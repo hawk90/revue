@@ -1,141 +1,73 @@
 <div align="center">
 
-<img src="assets/banner.svg" alt="Revue" width="500">
+<img src="assets/banner.svg" alt="Revue" width="480">
 
-<br>
+**A Vue-style TUI framework for Rust with CSS styling**
 
-**Build beautiful terminal UIs with the power of Rust and the elegance of CSS.**
+[![crates.io](https://img.shields.io/crates/v/revue?style=for-the-badge&logo=rust&logoColor=white&color=orange)](https://crates.io/crates/revue)
+[![docs.rs](https://img.shields.io/docsrs/revue?style=for-the-badge&logo=docs.rs&logoColor=white)](https://docs.rs/revue)
+[![CI](https://img.shields.io/github/actions/workflow/status/hawk90/revue/ci.yml?style=for-the-badge&logo=github&label=CI)](https://github.com/hawk90/revue/actions)
+[![codecov](https://img.shields.io/codecov/c/github/hawk90/revue?style=for-the-badge&logo=codecov&logoColor=white)](https://codecov.io/gh/hawk90/revue)
 
-[![CI](https://img.shields.io/github/actions/workflow/status/hawk90/revue/ci.yml?style=flat-square&logo=github&label=CI)](https://github.com/hawk90/revue/actions/workflows/ci.yml)
-[![codecov](https://img.shields.io/codecov/c/github/hawk90/revue?style=flat-square&logo=codecov)](https://codecov.io/gh/hawk90/revue)
-[![crates.io](https://img.shields.io/crates/v/revue?style=flat-square&logo=rust&label=crates.io)](https://crates.io/crates/revue)
-[![downloads](https://img.shields.io/crates/d/revue?style=flat-square&label=downloads)](https://crates.io/crates/revue)
-[![docs.rs](https://img.shields.io/docsrs/revue?style=flat-square&logo=docs.rs&label=docs.rs)](https://docs.rs/revue)
-[![Release](https://img.shields.io/github/v/release/hawk90/revue?style=flat-square&logo=github&label=release)](https://github.com/hawk90/revue/releases)
+[![downloads](https://img.shields.io/crates/d/revue?style=flat-square&label=downloads&color=blue)](https://crates.io/crates/revue)
 [![license](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![Rust 1.85+](https://img.shields.io/badge/rust-1.85+-orange?style=flat-square&logo=rust)](https://www.rust-lang.org)
+[![Linux](https://img.shields.io/badge/-Linux-grey?style=flat-square&logo=linux)](https://github.com/hawk90/revue)
+[![macOS](https://img.shields.io/badge/-macOS-grey?style=flat-square&logo=apple)](https://github.com/hawk90/revue)
+[![Windows](https://img.shields.io/badge/-Windows-grey?style=flat-square&logo=windows)](https://github.com/hawk90/revue)
 
-[![Linux](https://img.shields.io/badge/Linux-supported-success?style=flat-square&logo=linux&logoColor=white)](https://github.com/hawk90/revue)
-[![macOS](https://img.shields.io/badge/macOS-supported-success?style=flat-square&logo=apple&logoColor=white)](https://github.com/hawk90/revue)
-[![Windows](https://img.shields.io/badge/Windows-supported-success?style=flat-square&logo=windows&logoColor=white)](https://github.com/hawk90/revue)
-
-[Getting Started](#-quick-start) · [Examples](#-examples) · [Documentation](#-documentation) · [Contributing](#-contributing)
+[Quick Start](#-quick-start) · [Examples](examples/) · [Documentation](https://docs.rs/revue) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
----
+<br>
 
-## ✨ Highlights
+## Why Revue?
 
-<table>
-<tr>
-<td width="50%">
+> Build terminal UIs like you build web apps — with **CSS** and **reactive state**.
 
-### 🎨 CSS Styling
-Write styles in familiar CSS syntax with variables, selectors, transitions, and animations.
+- **CSS Styling** — Write styles in familiar CSS syntax with variables, selectors, and animations
+- **Reactive State** — Vue-inspired `Signal`/`Computed`/`Effect` system for automatic UI updates
+- **70+ Widgets** — Rich component library: inputs, tables, charts, markdown, images, and more
+- **Hot Reload** — See CSS changes instantly without restarting your app
+- **Developer Tools** — Widget inspector, snapshot testing, and performance profiler built-in
+- **Single Binary** — Pure Rust, no runtime dependencies, blazing fast
 
-</td>
-<td width="50%">
+<br>
 
-### ⚡ Reactive State
-Vue-inspired Signal/Computed/Effect system for automatic UI updates.
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 📦 70+ Widgets
-Rich widget library: inputs, tables, charts, markdown, images, and more.
-
-</td>
-<td width="50%">
-
-### 🔥 Hot Reload
-See CSS changes instantly without restarting your app.
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 🛠️ Developer Tools
-Widget inspector, snapshot testing, and performance profiler built-in.
-
-</td>
-<td width="50%">
-
-### 🚀 Fast & Lightweight
-Pure Rust, single binary, blazing fast performance.
-
-</td>
-</tr>
-</table>
-
-## 🆚 Comparison
-
-| Feature | Ratatui | Cursive | Textual | **Revue** |
-|:--------|:-------:|:-------:|:-------:|:---------:|
-| Language | Rust | Rust | Python | **Rust** |
-| Styling | Code | Theme | CSS | **CSS** |
-| Reactivity | Manual | Event | Reactive | **Signal** |
-| Hot Reload | ❌ | ❌ | ✅ | **✅** |
-| Devtools | ❌ | ❌ | ✅ | **✅** |
-| Binary | Single | Single | Python env | **Single** |
-
-## 🚀 Quick Start
-
-Add Revue to your project:
+## Quick Start
 
 ```bash
 cargo add revue
 ```
 
-Create your first app:
-
 ```rust
 use revue::prelude::*;
 
 fn main() -> Result<()> {
-    let mut app = App::builder()
+    App::new()
         .stylesheet("styles.css")
-        .build();
-
-    app.run_with_handler(Counter::new(), |event, state| {
-        state.handle_event(event)
-    })
+        .run(Counter::default())
 }
 
-struct Counter { count: i32 }
-
-impl Counter {
-    fn new() -> Self { Self { count: 0 } }
-
-    fn handle_event(&mut self, event: &KeyEvent) -> bool {
-        match event.key {
-            Key::Up => self.count += 1,
-            Key::Down => self.count -= 1,
-            Key::Char('q') => return false,
-            _ => {}
-        }
-        true
-    }
+#[derive(Default)]
+struct Counter {
+    count: Signal<i32>,
 }
 
 impl View for Counter {
-    fn render(&self, ctx: &mut RenderContext) {
-        Border::rounded()
+    fn view(&self) -> impl View {
+        vstack()
+            .class("container")
+            .child(text!("Count: {}", self.count.get()).bold())
             .child(
-                vstack().gap(1)
-                    .child(Text::new(format!("Count: {}", self.count)).bold())
-                    .child(Text::muted("[↑/↓] Change  [q] Quit"))
+                hstack().gap(1)
+                    .child(button("-").on_click(|| self.count.update(|n| n - 1)))
+                    .child(button("+").on_click(|| self.count.update(|n| n + 1)))
             )
-            .render(ctx);
     }
 }
 ```
-
-Style with CSS:
 
 ```css
 /* styles.css */
@@ -156,138 +88,73 @@ button:hover {
 }
 ```
 
-## 📦 Widgets
+<br>
 
-<details>
-<summary><b>Layout</b> - Stack, Grid, Scroll, Tabs, Accordion, Splitter</summary>
+## Widgets
 
-```rust
-vstack().gap(1).child(/* ... */);
-hstack().justify_content(Center);
-grid().cols(3).gap(1);
-tabs().tab("Home", home_view).tab("Settings", settings_view);
-```
+| Category | Components |
+|:---------|:-----------|
+| **Layout** | `vstack` `hstack` `grid` `scroll` `tabs` `accordion` `splitter` |
+| **Input** | `input` `textarea` `select` `checkbox` `radio` `switch` `slider` |
+| **Display** | `text` `markdown` `table` `tree` `list` `progress` `badge` `image` |
+| **Feedback** | `modal` `toast` `notification` `tooltip` `popover` |
+| **Charts** | `bar_chart` `line_chart` `sparkline` `heatmap` `gauge` |
 
-</details>
+<br>
 
-<details>
-<summary><b>Input</b> - Input, TextArea, Select, Checkbox, Switch, Slider</summary>
-
-```rust
-input().placeholder("Enter name...");
-textarea().rows(5);
-select().options(["Option 1", "Option 2"]);
-checkbox("Enable feature");
-switch().on_change(|on| /* ... */);
-```
-
-</details>
-
-<details>
-<summary><b>Display</b> - Text, Markdown, Table, Progress, Badge, Image</summary>
-
-```rust
-text("Hello").bold().fg(Color::CYAN);
-markdown("# Title\n**bold** and *italic*");
-table().columns(["Name", "Age"]).rows(data);
-progress(0.75).label("Loading...");
-image_from_file("logo.png");
-```
-
-</details>
-
-<details>
-<summary><b>Feedback</b> - Modal, Toast, Notification, Tooltip</summary>
-
-```rust
-modal().title("Confirm").content(/* ... */);
-toast("Saved!").level(Success);
-tooltip("Click to submit").child(button("Submit"));
-```
-
-</details>
-
-<details>
-<summary><b>Data Viz</b> - BarChart, LineChart, Sparkline, Heatmap</summary>
-
-```rust
-barchart().data([("A", 10), ("B", 20), ("C", 15)]);
-line_chart().series("Sales", sales_data);
-sparkline(cpu_history);
-```
-
-</details>
-
-## 🎯 Examples
+## Examples
 
 ```bash
 cargo run --example counter      # Basic counter
 cargo run --example todo         # Todo app
 cargo run --example dashboard    # Charts & widgets
-cargo run --example markdown     # Markdown viewer
 cargo run --example forms        # Form inputs
+cargo run --example markdown     # Markdown viewer
 ```
 
-## 📚 Documentation
+<br>
 
-| Resource | Description |
-|:---------|:------------|
-| [📖 API Docs](https://docs.rs/revue) | Full API reference |
-| [🏗️ Architecture](docs/ARCHITECTURE.md) | System design |
-| [🎨 CSS Reference](docs/CSS.md) | Supported CSS properties |
-| [🧩 Widgets](docs/WIDGETS.md) | Widget catalog |
+## Comparison
 
-## 🗺️ Roadmap
+| | Revue | Ratatui | Cursive | Textual |
+|:--|:--:|:--:|:--:|:--:|
+| **Language** | Rust | Rust | Rust | Python |
+| **Styling** | CSS | Code | Theme | CSS |
+| **Reactivity** | Signal | Manual | Event | Reactive |
+| **Hot Reload** | ✅ | ❌ | ❌ | ✅ |
+| **Devtools** | ✅ | ❌ | ❌ | ✅ |
 
-| Version | Theme | Status |
-|---------|-------|--------|
-| v0.1.0 | Foundation | ✅ Released |
-| v0.2.0 | Polish | ✅ Released |
-| v0.3.0 | Plugin System | ✅ Released |
-| v0.4.0 | Async & A11y | ✅ Released |
-| v0.5.0 | DX & Testing | ✅ Released |
-| v0.6.0 | Advanced UI | ✅ Released |
-| v0.7.0 | Ecosystem | ✅ Released |
-| v0.8.0 | Stability | ✅ Released |
-| v0.9.0 | Documentation | ✅ Released |
-| **v1.0.0** | **Production Ready** | **🎉 Current** |
+<br>
 
-## 🤝 Contributing
+## Documentation
 
-Contributions are welcome! See our [Contributing Guide](CONTRIBUTING.md) for details.
+- [API Reference](https://docs.rs/revue) — Full API documentation
+- [CSS Reference](docs/CSS.md) — Supported CSS properties
+- [Widget Guide](docs/WIDGETS.md) — Widget catalog and usage
+- [Architecture](docs/ARCHITECTURE.md) — System design
+
+<br>
+
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
-# Clone and setup
 git clone https://github.com/hawk90/revue.git
-cd revue
-
-# Install git hooks (recommended)
-brew install lefthook && lefthook install
-
-# Build and test
-cargo build
-cargo test
-
-# Run an example
-cargo run --example counter
+cd revue && cargo test
 ```
 
-## 💡 Inspired By
+<br>
 
-- [Textual](https://github.com/Textualize/textual) - CSS styling for TUI
-- [Ratatui](https://github.com/ratatui/ratatui) - Rust TUI ecosystem
-- [Vue.js](https://vuejs.org/) - Reactivity system
+## License
 
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
----
+MIT License — see [LICENSE](LICENSE) for details.
 
 <div align="center">
+<br>
 
-**[⬆ Back to Top](#-revue)**
+**[↑ Back to Top](#)**
 
-Made with ❤️ by the Revue contributors
+<sub>Built with Rust</sub>
 
 </div>
