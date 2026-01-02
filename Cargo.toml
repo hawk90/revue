@@ -75,7 +75,7 @@ fuzzy-matcher = "0.3"
 notify = "6.1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-dirs = "5.0"
+dirs = "6.0"
 
 # ═══════════════════════════════════════════
 # QR Code & HTTP & System
