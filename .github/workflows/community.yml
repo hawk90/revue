@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/stale@v9
+      - uses: actions/stale@v10
         with:
           stale-issue-message: >
             This issue has been automatically marked as stale because it has not had
