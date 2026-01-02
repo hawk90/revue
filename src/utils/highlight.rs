@@ -83,11 +83,13 @@ pub fn highlight_matches(text: &str, indices: &[usize]) -> Vec<HighlightSpan> {
         if should_highlight != in_highlight {
             // State change
             if !current_text.is_empty() {
-                let byte_start = text.char_indices()
+                let byte_start = text
+                    .char_indices()
                     .nth(current_start)
                     .map(|(i, _)| i)
                     .unwrap_or(0);
-                let byte_end = text.char_indices()
+                let byte_end = text
+                    .char_indices()
                     .nth(current_start + current_text.chars().count())
                     .map(|(i, _)| i)
                     .unwrap_or(text.len());
@@ -109,7 +111,8 @@ pub fn highlight_matches(text: &str, indices: &[usize]) -> Vec<HighlightSpan> {
 
     // Final span
     if !current_text.is_empty() {
-        let byte_start = text.char_indices()
+        let byte_start = text
+            .char_indices()
             .nth(current_start)
             .map(|(i, _)| i)
             .unwrap_or(0);
@@ -142,13 +145,25 @@ pub fn highlight_substring(text: &str, pattern: &str) -> Vec<HighlightSpan> {
 }
 
 /// Highlight all occurrences of a substring with case sensitivity option
-pub fn highlight_substring_case(text: &str, pattern: &str, case_sensitive: bool) -> Vec<HighlightSpan> {
+pub fn highlight_substring_case(
+    text: &str,
+    pattern: &str,
+    case_sensitive: bool,
+) -> Vec<HighlightSpan> {
     if pattern.is_empty() {
         return vec![HighlightSpan::normal(text.to_string(), 0, text.len())];
     }
 
-    let search_text = if case_sensitive { text.to_string() } else { text.to_lowercase() };
-    let search_pattern = if case_sensitive { pattern.to_string() } else { pattern.to_lowercase() };
+    let search_text = if case_sensitive {
+        text.to_string()
+    } else {
+        text.to_lowercase()
+    };
+    let search_pattern = if case_sensitive {
+        pattern.to_string()
+    } else {
+        pattern.to_lowercase()
+    };
 
     let mut spans = Vec::new();
     let mut last_end = 0;
@@ -203,11 +218,19 @@ pub fn highlight_range(text: &str, start: usize, end: usize) -> Vec<HighlightSpa
     }
 
     if start < end {
-        spans.push(HighlightSpan::highlighted(text[start..end].to_string(), start, end));
+        spans.push(HighlightSpan::highlighted(
+            text[start..end].to_string(),
+            start,
+            end,
+        ));
     }
 
     if end < text.len() {
-        spans.push(HighlightSpan::normal(text[end..].to_string(), end, text.len()));
+        spans.push(HighlightSpan::normal(
+            text[end..].to_string(),
+            end,
+            text.len(),
+        ));
     }
 
     if spans.is_empty() {
@@ -505,8 +528,8 @@ mod tests {
     fn test_unicode_highlighting() {
         let spans = highlight_matches("안녕하세요", &[0, 2]);
 
-        assert!(spans[0].highlighted);  // 안
+        assert!(spans[0].highlighted); // 안
         assert!(!spans[1].highlighted); // 녕
-        assert!(spans[2].highlighted);  // 하
+        assert!(spans[2].highlighted); // 하
     }
 }

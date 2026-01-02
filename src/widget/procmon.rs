@@ -3,10 +3,10 @@
 //! Displays system processes with CPU/memory usage,
 //! sorting, filtering, and process management.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 use sysinfo::System;
 
 /// Sort column for process list
@@ -248,7 +248,9 @@ impl ProcessMonitor {
     fn update_process_list(&mut self) {
         let total_memory = self.system.total_memory() as f32;
 
-        self.processes = self.system.processes()
+        self.processes = self
+            .system
+            .processes()
             .iter()
             .map(|(pid, proc)| {
                 let memory = proc.memory();
@@ -260,21 +262,21 @@ impl ProcessMonitor {
                     memory,
                     memory_percent: (memory as f32 / total_memory) * 100.0,
                     status: format!("{:?}", proc.status()),
-                    cmd: proc.cmd().iter()
+                    cmd: proc
+                        .cmd()
+                        .iter()
                         .map(|s| s.to_string_lossy().to_string())
                         .collect::<Vec<_>>()
                         .join(" "),
-                    user: proc.user_id()
-                        .map(|u| u.to_string())
-                        .unwrap_or_default(),
+                    user: proc.user_id().map(|u| u.to_string()).unwrap_or_default(),
                 }
             })
             .filter(|p| {
                 if self.filter.is_empty() {
                     true
                 } else {
-                    p.name.to_lowercase().contains(&self.filter) ||
-                    p.cmd.to_lowercase().contains(&self.filter)
+                    p.name.to_lowercase().contains(&self.filter)
+                        || p.cmd.to_lowercase().contains(&self.filter)
                 }
             })
             .collect();
@@ -284,11 +286,18 @@ impl ProcessMonitor {
             let ord = match self.sort {
                 ProcessSort::Pid => a.pid.cmp(&b.pid),
                 ProcessSort::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-                ProcessSort::Cpu => a.cpu.partial_cmp(&b.cpu).unwrap_or(std::cmp::Ordering::Equal),
+                ProcessSort::Cpu => a
+                    .cpu
+                    .partial_cmp(&b.cpu)
+                    .unwrap_or(std::cmp::Ordering::Equal),
                 ProcessSort::Memory => a.memory.cmp(&b.memory),
                 ProcessSort::Status => a.status.cmp(&b.status),
             };
-            if self.sort_asc { ord } else { ord.reverse() }
+            if self.sort_asc {
+                ord
+            } else {
+                ord.reverse()
+            }
         });
 
         // Adjust selection
@@ -383,8 +392,14 @@ impl ProcessMonitor {
         let mut x_offset = 0u16;
         for (name, width, sort) in headers {
             let indicator = if self.sort == sort {
-                if self.sort_asc { "▲" } else { "▼" }
-            } else { "" };
+                if self.sort_asc {
+                    "▲"
+                } else {
+                    "▼"
+                }
+            } else {
+                ""
+            };
 
             let text = format!("{}{}", name, indicator);
             for (i, ch) in text.chars().enumerate() {
@@ -444,12 +459,15 @@ impl View for ProcessMonitor {
         self.render_stats(ctx, 0);
 
         // Header (row 1)
-        let _header_ctx = RenderContext::new(ctx.buffer, crate::layout::Rect {
-            x: area.x,
-            y: area.y + 1,
-            width: area.width,
-            height: 1,
-        });
+        let _header_ctx = RenderContext::new(
+            ctx.buffer,
+            crate::layout::Rect {
+                x: area.x,
+                y: area.y + 1,
+                width: area.width,
+                height: 1,
+            },
+        );
         // We need to create a new RenderContext properly
         self.render_header(ctx);
 
@@ -466,7 +484,9 @@ impl View for ProcessMonitor {
             self.scroll
         };
 
-        for (i, proc) in self.processes.iter()
+        for (i, proc) in self
+            .processes
+            .iter()
             .skip(scroll)
             .take(visible_rows)
             .enumerate()
@@ -483,7 +503,11 @@ impl View for ProcessMonitor {
                 }
             }
 
-            let bg = if is_selected { Some(self.colors.selected_bg) } else { None };
+            let bg = if is_selected {
+                Some(self.colors.selected_bg)
+            } else {
+                None
+            };
 
             // PID
             let pid_str = format!("{:>6}", proc.pid);
@@ -574,8 +598,8 @@ pub fn htop() -> ProcessMonitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_process_monitor_creation() {

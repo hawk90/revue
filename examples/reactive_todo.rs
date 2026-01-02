@@ -65,9 +65,18 @@ impl ReactiveTodoList {
     fn new() -> Self {
         // Initialize reactive state
         let items = signal(vec![
-            TodoItem { text: "Learn Revue TUI".to_string(), completed: false },
-            TodoItem { text: "Build awesome app".to_string(), completed: false },
-            TodoItem { text: "Try reactive patterns".to_string(), completed: true },
+            TodoItem {
+                text: "Learn Revue TUI".to_string(),
+                completed: false,
+            },
+            TodoItem {
+                text: "Build awesome app".to_string(),
+                completed: false,
+            },
+            TodoItem {
+                text: "Try reactive patterns".to_string(),
+                completed: true,
+            },
         ]);
         let filter = signal(Filter::All);
         let input = signal(String::new());
@@ -79,7 +88,8 @@ impl ReactiveTodoList {
         let filtered_items = computed(move || {
             items_clone.with(|items| {
                 filter_clone.with(|filter| {
-                    items.iter()
+                    items
+                        .iter()
                         .filter(|item| filter.matches(item.completed))
                         .cloned()
                         .collect()
@@ -90,16 +100,12 @@ impl ReactiveTodoList {
         // Computed: counts
         let items_clone2 = items.clone();
         let active_count = computed(move || {
-            items_clone2.with(|items| {
-                items.iter().filter(|item| !item.completed).count()
-            })
+            items_clone2.with(|items| items.iter().filter(|item| !item.completed).count())
         });
 
         let items_clone3 = items.clone();
         let completed_count = computed(move || {
-            items_clone3.with(|items| {
-                items.iter().filter(|item| item.completed).count()
-            })
+            items_clone3.with(|items| items.iter().filter(|item| item.completed).count())
         });
 
         let items_clone4 = items.clone();
@@ -144,7 +150,8 @@ impl ReactiveTodoList {
 
         self.items.update(|items| {
             // Find actual index in full list based on filtered view
-            let filtered_indices: Vec<_> = items.iter()
+            let filtered_indices: Vec<_> = items
+                .iter()
                 .enumerate()
                 .filter(|(_, item)| filter.matches(item.completed))
                 .map(|(i, _)| i)
@@ -163,7 +170,8 @@ impl ReactiveTodoList {
         let filter = self.filter.get();
 
         self.items.update(|items| {
-            let filtered: Vec<_> = items.iter()
+            let filtered: Vec<_> = items
+                .iter()
                 .enumerate()
                 .filter(|(_, item)| filter.matches(item.completed))
                 .collect();
@@ -228,7 +236,9 @@ impl ReactiveTodoList {
                 true
             }
             Key::Backspace => {
-                self.input.update(|input| { input.pop(); });
+                self.input.update(|input| {
+                    input.pop();
+                });
                 true
             }
             _ => false,
@@ -273,56 +283,93 @@ impl View for ReactiveTodoList {
         let view = vstack()
             .gap(1)
             .child(
-                Border::panel()
-                    .title("📝 Reactive Todo List")
-                    .child(
-                        vstack()
-                            .gap(1)
-                            .child(
-                                hstack()
-                                    .gap(2)
-                                    .child(Text::new("New:"))
-                                    .child(Text::new(format!("[{}]", input)).fg(Color::YELLOW))
-                            )
-                            .child(
-                                hstack()
-                                    .gap(2)
-                                    .child(Text::new(format!("Filter: {}", filter.label())).fg(Color::CYAN))
-                                    .child(Text::muted("|"))
-                                    .child(Text::new(format!("Total: {}", total_count)))
-                                    .child(Text::new(format!("Active: {}", active_count)).fg(Color::GREEN))
-                                    .child(Text::new(format!("Done: {}", completed_count)).fg(Color::rgb(100, 100, 100)))
-                            )
-                    )
+                Border::panel().title("📝 Reactive Todo List").child(
+                    vstack()
+                        .gap(1)
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::new("New:"))
+                                .child(Text::new(format!("[{}]", input)).fg(Color::YELLOW)),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(
+                                    Text::new(format!("Filter: {}", filter.label()))
+                                        .fg(Color::CYAN),
+                                )
+                                .child(Text::muted("|"))
+                                .child(Text::new(format!("Total: {}", total_count)))
+                                .child(
+                                    Text::new(format!("Active: {}", active_count)).fg(Color::GREEN),
+                                )
+                                .child(
+                                    Text::new(format!("Done: {}", completed_count))
+                                        .fg(Color::rgb(100, 100, 100)),
+                                ),
+                        ),
+                ),
+            )
+            .child(Border::single().title("Items").child(items_view))
+            .child(
+                Border::rounded().title("Controls").child(
+                    vstack()
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[Type]"))
+                                .child(Text::new("Add text to new item")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[Enter]"))
+                                .child(Text::new("Add item")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[↑/↓]"))
+                                .child(Text::new("Navigate")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[Space]"))
+                                .child(Text::new("Toggle completed")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[d]"))
+                                .child(Text::new("Delete item")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[f]"))
+                                .child(Text::new("Cycle filter")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[q]"))
+                                .child(Text::new("Quit")),
+                        ),
+                ),
             )
             .child(
-                Border::single()
-                    .title("Items")
-                    .child(items_view)
-            )
-            .child(
-                Border::rounded()
-                    .title("Controls")
-                    .child(
-                        vstack()
-                            .child(hstack().gap(2).child(Text::muted("[Type]")).child(Text::new("Add text to new item")))
-                            .child(hstack().gap(2).child(Text::muted("[Enter]")).child(Text::new("Add item")))
-                            .child(hstack().gap(2).child(Text::muted("[↑/↓]")).child(Text::new("Navigate")))
-                            .child(hstack().gap(2).child(Text::muted("[Space]")).child(Text::new("Toggle completed")))
-                            .child(hstack().gap(2).child(Text::muted("[d]")).child(Text::new("Delete item")))
-                            .child(hstack().gap(2).child(Text::muted("[f]")).child(Text::new("Cycle filter")))
-                            .child(hstack().gap(2).child(Text::muted("[q]")).child(Text::new("Quit")))
-                    )
-            )
-            .child(
-                Border::success_box()
-                    .title("✨ Reactive Features")
-                    .child(
-                        vstack()
-                            .child(Text::success("✓ filtered_items auto-updates when filter or items change"))
-                            .child(Text::success("✓ Counts are computed - no manual recalculation"))
-                            .child(Text::success("✓ All derived state is cached and efficient"))
-                    )
+                Border::success_box().title("✨ Reactive Features").child(
+                    vstack()
+                        .child(Text::success(
+                            "✓ filtered_items auto-updates when filter or items change",
+                        ))
+                        .child(Text::success(
+                            "✓ Counts are computed - no manual recalculation",
+                        ))
+                        .child(Text::success("✓ All derived state is cached and efficient")),
+                ),
             );
 
         view.render(ctx);
@@ -340,10 +387,8 @@ fn main() -> Result<()> {
     let mut app = App::builder().build();
     let todo = ReactiveTodoList::new();
 
-    app.run(todo, |event, todo, _app| {
-        match event {
-            Event::Key(key_event) => todo.handle_key(&key_event.key),
-            _ => false,
-        }
+    app.run(todo, |event, todo, _app| match event {
+        Event::Key(key_event) => todo.handle_key(&key_event.key),
+        _ => false,
     })
 }

@@ -12,9 +12,9 @@
 //! let cards = dom.query_all(".card");
 //! ```
 
+use super::selector::{parse_selector, Combinator, Selector, SelectorPart};
+use super::{DomId, DomNode};
 use std::collections::HashMap;
-use super::{DomNode, DomId};
-use super::selector::{parse_selector, Selector, SelectorPart, Combinator};
 
 /// Query result - found nodes
 pub struct QueryResult<'a> {
@@ -133,15 +133,19 @@ impl DomTree {
         }
 
         // Add to parent's children and collect IDs for position update
-        let children_to_update: Vec<(DomId, usize, usize)> = if let Some(parent) = self.nodes.get_mut(&parent_id) {
-            parent.children.push(id);
-            let child_count = parent.children.len();
-            parent.children.iter().enumerate()
-                .map(|(idx, &child_id)| (child_id, idx, child_count))
-                .collect()
-        } else {
-            Vec::new()
-        };
+        let children_to_update: Vec<(DomId, usize, usize)> =
+            if let Some(parent) = self.nodes.get_mut(&parent_id) {
+                parent.children.push(id);
+                let child_count = parent.children.len();
+                parent
+                    .children
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, &child_id)| (child_id, idx, child_count))
+                    .collect()
+            } else {
+                Vec::new()
+            };
 
         self.nodes.insert(id, node);
 
@@ -159,11 +163,7 @@ impl DomTree {
     pub fn remove(&mut self, id: DomId) {
         // Collect info we need before modifying
         let (parent_id, element_id, children) = if let Some(node) = self.nodes.get(&id) {
-            (
-                node.parent,
-                node.meta.id.clone(),
-                node.children.clone(),
-            )
+            (node.parent, node.meta.id.clone(), node.children.clone())
         } else {
             return;
         };
@@ -362,8 +362,11 @@ impl DomTree {
     /// Check if a selector part matches a node
     fn matches_part(&self, part: &SelectorPart, node: &DomNode) -> bool {
         // Universal selector matches everything
-        if part.universal && part.id.is_none() && part.classes.is_empty()
-            && part.pseudo_classes.is_empty() && part.element.is_none()
+        if part.universal
+            && part.id.is_none()
+            && part.classes.is_empty()
+            && part.pseudo_classes.is_empty()
+            && part.element.is_none()
         {
             return true;
         }
@@ -416,7 +419,9 @@ impl DomTree {
 impl Query for DomTree {
     fn query_one(&self, selector_str: &str) -> Option<&DomNode> {
         let selector = parse_selector(selector_str).ok()?;
-        self.nodes.values().find(|node| self.matches_selector(node, &selector))
+        self.nodes
+            .values()
+            .find(|node| self.matches_selector(node, &selector))
     }
 
     fn query_all(&self, selector_str: &str) -> QueryResult<'_> {
@@ -425,7 +430,9 @@ impl Query for DomTree {
             Err(_) => return QueryResult::empty(),
         };
 
-        let nodes: Vec<_> = self.nodes.values()
+        let nodes: Vec<_> = self
+            .nodes
+            .values()
             .filter(|node| self.matches_selector(node, &selector))
             .collect();
 
@@ -433,18 +440,24 @@ impl Query for DomTree {
     }
 
     fn get_by_id(&self, id: &str) -> Option<&DomNode> {
-        self.id_map.get(id).and_then(|dom_id| self.nodes.get(dom_id))
+        self.id_map
+            .get(id)
+            .and_then(|dom_id| self.nodes.get(dom_id))
     }
 
     fn get_by_class(&self, class: &str) -> QueryResult<'_> {
-        let nodes: Vec<_> = self.nodes.values()
+        let nodes: Vec<_> = self
+            .nodes
+            .values()
             .filter(|node| node.has_class(class))
             .collect();
         QueryResult::from_nodes(nodes)
     }
 
     fn get_by_type(&self, widget_type: &str) -> QueryResult<'_> {
-        let nodes: Vec<_> = self.nodes.values()
+        let nodes: Vec<_> = self
+            .nodes
+            .values()
             .filter(|node| node.widget_type() == widget_type)
             .collect();
         QueryResult::from_nodes(nodes)
@@ -453,8 +466,8 @@ impl Query for DomTree {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::node::WidgetMeta;
+    use super::*;
 
     fn create_test_tree() -> DomTree {
         let mut tree = DomTree::new();
@@ -466,7 +479,10 @@ mod tests {
         let sidebar = tree.add_child(root, WidgetMeta::new("Container").class("sidebar"));
 
         // Add buttons to sidebar
-        tree.add_child(sidebar, WidgetMeta::new("Button").class("primary").id("nav-home"));
+        tree.add_child(
+            sidebar,
+            WidgetMeta::new("Button").class("primary").id("nav-home"),
+        );
         tree.add_child(sidebar, WidgetMeta::new("Button").id("nav-settings"));
 
         // Add content area
@@ -474,7 +490,10 @@ mod tests {
 
         // Add cards
         tree.add_child(content, WidgetMeta::new("Container").class("card"));
-        tree.add_child(content, WidgetMeta::new("Container").class("card").class("featured"));
+        tree.add_child(
+            content,
+            WidgetMeta::new("Container").class("card").class("featured"),
+        );
 
         tree
     }

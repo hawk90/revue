@@ -2,9 +2,9 @@
 //!
 //! Benchmarks for the Taffy-based layout engine.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use revue::layout::{LayoutEngine, Rect};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use revue::dom::DomId;
+use revue::layout::{LayoutEngine, Rect};
 use revue::style::Style;
 use std::sync::atomic::{AtomicU64, Ordering};
 

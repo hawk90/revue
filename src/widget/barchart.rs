@@ -2,10 +2,10 @@
 //!
 //! Displays data as horizontal or vertical bars.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Bar orientation
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -232,11 +232,7 @@ impl BarChart {
 
                     for (i, ch) in label.chars().enumerate() {
                         if (i as u16) < area.width {
-                            ctx.buffer.set(
-                                area.x + i as u16,
-                                area.y + y,
-                                Cell::new(ch),
-                            );
+                            ctx.buffer.set(area.x + i as u16, area.y + y, Cell::new(ch));
                         }
                     }
                 }
@@ -247,7 +243,8 @@ impl BarChart {
                     if bar_start + i < area.width {
                         let mut cell = Cell::new('█');
                         cell.fg = Some(color);
-                        ctx.buffer.set(area.x + bar_start + i, area.y + y + row, cell);
+                        ctx.buffer
+                            .set(area.x + bar_start + i, area.y + y + row, cell);
                     }
                 }
 
@@ -317,10 +314,12 @@ impl BarChart {
             // Draw value above bar
             if self.show_values && bar_area_height > 0 {
                 let value_str = format!("{:.0}", bar.value);
-                let value_y = area.y + bar_area_height - bar_height.saturating_sub(1).min(bar_area_height);
+                let value_y =
+                    area.y + bar_area_height - bar_height.saturating_sub(1).min(bar_area_height);
                 for (i, ch) in value_str.chars().enumerate() {
                     if x + (i as u16) < area.width && value_y > area.y {
-                        ctx.buffer.set(area.x + x + (i as u16), value_y - 1, Cell::new(ch));
+                        ctx.buffer
+                            .set(area.x + x + (i as u16), value_y - 1, Cell::new(ch));
                     }
                 }
             }
@@ -331,7 +330,8 @@ impl BarChart {
                 let label: String = bar.label.chars().take(self.bar_width as usize).collect();
                 for (i, ch) in label.chars().enumerate() {
                     if x + (i as u16) < area.width {
-                        ctx.buffer.set(area.x + x + (i as u16), label_y, Cell::new(ch));
+                        ctx.buffer
+                            .set(area.x + x + (i as u16), label_y, Cell::new(ch));
                     }
                 }
             }
@@ -369,8 +369,8 @@ pub fn barchart() -> BarChart {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_barchart_new() {
@@ -381,10 +381,7 @@ mod tests {
 
     #[test]
     fn test_barchart_bar() {
-        let chart = BarChart::new()
-            .bar("A", 10.0)
-            .bar("B", 20.0)
-            .bar("C", 30.0);
+        let chart = BarChart::new().bar("A", 10.0).bar("B", 20.0).bar("C", 30.0);
 
         assert_eq!(chart.bars.len(), 3);
         assert_eq!(chart.bars[0].label, "A");
@@ -393,10 +390,7 @@ mod tests {
 
     #[test]
     fn test_barchart_data() {
-        let data = vec![
-            ("Sales", 100.0),
-            ("Revenue", 200.0),
-        ];
+        let data = vec![("Sales", 100.0), ("Revenue", 200.0)];
 
         let chart = BarChart::new().data(data);
         assert_eq!(chart.bars.len(), 2);
@@ -473,18 +467,14 @@ mod tests {
 
     #[test]
     fn test_barchart_helper() {
-        let chart = barchart()
-            .bar("Test", 42.0);
+        let chart = barchart().bar("Test", 42.0);
 
         assert_eq!(chart.bars.len(), 1);
     }
 
     #[test]
     fn test_barchart_calculate_max() {
-        let chart = BarChart::new()
-            .bar("A", 10.0)
-            .bar("B", 50.0)
-            .bar("C", 30.0);
+        let chart = BarChart::new().bar("A", 10.0).bar("B", 50.0).bar("C", 30.0);
 
         assert_eq!(chart.calculate_max(), 50.0);
 

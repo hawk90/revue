@@ -3,10 +3,10 @@
 //! Provides a way to manage multiple screens with push/pop navigation,
 //! similar to mobile app navigation patterns.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::event::Key;
+use crate::{impl_props_builders, impl_styled_view};
 use std::collections::HashMap;
-use crate::{impl_styled_view, impl_props_builders};
 
 /// Screen identifier
 pub type ScreenId = &'static str;

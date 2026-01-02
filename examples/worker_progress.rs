@@ -5,7 +5,7 @@
 //! Run with: cargo run --example worker_progress
 
 use revue::prelude::*;
-use revue::worker::{WorkerChannel, WorkerMessage, WorkerCommand, WorkerSender};
+use revue::worker::{WorkerChannel, WorkerCommand, WorkerMessage, WorkerSender};
 use std::thread;
 use std::time::Duration;
 
@@ -162,37 +162,33 @@ impl View for ProgressDemo {
         let view = vstack()
             .gap(1)
             .child(
-                Border::panel()
-                    .title("📊 Worker Progress Demo")
-                    .child(
-                        vstack()
-                            .gap(1)
-                            .child(
-                                hstack()
-                                    .gap(2)
-                                    .child(Text::new("Status:").bold())
-                                    .child(Text::new(&self.status).fg(Color::CYAN))
-                            )
-                            .child(
-                                hstack()
-                                    .gap(2)
-                                    .child(Text::new("Running:"))
-                                    .child(if self.is_running {
-                                        Text::new("Yes").fg(Color::YELLOW)
-                                    } else {
-                                        Text::new("No").fg(Color::rgb(100, 100, 100))
-                                    })
-                            )
-                    )
+                Border::panel().title("📊 Worker Progress Demo").child(
+                    vstack()
+                        .gap(1)
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::new("Status:").bold())
+                                .child(Text::new(&self.status).fg(Color::CYAN)),
+                        )
+                        .child(hstack().gap(2).child(Text::new("Running:")).child(
+                            if self.is_running {
+                                Text::new("Yes").fg(Color::YELLOW)
+                            } else {
+                                Text::new("No").fg(Color::rgb(100, 100, 100))
+                            },
+                        )),
+                ),
             )
             .child(
-                Border::single()
-                    .title("Progress")
-                    .child(
-                        vstack()
-                            .child(Text::new(progress_bar).fg(Color::GREEN))
-                            .child(Text::muted(format!("{:.1}% complete", self.progress * 100.0)))
-                    )
+                Border::single().title("Progress").child(
+                    vstack()
+                        .child(Text::new(progress_bar).fg(Color::GREEN))
+                        .child(Text::muted(format!(
+                            "{:.1}% complete",
+                            self.progress * 100.0
+                        ))),
+                ),
             )
             .child(
                 Border::single()
@@ -207,43 +203,71 @@ impl View for ProgressDemo {
                             }
                         }
                         stack
-                    })
+                    }),
             )
-            .child(
-                Border::single()
-                    .title("Final Result")
-                    .child(if let Some(result) = &self.final_result {
-                        vstack()
-                            .child(Text::success("✓ Task completed"))
-                            .child(Text::new(result).fg(Color::WHITE))
-                    } else {
-                        vstack().child(Text::muted("Not completed yet"))
-                    })
-            )
+            .child(Border::single().title("Final Result").child(
+                if let Some(result) = &self.final_result {
+                    vstack()
+                        .child(Text::success("✓ Task completed"))
+                        .child(Text::new(result).fg(Color::WHITE))
+                } else {
+                    vstack().child(Text::muted("Not completed yet"))
+                },
+            ))
             .child(
                 Border::success_box()
                     .title("✨ Features Demonstrated")
                     .child(
                         vstack()
-                            .child(Text::success("✓ WorkerChannel: Bidirectional communication"))
+                            .child(Text::success(
+                                "✓ WorkerChannel: Bidirectional communication",
+                            ))
                             .child(Text::success("✓ Progress updates (0.0 to 1.0)"))
                             .child(Text::success("✓ Status messages"))
                             .child(Text::success("✓ Partial results"))
-                            .child(Text::success("✓ Commands: Cancel, Pause, Resume"))
-                    )
+                            .child(Text::success("✓ Commands: Cancel, Pause, Resume")),
+                    ),
             )
             .child(
-                Border::rounded()
-                    .title("Controls")
-                    .child(
-                        vstack()
-                            .child(hstack().gap(2).child(Text::muted("[s]")).child(Text::new("Start processing")))
-                            .child(hstack().gap(2).child(Text::muted("[c]")).child(Text::new("Cancel task")))
-                            .child(hstack().gap(2).child(Text::muted("[p]")).child(Text::new("Pause task")))
-                            .child(hstack().gap(2).child(Text::muted("[r]")).child(Text::new("Resume task")))
-                            .child(hstack().gap(2).child(Text::muted("[x]")).child(Text::new("Clear all")))
-                            .child(hstack().gap(2).child(Text::muted("[q]")).child(Text::new("Quit")))
-                    )
+                Border::rounded().title("Controls").child(
+                    vstack()
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[s]"))
+                                .child(Text::new("Start processing")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[c]"))
+                                .child(Text::new("Cancel task")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[p]"))
+                                .child(Text::new("Pause task")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[r]"))
+                                .child(Text::new("Resume task")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[x]"))
+                                .child(Text::new("Clear all")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[q]"))
+                                .child(Text::new("Quit")),
+                        ),
+                ),
             );
 
         view.render(ctx);
@@ -320,11 +344,9 @@ fn main() -> Result<()> {
     let mut app = App::builder().build();
     let mut demo = ProgressDemo::new();
 
-    app.run(demo, |event, demo, _app| {
-        match event {
-            Event::Key(key_event) => demo.handle_key(&key_event.key),
-            Event::Tick => demo.tick(),
-            _ => false,
-        }
+    app.run(demo, |event, demo, _app| match event {
+        Event::Key(key_event) => demo.handle_key(&key_event.key),
+        Event::Tick => demo.tick(),
+        _ => false,
     })
 }

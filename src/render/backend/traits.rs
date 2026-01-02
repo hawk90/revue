@@ -2,10 +2,10 @@
 //!
 //! Defines the interface that all terminal backends must implement.
 
-use std::io::Write;
-use crate::style::Color;
 use crate::render::cell::Modifier;
+use crate::style::Color;
 use crate::Result;
+use std::io::Write;
 
 /// Capabilities that a backend may support
 #[derive(Debug, Clone, Default)]

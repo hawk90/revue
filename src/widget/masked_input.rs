@@ -27,8 +27,8 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::widget::{RenderContext, View, WidgetProps};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Default peek timeout in frames for MaskStyle::Peek
 ///
@@ -475,8 +475,8 @@ impl View for MaskedInput {
     crate::impl_view_meta!("MaskedInput");
 
     fn render(&self, ctx: &mut RenderContext) {
+        use crate::widget::stack::{hstack, vstack};
         use crate::widget::Text;
-        use crate::widget::stack::{vstack, hstack};
 
         let mut content = vstack();
 
@@ -520,7 +520,11 @@ impl View for MaskedInput {
         let mut input_text = if self.focused && !self.disabled {
             hstack()
                 .child(Text::new(display_with_cursor.0))
-                .child(Text::new(display_with_cursor.1.to_string()).bg(Color::WHITE).fg(Color::BLACK))
+                .child(
+                    Text::new(display_with_cursor.1.to_string())
+                        .bg(Color::WHITE)
+                        .fg(Color::BLACK),
+                )
                 .child(Text::new(display_with_cursor.2))
         } else {
             let mut text = Text::new(&padded);
@@ -536,7 +540,11 @@ impl View for MaskedInput {
 
         // Add reveal indicator
         if self.allow_reveal {
-            let eye = if self.revealing { "👁" } else { "👁‍🗨" };
+            let eye = if self.revealing {
+                "👁"
+            } else {
+                "👁‍🗨"
+            };
             input_text = input_text.child(Text::new(format!(" {}", eye)));
         }
 
@@ -678,9 +686,7 @@ mod tests {
 
     #[test]
     fn test_reveal_toggle() {
-        let mut input = MaskedInput::new()
-            .allow_reveal(true)
-            .value("secret");
+        let mut input = MaskedInput::new().allow_reveal(true).value("secret");
 
         assert!(!input.revealing);
         assert_eq!(input.masked_display(), "●●●●●●");
@@ -692,9 +698,7 @@ mod tests {
 
     #[test]
     fn test_validation() {
-        let mut input = MaskedInput::new()
-            .min_length(8)
-            .value("short");
+        let mut input = MaskedInput::new().min_length(8).value("short");
 
         assert!(!input.validate());
         assert!(matches!(input.validation, ValidationState::Invalid(_)));

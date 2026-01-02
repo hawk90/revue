@@ -24,7 +24,7 @@
 //! ```
 
 use crate::style::Color;
-use crate::utils::color::{rgb_to_hsl, hsl_to_rgba};
+use crate::utils::color::{hsl_to_rgba, rgb_to_hsl};
 
 /// A color stop in a gradient
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -135,10 +135,7 @@ pub struct Gradient {
 impl Default for Gradient {
     fn default() -> Self {
         Self {
-            stops: vec![
-                ColorStop::start(Color::BLACK),
-                ColorStop::end(Color::WHITE),
-            ],
+            stops: vec![ColorStop::start(Color::BLACK), ColorStop::end(Color::WHITE)],
             interpolation: InterpolationMode::default(),
             spread: SpreadMode::default(),
         }
@@ -206,7 +203,8 @@ impl Gradient {
     /// Add a color stop
     pub fn add_stop(&mut self, stop: ColorStop) {
         self.stops.push(stop);
-        self.stops.sort_by(|a, b| a.position.partial_cmp(&b.position).unwrap());
+        self.stops
+            .sort_by(|a, b| a.position.partial_cmp(&b.position).unwrap());
     }
 
     /// Get number of color stops
@@ -231,7 +229,11 @@ impl Gradient {
             SpreadMode::Repeat => t.rem_euclid(1.0),
             SpreadMode::Reflect => {
                 let t = t.rem_euclid(2.0);
-                if t > 1.0 { 2.0 - t } else { t }
+                if t > 1.0 {
+                    2.0 - t
+                } else {
+                    t
+                }
             }
         }
     }
@@ -396,22 +398,22 @@ pub mod presets {
     /// Rainbow gradient (ROYGBIV)
     pub fn rainbow() -> Gradient {
         Gradient::from_colors(&[
-            Color::rgb(255, 0, 0),     // Red
-            Color::rgb(255, 127, 0),   // Orange
-            Color::rgb(255, 255, 0),   // Yellow
-            Color::rgb(0, 255, 0),     // Green
-            Color::rgb(0, 0, 255),     // Blue
-            Color::rgb(75, 0, 130),    // Indigo
-            Color::rgb(148, 0, 211),   // Violet
+            Color::rgb(255, 0, 0),   // Red
+            Color::rgb(255, 127, 0), // Orange
+            Color::rgb(255, 255, 0), // Yellow
+            Color::rgb(0, 255, 0),   // Green
+            Color::rgb(0, 0, 255),   // Blue
+            Color::rgb(75, 0, 130),  // Indigo
+            Color::rgb(148, 0, 211), // Violet
         ])
     }
 
     /// Sunset gradient
     pub fn sunset() -> Gradient {
         Gradient::from_colors(&[
-            Color::rgb(255, 94, 77),   // Coral
-            Color::rgb(255, 154, 0),   // Orange
-            Color::rgb(255, 206, 84),  // Gold
+            Color::rgb(255, 94, 77),  // Coral
+            Color::rgb(255, 154, 0),  // Orange
+            Color::rgb(255, 206, 84), // Gold
         ])
     }
 
@@ -436,9 +438,9 @@ pub mod presets {
     /// Fire gradient
     pub fn fire() -> Gradient {
         Gradient::from_colors(&[
-            Color::rgb(255, 0, 0),     // Red
-            Color::rgb(255, 154, 0),   // Orange
-            Color::rgb(255, 255, 0),   // Yellow
+            Color::rgb(255, 0, 0),   // Red
+            Color::rgb(255, 154, 0), // Orange
+            Color::rgb(255, 255, 0), // Yellow
         ])
     }
 
@@ -468,42 +470,42 @@ pub mod presets {
     /// Heat map gradient (for data visualization)
     pub fn heat_map() -> Gradient {
         Gradient::from_colors(&[
-            Color::rgb(0, 0, 139),     // Dark blue (cold)
-            Color::rgb(0, 255, 255),   // Cyan
-            Color::rgb(0, 255, 0),     // Green
-            Color::rgb(255, 255, 0),   // Yellow
-            Color::rgb(255, 0, 0),     // Red (hot)
+            Color::rgb(0, 0, 139),   // Dark blue (cold)
+            Color::rgb(0, 255, 255), // Cyan
+            Color::rgb(0, 255, 0),   // Green
+            Color::rgb(255, 255, 0), // Yellow
+            Color::rgb(255, 0, 0),   // Red (hot)
         ])
     }
 
     /// Viridis-like gradient (colorblind-friendly)
     pub fn viridis() -> Gradient {
         Gradient::from_colors(&[
-            Color::rgb(68, 1, 84),     // Dark purple
-            Color::rgb(59, 82, 139),   // Blue
-            Color::rgb(33, 145, 140),  // Teal
-            Color::rgb(94, 201, 98),   // Green
-            Color::rgb(253, 231, 37),  // Yellow
+            Color::rgb(68, 1, 84),    // Dark purple
+            Color::rgb(59, 82, 139),  // Blue
+            Color::rgb(33, 145, 140), // Teal
+            Color::rgb(94, 201, 98),  // Green
+            Color::rgb(253, 231, 37), // Yellow
         ])
     }
 
     /// Plasma-like gradient
     pub fn plasma() -> Gradient {
         Gradient::from_colors(&[
-            Color::rgb(13, 8, 135),    // Dark blue
-            Color::rgb(126, 3, 168),   // Purple
-            Color::rgb(204, 71, 120),  // Pink
-            Color::rgb(248, 149, 64),  // Orange
-            Color::rgb(240, 249, 33),  // Yellow
+            Color::rgb(13, 8, 135),   // Dark blue
+            Color::rgb(126, 3, 168),  // Purple
+            Color::rgb(204, 71, 120), // Pink
+            Color::rgb(248, 149, 64), // Orange
+            Color::rgb(240, 249, 33), // Yellow
         ])
     }
 
     /// Terminal green (Matrix-style)
     pub fn matrix() -> Gradient {
         Gradient::from_colors(&[
-            Color::rgb(0, 50, 0),      // Dark green
-            Color::rgb(0, 150, 0),     // Green
-            Color::rgb(0, 255, 0),     // Bright green
+            Color::rgb(0, 50, 0),  // Dark green
+            Color::rgb(0, 150, 0), // Green
+            Color::rgb(0, 255, 0), // Bright green
         ])
     }
 
@@ -544,7 +546,10 @@ pub struct LinearGradient {
 impl LinearGradient {
     /// Create a new linear gradient
     pub fn new(gradient: Gradient, direction: GradientDirection) -> Self {
-        Self { gradient, direction }
+        Self {
+            gradient,
+            direction,
+        }
     }
 
     /// Create a horizontal gradient (left to right)
@@ -574,8 +579,16 @@ impl LinearGradient {
             return self.gradient.at(0.0);
         }
 
-        let nx = if width > 1 { x as f32 / (width - 1) as f32 } else { 0.5 };
-        let ny = if height > 1 { y as f32 / (height - 1) as f32 } else { 0.5 };
+        let nx = if width > 1 {
+            x as f32 / (width - 1) as f32
+        } else {
+            0.5
+        };
+        let ny = if height > 1 {
+            y as f32 / (height - 1) as f32
+        } else {
+            0.5
+        };
 
         let t = match self.direction {
             GradientDirection::ToRight => nx,
@@ -599,11 +612,7 @@ impl LinearGradient {
     /// Generate a 2D grid of colors
     pub fn colors_2d(&self, width: usize, height: usize) -> Vec<Vec<Color>> {
         (0..height)
-            .map(|y| {
-                (0..width)
-                    .map(|x| self.at(x, y, width, height))
-                    .collect()
-            })
+            .map(|y| (0..width).map(|x| self.at(x, y, width, height)).collect())
             .collect()
     }
 }
@@ -660,8 +669,16 @@ impl RadialGradient {
             return self.gradient.at(0.0);
         }
 
-        let nx = if width > 1 { x as f32 / (width - 1) as f32 } else { 0.5 };
-        let ny = if height > 1 { y as f32 / (height - 1) as f32 } else { 0.5 };
+        let nx = if width > 1 {
+            x as f32 / (width - 1) as f32
+        } else {
+            0.5
+        };
+        let ny = if height > 1 {
+            y as f32 / (height - 1) as f32
+        } else {
+            0.5
+        };
 
         // Calculate distance from center (normalized)
         let dx = nx - self.center_x;
@@ -674,11 +691,7 @@ impl RadialGradient {
     /// Generate a 2D grid of colors
     pub fn colors_2d(&self, width: usize, height: usize) -> Vec<Vec<Color>> {
         (0..height)
-            .map(|y| {
-                (0..width)
-                    .map(|x| self.at(x, y, width, height))
-                    .collect()
-            })
+            .map(|y| (0..width).map(|x| self.at(x, y, width, height)).collect())
             .collect()
     }
 }
@@ -807,8 +820,7 @@ mod tests {
 
     #[test]
     fn test_spread_repeat() {
-        let gradient = Gradient::linear(Color::RED, Color::BLUE)
-            .spread(SpreadMode::Repeat);
+        let gradient = Gradient::linear(Color::RED, Color::BLUE).spread(SpreadMode::Repeat);
 
         let at_0 = gradient.at(0.0);
         let at_half = gradient.at(0.5);
@@ -820,8 +832,7 @@ mod tests {
 
     #[test]
     fn test_spread_reflect() {
-        let gradient = Gradient::linear(Color::RED, Color::BLUE)
-            .spread(SpreadMode::Reflect);
+        let gradient = Gradient::linear(Color::RED, Color::BLUE).spread(SpreadMode::Reflect);
 
         let at_0 = gradient.at(0.0);
         let at_1 = gradient.at(1.0);
@@ -903,8 +914,8 @@ mod tests {
         let lg = LinearGradient::horizontal(Color::BLACK, Color::WHITE);
         let colors = lg.colors_2d(3, 2);
 
-        assert_eq!(colors.len(), 2);       // 2 rows
-        assert_eq!(colors[0].len(), 3);    // 3 columns
+        assert_eq!(colors.len(), 2); // 2 rows
+        assert_eq!(colors[0].len(), 3); // 3 columns
     }
 
     // =========================================================================
@@ -925,7 +936,7 @@ mod tests {
         let rg = RadialGradient::circular(Color::WHITE, Color::BLACK);
 
         let edge = rg.at(10, 5, 11, 11); // Right edge
-        // Edge should be closer to end color
+                                         // Edge should be closer to end color
         assert!(edge.r < 200);
     }
 
@@ -965,8 +976,8 @@ mod tests {
 
     #[test]
     fn test_hsl_interpolation() {
-        let gradient = Gradient::linear(Color::RED, Color::BLUE)
-            .interpolation(InterpolationMode::HslShort);
+        let gradient =
+            Gradient::linear(Color::RED, Color::BLUE).interpolation(InterpolationMode::HslShort);
 
         let mid = gradient.at(0.5);
         // HSL short path from red to blue goes through magenta

@@ -4,11 +4,8 @@
 
 use revue::prelude::*;
 use revue::widget::{
-    Digits, DigitStyle,
-    Link, LinkStyle,
-    MaskedInput,
-    SelectionList, SelectionItem, SelectionStyle,
-    OptionList, OptionItem,
+    DigitStyle, Digits, Link, LinkStyle, MaskedInput, OptionItem, OptionList, SelectionItem,
+    SelectionList, SelectionStyle,
 };
 
 /// Current demo tab
@@ -104,7 +101,11 @@ impl NewWidgetsDemo {
             .add_option(OptionItem::new("New File").hint("Ctrl+N").icon("📄 "))
             .add_option(OptionItem::new("Open File").hint("Ctrl+O").icon("📂 "))
             .add_option(OptionItem::new("Save").hint("Ctrl+S").icon("💾 "))
-            .add_option(OptionItem::new("Save As...").hint("Ctrl+Shift+S").icon("📝 "))
+            .add_option(
+                OptionItem::new("Save As...")
+                    .hint("Ctrl+Shift+S")
+                    .icon("📝 "),
+            )
             .separator()
             .group("Edit")
             .add_option(OptionItem::new("Undo").hint("Ctrl+Z").icon("↩️ "))
@@ -137,11 +138,26 @@ impl NewWidgetsDemo {
     fn handle_key(&mut self, key: &Key) -> bool {
         // Tab switching
         match key {
-            Key::Char('1') => { self.tab = DemoTab::Digits; return true; }
-            Key::Char('2') => { self.tab = DemoTab::Links; return true; }
-            Key::Char('3') => { self.tab = DemoTab::MaskedInput; return true; }
-            Key::Char('4') => { self.tab = DemoTab::SelectionList; return true; }
-            Key::Char('5') => { self.tab = DemoTab::OptionList; return true; }
+            Key::Char('1') => {
+                self.tab = DemoTab::Digits;
+                return true;
+            }
+            Key::Char('2') => {
+                self.tab = DemoTab::Links;
+                return true;
+            }
+            Key::Char('3') => {
+                self.tab = DemoTab::MaskedInput;
+                return true;
+            }
+            Key::Char('4') => {
+                self.tab = DemoTab::SelectionList;
+                return true;
+            }
+            Key::Char('5') => {
+                self.tab = DemoTab::OptionList;
+                return true;
+            }
             Key::Tab => {
                 let tabs = DemoTab::all();
                 let idx = tabs.iter().position(|&t| t == self.tab).unwrap_or(0);
@@ -333,7 +349,12 @@ impl NewWidgetsDemo {
     }
 
     fn render_digits_demo(&self) -> impl View {
-        let styles = [DigitStyle::Block, DigitStyle::Thin, DigitStyle::Ascii, DigitStyle::Braille];
+        let styles = [
+            DigitStyle::Block,
+            DigitStyle::Thin,
+            DigitStyle::Ascii,
+            DigitStyle::Braille,
+        ];
         let style = styles[self.digit_style];
         let style_name = match style {
             DigitStyle::Block => "Block",
@@ -342,9 +363,7 @@ impl NewWidgetsDemo {
             DigitStyle::Braille => "Braille",
         };
 
-        let timer_display = Digits::timer(self.timer_secs)
-            .style(style)
-            .fg(Color::CYAN);
+        let timer_display = Digits::timer(self.timer_secs).style(style).fg(Color::CYAN);
 
         let counter = Digits::new(self.frame)
             .style(style)
@@ -356,7 +375,8 @@ impl NewWidgetsDemo {
             .fg(Color::YELLOW)
             .separator(',');
 
-        vstack().gap(1)
+        vstack()
+            .gap(1)
             .child(Text::new(format!("Style: {} (press 's' to change)", style_name)).bold())
             .child(Text::new(""))
             .child(Text::new("Timer (↑↓: +/-1s, ←→: +/-1m, r: reset):"))
@@ -394,7 +414,8 @@ impl NewWidgetsDemo {
             .text("Disabled Link")
             .disabled(true);
 
-        vstack().gap(1)
+        vstack()
+            .gap(1)
             .child(Text::new("Link Styles:").bold())
             .child(Text::new(""))
             .child(hstack().child(Text::new("Underline: ")).child(link1))
@@ -403,8 +424,13 @@ impl NewWidgetsDemo {
             .child(hstack().child(Text::new("Icon:      ")).child(link4))
             .child(hstack().child(Text::new("Disabled:  ")).child(link5))
             .child(Text::new(""))
-            .child(Text::new("Links support OSC 8 hyperlinks in compatible terminals.").fg(Color::rgb(100, 100, 100)))
-            .child(Text::new("Click or Ctrl+Click to open in browser.").fg(Color::rgb(100, 100, 100)))
+            .child(
+                Text::new("Links support OSC 8 hyperlinks in compatible terminals.")
+                    .fg(Color::rgb(100, 100, 100)),
+            )
+            .child(
+                Text::new("Click or Ctrl+Click to open in browser.").fg(Color::rgb(100, 100, 100)),
+            )
     }
 
     fn render_masked_input_demo(&self) -> impl View {
@@ -414,14 +440,25 @@ impl NewWidgetsDemo {
         let password = self.password.clone().focused(pwd_focused);
         let pin = self.pin.clone().focused(pin_focused);
 
-        vstack().gap(1)
+        vstack()
+            .gap(1)
             .child(Text::new("Masked Input Fields:").bold())
-            .child(Text::new("(↑↓: switch fields, type to enter, 'r': toggle reveal)"))
+            .child(Text::new(
+                "(↑↓: switch fields, type to enter, 'r': toggle reveal)",
+            ))
             .child(Text::new(""))
-            .child(if pwd_focused { Text::new("> Password").fg(Color::CYAN) } else { Text::new("  Password") })
+            .child(if pwd_focused {
+                Text::new("> Password").fg(Color::CYAN)
+            } else {
+                Text::new("  Password")
+            })
             .child(password)
             .child(Text::new(""))
-            .child(if pin_focused { Text::new("> PIN").fg(Color::CYAN) } else { Text::new("  PIN") })
+            .child(if pin_focused {
+                Text::new("> PIN").fg(Color::CYAN)
+            } else {
+                Text::new("  PIN")
+            })
             .child(pin)
             .child(Text::new(""))
             .child(Text::new("Features:").bold())
@@ -433,28 +470,39 @@ impl NewWidgetsDemo {
 
     fn render_selection_list_demo(&self) -> impl View {
         let selected_count = self.features.get_selected().len();
-        let selected_items: Vec<&str> = self.features
+        let selected_items: Vec<&str> = self
+            .features
             .get_selected_items()
             .iter()
             .map(|item| item.text.as_str())
             .collect();
 
-        vstack().gap(1)
+        vstack()
+            .gap(1)
             .child(Text::new("Multi-Selection List:").bold())
             .child(Text::new("(↑↓: navigate, Space: toggle, a: all, n: none)"))
             .child(Text::new(""))
             .child(self.features.clone())
             .child(Text::new(""))
-            .child(Text::new(format!("Selected ({}): {}", selected_count, selected_items.join(", ")))
-                .fg(Color::GREEN))
+            .child(
+                Text::new(format!(
+                    "Selected ({}): {}",
+                    selected_count,
+                    selected_items.join(", ")
+                ))
+                .fg(Color::GREEN),
+            )
     }
 
     fn render_option_list_demo(&self) -> impl View {
-        let selected = self.menu.get_selected()
+        let selected = self
+            .menu
+            .get_selected()
             .map(|item| item.text.as_str())
             .unwrap_or("None");
 
-        vstack().gap(1)
+        vstack()
+            .gap(1)
             .child(Text::new("Option List (Menu):").bold())
             .child(Text::new("(↑↓: navigate, Enter: select, Esc: clear)"))
             .child(Text::new(""))
@@ -496,8 +544,8 @@ impl View for NewWidgetsDemo {
                 .child(self.render_option_list_demo()),
         };
 
-        let help = Text::new("Press 'q' to quit | Tab: next | Shift+Tab: prev")
-            .fg(Color::rgb(80, 80, 80));
+        let help =
+            Text::new("Press 'q' to quit | Tab: next | Shift+Tab: prev").fg(Color::rgb(80, 80, 80));
 
         vstack()
             .child(header)

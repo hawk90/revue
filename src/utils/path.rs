@@ -99,7 +99,10 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
 
     if filename.len() + 4 > max_width {
         // Even filename doesn't fit, truncate it
-        return format!("...{}", &filename[filename.len().saturating_sub(max_width - 3)..]);
+        return format!(
+            "...{}",
+            &filename[filename.len().saturating_sub(max_width - 3)..]
+        );
     }
 
     // Try to include as many trailing components as possible
@@ -225,9 +228,7 @@ pub fn filename(path: impl AsRef<Path>) -> Option<String> {
 
 /// Get the parent directory
 pub fn parent(path: impl AsRef<Path>) -> Option<String> {
-    path.as_ref()
-        .parent()
-        .map(|p| p.display().to_string())
+    path.as_ref().parent().map(|p| p.display().to_string())
 }
 
 /// Check if path is hidden (starts with .)
@@ -433,9 +434,7 @@ mod tests {
 
     #[test]
     fn test_path_display() {
-        let display = PathDisplay::new()
-            .abbreviate(true)
-            .keep(1);
+        let display = PathDisplay::new().abbreviate(true).keep(1);
 
         let result = display.format("/a/b/c/d/file.txt");
         assert!(result.ends_with("file.txt"));

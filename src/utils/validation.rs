@@ -157,10 +157,14 @@ pub fn url() -> Validator {
         }
 
         if !value.starts_with("http://") && !value.starts_with("https://") {
-            return Err(ValidationError::new("URL must start with http:// or https://"));
+            return Err(ValidationError::new(
+                "URL must start with http:// or https://",
+            ));
         }
 
-        let rest = value.trim_start_matches("https://").trim_start_matches("http://");
+        let rest = value
+            .trim_start_matches("https://")
+            .trim_start_matches("http://");
         if rest.is_empty() || !rest.contains('.') {
             return Err(ValidationError::new("Invalid URL format"));
         }
@@ -182,7 +186,9 @@ pub fn pattern(pattern: &'static str, message: &'static str) -> Validator {
             r"^[a-zA-Z]+$" => value.chars().all(|c| c.is_ascii_alphabetic()),
             r"^[a-zA-Z0-9]+$" => value.chars().all(|c| c.is_ascii_alphanumeric()),
             r"^[a-zA-Z0-9_]+$" => value.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'),
-            r"^[a-zA-Z0-9_-]+$" => value.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-'),
+            r"^[a-zA-Z0-9_-]+$" => value
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-'),
             r"^[a-z]+$" => value.chars().all(|c| c.is_ascii_lowercase()),
             r"^[A-Z]+$" => value.chars().all(|c| c.is_ascii_uppercase()),
             _ => true, // Unknown pattern, pass through
@@ -518,16 +524,11 @@ mod tests {
             .field("email", vec![required(), email()])
             .field("password", vec![required(), min_length(8)]);
 
-        let result = validator.validate(&[
-            ("email", "user@example.com"),
-            ("password", "secret123"),
-        ]);
+        let result =
+            validator.validate(&[("email", "user@example.com"), ("password", "secret123")]);
         assert!(result.is_ok());
 
-        let result = validator.validate(&[
-            ("email", "invalid"),
-            ("password", "short"),
-        ]);
+        let result = validator.validate(&[("email", "invalid"), ("password", "short")]);
         assert!(result.is_err());
 
         let errors = result.unwrap_err();

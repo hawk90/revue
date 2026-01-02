@@ -1,9 +1,9 @@
 //! Pagination widget for page navigation
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Pagination style
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -233,7 +233,11 @@ impl View for Pagination {
                 // « < 1 2 [3] 4 5 > »
                 if self.show_edges {
                     // First button
-                    let color = if self.is_first() { self.inactive_color } else { self.active_color };
+                    let color = if self.is_first() {
+                        self.inactive_color
+                    } else {
+                        self.active_color
+                    };
                     let mut cell = Cell::new('«');
                     cell.fg = Some(color);
                     ctx.buffer.set(x, area.y, cell);
@@ -242,7 +246,11 @@ impl View for Pagination {
 
                 if self.show_arrows {
                     // Prev button
-                    let color = if self.is_first() { self.inactive_color } else { self.active_color };
+                    let color = if self.is_first() {
+                        self.inactive_color
+                    } else {
+                        self.active_color
+                    };
                     let mut cell = Cell::new('‹');
                     cell.fg = Some(color);
                     ctx.buffer.set(x, area.y, cell);
@@ -322,7 +330,11 @@ impl View for Pagination {
 
                 if self.show_arrows {
                     // Next button
-                    let color = if self.is_last() { self.inactive_color } else { self.active_color };
+                    let color = if self.is_last() {
+                        self.inactive_color
+                    } else {
+                        self.active_color
+                    };
                     let mut cell = Cell::new('›');
                     cell.fg = Some(color);
                     ctx.buffer.set(x, area.y, cell);
@@ -331,7 +343,11 @@ impl View for Pagination {
 
                 if self.show_edges {
                     // Last button
-                    let color = if self.is_last() { self.inactive_color } else { self.active_color };
+                    let color = if self.is_last() {
+                        self.inactive_color
+                    } else {
+                        self.active_color
+                    };
                     let mut cell = Cell::new('»');
                     cell.fg = Some(color);
                     ctx.buffer.set(x, area.y, cell);
@@ -339,7 +355,11 @@ impl View for Pagination {
             }
             PaginationStyle::Simple => {
                 // ← Page 3 of 10 →
-                let prev_color = if self.is_first() { self.inactive_color } else { self.active_color };
+                let prev_color = if self.is_first() {
+                    self.inactive_color
+                } else {
+                    self.active_color
+                };
                 let mut prev = Cell::new('←');
                 prev.fg = Some(prev_color);
                 ctx.buffer.set(x, area.y, prev);
@@ -354,7 +374,11 @@ impl View for Pagination {
                 }
                 x += 1;
 
-                let next_color = if self.is_last() { self.inactive_color } else { self.active_color };
+                let next_color = if self.is_last() {
+                    self.inactive_color
+                } else {
+                    self.active_color
+                };
                 let mut next = Cell::new('→');
                 next.fg = Some(next_color);
                 ctx.buffer.set(x, area.y, next);
@@ -380,7 +404,11 @@ impl View for Pagination {
                     let is_current = page == self.current;
                     let ch = if is_current { '●' } else { '○' };
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if is_current { self.active_color } else { self.inactive_color });
+                    cell.fg = Some(if is_current {
+                        self.active_color
+                    } else {
+                        self.inactive_color
+                    });
                     ctx.buffer.set(x, area.y, cell);
                     x += 2;
                 }
@@ -400,8 +428,8 @@ pub fn pagination(total: u16) -> Pagination {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_pagination_new() {

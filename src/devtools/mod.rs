@@ -30,15 +30,15 @@
 //!     .show_classes(true);
 //! ```
 
+mod events;
 mod inspector;
 mod state;
 mod style;
-mod events;
 
-pub use inspector::{Inspector, WidgetNode, InspectorConfig};
+pub use events::{EventFilter, EventLogger, EventType, LoggedEvent};
+pub use inspector::{Inspector, InspectorConfig, WidgetNode};
 pub use state::{StateDebugger, StateEntry, StateValue};
-pub use style::{StyleInspector, ComputedProperty, PropertySource, StyleCategory};
-pub use events::{EventLogger, LoggedEvent, EventFilter, EventType};
+pub use style::{ComputedProperty, PropertySource, StyleCategory, StyleInspector};
 
 use crate::layout::Rect;
 use crate::render::Buffer;
@@ -285,12 +285,7 @@ impl DevTools {
                 size.min(area.width),
                 area.height,
             ),
-            DevToolsPosition::Left => Rect::new(
-                area.x,
-                area.y,
-                size.min(area.width),
-                area.height,
-            ),
+            DevToolsPosition::Left => Rect::new(area.x, area.y, size.min(area.width), area.height),
             DevToolsPosition::Bottom => Rect::new(
                 area.x,
                 area.y + area.height.saturating_sub(size),
@@ -319,24 +314,18 @@ impl DevTools {
         let size = self.config.size;
 
         match self.config.position {
-            DevToolsPosition::Right => Rect::new(
-                area.x,
-                area.y,
-                area.width.saturating_sub(size),
-                area.height,
-            ),
+            DevToolsPosition::Right => {
+                Rect::new(area.x, area.y, area.width.saturating_sub(size), area.height)
+            }
             DevToolsPosition::Left => Rect::new(
                 area.x + size.min(area.width),
                 area.y,
                 area.width.saturating_sub(size),
                 area.height,
             ),
-            DevToolsPosition::Bottom => Rect::new(
-                area.x,
-                area.y,
-                area.width,
-                area.height.saturating_sub(size),
-            ),
+            DevToolsPosition::Bottom => {
+                Rect::new(area.x, area.y, area.width, area.height.saturating_sub(size))
+            }
             DevToolsPosition::Overlay => area,
         }
     }
@@ -376,10 +365,19 @@ impl DevTools {
         );
 
         match self.config.active_tab {
-            DevToolsTab::Inspector => self.inspector.render_content(buffer, content_area, &self.config),
-            DevToolsTab::State => self.state.render_content(buffer, content_area, &self.config),
-            DevToolsTab::Styles => self.styles.render_content(buffer, content_area, &self.config),
-            DevToolsTab::Events => self.events.render_content(buffer, content_area, &self.config),
+            DevToolsTab::Inspector => {
+                self.inspector
+                    .render_content(buffer, content_area, &self.config)
+            }
+            DevToolsTab::State => self
+                .state
+                .render_content(buffer, content_area, &self.config),
+            DevToolsTab::Styles => self
+                .styles
+                .render_content(buffer, content_area, &self.config),
+            DevToolsTab::Events => self
+                .events
+                .render_content(buffer, content_area, &self.config),
         }
     }
 
@@ -417,15 +415,23 @@ impl DevTools {
         // Corners and edges
         for x in area.x..area.x + area.width {
             if let Some(cell) = buffer.get_mut(x, area.y) {
-                cell.symbol = if x == area.x { '┌' }
-                    else if x == area.x + area.width - 1 { '┐' }
-                    else { '─' };
+                cell.symbol = if x == area.x {
+                    '┌'
+                } else if x == area.x + area.width - 1 {
+                    '┐'
+                } else {
+                    '─'
+                };
                 cell.fg = Some(color);
             }
             if let Some(cell) = buffer.get_mut(x, area.y + area.height - 1) {
-                cell.symbol = if x == area.x { '└' }
-                    else if x == area.x + area.width - 1 { '┘' }
-                    else { '─' };
+                cell.symbol = if x == area.x {
+                    '└'
+                } else if x == area.x + area.width - 1 {
+                    '┘'
+                } else {
+                    '─'
+                };
                 cell.fg = Some(color);
             }
         }
@@ -444,9 +450,13 @@ impl DevTools {
         // Separator after tabs
         for x in area.x..area.x + area.width {
             if let Some(cell) = buffer.get_mut(x, area.y + 2) {
-                cell.symbol = if x == area.x { '├' }
-                    else if x == area.x + area.width - 1 { '┤' }
-                    else { '─' };
+                cell.symbol = if x == area.x {
+                    '├'
+                } else if x == area.x + area.width - 1 {
+                    '┤'
+                } else {
+                    '─'
+                };
                 cell.fg = Some(color);
             }
         }

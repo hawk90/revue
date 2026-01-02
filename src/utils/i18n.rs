@@ -34,7 +34,11 @@ pub type PluralRule = fn(n: usize) -> usize;
 
 /// Default plural rule (English-like: 1 = singular, else plural)
 pub fn default_plural_rule(n: usize) -> usize {
-    if n == 1 { 0 } else { 1 }
+    if n == 1 {
+        0
+    } else {
+        1
+    }
 }
 
 /// Locale configuration
@@ -104,8 +108,7 @@ impl Locale {
 impl Locale {
     /// English (US)
     pub fn english() -> Self {
-        Locale::new("en", "English")
-            .native_name("English")
+        Locale::new("en", "English").native_name("English")
     }
 
     /// Korean
@@ -138,8 +141,7 @@ impl Locale {
 
     /// Spanish
     pub fn spanish() -> Self {
-        Locale::new("es", "Spanish")
-            .native_name("Español")
+        Locale::new("es", "Spanish").native_name("Español")
     }
 
     /// French
@@ -151,8 +153,7 @@ impl Locale {
 
     /// German
     pub fn german() -> Self {
-        Locale::new("de", "German")
-            .native_name("Deutsch")
+        Locale::new("de", "German").native_name("Deutsch")
     }
 
     /// Russian
@@ -178,12 +179,19 @@ impl Locale {
             .direction(Direction::Rtl)
             .plural_rule(|n| {
                 // Arabic has 6 plural forms
-                if n == 0 { 0 }
-                else if n == 1 { 1 }
-                else if n == 2 { 2 }
-                else if n % 100 >= 3 && n % 100 <= 10 { 3 }
-                else if n % 100 >= 11 { 4 }
-                else { 5 }
+                if n == 0 {
+                    0
+                } else if n == 1 {
+                    1
+                } else if n == 2 {
+                    2
+                } else if n % 100 >= 3 && n % 100 <= 10 {
+                    3
+                } else if n % 100 >= 11 {
+                    4
+                } else {
+                    5
+                }
             })
     }
 }
@@ -344,7 +352,8 @@ impl I18n {
 
     /// Translate with plural form
     pub fn t_plural<'a>(&'a self, key: &'a str, n: usize) -> &'a str {
-        let form = self.current_locale()
+        let form = self
+            .current_locale()
             .map(|l| l.get_plural_form(n))
             .unwrap_or(if n == 1 { 0 } else { 1 });
 
@@ -476,8 +485,10 @@ mod tests {
     #[test]
     fn test_i18n_plural() {
         let mut i18n = I18n::new();
-        i18n.add_translation("en", "items",
-            Translation::with_plural("1 item", "{n} items")
+        i18n.add_translation(
+            "en",
+            "items",
+            Translation::with_plural("1 item", "{n} items"),
         );
 
         assert_eq!(i18n.t_plural("items", 1), "1 item");
@@ -500,12 +511,12 @@ mod tests {
     fn test_russian_plural_rule() {
         let locale = Locale::russian();
 
-        assert_eq!(locale.get_plural_form(1), 0);   // яблоко
-        assert_eq!(locale.get_plural_form(2), 1);   // яблока
-        assert_eq!(locale.get_plural_form(5), 2);   // яблок
-        assert_eq!(locale.get_plural_form(21), 0);  // яблоко
-        assert_eq!(locale.get_plural_form(22), 1);  // яблока
-        assert_eq!(locale.get_plural_form(25), 2);  // яблок
+        assert_eq!(locale.get_plural_form(1), 0); // яблоко
+        assert_eq!(locale.get_plural_form(2), 1); // яблока
+        assert_eq!(locale.get_plural_form(5), 2); // яблок
+        assert_eq!(locale.get_plural_form(21), 0); // яблоко
+        assert_eq!(locale.get_plural_form(22), 1); // яблока
+        assert_eq!(locale.get_plural_form(25), 2); // яблок
     }
 
     #[test]

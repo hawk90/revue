@@ -1,9 +1,9 @@
 //! Divider widget for visual separation
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Orientation for the divider
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -166,7 +166,6 @@ impl Divider {
             (Orientation::Vertical, DividerStyle::Thick) => '┃',
         }
     }
-
 }
 
 impl Default for Divider {
@@ -288,8 +287,8 @@ pub fn vdivider() -> Divider {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_divider_new() {
@@ -306,11 +305,7 @@ mod tests {
 
     #[test]
     fn test_divider_builder() {
-        let d = divider()
-            .dashed()
-            .color(Color::RED)
-            .label("Test")
-            .margin(2);
+        let d = divider().dashed().color(Color::RED).label("Test").margin(2);
 
         assert_eq!(d.style, DividerStyle::Dashed);
         assert_eq!(d.label, Some("Test".to_string()));

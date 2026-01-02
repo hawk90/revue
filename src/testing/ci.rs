@@ -77,8 +77,7 @@ pub struct CiEnvironment {
 impl CiEnvironment {
     /// Detect current CI environment
     pub fn detect() -> Self {
-        let is_ci = std::env::var("CI").is_ok()
-            || std::env::var("CONTINUOUS_INTEGRATION").is_ok();
+        let is_ci = std::env::var("CI").is_ok() || std::env::var("CONTINUOUS_INTEGRATION").is_ok();
 
         let provider = if std::env::var("GITHUB_ACTIONS").is_ok() {
             CiProvider::GitHubActions
@@ -117,11 +116,9 @@ impl CiEnvironment {
 
     fn detect_branch(provider: &CiProvider) -> Option<String> {
         match provider {
-            CiProvider::GitHubActions => {
-                std::env::var("GITHUB_HEAD_REF")
-                    .or_else(|_| std::env::var("GITHUB_REF_NAME"))
-                    .ok()
-            }
+            CiProvider::GitHubActions => std::env::var("GITHUB_HEAD_REF")
+                .or_else(|_| std::env::var("GITHUB_REF_NAME"))
+                .ok(),
             CiProvider::GitLabCi => std::env::var("CI_COMMIT_REF_NAME").ok(),
             CiProvider::CircleCi => std::env::var("CIRCLE_BRANCH").ok(),
             CiProvider::TravisCi => std::env::var("TRAVIS_BRANCH").ok(),
@@ -145,16 +142,14 @@ impl CiEnvironment {
 
     fn detect_pr_number(provider: &CiProvider) -> Option<String> {
         match provider {
-            CiProvider::GitHubActions => {
-                std::env::var("GITHUB_EVENT_NAME")
-                    .ok()
-                    .filter(|e| e == "pull_request")
-                    .and_then(|_| {
-                        std::env::var("GITHUB_REF")
-                            .ok()
-                            .and_then(|r| r.split('/').nth(2).map(String::from))
-                    })
-            }
+            CiProvider::GitHubActions => std::env::var("GITHUB_EVENT_NAME")
+                .ok()
+                .filter(|e| e == "pull_request")
+                .and_then(|_| {
+                    std::env::var("GITHUB_REF")
+                        .ok()
+                        .and_then(|r| r.split('/').nth(2).map(String::from))
+                }),
             CiProvider::GitLabCi => std::env::var("CI_MERGE_REQUEST_IID").ok(),
             CiProvider::CircleCi => std::env::var("CIRCLE_PULL_REQUEST")
                 .ok()
@@ -179,18 +174,14 @@ impl CiEnvironment {
 
     fn detect_artifacts_dir(provider: &CiProvider) -> PathBuf {
         match provider {
-            CiProvider::GitHubActions => {
-                std::env::var("GITHUB_WORKSPACE")
-                    .map(PathBuf::from)
-                    .unwrap_or_else(|_| PathBuf::from("."))
-                    .join("test-artifacts")
-            }
+            CiProvider::GitHubActions => std::env::var("GITHUB_WORKSPACE")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from("."))
+                .join("test-artifacts"),
             CiProvider::GitLabCi => PathBuf::from("test-artifacts"),
-            CiProvider::CircleCi => {
-                std::env::var("CIRCLE_ARTIFACTS")
-                    .map(PathBuf::from)
-                    .unwrap_or_else(|_| PathBuf::from("test-artifacts"))
-            }
+            CiProvider::CircleCi => std::env::var("CIRCLE_ARTIFACTS")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from("test-artifacts")),
             _ => PathBuf::from("test-artifacts"),
         }
     }
@@ -232,7 +223,8 @@ impl CiEnvironment {
     pub fn start_group(&self, name: &str) {
         match self.provider {
             CiProvider::GitHubActions => println!("::group::{}", name),
-            CiProvider::GitLabCi => println!("\x1b[0Ksection_start:{}:{}\r\x1b[0K{}",
+            CiProvider::GitLabCi => println!(
+                "\x1b[0Ksection_start:{}:{}\r\x1b[0K{}",
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap()
@@ -248,7 +240,8 @@ impl CiEnvironment {
     pub fn end_group(&self, name: &str) {
         match self.provider {
             CiProvider::GitHubActions => println!("::endgroup::"),
-            CiProvider::GitLabCi => println!("\x1b[0Ksection_end:{}:{}\r\x1b[0K",
+            CiProvider::GitLabCi => println!(
+                "\x1b[0Ksection_end:{}:{}\r\x1b[0K",
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap()
@@ -470,7 +463,11 @@ impl TestReport {
         output.push_str("# Visual Regression Test Results\n\n");
 
         // Summary badge
-        let status = if self.all_passed() { "✅ Passed" } else { "❌ Failed" };
+        let status = if self.all_passed() {
+            "✅ Passed"
+        } else {
+            "❌ Failed"
+        };
         output.push_str(&format!("**Status:** {}\n\n", status));
 
         // Stats table

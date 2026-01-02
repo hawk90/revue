@@ -5,8 +5,8 @@
 //! and concurrent updates.
 
 use revue::reactive::*;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 // =============================================================================
 // Diamond Dependency Tests
@@ -62,8 +62,8 @@ fn test_diamond_dependency_no_duplicate_updates() {
     a.set(10);
 
     // Verify b and c were updated correctly
-    assert_eq!(b.get(), 20);  // 10 * 2
-    assert_eq!(c.get(), 30);  // 10 * 3
+    assert_eq!(b.get(), 20); // 10 * 2
+    assert_eq!(c.get(), 30); // 10 * 3
 
     // Effect should have run additional times
     assert!(run_count.load(Ordering::SeqCst) > initial_count);
@@ -232,7 +232,7 @@ fn test_deep_effect_chain() {
     });
 
     // Initial state
-    assert_eq!(c.get(), 10);  // b=0, c=0+10
+    assert_eq!(c.get(), 10); // b=0, c=0+10
 
     // Update a
     a.set(5);
@@ -269,7 +269,7 @@ fn test_effect_disposal_prevents_leaks() {
 
     // After effect is dropped, signal updates should not trigger it
     signal.set(2);
-    assert_eq!(call_count.load(Ordering::SeqCst), 2);  // Still 2, not 3
+    assert_eq!(call_count.load(Ordering::SeqCst), 2); // Still 2, not 3
 }
 
 #[test]
@@ -294,7 +294,7 @@ fn test_manual_effect_stop() {
 
     // Updates should not trigger effect anymore
     signal.set(2);
-    assert_eq!(call_count.load(Ordering::SeqCst), 2);  // Still 2
+    assert_eq!(call_count.load(Ordering::SeqCst), 2); // Still 2
 }
 
 #[test]
@@ -340,9 +340,9 @@ fn test_multiple_effects_cleanup() {
     effect2.stop();
 
     signal.set(2);
-    assert_eq!(count1.load(Ordering::SeqCst), 2);  // Stopped
-    assert_eq!(count2.load(Ordering::SeqCst), 2);  // Stopped
-    assert_eq!(count3.load(Ordering::SeqCst), 3);  // Still running
+    assert_eq!(count1.load(Ordering::SeqCst), 2); // Stopped
+    assert_eq!(count2.load(Ordering::SeqCst), 2); // Stopped
+    assert_eq!(count3.load(Ordering::SeqCst), 3); // Still running
 }
 
 // =============================================================================
@@ -466,7 +466,10 @@ fn test_multiple_signal_updates_batch() {
     let c_c = c.clone();
 
     let _effect = effect(move || {
-        s.store((a_c.get() + b_c.get() + c_c.get()) as usize, Ordering::SeqCst);
+        s.store(
+            (a_c.get() + b_c.get() + c_c.get()) as usize,
+            Ordering::SeqCst,
+        );
         rc.fetch_add(1, Ordering::SeqCst);
     });
 
@@ -482,7 +485,7 @@ fn test_multiple_signal_updates_batch() {
     assert_eq!(sum.load(Ordering::SeqCst), 60);
 
     // Effect runs once per signal update (no batching in current impl)
-    assert!(run_count.load(Ordering::SeqCst) >= 4);  // Initial + 3 updates
+    assert!(run_count.load(Ordering::SeqCst) >= 4); // Initial + 3 updates
 }
 
 #[test]
@@ -570,7 +573,10 @@ fn test_effect_triggered_by_own_write() {
 
     // Effect should stabilize at counter=5
     // In current impl, this might cause issues
-    assert!(run_count.load(Ordering::SeqCst) < 100, "Should not run 100+ times");
+    assert!(
+        run_count.load(Ordering::SeqCst) < 100,
+        "Should not run 100+ times"
+    );
 }
 
 // =============================================================================
@@ -597,7 +603,7 @@ fn test_computed_caching_efficiency() {
     assert_eq!(expensive.get(), 20);
     assert_eq!(expensive.get(), 20);
     assert_eq!(expensive.get(), 20);
-    assert_eq!(compute_count.load(Ordering::SeqCst), 1);  // Still 1
+    assert_eq!(compute_count.load(Ordering::SeqCst), 1); // Still 1
 
     // Update source
     source.set(20);
@@ -612,7 +618,7 @@ fn test_computed_caching_efficiency() {
     // Again, multiple accesses use cache
     assert_eq!(expensive.get(), 40);
     assert_eq!(expensive.get(), 40);
-    assert_eq!(compute_count.load(Ordering::SeqCst), 2);  // Still 2
+    assert_eq!(compute_count.load(Ordering::SeqCst), 2); // Still 2
 }
 
 #[test]
@@ -695,9 +701,7 @@ fn test_many_signals() {
 #[test]
 fn test_many_effects_on_one_signal() {
     let signal = signal(0);
-    let counts: Vec<_> = (0..50)
-        .map(|_| Arc::new(AtomicUsize::new(0)))
-        .collect();
+    let counts: Vec<_> = (0..50).map(|_| Arc::new(AtomicUsize::new(0))).collect();
 
     let _effects: Vec<_> = counts
         .iter()

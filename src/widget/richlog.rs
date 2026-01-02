@@ -2,11 +2,11 @@
 //!
 //! Provides a scrollable log view with syntax highlighting and log levels.
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::event::Key;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Log level
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
@@ -384,7 +384,8 @@ impl RichLog {
 
     /// Get filtered entries
     fn visible_entries(&self) -> Vec<&LogEntry> {
-        self.entries.iter()
+        self.entries
+            .iter()
             .filter(|e| e.level >= self.min_level)
             .collect()
     }
@@ -451,7 +452,6 @@ impl RichLog {
             _ => false,
         }
     }
-
 }
 
 impl Default for RichLog {
@@ -558,7 +558,11 @@ impl View for RichLog {
             }
 
             // Draw message
-            let msg_fg = if is_selected { Color::WHITE } else { level_color };
+            let msg_fg = if is_selected {
+                Color::WHITE
+            } else {
+                level_color
+            };
             for ch in entry.message.chars().take(message_width as usize) {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(msg_fg);
@@ -610,8 +614,8 @@ pub fn log_entry(message: impl Into<String>) -> LogEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_log_entry() {

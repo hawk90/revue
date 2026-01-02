@@ -96,19 +96,24 @@ fn is_wide_char(c: char) -> bool {
     let cp = c as u32;
 
     // CJK Unified Ideographs and related
-    if (0x4E00..=0x9FFF).contains(&cp) {  // CJK Unified Ideographs
+    if (0x4E00..=0x9FFF).contains(&cp) {
+        // CJK Unified Ideographs
         return true;
     }
-    if (0x3400..=0x4DBF).contains(&cp) {  // CJK Unified Ideographs Extension A
+    if (0x3400..=0x4DBF).contains(&cp) {
+        // CJK Unified Ideographs Extension A
         return true;
     }
-    if (0x20000..=0x2A6DF).contains(&cp) { // CJK Unified Ideographs Extension B
+    if (0x20000..=0x2A6DF).contains(&cp) {
+        // CJK Unified Ideographs Extension B
         return true;
     }
-    if (0x2A700..=0x2B73F).contains(&cp) { // CJK Unified Ideographs Extension C
+    if (0x2A700..=0x2B73F).contains(&cp) {
+        // CJK Unified Ideographs Extension C
         return true;
     }
-    if (0x2B740..=0x2B81F).contains(&cp) { // CJK Unified Ideographs Extension D
+    if (0x2B740..=0x2B81F).contains(&cp) {
+        // CJK Unified Ideographs Extension D
         return true;
     }
 
@@ -118,18 +123,22 @@ fn is_wide_char(c: char) -> bool {
     }
 
     // Hangul (Korean)
-    if (0xAC00..=0xD7AF).contains(&cp) {  // Hangul Syllables
+    if (0xAC00..=0xD7AF).contains(&cp) {
+        // Hangul Syllables
         return true;
     }
-    if (0x1100..=0x11FF).contains(&cp) {  // Hangul Jamo
+    if (0x1100..=0x11FF).contains(&cp) {
+        // Hangul Jamo
         return true;
     }
 
     // Japanese
-    if (0x3040..=0x309F).contains(&cp) {  // Hiragana
+    if (0x3040..=0x309F).contains(&cp) {
+        // Hiragana
         return true;
     }
-    if (0x30A0..=0x30FF).contains(&cp) {  // Katakana
+    if (0x30A0..=0x30FF).contains(&cp) {
+        // Katakana
         return true;
     }
 
@@ -143,16 +152,20 @@ fn is_wide_char(c: char) -> bool {
     }
 
     // Emojis (most common ranges)
-    if (0x1F300..=0x1F9FF).contains(&cp) {  // Miscellaneous Symbols and Pictographs, Emoticons, etc.
+    if (0x1F300..=0x1F9FF).contains(&cp) {
+        // Miscellaneous Symbols and Pictographs, Emoticons, etc.
         return true;
     }
-    if (0x1FA00..=0x1FAFF).contains(&cp) {  // Chess, Extended-A
+    if (0x1FA00..=0x1FAFF).contains(&cp) {
+        // Chess, Extended-A
         return true;
     }
-    if (0x2600..=0x26FF).contains(&cp) {    // Miscellaneous Symbols
+    if (0x2600..=0x26FF).contains(&cp) {
+        // Miscellaneous Symbols
         return true;
     }
-    if (0x2700..=0x27BF).contains(&cp) {    // Dingbats
+    if (0x2700..=0x27BF).contains(&cp) {
+        // Dingbats
         return true;
     }
 
@@ -377,15 +390,15 @@ mod tests {
 
     #[test]
     fn test_mixed_width() {
-        assert_eq!(display_width("Hello世界"), 9);  // 5 + 4
-        assert_eq!(display_width("a한b글c"), 7);    // 1 + 2 + 1 + 2 + 1
+        assert_eq!(display_width("Hello世界"), 9); // 5 + 4
+        assert_eq!(display_width("a한b글c"), 7); // 1 + 2 + 1 + 2 + 1
     }
 
     #[test]
     fn test_emoji_width() {
         assert_eq!(display_width("🎉"), 2);
         assert_eq!(display_width("👍"), 2);
-        assert_eq!(display_width("Hello 🎉"), 8);  // 6 + 2
+        assert_eq!(display_width("Hello 🎉"), 8); // 6 + 2
     }
 
     #[test]
@@ -398,7 +411,7 @@ mod tests {
     fn test_truncate_cjk() {
         // "안녕하세요" = 10 width (5 chars × 2)
         assert_eq!(truncate_to_width("안녕하세요", 4), "안녕");
-        assert_eq!(truncate_to_width("안녕하세요", 5), "안녕");  // Can't fit half of 하
+        assert_eq!(truncate_to_width("안녕하세요", 5), "안녕"); // Can't fit half of 하
         assert_eq!(truncate_to_width("안녕하세요", 6), "안녕하");
     }
 
@@ -406,7 +419,7 @@ mod tests {
     fn test_truncate_mixed() {
         // "Hello世界" = 9 width
         assert_eq!(truncate_to_width("Hello世界", 7), "Hello世");
-        assert_eq!(truncate_to_width("Hello世界", 6), "Hello");  // Can't fit 世 (width 2)
+        assert_eq!(truncate_to_width("Hello世界", 6), "Hello"); // Can't fit 世 (width 2)
     }
 
     #[test]
@@ -455,6 +468,6 @@ mod tests {
     #[test]
     fn test_zero_width_chars() {
         // Combining character shouldn't add width
-        assert_eq!(char_width('\u{0301}'), 0);  // Combining acute accent
+        assert_eq!(char_width('\u{0301}'), 0); // Combining acute accent
     }
 }

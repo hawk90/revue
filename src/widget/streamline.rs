@@ -22,10 +22,10 @@
 //!     .baseline(StreamBaseline::Symmetric);
 //! ```
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// A single layer in the stream graph
 #[derive(Debug, Clone)]
@@ -138,16 +138,16 @@ impl Streamline {
             bg_color: None,
             height: None,
             palette: vec![
-                Color::rgb(66, 133, 244),   // Blue
-                Color::rgb(234, 67, 53),    // Red
-                Color::rgb(251, 188, 5),    // Yellow
-                Color::rgb(52, 168, 83),    // Green
-                Color::rgb(155, 89, 182),   // Purple
-                Color::rgb(241, 196, 15),   // Gold
-                Color::rgb(26, 188, 156),   // Teal
-                Color::rgb(230, 126, 34),   // Orange
-                Color::rgb(149, 165, 166),  // Gray
-                Color::rgb(231, 76, 60),    // Coral
+                Color::rgb(66, 133, 244),  // Blue
+                Color::rgb(234, 67, 53),   // Red
+                Color::rgb(251, 188, 5),   // Yellow
+                Color::rgb(52, 168, 83),   // Green
+                Color::rgb(155, 89, 182),  // Purple
+                Color::rgb(241, 196, 15),  // Gold
+                Color::rgb(26, 188, 156),  // Teal
+                Color::rgb(230, 126, 34),  // Orange
+                Color::rgb(149, 165, 166), // Gray
+                Color::rgb(231, 76, 60),   // Coral
             ],
             highlighted: None,
             props: WidgetProps::new(),
@@ -227,9 +227,9 @@ impl Streamline {
     }
 
     fn get_layer_color(&self, index: usize) -> Color {
-        self.layers[index].color.unwrap_or_else(|| {
-            self.palette[index % self.palette.len()]
-        })
+        self.layers[index]
+            .color
+            .unwrap_or_else(|| self.palette[index % self.palette.len()])
     }
 
     fn compute_stacks(&self) -> Vec<Vec<(f64, f64)>> {
@@ -237,7 +237,9 @@ impl Streamline {
             return Vec::new();
         }
 
-        let num_points = self.layers.iter()
+        let num_points = self
+            .layers
+            .iter()
             .map(|l| l.values.len())
             .max()
             .unwrap_or(0);
@@ -254,7 +256,9 @@ impl Streamline {
                 indices.sort_by(|&a, &b| {
                     let sum_a: f64 = self.layers[a].values.iter().sum();
                     let sum_b: f64 = self.layers[b].values.iter().sum();
-                    sum_a.partial_cmp(&sum_b).unwrap_or(std::cmp::Ordering::Equal)
+                    sum_a
+                        .partial_cmp(&sum_b)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
                 indices
             }
@@ -263,7 +267,9 @@ impl Streamline {
                 indices.sort_by(|&a, &b| {
                     let sum_a: f64 = self.layers[a].values.iter().sum();
                     let sum_b: f64 = self.layers[b].values.iter().sum();
-                    sum_b.partial_cmp(&sum_a).unwrap_or(std::cmp::Ordering::Equal)
+                    sum_b
+                        .partial_cmp(&sum_a)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
                 indices
             }
@@ -272,7 +278,9 @@ impl Streamline {
                 indices.sort_by(|&a, &b| {
                     let sum_a: f64 = self.layers[a].values.iter().sum();
                     let sum_b: f64 = self.layers[b].values.iter().sum();
-                    sum_b.partial_cmp(&sum_a).unwrap_or(std::cmp::Ordering::Equal)
+                    sum_b
+                        .partial_cmp(&sum_a)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
                 let mut result = Vec::with_capacity(indices.len());
                 for (i, idx) in indices.into_iter().enumerate() {
@@ -289,10 +297,9 @@ impl Streamline {
         let mut stacks: Vec<Vec<(f64, f64)>> = vec![Vec::new(); self.layers.len()];
 
         for x in 0..num_points {
-            let values: Vec<f64> = ordered_indices.iter()
-                .map(|&i| {
-                    self.layers[i].values.get(x).copied().unwrap_or(0.0)
-                })
+            let values: Vec<f64> = ordered_indices
+                .iter()
+                .map(|&i| self.layers[i].values.get(x).copied().unwrap_or(0.0))
                 .collect();
 
             let total: f64 = values.iter().sum();
@@ -302,9 +309,12 @@ impl Streamline {
                 StreamBaseline::Symmetric => (-total / 2.0, 1.0),
                 StreamBaseline::Wiggle => {
                     let n = self.layers.len() as f64;
-                    let offset: f64 = values.iter().enumerate()
+                    let offset: f64 = values
+                        .iter()
+                        .enumerate()
                         .map(|(i, &v)| (n - i as f64) * v)
-                        .sum::<f64>() / n;
+                        .sum::<f64>()
+                        / n;
                     (-offset / 2.0, 1.0)
                 }
                 StreamBaseline::Expand => {
@@ -353,7 +363,8 @@ impl View for Streamline {
         // Title
         if let Some(ref title) = self.title {
             let title_x = area.x + (area.width.saturating_sub(title.len() as u16)) / 2;
-            ctx.buffer.put_str_styled(title_x, chart_y, title, Some(Color::WHITE), self.bg_color);
+            ctx.buffer
+                .put_str_styled(title_x, chart_y, title, Some(Color::WHITE), self.bg_color);
             chart_y += 1;
             chart_height = chart_height.saturating_sub(1);
         }
@@ -367,7 +378,13 @@ impl View for Streamline {
                 cell.fg = Some(color);
                 ctx.buffer.set(x, chart_y, cell);
                 x += 2;
-                ctx.buffer.put_str_styled(x, chart_y, &layer.name, Some(Color::WHITE), self.bg_color);
+                ctx.buffer.put_str_styled(
+                    x,
+                    chart_y,
+                    &layer.name,
+                    Some(Color::WHITE),
+                    self.bg_color,
+                );
                 x += layer.name.len() as u16 + 2;
 
                 if x > area.x + area.width - 10 {
@@ -430,10 +447,16 @@ impl View for Streamline {
             for x_idx in 0..num_points {
                 let (y0, y1) = layer_stack[x_idx];
 
-                let screen_x = area.x + (x_idx as f64 / (num_points - 1).max(1) as f64 * (area.width - 1) as f64) as u16;
+                let screen_x = area.x
+                    + (x_idx as f64 / (num_points - 1).max(1) as f64 * (area.width - 1) as f64)
+                        as u16;
 
-                let screen_y0 = chart_y + plot_height - 1 - ((y0 - min_y) / y_range * (plot_height - 1) as f64) as u16;
-                let screen_y1 = chart_y + plot_height - 1 - ((y1 - min_y) / y_range * (plot_height - 1) as f64) as u16;
+                let screen_y0 = chart_y + plot_height
+                    - 1
+                    - ((y0 - min_y) / y_range * (plot_height - 1) as f64) as u16;
+                let screen_y1 = chart_y + plot_height
+                    - 1
+                    - ((y1 - min_y) / y_range * (plot_height - 1) as f64) as u16;
 
                 let (top_y, bottom_y) = if screen_y0 <= screen_y1 {
                     (screen_y0, screen_y1)
@@ -465,14 +488,24 @@ impl View for Streamline {
 
                 let (y0, y1) = layer_stack[max_width_x];
                 let mid_y = (y0 + y1) / 2.0;
-                let screen_x = area.x + (max_width_x as f64 / (num_points - 1).max(1) as f64 * (area.width - 1) as f64) as u16;
-                let screen_y = chart_y + plot_height - 1 - ((mid_y - min_y) / y_range * (plot_height - 1) as f64) as u16;
+                let screen_x = area.x
+                    + (max_width_x as f64 / (num_points - 1).max(1) as f64
+                        * (area.width - 1) as f64) as u16;
+                let screen_y = chart_y + plot_height
+                    - 1
+                    - ((mid_y - min_y) / y_range * (plot_height - 1) as f64) as u16;
 
                 let label = &self.layers[layer_idx].name;
                 let label_x = screen_x.saturating_sub(label.len() as u16 / 2);
 
                 if screen_y >= chart_y && screen_y < chart_y + plot_height {
-                    ctx.buffer.put_str_styled(label_x, screen_y, label, Some(Color::WHITE), Some(display_color));
+                    ctx.buffer.put_str_styled(
+                        label_x,
+                        screen_y,
+                        label,
+                        Some(Color::WHITE),
+                        Some(display_color),
+                    );
                 }
             }
         }
@@ -483,9 +516,16 @@ impl View for Streamline {
             let num_labels = self.x_labels.len().min(area.width as usize / 8);
 
             for (i, label) in self.x_labels.iter().take(num_labels).enumerate() {
-                let x = area.x + (i as f64 / (num_labels - 1).max(1) as f64 * (area.width - 1) as f64) as u16;
+                let x = area.x
+                    + (i as f64 / (num_labels - 1).max(1) as f64 * (area.width - 1) as f64) as u16;
                 let label_x = x.saturating_sub(label.len() as u16 / 2);
-                ctx.buffer.put_str_styled(label_x, label_y, label, Some(Color::WHITE), self.bg_color);
+                ctx.buffer.put_str_styled(
+                    label_x,
+                    label_y,
+                    label,
+                    Some(Color::WHITE),
+                    self.bg_color,
+                );
             }
         }
     }
@@ -562,10 +602,26 @@ pub fn resource_stream(
     Streamline::new()
         .title("Resource Usage")
         .baseline(StreamBaseline::Zero)
-        .layer(StreamLayer::new("CPU").data(cpu).color(Color::rgb(52, 152, 219)))
-        .layer(StreamLayer::new("Memory").data(memory).color(Color::rgb(155, 89, 182)))
-        .layer(StreamLayer::new("Disk").data(disk).color(Color::rgb(46, 204, 113)))
-        .layer(StreamLayer::new("Network").data(network).color(Color::rgb(241, 196, 15)))
+        .layer(
+            StreamLayer::new("CPU")
+                .data(cpu)
+                .color(Color::rgb(52, 152, 219)),
+        )
+        .layer(
+            StreamLayer::new("Memory")
+                .data(memory)
+                .color(Color::rgb(155, 89, 182)),
+        )
+        .layer(
+            StreamLayer::new("Disk")
+                .data(disk)
+                .color(Color::rgb(46, 204, 113)),
+        )
+        .layer(
+            StreamLayer::new("Network")
+                .data(network)
+                .color(Color::rgb(241, 196, 15)),
+        )
 }
 
 #[cfg(test)]
@@ -595,8 +651,7 @@ mod tests {
 
     #[test]
     fn test_baseline_modes() {
-        let chart = streamline()
-            .baseline(StreamBaseline::Symmetric);
+        let chart = streamline().baseline(StreamBaseline::Symmetric);
 
         assert_eq!(chart.baseline, StreamBaseline::Symmetric);
     }

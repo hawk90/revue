@@ -3,14 +3,14 @@
 //! Provides a visual color selection interface with palette,
 //! RGB sliders, and hex input.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::event::Key;
+use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::layout::Rect;
-use crate::event::Key;
 use crate::utils::border::render_border;
-use crate::utils::color::{rgb_to_hsl, hsl_to_rgb};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::utils::color::{hsl_to_rgb, rgb_to_hsl};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Color picker mode
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
@@ -47,10 +47,22 @@ impl ColorPalette {
     fn colors(&self) -> Vec<Color> {
         match self {
             ColorPalette::Basic => vec![
-                Color::BLACK, Color::rgb(128, 0, 0), Color::rgb(0, 128, 0), Color::rgb(128, 128, 0),
-                Color::rgb(0, 0, 128), Color::rgb(128, 0, 128), Color::rgb(0, 128, 128), Color::rgb(192, 192, 192),
-                Color::rgb(128, 128, 128), Color::RED, Color::GREEN, Color::YELLOW,
-                Color::BLUE, Color::MAGENTA, Color::CYAN, Color::WHITE,
+                Color::BLACK,
+                Color::rgb(128, 0, 0),
+                Color::rgb(0, 128, 0),
+                Color::rgb(128, 128, 0),
+                Color::rgb(0, 0, 128),
+                Color::rgb(128, 0, 128),
+                Color::rgb(0, 128, 128),
+                Color::rgb(192, 192, 192),
+                Color::rgb(128, 128, 128),
+                Color::RED,
+                Color::GREEN,
+                Color::YELLOW,
+                Color::BLUE,
+                Color::MAGENTA,
+                Color::CYAN,
+                Color::WHITE,
             ],
             ColorPalette::Extended => {
                 let mut colors = Vec::with_capacity(256);
@@ -87,32 +99,62 @@ impl ColorPalette {
             }
             ColorPalette::Material => vec![
                 // Red
-                Color::rgb(244, 67, 54), Color::rgb(229, 115, 115), Color::rgb(183, 28, 28),
+                Color::rgb(244, 67, 54),
+                Color::rgb(229, 115, 115),
+                Color::rgb(183, 28, 28),
                 // Pink
-                Color::rgb(233, 30, 99), Color::rgb(240, 98, 146), Color::rgb(136, 14, 79),
+                Color::rgb(233, 30, 99),
+                Color::rgb(240, 98, 146),
+                Color::rgb(136, 14, 79),
                 // Purple
-                Color::rgb(156, 39, 176), Color::rgb(186, 104, 200), Color::rgb(74, 20, 140),
+                Color::rgb(156, 39, 176),
+                Color::rgb(186, 104, 200),
+                Color::rgb(74, 20, 140),
                 // Blue
-                Color::rgb(33, 150, 243), Color::rgb(100, 181, 246), Color::rgb(13, 71, 161),
+                Color::rgb(33, 150, 243),
+                Color::rgb(100, 181, 246),
+                Color::rgb(13, 71, 161),
                 // Cyan
-                Color::rgb(0, 188, 212), Color::rgb(77, 208, 225), Color::rgb(0, 96, 100),
+                Color::rgb(0, 188, 212),
+                Color::rgb(77, 208, 225),
+                Color::rgb(0, 96, 100),
                 // Green
-                Color::rgb(76, 175, 80), Color::rgb(129, 199, 132), Color::rgb(27, 94, 32),
+                Color::rgb(76, 175, 80),
+                Color::rgb(129, 199, 132),
+                Color::rgb(27, 94, 32),
                 // Yellow
-                Color::rgb(255, 235, 59), Color::rgb(255, 241, 118), Color::rgb(245, 127, 23),
+                Color::rgb(255, 235, 59),
+                Color::rgb(255, 241, 118),
+                Color::rgb(245, 127, 23),
                 // Orange
-                Color::rgb(255, 152, 0), Color::rgb(255, 183, 77), Color::rgb(230, 81, 0),
+                Color::rgb(255, 152, 0),
+                Color::rgb(255, 183, 77),
+                Color::rgb(230, 81, 0),
                 // Brown
-                Color::rgb(121, 85, 72), Color::rgb(161, 136, 127), Color::rgb(62, 39, 35),
+                Color::rgb(121, 85, 72),
+                Color::rgb(161, 136, 127),
+                Color::rgb(62, 39, 35),
                 // Grey
-                Color::rgb(158, 158, 158), Color::rgb(189, 189, 189), Color::rgb(66, 66, 66),
+                Color::rgb(158, 158, 158),
+                Color::rgb(189, 189, 189),
+                Color::rgb(66, 66, 66),
             ],
             ColorPalette::Pastel => vec![
-                Color::rgb(255, 179, 186), Color::rgb(255, 223, 186), Color::rgb(255, 255, 186),
-                Color::rgb(186, 255, 201), Color::rgb(186, 225, 255), Color::rgb(219, 186, 255),
-                Color::rgb(255, 186, 255), Color::rgb(255, 218, 233), Color::rgb(255, 240, 219),
-                Color::rgb(240, 255, 219), Color::rgb(219, 255, 240), Color::rgb(219, 240, 255),
-                Color::rgb(240, 219, 255), Color::rgb(255, 219, 240), Color::rgb(224, 224, 224),
+                Color::rgb(255, 179, 186),
+                Color::rgb(255, 223, 186),
+                Color::rgb(255, 255, 186),
+                Color::rgb(186, 255, 201),
+                Color::rgb(186, 225, 255),
+                Color::rgb(219, 186, 255),
+                Color::rgb(255, 186, 255),
+                Color::rgb(255, 218, 233),
+                Color::rgb(255, 240, 219),
+                Color::rgb(240, 255, 219),
+                Color::rgb(219, 255, 240),
+                Color::rgb(219, 240, 255),
+                Color::rgb(240, 219, 255),
+                Color::rgb(255, 219, 240),
+                Color::rgb(224, 224, 224),
                 Color::rgb(245, 245, 245),
             ],
         }
@@ -417,7 +459,6 @@ impl ColorPicker {
     }
 
     fn handle_hex_key(&mut self, key: &Key) -> bool {
-
         match key {
             Key::Char(c) if c.is_ascii_hexdigit() => {
                 if self.hex_input.len() < 6 {
@@ -468,7 +509,12 @@ impl View for ColorPicker {
         }
 
         let content_area = if self.border_color.is_some() {
-            Rect::new(area.x + 1, area.y + 1, area.width.saturating_sub(2), area.height.saturating_sub(2))
+            Rect::new(
+                area.x + 1,
+                area.y + 1,
+                area.width.saturating_sub(2),
+                area.height.saturating_sub(2),
+            )
         } else {
             area
         };
@@ -571,7 +617,11 @@ impl ColorPicker {
             for j in 0..slider_width {
                 let ch = if j < filled { '█' } else { '░' };
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(if j < filled { *color } else { Color::rgb(60, 60, 60) });
+                cell.fg = Some(if j < filled {
+                    *color
+                } else {
+                    Color::rgb(60, 60, 60)
+                });
                 ctx.buffer.set(area.x + 2 + j as u16, y, cell);
             }
 
@@ -608,7 +658,11 @@ impl ColorPicker {
         for i in 0..6 {
             let ch = self.hex_input.chars().nth(i).unwrap_or('_');
             let mut cell = Cell::new(ch);
-            cell.fg = Some(if i < self.hex_input.len() { Color::CYAN } else { Color::rgb(60, 60, 60) });
+            cell.fg = Some(if i < self.hex_input.len() {
+                Color::CYAN
+            } else {
+                Color::rgb(60, 60, 60)
+            });
             ctx.buffer.set(input_x + i as u16, area.y, cell);
         }
 
@@ -640,7 +694,8 @@ impl ColorPicker {
             for (i, ch) in hex.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
-                ctx.buffer.set(area.x + preview_width + 1 + i as u16, preview_y, cell);
+                ctx.buffer
+                    .set(area.x + preview_width + 1 + i as u16, preview_y, cell);
             }
         }
     }

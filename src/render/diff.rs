@@ -25,7 +25,12 @@ pub fn diff(old: &Buffer, new: &Buffer, dirty_rects: &[Rect]) -> Vec<Change> {
         // As a fallback for now, let's compare the whole screen if no rects are given.
         // This makes sure we don't break rendering logic that doesn't yet produce dirty rects.
         // The ideal state is that dirty_rects is never empty for a real change.
-        let full_screen = Rect { x: 0, y: 0, width: new.width(), height: new.height() };
+        let full_screen = Rect {
+            x: 0,
+            y: 0,
+            width: new.width(),
+            height: new.height(),
+        };
         return diff(old, new, &[full_screen]);
     }
 
@@ -64,7 +69,12 @@ mod tests {
 
     // Helper to create a test rect
     fn rect(x: u16, y: u16, width: u16, height: u16) -> Rect {
-        Rect { x, y, width, height }
+        Rect {
+            x,
+            y,
+            width,
+            height,
+        }
     }
 
     #[test]

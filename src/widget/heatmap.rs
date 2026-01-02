@@ -26,8 +26,8 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::widget::{RenderContext, View, WidgetProps};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Color scale for heatmap
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -59,18 +59,10 @@ impl ColorScale {
                 // Blue -> White -> Red
                 if v < 0.5 {
                     let t = v * 2.0;
-                    Color::rgb(
-                        (t * 255.0) as u8,
-                        (t * 255.0) as u8,
-                        255,
-                    )
+                    Color::rgb((t * 255.0) as u8, (t * 255.0) as u8, 255)
                 } else {
                     let t = (v - 0.5) * 2.0;
-                    Color::rgb(
-                        255,
-                        ((1.0 - t) * 255.0) as u8,
-                        ((1.0 - t) * 255.0) as u8,
-                    )
+                    Color::rgb(255, ((1.0 - t) * 255.0) as u8, ((1.0 - t) * 255.0) as u8)
                 }
             }
             ColorScale::Green => {
@@ -223,7 +215,6 @@ impl HeatMap {
             props: WidgetProps::new(),
         }
     }
-
 
     /// Create from flat data with dimensions
     pub fn from_flat(data: &[f64], rows: usize, cols: usize) -> Self {
@@ -385,13 +376,23 @@ impl HeatMap {
     /// Render cell content
     fn render_cell(&self, value: f64) -> String {
         if self.show_values {
-            format!("{:>width$.prec$}", value, width = self.cell_width, prec = self.value_decimals)
+            format!(
+                "{:>width$.prec$}",
+                value,
+                width = self.cell_width,
+                prec = self.value_decimals
+            )
         } else {
             match self.cell_display {
                 CellDisplay::Block => "█".repeat(self.cell_width),
                 CellDisplay::HalfBlock => "▀".repeat(self.cell_width),
                 CellDisplay::Value => {
-                    format!("{:>width$.prec$}", value, width = self.cell_width, prec = self.value_decimals)
+                    format!(
+                        "{:>width$.prec$}",
+                        value,
+                        width = self.cell_width,
+                        prec = self.value_decimals
+                    )
                 }
                 CellDisplay::Custom => "■".repeat(self.cell_width),
             }
@@ -403,8 +404,8 @@ impl View for HeatMap {
     crate::impl_view_meta!("HeatMap");
 
     fn render(&self, ctx: &mut RenderContext) {
+        use crate::widget::stack::{hstack, vstack};
         use crate::widget::Text;
-        use crate::widget::stack::{vstack, hstack};
 
         let mut content = vstack();
 
@@ -427,7 +428,7 @@ impl View for HeatMap {
                 };
                 col_header = col_header.child(
                     Text::new(format!("{:^width$}", truncated, width = self.cell_width))
-                        .fg(Color::rgb(150, 150, 150))
+                        .fg(Color::rgb(150, 150, 150)),
                 );
             }
             content = content.child(col_header);
@@ -443,8 +444,7 @@ impl View for HeatMap {
                     if let Some(label) = labels.get(row_idx) {
                         let truncated = if label.len() > 6 { &label[..6] } else { label };
                         row_view = row_view.child(
-                            Text::new(format!("{:>6} ", truncated))
-                                .fg(Color::rgb(150, 150, 150))
+                            Text::new(format!("{:>6} ", truncated)).fg(Color::rgb(150, 150, 150)),
                         );
                     }
                 }
@@ -495,8 +495,10 @@ impl View for HeatMap {
             }
 
             legend = legend.child(Text::new(" High").fg(Color::rgb(128, 128, 128)));
-            legend = legend.child(Text::new(format!("  ({:.1} - {:.1})", self.min_val, self.max_val))
-                .fg(Color::rgb(100, 100, 100)));
+            legend = legend.child(
+                Text::new(format!("  ({:.1} - {:.1})", self.min_val, self.max_val))
+                    .fg(Color::rgb(100, 100, 100)),
+            );
 
             content = content.child(legend);
         }
@@ -524,10 +526,7 @@ mod tests {
 
     #[test]
     fn test_heatmap_new() {
-        let data = vec![
-            vec![0.0, 0.5, 1.0],
-            vec![0.2, 0.4, 0.8],
-        ];
+        let data = vec![vec![0.0, 0.5, 1.0], vec![0.2, 0.4, 0.8]];
         let hm = HeatMap::new(data);
         assert_eq!(hm._rows, 2);
         assert_eq!(hm.cols, 3);

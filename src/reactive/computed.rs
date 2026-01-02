@@ -2,9 +2,9 @@
 //!
 //! Thread-safe computed values using Arc and atomic operations.
 
-use super::tracker::{Subscriber, SubscriberId, start_tracking, stop_tracking};
-use std::sync::{Arc, RwLock};
+use super::tracker::{start_tracking, stop_tracking, Subscriber, SubscriberId};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, RwLock};
 
 /// A derived value that automatically updates when dependencies change
 ///
@@ -60,7 +60,7 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
             // Create a subscriber with our persistent ID that invalidates when dependencies change
             let dirty_flag = self.dirty.clone();
             let subscriber = Subscriber {
-                id: self.id,  // Use persistent ID, not new one!
+                id: self.id, // Use persistent ID, not new one!
                 callback: Arc::new(move || {
                     dirty_flag.store(true, Ordering::SeqCst);
                 }),
@@ -79,8 +79,7 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
             self.dirty.store(false, Ordering::SeqCst);
             value
         } else {
-            self
-                .cached
+            self.cached
                 .read()
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                 .as_ref()
@@ -221,13 +220,7 @@ mod tests {
         let a_c = a.clone();
         let b_c = b.clone();
 
-        let computed = Computed::new(move || {
-            if f.get() {
-                a_c.get()
-            } else {
-                b_c.get()
-            }
-        });
+        let computed = Computed::new(move || if f.get() { a_c.get() } else { b_c.get() });
 
         // Initially: flag=true, depends on a
         assert_eq!(computed.get(), 1);
@@ -256,14 +249,16 @@ mod tests {
 
         let computed = Arc::new(Computed::new(|| 42));
 
-        let handles: Vec<_> = (0..4).map(|_| {
-            let c = computed.clone();
-            thread::spawn(move || {
-                for _ in 0..100 {
-                    assert_eq!(c.get(), 42);
-                }
+        let handles: Vec<_> = (0..4)
+            .map(|_| {
+                let c = computed.clone();
+                thread::spawn(move || {
+                    for _ in 0..100 {
+                        assert_eq!(c.get(), 42);
+                    }
+                })
             })
-        }).collect();
+            .collect();
 
         for h in handles {
             h.join().unwrap();

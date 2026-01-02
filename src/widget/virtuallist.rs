@@ -33,7 +33,7 @@
 //! list.jump_to(5000);
 //! ```
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
 use std::ops::Range;
@@ -323,7 +323,8 @@ impl<T: ToString + Clone> VirtualList<T> {
     pub fn scroll_by(&mut self, rows: i32) {
         if self.height_calculator.is_some() {
             // Variable height mode - scroll by rows
-            let current_row = self.row_of_index(self.scroll_offset) as i32 + self.scroll_sub_offset as i32;
+            let current_row =
+                self.row_of_index(self.scroll_offset) as i32 + self.scroll_sub_offset as i32;
             let new_row = (current_row + rows).max(0) as u32;
             let max_row = self.total_height().saturating_sub(1);
             let clamped_row = new_row.min(max_row);
@@ -571,7 +572,8 @@ impl<T: ToString + Clone> VirtualList<T> {
 
         let thumb_size = ((visible / total) * viewport_height as f32).max(1.0) as u16;
         let scroll_range = viewport_height.saturating_sub(thumb_size);
-        let thumb_pos = ((self.scroll_offset as f32 / (total - visible)) * scroll_range as f32) as u16;
+        let thumb_pos =
+            ((self.scroll_offset as f32 / (total - visible)) * scroll_range as f32) as u16;
 
         // Draw scrollbar track
         for y in 0..viewport_height {
@@ -579,7 +581,11 @@ impl<T: ToString + Clone> VirtualList<T> {
             if abs_y < area.y + area.height {
                 let in_thumb = y >= thumb_pos && y < thumb_pos + thumb_size;
                 let ch = if in_thumb { '█' } else { '░' };
-                let color = if in_thumb { self.scrollbar_fg } else { self.scrollbar_bg };
+                let color = if in_thumb {
+                    self.scrollbar_fg
+                } else {
+                    self.scrollbar_bg
+                };
                 ctx.buffer.set(scrollbar_x, abs_y, Cell::new(ch).fg(color));
             }
         }
@@ -633,11 +639,7 @@ impl<T: ToString + Clone> View for VirtualList<T> {
                 }
 
                 // Get the line for this row (for multi-row items)
-                let line = if row == 0 {
-                    &text
-                } else {
-                    ""
-                };
+                let line = if row == 0 { &text } else { "" };
 
                 // Render each character
                 for x in 0..content_width {
@@ -779,8 +781,8 @@ pub fn virtual_list<T: ToString + Clone>(items: Vec<T>) -> VirtualList<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_virtual_list_new() {
@@ -940,8 +942,8 @@ mod tests {
     #[test]
     fn test_virtual_list_variable_height() {
         let items: Vec<String> = (0..10).map(|i| format!("Item {}", i)).collect();
-        let list = VirtualList::new(items)
-            .variable_height(|_item, idx| if idx % 2 == 0 { 2 } else { 1 });
+        let list =
+            VirtualList::new(items).variable_height(|_item, idx| if idx % 2 == 0 { 2 } else { 1 });
 
         // Even items have height 2, odd items have height 1
         assert_eq!(list.get_item_height(0), 2);
@@ -955,8 +957,7 @@ mod tests {
     #[test]
     fn test_virtual_list_row_calculations() {
         let items: Vec<String> = (0..5).map(|i| format!("Item {}", i)).collect();
-        let list = VirtualList::new(items)
-            .variable_height(|_item, idx| (idx + 1) as u16); // Heights: 1, 2, 3, 4, 5
+        let list = VirtualList::new(items).variable_height(|_item, idx| (idx + 1) as u16); // Heights: 1, 2, 3, 4, 5
 
         // Cumulative heights: 1, 3, 6, 10, 15
         assert_eq!(list.row_of_index(0), 0);

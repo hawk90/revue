@@ -399,7 +399,10 @@ mod tests {
         let mut buf = Buffer::new(3, 2);
         buf.set(1, 1, Cell::new('X'));
 
-        let cells: Vec<_> = buf.iter_cells().filter(|(_, _, c)| c.symbol == 'X').collect();
+        let cells: Vec<_> = buf
+            .iter_cells()
+            .filter(|(_, _, c)| c.symbol == 'X')
+            .collect();
         assert_eq!(cells.len(), 1);
         assert_eq!(cells[0], (1, 1, buf.get(1, 1).unwrap()));
     }

@@ -2,10 +2,10 @@
 //!
 //! Shows progress through a series of steps with status indicators.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Step status
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
@@ -323,7 +323,9 @@ impl Stepper {
 
     /// Check if completed (on last step and it's completed)
     pub fn is_completed(&self) -> bool {
-        self.steps.last().is_some_and(|s| s.status == StepStatus::Completed)
+        self.steps
+            .last()
+            .is_some_and(|s| s.status == StepStatus::Completed)
     }
 
     /// Get progress as percentage
@@ -331,7 +333,11 @@ impl Stepper {
         if self.steps.is_empty() {
             return 0.0;
         }
-        let completed = self.steps.iter().filter(|s| s.status == StepStatus::Completed).count();
+        let completed = self
+            .steps
+            .iter()
+            .filter(|s| s.status == StepStatus::Completed)
+            .count();
         completed as f64 / self.steps.len() as f64
     }
 
@@ -407,12 +413,16 @@ impl Stepper {
             }
 
             // Connector (except last)
-            if matches!(self.style, StepperStyle::Connected | StepperStyle::Progress) && i < step_count - 1 {
+            if matches!(self.style, StepperStyle::Connected | StepperStyle::Progress)
+                && i < step_count - 1
+            {
                 let connector_start = x + 2;
                 let connector_end = area.x + ((i + 1) * step_width) as u16;
 
                 for cx in connector_start..connector_end {
-                    let ch = if matches!(self.style, StepperStyle::Progress) && step.status == StepStatus::Completed {
+                    let ch = if matches!(self.style, StepperStyle::Progress)
+                        && step.status == StepStatus::Completed
+                    {
                         '━'
                     } else {
                         '─'
@@ -568,8 +578,8 @@ pub fn step(title: impl Into<String>) -> Step {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_step_new() {
@@ -680,9 +690,7 @@ mod tests {
 
     #[test]
     fn test_stepper_is_completed() {
-        let mut s = Stepper::new()
-            .add_step("Step 1")
-            .current(0);
+        let mut s = Stepper::new().add_step("Step 1").current(0);
 
         assert!(!s.is_completed());
 
@@ -724,8 +732,7 @@ mod tests {
 
     #[test]
     fn test_helpers() {
-        let s = stepper()
-            .step(step("Test").description("Testing"));
+        let s = stepper().step(step("Test").description("Testing"));
 
         assert_eq!(s.len(), 1);
     }

@@ -3,9 +3,7 @@
 mod width;
 mod wrap;
 
-pub use width::{CharWidthTable, char_width};
+pub use width::{char_width, CharWidthTable};
 pub use wrap::{
-    wrap_text, wrap_words, wrap_chars,
-    truncate, truncate_middle,
-    TextWrapper, WrapMode, Overflow,
+    truncate, truncate_middle, wrap_chars, wrap_text, wrap_words, Overflow, TextWrapper, WrapMode,
 };

@@ -3,11 +3,11 @@
 //! Provides a searchable command interface similar to VSCode's Ctrl+P
 //! or Sublime Text's Command Palette.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::{fuzzy_match, FuzzyMatch};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Command item
 #[derive(Clone, Debug)]
@@ -117,7 +117,13 @@ impl Command {
     /// Get match score (higher = better match)
     pub fn match_score(&self, query: &str) -> i32 {
         if query.is_empty() {
-            return if self.pinned { 100 } else if self.recent { 50 } else { 0 };
+            return if self.pinned {
+                100
+            } else if self.recent {
+                50
+            } else {
+                0
+            };
         }
 
         let mut score = 0;
@@ -306,7 +312,8 @@ impl CommandPalette {
 
     /// Update filtered list
     fn update_filter(&mut self) {
-        self.filtered = self.commands
+        self.filtered = self
+            .commands
             .iter()
             .enumerate()
             .filter(|(_, cmd)| cmd.matches(&self.query))
@@ -339,7 +346,10 @@ impl CommandPalette {
     /// Select previous item
     pub fn select_prev(&mut self) {
         if !self.filtered.is_empty() {
-            self.selected = self.selected.checked_sub(1).unwrap_or(self.filtered.len() - 1);
+            self.selected = self
+                .selected
+                .checked_sub(1)
+                .unwrap_or(self.filtered.len() - 1);
             self.ensure_visible();
         }
     }
@@ -356,7 +366,9 @@ impl CommandPalette {
 
     /// Get selected command
     pub fn selected_command(&self) -> Option<&Command> {
-        self.filtered.get(self.selected).map(|&idx| &self.commands[idx])
+        self.filtered
+            .get(self.selected)
+            .map(|&idx| &self.commands[idx])
     }
 
     /// Get selected command ID
@@ -469,7 +481,8 @@ impl CommandPalette {
 
         // Get fuzzy match to find matched character indices
         if let Some(m) = fuzzy_match(&self.query, label) {
-            label.chars()
+            label
+                .chars()
                 .enumerate()
                 .map(|(i, c)| (c, m.indices.contains(&i)))
                 .collect()
@@ -629,7 +642,8 @@ impl View for CommandPalette {
         current_y += 1;
 
         // Command items
-        let visible_items: Vec<_> = self.filtered
+        let visible_items: Vec<_> = self
+            .filtered
             .iter()
             .skip(self.scroll_offset)
             .take(self.max_visible as usize)
@@ -646,7 +660,11 @@ impl View for CommandPalette {
             ctx.buffer.set(x, item_y, left);
 
             // Background for selected
-            let row_bg = if is_selected { self.selected_bg } else { self.bg_color };
+            let row_bg = if is_selected {
+                self.selected_bg
+            } else {
+                self.bg_color
+            };
             for dx in 1..width - 1 {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(row_bg);
@@ -673,7 +691,11 @@ impl View for CommandPalette {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(if is_match { self.match_color } else { Color::WHITE });
+                cell.fg = Some(if is_match {
+                    self.match_color
+                } else {
+                    Color::WHITE
+                });
                 cell.bg = Some(row_bg);
                 if is_match {
                     cell.modifier |= Modifier::BOLD;
@@ -756,8 +778,8 @@ pub fn command_palette() -> CommandPalette {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_command_new() {
@@ -784,8 +806,7 @@ mod tests {
 
     #[test]
     fn test_command_matches() {
-        let cmd = Command::new("save_file", "Save File")
-            .description("Save to disk");
+        let cmd = Command::new("save_file", "Save File").description("Save to disk");
 
         assert!(cmd.matches("save"));
         assert!(cmd.matches("file"));
@@ -876,8 +897,7 @@ mod tests {
 
     #[test]
     fn test_palette_execute() {
-        let mut p = CommandPalette::new()
-            .command(Command::new("test", "Test"));
+        let mut p = CommandPalette::new().command(Command::new("test", "Test"));
 
         p.show();
         let result = p.execute();

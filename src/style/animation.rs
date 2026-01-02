@@ -217,7 +217,11 @@ impl Tween {
     /// Update and get current value
     pub fn value(&mut self) -> f32 {
         if self.state != AnimationState::Running {
-            return if self.current_direction { self.from } else { self.to };
+            return if self.current_direction {
+                self.from
+            } else {
+                self.to
+            };
         }
 
         let Some(start) = self.start_time else {
@@ -244,11 +248,19 @@ impl Tween {
                     self.current_direction = !self.current_direction;
                 }
 
-                return if self.current_direction { self.to } else { self.from };
+                return if self.current_direction {
+                    self.to
+                } else {
+                    self.from
+                };
             }
 
             self.state = AnimationState::Completed;
-            return if self.current_direction { self.from } else { self.to };
+            return if self.current_direction {
+                self.from
+            } else {
+                self.to
+            };
         }
 
         let eased = (self.easing)(progress);
@@ -346,38 +358,32 @@ pub struct Animations;
 impl Animations {
     /// Fade in animation
     pub fn fade_in(duration: Duration) -> Tween {
-        Tween::new(0.0, 1.0, duration)
-            .easing(easing::ease_out)
+        Tween::new(0.0, 1.0, duration).easing(easing::ease_out)
     }
 
     /// Fade out animation
     pub fn fade_out(duration: Duration) -> Tween {
-        Tween::new(1.0, 0.0, duration)
-            .easing(easing::ease_in)
+        Tween::new(1.0, 0.0, duration).easing(easing::ease_in)
     }
 
     /// Slide in from left
     pub fn slide_in_left(distance: f32, duration: Duration) -> Tween {
-        Tween::new(-distance, 0.0, duration)
-            .easing(easing::ease_out_cubic)
+        Tween::new(-distance, 0.0, duration).easing(easing::ease_out_cubic)
     }
 
     /// Slide in from right
     pub fn slide_in_right(distance: f32, duration: Duration) -> Tween {
-        Tween::new(distance, 0.0, duration)
-            .easing(easing::ease_out_cubic)
+        Tween::new(distance, 0.0, duration).easing(easing::ease_out_cubic)
     }
 
     /// Scale up
     pub fn scale_up(duration: Duration) -> Tween {
-        Tween::new(0.0, 1.0, duration)
-            .easing(easing::back_out)
+        Tween::new(0.0, 1.0, duration).easing(easing::back_out)
     }
 
     /// Bounce
     pub fn bounce(duration: Duration) -> Tween {
-        Tween::new(0.0, 1.0, duration)
-            .easing(easing::bounce_out)
+        Tween::new(0.0, 1.0, duration).easing(easing::bounce_out)
     }
 
     /// Pulse (repeating scale)
@@ -469,8 +475,7 @@ mod tests {
 
     #[test]
     fn test_animation_tween() {
-        let anim = Animation::new("test")
-            .tween(Tween::new(0.0, 1.0, Duration::from_secs(1)));
+        let anim = Animation::new("test").tween(Tween::new(0.0, 1.0, Duration::from_secs(1)));
 
         assert_eq!(anim.tweens.len(), 1);
     }
@@ -818,16 +823,30 @@ impl KeyframeAnimation {
         let progress = self.progress();
 
         // Handle fill modes
-        if self.state == AnimationState::Pending && matches!(self.fill_mode, AnimationFillMode::Backwards | AnimationFillMode::Both) {
+        if self.state == AnimationState::Pending
+            && matches!(
+                self.fill_mode,
+                AnimationFillMode::Backwards | AnimationFillMode::Both
+            )
+        {
             // Return initial value during delay
-            return self.keyframes.first()
+            return self
+                .keyframes
+                .first()
                 .and_then(|kf| kf.get(property))
                 .unwrap_or(0.0);
         }
 
-        if self.state == AnimationState::Completed && matches!(self.fill_mode, AnimationFillMode::Forwards | AnimationFillMode::Both) {
+        if self.state == AnimationState::Completed
+            && matches!(
+                self.fill_mode,
+                AnimationFillMode::Forwards | AnimationFillMode::Both
+            )
+        {
             // Return final value after completion
-            return self.keyframes.last()
+            return self
+                .keyframes
+                .last()
                 .and_then(|kf| kf.get(property))
                 .unwrap_or(0.0);
         }
@@ -867,7 +886,8 @@ impl KeyframeAnimation {
             return prev_val;
         }
 
-        let local_t = (percent - prev_kf.percent as f32) / (next_kf.percent as f32 - prev_kf.percent as f32);
+        let local_t =
+            (percent - prev_kf.percent as f32) / (next_kf.percent as f32 - prev_kf.percent as f32);
         prev_val + (next_val - prev_val) * local_t
     }
 
@@ -1056,19 +1076,13 @@ impl AnimationGroup {
     /// Get total duration of the group
     pub fn total_duration(&self) -> Duration {
         match self.mode {
-            GroupMode::Parallel => {
-                self.animations
-                    .iter()
-                    .map(|a| a.delay + a.duration)
-                    .max()
-                    .unwrap_or(Duration::ZERO)
-            }
-            GroupMode::Sequential => {
-                self.animations
-                    .iter()
-                    .map(|a| a.delay + a.duration)
-                    .sum()
-            }
+            GroupMode::Parallel => self
+                .animations
+                .iter()
+                .map(|a| a.delay + a.duration)
+                .max()
+                .unwrap_or(Duration::ZERO),
+            GroupMode::Sequential => self.animations.iter().map(|a| a.delay + a.duration).sum(),
         }
     }
 
@@ -1115,7 +1129,9 @@ impl AnimationGroup {
                         break;
                     }
                     if anim.is_completed() && i + 1 < self.animations.len() {
-                        if !self.animations[i + 1].is_running() && !self.animations[i + 1].is_completed() {
+                        if !self.animations[i + 1].is_running()
+                            && !self.animations[i + 1].is_completed()
+                        {
                             should_start_next = true;
                             next_idx = i + 1;
                         }

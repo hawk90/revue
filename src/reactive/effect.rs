@@ -3,9 +3,9 @@
 //! Effects automatically track their dependencies and re-run when those
 //! dependencies change.
 
-use super::tracker::{start_tracking, stop_tracking, dispose_subscriber, Subscriber, SubscriberId};
-use std::sync::{Arc, RwLock};
+use super::tracker::{dispose_subscriber, start_tracking, stop_tracking, Subscriber, SubscriberId};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, RwLock};
 
 /// A side effect that runs when its dependencies change
 ///
@@ -139,10 +139,7 @@ impl Effect {
             .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(callback.clone());
 
         // Initial run with tracking
-        let subscriber = Subscriber {
-            id,
-            callback,
-        };
+        let subscriber = Subscriber { id, callback };
 
         start_tracking(subscriber);
         (self.effect_fn)();
@@ -265,11 +262,7 @@ mod tests {
 
         let _effect = Effect::new(move || {
             // Dynamic dependency: read a or b based on flag
-            let val = if f.get() {
-                a_c.get()
-            } else {
-                b_c.get()
-            };
+            let val = if f.get() { a_c.get() } else { b_c.get() };
             res.store(val as usize, Ordering::SeqCst);
         });
 

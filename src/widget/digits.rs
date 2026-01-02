@@ -23,8 +23,8 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::widget::{RenderContext, View, WidgetProps};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// 7-segment digit patterns (3x5 characters each)
 /// Each digit is represented as 5 rows of 3 characters
@@ -279,7 +279,6 @@ impl Digits {
         self
     }
 
-
     /// Get the height of digits in this style
     pub fn height(&self) -> usize {
         match self.style {
@@ -424,8 +423,8 @@ impl View for Digits {
     crate::impl_view_meta!("Digits");
 
     fn render(&self, ctx: &mut RenderContext) {
-        use crate::widget::Text;
         use crate::widget::stack::vstack;
+        use crate::widget::Text;
 
         let lines = self.render_lines();
         let mut stack = vstack();

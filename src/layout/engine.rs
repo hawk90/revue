@@ -1,11 +1,11 @@
 //! Layout engine wrapper around taffy
 
+use super::convert::to_taffy_style;
+use super::Rect;
+use crate::dom::DomId;
+use crate::style::Style;
 use std::collections::HashMap;
 use taffy::prelude::*;
-use super::Rect;
-use super::convert::to_taffy_style;
-use crate::style::Style;
-use crate::dom::DomId;
 
 /// Errors that can occur during layout operations
 #[derive(Debug, Clone, thiserror::Error)]
@@ -65,7 +65,9 @@ impl LayoutEngine {
     /// Returns an error if the taffy tree fails to create the node.
     pub fn create_node(&mut self, dom_id: DomId, style: &Style) -> LayoutResult<()> {
         let taffy_style = to_taffy_style(style);
-        let node_id = self.taffy.new_leaf(taffy_style)
+        let node_id = self
+            .taffy
+            .new_leaf(taffy_style)
             .map_err(|e| LayoutError::NodeCreationFailed(format!("{:?}", e)))?;
         self.nodes.insert(dom_id, node_id);
         Ok(())
@@ -74,14 +76,21 @@ impl LayoutEngine {
     /// Create a node with children
     ///
     /// Returns an error if the taffy tree fails to create the node.
-    pub fn create_node_with_children(&mut self, dom_id: DomId, style: &Style, children: &[DomId]) -> LayoutResult<()> {
+    pub fn create_node_with_children(
+        &mut self,
+        dom_id: DomId,
+        style: &Style,
+        children: &[DomId],
+    ) -> LayoutResult<()> {
         let taffy_style = to_taffy_style(style);
         let child_nodes: Vec<NodeId> = children
             .iter()
             .filter_map(|id| self.nodes.get(id).copied())
             .collect();
 
-        let node_id = self.taffy.new_with_children(taffy_style, &child_nodes)
+        let node_id = self
+            .taffy
+            .new_with_children(taffy_style, &child_nodes)
             .map_err(|e| LayoutError::NodeCreationFailed(format!("{:?}", e)))?;
         self.nodes.insert(dom_id, node_id);
         Ok(())
@@ -91,10 +100,13 @@ impl LayoutEngine {
     ///
     /// Returns an error if the node is not found or style update fails.
     pub fn update_style(&mut self, dom_id: DomId, style: &Style) -> LayoutResult<()> {
-        let &node_id = self.nodes.get(&dom_id)
+        let &node_id = self
+            .nodes
+            .get(&dom_id)
             .ok_or_else(|| LayoutError::NodeNotFound(dom_id.inner()))?;
         let taffy_style = to_taffy_style(style);
-        self.taffy.set_style(node_id, taffy_style)
+        self.taffy
+            .set_style(node_id, taffy_style)
             .map_err(|e| LayoutError::StyleUpdateFailed(format!("{:?}", e)))
     }
 
@@ -102,11 +114,16 @@ impl LayoutEngine {
     ///
     /// Returns an error if either node is not found or the operation fails.
     pub fn add_child(&mut self, parent_dom_id: DomId, child_dom_id: DomId) -> LayoutResult<()> {
-        let &parent = self.nodes.get(&parent_dom_id)
+        let &parent = self
+            .nodes
+            .get(&parent_dom_id)
             .ok_or_else(|| LayoutError::NodeNotFound(parent_dom_id.inner()))?;
-        let &child = self.nodes.get(&child_dom_id)
+        let &child = self
+            .nodes
+            .get(&child_dom_id)
             .ok_or_else(|| LayoutError::NodeNotFound(child_dom_id.inner()))?;
-        self.taffy.add_child(parent, child)
+        self.taffy
+            .add_child(parent, child)
             .map_err(|e| LayoutError::AddChildFailed(format!("{:?}", e)))
     }
 
@@ -115,7 +132,8 @@ impl LayoutEngine {
     /// Returns an error if the node removal fails. Returns Ok if node doesn't exist.
     pub fn remove_node(&mut self, dom_id: DomId) -> LayoutResult<()> {
         if let Some(node_id) = self.nodes.remove(&dom_id) {
-            self.taffy.remove(node_id)
+            self.taffy
+                .remove(node_id)
                 .map_err(|e| LayoutError::RemoveFailed(format!("{:?}", e)))?;
         }
         Ok(())
@@ -124,14 +142,22 @@ impl LayoutEngine {
     /// Compute layout for a root node
     ///
     /// Returns an error if the root node is not found or computation fails.
-    pub fn compute(&mut self, root_dom_id: DomId, available_width: u16, available_height: u16) -> LayoutResult<()> {
-        let &node_id = self.nodes.get(&root_dom_id)
+    pub fn compute(
+        &mut self,
+        root_dom_id: DomId,
+        available_width: u16,
+        available_height: u16,
+    ) -> LayoutResult<()> {
+        let &node_id = self
+            .nodes
+            .get(&root_dom_id)
             .ok_or_else(|| LayoutError::NodeNotFound(root_dom_id.inner()))?;
         let available_space = taffy::Size {
             width: AvailableSpace::Definite(available_width as f32),
             height: AvailableSpace::Definite(available_height as f32),
         };
-        self.taffy.compute_layout(node_id, available_space)
+        self.taffy
+            .compute_layout(node_id, available_space)
             .map_err(|e| LayoutError::ComputeFailed(format!("{:?}", e)))
     }
 
@@ -139,10 +165,14 @@ impl LayoutEngine {
     ///
     /// Returns an error if the node is not found or layout retrieval fails.
     pub fn layout(&self, dom_id: DomId) -> LayoutResult<Rect> {
-        let &node_id = self.nodes.get(&dom_id)
+        let &node_id = self
+            .nodes
+            .get(&dom_id)
             .ok_or_else(|| LayoutError::NodeNotFound(dom_id.inner()))?;
 
-        let layout = self.taffy.layout(node_id)
+        let layout = self
+            .taffy
+            .layout(node_id)
             .map_err(|e| LayoutError::LayoutRetrievalFailed(format!("{:?}", e)))?;
 
         // Safe f32 → u16 conversion with bounds checking
@@ -162,7 +192,12 @@ impl LayoutEngine {
             layout.location.y
         );
 
-        Ok(Rect { x, y, width, height })
+        Ok(Rect {
+            x,
+            y,
+            width,
+            height,
+        })
     }
 
     /// Get the computed layout for a node, returning None if not found
@@ -185,8 +220,6 @@ impl Default for LayoutEngine {
         Self::new()
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -263,7 +296,9 @@ mod tests {
         parent_style.sizing.width = Size::Fixed(200);
         parent_style.sizing.height = Size::Fixed(100);
         let parent = DomId::new(3);
-        engine.create_node_with_children(parent, &parent_style, &[child1, child2]).unwrap();
+        engine
+            .create_node_with_children(parent, &parent_style, &[child1, child2])
+            .unwrap();
 
         engine.compute(parent, 300, 300).unwrap();
 

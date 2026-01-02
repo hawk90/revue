@@ -54,16 +54,32 @@ pub fn format_duration(seconds: u64) -> String {
     let mut parts = Vec::new();
 
     if p.days > 0 {
-        parts.push(format!("{} {}", p.days, if p.days == 1 { "day" } else { "days" }));
+        parts.push(format!(
+            "{} {}",
+            p.days,
+            if p.days == 1 { "day" } else { "days" }
+        ));
     }
     if p.hours > 0 {
-        parts.push(format!("{} {}", p.hours, if p.hours == 1 { "hour" } else { "hours" }));
+        parts.push(format!(
+            "{} {}",
+            p.hours,
+            if p.hours == 1 { "hour" } else { "hours" }
+        ));
     }
     if p.minutes > 0 {
-        parts.push(format!("{} {}", p.minutes, if p.minutes == 1 { "minute" } else { "minutes" }));
+        parts.push(format!(
+            "{} {}",
+            p.minutes,
+            if p.minutes == 1 { "minute" } else { "minutes" }
+        ));
     }
     if p.seconds > 0 || parts.is_empty() {
-        parts.push(format!("{} {}", p.seconds, if p.seconds == 1 { "second" } else { "seconds" }));
+        parts.push(format!(
+            "{} {}",
+            p.seconds,
+            if p.seconds == 1 { "second" } else { "seconds" }
+        ));
     }
 
     parts.join(", ")
@@ -159,12 +175,20 @@ pub fn format_relative_time(seconds_ago: u64) -> String {
 
     let minutes = seconds_ago / 60;
     if minutes < 60 {
-        return format!("{} {} ago", minutes, if minutes == 1 { "minute" } else { "minutes" });
+        return format!(
+            "{} {} ago",
+            minutes,
+            if minutes == 1 { "minute" } else { "minutes" }
+        );
     }
 
     let hours = seconds_ago / 3600;
     if hours < 24 {
-        return format!("{} {} ago", hours, if hours == 1 { "hour" } else { "hours" });
+        return format!(
+            "{} {} ago",
+            hours,
+            if hours == 1 { "hour" } else { "hours" }
+        );
     }
 
     let days = seconds_ago / 86400;
@@ -174,16 +198,28 @@ pub fn format_relative_time(seconds_ago: u64) -> String {
 
     let weeks = days / 7;
     if weeks < 4 {
-        return format!("{} {} ago", weeks, if weeks == 1 { "week" } else { "weeks" });
+        return format!(
+            "{} {} ago",
+            weeks,
+            if weeks == 1 { "week" } else { "weeks" }
+        );
     }
 
     let months = days / 30;
     if months < 12 {
-        return format!("{} {} ago", months, if months == 1 { "month" } else { "months" });
+        return format!(
+            "{} {} ago",
+            months,
+            if months == 1 { "month" } else { "months" }
+        );
     }
 
     let years = days / 365;
-    format!("{} {} ago", years, if years == 1 { "year" } else { "years" })
+    format!(
+        "{} {} ago",
+        years,
+        if years == 1 { "year" } else { "years" }
+    )
 }
 
 /// Format relative time in short form

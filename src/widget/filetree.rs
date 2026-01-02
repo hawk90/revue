@@ -2,12 +2,12 @@
 //!
 //! Provides a tree view for browsing directories and files.
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::event::Key;
 use crate::utils::natural_cmp;
+use crate::{impl_props_builders, impl_styled_view};
 use std::path::{Path, PathBuf};
 
 /// File type for display
@@ -393,7 +393,6 @@ impl FileTree {
         }
     }
 
-
     /// Handle key input
     pub fn handle_key(&mut self, key: &Key) -> bool {
         match key {
@@ -443,7 +442,11 @@ impl View for FileTree {
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let entries = self.visible_entries();
-        let visible_height = if self.height > 0 { self.height } else { area.height } as usize;
+        let visible_height = if self.height > 0 {
+            self.height
+        } else {
+            area.height
+        } as usize;
 
         // Adjust scroll
         let scroll = if self.selected >= self.scroll + visible_height {
@@ -557,7 +560,11 @@ pub fn file_tree() -> FileTree {
 }
 
 /// Create a new file entry with type
-pub fn file_entry(name: impl Into<String>, path: impl Into<PathBuf>, file_type: FileType) -> FileEntry {
+pub fn file_entry(
+    name: impl Into<String>,
+    path: impl Into<PathBuf>,
+    file_type: FileType,
+) -> FileEntry {
     FileEntry::new(name, path, file_type)
 }
 
@@ -569,13 +576,12 @@ pub fn dir_entry(name: impl Into<String>, path: impl Into<PathBuf>) -> FileEntry
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_file_entry() {
-        let entry = FileEntry::file("test.txt", "/path/test.txt")
-            .size(1024);
+        let entry = FileEntry::file("test.txt", "/path/test.txt").size(1024);
 
         assert_eq!(entry.name, "test.txt");
         assert_eq!(entry.file_type, FileType::File);
@@ -595,9 +601,10 @@ mod tests {
 
     #[test]
     fn test_file_tree() {
-        let tree = FileTree::new()
-            .entry(FileEntry::directory("root", "/root")
-                .child(FileEntry::file("file.txt", "/root/file.txt")));
+        let tree = FileTree::new().entry(
+            FileEntry::directory("root", "/root")
+                .child(FileEntry::file("file.txt", "/root/file.txt")),
+        );
 
         let entries = tree.visible_entries();
         assert_eq!(entries.len(), 1); // Only root (not expanded)
@@ -643,8 +650,7 @@ mod tests {
         let area = Rect::new(0, 0, 40, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let tree = FileTree::new()
-            .entry(FileEntry::file("test.txt", "/test.txt"));
+        let tree = FileTree::new().entry(FileEntry::file("test.txt", "/test.txt"));
 
         tree.render(&mut ctx);
         // Smoke test

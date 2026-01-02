@@ -183,8 +183,7 @@ impl ClipboardBackend for SystemClipboard {
             .output()?;
 
         if output.status.success() {
-            String::from_utf8(output.stdout)
-                .map_err(|_| ClipboardError::InvalidUtf8)
+            String::from_utf8(output.stdout).map_err(|_| ClipboardError::InvalidUtf8)
         } else {
             Err(ClipboardError::CommandFailed(format!(
                 "{} exited with status: {:?}",

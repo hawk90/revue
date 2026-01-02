@@ -2,11 +2,11 @@
 //!
 //! Provides horizontal menu bars and dropdown/context menus.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::event::Key;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Menu item action
 pub type MenuAction = Box<dyn Fn() + 'static>;
@@ -235,7 +235,8 @@ impl MenuBar {
     /// Select previous menu
     pub fn prev_menu(&mut self) {
         if !self.menus.is_empty() {
-            self.selected_menu = self.selected_menu
+            self.selected_menu = self
+                .selected_menu
                 .checked_sub(1)
                 .unwrap_or(self.menus.len() - 1);
             if self.open {
@@ -401,7 +402,9 @@ impl MenuBar {
         }
 
         // Calculate max width
-        let max_width = menu.items.iter()
+        let max_width = menu
+            .items
+            .iter()
             .filter(|item| !item.separator)
             .map(|item| {
                 let shortcut_len = item.shortcut.as_ref().map(|s| s.len() + 2).unwrap_or(0);
@@ -474,7 +477,11 @@ impl MenuBar {
                 ctx.buffer.set(menu_x + dropdown_width - 1, item_y, right);
             } else {
                 // Draw item
-                let bg = if is_selected { self.selected_bg } else { self.bg };
+                let bg = if is_selected {
+                    self.selected_bg
+                } else {
+                    self.bg
+                };
                 let fg = if item.disabled {
                     self.disabled_fg
                 } else if is_selected {
@@ -655,10 +662,7 @@ impl View for ContextMenu {
             return;
         }
 
-        let width = self.items.iter()
-            .map(|i| i.label.len())
-            .max()
-            .unwrap_or(10) as u16 + 4;
+        let width = self.items.iter().map(|i| i.label.len()).max().unwrap_or(10) as u16 + 4;
         let height = self.items.len() as u16 + 2;
 
         // Adjust position to fit in area
@@ -668,13 +672,21 @@ impl View for ContextMenu {
         // Draw border and background
         for dy in 0..height {
             for dx in 0..width {
-                let ch = if dy == 0 && dx == 0 { '┌' }
-                else if dy == 0 && dx == width - 1 { '┐' }
-                else if dy == height - 1 && dx == 0 { '└' }
-                else if dy == height - 1 && dx == width - 1 { '┘' }
-                else if dy == 0 || dy == height - 1 { '─' }
-                else if dx == 0 || dx == width - 1 { '│' }
-                else { ' ' };
+                let ch = if dy == 0 && dx == 0 {
+                    '┌'
+                } else if dy == 0 && dx == width - 1 {
+                    '┐'
+                } else if dy == height - 1 && dx == 0 {
+                    '└'
+                } else if dy == height - 1 && dx == width - 1 {
+                    '┘'
+                } else if dy == 0 || dy == height - 1 {
+                    '─'
+                } else if dx == 0 || dx == width - 1 {
+                    '│'
+                } else {
+                    ' '
+                };
 
                 let mut cell = Cell::new(ch);
                 cell.bg = Some(self.bg);
@@ -688,8 +700,16 @@ impl View for ContextMenu {
             let item_y = y + 1 + i as u16;
             let is_selected = i == self.selected;
 
-            let bg = if is_selected { self.selected_bg } else { self.bg };
-            let fg = if is_selected { self.selected_fg } else { self.fg };
+            let bg = if is_selected {
+                self.selected_bg
+            } else {
+                self.bg
+            };
+            let fg = if is_selected {
+                self.selected_fg
+            } else {
+                self.fg
+            };
 
             // Fill row
             for dx in 1..width - 1 {
@@ -740,14 +760,12 @@ pub fn context_menu() -> ContextMenu {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_menu_item() {
-        let item = MenuItem::new("Open")
-            .shortcut("Ctrl+O")
-            .disabled(false);
+        let item = MenuItem::new("Open").shortcut("Ctrl+O").disabled(false);
 
         assert_eq!(item.label, "Open");
         assert_eq!(item.shortcut, Some("Ctrl+O".to_string()));

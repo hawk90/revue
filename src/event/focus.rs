@@ -175,7 +175,8 @@ impl FocusManager {
 
     /// Get the currently focused widget
     pub fn current(&self) -> Option<WidgetId> {
-        self.current.and_then(|idx| self.widgets.get(idx).map(|w| w.id))
+        self.current
+            .and_then(|idx| self.widgets.get(idx).map(|w| w.id))
     }
 
     /// Move focus to next widget (Tab)
@@ -249,17 +250,17 @@ impl FocusManager {
         };
 
         let ids = self.focusable_ids();
-        let candidates: Vec<_> = self.widgets.iter()
+        let candidates: Vec<_> = self
+            .widgets
+            .iter()
             .filter(|w| ids.contains(&w.id))
             .filter(|w| w.id != self.widgets[current_idx].id)
             .filter_map(|w| w.position.map(|p| (w.id, p)))
-            .filter(|(_, pos)| {
-                match direction {
-                    Direction::Up => pos.1 < current_pos.1,
-                    Direction::Down => pos.1 > current_pos.1,
-                    Direction::Left => pos.0 < current_pos.0,
-                    Direction::Right => pos.0 > current_pos.0,
-                }
+            .filter(|(_, pos)| match direction {
+                Direction::Up => pos.1 < current_pos.1,
+                Direction::Down => pos.1 > current_pos.1,
+                Direction::Left => pos.0 < current_pos.0,
+                Direction::Right => pos.0 > current_pos.0,
             })
             .collect();
 
@@ -268,16 +269,15 @@ impl FocusManager {
         }
 
         // Find closest widget in that direction
-        let closest = candidates.into_iter()
-            .min_by_key(|(_, pos)| {
-                let dx = (pos.0 as i32 - current_pos.0 as i32).abs();
-                let dy = (pos.1 as i32 - current_pos.1 as i32).abs();
-                // Weight primary direction more
-                match direction {
-                    Direction::Up | Direction::Down => dy * 2 + dx,
-                    Direction::Left | Direction::Right => dx * 2 + dy,
-                }
-            });
+        let closest = candidates.into_iter().min_by_key(|(_, pos)| {
+            let dx = (pos.0 as i32 - current_pos.0 as i32).abs();
+            let dy = (pos.1 as i32 - current_pos.1 as i32).abs();
+            // Weight primary direction more
+            match direction {
+                Direction::Up | Direction::Down => dy * 2 + dx,
+                Direction::Left | Direction::Right => dx * 2 + dy,
+            }
+        });
 
         if let Some((id, _)) = closest {
             self.focus(id);
@@ -734,15 +734,15 @@ mod tests {
         let mut fm = FocusManager::new();
         fm.register(1);
         fm.register(2);
-        fm.register(3);  // Modal button 1
-        fm.register(4);  // Modal button 2
+        fm.register(3); // Modal button 1
+        fm.register(4); // Modal button 2
 
         // Focus on widget 1
         fm.focus(1);
         assert_eq!(fm.current(), Some(1));
 
         // Trap focus to modal (widgets 3 and 4)
-        fm.trap_focus(100);  // Modal container ID
+        fm.trap_focus(100); // Modal container ID
         fm.add_to_trap(3);
         fm.add_to_trap(4);
 
@@ -754,7 +754,7 @@ mod tests {
         assert_eq!(fm.current(), Some(4));
 
         fm.next();
-        assert_eq!(fm.current(), Some(3));  // Wraps within trap
+        assert_eq!(fm.current(), Some(3)); // Wraps within trap
 
         // Release trap
         fm.release_trap();
@@ -889,9 +889,7 @@ mod tests {
 
         fm.focus(1);
 
-        let mut trap = FocusTrap::new(100)
-            .with_children(&[2, 3])
-            .initial_focus(3);
+        let mut trap = FocusTrap::new(100).with_children(&[2, 3]).initial_focus(3);
 
         assert!(!trap.is_active());
 
@@ -901,15 +899,12 @@ mod tests {
 
         trap.deactivate(&mut fm);
         assert!(!trap.is_active());
-        assert_eq!(fm.current(), Some(1));  // Restored
+        assert_eq!(fm.current(), Some(1)); // Restored
     }
 
     #[test]
     fn test_focus_trap_add_child() {
-        let trap = FocusTrap::new(100)
-            .add_child(1)
-            .add_child(2)
-            .add_child(2);  // Duplicate should be ignored
+        let trap = FocusTrap::new(100).add_child(1).add_child(2).add_child(2); // Duplicate should be ignored
 
         assert_eq!(trap.children.len(), 2);
     }

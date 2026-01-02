@@ -184,24 +184,24 @@
 //! 5. **Use visual tests for styling**: Catch color and layout regressions
 //! 6. **Run in CI**: Use `CiEnvironment` for portable test reports
 
-mod pilot;
-mod test_app;
-mod assertions;
 mod actions;
-mod snapshot;
-pub mod visual;
+mod assertions;
 pub mod ci;
+mod pilot;
+mod snapshot;
+mod test_app;
+pub mod visual;
 
-pub use pilot::{Pilot, AsyncPilot};
-pub use test_app::TestApp;
+pub use actions::{Action, ActionSequence, KeyAction, MouseAction};
 pub use assertions::{Assertion, AssertionResult};
-pub use actions::{Action, KeyAction, MouseAction, ActionSequence};
+pub use pilot::{AsyncPilot, Pilot};
 pub use snapshot::SnapshotManager;
+pub use test_app::TestApp;
 
 // Visual regression testing
 pub use visual::{
-    VisualTest, VisualTestConfig, VisualTestResult,
-    VisualCapture, VisualDiff, CapturedCell, CellDiff,
+    CapturedCell, CellDiff, VisualCapture, VisualDiff, VisualTest, VisualTestConfig,
+    VisualTestResult,
 };
 
 // CI integration

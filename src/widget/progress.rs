@@ -1,9 +1,9 @@
 //! Progress bar widget
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Progress bar style
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -167,9 +167,8 @@ impl_props_builders!(Progress);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
-    
+    use crate::render::Buffer;
 
     #[test]
     fn test_progress_new() {

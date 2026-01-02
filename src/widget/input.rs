@@ -3,11 +3,11 @@
 //! Note: All cursor and selection positions are in CHARACTER indices, not byte indices.
 //! This ensures correct handling of multi-byte UTF-8 characters (emoji, CJK, etc).
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::event::{Key, KeyEvent};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::event::{Key, KeyEvent};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Maximum undo history size
 const MAX_UNDO_HISTORY: usize = 100;
@@ -20,7 +20,12 @@ enum EditOperation {
     /// Delete text at position
     Delete { pos: usize, text: String },
     /// Replace entire value (for paste over selection, etc.)
-    Replace { old_value: String, old_cursor: usize, new_value: String, new_cursor: usize },
+    Replace {
+        old_value: String,
+        old_cursor: usize,
+        new_value: String,
+        new_cursor: usize,
+    },
 }
 
 /// A text input widget with cursor, selection, clipboard, and undo/redo support
@@ -188,7 +193,8 @@ impl Input {
 
     /// Get selected text
     pub fn selected_text(&self) -> Option<&str> {
-        self.selection().map(|(start, end)| self.substring(start, end))
+        self.selection()
+            .map(|(start, end)| self.substring(start, end))
     }
 
     /// Check if there's an active selection
@@ -218,7 +224,10 @@ impl Input {
     fn delete_selection_with_undo(&mut self) -> bool {
         if let Some((start, end)) = self.selection() {
             let deleted = self.substring(start, end).to_string();
-            self.push_undo(EditOperation::Delete { pos: start, text: deleted });
+            self.push_undo(EditOperation::Delete {
+                pos: start,
+                text: deleted,
+            });
             self.remove_char_range(start, end);
             self.cursor = start;
             self.clear_selection();
@@ -287,7 +296,10 @@ impl Input {
         } else {
             // No selection - simple insert
             let pos = self.cursor;
-            self.push_undo(EditOperation::Insert { pos, text: text.to_string() });
+            self.push_undo(EditOperation::Insert {
+                pos,
+                text: text.to_string(),
+            });
             self.cursor = self.insert_at_char(self.cursor, text);
         }
     }
@@ -322,7 +334,12 @@ impl Input {
                     self.cursor = pos + text.chars().count();
                     self.redo_stack.push(op);
                 }
-                EditOperation::Replace { ref old_value, old_cursor, ref new_value, new_cursor } => {
+                EditOperation::Replace {
+                    ref old_value,
+                    old_cursor,
+                    ref new_value,
+                    new_cursor,
+                } => {
                     // Undo replace by restoring old value
                     self.value = old_value.clone();
                     self.cursor = old_cursor;
@@ -358,7 +375,12 @@ impl Input {
                     self.cursor = pos;
                     self.undo_stack.push(op);
                 }
-                EditOperation::Replace { ref old_value, old_cursor, ref new_value, new_cursor } => {
+                EditOperation::Replace {
+                    ref old_value,
+                    old_cursor,
+                    ref new_value,
+                    new_cursor,
+                } => {
                     // Redo replace
                     self.value = new_value.clone();
                     self.cursor = new_cursor;
@@ -504,7 +526,10 @@ impl Input {
                 // Create a string from the character and insert at cursor
                 let s = c.to_string();
                 let pos = self.cursor;
-                self.push_undo(EditOperation::Insert { pos, text: s.clone() });
+                self.push_undo(EditOperation::Insert {
+                    pos,
+                    text: s.clone(),
+                });
                 self.cursor = self.insert_at_char(self.cursor, &s);
                 true
             }
@@ -515,7 +540,10 @@ impl Input {
                     self.cursor -= 1;
                     // Get the character to be deleted for undo
                     let deleted = self.substring(self.cursor, self.cursor + 1).to_string();
-                    self.push_undo(EditOperation::Delete { pos: self.cursor, text: deleted });
+                    self.push_undo(EditOperation::Delete {
+                        pos: self.cursor,
+                        text: deleted,
+                    });
                     self.remove_char_at(self.cursor);
                     true
                 } else {
@@ -528,7 +556,10 @@ impl Input {
                 } else if self.cursor < char_len {
                     // Get the character to be deleted for undo
                     let deleted = self.substring(self.cursor, self.cursor + 1).to_string();
-                    self.push_undo(EditOperation::Delete { pos: self.cursor, text: deleted });
+                    self.push_undo(EditOperation::Delete {
+                        pos: self.cursor,
+                        text: deleted,
+                    });
                     self.remove_char_at(self.cursor);
                     true
                 } else {
@@ -646,7 +677,10 @@ impl Input {
 
         // Get deleted text for undo
         let deleted = self.substring(start, end).to_string();
-        self.push_undo(EditOperation::Delete { pos: start, text: deleted });
+        self.push_undo(EditOperation::Delete {
+            pos: start,
+            text: deleted,
+        });
 
         // Delete characters between new cursor position and old cursor position
         self.remove_char_range(start, end);
@@ -695,13 +729,21 @@ impl View for Input {
         let css_fg = self.fg.or_else(|| {
             ctx.style.and_then(|s| {
                 let c = s.visual.color;
-                if c != Color::default() { Some(c) } else { None }
+                if c != Color::default() {
+                    Some(c)
+                } else {
+                    None
+                }
             })
         });
         let css_bg = self.bg.or_else(|| {
             ctx.style.and_then(|s| {
                 let c = s.visual.background;
-                if c != Color::default() { Some(c) } else { None }
+                if c != Color::default() {
+                    Some(c)
+                } else {
+                    None
+                }
             })
         });
 
@@ -757,8 +799,8 @@ pub fn input() -> Input {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
     use crate::widget::StyledView;
 
     #[test]
@@ -1147,9 +1189,7 @@ mod tests {
 
     #[test]
     fn test_input_css_classes() {
-        let input = Input::new()
-            .class("form-control")
-            .class("required");
+        let input = Input::new().class("form-control").class("required");
 
         assert!(input.has_class("form-control"));
         assert!(input.has_class("required"));

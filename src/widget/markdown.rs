@@ -1,12 +1,12 @@
 //! Markdown widget for rendering markdown content
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::figlet::{figlet_with_font, FigletFont};
-use crate::utils::syntax::{SyntaxHighlighter, SyntaxTheme, Language};
-use pulldown_cmark::{Event, Parser, Tag, TagEnd, HeadingLevel, CodeBlockKind, Options};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::utils::syntax::{Language, SyntaxHighlighter, SyntaxTheme};
+use crate::{impl_props_builders, impl_styled_view};
+use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
 /// Styled text segment
 #[derive(Clone)]
@@ -46,7 +46,9 @@ struct Line {
 
 impl Line {
     fn new() -> Self {
-        Self { segments: Vec::new() }
+        Self {
+            segments: Vec::new(),
+        }
     }
 
     fn push(&mut self, segment: StyledText) {
@@ -216,7 +218,11 @@ impl Markdown {
 
     /// Enable figlet-style headings with default Block font
     pub fn figlet_headings(mut self, enable: bool) -> Self {
-        self.figlet_font = if enable { Some(FigletFont::Block) } else { None };
+        self.figlet_font = if enable {
+            Some(FigletFont::Block)
+        } else {
+            None
+        };
         self.lines = self.parse_with_options();
         self
     }
@@ -340,7 +346,7 @@ impl Markdown {
         let highlighter = SyntaxHighlighter::with_theme(self.syntax_theme.clone());
         // Task list tracking
         let mut item_needs_bullet = false; // Track if item needs bullet (not task list)
-        // Table tracking
+                                           // Table tracking
         let mut in_table = false;
         let mut in_table_head = false;
         let mut table_row: Vec<String> = Vec::new();
@@ -352,9 +358,11 @@ impl Markdown {
         if self.show_toc && !self.toc.is_empty() {
             // TOC title
             let mut title_line = Line::new();
-            title_line.push(StyledText::new(&self.toc_title)
-                .with_fg(self.heading_fg)
-                .with_modifier(Modifier::BOLD));
+            title_line.push(
+                StyledText::new(&self.toc_title)
+                    .with_fg(self.heading_fg)
+                    .with_modifier(Modifier::BOLD),
+            );
             lines.push(title_line);
             lines.push(Line::new());
 
@@ -363,17 +371,21 @@ impl Markdown {
                 let indent = "  ".repeat(entry.level.saturating_sub(1) as usize);
                 let mut toc_line = Line::new();
                 toc_line.push(StyledText::new(format!("{}- ", indent)));
-                toc_line.push(StyledText::new(&entry.text)
-                    .with_fg(self.toc_fg)
-                    .with_modifier(Modifier::UNDERLINE));
+                toc_line.push(
+                    StyledText::new(&entry.text)
+                        .with_fg(self.toc_fg)
+                        .with_modifier(Modifier::UNDERLINE),
+                );
                 lines.push(toc_line);
             }
 
             // Separator
             lines.push(Line::new());
             let mut sep_line = Line::new();
-            sep_line.push(StyledText::new("────────────────────────────────────────")
-                .with_fg(Color::rgb(80, 80, 80)));
+            sep_line.push(
+                StyledText::new("────────────────────────────────────────")
+                    .with_fg(Color::rgb(80, 80, 80)),
+            );
             lines.push(sep_line);
             lines.push(Line::new());
         }
@@ -415,7 +427,8 @@ impl Markdown {
                             // Extract language from fenced code block
                             code_block_lang = match kind {
                                 CodeBlockKind::Fenced(lang) => {
-                                    let lang_str = lang.as_ref().split_whitespace().next().unwrap_or("");
+                                    let lang_str =
+                                        lang.as_ref().split_whitespace().next().unwrap_or("");
                                     Language::from_fence(lang_str)
                                 }
                                 CodeBlockKind::Indented => Language::Unknown,
@@ -486,17 +499,21 @@ impl Markdown {
                                 // Add each line of figlet art
                                 for figlet_line in figlet_art.lines() {
                                     let mut line = Line::new();
-                                    line.push(StyledText::new(figlet_line)
-                                        .with_fg(self.heading_fg)
-                                        .with_modifier(Modifier::BOLD));
+                                    line.push(
+                                        StyledText::new(figlet_line)
+                                            .with_fg(self.heading_fg)
+                                            .with_modifier(Modifier::BOLD),
+                                    );
                                     lines.push(line);
                                 }
                             } else {
                                 // Regular heading with prefix
                                 let prefix = "#".repeat(heading_level as usize);
                                 let mut heading_line = Line::new();
-                                heading_line.push(StyledText::new(format!("{} ", prefix))
-                                    .with_fg(Color::rgb(128, 128, 128)));
+                                heading_line.push(
+                                    StyledText::new(format!("{} ", prefix))
+                                        .with_fg(Color::rgb(128, 128, 128)),
+                                );
                                 for seg in current_line.segments.drain(..) {
                                     heading_line.push(seg);
                                 }
@@ -538,8 +555,7 @@ impl Markdown {
                             // Top border
                             if self.code_border {
                                 let mut border_line = Line::new();
-                                border_line.push(StyledText::new("╭─")
-                                    .with_fg(border_color));
+                                border_line.push(StyledText::new("╭─").with_fg(border_color));
                                 // Language label
                                 let lang_label = match code_block_lang {
                                     Language::Rust => " rust ",
@@ -561,11 +577,13 @@ impl Markdown {
                                     _ => "",
                                 };
                                 if !lang_label.is_empty() {
-                                    border_line.push(StyledText::new(lang_label)
-                                        .with_fg(self.syntax_theme.keyword));
+                                    border_line.push(
+                                        StyledText::new(lang_label)
+                                            .with_fg(self.syntax_theme.keyword),
+                                    );
                                 }
-                                border_line.push(StyledText::new("─".repeat(40))
-                                    .with_fg(border_color));
+                                border_line
+                                    .push(StyledText::new("─".repeat(40)).with_fg(border_color));
                                 lines.push(border_line);
                             }
 
@@ -576,34 +594,32 @@ impl Markdown {
 
                                 // Left border
                                 if self.code_border {
-                                    line.push(StyledText::new("│ ")
-                                        .with_fg(border_color));
+                                    line.push(StyledText::new("│ ").with_fg(border_color));
                                 }
 
                                 // Line numbers
                                 if self.code_line_numbers {
-                                    let num_str = format!("{:>width$} ", idx + 1, width = line_num_width);
-                                    line.push(StyledText::new(num_str)
-                                        .with_fg(line_num_color));
+                                    let num_str =
+                                        format!("{:>width$} ", idx + 1, width = line_num_width);
+                                    line.push(StyledText::new(num_str).with_fg(line_num_color));
                                 }
 
                                 // Apply syntax highlighting with block comment state tracking
                                 if self.syntax_highlight {
-                                    let (tokens, still_in_block) = highlighter.highlight_line_with_state(
-                                        code_line,
-                                        code_block_lang,
-                                        in_block_comment
-                                    );
+                                    let (tokens, still_in_block) = highlighter
+                                        .highlight_line_with_state(
+                                            code_line,
+                                            code_block_lang,
+                                            in_block_comment,
+                                        );
                                     in_block_comment = still_in_block;
                                     for token in tokens {
                                         let color = highlighter.token_color(token.token_type);
-                                        line.push(StyledText::new(&token.text)
-                                            .with_fg(color));
+                                        line.push(StyledText::new(&token.text).with_fg(color));
                                     }
                                 } else {
                                     // No highlighting, just use code_fg
-                                    line.push(StyledText::new(code_line)
-                                        .with_fg(self.code_fg));
+                                    line.push(StyledText::new(code_line).with_fg(self.code_fg));
                                 }
 
                                 lines.push(line);
@@ -612,10 +628,9 @@ impl Markdown {
                             // Bottom border
                             if self.code_border {
                                 let mut border_line = Line::new();
-                                border_line.push(StyledText::new("╰─")
-                                    .with_fg(border_color));
-                                border_line.push(StyledText::new("─".repeat(42))
-                                    .with_fg(border_color));
+                                border_line.push(StyledText::new("╰─").with_fg(border_color));
+                                border_line
+                                    .push(StyledText::new("─".repeat(42)).with_fg(border_color));
                                 lines.push(border_line);
                             }
 
@@ -637,7 +652,8 @@ impl Markdown {
                             // Render the complete table
                             if !table_rows.is_empty() {
                                 // Calculate column widths
-                                let col_count = table_rows.iter().map(|r| r.len()).max().unwrap_or(0);
+                                let col_count =
+                                    table_rows.iter().map(|r| r.len()).max().unwrap_or(0);
                                 let mut col_widths: Vec<usize> = vec![0; col_count];
                                 for row in &table_rows {
                                     for (i, cell) in row.iter().enumerate() {
@@ -654,7 +670,10 @@ impl Markdown {
                                 let mut top_border = Line::new();
                                 top_border.push(StyledText::new("┌").with_fg(border_color));
                                 for (i, &width) in col_widths.iter().enumerate() {
-                                    top_border.push(StyledText::new("─".repeat(width + 2)).with_fg(border_color));
+                                    top_border.push(
+                                        StyledText::new("─".repeat(width + 2))
+                                            .with_fg(border_color),
+                                    );
                                     if i < col_widths.len() - 1 {
                                         top_border.push(StyledText::new("┬").with_fg(border_color));
                                     }
@@ -672,9 +691,11 @@ impl Markdown {
                                         let padded = format!(" {}{} ", cell, " ".repeat(padding));
                                         if row_idx == 0 {
                                             // Header row - bold
-                                            line.push(StyledText::new(padded)
-                                                .with_fg(header_fg)
-                                                .with_modifier(Modifier::BOLD));
+                                            line.push(
+                                                StyledText::new(padded)
+                                                    .with_fg(header_fg)
+                                                    .with_modifier(Modifier::BOLD),
+                                            );
                                         } else {
                                             line.push(StyledText::new(padded));
                                         }
@@ -687,9 +708,14 @@ impl Markdown {
                                         let mut sep_line = Line::new();
                                         sep_line.push(StyledText::new("├").with_fg(border_color));
                                         for (i, &width) in col_widths.iter().enumerate() {
-                                            sep_line.push(StyledText::new("─".repeat(width + 2)).with_fg(border_color));
+                                            sep_line.push(
+                                                StyledText::new("─".repeat(width + 2))
+                                                    .with_fg(border_color),
+                                            );
                                             if i < col_widths.len() - 1 {
-                                                sep_line.push(StyledText::new("┼").with_fg(border_color));
+                                                sep_line.push(
+                                                    StyledText::new("┼").with_fg(border_color),
+                                                );
                                             }
                                         }
                                         sep_line.push(StyledText::new("┤").with_fg(border_color));
@@ -701,9 +727,13 @@ impl Markdown {
                                 let mut bottom_border = Line::new();
                                 bottom_border.push(StyledText::new("└").with_fg(border_color));
                                 for (i, &width) in col_widths.iter().enumerate() {
-                                    bottom_border.push(StyledText::new("─".repeat(width + 2)).with_fg(border_color));
+                                    bottom_border.push(
+                                        StyledText::new("─".repeat(width + 2))
+                                            .with_fg(border_color),
+                                    );
                                     if i < col_widths.len() - 1 {
-                                        bottom_border.push(StyledText::new("┴").with_fg(border_color));
+                                        bottom_border
+                                            .push(StyledText::new("┴").with_fg(border_color));
                                     }
                                 }
                                 bottom_border.push(StyledText::new("┘").with_fg(border_color));
@@ -775,7 +805,7 @@ impl Markdown {
                 }
                 Event::TaskListMarker(checked) => {
                     item_needs_bullet = false; // Task list has checkbox instead of bullet
-                    // Render checkbox
+                                               // Render checkbox
                     let checkbox = if checked {
                         "☑ " // Checked checkbox
                     } else {
@@ -789,8 +819,7 @@ impl Markdown {
                     current_line.push(StyledText::new(checkbox).with_fg(color));
                 }
                 Event::Code(code) => {
-                    let segment = StyledText::new(format!("`{}`", code))
-                        .with_fg(self.code_fg);
+                    let segment = StyledText::new(format!("`{}`", code)).with_fg(self.code_fg);
                     current_line.push(segment);
                 }
                 Event::SoftBreak | Event::HardBreak => {
@@ -803,8 +832,10 @@ impl Markdown {
                         current_line = Line::new();
                     }
                     let mut rule_line = Line::new();
-                    rule_line.push(StyledText::new("────────────────────────────────────────")
-                        .with_fg(Color::rgb(128, 128, 128)));
+                    rule_line.push(
+                        StyledText::new("────────────────────────────────────────")
+                            .with_fg(Color::rgb(128, 128, 128)),
+                    );
                     lines.push(rule_line);
                     lines.push(Line::new());
                 }
@@ -873,8 +904,8 @@ pub fn markdown(source: impl Into<String>) -> Markdown {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_markdown_new() {

@@ -1,9 +1,9 @@
 //! State debugger for reactive signals
 
+use super::DevToolsConfig;
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use super::DevToolsConfig;
 use std::collections::HashMap;
 
 /// State value representation
@@ -154,7 +154,8 @@ impl StateDebugger {
 
     /// Get filtered states
     fn filtered(&self) -> Vec<&StateEntry> {
-        self.states.iter()
+        self.states
+            .iter()
             .filter(|e| {
                 if !self.show_computed && e.is_computed {
                     return false;
@@ -247,8 +248,16 @@ impl StateDebugger {
         let prefix = if entry.is_computed { "⊙ " } else { "● " };
         let line = format!("{}{}: {}", prefix, entry.name, entry.value.display());
 
-        let fg = if selected { config.bg_color } else { config.fg_color };
-        let bg = if selected { Some(config.accent_color) } else { None };
+        let fg = if selected {
+            config.bg_color
+        } else {
+            config.fg_color
+        };
+        let bg = if selected {
+            Some(config.accent_color)
+        } else {
+            None
+        };
 
         for (i, ch) in line.chars().enumerate() {
             if (i as u16) < width {
@@ -263,7 +272,14 @@ impl StateDebugger {
         }
     }
 
-    fn render_separator(&self, buffer: &mut Buffer, x: u16, y: u16, width: u16, config: &DevToolsConfig) {
+    fn render_separator(
+        &self,
+        buffer: &mut Buffer,
+        x: u16,
+        y: u16,
+        width: u16,
+        config: &DevToolsConfig,
+    ) {
         for px in x..x + width {
             if let Some(cell) = buffer.get_mut(px, y) {
                 cell.symbol = '─';

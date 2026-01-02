@@ -201,8 +201,12 @@ pub fn hsl_to_rgba(h: u16, s: u8, l: u8, a: u8) -> Color {
     let p = 2.0 * l - q;
 
     let hue_to_rgb = |p: f32, q: f32, mut t: f32| -> f32 {
-        if t < 0.0 { t += 1.0; }
-        if t > 1.0 { t -= 1.0; }
+        if t < 0.0 {
+            t += 1.0;
+        }
+        if t > 1.0 {
+            t -= 1.0;
+        }
         if t < 1.0 / 6.0 {
             return p + (q - p) * 6.0 * t;
         }
@@ -219,12 +223,7 @@ pub fn hsl_to_rgba(h: u16, s: u8, l: u8, a: u8) -> Color {
     let g = hue_to_rgb(p, q, h);
     let b = hue_to_rgb(p, q, h - 1.0 / 3.0);
 
-    Color::rgba(
-        (r * 255.0) as u8,
-        (g * 255.0) as u8,
-        (b * 255.0) as u8,
-        a,
-    )
+    Color::rgba((r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8, a)
 }
 
 /// Adjust hue of a color (preserves alpha)
@@ -488,12 +487,12 @@ mod tests {
     #[test]
     fn test_gradient_alpha() {
         let from = Color::rgba(255, 0, 0, 255); // opaque red
-        let to = Color::rgba(0, 0, 255, 0);     // transparent blue
+        let to = Color::rgba(0, 0, 255, 0); // transparent blue
         let colors = gradient(from, to, 3);
 
         assert_eq!(colors[0].a, 255); // Start opaque
         assert!(colors[1].a > 100 && colors[1].a < 150); // Middle ~128
-        assert_eq!(colors[2].a, 0);   // End transparent
+        assert_eq!(colors[2].a, 0); // End transparent
     }
 
     #[test]

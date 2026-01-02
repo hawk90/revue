@@ -21,13 +21,13 @@
 //! }
 //! ```
 
-mod pool;
-mod handle;
 mod channel;
+mod handle;
+mod pool;
 
-pub use pool::{WorkerPool, Worker};
+pub use channel::{WorkerChannel, WorkerCommand, WorkerMessage, WorkerReceiver, WorkerSender};
 pub use handle::{WorkerHandle, WorkerState};
-pub use channel::{WorkerChannel, WorkerMessage, WorkerCommand, WorkerSender, WorkerReceiver};
+pub use pool::{Worker, WorkerPool};
 
 use std::future::Future;
 use std::pin::Pin;

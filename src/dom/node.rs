@@ -1,8 +1,8 @@
 //! DOM node representation
 
-use std::collections::HashSet;
 use super::NodeId;
 use crate::style::Style;
+use std::collections::HashSet;
 
 /// Widget metadata for CSS matching
 #[derive(Debug, Clone, Default)]

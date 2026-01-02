@@ -281,7 +281,9 @@ mod tests {
     #[test]
     fn test_config_path() {
         let path = TestConfig::config_path().unwrap();
-        assert!(path.to_string_lossy().contains(".config/revue-test/config.toml"));
+        assert!(path
+            .to_string_lossy()
+            .contains(".config/revue-test/config.toml"));
     }
 
     #[test]

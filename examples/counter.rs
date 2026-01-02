@@ -47,29 +47,25 @@ impl View for Counter {
             .child(
                 Border::panel()
                     .title("Counter")
-                    .child(
-                        Text::new(format!("{:^20}", self.value))
-                            .fg(color)
-                            .bold()
-                    )
+                    .child(Text::new(format!("{:^20}", self.value)).fg(color).bold()),
             )
             .child(
                 hstack()
                     .gap(2)
                     .child(Text::muted("[+/-]"))
-                    .child(Text::new("Increment/Decrement"))
+                    .child(Text::new("Increment/Decrement")),
             )
             .child(
                 hstack()
                     .gap(2)
                     .child(Text::muted("[r]"))
-                    .child(Text::new("Reset"))
+                    .child(Text::new("Reset")),
             )
             .child(
                 hstack()
                     .gap(2)
                     .child(Text::muted("[q]"))
-                    .child(Text::new("Quit"))
+                    .child(Text::new("Quit")),
             );
 
         view.render(ctx);

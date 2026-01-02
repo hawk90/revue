@@ -49,15 +49,30 @@ impl Breakpoint {
 /// Common terminal breakpoints
 impl Breakpoint {
     /// Extra small (< 40 columns) - minimal terminals
-    pub const XS: Breakpoint = Breakpoint { name: "xs", min_width: 0 };
+    pub const XS: Breakpoint = Breakpoint {
+        name: "xs",
+        min_width: 0,
+    };
     /// Small (40-79 columns) - compact terminals
-    pub const SM: Breakpoint = Breakpoint { name: "sm", min_width: 40 };
+    pub const SM: Breakpoint = Breakpoint {
+        name: "sm",
+        min_width: 40,
+    };
     /// Medium (80-119 columns) - standard terminals
-    pub const MD: Breakpoint = Breakpoint { name: "md", min_width: 80 };
+    pub const MD: Breakpoint = Breakpoint {
+        name: "md",
+        min_width: 80,
+    };
     /// Large (120-159 columns) - wide terminals
-    pub const LG: Breakpoint = Breakpoint { name: "lg", min_width: 120 };
+    pub const LG: Breakpoint = Breakpoint {
+        name: "lg",
+        min_width: 120,
+    };
     /// Extra large (160+ columns) - ultra-wide terminals
-    pub const XL: Breakpoint = Breakpoint { name: "xl", min_width: 160 };
+    pub const XL: Breakpoint = Breakpoint {
+        name: "xl",
+        min_width: 160,
+    };
 }
 
 /// Breakpoint collection
@@ -89,11 +104,7 @@ impl Breakpoints {
     /// Create minimal breakpoints (small, medium, large)
     pub fn simple() -> Self {
         Self {
-            points: vec![
-                Breakpoint::SM,
-                Breakpoint::MD,
-                Breakpoint::LG,
-            ],
+            points: vec![Breakpoint::SM, Breakpoint::MD, Breakpoint::LG],
         }
     }
 
@@ -484,14 +495,11 @@ mod tests {
     #[test]
     fn test_responsive_value() {
         let bp = Breakpoints::terminal();
-        let value = ResponsiveValue::new(1)
-            .at("sm", 2)
-            .at("md", 3)
-            .at("lg", 4);
+        let value = ResponsiveValue::new(1).at("sm", 2).at("md", 3).at("lg", 4);
 
-        assert_eq!(value.resolve(&bp, 30), 1);  // xs
-        assert_eq!(value.resolve(&bp, 50), 2);  // sm
-        assert_eq!(value.resolve(&bp, 80), 3);  // md
+        assert_eq!(value.resolve(&bp, 30), 1); // xs
+        assert_eq!(value.resolve(&bp, 50), 2); // sm
+        assert_eq!(value.resolve(&bp, 80), 3); // md
         assert_eq!(value.resolve(&bp, 120), 4); // lg
     }
 
@@ -501,8 +509,8 @@ mod tests {
         // Only define value for "md", should cascade up
         let value = ResponsiveValue::new(1).at("md", 5);
 
-        assert_eq!(value.resolve(&bp, 30), 1);  // xs - uses default
-        assert_eq!(value.resolve(&bp, 80), 5);  // md - uses md value
+        assert_eq!(value.resolve(&bp, 30), 1); // xs - uses default
+        assert_eq!(value.resolve(&bp, 80), 5); // md - uses md value
         assert_eq!(value.resolve(&bp, 120), 5); // lg - cascades md value
     }
 

@@ -3,10 +3,10 @@
 //! Displays differences between two texts with syntax highlighting
 //! and unified/split view modes.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 use similar::{ChangeTag, TextDiff};
 
 /// Diff display mode
@@ -259,8 +259,16 @@ impl DiffViewer {
             self.diff_lines.push(DiffLine {
                 left_num: left_n,
                 right_num: right_n,
-                left: if change.tag() != ChangeTag::Insert { content.clone() } else { String::new() },
-                right: if change.tag() != ChangeTag::Delete { content } else { String::new() },
+                left: if change.tag() != ChangeTag::Insert {
+                    content.clone()
+                } else {
+                    String::new()
+                },
+                right: if change.tag() != ChangeTag::Delete {
+                    content
+                } else {
+                    String::new()
+                },
                 change: change_type,
             });
         }
@@ -268,7 +276,8 @@ impl DiffViewer {
 
     /// Get number of changes
     pub fn change_count(&self) -> usize {
-        self.diff_lines.iter()
+        self.diff_lines
+            .iter()
             .filter(|l| l.change != ChangeType::Equal)
             .count()
     }
@@ -294,7 +303,9 @@ impl DiffViewer {
 
         // Content
         let visible_lines = (area.height - 1) as usize;
-        for (i, line) in self.diff_lines.iter()
+        for (i, line) in self
+            .diff_lines
+            .iter()
             .skip(self.scroll)
             .take(visible_lines)
             .enumerate()
@@ -302,7 +313,16 @@ impl DiffViewer {
             let y = area.y + 1 + i as u16;
 
             // Left side
-            self.render_line_half(ctx, line, true, area.x, y, half_width, line_num_width, content_width);
+            self.render_line_half(
+                ctx,
+                line,
+                true,
+                area.x,
+                y,
+                half_width,
+                line_num_width,
+                content_width,
+            );
 
             // Separator
             let mut sep = Cell::new('│');
@@ -310,30 +330,58 @@ impl DiffViewer {
             ctx.buffer.set(area.x + half_width, y, sep);
 
             // Right side
-            self.render_line_half(ctx, line, false, area.x + half_width + 1, y, half_width, line_num_width, content_width);
+            self.render_line_half(
+                ctx,
+                line,
+                false,
+                area.x + half_width + 1,
+                y,
+                half_width,
+                line_num_width,
+                content_width,
+            );
         }
     }
 
     /// Render one half of a split line
-    fn render_line_half(&self, ctx: &mut RenderContext, line: &DiffLine, is_left: bool,
-                        x: u16, y: u16, _width: u16, line_num_width: u16, content_width: usize) {
+    fn render_line_half(
+        &self,
+        ctx: &mut RenderContext,
+        line: &DiffLine,
+        is_left: bool,
+        x: u16,
+        y: u16,
+        _width: u16,
+        line_num_width: u16,
+        content_width: usize,
+    ) {
         let (content, line_num, bg) = if is_left {
-            (&line.left, line.left_num, match line.change {
-                ChangeType::Removed => Some(self.colors.removed_bg),
-                ChangeType::Modified => Some(self.colors.modified_bg),
-                _ => None,
-            })
+            (
+                &line.left,
+                line.left_num,
+                match line.change {
+                    ChangeType::Removed => Some(self.colors.removed_bg),
+                    ChangeType::Modified => Some(self.colors.modified_bg),
+                    _ => None,
+                },
+            )
         } else {
-            (&line.right, line.right_num, match line.change {
-                ChangeType::Added => Some(self.colors.added_bg),
-                ChangeType::Modified => Some(self.colors.modified_bg),
-                _ => None,
-            })
+            (
+                &line.right,
+                line.right_num,
+                match line.change {
+                    ChangeType::Added => Some(self.colors.added_bg),
+                    ChangeType::Modified => Some(self.colors.modified_bg),
+                    _ => None,
+                },
+            )
         };
 
         // Line number
         if self.show_line_numbers {
-            let num_str = line_num.map(|n| format!("{:>4}", n)).unwrap_or_else(|| "    ".to_string());
+            let num_str = line_num
+                .map(|n| format!("{:>4}", n))
+                .unwrap_or_else(|| "    ".to_string());
             for (i, ch) in num_str.chars().enumerate() {
                 if i as u16 >= line_num_width {
                     break;
@@ -403,14 +451,16 @@ impl DiffViewer {
             let mut cell = Cell::new(ch);
             cell.bg = Some(self.colors.header_bg);
             cell.modifier = Modifier::BOLD;
-            ctx.buffer.set(area.x + half_width + 1 + i as u16, area.y, cell);
+            ctx.buffer
+                .set(area.x + half_width + 1 + i as u16, area.y, cell);
         }
 
         // Fill right header
         for i in self.right_name.len()..half_width as usize {
             let mut cell = Cell::new(' ');
             cell.bg = Some(self.colors.header_bg);
-            ctx.buffer.set(area.x + half_width + 1 + i as u16, area.y, cell);
+            ctx.buffer
+                .set(area.x + half_width + 1 + i as u16, area.y, cell);
         }
     }
 
@@ -421,7 +471,9 @@ impl DiffViewer {
         let content_width = area.width.saturating_sub(line_num_width + 1) as usize;
 
         let visible_lines = area.height as usize;
-        for (i, line) in self.diff_lines.iter()
+        for (i, line) in self
+            .diff_lines
+            .iter()
             .skip(self.scroll)
             .take(visible_lines)
             .enumerate()
@@ -430,7 +482,8 @@ impl DiffViewer {
 
             // Line numbers (left:right)
             if self.show_line_numbers {
-                let num_str = format!("{:>4}:{:<4}",
+                let num_str = format!(
+                    "{:>4}:{:<4}",
                     line.left_num.map(|n| n.to_string()).unwrap_or_default(),
                     line.right_num.map(|n| n.to_string()).unwrap_or_default()
                 );
@@ -458,12 +511,17 @@ impl DiffViewer {
             ctx.buffer.set(area.x + line_num_width, y, ind_cell);
 
             // Content
-            let content = if !line.right.is_empty() { &line.right } else { &line.left };
+            let content = if !line.right.is_empty() {
+                &line.right
+            } else {
+                &line.left
+            };
             for (j, ch) in content.chars().take(content_width).enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);
-                ctx.buffer.set(area.x + line_num_width + 1 + j as u16, y, cell);
+                ctx.buffer
+                    .set(area.x + line_num_width + 1 + j as u16, y, cell);
             }
         }
     }
@@ -502,8 +560,8 @@ pub fn diff(left: impl Into<String>, right: impl Into<String>) -> DiffViewer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_diff_viewer_creation() {
@@ -525,8 +583,7 @@ mod tests {
 
     #[test]
     fn test_diff_modes() {
-        let viewer = diff("A\nB", "A\nC")
-            .mode(DiffMode::Unified);
+        let viewer = diff("A\nB", "A\nC").mode(DiffMode::Unified);
         assert_eq!(viewer.mode, DiffMode::Unified);
     }
 

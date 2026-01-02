@@ -49,7 +49,9 @@ impl VimMode {
         match self {
             VimMode::Normal => Color::rgb(100, 150, 255),
             VimMode::Insert => Color::rgb(100, 255, 100),
-            VimMode::Visual | VimMode::VisualLine | VimMode::VisualBlock => Color::rgb(255, 150, 100),
+            VimMode::Visual | VimMode::VisualLine | VimMode::VisualBlock => {
+                Color::rgb(255, 150, 100)
+            }
             VimMode::Command => Color::rgb(255, 255, 100),
             VimMode::Search => Color::rgb(255, 100, 255),
             VimMode::Replace => Color::rgb(255, 100, 100),
@@ -559,8 +561,16 @@ impl VimState {
 
         // Save for repeat
         if action != VimAction::None && action != VimAction::Escape {
-            if matches!(action, VimAction::Delete(_) | VimAction::Yank(_) | VimAction::Change(_)
-                | VimAction::Insert | VimAction::Append | VimAction::OpenBelow | VimAction::OpenAbove) {
+            if matches!(
+                action,
+                VimAction::Delete(_)
+                    | VimAction::Yank(_)
+                    | VimAction::Change(_)
+                    | VimAction::Insert
+                    | VimAction::Append
+                    | VimAction::OpenBelow
+                    | VimAction::OpenAbove
+            ) {
                 self.last_action = Some(action.clone());
             }
         }

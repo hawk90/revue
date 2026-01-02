@@ -17,10 +17,10 @@
 //! let text = RichText::markup("[bold]Hello[/] [green]World[/]");
 //! ```
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Text style for spans
 #[derive(Clone, Debug, Default)]
@@ -131,11 +131,21 @@ impl Style {
     /// Get modifier flags
     fn to_modifier(&self) -> Modifier {
         let mut m = Modifier::empty();
-        if self.bold { m |= Modifier::BOLD; }
-        if self.italic { m |= Modifier::ITALIC; }
-        if self.underline { m |= Modifier::UNDERLINE; }
-        if self.dim { m |= Modifier::DIM; }
-        if self.strikethrough { m |= Modifier::CROSSED_OUT; }
+        if self.bold {
+            m |= Modifier::BOLD;
+        }
+        if self.italic {
+            m |= Modifier::ITALIC;
+        }
+        if self.underline {
+            m |= Modifier::UNDERLINE;
+        }
+        if self.dim {
+            m |= Modifier::DIM;
+        }
+        if self.strikethrough {
+            m |= Modifier::CROSSED_OUT;
+        }
         m
     }
 }
@@ -387,7 +397,6 @@ impl RichText {
             self.spans.push(span);
         }
     }
-
 }
 
 impl Default for RichText {
@@ -410,9 +419,10 @@ impl View for RichText {
 
         for span in &self.spans {
             // Register hyperlink if present
-            let hyperlink_id = span.link.as_ref().map(|url| {
-                ctx.buffer.register_hyperlink(url)
-            });
+            let hyperlink_id = span
+                .link
+                .as_ref()
+                .map(|url| ctx.buffer.register_hyperlink(url));
 
             let modifier = span.style.to_modifier();
 
@@ -475,8 +485,8 @@ pub fn style() -> Style {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_style_builder() {
@@ -561,8 +571,7 @@ mod tests {
         let area = Rect::new(0, 0, 40, 1);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let rt = RichText::new()
-            .push_link("Click", "https://example.com");
+        let rt = RichText::new().push_link("Click", "https://example.com");
 
         rt.render(&mut ctx);
 

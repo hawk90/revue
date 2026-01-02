@@ -19,8 +19,8 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::widget::{RenderContext, View, WidgetProps};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Single candlestick data point
 #[derive(Clone, Copy, Debug)]
@@ -277,12 +277,15 @@ impl CandleChart {
             return (0.0, 100.0);
         }
 
-        let min = self.min_price.unwrap_or_else(|| {
-            candles.iter().map(|c| c.low).fold(f64::INFINITY, f64::min)
-        });
+        let min = self
+            .min_price
+            .unwrap_or_else(|| candles.iter().map(|c| c.low).fold(f64::INFINITY, f64::min));
 
         let max = self.max_price.unwrap_or_else(|| {
-            candles.iter().map(|c| c.high).fold(f64::NEG_INFINITY, f64::max)
+            candles
+                .iter()
+                .map(|c| c.high)
+                .fold(f64::NEG_INFINITY, f64::max)
         });
 
         // Add padding
@@ -445,8 +448,8 @@ impl View for CandleChart {
     crate::impl_view_meta!("CandleChart");
 
     fn render(&self, ctx: &mut RenderContext) {
+        use crate::widget::stack::{hstack, vstack};
         use crate::widget::Text;
-        use crate::widget::stack::{vstack, hstack};
 
         let mut content = vstack();
 
@@ -456,15 +459,29 @@ impl View for CandleChart {
             header = header.child(Text::new(title).bold());
 
             if let Some(price) = self.current_price() {
-                header = header.child(Text::new(format!("  {:.prec$}", price, prec = self.precision)));
+                header = header.child(Text::new(format!(
+                    "  {:.prec$}",
+                    price,
+                    prec = self.precision
+                )));
 
                 if let Some((change, percent)) = self.price_change() {
-                    let color = if change >= 0.0 { self.bullish_color } else { self.bearish_color };
+                    let color = if change >= 0.0 {
+                        self.bullish_color
+                    } else {
+                        self.bearish_color
+                    };
                     let sign = if change >= 0.0 { "+" } else { "" };
                     header = header.child(
-                        Text::new(format!("  {}{:.prec$} ({}{:.2}%)",
-                            sign, change, sign, percent, prec = self.precision))
-                            .fg(color)
+                        Text::new(format!(
+                            "  {}{:.prec$} ({}{:.2}%)",
+                            sign,
+                            change,
+                            sign,
+                            percent,
+                            prec = self.precision
+                        ))
+                        .fg(color),
                     );
                 }
             }
@@ -508,8 +525,12 @@ impl View for CandleChart {
 
             // Price label
             if self.show_axis {
-                let price = max_price - (row_idx as f64 / (self.height as f64 - 1.0)) * (max_price - min_price);
-                let label = if row_idx == 0 || row_idx == self.height as usize - 1 || row_idx == self.height as usize / 2 {
+                let price = max_price
+                    - (row_idx as f64 / (self.height as f64 - 1.0)) * (max_price - min_price);
+                let label = if row_idx == 0
+                    || row_idx == self.height as usize - 1
+                    || row_idx == self.height as usize / 2
+                {
                     format!("{:>8.prec$} ", price, prec = self.precision)
                 } else {
                     " ".repeat(axis_width)
@@ -527,12 +548,14 @@ impl View for CandleChart {
 
         // Volume bars
         if self.show_volume {
-            let max_vol = candles.iter()
+            let max_vol = candles
+                .iter()
                 .filter_map(|c| c.volume)
                 .fold(0.0f64, f64::max);
 
             if max_vol > 0.0 {
-                content = content.child(Text::new("─".repeat(candles.len())).fg(Color::rgb(60, 60, 60)));
+                content =
+                    content.child(Text::new("─".repeat(candles.len())).fg(Color::rgb(60, 60, 60)));
 
                 for row in 0..self.volume_height {
                     let mut vol_line = hstack();
@@ -570,8 +593,14 @@ impl View for CandleChart {
             if let Some(candle) = candles.get(idx) {
                 let info = format!(
                     "O:{:.prec$} H:{:.prec$} L:{:.prec$} C:{:.prec$}{}",
-                    candle.open, candle.high, candle.low, candle.close,
-                    candle.volume.map(|v| format!(" V:{:.0}", v)).unwrap_or_default(),
+                    candle.open,
+                    candle.high,
+                    candle.low,
+                    candle.close,
+                    candle
+                        .volume
+                        .map(|v| format!(" V:{:.0}", v))
+                        .unwrap_or_default(),
                     prec = self.precision
                 );
                 content = content.child(Text::new(info).fg(Color::rgb(180, 180, 180)));

@@ -1,9 +1,9 @@
 //! Table widget for displaying tabular data
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Column definition
 #[derive(Clone)]
@@ -61,7 +61,8 @@ impl Table {
 
     /// Add a row of data
     pub fn row(mut self, cells: Vec<impl Into<String>>) -> Self {
-        self.rows.push(cells.into_iter().map(|c| c.into()).collect());
+        self.rows
+            .push(cells.into_iter().map(|c| c.into()).collect());
         self
     }
 
@@ -145,7 +146,9 @@ impl Table {
 
         // Distribute remaining space to auto columns
         let border_space = if self.border { col_count as u16 + 1 } else { 0 };
-        let remaining = available_width.saturating_sub(fixed_total).saturating_sub(border_space);
+        let remaining = available_width
+            .saturating_sub(fixed_total)
+            .saturating_sub(border_space);
 
         if auto_count > 0 {
             let auto_width = remaining / auto_count;
@@ -191,7 +194,11 @@ impl View for Table {
             area.x,
             y,
             &widths,
-            &self.columns.iter().map(|c| c.title.clone()).collect::<Vec<_>>(),
+            &self
+                .columns
+                .iter()
+                .map(|c| c.title.clone())
+                .collect::<Vec<_>>(),
             self.header_fg,
             self.header_bg,
             true,
@@ -333,16 +340,12 @@ pub fn column(title: impl Into<String>) -> Column {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
-    
+    use crate::render::Buffer;
 
     #[test]
     fn test_table_new() {
-        let t = Table::new(vec![
-            Column::new("Name"),
-            Column::new("Age"),
-        ]);
+        let t = Table::new(vec![Column::new("Name"), Column::new("Age")]);
         assert_eq!(t.columns.len(), 2);
         assert_eq!(t.row_count(), 0);
     }
@@ -414,8 +417,7 @@ mod tests {
 
     #[test]
     fn test_table_helpers() {
-        let t = table(vec![column("A"), column("B")])
-            .row(vec!["1", "2"]);
+        let t = table(vec![column("A"), column("B")]).row(vec!["1", "2"]);
 
         assert_eq!(t.columns.len(), 2);
         assert_eq!(t.row_count(), 1);

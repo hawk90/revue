@@ -1,7 +1,7 @@
 //! Button widget for clickable actions
 
-use super::traits::{View, RenderContext, WidgetState, WidgetProps, Interactive, EventResult};
-use crate::event::{Key, KeyEvent, MouseEvent, MouseEventKind, MouseButton};
+use super::traits::{EventResult, Interactive, RenderContext, View, WidgetProps, WidgetState};
+use crate::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
@@ -191,7 +191,8 @@ impl Button {
     /// 5. Apply pressed/hover/focus interaction effects
     fn get_colors_from_ctx(&self, ctx: &RenderContext) -> (Color, Color) {
         let (variant_fg, variant_bg) = self.get_variant_base_colors();
-        self.state.resolve_colors_interactive(ctx.style, variant_fg, variant_bg)
+        self.state
+            .resolve_colors_interactive(ctx.style, variant_fg, variant_bg)
     }
 }
 
@@ -365,8 +366,8 @@ impl_widget_builders!(Button);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
     use crate::widget::StyledView;
 
     #[test]
@@ -455,9 +456,7 @@ mod tests {
 
     #[test]
     fn test_button_custom_colors() {
-        let btn = Button::new("Custom")
-            .fg(Color::RED)
-            .bg(Color::BLUE);
+        let btn = Button::new("Custom").fg(Color::RED).bg(Color::BLUE);
 
         assert_eq!(btn.state.fg, Some(Color::RED));
         assert_eq!(btn.state.bg, Some(Color::BLUE));
@@ -574,9 +573,7 @@ mod tests {
 
     #[test]
     fn test_button_css_classes() {
-        let btn = Button::new("Action")
-            .class("primary")
-            .class("large");
+        let btn = Button::new("Action").class("primary").class("large");
 
         assert!(btn.has_class("primary"));
         assert!(btn.has_class("large"));
@@ -640,9 +637,7 @@ mod tests {
         use crate::style::{Style, VisualStyle};
 
         // Inline color should override CSS color
-        let btn = Button::new("Override")
-            .fg(Color::GREEN)
-            .bg(Color::YELLOW);
+        let btn = Button::new("Override").fg(Color::GREEN).bg(Color::YELLOW);
 
         let mut buffer = Buffer::new(20, 3);
         let area = Rect::new(1, 1, 15, 1);

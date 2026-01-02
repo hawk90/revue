@@ -1,10 +1,10 @@
 //! Border/Frame widget for surrounding content
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::layout::Rect;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Border style characters
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -23,7 +23,6 @@ pub enum BorderType {
     /// ASCII: +-+|
     Ascii,
 }
-
 
 /// Border characters set
 struct BorderChars {
@@ -174,9 +173,7 @@ impl Border {
 
     /// Create a panel (double border with cyan color)
     pub fn panel() -> Self {
-        Self::new()
-            .border_type(BorderType::Double)
-            .fg(Color::CYAN)
+        Self::new().border_type(BorderType::Double).fg(Color::CYAN)
     }
 
     /// Create a card (rounded border with white color)
@@ -188,18 +185,13 @@ impl Border {
 
     /// Create an error box (single border with red color)
     pub fn error_box() -> Self {
-        Self::new()
-            .border_type(BorderType::Single)
-            .fg(Color::RED)
+        Self::new().border_type(BorderType::Single).fg(Color::RED)
     }
 
     /// Create a success box (single border with green color)
     pub fn success_box() -> Self {
-        Self::new()
-            .border_type(BorderType::Single)
-            .fg(Color::GREEN)
+        Self::new().border_type(BorderType::Single).fg(Color::GREEN)
     }
-
 }
 
 impl Default for Border {
@@ -293,7 +285,8 @@ impl View for Border {
         let mut cell = Cell::new(chars.bottom_right);
         cell.fg = self.fg;
         cell.bg = self.bg;
-        ctx.buffer.set(area.x + area.width - 1, area.y + area.height - 1, cell);
+        ctx.buffer
+            .set(area.x + area.width - 1, area.y + area.height - 1, cell);
 
         // Render child in inner area
         if let Some(ref child) = self.child {
@@ -324,7 +317,6 @@ mod tests {
     use super::*;
     use crate::render::Buffer;
     use crate::widget::Text;
-    
 
     #[test]
     fn test_border_new() {
@@ -391,8 +383,7 @@ mod tests {
         let area = Rect::new(0, 0, 10, 5);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let b = Border::single()
-            .child(Text::new("Hi"));
+        let b = Border::single().child(Text::new("Hi"));
         b.render(&mut ctx);
 
         // Child rendered at (1, 1) inside border

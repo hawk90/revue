@@ -5,8 +5,8 @@
 use revue::{
     app::App,
     event::Key,
-    widget::{vstack, hstack, Text, List, Input, Border, Progress, View, RenderContext},
     style::Color,
+    widget::{hstack, vstack, Border, Input, List, Progress, RenderContext, Text, View},
 };
 
 /// Main application state
@@ -104,11 +104,11 @@ impl View for MainView {
         let counter = Text::new(counter_text).fg(Color::YELLOW);
 
         // Progress bar with border
-        let progress_bar = Border::single()
-            .title("Progress")
-            .child(Progress::new(self.state.progress)
+        let progress_bar = Border::single().title("Progress").child(
+            Progress::new(self.state.progress)
                 .filled_color(Color::GREEN)
-                .show_percentage(true));
+                .show_percentage(true),
+        );
 
         // Input with border
         let input_box = Border::single()
@@ -116,23 +116,19 @@ impl View for MainView {
             .child(self.state.input.clone());
 
         // List with border
-        let list = Border::double()
-            .title("Items")
-            .fg(Color::BLUE)
-            .child(List::new(self.state.items.clone())
+        let list = Border::double().title("Items").fg(Color::BLUE).child(
+            List::new(self.state.items.clone())
                 .selected(self.state.selected)
                 .highlight_bg(Color::BLUE)
-                .highlight_fg(Color::WHITE));
+                .highlight_fg(Color::WHITE),
+        );
 
         // Layout
         let layout = vstack()
             .gap(1)
             .child(title)
             .child(instructions)
-            .child(hstack()
-                .gap(1)
-                .child(counter)
-                .child(progress_bar))
+            .child(hstack().gap(1).child(counter).child(progress_bar))
             .child(input_box)
             .child(list);
 
@@ -144,7 +140,5 @@ fn main() -> revue::Result<()> {
     let mut app = App::builder().build();
     let view = MainView::new();
 
-    app.run_with_handler(view, |key_event, view| {
-        view.handle_key(&key_event.key)
-    })
+    app.run_with_handler(view, |key_event, view| view.handle_key(&key_event.key))
 }

@@ -2,10 +2,10 @@
 //!
 //! A toggle switch for boolean values with customizable styles.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Switch style
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -179,7 +179,11 @@ impl Switch {
 
     /// Render default style
     fn render_default(&self, ctx: &mut RenderContext, x: u16, y: u16) {
-        let color = if self.on { self.on_color } else { self.off_color };
+        let color = if self.on {
+            self.on_color
+        } else {
+            self.off_color
+        };
         let track_len = self.width.saturating_sub(2);
 
         // Opening bracket
@@ -189,11 +193,7 @@ impl Switch {
 
         // Track
         for i in 0..track_len {
-            let is_knob = if self.on {
-                i == track_len - 1
-            } else {
-                i == 0
-            };
+            let is_knob = if self.on { i == track_len - 1 } else { i == 0 };
 
             let ch = if is_knob { '●' } else { '━' };
             let mut cell = Cell::new(ch);
@@ -209,8 +209,16 @@ impl Switch {
 
     /// Render iOS style
     fn render_ios(&self, ctx: &mut RenderContext, x: u16, y: u16) {
-        let color = if self.on { self.on_color } else { self.off_color };
-        let bg = if self.on { self.on_color } else { self.track_color };
+        let color = if self.on {
+            self.on_color
+        } else {
+            self.off_color
+        };
+        let bg = if self.on {
+            self.on_color
+        } else {
+            self.track_color
+        };
         let track_len = self.width.saturating_sub(2);
 
         // Opening paren
@@ -220,11 +228,7 @@ impl Switch {
 
         // Track with knob
         for i in 0..track_len {
-            let is_knob = if self.on {
-                i == track_len - 1
-            } else {
-                i == 0
-            };
+            let is_knob = if self.on { i == track_len - 1 } else { i == 0 };
 
             let ch = if is_knob { '●' } else { ' ' };
             let mut cell = Cell::new(ch);
@@ -241,7 +245,11 @@ impl Switch {
 
     /// Render Material style
     fn render_material(&self, ctx: &mut RenderContext, x: u16, y: u16) {
-        let color = if self.on { self.on_color } else { self.off_color };
+        let color = if self.on {
+            self.on_color
+        } else {
+            self.off_color
+        };
         let track_len = self.width;
 
         for i in 0..track_len {
@@ -279,7 +287,11 @@ impl Switch {
         };
 
         let mut open = Cell::new('[');
-        open.fg = Some(if self.focused { Color::CYAN } else { Color::WHITE });
+        open.fg = Some(if self.focused {
+            Color::CYAN
+        } else {
+            Color::WHITE
+        });
         ctx.buffer.set(x, y, open);
 
         for (i, ch) in text.chars().enumerate() {
@@ -292,7 +304,11 @@ impl Switch {
         }
 
         let mut close = Cell::new(']');
-        close.fg = Some(if self.focused { Color::CYAN } else { Color::WHITE });
+        close.fg = Some(if self.focused {
+            Color::CYAN
+        } else {
+            Color::WHITE
+        });
         ctx.buffer.set(x + 1 + text.len() as u16, y, close);
     }
 
@@ -311,7 +327,11 @@ impl Switch {
         for i in 0..track_len {
             let is_filled = if self.on { i >= half } else { i < half };
             let ch = if is_filled { '▓' } else { '░' };
-            let color = if self.on { self.on_color } else { self.off_color };
+            let color = if self.on {
+                self.on_color
+            } else {
+                self.off_color
+            };
 
             let mut cell = Cell::new(ch);
             cell.fg = Some(color);
@@ -419,9 +439,8 @@ impl_props_builders!(Switch);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
-    
+    use crate::render::Buffer;
 
     #[test]
     fn test_switch_new() {
@@ -470,9 +489,7 @@ mod tests {
 
     #[test]
     fn test_switch_colors() {
-        let s = Switch::new()
-            .on_color(Color::CYAN)
-            .off_color(Color::RED);
+        let s = Switch::new().on_color(Color::CYAN).off_color(Color::RED);
         assert_eq!(s.on_color, Color::CYAN);
         assert_eq!(s.off_color, Color::RED);
     }

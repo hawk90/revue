@@ -2,11 +2,11 @@
 //!
 //! Provides hover-style tooltips and help text displays.
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::border::BorderChars;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Tooltip position relative to anchor
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -90,10 +90,11 @@ impl TooltipStyle {
     fn border_chars(&self) -> Option<BorderChars> {
         match self {
             TooltipStyle::Plain => None,
-            TooltipStyle::Bordered | TooltipStyle::Info | TooltipStyle::Warning
-            | TooltipStyle::Error | TooltipStyle::Success => {
-                Some(BorderChars::SINGLE)
-            }
+            TooltipStyle::Bordered
+            | TooltipStyle::Info
+            | TooltipStyle::Warning
+            | TooltipStyle::Error
+            | TooltipStyle::Success => Some(BorderChars::SINGLE),
             TooltipStyle::Rounded => Some(BorderChars::ROUNDED),
         }
     }
@@ -271,7 +272,11 @@ impl Tooltip {
 
     /// Word wrap text
     fn wrap_text(&self) -> Vec<String> {
-        let max_width = if self.max_width > 0 { self.max_width as usize } else { 40 };
+        let max_width = if self.max_width > 0 {
+            self.max_width as usize
+        } else {
+            40
+        };
 
         let mut lines = Vec::new();
         for line in self.text.lines() {
@@ -315,7 +320,9 @@ impl Tooltip {
         let text_width = content_width.max(title_width);
 
         let width = text_width + if has_border { 4 } else { 2 }; // padding + border
-        let height = lines.len() as u16 + if has_border { 2 } else { 0 } + if has_title && has_border { 1 } else { 0 };
+        let height = lines.len() as u16
+            + if has_border { 2 } else { 0 }
+            + if has_title && has_border { 1 } else { 0 };
 
         (width, height)
     }
@@ -324,7 +331,11 @@ impl Tooltip {
     fn calculate_position(&self, area_width: u16, area_height: u16) -> (u16, u16, TooltipPosition) {
         let (tooltip_w, tooltip_h) = self.calculate_dimensions();
         let (anchor_x, anchor_y) = self.anchor;
-        let arrow_offset: u16 = if matches!(self.arrow, TooltipArrow::None) { 0 } else { 1 };
+        let arrow_offset: u16 = if matches!(self.arrow, TooltipArrow::None) {
+            0
+        } else {
+            1
+        };
 
         let position = if matches!(self.position, TooltipPosition::Auto) {
             // Auto-detect best position
@@ -396,7 +407,8 @@ impl View for Tooltip {
 
         let area = ctx.area;
         let (tooltip_w, tooltip_h) = self.calculate_dimensions();
-        let (tooltip_x, tooltip_y, actual_position) = self.calculate_position(area.width, area.height);
+        let (tooltip_x, tooltip_y, actual_position) =
+            self.calculate_position(area.width, area.height);
 
         // Get colors
         let (default_fg, default_bg) = self.style.colors();
@@ -461,7 +473,11 @@ impl View for Tooltip {
             }
 
             // Left and right borders
-            let _text_start_y = if self.title.is_some() { tooltip_y + 2 } else { tooltip_y + 1 };
+            let _text_start_y = if self.title.is_some() {
+                tooltip_y + 2
+            } else {
+                tooltip_y + 1
+            };
             for dy in 1..tooltip_h - 1 {
                 let y = tooltip_y + dy;
                 if y < area.height {
@@ -504,7 +520,11 @@ impl View for Tooltip {
 
         // Draw text content
         let lines = self.wrap_text();
-        let text_y_offset = if self.title.is_some() && self.style.border_chars().is_some() { 1 } else { 0 };
+        let text_y_offset = if self.title.is_some() && self.style.border_chars().is_some() {
+            1
+        } else {
+            0
+        };
 
         for (i, line) in lines.iter().enumerate() {
             let y = content_start_y + text_y_offset + i as u16;
@@ -527,18 +547,10 @@ impl View for Tooltip {
         if !matches!(self.arrow, TooltipArrow::None) {
             let (arrow_char, _) = self.arrow.chars(actual_position);
             let (arrow_x, arrow_y) = match actual_position {
-                TooltipPosition::Top => {
-                    (self.anchor.0, tooltip_y + tooltip_h)
-                }
-                TooltipPosition::Bottom => {
-                    (self.anchor.0, tooltip_y.saturating_sub(1))
-                }
-                TooltipPosition::Left => {
-                    (tooltip_x + tooltip_w, self.anchor.1)
-                }
-                TooltipPosition::Right => {
-                    (tooltip_x.saturating_sub(1), self.anchor.1)
-                }
+                TooltipPosition::Top => (self.anchor.0, tooltip_y + tooltip_h),
+                TooltipPosition::Bottom => (self.anchor.0, tooltip_y.saturating_sub(1)),
+                TooltipPosition::Left => (tooltip_x + tooltip_w, self.anchor.1),
+                TooltipPosition::Right => (tooltip_x.saturating_sub(1), self.anchor.1),
                 TooltipPosition::Auto => unreachable!(),
             };
 
@@ -562,9 +574,8 @@ pub fn tooltip(text: impl Into<String>) -> Tooltip {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
-    
+    use crate::render::Buffer;
 
     #[test]
     fn test_tooltip_new() {
@@ -675,7 +686,9 @@ mod tests {
 
     #[test]
     fn test_tooltip_auto_position() {
-        let t = Tooltip::new("Test").position(TooltipPosition::Auto).anchor(5, 5);
+        let t = Tooltip::new("Test")
+            .position(TooltipPosition::Auto)
+            .anchor(5, 5);
 
         let (_, _, pos) = t.calculate_position(40, 20);
         // Should choose a valid position

@@ -12,15 +12,15 @@
 //! - **Terminal**: High-level renderer that uses diff-based updates
 
 pub mod backend;
+mod batch;
 mod buffer;
 mod cell;
 mod diff;
 mod terminal;
-mod batch;
 
 pub use backend::{Backend, BackendCapabilities, CrosstermBackend};
+pub use batch::{BatchStats, RenderBatch, RenderOp};
 pub use buffer::Buffer;
 pub use cell::{Cell, Modifier};
 pub use diff::{diff, Change};
-pub use terminal::{Terminal, stdout_terminal};
-pub use batch::{RenderBatch, RenderOp, BatchStats};
+pub use terminal::{stdout_terminal, Terminal};

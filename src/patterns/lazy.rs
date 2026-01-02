@@ -217,8 +217,7 @@ where
         T: Clone,
     {
         self.ensure_loaded();
-        self
-            .value
+        self.value
             .read()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .clone()
@@ -503,10 +502,7 @@ impl<T: Clone> LazyList<T> {
 
     /// Get item at index
     pub fn get(&self, index: usize) -> Option<T> {
-        self.items
-            .borrow()
-            .get(index)
-            .and_then(|opt| opt.clone())
+        self.items.borrow().get(index).and_then(|opt| opt.clone())
     }
 
     /// Set item at index
@@ -527,7 +523,11 @@ impl<T: Clone> LazyList<T> {
 
     /// Get number of loaded items
     pub fn loaded_count(&self) -> usize {
-        self.items.borrow().iter().filter(|opt| opt.is_some()).count()
+        self.items
+            .borrow()
+            .iter()
+            .filter(|opt| opt.is_some())
+            .count()
     }
 
     /// Clear item at index

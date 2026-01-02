@@ -2,7 +2,7 @@
 //!
 //! Benchmarks for the rendering pipeline.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use revue::prelude::*;
 use revue::render::Buffer;
 use revue::testing::TestApp;
@@ -36,9 +36,7 @@ fn bench_nested_layout(c: &mut Criterion) {
             // Create a nested vstack structure
             let mut view = vstack().child(text("Leaf"));
             for i in 0..depth {
-                view = vstack()
-                    .child(text(&format!("Level {}", i)))
-                    .child(view);
+                view = vstack().child(text(&format!("Level {}", i))).child(view);
             }
 
             let mut app = TestApp::new(view);
@@ -58,16 +56,20 @@ fn bench_list_render(c: &mut Criterion) {
     let mut group = c.benchmark_group("list_render");
 
     for item_count in [10, 100, 500].iter() {
-        group.bench_with_input(BenchmarkId::from_parameter(item_count), item_count, |b, &count| {
-            let items: Vec<String> = (0..count).map(|i| format!("Item {}", i)).collect();
-            let view = List::new(items);
-            let mut app = TestApp::new(view);
+        group.bench_with_input(
+            BenchmarkId::from_parameter(item_count),
+            item_count,
+            |b, &count| {
+                let items: Vec<String> = (0..count).map(|i| format!("Item {}", i)).collect();
+                let view = List::new(items);
+                let mut app = TestApp::new(view);
 
-            b.iter(|| {
-                app.render();
-                black_box(&app);
-            });
-        });
+                b.iter(|| {
+                    app.render();
+                    black_box(&app);
+                });
+            },
+        );
     }
 
     group.finish();
@@ -78,28 +80,32 @@ fn bench_table_render(c: &mut Criterion) {
     let mut group = c.benchmark_group("table_render");
 
     for row_count in [10, 50, 100].iter() {
-        group.bench_with_input(BenchmarkId::from_parameter(row_count), row_count, |b, &count| {
-            let mut table = Table::new(vec![
-                Column::new("ID").width(10),
-                Column::new("Name").width(20),
-                Column::new("Value").width(15),
-            ]);
-
-            for i in 0..count {
-                table = table.row(vec![
-                    format!("{}", i),
-                    format!("Item {}", i),
-                    format!("{:.2}", i as f64 * 1.5),
+        group.bench_with_input(
+            BenchmarkId::from_parameter(row_count),
+            row_count,
+            |b, &count| {
+                let mut table = Table::new(vec![
+                    Column::new("ID").width(10),
+                    Column::new("Name").width(20),
+                    Column::new("Value").width(15),
                 ]);
-            }
 
-            let mut app = TestApp::new(table);
+                for i in 0..count {
+                    table = table.row(vec![
+                        format!("{}", i),
+                        format!("Item {}", i),
+                        format!("{:.2}", i as f64 * 1.5),
+                    ]);
+                }
 
-            b.iter(|| {
-                app.render();
-                black_box(&app);
-            });
-        });
+                let mut app = TestApp::new(table);
+
+                b.iter(|| {
+                    app.render();
+                    black_box(&app);
+                });
+            },
+        );
     }
 
     group.finish();

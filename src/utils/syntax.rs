@@ -244,54 +244,233 @@ impl Language {
                 "global", "nonlocal", "assert", "async", "await",
             ],
             Self::JavaScript | Self::TypeScript => &[
-                "function", "const", "let", "var", "if", "else", "for", "while", "do", "switch",
-                "case", "default", "break", "continue", "return", "try", "catch", "finally",
-                "throw", "new", "delete", "typeof", "instanceof", "in", "of", "class", "extends",
-                "super", "this", "import", "export", "from", "as", "async", "await", "yield",
-                "true", "false", "null", "undefined",
+                "function",
+                "const",
+                "let",
+                "var",
+                "if",
+                "else",
+                "for",
+                "while",
+                "do",
+                "switch",
+                "case",
+                "default",
+                "break",
+                "continue",
+                "return",
+                "try",
+                "catch",
+                "finally",
+                "throw",
+                "new",
+                "delete",
+                "typeof",
+                "instanceof",
+                "in",
+                "of",
+                "class",
+                "extends",
+                "super",
+                "this",
+                "import",
+                "export",
+                "from",
+                "as",
+                "async",
+                "await",
+                "yield",
+                "true",
+                "false",
+                "null",
+                "undefined",
             ],
             Self::Go => &[
-                "func", "var", "const", "type", "struct", "interface", "map", "chan", "if",
-                "else", "for", "range", "switch", "case", "default", "break", "continue",
-                "return", "go", "defer", "select", "package", "import", "true", "false", "nil",
+                "func",
+                "var",
+                "const",
+                "type",
+                "struct",
+                "interface",
+                "map",
+                "chan",
+                "if",
+                "else",
+                "for",
+                "range",
+                "switch",
+                "case",
+                "default",
+                "break",
+                "continue",
+                "return",
+                "go",
+                "defer",
+                "select",
+                "package",
+                "import",
+                "true",
+                "false",
+                "nil",
             ],
             Self::C | Self::Cpp => &[
-                "if", "else", "for", "while", "do", "switch", "case", "default", "break",
-                "continue", "return", "goto", "sizeof", "typedef", "struct", "union", "enum",
-                "static", "extern", "const", "volatile", "register", "auto", "inline",
-                "true", "false", "NULL", "nullptr",
+                "if",
+                "else",
+                "for",
+                "while",
+                "do",
+                "switch",
+                "case",
+                "default",
+                "break",
+                "continue",
+                "return",
+                "goto",
+                "sizeof",
+                "typedef",
+                "struct",
+                "union",
+                "enum",
+                "static",
+                "extern",
+                "const",
+                "volatile",
+                "register",
+                "auto",
+                "inline",
+                "true",
+                "false",
+                "NULL",
+                "nullptr",
                 // C++ specific
-                "class", "public", "private", "protected", "virtual", "override", "final",
-                "new", "delete", "this", "namespace", "using", "template", "typename",
-                "try", "catch", "throw", "noexcept", "constexpr",
+                "class",
+                "public",
+                "private",
+                "protected",
+                "virtual",
+                "override",
+                "final",
+                "new",
+                "delete",
+                "this",
+                "namespace",
+                "using",
+                "template",
+                "typename",
+                "try",
+                "catch",
+                "throw",
+                "noexcept",
+                "constexpr",
             ],
             Self::Java => &[
-                "class", "interface", "extends", "implements", "public", "private", "protected",
-                "static", "final", "abstract", "synchronized", "volatile", "transient",
-                "if", "else", "for", "while", "do", "switch", "case", "default", "break",
-                "continue", "return", "try", "catch", "finally", "throw", "throws",
-                "new", "this", "super", "instanceof", "import", "package",
-                "true", "false", "null",
+                "class",
+                "interface",
+                "extends",
+                "implements",
+                "public",
+                "private",
+                "protected",
+                "static",
+                "final",
+                "abstract",
+                "synchronized",
+                "volatile",
+                "transient",
+                "if",
+                "else",
+                "for",
+                "while",
+                "do",
+                "switch",
+                "case",
+                "default",
+                "break",
+                "continue",
+                "return",
+                "try",
+                "catch",
+                "finally",
+                "throw",
+                "throws",
+                "new",
+                "this",
+                "super",
+                "instanceof",
+                "import",
+                "package",
+                "true",
+                "false",
+                "null",
             ],
             Self::Ruby => &[
-                "def", "class", "module", "if", "elsif", "else", "unless", "case", "when",
-                "while", "until", "for", "do", "end", "begin", "rescue", "ensure", "raise",
-                "return", "yield", "break", "next", "redo", "retry", "self", "super",
-                "true", "false", "nil", "and", "or", "not", "in", "then",
+                "def", "class", "module", "if", "elsif", "else", "unless", "case", "when", "while",
+                "until", "for", "do", "end", "begin", "rescue", "ensure", "raise", "return",
+                "yield", "break", "next", "redo", "retry", "self", "super", "true", "false", "nil",
+                "and", "or", "not", "in", "then",
             ],
             Self::Shell => &[
-                "if", "then", "else", "elif", "fi", "case", "esac", "for", "while", "until",
-                "do", "done", "in", "function", "return", "exit", "break", "continue",
-                "export", "local", "readonly", "unset", "true", "false",
+                "if", "then", "else", "elif", "fi", "case", "esac", "for", "while", "until", "do",
+                "done", "in", "function", "return", "exit", "break", "continue", "export", "local",
+                "readonly", "unset", "true", "false",
             ],
             Self::Sql => &[
-                "SELECT", "FROM", "WHERE", "AND", "OR", "NOT", "IN", "LIKE", "BETWEEN",
-                "JOIN", "LEFT", "RIGHT", "INNER", "OUTER", "ON", "GROUP", "BY", "HAVING",
-                "ORDER", "ASC", "DESC", "LIMIT", "OFFSET", "INSERT", "INTO", "VALUES",
-                "UPDATE", "SET", "DELETE", "CREATE", "TABLE", "DROP", "ALTER", "INDEX",
-                "PRIMARY", "KEY", "FOREIGN", "REFERENCES", "NULL", "DEFAULT", "UNIQUE",
-                "AS", "DISTINCT", "COUNT", "SUM", "AVG", "MIN", "MAX", "CASE", "WHEN",
-                "THEN", "ELSE", "END", "UNION", "ALL", "EXISTS",
+                "SELECT",
+                "FROM",
+                "WHERE",
+                "AND",
+                "OR",
+                "NOT",
+                "IN",
+                "LIKE",
+                "BETWEEN",
+                "JOIN",
+                "LEFT",
+                "RIGHT",
+                "INNER",
+                "OUTER",
+                "ON",
+                "GROUP",
+                "BY",
+                "HAVING",
+                "ORDER",
+                "ASC",
+                "DESC",
+                "LIMIT",
+                "OFFSET",
+                "INSERT",
+                "INTO",
+                "VALUES",
+                "UPDATE",
+                "SET",
+                "DELETE",
+                "CREATE",
+                "TABLE",
+                "DROP",
+                "ALTER",
+                "INDEX",
+                "PRIMARY",
+                "KEY",
+                "FOREIGN",
+                "REFERENCES",
+                "NULL",
+                "DEFAULT",
+                "UNIQUE",
+                "AS",
+                "DISTINCT",
+                "COUNT",
+                "SUM",
+                "AVG",
+                "MIN",
+                "MAX",
+                "CASE",
+                "WHEN",
+                "THEN",
+                "ELSE",
+                "END",
+                "UNION",
+                "ALL",
+                "EXISTS",
             ],
             _ => &[],
         }
@@ -301,49 +480,116 @@ impl Language {
     fn types(&self) -> &'static [&'static str] {
         match self {
             Self::Rust => &[
-                "i8", "i16", "i32", "i64", "i128", "isize",
-                "u8", "u16", "u32", "u64", "u128", "usize",
-                "f32", "f64", "bool", "char", "str", "String",
-                "Vec", "Box", "Rc", "Arc", "Option", "Result",
-                "HashMap", "HashSet", "BTreeMap", "BTreeSet",
+                "i8", "i16", "i32", "i64", "i128", "isize", "u8", "u16", "u32", "u64", "u128",
+                "usize", "f32", "f64", "bool", "char", "str", "String", "Vec", "Box", "Rc", "Arc",
+                "Option", "Result", "HashMap", "HashSet", "BTreeMap", "BTreeSet",
             ],
             Self::Python => &[
-                "int", "float", "str", "bool", "list", "dict", "set", "tuple",
-                "bytes", "bytearray", "object", "type",
+                "int",
+                "float",
+                "str",
+                "bool",
+                "list",
+                "dict",
+                "set",
+                "tuple",
+                "bytes",
+                "bytearray",
+                "object",
+                "type",
             ],
             Self::JavaScript | Self::TypeScript => &[
-                "number", "string", "boolean", "object", "Array", "Map", "Set",
-                "Promise", "Date", "RegExp", "Error", "Symbol", "BigInt",
-                "void", "any", "unknown", "never",
+                "number", "string", "boolean", "object", "Array", "Map", "Set", "Promise", "Date",
+                "RegExp", "Error", "Symbol", "BigInt", "void", "any", "unknown", "never",
             ],
             Self::Go => &[
-                "int", "int8", "int16", "int32", "int64",
-                "uint", "uint8", "uint16", "uint32", "uint64",
-                "float32", "float64", "complex64", "complex128",
-                "bool", "byte", "rune", "string", "error",
+                "int",
+                "int8",
+                "int16",
+                "int32",
+                "int64",
+                "uint",
+                "uint8",
+                "uint16",
+                "uint32",
+                "uint64",
+                "float32",
+                "float64",
+                "complex64",
+                "complex128",
+                "bool",
+                "byte",
+                "rune",
+                "string",
+                "error",
             ],
             Self::C | Self::Cpp => &[
-                "int", "long", "short", "char", "float", "double", "void",
-                "signed", "unsigned", "bool", "size_t", "ptrdiff_t",
-                "int8_t", "int16_t", "int32_t", "int64_t",
-                "uint8_t", "uint16_t", "uint32_t", "uint64_t",
-                "string", "vector", "map", "set", "array", "deque", "list",
+                "int",
+                "long",
+                "short",
+                "char",
+                "float",
+                "double",
+                "void",
+                "signed",
+                "unsigned",
+                "bool",
+                "size_t",
+                "ptrdiff_t",
+                "int8_t",
+                "int16_t",
+                "int32_t",
+                "int64_t",
+                "uint8_t",
+                "uint16_t",
+                "uint32_t",
+                "uint64_t",
+                "string",
+                "vector",
+                "map",
+                "set",
+                "array",
+                "deque",
+                "list",
             ],
             Self::Java => &[
-                "int", "long", "short", "byte", "float", "double", "char",
-                "boolean", "void", "String", "Integer", "Long", "Double",
-                "Boolean", "Object", "List", "Map", "Set", "Array",
+                "int", "long", "short", "byte", "float", "double", "char", "boolean", "void",
+                "String", "Integer", "Long", "Double", "Boolean", "Object", "List", "Map", "Set",
+                "Array",
             ],
             Self::Ruby => &[
-                "Integer", "Float", "String", "Array", "Hash", "Symbol",
-                "TrueClass", "FalseClass", "NilClass", "Object", "Class",
+                "Integer",
+                "Float",
+                "String",
+                "Array",
+                "Hash",
+                "Symbol",
+                "TrueClass",
+                "FalseClass",
+                "NilClass",
+                "Object",
+                "Class",
             ],
             Self::Sql => &[
-                "INT", "INTEGER", "BIGINT", "SMALLINT", "TINYINT",
-                "FLOAT", "DOUBLE", "DECIMAL", "NUMERIC",
-                "VARCHAR", "CHAR", "TEXT", "BLOB",
-                "DATE", "TIME", "DATETIME", "TIMESTAMP",
-                "BOOLEAN", "BOOL",
+                "INT",
+                "INTEGER",
+                "BIGINT",
+                "SMALLINT",
+                "TINYINT",
+                "FLOAT",
+                "DOUBLE",
+                "DECIMAL",
+                "NUMERIC",
+                "VARCHAR",
+                "CHAR",
+                "TEXT",
+                "BLOB",
+                "DATE",
+                "TIME",
+                "DATETIME",
+                "TIMESTAMP",
+                "BOOLEAN",
+                "BOOL",
             ],
             _ => &[],
         }
@@ -352,8 +598,14 @@ impl Language {
     /// Get comment patterns for this language
     fn comment_patterns(&self) -> (&'static str, Option<(&'static str, &'static str)>) {
         match self {
-            Self::Rust | Self::Go | Self::C | Self::Cpp | Self::Java
-            | Self::JavaScript | Self::TypeScript | Self::Css => ("//", Some(("/*", "*/"))),
+            Self::Rust
+            | Self::Go
+            | Self::C
+            | Self::Cpp
+            | Self::Java
+            | Self::JavaScript
+            | Self::TypeScript
+            | Self::Css => ("//", Some(("/*", "*/"))),
             Self::Python | Self::Ruby | Self::Shell | Self::Yaml | Self::Toml => ("#", None),
             Self::Sql => ("--", Some(("/*", "*/"))),
             Self::Html => ("", Some(("<!--", "-->"))),
@@ -403,7 +655,12 @@ impl SyntaxHighlighter {
 
     /// Highlight a line of code with block comment state
     /// Returns (tokens, in_block_comment_at_end)
-    pub fn highlight_line_with_state(&self, line: &str, lang: Language, in_block_comment: bool) -> (Vec<Token>, bool) {
+    pub fn highlight_line_with_state(
+        &self,
+        line: &str,
+        lang: Language,
+        in_block_comment: bool,
+    ) -> (Vec<Token>, bool) {
         let mut tokens = Vec::new();
         let keywords = lang.keywords();
         let types = lang.types();
@@ -438,7 +695,10 @@ impl SyntaxHighlighter {
                     // Look for end of block comment on same line
                     if let Some(rel_end) = line[i..].find(end) {
                         let comment_end = i + rel_end + end.len();
-                        tokens.push(Token::new(&line[comment_start..comment_end], TokenType::Comment));
+                        tokens.push(Token::new(
+                            &line[comment_start..comment_end],
+                            TokenType::Comment,
+                        ));
                         i = comment_end;
                         continue;
                     } else {
@@ -514,17 +774,27 @@ impl SyntaxHighlighter {
             }
 
             // Check for number
-            if chars[i].is_ascii_digit() || (chars[i] == '.' && i + 1 < chars.len() && chars[i + 1].is_ascii_digit()) {
+            if chars[i].is_ascii_digit()
+                || (chars[i] == '.' && i + 1 < chars.len() && chars[i + 1].is_ascii_digit())
+            {
                 let start = i;
                 // Hex
-                if chars[i] == '0' && i + 1 < chars.len() && (chars[i + 1] == 'x' || chars[i + 1] == 'X') {
+                if chars[i] == '0'
+                    && i + 1 < chars.len()
+                    && (chars[i + 1] == 'x' || chars[i + 1] == 'X')
+                {
                     i += 2;
                     while i < chars.len() && chars[i].is_ascii_hexdigit() {
                         i += 1;
                     }
                 } else {
                     // Decimal or float
-                    while i < chars.len() && (chars[i].is_ascii_digit() || chars[i] == '.' || chars[i] == 'e' || chars[i] == 'E') {
+                    while i < chars.len()
+                        && (chars[i].is_ascii_digit()
+                            || chars[i] == '.'
+                            || chars[i] == 'e'
+                            || chars[i] == 'E')
+                    {
                         i += 1;
                     }
                 }
@@ -576,7 +846,11 @@ impl SyntaxHighlighter {
             }
 
             // Check for Rust attribute
-            if lang == Language::Rust && chars[i] == '#' && i + 1 < chars.len() && chars[i + 1] == '[' {
+            if lang == Language::Rust
+                && chars[i] == '#'
+                && i + 1 < chars.len()
+                && chars[i + 1] == '['
+            {
                 let start = i;
                 let mut depth = 0;
                 while i < chars.len() {
@@ -597,8 +871,11 @@ impl SyntaxHighlighter {
             }
 
             // Check for Python/shell comment
-            if (lang == Language::Python || lang == Language::Shell || lang == Language::Ruby
-                || lang == Language::Yaml || lang == Language::Toml)
+            if (lang == Language::Python
+                || lang == Language::Shell
+                || lang == Language::Ruby
+                || lang == Language::Yaml
+                || lang == Language::Toml)
                 && chars[i] == '#'
             {
                 tokens.push(Token::new(&line[i..], TokenType::Comment));
@@ -609,7 +886,9 @@ impl SyntaxHighlighter {
             if lang == Language::Python && chars[i] == '@' {
                 let start = i;
                 i += 1;
-                while i < chars.len() && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '.') {
+                while i < chars.len()
+                    && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '.')
+                {
                     i += 1;
                 }
                 let s: String = chars[start..i].iter().collect();
@@ -637,7 +916,8 @@ impl SyntaxHighlighter {
         let mut in_block_comment = false;
         code.lines()
             .map(|line| {
-                let (tokens, still_in_block) = self.highlight_line_with_state(line, lang, in_block_comment);
+                let (tokens, still_in_block) =
+                    self.highlight_line_with_state(line, lang, in_block_comment);
                 in_block_comment = still_in_block;
                 tokens
             })

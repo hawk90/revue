@@ -224,12 +224,7 @@ pub fn fill_inner_bg(ctx: &mut RenderContext, area: Rect, color: Color) {
     if area.width <= 2 || area.height <= 2 {
         return;
     }
-    let inner = Rect::new(
-        area.x + 1,
-        area.y + 1,
-        area.width - 2,
-        area.height - 2,
-    );
+    let inner = Rect::new(area.x + 1, area.y + 1, area.width - 2, area.height - 2);
     fill_bg(ctx, inner, color);
 }
 
@@ -723,7 +718,11 @@ mod tests {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         render_border(&mut ctx, area, Color::WHITE);
-        draw_border_title(&mut ctx, area, &BorderTitle::new("Bottom").bottom().padding(1));
+        draw_border_title(
+            &mut ctx,
+            area,
+            &BorderTitle::new("Bottom").bottom().padding(1),
+        );
 
         // Should be on bottom border (y = 4)
         assert_eq!(buffer.get(2, 4).unwrap().symbol, 'B');
@@ -737,10 +736,14 @@ mod tests {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         render_border(&mut ctx, area, Color::WHITE);
-        draw_border_titles(&mut ctx, area, &[
-            BorderTitle::new("Left").start(),
-            BorderTitle::new("Right").end(),
-        ]);
+        draw_border_titles(
+            &mut ctx,
+            area,
+            &[
+                BorderTitle::new("Left").start(),
+                BorderTitle::new("Right").end(),
+            ],
+        );
 
         // "Left" at start: pos 1 pad, 2 L, 3 e, 4 f, 5 t, 6 pad
         // "Right" at end: 30 - 1 - 7 = 22 pad, 23 R, 24 i, 25 g, 26 h, 27 t, 28 pad

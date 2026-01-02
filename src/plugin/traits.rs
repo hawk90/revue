@@ -117,7 +117,9 @@ mod tests {
     fn test_plugin_default_implementations() {
         struct MinimalPlugin;
         impl Plugin for MinimalPlugin {
-            fn name(&self) -> &str { "minimal" }
+            fn name(&self) -> &str {
+                "minimal"
+            }
         }
 
         let plugin = MinimalPlugin;

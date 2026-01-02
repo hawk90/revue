@@ -1,8 +1,8 @@
 //! Stack container widget
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::layout::Rect;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// A stack container for layout
 pub struct Stack {
@@ -216,9 +216,7 @@ mod tests {
 
     #[test]
     fn test_stack_builder() {
-        let s = Stack::new()
-            .direction(Direction::Column)
-            .gap(2);
+        let s = Stack::new().direction(Direction::Column).gap(2);
 
         assert_eq!(s.direction, Direction::Column);
         assert_eq!(s.gap, 2);
@@ -249,9 +247,7 @@ mod tests {
         let area = Rect::new(0, 0, 20, 1);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let s = hstack()
-            .child(Text::new("AB"))
-            .child(Text::new("CD"));
+        let s = hstack().child(Text::new("AB")).child(Text::new("CD"));
 
         s.render(&mut ctx);
 
@@ -268,9 +264,7 @@ mod tests {
         let area = Rect::new(0, 0, 20, 4);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let s = vstack()
-            .child(Text::new("Top"))
-            .child(Text::new("Bottom"));
+        let s = vstack().child(Text::new("Top")).child(Text::new("Bottom"));
 
         s.render(&mut ctx);
 
@@ -285,10 +279,7 @@ mod tests {
         let area = Rect::new(0, 0, 20, 1);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let s = hstack()
-            .gap(2)
-            .child(Text::new("A"))
-            .child(Text::new("B"));
+        let s = hstack().gap(2).child(Text::new("A")).child(Text::new("B"));
 
         s.render(&mut ctx);
 

@@ -2,10 +2,10 @@
 //!
 //! A Postman-like widget for making HTTP requests and viewing responses.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -46,12 +46,12 @@ impl HttpMethod {
     /// Get method color
     pub fn color(&self) -> Color {
         match self {
-            HttpMethod::GET => Color::rgb(97, 175, 239),     // Blue
-            HttpMethod::POST => Color::rgb(152, 195, 121),   // Green
-            HttpMethod::PUT => Color::rgb(229, 192, 123),    // Yellow
-            HttpMethod::DELETE => Color::rgb(224, 108, 117), // Red
-            HttpMethod::PATCH => Color::rgb(198, 120, 221),  // Purple
-            HttpMethod::HEAD => Color::rgb(86, 182, 194),    // Cyan
+            HttpMethod::GET => Color::rgb(97, 175, 239),      // Blue
+            HttpMethod::POST => Color::rgb(152, 195, 121),    // Green
+            HttpMethod::PUT => Color::rgb(229, 192, 123),     // Yellow
+            HttpMethod::DELETE => Color::rgb(224, 108, 117),  // Red
+            HttpMethod::PATCH => Color::rgb(198, 120, 221),   // Purple
+            HttpMethod::HEAD => Color::rgb(86, 182, 194),     // Cyan
             HttpMethod::OPTIONS => Color::rgb(171, 178, 191), // Gray
         }
     }
@@ -101,7 +101,7 @@ impl HttpResponse {
             300..=399 => Color::rgb(229, 192, 123), // Yellow
             400..=499 => Color::rgb(224, 108, 117), // Red
             500..=599 => Color::rgb(198, 120, 221), // Purple
-            _ => Color::rgb(171, 178, 191),          // Gray
+            _ => Color::rgb(171, 178, 191),         // Gray
         }
     }
 }
@@ -159,7 +159,8 @@ impl HttpRequest {
         if self.params.is_empty() {
             self.url.clone()
         } else {
-            let params: Vec<String> = self.params
+            let params: Vec<String> = self
+                .params
                 .iter()
                 .map(|(k, v)| format!("{}={}", k, v))
                 .collect();
@@ -275,7 +276,6 @@ impl HttpClient {
         }
     }
 
-
     /// Set URL
     pub fn url(mut self, url: impl Into<String>) -> Self {
         self.request.url = url.into();
@@ -386,7 +386,9 @@ impl HttpClient {
             headers: [
                 ("Content-Type".to_string(), "application/json".to_string()),
                 ("Content-Length".to_string(), mock_body.len().to_string()),
-            ].into_iter().collect(),
+            ]
+            .into_iter()
+            .collect(),
             body: mock_body.to_string(),
             time: start.elapsed(),
             size: mock_body.len(),
@@ -586,8 +588,16 @@ impl View for HttpClient {
                         break;
                     }
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if is_active { Color::WHITE } else { Color::rgb(100, 100, 100) });
-                    cell.bg = Some(if is_active { self.colors.tab_active } else { self.colors.tab_bg });
+                    cell.fg = Some(if is_active {
+                        Color::WHITE
+                    } else {
+                        Color::rgb(100, 100, 100)
+                    });
+                    cell.bg = Some(if is_active {
+                        self.colors.tab_active
+                    } else {
+                        self.colors.tab_bg
+                    });
                     ctx.buffer.set(area.x + tab_x, area.y + tab_y, cell);
                     tab_x += 1;
                 }
@@ -612,7 +622,9 @@ impl View for HttpClient {
 
             match self.view {
                 ResponseView::Body | ResponseView::Raw => {
-                    for (i, line) in response.body.lines()
+                    for (i, line) in response
+                        .body
+                        .lines()
                         .skip(self.body_scroll)
                         .take(content_height as usize)
                         .enumerate()
@@ -623,12 +635,15 @@ impl View for HttpClient {
                             }
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(Color::rgb(200, 200, 200));
-                            ctx.buffer.set(area.x + j as u16, area.y + content_y + i as u16, cell);
+                            ctx.buffer
+                                .set(area.x + j as u16, area.y + content_y + i as u16, cell);
                         }
                     }
                 }
                 ResponseView::Headers => {
-                    for (i, (key, value)) in response.headers.iter()
+                    for (i, (key, value)) in response
+                        .headers
+                        .iter()
                         .skip(self.body_scroll)
                         .take(content_height as usize)
                         .enumerate()
@@ -690,23 +705,19 @@ pub fn http_client() -> HttpClient {
 
 /// Create a GET request
 pub fn get(url: impl Into<String>) -> HttpClient {
-    HttpClient::new()
-        .url(url)
-        .method(HttpMethod::GET)
+    HttpClient::new().url(url).method(HttpMethod::GET)
 }
 
 /// Create a POST request
 pub fn post(url: impl Into<String>) -> HttpClient {
-    HttpClient::new()
-        .url(url)
-        .method(HttpMethod::POST)
+    HttpClient::new().url(url).method(HttpMethod::POST)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_http_client_creation() {

@@ -17,11 +17,13 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::event::drag::{DragData, DragId};
+use crate::event::{KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+use crate::impl_view_meta;
 use crate::layout::Rect;
 use crate::style::Color;
-use crate::widget::traits::{RenderContext, View, Draggable, Interactive, EventResult, WidgetState, WidgetProps};
-use crate::event::{KeyEvent, MouseEvent, MouseEventKind, MouseButton};
-use crate::impl_view_meta;
+use crate::widget::traits::{
+    Draggable, EventResult, Interactive, RenderContext, View, WidgetProps, WidgetState,
+};
 
 /// Atomic counter for generating unique sortable list IDs
 static SORTABLE_ID_COUNTER: AtomicU64 = AtomicU64::new(1000);
@@ -262,8 +264,8 @@ impl SortableList {
     pub fn update_drop_target(&mut self, y: u16, area_y: u16) {
         if self.dragging.is_some() {
             let relative_y = y.saturating_sub(area_y) as usize;
-            let target_idx = (relative_y / self.item_height as usize + self.scroll)
-                .min(self.items.len());
+            let target_idx =
+                (relative_y / self.item_height as usize + self.scroll).min(self.items.len());
             self.drop_target = Some(target_idx);
         }
     }
@@ -309,7 +311,9 @@ impl View for SortableList {
         let area = ctx.area;
         let visible_count = (area.height / self.item_height) as usize;
 
-        for (i, item) in self.items.iter()
+        for (i, item) in self
+            .items
+            .iter()
             .enumerate()
             .skip(self.scroll)
             .take(visible_count)
@@ -377,7 +381,8 @@ impl View for SortableList {
         // Draw final drop indicator at end if needed
         if let Some(target) = self.drop_target {
             if target == self.items.len() && self.dragging.is_some() {
-                let y = area.y + (visible_count.min(self.items.len() - self.scroll) as u16 * self.item_height);
+                let y = area.y
+                    + (visible_count.min(self.items.len() - self.scroll) as u16 * self.item_height);
                 if y < area.y + area.height {
                     ctx.draw_hline(area.x, y, area.width, '─', self.drag_color);
                 }
@@ -477,7 +482,9 @@ impl Draggable for SortableList {
 
     fn drag_data(&self) -> Option<DragData> {
         self.selected.map(|idx| {
-            let label = self.items.get(idx)
+            let label = self
+                .items
+                .get(idx)
                 .map(|i| i.label.clone())
                 .unwrap_or_default();
             DragData::list_item(idx, label)
@@ -485,9 +492,8 @@ impl Draggable for SortableList {
     }
 
     fn drag_preview(&self) -> Option<String> {
-        self.selected.and_then(|idx| {
-            self.items.get(idx).map(|i| format!("↕ {}", i.label))
-        })
+        self.selected
+            .and_then(|idx| self.items.get(idx).map(|i| format!("↕ {}", i.label)))
     }
 
     fn on_drag_start(&mut self) {
@@ -515,7 +521,11 @@ impl Draggable for SortableList {
                 // Reorder
                 if from_idx < self.items.len() && from_idx != to_idx {
                     let item = self.items.remove(from_idx);
-                    let insert_idx = if to_idx > from_idx { to_idx - 1 } else { to_idx };
+                    let insert_idx = if to_idx > from_idx {
+                        to_idx - 1
+                    } else {
+                        to_idx
+                    };
                     self.items.insert(insert_idx.min(self.items.len()), item);
                     self.selected = Some(insert_idx.min(self.items.len() - 1));
 

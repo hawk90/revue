@@ -62,7 +62,9 @@ pub struct TreePrefix {
 impl TreePrefix {
     /// Create a new TreePrefix
     pub fn new() -> Self {
-        Self { depth_flags: Vec::new() }
+        Self {
+            depth_flags: Vec::new(),
+        }
     }
 
     /// Push a new depth level
@@ -87,11 +89,19 @@ impl TreePrefix {
 
         // Add prefixes for parent levels
         for &has_more in &self.depth_flags {
-            result.push_str(if has_more { tree_chars::PIPE } else { tree_chars::SPACE });
+            result.push_str(if has_more {
+                tree_chars::PIPE
+            } else {
+                tree_chars::SPACE
+            });
         }
 
         // Add branch for current level
-        result.push_str(if is_last { tree_chars::LAST } else { tree_chars::BRANCH });
+        result.push_str(if is_last {
+            tree_chars::LAST
+        } else {
+            tree_chars::BRANCH
+        });
 
         result
     }
@@ -100,7 +110,11 @@ impl TreePrefix {
     pub fn continuation(&self) -> String {
         let mut result = String::new();
         for &has_more in &self.depth_flags {
-            result.push_str(if has_more { tree_chars::PIPE } else { tree_chars::SPACE });
+            result.push_str(if has_more {
+                tree_chars::PIPE
+            } else {
+                tree_chars::SPACE
+            });
         }
         result.push_str(tree_chars::SPACE);
         result
@@ -185,13 +199,21 @@ impl TreeIcons {
     /// Get selection indicator
     #[inline]
     pub fn selection(&self, is_selected: bool) -> &'static str {
-        if is_selected { self.selected } else { self.blank }
+        if is_selected {
+            self.selected
+        } else {
+            self.blank
+        }
     }
 
     /// Get collapse/expand indicator
     #[inline]
     pub fn collapse(&self, is_collapsed: bool) -> &'static str {
-        if is_collapsed { self.collapsed } else { self.expanded }
+        if is_collapsed {
+            self.collapsed
+        } else {
+            self.expanded
+        }
     }
 }
 
@@ -528,7 +550,9 @@ impl TreeNav {
             let depth = item.depth;
 
             // Find siblings (same parent and depth)
-            let siblings: Vec<_> = self.items.iter()
+            let siblings: Vec<_> = self
+                .items
+                .iter()
                 .filter(|i| i.parent == parent && i.depth == depth && self.is_visible(i.id))
                 .collect();
 

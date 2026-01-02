@@ -2,12 +2,12 @@
 //!
 //! A feature-rich data grid with sorting, filtering, and cell editing.
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::event::Key;
 use crate::utils::natural_cmp;
+use crate::{impl_props_builders, impl_styled_view};
 use std::cmp::Ordering;
 
 /// Cell editing state
@@ -294,7 +294,8 @@ impl GridRow {
 
     /// Get cell value by key
     pub fn get(&self, key: &str) -> Option<&str> {
-        self.data.iter()
+        self.data
+            .iter()
             .find(|(k, _)| k == key)
             .map(|(_, v)| v.as_str())
     }
@@ -521,7 +522,11 @@ impl DataGrid {
                 _ => va.cmp(vb),
             };
 
-            if ascending { cmp } else { cmp.reverse() }
+            if ascending {
+                cmp
+            } else {
+                cmp.reverse()
+            }
         });
         self.recompute_cache();
     }
@@ -541,24 +546,23 @@ impl DataGrid {
         if self.filter.is_empty() {
             (0..self.rows.len()).collect()
         } else {
-            self.rows.iter()
+            self.rows
+                .iter()
                 .enumerate()
-                .filter(|(_, row)| {
-                    match self.filter_column {
-                        Some(col_idx) => {
-                            if let Some(col) = self.columns.get(col_idx) {
-                                row.get(&col.key)
-                                    .map(|v| v.to_lowercase().contains(&self.filter))
-                                    .unwrap_or(false)
-                            } else {
-                                false
-                            }
-                        }
-                        None => {
-                            row.data.iter()
-                                .any(|(_, v)| v.to_lowercase().contains(&self.filter))
+                .filter(|(_, row)| match self.filter_column {
+                    Some(col_idx) => {
+                        if let Some(col) = self.columns.get(col_idx) {
+                            row.get(&col.key)
+                                .map(|v| v.to_lowercase().contains(&self.filter))
+                                .unwrap_or(false)
+                        } else {
+                            false
                         }
                     }
+                    None => row
+                        .data
+                        .iter()
+                        .any(|(_, v)| v.to_lowercase().contains(&self.filter)),
                 })
                 .map(|(i, _)| i)
                 .collect()
@@ -668,11 +672,16 @@ impl DataGrid {
 
     /// Select next column
     pub fn select_next_col(&mut self) {
-        let visible_cols: Vec<_> = self.columns.iter()
+        let visible_cols: Vec<_> = self
+            .columns
+            .iter()
             .enumerate()
             .filter(|(_, c)| c.visible)
             .collect();
-        if let Some(pos) = visible_cols.iter().position(|(i, _)| *i == self.selected_col) {
+        if let Some(pos) = visible_cols
+            .iter()
+            .position(|(i, _)| *i == self.selected_col)
+        {
             if pos < visible_cols.len() - 1 {
                 self.selected_col = visible_cols[pos + 1].0;
             }
@@ -681,11 +690,16 @@ impl DataGrid {
 
     /// Select previous column
     pub fn select_prev_col(&mut self) {
-        let visible_cols: Vec<_> = self.columns.iter()
+        let visible_cols: Vec<_> = self
+            .columns
+            .iter()
             .enumerate()
             .filter(|(_, c)| c.visible)
             .collect();
-        if let Some(pos) = visible_cols.iter().position(|(i, _)| *i == self.selected_col) {
+        if let Some(pos) = visible_cols
+            .iter()
+            .position(|(i, _)| *i == self.selected_col)
+        {
             if pos > 0 {
                 self.selected_col = visible_cols[pos - 1].0;
             }
@@ -739,10 +753,7 @@ impl DataGrid {
 
         // Get current cell value
         let col_key = &self.columns[selected_col].key;
-        let value = self.rows[row_idx]
-            .get(col_key)
-            .unwrap_or("")
-            .to_string();
+        let value = self.rows[row_idx].get(col_key).unwrap_or("").to_string();
 
         self.edit_state = EditState {
             active: true,
@@ -813,7 +824,8 @@ impl DataGrid {
             Key::Char(c) => {
                 let pos = self.edit_state.cursor;
                 self.edit_state.buffer.insert(
-                    self.edit_state.buffer
+                    self.edit_state
+                        .buffer
                         .char_indices()
                         .nth(pos)
                         .map(|(i, _)| i)
@@ -826,13 +838,22 @@ impl DataGrid {
             Key::Backspace => {
                 if self.edit_state.cursor > 0 {
                     self.edit_state.cursor -= 1;
-                    let byte_pos = self.edit_state.buffer
+                    let byte_pos = self
+                        .edit_state
+                        .buffer
                         .char_indices()
                         .nth(self.edit_state.cursor)
                         .map(|(i, _)| i)
                         .unwrap_or(0);
-                    if let Some((_, ch)) = self.edit_state.buffer.char_indices().nth(self.edit_state.cursor) {
-                        self.edit_state.buffer.drain(byte_pos..byte_pos + ch.len_utf8());
+                    if let Some((_, ch)) = self
+                        .edit_state
+                        .buffer
+                        .char_indices()
+                        .nth(self.edit_state.cursor)
+                    {
+                        self.edit_state
+                            .buffer
+                            .drain(byte_pos..byte_pos + ch.len_utf8());
                     }
                 }
                 true
@@ -840,13 +861,22 @@ impl DataGrid {
             Key::Delete => {
                 let char_count = self.edit_state.buffer.chars().count();
                 if self.edit_state.cursor < char_count {
-                    let byte_pos = self.edit_state.buffer
+                    let byte_pos = self
+                        .edit_state
+                        .buffer
                         .char_indices()
                         .nth(self.edit_state.cursor)
                         .map(|(i, _)| i)
                         .unwrap_or(0);
-                    if let Some((_, ch)) = self.edit_state.buffer.char_indices().nth(self.edit_state.cursor) {
-                        self.edit_state.buffer.drain(byte_pos..byte_pos + ch.len_utf8());
+                    if let Some((_, ch)) = self
+                        .edit_state
+                        .buffer
+                        .char_indices()
+                        .nth(self.edit_state.cursor)
+                    {
+                        self.edit_state
+                            .buffer
+                            .drain(byte_pos..byte_pos + ch.len_utf8());
                     }
                 }
                 true
@@ -933,9 +963,7 @@ impl DataGrid {
 
     /// Calculate column widths
     fn calculate_widths(&self, available: u16) -> Vec<u16> {
-        let visible_cols: Vec<_> = self.columns.iter()
-            .filter(|c| c.visible)
-            .collect();
+        let visible_cols: Vec<_> = self.columns.iter().filter(|c| c.visible).collect();
 
         if visible_cols.is_empty() {
             return vec![];
@@ -946,7 +974,8 @@ impl DataGrid {
         let available = available.saturating_sub(row_num_width + borders);
 
         // Start with fixed or min widths
-        let mut widths: Vec<u16> = visible_cols.iter()
+        let mut widths: Vec<u16> = visible_cols
+            .iter()
             .map(|c| if c.width > 0 { c.width } else { c.min_width })
             .collect();
 
@@ -964,7 +993,6 @@ impl DataGrid {
 
         widths
     }
-
 }
 
 impl Default for DataGrid {
@@ -983,7 +1011,9 @@ impl View for DataGrid {
         }
 
         let widths = self.calculate_widths(area.width);
-        let visible_cols: Vec<_> = self.columns.iter()
+        let visible_cols: Vec<_> = self
+            .columns
+            .iter()
             .enumerate()
             .filter(|(_, c)| c.visible)
             .collect();
@@ -1002,7 +1032,16 @@ impl View for DataGrid {
         // Draw rows
         let filtered = self.filtered_rows();
         let visible_height = (area.height - header_height) as usize;
-        self.render_rows(ctx, &filtered, &visible_cols, &widths, area.x, y, row_num_width, visible_height);
+        self.render_rows(
+            ctx,
+            &filtered,
+            &visible_cols,
+            &widths,
+            area.x,
+            y,
+            row_num_width,
+            visible_height,
+        );
 
         // Draw scrollbar if needed
         self.render_scrollbar(ctx, filtered.len(), visible_height, area, y);
@@ -1033,7 +1072,11 @@ impl DataGrid {
             let is_selected = *orig_idx == self.selected_col;
 
             // Draw header cell background
-            let bg = if is_selected { self.colors.selected_bg } else { self.colors.header_bg };
+            let bg = if is_selected {
+                self.colors.selected_bg
+            } else {
+                self.colors.header_bg
+            };
             for dx in 0..w {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg);
@@ -1071,7 +1114,12 @@ impl DataGrid {
         row_num_width: u16,
         visible_height: usize,
     ) {
-        for (i, row) in filtered.iter().skip(self.scroll_row).take(visible_height).enumerate() {
+        for (i, row) in filtered
+            .iter()
+            .skip(self.scroll_row)
+            .take(visible_height)
+            .enumerate()
+        {
             let row_y = start_y + i as u16;
             let is_selected = self.scroll_row + i == self.selected_row;
             let is_alt = self.options.zebra && i % 2 == 1;
@@ -1160,19 +1208,31 @@ impl DataGrid {
 
     /// Render cell in edit mode with cursor
     fn render_edit_cell(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16, bg: Color) {
-        let display: String = self.edit_state.buffer.chars().take(width as usize - 1).collect();
+        let display: String = self
+            .edit_state
+            .buffer
+            .chars()
+            .take(width as usize - 1)
+            .collect();
         for (j, ch) in display.chars().enumerate() {
             let is_cursor = j == self.edit_state.cursor;
             let mut cell = Cell::new(ch);
-            cell.fg = Some(if is_cursor { Color::BLACK } else { Color::WHITE });
+            cell.fg = Some(if is_cursor {
+                Color::BLACK
+            } else {
+                Color::WHITE
+            });
             cell.bg = Some(if is_cursor { Color::WHITE } else { bg });
             ctx.buffer.set(x + j as u16, y, cell);
         }
         // Draw cursor at end if needed
-        if self.edit_state.cursor >= display.chars().count() && self.edit_state.cursor < width as usize {
+        if self.edit_state.cursor >= display.chars().count()
+            && self.edit_state.cursor < width as usize
+        {
             let mut cursor_cell = Cell::new(' ');
             cursor_cell.bg = Some(Color::WHITE);
-            ctx.buffer.set(x + self.edit_state.cursor as u16, y, cursor_cell);
+            ctx.buffer
+                .set(x + self.edit_state.cursor as u16, y, cursor_cell);
         }
     }
 
@@ -1197,7 +1257,11 @@ impl DataGrid {
 
         for (j, ch) in display.chars().enumerate() {
             let mut cell = Cell::new(ch);
-            cell.fg = Some(if is_selected { self.colors.selected_fg } else { Color::WHITE });
+            cell.fg = Some(if is_selected {
+                self.colors.selected_fg
+            } else {
+                Color::WHITE
+            });
             cell.bg = Some(row_bg);
             ctx.buffer.set(start_x + j as u16, y, cell);
         }
@@ -1218,7 +1282,8 @@ impl DataGrid {
 
         let scrollbar_x = area.x + area.width - 1;
         let scrollbar_height = visible_height as f64;
-        let thumb_height = (scrollbar_height * visible_height as f64 / total_rows as f64).max(1.0) as u16;
+        let thumb_height =
+            (scrollbar_height * visible_height as f64 / total_rows as f64).max(1.0) as u16;
         let thumb_pos = (self.scroll_row as f64 / (total_rows - visible_height) as f64
             * (scrollbar_height - thumb_height as f64)) as u16;
 
@@ -1273,14 +1338,12 @@ pub fn grid_row() -> GridRow {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_grid_column() {
-        let col = GridColumn::new("name", "Name")
-            .width(20)
-            .sortable(true);
+        let col = GridColumn::new("name", "Name").width(20).sortable(true);
 
         assert_eq!(col.key, "name");
         assert_eq!(col.title, "Name");
@@ -1290,9 +1353,7 @@ mod tests {
 
     #[test]
     fn test_grid_row() {
-        let row = GridRow::new()
-            .cell("name", "John")
-            .cell("age", "30");
+        let row = GridRow::new().cell("name", "John").cell("age", "30");
 
         assert_eq!(row.get("name"), Some("John"));
         assert_eq!(row.get("age"), Some("30"));

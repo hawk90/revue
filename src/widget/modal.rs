@@ -1,9 +1,9 @@
 //! Modal/Dialog widget for displaying overlays
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Button configuration for modal dialogs
 ///
@@ -233,7 +233,8 @@ impl Modal {
     /// Select previous button
     pub fn prev_button(&mut self) {
         if !self.buttons.is_empty() {
-            self.selected_button = self.selected_button
+            self.selected_button = self
+                .selected_button
                 .checked_sub(1)
                 .unwrap_or(self.buttons.len() - 1);
         }
@@ -273,18 +274,12 @@ impl Modal {
 
     /// Create alert dialog
     pub fn alert(title: impl Into<String>, message: impl Into<String>) -> Self {
-        Self::new()
-            .title(title)
-            .content(message)
-            .ok()
+        Self::new().title(title).content(message).ok()
     }
 
     /// Create confirmation dialog
     pub fn confirm(title: impl Into<String>, message: impl Into<String>) -> Self {
-        Self::new()
-            .title(title)
-            .content(message)
-            .yes_no()
+        Self::new().title(title).content(message).yes_no()
     }
 
     /// Create error dialog
@@ -378,12 +373,8 @@ impl View for Modal {
 
         if let Some(ref body_widget) = self.body {
             // Render child widget
-            let content_area = crate::layout::Rect::new(
-                x + 2,
-                content_y,
-                content_width,
-                content_height,
-            );
+            let content_area =
+                crate::layout::Rect::new(x + 2, content_y, content_width, content_height);
             let mut body_ctx = RenderContext::new(ctx.buffer, content_area);
             body_widget.render(&mut body_ctx);
         } else {
@@ -403,9 +394,12 @@ impl View for Modal {
         // Draw buttons
         if !self.buttons.is_empty() {
             let button_y = y + modal_height - 2;
-            let total_button_width: usize = self.buttons.iter()
+            let total_button_width: usize = self
+                .buttons
+                .iter()
                 .map(|b| b.label.len() + 4) // [ label ]
-                .sum::<usize>() + (self.buttons.len() - 1) * 2; // spacing
+                .sum::<usize>()
+                + (self.buttons.len() - 1) * 2; // spacing
 
             let start_x = x + (modal_width - total_button_width as u16) / 2;
             let mut bx = start_x;
@@ -499,9 +493,8 @@ impl_props_builders!(Modal);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
-    
+    use crate::render::Buffer;
 
     #[test]
     fn test_modal_new() {
@@ -610,10 +603,7 @@ mod tests {
         let area = Rect::new(0, 0, 80, 24);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let mut m = Modal::new()
-            .title("Test Dialog")
-            .content("Hello")
-            .ok();
+        let mut m = Modal::new().title("Test Dialog").content("Hello").ok();
         m.show();
         m.render(&mut ctx);
 
@@ -639,9 +629,7 @@ mod tests {
 
     #[test]
     fn test_modal_helper() {
-        let m = modal()
-            .title("Quick")
-            .ok();
+        let m = modal().title("Quick").ok();
 
         assert_eq!(m.title, "Quick");
     }

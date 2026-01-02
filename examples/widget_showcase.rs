@@ -5,17 +5,17 @@
 use revue::prelude::*;
 
 // Textual-style colors
-const BG_DARK: Color = Color::rgb(30, 30, 46);      // Base background
-const BG_PANEL: Color = Color::rgb(45, 45, 65);     // Panel background
-const BG_SURFACE: Color = Color::rgb(55, 55, 75);   // Surface/card
+const BG_DARK: Color = Color::rgb(30, 30, 46); // Base background
+const BG_PANEL: Color = Color::rgb(45, 45, 65); // Panel background
+const BG_SURFACE: Color = Color::rgb(55, 55, 75); // Surface/card
 const BG_HIGHLIGHT: Color = Color::rgb(80, 80, 120); // Highlight
 const FG_PRIMARY: Color = Color::rgb(205, 214, 244); // Primary text
-const FG_MUTED: Color = Color::rgb(147, 153, 178);   // Muted text
-const ACCENT: Color = Color::rgb(137, 180, 250);     // Blue accent
-const GREEN: Color = Color::rgb(166, 227, 161);      // Success
-const RED: Color = Color::rgb(243, 139, 168);        // Error
-const YELLOW: Color = Color::rgb(249, 226, 175);     // Warning
-const PINK: Color = Color::rgb(245, 194, 231);       // Pink
+const FG_MUTED: Color = Color::rgb(147, 153, 178); // Muted text
+const ACCENT: Color = Color::rgb(137, 180, 250); // Blue accent
+const GREEN: Color = Color::rgb(166, 227, 161); // Success
+const RED: Color = Color::rgb(243, 139, 168); // Error
+const YELLOW: Color = Color::rgb(249, 226, 175); // Warning
+const PINK: Color = Color::rgb(245, 194, 231); // Pink
 
 #[derive(Default)]
 struct WidgetShowcase {
@@ -36,13 +36,34 @@ impl WidgetShowcase {
                 self.tab = if self.tab == 0 { 6 } else { self.tab - 1 };
                 true
             }
-            Key::Char('1') => { self.tab = 0; true }
-            Key::Char('2') => { self.tab = 1; true }
-            Key::Char('3') => { self.tab = 2; true }
-            Key::Char('4') => { self.tab = 3; true }
-            Key::Char('5') => { self.tab = 4; true }
-            Key::Char('6') => { self.tab = 5; true }
-            Key::Char('7') => { self.tab = 6; true }
+            Key::Char('1') => {
+                self.tab = 0;
+                true
+            }
+            Key::Char('2') => {
+                self.tab = 1;
+                true
+            }
+            Key::Char('3') => {
+                self.tab = 2;
+                true
+            }
+            Key::Char('4') => {
+                self.tab = 3;
+                true
+            }
+            Key::Char('5') => {
+                self.tab = 4;
+                true
+            }
+            Key::Char('6') => {
+                self.tab = 5;
+                true
+            }
+            Key::Char('7') => {
+                self.tab = 6;
+                true
+            }
             Key::Up | Key::Char('k') => {
                 self.list_idx = self.list_idx.saturating_sub(1);
                 true
@@ -56,7 +77,7 @@ impl WidgetShowcase {
                 self.switch_on = !self.switch_on;
                 true
             }
-            _ => false
+            _ => false,
         }
     }
 
@@ -80,9 +101,7 @@ impl WidgetShowcase {
                 .bg(ACCENT)
                 .bold()
         } else {
-            Text::new(format!(" {} ", name))
-                .fg(FG_MUTED)
-                .bg(BG_PANEL)
+            Text::new(format!(" {} ", name)).fg(FG_MUTED).bg(BG_PANEL)
         }
     }
 
@@ -99,15 +118,15 @@ impl WidgetShowcase {
                             .child(Text::new("Horizontal").fg(FG_PRIMARY))
                             .child(Text::new("│").fg(FG_MUTED))
                             .child(Text::new("Items").fg(FG_PRIMARY))
-                            .child(Text::new("│").fg(FG_MUTED))
-                    )
+                            .child(Text::new("│").fg(FG_MUTED)),
+                    ),
             )
             .child(
                 hstack()
                     .gap(1)
                     .child(Text::new(" Card A ").fg(FG_PRIMARY).bg(BG_SURFACE))
                     .child(Text::new(" Card B ").fg(FG_PRIMARY).bg(BG_SURFACE))
-                    .child(Text::new(" Card C ").fg(FG_PRIMARY).bg(BG_SURFACE))
+                    .child(Text::new(" Card C ").fg(FG_PRIMARY).bg(BG_SURFACE)),
             )
     }
 
@@ -121,27 +140,23 @@ impl WidgetShowcase {
                     .child(Text::new(" OK ").fg(BG_DARK).bg(FG_PRIMARY))
                     .child(Text::new(" Save ").fg(BG_DARK).bg(ACCENT))
                     .child(Text::new(" Delete ").fg(BG_DARK).bg(RED))
-                    .child(Text::new(" Cancel ").fg(FG_MUTED).bg(BG_SURFACE))
+                    .child(Text::new(" Cancel ").fg(FG_MUTED).bg(BG_SURFACE)),
             )
             .child(Text::new(""))
             .child(Text::new(" Toggle Controls ").fg(ACCENT).bold())
             .child(
                 hstack()
                     .gap(2)
-                    .child(
-                        if self.checked {
-                            Text::new(" ☑ Checked ").fg(GREEN)
-                        } else {
-                            Text::new(" ☐ Unchecked ").fg(FG_MUTED)
-                        }
-                    )
-                    .child(
-                        if self.switch_on {
-                            Text::new(" ●━━ ON ").fg(GREEN)
-                        } else {
-                            Text::new(" ━━○ OFF ").fg(FG_MUTED)
-                        }
-                    )
+                    .child(if self.checked {
+                        Text::new(" ☑ Checked ").fg(GREEN)
+                    } else {
+                        Text::new(" ☐ Unchecked ").fg(FG_MUTED)
+                    })
+                    .child(if self.switch_on {
+                        Text::new(" ●━━ ON ").fg(GREEN)
+                    } else {
+                        Text::new(" ━━○ OFF ").fg(FG_MUTED)
+                    }),
             )
     }
 
@@ -309,11 +324,13 @@ impl View for WidgetShowcase {
 
 fn main() -> Result<()> {
     let mut app = App::builder()
-        .css(r#"
+        .css(
+            r#"
             * {
                 background: #1e1e2e;
             }
-        "#)
+        "#,
+        )
         .build();
 
     let showcase = WidgetShowcase::default();

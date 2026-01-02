@@ -384,7 +384,8 @@ impl TextBuffer {
 
     /// Get selected text
     pub fn selected_text(&self) -> Option<&str> {
-        self.selection().map(|(start, end)| self.substring(start, end))
+        self.selection()
+            .map(|(start, end)| self.substring(start, end))
     }
 
     /// Select all text

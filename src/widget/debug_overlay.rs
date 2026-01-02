@@ -21,7 +21,7 @@
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use crate::widget::{View, RenderContext};
+use crate::widget::{RenderContext, View};
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
@@ -92,7 +92,11 @@ impl PerfMetrics {
         }
         let total: Duration = self.frame_times.iter().sum();
         let avg = total.as_secs_f64() / self.frame_times.len() as f64;
-        if avg > 0.0 { 1.0 / avg } else { 0.0 }
+        if avg > 0.0 {
+            1.0 / avg
+        } else {
+            0.0
+        }
     }
 
     /// Get average frame time in ms
@@ -481,25 +485,39 @@ impl<V: View> DebugOverlay<V> {
         y += 1;
 
         // Separator
-        self.draw_text(buffer, x, y, &"-".repeat((rect.width - 2) as usize), self.config.fg_color);
+        self.draw_text(
+            buffer,
+            x,
+            y,
+            &"-".repeat((rect.width - 2) as usize),
+            self.config.fg_color,
+        );
         y += 1;
 
         // Performance metrics
         if self.config.show_metrics && y < max_y {
             let fps_color = if self.metrics.fps() >= 30.0 {
-                Color::rgb(100, 255, 100)  // Green
+                Color::rgb(100, 255, 100) // Green
             } else if self.metrics.fps() >= 15.0 {
-                Color::rgb(255, 255, 100)  // Yellow
+                Color::rgb(255, 255, 100) // Yellow
             } else {
-                Color::rgb(255, 100, 100)  // Red
+                Color::rgb(255, 100, 100) // Red
             };
 
-            self.draw_text(buffer, x, y, &format!("FPS: {:.1}", self.metrics.fps()), fps_color);
+            self.draw_text(
+                buffer,
+                x,
+                y,
+                &format!("FPS: {:.1}", self.metrics.fps()),
+                fps_color,
+            );
             y += 1;
 
             if y < max_y {
                 self.draw_text(
-                    buffer, x, y,
+                    buffer,
+                    x,
+                    y,
                     &format!("Frame: {:.2}ms", self.metrics.avg_frame_time_ms()),
                     self.config.fg_color,
                 );
@@ -508,7 +526,9 @@ impl<V: View> DebugOverlay<V> {
 
             if y < max_y {
                 self.draw_text(
-                    buffer, x, y,
+                    buffer,
+                    x,
+                    y,
                     &format!("Layout: {:.2}ms", self.metrics.avg_layout_time_ms()),
                     self.config.fg_color,
                 );
@@ -517,14 +537,16 @@ impl<V: View> DebugOverlay<V> {
 
             if y < max_y {
                 self.draw_text(
-                    buffer, x, y,
+                    buffer,
+                    x,
+                    y,
                     &format!("Render: {:.2}ms", self.metrics.avg_render_time_ms()),
                     self.config.fg_color,
                 );
                 y += 1;
             }
 
-            y += 1;  // Spacing
+            y += 1; // Spacing
         }
 
         // Widget tree
@@ -551,7 +573,7 @@ impl<V: View> DebugOverlay<V> {
                 y += 1;
             }
 
-            y += 1;  // Spacing
+            y += 1; // Spacing
         }
 
         // Event log
@@ -601,15 +623,23 @@ impl<V: View> DebugOverlay<V> {
         // Top and bottom
         for x in rect.x..rect.x + rect.width {
             if let Some(cell) = buffer.get_mut(x, rect.y) {
-                cell.symbol = if x == rect.x { '┌' }
-                    else if x == rect.x + rect.width - 1 { '┐' }
-                    else { '─' };
+                cell.symbol = if x == rect.x {
+                    '┌'
+                } else if x == rect.x + rect.width - 1 {
+                    '┐'
+                } else {
+                    '─'
+                };
                 cell.fg = Some(border_color);
             }
             if let Some(cell) = buffer.get_mut(x, rect.y + rect.height - 1) {
-                cell.symbol = if x == rect.x { '└' }
-                    else if x == rect.x + rect.width - 1 { '┘' }
-                    else { '─' };
+                cell.symbol = if x == rect.x {
+                    '└'
+                } else if x == rect.x + rect.width - 1 {
+                    '┘'
+                } else {
+                    '─'
+                };
                 cell.fg = Some(border_color);
             }
         }

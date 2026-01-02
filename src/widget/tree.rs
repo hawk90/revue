@@ -1,10 +1,10 @@
 //! Tree widget for displaying hierarchical data
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::{fuzzy_match, FuzzyMatch};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// A tree node
 #[derive(Clone)]
@@ -179,7 +179,12 @@ impl Tree {
 
     /// Get node at visible index
     fn get_node_at(&self, index: usize) -> Option<(&TreeNode, usize)> {
-        fn find_node<'a>(nodes: &'a [TreeNode], target: usize, current: &mut usize, depth: usize) -> Option<(&'a TreeNode, usize)> {
+        fn find_node<'a>(
+            nodes: &'a [TreeNode],
+            target: usize,
+            current: &mut usize,
+            depth: usize,
+        ) -> Option<(&'a TreeNode, usize)> {
             for node in nodes {
                 if *current == target {
                     return Some((node, depth));
@@ -199,7 +204,11 @@ impl Tree {
 
     /// Get mutable node at visible index
     fn get_node_mut_at(&mut self, index: usize) -> Option<&mut TreeNode> {
-        fn find_node_mut<'a>(nodes: &'a mut [TreeNode], target: usize, current: &mut usize) -> Option<&'a mut TreeNode> {
+        fn find_node_mut<'a>(
+            nodes: &'a mut [TreeNode],
+            target: usize,
+            current: &mut usize,
+        ) -> Option<&'a mut TreeNode> {
             for node in nodes {
                 if *current == target {
                     return Some(node);
@@ -320,7 +329,12 @@ impl Tree {
         }
 
         // Find all visible nodes that match
-        fn find_matches(nodes: &[TreeNode], query: &str, visible_index: &mut usize, matches: &mut Vec<usize>) {
+        fn find_matches(
+            nodes: &[TreeNode],
+            query: &str,
+            visible_index: &mut usize,
+            matches: &mut Vec<usize>,
+        ) {
             for node in nodes {
                 if fuzzy_match(query, &node.label).is_some() {
                     matches.push(*visible_index);
@@ -333,7 +347,12 @@ impl Tree {
         }
 
         let mut visible_index = 0;
-        find_matches(&self.root, &self.query, &mut visible_index, &mut self.matches);
+        find_matches(
+            &self.root,
+            &self.query,
+            &mut visible_index,
+            &mut self.matches,
+        );
 
         // Jump to first match
         if let Some(&first) = self.matches.first() {
@@ -356,7 +375,8 @@ impl Tree {
         if self.matches.is_empty() {
             return false;
         }
-        self.current_match = self.current_match
+        self.current_match = self
+            .current_match
             .checked_sub(1)
             .unwrap_or(self.matches.len() - 1);
         self.selected = self.matches[self.current_match];
@@ -493,7 +513,8 @@ impl Tree {
 
     /// Get selected node label
     pub fn selected_label(&self) -> Option<&str> {
-        self.get_node_at(self.selected).map(|(n, _)| n.label.as_str())
+        self.get_node_at(self.selected)
+            .map(|(n, _)| n.label.as_str())
     }
 }
 
@@ -589,7 +610,11 @@ impl View for Tree {
 
                 // Draw expand/collapse indicator
                 let indicator = if node.has_children() {
-                    if node.expanded { '▼' } else { '▶' }
+                    if node.expanded {
+                        '▼'
+                    } else {
+                        '▶'
+                    }
                 } else {
                     ' '
                 };
@@ -604,7 +629,8 @@ impl View for Tree {
                 let truncated: String = node.label.chars().take(available_width).collect();
 
                 // Get match indices for highlighting
-                let match_indices: Vec<usize> = tree.get_match(&node.label)
+                let match_indices: Vec<usize> = tree
+                    .get_match(&node.label)
                     .map(|m| m.indices)
                     .unwrap_or_default();
 
@@ -630,7 +656,15 @@ impl View for Tree {
                 if node.expanded && !node.children.is_empty() {
                     let mut new_stack = is_last_stack.to_vec();
                     new_stack.push(is_last);
-                    render_nodes(tree, &node.children, ctx, y, visible_index, depth + 1, &new_stack);
+                    render_nodes(
+                        tree,
+                        &node.children,
+                        ctx,
+                        y,
+                        visible_index,
+                        depth + 1,
+                        &new_stack,
+                    );
                 }
             }
         }
@@ -655,8 +689,8 @@ pub fn tree_node(label: impl Into<String>) -> TreeNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_tree_new() {
@@ -688,12 +722,11 @@ mod tests {
 
     #[test]
     fn test_tree_navigation() {
-        let t = Tree::new()
-            .nodes(vec![
-                TreeNode::new("One"),
-                TreeNode::new("Two"),
-                TreeNode::new("Three"),
-            ]);
+        let t = Tree::new().nodes(vec![
+            TreeNode::new("One"),
+            TreeNode::new("Two"),
+            TreeNode::new("Three"),
+        ]);
 
         let mut t = t;
         assert_eq!(t.selected_index(), 0);
@@ -719,12 +752,11 @@ mod tests {
 
     #[test]
     fn test_tree_expand_collapse() {
-        let mut t = Tree::new()
-            .node(
-                TreeNode::new("Parent")
-                    .child(TreeNode::new("Child 1"))
-                    .child(TreeNode::new("Child 2"))
-            );
+        let mut t = Tree::new().node(
+            TreeNode::new("Parent")
+                .child(TreeNode::new("Child 1"))
+                .child(TreeNode::new("Child 2")),
+        );
 
         // Initially collapsed
         assert_eq!(t.visible_count(), 1);
@@ -742,12 +774,11 @@ mod tests {
     fn test_tree_handle_key() {
         use crate::event::Key;
 
-        let mut t = Tree::new()
-            .node(
-                TreeNode::new("Root")
-                    .child(TreeNode::new("A"))
-                    .child(TreeNode::new("B"))
-            );
+        let mut t = Tree::new().node(
+            TreeNode::new("Root")
+                .child(TreeNode::new("A"))
+                .child(TreeNode::new("B")),
+        );
 
         // Expand
         t.handle_key(&Key::Enter);
@@ -768,8 +799,7 @@ mod tests {
         let area = Rect::new(0, 0, 40, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let t = Tree::new()
-            .node(TreeNode::new("Files"));
+        let t = Tree::new().node(TreeNode::new("Files"));
 
         t.render(&mut ctx);
 
@@ -780,19 +810,14 @@ mod tests {
 
     #[test]
     fn test_tree_selected_label() {
-        let t = Tree::new()
-            .nodes(vec![
-                TreeNode::new("First"),
-                TreeNode::new("Second"),
-            ]);
+        let t = Tree::new().nodes(vec![TreeNode::new("First"), TreeNode::new("Second")]);
 
         assert_eq!(t.selected_label(), Some("First"));
     }
 
     #[test]
     fn test_tree_helper() {
-        let t = tree()
-            .node(tree_node("Test"));
+        let t = tree().node(tree_node("Test"));
 
         assert_eq!(t.len(), 1);
     }
@@ -877,7 +902,7 @@ mod tests {
                 TreeNode::new("src")
                     .expanded(true)
                     .child(TreeNode::new("main.rs"))
-                    .child(TreeNode::new("lib.rs"))
+                    .child(TreeNode::new("lib.rs")),
             )
             .node(TreeNode::new("Cargo.toml"))
             .searchable(true);

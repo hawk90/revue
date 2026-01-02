@@ -719,19 +719,20 @@ mod tests {
     fn test_sync_object_pool() {
         use std::thread;
 
-        let pool: Arc<SyncObjectPool<Vec<u8>>> = Arc::new(
-            SyncObjectPool::new(|| Vec::with_capacity(64))
-        );
+        let pool: Arc<SyncObjectPool<Vec<u8>>> =
+            Arc::new(SyncObjectPool::new(|| Vec::with_capacity(64)));
 
-        let handles: Vec<_> = (0..4).map(|_| {
-            let pool = pool.clone();
-            thread::spawn(move || {
-                for _ in 0..10 {
-                    let v = pool.acquire();
-                    pool.release(v);
-                }
+        let handles: Vec<_> = (0..4)
+            .map(|_| {
+                let pool = pool.clone();
+                thread::spawn(move || {
+                    for _ in 0..10 {
+                        let v = pool.acquire();
+                        pool.release(v);
+                    }
+                })
             })
-        }).collect();
+            .collect();
 
         for h in handles {
             h.join().unwrap();
@@ -748,14 +749,16 @@ mod tests {
 
         let pool: Arc<SyncStringPool> = Arc::new(SyncStringPool::new());
 
-        let handles: Vec<_> = (0..4).map(|i| {
-            let pool = pool.clone();
-            thread::spawn(move || {
-                for j in 0..10 {
-                    let _ = pool.intern(format!("string-{}-{}", i, j));
-                }
+        let handles: Vec<_> = (0..4)
+            .map(|i| {
+                let pool = pool.clone();
+                thread::spawn(move || {
+                    for j in 0..10 {
+                        let _ = pool.intern(format!("string-{}-{}", i, j));
+                    }
+                })
             })
-        }).collect();
+            .collect();
 
         for h in handles {
             h.join().unwrap();

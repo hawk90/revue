@@ -8,7 +8,8 @@ use revue::prelude::*;
 
 fn main() -> revue::Result<()> {
     let mut app = App::builder()
-        .css(r#"
+        .css(
+            r#"
             .container {
                 padding: 2;
             }
@@ -18,14 +19,13 @@ fn main() -> revue::Result<()> {
             .hint {
                 color: var(--theme-text-muted);
             }
-        "#)
+        "#,
+        )
         .build();
 
     let state = ThemeSwitcherState::new();
 
-    app.run_with_handler(state, |event, state| {
-        state.handle_key(&event.key)
-    })
+    app.run_with_handler(state, |event, state| state.handle_key(&event.key))
 }
 
 struct ThemeSwitcherState {
@@ -36,7 +36,14 @@ impl ThemeSwitcherState {
     fn new() -> Self {
         Self {
             picker: theme_picker()
-                .themes(["dark", "light", "dracula", "nord", "monokai", "solarized_dark"])
+                .themes([
+                    "dark",
+                    "light",
+                    "dracula",
+                    "nord",
+                    "monokai",
+                    "solarized_dark",
+                ])
                 .width(40),
         }
     }
@@ -69,11 +76,7 @@ impl View for ThemeSwitcherState {
         vstack()
             .class("container")
             .gap(1)
-            .child(
-                Text::new("Theme Switcher Demo")
-                    .class("title")
-                    .bold()
-            )
+            .child(Text::new("Theme Switcher Demo").class("title").bold())
             .child(divider())
             .child(self.picker.clone())
             .child(divider())
@@ -81,7 +84,7 @@ impl View for ThemeSwitcherState {
                 vstack()
                     .gap(0)
                     .child(Text::new(format!("Current: {}", theme.name)))
-                    .child(Text::new(format!("Variant: {:?}", theme.variant)))
+                    .child(Text::new(format!("Variant: {:?}", theme.variant))),
             )
             .child(divider())
             .child(
@@ -90,12 +93,12 @@ impl View for ThemeSwitcherState {
                     .child(badge(&format!("Primary")).variant(BadgeVariant::Primary))
                     .child(badge(&format!("Success")).variant(BadgeVariant::Success))
                     .child(badge(&format!("Warning")).variant(BadgeVariant::Warning))
-                    .child(badge(&format!("Error")).variant(BadgeVariant::Error))
+                    .child(badge(&format!("Error")).variant(BadgeVariant::Error)),
             )
             .child(divider())
             .child(
                 Text::new("[t] Cycle theme  [d] Toggle dark/light  [Enter] Open picker  [q] Quit")
-                    .class("hint")
+                    .class("hint"),
             )
             .render(ctx);
     }

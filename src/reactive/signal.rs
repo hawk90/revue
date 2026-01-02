@@ -3,8 +3,8 @@
 //! Signals use `Arc<RwLock<T>>` internally, making them `Send + Sync`.
 //! This allows async operations to update signals from background threads.
 
+use super::tracker::{notify_dependents, track_read};
 use super::SignalId;
-use super::tracker::{track_read, notify_dependents};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 /// Type alias for thread-safe subscriber callbacks
@@ -81,7 +81,9 @@ impl<T: 'static> Signal<T> {
     #[inline]
     pub fn read(&self) -> RwLockReadGuard<'_, T> {
         track_read(self.id);
-        self.value.read().unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.value
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     /// Borrow the value immutably (alias for read, zero-copy)
@@ -101,7 +103,9 @@ impl<T: 'static> Signal<T> {
     /// If the lock is poisoned, this method recovers by returning the underlying data.
     #[inline]
     pub fn write(&self) -> RwLockWriteGuard<'_, T> {
-        self.value.write().unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.value
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     /// Borrow the value mutably (alias for write, zero-copy)
@@ -122,7 +126,10 @@ impl<T: 'static> Signal<T> {
     #[inline]
     pub fn with<R>(&self, f: impl FnOnce(&T) -> R) -> R {
         track_read(self.id);
-        let guard = self.value.read().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let guard = self
+            .value
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         f(&*guard)
     }
 
@@ -131,7 +138,10 @@ impl<T: 'static> Signal<T> {
     /// Like `with` but for mutations. Does NOT notify subscribers.
     #[inline]
     pub fn with_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
-        let mut guard = self.value.write().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut guard = self
+            .value
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         f(&mut *guard)
     }
 
@@ -140,7 +150,10 @@ impl<T: 'static> Signal<T> {
     /// Notifies both manual subscribers and auto-tracked dependents.
     pub fn set(&self, value: T) {
         {
-            let mut guard = self.value.write().unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut guard = self
+                .value
+                .write()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             *guard = value;
         }
         self.notify();
@@ -152,7 +165,10 @@ impl<T: 'static> Signal<T> {
     /// Notifies both manual subscribers and auto-tracked dependents.
     pub fn update(&self, f: impl FnOnce(&mut T)) {
         {
-            let mut guard = self.value.write().unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut guard = self
+                .value
+                .write()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             f(&mut *guard);
         }
         self.notify();
@@ -185,7 +201,10 @@ impl<T: 'static> Signal<T> {
     /// });
     /// ```
     pub fn subscribe(&self, callback: impl Fn() + Send + Sync + 'static) {
-        let mut subs = self.subscribers.write().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut subs = self
+            .subscribers
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         subs.push(Box::new(callback));
     }
 
@@ -199,7 +218,10 @@ impl<T: 'static> Signal<T> {
 
     /// Notify all subscribers of a change
     fn notify(&self) {
-        let subs = self.subscribers.read().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let subs = self
+            .subscribers
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         for subscriber in subs.iter() {
             subscriber();
         }
@@ -220,7 +242,10 @@ impl<T: Clone + 'static> Signal<T> {
     #[inline]
     pub fn get(&self) -> T {
         track_read(self.id);
-        let guard = self.value.read().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let guard = self
+            .value
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         guard.clone()
     }
 }
@@ -238,11 +263,13 @@ impl<T: 'static> Clone for Signal<T> {
 impl<T: std::fmt::Debug + 'static> std::fmt::Debug for Signal<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.value.try_read() {
-            Ok(guard) => f.debug_struct("Signal")
+            Ok(guard) => f
+                .debug_struct("Signal")
                 .field("id", &self.id)
                 .field("value", &*guard)
                 .finish(),
-            Err(_) => f.debug_struct("Signal")
+            Err(_) => f
+                .debug_struct("Signal")
                 .field("id", &self.id)
                 .field("value", &"<locked>")
                 .finish(),

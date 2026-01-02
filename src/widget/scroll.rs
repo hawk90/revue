@@ -1,10 +1,10 @@
 //! ScrollView widget for scrollable content
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::layout::Rect;
 use crate::render::{Buffer, Cell};
 use crate::style::Color;
-use crate::layout::Rect;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// A scrollable view widget
 pub struct ScrollView {
@@ -163,7 +163,8 @@ impl ScrollView {
         let scrollbar_x = area.x + area.width - 1;
 
         // Calculate scrollbar thumb position and size
-        let thumb_height = ((viewport_height as f32 / self.content_height as f32) * viewport_height as f32)
+        let thumb_height = ((viewport_height as f32 / self.content_height as f32)
+            * viewport_height as f32)
             .max(1.0) as u16;
         let thumb_height = thumb_height.max(1).min(viewport_height);
 

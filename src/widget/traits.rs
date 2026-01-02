@@ -1,9 +1,9 @@
 //! Widget traits
 
-use crate::render::{Buffer, Cell};
+use crate::dom::{NodeState, WidgetMeta};
 use crate::layout::Rect;
-use crate::dom::{WidgetMeta, NodeState};
-use crate::style::{Style, Color};
+use crate::render::{Buffer, Cell};
+use crate::style::{Color, Style};
 use std::time::{Duration, Instant};
 
 // =============================================================================
@@ -73,7 +73,9 @@ impl<T> Timeout<T> {
 
     /// Check if the timeout has expired.
     pub fn is_expired(&self) -> bool {
-        self.set_time.map(|t| t.elapsed() > self.duration).unwrap_or(false)
+        self.set_time
+            .map(|t| t.elapsed() > self.duration)
+            .unwrap_or(false)
     }
 
     /// Get a reference to the current value if set.
@@ -228,7 +230,12 @@ impl<'a> RenderContext<'a> {
     }
 
     /// Create a full render context
-    pub fn full(buffer: &'a mut Buffer, area: Rect, style: &'a Style, state: &'a NodeState) -> Self {
+    pub fn full(
+        buffer: &'a mut Buffer,
+        area: Rect,
+        style: &'a Style,
+        state: &'a NodeState,
+    ) -> Self {
         Self {
             buffer,
             area,
@@ -239,7 +246,10 @@ impl<'a> RenderContext<'a> {
     }
 
     /// Set transition values for this render context
-    pub fn with_transitions(mut self, transitions: &'a std::collections::HashMap<String, f32>) -> Self {
+    pub fn with_transitions(
+        mut self,
+        transitions: &'a std::collections::HashMap<String, f32>,
+    ) -> Self {
         self.transitions = Some(transitions);
         self
     }
@@ -395,7 +405,14 @@ impl<'a> RenderContext<'a> {
     ///     (" ✓ 3 ", GREEN),
     /// ], BLUE);
     /// ```
-    pub fn draw_header_line(&mut self, x: u16, y: u16, width: u16, parts: &[(&str, Color)], border_color: Color) {
+    pub fn draw_header_line(
+        &mut self,
+        x: u16,
+        y: u16,
+        width: u16,
+        parts: &[(&str, Color)],
+        border_color: Color,
+    ) {
         if width < 4 {
             return;
         }
@@ -500,7 +517,14 @@ impl<'a> RenderContext<'a> {
     }
 
     /// Draw bold text clipped to max_width
-    pub fn draw_text_clipped_bold(&mut self, x: u16, y: u16, text: &str, fg: Color, max_width: u16) {
+    pub fn draw_text_clipped_bold(
+        &mut self,
+        x: u16,
+        y: u16,
+        text: &str,
+        fg: Color,
+        max_width: u16,
+    ) {
         for (i, ch) in text.chars().enumerate() {
             if (i as u16) >= max_width {
                 break;
@@ -593,7 +617,15 @@ impl<'a> RenderContext<'a> {
     }
 
     /// Draw a single-line box with a title
-    pub fn draw_box_titled_single(&mut self, x: u16, y: u16, w: u16, h: u16, title: &str, fg: Color) {
+    pub fn draw_box_titled_single(
+        &mut self,
+        x: u16,
+        y: u16,
+        w: u16,
+        h: u16,
+        title: &str,
+        fg: Color,
+    ) {
         if w < 2 || h < 2 {
             return;
         }
@@ -625,7 +657,15 @@ impl<'a> RenderContext<'a> {
     }
 
     /// Draw a double-line box with a title
-    pub fn draw_box_titled_double(&mut self, x: u16, y: u16, w: u16, h: u16, title: &str, fg: Color) {
+    pub fn draw_box_titled_double(
+        &mut self,
+        x: u16,
+        y: u16,
+        w: u16,
+        h: u16,
+        title: &str,
+        fg: Color,
+    ) {
         if w < 2 || h < 2 {
             return;
         }
@@ -737,7 +777,14 @@ impl<'a> RenderContext<'a> {
     }
 
     /// Draw segments with a separator between them
-    pub fn draw_segments_sep(&mut self, x: u16, y: u16, segments: &[(&str, Color)], sep: &str, sep_color: Color) -> u16 {
+    pub fn draw_segments_sep(
+        &mut self,
+        x: u16,
+        y: u16,
+        segments: &[(&str, Color)],
+        sep: &str,
+        sep_color: Color,
+    ) -> u16 {
         let mut cx = x;
         for (i, (text, color)) in segments.iter().enumerate() {
             if i > 0 {
@@ -756,7 +803,14 @@ impl<'a> RenderContext<'a> {
     /// ```ignore
     /// ctx.draw_key_hints(x, y, &[("j/k", "Move"), ("m", "Mount")], Color::CYAN, Color::GRAY);
     /// ```
-    pub fn draw_key_hints(&mut self, x: u16, y: u16, hints: &[(&str, &str)], key_color: Color, action_color: Color) -> u16 {
+    pub fn draw_key_hints(
+        &mut self,
+        x: u16,
+        y: u16,
+        hints: &[(&str, &str)],
+        key_color: Color,
+        action_color: Color,
+    ) -> u16 {
         let mut cx = x;
         for (key, action) in hints {
             self.draw_text_bold(cx, y, key, key_color);
@@ -768,7 +822,15 @@ impl<'a> RenderContext<'a> {
     }
 
     /// Draw text with selection styling (bold + highlight color when selected)
-    pub fn draw_text_selectable(&mut self, x: u16, y: u16, text: &str, selected: bool, normal_color: Color, selected_color: Color) {
+    pub fn draw_text_selectable(
+        &mut self,
+        x: u16,
+        y: u16,
+        text: &str,
+        selected: bool,
+        normal_color: Color,
+        selected_color: Color,
+    ) {
         if selected {
             self.draw_text_bold(x, y, text, selected_color);
         } else {
@@ -779,7 +841,14 @@ impl<'a> RenderContext<'a> {
     /// Get color based on value thresholds (for metrics)
     ///
     /// Returns low_color if value < mid, mid_color if value < high, else high_color
-    pub fn metric_color(value: u8, mid: u8, high: u8, low_color: Color, mid_color: Color, high_color: Color) -> Color {
+    pub fn metric_color(
+        value: u8,
+        mid: u8,
+        high: u8,
+        low_color: Color,
+        mid_color: Color,
+        high_color: Color,
+    ) -> Color {
         if value < mid {
             low_color
         } else if value < high {
@@ -807,7 +876,11 @@ impl<'a> RenderContext<'a> {
         self.style
             .map(|s| {
                 let c = s.visual.color;
-                if c == Color::default() { default } else { c }
+                if c == Color::default() {
+                    default
+                } else {
+                    c
+                }
             })
             .unwrap_or(default)
     }
@@ -817,7 +890,11 @@ impl<'a> RenderContext<'a> {
         self.style
             .map(|s| {
                 let c = s.visual.background;
-                if c == Color::default() { default } else { c }
+                if c == Color::default() {
+                    default
+                } else {
+                    c
+                }
             })
             .unwrap_or(default)
     }
@@ -827,7 +904,11 @@ impl<'a> RenderContext<'a> {
         self.style
             .map(|s| {
                 let c = s.visual.border_color;
-                if c == Color::default() { default } else { c }
+                if c == Color::default() {
+                    default
+                } else {
+                    c
+                }
             })
             .unwrap_or(default)
     }
@@ -864,7 +945,9 @@ impl<'a> RenderContext<'a> {
 
     /// Get border style from CSS
     pub fn css_border_style(&self) -> crate::style::BorderStyle {
-        self.style.map(|s| s.visual.border_style).unwrap_or_default()
+        self.style
+            .map(|s| s.visual.border_style)
+            .unwrap_or_default()
     }
 
     /// Get gap from CSS style (for flex/grid layouts)
@@ -933,7 +1016,15 @@ impl<'a> RenderContext<'a> {
     ///     ctx.draw_focus_ring(x, y, w, h, Color::CYAN, FocusStyle::Dotted);
     /// }
     /// ```
-    pub fn draw_focus_ring(&mut self, x: u16, y: u16, w: u16, h: u16, color: Color, style: FocusStyle) {
+    pub fn draw_focus_ring(
+        &mut self,
+        x: u16,
+        y: u16,
+        w: u16,
+        h: u16,
+        color: Color,
+        style: FocusStyle,
+    ) {
         if w < 2 || h < 2 {
             return;
         }
@@ -1100,7 +1191,10 @@ pub trait View {
 
     /// Get widget type name (for CSS type selectors)
     fn widget_type(&self) -> &'static str {
-        std::any::type_name::<Self>().rsplit("::").next().unwrap_or("Unknown")
+        std::any::type_name::<Self>()
+            .rsplit("::")
+            .next()
+            .unwrap_or("Unknown")
     }
 
     /// Get element ID (for CSS #id selectors)
@@ -1214,7 +1308,11 @@ pub trait Interactive: View {
     /// # Arguments
     /// * `event` - The mouse event with position and kind
     /// * `area` - The widget's rendered area for hit testing
-    fn handle_mouse(&mut self, event: &crate::event::MouseEvent, area: crate::layout::Rect) -> EventResult {
+    fn handle_mouse(
+        &mut self,
+        event: &crate::event::MouseEvent,
+        area: crate::layout::Rect,
+    ) -> EventResult {
         let _ = (event, area);
         EventResult::Ignored
     }
@@ -1422,9 +1520,19 @@ pub struct WidgetState {
 }
 
 /// Default disabled foreground color
-pub const DISABLED_FG: Color = Color { r: 100, g: 100, b: 100, a: 255 };
+pub const DISABLED_FG: Color = Color {
+    r: 100,
+    g: 100,
+    b: 100,
+    a: 255,
+};
 /// Default disabled background color
-pub const DISABLED_BG: Color = Color { r: 50, g: 50, b: 50, a: 255 };
+pub const DISABLED_BG: Color = Color {
+    r: 50,
+    g: 50,
+    b: 50,
+    a: 255,
+};
 
 impl WidgetState {
     /// Create a new default widget state
@@ -2159,9 +2267,7 @@ mod tests {
         use crate::widget::Text;
 
         // Create a Text widget with classes
-        let widget = Text::new("Test")
-            .class("btn")
-            .class("primary");
+        let widget = Text::new("Test").class("btn").class("primary");
 
         // Verify classes are accessible via View trait
         let classes = View::classes(&widget);

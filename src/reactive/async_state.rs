@@ -219,7 +219,13 @@ where
 ///     poll(); // Call each tick to check for completion
 /// }
 /// ```
-pub fn use_async_poll<T, F>(f: F) -> (Signal<AsyncState<T>>, impl Fn() + Clone, impl Fn() -> bool + Clone)
+pub fn use_async_poll<T, F>(
+    f: F,
+) -> (
+    Signal<AsyncState<T>>,
+    impl Fn() + Clone,
+    impl Fn() -> bool + Clone,
+)
 where
     T: Clone + Send + Sync + 'static,
     F: Fn() -> AsyncResult<T> + Send + Sync + Clone + 'static,
@@ -410,9 +416,7 @@ mod tests {
 
     #[test]
     fn test_use_async_error() {
-        let (state, trigger) = use_async::<i32, _>(|| {
-            Err("Something went wrong".to_string())
-        });
+        let (state, trigger) = use_async::<i32, _>(|| Err("Something went wrong".to_string()));
 
         trigger();
 

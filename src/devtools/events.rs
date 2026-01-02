@@ -1,9 +1,9 @@
 //! Event logger for debugging event flow
 
+use super::DevToolsConfig;
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use super::DevToolsConfig;
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
@@ -198,7 +198,9 @@ impl EventFilter {
         // Check event type
         let type_match = match event.event_type {
             EventType::KeyPress | EventType::KeyRelease => self.show_keys,
-            EventType::MouseClick | EventType::MouseMove | EventType::MouseScroll => self.show_mouse,
+            EventType::MouseClick | EventType::MouseMove | EventType::MouseScroll => {
+                self.show_mouse
+            }
             EventType::FocusIn | EventType::FocusOut => self.show_focus,
             EventType::Resize => self.show_resize,
             EventType::Custom => self.show_custom,
@@ -341,7 +343,10 @@ impl EventLogger {
 
     /// Log a mouse click
     pub fn log_click(&mut self, x: u16, y: u16, button: &str) -> u64 {
-        self.log(EventType::MouseClick, format!("{} @ ({}, {})", button, x, y))
+        self.log(
+            EventType::MouseClick,
+            format!("{} @ ({}, {})", button, x, y),
+        )
     }
 
     /// Log a mouse move
@@ -351,7 +356,11 @@ impl EventLogger {
 
     /// Log focus change
     pub fn log_focus(&mut self, target: &str, gained: bool) -> u64 {
-        let event_type = if gained { EventType::FocusIn } else { EventType::FocusOut };
+        let event_type = if gained {
+            EventType::FocusIn
+        } else {
+            EventType::FocusOut
+        };
         let mut event = LoggedEvent::new(self.next_id, event_type, target);
         event.target = Some(target.to_string());
 
@@ -382,7 +391,8 @@ impl EventLogger {
 
     /// Get filtered events
     fn filtered(&self) -> Vec<&LoggedEvent> {
-        self.events.iter()
+        self.events
+            .iter()
             .filter(|e| self.filter.matches(e))
             .collect()
     }
@@ -444,17 +454,29 @@ impl EventLogger {
         let max_y = area.y + area.height;
 
         // Header
-        let status = if self.paused { "⏸ PAUSED" } else { "● Recording" };
+        let status = if self.paused {
+            "⏸ PAUSED"
+        } else {
+            "● Recording"
+        };
         let header = format!("{} | {} events", status, self.filtered_count());
         self.draw_text(buffer, area.x, y, &header, config.accent_color);
         y += 1;
 
         // Filter info
         let mut filters = Vec::new();
-        if self.filter.show_keys { filters.push("Keys"); }
-        if self.filter.show_mouse { filters.push("Mouse"); }
-        if self.filter.show_focus { filters.push("Focus"); }
-        if self.filter.show_resize { filters.push("Resize"); }
+        if self.filter.show_keys {
+            filters.push("Keys");
+        }
+        if self.filter.show_mouse {
+            filters.push("Mouse");
+        }
+        if self.filter.show_focus {
+            filters.push("Focus");
+        }
+        if self.filter.show_resize {
+            filters.push("Resize");
+        }
         let filter_str = format!("Showing: {}", filters.join(", "));
         self.draw_text(buffer, area.x, y, &filter_str, config.fg_color);
         y += 2;
@@ -513,7 +535,11 @@ impl EventLogger {
         } else {
             event.event_type.color()
         };
-        let bg = if selected { Some(config.accent_color) } else { None };
+        let bg = if selected {
+            Some(config.accent_color)
+        } else {
+            None
+        };
 
         for (i, ch) in line.chars().enumerate() {
             if (i as u16) < width {
@@ -528,7 +554,14 @@ impl EventLogger {
         }
     }
 
-    fn render_separator(&self, buffer: &mut Buffer, x: u16, y: u16, width: u16, config: &DevToolsConfig) {
+    fn render_separator(
+        &self,
+        buffer: &mut Buffer,
+        x: u16,
+        y: u16,
+        width: u16,
+        config: &DevToolsConfig,
+    ) {
         for px in x..x + width {
             if let Some(cell) = buffer.get_mut(px, y) {
                 cell.symbol = '─';
@@ -552,7 +585,11 @@ impl EventLogger {
             event.id,
             event.event_type.label(),
             target,
-            if event.handled { "Handled" } else { "Not handled" }
+            if event.handled {
+                "Handled"
+            } else {
+                "Not handled"
+            }
         );
         self.draw_text(buffer, x, y, &details, config.fg_color);
     }
@@ -673,7 +710,11 @@ mod tests {
         ];
 
         for event in &events {
-            assert!(filter.matches(event), "Filter should match {:?}", event.event_type);
+            assert!(
+                filter.matches(event),
+                "Filter should match {:?}",
+                event.event_type
+            );
         }
     }
 }

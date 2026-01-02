@@ -61,7 +61,11 @@ impl Selection {
     /// Move to previous item (wraps to end at 0)
     pub fn prev(&mut self) {
         if self.len > 0 {
-            self.index = if self.index == 0 { self.len - 1 } else { self.index - 1 };
+            self.index = if self.index == 0 {
+                self.len - 1
+            } else {
+                self.index - 1
+            };
             self.ensure_visible();
         }
     }
@@ -200,12 +204,22 @@ impl Selection {
 
 /// Wrap index forward (standalone function)
 pub fn wrap_next(index: usize, len: usize) -> usize {
-    if len == 0 { 0 } else { (index + 1) % len }
+    if len == 0 {
+        0
+    } else {
+        (index + 1) % len
+    }
 }
 
 /// Wrap index backward (standalone function)
 pub fn wrap_prev(index: usize, len: usize) -> usize {
-    if len == 0 { 0 } else if index == 0 { len - 1 } else { index - 1 }
+    if len == 0 {
+        0
+    } else if index == 0 {
+        len - 1
+    } else {
+        index - 1
+    }
 }
 
 // ============================================================================

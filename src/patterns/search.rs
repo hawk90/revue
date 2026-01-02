@@ -296,7 +296,9 @@ mod tests {
         assert!(search.matches("Apple")); // case insensitive by default, so matches
 
         // With case sensitive
-        let mut search_cs = SearchState::new().mode(SearchMode::Exact).case_sensitive(true);
+        let mut search_cs = SearchState::new()
+            .mode(SearchMode::Exact)
+            .case_sensitive(true);
         search_cs.set_query("apple");
         assert!(!search_cs.matches("Apple")); // now it doesn't match
     }

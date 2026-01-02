@@ -3,10 +3,10 @@
 //! Create beautiful terminal-based presentations with slides,
 //! transitions, and speaker notes.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Slide transition effect
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -342,13 +342,25 @@ impl Presentation {
         // Author
         if !self.author.is_empty() {
             let author_y = center_y + 1;
-            self.render_centered_text(ctx, &self.author, author_y, Color::rgb(150, 150, 150), Modifier::ITALIC);
+            self.render_centered_text(
+                ctx,
+                &self.author,
+                author_y,
+                Color::rgb(150, 150, 150),
+                Modifier::ITALIC,
+            );
         }
 
         // Press key hint
         let hint = "Press → or Space to start";
         let hint_y = area.height - 2;
-        self.render_centered_text(ctx, hint, hint_y, Color::rgb(100, 100, 100), Modifier::empty());
+        self.render_centered_text(
+            ctx,
+            hint,
+            hint_y,
+            Color::rgb(100, 100, 100),
+            Modifier::empty(),
+        );
     }
 
     /// Render a content slide
@@ -367,7 +379,13 @@ impl Presentation {
 
         // Title (top center)
         let title_y = 2;
-        self.render_centered_text(ctx, &slide.title, title_y, slide.title_color, Modifier::BOLD);
+        self.render_centered_text(
+            ctx,
+            &slide.title,
+            title_y,
+            slide.title_color,
+            Modifier::BOLD,
+        );
 
         // Separator
         let sep_y = 4;
@@ -376,7 +394,8 @@ impl Presentation {
         for i in 0..sep_len {
             let mut cell = Cell::new('─');
             cell.fg = Some(self.accent);
-            ctx.buffer.set(area.x + sep_start as u16 + i as u16, area.y + sep_y, cell);
+            ctx.buffer
+                .set(area.x + sep_start as u16 + i as u16, area.y + sep_y, cell);
         }
 
         // Content
@@ -399,7 +418,13 @@ impl Presentation {
                     }
                 }
                 SlideAlign::Center => {
-                    self.render_centered_text(ctx, line, y - area.y, slide.content_color, Modifier::empty());
+                    self.render_centered_text(
+                        ctx,
+                        line,
+                        y - area.y,
+                        slide.content_color,
+                        Modifier::empty(),
+                    );
                 }
                 SlideAlign::Right => {
                     let line_len = line.chars().count();
@@ -415,7 +440,14 @@ impl Presentation {
     }
 
     /// Render centered text
-    fn render_centered_text(&self, ctx: &mut RenderContext, text: &str, y: u16, fg: Color, modifier: Modifier) {
+    fn render_centered_text(
+        &self,
+        ctx: &mut RenderContext,
+        text: &str,
+        y: u16,
+        fg: Color,
+        modifier: Modifier,
+    ) {
         let area = ctx.area;
         let text_len = text.chars().count();
         let start_x = (area.width as usize).saturating_sub(text_len) / 2;
@@ -457,7 +489,11 @@ impl Presentation {
             for i in 0..bar_width {
                 let ch = if i < filled { '━' } else { '─' };
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(if i < filled { self.accent } else { Color::rgb(60, 60, 60) });
+                cell.fg = Some(if i < filled {
+                    self.accent
+                } else {
+                    Color::rgb(60, 60, 60)
+                });
                 ctx.buffer.set(area.x + 1 + i, footer_y, cell);
             }
         }
@@ -513,14 +549,12 @@ pub fn slide(title: impl Into<String>) -> Slide {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_presentation_creation() {
-        let pres = Presentation::new()
-            .title("Test")
-            .author("Author");
+        let pres = Presentation::new().title("Test").author("Author");
         assert_eq!(pres.slide_count(), 0);
     }
 

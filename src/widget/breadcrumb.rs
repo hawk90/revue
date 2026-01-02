@@ -2,10 +2,10 @@
 //!
 //! Shows hierarchical navigation path with clickable segments.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Breadcrumb item
 #[derive(Clone, Debug)]
@@ -356,12 +356,20 @@ impl View for Breadcrumb {
 
             if let Some(icon) = item.icon {
                 let mut cell = Cell::new(icon);
-                cell.fg = Some(if is_selected { self.selected_color } else { self.item_color });
+                cell.fg = Some(if is_selected {
+                    self.selected_color
+                } else {
+                    self.item_color
+                });
                 ctx.buffer.set(x, y, cell);
                 x += 2;
             }
 
-            let color = if is_selected { self.selected_color } else { self.item_color };
+            let color = if is_selected {
+                self.selected_color
+            } else {
+                self.item_color
+            };
             for ch in item.label.chars() {
                 if x >= area.x + max_width - 10 {
                     break;
@@ -417,13 +425,21 @@ impl View for Breadcrumb {
             // Icon
             if let Some(icon) = item.icon {
                 let mut cell = Cell::new(icon);
-                cell.fg = Some(if is_selected { self.selected_color } else { self.item_color });
+                cell.fg = Some(if is_selected {
+                    self.selected_color
+                } else {
+                    self.item_color
+                });
                 ctx.buffer.set(x, y, cell);
                 x += 2;
             }
 
             // Label
-            let color = if is_selected { self.selected_color } else { self.item_color };
+            let color = if is_selected {
+                self.selected_color
+            } else {
+                self.item_color
+            };
             for ch in item.label.chars() {
                 if x >= area.x + max_width {
                     break;
@@ -465,8 +481,8 @@ pub fn crumb(label: impl Into<String>) -> BreadcrumbItem {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_breadcrumb_item() {
@@ -501,10 +517,7 @@ mod tests {
 
     #[test]
     fn test_breadcrumb_selection() {
-        let mut bc = Breadcrumb::new()
-            .push("A")
-            .push("B")
-            .push("C");
+        let mut bc = Breadcrumb::new().push("A").push("B").push("C");
 
         assert_eq!(bc.selected(), 2);
 
@@ -523,11 +536,7 @@ mod tests {
 
     #[test]
     fn test_breadcrumb_navigate() {
-        let mut bc = Breadcrumb::new()
-            .push("A")
-            .push("B")
-            .push("C")
-            .push("D");
+        let mut bc = Breadcrumb::new().push("A").push("B").push("C").push("D");
 
         bc.navigate_to(1);
         assert_eq!(bc.len(), 2);
@@ -536,9 +545,7 @@ mod tests {
 
     #[test]
     fn test_breadcrumb_pop() {
-        let mut bc = Breadcrumb::new()
-            .push("A")
-            .push("B");
+        let mut bc = Breadcrumb::new().push("A").push("B");
 
         let item = bc.pop();
         assert_eq!(item.unwrap().label, "B");
@@ -557,9 +564,7 @@ mod tests {
     fn test_handle_key() {
         use crate::event::Key;
 
-        let mut bc = Breadcrumb::new()
-            .push("A")
-            .push("B");
+        let mut bc = Breadcrumb::new().push("A").push("B");
 
         bc.set_selected(0);
         assert!(bc.handle_key(&Key::Right));
@@ -586,8 +591,7 @@ mod tests {
 
     #[test]
     fn test_helpers() {
-        let bc = breadcrumb()
-            .item(crumb("Test"));
+        let bc = breadcrumb().item(crumb("Test"));
 
         assert_eq!(bc.len(), 1);
     }

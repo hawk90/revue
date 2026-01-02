@@ -3,10 +3,10 @@
 //! Renders flowcharts, sequence diagrams, and other diagrams
 //! using ASCII/Unicode art.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 use std::collections::HashMap;
 
 /// Diagram type
@@ -295,10 +295,16 @@ impl Diagram {
 
                 // Add nodes if not exists
                 if !self.nodes.iter().any(|n| n.id == from_id) {
-                    self.nodes.push(DiagramNode::new(&from_id, from_label.unwrap_or_else(|| from_id.clone())));
+                    self.nodes.push(DiagramNode::new(
+                        &from_id,
+                        from_label.unwrap_or_else(|| from_id.clone()),
+                    ));
                 }
                 if !self.nodes.iter().any(|n| n.id == to_id) {
-                    self.nodes.push(DiagramNode::new(&to_id, to_label.unwrap_or_else(|| to_id.clone())));
+                    self.nodes.push(DiagramNode::new(
+                        &to_id,
+                        to_label.unwrap_or_else(|| to_id.clone()),
+                    ));
                 }
 
                 let mut edge = DiagramEdge::new(from_id, to_id);
@@ -372,12 +378,21 @@ impl Diagram {
             let y = row * cell_height + (cell_height - node_height) / 2;
 
             self.positions.insert(node.id.clone(), (x, y));
-            self.sizes.insert(node.id.clone(), (node_width, node_height));
+            self.sizes
+                .insert(node.id.clone(), (node_width, node_height));
         }
     }
 
     /// Render a node
-    fn render_node(&self, ctx: &mut RenderContext, node: &DiagramNode, x: u16, y: u16, width: u16, _height: u16) {
+    fn render_node(
+        &self,
+        ctx: &mut RenderContext,
+        node: &DiagramNode,
+        x: u16,
+        y: u16,
+        width: u16,
+        _height: u16,
+    ) {
         let area = ctx.area;
         let fg = node.color.unwrap_or(self.colors.node_fg);
         let bg = node.bg.or(Some(self.colors.node_bg));
@@ -418,7 +433,11 @@ impl Diagram {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(fg);
                     cell.bg = bg;
-                    ctx.buffer.set(area.x + x + label_start as u16 + i as u16, area.y + y + 1, cell);
+                    ctx.buffer.set(
+                        area.x + x + label_start as u16 + i as u16,
+                        area.y + y + 1,
+                        cell,
+                    );
                 }
 
                 // Bottom border
@@ -447,7 +466,8 @@ impl Diagram {
                 for (i, ch) in node.label.chars().enumerate() {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(fg);
-                    ctx.buffer.set(area.x + x + 1 + i as u16, area.y + y + 1, cell);
+                    ctx.buffer
+                        .set(area.x + x + 1 + i as u16, area.y + y + 1, cell);
                 }
 
                 let mut cell = Cell::new('>');
@@ -472,10 +492,18 @@ impl Diagram {
     fn render_edge(&self, ctx: &mut RenderContext, edge: &DiagramEdge) {
         let area = ctx.area;
 
-        let Some(&(x1, y1)) = self.positions.get(&edge.from) else { return };
-        let Some(&(w1, h1)) = self.sizes.get(&edge.from) else { return };
-        let Some(&(x2, y2)) = self.positions.get(&edge.to) else { return };
-        let Some(&(w2, _h2)) = self.sizes.get(&edge.to) else { return };
+        let Some(&(x1, y1)) = self.positions.get(&edge.from) else {
+            return;
+        };
+        let Some(&(w1, h1)) = self.sizes.get(&edge.from) else {
+            return;
+        };
+        let Some(&(x2, y2)) = self.positions.get(&edge.to) else {
+            return;
+        };
+        let Some(&(w2, _h2)) = self.sizes.get(&edge.to) else {
+            return;
+        };
 
         // Simple arrow: draw from bottom of source to top of target
         let start_x = x1 + w1 / 2;
@@ -519,7 +547,8 @@ impl Diagram {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.colors.label);
                 cell.modifier = Modifier::ITALIC;
-                ctx.buffer.set(area.x + label_x + i as u16, area.y + label_y, cell);
+                ctx.buffer
+                    .set(area.x + label_x + i as u16, area.y + label_y, cell);
             }
         }
     }
@@ -578,10 +607,9 @@ impl View for Diagram {
 
         // Render nodes
         for node in &diagram.nodes {
-            if let (Some(&(x, y)), Some(&(w, h))) = (
-                diagram.positions.get(&node.id),
-                diagram.sizes.get(&node.id)
-            ) {
+            if let (Some(&(x, y)), Some(&(w, h))) =
+                (diagram.positions.get(&node.id), diagram.sizes.get(&node.id))
+            {
                 diagram.render_node(ctx, node, x, y + title_height, w, h);
             }
         }
@@ -616,8 +644,8 @@ pub fn edge(from: impl Into<String>, to: impl Into<String>) -> DiagramEdge {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_diagram_creation() {

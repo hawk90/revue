@@ -3,10 +3,10 @@
 //! Provides horizontal and vertical sliders with customizable
 //! ranges, steps, and visual styles.
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Slider orientation
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -273,13 +273,13 @@ impl Slider {
         }
 
         match (&self.orientation, key) {
-            (SliderOrientation::Horizontal, Key::Right | Key::Char('l')) |
-            (SliderOrientation::Vertical, Key::Up | Key::Char('k')) => {
+            (SliderOrientation::Horizontal, Key::Right | Key::Char('l'))
+            | (SliderOrientation::Vertical, Key::Up | Key::Char('k')) => {
                 self.increment();
                 true
             }
-            (SliderOrientation::Horizontal, Key::Left | Key::Char('h')) |
-            (SliderOrientation::Vertical, Key::Down | Key::Char('j')) => {
+            (SliderOrientation::Horizontal, Key::Left | Key::Char('h'))
+            | (SliderOrientation::Vertical, Key::Down | Key::Char('j')) => {
                 self.decrement();
                 true
             }
@@ -319,7 +319,11 @@ impl Slider {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(if self.disabled { Color::rgb(100, 100, 100) } else { Color::WHITE });
+                cell.fg = Some(if self.disabled {
+                    Color::rgb(100, 100, 100)
+                } else {
+                    Color::WHITE
+                });
                 ctx.buffer.set(x + i as u16, y, cell);
             }
             x += label.len() as u16 + 1;
@@ -333,9 +337,17 @@ impl Slider {
             SliderStyle::Block => {
                 for i in 0..track_len {
                     let ch = if i <= filled { '█' } else { '░' };
-                    let fg = if i <= filled { self.fill_color } else { self.track_color };
+                    let fg = if i <= filled {
+                        self.fill_color
+                    } else {
+                        self.track_color
+                    };
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled { Color::rgb(80, 80, 80) } else { fg });
+                    cell.fg = Some(if self.disabled {
+                        Color::rgb(80, 80, 80)
+                    } else {
+                        fg
+                    });
                     ctx.buffer.set(x + i, y, cell);
                 }
             }
@@ -351,7 +363,11 @@ impl Slider {
                         self.track_color
                     };
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled { Color::rgb(80, 80, 80) } else { fg });
+                    cell.fg = Some(if self.disabled {
+                        Color::rgb(80, 80, 80)
+                    } else {
+                        fg
+                    });
                     ctx.buffer.set(x + i, y, cell);
                 }
             }
@@ -359,9 +375,17 @@ impl Slider {
                 for i in 0..track_len {
                     let is_knob = i == filled;
                     let ch = if is_knob { '┃' } else { '─' };
-                    let fg = if is_knob { self.knob_color } else { self.track_color };
+                    let fg = if is_knob {
+                        self.knob_color
+                    } else {
+                        self.track_color
+                    };
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled { Color::rgb(80, 80, 80) } else { fg });
+                    cell.fg = Some(if self.disabled {
+                        Color::rgb(80, 80, 80)
+                    } else {
+                        fg
+                    });
                     ctx.buffer.set(x + i, y, cell);
                 }
             }
@@ -385,16 +409,28 @@ impl Slider {
                         self.track_color
                     };
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled { Color::rgb(80, 80, 80) } else { fg });
+                    cell.fg = Some(if self.disabled {
+                        Color::rgb(80, 80, 80)
+                    } else {
+                        fg
+                    });
                     ctx.buffer.set(x + i, y, cell);
                 }
             }
             SliderStyle::Dots => {
                 for i in 0..track_len {
                     let ch = if i <= filled { '●' } else { '○' };
-                    let fg = if i <= filled { self.fill_color } else { self.track_color };
+                    let fg = if i <= filled {
+                        self.fill_color
+                    } else {
+                        self.track_color
+                    };
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled { Color::rgb(80, 80, 80) } else { fg });
+                    cell.fg = Some(if self.disabled {
+                        Color::rgb(80, 80, 80)
+                    } else {
+                        fg
+                    });
                     ctx.buffer.set(x + i, y, cell);
                 }
             }
@@ -411,7 +447,11 @@ impl Slider {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(if self.focused { Color::CYAN } else { Color::WHITE });
+                cell.fg = Some(if self.focused {
+                    Color::CYAN
+                } else {
+                    Color::WHITE
+                });
                 if self.focused {
                     cell.modifier |= Modifier::BOLD;
                 }
@@ -423,7 +463,8 @@ impl Slider {
         if self.show_ticks && area.height > 1 {
             let tick_y = y + 1;
             for i in 0..self.tick_count {
-                let tick_x = area.x + (self.label.as_ref().map(|l| l.len() + 1).unwrap_or(0) as u16)
+                let tick_x = area.x
+                    + (self.label.as_ref().map(|l| l.len() + 1).unwrap_or(0) as u16)
                     + (i as f64 / (self.tick_count - 1) as f64 * (track_len - 1) as f64) as u16;
                 if tick_x < area.x + area.width {
                     let mut cell = Cell::new('┴');
@@ -457,7 +498,14 @@ impl Slider {
                     if from_bottom == filled {
                         ('●', self.knob_color)
                     } else {
-                        ('│', if from_bottom < filled { self.fill_color } else { self.track_color })
+                        (
+                            '│',
+                            if from_bottom < filled {
+                                self.fill_color
+                            } else {
+                                self.track_color
+                            },
+                        )
                     }
                 }
                 SliderStyle::Gradient | SliderStyle::Dots => {
@@ -470,7 +518,11 @@ impl Slider {
             };
 
             let mut cell = Cell::new(ch);
-            cell.fg = Some(if self.disabled { Color::rgb(80, 80, 80) } else { fg });
+            cell.fg = Some(if self.disabled {
+                Color::rgb(80, 80, 80)
+            } else {
+                fg
+            });
             ctx.buffer.set(x, y, cell);
         }
 
@@ -483,7 +535,11 @@ impl Slider {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(if self.focused { Color::CYAN } else { Color::WHITE });
+                cell.fg = Some(if self.focused {
+                    Color::CYAN
+                } else {
+                    Color::WHITE
+                });
                 ctx.buffer.set(x + 2 + i as u16, value_y, cell);
             }
         }
@@ -536,9 +592,8 @@ pub fn volume_slider() -> Slider {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
-    
+    use crate::render::Buffer;
 
     #[test]
     fn test_slider_new() {

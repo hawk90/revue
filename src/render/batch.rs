@@ -19,25 +19,18 @@
 //! batch.flush(&mut terminal)?;
 //! ```
 
+use super::cell::{Cell, Modifier};
 use crate::layout::Rect;
 use crate::style::Color;
-use super::cell::{Cell, Modifier};
 
 /// A single render operation
 #[derive(Debug, Clone)]
 #[allow(missing_docs)] // Fields are self-explanatory from variant docs
 pub enum RenderOp {
     /// Set a single cell
-    SetCell {
-        x: u16,
-        y: u16,
-        cell: Cell,
-    },
+    SetCell { x: u16, y: u16, cell: Cell },
     /// Fill a rectangular region
-    FillRect {
-        rect: Rect,
-        cell: Cell,
-    },
+    FillRect { rect: Rect, cell: Cell },
     /// Draw horizontal line
     HLine {
         x: u16,
@@ -64,10 +57,7 @@ pub enum RenderOp {
     /// Clear screen
     Clear,
     /// Set cursor position
-    MoveCursor {
-        x: u16,
-        y: u16,
-    },
+    MoveCursor { x: u16, y: u16 },
     /// Show/hide cursor
     ShowCursor(bool),
 }
@@ -190,7 +180,14 @@ impl RenderBatch {
     }
 
     /// Draw text
-    pub fn text(&mut self, x: u16, y: u16, text: impl Into<String>, fg: Option<Color>, bg: Option<Color>) {
+    pub fn text(
+        &mut self,
+        x: u16,
+        y: u16,
+        text: impl Into<String>,
+        fg: Option<Color>,
+        bg: Option<Color>,
+    ) {
         self.push(RenderOp::Text {
             x,
             y,
@@ -324,9 +321,9 @@ impl RenderBatch {
             let first_mod = pending_cells[0].1.modifier;
 
             // Check if all cells have same style
-            let same_style = pending_cells.iter().all(|(_, c)| {
-                c.fg == first_fg && c.bg == first_bg && c.modifier == first_mod
-            });
+            let same_style = pending_cells
+                .iter()
+                .all(|(_, c)| c.fg == first_fg && c.bg == first_bg && c.modifier == first_mod);
 
             if same_style {
                 // Convert to text operation
@@ -388,7 +385,14 @@ impl RenderBatch {
                         buffer.set(*x, *y + dy, cell.clone());
                     }
                 }
-                RenderOp::Text { x, y, text, fg, bg, modifier } => {
+                RenderOp::Text {
+                    x,
+                    y,
+                    text,
+                    fg,
+                    bg,
+                    modifier,
+                } => {
                     for (i, ch) in text.chars().enumerate() {
                         let mut cell = Cell::new(ch);
                         cell.fg = *fg;

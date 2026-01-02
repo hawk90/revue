@@ -319,8 +319,8 @@ mod tests {
             .col_right("C", 8)
             .spacing(1);
 
-        assert_eq!(table.column_offset(0), 2);  // after prefix
-        assert_eq!(table.column_offset(1), 7);  // 2 + 4 + 1
+        assert_eq!(table.column_offset(0), 2); // after prefix
+        assert_eq!(table.column_offset(1), 7); // 2 + 4 + 1
         assert_eq!(table.column_offset(2), 14); // 2 + 4 + 1 + 6 + 1
     }
 
@@ -338,8 +338,8 @@ mod tests {
         // HOST(4) + 4 spaces = 8, spacing = 1, 2 spaces + PING(4) = 6
         assert_eq!(header, "HOST       PING");
         // server1(7) + 1 space = 8, spacing = 1, 3 spaces + 3ms(3) = 6
-        assert_eq!(row1,   "server1     3ms");
+        assert_eq!(row1, "server1     3ms");
         // server2(7) + 1 space = 8, spacing = 1, 2 spaces + 15ms(4) = 6
-        assert_eq!(row2,   "server2    15ms");
+        assert_eq!(row2, "server2    15ms");
     }
 }

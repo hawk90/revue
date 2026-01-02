@@ -213,7 +213,10 @@ mod tests {
     #[test]
     fn test_confirm_action_message() {
         assert_eq!(ConfirmAction::Delete.message(), "Delete? (y/n)");
-        assert_eq!(ConfirmAction::OpenBrowser.message(), "Open in browser? (y/n)");
+        assert_eq!(
+            ConfirmAction::OpenBrowser.message(),
+            "Open in browser? (y/n)"
+        );
         assert_eq!(
             ConfirmAction::Custom("Really?".to_string()).message(),
             "Really?"

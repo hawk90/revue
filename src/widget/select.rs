@@ -1,10 +1,10 @@
 //! Select/Dropdown widget for choosing from a list of options
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::{fuzzy_match, FuzzyMatch};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// A select/dropdown widget with optional fuzzy search
 #[derive(Clone, Debug)]
@@ -156,7 +156,10 @@ impl Select {
     /// Select previous option
     pub fn select_prev(&mut self) {
         if !self.options.is_empty() {
-            self.selected = self.selected.checked_sub(1).unwrap_or(self.options.len() - 1);
+            self.selected = self
+                .selected
+                .checked_sub(1)
+                .unwrap_or(self.options.len() - 1);
         }
     }
 
@@ -224,12 +227,11 @@ impl Select {
         }
 
         // Collect matches with scores
-        let mut matches: Vec<(usize, i32)> = self.options
+        let mut matches: Vec<(usize, i32)> = self
+            .options
             .iter()
             .enumerate()
-            .filter_map(|(i, opt)| {
-                fuzzy_match(&self.query, opt).map(|m| (i, m.score))
-            })
+            .filter_map(|(i, opt)| fuzzy_match(&self.query, opt).map(|m| (i, m.score)))
             .collect();
 
         // Sort by score descending
@@ -264,7 +266,8 @@ impl Select {
     /// Select previous in filtered results
     fn select_prev_filtered(&mut self) {
         if !self.filtered.is_empty() {
-            self.filtered_selected = self.filtered_selected
+            self.filtered_selected = self
+                .filtered_selected
                 .checked_sub(1)
                 .unwrap_or(self.filtered.len() - 1);
             self.selected = self.filtered[self.filtered_selected];
@@ -362,7 +365,9 @@ impl Select {
             return w.min(max_width);
         }
 
-        let max_option_len = self.options.iter()
+        let max_option_len = self
+            .options
+            .iter()
             .map(|o| o.len())
             .max()
             .unwrap_or(self.placeholder.len());
@@ -406,7 +411,11 @@ impl View for Select {
         }
 
         // Draw arrow (or search icon when searching)
-        let icon = if self.open && self.searchable { "🔍".chars().next().unwrap_or('?') } else { arrow.chars().next().unwrap_or('▼') };
+        let icon = if self.open && self.searchable {
+            "🔍".chars().next().unwrap_or('?')
+        } else {
+            arrow.chars().next().unwrap_or('▼')
+        };
         let mut cell = Cell::new(icon);
         cell.fg = self.fg;
         cell.bg = self.bg;
@@ -429,12 +438,14 @@ impl View for Select {
             let visible_options: Vec<(usize, &String)> = if self.query.is_empty() {
                 self.options.iter().enumerate().collect()
             } else {
-                self.filtered.iter()
+                self.filtered
+                    .iter()
                     .filter_map(|&i| self.options.get(i).map(|opt| (i, opt)))
                     .collect()
             };
 
-            for (row, (option_idx, option)) in visible_options.iter().enumerate().take(max_visible) {
+            for (row, (option_idx, option)) in visible_options.iter().enumerate().take(max_visible)
+            {
                 let y = area.y + 1 + row as u16;
                 let is_selected = *option_idx == self.selected;
 
@@ -460,7 +471,8 @@ impl View for Select {
                 ctx.buffer.set(area.x, y, cell);
 
                 // Get fuzzy match indices for highlighting
-                let match_indices: Vec<usize> = self.get_match(option)
+                let match_indices: Vec<usize> = self
+                    .get_match(option)
                     .map(|m| m.indices)
                     .unwrap_or_default();
 
@@ -497,8 +509,8 @@ pub fn select() -> Select {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
     use crate::widget::StyledView;
 
     #[test]
@@ -522,8 +534,7 @@ mod tests {
 
     #[test]
     fn test_select_options_vec() {
-        let s = Select::new()
-            .options(vec!["One", "Two", "Three"]);
+        let s = Select::new().options(vec!["One", "Two", "Three"]);
 
         assert_eq!(s.len(), 3);
         assert_eq!(s.value(), Some("One"));
@@ -531,8 +542,7 @@ mod tests {
 
     #[test]
     fn test_select_navigation() {
-        let mut s = Select::new()
-            .options(vec!["A", "B", "C"]);
+        let mut s = Select::new().options(vec!["A", "B", "C"]);
 
         assert_eq!(s.selected_index(), 0);
 
@@ -577,8 +587,7 @@ mod tests {
     fn test_select_handle_key() {
         use crate::event::Key;
 
-        let mut s = Select::new()
-            .options(vec!["X", "Y", "Z"]);
+        let mut s = Select::new().options(vec!["X", "Y", "Z"]);
 
         // Toggle open
         s.handle_key(&Key::Enter);
@@ -621,8 +630,7 @@ mod tests {
         let area = Rect::new(0, 0, 20, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let mut s = Select::new()
-            .options(vec!["Apple", "Banana"]);
+        let mut s = Select::new().options(vec!["Apple", "Banana"]);
         s.open();
 
         s.render(&mut ctx);
@@ -635,9 +643,7 @@ mod tests {
 
     #[test]
     fn test_select_helper() {
-        let s = select()
-            .option("Test")
-            .placeholder("Pick one");
+        let s = select().option("Test").placeholder("Pick one");
 
         assert_eq!(s.len(), 1);
     }
@@ -723,9 +729,7 @@ mod tests {
 
     #[test]
     fn test_select_get_match() {
-        let mut s = Select::new()
-            .options(vec!["Hello World"])
-            .searchable(true);
+        let mut s = Select::new().options(vec!["Hello World"]).searchable(true);
 
         // No match when no query
         assert!(s.get_match("Hello World").is_none());

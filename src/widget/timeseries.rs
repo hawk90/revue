@@ -26,10 +26,10 @@
 //!     .time_format(TimeFormat::Auto);
 //! ```
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// A single data point in a time series
 #[derive(Debug, Clone)]
@@ -514,7 +514,8 @@ impl View for TimeSeries {
         // Title
         if let Some(ref title) = self.title {
             let title_x = area.x + (area.width.saturating_sub(title.len() as u16)) / 2;
-            ctx.buffer.put_str_styled(title_x, current_y, title, Some(Color::WHITE), self.bg_color);
+            ctx.buffer
+                .put_str_styled(title_x, current_y, title, Some(Color::WHITE), self.bg_color);
             current_y += 1;
         }
 
@@ -528,9 +529,16 @@ impl View for TimeSeries {
                     TimeLineStyle::Dotted => "·",
                     TimeLineStyle::Step => "┐",
                 };
-                ctx.buffer.put_str_styled(x, current_y, marker, Some(series.color), self.bg_color);
+                ctx.buffer
+                    .put_str_styled(x, current_y, marker, Some(series.color), self.bg_color);
                 x += 2;
-                ctx.buffer.put_str_styled(x, current_y, &series.name, Some(Color::WHITE), self.bg_color);
+                ctx.buffer.put_str_styled(
+                    x,
+                    current_y,
+                    &series.name,
+                    Some(Color::WHITE),
+                    self.bg_color,
+                );
                 x += series.name.len() as u16 + 3;
             }
             current_y += 1;
@@ -573,14 +581,16 @@ impl View for TimeSeries {
                     format!("{:.2}", val)
                 };
                 let label_x = area.x + y_label_width.saturating_sub(label.len() as u16 + 1);
-                ctx.buffer.put_str_styled(label_x, y, &label, Some(Color::WHITE), self.bg_color);
+                ctx.buffer
+                    .put_str_styled(label_x, y, &label, Some(Color::WHITE), self.bg_color);
             }
         }
 
         // Draw markers
         for marker in &self.markers {
             if marker.timestamp >= time_min && marker.timestamp <= time_max && time_range > 0 {
-                let x_pos = ((marker.timestamp - time_min) as f64 / time_range as f64 * (plot_width - 1) as f64) as u16;
+                let x_pos = ((marker.timestamp - time_min) as f64 / time_range as f64
+                    * (plot_width - 1) as f64) as u16;
                 let x = plot_x + x_pos;
 
                 match marker.style {
@@ -600,14 +610,22 @@ impl View for TimeSeries {
 
                 if !marker.label.is_empty() {
                     let label_x = x.saturating_sub(marker.label.len() as u16 / 2);
-                    ctx.buffer.put_str_styled(label_x, plot_y + plot_height + 1, &marker.label, Some(marker.color), self.bg_color);
+                    ctx.buffer.put_str_styled(
+                        label_x,
+                        plot_y + plot_height + 1,
+                        &marker.label,
+                        Some(marker.color),
+                        self.bg_color,
+                    );
                 }
             }
         }
 
         // Draw series
         for series in &self.series {
-            let filtered_points: Vec<_> = series.points.iter()
+            let filtered_points: Vec<_> = series
+                .points
+                .iter()
                 .filter(|p| p.timestamp >= time_min && p.timestamp <= time_max)
                 .collect();
 
@@ -616,7 +634,8 @@ impl View for TimeSeries {
             }
 
             // Map points to screen coordinates
-            let screen_points: Vec<(u16, u16)> = filtered_points.iter()
+            let screen_points: Vec<(u16, u16)> = filtered_points
+                .iter()
                 .map(|p| {
                     let x_ratio = if time_range > 0 {
                         (p.timestamp - time_min) as f64 / time_range as f64
@@ -667,9 +686,31 @@ impl View for TimeSeries {
 
                         loop {
                             let ch = match series.line_style {
-                                TimeLineStyle::Solid => if dx > dy { '─' } else { '│' },
-                                TimeLineStyle::Dashed => if step % 2 == 0 { if dx > dy { '╌' } else { '╎' } } else { ' ' },
-                                TimeLineStyle::Dotted => if step % 2 == 0 { '·' } else { ' ' },
+                                TimeLineStyle::Solid => {
+                                    if dx > dy {
+                                        '─'
+                                    } else {
+                                        '│'
+                                    }
+                                }
+                                TimeLineStyle::Dashed => {
+                                    if step % 2 == 0 {
+                                        if dx > dy {
+                                            '╌'
+                                        } else {
+                                            '╎'
+                                        }
+                                    } else {
+                                        ' '
+                                    }
+                                }
+                                TimeLineStyle::Dotted => {
+                                    if step % 2 == 0 {
+                                        '·'
+                                    } else {
+                                        ' '
+                                    }
+                                }
                                 TimeLineStyle::Step => unreachable!(),
                             };
 
@@ -739,7 +780,13 @@ impl View for TimeSeries {
                 let label = self.format_time(ts, time_range);
                 let x = plot_x + (ratio * (plot_width - 1) as f64) as u16;
                 let label_x = x.saturating_sub(label.len() as u16 / 2);
-                ctx.buffer.put_str_styled(label_x, x_label_y, &label, Some(Color::WHITE), self.bg_color);
+                ctx.buffer.put_str_styled(
+                    label_x,
+                    x_label_y,
+                    &label,
+                    Some(Color::WHITE),
+                    self.bg_color,
+                );
             }
         }
     }
@@ -779,9 +826,7 @@ pub fn cpu_chart(values: Vec<(u64, f64)>) -> TimeSeries {
 
 /// Create a memory usage chart
 pub fn memory_chart(values: Vec<(u64, f64)>) -> TimeSeries {
-    let mut series = TimeSeriesData::new("Memory")
-        .color(Color::MAGENTA)
-        .filled();
+    let mut series = TimeSeriesData::new("Memory").color(Color::MAGENTA).filled();
     for (ts, val) in values {
         series.points.push(TimePoint::new(ts, val));
     }

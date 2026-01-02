@@ -11,5 +11,7 @@ fn main() -> Result<()> {
         .child(Text::muted("A Vue-style TUI framework for Rust"))
         .child(Text::info("Press 'q' or Ctrl+C to quit"));
 
-    App::builder().build().run(view, |_event, _view, _app| false)
+    App::builder()
+        .build()
+        .run(view, |_event, _view, _app| false)
 }

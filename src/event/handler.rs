@@ -138,17 +138,15 @@ impl EventHandler {
     /// Remove a handler by ID
     pub fn remove(&mut self, id: HandlerId) -> bool {
         // Try to remove from each list
-        let len_before = self.capture_handlers.len()
-            + self.bubble_handlers.len()
-            + self.simple_handlers.len();
+        let len_before =
+            self.capture_handlers.len() + self.bubble_handlers.len() + self.simple_handlers.len();
 
         self.capture_handlers.retain(|(hid, _)| *hid != id);
         self.bubble_handlers.retain(|(hid, _)| *hid != id);
         self.simple_handlers.retain(|(hid, _)| *hid != id);
 
-        let len_after = self.capture_handlers.len()
-            + self.bubble_handlers.len()
-            + self.simple_handlers.len();
+        let len_after =
+            self.capture_handlers.len() + self.bubble_handlers.len() + self.simple_handlers.len();
 
         len_after < len_before
     }
@@ -210,9 +208,7 @@ impl EventHandler {
 
     /// Get the number of registered handlers
     pub fn handler_count(&self) -> usize {
-        self.capture_handlers.len()
-            + self.bubble_handlers.len()
-            + self.simple_handlers.len()
+        self.capture_handlers.len() + self.bubble_handlers.len() + self.simple_handlers.len()
     }
 }
 
@@ -225,7 +221,7 @@ impl Default for EventHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::event::{Event, KeyEvent, Key};
+    use crate::event::{Event, Key, KeyEvent};
 
     #[test]
     fn test_event_context() {
@@ -249,9 +245,7 @@ mod tests {
     fn test_simple_handler() {
         let mut handler = EventHandler::new();
 
-        handler.on(|event| {
-            matches!(event, Event::Key(k) if k.key == Key::Enter)
-        });
+        handler.on(|event| matches!(event, Event::Key(k) if k.key == Key::Enter));
 
         let enter = Event::Key(KeyEvent::new(Key::Enter));
         let esc = Event::Key(KeyEvent::new(Key::Escape));

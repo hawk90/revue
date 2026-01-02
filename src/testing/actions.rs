@@ -155,7 +155,8 @@ impl ActionSequence {
     pub fn type_text(mut self, text: impl Into<String>) -> Self {
         let text = text.into();
         for ch in text.chars() {
-            self.actions.push(Action::Key(KeyAction::Press(Key::Char(ch))));
+            self.actions
+                .push(Action::Key(KeyAction::Press(Key::Char(ch))));
         }
         self
     }

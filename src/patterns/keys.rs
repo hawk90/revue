@@ -281,10 +281,7 @@ pub mod common {
 
     /// Check if key is a cancel key (n/N/Esc)
     pub fn is_cancel_key(key: &KeyCode) -> bool {
-        matches!(
-            key,
-            KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc
-        )
+        matches!(key, KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc)
     }
 
     /// Check if key is a quit key (q/Q)

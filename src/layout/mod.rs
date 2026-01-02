@@ -2,16 +2,15 @@
 //!
 //! Powered by taffy, the same engine used by Dioxus and Bevy.
 
-mod engine;
 mod convert;
+mod engine;
 pub mod responsive;
 
-pub use engine::{LayoutEngine, LayoutError, LayoutResult};
 pub use convert::to_taffy_style;
+pub use engine::{LayoutEngine, LayoutError, LayoutResult};
 pub use responsive::{
-    Breakpoint, Breakpoints, ResponsiveValue, ResponsiveLayout, MediaQuery,
-    responsive as responsive_value, breakpoints, responsive_layout,
-    min_width, max_width,
+    breakpoints, max_width, min_width, responsive as responsive_value, responsive_layout,
+    Breakpoint, Breakpoints, MediaQuery, ResponsiveLayout, ResponsiveValue,
 };
 
 /// A rectangle representing a widget's position and size
@@ -30,7 +29,12 @@ pub struct Rect {
 impl Rect {
     /// Create a new rectangle
     pub fn new(x: u16, y: u16, width: u16, height: u16) -> Self {
-        Self { x, y, width, height }
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
     }
 
     /// Check if a point is inside the rectangle
@@ -205,10 +209,7 @@ mod tests {
 
     #[test]
     fn test_merge_rects_overlapping() {
-        let rects = vec![
-            Rect::new(0, 0, 20, 20),
-            Rect::new(10, 10, 20, 20),
-        ];
+        let rects = vec![Rect::new(0, 0, 20, 20), Rect::new(10, 10, 20, 20)];
         let merged = merge_rects(&rects);
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0], Rect::new(0, 0, 30, 30));
@@ -216,10 +217,7 @@ mod tests {
 
     #[test]
     fn test_merge_rects_non_overlapping() {
-        let rects = vec![
-            Rect::new(0, 0, 10, 10),
-            Rect::new(50, 50, 10, 10),
-        ];
+        let rects = vec![Rect::new(0, 0, 10, 10), Rect::new(50, 50, 10, 10)];
         let merged = merge_rects(&rects);
         assert_eq!(merged.len(), 2);
         assert!(merged.contains(&Rect::new(0, 0, 10, 10)));

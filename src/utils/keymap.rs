@@ -19,8 +19,8 @@
 //! let action = keymap.lookup("j");
 //! ```
 
-use std::collections::HashMap;
 use crate::event::{Key, KeyBinding};
+use std::collections::HashMap;
 
 /// Input mode
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -287,7 +287,9 @@ impl KeymapConfig {
     pub fn lookup(&mut self, key: KeyBinding) -> LookupResult {
         self.pending.push(key);
 
-        let chord = KeyChord { keys: self.pending.clone() };
+        let chord = KeyChord {
+            keys: self.pending.clone(),
+        };
 
         // Check global bindings first
         if let Some(action) = self.global_bindings.get(&chord) {

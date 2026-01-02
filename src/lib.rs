@@ -284,17 +284,17 @@ pub mod prelude {
     pub use crate::app::App;
 
     // Events
-    pub use crate::event::{Key, KeyEvent, Event, MouseEvent, MouseEventKind, MouseButton};
+    pub use crate::event::{Event, Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 
     // Layout
     pub use crate::layout::Rect;
 
     // Reactive primitives
-    pub use crate::reactive::{signal, computed, effect, Signal, Computed};
+    pub use crate::reactive::{computed, effect, signal, Computed, Signal};
 
     // Async support
     pub use crate::reactive::{
-        AsyncState, AsyncResult, use_async, use_async_poll, use_async_immediate,
+        use_async, use_async_immediate, use_async_poll, AsyncResult, AsyncState,
     };
 
     // Style
@@ -302,193 +302,287 @@ pub mod prelude {
 
     // Theme system
     pub use crate::style::{
-        Theme, ThemeVariant, Themes,
-        use_theme, set_theme, set_theme_by_id, toggle_theme, cycle_theme,
-        theme_ids, register_theme,
+        cycle_theme, register_theme, set_theme, set_theme_by_id, theme_ids, toggle_theme,
+        use_theme, Theme, ThemeVariant, Themes,
     };
 
     // Animation system
     pub use crate::style::{
-        // Core animation types
-        AnimationState, Tween, Animation, Animations, easing,
-        // CSS @keyframes style
-        KeyframeAnimation, CssKeyframe, AnimationDirection, AnimationFillMode,
-        // Choreography
-        Stagger, AnimationGroup, GroupMode, Choreographer,
+        easing,
+        effective_duration,
+        // Reduced motion support
+        should_skip_animation,
         // Widget animation presets
         widget_animations,
-        // Reduced motion support
-        should_skip_animation, effective_duration,
+        Animation,
+        AnimationDirection,
+        AnimationFillMode,
+        AnimationGroup,
+        // Core animation types
+        AnimationState,
+        Animations,
+        Choreographer,
+        CssKeyframe,
+        GroupMode,
+        // CSS @keyframes style
+        KeyframeAnimation,
+        // Choreography
+        Stagger,
+        Tween,
     };
 
     // Widgets - Types
     pub use crate::widget::{
-        View, RenderContext, Timeout, WidgetState, Interactive, EventResult, FocusStyle,
-        Stack, Direction,
-        Text, Alignment,
-        Border, BorderType,
-        Input,
-        List,
-        Progress, ProgressStyle,
-        Spinner, SpinnerStyle,
-        Table, Column,
-        Select,
-        ThemePicker,
-        Modal, ModalButton, ModalButtonStyle,
-        Tabs, Tab,
-        Tree, TreeNode,
-        ScrollView,
-        Markdown,
-        Image, ScaleMode,
+        Alignment,
+        Anchor,
+        Avatar,
+        AvatarShape,
+        AvatarSize,
+        Badge,
+        BadgeShape,
+        BadgeVariant,
+        BarChart,
+        BarOrientation,
+        Border,
+        BorderType,
+        // Braille canvas
+        BrailleCanvas,
+        BrailleContext,
+        BrailleGrid,
         // New widgets
-        Button, ButtonVariant,
-        Checkbox, CheckboxStyle,
-        RadioGroup, RadioStyle, RadioLayout,
-        Sparkline, SparklineStyle,
+        Button,
+        ButtonVariant,
+        Canvas,
+        Checkbox,
+        CheckboxStyle,
+        Circle,
+        Column,
+        Command,
+        // Command palette
+        CommandPalette,
+        Direction,
+        // Convenience widgets
+        Divider,
+        DividerStyle,
+        DrawContext,
+        EventResult,
+        FilledCircle,
+        FilledRectangle,
+        FocusStyle,
+        Image,
+        Input,
+        Interactive,
         // Layer system
         Layers,
-        Positioned, Anchor,
-        Canvas, DrawContext,
-        BarChart, BarOrientation,
-        // Braille canvas
-        BrailleCanvas, BrailleContext, BrailleGrid,
-        Shape, Line, Circle, FilledCircle, Rectangle, FilledRectangle, Points,
-        // UX widgets
-        Toast, ToastLevel, ToastPosition,
+        Line,
+        List,
+        Markdown,
+        Modal,
+        ModalButton,
+        ModalButtonStyle,
+        Orientation,
+        Pagination,
+        PaginationStyle,
+        Points,
+        Positioned,
+        Progress,
+        ProgressStyle,
+        RadioGroup,
+        RadioLayout,
+        RadioStyle,
+        Rectangle,
+        RenderContext,
+        ScaleMode,
+        ScrollView,
+        Select,
+        Shape,
+        Skeleton,
+        SkeletonShape,
+        Sparkline,
+        SparklineStyle,
+        Spinner,
+        SpinnerStyle,
+        Stack,
+        Tab,
+        Table,
+        Tabs,
+        Tag,
+        TagStyle,
+        Text,
         TextArea,
-        // Command palette
-        CommandPalette, Command,
-        // Convenience widgets
-        Divider, Orientation, DividerStyle,
-        Badge, BadgeVariant, BadgeShape,
-        Avatar, AvatarSize, AvatarShape,
-        Tag, TagStyle,
-        Skeleton, SkeletonShape,
-        Pagination, PaginationStyle,
+        ThemePicker,
+        Timeout,
+        // UX widgets
+        Toast,
+        ToastLevel,
+        ToastPosition,
+        Tree,
+        TreeNode,
+        View,
+        WidgetState,
     };
 
     // Widgets - Constructors
     pub use crate::widget::{
-        vstack, hstack,
-        text,
+        avatar,
+        avatar_icon,
+        badge,
+        barchart,
         border,
-        input,
-        list,
-        progress,
-        spinner,
-        table, column,
-        select,
-        theme_picker,
-        modal,
-        tabs,
-        tree, tree_node,
-        scroll_view,
-        markdown,
-        image_from_file,
+        braille_canvas,
         // New constructors
         button,
-        checkbox,
-        radio_group,
-        sparkline,
-        // Layer system constructors
-        layers,
-        positioned,
         canvas,
-        barchart,
-        braille_canvas,
-        // UX constructors
-        toast,
-        textarea,
+        checkbox,
+        chip,
+        column,
         // Command palette
         command_palette,
         // Convenience widget constructors
-        divider, vdivider,
-        badge, dot_badge,
-        avatar, avatar_icon,
-        tag, chip,
-        skeleton, skeleton_text, skeleton_avatar, skeleton_paragraph,
+        divider,
+        dot_badge,
+        hstack,
+        image_from_file,
+        input,
+        // Layer system constructors
+        layers,
+        list,
+        markdown,
+        modal,
         pagination,
+        positioned,
+        progress,
+        radio_group,
+        scroll_view,
+        select,
+        skeleton,
+        skeleton_avatar,
+        skeleton_paragraph,
+        skeleton_text,
+        sparkline,
+        spinner,
+        table,
+        tabs,
+        tag,
+        text,
+        textarea,
+        theme_picker,
+        // UX constructors
+        toast,
+        tree,
+        tree_node,
+        vdivider,
+        vstack,
     };
 
     // DOM system
-    pub use crate::dom::{
-        DomRenderer, DomTree, DomNode, DomId, WidgetMeta, NodeState, Query,
-    };
+    pub use crate::dom::{DomId, DomNode, DomRenderer, DomTree, NodeState, Query, WidgetMeta};
 
     // Worker system
     pub use crate::worker::{
-        WorkerPool, WorkerHandle, WorkerState, WorkerChannel, WorkerMessage,
-        run_blocking, spawn as spawn_worker,
+        run_blocking, spawn as spawn_worker, WorkerChannel, WorkerHandle, WorkerMessage,
+        WorkerPool, WorkerState,
     };
 
     // Tasks - Timer, TaskRunner, EventBus
     pub use crate::tasks::{
-        Timer, TimerId, TimerEntry,
-        TaskRunner, TaskId, TaskResult,
-        EventBus, EventId, Subscription,
+        EventBus, EventId, Subscription, TaskId, TaskResult, TaskRunner, Timer, TimerEntry, TimerId,
     };
 
     // Patterns - Common TUI patterns
     pub use crate::patterns::{
-        // Colors
-        CYAN, GREEN, YELLOW, RED, BLUE, PURPLE, ORANGE,
-        FG, FG_DIM, FG_SUBTLE,
-        BG, BG_SUBTLE, BG_INSET,
-        BORDER, BORDER_MUTED,
-        SUCCESS, ERROR, WARNING, INFO,
-        status_color, build_color, priority_color,
+        build_color,
+        priority_color,
+        spinner_char,
+        status_color,
+        // Config loading
+        AppConfig,
+        // Async operations
+        AsyncTask,
+        BreadcrumbItem,
+        ConfigError,
+        ConfirmAction,
+        ConfirmState,
+        FieldType,
+        FormField,
+        // Form validation
+        FormState,
         // State management
         MessageState,
-        ConfirmAction, ConfirmState,
-        // Async operations
-        AsyncTask, spinner_char, SPINNER_FRAMES,
-        // Config loading
-        AppConfig, ConfigError,
-        // Search/filter
-        SearchState, SearchMode,
-        // Form validation
-        FormState, FormField, FieldType, ValidationError, Validators,
+        NavigationEvent,
         // Navigation
-        NavigationState, Route, NavigationEvent, BreadcrumbItem,
+        NavigationState,
+        Route,
+        SearchMode,
+        // Search/filter
+        SearchState,
+        ValidationError,
+        Validators,
+        BG,
+        BG_INSET,
+        BG_SUBTLE,
+        BLUE,
+        BORDER,
+        BORDER_MUTED,
+        // Colors
+        CYAN,
+        ERROR,
+        FG,
+        FG_DIM,
+        FG_SUBTLE,
+        GREEN,
+        INFO,
+        ORANGE,
+        PURPLE,
+        RED,
+        SPINNER_FRAMES,
+        SUCCESS,
+        WARNING,
+        YELLOW,
     };
 
     // Accessibility
     pub use crate::utils::{
         // Announcement functions
-        announce, announce_now, take_announcements, has_announcements,
-        // Preference getters/setters
-        prefers_reduced_motion, set_reduced_motion,
-        is_high_contrast, set_high_contrast,
+        announce,
         // Widget-specific announcement helpers
-        announce_button_clicked, announce_checkbox_changed,
-        announce_list_selection, announce_tab_changed,
-        announce_error, announce_success,
-        announce_dialog_opened, announce_dialog_closed,
+        announce_button_clicked,
+        announce_checkbox_changed,
+        announce_dialog_closed,
+        announce_dialog_opened,
+        announce_error,
+        announce_list_selection,
+        announce_now,
+        announce_success,
+        announce_tab_changed,
+        has_announcements,
+        is_high_contrast,
+        // Preference getters/setters
+        prefers_reduced_motion,
+        set_high_contrast,
+        set_reduced_motion,
+        take_announcements,
     };
 
     // Testing (Pilot)
     pub use crate::testing::{Pilot, TestApp, TestConfig};
     // Visual regression testing
     pub use crate::testing::{
-        VisualTest, VisualTestConfig, VisualTestResult,
-        VisualCapture, VisualDiff, CapturedCell,
-        CiEnvironment, CiProvider, TestReport,
+        CapturedCell, CiEnvironment, CiProvider, TestReport, VisualCapture, VisualDiff, VisualTest,
+        VisualTestConfig, VisualTestResult,
     };
 
     // DevTools
     pub use crate::devtools::{
-        DevTools, DevToolsConfig, DevToolsPosition, DevToolsTab,
-        Inspector, WidgetNode, InspectorConfig,
-        StateDebugger, StateEntry, StateValue,
-        StyleInspector, ComputedProperty, PropertySource, StyleCategory,
-        EventLogger, LoggedEvent, EventType, EventFilter,
-        enable_devtools, disable_devtools, is_devtools_enabled, toggle_devtools,
+        disable_devtools, enable_devtools, is_devtools_enabled, toggle_devtools, ComputedProperty,
+        DevTools, DevToolsConfig, DevToolsPosition, DevToolsTab, EventFilter, EventLogger,
+        EventType, Inspector, InspectorConfig, LoggedEvent, PropertySource, StateDebugger,
+        StateEntry, StateValue, StyleCategory, StyleInspector, WidgetNode,
     };
 
     // Profiler
     pub use crate::utils::profiler::{
-        Profiler, ProfileGuard, Stats, Timing, FlameNode,
-        profile, start_profile, profiler_report,
+        profile, profiler_report, start_profile, FlameNode, ProfileGuard, Profiler, Stats, Timing,
     };
 
     // Result type
@@ -496,20 +590,28 @@ pub mod prelude {
 
     // Constants
     pub use crate::constants::{
-        // Frame rates
-        FRAME_DURATION_60FPS, FRAME_DURATION_30FPS,
         // Animation durations
-        ANIMATION_DEFAULT_DURATION, ANIMATION_FAST_DURATION,
-        ANIMATION_SLOW_DURATION, ANIMATION_VERY_SLOW_DURATION,
+        ANIMATION_DEFAULT_DURATION,
+        ANIMATION_FAST_DURATION,
+        ANIMATION_SLOW_DURATION,
+        ANIMATION_VERY_SLOW_DURATION,
         // Debounce
-        DEBOUNCE_DEFAULT, DEBOUNCE_SEARCH, DEBOUNCE_FILE_SYSTEM,
-        // Tick rates
-        TICK_RATE_DEFAULT, POLL_IMMEDIATE,
+        DEBOUNCE_DEFAULT,
+        DEBOUNCE_FILE_SYSTEM,
+        DEBOUNCE_SEARCH,
+        FRAME_DURATION_30FPS,
+        // Frame rates
+        FRAME_DURATION_60FPS,
+        // Messages
+        MESSAGE_DEFAULT_DURATION,
+        MESSAGE_LONG_DURATION,
+        MESSAGE_QUICK_DURATION,
+        POLL_IMMEDIATE,
         // Screen transitions
         SCREEN_TRANSITION_DURATION,
         // Stagger
         STAGGER_DELAY_DEFAULT,
-        // Messages
-        MESSAGE_DEFAULT_DURATION, MESSAGE_QUICK_DURATION, MESSAGE_LONG_DURATION,
+        // Tick rates
+        TICK_RATE_DEFAULT,
     };
 }

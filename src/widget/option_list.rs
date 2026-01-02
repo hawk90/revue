@@ -27,8 +27,8 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::widget::{RenderContext, View, WidgetProps};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Option list entry type
 #[derive(Clone, Debug)]
@@ -466,8 +466,8 @@ impl View for OptionList {
     crate::impl_view_meta!("OptionList");
 
     fn render(&self, ctx: &mut RenderContext) {
-        use crate::widget::Text;
         use crate::widget::stack::vstack;
+        use crate::widget::Text;
 
         let width = self.width.unwrap_or(40) as usize;
 
@@ -539,12 +539,8 @@ impl View for OptionList {
                     };
 
                     // Build row
-                    let mut text = Text::new(format!(
-                        "{}{}{}",
-                        main_text,
-                        " ".repeat(padding),
-                        hint
-                    )).fg(fg);
+                    let mut text =
+                        Text::new(format!("{}{}{}", main_text, " ".repeat(padding), hint)).fg(fg);
 
                     if let Some(bg) = bg {
                         text = text.bg(bg);
@@ -560,8 +556,7 @@ impl View for OptionList {
                     if self.show_descriptions {
                         if let Some(desc) = &item.description {
                             content = content.child(
-                                Text::new(format!("    {}", desc))
-                                    .fg(Color::rgb(128, 128, 128))
+                                Text::new(format!("    {}", desc)).fg(Color::rgb(128, 128, 128)),
                             );
                         }
                     }
@@ -574,9 +569,7 @@ impl View for OptionList {
                     content = content.child(Text::new(line).fg(Color::rgb(80, 80, 80)));
                 }
                 OptionEntry::Group(name) => {
-                    content = content.child(
-                        Text::new(name).fg(Color::rgb(180, 180, 180)).bold()
-                    );
+                    content = content.child(Text::new(name).fg(Color::rgb(180, 180, 180)).bold());
                 }
             }
         }

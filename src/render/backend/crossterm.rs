@@ -2,24 +2,24 @@
 //!
 //! This backend uses the crossterm library for cross-platform terminal I/O.
 
-use std::io::{self, Write};
 use crossterm::{
     cursor::{Hide, MoveTo, Show},
     event::{DisableMouseCapture, EnableMouseCapture},
     execute, queue,
     style::{
-        Attribute, Color as CrosstermColor, SetAttribute,
-        SetBackgroundColor, SetForegroundColor, ResetColor,
+        Attribute, Color as CrosstermColor, ResetColor, SetAttribute, SetBackgroundColor,
+        SetForegroundColor,
     },
     terminal::{
-        self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen,
-        disable_raw_mode, enable_raw_mode,
+        self, disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
+        LeaveAlternateScreen,
     },
 };
+use std::io::{self, Write};
 
 use super::traits::{Backend, BackendCapabilities};
-use crate::style::Color;
 use crate::render::cell::Modifier;
+use crate::style::Color;
 use crate::Result;
 
 /// Crossterm-based terminal backend
@@ -103,12 +103,7 @@ impl<W: Write> Backend for CrosstermBackend<W> {
                     LeaveAlternateScreen
                 )?;
             } else {
-                execute!(
-                    self.writer,
-                    ResetColor,
-                    Show,
-                    LeaveAlternateScreen
-                )?;
+                execute!(self.writer, ResetColor, Show, LeaveAlternateScreen)?;
             }
             disable_raw_mode()?;
             self.raw_mode = false;
