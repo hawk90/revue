@@ -311,11 +311,11 @@ impl Diagram {
         self
     }
 
-    /// Parse node definition like A[Label] or B{Decision}
+    /// Parse node definition like `A[Label]` or `B{Decision}`
     fn parse_node_def(s: &str) -> (String, Option<String>) {
         let s = s.trim();
 
-        // [Label]
+        // `[Label]`
         if let Some(bracket_start) = s.find('[') {
             if let Some(bracket_end) = s.find(']') {
                 let id = s[..bracket_start].trim().to_string();

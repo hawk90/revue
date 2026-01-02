@@ -13,7 +13,7 @@
 [![docs.rs](https://img.shields.io/docsrs/revue?style=flat-square&logo=docs.rs&label=docs.rs)](https://docs.rs/revue)
 [![Release](https://img.shields.io/github/v/release/hawk90/revue?style=flat-square&logo=github&label=release)](https://github.com/hawk90/revue/releases)
 [![license](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![Rust 1.75+](https://img.shields.io/badge/rust-1.75+-orange?style=flat-square&logo=rust)](https://www.rust-lang.org)
+[![Rust 1.85+](https://img.shields.io/badge/rust-1.85+-orange?style=flat-square&logo=rust)](https://www.rust-lang.org)
 
 [![Linux](https://img.shields.io/badge/Linux-supported-success?style=flat-square&logo=linux&logoColor=white)](https://github.com/hawk90/revue)
 [![macOS](https://img.shields.io/badge/macOS-supported-success?style=flat-square&logo=apple&logoColor=white)](https://github.com/hawk90/revue)

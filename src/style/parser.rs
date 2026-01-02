@@ -86,7 +86,7 @@ impl StyleSheet {
 
 /// Parse CSS text into a StyleSheet
 ///
-/// This parser uses zero-copy &str slicing for efficiency, avoiding Vec<char> allocation.
+/// This parser uses zero-copy `&str` slicing for efficiency, avoiding `Vec<char>` allocation.
 pub fn parse(css: &str) -> Result<StyleSheet, ParseError> {
     let mut sheet = StyleSheet::new();
     let bytes = css.as_bytes();
