@@ -95,7 +95,20 @@ impl Effect {
         let effect_fn = self.effect_fn.clone();
         let id = self.id;
 
-        // Create self-referencing callback using RwLock
+        // Self-referential callback pattern:
+        //
+        // When a signal changes, it needs to re-run the effect AND re-register
+        // the same callback for future changes. This creates a chicken-and-egg
+        // problem: the callback needs to reference itself to re-register.
+        //
+        // Solution: Use an RwLock<Option<CallbackType>> as an indirection layer.
+        // 1. Create the cell with None
+        // 2. Create the callback that reads from the cell to get "itself"
+        // 3. Store the callback in the cell
+        // 4. Now the callback can access itself through the cell
+        //
+        // This is similar to the "lazy initialization" pattern for self-referential
+        // structures, but using interior mutability instead of unsafe code.
         type CallbackType = Arc<dyn Fn() + Send + Sync>;
         let callback_cell: Arc<RwLock<Option<CallbackType>>> = Arc::new(RwLock::new(None));
 

@@ -159,7 +159,31 @@ impl<T: 'static> Signal<T> {
         notify_dependents(self.id);
     }
 
-    /// Subscribe to changes (callback must be Send + Sync)
+    /// Subscribe to changes manually (callback must be Send + Sync)
+    ///
+    /// This provides **explicit** subscription, unlike the **automatic** dependency
+    /// tracking used by `Effect` and `Computed`.
+    ///
+    /// # Manual vs Automatic Subscription
+    ///
+    /// | Approach | How it works | Use case |
+    /// |----------|--------------|----------|
+    /// | `subscribe()` | Explicit registration, always called on change | External integrations, logging |
+    /// | `Effect::new()` | Auto-tracks signals read during execution | Reactive side effects |
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let count = signal(0);
+    ///
+    /// // Manual: always called when count changes
+    /// count.subscribe(|| println!("count changed!"));
+    ///
+    /// // Automatic: only tracks signals actually read
+    /// Effect::new(move || {
+    ///     println!("count is {}", count.get()); // auto-subscribes to count
+    /// });
+    /// ```
     pub fn subscribe(&self, callback: impl Fn() + Send + Sync + 'static) {
         let mut subs = self.subscribers.write().unwrap_or_else(|poisoned| poisoned.into_inner());
         subs.push(Box::new(callback));
