@@ -184,7 +184,6 @@
 //! | Snapshot Testing | ✅ | ❌ | ❌ | ❌ |
 
 #![warn(missing_docs)]
-#![allow(dead_code)] // Allow during development
 
 pub mod app;
 pub mod constants;
