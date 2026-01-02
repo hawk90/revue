@@ -69,19 +69,19 @@ impl fmt::Display for PseudoClass {
 /// Attribute selector operator
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AttributeOp {
-    /// [attr] - has attribute
+    /// `[attr]` - has attribute
     Exists,
-    /// [attr=value] - exact match
+    /// `[attr=value]` - exact match
     Equals,
-    /// [attr~=value] - contains word
+    /// `[attr~=value]` - contains word
     ContainsWord,
-    /// [attr|=value] - starts with word
+    /// `[attr|=value]` - starts with word
     StartsWithWord,
-    /// [attr^=value] - starts with
+    /// `[attr^=value]` - starts with
     StartsWith,
-    /// [attr$=value] - ends with
+    /// `[attr$=value]` - ends with
     EndsWith,
-    /// [attr*=value] - contains
+    /// `[attr*=value]` - contains
     Contains,
 }
 
