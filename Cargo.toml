@@ -8,6 +8,24 @@ license = "MIT"
 repository = "https://github.com/user/revue"
 keywords = ["tui", "terminal", "css", "reactive", "ui"]
 categories = ["command-line-interface", "gui"]
+exclude = [
+    "revue-cli/",
+    "references/",
+    "playground/",
+    "extensions/",
+    "tools/",
+    "docs/",
+    "tree-sitter-revue-css/",
+    ".claude/",
+    ".github/",
+    "tests/snapshots/",
+    "benches/",
+    "examples/",
+    "*.md",
+    "cliff.toml",
+    "deny.toml",
+    "lefthook.yml",
+]
 
 [dependencies]
 # ═══════════════════════════════════════════
