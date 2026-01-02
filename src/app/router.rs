@@ -69,17 +69,12 @@ impl Route {
         let mut params = HashMap::new();
 
         for (pattern_part, path_part) in pattern_parts.iter().zip(path_parts.iter()) {
-            if pattern_part.starts_with(':') {
+            if let Some(param_name) = pattern_part.strip_prefix(':') {
                 // Parameter
-                let param_name = &pattern_part[1..];
                 params.insert(param_name.to_string(), path_part.to_string());
-            } else if pattern_part.starts_with('*') {
+            } else if let Some(rest) = pattern_part.strip_prefix('*') {
                 // Wildcard (matches rest)
-                let param_name = if pattern_part.len() > 1 {
-                    &pattern_part[1..]
-                } else {
-                    "wildcard"
-                };
+                let param_name = if rest.is_empty() { "wildcard" } else { rest };
                 params.insert(param_name.to_string(), path_part.to_string());
             } else if *pattern_part != *path_part {
                 return None;

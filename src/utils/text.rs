@@ -320,7 +320,7 @@ pub fn display_width(text: &str) -> usize {
 
 /// Repeat a character to create a string
 pub fn repeat_char(ch: char, count: usize) -> String {
-    std::iter::repeat(ch).take(count).collect()
+    std::iter::repeat_n(ch, count).collect()
 }
 
 /// Create a horizontal bar using block characters

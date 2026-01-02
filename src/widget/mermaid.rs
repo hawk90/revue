@@ -362,7 +362,7 @@ impl Diagram {
 
         // Simple grid layout
         let rows = ((self.nodes.len() as f32).sqrt().ceil() as u16).max(1);
-        let cols = ((self.nodes.len() as u16 + rows - 1) / rows).max(1);
+        let cols = (self.nodes.len() as u16).div_ceil(rows).max(1);
 
         let cell_width = width / cols;
         let cell_height = height / rows;

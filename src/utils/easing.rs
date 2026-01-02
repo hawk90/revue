@@ -30,9 +30,10 @@ use std::f64::consts::PI;
 pub type EasingFn = fn(f64) -> f64;
 
 /// Standard easing types
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Easing {
     /// No easing, constant speed
+    #[default]
     Linear,
 
     // Quadratic
@@ -114,12 +115,6 @@ pub enum Easing {
     OutBounce,
     /// Bounce ease in-out
     InOutBounce,
-}
-
-impl Default for Easing {
-    fn default() -> Self {
-        Self::Linear
-    }
 }
 
 impl Easing {

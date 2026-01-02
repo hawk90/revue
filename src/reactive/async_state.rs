@@ -38,9 +38,10 @@ use super::{signal, Signal};
 /// State of an async operation
 ///
 /// Represents the lifecycle of an async task from idle to completion.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum AsyncState<T> {
     /// Task has not started yet
+    #[default]
     Idle,
     /// Task is currently running
     Loading,
@@ -120,12 +121,6 @@ impl<T> AsyncState<T> {
             AsyncState::Ready(v) => v.clone(),
             _ => f(),
         }
-    }
-}
-
-impl<T: Default + Clone> Default for AsyncState<T> {
-    fn default() -> Self {
-        AsyncState::Idle
     }
 }
 

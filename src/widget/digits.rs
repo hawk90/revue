@@ -367,8 +367,8 @@ impl Digits {
 
     fn add_thousands_separator(&self, s: &str, sep: char) -> String {
         // Handle negative numbers
-        let (sign, num) = if s.starts_with('-') {
-            ("-", &s[1..])
+        let (sign, num) = if let Some(rest) = s.strip_prefix('-') {
+            ("-", rest)
         } else {
             ("", s)
         };

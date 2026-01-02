@@ -346,7 +346,7 @@ where
 {
     /// Create new paged data source
     pub fn new(total: usize, page_size: usize, loader: F) -> Self {
-        let num_pages = (total + page_size - 1) / page_size;
+        let num_pages = total.div_ceil(page_size);
         let pages: Vec<Option<Vec<T>>> = (0..num_pages).map(|_| None).collect();
         let loading: Vec<bool> = vec![false; num_pages];
         Self {
@@ -370,7 +370,7 @@ where
 
     /// Get number of pages
     pub fn page_count(&self) -> usize {
-        (self.total + self.page_size - 1) / self.page_size
+        self.total.div_ceil(self.page_size)
     }
 
     /// Check if a page is loaded
