@@ -455,6 +455,7 @@ mod tests {
     use super::*;
     use crate::event::Key;
 
+    #[allow(dead_code)]
     struct TestView;
     impl View for TestView {
         fn render(&self, _ctx: &mut crate::widget::RenderContext) {}
