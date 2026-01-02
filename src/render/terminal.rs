@@ -339,6 +339,7 @@ mod tests {
     use super::*;
 
     // Mock writer for testing
+    #[allow(dead_code)]
     struct MockWriter {
         buffer: Vec<u8>,
     }

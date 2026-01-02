@@ -85,6 +85,7 @@ pub trait Plugin: Send {
 mod tests {
     use super::*;
 
+    #[allow(dead_code)]
     struct TestPlugin {
         init_called: bool,
         mount_called: bool,

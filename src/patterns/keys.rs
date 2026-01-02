@@ -307,6 +307,7 @@ pub mod common {
 mod tests {
     use super::*;
 
+    #[allow(dead_code)]
     struct TestApp {
         in_modal: bool,
         has_confirm: bool,

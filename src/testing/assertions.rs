@@ -185,6 +185,7 @@ impl Assertion for CellEquals {
 
 /// Assert screen matches exact text
 #[cfg(test)]
+#[allow(dead_code)]
 pub struct ScreenEquals {
     expected: String,
 }
