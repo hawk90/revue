@@ -1,8 +1,8 @@
 //! Reactive state management system.
 //!
 //! Vue/SolidJS-inspired reactivity with automatic dependency tracking.
-//! Create reactive state with [`signal`], derived values with [`computed`],
-//! and side effects with [`effect`].
+//! Create reactive state with [`signal()`], derived values with [`computed()`],
+//! and side effects with [`effect()`].
 //!
 //! # Core Primitives
 //!
