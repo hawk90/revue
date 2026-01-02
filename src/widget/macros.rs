@@ -97,14 +97,11 @@ macro_rules! bordered {
     }};
     // Title + child
     ($title:expr; $child:expr) => {{
-        $crate::widget::Border::single()
-            .title($title)
-            .child($child)
+        $crate::widget::Border::single().title($title).child($child)
     }};
     // Just child
     ($child:expr) => {{
-        $crate::widget::Border::single()
-            .child($child)
+        $crate::widget::Border::single().child($child)
     }};
 }
 
@@ -211,16 +208,13 @@ macro_rules! ui {
 
 #[cfg(test)]
 mod tests {
-    use crate::widget::{Text, View, RenderContext};
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
+    use crate::widget::{RenderContext, Text, View};
 
     #[test]
     fn test_vstack_macro() {
-        let stack = vstack![
-            Text::new("Line 1"),
-            Text::new("Line 2"),
-        ];
+        let stack = vstack![Text::new("Line 1"), Text::new("Line 2"),];
         assert_eq!(stack.len(), 2);
     }
 
@@ -235,10 +229,7 @@ mod tests {
 
     #[test]
     fn test_hstack_macro() {
-        let stack = hstack![
-            Text::new("Left"),
-            Text::new("Right"),
-        ];
+        let stack = hstack![Text::new("Left"), Text::new("Right"),];
         assert_eq!(stack.len(), 2);
     }
 
@@ -274,10 +265,7 @@ mod tests {
     fn test_nested_layout() {
         let layout = vstack![
             Text::heading("Title"),
-            hstack![
-                Text::new("Left"),
-                Text::new("Right"),
-            ],
+            hstack![Text::new("Left"), Text::new("Right"),],
             Text::muted("Footer"),
         ];
         assert_eq!(layout.len(), 3);

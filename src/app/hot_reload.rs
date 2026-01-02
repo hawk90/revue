@@ -1,7 +1,7 @@
 //! Hot reload support for CSS stylesheets
 
 use crate::constants::DEBOUNCE_FILE_SYSTEM;
-use notify::{Watcher, RecursiveMode, Event, EventKind};
+use notify::{Event, EventKind, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver};
 use std::time::{Duration, Instant};
@@ -56,37 +56,35 @@ impl HotReload {
         let (tx, rx) = channel();
         let sender = tx.clone();
 
-        let watcher = notify::recommended_watcher(move |result: Result<Event, notify::Error>| {
-            match result {
-                Ok(event) => {
-                    let reload_event = match event.kind {
-                        EventKind::Modify(_) => {
-                            event.paths.first().map(|p| {
-                                HotReloadEvent::StylesheetChanged(p.clone())
-                            })
-                        }
-                        EventKind::Create(_) => {
-                            event.paths.first().map(|p| {
-                                HotReloadEvent::FileCreated(p.clone())
-                            })
-                        }
-                        EventKind::Remove(_) => {
-                            event.paths.first().map(|p| {
-                                HotReloadEvent::FileDeleted(p.clone())
-                            })
-                        }
-                        _ => None,
-                    };
+        let watcher =
+            notify::recommended_watcher(
+                move |result: Result<Event, notify::Error>| match result {
+                    Ok(event) => {
+                        let reload_event = match event.kind {
+                            EventKind::Modify(_) => event
+                                .paths
+                                .first()
+                                .map(|p| HotReloadEvent::StylesheetChanged(p.clone())),
+                            EventKind::Create(_) => event
+                                .paths
+                                .first()
+                                .map(|p| HotReloadEvent::FileCreated(p.clone())),
+                            EventKind::Remove(_) => event
+                                .paths
+                                .first()
+                                .map(|p| HotReloadEvent::FileDeleted(p.clone())),
+                            _ => None,
+                        };
 
-                    if let Some(e) = reload_event {
-                        let _ = sender.send(e);
+                        if let Some(e) = reload_event {
+                            let _ = sender.send(e);
+                        }
                     }
-                }
-                Err(e) => {
-                    let _ = sender.send(HotReloadEvent::Error(e.to_string()));
-                }
-            }
-        })?;
+                    Err(e) => {
+                        let _ = sender.send(HotReloadEvent::Error(e.to_string()));
+                    }
+                },
+            )?;
 
         Ok(Self {
             _watcher: watcher,
@@ -244,8 +242,7 @@ mod tests {
 
     #[test]
     fn test_hot_reload_builder() {
-        let builder = HotReloadBuilder::new()
-            .debounce(Duration::from_millis(200));
+        let builder = HotReloadBuilder::new().debounce(Duration::from_millis(200));
 
         assert_eq!(builder.config.debounce, Duration::from_millis(200));
     }
@@ -268,8 +265,7 @@ mod tests {
 
     #[test]
     fn test_hot_reload_helper() {
-        let builder = hot_reload()
-            .debounce(Duration::from_millis(50));
+        let builder = hot_reload().debounce(Duration::from_millis(50));
 
         assert_eq!(builder.config.debounce, Duration::from_millis(50));
     }

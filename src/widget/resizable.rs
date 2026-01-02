@@ -89,11 +89,10 @@ impl ResizeHandle {
                     && y > area.y + handle_size
                     && y < area.y + area.height - handle_size
             }
-            ResizeHandle::TopLeft => {
-                x <= area.x + handle_size && y <= area.y + handle_size
-            }
+            ResizeHandle::TopLeft => x <= area.x + handle_size && y <= area.y + handle_size,
             ResizeHandle::TopRight => {
-                x >= area.x + area.width.saturating_sub(handle_size + 1) && y <= area.y + handle_size
+                x >= area.x + area.width.saturating_sub(handle_size + 1)
+                    && y <= area.y + handle_size
             }
             ResizeHandle::BottomLeft => {
                 x <= area.x + handle_size
@@ -118,19 +117,46 @@ pub struct ResizeDirection {
 
 impl ResizeDirection {
     /// No resize
-    pub const NONE: Self = Self { horizontal: 0, vertical: 0 };
+    pub const NONE: Self = Self {
+        horizontal: 0,
+        vertical: 0,
+    };
 
     /// From handle
     fn from_handle(handle: ResizeHandle) -> Self {
         match handle {
-            ResizeHandle::Top => Self { horizontal: 0, vertical: -1 },
-            ResizeHandle::Bottom => Self { horizontal: 0, vertical: 1 },
-            ResizeHandle::Left => Self { horizontal: -1, vertical: 0 },
-            ResizeHandle::Right => Self { horizontal: 1, vertical: 0 },
-            ResizeHandle::TopLeft => Self { horizontal: -1, vertical: -1 },
-            ResizeHandle::TopRight => Self { horizontal: 1, vertical: -1 },
-            ResizeHandle::BottomLeft => Self { horizontal: -1, vertical: 1 },
-            ResizeHandle::BottomRight => Self { horizontal: 1, vertical: 1 },
+            ResizeHandle::Top => Self {
+                horizontal: 0,
+                vertical: -1,
+            },
+            ResizeHandle::Bottom => Self {
+                horizontal: 0,
+                vertical: 1,
+            },
+            ResizeHandle::Left => Self {
+                horizontal: -1,
+                vertical: 0,
+            },
+            ResizeHandle::Right => Self {
+                horizontal: 1,
+                vertical: 0,
+            },
+            ResizeHandle::TopLeft => Self {
+                horizontal: -1,
+                vertical: -1,
+            },
+            ResizeHandle::TopRight => Self {
+                horizontal: 1,
+                vertical: -1,
+            },
+            ResizeHandle::BottomLeft => Self {
+                horizontal: -1,
+                vertical: 1,
+            },
+            ResizeHandle::BottomRight => Self {
+                horizontal: 1,
+                vertical: 1,
+            },
         }
     }
 }

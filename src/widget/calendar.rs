@@ -3,11 +3,11 @@
 //! Supports month/year navigation, date selection, range selection,
 //! and custom styling for different date types.
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::border::render_border;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Days in a month (accounting for leap years)
 fn days_in_month(year: i32, month: u32) -> u32 {
@@ -33,7 +33,11 @@ fn is_leap_year(year: i32) -> bool {
 /// Day of week for the first day of a month (0 = Sunday, 6 = Saturday)
 /// Using Zeller's congruence
 fn first_day_of_month(year: i32, month: u32) -> u32 {
-    let m = if month < 3 { month as i32 + 12 } else { month as i32 };
+    let m = if month < 3 {
+        month as i32 + 12
+    } else {
+        month as i32
+    };
     let y = if month < 3 { year - 1 } else { year };
     let q = 1i32; // First day of month
     let k = y % 100;
@@ -71,7 +75,10 @@ impl Date {
 
     /// Check if date is valid
     pub fn is_valid(&self) -> bool {
-        self.month >= 1 && self.month <= 12 && self.day >= 1 && self.day <= days_in_month(self.year, self.month)
+        self.month >= 1
+            && self.month <= 12
+            && self.day >= 1
+            && self.day <= days_in_month(self.year, self.month)
     }
 
     /// Day of week (0 = Sunday, 6 = Saturday)
@@ -449,7 +456,11 @@ impl Calendar {
     fn is_in_range(&self, date: &Date) -> bool {
         match (self.selected, self.range_end) {
             (Some(start), Some(end)) => {
-                let (start, end) = if start <= end { (start, end) } else { (end, start) };
+                let (start, end) = if start <= end {
+                    (start, end)
+                } else {
+                    (end, start)
+                };
                 date >= &start && date <= &end
             }
             _ => false,
@@ -496,8 +507,18 @@ impl Calendar {
 
         // Month name and year header
         let month_names = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
         ];
         let header = format!("{} {}", month_names[(self.month - 1) as usize], self.year);
         let header_x = start_x + week_num_offset + (20 - header.len() as u16) / 2;
@@ -518,7 +539,8 @@ impl Calendar {
 
             let mut right = Cell::new('▶');
             right.fg = Some(self.header_fg);
-            ctx.buffer.set(start_x + week_num_offset + 21, start_y, right);
+            ctx.buffer
+                .set(start_x + week_num_offset + 21, start_y, right);
         }
 
         // Week header
@@ -537,7 +559,11 @@ impl Calendar {
 
             for (j, ch) in name.chars().enumerate() {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(if is_weekend { self.weekend_fg } else { self.header_fg });
+                cell.fg = Some(if is_weekend {
+                    self.weekend_fg
+                } else {
+                    self.header_fg
+                });
                 ctx.buffer.set(x + j as u16, y, cell);
             }
         }
@@ -594,7 +620,11 @@ impl Calendar {
                 let (fg, bg, modifier) = if is_selected {
                     (self.selected_fg, Some(self.selected_bg), Modifier::BOLD)
                 } else if is_in_range {
-                    (self.selected_fg, Some(Color::rgb(60, 90, 120)), Modifier::empty())
+                    (
+                        self.selected_fg,
+                        Some(Color::rgb(60, 90, 120)),
+                        Modifier::empty(),
+                    )
                 } else if is_today {
                     (self.today_fg, None, Modifier::BOLD)
                 } else if let Some(m) = marker {
@@ -646,7 +676,11 @@ impl Calendar {
 
         // Calculate weekday (0=Monday, 6=Sunday) using Zeller's congruence
         let weekday = {
-            let m = if month < 3 { month as i32 + 12 } else { month as i32 };
+            let m = if month < 3 {
+                month as i32 + 12
+            } else {
+                month as i32
+            };
             let y = if month < 3 { year - 1 } else { year };
             let k = y % 100;
             let j = y / 100;
@@ -673,7 +707,6 @@ impl Calendar {
         // Calculate week number
         ((thursday_day_of_year as u32 - 1) / 7) + 1
     }
-
 }
 
 impl Default for Calendar {
@@ -707,9 +740,8 @@ pub fn calendar(year: i32, month: u32) -> Calendar {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
-    
+    use crate::render::Buffer;
 
     #[test]
     fn test_calendar_new() {
@@ -822,8 +854,7 @@ mod tests {
 
     #[test]
     fn test_date_marker() {
-        let marker = DateMarker::new(Date::new(2025, 1, 1), Color::RED)
-            .symbol('★');
+        let marker = DateMarker::new(Date::new(2025, 1, 1), Color::RED).symbol('★');
 
         assert_eq!(marker.date, Date::new(2025, 1, 1));
         assert_eq!(marker.color, Color::RED);
@@ -832,8 +863,7 @@ mod tests {
 
     #[test]
     fn test_calendar_range() {
-        let cal = Calendar::new(2025, 1)
-            .range(Date::new(2025, 1, 10), Date::new(2025, 1, 20));
+        let cal = Calendar::new(2025, 1).range(Date::new(2025, 1, 10), Date::new(2025, 1, 20));
 
         assert!(cal.is_in_range(&Date::new(2025, 1, 15)));
         assert!(!cal.is_in_range(&Date::new(2025, 1, 5)));

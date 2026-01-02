@@ -300,7 +300,10 @@ mod tests {
     fn test_natural_sort() {
         let mut files = vec!["file10.txt", "file2.txt", "file1.txt", "file20.txt"];
         natural_sort(&mut files);
-        assert_eq!(files, vec!["file1.txt", "file2.txt", "file10.txt", "file20.txt"]);
+        assert_eq!(
+            files,
+            vec!["file1.txt", "file2.txt", "file10.txt", "file20.txt"]
+        );
     }
 
     #[test]
@@ -328,21 +331,27 @@ mod tests {
             "chapter3.md",
         ];
         natural_sort(&mut files);
-        assert_eq!(files, vec![
-            "chapter1.md",
-            "chapter2.md",
-            "chapter3.md",
-            "chapter10.md",
-            "chapter11.md",
-            "intro.md",
-        ]);
+        assert_eq!(
+            files,
+            vec![
+                "chapter1.md",
+                "chapter2.md",
+                "chapter3.md",
+                "chapter10.md",
+                "chapter11.md",
+                "intro.md",
+            ]
+        );
     }
 
     #[test]
     fn test_version_numbers() {
         let mut versions = vec!["v1.10.0", "v1.2.0", "v1.9.0", "v2.0.0", "v1.1.0"];
         natural_sort(&mut versions);
-        assert_eq!(versions, vec!["v1.1.0", "v1.2.0", "v1.9.0", "v1.10.0", "v2.0.0"]);
+        assert_eq!(
+            versions,
+            vec!["v1.1.0", "v1.2.0", "v1.9.0", "v1.10.0", "v2.0.0"]
+        );
     }
 
     #[test]

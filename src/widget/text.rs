@@ -3,10 +3,10 @@
 //! A simple text widget that internally uses RichText for rendering.
 //! This ensures consistent text rendering across all widgets.
 
-use super::traits::{View, RenderContext, WidgetProps};
 use super::richtext::{RichText, Style};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Text alignment
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
@@ -143,7 +143,11 @@ impl Text {
         let fg = self.fg.or_else(|| {
             ctx.style.and_then(|s| {
                 let c = s.visual.color;
-                if c != Color::default() { Some(c) } else { None }
+                if c != Color::default() {
+                    Some(c)
+                } else {
+                    None
+                }
             })
         });
         if let Some(fg) = fg {
@@ -154,7 +158,11 @@ impl Text {
         let bg = self.bg.or_else(|| {
             ctx.style.and_then(|s| {
                 let c = s.visual.background;
-                if c != Color::default() { Some(c) } else { None }
+                if c != Color::default() {
+                    Some(c)
+                } else {
+                    None
+                }
             })
         });
         if let Some(bg) = bg {
@@ -221,8 +229,8 @@ impl_props_builders!(Text);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
     use crate::widget::StyledView;
 
     #[test]
@@ -285,9 +293,7 @@ mod tests {
 
     #[test]
     fn test_text_css_classes() {
-        let text = Text::new("Warning")
-            .class("alert")
-            .class("bold");
+        let text = Text::new("Warning").class("alert").class("bold");
 
         assert!(text.has_class("alert"));
         assert!(text.has_class("bold"));

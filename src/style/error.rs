@@ -86,26 +86,18 @@ impl ErrorCode {
     /// Get help text with more details
     pub fn help(&self) -> &'static str {
         match self {
-            Self::InvalidSyntax =>
-                "Check for mismatched brackets, quotes, or unexpected characters",
-            Self::UnknownProperty =>
-                "Check spelling or see the supported properties list",
-            Self::InvalidValue =>
-                "The value format doesn't match what this property expects",
-            Self::MissingBrace =>
-                "Every '{' must have a matching '}'",
-            Self::MissingSemicolon =>
-                "Each CSS declaration should end with ';'",
-            Self::InvalidSelector =>
-                "Selectors should be like '.class', '#id', or 'element'",
-            Self::UndefinedVariable =>
-                "Define variables in :root { --name: value; }",
-            Self::InvalidColor =>
-                "Use formats like #rgb, #rrggbb, rgb(r,g,b), or named colors",
-            Self::InvalidNumber =>
-                "Numbers should be like '10', '10px', '50%', or '0.5'",
-            Self::EmptyRule =>
-                "Add at least one property declaration inside the rule",
+            Self::InvalidSyntax => {
+                "Check for mismatched brackets, quotes, or unexpected characters"
+            }
+            Self::UnknownProperty => "Check spelling or see the supported properties list",
+            Self::InvalidValue => "The value format doesn't match what this property expects",
+            Self::MissingBrace => "Every '{' must have a matching '}'",
+            Self::MissingSemicolon => "Each CSS declaration should end with ';'",
+            Self::InvalidSelector => "Selectors should be like '.class', '#id', or 'element'",
+            Self::UndefinedVariable => "Define variables in :root { --name: value; }",
+            Self::InvalidColor => "Use formats like #rgb, #rrggbb, rgb(r,g,b), or named colors",
+            Self::InvalidNumber => "Numbers should be like '10', '10px', '50%', or '0.5'",
+            Self::EmptyRule => "Add at least one property declaration inside the rule",
         }
     }
 }
@@ -171,7 +163,12 @@ pub struct SourceLocation {
 impl SourceLocation {
     /// Create a new source location
     pub fn new(line: usize, column: usize, offset: usize, length: usize) -> Self {
-        Self { line, column, offset, length }
+        Self {
+            line,
+            column,
+            offset,
+            length,
+        }
     }
 
     /// Create from byte offset in source
@@ -302,8 +299,13 @@ impl RichParseError {
         // Error header
         output.push_str(&format!(
             "{}{}{}: {}[{}]{} {}\n",
-            bold, self.severity.color(), self.severity.label(),
-            reset, self.code, reset, self.message
+            bold,
+            self.severity.color(),
+            self.severity.label(),
+            reset,
+            self.code,
+            reset,
+            self.message
         ));
 
         // Location
@@ -323,7 +325,10 @@ impl RichParseError {
             if line_idx > 0 {
                 output.push_str(&format!(
                     "  {}{:>width$} |{} {}\n",
-                    dim, line_idx, reset, lines[line_idx - 1],
+                    dim,
+                    line_idx,
+                    reset,
+                    lines[line_idx - 1],
                     width = line_num_width
                 ));
             }
@@ -331,7 +336,10 @@ impl RichParseError {
             // Error line
             output.push_str(&format!(
                 "  {}{:>width$} |{} {}\n",
-                blue, self.location.line, reset, lines[line_idx],
+                blue,
+                self.location.line,
+                reset,
+                lines[line_idx],
                 width = line_num_width
             ));
 
@@ -340,7 +348,8 @@ impl RichParseError {
             let pointer_len = self.location.length.max(1);
             output.push_str(&format!(
                 "  {:>width$} {} {}{}{}{}",
-                "", "|",
+                "",
+                "|",
                 " ".repeat(pointer_offset),
                 self.severity.color(),
                 "^".repeat(pointer_len),
@@ -358,7 +367,10 @@ impl RichParseError {
             if line_idx + 1 < lines.len() {
                 output.push_str(&format!(
                     "  {}{:>width$} |{} {}\n",
-                    dim, self.location.line + 1, reset, lines[line_idx + 1],
+                    dim,
+                    self.location.line + 1,
+                    reset,
+                    lines[line_idx + 1],
                     width = line_num_width
                 ));
             }
@@ -367,10 +379,7 @@ impl RichParseError {
         // Suggestions
         for suggestion in &self.suggestions {
             if let Some(replacement) = &suggestion.replacement {
-                output.push_str(&format!(
-                    "\n  {}help:{} try `{}`",
-                    cyan, reset, replacement
-                ));
+                output.push_str(&format!("\n  {}help:{} try `{}`", cyan, reset, replacement));
             }
         }
 
@@ -382,7 +391,9 @@ impl RichParseError {
         // Help
         output.push_str(&format!(
             "\n  {}help:{} {}\n",
-            cyan, reset, self.code.help()
+            cyan,
+            reset,
+            self.code.help()
         ));
 
         output
@@ -395,7 +406,9 @@ impl RichParseError {
         // Error header
         output.push_str(&format!(
             "{}: [{}] {}\n",
-            self.severity.label(), self.code, self.message
+            self.severity.label(),
+            self.code,
+            self.message
         ));
 
         // Location
@@ -409,10 +422,7 @@ impl RichParseError {
         let line_idx = self.location.line.saturating_sub(1);
 
         if line_idx < lines.len() {
-            output.push_str(&format!(
-                "  {} | {}\n",
-                self.location.line, lines[line_idx]
-            ));
+            output.push_str(&format!("  {} | {}\n", self.location.line, lines[line_idx]));
 
             let pointer_offset = self.location.column.saturating_sub(1);
             let pointer_len = self.location.length.max(1);
@@ -520,10 +530,14 @@ impl ParseErrors {
         }
 
         // Summary
-        let error_count = self.errors.iter()
+        let error_count = self
+            .errors
+            .iter()
             .filter(|e| e.severity == Severity::Error)
             .count();
-        let warning_count = self.errors.iter()
+        let warning_count = self
+            .errors
+            .iter()
             .filter(|e| e.severity == Severity::Warning)
             .count();
 
@@ -544,18 +558,59 @@ impl ParseErrors {
 
 /// Common CSS properties for suggestions
 pub const KNOWN_PROPERTIES: &[&str] = &[
-    "color", "background", "background-color", "border", "border-color",
-    "border-width", "border-style", "border-radius",
-    "padding", "padding-top", "padding-right", "padding-bottom", "padding-left",
-    "margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
-    "width", "height", "min-width", "min-height", "max-width", "max-height",
-    "display", "flex-direction", "justify-content", "align-items", "align-self",
-    "flex-grow", "flex-shrink", "flex-basis", "flex-wrap", "gap",
-    "position", "top", "right", "bottom", "left",
-    "font-weight", "font-style", "text-align", "text-decoration",
-    "opacity", "visibility", "overflow", "cursor",
-    "transition", "animation",
-    "grid-template-columns", "grid-template-rows", "grid-column", "grid-row",
+    "color",
+    "background",
+    "background-color",
+    "border",
+    "border-color",
+    "border-width",
+    "border-style",
+    "border-radius",
+    "padding",
+    "padding-top",
+    "padding-right",
+    "padding-bottom",
+    "padding-left",
+    "margin",
+    "margin-top",
+    "margin-right",
+    "margin-bottom",
+    "margin-left",
+    "width",
+    "height",
+    "min-width",
+    "min-height",
+    "max-width",
+    "max-height",
+    "display",
+    "flex-direction",
+    "justify-content",
+    "align-items",
+    "align-self",
+    "flex-grow",
+    "flex-shrink",
+    "flex-basis",
+    "flex-wrap",
+    "gap",
+    "position",
+    "top",
+    "right",
+    "bottom",
+    "left",
+    "font-weight",
+    "font-style",
+    "text-align",
+    "text-decoration",
+    "opacity",
+    "visibility",
+    "overflow",
+    "cursor",
+    "transition",
+    "animation",
+    "grid-template-columns",
+    "grid-template-rows",
+    "grid-column",
+    "grid-row",
 ];
 
 /// Find similar property names (Levenshtein distance)
@@ -584,8 +639,12 @@ fn levenshtein_distance(a: &str, b: &str) -> usize {
     let a_len = a_chars.len();
     let b_len = b_chars.len();
 
-    if a_len == 0 { return b_len; }
-    if b_len == 0 { return a_len; }
+    if a_len == 0 {
+        return b_len;
+    }
+    if b_len == 0 {
+        return a_len;
+    }
 
     let mut prev: Vec<usize> = (0..=b_len).collect();
     let mut curr = vec![0; b_len + 1];
@@ -593,10 +652,12 @@ fn levenshtein_distance(a: &str, b: &str) -> usize {
     for i in 1..=a_len {
         curr[0] = i;
         for j in 1..=b_len {
-            let cost = if a_chars[i - 1] == b_chars[j - 1] { 0 } else { 1 };
-            curr[j] = (prev[j] + 1)
-                .min(curr[j - 1] + 1)
-                .min(prev[j - 1] + cost);
+            let cost = if a_chars[i - 1] == b_chars[j - 1] {
+                0
+            } else {
+                1
+            };
+            curr[j] = (prev[j] + 1).min(curr[j - 1] + 1).min(prev[j - 1] + cost);
         }
         std::mem::swap(&mut prev, &mut curr);
     }
@@ -647,12 +708,8 @@ mod tests {
     fn test_rich_error_pretty_print() {
         let source = ".button {\n  colr: red;\n}";
         let loc = SourceLocation::new(2, 3, 12, 4);
-        let error = RichParseError::new(
-            ErrorCode::UnknownProperty,
-            "unknown property 'colr'",
-            loc,
-        )
-        .suggest(Suggestion::with_fix("did you mean 'color'?", "color"));
+        let error = RichParseError::new(ErrorCode::UnknownProperty, "unknown property 'colr'", loc)
+            .suggest(Suggestion::with_fix("did you mean 'color'?", "color"));
 
         let output = error.pretty_print(source);
         assert!(output.contains("E002"));

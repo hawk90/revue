@@ -3,10 +3,10 @@
 //! Advanced progress indicators with various styles including
 //! speedometer, arc, battery, and more.
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Gauge style
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -245,7 +245,6 @@ impl Gauge {
         self
     }
 
-
     /// Get current display color based on thresholds
     fn current_color(&self) -> Color {
         if let Some(critical) = self.critical_threshold {
@@ -363,7 +362,11 @@ impl Gauge {
         for y in 0..height - 1 {
             let from_bottom = height - 2 - y;
             let ch = if from_bottom < filled { '█' } else { '│' };
-            let fg = if from_bottom < filled { color } else { self.empty_color };
+            let fg = if from_bottom < filled {
+                color
+            } else {
+                self.empty_color
+            };
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
             ctx.buffer.set(area.x, area.y + y, cell);
@@ -388,7 +391,11 @@ impl Gauge {
         for x in 1..width - 1 {
             let progress = (x - 1) as f64 / (width - 3) as f64;
             let ch = if progress <= self.value { '━' } else { '─' };
-            let fg = if progress <= self.value { color } else { self.empty_color };
+            let fg = if progress <= self.value {
+                color
+            } else {
+                self.empty_color
+            };
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
             ctx.buffer.set(area.x + x, area.y, cell);
@@ -488,7 +495,11 @@ impl Gauge {
         for y in 0..height {
             let from_bottom = height - 1 - y;
             let ch = if from_bottom < filled { '█' } else { '░' };
-            let fg = if from_bottom < filled { color } else { self.empty_color };
+            let fg = if from_bottom < filled {
+                color
+            } else {
+                self.empty_color
+            };
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
             ctx.buffer.set(area.x, area.y + y, cell);
@@ -604,9 +615,8 @@ pub fn battery(level: f64) -> Gauge {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
-    
+    use crate::render::Buffer;
 
     #[test]
     fn test_gauge_new() {
@@ -649,27 +659,21 @@ mod tests {
 
     #[test]
     fn test_gauge_thresholds() {
-        let g = Gauge::new()
-            .thresholds(0.7, 0.9)
-            .value(0.95);
+        let g = Gauge::new().thresholds(0.7, 0.9).value(0.95);
 
         assert_eq!(g.current_color(), g.critical_color);
     }
 
     #[test]
     fn test_gauge_warning_color() {
-        let g = Gauge::new()
-            .thresholds(0.7, 0.9)
-            .value(0.75);
+        let g = Gauge::new().thresholds(0.7, 0.9).value(0.75);
 
         assert_eq!(g.current_color(), g.warning_color);
     }
 
     #[test]
     fn test_gauge_normal_color() {
-        let g = Gauge::new()
-            .thresholds(0.7, 0.9)
-            .value(0.5);
+        let g = Gauge::new().thresholds(0.7, 0.9).value(0.5);
 
         assert_eq!(g.current_color(), g.fill_color);
     }

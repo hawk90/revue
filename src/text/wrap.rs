@@ -83,11 +83,10 @@ impl TextWrapper {
     /// Wrap text
     pub fn wrap(&self, text: &str) -> Vec<String> {
         match self.mode {
-            WrapMode::NoWrap => {
-                text.lines()
-                    .map(|line| self.handle_overflow(line))
-                    .collect()
-            }
+            WrapMode::NoWrap => text
+                .lines()
+                .map(|line| self.handle_overflow(line))
+                .collect(),
             WrapMode::Word => {
                 let options = Options::new(self.width)
                     .initial_indent(&self.indent)
@@ -147,9 +146,7 @@ impl TextWrapper {
         }
 
         match self.overflow {
-            Overflow::Clip => {
-                chars[..self.width].iter().collect()
-            }
+            Overflow::Clip => chars[..self.width].iter().collect(),
             Overflow::Ellipsis => {
                 if self.width <= 3 {
                     "...".chars().take(self.width).collect()
@@ -282,9 +279,7 @@ mod tests {
 
     #[test]
     fn test_wrapper_indent() {
-        let wrapper = TextWrapper::new(40)
-            .indent("  ")
-            .subsequent_indent("    ");
+        let wrapper = TextWrapper::new(40).indent("  ").subsequent_indent("    ");
 
         let wrapped = wrapper.wrap("This is a test line that should wrap");
         assert!(wrapped[0].starts_with("  "));

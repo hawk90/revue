@@ -1,8 +1,8 @@
 //! Convert Revue styles to taffy styles
 
 use crate::style::{
-    Style, Display, FlexDirection, JustifyContent, AlignItems, Size, Spacing,
-    Position, GridTemplate, GridTrack, GridPlacement,
+    AlignItems, Display, FlexDirection, GridPlacement, GridTemplate, GridTrack, JustifyContent,
+    Position, Size, Spacing, Style,
 };
 use taffy::prelude::*;
 
@@ -37,7 +37,8 @@ pub fn to_taffy_style(style: &Style) -> taffy::Style {
 
     // Grid properties
     if style.layout.display == Display::Grid {
-        taffy_style.grid_template_columns = convert_grid_template(&style.layout.grid_template_columns);
+        taffy_style.grid_template_columns =
+            convert_grid_template(&style.layout.grid_template_columns);
         taffy_style.grid_template_rows = convert_grid_template(&style.layout.grid_template_rows);
     }
 
@@ -71,10 +72,10 @@ fn convert_display(display: Display) -> taffy::Display {
 
 fn convert_position(position: Position) -> taffy::Position {
     match position {
-        Position::Static => taffy::Position::Relative,  // taffy doesn't have Static
+        Position::Static => taffy::Position::Relative, // taffy doesn't have Static
         Position::Relative => taffy::Position::Relative,
         Position::Absolute => taffy::Position::Absolute,
-        Position::Fixed => taffy::Position::Absolute,  // Fixed is like absolute in terminal
+        Position::Fixed => taffy::Position::Absolute, // Fixed is like absolute in terminal
     }
 }
 
@@ -82,25 +83,23 @@ fn convert_grid_template(template: &GridTemplate) -> Vec<taffy::GridTemplateComp
     use taffy::style_helpers::*;
     use taffy::GridTemplateComponent;
 
-    template.tracks.iter().map(|track| {
-        match track {
-            GridTrack::Fixed(v) => GridTemplateComponent::Single(
-                minmax(length(*v as f32), length(*v as f32))
-            ),
-            GridTrack::Fr(fr_val) => GridTemplateComponent::Single(
-                minmax(auto(), fr(*fr_val))
-            ),
-            GridTrack::Auto => GridTemplateComponent::Single(
-                minmax(auto(), auto())
-            ),
-            GridTrack::MinContent => GridTemplateComponent::Single(
-                minmax(min_content(), min_content())
-            ),
-            GridTrack::MaxContent => GridTemplateComponent::Single(
-                minmax(max_content(), max_content())
-            ),
-        }
-    }).collect()
+    template
+        .tracks
+        .iter()
+        .map(|track| match track {
+            GridTrack::Fixed(v) => {
+                GridTemplateComponent::Single(minmax(length(*v as f32), length(*v as f32)))
+            }
+            GridTrack::Fr(fr_val) => GridTemplateComponent::Single(minmax(auto(), fr(*fr_val))),
+            GridTrack::Auto => GridTemplateComponent::Single(minmax(auto(), auto())),
+            GridTrack::MinContent => {
+                GridTemplateComponent::Single(minmax(min_content(), min_content()))
+            }
+            GridTrack::MaxContent => {
+                GridTemplateComponent::Single(minmax(max_content(), max_content()))
+            }
+        })
+        .collect()
 }
 
 fn convert_grid_placement(placement: GridPlacement) -> taffy::Line<taffy::GridPlacement> {
@@ -202,9 +201,18 @@ mod tests {
 
     #[test]
     fn test_convert_display() {
-        assert!(matches!(convert_display(Display::Flex), taffy::Display::Flex));
-        assert!(matches!(convert_display(Display::Block), taffy::Display::Block));
-        assert!(matches!(convert_display(Display::None), taffy::Display::None));
+        assert!(matches!(
+            convert_display(Display::Flex),
+            taffy::Display::Flex
+        ));
+        assert!(matches!(
+            convert_display(Display::Block),
+            taffy::Display::Block
+        ));
+        assert!(matches!(
+            convert_display(Display::None),
+            taffy::Display::None
+        ));
     }
 
     #[test]
@@ -247,6 +255,9 @@ mod tests {
         let taffy_style = to_taffy_style(&style);
 
         assert!(matches!(taffy_style.display, taffy::Display::Flex));
-        assert!(matches!(taffy_style.flex_direction, taffy::FlexDirection::Column));
+        assert!(matches!(
+            taffy_style.flex_direction,
+            taffy::FlexDirection::Column
+        ));
     }
 }

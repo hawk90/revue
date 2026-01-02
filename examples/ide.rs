@@ -5,7 +5,7 @@
 //! Run with: cargo run --example ide
 
 use revue::prelude::*;
-use revue::widget::{CommandPalette, Command, TextArea};
+use revue::widget::{Command, CommandPalette, TextArea};
 
 /// Main IDE application state
 struct IdeApp {
@@ -80,14 +80,46 @@ impl IdeApp {
         ];
 
         let files = vec![
-            FileItem { name: "src/".into(), is_dir: true, modified: false },
-            FileItem { name: "  main.rs".into(), is_dir: false, modified: true },
-            FileItem { name: "  lib.rs".into(), is_dir: false, modified: false },
-            FileItem { name: "  app/".into(), is_dir: true, modified: false },
-            FileItem { name: "    mod.rs".into(), is_dir: false, modified: false },
-            FileItem { name: "    screen.rs".into(), is_dir: false, modified: true },
-            FileItem { name: "Cargo.toml".into(), is_dir: false, modified: false },
-            FileItem { name: "README.md".into(), is_dir: false, modified: false },
+            FileItem {
+                name: "src/".into(),
+                is_dir: true,
+                modified: false,
+            },
+            FileItem {
+                name: "  main.rs".into(),
+                is_dir: false,
+                modified: true,
+            },
+            FileItem {
+                name: "  lib.rs".into(),
+                is_dir: false,
+                modified: false,
+            },
+            FileItem {
+                name: "  app/".into(),
+                is_dir: true,
+                modified: false,
+            },
+            FileItem {
+                name: "    mod.rs".into(),
+                is_dir: false,
+                modified: false,
+            },
+            FileItem {
+                name: "    screen.rs".into(),
+                is_dir: false,
+                modified: true,
+            },
+            FileItem {
+                name: "Cargo.toml".into(),
+                is_dir: false,
+                modified: false,
+            },
+            FileItem {
+                name: "README.md".into(),
+                is_dir: false,
+                modified: false,
+            },
         ];
 
         let sample_code = r#"//! Revue - A Vue-style TUI framework for Rust
@@ -336,9 +368,7 @@ fn main() -> Result<()> {
             tree = tree.child(text);
         }
 
-        Border::rounded()
-            .title("Explorer")
-            .child(tree)
+        Border::rounded().title("Explorer").child(tree)
     }
 
     fn render_editor(&self) -> impl View {
@@ -357,11 +387,7 @@ fn main() -> Result<()> {
         }
 
         let (cursor_row, cursor_col) = self.editor.cursor_position();
-        let cursor_info = format!(
-            "Ln {}, Col {}",
-            cursor_row + 1,
-            cursor_col + 1
-        );
+        let cursor_info = format!("Ln {}, Col {}", cursor_row + 1, cursor_col + 1);
 
         let header = hstack()
             .child(Text::new(format!(" {} ", self.current_file)).bg(Color::rgb(50, 50, 50)))
@@ -384,15 +410,11 @@ fn main() -> Result<()> {
             .bold();
 
         let file_text = Text::new(format!("  {} ", self.current_file));
-        let status_text = Text::new(format!("  {} ", self.status_message))
-            .fg(Color::rgb(180, 180, 180));
+        let status_text =
+            Text::new(format!("  {} ", self.status_message)).fg(Color::rgb(180, 180, 180));
 
         let (cursor_row, cursor_col) = self.editor.cursor_position();
-        let pos_text = Text::new(format!(
-            " {}:{} ",
-            cursor_row + 1,
-            cursor_col + 1
-        ));
+        let pos_text = Text::new(format!(" {}:{} ", cursor_row + 1, cursor_col + 1));
 
         hstack()
             .child(mode_text)
@@ -408,14 +430,14 @@ fn main() -> Result<()> {
 
         // Use the CommandPalette's built-in rendering
         // Just show a simple overlay since CommandPalette has its own render
-        let search_box = Border::rounded()
-            .title("Command Palette")
-            .child(
-                vstack()
-                    .child(Text::new(format!("> {}", self.command_palette.get_query())))
-                    .child(Text::new("─".repeat(40)).fg(Color::rgb(80, 80, 80)))
-                    .child(Text::new("(Use ↑↓ to select, Enter to execute)").fg(Color::rgb(100, 100, 100)))
-            );
+        let search_box = Border::rounded().title("Command Palette").child(
+            vstack()
+                .child(Text::new(format!("> {}", self.command_palette.get_query())))
+                .child(Text::new("─".repeat(40)).fg(Color::rgb(80, 80, 80)))
+                .child(
+                    Text::new("(Use ↑↓ to select, Enter to execute)").fg(Color::rgb(100, 100, 100)),
+                ),
+        );
 
         vstack().child(search_box)
     }
@@ -429,9 +451,7 @@ impl View for IdeApp {
 
         // Create split pane
         let main_content = if self.split_ratio > 0.05 {
-            hstack()
-                .child(sidebar)
-                .child(editor)
+            hstack().child(sidebar).child(editor)
         } else {
             hstack().child(editor)
         };
@@ -439,8 +459,10 @@ impl View for IdeApp {
         // Header
         let header = hstack()
             .child(Text::new(" Revue IDE ").fg(Color::CYAN).bold())
-            .child(Text::new(" | Ctrl+P: Commands | Tab: Files | i: Insert | :: Command ")
-                .fg(Color::rgb(100, 100, 100)));
+            .child(
+                Text::new(" | Ctrl+P: Commands | Tab: Files | i: Insert | :: Command ")
+                    .fg(Color::rgb(100, 100, 100)),
+            );
 
         // Main view
         let main_view = vstack()
@@ -462,7 +484,7 @@ impl View for IdeApp {
                 notif_stack = notif_stack.child(
                     Text::new(format!(" {} ", msg))
                         .fg(Color::WHITE)
-                        .bg(Color::rgb(60, 60, 60))
+                        .bg(Color::rgb(60, 60, 60)),
                 );
             }
             notif_stack.render(ctx);
@@ -474,7 +496,5 @@ fn main() -> Result<()> {
     let mut app = App::builder().build();
     let ide = IdeApp::new();
 
-    app.run_with_handler(ide, |key_event, ide| {
-        ide.handle_key(&key_event.key)
-    })
+    app.run_with_handler(ide, |key_event, ide| ide.handle_key(&key_event.key))
 }

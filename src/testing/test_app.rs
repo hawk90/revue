@@ -1,10 +1,10 @@
 //! Test app wrapper for testing views without a terminal
 
-use crate::event::{KeyEvent, MouseEvent, MouseEventKind, MouseButton};
+use super::TestConfig;
+use crate::event::{KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use crate::layout::Rect;
 use crate::render::Buffer;
-use crate::widget::{View, RenderContext};
-use super::TestConfig;
+use crate::widget::{RenderContext, View};
 
 /// Type alias for key event handler
 type KeyHandler<V> = Box<dyn FnMut(&KeyEvent, &mut V) -> bool>;

@@ -31,6 +31,8 @@ impl ComputedStyle {
             Some(parent_computed) => style.with_inheritance(&parent_computed.style),
             None => style,
         };
-        Self { style: computed_style }
+        Self {
+            style: computed_style,
+        }
     }
 }

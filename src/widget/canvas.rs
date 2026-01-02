@@ -7,10 +7,10 @@
 //! - **Character mode**: Standard character-based drawing
 //! - **Braille mode**: High-resolution drawing using braille patterns (2x4 dots per cell)
 
-use super::traits::{View, RenderContext};
+use super::traits::{RenderContext, View};
+use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::layout::Rect;
 
 // =============================================================================
 // Braille Constants
@@ -60,7 +60,13 @@ pub struct Line {
 impl Line {
     /// Create a new line
     pub fn new(x0: f64, y0: f64, x1: f64, y1: f64, color: Color) -> Self {
-        Self { x0, y0, x1, y1, color }
+        Self {
+            x0,
+            y0,
+            x1,
+            y1,
+            color,
+        }
     }
 }
 
@@ -112,7 +118,12 @@ pub struct Circle {
 impl Circle {
     /// Create a new circle
     pub fn new(x: f64, y: f64, radius: f64, color: Color) -> Self {
-        Self { x, y, radius, color }
+        Self {
+            x,
+            y,
+            radius,
+            color,
+        }
     }
 }
 
@@ -168,7 +179,12 @@ pub struct FilledCircle {
 impl FilledCircle {
     /// Create a new filled circle
     pub fn new(x: f64, y: f64, radius: f64, color: Color) -> Self {
-        Self { x, y, radius, color }
+        Self {
+            x,
+            y,
+            radius,
+            color,
+        }
     }
 }
 
@@ -210,7 +226,13 @@ pub struct Rectangle {
 impl Rectangle {
     /// Create a new rectangle
     pub fn new(x: f64, y: f64, width: f64, height: f64, color: Color) -> Self {
-        Self { x, y, width, height, color }
+        Self {
+            x,
+            y,
+            width,
+            height,
+            color,
+        }
     }
 }
 
@@ -250,7 +272,13 @@ pub struct FilledRectangle {
 impl FilledRectangle {
     /// Create a new filled rectangle
     pub fn new(x: f64, y: f64, width: f64, height: f64, color: Color) -> Self {
-        Self { x, y, width, height, color }
+        Self {
+            x,
+            y,
+            width,
+            height,
+            color,
+        }
     }
 }
 
@@ -579,7 +607,16 @@ impl<'a> DrawContext<'a> {
 
     /// Fill a rectangle
     #[allow(clippy::too_many_arguments)]
-    pub fn fill_rect(&mut self, x: u16, y: u16, width: u16, height: u16, ch: char, fg: Option<Color>, bg: Option<Color>) {
+    pub fn fill_rect(
+        &mut self,
+        x: u16,
+        y: u16,
+        width: u16,
+        height: u16,
+        ch: char,
+        fg: Option<Color>,
+        bg: Option<Color>,
+    ) {
         for dy in 0..height {
             for dx in 0..width {
                 if x + dx < self.area.width && y + dy < self.area.height {
@@ -960,7 +997,7 @@ mod tests {
     #[test]
     fn test_braille_grid_new() {
         let grid = BrailleGrid::new(40, 20);
-        assert_eq!(grid.width(), 80);  // 40 * 2
+        assert_eq!(grid.width(), 80); // 40 * 2
         assert_eq!(grid.height(), 80); // 20 * 4
     }
 

@@ -57,8 +57,12 @@ impl TerminalType {
     pub fn emoji_width(&self) -> u8 {
         match self {
             // Modern terminals typically render emoji as 2 cells
-            Self::ITerm2 | Self::Kitty | Self::Alacritty | Self::WezTerm
-            | Self::WindowsTerminal | Self::VSCode => 2,
+            Self::ITerm2
+            | Self::Kitty
+            | Self::Alacritty
+            | Self::WezTerm
+            | Self::WindowsTerminal
+            | Self::VSCode => 2,
             // Apple Terminal may have issues with some emoji
             Self::AppleTerminal => 2,
             // Unknown - assume 2 (most common)

@@ -9,12 +9,12 @@
 //! - Word wrap
 //! - Scrolling
 
-use super::traits::{View, RenderContext, WidgetProps};
 use super::syntax::{Language, SyntaxHighlighter, SyntaxTheme};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::event::Key;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Maximum undo history size
 const MAX_UNDO_HISTORY: usize = 100;
@@ -37,7 +37,10 @@ impl Selection {
     /// Get the normalized selection (start before end)
     pub fn normalized(&self) -> Self {
         if self.start.0 > self.end.0 || (self.start.0 == self.end.0 && self.start.1 > self.end.1) {
-            Self { start: self.end, end: self.start }
+            Self {
+                start: self.end,
+                end: self.start,
+            }
         } else {
             *self
         }
@@ -77,25 +80,13 @@ enum EditOperation {
         text: String,
     },
     /// Insert a new line
-    InsertLine {
-        line: usize,
-        content: String,
-    },
+    InsertLine { line: usize, content: String },
     /// Delete a line
-    DeleteLine {
-        line: usize,
-        content: String,
-    },
+    DeleteLine { line: usize, content: String },
     /// Merge with previous line
-    MergeLines {
-        line: usize,
-        col: usize,
-    },
+    MergeLines { line: usize, col: usize },
     /// Split line at position
-    SplitLine {
-        line: usize,
-        col: usize,
-    },
+    SplitLine { line: usize, col: usize },
 }
 
 /// A multi-line text editor widget
@@ -285,7 +276,10 @@ impl TextArea {
 
     /// Get the current highlighting language
     pub fn get_syntax_language(&self) -> Language {
-        self.highlighter.as_ref().map(|h| h.get_language()).unwrap_or(Language::None)
+        self.highlighter
+            .as_ref()
+            .map(|h| h.get_language())
+            .unwrap_or(Language::None)
     }
 
     /// Get the current text content
@@ -337,8 +331,16 @@ impl TextArea {
                 break;
             }
             let line = &self.lines[line_idx];
-            let start_col = if line_idx == sel.start.0 { sel.start.1 } else { 0 };
-            let end_col = if line_idx == sel.end.0 { sel.end.1 } else { line.len() };
+            let start_col = if line_idx == sel.start.0 {
+                sel.start.1
+            } else {
+                0
+            };
+            let end_col = if line_idx == sel.end.0 {
+                sel.end.1
+            } else {
+                line.len()
+            };
 
             if start_col < line.len() {
                 result.push_str(&line[start_col..end_col.min(line.len())]);
@@ -359,7 +361,8 @@ impl TextArea {
             if sel.start.0 == sel.end.0 {
                 // Single line selection
                 if let Some(line) = self.lines.get_mut(sel.start.0) {
-                    let deleted: String = line.drain(sel.start.1..sel.end.1.min(line.len())).collect();
+                    let deleted: String =
+                        line.drain(sel.start.1..sel.end.1.min(line.len())).collect();
                     self.push_undo(EditOperation::Delete {
                         line: sel.start.0,
                         col: sel.start.1,
@@ -380,7 +383,8 @@ impl TextArea {
                 }
 
                 // Insert merged line
-                self.lines.insert(sel.start.0, format!("{}{}", before, after));
+                self.lines
+                    .insert(sel.start.0, format!("{}{}", before, after));
             }
 
             self.cursor = sel.start;
@@ -700,7 +704,10 @@ impl TextArea {
         let line = self.cursor.0;
         let content = self.lines[line].clone();
         self.lines.insert(line + 1, content.clone());
-        self.push_undo(EditOperation::InsertLine { line: line + 1, content });
+        self.push_undo(EditOperation::InsertLine {
+            line: line + 1,
+            content,
+        });
         self.cursor.0 += 1;
     }
 
@@ -961,7 +968,8 @@ impl View for TextArea {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(Color::rgb(128, 128, 128));
                         cell.modifier = Modifier::ITALIC;
-                        ctx.buffer.set(area.x + text_start_x + i as u16, area.y, cell);
+                        ctx.buffer
+                            .set(area.x + text_start_x + i as u16, area.y, cell);
                     }
                 }
             }
@@ -977,7 +985,11 @@ impl View for TextArea {
 
             // Draw line numbers
             if self.show_line_numbers {
-                let num_str = format!("{:>width$} ", line_idx + 1, width = (line_num_width - 2) as usize);
+                let num_str = format!(
+                    "{:>width$} ",
+                    line_idx + 1,
+                    width = (line_num_width - 2) as usize
+                );
                 for (i, ch) in num_str.chars().enumerate() {
                     if (i as u16) < line_num_width {
                         let mut cell = Cell::new(ch);
@@ -1005,14 +1017,14 @@ impl View for TextArea {
                 let mut cell = Cell::new(ch);
 
                 // Check if this position is selected
-                let is_selected = self.selection
+                let is_selected = self
+                    .selection
                     .map(|s| s.contains(line_idx, char_idx))
                     .unwrap_or(false);
 
                 // Check if this is cursor position
-                let is_cursor = self.focused
-                    && line_idx == self.cursor.0
-                    && char_idx == self.cursor.1;
+                let is_cursor =
+                    self.focused && line_idx == self.cursor.0 && char_idx == self.cursor.1;
 
                 if is_cursor {
                     cell.fg = self.cursor_fg;
@@ -1071,10 +1083,10 @@ pub fn textarea() -> TextArea {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::syntax::{Language, SyntaxTheme};
-    use crate::render::Buffer;
+    use super::*;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_textarea_new() {
@@ -1310,8 +1322,7 @@ mod tests {
 
     #[test]
     fn test_textarea_set_language() {
-        let mut ta = TextArea::new()
-            .content("console.log('Hello');");
+        let mut ta = TextArea::new().content("console.log('Hello');");
 
         ta.set_language(Language::JavaScript);
         assert_eq!(ta.get_syntax_language(), Language::JavaScript);

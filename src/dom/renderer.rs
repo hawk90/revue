@@ -2,11 +2,11 @@
 //!
 //! Integrates the DOM tree with style resolution and rendering.
 
-use crate::dom::{DomTree, DomId, DomNode, WidgetMeta, NodeState, StyleResolver, Query};
+use crate::dom::{DomId, DomNode, DomTree, NodeState, Query, StyleResolver, WidgetMeta};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::{Style, StyleSheet};
-use crate::widget::{View, RenderContext};
+use crate::widget::{RenderContext, View};
 
 /// DOM-aware renderer
 ///
@@ -144,13 +144,15 @@ impl DomRenderer {
     /// Recursively update children, reusing nodes when possible
     fn update_children(&mut self, parent_id: DomId, new_children: &[Box<dyn View>]) {
         // Get current children IDs
-        let old_children: Vec<DomId> = self.tree
+        let old_children: Vec<DomId> = self
+            .tree
             .get(parent_id)
             .map(|n| n.children.clone())
             .unwrap_or_default();
 
         // Build ID lookup map for efficient matching
-        let mut old_by_id: std::collections::HashMap<String, DomId> = std::collections::HashMap::new();
+        let mut old_by_id: std::collections::HashMap<String, DomId> =
+            std::collections::HashMap::new();
 
         for &child_id in &old_children {
             if let Some(node) = self.tree.get(child_id) {
@@ -399,9 +401,7 @@ impl DomRenderer {
         let node = self.tree.get(node_id)?;
 
         // Create closure for node lookup
-        let get_node = |id: DomId| -> Option<&DomNode> {
-            self.tree.get(id)
-        };
+        let get_node = |id: DomId| -> Option<&DomNode> { self.tree.get(id) };
 
         let style = resolver.compute_style(node, get_node);
         self.styles.insert(node_id, style.clone());
@@ -436,9 +436,7 @@ impl DomRenderer {
         let node = self.tree.get(node_id)?;
 
         // Create closure for node lookup
-        let get_node = |id: DomId| -> Option<&DomNode> {
-            self.tree.get(id)
-        };
+        let get_node = |id: DomId| -> Option<&DomNode> { self.tree.get(id) };
 
         let style = resolver.compute_style_with_parent(node, parent_style.as_ref(), get_node);
         self.styles.insert(node_id, style.clone());
@@ -488,7 +486,8 @@ impl DomRenderer {
         }
 
         // Get children (need to collect to avoid borrow issues)
-        let children: Vec<DomId> = self.tree
+        let children: Vec<DomId> = self
+            .tree
             .get(node_id)
             .map(|n| n.children.clone())
             .unwrap_or_default();
@@ -642,7 +641,9 @@ mod tests {
 
         // Build tree: App -> Button
         let root_id = renderer.tree.create_root(WidgetMeta::new("App").id("app"));
-        let child_id = renderer.tree.add_child(root_id, WidgetMeta::new("Button").id("btn"));
+        let child_id = renderer
+            .tree
+            .add_child(root_id, WidgetMeta::new("Button").id("btn"));
 
         // Compute styles with inheritance
         renderer.compute_styles_with_inheritance();
@@ -672,7 +673,9 @@ mod tests {
 
         // Build tree: App -> Button
         let root_id = renderer.tree.create_root(WidgetMeta::new("App").id("app"));
-        let child_id = renderer.tree.add_child(root_id, WidgetMeta::new("Button").id("btn"));
+        let child_id = renderer
+            .tree
+            .add_child(root_id, WidgetMeta::new("Button").id("btn"));
 
         // Compute styles with inheritance
         renderer.compute_styles_with_inheritance();
@@ -699,7 +702,9 @@ mod tests {
 
         // Build tree: App -> Button
         let root_id = renderer.tree.create_root(WidgetMeta::new("App").id("app"));
-        let child_id = renderer.tree.add_child(root_id, WidgetMeta::new("Button").id("btn"));
+        let child_id = renderer
+            .tree
+            .add_child(root_id, WidgetMeta::new("Button").id("btn"));
 
         // Compute styles with inheritance
         renderer.compute_styles_with_inheritance();
@@ -726,8 +731,12 @@ mod tests {
 
         // Build tree: App -> Container -> Button
         let root_id = renderer.tree.create_root(WidgetMeta::new("App").id("app"));
-        let container_id = renderer.tree.add_child(root_id, WidgetMeta::new("Container"));
-        let btn_id = renderer.tree.add_child(container_id, WidgetMeta::new("Button"));
+        let container_id = renderer
+            .tree
+            .add_child(root_id, WidgetMeta::new("Container"));
+        let btn_id = renderer
+            .tree
+            .add_child(container_id, WidgetMeta::new("Button"));
 
         // Compute styles with inheritance
         renderer.compute_styles_with_inheritance();
@@ -757,7 +766,7 @@ mod tests {
                 Stack::new()
                     .element_id("nested")
                     .child(Text::new("Second").element_id("text2"))
-                    .child(Text::new("Third").element_id("text3"))
+                    .child(Text::new("Third").element_id("text3")),
             );
 
         // Build DOM from View hierarchy
@@ -790,7 +799,11 @@ mod tests {
 
         // Verify tree structure using children count
         assert_eq!(root_node.children.len(), 2, "Root should have 2 children");
-        assert_eq!(nested.unwrap().children.len(), 2, "Nested stack should have 2 children");
+        assert_eq!(
+            nested.unwrap().children.len(),
+            2,
+            "Nested stack should have 2 children"
+        );
     }
 
     #[test]
@@ -821,7 +834,10 @@ mod tests {
         let new_greeting_id = renderer.get_by_id("greeting").unwrap().id;
 
         assert_eq!(original_root_id, new_root_id, "Root node should be reused");
-        assert_eq!(original_greeting_id, new_greeting_id, "Child node should be reused");
+        assert_eq!(
+            original_greeting_id, new_greeting_id,
+            "Child node should be reused"
+        );
     }
 
     #[test]
@@ -923,9 +939,7 @@ mod tests {
         let mut renderer = DomRenderer::new();
 
         // First build
-        let view = Stack::new()
-            .element_id("root")
-            .child(Text::new("Hello"));
+        let view = Stack::new().element_id("root").child(Text::new("Hello"));
 
         renderer.build(&view);
         let original_root_id = renderer.tree.root_id().unwrap();
@@ -939,6 +953,9 @@ mod tests {
         let new_root_id = renderer.tree.root_id().unwrap();
 
         // Should be a new node (different ID)
-        assert_ne!(original_root_id, new_root_id, "Should create new node after invalidate");
+        assert_ne!(
+            original_root_id, new_root_id,
+            "Should create new node after invalidate"
+        );
     }
 }

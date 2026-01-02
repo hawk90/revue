@@ -2,10 +2,10 @@
 //!
 //! Displays customizable star ratings with hover and selection support.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Rating display style
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -40,11 +40,11 @@ impl RatingStyle {
     /// Get half-filled character for this style
     fn half_char(&self) -> char {
         match self {
-            RatingStyle::Star => '⯪',    // Half-filled star
-            RatingStyle::Heart => '❥',   // Rotated heart (visual half)
-            RatingStyle::Circle => '◐',  // Left half black circle
-            RatingStyle::Square => '◧',  // Left half black square
-            RatingStyle::Numeric => '◐', // Same as circle for numeric
+            RatingStyle::Star => '⯪',                  // Half-filled star
+            RatingStyle::Heart => '❥',                 // Rotated heart (visual half)
+            RatingStyle::Circle => '◐',                // Left half black circle
+            RatingStyle::Square => '◧',                // Left half black square
+            RatingStyle::Numeric => '◐',               // Same as circle for numeric
             RatingStyle::Custom(filled, _) => *filled, // Use filled for custom
         }
     }
@@ -321,7 +321,8 @@ impl View for Rating {
                 if x >= area.x + area.width {
                     break;
                 }
-                ctx.buffer.set(x, y, Cell::new(ch).fg(Color::rgb(150, 150, 150)));
+                ctx.buffer
+                    .set(x, y, Cell::new(ch).fg(Color::rgb(150, 150, 150)));
                 x += 1;
             }
         }
@@ -339,8 +340,8 @@ pub fn rating() -> Rating {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_rating_new() {

@@ -55,20 +55,26 @@ impl Timer {
 
     /// Set a one-shot timer
     pub fn set(&mut self, id: TimerId, duration: Duration) {
-        self.timers.insert(id, TimerEntry {
-            expires_at: Instant::now() + duration,
-            repeat: None,
-            active: true,
-        });
+        self.timers.insert(
+            id,
+            TimerEntry {
+                expires_at: Instant::now() + duration,
+                repeat: None,
+                active: true,
+            },
+        );
     }
 
     /// Set a repeating timer
     pub fn set_repeating(&mut self, id: TimerId, interval: Duration) {
-        self.timers.insert(id, TimerEntry {
-            expires_at: Instant::now() + interval,
-            repeat: Some(interval),
-            active: true,
-        });
+        self.timers.insert(
+            id,
+            TimerEntry {
+                expires_at: Instant::now() + interval,
+                repeat: Some(interval),
+                active: true,
+            },
+        );
     }
 
     /// Cancel a timer
@@ -132,7 +138,8 @@ impl Timer {
             }
 
             // Remove one-shot timers that expired
-            self.timers.retain(|_, entry| entry.repeat.is_some() || entry.expires_at > now);
+            self.timers
+                .retain(|_, entry| entry.repeat.is_some() || entry.expires_at > now);
         }
 
         // Return one expired timer at a time

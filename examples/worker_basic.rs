@@ -147,29 +147,27 @@ impl View for WorkerDemo {
         let view = vstack()
             .gap(1)
             .child(
-                Border::panel()
-                    .title("⚙️  Worker Handle Demo")
-                    .child(
-                        vstack()
-                            .child(
-                                hstack()
-                                    .gap(2)
-                                    .child(Text::new("Status:").bold())
-                                    .child(Text::new(&self.status).fg(Color::CYAN))
-                            )
-                            .child(
-                                hstack()
-                                    .gap(2)
-                                    .child(Text::new("Worker state:"))
-                                    .child(Text::new(state_text).fg(state_color))
-                            )
-                            .child(
-                                hstack()
-                                    .gap(2)
-                                    .child(Text::new("Tasks completed:"))
-                                    .child(Text::new(format!("{}", self.task_count)))
-                            )
-                    )
+                Border::panel().title("⚙️  Worker Handle Demo").child(
+                    vstack()
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::new("Status:").bold())
+                                .child(Text::new(&self.status).fg(Color::CYAN)),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::new("Worker state:"))
+                                .child(Text::new(state_text).fg(state_color)),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::new("Tasks completed:"))
+                                .child(Text::new(format!("{}", self.task_count))),
+                        ),
+                ),
             )
             .child(
                 Border::single()
@@ -180,7 +178,7 @@ impl View for WorkerDemo {
                             .child(Text::new(result).fg(Color::WHITE))
                     } else {
                         vstack().child(Text::muted("No result yet"))
-                    })
+                    }),
             )
             .child(
                 Border::success_box()
@@ -188,24 +186,54 @@ impl View for WorkerDemo {
                     .child(
                         vstack()
                             .child(Text::success("✓ WorkerHandle: Spawn blocking tasks"))
-                            .child(Text::success("✓ State tracking: Pending → Running → Completed"))
+                            .child(Text::success(
+                                "✓ State tracking: Pending → Running → Completed",
+                            ))
                             .child(Text::success("✓ Result retrieval with join()"))
                             .child(Text::success("✓ Cancellation support"))
-                            .child(Text::success("✓ Panic handling"))
-                    )
+                            .child(Text::success("✓ Panic handling")),
+                    ),
             )
             .child(
-                Border::rounded()
-                    .title("Controls")
-                    .child(
-                        vstack()
-                            .child(hstack().gap(2).child(Text::muted("[1]")).child(Text::new("Start 1s task")))
-                            .child(hstack().gap(2).child(Text::muted("[2]")).child(Text::new("Start 3s task")))
-                            .child(hstack().gap(2).child(Text::muted("[3]")).child(Text::new("Start 5s task")))
-                            .child(hstack().gap(2).child(Text::muted("[c]")).child(Text::new("Cancel task")))
-                            .child(hstack().gap(2).child(Text::muted("[r]")).child(Text::new("Clear result")))
-                            .child(hstack().gap(2).child(Text::muted("[q]")).child(Text::new("Quit")))
-                    )
+                Border::rounded().title("Controls").child(
+                    vstack()
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[1]"))
+                                .child(Text::new("Start 1s task")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[2]"))
+                                .child(Text::new("Start 3s task")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[3]"))
+                                .child(Text::new("Start 5s task")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[c]"))
+                                .child(Text::new("Cancel task")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[r]"))
+                                .child(Text::new("Clear result")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[q]"))
+                                .child(Text::new("Quit")),
+                        ),
+                ),
             );
 
         view.render(ctx);
@@ -223,11 +251,9 @@ fn main() -> Result<()> {
     let mut app = App::builder().build();
     let mut demo = WorkerDemo::new();
 
-    app.run(demo, |event, demo, _app| {
-        match event {
-            Event::Key(key_event) => demo.handle_key(&key_event.key),
-            Event::Tick => demo.tick(),
-            _ => false,
-        }
+    app.run(demo, |event, demo, _app| match event {
+        Event::Key(key_event) => demo.handle_key(&key_event.key),
+        Event::Tick => demo.tick(),
+        _ => false,
     })
 }

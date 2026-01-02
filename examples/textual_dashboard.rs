@@ -42,7 +42,7 @@ impl Dashboard {
                 Text::new(" Posting data to httpbin.org ")
                     .fg(BG_BASE)
                     .bg(BLUE)
-                    .bold()
+                    .bold(),
             )
             .child(Text::new(""))
     }
@@ -61,10 +61,7 @@ impl Dashboard {
         Border::rounded()
             .title(" JSON ")
             .fg(BG_OVERLAY)
-            .child(
-                vstack()
-                    .child(self.render_json_syntax(json_content))
-            )
+            .child(vstack().child(self.render_json_syntax(json_content)))
     }
 
     fn render_json_syntax(&self, json: &str) -> impl View {
@@ -88,10 +85,17 @@ impl Dashboard {
                 } else {
                     rich.append(line, Style::new().fg(GREEN));
                 }
-            } else if trimmed.starts_with('{') || trimmed.starts_with('}')
-                   || trimmed.starts_with('[') || trimmed.starts_with(']') {
+            } else if trimmed.starts_with('{')
+                || trimmed.starts_with('}')
+                || trimmed.starts_with('[')
+                || trimmed.starts_with(']')
+            {
                 rich.append(line, Style::new().fg(TEXT));
-            } else if trimmed == "true" || trimmed == "false" || trimmed.starts_with("true") || trimmed.starts_with("false") {
+            } else if trimmed == "true"
+                || trimmed == "false"
+                || trimmed.starts_with("true")
+                || trimmed.starts_with("false")
+            {
                 rich.append(&indent, Style::new());
                 rich.append(trimmed.trim_end_matches(','), Style::new().fg(PINK));
                 if trimmed.ends_with(',') {
@@ -107,35 +111,31 @@ impl Dashboard {
     }
 
     fn render_markdown_panel(&self) -> impl View {
-        Border::rounded()
-            .title(" Markdown ")
-            .fg(BG_OVERLAY)
-            .child(
-                vstack()
-                    .child(RichText::markup("[bold]Revue[/] is a [cyan]Vue-style[/] TUI framework"))
-                    .child(Text::new(""))
-                    .child(RichText::markup("Features:"))
-                    .child(RichText::markup("  [green]•[/] CSS styling"))
-                    .child(RichText::markup("  [green]•[/] Reactive state"))
-                    .child(RichText::markup("  [green]•[/] 70+ widgets"))
-                    .child(Text::new(""))
-                    .child(RichText::markup("[dim]Built with Rust[/]"))
-            )
+        Border::rounded().title(" Markdown ").fg(BG_OVERLAY).child(
+            vstack()
+                .child(RichText::markup(
+                    "[bold]Revue[/] is a [cyan]Vue-style[/] TUI framework",
+                ))
+                .child(Text::new(""))
+                .child(RichText::markup("Features:"))
+                .child(RichText::markup("  [green]•[/] CSS styling"))
+                .child(RichText::markup("  [green]•[/] Reactive state"))
+                .child(RichText::markup("  [green]•[/] 70+ widgets"))
+                .child(Text::new(""))
+                .child(RichText::markup("[dim]Built with Rust[/]")),
+        )
     }
 
     fn render_csv_panel(&self) -> impl View {
-        Border::rounded()
-            .title(" CSV Data ")
-            .fg(BG_OVERLAY)
-            .child(
-                vstack()
-                    .child(Text::new(" Name       │ Value │ Status").fg(SUBTEXT))
-                    .child(Text::new("────────────┼───────┼────────").fg(BG_OVERLAY))
-                    .child(self.csv_row("Alpha", "100", "OK", 0))
-                    .child(self.csv_row("Beta", "250", "OK", 1))
-                    .child(self.csv_row("Gamma", "75", "WARN", 2))
-                    .child(self.csv_row("Delta", "320", "OK", 3))
-            )
+        Border::rounded().title(" CSV Data ").fg(BG_OVERLAY).child(
+            vstack()
+                .child(Text::new(" Name       │ Value │ Status").fg(SUBTEXT))
+                .child(Text::new("────────────┼───────┼────────").fg(BG_OVERLAY))
+                .child(self.csv_row("Alpha", "100", "OK", 0))
+                .child(self.csv_row("Beta", "250", "OK", 1))
+                .child(self.csv_row("Gamma", "75", "WARN", 2))
+                .child(self.csv_row("Delta", "320", "OK", 3)),
+        )
     }
 
     fn csv_row(&self, name: &str, value: &str, status: &str, idx: usize) -> Text {
@@ -149,18 +149,15 @@ impl Dashboard {
     }
 
     fn render_progress_panel(&self) -> impl View {
-        Border::rounded()
-            .title(" Progress ")
-            .fg(BG_OVERLAY)
-            .child(
-                vstack()
-                    .gap(1)
-                    .child(Text::new(" Downloading...").fg(SUBTEXT))
-                    .child(self.render_progress_bar(self.progress1, BLUE))
-                    .child(Text::new(""))
-                    .child(Text::new(" Processing...").fg(SUBTEXT))
-                    .child(self.render_progress_bar(self.progress2, GREEN))
-            )
+        Border::rounded().title(" Progress ").fg(BG_OVERLAY).child(
+            vstack()
+                .gap(1)
+                .child(Text::new(" Downloading...").fg(SUBTEXT))
+                .child(self.render_progress_bar(self.progress1, BLUE))
+                .child(Text::new(""))
+                .child(Text::new(" Processing...").fg(SUBTEXT))
+                .child(self.render_progress_bar(self.progress2, GREEN)),
+        )
     }
 
     fn render_progress_bar(&self, value: f32, color: Color) -> impl View {
@@ -171,21 +168,31 @@ impl Dashboard {
         RichText::new()
             .push(&"━".repeat(filled), Style::new().fg(color))
             .push(&"─".repeat(empty), Style::new().fg(BG_OVERLAY))
-            .push(&format!(" {:>3}%", (value * 100.0) as u32), Style::new().fg(SUBTEXT))
+            .push(
+                &format!(" {:>3}%", (value * 100.0) as u32),
+                Style::new().fg(SUBTEXT),
+            )
     }
 
     fn render_log_panel(&self) -> impl View {
-        Border::rounded()
-            .title(" Log ")
-            .fg(BG_OVERLAY)
-            .child(
-                vstack()
-                    .child(RichText::markup("[dim]12:00:01[/] [green]INFO[/]  Application started"))
-                    .child(RichText::markup("[dim]12:00:02[/] [green]INFO[/]  Loading config..."))
-                    .child(RichText::markup("[dim]12:00:03[/] [yellow]WARN[/]  Cache miss"))
-                    .child(RichText::markup("[dim]12:00:04[/] [green]INFO[/]  Connected to server"))
-                    .child(RichText::markup("[dim]12:00:05[/] [red]ERROR[/] Request timeout"))
-            )
+        Border::rounded().title(" Log ").fg(BG_OVERLAY).child(
+            vstack()
+                .child(RichText::markup(
+                    "[dim]12:00:01[/] [green]INFO[/]  Application started",
+                ))
+                .child(RichText::markup(
+                    "[dim]12:00:02[/] [green]INFO[/]  Loading config...",
+                ))
+                .child(RichText::markup(
+                    "[dim]12:00:03[/] [yellow]WARN[/]  Cache miss",
+                ))
+                .child(RichText::markup(
+                    "[dim]12:00:04[/] [green]INFO[/]  Connected to server",
+                ))
+                .child(RichText::markup(
+                    "[dim]12:00:05[/] [red]ERROR[/] Request timeout",
+                )),
+        )
     }
 
     fn render_footer(&self) -> impl View {
@@ -209,14 +216,14 @@ impl View for Dashboard {
                         vstack()
                             .gap(1)
                             .child(self.render_json_panel())
-                            .child(self.render_markdown_panel())
+                            .child(self.render_markdown_panel()),
                     )
                     .child(
                         vstack()
                             .gap(1)
                             .child(self.render_csv_panel())
-                            .child(self.render_progress_panel())
-                    )
+                            .child(self.render_progress_panel()),
+                    ),
             )
             .child(self.render_log_panel())
             .child(Text::new(""))
@@ -227,37 +234,37 @@ impl View for Dashboard {
 
 fn main() -> Result<()> {
     let mut app = App::builder()
-        .css(r#"
+        .css(
+            r#"
             * {
                 background: #1e1e2e;
             }
-        "#)
+        "#,
+        )
         .build();
 
     let mut dashboard = Dashboard::new();
 
-    app.run_with_handler(dashboard, |event, dashboard| {
-        match event.key {
-            Key::Char('q') | Key::Escape => std::process::exit(0),
-            Key::Up | Key::Char('k') => {
-                dashboard.selected_row = dashboard.selected_row.saturating_sub(1);
-                true
-            }
-            Key::Down | Key::Char('j') => {
-                dashboard.selected_row = (dashboard.selected_row + 1).min(3);
-                true
-            }
-            Key::Char('+') | Key::Char('=') => {
-                dashboard.progress1 = (dashboard.progress1 + 0.05).min(1.0);
-                dashboard.progress2 = (dashboard.progress2 + 0.03).min(1.0);
-                true
-            }
-            Key::Char('-') => {
-                dashboard.progress1 = (dashboard.progress1 - 0.05).max(0.0);
-                dashboard.progress2 = (dashboard.progress2 - 0.03).max(0.0);
-                true
-            }
-            _ => false,
+    app.run_with_handler(dashboard, |event, dashboard| match event.key {
+        Key::Char('q') | Key::Escape => std::process::exit(0),
+        Key::Up | Key::Char('k') => {
+            dashboard.selected_row = dashboard.selected_row.saturating_sub(1);
+            true
         }
+        Key::Down | Key::Char('j') => {
+            dashboard.selected_row = (dashboard.selected_row + 1).min(3);
+            true
+        }
+        Key::Char('+') | Key::Char('=') => {
+            dashboard.progress1 = (dashboard.progress1 + 0.05).min(1.0);
+            dashboard.progress2 = (dashboard.progress2 + 0.03).min(1.0);
+            true
+        }
+        Key::Char('-') => {
+            dashboard.progress1 = (dashboard.progress1 - 0.05).max(0.0);
+            dashboard.progress2 = (dashboard.progress2 - 0.03).max(0.0);
+            true
+        }
+        _ => false,
     })
 }

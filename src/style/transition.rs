@@ -233,12 +233,7 @@ pub struct ActiveTransition {
 
 impl ActiveTransition {
     /// Create a new active transition
-    pub fn new(
-        property: impl Into<String>,
-        from: f32,
-        to: f32,
-        transition: &Transition,
-    ) -> Self {
+    pub fn new(property: impl Into<String>, from: f32, to: f32, transition: &Transition) -> Self {
         Self {
             property: property.into(),
             from,
@@ -445,7 +440,10 @@ impl TransitionManager {
     }
 
     /// Get all current transition values for a specific node
-    pub fn current_values_for_node(&self, element_id: &str) -> std::collections::HashMap<String, f32> {
+    pub fn current_values_for_node(
+        &self,
+        element_id: &str,
+    ) -> std::collections::HashMap<String, f32> {
         self.node_transitions
             .get(element_id)
             .map(|transitions| {

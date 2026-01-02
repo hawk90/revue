@@ -2,10 +2,10 @@
 //!
 //! Uses Condvar for efficient thread signaling instead of busy-polling.
 
+use super::{Priority, WorkerConfig, WorkerHandle};
+use std::collections::VecDeque;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
-use std::collections::VecDeque;
-use super::{WorkerHandle, WorkerConfig, Priority};
 
 /// Shared state between pool and workers
 struct SharedState {
@@ -192,7 +192,11 @@ impl Worker {
             })
             .ok();
 
-        Self { id, _thread: thread, active }
+        Self {
+            id,
+            _thread: thread,
+            active,
+        }
     }
 
     /// Get worker ID
@@ -237,7 +241,8 @@ impl TaskQueue {
         }
 
         // Insert based on priority
-        let insert_pos = self.tasks
+        let insert_pos = self
+            .tasks
             .iter()
             .position(|t| t.priority < task.priority)
             .unwrap_or(self.tasks.len());
@@ -332,15 +337,21 @@ mod tests {
 
         // Submit low priority first
         let order1 = order.clone();
-        pool.submit_with_priority(move || {
-            order1.lock().unwrap().push("low");
-        }, Priority::Low);
+        pool.submit_with_priority(
+            move || {
+                order1.lock().unwrap().push("low");
+            },
+            Priority::Low,
+        );
 
         // Submit high priority second (should run first due to priority)
         let order2 = order.clone();
-        pool.submit_with_priority(move || {
-            order2.lock().unwrap().push("high");
-        }, Priority::High);
+        pool.submit_with_priority(
+            move || {
+                order2.lock().unwrap().push("high");
+            },
+            Priority::High,
+        );
 
         // Wait for completion
         thread::sleep(std::time::Duration::from_millis(100));

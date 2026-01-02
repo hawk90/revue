@@ -24,9 +24,9 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::{View, RenderContext};
 use crate::widget::traits::WidgetProps;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::widget::{RenderContext, View};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Selection list item
 #[derive(Clone, Debug)]
@@ -264,9 +264,9 @@ impl SelectionList {
         self.selected
             .iter()
             .filter_map(|&i| {
-                self.items.get(i).map(|item| {
-                    item.value.as_deref().unwrap_or(&item.text)
-                })
+                self.items
+                    .get(i)
+                    .map(|item| item.value.as_deref().unwrap_or(&item.text))
             })
             .collect()
     }
@@ -421,9 +421,7 @@ impl SelectionList {
                     "○ ".to_string()
                 }
             }
-            SelectionStyle::Highlight => {
-                if is_selected { "▸ " } else { "  " }.to_string()
-            }
+            SelectionStyle::Highlight => if is_selected { "▸ " } else { "  " }.to_string(),
             SelectionStyle::Bracket => {
                 if is_selected {
                     "[".to_string()
@@ -446,8 +444,8 @@ impl SelectionList {
 
 impl View for SelectionList {
     fn render(&self, ctx: &mut RenderContext) {
-        use crate::widget::Text;
         use crate::widget::stack::vstack;
+        use crate::widget::Text;
 
         let mut content = vstack();
 
@@ -515,9 +513,7 @@ impl View for SelectionList {
             if self.show_descriptions {
                 if let Some(desc) = &item.description {
                     let desc_text = format!("    {}", desc);
-                    content = content.child(
-                        Text::new(desc_text).fg(Color::rgb(128, 128, 128))
-                    );
+                    content = content.child(Text::new(desc_text).fg(Color::rgb(128, 128, 128)));
                 }
             }
         }
@@ -531,7 +527,7 @@ impl View for SelectionList {
         if self.focused {
             content = content.child(
                 Text::new("↑↓: Navigate | Space: Toggle | a: All | n: None")
-                    .fg(Color::rgb(80, 80, 80))
+                    .fg(Color::rgb(80, 80, 80)),
             );
         }
 
@@ -580,8 +576,7 @@ mod tests {
 
     #[test]
     fn test_selection_max() {
-        let mut list = SelectionList::new(vec!["A", "B", "C"])
-            .max_selections(2);
+        let mut list = SelectionList::new(vec!["A", "B", "C"]).max_selections(2);
         list.toggle(0);
         list.toggle(1);
         list.toggle(2); // Should not add
@@ -608,8 +603,7 @@ mod tests {
 
     #[test]
     fn test_deselect_all() {
-        let mut list = SelectionList::new(vec!["A", "B", "C"])
-            .selected(vec![0, 1, 2]);
+        let mut list = SelectionList::new(vec!["A", "B", "C"]).selected(vec![0, 1, 2]);
         list.deselect_all();
         assert!(list.selected.is_empty());
     }
@@ -645,7 +639,8 @@ mod tests {
             SelectionItem::new("Item A").value("a"),
             SelectionItem::new("Item B").value("b"),
             SelectionItem::new("Item C").value("c"),
-        ]).selected(vec![0, 2]);
+        ])
+        .selected(vec![0, 2]);
 
         let values = list.get_selected_values();
         assert_eq!(values, vec!["a", "c"]);

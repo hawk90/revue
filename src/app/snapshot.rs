@@ -2,9 +2,9 @@
 
 use crate::layout::Rect;
 use crate::render::Buffer;
-use crate::widget::{View, RenderContext};
-use std::path::{Path, PathBuf};
+use crate::widget::{RenderContext, View};
 use std::fs;
+use std::path::{Path, PathBuf};
 
 /// Snapshot test result
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -175,7 +175,13 @@ impl Snapshot {
     }
 
     /// Assert snapshot matches
-    pub fn assert_snapshot<V: View>(&self, name: &str, view: &V, width: u16, height: u16) -> SnapshotResult {
+    pub fn assert_snapshot<V: View>(
+        &self,
+        name: &str,
+        view: &V,
+        width: u16,
+        height: u16,
+    ) -> SnapshotResult {
         let buffer = self.render_view(view, width, height);
         let actual = self.buffer_to_string(&buffer);
         self.assert_snapshot_string(name, &actual)
@@ -194,9 +200,7 @@ impl Snapshot {
         let expected = fs::read_to_string(&path).ok();
 
         match expected {
-            Some(expected) if expected == *actual => {
-                SnapshotResult::Match
-            }
+            Some(expected) if expected == *actual => SnapshotResult::Match,
             Some(expected) if self.config.update_snapshots => {
                 fs::write(&path, actual).ok();
                 SnapshotResult::Created

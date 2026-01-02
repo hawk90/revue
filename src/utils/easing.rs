@@ -618,8 +618,7 @@ mod tests {
 
     #[test]
     fn test_interpolator() {
-        let interp = Interpolator::new(0.0, 100.0)
-            .easing(Easing::OutQuad);
+        let interp = Interpolator::new(0.0, 100.0).easing(Easing::OutQuad);
 
         assert_eq!(interp.at(0.0), 0.0);
         assert_eq!(interp.at(1.0), 100.0);
@@ -629,16 +628,36 @@ mod tests {
     fn test_all_easings_boundary() {
         let easings = [
             Easing::Linear,
-            Easing::InQuad, Easing::OutQuad, Easing::InOutQuad,
-            Easing::InCubic, Easing::OutCubic, Easing::InOutCubic,
-            Easing::InQuart, Easing::OutQuart, Easing::InOutQuart,
-            Easing::InQuint, Easing::OutQuint, Easing::InOutQuint,
-            Easing::InSine, Easing::OutSine, Easing::InOutSine,
-            Easing::InExpo, Easing::OutExpo, Easing::InOutExpo,
-            Easing::InCirc, Easing::OutCirc, Easing::InOutCirc,
-            Easing::InBack, Easing::OutBack, Easing::InOutBack,
-            Easing::InElastic, Easing::OutElastic, Easing::InOutElastic,
-            Easing::InBounce, Easing::OutBounce, Easing::InOutBounce,
+            Easing::InQuad,
+            Easing::OutQuad,
+            Easing::InOutQuad,
+            Easing::InCubic,
+            Easing::OutCubic,
+            Easing::InOutCubic,
+            Easing::InQuart,
+            Easing::OutQuart,
+            Easing::InOutQuart,
+            Easing::InQuint,
+            Easing::OutQuint,
+            Easing::InOutQuint,
+            Easing::InSine,
+            Easing::OutSine,
+            Easing::InOutSine,
+            Easing::InExpo,
+            Easing::OutExpo,
+            Easing::InOutExpo,
+            Easing::InCirc,
+            Easing::OutCirc,
+            Easing::InOutCirc,
+            Easing::InBack,
+            Easing::OutBack,
+            Easing::InOutBack,
+            Easing::InElastic,
+            Easing::OutElastic,
+            Easing::InOutElastic,
+            Easing::InBounce,
+            Easing::OutBounce,
+            Easing::InOutBounce,
         ];
 
         for easing in easings {

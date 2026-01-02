@@ -2,10 +2,10 @@
 //!
 //! Displays temporary notification messages with different severity levels.
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Toast notification level
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -179,7 +179,13 @@ impl Toast {
     }
 
     /// Calculate toast position
-    fn calculate_position(&self, area_width: u16, area_height: u16, toast_width: u16, toast_height: u16) -> (u16, u16) {
+    fn calculate_position(
+        &self,
+        area_width: u16,
+        area_height: u16,
+        toast_width: u16,
+        toast_height: u16,
+    ) -> (u16, u16) {
         let margin = 1u16;
 
         let x = match self.position {
@@ -194,9 +200,9 @@ impl Toast {
 
         let y = match self.position {
             ToastPosition::TopLeft | ToastPosition::TopCenter | ToastPosition::TopRight => margin,
-            ToastPosition::BottomLeft | ToastPosition::BottomCenter | ToastPosition::BottomRight => {
-                area_height.saturating_sub(toast_height + margin)
-            }
+            ToastPosition::BottomLeft
+            | ToastPosition::BottomCenter
+            | ToastPosition::BottomRight => area_height.saturating_sub(toast_height + margin),
         };
 
         (x, y)
@@ -236,25 +242,32 @@ impl View for Toast {
             let mut top_right = Cell::new('╮');
             top_right.fg = Some(color);
             top_right.bg = Some(bg);
-            ctx.buffer.set(area.x + x + toast_width - 1, area.y + y, top_right);
+            ctx.buffer
+                .set(area.x + x + toast_width - 1, area.y + y, top_right);
 
             // Bottom border
             let mut bottom_left = Cell::new('╰');
             bottom_left.fg = Some(color);
             bottom_left.bg = Some(bg);
-            ctx.buffer.set(area.x + x, area.y + y + toast_height - 1, bottom_left);
+            ctx.buffer
+                .set(area.x + x, area.y + y + toast_height - 1, bottom_left);
 
             for i in 1..toast_width.saturating_sub(1) {
                 let mut cell = Cell::new('─');
                 cell.fg = Some(color);
                 cell.bg = Some(bg);
-                ctx.buffer.set(area.x + x + i, area.y + y + toast_height - 1, cell);
+                ctx.buffer
+                    .set(area.x + x + i, area.y + y + toast_height - 1, cell);
             }
 
             let mut bottom_right = Cell::new('╯');
             bottom_right.fg = Some(color);
             bottom_right.bg = Some(bg);
-            ctx.buffer.set(area.x + x + toast_width - 1, area.y + y + toast_height - 1, bottom_right);
+            ctx.buffer.set(
+                area.x + x + toast_width - 1,
+                area.y + y + toast_height - 1,
+                bottom_right,
+            );
 
             // Side borders
             for row in 1..toast_height.saturating_sub(1) {
@@ -266,7 +279,8 @@ impl View for Toast {
                 let mut right = Cell::new('│');
                 right.fg = Some(color);
                 right.bg = Some(bg);
-                ctx.buffer.set(area.x + x + toast_width - 1, area.y + y + row, right);
+                ctx.buffer
+                    .set(area.x + x + toast_width - 1, area.y + y + row, right);
 
                 // Fill background
                 for col in 1..toast_width.saturating_sub(1) {
@@ -286,7 +300,8 @@ impl View for Toast {
             let mut icon_cell = Cell::new(self.level.icon());
             icon_cell.fg = Some(color);
             icon_cell.bg = Some(bg);
-            ctx.buffer.set(area.x + content_x, area.y + content_y, icon_cell);
+            ctx.buffer
+                .set(area.x + content_x, area.y + content_y, icon_cell);
         }
 
         // Draw message
@@ -314,9 +329,8 @@ pub fn toast(message: impl Into<String>) -> Toast {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
-    
+    use crate::render::Buffer;
 
     #[test]
     fn test_toast_new() {
@@ -342,8 +356,7 @@ mod tests {
 
     #[test]
     fn test_toast_position() {
-        let t = Toast::new("Test")
-            .position(ToastPosition::BottomLeft);
+        let t = Toast::new("Test").position(ToastPosition::BottomLeft);
         assert_eq!(t.position, ToastPosition::BottomLeft);
     }
 
@@ -378,8 +391,7 @@ mod tests {
 
     #[test]
     fn test_toast_no_border() {
-        let t = Toast::new("No border")
-            .show_border(false);
+        let t = Toast::new("No border").show_border(false);
 
         let mut buffer = Buffer::new(30, 5);
         let area = Rect::new(0, 0, 30, 5);
@@ -390,8 +402,7 @@ mod tests {
 
     #[test]
     fn test_toast_no_icon() {
-        let t = Toast::new("No icon")
-            .show_icon(false);
+        let t = Toast::new("No icon").show_icon(false);
 
         let mut buffer = Buffer::new(30, 5);
         let area = Rect::new(0, 0, 30, 5);

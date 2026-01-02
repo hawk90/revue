@@ -1,10 +1,10 @@
 //! Worker handle for task management
 
+use super::{WorkerError, WorkerResult};
+use std::future::Future;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
-use std::future::Future;
-use super::{WorkerResult, WorkerError};
 
 /// State of a worker task
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -156,13 +156,15 @@ impl<T: Send + 'static> WorkerHandle<T> {
     where
         F: Future<Output = T> + Send + 'static,
     {
-        use std::task::{Context, Poll, Waker, RawWaker, RawWakerVTable};
         use std::pin::Pin;
+        use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
         // Simple waker that does nothing (busy-polling)
         fn dummy_raw_waker() -> RawWaker {
             fn no_op(_: *const ()) {}
-            fn clone(_: *const ()) -> RawWaker { dummy_raw_waker() }
+            fn clone(_: *const ()) -> RawWaker {
+                dummy_raw_waker()
+            }
             let vtable = &RawWakerVTable::new(clone, no_op, no_op, no_op);
             RawWaker::new(std::ptr::null(), vtable)
         }

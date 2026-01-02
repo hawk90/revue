@@ -235,29 +235,20 @@ fn diff_sequences(old: &[&str], new: &[&str]) -> Vec<DiffChange> {
     for (lcs_old, lcs_new) in lcs {
         // Deletions from old
         while old_idx < lcs_old {
-            changes.push(
-                DiffChange::delete(old[old_idx])
-                    .with_lines(Some(old_line), None)
-            );
+            changes.push(DiffChange::delete(old[old_idx]).with_lines(Some(old_line), None));
             old_idx += 1;
             old_line += 1;
         }
 
         // Insertions to new
         while new_idx < lcs_new {
-            changes.push(
-                DiffChange::insert(new[new_idx])
-                    .with_lines(None, Some(new_line))
-            );
+            changes.push(DiffChange::insert(new[new_idx]).with_lines(None, Some(new_line)));
             new_idx += 1;
             new_line += 1;
         }
 
         // Equal line
-        changes.push(
-            DiffChange::equal(old[old_idx])
-                .with_lines(Some(old_line), Some(new_line))
-        );
+        changes.push(DiffChange::equal(old[old_idx]).with_lines(Some(old_line), Some(new_line)));
         old_idx += 1;
         new_idx += 1;
         old_line += 1;
@@ -266,20 +257,14 @@ fn diff_sequences(old: &[&str], new: &[&str]) -> Vec<DiffChange> {
 
     // Remaining deletions
     while old_idx < old.len() {
-        changes.push(
-            DiffChange::delete(old[old_idx])
-                .with_lines(Some(old_line), None)
-        );
+        changes.push(DiffChange::delete(old[old_idx]).with_lines(Some(old_line), None));
         old_idx += 1;
         old_line += 1;
     }
 
     // Remaining insertions
     while new_idx < new.len() {
-        changes.push(
-            DiffChange::insert(new[new_idx])
-                .with_lines(None, Some(new_line))
-        );
+        changes.push(DiffChange::insert(new[new_idx]).with_lines(None, Some(new_line)));
         new_idx += 1;
         new_line += 1;
     }
@@ -343,9 +328,7 @@ pub fn format_unified_diff(old: &str, new: &str, old_name: &str, new_name: &str)
             if changes[hunk_end].is_equal() {
                 // Check if there are more changes after context
                 let context_end = (hunk_end + 3).min(changes.len());
-                let has_more_changes = changes[hunk_end..context_end]
-                    .iter()
-                    .any(|c| !c.is_equal());
+                let has_more_changes = changes[hunk_end..context_end].iter().any(|c| !c.is_equal());
                 if !has_more_changes {
                     hunk_end = context_end.min(changes.len());
                     break;

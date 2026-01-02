@@ -3,10 +3,10 @@
 //! Provides configurable status bars with sections for displaying
 //! application state, key hints, and other information.
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Status bar position
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -367,7 +367,13 @@ impl_styled_view!(StatusBar);
 impl_props_builders!(StatusBar);
 
 impl StatusBar {
-    fn render_section(&self, ctx: &mut RenderContext, section: &StatusSection, x: u16, y: u16) -> u16 {
+    fn render_section(
+        &self,
+        ctx: &mut RenderContext,
+        section: &StatusSection,
+        x: u16,
+        y: u16,
+    ) -> u16 {
         let fg = section.fg.unwrap_or(self.fg);
         let bg = section.bg.unwrap_or(self.bg);
 
@@ -499,8 +505,8 @@ pub fn key_hint(key: impl Into<String>, description: impl Into<String>) -> KeyHi
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_status_section() {
@@ -553,9 +559,7 @@ mod tests {
         let area = Rect::new(0, 0, 80, 24);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let bar = StatusBar::new()
-            .left_text("Left")
-            .right_text("Right");
+        let bar = StatusBar::new().left_text("Left").right_text("Right");
 
         bar.render(&mut ctx);
         // Smoke test
@@ -563,8 +567,7 @@ mod tests {
 
     #[test]
     fn test_status_bar_update() {
-        let mut bar = StatusBar::new()
-            .left_text("Original");
+        let mut bar = StatusBar::new().left_text("Original");
 
         bar.update_left(0, "Updated");
         assert_eq!(bar.left[0].content, "Updated");

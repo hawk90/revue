@@ -2,12 +2,12 @@
 //!
 //! A vertically stacked list of collapsible content panels.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::layout::Rect;
 use crate::utils::border::render_border;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Accordion section
 #[derive(Clone)]
@@ -194,7 +194,10 @@ impl Accordion {
     /// Select previous section
     pub fn select_prev(&mut self) {
         if !self.sections.is_empty() {
-            self.selected = self.selected.checked_sub(1).unwrap_or(self.sections.len() - 1);
+            self.selected = self
+                .selected
+                .checked_sub(1)
+                .unwrap_or(self.sections.len() - 1);
             self.ensure_visible();
         }
     }
@@ -355,7 +358,12 @@ impl View for Accordion {
         }
 
         let content_area = if self.border_color.is_some() {
-            Rect::new(area.x + 1, area.y + 1, area.width.saturating_sub(2), area.height.saturating_sub(2))
+            Rect::new(
+                area.x + 1,
+                area.y + 1,
+                area.width.saturating_sub(2),
+                area.height.saturating_sub(2),
+            )
         } else {
             area
         };
@@ -376,7 +384,11 @@ impl View for Accordion {
             let is_selected = section_idx == self.selected;
 
             // Render header
-            let header_bg = if is_selected { self.selected_bg } else { self.header_bg };
+            let header_bg = if is_selected {
+                self.selected_bg
+            } else {
+                self.header_bg
+            };
 
             // Fill header background
             for x in content_area.x..content_area.x + content_area.width {
@@ -485,8 +497,7 @@ mod tests {
 
     #[test]
     fn test_section_content() {
-        let s = AccordionSection::new("Multi")
-            .content("Line 1\nLine 2\nLine 3");
+        let s = AccordionSection::new("Multi").content("Line 1\nLine 2\nLine 3");
 
         assert_eq!(s.content.len(), 3);
     }
@@ -543,8 +554,7 @@ mod tests {
 
     #[test]
     fn test_accordion_toggle() {
-        let mut acc = Accordion::new()
-            .section(AccordionSection::new("A").line("Content"));
+        let mut acc = Accordion::new().section(AccordionSection::new("A").line("Content"));
 
         assert!(!acc.sections[0].expanded);
 
@@ -624,7 +634,11 @@ mod tests {
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         let acc = Accordion::new()
-            .section(AccordionSection::new("Section 1").line("Content 1").expanded(true))
+            .section(
+                AccordionSection::new("Section 1")
+                    .line("Content 1")
+                    .expanded(true),
+            )
             .section(AccordionSection::new("Section 2").line("Content 2"));
 
         acc.render(&mut ctx);
@@ -661,16 +675,14 @@ mod tests {
 
     #[test]
     fn test_helpers() {
-        let acc = accordion()
-            .section(section("Test").line("Content"));
+        let acc = accordion().section(section("Test").line("Content"));
 
         assert_eq!(acc.len(), 1);
     }
 
     #[test]
     fn test_section_icons() {
-        let s = AccordionSection::new("Test")
-            .icons('+', '-');
+        let s = AccordionSection::new("Test").icons('+', '-');
 
         assert_eq!(s.collapsed_icon, '+');
         assert_eq!(s.expanded_icon, '-');

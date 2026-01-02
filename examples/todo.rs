@@ -31,9 +31,21 @@ impl TodoApp {
     fn new() -> Self {
         Self {
             items: vec![
-                TodoItem { id: 1, text: "Learn Revue framework".into(), completed: true },
-                TodoItem { id: 2, text: "Build awesome TUI apps".into(), completed: false },
-                TodoItem { id: 3, text: "Share with the community".into(), completed: false },
+                TodoItem {
+                    id: 1,
+                    text: "Learn Revue framework".into(),
+                    completed: true,
+                },
+                TodoItem {
+                    id: 2,
+                    text: "Build awesome TUI apps".into(),
+                    completed: false,
+                },
+                TodoItem {
+                    id: 3,
+                    text: "Share with the community".into(),
+                    completed: false,
+                },
             ],
             input: Input::new().placeholder("What needs to be done?"),
             selected: 0,
@@ -44,11 +56,14 @@ impl TodoApp {
     }
 
     fn filtered_items(&self) -> Vec<&TodoItem> {
-        self.items.iter().filter(|item| match self.filter {
-            Filter::All => true,
-            Filter::Active => !item.completed,
-            Filter::Completed => item.completed,
-        }).collect()
+        self.items
+            .iter()
+            .filter(|item| match self.filter {
+                Filter::All => true,
+                Filter::Active => !item.completed,
+                Filter::Completed => item.completed,
+            })
+            .collect()
     }
 
     fn active_count(&self) -> usize {
@@ -150,8 +165,7 @@ impl TodoApp {
 impl View for TodoApp {
     fn render(&self, ctx: &mut RenderContext) {
         // Header
-        let header = Border::rounded()
-            .child(Text::new("Todo App").fg(Color::MAGENTA).bold());
+        let header = Border::rounded().child(Text::new("Todo App").fg(Color::MAGENTA).bold());
 
         // Input area
         let input_border = if self.editing {
@@ -185,8 +199,16 @@ impl View for TodoApp {
             let mut list = vstack();
             for (i, item) in filtered.iter().enumerate() {
                 let checkbox = if item.completed { "[x]" } else { "[ ]" };
-                let checkbox_color = if item.completed { Color::GREEN } else { Color::rgb(80, 80, 80) };
-                let text_color = if item.completed { Color::rgb(100, 100, 100) } else { Color::WHITE };
+                let checkbox_color = if item.completed {
+                    Color::GREEN
+                } else {
+                    Color::rgb(80, 80, 80)
+                };
+                let text_color = if item.completed {
+                    Color::rgb(100, 100, 100)
+                } else {
+                    Color::WHITE
+                };
 
                 // Create item text (with visual strikethrough using dashes for completed)
                 let item_text = if item.completed {
@@ -198,8 +220,11 @@ impl View for TodoApp {
                 let row = if i == self.selected {
                     Text::new(item_text).fg(Color::CYAN).bold()
                 } else {
-                    Text::new(format!("{} {}", checkbox, item.text))
-                        .fg(if item.completed { checkbox_color } else { text_color })
+                    Text::new(format!("{} {}", checkbox, item.text)).fg(if item.completed {
+                        checkbox_color
+                    } else {
+                        text_color
+                    })
                 };
                 list = list.child(row);
             }
@@ -219,7 +244,8 @@ impl View for TodoApp {
         let help = if self.editing {
             Text::new("Enter: Add | Esc: Cancel").fg(Color::rgb(80, 80, 80))
         } else {
-            Text::new("a: Add | Space: Toggle | d: Delete | c: Clear done | q: Quit").fg(Color::rgb(80, 80, 80))
+            Text::new("a: Add | Space: Toggle | d: Delete | c: Clear done | q: Quit")
+                .fg(Color::rgb(80, 80, 80))
         };
 
         // Layout
@@ -240,7 +266,5 @@ fn main() -> Result<()> {
     let mut app = App::builder().build();
     let todo = TodoApp::new();
 
-    app.run_with_handler(todo, |key_event, todo| {
-        todo.handle_key(&key_event.key)
-    })
+    app.run_with_handler(todo, |key_event, todo| todo.handle_key(&key_event.key))
 }

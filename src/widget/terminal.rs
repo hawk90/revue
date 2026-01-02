@@ -2,11 +2,11 @@
 //!
 //! Provides an embedded terminal with ANSI color support and scrollback.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::event::{Key, KeyEvent};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::event::{KeyEvent, Key};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Terminal cell with character and styling
 #[derive(Clone, Debug)]
@@ -116,29 +116,30 @@ impl AnsiParser {
                     })
                 }
             }
-            ParserState::Escape => {
-                match ch {
-                    '[' => {
-                        self.state = ParserState::Csi;
-                        self.params.clear();
-                        self.current_param = None;
-                        None
-                    }
-                    ']' => {
-                        self.state = ParserState::OscStart;
-                        None
-                    }
-                    _ => {
-                        self.state = ParserState::Normal;
-                        None
-                    }
+            ParserState::Escape => match ch {
+                '[' => {
+                    self.state = ParserState::Csi;
+                    self.params.clear();
+                    self.current_param = None;
+                    None
                 }
-            }
+                ']' => {
+                    self.state = ParserState::OscStart;
+                    None
+                }
+                _ => {
+                    self.state = ParserState::Normal;
+                    None
+                }
+            },
             ParserState::Csi => {
                 if ch.is_ascii_digit() {
                     let digit = ch.to_digit(10).unwrap() as u16;
                     self.current_param = Some(
-                        self.current_param.unwrap_or(0).saturating_mul(10).saturating_add(digit)
+                        self.current_param
+                            .unwrap_or(0)
+                            .saturating_mul(10)
+                            .saturating_add(digit),
                     );
                     None
                 } else if ch == ';' {
@@ -192,8 +193,8 @@ impl AnsiParser {
                 3 => self.modifiers |= Modifier::ITALIC,
                 4 => self.modifiers |= Modifier::UNDERLINE,
                 5 | 6 => {} // Blink not supported
-                7 => {} // Reverse not supported
-                8 => {} // Hidden not supported
+                7 => {}     // Reverse not supported
+                8 => {}     // Hidden not supported
                 9 => self.modifiers |= Modifier::CROSSED_OUT,
                 22 => self.modifiers &= !(Modifier::BOLD | Modifier::DIM),
                 23 => self.modifiers &= !Modifier::ITALIC,
@@ -525,7 +526,8 @@ impl Terminal {
     fn put_cell(&mut self, cell: TermCell) {
         // Ensure we have enough lines
         while self.cursor_row >= self.lines.len() {
-            self.lines.push(TermLine::with_capacity(self.width as usize));
+            self.lines
+                .push(TermLine::with_capacity(self.width as usize));
         }
 
         // Get current line
@@ -563,7 +565,8 @@ impl Terminal {
         self.cursor_row += 1;
 
         while self.cursor_row >= self.lines.len() {
-            self.lines.push(TermLine::with_capacity(self.width as usize));
+            self.lines
+                .push(TermLine::with_capacity(self.width as usize));
         }
 
         self.trim_scrollback();
@@ -590,7 +593,8 @@ impl Terminal {
     pub fn clear(&mut self) {
         self.lines.clear();
         for _ in 0..self.height {
-            self.lines.push(TermLine::with_capacity(self.width as usize));
+            self.lines
+                .push(TermLine::with_capacity(self.width as usize));
         }
         self.cursor_row = 0;
         self.cursor_col = 0;
@@ -658,7 +662,9 @@ impl Terminal {
             Key::Up => {
                 if self.history_pos > 0 {
                     self.history_pos -= 1;
-                    self.input_buffer = self.history.get(self.history_pos)
+                    self.input_buffer = self
+                        .history
+                        .get(self.history_pos)
                         .cloned()
                         .unwrap_or_default();
                 }
@@ -667,7 +673,9 @@ impl Terminal {
             Key::Down => {
                 if self.history_pos < self.history.len() {
                     self.history_pos += 1;
-                    self.input_buffer = self.history.get(self.history_pos)
+                    self.input_buffer = self
+                        .history
+                        .get(self.history_pos)
                         .cloned()
                         .unwrap_or_default();
                 }
@@ -689,12 +697,8 @@ impl Terminal {
                 self.scroll_to_bottom();
                 None
             }
-            Key::Escape => {
-                Some(TerminalAction::Cancel)
-            }
-            Key::Tab => {
-                Some(TerminalAction::TabComplete(self.input_buffer.clone()))
-            }
+            Key::Escape => Some(TerminalAction::Cancel),
+            Key::Tab => Some(TerminalAction::TabComplete(self.input_buffer.clone())),
             _ => None,
         }
     }
@@ -767,11 +771,8 @@ impl View for Terminal {
         // Fill background
         for y in 0..area.height {
             for x in 0..area.width {
-                ctx.buffer.set(
-                    area.x + x,
-                    area.y + y,
-                    Cell::new(' ').bg(self.default_bg),
-                );
+                ctx.buffer
+                    .set(area.x + x, area.y + y, Cell::new(' ').bg(self.default_bg));
             }
         }
 
@@ -792,7 +793,8 @@ impl View for Terminal {
 
                     let mut render_cell = Cell::new(cell.ch).fg(cell.fg).bg(cell.bg);
                     render_cell.modifier = cell.modifiers;
-                    ctx.buffer.set(area.x + col as u16, area.y + render_y, render_cell);
+                    ctx.buffer
+                        .set(area.x + col as u16, area.y + render_y, render_cell);
                 }
             }
 
@@ -801,9 +803,9 @@ impl View for Terminal {
 
         // Render cursor if visible and focused
         if self.show_cursor && self.focused && self.scroll_offset == 0 {
-            let cursor_screen_row = self.cursor_row.saturating_sub(
-                self.lines.len().saturating_sub(self.height as usize)
-            );
+            let cursor_screen_row = self
+                .cursor_row
+                .saturating_sub(self.lines.len().saturating_sub(self.height as usize));
 
             if cursor_screen_row < area.height as usize && self.cursor_col < area.width as usize {
                 let cursor_x = area.x + self.cursor_col as u16;
@@ -890,8 +892,8 @@ pub fn terminal(width: u16, height: u16) -> Terminal {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_terminal_new() {

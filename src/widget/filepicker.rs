@@ -21,11 +21,11 @@
 //! let dir = FilePicker::directory();
 //! ```
 
-use std::path::{Path, PathBuf};
-use std::fs;
 use crate::style::Color;
-use crate::widget::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::widget::{RenderContext, View, WidgetProps};
+use crate::{impl_props_builders, impl_styled_view};
+use std::fs;
+use std::path::{Path, PathBuf};
 
 /// File filter
 #[derive(Clone, Debug)]
@@ -57,12 +57,11 @@ impl FileFilter {
     pub fn matches(&self, path: &Path) -> bool {
         match self {
             FileFilter::All => true,
-            FileFilter::Extensions(exts) => {
-                path.extension()
-                    .and_then(|e| e.to_str())
-                    .map(|e| exts.iter().any(|ext| ext.eq_ignore_ascii_case(e)))
-                    .unwrap_or(false)
-            }
+            FileFilter::Extensions(exts) => path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|e| exts.iter().any(|ext| ext.eq_ignore_ascii_case(e)))
+                .unwrap_or(false),
             FileFilter::Pattern(pattern) => {
                 path.file_name()
                     .and_then(|n| n.to_str())
@@ -71,7 +70,7 @@ impl FileFilter {
                         if pattern.starts_with('*') {
                             name.ends_with(&pattern[1..])
                         } else if pattern.ends_with('*') {
-                            name.starts_with(&pattern[..pattern.len()-1])
+                            name.starts_with(&pattern[..pattern.len() - 1])
                         } else {
                             name == pattern
                         }
@@ -261,12 +260,9 @@ impl FilePicker {
         picker
     }
 
-
     /// Create save file picker
     pub fn save() -> Self {
-        Self::new()
-            .mode(PickerMode::Save)
-            .title("Save File")
+        Self::new().mode(PickerMode::Save).title("Save File")
     }
 
     /// Create directory picker
@@ -346,9 +342,7 @@ impl FilePicker {
                 let path = entry.path();
 
                 // Skip hidden if not showing
-                let name = path.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("");
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
                 if !self.show_hidden && name.starts_with('.') {
                     continue;
@@ -560,8 +554,8 @@ impl View for FilePicker {
     crate::impl_view_meta!("FilePicker");
 
     fn render(&self, ctx: &mut RenderContext) {
-        use crate::widget::Text;
         use crate::widget::stack::vstack;
+        use crate::widget::Text;
 
         let mut content = vstack();
 
@@ -573,21 +567,21 @@ impl View for FilePicker {
         // Current path
         let path_str = self.current_dir.display().to_string();
         let truncated_path = if path_str.len() > self.width as usize - 4 {
-            format!("...{}", &path_str[path_str.len() - self.width as usize + 7..])
+            format!(
+                "...{}",
+                &path_str[path_str.len() - self.width as usize + 7..]
+            )
         } else {
             path_str
         };
-        content = content.child(
-            Text::new(format!(" {}", truncated_path)).fg(Color::CYAN)
-        );
+        content = content.child(Text::new(format!(" {}", truncated_path)).fg(Color::CYAN));
 
         // Separator
-        content = content.child(Text::new("─".repeat(self.width as usize)).fg(Color::rgb(80, 80, 80)));
+        content =
+            content.child(Text::new("─".repeat(self.width as usize)).fg(Color::rgb(80, 80, 80)));
 
         // Parent directory option
-        content = content.child(
-            Text::new("  📁 ..").fg(Color::rgb(150, 150, 150))
-        );
+        content = content.child(Text::new("  📁 ..").fg(Color::rgb(150, 150, 150)));
 
         // File list
         let start = self.scroll_offset;
@@ -640,7 +634,8 @@ impl View for FilePicker {
         }
 
         // Separator
-        content = content.child(Text::new("─".repeat(self.width as usize)).fg(Color::rgb(80, 80, 80)));
+        content =
+            content.child(Text::new("─".repeat(self.width as usize)).fg(Color::rgb(80, 80, 80)));
 
         // Filename input (for save mode)
         if self.mode == PickerMode::Save {
@@ -651,16 +646,24 @@ impl View for FilePicker {
         // Selection count (for multi-select)
         if self.mode == PickerMode::MultiSelect && !self.selected.is_empty() {
             content = content.child(
-                Text::new(format!("Selected: {} files", self.selected.len())).fg(Color::GREEN)
+                Text::new(format!("Selected: {} files", self.selected.len())).fg(Color::GREEN),
             );
         }
 
         // Help
         let help = match self.mode {
-            PickerMode::Open => "↑↓: Navigate | Enter: Select/Open | Backspace: Parent | h: Hidden | q: Cancel",
-            PickerMode::Save => "↑↓: Navigate | Enter: Save | Type: Filename | Backspace: Delete | q: Cancel",
-            PickerMode::Directory => "↑↓: Navigate | Enter: Open | Space: Select | Backspace: Parent | q: Cancel",
-            PickerMode::MultiSelect => "↑↓: Navigate | Space: Toggle | Enter: Confirm | a: All | n: None | q: Cancel",
+            PickerMode::Open => {
+                "↑↓: Navigate | Enter: Select/Open | Backspace: Parent | h: Hidden | q: Cancel"
+            }
+            PickerMode::Save => {
+                "↑↓: Navigate | Enter: Save | Type: Filename | Backspace: Delete | q: Cancel"
+            }
+            PickerMode::Directory => {
+                "↑↓: Navigate | Enter: Open | Space: Select | Backspace: Parent | q: Cancel"
+            }
+            PickerMode::MultiSelect => {
+                "↑↓: Navigate | Space: Toggle | Enter: Confirm | a: All | n: None | q: Cancel"
+            }
         };
         content = content.child(Text::new(help).fg(Color::rgb(80, 80, 80)));
 

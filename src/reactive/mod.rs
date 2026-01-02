@@ -91,25 +91,23 @@
 //! 3. **Avoid side effects in computed**: Use `effect` for side effects
 //! 4. **Clone signals freely**: Signals are cheap to clone (reference-counted)
 
-mod signal;
+mod async_state;
 mod computed;
 mod effect;
 mod runtime;
+mod signal;
 mod tracker;
-mod async_state;
 
-pub use signal::Signal;
+pub use async_state::{
+    use_async, use_async_immediate, use_async_poll, AsyncResource, AsyncResult, AsyncState,
+};
 pub use computed::Computed;
 pub use effect::Effect;
 pub use runtime::ReactiveRuntime;
-pub use async_state::{
-    AsyncState, AsyncResult, AsyncResource,
-    use_async, use_async_poll, use_async_immediate,
-};
+pub use signal::Signal;
 pub use tracker::{
-    DependencyTracker, Subscriber, SubscriberId, SubscriberCallback,
-    with_tracker, start_tracking, stop_tracking, track_read, notify_dependents,
-    dispose_subscriber, is_tracking,
+    dispose_subscriber, is_tracking, notify_dependents, start_tracking, stop_tracking, track_read,
+    with_tracker, DependencyTracker, Subscriber, SubscriberCallback, SubscriberId,
 };
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -140,7 +138,9 @@ pub fn signal<T: Clone + 'static>(value: T) -> Signal<T> {
 /// Create a computed value
 ///
 /// The closure must be `Send + Sync` since Signals are thread-safe.
-pub fn computed<T: Clone + Send + Sync + 'static>(f: impl Fn() -> T + Send + Sync + 'static) -> Computed<T> {
+pub fn computed<T: Clone + Send + Sync + 'static>(
+    f: impl Fn() -> T + Send + Sync + 'static,
+) -> Computed<T> {
     Computed::new(f)
 }
 
@@ -155,8 +155,8 @@ pub fn effect(f: impl Fn() + Send + Sync + 'static) -> Effect {
 #[cfg(test)]
 mod integration_tests {
     use super::*;
-    use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
     use std::sync::RwLock;
 
     #[test]

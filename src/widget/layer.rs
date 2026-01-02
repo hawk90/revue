@@ -3,8 +3,8 @@
 //! Layers allow multiple widgets to be rendered in the same area,
 //! with later children appearing on top of earlier ones.
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// A container that renders children in overlapping layers
 ///
@@ -69,7 +69,6 @@ impl Layers {
     pub fn is_empty(&self) -> bool {
         self.children.is_empty()
     }
-
 }
 
 impl Default for Layers {
@@ -107,9 +106,9 @@ pub fn layers() -> Layers {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::widget::{Text, Border};
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
+    use crate::widget::{Border, Text};
 
     #[test]
     fn test_layers_new() {
@@ -129,11 +128,7 @@ mod tests {
 
     #[test]
     fn test_layers_children() {
-        let texts: Vec<Text> = vec![
-            Text::new("A"),
-            Text::new("B"),
-            Text::new("C"),
-        ];
+        let texts: Vec<Text> = vec![Text::new("A"), Text::new("B"), Text::new("C")];
 
         let l = Layers::new().children(texts);
         assert_eq!(l.len(), 3);
@@ -170,8 +165,7 @@ mod tests {
 
     #[test]
     fn test_layers_helper() {
-        let l = layers()
-            .child(Text::new("Test"));
+        let l = layers().child(Text::new("Test"));
 
         assert_eq!(l.len(), 1);
     }

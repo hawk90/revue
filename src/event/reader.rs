@@ -1,14 +1,14 @@
 //! Event reader using crossterm
 
-use std::time::Duration;
 use crossterm::event::{
-    self, Event as CrosstermEvent, KeyCode, KeyEvent as CrosstermKeyEvent,
-    KeyModifiers, MouseEvent as CrosstermMouseEvent, MouseEventKind as CrosstermMouseEventKind,
-    MouseButton as CrosstermMouseButton, poll,
+    self, poll, Event as CrosstermEvent, KeyCode, KeyEvent as CrosstermKeyEvent, KeyModifiers,
+    MouseButton as CrosstermMouseButton, MouseEvent as CrosstermMouseEvent,
+    MouseEventKind as CrosstermMouseEventKind,
 };
+use std::time::Duration;
 
-use super::{Event, KeyEvent, Key, MouseEvent, MouseEventKind, MouseButton};
-use crate::constants::{TICK_RATE_DEFAULT, POLL_IMMEDIATE};
+use super::{Event, Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+use crate::constants::{POLL_IMMEDIATE, TICK_RATE_DEFAULT};
 use crate::Result;
 
 /// Event reader for terminal input
@@ -54,15 +54,9 @@ impl EventReader {
     pub fn try_read(&self) -> Result<Option<Event>> {
         if poll(POLL_IMMEDIATE)? {
             match event::read()? {
-                CrosstermEvent::Key(key) => {
-                    Ok(Some(Event::Key(convert_key_event(key))))
-                }
-                CrosstermEvent::Mouse(mouse) => {
-                    Ok(Some(Event::Mouse(convert_mouse_event(mouse))))
-                }
-                CrosstermEvent::Resize(width, height) => {
-                    Ok(Some(Event::Resize(width, height)))
-                }
+                CrosstermEvent::Key(key) => Ok(Some(Event::Key(convert_key_event(key)))),
+                CrosstermEvent::Mouse(mouse) => Ok(Some(Event::Mouse(convert_mouse_event(mouse)))),
+                CrosstermEvent::Resize(width, height) => Ok(Some(Event::Resize(width, height))),
                 _ => Ok(None),
             }
         } else {
@@ -187,10 +181,7 @@ mod tests {
 
     #[test]
     fn test_convert_key_event_with_modifiers() {
-        let ct_key = CrosstermKeyEvent::new(
-            KeyCode::Char('c'),
-            KeyModifiers::CONTROL,
-        );
+        let ct_key = CrosstermKeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
         let key_event = convert_key_event(ct_key);
 
         assert_eq!(key_event.key, Key::Char('c'));

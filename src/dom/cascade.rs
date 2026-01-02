@@ -9,9 +9,9 @@
 use std::cmp::Ordering;
 
 use super::node::DomNode;
-use super::selector::{Selector, SelectorPart, Combinator};
+use super::selector::{Combinator, Selector, SelectorPart};
 use super::DomId;
-use crate::style::{Style, StyleSheet, Rule, apply_declaration};
+use crate::style::{apply_declaration, Rule, Style, StyleSheet};
 
 /// CSS specificity (a, b, c)
 /// - a: ID selectors count
@@ -141,7 +141,10 @@ impl<'a> StyleResolver<'a> {
     }
 
     /// Create a style resolver with pre-parsed selectors (avoids reparsing)
-    pub fn with_cached_selectors(stylesheet: &'a StyleSheet, selectors: Vec<(Selector, usize)>) -> Self {
+    pub fn with_cached_selectors(
+        stylesheet: &'a StyleSheet,
+        selectors: Vec<(Selector, usize)>,
+    ) -> Self {
         Self {
             stylesheet,
             selectors,
@@ -271,7 +274,9 @@ impl<'a> StyleResolver<'a> {
             if !self.matches_part(part, node) {
                 // For descendant combinator, try ancestors
                 if part_idx < selector.parts.len() - 1 {
-                    if let Some((_, Some(Combinator::Descendant))) = selector.parts.get(part_idx + 1) {
+                    if let Some((_, Some(Combinator::Descendant))) =
+                        selector.parts.get(part_idx + 1)
+                    {
                         // Try parent
                         if let Some(parent_id) = node.parent {
                             if let Some(parent) = get_node(parent_id) {
@@ -316,8 +321,11 @@ impl<'a> StyleResolver<'a> {
     /// Check if a selector part matches a node
     fn matches_part(&self, part: &SelectorPart, node: &DomNode) -> bool {
         // Universal selector matches everything
-        if part.universal && part.id.is_none() && part.classes.is_empty()
-            && part.pseudo_classes.is_empty() && part.element.is_none()
+        if part.universal
+            && part.id.is_none()
+            && part.classes.is_empty()
+            && part.pseudo_classes.is_empty()
+            && part.element.is_none()
         {
             return true;
         }
@@ -390,7 +398,10 @@ impl<'a> StyleResolver<'a> {
                     AttributeOp::Exists => !node.meta.classes.is_empty(),
                     AttributeOp::ContainsWord => {
                         if let Some(ref val) = attr.value {
-                            node.meta.classes.iter().any(|c| compare(c, val, attr.case_insensitive))
+                            node.meta
+                                .classes
+                                .iter()
+                                .any(|c| compare(c, val, attr.case_insensitive))
                         } else {
                             false
                         }
@@ -399,7 +410,11 @@ impl<'a> StyleResolver<'a> {
                         // Exact match: classes joined with space equals value
                         if let Some(ref val) = attr.value {
                             let classes: Vec<_> = node.meta.classes.iter().collect();
-                            let joined = classes.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(" ");
+                            let joined = classes
+                                .iter()
+                                .map(|s| s.as_str())
+                                .collect::<Vec<_>>()
+                                .join(" ");
                             compare(&joined, val, attr.case_insensitive)
                         } else {
                             false
@@ -536,60 +551,50 @@ impl<'a> StyleResolver<'a> {
                     _ => false,
                 }
             }
-            "disabled" => {
-                match &attr.op {
-                    AttributeOp::Exists => node.state.disabled,
-                    AttributeOp::Equals => {
-                        if let Some(ref val) = attr.value {
-                            let is_true = val == "true" || val == "1" || val.is_empty();
-                            node.state.disabled == is_true
-                        } else {
-                            node.state.disabled
-                        }
+            "disabled" => match &attr.op {
+                AttributeOp::Exists => node.state.disabled,
+                AttributeOp::Equals => {
+                    if let Some(ref val) = attr.value {
+                        let is_true = val == "true" || val == "1" || val.is_empty();
+                        node.state.disabled == is_true
+                    } else {
+                        node.state.disabled
                     }
-                    _ => false,
                 }
-            }
-            "checked" => {
-                match &attr.op {
-                    AttributeOp::Exists => node.state.checked,
-                    AttributeOp::Equals => {
-                        if let Some(ref val) = attr.value {
-                            let is_true = val == "true" || val == "1" || val.is_empty();
-                            node.state.checked == is_true
-                        } else {
-                            node.state.checked
-                        }
+                _ => false,
+            },
+            "checked" => match &attr.op {
+                AttributeOp::Exists => node.state.checked,
+                AttributeOp::Equals => {
+                    if let Some(ref val) = attr.value {
+                        let is_true = val == "true" || val == "1" || val.is_empty();
+                        node.state.checked == is_true
+                    } else {
+                        node.state.checked
                     }
-                    _ => false,
                 }
-            }
-            "selected" => {
-                match &attr.op {
-                    AttributeOp::Exists => node.state.selected,
-                    AttributeOp::Equals => {
-                        if let Some(ref val) = attr.value {
-                            let is_true = val == "true" || val == "1" || val.is_empty();
-                            node.state.selected == is_true
-                        } else {
-                            node.state.selected
-                        }
+                _ => false,
+            },
+            "selected" => match &attr.op {
+                AttributeOp::Exists => node.state.selected,
+                AttributeOp::Equals => {
+                    if let Some(ref val) = attr.value {
+                        let is_true = val == "true" || val == "1" || val.is_empty();
+                        node.state.selected == is_true
+                    } else {
+                        node.state.selected
                     }
-                    _ => false,
                 }
-            }
-            "focused" | "focus" => {
-                match &attr.op {
-                    AttributeOp::Exists => node.state.focused,
-                    _ => false,
-                }
-            }
-            "hovered" | "hover" => {
-                match &attr.op {
-                    AttributeOp::Exists => node.state.hovered,
-                    _ => false,
-                }
-            }
+                _ => false,
+            },
+            "focused" | "focus" => match &attr.op {
+                AttributeOp::Exists => node.state.focused,
+                _ => false,
+            },
+            "hovered" | "hover" => match &attr.op {
+                AttributeOp::Exists => node.state.hovered,
+                _ => false,
+            },
             _ => false,
         }
     }
@@ -620,8 +625,7 @@ pub trait StyleMerge {
 impl StyleMerge for Style {
     fn merge(&self, other: &Self) -> Self {
         use crate::style::{
-            Display, FlexDirection, JustifyContent, AlignItems,
-            Size, Spacing, BorderStyle, Color,
+            AlignItems, BorderStyle, Color, Display, FlexDirection, JustifyContent, Size, Spacing,
         };
 
         let mut result = self.clone();
@@ -703,9 +707,9 @@ impl StyleMerge for Style {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::node::{DomNode, WidgetMeta};
-    use crate::style::{StyleSheet, Rule, Declaration};
+    use super::*;
+    use crate::style::{Declaration, Rule, StyleSheet};
 
     // ─────────────────────────────────────────────────────────────────────────────
     // Specificity Tests
@@ -782,30 +786,24 @@ mod tests {
             rules: vec![
                 Rule {
                     selector: "Button".to_string(),
-                    declarations: vec![
-                        Declaration {
-                            property: "padding".to_string(),
-                            value: "1".to_string(),
-                        },
-                    ],
+                    declarations: vec![Declaration {
+                        property: "padding".to_string(),
+                        value: "1".to_string(),
+                    }],
                 },
                 Rule {
                     selector: ".primary".to_string(),
-                    declarations: vec![
-                        Declaration {
-                            property: "background".to_string(),
-                            value: "blue".to_string(),
-                        },
-                    ],
+                    declarations: vec![Declaration {
+                        property: "background".to_string(),
+                        value: "blue".to_string(),
+                    }],
                 },
                 Rule {
                     selector: "#submit".to_string(),
-                    declarations: vec![
-                        Declaration {
-                            property: "width".to_string(),
-                            value: "100".to_string(),
-                        },
-                    ],
+                    declarations: vec![Declaration {
+                        property: "width".to_string(),
+                        value: "100".to_string(),
+                    }],
                 },
             ],
             variables: std::collections::HashMap::new(),
@@ -884,9 +882,7 @@ mod tests {
         let dom_id = DomId::new(1);
         let node = DomNode::new(
             dom_id,
-            WidgetMeta::new("Button")
-                .class("primary")
-                .id("submit")
+            WidgetMeta::new("Button").class("primary").id("submit"),
         );
         let get_node = |_: DomId| -> Option<&DomNode> { None };
 
@@ -953,17 +949,13 @@ mod tests {
     #[test]
     fn test_match_pseudo_hover() {
         let stylesheet = StyleSheet {
-            rules: vec![
-                Rule {
-                    selector: "Button:hover".to_string(),
-                    declarations: vec![
-                        Declaration {
-                            property: "background".to_string(),
-                            value: "red".to_string(),
-                        },
-                    ],
-                },
-            ],
+            rules: vec![Rule {
+                selector: "Button:hover".to_string(),
+                declarations: vec![Declaration {
+                    property: "background".to_string(),
+                    value: "red".to_string(),
+                }],
+            }],
             variables: std::collections::HashMap::new(),
         };
         let resolver = StyleResolver::new(&stylesheet);
@@ -986,12 +978,10 @@ mod tests {
     #[test]
     fn test_match_pseudo_focus() {
         let stylesheet = StyleSheet {
-            rules: vec![
-                Rule {
-                    selector: "Input:focus".to_string(),
-                    declarations: vec![],
-                },
-            ],
+            rules: vec![Rule {
+                selector: "Input:focus".to_string(),
+                declarations: vec![],
+            }],
             variables: std::collections::HashMap::new(),
         };
         let resolver = StyleResolver::new(&stylesheet);
@@ -1013,12 +1003,10 @@ mod tests {
     #[test]
     fn test_match_pseudo_disabled() {
         let stylesheet = StyleSheet {
-            rules: vec![
-                Rule {
-                    selector: "Button:disabled".to_string(),
-                    declarations: vec![],
-                },
-            ],
+            rules: vec![Rule {
+                selector: "Button:disabled".to_string(),
+                declarations: vec![],
+            }],
             variables: std::collections::HashMap::new(),
         };
         let resolver = StyleResolver::new(&stylesheet);
@@ -1035,12 +1023,10 @@ mod tests {
     #[test]
     fn test_match_pseudo_first_child() {
         let stylesheet = StyleSheet {
-            rules: vec![
-                Rule {
-                    selector: "Item:first-child".to_string(),
-                    declarations: vec![],
-                },
-            ],
+            rules: vec![Rule {
+                selector: "Item:first-child".to_string(),
+                declarations: vec![],
+            }],
             variables: std::collections::HashMap::new(),
         };
         let resolver = StyleResolver::new(&stylesheet);
@@ -1062,12 +1048,10 @@ mod tests {
     #[test]
     fn test_match_pseudo_last_child() {
         let stylesheet = StyleSheet {
-            rules: vec![
-                Rule {
-                    selector: "Item:last-child".to_string(),
-                    declarations: vec![],
-                },
-            ],
+            rules: vec![Rule {
+                selector: "Item:last-child".to_string(),
+                declarations: vec![],
+            }],
             variables: std::collections::HashMap::new(),
         };
         let resolver = StyleResolver::new(&stylesheet);
@@ -1088,12 +1072,10 @@ mod tests {
     #[test]
     fn test_match_descendant_combinator() {
         let stylesheet = StyleSheet {
-            rules: vec![
-                Rule {
-                    selector: "Container Button".to_string(),
-                    declarations: vec![],
-                },
-            ],
+            rules: vec![Rule {
+                selector: "Container Button".to_string(),
+                declarations: vec![],
+            }],
             variables: std::collections::HashMap::new(),
         };
         let resolver = StyleResolver::new(&stylesheet);
@@ -1123,12 +1105,10 @@ mod tests {
     #[test]
     fn test_match_child_combinator() {
         let stylesheet = StyleSheet {
-            rules: vec![
-                Rule {
-                    selector: "Container > Button".to_string(),
-                    declarations: vec![],
-                },
-            ],
+            rules: vec![Rule {
+                selector: "Container > Button".to_string(),
+                declarations: vec![],
+            }],
             variables: std::collections::HashMap::new(),
         };
         let resolver = StyleResolver::new(&stylesheet);

@@ -22,11 +22,11 @@
 //!     .render(ctx);
 //! ```
 
-use super::traits::{View, RenderContext, WidgetProps, EventResult, Interactive};
+use super::traits::{EventResult, Interactive, RenderContext, View, WidgetProps};
+use crate::event::{Key, KeyEvent};
 use crate::render::Cell;
-use crate::style::{use_theme, set_theme_by_id, theme_ids, get_theme, Color, Theme};
-use crate::event::{KeyEvent, Key};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::style::{get_theme, set_theme_by_id, theme_ids, use_theme, Color, Theme};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Theme picker widget for selecting themes
 #[derive(Clone, Debug)]
@@ -59,7 +59,9 @@ impl ThemePicker {
         let selected_index = all_themes
             .iter()
             .position(|id| {
-                get_theme(id).map(|t| t.name == current.name).unwrap_or(false)
+                get_theme(id)
+                    .map(|t| t.name == current.name)
+                    .unwrap_or(false)
             })
             .unwrap_or(0);
 
@@ -472,8 +474,7 @@ mod tests {
 
     #[test]
     fn test_theme_picker_selection() {
-        let mut picker = ThemePicker::new()
-            .themes(["dark", "light", "dracula"]);
+        let mut picker = ThemePicker::new().themes(["dark", "light", "dracula"]);
 
         assert_eq!(picker.selected_index, 0);
 
@@ -493,8 +494,7 @@ mod tests {
 
     #[test]
     fn test_theme_picker_selected_id() {
-        let picker = ThemePicker::new()
-            .themes(["dracula", "nord"]);
+        let picker = ThemePicker::new().themes(["dracula", "nord"]);
 
         assert_eq!(picker.selected_id(), Some("dracula"));
     }
@@ -507,8 +507,7 @@ mod tests {
 
     #[test]
     fn test_theme_picker_custom_themes() {
-        let picker = ThemePicker::new()
-            .themes(["dark", "nord"]);
+        let picker = ThemePicker::new().themes(["dark", "nord"]);
 
         assert_eq!(picker.themes.len(), 2);
         assert_eq!(picker.themes[0], "dark");
@@ -546,8 +545,7 @@ mod tests {
 
     #[test]
     fn test_theme_picker_handle_key_navigate() {
-        let mut picker = ThemePicker::new()
-            .themes(["dark", "light", "dracula"]);
+        let mut picker = ThemePicker::new().themes(["dark", "light", "dracula"]);
         picker.open();
 
         // Down

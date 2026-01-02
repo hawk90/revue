@@ -3,7 +3,7 @@
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::widget::{View, RenderContext};
+use crate::widget::{RenderContext, View};
 
 /// Widget info for inspection
 #[derive(Clone, Debug)]
@@ -61,9 +61,7 @@ impl WidgetInfo {
 
     /// Get total descendant count
     pub fn descendant_count(&self) -> usize {
-        self.children.iter()
-            .map(|c| 1 + c.descendant_count())
-            .sum()
+        self.children.iter().map(|c| 1 + c.descendant_count()).sum()
     }
 }
 
@@ -171,7 +169,11 @@ impl Inspector {
     }
 
     /// Get widget at index (depth-first traversal)
-    fn get_widget_at<'a>(&self, widget: &'a WidgetInfo, mut index: usize) -> Option<&'a WidgetInfo> {
+    fn get_widget_at<'a>(
+        &self,
+        widget: &'a WidgetInfo,
+        mut index: usize,
+    ) -> Option<&'a WidgetInfo> {
         if index == 0 {
             return Some(widget);
         }
@@ -292,7 +294,11 @@ impl Inspector {
 
         let is_selected = index == self.selected;
         let indent = "  ".repeat(depth);
-        let prefix = if widget.children.is_empty() { "•" } else { "▼" };
+        let prefix = if widget.children.is_empty() {
+            "•"
+        } else {
+            "▼"
+        };
         let text = format!("{}{} {}", indent, prefix, widget.type_name);
 
         let (fg, bg) = if is_selected {
@@ -319,7 +325,8 @@ impl Inspector {
         let mut current_index = index + 1;
 
         for child in &widget.children {
-            current_index = self.render_widget_tree(ctx, child, x, y, depth + 1, current_index, max_width);
+            current_index =
+                self.render_widget_tree(ctx, child, x, y, depth + 1, current_index, max_width);
         }
 
         current_index
@@ -356,8 +363,7 @@ impl Inspector {
         // Draw bounds
         let bounds_text = format!(
             "x: {}, y: {}, w: {}, h: {}",
-            widget.bounds.x, widget.bounds.y,
-            widget.bounds.width, widget.bounds.height
+            widget.bounds.x, widget.bounds.y, widget.bounds.width, widget.bounds.height
         );
         for (i, ch) in bounds_text.chars().take(max_width as usize).enumerate() {
             let mut cell = Cell::new(ch);
@@ -486,8 +492,7 @@ mod tests {
     #[test]
     fn test_widget_info_children() {
         let child = WidgetInfo::new("Text", Rect::new(0, 0, 5, 1));
-        let parent = WidgetInfo::new("Stack", Rect::new(0, 0, 10, 5))
-            .child(child);
+        let parent = WidgetInfo::new("Stack", Rect::new(0, 0, 10, 5)).child(child);
 
         assert_eq!(parent.children.len(), 1);
         assert_eq!(parent.descendant_count(), 1);

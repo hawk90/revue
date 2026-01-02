@@ -5,21 +5,26 @@
 mod builder;
 mod hot_reload;
 mod inspector;
-pub mod snapshot;
-pub mod router;
 pub mod profiler;
+pub mod router;
 pub mod screen;
+pub mod snapshot;
 
 pub use builder::AppBuilder;
-pub use hot_reload::{HotReload, HotReloadEvent, HotReloadConfig, HotReloadBuilder, hot_reload};
-pub use inspector::{Inspector, WidgetInfo, inspector};
-pub use snapshot::{Snapshot, SnapshotResult, SnapshotConfig, snapshot};
-pub use router::{Router, Route, RouteParams, QueryParams, HistoryEntry, NavigationEvent, RouteBuilder, router, routes};
-pub use profiler::{Profiler, Stats, Sample, Metric, MetricType, FpsCounter, profiler as new_profiler, fps_counter};
-pub use screen::{
-    Screen, ScreenId, ScreenManager, ScreenConfig, ScreenMode, ScreenEvent, ScreenResult,
-    Transition, SimpleScreen, screen_manager, simple_screen,
+pub use hot_reload::{hot_reload, HotReload, HotReloadBuilder, HotReloadConfig, HotReloadEvent};
+pub use inspector::{inspector, Inspector, WidgetInfo};
+pub use profiler::{
+    fps_counter, profiler as new_profiler, FpsCounter, Metric, MetricType, Profiler, Sample, Stats,
 };
+pub use router::{
+    router, routes, HistoryEntry, NavigationEvent, QueryParams, Route, RouteBuilder, RouteParams,
+    Router,
+};
+pub use screen::{
+    screen_manager, simple_screen, Screen, ScreenConfig, ScreenEvent, ScreenId, ScreenManager,
+    ScreenMode, ScreenResult, SimpleScreen, Transition,
+};
+pub use snapshot::{snapshot, Snapshot, SnapshotConfig, SnapshotResult};
 
 use crate::constants::FRAME_DURATION_60FPS;
 use crate::dom::DomRenderer;
@@ -89,7 +94,7 @@ impl App {
             mouse_capture,
             needs_force_redraw: true, // Initial render should be a full draw
             needs_layout_rebuild: true, // Initial render needs full layout build
-            needs_dom_rebuild: true, // Initial render needs DOM root creation
+            needs_dom_rebuild: true,  // Initial render needs DOM root creation
             plugins,
         }
     }
@@ -175,11 +180,9 @@ impl App {
         V: View,
         H: FnMut(&KeyEvent, &mut V) -> bool,
     {
-        self.run(view, move |event, view, _app| {
-            match event {
-                Event::Key(key_event) => handler(key_event, view),
-                _ => false,
-            }
+        self.run(view, move |event, view, _app| match event {
+            Event::Key(key_event) => handler(key_event, view),
+            _ => false,
         })
     }
 
@@ -190,7 +193,7 @@ impl App {
         H: FnMut(&Event, &mut V, &mut Self) -> bool,
     {
         let mut should_draw = handler(&event, view, self);
-    
+
         match event {
             Event::Key(key) if is_quit_key(&key) => {
                 self.quit();
@@ -221,12 +224,17 @@ impl App {
             }
             _ => {}
         }
-        
+
         should_draw || self.needs_force_redraw
     }
 
     /// Draw the UI to the terminal
-    fn draw<V: View, W: std::io::Write>(&mut self, view: &V, terminal: &mut Terminal<W>, force_redraw: bool) -> crate::Result<()> {
+    fn draw<V: View, W: std::io::Write>(
+        &mut self,
+        view: &V,
+        terminal: &mut Terminal<W>,
+        force_redraw: bool,
+    ) -> crate::Result<()> {
         // Only rebuild DOM root if needed (first frame or explicit request)
         // This is a major optimization since build() clears the entire tree and style cache
         if self.needs_dom_rebuild {
@@ -239,7 +247,11 @@ impl App {
         // Always compute styles (has internal dirty checking optimization)
         self.dom.compute_styles_with_inheritance();
 
-        let root_dom_id = self.dom.tree().root_id().expect("Root DOM node must exist to draw.");
+        let root_dom_id = self
+            .dom
+            .tree()
+            .root_id()
+            .expect("Root DOM node must exist to draw.");
 
         // Only rebuild layout tree if needed (e.g., on resize or structural changes)
         // DOM build() now performs incremental updates (reuses nodes by ID/position)
@@ -278,11 +290,13 @@ impl App {
             } else if self.transitions.has_active() {
                 // Active transitions need redraws - only redraw affected nodes
                 // Collect rects for nodes with active transitions
-                let transition_rects: Vec<Rect> = self.transitions
+                let transition_rects: Vec<Rect> = self
+                    .transitions
                     .active_node_ids()
                     .filter_map(|element_id| {
                         // Look up DOM node by element ID and get its layout rect
-                        self.dom.get_by_id(element_id)
+                        self.dom
+                            .get_by_id(element_id)
                             .map(|node| node.id)
                             .and_then(|dom_id| self.layout.layout(dom_id).ok())
                     })
@@ -342,12 +356,17 @@ impl App {
             return;
         };
 
-        let style = self.dom.style_for_with_inheritance(dom_id).expect("Style should exist");
+        let style = self
+            .dom
+            .style_for_with_inheritance(dom_id)
+            .expect("Style should exist");
         let child_ids: Vec<_> = children.iter().map(|c| *c).collect();
-        let _ = self.layout.create_node_with_children(dom_id, &style, &child_ids);
+        let _ = self
+            .layout
+            .create_node_with_children(dom_id, &style, &child_ids);
 
         for child_dom_id in children {
-             self.build_layout_tree(child_dom_id);
+            self.build_layout_tree(child_dom_id);
         }
     }
 
@@ -365,7 +384,10 @@ impl App {
         }
 
         // Get node state to check if dirty
-        let is_dirty = self.dom.tree().get(dom_id)
+        let is_dirty = self
+            .dom
+            .tree()
+            .get(dom_id)
             .map(|n| n.state.dirty)
             .unwrap_or(false);
 
@@ -377,7 +399,10 @@ impl App {
         }
 
         // Recursively update children
-        let children = self.dom.tree().get(dom_id)
+        let children = self
+            .dom
+            .tree()
+            .get(dom_id)
             .map(|n| n.children.clone())
             .unwrap_or_default();
 
@@ -429,7 +454,13 @@ impl App {
     }
 
     /// Start a transition animation for a property
-    pub fn start_transition( &mut self, property: &str, from: f32, to: f32, transition: &crate::style::Transition) {
+    pub fn start_transition(
+        &mut self,
+        property: &str,
+        from: f32,
+        to: f32,
+        transition: &crate::style::Transition,
+    ) {
         self.transitions.start(property, from, to, transition);
     }
 
@@ -466,9 +497,7 @@ mod tests {
 
     #[test]
     fn test_app_builder_and_new() {
-        let app = App::builder()
-            .css(".test { color: red; }")
-            .build();
+        let app = App::builder().css(".test { color: red; }").build();
         assert!(!app.is_running());
     }
 

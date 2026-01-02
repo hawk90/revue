@@ -21,8 +21,8 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::widget::{RenderContext, View, WidgetProps};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Link style
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -254,17 +254,13 @@ pub fn url_link(url: impl Into<String>) -> Link {
 /// Open URL in default browser
 #[cfg(target_os = "macos")]
 fn open_url(url: &str) -> std::io::Result<()> {
-    std::process::Command::new("open")
-        .arg(url)
-        .spawn()?;
+    std::process::Command::new("open").arg(url).spawn()?;
     Ok(())
 }
 
 #[cfg(target_os = "linux")]
 fn open_url(url: &str) -> std::io::Result<()> {
-    std::process::Command::new("xdg-open")
-        .arg(url)
-        .spawn()?;
+    std::process::Command::new("xdg-open").arg(url).spawn()?;
     Ok(())
 }
 
@@ -357,8 +353,7 @@ mod tests {
 
     #[test]
     fn test_link_tooltip() {
-        let link = Link::new("https://example.com")
-            .tooltip("Click to visit");
+        let link = Link::new("https://example.com").tooltip("Click to visit");
         assert_eq!(link.tooltip, Some("Click to visit".to_string()));
     }
 }

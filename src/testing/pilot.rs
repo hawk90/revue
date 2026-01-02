@@ -1,6 +1,6 @@
 //! Pilot - automated UI testing controller
 
-use super::{TestApp, TestConfig, Action, KeyAction, MouseAction};
+use super::{Action, KeyAction, MouseAction, TestApp, TestConfig};
 use crate::event::{Key, KeyEvent};
 use crate::render::Buffer;
 use std::time::Duration;
@@ -107,7 +107,8 @@ impl<'a, V: crate::widget::View> Pilot<'a, V> {
         for ch in text.chars() {
             self.press_key(Key::Char(ch));
         }
-        self.history.push(Action::Key(KeyAction::Type(text.to_string())));
+        self.history
+            .push(Action::Key(KeyAction::Type(text.to_string())));
         self
     }
 
@@ -131,21 +132,24 @@ impl<'a, V: crate::widget::View> Pilot<'a, V> {
     pub fn double_click(&mut self, x: u16, y: u16) -> &mut Self {
         self.click(x, y);
         self.click(x, y);
-        self.history.push(Action::Mouse(MouseAction::DoubleClick(x, y)));
+        self.history
+            .push(Action::Mouse(MouseAction::DoubleClick(x, y)));
         self
     }
 
     /// Scroll up at position
     pub fn scroll_up(&mut self, x: u16, y: u16, amount: u16) -> &mut Self {
         self.app.send_scroll(x, y, -(amount as i16));
-        self.history.push(Action::Mouse(MouseAction::ScrollUp(x, y, amount)));
+        self.history
+            .push(Action::Mouse(MouseAction::ScrollUp(x, y, amount)));
         self
     }
 
     /// Scroll down at position
     pub fn scroll_down(&mut self, x: u16, y: u16, amount: u16) -> &mut Self {
         self.app.send_scroll(x, y, amount as i16);
-        self.history.push(Action::Mouse(MouseAction::ScrollDown(x, y, amount)));
+        self.history
+            .push(Action::Mouse(MouseAction::ScrollDown(x, y, amount)));
         self
     }
 
@@ -265,11 +269,9 @@ impl<'a, V: crate::widget::View> Pilot<'a, V> {
         let actual_trimmed = actual.trim();
 
         assert_eq!(
-            actual_trimmed,
-            expected_trimmed,
+            actual_trimmed, expected_trimmed,
             "Screen does not match expected.\nExpected:\n{}\n\nActual:\n{}",
-            expected_trimmed,
-            actual_trimmed
+            expected_trimmed, actual_trimmed
         );
     }
 
@@ -448,7 +450,7 @@ impl AsyncPilot {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::widget::{Text, View, RenderContext};
+    use crate::widget::{RenderContext, Text, View};
 
     struct SimpleView {
         text: String,

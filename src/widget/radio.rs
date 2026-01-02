@@ -1,10 +1,10 @@
 //! Radio button widget for single selection from options
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Radio button style variants
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -263,7 +263,11 @@ impl RadioGroup {
             ctx.buffer.set(current_x, y, left_cell);
             current_x += 1;
 
-            let indicator = if is_selected { selected_char } else { unselected_char };
+            let indicator = if is_selected {
+                selected_char
+            } else {
+                unselected_char
+            };
             let mut ind_cell = Cell::new(indicator);
             ind_cell.fg = Some(indicator_fg);
             ctx.buffer.set(current_x, y, ind_cell);
@@ -274,7 +278,11 @@ impl RadioGroup {
             ctx.buffer.set(current_x, y, right_cell);
             current_x += 1;
         } else {
-            let indicator = if is_selected { selected_char } else { unselected_char };
+            let indicator = if is_selected {
+                selected_char
+            } else {
+                unselected_char
+            };
             let mut ind_cell = Cell::new(indicator);
             ind_cell.fg = Some(indicator_fg);
             ctx.buffer.set(current_x, y, ind_cell);
@@ -370,9 +378,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
-    
+    use crate::render::Buffer;
 
     #[test]
     fn test_radio_group_new() {

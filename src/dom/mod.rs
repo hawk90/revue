@@ -25,21 +25,23 @@
 //! .card Button.danger { background: red; }
 //! ```
 
-mod node;
-mod selector;
 mod cascade;
+mod node;
+mod pool;
 mod query;
 mod renderer;
-mod pool;
+mod selector;
 
-pub use node::{DomNode, DomId, NodeState, WidgetMeta};
-pub use selector::{Selector, SelectorPart, Combinator, PseudoClass, parse_selector, parse_selectors};
-pub use cascade::{StyleResolver, Specificity, MatchedRule};
-pub use query::{Query, QueryResult, DomTree};
-pub use renderer::{DomRenderer, styled_context};
+pub use cascade::{MatchedRule, Specificity, StyleResolver};
+pub use node::{DomId, DomNode, NodeState, WidgetMeta};
 pub use pool::{
-    ObjectPool, SyncObjectPool, BufferPool, StringPool, SyncStringPool, VecPool,
-    Pooled, PoolStats, object_pool, buffer_pool, string_pool, vec_pool,
+    buffer_pool, object_pool, string_pool, vec_pool, BufferPool, ObjectPool, PoolStats, Pooled,
+    StringPool, SyncObjectPool, SyncStringPool, VecPool,
+};
+pub use query::{DomTree, Query, QueryResult};
+pub use renderer::{styled_context, DomRenderer};
+pub use selector::{
+    parse_selector, parse_selectors, Combinator, PseudoClass, Selector, SelectorPart,
 };
 
 /// Unique identifier for DOM nodes

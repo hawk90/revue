@@ -2,12 +2,12 @@
 //!
 //! Allows dividing an area into resizable panes with draggable dividers.
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::event::Key;
+use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::layout::Rect;
-use crate::event::Key;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Split orientation
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -197,15 +197,14 @@ impl Splitter {
     /// Get pane areas
     pub fn pane_areas(&self, area: Rect) -> Vec<(String, Rect)> {
         let mut areas = Vec::new();
-        let visible_panes: Vec<_> = self.panes.iter()
-            .filter(|p| !p.collapsed)
-            .collect();
+        let visible_panes: Vec<_> = self.panes.iter().filter(|p| !p.collapsed).collect();
 
         if visible_panes.is_empty() {
             return areas;
         }
 
-        let total_splitter_width = (visible_panes.len().saturating_sub(1)) as u16 * self.splitter_width;
+        let total_splitter_width =
+            (visible_panes.len().saturating_sub(1)) as u16 * self.splitter_width;
         let available = match self.orientation {
             SplitOrientation::Horizontal => area.width.saturating_sub(total_splitter_width),
             SplitOrientation::Vertical => area.height.saturating_sub(total_splitter_width),
@@ -216,7 +215,11 @@ impl Splitter {
         let mut offset = 0u16;
 
         for (i, pane) in visible_panes.iter().enumerate() {
-            let ratio = if total_ratio > 0.0 { pane.ratio / total_ratio } else { 1.0 / visible_panes.len() as f32 };
+            let ratio = if total_ratio > 0.0 {
+                pane.ratio / total_ratio
+            } else {
+                1.0 / visible_panes.len() as f32
+            };
             let mut size = (available as f32 * ratio) as u16;
 
             // Apply constraints
@@ -231,18 +234,10 @@ impl Splitter {
             }
 
             let pane_area = match self.orientation {
-                SplitOrientation::Horizontal => Rect::new(
-                    area.x + offset,
-                    area.y,
-                    size,
-                    area.height,
-                ),
-                SplitOrientation::Vertical => Rect::new(
-                    area.x,
-                    area.y + offset,
-                    area.width,
-                    size,
-                ),
+                SplitOrientation::Horizontal => {
+                    Rect::new(area.x + offset, area.y, size, area.height)
+                }
+                SplitOrientation::Vertical => Rect::new(area.x, area.y + offset, area.width, size),
             };
 
             areas.push((pane.id.clone(), pane_area));
@@ -259,7 +254,9 @@ impl Splitter {
 
     /// Focus next pane
     pub fn focus_next(&mut self) {
-        let visible: Vec<_> = self.panes.iter()
+        let visible: Vec<_> = self
+            .panes
+            .iter()
             .enumerate()
             .filter(|(_, p)| !p.collapsed)
             .map(|(i, _)| i)
@@ -273,7 +270,9 @@ impl Splitter {
 
     /// Focus previous pane
     pub fn focus_prev(&mut self) {
-        let visible: Vec<_> = self.panes.iter()
+        let visible: Vec<_> = self
+            .panes
+            .iter()
             .enumerate()
             .filter(|(_, p)| !p.collapsed)
             .map(|(i, _)| i)
@@ -373,7 +372,11 @@ impl View for Splitter {
         // Draw splitters between panes
         for (i, (_, pane_area)) in areas.iter().enumerate().take(areas.len().saturating_sub(1)) {
             let is_active = self.active_divider == Some(i);
-            let color = if is_active { self.active_color } else { self.color };
+            let color = if is_active {
+                self.active_color
+            } else {
+                self.color
+            };
             let ch = self.style.char(self.orientation);
 
             match self.orientation {
@@ -574,10 +577,7 @@ mod tests {
 
     #[test]
     fn test_pane() {
-        let p = Pane::new("main")
-            .min_size(10)
-            .ratio(0.6)
-            .collapsible();
+        let p = Pane::new("main").min_size(10).ratio(0.6).collapsible();
 
         assert_eq!(p.id, "main");
         assert_eq!(p.min_size, 10);

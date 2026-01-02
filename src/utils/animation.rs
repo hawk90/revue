@@ -23,8 +23,8 @@
 //! let value = anim.at(0.25);  // Interpolated between keyframes
 //! ```
 
-use std::time::{Duration, Instant};
 use crate::utils::easing::Easing;
+use std::time::{Duration, Instant};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Interpolatable Trait
@@ -309,8 +309,7 @@ impl Spring {
 
     /// Check if spring has settled (close to target with low velocity)
     pub fn is_settled(&self) -> bool {
-        (self.value - self.target).abs() < self.threshold
-            && self.velocity.abs() < self.threshold
+        (self.value - self.target).abs() < self.threshold && self.velocity.abs() < self.threshold
     }
 
     /// Update spring simulation
@@ -402,14 +401,17 @@ impl<T: Interpolatable> Keyframes<T> {
     /// Add a keyframe
     pub fn add(mut self, time: f64, value: T) -> Self {
         self.keyframes.push(Keyframe::new(time, value));
-        self.keyframes.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
+        self.keyframes
+            .sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
         self
     }
 
     /// Add a keyframe with easing
     pub fn add_eased(mut self, time: f64, value: T, easing: Easing) -> Self {
-        self.keyframes.push(Keyframe::new(time, value).easing(easing));
-        self.keyframes.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
+        self.keyframes
+            .push(Keyframe::new(time, value).easing(easing));
+        self.keyframes
+            .sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
         self
     }
 
@@ -599,7 +601,8 @@ impl Sequence {
 
     /// Add a step with easing
     pub fn then_eased(mut self, duration: Duration, target: f64, easing: Easing) -> Self {
-        self.steps.push(SequenceStep::new(duration, target).easing(easing));
+        self.steps
+            .push(SequenceStep::new(duration, target).easing(easing));
         self
     }
 
@@ -788,14 +791,12 @@ pub mod presets {
 
     /// Fade in animation (0.0 to 1.0)
     pub fn fade_in(duration_ms: u64) -> Sequence {
-        Sequence::new()
-            .then_eased(Duration::from_millis(duration_ms), 1.0, Easing::OutQuad)
+        Sequence::new().then_eased(Duration::from_millis(duration_ms), 1.0, Easing::OutQuad)
     }
 
     /// Fade out animation (1.0 to 0.0)
     pub fn fade_out(duration_ms: u64) -> Sequence {
-        Sequence::new()
-            .then_eased(Duration::from_millis(duration_ms), 0.0, Easing::InQuad)
+        Sequence::new().then_eased(Duration::from_millis(duration_ms), 0.0, Easing::InQuad)
     }
 
     /// Pulse animation (repeating scale)
@@ -816,27 +817,23 @@ pub mod presets {
 
     /// Slide in from left (-1.0 to 0.0)
     pub fn slide_in_left(duration_ms: u64) -> Sequence {
-        Sequence::new()
-            .then_eased(Duration::from_millis(duration_ms), 0.0, Easing::OutCubic)
+        Sequence::new().then_eased(Duration::from_millis(duration_ms), 0.0, Easing::OutCubic)
     }
 
     /// Bounce animation
     pub fn bounce(duration_ms: u64) -> Sequence {
-        Sequence::new()
-            .then_eased(Duration::from_millis(duration_ms), 1.0, Easing::OutBounce)
+        Sequence::new().then_eased(Duration::from_millis(duration_ms), 1.0, Easing::OutBounce)
     }
 
     /// Elastic animation
     pub fn elastic(duration_ms: u64) -> Sequence {
-        Sequence::new()
-            .then_eased(Duration::from_millis(duration_ms), 1.0, Easing::OutElastic)
+        Sequence::new().then_eased(Duration::from_millis(duration_ms), 1.0, Easing::OutElastic)
     }
 
     /// Typewriter effect (linear reveal)
     pub fn typewriter(total_chars: usize, chars_per_second: f64) -> Sequence {
         let duration = Duration::from_secs_f64(total_chars as f64 / chars_per_second);
-        Sequence::new()
-            .then(duration, 1.0)
+        Sequence::new().then(duration, 1.0)
     }
 }
 
@@ -962,18 +959,14 @@ mod tests {
 
     #[test]
     fn test_keyframes_add() {
-        let kf = Keyframes::new()
-            .add(0.0, 0.0)
-            .add(1.0, 100.0);
+        let kf = Keyframes::new().add(0.0, 0.0).add(1.0, 100.0);
 
         assert_eq!(kf.len(), 2);
     }
 
     #[test]
     fn test_keyframes_at() {
-        let kf = Keyframes::new()
-            .add(0.0, 0.0)
-            .add(1.0, 100.0);
+        let kf = Keyframes::new().add(0.0, 0.0).add(1.0, 100.0);
 
         assert_eq!(kf.at(0.0), Some(0.0));
         assert_eq!(kf.at(1.0), Some(100.0));
@@ -1063,8 +1056,7 @@ mod tests {
 
     #[test]
     fn test_sequence_start() {
-        let mut seq = Sequence::new()
-            .then(Duration::from_millis(100), 1.0);
+        let mut seq = Sequence::new().then(Duration::from_millis(100), 1.0);
 
         seq.start();
         assert!(seq.is_running());
@@ -1072,8 +1064,7 @@ mod tests {
 
     #[test]
     fn test_sequence_value() {
-        let mut seq = Sequence::new()
-            .then(Duration::from_millis(0), 1.0); // Instant completion
+        let mut seq = Sequence::new().then(Duration::from_millis(0), 1.0); // Instant completion
 
         seq.start();
         std::thread::sleep(Duration::from_millis(10));
@@ -1107,7 +1098,7 @@ mod tests {
         let ticker = Ticker::with_target_fps(30.0);
         let frame_dur = ticker.frame_duration();
 
-        assert!((frame_dur.as_secs_f64() - 1.0/30.0).abs() < 0.001);
+        assert!((frame_dur.as_secs_f64() - 1.0 / 30.0).abs() < 0.001);
     }
 
     // =========================================================================

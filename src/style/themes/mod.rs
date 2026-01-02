@@ -435,7 +435,10 @@ impl BuiltinTheme {
 
     /// Check if this theme is an accessibility theme
     pub fn is_accessibility(&self) -> bool {
-        matches!(self, BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight)
+        matches!(
+            self,
+            BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight
+        )
     }
 
     /// Check if this is a dark theme

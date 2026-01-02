@@ -20,8 +20,8 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::{Arc, OnceLock, RwLock};
 use std::time::{Duration, Instant};
-use std::sync::{Arc, RwLock, OnceLock};
 
 // =============================================================================
 // Timing Entry
@@ -295,7 +295,8 @@ impl Profiler {
 
     /// Get all statistics
     pub fn all_stats(&self) -> HashMap<String, Stats> {
-        self.inner.read()
+        self.inner
+            .read()
             .map(|i| i.stats.clone())
             .unwrap_or_default()
     }
@@ -332,7 +333,11 @@ impl Profiler {
         for (name, stat) in entries {
             output.push_str(&format!(
                 "{:<30} {:>8} {:>10.2} {:>10.3} {:>10.3} {:>10.3}\n",
-                if name.len() > 30 { format!("{}...", &name[..27]) } else { name.clone() },
+                if name.len() > 30 {
+                    format!("{}...", &name[..27])
+                } else {
+                    name.clone()
+                },
                 stat.count,
                 stat.total_ms(),
                 stat.avg_ms(),
@@ -579,9 +584,7 @@ mod tests {
 
     #[test]
     fn test_convenience_functions() {
-        let result = profile("test_fn", || {
-            42
-        });
+        let result = profile("test_fn", || 42);
         assert_eq!(result, 42);
     }
 

@@ -95,7 +95,9 @@ pub fn fuzzy_match(pattern: &str, target: &str) -> Option<FuzzyMatch> {
                 score += 2; // Start of string
             } else {
                 let prev_char = target_chars[i - 1];
-                if !prev_char.is_alphanumeric() || (prev_char.is_lowercase() && target_chars[i].is_uppercase()) {
+                if !prev_char.is_alphanumeric()
+                    || (prev_char.is_lowercase() && target_chars[i].is_uppercase())
+                {
                     score += 2; // Word boundary or camelCase
                 }
             }
@@ -143,9 +145,7 @@ pub fn fuzzy_matches(pattern: &str, target: &str) -> bool {
 pub fn fuzzy_filter<'a, T: AsRef<str>>(pattern: &str, items: &'a [T]) -> Vec<(&'a T, FuzzyMatch)> {
     let mut matches: Vec<_> = items
         .iter()
-        .filter_map(|item| {
-            fuzzy_match(pattern, item.as_ref()).map(|m| (item, m))
-        })
+        .filter_map(|item| fuzzy_match(pattern, item.as_ref()).map(|m| (item, m)))
         .collect();
 
     matches.sort_by(|a, b| b.1.score.cmp(&a.1.score));
@@ -154,7 +154,10 @@ pub fn fuzzy_filter<'a, T: AsRef<str>>(pattern: &str, items: &'a [T]) -> Vec<(&'
 
 /// Filter items and return only the strings (without match info)
 pub fn fuzzy_filter_simple<'a, T: AsRef<str>>(pattern: &str, items: &'a [T]) -> Vec<&'a T> {
-    fuzzy_filter(pattern, items).into_iter().map(|(item, _)| item).collect()
+    fuzzy_filter(pattern, items)
+        .into_iter()
+        .map(|(item, _)| item)
+        .collect()
 }
 
 /// A fuzzy matcher that can be reused for multiple matches
@@ -227,7 +230,9 @@ impl FuzzyMatcher {
                     score += 2;
                 } else {
                     let prev_char = target_chars[i - 1];
-                    if !prev_char.is_alphanumeric() || (prev_char.is_lowercase() && target_chars[i].is_uppercase()) {
+                    if !prev_char.is_alphanumeric()
+                        || (prev_char.is_lowercase() && target_chars[i].is_uppercase())
+                    {
                         score += 2;
                     }
                 }
@@ -443,7 +448,9 @@ mod tests {
         assert!(matcher.match_str("zzzzzzzzza").is_none());
 
         // But 'a' at start should have higher score
-        assert!(matcher.match_str("apple").is_none() || matcher.match_str("apple").unwrap().score >= 10);
+        assert!(
+            matcher.match_str("apple").is_none() || matcher.match_str("apple").unwrap().score >= 10
+        );
     }
 
     #[test]

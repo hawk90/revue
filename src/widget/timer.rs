@@ -18,11 +18,11 @@
 //! let pomodoro = Timer::pomodoro();
 //! ```
 
-use std::time::Instant;
 use crate::style::Color;
-use crate::widget::{View, RenderContext};
 use crate::widget::traits::WidgetProps;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::widget::{RenderContext, View};
+use crate::{impl_props_builders, impl_styled_view};
+use std::time::Instant;
 
 /// Timer state
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -123,14 +123,12 @@ impl Timer {
 
     /// Create a short break timer (5 minutes)
     pub fn short_break() -> Self {
-        Self::countdown(5 * 60)
-            .title("Short Break")
+        Self::countdown(5 * 60).title("Short Break")
     }
 
     /// Create a long break timer (15 minutes)
     pub fn long_break() -> Self {
-        Self::countdown(15 * 60)
-            .title("Long Break")
+        Self::countdown(15 * 60).title("Long Break")
     }
 
     /// Set display format
@@ -332,9 +330,9 @@ impl Timer {
 
 impl View for Timer {
     fn render(&self, ctx: &mut RenderContext) {
-        use crate::widget::Text;
-        use crate::widget::Progress;
         use crate::widget::stack::vstack;
+        use crate::widget::Progress;
+        use crate::widget::Text;
 
         let color = self.current_color();
         let mut content = vstack();
@@ -358,8 +356,7 @@ impl View for Timer {
 
         // Progress bar
         if self.show_progress {
-            let progress = Progress::new(self.progress())
-                .filled_color(color);
+            let progress = Progress::new(self.progress()).filled_color(color);
             content = content.child(progress);
         }
 
@@ -560,8 +557,8 @@ impl Default for Stopwatch {
 
 impl View for Stopwatch {
     fn render(&self, ctx: &mut RenderContext) {
-        use crate::widget::Text;
         use crate::widget::stack::vstack;
+        use crate::widget::Text;
 
         let color = self.fg.unwrap_or(Color::WHITE);
         let mut content = vstack();

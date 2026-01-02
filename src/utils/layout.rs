@@ -67,7 +67,14 @@ impl BoxLayout {
     }
 
     /// Fit to content, clamped to max_height
-    pub fn fit(x: u16, y: u16, width: u16, max_height: u16, content_rows: usize, header_rows: u16) -> Self {
+    pub fn fit(
+        x: u16,
+        y: u16,
+        width: u16,
+        max_height: u16,
+        content_rows: usize,
+        header_rows: u16,
+    ) -> Self {
         let border = 1u16;
         let needed = (border * 2) + header_rows + content_rows as u16;
         let height = needed.min(max_height);

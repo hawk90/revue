@@ -92,11 +92,7 @@ impl ReactiveForm {
         // Validation: age (must be a number between 1-150)
         let age_clone = age.clone();
         let age_valid = computed(move || {
-            age_clone.with(|a| {
-                a.parse::<u32>()
-                    .map(|n| n > 0 && n <= 150)
-                    .unwrap_or(false)
-            })
+            age_clone.with(|a| a.parse::<u32>().map(|n| n > 0 && n <= 150).unwrap_or(false))
         });
 
         let age_clone2 = age.clone();
@@ -127,7 +123,10 @@ impl ReactiveForm {
         let form_valid_clone = form_valid.clone();
         effect(move || {
             let valid = form_valid_clone.get();
-            println!("Form is now: {}", if valid { "VALID ✓" } else { "INVALID ✗" });
+            println!(
+                "Form is now: {}",
+                if valid { "VALID ✓" } else { "INVALID ✗" }
+            );
         });
 
         Self {
@@ -161,9 +160,15 @@ impl ReactiveForm {
 
     fn handle_backspace(&mut self) {
         match self.focused.get() {
-            Field::Name => self.name.update(|s| { s.pop(); }),
-            Field::Email => self.email.update(|s| { s.pop(); }),
-            Field::Age => self.age.update(|s| { s.pop(); }),
+            Field::Name => self.name.update(|s| {
+                s.pop();
+            }),
+            Field::Email => self.email.update(|s| {
+                s.pop();
+            }),
+            Field::Age => self.age.update(|s| {
+                s.pop();
+            }),
         }
     }
 
@@ -204,7 +209,8 @@ impl ReactiveForm {
             self.email.set(String::new());
             self.age.set(String::new());
         } else {
-            self.message.set("✗ Please fix validation errors".to_string());
+            self.message
+                .set("✗ Please fix validation errors".to_string());
         }
     }
 
@@ -254,100 +260,141 @@ impl View for ReactiveForm {
         let age_error = self.age_error.get();
 
         // Helper to render field
-        let render_field = |label: &str, value: &str, is_focused: bool, is_valid: bool, error: Option<String>| {
-            let border = if is_focused {
-                Border::double().fg(Color::CYAN)
-            } else {
-                Border::single()
-            };
+        let render_field =
+            |label: &str, value: &str, is_focused: bool, is_valid: bool, error: Option<String>| {
+                let border = if is_focused {
+                    Border::double().fg(Color::CYAN)
+                } else {
+                    Border::single()
+                };
 
-            let status_icon = if value.is_empty() {
-                "○"
-            } else if is_valid {
-                "✓"
-            } else {
-                "✗"
-            };
+                let status_icon = if value.is_empty() {
+                    "○"
+                } else if is_valid {
+                    "✓"
+                } else {
+                    "✗"
+                };
 
-            let status_color = if value.is_empty() {
-                Color::rgb(100, 100, 100)
-            } else if is_valid {
-                Color::GREEN
-            } else {
-                Color::RED
-            };
+                let status_color = if value.is_empty() {
+                    Color::rgb(100, 100, 100)
+                } else if is_valid {
+                    Color::GREEN
+                } else {
+                    Color::RED
+                };
 
-            let mut field_view = vstack()
-                .child(
-                    hstack()
-                        .gap(1)
-                        .child(Text::new(status_icon).fg(status_color))
-                        .child(Text::new(label).bold())
-                )
-                .child(
-                    Text::new(if value.is_empty() { "(empty)" } else { value })
-                        .fg(if is_focused { Color::YELLOW } else { Color::WHITE })
-                );
-
-            if let Some(err) = error {
-                if !value.is_empty() || is_focused {
-                    field_view = field_view.child(Text::error(format!("  → {}", err)));
-                }
-            }
-
-            border.child(field_view)
-        };
-
-        let view = vstack()
-            .gap(1)
-            .child(
-                Border::panel()
-                    .title("📋 Reactive Form")
+                let mut field_view = vstack()
                     .child(
+                        hstack()
+                            .gap(1)
+                            .child(Text::new(status_icon).fg(status_color))
+                            .child(Text::new(label).bold()),
+                    )
+                    .child(
+                        Text::new(if value.is_empty() { "(empty)" } else { value }).fg(
+                            if is_focused {
+                                Color::YELLOW
+                            } else {
+                                Color::WHITE
+                            },
+                        ),
+                    );
+
+                if let Some(err) = error {
+                    if !value.is_empty() || is_focused {
+                        field_view = field_view.child(Text::error(format!("  → {}", err)));
+                    }
+                }
+
+                border.child(field_view)
+            };
+
+        let view =
+            vstack()
+                .gap(1)
+                .child(
+                    Border::panel().title("📋 Reactive Form").child(
                         vstack()
-                            .child(
-                                hstack()
-                                    .gap(2)
-                                    .child(Text::new("Status:"))
-                                    .child(if form_valid {
-                                        Text::success("✓ Valid - Ready to submit!")
-                                    } else {
-                                        Text::error("✗ Please complete all fields")
-                                    })
-                            )
+                            .child(hstack().gap(2).child(Text::new("Status:")).child(
+                                if form_valid {
+                                    Text::success("✓ Valid - Ready to submit!")
+                                } else {
+                                    Text::error("✗ Please complete all fields")
+                                },
+                            ))
                             .child(if !message.is_empty() {
                                 Text::new(message).fg(Color::CYAN).bold()
                             } else {
                                 Text::new("")
-                            })
-                    )
-            )
-            .child(render_field("Name", &name, focused == Field::Name, name_valid, name_error))
-            .child(render_field("Email", &email, focused == Field::Email, email_valid, email_error))
-            .child(render_field("Age", &age, focused == Field::Age, age_valid, age_error))
-            .child(
-                Border::rounded()
-                    .title("Controls")
-                    .child(
+                            }),
+                    ),
+                )
+                .child(render_field(
+                    "Name",
+                    &name,
+                    focused == Field::Name,
+                    name_valid,
+                    name_error,
+                ))
+                .child(render_field(
+                    "Email",
+                    &email,
+                    focused == Field::Email,
+                    email_valid,
+                    email_error,
+                ))
+                .child(render_field(
+                    "Age",
+                    &age,
+                    focused == Field::Age,
+                    age_valid,
+                    age_error,
+                ))
+                .child(
+                    Border::rounded().title("Controls").child(
                         vstack()
-                            .child(hstack().gap(2).child(Text::muted("[Type]")).child(Text::new("Enter text")))
-                            .child(hstack().gap(2).child(Text::muted("[Tab]")).child(Text::new("Next field")))
-                            .child(hstack().gap(2).child(Text::muted("[Shift+Tab]")).child(Text::new("Previous field")))
-                            .child(hstack().gap(2).child(Text::muted("[Enter]")).child(Text::new("Submit form")))
-                            .child(hstack().gap(2).child(Text::muted("[q]")).child(Text::new("Quit")))
-                    )
-            )
-            .child(
-                Border::success_box()
-                    .title("✨ Reactive Validation")
-                    .child(
+                            .child(
+                                hstack()
+                                    .gap(2)
+                                    .child(Text::muted("[Type]"))
+                                    .child(Text::new("Enter text")),
+                            )
+                            .child(
+                                hstack()
+                                    .gap(2)
+                                    .child(Text::muted("[Tab]"))
+                                    .child(Text::new("Next field")),
+                            )
+                            .child(
+                                hstack()
+                                    .gap(2)
+                                    .child(Text::muted("[Shift+Tab]"))
+                                    .child(Text::new("Previous field")),
+                            )
+                            .child(
+                                hstack()
+                                    .gap(2)
+                                    .child(Text::muted("[Enter]"))
+                                    .child(Text::new("Submit form")),
+                            )
+                            .child(
+                                hstack()
+                                    .gap(2)
+                                    .child(Text::muted("[q]"))
+                                    .child(Text::new("Quit")),
+                            ),
+                    ),
+                )
+                .child(
+                    Border::success_box().title("✨ Reactive Validation").child(
                         vstack()
                             .child(Text::success("✓ Real-time validation with Computed"))
                             .child(Text::success("✓ Error messages auto-update"))
                             .child(Text::success("✓ Form validity is derived from all fields"))
-                            .child(Text::info("→ No manual validation logic in render!"))
-                    )
-            );
+                            .child(Text::info("→ No manual validation logic in render!")),
+                    ),
+                );
 
         view.render(ctx);
     }
@@ -364,10 +411,8 @@ fn main() -> Result<()> {
     let mut app = App::builder().build();
     let form = ReactiveForm::new();
 
-    app.run(form, |event, form, _app| {
-        match event {
-            Event::Key(key_event) => form.handle_key(&key_event.key),
-            _ => false,
-        }
+    app.run(form, |event, form, _app| match event {
+        Event::Key(key_event) => form.handle_key(&key_event.key),
+        _ => false,
     })
 }

@@ -5,7 +5,7 @@
 //! Run with: cargo run --example tasks_usage
 
 use revue::prelude::*;
-use revue::tasks::{TaskRunner, Timer, EventBus};
+use revue::tasks::{EventBus, TaskRunner, Timer};
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -167,33 +167,28 @@ impl View for TasksDemo {
         let view = vstack()
             .gap(1)
             .child(
-                Border::panel()
-                    .title("📋 Tasks Module Demo")
-                    .child(
-                        vstack()
-                            .child(
-                                hstack()
-                                    .gap(2)
-                                    .child(Text::new("Status:").bold())
-                                    .child(Text::new(&self.status).fg(Color::CYAN))
-                            )
-                            .child(
-                                hstack()
-                                    .gap(2)
-                                    .child(Text::new("Task running:"))
-                                    .child(if is_running {
-                                        Text::new("Yes").fg(Color::YELLOW)
-                                    } else {
-                                        Text::new("No").fg(Color::rgb(100, 100, 100))
-                                    })
-                            )
-                            .child(
-                                hstack()
-                                    .gap(2)
-                                    .child(Text::new("Timers active:"))
-                                    .child(Text::new(format!("{}", self.timer.count())))
-                            )
-                    )
+                Border::panel().title("📋 Tasks Module Demo").child(
+                    vstack()
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::new("Status:").bold())
+                                .child(Text::new(&self.status).fg(Color::CYAN)),
+                        )
+                        .child(hstack().gap(2).child(Text::new("Task running:")).child(
+                            if is_running {
+                                Text::new("Yes").fg(Color::YELLOW)
+                            } else {
+                                Text::new("No").fg(Color::rgb(100, 100, 100))
+                            },
+                        ))
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::new("Timers active:"))
+                                .child(Text::new(format!("{}", self.timer.count()))),
+                        ),
+                ),
             )
             .child(
                 Border::single()
@@ -206,7 +201,7 @@ impl View for TasksDemo {
                         vstack()
                             .child(Text::muted("No data yet"))
                             .child(Text::muted("Press 'f' to fetch"))
-                    })
+                    }),
             )
             .child(if let Some(msg) = &self.message {
                 Border::rounded()
@@ -222,22 +217,42 @@ impl View for TasksDemo {
                     .title("✨ Features Demonstrated")
                     .child(
                         vstack()
-                            .child(Text::success("✓ TaskRunner: Background fetch with result polling"))
+                            .child(Text::success(
+                                "✓ TaskRunner: Background fetch with result polling",
+                            ))
                             .child(Text::success("✓ Timer: Message auto-clear after 2 seconds"))
                             .child(Text::success("✓ Timer: Auto-refresh every 5 seconds"))
-                            .child(Text::success("✓ EventBus: Task lifecycle events"))
-                    )
+                            .child(Text::success("✓ EventBus: Task lifecycle events")),
+                    ),
             )
             .child(
-                Border::rounded()
-                    .title("Controls")
-                    .child(
-                        vstack()
-                            .child(hstack().gap(2).child(Text::muted("[f]")).child(Text::new("Fetch data")))
-                            .child(hstack().gap(2).child(Text::muted("[c]")).child(Text::new("Clear data")))
-                            .child(hstack().gap(2).child(Text::muted("[s]")).child(Text::new("Show test message")))
-                            .child(hstack().gap(2).child(Text::muted("[q]")).child(Text::new("Quit")))
-                    )
+                Border::rounded().title("Controls").child(
+                    vstack()
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[f]"))
+                                .child(Text::new("Fetch data")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[c]"))
+                                .child(Text::new("Clear data")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[s]"))
+                                .child(Text::new("Show test message")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[q]"))
+                                .child(Text::new("Quit")),
+                        ),
+                ),
             );
 
         view.render(ctx);
@@ -255,11 +270,9 @@ fn main() -> Result<()> {
     let mut app = App::builder().build();
     let mut demo = TasksDemo::new();
 
-    app.run(demo, |event, demo, _app| {
-        match event {
-            Event::Key(key_event) => demo.handle_key(&key_event.key),
-            Event::Tick => demo.tick(),
-            _ => false,
-        }
+    app.run(demo, |event, demo, _app| match event {
+        Event::Key(key_event) => demo.handle_key(&key_event.key),
+        Event::Tick => demo.tick(),
+        _ => false,
     })
 }

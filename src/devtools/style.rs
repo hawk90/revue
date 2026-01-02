@@ -1,9 +1,9 @@
 //! Style inspector for CSS debugging
 
+use super::DevToolsConfig;
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use super::DevToolsConfig;
 use std::collections::HashMap;
 
 /// Computed CSS property
@@ -134,15 +134,28 @@ impl StyleCategory {
         match name {
             // Border must come before layout (border-width vs width)
             n if n.starts_with("border") => Self::Border,
-            n if n.starts_with("margin") || n.starts_with("padding")
-                || n.contains("width") || n.contains("height")
-                || n.starts_with("flex") || n.starts_with("grid")
-                || n == "display" || n == "position" => Self::Layout,
-            n if n.starts_with("font") || n.starts_with("text")
-                || n == "line-height" || n == "letter-spacing" => Self::Typography,
+            n if n.starts_with("margin")
+                || n.starts_with("padding")
+                || n.contains("width")
+                || n.contains("height")
+                || n.starts_with("flex")
+                || n.starts_with("grid")
+                || n == "display"
+                || n == "position" =>
+            {
+                Self::Layout
+            }
+            n if n.starts_with("font")
+                || n.starts_with("text")
+                || n == "line-height"
+                || n == "letter-spacing" =>
+            {
+                Self::Typography
+            }
             n if n.contains("color") || n.contains("background") => Self::Colors,
-            n if n.contains("shadow") || n == "opacity"
-                || n.starts_with("transform") => Self::Effects,
+            n if n.contains("shadow") || n == "opacity" || n.starts_with("transform") => {
+                Self::Effects
+            }
             _ => Self::Other,
         }
     }
@@ -242,7 +255,8 @@ impl StyleInspector {
 
     /// Get filtered properties
     fn filtered(&self) -> Vec<&ComputedProperty> {
-        self.properties.iter()
+        self.properties
+            .iter()
             .filter(|p| {
                 if !self.show_inherited && p.source == PropertySource::Inherited {
                     return false;
@@ -302,7 +316,9 @@ impl StyleInspector {
 
             // Classes
             if !self.classes.is_empty() {
-                let classes_str = self.classes.iter()
+                let classes_str = self
+                    .classes
+                    .iter()
                     .map(|c| format!(".{}", c))
                     .collect::<Vec<_>>()
                     .join(" ");
@@ -333,7 +349,11 @@ impl StyleInspector {
             }
 
             if let Some(props) = by_category.get(category) {
-                let expanded = self.expanded_categories.get(category).copied().unwrap_or(true);
+                let expanded = self
+                    .expanded_categories
+                    .get(category)
+                    .copied()
+                    .unwrap_or(true);
                 let indicator = if expanded { "▼" } else { "▶" };
                 let header = format!("{} {} ({})", indicator, category.label(), props.len());
                 self.draw_text(buffer, area.x, y, &header, config.accent_color);
@@ -346,7 +366,15 @@ impl StyleInspector {
                         }
 
                         let is_selected = self.selected == Some(prop_idx);
-                        self.render_property(buffer, area.x + 2, y, area.width - 2, prop, is_selected, config);
+                        self.render_property(
+                            buffer,
+                            area.x + 2,
+                            y,
+                            area.width - 2,
+                            prop,
+                            is_selected,
+                            config,
+                        );
                         y += 1;
                         prop_idx += 1;
                     }
@@ -380,7 +408,11 @@ impl StyleInspector {
         } else {
             config.fg_color
         };
-        let bg = if selected { Some(config.accent_color) } else { None };
+        let bg = if selected {
+            Some(config.accent_color)
+        } else {
+            None
+        };
 
         for (i, ch) in line.chars().enumerate() {
             if (i as u16) < width {
@@ -411,8 +443,7 @@ mod tests {
 
     #[test]
     fn test_computed_property() {
-        let prop = ComputedProperty::new("color", "red")
-            .source(PropertySource::Inline);
+        let prop = ComputedProperty::new("color", "red").source(PropertySource::Inline);
 
         assert_eq!(prop.name, "color");
         assert_eq!(prop.value, "red");
@@ -428,11 +459,26 @@ mod tests {
 
     #[test]
     fn test_style_category_from_property() {
-        assert_eq!(StyleCategory::from_property("margin-left"), StyleCategory::Layout);
-        assert_eq!(StyleCategory::from_property("font-size"), StyleCategory::Typography);
-        assert_eq!(StyleCategory::from_property("background-color"), StyleCategory::Colors);
-        assert_eq!(StyleCategory::from_property("border-width"), StyleCategory::Border);
-        assert_eq!(StyleCategory::from_property("box-shadow"), StyleCategory::Effects);
+        assert_eq!(
+            StyleCategory::from_property("margin-left"),
+            StyleCategory::Layout
+        );
+        assert_eq!(
+            StyleCategory::from_property("font-size"),
+            StyleCategory::Typography
+        );
+        assert_eq!(
+            StyleCategory::from_property("background-color"),
+            StyleCategory::Colors
+        );
+        assert_eq!(
+            StyleCategory::from_property("border-width"),
+            StyleCategory::Border
+        );
+        assert_eq!(
+            StyleCategory::from_property("box-shadow"),
+            StyleCategory::Effects
+        );
         assert_eq!(StyleCategory::from_property("custom"), StyleCategory::Other);
     }
 
@@ -448,11 +494,10 @@ mod tests {
     #[test]
     fn test_style_inspector_filter() {
         let mut inspector = StyleInspector::new();
+        inspector
+            .add_property(ComputedProperty::new("color", "blue").source(PropertySource::Inline));
         inspector.add_property(
-            ComputedProperty::new("color", "blue").source(PropertySource::Inline)
-        );
-        inspector.add_property(
-            ComputedProperty::new("font-size", "14px").source(PropertySource::Inherited)
+            ComputedProperty::new("font-size", "14px").source(PropertySource::Inherited),
         );
 
         // With inherited shown

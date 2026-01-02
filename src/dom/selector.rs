@@ -324,7 +324,11 @@ pub struct SelectorParseError {
 
 impl fmt::Display for SelectorParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Selector parse error at {}: {}", self.position, self.message)
+        write!(
+            f,
+            "Selector parse error at {}: {}",
+            self.position, self.message
+        )
     }
 }
 
@@ -852,7 +856,10 @@ mod tests {
     #[test]
     fn test_parse_nth_child() {
         let sel = parse_selector(":nth-child(3)").unwrap();
-        assert_eq!(sel.parts[0].0.pseudo_classes, vec![PseudoClass::NthChild(3)]);
+        assert_eq!(
+            sel.parts[0].0.pseudo_classes,
+            vec![PseudoClass::NthChild(3)]
+        );
     }
 
     #[test]

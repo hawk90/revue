@@ -137,49 +137,49 @@ impl SyntaxTheme {
     /// Dark theme (default)
     pub fn dark() -> Self {
         Self {
-            keyword: Color::rgb(198, 120, 221),    // Purple
-            type_name: Color::rgb(229, 192, 123),  // Yellow
-            function: Color::rgb(97, 175, 239),    // Blue
-            string: Color::rgb(152, 195, 121),     // Green
-            number: Color::rgb(209, 154, 102),     // Orange
-            comment: Color::rgb(92, 99, 112),      // Gray
-            operator: Color::rgb(171, 178, 191),   // Light gray
+            keyword: Color::rgb(198, 120, 221),   // Purple
+            type_name: Color::rgb(229, 192, 123), // Yellow
+            function: Color::rgb(97, 175, 239),   // Blue
+            string: Color::rgb(152, 195, 121),    // Green
+            number: Color::rgb(209, 154, 102),    // Orange
+            comment: Color::rgb(92, 99, 112),     // Gray
+            operator: Color::rgb(171, 178, 191),  // Light gray
             punctuation: Color::rgb(171, 178, 191),
-            constant: Color::rgb(209, 154, 102),   // Orange
-            macro_call: Color::rgb(86, 182, 194),  // Cyan
-            attribute: Color::rgb(229, 192, 123),  // Yellow
-            variable: Color::rgb(224, 108, 117),   // Red
+            constant: Color::rgb(209, 154, 102),  // Orange
+            macro_call: Color::rgb(86, 182, 194), // Cyan
+            attribute: Color::rgb(229, 192, 123), // Yellow
+            variable: Color::rgb(224, 108, 117),  // Red
         }
     }
 
     /// Light theme
     pub fn light() -> Self {
         Self {
-            keyword: Color::rgb(166, 38, 164),     // Purple
-            type_name: Color::rgb(193, 132, 1),    // Yellow/Brown
-            function: Color::rgb(64, 120, 242),    // Blue
-            string: Color::rgb(80, 161, 79),       // Green
-            number: Color::rgb(152, 104, 1),       // Brown
-            comment: Color::rgb(160, 161, 167),    // Gray
-            operator: Color::rgb(56, 58, 66),      // Dark gray
+            keyword: Color::rgb(166, 38, 164),  // Purple
+            type_name: Color::rgb(193, 132, 1), // Yellow/Brown
+            function: Color::rgb(64, 120, 242), // Blue
+            string: Color::rgb(80, 161, 79),    // Green
+            number: Color::rgb(152, 104, 1),    // Brown
+            comment: Color::rgb(160, 161, 167), // Gray
+            operator: Color::rgb(56, 58, 66),   // Dark gray
             punctuation: Color::rgb(56, 58, 66),
-            constant: Color::rgb(152, 104, 1),     // Brown
-            macro_call: Color::rgb(1, 132, 188),   // Cyan
-            attribute: Color::rgb(193, 132, 1),    // Yellow/Brown
-            variable: Color::rgb(228, 86, 73),     // Red
+            constant: Color::rgb(152, 104, 1),   // Brown
+            macro_call: Color::rgb(1, 132, 188), // Cyan
+            attribute: Color::rgb(193, 132, 1),  // Yellow/Brown
+            variable: Color::rgb(228, 86, 73),   // Red
         }
     }
 
     /// Monokai theme
     pub fn monokai() -> Self {
         Self {
-            keyword: Color::rgb(249, 38, 114),     // Pink
-            type_name: Color::rgb(102, 217, 239),  // Cyan
-            function: Color::rgb(166, 226, 46),    // Green
-            string: Color::rgb(230, 219, 116),     // Yellow
-            number: Color::rgb(174, 129, 255),     // Purple
-            comment: Color::rgb(117, 113, 94),     // Gray
-            operator: Color::rgb(249, 38, 114),    // Pink
+            keyword: Color::rgb(249, 38, 114),    // Pink
+            type_name: Color::rgb(102, 217, 239), // Cyan
+            function: Color::rgb(166, 226, 46),   // Green
+            string: Color::rgb(230, 219, 116),    // Yellow
+            number: Color::rgb(174, 129, 255),    // Purple
+            comment: Color::rgb(117, 113, 94),    // Gray
+            operator: Color::rgb(249, 38, 114),   // Pink
             punctuation: Color::rgb(248, 248, 242),
             constant: Color::rgb(174, 129, 255),   // Purple
             macro_call: Color::rgb(102, 217, 239), // Cyan
@@ -326,7 +326,12 @@ impl SyntaxHighlighter {
                     spans.push(HighlightSpan::new(start, i, self.theme.keyword).bold());
                 }
                 // Types (starts with uppercase)
-                else if word.chars().next().map(|c| c.is_uppercase()).unwrap_or(false) {
+                else if word
+                    .chars()
+                    .next()
+                    .map(|c| c.is_uppercase())
+                    .unwrap_or(false)
+                {
                     spans.push(HighlightSpan::new(start, i, self.theme.type_name));
                 }
                 // Constants
@@ -339,7 +344,9 @@ impl SyntaxHighlighter {
             // Numbers
             if chars[i].is_ascii_digit() {
                 let start = i;
-                while i < len && (chars[i].is_ascii_alphanumeric() || chars[i] == '_' || chars[i] == '.') {
+                while i < len
+                    && (chars[i].is_ascii_alphanumeric() || chars[i] == '_' || chars[i] == '.')
+                {
                     i += 1;
                 }
                 spans.push(HighlightSpan::new(start, i, self.theme.number));
@@ -423,7 +430,9 @@ impl SyntaxHighlighter {
             // Numbers
             if chars[i].is_ascii_digit() {
                 let start = i;
-                while i < len && (chars[i].is_ascii_alphanumeric() || chars[i] == '_' || chars[i] == '.') {
+                while i < len
+                    && (chars[i].is_ascii_alphanumeric() || chars[i] == '_' || chars[i] == '.')
+                {
                     i += 1;
                 }
                 spans.push(HighlightSpan::new(start, i, self.theme.number));
@@ -487,14 +496,16 @@ impl SyntaxHighlighter {
             // Identifiers and keywords
             if chars[i].is_alphabetic() || chars[i] == '_' || chars[i] == '$' {
                 let start = i;
-                while i < len && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '$') {
+                while i < len && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '$')
+                {
                     i += 1;
                 }
                 let word: String = chars[start..i].iter().collect();
 
                 if is_javascript_keyword(&word) {
                     spans.push(HighlightSpan::new(start, i, self.theme.keyword).bold());
-                } else if word == "true" || word == "false" || word == "null" || word == "undefined" {
+                } else if word == "true" || word == "false" || word == "null" || word == "undefined"
+                {
                     spans.push(HighlightSpan::new(start, i, self.theme.constant));
                 } else if i < len && chars[i] == '(' {
                     spans.push(HighlightSpan::new(start, i, self.theme.function));
@@ -505,7 +516,9 @@ impl SyntaxHighlighter {
             // Numbers
             if chars[i].is_ascii_digit() {
                 let start = i;
-                while i < len && (chars[i].is_ascii_alphanumeric() || chars[i] == '_' || chars[i] == '.') {
+                while i < len
+                    && (chars[i].is_ascii_alphanumeric() || chars[i] == '_' || chars[i] == '.')
+                {
                     i += 1;
                 }
                 spans.push(HighlightSpan::new(start, i, self.theme.number));
@@ -545,7 +558,11 @@ impl SyntaxHighlighter {
                 if i < len {
                     i += 1;
                 }
-                let color = if in_key { self.theme.variable } else { self.theme.string };
+                let color = if in_key {
+                    self.theme.variable
+                } else {
+                    self.theme.string
+                };
                 spans.push(HighlightSpan::new(start, i, color));
 
                 // Check for colon after key
@@ -565,7 +582,14 @@ impl SyntaxHighlighter {
                 if chars[i] == '-' {
                     i += 1;
                 }
-                while i < len && (chars[i].is_ascii_digit() || chars[i] == '.' || chars[i] == 'e' || chars[i] == 'E' || chars[i] == '+' || chars[i] == '-') {
+                while i < len
+                    && (chars[i].is_ascii_digit()
+                        || chars[i] == '.'
+                        || chars[i] == 'e'
+                        || chars[i] == 'E'
+                        || chars[i] == '+'
+                        || chars[i] == '-')
+                {
                     i += 1;
                 }
                 spans.push(HighlightSpan::new(start, i, self.theme.number));
@@ -649,7 +673,8 @@ impl SyntaxHighlighter {
             // Keys (before =)
             if chars[i].is_alphabetic() || chars[i] == '_' {
                 let start = i;
-                while i < len && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '-') {
+                while i < len && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '-')
+                {
                     i += 1;
                 }
                 let word: String = chars[start..i].iter().collect();
@@ -670,7 +695,14 @@ impl SyntaxHighlighter {
             // Numbers
             if chars[i].is_ascii_digit() || chars[i] == '-' || chars[i] == '+' {
                 let start = i;
-                while i < len && (chars[i].is_ascii_alphanumeric() || chars[i] == '_' || chars[i] == '.' || chars[i] == '-' || chars[i] == '+' || chars[i] == ':') {
+                while i < len
+                    && (chars[i].is_ascii_alphanumeric()
+                        || chars[i] == '_'
+                        || chars[i] == '.'
+                        || chars[i] == '-'
+                        || chars[i] == '+'
+                        || chars[i] == ':')
+                {
                     i += 1;
                 }
                 spans.push(HighlightSpan::new(start, i, self.theme.number));
@@ -705,7 +737,8 @@ impl SyntaxHighlighter {
             // Keys (word followed by colon)
             if chars[i].is_alphabetic() || chars[i] == '_' {
                 let start = i;
-                while i < len && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '-') {
+                while i < len && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '-')
+                {
                     i += 1;
                 }
 
@@ -717,7 +750,12 @@ impl SyntaxHighlighter {
                 }
 
                 let word: String = chars[start..i].iter().collect();
-                if word == "true" || word == "false" || word == "null" || word == "yes" || word == "no" {
+                if word == "true"
+                    || word == "false"
+                    || word == "null"
+                    || word == "yes"
+                    || word == "no"
+                {
                     spans.push(HighlightSpan::new(start, i, self.theme.constant));
                 }
                 continue;
@@ -741,7 +779,12 @@ impl SyntaxHighlighter {
             // Numbers
             if chars[i].is_ascii_digit() || chars[i] == '-' {
                 let start = i;
-                while i < len && (chars[i].is_ascii_alphanumeric() || chars[i] == '.' || chars[i] == '-' || chars[i] == '+') {
+                while i < len
+                    && (chars[i].is_ascii_alphanumeric()
+                        || chars[i] == '.'
+                        || chars[i] == '-'
+                        || chars[i] == '+')
+                {
                     i += 1;
                 }
                 spans.push(HighlightSpan::new(start, i, self.theme.number));
@@ -773,7 +816,10 @@ impl SyntaxHighlighter {
         let mut i = 0;
         while i < len {
             // Bold **text** or __text__
-            if i + 1 < len && ((chars[i] == '*' && chars[i + 1] == '*') || (chars[i] == '_' && chars[i + 1] == '_')) {
+            if i + 1 < len
+                && ((chars[i] == '*' && chars[i + 1] == '*')
+                    || (chars[i] == '_' && chars[i + 1] == '_'))
+            {
                 let marker = chars[i];
                 let start = i;
                 i += 2;
@@ -903,7 +949,8 @@ impl SyntaxHighlighter {
             // Commands/keywords
             if chars[i].is_alphabetic() || chars[i] == '_' {
                 let start = i;
-                while i < len && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '-') {
+                while i < len && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '-')
+                {
                     i += 1;
                 }
                 let word: String = chars[start..i].iter().collect();
@@ -963,7 +1010,10 @@ impl SyntaxHighlighter {
 
                 if is_sql_keyword(&word) {
                     spans.push(HighlightSpan::new(start, i, self.theme.keyword).bold());
-                } else if word.to_uppercase() == "NULL" || word.to_uppercase() == "TRUE" || word.to_uppercase() == "FALSE" {
+                } else if word.to_uppercase() == "NULL"
+                    || word.to_uppercase() == "TRUE"
+                    || word.to_uppercase() == "FALSE"
+                {
                     spans.push(HighlightSpan::new(start, i, self.theme.constant));
                 }
                 continue;
@@ -1067,7 +1117,13 @@ impl SyntaxHighlighter {
             // Selectors (class, id, element)
             if chars[i] == '.' || chars[i] == '#' || chars[i].is_alphabetic() {
                 let start = i;
-                while i < len && (chars[i].is_alphanumeric() || chars[i] == '-' || chars[i] == '_' || chars[i] == '.' || chars[i] == '#') {
+                while i < len
+                    && (chars[i].is_alphanumeric()
+                        || chars[i] == '-'
+                        || chars[i] == '_'
+                        || chars[i] == '.'
+                        || chars[i] == '#')
+                {
                     i += 1;
                 }
                 // Check if it's before a { (selector) or : (property)
@@ -1104,7 +1160,9 @@ impl SyntaxHighlighter {
                 if chars[i] == '-' {
                     i += 1;
                 }
-                while i < len && (chars[i].is_ascii_alphanumeric() || chars[i] == '.' || chars[i] == '%') {
+                while i < len
+                    && (chars[i].is_ascii_alphanumeric() || chars[i] == '.' || chars[i] == '%')
+                {
                     i += 1;
                 }
                 spans.push(HighlightSpan::new(start, i, self.theme.number));
@@ -1177,7 +1235,12 @@ impl SyntaxHighlighter {
                     spans.push(HighlightSpan::new(start, i, self.theme.keyword).bold());
                 } else if word == "true" || word == "false" || word == "nil" {
                     spans.push(HighlightSpan::new(start, i, self.theme.constant));
-                } else if word.chars().next().map(|c| c.is_uppercase()).unwrap_or(false) {
+                } else if word
+                    .chars()
+                    .next()
+                    .map(|c| c.is_uppercase())
+                    .unwrap_or(false)
+                {
                     spans.push(HighlightSpan::new(start, i, self.theme.type_name));
                 } else if i < len && chars[i] == '(' {
                     spans.push(HighlightSpan::new(start, i, self.theme.function));
@@ -1188,7 +1251,9 @@ impl SyntaxHighlighter {
             // Numbers
             if chars[i].is_ascii_digit() {
                 let start = i;
-                while i < len && (chars[i].is_ascii_alphanumeric() || chars[i] == '.' || chars[i] == '_') {
+                while i < len
+                    && (chars[i].is_ascii_alphanumeric() || chars[i] == '.' || chars[i] == '_')
+                {
                     i += 1;
                 }
                 spans.push(HighlightSpan::new(start, i, self.theme.number));
@@ -1205,62 +1270,260 @@ impl SyntaxHighlighter {
 // Keyword lists
 
 fn is_rust_keyword(word: &str) -> bool {
-    matches!(word,
-        "as" | "async" | "await" | "break" | "const" | "continue" | "crate" | "dyn" |
-        "else" | "enum" | "extern" | "false" | "fn" | "for" | "if" | "impl" | "in" |
-        "let" | "loop" | "match" | "mod" | "move" | "mut" | "pub" | "ref" | "return" |
-        "self" | "Self" | "static" | "struct" | "super" | "trait" | "true" | "type" |
-        "unsafe" | "use" | "where" | "while"
+    matches!(
+        word,
+        "as" | "async"
+            | "await"
+            | "break"
+            | "const"
+            | "continue"
+            | "crate"
+            | "dyn"
+            | "else"
+            | "enum"
+            | "extern"
+            | "false"
+            | "fn"
+            | "for"
+            | "if"
+            | "impl"
+            | "in"
+            | "let"
+            | "loop"
+            | "match"
+            | "mod"
+            | "move"
+            | "mut"
+            | "pub"
+            | "ref"
+            | "return"
+            | "self"
+            | "Self"
+            | "static"
+            | "struct"
+            | "super"
+            | "trait"
+            | "true"
+            | "type"
+            | "unsafe"
+            | "use"
+            | "where"
+            | "while"
     )
 }
 
 fn is_python_keyword(word: &str) -> bool {
-    matches!(word,
-        "and" | "as" | "assert" | "async" | "await" | "break" | "class" | "continue" |
-        "def" | "del" | "elif" | "else" | "except" | "finally" | "for" | "from" |
-        "global" | "if" | "import" | "in" | "is" | "lambda" | "nonlocal" | "not" |
-        "or" | "pass" | "raise" | "return" | "try" | "while" | "with" | "yield"
+    matches!(
+        word,
+        "and"
+            | "as"
+            | "assert"
+            | "async"
+            | "await"
+            | "break"
+            | "class"
+            | "continue"
+            | "def"
+            | "del"
+            | "elif"
+            | "else"
+            | "except"
+            | "finally"
+            | "for"
+            | "from"
+            | "global"
+            | "if"
+            | "import"
+            | "in"
+            | "is"
+            | "lambda"
+            | "nonlocal"
+            | "not"
+            | "or"
+            | "pass"
+            | "raise"
+            | "return"
+            | "try"
+            | "while"
+            | "with"
+            | "yield"
     )
 }
 
 fn is_javascript_keyword(word: &str) -> bool {
-    matches!(word,
-        "async" | "await" | "break" | "case" | "catch" | "class" | "const" | "continue" |
-        "debugger" | "default" | "delete" | "do" | "else" | "export" | "extends" |
-        "finally" | "for" | "function" | "if" | "import" | "in" | "instanceof" | "let" |
-        "new" | "of" | "return" | "static" | "super" | "switch" | "this" | "throw" |
-        "try" | "typeof" | "var" | "void" | "while" | "with" | "yield"
+    matches!(
+        word,
+        "async"
+            | "await"
+            | "break"
+            | "case"
+            | "catch"
+            | "class"
+            | "const"
+            | "continue"
+            | "debugger"
+            | "default"
+            | "delete"
+            | "do"
+            | "else"
+            | "export"
+            | "extends"
+            | "finally"
+            | "for"
+            | "function"
+            | "if"
+            | "import"
+            | "in"
+            | "instanceof"
+            | "let"
+            | "new"
+            | "of"
+            | "return"
+            | "static"
+            | "super"
+            | "switch"
+            | "this"
+            | "throw"
+            | "try"
+            | "typeof"
+            | "var"
+            | "void"
+            | "while"
+            | "with"
+            | "yield"
     )
 }
 
 fn is_shell_keyword(word: &str) -> bool {
-    matches!(word,
-        "if" | "then" | "else" | "elif" | "fi" | "for" | "while" | "do" | "done" |
-        "case" | "esac" | "in" | "function" | "select" | "until" | "return" | "exit" |
-        "export" | "local" | "readonly" | "declare" | "typeset" | "unset" | "shift" |
-        "cd" | "echo" | "read" | "source" | "alias" | "eval" | "exec" | "set"
+    matches!(
+        word,
+        "if" | "then"
+            | "else"
+            | "elif"
+            | "fi"
+            | "for"
+            | "while"
+            | "do"
+            | "done"
+            | "case"
+            | "esac"
+            | "in"
+            | "function"
+            | "select"
+            | "until"
+            | "return"
+            | "exit"
+            | "export"
+            | "local"
+            | "readonly"
+            | "declare"
+            | "typeset"
+            | "unset"
+            | "shift"
+            | "cd"
+            | "echo"
+            | "read"
+            | "source"
+            | "alias"
+            | "eval"
+            | "exec"
+            | "set"
     )
 }
 
 fn is_sql_keyword(word: &str) -> bool {
     let upper = word.to_uppercase();
-    matches!(upper.as_str(),
-        "SELECT" | "FROM" | "WHERE" | "AND" | "OR" | "NOT" | "IN" | "LIKE" | "BETWEEN" |
-        "JOIN" | "LEFT" | "RIGHT" | "INNER" | "OUTER" | "ON" | "AS" | "ORDER" | "BY" |
-        "GROUP" | "HAVING" | "LIMIT" | "OFFSET" | "INSERT" | "INTO" | "VALUES" | "UPDATE" |
-        "SET" | "DELETE" | "CREATE" | "TABLE" | "DROP" | "ALTER" | "INDEX" | "PRIMARY" |
-        "KEY" | "FOREIGN" | "REFERENCES" | "CONSTRAINT" | "UNIQUE" | "DEFAULT" | "NULL" |
-        "IS" | "ASC" | "DESC" | "DISTINCT" | "COUNT" | "SUM" | "AVG" | "MIN" | "MAX" |
-        "CASE" | "WHEN" | "THEN" | "ELSE" | "END" | "UNION" | "ALL" | "EXISTS"
+    matches!(
+        upper.as_str(),
+        "SELECT"
+            | "FROM"
+            | "WHERE"
+            | "AND"
+            | "OR"
+            | "NOT"
+            | "IN"
+            | "LIKE"
+            | "BETWEEN"
+            | "JOIN"
+            | "LEFT"
+            | "RIGHT"
+            | "INNER"
+            | "OUTER"
+            | "ON"
+            | "AS"
+            | "ORDER"
+            | "BY"
+            | "GROUP"
+            | "HAVING"
+            | "LIMIT"
+            | "OFFSET"
+            | "INSERT"
+            | "INTO"
+            | "VALUES"
+            | "UPDATE"
+            | "SET"
+            | "DELETE"
+            | "CREATE"
+            | "TABLE"
+            | "DROP"
+            | "ALTER"
+            | "INDEX"
+            | "PRIMARY"
+            | "KEY"
+            | "FOREIGN"
+            | "REFERENCES"
+            | "CONSTRAINT"
+            | "UNIQUE"
+            | "DEFAULT"
+            | "NULL"
+            | "IS"
+            | "ASC"
+            | "DESC"
+            | "DISTINCT"
+            | "COUNT"
+            | "SUM"
+            | "AVG"
+            | "MIN"
+            | "MAX"
+            | "CASE"
+            | "WHEN"
+            | "THEN"
+            | "ELSE"
+            | "END"
+            | "UNION"
+            | "ALL"
+            | "EXISTS"
     )
 }
 
 fn is_go_keyword(word: &str) -> bool {
-    matches!(word,
-        "break" | "case" | "chan" | "const" | "continue" | "default" | "defer" | "else" |
-        "fallthrough" | "for" | "func" | "go" | "goto" | "if" | "import" | "interface" |
-        "map" | "package" | "range" | "return" | "select" | "struct" | "switch" | "type" |
-        "var"
+    matches!(
+        word,
+        "break"
+            | "case"
+            | "chan"
+            | "const"
+            | "continue"
+            | "default"
+            | "defer"
+            | "else"
+            | "fallthrough"
+            | "for"
+            | "func"
+            | "go"
+            | "goto"
+            | "if"
+            | "import"
+            | "interface"
+            | "map"
+            | "package"
+            | "range"
+            | "return"
+            | "select"
+            | "struct"
+            | "switch"
+            | "type"
+            | "var"
     )
 }
 

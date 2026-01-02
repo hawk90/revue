@@ -127,48 +127,62 @@
 //! // #bd93f9
 //! ```
 
+mod animation;
+mod computed;
+pub mod error;
 mod parser;
 mod properties;
-mod computed;
 mod theme;
-mod animation;
-mod transition;
 mod theme_signal;
 pub mod themes;
-pub mod error;
+mod transition;
 
-pub use parser::{StyleSheet, Rule, Declaration, apply_declaration};
-pub use properties::*;
-pub use computed::ComputedStyle;
-pub use theme::{
-    Theme, ThemeVariant, ThemeBuilder, ThemeColors, Palette, Themes,
-    ThemeManager, SharedTheme, ThemeChangeListener,
-    theme_manager, shared_theme,
-};
-pub use theme_signal::{
-    use_theme, set_theme, set_theme_by_id, toggle_theme, cycle_theme,
-    theme_ids, register_theme, get_theme, theme_to_css_variables,
-};
 pub use animation::{
-    Tween, Animation, Animations, AnimationState, easing,
-    // CSS @keyframes animations
-    CssKeyframe, KeyframeAnimation, AnimationDirection, AnimationFillMode,
-    // Choreography
-    Stagger, AnimationGroup, GroupMode, Choreographer,
+    easing,
     // Widget animation presets
     widget_animations,
+    Animation,
+    AnimationDirection,
+    AnimationFillMode,
+    AnimationGroup,
+    AnimationState,
+    Animations,
+    Choreographer,
+    // CSS @keyframes animations
+    CssKeyframe,
+    GroupMode,
+    KeyframeAnimation,
+    // Choreography
+    Stagger,
+    Tween,
 };
-pub use transition::{
-    Transition, Transitions, Easing,
-    ActiveTransition, TransitionManager,
-    lerp_u8, lerp_f32,
-    // Reduced motion support
-    should_skip_animation, effective_duration,
+pub use computed::ComputedStyle;
+pub use error::{
+    suggest_property, ErrorCode, ParseErrors, RichParseError, Severity, SourceLocation, Suggestion,
+    KNOWN_PROPERTIES,
+};
+pub use parser::{apply_declaration, Declaration, Rule, StyleSheet};
+pub use properties::*;
+pub use theme::{
+    shared_theme, theme_manager, Palette, SharedTheme, Theme, ThemeBuilder, ThemeChangeListener,
+    ThemeColors, ThemeManager, ThemeVariant, Themes,
+};
+pub use theme_signal::{
+    cycle_theme, get_theme, register_theme, set_theme, set_theme_by_id, theme_ids,
+    theme_to_css_variables, toggle_theme, use_theme,
 };
 pub use themes::BuiltinTheme;
-pub use error::{
-    ErrorCode, Severity, SourceLocation, Suggestion,
-    RichParseError, ParseErrors, suggest_property, KNOWN_PROPERTIES,
+pub use transition::{
+    effective_duration,
+    lerp_f32,
+    lerp_u8,
+    // Reduced motion support
+    should_skip_animation,
+    ActiveTransition,
+    Easing,
+    Transition,
+    TransitionManager,
+    Transitions,
 };
 
 /// Parse a CSS file

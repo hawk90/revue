@@ -186,7 +186,11 @@ pub fn cycle_theme() {
 pub fn theme_ids() -> Vec<String> {
     let manager = get_theme_manager();
     let guard = manager.lock().unwrap();
-    guard.theme_ids().into_iter().map(|s| s.to_string()).collect()
+    guard
+        .theme_ids()
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect()
 }
 
 /// Register a custom theme

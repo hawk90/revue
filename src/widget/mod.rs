@@ -159,216 +159,234 @@
 //!     .fg(Color::BLUE);
 //! ```
 
-pub mod traits;
-mod stack;
-mod text;
-mod list;
-mod input;
-mod border;
-mod progress;
-mod spinner;
-mod table;
-mod select;
-mod theme_picker;
-mod modal;
-mod tabs;
-mod tree;
-mod scroll;
-mod markdown;
-mod image;
-mod button;
-mod checkbox;
-mod radio;
-mod sparkline;
-mod layer;
-mod positioned;
-mod canvas;
-mod barchart;
-mod toast;
-mod textarea;
-mod chart;
-mod calendar;
-mod tooltip;
-mod grid;
-mod switch;
-mod gauge;
-mod notification;
-mod slider;
-mod command_palette;
 mod accordion;
-mod color_picker;
-mod breadcrumb;
-mod stepper;
-mod screen;
-mod menu;
-mod statusbar;
-mod splitter;
-mod filetree;
-mod timeline;
-mod datagrid;
-mod richlog;
-mod richtext;
-mod divider;
-mod badge;
-mod avatar;
-mod tag;
-mod skeleton;
-mod pagination;
-mod virtuallist;
-mod terminal;
-mod autocomplete;
-mod rating;
-mod digits;
-mod link;
-mod masked_input;
-mod selection_list;
-mod option_list;
-mod timer;
-mod filepicker;
-mod heatmap;
-mod candlechart;
-mod timeseries;
-mod waveline;
-mod streamline;
-mod syntax;
-mod qrcode;
-mod diff;
 mod aistream;
+mod autocomplete;
+mod avatar;
+mod badge;
+mod barchart;
+mod border;
+mod breadcrumb;
+mod button;
+mod calendar;
+mod candlechart;
+mod canvas;
+mod chart;
+mod checkbox;
+mod color_picker;
+mod command_palette;
+mod datagrid;
+mod debug_overlay;
+mod diff;
+mod digits;
+mod divider;
+mod dropzone;
+mod filepicker;
+mod filetree;
+mod gauge;
+mod grid;
+mod heatmap;
+mod httpclient;
+mod image;
+mod input;
+mod layer;
+mod link;
+mod list;
+mod markdown;
+mod masked_input;
+mod menu;
+mod mermaid;
+mod modal;
+mod notification;
+mod option_list;
+mod pagination;
+mod positioned;
 mod presentation;
 mod procmon;
-mod debug_overlay;
-mod mermaid;
-mod vim;
-mod httpclient;
-mod dropzone;
-mod sortable;
+mod progress;
+mod qrcode;
+mod radio;
+mod rating;
 mod resizable;
+mod richlog;
+mod richtext;
+mod screen;
+mod scroll;
+mod select;
+mod selection_list;
+mod skeleton;
+mod slider;
+mod sortable;
+mod sparkline;
+mod spinner;
+mod splitter;
+mod stack;
+mod statusbar;
+mod stepper;
+mod streamline;
+mod switch;
+mod syntax;
+mod table;
+mod tabs;
+mod tag;
+mod terminal;
+mod text;
+mod textarea;
+mod theme_picker;
+mod timeline;
+mod timer;
+mod timeseries;
+mod toast;
+mod tooltip;
+pub mod traits;
+mod tree;
+mod vim;
+mod virtuallist;
+mod waveline;
 #[macro_use]
 mod macros;
 
-pub use traits::{View, Element, RenderContext, Timeout, WidgetState, WidgetProps, DISABLED_FG, DISABLED_BG, Interactive, EventResult, StyledView, FocusStyle, Draggable};
-pub use dropzone::{DropZone, DropZoneStyle, drop_zone};
-pub use sortable::{SortableList, SortableItem, sortable_list};
-pub use resizable::{Resizable, ResizeHandle, ResizeDirection, ResizeStyle, resizable};
-pub use stack::{Stack, vstack, hstack, Direction};
-pub use text::{Text, Alignment};
-pub use list::{List, list};
-pub use input::{Input, input};
-pub use border::{Border, BorderType, border};
-pub use progress::{Progress, ProgressStyle, progress};
-pub use spinner::{Spinner, SpinnerStyle, spinner};
-pub use table::{Table, Column, table, column};
-pub use select::{Select, select};
-pub use theme_picker::{ThemePicker, theme_picker};
-pub use modal::{Modal, ModalButton, ModalButtonStyle, modal};
-pub use tabs::{Tabs, Tab, tabs};
-pub use tree::{Tree, TreeNode, tree, tree_node};
-pub use scroll::{ScrollView, scroll_view};
-pub use markdown::{Markdown, markdown};
-pub use image::{Image, ImageError, ImageResult, ScaleMode, image_from_file, try_image_from_file};
-pub use button::{Button, ButtonVariant, button};
-pub use checkbox::{Checkbox, CheckboxStyle, checkbox};
-pub use radio::{RadioGroup, RadioStyle, RadioLayout, radio_group};
-pub use sparkline::{Sparkline, SparklineStyle, sparkline};
-pub use layer::{Layers, layers};
-pub use positioned::{Positioned, Anchor, positioned};
+pub use accordion::{accordion, section, Accordion, AccordionSection};
+pub use aistream::{ai_response, ai_stream, AiStream, StreamCursor, StreamStatus, TypingStyle};
+pub use autocomplete::{autocomplete, Autocomplete, FilterMode, Suggestion};
+pub use avatar::{avatar, avatar_icon, Avatar, AvatarShape, AvatarSize};
+pub use badge::{badge, dot_badge, Badge, BadgeShape, BadgeVariant};
+pub use barchart::{barchart, BarChart, BarOrientation};
+pub use border::{border, Border, BorderType};
+pub use breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
+pub use button::{button, Button, ButtonVariant};
+pub use calendar::{calendar, Calendar, CalendarMode, Date, DateMarker, FirstDayOfWeek};
+pub use candlechart::{candle_chart, ohlc_chart, Candle, CandleChart, ChartStyle as CandleStyle};
 pub use canvas::{
-    Canvas, DrawContext, canvas,
-    BrailleCanvas, BrailleContext, BrailleGrid, braille_canvas,
-    Shape, Line, Circle, FilledCircle, Rectangle, FilledRectangle, Points,
+    braille_canvas, canvas, BrailleCanvas, BrailleContext, BrailleGrid, Canvas, Circle,
+    DrawContext, FilledCircle, FilledRectangle, Line, Points, Rectangle, Shape,
 };
-pub use barchart::{BarChart, BarOrientation, barchart};
-pub use toast::{Toast, ToastLevel, ToastPosition, toast};
-pub use textarea::{TextArea, textarea};
 pub use chart::{
-    Chart, ChartType, Series, Axis, AxisFormat,
-    Marker, LineStyle, LegendPosition,
-    chart, line_chart, scatter_plot,
+    chart, line_chart, scatter_plot, Axis, AxisFormat, Chart, ChartType, LegendPosition, LineStyle,
+    Marker, Series,
 };
-pub use calendar::{
-    Calendar, CalendarMode, FirstDayOfWeek, Date, DateMarker,
-    calendar,
+pub use checkbox::{checkbox, Checkbox, CheckboxStyle};
+pub use color_picker::{color_picker, ColorPalette, ColorPicker, ColorPickerMode};
+pub use command_palette::{command_palette, Command, CommandPalette};
+pub use datagrid::{datagrid, grid_column, grid_row, DataGrid, GridColumn, GridRow, SortDirection};
+pub use debug_overlay::{
+    disable_debug, enable_debug, is_debug_enabled, toggle_debug, DebugConfig, DebugEvent,
+    DebugOverlay, DebugPosition, EventLog, PerfMetrics, WidgetInfo,
 };
-pub use tooltip::{
-    Tooltip, TooltipPosition, TooltipArrow, TooltipStyle,
-    tooltip,
+pub use diff::{diff, diff_viewer, ChangeType, DiffColors, DiffLine, DiffMode, DiffViewer};
+pub use digits::{clock, digits, timer, DigitStyle, Digits};
+pub use divider::{divider, vdivider, Divider, DividerStyle, Orientation};
+pub use dropzone::{drop_zone, DropZone, DropZoneStyle};
+pub use filepicker::{
+    dir_picker, file_picker, save_picker, FileFilter, FilePicker, PickerEntry, PickerMode,
+    PickerResult,
 };
+pub use filetree::{dir_entry, file_entry, file_tree, FileEntry, FileTree, FileType};
+pub use gauge::{battery, gauge, percentage, Gauge, GaugeStyle, LabelPosition};
 pub use grid::{
-    Grid, GridItem, GridPlacement, GridAlign, TrackSize,
-    grid, grid_item, grid_template,
+    grid, grid_item, grid_template, Grid, GridAlign, GridItem, GridPlacement, TrackSize,
 };
-pub use switch::{Switch, SwitchStyle, switch, toggle};
-pub use gauge::{Gauge, GaugeStyle, LabelPosition, gauge, percentage, battery};
+pub use heatmap::{contribution_map, heatmap, CellDisplay, ColorScale, HeatMap};
+pub use httpclient::{
+    get as http_get, http_client, post as http_post, HttpClient, HttpMethod, HttpRequest,
+    HttpResponse, RequestState, ResponseView,
+};
+pub use image::{image_from_file, try_image_from_file, Image, ImageError, ImageResult, ScaleMode};
+pub use input::{input, Input};
+pub use layer::{layers, Layers};
+pub use link::{link, url_link, Link, LinkStyle};
+pub use list::{list, List};
+pub use markdown::{markdown, Markdown};
+pub use masked_input::{
+    credit_card_input, masked_input, password_input, pin_input, MaskStyle, MaskedInput,
+    ValidationState,
+};
+pub use menu::{context_menu, menu, menu_bar, menu_item, ContextMenu, Menu, MenuBar, MenuItem};
+pub use mermaid::{
+    diagram, edge, flowchart, node, ArrowStyle, Diagram, DiagramEdge, DiagramNode, DiagramType,
+    NodeShape,
+};
+pub use modal::{modal, Modal, ModalButton, ModalButtonStyle};
 pub use notification::{
-    NotificationCenter, Notification, NotificationLevel, NotificationPosition,
-    notification_center,
+    notification_center, Notification, NotificationCenter, NotificationLevel, NotificationPosition,
+};
+pub use option_list::{
+    option_item, option_list, OptionEntry, OptionItem, OptionList,
+    SeparatorStyle as OptionSeparatorStyle,
+};
+pub use pagination::{pagination, Pagination, PaginationStyle};
+pub use positioned::{positioned, Anchor, Positioned};
+pub use presentation::{presentation, slide, Presentation, Slide, SlideAlign, Transition};
+pub use procmon::{
+    htop, process_monitor, ProcColors, ProcessInfo, ProcessMonitor, ProcessSort, ProcessView,
+};
+pub use progress::{progress, Progress, ProgressStyle};
+pub use qrcode::{qrcode, qrcode_url, ErrorCorrection, QrCodeWidget, QrStyle};
+pub use radio::{radio_group, RadioGroup, RadioLayout, RadioStyle};
+pub use rating::{rating, Rating, RatingSize, RatingStyle};
+pub use resizable::{resizable, Resizable, ResizeDirection, ResizeHandle, ResizeStyle};
+pub use richlog::{log_entry, richlog, LogEntry, LogLevel, RichLog};
+pub use richtext::{markup, rich_text, span, style, RichText, Span, Style};
+pub use screen::{screen, screen_stack, Screen, ScreenStack, ScreenTransition};
+pub use scroll::{scroll_view, ScrollView};
+pub use select::{select, Select};
+pub use selection_list::{
+    selection_item, selection_list, SelectionItem, SelectionList, SelectionStyle,
+};
+pub use skeleton::{
+    skeleton, skeleton_avatar, skeleton_paragraph, skeleton_text, Skeleton, SkeletonShape,
 };
 pub use slider::{
-    Slider, SliderOrientation, SliderStyle,
-    slider, slider_range, percentage_slider, volume_slider,
+    percentage_slider, slider, slider_range, volume_slider, Slider, SliderOrientation, SliderStyle,
 };
-pub use command_palette::{CommandPalette, Command, command_palette};
-pub use accordion::{Accordion, AccordionSection, accordion, section};
-pub use color_picker::{ColorPicker, ColorPickerMode, ColorPalette, color_picker};
-pub use breadcrumb::{Breadcrumb, BreadcrumbItem, SeparatorStyle, breadcrumb, crumb};
-pub use stepper::{Stepper, Step, StepStatus, StepperOrientation, StepperStyle, stepper, step};
-pub use screen::{Screen, ScreenStack, ScreenTransition, screen, screen_stack};
-pub use menu::{Menu, MenuItem, MenuBar, ContextMenu, menu, menu_item, menu_bar, context_menu};
-pub use statusbar::{StatusBar, StatusSection, KeyHint, SectionAlign, statusbar, header, footer, section as status_section, key_hint};
-pub use splitter::{Splitter, Pane, SplitOrientation, HSplit, VSplit, splitter, pane, hsplit, vsplit};
-pub use filetree::{FileTree, FileEntry, FileType, file_tree, file_entry, dir_entry};
-pub use timeline::{Timeline, TimelineEvent, TimelineOrientation, TimelineStyle, EventType, timeline, timeline_event};
-pub use datagrid::{DataGrid, GridColumn, GridRow, SortDirection, datagrid, grid_column, grid_row};
-pub use richlog::{RichLog, LogEntry, LogLevel, richlog, log_entry};
-pub use richtext::{RichText, Span, Style, rich_text, markup, span, style};
-pub use divider::{Divider, Orientation, DividerStyle, divider, vdivider};
-pub use badge::{Badge, BadgeVariant, BadgeShape, badge, dot_badge};
-pub use avatar::{Avatar, AvatarSize, AvatarShape, avatar, avatar_icon};
-pub use tag::{Tag, TagStyle, tag, chip};
-pub use skeleton::{Skeleton, SkeletonShape, skeleton, skeleton_text, skeleton_avatar, skeleton_paragraph};
-pub use pagination::{Pagination, PaginationStyle, pagination};
-pub use virtuallist::{VirtualList, virtual_list, ScrollMode, ScrollAlignment};
-pub use terminal::{Terminal, TermCell, TermLine, TerminalAction, CursorStyle, terminal};
-pub use autocomplete::{Autocomplete, Suggestion, FilterMode, autocomplete};
-pub use rating::{Rating, RatingStyle, RatingSize, rating};
-pub use digits::{Digits, DigitStyle, digits, clock, timer};
-pub use link::{Link, LinkStyle, link, url_link};
-pub use masked_input::{MaskedInput, MaskStyle, ValidationState, masked_input, password_input, pin_input, credit_card_input};
-pub use selection_list::{SelectionList, SelectionItem, SelectionStyle, selection_list, selection_item};
-pub use option_list::{OptionList, OptionEntry, OptionItem, SeparatorStyle as OptionSeparatorStyle, option_list, option_item};
-pub use timer::{Timer, TimerState, TimerFormat, timer as timer_widget, pomodoro};
-pub use timer::{Stopwatch, stopwatch};
-pub use filepicker::{FilePicker, PickerMode, FileFilter, PickerEntry, PickerResult, file_picker, save_picker, dir_picker};
-pub use heatmap::{HeatMap, ColorScale, CellDisplay, heatmap, contribution_map};
-pub use candlechart::{CandleChart, Candle, ChartStyle as CandleStyle, candle_chart, ohlc_chart};
-pub use timeseries::{
-    TimeSeries, TimeSeriesData, TimePoint, TimeLineStyle,
-    TimeFormat, TimeRange, TimeMarker, MarkerStyle,
-    time_series, time_series_with_data, cpu_chart, memory_chart, network_chart,
+pub use sortable::{sortable_list, SortableItem, SortableList};
+pub use sparkline::{sparkline, Sparkline, SparklineStyle};
+pub use spinner::{spinner, Spinner, SpinnerStyle};
+pub use splitter::{
+    hsplit, pane, splitter, vsplit, HSplit, Pane, SplitOrientation, Splitter, VSplit,
 };
-pub use waveline::{
-    Waveline, WaveStyle, Interpolation,
-    waveline, audio_waveform, signal_wave, area_wave, spectrum,
-    sine_wave, square_wave, sawtooth_wave,
+pub use stack::{hstack, vstack, Direction, Stack};
+pub use statusbar::{
+    footer, header, key_hint, section as status_section, statusbar, KeyHint, SectionAlign,
+    StatusBar, StatusSection,
 };
+pub use stepper::{step, stepper, Step, StepStatus, Stepper, StepperOrientation, StepperStyle};
 pub use streamline::{
-    Streamline, StreamLayer, StreamBaseline, StreamOrder,
-    streamline, streamline_with_data, genre_stream, traffic_stream, resource_stream,
+    genre_stream, resource_stream, streamline, streamline_with_data, traffic_stream,
+    StreamBaseline, StreamLayer, StreamOrder, Streamline,
 };
-pub use syntax::{Language, SyntaxHighlighter, SyntaxTheme, HighlightSpan};
-pub use qrcode::{QrCodeWidget, QrStyle, ErrorCorrection, qrcode, qrcode_url};
-pub use diff::{DiffViewer, DiffMode, DiffLine, ChangeType, DiffColors, diff_viewer, diff};
-pub use aistream::{AiStream, TypingStyle, StreamCursor, StreamStatus, ai_stream, ai_response};
-pub use presentation::{Presentation, Slide, Transition, SlideAlign, presentation, slide};
-pub use procmon::{ProcessMonitor, ProcessInfo, ProcessSort, ProcessView, ProcColors, process_monitor, htop};
-pub use debug_overlay::{
-    DebugOverlay, DebugConfig, DebugPosition, DebugEvent,
-    PerfMetrics, EventLog, WidgetInfo,
-    enable_debug, disable_debug, is_debug_enabled, toggle_debug,
+pub use switch::{switch, toggle, Switch, SwitchStyle};
+pub use syntax::{HighlightSpan, Language, SyntaxHighlighter, SyntaxTheme};
+pub use table::{column, table, Column, Table};
+pub use tabs::{tabs, Tab, Tabs};
+pub use tag::{chip, tag, Tag, TagStyle};
+pub use terminal::{terminal, CursorStyle, TermCell, TermLine, Terminal, TerminalAction};
+pub use text::{Alignment, Text};
+pub use textarea::{textarea, TextArea};
+pub use theme_picker::{theme_picker, ThemePicker};
+pub use timeline::{
+    timeline, timeline_event, EventType, Timeline, TimelineEvent, TimelineOrientation,
+    TimelineStyle,
 };
-pub use mermaid::{Diagram, DiagramNode, DiagramEdge, DiagramType, NodeShape, ArrowStyle, diagram, flowchart, node, edge};
-pub use vim::{VimState, VimMode, VimMotion, VimAction, VimCommandResult, vim_state};
-pub use httpclient::{HttpClient, HttpMethod, HttpRequest, HttpResponse, ResponseView, RequestState, http_client, get as http_get, post as http_post};
+pub use timer::{pomodoro, timer as timer_widget, Timer, TimerFormat, TimerState};
+pub use timer::{stopwatch, Stopwatch};
+pub use timeseries::{
+    cpu_chart, memory_chart, network_chart, time_series, time_series_with_data, MarkerStyle,
+    TimeFormat, TimeLineStyle, TimeMarker, TimePoint, TimeRange, TimeSeries, TimeSeriesData,
+};
+pub use toast::{toast, Toast, ToastLevel, ToastPosition};
+pub use tooltip::{tooltip, Tooltip, TooltipArrow, TooltipPosition, TooltipStyle};
+pub use traits::{
+    Draggable, Element, EventResult, FocusStyle, Interactive, RenderContext, StyledView, Timeout,
+    View, WidgetProps, WidgetState, DISABLED_BG, DISABLED_FG,
+};
+pub use tree::{tree, tree_node, Tree, TreeNode};
+pub use vim::{vim_state, VimAction, VimCommandResult, VimMode, VimMotion, VimState};
+pub use virtuallist::{virtual_list, ScrollAlignment, ScrollMode, VirtualList};
+pub use waveline::{
+    area_wave, audio_waveform, sawtooth_wave, signal_wave, sine_wave, spectrum, square_wave,
+    waveline, Interpolation, WaveStyle, Waveline,
+};
 
 // Re-export common widget constructors
 

@@ -3,11 +3,11 @@
 //! Generates and displays QR codes using Unicode block characters
 //! for high-resolution rendering in the terminal.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
-use qrcode::{QrCode, EcLevel};
+use crate::{impl_props_builders, impl_styled_view};
+use qrcode::{EcLevel, QrCode};
 
 /// QR Code display style
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -137,7 +137,8 @@ impl QrCodeWidget {
 
     /// Get the encoded QR matrix
     fn get_matrix(&self) -> Option<Vec<Vec<bool>>> {
-        let code = QrCode::with_error_correction_level(&self.data, self.ec_level.to_ec_level()).ok()?;
+        let code =
+            QrCode::with_error_correction_level(&self.data, self.ec_level.to_ec_level()).ok()?;
         let size = code.width();
         let quiet = self.quiet_zone as usize;
         let total_size = size + quiet * 2;
@@ -177,8 +178,16 @@ impl QrCodeWidget {
                     break;
                 }
 
-                let top = matrix.get(row * 2).and_then(|r| r.get(col)).copied().unwrap_or(false);
-                let bottom = matrix.get(row * 2 + 1).and_then(|r| r.get(col)).copied().unwrap_or(false);
+                let top = matrix
+                    .get(row * 2)
+                    .and_then(|r| r.get(col))
+                    .copied()
+                    .unwrap_or(false);
+                let bottom = matrix
+                    .get(row * 2 + 1)
+                    .and_then(|r| r.get(col))
+                    .copied()
+                    .unwrap_or(false);
 
                 let (ch, cell_fg, cell_bg) = match (top, bottom) {
                     (true, true) => ('█', Some(fg), Some(bg)),
@@ -190,7 +199,8 @@ impl QrCodeWidget {
                 let mut cell = Cell::new(ch);
                 cell.fg = cell_fg;
                 cell.bg = cell_bg;
-                ctx.buffer.set(area.x + col as u16, area.y + row as u16, cell);
+                ctx.buffer
+                    .set(area.x + col as u16, area.y + row as u16, cell);
             }
         }
     }
@@ -225,8 +235,10 @@ impl QrCodeWidget {
                 cell.bg = Some(bg);
 
                 // Two columns per module for aspect ratio
-                ctx.buffer.set(area.x + col as u16 * 2, area.y + row as u16, cell.clone());
-                ctx.buffer.set(area.x + col as u16 * 2 + 1, area.y + row as u16, cell);
+                ctx.buffer
+                    .set(area.x + col as u16 * 2, area.y + row as u16, cell.clone());
+                ctx.buffer
+                    .set(area.x + col as u16 * 2 + 1, area.y + row as u16, cell);
             }
         }
     }
@@ -254,9 +266,11 @@ impl QrCodeWidget {
                 cell.fg = Some(self.fg);
                 cell.bg = Some(self.bg);
 
-                ctx.buffer.set(area.x + col as u16 * 2, area.y + row as u16, cell.clone());
+                ctx.buffer
+                    .set(area.x + col as u16 * 2, area.y + row as u16, cell.clone());
                 cell.symbol = ch;
-                ctx.buffer.set(area.x + col as u16 * 2 + 1, area.y + row as u16, cell);
+                ctx.buffer
+                    .set(area.x + col as u16 * 2 + 1, area.y + row as u16, cell);
             }
         }
     }
@@ -290,27 +304,48 @@ impl QrCodeWidget {
                 // 3 6
                 // 7 8
                 let get = |r: usize, c: usize| -> bool {
-                    matrix.get(r).and_then(|row| row.get(c)).copied().unwrap_or(false)
+                    matrix
+                        .get(r)
+                        .and_then(|row| row.get(c))
+                        .copied()
+                        .unwrap_or(false)
                 };
 
                 let base_row = row * 4;
                 let base_col = col * 2;
 
-                if get(base_row, base_col) { dots |= 0x01; }       // dot 1
-                if get(base_row + 1, base_col) { dots |= 0x02; }   // dot 2
-                if get(base_row + 2, base_col) { dots |= 0x04; }   // dot 3
-                if get(base_row, base_col + 1) { dots |= 0x08; }   // dot 4
-                if get(base_row + 1, base_col + 1) { dots |= 0x10; } // dot 5
-                if get(base_row + 2, base_col + 1) { dots |= 0x20; } // dot 6
-                if get(base_row + 3, base_col) { dots |= 0x40; }   // dot 7
-                if get(base_row + 3, base_col + 1) { dots |= 0x80; } // dot 8
+                if get(base_row, base_col) {
+                    dots |= 0x01;
+                } // dot 1
+                if get(base_row + 1, base_col) {
+                    dots |= 0x02;
+                } // dot 2
+                if get(base_row + 2, base_col) {
+                    dots |= 0x04;
+                } // dot 3
+                if get(base_row, base_col + 1) {
+                    dots |= 0x08;
+                } // dot 4
+                if get(base_row + 1, base_col + 1) {
+                    dots |= 0x10;
+                } // dot 5
+                if get(base_row + 2, base_col + 1) {
+                    dots |= 0x20;
+                } // dot 6
+                if get(base_row + 3, base_col) {
+                    dots |= 0x40;
+                } // dot 7
+                if get(base_row + 3, base_col + 1) {
+                    dots |= 0x80;
+                } // dot 8
 
                 let ch = char::from_u32(braille_base + dots as u32).unwrap_or('⠀');
 
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.fg);
                 cell.bg = Some(self.bg);
-                ctx.buffer.set(area.x + col as u16, area.y + row as u16, cell);
+                ctx.buffer
+                    .set(area.x + col as u16, area.y + row as u16, cell);
             }
         }
     }
@@ -372,8 +407,8 @@ pub fn qrcode_url(url: impl Into<String>) -> QrCodeWidget {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_qrcode_creation() {
@@ -418,8 +453,12 @@ mod tests {
 
     #[test]
     fn test_qrcode_error_levels() {
-        for level in [ErrorCorrection::Low, ErrorCorrection::Medium,
-                      ErrorCorrection::Quartile, ErrorCorrection::High] {
+        for level in [
+            ErrorCorrection::Low,
+            ErrorCorrection::Medium,
+            ErrorCorrection::Quartile,
+            ErrorCorrection::High,
+        ] {
             let qr = QrCodeWidget::new("Test").error_correction(level);
             assert!(qr.get_matrix().is_some());
         }

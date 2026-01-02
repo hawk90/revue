@@ -1,9 +1,9 @@
 //! Image widget for displaying images using Kitty graphics protocol
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use std::path::PathBuf;
 
 /// Errors that can occur during image operations
@@ -77,7 +77,8 @@ impl Image {
         let reader = image::ImageReader::new(std::io::Cursor::new(&data))
             .with_guessed_format()
             .map_err(|e| ImageError::DecodeError(e.to_string()))?;
-        let img = reader.decode()
+        let img = reader
+            .decode()
             .map_err(|e| ImageError::DecodeError(e.to_string()))?;
 
         Ok(Self {
@@ -221,7 +222,8 @@ impl Image {
         let encoded = BASE64.encode(&self.data);
 
         // Split into chunks (max 4096 bytes per chunk)
-        let chunks: Vec<&str> = encoded.as_bytes()
+        let chunks: Vec<&str> = encoded
+            .as_bytes()
             .chunks(4096)
             .map(|c| std::str::from_utf8(c).unwrap_or(""))
             .collect();
@@ -235,20 +237,11 @@ impl Image {
                 // First chunk includes all parameters
                 output.push_str(&format!(
                     "\x1b_Ga=T,f={},i={},c={},r={},m={};{}\x1b\\",
-                    format_code,
-                    self.id,
-                    cols,
-                    rows,
-                    more,
-                    chunk
+                    format_code, self.id, cols, rows, more, chunk
                 ));
             } else {
                 // Continuation chunks
-                output.push_str(&format!(
-                    "\x1b_Gm={};{}\x1b\\",
-                    more,
-                    chunk
-                ));
+                output.push_str(&format!("\x1b_Gm={};{}\x1b\\", more, chunk));
             }
         }
 
@@ -258,8 +251,10 @@ impl Image {
     /// Check if the terminal likely supports Kitty graphics
     pub fn is_kitty_supported() -> bool {
         // Check for TERM_PROGRAM=kitty or KITTY_WINDOW_ID
-        std::env::var("KITTY_WINDOW_ID").is_ok() ||
-            std::env::var("TERM_PROGRAM").map(|v| v == "kitty").unwrap_or(false)
+        std::env::var("KITTY_WINDOW_ID").is_ok()
+            || std::env::var("TERM_PROGRAM")
+                .map(|v| v == "kitty")
+                .unwrap_or(false)
     }
 }
 
@@ -280,7 +275,8 @@ impl View for Image {
         // Fill area with placeholder
         for y in 0..scaled_h.min(area.height) {
             for x in 0..scaled_w.min(area.width) {
-                ctx.buffer.set(area.x + x, area.y + y, Cell::new(self.placeholder));
+                ctx.buffer
+                    .set(area.x + x, area.y + y, Cell::new(self.placeholder));
             }
         }
 
@@ -319,8 +315,8 @@ pub fn try_image_from_file(path: impl AsRef<std::path::Path>) -> Option<Image> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_image_from_rgb() {
@@ -340,8 +336,7 @@ mod tests {
 
     #[test]
     fn test_image_scale() {
-        let img = Image::from_rgb(vec![0; 3], 1, 1)
-            .scale(ScaleMode::Stretch);
+        let img = Image::from_rgb(vec![0; 3], 1, 1).scale(ScaleMode::Stretch);
 
         let (w, h) = img.scaled_dimensions(80, 24);
         assert_eq!(w, 80);
@@ -370,8 +365,7 @@ mod tests {
         let area = Rect::new(0, 0, 10, 5);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let img = Image::from_rgb(vec![0; 300], 10, 10)
-            .placeholder('#');
+        let img = Image::from_rgb(vec![0; 300], 10, 10).placeholder('#');
         img.render(&mut ctx);
 
         // Check placeholder was rendered

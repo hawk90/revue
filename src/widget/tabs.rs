@@ -1,9 +1,9 @@
 //! Tabs widget for tabbed navigation
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Tab item
 #[derive(Clone)]
@@ -111,9 +111,7 @@ impl Tabs {
     /// Select previous tab
     pub fn select_prev(&mut self) {
         if !self.tabs.is_empty() {
-            self.selected = self.selected
-                .checked_sub(1)
-                .unwrap_or(self.tabs.len() - 1);
+            self.selected = self.selected.checked_sub(1).unwrap_or(self.tabs.len() - 1);
         }
     }
 
@@ -184,7 +182,6 @@ impl Tabs {
     pub fn is_empty(&self) -> bool {
         self.tabs.is_empty()
     }
-
 }
 
 impl Default for Tabs {
@@ -267,9 +264,8 @@ impl_props_builders!(Tabs);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
-    
+    use crate::render::Buffer;
 
     #[test]
     fn test_tabs_new() {
@@ -280,10 +276,7 @@ mod tests {
 
     #[test]
     fn test_tabs_builder() {
-        let t = Tabs::new()
-            .tab("Home")
-            .tab("Settings")
-            .tab("Help");
+        let t = Tabs::new().tab("Home").tab("Settings").tab("Help");
 
         assert_eq!(t.len(), 3);
         assert_eq!(t.selected_label(), Some("Home"));
@@ -291,16 +284,14 @@ mod tests {
 
     #[test]
     fn test_tabs_from_vec() {
-        let t = Tabs::new()
-            .tabs(vec!["A", "B", "C"]);
+        let t = Tabs::new().tabs(vec!["A", "B", "C"]);
 
         assert_eq!(t.len(), 3);
     }
 
     #[test]
     fn test_tabs_navigation() {
-        let mut t = Tabs::new()
-            .tabs(vec!["One", "Two", "Three"]);
+        let mut t = Tabs::new().tabs(vec!["One", "Two", "Three"]);
 
         assert_eq!(t.selected_index(), 0);
 
@@ -330,8 +321,7 @@ mod tests {
     fn test_tabs_handle_key() {
         use crate::event::Key;
 
-        let mut t = Tabs::new()
-            .tabs(vec!["A", "B", "C"]);
+        let mut t = Tabs::new().tabs(vec!["A", "B", "C"]);
 
         let changed = t.handle_key(&Key::Right);
         assert!(changed);
@@ -355,9 +345,7 @@ mod tests {
         let area = Rect::new(0, 0, 40, 5);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let t = Tabs::new()
-            .tab("Files")
-            .tab("Edit");
+        let t = Tabs::new().tab("Files").tab("Edit");
 
         t.render(&mut ctx);
 
@@ -368,16 +356,14 @@ mod tests {
 
     #[test]
     fn test_tabs_selected_label() {
-        let t = Tabs::new()
-            .tabs(vec!["Alpha", "Beta"]);
+        let t = Tabs::new().tabs(vec!["Alpha", "Beta"]);
 
         assert_eq!(t.selected_label(), Some("Alpha"));
     }
 
     #[test]
     fn test_tabs_helper() {
-        let t = tabs()
-            .tab("Test");
+        let t = tabs().tab("Test");
 
         assert_eq!(t.len(), 1);
     }

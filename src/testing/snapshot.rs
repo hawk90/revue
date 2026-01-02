@@ -92,9 +92,7 @@ impl SnapshotManager {
                          \n\
                          To update snapshots, run:\n\
                          REVUE_UPDATE_SNAPSHOTS=1 cargo test\n",
-                        name,
-                        expected_trimmed,
-                        actual_trimmed
+                        name, expected_trimmed, actual_trimmed
                     );
                 }
             }

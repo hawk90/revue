@@ -16,8 +16,8 @@
 //! let mut terminal = Terminal::with_backend(backend)?;
 //! ```
 
-mod traits;
 mod crossterm;
+mod traits;
 
-pub use traits::{Backend, BackendCapabilities};
 pub use self::crossterm::CrosstermBackend;
+pub use traits::{Backend, BackendCapabilities};

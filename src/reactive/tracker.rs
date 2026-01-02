@@ -114,7 +114,8 @@ impl DependencyTracker {
         self.clear_subscriber_deps(subscriber.id);
 
         // Store callback for later notification
-        self.subscribers.insert(subscriber.id, subscriber.callback.clone());
+        self.subscribers
+            .insert(subscriber.id, subscriber.callback.clone());
 
         // Push onto stack
         self.subscriber_stack.push(subscriber);

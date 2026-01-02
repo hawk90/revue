@@ -2,8 +2,8 @@
 //!
 //! Simple event system for decoupled component communication.
 
-use std::collections::{HashMap, VecDeque};
 use std::any::Any;
+use std::collections::{HashMap, VecDeque};
 
 /// Event identifier
 pub type EventId = &'static str;
@@ -31,7 +31,10 @@ impl Event {
 
     /// Take ownership of event data
     pub fn take_data<T: 'static>(&mut self) -> Option<T> {
-        self.data.take().and_then(|d| d.downcast::<T>().ok()).map(|b| *b)
+        self.data
+            .take()
+            .and_then(|d| d.downcast::<T>().ok())
+            .map(|b| *b)
     }
 }
 
@@ -87,10 +90,7 @@ impl EventBus {
 
     /// Emit an event without data
     pub fn emit_signal(&mut self, id: EventId) {
-        self.queue.push_back(Event {
-            id,
-            data: None,
-        });
+        self.queue.push_back(Event { id, data: None });
     }
 
     /// Poll for the next event
@@ -227,7 +227,12 @@ mod tests {
         }
 
         let mut bus = EventBus::new();
-        bus.emit("custom", MyEvent { value: "hello".into() });
+        bus.emit(
+            "custom",
+            MyEvent {
+                value: "hello".into(),
+            },
+        );
 
         let event = bus.poll().unwrap();
         let data = event.data::<MyEvent>().unwrap();

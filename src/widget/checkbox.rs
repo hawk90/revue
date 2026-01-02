@@ -1,6 +1,6 @@
 //! Checkbox widget for boolean selection
 
-use super::traits::{View, RenderContext, WidgetState, WidgetProps, Interactive, EventResult};
+use super::traits::{EventResult, Interactive, RenderContext, View, WidgetProps, WidgetState};
 use crate::event::{Key, KeyEvent};
 use crate::render::Cell;
 use crate::style::Color;
@@ -166,7 +166,11 @@ impl View for Checkbox {
             ctx.buffer.set(x, area.y, left_cell);
             x += 1;
 
-            let check_char = if self.checked { checked_char } else { unchecked_char };
+            let check_char = if self.checked {
+                checked_char
+            } else {
+                unchecked_char
+            };
             let mut check_cell = Cell::new(check_char);
             check_cell.fg = Some(check_fg);
             ctx.buffer.set(x, area.y, check_cell);
@@ -178,7 +182,11 @@ impl View for Checkbox {
             x += 1;
         } else {
             // Unicode style: ☑ or ☐
-            let check_char = if self.checked { checked_char } else { unchecked_char };
+            let check_char = if self.checked {
+                checked_char
+            } else {
+                unchecked_char
+            };
             let mut check_cell = Cell::new(check_char);
             check_cell.fg = Some(check_fg);
             ctx.buffer.set(x, area.y, check_cell);
@@ -246,8 +254,8 @@ impl_widget_builders!(Checkbox);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
     use crate::widget::StyledView;
 
     #[test]

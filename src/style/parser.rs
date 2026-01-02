@@ -1,10 +1,10 @@
 //! CSS parser for TUI styling
 
-use std::collections::HashMap;
 use super::{
-    ParseError, ErrorCode, Style, Display, FlexDirection, JustifyContent, AlignItems,
-    Size, Spacing, BorderStyle, Color, Position, GridTemplate, GridTrack, GridPlacement,
+    AlignItems, BorderStyle, Color, Display, ErrorCode, FlexDirection, GridPlacement, GridTemplate,
+    GridTrack, JustifyContent, ParseError, Position, Size, Spacing, Style,
 };
+use std::collections::HashMap;
 
 /// Create a ParseError at the given position
 fn make_error(css: &str, pos: usize, message: &str, code: ErrorCode) -> ParseError {
@@ -67,7 +67,10 @@ impl StyleSheet {
 
     /// Get rules matching a selector
     pub fn rules(&self, selector: &str) -> Vec<&Rule> {
-        self.rules.iter().filter(|r| r.selector == selector).collect()
+        self.rules
+            .iter()
+            .filter(|r| r.selector == selector)
+            .collect()
     }
 
     /// Apply stylesheet to a base style for a given selector
@@ -115,9 +118,17 @@ pub fn parse(css: &str) -> Result<StyleSheet, ParseError> {
         // Expect '{'
         if pos >= bytes.len() || bytes[pos] != b'{' {
             return Err(make_error(
-                css, pos,
-                &format!("expected '{{' after selector '{}', found '{}'", selector,
-                    if pos < bytes.len() { bytes[pos] as char } else { ' ' }),
+                css,
+                pos,
+                &format!(
+                    "expected '{{' after selector '{}', found '{}'",
+                    selector,
+                    if pos < bytes.len() {
+                        bytes[pos] as char
+                    } else {
+                        ' '
+                    }
+                ),
                 ErrorCode::MissingBrace,
             ));
         }
@@ -189,7 +200,12 @@ fn parse_root_variables_str(
 
     // Expect '{'
     if pos >= bytes.len() || bytes[pos] != b'{' {
-        return Err(make_error(css, pos, "expected '{' after :root", ErrorCode::MissingBrace));
+        return Err(make_error(
+            css,
+            pos,
+            "expected '{' after :root",
+            ErrorCode::MissingBrace,
+        ));
     }
     pos += 1;
 
@@ -209,10 +225,12 @@ fn parse_root_variables_str(
         // Variable name starts with --
         if !bytes[pos..].starts_with(b"--") {
             return Err(make_error(
-                css, pos,
+                css,
+                pos,
                 "CSS variables must start with '--' (e.g., --primary-color)",
                 ErrorCode::InvalidSyntax,
-            ).suggest("use '--variable-name: value;' format"));
+            )
+            .suggest("use '--variable-name: value;' format"));
         }
 
         // Read variable name (ASCII only, safe to use byte indexing)
@@ -227,10 +245,12 @@ fn parse_root_variables_str(
         // Expect ':'
         if pos >= bytes.len() || bytes[pos] != b':' {
             return Err(make_error(
-                css, pos,
+                css,
+                pos,
                 "expected ':' after variable name",
                 ErrorCode::InvalidSyntax,
-            ).suggest("format: --variable-name: value;"));
+            )
+            .suggest("format: --variable-name: value;"));
         }
         pos += 1;
 
@@ -320,7 +340,12 @@ fn parse_declarations_str(
 }
 
 /// Apply a declaration to a style
-pub fn apply_declaration(style: &mut Style, property: &str, value: &str, vars: &HashMap<String, String>) {
+pub fn apply_declaration(
+    style: &mut Style,
+    property: &str,
+    value: &str,
+    vars: &HashMap<String, String>,
+) {
     // Resolve CSS variable if needed
     let value = if value.starts_with("var(") && value.ends_with(')') {
         let var_name = &value[4..value.len() - 1];
@@ -330,10 +355,18 @@ pub fn apply_declaration(style: &mut Style, property: &str, value: &str, vars: &
     };
 
     // Try each category of properties
-    if apply_display_layout(style, property, value) { return; }
-    if apply_grid_properties(style, property, value) { return; }
-    if apply_position_offsets(style, property, value) { return; }
-    if apply_sizing(style, property, value) { return; }
+    if apply_display_layout(style, property, value) {
+        return;
+    }
+    if apply_grid_properties(style, property, value) {
+        return;
+    }
+    if apply_position_offsets(style, property, value) {
+        return;
+    }
+    if apply_sizing(style, property, value) {
+        return;
+    }
     apply_visual(style, property, value);
 }
 
@@ -906,7 +939,10 @@ mod tests {
         "#;
         let sheet = parse(css).unwrap();
 
-        assert_eq!(sheet.variables.get("--primary"), Some(&"#ff0000".to_string()));
+        assert_eq!(
+            sheet.variables.get("--primary"),
+            Some(&"#ff0000".to_string())
+        );
         assert_eq!(sheet.variables.get("--spacing"), Some(&"8".to_string()));
         assert_eq!(sheet.rules.len(), 1);
     }

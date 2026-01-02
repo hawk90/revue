@@ -18,10 +18,10 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::event::drag::{DragData, DragId, DropTarget};
+use crate::impl_view_meta;
 use crate::layout::Rect;
 use crate::style::Color;
-use crate::widget::traits::{RenderContext, View, Draggable, WidgetState, WidgetProps};
-use crate::impl_view_meta;
+use crate::widget::traits::{Draggable, RenderContext, View, WidgetProps, WidgetState};
 
 /// Atomic counter for generating unique drop zone IDs
 static DROPZONE_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -285,7 +285,11 @@ where
             DropZoneStyle::Minimal => {
                 // Just show indicator on left edge
                 let indicator = if self.hovered {
-                    if self.can_accept_current { '▶' } else { '✗' }
+                    if self.can_accept_current {
+                        '▶'
+                    } else {
+                        '✗'
+                    }
                 } else {
                     '│'
                 };
@@ -386,8 +390,7 @@ mod tests {
 
     #[test]
     fn test_dropzone_accepts() {
-        let zone = DropZone::new("Drop files")
-            .accepts(&["file", "text"]);
+        let zone = DropZone::new("Drop files").accepts(&["file", "text"]);
 
         assert_eq!(zone.accepts.len(), 2);
         assert!(zone.accepts.contains(&"file"));
@@ -396,16 +399,14 @@ mod tests {
 
     #[test]
     fn test_dropzone_style() {
-        let zone = DropZone::new("Test")
-            .style(DropZoneStyle::Dashed);
+        let zone = DropZone::new("Test").style(DropZoneStyle::Dashed);
 
         assert_eq!(zone.style, DropZoneStyle::Dashed);
     }
 
     #[test]
     fn test_dropzone_as_target() {
-        let zone = DropZone::new("Test")
-            .accepts(&["text"]);
+        let zone = DropZone::new("Test").accepts(&["text"]);
 
         let bounds = Rect::new(10, 5, 20, 10);
         let target = zone.as_target(bounds);

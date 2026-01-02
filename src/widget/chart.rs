@@ -3,10 +3,10 @@
 //! Supports line charts, scatter plots, area charts, and step charts
 //! with multiple series, axes, legends, and grid lines.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Chart type
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -452,8 +452,16 @@ impl Chart {
 
         // Add padding for auto bounds
         let y_range = y_max - y_min;
-        let y_min = if self.y_axis.min.is_none() { y_min - y_range * 0.05 } else { y_min };
-        let y_max = if self.y_axis.max.is_none() { y_max + y_range * 0.05 } else { y_max };
+        let y_min = if self.y_axis.min.is_none() {
+            y_min - y_range * 0.05
+        } else {
+            y_min
+        };
+        let y_max = if self.y_axis.max.is_none() {
+            y_max + y_range * 0.05
+        } else {
+            y_max
+        };
 
         (x_min, x_max, y_min, y_max)
     }
@@ -553,10 +561,7 @@ impl Chart {
                 };
 
                 if draw {
-                    let ch = self.get_line_char(
-                        x1 as i32 - x0 as i32,
-                        y1 as i32 - y0 as i32,
-                    );
+                    let ch = self.get_line_char(x1 as i32 - x0 as i32, y1 as i32 - y0 as i32);
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(color);
                     ctx.buffer.set(x as u16, y as u16, cell);
@@ -703,8 +708,12 @@ impl View for Chart {
 
         let inner_x = area.x + if has_border { 1 } else { 0 } + y_label_width;
         let inner_y = area.y + if has_border { 1 } else { 0 } + if has_title { 1 } else { 0 };
-        let inner_w = area.width.saturating_sub(y_label_width + if has_border { 2 } else { 0 });
-        let inner_h = area.height.saturating_sub(x_label_height + if has_border { 2 } else { 0 } + if has_title { 1 } else { 0 });
+        let inner_w = area
+            .width
+            .saturating_sub(y_label_width + if has_border { 2 } else { 0 });
+        let inner_h = area.height.saturating_sub(
+            x_label_height + if has_border { 2 } else { 0 } + if has_title { 1 } else { 0 },
+        );
 
         if inner_w < 5 || inner_h < 3 {
             return;
@@ -835,7 +844,16 @@ impl View for Chart {
                         for window in screen_points.windows(2) {
                             let (x0, y0) = window[0];
                             let (x1, y1) = window[1];
-                            self.draw_line(ctx, x0, y0, x1, y1, series.color, series.line_style, chart_area);
+                            self.draw_line(
+                                ctx,
+                                x0,
+                                y0,
+                                x1,
+                                y1,
+                                series.color,
+                                series.line_style,
+                                chart_area,
+                            );
                         }
                     }
                     ChartType::StepAfter => {
@@ -843,8 +861,26 @@ impl View for Chart {
                             let (x0, y0) = window[0];
                             let (x1, y1) = window[1];
                             // Horizontal then vertical
-                            self.draw_line(ctx, x0, y0, x1, y0, series.color, series.line_style, chart_area);
-                            self.draw_line(ctx, x1, y0, x1, y1, series.color, series.line_style, chart_area);
+                            self.draw_line(
+                                ctx,
+                                x0,
+                                y0,
+                                x1,
+                                y0,
+                                series.color,
+                                series.line_style,
+                                chart_area,
+                            );
+                            self.draw_line(
+                                ctx,
+                                x1,
+                                y0,
+                                x1,
+                                y1,
+                                series.color,
+                                series.line_style,
+                                chart_area,
+                            );
                         }
                     }
                     ChartType::StepBefore => {
@@ -852,8 +888,26 @@ impl View for Chart {
                             let (x0, y0) = window[0];
                             let (x1, y1) = window[1];
                             // Vertical then horizontal
-                            self.draw_line(ctx, x0, y0, x0, y1, series.color, series.line_style, chart_area);
-                            self.draw_line(ctx, x0, y1, x1, y1, series.color, series.line_style, chart_area);
+                            self.draw_line(
+                                ctx,
+                                x0,
+                                y0,
+                                x0,
+                                y1,
+                                series.color,
+                                series.line_style,
+                                chart_area,
+                            );
+                            self.draw_line(
+                                ctx,
+                                x0,
+                                y1,
+                                x1,
+                                y1,
+                                series.color,
+                                series.line_style,
+                                chart_area,
+                            );
                         }
                     }
                     ChartType::Scatter => {}
@@ -864,7 +918,11 @@ impl View for Chart {
             if !matches!(series.marker, Marker::None) {
                 let marker_char = series.marker.char();
                 for &(x, y) in &screen_points {
-                    if x >= inner_x && x < inner_x + inner_w && y >= inner_y && y < inner_y + inner_h {
+                    if x >= inner_x
+                        && x < inner_x + inner_w
+                        && y >= inner_y
+                        && y < inner_y + inner_h
+                    {
                         let mut cell = Cell::new(marker_char);
                         cell.fg = Some(series.color);
                         ctx.buffer.set(x, y, cell);
@@ -875,7 +933,12 @@ impl View for Chart {
 
         // Draw legend
         if !matches!(self.legend, LegendPosition::None) && !self.series.is_empty() {
-            let legend_width = self.series.iter().map(|s| s.name.len() + 4).max().unwrap_or(10) as u16;
+            let legend_width = self
+                .series
+                .iter()
+                .map(|s| s.name.len() + 4)
+                .max()
+                .unwrap_or(10) as u16;
             let legend_height = self.series.len() as u16 + 2;
 
             let (legend_x, legend_y) = match self.legend {
@@ -883,8 +946,14 @@ impl View for Chart {
                 LegendPosition::TopCenter => (inner_x + (inner_w - legend_width) / 2, inner_y + 1),
                 LegendPosition::TopRight => (inner_x + inner_w - legend_width - 1, inner_y + 1),
                 LegendPosition::BottomLeft => (inner_x + 1, inner_y + inner_h - legend_height - 1),
-                LegendPosition::BottomCenter => (inner_x + (inner_w - legend_width) / 2, inner_y + inner_h - legend_height - 1),
-                LegendPosition::BottomRight => (inner_x + inner_w - legend_width - 1, inner_y + inner_h - legend_height - 1),
+                LegendPosition::BottomCenter => (
+                    inner_x + (inner_w - legend_width) / 2,
+                    inner_y + inner_h - legend_height - 1,
+                ),
+                LegendPosition::BottomRight => (
+                    inner_x + inner_w - legend_width - 1,
+                    inner_y + inner_h - legend_height - 1,
+                ),
                 LegendPosition::None => unreachable!(),
             };
 
@@ -965,8 +1034,8 @@ pub fn scatter_plot(data: &[(f64, f64)]) -> Chart {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_chart_new() {
@@ -995,8 +1064,7 @@ mod tests {
 
     #[test]
     fn test_chart_bounds() {
-        let c = Chart::new()
-            .series(Series::new("A").data(vec![(0.0, 0.0), (10.0, 100.0)]));
+        let c = Chart::new().series(Series::new("A").data(vec![(0.0, 0.0), (10.0, 100.0)]));
 
         let bounds = c.compute_bounds();
         assert_eq!(bounds.0, 0.0); // x_min
@@ -1024,9 +1092,11 @@ mod tests {
         let area = Rect::new(0, 0, 60, 20);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let c = Chart::new()
-            .title("Test Chart")
-            .series(Series::new("Data").data_y(&[1.0, 4.0, 2.0, 5.0, 3.0]).line());
+        let c = Chart::new().title("Test Chart").series(
+            Series::new("Data")
+                .data_y(&[1.0, 4.0, 2.0, 5.0, 3.0])
+                .line(),
+        );
 
         c.render(&mut ctx);
         // Basic smoke test - chart renders without panic
@@ -1156,9 +1226,11 @@ mod tests {
 
     #[test]
     fn test_compute_bounds_nan_values() {
-        let c = Chart::new().series(
-            Series::new("WithNaN").data(vec![(1.0, 2.0), (f64::NAN, 3.0), (3.0, f64::INFINITY)])
-        );
+        let c = Chart::new().series(Series::new("WithNaN").data(vec![
+            (1.0, 2.0),
+            (f64::NAN, 3.0),
+            (3.0, f64::INFINITY),
+        ]));
         let (x_min, x_max, y_min, y_max) = c.compute_bounds();
         // Should ignore NaN/Infinity and use valid data
         assert!(x_min.is_finite());

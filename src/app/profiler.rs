@@ -665,10 +665,7 @@ mod tests {
             Stats::format_duration(Duration::from_micros(1500)),
             "1.50ms"
         );
-        assert_eq!(
-            Stats::format_duration(Duration::from_secs(2)),
-            "2.00s"
-        );
+        assert_eq!(Stats::format_duration(Duration::from_secs(2)), "2.00s");
     }
 
     #[test]

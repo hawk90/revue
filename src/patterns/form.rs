@@ -186,7 +186,9 @@ impl Validators {
             if value.chars().all(|c| c.is_alphanumeric()) {
                 Ok(())
             } else {
-                Err(ValidationError::new("Must contain only letters and numbers"))
+                Err(ValidationError::new(
+                    "Must contain only letters and numbers",
+                ))
             }
         })
     }
@@ -496,9 +498,7 @@ impl FormState {
     pub fn errors(&self) -> Vec<(&str, &str)> {
         self.fields
             .iter()
-            .filter_map(|(name, field)| {
-                field.first_error().map(|err| (name.as_str(), err))
-            })
+            .filter_map(|(name, field)| field.first_error().map(|err| (name.as_str(), err)))
             .collect()
     }
 
@@ -521,7 +521,8 @@ impl FormState {
             return;
         }
 
-        let current_idx = self.focused
+        let current_idx = self
+            .focused
             .as_ref()
             .and_then(|name| self.field_order.iter().position(|n| n == name))
             .unwrap_or(0);
@@ -536,7 +537,8 @@ impl FormState {
             return;
         }
 
-        let current_idx = self.focused
+        let current_idx = self
+            .focused
             .as_ref()
             .and_then(|name| self.field_order.iter().position(|n| n == name))
             .unwrap_or(0);
@@ -562,9 +564,9 @@ impl FormState {
 
     /// Iterate over fields in order
     pub fn iter(&self) -> impl Iterator<Item = (&str, &FormField)> {
-        self.field_order.iter().filter_map(|name| {
-            self.fields.get(name).map(|field| (name.as_str(), field))
-        })
+        self.field_order
+            .iter()
+            .filter_map(|name| self.fields.get(name).map(|field| (name.as_str(), field)))
     }
 
     /// Mark form as submitted
@@ -641,10 +643,7 @@ mod tests {
 
     #[test]
     fn test_form_field() {
-        let mut field = FormField::text()
-            .label("Username")
-            .required()
-            .min_length(3);
+        let mut field = FormField::text().label("Username").required().min_length(3);
 
         field.value = "ab".to_string();
         assert!(!field.validate());
@@ -670,8 +669,7 @@ mod tests {
 
     #[test]
     fn test_form_errors() {
-        let mut form = FormState::new()
-            .field("username", FormField::text().required());
+        let mut form = FormState::new().field("username", FormField::text().required());
 
         form.set_value("username", "");
         form.validate_all();
@@ -706,8 +704,7 @@ mod tests {
 
     #[test]
     fn test_form_submit() {
-        let mut form = FormState::new()
-            .field("name", FormField::text().required());
+        let mut form = FormState::new().field("name", FormField::text().required());
 
         // Empty submission should fail
         assert!(!form.submit());
@@ -720,8 +717,7 @@ mod tests {
 
     #[test]
     fn test_form_reset() {
-        let mut form = FormState::new()
-            .field("name", FormField::text());
+        let mut form = FormState::new().field("name", FormField::text());
 
         form.set_value("name", "John");
         form.submit();

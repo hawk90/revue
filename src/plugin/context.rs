@@ -91,10 +91,7 @@ impl PluginContext {
     /// Get data for the current plugin
     pub fn get_data<T: Any + Send>(&self, key: &str) -> Option<&T> {
         let plugin_name = self.current_plugin.as_ref()?;
-        self.data
-            .get(plugin_name)?
-            .get(key)?
-            .downcast_ref::<T>()
+        self.data.get(plugin_name)?.get(key)?.downcast_ref::<T>()
     }
 
     /// Get mutable data for the current plugin
@@ -118,10 +115,7 @@ impl PluginContext {
 
     /// Get data from another plugin (read-only)
     pub fn get_plugin_data<T: Any + Send>(&self, plugin_name: &str, key: &str) -> Option<&T> {
-        self.data
-            .get(plugin_name)?
-            .get(key)?
-            .downcast_ref::<T>()
+        self.data.get(plugin_name)?.get(key)?.downcast_ref::<T>()
     }
 
     /// Log a message (for debugging)

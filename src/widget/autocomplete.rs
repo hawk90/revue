@@ -2,12 +2,12 @@
 //!
 //! Provides a text input with dropdown suggestions based on user input.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::event::{Key, KeyEvent};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::event::{KeyEvent, Key};
 use crate::utils::fuzzy_match;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Suggestion item with display text and optional value
 #[derive(Clone, Debug)]
@@ -249,7 +249,9 @@ impl Autocomplete {
 
     /// Get selected suggestion
     pub fn selected_suggestion(&self) -> Option<&Suggestion> {
-        self.filtered.get(self.selected).and_then(|&idx| self.suggestions.get(idx))
+        self.filtered
+            .get(self.selected)
+            .and_then(|&idx| self.suggestions.get(idx))
     }
 
     /// Accept current selection
@@ -273,18 +275,29 @@ impl Autocomplete {
         }
 
         let query = &self.value;
-        self.filtered = self.suggestions
+        self.filtered = self
+            .suggestions
             .iter()
             .enumerate()
             .filter_map(|(idx, suggestion)| {
                 let matches = match self.filter_mode {
                     FilterMode::Fuzzy => fuzzy_match(query, &suggestion.label).is_some(),
-                    FilterMode::Prefix => suggestion.label.to_lowercase().starts_with(&query.to_lowercase()),
-                    FilterMode::Contains => suggestion.label.to_lowercase().contains(&query.to_lowercase()),
+                    FilterMode::Prefix => suggestion
+                        .label
+                        .to_lowercase()
+                        .starts_with(&query.to_lowercase()),
+                    FilterMode::Contains => suggestion
+                        .label
+                        .to_lowercase()
+                        .contains(&query.to_lowercase()),
                     FilterMode::Exact => suggestion.label.to_lowercase() == query.to_lowercase(),
                     FilterMode::None => true,
                 };
-                if matches { Some(idx) } else { None }
+                if matches {
+                    Some(idx)
+                } else {
+                    None
+                }
             })
             .take(self.max_suggestions)
             .collect();
@@ -376,7 +389,8 @@ impl View for Autocomplete {
         // Render input box
         let input_width = area.width;
         for x in 0..input_width {
-            ctx.buffer.set(area.x + x, area.y, Cell::new(' ').bg(self.input_bg));
+            ctx.buffer
+                .set(area.x + x, area.y, Cell::new(' ').bg(self.input_bg));
         }
 
         // Render input text or placeholder
@@ -396,7 +410,8 @@ impl View for Autocomplete {
             if x >= area.x + input_width {
                 break;
             }
-            ctx.buffer.set(x, area.y, Cell::new(ch).fg(text_fg).bg(self.input_bg));
+            ctx.buffer
+                .set(x, area.y, Cell::new(ch).fg(text_fg).bg(self.input_bg));
         }
 
         // Render cursor if focused
@@ -404,8 +419,11 @@ impl View for Autocomplete {
             let cursor_x = area.x + self.cursor as u16;
             if cursor_x < area.x + input_width {
                 let cursor_char = self.value.chars().nth(self.cursor).unwrap_or(' ');
-                ctx.buffer.set(cursor_x, area.y,
-                    Cell::new(cursor_char).fg(self.input_bg).bg(self.input_fg));
+                ctx.buffer.set(
+                    cursor_x,
+                    area.y,
+                    Cell::new(cursor_char).fg(self.input_bg).bg(self.input_fg),
+                );
             }
         }
 
@@ -414,7 +432,12 @@ impl View for Autocomplete {
             let dropdown_height = (self.filtered.len() as u16).min(area.height - 1);
             let dropdown_y = area.y + 1;
 
-            for (i, &suggestion_idx) in self.filtered.iter().enumerate().take(dropdown_height as usize) {
+            for (i, &suggestion_idx) in self
+                .filtered
+                .iter()
+                .enumerate()
+                .take(dropdown_height as usize)
+            {
                 let suggestion = &self.suggestions[suggestion_idx];
                 let y = dropdown_y + i as u16;
                 let is_selected = i == self.selected;
@@ -469,7 +492,8 @@ impl View for Autocomplete {
                         if x >= area.x + input_width {
                             break;
                         }
-                        ctx.buffer.set(x, y, Cell::new(ch).fg(self.description_fg).bg(bg));
+                        ctx.buffer
+                            .set(x, y, Cell::new(ch).fg(self.description_fg).bg(bg));
                         x += 1;
                     }
                 }
@@ -489,8 +513,8 @@ pub fn autocomplete() -> Autocomplete {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_suggestion_new() {
@@ -515,8 +539,7 @@ mod tests {
 
     #[test]
     fn test_autocomplete_suggestions() {
-        let ac = Autocomplete::new()
-            .suggestions(vec!["apple", "banana", "cherry"]);
+        let ac = Autocomplete::new().suggestions(vec!["apple", "banana", "cherry"]);
         assert_eq!(ac.suggestions.len(), 3);
     }
 
@@ -532,8 +555,7 @@ mod tests {
 
     #[test]
     fn test_autocomplete_accept() {
-        let mut ac = Autocomplete::new()
-            .suggestions(vec!["apple", "banana"]);
+        let mut ac = Autocomplete::new().suggestions(vec!["apple", "banana"]);
 
         ac.set_value("a");
         ac.accept_selection();

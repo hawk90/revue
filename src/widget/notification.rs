@@ -3,10 +3,10 @@
 //! Provides a centralized system for displaying notifications,
 //! alerts, and status messages with queuing and auto-dismiss.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Notification level/severity
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -454,7 +454,9 @@ impl View for NotificationCenter {
         }
 
         let area = ctx.area;
-        let visible = self.notifications.iter()
+        let visible = self
+            .notifications
+            .iter()
             .rev()
             .take(self.max_visible)
             .collect::<Vec<_>>();
@@ -464,21 +466,23 @@ impl View for NotificationCenter {
             NotificationPosition::TopRight => {
                 (area.x + area.width.saturating_sub(self.width), area.y, 1)
             }
-            NotificationPosition::TopLeft => {
-                (area.x, area.y, 1)
-            }
-            NotificationPosition::TopCenter => {
-                (area.x + (area.width.saturating_sub(self.width)) / 2, area.y, 1)
-            }
-            NotificationPosition::BottomRight => {
-                (area.x + area.width.saturating_sub(self.width), area.y + area.height, -1)
-            }
-            NotificationPosition::BottomLeft => {
-                (area.x, area.y + area.height, -1)
-            }
-            NotificationPosition::BottomCenter => {
-                (area.x + (area.width.saturating_sub(self.width)) / 2, area.y + area.height, -1)
-            }
+            NotificationPosition::TopLeft => (area.x, area.y, 1),
+            NotificationPosition::TopCenter => (
+                area.x + (area.width.saturating_sub(self.width)) / 2,
+                area.y,
+                1,
+            ),
+            NotificationPosition::BottomRight => (
+                area.x + area.width.saturating_sub(self.width),
+                area.y + area.height,
+                -1,
+            ),
+            NotificationPosition::BottomLeft => (area.x, area.y + area.height, -1),
+            NotificationPosition::BottomCenter => (
+                area.x + (area.width.saturating_sub(self.width)) / 2,
+                area.y + area.height,
+                -1,
+            ),
         };
 
         // Render each notification
@@ -640,7 +644,11 @@ impl NotificationCenter {
             let filled = (progress * bar_width as f64).round() as u16;
             for dx in 0..bar_width {
                 let ch = if dx < filled { '█' } else { '░' };
-                let fg = if dx < filled { color } else { Color::rgb(60, 60, 60) };
+                let fg = if dx < filled {
+                    color
+                } else {
+                    Color::rgb(60, 60, 60)
+                };
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);
@@ -667,7 +675,11 @@ impl NotificationCenter {
 
             for dx in 1..width - 1 {
                 let ch = if dx <= timer_filled { '━' } else { '─' };
-                let fg = if dx <= timer_filled { color } else { border_color };
+                let fg = if dx <= timer_filled {
+                    color
+                } else {
+                    border_color
+                };
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
                 ctx.buffer.set(x + dx, current_y, cell);
@@ -697,8 +709,8 @@ pub fn notification_center() -> NotificationCenter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_notification_new() {

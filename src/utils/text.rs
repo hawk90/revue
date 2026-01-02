@@ -351,9 +351,16 @@ pub fn progress_bar_precise(value: f64, width: usize) -> String {
         _ => "█",
     };
 
-    let empty = width.saturating_sub(full_blocks).saturating_sub(if remainder > 0 { 1 } else { 0 });
+    let empty = width
+        .saturating_sub(full_blocks)
+        .saturating_sub(if remainder > 0 { 1 } else { 0 });
 
-    format!("{}{}{}", "█".repeat(full_blocks), partial, " ".repeat(empty))
+    format!(
+        "{}{}{}",
+        "█".repeat(full_blocks),
+        partial,
+        " ".repeat(empty)
+    )
 }
 
 #[cfg(test)]
@@ -497,7 +504,7 @@ mod tests {
     fn test_char_count() {
         assert_eq!(char_count("hello"), 5);
         assert_eq!(char_count("héllo"), 5); // 5 chars, 6 bytes
-        assert_eq!(char_count("🎉"), 1);    // 1 char, 4 bytes
+        assert_eq!(char_count("🎉"), 1); // 1 char, 4 bytes
         assert_eq!(char_count(""), 0);
     }
 

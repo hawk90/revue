@@ -169,12 +169,7 @@ impl Role {
     pub fn is_landmark(&self) -> bool {
         matches!(
             self,
-            Role::Navigation
-                | Role::Main
-                | Role::Header
-                | Role::Footer
-                | Role::Search
-                | Role::Form
+            Role::Navigation | Role::Main | Role::Header | Role::Footer | Role::Search | Role::Form
         )
     }
 }
@@ -615,7 +610,9 @@ impl AccessibilityManager {
 
     /// Move focus to next focusable element
     pub fn focus_next(&mut self) -> Option<&str> {
-        let focusable: Vec<_> = self.nodes.values()
+        let focusable: Vec<_> = self
+            .nodes
+            .values()
             .filter(|n| n.is_focusable())
             .map(|n| &n.id)
             .collect();
@@ -624,7 +621,9 @@ impl AccessibilityManager {
             return None;
         }
 
-        let current_idx = self.focus.as_ref()
+        let current_idx = self
+            .focus
+            .as_ref()
             .and_then(|id| focusable.iter().position(|fid| *fid == id))
             .unwrap_or(0);
 
@@ -636,7 +635,9 @@ impl AccessibilityManager {
 
     /// Move focus to previous focusable element
     pub fn focus_prev(&mut self) -> Option<&str> {
-        let focusable: Vec<_> = self.nodes.values()
+        let focusable: Vec<_> = self
+            .nodes
+            .values()
             .filter(|n| n.is_focusable())
             .map(|n| &n.id)
             .collect();
@@ -645,7 +646,9 @@ impl AccessibilityManager {
             return None;
         }
 
-        let current_idx = self.focus.as_ref()
+        let current_idx = self
+            .focus
+            .as_ref()
             .and_then(|id| focusable.iter().position(|fid| *fid == id))
             .unwrap_or(0);
 
@@ -694,7 +697,10 @@ impl AccessibilityManager {
 
     /// Get landmarks
     pub fn landmarks(&self) -> Vec<&AccessibleNode> {
-        self.nodes.values().filter(|n| n.role.is_landmark()).collect()
+        self.nodes
+            .values()
+            .filter(|n| n.role.is_landmark())
+            .collect()
     }
 
     /// Clear all nodes
@@ -847,8 +853,7 @@ mod tests {
     fn test_accessibility_manager() {
         let mut manager = AccessibilityManager::new();
 
-        let button = AccessibleNode::new(Role::Button)
-            .label("Click me");
+        let button = AccessibleNode::new(Role::Button).label("Click me");
         let button_id = button.id.clone();
 
         manager.add_node(button);
@@ -943,8 +948,7 @@ mod tests {
 
     #[test]
     fn test_node_not_focusable_when_disabled() {
-        let node = AccessibleNode::new(Role::Button)
-            .state(AccessibleState::new().disabled(true));
+        let node = AccessibleNode::new(Role::Button).state(AccessibleState::new().disabled(true));
 
         assert!(!node.is_focusable());
     }

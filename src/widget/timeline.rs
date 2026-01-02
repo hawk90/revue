@@ -2,10 +2,10 @@
 //!
 //! Displays chronological events with timestamps and icons.
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Timeline event type
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -304,7 +304,6 @@ impl Timeline {
     pub fn is_empty(&self) -> bool {
         self.events.is_empty()
     }
-
 }
 
 impl Default for Timeline {
@@ -522,8 +521,8 @@ pub fn timeline_event(title: impl Into<String>) -> TimelineEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_timeline_event() {

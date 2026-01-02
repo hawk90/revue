@@ -486,7 +486,7 @@ impl fmt::Debug for DragContext {
 // Global drag context (optional singleton)
 // ─────────────────────────────────────────────────────────────────────────────
 
-use std::sync::{Arc, RwLock, OnceLock};
+use std::sync::{Arc, OnceLock, RwLock};
 
 static GLOBAL_DRAG_CTX: OnceLock<Arc<RwLock<DragContext>>> = OnceLock::new();
 
@@ -609,8 +609,7 @@ mod tests {
 
     #[test]
     fn test_drop_target() {
-        let target = DropTarget::new(1, Rect::new(10, 10, 20, 10))
-            .accepts(&["text", "file"]);
+        let target = DropTarget::new(1, Rect::new(10, 10, 20, 10)).accepts(&["text", "file"]);
 
         assert!(target.contains(15, 15));
         assert!(!target.contains(5, 5));
@@ -638,10 +637,7 @@ mod tests {
         let mut ctx = DragContext::new().threshold(0);
 
         // Register a target
-        ctx.register_target(
-            DropTarget::new(1, Rect::new(50, 50, 20, 10))
-                .accepts(&["text"])
-        );
+        ctx.register_target(DropTarget::new(1, Rect::new(50, 50, 20, 10)).accepts(&["text"]));
 
         // Start drag
         ctx.start_drag(DragData::text("Test"), 10, 10);
@@ -662,10 +658,7 @@ mod tests {
     fn test_drag_context_end_drag() {
         let mut ctx = DragContext::new().threshold(0);
 
-        ctx.register_target(
-            DropTarget::new(1, Rect::new(50, 50, 20, 10))
-                .accepts_all()
-        );
+        ctx.register_target(DropTarget::new(1, Rect::new(50, 50, 20, 10)).accepts_all());
 
         ctx.start_drag(DragData::text("Hello"), 10, 10);
         ctx.update_position(55, 55); // Over target

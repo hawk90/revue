@@ -192,7 +192,8 @@ impl VisualTest {
 
         if self.config.update_mode {
             // Update mode: save new golden file
-            actual.save(&golden_path)
+            actual
+                .save(&golden_path)
                 .unwrap_or_else(|e| panic!("Failed to save golden file: {}", e));
             println!("Updated golden file: {}", self.name);
             return VisualTestResult::Updated;
@@ -203,7 +204,8 @@ impl VisualTest {
                 panic!("Golden file not found: {:?}", golden_path);
             } else {
                 // Create new golden file
-                actual.save(&golden_path)
+                actual
+                    .save(&golden_path)
                     .unwrap_or_else(|e| panic!("Failed to create golden file: {}", e));
                 println!("Created golden file: {}", self.name);
                 return VisualTestResult::Created;
@@ -321,7 +323,13 @@ impl CapturedCell {
     }
 
     /// Compare with tolerance for colors
-    pub fn matches(&self, other: &Self, tolerance: u8, include_styles: bool, include_colors: bool) -> bool {
+    pub fn matches(
+        &self,
+        other: &Self,
+        tolerance: u8,
+        include_styles: bool,
+        include_colors: bool,
+    ) -> bool {
         // Symbol must match
         if self.symbol != other.symbol {
             return false;
@@ -390,11 +398,21 @@ impl VisualCapture {
                 let cell = if let Some(buf_cell) = buffer.get(x, y) {
                     CapturedCell {
                         symbol: buf_cell.symbol,
-                        fg: if config.include_colors { buf_cell.fg } else { None },
-                        bg: if config.include_colors { buf_cell.bg } else { None },
+                        fg: if config.include_colors {
+                            buf_cell.fg
+                        } else {
+                            None
+                        },
+                        bg: if config.include_colors {
+                            buf_cell.bg
+                        } else {
+                            None
+                        },
                         bold: config.include_styles && buf_cell.modifier.contains(Modifier::BOLD),
-                        italic: config.include_styles && buf_cell.modifier.contains(Modifier::ITALIC),
-                        underline: config.include_styles && buf_cell.modifier.contains(Modifier::UNDERLINE),
+                        italic: config.include_styles
+                            && buf_cell.modifier.contains(Modifier::ITALIC),
+                        underline: config.include_styles
+                            && buf_cell.modifier.contains(Modifier::UNDERLINE),
                         dim: config.include_styles && buf_cell.modifier.contains(Modifier::DIM),
                     }
                 } else {
@@ -430,10 +448,7 @@ impl VisualCapture {
         // Check size mismatch
         if self.width != other.width || self.height != other.height {
             return VisualDiff {
-                size_mismatch: Some((
-                    (self.width, self.height),
-                    (other.width, other.height),
-                )),
+                size_mismatch: Some(((self.width, self.height), (other.width, other.height))),
                 differences,
                 actual_width: self.width,
                 actual_height: self.height,
@@ -448,7 +463,12 @@ impl VisualCapture {
                 let actual = self.get(x, y).unwrap();
                 let expected = other.get(x, y).unwrap();
 
-                if !actual.matches(expected, tolerance, self.include_styles, self.include_colors) {
+                if !actual.matches(
+                    expected,
+                    tolerance,
+                    self.include_styles,
+                    self.include_colors,
+                ) {
                     differences.push(CellDiff {
                         x,
                         y,
@@ -512,11 +532,17 @@ impl VisualCapture {
                     if let Some(cell) = self.get(x, y) {
                         if let Some(fg) = &cell.fg {
                             let (r, g, b) = color_to_rgb(fg);
-                            output.push_str(&format!("{}:{},{}:#{:02x}{:02x}{:02x} ", x, y, "fg", r, g, b));
+                            output.push_str(&format!(
+                                "{}:{},{}:#{:02x}{:02x}{:02x} ",
+                                x, y, "fg", r, g, b
+                            ));
                         }
                         if let Some(bg) = &cell.bg {
                             let (r, g, b) = color_to_rgb(bg);
-                            output.push_str(&format!("{}:{},{}:#{:02x}{:02x}{:02x} ", x, y, "bg", r, g, b));
+                            output.push_str(&format!(
+                                "{}:{},{}:#{:02x}{:02x}{:02x} ",
+                                x, y, "bg", r, g, b
+                            ));
                         }
                     }
                 }
@@ -531,10 +557,18 @@ impl VisualCapture {
                 for x in 0..self.width {
                     if let Some(cell) = self.get(x, y) {
                         let mut styles = Vec::new();
-                        if cell.bold { styles.push("B"); }
-                        if cell.italic { styles.push("I"); }
-                        if cell.underline { styles.push("U"); }
-                        if cell.dim { styles.push("D"); }
+                        if cell.bold {
+                            styles.push("B");
+                        }
+                        if cell.italic {
+                            styles.push("I");
+                        }
+                        if cell.underline {
+                            styles.push("U");
+                        }
+                        if cell.dim {
+                            styles.push("D");
+                        }
                         if !styles.is_empty() {
                             output.push_str(&format!("{}:{}:{} ", x, y, styles.join("")));
                         }
@@ -635,12 +669,15 @@ impl VisualCapture {
                         let x: u16 = parts[0].parse().unwrap_or(0);
                         let y: u16 = parts[1].parse().unwrap_or(0);
                         let flags = parts[2];
-                        style_data.insert((x, y), (
-                            flags.contains('B'),
-                            flags.contains('I'),
-                            flags.contains('U'),
-                            flags.contains('D'),
-                        ));
+                        style_data.insert(
+                            (x, y),
+                            (
+                                flags.contains('B'),
+                                flags.contains('I'),
+                                flags.contains('U'),
+                                flags.contains('D'),
+                            ),
+                        );
                     }
                 }
             }
@@ -651,7 +688,11 @@ impl VisualCapture {
             height = text_lines.len() as u16;
         }
         if width == 0 && !text_lines.is_empty() {
-            width = text_lines.iter().map(|l| l.chars().count()).max().unwrap_or(0) as u16;
+            width = text_lines
+                .iter()
+                .map(|l| l.chars().count())
+                .max()
+                .unwrap_or(0) as u16;
         }
 
         for y in 0..height {
@@ -660,9 +701,11 @@ impl VisualCapture {
 
             for x in 0..width {
                 let symbol = chars.get(x as usize).copied().unwrap_or(' ');
-                let fg = color_data.get(&(x, y, "fg".to_string()))
+                let fg = color_data
+                    .get(&(x, y, "fg".to_string()))
                     .map(|(r, g, b)| Color::rgb(*r, *g, *b));
-                let bg = color_data.get(&(x, y, "bg".to_string()))
+                let bg = color_data
+                    .get(&(x, y, "bg".to_string()))
                     .map(|(r, g, b)| Color::rgb(*r, *g, *b));
                 let (bold, italic, underline, dim) = style_data
                     .get(&(x, y))
@@ -917,7 +960,10 @@ mod tests {
 
         assert_eq!(capture.width, deserialized.width);
         assert_eq!(capture.height, deserialized.height);
-        assert_eq!(capture.get(0, 0).unwrap().symbol, deserialized.get(0, 0).unwrap().symbol);
+        assert_eq!(
+            capture.get(0, 0).unwrap().symbol,
+            deserialized.get(0, 0).unwrap().symbol
+        );
     }
 
     #[test]

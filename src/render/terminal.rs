@@ -1,23 +1,23 @@
 //! Terminal backend using crossterm
 
-use std::io::{self, Write};
 use crossterm::{
     cursor::{Hide, MoveTo, Show},
-    event::{EnableMouseCapture, DisableMouseCapture},
+    event::{DisableMouseCapture, EnableMouseCapture},
     execute, queue,
     style::{
-        Attribute, Color as CrosstermColor, Print, SetAttribute, SetBackgroundColor,
-        SetForegroundColor, ResetColor,
+        Attribute, Color as CrosstermColor, Print, ResetColor, SetAttribute, SetBackgroundColor,
+        SetForegroundColor,
     },
     terminal::{
-        self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen,
-        disable_raw_mode, enable_raw_mode,
+        self, disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
+        LeaveAlternateScreen,
     },
 };
+use std::io::{self, Write};
 
-use super::{Buffer, Cell};
-use super::diff::diff;
 use super::cell::Modifier;
+use super::diff::diff;
+use super::{Buffer, Cell};
 use crate::style::Color;
 use crate::Result;
 
@@ -99,12 +99,7 @@ impl<W: Write> Terminal<W> {
                     LeaveAlternateScreen
                 )?;
             } else {
-                execute!(
-                    self.writer,
-                    ResetColor,
-                    Show,
-                    LeaveAlternateScreen
-                )?;
+                execute!(self.writer, ResetColor, Show, LeaveAlternateScreen)?;
             }
             disable_raw_mode()?;
             self.raw_mode = false;
@@ -130,16 +125,28 @@ impl<W: Write> Terminal<W> {
     }
 
     /// Draws a given set of changes to the terminal and updates the internal current buffer.
-    pub fn draw_changes(&mut self, changes: Vec<super::diff::Change>, buffer: &Buffer) -> Result<()> {
+    pub fn draw_changes(
+        &mut self,
+        changes: Vec<super::diff::Change>,
+        buffer: &Buffer,
+    ) -> Result<()> {
         let mut state = RenderState::default();
 
         for change in changes {
             // Only draw if not a continuation cell (continuation cells are handled by the wide char)
             if !change.cell.is_continuation() {
                 // Look up hyperlink URL if cell has one
-                let hyperlink_url = change.cell.hyperlink_id
+                let hyperlink_url = change
+                    .cell
+                    .hyperlink_id
                     .and_then(|id| buffer.get_hyperlink(id));
-                self.draw_cell_stateful(change.x, change.y, &change.cell, hyperlink_url, &mut state)?;
+                self.draw_cell_stateful(
+                    change.x,
+                    change.y,
+                    &change.cell,
+                    hyperlink_url,
+                    &mut state,
+                )?;
             }
             // Update current buffer with changed cell (Cell is Copy, no allocation)
             self.current.set(change.x, change.y, change.cell);
@@ -167,8 +174,7 @@ impl<W: Write> Terminal<W> {
 
         for (x, y, cell) in buffer.iter_cells() {
             if !cell.is_continuation() {
-                let hyperlink_url = cell.hyperlink_id
-                    .and_then(|id| buffer.get_hyperlink(id));
+                let hyperlink_url = cell.hyperlink_id.and_then(|id| buffer.get_hyperlink(id));
                 self.draw_cell_stateful(x, y, cell, hyperlink_url, &mut state)?;
             }
             // Update current buffer (Cell is Copy, no allocation)

@@ -428,10 +428,7 @@ impl Router {
         let path = path.into();
         let (path, query) = parse_path_and_query(&path);
 
-        let params = self
-            .match_route(&path)
-            .map(|(_, p)| p)
-            .unwrap_or_default();
+        let params = self.match_route(&path).map(|(_, p)| p).unwrap_or_default();
 
         self.history.clear();
         self.history.push(
@@ -689,9 +686,7 @@ mod tests {
 
     #[test]
     fn test_can_go_back_forward() {
-        let mut router = Router::new()
-            .route("/", "home")
-            .route("/next", "next");
+        let mut router = Router::new().route("/", "home").route("/next", "next");
 
         assert!(!router.can_go_back());
         assert!(!router.can_go_forward());
@@ -726,10 +721,7 @@ mod tests {
 
     #[test]
     fn test_route_builder() {
-        let routes = routes()
-            .route("/", "home")
-            .route("/about", "about")
-            .build();
+        let routes = routes().route("/", "home").route("/about", "about").build();
 
         assert_eq!(routes.len(), 2);
         assert_eq!(routes[0].name, "home");

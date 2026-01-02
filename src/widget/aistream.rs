@@ -3,10 +3,10 @@
 //! Displays streaming text with typing effects, markdown rendering,
 //! and code block syntax highlighting.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 use std::time::{Duration, Instant};
 
 /// Typing effect style
@@ -258,7 +258,8 @@ impl AiStream {
         }
 
         let now = Instant::now();
-        let elapsed = self.last_update
+        let elapsed = self
+            .last_update
             .map(|t| now.duration_since(t))
             .unwrap_or(Duration::ZERO);
 
@@ -464,8 +465,8 @@ pub fn ai_response(content: impl Into<String>) -> AiStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_ai_stream_creation() {

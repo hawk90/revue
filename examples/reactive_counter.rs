@@ -102,61 +102,59 @@ impl View for ReactiveCounter {
         let view = vstack()
             .gap(1)
             .child(
-                Border::panel()
-                    .title("🔄 Reactive Counter")
-                    .child(
-                        vstack()
-                            .gap(1)
-                            .child(
-                                Text::new(format!("Count: {}", count))
-                                    .fg(color)
-                                    .bold()
-                                    .align(Alignment::Center)
-                            )
-                            .child(
-                                Text::new(format!("Doubled: {}", doubled))
-                                    .fg(Color::CYAN)
-                                    .align(Alignment::Center)
-                            )
-                            .child(
-                                Text::new(format!("Status: {}", status))
-                                    .fg(Color::YELLOW)
-                                    .align(Alignment::Center)
-                            )
-                    )
+                Border::panel().title("🔄 Reactive Counter").child(
+                    vstack()
+                        .gap(1)
+                        .child(
+                            Text::new(format!("Count: {}", count))
+                                .fg(color)
+                                .bold()
+                                .align(Alignment::Center),
+                        )
+                        .child(
+                            Text::new(format!("Doubled: {}", doubled))
+                                .fg(Color::CYAN)
+                                .align(Alignment::Center),
+                        )
+                        .child(
+                            Text::new(format!("Status: {}", status))
+                                .fg(Color::YELLOW)
+                                .align(Alignment::Center),
+                        ),
+                ),
             )
-            .child(Border::single().title("Controls").child(
-                vstack()
-                    .child(
-                        hstack()
-                            .gap(2)
-                            .child(Text::muted("[+/-/↑/↓]"))
-                            .child(Text::new("Increment/Decrement"))
-                    )
-                    .child(
-                        hstack()
-                            .gap(2)
-                            .child(Text::muted("[r]"))
-                            .child(Text::new("Reset"))
-                    )
-                    .child(
-                        hstack()
-                            .gap(2)
-                            .child(Text::muted("[q]"))
-                            .child(Text::new("Quit"))
-                    )
-            ))
             .child(
-                Border::rounded()
-                    .title("ℹ️  How It Works")
-                    .child(
-                        vstack()
-                            .child(Text::success("✓ count is a Signal<i32>"))
-                            .child(Text::success("✓ doubled is a Computed value"))
-                            .child(Text::success("✓ status is computed based on count"))
-                            .child(Text::info("→ Computed values auto-update!"))
-                            .child(Text::info("→ No manual recalculation needed!"))
-                    )
+                Border::single().title("Controls").child(
+                    vstack()
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[+/-/↑/↓]"))
+                                .child(Text::new("Increment/Decrement")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[r]"))
+                                .child(Text::new("Reset")),
+                        )
+                        .child(
+                            hstack()
+                                .gap(2)
+                                .child(Text::muted("[q]"))
+                                .child(Text::new("Quit")),
+                        ),
+                ),
+            )
+            .child(
+                Border::rounded().title("ℹ️  How It Works").child(
+                    vstack()
+                        .child(Text::success("✓ count is a Signal<i32>"))
+                        .child(Text::success("✓ doubled is a Computed value"))
+                        .child(Text::success("✓ status is computed based on count"))
+                        .child(Text::info("→ Computed values auto-update!"))
+                        .child(Text::info("→ No manual recalculation needed!")),
+                ),
             );
 
         view.render(ctx);
@@ -174,10 +172,8 @@ fn main() -> Result<()> {
     let mut app = App::builder().build();
     let counter = ReactiveCounter::new();
 
-    app.run(counter, |event, counter, _app| {
-        match event {
-            Event::Key(key_event) => counter.handle_key(&key_event.key),
-            _ => false,
-        }
+    app.run(counter, |event, counter, _app| match event {
+        Event::Key(key_event) => counter.handle_key(&key_event.key),
+        _ => false,
     })
 }

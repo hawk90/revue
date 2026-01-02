@@ -22,10 +22,10 @@
 //!     .baseline(0.5);
 //! ```
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Display style for the waveline
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -220,12 +220,8 @@ impl Waveline {
         let t = idx - idx_floor as f64;
 
         match self.interpolation {
-            Interpolation::Linear => {
-                data[idx_floor] * (1.0 - t) + data[idx_ceil] * t
-            }
-            Interpolation::Step => {
-                data[idx_floor]
-            }
+            Interpolation::Linear => data[idx_floor] * (1.0 - t) + data[idx_ceil] * t,
+            Interpolation::Step => data[idx_floor],
             Interpolation::Bezier | Interpolation::CatmullRom => {
                 let p0_idx = idx_floor.saturating_sub(1);
                 let p3_idx = (idx_ceil + 1).min(data.len() - 1);
@@ -272,7 +268,8 @@ impl View for Waveline {
 
         // Label
         if let Some(ref label) = self.label {
-            ctx.buffer.put_str_styled(area.x, chart_y, label, Some(Color::WHITE), self.bg_color);
+            ctx.buffer
+                .put_str_styled(area.x, chart_y, label, Some(Color::WHITE), self.bg_color);
             chart_y += 1;
             chart_height = chart_height.saturating_sub(1);
         }
@@ -308,7 +305,8 @@ impl View for Waveline {
         match self.style {
             WaveStyle::Line | WaveStyle::Smooth => {
                 for x in 0..width {
-                    let val = (self.get_interpolated_value(data, x, width) * self.amplitude).clamp(-1.0, 1.0);
+                    let val = (self.get_interpolated_value(data, x, width) * self.amplitude)
+                        .clamp(-1.0, 1.0);
                     let y_ratio = self.baseline + val * (1.0 - self.baseline);
                     let y = chart_y + ((1.0 - y_ratio) * (chart_height - 1) as f64) as u16;
 
@@ -324,7 +322,8 @@ impl View for Waveline {
                 let baseline_row = ((1.0 - self.baseline) * (chart_height - 1) as f64) as u16;
 
                 for x in 0..width {
-                    let val = (self.get_interpolated_value(data, x, width) * self.amplitude).clamp(-1.0, 1.0);
+                    let val = (self.get_interpolated_value(data, x, width) * self.amplitude)
+                        .clamp(-1.0, 1.0);
                     let y_ratio = self.baseline + val * (1.0 - self.baseline);
                     let y = ((1.0 - y_ratio) * (chart_height - 1) as f64) as u16;
 
@@ -352,7 +351,8 @@ impl View for Waveline {
                 let center_y = chart_height / 2;
 
                 for x in 0..width {
-                    let val = (self.get_interpolated_value(data, x, width).abs() * self.amplitude).clamp(0.0, 1.0);
+                    let val = (self.get_interpolated_value(data, x, width).abs() * self.amplitude)
+                        .clamp(0.0, 1.0);
                     let half_height = (val * center_y as f64) as u16;
 
                     let screen_x = area.x + x as u16;
@@ -387,7 +387,8 @@ impl View for Waveline {
                 let bar_chars = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 
                 for x in 0..width {
-                    let val = (self.get_interpolated_value(data, x, width) * self.amplitude).clamp(-1.0, 1.0);
+                    let val = (self.get_interpolated_value(data, x, width) * self.amplitude)
+                        .clamp(-1.0, 1.0);
                     let y_ratio = self.baseline + val * (1.0 - self.baseline);
                     let target_y = ((1.0 - y_ratio) * (chart_height - 1) as f64) as u16;
 
@@ -428,7 +429,8 @@ impl View for Waveline {
             }
             WaveStyle::Dots => {
                 for x in 0..width {
-                    let val = (self.get_interpolated_value(data, x, width) * self.amplitude).clamp(-1.0, 1.0);
+                    let val = (self.get_interpolated_value(data, x, width) * self.amplitude)
+                        .clamp(-1.0, 1.0);
                     let y_ratio = self.baseline + val * (1.0 - self.baseline);
                     let y = chart_y + ((1.0 - y_ratio) * (chart_height - 1) as f64) as u16;
 
@@ -504,7 +506,11 @@ pub fn square_wave(samples: usize, frequency: f64, amplitude: f64) -> Vec<f64> {
     (0..samples)
         .map(|i| {
             let t = i as f64 / samples as f64 * frequency;
-            if t.fract() < 0.5 { amplitude } else { -amplitude }
+            if t.fract() < 0.5 {
+                amplitude
+            } else {
+                -amplitude
+            }
         })
         .collect()
 }
@@ -553,8 +559,7 @@ mod tests {
 
     #[test]
     fn test_interpolation() {
-        let wave = waveline(vec![0.0, 1.0, 0.0])
-            .interpolation(Interpolation::CatmullRom);
+        let wave = waveline(vec![0.0, 1.0, 0.0]).interpolation(Interpolation::CatmullRom);
 
         assert_eq!(wave.interpolation, Interpolation::CatmullRom);
     }

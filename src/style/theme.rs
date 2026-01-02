@@ -335,12 +335,12 @@ impl Themes {
             name: "Nord".to_string(),
             variant: ThemeVariant::Dark,
             palette: Palette {
-                primary: Color::rgb(136, 192, 208),  // Frost
+                primary: Color::rgb(136, 192, 208),   // Frost
                 secondary: Color::rgb(180, 142, 173), // Aurora purple
-                success: Color::rgb(163, 190, 140),  // Aurora green
-                warning: Color::rgb(235, 203, 139),  // Aurora yellow
-                error: Color::rgb(191, 97, 106),     // Aurora red
-                info: Color::rgb(129, 161, 193),     // Frost blue
+                success: Color::rgb(163, 190, 140),   // Aurora green
+                warning: Color::rgb(235, 203, 139),   // Aurora yellow
+                error: Color::rgb(191, 97, 106),      // Aurora red
+                info: Color::rgb(129, 161, 193),      // Frost blue
             },
             colors: ThemeColors {
                 background: Color::rgb(46, 52, 64),
@@ -362,12 +362,12 @@ impl Themes {
             name: "Monokai".to_string(),
             variant: ThemeVariant::Dark,
             palette: Palette {
-                primary: Color::rgb(102, 217, 239),  // Cyan
+                primary: Color::rgb(102, 217, 239),   // Cyan
                 secondary: Color::rgb(174, 129, 255), // Purple
-                success: Color::rgb(166, 226, 46),   // Green
-                warning: Color::rgb(253, 151, 31),   // Orange
-                error: Color::rgb(249, 38, 114),     // Red/Pink
-                info: Color::rgb(102, 217, 239),     // Cyan
+                success: Color::rgb(166, 226, 46),    // Green
+                warning: Color::rgb(253, 151, 31),    // Orange
+                error: Color::rgb(249, 38, 114),      // Red/Pink
+                info: Color::rgb(102, 217, 239),      // Cyan
             },
             colors: ThemeColors {
                 background: Color::rgb(39, 40, 34),
@@ -389,12 +389,12 @@ impl Themes {
             name: "Solarized Dark".to_string(),
             variant: ThemeVariant::Dark,
             palette: Palette {
-                primary: Color::rgb(38, 139, 210),   // Blue
+                primary: Color::rgb(38, 139, 210),    // Blue
                 secondary: Color::rgb(108, 113, 196), // Violet
-                success: Color::rgb(133, 153, 0),    // Green
-                warning: Color::rgb(181, 137, 0),    // Yellow
-                error: Color::rgb(220, 50, 47),      // Red
-                info: Color::rgb(42, 161, 152),      // Cyan
+                success: Color::rgb(133, 153, 0),     // Green
+                warning: Color::rgb(181, 137, 0),     // Yellow
+                error: Color::rgb(220, 50, 47),       // Red
+                info: Color::rgb(42, 161, 152),       // Cyan
             },
             colors: ThemeColors {
                 background: Color::rgb(0, 43, 54),
@@ -416,12 +416,12 @@ impl Themes {
             name: "Solarized Light".to_string(),
             variant: ThemeVariant::Light,
             palette: Palette {
-                primary: Color::rgb(38, 139, 210),   // Blue
+                primary: Color::rgb(38, 139, 210),    // Blue
                 secondary: Color::rgb(108, 113, 196), // Violet
-                success: Color::rgb(133, 153, 0),    // Green
-                warning: Color::rgb(181, 137, 0),    // Yellow
-                error: Color::rgb(220, 50, 47),      // Red
-                info: Color::rgb(42, 161, 152),      // Cyan
+                success: Color::rgb(133, 153, 0),     // Green
+                warning: Color::rgb(181, 137, 0),     // Yellow
+                error: Color::rgb(220, 50, 47),       // Red
+                info: Color::rgb(42, 161, 152),       // Cyan
             },
             colors: ThemeColors {
                 background: Color::rgb(253, 246, 227),
@@ -570,7 +570,10 @@ impl ThemeManager {
             return;
         }
 
-        let current_idx = ids.iter().position(|id| id == &self.current_id).unwrap_or(0);
+        let current_idx = ids
+            .iter()
+            .position(|id| id == &self.current_id)
+            .unwrap_or(0);
         let next_idx = (current_idx + 1) % ids.len();
         self.set_theme(ids[next_idx].clone());
     }
@@ -862,9 +865,7 @@ mod tests {
     #[test]
     fn test_theme_manager_register() {
         let mut manager = ThemeManager::new();
-        let custom = Theme::custom("Custom")
-            .primary(Color::MAGENTA)
-            .build();
+        let custom = Theme::custom("Custom").primary(Color::MAGENTA).build();
 
         manager.register("custom", custom);
         assert!(manager.has_theme("custom"));

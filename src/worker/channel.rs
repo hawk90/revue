@@ -1,7 +1,7 @@
 //! Worker channel for communication between workers and UI
 
-use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
 
 /// Message types for worker communication
 #[derive(Debug, Clone)]
@@ -99,7 +99,10 @@ impl<T: Clone> WorkerChannel<T> {
 
     /// Check if there are pending commands for worker
     pub fn has_commands(&self) -> bool {
-        self.to_worker.lock().map(|q| !q.is_empty()).unwrap_or(false)
+        self.to_worker
+            .lock()
+            .map(|q| !q.is_empty())
+            .unwrap_or(false)
     }
 
     /// Get number of pending messages
@@ -188,9 +191,11 @@ impl<T: Clone> WorkerSender<T> {
 
     /// Check if cancelled
     pub fn is_cancelled(&self) -> bool {
-        self.to_worker.lock().ok().map(|q| {
-            q.iter().any(|cmd| matches!(cmd, WorkerCommand::Cancel))
-        }).unwrap_or(false)
+        self.to_worker
+            .lock()
+            .ok()
+            .map(|q| q.iter().any(|cmd| matches!(cmd, WorkerCommand::Cancel)))
+            .unwrap_or(false)
     }
 }
 
@@ -281,7 +286,9 @@ mod tests {
         channel.send(WorkerMessage::Status("working".to_string()));
         channel.send(WorkerMessage::Complete(42));
 
-        assert!(matches!(channel.recv(), Some(WorkerMessage::Progress(p)) if (p - 0.5).abs() < 0.01));
+        assert!(
+            matches!(channel.recv(), Some(WorkerMessage::Progress(p)) if (p - 0.5).abs() < 0.01)
+        );
         assert!(matches!(channel.recv(), Some(WorkerMessage::Status(_))));
         assert!(matches!(channel.recv(), Some(WorkerMessage::Complete(42))));
         assert!(channel.recv().is_none());

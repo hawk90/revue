@@ -2,9 +2,9 @@
 //!
 //! Allows placing widgets at specific coordinates within their parent area.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::layout::Rect;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Position anchor point
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -242,8 +242,8 @@ pub fn positioned<V: View + 'static>(child: V) -> Positioned {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::widget::Text;
     use crate::render::Buffer;
+    use crate::widget::Text;
 
     #[test]
     fn test_positioned_new() {
@@ -255,9 +255,7 @@ mod tests {
 
     #[test]
     fn test_positioned_absolute() {
-        let p = Positioned::new(Text::new("Test"))
-            .x(10)
-            .y(5);
+        let p = Positioned::new(Text::new("Test")).x(10).y(5);
 
         assert_eq!(p.x, Some(10));
         assert_eq!(p.y, Some(5));
@@ -265,8 +263,7 @@ mod tests {
 
     #[test]
     fn test_positioned_at() {
-        let p = Positioned::new(Text::new("Test"))
-            .at(15, 20);
+        let p = Positioned::new(Text::new("Test")).at(15, 20);
 
         assert_eq!(p.x, Some(15));
         assert_eq!(p.y, Some(20));
@@ -286,9 +283,7 @@ mod tests {
 
     #[test]
     fn test_positioned_size() {
-        let p = Positioned::new(Text::new("Test"))
-            .width(20)
-            .height(10);
+        let p = Positioned::new(Text::new("Test")).width(20).height(10);
 
         assert_eq!(p.width, Some(20));
         assert_eq!(p.height, Some(10));
@@ -296,17 +291,14 @@ mod tests {
 
     #[test]
     fn test_positioned_anchor() {
-        let p = Positioned::new(Text::new("Test"))
-            .anchor(Anchor::Center);
+        let p = Positioned::new(Text::new("Test")).anchor(Anchor::Center);
 
         assert_eq!(p.anchor, Anchor::Center);
     }
 
     #[test]
     fn test_positioned_render() {
-        let p = Positioned::new(Text::new("Hello"))
-            .at(5, 2)
-            .size(10, 1);
+        let p = Positioned::new(Text::new("Hello")).at(5, 2).size(10, 1);
 
         let mut buffer = Buffer::new(30, 10);
         let area = Rect::new(0, 0, 30, 10);

@@ -1,17 +1,17 @@
 //! Event handling and keyboard input
 
-mod handler;
 pub mod drag;
 mod focus;
+mod handler;
 mod keymap;
 mod reader;
 
-pub use handler::{EventHandler, EventContext, EventPhase, HandlerId};
 pub use drag::{
-    DragContext, DragData, DragState, DropResult, DropTarget, DragId,
-    drag_context, start_drag, update_drag_position, end_drag, cancel_drag, is_dragging,
+    cancel_drag, drag_context, end_drag, is_dragging, start_drag, update_drag_position,
+    DragContext, DragData, DragId, DragState, DropResult, DropTarget,
 };
-pub use focus::{Direction, FocusManager, WidgetId, FocusTrap, FocusTrapConfig};
+pub use focus::{Direction, FocusManager, FocusTrap, FocusTrapConfig, WidgetId};
+pub use handler::{EventContext, EventHandler, EventPhase, HandlerId};
 pub use keymap::{Key, KeyBinding, KeyMap};
 pub use reader::EventReader;
 
@@ -85,7 +85,10 @@ impl MouseEvent {
 
     /// Check if this is a scroll event
     pub fn is_scroll(&self) -> bool {
-        matches!(self.kind, MouseEventKind::ScrollDown | MouseEventKind::ScrollUp)
+        matches!(
+            self.kind,
+            MouseEventKind::ScrollDown | MouseEventKind::ScrollUp
+        )
     }
 }
 

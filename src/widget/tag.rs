@@ -1,9 +1,9 @@
 //! Tag/Chip widget for labels and categories
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Tag style variant
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -172,7 +172,6 @@ impl Tag {
             }
         }
     }
-
 }
 
 impl Default for Tag {
@@ -272,8 +271,8 @@ pub fn chip(text: impl Into<String>) -> Tag {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_tag_new() {

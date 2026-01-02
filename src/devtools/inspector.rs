@@ -1,9 +1,9 @@
 //! Widget tree inspector
 
+use super::DevToolsConfig;
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use super::DevToolsConfig;
 use std::collections::HashMap;
 
 /// Widget node in the tree
@@ -249,7 +249,8 @@ impl Inspector {
             return;
         }
 
-        let current_idx = self.selected
+        let current_idx = self
+            .selected
             .and_then(|id| visible.iter().position(|&i| i == id))
             .unwrap_or(0);
 
@@ -264,7 +265,8 @@ impl Inspector {
             return;
         }
 
-        let current_idx = self.selected
+        let current_idx = self
+            .selected
             .and_then(|id| visible.iter().position(|&i| i == id))
             .unwrap_or(0);
 
@@ -381,7 +383,14 @@ impl Inspector {
         }
     }
 
-    fn render_separator(&self, buffer: &mut Buffer, x: u16, y: u16, width: u16, config: &DevToolsConfig) {
+    fn render_separator(
+        &self,
+        buffer: &mut Buffer,
+        x: u16,
+        y: u16,
+        width: u16,
+        config: &DevToolsConfig,
+    ) {
         for px in x..x + width {
             if let Some(cell) = buffer.get_mut(px, y) {
                 cell.symbol = '─';

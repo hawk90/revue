@@ -173,73 +173,135 @@ pub struct Style {
 impl Style {
     // Layout accessors
     /// Display mode (flex, block, grid, none) - non-inherited
-    pub fn display(&self) -> Display { self.layout.display }
+    pub fn display(&self) -> Display {
+        self.layout.display
+    }
     /// Position mode (static, relative, absolute, fixed) - non-inherited
-    pub fn position(&self) -> Position { self.layout.position }
+    pub fn position(&self) -> Position {
+        self.layout.position
+    }
     /// Flex direction (row, column) - non-inherited
-    pub fn flex_direction(&self) -> FlexDirection { self.layout.flex_direction }
+    pub fn flex_direction(&self) -> FlexDirection {
+        self.layout.flex_direction
+    }
     /// Main axis alignment - non-inherited
-    pub fn justify_content(&self) -> JustifyContent { self.layout.justify_content }
+    pub fn justify_content(&self) -> JustifyContent {
+        self.layout.justify_content
+    }
     /// Cross axis alignment - non-inherited
-    pub fn align_items(&self) -> AlignItems { self.layout.align_items }
+    pub fn align_items(&self) -> AlignItems {
+        self.layout.align_items
+    }
     /// Gap between flex/grid items - non-inherited
-    pub fn gap(&self) -> u16 { self.layout.gap }
+    pub fn gap(&self) -> u16 {
+        self.layout.gap
+    }
     /// Column gap for grid - non-inherited
-    pub fn column_gap(&self) -> Option<u16> { self.layout.column_gap }
+    pub fn column_gap(&self) -> Option<u16> {
+        self.layout.column_gap
+    }
     /// Row gap for grid - non-inherited
-    pub fn row_gap(&self) -> Option<u16> { self.layout.row_gap }
+    pub fn row_gap(&self) -> Option<u16> {
+        self.layout.row_gap
+    }
     /// Grid template columns - non-inherited
-    pub fn grid_template_columns(&self) -> &GridTemplate { &self.layout.grid_template_columns }
+    pub fn grid_template_columns(&self) -> &GridTemplate {
+        &self.layout.grid_template_columns
+    }
     /// Grid template rows - non-inherited
-    pub fn grid_template_rows(&self) -> &GridTemplate { &self.layout.grid_template_rows }
+    pub fn grid_template_rows(&self) -> &GridTemplate {
+        &self.layout.grid_template_rows
+    }
     /// Grid column placement - non-inherited
-    pub fn grid_column(&self) -> GridPlacement { self.layout.grid_column }
+    pub fn grid_column(&self) -> GridPlacement {
+        self.layout.grid_column
+    }
     /// Grid row placement - non-inherited
-    pub fn grid_row(&self) -> GridPlacement { self.layout.grid_row }
+    pub fn grid_row(&self) -> GridPlacement {
+        self.layout.grid_row
+    }
 
     // Spacing accessors
     /// Inner padding - non-inherited
-    pub fn padding(&self) -> Spacing { self.spacing.padding }
+    pub fn padding(&self) -> Spacing {
+        self.spacing.padding
+    }
     /// Outer margin - non-inherited
-    pub fn margin(&self) -> Spacing { self.spacing.margin }
+    pub fn margin(&self) -> Spacing {
+        self.spacing.margin
+    }
     /// Top offset - non-inherited
-    pub fn top(&self) -> Option<i16> { self.spacing.top }
+    pub fn top(&self) -> Option<i16> {
+        self.spacing.top
+    }
     /// Right offset - non-inherited
-    pub fn right(&self) -> Option<i16> { self.spacing.right }
+    pub fn right(&self) -> Option<i16> {
+        self.spacing.right
+    }
     /// Bottom offset - non-inherited
-    pub fn bottom(&self) -> Option<i16> { self.spacing.bottom }
+    pub fn bottom(&self) -> Option<i16> {
+        self.spacing.bottom
+    }
     /// Left offset - non-inherited
-    pub fn left(&self) -> Option<i16> { self.spacing.left }
+    pub fn left(&self) -> Option<i16> {
+        self.spacing.left
+    }
 
     // Sizing accessors
     /// Width constraint - non-inherited
-    pub fn width(&self) -> Size { self.sizing.width }
+    pub fn width(&self) -> Size {
+        self.sizing.width
+    }
     /// Height constraint - non-inherited
-    pub fn height(&self) -> Size { self.sizing.height }
+    pub fn height(&self) -> Size {
+        self.sizing.height
+    }
     /// Minimum width - non-inherited
-    pub fn min_width(&self) -> Size { self.sizing.min_width }
+    pub fn min_width(&self) -> Size {
+        self.sizing.min_width
+    }
     /// Maximum width - non-inherited
-    pub fn max_width(&self) -> Size { self.sizing.max_width }
+    pub fn max_width(&self) -> Size {
+        self.sizing.max_width
+    }
     /// Minimum height - non-inherited
-    pub fn min_height(&self) -> Size { self.sizing.min_height }
+    pub fn min_height(&self) -> Size {
+        self.sizing.min_height
+    }
     /// Maximum height - non-inherited
-    pub fn max_height(&self) -> Size { self.sizing.max_height }
+    pub fn max_height(&self) -> Size {
+        self.sizing.max_height
+    }
 
     // Visual accessors
     /// Border style - non-inherited
-    pub fn border_style(&self) -> BorderStyle { self.visual.border_style }
+    pub fn border_style(&self) -> BorderStyle {
+        self.visual.border_style
+    }
     /// Border color - non-inherited
-    pub fn border_color(&self) -> Color { self.visual.border_color }
+    pub fn border_color(&self) -> Color {
+        self.visual.border_color
+    }
     /// Text/foreground color - INHERITED
-    pub fn color(&self) -> Color { self.visual.color }
+    pub fn color(&self) -> Color {
+        self.visual.color
+    }
     /// Background color - non-inherited
-    pub fn background(&self) -> Color { self.visual.background }
+    pub fn background(&self) -> Color {
+        self.visual.background
+    }
     /// Opacity (0.0 to 1.0) - INHERITED
-    pub fn opacity(&self) -> f32 { self.visual.opacity }
+    pub fn opacity(&self) -> f32 {
+        self.visual.opacity
+    }
     /// Visibility flag - INHERITED
-    pub fn visible(&self) -> bool { self.visual.visible }
+    pub fn visible(&self) -> bool {
+        self.visual.visible
+    }
     /// Z-index for stacking order - non-inherited
-    pub fn z_index(&self) -> i16 { self.visual.z_index }
+    pub fn z_index(&self) -> i16 {
+        self.visual.z_index
+    }
 }
 
 impl Default for Style {
@@ -522,12 +584,18 @@ impl GridPlacement {
 
     /// Place at a specific line
     pub fn line(line: i16) -> Self {
-        Self { start: line, end: 0 }
+        Self {
+            start: line,
+            end: 0,
+        }
     }
 
     /// Span a number of tracks
     pub fn span(count: i16) -> Self {
-        Self { start: 0, end: -count }  // Negative end means span
+        Self {
+            start: 0,
+            end: -count,
+        } // Negative end means span
     }
 
     /// Place from start to end line
@@ -592,22 +660,42 @@ pub struct Spacing {
 impl Spacing {
     /// Create spacing with same value on all sides
     pub fn all(value: u16) -> Self {
-        Self { top: value, right: value, bottom: value, left: value }
+        Self {
+            top: value,
+            right: value,
+            bottom: value,
+            left: value,
+        }
     }
 
     /// Create spacing with vertical (top/bottom) values only
     pub fn vertical(value: u16) -> Self {
-        Self { top: value, right: 0, bottom: value, left: 0 }
+        Self {
+            top: value,
+            right: 0,
+            bottom: value,
+            left: 0,
+        }
     }
 
     /// Create spacing with horizontal (left/right) values only
     pub fn horizontal(value: u16) -> Self {
-        Self { top: 0, right: value, bottom: 0, left: value }
+        Self {
+            top: 0,
+            right: value,
+            bottom: 0,
+            left: value,
+        }
     }
 
     /// Create spacing with individual values
     pub fn new(top: u16, right: u16, bottom: u16, left: u16) -> Self {
-        Self { top, right, bottom, left }
+        Self {
+            top,
+            right,
+            bottom,
+            left,
+        }
     }
 }
 
@@ -658,7 +746,12 @@ pub struct Color {
 impl Default for Color {
     /// Default color is transparent black (unset state)
     fn default() -> Self {
-        Self { r: 0, g: 0, b: 0, a: 0 }
+        Self {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 0,
+        }
     }
 }
 
@@ -1098,7 +1191,7 @@ mod tests {
     fn test_color_lighten_pct() {
         let base = Color::rgb(100, 100, 100);
         let lighter = base.lighten_pct(0.2); // 20% lighter
-        // 100 + (255 - 100) * 0.2 = 100 + 31 = 131
+                                             // 100 + (255 - 100) * 0.2 = 100 + 31 = 131
         assert_eq!(lighter.r, 131);
         assert_eq!(lighter.g, 131);
         assert_eq!(lighter.b, 131);

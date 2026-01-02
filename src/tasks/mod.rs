@@ -56,12 +56,12 @@
 //! }
 //! ```
 
-mod timer;
-mod runner;
-mod pooled_runner;
 mod event_bus;
+mod pooled_runner;
+mod runner;
+mod timer;
 
-pub use timer::{Timer, TimerId, TimerEntry};
-pub use runner::{TaskRunner, TaskId, TaskResult};
-pub use pooled_runner::PooledTaskRunner;
 pub use event_bus::{EventBus, EventId, Subscription};
+pub use pooled_runner::PooledTaskRunner;
+pub use runner::{TaskId, TaskResult, TaskRunner};
+pub use timer::{Timer, TimerEntry, TimerId};

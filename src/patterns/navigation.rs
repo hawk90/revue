@@ -298,7 +298,10 @@ pub struct BreadcrumbItem {
 }
 
 /// Build breadcrumbs from navigation state
-pub fn build_breadcrumbs(nav: &NavigationState, labels: &HashMap<&str, &str>) -> Vec<BreadcrumbItem> {
+pub fn build_breadcrumbs(
+    nav: &NavigationState,
+    labels: &HashMap<&str, &str>,
+) -> Vec<BreadcrumbItem> {
     let path = nav.path();
     let parts: Vec<&str> = path.split('/').filter(|p| !p.is_empty()).collect();
 
@@ -412,9 +415,7 @@ mod tests {
 
     #[test]
     fn test_route_params() {
-        let route = Route::new("detail")
-            .param("id", "123")
-            .param("tab", "info");
+        let route = Route::new("detail").param("id", "123").param("tab", "info");
 
         assert_eq!(route.get_param("id"), Some("123"));
         assert_eq!(route.get_param("tab"), Some("info"));
@@ -468,10 +469,7 @@ mod tests {
         let mut nav = NavigationState::new("home");
         nav.push("projects/123/issues");
 
-        let labels: HashMap<&str, &str> = [
-            ("", "Home"),
-            ("projects", "Projects"),
-        ].into();
+        let labels: HashMap<&str, &str> = [("", "Home"), ("projects", "Projects")].into();
 
         let crumbs = build_breadcrumbs(&nav, &labels);
         assert_eq!(crumbs.len(), 4);

@@ -1,6 +1,6 @@
 //! List widget
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
 use std::fmt::Display;
@@ -77,7 +77,6 @@ impl<T> List<T> {
             self.selected = self.selected.checked_sub(1).unwrap_or(self.items.len() - 1);
         }
     }
-
 }
 
 impl<T: Display> View for List<T> {
@@ -176,9 +175,8 @@ pub fn list<T>(items: Vec<T>) -> List<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
-    
+    use crate::render::Buffer;
 
     #[test]
     fn test_list_new() {

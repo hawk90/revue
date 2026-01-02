@@ -3,9 +3,9 @@
 //! Provides a flexible grid system with rows, columns, gaps,
 //! and span support for complex layouts.
 
-use super::traits::{View, RenderContext, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::layout::Rect;
-use crate::{impl_styled_view, impl_props_builders};
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Maximum grid dimensions to prevent unbounded memory allocation
 const MAX_GRID_SIZE: usize = 1000;
@@ -222,7 +222,6 @@ impl Grid {
         }
     }
 
-
     /// Set column definitions
     pub fn columns(mut self, cols: Vec<TrackSize>) -> Self {
         self.columns = cols;
@@ -326,7 +325,13 @@ impl Grid {
     }
 
     /// Calculate track sizes
-    fn calculate_tracks(&self, available: u16, tracks: &[TrackSize], _auto_size: TrackSize, gap: u16) -> Vec<u16> {
+    fn calculate_tracks(
+        &self,
+        available: u16,
+        tracks: &[TrackSize],
+        _auto_size: TrackSize,
+        gap: u16,
+    ) -> Vec<u16> {
         if tracks.is_empty() {
             return vec![];
         }
@@ -422,7 +427,9 @@ impl Grid {
             }
 
             // Determine actual placement
-            let (col_start, col_end, row_start, row_end) = if placement.col_start > 0 && placement.row_start > 0 {
+            let (col_start, col_end, row_start, row_end) = if placement.col_start > 0
+                && placement.row_start > 0
+            {
                 // Explicit placement - clamp to max grid size
                 (
                     ((placement.col_start - 1) as usize).min(MAX_GRID_SIZE - 1),
@@ -456,7 +463,9 @@ impl Grid {
                     if self.auto_flow_row {
                         if auto_col + col_span <= col_count {
                             let fits = (auto_row..auto_row + row_span).all(|r| {
-                                r < grid.len() && (auto_col..auto_col + col_span).all(|c| c < grid[r].len() && !grid[r][c])
+                                r < grid.len()
+                                    && (auto_col..auto_col + col_span)
+                                        .all(|c| c < grid[r].len() && !grid[r][c])
                             });
                             if fits {
                                 break;
@@ -477,7 +486,8 @@ impl Grid {
                     } else {
                         if auto_row + row_span <= grid.len() {
                             let fits = (auto_col..auto_col + col_span).all(|c| {
-                                (auto_row..auto_row + row_span).all(|r| r < grid.len() && c < grid[r].len() && !grid[r][c])
+                                (auto_row..auto_row + row_span)
+                                    .all(|r| r < grid.len() && c < grid[r].len() && !grid[r][c])
                             });
                             if fits {
                                 break;
@@ -526,12 +536,15 @@ impl Grid {
                 }
             }
 
-            placements.push((idx, GridPlacement {
-                col_start: (col_start + 1) as u16,
-                col_end: (col_end + 1) as u16,
-                row_start: (row_start + 1) as u16,
-                row_end: (row_end + 1) as u16,
-            }));
+            placements.push((
+                idx,
+                GridPlacement {
+                    col_start: (col_start + 1) as u16,
+                    col_end: (col_end + 1) as u16,
+                    row_start: (row_start + 1) as u16,
+                    row_end: (row_end + 1) as u16,
+                },
+            ));
         }
 
         placements
@@ -556,7 +569,8 @@ impl View for Grid {
         // Determine grid dimensions
         let col_count = if self.columns.is_empty() {
             // Auto-detect from placements
-            self.items.iter()
+            self.items
+                .iter()
                 .map(|item| item.placement.col_end.max(item.placement.col_start + 1) as usize)
                 .max()
                 .unwrap_or(1)
@@ -565,7 +579,8 @@ impl View for Grid {
         };
 
         let row_count = if self.rows.is_empty() {
-            self.items.iter()
+            self.items
+                .iter()
                 .map(|item| item.placement.row_end.max(item.placement.row_start + 1) as usize)
                 .max()
                 .unwrap_or(1)
@@ -587,8 +602,10 @@ impl View for Grid {
         };
 
         // Calculate track sizes
-        let col_sizes = self.calculate_tracks(area.width, &col_tracks, self.auto_cols, self.col_gap);
-        let row_sizes = self.calculate_tracks(area.height, &row_tracks, self.auto_rows, self.row_gap);
+        let col_sizes =
+            self.calculate_tracks(area.width, &col_tracks, self.auto_cols, self.col_gap);
+        let row_sizes =
+            self.calculate_tracks(area.height, &row_tracks, self.auto_rows, self.row_gap);
 
         // Get track positions
         let col_positions = self.track_positions(&col_sizes, self.col_gap);
@@ -652,9 +669,7 @@ pub fn grid_item(widget: impl View + 'static) -> GridItem {
 
 /// Create a simple NxM grid
 pub fn grid_template(cols: usize, rows: usize) -> Grid {
-    Grid::new()
-        .cols(cols)
-        .rows_count(rows)
+    Grid::new().cols(cols).rows_count(rows)
 }
 
 #[cfg(test)]

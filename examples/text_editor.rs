@@ -157,7 +157,10 @@ impl Default for Config {
     }
 
     fn current_line(&self) -> &str {
-        self.lines.get(self.cursor_row).map(|s| s.as_str()).unwrap_or("")
+        self.lines
+            .get(self.cursor_row)
+            .map(|s| s.as_str())
+            .unwrap_or("")
     }
 
     fn current_line_len(&self) -> usize {
@@ -270,11 +273,13 @@ impl Default for Config {
                 let line = self.current_line();
                 let mut col = self.cursor_col;
                 // Skip current word
-                while col < line.len() && !line.chars().nth(col).map_or(true, |c| c.is_whitespace()) {
+                while col < line.len() && !line.chars().nth(col).map_or(true, |c| c.is_whitespace())
+                {
                     col += 1;
                 }
                 // Skip whitespace
-                while col < line.len() && line.chars().nth(col).map_or(false, |c| c.is_whitespace()) {
+                while col < line.len() && line.chars().nth(col).map_or(false, |c| c.is_whitespace())
+                {
                     col += 1;
                 }
                 if col >= line.len() && self.cursor_row < self.lines.len() - 1 {
@@ -298,7 +303,12 @@ impl Default for Config {
                         col -= 1;
                     }
                     // Skip word
-                    while col > 0 && !line.chars().nth(col - 1).map_or(true, |c| c.is_whitespace()) {
+                    while col > 0
+                        && !line
+                            .chars()
+                            .nth(col - 1)
+                            .map_or(true, |c| c.is_whitespace())
+                    {
                         col -= 1;
                     }
                     self.cursor_col = col;
@@ -369,7 +379,11 @@ impl Default for Config {
                 self.save_undo();
                 if !self.current_line().is_empty() && self.cursor_col < self.current_line_len() {
                     let line = &mut self.lines[self.cursor_row];
-                    self.clipboard = line.chars().nth(self.cursor_col).map(|c| c.to_string()).unwrap_or_default();
+                    self.clipboard = line
+                        .chars()
+                        .nth(self.cursor_col)
+                        .map(|c| c.to_string())
+                        .unwrap_or_default();
                     line.remove(self.cursor_col);
                     self.modified = true;
                     self.clamp_cursor();
@@ -400,7 +414,9 @@ impl Default for Config {
                 // Paste after
                 if !self.clipboard.is_empty() {
                     self.save_undo();
-                    if self.clipboard.contains('\n') || !self.lines[self.cursor_row].contains(&self.clipboard) {
+                    if self.clipboard.contains('\n')
+                        || !self.lines[self.cursor_row].contains(&self.clipboard)
+                    {
                         self.cursor_row += 1;
                         self.lines.insert(self.cursor_row, self.clipboard.clone());
                     } else {
@@ -439,7 +455,11 @@ impl Default for Config {
                     let (row, col) = self.search_matches[self.search_index];
                     self.cursor_row = row;
                     self.cursor_col = col;
-                    self.status_message = format!("Match {}/{}", self.search_index + 1, self.search_matches.len());
+                    self.status_message = format!(
+                        "Match {}/{}",
+                        self.search_index + 1,
+                        self.search_matches.len()
+                    );
                 }
                 true
             }
@@ -454,7 +474,11 @@ impl Default for Config {
                     let (row, col) = self.search_matches[self.search_index];
                     self.cursor_row = row;
                     self.cursor_col = col;
-                    self.status_message = format!("Match {}/{}", self.search_index + 1, self.search_matches.len());
+                    self.status_message = format!(
+                        "Match {}/{}",
+                        self.search_index + 1,
+                        self.search_matches.len()
+                    );
                 }
                 true
             }
@@ -606,14 +630,19 @@ impl Default for Config {
                     };
 
                     if sr == er {
-                        self.clipboard = self.lines[sr][sc..=ec.min(self.lines[sr].len().saturating_sub(1))].to_string();
+                        self.clipboard = self.lines[sr]
+                            [sc..=ec.min(self.lines[sr].len().saturating_sub(1))]
+                            .to_string();
                     } else {
                         let mut selected = String::new();
                         for row in sr..=er {
                             if row == sr {
                                 selected.push_str(&self.lines[row][sc..]);
                             } else if row == er {
-                                selected.push_str(&self.lines[row][..=ec.min(self.lines[row].len().saturating_sub(1))]);
+                                selected.push_str(
+                                    &self.lines[row]
+                                        [..=ec.min(self.lines[row].len().saturating_sub(1))],
+                                );
                             } else {
                                 selected.push_str(&self.lines[row]);
                             }
@@ -723,7 +752,8 @@ impl Default for Config {
     fn execute_command(&mut self, cmd: &str) {
         match cmd.trim() {
             "w" => {
-                self.status_message = format!("\"{}\" written ({} lines)", self.filename, self.lines.len());
+                self.status_message =
+                    format!("\"{}\" written ({} lines)", self.filename, self.lines.len());
                 self.modified = false;
             }
             "q" => {
@@ -770,8 +800,7 @@ impl Default for Config {
     fn render_line_number(&self, line_num: usize) -> impl View {
         if self.show_line_numbers {
             let width = self.lines.len().to_string().len();
-            Text::new(format!("{:>width$} ", line_num, width = width))
-                .fg(Color::rgb(100, 100, 100))
+            Text::new(format!("{:>width$} ", line_num, width = width)).fg(Color::rgb(100, 100, 100))
         } else {
             Text::new("")
         }
@@ -814,9 +843,15 @@ impl View for TextEditor {
         // Header
         let modified_indicator = if self.modified { " [+]" } else { "" };
         let header = hstack()
-            .child(Text::new(format!(" {} ", self.filename)).fg(Color::WHITE).bg(Color::rgb(50, 50, 50)))
+            .child(
+                Text::new(format!(" {} ", self.filename))
+                    .fg(Color::WHITE)
+                    .bg(Color::rgb(50, 50, 50)),
+            )
             .child(Text::new(modified_indicator).fg(Color::YELLOW))
-            .child(Text::new(format!("  {} lines  ", self.lines.len())).fg(Color::rgb(100, 100, 100)));
+            .child(
+                Text::new(format!("  {} lines  ", self.lines.len())).fg(Color::rgb(100, 100, 100)),
+            );
 
         // Editor content
         let mut content = vstack();
@@ -840,12 +875,20 @@ impl View for TextEditor {
                 // Highlight cursor position
                 let before = &line[..self.cursor_col.min(line.len())];
                 let cursor_char = line.chars().nth(self.cursor_col).unwrap_or(' ');
-                let after = if self.cursor_col < line.len() { &line[self.cursor_col + 1..] } else { "" };
+                let after = if self.cursor_col < line.len() {
+                    &line[self.cursor_col + 1..]
+                } else {
+                    ""
+                };
 
                 hstack()
                     .child(line_num)
                     .child(Text::new(before))
-                    .child(Text::new(cursor_char.to_string()).fg(Color::BLACK).bg(Color::WHITE))
+                    .child(
+                        Text::new(cursor_char.to_string())
+                            .fg(Color::BLACK)
+                            .bg(Color::WHITE),
+                    )
                     .child(Text::new(after))
             } else if is_cursor_row && self.mode == Mode::Insert {
                 // Insert mode cursor (line)
@@ -858,9 +901,7 @@ impl View for TextEditor {
                     .child(Text::new("|").fg(Color::CYAN))
                     .child(Text::new(after))
             } else {
-                hstack()
-                    .child(line_num)
-                    .child(Text::new(line))
+                hstack().child(line_num).child(Text::new(line))
             };
 
             content = content.child(text);
@@ -874,19 +915,19 @@ impl View for TextEditor {
 
         let file_info = Text::new(format!(" {} ", self.filename));
 
-        let position = Text::new(format!(
-            " {}:{} ",
-            self.cursor_row + 1,
-            self.cursor_col + 1
-        ));
+        let position = Text::new(format!(" {}:{} ", self.cursor_row + 1, self.cursor_col + 1));
 
         let percent = if self.lines.is_empty() {
             "Top".to_string()
         } else {
             let pct = (self.cursor_row * 100) / self.lines.len().max(1);
-            if pct == 0 { "Top".to_string() }
-            else if pct >= 99 { "Bot".to_string() }
-            else { format!("{}%", pct) }
+            if pct == 0 {
+                "Top".to_string()
+            } else if pct >= 99 {
+                "Bot".to_string()
+            } else {
+                format!("{}%", pct)
+            }
         };
 
         let status_line = hstack()

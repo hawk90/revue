@@ -16,8 +16,8 @@
 //! }
 //! ```
 
-use crate::style::Color;
 use crate::render::Modifier;
+use crate::style::Color;
 
 /// An ANSI-styled text span
 #[derive(Clone, Debug, PartialEq)]
@@ -179,10 +179,7 @@ fn apply_sgr(state: &mut AnsiState, params: &str) {
         return;
     }
 
-    let codes: Vec<u8> = params
-        .split(';')
-        .filter_map(|s| s.parse().ok())
-        .collect();
+    let codes: Vec<u8> = params.split(';').filter_map(|s| s.parse().ok()).collect();
 
     let mut i = 0;
     while i < codes.len() {
@@ -228,14 +225,14 @@ fn apply_sgr(state: &mut AnsiState, params: &str) {
             49 => state.bg = None, // Default background
 
             // Bright foreground colors
-            90 => state.fg = Some(Color::rgb(128, 128, 128)),  // Bright black (gray)
-            91 => state.fg = Some(Color::rgb(255, 85, 85)),    // Bright red
-            92 => state.fg = Some(Color::rgb(85, 255, 85)),    // Bright green
-            93 => state.fg = Some(Color::rgb(255, 255, 85)),   // Bright yellow
-            94 => state.fg = Some(Color::rgb(85, 85, 255)),    // Bright blue
-            95 => state.fg = Some(Color::rgb(255, 85, 255)),   // Bright magenta
-            96 => state.fg = Some(Color::rgb(85, 255, 255)),   // Bright cyan
-            97 => state.fg = Some(Color::rgb(255, 255, 255)),  // Bright white
+            90 => state.fg = Some(Color::rgb(128, 128, 128)), // Bright black (gray)
+            91 => state.fg = Some(Color::rgb(255, 85, 85)),   // Bright red
+            92 => state.fg = Some(Color::rgb(85, 255, 85)),   // Bright green
+            93 => state.fg = Some(Color::rgb(255, 255, 85)),  // Bright yellow
+            94 => state.fg = Some(Color::rgb(85, 85, 255)),   // Bright blue
+            95 => state.fg = Some(Color::rgb(255, 85, 255)),  // Bright magenta
+            96 => state.fg = Some(Color::rgb(85, 255, 255)),  // Bright cyan
+            97 => state.fg = Some(Color::rgb(255, 255, 255)), // Bright white
 
             // Bright background colors
             100 => state.bg = Some(Color::rgb(128, 128, 128)),

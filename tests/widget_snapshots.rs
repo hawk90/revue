@@ -5,10 +5,8 @@
 //! Update snapshots: REVUE_UPDATE_SNAPSHOTS=1 cargo test
 
 use revue::prelude::*;
-use revue::testing::{TestApp, Pilot, TestConfig};
-use revue::widget::{
-    Switch, Slider, Gauge, Breadcrumb, Rating, Accordion, Calendar, Grid,
-};
+use revue::testing::{Pilot, TestApp, TestConfig};
+use revue::widget::{Accordion, Breadcrumb, Calendar, Gauge, Grid, Rating, Slider, Switch};
 
 // =============================================================================
 // Text Widget Tests
@@ -85,10 +83,7 @@ fn test_vstack_basic() {
 
 #[test]
 fn test_hstack_basic() {
-    let view = hstack()
-        .child(text("A"))
-        .child(text("B"))
-        .child(text("C"));
+    let view = hstack().child(text("A")).child(text("B")).child(text("C"));
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -118,7 +113,7 @@ fn test_nested_stacks() {
             hstack()
                 .child(text("Left"))
                 .child(text(" | "))
-                .child(text("Right"))
+                .child(text("Right")),
         )
         .child(text("Footer"));
 
@@ -134,8 +129,7 @@ fn test_nested_stacks() {
 
 #[test]
 fn test_border_single() {
-    let view = Border::single()
-        .child(text("Bordered content"));
+    let view = Border::single().child(text("Bordered content"));
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -145,8 +139,7 @@ fn test_border_single() {
 
 #[test]
 fn test_border_double() {
-    let view = Border::double()
-        .child(text("Double border"));
+    let view = Border::double().child(text("Double border"));
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -156,8 +149,7 @@ fn test_border_double() {
 
 #[test]
 fn test_border_rounded() {
-    let view = Border::rounded()
-        .child(text("Rounded corners"));
+    let view = Border::rounded().child(text("Rounded corners"));
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -181,9 +173,7 @@ fn test_border_with_title() {
 fn test_border_panel() {
     let view = Border::panel()
         .title("Panel")
-        .child(vstack()
-            .child(text("Line 1"))
-            .child(text("Line 2")));
+        .child(vstack().child(text("Line 1")).child(text("Line 2")));
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -243,20 +233,18 @@ fn test_progress_with_label() {
 
 #[test]
 fn test_card_layout() {
-    let view = Border::panel()
-        .title("Card Title")
-        .child(
-            vstack()
-                .gap(1)
-                .child(Text::heading("Welcome"))
-                .child(text("This is a card with multiple elements."))
-                .child(
-                    hstack()
-                        .child(text("[OK]"))
-                        .child(text(" "))
-                        .child(text("[Cancel]"))
-                )
-        );
+    let view = Border::panel().title("Card Title").child(
+        vstack()
+            .gap(1)
+            .child(Text::heading("Welcome"))
+            .child(text("This is a card with multiple elements."))
+            .child(
+                hstack()
+                    .child(text("[OK]"))
+                    .child(text(" "))
+                    .child(text("[Cancel]")),
+            ),
+    );
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -266,18 +254,16 @@ fn test_card_layout() {
 
 #[test]
 fn test_form_layout() {
-    let view = Border::single()
-        .title("Login Form")
-        .child(
-            vstack()
-                .gap(1)
-                .child(text("Username: "))
-                .child(Border::single().child(text("admin")))
-                .child(text("Password: "))
-                .child(Border::single().child(text("****")))
-                .child(text(""))
-                .child(text("[Login]"))
-        );
+    let view = Border::single().title("Login Form").child(
+        vstack()
+            .gap(1)
+            .child(text("Username: "))
+            .child(Border::single().child(text("admin")))
+            .child(text("Password: "))
+            .child(Border::single().child(text("****")))
+            .child(text(""))
+            .child(text("[Login]")),
+    );
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -292,28 +278,26 @@ fn test_dashboard_layout() {
         .child(
             Border::double()
                 .title("Dashboard")
-                .child(text("Application Status: Running"))
+                .child(text("Application Status: Running")),
         )
         .child(
             hstack()
                 .child(
-                    Border::single()
-                        .title("Stats")
-                        .child(vstack()
+                    Border::single().title("Stats").child(
+                        vstack()
                             .child(text("CPU: 45%"))
                             .child(text("Memory: 2.1GB"))
-                            .child(text("Uptime: 2h 15m"))
-                        )
+                            .child(text("Uptime: 2h 15m")),
+                    ),
                 )
                 .child(
-                    Border::single()
-                        .title("Logs")
-                        .child(vstack()
+                    Border::single().title("Logs").child(
+                        vstack()
                             .child(Text::info("[INFO] Server started"))
                             .child(Text::success("[OK] Connected"))
-                            .child(Text::error("[ERR] Failed to load"))
-                        )
-                )
+                            .child(Text::error("[ERR] Failed to load")),
+                    ),
+                ),
         );
 
     let mut app = TestApp::with_config(view, config);
@@ -348,17 +332,7 @@ fn test_empty_border() {
 
 #[test]
 fn test_deeply_nested() {
-    let view = vstack()
-        .child(
-            vstack()
-                .child(
-                    vstack()
-                        .child(
-                            vstack()
-                                .child(text("Deep"))
-                        )
-                )
-        );
+    let view = vstack().child(vstack().child(vstack().child(vstack().child(text("Deep")))));
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -411,16 +385,14 @@ fn test_small_terminal() {
 #[test]
 fn test_large_terminal() {
     let config = TestConfig::with_size(120, 40);
-    let view = Border::double()
-        .title("Large Terminal")
-        .child(
-            vstack()
-                .child(text("This is a large terminal with plenty of space."))
-                .child(text("We can fit much more content here."))
-                .child(text("Line 3"))
-                .child(text("Line 4"))
-                .child(text("Line 5"))
-        );
+    let view = Border::double().title("Large Terminal").child(
+        vstack()
+            .child(text("This is a large terminal with plenty of space."))
+            .child(text("We can fit much more content here."))
+            .child(text("Line 3"))
+            .child(text("Line 4"))
+            .child(text("Line 5")),
+    );
 
     let mut app = TestApp::with_config(view, config);
     let mut pilot = Pilot::new(&mut app);
@@ -435,8 +407,7 @@ fn test_large_terminal() {
 #[test]
 fn test_focused_state() {
     // Placeholder for future focused state testing
-    let view = Border::single()
-        .child(text("[Focused Element]"));
+    let view = Border::single().child(text("[Focused Element]"));
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -573,7 +544,11 @@ fn test_switch_basic() {
     let view = vstack()
         .gap(1)
         .child(hstack().child(Switch::new()).child(text(" Enable feature")))
-        .child(hstack().child(Switch::new().on(true)).child(text(" Dark mode")));
+        .child(
+            hstack()
+                .child(Switch::new().on(true))
+                .child(text(" Dark mode")),
+        );
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -690,10 +665,7 @@ fn test_table_with_header() {
 
 #[test]
 fn test_tabs_basic() {
-    let view = Tabs::new()
-        .tab("Home")
-        .tab("Settings")
-        .tab("About");
+    let view = Tabs::new().tab("Home").tab("Settings").tab("About");
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -717,8 +689,7 @@ fn test_list_basic() {
 
 #[test]
 fn test_list_selected() {
-    let view = List::new(vec!["First", "Second", "Third"])
-        .selected(1);
+    let view = List::new(vec!["First", "Second", "Third"]).selected(1);
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -732,15 +703,18 @@ fn test_list_selected() {
 
 #[test]
 fn test_tree_basic() {
-    let view = Tree::new()
-        .node(TreeNode::new("Root")
+    let view = Tree::new().node(
+        TreeNode::new("Root")
             .expanded(true)
             .child(TreeNode::new("Child 1"))
-            .child(TreeNode::new("Child 2")
-                .expanded(true)
-                .child(TreeNode::new("Grandchild 1"))
-                .child(TreeNode::new("Grandchild 2")))
-            .child(TreeNode::new("Child 3")));
+            .child(
+                TreeNode::new("Child 2")
+                    .expanded(true)
+                    .child(TreeNode::new("Grandchild 1"))
+                    .child(TreeNode::new("Grandchild 2")),
+            )
+            .child(TreeNode::new("Child 3")),
+    );
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -1042,7 +1016,11 @@ fn test_grid_basic() {
     use revue::widget::TrackSize;
 
     let view = Grid::new()
-        .columns(vec![TrackSize::Fr(1.0), TrackSize::Fr(1.0), TrackSize::Fr(1.0)])
+        .columns(vec![
+            TrackSize::Fr(1.0),
+            TrackSize::Fr(1.0),
+            TrackSize::Fr(1.0),
+        ])
         .child(text("1"))
         .child(text("2"))
         .child(text("3"))

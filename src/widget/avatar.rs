@@ -1,9 +1,9 @@
 //! Avatar widget for user/entity representation
 
-use super::traits::{View, RenderContext, WidgetProps};
-use crate::{impl_styled_view, impl_props_builders};
+use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::{impl_props_builders, impl_styled_view};
 
 /// Avatar size
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -236,7 +236,10 @@ impl Avatar {
         }
 
         // Generate color from name hash
-        let hash: u32 = self.name.bytes().fold(0u32, |acc, b| acc.wrapping_add(b as u32));
+        let hash: u32 = self
+            .name
+            .bytes()
+            .fold(0u32, |acc, b| acc.wrapping_add(b as u32));
         let hue = (hash % 360) as u8;
 
         // Convert HSL to RGB (simplified)
@@ -263,7 +266,6 @@ impl Avatar {
             ((b1 + m) * 255.0) as u8,
         )
     }
-
 }
 
 impl Default for Avatar {
@@ -328,8 +330,16 @@ impl View for Avatar {
                     }
                     AvatarShape::Square | AvatarShape::Rounded => {
                         // [XY] format
-                        let left = if self.shape == AvatarShape::Rounded { '(' } else { '[' };
-                        let right = if self.shape == AvatarShape::Rounded { ')' } else { ']' };
+                        let left = if self.shape == AvatarShape::Rounded {
+                            '('
+                        } else {
+                            '['
+                        };
+                        let right = if self.shape == AvatarShape::Rounded {
+                            ')'
+                        } else {
+                            ']'
+                        };
 
                         let mut lc = Cell::new(left);
                         lc.fg = Some(bg);
@@ -526,8 +536,8 @@ pub fn avatar_icon(icon: char) -> Avatar {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
     use crate::layout::Rect;
+    use crate::render::Buffer;
 
     #[test]
     fn test_avatar_new() {

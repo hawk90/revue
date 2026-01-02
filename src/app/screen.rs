@@ -27,12 +27,12 @@
 //! manager.push("home");
 //! ```
 
-use std::collections::HashMap;
 use std::any::Any;
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use crate::widget::RenderContext;
 use crate::event::KeyEvent;
+use crate::widget::RenderContext;
 
 /// Screen identifier
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

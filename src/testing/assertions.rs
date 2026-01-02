@@ -171,10 +171,7 @@ impl Assertion for CellEquals {
                 ))
             }
         } else {
-            AssertionResult::Fail(format!(
-                "Cell ({}, {}) is out of bounds",
-                self.x, self.y
-            ))
+            AssertionResult::Fail(format!("Cell ({}, {}) is out of bounds", self.x, self.y))
         }
     }
 
