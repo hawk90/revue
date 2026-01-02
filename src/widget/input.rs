@@ -214,18 +214,6 @@ impl Input {
         self.cursor = self.char_count();
     }
 
-    /// Delete selected text
-    fn delete_selection(&mut self) -> bool {
-        if let Some((start, end)) = self.selection() {
-            self.remove_char_range(start, end);
-            self.cursor = start;
-            self.clear_selection();
-            true
-        } else {
-            false
-        }
-    }
-
     /// Delete selected text with undo support
     fn delete_selection_with_undo(&mut self) -> bool {
         if let Some((start, end)) = self.selection() {

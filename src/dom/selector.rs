@@ -351,7 +351,7 @@ pub fn parse_selectors(input: &str) -> Result<Vec<Selector>, SelectorParseError>
 }
 
 struct SelectorParser<'a> {
-    input: &'a str,
+    _input: &'a str,
     chars: Vec<char>,
     pos: usize,
 }
@@ -359,7 +359,7 @@ struct SelectorParser<'a> {
 impl<'a> SelectorParser<'a> {
     fn new(input: &'a str) -> Self {
         Self {
-            input,
+            _input: input,
             chars: input.chars().collect(),
             pos: 0,
         }

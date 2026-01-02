@@ -137,8 +137,8 @@ impl Drop for WorkerPool {
 pub struct Worker {
     /// Worker ID
     id: usize,
-    /// Thread handle
-    thread: Option<JoinHandle<()>>,
+    /// Thread handle (kept for join on drop)
+    _thread: Option<JoinHandle<()>>,
     /// Active flag
     active: Arc<Mutex<bool>>,
 }
@@ -192,7 +192,7 @@ impl Worker {
             })
             .ok();
 
-        Self { id, thread, active }
+        Self { id, _thread: thread, active }
     }
 
     /// Get worker ID

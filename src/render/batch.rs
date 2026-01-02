@@ -477,11 +477,6 @@ impl BatchStats {
     }
 }
 
-/// Create a new render batch
-pub fn render_batch() -> RenderBatch {
-    RenderBatch::new()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

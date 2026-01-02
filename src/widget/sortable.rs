@@ -78,12 +78,12 @@ pub struct SortableList {
     selected_color: Color,
     /// Drag indicator color
     drag_color: Color,
-    /// Widget state
-    state: WidgetState,
+    /// Widget state (for future focus management)
+    _state: WidgetState,
     /// Widget props
     props: WidgetProps,
-    /// Unique ID for drag operations
-    id: DragId,
+    /// Unique ID for drag operations (for future drag tracking)
+    _id: DragId,
 }
 
 impl SortableList {
@@ -113,9 +113,9 @@ impl SortableList {
             item_color: Color::rgb(200, 200, 200),
             selected_color: Color::rgb(100, 150, 255),
             drag_color: Color::rgb(255, 200, 100),
-            state: WidgetState::new(),
+            _state: WidgetState::new(),
             props: WidgetProps::new(),
-            id,
+            _id: id,
         }
     }
 

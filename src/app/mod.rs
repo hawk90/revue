@@ -40,41 +40,6 @@ fn is_quit_key(key: &KeyEvent) -> bool {
     key.is_ctrl_c() || key.key == crate::event::Key::Char('q')
 }
 
-/// Wrap a key handler with quit key handling
-fn with_quit_handler<V, H>(
-    mut handler: H,
-) -> impl FnMut(&KeyEvent, &mut V, &mut App) -> bool
-where
-    H: FnMut(&KeyEvent, &mut V) -> bool,
-{
-    move |key, view, app| {
-        if is_quit_key(key) {
-            app.quit();
-            false
-        } else {
-            handler(key, view)
-        }
-    }
-}
-
-/// Wrap a key handler with quit key handling (extended version with App access)
-fn with_quit_handler_ext<V, H>(
-    mut handler: H,
-) -> impl FnMut(&KeyEvent, &mut V, &mut App) -> bool
-where
-    H: FnMut(&KeyEvent, &mut V, &mut App) -> bool,
-{
-    move |key, view, app| {
-        if is_quit_key(key) {
-            app.quit();
-            false
-        } else {
-            handler(key, view, app)
-        }
-    }
-}
-
-
 /// Main application struct
 pub struct App {
     /// Manages all DOM nodes and style resolution
@@ -105,20 +70,6 @@ pub struct App {
 }
 
 impl App {
-    /// Create a new application.
-    pub(crate) fn new(
-        initial_size: (u16, u16),
-        stylesheet: StyleSheet,
-        mouse_capture: bool,
-    ) -> Self {
-        Self::new_with_plugins(
-            initial_size,
-            stylesheet,
-            mouse_capture,
-            crate::plugin::PluginRegistry::new(),
-        )
-    }
-
     /// Create a new application with plugins.
     pub(crate) fn new_with_plugins(
         initial_size: (u16, u16),
@@ -522,7 +473,12 @@ mod tests {
 
     #[test]
     fn test_app_quit() {
-        let mut app = App::new((10, 10), StyleSheet::new(), false);
+        let mut app = App::new_with_plugins(
+            (10, 10),
+            StyleSheet::new(),
+            false,
+            crate::plugin::PluginRegistry::new(),
+        );
         app.running = true;
         assert!(app.is_running());
         app.quit();

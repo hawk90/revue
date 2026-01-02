@@ -114,8 +114,8 @@ pub struct StateDebugger {
     filter: String,
     /// Show computed values
     show_computed: bool,
-    /// Show update counts
-    show_updates: bool,
+    /// Show update counts (for future UI)
+    _show_updates: bool,
 }
 
 impl StateDebugger {
@@ -123,7 +123,7 @@ impl StateDebugger {
     pub fn new() -> Self {
         Self {
             show_computed: true,
-            show_updates: true,
+            _show_updates: true,
             ..Default::default()
         }
     }

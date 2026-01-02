@@ -290,19 +290,6 @@ impl View for ScreenStack {
 impl_styled_view!(ScreenStack);
 impl_props_builders!(ScreenStack);
 
-/// Screen navigation event
-#[derive(Clone, Debug)]
-pub enum ScreenEvent {
-    /// Screen was pushed
-    Pushed(ScreenId),
-    /// Screen was popped
-    Popped(ScreenId),
-    /// Screen was replaced
-    Replaced { from: ScreenId, to: ScreenId },
-    /// Navigated to root
-    PoppedToRoot,
-}
-
 /// Helper to create a screen
 pub fn screen(id: ScreenId) -> Screen {
     Screen::new(id)

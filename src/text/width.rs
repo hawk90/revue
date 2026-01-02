@@ -194,6 +194,7 @@ pub fn char_width(ch: char) -> u8 {
 }
 
 /// Get string width
+#[cfg(test)] // Used in tests only
 pub fn str_width(s: &str) -> usize {
     unicode_width::UnicodeWidthStr::width(s)
 }

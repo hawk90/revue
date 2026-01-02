@@ -70,18 +70,6 @@ impl ResizeHandle {
         ResizeHandle::BottomRight,
     ];
 
-    /// Get cursor character for this handle
-    fn cursor(&self) -> char {
-        match self {
-            ResizeHandle::Top | ResizeHandle::Bottom => '─',
-            ResizeHandle::Left | ResizeHandle::Right => '│',
-            ResizeHandle::TopLeft => '┌',
-            ResizeHandle::TopRight => '┐',
-            ResizeHandle::BottomLeft => '└',
-            ResizeHandle::BottomRight => '┘',
-        }
-    }
-
     /// Check if position is within handle area
     fn hit_test(&self, x: u16, y: u16, area: Rect, handle_size: u16) -> bool {
         match self {

@@ -286,22 +286,22 @@ pub trait Screen: Send + Sync {
 struct StackEntry {
     /// Screen instance
     screen: Box<dyn Screen>,
-    /// Entry timestamp
-    entered_at: Instant,
+    /// Entry timestamp (for future analytics)
+    _entered_at: Instant,
     /// Whether screen is visible
     visible: bool,
 }
 
 /// Active transition state
 struct TransitionState {
-    /// Transition type
-    transition: Transition,
+    /// Transition type (for future animation interpolation)
+    _transition: Transition,
     /// Start time
     start: Instant,
     /// Duration
     duration: Duration,
-    /// Whether entering or exiting
-    entering: bool,
+    /// Whether entering or exiting (for future use)
+    _entering: bool,
 }
 
 impl TransitionState {
@@ -328,8 +328,8 @@ pub struct ScreenManager {
     transition: Option<TransitionState>,
     /// Data to pass to next screen
     pending_data: Option<ScreenData>,
-    /// Event queue
-    event_queue: Vec<(ScreenId, ScreenEvent)>,
+    /// Event queue (for future event propagation)
+    _event_queue: Vec<(ScreenId, ScreenEvent)>,
 }
 
 impl ScreenManager {
@@ -340,7 +340,7 @@ impl ScreenManager {
             stack: Vec::new(),
             transition: None,
             pending_data: None,
-            event_queue: Vec::new(),
+            _event_queue: Vec::new(),
         }
     }
 
@@ -357,7 +357,7 @@ impl ScreenManager {
     pub fn register_screen(&mut self, screen: Box<dyn Screen>) {
         let entry = StackEntry {
             screen,
-            entered_at: Instant::now(),
+            _entered_at: Instant::now(),
             visible: false,
         };
         // For direct registration, we push it but keep it hidden
@@ -419,16 +419,16 @@ impl ScreenManager {
         // Start transition if configured
         if config.enter_transition != Transition::None {
             self.transition = Some(TransitionState {
-                transition: config.enter_transition,
+                _transition: config.enter_transition,
                 start: Instant::now(),
                 duration: config.transition_duration,
-                entering: true,
+                _entering: true,
             });
         }
 
         self.stack.push(StackEntry {
             screen,
-            entered_at: Instant::now(),
+            _entered_at: Instant::now(),
             visible: true,
         });
 
@@ -784,10 +784,10 @@ mod tests {
     #[test]
     fn test_transition_progress() {
         let state = TransitionState {
-            transition: Transition::Fade,
+            _transition: Transition::Fade,
             start: Instant::now(),
             duration: Duration::from_millis(100),
-            entering: true,
+            _entering: true,
         };
 
         assert!(state.progress() >= 0.0);

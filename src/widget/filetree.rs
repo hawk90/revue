@@ -198,7 +198,7 @@ pub struct FileTree {
     selected_bg: Color,
     selected_fg: Color,
     dir_fg: Color,
-    file_fg: Color,
+    _file_fg: Color,
     /// Indent size
     indent: u16,
     /// Height limit (0 = unlimited)
@@ -223,7 +223,7 @@ impl FileTree {
             selected_bg: Color::rgb(60, 100, 180),
             selected_fg: Color::WHITE,
             dir_fg: Color::CYAN,
-            file_fg: Color::WHITE,
+            _file_fg: Color::WHITE,
             indent: 2,
             height: 0,
             props: WidgetProps::new(),

@@ -2,7 +2,7 @@
 //!
 //! Defines the interface that all terminal backends must implement.
 
-use std::io::{self, Write};
+use std::io::Write;
 use crate::style::Color;
 use crate::render::cell::Modifier;
 use crate::Result;
@@ -114,10 +114,4 @@ pub trait Backend: Write {
 
     /// Get backend name for debugging
     fn name(&self) -> &'static str;
-}
-
-/// Convenience trait for creating backends with stdout
-pub trait StdoutBackend: Backend + Sized {
-    /// Create a new backend with stdout
-    fn stdout() -> io::Result<Self>;
 }
