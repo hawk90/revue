@@ -8,11 +8,16 @@ Build beautiful terminal UIs with the power of Rust and the elegance of CSS.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/hawk90/revue/ci.yml?style=flat-square&logo=github&label=CI)](https://github.com/hawk90/revue/actions/workflows/ci.yml)
 [![codecov](https://img.shields.io/codecov/c/github/hawk90/revue?style=flat-square&logo=codecov)](https://codecov.io/gh/hawk90/revue)
-[![license](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![crates.io](https://img.shields.io/crates/v/revue?style=flat-square&logo=rust&label=crates.io)](https://crates.io/crates/revue)
+[![downloads](https://img.shields.io/crates/d/revue?style=flat-square&label=downloads)](https://crates.io/crates/revue)
 [![docs.rs](https://img.shields.io/docsrs/revue?style=flat-square&logo=docs.rs&label=docs.rs)](https://docs.rs/revue)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](https://github.com/hawk90/revue/pulls)
+[![Release](https://img.shields.io/github/v/release/hawk90/revue?style=flat-square&logo=github&label=release)](https://github.com/hawk90/revue/releases)
+[![license](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![Rust 1.75+](https://img.shields.io/badge/rust-1.75+-orange?style=flat-square&logo=rust)](https://www.rust-lang.org)
+
+[![Linux](https://img.shields.io/badge/Linux-supported-success?style=flat-square&logo=linux&logoColor=white)](https://github.com/hawk90/revue)
+[![macOS](https://img.shields.io/badge/macOS-supported-success?style=flat-square&logo=apple&logoColor=white)](https://github.com/hawk90/revue)
+[![Windows](https://img.shields.io/badge/Windows-supported-success?style=flat-square&logo=windows&logoColor=white)](https://github.com/hawk90/revue)
 
 [Getting Started](#-quick-start) · [Examples](#-examples) · [Documentation](#-documentation) · [Contributing](#-contributing)
 
