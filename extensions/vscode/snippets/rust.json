@@ -1,0 +1,253 @@
+{
+  "Revue App": {
+    "prefix": "revue-app",
+    "body": [
+      "use revue::prelude::*;",
+      "",
+      "struct ${1:App} {",
+      "    ${2:// state}",
+      "}",
+      "",
+      "impl ${1:App} {",
+      "    fn new() -> Self {",
+      "        Self {",
+      "            ${3:// init}",
+      "        }",
+      "    }",
+      "}",
+      "",
+      "impl View for ${1:App} {",
+      "    fn render(&self, ctx: &mut RenderContext) {",
+      "        ${0}",
+      "    }",
+      "}"
+    ],
+    "description": "Create a new Revue app with View implementation"
+  },
+  "Revue Main": {
+    "prefix": "revue-main",
+    "body": [
+      "use revue::prelude::*;",
+      "",
+      "mod app;",
+      "use app::App;",
+      "",
+      "fn main() -> revue::Result<()> {",
+      "    App::builder()",
+      "        .view(App::new())",
+      "        .run()",
+      "}"
+    ],
+    "description": "Revue main function boilerplate"
+  },
+  "VStack": {
+    "prefix": "vstack",
+    "body": [
+      "vstack()",
+      "    .gap(${1:1})",
+      "    .child(${0})"
+    ],
+    "description": "Vertical stack layout"
+  },
+  "HStack": {
+    "prefix": "hstack",
+    "body": [
+      "hstack()",
+      "    .gap(${1:1})",
+      "    .child(${0})"
+    ],
+    "description": "Horizontal stack layout"
+  },
+  "Border": {
+    "prefix": "border",
+    "body": [
+      "Border::rounded()",
+      "    .title(\"${1:Title}\")",
+      "    .child(${0})"
+    ],
+    "description": "Bordered container"
+  },
+  "Text": {
+    "prefix": "text",
+    "body": [
+      "Text::new(\"${1:text}\")",
+      "    .fg(Color::${2:WHITE})"
+    ],
+    "description": "Text widget"
+  },
+  "Button": {
+    "prefix": "button",
+    "body": [
+      "button(\"${1:Label}\")",
+      "    .on_click(|| {",
+      "        ${0}",
+      "    })"
+    ],
+    "description": "Button widget"
+  },
+  "Input": {
+    "prefix": "input",
+    "body": [
+      "input()",
+      "    .placeholder(\"${1:Enter text...}\")",
+      "    .value(&self.${2:value})",
+      "    .on_change(|v| ${0})"
+    ],
+    "description": "Text input widget"
+  },
+  "List": {
+    "prefix": "list",
+    "body": [
+      "list(&self.${1:items})",
+      "    .selected(self.${2:selected})",
+      "    .on_select(|i| ${0})"
+    ],
+    "description": "Selectable list widget"
+  },
+  "Table": {
+    "prefix": "table",
+    "body": [
+      "table()",
+      "    .column(column(\"${1:Name}\").width(${2:20}))",
+      "    .column(column(\"${3:Value}\").width(${4:10}))",
+      "    .rows(${0})"
+    ],
+    "description": "Data table widget"
+  },
+  "Modal": {
+    "prefix": "modal",
+    "body": [
+      "modal(\"${1:Title}\")",
+      "    .visible(self.${2:show_modal})",
+      "    .on_close(|| ${3})",
+      "    .child(${0})"
+    ],
+    "description": "Modal dialog"
+  },
+  "Tabs": {
+    "prefix": "tabs",
+    "body": [
+      "tabs()",
+      "    .tab(Tab::new(\"${1:Tab 1}\").child(${2}))",
+      "    .tab(Tab::new(\"${3:Tab 2}\").child(${0}))"
+    ],
+    "description": "Tab navigation"
+  },
+  "Progress": {
+    "prefix": "progress",
+    "body": [
+      "progress(${1:0.5})",
+      "    .show_percentage(true)"
+    ],
+    "description": "Progress bar"
+  },
+  "Spinner": {
+    "prefix": "spinner",
+    "body": [
+      "spinner()",
+      "    .label(\"${1:Loading...}\")"
+    ],
+    "description": "Loading spinner"
+  },
+  "Select": {
+    "prefix": "select",
+    "body": [
+      "select(&[${1:\"Option 1\", \"Option 2\"}])",
+      "    .selected(self.${2:selected})",
+      "    .on_change(|i| ${0})"
+    ],
+    "description": "Dropdown select"
+  },
+  "Checkbox": {
+    "prefix": "checkbox",
+    "body": [
+      "checkbox(\"${1:Label}\")",
+      "    .checked(self.${2:checked})",
+      "    .on_toggle(|v| ${0})"
+    ],
+    "description": "Checkbox widget"
+  },
+  "Signal": {
+    "prefix": "signal",
+    "body": [
+      "let ${1:value} = use_signal(${2:0});"
+    ],
+    "description": "Create a reactive signal"
+  },
+  "Effect": {
+    "prefix": "effect",
+    "body": [
+      "use_effect(move || {",
+      "    ${0}",
+      "});"
+    ],
+    "description": "Create a reactive effect"
+  },
+  "Async Hook": {
+    "prefix": "use-async",
+    "body": [
+      "let ${1:data} = use_async(async {",
+      "    ${0}",
+      "});"
+    ],
+    "description": "Async data fetching hook"
+  },
+  "Plugin": {
+    "prefix": "revue-plugin",
+    "body": [
+      "use revue::plugin::{Plugin, PluginContext};",
+      "use revue::Result;",
+      "use std::time::Duration;",
+      "",
+      "pub struct ${1:MyPlugin};",
+      "",
+      "impl Plugin for ${1:MyPlugin} {",
+      "    fn name(&self) -> &str {",
+      "        \"${2:my-plugin}\"",
+      "    }",
+      "",
+      "    fn on_init(&mut self, ctx: &mut PluginContext) -> Result<()> {",
+      "        ${0}",
+      "        Ok(())",
+      "    }",
+      "}"
+    ],
+    "description": "Create a Revue plugin"
+  },
+  "Grid": {
+    "prefix": "grid",
+    "body": [
+      "grid()",
+      "    .columns(\"${1:1fr 1fr}\")",
+      "    .rows(\"${2:auto}\")",
+      "    .gap(${3:1})",
+      "    .child(${0})"
+    ],
+    "description": "CSS Grid layout"
+  },
+  "ScrollView": {
+    "prefix": "scroll",
+    "body": [
+      "scroll_view()",
+      "    .child(${0})"
+    ],
+    "description": "Scrollable container"
+  },
+  "Tooltip": {
+    "prefix": "tooltip",
+    "body": [
+      "tooltip(\"${1:Tooltip text}\")",
+      "    .child(${0})"
+    ],
+    "description": "Tooltip wrapper"
+  },
+  "Toast": {
+    "prefix": "toast",
+    "body": [
+      "toast(\"${1:Message}\")",
+      "    .level(ToastLevel::${2:Info})",
+      "    .duration(Duration::from_secs(${3:3}))"
+    ],
+    "description": "Toast notification"
+  }
+}

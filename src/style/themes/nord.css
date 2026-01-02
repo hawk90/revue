@@ -1,0 +1,26 @@
+/* Nord Theme for Revue */
+/* https://www.nordtheme.com */
+
+:root {
+    --polar-night-0: #2e3440;
+    --polar-night-1: #3b4252;
+    --frost-1: #88c0d0;
+    --frost-2: #81a1c1;
+    --snow-storm-0: #d8dee9;
+    --aurora-green: #a3be8c;
+    --aurora-yellow: #ebcb8b;
+    --aurora-red: #bf616a;
+
+    --bg-primary: var(--polar-night-0);
+    --bg-secondary: var(--polar-night-1);
+    --fg-primary: var(--snow-storm-0);
+    --accent: var(--frost-1);
+}
+
+* { color: var(--fg-primary); background: var(--bg-primary); }
+.title { color: var(--frost-1); }
+.button { background: var(--frost-2); color: var(--polar-night-0); }
+.button:hover { background: var(--frost-1); }
+.input { background: var(--polar-night-1); }
+.input:focus { border-color: var(--frost-1); }
+.list-item:selected { background: var(--frost-2); color: var(--polar-night-0); }

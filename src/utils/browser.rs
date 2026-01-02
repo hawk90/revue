@@ -1,0 +1,148 @@
+//! System browser and URL utilities
+//!
+//! Platform-aware utilities for opening URLs and files in the system browser/application.
+//!
+//! # Example
+//! ```ignore
+//! use revue::utils::browser::open_browser;
+//!
+//! // Open URL in default browser
+//! open_browser("https://github.com");
+//!
+//! // Open file with default application
+//! open_browser("/path/to/file.pdf");
+//! ```
+
+use std::process::Command;
+
+/// Open a URL or file in the system's default browser/application
+///
+/// Platform support:
+/// - macOS: Uses `open`
+/// - Linux: Uses `xdg-open`
+/// - Windows: Uses `start`
+///
+/// # Arguments
+/// * `url` - URL or file path to open
+///
+/// # Returns
+/// * `true` if the command was spawned successfully
+/// * `false` if spawning failed
+pub fn open_browser(url: &str) -> bool {
+    #[cfg(target_os = "macos")]
+    let result = Command::new("open").arg(url).spawn();
+
+    #[cfg(target_os = "linux")]
+    let result = Command::new("xdg-open").arg(url).spawn();
+
+    #[cfg(target_os = "windows")]
+    let result = Command::new("cmd").args(["/C", "start", "", url]).spawn();
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    let result: Result<std::process::Child, std::io::Error> = Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "Unsupported platform",
+    ));
+
+    result.is_ok()
+}
+
+/// Open a URL and return the result
+///
+/// Same as `open_browser` but returns a Result for error handling.
+pub fn open_url(url: &str) -> std::io::Result<()> {
+    #[cfg(target_os = "macos")]
+    let mut child = Command::new("open").arg(url).spawn()?;
+
+    #[cfg(target_os = "linux")]
+    let mut child = Command::new("xdg-open").arg(url).spawn()?;
+
+    #[cfg(target_os = "windows")]
+    let mut child = Command::new("cmd").args(["/C", "start", "", url]).spawn()?;
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    return Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "Unsupported platform",
+    ));
+
+    // Detach - don't wait for browser to close
+    let _ = child.wait();
+    Ok(())
+}
+
+/// Open a file with its default application
+///
+/// Alias for `open_browser` - works with file paths too.
+pub fn open_file(path: &str) -> bool {
+    open_browser(path)
+}
+
+/// Open a folder in the system file manager
+///
+/// # Arguments
+/// * `path` - Path to the folder
+pub fn open_folder(path: &str) -> bool {
+    #[cfg(target_os = "macos")]
+    let result = Command::new("open").arg(path).spawn();
+
+    #[cfg(target_os = "linux")]
+    let result = Command::new("xdg-open").arg(path).spawn();
+
+    #[cfg(target_os = "windows")]
+    let result = Command::new("explorer").arg(path).spawn();
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    let result: Result<std::process::Child, std::io::Error> = Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "Unsupported platform",
+    ));
+
+    result.is_ok()
+}
+
+/// Reveal a file in the system file manager (highlight the file)
+///
+/// # Arguments
+/// * `path` - Path to the file to reveal
+pub fn reveal_in_finder(path: &str) -> bool {
+    #[cfg(target_os = "macos")]
+    let result = Command::new("open").args(["-R", path]).spawn();
+
+    #[cfg(target_os = "linux")]
+    // Linux doesn't have a standard "reveal" - just open parent folder
+    let result = {
+        let parent = std::path::Path::new(path)
+            .parent()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| path.to_string());
+        Command::new("xdg-open").arg(&parent).spawn()
+    };
+
+    #[cfg(target_os = "windows")]
+    let result = Command::new("explorer").args(["/select,", path]).spawn();
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    let result: Result<std::process::Child, std::io::Error> = Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "Unsupported platform",
+    ));
+
+    result.is_ok()
+}
+
+#[cfg(test)]
+mod tests {
+    // Note: These tests don't actually open browsers, just check compilation
+    use super::*;
+
+    #[test]
+    fn test_functions_exist() {
+        // Just verify the functions compile
+        let _ = open_browser;
+        let _ = open_url;
+        let _ = open_file;
+        let _ = open_folder;
+        let _ = reveal_in_finder;
+    }
+}

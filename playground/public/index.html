@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revue Playground</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1b26;
+            --bg-secondary: #24283b;
+            --bg-tertiary: #1f2335;
+            --fg-primary: #c0caf5;
+            --fg-secondary: #565f89;
+            --accent: #7aa2f7;
+            --success: #9ece6a;
+            --warning: #e0af68;
+            --error: #f7768e;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--fg-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--bg-tertiary);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .logo span {
+            font-size: 12px;
+            color: var(--fg-secondary);
+            background: var(--bg-tertiary);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        button {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button.secondary {
+            background: var(--bg-tertiary);
+            color: var(--fg-primary);
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .editor-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--bg-tertiary);
+        }
+
+        .pane-header {
+            background: var(--bg-secondary);
+            padding: 8px 16px;
+            font-size: 12px;
+            color: var(--fg-secondary);
+            border-bottom: 1px solid var(--bg-tertiary);
+        }
+
+        #editor {
+            flex: 1;
+            width: 100%;
+            background: var(--bg-primary);
+            color: var(--fg-primary);
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 16px;
+            border: none;
+            resize: none;
+            outline: none;
+        }
+
+        .preview-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #terminal {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-primary);
+        }
+
+        #terminal canvas {
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .status-bar {
+            background: var(--bg-secondary);
+            padding: 6px 16px;
+            font-size: 12px;
+            color: var(--fg-secondary);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .status-bar .ready {
+            color: var(--success);
+        }
+
+        /* Examples dropdown */
+        .examples {
+            position: relative;
+        }
+
+        .examples-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 8px 0;
+            min-width: 200px;
+            display: none;
+            z-index: 100;
+        }
+
+        .examples-menu.open {
+            display: block;
+        }
+
+        .examples-menu a {
+            display: block;
+            padding: 8px 16px;
+            color: var(--fg-primary);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .examples-menu a:hover {
+            background: var(--bg-tertiary);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>Revue Playground</h1>
+            <span>v1.0.0</span>
+        </div>
+        <div class="actions">
+            <div class="examples">
+                <button class="secondary" id="examples-btn">
+                    Examples ▾
+                </button>
+                <div class="examples-menu" id="examples-menu">
+                    <a href="#" data-example="hello">Hello World</a>
+                    <a href="#" data-example="counter">Counter</a>
+                    <a href="#" data-example="todo">Todo App</a>
+                    <a href="#" data-example="dashboard">Dashboard</a>
+                </div>
+            </div>
+            <button id="run-btn">
+                ▶ Run
+            </button>
+            <button class="secondary" id="share-btn">
+                Share
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <div class="editor-pane">
+            <div class="pane-header">main.rs</div>
+            <textarea id="editor" spellcheck="false">use revue::prelude::*;
+
+fn main() -> revue::Result<()> {
+    App::builder()
+        .view(HelloWorld)
+        .run()
+}
+
+struct HelloWorld;
+
+impl View for HelloWorld {
+    fn render(&self, ctx: &mut RenderContext) {
+        vstack()
+            .gap(1)
+            .child(
+                Text::new("Hello, Revue!")
+                    .fg(Color::CYAN)
+                    .bold()
+            )
+            .child(
+                Text::new("Edit this code and press Run")
+                    .fg(Color::rgb(128, 128, 128))
+            )
+            .render(ctx);
+    }
+}</textarea>
+        </div>
+        <div class="preview-pane">
+            <div class="pane-header">Preview</div>
+            <div id="terminal">
+                <canvas id="canvas"></canvas>
+            </div>
+        </div>
+    </main>
+
+    <div class="status-bar">
+        <span>Ctrl+Enter to run</span>
+        <span class="ready">● Ready</span>
+    </div>
+
+    <script type="module">
+        import init, { Playground } from './pkg/revue_playground.js';
+
+        const EXAMPLES = {
+            hello: `use revue::prelude::*;
+
+fn main() -> revue::Result<()> {
+    App::builder()
+        .view(HelloWorld)
+        .run()
+}
+
+struct HelloWorld;
+
+impl View for HelloWorld {
+    fn render(&self, ctx: &mut RenderContext) {
+        Text::new("Hello, World!")
+            .fg(Color::CYAN)
+            .bold()
+            .render(ctx);
+    }
+}`,
+            counter: `use revue::prelude::*;
+
+fn main() -> revue::Result<()> {
+    App::builder()
+        .view(Counter::new())
+        .run()
+}
+
+struct Counter {
+    count: i32,
+}
+
+impl Counter {
+    fn new() -> Self {
+        Self { count: 0 }
+    }
+}
+
+impl View for Counter {
+    fn render(&self, ctx: &mut RenderContext) {
+        vstack()
+            .gap(1)
+            .child(Text::new(format!("Count: {}", self.count)))
+            .child(
+                hstack()
+                    .gap(2)
+                    .child(button("-").on_click(|| self.count -= 1))
+                    .child(button("+").on_click(|| self.count += 1))
+            )
+            .render(ctx);
+    }
+}`,
+            todo: `use revue::prelude::*;
+
+fn main() -> revue::Result<()> {
+    App::builder()
+        .view(TodoApp::new())
+        .run()
+}
+
+struct TodoApp {
+    todos: Vec<String>,
+    input: String,
+}
+
+impl TodoApp {
+    fn new() -> Self {
+        Self {
+            todos: vec!["Learn Revue".into(), "Build TUI app".into()],
+            input: String::new(),
+        }
+    }
+}
+
+impl View for TodoApp {
+    fn render(&self, ctx: &mut RenderContext) {
+        Border::rounded()
+            .title("Todo App")
+            .child(
+                vstack()
+                    .child(input().value(&self.input))
+                    .child(list(&self.todos))
+            )
+            .render(ctx);
+    }
+}`,
+            dashboard: `use revue::prelude::*;
+
+fn main() -> revue::Result<()> {
+    App::builder()
+        .view(Dashboard)
+        .run()
+}
+
+struct Dashboard;
+
+impl View for Dashboard {
+    fn render(&self, ctx: &mut RenderContext) {
+        grid()
+            .columns("1fr 1fr")
+            .gap(1)
+            .child(Border::rounded().title("CPU").child(gauge(0.65)))
+            .child(Border::rounded().title("Memory").child(gauge(0.42)))
+            .child(Border::rounded().title("Disk").child(gauge(0.78)))
+            .child(Border::rounded().title("Network").child(sparkline(&[1,3,2,5,4,6,3])))
+            .render(ctx);
+    }
+}`
+        };
+
+        async function main() {
+            await init();
+
+            const playground = new Playground();
+            const editor = document.getElementById('editor');
+            const canvas = document.getElementById('canvas');
+            const runBtn = document.getElementById('run-btn');
+            const shareBtn = document.getElementById('share-btn');
+            const examplesBtn = document.getElementById('examples-btn');
+            const examplesMenu = document.getElementById('examples-menu');
+
+            // Initial render
+            playground.set_code(editor.value);
+            playground.run();
+            playground.render(canvas);
+
+            // Run button
+            runBtn.addEventListener('click', () => {
+                playground.set_code(editor.value);
+                playground.run();
+                playground.render(canvas);
+            });
+
+            // Keyboard shortcut
+            editor.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    e.preventDefault();
+                    playground.set_code(editor.value);
+                    playground.run();
+                    playground.render(canvas);
+                }
+            });
+
+            // Examples dropdown
+            examplesBtn.addEventListener('click', () => {
+                examplesMenu.classList.toggle('open');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.examples')) {
+                    examplesMenu.classList.remove('open');
+                }
+            });
+
+            examplesMenu.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const example = e.target.dataset.example;
+                    if (EXAMPLES[example]) {
+                        editor.value = EXAMPLES[example];
+                        playground.set_code(editor.value);
+                        playground.run();
+                        playground.render(canvas);
+                    }
+                    examplesMenu.classList.remove('open');
+                });
+            });
+
+            // Share button
+            shareBtn.addEventListener('click', () => {
+                const code = encodeURIComponent(editor.value);
+                const url = `${window.location.origin}${window.location.pathname}?code=${code}`;
+                navigator.clipboard.writeText(url);
+                alert('Link copied to clipboard!');
+            });
+
+            // Load from URL
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            if (code) {
+                editor.value = decodeURIComponent(code);
+                playground.set_code(editor.value);
+                playground.run();
+                playground.render(canvas);
+            }
+        }
+
+        main();
+    </script>
+</body>
+</html>

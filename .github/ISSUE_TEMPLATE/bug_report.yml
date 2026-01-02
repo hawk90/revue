@@ -1,0 +1,198 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in Revue
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Thanks for reporting a bug!
+
+        Before submitting, please:
+        - Search [existing issues](https://github.com/hawk90/revue/issues) to avoid duplicates
+        - Make sure you're using the latest version of Revue
+        - Try to reproduce with a minimal example
+
+        The more details you provide, the faster we can help!
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Bug Type
+      description: What kind of bug is this?
+      options:
+        - Widget rendering issue (widget not displaying correctly)
+        - Layout/styling issue (CSS, flexbox, positioning)
+        - Reactivity/state issue (signal, computed, effect)
+        - Input handling issue (keyboard, mouse, focus)
+        - Performance issue (slow, high CPU/memory)
+        - Crash/panic (application crashes)
+        - Build/compilation error
+        - Documentation issue
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of the bug
+      placeholder: |
+        What happened? What did you expect to happen instead?
+
+        Example: "The button widget doesn't respond to Enter key when focused.
+        Expected: Button should trigger on_click when Enter is pressed."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps to reproduce the behavior
+      placeholder: |
+        1. Create a new Revue app with `App::new()`
+        2. Add a button widget with `.on_click(|| ...)`
+        3. Run the app and focus the button
+        4. Press Enter key
+        5. Notice that on_click is not triggered
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: "The button should trigger its on_click handler when Enter is pressed while focused."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: "Nothing happens when Enter is pressed. The button only responds to mouse clicks."
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Minimal Reproducible Example
+      description: |
+        Please provide a minimal code example that reproduces the issue.
+        This helps us investigate and fix the bug faster.
+      placeholder: |
+        use revue::prelude::*;
+
+        fn main() -> Result<()> {
+            App::new()
+                .mount(|| {
+                    button("Click me")
+                        .on_click(|| println!("Clicked!"))
+                })
+                .run()
+        }
+      render: rust
+
+  - type: textarea
+    id: css
+    attributes:
+      label: CSS (if applicable)
+      description: If this is a styling issue, include the relevant CSS
+      render: css
+
+  - type: input
+    id: version
+    attributes:
+      label: Revue Version
+      description: "Run `cargo pkgid revue` to find your version"
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: rust_version
+    attributes:
+      label: Rust Version
+      description: "Run `rustc --version` to find your version"
+      placeholder: "rustc 1.75.0 (82e1608df 2023-12-21)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - macOS
+        - Linux (Ubuntu/Debian)
+        - Linux (Fedora/RHEL)
+        - Linux (Arch)
+        - Linux (Other)
+        - Windows 10
+        - Windows 11
+        - WSL
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: terminal
+    attributes:
+      label: Terminal Emulator
+      description: Which terminal are you using?
+      placeholder: "iTerm2 3.5.0, Kitty 0.31.0, WezTerm 20240203, Alacritty 0.13.0, etc."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: terminal_features
+    attributes:
+      label: Terminal Features
+      description: Does your terminal support these features?
+      multiple: true
+      options:
+        - True Color (24-bit)
+        - Kitty Graphics Protocol
+        - Sixel Graphics
+        - Unicode/Emoji
+        - Mouse Support
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs / Stack Trace
+      description: |
+        If there's an error message or stack trace, please include it here.
+        Run with `RUST_BACKTRACE=1` to get a full backtrace.
+      render: shell
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain the problem. You can paste images directly here.
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround
+      description: If you've found a workaround, please share it to help others
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues and this is not a duplicate
+          required: true
+        - label: I have tested with the latest version of Revue
+        - label: I can reproduce this issue consistently

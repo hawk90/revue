@@ -1,0 +1,206 @@
+{
+  "Revue Border": {
+    "prefix": "border",
+    "body": [
+      "border: ${1|solid,double,rounded,thick,none|} ${2:blue};"
+    ],
+    "description": "Revue border style"
+  },
+  "Revue Padding": {
+    "prefix": "padding",
+    "body": [
+      "padding: ${1:1};"
+    ],
+    "description": "Padding in terminal cells"
+  },
+  "Revue Margin": {
+    "prefix": "margin",
+    "body": [
+      "margin: ${1:1};"
+    ],
+    "description": "Margin in terminal cells"
+  },
+  "Revue Gap": {
+    "prefix": "gap",
+    "body": [
+      "gap: ${1:1};"
+    ],
+    "description": "Gap between flex/grid items"
+  },
+  "Revue Flex": {
+    "prefix": "flex",
+    "body": [
+      "display: flex;",
+      "flex-direction: ${1|row,column|};",
+      "gap: ${2:1};"
+    ],
+    "description": "Flex container"
+  },
+  "Revue Grid": {
+    "prefix": "grid",
+    "body": [
+      "display: grid;",
+      "grid-template-columns: ${1:1fr 1fr};",
+      "gap: ${2:1};"
+    ],
+    "description": "Grid container"
+  },
+  "Revue Color Variable": {
+    "prefix": "var-color",
+    "body": [
+      "--${1:name}: ${2:#ffffff};"
+    ],
+    "description": "Define a color variable"
+  },
+  "Revue Use Variable": {
+    "prefix": "var",
+    "body": [
+      "var(--${1:name})"
+    ],
+    "description": "Use a CSS variable"
+  },
+  "Revue Animation": {
+    "prefix": "animation",
+    "body": [
+      "animation: ${1:name} ${2:1s} ${3|linear,ease,ease-in,ease-out,ease-in-out|};"
+    ],
+    "description": "Animation shorthand"
+  },
+  "Revue Transition": {
+    "prefix": "transition",
+    "body": [
+      "transition: ${1:all} ${2:0.3s} ${3|linear,ease,ease-in,ease-out,ease-in-out|};"
+    ],
+    "description": "Transition effect"
+  },
+  "Revue Width": {
+    "prefix": "width",
+    "body": [
+      "width: ${1|auto,100%,50%,min-content,max-content|};"
+    ],
+    "description": "Width property"
+  },
+  "Revue Height": {
+    "prefix": "height",
+    "body": [
+      "height: ${1|auto,100%,50%,min-content,max-content|};"
+    ],
+    "description": "Height property"
+  },
+  "Revue Widget Class": {
+    "prefix": ".widget",
+    "body": [
+      ".${1:widget-name} {",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Widget class selector"
+  },
+  "Revue ID Selector": {
+    "prefix": "#id",
+    "body": [
+      "#${1:widget-id} {",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Widget ID selector"
+  },
+  "Revue Hover State": {
+    "prefix": ":hover",
+    "body": [
+      "&:hover {",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Hover pseudo-class"
+  },
+  "Revue Focus State": {
+    "prefix": ":focus",
+    "body": [
+      "&:focus {",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Focus pseudo-class"
+  },
+  "Revue Active State": {
+    "prefix": ":active",
+    "body": [
+      "&:active {",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Active pseudo-class"
+  },
+  "Revue Disabled State": {
+    "prefix": ":disabled",
+    "body": [
+      "&:disabled {",
+      "    color: gray;",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Disabled pseudo-class"
+  },
+  "Revue Theme": {
+    "prefix": "theme",
+    "body": [
+      ":root {",
+      "    --bg-primary: ${1:#1a1b26};",
+      "    --bg-secondary: ${2:#24283b};",
+      "    --fg-primary: ${3:#c0caf5};",
+      "    --fg-secondary: ${4:#565f89};",
+      "    --accent: ${5:#7aa2f7};",
+      "    --success: ${6:#9ece6a};",
+      "    --warning: ${7:#e0af68};",
+      "    --error: ${8:#f7768e};",
+      "}"
+    ],
+    "description": "Theme color variables"
+  },
+  "Revue Button Style": {
+    "prefix": "button-style",
+    "body": [
+      ".button {",
+      "    padding: 0 2;",
+      "    border: solid var(--accent);",
+      "    color: var(--accent);",
+      "}",
+      "",
+      ".button:hover {",
+      "    background: var(--accent);",
+      "    color: var(--bg-primary);",
+      "}",
+      "",
+      ".button:focus {",
+      "    border: double var(--accent);",
+      "}"
+    ],
+    "description": "Complete button styling"
+  },
+  "Revue Input Style": {
+    "prefix": "input-style",
+    "body": [
+      ".input {",
+      "    border: solid var(--fg-secondary);",
+      "    padding: 0 1;",
+      "}",
+      "",
+      ".input:focus {",
+      "    border: solid var(--accent);",
+      "}"
+    ],
+    "description": "Complete input styling"
+  },
+  "Revue Card Style": {
+    "prefix": "card-style",
+    "body": [
+      ".card {",
+      "    border: rounded var(--fg-secondary);",
+      "    padding: 1;",
+      "    background: var(--bg-secondary);",
+      "}"
+    ],
+    "description": "Card component styling"
+  }
+}

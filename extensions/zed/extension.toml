@@ -1,0 +1,14 @@
+[package]
+name = "revue-tui"
+version = "0.1.0"
+description = "Revue TUI framework support for Zed"
+authors = ["Revue Team"]
+repository = "https://github.com/user/revue"
+
+[language.revue-css]
+name = "Revue CSS"
+path = "languages/revue-css"
+
+[grammars.revue-css]
+repository = "https://github.com/user/tree-sitter-revue-css"
+commit = "main"

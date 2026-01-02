@@ -1,0 +1,46 @@
+# Lefthook - Git hooks manager
+# Install: brew install lefthook or cargo install lefthook
+# Enable: lefthook install
+
+pre-commit:
+  parallel: true
+  commands:
+    fmt:
+      glob: "*.rs"
+      run: cargo fmt -- --check
+      fail_text: "Code is not formatted. Run 'cargo fmt' to fix."
+
+    clippy:
+      glob: "*.rs"
+      run: cargo clippy --all-features -- -D warnings
+      fail_text: "Clippy warnings found."
+
+    check:
+      run: cargo check --all-features
+      fail_text: "Compilation errors found."
+
+commit-msg:
+  commands:
+    commitlint:
+      run: |
+        # Validate Conventional Commits format
+        # Format: type(scope)?: description
+        MSG=$(cat {1})
+        if ! echo "$MSG" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+$"; then
+          echo "Commit message does not follow Conventional Commits format."
+          echo ""
+          echo "Expected format: <type>: <description>"
+          echo "Examples:"
+          echo "  feat: add new feature"
+          echo "  fix: resolve bug"
+          echo "  docs: update documentation"
+          echo ""
+          exit 1
+        fi
+
+pre-push:
+  parallel: true
+  commands:
+    test:
+      run: cargo test --all-features
+      fail_text: "Tests failed."

@@ -1,0 +1,22 @@
+/* Gruvbox Theme for Revue */
+
+:root {
+    --bg: #282828;
+    --bg1: #3c3836;
+    --fg: #ebdbb2;
+    --fg4: #a89984;
+    --yellow: #fabd2f;
+    --orange: #fe8019;
+    --green: #b8bb26;
+    --red: #fb4934;
+}
+
+* { color: var(--fg); background: var(--bg); }
+.title { color: var(--yellow); }
+.button { background: var(--yellow); color: var(--bg); }
+.button:hover { background: var(--orange); }
+.input { background: var(--bg1); }
+.input:focus { border-color: var(--yellow); }
+.list-item:selected { background: var(--yellow); color: var(--bg); }
+.success { color: var(--green); }
+.error { color: var(--red); }

@@ -1,0 +1,685 @@
+//! Modal/Dialog widget for displaying overlays
+
+use super::traits::{View, RenderContext, WidgetProps};
+use crate::render::Cell;
+use crate::style::Color;
+use crate::{impl_styled_view, impl_props_builders};
+
+/// Button configuration for modal dialogs
+///
+/// This is distinct from the interactive `Button` widget.
+/// `ModalButton` configures the appearance and label of buttons
+/// shown at the bottom of modal dialogs.
+#[derive(Clone)]
+pub struct ModalButton {
+    /// Button label
+    pub label: String,
+    /// Button style
+    pub style: ModalButtonStyle,
+}
+
+/// Style preset for modal buttons
+#[derive(Clone, Copy, Default)]
+pub enum ModalButtonStyle {
+    /// Default neutral button
+    #[default]
+    Default,
+    /// Primary action button (highlighted)
+    Primary,
+    /// Danger/destructive action button
+    Danger,
+}
+
+impl ModalButton {
+    /// Create a new button with default style
+    pub fn new(label: impl Into<String>) -> Self {
+        Self {
+            label: label.into(),
+            style: ModalButtonStyle::Default,
+        }
+    }
+
+    /// Create a primary action button
+    pub fn primary(label: impl Into<String>) -> Self {
+        Self {
+            label: label.into(),
+            style: ModalButtonStyle::Primary,
+        }
+    }
+
+    /// Create a danger/destructive action button
+    pub fn danger(label: impl Into<String>) -> Self {
+        Self {
+            label: label.into(),
+            style: ModalButtonStyle::Danger,
+        }
+    }
+}
+
+/// A modal dialog widget
+pub struct Modal {
+    title: String,
+    /// Text content (for simple messages)
+    content: Vec<String>,
+    /// Child widget content (takes precedence over text content)
+    body: Option<Box<dyn View>>,
+    buttons: Vec<ModalButton>,
+    selected_button: usize,
+    visible: bool,
+    width: u16,
+    height: Option<u16>,
+    title_fg: Option<Color>,
+    border_fg: Option<Color>,
+    props: WidgetProps,
+}
+
+impl Modal {
+    /// Create a new modal dialog
+    pub fn new() -> Self {
+        Self {
+            title: String::new(),
+            content: Vec::new(),
+            body: None,
+            buttons: Vec::new(),
+            selected_button: 0,
+            visible: false,
+            width: 40,
+            height: None,
+            title_fg: Some(Color::WHITE),
+            border_fg: Some(Color::WHITE),
+            props: WidgetProps::new(),
+        }
+    }
+
+    /// Set modal title
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.title = title.into();
+        self
+    }
+
+    /// Set modal content
+    pub fn content(mut self, content: impl Into<String>) -> Self {
+        self.content = content.into().lines().map(|s| s.to_string()).collect();
+        self
+    }
+
+    /// Add a line to content
+    pub fn line(mut self, line: impl Into<String>) -> Self {
+        self.content.push(line.into());
+        self
+    }
+
+    /// Set buttons
+    pub fn buttons(mut self, buttons: Vec<ModalButton>) -> Self {
+        self.buttons = buttons;
+        self
+    }
+
+    /// Add OK button
+    pub fn ok(mut self) -> Self {
+        self.buttons.push(ModalButton::primary("OK"));
+        self
+    }
+
+    /// Add Cancel button
+    pub fn cancel(mut self) -> Self {
+        self.buttons.push(ModalButton::new("Cancel"));
+        self
+    }
+
+    /// Add OK and Cancel buttons
+    pub fn ok_cancel(mut self) -> Self {
+        self.buttons.push(ModalButton::primary("OK"));
+        self.buttons.push(ModalButton::new("Cancel"));
+        self
+    }
+
+    /// Add Yes and No buttons
+    pub fn yes_no(mut self) -> Self {
+        self.buttons.push(ModalButton::primary("Yes"));
+        self.buttons.push(ModalButton::new("No"));
+        self
+    }
+
+    /// Add Yes, No, and Cancel buttons
+    pub fn yes_no_cancel(mut self) -> Self {
+        self.buttons.push(ModalButton::primary("Yes"));
+        self.buttons.push(ModalButton::new("No"));
+        self.buttons.push(ModalButton::new("Cancel"));
+        self
+    }
+
+    /// Set modal width
+    pub fn width(mut self, width: u16) -> Self {
+        self.width = width;
+        self
+    }
+
+    /// Set modal height (None = auto)
+    pub fn height(mut self, height: u16) -> Self {
+        self.height = Some(height);
+        self
+    }
+
+    /// Set a child widget as body content
+    ///
+    /// When a body widget is set, it takes precedence over text content.
+    /// The widget will be rendered inside the modal's content area.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use revue::prelude::*;
+    ///
+    /// let modal = Modal::new()
+    ///     .title("User Form")
+    ///     .body(
+    ///         vstack()
+    ///             .gap(1)
+    ///             .child(Input::new().placeholder("Name"))
+    ///             .child(Input::new().placeholder("Email"))
+    ///     )
+    ///     .ok_cancel();
+    /// ```
+    pub fn body(mut self, widget: impl View + 'static) -> Self {
+        self.body = Some(Box::new(widget));
+        self
+    }
+
+    /// Set title color
+    pub fn title_fg(mut self, color: Color) -> Self {
+        self.title_fg = Some(color);
+        self
+    }
+
+    /// Set border color
+    pub fn border_fg(mut self, color: Color) -> Self {
+        self.border_fg = Some(color);
+        self
+    }
+
+    /// Show the modal
+    pub fn show(&mut self) {
+        self.visible = true;
+    }
+
+    /// Hide the modal
+    pub fn hide(&mut self) {
+        self.visible = false;
+    }
+
+    /// Toggle visibility
+    pub fn toggle(&mut self) {
+        self.visible = !self.visible;
+    }
+
+    /// Check if modal is visible
+    pub fn is_visible(&self) -> bool {
+        self.visible
+    }
+
+    /// Get selected button index
+    pub fn selected_button(&self) -> usize {
+        self.selected_button
+    }
+
+    /// Select next button
+    pub fn next_button(&mut self) {
+        if !self.buttons.is_empty() {
+            self.selected_button = (self.selected_button + 1) % self.buttons.len();
+        }
+    }
+
+    /// Select previous button
+    pub fn prev_button(&mut self) {
+        if !self.buttons.is_empty() {
+            self.selected_button = self.selected_button
+                .checked_sub(1)
+                .unwrap_or(self.buttons.len() - 1);
+        }
+    }
+
+    /// Handle key input, returns Some(button_index) if button confirmed
+    pub fn handle_key(&mut self, key: &crate::event::Key) -> Option<usize> {
+        use crate::event::Key;
+
+        match key {
+            Key::Enter | Key::Char(' ') => {
+                if !self.buttons.is_empty() {
+                    Some(self.selected_button)
+                } else {
+                    None
+                }
+            }
+            Key::Left | Key::Char('h') => {
+                self.prev_button();
+                None
+            }
+            Key::Right | Key::Char('l') => {
+                self.next_button();
+                None
+            }
+            Key::Tab => {
+                self.next_button();
+                None
+            }
+            Key::Escape => {
+                self.hide();
+                None
+            }
+            _ => None,
+        }
+    }
+
+    /// Create alert dialog
+    pub fn alert(title: impl Into<String>, message: impl Into<String>) -> Self {
+        Self::new()
+            .title(title)
+            .content(message)
+            .ok()
+    }
+
+    /// Create confirmation dialog
+    pub fn confirm(title: impl Into<String>, message: impl Into<String>) -> Self {
+        Self::new()
+            .title(title)
+            .content(message)
+            .yes_no()
+    }
+
+    /// Create error dialog
+    pub fn error(message: impl Into<String>) -> Self {
+        Self::new()
+            .title("Error")
+            .title_fg(Color::RED)
+            .border_fg(Color::RED)
+            .content(message)
+            .ok()
+    }
+
+    /// Create warning dialog
+    pub fn warning(message: impl Into<String>) -> Self {
+        Self::new()
+            .title("Warning")
+            .title_fg(Color::YELLOW)
+            .border_fg(Color::YELLOW)
+            .content(message)
+            .ok()
+    }
+
+    /// Calculate required height
+    fn required_height(&self) -> u16 {
+        // If height is explicitly set, use it
+        if let Some(h) = self.height {
+            return h;
+        }
+
+        // For body widget, use a default content height of 5 lines
+        let content_lines = if self.body.is_some() {
+            5u16
+        } else {
+            self.content.len() as u16
+        };
+
+        let button_line = if self.buttons.is_empty() { 0 } else { 1 };
+        // top border + title + title separator + content + padding + buttons + bottom border
+        3 + content_lines + 1 + button_line + 1
+    }
+}
+
+impl Default for Modal {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl View for Modal {
+    fn render(&self, ctx: &mut RenderContext) {
+        if !self.visible {
+            return;
+        }
+
+        let area = ctx.area;
+        let modal_width = self.width.min(area.width.saturating_sub(4));
+        let modal_height = self.required_height().min(area.height.saturating_sub(2));
+
+        // Center the modal
+        let x = area.x + (area.width.saturating_sub(modal_width)) / 2;
+        let y = area.y + (area.height.saturating_sub(modal_height)) / 2;
+
+        // Draw border
+        self.render_border(ctx, x, y, modal_width, modal_height);
+
+        // Draw title
+        if !self.title.is_empty() {
+            let title_x = x + 2;
+            let title_width = (modal_width - 4) as usize;
+            let title: String = self.title.chars().take(title_width).collect();
+
+            for (i, ch) in title.chars().enumerate() {
+                let mut cell = Cell::new(ch);
+                cell.fg = self.title_fg;
+                cell.modifier |= crate::render::Modifier::BOLD;
+                ctx.buffer.set(title_x + i as u16, y + 1, cell);
+            }
+
+            // Title separator
+            for dx in 1..(modal_width - 1) {
+                ctx.buffer.set(x + dx, y + 2, Cell::new('─'));
+            }
+            ctx.buffer.set(x, y + 2, Cell::new('├'));
+            ctx.buffer.set(x + modal_width - 1, y + 2, Cell::new('┤'));
+        }
+
+        // Draw content
+        let content_y = y + 3;
+        let content_width = modal_width.saturating_sub(4);
+        let content_height = modal_height.saturating_sub(6); // title + separator + padding + buttons + borders
+
+        if let Some(ref body_widget) = self.body {
+            // Render child widget
+            let content_area = crate::layout::Rect::new(
+                x + 2,
+                content_y,
+                content_width,
+                content_height,
+            );
+            let mut body_ctx = RenderContext::new(ctx.buffer, content_area);
+            body_widget.render(&mut body_ctx);
+        } else {
+            // Render text content
+            for (i, line) in self.content.iter().enumerate() {
+                let cy = content_y + i as u16;
+                if cy >= y + modal_height - 2 {
+                    break;
+                }
+                let truncated: String = line.chars().take(content_width as usize).collect();
+                for (j, ch) in truncated.chars().enumerate() {
+                    ctx.buffer.set(x + 2 + j as u16, cy, Cell::new(ch));
+                }
+            }
+        }
+
+        // Draw buttons
+        if !self.buttons.is_empty() {
+            let button_y = y + modal_height - 2;
+            let total_button_width: usize = self.buttons.iter()
+                .map(|b| b.label.len() + 4) // [ label ]
+                .sum::<usize>() + (self.buttons.len() - 1) * 2; // spacing
+
+            let start_x = x + (modal_width - total_button_width as u16) / 2;
+            let mut bx = start_x;
+
+            for (i, button) in self.buttons.iter().enumerate() {
+                let is_selected = i == self.selected_button;
+                let button_text = format!("[ {} ]", button.label);
+
+                let (fg, bg) = if is_selected {
+                    match button.style {
+                        ModalButtonStyle::Primary => (Some(Color::WHITE), Some(Color::BLUE)),
+                        ModalButtonStyle::Danger => (Some(Color::WHITE), Some(Color::RED)),
+                        ModalButtonStyle::Default => (Some(Color::BLACK), Some(Color::WHITE)),
+                    }
+                } else {
+                    (None, None)
+                };
+
+                for (j, ch) in button_text.chars().enumerate() {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = fg;
+                    cell.bg = bg;
+                    ctx.buffer.set(bx + j as u16, button_y, cell);
+                }
+
+                bx += button_text.len() as u16 + 2;
+            }
+        }
+    }
+
+    crate::impl_view_meta!("Modal");
+}
+
+impl Modal {
+    fn render_border(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16, height: u16) {
+        // Clear interior with spaces
+        for dy in 1..height.saturating_sub(1) {
+            for dx in 1..width.saturating_sub(1) {
+                ctx.buffer.set(x + dx, y + dy, Cell::new(' '));
+            }
+        }
+
+        // Top border
+        let mut corner = Cell::new('┌');
+        corner.fg = self.border_fg;
+        ctx.buffer.set(x, y, corner);
+
+        for dx in 1..(width - 1) {
+            let mut cell = Cell::new('─');
+            cell.fg = self.border_fg;
+            ctx.buffer.set(x + dx, y, cell);
+        }
+
+        let mut corner = Cell::new('┐');
+        corner.fg = self.border_fg;
+        ctx.buffer.set(x + width - 1, y, corner);
+
+        // Sides
+        for dy in 1..(height - 1) {
+            let mut cell = Cell::new('│');
+            cell.fg = self.border_fg;
+            ctx.buffer.set(x, y + dy, cell);
+            ctx.buffer.set(x + width - 1, y + dy, cell);
+        }
+
+        // Bottom border
+        let mut corner = Cell::new('└');
+        corner.fg = self.border_fg;
+        ctx.buffer.set(x, y + height - 1, corner);
+
+        for dx in 1..(width - 1) {
+            let mut cell = Cell::new('─');
+            cell.fg = self.border_fg;
+            ctx.buffer.set(x + dx, y + height - 1, cell);
+        }
+
+        let mut corner = Cell::new('┘');
+        corner.fg = self.border_fg;
+        ctx.buffer.set(x + width - 1, y + height - 1, corner);
+    }
+}
+
+/// Helper function to create a modal
+pub fn modal() -> Modal {
+    Modal::new()
+}
+
+impl_styled_view!(Modal);
+impl_props_builders!(Modal);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::Buffer;
+    use crate::layout::Rect;
+    
+
+    #[test]
+    fn test_modal_new() {
+        let m = Modal::new();
+        assert!(!m.is_visible());
+        assert!(m.title.is_empty());
+        assert!(m.content.is_empty());
+        assert!(m.buttons.is_empty());
+    }
+
+    #[test]
+    fn test_modal_builder() {
+        let m = Modal::new()
+            .title("Test")
+            .content("Hello\nWorld")
+            .ok_cancel();
+
+        assert_eq!(m.title, "Test");
+        assert_eq!(m.content.len(), 2);
+        assert_eq!(m.buttons.len(), 2);
+    }
+
+    #[test]
+    fn test_modal_visibility() {
+        let mut m = Modal::new();
+        assert!(!m.is_visible());
+
+        m.show();
+        assert!(m.is_visible());
+
+        m.hide();
+        assert!(!m.is_visible());
+
+        m.toggle();
+        assert!(m.is_visible());
+    }
+
+    #[test]
+    fn test_modal_button_navigation() {
+        let mut m = Modal::new().ok_cancel();
+
+        assert_eq!(m.selected_button(), 0);
+
+        m.next_button();
+        assert_eq!(m.selected_button(), 1);
+
+        m.next_button(); // Wraps around
+        assert_eq!(m.selected_button(), 0);
+
+        m.prev_button(); // Wraps around
+        assert_eq!(m.selected_button(), 1);
+    }
+
+    #[test]
+    fn test_modal_handle_key() {
+        use crate::event::Key;
+
+        let mut m = Modal::new().yes_no();
+        m.show();
+
+        // Navigate buttons
+        m.handle_key(&Key::Right);
+        assert_eq!(m.selected_button(), 1);
+
+        m.handle_key(&Key::Left);
+        assert_eq!(m.selected_button(), 0);
+
+        // Confirm selection
+        let result = m.handle_key(&Key::Enter);
+        assert_eq!(result, Some(0));
+
+        // Escape closes
+        m.handle_key(&Key::Escape);
+        assert!(!m.is_visible());
+    }
+
+    #[test]
+    fn test_modal_presets() {
+        let alert = Modal::alert("Title", "Message");
+        assert_eq!(alert.title, "Title");
+        assert_eq!(alert.buttons.len(), 1);
+
+        let confirm = Modal::confirm("Title", "Question?");
+        assert_eq!(confirm.buttons.len(), 2);
+
+        let error = Modal::error("Something went wrong");
+        assert_eq!(error.title, "Error");
+    }
+
+    #[test]
+    fn test_modal_render_hidden() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let m = Modal::new().title("Test");
+        m.render(&mut ctx);
+
+        // Hidden modal shouldn't render anything special
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
+    }
+
+    #[test]
+    fn test_modal_render_visible() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut m = Modal::new()
+            .title("Test Dialog")
+            .content("Hello")
+            .ok();
+        m.show();
+        m.render(&mut ctx);
+
+        // Modal should render centered - check for border characters
+        // The exact position depends on centering calculation
+        let center_x = (80 - 40) / 2;
+        let center_y = (24 - m.required_height()) / 2;
+
+        assert_eq!(buffer.get(center_x, center_y).unwrap().symbol, '┌');
+    }
+
+    #[test]
+    fn test_modal_button_styles() {
+        let btn = ModalButton::new("Test");
+        assert!(matches!(btn.style, ModalButtonStyle::Default));
+
+        let btn = ModalButton::primary("OK");
+        assert!(matches!(btn.style, ModalButtonStyle::Primary));
+
+        let btn = ModalButton::danger("Delete");
+        assert!(matches!(btn.style, ModalButtonStyle::Danger));
+    }
+
+    #[test]
+    fn test_modal_helper() {
+        let m = modal()
+            .title("Quick")
+            .ok();
+
+        assert_eq!(m.title, "Quick");
+    }
+
+    #[test]
+    fn test_modal_with_body() {
+        use crate::widget::Text;
+
+        let m = Modal::new()
+            .title("Form")
+            .body(Text::new("Custom content"))
+            .height(10)
+            .ok();
+
+        assert!(m.body.is_some());
+        assert_eq!(m.height, Some(10));
+    }
+
+    #[test]
+    fn test_modal_body_render() {
+        use crate::widget::Text;
+
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut m = Modal::new()
+            .title("Body Test")
+            .body(Text::new("Widget content"))
+            .width(50)
+            .height(12)
+            .ok();
+        m.show();
+        m.render(&mut ctx);
+
+        // Modal with body should render
+        let center_x = (80 - 50) / 2;
+        let center_y = (24 - 12) / 2;
+        assert_eq!(buffer.get(center_x, center_y).unwrap().symbol, '┌');
+    }
+}

@@ -1,0 +1,34 @@
+# CODEOWNERS - Automatic reviewer assignment
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything
+* @hawk90
+
+# Core library
+/src/lib.rs @hawk90
+/src/app/ @hawk90
+/src/reactive/ @hawk90
+/src/dom/ @hawk90
+
+# Rendering & Layout
+/src/render/ @hawk90
+/src/layout/ @hawk90
+
+# Styling
+/src/style/ @hawk90
+/tree-sitter-revue-css/ @hawk90
+
+# Widgets
+/src/widget/ @hawk90
+
+# CLI
+/revue-cli/ @hawk90
+
+# CI/CD & DevOps
+/.github/ @hawk90
+/deny.toml @hawk90
+/cliff.toml @hawk90
+
+# Documentation
+/docs/ @hawk90
+/*.md @hawk90

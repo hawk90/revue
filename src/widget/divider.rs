@@ -1,0 +1,387 @@
+//! Divider widget for visual separation
+
+use super::traits::{View, RenderContext, WidgetProps};
+use crate::{impl_styled_view, impl_props_builders};
+use crate::render::Cell;
+use crate::style::Color;
+
+/// Orientation for the divider
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Orientation {
+    /// Horizontal divider (default)
+    #[default]
+    Horizontal,
+    /// Vertical divider
+    Vertical,
+}
+
+/// Divider style
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DividerStyle {
+    /// Solid line (default)
+    #[default]
+    Solid,
+    /// Dashed line
+    Dashed,
+    /// Dotted line
+    Dotted,
+    /// Double line
+    Double,
+    /// Thick line
+    Thick,
+}
+
+/// A divider widget for visual separation
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use revue::prelude::*;
+///
+/// vstack()
+///     .child(text("Section 1"))
+///     .child(divider())
+///     .child(text("Section 2"))
+/// ```
+pub struct Divider {
+    /// Orientation
+    orientation: Orientation,
+    /// Style
+    style: DividerStyle,
+    /// Color
+    color: Color,
+    /// Label (centered in the divider)
+    label: Option<String>,
+    /// Label color
+    label_color: Option<Color>,
+    /// Margin (space before and after)
+    margin: u16,
+    /// Length (0 = auto/full width)
+    length: u16,
+    /// Widget props for CSS integration
+    props: WidgetProps,
+}
+
+impl Divider {
+    /// Create a new horizontal divider
+    pub fn new() -> Self {
+        Self {
+            orientation: Orientation::Horizontal,
+            style: DividerStyle::Solid,
+            color: Color::rgb(80, 80, 80),
+            label: None,
+            label_color: None,
+            margin: 0,
+            length: 0,
+            props: WidgetProps::new(),
+        }
+    }
+
+    /// Create a vertical divider
+    pub fn vertical() -> Self {
+        Self {
+            orientation: Orientation::Vertical,
+            ..Self::new()
+        }
+    }
+
+    /// Set orientation
+    pub fn orientation(mut self, orientation: Orientation) -> Self {
+        self.orientation = orientation;
+        self
+    }
+
+    /// Set style
+    pub fn style(mut self, style: DividerStyle) -> Self {
+        self.style = style;
+        self
+    }
+
+    /// Set color
+    pub fn color(mut self, color: Color) -> Self {
+        self.color = color;
+        self
+    }
+
+    /// Set label (centered text)
+    pub fn label(mut self, label: impl Into<String>) -> Self {
+        self.label = Some(label.into());
+        self
+    }
+
+    /// Set label color
+    pub fn label_color(mut self, color: Color) -> Self {
+        self.label_color = Some(color);
+        self
+    }
+
+    /// Set margin (space before and after the line)
+    pub fn margin(mut self, margin: u16) -> Self {
+        self.margin = margin;
+        self
+    }
+
+    /// Set length (0 = auto/full)
+    pub fn length(mut self, length: u16) -> Self {
+        self.length = length;
+        self
+    }
+
+    /// Dashed style shorthand
+    pub fn dashed(mut self) -> Self {
+        self.style = DividerStyle::Dashed;
+        self
+    }
+
+    /// Dotted style shorthand
+    pub fn dotted(mut self) -> Self {
+        self.style = DividerStyle::Dotted;
+        self
+    }
+
+    /// Double line shorthand
+    pub fn double(mut self) -> Self {
+        self.style = DividerStyle::Double;
+        self
+    }
+
+    /// Thick line shorthand
+    pub fn thick(mut self) -> Self {
+        self.style = DividerStyle::Thick;
+        self
+    }
+
+    /// Get the line character based on style and orientation
+    fn line_char(&self) -> char {
+        match (self.orientation, self.style) {
+            (Orientation::Horizontal, DividerStyle::Solid) => '─',
+            (Orientation::Horizontal, DividerStyle::Dashed) => '╌',
+            (Orientation::Horizontal, DividerStyle::Dotted) => '┄',
+            (Orientation::Horizontal, DividerStyle::Double) => '═',
+            (Orientation::Horizontal, DividerStyle::Thick) => '━',
+            (Orientation::Vertical, DividerStyle::Solid) => '│',
+            (Orientation::Vertical, DividerStyle::Dashed) => '╎',
+            (Orientation::Vertical, DividerStyle::Dotted) => '┆',
+            (Orientation::Vertical, DividerStyle::Double) => '║',
+            (Orientation::Vertical, DividerStyle::Thick) => '┃',
+        }
+    }
+
+}
+
+impl Default for Divider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl View for Divider {
+    crate::impl_view_meta!("Divider");
+
+    fn render(&self, ctx: &mut RenderContext) {
+        let area = ctx.area;
+        let line_char = self.line_char();
+
+        match self.orientation {
+            Orientation::Horizontal => {
+                let y = area.y;
+                let start_x = area.x + self.margin;
+                let end_x = if self.length > 0 {
+                    (start_x + self.length).min(area.x + area.width)
+                } else {
+                    area.x + area.width.saturating_sub(self.margin)
+                };
+
+                // Draw the line
+                if let Some(ref label) = self.label {
+                    // Line with label centered
+                    let label_len = label.chars().count() as u16;
+                    let total_width = end_x - start_x;
+
+                    if label_len + 4 <= total_width {
+                        let label_start = start_x + (total_width - label_len) / 2 - 1;
+                        let label_end = label_start + label_len + 2;
+
+                        // Left part
+                        for x in start_x..label_start {
+                            let mut cell = Cell::new(line_char);
+                            cell.fg = Some(self.color);
+                            ctx.buffer.set(x, y, cell);
+                        }
+
+                        // Space before label
+                        let mut space = Cell::new(' ');
+                        space.fg = Some(self.color);
+                        ctx.buffer.set(label_start, y, space);
+
+                        // Label
+                        let label_color = self.label_color.unwrap_or(self.color);
+                        for (i, ch) in label.chars().enumerate() {
+                            let mut cell = Cell::new(ch);
+                            cell.fg = Some(label_color);
+                            ctx.buffer.set(label_start + 1 + i as u16, y, cell);
+                        }
+
+                        // Space after label
+                        let mut space = Cell::new(' ');
+                        space.fg = Some(self.color);
+                        ctx.buffer.set(label_end - 1, y, space);
+
+                        // Right part
+                        for x in label_end..end_x {
+                            let mut cell = Cell::new(line_char);
+                            cell.fg = Some(self.color);
+                            ctx.buffer.set(x, y, cell);
+                        }
+                    } else {
+                        // Not enough space, just draw label
+                        for (i, ch) in label.chars().enumerate() {
+                            if start_x + i as u16 >= end_x {
+                                break;
+                            }
+                            let mut cell = Cell::new(ch);
+                            cell.fg = Some(self.label_color.unwrap_or(self.color));
+                            ctx.buffer.set(start_x + i as u16, y, cell);
+                        }
+                    }
+                } else {
+                    // Simple line without label
+                    for x in start_x..end_x {
+                        let mut cell = Cell::new(line_char);
+                        cell.fg = Some(self.color);
+                        ctx.buffer.set(x, y, cell);
+                    }
+                }
+            }
+            Orientation::Vertical => {
+                let x = area.x;
+                let start_y = area.y + self.margin;
+                let end_y = if self.length > 0 {
+                    (start_y + self.length).min(area.y + area.height)
+                } else {
+                    area.y + area.height.saturating_sub(self.margin)
+                };
+
+                for y in start_y..end_y {
+                    let mut cell = Cell::new(line_char);
+                    cell.fg = Some(self.color);
+                    ctx.buffer.set(x, y, cell);
+                }
+            }
+        }
+    }
+}
+
+impl_styled_view!(Divider);
+impl_props_builders!(Divider);
+
+/// Create a new horizontal divider
+pub fn divider() -> Divider {
+    Divider::new()
+}
+
+/// Create a new vertical divider
+pub fn vdivider() -> Divider {
+    Divider::vertical()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::Buffer;
+    use crate::layout::Rect;
+
+    #[test]
+    fn test_divider_new() {
+        let d = Divider::new();
+        assert_eq!(d.orientation, Orientation::Horizontal);
+        assert_eq!(d.style, DividerStyle::Solid);
+    }
+
+    #[test]
+    fn test_divider_vertical() {
+        let d = Divider::vertical();
+        assert_eq!(d.orientation, Orientation::Vertical);
+    }
+
+    #[test]
+    fn test_divider_builder() {
+        let d = divider()
+            .dashed()
+            .color(Color::RED)
+            .label("Test")
+            .margin(2);
+
+        assert_eq!(d.style, DividerStyle::Dashed);
+        assert_eq!(d.label, Some("Test".to_string()));
+        assert_eq!(d.margin, 2);
+    }
+
+    #[test]
+    fn test_divider_render_horizontal() {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let d = divider();
+        d.render(&mut ctx);
+
+        // Check first character is a horizontal line
+        assert_eq!(buffer.get(0, 0).map(|c| c.symbol), Some('─'));
+    }
+
+    #[test]
+    fn test_divider_render_vertical() {
+        let mut buffer = Buffer::new(1, 10);
+        let area = Rect::new(0, 0, 1, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let d = vdivider();
+        d.render(&mut ctx);
+
+        assert_eq!(buffer.get(0, 0).map(|c| c.symbol), Some('│'));
+    }
+
+    #[test]
+    fn test_divider_with_label() {
+        let mut buffer = Buffer::new(30, 1);
+        let area = Rect::new(0, 0, 30, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let d = divider().label("Section");
+        d.render(&mut ctx);
+
+        // Label should be somewhere in the middle
+        let text: String = (0..30)
+            .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
+            .collect();
+        assert!(text.contains("Section"));
+    }
+
+    #[test]
+    fn test_line_chars() {
+        let d = divider();
+        assert_eq!(d.line_char(), '─');
+
+        let d = divider().dashed();
+        assert_eq!(d.line_char(), '╌');
+
+        let d = divider().double();
+        assert_eq!(d.line_char(), '═');
+
+        let d = vdivider();
+        assert_eq!(d.line_char(), '│');
+
+        let d = vdivider().thick();
+        assert_eq!(d.line_char(), '┃');
+    }
+
+    #[test]
+    fn test_helper_functions() {
+        let h = divider();
+        assert_eq!(h.orientation, Orientation::Horizontal);
+
+        let v = vdivider();
+        assert_eq!(v.orientation, Orientation::Vertical);
+    }
+}

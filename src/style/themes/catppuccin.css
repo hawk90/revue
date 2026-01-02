@@ -1,0 +1,24 @@
+/* Catppuccin Mocha Theme for Revue */
+
+:root {
+    --base: #1e1e2e;
+    --surface0: #313244;
+    --text: #cdd6f4;
+    --overlay0: #6c7086;
+    --mauve: #cba6f7;
+    --pink: #f5c2e7;
+    --green: #a6e3a1;
+    --yellow: #f9e2af;
+    --red: #f38ba8;
+}
+
+* { color: var(--text); background: var(--base); }
+.title { color: var(--mauve); }
+.button { background: var(--mauve); color: var(--base); }
+.button:hover { background: var(--pink); }
+.input { background: var(--surface0); }
+.input:focus { border-color: var(--mauve); }
+.list-item:selected { background: var(--mauve); color: var(--base); }
+.success { color: var(--green); }
+.warning { color: var(--yellow); }
+.error { color: var(--red); }

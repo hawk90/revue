@@ -1,0 +1,20 @@
+/* Monokai Theme for Revue */
+
+:root {
+    --bg-primary: #272822;
+    --bg-secondary: #3e3d32;
+    --fg-primary: #f8f8f2;
+    --fg-secondary: #75715e;
+    --accent: #a6e22e;
+    --pink: #f92672;
+    --orange: #fd971f;
+    --cyan: #66d9ef;
+}
+
+* { color: var(--fg-primary); background: var(--bg-primary); }
+.title { color: var(--pink); }
+.button { background: var(--pink); color: var(--fg-primary); }
+.button:hover { background: var(--accent); color: var(--bg-primary); }
+.input { background: var(--bg-secondary); }
+.input:focus { border-color: var(--cyan); }
+.list-item:selected { background: var(--pink); }

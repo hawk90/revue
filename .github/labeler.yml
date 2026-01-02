@@ -1,0 +1,61 @@
+# Pull Request Labeler configuration
+# https://github.com/actions/labeler
+
+# Core library
+core:
+  - changed-files:
+      - any-glob-to-any-file: "src/lib.rs"
+      - any-glob-to-any-file: "src/core/**"
+
+# Parser
+parser:
+  - changed-files:
+      - any-glob-to-any-file: "src/parser/**"
+      - any-glob-to-any-file: "src/lexer/**"
+      - any-glob-to-any-file: "src/tokenizer/**"
+
+# AST
+ast:
+  - changed-files:
+      - any-glob-to-any-file: "src/ast/**"
+      - any-glob-to-any-file: "src/syntax/**"
+
+# CLI
+cli:
+  - changed-files:
+      - any-glob-to-any-file: "revue-cli/**"
+
+# Documentation
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: "*.md"
+      - any-glob-to-any-file: "docs/**"
+
+# Tests
+tests:
+  - changed-files:
+      - any-glob-to-any-file: "tests/**"
+      - any-glob-to-any-file: "**/*_test.rs"
+      - any-glob-to-any-file: "**/tests.rs"
+
+# CI/CD
+ci:
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"
+
+# Dependencies
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file: "Cargo.toml"
+      - any-glob-to-any-file: "Cargo.lock"
+      - any-glob-to-any-file: "deny.toml"
+
+# Examples
+examples:
+  - changed-files:
+      - any-glob-to-any-file: "examples/**"
+
+# Tree-sitter grammar
+tree-sitter:
+  - changed-files:
+      - any-glob-to-any-file: "tree-sitter-revue-css/**"

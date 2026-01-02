@@ -1,0 +1,89 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Revue CSS",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#selectors" },
+    { "include": "#rule-block" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.css",
+          "begin": "/\\*",
+          "end": "\\*/"
+        },
+        {
+          "name": "comment.line.double-slash.css",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "selectors": {
+      "patterns": [
+        {
+          "name": "entity.name.tag.css",
+          "match": "\\b(Button|Text|Input|List|Table|Modal|Border|Stack|Grid|Tabs|Progress|Spinner|Select|Checkbox|Radio|Toast|Tooltip)\\b"
+        },
+        {
+          "name": "entity.other.attribute-name.class.css",
+          "match": "\\.[a-zA-Z][a-zA-Z0-9_-]*"
+        },
+        {
+          "name": "entity.other.attribute-name.id.css",
+          "match": "#[a-zA-Z][a-zA-Z0-9_-]*"
+        },
+        {
+          "name": "entity.other.attribute-name.pseudo-class.css",
+          "match": ":(hover|focus|active|disabled|selected|checked|first-child|last-child|nth-child\\([^)]+\\))"
+        },
+        {
+          "name": "entity.other.attribute-name.pseudo-element.css",
+          "match": "::(before|after|placeholder)"
+        }
+      ]
+    },
+    "rule-block": {
+      "begin": "\\{",
+      "end": "\\}",
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#properties" }
+      ]
+    },
+    "properties": {
+      "patterns": [
+        {
+          "name": "support.type.property-name.css",
+          "match": "\\b(border|padding|margin|gap|width|height|min-width|max-width|min-height|max-height|color|background|display|flex|flex-direction|flex-wrap|justify-content|align-items|align-self|grid-template-columns|grid-template-rows|grid-column|grid-row|font-weight|font-style|text-align|text-decoration|transition|animation|animation-name|animation-duration|animation-timing-function|opacity|visibility|overflow|position|top|right|bottom|left|z-index)\\b"
+        },
+        {
+          "name": "support.constant.property-value.css",
+          "match": "\\b(solid|double|rounded|thick|none|flex|grid|block|inline|row|column|wrap|nowrap|center|start|end|space-between|space-around|stretch|auto|inherit|transparent|bold|italic|underline|ease|ease-in|ease-out|ease-in-out|linear|hidden|visible|scroll|absolute|relative|fixed|sticky)\\b"
+        },
+        {
+          "name": "constant.numeric.css",
+          "match": "\\b[0-9]+(\\.[0-9]+)?(px|%|em|rem|fr|s|ms)?\\b"
+        },
+        {
+          "name": "constant.other.color.rgb-value.css",
+          "match": "#[0-9a-fA-F]{3,8}\\b"
+        },
+        {
+          "name": "support.function.css",
+          "match": "\\b(rgb|rgba|hsl|hsla|var|calc|min|max|clamp)\\s*\\("
+        },
+        {
+          "name": "variable.css",
+          "match": "--[a-zA-Z][a-zA-Z0-9_-]*"
+        },
+        {
+          "name": "support.constant.color.css",
+          "match": "\\b(red|green|blue|yellow|cyan|magenta|white|black|gray|orange|purple|pink|brown|transparent)\\b"
+        }
+      ]
+    }
+  },
+  "scopeName": "source.revue-css"
+}

@@ -1,0 +1,119 @@
+================================================================================
+Simple rule
+================================================================================
+
+.button {
+  color: red;
+}
+
+--------------------------------------------------------------------------------
+
+(stylesheet
+  (rule_set
+    (selectors
+      (selector
+        (class_selector (identifier))))
+    (block
+      (declaration
+        (property (identifier))
+        (color (named_color))))))
+
+================================================================================
+CSS Variables
+================================================================================
+
+:root {
+  --primary: #ff5500;
+  --bg: rgb(30, 30, 46);
+}
+
+.title {
+  color: var(--primary);
+  background: var(--bg, #000);
+}
+
+--------------------------------------------------------------------------------
+
+(stylesheet
+  (rule_set
+    (selectors
+      (selector
+        (pseudo_class (identifier))))
+    (block
+      (declaration
+        (property (variable_name))
+        (color (hex_color)))
+      (declaration
+        (property (variable_name))
+        (function_call (identifier) (number) (number) (number)))))
+  (rule_set
+    (selectors
+      (selector
+        (class_selector (identifier))))
+    (block
+      (declaration
+        (property (identifier))
+        (variable_ref (variable_name)))
+      (declaration
+        (property (identifier))
+        (variable_ref (variable_name) (color (hex_color)))))))
+
+================================================================================
+Keyframes
+================================================================================
+
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+--------------------------------------------------------------------------------
+
+(stylesheet
+  (keyframes
+    (identifier)
+    (keyframe
+      (keyframe_selector)
+      (block
+        (declaration (property (identifier)) (number))))
+    (keyframe
+      (keyframe_selector)
+      (block
+        (declaration (property (identifier)) (number))))))
+
+================================================================================
+Complex selectors
+================================================================================
+
+.container > .item:hover {
+  background: blue;
+}
+
+#main .list-item:nth-child(2n+1) {
+  color: gray;
+}
+
+--------------------------------------------------------------------------------
+
+(stylesheet
+  (rule_set
+    (selectors
+      (selector
+        (class_selector (identifier))
+        (combinator)
+        (class_selector (identifier))
+        (pseudo_class (identifier))))
+    (block
+      (declaration
+        (property (identifier))
+        (color (named_color)))))
+  (rule_set
+    (selectors
+      (selector
+        (id_selector (identifier))
+        (class_selector (identifier))
+        (pseudo_class (identifier) (identifier))))
+    (block
+      (declaration
+        (property (identifier))
+        (color (named_color))))))

@@ -1,0 +1,31 @@
+[package]
+name = "revue-cli"
+version = "0.1.0"
+edition = "2021"
+description = "CLI tool for Revue TUI framework"
+license = "MIT"
+repository = "https://github.com/user/revue"
+keywords = ["tui", "cli", "terminal", "ui"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "revue"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+colored = "2.1"
+dialoguer = "0.11"
+indicatif = "0.17"
+toml = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+notify = "6.1"
+walkdir = "2.4"
+include_dir = "0.7"
+handlebars = "5.1"
+ureq = { version = "2.9", features = ["json"] }
+urlencoding = "2.1"
+
+[dev-dependencies]
+tempfile = "3.10"
