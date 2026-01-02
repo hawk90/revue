@@ -78,24 +78,25 @@ fn convert_position(position: Position) -> taffy::Position {
     }
 }
 
-fn convert_grid_template(template: &GridTemplate) -> Vec<taffy::TrackSizingFunction> {
+fn convert_grid_template(template: &GridTemplate) -> Vec<taffy::GridTemplateComponent<String>> {
     use taffy::style_helpers::*;
+    use taffy::GridTemplateComponent;
 
     template.tracks.iter().map(|track| {
         match track {
-            GridTrack::Fixed(v) => taffy::TrackSizingFunction::Single(
+            GridTrack::Fixed(v) => GridTemplateComponent::Single(
                 minmax(length(*v as f32), length(*v as f32))
             ),
-            GridTrack::Fr(fr_val) => taffy::TrackSizingFunction::Single(
+            GridTrack::Fr(fr_val) => GridTemplateComponent::Single(
                 minmax(auto(), fr(*fr_val))
             ),
-            GridTrack::Auto => taffy::TrackSizingFunction::Single(
+            GridTrack::Auto => GridTemplateComponent::Single(
                 minmax(auto(), auto())
             ),
-            GridTrack::MinContent => taffy::TrackSizingFunction::Single(
+            GridTrack::MinContent => GridTemplateComponent::Single(
                 minmax(min_content(), min_content())
             ),
-            GridTrack::MaxContent => taffy::TrackSizingFunction::Single(
+            GridTrack::MaxContent => GridTemplateComponent::Single(
                 minmax(max_content(), max_content())
             ),
         }
@@ -138,8 +139,8 @@ fn convert_grid_placement(placement: GridPlacement) -> taffy::Line<taffy::GridPl
 
 fn convert_inset(value: Option<i16>) -> LengthPercentageAuto {
     match value {
-        Some(v) => LengthPercentageAuto::Length(v as f32),
-        None => LengthPercentageAuto::Auto,
+        Some(v) => LengthPercentageAuto::length(v as f32),
+        None => LengthPercentageAuto::AUTO,
     }
 }
 
@@ -171,7 +172,7 @@ fn convert_align_items(ai: AlignItems) -> taffy::AlignItems {
 
 fn convert_size(size: Size) -> Dimension {
     match size {
-        Size::Auto => Dimension::Auto,
+        Size::Auto => Dimension::auto(),
         Size::Fixed(v) => length(v as f32),
         Size::Percent(p) => percent(p / 100.0),
     }
@@ -188,10 +189,10 @@ fn convert_spacing(spacing: &Spacing) -> taffy::Rect<LengthPercentage> {
 
 fn convert_spacing_auto(spacing: &Spacing) -> taffy::Rect<LengthPercentageAuto> {
     taffy::Rect {
-        top: LengthPercentageAuto::Length(spacing.top as f32),
-        right: LengthPercentageAuto::Length(spacing.right as f32),
-        bottom: LengthPercentageAuto::Length(spacing.bottom as f32),
-        left: LengthPercentageAuto::Length(spacing.left as f32),
+        top: LengthPercentageAuto::length(spacing.top as f32),
+        right: LengthPercentageAuto::length(spacing.right as f32),
+        bottom: LengthPercentageAuto::length(spacing.bottom as f32),
+        left: LengthPercentageAuto::length(spacing.left as f32),
     }
 }
 
