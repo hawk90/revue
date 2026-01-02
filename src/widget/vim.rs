@@ -194,8 +194,8 @@ pub struct VimState {
     last_action: Option<VimAction>,
     /// Register (for yank/paste)
     register: String,
-    /// Register name
-    register_name: char,
+    /// Register name (for future named register support)
+    _register_name: char,
     /// Key sequence buffer
     key_buffer: Vec<char>,
     /// Custom key mappings
@@ -214,7 +214,7 @@ impl VimState {
             search_forward: true,
             last_action: None,
             register: String::new(),
-            register_name: '"',
+            _register_name: '"',
             key_buffer: Vec::new(),
             mappings: HashMap::new(),
         }

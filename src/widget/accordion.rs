@@ -337,18 +337,6 @@ impl Accordion {
             None
         }
     }
-
-    /// Calculate total content height
-    fn total_height(&self) -> u16 {
-        let mut height = 0u16;
-        for (i, section) in self.sections.iter().enumerate() {
-            height += section.height();
-            if self.show_dividers && i < self.sections.len() - 1 {
-                height += 1;
-            }
-        }
-        height
-    }
 }
 
 impl Default for Accordion {

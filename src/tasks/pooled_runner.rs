@@ -112,18 +112,18 @@ impl Worker {
 pub struct PooledTaskRunner<T: Send + 'static> {
     /// Channel for submitting work to the pool
     work_tx: Sender<WorkItem<T>>,
-    /// Shared receiver for workers to get work
-    work_rx: Arc<Mutex<Receiver<WorkItem<T>>>>,
+    /// Shared receiver for workers to get work (kept alive for workers)
+    _work_rx: Arc<Mutex<Receiver<WorkItem<T>>>>,
     /// Channel for receiving results
     result_rx: Receiver<ResultMessage<T>>,
-    /// Sender for workers to send results
-    result_tx: Sender<ResultMessage<T>>,
+    /// Sender for workers to send results (kept alive for workers)
+    _result_tx: Sender<ResultMessage<T>>,
     /// Worker threads
     _workers: Vec<Worker>,
     /// Pending tasks (to prevent duplicate IDs)
     pending: HashMap<TaskId, ()>,
-    /// Queue of tasks waiting to be submitted (if pool is busy)
-    queue: VecDeque<(TaskId, Box<dyn FnOnce() -> T + Send + 'static>)>,
+    /// Queue of tasks waiting to be submitted (for future backpressure)
+    _queue: VecDeque<(TaskId, Box<dyn FnOnce() -> T + Send + 'static>)>,
 }
 
 impl<T: Send + 'static> PooledTaskRunner<T> {
@@ -150,12 +150,12 @@ impl<T: Send + 'static> PooledTaskRunner<T> {
 
         Self {
             work_tx,
-            work_rx,
+            _work_rx: work_rx,
             result_rx,
-            result_tx,
+            _result_tx: result_tx,
             _workers: workers,
             pending: HashMap::new(),
-            queue: VecDeque::new(),
+            _queue: VecDeque::new(),
         }
     }
 

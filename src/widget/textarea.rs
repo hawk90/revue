@@ -910,25 +910,6 @@ impl TextArea {
         }
     }
 
-    /// Update scroll to keep cursor visible
-    fn update_scroll(&mut self, visible_lines: usize, visible_cols: usize) {
-        // Vertical scroll
-        if self.cursor.0 < self.scroll.0 {
-            self.scroll.0 = self.cursor.0;
-        } else if self.cursor.0 >= self.scroll.0 + visible_lines {
-            self.scroll.0 = self.cursor.0 - visible_lines + 1;
-        }
-
-        // Horizontal scroll (only if not wrapping)
-        if !self.wrap {
-            if self.cursor.1 < self.scroll.1 {
-                self.scroll.1 = self.cursor.1;
-            } else if self.cursor.1 >= self.scroll.1 + visible_cols {
-                self.scroll.1 = self.cursor.1 - visible_cols + 1;
-            }
-        }
-    }
-
     /// Get line number width
     fn line_number_width(&self) -> u16 {
         if self.show_line_numbers {

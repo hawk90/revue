@@ -139,8 +139,8 @@ pub enum CellDisplay {
 pub struct HeatMap {
     /// Data grid (row-major)
     data: Vec<Vec<f64>>,
-    /// Number of rows
-    rows: usize,
+    /// Number of rows (cached for future use)
+    _rows: usize,
     /// Number of columns
     cols: usize,
     /// Min value (for normalization)
@@ -204,7 +204,7 @@ impl HeatMap {
 
         Self {
             data,
-            rows,
+            _rows: rows,
             cols,
             min_val,
             max_val,
@@ -529,7 +529,7 @@ mod tests {
             vec![0.2, 0.4, 0.8],
         ];
         let hm = HeatMap::new(data);
-        assert_eq!(hm.rows, 2);
+        assert_eq!(hm._rows, 2);
         assert_eq!(hm.cols, 3);
         assert_eq!(hm.min_val, 0.0);
         assert_eq!(hm.max_val, 1.0);
@@ -539,7 +539,7 @@ mod tests {
     fn test_heatmap_from_flat() {
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let hm = HeatMap::from_flat(&data, 2, 3);
-        assert_eq!(hm.rows, 2);
+        assert_eq!(hm._rows, 2);
         assert_eq!(hm.cols, 3);
         assert_eq!(hm.data[0][0], 1.0);
         assert_eq!(hm.data[1][2], 6.0);
@@ -605,6 +605,6 @@ mod tests {
     fn test_helper_functions() {
         let data = vec![vec![0.5]];
         let hm = heatmap(data);
-        assert_eq!(hm.rows, 1);
+        assert_eq!(hm._rows, 1);
     }
 }

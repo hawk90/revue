@@ -17,7 +17,7 @@ use crossterm::{
     },
 };
 
-use super::traits::{Backend, BackendCapabilities, StdoutBackend};
+use super::traits::{Backend, BackendCapabilities};
 use crate::style::Color;
 use crate::render::cell::Modifier;
 use crate::Result;
@@ -50,12 +50,6 @@ impl<W: Write> CrosstermBackend<W> {
     /// Get a mutable reference to the underlying writer
     pub fn writer_mut(&mut self) -> &mut W {
         &mut self.writer
-    }
-}
-
-impl StdoutBackend for CrosstermBackend<io::Stdout> {
-    fn stdout() -> io::Result<Self> {
-        Ok(Self::new(io::stdout()))
     }
 }
 

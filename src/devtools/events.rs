@@ -245,8 +245,8 @@ pub struct EventLogger {
     scroll: usize,
     /// Is paused
     paused: bool,
-    /// Start time for relative timestamps
-    start_time: Instant,
+    /// Start time for relative timestamps (for future UI)
+    _start_time: Instant,
 }
 
 impl Default for EventLogger {
@@ -266,7 +266,7 @@ impl EventLogger {
             selected: None,
             scroll: 0,
             paused: false,
-            start_time: Instant::now(),
+            _start_time: Instant::now(),
         }
     }
 

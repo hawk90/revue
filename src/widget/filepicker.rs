@@ -204,10 +204,10 @@ pub struct FilePicker {
     default_name: Option<String>,
     /// Input filename (for save mode)
     input_name: String,
-    /// Is inputting filename
-    input_mode: bool,
-    /// Confirm selection needed
-    confirm_overwrite: bool,
+    /// Is inputting filename (for future save mode UI)
+    _input_mode: bool,
+    /// Confirm selection needed (for future save mode UI)
+    _confirm_overwrite: bool,
     /// Width
     width: u16,
     /// History (visited directories)
@@ -245,8 +245,8 @@ impl FilePicker {
             title: None,
             default_name: None,
             input_name: String::new(),
-            input_mode: false,
-            confirm_overwrite: true,
+            _input_mode: false,
+            _confirm_overwrite: true,
             width: 60,
             history: vec![current_dir],
             history_idx: 0,

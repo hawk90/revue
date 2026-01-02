@@ -216,7 +216,6 @@ mod skeleton;
 mod pagination;
 mod virtuallist;
 mod terminal;
-mod contextmenu;
 mod autocomplete;
 mod rating;
 mod digits;
@@ -330,8 +329,6 @@ pub use skeleton::{Skeleton, SkeletonShape, skeleton, skeleton_text, skeleton_av
 pub use pagination::{Pagination, PaginationStyle, pagination};
 pub use virtuallist::{VirtualList, virtual_list, ScrollMode, ScrollAlignment};
 pub use terminal::{Terminal, TermCell, TermLine, TerminalAction, CursorStyle, terminal};
-// Note: contextmenu module provides alternative implementation
-// The primary ContextMenu is exported from menu module
 pub use autocomplete::{Autocomplete, Suggestion, FilterMode, autocomplete};
 pub use rating::{Rating, RatingStyle, RatingSize, rating};
 pub use digits::{Digits, DigitStyle, digits, clock, timer};

@@ -213,14 +213,6 @@ impl ProfilerInner {
         }
     }
 
-    fn push(&mut self, name: &str) {
-        self.stack.push(name.to_string());
-    }
-
-    fn pop(&mut self) {
-        self.stack.pop();
-    }
-
     fn reset(&mut self) {
         self.stats.clear();
         self.recent.clear();

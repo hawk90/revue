@@ -181,18 +181,6 @@ impl Button {
         }
     }
 
-    /// Get colors based on variant and state (without CSS context)
-    fn get_colors(&self) -> (Color, Color) {
-        let (variant_fg, variant_bg) = self.get_variant_base_colors();
-
-        // Use state's effective colors with interaction effects
-        let fg = self.state.effective_fg(variant_fg);
-        let bg = self.state.effective_bg(variant_bg)
-            .with_interaction(self.state.pressed, self.state.hovered, self.state.focused);
-
-        (fg, bg)
-    }
-
     /// Get colors with CSS cascade support
     ///
     /// Uses WidgetState::resolve_colors_interactive for standard cascade:

@@ -161,8 +161,8 @@ pub struct StyleInspector {
     widget_type: String,
     /// Selected property index
     selected: Option<usize>,
-    /// Scroll offset
-    scroll: usize,
+    /// Scroll offset (for future UI)
+    _scroll: usize,
     /// Show inherited properties
     show_inherited: bool,
     /// Show overridden properties

@@ -175,11 +175,6 @@ fn skip_whitespace_and_comments_bytes(bytes: &[u8], mut pos: usize) -> usize {
     pos
 }
 
-/// Count lines up to position (for error reporting)
-fn count_lines_str(css: &str, pos: usize) -> usize {
-    css[..pos.min(css.len())].bytes().filter(|&b| b == b'\n').count() + 1
-}
-
 /// Parse :root variables block using zero-copy str slicing
 fn parse_root_variables_str(
     css: &str,

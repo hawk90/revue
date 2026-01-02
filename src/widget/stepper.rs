@@ -33,16 +33,6 @@ impl StepStatus {
             StepStatus::Skipped => '⊘',
         }
     }
-
-    fn color(&self) -> Color {
-        match self {
-            StepStatus::Pending => Color::rgb(100, 100, 100),
-            StepStatus::Active => Color::CYAN,
-            StepStatus::Completed => Color::GREEN,
-            StepStatus::Error => Color::RED,
-            StepStatus::Skipped => Color::rgb(150, 150, 150),
-        }
-    }
 }
 
 /// Step definition

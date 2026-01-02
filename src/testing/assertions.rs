@@ -40,10 +40,12 @@ pub trait Assertion {
 }
 
 /// Assert that screen contains text
+#[cfg(test)]
 pub struct ContainsText {
     text: String,
 }
 
+#[cfg(test)]
 impl ContainsText {
     /// Create new assertion
     pub fn new(text: impl Into<String>) -> Self {
@@ -51,6 +53,7 @@ impl ContainsText {
     }
 }
 
+#[cfg(test)]
 impl Assertion for ContainsText {
     fn check(&self, buffer: &Buffer) -> AssertionResult {
         let screen = buffer_to_string(buffer);
@@ -70,10 +73,12 @@ impl Assertion for ContainsText {
 }
 
 /// Assert that screen does not contain text
+#[cfg(test)]
 pub struct NotContainsText {
     text: String,
 }
 
+#[cfg(test)]
 impl NotContainsText {
     /// Create new assertion
     pub fn new(text: impl Into<String>) -> Self {
@@ -81,6 +86,7 @@ impl NotContainsText {
     }
 }
 
+#[cfg(test)]
 impl Assertion for NotContainsText {
     fn check(&self, buffer: &Buffer) -> AssertionResult {
         let screen = buffer_to_string(buffer);
@@ -100,11 +106,13 @@ impl Assertion for NotContainsText {
 }
 
 /// Assert that a specific line contains text
+#[cfg(test)]
 pub struct LineContains {
     line: u16,
     text: String,
 }
 
+#[cfg(test)]
 impl LineContains {
     /// Create new assertion
     pub fn new(line: u16, text: impl Into<String>) -> Self {
@@ -115,6 +123,7 @@ impl LineContains {
     }
 }
 
+#[cfg(test)]
 impl Assertion for LineContains {
     fn check(&self, buffer: &Buffer) -> AssertionResult {
         let line_text = get_line(buffer, self.line);
@@ -134,12 +143,14 @@ impl Assertion for LineContains {
 }
 
 /// Assert cell has specific character
+#[cfg(test)]
 pub struct CellEquals {
     x: u16,
     y: u16,
     expected: char,
 }
 
+#[cfg(test)]
 impl CellEquals {
     /// Create new assertion
     pub fn new(x: u16, y: u16, expected: char) -> Self {
@@ -147,6 +158,7 @@ impl CellEquals {
     }
 }
 
+#[cfg(test)]
 impl Assertion for CellEquals {
     fn check(&self, buffer: &Buffer) -> AssertionResult {
         if let Some(cell) = buffer.get(self.x, self.y) {
@@ -172,10 +184,12 @@ impl Assertion for CellEquals {
 }
 
 /// Assert screen matches exact text
+#[cfg(test)]
 pub struct ScreenEquals {
     expected: String,
 }
 
+#[cfg(test)]
 impl ScreenEquals {
     /// Create new assertion
     pub fn new(expected: impl Into<String>) -> Self {
@@ -185,6 +199,7 @@ impl ScreenEquals {
     }
 }
 
+#[cfg(test)]
 impl Assertion for ScreenEquals {
     fn check(&self, buffer: &Buffer) -> AssertionResult {
         let actual = buffer_to_string(buffer);
@@ -208,6 +223,7 @@ impl Assertion for ScreenEquals {
 
 // Helper functions
 
+#[cfg(test)]
 fn buffer_to_string(buffer: &Buffer) -> String {
     let mut lines = Vec::new();
     for y in 0..buffer.height() {
@@ -230,6 +246,7 @@ fn buffer_to_string(buffer: &Buffer) -> String {
     lines.join("\n")
 }
 
+#[cfg(test)]
 fn get_line(buffer: &Buffer, row: u16) -> String {
     if row >= buffer.height() {
         return String::new();

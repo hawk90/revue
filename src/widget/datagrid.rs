@@ -339,7 +339,7 @@ pub struct DataGrid {
     selected_col: usize,
     /// Scroll offset
     scroll_row: usize,
-    scroll_col: usize,
+    _scroll_col: usize,
 
     // ─────────────────────────────────────────────────────────────────────────
     // Display Options & Colors (extracted structs)
@@ -372,7 +372,7 @@ impl DataGrid {
             selected_row: 0,
             selected_col: 0,
             scroll_row: 0,
-            scroll_col: 0,
+            _scroll_col: 0,
             options: GridOptions::default(),
             colors: GridColors::default(),
             edit_state: EditState::default(),
