@@ -154,9 +154,10 @@ pub enum TimeFormat {
 }
 
 /// Time range for the chart
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum TimeRange {
     /// Show all data
+    #[default]
     All,
     /// Last N seconds
     LastSeconds(u64),
@@ -173,12 +174,6 @@ pub enum TimeRange {
         /// End timestamp
         end: u64,
     },
-}
-
-impl Default for TimeRange {
-    fn default() -> Self {
-        Self::All
-    }
 }
 
 /// Marker on the time series chart

@@ -424,7 +424,7 @@ impl MaskedInput {
         match self.mask_style {
             MaskStyle::Full => {
                 // Pre-allocate with exact capacity
-                std::iter::repeat(self.mask_char).take(len).collect()
+                std::iter::repeat_n(self.mask_char, len).collect()
             }
             MaskStyle::ShowLast(n) => {
                 if len <= n {
@@ -432,7 +432,7 @@ impl MaskedInput {
                 } else {
                     let mask_count = len - n;
                     let mut result = String::with_capacity(len);
-                    result.extend(std::iter::repeat(self.mask_char).take(mask_count));
+                    result.extend(std::iter::repeat_n(self.mask_char, mask_count));
                     result.push_str(&self.value[len - n..]);
                     result
                 }
@@ -443,7 +443,7 @@ impl MaskedInput {
                 } else {
                     let mut result = String::with_capacity(len);
                     result.push_str(&self.value[..n]);
-                    result.extend(std::iter::repeat(self.mask_char).take(len - n));
+                    result.extend(std::iter::repeat_n(self.mask_char, len - n));
                     result
                 }
             }
@@ -452,12 +452,12 @@ impl MaskedInput {
                     // Show the last typed character
                     let last_char = self.value.chars().nth(self.cursor - 1).unwrap_or(' ');
                     let mut result = String::with_capacity(len);
-                    result.extend(std::iter::repeat(self.mask_char).take(self.cursor - 1));
+                    result.extend(std::iter::repeat_n(self.mask_char, self.cursor - 1));
                     result.push(last_char);
-                    result.extend(std::iter::repeat(self.mask_char).take(len - self.cursor));
+                    result.extend(std::iter::repeat_n(self.mask_char, len - self.cursor));
                     result
                 } else {
-                    std::iter::repeat(self.mask_char).take(len).collect()
+                    std::iter::repeat_n(self.mask_char, len).collect()
                 }
             }
             MaskStyle::Hidden => String::new(),
@@ -499,7 +499,7 @@ impl View for MaskedInput {
         let padded = if display.len() < width {
             let mut result = String::with_capacity(width);
             result.push_str(&display);
-            result.extend(std::iter::repeat(' ').take(width - display.len()));
+            result.extend(std::iter::repeat_n(' ', width - display.len()));
             result
         } else {
             display.chars().take(width).collect()
@@ -573,8 +573,8 @@ impl View for MaskedInput {
             let strength = self.password_strength();
             let color = self.strength_color();
             // Pre-allocate strength bar (max 5 chars = strength + 1)
-            let bar: String = std::iter::repeat('█').take(strength + 1).collect();
-            let empty: String = std::iter::repeat('░').take(4 - strength).collect();
+            let bar: String = std::iter::repeat_n('█', strength + 1).collect();
+            let empty: String = std::iter::repeat_n('░', 4 - strength).collect();
 
             let strength_display = hstack()
                 .child(Text::new(&bar).fg(color))

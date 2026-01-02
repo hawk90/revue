@@ -63,9 +63,10 @@ impl std::fmt::Display for ScreenId {
 }
 
 /// Screen transition type
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Transition {
     /// No transition
+    #[default]
     None,
     /// Fade in/out
     Fade,
@@ -83,27 +84,16 @@ pub enum Transition {
     Pop,
 }
 
-impl Default for Transition {
-    fn default() -> Self {
-        Self::None
-    }
-}
-
 /// Screen mode
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ScreenMode {
     /// Full screen (replaces previous)
+    #[default]
     Fullscreen,
     /// Modal (overlays previous)
     Modal,
     /// Popup (small overlay)
     Popup,
-}
-
-impl Default for ScreenMode {
-    fn default() -> Self {
-        Self::Fullscreen
-    }
 }
 
 /// Screen lifecycle event
@@ -128,9 +118,10 @@ pub enum ScreenEvent {
 }
 
 /// Result of screen event handling
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub enum ScreenResult {
     /// Continue normally
+    #[default]
     Continue,
     /// Request re-render
     Render,
@@ -146,12 +137,6 @@ pub enum ScreenResult {
     Exit,
     /// Pass event to next handler
     Pass,
-}
-
-impl Default for ScreenResult {
-    fn default() -> Self {
-        Self::Continue
-    }
 }
 
 /// Data passed between screens

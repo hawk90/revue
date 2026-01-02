@@ -168,7 +168,7 @@ impl QrCodeWidget {
         };
 
         // Two rows of QR = one terminal row
-        for row in 0..(height + 1) / 2 {
+        for row in 0..height.div_ceil(2) {
             if row as u16 >= area.height {
                 break;
             }
@@ -285,12 +285,12 @@ impl QrCodeWidget {
         // ⠁⠂⠄⡀ ⠈⠐⠠⢀
         let braille_base: u32 = 0x2800;
 
-        for row in 0..(height + 3) / 4 {
+        for row in 0..height.div_ceil(4) {
             if row as u16 >= area.height {
                 break;
             }
 
-            for col in 0..(width + 1) / 2 {
+            for col in 0..width.div_ceil(2) {
                 if col as u16 >= area.width {
                     break;
                 }
@@ -357,9 +357,9 @@ impl QrCodeWidget {
         let width = if height > 0 { matrix[0].len() } else { 0 };
 
         match self.style {
-            QrStyle::HalfBlock => Some((width as u16, ((height + 1) / 2) as u16)),
+            QrStyle::HalfBlock => Some((width as u16, height.div_ceil(2) as u16)),
             QrStyle::FullBlock | QrStyle::Ascii => Some((width as u16 * 2, height as u16)),
-            QrStyle::Braille => Some((((width + 1) / 2) as u16, ((height + 3) / 4) as u16)),
+            QrStyle::Braille => Some((width.div_ceil(2) as u16, height.div_ceil(4) as u16)),
         }
     }
 }

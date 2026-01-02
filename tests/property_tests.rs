@@ -14,12 +14,12 @@ use revue::style::Color;
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(1000))]
 
-    /// Rect area calculation is always non-negative
+    /// Rect area calculation matches width * height
     #[test]
-    fn rect_area_non_negative(x: u16, y: u16, w: u16, h: u16) {
+    fn rect_area_correct(x: u16, y: u16, w: u16, h: u16) {
         let rect = Rect::new(x, y, w, h);
         let area = rect.width as u32 * rect.height as u32;
-        prop_assert!(area >= 0);
+        prop_assert_eq!(area, w as u32 * h as u32);
     }
 
     /// Rect contains its own origin

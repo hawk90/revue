@@ -82,9 +82,10 @@ pub enum SpreadMode {
 }
 
 /// Direction for linear gradients
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum GradientDirection {
     /// Left to right (default)
+    #[default]
     ToRight,
     /// Right to left
     ToLeft,
@@ -98,12 +99,6 @@ pub enum GradientDirection {
     ToTopRight,
     /// Custom angle in degrees (0 = right, 90 = down)
     Angle(f32),
-}
-
-impl Default for GradientDirection {
-    fn default() -> Self {
-        Self::ToRight
-    }
 }
 
 impl GradientDirection {

@@ -10,7 +10,7 @@
 /// Layout-related style properties
 ///
 /// Contains display mode, flexbox, and grid layout properties.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct LayoutStyle {
     /// Display mode (flex, block, grid, none)
     pub display: Display,
@@ -36,25 +36,6 @@ pub struct LayoutStyle {
     pub grid_column: GridPlacement,
     /// Grid row placement
     pub grid_row: GridPlacement,
-}
-
-impl Default for LayoutStyle {
-    fn default() -> Self {
-        Self {
-            display: Display::default(),
-            position: Position::default(),
-            flex_direction: FlexDirection::default(),
-            justify_content: JustifyContent::default(),
-            align_items: AlignItems::default(),
-            gap: 0,
-            column_gap: None,
-            row_gap: None,
-            grid_template_columns: GridTemplate::default(),
-            grid_template_rows: GridTemplate::default(),
-            grid_column: GridPlacement::default(),
-            grid_row: GridPlacement::default(),
-        }
-    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -157,7 +138,7 @@ impl Default for VisualStyle {
 ///
 /// For backward compatibility, individual properties can still be accessed
 /// directly (e.g., `style.display` instead of `style.layout.display`).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Style {
     /// Layout properties (display, flex, grid)
     pub layout: LayoutStyle,
@@ -301,17 +282,6 @@ impl Style {
     /// Z-index for stacking order - non-inherited
     pub fn z_index(&self) -> i16 {
         self.visual.z_index
-    }
-}
-
-impl Default for Style {
-    fn default() -> Self {
-        Self {
-            layout: LayoutStyle::default(),
-            spacing: SpacingStyle::default(),
-            sizing: SizingStyle::default(),
-            visual: VisualStyle::default(),
-        }
     }
 }
 
@@ -512,24 +482,19 @@ pub enum Position {
 }
 
 /// Grid track sizing
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum GridTrack {
     /// Fixed size in cells
     Fixed(u16),
     /// Fractional unit (fr)
     Fr(f32),
     /// Automatic sizing
+    #[default]
     Auto,
     /// Minimum content
     MinContent,
     /// Maximum content
     MaxContent,
-}
-
-impl Default for GridTrack {
-    fn default() -> Self {
-        GridTrack::Auto
-    }
 }
 
 /// Grid template (columns or rows)

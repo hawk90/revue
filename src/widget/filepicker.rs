@@ -28,9 +28,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// File filter
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub enum FileFilter {
     /// No filter (show all)
+    #[default]
     All,
     /// Filter by extensions
     Extensions(Vec<String>),
@@ -67,10 +68,10 @@ impl FileFilter {
                     .and_then(|n| n.to_str())
                     .map(|name| {
                         // Simple glob matching
-                        if pattern.starts_with('*') {
-                            name.ends_with(&pattern[1..])
-                        } else if pattern.ends_with('*') {
-                            name.starts_with(&pattern[..pattern.len() - 1])
+                        if let Some(suffix) = pattern.strip_prefix('*') {
+                            name.ends_with(suffix)
+                        } else if let Some(prefix) = pattern.strip_suffix('*') {
+                            name.starts_with(prefix)
                         } else {
                             name == pattern
                         }
@@ -80,12 +81,6 @@ impl FileFilter {
             FileFilter::Custom(_) => true, // Custom filters need external handling
             FileFilter::DirectoriesOnly => path.is_dir(),
         }
-    }
-}
-
-impl Default for FileFilter {
-    fn default() -> Self {
-        Self::All
     }
 }
 
