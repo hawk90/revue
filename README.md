@@ -1,10 +1,10 @@
 <div align="center">
 
-# 🎭 Revue
+<img src="assets/banner.svg" alt="Revue" width="500">
 
-**A Vue-style TUI framework for Rust with CSS styling**
+<br>
 
-Build beautiful terminal UIs with the power of Rust and the elegance of CSS.
+**Build beautiful terminal UIs with the power of Rust and the elegance of CSS.**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/hawk90/revue/ci.yml?style=flat-square&logo=github&label=CI)](https://github.com/hawk90/revue/actions/workflows/ci.yml)
 [![codecov](https://img.shields.io/codecov/c/github/hawk90/revue?style=flat-square&logo=codecov)](https://codecov.io/gh/hawk90/revue)
