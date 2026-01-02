@@ -6,15 +6,14 @@
 
 [![crates.io](https://img.shields.io/crates/v/revue?style=for-the-badge&logo=rust&logoColor=white&color=orange)](https://crates.io/crates/revue)
 [![docs.rs](https://img.shields.io/docsrs/revue?style=for-the-badge&logo=docs.rs&logoColor=white)](https://docs.rs/revue)
-[![CI](https://img.shields.io/github/actions/workflow/status/hawk90/revue/ci.yml?style=for-the-badge&logo=github&label=CI)](https://github.com/hawk90/revue/actions)
 [![codecov](https://img.shields.io/codecov/c/github/hawk90/revue?style=for-the-badge&logo=codecov&logoColor=white)](https://codecov.io/gh/hawk90/revue)
 
-[![downloads](https://img.shields.io/crates/d/revue?style=flat-square&label=downloads&color=blue)](https://crates.io/crates/revue)
+[![Linux](https://img.shields.io/github/actions/workflow/status/hawk90/revue/ci.yml?style=flat-square&logo=linux&logoColor=white&label=Linux)](https://github.com/hawk90/revue/actions)
+[![macOS](https://img.shields.io/github/actions/workflow/status/hawk90/revue/ci.yml?style=flat-square&logo=apple&label=macOS)](https://github.com/hawk90/revue/actions)
+[![Windows](https://img.shields.io/github/actions/workflow/status/hawk90/revue/ci.yml?style=flat-square&logo=windows&logoColor=white&label=Windows)](https://github.com/hawk90/revue/actions)
 [![license](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![Rust 1.85+](https://img.shields.io/badge/rust-1.85+-orange?style=flat-square&logo=rust)](https://www.rust-lang.org)
-[![Linux](https://img.shields.io/badge/-Linux-grey?style=flat-square&logo=linux)](https://github.com/hawk90/revue)
-[![macOS](https://img.shields.io/badge/-macOS-grey?style=flat-square&logo=apple)](https://github.com/hawk90/revue)
-[![Windows](https://img.shields.io/badge/-Windows-grey?style=flat-square&logo=windows)](https://github.com/hawk90/revue)
+[![downloads](https://img.shields.io/crates/d/revue?style=flat-square&label=downloads&color=blue)](https://crates.io/crates/revue)
 
 [Quick Start](#-quick-start) · [Examples](examples/) · [Documentation](https://docs.rs/revue) · [Contributing](CONTRIBUTING.md)
 
