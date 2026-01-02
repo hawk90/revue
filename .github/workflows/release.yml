@@ -119,7 +119,7 @@ jobs:
           Get-FileHash revue-${{ github.ref_name }}-${{ matrix.target }}.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  revue-${{ github.ref_name }}-${{ matrix.target }}.zip" } | Out-File -Encoding ASCII revue-${{ github.ref_name }}-${{ matrix.target }}.zip.sha256
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: revue-${{ matrix.target }}
           path: |
