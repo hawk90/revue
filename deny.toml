@@ -4,7 +4,12 @@
 [advisories]
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-ignore = []
+ignore = [
+    # Unmaintained transitive dependencies from syntect - no safe upgrade available
+    "RUSTSEC-2024-0320",  # yaml-rust (via syntect)
+    "RUSTSEC-2025-0098",  # unic-ucd-version (via unic-emoji-char)
+    "RUSTSEC-2025-0097",  # unic-emoji-char
+]
 
 [licenses]
 allow = [
