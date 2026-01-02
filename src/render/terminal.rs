@@ -345,6 +345,7 @@ mod tests {
     }
 
     impl MockWriter {
+        #[allow(dead_code)]
         fn new() -> Self {
             Self { buffer: Vec::new() }
         }
