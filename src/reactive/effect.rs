@@ -104,7 +104,7 @@ impl Effect {
             // Get reference to ourselves for re-registration
             let self_callback = callback_cell_clone
                 .read()
-                .expect("Callback lock poisoned")
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
                 .as_ref()
                 .expect("Callback not initialized")
                 .clone();
@@ -121,7 +121,9 @@ impl Effect {
         });
 
         // Store callback in cell so it can reference itself
-        *callback_cell.write().expect("Callback lock poisoned") = Some(callback.clone());
+        *callback_cell
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(callback.clone());
 
         // Initial run with tracking
         let subscriber = Subscriber {
