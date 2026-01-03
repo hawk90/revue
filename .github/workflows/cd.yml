@@ -53,6 +53,7 @@ jobs:
         id: release
         with:
           release-type: rust
+          token: ${{ secrets.RELEASE_TOKEN }}
 
   publish:
     name: Publish to crates.io
