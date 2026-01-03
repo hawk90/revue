@@ -4,9 +4,7 @@
 [default.extend-words]
 # Allow these "misspellings"
 ot = "ot"          # often used in comments
-Ratatui = "Ratatui"  # Rust TUI library name
-ratatui = "ratatui"  # lowercase variant
-elete = "elete"      # partial word in "[d]elete" shortcut display
+elete = "elete"    # partial word in "[d]elete" shortcut display
 
 [default.extend-identifiers]
 # Test data for typo correction features
