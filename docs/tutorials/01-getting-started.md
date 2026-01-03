@@ -13,7 +13,7 @@ Add Revue to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-revue = "0.9"
+revue = "1.0"
 ```
 
 ## Your First App
