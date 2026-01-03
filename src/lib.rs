@@ -193,6 +193,7 @@ pub mod event;
 pub mod layout;
 pub mod patterns;
 pub mod plugin;
+pub mod query;
 pub mod reactive;
 pub mod render;
 pub mod style;
