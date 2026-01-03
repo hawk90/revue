@@ -77,8 +77,12 @@ impl SnapshotManager {
                 let expected = fs::read_to_string(&path)
                     .unwrap_or_else(|e| panic!("Failed to read snapshot '{}': {}", name, e));
 
-                let expected_trimmed = expected.trim();
-                let actual_trimmed = content.trim();
+                // Normalize line endings for cross-platform compatibility
+                let expected_normalized = expected.replace("\r\n", "\n");
+                let actual_normalized = content.replace("\r\n", "\n");
+
+                let expected_trimmed = expected_normalized.trim();
+                let actual_trimmed = actual_normalized.trim();
 
                 if expected_trimmed != actual_trimmed {
                     panic!(
