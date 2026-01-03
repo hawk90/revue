@@ -167,12 +167,8 @@ impl View for ZenMode {
             let content_height = area.height.saturating_sub(self.padding_y * 2);
 
             if content_width > 0 && content_height > 0 {
-                let content_area = crate::layout::Rect::new(
-                    content_x,
-                    content_y,
-                    content_width,
-                    content_height,
-                );
+                let content_area =
+                    crate::layout::Rect::new(content_x, content_y, content_width, content_height);
 
                 let mut sub_ctx = RenderContext::new(ctx.buffer, content_area);
                 self.content.render(&mut sub_ctx);
@@ -196,9 +192,7 @@ pub fn zen(content: impl View + 'static) -> ZenMode {
 
 /// Helper function to create a zen mode wrapper with dark theme
 pub fn zen_dark(content: impl View + 'static) -> ZenMode {
-    ZenMode::new(content)
-        .bg(Color::rgb(15, 15, 25))
-        .padding(4)
+    ZenMode::new(content).bg(Color::rgb(15, 15, 25)).padding(4)
 }
 
 /// Helper function to create a zen mode wrapper with light theme
