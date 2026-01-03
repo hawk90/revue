@@ -288,3 +288,16 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Publish to crates.io
         run: cargo publish
+
+  # ═══════════════════════════════════════════════════════════════
+  # Stage 6: Quality
+  # ═══════════════════════════════════════════════════════════════
+  typos:
+    name: Typos
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: crate-ci/typos@master
+        with:
+          config: .typos.toml
