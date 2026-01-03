@@ -52,6 +52,7 @@ jobs:
         id: release
         with:
           release-type: rust
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   publish:
     name: Publish to crates.io
