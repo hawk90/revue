@@ -48,6 +48,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   test:
     name: Test (${{ matrix.name }})
+    needs: [fmt, clippy]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -75,6 +76,7 @@ jobs:
 
   coverage:
     name: Coverage
+    needs: [fmt, clippy]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
