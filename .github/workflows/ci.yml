@@ -9,8 +9,6 @@ on:
     types: [opened, edited, synchronize, reopened]
   issues:
     types: [opened]
-  release:
-    types: [published]
   schedule:
     - cron: "0 0 * * 1"
   workflow_dispatch:
@@ -276,8 +274,9 @@ jobs:
 
   build:
     name: Build (${{ matrix.target }})
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
     runs-on: ${{ matrix.os }}
-    if: github.event_name == 'release'
     strategy:
       fail-fast: false
       matrix:
@@ -335,7 +334,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           cd target/${{ matrix.target }}/release
-          tar -czvf ../../../revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.tar.gz ${{ env.BINARY }}
+          tar -czvf ../../../revue-${{ needs.release-please.outputs.tag_name }}-${{ matrix.target }}.tar.gz ${{ env.BINARY }}
           cp ${{ env.BINARY }} ../../../revue-${{ matrix.target }}
 
       - name: Create archive (Windows)
@@ -343,17 +342,17 @@ jobs:
         shell: bash
         run: |
           cd target/${{ matrix.target }}/release
-          7z a ../../../revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.zip ${{ env.BINARY }}
+          7z a ../../../revue-${{ needs.release-please.outputs.tag_name }}-${{ matrix.target }}.zip ${{ env.BINARY }}
           cp ${{ env.BINARY }} ../../../revue-${{ matrix.target }}.exe
 
       - name: Generate checksums
         shell: bash
         run: |
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            sha256sum revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.zip > revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.zip.sha256
+            sha256sum revue-${{ needs.release-please.outputs.tag_name }}-${{ matrix.target }}.zip > revue-${{ needs.release-please.outputs.tag_name }}-${{ matrix.target }}.zip.sha256
             sha256sum revue-${{ matrix.target }}.exe > revue-${{ matrix.target }}.exe.sha256
           else
-            sha256sum revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.tar.gz > revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.tar.gz.sha256
+            sha256sum revue-${{ needs.release-please.outputs.tag_name }}-${{ matrix.target }}.tar.gz > revue-${{ needs.release-please.outputs.tag_name }}-${{ matrix.target }}.tar.gz.sha256
             sha256sum revue-${{ matrix.target }} > revue-${{ matrix.target }}.sha256
           fi
 
@@ -361,14 +360,14 @@ jobs:
         with:
           name: revue-${{ matrix.target }}
           path: |
-            revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.*
+            revue-${{ needs.release-please.outputs.tag_name }}-${{ matrix.target }}.*
             revue-${{ matrix.target }}*
 
   upload:
     name: Upload Release
-    needs: build
+    needs: [release-please, build]
+    if: needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
     steps:
       - uses: actions/checkout@v6
 
@@ -382,6 +381,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -392,9 +392,9 @@ jobs:
 
   publish:
     name: Publish
-    needs: upload
+    needs: [release-please, upload]
+    if: needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
