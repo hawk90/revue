@@ -199,13 +199,22 @@ impl View for Table {
         // Render header
         if self.border {
             // Top border
-            let top_border = BorderChars { left: '┌', mid: '┬', right: '┐', horiz: '─' };
+            let top_border = BorderChars {
+                left: '┌',
+                mid: '┬',
+                right: '┐',
+                horiz: '─',
+            };
             self.render_border_line(ctx, area.x, y, &widths, &top_border);
             y += 1;
         }
 
         // Header row
-        let header_style = RowStyle { fg: self.header_fg, bg: self.header_bg, bold: true };
+        let header_style = RowStyle {
+            fg: self.header_fg,
+            bg: self.header_bg,
+            bold: true,
+        };
         self.render_row(
             ctx,
             area.x,
@@ -222,7 +231,12 @@ impl View for Table {
 
         if self.border {
             // Header separator
-            let sep_border = BorderChars { left: '├', mid: '┼', right: '┤', horiz: '─' };
+            let sep_border = BorderChars {
+                left: '├',
+                mid: '┼',
+                right: '┤',
+                horiz: '─',
+            };
             self.render_border_line(ctx, area.x, y, &widths, &sep_border);
             y += 1;
         }
@@ -240,14 +254,23 @@ impl View for Table {
                 (None, None)
             };
 
-            let row_style = RowStyle { fg, bg, bold: false };
+            let row_style = RowStyle {
+                fg,
+                bg,
+                bold: false,
+            };
             self.render_row(ctx, area.x, y, &widths, row, &row_style);
             y += 1;
         }
 
         if self.border {
             // Bottom border
-            let bottom_border = BorderChars { left: '└', mid: '┴', right: '┘', horiz: '─' };
+            let bottom_border = BorderChars {
+                left: '└',
+                mid: '┴',
+                right: '┘',
+                horiz: '─',
+            };
             self.render_border_line(ctx, area.x, y, &widths, &bottom_border);
         }
     }

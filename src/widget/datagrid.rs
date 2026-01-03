@@ -1166,8 +1166,16 @@ impl DataGrid {
                     && self.scroll_row + i == self.selected_row
                     && *orig_col_idx == self.edit_state.col;
 
-                let pos = CellPos { x, y: row_y, width: w };
-                let state = CellState { row_bg, is_selected, is_editing };
+                let pos = CellPos {
+                    x,
+                    y: row_y,
+                    width: w,
+                };
+                let state = CellState {
+                    row_bg,
+                    is_selected,
+                    is_editing,
+                };
                 self.render_cell(ctx, row, col, &pos, &state);
 
                 // Draw separator

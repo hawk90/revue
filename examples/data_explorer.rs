@@ -66,6 +66,7 @@ struct Notification {
 }
 
 #[derive(Clone, Copy)]
+#[allow(dead_code)]
 enum NotificationLevel {
     Info,
     Success,
@@ -725,7 +726,7 @@ impl View for DataExplorer {
 
 fn main() -> Result<()> {
     let mut app = App::builder().build();
-    let mut explorer = DataExplorer::new();
+    let explorer = DataExplorer::new();
 
     app.run_with_handler(explorer, |key_event, explorer| {
         explorer.update_notifications();
