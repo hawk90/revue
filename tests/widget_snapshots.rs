@@ -1033,3 +1033,543 @@ fn test_grid_basic() {
 
     pilot.snapshot("grid_basic");
 }
+
+// =============================================================================
+// Autocomplete Widget Tests
+// =============================================================================
+
+#[test]
+fn test_autocomplete_basic() {
+    use revue::widget::Autocomplete;
+
+    let view = Autocomplete::new()
+        .placeholder("Search...")
+        .suggestions(["Apple", "Banana", "Cherry", "Date", "Elderberry"]);
+
+    let mut app = TestApp::new(view);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("autocomplete_basic");
+}
+
+#[test]
+fn test_autocomplete_with_value() {
+    use revue::widget::Autocomplete;
+
+    let view = Autocomplete::new()
+        .placeholder("Search fruits...")
+        .suggestions(["Apple", "Apricot", "Avocado"])
+        .value("Ap");
+
+    let mut app = TestApp::new(view);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("autocomplete_with_value");
+}
+
+// =============================================================================
+// TextArea Widget Tests
+// =============================================================================
+
+#[test]
+fn test_textarea_basic() {
+    use revue::widget::TextArea;
+
+    let view = TextArea::new()
+        .content("Hello, World!\nThis is a multi-line text area.\nLine 3 here.");
+
+    let mut app = TestApp::new(view);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("textarea_basic");
+}
+
+#[test]
+fn test_textarea_with_line_numbers() {
+    use revue::widget::TextArea;
+
+    let view = TextArea::new()
+        .content("fn main() {\n    println!(\"Hello\");\n}")
+        .line_numbers(true);
+
+    let mut app = TestApp::new(view);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("textarea_line_numbers");
+}
+
+#[test]
+fn test_textarea_with_placeholder() {
+    use revue::widget::TextArea;
+
+    let view = TextArea::new()
+        .placeholder("Enter your code here...");
+
+    let mut app = TestApp::new(view);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("textarea_placeholder");
+}
+
+// =============================================================================
+// VirtualList Widget Tests
+// =============================================================================
+
+#[test]
+fn test_virtuallist_basic() {
+    use revue::widget::VirtualList;
+
+    let items: Vec<String> = (0..100).map(|i| format!("Item {}", i)).collect();
+    let view = VirtualList::new(items)
+        .item_height(1)
+        .selected(5);
+
+    let config = TestConfig::with_size(40, 10);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("virtuallist_basic");
+}
+
+#[test]
+fn test_virtuallist_with_scrollbar() {
+    use revue::widget::VirtualList;
+
+    let items: Vec<String> = (0..50).map(|i| format!("Row {}", i)).collect();
+    let view = VirtualList::new(items)
+        .item_height(1)
+        .show_scrollbar(true)
+        .selected(10);
+
+    let config = TestConfig::with_size(30, 8);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("virtuallist_scrollbar");
+}
+
+// =============================================================================
+// Menu Widget Tests
+// =============================================================================
+
+#[test]
+fn test_menubar_basic() {
+    use revue::widget::{Menu, MenuBar, MenuItem};
+
+    let view = MenuBar::new()
+        .menu(Menu::new("File")
+            .item(MenuItem::new("New"))
+            .item(MenuItem::new("Open"))
+            .item(MenuItem::separator())
+            .item(MenuItem::new("Save"))
+            .item(MenuItem::new("Exit")))
+        .menu(Menu::new("Edit")
+            .item(MenuItem::new("Cut"))
+            .item(MenuItem::new("Copy")))
+        .menu(Menu::new("Help")
+            .item(MenuItem::new("About")));
+
+    let mut app = TestApp::new(view);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("menubar_basic");
+}
+
+#[test]
+fn test_menubar_with_shortcuts() {
+    use revue::widget::{Menu, MenuBar, MenuItem};
+
+    let view = MenuBar::new()
+        .menu(Menu::new("File")
+            .item(MenuItem::new("New").shortcut("Ctrl+N"))
+            .item(MenuItem::new("Open").shortcut("Ctrl+O"))
+            .item(MenuItem::new("Save").shortcut("Ctrl+S")))
+        .menu(Menu::new("Edit")
+            .item(MenuItem::new("Cut").shortcut("Ctrl+X"))
+            .item(MenuItem::new("Copy").shortcut("Ctrl+C"))
+            .item(MenuItem::new("Paste").shortcut("Ctrl+V")));
+
+    let mut app = TestApp::new(view);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("menubar_shortcuts");
+}
+
+// =============================================================================
+// Tooltip Widget Tests
+// =============================================================================
+
+#[test]
+fn test_tooltip_basic() {
+    use revue::widget::Tooltip;
+
+    let view = Tooltip::new("This is helpful information")
+        .visible(true)
+        .anchor(10, 5);
+
+    let config = TestConfig::with_size(50, 10);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("tooltip_basic");
+}
+
+#[test]
+fn test_tooltip_variants() {
+    use revue::widget::Tooltip;
+
+    let view = vstack()
+        .gap(2)
+        .child(Tooltip::info("Info tooltip").visible(true).anchor(5, 1))
+        .child(Tooltip::warning("Warning tooltip").visible(true).anchor(5, 4))
+        .child(Tooltip::error("Error tooltip").visible(true).anchor(5, 7));
+
+    let config = TestConfig::with_size(50, 12);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("tooltip_variants");
+}
+
+// =============================================================================
+// Markdown Widget Tests
+// =============================================================================
+
+#[test]
+fn test_markdown_basic() {
+    use revue::widget::Markdown;
+
+    let source = r#"# Hello World
+
+This is a **bold** and *italic* text.
+
+- Item 1
+- Item 2
+- Item 3
+
+`inline code` and more text.
+"#;
+
+    let view = Markdown::new(source);
+
+    let config = TestConfig::with_size(50, 15);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("markdown_basic");
+}
+
+#[test]
+fn test_markdown_code_block() {
+    use revue::widget::Markdown;
+
+    let source = r#"## Code Example
+
+```rust
+fn main() {
+    println!("Hello!");
+}
+```
+"#;
+
+    let view = Markdown::new(source);
+
+    let config = TestConfig::with_size(50, 12);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("markdown_code");
+}
+
+#[test]
+fn test_markdown_with_toc() {
+    use revue::widget::Markdown;
+
+    let source = r#"# Main Title
+
+## Section 1
+Content here.
+
+## Section 2
+More content.
+
+### Subsection 2.1
+Details.
+"#;
+
+    let view = Markdown::new(source).show_toc(true);
+
+    let config = TestConfig::with_size(60, 15);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("markdown_toc");
+}
+
+// =============================================================================
+// Syntax Highlighter Tests
+// =============================================================================
+
+#[test]
+fn test_syntax_rust() {
+    use revue::widget::{Language, SyntaxHighlighter};
+
+    let code = r#"fn main() {
+    let x = 42;
+    println!("{}", x);
+}"#;
+
+    let highlighter = SyntaxHighlighter::new(Language::Rust);
+    // Just test that highlighting produces spans
+    let spans = highlighter.highlight_line("fn main() {");
+    assert!(!spans.is_empty());
+}
+
+#[test]
+fn test_syntax_themes() {
+    use revue::widget::{Language, SyntaxHighlighter, SyntaxTheme};
+
+    let _dark = SyntaxHighlighter::new(Language::Rust).theme(SyntaxTheme::dark());
+    let _light = SyntaxHighlighter::new(Language::Rust).theme(SyntaxTheme::light());
+    let _monokai = SyntaxHighlighter::new(Language::Rust).theme(SyntaxTheme::monokai());
+}
+
+#[test]
+fn test_syntax_languages() {
+    use revue::widget::Language;
+
+    assert_eq!(Language::from_extension("rs"), Language::Rust);
+    assert_eq!(Language::from_extension("py"), Language::Python);
+    assert_eq!(Language::from_extension("js"), Language::JavaScript);
+    assert_eq!(Language::from_extension("ts"), Language::JavaScript);
+    assert_eq!(Language::from_extension("go"), Language::Go);
+}
+
+// =============================================================================
+// TimeSeries Widget Tests
+// =============================================================================
+
+#[test]
+fn test_timeseries_basic() {
+    use revue::widget::{TimeSeries, TimeSeriesData};
+    use revue::style::Color;
+
+    let data = TimeSeriesData::new("CPU")
+        .point(0, 25.0)
+        .point(1, 45.0)
+        .point(2, 30.0)
+        .point(3, 60.0)
+        .point(4, 55.0)
+        .color(Color::CYAN);
+
+    let view = TimeSeries::new()
+        .title("CPU Usage")
+        .series(data)
+        .show_legend(true);
+
+    let config = TestConfig::with_size(60, 15);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("timeseries_basic");
+}
+
+#[test]
+fn test_timeseries_multiple_series() {
+    use revue::widget::{TimeSeries, TimeSeriesData};
+    use revue::style::Color;
+
+    let cpu = TimeSeriesData::new("CPU")
+        .points(vec![(0, 20.0), (1, 40.0), (2, 35.0), (3, 50.0)])
+        .color(Color::CYAN);
+
+    let memory = TimeSeriesData::new("Memory")
+        .points(vec![(0, 60.0), (1, 65.0), (2, 70.0), (3, 68.0)])
+        .color(Color::MAGENTA);
+
+    let view = TimeSeries::new()
+        .title("System Metrics")
+        .series(cpu)
+        .series(memory)
+        .y_label("Usage %")
+        .show_grid(true);
+
+    let config = TestConfig::with_size(70, 18);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("timeseries_multi");
+}
+
+// =============================================================================
+// Waveline Widget Tests
+// =============================================================================
+
+#[test]
+fn test_waveline_basic() {
+    use revue::widget::Waveline;
+
+    let data: Vec<f64> = (0..50).map(|i| (i as f64 * 0.2).sin() * 0.4 + 0.5).collect();
+    let view = Waveline::new(data);
+
+    let config = TestConfig::with_size(60, 10);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("waveline_basic");
+}
+
+#[test]
+fn test_waveline_filled() {
+    use revue::widget::{Waveline, WaveStyle};
+    use revue::style::Color;
+
+    let data: Vec<f64> = (0..40).map(|i| (i as f64 * 0.15).sin() * 0.3 + 0.5).collect();
+    let view = Waveline::new(data)
+        .style(WaveStyle::Filled)
+        .color(Color::GREEN);
+
+    let config = TestConfig::with_size(50, 8);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("waveline_filled");
+}
+
+#[test]
+fn test_waveline_mirrored() {
+    use revue::widget::{Waveline, WaveStyle};
+    use revue::style::Color;
+
+    let data: Vec<f64> = (0..60).map(|i| (i as f64 * 0.1).sin() * 0.5 + 0.5).collect();
+    let view = Waveline::new(data)
+        .style(WaveStyle::Mirrored)
+        .color(Color::CYAN)
+        .show_baseline(true);
+
+    let config = TestConfig::with_size(70, 12);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("waveline_mirrored");
+}
+
+// =============================================================================
+// Timeline Widget Tests
+// =============================================================================
+
+#[test]
+fn test_timeline_basic() {
+    use revue::widget::{Timeline, TimelineEvent};
+
+    let view = Timeline::new()
+        .event(TimelineEvent::new("Project Started").timestamp("2024-01"))
+        .event(TimelineEvent::new("Beta Release").timestamp("2024-06"))
+        .event(TimelineEvent::new("1.0 Launch").timestamp("2024-12"));
+
+    let config = TestConfig::with_size(50, 12);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("timeline_basic");
+}
+
+#[test]
+fn test_timeline_with_descriptions() {
+    use revue::widget::{Timeline, TimelineEvent, EventType};
+
+    let view = Timeline::new()
+        .event(TimelineEvent::new("Bug Fix")
+            .description("Fixed critical login issue")
+            .event_type(EventType::Success)
+            .timestamp("10:30"))
+        .event(TimelineEvent::new("Deployment")
+            .description("Pushed to production")
+            .event_type(EventType::Info)
+            .timestamp("11:00"))
+        .event(TimelineEvent::new("Alert")
+            .description("High memory usage")
+            .event_type(EventType::Warning)
+            .timestamp("11:30"));
+
+    let config = TestConfig::with_size(60, 15);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("timeline_descriptions");
+}
+
+// =============================================================================
+// ThemePicker Widget Tests
+// =============================================================================
+
+#[test]
+fn test_theme_picker_basic() {
+    use revue::widget::ThemePicker;
+
+    let view = ThemePicker::new();
+
+    let config = TestConfig::with_size(40, 8);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("theme_picker_basic");
+}
+
+#[test]
+fn test_theme_picker_compact() {
+    use revue::widget::ThemePicker;
+
+    let view = ThemePicker::new().compact(true);
+
+    let config = TestConfig::with_size(30, 5);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("theme_picker_compact");
+}
+
+// =============================================================================
+// Timer Widget Tests
+// =============================================================================
+
+#[test]
+fn test_timer_countdown() {
+    use revue::widget::Timer;
+
+    let view = Timer::countdown(300); // 5 minutes
+
+    let config = TestConfig::with_size(30, 5);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("timer_countdown");
+}
+
+#[test]
+fn test_timer_with_progress() {
+    use revue::widget::Timer;
+
+    let view = Timer::countdown(600)
+        .title("Pomodoro")
+        .show_progress(true);
+
+    let config = TestConfig::with_size(40, 6);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("timer_progress");
+}
+
+#[test]
+fn test_stopwatch_basic() {
+    use revue::widget::Stopwatch;
+
+    let view = Stopwatch::new();
+
+    let config = TestConfig::with_size(30, 5);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("stopwatch_basic");
+}

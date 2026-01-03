@@ -494,6 +494,15 @@ mod tests {
         }
     }
 
+    fn create_test_app() -> App {
+        App::new_with_plugins(
+            (80, 24),
+            StyleSheet::new(),
+            false,
+            crate::plugin::PluginRegistry::new(),
+        )
+    }
+
     #[test]
     fn test_app_builder_and_new() {
         let app = App::builder().css(".test { color: red; }").build();
@@ -501,13 +510,14 @@ mod tests {
     }
 
     #[test]
+    fn test_app_default() {
+        let app = App::default();
+        assert!(!app.is_running());
+    }
+
+    #[test]
     fn test_app_quit() {
-        let mut app = App::new_with_plugins(
-            (10, 10),
-            StyleSheet::new(),
-            false,
-            crate::plugin::PluginRegistry::new(),
-        );
+        let mut app = create_test_app();
         app.running = true;
         assert!(app.is_running());
         app.quit();
@@ -522,5 +532,191 @@ mod tests {
         assert!(is_quit_key(&q_key));
         assert!(is_quit_key(&ctrl_c));
         assert!(!is_quit_key(&other_key));
+    }
+
+    #[test]
+    fn test_is_quit_key_other_keys() {
+        let escape = KeyEvent::new(Key::Escape);
+        let enter = KeyEvent::new(Key::Enter);
+        let ctrl_d = KeyEvent::ctrl(Key::Char('d'));
+        assert!(!is_quit_key(&escape));
+        assert!(!is_quit_key(&enter));
+        assert!(!is_quit_key(&ctrl_d));
+    }
+
+    #[test]
+    fn test_request_redraw() {
+        let mut app = create_test_app();
+        app.needs_force_redraw = false;
+        app.request_redraw();
+        assert!(app.needs_force_redraw);
+    }
+
+    #[test]
+    fn test_request_layout_rebuild() {
+        let mut app = create_test_app();
+        app.needs_layout_rebuild = false;
+        app.request_layout_rebuild();
+        assert!(app.needs_layout_rebuild);
+    }
+
+    #[test]
+    fn test_request_dom_rebuild() {
+        let mut app = create_test_app();
+        app.needs_dom_rebuild = false;
+        app.needs_layout_rebuild = false;
+        app.request_dom_rebuild();
+        assert!(app.needs_dom_rebuild);
+        assert!(app.needs_layout_rebuild); // DOM rebuild implies layout rebuild
+    }
+
+    #[test]
+    fn test_plugins_access() {
+        let mut app = create_test_app();
+        let _ = app.plugins();
+        let _ = app.plugins_mut();
+    }
+
+    #[test]
+    fn test_dom_renderer_access() {
+        let mut app = create_test_app();
+        let _ = app.dom_renderer();
+    }
+
+    #[test]
+    fn test_transitions_access() {
+        let mut app = create_test_app();
+        assert!(!app.has_active_transitions());
+        let _ = app.transitions();
+        let _ = app.transitions_mut();
+    }
+
+    #[test]
+    fn test_transition_value_none() {
+        let app = create_test_app();
+        assert!(app.transition_value("opacity").is_none());
+    }
+
+    #[test]
+    fn test_start_transition() {
+        let mut app = create_test_app();
+        let transition = crate::style::Transition {
+            property: "opacity".to_string(),
+            duration: Duration::from_millis(300),
+            delay: Duration::ZERO,
+            easing: crate::style::Easing::Linear,
+        };
+        app.start_transition("opacity", 0.0, 1.0, &transition);
+        assert!(app.has_active_transitions());
+        // Initial value should be close to 0 (start value)
+        let value = app.transition_value("opacity");
+        assert!(value.is_some());
+    }
+
+    #[test]
+    fn test_new_with_plugins_initial_state() {
+        let app = App::new_with_plugins(
+            (100, 50),
+            StyleSheet::new(),
+            true,
+            crate::plugin::PluginRegistry::new(),
+        );
+        assert!(!app.running);
+        assert!(app.needs_force_redraw);
+        assert!(app.needs_layout_rebuild);
+        assert!(app.needs_dom_rebuild);
+        assert!(app.mouse_capture);
+    }
+
+    #[test]
+    fn test_buffer_initialization() {
+        let app = App::new_with_plugins(
+            (120, 40),
+            StyleSheet::new(),
+            false,
+            crate::plugin::PluginRegistry::new(),
+        );
+        assert_eq!(app.buffers[0].width(), 120);
+        assert_eq!(app.buffers[0].height(), 40);
+        assert_eq!(app.buffers[1].width(), 120);
+        assert_eq!(app.buffers[1].height(), 40);
+        assert_eq!(app.current_buffer, 0);
+    }
+
+    #[test]
+    fn test_handle_event_quit_q() {
+        let mut app = create_test_app();
+        app.running = true;
+        let mut view = TestView;
+        let mut handler = |_: &Event, _: &mut TestView, _: &mut App| false;
+
+        let event = Event::Key(KeyEvent::new(Key::Char('q')));
+        let _ = app.handle_event(event, &mut view, &mut handler);
+        assert!(!app.is_running());
+    }
+
+    #[test]
+    fn test_handle_event_quit_ctrl_c() {
+        let mut app = create_test_app();
+        app.running = true;
+        let mut view = TestView;
+        let mut handler = |_: &Event, _: &mut TestView, _: &mut App| false;
+
+        let event = Event::Key(KeyEvent::ctrl(Key::Char('c')));
+        let _ = app.handle_event(event, &mut view, &mut handler);
+        assert!(!app.is_running());
+    }
+
+    #[test]
+    fn test_handle_event_resize() {
+        let mut app = create_test_app();
+        app.needs_force_redraw = false;
+        app.needs_layout_rebuild = false;
+        let mut view = TestView;
+        let mut handler = |_: &Event, _: &mut TestView, _: &mut App| false;
+
+        let event = Event::Resize(100, 50);
+        let should_draw = app.handle_event(event, &mut view, &mut handler);
+
+        assert!(should_draw);
+        assert!(app.needs_force_redraw);
+        assert!(app.needs_layout_rebuild);
+        assert_eq!(app.buffers[0].width(), 100);
+        assert_eq!(app.buffers[0].height(), 50);
+    }
+
+    #[test]
+    fn test_handle_event_tick() {
+        let mut app = create_test_app();
+        let mut view = TestView;
+        let mut handler = |_: &Event, _: &mut TestView, _: &mut App| false;
+
+        let event = Event::Tick;
+        let _ = app.handle_event(event, &mut view, &mut handler);
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_handle_event_handler_returns_true() {
+        let mut app = create_test_app();
+        app.needs_force_redraw = false;
+        let mut view = TestView;
+        let mut handler = |_: &Event, _: &mut TestView, _: &mut App| true;
+
+        let event = Event::Key(KeyEvent::new(Key::Char('a')));
+        let should_draw = app.handle_event(event, &mut view, &mut handler);
+        assert!(should_draw);
+    }
+
+    #[test]
+    fn test_handle_event_handler_returns_false() {
+        let mut app = create_test_app();
+        app.needs_force_redraw = false;
+        let mut view = TestView;
+        let mut handler = |_: &Event, _: &mut TestView, _: &mut App| false;
+
+        let event = Event::Key(KeyEvent::new(Key::Char('a')));
+        let should_draw = app.handle_event(event, &mut view, &mut handler);
+        assert!(!should_draw);
     }
 }

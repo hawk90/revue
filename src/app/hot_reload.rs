@@ -234,27 +234,90 @@ mod tests {
     }
 
     #[test]
-    fn test_hot_reload_config() {
+    fn test_hot_reload_with_config() {
+        let config = HotReloadConfig {
+            debounce: Duration::from_millis(50),
+            recursive: false,
+        };
+        let hr = HotReload::with_config(config);
+        assert!(hr.is_ok());
+        let hr = hr.unwrap();
+        assert_eq!(hr.debounce, Duration::from_millis(50));
+    }
+
+    #[test]
+    fn test_hot_reload_config_default() {
         let config = HotReloadConfig::default();
         assert_eq!(config.debounce, Duration::from_millis(100));
         assert!(config.recursive);
     }
 
     #[test]
-    fn test_hot_reload_builder() {
-        let builder = HotReloadBuilder::new().debounce(Duration::from_millis(200));
+    fn test_hot_reload_builder_new() {
+        let builder = HotReloadBuilder::new();
+        assert!(builder.paths.is_empty());
+        assert_eq!(builder.config.debounce, Duration::from_millis(100));
+    }
 
+    #[test]
+    fn test_hot_reload_builder_default() {
+        let builder = HotReloadBuilder::default();
+        assert!(builder.paths.is_empty());
+        assert_eq!(builder.config.debounce, Duration::from_millis(100));
+    }
+
+    #[test]
+    fn test_hot_reload_builder_debounce() {
+        let builder = HotReloadBuilder::new().debounce(Duration::from_millis(200));
         assert_eq!(builder.config.debounce, Duration::from_millis(200));
+    }
+
+    #[test]
+    fn test_hot_reload_builder_watch() {
+        let builder = HotReloadBuilder::new()
+            .watch("src")
+            .watch("tests");
+        assert_eq!(builder.paths.len(), 2);
+    }
+
+    #[test]
+    fn test_hot_reload_builder_build() {
+        let hr = HotReloadBuilder::new()
+            .debounce(Duration::from_millis(75))
+            .watch(".")
+            .build();
+        assert!(hr.is_ok());
+        let hr = hr.unwrap();
+        assert_eq!(hr.debounce, Duration::from_millis(75));
+        assert_eq!(hr.watched_paths().len(), 1);
     }
 
     #[test]
     fn test_hot_reload_watch_current_dir() {
         let mut hr = HotReload::new().unwrap();
-
         // Watch current directory (always exists)
         let result = hr.watch(".");
         assert!(result.is_ok());
         assert_eq!(hr.watched_paths().len(), 1);
+    }
+
+    #[test]
+    fn test_hot_reload_watch_multiple_paths() {
+        let mut hr = HotReload::new().unwrap();
+        let _ = hr.watch(".");
+        let _ = hr.watch("src");
+        // Both should be tracked
+        assert_eq!(hr.watched_paths().len(), 2);
+    }
+
+    #[test]
+    fn test_hot_reload_unwatch() {
+        let mut hr = HotReload::new().unwrap();
+        let _ = hr.watch(".");
+        assert_eq!(hr.watched_paths().len(), 1);
+        let result = hr.unwatch(".");
+        assert!(result.is_ok());
+        assert!(hr.watched_paths().is_empty());
     }
 
     #[test]
@@ -264,15 +327,84 @@ mod tests {
     }
 
     #[test]
+    fn test_hot_reload_wait_timeout_empty() {
+        let mut hr = HotReload::new().unwrap();
+        let event = hr.wait_timeout(Duration::from_millis(1));
+        assert!(event.is_none());
+    }
+
+    #[test]
+    fn test_hot_reload_css_changed_empty() {
+        let mut hr = HotReload::new().unwrap();
+        let changed = hr.css_changed();
+        assert!(changed.is_none());
+    }
+
+    #[test]
     fn test_hot_reload_helper() {
         let builder = hot_reload().debounce(Duration::from_millis(50));
-
         assert_eq!(builder.config.debounce, Duration::from_millis(50));
     }
 
     #[test]
-    fn test_hot_reload_event_debug() {
+    fn test_hot_reload_event_stylesheet_changed() {
         let event = HotReloadEvent::StylesheetChanged(PathBuf::from("test.css"));
-        assert!(format!("{:?}", event).contains("test.css"));
+        let debug = format!("{:?}", event);
+        assert!(debug.contains("StylesheetChanged"));
+        assert!(debug.contains("test.css"));
+    }
+
+    #[test]
+    fn test_hot_reload_event_file_created() {
+        let event = HotReloadEvent::FileCreated(PathBuf::from("new.css"));
+        let debug = format!("{:?}", event);
+        assert!(debug.contains("FileCreated"));
+        assert!(debug.contains("new.css"));
+    }
+
+    #[test]
+    fn test_hot_reload_event_file_deleted() {
+        let event = HotReloadEvent::FileDeleted(PathBuf::from("deleted.css"));
+        let debug = format!("{:?}", event);
+        assert!(debug.contains("FileDeleted"));
+        assert!(debug.contains("deleted.css"));
+    }
+
+    #[test]
+    fn test_hot_reload_event_error() {
+        let event = HotReloadEvent::Error("test error".to_string());
+        let debug = format!("{:?}", event);
+        assert!(debug.contains("Error"));
+        assert!(debug.contains("test error"));
+    }
+
+    #[test]
+    fn test_hot_reload_event_clone() {
+        let event = HotReloadEvent::StylesheetChanged(PathBuf::from("style.css"));
+        let cloned = event.clone();
+        match cloned {
+            HotReloadEvent::StylesheetChanged(path) => {
+                assert_eq!(path, PathBuf::from("style.css"));
+            }
+            _ => panic!("Expected StylesheetChanged"),
+        }
+    }
+
+    #[test]
+    fn test_hot_reload_watched_paths_empty() {
+        let hr = HotReload::new().unwrap();
+        assert!(hr.watched_paths().is_empty());
+    }
+
+    #[test]
+    fn test_hot_reload_builder_chaining() {
+        let builder = HotReloadBuilder::new()
+            .debounce(Duration::from_millis(150))
+            .watch("src")
+            .watch("tests")
+            .watch("examples");
+
+        assert_eq!(builder.config.debounce, Duration::from_millis(150));
+        assert_eq!(builder.paths.len(), 3);
     }
 }
