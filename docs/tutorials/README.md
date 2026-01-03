@@ -9,8 +9,8 @@ Learn Revue step by step with these hands-on tutorials.
 | 1 | [Getting Started](./01-getting-started.md) | 5 min | Install Revue and create your first app |
 | 2 | [Counter App](./02-counter.md) | 15 min | Learn state management with a counter |
 | 3 | [Todo App](./03-todo.md) | 30 min | Build a full-featured todo list |
-| 4 | Dashboard App | Coming Soon | Create a multi-panel dashboard |
-| 5 | Full Application | 2+ hours | Build a complete production app |
+| 4 | [Dashboard App](../../examples/dashboard.rs) | Example | Multi-panel dashboard with charts |
+| 5 | [IDE App](../../examples/ide.rs) | Example | Full-featured IDE interface |
 
 ## Quick Start
 
