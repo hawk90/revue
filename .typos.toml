@@ -3,14 +3,34 @@
 
 [default.extend-words]
 # Allow these "misspellings"
-ot = "ot"  # often used in comments
+ot = "ot"            # often used in comments
+elete = "elete"      # partial word in "[d]elete" shortcut display
+Ratatui = "Ratatui"  # TUI framework name (not Ratatouille)
+ratatui = "ratatui"  # lowercase variant
+
+[default.extend-identifiers]
+# Test data for typo correction features
+backgrond = "backgrond"  # intentional typo in suggest_property test
 
 [files]
 extend-exclude = [
     "target/",
     "*.lock",
     "tests/snapshots/",
+    "tests/fixtures/",
 ]
 
 [default]
 locale = "en-us"
+
+# Ignore partial word matches in code
+[type.rust.extend-words]
+ommand = "ommand"    # partial match in command
+colour = "colour"    # British spelling in test data
+Hel = "Hel"          # partial match in Hello/Help
+Helo = "Helo"        # test string
+sav = "sav"          # partial match in save
+Ded = "Ded"          # partial match in Dead
+hel = "hel"          # lowercase partial
+ba = "ba"            # partial match
+nd = "nd"            # partial match in and

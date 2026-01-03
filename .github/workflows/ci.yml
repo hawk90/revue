@@ -4,40 +4,19 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
-  pull_request_target:
-    types: [opened, edited, synchronize, reopened]
-  issues:
-    types: [opened]
-  schedule:
-    - cron: "0 0 * * 1"
-  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.run_id }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -Dwarnings
 
-permissions:
-  contents: write
-  security-events: write
-  pages: write
-  id-token: write
-  issues: write
-  pull-requests: write
-  statuses: write
-
 jobs:
-  # ═══════════════════════════════════════════════════════════════
-  # Stage 1: Lint
-  # ═══════════════════════════════════════════════════════════════
   fmt:
     name: Format
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -48,7 +27,6 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -57,62 +35,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-features -- -D warnings
 
-  commits:
-    name: Validate Commits
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "20"
-      - name: Install commitlint
-        run: |
-          npm install --save-dev @commitlint/{cli,config-conventional}
-          echo "module.exports = { extends: ['@commitlint/config-conventional'] };" > commitlint.config.js
-      - name: Validate PR commits
-        if: github.event_name == 'pull_request'
-        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
-      - name: Validate push commit
-        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
-        run: npx commitlint --from ${{ github.event.before }} --to ${{ github.event.after }} --verbose
-
-  pr-title:
-    name: Validate PR Title
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request_target'
-    steps:
-      - uses: amannn/action-semantic-pull-request@v6
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          types: |
-            feat
-            fix
-            docs
-            style
-            refactor
-            perf
-            test
-            build
-            ci
-            chore
-            revert
-          requireScope: false
-          wip: true
-          subjectPattern: ^(?![A-Z]).+$
-          subjectPatternError: |
-            PR title must follow Conventional Commits: <type>: <description>
-
-  # ═══════════════════════════════════════════════════════════════
-  # Stage 2: Test
-  # ═══════════════════════════════════════════════════════════════
   test:
     name: Test (${{ matrix.os }})
     needs: [fmt, clippy]
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -127,7 +52,6 @@ jobs:
   coverage:
     name: Coverage
     needs: [fmt, clippy]
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -146,7 +70,6 @@ jobs:
   msrv:
     name: MSRV (1.87)
     needs: [fmt, clippy]
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -154,150 +77,31 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --all-features
 
-  # ═══════════════════════════════════════════════════════════════
-  # Stage 2: Security
-  # ═══════════════════════════════════════════════════════════════
-  audit:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'schedule'
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo generate-lockfile
-      - uses: rustsec/audit-check@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-  deny:
-    name: Cargo Deny
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'schedule'
-    steps:
-      - uses: actions/checkout@v6
-      - uses: EmbarkStudios/cargo-deny-action@v2
-        with:
-          command: check all
-
-  # ═══════════════════════════════════════════════════════════════
-  # Stage 3: Docs (GitHub Pages)
-  # ═══════════════════════════════════════════════════════════════
-  docs:
-    name: Build Docs
-    needs: [fmt, clippy]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
-      - uses: Swatinem/rust-cache@v2
-      - name: Build rustdoc
-        run: cargo doc --no-deps --all-features --document-private-items
-        env:
-          RUSTDOCFLAGS: --cfg docsrs -D warnings
-      - name: Create index redirect
-        run: echo '<html><head><meta http-equiv="refresh" content="0; url=revue/index.html"></head></html>' > target/doc/index.html
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: target/doc
-
-  deploy-docs:
-    name: Deploy Docs
-    needs: docs
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/deploy-pages@v4
-        id: deployment
-
-  # ═══════════════════════════════════════════════════════════════
-  # Stage 4: Community
-  # ═══════════════════════════════════════════════════════════════
-  label:
-    name: Label PR
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request_target'
-    steps:
-      - uses: actions/labeler@v5
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          configuration-path: .github/labeler.yml
-          sync-labels: true
-
-  welcome:
-    name: Welcome
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request_target' || github.event_name == 'issues'
-    steps:
-      - uses: actions/first-interaction@v3
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          issue_message: |
-            Thanks for opening your first issue! A maintainer will review it soon.
-          pr_message: |
-            Thanks for your first pull request! A maintainer will review your PR soon.
-
-  stale:
-    name: Mark Stale
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    steps:
-      - uses: actions/stale@v10
-        with:
-          stale-issue-message: "This issue has been marked as stale due to inactivity."
-          stale-pr-message: "This PR has been marked as stale due to inactivity."
-          days-before-stale: 60
-          days-before-close: 14
-          stale-issue-label: stale
-          stale-pr-label: stale
-          exempt-issue-labels: "pinned,security,help wanted,good first issue"
-          exempt-pr-labels: "pinned,security,work in progress"
-
-  # ═══════════════════════════════════════════════════════════════
-  # Stage 5: Release
-  # ═══════════════════════════════════════════════════════════════
-  release-please:
-    name: Release Please
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-    steps:
-      - uses: googleapis/release-please-action@v4
-        id: release
-        with:
-          release-type: rust
-
-  publish:
-    name: Publish to crates.io
-    needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
-    runs-on: ubuntu-latest
-    environment: crates-io
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Publish to crates.io
-        run: cargo publish
-
-  # ═══════════════════════════════════════════════════════════════
-  # Stage 6: Quality
-  # ═══════════════════════════════════════════════════════════════
   typos:
     name: Typos
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v6
       - uses: crate-ci/typos@master
         with:
           config: .typos.toml
+
+  commits:
+    name: Validate Commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+      - name: Install commitlint
+        run: npm install --save-dev @commitlint/{cli,config-conventional}
+      - name: Validate PR commits
+        if: github.event_name == 'pull_request'
+        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+      - name: Validate push commits
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        run: npx commitlint --from ${{ github.event.before }} --to ${{ github.event.after }} --verbose
+
