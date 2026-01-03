@@ -113,14 +113,10 @@ jobs:
           RUSTDOCFLAGS: -D warnings
 
   msrv:
-    name: MSRV (1.85)
+    name: MSRV (1.87)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@1.85
+      - uses: dtolnay/rust-toolchain@1.87
       - uses: Swatinem/rust-cache@v2
-      - name: Downgrade incompatible dependencies
-        run: |
-          cargo generate-lockfile
-          cargo update zune-jpeg@0.5.8 --precise 0.4.21
       - run: cargo check --all-features
