@@ -32,6 +32,37 @@ pub use pool::{Worker, WorkerPool};
 use std::future::Future;
 use std::pin::Pin;
 
+/// Shared tokio runtime for async worker tasks
+#[cfg(feature = "async")]
+mod shared_runtime {
+    use std::sync::OnceLock;
+    use tokio::runtime::{Handle, Runtime};
+
+    static RUNTIME: OnceLock<Runtime> = OnceLock::new();
+
+    /// Get or create the shared runtime handle
+    pub fn handle() -> Handle {
+        // First, try to get the current runtime if we're already in one
+        if let Ok(handle) = Handle::try_current() {
+            return handle;
+        }
+
+        // Otherwise, use/create the shared runtime
+        RUNTIME
+            .get_or_init(|| {
+                tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("Failed to create shared tokio runtime")
+            })
+            .handle()
+            .clone()
+    }
+}
+
+#[cfg(feature = "async")]
+pub(crate) use shared_runtime::handle as get_runtime_handle;
+
 /// A boxed future for worker tasks
 pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send + 'static>>;
 

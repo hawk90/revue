@@ -375,10 +375,13 @@ impl ScreenManager {
             screen = Some(entry.screen);
         }
 
-        // If not found, we need a factory - for now just return false
-        // In a real implementation, we'd use the registry
+        // If not found in stack, try to create from registry
         if screen.is_none() {
-            return false;
+            if let Some(factory) = self.registry.get(&id) {
+                screen = Some(factory());
+            } else {
+                return false;
+            }
         }
 
         let mut screen = screen.unwrap();
