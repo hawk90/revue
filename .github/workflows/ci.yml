@@ -28,6 +28,7 @@ permissions:
   id-token: write
   issues: write
   pull-requests: write
+  statuses: write
 
 jobs:
   # ═══════════════════════════════════════════════════════════════
@@ -234,10 +235,10 @@ jobs:
     steps:
       - uses: actions/first-interaction@v3
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          issue-message: |
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: |
             Thanks for opening your first issue! A maintainer will review it soon.
-          pr-message: |
+          pr_message: |
             Thanks for your first pull request! A maintainer will review your PR soon.
 
   stale:
