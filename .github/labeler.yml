@@ -5,20 +5,38 @@
 core:
   - changed-files:
       - any-glob-to-any-file: "src/lib.rs"
-      - any-glob-to-any-file: "src/core/**"
+      - any-glob-to-any-file: "src/app/**"
 
-# Parser
-parser:
+# Widgets
+widget:
   - changed-files:
-      - any-glob-to-any-file: "src/parser/**"
-      - any-glob-to-any-file: "src/lexer/**"
-      - any-glob-to-any-file: "src/tokenizer/**"
+      - any-glob-to-any-file: "src/widget/**"
 
-# AST
-ast:
+# Reactivity
+reactive:
   - changed-files:
-      - any-glob-to-any-file: "src/ast/**"
-      - any-glob-to-any-file: "src/syntax/**"
+      - any-glob-to-any-file: "src/reactive/**"
+
+# Layout
+layout:
+  - changed-files:
+      - any-glob-to-any-file: "src/layout/**"
+
+# Styling
+style:
+  - changed-files:
+      - any-glob-to-any-file: "src/style/**"
+      - any-glob-to-any-file: "tree-sitter-revue-css/**"
+
+# Rendering
+render:
+  - changed-files:
+      - any-glob-to-any-file: "src/render/**"
+
+# DOM
+dom:
+  - changed-files:
+      - any-glob-to-any-file: "src/dom/**"
 
 # CLI
 cli:
@@ -55,7 +73,7 @@ examples:
   - changed-files:
       - any-glob-to-any-file: "examples/**"
 
-# Tree-sitter grammar
-tree-sitter:
+# Performance (benchmarks)
+performance:
   - changed-files:
-      - any-glob-to-any-file: "tree-sitter-revue-css/**"
+      - any-glob-to-any-file: "benches/**"
