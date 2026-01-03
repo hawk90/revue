@@ -185,6 +185,37 @@
 
 #![warn(missing_docs)]
 
+// Internal logging macros - no-op when tracing feature is disabled
+#[cfg(feature = "tracing")]
+macro_rules! log_debug {
+    ($($arg:tt)*) => { tracing::debug!($($arg)*) }
+}
+#[cfg(not(feature = "tracing"))]
+macro_rules! log_debug {
+    ($($arg:tt)*) => { { let _ = ($($arg)*,); } }
+}
+pub(crate) use log_debug;
+
+#[cfg(feature = "tracing")]
+macro_rules! log_warn {
+    ($($arg:tt)*) => { tracing::warn!($($arg)*) }
+}
+#[cfg(not(feature = "tracing"))]
+macro_rules! log_warn {
+    ($($arg:tt)*) => { { let _ = ($($arg)*,); } }
+}
+pub(crate) use log_warn;
+
+#[cfg(feature = "tracing")]
+macro_rules! log_error {
+    ($($arg:tt)*) => { tracing::error!($($arg)*) }
+}
+#[cfg(not(feature = "tracing"))]
+macro_rules! log_error {
+    ($($arg:tt)*) => { { let _ = ($($arg)*,); } }
+}
+pub(crate) use log_error;
+
 pub mod app;
 pub mod constants;
 pub mod devtools;
@@ -503,12 +534,9 @@ pub mod prelude {
         priority_color,
         spinner_char,
         status_color,
-        // Config loading
-        AppConfig,
         // Async operations
         AsyncTask,
         BreadcrumbItem,
-        ConfigError,
         ConfirmAction,
         ConfirmState,
         FieldType,
@@ -548,6 +576,10 @@ pub mod prelude {
         WARNING,
         YELLOW,
     };
+
+    // Config loading (requires config feature)
+    #[cfg(feature = "config")]
+    pub use crate::patterns::{AppConfig, ConfigError};
 
     // Accessibility
     pub use crate::utils::{

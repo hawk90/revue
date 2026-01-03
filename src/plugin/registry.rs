@@ -39,7 +39,7 @@ impl PluginRegistry {
         self.plugins
             .sort_by_key(|p| std::cmp::Reverse(p.priority()));
 
-        tracing::debug!(
+        crate::log_debug!(
             "Registered plugin '{}' with priority {}",
             self.plugins.last().map(|p| p.name()).unwrap_or("unknown"),
             priority
