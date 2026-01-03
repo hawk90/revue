@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7](https://github.com/hawk90/revue/compare/v1.0.6...v1.0.7) (2026-01-03)
+
+
+### Bug Fixes
+
+* use API token for crates.io publish ([b939f43](https://github.com/hawk90/revue/commit/b939f432eb8eb7b65448630ff812d7be1c9553b1))
+
 ## [1.0.6](https://github.com/hawk90/revue/compare/v1.0.5...v1.0.6) (2026-01-03)
 
 
