@@ -9,7 +9,7 @@ Learn Revue step by step with these hands-on tutorials.
 | 1 | [Getting Started](./01-getting-started.md) | 5 min | Install Revue and create your first app |
 | 2 | [Counter App](./02-counter.md) | 15 min | Learn state management with a counter |
 | 3 | [Todo App](./03-todo.md) | 30 min | Build a full-featured todo list |
-| 4 | Dashboard App | 1 hour | Create a multi-panel dashboard |
+| 4 | Dashboard App | Coming Soon | Create a multi-panel dashboard |
 | 5 | Full Application | 2+ hours | Build a complete production app |
 
 ## Quick Start
@@ -68,5 +68,5 @@ cargo run --example ide
 ## Getting Help
 
 - [API Documentation](https://docs.rs/revue)
-- [GitHub Issues](https://github.com/anthropics/revue/issues)
+- [GitHub Issues](https://github.com/hawk90/revue/issues)
 - [Architecture Overview](../ARCHITECTURE.md)

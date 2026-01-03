@@ -14,14 +14,10 @@ We take security vulnerabilities seriously. If you discover a security issue, pl
 
 **Please do NOT report security vulnerabilities through public GitHub issues.**
 
-Instead, please report them via one of the following methods:
+Instead, please report them via GitHub Security Advisories:
 
-1. **GitHub Security Advisories** (Preferred)
-   - Go to [Security Advisories](https://github.com/hawk90/revue/security/advisories/new)
-   - Click "Report a vulnerability"
-
-2. **Email**
-   - Send details to: security@example.com (replace with your email)
+- Go to [Security Advisories](https://github.com/hawk90/revue/security/advisories/new)
+- Click "Report a vulnerability"
 
 ### What to Include
 

@@ -374,6 +374,5 @@ cargo run --example reactive_todo
 
 ## Next Steps
 
-- [Dashboard Tutorial](./04-dashboard.md) - Build a complex multi-panel app
 - [Testing Guide](../guides/testing.md) - Learn to test your app
 - [Accessibility Guide](../guides/accessibility.md) - Make your app accessible
