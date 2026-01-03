@@ -3,8 +3,10 @@
 
 [default.extend-words]
 # Allow these "misspellings"
-ot = "ot"          # often used in comments
-elete = "elete"    # partial word in "[d]elete" shortcut display
+ot = "ot"            # often used in comments
+elete = "elete"      # partial word in "[d]elete" shortcut display
+Ratatui = "Ratatui"  # TUI framework name (not Ratatouille)
+ratatui = "ratatui"  # lowercase variant
 
 [default.extend-identifiers]
 # Test data for typo correction features
