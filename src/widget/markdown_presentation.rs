@@ -225,7 +225,7 @@ impl MarkdownPresentation {
     ///
     /// Returns `true` if navigation succeeded.
     pub fn next_slide(&mut self) -> bool {
-        self.nav.next()
+        self.nav.advance()
     }
 
     /// Go to the previous slide
@@ -384,7 +384,8 @@ impl MarkdownPresentation {
                     for i in 0..sep_len {
                         let mut cell = Cell::new('─');
                         cell.fg = Some(self.accent);
-                        ctx.buffer.set(area.x + sep_start as u16 + i as u16, sep_y, cell);
+                        ctx.buffer
+                            .set(area.x + sep_start as u16 + i as u16, sep_y, cell);
                     }
                     content_start_y += 2;
                 }
@@ -422,11 +423,12 @@ impl MarkdownPresentation {
 
         while let Some(line) = lines.next() {
             // Skip first H1/H2 heading
-            if !skipped_title && (line.trim_start().starts_with("# ") ||
-                                   line.trim_start().starts_with("## ")) {
+            if !skipped_title
+                && (line.trim_start().starts_with("# ") || line.trim_start().starts_with("## "))
+            {
                 skipped_title = true;
                 // Skip any immediately following blank lines
-                while lines.peek().map_or(false, |l| l.trim().is_empty()) {
+                while lines.peek().is_some_and(|l| l.trim().is_empty()) {
                     lines.next();
                 }
                 continue;

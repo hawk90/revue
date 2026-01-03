@@ -143,10 +143,10 @@ impl BigText {
     /// Get the appropriate Figlet font based on tier
     fn font_for_tier(&self) -> FigletFont {
         match self.tier {
-            1 => self.figlet_font,        // H1: use configured font
-            2 => FigletFont::Slant,       // H2: slant
-            3 => FigletFont::Small,       // H3: small
-            4 | 5 | 6 => FigletFont::Mini, // H4-H6: mini
+            1 => self.figlet_font,     // H1: use configured font
+            2 => FigletFont::Slant,    // H2: slant
+            3 => FigletFont::Small,    // H3: small
+            4..=6 => FigletFont::Mini, // H4-H6: mini
             _ => FigletFont::Mini,
         }
     }
@@ -177,7 +177,8 @@ impl BigText {
                 }
                 cell.modifier = modifier;
 
-                ctx.buffer.set(area.x + col as u16, area.y + row as u16, cell);
+                ctx.buffer
+                    .set(area.x + col as u16, area.y + row as u16, cell);
             }
         }
     }

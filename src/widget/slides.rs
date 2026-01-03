@@ -221,7 +221,7 @@ fn is_slide_delimiter(line: &str) -> bool {
 }
 
 /// State for slide navigation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SlideNav {
     /// All slides
     slides: Vec<SlideContent>,
@@ -259,7 +259,7 @@ impl SlideNav {
     /// Go to the next slide
     ///
     /// Returns `true` if navigation succeeded, `false` if already at last slide.
-    pub fn next(&mut self) -> bool {
+    pub fn advance(&mut self) -> bool {
         if self.current < self.slides.len().saturating_sub(1) {
             self.current += 1;
             true
@@ -328,15 +328,6 @@ impl SlideNav {
             return 0.0;
         }
         (self.current + 1) as f32 / self.slides.len() as f32
-    }
-}
-
-impl Default for SlideNav {
-    fn default() -> Self {
-        Self {
-            slides: Vec::new(),
-            current: 0,
-        }
     }
 }
 
@@ -488,15 +479,15 @@ Content
         assert!(nav.is_first());
         assert!(!nav.is_last());
 
-        assert!(nav.next());
+        assert!(nav.advance());
         assert_eq!(nav.current_index(), 1);
         assert_eq!(nav.indicator(), "2/3");
 
-        assert!(nav.next());
+        assert!(nav.advance());
         assert_eq!(nav.current_index(), 2);
         assert!(nav.is_last());
 
-        assert!(!nav.next()); // Can't go further
+        assert!(!nav.advance()); // Can't go further
         assert_eq!(nav.current_index(), 2);
 
         assert!(nav.prev());
@@ -531,7 +522,7 @@ Content
         let mut nav = SlideNav::new("# 1\n---\n# 2\n---\n# 3\n---\n# 4");
 
         assert!((nav.progress() - 0.25).abs() < 0.01); // 1/4
-        nav.next();
+        nav.advance();
         assert!((nav.progress() - 0.50).abs() < 0.01); // 2/4
         nav.last();
         assert!((nav.progress() - 1.0).abs() < 0.01); // 4/4

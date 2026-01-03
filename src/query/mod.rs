@@ -103,11 +103,15 @@ impl QueryValue {
         match self {
             Self::String(s) => s.to_lowercase() == other.to_lowercase(),
             Self::Int(n) => other.parse::<i64>().map(|o| *n == o).unwrap_or(false),
-            Self::Float(n) => other.parse::<f64>().map(|o| (*n - o).abs() < f64::EPSILON).unwrap_or(false),
+            Self::Float(n) => other
+                .parse::<f64>()
+                .map(|o| (*n - o).abs() < f64::EPSILON)
+                .unwrap_or(false),
             Self::Bool(b) => {
                 let other_lower = other.to_lowercase();
                 (*b && (other_lower == "true" || other_lower == "yes" || other_lower == "1"))
-                    || (!*b && (other_lower == "false" || other_lower == "no" || other_lower == "0"))
+                    || (!*b
+                        && (other_lower == "false" || other_lower == "no" || other_lower == "0"))
             }
             Self::Date(d) => d == other,
             Self::Null => other.to_lowercase() == "null" || other.is_empty(),
@@ -229,7 +233,7 @@ impl Filter {
     }
 
     /// Negate
-    pub fn not(self) -> Self {
+    pub fn negate(self) -> Self {
         Self::Not(Box::new(self))
     }
 
@@ -247,10 +251,20 @@ impl Filter {
                         Operator::Eq => field_value.equals_str(value),
                         Operator::Ne => !field_value.equals_str(value),
                         Operator::Contains => field_value.contains(value),
-                        Operator::Gt => field_value.compare(value) == Some(std::cmp::Ordering::Greater),
-                        Operator::Lt => field_value.compare(value) == Some(std::cmp::Ordering::Less),
-                        Operator::Ge => matches!(field_value.compare(value), Some(std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)),
-                        Operator::Le => matches!(field_value.compare(value), Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal)),
+                        Operator::Gt => {
+                            field_value.compare(value) == Some(std::cmp::Ordering::Greater)
+                        }
+                        Operator::Lt => {
+                            field_value.compare(value) == Some(std::cmp::Ordering::Less)
+                        }
+                        Operator::Ge => matches!(
+                            field_value.compare(value),
+                            Some(std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)
+                        ),
+                        Operator::Le => matches!(
+                            field_value.compare(value),
+                            Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal)
+                        ),
                     }
                 } else {
                     false
@@ -571,16 +585,28 @@ mod tests {
             active: true,
         };
 
-        assert!(Filter::eq("name", "jane").not().matches(&item));
-        assert!(!Filter::eq("name", "john").not().matches(&item));
+        assert!(Filter::eq("name", "jane").negate().matches(&item));
+        assert!(!Filter::eq("name", "john").negate().matches(&item));
     }
 
     #[test]
     fn test_query() {
         let items = vec![
-            TestItem { name: "Alice".into(), age: 25, active: true },
-            TestItem { name: "Bob".into(), age: 30, active: false },
-            TestItem { name: "Charlie".into(), age: 35, active: true },
+            TestItem {
+                name: "Alice".into(),
+                age: 25,
+                active: true,
+            },
+            TestItem {
+                name: "Bob".into(),
+                age: 30,
+                active: false,
+            },
+            TestItem {
+                name: "Charlie".into(),
+                age: 35,
+                active: true,
+            },
         ];
 
         let query = Query::new().filter(Filter::eq("active", "true"));
@@ -595,9 +621,21 @@ mod tests {
     #[test]
     fn test_query_sort() {
         let items = vec![
-            TestItem { name: "Charlie".into(), age: 35, active: true },
-            TestItem { name: "Alice".into(), age: 25, active: true },
-            TestItem { name: "Bob".into(), age: 30, active: false },
+            TestItem {
+                name: "Charlie".into(),
+                age: 35,
+                active: true,
+            },
+            TestItem {
+                name: "Alice".into(),
+                age: 25,
+                active: true,
+            },
+            TestItem {
+                name: "Bob".into(),
+                age: 30,
+                active: false,
+            },
         ];
 
         let query = Query::new().sort_asc("age");
@@ -614,10 +652,26 @@ mod tests {
     #[test]
     fn test_query_limit_offset() {
         let items = vec![
-            TestItem { name: "A".into(), age: 1, active: true },
-            TestItem { name: "B".into(), age: 2, active: true },
-            TestItem { name: "C".into(), age: 3, active: true },
-            TestItem { name: "D".into(), age: 4, active: true },
+            TestItem {
+                name: "A".into(),
+                age: 1,
+                active: true,
+            },
+            TestItem {
+                name: "B".into(),
+                age: 2,
+                active: true,
+            },
+            TestItem {
+                name: "C".into(),
+                age: 3,
+                active: true,
+            },
+            TestItem {
+                name: "D".into(),
+                age: 4,
+                active: true,
+            },
         ];
 
         let query = Query::new().limit(2);
