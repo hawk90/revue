@@ -13,7 +13,7 @@
 [![Rust 1.87+](https://img.shields.io/badge/rust-1.87+-orange?style=flat-square&logo=rust)](https://www.rust-lang.org)
 [![downloads](https://img.shields.io/crates/d/revue?style=flat-square&label=downloads&color=blue)](https://crates.io/crates/revue)
 
-[Quick Start](#-quick-start) · [Examples](examples/) · [Documentation](https://docs.rs/revue) · [Contributing](CONTRIBUTING.md)
+[Quick Start](#quick-start) · [Examples](examples/) · [Documentation](https://docs.rs/revue) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
