@@ -3,13 +3,14 @@ name: CI
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
     branches: [main]
   pull_request_target:
     types: [opened, edited, synchronize, reopened]
   issues:
     types: [opened]
+  release:
+    types: [published]
   schedule:
     - cron: "0 0 * * 1"
   workflow_dispatch:
@@ -276,76 +277,115 @@ jobs:
   build:
     name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'release'
     strategy:
       fail-fast: false
       matrix:
         include:
+          # Linux glibc
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            archive: tar.gz
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
-            archive: tar.gz
             cross: true
+          # Linux musl (static, for Alpine/Nix/etc)
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            cross: true
+          # macOS
           - target: x86_64-apple-darwin
             os: macos-latest
-            archive: tar.gz
           - target: aarch64-apple-darwin
             os: macos-14
-            archive: tar.gz
+          # Windows
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            archive: zip
     steps:
       - uses: actions/checkout@v6
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
       - uses: Swatinem/rust-cache@v2
+
+      - name: Install musl-tools
+        if: contains(matrix.target, 'musl') && !matrix.cross
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
       - name: Install Cross
         if: matrix.cross
         run: cargo install cross --git https://github.com/cross-rs/cross
+
       - name: Build
         run: ${{ matrix.cross && 'cross' || 'cargo' }} build --release --target ${{ matrix.target }}
-      - name: Archive (Unix)
+
+      - name: Set binary name
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            echo "BINARY=revue.exe" >> $GITHUB_ENV
+          else
+            echo "BINARY=revue" >> $GITHUB_ENV
+          fi
+
+      - name: Create archive (Unix)
         if: runner.os != 'Windows'
         run: |
           cd target/${{ matrix.target }}/release
-          tar -czvf ../../../revue-${{ github.ref_name }}-${{ matrix.target }}.tar.gz revue
-      - name: Archive (Windows)
+          tar -czvf ../../../revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.tar.gz ${{ env.BINARY }}
+          cp ${{ env.BINARY }} ../../../revue-${{ matrix.target }}
+
+      - name: Create archive (Windows)
         if: runner.os == 'Windows'
+        shell: bash
         run: |
           cd target/${{ matrix.target }}/release
-          7z a ../../../revue-${{ github.ref_name }}-${{ matrix.target }}.zip revue.exe
-      - name: Checksum (Unix)
-        if: runner.os != 'Windows'
-        run: sha256sum revue-${{ github.ref_name }}-${{ matrix.target }}.tar.gz > revue-${{ github.ref_name }}-${{ matrix.target }}.tar.gz.sha256
-      - name: Checksum (Windows)
-        if: runner.os == 'Windows'
+          7z a ../../../revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.zip ${{ env.BINARY }}
+          cp ${{ env.BINARY }} ../../../revue-${{ matrix.target }}.exe
+
+      - name: Generate checksums
+        shell: bash
         run: |
-          Get-FileHash revue-${{ github.ref_name }}-${{ matrix.target }}.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  revue-${{ github.ref_name }}-${{ matrix.target }}.zip" } | Out-File -Encoding ASCII revue-${{ github.ref_name }}-${{ matrix.target }}.zip.sha256
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            sha256sum revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.zip > revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.zip.sha256
+            sha256sum revue-${{ matrix.target }}.exe > revue-${{ matrix.target }}.exe.sha256
+          else
+            sha256sum revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.tar.gz > revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.tar.gz.sha256
+            sha256sum revue-${{ matrix.target }} > revue-${{ matrix.target }}.sha256
+          fi
+
       - uses: actions/upload-artifact@v6
         with:
           name: revue-${{ matrix.target }}
-          path: revue-${{ github.ref_name }}-${{ matrix.target }}.*
+          path: |
+            revue-${{ github.event.release.tag_name }}-${{ matrix.target }}.*
+            revue-${{ matrix.target }}*
 
   upload:
     name: Upload Release
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'release'
     steps:
       - uses: actions/checkout@v6
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la artifacts/
+
       - uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: artifacts/*
@@ -354,7 +394,7 @@ jobs:
     name: Publish
     needs: upload
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'release'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
