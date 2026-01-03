@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5](https://github.com/hawk90/revue/compare/v1.0.4...v1.0.5) (2026-01-03)
+
+
+### Bug Fixes
+
+* add codecov token to coverage job ([47b0334](https://github.com/hawk90/revue/commit/47b033498bbb8199db2c16a1a8eff7c06f27e8ca))
+* configure trusted publishing for crates.io ([b016f41](https://github.com/hawk90/revue/commit/b016f411a7b4f2ea1de3f77039fb21b7d8ee3956))
+
 ## [1.0.4](https://github.com/hawk90/revue/compare/v1.0.3...v1.0.4) (2026-01-03)
 
 
