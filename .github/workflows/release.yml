@@ -2,18 +2,18 @@ name: Release
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    tags: ['v*']
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
-  release-please:
-    name: Release Please
+  release:
+    name: Create GitHub Release
     runs-on: ubuntu-latest
     steps:
-      - uses: googleapis/release-please-action@v4
-        with:
-          release-type: rust
+      - uses: actions/checkout@v4
+      - name: Create Release
+        run: gh release create ${{ github.ref_name }} --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
