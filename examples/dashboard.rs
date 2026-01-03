@@ -171,10 +171,10 @@ impl Dashboard {
         let empty = width - filled;
 
         RichText::new()
-            .push(&"━".repeat(filled), Style::new().fg(color))
-            .push(&"─".repeat(empty), Style::new().fg(BG_OVERLAY))
+            .push("━".repeat(filled), Style::new().fg(color))
+            .push("─".repeat(empty), Style::new().fg(BG_OVERLAY))
             .push(
-                &format!(" {:>3}%", (value * 100.0) as u32),
+                format!(" {:>3}%", (value * 100.0) as u32),
                 Style::new().fg(SUBTEXT),
             )
     }

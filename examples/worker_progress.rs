@@ -192,7 +192,7 @@ impl View for ProgressDemo {
             )
             .child(
                 Border::single()
-                    .title(format!("Partial Results (last 5)"))
+                    .title("Partial Results (last 5)".to_string())
                     .child({
                         let mut stack = vstack();
                         if self.partial_results.is_empty() {

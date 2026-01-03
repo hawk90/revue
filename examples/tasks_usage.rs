@@ -103,22 +103,19 @@ impl TasksDemo {
 
         // Poll tasks
         while let Some(result) = self.tasks.poll() {
-            match result.id {
-                "fetch_data" => {
-                    match result.result {
-                        Ok(data) => {
-                            self.status = "Fetch completed!".to_string();
-                            self.data = Some(data);
-                            self.bus.emit("task:completed", "success");
-                        }
-                        Err(e) => {
-                            self.status = format!("Error: {}", e);
-                            self.bus.emit("task:completed", "error");
-                        }
+            if result.id == "fetch_data" {
+                match result.result {
+                    Ok(data) => {
+                        self.status = "Fetch completed!".to_string();
+                        self.data = Some(data);
+                        self.bus.emit("task:completed", "success");
                     }
-                    updated = true;
+                    Err(e) => {
+                        self.status = format!("Error: {}", e);
+                        self.bus.emit("task:completed", "error");
+                    }
                 }
-                _ => {}
+                updated = true;
             }
         }
 
