@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8](https://github.com/hawk90/revue/compare/v1.0.7...v1.0.8) (2026-01-03)
+
+
+### Bug Fixes
+
+* **docs:** correct GitHub URL and remove broken links ([9cb5684](https://github.com/hawk90/revue/commit/9cb56846f44d487c75b818fddee9a26448972e15))
+* include examples and benches in published package ([8465bd0](https://github.com/hawk90/revue/commit/8465bd083ecd86e6214dbc1adc0a16257dfa4b85))
+* prefix unused variable with underscore ([c0d956c](https://github.com/hawk90/revue/commit/c0d956caef0a1b6ac64731ddc7a03a4dbb11dba5))
+* resolve clippy warnings in examples ([12da1f6](https://github.com/hawk90/revue/commit/12da1f645bc105a4c558ae9fd5d212b33585d38f))
+
 ## [1.0.7](https://github.com/hawk90/revue/compare/v1.0.6...v1.0.7) (2026-01-03)
 
 
