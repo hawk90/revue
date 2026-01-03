@@ -36,7 +36,8 @@ impl PluginRegistry {
         self.plugins.push(Box::new(plugin));
 
         // Sort by priority (descending)
-        self.plugins.sort_by(|a, b| b.priority().cmp(&a.priority()));
+        self.plugins
+            .sort_by_key(|p| std::cmp::Reverse(p.priority()));
 
         tracing::debug!(
             "Registered plugin '{}' with priority {}",

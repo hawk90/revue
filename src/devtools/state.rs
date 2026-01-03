@@ -6,6 +6,43 @@ use crate::render::Buffer;
 use crate::style::Color;
 use std::collections::HashMap;
 
+/// Helper context for rendering devtools panels
+struct RenderCtx<'a> {
+    buffer: &'a mut Buffer,
+    x: u16,
+    width: u16,
+    config: &'a DevToolsConfig,
+}
+
+impl<'a> RenderCtx<'a> {
+    fn new(buffer: &'a mut Buffer, x: u16, width: u16, config: &'a DevToolsConfig) -> Self {
+        Self {
+            buffer,
+            x,
+            width,
+            config,
+        }
+    }
+
+    fn draw_text(&mut self, y: u16, text: &str, color: Color) {
+        for (i, ch) in text.chars().enumerate() {
+            if let Some(cell) = self.buffer.get_mut(self.x + i as u16, y) {
+                cell.symbol = ch;
+                cell.fg = Some(color);
+            }
+        }
+    }
+
+    fn draw_separator(&mut self, y: u16) {
+        for px in self.x..self.x + self.width {
+            if let Some(cell) = self.buffer.get_mut(px, y) {
+                cell.symbol = '─';
+                cell.fg = Some(self.config.accent_color);
+            }
+        }
+    }
+}
+
 /// State value representation
 #[derive(Debug, Clone)]
 pub enum StateValue {
@@ -202,12 +239,13 @@ impl StateDebugger {
 
     /// Render state debugger content
     pub fn render_content(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig) {
+        let mut ctx = RenderCtx::new(buffer, area.x, area.width, config);
         let mut y = area.y;
         let max_y = area.y + area.height;
 
         // Header
         let header = format!("{} signals tracked", self.states.len());
-        self.draw_text(buffer, area.x, y, &header, config.accent_color);
+        ctx.draw_text(y, &header, config.accent_color);
         y += 2;
 
         // States list
@@ -218,7 +256,7 @@ impl StateDebugger {
             }
 
             let is_selected = self.selected == Some(i);
-            self.render_entry(buffer, area.x, y, area.width, entry, is_selected, config);
+            Self::render_entry(&mut ctx, y, entry, is_selected);
             y += 1;
         }
 
@@ -227,41 +265,32 @@ impl StateDebugger {
             if let Some(entry) = filtered.get(idx) {
                 if y + 2 < max_y {
                     y = max_y - 3;
-                    self.render_separator(buffer, area.x, y, area.width, config);
+                    ctx.draw_separator(y);
                     y += 1;
-                    self.render_details(buffer, area.x, y, area.width, entry, config);
+                    Self::render_details(&mut ctx, y, entry);
                 }
             }
         }
     }
 
-    fn render_entry(
-        &self,
-        buffer: &mut Buffer,
-        x: u16,
-        y: u16,
-        width: u16,
-        entry: &StateEntry,
-        selected: bool,
-        config: &DevToolsConfig,
-    ) {
+    fn render_entry(ctx: &mut RenderCtx<'_>, y: u16, entry: &StateEntry, selected: bool) {
         let prefix = if entry.is_computed { "⊙ " } else { "● " };
         let line = format!("{}{}: {}", prefix, entry.name, entry.value.display());
 
         let fg = if selected {
-            config.bg_color
+            ctx.config.bg_color
         } else {
-            config.fg_color
+            ctx.config.fg_color
         };
         let bg = if selected {
-            Some(config.accent_color)
+            Some(ctx.config.accent_color)
         } else {
             None
         };
 
         for (i, ch) in line.chars().enumerate() {
-            if (i as u16) < width {
-                if let Some(cell) = buffer.get_mut(x + i as u16, y) {
+            if (i as u16) < ctx.width {
+                if let Some(cell) = ctx.buffer.get_mut(ctx.x + i as u16, y) {
                     cell.symbol = ch;
                     cell.fg = Some(fg);
                     if let Some(b) = bg {
@@ -272,45 +301,12 @@ impl StateDebugger {
         }
     }
 
-    fn render_separator(
-        &self,
-        buffer: &mut Buffer,
-        x: u16,
-        y: u16,
-        width: u16,
-        config: &DevToolsConfig,
-    ) {
-        for px in x..x + width {
-            if let Some(cell) = buffer.get_mut(px, y) {
-                cell.symbol = '─';
-                cell.fg = Some(config.accent_color);
-            }
-        }
-    }
-
-    fn render_details(
-        &self,
-        buffer: &mut Buffer,
-        x: u16,
-        y: u16,
-        _width: u16,
-        entry: &StateEntry,
-        config: &DevToolsConfig,
-    ) {
+    fn render_details(ctx: &mut RenderCtx<'_>, y: u16, entry: &StateEntry) {
         let details = format!(
             "Type: {} | Subs: {} | Updates: {}",
             entry.type_name, entry.subscribers, entry.update_count
         );
-        self.draw_text(buffer, x, y, &details, config.fg_color);
-    }
-
-    fn draw_text(&self, buffer: &mut Buffer, x: u16, y: u16, text: &str, color: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            if let Some(cell) = buffer.get_mut(x + i as u16, y) {
-                cell.symbol = ch;
-                cell.fg = Some(color);
-            }
-        }
+        ctx.draw_text(y, &details, ctx.config.fg_color);
     }
 }
 

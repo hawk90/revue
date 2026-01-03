@@ -167,7 +167,7 @@ impl ThemePicker {
 
     /// Get selected theme
     pub fn selected_theme(&self) -> Option<Theme> {
-        self.selected_id().and_then(|id| get_theme(id))
+        self.selected_id().and_then(get_theme)
     }
 
     /// Draw color swatch at position, returns width used

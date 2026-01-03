@@ -7,6 +7,43 @@ use crate::style::Color;
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
+/// Helper context for rendering devtools panels
+struct RenderCtx<'a> {
+    buffer: &'a mut Buffer,
+    x: u16,
+    width: u16,
+    config: &'a DevToolsConfig,
+}
+
+impl<'a> RenderCtx<'a> {
+    fn new(buffer: &'a mut Buffer, x: u16, width: u16, config: &'a DevToolsConfig) -> Self {
+        Self {
+            buffer,
+            x,
+            width,
+            config,
+        }
+    }
+
+    fn draw_text(&mut self, y: u16, text: &str, color: Color) {
+        for (i, ch) in text.chars().enumerate() {
+            if let Some(cell) = self.buffer.get_mut(self.x + i as u16, y) {
+                cell.symbol = ch;
+                cell.fg = Some(color);
+            }
+        }
+    }
+
+    fn draw_separator(&mut self, y: u16) {
+        for px in self.x..self.x + self.width {
+            if let Some(cell) = self.buffer.get_mut(px, y) {
+                cell.symbol = '─';
+                cell.fg = Some(self.config.accent_color);
+            }
+        }
+    }
+}
+
 /// Event type for logging
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EventType {
@@ -450,6 +487,7 @@ impl EventLogger {
 
     /// Render event logger content
     pub fn render_content(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig) {
+        let mut ctx = RenderCtx::new(buffer, area.x, area.width, config);
         let mut y = area.y;
         let max_y = area.y + area.height;
 
@@ -460,7 +498,7 @@ impl EventLogger {
             "● Recording"
         };
         let header = format!("{} | {} events", status, self.filtered_count());
-        self.draw_text(buffer, area.x, y, &header, config.accent_color);
+        ctx.draw_text(y, &header, config.accent_color);
         y += 1;
 
         // Filter info
@@ -478,7 +516,7 @@ impl EventLogger {
             filters.push("Resize");
         }
         let filter_str = format!("Showing: {}", filters.join(", "));
-        self.draw_text(buffer, area.x, y, &filter_str, config.fg_color);
+        ctx.draw_text(y, &filter_str, config.fg_color);
         y += 2;
 
         // Events list (newest first)
@@ -489,7 +527,7 @@ impl EventLogger {
             }
 
             let is_selected = self.selected == Some(i);
-            self.render_event(buffer, area.x, y, area.width, event, is_selected, config);
+            Self::render_event(&mut ctx, y, event, is_selected);
             y += 1;
         }
 
@@ -498,30 +536,21 @@ impl EventLogger {
             if let Some(event) = filtered.get(idx) {
                 if y + 2 < max_y {
                     y = max_y - 3;
-                    self.render_separator(buffer, area.x, y, area.width, config);
+                    ctx.draw_separator(y);
                     y += 1;
-                    self.render_details(buffer, area.x, y, area.width, event, config);
+                    Self::render_details(&mut ctx, y, event);
                 }
             }
         }
     }
 
-    fn render_event(
-        &self,
-        buffer: &mut Buffer,
-        x: u16,
-        y: u16,
-        width: u16,
-        event: &LoggedEvent,
-        selected: bool,
-        config: &DevToolsConfig,
-    ) {
+    fn render_event(ctx: &mut RenderCtx<'_>, y: u16, event: &LoggedEvent, selected: bool) {
         let icon = event.event_type.icon();
         let handled_mark = if event.handled { "✓" } else { " " };
         let age = event.age_str();
 
         // Truncate details if needed
-        let max_details = (width as usize).saturating_sub(20);
+        let max_details = (ctx.width as usize).saturating_sub(20);
         let details = if event.details.len() > max_details {
             format!("{}...", &event.details[..max_details.saturating_sub(3)])
         } else {
@@ -531,19 +560,19 @@ impl EventLogger {
         let line = format!("{} {} {} {}", icon, handled_mark, details, age);
 
         let fg = if selected {
-            config.bg_color
+            ctx.config.bg_color
         } else {
             event.event_type.color()
         };
         let bg = if selected {
-            Some(config.accent_color)
+            Some(ctx.config.accent_color)
         } else {
             None
         };
 
         for (i, ch) in line.chars().enumerate() {
-            if (i as u16) < width {
-                if let Some(cell) = buffer.get_mut(x + i as u16, y) {
+            if (i as u16) < ctx.width {
+                if let Some(cell) = ctx.buffer.get_mut(ctx.x + i as u16, y) {
                     cell.symbol = ch;
                     cell.fg = Some(fg);
                     if let Some(b) = bg {
@@ -554,31 +583,7 @@ impl EventLogger {
         }
     }
 
-    fn render_separator(
-        &self,
-        buffer: &mut Buffer,
-        x: u16,
-        y: u16,
-        width: u16,
-        config: &DevToolsConfig,
-    ) {
-        for px in x..x + width {
-            if let Some(cell) = buffer.get_mut(px, y) {
-                cell.symbol = '─';
-                cell.fg = Some(config.accent_color);
-            }
-        }
-    }
-
-    fn render_details(
-        &self,
-        buffer: &mut Buffer,
-        x: u16,
-        y: u16,
-        _width: u16,
-        event: &LoggedEvent,
-        config: &DevToolsConfig,
-    ) {
+    fn render_details(ctx: &mut RenderCtx<'_>, y: u16, event: &LoggedEvent) {
         let target = event.target.as_deref().unwrap_or("none");
         let details = format!(
             "#{} {} | Target: {} | {}",
@@ -591,16 +596,7 @@ impl EventLogger {
                 "Not handled"
             }
         );
-        self.draw_text(buffer, x, y, &details, config.fg_color);
-    }
-
-    fn draw_text(&self, buffer: &mut Buffer, x: u16, y: u16, text: &str, color: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            if let Some(cell) = buffer.get_mut(x + i as u16, y) {
-                cell.symbol = ch;
-                cell.fg = Some(color);
-            }
-        }
+        ctx.draw_text(y, &details, ctx.config.fg_color);
     }
 }
 

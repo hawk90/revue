@@ -1,3 +1,4 @@
+#![allow(clippy::explicit_counter_loop)]
 //! Terminal widget for embedded terminal emulator
 //!
 //! Provides an embedded terminal with ANSI color support and scrollback.
@@ -171,11 +172,10 @@ impl AnsiParser {
     }
 
     fn handle_csi(&mut self, cmd: char) {
-        match cmd {
-            'm' => self.handle_sgr(),
-            // Other CSI commands can be added here
-            _ => {}
+        if cmd == 'm' {
+            self.handle_sgr();
         }
+        // Other CSI commands can be added here
     }
 
     fn handle_sgr(&mut self) {
@@ -511,7 +511,7 @@ impl Terminal {
         if ch == '\t' {
             // Tab to next 8-column boundary
             let next_tab = ((self.cursor_col / 8) + 1) * 8;
-            while self.cursor_col < next_tab as usize && self.cursor_col < self.width as usize {
+            while self.cursor_col < next_tab && self.cursor_col < self.width as usize {
                 self.write_char(' ');
             }
             return;

@@ -5,6 +5,15 @@ use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::{RenderContext, View};
 
+/// Tree rendering state
+struct TreeRenderState {
+    x: u16,
+    y: u16,
+    depth: usize,
+    index: usize,
+    max_width: u16,
+}
+
 /// Widget info for inspection
 #[derive(Clone, Debug)]
 pub struct WidgetInfo {
@@ -259,8 +268,14 @@ impl Inspector {
 
         // Draw widget tree
         if let Some(ref root) = self.root {
-            let mut y = area.y + 2;
-            self.render_widget_tree(ctx, root, panel_x + 2, &mut y, 0, 0, panel_width - 3);
+            let mut state = TreeRenderState {
+                x: panel_x + 2,
+                y: area.y + 2,
+                depth: 0,
+                index: 0,
+                max_width: panel_width - 3,
+            };
+            self.render_widget_tree(ctx, root, &mut state);
         }
 
         // Draw selected widget properties
@@ -277,23 +292,18 @@ impl Inspector {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn render_widget_tree(
         &self,
         ctx: &mut RenderContext,
         widget: &WidgetInfo,
-        x: u16,
-        y: &mut u16,
-        depth: usize,
-        index: usize,
-        max_width: u16,
+        state: &mut TreeRenderState,
     ) -> usize {
-        if *y >= ctx.area.y + ctx.area.height / 2 {
-            return index;
+        if state.y >= ctx.area.y + ctx.area.height / 2 {
+            return state.index;
         }
 
-        let is_selected = index == self.selected;
-        let indent = "  ".repeat(depth);
+        let is_selected = state.index == self.selected;
+        let indent = "  ".repeat(state.depth);
         let prefix = if widget.children.is_empty() {
             "•"
         } else {
@@ -307,29 +317,30 @@ impl Inspector {
             (Some(Color::WHITE), Some(self.bg_color))
         };
 
-        for (i, ch) in text.chars().take(max_width as usize).enumerate() {
+        for (i, ch) in text.chars().take(state.max_width as usize).enumerate() {
             let mut cell = Cell::new(ch);
             cell.fg = fg;
             cell.bg = bg;
-            ctx.buffer.set(x + i as u16, *y, cell);
+            ctx.buffer.set(state.x + i as u16, state.y, cell);
         }
 
         // Fill rest of line with background
-        for i in text.len()..(max_width as usize) {
+        for i in text.len()..(state.max_width as usize) {
             let mut cell = Cell::new(' ');
             cell.bg = bg;
-            ctx.buffer.set(x + i as u16, *y, cell);
+            ctx.buffer.set(state.x + i as u16, state.y, cell);
         }
 
-        *y += 1;
-        let mut current_index = index + 1;
+        state.y += 1;
+        state.index += 1;
+        state.depth += 1;
 
         for child in &widget.children {
-            current_index =
-                self.render_widget_tree(ctx, child, x, y, depth + 1, current_index, max_width);
+            self.render_widget_tree(ctx, child, state);
         }
 
-        current_index
+        state.depth -= 1;
+        state.index
     }
 
     fn render_properties(

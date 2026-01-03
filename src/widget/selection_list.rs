@@ -319,11 +319,11 @@ impl SelectionList {
             return;
         }
 
-        if !self.is_selected(index) {
-            if self.max_selections == 0 || self.selected.len() < self.max_selections {
-                self.selected.push(index);
-                self.selected.sort();
-            }
+        if !self.is_selected(index)
+            && (self.max_selections == 0 || self.selected.len() < self.max_selections)
+        {
+            self.selected.push(index);
+            self.selected.sort();
         }
     }
 

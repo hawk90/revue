@@ -7,6 +7,30 @@ use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::natural_cmp;
+
+/// Cell position for rendering
+struct CellPos {
+    x: u16,
+    y: u16,
+    width: u16,
+}
+
+/// Cell state for rendering
+struct CellState {
+    row_bg: Color,
+    is_selected: bool,
+    is_editing: bool,
+}
+
+/// Row rendering parameters
+struct RowRenderParams<'a> {
+    visible_cols: &'a [(usize, &'a GridColumn)],
+    widths: &'a [u16],
+    area_x: u16,
+    start_y: u16,
+    row_num_width: u16,
+    visible_height: usize,
+}
 use crate::{impl_props_builders, impl_styled_view};
 use std::cmp::Ordering;
 
@@ -1032,16 +1056,15 @@ impl View for DataGrid {
         // Draw rows
         let filtered = self.filtered_rows();
         let visible_height = (area.height - header_height) as usize;
-        self.render_rows(
-            ctx,
-            &filtered,
-            &visible_cols,
-            &widths,
-            area.x,
-            y,
+        let params = RowRenderParams {
+            visible_cols: &visible_cols,
+            widths: &widths,
+            area_x: area.x,
+            start_y: y,
             row_num_width,
             visible_height,
-        );
+        };
+        self.render_rows(ctx, &filtered, &params);
 
         // Draw scrollbar if needed
         self.render_scrollbar(ctx, filtered.len(), visible_height, area, y);
@@ -1107,20 +1130,15 @@ impl DataGrid {
         &self,
         ctx: &mut RenderContext,
         filtered: &[&GridRow],
-        visible_cols: &[(usize, &GridColumn)],
-        widths: &[u16],
-        area_x: u16,
-        start_y: u16,
-        row_num_width: u16,
-        visible_height: usize,
+        params: &RowRenderParams<'_>,
     ) {
         for (i, row) in filtered
             .iter()
             .skip(self.scroll_row)
-            .take(visible_height)
+            .take(params.visible_height)
             .enumerate()
         {
-            let row_y = start_y + i as u16;
+            let row_y = params.start_y + i as u16;
             let is_selected = self.scroll_row + i == self.selected_row;
             let is_alt = self.options.zebra && i % 2 == 1;
 
@@ -1134,21 +1152,23 @@ impl DataGrid {
 
             // Draw row number
             if self.options.show_row_numbers {
-                self.render_row_number(ctx, area_x, row_y, self.scroll_row + i + 1, row_bg);
+                self.render_row_number(ctx, params.area_x, row_y, self.scroll_row + i + 1, row_bg);
             }
 
             // Draw cells
-            let mut x = area_x + row_num_width;
-            for (col_idx, (orig_col_idx, col)) in visible_cols.iter().enumerate() {
-                if col_idx >= widths.len() {
+            let mut x = params.area_x + params.row_num_width;
+            for (col_idx, (orig_col_idx, col)) in params.visible_cols.iter().enumerate() {
+                if col_idx >= params.widths.len() {
                     break;
                 }
-                let w = widths[col_idx];
+                let w = params.widths[col_idx];
                 let is_editing = self.edit_state.active
                     && self.scroll_row + i == self.selected_row
                     && *orig_col_idx == self.edit_state.col;
 
-                self.render_cell(ctx, row, col, x, row_y, w, row_bg, is_selected, is_editing);
+                let pos = CellPos { x, y: row_y, width: w };
+                let state = CellState { row_bg, is_selected, is_editing };
+                self.render_cell(ctx, row, col, &pos, &state);
 
                 // Draw separator
                 let mut sep = Cell::new('│');
@@ -1178,31 +1198,27 @@ impl DataGrid {
         ctx: &mut RenderContext,
         row: &GridRow,
         col: &GridColumn,
-        x: u16,
-        y: u16,
-        width: u16,
-        row_bg: Color,
-        is_selected: bool,
-        is_editing: bool,
+        pos: &CellPos,
+        state: &CellState,
     ) {
-        let cell_bg = if is_editing {
+        let cell_bg = if state.is_editing {
             Color::rgb(50, 50, 80) // Edit mode background
         } else {
-            row_bg
+            state.row_bg
         };
 
         // Fill background
-        for dx in 0..width {
+        for dx in 0..pos.width {
             let mut cell = Cell::new(' ');
             cell.bg = Some(cell_bg);
-            ctx.buffer.set(x + dx, y, cell);
+            ctx.buffer.set(pos.x + dx, pos.y, cell);
         }
 
         // Draw value or edit buffer
-        if is_editing {
-            self.render_edit_cell(ctx, x, y, width, cell_bg);
+        if state.is_editing {
+            self.render_edit_cell(ctx, pos.x, pos.y, pos.width, cell_bg);
         } else if let Some(value) = row.get(&col.key) {
-            self.render_value_cell(ctx, value, col, x, y, width, row_bg, is_selected);
+            self.render_value_cell(ctx, value, col, pos, state.row_bg, state.is_selected);
         }
     }
 
@@ -1242,17 +1258,15 @@ impl DataGrid {
         ctx: &mut RenderContext,
         value: &str,
         col: &GridColumn,
-        x: u16,
-        y: u16,
-        width: u16,
+        pos: &CellPos,
         row_bg: Color,
         is_selected: bool,
     ) {
-        let display: String = value.chars().take(width as usize - 1).collect();
+        let display: String = value.chars().take(pos.width as usize - 1).collect();
         let start_x = match col.align {
-            Alignment::Left => x,
-            Alignment::Center => x + (width.saturating_sub(display.len() as u16)) / 2,
-            Alignment::Right => x + width.saturating_sub(display.len() as u16 + 1),
+            Alignment::Left => pos.x,
+            Alignment::Center => pos.x + (pos.width.saturating_sub(display.len() as u16)) / 2,
+            Alignment::Right => pos.x + pos.width.saturating_sub(display.len() as u16 + 1),
         };
 
         for (j, ch) in display.chars().enumerate() {
@@ -1263,7 +1277,7 @@ impl DataGrid {
                 Color::WHITE
             });
             cell.bg = Some(row_bg);
-            ctx.buffer.set(start_x + j as u16, y, cell);
+            ctx.buffer.set(start_x + j as u16, pos.y, cell);
         }
     }
 

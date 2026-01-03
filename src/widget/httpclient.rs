@@ -1,3 +1,4 @@
+#![allow(clippy::needless_range_loop, clippy::explicit_counter_loop)]
 //! HTTP Client widget for REST API testing
 //!
 //! A Postman-like widget for making HTTP requests and viewing responses.
@@ -576,12 +577,10 @@ impl View for HttpClient {
             let tab_y = response_y + 1;
             let mut tab_x = 0u16;
             for (i, tab) in tabs.iter().enumerate() {
-                let is_active = match (i, self.view) {
-                    (0, ResponseView::Body) => true,
-                    (1, ResponseView::Headers) => true,
-                    (2, ResponseView::Raw) => true,
-                    _ => false,
-                };
+                let is_active = matches!(
+                    (i, self.view),
+                    (0, ResponseView::Body) | (1, ResponseView::Headers) | (2, ResponseView::Raw)
+                );
 
                 for ch in tab.chars() {
                     if tab_x >= area.width {

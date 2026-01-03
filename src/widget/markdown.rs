@@ -236,7 +236,7 @@ impl Markdown {
 
     /// Set maximum heading level to render as figlet (1-6)
     pub fn figlet_max_level(mut self, level: u8) -> Self {
-        self.figlet_max_level = level.min(6).max(1);
+        self.figlet_max_level = level.clamp(1, 6);
         self.lines = self.parse_with_options();
         self
     }

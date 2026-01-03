@@ -6,6 +6,24 @@ use crate::render::{Buffer, Cell};
 use crate::style::{Color, Style};
 use std::time::{Duration, Instant};
 
+/// Progress bar rendering configuration
+pub struct ProgressBarConfig {
+    /// X position
+    pub x: u16,
+    /// Y position
+    pub y: u16,
+    /// Total width of the bar
+    pub width: u16,
+    /// Progress value from 0.0 to 1.0
+    pub progress: f32,
+    /// Character for filled portion (e.g., '█')
+    pub filled_char: char,
+    /// Character for empty portion (e.g., '░')
+    pub empty_char: char,
+    /// Foreground color
+    pub fg: Color,
+}
+
 // =============================================================================
 // Timeout Utility
 // =============================================================================
@@ -702,29 +720,14 @@ impl<'a> RenderContext<'a> {
 
     /// Draw a horizontal progress bar
     ///
-    /// # Arguments
-    /// * `x`, `y` - Position
-    /// * `width` - Total width of the bar
-    /// * `progress` - Progress value from 0.0 to 1.0
-    /// * `filled_char` - Character for filled portion (e.g., '█')
-    /// * `empty_char` - Character for empty portion (e.g., '░')
-    /// * `fg` - Foreground color
-    pub fn draw_progress_bar(
-        &mut self,
-        x: u16,
-        y: u16,
-        width: u16,
-        progress: f32,
-        filled_char: char,
-        empty_char: char,
-        fg: Color,
-    ) {
-        let progress = progress.clamp(0.0, 1.0);
-        let filled = (width as f32 * progress).round() as u16;
+    /// Draw a progress bar with custom characters
+    pub fn draw_progress_bar(&mut self, config: &ProgressBarConfig) {
+        let progress = config.progress.clamp(0.0, 1.0);
+        let filled = (config.width as f32 * progress).round() as u16;
 
-        for i in 0..width {
-            let ch = if i < filled { filled_char } else { empty_char };
-            self.draw_char(x + i, y, ch, fg);
+        for i in 0..config.width {
+            let ch = if i < filled { config.filled_char } else { config.empty_char };
+            self.draw_char(config.x + i, config.y, ch, config.fg);
         }
     }
 
@@ -747,7 +750,15 @@ impl<'a> RenderContext<'a> {
         // Draw bar after label
         let bar_x = x + 4;
         self.draw_char(bar_x, y, '[', fg);
-        self.draw_progress_bar(bar_x + 1, y, bar_width, progress, '█', '░', fg);
+        self.draw_progress_bar(&ProgressBarConfig {
+            x: bar_x + 1,
+            y,
+            width: bar_width,
+            progress,
+            filled_char: '█',
+            empty_char: '░',
+            fg,
+        });
         self.draw_char(bar_x + 1 + bar_width, y, ']', fg);
     }
 
@@ -1976,7 +1987,7 @@ impl WidgetProps {
 
     /// Get classes as slice
     pub fn classes_vec(&self) -> Vec<String> {
-        self.classes.iter().cloned().collect()
+        self.classes.to_vec()
     }
 }
 

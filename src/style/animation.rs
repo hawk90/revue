@@ -541,8 +541,8 @@ mod tests {
     #[test]
     fn test_animation_group_parallel() {
         let group = AnimationGroup::parallel()
-            .add(KeyframeAnimation::new("a").duration(Duration::from_millis(100)))
-            .add(KeyframeAnimation::new("b").duration(Duration::from_millis(200)));
+            .with_animation(KeyframeAnimation::new("a").duration(Duration::from_millis(100)))
+            .with_animation(KeyframeAnimation::new("b").duration(Duration::from_millis(200)));
 
         assert_eq!(group.total_duration(), Duration::from_millis(200));
     }
@@ -550,8 +550,8 @@ mod tests {
     #[test]
     fn test_animation_group_sequential() {
         let group = AnimationGroup::sequential()
-            .add(KeyframeAnimation::new("a").duration(Duration::from_millis(100)))
-            .add(KeyframeAnimation::new("b").duration(Duration::from_millis(200)));
+            .with_animation(KeyframeAnimation::new("a").duration(Duration::from_millis(100)))
+            .with_animation(KeyframeAnimation::new("b").duration(Duration::from_millis(200)));
 
         assert_eq!(group.total_duration(), Duration::from_millis(300));
     }
@@ -1068,7 +1068,7 @@ impl AnimationGroup {
     }
 
     /// Add an animation to the group
-    pub fn add(mut self, animation: KeyframeAnimation) -> Self {
+    pub fn with_animation(mut self, animation: KeyframeAnimation) -> Self {
         self.animations.push(animation);
         self
     }
@@ -1128,13 +1128,13 @@ impl AnimationGroup {
                     if anim.is_running() {
                         break;
                     }
-                    if anim.is_completed() && i + 1 < self.animations.len() {
-                        if !self.animations[i + 1].is_running()
-                            && !self.animations[i + 1].is_completed()
-                        {
-                            should_start_next = true;
-                            next_idx = i + 1;
-                        }
+                    if anim.is_completed()
+                        && i + 1 < self.animations.len()
+                        && !self.animations[i + 1].is_running()
+                        && !self.animations[i + 1].is_completed()
+                    {
+                        should_start_next = true;
+                        next_idx = i + 1;
                     }
                 }
 

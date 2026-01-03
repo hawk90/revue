@@ -281,7 +281,7 @@ impl BufferPool {
         let key = (buf.width(), buf.height());
         let mut pools = self.pools.borrow_mut();
 
-        let pool = pools.entry(key).or_insert_with(Vec::new);
+        let pool = pools.entry(key).or_default();
         if pool.len() < self.max_per_size {
             pool.push(buf);
         } else {

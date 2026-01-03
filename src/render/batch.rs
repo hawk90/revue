@@ -366,23 +366,23 @@ impl RenderBatch {
         for op in &self.ops {
             match op {
                 RenderOp::SetCell { x, y, cell } => {
-                    buffer.set(*x, *y, cell.clone());
+                    buffer.set(*x, *y, *cell);
                 }
                 RenderOp::FillRect { rect, cell } => {
                     for y in rect.y..(rect.y + rect.height) {
                         for x in rect.x..(rect.x + rect.width) {
-                            buffer.set(x, y, cell.clone());
+                            buffer.set(x, y, *cell);
                         }
                     }
                 }
                 RenderOp::HLine { x, y, len, cell } => {
                     for dx in 0..*len {
-                        buffer.set(*x + dx, *y, cell.clone());
+                        buffer.set(*x + dx, *y, *cell);
                     }
                 }
                 RenderOp::VLine { x, y, len, cell } => {
                     for dy in 0..*len {
-                        buffer.set(*x, *y + dy, cell.clone());
+                        buffer.set(*x, *y + dy, *cell);
                     }
                 }
                 RenderOp::Text {
@@ -441,9 +441,11 @@ pub struct BatchStats {
 impl BatchStats {
     /// Calculate stats for a batch
     pub fn from_batch(batch: &RenderBatch) -> Self {
-        let mut stats = Self::default();
-        stats.total_ops = batch.len();
-        stats.optimized_ops = batch.len();
+        let mut stats = Self {
+            total_ops: batch.len(),
+            optimized_ops: batch.len(),
+            ..Self::default()
+        };
 
         for op in batch.iter() {
             match op {

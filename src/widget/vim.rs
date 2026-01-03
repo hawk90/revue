@@ -560,8 +560,9 @@ impl VimState {
         };
 
         // Save for repeat
-        if action != VimAction::None && action != VimAction::Escape {
-            if matches!(
+        if action != VimAction::None
+            && action != VimAction::Escape
+            && matches!(
                 action,
                 VimAction::Delete(_)
                     | VimAction::Yank(_)
@@ -570,9 +571,9 @@ impl VimState {
                     | VimAction::Append
                     | VimAction::OpenBelow
                     | VimAction::OpenAbove
-            ) {
-                self.last_action = Some(action.clone());
-            }
+            )
+        {
+            self.last_action = Some(action.clone());
         }
 
         // Reset count after action

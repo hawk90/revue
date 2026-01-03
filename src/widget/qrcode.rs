@@ -1,3 +1,4 @@
+#![allow(clippy::needless_range_loop)]
 //! QR Code widget for terminal display
 //!
 //! Generates and displays QR codes using Unicode block characters
@@ -236,7 +237,7 @@ impl QrCodeWidget {
 
                 // Two columns per module for aspect ratio
                 ctx.buffer
-                    .set(area.x + col as u16 * 2, area.y + row as u16, cell.clone());
+                    .set(area.x + col as u16 * 2, area.y + row as u16, cell);
                 ctx.buffer
                     .set(area.x + col as u16 * 2 + 1, area.y + row as u16, cell);
             }
@@ -267,8 +268,7 @@ impl QrCodeWidget {
                 cell.bg = Some(self.bg);
 
                 ctx.buffer
-                    .set(area.x + col as u16 * 2, area.y + row as u16, cell.clone());
-                cell.symbol = ch;
+                    .set(area.x + col as u16 * 2, area.y + row as u16, cell);
                 ctx.buffer
                     .set(area.x + col as u16 * 2 + 1, area.y + row as u16, cell);
             }

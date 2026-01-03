@@ -153,7 +153,7 @@ impl CiEnvironment {
             CiProvider::GitLabCi => std::env::var("CI_MERGE_REQUEST_IID").ok(),
             CiProvider::CircleCi => std::env::var("CIRCLE_PULL_REQUEST")
                 .ok()
-                .and_then(|url| url.split('/').last().map(String::from)),
+                .and_then(|url| url.split('/').next_back().map(String::from)),
             CiProvider::TravisCi => std::env::var("TRAVIS_PULL_REQUEST")
                 .ok()
                 .filter(|pr| pr != "false"),

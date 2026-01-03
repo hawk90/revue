@@ -1,3 +1,4 @@
+#![allow(clippy::needless_range_loop)]
 //! Streamline Chart Widget (Stream Graph / ThemeRiver)
 //!
 //! A stacked area chart with smooth, flowing layers that shows how multiple
