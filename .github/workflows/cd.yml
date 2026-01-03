@@ -53,7 +53,6 @@ jobs:
         id: release
         with:
           release-type: rust
-          package-name: revue
 
   publish:
     name: Publish to crates.io
