@@ -370,15 +370,12 @@ pub mod prelude {
         FilledCircle,
         FilledRectangle,
         FocusStyle,
-        Image,
         Input,
         Interactive,
         // Layer system
         Layers,
         Line,
         List,
-        Markdown,
-        MarkdownPresentation,
         Modal,
         ModalButton,
         ModalButtonStyle,
@@ -394,7 +391,6 @@ pub mod prelude {
         RadioStyle,
         Rectangle,
         RenderContext,
-        ScaleMode,
         ScrollView,
         Select,
         Shape,
@@ -421,9 +417,14 @@ pub mod prelude {
         Tree,
         TreeNode,
         View,
-        ViewMode,
         WidgetState,
     };
+
+    // Feature-gated widget types
+    #[cfg(feature = "image")]
+    pub use crate::widget::{Image, ScaleMode};
+    #[cfg(feature = "markdown")]
+    pub use crate::widget::{Markdown, MarkdownPresentation, ViewMode};
 
     // Widgets - Constructors
     pub use crate::widget::{
@@ -445,13 +446,10 @@ pub mod prelude {
         divider,
         dot_badge,
         hstack,
-        image_from_file,
         input,
         // Layer system constructors
         layers,
         list,
-        markdown,
-        markdown_presentation,
         modal,
         pagination,
         positioned,
@@ -478,6 +476,12 @@ pub mod prelude {
         vdivider,
         vstack,
     };
+
+    // Feature-gated widget constructors
+    #[cfg(feature = "image")]
+    pub use crate::widget::image_from_file;
+    #[cfg(feature = "markdown")]
+    pub use crate::widget::{markdown, markdown_presentation};
 
     // DOM system
     pub use crate::dom::{DomId, DomNode, DomRenderer, DomTree, NodeState, Query, WidgetMeta};
