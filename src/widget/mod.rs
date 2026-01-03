@@ -165,6 +165,7 @@ mod autocomplete;
 mod avatar;
 mod badge;
 mod barchart;
+mod bigtext;
 mod border;
 mod breadcrumb;
 mod button;
@@ -193,6 +194,7 @@ mod layer;
 mod link;
 mod list;
 mod markdown;
+mod markdown_presentation;
 mod masked_input;
 mod menu;
 mod mermaid;
@@ -218,6 +220,7 @@ mod skeleton;
 mod slider;
 mod sortable;
 mod sparkline;
+pub mod slides;
 mod spinner;
 mod splitter;
 mod stack;
@@ -252,6 +255,7 @@ pub use autocomplete::{autocomplete, Autocomplete, FilterMode, Suggestion};
 pub use avatar::{avatar, avatar_icon, Avatar, AvatarShape, AvatarSize};
 pub use badge::{badge, dot_badge, Badge, BadgeShape, BadgeVariant};
 pub use barchart::{barchart, BarChart, BarOrientation};
+pub use bigtext::{bigtext, h1, h2, h3, BigText};
 pub use border::{border, Border, BorderType};
 pub use breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
 pub use button::{button, Button, ButtonVariant};
@@ -297,6 +301,7 @@ pub use layer::{layers, Layers};
 pub use link::{link, url_link, Link, LinkStyle};
 pub use list::{list, List};
 pub use markdown::{markdown, Markdown};
+pub use markdown_presentation::{markdown_presentation, MarkdownPresentation, ViewMode};
 pub use masked_input::{
     credit_card_input, masked_input, password_input, pin_input, MaskStyle, MaskedInput,
     ValidationState,
@@ -336,6 +341,7 @@ pub use selection_list::{
 pub use skeleton::{
     skeleton, skeleton_avatar, skeleton_paragraph, skeleton_text, Skeleton, SkeletonShape,
 };
+pub use slides::{parse_slides, SlideContent, SlideNav};
 pub use slider::{
     percentage_slider, slider, slider_range, volume_slider, Slider, SliderOrientation, SliderStyle,
 };

@@ -8,7 +8,7 @@
 | **Layout** | Flexbox, padding, margin, border |
 | **Reactivity** | Signal, Computed, Effect |
 | **Widgets** | 15+ built-in widgets |
-| **Content** | Markdown, syntax highlighting, images |
+| **Content** | Markdown, presentations, syntax highlighting, images |
 | **Navigation** | Routing, focus, layers, command palette |
 | **DX** | Hot reload, devtools, testing |
 
@@ -426,6 +426,37 @@ fn main() {
 - Item 2
 "#)
 ```
+
+#### Markdown Presentation
+
+Slidev-style terminal presentations with header sizing support:
+
+```rust
+let pres = MarkdownPresentation::new(r#"
+# Title Slide
+
+Welcome!
+
+---
+
+## Slide 2
+
+- Point 1
+- Point 2
+"#)
+    .accent(Color::CYAN)
+    .text_sizing(true);  // Use Kitty Text Sizing Protocol
+
+// Navigation
+pres.next_slide();
+pres.toggle_mode();  // Switch between preview/slides
+```
+
+Features:
+- **Slide parsing**: Uses `---` delimiter (Slidev/Marp compatible)
+- **Header sizing**: H1-H6 render at different sizes in Kitty terminal
+- **Two modes**: Preview (scrollable) and Slides (one at a time)
+- **Speaker notes**: `<!-- notes: ... -->` extracted but hidden
 
 #### Image (Kitty Protocol)
 

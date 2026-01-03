@@ -377,6 +377,7 @@ pub mod prelude {
         Line,
         List,
         Markdown,
+        MarkdownPresentation,
         Modal,
         ModalButton,
         ModalButtonStyle,
@@ -419,6 +420,7 @@ pub mod prelude {
         Tree,
         TreeNode,
         View,
+        ViewMode,
         WidgetState,
     };
 
@@ -448,6 +450,7 @@ pub mod prelude {
         layers,
         list,
         markdown,
+        markdown_presentation,
         modal,
         pagination,
         positioned,
