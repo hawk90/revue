@@ -49,6 +49,15 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
     /// This automatically tracks dependencies during computation
     /// and invalidates when any dependency changes.
     pub fn get(&self) -> T {
+        if self.needs_recompute() {
+            self.recompute_and_cache()
+        } else {
+            self.get_cached()
+        }
+    }
+
+    /// Check if recomputation is needed
+    fn needs_recompute(&self) -> bool {
         let is_dirty = self.dirty.load(Ordering::SeqCst);
         let has_cache = self
             .cached
@@ -56,36 +65,43 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .is_some();
 
-        if is_dirty || !has_cache {
-            // Create a subscriber with our persistent ID that invalidates when dependencies change
-            let dirty_flag = self.dirty.clone();
-            let subscriber = Subscriber {
-                id: self.id, // Use persistent ID, not new one!
-                callback: Arc::new(move || {
-                    dirty_flag.store(true, Ordering::SeqCst);
-                }),
-            };
+        is_dirty || !has_cache
+    }
 
-            // Track dependencies during computation
-            start_tracking(subscriber);
-            let value = (self.compute)();
-            stop_tracking();
+    /// Recompute the value and cache it
+    fn recompute_and_cache(&self) -> T {
+        // Create a subscriber that invalidates when dependencies change
+        let dirty_flag = self.dirty.clone();
+        let subscriber = Subscriber {
+            id: self.id,
+            callback: Arc::new(move || {
+                dirty_flag.store(true, Ordering::SeqCst);
+            }),
+        };
 
-            // Cache the result
-            *self
-                .cached
-                .write()
-                .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(value.clone());
-            self.dirty.store(false, Ordering::SeqCst);
-            value
-        } else {
-            self.cached
-                .read()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .as_ref()
-                .unwrap()
-                .clone()
-        }
+        // Track dependencies during computation
+        start_tracking(subscriber);
+        let value = (self.compute)();
+        stop_tracking();
+
+        // Cache the result and mark as clean
+        *self
+            .cached
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(value.clone());
+        self.dirty.store(false, Ordering::SeqCst);
+
+        value
+    }
+
+    /// Get the cached value (assumes cache exists)
+    fn get_cached(&self) -> T {
+        self.cached
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .as_ref()
+            .unwrap()
+            .clone()
     }
 
     /// Force recalculation on next get

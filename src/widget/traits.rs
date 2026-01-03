@@ -613,19 +613,8 @@ impl<'a> RenderContext<'a> {
         self.draw_char(x, y + h - 1, '╰', fg);
         self.draw_char(x + w - 1, y + h - 1, '╯', fg);
 
-        // Top border with title
-        let title_start = 2u16;
-        let title_len = title.chars().count() as u16;
-        let title_end = title_start + title_len;
-
-        for i in 1..(w - 1) {
-            if i >= title_start && i < title_end {
-                let ch = title.chars().nth((i - title_start) as usize).unwrap_or('─');
-                self.draw_char(x + i, y, ch, fg);
-            } else {
-                self.draw_char(x + i, y, '─', fg);
-            }
-        }
+        // Top border with title (using iterator for O(n) instead of O(n²))
+        self.draw_top_border_with_title(x, y, w, title, '─', fg);
 
         // Bottom border
         self.draw_hline(x + 1, y + h - 1, w - 2, '─', fg);
@@ -653,19 +642,8 @@ impl<'a> RenderContext<'a> {
         self.draw_char(x, y + h - 1, '└', fg);
         self.draw_char(x + w - 1, y + h - 1, '┘', fg);
 
-        // Top border with title
-        let title_start = 2u16;
-        let title_len = title.chars().count() as u16;
-        let title_end = title_start + title_len;
-
-        for i in 1..(w - 1) {
-            if i >= title_start && i < title_end {
-                let ch = title.chars().nth((i - title_start) as usize).unwrap_or('─');
-                self.draw_char(x + i, y, ch, fg);
-            } else {
-                self.draw_char(x + i, y, '─', fg);
-            }
-        }
+        // Top border with title (using iterator for O(n) instead of O(n²))
+        self.draw_top_border_with_title(x, y, w, title, '─', fg);
 
         // Bottom border
         self.draw_hline(x + 1, y + h - 1, w - 2, '─', fg);
@@ -693,25 +671,37 @@ impl<'a> RenderContext<'a> {
         self.draw_char(x, y + h - 1, '╚', fg);
         self.draw_char(x + w - 1, y + h - 1, '╝', fg);
 
-        // Top border with title
-        let title_start = 2u16;
-        let title_len = title.chars().count() as u16;
-        let title_end = title_start + title_len;
-
-        for i in 1..(w - 1) {
-            if i >= title_start && i < title_end {
-                let ch = title.chars().nth((i - title_start) as usize).unwrap_or('═');
-                self.draw_char(x + i, y, ch, fg);
-            } else {
-                self.draw_char(x + i, y, '═', fg);
-            }
-        }
+        // Top border with title (using iterator for O(n) instead of O(n²))
+        self.draw_top_border_with_title(x, y, w, title, '═', fg);
 
         // Bottom border
         self.draw_hline(x + 1, y + h - 1, w - 2, '═', fg);
         // Vertical lines
         self.draw_vline(x, y + 1, h - 2, '║', fg);
         self.draw_vline(x + w - 1, y + 1, h - 2, '║', fg);
+    }
+
+    /// Helper: Draw top border with embedded title using O(n) iterator
+    fn draw_top_border_with_title(
+        &mut self,
+        x: u16,
+        y: u16,
+        w: u16,
+        title: &str,
+        border_char: char,
+        fg: Color,
+    ) {
+        let title_start = 2u16;
+        let mut title_chars = title.chars().peekable();
+
+        for i in 1..(w - 1) {
+            let ch = if i >= title_start && title_chars.peek().is_some() {
+                title_chars.next().unwrap_or(border_char)
+            } else {
+                border_char
+            };
+            self.draw_char(x + i, y, ch, fg);
+        }
     }
 
     // =========================================================================

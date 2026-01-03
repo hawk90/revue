@@ -126,12 +126,9 @@ impl<T: Send + 'static> WorkerHandle<T> {
                 *s = WorkerState::Running;
             }
 
-            // Use tokio runtime for async task
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("Failed to create tokio runtime");
-            let value = rt.block_on(future);
+            // Use shared runtime for async task (avoids ~100KB allocation per task)
+            let handle = super::get_runtime_handle();
+            let value = handle.block_on(future);
 
             // Store result
             if let Ok(mut r) = result_clone.lock() {
@@ -184,6 +181,9 @@ impl<T: Send + 'static> WorkerHandle<T> {
             }
 
             // Simple polling executor
+            // SAFETY: RawWaker vtable is properly configured with no-op functions
+            // (clone, wake, wake_by_ref, drop). The waker is only used for polling
+            // and never actually wakes anything - this is a busy-polling executor.
             let waker = unsafe { Waker::from_raw(dummy_raw_waker()) };
             let mut cx = Context::from_waker(&waker);
             let mut future = Box::pin(future);

@@ -22,6 +22,7 @@
 use super::cell::{Cell, Modifier};
 use crate::layout::Rect;
 use crate::style::Color;
+use crate::text::char_width;
 
 /// A single render operation
 #[derive(Debug, Clone)]
@@ -393,12 +394,14 @@ impl RenderBatch {
                     bg,
                     modifier,
                 } => {
-                    for (i, ch) in text.chars().enumerate() {
+                    let mut offset: u16 = 0;
+                    for ch in text.chars() {
                         let mut cell = Cell::new(ch);
                         cell.fg = *fg;
                         cell.bg = *bg;
                         cell.modifier = *modifier;
-                        buffer.set(*x + i as u16, *y, cell);
+                        buffer.set(*x + offset, *y, cell);
+                        offset += char_width(ch) as u16;
                     }
                 }
                 RenderOp::Clear => {
