@@ -701,18 +701,167 @@ mod tests {
         fn render(&self, _ctx: &mut RenderContext) {}
     }
 
+    // ScreenId tests
     #[test]
-    fn test_screen_id() {
+    fn test_screen_id_new() {
         let id = ScreenId::new("home");
         assert_eq!(id.as_str(), "home");
-        assert_eq!(format!("{}", id), "home");
     }
 
+    #[test]
+    fn test_screen_id_display() {
+        let id = ScreenId::new("settings");
+        assert_eq!(format!("{}", id), "settings");
+    }
+
+    #[test]
+    fn test_screen_id_from_string() {
+        let id: ScreenId = "profile".into();
+        assert_eq!(id.as_str(), "profile");
+    }
+
+    #[test]
+    fn test_screen_id_from_str() {
+        let id: ScreenId = ScreenId::from("about");
+        assert_eq!(id.as_str(), "about");
+    }
+
+    #[test]
+    fn test_screen_id_clone() {
+        let id = ScreenId::new("test");
+        let cloned = id.clone();
+        assert_eq!(id, cloned);
+    }
+
+    #[test]
+    fn test_screen_id_eq() {
+        let id1 = ScreenId::new("same");
+        let id2 = ScreenId::new("same");
+        let id3 = ScreenId::new("different");
+        assert_eq!(id1, id2);
+        assert_ne!(id1, id3);
+    }
+
+    #[test]
+    fn test_screen_id_debug() {
+        let id = ScreenId::new("debug_test");
+        let debug = format!("{:?}", id);
+        assert!(debug.contains("debug_test"));
+    }
+
+    // Transition tests
+    #[test]
+    fn test_transition_default() {
+        let t = Transition::default();
+        assert_eq!(t, Transition::None);
+    }
+
+    #[test]
+    fn test_transition_variants() {
+        assert_eq!(Transition::None, Transition::None);
+        assert_eq!(Transition::Fade, Transition::Fade);
+        assert_eq!(Transition::SlideLeft, Transition::SlideLeft);
+        assert_eq!(Transition::SlideRight, Transition::SlideRight);
+        assert_eq!(Transition::SlideUp, Transition::SlideUp);
+        assert_eq!(Transition::SlideDown, Transition::SlideDown);
+        assert_eq!(Transition::Push, Transition::Push);
+        assert_eq!(Transition::Pop, Transition::Pop);
+    }
+
+    #[test]
+    fn test_transition_clone() {
+        let t = Transition::Fade;
+        let cloned = t.clone();
+        assert_eq!(t, cloned);
+    }
+
+    // ScreenMode tests
+    #[test]
+    fn test_screen_mode_default() {
+        let mode = ScreenMode::default();
+        assert_eq!(mode, ScreenMode::Fullscreen);
+    }
+
+    #[test]
+    fn test_screen_mode_variants() {
+        assert_eq!(ScreenMode::Fullscreen, ScreenMode::Fullscreen);
+        assert_eq!(ScreenMode::Modal, ScreenMode::Modal);
+        assert_eq!(ScreenMode::Popup, ScreenMode::Popup);
+    }
+
+    // ScreenEvent tests
+    #[test]
+    fn test_screen_event_clone() {
+        let event = ScreenEvent::Mount;
+        let cloned = event.clone();
+        assert!(matches!(cloned, ScreenEvent::Mount));
+    }
+
+    #[test]
+    fn test_screen_event_debug() {
+        let events = vec![
+            ScreenEvent::Mount,
+            ScreenEvent::Unmount,
+            ScreenEvent::Show,
+            ScreenEvent::Hide,
+            ScreenEvent::Focus,
+            ScreenEvent::Blur,
+            ScreenEvent::Resume,
+            ScreenEvent::Suspend,
+        ];
+        for event in events {
+            let debug = format!("{:?}", event);
+            assert!(!debug.is_empty());
+        }
+    }
+
+    // ScreenResult tests
+    #[test]
+    fn test_screen_result_default() {
+        let result = ScreenResult::default();
+        assert!(matches!(result, ScreenResult::Continue));
+    }
+
+    #[test]
+    fn test_screen_result_clone() {
+        let result = ScreenResult::Render;
+        let cloned = result.clone();
+        assert!(matches!(cloned, ScreenResult::Render));
+    }
+
+    #[test]
+    fn test_screen_result_push() {
+        let result = ScreenResult::Push(ScreenId::new("test"));
+        assert!(matches!(result, ScreenResult::Push(_)));
+    }
+
+    #[test]
+    fn test_screen_result_replace() {
+        let result = ScreenResult::Replace(ScreenId::new("test"));
+        assert!(matches!(result, ScreenResult::Replace(_)));
+    }
+
+    #[test]
+    fn test_screen_result_goto() {
+        let result = ScreenResult::Goto(ScreenId::new("test"));
+        assert!(matches!(result, ScreenResult::Goto(_)));
+    }
+
+    // ScreenConfig tests
     #[test]
     fn test_screen_config_default() {
         let config = ScreenConfig::default();
         assert_eq!(config.mode, ScreenMode::Fullscreen);
+        assert_eq!(config.enter_transition, Transition::None);
+        assert_eq!(config.exit_transition, Transition::None);
         assert!(config.dismissable);
+        assert!(config.title.is_none());
+    }
+
+    #[test]
+    fn test_screen_config_fullscreen() {
+        let config = ScreenConfig::fullscreen();
+        assert_eq!(config.mode, ScreenMode::Fullscreen);
     }
 
     #[test]
@@ -720,38 +869,14 @@ mod tests {
         let config = ScreenConfig::modal();
         assert_eq!(config.mode, ScreenMode::Modal);
         assert_eq!(config.enter_transition, Transition::Fade);
+        assert_eq!(config.exit_transition, Transition::Fade);
     }
 
     #[test]
-    fn test_screen_manager_new() {
-        let manager = ScreenManager::new();
-        assert_eq!(manager.depth(), 0);
-        assert!(!manager.can_pop());
-    }
-
-    #[test]
-    fn test_screen_manager_register() {
-        let mut manager = ScreenManager::new();
-        let screen = TestScreen::new("home");
-        manager.register_screen(Box::new(screen));
-        assert_eq!(manager.depth(), 1);
-    }
-
-    #[test]
-    fn test_screen_manager_push_pop() {
-        let mut manager = ScreenManager::new();
-
-        let home = TestScreen::new("home");
-        let settings = TestScreen::new("settings");
-
-        manager.register_screen(Box::new(home));
-        manager.register_screen(Box::new(settings));
-
-        // Push home to top
-        manager.push("home");
-
-        // Now we can check
-        assert!(manager.depth() >= 1);
+    fn test_screen_config_popup() {
+        let config = ScreenConfig::popup();
+        assert_eq!(config.mode, ScreenMode::Popup);
+        assert_eq!(config.transition_duration, Duration::from_millis(100));
     }
 
     #[test]
@@ -765,12 +890,148 @@ mod tests {
 
         assert_eq!(config.mode, ScreenMode::Modal);
         assert_eq!(config.enter_transition, Transition::SlideLeft);
+        assert_eq!(config.exit_transition, Transition::SlideRight);
+        assert_eq!(config.transition_duration, Duration::from_millis(300));
         assert!(!config.dismissable);
         assert_eq!(config.title, Some("Settings".to_string()));
     }
 
+    // ScreenManager tests
     #[test]
-    fn test_transition_progress() {
+    fn test_screen_manager_new() {
+        let manager = ScreenManager::new();
+        assert_eq!(manager.depth(), 0);
+        assert!(!manager.can_pop());
+    }
+
+    #[test]
+    fn test_screen_manager_default() {
+        let manager = ScreenManager::default();
+        assert_eq!(manager.depth(), 0);
+    }
+
+    #[test]
+    fn test_screen_manager_register_screen() {
+        let mut manager = ScreenManager::new();
+        let screen = TestScreen::new("home");
+        manager.register_screen(Box::new(screen));
+        assert_eq!(manager.depth(), 1);
+    }
+
+    #[test]
+    fn test_screen_manager_register_factory() {
+        let mut manager = ScreenManager::new();
+        manager.register("home", || Box::new(TestScreen::new("home")));
+
+        // Factory registered but not pushed yet
+        assert_eq!(manager.depth(), 0);
+
+        // Push should create screen from factory
+        let result = manager.push("home");
+        assert!(result);
+        assert_eq!(manager.depth(), 1);
+    }
+
+    #[test]
+    fn test_screen_manager_push_unregistered() {
+        let mut manager = ScreenManager::new();
+        let result = manager.push("unknown");
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_screen_manager_pop_empty() {
+        let mut manager = ScreenManager::new();
+        let result = manager.pop();
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_screen_manager_pop_single() {
+        let mut manager = ScreenManager::new();
+        manager.register_screen(Box::new(TestScreen::new("home")));
+        // Can't pop if only one screen
+        let result = manager.pop();
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_screen_manager_current_empty() {
+        let manager = ScreenManager::new();
+        assert!(manager.current().is_none());
+        assert!(manager.current_id().is_none());
+    }
+
+    #[test]
+    fn test_screen_manager_current() {
+        let mut manager = ScreenManager::new();
+        manager.register_screen(Box::new(TestScreen::new("home")));
+
+        let current = manager.current();
+        assert!(current.is_some());
+        assert_eq!(current.unwrap().id().as_str(), "home");
+    }
+
+    #[test]
+    fn test_screen_manager_current_mut() {
+        let mut manager = ScreenManager::new();
+        manager.register_screen(Box::new(TestScreen::new("home")));
+
+        let current = manager.current_mut();
+        assert!(current.is_some());
+    }
+
+    #[test]
+    fn test_screen_manager_current_id() {
+        let mut manager = ScreenManager::new();
+        manager.register_screen(Box::new(TestScreen::new("test")));
+
+        let id = manager.current_id();
+        assert!(id.is_some());
+        assert_eq!(id.unwrap().as_str(), "test");
+    }
+
+    #[test]
+    fn test_screen_manager_has_screen() {
+        let mut manager = ScreenManager::new();
+        manager.register_screen(Box::new(TestScreen::new("home")));
+
+        assert!(manager.has_screen(&ScreenId::new("home")));
+        assert!(!manager.has_screen(&ScreenId::new("unknown")));
+    }
+
+    #[test]
+    fn test_screen_manager_is_transitioning() {
+        let manager = ScreenManager::new();
+        assert!(!manager.is_transitioning());
+    }
+
+    #[test]
+    fn test_screen_manager_transition_progress() {
+        let manager = ScreenManager::new();
+        assert!(manager.transition_progress().is_none());
+    }
+
+    #[test]
+    fn test_screen_manager_history() {
+        let mut manager = ScreenManager::new();
+        manager.register_screen(Box::new(TestScreen::new("a")));
+        manager.register_screen(Box::new(TestScreen::new("b")));
+
+        let history = manager.history();
+        assert_eq!(history.len(), 2);
+    }
+
+    #[test]
+    fn test_screen_manager_update_empty() {
+        let mut manager = ScreenManager::new();
+        let result = manager.update();
+        assert!(matches!(result, ScreenResult::Continue));
+    }
+
+    // TransitionState tests
+    #[test]
+    fn test_transition_state_progress() {
         let state = TransitionState {
             _transition: Transition::Fade,
             start: Instant::now(),
@@ -783,25 +1044,36 @@ mod tests {
     }
 
     #[test]
-    fn test_screen_result_default() {
-        let result = ScreenResult::default();
-        assert!(matches!(result, ScreenResult::Continue));
+    fn test_transition_state_is_complete() {
+        let state = TransitionState {
+            _transition: Transition::Fade,
+            start: Instant::now() - Duration::from_millis(200),
+            duration: Duration::from_millis(100),
+            _entering: true,
+        };
+
+        assert!(state.is_complete());
     }
 
-    #[test]
-    fn test_screen_history() {
-        let mut manager = ScreenManager::new();
-
-        manager.register_screen(Box::new(TestScreen::new("a")));
-        manager.register_screen(Box::new(TestScreen::new("b")));
-
-        let history = manager.history();
-        assert_eq!(history.len(), 2);
-    }
-
+    // Helper function tests
     #[test]
     fn test_screen_manager_helper() {
         let manager = screen_manager();
         assert_eq!(manager.depth(), 0);
+    }
+
+    #[test]
+    fn test_simple_screen_helper() {
+        let screen = simple_screen("test", |_ctx| {});
+        assert_eq!(screen.id().as_str(), "test");
+    }
+
+    #[test]
+    fn test_simple_screen_with_config() {
+        let config = ScreenConfig::modal();
+        let screen = simple_screen("modal", |_ctx| {}).config(config);
+        // Access config via Screen trait method
+        let screen_config = Screen::config(&screen);
+        assert_eq!(screen_config.mode, ScreenMode::Modal);
     }
 }

@@ -129,15 +129,131 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_builder_default() {
+    fn test_builder_new() {
         let builder = AppBuilder::new();
         assert!(builder.style_paths.is_empty());
+        assert!(!builder.hot_reload);
+        assert!(builder.mouse_capture);
+    }
+
+    #[test]
+    fn test_builder_default_trait() {
+        let builder = AppBuilder::default();
+        assert!(builder.style_paths.is_empty());
+        assert!(!builder.hot_reload);
+        assert!(builder.mouse_capture);
+    }
+
+    #[test]
+    fn test_builder_hot_reload_enabled() {
+        let builder = AppBuilder::new().hot_reload(true);
+        assert!(builder.hot_reload);
+    }
+
+    #[test]
+    fn test_builder_hot_reload_disabled() {
+        let builder = AppBuilder::new().hot_reload(false);
         assert!(!builder.hot_reload);
     }
 
     #[test]
-    fn test_builder_hot_reload() {
-        let builder = AppBuilder::new().hot_reload(true);
+    fn test_builder_devtools_enabled() {
+        let builder = AppBuilder::new().devtools(true);
+        assert!(builder.devtools);
+    }
+
+    #[test]
+    fn test_builder_devtools_disabled() {
+        let builder = AppBuilder::new().devtools(false);
+        assert!(!builder.devtools);
+    }
+
+    #[test]
+    fn test_builder_mouse_capture_enabled() {
+        let builder = AppBuilder::new().mouse_capture(true);
+        assert!(builder.mouse_capture);
+    }
+
+    #[test]
+    fn test_builder_mouse_capture_disabled() {
+        let builder = AppBuilder::new().mouse_capture(false);
+        assert!(!builder.mouse_capture);
+    }
+
+    #[test]
+    fn test_builder_css_valid() {
+        let builder = AppBuilder::new().css("div { color: red; }");
+        // Should parse without error; stylesheet gets updated
+        assert!(!builder.stylesheet.rules.is_empty());
+    }
+
+    #[test]
+    fn test_builder_css_empty() {
+        let builder = AppBuilder::new().css("");
+        // Empty CSS is valid, stylesheet remains empty
+        assert!(builder.stylesheet.rules.is_empty());
+    }
+
+    #[test]
+    fn test_builder_css_invalid() {
+        // Invalid CSS should log warning but not panic
+        let builder = AppBuilder::new().css("not { valid {{{ css");
+        // Should still return a builder (with warning logged)
+        assert!(builder.style_paths.is_empty());
+    }
+
+    #[test]
+    fn test_builder_multiple_css() {
+        let builder = AppBuilder::new()
+            .css("div { color: red; }")
+            .css("span { color: blue; }");
+        // Both should be merged
+        assert!(!builder.stylesheet.rules.is_empty());
+    }
+
+    #[test]
+    fn test_builder_chaining() {
+        let builder = AppBuilder::new()
+            .hot_reload(true)
+            .devtools(true)
+            .mouse_capture(false)
+            .css("div { display: flex; }");
+
         assert!(builder.hot_reload);
+        assert!(builder.devtools);
+        assert!(!builder.mouse_capture);
+        assert!(!builder.stylesheet.rules.is_empty());
+    }
+
+    #[test]
+    fn test_builder_style_nonexistent_file() {
+        // Should handle missing file gracefully with warning
+        let builder = AppBuilder::new().style("/nonexistent/path/style.css");
+        assert_eq!(builder.style_paths.len(), 1);
+        // File doesn't exist but path is tracked
+    }
+
+    #[test]
+    fn test_builder_build() {
+        let app = AppBuilder::new()
+            .mouse_capture(false)
+            .css("div { color: red; }")
+            .build();
+        assert!(!app.is_running());
+        assert!(!app.mouse_capture);
+    }
+
+    #[test]
+    fn test_builder_build_with_defaults() {
+        let app = AppBuilder::new().build();
+        assert!(!app.is_running());
+        assert!(app.mouse_capture); // Default is true
+    }
+
+    #[test]
+    fn test_builder_build_initializes_buffers() {
+        let app = AppBuilder::new().build();
+        // Should have initialized buffers
+        assert!(app.buffers[0].width() > 0 || app.buffers[0].height() > 0);
     }
 }
