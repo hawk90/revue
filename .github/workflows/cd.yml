@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
   pages: write
   id-token: write
 
@@ -52,7 +53,7 @@ jobs:
         id: release
         with:
           release-type: rust
-          token: ${{ secrets.GITHUB_TOKEN }}
+          package-name: revue
 
   publish:
     name: Publish to crates.io
