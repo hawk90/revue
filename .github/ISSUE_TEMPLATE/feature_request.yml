@@ -1,39 +1,27 @@
 name: Feature Request
-description: Suggest a new feature or enhancement for Revue
+description: Suggest a new feature or enhancement
 title: "[Feature]: "
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        ## Thanks for suggesting a feature!
-
-        Before submitting, please:
-        - Search [existing issues](https://github.com/hawk90/revue/issues) to see if it's already been requested
-        - Check the [roadmap](https://github.com/hawk90/revue#roadmap) to see if it's already planned
-        - Consider if this fits Revue's goal of being a Vue-style TUI framework
-
-        We appreciate detailed proposals that include use cases and examples!
+        Thanks for the suggestion! Please search [existing issues](https://github.com/hawk90/revue/issues) first.
 
   - type: dropdown
     id: category
     attributes:
       label: Category
-      description: What area of Revue does this feature relate to?
       options:
-        - New Widget (add a new widget type)
-        - Widget Enhancement (improve existing widget)
-        - Styling/CSS (new CSS properties, selectors, etc.)
-        - Layout (flexbox, grid, positioning)
-        - Reactivity (signals, computed, effects)
-        - Animation/Transitions
-        - Performance Optimization
-        - Developer Experience (hot reload, devtools, etc.)
-        - Testing Utilities
-        - Accessibility
+        - New Widget
+        - Widget Enhancement
+        - Styling/CSS
+        - Layout
+        - Reactivity
+        - Animation
+        - Performance
+        - Developer Experience
         - Documentation
-        - Examples/Demos
-        - CLI Tooling
         - Other
     validations:
       required: true
@@ -41,14 +29,11 @@ body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem Statement
-      description: |
-        What problem does this feature solve?
-        Describe the frustration or limitation you're experiencing.
+      label: Problem
+      description: What problem does this solve?
       placeholder: |
-        Example: "When building dashboards, I often need to display real-time data in charts.
-        Currently, I have to manually manage redrawing the chart on every data update,
-        which is error-prone and verbose."
+        When building dashboards, I need to display real-time charts.
+        Currently I have to manually manage redraws which is error-prone.
     validations:
       required: true
 
@@ -56,104 +41,40 @@ body:
     id: solution
     attributes:
       label: Proposed Solution
-      description: |
-        How would you like this to work?
-        Describe your ideal solution in detail.
+      description: How would you like this to work?
       placeholder: |
-        Example: "Add a reactive Chart widget that automatically re-renders when its
-        data signal changes. It should support line, bar, and area charts with
-        configurable colors and axis labels."
+        Add a Chart widget that re-renders when data changes.
+        Support line, bar, and area charts with configurable colors.
     validations:
       required: true
 
   - type: textarea
     id: api
     attributes:
-      label: Proposed API
-      description: |
-        Show example code of how this feature would be used.
-        This helps us understand your vision and design a good API.
+      label: API Example
+      description: Show how you'd use this feature (optional)
       placeholder: |
-        use revue::prelude::*;
-
-        fn dashboard() -> impl View {
-            let data = signal(vec![10.0, 20.0, 15.0, 30.0]);
-
-            // Proposed API
-            line_chart(data.clone())
-                .title("Sales")
-                .x_label("Month")
-                .y_label("Revenue")
-                .color(Color::CYAN)
-                .on_hover(|point| tooltip(format!("Value: {}", point)))
-        }
+        let data = signal(vec![10.0, 20.0, 15.0]);
+        line_chart(data).title("Sales").color(Color::CYAN)
       render: rust
-
-  - type: textarea
-    id: css_api
-    attributes:
-      label: CSS API (if applicable)
-      description: If this feature involves CSS, show how it would be styled
-      placeholder: |
-        .chart {
-            height: 100%;
-            grid-color: var(--border-muted);
-        }
-
-        .chart-line {
-            stroke: var(--accent);
-            stroke-width: 2;
-        }
-      render: css
 
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives Considered
-      description: |
-        What other solutions have you considered?
-        Why is your proposed solution better?
-      placeholder: |
-        Example: "I considered using a custom canvas widget, but that requires
-        low-level drawing code and doesn't integrate with the reactive system.
-        A dedicated Chart widget would be more ergonomic and performant."
-
-  - type: textarea
-    id: prior_art
-    attributes:
-      label: Prior Art
-      description: |
-        Are there similar features in other frameworks?
-        Links to examples or documentation are helpful.
-      placeholder: |
-        - Textual (Python): https://textual.textualize.io/widgets/sparkline/
-        - Ratatui: https://ratatui.rs/examples/chart/
-        - Chart.js (web): https://www.chartjs.org/
-
-  - type: dropdown
-    id: priority
-    attributes:
-      label: How important is this feature to you?
-      options:
-        - Nice to have - would improve my experience
-        - Important - I need this for my project
-        - Critical - blocking my use of Revue
+      label: Alternatives / Prior Art
+      description: Other solutions you considered, or similar features in other projects (optional)
 
   - type: checkboxes
     id: contribution
     attributes:
       label: Contribution
-      description: Would you be willing to help implement this feature?
       options:
-        - label: I'm willing to submit a PR for this feature
-        - label: I can help with testing/feedback
-        - label: I can help with documentation
+        - label: I'm willing to help implement this
 
   - type: checkboxes
     id: checklist
     attributes:
       label: Checklist
       options:
-        - label: I have searched existing issues and this is not a duplicate
+        - label: I searched existing issues
           required: true
-        - label: I have checked the roadmap and this is not already planned

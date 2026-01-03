@@ -1,29 +1,24 @@
 # Contributing to Revue
 
-Thank you for your interest in contributing to revue!
+Thank you for your interest in contributing to Revue!
 
 ## Development Setup
 
 ### Prerequisites
 
 ```bash
-# Rust (1.75+)
+# Rust (1.87+)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Lefthook (Git hooks)
-brew install lefthook  # macOS
-# or
-cargo install lefthook
+# Optional: typos (spell checker)
+cargo install typos-cli
 ```
 
 ### Project Setup
 
 ```bash
-git clone https://github.com/user/revue.git
+git clone https://github.com/hawk90/revue.git
 cd revue
-
-# Enable Git hooks
-lefthook install
 
 # Verify build
 cargo build
@@ -31,6 +26,14 @@ cargo test
 ```
 
 ## Git Workflow
+
+We use a **simplified trunk-based flow** (no develop/release branches):
+
+```
+main (protected, always deployable)
+  │
+  └── feature branches → PR → squash merge → main
+```
 
 ### Branch Strategy
 
@@ -68,13 +71,16 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/).
 <type>(<scope>): <description>
 
 # Examples
-feat(components): add Button component
+feat(widget): add Button component
 fix(parser): resolve memory leak in CSS parser
 docs(readme): add installation guide
 refactor(layout): simplify flexbox calculation
 perf(render): optimize diff algorithm
 test(button): add click event tests
 chore(deps): update crossterm to 0.28
+
+# Breaking changes - add ! after type
+feat!(api): change View trait signature
 ```
 
 **Types:**
@@ -93,36 +99,52 @@ chore(deps): update crossterm to 0.28
 | `chore` | Other changes |
 | `revert` | Revert a commit |
 
-### PR Titles
+### PR Workflow
 
-PR titles must also follow Conventional Commits format:
-
-```
-feat: add Button component
-fix: resolve memory leak in CSS parser
-```
+1. Create a feature branch from `main`
+2. Make changes, commit with conventional commits
+3. Push and open a PR
+4. CI runs automatically (clippy, fmt, tests, security audit)
+5. Get review and approval
+6. Squash and merge
 
 ### Merge Strategy
 
 - **Squash and merge** is used to maintain a clean history
 - The PR title becomes the final commit message
+- Delete branch after merge
 
-## Code Style
+## Code Quality
 
-### Rust
+### Pre-commit Checks
+
+Run these before committing:
 
 ```bash
-# Formatting
+# Format code
 cargo fmt
 
-# Linting
+# Lint
 cargo clippy --all-features -- -D warnings
 
-# Testing
+# Run tests
 cargo test --all-features
+
+# Optional: check typos
+typos
 ```
 
-### Guidelines
+### CI Checks
+
+PRs must pass all CI checks:
+
+- `cargo fmt --check`
+- `cargo clippy --all-features -- -D warnings`
+- `cargo test --all-features`
+- `cargo-deny` (license and security)
+- `typos` (spell check)
+
+### Code Guidelines
 
 1. **Document public APIs**
    ```rust
@@ -164,26 +186,25 @@ Before submitting a PR:
 - [ ] Run `cargo clippy --all-features` with no warnings
 - [ ] Run `cargo test --all-features` and all tests pass
 - [ ] Update documentation for public API changes
-- [ ] Note breaking changes in PR description
+- [ ] Note breaking changes in PR description (use `feat!:` or `BREAKING CHANGE:`)
 
 ## Release Process
 
-Releases are fully automated:
+Releases are fully automated via [Release Please](https://github.com/googleapis/release-please):
 
 1. PR is merged to `main`
-2. [Release Please](https://github.com/googleapis/release-please) analyzes commits
+2. Release Please analyzes commits
 3. Release PR is automatically created (version bump + CHANGELOG)
-4. When Release PR is merged, automatic release:
+4. When Release PR is merged:
    - GitHub Release created
-   - Binaries built and uploaded
    - Published to crates.io
 
 Version is determined automatically based on Conventional Commits:
-- `feat:` → minor (0.1.0 → 0.2.0)
 - `fix:` → patch (0.1.0 → 0.1.1)
+- `feat:` → minor (0.1.0 → 0.2.0)
 - `feat!:` or `BREAKING CHANGE:` → major (0.1.0 → 1.0.0)
 
 ## Need Help?
 
-- Open an issue on [GitHub Issues](https://github.com/user/revue/issues)
+- Open an issue on [GitHub Issues](https://github.com/hawk90/revue/issues)
 - Look for issues labeled `good first issue` to get started

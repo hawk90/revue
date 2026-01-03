@@ -6,7 +6,6 @@
 
 [![crates.io](https://img.shields.io/crates/v/revue?style=for-the-badge&logo=rust&logoColor=white&color=orange)](https://crates.io/crates/revue)
 [![docs.rs](https://img.shields.io/docsrs/revue?style=for-the-badge&logo=docs.rs&logoColor=white)](https://docs.rs/revue)
-[![Release](https://img.shields.io/github/v/release/hawk90/revue?style=for-the-badge&sort=semver&logo=github)](https://github.com/hawk90/revue/releases)
 [![GitHub Stars](https://img.shields.io/github/stars/hawk90/revue?style=for-the-badge&logo=github)](https://github.com/hawk90/revue/stargazers)
 
 [![CI](https://img.shields.io/github/actions/workflow/status/hawk90/revue/ci.yml?style=flat-square&label=CI)](https://github.com/hawk90/revue/actions/workflows/ci.yml)
@@ -45,7 +44,7 @@ use revue::prelude::*;
 
 fn main() -> Result<()> {
     App::new()
-        .stylesheet("styles.css")
+        .style("styles.css")
         .run(Counter::default())
 }
 
@@ -97,7 +96,7 @@ button:hover {
 | **Input** | `input` `textarea` `select` `checkbox` `radio` `switch` `slider` |
 | **Display** | `text` `markdown` `table` `tree` `list` `progress` `badge` `image` `presentation` |
 | **Feedback** | `modal` `toast` `notification` `tooltip` `popover` |
-| **Charts** | `bar_chart` `line_chart` `sparkline` `heatmap` `gauge` |
+| **Charts** | `barchart` `line_chart` `sparkline` `heatmap` `gauge` |
 
 <br>
 
@@ -107,8 +106,6 @@ button:hover {
 cargo run --example counter      # Basic counter
 cargo run --example todo         # Todo app
 cargo run --example dashboard    # Charts & widgets
-cargo run --example forms        # Form inputs
-cargo run --example markdown     # Markdown viewer
 cargo run --example slideshow    # Slidev-style presentations
 ```
 
