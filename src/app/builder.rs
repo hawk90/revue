@@ -5,7 +5,6 @@ use crate::plugin::{Plugin, PluginRegistry};
 use crate::style::{parse_css, StyleSheet};
 use std::fs;
 use std::path::PathBuf;
-use tracing::warn;
 
 /// Builder for configuring and creating an App
 pub struct AppBuilder {
@@ -57,9 +56,9 @@ impl AppBuilder {
         match fs::read_to_string(&path) {
             Ok(content) => match parse_css(&content) {
                 Ok(sheet) => self.stylesheet.merge(sheet),
-                Err(e) => warn!("Failed to parse CSS from {:?}: {}", path, e),
+                Err(e) => log_warn!("Failed to parse CSS from {:?}: {}", path, e),
             },
-            Err(e) => warn!("Failed to read CSS file {:?}: {}", path, e),
+            Err(e) => log_warn!("Failed to read CSS file {:?}: {}", path, e),
         }
         self
     }
@@ -69,7 +68,7 @@ impl AppBuilder {
         let css = css.into();
         match parse_css(&css) {
             Ok(sheet) => self.stylesheet.merge(sheet),
-            Err(e) => warn!("Failed to parse inline CSS: {}", e),
+            Err(e) => log_warn!("Failed to parse inline CSS: {}", e),
         }
         self
     }
@@ -106,7 +105,7 @@ impl AppBuilder {
 
         // Initialize plugins
         if let Err(e) = self.plugins.init() {
-            warn!("Plugin initialization failed: {}", e);
+            log_warn!("Plugin initialization failed: {}", e);
         }
 
         App::new_with_plugins(

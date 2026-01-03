@@ -3,6 +3,7 @@
 //! This module provides the main entry point for Revue applications.
 
 mod builder;
+#[cfg(feature = "hot-reload")]
 mod hot_reload;
 mod inspector;
 pub mod profiler;
@@ -11,6 +12,7 @@ pub mod screen;
 pub mod snapshot;
 
 pub use builder::AppBuilder;
+#[cfg(feature = "hot-reload")]
 pub use hot_reload::{hot_reload, HotReload, HotReloadBuilder, HotReloadConfig, HotReloadEvent};
 pub use inspector::{inspector, Inspector, WidgetInfo};
 pub use profiler::{
@@ -131,7 +133,7 @@ impl App {
 
         // Mount plugins
         if let Err(e) = self.plugins.mount() {
-            tracing::warn!("Plugin mount failed: {}", e);
+            crate::log_warn!("Plugin mount failed: {}", e);
         }
 
         self.running = true;
@@ -153,7 +155,7 @@ impl App {
 
         // Unmount plugins before exit
         if let Err(e) = self.plugins.unmount() {
-            tracing::warn!("Plugin unmount failed: {}", e);
+            crate::log_warn!("Plugin unmount failed: {}", e);
         }
 
         terminal.restore()?;
@@ -216,7 +218,7 @@ impl App {
                 self.transitions.update_nodes(delta);
                 // Tick plugins
                 if let Err(e) = self.plugins.tick(delta) {
-                    tracing::warn!("Plugin tick failed: {}", e);
+                    crate::log_warn!("Plugin tick failed: {}", e);
                 }
                 if self.transitions.has_active() {
                     should_draw = true;
