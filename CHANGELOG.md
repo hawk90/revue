@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1](https://github.com/hawk90/revue/compare/v1.0.0...v1.0.1) (2026-01-03)
+
+
+### Bug Fixes
+
+* add allow(dead_code) to test functions and adjust banner size ([31fa7a9](https://github.com/hawk90/revue/commit/31fa7a9e5c78e78d9c59d5fdc32297ffe5cdd725))
+* add allow(dead_code) to test structs ([99e16bc](https://github.com/hawk90/revue/commit/99e16bc201f56fe97ba68eb55f5491721529cfd5))
+* add fxhash and zune-jpeg version advisories ([b0c79bd](https://github.com/hawk90/revue/commit/b0c79bd42c92b4c7c8d3b63b46273363ff6f6f20))
+* add missing licenses and relax FPS test threshold ([fd054b4](https://github.com/hawk90/revue/commit/fd054b40e4da7787257996939553183e7febc5a2))
+* add poison recovery to Effect callback handling ([38dfa12](https://github.com/hawk90/revue/commit/38dfa124c4c5404cb8b1e7fc7762fe0a58990132))
+* **ci:** remove missing labels from dependabot ([1889bdd](https://github.com/hawk90/revue/commit/1889bdd2adac56292be1cf500a9f237716c617aa))
+* **ci:** skip commitlint on initial push ([950463d](https://github.com/hawk90/revue/commit/950463dd48585c0d860b6c17d78e69213804a194))
+* **ci:** update deny.toml for cargo-deny v0.18+ ([7f2ec16](https://github.com/hawk90/revue/commit/7f2ec16fa93ae67d2cd3b5483c12eb5bcbaa7d95))
+* **ci:** update deny.toml for cargo-deny v0.18+ compatibility ([fd9fbad](https://github.com/hawk90/revue/commit/fd9fbad20589261d4b694bb140ff3409d742e7d2))
+* downgrade zune-jpeg to 0.4.21 for MSRV compatibility ([50f9d10](https://github.com/hawk90/revue/commit/50f9d10e0d325639809f8d3e713e0d016aa07763))
+* ignore flaky test and add CI job dependencies ([b1f7bdd](https://github.com/hawk90/revue/commit/b1f7bdd2868a82ccfc7b4e39e87e1142a92bd6ee))
+* ignore unmaintained advisories and update CI badges ([35c0db1](https://github.com/hawk90/revue/commit/35c0db1c8820570748979d322870b5a0aad9847d))
+* resolve all example warnings for CI ([4fa0360](https://github.com/hawk90/revue/commit/4fa03602991088e826df4c5738936460491b6ba8))
+* resolve CI failures across all platforms ([e654e23](https://github.com/hawk90/revue/commit/e654e235a85370f8be49997f08daac3582610212))
+* resolve CI failures and reorganize workflow ([2df63d6](https://github.com/hawk90/revue/commit/2df63d632970cf9ac55ab0d534c4b764abc15f69))
+* resolve clippy warnings (impl derive, repeat_n, div_ceil) ([e17d8d8](https://github.com/hawk90/revue/commit/e17d8d859e9531bed2aedf7d1a445638f2b7ae39))
+* resolve clippy warnings and flaky test issues ([5d3ab22](https://github.com/hawk90/revue/commit/5d3ab22625644f724281901d2cb05c3f954999bd))
+* resolve critical bugs and improve code quality ([eef7b15](https://github.com/hawk90/revue/commit/eef7b15947f76335c343389b1db136d0868b29d1))
+* resolve doc links and security workflow ([bc12246](https://github.com/hawk90/revue/commit/bc1224663d1f510eb06d174644dc890906428eed))
+* resolve doc warnings and update MSRV to 1.85 ([ed7cfbf](https://github.com/hawk90/revue/commit/ed7cfbfaa7ca808cbfe63f8ae155c7f67c15a3a3))
+* update to taffy 0.9.2 API and remove dead_code allow ([e919b41](https://github.com/hawk90/revue/commit/e919b41a15f70410313ec35e1962d7433ac4d57c))
+
 ## [Unreleased]
 
 ## [1.0.0] - 2026-01-02
