@@ -6,6 +6,7 @@ ignore = [
     # Unmaintained transitive dependencies - no safe upgrade available
     "RUSTSEC-2024-0320",  # yaml-rust (via syntect)
     "RUSTSEC-2024-0436",  # paste (via image -> ravif -> rav1e)
+    "RUSTSEC-2025-0057",  # fxhash (via selectors)
     # unic-* crates (via unic-emoji-char) - all unmaintained
     "RUSTSEC-2025-0075",  # unic-char-range
     "RUSTSEC-2025-0080",  # unic-common
