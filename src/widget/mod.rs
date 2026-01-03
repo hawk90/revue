@@ -225,10 +225,10 @@ mod select;
 mod selection_list;
 mod skeleton;
 mod slider;
-mod sortable;
-mod sparkline;
 #[cfg(feature = "markdown")]
 pub mod slides;
+mod sortable;
+mod sparkline;
 mod spinner;
 mod splitter;
 mod stack;
@@ -357,11 +357,11 @@ pub use selection_list::{
 pub use skeleton::{
     skeleton, skeleton_avatar, skeleton_paragraph, skeleton_text, Skeleton, SkeletonShape,
 };
-#[cfg(feature = "markdown")]
-pub use slides::{parse_slides, SlideContent, SlideNav};
 pub use slider::{
     percentage_slider, slider, slider_range, volume_slider, Slider, SliderOrientation, SliderStyle,
 };
+#[cfg(feature = "markdown")]
+pub use slides::{parse_slides, SlideContent, SlideNav};
 pub use sortable::{sortable_list, SortableItem, SortableList};
 pub use sparkline::{sparkline, Sparkline, SparklineStyle};
 pub use spinner::{spinner, Spinner, SpinnerStyle};

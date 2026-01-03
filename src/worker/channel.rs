@@ -89,7 +89,8 @@ impl<T: Clone> WorkerChannel<T> {
             }
             log_warn!(
                 "Worker channel overflow: command {:?} dropped (queue full at {} items)",
-                cmd, self.capacity
+                cmd,
+                self.capacity
             );
         }
         false
