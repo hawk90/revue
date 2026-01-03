@@ -1042,9 +1042,13 @@ fn test_grid_basic() {
 fn test_autocomplete_basic() {
     use revue::widget::Autocomplete;
 
-    let view = Autocomplete::new()
-        .placeholder("Search...")
-        .suggestions(["Apple", "Banana", "Cherry", "Date", "Elderberry"]);
+    let view = Autocomplete::new().placeholder("Search...").suggestions([
+        "Apple",
+        "Banana",
+        "Cherry",
+        "Date",
+        "Elderberry",
+    ]);
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -1075,8 +1079,8 @@ fn test_autocomplete_with_value() {
 fn test_textarea_basic() {
     use revue::widget::TextArea;
 
-    let view = TextArea::new()
-        .content("Hello, World!\nThis is a multi-line text area.\nLine 3 here.");
+    let view =
+        TextArea::new().content("Hello, World!\nThis is a multi-line text area.\nLine 3 here.");
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -1102,8 +1106,7 @@ fn test_textarea_with_line_numbers() {
 fn test_textarea_with_placeholder() {
     use revue::widget::TextArea;
 
-    let view = TextArea::new()
-        .placeholder("Enter your code here...");
+    let view = TextArea::new().placeholder("Enter your code here...");
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -1120,9 +1123,7 @@ fn test_virtuallist_basic() {
     use revue::widget::VirtualList;
 
     let items: Vec<String> = (0..100).map(|i| format!("Item {}", i)).collect();
-    let view = VirtualList::new(items)
-        .item_height(1)
-        .selected(5);
+    let view = VirtualList::new(items).item_height(1).selected(5);
 
     let config = TestConfig::with_size(40, 10);
     let mut app = TestApp::with_config(view, config);
@@ -1157,17 +1158,20 @@ fn test_menubar_basic() {
     use revue::widget::{Menu, MenuBar, MenuItem};
 
     let view = MenuBar::new()
-        .menu(Menu::new("File")
-            .item(MenuItem::new("New"))
-            .item(MenuItem::new("Open"))
-            .item(MenuItem::separator())
-            .item(MenuItem::new("Save"))
-            .item(MenuItem::new("Exit")))
-        .menu(Menu::new("Edit")
-            .item(MenuItem::new("Cut"))
-            .item(MenuItem::new("Copy")))
-        .menu(Menu::new("Help")
-            .item(MenuItem::new("About")));
+        .menu(
+            Menu::new("File")
+                .item(MenuItem::new("New"))
+                .item(MenuItem::new("Open"))
+                .item(MenuItem::separator())
+                .item(MenuItem::new("Save"))
+                .item(MenuItem::new("Exit")),
+        )
+        .menu(
+            Menu::new("Edit")
+                .item(MenuItem::new("Cut"))
+                .item(MenuItem::new("Copy")),
+        )
+        .menu(Menu::new("Help").item(MenuItem::new("About")));
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -1180,14 +1184,18 @@ fn test_menubar_with_shortcuts() {
     use revue::widget::{Menu, MenuBar, MenuItem};
 
     let view = MenuBar::new()
-        .menu(Menu::new("File")
-            .item(MenuItem::new("New").shortcut("Ctrl+N"))
-            .item(MenuItem::new("Open").shortcut("Ctrl+O"))
-            .item(MenuItem::new("Save").shortcut("Ctrl+S")))
-        .menu(Menu::new("Edit")
-            .item(MenuItem::new("Cut").shortcut("Ctrl+X"))
-            .item(MenuItem::new("Copy").shortcut("Ctrl+C"))
-            .item(MenuItem::new("Paste").shortcut("Ctrl+V")));
+        .menu(
+            Menu::new("File")
+                .item(MenuItem::new("New").shortcut("Ctrl+N"))
+                .item(MenuItem::new("Open").shortcut("Ctrl+O"))
+                .item(MenuItem::new("Save").shortcut("Ctrl+S")),
+        )
+        .menu(
+            Menu::new("Edit")
+                .item(MenuItem::new("Cut").shortcut("Ctrl+X"))
+                .item(MenuItem::new("Copy").shortcut("Ctrl+C"))
+                .item(MenuItem::new("Paste").shortcut("Ctrl+V")),
+        );
 
     let mut app = TestApp::new(view);
     let mut pilot = Pilot::new(&mut app);
@@ -1221,7 +1229,11 @@ fn test_tooltip_variants() {
     let view = vstack()
         .gap(2)
         .child(Tooltip::info("Info tooltip").visible(true).anchor(5, 1))
-        .child(Tooltip::warning("Warning tooltip").visible(true).anchor(5, 4))
+        .child(
+            Tooltip::warning("Warning tooltip")
+                .visible(true)
+                .anchor(5, 4),
+        )
         .child(Tooltip::error("Error tooltip").visible(true).anchor(5, 7));
 
     let config = TestConfig::with_size(50, 12);
@@ -1351,8 +1363,8 @@ fn test_syntax_languages() {
 
 #[test]
 fn test_timeseries_basic() {
-    use revue::widget::{TimeSeries, TimeSeriesData};
     use revue::style::Color;
+    use revue::widget::{TimeSeries, TimeSeriesData};
 
     let data = TimeSeriesData::new("CPU")
         .point(0, 25.0)
@@ -1376,8 +1388,8 @@ fn test_timeseries_basic() {
 
 #[test]
 fn test_timeseries_multiple_series() {
-    use revue::widget::{TimeSeries, TimeSeriesData};
     use revue::style::Color;
+    use revue::widget::{TimeSeries, TimeSeriesData};
 
     let cpu = TimeSeriesData::new("CPU")
         .points(vec![(0, 20.0), (1, 40.0), (2, 35.0), (3, 50.0)])
@@ -1409,7 +1421,9 @@ fn test_timeseries_multiple_series() {
 fn test_waveline_basic() {
     use revue::widget::Waveline;
 
-    let data: Vec<f64> = (0..50).map(|i| (i as f64 * 0.2).sin() * 0.4 + 0.5).collect();
+    let data: Vec<f64> = (0..50)
+        .map(|i| (i as f64 * 0.2).sin() * 0.4 + 0.5)
+        .collect();
     let view = Waveline::new(data);
 
     let config = TestConfig::with_size(60, 10);
@@ -1421,10 +1435,12 @@ fn test_waveline_basic() {
 
 #[test]
 fn test_waveline_filled() {
-    use revue::widget::{Waveline, WaveStyle};
     use revue::style::Color;
+    use revue::widget::{WaveStyle, Waveline};
 
-    let data: Vec<f64> = (0..40).map(|i| (i as f64 * 0.15).sin() * 0.3 + 0.5).collect();
+    let data: Vec<f64> = (0..40)
+        .map(|i| (i as f64 * 0.15).sin() * 0.3 + 0.5)
+        .collect();
     let view = Waveline::new(data)
         .style(WaveStyle::Filled)
         .color(Color::GREEN);
@@ -1438,10 +1454,12 @@ fn test_waveline_filled() {
 
 #[test]
 fn test_waveline_mirrored() {
-    use revue::widget::{Waveline, WaveStyle};
     use revue::style::Color;
+    use revue::widget::{WaveStyle, Waveline};
 
-    let data: Vec<f64> = (0..60).map(|i| (i as f64 * 0.1).sin() * 0.5 + 0.5).collect();
+    let data: Vec<f64> = (0..60)
+        .map(|i| (i as f64 * 0.1).sin() * 0.5 + 0.5)
+        .collect();
     let view = Waveline::new(data)
         .style(WaveStyle::Mirrored)
         .color(Color::CYAN)
@@ -1476,21 +1494,27 @@ fn test_timeline_basic() {
 
 #[test]
 fn test_timeline_with_descriptions() {
-    use revue::widget::{Timeline, TimelineEvent, EventType};
+    use revue::widget::{EventType, Timeline, TimelineEvent};
 
     let view = Timeline::new()
-        .event(TimelineEvent::new("Bug Fix")
-            .description("Fixed critical login issue")
-            .event_type(EventType::Success)
-            .timestamp("10:30"))
-        .event(TimelineEvent::new("Deployment")
-            .description("Pushed to production")
-            .event_type(EventType::Info)
-            .timestamp("11:00"))
-        .event(TimelineEvent::new("Alert")
-            .description("High memory usage")
-            .event_type(EventType::Warning)
-            .timestamp("11:30"));
+        .event(
+            TimelineEvent::new("Bug Fix")
+                .description("Fixed critical login issue")
+                .event_type(EventType::Success)
+                .timestamp("10:30"),
+        )
+        .event(
+            TimelineEvent::new("Deployment")
+                .description("Pushed to production")
+                .event_type(EventType::Info)
+                .timestamp("11:00"),
+        )
+        .event(
+            TimelineEvent::new("Alert")
+                .description("High memory usage")
+                .event_type(EventType::Warning)
+                .timestamp("11:30"),
+        );
 
     let config = TestConfig::with_size(60, 15);
     let mut app = TestApp::with_config(view, config);
@@ -1550,9 +1574,7 @@ fn test_timer_countdown() {
 fn test_timer_with_progress() {
     use revue::widget::Timer;
 
-    let view = Timer::countdown(600)
-        .title("Pomodoro")
-        .show_progress(true);
+    let view = Timer::countdown(600).title("Pomodoro").show_progress(true);
 
     let config = TestConfig::with_size(40, 6);
     let mut app = TestApp::with_config(view, config);

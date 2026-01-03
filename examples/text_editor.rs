@@ -273,13 +273,11 @@ impl Default for Config {
                 let line = self.current_line();
                 let mut col = self.cursor_col;
                 // Skip current word
-                while col < line.len() && !line.chars().nth(col).is_none_or(|c| c.is_whitespace())
-                {
+                while col < line.len() && !line.chars().nth(col).is_none_or(|c| c.is_whitespace()) {
                     col += 1;
                 }
                 // Skip whitespace
-                while col < line.len() && line.chars().nth(col).is_some_and(|c| c.is_whitespace())
-                {
+                while col < line.len() && line.chars().nth(col).is_some_and(|c| c.is_whitespace()) {
                     col += 1;
                 }
                 if col >= line.len() && self.cursor_row < self.lines.len() - 1 {
@@ -303,12 +301,7 @@ impl Default for Config {
                         col -= 1;
                     }
                     // Skip word
-                    while col > 0
-                        && !line
-                            .chars()
-                            .nth(col - 1)
-                            .is_none_or(|c| c.is_whitespace())
-                    {
+                    while col > 0 && !line.chars().nth(col - 1).is_none_or(|c| c.is_whitespace()) {
                         col -= 1;
                     }
                     self.cursor_col = col;
