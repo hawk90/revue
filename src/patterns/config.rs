@@ -261,8 +261,10 @@ pub fn write_default_config(
 mod tests {
     use super::*;
     use serde::Deserialize;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
 
-    #[derive(Deserialize, Default)]
+    #[derive(Deserialize, Default, Debug)]
     struct TestConfig {
         name: String,
         value: i32,
@@ -278,17 +280,116 @@ mod tests {
         }
     }
 
+    #[derive(Deserialize, Default)]
+    #[allow(dead_code)]
+    struct MinimalConfig {
+        data: String,
+    }
+
+    impl AppConfig for MinimalConfig {
+        fn config_dir() -> &'static str {
+            "revue-minimal"
+        }
+        // Uses all defaults
+    }
+
+    // ConfigError tests
+    #[test]
+    fn test_config_error_not_found_display() {
+        let err = ConfigError::NotFound(PathBuf::from("/test/config.toml"));
+        let msg = err.to_string();
+        assert!(msg.contains("not found"));
+        assert!(msg.contains("/test/config.toml"));
+    }
+
+    #[test]
+    fn test_config_error_no_home_display() {
+        let err = ConfigError::NoHome;
+        assert!(err.to_string().contains("home directory"));
+    }
+
+    #[test]
+    fn test_config_error_read_error_display() {
+        let err = ConfigError::ReadError(
+            PathBuf::from("/some/path.toml"),
+            "permission denied".to_string(),
+        );
+        let msg = err.to_string();
+        assert!(msg.contains("/some/path.toml"));
+        assert!(msg.contains("permission denied"));
+    }
+
+    #[test]
+    fn test_config_error_parse_error_display() {
+        let err = ConfigError::ParseError("invalid TOML syntax".to_string());
+        let msg = err.to_string();
+        assert!(msg.contains("parse"));
+        assert!(msg.contains("invalid TOML syntax"));
+    }
+
+    #[test]
+    fn test_config_error_validation_error_display() {
+        let err = ConfigError::ValidationError("field cannot be empty".to_string());
+        let msg = err.to_string();
+        assert!(msg.contains("Invalid"));
+        assert!(msg.contains("field cannot be empty"));
+    }
+
+    #[test]
+    fn test_config_error_debug() {
+        let err = ConfigError::NoHome;
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("NoHome"));
+    }
+
+    #[test]
+    fn test_config_error_clone() {
+        let err = ConfigError::ParseError("test".to_string());
+        let cloned = err.clone();
+        assert_eq!(err.to_string(), cloned.to_string());
+    }
+
+    #[test]
+    fn test_config_error_is_error() {
+        let err: Box<dyn std::error::Error> = Box::new(ConfigError::NoHome);
+        assert!(err.to_string().contains("home"));
+    }
+
+    // AppConfig trait tests
     #[test]
     fn test_config_path() {
         let path = TestConfig::config_path().unwrap();
         let path_str = path.to_string_lossy();
-        // Unix: .config/revue-test/config.toml
-        // Windows: AppData\Roaming\revue-test\config.toml
         assert!(
             path_str.contains("revue-test") && path_str.ends_with("config.toml"),
             "Unexpected path: {}",
             path_str
         );
+    }
+
+    #[test]
+    fn test_config_file_default() {
+        assert_eq!(MinimalConfig::config_file(), "config.toml");
+    }
+
+    #[test]
+    fn test_example_config_default() {
+        // MinimalConfig uses the default example_config
+        let example = MinimalConfig::example_config();
+        assert!(example.contains("example"));
+    }
+
+    #[test]
+    fn test_example_config_custom() {
+        let example = TestConfig::example_config();
+        assert!(example.contains("name"));
+        assert!(example.contains("value"));
+    }
+
+    #[test]
+    fn test_validate_default() {
+        let config = TestConfig::default();
+        assert!(config.validate().is_ok());
     }
 
     #[test]
@@ -300,14 +401,98 @@ mod tests {
     }
 
     #[test]
-    fn test_config_error_display() {
-        let err = ConfigError::NotFound(PathBuf::from("/test/config.toml"));
-        assert!(err.to_string().contains("/test/config.toml"));
+    fn test_load_from_file() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, "name = \"loaded\"\nvalue = 123").unwrap();
 
-        let err = ConfigError::NoHome;
-        assert!(err.to_string().contains("home directory"));
+        let config = TestConfig::load_from(file.path()).unwrap();
+        assert_eq!(config.name, "loaded");
+        assert_eq!(config.value, 123);
+    }
 
-        let err = ConfigError::ParseError("invalid TOML".to_string());
-        assert!(err.to_string().contains("invalid TOML"));
+    #[test]
+    fn test_load_from_nonexistent() {
+        let result = TestConfig::load_from(Path::new("/nonexistent/path/config.toml"));
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ConfigError::NotFound(path) => {
+                assert!(path.to_string_lossy().contains("nonexistent"));
+            }
+            _ => panic!("Expected NotFound error"),
+        }
+    }
+
+    #[test]
+    fn test_load_from_invalid_toml() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, "this is not valid {{ toml }}").unwrap();
+
+        let result = TestConfig::load_from(file.path());
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ConfigError::ParseError(msg) => {
+                assert!(!msg.is_empty());
+            }
+            _ => panic!("Expected ParseError"),
+        }
+    }
+
+    #[test]
+    fn test_load_or_default() {
+        // This will fail to load (no file) and return default
+        let config = TestConfig::load_or_default();
+        assert_eq!(config.name, ""); // Default empty string
+        assert_eq!(config.value, 0); // Default i32
+    }
+
+    // Helper function tests
+    #[test]
+    fn test_ensure_config_dir() {
+        // This creates a real directory in ~/.config/
+        let result = ensure_config_dir("revue-test-ensure");
+        assert!(result.is_ok());
+        let path = result.unwrap();
+        assert!(path.exists());
+        // Clean up
+        let _ = std::fs::remove_dir(&path);
+    }
+
+    #[test]
+    fn test_write_default_config_new() {
+        let app_name = format!("revue-test-write-{}", std::process::id());
+        let result = write_default_config(&app_name, "test.toml", "key = \"value\"");
+        assert!(result.is_ok());
+        let path = result.unwrap();
+        assert!(path.exists());
+
+        // Verify contents
+        let contents = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(contents, "key = \"value\"");
+
+        // Clean up
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_dir(path.parent().unwrap());
+    }
+
+    #[test]
+    fn test_write_default_config_exists() {
+        let app_name = format!("revue-test-exists-{}", std::process::id());
+
+        // Create first
+        let path = write_default_config(&app_name, "test.toml", "first").unwrap();
+
+        // Try to create again - should fail
+        let result = write_default_config(&app_name, "test.toml", "second");
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ConfigError::ValidationError(msg) => {
+                assert!(msg.contains("already exists"));
+            }
+            _ => panic!("Expected ValidationError"),
+        }
+
+        // Clean up
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_dir(path.parent().unwrap());
     }
 }

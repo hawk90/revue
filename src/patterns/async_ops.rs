@@ -200,9 +200,47 @@ mod tests {
     use super::*;
     use std::time::Duration;
 
+    // AsyncTask tests
+    #[test]
+    fn test_async_task_spawn_and_wait() {
+        let task = AsyncTask::spawn(|| 42);
+        assert_eq!(task.wait(), Some(42));
+    }
+
+    #[test]
+    fn test_async_task_spawn_string() {
+        let task = AsyncTask::spawn(|| "hello".to_string());
+        assert_eq!(task.wait(), Some("hello".to_string()));
+    }
+
+    #[test]
+    fn test_async_task_spawn_vec() {
+        let task = AsyncTask::spawn(|| vec![1, 2, 3]);
+        assert_eq!(task.wait(), Some(vec![1, 2, 3]));
+    }
+
+    #[test]
+    fn test_async_task_try_recv_completed() {
+        let mut task = AsyncTask::spawn(|| 42);
+        // Wait for completion
+        thread::sleep(Duration::from_millis(10));
+        // May or may not be ready, but shouldn't panic
+        let _ = task.try_recv();
+    }
+
+    #[test]
+    fn test_async_task_cancel() {
+        let task = AsyncTask::spawn(|| {
+            thread::sleep(Duration::from_millis(1000));
+            42
+        });
+        // Cancel should not panic
+        task.cancel();
+    }
+
     #[test]
     #[ignore] // Flaky in CI due to timing sensitivity
-    fn test_async_task() {
+    fn test_async_task_timing() {
         let task = AsyncTask::spawn(|| {
             thread::sleep(Duration::from_millis(50));
             42
@@ -218,20 +256,105 @@ mod tests {
     }
 
     #[test]
-    fn test_spinner_char() {
-        assert_eq!(spinner_char(0), "⣾");
-        assert_eq!(spinner_char(1), "⣽");
-        assert_eq!(spinner_char(8), "⣾"); // wraps around
+    #[ignore] // Flaky in CI due to timing sensitivity
+    fn test_async_task_is_running() {
+        let task = AsyncTask::spawn(|| {
+            thread::sleep(Duration::from_millis(100));
+            42
+        });
+
+        assert!(task.is_running());
+        thread::sleep(Duration::from_millis(150));
+        assert!(!task.is_running());
+    }
+
+    // Spinner tests
+    #[test]
+    fn test_spinner_frames_count() {
+        assert_eq!(SPINNER_FRAMES.len(), 8);
     }
 
     #[test]
-    fn test_spawn_task() {
-        let (rx, _handle) = spawn_task(|| 42);
+    fn test_spinner_char_first() {
+        assert_eq!(spinner_char(0), "⣾");
+    }
+
+    #[test]
+    fn test_spinner_char_second() {
+        assert_eq!(spinner_char(1), "⣽");
+    }
+
+    #[test]
+    fn test_spinner_char_all_frames() {
+        assert_eq!(spinner_char(0), "⣾");
+        assert_eq!(spinner_char(1), "⣽");
+        assert_eq!(spinner_char(2), "⣻");
+        assert_eq!(spinner_char(3), "⢿");
+        assert_eq!(spinner_char(4), "⡿");
+        assert_eq!(spinner_char(5), "⣟");
+        assert_eq!(spinner_char(6), "⣯");
+        assert_eq!(spinner_char(7), "⣷");
+    }
+
+    #[test]
+    fn test_spinner_char_wraps() {
+        assert_eq!(spinner_char(8), "⣾"); // wraps to 0
+        assert_eq!(spinner_char(9), "⣽"); // wraps to 1
+        assert_eq!(spinner_char(16), "⣾"); // wraps to 0
+    }
+
+    #[test]
+    fn test_spinner_char_large_number() {
+        // Should not panic with large frame numbers
+        let _ = spinner_char(1000);
+        let _ = spinner_char(usize::MAX);
+    }
+
+    // spawn_task tests
+    #[test]
+    fn test_spawn_task_int() {
+        let (rx, handle) = spawn_task(|| 42);
+        assert_eq!(rx.recv().unwrap(), 42);
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn test_spawn_task_string() {
+        let (rx, handle) = spawn_task(|| "result".to_string());
+        assert_eq!(rx.recv().unwrap(), "result");
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn test_spawn_task_result() {
+        let (rx, handle) = spawn_task(|| -> Result<i32, &str> { Ok(42) });
+        assert_eq!(rx.recv().unwrap(), Ok(42));
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn test_spawn_task_computation() {
+        let (rx, _) = spawn_task(|| {
+            let mut sum = 0;
+            for i in 0..100 {
+                sum += i;
+            }
+            sum
+        });
+        assert_eq!(rx.recv().unwrap(), 4950);
+    }
+
+    // spawn_with_sender tests
+    #[test]
+    fn test_spawn_with_sender_single() {
+        let rx = spawn_with_sender(|tx| {
+            tx.send(42).unwrap();
+        });
         assert_eq!(rx.recv().unwrap(), 42);
     }
 
     #[test]
-    fn test_spawn_with_sender() {
+    fn test_spawn_with_sender_multiple() {
         let rx = spawn_with_sender(|tx| {
             tx.send(1).unwrap();
             tx.send(2).unwrap();
@@ -244,15 +367,37 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Flaky in CI due to timing sensitivity
-    fn test_is_running() {
-        let task = AsyncTask::spawn(|| {
-            thread::sleep(Duration::from_millis(100));
-            42
+    fn test_spawn_with_sender_collect() {
+        let rx = spawn_with_sender(|tx| {
+            for i in 0..5 {
+                tx.send(i).unwrap();
+            }
         });
 
-        assert!(task.is_running());
-        thread::sleep(Duration::from_millis(150));
-        assert!(!task.is_running());
+        let results: Vec<i32> = rx.iter().collect();
+        assert_eq!(results, vec![0, 1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn test_spawn_with_sender_strings() {
+        let rx = spawn_with_sender(|tx| {
+            tx.send("hello".to_string()).unwrap();
+            tx.send("world".to_string()).unwrap();
+        });
+
+        assert_eq!(rx.recv().unwrap(), "hello");
+        assert_eq!(rx.recv().unwrap(), "world");
+    }
+
+    #[test]
+    fn test_spawn_with_sender_channel_closes() {
+        let rx = spawn_with_sender(|tx| {
+            tx.send(1).unwrap();
+            // Channel closes when tx is dropped
+        });
+
+        assert_eq!(rx.recv().unwrap(), 1);
+        // After sender is dropped, recv returns error
+        assert!(rx.recv().is_err());
     }
 }

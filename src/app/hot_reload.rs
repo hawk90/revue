@@ -274,9 +274,7 @@ mod tests {
 
     #[test]
     fn test_hot_reload_builder_watch() {
-        let builder = HotReloadBuilder::new()
-            .watch("src")
-            .watch("tests");
+        let builder = HotReloadBuilder::new().watch("src").watch("tests");
         assert_eq!(builder.paths.len(), 2);
     }
 

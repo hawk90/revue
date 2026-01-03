@@ -345,15 +345,21 @@ mod tests {
     use super::*;
 
     // Mock writer for testing
-    #[allow(dead_code)]
     struct MockWriter {
         buffer: Vec<u8>,
     }
 
     impl MockWriter {
-        #[allow(dead_code)]
         fn new() -> Self {
             Self { buffer: Vec::new() }
+        }
+
+        fn contents(&self) -> &[u8] {
+            &self.buffer
+        }
+
+        fn as_string(&self) -> String {
+            String::from_utf8_lossy(&self.buffer).to_string()
         }
     }
 
@@ -368,6 +374,17 @@ mod tests {
         }
     }
 
+    // RenderState tests
+    #[test]
+    fn test_render_state_default() {
+        let state = RenderState::default();
+        assert!(state.fg.is_none());
+        assert!(state.bg.is_none());
+        assert!(state.modifier.is_empty());
+        assert!(state.hyperlink_id.is_none());
+    }
+
+    // Color conversion tests
     #[test]
     fn test_to_crossterm_color() {
         let color = Color::rgb(255, 128, 64);
@@ -394,5 +411,176 @@ mod tests {
             }
             _ => panic!("Expected RGB color"),
         }
+    }
+
+    #[test]
+    fn test_color_green_conversion() {
+        let green = to_crossterm_color(Color::GREEN);
+        match green {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 0);
+                assert_eq!(g, 255);
+                assert_eq!(b, 0);
+            }
+            _ => panic!("Expected RGB color"),
+        }
+    }
+
+    #[test]
+    fn test_color_blue_conversion() {
+        let blue = to_crossterm_color(Color::BLUE);
+        match blue {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 0);
+                assert_eq!(g, 0);
+                assert_eq!(b, 255);
+            }
+            _ => panic!("Expected RGB color"),
+        }
+    }
+
+    #[test]
+    fn test_color_white_conversion() {
+        let white = to_crossterm_color(Color::WHITE);
+        match white {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 255);
+                assert_eq!(g, 255);
+                assert_eq!(b, 255);
+            }
+            _ => panic!("Expected RGB color"),
+        }
+    }
+
+    #[test]
+    fn test_color_black_conversion() {
+        let black = to_crossterm_color(Color::BLACK);
+        match black {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 0);
+                assert_eq!(g, 0);
+                assert_eq!(b, 0);
+            }
+            _ => panic!("Expected RGB color"),
+        }
+    }
+
+    #[test]
+    fn test_color_cyan_conversion() {
+        let cyan = to_crossterm_color(Color::CYAN);
+        match cyan {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 0);
+                assert_eq!(g, 255);
+                assert_eq!(b, 255);
+            }
+            _ => panic!("Expected RGB color"),
+        }
+    }
+
+    #[test]
+    fn test_color_magenta_conversion() {
+        let magenta = to_crossterm_color(Color::MAGENTA);
+        match magenta {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 255);
+                assert_eq!(g, 0);
+                assert_eq!(b, 255);
+            }
+            _ => panic!("Expected RGB color"),
+        }
+    }
+
+    #[test]
+    fn test_color_yellow_conversion() {
+        let yellow = to_crossterm_color(Color::YELLOW);
+        match yellow {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 255);
+                assert_eq!(g, 255);
+                assert_eq!(b, 0);
+            }
+            _ => panic!("Expected RGB color"),
+        }
+    }
+
+    #[test]
+    fn test_color_gray_conversion() {
+        let gray = to_crossterm_color(Color::rgb(128, 128, 128));
+        match gray {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 128);
+                assert_eq!(g, 128);
+                assert_eq!(b, 128);
+            }
+            _ => panic!("Expected RGB color"),
+        }
+    }
+
+    // Hyperlink escape sequence tests
+    #[test]
+    fn test_hyperlink_start_escape() {
+        let mut writer = MockWriter::new();
+        let url = "https://example.com";
+        write!(writer, "\x1b]8;;{}\x1b\\", url).unwrap();
+        let output = writer.as_string();
+        assert!(output.contains("8;;"));
+        assert!(output.contains("https://example.com"));
+    }
+
+    #[test]
+    fn test_hyperlink_end_escape() {
+        let mut writer = MockWriter::new();
+        write!(writer, "\x1b]8;;\x1b\\").unwrap();
+        let output = writer.as_string();
+        assert!(output.contains("8;;"));
+    }
+
+    // MockWriter tests
+    #[test]
+    fn test_mock_writer_write() {
+        let mut writer = MockWriter::new();
+        let bytes_written = writer.write(b"hello").unwrap();
+        assert_eq!(bytes_written, 5);
+        assert_eq!(writer.contents(), b"hello");
+    }
+
+    #[test]
+    fn test_mock_writer_multiple_writes() {
+        let mut writer = MockWriter::new();
+        writer.write(b"hello").unwrap();
+        writer.write(b" ").unwrap();
+        writer.write(b"world").unwrap();
+        assert_eq!(writer.as_string(), "hello world");
+    }
+
+    #[test]
+    fn test_mock_writer_flush() {
+        let mut writer = MockWriter::new();
+        assert!(writer.flush().is_ok());
+    }
+
+    // Modifier tests
+    #[test]
+    fn test_modifier_empty() {
+        let modifier = Modifier::empty();
+        assert!(modifier.is_empty());
+        assert!(!modifier.contains(Modifier::BOLD));
+        assert!(!modifier.contains(Modifier::ITALIC));
+    }
+
+    #[test]
+    fn test_modifier_bold() {
+        let modifier = Modifier::BOLD;
+        assert!(!modifier.is_empty());
+        assert!(modifier.contains(Modifier::BOLD));
+    }
+
+    #[test]
+    fn test_modifier_combined() {
+        let modifier = Modifier::BOLD | Modifier::ITALIC;
+        assert!(modifier.contains(Modifier::BOLD));
+        assert!(modifier.contains(Modifier::ITALIC));
+        assert!(!modifier.contains(Modifier::UNDERLINE));
     }
 }
