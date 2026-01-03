@@ -128,8 +128,8 @@ cargo run --example markdown     # Markdown viewer
 ## Documentation
 
 - [API Reference](https://docs.rs/revue) — Full API documentation
-- [CSS Reference](docs/CSS.md) — Supported CSS properties
-- [Widget Guide](docs/WIDGETS.md) — Widget catalog and usage
+- [Styling Guide](docs/guides/styling.md) — CSS properties and theming
+- [Features](docs/FEATURES.md) — Widget catalog and capabilities
 - [Architecture](docs/ARCHITECTURE.md) — System design
 
 <br>
@@ -152,7 +152,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 <div align="center">
 <br>
 
-**[↑ Back to Top](#)**
+**[↑ Back to Top](#why-revue)**
 
 <sub>Built with Rust</sub>
 
