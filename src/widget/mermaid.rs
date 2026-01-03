@@ -424,7 +424,7 @@ impl Diagram {
                 // Middle (with label)
                 let mut cell = Cell::new(v);
                 cell.fg = Some(fg);
-                ctx.buffer.set(area.x + x, area.y + y + 1, cell.clone());
+                ctx.buffer.set(area.x + x, area.y + y + 1, cell);
                 ctx.buffer.set(area.x + x + width - 1, area.y + y + 1, cell);
 
                 // Label

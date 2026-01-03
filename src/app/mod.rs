@@ -138,7 +138,7 @@ impl App {
         self.last_tick = Instant::now();
 
         self.dom.build(&view);
-        self.draw(&mut view, &mut terminal, true)?;
+        self.draw(&view, &mut terminal, true)?;
 
         let reader = EventReader::new(FRAME_DURATION_60FPS);
 
@@ -147,7 +147,7 @@ impl App {
             let should_draw = self.handle_event(event, &mut view, &mut handler);
 
             if should_draw {
-                self.draw(&mut view, &mut terminal, false)?;
+                self.draw(&view, &mut terminal, false)?;
             }
         }
 
@@ -305,7 +305,7 @@ impl App {
                 if transition_rects.is_empty() {
                     // Fallback: if no node-aware transitions, use legacy behavior
                     // This handles global transitions that aren't tied to specific nodes
-                    if !self.transitions.active_properties().next().is_none() {
+                    if self.transitions.active_properties().next().is_some() {
                         let full_screen_rect = Rect::new(0, 0, width, height);
                         dirty_rects.push(full_screen_rect);
                     }
@@ -360,10 +360,9 @@ impl App {
             .dom
             .style_for_with_inheritance(dom_id)
             .expect("Style should exist");
-        let child_ids: Vec<_> = children.iter().map(|c| *c).collect();
         let _ = self
             .layout
-            .create_node_with_children(dom_id, &style, &child_ids);
+            .create_node_with_children(dom_id, &style, &children);
 
         for child_dom_id in children {
             self.build_layout_tree(child_dom_id);

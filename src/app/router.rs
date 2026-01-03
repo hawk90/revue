@@ -1,3 +1,4 @@
+#![allow(clippy::type_complexity)]
 //! Router for TUI navigation
 //!
 //! Provides navigation between screens/views in TUI applications.

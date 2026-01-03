@@ -6,6 +6,34 @@ use crate::render::Buffer;
 use crate::style::Color;
 use std::collections::HashMap;
 
+/// Helper context for rendering devtools panels
+struct RenderCtx<'a> {
+    buffer: &'a mut Buffer,
+    x: u16,
+    width: u16,
+    config: &'a DevToolsConfig,
+}
+
+impl<'a> RenderCtx<'a> {
+    fn new(buffer: &'a mut Buffer, x: u16, width: u16, config: &'a DevToolsConfig) -> Self {
+        Self {
+            buffer,
+            x,
+            width,
+            config,
+        }
+    }
+
+    fn draw_text(&mut self, y: u16, text: &str, color: Color) {
+        for (i, ch) in text.chars().enumerate() {
+            if let Some(cell) = self.buffer.get_mut(self.x + i as u16, y) {
+                cell.symbol = ch;
+                cell.fg = Some(color);
+            }
+        }
+    }
+}
+
 /// Computed CSS property
 #[derive(Debug, Clone)]
 pub struct ComputedProperty {
@@ -302,6 +330,7 @@ impl StyleInspector {
 
     /// Render style inspector content
     pub fn render_content(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig) {
+        let mut ctx = RenderCtx::new(buffer, area.x, area.width, config);
         let mut y = area.y;
         let max_y = area.y + area.height;
 
@@ -311,7 +340,7 @@ impl StyleInspector {
             if let Some(ref id) = self.widget_id {
                 header.push_str(&format!("#{}", id));
             }
-            self.draw_text(buffer, area.x, y, &header, config.accent_color);
+            ctx.draw_text(y, &header, config.accent_color);
             y += 1;
 
             // Classes
@@ -322,7 +351,7 @@ impl StyleInspector {
                     .map(|c| format!(".{}", c))
                     .collect::<Vec<_>>()
                     .join(" ");
-                self.draw_text(buffer, area.x, y, &classes_str, config.fg_color);
+                ctx.draw_text(y, &classes_str, config.fg_color);
                 y += 1;
             }
             y += 1;
@@ -331,7 +360,7 @@ impl StyleInspector {
         // Properties by category
         let filtered = self.filtered();
         if filtered.is_empty() {
-            self.draw_text(buffer, area.x, y, "No styles to display", config.fg_color);
+            ctx.draw_text(y, "No styles to display", config.fg_color);
             return;
         }
 
@@ -356,7 +385,7 @@ impl StyleInspector {
                     .unwrap_or(true);
                 let indicator = if expanded { "▼" } else { "▶" };
                 let header = format!("{} {} ({})", indicator, category.label(), props.len());
-                self.draw_text(buffer, area.x, y, &header, config.accent_color);
+                ctx.draw_text(y, &header, config.accent_color);
                 y += 1;
 
                 if expanded {
@@ -366,15 +395,7 @@ impl StyleInspector {
                         }
 
                         let is_selected = self.selected == Some(prop_idx);
-                        self.render_property(
-                            buffer,
-                            area.x + 2,
-                            y,
-                            area.width - 2,
-                            prop,
-                            is_selected,
-                            config,
-                        );
+                        Self::render_property(&mut ctx, 2, y, prop, is_selected);
                         y += 1;
                         prop_idx += 1;
                     }
@@ -388,50 +409,40 @@ impl StyleInspector {
     }
 
     fn render_property(
-        &self,
-        buffer: &mut Buffer,
-        x: u16,
+        ctx: &mut RenderCtx<'_>,
+        indent: u16,
         y: u16,
-        width: u16,
         prop: &ComputedProperty,
         selected: bool,
-        config: &DevToolsConfig,
     ) {
         let source_icon = prop.source.icon();
         let strike = if prop.overridden { "̶" } else { "" };
         let line = format!("{} {}{}: {}", source_icon, prop.name, strike, prop.value);
 
         let fg = if selected {
-            config.bg_color
+            ctx.config.bg_color
         } else if prop.overridden {
             Color::rgb(128, 128, 128)
         } else {
-            config.fg_color
+            ctx.config.fg_color
         };
         let bg = if selected {
-            Some(config.accent_color)
+            Some(ctx.config.accent_color)
         } else {
             None
         };
 
+        let x = ctx.x + indent;
+        let width = ctx.width.saturating_sub(indent);
         for (i, ch) in line.chars().enumerate() {
             if (i as u16) < width {
-                if let Some(cell) = buffer.get_mut(x + i as u16, y) {
+                if let Some(cell) = ctx.buffer.get_mut(x + i as u16, y) {
                     cell.symbol = ch;
                     cell.fg = Some(fg);
                     if let Some(b) = bg {
                         cell.bg = Some(b);
                     }
                 }
-            }
-        }
-    }
-
-    fn draw_text(&self, buffer: &mut Buffer, x: u16, y: u16, text: &str, color: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            if let Some(cell) = buffer.get_mut(x + i as u16, y) {
-                cell.symbol = ch;
-                cell.fg = Some(color);
             }
         }
     }

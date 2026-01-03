@@ -606,21 +606,17 @@ impl<'a> DrawContext<'a> {
     }
 
     /// Fill a rectangle
-    #[allow(clippy::too_many_arguments)]
     pub fn fill_rect(
         &mut self,
-        x: u16,
-        y: u16,
-        width: u16,
-        height: u16,
+        rect: Rect,
         ch: char,
         fg: Option<Color>,
         bg: Option<Color>,
     ) {
-        for dy in 0..height {
-            for dx in 0..width {
-                if x + dx < self.area.width && y + dy < self.area.height {
-                    self.set_styled(x + dx, y + dy, ch, fg, bg);
+        for dy in 0..rect.height {
+            for dx in 0..rect.width {
+                if rect.x + dx < self.area.width && rect.y + dy < self.area.height {
+                    self.set_styled(rect.x + dx, rect.y + dy, ch, fg, bg);
                 }
             }
         }
@@ -689,7 +685,7 @@ impl<'a> DrawContext<'a> {
 
     /// Clear the canvas
     pub fn clear(&mut self) {
-        self.fill_rect(0, 0, self.area.width, self.area.height, ' ', None, None);
+        self.fill_rect(Rect::new(0, 0, self.area.width, self.area.height), ' ', None, None);
     }
 
     /// Draw a point/dot
@@ -919,7 +915,7 @@ mod tests {
             area,
         };
 
-        ctx.fill_rect(3, 3, 5, 3, '#', Some(Color::RED), Some(Color::BLACK));
+        ctx.fill_rect(Rect::new(3, 3, 5, 3), '#', Some(Color::RED), Some(Color::BLACK));
     }
 
     #[test]

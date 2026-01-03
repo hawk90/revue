@@ -334,8 +334,8 @@ impl<T: ToString + Clone> VirtualList<T> {
             self.scroll_sub_offset = (clamped_row - item_start) as u16;
         } else {
             // Uniform height mode
-            let total_rows = rows.abs() as u16 / self.item_height;
-            let sub_rows = rows.abs() as u16 % self.item_height;
+            let total_rows = rows.unsigned_abs() as u16 / self.item_height;
+            let sub_rows = rows.unsigned_abs() as u16 % self.item_height;
 
             if rows > 0 {
                 let new_sub = self.scroll_sub_offset + sub_rows;
@@ -346,14 +346,12 @@ impl<T: ToString + Clone> VirtualList<T> {
                     self.scroll_offset = self.scroll_offset.saturating_add(total_rows as usize);
                     self.scroll_sub_offset = new_sub;
                 }
+            } else if sub_rows > self.scroll_sub_offset {
+                self.scroll_offset = self.scroll_offset.saturating_sub(total_rows as usize + 1);
+                self.scroll_sub_offset = self.item_height - (sub_rows - self.scroll_sub_offset);
             } else {
-                if sub_rows > self.scroll_sub_offset {
-                    self.scroll_offset = self.scroll_offset.saturating_sub(total_rows as usize + 1);
-                    self.scroll_sub_offset = self.item_height - (sub_rows - self.scroll_sub_offset);
-                } else {
-                    self.scroll_offset = self.scroll_offset.saturating_sub(total_rows as usize);
-                    self.scroll_sub_offset -= sub_rows;
-                }
+                self.scroll_offset = self.scroll_offset.saturating_sub(total_rows as usize);
+                self.scroll_sub_offset -= sub_rows;
             }
 
             // Clamp scroll offset
@@ -616,7 +614,7 @@ impl<T: ToString + Clone> View for VirtualList<T> {
         let visible_range = this.visible_range(viewport_height);
 
         // Render visible items
-        for (_render_idx, item_idx) in visible_range.enumerate() {
+        for item_idx in visible_range {
             let item = &this.items[item_idx];
             let is_selected = this.selected == Some(item_idx);
 

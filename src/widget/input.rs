@@ -754,7 +754,7 @@ impl View for Input {
             }
 
             let is_cursor = self.focused && i == self.cursor;
-            let is_selected = selection.map_or(false, |(start, end)| i >= start && i < end);
+            let is_selected = selection.is_some_and(|(start, end)| i >= start && i < end);
             let mut cell = Cell::new(ch);
 
             if is_cursor {

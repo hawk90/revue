@@ -1,3 +1,4 @@
+#![allow(clippy::needless_range_loop)]
 //! Candlestick/OHLC chart widget
 //!
 //! Financial charting for stock prices with OHLC (Open, High, Low, Close) data.

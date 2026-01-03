@@ -429,21 +429,22 @@ impl View for AiStream {
         }
 
         // Render cursor
-        if self.status == StreamStatus::Streaming && self.cursor != StreamCursor::None {
-            if y < area.height {
-                let cursor_char = match self.cursor {
-                    StreamCursor::Block => '█',
-                    StreamCursor::Underline => '_',
-                    StreamCursor::Bar => '│',
-                    StreamCursor::None => ' ',
-                };
+        if self.status == StreamStatus::Streaming
+            && self.cursor != StreamCursor::None
+            && y < area.height
+        {
+            let cursor_char = match self.cursor {
+                StreamCursor::Block => '█',
+                StreamCursor::Underline => '_',
+                StreamCursor::Bar => '│',
+                StreamCursor::None => ' ',
+            };
 
-                let mut cell = Cell::new(cursor_char);
-                cell.fg = Some(self.cursor_color);
-                // Blink effect
-                if self.thinking_frame % 2 == 0 {
-                    ctx.buffer.set(area.x + x, area.y + y, cell);
-                }
+            let mut cell = Cell::new(cursor_char);
+            cell.fg = Some(self.cursor_color);
+            // Blink effect
+            if self.thinking_frame % 2 == 0 {
+                ctx.buffer.set(area.x + x, area.y + y, cell);
             }
         }
     }

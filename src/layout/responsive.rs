@@ -1,3 +1,4 @@
+#![allow(clippy::should_implement_trait, clippy::module_inception)]
 //! Responsive layout breakpoints for terminal applications
 //!
 //! Provides a CSS-like breakpoint system for adapting layouts to different

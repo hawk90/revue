@@ -154,7 +154,7 @@ impl Slide {
 ///         .code("fn main() {\n    println!(\"Hello!\");\n}"));
 ///
 /// // Navigate
-/// pres.next();
+/// pres.next_slide();
 /// pres.prev();
 /// ```
 pub struct Presentation {
@@ -264,7 +264,7 @@ impl Presentation {
     }
 
     /// Go to next slide
-    pub fn next(&mut self) -> bool {
+    pub fn next_slide(&mut self) -> bool {
         if self.current < self.slides.len().saturating_sub(1) {
             self.current += 1;
             self.transition_progress = 0.0;
@@ -576,7 +576,7 @@ mod tests {
             .slide(slide("Slide 3"));
 
         assert_eq!(pres.current_index(), 0);
-        assert!(pres.next());
+        assert!(pres.next_slide());
         assert_eq!(pres.current_index(), 1);
         assert!(pres.prev());
         assert_eq!(pres.current_index(), 0);

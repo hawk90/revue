@@ -176,7 +176,7 @@ where
         let state_for_thread = state_clone.clone();
 
         thread::spawn(move || {
-            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f_clone()));
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f_clone));
             let result = match result {
                 Ok(r) => r,
                 Err(_) => Err("Task panicked".to_string()),
@@ -237,7 +237,7 @@ where
         let f_clone = f.clone();
 
         thread::spawn(move || {
-            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f_clone()));
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f_clone));
             let result = match result {
                 Ok(r) => r,
                 Err(_) => Err("Task panicked".to_string()),

@@ -5,6 +5,21 @@ use crate::render::Cell;
 use crate::style::Color;
 use crate::{impl_props_builders, impl_styled_view};
 
+/// Row rendering style configuration
+struct RowStyle {
+    fg: Option<Color>,
+    bg: Option<Color>,
+    bold: bool,
+}
+
+/// Border line characters
+struct BorderChars {
+    left: char,
+    mid: char,
+    right: char,
+    horiz: char,
+}
+
 /// Column definition
 #[derive(Clone)]
 pub struct Column {
@@ -184,11 +199,13 @@ impl View for Table {
         // Render header
         if self.border {
             // Top border
-            self.render_border_line(ctx, area.x, y, &widths, '┌', '┬', '┐', '─');
+            let top_border = BorderChars { left: '┌', mid: '┬', right: '┐', horiz: '─' };
+            self.render_border_line(ctx, area.x, y, &widths, &top_border);
             y += 1;
         }
 
         // Header row
+        let header_style = RowStyle { fg: self.header_fg, bg: self.header_bg, bold: true };
         self.render_row(
             ctx,
             area.x,
@@ -199,15 +216,14 @@ impl View for Table {
                 .iter()
                 .map(|c| c.title.clone())
                 .collect::<Vec<_>>(),
-            self.header_fg,
-            self.header_bg,
-            true,
+            &header_style,
         );
         y += 1;
 
         if self.border {
             // Header separator
-            self.render_border_line(ctx, area.x, y, &widths, '├', '┼', '┤', '─');
+            let sep_border = BorderChars { left: '├', mid: '┼', right: '┤', horiz: '─' };
+            self.render_border_line(ctx, area.x, y, &widths, &sep_border);
             y += 1;
         }
 
@@ -224,19 +240,20 @@ impl View for Table {
                 (None, None)
             };
 
-            self.render_row(ctx, area.x, y, &widths, row, fg, bg, false);
+            let row_style = RowStyle { fg, bg, bold: false };
+            self.render_row(ctx, area.x, y, &widths, row, &row_style);
             y += 1;
         }
 
         if self.border {
             // Bottom border
-            self.render_border_line(ctx, area.x, y, &widths, '└', '┴', '┘', '─');
+            let bottom_border = BorderChars { left: '└', mid: '┴', right: '┘', horiz: '─' };
+            self.render_border_line(ctx, area.x, y, &widths, &bottom_border);
         }
     }
 }
 
 impl Table {
-    #[allow(clippy::too_many_arguments)]
     fn render_row(
         &self,
         ctx: &mut RenderContext,
@@ -244,16 +261,14 @@ impl Table {
         y: u16,
         widths: &[u16],
         cells: &[String],
-        fg: Option<Color>,
-        bg: Option<Color>,
-        bold: bool,
+        style: &RowStyle,
     ) {
         let mut cx = x;
 
         if self.border {
             let mut cell = Cell::new('│');
-            cell.fg = fg;
-            cell.bg = bg;
+            cell.fg = style.fg;
+            cell.bg = style.bg;
             ctx.buffer.set(cx, y, cell);
             cx += 1;
         }
@@ -264,9 +279,9 @@ impl Table {
 
             for (j, ch) in truncated.chars().enumerate() {
                 let mut cell = Cell::new(ch);
-                cell.fg = fg;
-                cell.bg = bg;
-                if bold {
+                cell.fg = style.fg;
+                cell.bg = style.bg;
+                if style.bold {
                     cell.modifier |= crate::render::Modifier::BOLD;
                 }
                 ctx.buffer.set(cx + j as u16, y, cell);
@@ -275,8 +290,8 @@ impl Table {
             // Fill remaining space
             for j in truncated.len()..(*width as usize) {
                 let mut cell = Cell::new(' ');
-                cell.fg = fg;
-                cell.bg = bg;
+                cell.fg = style.fg;
+                cell.bg = style.bg;
                 ctx.buffer.set(cx + j as u16, y, cell);
             }
 
@@ -284,43 +299,39 @@ impl Table {
 
             if self.border {
                 let mut cell = Cell::new('│');
-                cell.fg = fg;
-                cell.bg = bg;
+                cell.fg = style.fg;
+                cell.bg = style.bg;
                 ctx.buffer.set(cx, y, cell);
                 cx += 1;
             }
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn render_border_line(
         &self,
         ctx: &mut RenderContext,
         x: u16,
         y: u16,
         widths: &[u16],
-        left: char,
-        mid: char,
-        right: char,
-        horiz: char,
+        chars: &BorderChars,
     ) {
         let mut cx = x;
 
-        ctx.buffer.set(cx, y, Cell::new(left));
+        ctx.buffer.set(cx, y, Cell::new(chars.left));
         cx += 1;
 
         for (i, width) in widths.iter().enumerate() {
             for _ in 0..*width {
-                ctx.buffer.set(cx, y, Cell::new(horiz));
+                ctx.buffer.set(cx, y, Cell::new(chars.horiz));
                 cx += 1;
             }
             if i < widths.len() - 1 {
-                ctx.buffer.set(cx, y, Cell::new(mid));
+                ctx.buffer.set(cx, y, Cell::new(chars.mid));
                 cx += 1;
             }
         }
 
-        ctx.buffer.set(cx, y, Cell::new(right));
+        ctx.buffer.set(cx, y, Cell::new(chars.right));
     }
 }
 

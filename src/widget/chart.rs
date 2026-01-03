@@ -4,9 +4,20 @@
 //! with multiple series, axes, legends, and grid lines.
 
 use super::traits::{RenderContext, View, WidgetProps};
+use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::{impl_props_builders, impl_styled_view};
+
+/// Line segment for drawing
+struct LineSegment {
+    x0: u16,
+    y0: u16,
+    x1: u16,
+    y1: u16,
+    color: Color,
+    style: LineStyle,
+}
 
 /// Chart type
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -526,19 +537,8 @@ impl Chart {
     }
 
     /// Draw line between two points using Bresenham's algorithm
-    #[allow(clippy::too_many_arguments)]
-    fn draw_line(
-        &self,
-        ctx: &mut RenderContext,
-        x0: u16,
-        y0: u16,
-        x1: u16,
-        y1: u16,
-        color: Color,
-        style: LineStyle,
-        chart_area: (u16, u16, u16, u16),
-    ) {
-        let (cx, cy, cw, ch) = chart_area;
+    fn draw_line(&self, ctx: &mut RenderContext, seg: &LineSegment, bounds: &Rect) {
+        let LineSegment { x0, y0, x1, y1, color, style } = *seg;
 
         let dx = (x1 as i32 - x0 as i32).abs();
         let dy = (y1 as i32 - y0 as i32).abs();
@@ -552,7 +552,11 @@ impl Chart {
 
         loop {
             // Check bounds
-            if x >= cx as i32 && x < (cx + cw) as i32 && y >= cy as i32 && y < (cy + ch) as i32 {
+            if x >= bounds.x as i32
+                && x < (bounds.x + bounds.width) as i32
+                && y >= bounds.y as i32
+                && y < (bounds.y + bounds.height) as i32
+            {
                 let draw = match style {
                     LineStyle::Solid => true,
                     LineStyle::Dashed => (step / 3) % 2 == 0,
@@ -719,7 +723,7 @@ impl View for Chart {
             return;
         }
 
-        let chart_area = (inner_x, inner_y, inner_w, inner_h);
+        let chart_bounds = Rect::new(inner_x, inner_y, inner_w, inner_h);
 
         // Draw title
         if let Some(ref title) = self.title {
@@ -824,6 +828,7 @@ impl View for Chart {
             }
 
             // Map all points to screen coordinates
+            let chart_area = (chart_bounds.x, chart_bounds.y, chart_bounds.width, chart_bounds.height);
             let screen_points: Vec<(u16, u16)> = series
                 .data
                 .iter()
@@ -844,16 +849,12 @@ impl View for Chart {
                         for window in screen_points.windows(2) {
                             let (x0, y0) = window[0];
                             let (x1, y1) = window[1];
-                            self.draw_line(
-                                ctx,
-                                x0,
-                                y0,
-                                x1,
-                                y1,
-                                series.color,
-                                series.line_style,
-                                chart_area,
-                            );
+                            let seg = LineSegment {
+                                x0, y0, x1, y1,
+                                color: series.color,
+                                style: series.line_style,
+                            };
+                            self.draw_line(ctx, &seg, &chart_bounds);
                         }
                     }
                     ChartType::StepAfter => {
@@ -861,26 +862,18 @@ impl View for Chart {
                             let (x0, y0) = window[0];
                             let (x1, y1) = window[1];
                             // Horizontal then vertical
-                            self.draw_line(
-                                ctx,
-                                x0,
-                                y0,
-                                x1,
-                                y0,
-                                series.color,
-                                series.line_style,
-                                chart_area,
-                            );
-                            self.draw_line(
-                                ctx,
-                                x1,
-                                y0,
-                                x1,
-                                y1,
-                                series.color,
-                                series.line_style,
-                                chart_area,
-                            );
+                            let horiz = LineSegment {
+                                x0, y0, x1, y1: y0,
+                                color: series.color,
+                                style: series.line_style,
+                            };
+                            self.draw_line(ctx, &horiz, &chart_bounds);
+                            let vert = LineSegment {
+                                x0: x1, y0, x1, y1,
+                                color: series.color,
+                                style: series.line_style,
+                            };
+                            self.draw_line(ctx, &vert, &chart_bounds);
                         }
                     }
                     ChartType::StepBefore => {
@@ -888,26 +881,18 @@ impl View for Chart {
                             let (x0, y0) = window[0];
                             let (x1, y1) = window[1];
                             // Vertical then horizontal
-                            self.draw_line(
-                                ctx,
-                                x0,
-                                y0,
-                                x0,
-                                y1,
-                                series.color,
-                                series.line_style,
-                                chart_area,
-                            );
-                            self.draw_line(
-                                ctx,
-                                x0,
-                                y1,
-                                x1,
-                                y1,
-                                series.color,
-                                series.line_style,
-                                chart_area,
-                            );
+                            let vert = LineSegment {
+                                x0, y0, x1: x0, y1,
+                                color: series.color,
+                                style: series.line_style,
+                            };
+                            self.draw_line(ctx, &vert, &chart_bounds);
+                            let horiz = LineSegment {
+                                x0, y0: y1, x1, y1,
+                                color: series.color,
+                                style: series.line_style,
+                            };
+                            self.draw_line(ctx, &horiz, &chart_bounds);
                         }
                     }
                     ChartType::Scatter => {}

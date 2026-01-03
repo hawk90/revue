@@ -31,7 +31,7 @@ pub fn char_width(c: char) -> usize {
     }
 
     // Control characters
-    if cp < 0x20 || (0x7F <= cp && cp < 0xA0) {
+    if cp < 0x20 || (0x7F..0xA0).contains(&cp) {
         return 0;
     }
 

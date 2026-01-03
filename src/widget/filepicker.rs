@@ -390,8 +390,8 @@ impl FilePicker {
 
     /// Go to parent directory
     pub fn go_up(&mut self) {
-        if let Some(parent) = self.current_dir.parent() {
-            self.navigate_to(&parent.to_path_buf());
+        if let Some(parent) = self.current_dir.parent().map(Path::to_path_buf) {
+            self.navigate_to(&parent);
         }
     }
 
@@ -479,9 +479,9 @@ impl FilePicker {
         match self.mode {
             PickerMode::Open | PickerMode::Directory => {
                 if let Some(entry) = self.entries.get(self.highlighted) {
-                    if self.mode == PickerMode::Directory && entry.is_dir {
-                        PickerResult::Selected(entry.path.clone())
-                    } else if self.mode == PickerMode::Open && !entry.is_dir {
+                    let valid_selection = (self.mode == PickerMode::Directory && entry.is_dir)
+                        || (self.mode == PickerMode::Open && !entry.is_dir);
+                    if valid_selection {
                         PickerResult::Selected(entry.path.clone())
                     } else {
                         PickerResult::None

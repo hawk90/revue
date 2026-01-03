@@ -9,6 +9,14 @@ use crate::style::Color;
 use crate::{impl_props_builders, impl_styled_view};
 use similar::{ChangeTag, TextDiff};
 
+/// Line rendering layout parameters
+struct LineLayout {
+    x: u16,
+    y: u16,
+    line_num_width: u16,
+    content_width: usize,
+}
+
 /// Diff display mode
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DiffMode {
@@ -313,16 +321,13 @@ impl DiffViewer {
             let y = area.y + 1 + i as u16;
 
             // Left side
-            self.render_line_half(
-                ctx,
-                line,
-                true,
-                area.x,
+            let left_layout = LineLayout {
+                x: area.x,
                 y,
-                half_width,
                 line_num_width,
                 content_width,
-            );
+            };
+            self.render_line_half(ctx, line, true, &left_layout);
 
             // Separator
             let mut sep = Cell::new('│');
@@ -330,16 +335,13 @@ impl DiffViewer {
             ctx.buffer.set(area.x + half_width, y, sep);
 
             // Right side
-            self.render_line_half(
-                ctx,
-                line,
-                false,
-                area.x + half_width + 1,
+            let right_layout = LineLayout {
+                x: area.x + half_width + 1,
                 y,
-                half_width,
                 line_num_width,
                 content_width,
-            );
+            };
+            self.render_line_half(ctx, line, false, &right_layout);
         }
     }
 
@@ -349,12 +351,9 @@ impl DiffViewer {
         ctx: &mut RenderContext,
         line: &DiffLine,
         is_left: bool,
-        x: u16,
-        y: u16,
-        _width: u16,
-        line_num_width: u16,
-        content_width: usize,
+        layout: &LineLayout,
     ) {
+        let LineLayout { x, y, line_num_width, content_width } = *layout;
         let (content, line_num, bg) = if is_left {
             (
                 &line.left,
