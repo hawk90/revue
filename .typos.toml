@@ -6,6 +6,7 @@
 ot = "ot"          # often used in comments
 Ratatui = "Ratatui"  # Rust TUI library name
 ratatui = "ratatui"  # lowercase variant
+elete = "elete"      # partial word in "[d]elete" shortcut display
 
 [default.extend-identifiers]
 # Test data for typo correction features
@@ -24,7 +25,6 @@ locale = "en-us"
 
 # Ignore partial word matches in code
 [type.rust.extend-words]
-elete = "elete"      # partial match in Delete
 ommand = "ommand"    # partial match in command
 colour = "colour"    # British spelling in test data
 Hel = "Hel"          # partial match in Hello/Help
