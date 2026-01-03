@@ -277,6 +277,7 @@ jobs:
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
+    environment: crates-io
     permissions:
       id-token: write
       contents: read
@@ -285,6 +286,4 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Publish to crates.io
-        run: cargo publish --token "$CARGO_REGISTRY_TOKEN"
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish
