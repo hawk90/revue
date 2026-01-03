@@ -6,8 +6,12 @@ on:
     tags: ["v*"]
   pull_request:
     branches: [main]
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+  issues:
+    types: [opened]
   schedule:
-    - cron: "0 0 * * 1"  # Weekly security audit
+    - cron: "0 0 * * 1"
   workflow_dispatch:
 
 concurrency:
@@ -19,8 +23,13 @@ env:
   RUSTFLAGS: -Dwarnings
 
 permissions:
-  contents: read
+  contents: write
   security-events: write
+  pages: write
+  id-token: write
+  issues: write
+  pull-requests: write
+  attestations: write
 
 jobs:
   # ═══════════════════════════════════════════════════════════════
@@ -29,6 +38,7 @@ jobs:
   fmt:
     name: Format
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -39,6 +49,7 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -47,45 +58,77 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-features -- -D warnings
 
-  # ═══════════════════════════════════════════════════════════════
-  # Stage 2: Test (parallel per platform)
-  # ═══════════════════════════════════════════════════════════════
-  test-linux:
-    name: Test Linux
-    needs: [fmt, clippy]
+  commits:
+    name: Validate Commits
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test --all-features
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+      - name: Install commitlint
+        run: |
+          npm install --save-dev @commitlint/{cli,config-conventional}
+          echo "module.exports = { extends: ['@commitlint/config-conventional'] };" > commitlint.config.js
+      - name: Validate PR commits
+        if: github.event_name == 'pull_request'
+        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+      - name: Validate push commit
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        run: npx commitlint --from ${{ github.event.before }} --to ${{ github.event.after }} --verbose
 
-  test-macos:
-    name: Test macOS
-    needs: [fmt, clippy]
-    runs-on: macos-latest
+  pr-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request_target'
     steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test --all-features
-
-  test-windows:
-    name: Test Windows
-    needs: [fmt, clippy]
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test --all-features
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          wip: true
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            PR title must follow Conventional Commits: <type>: <description>
 
   # ═══════════════════════════════════════════════════════════════
-  # Stage 2: Quality (parallel)
+  # Stage 2: Test
   # ═══════════════════════════════════════════════════════════════
+  test:
+    name: Test (${{ matrix.os }})
+    needs: [fmt, clippy]
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --all-features
+
   coverage:
     name: Coverage
     needs: [fmt, clippy]
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -100,21 +143,10 @@ jobs:
           files: lcov.info
           fail_ci_if_error: false
 
-  docs:
-    name: Docs
-    needs: [fmt, clippy]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo doc --no-deps --all-features
-        env:
-          RUSTDOCFLAGS: -D warnings
-
   msrv:
     name: MSRV (1.87)
     needs: [fmt, clippy]
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -122,22 +154,24 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --all-features
 
+  # ═══════════════════════════════════════════════════════════════
+  # Stage 2: Security
+  # ═══════════════════════════════════════════════════════════════
   audit:
     name: Security Audit
-    needs: [fmt, clippy]
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'schedule'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo generate-lockfile
       - uses: rustsec/audit-check@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   deny:
     name: Cargo Deny
-    needs: [fmt, clippy]
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'schedule'
     steps:
       - uses: actions/checkout@v6
       - uses: EmbarkStudios/cargo-deny-action@v2
@@ -145,14 +179,182 @@ jobs:
           command: check all
 
   # ═══════════════════════════════════════════════════════════════
-  # Stage 3: Publish (only on tags)
+  # Stage 3: Docs (GitHub Pages)
   # ═══════════════════════════════════════════════════════════════
-  publish:
-    name: Publish
-    needs: [test-linux, test-macos, test-windows, coverage, docs, msrv, audit, deny]
-    if: startsWith(github.ref, 'refs/tags/v')
+  docs:
+    name: Build Docs
+    needs: [fmt, clippy]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Build rustdoc
+        run: cargo doc --no-deps --all-features --document-private-items
+        env:
+          RUSTDOCFLAGS: --cfg docsrs -D warnings
+      - name: Create index redirect
+        run: echo '<html><head><meta http-equiv="refresh" content="0; url=revue/index.html"></head></html>' > target/doc/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: target/doc
+
+  deploy-docs:
+    name: Deploy Docs
+    needs: docs
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
+
+  # ═══════════════════════════════════════════════════════════════
+  # Stage 4: Community
+  # ═══════════════════════════════════════════════════════════════
+  label:
+    name: Label PR
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request_target'
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true
+
+  welcome:
+    name: Welcome
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request_target' || github.event_name == 'issues'
+    steps:
+      - uses: actions/first-interaction@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            Thanks for opening your first issue! A maintainer will review it soon.
+          pr-message: |
+            Thanks for your first pull request! A maintainer will review your PR soon.
+
+  stale:
+    name: Mark Stale
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/stale@v10
+        with:
+          stale-issue-message: "This issue has been marked as stale due to inactivity."
+          stale-pr-message: "This PR has been marked as stale due to inactivity."
+          days-before-stale: 60
+          days-before-close: 14
+          stale-issue-label: stale
+          stale-pr-label: stale
+          exempt-issue-labels: "pinned,security,help wanted,good first issue"
+          exempt-pr-labels: "pinned,security,work in progress"
+
+  # ═══════════════════════════════════════════════════════════════
+  # Stage 5: Release
+  # ═══════════════════════════════════════════════════════════════
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          release-type: rust
+
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    if: startsWith(github.ref, 'refs/tags/')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+            cross: true
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-14
+            archive: tar.gz
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+    steps:
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Cross
+        if: matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Build
+        run: ${{ matrix.cross && 'cross' || 'cargo' }} build --release --target ${{ matrix.target }}
+      - name: Archive (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar -czvf ../../../revue-${{ github.ref_name }}-${{ matrix.target }}.tar.gz revue
+      - name: Archive (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd target/${{ matrix.target }}/release
+          7z a ../../../revue-${{ github.ref_name }}-${{ matrix.target }}.zip revue.exe
+      - name: Checksum (Unix)
+        if: runner.os != 'Windows'
+        run: sha256sum revue-${{ github.ref_name }}-${{ matrix.target }}.tar.gz > revue-${{ github.ref_name }}-${{ matrix.target }}.tar.gz.sha256
+      - name: Checksum (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          Get-FileHash revue-${{ github.ref_name }}-${{ matrix.target }}.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  revue-${{ github.ref_name }}-${{ matrix.target }}.zip" } | Out-File -Encoding ASCII revue-${{ github.ref_name }}-${{ matrix.target }}.zip.sha256
+      - uses: actions/upload-artifact@v6
+        with:
+          name: revue-${{ matrix.target }}
+          path: revue-${{ github.ref_name }}-${{ matrix.target }}.*
+
+  upload:
+    name: Upload Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: artifacts/*
+
+  publish:
+    name: Publish
+    needs: upload
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo publish
