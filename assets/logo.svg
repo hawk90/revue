@@ -1,32 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-  <defs>
-    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#42b883"/>
-      <stop offset="100%" style="stop-color:#35495e"/>
-    </linearGradient>
-  </defs>
-
-  <!-- Terminal window frame -->
-  <rect x="20" y="30" width="160" height="140" rx="8" ry="8" fill="#1a1a2e" stroke="#42b883" stroke-width="2"/>
-
-  <!-- Terminal title bar -->
-  <rect x="20" y="30" width="160" height="24" rx="8" ry="8" fill="#35495e"/>
-  <rect x="20" y="46" width="160" height="8" fill="#35495e"/>
-
-  <!-- Window buttons -->
-  <circle cx="36" cy="42" r="5" fill="#ff5f56"/>
-  <circle cx="52" cy="42" r="5" fill="#ffbd2e"/>
-  <circle cx="68" cy="42" r="5" fill="#27ca40"/>
-
-  <!-- Vue-style V shape inside terminal -->
-  <path d="M100 75 L65 135 L80 135 L100 100 L120 135 L135 135 Z" fill="url(#gradient)"/>
-  <path d="M100 90 L82 125 L90 125 L100 108 L110 125 L118 125 Z" fill="#1a1a2e"/>
-
-  <!-- Cursor blink -->
-  <rect x="140" y="145" width="8" height="14" fill="#42b883" opacity="0.8">
-    <animate attributeName="opacity" values="0.8;0;0.8" dur="1s" repeatCount="indefinite"/>
-  </rect>
-
-  <!-- R letter accent -->
-  <text x="148" y="52" font-family="monospace" font-size="14" font-weight="bold" fill="#42b883">R</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 44">
+  <text x="4" y="32" font-family="Inter, -apple-system, system-ui, sans-serif" font-size="32" font-weight="800" letter-spacing="-1.5" fill="#1a1a2e">revue</text>
+  <!-- v 글자 폭에 정확히 맞춤 -->
+  <rect x="41" y="35" width="15" height="2.5" rx="1.25" fill="#42b883"/>
 </svg>

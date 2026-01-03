@@ -121,27 +121,27 @@ impl PluginContext {
     /// Log a message (for debugging)
     pub fn log(&self, message: &str) {
         if let Some(plugin_name) = &self.current_plugin {
-            tracing::debug!("[{}] {}", plugin_name, message);
+            crate::log_debug!("[{}] {}", plugin_name, message);
         } else {
-            tracing::debug!("{}", message);
+            crate::log_debug!("{}", message);
         }
     }
 
     /// Log a warning
     pub fn warn(&self, message: &str) {
         if let Some(plugin_name) = &self.current_plugin {
-            tracing::warn!("[{}] {}", plugin_name, message);
+            crate::log_warn!("[{}] {}", plugin_name, message);
         } else {
-            tracing::warn!("{}", message);
+            crate::log_warn!("{}", message);
         }
     }
 
     /// Log an error
     pub fn error(&self, message: &str) {
         if let Some(plugin_name) = &self.current_plugin {
-            tracing::error!("[{}] {}", plugin_name, message);
+            crate::log_error!("[{}] {}", plugin_name, message);
         } else {
-            tracing::error!("{}", message);
+            crate::log_error!("{}", message);
         }
     }
 }

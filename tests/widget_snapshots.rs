@@ -1248,6 +1248,7 @@ fn test_tooltip_variants() {
 // =============================================================================
 
 #[test]
+#[cfg(feature = "markdown")]
 fn test_markdown_basic() {
     use revue::widget::Markdown;
 
@@ -1272,6 +1273,7 @@ This is a **bold** and *italic* text.
 }
 
 #[test]
+#[cfg(feature = "markdown")]
 fn test_markdown_code_block() {
     use revue::widget::Markdown;
 
@@ -1294,6 +1296,7 @@ fn main() {
 }
 
 #[test]
+#[cfg(feature = "markdown")]
 fn test_markdown_with_toc() {
     use revue::widget::Markdown;
 

@@ -61,6 +61,7 @@ pub mod sort;
 pub mod syntax;
 pub mod table;
 pub mod text;
+pub mod text_sizing;
 pub mod textbuffer;
 pub mod tree;
 pub mod undo;
@@ -278,3 +279,6 @@ pub use profiler::{
     profile, profiler_report, start_profile, thread_profiler, FlameNode, ProfileGuard, Profiler,
     Stats, Timing,
 };
+
+// Text Sizing (Kitty OSC 66 protocol)
+pub use text_sizing::{is_supported as text_sizing_supported, TextSizing};

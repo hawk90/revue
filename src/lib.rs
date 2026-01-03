@@ -185,6 +185,37 @@
 
 #![warn(missing_docs)]
 
+// Internal logging macros - no-op when tracing feature is disabled
+#[cfg(feature = "tracing")]
+macro_rules! log_debug {
+    ($($arg:tt)*) => { tracing::debug!($($arg)*) }
+}
+#[cfg(not(feature = "tracing"))]
+macro_rules! log_debug {
+    ($($arg:tt)*) => { { let _ = ($($arg)*,); } }
+}
+pub(crate) use log_debug;
+
+#[cfg(feature = "tracing")]
+macro_rules! log_warn {
+    ($($arg:tt)*) => { tracing::warn!($($arg)*) }
+}
+#[cfg(not(feature = "tracing"))]
+macro_rules! log_warn {
+    ($($arg:tt)*) => { { let _ = ($($arg)*,); } }
+}
+pub(crate) use log_warn;
+
+#[cfg(feature = "tracing")]
+macro_rules! log_error {
+    ($($arg:tt)*) => { tracing::error!($($arg)*) }
+}
+#[cfg(not(feature = "tracing"))]
+macro_rules! log_error {
+    ($($arg:tt)*) => { { let _ = ($($arg)*,); } }
+}
+pub(crate) use log_error;
+
 pub mod app;
 pub mod constants;
 pub mod devtools;
@@ -193,6 +224,7 @@ pub mod event;
 pub mod layout;
 pub mod patterns;
 pub mod plugin;
+pub mod query;
 pub mod reactive;
 pub mod render;
 pub mod style;
@@ -369,14 +401,12 @@ pub mod prelude {
         FilledCircle,
         FilledRectangle,
         FocusStyle,
-        Image,
         Input,
         Interactive,
         // Layer system
         Layers,
         Line,
         List,
-        Markdown,
         Modal,
         ModalButton,
         ModalButtonStyle,
@@ -392,7 +422,6 @@ pub mod prelude {
         RadioStyle,
         Rectangle,
         RenderContext,
-        ScaleMode,
         ScrollView,
         Select,
         Shape,
@@ -422,6 +451,12 @@ pub mod prelude {
         WidgetState,
     };
 
+    // Feature-gated widget types
+    #[cfg(feature = "image")]
+    pub use crate::widget::{Image, ScaleMode};
+    #[cfg(feature = "markdown")]
+    pub use crate::widget::{Markdown, MarkdownPresentation, ViewMode};
+
     // Widgets - Constructors
     pub use crate::widget::{
         avatar,
@@ -442,12 +477,10 @@ pub mod prelude {
         divider,
         dot_badge,
         hstack,
-        image_from_file,
         input,
         // Layer system constructors
         layers,
         list,
-        markdown,
         modal,
         pagination,
         positioned,
@@ -475,6 +508,12 @@ pub mod prelude {
         vstack,
     };
 
+    // Feature-gated widget constructors
+    #[cfg(feature = "image")]
+    pub use crate::widget::image_from_file;
+    #[cfg(feature = "markdown")]
+    pub use crate::widget::{markdown, markdown_presentation};
+
     // DOM system
     pub use crate::dom::{DomId, DomNode, DomRenderer, DomTree, NodeState, Query, WidgetMeta};
 
@@ -495,12 +534,9 @@ pub mod prelude {
         priority_color,
         spinner_char,
         status_color,
-        // Config loading
-        AppConfig,
         // Async operations
         AsyncTask,
         BreadcrumbItem,
-        ConfigError,
         ConfirmAction,
         ConfirmState,
         FieldType,
@@ -540,6 +576,10 @@ pub mod prelude {
         WARNING,
         YELLOW,
     };
+
+    // Config loading (requires config feature)
+    #[cfg(feature = "config")]
+    pub use crate::patterns::{AppConfig, ConfigError};
 
     // Accessibility
     pub use crate::utils::{

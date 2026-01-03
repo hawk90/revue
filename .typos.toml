@@ -1,0 +1,16 @@
+# typos configuration
+# https://github.com/crate-ci/typos
+
+[default.extend-words]
+# Allow these "misspellings"
+ot = "ot"  # often used in comments
+
+[files]
+extend-exclude = [
+    "target/",
+    "*.lock",
+    "tests/snapshots/",
+]
+
+[default]
+locale = "en-us"

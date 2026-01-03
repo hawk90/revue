@@ -1,32 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 120">
-  <defs>
-    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#42b883"/>
-      <stop offset="100%" style="stop-color:#35495e"/>
-    </linearGradient>
-    <linearGradient id="vGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#42b883"/>
-      <stop offset="100%" style="stop-color:#35495e"/>
-    </linearGradient>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 650 180">
+  <!-- Clean split layout -->
 
-  <!-- Terminal icon -->
-  <rect x="20" y="10" width="100" height="100" rx="8" ry="8" fill="#1a1a2e" stroke="#42b883" stroke-width="2"/>
-  <rect x="20" y="10" width="100" height="20" rx="8" ry="8" fill="#35495e"/>
-  <rect x="20" y="25" width="100" height="5" fill="#35495e"/>
+  <!-- Left: Embedded logo (scaled 2x) -->
+  <g transform="translate(40, 45) scale(2)">
+    <text x="4" y="32" font-family="Inter, -apple-system, system-ui, sans-serif" font-size="32" font-weight="800" letter-spacing="-1.5" fill="#1a1a2e">revue</text>
+    <rect x="41" y="35" width="15" height="2.5" rx="1.25" fill="#42b883"/>
+  </g>
 
-  <!-- Window buttons -->
-  <circle cx="32" cy="20" r="4" fill="#ff5f56"/>
-  <circle cx="44" cy="20" r="4" fill="#ffbd2e"/>
-  <circle cx="56" cy="20" r="4" fill="#27ca40"/>
+  <!-- Divider line -->
+  <line x1="280" y1="55" x2="280" y2="145" stroke="#e2e8f0" stroke-width="1"/>
 
-  <!-- V shape -->
-  <path d="M70 40 L45 90 L55 90 L70 63 L85 90 L95 90 Z" fill="url(#vGradient)"/>
-  <path d="M70 53 L56 80 L62 80 L70 67 L78 80 L84 80 Z" fill="#1a1a2e"/>
+  <!-- Right: Description -->
+  <g transform="translate(310, 45)">
+    <text x="0" y="28" font-family="Inter, -apple-system, system-ui, sans-serif" font-size="16" font-weight="600" fill="#1a1a2e">Vue-style Reactive TUI Framework</text>
+    <text x="0" y="52" font-family="Inter, -apple-system, system-ui, sans-serif" font-size="13" font-weight="400" fill="#64748b">Build terminal UIs with CSS styling and reactive state.</text>
+    <text x="0" y="72" font-family="Inter, -apple-system, system-ui, sans-serif" font-size="13" font-weight="400" fill="#64748b">Pure Rust. Single binary. Blazing fast.</text>
 
-  <!-- Text: Revue -->
-  <text x="140" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="bold" fill="url(#textGradient)">Revue</text>
+    <!-- Tech badges -->
+    <g transform="translate(0, 90)" font-family="Inter, -apple-system, system-ui, sans-serif" font-size="11" font-weight="500">
+      <rect x="0" y="0" width="40" height="22" rx="4" fill="#1a1a2e"/>
+      <text x="20" y="15" text-anchor="middle" fill="white">Rust</text>
 
-  <!-- Tagline -->
-  <text x="142" y="100" font-family="monospace" font-size="14" fill="#6b7280">Vue-style TUI framework for Rust</text>
+      <rect x="48" y="0" width="40" height="22" rx="4" fill="none" stroke="#42b883" stroke-width="1.5"/>
+      <text x="68" y="15" text-anchor="middle" fill="#42b883">CSS</text>
+
+      <rect x="96" y="0" width="65" height="22" rx="4" fill="none" stroke="#42b883" stroke-width="1.5"/>
+      <text x="128" y="15" text-anchor="middle" fill="#42b883">Reactive</text>
+
+      <rect x="169" y="0" width="80" height="22" rx="4" fill="none" stroke="#42b883" stroke-width="1.5"/>
+      <text x="209" y="15" text-anchor="middle" fill="#42b883">Hot Reload</text>
+    </g>
+  </g>
 </svg>

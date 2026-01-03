@@ -49,6 +49,7 @@
 
 pub mod async_ops;
 pub mod colors;
+#[cfg(feature = "config")]
 pub mod config;
 pub mod confirm;
 pub mod form;
@@ -61,6 +62,7 @@ pub mod search;
 // Re-export commonly used items
 pub use async_ops::{spinner_char, AsyncTask, SPINNER_FRAMES};
 pub use colors::*;
+#[cfg(feature = "config")]
 pub use config::{AppConfig, ConfigError};
 pub use confirm::{ConfirmAction, ConfirmState};
 pub use form::{FieldType, FormField, FormState, ValidationError, Validators};

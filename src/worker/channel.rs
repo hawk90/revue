@@ -2,7 +2,6 @@
 
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
-use tracing::warn;
 
 /// Message types for worker communication
 #[derive(Debug, Clone)]
@@ -68,7 +67,7 @@ impl<T: Clone> WorkerChannel<T> {
                 queue.push_back(msg);
                 return true;
             }
-            warn!(
+            log_warn!(
                 "Worker channel overflow: message dropped (queue full at {} items)",
                 self.capacity
             );
@@ -88,7 +87,7 @@ impl<T: Clone> WorkerChannel<T> {
                 queue.push_back(cmd);
                 return true;
             }
-            warn!(
+            log_warn!(
                 "Worker channel overflow: command {:?} dropped (queue full at {} items)",
                 cmd, self.capacity
             );

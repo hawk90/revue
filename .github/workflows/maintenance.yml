@@ -1,0 +1,140 @@
+name: Maintenance
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"  # 매주 월요일 9시 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  outdated:
+    name: Check Outdated Deps
+    runs-on: ubuntu-latest
+    outputs:
+      has_outdated: ${{ steps.check.outputs.has_outdated }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-outdated
+        run: cargo install cargo-outdated
+      - name: Check outdated
+        id: check
+        run: |
+          OUTPUT=$(cargo outdated --root-deps-only 2>/dev/null || echo "")
+          if echo "$OUTPUT" | grep -q "->"; then
+            echo "has_outdated=true" >> $GITHUB_OUTPUT
+            echo "::warning::Outdated dependencies found"
+          else
+            echo "has_outdated=false" >> $GITHUB_OUTPUT
+          fi
+          echo "## 📦 Dependency Report" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  semver:
+    name: API Stability
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-semver-checks
+        run: cargo install cargo-semver-checks
+      - name: Check API stability
+        continue-on-error: true
+        run: |
+          LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -n1)
+          echo "## 🔒 API Stability" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$LATEST_TAG" ]; then
+            if cargo semver-checks check-release --baseline-rev "$LATEST_TAG" 2>&1; then
+              echo "✅ No breaking changes vs $LATEST_TAG" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⚠️ Breaking changes detected vs $LATEST_TAG" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "ℹ️ No release tag found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  dep-stats:
+    name: Dependency Stats
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Calculate stats
+        run: |
+          echo "## 📊 Dependency Statistics" >> $GITHUB_STEP_SUMMARY
+          MINIMAL=$(cargo tree --no-default-features -e normal --depth 1 2>/dev/null | grep -cE '├|└' || echo "0")
+          FULL=$(cargo tree --all-features -e normal --depth 1 2>/dev/null | grep -cE '├|└' || echo "0")
+          echo "- **Minimal:** $MINIMAL deps" >> $GITHUB_STEP_SUMMARY
+          echo "- **Full:** $FULL deps" >> $GITHUB_STEP_SUMMARY
+
+  binary-size:
+    name: Binary Size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build and measure
+        run: |
+          cargo build --release --all-features
+          echo "## 📏 Binary Size" >> $GITHUB_STEP_SUMMARY
+          if [ -f target/release/librevue.rlib ]; then
+            SIZE=$(du -h target/release/librevue.rlib | cut -f1)
+            echo "- **Library:** $SIZE" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  docs-coverage:
+    name: Doc Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: Check doc coverage
+        run: |
+          echo "## 📚 Documentation" >> $GITHUB_STEP_SUMMARY
+          OUTPUT=$(RUSTDOCFLAGS="-D missing_docs" cargo doc --no-deps --all-features 2>&1 || true)
+          MISSING=$(echo "$OUTPUT" | grep -c "missing documentation" || echo "0")
+          if [ "$MISSING" -eq 0 ]; then
+            echo "✅ All public items documented" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ $MISSING items missing docs" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  benchmark:
+    name: Benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run benchmarks
+        run: |
+          echo "## ⚡ Benchmarks" >> $GITHUB_STEP_SUMMARY
+          cargo bench --all-features -- --noplot 2>&1 | grep -E "time:" | head -20 >> $GITHUB_STEP_SUMMARY || echo "No results" >> $GITHUB_STEP_SUMMARY
+
+  notify-outdated:
+    name: Create Outdated Issue
+    needs: outdated
+    if: needs.outdated.outputs.has_outdated == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Create issue
+        run: |
+          EXISTING=$(gh issue list --label "dependencies" --state open --json number --jq '.[0].number // empty')
+          if [ -z "$EXISTING" ]; then
+            gh issue create --title "📦 Outdated dependencies" --label "dependencies,maintenance" --body "Run \`cargo outdated\` for details."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -2,7 +2,7 @@
 
 <img src="assets/banner.svg" alt="Revue" width="480">
 
-**A Vue-style TUI framework for Rust with CSS styling**
+**/rɪˈvjuː/** — *Re + Vue* — A Vue-style TUI framework for Rust
 
 [![crates.io](https://img.shields.io/crates/v/revue?style=for-the-badge&logo=rust&logoColor=white&color=orange)](https://crates.io/crates/revue)
 [![docs.rs](https://img.shields.io/docsrs/revue?style=for-the-badge&logo=docs.rs&logoColor=white)](https://docs.rs/revue)
@@ -95,7 +95,7 @@ button:hover {
 |:---------|:-----------|
 | **Layout** | `vstack` `hstack` `grid` `scroll` `tabs` `accordion` `splitter` |
 | **Input** | `input` `textarea` `select` `checkbox` `radio` `switch` `slider` |
-| **Display** | `text` `markdown` `table` `tree` `list` `progress` `badge` `image` |
+| **Display** | `text` `markdown` `table` `tree` `list` `progress` `badge` `image` `presentation` |
 | **Feedback** | `modal` `toast` `notification` `tooltip` `popover` |
 | **Charts** | `bar_chart` `line_chart` `sparkline` `heatmap` `gauge` |
 
@@ -109,6 +109,7 @@ cargo run --example todo         # Todo app
 cargo run --example dashboard    # Charts & widgets
 cargo run --example forms        # Form inputs
 cargo run --example markdown     # Markdown viewer
+cargo run --example slideshow    # Slidev-style presentations
 ```
 
 <br>
