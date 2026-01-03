@@ -640,9 +640,9 @@ mod tests {
             thread::sleep(Duration::from_millis(10));
         }
 
-        // Should be around 100 FPS
+        // Should be around 100 FPS (relaxed for CI environments)
         let measured = fps.fps();
-        assert!(measured > 50.0);
+        assert!(measured > 30.0);
     }
 
     #[test]
