@@ -1,8 +1,8 @@
 # Expert Code Review - Revue TUI Framework
 
-**Date:** 2025-12-18
+**Date:** 2026-01-03
 **Reviewers:** 10 Expert Personas
-**Tests:** 1309 passed
+**Tests:** 1980 passed
 
 ---
 
@@ -44,6 +44,14 @@
 | Split DataGrid render() | Martin Fowler | `datagrid.rs` | ✅ Done |
 | Extract quit handler | Uncle Bob | `app/mod.rs` | ✅ Done |
 | App/Builder tests | Kent Beck | `app/mod.rs`, `builder.rs` | ✅ Done |
+| Gradient NaN panic fix | Review Agents | `gradient.rs` | ✅ Done |
+| Wide char rendering | Review Agents | `batch.rs` | ✅ Done |
+| Screen Registry connection | Review Agents | `screen.rs` | ✅ Done |
+| Shared tokio runtime | Linus Torvalds | `worker/mod.rs`, `handle.rs` | ✅ Done |
+| Queue overflow logging | Linus Torvalds | `channel.rs` | ✅ Done |
+| Computed::get() refactor | Martin Fowler | `computed.rs` | ✅ Done |
+| draw_box_titled O(n) | Andrew Kelley | `traits.rs` | ✅ Done |
+| Unsafe block documentation | Jon Gjengset | `handle.rs` | ✅ Done |
 
 ### 🔄 In Progress
 
@@ -203,7 +211,7 @@ x: layout.location.x as u16  // Could overflow!
 
 | Metric | Before | After | Target |
 |--------|--------|-------|--------|
-| Tests | 1309 | 1355 | 1400+ |
+| Tests | 1309 | 1980 | 1400+ ✅ |
 | Longest Method | 201 lines | ~50 lines | <50 lines |
 | DataGrid Fields | 42 | 14 | <15 ✅ |
 | App Fields | 6 | 4 | <6 ✅ |
@@ -263,6 +271,22 @@ x: layout.location.x as u16  // Could overflow!
   - `SyntaxHighlighter` with `highlight_line()` method
   - TextArea integration: `.syntax(Language::Rust)`, `.syntax_with_theme()`
   - 4 new tests for syntax highlighting
+
+### Changes Made (Phase 3: Bug Fixes & Optimizations - 2026-01-03)
+
+**Critical Bug Fixes:**
+- **Gradient NaN Panic**: Fixed `partial_cmp().unwrap()` → `unwrap_or(Ordering::Equal)` in sort
+- **Wide Character Rendering**: Fixed text positioning to use `char_width()` for proper CJK/emoji display
+- **Screen Registry**: Connected registry factory lookup in `push_with_config()`
+
+**Performance Improvements:**
+- **Shared Tokio Runtime**: Replaced per-task runtime creation (~100KB each) with shared `OnceLock<Runtime>`
+- **draw_box_titled O(n)**: Refactored from O(n²) `.chars().nth()` to O(n) iterator
+
+**Code Quality:**
+- **Computed::get() Refactor**: Split into `needs_recompute()`, `recompute_and_cache()`, `get_cached()`
+- **Queue Overflow Logging**: Added `tracing::warn!` for dropped messages in worker channel
+- **Unsafe Documentation**: Added SAFETY comment for `Waker::from_raw()` in polling executor
 
 ---
 
