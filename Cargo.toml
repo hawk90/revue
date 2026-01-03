@@ -19,8 +19,6 @@ exclude = [
     ".claude/",
     ".github/",
     "tests/snapshots/",
-    "benches/",
-    "examples/",
     "*.md",
     "cliff.toml",
     "deny.toml",
