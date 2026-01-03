@@ -162,7 +162,7 @@ impl TasksDemo {
 impl View for TasksDemo {
     fn render(&self, ctx: &mut RenderContext) {
         let is_running = self.tasks.is_running("fetch_data");
-        let has_timer = self.timer.has_pending();
+        let _has_timer = self.timer.has_pending();
 
         let view = vstack()
             .gap(1)
@@ -268,7 +268,7 @@ fn main() -> Result<()> {
     println!("Demonstrates TaskRunner, Timer, and EventBus.\n");
 
     let mut app = App::builder().build();
-    let mut demo = TasksDemo::new();
+    let demo = TasksDemo::new();
 
     app.run(demo, |event, demo, _app| match event {
         Event::Key(key_event) => demo.handle_key(&key_event.key),

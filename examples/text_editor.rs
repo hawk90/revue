@@ -806,6 +806,7 @@ impl Default for Config {
         }
     }
 
+    #[allow(dead_code)]
     fn is_in_visual_selection(&self, row: usize, col: usize) -> bool {
         if self.mode != Mode::Visual {
             return false;
@@ -866,7 +867,7 @@ impl View for TextEditor {
             let mut line_content = String::new();
             let is_cursor_row = row == self.cursor_row;
 
-            for (col, ch) in line.chars().enumerate() {
+            for (_col, ch) in line.chars().enumerate() {
                 line_content.push(ch);
             }
 

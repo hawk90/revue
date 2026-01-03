@@ -126,7 +126,7 @@ impl WorkerDemo {
 impl View for WorkerDemo {
     fn render(&self, ctx: &mut RenderContext) {
         let state = self.handle.as_ref().map(|h| h.state());
-        let is_running = matches!(state, Some(WorkerState::Running));
+        let _is_running = matches!(state, Some(WorkerState::Running));
 
         let state_text = match state {
             Some(WorkerState::Pending) => "Pending",
@@ -249,7 +249,7 @@ fn main() -> Result<()> {
     println!("Demonstrates WorkerHandle state tracking and control.\n");
 
     let mut app = App::builder().build();
-    let mut demo = WorkerDemo::new();
+    let demo = WorkerDemo::new();
 
     app.run(demo, |event, demo, _app| match event {
         Event::Key(key_event) => demo.handle_key(&key_event.key),

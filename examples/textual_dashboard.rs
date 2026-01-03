@@ -8,16 +8,21 @@ use revue::prelude::*;
 use revue::widget::*;
 
 // Catppuccin Mocha colors
+#[allow(dead_code)]
 const BG_BASE: Color = Color::rgb(30, 30, 46);
+#[allow(dead_code)]
 const BG_SURFACE: Color = Color::rgb(49, 50, 68);
 const BG_OVERLAY: Color = Color::rgb(69, 71, 90);
 const TEXT: Color = Color::rgb(205, 214, 244);
 const SUBTEXT: Color = Color::rgb(166, 173, 200);
 const BLUE: Color = Color::rgb(137, 180, 250);
 const GREEN: Color = Color::rgb(166, 227, 161);
+#[allow(dead_code)]
 const YELLOW: Color = Color::rgb(249, 226, 175);
+#[allow(dead_code)]
 const RED: Color = Color::rgb(243, 139, 168);
 const PINK: Color = Color::rgb(245, 194, 231);
+#[allow(dead_code)]
 const TEAL: Color = Color::rgb(148, 226, 213);
 
 #[derive(Default)]
@@ -243,7 +248,7 @@ fn main() -> Result<()> {
         )
         .build();
 
-    let mut dashboard = Dashboard::new();
+    let dashboard = Dashboard::new();
 
     app.run_with_handler(dashboard, |event, dashboard| match event.key {
         Key::Char('q') | Key::Escape => std::process::exit(0),
