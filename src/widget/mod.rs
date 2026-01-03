@@ -178,6 +178,7 @@ mod color_picker;
 mod command_palette;
 mod datagrid;
 mod debug_overlay;
+#[cfg(feature = "diff")]
 mod diff;
 mod digits;
 mod divider;
@@ -188,12 +189,15 @@ mod gauge;
 mod grid;
 mod heatmap;
 mod httpclient;
+#[cfg(feature = "image")]
 mod image;
 mod input;
 mod layer;
 mod link;
 mod list;
+#[cfg(feature = "markdown")]
 mod markdown;
+#[cfg(feature = "markdown")]
 mod markdown_presentation;
 mod masked_input;
 mod menu;
@@ -204,8 +208,10 @@ mod option_list;
 mod pagination;
 mod positioned;
 mod presentation;
+#[cfg(feature = "sysinfo")]
 mod procmon;
 mod progress;
+#[cfg(feature = "qrcode")]
 mod qrcode;
 mod radio;
 mod rating;
@@ -221,6 +227,7 @@ mod skeleton;
 mod slider;
 mod sortable;
 mod sparkline;
+#[cfg(feature = "markdown")]
 pub mod slides;
 mod spinner;
 mod splitter;
@@ -279,6 +286,7 @@ pub use debug_overlay::{
     disable_debug, enable_debug, is_debug_enabled, toggle_debug, DebugConfig, DebugEvent,
     DebugOverlay, DebugPosition, EventLog, PerfMetrics, WidgetInfo,
 };
+#[cfg(feature = "diff")]
 pub use diff::{diff, diff_viewer, ChangeType, DiffColors, DiffLine, DiffMode, DiffViewer};
 pub use digits::{clock, digits, timer, DigitStyle, Digits};
 pub use divider::{divider, vdivider, Divider, DividerStyle, Orientation};
@@ -297,12 +305,15 @@ pub use httpclient::{
     get as http_get, http_client, post as http_post, HttpClient, HttpMethod, HttpRequest,
     HttpResponse, RequestState, ResponseView,
 };
+#[cfg(feature = "image")]
 pub use image::{image_from_file, try_image_from_file, Image, ImageError, ImageResult, ScaleMode};
 pub use input::{input, Input};
 pub use layer::{layers, Layers};
 pub use link::{link, url_link, Link, LinkStyle};
 pub use list::{list, List};
+#[cfg(feature = "markdown")]
 pub use markdown::{markdown, Markdown};
+#[cfg(feature = "markdown")]
 pub use markdown_presentation::{markdown_presentation, MarkdownPresentation, ViewMode};
 pub use masked_input::{
     credit_card_input, masked_input, password_input, pin_input, MaskStyle, MaskedInput,
@@ -324,10 +335,12 @@ pub use option_list::{
 pub use pagination::{pagination, Pagination, PaginationStyle};
 pub use positioned::{positioned, Anchor, Positioned};
 pub use presentation::{presentation, slide, Presentation, Slide, SlideAlign, Transition};
+#[cfg(feature = "sysinfo")]
 pub use procmon::{
     htop, process_monitor, ProcColors, ProcessInfo, ProcessMonitor, ProcessSort, ProcessView,
 };
 pub use progress::{progress, Progress, ProgressStyle};
+#[cfg(feature = "qrcode")]
 pub use qrcode::{qrcode, qrcode_url, ErrorCorrection, QrCodeWidget, QrStyle};
 pub use radio::{radio_group, RadioGroup, RadioLayout, RadioStyle};
 pub use rating::{rating, Rating, RatingSize, RatingStyle};
@@ -344,6 +357,7 @@ pub use selection_list::{
 pub use skeleton::{
     skeleton, skeleton_avatar, skeleton_paragraph, skeleton_text, Skeleton, SkeletonShape,
 };
+#[cfg(feature = "markdown")]
 pub use slides::{parse_slides, SlideContent, SlideNav};
 pub use slider::{
     percentage_slider, slider, slider_range, volume_slider, Slider, SliderOrientation, SliderStyle,

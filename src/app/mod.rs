@@ -3,6 +3,7 @@
 //! This module provides the main entry point for Revue applications.
 
 mod builder;
+#[cfg(feature = "hot-reload")]
 mod hot_reload;
 mod inspector;
 pub mod profiler;
@@ -11,6 +12,7 @@ pub mod screen;
 pub mod snapshot;
 
 pub use builder::AppBuilder;
+#[cfg(feature = "hot-reload")]
 pub use hot_reload::{hot_reload, HotReload, HotReloadBuilder, HotReloadConfig, HotReloadEvent};
 pub use inspector::{inspector, Inspector, WidgetInfo};
 pub use profiler::{
