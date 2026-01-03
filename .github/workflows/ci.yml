@@ -122,5 +122,5 @@ jobs:
       - name: Downgrade incompatible dependencies
         run: |
           cargo generate-lockfile
-          cargo update zune-jpeg --precise 0.5.7
+          cargo update zune-jpeg@0.5.8 --precise 0.5.7
       - run: cargo check --all-features
