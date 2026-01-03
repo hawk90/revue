@@ -14,8 +14,25 @@ env:
   RUSTFLAGS: -Dwarnings
 
 jobs:
+  # Skip CI for release-please commits
+  check-skip:
+    name: Check Skip
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ github.event.head_commit.message }}" == *"chore(main): release"* ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
   fmt:
     name: Format
+    needs: check-skip
+    if: needs.check-skip.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -26,6 +43,8 @@ jobs:
 
   clippy:
     name: Clippy
+    needs: check-skip
+    if: needs.check-skip.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -37,7 +56,8 @@ jobs:
 
   test:
     name: Test (${{ matrix.os }})
-    needs: [fmt, clippy]
+    needs: [check-skip, fmt, clippy]
+    if: needs.check-skip.outputs.skip != 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -51,7 +71,8 @@ jobs:
 
   coverage:
     name: Coverage
-    needs: [fmt, clippy]
+    needs: [check-skip, fmt, clippy]
+    if: needs.check-skip.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -69,7 +90,8 @@ jobs:
 
   msrv:
     name: MSRV (1.87)
-    needs: [fmt, clippy]
+    needs: [check-skip, fmt, clippy]
+    if: needs.check-skip.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -79,6 +101,8 @@ jobs:
 
   typos:
     name: Typos
+    needs: check-skip
+    if: needs.check-skip.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -88,6 +112,8 @@ jobs:
 
   commits:
     name: Validate Commits
+    needs: check-skip
+    if: needs.check-skip.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -104,4 +130,3 @@ jobs:
       - name: Validate push commits
         if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
         run: npx commitlint --from ${{ github.event.before }} --to ${{ github.event.after }} --verbose
-
