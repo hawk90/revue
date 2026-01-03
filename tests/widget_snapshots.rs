@@ -1326,7 +1326,7 @@ Details.
 fn test_syntax_rust() {
     use revue::widget::{Language, SyntaxHighlighter};
 
-    let code = r#"fn main() {
+    let _code = r#"fn main() {
     let x = 42;
     println!("{}", x);
 }"#;
