@@ -19,7 +19,7 @@ jobs:
     outputs:
       has_outdated: ${{ steps.check.outputs.has_outdated }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-outdated
         run: cargo install cargo-outdated
@@ -42,7 +42,7 @@ jobs:
     name: API Stability
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
@@ -68,7 +68,7 @@ jobs:
     name: Dependency Stats
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Calculate stats
         run: |
@@ -82,7 +82,7 @@ jobs:
     name: Binary Size
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build and measure
@@ -98,7 +98,7 @@ jobs:
     name: Doc Coverage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
       - name: Check doc coverage
         run: |
@@ -115,7 +115,7 @@ jobs:
     name: Benchmark
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Run benchmarks
@@ -129,7 +129,7 @@ jobs:
     if: needs.outdated.outputs.has_outdated == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Create issue
         run: |
           EXISTING=$(gh issue list --label "dependencies" --state open --json number --jq '.[0].number // empty')
