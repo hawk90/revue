@@ -7,7 +7,7 @@ Thank you for your interest in contributing to Revue!
 ### Prerequisites
 
 ```bash
-# Rust (1.75+)
+# Rust (1.87+)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Optional: typos (spell checker)
