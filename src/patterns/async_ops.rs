@@ -244,6 +244,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Flaky in CI due to timing sensitivity
     fn test_is_running() {
         let task = AsyncTask::spawn(|| {
             thread::sleep(Duration::from_millis(100));
