@@ -273,12 +273,12 @@ impl Default for Config {
                 let line = self.current_line();
                 let mut col = self.cursor_col;
                 // Skip current word
-                while col < line.len() && !line.chars().nth(col).map_or(true, |c| c.is_whitespace())
+                while col < line.len() && !line.chars().nth(col).is_none_or(|c| c.is_whitespace())
                 {
                     col += 1;
                 }
                 // Skip whitespace
-                while col < line.len() && line.chars().nth(col).map_or(false, |c| c.is_whitespace())
+                while col < line.len() && line.chars().nth(col).is_some_and(|c| c.is_whitespace())
                 {
                     col += 1;
                 }
@@ -299,7 +299,7 @@ impl Default for Config {
                     let line = self.current_line();
                     let mut col = self.cursor_col.saturating_sub(1);
                     // Skip whitespace
-                    while col > 0 && line.chars().nth(col).map_or(false, |c| c.is_whitespace()) {
+                    while col > 0 && line.chars().nth(col).is_some_and(|c| c.is_whitespace()) {
                         col -= 1;
                     }
                     // Skip word
@@ -307,7 +307,7 @@ impl Default for Config {
                         && !line
                             .chars()
                             .nth(col - 1)
-                            .map_or(true, |c| c.is_whitespace())
+                            .is_none_or(|c| c.is_whitespace())
                     {
                         col -= 1;
                     }
@@ -867,7 +867,7 @@ impl View for TextEditor {
             let mut line_content = String::new();
             let is_cursor_row = row == self.cursor_row;
 
-            for (_col, ch) in line.chars().enumerate() {
+            for ch in line.chars() {
                 line_content.push(ch);
             }
 

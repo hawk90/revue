@@ -67,7 +67,7 @@ fn main() -> Result<()> {
                 ),
         )
         .child(Text::muted("Measuring frame times..."))
-        .child(Text::muted(&format!(
+        .child(Text::muted(format!(
             "Will auto-exit after {} seconds",
             test_duration_secs
         )));

@@ -351,7 +351,7 @@ fn main() -> Result<()> {
         let mut tree = vstack();
 
         for (i, file) in self.files.iter().enumerate() {
-            let icon = if file.is_dir { "" } else { "" };
+            let icon = if file.is_dir { "📁 " } else { "📄 " };
             let modified = if file.modified { " [+]" } else { "" };
             let name = format!("{}{}{}", icon, file.name, modified);
 

@@ -50,7 +50,7 @@ impl ThemeSwitcherState {
 
     fn handle_key(&mut self, key: &Key) -> bool {
         match key {
-            Key::Char('q') => return false,
+            Key::Char('q') => false,
             Key::Char('t') | Key::Tab => {
                 cycle_theme();
                 true
@@ -90,10 +90,10 @@ impl View for ThemeSwitcherState {
             .child(
                 hstack()
                     .gap(1)
-                    .child(badge(&format!("Primary")).variant(BadgeVariant::Primary))
-                    .child(badge(&format!("Success")).variant(BadgeVariant::Success))
-                    .child(badge(&format!("Warning")).variant(BadgeVariant::Warning))
-                    .child(badge(&format!("Error")).variant(BadgeVariant::Error)),
+                    .child(badge("Primary".to_string()).variant(BadgeVariant::Primary))
+                    .child(badge("Success".to_string()).variant(BadgeVariant::Success))
+                    .child(badge("Warning".to_string()).variant(BadgeVariant::Warning))
+                    .child(badge("Error".to_string()).variant(BadgeVariant::Error)),
             )
             .child(divider())
             .child(

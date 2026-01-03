@@ -288,7 +288,7 @@ impl Gallery {
 
         Border::rounded()
             .child(list)
-            .title(&format!(" {} Widgets ", cat.name))
+            .title(format!(" {} Widgets ", cat.name))
     }
 
     fn render_preview(&self) -> impl View {
