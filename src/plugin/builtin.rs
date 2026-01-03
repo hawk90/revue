@@ -78,7 +78,7 @@ impl Plugin for LoggerPlugin {
     fn on_tick(&mut self, ctx: &mut PluginContext, _delta: Duration) -> crate::Result<()> {
         self.tick_count += 1;
 
-        if self.verbose && self.tick_count % self.log_interval == 0 {
+        if self.verbose && self.tick_count.is_multiple_of(self.log_interval) {
             ctx.log(&format!("Tick #{}", self.tick_count));
         }
 

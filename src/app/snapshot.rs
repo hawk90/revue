@@ -201,7 +201,7 @@ impl Snapshot {
 
         match expected {
             Some(expected) if expected == *actual => SnapshotResult::Match,
-            Some(expected) if self.config.update_snapshots => {
+            Some(_) if self.config.update_snapshots => {
                 fs::write(&path, actual).ok();
                 SnapshotResult::Created
             }

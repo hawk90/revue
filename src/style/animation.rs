@@ -856,7 +856,7 @@ impl KeyframeAnimation {
             AnimationDirection::Normal => false,
             AnimationDirection::Reverse => true,
             AnimationDirection::Alternate => self.current_iteration % 2 == 1,
-            AnimationDirection::AlternateReverse => self.current_iteration % 2 == 0,
+            AnimationDirection::AlternateReverse => self.current_iteration.is_multiple_of(2),
         };
 
         // Apply easing and direction
