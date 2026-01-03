@@ -726,7 +726,11 @@ impl<'a> RenderContext<'a> {
         let filled = (config.width as f32 * progress).round() as u16;
 
         for i in 0..config.width {
-            let ch = if i < filled { config.filled_char } else { config.empty_char };
+            let ch = if i < filled {
+                config.filled_char
+            } else {
+                config.empty_char
+            };
             self.draw_char(config.x + i, config.y, ch, config.fg);
         }
     }

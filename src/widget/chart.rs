@@ -538,7 +538,14 @@ impl Chart {
 
     /// Draw line between two points using Bresenham's algorithm
     fn draw_line(&self, ctx: &mut RenderContext, seg: &LineSegment, bounds: &Rect) {
-        let LineSegment { x0, y0, x1, y1, color, style } = *seg;
+        let LineSegment {
+            x0,
+            y0,
+            x1,
+            y1,
+            color,
+            style,
+        } = *seg;
 
         let dx = (x1 as i32 - x0 as i32).abs();
         let dy = (y1 as i32 - y0 as i32).abs();
@@ -828,7 +835,12 @@ impl View for Chart {
             }
 
             // Map all points to screen coordinates
-            let chart_area = (chart_bounds.x, chart_bounds.y, chart_bounds.width, chart_bounds.height);
+            let chart_area = (
+                chart_bounds.x,
+                chart_bounds.y,
+                chart_bounds.width,
+                chart_bounds.height,
+            );
             let screen_points: Vec<(u16, u16)> = series
                 .data
                 .iter()
@@ -850,7 +862,10 @@ impl View for Chart {
                             let (x0, y0) = window[0];
                             let (x1, y1) = window[1];
                             let seg = LineSegment {
-                                x0, y0, x1, y1,
+                                x0,
+                                y0,
+                                x1,
+                                y1,
                                 color: series.color,
                                 style: series.line_style,
                             };
@@ -863,13 +878,19 @@ impl View for Chart {
                             let (x1, y1) = window[1];
                             // Horizontal then vertical
                             let horiz = LineSegment {
-                                x0, y0, x1, y1: y0,
+                                x0,
+                                y0,
+                                x1,
+                                y1: y0,
                                 color: series.color,
                                 style: series.line_style,
                             };
                             self.draw_line(ctx, &horiz, &chart_bounds);
                             let vert = LineSegment {
-                                x0: x1, y0, x1, y1,
+                                x0: x1,
+                                y0,
+                                x1,
+                                y1,
                                 color: series.color,
                                 style: series.line_style,
                             };
@@ -882,13 +903,19 @@ impl View for Chart {
                             let (x1, y1) = window[1];
                             // Vertical then horizontal
                             let vert = LineSegment {
-                                x0, y0, x1: x0, y1,
+                                x0,
+                                y0,
+                                x1: x0,
+                                y1,
                                 color: series.color,
                                 style: series.line_style,
                             };
                             self.draw_line(ctx, &vert, &chart_bounds);
                             let horiz = LineSegment {
-                                x0, y0: y1, x1, y1,
+                                x0,
+                                y0: y1,
+                                x1,
+                                y1,
                                 color: series.color,
                                 style: series.line_style,
                             };

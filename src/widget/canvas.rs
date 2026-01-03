@@ -606,13 +606,7 @@ impl<'a> DrawContext<'a> {
     }
 
     /// Fill a rectangle
-    pub fn fill_rect(
-        &mut self,
-        rect: Rect,
-        ch: char,
-        fg: Option<Color>,
-        bg: Option<Color>,
-    ) {
+    pub fn fill_rect(&mut self, rect: Rect, ch: char, fg: Option<Color>, bg: Option<Color>) {
         for dy in 0..rect.height {
             for dx in 0..rect.width {
                 if rect.x + dx < self.area.width && rect.y + dy < self.area.height {
@@ -685,7 +679,12 @@ impl<'a> DrawContext<'a> {
 
     /// Clear the canvas
     pub fn clear(&mut self) {
-        self.fill_rect(Rect::new(0, 0, self.area.width, self.area.height), ' ', None, None);
+        self.fill_rect(
+            Rect::new(0, 0, self.area.width, self.area.height),
+            ' ',
+            None,
+            None,
+        );
     }
 
     /// Draw a point/dot
@@ -915,7 +914,12 @@ mod tests {
             area,
         };
 
-        ctx.fill_rect(Rect::new(3, 3, 5, 3), '#', Some(Color::RED), Some(Color::BLACK));
+        ctx.fill_rect(
+            Rect::new(3, 3, 5, 3),
+            '#',
+            Some(Color::RED),
+            Some(Color::BLACK),
+        );
     }
 
     #[test]

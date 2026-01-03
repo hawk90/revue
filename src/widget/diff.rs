@@ -353,7 +353,12 @@ impl DiffViewer {
         is_left: bool,
         layout: &LineLayout,
     ) {
-        let LineLayout { x, y, line_num_width, content_width } = *layout;
+        let LineLayout {
+            x,
+            y,
+            line_num_width,
+            content_width,
+        } = *layout;
         let (content, line_num, bg) = if is_left {
             (
                 &line.left,
