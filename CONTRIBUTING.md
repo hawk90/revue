@@ -207,5 +207,4 @@ Version is determined automatically based on Conventional Commits:
 ## Need Help?
 
 - Open an issue on [GitHub Issues](https://github.com/hawk90/revue/issues)
-- Ask questions in [GitHub Discussions](https://github.com/hawk90/revue/discussions)
 - Look for issues labeled `good first issue` to get started
