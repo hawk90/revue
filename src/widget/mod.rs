@@ -214,6 +214,7 @@ mod richlog;
 mod richtext;
 mod screen;
 mod scroll;
+mod search_bar;
 mod select;
 mod selection_list;
 mod skeleton;
@@ -246,6 +247,7 @@ mod tree;
 mod vim;
 mod virtuallist;
 mod waveline;
+mod zen;
 #[macro_use]
 mod macros;
 
@@ -334,6 +336,7 @@ pub use richlog::{log_entry, richlog, LogEntry, LogLevel, RichLog};
 pub use richtext::{markup, rich_text, span, style, RichText, Span, Style};
 pub use screen::{screen, screen_stack, Screen, ScreenStack, ScreenTransition};
 pub use scroll::{scroll_view, ScrollView};
+pub use search_bar::{search_bar, SearchBar};
 pub use select::{select, Select};
 pub use selection_list::{
     selection_item, selection_list, SelectionItem, SelectionList, SelectionStyle,
@@ -393,6 +396,7 @@ pub use waveline::{
     area_wave, audio_waveform, sawtooth_wave, signal_wave, sine_wave, spectrum, square_wave,
     waveline, Interpolation, WaveStyle, Waveline,
 };
+pub use zen::{zen, zen_dark, zen_light, ZenMode};
 
 // Re-export common widget constructors
 
