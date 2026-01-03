@@ -342,7 +342,7 @@ fn main() -> Result<()> {
     println!("Demonstrates WorkerChannel with progress updates.\n");
 
     let mut app = App::builder().build();
-    let mut demo = ProgressDemo::new();
+    let demo = ProgressDemo::new();
 
     app.run(demo, |event, demo, _app| match event {
         Event::Key(key_event) => demo.handle_key(&key_event.key),
