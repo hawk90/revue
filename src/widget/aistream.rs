@@ -443,7 +443,7 @@ impl View for AiStream {
             let mut cell = Cell::new(cursor_char);
             cell.fg = Some(self.cursor_color);
             // Blink effect
-            if self.thinking_frame % 2 == 0 {
+            if self.thinking_frame.is_multiple_of(2) {
                 ctx.buffer.set(area.x + x, area.y + y, cell);
             }
         }

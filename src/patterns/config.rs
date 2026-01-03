@@ -281,9 +281,14 @@ mod tests {
     #[test]
     fn test_config_path() {
         let path = TestConfig::config_path().unwrap();
-        assert!(path
-            .to_string_lossy()
-            .contains(".config/revue-test/config.toml"));
+        let path_str = path.to_string_lossy();
+        // Unix: .config/revue-test/config.toml
+        // Windows: AppData\Roaming\revue-test\config.toml
+        assert!(
+            path_str.contains("revue-test") && path_str.ends_with("config.toml"),
+            "Unexpected path: {}",
+            path_str
+        );
     }
 
     #[test]
