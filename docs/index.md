@@ -60,6 +60,9 @@ impl View for Counter {
 | Beginner | [Getting Started](tutorials/01-getting-started.md) | Install and create your first app |
 | Beginner | [Counter App](tutorials/02-counter.md) | Learn state management |
 | Intermediate | [Todo App](tutorials/03-todo.md) | Build a full-featured todo list |
+| Intermediate | [Reactive State](tutorials/04-reactive.md) | Signal, Computed, and Effect |
+| Intermediate | [Styling](tutorials/05-styling.md) | CSS styling and theming |
+| Intermediate | [Forms](tutorials/06-forms.md) | Form handling with validation |
 
 ---
 

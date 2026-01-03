@@ -1,68 +1,48 @@
-# Revue Tutorials
+# Tutorials
 
-Learn Revue step by step with these hands-on tutorials.
+Learn Revue step by step.
 
 ## Tutorial Series
 
-| # | Tutorial | Time | Description |
-|---|----------|------|-------------|
-| 1 | [Getting Started](./01-getting-started.md) | 5 min | Install Revue and create your first app |
-| 2 | [Counter App](./02-counter.md) | 15 min | Learn state management with a counter |
-| 3 | [Todo App](./03-todo.md) | 30 min | Build a full-featured todo list |
-| 4 | [Dashboard App](../../examples/dashboard.rs) | Example | Multi-panel dashboard with charts |
-| 5 | [IDE App](../../examples/ide.rs) | Example | Full-featured IDE interface |
-
-## Quick Start
-
-```bash
-# Create a new project
-cargo new my-revue-app
-cd my-revue-app
-
-# Add Revue
-cargo add revue
-
-# Run the example
-cargo run
-```
+| # | Tutorial | Description |
+|---|----------|-------------|
+| 1 | [Getting Started](./01-getting-started.md) | Install and create your first app |
+| 2 | [Counter App](./02-counter.md) | Build an interactive counter |
+| 3 | [Todo App](./03-todo.md) | Build a full-featured todo list |
+| 4 | [Reactive State](./04-reactive.md) | Signal, Computed, and Effect |
+| 5 | [Styling](./05-styling.md) | CSS styling and theming |
+| 6 | [Forms](./06-forms.md) | Form handling with validation |
 
 ## Learning Path
 
 ### Beginner
-1. Start with [Getting Started](./01-getting-started.md)
-2. Build the [Counter App](./02-counter.md)
-3. Read the [Styling Guide](../guides/styling.md)
+
+1. [Getting Started](./01-getting-started.md)
+2. [Counter App](./02-counter.md)
+3. [Styling Guide](../guides/styling.md)
 
 ### Intermediate
-1. Build the [Todo App](./03-todo.md)
-2. Learn about [State Management](../guides/state.md)
-3. Explore the [Widget Gallery](../../examples/gallery.rs)
+
+1. [Todo App](./03-todo.md)
+2. [Reactive State](./04-reactive.md)
+3. [Forms](./06-forms.md)
 
 ### Advanced
-1. Build complex dashboards
-2. Learn about [Testing](../guides/testing.md)
-3. Master [Performance](../guides/performance.md) optimization
-4. Implement [Accessibility](../guides/accessibility.md)
 
-## Example Apps
+1. [Testing Guide](../guides/testing.md)
+2. [Performance Guide](../guides/performance.md)
+3. [Accessibility Guide](../guides/accessibility.md)
 
-Explore the `examples/` directory for more complete applications:
+## Examples
+
+See the [examples directory](../../examples/) for complete applications:
 
 ```bash
-# Widget gallery - see all widgets
-cargo run --example gallery
-
-# Dashboard example
-cargo run --example dashboard
-
-# Interactive todo
-cargo run --example reactive_todo
-
-# Text editor
-cargo run --example text_editor
-
-# IDE-like interface
-cargo run --example ide
+cargo run --example hello_world   # Minimal app
+cargo run --example counter       # Reactive counter
+cargo run --example todo          # Todo with filtering
+cargo run --example dashboard     # System monitoring
+cargo run --example ide           # Full IDE interface
 ```
 
 ## Getting Help
