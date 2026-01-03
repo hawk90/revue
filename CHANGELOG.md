@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0](https://github.com/hawk90/revue/compare/v1.0.8...v2.0.0) (2026-01-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* v2.0.0 - Optional deps, widgets, and maintenance CI ([#26](https://github.com/hawk90/revue/issues/26))
+
+### Features
+
+* v2.0.0 - Optional deps, widgets, and maintenance CI ([#26](https://github.com/hawk90/revue/issues/26)) ([4f39f03](https://github.com/hawk90/revue/commit/4f39f036ae0d8da7b9401b9b7298908a847f275b))
+
+
+### Bug Fixes
+
+* **ci:** add commitlint config and update typos ignore list ([#30](https://github.com/hawk90/revue/issues/30)) ([c6c6457](https://github.com/hawk90/revue/commit/c6c6457112a02ad80f92b7151a50bb3a095f7d73))
+* clippy warnings and format issues ([#28](https://github.com/hawk90/revue/issues/28)) ([f555351](https://github.com/hawk90/revue/commit/f555351a7d0265dce24313429540d32100b8fa26))
+
 ## [1.0.8](https://github.com/hawk90/revue/compare/v1.0.7...v1.0.8) (2026-01-03)
 
 
