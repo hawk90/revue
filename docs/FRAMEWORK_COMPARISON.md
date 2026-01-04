@@ -154,7 +154,7 @@
 | Feature | Revue | Textual | Ratatui |
 |---------|-------|---------|---------|
 | Flexbox | ✅ (Taffy) | ✅ | ❌ |
-| Grid | ❌ | ✅ | ❌ |
+| Grid | ✅ | ✅ | ❌ |
 | Constraint | ❌ | ❌ | ✅ (Cassowary) |
 | Linear | ✅ | ✅ | ❌ |
 | Dock | ❌ | ✅ | ❌ |
@@ -216,7 +216,7 @@
 | Word navigation | ✅ | ✅ |
 | Line numbers | ✅ | ✅ |
 | Soft wrap | ✅ | ✅ |
-| Syntax highlight | ❌ | ✅ |
+| Syntax highlight | ✅ | ✅ |
 | Multiple cursors | ❌ | ❌ |
 | Find/Replace | ❌ | ❌ |
 
@@ -264,22 +264,26 @@ Features that Revue has but competitors don't:
 
 ### 9.1 Critical Gaps (vs Textual)
 
-| Gap | Impact | Difficulty |
-|-----|--------|------------|
-| Input: Ctrl+C/V copy-paste | High | Easy |
-| Input: Selection with Shift | High | Medium |
-| DataGrid: Virtual scroll | High | Hard |
-| DataGrid: Column resize | Medium | Medium |
-| Syntax highlighting | Medium | Hard |
+| Gap | Impact | Difficulty | Status |
+|-----|--------|------------|--------|
+| ~~Input: Ctrl+C/V copy-paste~~ | ~~High~~ | ~~Easy~~ | ✅ Done |
+| ~~Input: Selection with Shift~~ | ~~High~~ | ~~Medium~~ | ✅ Done |
+| DataGrid: Virtual scroll | High | Hard | ❌ TODO |
+| DataGrid: Column resize | Medium | Medium | ❌ TODO |
+| DataGrid: Column reorder | Medium | Medium | ❌ TODO |
+| DataGrid: Column freeze | Medium | Medium | ❌ TODO |
+| ~~Syntax highlighting~~ | ~~Medium~~ | ~~Hard~~ | ✅ Done |
+| TextArea: Multiple cursors | Low | Hard | ❌ TODO |
+| TextArea: Find/Replace | Medium | Medium | ❌ TODO |
 
 ### 9.2 Nice to Have (vs Textual)
 
-| Feature | Impact | Difficulty |
-|---------|--------|------------|
-| CSS Grid layout | Medium | Medium |
-| Worker system | Medium | Hard |
-| Web deployment | Low | Very Hard |
-| Screen stack | Low | Medium |
+| Feature | Impact | Difficulty | Status |
+|---------|--------|------------|--------|
+| ~~CSS Grid layout~~ | ~~Medium~~ | ~~Medium~~ | ✅ Done |
+| Worker system | Medium | Hard | ✅ Done |
+| Web deployment | Low | Very Hard | ❌ TODO |
+| Screen stack | Low | Medium | ❌ TODO |
 
 ---
 
@@ -293,16 +297,15 @@ Features that Revue has but competitors don't:
 - **Unique widgets** (Terminal, FilePicker, Timeline, etc.)
 
 ### Revue Weaknesses
-- **Input widget** needs selection/copy-paste
-- **DataGrid** needs virtual scrolling for large data
-- **No syntax highlighting** for TextArea
+- **DataGrid** needs virtual scrolling, column resize/reorder/freeze
+- **TextArea** needs multiple cursors, find/replace
 - **No web deployment** (Textual has textual-serve)
 
 ### Overall Assessment
 
 | vs Framework | Revue Score | Notes |
 |--------------|-------------|-------|
-| vs Textual | **80%** | Missing: advanced Input, DataGrid virtual scroll |
+| vs Textual | **90%** | Missing: DataGrid advanced features, TextArea find/replace |
 | vs Ratatui | **120%** | More widgets, CSS styling |
 | vs Cursive | **110%** | Modern API, CSS styling |
 | vs Bubbletea | **130%** | More widgets, better styling |

@@ -1,0 +1,15 @@
+coverage:
+  status:
+    project:
+      default:
+        # Allow 1% coverage drop
+        threshold: 1%
+    patch:
+      default:
+        # New code should have at least 50% coverage
+        target: 50%
+
+comment:
+  layout: "header, diff, flags, files"
+  behavior: default
+  require_changes: true
