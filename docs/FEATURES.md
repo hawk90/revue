@@ -19,9 +19,10 @@
 ### External CSS Files
 
 ```rust
-App::new()
+let mut app = App::builder()
     .style("styles.css")        // Main stylesheet
     .style("theme-dark.css")    // Additional styles
+    .build();
 ```
 
 ### Selectors
@@ -583,17 +584,19 @@ revue dev --watch
 ```
 
 ```rust
-App::new()
+let mut app = App::builder()
     .style("styles.css")
     .hot_reload(true)  // Enable in dev
+    .build();
 ```
 
 ### Devtools
 
 ```rust
 // Enable devtools (Ctrl+Shift+D)
-App::new()
+let mut app = App::builder()
     .devtools(true)
+    .build();
 ```
 
 **Features:**
@@ -605,24 +608,25 @@ App::new()
 ### Testing
 
 ```rust
-#[tokio::test]
-async fn test_counter() {
-    let app = App::new().mount(counter_view);
+use revue::testing::{TestApp, TestPilot};
 
-    // Simulate user interaction
-    let pilot = app.pilot();
+#[test]
+fn test_counter() {
+    let mut app = TestApp::new(Counter::new());
 
-    pilot.press('j').await;  // Increment
-    pilot.press('j').await;
+    // Simulate key presses
+    app.press_key(Key::Up);
+    app.press_key(Key::Up);
 
-    // Assert state
-    assert_eq!(pilot.query(".count").text(), "Count: 2");
+    // Render and check output
+    let output = app.render_to_string();
+    assert!(output.contains("Count: 2"));
 }
 
 #[test]
 fn test_snapshot() {
-    let widget = counter_view();
-    insta::assert_snapshot!(widget.render_to_string());
+    let mut app = TestApp::new(Counter::new());
+    insta::assert_snapshot!(app.render_to_string());
 }
 ```
 
@@ -661,8 +665,9 @@ nerd_font = true
 ### Applying Themes
 
 ```rust
-App::new()
-    .theme("themes/dark.toml")
+let mut app = App::builder()
+    .style("themes/dark.css")
+    .build();
 ```
 
 ### Runtime Theme Switching
@@ -708,10 +713,18 @@ input()
 ### Global Shortcuts
 
 ```rust
-App::new()
-    .on_key('q', || app.quit())
-    .on_key(Ctrl('p'), || show_command_palette())
-    .on_key(Ctrl('s'), || save())
+app.run(view, |event, view, app| {
+    if let Event::Key(key) = event {
+        match (key.key, key.ctrl) {
+            (Key::Char('q'), false) => { app.quit(); true }
+            (Key::Char('p'), true) => { show_command_palette(); true }
+            (Key::Char('s'), true) => { save(); true }
+            _ => false,
+        }
+    } else {
+        false
+    }
+})
 ```
 
 ### Widget Shortcuts

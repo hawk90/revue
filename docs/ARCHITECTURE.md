@@ -315,9 +315,9 @@ src/app/
 **App Lifecycle:**
 
 ```
-App::new() → .style() → .mount() → .run()
-                │           │         │
-          load CSS    root view   event loop
+App::builder() → .style() → .build() → .run(view, handler)
+                     │          │              │
+               load CSS    create App     event loop
 ```
 
 **Event Loop:**

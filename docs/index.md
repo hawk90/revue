@@ -20,21 +20,44 @@ cargo add revue
 use revue::prelude::*;
 
 fn main() -> Result<()> {
-    App::new()
-        .stylesheet("styles.css")
-        .run(Counter::default())
+    let mut app = App::builder()
+        .style("styles.css")
+        .build();
+
+    let counter = Counter::new();
+    app.run(counter, |event, counter, _app| {
+        if let Event::Key(key) = event {
+            counter.handle_key(&key.key)
+        } else {
+            false
+        }
+    })
 }
 
-#[derive(Default)]
 struct Counter {
     count: Signal<i32>,
 }
 
+impl Counter {
+    fn new() -> Self {
+        Self { count: signal(0) }
+    }
+
+    fn handle_key(&mut self, key: &Key) -> bool {
+        match key {
+            Key::Up => { self.count.update(|n| *n += 1); true }
+            Key::Down => { self.count.update(|n| *n -= 1); true }
+            _ => false,
+        }
+    }
+}
+
 impl View for Counter {
-    fn view(&self) -> impl View {
+    fn render(&self, ctx: &mut RenderContext) {
         vstack()
-            .child(text!("Count: {}", self.count.get()))
-            .child(button("+").on_click(|| self.count.update(|n| n + 1)))
+            .child(Text::new(format!("Count: {}", self.count.get())))
+            .child(Text::new("↑/↓ to change"))
+            .render(ctx);
     }
 }
 ```
