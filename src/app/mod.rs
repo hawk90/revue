@@ -78,6 +78,8 @@ pub struct App {
     needs_dom_rebuild: bool,
     /// Plugin registry
     plugins: crate::plugin::PluginRegistry,
+    /// Whether devtools are enabled for this app instance
+    devtools_enabled: bool,
     /// Hot reload watcher
     #[cfg(feature = "hot-reload")]
     hot_reload: Option<HotReload>,
@@ -94,6 +96,7 @@ impl App {
         stylesheet: StyleSheet,
         mouse_capture: bool,
         plugins: crate::plugin::PluginRegistry,
+        devtools_enabled: bool,
     ) -> Self {
         let (width, height) = initial_size;
         Self {
@@ -109,6 +112,7 @@ impl App {
             needs_layout_rebuild: true, // Initial render needs full layout build
             needs_dom_rebuild: true,  // Initial render needs DOM root creation
             plugins,
+            devtools_enabled,
             #[cfg(feature = "hot-reload")]
             hot_reload: None,
             #[cfg(feature = "hot-reload")]
@@ -123,6 +127,7 @@ impl App {
         stylesheet: StyleSheet,
         mouse_capture: bool,
         plugins: crate::plugin::PluginRegistry,
+        devtools_enabled: bool,
         hot_reload: Option<HotReload>,
         style_paths: Vec<PathBuf>,
     ) -> Self {
@@ -140,6 +145,7 @@ impl App {
             needs_layout_rebuild: true,
             needs_dom_rebuild: true,
             plugins,
+            devtools_enabled,
             hot_reload,
             style_paths,
         }
@@ -545,6 +551,27 @@ impl App {
         self.running
     }
 
+    /// Check if devtools are enabled for this app instance
+    pub fn is_devtools_enabled(&self) -> bool {
+        self.devtools_enabled
+    }
+
+    /// Enable devtools for this app instance
+    pub fn enable_devtools(&mut self) {
+        self.devtools_enabled = true;
+    }
+
+    /// Disable devtools for this app instance
+    pub fn disable_devtools(&mut self) {
+        self.devtools_enabled = false;
+    }
+
+    /// Toggle devtools for this app instance
+    pub fn toggle_devtools(&mut self) -> bool {
+        self.devtools_enabled = !self.devtools_enabled;
+        self.devtools_enabled
+    }
+
     /// Get mutable access to the DOM renderer
     pub fn dom_renderer(&mut self) -> &mut DomRenderer {
         &mut self.dom
@@ -608,6 +635,7 @@ mod tests {
             StyleSheet::new(),
             false,
             crate::plugin::PluginRegistry::new(),
+            false, // devtools_enabled
         )
     }
 
@@ -728,12 +756,14 @@ mod tests {
             StyleSheet::new(),
             true,
             crate::plugin::PluginRegistry::new(),
+            false, // devtools_enabled
         );
         assert!(!app.running);
         assert!(app.needs_force_redraw);
         assert!(app.needs_layout_rebuild);
         assert!(app.needs_dom_rebuild);
         assert!(app.mouse_capture);
+        assert!(!app.devtools_enabled);
     }
 
     #[test]
@@ -743,12 +773,33 @@ mod tests {
             StyleSheet::new(),
             false,
             crate::plugin::PluginRegistry::new(),
+            false, // devtools_enabled
         );
         assert_eq!(app.buffers[0].width(), 120);
         assert_eq!(app.buffers[0].height(), 40);
         assert_eq!(app.buffers[1].width(), 120);
         assert_eq!(app.buffers[1].height(), 40);
         assert_eq!(app.current_buffer, 0);
+    }
+
+    #[test]
+    fn test_devtools_methods() {
+        let mut app = create_test_app();
+        assert!(!app.is_devtools_enabled());
+
+        app.enable_devtools();
+        assert!(app.is_devtools_enabled());
+
+        app.disable_devtools();
+        assert!(!app.is_devtools_enabled());
+
+        let result = app.toggle_devtools();
+        assert!(result);
+        assert!(app.is_devtools_enabled());
+
+        let result = app.toggle_devtools();
+        assert!(!result);
+        assert!(!app.is_devtools_enabled());
     }
 
     #[test]

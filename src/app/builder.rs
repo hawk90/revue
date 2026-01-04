@@ -111,11 +111,6 @@ impl AppBuilder {
             log_warn!("Plugin initialization failed: {}", e);
         }
 
-        // Enable devtools if requested
-        if self.devtools {
-            crate::devtools::enable_devtools();
-        }
-
         // Set up hot reload if enabled and there are style paths
         #[cfg(feature = "hot-reload")]
         let hot_reload = if self.hot_reload && !self.style_paths.is_empty() {
@@ -143,6 +138,7 @@ impl AppBuilder {
             self.stylesheet,
             self.mouse_capture,
             self.plugins,
+            self.devtools,
             hot_reload,
             self.style_paths,
         );
@@ -153,6 +149,7 @@ impl AppBuilder {
             self.stylesheet,
             self.mouse_capture,
             self.plugins,
+            self.devtools,
         )
     }
 }
@@ -299,12 +296,24 @@ mod tests {
     #[test]
     fn test_builder_devtools_actually_enables() {
         // Build with devtools enabled
-        let _app = AppBuilder::new().devtools(true).build();
+        let app = AppBuilder::new().devtools(true).build();
 
         // Verify devtools was enabled by build()
         assert!(
-            crate::devtools::is_devtools_enabled(),
+            app.is_devtools_enabled(),
             "devtools should be enabled after build() with devtools(true)"
+        );
+    }
+
+    #[test]
+    fn test_builder_devtools_disabled_by_default_when_feature_off() {
+        // Build with devtools explicitly disabled
+        let app = AppBuilder::new().devtools(false).build();
+
+        // Verify devtools is disabled
+        assert!(
+            !app.is_devtools_enabled(),
+            "devtools should be disabled when devtools(false)"
         );
     }
 
