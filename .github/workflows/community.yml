@@ -80,4 +80,4 @@ jobs:
           stale-issue-label: stale
           stale-pr-label: stale
           exempt-issue-labels: "pinned,security,help wanted,good first issue"
-          exempt-pr-labels: "pinned,security,work in progress"
+          exempt-pr-labels: "pinned,security,work in progress,autorelease: pending"
