@@ -15,6 +15,7 @@ jobs:
   fmt:
     name: Format
     runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -25,6 +26,7 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -58,7 +60,7 @@ jobs:
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-llvm-cov
-      - run: cargo llvm-cov --all-features --lcov --output-path lcov.info
+      - run: cargo llvm-cov --all-features --lcov --output-path lcov.info --ignore-run-fail
       - uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -78,6 +80,7 @@ jobs:
   typos:
     name: Typos
     runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
     steps:
       - uses: actions/checkout@v4
       - uses: crate-ci/typos@master

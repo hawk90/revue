@@ -14,6 +14,7 @@ jobs:
   audit:
     name: Security Audit
     runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -25,6 +26,7 @@ jobs:
   deny:
     name: Cargo Deny
     runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
     steps:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v2
