@@ -62,6 +62,15 @@ impl DomRenderer {
         self.styles.clear();
     }
 
+    /// Get mutable access to the stylesheet (for hot reload)
+    pub fn stylesheet_mut(&mut self) -> &mut StyleSheet {
+        // Invalidate cached selectors when stylesheet might be modified
+        self.cached_selectors = None;
+        // Invalidate style cache
+        self.styles.clear();
+        &mut self.stylesheet
+    }
+
     /// Build DOM from a View hierarchy
     ///
     /// This method now performs incremental updates when possible:
@@ -957,5 +966,45 @@ mod tests {
             original_root_id, new_root_id,
             "Should create new node after invalidate"
         );
+    }
+
+    #[test]
+    fn test_stylesheet_mut_invalidates_cache() {
+        let css = r#"
+            App { color: #FF0000; }
+        "#;
+        let stylesheet = parse_css(css).unwrap();
+        let mut renderer = DomRenderer::with_stylesheet(stylesheet);
+
+        // Build tree and compute styles to populate caches
+        let root_id = renderer.tree.create_root(WidgetMeta::new("App").id("app"));
+        renderer.compute_styles_with_inheritance();
+
+        // Verify style was computed
+        assert!(renderer.styles.contains_key(&root_id));
+
+        // Get mutable stylesheet - should invalidate caches
+        let sheet = renderer.stylesheet_mut();
+        // Modify the stylesheet
+        let new_css = parse_css("App { color: #00FF00; }").unwrap();
+        sheet.merge(new_css);
+
+        // Caches should be invalidated
+        assert!(renderer.styles.is_empty());
+        assert!(renderer.cached_selectors.is_none());
+    }
+
+    #[test]
+    fn test_stylesheet_mut_returns_mutable_ref() {
+        let mut renderer = DomRenderer::new();
+        let original_rules_count = renderer.stylesheet_mut().rules.len();
+        assert_eq!(original_rules_count, 0);
+
+        // Add rules through mutable reference
+        let css = parse_css("Button { color: red; }").unwrap();
+        renderer.stylesheet_mut().merge(css);
+
+        // Verify rules were added
+        assert_eq!(renderer.stylesheet_mut().rules.len(), 1);
     }
 }

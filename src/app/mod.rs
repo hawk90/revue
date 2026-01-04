@@ -33,10 +33,14 @@ use crate::dom::DomRenderer;
 use crate::event::{Event, KeyEvent};
 use crate::layout::{LayoutEngine, Rect};
 use crate::render::{Buffer, Terminal};
-use crate::style::{StyleSheet, TransitionManager};
+use crate::style::{parse_css, StyleSheet, TransitionManager};
 use crate::widget::View;
 use std::io::stdout;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
+
+#[cfg(feature = "hot-reload")]
+use std::fs;
 
 /// Tick handler callback type
 pub type TickHandler<V> = Box<dyn FnMut(&mut V, Duration) -> bool>;
@@ -65,7 +69,7 @@ pub struct App {
     /// Last tick time for delta calculation
     last_tick: Instant,
     /// Whether to capture mouse events
-    mouse_capture: bool,
+    pub(crate) mouse_capture: bool,
     /// Request full screen redraw (clears diff cache)
     needs_force_redraw: bool,
     /// Track if layout tree needs full rebuild
@@ -74,10 +78,17 @@ pub struct App {
     needs_dom_rebuild: bool,
     /// Plugin registry
     plugins: crate::plugin::PluginRegistry,
+    /// Hot reload watcher
+    #[cfg(feature = "hot-reload")]
+    hot_reload: Option<HotReload>,
+    /// Style file paths for hot reload
+    #[cfg(feature = "hot-reload")]
+    style_paths: Vec<PathBuf>,
 }
 
 impl App {
     /// Create a new application with plugins.
+    #[allow(dead_code)] // Used conditionally based on features
     pub(crate) fn new_with_plugins(
         initial_size: (u16, u16),
         stylesheet: StyleSheet,
@@ -98,6 +109,39 @@ impl App {
             needs_layout_rebuild: true, // Initial render needs full layout build
             needs_dom_rebuild: true,  // Initial render needs DOM root creation
             plugins,
+            #[cfg(feature = "hot-reload")]
+            hot_reload: None,
+            #[cfg(feature = "hot-reload")]
+            style_paths: Vec::new(),
+        }
+    }
+
+    /// Create a new application with hot reload support.
+    #[cfg(feature = "hot-reload")]
+    pub(crate) fn new_with_hot_reload(
+        initial_size: (u16, u16),
+        stylesheet: StyleSheet,
+        mouse_capture: bool,
+        plugins: crate::plugin::PluginRegistry,
+        hot_reload: Option<HotReload>,
+        style_paths: Vec<PathBuf>,
+    ) -> Self {
+        let (width, height) = initial_size;
+        Self {
+            dom: DomRenderer::with_stylesheet(stylesheet),
+            layout: LayoutEngine::new(),
+            buffers: [Buffer::new(width, height), Buffer::new(width, height)],
+            current_buffer: 0,
+            running: false,
+            transitions: TransitionManager::new(),
+            last_tick: Instant::now(),
+            mouse_capture,
+            needs_force_redraw: true,
+            needs_layout_rebuild: true,
+            needs_dom_rebuild: true,
+            plugins,
+            hot_reload,
+            style_paths,
         }
     }
 
@@ -145,6 +189,17 @@ impl App {
         let reader = EventReader::new(FRAME_DURATION_60FPS);
 
         while self.running {
+            // Check for hot reload events
+            #[cfg(feature = "hot-reload")]
+            {
+                if let Some(should_reload) = self.check_hot_reload() {
+                    if should_reload {
+                        self.needs_force_redraw = true;
+                        self.draw(&view, &mut terminal, true)?;
+                    }
+                }
+            }
+
             let event = reader.read()?;
             let should_draw = self.handle_event(event, &mut view, &mut handler);
 
@@ -228,6 +283,57 @@ impl App {
         }
 
         should_draw || self.needs_force_redraw
+    }
+
+    /// Check for hot reload events and reload stylesheets if needed
+    #[cfg(feature = "hot-reload")]
+    fn check_hot_reload(&mut self) -> Option<bool> {
+        let hr = self.hot_reload.as_mut()?;
+
+        // Non-blocking check for events
+        if let Some(event) = hr.poll() {
+            match event {
+                HotReloadEvent::StylesheetChanged(path) => {
+                    crate::log_debug!("Hot reload: stylesheet changed {:?}", path);
+                    self.reload_stylesheet(&path);
+                    return Some(true);
+                }
+                HotReloadEvent::FileCreated(path) => {
+                    crate::log_debug!("Hot reload: file created {:?}", path);
+                    if self.style_paths.contains(&path) {
+                        self.reload_stylesheet(&path);
+                        return Some(true);
+                    }
+                }
+                HotReloadEvent::FileDeleted(path) => {
+                    crate::log_debug!("Hot reload: file deleted {:?}", path);
+                }
+                HotReloadEvent::Error(e) => {
+                    crate::log_warn!("Hot reload error: {}", e);
+                }
+            }
+        }
+        Some(false)
+    }
+
+    /// Reload a single stylesheet file
+    #[cfg(feature = "hot-reload")]
+    fn reload_stylesheet(&mut self, path: &PathBuf) {
+        match fs::read_to_string(path) {
+            Ok(content) => match parse_css(&content) {
+                Ok(sheet) => {
+                    self.dom.stylesheet_mut().merge(sheet);
+                    self.needs_force_redraw = true;
+                    crate::log_debug!("Hot reload: reloaded {:?}", path);
+                }
+                Err(e) => {
+                    crate::log_warn!("Hot reload: failed to parse CSS from {:?}: {}", path, e);
+                }
+            },
+            Err(e) => {
+                crate::log_warn!("Hot reload: failed to read {:?}: {}", path, e);
+            }
+        }
     }
 
     /// Draw the UI to the terminal

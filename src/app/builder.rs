@@ -6,6 +6,9 @@ use crate::style::{parse_css, StyleSheet};
 use std::fs;
 use std::path::PathBuf;
 
+#[cfg(feature = "hot-reload")]
+use super::HotReload;
+
 /// Builder for configuring and creating an App
 pub struct AppBuilder {
     stylesheet: StyleSheet,
@@ -108,6 +111,43 @@ impl AppBuilder {
             log_warn!("Plugin initialization failed: {}", e);
         }
 
+        // Enable devtools if requested
+        if self.devtools {
+            crate::devtools::enable_devtools();
+        }
+
+        // Set up hot reload if enabled and there are style paths
+        #[cfg(feature = "hot-reload")]
+        let hot_reload = if self.hot_reload && !self.style_paths.is_empty() {
+            match HotReload::new() {
+                Ok(mut hr) => {
+                    for path in &self.style_paths {
+                        if let Err(e) = hr.watch(path) {
+                            log_warn!("Failed to watch {:?} for hot reload: {}", path, e);
+                        }
+                    }
+                    Some(hr)
+                }
+                Err(e) => {
+                    log_warn!("Failed to initialize hot reload: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        #[cfg(feature = "hot-reload")]
+        return App::new_with_hot_reload(
+            initial_size,
+            self.stylesheet,
+            self.mouse_capture,
+            self.plugins,
+            hot_reload,
+            self.style_paths,
+        );
+
+        #[cfg(not(feature = "hot-reload"))]
         App::new_with_plugins(
             initial_size,
             self.stylesheet,
@@ -254,5 +294,61 @@ mod tests {
         let app = AppBuilder::new().build();
         // Should have initialized buffers
         assert!(app.buffers[0].width() > 0 || app.buffers[0].height() > 0);
+    }
+
+    #[test]
+    fn test_builder_devtools_actually_enables() {
+        // Build with devtools enabled
+        let _app = AppBuilder::new().devtools(true).build();
+
+        // Verify devtools was enabled by build()
+        assert!(
+            crate::devtools::is_devtools_enabled(),
+            "devtools should be enabled after build() with devtools(true)"
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "hot-reload")]
+    fn test_builder_hot_reload_with_style_path() {
+        use std::io::Write;
+
+        // Create a temporary CSS file
+        let temp_dir = tempfile::tempdir().unwrap();
+        let css_path = temp_dir.path().join("test.css");
+        let mut file = std::fs::File::create(&css_path).unwrap();
+        writeln!(file, "div {{ color: red; }}").unwrap();
+
+        // Build with hot reload enabled
+        let app = AppBuilder::new().hot_reload(true).style(&css_path).build();
+
+        // Verify hot reload is set up (app has hot_reload field)
+        assert!(app.hot_reload.is_some(), "hot_reload should be initialized");
+    }
+
+    #[test]
+    #[cfg(feature = "hot-reload")]
+    fn test_builder_hot_reload_disabled_no_watcher() {
+        // Build with hot reload disabled
+        let app = AppBuilder::new().hot_reload(false).build();
+
+        // Verify hot reload is not set up
+        assert!(
+            app.hot_reload.is_none(),
+            "hot_reload should be None when disabled"
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "hot-reload")]
+    fn test_builder_hot_reload_no_style_paths() {
+        // Build with hot reload enabled but no style paths
+        let app = AppBuilder::new().hot_reload(true).build();
+
+        // hot_reload should be None because there are no style paths to watch
+        assert!(
+            app.hot_reload.is_none(),
+            "hot_reload should be None when no style paths"
+        );
     }
 }
