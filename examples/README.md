@@ -27,7 +27,14 @@ cargo run --example <name>
 |---------|-------------|
 | [todo](todo.rs) | Todo app with filtering and persistence |
 | [reactive_form](reactive_form.rs) | Form validation with signals |
+| [form_validation](form_validation.rs) | Form field validation patterns |
 | [theme_switcher](theme_switcher.rs) | Runtime theme switching |
+
+## Styling & Animation
+
+| Example | Description |
+|---------|-------------|
+| [animations](animations.rs) | Tween, keyframes, spring physics, stagger |
 
 ## Applications
 
@@ -38,6 +45,14 @@ cargo run --example <name>
 | [data_explorer](data_explorer.rs) | Data grid with filtering/sorting |
 | [text_editor](text_editor.rs) | Full-featured text editor |
 | [ide](ide.rs) | Mini IDE application |
+| [slideshow](slideshow.rs) | Markdown presentation slides |
+
+## Workers & Async
+
+| Example | Description |
+|---------|-------------|
+| [worker_basic](worker_basic.rs) | Basic worker thread usage |
+| [worker_progress](worker_progress.rs) | Worker with progress reporting |
 
 ## Advanced
 
