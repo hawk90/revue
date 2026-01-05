@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0](https://github.com/hawk90/revue/compare/v2.1.0...v2.2.0) (2026-01-05)
+
+
+### Features
+
+* **examples:** add form_validation example ([#56](https://github.com/hawk90/revue/issues/56)) ([#105](https://github.com/hawk90/revue/issues/105)) ([d4f25c9](https://github.com/hawk90/revue/commit/d4f25c933f4f1891b5b578c1c1e5d9694ff402fc))
+
 ## [2.1.0](https://github.com/hawk90/revue/compare/v2.0.4...v2.1.0) (2026-01-05)
 
 
