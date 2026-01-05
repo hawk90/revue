@@ -12,10 +12,31 @@ env:
   RUSTFLAGS: -Dwarnings
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'src/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'tests/**'
+              - 'benches/**'
+              - 'examples/**'
+              - '.github/workflows/ci.yml'
+
   fmt:
     name: Format
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    if: github.actor != 'github-actions[bot]'
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -25,8 +46,9 @@ jobs:
 
   clippy:
     name: Clippy
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    if: github.actor != 'github-actions[bot]'
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -37,7 +59,12 @@ jobs:
 
   test:
     name: Test (${{ matrix.os }})
-    needs: [fmt, clippy]
+    needs: [changes, fmt, clippy]
+    if: |
+      always() &&
+      needs.changes.outputs.code == 'true' &&
+      (needs.fmt.result == 'success' || needs.fmt.result == 'skipped') &&
+      (needs.clippy.result == 'success' || needs.clippy.result == 'skipped')
     strategy:
       fail-fast: false
       matrix:
@@ -51,7 +78,12 @@ jobs:
 
   coverage:
     name: Coverage
-    needs: [fmt, clippy]
+    needs: [changes, fmt, clippy]
+    if: |
+      always() &&
+      needs.changes.outputs.code == 'true' &&
+      (needs.fmt.result == 'success' || needs.fmt.result == 'skipped') &&
+      (needs.clippy.result == 'success' || needs.clippy.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,7 +101,12 @@ jobs:
 
   msrv:
     name: MSRV (1.87)
-    needs: [fmt, clippy]
+    needs: [changes, fmt, clippy]
+    if: |
+      always() &&
+      needs.changes.outputs.code == 'true' &&
+      (needs.fmt.result == 'success' || needs.fmt.result == 'skipped') &&
+      (needs.clippy.result == 'success' || needs.clippy.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,7 +117,6 @@ jobs:
   typos:
     name: Typos
     runs-on: ubuntu-latest
-    if: github.actor != 'github-actions[bot]'
     steps:
       - uses: actions/checkout@v4
       - uses: crate-ci/typos@master
