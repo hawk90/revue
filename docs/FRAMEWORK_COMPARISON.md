@@ -4,7 +4,7 @@
 
 | Framework | Language | Rendering | Widgets | Styling | Maturity |
 |-----------|----------|-----------|---------|---------|----------|
-| **Revue** | Rust | Retained | 70+ | CSS | New |
+| **Revue** | Rust | Retained | 80+ | CSS | New |
 | **Textual** | Python | Retained | 35+ | TCSS | Mature |
 | **Ratatui** | Rust | Immediate | 13 | Inline | Mature |
 | **Cursive** | Rust | Retained | 40+ | TOML | Mature |

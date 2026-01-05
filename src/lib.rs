@@ -10,7 +10,7 @@
 //! | **CSS Styling** | External CSS files with variables, selectors, transitions, and hot reload |
 //! | **Flexbox Layout** | Powered by [taffy](https://github.com/DioxusLabs/taffy) for flexible layouts |
 //! | **Reactive State** | Vue-inspired Signal/Computed/Effect pattern |
-//! | **40+ Widgets** | Text, Button, Input, Table, Tree, Modal, Toast, Charts, and more |
+//! | **80+ Widgets** | Text, Button, Input, Table, Tree, Modal, Toast, Charts, and more |
 //! | **Markdown & Images** | Built-in markdown rendering with Kitty image protocol support |
 //! | **Developer Tools** | Hot reload, widget inspector, snapshot testing (Pilot) |
 //! | **Theming** | Built-in themes: Dracula, Nord, Monokai, Gruvbox, Catppuccin |
@@ -180,7 +180,7 @@
 //! | CSS Styling | ✅ | ❌ | ✅ | ❌ |
 //! | Reactive State | ✅ | ❌ | ✅ | ❌ |
 //! | Hot Reload | ✅ | ❌ | ✅ | ❌ |
-//! | Widget Count | 40+ | 13 | 35+ | 40+ |
+//! | Widget Count | 80+ | 13 | 35+ | 40+ |
 //! | Snapshot Testing | ✅ | ❌ | ❌ | ❌ |
 
 #![warn(missing_docs)]
@@ -303,7 +303,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// - [`layout::Rect`] - Rectangle geometry
 ///
 /// ## Widgets
-/// All 40+ widgets and their constructors are included.
+/// All 80+ widgets and their constructors are included.
 /// See [`widget`] module documentation for the full list.
 ///
 /// ## Testing

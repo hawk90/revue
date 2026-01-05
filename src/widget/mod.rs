@@ -1,6 +1,6 @@
 //! Widget system for Revue TUI framework.
 //!
-//! This module provides 70+ widgets for building terminal user interfaces.
+//! This module provides 80+ widgets for building terminal user interfaces.
 //! Widgets are organized into categories for easy discovery.
 //!
 //! # Widget Categories

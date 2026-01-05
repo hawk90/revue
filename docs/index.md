@@ -70,7 +70,7 @@ impl View for Counter {
 |:--|:--|
 | **CSS Styling** | Familiar CSS syntax with variables and animations |
 | **Reactive State** | Vue-inspired Signal/Computed/Effect system |
-| **70+ Widgets** | Inputs, tables, charts, markdown, and more |
+| **80+ Widgets** | Inputs, tables, charts, markdown, and more |
 | **Hot Reload** | See CSS changes instantly |
 | **Developer Tools** | Inspector, snapshot testing, profiler |
 
