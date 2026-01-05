@@ -12,12 +12,14 @@
 //! use revue::style::theme::{ThemeManager, Theme, Themes};
 //!
 //! let mut manager = ThemeManager::new();
+//! // Default theme is "dark", toggle switches between "dark" and "light"
 //! manager.register("dracula", Themes::dracula());
-//! manager.register("nord", Themes::nord());
 //!
 //! manager.set_theme("dracula");
 //! println!("Current: {}", manager.current().name);
 //!
+//! // toggle_dark_light() switches between dark_theme ("dark") and light_theme ("light")
+//! // Use set_dark_theme()/set_light_theme() to customize toggle targets
 //! manager.toggle_dark_light();
 //! ```
 
@@ -555,6 +557,9 @@ impl ThemeManager {
     }
 
     /// Toggle between dark and light theme
+    ///
+    /// Switches between `dark_theme` (default: "dark") and `light_theme` (default: "light").
+    /// Use [`set_dark_theme`] and [`set_light_theme`] to customize toggle targets.
     pub fn toggle_dark_light(&mut self) {
         let new_id = if self.current().is_dark() {
             self.light_theme.clone()

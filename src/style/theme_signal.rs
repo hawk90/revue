@@ -155,12 +155,15 @@ pub fn toggle_theme() {
 
 /// Cycle through available themes
 ///
+/// Cycles to the next registered theme. Note that the order is not guaranteed
+/// as themes are stored in a HashMap.
+///
 /// # Example
 ///
 /// ```rust,ignore
 /// use revue::style::cycle_theme;
 ///
-/// cycle_theme(); // Dark -> Dracula -> Nord -> ...
+/// cycle_theme(); // Switches to next registered theme
 /// ```
 pub fn cycle_theme() {
     let manager = get_theme_manager();
