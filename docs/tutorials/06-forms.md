@@ -1,329 +1,383 @@
 # Building Forms
 
-Learn how to build forms with validation using Revue's reactive system.
+Learn how to build forms with validation using Revue's reactive `FormState` API.
 
-## Basic Input
+## Using FormState
+
+Revue provides a high-level `FormState` API that handles reactive validation automatically:
 
 ```rust
 use revue::prelude::*;
+use revue::patterns::form::{FormState, Validators};
 
-struct Form {
-    name: Signal<String>,
-}
+let form = FormState::new()
+    .field("name", |f| f
+        .label("Name")
+        .placeholder("Enter your name")
+        .required()
+        .min_length(2)
+        .max_length(50))
+    .field("email", |f| f
+        .email()
+        .label("Email")
+        .required())
+    .field("age", |f| f
+        .number()
+        .label("Age")
+        .min_value(1)
+        .max_value(150))
+    .build();
 
-impl Form {
-    fn new() -> Self {
-        Self { name: signal(String::new()) }
-    }
+// Reactive validation - errors auto-update when values change
+form.set_value("email", "invalid");
+assert!(!form.is_valid());
 
-    fn handle_input(&mut self, c: char) {
-        self.name.update(|s| s.push(c));
-    }
-
-    fn handle_backspace(&mut self) {
-        self.name.update(|s| { s.pop(); });
-    }
-}
-
-impl View for Form {
-    fn render(&self, ctx: &mut RenderContext) {
-        let name = self.name.get();
-
-        vstack()
-            .child(Text::new("Name:"))
-            .child(
-                Border::single().child(
-                    Text::new(if name.is_empty() { "(empty)" } else { &name })
-                )
-            )
-            .render(ctx);
-    }
-}
+form.set_value("email", "user@example.com");
+// Validation automatically recalculates
 ```
 
-## Multiple Fields
+## FormField Builder
+
+Each field is configured using a builder pattern:
 
 ```rust
-#[derive(Clone, PartialEq)]
-enum Field {
-    Name,
-    Email,
-    Age,
-}
-
-struct Form {
-    name: Signal<String>,
-    email: Signal<String>,
-    age: Signal<String>,
-    focused: Signal<Field>,
-}
-
-impl Form {
-    fn new() -> Self {
-        Self {
-            name: signal(String::new()),
-            email: signal(String::new()),
-            age: signal(String::new()),
-            focused: signal(Field::Name),
-        }
-    }
-
-    fn handle_input(&mut self, c: char) {
-        match self.focused.get() {
-            Field::Name => self.name.update(|s| s.push(c)),
-            Field::Email => self.email.update(|s| s.push(c)),
-            Field::Age => {
-                if c.is_ascii_digit() {
-                    self.age.update(|s| s.push(c));
-                }
-            }
-        }
-    }
-
-    fn next_field(&mut self) {
-        self.focused.update(|f| {
-            *f = match f {
-                Field::Name => Field::Email,
-                Field::Email => Field::Age,
-                Field::Age => Field::Name,
-            };
-        });
-    }
-}
+.field("username", |f| f
+    .label("Username")           // Display label
+    .placeholder("Enter name")   // Placeholder text
+    .initial_value("default")    // Initial value
+    .required()                  // Required validator
+    .min_length(3)               // Minimum length
+    .max_length(20)              // Maximum length
+    .alphanumeric())             // Letters and numbers only
 ```
 
-## Reactive Validation
-
-Use `Computed` for real-time validation:
+### Field Types
 
 ```rust
-struct Form {
-    name: Signal<String>,
-    email: Signal<String>,
-
-    // Computed validations
-    name_valid: Computed<bool>,
-    email_valid: Computed<bool>,
-    form_valid: Computed<bool>,
-
-    // Computed error messages
-    name_error: Computed<Option<String>>,
-    email_error: Computed<Option<String>>,
-}
-
-impl Form {
-    fn new() -> Self {
-        let name = signal(String::new());
-        let email = signal(String::new());
-
-        // Name validation
-        let name_clone = name.clone();
-        let name_valid = computed(move || {
-            let n = name_clone.get();
-            !n.is_empty() && n.len() < 50
-        });
-
-        let name_clone = name.clone();
-        let name_error = computed(move || {
-            let n = name_clone.get();
-            if n.is_empty() {
-                Some("Name is required".into())
-            } else if n.len() >= 50 {
-                Some("Name too long".into())
-            } else {
-                None
-            }
-        });
-
-        // Email validation
-        let email_clone = email.clone();
-        let email_valid = computed(move || {
-            let e = email_clone.get();
-            e.contains('@') && e.len() > 3
-        });
-
-        let email_clone = email.clone();
-        let email_error = computed(move || {
-            let e = email_clone.get();
-            if e.is_empty() {
-                Some("Email is required".into())
-            } else if !e.contains('@') {
-                Some("Invalid email".into())
-            } else {
-                None
-            }
-        });
-
-        // Form-level validation
-        let name_valid_clone = name_valid.clone();
-        let email_valid_clone = email_valid.clone();
-        let form_valid = computed(move || {
-            name_valid_clone.get() && email_valid_clone.get()
-        });
-
-        Self {
-            name, email,
-            name_valid, email_valid, form_valid,
-            name_error, email_error,
-        }
-    }
-}
+.field("password", |f| f.password())    // Password field
+.field("email", |f| f.email())          // Email field
+.field("age", |f| f.number())           // Number field
+.field("bio", |f| f.textarea())         // Multi-line text
+.field("count", |f| f.integer())        // Integer field
 ```
 
-## Rendering Fields with Validation
+### Available Validators
 
 ```rust
-impl View for Form {
-    fn render(&self, ctx: &mut RenderContext) {
-        let name = self.name.get();
-        let name_valid = self.name_valid.get();
-        let name_error = self.name_error.get();
+.required()              // Field cannot be empty
+.email()                 // Must be valid email
+.min_length(n)           // Minimum character count
+.max_length(n)           // Maximum character count
+.min_value(n)            // Minimum numeric value
+.max_value(n)            // Maximum numeric value
+.numeric()               // Must contain only digits
+.integer()               // Must be a valid integer
+.alphanumeric()          // Letters and numbers only
+.no_whitespace()         // No spaces allowed
+.contains("@")           // Must contain substring
+.matches("password")     // Must match another field
+.custom(|v| ...)         // Custom validator function
+```
 
-        let email = self.email.get();
-        let email_valid = self.email_valid.get();
-        let email_error = self.email_error.get();
+## Password Confirmation
 
-        let form_valid = self.form_valid.get();
+Use the `matches()` validator for password confirmation:
 
-        vstack().gap(1)
-            // Name field
-            .child(
-                vstack()
-                    .child(
-                        hstack().gap(1)
-                            .child(Text::new(if name_valid { "✓" } else { "○" })
-                                .fg(if name_valid { Color::GREEN } else { Color::GRAY }))
-                            .child(Text::new("Name").bold())
-                    )
-                    .child(Border::single().child(Text::new(&name)))
-                    .child(if let Some(err) = name_error {
-                        Text::error(err)
-                    } else {
-                        Text::new("")
-                    })
-            )
-            // Email field
-            .child(
-                vstack()
-                    .child(
-                        hstack().gap(1)
-                            .child(Text::new(if email_valid { "✓" } else { "○" })
-                                .fg(if email_valid { Color::GREEN } else { Color::GRAY }))
-                            .child(Text::new("Email").bold())
-                    )
-                    .child(Border::single().child(Text::new(&email)))
-                    .child(if let Some(err) = email_error {
-                        Text::error(err)
-                    } else {
-                        Text::new("")
-                    })
-            )
-            // Submit status
-            .child(
-                if form_valid {
-                    Text::success("✓ Ready to submit")
-                } else {
-                    Text::error("✗ Please fix errors")
-                }
-            )
-            .render(ctx);
-    }
+```rust
+let form = FormState::new()
+    .field("password", |f| f
+        .password()
+        .label("Password")
+        .required()
+        .min_length(8))
+    .field("confirm", |f| f
+        .password()
+        .label("Confirm Password")
+        .required()
+        .matches("password"))  // Must match password field
+    .build();
+
+form.set_value("password", "secret123");
+form.set_value("confirm", "secret123");
+assert!(form.is_valid());
+
+form.set_value("confirm", "different");
+assert!(!form.is_valid());  // Automatically invalid
+```
+
+## Accessing Form Data
+
+```rust
+// Get a field
+if let Some(field) = form.get("email") {
+    let value = field.value();           // Current value
+    let errors = field.errors();         // Validation errors
+    let is_valid = field.is_valid();     // Field validity
+    let touched = field.is_touched();    // Has been edited
 }
+
+// Set values
+form.set_value("email", "new@example.com");
+
+// Get value directly
+let email = form.value("email");  // Option<String>
+
+// Get all values as HashMap
+let values = form.values();
+
+// Check overall validity
+if form.is_valid() {
+    // All fields pass validation
+}
+
+// Get all errors
+let all_errors = form.errors();
+```
+
+## Focus Management
+
+```rust
+// Set focus
+form.focus("email");
+
+// Navigate fields
+form.focus_next();  // Move to next field
+form.focus_prev();  // Move to previous field
+
+// Clear focus
+form.blur();
+
+// Get focused field
+let focused = form.focused();  // Option<String>
 ```
 
 ## Form Submission
 
 ```rust
-impl Form {
+impl MyForm {
     fn submit(&mut self) {
-        if self.form_valid.get() {
-            let name = self.name.get();
-            let email = self.email.get();
+        // submit() touches all fields and returns validity
+        if self.form.submit() {
+            let values = self.form.values();
 
             // Process form data
-            println!("Submitted: {} ({})", name, email);
+            println!("Name: {}", values.get("name").unwrap());
+            println!("Email: {}", values.get("email").unwrap());
 
-            // Clear form
-            self.name.set(String::new());
-            self.email.set(String::new());
-
-            announce_success("Form submitted");
+            // Reset form after successful submission
+            self.form.reset();
         } else {
-            announce_error("Please fix validation errors");
+            // Show validation errors
+            for (field, errors) in self.form.errors() {
+                for error in errors {
+                    println!("{}: {}", field, error.message());
+                }
+            }
         }
     }
 }
 ```
 
-## Event Handling
+## Rendering with FormState
 
 ```rust
-fn main() -> Result<()> {
-    let mut app = App::builder().build();
-    let form = Form::new();
+impl View for MyForm {
+    fn render(&self, ctx: &mut RenderContext) {
+        let mut children = vstack().gap(1);
 
-    app.run(form, |event, form, _app| {
-        match event {
-            Event::Key(key_event) => match key_event.key {
-                Key::Char(c) if !c.is_control() => {
-                    form.handle_input(c);
-                    true
+        // Render each field
+        for name in self.form.field_names() {
+            if let Some(field) = self.form.get(name) {
+                let is_focused = self.form.focused().as_deref() == Some(name);
+                let value = field.value();
+                let errors = field.errors();
+                let is_valid = field.is_valid();
+
+                let border = if is_focused {
+                    Border::double().fg(Color::CYAN)
+                } else {
+                    Border::single()
+                };
+
+                let status = if value.is_empty() {
+                    Text::new("○").fg(Color::GRAY)
+                } else if is_valid {
+                    Text::new("✓").fg(Color::GREEN)
+                } else {
+                    Text::new("✗").fg(Color::RED)
+                };
+
+                let mut field_view = vstack()
+                    .child(hstack().gap(1)
+                        .child(status)
+                        .child(Text::new(field.label).bold()))
+                    .child(Text::new(if value.is_empty() {
+                        &field.placeholder
+                    } else {
+                        &value
+                    }));
+
+                // Show errors if touched
+                if field.is_touched() {
+                    for error in errors {
+                        field_view = field_view.child(
+                            Text::error(format!("  → {}", error.message()))
+                        );
+                    }
                 }
-                Key::Backspace => {
-                    form.handle_backspace();
-                    true
-                }
-                Key::Tab => {
-                    form.next_field();
-                    true
-                }
-                Key::Enter => {
-                    form.submit();
-                    true
-                }
-                Key::Char('q') | Key::Esc => false,
-                _ => true,
-            },
-            _ => true,
+
+                children = children.child(border.child(field_view));
+            }
         }
-    })
+
+        // Submit button
+        children = children.child(
+            if self.form.is_valid() {
+                Text::success("[Enter] Submit")
+            } else {
+                Text::muted("[Enter] Submit (fix errors first)")
+            }
+        );
+
+        children.render(ctx);
+    }
+}
+```
+
+## Custom Validators
+
+```rust
+use revue::patterns::form::ValidationError;
+
+let form = FormState::new()
+    .field("username", |f| f
+        .required()
+        .custom(|value| {
+            if value.starts_with("admin") {
+                Err(ValidationError::new("Username cannot start with 'admin'"))
+            } else {
+                Ok(())
+            }
+        }))
+    .build();
+```
+
+## Complete Example
+
+```rust
+use revue::prelude::*;
+use revue::patterns::form::FormState;
+
+struct RegistrationForm {
+    form: FormState,
+}
+
+impl RegistrationForm {
+    fn new() -> Self {
+        let form = FormState::new()
+            .field("username", |f| f
+                .label("Username")
+                .required()
+                .min_length(3)
+                .max_length(20)
+                .alphanumeric())
+            .field("email", |f| f
+                .email()
+                .label("Email")
+                .required())
+            .field("password", |f| f
+                .password()
+                .label("Password")
+                .required()
+                .min_length(8))
+            .field("confirm", |f| f
+                .password()
+                .label("Confirm Password")
+                .required()
+                .matches("password"))
+            .build();
+
+        Self { form }
+    }
+
+    fn handle_key(&mut self, key: &Key) -> bool {
+        match key {
+            Key::Char(c) if !c.is_control() => {
+                if let Some(name) = self.form.focused() {
+                    let mut value = self.form.value(&name).unwrap_or_default();
+                    value.push(*c);
+                    self.form.set_value(&name, &value);
+                }
+                true
+            }
+            Key::Backspace => {
+                if let Some(name) = self.form.focused() {
+                    let mut value = self.form.value(&name).unwrap_or_default();
+                    value.pop();
+                    self.form.set_value(&name, &value);
+                }
+                true
+            }
+            Key::Tab => {
+                self.form.focus_next();
+                true
+            }
+            Key::BackTab => {
+                self.form.focus_prev();
+                true
+            }
+            Key::Enter => {
+                if self.form.submit() {
+                    println!("Form submitted: {:?}", self.form.values());
+                    self.form.reset();
+                }
+                true
+            }
+            _ => false,
+        }
+    }
 }
 ```
 
 ## Best Practices
 
-### 1. Validate on blur, not every keystroke
-
-For complex validation (API calls), consider validating only when focus leaves the field.
-
-### 2. Show errors contextually
-
-Only show errors after the user has interacted with the field:
+### 1. Use appropriate field types
 
 ```rust
-let show_error = !value.is_empty() || has_been_focused;
+// Good - using semantic field types
+.field("email", |f| f.email().required())
+.field("password", |f| f.password().min_length(8))
+
+// Avoid - generic text for specialized fields
+.field("email", |f| f.contains("@"))
 ```
 
-### 3. Provide clear feedback
+### 2. Provide clear labels and placeholders
 
 ```rust
-// Status indicators
-let icon = if valid { "✓" } else if touched { "✗" } else { "○" };
-
-// Color coding
-let color = if valid { Color::GREEN } else if touched { Color::RED } else { Color::GRAY };
+.field("phone", |f| f
+    .label("Phone Number")
+    .placeholder("(555) 123-4567")
+    .numeric())
 ```
 
-### 4. Announce for accessibility
+### 3. Use matches() for confirmation fields
 
 ```rust
-if form_valid {
-    announce_success("Form is ready to submit");
+.field("password", |f| f.password().required())
+.field("confirm", |f| f.password().matches("password"))
+```
+
+### 4. Show errors only after interaction
+
+```rust
+if field.is_touched() && !field.is_valid() {
+    // Show errors
 }
 ```
 
 ## Next Steps
 
-- [Reactive Form Example](../../examples/reactive_form.rs) - Complete form with validation
+- [Reactive Form Example](../../examples/reactive_form.rs) - Complete form with new API
 - [Reactive Tutorial](./04-reactive.md) - Deep dive into signals
 - [Accessibility Guide](../guides/accessibility.md) - Make forms accessible

@@ -1,31 +1,35 @@
-//! Form validation pattern
+//! Form validation pattern with reactive state
 //!
-//! Provides reusable form field and validation state for input forms.
+//! Provides reactive form field and validation state for input forms.
+//! Values, errors, and validity are automatically computed using Signal/Computed.
 //!
 //! # Example
 //!
 //! ```rust,ignore
-//! use revue::patterns::{FormState, FormField, Validator};
+//! use revue::prelude::*;
 //!
-//! let mut form = FormState::new()
-//!     .field("username", FormField::text()
+//! let form = FormState::new()
+//!     .field("username", |f| f
+//!         .label("Username")
 //!         .required()
 //!         .min_length(3)
 //!         .max_length(20))
-//!     .field("email", FormField::email())
-//!     .field("age", FormField::number()
-//!         .min(0)
-//!         .max(150));
+//!     .field("email", |f| f.email().required())
+//!     .field("age", |f| f.number().min(0.0).max(150.0))
+//!     .build();
 //!
 //! form.set_value("username", "john");
 //! form.set_value("email", "john@example.com");
 //!
-//! if form.validate_all() {
+//! // Validity is automatically computed
+//! if form.is_valid() {
 //!     println!("Form is valid!");
 //! }
 //! ```
 
+use crate::reactive::{computed, signal, Computed, Signal};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Validation error
 #[derive(Clone, Debug, PartialEq)]
@@ -231,88 +235,75 @@ pub enum FieldType {
     TextArea,
 }
 
-/// Form field configuration
-pub struct FormField {
-    /// Field type
-    pub field_type: FieldType,
-    /// Field label
-    pub label: String,
-    /// Placeholder text
-    pub placeholder: String,
-    /// Current value
-    pub value: String,
-    /// Validation errors
-    pub errors: Vec<ValidationError>,
-    /// Validators
+/// Builder for creating reactive form fields
+pub struct FormFieldBuilder {
+    field_type: FieldType,
+    label: String,
+    placeholder: String,
+    initial_value: String,
     validators: Vec<ValidatorFn>,
-    /// Whether field has been touched
-    pub touched: bool,
-    /// Whether field is disabled
-    pub disabled: bool,
+    disabled: bool,
+    /// Field name to match against (for password confirmation, etc.)
+    matches_field: Option<String>,
 }
 
-impl Default for FormField {
+impl Default for FormFieldBuilder {
     fn default() -> Self {
-        Self::text()
+        Self::new()
     }
 }
 
-impl FormField {
-    /// Create a text field
-    pub fn text() -> Self {
+impl FormFieldBuilder {
+    /// Create a new field builder (defaults to text field)
+    pub fn new() -> Self {
         Self {
             field_type: FieldType::Text,
             label: String::new(),
             placeholder: String::new(),
-            value: String::new(),
-            errors: Vec::new(),
+            initial_value: String::new(),
             validators: Vec::new(),
-            touched: false,
             disabled: false,
+            matches_field: None,
         }
     }
 
-    /// Create a password field
-    pub fn password() -> Self {
-        Self {
-            field_type: FieldType::Password,
-            ..Self::text()
-        }
+    /// Set field type to text
+    pub fn text(mut self) -> Self {
+        self.field_type = FieldType::Text;
+        self
     }
 
-    /// Create an email field
-    pub fn email() -> Self {
-        Self {
-            field_type: FieldType::Email,
-            validators: vec![Validators::email()],
-            ..Self::text()
-        }
+    /// Set field type to password
+    pub fn password(mut self) -> Self {
+        self.field_type = FieldType::Password;
+        self
     }
 
-    /// Create a number field
-    pub fn number() -> Self {
-        Self {
-            field_type: FieldType::Number,
-            validators: vec![Validators::numeric()],
-            ..Self::text()
-        }
+    /// Set field type to email (adds email validator)
+    pub fn email(mut self) -> Self {
+        self.field_type = FieldType::Email;
+        self.validators.push(Validators::email());
+        self
     }
 
-    /// Create an integer field
-    pub fn integer() -> Self {
-        Self {
-            field_type: FieldType::Integer,
-            validators: vec![Validators::integer()],
-            ..Self::text()
-        }
+    /// Set field type to number (adds numeric validator)
+    pub fn number(mut self) -> Self {
+        self.field_type = FieldType::Number;
+        self.validators.push(Validators::numeric());
+        self
     }
 
-    /// Create a textarea field
-    pub fn textarea() -> Self {
-        Self {
-            field_type: FieldType::TextArea,
-            ..Self::text()
-        }
+    /// Set field type to integer (adds integer validator)
+    pub fn integer(mut self) -> Self {
+        self.field_type = FieldType::Integer;
+        self.validators.push(Validators::integer());
+        self
+    }
+
+    /// Set field type to textarea
+    pub fn textarea(mut self) -> Self {
+        self.field_type = FieldType::TextArea;
+        self
     }
 
     /// Set field label
@@ -329,11 +320,11 @@ impl FormField {
 
     /// Set initial value
     pub fn initial_value(mut self, value: impl Into<String>) -> Self {
-        self.value = value.into();
+        self.initial_value = value.into();
         self
     }
 
-    /// Mark as required
+    /// Mark as required (inserts at front for priority)
     pub fn required(mut self) -> Self {
         self.validators.insert(0, Validators::required());
         self
@@ -375,70 +366,281 @@ impl FormField {
         self
     }
 
-    /// Validate the field
-    pub fn validate(&mut self) -> bool {
-        self.errors.clear();
-
-        for validator in &self.validators {
-            if let Err(e) = validator(&self.value) {
-                self.errors.push(e);
-            }
-        }
-
-        self.errors.is_empty()
+    /// Match this field's value against another field
+    ///
+    /// Useful for password confirmation fields.
+    /// The actual validation is set up when FormState is built.
+    pub fn matches(mut self, field_name: impl Into<String>) -> Self {
+        self.matches_field = Some(field_name.into());
+        self
     }
 
-    /// Check if field is valid
+    /// Build the reactive FormField
+    pub fn build(self) -> FormField {
+        self.build_with_match(None)
+    }
+
+    /// Build the reactive FormField with optional match signal
+    pub(crate) fn build_with_match(self, match_signal: Option<Signal<String>>) -> FormField {
+        let value = signal(self.initial_value);
+        let touched = signal(false);
+        let validators = Arc::new(self.validators);
+
+        // Create computed errors that auto-update when value changes
+        let value_for_errors = value.clone();
+        let validators_for_errors = validators.clone();
+        let match_signal_clone = match_signal.clone();
+        let errors = computed(move || {
+            let val = value_for_errors.get();
+            let mut errs: Vec<ValidationError> = validators_for_errors
+                .iter()
+                .filter_map(|v| v(&val).err())
+                .collect();
+
+            // Check matches constraint
+            if let Some(ref match_sig) = match_signal_clone {
+                let match_val = match_sig.get();
+                if val != match_val {
+                    errs.push(ValidationError::new("Fields do not match"));
+                }
+            }
+
+            errs
+        });
+
+        FormField {
+            field_type: self.field_type,
+            label: self.label,
+            placeholder: self.placeholder,
+            value,
+            errors,
+            touched,
+            disabled: self.disabled,
+            validators,
+        }
+    }
+
+    /// Get the matches_field if set
+    pub(crate) fn get_matches_field(&self) -> Option<&str> {
+        self.matches_field.as_deref()
+    }
+}
+
+/// Reactive form field with automatic validation
+///
+/// Values and errors are managed using Signal/Computed for automatic reactivity.
+/// When the value changes, errors are automatically recomputed.
+#[derive(Clone)]
+pub struct FormField {
+    /// Field type
+    pub field_type: FieldType,
+    /// Field label
+    pub label: String,
+    /// Placeholder text
+    pub placeholder: String,
+    /// Reactive current value
+    value: Signal<String>,
+    /// Computed validation errors (auto-recalculates when value changes)
+    errors: Computed<Vec<ValidationError>>,
+    /// Reactive touched state
+    touched: Signal<bool>,
+    /// Whether field is disabled
+    pub disabled: bool,
+    /// Validators (kept for potential dynamic validation)
+    #[allow(dead_code)]
+    validators: Arc<Vec<ValidatorFn>>,
+}
+
+impl Default for FormField {
+    fn default() -> Self {
+        FormFieldBuilder::new().build()
+    }
+}
+
+impl FormField {
+    /// Create a text field builder
+    pub fn text() -> FormFieldBuilder {
+        FormFieldBuilder::new().text()
+    }
+
+    /// Create a password field builder
+    pub fn password() -> FormFieldBuilder {
+        FormFieldBuilder::new().password()
+    }
+
+    /// Create an email field builder (includes email validator)
+    pub fn email() -> FormFieldBuilder {
+        FormFieldBuilder::new().email()
+    }
+
+    /// Create a number field builder (includes numeric validator)
+    pub fn number() -> FormFieldBuilder {
+        FormFieldBuilder::new().number()
+    }
+
+    /// Create an integer field builder (includes integer validator)
+    pub fn integer() -> FormFieldBuilder {
+        FormFieldBuilder::new().integer()
+    }
+
+    /// Create a textarea field builder
+    pub fn textarea() -> FormFieldBuilder {
+        FormFieldBuilder::new().textarea()
+    }
+
+    /// Get the current value (clones the value)
+    pub fn value(&self) -> String {
+        self.value.get()
+    }
+
+    /// Get the value signal for reactive access
+    pub fn value_signal(&self) -> &Signal<String> {
+        &self.value
+    }
+
+    /// Set the field value (automatically triggers validation)
+    pub fn set_value(&self, value: impl Into<String>) {
+        self.value.set(value.into());
+        self.touched.set(true);
+    }
+
+    /// Update the field value with a function
+    pub fn update_value(&self, f: impl FnOnce(&mut String)) {
+        self.value.update(f);
+        self.touched.set(true);
+    }
+
+    /// Get validation errors (computed automatically)
+    pub fn errors(&self) -> Vec<ValidationError> {
+        self.errors.get()
+    }
+
+    /// Check if field is valid (no errors)
     pub fn is_valid(&self) -> bool {
-        self.errors.is_empty()
+        self.errors.get().is_empty()
     }
 
     /// Check if field has errors
     pub fn has_errors(&self) -> bool {
-        !self.errors.is_empty()
+        !self.errors.get().is_empty()
     }
 
     /// Get first error message
-    pub fn first_error(&self) -> Option<&str> {
-        self.errors.first().map(|e| e.message.as_str())
+    pub fn first_error(&self) -> Option<String> {
+        self.errors.get().first().map(|e| e.message.clone())
+    }
+
+    /// Check if field has been touched
+    pub fn is_touched(&self) -> bool {
+        self.touched.get()
+    }
+
+    /// Mark field as touched
+    pub fn touch(&self) {
+        self.touched.set(true);
+    }
+
+    /// Reset field to initial state
+    pub fn reset(&self) {
+        self.value.set(String::new());
+        self.touched.set(false);
+    }
+
+    /// Get the touched signal for reactive access
+    pub fn touched_signal(&self) -> &Signal<bool> {
+        &self.touched
     }
 }
 
-/// Form state managing multiple fields
-pub struct FormState {
-    /// Form fields by name
-    fields: HashMap<String, FormField>,
-    /// Field order for iteration
-    field_order: Vec<String>,
-    /// Currently focused field
-    focused: Option<String>,
-    /// Whether form has been submitted
-    submitted: bool,
+/// Builder for creating reactive form state
+pub struct FormStateBuilder {
+    fields: Vec<(String, FormFieldBuilder)>,
 }
 
-impl Default for FormState {
+impl Default for FormStateBuilder {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl FormState {
-    /// Create a new form state
+impl FormStateBuilder {
+    /// Create a new form state builder
     pub fn new() -> Self {
-        Self {
-            fields: HashMap::new(),
-            field_order: Vec::new(),
-            focused: None,
-            submitted: false,
-        }
+        Self { fields: Vec::new() }
     }
 
-    /// Add a field to the form
-    pub fn field(mut self, name: impl Into<String>, field: FormField) -> Self {
-        let name = name.into();
-        self.field_order.push(name.clone());
-        self.fields.insert(name, field);
+    /// Add a field to the form using a builder function
+    pub fn field(
+        mut self,
+        name: impl Into<String>,
+        builder_fn: impl FnOnce(FormFieldBuilder) -> FormFieldBuilder,
+    ) -> Self {
+        let builder = builder_fn(FormFieldBuilder::new());
+        self.fields.push((name.into(), builder));
         self
+    }
+
+    /// Build the reactive FormState
+    pub fn build(self) -> FormState {
+        let mut fields = HashMap::new();
+        let mut field_order = Vec::new();
+        let mut pending_matches: Vec<(String, FormFieldBuilder, String)> = Vec::new();
+
+        // First pass: build fields without matches, collect pending matches
+        for (name, builder) in self.fields {
+            field_order.push(name.clone());
+            let match_field_opt = builder.get_matches_field().map(|s| s.to_string());
+            if let Some(match_field) = match_field_opt {
+                pending_matches.push((name, builder, match_field));
+            } else {
+                fields.insert(name, builder.build());
+            }
+        }
+
+        // Second pass: build fields with matches (target field must exist)
+        for (name, builder, match_field) in pending_matches {
+            let match_signal = fields.get(&match_field).map(|f| f.value_signal().clone());
+            fields.insert(name, builder.build_with_match(match_signal));
+        }
+
+        let focused = signal(None);
+        let submitted = signal(false);
+
+        FormState {
+            fields,
+            field_order,
+            focused,
+            submitted,
+        }
+    }
+}
+
+/// Reactive form state managing multiple fields
+///
+/// Form validity is computed based on all field validations.
+#[derive(Clone)]
+pub struct FormState {
+    /// Form fields by name
+    fields: HashMap<String, FormField>,
+    /// Field order for iteration
+    field_order: Vec<String>,
+    /// Currently focused field (reactive)
+    focused: Signal<Option<String>>,
+    /// Whether form has been submitted (reactive)
+    submitted: Signal<bool>,
+}
+
+impl Default for FormState {
+    fn default() -> Self {
+        FormStateBuilder::new().build()
+    }
+}
+
+impl FormState {
+    /// Create a new form state builder
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new() -> FormStateBuilder {
+        FormStateBuilder::new()
     }
 
     /// Get a field by name
@@ -446,45 +648,19 @@ impl FormState {
         self.fields.get(name)
     }
 
-    /// Get a mutable field by name
-    pub fn get_mut(&mut self, name: &str) -> Option<&mut FormField> {
-        self.fields.get_mut(name)
-    }
-
     /// Get field value
-    pub fn value(&self, name: &str) -> Option<&str> {
-        self.fields.get(name).map(|f| f.value.as_str())
+    pub fn value(&self, name: &str) -> Option<String> {
+        self.fields.get(name).map(|f| f.value())
     }
 
-    /// Set field value
-    pub fn set_value(&mut self, name: &str, value: impl Into<String>) {
-        if let Some(field) = self.fields.get_mut(name) {
-            field.value = value.into();
-            field.touched = true;
+    /// Set field value (automatically triggers validation)
+    pub fn set_value(&self, name: &str, value: impl Into<String>) {
+        if let Some(field) = self.fields.get(name) {
+            field.set_value(value);
         }
     }
 
-    /// Validate a single field
-    pub fn validate_field(&mut self, name: &str) -> bool {
-        if let Some(field) = self.fields.get_mut(name) {
-            field.validate()
-        } else {
-            false
-        }
-    }
-
-    /// Validate all fields
-    pub fn validate_all(&mut self) -> bool {
-        let mut valid = true;
-        for field in self.fields.values_mut() {
-            if !field.validate() {
-                valid = false;
-            }
-        }
-        valid
-    }
-
-    /// Check if form is valid
+    /// Check if form is valid (checks all fields)
     pub fn is_valid(&self) -> bool {
         self.fields.values().all(|f| f.is_valid())
     }
@@ -495,50 +671,52 @@ impl FormState {
     }
 
     /// Get all field names with errors
-    pub fn errors(&self) -> Vec<(&str, &str)> {
+    pub fn errors(&self) -> Vec<(String, String)> {
         self.fields
             .iter()
-            .filter_map(|(name, field)| field.first_error().map(|err| (name.as_str(), err)))
+            .filter_map(|(name, field)| field.first_error().map(|err| (name.clone(), err)))
             .collect()
     }
 
     /// Get currently focused field name
-    pub fn focused(&self) -> Option<&str> {
-        self.focused.as_deref()
+    pub fn focused(&self) -> Option<String> {
+        self.focused.get()
     }
 
     /// Set focused field
-    pub fn focus(&mut self, name: impl Into<String>) {
+    pub fn focus(&self, name: impl Into<String>) {
         let name = name.into();
         if self.fields.contains_key(&name) {
-            self.focused = Some(name);
+            self.focused.set(Some(name));
         }
     }
 
     /// Focus next field
-    pub fn focus_next(&mut self) {
+    pub fn focus_next(&self) {
         if self.field_order.is_empty() {
             return;
         }
 
         let current_idx = self
             .focused
+            .get()
             .as_ref()
             .and_then(|name| self.field_order.iter().position(|n| n == name))
             .unwrap_or(0);
 
         let next_idx = (current_idx + 1) % self.field_order.len();
-        self.focused = Some(self.field_order[next_idx].clone());
+        self.focused.set(Some(self.field_order[next_idx].clone()));
     }
 
     /// Focus previous field
-    pub fn focus_prev(&mut self) {
+    pub fn focus_prev(&self) {
         if self.field_order.is_empty() {
             return;
         }
 
         let current_idx = self
             .focused
+            .get()
             .as_ref()
             .and_then(|name| self.field_order.iter().position(|n| n == name))
             .unwrap_or(0);
@@ -549,12 +727,12 @@ impl FormState {
             current_idx - 1
         };
 
-        self.focused = Some(self.field_order[prev_idx].clone());
+        self.focused.set(Some(self.field_order[prev_idx].clone()));
     }
 
     /// Clear focus
-    pub fn blur(&mut self) {
-        self.focused = None;
+    pub fn blur(&self) {
+        self.focused.set(None);
     }
 
     /// Get field names in order
@@ -569,38 +747,36 @@ impl FormState {
             .filter_map(|name| self.fields.get(name).map(|field| (name.as_str(), field)))
     }
 
-    /// Mark form as submitted
-    pub fn submit(&mut self) -> bool {
-        self.submitted = true;
+    /// Submit the form (touches all fields and returns validity)
+    pub fn submit(&self) -> bool {
+        self.submitted.set(true);
 
         // Touch all fields
-        for field in self.fields.values_mut() {
-            field.touched = true;
+        for field in self.fields.values() {
+            field.touch();
         }
 
-        self.validate_all()
+        self.is_valid()
     }
 
     /// Check if form has been submitted
     pub fn is_submitted(&self) -> bool {
-        self.submitted
+        self.submitted.get()
     }
 
     /// Reset form to initial state
-    pub fn reset(&mut self) {
-        for field in self.fields.values_mut() {
-            field.value.clear();
-            field.errors.clear();
-            field.touched = false;
+    pub fn reset(&self) {
+        for field in self.fields.values() {
+            field.reset();
         }
-        self.submitted = false;
+        self.submitted.set(false);
     }
 
     /// Get form values as a map
-    pub fn values(&self) -> HashMap<&str, &str> {
+    pub fn values(&self) -> HashMap<String, String> {
         self.fields
             .iter()
-            .map(|(name, field)| (name.as_str(), field.value.as_str()))
+            .map(|(name, field)| (name.clone(), field.value()))
             .collect()
     }
 }
@@ -951,55 +1127,55 @@ mod tests {
     // FormField tests
     #[test]
     fn test_form_field_text() {
-        let field = FormField::text();
+        let field = FormField::text().build();
         assert_eq!(field.field_type, FieldType::Text);
         assert!(field.label.is_empty());
         assert!(field.placeholder.is_empty());
-        assert!(field.value.is_empty());
-        assert!(!field.touched);
+        assert!(field.value().is_empty());
+        assert!(!field.is_touched());
         assert!(!field.disabled);
     }
 
     #[test]
     fn test_form_field_password() {
-        let field = FormField::password();
+        let field = FormField::password().build();
         assert_eq!(field.field_type, FieldType::Password);
     }
 
     #[test]
     fn test_form_field_email() {
-        let mut field = FormField::email();
+        let field = FormField::email().build();
         assert_eq!(field.field_type, FieldType::Email);
-        // Should have email validator
-        field.value = "invalid".to_string();
-        assert!(!field.validate());
+        // Should have email validator - auto validates
+        field.set_value("invalid");
+        assert!(!field.is_valid());
     }
 
     #[test]
     fn test_form_field_number() {
-        let mut field = FormField::number();
+        let field = FormField::number().build();
         assert_eq!(field.field_type, FieldType::Number);
-        // Should have numeric validator
-        field.value = "abc".to_string();
-        assert!(!field.validate());
-        field.value = "123.45".to_string();
-        assert!(field.validate());
+        // Should have numeric validator - auto validates
+        field.set_value("abc");
+        assert!(!field.is_valid());
+        field.set_value("123.45");
+        assert!(field.is_valid());
     }
 
     #[test]
     fn test_form_field_integer() {
-        let mut field = FormField::integer();
+        let field = FormField::integer().build();
         assert_eq!(field.field_type, FieldType::Integer);
-        // Should have integer validator
-        field.value = "123.45".to_string();
-        assert!(!field.validate());
-        field.value = "123".to_string();
-        assert!(field.validate());
+        // Should have integer validator - auto validates
+        field.set_value("123.45");
+        assert!(!field.is_valid());
+        field.set_value("123");
+        assert!(field.is_valid());
     }
 
     #[test]
     fn test_form_field_textarea() {
-        let field = FormField::textarea();
+        let field = FormField::textarea().build();
         assert_eq!(field.field_type, FieldType::TextArea);
     }
 
@@ -1011,140 +1187,143 @@ mod tests {
 
     #[test]
     fn test_form_field_label() {
-        let field = FormField::text().label("Username");
+        let field = FormField::text().label("Username").build();
         assert_eq!(field.label, "Username");
     }
 
     #[test]
     fn test_form_field_placeholder() {
-        let field = FormField::text().placeholder("Enter username");
+        let field = FormField::text().placeholder("Enter username").build();
         assert_eq!(field.placeholder, "Enter username");
     }
 
     #[test]
     fn test_form_field_initial_value() {
-        let field = FormField::text().initial_value("default");
-        assert_eq!(field.value, "default");
+        let field = FormField::text().initial_value("default").build();
+        assert_eq!(field.value(), "default");
     }
 
     #[test]
     fn test_form_field_disabled() {
-        let field = FormField::text().disabled(true);
+        let field = FormField::text().disabled(true).build();
         assert!(field.disabled);
     }
 
     #[test]
     fn test_form_field_min_max() {
-        let mut field = FormField::number().min(5.0).max(10.0);
-        field.value = "7".to_string();
-        assert!(field.validate());
-        field.value = "3".to_string();
-        assert!(!field.validate());
-        field.value = "15".to_string();
-        assert!(!field.validate());
+        let field = FormField::number().min(5.0).max(10.0).build();
+        field.set_value("7");
+        assert!(field.is_valid());
+        field.set_value("3");
+        assert!(!field.is_valid());
+        field.set_value("15");
+        assert!(!field.is_valid());
     }
 
     #[test]
     fn test_form_field_custom_validator() {
-        let mut field = FormField::text().validator(Validators::custom(|v| {
-            if v.len() == 4 {
-                Ok(())
-            } else {
-                Err(ValidationError::new("Must be 4 chars"))
-            }
-        }));
-        field.value = "abcd".to_string();
-        assert!(field.validate());
-        field.value = "abc".to_string();
-        assert!(!field.validate());
+        let field = FormField::text()
+            .validator(Validators::custom(|v| {
+                if v.len() == 4 {
+                    Ok(())
+                } else {
+                    Err(ValidationError::new("Must be 4 chars"))
+                }
+            }))
+            .build();
+        field.set_value("abcd");
+        assert!(field.is_valid());
+        field.set_value("abc");
+        assert!(!field.is_valid());
     }
 
     #[test]
     fn test_form_field() {
-        let mut field = FormField::text().label("Username").required().min_length(3);
+        let field = FormField::text()
+            .label("Username")
+            .required()
+            .min_length(3)
+            .build();
 
-        field.value = "ab".to_string();
-        assert!(!field.validate());
+        field.set_value("ab");
+        assert!(!field.is_valid());
         assert!(field.has_errors());
 
-        field.value = "abc".to_string();
-        assert!(field.validate());
+        field.set_value("abc");
+        assert!(field.is_valid());
         assert!(!field.has_errors());
     }
 
     #[test]
     fn test_form_field_is_valid() {
-        let field = FormField::text();
+        let field = FormField::text().build();
         assert!(field.is_valid()); // no errors by default
     }
 
     #[test]
     fn test_form_field_first_error() {
-        let mut field = FormField::text().required().min_length(5);
-        field.value = "".to_string();
-        field.validate();
+        let field = FormField::text().required().min_length(5).build();
+        // Empty value triggers required error (auto-computed)
         assert!(field.first_error().is_some());
         assert!(field.first_error().unwrap().contains("required"));
     }
 
     #[test]
     fn test_form_field_first_error_none() {
-        let field = FormField::text();
+        let field = FormField::text().build();
         assert!(field.first_error().is_none());
     }
 
     #[test]
     fn test_form_field_multiple_errors() {
-        let mut field = FormField::text().required().min_length(10);
-        field.value = "".to_string();
-        field.validate();
+        let field = FormField::text().required().min_length(10).build();
+        // Empty value - errors are auto-computed
         // Required fails, min_length also fails on empty
-        assert!(field.errors.len() >= 1);
+        assert!(!field.errors().is_empty());
     }
 
     #[test]
-    fn test_form_field_validate_clears_errors() {
-        let mut field = FormField::text().required();
-        field.value = "".to_string();
-        field.validate();
-        assert!(!field.errors.is_empty());
-        field.value = "valid".to_string();
-        field.validate();
-        assert!(field.errors.is_empty());
+    fn test_form_field_errors_auto_update() {
+        let field = FormField::text().required().build();
+        // Empty - has error
+        assert!(!field.errors().is_empty());
+        // Set valid value - errors auto-clear
+        field.set_value("valid");
+        assert!(field.errors().is_empty());
     }
 
     // FormState tests
     #[test]
     fn test_form_state_new() {
-        let form = FormState::new();
-        assert!(form.fields.is_empty());
-        assert!(form.field_order.is_empty());
-        assert!(form.focused.is_none());
-        assert!(!form.submitted);
+        let form = FormState::new().build();
+        assert!(form.field_names().is_empty());
+        assert!(form.focused().is_none());
+        assert!(!form.is_submitted());
     }
 
     #[test]
     fn test_form_state_default() {
         let form = FormState::default();
-        assert!(form.fields.is_empty());
+        assert!(form.field_names().is_empty());
     }
 
     #[test]
     fn test_form_state() {
-        let mut form = FormState::new()
-            .field("username", FormField::text().required())
-            .field("email", FormField::email());
+        let form = FormState::new()
+            .field("username", |f| f.required())
+            .field("email", |f| f.email())
+            .build();
 
         form.set_value("username", "john");
         form.set_value("email", "john@example.com");
 
-        assert!(form.validate_all());
+        // Auto validates
         assert!(form.is_valid());
     }
 
     #[test]
     fn test_form_state_get() {
-        let form = FormState::new().field("name", FormField::text().label("Name"));
+        let form = FormState::new().field("name", |f| f.label("Name")).build();
         let field = form.get("name");
         assert!(field.is_some());
         assert_eq!(field.unwrap().label, "Name");
@@ -1152,70 +1331,57 @@ mod tests {
 
     #[test]
     fn test_form_state_get_none() {
-        let form = FormState::new();
+        let form = FormState::new().build();
         assert!(form.get("nonexistent").is_none());
     }
 
     #[test]
-    fn test_form_state_get_mut() {
-        let mut form = FormState::new().field("name", FormField::text());
-        if let Some(field) = form.get_mut("name") {
-            field.value = "modified".to_string();
-        }
-        assert_eq!(form.value("name"), Some("modified"));
-    }
-
-    #[test]
-    fn test_form_state_get_mut_none() {
-        let mut form = FormState::new();
-        assert!(form.get_mut("nonexistent").is_none());
+    fn test_form_state_set_value() {
+        let form = FormState::new().field("name", |f| f).build();
+        form.set_value("name", "modified");
+        assert_eq!(form.value("name"), Some("modified".to_string()));
     }
 
     #[test]
     fn test_form_state_value() {
-        let mut form = FormState::new().field("name", FormField::text());
+        let form = FormState::new().field("name", |f| f).build();
         form.set_value("name", "test");
-        assert_eq!(form.value("name"), Some("test"));
+        assert_eq!(form.value("name"), Some("test".to_string()));
     }
 
     #[test]
     fn test_form_state_value_none() {
-        let form = FormState::new();
+        let form = FormState::new().build();
         assert!(form.value("nonexistent").is_none());
     }
 
     #[test]
     fn test_form_state_set_value_marks_touched() {
-        let mut form = FormState::new().field("name", FormField::text());
+        let form = FormState::new().field("name", |f| f).build();
         form.set_value("name", "test");
-        assert!(form.get("name").unwrap().touched);
+        assert!(form.get("name").unwrap().is_touched());
     }
 
     #[test]
     fn test_form_state_set_value_nonexistent() {
-        let mut form = FormState::new();
+        let form = FormState::new().build();
         form.set_value("nonexistent", "value"); // Should not panic
     }
 
     #[test]
-    fn test_form_state_validate_field() {
-        let mut form = FormState::new().field("name", FormField::text().required());
-        assert!(!form.validate_field("name")); // empty value fails required
-    }
-
-    #[test]
-    fn test_form_state_validate_field_nonexistent() {
-        let mut form = FormState::new();
-        assert!(!form.validate_field("nonexistent"));
+    fn test_form_field_auto_validates() {
+        let form = FormState::new().field("name", |f| f.required()).build();
+        // Empty value fails required - auto validated
+        assert!(!form.is_valid());
+        form.set_value("name", "valid");
+        assert!(form.is_valid());
     }
 
     #[test]
     fn test_form_errors() {
-        let mut form = FormState::new().field("username", FormField::text().required());
+        let form = FormState::new().field("username", |f| f.required()).build();
 
-        form.set_value("username", "");
-        form.validate_all();
-
+        // Empty value - auto validates with errors
         assert!(form.has_errors());
         let errors = form.errors();
         assert_eq!(errors.len(), 1);
@@ -1223,71 +1389,71 @@ mod tests {
 
     #[test]
     fn test_form_errors_multiple_fields() {
-        let mut form = FormState::new()
-            .field("a", FormField::text().required())
-            .field("b", FormField::text().required());
-        form.validate_all();
+        let form = FormState::new()
+            .field("a", |f| f.required())
+            .field("b", |f| f.required())
+            .build();
+        // Both fields empty - auto validates
         let errors = form.errors();
         assert_eq!(errors.len(), 2);
     }
 
     #[test]
     fn test_form_focus() {
-        let mut form = FormState::new()
-            .field("a", FormField::text())
-            .field("b", FormField::text())
-            .field("c", FormField::text());
+        let form = FormState::new()
+            .field("a", |f| f)
+            .field("b", |f| f)
+            .field("c", |f| f)
+            .build();
 
         form.focus("a");
-        assert_eq!(form.focused(), Some("a"));
+        assert_eq!(form.focused(), Some("a".to_string()));
 
         form.focus_next();
-        assert_eq!(form.focused(), Some("b"));
+        assert_eq!(form.focused(), Some("b".to_string()));
 
         form.focus_next();
-        assert_eq!(form.focused(), Some("c"));
+        assert_eq!(form.focused(), Some("c".to_string()));
 
         form.focus_next(); // Wraps around
-        assert_eq!(form.focused(), Some("a"));
+        assert_eq!(form.focused(), Some("a".to_string()));
 
         form.focus_prev();
-        assert_eq!(form.focused(), Some("c"));
+        assert_eq!(form.focused(), Some("c".to_string()));
     }
 
     #[test]
     fn test_form_focus_nonexistent() {
-        let mut form = FormState::new().field("a", FormField::text());
+        let form = FormState::new().field("a", |f| f).build();
         form.focus("nonexistent");
         assert!(form.focused().is_none());
     }
 
     #[test]
     fn test_form_focus_next_empty() {
-        let mut form = FormState::new();
+        let form = FormState::new().build();
         form.focus_next(); // Should not panic
         assert!(form.focused().is_none());
     }
 
     #[test]
     fn test_form_focus_prev_empty() {
-        let mut form = FormState::new();
+        let form = FormState::new().build();
         form.focus_prev(); // Should not panic
         assert!(form.focused().is_none());
     }
 
     #[test]
     fn test_form_focus_prev_wrap() {
-        let mut form = FormState::new()
-            .field("a", FormField::text())
-            .field("b", FormField::text());
+        let form = FormState::new().field("a", |f| f).field("b", |f| f).build();
         form.focus("a");
         form.focus_prev();
-        assert_eq!(form.focused(), Some("b"));
+        assert_eq!(form.focused(), Some("b".to_string()));
     }
 
     #[test]
     fn test_form_blur() {
-        let mut form = FormState::new().field("a", FormField::text());
+        let form = FormState::new().field("a", |f| f).build();
         form.focus("a");
         assert!(form.focused().is_some());
         form.blur();
@@ -1297,8 +1463,9 @@ mod tests {
     #[test]
     fn test_form_field_names() {
         let form = FormState::new()
-            .field("first", FormField::text())
-            .field("second", FormField::text());
+            .field("first", |f| f)
+            .field("second", |f| f)
+            .build();
         let names = form.field_names();
         assert_eq!(names, &["first", "second"]);
     }
@@ -1306,8 +1473,9 @@ mod tests {
     #[test]
     fn test_form_iter() {
         let form = FormState::new()
-            .field("a", FormField::text().label("A"))
-            .field("b", FormField::text().label("B"));
+            .field("a", |f| f.label("A"))
+            .field("b", |f| f.label("B"))
+            .build();
         let fields: Vec<_> = form.iter().collect();
         assert_eq!(fields.len(), 2);
         assert_eq!(fields[0].0, "a");
@@ -1318,7 +1486,7 @@ mod tests {
 
     #[test]
     fn test_form_submit() {
-        let mut form = FormState::new().field("name", FormField::text().required());
+        let form = FormState::new().field("name", |f| f.required()).build();
 
         // Empty submission should fail
         assert!(!form.submit());
@@ -1331,61 +1499,60 @@ mod tests {
 
     #[test]
     fn test_form_submit_touches_all_fields() {
-        let mut form = FormState::new()
-            .field("a", FormField::text())
-            .field("b", FormField::text());
-        assert!(!form.get("a").unwrap().touched);
-        assert!(!form.get("b").unwrap().touched);
+        let form = FormState::new().field("a", |f| f).field("b", |f| f).build();
+        assert!(!form.get("a").unwrap().is_touched());
+        assert!(!form.get("b").unwrap().is_touched());
         form.submit();
-        assert!(form.get("a").unwrap().touched);
-        assert!(form.get("b").unwrap().touched);
+        assert!(form.get("a").unwrap().is_touched());
+        assert!(form.get("b").unwrap().is_touched());
     }
 
     #[test]
     fn test_form_reset() {
-        let mut form = FormState::new().field("name", FormField::text());
+        let form = FormState::new().field("name", |f| f).build();
 
         form.set_value("name", "John");
         form.submit();
 
         form.reset();
-        assert_eq!(form.value("name"), Some(""));
+        assert_eq!(form.value("name"), Some("".to_string()));
         assert!(!form.is_submitted());
     }
 
     #[test]
     fn test_form_reset_clears_touched() {
-        let mut form = FormState::new().field("name", FormField::text());
+        let form = FormState::new().field("name", |f| f).build();
         form.set_value("name", "value");
-        assert!(form.get("name").unwrap().touched);
+        assert!(form.get("name").unwrap().is_touched());
         form.reset();
-        assert!(!form.get("name").unwrap().touched);
+        assert!(!form.get("name").unwrap().is_touched());
     }
 
     #[test]
     fn test_form_reset_clears_errors() {
-        let mut form = FormState::new().field("name", FormField::text().required());
-        form.validate_all();
-        assert!(!form.get("name").unwrap().errors.is_empty());
+        let form = FormState::new().field("name", |f| f.required()).build();
+        // Has errors initially (required + empty)
+        assert!(!form.get("name").unwrap().errors().is_empty());
+        // Set valid value then reset
+        form.set_value("name", "valid");
         form.reset();
-        assert!(form.get("name").unwrap().errors.is_empty());
+        // After reset, empty again = has errors
+        assert!(!form.get("name").unwrap().errors().is_empty());
     }
 
     #[test]
     fn test_form_values() {
-        let mut form = FormState::new()
-            .field("a", FormField::text())
-            .field("b", FormField::text());
+        let form = FormState::new().field("a", |f| f).field("b", |f| f).build();
         form.set_value("a", "value_a");
         form.set_value("b", "value_b");
         let values = form.values();
-        assert_eq!(values.get("a"), Some(&"value_a"));
-        assert_eq!(values.get("b"), Some(&"value_b"));
+        assert_eq!(values.get("a"), Some(&"value_a".to_string()));
+        assert_eq!(values.get("b"), Some(&"value_b".to_string()));
     }
 
     #[test]
     fn test_form_values_empty() {
-        let form = FormState::new();
+        let form = FormState::new().build();
         let values = form.values();
         assert!(values.is_empty());
     }
@@ -1393,43 +1560,42 @@ mod tests {
     // Integration tests
     #[test]
     fn test_complete_form_workflow() {
-        let mut form = FormState::new()
-            .field(
-                "username",
-                FormField::text()
-                    .label("Username")
-                    .required()
-                    .min_length(3)
-                    .max_length(20),
-            )
-            .field("email", FormField::email().label("Email").required())
-            .field("age", FormField::integer().label("Age").min(0.0).max(150.0));
+        let form = FormState::new()
+            .field("username", |f| {
+                f.label("Username").required().min_length(3).max_length(20)
+            })
+            .field("email", |f| f.email().label("Email").required())
+            .field("age", |f| f.integer().label("Age").min(0.0).max(150.0))
+            .build();
 
-        // Initial state
+        // Initial state - has errors due to required fields
         assert!(!form.is_submitted());
-        assert!(!form.has_errors());
+        assert!(form.has_errors());
 
         // Set some values
         form.set_value("username", "john");
         form.set_value("email", "john@example.com");
         form.set_value("age", "25");
 
+        // Now valid (auto-computed)
+        assert!(form.is_valid());
+
         // Submit
         assert!(form.submit());
-        assert!(form.is_valid());
 
         // Get values
         let values = form.values();
-        assert_eq!(values.get("username"), Some(&"john"));
-        assert_eq!(values.get("email"), Some(&"john@example.com"));
-        assert_eq!(values.get("age"), Some(&"25"));
+        assert_eq!(values.get("username"), Some(&"john".to_string()));
+        assert_eq!(values.get("email"), Some(&"john@example.com".to_string()));
+        assert_eq!(values.get("age"), Some(&"25".to_string()));
     }
 
     #[test]
     fn test_form_with_invalid_data() {
-        let mut form = FormState::new()
-            .field("username", FormField::text().required().min_length(5))
-            .field("email", FormField::email());
+        let form = FormState::new()
+            .field("username", |f| f.required().min_length(5))
+            .field("email", |f| f.email())
+            .build();
 
         form.set_value("username", "ab"); // too short
         form.set_value("email", "invalid"); // no @ or .
@@ -1438,5 +1604,146 @@ mod tests {
         assert!(form.has_errors());
         let errors = form.errors();
         assert_eq!(errors.len(), 2);
+    }
+
+    // Reactive behavior tests
+    #[test]
+    fn test_form_reactive_validation() {
+        let form = FormState::new()
+            .field("email", |f| f.email().required())
+            .build();
+
+        // Initially invalid (empty + required)
+        assert!(!form.is_valid());
+
+        // Set invalid email
+        form.set_value("email", "invalid");
+        assert!(!form.is_valid());
+
+        // Set valid email
+        form.set_value("email", "test@example.com");
+        assert!(form.is_valid());
+
+        // Change to invalid
+        form.set_value("email", "bad");
+        assert!(!form.is_valid());
+    }
+
+    // Matches validator tests
+    #[test]
+    fn test_matches_validator() {
+        let form = FormState::new()
+            .field("password", |f| f.password().required().min_length(8))
+            .field("confirm", |f| f.password().required().matches("password"))
+            .build();
+
+        // Set password
+        form.set_value("password", "secret123");
+
+        // Confirm doesn't match
+        form.set_value("confirm", "different");
+        assert!(!form.is_valid());
+        assert!(form.get("confirm").unwrap().has_errors());
+
+        // Confirm matches
+        form.set_value("confirm", "secret123");
+        assert!(form.is_valid());
+        assert!(!form.get("confirm").unwrap().has_errors());
+    }
+
+    #[test]
+    fn test_matches_validator_reactive() {
+        let form = FormState::new()
+            .field("password", |f| f.password())
+            .field("confirm", |f| f.password().matches("password"))
+            .build();
+
+        // Both empty - should match
+        assert!(form.is_valid());
+
+        // Set both to same value
+        form.set_value("password", "test123");
+        form.set_value("confirm", "test123");
+        assert!(form.is_valid());
+
+        // Change password - confirm should now fail
+        form.set_value("password", "changed");
+        assert!(!form.is_valid());
+        let confirm_errors = form.get("confirm").unwrap().errors();
+        assert!(confirm_errors.iter().any(|e| e.message.contains("match")));
+
+        // Update confirm to match
+        form.set_value("confirm", "changed");
+        assert!(form.is_valid());
+    }
+
+    #[test]
+    fn test_matches_nonexistent_field() {
+        // If matches field doesn't exist, just build without match validation
+        let form = FormState::new()
+            .field("confirm", |f| f.matches("nonexistent"))
+            .build();
+
+        form.set_value("confirm", "anything");
+        // Should be valid since target doesn't exist
+        assert!(form.is_valid());
+    }
+
+    #[test]
+    fn test_form_field_update_value() {
+        let field = FormFieldBuilder::new().build();
+        field.update_value(|v| v.push_str("hello"));
+        assert_eq!(field.value(), "hello");
+        assert!(field.is_touched());
+    }
+
+    #[test]
+    fn test_form_field_touch() {
+        let field = FormFieldBuilder::new().build();
+        assert!(!field.is_touched());
+        field.touch();
+        assert!(field.is_touched());
+    }
+
+    #[test]
+    fn test_form_field_touched_signal() {
+        let field = FormFieldBuilder::new().build();
+        let signal = field.touched_signal();
+        assert!(!signal.get());
+        field.touch();
+        assert!(signal.get());
+    }
+
+    #[test]
+    fn test_form_field_builder_default() {
+        let builder = FormFieldBuilder::default();
+        let field = builder.build();
+        assert_eq!(field.field_type, FieldType::Text);
+    }
+
+    #[test]
+    fn test_form_state_builder_default() {
+        let builder = FormStateBuilder::default();
+        let form = builder.build();
+        assert!(form.is_valid());
+    }
+
+    #[test]
+    fn test_form_field_validator_method() {
+        let field = FormFieldBuilder::new()
+            .validator(Box::new(|v: &str| {
+                if v.contains("bad") {
+                    Err(ValidationError::new("Contains bad"))
+                } else {
+                    Ok(())
+                }
+            }))
+            .build();
+
+        field.set_value("good");
+        assert!(field.is_valid());
+
+        field.set_value("bad word");
+        assert!(!field.is_valid());
     }
 }

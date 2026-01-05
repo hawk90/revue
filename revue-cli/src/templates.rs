@@ -1043,32 +1043,31 @@ use revue::prelude::*;
 
 pub struct FormComponent {
     form: FormState,
-    focused_field: usize,
 }
 
 impl FormComponent {
     pub fn new() -> Self {
         let form = FormState::new()
-            .field("username", FormField::text()
+            .field("username", |f| f
                 .label("Username")
                 .placeholder("Enter username")
                 .required()
                 .min_length(3))
-            .field("email", FormField::email()
+            .field("email", |f| f
+                .email()
                 .label("Email")
                 .placeholder("user@example.com"))
-            .field("password", FormField::password()
+            .field("password", |f| f
+                .password()
                 .label("Password")
                 .required()
-                .min_length(8));
+                .min_length(8))
+            .build();
 
-        Self {
-            form,
-            focused_field: 0,
-        }
+        Self { form }
     }
 
-    pub fn handle_key(&mut self, key: &Key) -> bool {
+    pub fn handle_key(&self, key: &Key) -> bool {
         match key {
             Key::Tab => {
                 self.form.focus_next();
@@ -1101,17 +1100,17 @@ impl View for FormComponent {
                     .gap(1)
                     .children(
                         self.form.iter().map(|(name, field)| {
-                            let is_focused = self.form.focused() == Some(name);
+                            let _is_focused = self.form.focused().as_deref() == Some(name);
                             vstack()
                                 .child(Text::new(&field.label))
                                 .child(
                                     input()
-                                        .value(&field.value)
+                                        .value(&field.value())
                                         .placeholder(&field.placeholder)
                                 )
                                 .child(
                                     if let Some(err) = field.first_error() {
-                                        Text::new(err).fg(Color::RED)
+                                        Text::new(&err).fg(Color::RED)
                                     } else {
                                         Text::empty()
                                     }
