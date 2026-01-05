@@ -559,7 +559,7 @@ impl ThemeManager {
     /// Toggle between dark and light theme
     ///
     /// Switches between `dark_theme` (default: "dark") and `light_theme` (default: "light").
-    /// Use [`set_dark_theme`] and [`set_light_theme`] to customize toggle targets.
+    /// Use [`Self::set_dark_theme`] and [`Self::set_light_theme`] to customize toggle targets.
     pub fn toggle_dark_light(&mut self) {
         let new_id = if self.current().is_dark() {
             self.light_theme.clone()
