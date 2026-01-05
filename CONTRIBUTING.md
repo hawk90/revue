@@ -46,6 +46,7 @@ main (protected)
   ├── refactor/*  Refactoring
   ├── perf/*      Performance improvements
   ├── test/*      Tests
+  ├── examples/*  Example applications
   └── chore/*     Configuration, dependencies
 ```
 
