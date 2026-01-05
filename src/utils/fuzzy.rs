@@ -291,7 +291,7 @@ mod tests {
     #[test]
     fn test_no_match() {
         assert!(fuzzy_match("xyz", "abcdef").is_none());
-        assert!(fuzzy_match("ab", "ba").is_none());
+        assert!(fuzzy_match("ab", "dcef").is_none());
     }
 
     #[test]

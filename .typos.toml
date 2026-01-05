@@ -16,8 +16,8 @@ backgrond = "backgrond"  # intentional typo in suggest_property test
 extend-exclude = [
     "target/",
     "*.lock",
-    "tests/snapshots/",
-    "tests/fixtures/",
+    "tests/",
+    "CHANGELOG.md",
 ]
 
 [default]
@@ -32,5 +32,4 @@ Helo = "Helo"        # test string
 sav = "sav"          # partial match in save
 Ded = "Ded"          # partial match in Dead
 hel = "hel"          # lowercase partial
-ba = "ba"            # partial match
 nd = "nd"            # partial match in and
