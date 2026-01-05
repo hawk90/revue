@@ -3,6 +3,17 @@ name: Security
 on:
   push:
     branches: [main]
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "src/**"
+      - "deny.toml"
+  pull_request:
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "src/**"
+      - "deny.toml"
   schedule:
     - cron: "0 0 * * 1"  # Weekly on Monday
   workflow_dispatch:
