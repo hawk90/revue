@@ -1598,3 +1598,92 @@ fn test_stopwatch_basic() {
 
     pilot.snapshot("stopwatch_basic");
 }
+
+// =============================================================================
+// BigText Widget Tests (OSC 66 / Figlet)
+// =============================================================================
+
+#[test]
+fn test_bigtext_h1() {
+    use revue::widget::BigText;
+
+    let view = BigText::h1("Hello").force_figlet(true);
+
+    let config = TestConfig::with_size(80, 10);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("bigtext_h1");
+}
+
+#[test]
+fn test_bigtext_h2() {
+    use revue::widget::BigText;
+
+    let view = BigText::h2("World").force_figlet(true);
+
+    let config = TestConfig::with_size(80, 10);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("bigtext_h2");
+}
+
+#[test]
+fn test_bigtext_h3() {
+    use revue::widget::BigText;
+
+    let view = BigText::h3("Test").force_figlet(true);
+
+    let config = TestConfig::with_size(60, 6);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("bigtext_h3");
+}
+
+#[test]
+fn test_bigtext_tiers() {
+    use revue::widget::BigText;
+
+    let view = vstack()
+        .child(BigText::h1("H1").force_figlet(true))
+        .child(BigText::h2("H2").force_figlet(true))
+        .child(BigText::h3("H3").force_figlet(true));
+
+    let config = TestConfig::with_size(80, 24);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("bigtext_tiers");
+}
+
+#[test]
+fn test_bigtext_with_color() {
+    use revue::widget::BigText;
+
+    let view = BigText::h1("Color").force_figlet(true).fg(Color::CYAN);
+
+    let config = TestConfig::with_size(80, 10);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("bigtext_color");
+}
+
+#[test]
+fn test_bigtext_small_tiers() {
+    use revue::widget::BigText;
+
+    // H4-H6 use Mini font
+    let view = vstack()
+        .child(BigText::h4("H4").force_figlet(true))
+        .child(BigText::h5("H5").force_figlet(true))
+        .child(BigText::h6("H6").force_figlet(true));
+
+    let config = TestConfig::with_size(40, 12);
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("bigtext_small_tiers");
+}
