@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0](https://github.com/hawk90/revue/compare/v2.2.0...v2.3.0) (2026-01-05)
+
+
+### Features
+
+* **widget:** add virtual scroll support to DataGrid ([#115](https://github.com/hawk90/revue/issues/115)) ([cdf6022](https://github.com/hawk90/revue/commit/cdf6022a621a92fa070e204f2c60812198fd1152))
+
 ## [2.2.0](https://github.com/hawk90/revue/compare/v2.1.0...v2.2.0) (2026-01-05)
 
 
