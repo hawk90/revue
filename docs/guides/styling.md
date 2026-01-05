@@ -8,7 +8,7 @@ Revue uses CSS for styling, bringing familiar web development patterns to termin
 
 ```rust
 let mut app = App::builder()
-    .stylesheet("styles.css")
+    .style("styles.css")
     .hot_reload(true)  // Auto-reload on file changes
     .build();
 ```

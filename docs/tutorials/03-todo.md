@@ -358,10 +358,10 @@ fn main() -> Result<()> {
 
 ## Complete Example
 
-See the full working example at `examples/reactive_todo.rs`:
+See the full working example at `examples/todo.rs`:
 
 ```bash
-cargo run --example reactive_todo
+cargo run --example todo
 ```
 
 ## Exercises

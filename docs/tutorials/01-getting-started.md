@@ -4,7 +4,7 @@ This tutorial will get you up and running with Revue in 5 minutes.
 
 ## Prerequisites
 
-- Rust 1.70 or later
+- Rust 1.87 or later
 - A terminal that supports 256 colors (most modern terminals)
 
 ## Installation
@@ -13,7 +13,7 @@ Add Revue to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-revue = "1.0"
+revue = "2"
 ```
 
 ## Your First App
@@ -26,8 +26,8 @@ use revue::prelude::*;
 fn main() -> Result<()> {
     let mut app = App::builder().build();
 
-    app.run_with_handler(HelloWorld, |event, _state| {
-        !matches!(event.key, Key::Char('q') | Key::Escape)
+    app.run(HelloWorld, |event, _view, _app| {
+        matches!(event, Event::Key(k) if !matches!(k.key, Key::Char('q') | Key::Escape))
     })
 }
 
@@ -57,8 +57,8 @@ Every Revue app starts with `App::builder()`:
 
 ```rust
 let mut app = App::builder()
-    .stylesheet("styles.css")  // Load CSS file
-    .hot_reload(true)          // Enable hot reload
+    .style("styles.css")  // Load CSS file
+    .hot_reload(true)     // Enable hot reload
     .build();
 ```
 
@@ -88,17 +88,20 @@ Checkbox::new("Enable feature").checked(true)
 
 ### Handling Events
 
-Use `run_with_handler` to respond to keyboard events:
+Use `app.run()` to respond to events:
 
 ```rust
-app.run_with_handler(state, |event, state| {
-    match event.key {
-        Key::Char('q') => false,  // Return false to quit
-        Key::Up => {
-            state.move_up();
-            true                  // Return true to continue
-        }
-        _ => true,
+app.run(view, |event, view, _app| {
+    match event {
+        Event::Key(key_event) => match key_event.key {
+            Key::Char('q') => false,  // Return false to quit
+            Key::Up => {
+                view.move_up();
+                true                  // Return true to redraw
+            }
+            _ => true,
+        },
+        _ => false,
     }
 })
 ```

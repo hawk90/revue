@@ -109,15 +109,16 @@ let data = use_async_immediate(async {
 ### Form State
 
 ```rust
-use revue::patterns::FormState;
+use revue::patterns::form::FormState;
 
 let form = FormState::new()
-    .field("username", FieldType::Text)
-    .field("email", FieldType::Email)
-    .field("age", FieldType::Number);
+    .field("username", |f| f.required().min_length(3))
+    .field("email", |f| f.email().required())
+    .field("age", |f| f.number().min(0.0).max(150.0))
+    .build();
 
-// Validate
-if form.validate() {
+// Validate and submit
+if form.submit() {
     let values = form.values();
     submit(values);
 }

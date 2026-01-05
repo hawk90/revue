@@ -6,7 +6,7 @@ Learn how to style your Revue apps using CSS.
 
 ```rust
 let mut app = App::builder()
-    .stylesheet("styles.css")
+    .style("styles.css")
     .hot_reload(true)  // Changes apply without restart
     .build();
 ```
@@ -290,10 +290,14 @@ Input:focus {
 use revue::prelude::*;
 
 fn main() -> Result<()> {
-    App::builder()
-        .stylesheet("styles.css")
+    let mut app = App::builder()
+        .style("styles.css")
         .hot_reload(true)
-        .run(MyApp::new())
+        .build();
+
+    app.run(MyApp, |event, _view, _app| {
+        !matches!(event, Event::Key(k) if k.key == Key::Char('q'))
+    })
 }
 
 struct MyApp;

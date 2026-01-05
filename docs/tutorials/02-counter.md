@@ -254,10 +254,10 @@ impl View for AnimatedCounter {
 
 ## Complete Example
 
-See the full working example at `examples/reactive_counter.rs`:
+See the full working example at `examples/counter.rs`:
 
 ```bash
-cargo run --example reactive_counter
+cargo run --example counter
 ```
 
 ## Exercises
