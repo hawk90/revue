@@ -50,7 +50,7 @@ textwrap = "0.16"
 # ═══════════════════════════════════════════
 # Markdown & Syntax (optional)
 # ═══════════════════════════════════════════
-pulldown-cmark = { version = "0.12", optional = true }
+pulldown-cmark = { version = "0.13", optional = true }
 syntect = { version = "5.2", optional = true }
 
 # ═══════════════════════════════════════════
