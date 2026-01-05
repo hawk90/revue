@@ -42,6 +42,9 @@ pub struct Cell {
     pub modifier: Modifier,
     /// Hyperlink ID (references Buffer's hyperlink registry)
     pub hyperlink_id: Option<u16>,
+    /// Escape sequence ID (references Buffer's sequence registry)
+    /// When set, the sequence is written instead of the symbol
+    pub sequence_id: Option<u16>,
 }
 
 impl Default for Cell {
@@ -52,6 +55,7 @@ impl Default for Cell {
             bg: None,
             modifier: Modifier::empty(),
             hyperlink_id: None,
+            sequence_id: None,
         }
     }
 }
@@ -65,6 +69,7 @@ impl Cell {
             bg: None,
             modifier: Modifier::empty(),
             hyperlink_id: None,
+            sequence_id: None,
         }
     }
 
@@ -73,12 +78,12 @@ impl Cell {
         Self::new(' ')
     }
 
-    /// Check if cell is a continuation of a wide character
+    /// Check if cell is a continuation of a wide character or escape sequence
     pub fn is_continuation(&self) -> bool {
         self.symbol == '\0'
     }
 
-    /// Create a continuation cell (for wide characters)
+    /// Create a continuation cell (for wide characters or escape sequences)
     pub fn continuation() -> Self {
         Self {
             symbol: '\0',
@@ -86,7 +91,14 @@ impl Cell {
             bg: None,
             modifier: Modifier::empty(),
             hyperlink_id: None,
+            sequence_id: None,
         }
+    }
+
+    /// Set escape sequence ID
+    pub fn sequence(mut self, id: u16) -> Self {
+        self.sequence_id = Some(id);
+        self
     }
 
     /// Set hyperlink ID
@@ -138,6 +150,7 @@ impl Cell {
         self.bg = None;
         self.modifier = Modifier::empty();
         self.hyperlink_id = None;
+        self.sequence_id = None;
     }
 }
 
@@ -224,5 +237,19 @@ mod tests {
     fn test_modifier_size() {
         // Modifier should be 1 byte with bitflags
         assert_eq!(std::mem::size_of::<Modifier>(), 1);
+    }
+
+    #[test]
+    fn test_cell_sequence() {
+        let cell = Cell::new('X').sequence(42);
+        assert_eq!(cell.sequence_id, Some(42));
+    }
+
+    #[test]
+    fn test_cell_reset_clears_sequence() {
+        let mut cell = Cell::new('A').sequence(1);
+        assert!(cell.sequence_id.is_some());
+        cell.reset();
+        assert!(cell.sequence_id.is_none());
     }
 }

@@ -12,6 +12,9 @@ pub struct Buffer {
     height: u16,
     /// Hyperlink URL registry (indexed by hyperlink_id in Cell)
     hyperlinks: Vec<String>,
+    /// Escape sequence registry (indexed by sequence_id in Cell)
+    /// Used for raw escape sequences like OSC 66 text sizing
+    sequences: Vec<String>,
 }
 
 impl Buffer {
@@ -30,6 +33,7 @@ impl Buffer {
             width,
             height,
             hyperlinks: Vec::new(),
+            sequences: Vec::new(),
         }
     }
 
@@ -260,6 +264,66 @@ impl Buffer {
 
         offset
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Escape sequence support (OSC 66, etc.)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Register an escape sequence and return its ID
+    ///
+    /// Used for raw terminal sequences like OSC 66 (text sizing).
+    /// The sequence will be written directly to the terminal instead of the cell's symbol.
+    pub fn register_sequence(&mut self, seq: impl Into<String>) -> u16 {
+        let seq = seq.into();
+        let id = self.sequences.len() as u16;
+        self.sequences.push(seq);
+        id
+    }
+
+    /// Get escape sequence by ID
+    pub fn get_sequence(&self, id: u16) -> Option<&str> {
+        self.sequences.get(id as usize).map(|s| s.as_str())
+    }
+
+    /// Get all registered sequences
+    pub fn sequences(&self) -> &[String] {
+        &self.sequences
+    }
+
+    /// Clear sequences (call on buffer clear/resize)
+    pub fn clear_sequences(&mut self) {
+        self.sequences.clear();
+    }
+
+    /// Put an escape sequence at position, marking subsequent cells as continuations
+    ///
+    /// # Arguments
+    /// * `x`, `y` - Starting position
+    /// * `seq` - The escape sequence to write
+    /// * `width` - Number of cells this sequence spans (for continuation markers)
+    /// * `height` - Number of rows this sequence spans
+    pub fn put_sequence(&mut self, x: u16, y: u16, seq: &str, width: u16, height: u16) {
+        let seq_id = self.register_sequence(seq);
+
+        // Set first cell with sequence ID
+        if let Some(cell) = self.get_mut(x, y) {
+            cell.sequence_id = Some(seq_id);
+        }
+
+        // Mark remaining cells in the span as continuations
+        for dy in 0..height {
+            for dx in 0..width {
+                if dx == 0 && dy == 0 {
+                    continue; // Skip the first cell
+                }
+                let curr_x = x.saturating_add(dx);
+                let curr_y = y.saturating_add(dy);
+                if curr_x < self.width && curr_y < self.height {
+                    self.set(curr_x, curr_y, Cell::continuation());
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -405,5 +469,65 @@ mod tests {
             .collect();
         assert_eq!(cells.len(), 1);
         assert_eq!(cells[0], (1, 1, buf.get(1, 1).unwrap()));
+    }
+
+    #[test]
+    fn test_buffer_register_sequence() {
+        let mut buf = Buffer::new(80, 24);
+        let id1 = buf.register_sequence("seq1");
+        let id2 = buf.register_sequence("seq2");
+
+        assert_eq!(id1, 0);
+        assert_eq!(id2, 1);
+        assert_eq!(buf.sequences().len(), 2);
+    }
+
+    #[test]
+    fn test_buffer_get_sequence() {
+        let mut buf = Buffer::new(80, 24);
+        buf.register_sequence("test_sequence");
+
+        assert_eq!(buf.get_sequence(0), Some("test_sequence"));
+        assert_eq!(buf.get_sequence(1), None);
+    }
+
+    #[test]
+    fn test_buffer_clear_sequences() {
+        let mut buf = Buffer::new(80, 24);
+        buf.register_sequence("seq1");
+        buf.register_sequence("seq2");
+        assert_eq!(buf.sequences().len(), 2);
+
+        buf.clear_sequences();
+        assert_eq!(buf.sequences().len(), 0);
+    }
+
+    #[test]
+    fn test_buffer_put_sequence() {
+        let mut buf = Buffer::new(80, 24);
+        buf.put_sequence(5, 5, "test_seq", 10, 2);
+
+        // First cell should have sequence_id
+        let first = buf.get(5, 5).unwrap();
+        assert!(first.sequence_id.is_some());
+
+        // Adjacent cells should be continuations
+        let next = buf.get(6, 5).unwrap();
+        assert!(next.is_continuation());
+
+        // Cell on second row should be continuation
+        let row2 = buf.get(5, 6).unwrap();
+        assert!(row2.is_continuation());
+    }
+
+    #[test]
+    fn test_buffer_sequence_in_bounds() {
+        let mut buf = Buffer::new(10, 5);
+        // Put a sequence that would exceed bounds
+        buf.put_sequence(8, 4, "test", 5, 3);
+
+        // Should not panic, cells outside bounds are ignored
+        let first = buf.get(8, 4).unwrap();
+        assert!(first.sequence_id.is_some());
     }
 }

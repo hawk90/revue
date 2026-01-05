@@ -140,11 +140,17 @@ impl<W: Write> Terminal<W> {
                     .cell
                     .hyperlink_id
                     .and_then(|id| buffer.get_hyperlink(id));
+                // Look up escape sequence if cell has one
+                let escape_sequence = change
+                    .cell
+                    .sequence_id
+                    .and_then(|id| buffer.get_sequence(id));
                 self.draw_cell_stateful(
                     change.x,
                     change.y,
                     &change.cell,
                     hyperlink_url,
+                    escape_sequence,
                     &mut state,
                 )?;
             }
@@ -175,7 +181,8 @@ impl<W: Write> Terminal<W> {
         for (x, y, cell) in buffer.iter_cells() {
             if !cell.is_continuation() {
                 let hyperlink_url = cell.hyperlink_id.and_then(|id| buffer.get_hyperlink(id));
-                self.draw_cell_stateful(x, y, cell, hyperlink_url, &mut state)?;
+                let escape_sequence = cell.sequence_id.and_then(|id| buffer.get_sequence(id));
+                self.draw_cell_stateful(x, y, cell, hyperlink_url, escape_sequence, &mut state)?;
             }
             // Update current buffer (Cell is Copy, no allocation)
             self.current.set(x, y, *cell);
@@ -202,9 +209,28 @@ impl<W: Write> Terminal<W> {
         y: u16,
         cell: &Cell,
         hyperlink_url: Option<&str>,
+        escape_sequence: Option<&str>,
         state: &mut RenderState,
     ) -> Result<()> {
         queue!(self.writer, MoveTo(x, y))?;
+
+        // If cell has an escape sequence, write it directly and skip normal rendering
+        if let Some(seq) = escape_sequence {
+            // Reset any active styling before writing raw sequence
+            if state.hyperlink_id.is_some() {
+                self.write_hyperlink_end()?;
+                state.hyperlink_id = None;
+            }
+            if state.fg.is_some() || state.bg.is_some() || !state.modifier.is_empty() {
+                queue!(self.writer, SetAttribute(Attribute::Reset))?;
+                state.fg = None;
+                state.bg = None;
+                state.modifier = Modifier::empty();
+            }
+            // Write the raw escape sequence
+            write!(self.writer, "{}", seq)?;
+            return Ok(());
+        }
 
         // Handle hyperlink state changes
         let new_hyperlink_id = cell.hyperlink_id;
