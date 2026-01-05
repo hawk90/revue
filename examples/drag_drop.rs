@@ -22,8 +22,6 @@ struct DragDropDemo {
     // Drop zone received items
     completed: Vec<String>,
     trash: Vec<String>,
-    // Manual drag state
-    drag_ctx: DragContext,
     // Selected tab
     active_tab: usize,
     // Status message
@@ -42,7 +40,6 @@ impl DragDropDemo {
             ],
             completed: Vec::new(),
             trash: Vec::new(),
-            drag_ctx: DragContext::new(),
             active_tab: 0,
             status: "Use ↑↓ to select, Enter to drag, Tab to switch zones".to_string(),
         }
@@ -397,6 +394,7 @@ fn demonstrate_drag_context_api() {
         id: 42,
         name: "My Item".to_string(),
     };
+    println!("Custom item: id={}, name={}", custom.id, custom.name);
     let _custom_data = DragData::new("custom", custom).with_label("My Item");
 }
 

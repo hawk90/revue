@@ -404,8 +404,13 @@ mod tests {
 
         trigger();
 
-        // Wait for completion
-        thread::sleep(Duration::from_millis(50));
+        // Poll until complete (more reliable than fixed sleep in CI)
+        for _ in 0..100 {
+            if state.get().is_ready() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
 
         assert_eq!(state.get(), AsyncState::Ready(42));
     }
@@ -416,7 +421,13 @@ mod tests {
 
         trigger();
 
-        thread::sleep(Duration::from_millis(50));
+        // Poll until complete (more reliable than fixed sleep in CI)
+        for _ in 0..100 {
+            if state.get().is_error() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
 
         assert!(state.get().is_error());
         assert_eq!(state.get().error(), Some("Something went wrong"));

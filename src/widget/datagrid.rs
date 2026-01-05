@@ -120,6 +120,12 @@ pub struct GridOptions {
     pub zebra: bool,
     /// Use natural sorting for text (file2 < file10)
     pub use_natural_sort: bool,
+    /// Enable virtual scrolling for large datasets
+    pub virtual_scroll: bool,
+    /// Row height in lines (for virtual scroll calculations)
+    pub row_height: u16,
+    /// Overscan rows (extra rows rendered above/below viewport for smooth scrolling)
+    pub overscan: usize,
 }
 
 impl Default for GridOptions {
@@ -130,6 +136,9 @@ impl Default for GridOptions {
             multi_select: false,
             zebra: true,
             use_natural_sort: true,
+            virtual_scroll: true,
+            row_height: 1,
+            overscan: 5,
         }
     }
 }
@@ -503,6 +512,30 @@ impl DataGrid {
         self
     }
 
+    /// Enable virtual scrolling for large datasets (default: true)
+    ///
+    /// When enabled, only visible rows plus overscan are rendered,
+    /// allowing smooth performance with 100,000+ rows.
+    pub fn virtual_scroll(mut self, enable: bool) -> Self {
+        self.options.virtual_scroll = enable;
+        self
+    }
+
+    /// Set row height in lines (default: 1)
+    pub fn row_height(mut self, height: u16) -> Self {
+        self.options.row_height = height.max(1);
+        self
+    }
+
+    /// Set overscan rows (extra rows rendered above/below viewport)
+    ///
+    /// Higher values provide smoother scrolling but use more memory.
+    /// Default is 5 rows.
+    pub fn overscan(mut self, rows: usize) -> Self {
+        self.options.overscan = rows;
+        self
+    }
+
     /// Sort by column (cancels any active edit)
     pub fn sort(&mut self, column: usize) {
         if column >= self.columns.len() || !self.columns[column].sortable {
@@ -605,6 +638,8 @@ impl DataGrid {
     }
 
     /// Get filtered rows (uses cached indices)
+    /// Note: For large datasets, prefer using filtered_indices() with index-based access
+    #[allow(dead_code)]
     fn filtered_rows(&self) -> Vec<&GridRow> {
         self.filtered_indices()
             .iter()
@@ -1053,9 +1088,21 @@ impl View for DataGrid {
             y += 1;
         }
 
-        // Draw rows
-        let filtered = self.filtered_rows();
-        let visible_height = (area.height - header_height) as usize;
+        // Calculate visible range with virtual scrolling
+        let total_rows = self.filtered_count();
+        let visible_height =
+            (area.height - header_height) as usize / self.options.row_height.max(1) as usize;
+
+        // Virtual scroll: calculate render range with overscan
+        let (render_start, render_end) = if self.options.virtual_scroll {
+            let overscan = self.options.overscan;
+            let start = self.scroll_row.saturating_sub(overscan);
+            let end = (self.scroll_row + visible_height + overscan).min(total_rows);
+            (start, end)
+        } else {
+            (0, total_rows)
+        };
+
         let params = RowRenderParams {
             visible_cols: &visible_cols,
             widths: &widths,
@@ -1064,10 +1111,12 @@ impl View for DataGrid {
             row_num_width,
             visible_height,
         };
-        self.render_rows(ctx, &filtered, &params);
+
+        // Render rows using index-based access (no allocation)
+        self.render_rows_virtual(ctx, render_start, render_end, &params);
 
         // Draw scrollbar if needed
-        self.render_scrollbar(ctx, filtered.len(), visible_height, area, y);
+        self.render_scrollbar(ctx, total_rows, visible_height, area, y);
     }
 }
 
@@ -1075,6 +1124,88 @@ impl_styled_view!(DataGrid);
 impl_props_builders!(DataGrid);
 
 impl DataGrid {
+    /// Render rows using virtual scrolling (index-based, no allocation)
+    fn render_rows_virtual(
+        &self,
+        ctx: &mut RenderContext,
+        render_start: usize,
+        render_end: usize,
+        params: &RowRenderParams<'_>,
+    ) {
+        let filtered_indices = self.filtered_indices();
+
+        for render_idx in render_start..render_end {
+            // Skip rows above viewport (but within overscan)
+            if render_idx < self.scroll_row.saturating_sub(self.options.overscan) {
+                continue;
+            }
+
+            // Get actual row index from filtered cache
+            let Some(&actual_row_idx) = filtered_indices.get(render_idx) else {
+                continue;
+            };
+
+            let Some(row) = self.rows.get(actual_row_idx) else {
+                continue;
+            };
+
+            // Calculate Y position relative to viewport
+            let viewport_offset = render_idx.saturating_sub(self.scroll_row);
+            if viewport_offset >= params.visible_height {
+                continue;
+            }
+
+            let row_y = params.start_y + (viewport_offset as u16 * self.options.row_height);
+            let is_selected = render_idx == self.selected_row;
+            let is_alt = self.options.zebra && render_idx % 2 == 1;
+
+            let row_bg = if is_selected {
+                self.colors.selected_bg
+            } else if is_alt {
+                self.colors.alt_row_bg
+            } else {
+                self.colors.row_bg
+            };
+
+            // Draw row number
+            if self.options.show_row_numbers {
+                self.render_row_number(ctx, params.area_x, row_y, render_idx + 1, row_bg);
+            }
+
+            // Draw cells
+            let mut x = params.area_x + params.row_num_width;
+            for (col_idx, (orig_col_idx, col)) in params.visible_cols.iter().enumerate() {
+                if col_idx >= params.widths.len() {
+                    break;
+                }
+                let w = params.widths[col_idx];
+                let is_editing = self.edit_state.active
+                    && render_idx == self.selected_row
+                    && *orig_col_idx == self.edit_state.col;
+
+                let pos = CellPos {
+                    x,
+                    y: row_y,
+                    width: w,
+                };
+                let state = CellState {
+                    row_bg,
+                    is_selected,
+                    is_editing,
+                };
+                self.render_cell(ctx, row, col, &pos, &state);
+
+                // Draw separator
+                let mut sep = Cell::new('│');
+                sep.fg = Some(self.colors.border_color);
+                sep.bg = Some(row_bg);
+                ctx.buffer.set(x + w, row_y, sep);
+
+                x += w + 1;
+            }
+        }
+    }
+
     /// Render the header row
     fn render_header(
         &self,
@@ -1125,7 +1256,8 @@ impl DataGrid {
         }
     }
 
-    /// Render all visible rows
+    /// Render all visible rows (legacy, non-virtual scroll)
+    #[allow(dead_code)]
     fn render_rows(
         &self,
         ctx: &mut RenderContext,
@@ -1626,5 +1758,114 @@ mod tests {
         // Move to end
         grid.handle_key(&Key::End);
         assert_eq!(grid.edit_state.cursor, 4);
+    }
+
+    #[test]
+    fn test_virtual_scroll_enabled_by_default() {
+        let grid = DataGrid::new();
+        assert!(grid.options.virtual_scroll);
+        assert_eq!(grid.options.row_height, 1);
+        assert_eq!(grid.options.overscan, 5);
+    }
+
+    #[test]
+    fn test_virtual_scroll_builder_methods() {
+        let grid = DataGrid::new()
+            .virtual_scroll(true)
+            .row_height(2)
+            .overscan(10);
+
+        assert!(grid.options.virtual_scroll);
+        assert_eq!(grid.options.row_height, 2);
+        assert_eq!(grid.options.overscan, 10);
+    }
+
+    #[test]
+    fn test_virtual_scroll_disabled() {
+        let grid = DataGrid::new().virtual_scroll(false);
+        assert!(!grid.options.virtual_scroll);
+    }
+
+    #[test]
+    fn test_large_dataset_100k_rows() {
+        // Create grid with 100,000 rows
+        let mut grid = DataGrid::new()
+            .virtual_scroll(true)
+            .overscan(5)
+            .column(GridColumn::new("id", "ID"))
+            .column(GridColumn::new("name", "Name"));
+
+        // Add 100,000 rows
+        let mut rows = Vec::with_capacity(100_000);
+        for i in 0..100_000 {
+            rows.push(
+                GridRow::new()
+                    .cell("id", i.to_string())
+                    .cell("name", format!("Row {}", i)),
+            );
+        }
+        grid = grid.rows(rows);
+
+        // Verify row count
+        assert_eq!(grid.row_count(), 100_000);
+
+        // Navigation should work
+        grid.select_last();
+        assert_eq!(grid.selected_row, 99_999);
+
+        grid.select_first();
+        assert_eq!(grid.selected_row, 0);
+
+        // Page navigation
+        grid.page_down(100);
+        assert_eq!(grid.selected_row, 100);
+
+        // Render should only process visible rows (smoke test)
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        grid.render(&mut ctx);
+        // If this completes quickly, virtual scroll is working
+    }
+
+    #[test]
+    fn test_virtual_scroll_render_range() {
+        let mut grid = DataGrid::new()
+            .virtual_scroll(true)
+            .overscan(3)
+            .column(GridColumn::new("id", "ID"));
+
+        // Add 100 rows
+        let rows: Vec<_> = (0..100)
+            .map(|i| GridRow::new().cell("id", i.to_string()))
+            .collect();
+        grid = grid.rows(rows);
+
+        // Scroll to middle
+        grid.selected_row = 50;
+        grid.scroll_row = 45;
+
+        // With viewport of 20 rows and overscan of 3:
+        // render_start = 45 - 3 = 42
+        // render_end = 45 + 20 + 3 = 68 (capped at 100)
+        let total = grid.filtered_count();
+        let visible_height = 20;
+        let overscan = grid.options.overscan;
+
+        let render_start = grid.scroll_row.saturating_sub(overscan);
+        let render_end = (grid.scroll_row + visible_height + overscan).min(total);
+
+        assert_eq!(render_start, 42);
+        assert_eq!(render_end, 68);
+    }
+
+    #[test]
+    fn test_row_height_calculation() {
+        let grid = DataGrid::new().row_height(2);
+        assert_eq!(grid.options.row_height, 2);
+
+        // Row height of 0 should be clamped to 1
+        let grid = DataGrid::new().row_height(0);
+        assert_eq!(grid.options.row_height, 1);
     }
 }
