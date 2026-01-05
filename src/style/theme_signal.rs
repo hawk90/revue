@@ -23,6 +23,7 @@
 
 use super::theme::{Theme, ThemeManager};
 use crate::reactive::{signal, Signal};
+use crate::utils::lock::lock_or_recover;
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -115,7 +116,7 @@ pub fn set_theme(theme: Theme) {
 /// ```
 pub fn set_theme_by_id(id: &str) -> bool {
     let manager = get_theme_manager();
-    let guard = manager.lock().unwrap();
+    let guard = lock_or_recover(&manager);
 
     if let Some(theme) = guard.get(id) {
         let theme = theme.clone();
@@ -163,7 +164,7 @@ pub fn toggle_theme() {
 /// ```
 pub fn cycle_theme() {
     let manager = get_theme_manager();
-    let mut guard = manager.lock().unwrap();
+    let mut guard = lock_or_recover(&manager);
 
     guard.cycle();
     let theme = guard.current().clone();
@@ -185,7 +186,7 @@ pub fn cycle_theme() {
 /// ```
 pub fn theme_ids() -> Vec<String> {
     let manager = get_theme_manager();
-    let guard = manager.lock().unwrap();
+    let guard = lock_or_recover(&manager);
     guard
         .theme_ids()
         .into_iter()
@@ -209,14 +210,14 @@ pub fn theme_ids() -> Vec<String> {
 /// ```
 pub fn register_theme(id: impl Into<String>, theme: Theme) {
     let manager = get_theme_manager();
-    let mut guard = manager.lock().unwrap();
+    let mut guard = lock_or_recover(&manager);
     guard.register(id, theme);
 }
 
 /// Get a theme by ID without setting it
 pub fn get_theme(id: &str) -> Option<Theme> {
     let manager = get_theme_manager();
-    let guard = manager.lock().unwrap();
+    let guard = lock_or_recover(&manager);
     guard.get(id).cloned()
 }
 

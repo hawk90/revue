@@ -25,6 +25,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use crate::render::Buffer;
+use crate::utils::lock::lock_or_recover;
 
 /// A generic object pool for reusing allocations
 ///
@@ -178,10 +179,10 @@ impl<T: Send> SyncObjectPool<T> {
 
     /// Acquire an object
     pub fn acquire(&self) -> T {
-        let mut stats = self.stats.lock().unwrap();
+        let mut stats = lock_or_recover(&self.stats);
         stats.acquires += 1;
 
-        if let Some(obj) = self.pool.lock().unwrap().pop() {
+        if let Some(obj) = lock_or_recover(&self.pool).pop() {
             stats.hits += 1;
             obj
         } else {
@@ -192,10 +193,10 @@ impl<T: Send> SyncObjectPool<T> {
 
     /// Release an object
     pub fn release(&self, obj: T) {
-        let mut stats = self.stats.lock().unwrap();
+        let mut stats = lock_or_recover(&self.stats);
         stats.releases += 1;
 
-        let mut pool = self.pool.lock().unwrap();
+        let mut pool = lock_or_recover(&self.pool);
         if pool.len() < self.max_size {
             pool.push(obj);
         } else {
@@ -205,7 +206,7 @@ impl<T: Send> SyncObjectPool<T> {
 
     /// Get pool statistics
     pub fn stats(&self) -> PoolStats {
-        self.stats.lock().unwrap().clone()
+        lock_or_recover(&self.stats).clone()
     }
 }
 
@@ -400,10 +401,10 @@ impl SyncStringPool {
     /// Intern a string
     pub fn intern(&self, s: impl AsRef<str>) -> Arc<str> {
         let s = s.as_ref();
-        let mut stats = self.stats.lock().unwrap();
+        let mut stats = lock_or_recover(&self.stats);
         stats.acquires += 1;
 
-        let mut strings = self.strings.lock().unwrap();
+        let mut strings = lock_or_recover(&self.strings);
         if let Some(interned) = strings.get(s) {
             stats.hits += 1;
             interned.clone()
@@ -417,7 +418,7 @@ impl SyncStringPool {
 
     /// Get statistics
     pub fn stats(&self) -> PoolStats {
-        self.stats.lock().unwrap().clone()
+        lock_or_recover(&self.stats).clone()
     }
 }
 

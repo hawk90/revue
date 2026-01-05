@@ -28,6 +28,7 @@
 //! }
 //! ```
 
+use crate::utils::lock::write_or_recover;
 use std::fmt;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::sync::{Arc, RwLock};
@@ -245,13 +246,13 @@ where
             let _ = tx.send(result);
         });
 
-        *receiver_start.write().unwrap() = Some(rx);
+        *write_or_recover(&receiver_start) = Some(rx);
     };
 
     let receiver_poll = receiver.clone();
     let state_poll = state.clone();
     let poll = move || -> bool {
-        let mut rx_ref = receiver_poll.write().unwrap();
+        let mut rx_ref = write_or_recover(&receiver_poll);
         if let Some(rx) = rx_ref.as_ref() {
             match rx.try_recv() {
                 Ok(result) => {
