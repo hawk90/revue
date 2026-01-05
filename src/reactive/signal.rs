@@ -47,16 +47,11 @@ pub struct Signal<T> {
     subscribers: Subscribers,
 }
 
-// SAFETY: Signal<T> is Send + Sync when T is Send + Sync.
-// This is technically redundant since Arc<RwLock<T>> auto-derives these traits,
-// but we keep explicit impls for documentation clarity and to ensure the bounds
-// are intentional (we require T: Sync for Send to guarantee safe cross-thread sharing).
-// All fields are thread-safe:
-// - id: Copy type (SignalId)
-// - value: Arc<RwLock<T>> is Send+Sync when T: Send+Sync
-// - subscribers: Arc<RwLock<Vec<...>>> with Send+Sync callbacks
-unsafe impl<T: Send + Sync> Send for Signal<T> {}
-unsafe impl<T: Send + Sync> Sync for Signal<T> {}
+// Signal<T> auto-derives Send + Sync when T: Send + Sync.
+// All fields are inherently thread-safe:
+// - id: SignalId (Copy, u64)
+// - value: Arc<RwLock<T>> (Send+Sync when T: Send+Sync)
+// - subscribers: Arc<RwLock<Vec<...>>> (Send+Sync with Send+Sync callbacks)
 
 impl<T: 'static> Signal<T> {
     /// Create a new signal with initial value

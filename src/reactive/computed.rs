@@ -20,15 +20,12 @@ pub struct Computed<T> {
     dirty: Arc<AtomicBool>,
 }
 
-// SAFETY: Computed<T> is Send when T is Send, Sync when T is Send + Sync.
-// This matches the auto-derive bounds for Arc<RwLock<Option<T>>>.
-// All fields are thread-safe:
-// - id: Copy type (SubscriberId)
-// - compute: Arc<dyn Fn() -> T + Send + Sync> is Send+Sync
-// - cached: Arc<RwLock<Option<T>>> is Send when T: Send, Sync when T: Send+Sync
-// - dirty: Arc<AtomicBool> is Send+Sync
-unsafe impl<T: Send> Send for Computed<T> {}
-unsafe impl<T: Send + Sync> Sync for Computed<T> {}
+// Computed<T> auto-derives Send when T: Send, Sync when T: Send + Sync.
+// All fields are inherently thread-safe:
+// - id: SubscriberId (Copy, u64)
+// - compute: Arc<dyn Fn() -> T + Send + Sync> (Send+Sync)
+// - cached: Arc<RwLock<Option<T>>> (Send when T: Send, Sync when T: Send+Sync)
+// - dirty: Arc<AtomicBool> (Send+Sync)
 
 impl<T: Clone + Send + Sync + 'static> Computed<T> {
     /// Create a new computed value
