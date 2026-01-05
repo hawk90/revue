@@ -267,12 +267,11 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Flaky in CI due to timing sensitivity
     fn test_duplicate_task_id_rejected() {
         let mut runner: TaskRunner<i32> = TaskRunner::new();
 
         runner.spawn("same_id", || {
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(10));
             1
         });
 
@@ -282,9 +281,16 @@ mod tests {
         // Still only 1 pending
         assert_eq!(runner.pending_count(), 1);
 
-        std::thread::sleep(Duration::from_millis(150));
+        // Poll with timeout instead of fixed sleep
+        let mut result = None;
+        for _ in 0..100 {
+            if let Some(r) = runner.poll() {
+                result = Some(r);
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
 
-        let result = runner.poll();
         assert!(result.is_some());
         // Should get result from first task
         assert_eq!(result.unwrap().result, Ok(1));

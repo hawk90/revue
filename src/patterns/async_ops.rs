@@ -239,32 +239,44 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Flaky in CI due to timing sensitivity
     fn test_async_task_timing() {
         let task = AsyncTask::spawn(|| {
-            thread::sleep(Duration::from_millis(50));
+            thread::sleep(Duration::from_millis(5));
             42
         });
 
-        // Should not be ready immediately
+        // Poll with timeout instead of fixed sleep
         let mut task = task;
-        assert!(task.try_recv().is_none());
+        let mut result = None;
+        for _ in 0..100 {
+            if let Some(r) = task.try_recv() {
+                result = Some(r);
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
 
-        // Wait and check again
-        thread::sleep(Duration::from_millis(150));
-        assert_eq!(task.try_recv(), Some(42));
+        assert_eq!(result, Some(42));
     }
 
     #[test]
-    #[ignore] // Flaky in CI due to timing sensitivity
     fn test_async_task_is_running() {
         let task = AsyncTask::spawn(|| {
-            thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(20));
             42
         });
 
+        // Task should be running initially
         assert!(task.is_running());
-        thread::sleep(Duration::from_millis(150));
+
+        // Wait for completion with polling
+        for _ in 0..100 {
+            if !task.is_running() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+
         assert!(!task.is_running());
     }
 
