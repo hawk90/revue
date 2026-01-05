@@ -1,14 +1,8 @@
 name: Security
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "src/**"
-      - "deny.toml"
   pull_request:
+    branches: [main]
     paths:
       - "Cargo.toml"
       - "Cargo.lock"
