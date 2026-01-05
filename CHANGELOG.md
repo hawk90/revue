@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0](https://github.com/hawk90/revue/compare/v2.0.4...v2.1.0) (2026-01-05)
+
+
+### Features
+
+* **form:** refactor Form API with Signal-based reactivity ([#103](https://github.com/hawk90/revue/issues/103)) ([bf955cf](https://github.com/hawk90/revue/commit/bf955cfb7b275094d9bfcec6316563b500293669))
+
+
+### Bug Fixes
+
+* **docs:** align theme signal documentation with implementation ([#95](https://github.com/hawk90/revue/issues/95)) ([a4ff194](https://github.com/hawk90/revue/commit/a4ff19417473f76eadb6ebfd148214f71961dc59)), closes [#64](https://github.com/hawk90/revue/issues/64)
+* **docs:** unify widget count to 80+ across all documentation ([#94](https://github.com/hawk90/revue/issues/94)) ([6dea979](https://github.com/hawk90/revue/commit/6dea97978d7342332b82487c41f7efc331ae21e4)), closes [#60](https://github.com/hawk90/revue/issues/60)
+
 ## [2.0.4](https://github.com/hawk90/revue/compare/v2.0.3...v2.0.4) (2026-01-05)
 
 
