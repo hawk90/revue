@@ -3,6 +3,7 @@
 //! Prevents thread explosion by using a fixed number of worker threads
 //! to process a queue of tasks.
 
+use crate::utils::lock::lock_or_recover;
 use std::collections::{HashMap, VecDeque};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
@@ -46,7 +47,7 @@ impl Worker {
             loop {
                 // Try to get work from the queue
                 let work_item = {
-                    let rx = work_rx.lock().unwrap();
+                    let rx = lock_or_recover(&work_rx);
                     rx.recv()
                 };
 

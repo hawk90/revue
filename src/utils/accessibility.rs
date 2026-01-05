@@ -20,6 +20,7 @@
 //! announce("Form submitted successfully");
 //! ```
 
+use super::lock::{read_or_recover, write_or_recover};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -733,22 +734,22 @@ impl SharedAccessibility {
 
     /// Announce message (polite)
     pub fn announce(&self, message: impl Into<String>) {
-        self.inner.write().unwrap().announce_polite(message);
+        write_or_recover(&self.inner).announce_polite(message);
     }
 
     /// Announce message (assertive)
     pub fn announce_now(&self, message: impl Into<String>) {
-        self.inner.write().unwrap().announce_assertive(message);
+        write_or_recover(&self.inner).announce_assertive(message);
     }
 
     /// Set focus
     pub fn set_focus(&self, id: impl Into<String>) {
-        self.inner.write().unwrap().set_focus(id);
+        write_or_recover(&self.inner).set_focus(id);
     }
 
     /// Get focused node ID
     pub fn focus(&self) -> Option<String> {
-        self.inner.read().unwrap().focus().map(|s| s.to_string())
+        read_or_recover(&self.inner).focus().map(|s| s.to_string())
     }
 }
 

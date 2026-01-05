@@ -17,6 +17,7 @@
 //! let content = clipboard.get().unwrap();
 //! ```
 
+use super::lock::lock_or_recover;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
 
@@ -223,23 +224,23 @@ impl MemoryClipboard {
 
 impl ClipboardBackend for MemoryClipboard {
     fn set(&self, content: &str) -> ClipboardResult<()> {
-        let mut guard = self.content.lock().unwrap();
+        let mut guard = lock_or_recover(&self.content);
         *guard = content.to_string();
         Ok(())
     }
 
     fn get(&self) -> ClipboardResult<String> {
-        let guard = self.content.lock().unwrap();
+        let guard = lock_or_recover(&self.content);
         Ok(guard.clone())
     }
 
     fn has_text(&self) -> ClipboardResult<bool> {
-        let guard = self.content.lock().unwrap();
+        let guard = lock_or_recover(&self.content);
         Ok(!guard.is_empty())
     }
 
     fn clear(&self) -> ClipboardResult<()> {
-        let mut guard = self.content.lock().unwrap();
+        let mut guard = lock_or_recover(&self.content);
         guard.clear();
         Ok(())
     }

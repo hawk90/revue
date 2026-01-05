@@ -22,6 +22,7 @@
 //! ```
 
 use super::properties::Color;
+use crate::utils::lock::{read_or_recover, write_or_recover};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -681,39 +682,37 @@ impl SharedTheme {
 
     /// Get current theme (cloned)
     pub fn current(&self) -> Theme {
-        self.inner.read().unwrap().current().clone()
+        read_or_recover(&self.inner).current().clone()
     }
 
     /// Get current theme ID
     pub fn current_id(&self) -> String {
-        self.inner.read().unwrap().current_id().to_string()
+        read_or_recover(&self.inner).current_id().to_string()
     }
 
     /// Set theme
     pub fn set_theme(&self, id: impl Into<String>) -> bool {
-        self.inner.write().unwrap().set_theme(id)
+        write_or_recover(&self.inner).set_theme(id)
     }
 
     /// Toggle dark/light
     pub fn toggle_dark_light(&self) {
-        self.inner.write().unwrap().toggle_dark_light();
+        write_or_recover(&self.inner).toggle_dark_light();
     }
 
     /// Cycle themes
     pub fn cycle(&self) {
-        self.inner.write().unwrap().cycle();
+        write_or_recover(&self.inner).cycle();
     }
 
     /// Register theme
     pub fn register(&self, id: impl Into<String>, theme: Theme) {
-        self.inner.write().unwrap().register(id, theme);
+        write_or_recover(&self.inner).register(id, theme);
     }
 
     /// Get theme IDs
     pub fn theme_ids(&self) -> Vec<String> {
-        self.inner
-            .read()
-            .unwrap()
+        read_or_recover(&self.inner)
             .theme_ids()
             .into_iter()
             .map(|s| s.to_string())

@@ -35,6 +35,7 @@
 //! | [`layout`] | Box layout calculation for bordered boxes |
 //! | [`browser`] | System browser and URL utilities |
 //! | [`profiler`] | Performance profiling and timing |
+//! | [`lock`] | Lock utilities for consistent poison handling |
 
 pub mod accessibility;
 pub mod accessibility_signal;
@@ -54,6 +55,7 @@ pub mod highlight;
 pub mod i18n;
 pub mod keymap;
 pub mod layout;
+pub mod lock;
 pub mod path;
 pub mod profiler;
 pub mod selection;
@@ -282,3 +284,6 @@ pub use profiler::{
 
 // Text Sizing (Kitty OSC 66 protocol)
 pub use text_sizing::{is_supported as text_sizing_supported, TextSizing};
+
+// Lock utilities
+pub use lock::{lock_or_recover, read_or_recover, write_or_recover};
