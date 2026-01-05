@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0](https://github.com/hawk90/revue/compare/v2.2.0...v2.3.0) (2026-01-05)
+
+
+### Features
+
+* **widget:** add OSC 66 text sizing support for BigText ([#117](https://github.com/hawk90/revue/issues/117)) ([ce22714](https://github.com/hawk90/revue/commit/ce22714cb489e8b6e7051dc85f3b5c14e37e25cf)), closes [#57](https://github.com/hawk90/revue/issues/57)
+* **widget:** add OSC 66 text sizing support for BigText ([#58](https://github.com/hawk90/revue/issues/58)) ([d97e8b7](https://github.com/hawk90/revue/commit/d97e8b71bb09da7dff03d2b0560e7afe357c23ea))
+* **widget:** add virtual scroll support to DataGrid ([#115](https://github.com/hawk90/revue/issues/115)) ([cdf6022](https://github.com/hawk90/revue/commit/cdf6022a621a92fa070e204f2c60812198fd1152))
+
 ## [2.4.0](https://github.com/hawk90/revue/compare/v2.3.0...v2.4.0) (2026-01-05)
 
 
