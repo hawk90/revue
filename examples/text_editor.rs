@@ -106,7 +106,6 @@ fn main() -> Result<()> {
 // - Command mode: :w to save, :q to quit, :wq to save and quit
 
 // TODO: Add syntax highlighting
-// FIXME: Handle unicode properly
 // NOTE: This is a demo application
 
 fn helper_function() {
@@ -164,7 +163,60 @@ impl Default for Config {
     }
 
     fn current_line_len(&self) -> usize {
-        self.current_line().len()
+        self.current_line().chars().count()
+    }
+
+    /// Convert char index to byte index for a string
+    fn char_to_byte_index(s: &str, char_idx: usize) -> usize {
+        s.char_indices()
+            .nth(char_idx)
+            .map(|(i, _)| i)
+            .unwrap_or(s.len())
+    }
+
+    /// Safely remove char at char index
+    fn remove_char_at(line: &mut String, char_idx: usize) {
+        if let Some((byte_idx, ch)) = line.char_indices().nth(char_idx) {
+            line.replace_range(byte_idx..byte_idx + ch.len_utf8(), "");
+        }
+    }
+
+    /// Safely insert char at char index
+    fn insert_char_at(line: &mut String, char_idx: usize, ch: char) {
+        let byte_idx = Self::char_to_byte_index(line, char_idx);
+        line.insert(byte_idx, ch);
+    }
+
+    /// Safely insert string at char index
+    fn insert_str_at(line: &mut String, char_idx: usize, s: &str) {
+        let byte_idx = Self::char_to_byte_index(line, char_idx);
+        line.insert_str(byte_idx, s);
+    }
+
+    /// Safely split off at char index
+    fn split_off_at(line: &mut String, char_idx: usize) -> String {
+        let byte_idx = Self::char_to_byte_index(line, char_idx);
+        line.split_off(byte_idx)
+    }
+
+    /// Get substring from start to char index (exclusive)
+    fn substr_before(s: &str, char_idx: usize) -> &str {
+        let byte_idx = Self::char_to_byte_index(s, char_idx);
+        &s[..byte_idx]
+    }
+
+    /// Get substring from char index to end
+    fn substr_from(s: &str, char_idx: usize) -> &str {
+        let byte_idx = Self::char_to_byte_index(s, char_idx);
+        &s[byte_idx..]
+    }
+
+    /// Get substring between two char indices (inclusive end)
+    fn substr_range(s: &str, start_char: usize, end_char: usize) -> String {
+        s.chars()
+            .skip(start_char)
+            .take(end_char - start_char + 1)
+            .collect()
     }
 
     fn save_undo(&mut self) {
@@ -377,7 +429,7 @@ impl Default for Config {
                         .nth(self.cursor_col)
                         .map(|c| c.to_string())
                         .unwrap_or_default();
-                    line.remove(self.cursor_col);
+                    Self::remove_char_at(line, self.cursor_col);
                     self.modified = true;
                     self.clamp_cursor();
                 }
@@ -414,8 +466,8 @@ impl Default for Config {
                         self.lines.insert(self.cursor_row, self.clipboard.clone());
                     } else {
                         let col = self.cursor_col + 1;
-                        self.lines[self.cursor_row].insert_str(col, &self.clipboard);
-                        self.cursor_col = col + self.clipboard.len() - 1;
+                        Self::insert_str_at(&mut self.lines[self.cursor_row], col, &self.clipboard);
+                        self.cursor_col = col + self.clipboard.chars().count() - 1;
                     }
                     self.modified = true;
                     self.status_message = "Pasted".into();
@@ -492,14 +544,14 @@ impl Default for Config {
             }
             Key::Char(c) => {
                 self.save_undo();
-                self.lines[self.cursor_row].insert(self.cursor_col, *c);
+                Self::insert_char_at(&mut self.lines[self.cursor_row], self.cursor_col, *c);
                 self.cursor_col += 1;
                 self.modified = true;
                 true
             }
             Key::Enter => {
                 self.save_undo();
-                let rest = self.lines[self.cursor_row].split_off(self.cursor_col);
+                let rest = Self::split_off_at(&mut self.lines[self.cursor_row], self.cursor_col);
                 self.cursor_row += 1;
                 self.lines.insert(self.cursor_row, rest);
                 self.cursor_col = 0;
@@ -509,13 +561,13 @@ impl Default for Config {
             Key::Backspace => {
                 self.save_undo();
                 if self.cursor_col > 0 {
-                    self.lines[self.cursor_row].remove(self.cursor_col - 1);
+                    Self::remove_char_at(&mut self.lines[self.cursor_row], self.cursor_col - 1);
                     self.cursor_col -= 1;
                     self.modified = true;
                 } else if self.cursor_row > 0 {
                     let current = self.lines.remove(self.cursor_row);
                     self.cursor_row -= 1;
-                    self.cursor_col = self.lines[self.cursor_row].len();
+                    self.cursor_col = self.lines[self.cursor_row].chars().count();
                     self.lines[self.cursor_row].push_str(&current);
                     self.modified = true;
                 }
@@ -524,7 +576,7 @@ impl Default for Config {
             Key::Delete => {
                 self.save_undo();
                 if self.cursor_col < self.current_line_len() {
-                    self.lines[self.cursor_row].remove(self.cursor_col);
+                    Self::remove_char_at(&mut self.lines[self.cursor_row], self.cursor_col);
                     self.modified = true;
                 } else if self.cursor_row < self.lines.len() - 1 {
                     let next = self.lines.remove(self.cursor_row + 1);
@@ -535,7 +587,7 @@ impl Default for Config {
             }
             Key::Tab => {
                 self.save_undo();
-                self.lines[self.cursor_row].insert_str(self.cursor_col, "    ");
+                Self::insert_str_at(&mut self.lines[self.cursor_row], self.cursor_col, "    ");
                 self.cursor_col += 4;
                 self.modified = true;
                 true
@@ -623,19 +675,23 @@ impl Default for Config {
                     };
 
                     if sr == er {
-                        self.clipboard = self.lines[sr]
-                            [sc..=ec.min(self.lines[sr].len().saturating_sub(1))]
-                            .to_string();
+                        let line_char_len = self.lines[sr].chars().count();
+                        self.clipboard = Self::substr_range(
+                            &self.lines[sr],
+                            sc,
+                            ec.min(line_char_len.saturating_sub(1)),
+                        );
                     } else {
                         let mut selected = String::new();
                         for row in sr..=er {
                             if row == sr {
-                                selected.push_str(&self.lines[row][sc..]);
+                                selected.push_str(Self::substr_from(&self.lines[row], sc));
                             } else if row == er {
-                                selected.push_str(
-                                    &self.lines[row]
-                                        [..=ec.min(self.lines[row].len().saturating_sub(1))],
-                                );
+                                let line_char_len = self.lines[row].chars().count();
+                                selected.push_str(Self::substr_before(
+                                    &self.lines[row],
+                                    (ec + 1).min(line_char_len),
+                                ));
                             } else {
                                 selected.push_str(&self.lines[row]);
                             }
@@ -865,12 +921,13 @@ impl View for TextEditor {
             }
 
             // Show cursor position
+            let line_char_len = line.chars().count();
             let text = if is_cursor_row && self.mode == Mode::Normal {
                 // Highlight cursor position
-                let before = &line[..self.cursor_col.min(line.len())];
+                let before = Self::substr_before(line, self.cursor_col.min(line_char_len));
                 let cursor_char = line.chars().nth(self.cursor_col).unwrap_or(' ');
-                let after = if self.cursor_col < line.len() {
-                    &line[self.cursor_col + 1..]
+                let after = if self.cursor_col < line_char_len {
+                    Self::substr_from(line, self.cursor_col + 1)
                 } else {
                     ""
                 };
@@ -886,8 +943,8 @@ impl View for TextEditor {
                     .child(Text::new(after))
             } else if is_cursor_row && self.mode == Mode::Insert {
                 // Insert mode cursor (line)
-                let before = &line[..self.cursor_col.min(line.len())];
-                let after = &line[self.cursor_col.min(line.len())..];
+                let before = Self::substr_before(line, self.cursor_col.min(line_char_len));
+                let after = Self::substr_from(line, self.cursor_col.min(line_char_len));
 
                 hstack()
                     .child(line_num)
