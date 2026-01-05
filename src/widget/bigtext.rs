@@ -184,18 +184,17 @@ impl BigText {
     }
 
     /// Render using Text Sizing Protocol (OSC 66)
-    ///
-    /// Note: This requires modifying the Cell/Buffer architecture to support
-    /// escape sequences. For now, falls back to Figlet.
     fn render_text_sizing(&self, ctx: &mut RenderContext) {
-        // TODO: Implement OSC 66 rendering once Cell supports escape sequences
-        // For now, we fall back to Figlet rendering
-        //
-        // The escape sequence would be:
-        // let seq = TextSizing::escape_sequence(&self.text, self.tier, ctx.area.width);
-        // ... write seq to first cell, mark rest as skip ...
+        let area = ctx.area;
 
-        self.render_figlet(ctx);
+        // Generate the OSC 66 escape sequence
+        let seq = TextSizing::escape_sequence(&self.text, self.tier, area.width);
+
+        // Write the sequence to the buffer
+        // OSC 66 text occupies 2 rows of height
+        let height = TextSizing::height();
+        ctx.buffer
+            .put_sequence(area.x, area.y, &seq, area.width, height);
     }
 }
 
@@ -346,5 +345,48 @@ mod tests {
         bt.render(&mut ctx);
 
         // Should not crash, and should not render anything
+    }
+
+    #[test]
+    fn test_text_sizing_rendering() {
+        let mut buffer = Buffer::new(80, 10);
+        let area = Rect::new(0, 0, 80, 10);
+
+        // Simulate text sizing support for testing
+        // render_text_sizing writes an escape sequence to the buffer
+        let bt = BigText::h1("Test");
+
+        // Call render_text_sizing directly (bypasses the is_supported check)
+        bt.render_text_sizing(&mut RenderContext::new(&mut buffer, area));
+
+        // Verify that a sequence was registered
+        assert_eq!(buffer.sequences().len(), 1);
+
+        // Verify the sequence contains OSC 66 marker
+        let seq = &buffer.sequences()[0];
+        assert!(seq.contains("\x1b]66;"), "Should contain OSC 66 marker");
+        assert!(seq.contains("Test"), "Should contain the text");
+
+        // Verify the first cell has a sequence_id
+        let first_cell = buffer.get(0, 0).unwrap();
+        assert!(
+            first_cell.sequence_id.is_some(),
+            "First cell should have sequence_id"
+        );
+
+        // Verify continuation cells
+        let cont_cell = buffer.get(1, 0).unwrap();
+        assert!(
+            cont_cell.is_continuation(),
+            "Adjacent cells should be continuations"
+        );
+    }
+
+    #[test]
+    fn test_text_sizing_height() {
+        let bt = BigText::h1("Test");
+        // When text sizing is not supported, height is figlet height
+        // When supported, height is TextSizing::height() = 2
+        assert!(bt.height() > 0);
     }
 }
