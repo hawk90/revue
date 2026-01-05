@@ -83,7 +83,7 @@ similar = { version = "2.6", optional = true }
 # ═══════════════════════════════════════════
 # Error Handling
 # ═══════════════════════════════════════════
-thiserror = "1.0"
+thiserror = "2.0"
 
 [dev-dependencies]
 insta = "1.34"
