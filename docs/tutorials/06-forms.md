@@ -24,8 +24,8 @@ let form = FormState::new()
     .field("age", |f| f
         .number()
         .label("Age")
-        .min_value(1)
-        .max_value(150))
+        .min(1.0)
+        .max(150.0))
     .build();
 
 // Reactive validation - errors auto-update when values change
@@ -68,13 +68,12 @@ Each field is configured using a builder pattern:
 .email()                 // Must be valid email
 .min_length(n)           // Minimum character count
 .max_length(n)           // Maximum character count
-.min_value(n)            // Minimum numeric value
-.max_value(n)            // Maximum numeric value
+.min(n)                  // Minimum numeric value
+.max(n)                  // Maximum numeric value
 .numeric()               // Must contain only digits
 .integer()               // Must be a valid integer
 .alphanumeric()          // Letters and numbers only
 .no_whitespace()         // No spaces allowed
-.contains("@")           // Must contain substring
 .matches("password")     // Must match another field
 .custom(|v| ...)         // Custom validator function
 ```
@@ -170,7 +169,7 @@ impl MyForm {
             // Show validation errors
             for (field, errors) in self.form.errors() {
                 for error in errors {
-                    println!("{}: {}", field, error.message());
+                    println!("{}: {}", field, error.message);
                 }
             }
         }
@@ -221,7 +220,7 @@ impl View for MyForm {
                 if field.is_touched() {
                     for error in errors {
                         field_view = field_view.child(
-                            Text::error(format!("  → {}", error.message()))
+                            Text::error(format!("  → {}", error.message))
                         );
                     }
                 }
@@ -348,8 +347,8 @@ impl RegistrationForm {
 .field("email", |f| f.email().required())
 .field("password", |f| f.password().min_length(8))
 
-// Avoid - generic text for specialized fields
-.field("email", |f| f.contains("@"))
+// Avoid - generic validation for specialized fields
+.field("email", |f| f.validator(Validators::contains("@", "Must contain @")))
 ```
 
 ### 2. Provide clear labels and placeholders

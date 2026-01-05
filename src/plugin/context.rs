@@ -15,9 +15,9 @@ use std::collections::HashMap;
 ///     // Store plugin-specific data
 ///     ctx.set_data("counter", 0i32);
 ///
-///     // Read configuration
-///     if let Some(config) = ctx.get_config::<MyConfig>("my-plugin") {
-///         // Use config...
+///     // Read data
+///     if let Some(counter) = ctx.get_data::<i32>("counter") {
+///         // Use counter...
 ///     }
 ///
 ///     Ok(())
