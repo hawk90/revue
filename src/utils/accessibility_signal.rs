@@ -252,6 +252,7 @@ pub fn announce_progress_complete(context: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     // Helper to reset global state before each test
     fn setup() {
@@ -262,7 +263,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Flaky due to global state race condition in parallel tests
+    #[serial]
     fn test_announce() {
         setup();
         announce("Test message");
@@ -273,7 +274,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Flaky due to global state race condition in parallel tests
+    #[serial]
     fn test_announce_now() {
         setup();
         announce_now("Urgent message");
@@ -284,6 +285,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_take_clears_queue() {
         setup();
         announce("Message 1");
@@ -297,6 +299,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_reduced_motion() {
         setup();
         set_reduced_motion(true);
@@ -307,6 +310,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_high_contrast() {
         setup();
         set_high_contrast(true);
@@ -317,6 +321,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_disabled_no_announcements() {
         setup();
         set_accessibility_enabled(false);
@@ -329,7 +334,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Flaky due to global state race condition in parallel tests
+    #[serial]
     fn test_button_clicked() {
         setup();
         announce_button_clicked("Submit");
@@ -338,7 +343,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Flaky due to global state race condition in parallel tests
+    #[serial]
     fn test_checkbox_changed() {
         setup();
         announce_checkbox_changed("Accept terms", true);
@@ -347,7 +352,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Flaky due to global state race condition in parallel tests
+    #[serial]
     fn test_list_selection() {
         setup();
         announce_list_selection("Item A", 0, 5);
@@ -356,7 +361,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Flaky due to global state race condition in parallel tests
+    #[serial]
     fn test_error_announcement() {
         setup();
         announce_error("Invalid email");
@@ -366,7 +371,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Flaky due to global state race condition in parallel tests
+    #[serial]
     fn test_progress_announcement() {
         setup();
         announce_progress(50, "Upload");
