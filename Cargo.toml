@@ -79,7 +79,7 @@ tracing-subscriber = { version = "0.3", optional = true }
 # QR Code & HTTP & System (optional)
 # ═══════════════════════════════════════════
 qrcode = { version = "0.14", optional = true }
-sysinfo = { version = "0.31", optional = true }
+sysinfo = { version = "0.37", optional = true }
 reqwest = { version = "0.13", features = ["json", "blocking"], optional = true }
 similar = { version = "2.6", optional = true }
 
