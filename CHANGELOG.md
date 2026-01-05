@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4](https://github.com/hawk90/revue/compare/v2.0.3...v2.0.4) (2026-01-05)
+
+
+### Bug Fixes
+
+* **ci:** use stable rust toolchain instead of non-existent 1.100 ([7fb6f37](https://github.com/hawk90/revue/commit/7fb6f37fbbb9d57a7a8e1115f28b74412a3d42a8))
+* consistent lock poisoning recovery across codebase ([ba8003e](https://github.com/hawk90/revue/commit/ba8003e8a2f34a693239330259dd7fd6d99fbbb3))
+* consistent lock poisoning recovery across codebase ([1809de5](https://github.com/hawk90/revue/commit/1809de56ec67a3cbb8b36fd26ae78d077e51cfef)), closes [#63](https://github.com/hawk90/revue/issues/63)
+
 ## [2.0.3](https://github.com/hawk90/revue/compare/v2.0.2...v2.0.3) (2026-01-05)
 
 
