@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0](https://github.com/hawk90/revue/compare/v2.4.0...v2.5.0) (2026-01-06)
+
+
+### Features
+
+* **widget:** add Justify text alignment ([#65](https://github.com/hawk90/revue/issues/65)) ([bf1c27d](https://github.com/hawk90/revue/commit/bf1c27dd049e726f669f853ba74fba73fc4bf6ba)), closes [#50](https://github.com/hawk90/revue/issues/50)
+
 ## [2.4.0](https://github.com/hawk90/revue/compare/v2.3.0...v2.4.0) (2026-01-05)
 
 
