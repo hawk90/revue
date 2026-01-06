@@ -29,6 +29,7 @@ pub struct Text {
     bold: bool,
     italic: bool,
     underline: bool,
+    reverse: bool,
     align: Alignment,
     /// CSS styling properties (id, classes)
     props: WidgetProps,
@@ -44,6 +45,7 @@ impl Text {
             bold: false,
             italic: false,
             underline: false,
+            reverse: false,
             align: Alignment::Left,
             props: WidgetProps::new(),
         }
@@ -122,6 +124,12 @@ impl Text {
         self
     }
 
+    /// Reverse video (swap foreground/background colors)
+    pub fn reverse(mut self) -> Self {
+        self.reverse = true;
+        self
+    }
+
     /// Set text alignment
     pub fn align(mut self, align: Alignment) -> Self {
         self.align = align;
@@ -177,6 +185,9 @@ impl Text {
         }
         if self.underline {
             style = style.underline();
+        }
+        if self.reverse {
+            style = style.reverse();
         }
 
         RichText::new().push(&self.content, style)

@@ -19,6 +19,8 @@ bitflags! {
         const DIM = 0b00001000;
         /// Strikethrough/crossed out text
         const CROSSED_OUT = 0b00010000;
+        /// Reverse video (swap foreground/background)
+        const REVERSE = 0b00100000;
     }
 }
 
@@ -143,6 +145,12 @@ impl Cell {
         self
     }
 
+    /// Set reverse modifier (swap foreground/background)
+    pub fn reverse(mut self) -> Self {
+        self.modifier |= Modifier::REVERSE;
+        self
+    }
+
     /// Reset the cell to default state
     pub fn reset(&mut self) {
         self.symbol = ' ';
@@ -251,5 +259,18 @@ mod tests {
         assert!(cell.sequence_id.is_some());
         cell.reset();
         assert!(cell.sequence_id.is_none());
+    }
+
+    #[test]
+    fn test_cell_reverse() {
+        let cell = Cell::new('X').reverse();
+        assert!(cell.modifier.contains(Modifier::REVERSE));
+    }
+
+    #[test]
+    fn test_modifier_reverse_combined() {
+        let cell = Cell::new('X').bold().reverse();
+        assert!(cell.modifier.contains(Modifier::BOLD));
+        assert!(cell.modifier.contains(Modifier::REVERSE));
     }
 }

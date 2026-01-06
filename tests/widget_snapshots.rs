@@ -64,6 +64,19 @@ fn test_text_alignment() {
     pilot.snapshot("text_alignment");
 }
 
+#[test]
+fn test_text_reverse() {
+    let view = vstack()
+        .child(Text::new("Normal text"))
+        .child(Text::new("Reversed text").reverse())
+        .child(Text::new("Bold + Reversed").bold().reverse());
+
+    let mut app = TestApp::new(view);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("text_reverse");
+}
+
 // =============================================================================
 // Stack Widget Tests
 // =============================================================================

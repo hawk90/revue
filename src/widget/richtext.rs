@@ -39,6 +39,8 @@ pub struct Style {
     pub dim: bool,
     /// Strikethrough text
     pub strikethrough: bool,
+    /// Reverse video (swap fg/bg)
+    pub reverse: bool,
 }
 
 impl Style {
@@ -86,6 +88,12 @@ impl Style {
     /// Set strikethrough
     pub fn strikethrough(mut self) -> Self {
         self.strikethrough = true;
+        self
+    }
+
+    /// Set reverse video (swap foreground/background)
+    pub fn reverse(mut self) -> Self {
+        self.reverse = true;
         self
     }
 
@@ -145,6 +153,9 @@ impl Style {
         }
         if self.strikethrough {
             m |= Modifier::CROSSED_OUT;
+        }
+        if self.reverse {
+            m |= Modifier::REVERSE;
         }
         m
     }
@@ -362,6 +373,7 @@ impl RichText {
                             "underline" | "u" => current_style.underline = true,
                             "dim" => current_style.dim = true,
                             "strike" | "s" => current_style.strikethrough = true,
+                            "reverse" | "rev" => current_style.reverse = true,
                             "red" => current_style.fg = Some(Color::RED),
                             "green" => current_style.fg = Some(Color::GREEN),
                             "blue" => current_style.fg = Some(Color::BLUE),

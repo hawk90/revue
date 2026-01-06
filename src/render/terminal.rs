@@ -297,6 +297,9 @@ impl<W: Write> Terminal<W> {
             if cell.modifier.contains(Modifier::CROSSED_OUT) {
                 queue!(self.writer, SetAttribute(Attribute::CrossedOut))?;
             }
+            if cell.modifier.contains(Modifier::REVERSE) {
+                queue!(self.writer, SetAttribute(Attribute::Reverse))?;
+            }
 
             state.modifier = cell.modifier;
         }
