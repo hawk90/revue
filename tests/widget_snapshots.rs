@@ -77,6 +77,20 @@ fn test_text_reverse() {
     pilot.snapshot("text_reverse");
 }
 
+#[test]
+fn test_text_justify() {
+    let config = TestConfig::with_size(30, 5);
+    let view = vstack()
+        .child(Text::new("Hello World Test").align(Alignment::Justify))
+        .child(Text::new("A B C D E").align(Alignment::Justify))
+        .child(Text::new("SingleWord").align(Alignment::Justify));
+
+    let mut app = TestApp::with_config(view, config);
+    let mut pilot = Pilot::new(&mut app);
+
+    pilot.snapshot("text_justify");
+}
+
 // =============================================================================
 // Stack Widget Tests
 // =============================================================================
