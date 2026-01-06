@@ -261,23 +261,32 @@ mod tests {
 
     #[test]
     fn test_async_task_is_running() {
-        let task = AsyncTask::spawn(|| {
-            thread::sleep(Duration::from_millis(20));
+        use std::sync::{Arc, Barrier};
+
+        // Two barriers: one to signal task started, one to signal task can finish
+        let started = Arc::new(Barrier::new(2));
+        let finish = Arc::new(Barrier::new(2));
+        let started_clone = started.clone();
+        let finish_clone = finish.clone();
+
+        let task = AsyncTask::spawn(move || {
+            started_clone.wait(); // Signal: task has started
+            finish_clone.wait(); // Wait: main thread allows finish
             42
         });
 
-        // Task should be running initially
-        assert!(task.is_running());
+        // Wait until task has started
+        started.wait();
 
-        // Wait for completion with polling
-        for _ in 0..100 {
-            if !task.is_running() {
-                break;
-            }
-            thread::sleep(Duration::from_millis(10));
-        }
+        // Now task is blocked at finish barrier, so it's definitely running
+        assert!(task.is_running(), "Task should be running while blocked");
 
-        assert!(!task.is_running());
+        // Allow task to finish
+        finish.wait();
+
+        // Wait for completion deterministically
+        let result = task.wait();
+        assert_eq!(result, Some(42));
     }
 
     // Spinner tests
