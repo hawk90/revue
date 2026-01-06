@@ -18,6 +18,8 @@ pub enum Alignment {
     Center,
     /// Right-aligned text
     Right,
+    /// Justified text (both edges aligned)
+    Justify,
 }
 
 /// A text display widget
@@ -192,6 +194,77 @@ impl Text {
 
         RichText::new().push(&self.content, style)
     }
+
+    /// Render text with justify alignment (distribute space between words)
+    fn render_justified(&self, ctx: &mut RenderContext) {
+        use crate::render::{Cell, Modifier};
+        use unicode_width::UnicodeWidthStr;
+
+        let area = ctx.area;
+        let words: Vec<&str> = self.content.split_whitespace().collect();
+
+        // If no words or single word, fall back to left alignment
+        if words.len() <= 1 {
+            let rich_text = self.to_rich_text_with_ctx(ctx);
+            rich_text.render(ctx);
+            return;
+        }
+
+        // Calculate total text width (without spaces)
+        let text_width: usize = words.iter().map(|w| w.width()).sum();
+        let available_width = area.width as usize;
+
+        // If text is too wide, fall back to left alignment
+        if text_width >= available_width {
+            let rich_text = self.to_rich_text_with_ctx(ctx);
+            rich_text.render(ctx);
+            return;
+        }
+
+        // Calculate space distribution
+        let total_space = available_width - text_width;
+        let gap_count = words.len() - 1;
+        let base_space = total_space / gap_count;
+        let extra_spaces = total_space % gap_count;
+
+        // Build modifier from style
+        let mut modifier = Modifier::empty();
+        if self.bold {
+            modifier |= Modifier::BOLD;
+        }
+        if self.italic {
+            modifier |= Modifier::ITALIC;
+        }
+        if self.underline {
+            modifier |= Modifier::UNDERLINE;
+        }
+        if self.reverse {
+            modifier |= Modifier::REVERSE;
+        }
+
+        // Render words with distributed spacing
+        let mut x = area.x;
+        for (i, word) in words.iter().enumerate() {
+            // Render word
+            for ch in word.chars() {
+                if x >= area.x + area.width {
+                    break;
+                }
+                let mut cell = Cell::new(ch);
+                cell.fg = self.fg;
+                cell.bg = self.bg;
+                cell.modifier = modifier;
+                ctx.buffer.set(x, area.y, cell);
+                x += UnicodeWidthStr::width(ch.to_string().as_str()) as u16;
+            }
+
+            // Add spacing after word (except last word)
+            if i < gap_count {
+                let spaces = base_space + if i < extra_spaces { 1 } else { 0 };
+                x += spaces as u16;
+            }
+        }
+    }
 }
 
 impl View for Text {
@@ -201,13 +274,19 @@ impl View for Text {
             return;
         }
 
+        // Handle Justify alignment specially
+        if self.align == Alignment::Justify {
+            self.render_justified(ctx);
+            return;
+        }
+
         // Extract CSS colors before creating adjusted context (avoids borrow conflict)
         let rich_text = self.to_rich_text_with_ctx(ctx);
 
         // Calculate start position based on alignment
         let text_width = unicode_width::UnicodeWidthStr::width(self.content.as_str()) as u16;
         let x_offset = match self.align {
-            Alignment::Left => 0,
+            Alignment::Left | Alignment::Justify => 0,
             Alignment::Center => area.width.saturating_sub(text_width) / 2,
             Alignment::Right => area.width.saturating_sub(text_width),
         };
@@ -354,5 +433,61 @@ mod tests {
         let mut ctx = RenderContext::with_style(&mut buffer, area, &style);
         text.render(&mut ctx);
         // Text should use CSS color
+    }
+
+    #[test]
+    fn test_text_justify_alignment() {
+        // "Hello World" = 10 chars (5+5), width 20 = 10 extra spaces
+        // gap_count = 1, so 10 spaces between "Hello" and "World"
+        // Hello(0-4), gap(5-14), World(15-19)
+        let text = Text::new("Hello World").align(Alignment::Justify);
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        text.render(&mut ctx);
+
+        // First word starts at 0
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'H');
+        assert_eq!(buffer.get(4, 0).unwrap().symbol, 'o');
+
+        // Last word ends at 19 (width - 1)
+        assert_eq!(buffer.get(19, 0).unwrap().symbol, 'd');
+        assert_eq!(buffer.get(15, 0).unwrap().symbol, 'W');
+    }
+
+    #[test]
+    fn test_text_justify_single_word() {
+        // Single word should fall back to left alignment
+        let text = Text::new("Hello").align(Alignment::Justify);
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        text.render(&mut ctx);
+
+        // Should be left-aligned
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'H');
+        assert_eq!(buffer.get(4, 0).unwrap().symbol, 'o');
+    }
+
+    #[test]
+    fn test_text_justify_multiple_words() {
+        // "A B C" = 5 chars, width 11 = 6 extra spaces, 2 gaps = 3 each
+        let text = Text::new("A B C").align(Alignment::Justify);
+        let mut buffer = Buffer::new(11, 1);
+        let area = Rect::new(0, 0, 11, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        text.render(&mut ctx);
+
+        // A at 0, B at 4, C at 8 (3 spaces between each)
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'A');
+        // Extra space distributed: 6/2 = 3 each, remainder 0
+        // A(0) + 4 spaces = B(4), B(4) + 4 spaces = ... wait
+        // Actually: 11 width - 3 chars = 8 spaces, 2 gaps = 4 each
+        // A(0), gap(1-4), B(5), gap(6-9), C(10)
+        assert_eq!(buffer.get(5, 0).unwrap().symbol, 'B');
+        assert_eq!(buffer.get(10, 0).unwrap().symbol, 'C');
     }
 }
