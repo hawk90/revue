@@ -18,6 +18,7 @@
 //! | [`Grid`] | CSS Grid layout | [`grid()`] |
 //! | [`Splitter`] | Resizable panes | [`hsplit()`], [`vsplit()`] |
 //! | [`Accordion`] | Collapsible sections | [`accordion()`] |
+//! | [`Collapsible`] | Single expandable section | [`collapsible()`] |
 //! | [`Screen`] | Screen navigation | [`screen()`] |
 //!
 //! ## Input Widgets
@@ -174,6 +175,7 @@ mod candlechart;
 mod canvas;
 mod chart;
 mod checkbox;
+mod collapsible;
 mod color_picker;
 mod command_palette;
 mod datagrid;
@@ -279,6 +281,7 @@ pub use chart::{
     Marker, Series,
 };
 pub use checkbox::{checkbox, Checkbox, CheckboxStyle};
+pub use collapsible::{collapsible, Collapsible};
 pub use color_picker::{color_picker, ColorPalette, ColorPicker, ColorPickerMode};
 pub use command_palette::{command_palette, Command, CommandPalette};
 pub use datagrid::{datagrid, grid_column, grid_row, DataGrid, GridColumn, GridRow, SortDirection};
