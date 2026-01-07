@@ -438,6 +438,65 @@ progress()
     .label(format!("{}%", progress.get()))
 ```
 
+#### Alert
+
+```rust
+// Basic alerts by level
+info_alert("Operation completed")
+success_alert("File saved successfully")
+warning_alert("Connection unstable")
+error_alert("Failed to load data")
+
+// Alert variants
+alert("Custom message")
+    .level(AlertLevel::Warning)
+    .variant(AlertVariant::Filled)    // Filled background
+    .variant(AlertVariant::Outlined)  // Border only
+    .variant(AlertVariant::Minimal)   // Icon and text only
+    .dismissible(true)                // Can be dismissed
+    .icon(false)                      // Hide icon
+    .custom_icon('⚠')                 // Custom icon character
+    .title("Warning")                 // Add title
+```
+
+#### Callout
+
+```rust
+// Callout types for documentation-style highlights
+note("General information for the reader")
+tip("Helpful suggestion or best practice")
+important("Key information to remember")
+warning_callout("Potential issues to watch for")
+danger("Critical warning - proceed with caution")
+
+// Callout variants
+Callout::note("Content here")
+    .variant(CalloutVariant::Filled)      // Filled background
+    .variant(CalloutVariant::LeftBorder)  // Left accent border
+    .variant(CalloutVariant::Minimal)     // Icon and text only
+    .collapsible(true)                    // Can collapse/expand
+    .title("Custom Title")                // Override default title
+```
+
+#### StatusIndicator
+
+```rust
+// Status states
+online()                    // Green dot
+offline()                   // Gray dot
+busy_indicator()            // Red dot
+away_indicator()            // Yellow dot
+
+// Display styles
+status_indicator(Status::Online)
+    .indicator_style(StatusStyle::Dot)          // Just the dot
+    .indicator_style(StatusStyle::DotWithLabel) // Dot + "Online"
+    .indicator_style(StatusStyle::Badge)        // Colored badge
+    .size(StatusSize::Small)                    // sm/md/lg
+    .label("Available")                         // Custom label
+    .pulsing(true)                              // Animated pulse
+```
+
 ### Content Widgets
 
 #### Markdown
