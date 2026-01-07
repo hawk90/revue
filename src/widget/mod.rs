@@ -56,6 +56,7 @@
 //! | [`Breadcrumb`] | Navigation trail | [`breadcrumb()`] |
 //! | [`Stepper`] | Step indicator | [`stepper()`] |
 //! | [`Alert`] | Persistent feedback | [`alert()`] |
+//! | [`Callout`] | Info highlight block | [`callout()`], [`note()`], [`tip()`] |
 //!
 //! ## Data Widgets
 //!
@@ -173,6 +174,7 @@ mod border;
 mod breadcrumb;
 mod button;
 mod calendar;
+mod callout;
 mod candlechart;
 mod canvas;
 mod chart;
@@ -276,6 +278,10 @@ pub use border::{border, Border, BorderType};
 pub use breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
 pub use button::{button, Button, ButtonVariant};
 pub use calendar::{calendar, Calendar, CalendarMode, Date, DateMarker, FirstDayOfWeek};
+pub use callout::{
+    callout, danger, important, info_callout, note, tip, warning_callout, Callout, CalloutType,
+    CalloutVariant,
+};
 pub use candlechart::{candle_chart, ohlc_chart, Candle, CandleChart, ChartStyle as CandleStyle};
 pub use canvas::{
     braille_canvas, canvas, BrailleCanvas, BrailleContext, BrailleGrid, Canvas, Circle,
