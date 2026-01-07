@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0](https://github.com/hawk90/revue/compare/v2.6.0...v2.7.0) (2026-01-07)
+
+
+### Features
+
+* **widget:** add Alert widget ([#71](https://github.com/hawk90/revue/issues/71)) ([6eae377](https://github.com/hawk90/revue/commit/6eae3773747fa767d626d914ba83fd76caf854c9)), closes [#41](https://github.com/hawk90/revue/issues/41)
+
 ## [2.6.0](https://github.com/hawk90/revue/compare/v2.5.1...v2.6.0) (2026-01-07)
 
 
