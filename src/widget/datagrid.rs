@@ -1868,4 +1868,724 @@ mod tests {
         let grid = DataGrid::new().row_height(0);
         assert_eq!(grid.options.row_height, 1);
     }
+
+    // ==================== GridColors Tests ====================
+
+    #[test]
+    fn test_grid_colors_new() {
+        let colors = GridColors::new();
+        assert_eq!(colors.header_bg, Color::rgb(60, 60, 80));
+    }
+
+    #[test]
+    fn test_grid_colors_dark() {
+        let colors = GridColors::dark();
+        assert_eq!(colors.header_bg, Color::rgb(60, 60, 80));
+        assert_eq!(colors.header_fg, Color::WHITE);
+    }
+
+    #[test]
+    fn test_grid_colors_light() {
+        let colors = GridColors::light();
+        assert_eq!(colors.header_bg, Color::rgb(220, 220, 230));
+        assert_eq!(colors.header_fg, Color::BLACK);
+        assert_eq!(colors.row_bg, Color::rgb(255, 255, 255));
+    }
+
+    #[test]
+    fn test_grid_colors_debug_clone() {
+        let colors = GridColors::default();
+        let cloned = colors.clone();
+        assert_eq!(colors.header_bg, cloned.header_bg);
+        let _ = format!("{:?}", colors);
+    }
+
+    // ==================== GridOptions Tests ====================
+
+    #[test]
+    fn test_grid_options_new() {
+        let options = GridOptions::new();
+        assert!(options.show_header);
+        assert!(!options.show_row_numbers);
+        assert!(options.zebra);
+    }
+
+    #[test]
+    fn test_grid_options_debug_clone() {
+        let options = GridOptions::default();
+        let cloned = options.clone();
+        assert_eq!(options.show_header, cloned.show_header);
+        let _ = format!("{:?}", options);
+    }
+
+    // ==================== ColumnType Tests ====================
+
+    #[test]
+    fn test_column_type_default() {
+        assert_eq!(ColumnType::default(), ColumnType::Text);
+    }
+
+    #[test]
+    fn test_column_type_variants() {
+        let _text = ColumnType::Text;
+        let _number = ColumnType::Number;
+        let _date = ColumnType::Date;
+        let _bool = ColumnType::Boolean;
+        let _custom = ColumnType::Custom;
+    }
+
+    #[test]
+    fn test_column_type_debug_clone_eq() {
+        let col_type = ColumnType::Number;
+        let cloned = col_type;
+        assert_eq!(col_type, cloned);
+        let _ = format!("{:?}", col_type);
+    }
+
+    // ==================== SortDirection Tests ====================
+
+    #[test]
+    fn test_sort_direction_toggle() {
+        let asc = SortDirection::Ascending;
+        assert_eq!(asc.toggle(), SortDirection::Descending);
+
+        let desc = SortDirection::Descending;
+        assert_eq!(desc.toggle(), SortDirection::Ascending);
+    }
+
+    #[test]
+    fn test_sort_direction_icon() {
+        assert_eq!(SortDirection::Ascending.icon(), '▲');
+        assert_eq!(SortDirection::Descending.icon(), '▼');
+    }
+
+    #[test]
+    fn test_sort_direction_debug_clone_eq() {
+        let dir = SortDirection::Ascending;
+        let cloned = dir;
+        assert_eq!(dir, cloned);
+        let _ = format!("{:?}", dir);
+    }
+
+    // ==================== Alignment Tests ====================
+
+    #[test]
+    fn test_alignment_default() {
+        assert_eq!(Alignment::default(), Alignment::Left);
+    }
+
+    #[test]
+    fn test_alignment_variants() {
+        let _left = Alignment::Left;
+        let _center = Alignment::Center;
+        let _right = Alignment::Right;
+    }
+
+    // ==================== GridColumn Builder Tests ====================
+
+    #[test]
+    fn test_grid_column_col_type() {
+        let col = GridColumn::new("num", "Number").col_type(ColumnType::Number);
+        assert_eq!(col.col_type, ColumnType::Number);
+    }
+
+    #[test]
+    fn test_grid_column_min_max_width() {
+        let col = GridColumn::new("test", "Test").min_width(10).max_width(100);
+        assert_eq!(col.min_width, 10);
+        assert_eq!(col.max_width, 100);
+    }
+
+    #[test]
+    fn test_grid_column_editable() {
+        let col = GridColumn::new("test", "Test").editable(true);
+        assert!(col.editable);
+    }
+
+    #[test]
+    fn test_grid_column_align() {
+        let col = GridColumn::new("test", "Test").align(Alignment::Right);
+        assert_eq!(col.align, Alignment::Right);
+    }
+
+    #[test]
+    fn test_grid_column_right() {
+        let col = GridColumn::new("test", "Test").right();
+        assert_eq!(col.align, Alignment::Right);
+    }
+
+    #[test]
+    fn test_grid_column_center() {
+        let col = GridColumn::new("test", "Test").center();
+        assert_eq!(col.align, Alignment::Center);
+    }
+
+    // ==================== GridRow Tests ====================
+
+    #[test]
+    fn test_grid_row_default() {
+        let row = GridRow::default();
+        assert!(row.data.is_empty());
+        assert!(!row.selected);
+        assert!(!row.expanded);
+        assert!(row.children.is_empty());
+    }
+
+    #[test]
+    fn test_grid_row_debug_clone() {
+        let row = GridRow::new().cell("key", "value");
+        let cloned = row.clone();
+        assert_eq!(row.get("key"), cloned.get("key"));
+        let _ = format!("{:?}", row);
+    }
+
+    // ==================== DataGrid Builder Tests ====================
+
+    #[test]
+    fn test_datagrid_default() {
+        let grid = DataGrid::default();
+        assert!(grid.columns.is_empty());
+        assert!(grid.rows.is_empty());
+    }
+
+    #[test]
+    fn test_datagrid_colors() {
+        let grid = DataGrid::new().colors(GridColors::light());
+        assert_eq!(grid.colors.header_fg, Color::BLACK);
+    }
+
+    #[test]
+    fn test_datagrid_options() {
+        let options = GridOptions {
+            show_row_numbers: true,
+            ..Default::default()
+        };
+        let grid = DataGrid::new().options(options);
+        assert!(grid.options.show_row_numbers);
+    }
+
+    #[test]
+    fn test_datagrid_colors_mut() {
+        let mut grid = DataGrid::new();
+        grid.colors_mut().header_fg = Color::RED;
+        assert_eq!(grid.colors.header_fg, Color::RED);
+    }
+
+    #[test]
+    fn test_datagrid_options_mut() {
+        let mut grid = DataGrid::new();
+        grid.options_mut().show_row_numbers = true;
+        assert!(grid.options.show_row_numbers);
+    }
+
+    #[test]
+    fn test_datagrid_columns_vec() {
+        let cols = vec![GridColumn::new("a", "A"), GridColumn::new("b", "B")];
+        let grid = DataGrid::new().columns(cols);
+        assert_eq!(grid.columns.len(), 2);
+    }
+
+    #[test]
+    fn test_datagrid_data_2d() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("col1", "Col1"))
+            .column(GridColumn::new("col2", "Col2"))
+            .data(vec![
+                vec!["a1".into(), "b1".into()],
+                vec!["a2".into(), "b2".into()],
+            ]);
+        assert_eq!(grid.rows.len(), 2);
+        assert_eq!(grid.rows[0].get("col1"), Some("a1"));
+    }
+
+    #[test]
+    fn test_datagrid_header() {
+        let grid = DataGrid::new().header(false);
+        assert!(!grid.options.show_header);
+    }
+
+    #[test]
+    fn test_datagrid_row_numbers() {
+        let grid = DataGrid::new().row_numbers(true);
+        assert!(grid.options.show_row_numbers);
+    }
+
+    #[test]
+    fn test_datagrid_zebra() {
+        let grid = DataGrid::new().zebra(false);
+        assert!(!grid.options.zebra);
+    }
+
+    #[test]
+    fn test_datagrid_multi_select() {
+        let grid = DataGrid::new().multi_select(true);
+        assert!(grid.options.multi_select);
+    }
+
+    // ==================== Selection Tests ====================
+
+    #[test]
+    fn test_toggle_selection() {
+        let mut grid = DataGrid::new()
+            .multi_select(true)
+            .row(GridRow::new().cell("a", "1"))
+            .row(GridRow::new().cell("a", "2"));
+
+        assert!(!grid.rows[0].selected);
+        grid.toggle_selection();
+        assert!(grid.rows[0].selected);
+        grid.toggle_selection();
+        assert!(!grid.rows[0].selected);
+    }
+
+    #[test]
+    fn test_toggle_selection_without_multi_select() {
+        let mut grid = DataGrid::new()
+            .multi_select(false)
+            .row(GridRow::new().cell("a", "1"));
+
+        grid.toggle_selection();
+        // Should not toggle when multi_select is disabled
+        assert!(!grid.rows[0].selected);
+    }
+
+    #[test]
+    fn test_selected_rows() {
+        let mut grid = DataGrid::new()
+            .multi_select(true)
+            .row(GridRow::new().cell("a", "1"))
+            .row(GridRow::new().cell("a", "2"))
+            .row(GridRow::new().cell("a", "3"));
+
+        grid.rows[0].selected = true;
+        grid.rows[2].selected = true;
+
+        let selected = grid.selected_rows();
+        assert_eq!(selected.len(), 2);
+    }
+
+    // ==================== Navigation Tests ====================
+
+    #[test]
+    fn test_select_next_col() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .column(GridColumn::new("b", "B"))
+            .column(GridColumn::new("c", "C"));
+
+        assert_eq!(grid.selected_col, 0);
+        grid.select_next_col();
+        assert_eq!(grid.selected_col, 1);
+        grid.select_next_col();
+        assert_eq!(grid.selected_col, 2);
+        grid.select_next_col();
+        assert_eq!(grid.selected_col, 2); // Can't go past last
+    }
+
+    #[test]
+    fn test_select_prev_col() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .column(GridColumn::new("b", "B"));
+
+        grid.selected_col = 1;
+        grid.select_prev_col();
+        assert_eq!(grid.selected_col, 0);
+        grid.select_prev_col();
+        assert_eq!(grid.selected_col, 0); // Can't go before first
+    }
+
+    #[test]
+    fn test_page_up() {
+        let mut grid = DataGrid::new().column(GridColumn::new("a", "A"));
+
+        let rows: Vec<_> = (0..50)
+            .map(|i| GridRow::new().cell("a", i.to_string()))
+            .collect();
+        grid = grid.rows(rows);
+
+        grid.selected_row = 25;
+        grid.page_up(10);
+        assert_eq!(grid.selected_row, 15);
+
+        grid.page_up(20);
+        assert_eq!(grid.selected_row, 0); // Clamped to 0
+    }
+
+    #[test]
+    fn test_ensure_visible_with_height() {
+        let mut grid = DataGrid::new().column(GridColumn::new("a", "A"));
+
+        let rows: Vec<_> = (0..100)
+            .map(|i| GridRow::new().cell("a", i.to_string()))
+            .collect();
+        grid = grid.rows(rows);
+
+        grid.selected_row = 50;
+        grid.scroll_row = 0;
+        grid.ensure_visible_with_height(10);
+
+        // Scroll should adjust to show selected row
+        assert!(grid.scroll_row > 0);
+    }
+
+    #[test]
+    fn test_set_viewport_height() {
+        let mut grid = DataGrid::new().column(GridColumn::new("a", "A"));
+
+        let rows: Vec<_> = (0..50)
+            .map(|i| GridRow::new().cell("a", i.to_string()))
+            .collect();
+        grid = grid.rows(rows);
+
+        grid.selected_row = 30;
+        grid.scroll_row = 0;
+        grid.set_viewport_height(10);
+
+        assert!(grid.scroll_row > 0);
+    }
+
+    #[test]
+    fn test_scroll_info() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .row(GridRow::new().cell("a", "1"))
+            .row(GridRow::new().cell("a", "2"));
+
+        let (scroll, total, _viewport) = grid.scroll_info();
+        assert_eq!(scroll, 0);
+        assert_eq!(total, 2);
+    }
+
+    #[test]
+    fn test_visible_row_count() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .row(GridRow::new().cell("a", "1"))
+            .row(GridRow::new().cell("a", "2"));
+
+        assert_eq!(grid.visible_row_count(), 2);
+    }
+
+    // ==================== Sorting Edge Cases ====================
+
+    #[test]
+    fn test_sort_invalid_column() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .row(GridRow::new().cell("a", "1"));
+
+        // Sorting invalid column should be no-op
+        grid.sort(99);
+        assert!(grid.sort_column.is_none());
+    }
+
+    #[test]
+    fn test_sort_unsortable_column() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A").sortable(false))
+            .row(GridRow::new().cell("a", "1"));
+
+        grid.sort(0);
+        assert!(grid.sort_column.is_none());
+    }
+
+    #[test]
+    fn test_sort_toggle_direction() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .row(GridRow::new().cell("a", "B"))
+            .row(GridRow::new().cell("a", "A"));
+
+        grid.sort(0); // Ascending
+        assert_eq!(grid.sort_direction, SortDirection::Ascending);
+        assert_eq!(grid.rows[0].get("a"), Some("A"));
+
+        grid.sort(0); // Toggle to descending
+        assert_eq!(grid.sort_direction, SortDirection::Descending);
+        assert_eq!(grid.rows[0].get("a"), Some("B"));
+    }
+
+    #[test]
+    fn test_sort_number_column() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("num", "Number").col_type(ColumnType::Number))
+            .row(GridRow::new().cell("num", "10"))
+            .row(GridRow::new().cell("num", "2"))
+            .row(GridRow::new().cell("num", "100"));
+
+        grid.sort(0);
+
+        assert_eq!(grid.rows[0].get("num"), Some("2"));
+        assert_eq!(grid.rows[1].get("num"), Some("10"));
+        assert_eq!(grid.rows[2].get("num"), Some("100"));
+    }
+
+    #[test]
+    fn test_sort_cancels_edit() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A").editable(true))
+            .row(GridRow::new().cell("a", "B"))
+            .row(GridRow::new().cell("a", "A"));
+
+        grid.start_edit();
+        assert!(grid.is_editing());
+
+        grid.sort(0);
+        assert!(!grid.is_editing());
+    }
+
+    // ==================== Filter Tests ====================
+
+    #[test]
+    fn test_filter_specific_column() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .column(GridColumn::new("b", "B"))
+            .row(GridRow::new().cell("a", "Alice").cell("b", "Smith"))
+            .row(GridRow::new().cell("a", "Bob").cell("b", "Alice"));
+
+        grid.filter_column = Some(0);
+        grid.set_filter("alice");
+
+        // Should only match first row (column A)
+        assert_eq!(grid.filtered_count(), 1);
+    }
+
+    #[test]
+    fn test_filter_cancels_edit() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A").editable(true))
+            .row(GridRow::new().cell("a", "test"));
+
+        grid.start_edit();
+        assert!(grid.is_editing());
+
+        grid.set_filter("x");
+        assert!(!grid.is_editing());
+    }
+
+    // ==================== Edit Mode Tests ====================
+
+    #[test]
+    fn test_edit_delete_key() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A").editable(true))
+            .row(GridRow::new().cell("a", "ABC"));
+
+        grid.start_edit();
+        grid.handle_key(&Key::Home); // Move to start
+        grid.handle_key(&Key::Delete); // Delete 'A'
+
+        assert_eq!(grid.edit_buffer(), Some("BC"));
+    }
+
+    #[test]
+    fn test_edit_right_key() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A").editable(true))
+            .row(GridRow::new().cell("a", "AB"));
+
+        grid.start_edit();
+        grid.handle_key(&Key::Home);
+        assert_eq!(grid.edit_state.cursor, 0);
+
+        grid.handle_key(&Key::Right);
+        assert_eq!(grid.edit_state.cursor, 1);
+    }
+
+    #[test]
+    fn test_edit_start_out_of_bounds() {
+        let mut grid = DataGrid::new().column(GridColumn::new("a", "A").editable(true));
+
+        // No rows, can't edit
+        assert!(!grid.start_edit());
+    }
+
+    #[test]
+    fn test_commit_edit_invalid_state() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A").editable(true))
+            .row(GridRow::new().cell("a", "test"));
+
+        // Not editing, commit should fail
+        assert!(!grid.commit_edit());
+    }
+
+    #[test]
+    fn test_edit_add_new_cell() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A").editable(true))
+            .row(GridRow::new()); // Row without the cell
+
+        grid.start_edit();
+        grid.handle_key(&Key::Char('X'));
+        grid.commit_edit();
+
+        assert_eq!(grid.rows[0].get("a"), Some("X"));
+    }
+
+    // ==================== Key Handling Tests ====================
+
+    #[test]
+    fn test_handle_key_navigation() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .column(GridColumn::new("b", "B"))
+            .row(GridRow::new().cell("a", "1").cell("b", "2"))
+            .row(GridRow::new().cell("a", "3").cell("b", "4"));
+
+        // Vim keys
+        assert!(grid.handle_key(&Key::Char('j'))); // Down
+        assert_eq!(grid.selected_row, 1);
+
+        assert!(grid.handle_key(&Key::Char('k'))); // Up
+        assert_eq!(grid.selected_row, 0);
+
+        assert!(grid.handle_key(&Key::Char('l'))); // Right
+        assert_eq!(grid.selected_col, 1);
+
+        assert!(grid.handle_key(&Key::Char('h'))); // Left
+        assert_eq!(grid.selected_col, 0);
+
+        // Home/End
+        assert!(grid.handle_key(&Key::Char('g'))); // Home
+        assert_eq!(grid.selected_row, 0);
+
+        assert!(grid.handle_key(&Key::Char('G'))); // End
+        assert_eq!(grid.selected_row, 1);
+    }
+
+    #[test]
+    fn test_handle_key_enter_non_editable() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A").editable(false).sortable(true))
+            .row(GridRow::new().cell("a", "B"))
+            .row(GridRow::new().cell("a", "A"));
+
+        // Enter on non-editable should sort
+        grid.handle_key(&Key::Enter);
+        assert_eq!(grid.sort_column, Some(0));
+    }
+
+    #[test]
+    fn test_handle_key_space_multi_select() {
+        let mut grid = DataGrid::new()
+            .multi_select(true)
+            .column(GridColumn::new("a", "A"))
+            .row(GridRow::new().cell("a", "1"));
+
+        assert!(grid.handle_key(&Key::Char(' ')));
+        assert!(grid.rows[0].selected);
+    }
+
+    #[test]
+    fn test_handle_key_unhandled() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .row(GridRow::new().cell("a", "1"));
+
+        assert!(!grid.handle_key(&Key::Tab));
+    }
+
+    // ==================== Rendering Tests ====================
+
+    #[test]
+    fn test_render_small_area() {
+        let mut buffer = Buffer::new(5, 2);
+        let area = Rect::new(0, 0, 5, 2);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .row(GridRow::new().cell("a", "test"));
+
+        grid.render(&mut ctx);
+        // Should not panic with small area
+    }
+
+    #[test]
+    fn test_render_with_row_numbers() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let grid = DataGrid::new()
+            .row_numbers(true)
+            .column(GridColumn::new("a", "A"))
+            .row(GridRow::new().cell("a", "test"));
+
+        grid.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_render_no_header() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let grid = DataGrid::new()
+            .header(false)
+            .column(GridColumn::new("a", "A"))
+            .row(GridRow::new().cell("a", "test"));
+
+        grid.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_render_non_virtual_scroll() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let grid = DataGrid::new()
+            .virtual_scroll(false)
+            .column(GridColumn::new("a", "A"))
+            .row(GridRow::new().cell("a", "test"));
+
+        grid.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_render_with_sorting() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .row(GridRow::new().cell("a", "B"))
+            .row(GridRow::new().cell("a", "A"));
+
+        grid.sort(0);
+        grid.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_calculate_widths_empty() {
+        let grid = DataGrid::new();
+        let widths = grid.calculate_widths(80);
+        assert!(widths.is_empty());
+    }
+
+    // ==================== Helper Functions Tests ====================
+
+    #[test]
+    fn test_datagrid_helper() {
+        let grid = datagrid();
+        assert!(grid.columns.is_empty());
+    }
+
+    #[test]
+    fn test_grid_column_helper() {
+        let col = grid_column("key", "Title");
+        assert_eq!(col.key, "key");
+        assert_eq!(col.title, "Title");
+    }
+
+    #[test]
+    fn test_grid_row_helper() {
+        let row = grid_row();
+        assert!(row.data.is_empty());
+    }
 }
