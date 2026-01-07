@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0](https://github.com/hawk90/revue/compare/v2.7.0...v2.8.0) (2026-01-07)
+
+
+### Features
+
+* **widget:** add Callout widget for info highlight blocks ([#73](https://github.com/hawk90/revue/issues/73)) ([bc02240](https://github.com/hawk90/revue/commit/bc02240ac2025f8731a9d1b1ab72e5989a280841))
+
 ## [2.7.0](https://github.com/hawk90/revue/compare/v2.6.0...v2.7.0) (2026-01-07)
 
 
