@@ -23,6 +23,7 @@ use super::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::render::Cell;
 use crate::style::Color;
 use crate::{impl_props_builders, impl_state_builders, impl_styled_view};
+use unicode_width::UnicodeWidthChar;
 
 /// Predefined status states
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -348,13 +349,23 @@ impl StatusIndicator {
         let label_start = area.x + self.size.width() + 1;
         let max_label_width = area.width.saturating_sub(self.size.width() + 1);
 
-        for (i, ch) in label.chars().enumerate() {
-            if i as u16 >= max_label_width {
+        let mut offset = 0u16;
+        for ch in label.chars() {
+            let char_width = ch.width().unwrap_or(0) as u16;
+            if char_width == 0 {
+                continue;
+            }
+            if offset + char_width > max_label_width {
                 break;
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::rgb(200, 200, 200));
-            ctx.buffer.set(label_start + i as u16, area.y, cell);
+            ctx.buffer.set(label_start + offset, area.y, cell);
+            for i in 1..char_width {
+                ctx.buffer
+                    .set(label_start + offset + i, area.y, Cell::continuation());
+            }
+            offset += char_width;
         }
     }
 
@@ -362,13 +373,23 @@ impl StatusIndicator {
         let area = ctx.area;
         let label = self.get_label();
 
-        for (i, ch) in label.chars().enumerate() {
-            if i as u16 >= area.width {
+        let mut offset = 0u16;
+        for ch in label.chars() {
+            let char_width = ch.width().unwrap_or(0) as u16;
+            if char_width == 0 {
+                continue;
+            }
+            if offset + char_width > area.width {
                 break;
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(color);
-            ctx.buffer.set(area.x + i as u16, area.y, cell);
+            ctx.buffer.set(area.x + offset, area.y, cell);
+            for i in 1..char_width {
+                ctx.buffer
+                    .set(area.x + offset + i, area.y, Cell::continuation());
+            }
+            offset += char_width;
         }
     }
 
@@ -395,14 +416,26 @@ impl StatusIndicator {
 
         // Label
         let label_start = area.x + 3;
-        for (i, ch) in label.chars().enumerate() {
-            if label_start + i as u16 >= area.x + total_width - 1 {
+        let max_label_width = total_width.saturating_sub(4);
+        let mut offset = 0u16;
+        for ch in label.chars() {
+            let char_width = ch.width().unwrap_or(0) as u16;
+            if char_width == 0 {
+                continue;
+            }
+            if offset + char_width > max_label_width {
                 break;
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::WHITE);
             cell.bg = Some(bg_color);
-            ctx.buffer.set(label_start + i as u16, area.y, cell);
+            ctx.buffer.set(label_start + offset, area.y, cell);
+            for i in 1..char_width {
+                let mut cont = Cell::continuation();
+                cont.bg = Some(bg_color);
+                ctx.buffer.set(label_start + offset + i, area.y, cont);
+            }
+            offset += char_width;
         }
     }
 }

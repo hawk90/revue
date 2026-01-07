@@ -30,6 +30,7 @@ use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::{impl_props_builders, impl_state_builders, impl_styled_view};
+use unicode_width::UnicodeWidthChar;
 
 /// Callout type determines the styling and default icon
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -435,8 +436,13 @@ impl Callout {
 
         // Title
         let title = self.get_title();
+        let max_title_x = area.x + area.width - 1;
         for ch in title.chars() {
-            if x >= area.x + area.width - 1 {
+            let char_width = ch.width().unwrap_or(0) as u16;
+            if char_width == 0 {
+                continue;
+            }
+            if x + char_width > max_title_x {
                 break;
             }
             let mut cell = Cell::new(ch);
@@ -444,7 +450,11 @@ impl Callout {
             cell.bg = Some(bg_color);
             cell.modifier |= Modifier::BOLD;
             ctx.buffer.set(x, y, cell);
-            x += 1;
+            // Set continuation cells for wide characters
+            for i in 1..char_width {
+                ctx.buffer.set(x + i, y, Cell::continuation());
+            }
+            x += char_width;
         }
 
         // Content (if expanded or not collapsible)
@@ -458,14 +468,24 @@ impl Callout {
                     break;
                 }
 
-                for (j, ch) in line.chars().enumerate() {
-                    if j as u16 >= content_width {
+                let mut offset = 0u16;
+                for ch in line.chars() {
+                    let char_width = ch.width().unwrap_or(0) as u16;
+                    if char_width == 0 {
+                        continue;
+                    }
+                    if offset + char_width > content_width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(200, 200, 200));
                     cell.bg = Some(bg_color);
-                    ctx.buffer.set(content_x + j as u16, line_y, cell);
+                    ctx.buffer.set(content_x + offset, line_y, cell);
+                    for i in 1..char_width {
+                        ctx.buffer
+                            .set(content_x + offset + i, line_y, Cell::continuation());
+                    }
+                    offset += char_width;
                 }
             }
         }
@@ -504,15 +524,23 @@ impl Callout {
 
         // Title
         let title = self.get_title();
+        let max_title_x = area.x + area.width;
         for ch in title.chars() {
-            if x >= area.x + area.width {
+            let char_width = ch.width().unwrap_or(0) as u16;
+            if char_width == 0 {
+                continue;
+            }
+            if x + char_width > max_title_x {
                 break;
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(title_color);
             cell.modifier |= Modifier::BOLD;
             ctx.buffer.set(x, y, cell);
-            x += 1;
+            for i in 1..char_width {
+                ctx.buffer.set(x + i, y, Cell::continuation());
+            }
+            x += char_width;
         }
 
         // Content (if expanded or not collapsible)
@@ -526,13 +554,23 @@ impl Callout {
                     break;
                 }
 
-                for (j, ch) in line.chars().enumerate() {
-                    if j as u16 >= content_width {
+                let mut offset = 0u16;
+                for ch in line.chars() {
+                    let char_width = ch.width().unwrap_or(0) as u16;
+                    if char_width == 0 {
+                        continue;
+                    }
+                    if offset + char_width > content_width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(180, 180, 180));
-                    ctx.buffer.set(content_x + j as u16, line_y, cell);
+                    ctx.buffer.set(content_x + offset, line_y, cell);
+                    for i in 1..char_width {
+                        ctx.buffer
+                            .set(content_x + offset + i, line_y, Cell::continuation());
+                    }
+                    offset += char_width;
                 }
             }
         }
@@ -564,15 +602,23 @@ impl Callout {
 
         // Title
         let title = self.get_title();
+        let max_title_x = area.x + area.width;
         for ch in title.chars() {
-            if x >= area.x + area.width {
+            let char_width = ch.width().unwrap_or(0) as u16;
+            if char_width == 0 {
+                continue;
+            }
+            if x + char_width > max_title_x {
                 break;
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(title_color);
             cell.modifier |= Modifier::BOLD;
             ctx.buffer.set(x, y, cell);
-            x += 1;
+            for i in 1..char_width {
+                ctx.buffer.set(x + i, y, Cell::continuation());
+            }
+            x += char_width;
         }
 
         // Content (if expanded or not collapsible)
@@ -588,13 +634,23 @@ impl Callout {
                     break;
                 }
 
-                for (j, ch) in line.chars().enumerate() {
-                    if j as u16 >= content_width {
+                let mut offset = 0u16;
+                for ch in line.chars() {
+                    let char_width = ch.width().unwrap_or(0) as u16;
+                    if char_width == 0 {
+                        continue;
+                    }
+                    if offset + char_width > content_width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(180, 180, 180));
-                    ctx.buffer.set(content_x + j as u16, line_y, cell);
+                    ctx.buffer.set(content_x + offset, line_y, cell);
+                    for i in 1..char_width {
+                        ctx.buffer
+                            .set(content_x + offset + i, line_y, Cell::continuation());
+                    }
+                    offset += char_width;
                 }
             }
         }
