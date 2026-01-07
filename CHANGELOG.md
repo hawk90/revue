@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0](https://github.com/hawk90/revue/compare/v2.9.1...v2.10.0) (2026-01-07)
+
+
+### Features
+
+* **widget:** add Card widget for structured content layout ([#79](https://github.com/hawk90/revue/issues/79)) ([3109241](https://github.com/hawk90/revue/commit/31092419cd00463ba5aa8997e660bf283047a632)), closes [#40](https://github.com/hawk90/revue/issues/40)
+
 ## [2.9.1](https://github.com/hawk90/revue/compare/v2.9.0...v2.9.1) (2026-01-07)
 
 
