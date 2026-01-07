@@ -70,6 +70,7 @@
 //! | [`Tree`] | Hierarchical tree | [`tree()`] |
 //! | [`FileTree`] | File browser | [`file_tree()`] |
 //! | [`Calendar`] | Date picker | [`calendar()`] |
+//! | [`DateTimePicker`] | Date/time picker | [`datetime_picker()`] |
 //! | [`Timeline`] | Event timeline | [`timeline()`] |
 //! | [`RichLog`] | Log viewer | [`richlog()`] |
 //!
@@ -186,6 +187,7 @@ mod collapsible;
 mod color_picker;
 mod command_palette;
 mod datagrid;
+mod datetime_picker;
 mod debug_overlay;
 #[cfg(feature = "diff")]
 mod diff;
@@ -281,7 +283,9 @@ pub use bigtext::{bigtext, h1, h2, h3, BigText};
 pub use border::{border, Border, BorderType};
 pub use breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
 pub use button::{button, Button, ButtonVariant};
-pub use calendar::{calendar, Calendar, CalendarMode, Date, DateMarker, FirstDayOfWeek};
+pub use calendar::{
+    calendar, days_in_month, Calendar, CalendarMode, Date, DateMarker, FirstDayOfWeek,
+};
 pub use callout::{
     callout, danger, important, info_callout, note, tip, warning_callout, Callout, CalloutType,
     CalloutVariant,
@@ -301,6 +305,10 @@ pub use collapsible::{collapsible, Collapsible};
 pub use color_picker::{color_picker, ColorPalette, ColorPicker, ColorPickerMode};
 pub use command_palette::{command_palette, Command, CommandPalette};
 pub use datagrid::{datagrid, grid_column, grid_row, DataGrid, GridColumn, GridRow, SortDirection};
+pub use datetime_picker::{
+    date_picker, datetime_picker, time_picker, DateTime, DateTimeFormat, DateTimeMode,
+    DateTimePicker, Time, TimeField,
+};
 pub use debug_overlay::{
     disable_debug, enable_debug, is_debug_enabled, toggle_debug, DebugConfig, DebugEvent,
     DebugOverlay, DebugPosition, EventLog, PerfMetrics, WidgetInfo,

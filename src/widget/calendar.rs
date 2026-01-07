@@ -10,7 +10,7 @@ use crate::utils::border::render_border;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Days in a month (accounting for leap years)
-fn days_in_month(year: i32, month: u32) -> u32 {
+pub fn days_in_month(year: i32, month: u32) -> u32 {
     match month {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
         4 | 6 | 9 | 11 => 30,

@@ -336,6 +336,47 @@ checkbox()
     .on_change(|v| enabled.set(v))
 ```
 
+#### DateTimePicker
+
+Combined date and time selection with calendar-style interface:
+
+```rust
+use revue::widget::{datetime_picker, date_picker, time_picker, Date, Time};
+
+// Full datetime picker
+datetime_picker()
+    .selected_date(Date::new(2025, 6, 15))
+    .selected_time(Time::new(14, 30, 0))
+    .show_seconds(true)
+
+// Date only
+date_picker()
+    .selected_date(Date::new(2025, 1, 1))
+    .min_date(Date::new(2025, 1, 1))
+    .max_date(Date::new(2025, 12, 31))
+
+// Time only
+time_picker()
+    .selected_time(Time::new(9, 0, 0))
+    .show_seconds(false)
+```
+
+Features:
+- **Calendar date picker**: Visual month view with day selection
+- **Time picker**: Hour/minute/second with scrollable fields
+- **Keyboard navigation**: Arrow keys, vim-style hjkl, Tab to switch modes
+- **Date constraints**: Min/max date validation
+- **Flexible formats**: Date only, time only, or combined datetime
+
+| Key | Action |
+|-----|--------|
+| ←→ / hl | Move cursor left/right |
+| ↑↓ / jk | Move cursor up/down or change time value |
+| `[` / `]` | Previous/next month |
+| `{` / `}` | Previous/next year |
+| Tab | Switch between date and time mode |
+| Enter | Select current date |
+
 ### Navigation Widgets
 
 #### Tabs
