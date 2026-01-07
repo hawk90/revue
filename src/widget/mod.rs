@@ -55,6 +55,7 @@
 //! | [`Tooltip`] | Hover tooltip | [`tooltip()`] |
 //! | [`Breadcrumb`] | Navigation trail | [`breadcrumb()`] |
 //! | [`Stepper`] | Step indicator | [`stepper()`] |
+//! | [`Alert`] | Persistent feedback | [`alert()`] |
 //!
 //! ## Data Widgets
 //!
@@ -162,6 +163,7 @@
 
 mod accordion;
 mod aistream;
+mod alert;
 mod autocomplete;
 mod avatar;
 mod badge;
@@ -262,6 +264,9 @@ mod macros;
 
 pub use accordion::{accordion, section, Accordion, AccordionSection};
 pub use aistream::{ai_response, ai_stream, AiStream, StreamCursor, StreamStatus, TypingStyle};
+pub use alert::{
+    alert, error_alert, info_alert, success_alert, warning_alert, Alert, AlertLevel, AlertVariant,
+};
 pub use autocomplete::{autocomplete, Autocomplete, FilterMode, Suggestion};
 pub use avatar::{avatar, avatar_icon, Avatar, AvatarShape, AvatarSize};
 pub use badge::{badge, dot_badge, Badge, BadgeShape, BadgeVariant};
