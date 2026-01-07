@@ -19,6 +19,7 @@
 //! | [`Splitter`] | Resizable panes | [`hsplit()`], [`vsplit()`] |
 //! | [`Accordion`] | Collapsible sections | [`accordion()`] |
 //! | [`Collapsible`] | Single expandable section | [`collapsible()`] |
+//! | [`Card`] | Content container | [`card()`] |
 //! | [`Screen`] | Screen navigation | [`screen()`] |
 //!
 //! ## Input Widgets
@@ -178,6 +179,7 @@ mod calendar;
 mod callout;
 mod candlechart;
 mod canvas;
+mod card;
 mod chart;
 mod checkbox;
 mod collapsible;
@@ -289,6 +291,7 @@ pub use canvas::{
     braille_canvas, canvas, BrailleCanvas, BrailleContext, BrailleGrid, Canvas, Circle,
     DrawContext, FilledCircle, FilledRectangle, Line, Points, Rectangle, Shape,
 };
+pub use card::{card, Card, CardBorder, CardVariant};
 pub use chart::{
     chart, line_chart, scatter_plot, Axis, AxisFormat, Chart, ChartType, LegendPosition, LineStyle,
     Marker, Series,
