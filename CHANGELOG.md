@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0](https://github.com/hawk90/revue/compare/v2.10.0...v2.11.0) (2026-01-07)
+
+
+### Features
+
+* **widget:** add DateTimePicker widget ([#83](https://github.com/hawk90/revue/issues/83)) ([47ab075](https://github.com/hawk90/revue/commit/47ab075ed0a9dac2412c1241807e19f24c920aa3)), closes [#46](https://github.com/hawk90/revue/issues/46)
+
 ## [2.10.0](https://github.com/hawk90/revue/compare/v2.9.1...v2.10.0) (2026-01-07)
 
 
