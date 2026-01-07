@@ -57,6 +57,7 @@
 //! | [`Stepper`] | Step indicator | [`stepper()`] |
 //! | [`Alert`] | Persistent feedback | [`alert()`] |
 //! | [`Callout`] | Info highlight block | [`callout()`], [`note()`], [`tip()`] |
+//! | [`StatusIndicator`] | Availability status | [`status_indicator()`], [`online()`] |
 //!
 //! ## Data Widgets
 //!
@@ -238,6 +239,7 @@ mod sparkline;
 mod spinner;
 mod splitter;
 mod stack;
+mod status_indicator;
 mod statusbar;
 mod stepper;
 mod streamline;
@@ -383,6 +385,10 @@ pub use splitter::{
     hsplit, pane, splitter, vsplit, HSplit, Pane, SplitOrientation, Splitter, VSplit,
 };
 pub use stack::{hstack, vstack, Direction, Stack};
+pub use status_indicator::{
+    away_indicator, busy_indicator, offline, online, status_indicator, Status, StatusIndicator,
+    StatusSize, StatusStyle,
+};
 pub use statusbar::{
     footer, header, key_hint, section as status_section, statusbar, KeyHint, SectionAlign,
     StatusBar, StatusSection,
