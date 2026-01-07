@@ -369,6 +369,37 @@ menu_bar()
     ])
 ```
 
+### Layout Widgets
+
+#### Card
+
+```rust
+// Basic card with title
+card()
+    .title("User Profile")
+    .subtitle("Account settings")
+    .body(user_info_view())
+
+// Card variants
+card().outlined()   // Border only
+card().filled()     // Background fill
+card().elevated()   // Elevated with shadow effect
+card().flat()       // No border, minimal
+
+// Collapsible card
+card()
+    .title("Details")
+    .collapsible(true)
+    .expanded(false)
+    .body(details_view())
+
+// Card with header, body, and footer
+card()
+    .title("Order Summary")
+    .body(order_items())
+    .footer(total_view())
+```
+
 ### Feedback Widgets
 
 #### Modal
