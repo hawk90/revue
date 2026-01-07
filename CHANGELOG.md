@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.1](https://github.com/hawk90/revue/compare/v2.9.0...v2.9.1) (2026-01-07)
+
+
+### Bug Fixes
+
+* **widget:** handle wide characters correctly in Callout and StatusIndicator ([#77](https://github.com/hawk90/revue/issues/77)) ([9c7771c](https://github.com/hawk90/revue/commit/9c7771c18f37542a6739ba0d6ddab2d6f6e47c36))
+
 ## [2.9.0](https://github.com/hawk90/revue/compare/v2.8.0...v2.9.0) (2026-01-07)
 
 
