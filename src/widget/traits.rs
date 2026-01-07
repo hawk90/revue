@@ -5,6 +5,7 @@ use crate::layout::Rect;
 use crate::render::{Buffer, Cell};
 use crate::style::{Color, Style};
 use std::time::{Duration, Instant};
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 /// Progress bar rendering configuration
 pub struct ProgressBarConfig {
@@ -309,6 +310,63 @@ impl<'a> RenderContext<'a> {
     // Drawing utilities
     // =========================================================================
 
+    /// Helper: Draw text with custom cell styling, handling wide characters correctly.
+    ///
+    /// This is the core implementation for all `draw_text_*` methods.
+    /// Uses `unicode-width` to correctly handle CJK and other wide characters.
+    fn draw_text_with_style<F>(&mut self, x: u16, y: u16, text: &str, mut make_cell: F)
+    where
+        F: FnMut(char) -> Cell,
+    {
+        let mut offset = 0u16;
+        for ch in text.chars() {
+            let width = ch.width().unwrap_or(0) as u16;
+            if width == 0 {
+                continue;
+            }
+            // Set the main cell
+            self.buffer.set(x.saturating_add(offset), y, make_cell(ch));
+            // Set continuation cells for wide characters
+            for i in 1..width {
+                self.buffer
+                    .set(x.saturating_add(offset + i), y, Cell::continuation());
+            }
+            offset = offset.saturating_add(width);
+        }
+    }
+
+    /// Helper: Draw text clipped to max_width, handling wide characters correctly.
+    ///
+    /// Stops drawing when the next character would exceed `max_width`.
+    fn draw_text_clipped_with_style<F>(
+        &mut self,
+        x: u16,
+        y: u16,
+        text: &str,
+        max_width: u16,
+        mut make_cell: F,
+    ) where
+        F: FnMut(char) -> Cell,
+    {
+        let mut offset = 0u16;
+        for ch in text.chars() {
+            let width = ch.width().unwrap_or(0) as u16;
+            if width == 0 {
+                continue;
+            }
+            // Check if adding this character would exceed max_width
+            if offset.saturating_add(width) > max_width {
+                break;
+            }
+            self.buffer.set(x.saturating_add(offset), y, make_cell(ch));
+            for i in 1..width {
+                self.buffer
+                    .set(x.saturating_add(offset + i), y, Cell::continuation());
+            }
+            offset = offset.saturating_add(width);
+        }
+    }
+
     /// Draw a single character at position
     #[inline]
     pub fn draw_char(&mut self, x: u16, y: u16, ch: char, fg: Color) {
@@ -332,26 +390,17 @@ impl<'a> RenderContext<'a> {
 
     /// Draw text at position
     pub fn draw_text(&mut self, x: u16, y: u16, text: &str, fg: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            let cell = Cell::new(ch).fg(fg);
-            self.buffer.set(x + i as u16, y, cell);
-        }
+        self.draw_text_with_style(x, y, text, |ch| Cell::new(ch).fg(fg));
     }
 
     /// Draw text with background color
     pub fn draw_text_bg(&mut self, x: u16, y: u16, text: &str, fg: Color, bg: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            let cell = Cell::new(ch).fg(fg).bg(bg);
-            self.buffer.set(x + i as u16, y, cell);
-        }
+        self.draw_text_with_style(x, y, text, |ch| Cell::new(ch).fg(fg).bg(bg));
     }
 
     /// Draw bold text
     pub fn draw_text_bold(&mut self, x: u16, y: u16, text: &str, fg: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            let cell = Cell::new(ch).fg(fg).bold();
-            self.buffer.set(x + i as u16, y, cell);
-        }
+        self.draw_text_with_style(x, y, text, |ch| Cell::new(ch).fg(fg).bold());
     }
 
     /// Draw a horizontal line
@@ -435,14 +484,14 @@ impl<'a> RenderContext<'a> {
             return;
         }
 
-        // Draw left corner
+        // Draw left corner (╭─ is 2 display width)
         self.draw_text(x, y, "╭─", border_color);
         let mut pos = x + 2;
 
         // Draw content parts
         for (text, color) in parts {
             self.draw_text(pos, y, text, *color);
-            pos += text.chars().count() as u16;
+            pos += text.width() as u16;
         }
 
         // Fill remaining with ─ and close with ╮
@@ -525,13 +574,7 @@ impl<'a> RenderContext<'a> {
 
     /// Draw text clipped to max_width (stops drawing at boundary)
     pub fn draw_text_clipped(&mut self, x: u16, y: u16, text: &str, fg: Color, max_width: u16) {
-        for (i, ch) in text.chars().enumerate() {
-            if (i as u16) >= max_width {
-                break;
-            }
-            let cell = Cell::new(ch).fg(fg);
-            self.buffer.set(x + i as u16, y, cell);
-        }
+        self.draw_text_clipped_with_style(x, y, text, max_width, |ch| Cell::new(ch).fg(fg));
     }
 
     /// Draw bold text clipped to max_width
@@ -543,57 +586,42 @@ impl<'a> RenderContext<'a> {
         fg: Color,
         max_width: u16,
     ) {
-        for (i, ch) in text.chars().enumerate() {
-            if (i as u16) >= max_width {
-                break;
-            }
-            let cell = Cell::new(ch).fg(fg).bold();
-            self.buffer.set(x + i as u16, y, cell);
-        }
+        self.draw_text_clipped_with_style(x, y, text, max_width, |ch| Cell::new(ch).fg(fg).bold());
     }
 
     /// Draw dimmed text
     pub fn draw_text_dim(&mut self, x: u16, y: u16, text: &str, fg: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            let cell = Cell::new(ch).fg(fg).dim();
-            self.buffer.set(x + i as u16, y, cell);
-        }
+        self.draw_text_with_style(x, y, text, |ch| Cell::new(ch).fg(fg).dim());
     }
 
     /// Draw italic text
     pub fn draw_text_italic(&mut self, x: u16, y: u16, text: &str, fg: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            let cell = Cell::new(ch).fg(fg).italic();
-            self.buffer.set(x + i as u16, y, cell);
-        }
+        self.draw_text_with_style(x, y, text, |ch| Cell::new(ch).fg(fg).italic());
     }
 
     /// Draw underlined text
     pub fn draw_text_underline(&mut self, x: u16, y: u16, text: &str, fg: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            let cell = Cell::new(ch).fg(fg).underline();
-            self.buffer.set(x + i as u16, y, cell);
-        }
+        self.draw_text_with_style(x, y, text, |ch| Cell::new(ch).fg(fg).underline());
     }
 
     /// Draw text centered within a given width
     pub fn draw_text_centered(&mut self, x: u16, y: u16, width: u16, text: &str, fg: Color) {
-        let text_len = text.chars().count() as u16;
-        let start_x = if text_len >= width {
+        let text_width = text.width() as u16;
+        let start_x = if text_width >= width {
             x
         } else {
-            x + (width - text_len) / 2
+            x + (width - text_width) / 2
         };
         self.draw_text_clipped(start_x, y, text, fg, width);
     }
 
     /// Draw text right-aligned within a given width
     pub fn draw_text_right(&mut self, x: u16, y: u16, width: u16, text: &str, fg: Color) {
-        let text_len = text.chars().count() as u16;
-        let start_x = if text_len >= width {
+        let text_width = text.width() as u16;
+        let start_x = if text_width >= width {
             x
         } else {
-            x + width - text_len
+            x + width - text_width
         };
         self.draw_text_clipped(start_x, y, text, fg, width);
     }
@@ -692,15 +720,34 @@ impl<'a> RenderContext<'a> {
         fg: Color,
     ) {
         let title_start = 2u16;
+        let border_end = w.saturating_sub(1);
         let mut title_chars = title.chars().peekable();
+        let mut pos = 1u16; // Start after left corner
 
-        for i in 1..(w - 1) {
-            let ch = if i >= title_start && title_chars.peek().is_some() {
-                title_chars.next().unwrap_or(border_char)
-            } else {
-                border_char
-            };
-            self.draw_char(x + i, y, ch, fg);
+        while pos < border_end {
+            if pos >= title_start {
+                if let Some(ch) = title_chars.next() {
+                    let char_width = ch.width().unwrap_or(0) as u16;
+                    if char_width == 0 {
+                        continue;
+                    }
+                    // Check if this char would overflow the border
+                    if pos + char_width > border_end {
+                        // Fill remaining with border chars
+                        break;
+                    }
+                    self.draw_char(x + pos, y, ch, fg);
+                    // Set continuation cells for wide characters
+                    for i in 1..char_width {
+                        self.buffer.set(x + pos + i, y, Cell::continuation());
+                    }
+                    pos += char_width;
+                    continue;
+                }
+            }
+            // Draw border char
+            self.draw_char(x + pos, y, border_char, fg);
+            pos += 1;
         }
     }
 
@@ -776,7 +823,7 @@ impl<'a> RenderContext<'a> {
         let mut cx = x;
         for (text, color) in segments {
             self.draw_text(cx, y, text, *color);
-            cx += text.chars().count() as u16;
+            cx += text.width() as u16;
         }
         cx
     }
@@ -794,10 +841,10 @@ impl<'a> RenderContext<'a> {
         for (i, (text, color)) in segments.iter().enumerate() {
             if i > 0 {
                 self.draw_text(cx, y, sep, sep_color);
-                cx += sep.chars().count() as u16;
+                cx += sep.width() as u16;
             }
             self.draw_text(cx, y, text, *color);
-            cx += text.chars().count() as u16;
+            cx += text.width() as u16;
         }
         cx
     }
@@ -819,9 +866,9 @@ impl<'a> RenderContext<'a> {
         let mut cx = x;
         for (key, action) in hints {
             self.draw_text_bold(cx, y, key, key_color);
-            cx += key.chars().count() as u16 + 1;
+            cx += key.width() as u16 + 1;
             self.draw_text(cx, y, action, action_color);
-            cx += action.chars().count() as u16 + 2;
+            cx += action.width() as u16 + 2;
         }
         cx
     }
@@ -2284,5 +2331,235 @@ mod tests {
         let meta = widget.meta();
         assert!(meta.classes.contains("btn"));
         assert!(meta.classes.contains("primary"));
+    }
+
+    // =========================================================================
+    // Wide character (Unicode) tests for draw_text_* functions
+    // =========================================================================
+
+    #[test]
+    fn test_draw_text_wide_chars() {
+        let mut buf = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buf, area);
+
+        // "한글" - each Korean char is 2 display cells wide
+        ctx.draw_text(0, 0, "한글", Color::WHITE);
+
+        // '한' at position 0, continuation at 1
+        assert_eq!(buf.get(0, 0).unwrap().symbol, '한');
+        assert!(buf.get(1, 0).unwrap().is_continuation());
+        // '글' at position 2, continuation at 3
+        assert_eq!(buf.get(2, 0).unwrap().symbol, '글');
+        assert!(buf.get(3, 0).unwrap().is_continuation());
+        // Position 4 should be default (space)
+        assert_eq!(buf.get(4, 0).unwrap().symbol, ' ');
+    }
+
+    #[test]
+    fn test_draw_text_mixed_width() {
+        let mut buf = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buf, area);
+
+        // Mix of ASCII (1 cell) and Korean (2 cells): "A한B"
+        ctx.draw_text(0, 0, "A한B", Color::WHITE);
+
+        assert_eq!(buf.get(0, 0).unwrap().symbol, 'A'); // pos 0
+        assert_eq!(buf.get(1, 0).unwrap().symbol, '한'); // pos 1
+        assert!(buf.get(2, 0).unwrap().is_continuation()); // pos 2 (continuation)
+        assert_eq!(buf.get(3, 0).unwrap().symbol, 'B'); // pos 3
+    }
+
+    #[test]
+    fn test_draw_text_bg_wide_chars() {
+        let mut buf = Buffer::new(10, 1);
+        let area = Rect::new(0, 0, 10, 1);
+        let mut ctx = RenderContext::new(&mut buf, area);
+
+        ctx.draw_text_bg(0, 0, "가", Color::WHITE, Color::BLUE);
+
+        let cell = buf.get(0, 0).unwrap();
+        assert_eq!(cell.symbol, '가');
+        assert_eq!(cell.bg, Some(Color::BLUE));
+        assert!(buf.get(1, 0).unwrap().is_continuation());
+    }
+
+    #[test]
+    fn test_draw_text_bold_wide_chars() {
+        use crate::render::Modifier;
+
+        let mut buf = Buffer::new(10, 1);
+        let area = Rect::new(0, 0, 10, 1);
+        let mut ctx = RenderContext::new(&mut buf, area);
+
+        ctx.draw_text_bold(0, 0, "日本", Color::WHITE);
+
+        // Each Japanese kanji is 2 cells wide
+        assert_eq!(buf.get(0, 0).unwrap().symbol, '日');
+        assert!(buf.get(0, 0).unwrap().modifier.contains(Modifier::BOLD));
+        assert!(buf.get(1, 0).unwrap().is_continuation());
+        assert_eq!(buf.get(2, 0).unwrap().symbol, '本');
+        assert!(buf.get(3, 0).unwrap().is_continuation());
+    }
+
+    #[test]
+    fn test_draw_text_clipped_wide_chars() {
+        let mut buf = Buffer::new(10, 1);
+        let area = Rect::new(0, 0, 10, 1);
+        let mut ctx = RenderContext::new(&mut buf, area);
+
+        // "한글테스트" = 10 display cells, but max_width is 5
+        // Should only fit "한글" (4 cells) since "테" would make it 6
+        ctx.draw_text_clipped(0, 0, "한글테스트", Color::WHITE, 5);
+
+        assert_eq!(buf.get(0, 0).unwrap().symbol, '한');
+        assert!(buf.get(1, 0).unwrap().is_continuation());
+        assert_eq!(buf.get(2, 0).unwrap().symbol, '글');
+        assert!(buf.get(3, 0).unwrap().is_continuation());
+        // Position 4 should NOT have '테' because it would overflow
+        assert_eq!(buf.get(4, 0).unwrap().symbol, ' ');
+    }
+
+    #[test]
+    fn test_draw_text_clipped_exact_fit() {
+        let mut buf = Buffer::new(10, 1);
+        let area = Rect::new(0, 0, 10, 1);
+        let mut ctx = RenderContext::new(&mut buf, area);
+
+        // "한글" = exactly 4 cells, max_width is 4
+        ctx.draw_text_clipped(0, 0, "한글", Color::WHITE, 4);
+
+        assert_eq!(buf.get(0, 0).unwrap().symbol, '한');
+        assert!(buf.get(1, 0).unwrap().is_continuation());
+        assert_eq!(buf.get(2, 0).unwrap().symbol, '글');
+        assert!(buf.get(3, 0).unwrap().is_continuation());
+    }
+
+    #[test]
+    fn test_draw_text_centered_wide_chars() {
+        let mut buf = Buffer::new(10, 1);
+        let area = Rect::new(0, 0, 10, 1);
+        let mut ctx = RenderContext::new(&mut buf, area);
+
+        // "한글" = 4 cells wide, centered in width 10 should start at (10-4)/2 = 3
+        ctx.draw_text_centered(0, 0, 10, "한글", Color::WHITE);
+
+        assert_eq!(buf.get(3, 0).unwrap().symbol, '한');
+        assert!(buf.get(4, 0).unwrap().is_continuation());
+        assert_eq!(buf.get(5, 0).unwrap().symbol, '글');
+        assert!(buf.get(6, 0).unwrap().is_continuation());
+    }
+
+    #[test]
+    fn test_draw_text_right_wide_chars() {
+        let mut buf = Buffer::new(10, 1);
+        let area = Rect::new(0, 0, 10, 1);
+        let mut ctx = RenderContext::new(&mut buf, area);
+
+        // "한글" = 4 cells wide, right-aligned in width 10 should start at 10-4 = 6
+        ctx.draw_text_right(0, 0, 10, "한글", Color::WHITE);
+
+        assert_eq!(buf.get(6, 0).unwrap().symbol, '한');
+        assert!(buf.get(7, 0).unwrap().is_continuation());
+        assert_eq!(buf.get(8, 0).unwrap().symbol, '글');
+        assert!(buf.get(9, 0).unwrap().is_continuation());
+    }
+
+    #[test]
+    fn test_draw_segments_wide_chars() {
+        let mut buf = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buf, area);
+
+        // Test segments with wide chars
+        let end_pos = ctx.draw_segments(
+            0,
+            0,
+            &[("한", Color::RED), ("글", Color::BLUE), ("!", Color::GREEN)],
+        );
+
+        // "한" (2) + "글" (2) + "!" (1) = 5
+        assert_eq!(end_pos, 5);
+
+        assert_eq!(buf.get(0, 0).unwrap().symbol, '한');
+        assert!(buf.get(1, 0).unwrap().is_continuation());
+        assert_eq!(buf.get(2, 0).unwrap().symbol, '글');
+        assert!(buf.get(3, 0).unwrap().is_continuation());
+        assert_eq!(buf.get(4, 0).unwrap().symbol, '!');
+    }
+
+    #[test]
+    fn test_draw_header_line_wide_chars() {
+        let mut buf = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buf, area);
+
+        // Header with wide char content
+        ctx.draw_header_line(0, 0, 15, &[("한글", Color::WHITE)], Color::CYAN);
+
+        // Check corners
+        assert_eq!(buf.get(0, 0).unwrap().symbol, '╭');
+        assert_eq!(buf.get(1, 0).unwrap().symbol, '─');
+
+        // Check "한글" at position 2
+        assert_eq!(buf.get(2, 0).unwrap().symbol, '한');
+        assert!(buf.get(3, 0).unwrap().is_continuation());
+        assert_eq!(buf.get(4, 0).unwrap().symbol, '글');
+        assert!(buf.get(5, 0).unwrap().is_continuation());
+
+        // Check closing corner
+        assert_eq!(buf.get(14, 0).unwrap().symbol, '╮');
+    }
+
+    #[test]
+    fn test_draw_text_dim_italic_underline_wide_chars() {
+        use crate::render::Modifier;
+
+        let mut buf = Buffer::new(10, 3);
+        let area = Rect::new(0, 0, 10, 3);
+        let mut ctx = RenderContext::new(&mut buf, area);
+
+        ctx.draw_text_dim(0, 0, "中", Color::WHITE);
+        ctx.draw_text_italic(0, 1, "文", Color::WHITE);
+        ctx.draw_text_underline(0, 2, "字", Color::WHITE);
+
+        // Check dim
+        assert_eq!(buf.get(0, 0).unwrap().symbol, '中');
+        assert!(buf.get(0, 0).unwrap().modifier.contains(Modifier::DIM));
+        assert!(buf.get(1, 0).unwrap().is_continuation());
+
+        // Check italic
+        assert_eq!(buf.get(0, 1).unwrap().symbol, '文');
+        assert!(buf.get(0, 1).unwrap().modifier.contains(Modifier::ITALIC));
+        assert!(buf.get(1, 1).unwrap().is_continuation());
+
+        // Check underline
+        assert_eq!(buf.get(0, 2).unwrap().symbol, '字');
+        assert!(buf
+            .get(0, 2)
+            .unwrap()
+            .modifier
+            .contains(Modifier::UNDERLINE));
+        assert!(buf.get(1, 2).unwrap().is_continuation());
+    }
+
+    #[test]
+    fn test_draw_box_titled_wide_chars() {
+        let mut buf = Buffer::new(15, 5);
+        let area = Rect::new(0, 0, 15, 5);
+        let mut ctx = RenderContext::new(&mut buf, area);
+
+        ctx.draw_box_titled(0, 0, 15, 5, "한글", Color::WHITE);
+
+        // Check title "한글" in top border (starts at position 2)
+        assert_eq!(buf.get(0, 0).unwrap().symbol, '╭');
+        assert_eq!(buf.get(1, 0).unwrap().symbol, '─');
+        assert_eq!(buf.get(2, 0).unwrap().symbol, '한');
+        assert!(buf.get(3, 0).unwrap().is_continuation());
+        assert_eq!(buf.get(4, 0).unwrap().symbol, '글');
+        assert!(buf.get(5, 0).unwrap().is_continuation());
+        // Rest should be border chars
+        assert_eq!(buf.get(6, 0).unwrap().symbol, '─');
     }
 }
