@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.0](https://github.com/hawk90/revue/compare/v2.11.0...v2.12.0) (2026-01-08)
+
+
+### Features
+
+* **widget:** add DataGrid column resize, reorder, and freeze ([#87](https://github.com/hawk90/revue/issues/87)) ([b4f673a](https://github.com/hawk90/revue/commit/b4f673ad638db245e50414d636470fef1119fce6))
+
 ## [2.11.0](https://github.com/hawk90/revue/compare/v2.10.0...v2.11.0) (2026-01-07)
 
 
