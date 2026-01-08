@@ -8,6 +8,76 @@ use crate::utils::syntax::{Language, SyntaxHighlighter, SyntaxTheme};
 use crate::{impl_props_builders, impl_styled_view};
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
+/// Admonition/Callout type for GitHub-style callouts
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AdmonitionType {
+    Note,
+    Tip,
+    Important,
+    Warning,
+    Caution,
+}
+
+impl AdmonitionType {
+    /// Parse admonition type from text like "[!NOTE]"
+    fn from_marker(text: &str) -> Option<Self> {
+        let text = text.trim();
+        if !text.starts_with("[!") || !text.contains(']') {
+            return None;
+        }
+        let end = text.find(']')?;
+        let type_str = &text[2..end];
+        match type_str.to_uppercase().as_str() {
+            "NOTE" => Some(AdmonitionType::Note),
+            "TIP" => Some(AdmonitionType::Tip),
+            "IMPORTANT" => Some(AdmonitionType::Important),
+            "WARNING" => Some(AdmonitionType::Warning),
+            "CAUTION" => Some(AdmonitionType::Caution),
+            _ => None,
+        }
+    }
+
+    /// Get icon for this admonition type
+    fn icon(&self) -> &'static str {
+        match self {
+            AdmonitionType::Note => "ℹ️ ",
+            AdmonitionType::Tip => "💡",
+            AdmonitionType::Important => "❗",
+            AdmonitionType::Warning => "⚠️ ",
+            AdmonitionType::Caution => "🔴",
+        }
+    }
+
+    /// Get color for this admonition type
+    fn color(&self) -> Color {
+        match self {
+            AdmonitionType::Note => Color::rgb(88, 166, 255), // Blue
+            AdmonitionType::Tip => Color::rgb(63, 185, 80),   // Green
+            AdmonitionType::Important => Color::rgb(163, 113, 247), // Purple
+            AdmonitionType::Warning => Color::rgb(210, 153, 34), // Yellow/Orange
+            AdmonitionType::Caution => Color::rgb(248, 81, 73), // Red
+        }
+    }
+
+    /// Get label for this admonition type
+    fn label(&self) -> &'static str {
+        match self {
+            AdmonitionType::Note => "Note",
+            AdmonitionType::Tip => "Tip",
+            AdmonitionType::Important => "Important",
+            AdmonitionType::Warning => "Warning",
+            AdmonitionType::Caution => "Caution",
+        }
+    }
+}
+
+/// Footnote definition
+#[derive(Clone, Debug)]
+struct FootnoteDefinition {
+    label: String,
+    content: String,
+}
+
 /// Styled text segment
 #[derive(Clone)]
 struct StyledText {
@@ -136,6 +206,7 @@ impl Markdown {
         options.insert(Options::ENABLE_TABLES);
         options.insert(Options::ENABLE_TASKLISTS);
         options.insert(Options::ENABLE_STRIKETHROUGH);
+        options.insert(Options::ENABLE_FOOTNOTES);
         options
     }
 
@@ -354,6 +425,20 @@ impl Markdown {
         let mut table_rows: Vec<Vec<String>> = Vec::new();
         let mut current_cell = String::new();
 
+        // Footnote tracking
+        let mut footnote_definitions: Vec<FootnoteDefinition> = Vec::new();
+        let mut in_footnote_definition = false;
+        let mut current_footnote_label = String::new();
+        let mut current_footnote_content = String::new();
+        let mut footnote_counter: usize = 0;
+        let mut footnote_label_map: std::collections::HashMap<String, usize> =
+            std::collections::HashMap::new();
+
+        // Admonition tracking (GitHub-style callouts in blockquotes)
+        let mut in_blockquote = false;
+        let mut blockquote_first_text = true; // Is next text the first in blockquote?
+        let mut current_admonition: Option<AdmonitionType> = None;
+
         // Render TOC at the beginning if enabled
         if self.show_toc && !self.toc.is_empty() {
             // TOC title
@@ -468,9 +553,21 @@ impl Markdown {
                             current_cell.clear();
                         }
                         Tag::BlockQuote(_) => {
-                            current_line.push(StyledText::new("│ ").with_fg(self.quote_fg));
-                            current_fg = Some(self.quote_fg);
-                            current_modifier |= Modifier::ITALIC;
+                            in_blockquote = true;
+                            blockquote_first_text = true;
+                            current_admonition = None;
+                            // Don't render yet - wait to see if it's an admonition
+                        }
+                        Tag::FootnoteDefinition(label) => {
+                            in_footnote_definition = true;
+                            current_footnote_label = label.to_string();
+                            current_footnote_content.clear();
+                            // Assign number to this footnote if not already assigned
+                            if !footnote_label_map.contains_key(&current_footnote_label) {
+                                footnote_counter += 1;
+                                footnote_label_map
+                                    .insert(current_footnote_label.clone(), footnote_counter);
+                            }
                         }
                         Tag::Paragraph => {
                             if !lines.is_empty() && !current_line.is_empty() {
@@ -760,12 +857,31 @@ impl Markdown {
                             current_cell.clear();
                         }
                         TagEnd::BlockQuote(_) => {
-                            current_fg = None;
-                            current_modifier &= !Modifier::ITALIC;
+                            // Finish the blockquote/admonition
                             if !current_line.is_empty() {
                                 lines.push(current_line);
                                 current_line = Line::new();
                             }
+                            // Add empty line after admonition
+                            if current_admonition.is_some() {
+                                lines.push(Line::new());
+                            }
+                            in_blockquote = false;
+                            current_admonition = None;
+                            current_fg = None;
+                            current_modifier &= !Modifier::ITALIC;
+                        }
+                        TagEnd::FootnoteDefinition => {
+                            // Save the footnote definition
+                            if !current_footnote_label.is_empty() {
+                                footnote_definitions.push(FootnoteDefinition {
+                                    label: current_footnote_label.clone(),
+                                    content: current_footnote_content.trim().to_string(),
+                                });
+                            }
+                            in_footnote_definition = false;
+                            current_footnote_label.clear();
+                            current_footnote_content.clear();
                         }
                         TagEnd::Paragraph => {
                             if !current_line.is_empty() {
@@ -783,7 +899,10 @@ impl Markdown {
                     if in_heading {
                         heading_text.push_str(text.as_ref());
                     }
-                    if in_code_block {
+                    if in_footnote_definition {
+                        // Accumulate footnote content
+                        current_footnote_content.push_str(text.as_ref());
+                    } else if in_code_block {
                         // Accumulate code block lines for later highlighting
                         for line in text.as_ref().lines() {
                             code_block_lines.push(line.to_string());
@@ -791,6 +910,50 @@ impl Markdown {
                     } else if in_table {
                         // Accumulate text for table cell
                         current_cell.push_str(text.as_ref());
+                    } else if in_blockquote && blockquote_first_text {
+                        // Check for admonition marker (e.g., "[!NOTE]")
+                        blockquote_first_text = false;
+                        let text_str = text.as_ref();
+                        if let Some(admonition) = AdmonitionType::from_marker(text_str) {
+                            current_admonition = Some(admonition);
+                            // Render admonition header with icon and label
+                            let mut header_line = Line::new();
+                            header_line.push(StyledText::new("│ ").with_fg(admonition.color()));
+                            header_line.push(
+                                StyledText::new(admonition.icon()).with_fg(admonition.color()),
+                            );
+                            header_line.push(
+                                StyledText::new(format!(" {}", admonition.label()))
+                                    .with_fg(admonition.color())
+                                    .with_modifier(Modifier::BOLD),
+                            );
+                            lines.push(header_line);
+                            // Set up for subsequent content
+                            current_fg = Some(admonition.color());
+                        } else {
+                            // Regular blockquote - render with quote styling
+                            current_fg = Some(self.quote_fg);
+                            current_modifier |= Modifier::ITALIC;
+                            current_line
+                                .push(StyledText::new("│ ").with_fg(Color::rgb(100, 100, 100)));
+                            let mut segment = StyledText::new(text_str);
+                            segment.modifier = current_modifier;
+                            segment.fg = current_fg;
+                            current_line.push(segment);
+                        }
+                    } else if let Some(admonition) = current_admonition {
+                        // Admonition content
+                        let mut content_line = Line::new();
+                        content_line.push(StyledText::new("│ ").with_fg(admonition.color()));
+                        content_line.push(StyledText::new(text.as_ref()));
+                        lines.push(content_line);
+                    } else if in_blockquote {
+                        // Regular blockquote continuation
+                        current_line.push(StyledText::new("│ ").with_fg(Color::rgb(100, 100, 100)));
+                        let mut segment = StyledText::new(text.as_ref());
+                        segment.modifier = current_modifier;
+                        segment.fg = current_fg;
+                        current_line.push(segment);
                     } else {
                         // Add bullet for regular list items (not task list)
                         if item_needs_bullet {
@@ -822,6 +985,22 @@ impl Markdown {
                     let segment = StyledText::new(format!("`{}`", code)).with_fg(self.code_fg);
                     current_line.push(segment);
                 }
+                Event::FootnoteReference(label) => {
+                    // Render footnote reference as superscript number
+                    let label_str = label.to_string();
+                    let num = footnote_label_map
+                        .entry(label_str.clone())
+                        .or_insert_with(|| {
+                            footnote_counter += 1;
+                            footnote_counter
+                        });
+                    let ref_text = format!("[{}]", num);
+                    current_line.push(
+                        StyledText::new(ref_text)
+                            .with_fg(self.link_fg)
+                            .with_modifier(Modifier::BOLD),
+                    );
+                }
                 Event::SoftBreak | Event::HardBreak => {
                     lines.push(current_line);
                     current_line = Line::new();
@@ -845,6 +1024,39 @@ impl Markdown {
 
         if !current_line.is_empty() {
             lines.push(current_line);
+        }
+
+        // Render footnotes section at the end if there are any
+        if !footnote_definitions.is_empty() {
+            lines.push(Line::new());
+
+            // Footnotes separator
+            let mut sep_line = Line::new();
+            sep_line.push(
+                StyledText::new("────────────────────────────────────────")
+                    .with_fg(Color::rgb(80, 80, 80)),
+            );
+            lines.push(sep_line);
+            lines.push(Line::new());
+
+            // Sort footnote definitions by their assigned number
+            let mut sorted_definitions: Vec<_> = footnote_definitions
+                .iter()
+                .filter_map(|def| footnote_label_map.get(&def.label).map(|num| (*num, def)))
+                .collect();
+            sorted_definitions.sort_by_key(|(num, _)| *num);
+
+            // Render each footnote
+            for (num, def) in sorted_definitions {
+                let mut footnote_line = Line::new();
+                footnote_line.push(
+                    StyledText::new(format!("[{}] ", num))
+                        .with_fg(self.link_fg)
+                        .with_modifier(Modifier::BOLD),
+                );
+                footnote_line.push(StyledText::new(&def.content));
+                lines.push(footnote_line);
+            }
         }
 
         while lines.last().map(|l| l.is_empty()).unwrap_or(false) {
@@ -998,5 +1210,157 @@ mod tests {
     fn test_markdown_rule() {
         let md = Markdown::new("Above\n\n---\n\nBelow");
         assert!(md.line_count() >= 3);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════
+    // Footnotes tests (#47)
+    // ════════════════════════════════════════════════════════════════════════════
+
+    #[test]
+    fn test_footnote_reference() {
+        let md = Markdown::new("Text with footnote[^1]\n\n[^1]: This is the footnote.");
+        assert!(md.line_count() >= 2);
+    }
+
+    #[test]
+    fn test_multiple_footnotes() {
+        let md = Markdown::new(
+            "First[^a] and second[^b].\n\n[^a]: First footnote.\n[^b]: Second footnote.",
+        );
+        // Should have content plus separator plus footnotes
+        assert!(md.line_count() >= 3);
+    }
+
+    #[test]
+    fn test_footnote_section_rendered() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let md = Markdown::new("Text[^note]\n\n[^note]: My footnote.");
+        md.render(&mut ctx);
+
+        // Look for the separator line (─) which indicates footnotes section
+        let mut found_separator = false;
+        for y in 0..24 {
+            if buffer.get(0, y).unwrap().symbol == '─' {
+                found_separator = true;
+                break;
+            }
+        }
+        assert!(found_separator, "Footnotes separator should be rendered");
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════
+    // Admonition/Callout tests (#49)
+    // ════════════════════════════════════════════════════════════════════════════
+
+    #[test]
+    fn test_admonition_type_from_marker() {
+        assert_eq!(
+            AdmonitionType::from_marker("[!NOTE]"),
+            Some(AdmonitionType::Note)
+        );
+        assert_eq!(
+            AdmonitionType::from_marker("[!TIP]"),
+            Some(AdmonitionType::Tip)
+        );
+        assert_eq!(
+            AdmonitionType::from_marker("[!IMPORTANT]"),
+            Some(AdmonitionType::Important)
+        );
+        assert_eq!(
+            AdmonitionType::from_marker("[!WARNING]"),
+            Some(AdmonitionType::Warning)
+        );
+        assert_eq!(
+            AdmonitionType::from_marker("[!CAUTION]"),
+            Some(AdmonitionType::Caution)
+        );
+        // Case insensitive
+        assert_eq!(
+            AdmonitionType::from_marker("[!note]"),
+            Some(AdmonitionType::Note)
+        );
+        // Invalid markers
+        assert_eq!(AdmonitionType::from_marker("NOTE"), None);
+        assert_eq!(AdmonitionType::from_marker("[NOTE]"), None);
+        assert_eq!(AdmonitionType::from_marker("[!UNKNOWN]"), None);
+    }
+
+    #[test]
+    fn test_admonition_icon() {
+        assert_eq!(AdmonitionType::Note.icon(), "ℹ️ ");
+        assert_eq!(AdmonitionType::Tip.icon(), "💡");
+        assert_eq!(AdmonitionType::Important.icon(), "❗");
+        assert_eq!(AdmonitionType::Warning.icon(), "⚠️ ");
+        assert_eq!(AdmonitionType::Caution.icon(), "🔴");
+    }
+
+    #[test]
+    fn test_admonition_label() {
+        assert_eq!(AdmonitionType::Note.label(), "Note");
+        assert_eq!(AdmonitionType::Tip.label(), "Tip");
+        assert_eq!(AdmonitionType::Important.label(), "Important");
+        assert_eq!(AdmonitionType::Warning.label(), "Warning");
+        assert_eq!(AdmonitionType::Caution.label(), "Caution");
+    }
+
+    #[test]
+    fn test_admonition_note() {
+        let md = Markdown::new("> [!NOTE]\n> This is a note.");
+        assert!(md.line_count() >= 2);
+    }
+
+    #[test]
+    fn test_admonition_warning() {
+        let md = Markdown::new("> [!WARNING]\n> Be careful!");
+        assert!(md.line_count() >= 2);
+    }
+
+    #[test]
+    fn test_admonition_all_types() {
+        for (marker, label) in [
+            ("[!NOTE]", "Note"),
+            ("[!TIP]", "Tip"),
+            ("[!IMPORTANT]", "Important"),
+            ("[!WARNING]", "Warning"),
+            ("[!CAUTION]", "Caution"),
+        ] {
+            let source = format!("> {}\n> Content for {}.", marker, label);
+            let md = Markdown::new(source);
+            assert!(
+                md.line_count() >= 2,
+                "Admonition {} should render at least 2 lines",
+                label
+            );
+        }
+    }
+
+    #[test]
+    fn test_regular_blockquote_not_admonition() {
+        let md = Markdown::new("> This is a regular quote\n> Not an admonition");
+        // Should render as blockquote, not admonition
+        assert!(md.line_count() >= 1);
+    }
+
+    #[test]
+    fn test_admonition_render() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let md = Markdown::new("> [!NOTE]\n> Important information.");
+        md.render(&mut ctx);
+
+        // Look for the vertical bar (│) which is part of admonition styling
+        let mut found_bar = false;
+        for y in 0..24 {
+            if buffer.get(0, y).unwrap().symbol == '│' {
+                found_bar = true;
+                break;
+            }
+        }
+        assert!(found_bar, "Admonition border should be rendered");
     }
 }
