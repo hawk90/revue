@@ -2,6 +2,14 @@
 //!
 //! A feature-rich data grid with sorting, filtering, and cell editing.
 
+mod types;
+
+#[cfg(test)]
+mod tests;
+
+// Re-export all types
+pub use types::*;
+
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
@@ -49,314 +57,29 @@ struct EditState {
     cursor: usize,
 }
 
-/// Grid color scheme
+// ═══════════════════════════════════════════════════════════════════════════
+// Tree Grid Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Tree node info for flattened display
 #[derive(Clone, Debug)]
-pub struct GridColors {
-    /// Header background color
-    pub header_bg: Color,
-    /// Header foreground color
-    pub header_fg: Color,
-    /// Normal row background
-    pub row_bg: Color,
-    /// Alternate row background (zebra striping)
-    pub alt_row_bg: Color,
-    /// Selected row background
-    pub selected_bg: Color,
-    /// Selected row foreground
-    pub selected_fg: Color,
-    /// Border/separator color
-    pub border_color: Color,
+#[allow(dead_code)] // Fields used for tree rendering
+struct TreeNodeInfo {
+    /// Original row index in tree (path from root)
+    path: Vec<usize>,
+    /// Nesting depth (0 = root level)
+    depth: usize,
+    /// Has child rows
+    has_children: bool,
+    /// Currently expanded
+    is_expanded: bool,
+    /// Is last child at this level (for tree line rendering)
+    is_last_child: bool,
 }
 
-impl Default for GridColors {
-    fn default() -> Self {
-        Self {
-            header_bg: Color::rgb(60, 60, 80),
-            header_fg: Color::WHITE,
-            row_bg: Color::rgb(30, 30, 30),
-            alt_row_bg: Color::rgb(40, 40, 40),
-            selected_bg: Color::rgb(60, 100, 180),
-            selected_fg: Color::WHITE,
-            border_color: Color::rgb(80, 80, 80),
-        }
-    }
-}
-
-impl GridColors {
-    /// Create a new color scheme
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Dark theme (default)
-    pub fn dark() -> Self {
-        Self::default()
-    }
-
-    /// Light theme
-    pub fn light() -> Self {
-        Self {
-            header_bg: Color::rgb(220, 220, 230),
-            header_fg: Color::BLACK,
-            row_bg: Color::rgb(255, 255, 255),
-            alt_row_bg: Color::rgb(245, 245, 250),
-            selected_bg: Color::rgb(100, 150, 220),
-            selected_fg: Color::WHITE,
-            border_color: Color::rgb(180, 180, 190),
-        }
-    }
-}
-
-/// Grid display options
-#[derive(Clone, Debug)]
-pub struct GridOptions {
-    /// Show header row
-    pub show_header: bool,
-    /// Show row numbers column
-    pub show_row_numbers: bool,
-    /// Enable multi-row selection
-    pub multi_select: bool,
-    /// Enable zebra striping (alternating row colors)
-    pub zebra: bool,
-    /// Use natural sorting for text (file2 < file10)
-    pub use_natural_sort: bool,
-    /// Enable virtual scrolling for large datasets
-    pub virtual_scroll: bool,
-    /// Row height in lines (for virtual scroll calculations)
-    pub row_height: u16,
-    /// Overscan rows (extra rows rendered above/below viewport for smooth scrolling)
-    pub overscan: usize,
-}
-
-impl Default for GridOptions {
-    fn default() -> Self {
-        Self {
-            show_header: true,
-            show_row_numbers: false,
-            multi_select: false,
-            zebra: true,
-            use_natural_sort: true,
-            virtual_scroll: true,
-            row_height: 1,
-            overscan: 5,
-        }
-    }
-}
-
-impl GridOptions {
-    /// Create new options with defaults
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-/// Column data type
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum ColumnType {
-    #[default]
-    Text,
-    Number,
-    Date,
-    Boolean,
-    Custom,
-}
-
-/// Sort direction
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SortDirection {
-    /// Sort ascending (A-Z, 0-9)
-    Ascending,
-    /// Sort descending (Z-A, 9-0)
-    Descending,
-}
-
-impl SortDirection {
-    fn toggle(&self) -> Self {
-        match self {
-            SortDirection::Ascending => SortDirection::Descending,
-            SortDirection::Descending => SortDirection::Ascending,
-        }
-    }
-
-    fn icon(&self) -> char {
-        match self {
-            SortDirection::Ascending => '▲',
-            SortDirection::Descending => '▼',
-        }
-    }
-}
-
-/// Grid column definition
-#[derive(Clone)]
-pub struct GridColumn {
-    /// Column key/id
-    pub key: String,
-    /// Display title
-    pub title: String,
-    /// Column type
-    pub col_type: ColumnType,
-    /// Width (0 = auto)
-    pub width: u16,
-    /// Minimum width
-    pub min_width: u16,
-    /// Maximum width
-    pub max_width: u16,
-    /// Is sortable
-    pub sortable: bool,
-    /// Is filterable
-    pub filterable: bool,
-    /// Is editable
-    pub editable: bool,
-    /// Is visible
-    pub visible: bool,
-    /// Alignment
-    pub align: Alignment,
-    /// Is resizable (can drag to resize)
-    pub resizable: bool,
-    /// Is frozen (stays visible during horizontal scroll)
-    pub frozen: bool,
-}
-
-/// Text alignment
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Alignment {
-    #[default]
-    Left,
-    Center,
-    Right,
-}
-
-impl GridColumn {
-    /// Create a new column
-    pub fn new(key: impl Into<String>, title: impl Into<String>) -> Self {
-        Self {
-            key: key.into(),
-            title: title.into(),
-            col_type: ColumnType::Text,
-            width: 0,
-            min_width: 5,
-            max_width: 50,
-            sortable: true,
-            filterable: true,
-            editable: false,
-            visible: true,
-            align: Alignment::Left,
-            resizable: true,
-            frozen: false,
-        }
-    }
-
-    /// Set column type
-    pub fn col_type(mut self, t: ColumnType) -> Self {
-        self.col_type = t;
-        self
-    }
-
-    /// Set width
-    pub fn width(mut self, w: u16) -> Self {
-        self.width = w;
-        self
-    }
-
-    /// Set min width
-    pub fn min_width(mut self, w: u16) -> Self {
-        self.min_width = w;
-        self
-    }
-
-    /// Set max width
-    pub fn max_width(mut self, w: u16) -> Self {
-        self.max_width = w;
-        self
-    }
-
-    /// Set sortable
-    pub fn sortable(mut self, s: bool) -> Self {
-        self.sortable = s;
-        self
-    }
-
-    /// Set editable
-    pub fn editable(mut self, e: bool) -> Self {
-        self.editable = e;
-        self
-    }
-
-    /// Set alignment
-    pub fn align(mut self, a: Alignment) -> Self {
-        self.align = a;
-        self
-    }
-
-    /// Right align
-    pub fn right(mut self) -> Self {
-        self.align = Alignment::Right;
-        self
-    }
-
-    /// Center align
-    pub fn center(mut self) -> Self {
-        self.align = Alignment::Center;
-        self
-    }
-
-    /// Set resizable (can drag to resize)
-    pub fn resizable(mut self, r: bool) -> Self {
-        self.resizable = r;
-        self
-    }
-
-    /// Set frozen (stays visible during horizontal scroll)
-    pub fn frozen(mut self, f: bool) -> Self {
-        self.frozen = f;
-        self
-    }
-}
-
-/// A row in the grid
-#[derive(Clone, Debug)]
-pub struct GridRow {
-    /// Row data (key -> value)
-    pub data: Vec<(String, String)>,
-    /// Row is selected
-    pub selected: bool,
-    /// Row is expanded (for tree grids)
-    pub expanded: bool,
-    /// Child rows
-    pub children: Vec<GridRow>,
-}
-
-impl GridRow {
-    /// Create a new row
-    pub fn new() -> Self {
-        Self {
-            data: Vec::new(),
-            selected: false,
-            expanded: false,
-            children: Vec::new(),
-        }
-    }
-
-    /// Add cell data
-    pub fn cell(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.data.push((key.into(), value.into()));
-        self
-    }
-
-    /// Get cell value by key
-    pub fn get(&self, key: &str) -> Option<&str> {
-        self.data
-            .iter()
-            .find(|(k, _)| k == key)
-            .map(|(_, v)| v.as_str())
-    }
-}
-
-impl Default for GridRow {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Types (GridColors, GridOptions, ColumnType, SortDirection, Alignment,
+// GridColumn, GridRow, ExportFormat, ExportOptions, AggregationType,
+// ColumnAggregation, FooterRow) are defined in types.rs
 
 /// DataGrid widget
 pub struct DataGrid {
@@ -447,6 +170,22 @@ pub struct DataGrid {
     /// Horizontal scroll offset (column index)
     scroll_col: usize,
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tree Grid State
+    // ─────────────────────────────────────────────────────────────────────────
+    /// Enable tree grid mode (hierarchical display)
+    tree_mode: bool,
+    /// Flattened tree cache for display
+    tree_cache: Vec<TreeNodeInfo>,
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Export & Aggregation State
+    // ─────────────────────────────────────────────────────────────────────────
+    /// Footer rows for aggregation display
+    footer_rows: Vec<FooterRow>,
+    /// Show aggregation footer
+    show_footer: bool,
+
     /// Widget props for CSS integration
     props: WidgetProps,
 }
@@ -486,6 +225,12 @@ impl DataGrid {
             frozen_left: 0,
             frozen_right: 0,
             scroll_col: 0,
+            // Tree grid state
+            tree_mode: false,
+            tree_cache: Vec::new(),
+            // Footer state
+            footer_rows: Vec::new(),
+            show_footer: false,
             props: WidgetProps::new(),
         }
     }
@@ -658,6 +403,447 @@ impl DataGrid {
     pub fn freeze_columns_right(mut self, count: usize) -> Self {
         self.frozen_right = count;
         self
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tree Grid Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Enable tree grid mode for hierarchical data display
+    pub fn tree_mode(mut self, enabled: bool) -> Self {
+        self.tree_mode = enabled;
+        if enabled {
+            self.rebuild_tree_cache();
+        }
+        self
+    }
+
+    /// Check if tree mode is enabled
+    pub fn is_tree_mode(&self) -> bool {
+        self.tree_mode
+    }
+
+    /// Rebuild the flattened tree cache from rows
+    fn rebuild_tree_cache(&mut self) {
+        self.tree_cache.clear();
+        self.flatten_rows(&self.rows.clone(), 0, &mut vec![], &[]);
+    }
+
+    /// Recursively flatten rows into tree_cache
+    fn flatten_rows(
+        &mut self,
+        rows: &[GridRow],
+        depth: usize,
+        path: &mut Vec<usize>,
+        parent_is_last: &[bool],
+    ) {
+        let count = rows.len();
+        for (i, row) in rows.iter().enumerate() {
+            let is_last = i == count - 1;
+            path.push(i);
+
+            self.tree_cache.push(TreeNodeInfo {
+                path: path.clone(),
+                depth,
+                has_children: !row.children.is_empty(),
+                is_expanded: row.expanded,
+                is_last_child: is_last,
+            });
+
+            // Recurse into expanded children
+            if row.expanded && !row.children.is_empty() {
+                let mut new_parent_is_last = parent_is_last.to_vec();
+                new_parent_is_last.push(is_last);
+                self.flatten_rows(&row.children, depth + 1, path, &new_parent_is_last);
+            }
+
+            path.pop();
+        }
+    }
+
+    /// Get row by path through tree
+    #[allow(dead_code)] // Used for tree rendering
+    fn get_row_by_path(&self, path: &[usize]) -> Option<&GridRow> {
+        if path.is_empty() {
+            return None;
+        }
+
+        let mut current_rows = &self.rows;
+        let mut row: Option<&GridRow> = None;
+
+        for &idx in path {
+            if idx >= current_rows.len() {
+                return None;
+            }
+            row = Some(&current_rows[idx]);
+            current_rows = &current_rows[idx].children;
+        }
+
+        row
+    }
+
+    /// Get mutable row by path through tree
+    fn get_row_by_path_mut(&mut self, path: &[usize]) -> Option<&mut GridRow> {
+        if path.is_empty() {
+            return None;
+        }
+
+        let mut current_rows = &mut self.rows;
+
+        for (i, &idx) in path.iter().enumerate() {
+            if idx >= current_rows.len() {
+                return None;
+            }
+            if i == path.len() - 1 {
+                return Some(&mut current_rows[idx]);
+            }
+            current_rows = &mut current_rows[idx].children;
+        }
+
+        None
+    }
+
+    /// Toggle expand/collapse of selected row in tree mode
+    pub fn toggle_expand(&mut self) {
+        if !self.tree_mode {
+            return;
+        }
+
+        let visible_rows = if self.tree_mode {
+            self.tree_cache.len()
+        } else {
+            self.filtered_count()
+        };
+
+        if self.selected_row >= visible_rows {
+            return;
+        }
+
+        if let Some(node) = self.tree_cache.get(self.selected_row).cloned() {
+            if node.has_children {
+                if let Some(row) = self.get_row_by_path_mut(&node.path) {
+                    row.expanded = !row.expanded;
+                    self.rebuild_tree_cache();
+                }
+            }
+        }
+    }
+
+    /// Expand selected row in tree mode
+    pub fn expand(&mut self) {
+        if !self.tree_mode {
+            return;
+        }
+
+        if let Some(node) = self.tree_cache.get(self.selected_row).cloned() {
+            if node.has_children && !node.is_expanded {
+                if let Some(row) = self.get_row_by_path_mut(&node.path) {
+                    row.expanded = true;
+                    self.rebuild_tree_cache();
+                }
+            }
+        }
+    }
+
+    /// Collapse selected row in tree mode
+    pub fn collapse(&mut self) {
+        if !self.tree_mode {
+            return;
+        }
+
+        if let Some(node) = self.tree_cache.get(self.selected_row).cloned() {
+            if node.has_children && node.is_expanded {
+                if let Some(row) = self.get_row_by_path_mut(&node.path) {
+                    row.expanded = false;
+                    self.rebuild_tree_cache();
+                }
+            }
+        }
+    }
+
+    /// Expand all rows in tree mode
+    pub fn expand_all(&mut self) {
+        if !self.tree_mode {
+            return;
+        }
+        Self::set_expanded_recursive(&mut self.rows, true);
+        self.rebuild_tree_cache();
+    }
+
+    /// Collapse all rows in tree mode
+    pub fn collapse_all(&mut self) {
+        if !self.tree_mode {
+            return;
+        }
+        Self::set_expanded_recursive(&mut self.rows, false);
+        self.rebuild_tree_cache();
+    }
+
+    /// Recursively set expanded state for all rows
+    fn set_expanded_recursive(rows: &mut [GridRow], expanded: bool) {
+        for row in rows.iter_mut() {
+            if !row.children.is_empty() {
+                row.expanded = expanded;
+                Self::set_expanded_recursive(&mut row.children, expanded);
+            }
+        }
+    }
+
+    /// Get tree indent string for rendering
+    #[allow(dead_code)] // Used for tree rendering
+    fn get_tree_indent(&self, node: &TreeNodeInfo) -> String {
+        if node.depth == 0 {
+            return String::new();
+        }
+
+        let mut indent = String::new();
+
+        // Add vertical lines for parent levels
+        for _ in 0..node.depth.saturating_sub(1) {
+            indent.push_str("│ ");
+        }
+
+        // Add branch character for this level
+        if node.is_last_child {
+            indent.push_str("└─");
+        } else {
+            indent.push_str("├─");
+        }
+
+        indent
+    }
+
+    /// Get expand/collapse indicator for tree node
+    #[allow(dead_code)] // Used for tree rendering
+    fn get_tree_indicator(&self, node: &TreeNodeInfo) -> &'static str {
+        if !node.has_children {
+            "  "
+        } else if node.is_expanded {
+            "▼ "
+        } else {
+            "▶ "
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Export Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Export grid data with options
+    pub fn export(&self, options: &ExportOptions) -> String {
+        let separator = match options.format {
+            ExportFormat::Csv => ',',
+            ExportFormat::Tsv => '\t',
+            ExportFormat::PlainText => ' ',
+        };
+
+        let mut output = String::new();
+
+        // Get visible columns
+        let visible_cols: Vec<_> = if options.visible_columns_only {
+            self.columns
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.visible)
+                .collect()
+        } else {
+            self.columns.iter().enumerate().collect()
+        };
+
+        // Export headers
+        if options.include_headers {
+            let headers: Vec<_> = visible_cols
+                .iter()
+                .map(|(_, c)| self.escape_value(&c.title, options.format))
+                .collect();
+            output.push_str(&headers.join(&separator.to_string()));
+            output.push('\n');
+        }
+
+        // Get rows to export
+        let row_indices: Vec<usize> = if options.selected_only {
+            self.filtered_indices()
+                .iter()
+                .enumerate()
+                .filter(|(_, &idx)| self.rows.get(idx).is_some_and(|r| r.selected))
+                .map(|(i, _)| i)
+                .collect()
+        } else {
+            (0..self.filtered_count()).collect()
+        };
+
+        // Export rows
+        for row_idx in row_indices {
+            if let Some(&actual_idx) = self.filtered_indices().get(row_idx) {
+                if let Some(row) = self.rows.get(actual_idx) {
+                    let values: Vec<_> = visible_cols
+                        .iter()
+                        .map(|(_, c)| {
+                            let value = row.get(&c.key).unwrap_or("");
+                            self.escape_value(value, options.format)
+                        })
+                        .collect();
+                    output.push_str(&values.join(&separator.to_string()));
+                    output.push('\n');
+                }
+            }
+        }
+
+        output
+    }
+
+    /// Export as CSV
+    pub fn export_csv(&self) -> String {
+        self.export(&ExportOptions::new().format(ExportFormat::Csv))
+    }
+
+    /// Export as TSV
+    pub fn export_tsv(&self) -> String {
+        self.export(&ExportOptions::new().format(ExportFormat::Tsv))
+    }
+
+    /// Copy current cell value
+    pub fn copy_cell(&self) -> String {
+        let visible_cols: Vec<_> = self.columns.iter().filter(|c| c.visible).collect();
+
+        if let Some(col) = visible_cols.get(self.selected_col) {
+            if let Some(&actual_idx) = self.filtered_indices().get(self.selected_row) {
+                if let Some(row) = self.rows.get(actual_idx) {
+                    return row.get(&col.key).unwrap_or("").to_string();
+                }
+            }
+        }
+        String::new()
+    }
+
+    /// Copy selected rows as CSV
+    pub fn copy_selected(&self) -> String {
+        self.export(&ExportOptions::new().selected_only(true))
+    }
+
+    /// Escape value for export format
+    fn escape_value(&self, value: &str, format: ExportFormat) -> String {
+        match format {
+            ExportFormat::Csv => {
+                if value.contains(',') || value.contains('"') || value.contains('\n') {
+                    format!("\"{}\"", value.replace('"', "\"\""))
+                } else {
+                    value.to_string()
+                }
+            }
+            ExportFormat::Tsv => {
+                if value.contains('\t') || value.contains('\n') {
+                    value
+                        .chars()
+                        .map(|c| if c == '\t' || c == '\n' { ' ' } else { c })
+                        .collect()
+                } else {
+                    value.to_string()
+                }
+            }
+            ExportFormat::PlainText => value.to_string(),
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Aggregation Footer Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Add a footer row
+    pub fn footer(mut self, row: FooterRow) -> Self {
+        self.footer_rows.push(row);
+        self.show_footer = true;
+        self
+    }
+
+    /// Show/hide footer
+    pub fn show_footer(mut self, show: bool) -> Self {
+        self.show_footer = show;
+        self
+    }
+
+    /// Add a quick sum aggregation
+    pub fn add_sum(mut self, column_key: impl Into<String>) -> Self {
+        let key = column_key.into();
+        if self.footer_rows.is_empty() {
+            self.footer_rows.push(FooterRow::new("Total"));
+        }
+        if let Some(footer) = self.footer_rows.first_mut() {
+            footer
+                .aggregations
+                .push(ColumnAggregation::new(key, AggregationType::Sum));
+        }
+        self.show_footer = true;
+        self
+    }
+
+    /// Add a quick average aggregation
+    pub fn add_average(mut self, column_key: impl Into<String>) -> Self {
+        let key = column_key.into();
+        if self.footer_rows.is_empty() {
+            self.footer_rows.push(FooterRow::new("Average"));
+        }
+        if let Some(footer) = self.footer_rows.first_mut() {
+            footer
+                .aggregations
+                .push(ColumnAggregation::new(key, AggregationType::Average));
+        }
+        self.show_footer = true;
+        self
+    }
+
+    /// Compute aggregation value for a column
+    fn compute_aggregation(&self, column_key: &str, agg_type: AggregationType) -> Option<f64> {
+        let values: Vec<f64> = self
+            .filtered_indices()
+            .iter()
+            .filter_map(|&idx| {
+                self.rows
+                    .get(idx)
+                    .and_then(|r| r.get(column_key))
+                    .and_then(|v| v.parse::<f64>().ok())
+            })
+            .collect();
+
+        if values.is_empty() {
+            return None;
+        }
+
+        Some(match agg_type {
+            AggregationType::Sum => values.iter().sum(),
+            AggregationType::Average => values.iter().sum::<f64>() / values.len() as f64,
+            AggregationType::Count => values.len() as f64,
+            AggregationType::Min => values.iter().cloned().fold(f64::INFINITY, f64::min),
+            AggregationType::Max => values.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
+        })
+    }
+
+    /// Get computed footer values for rendering
+    #[allow(dead_code)] // Used for footer rendering
+    fn get_footer_values(&self, footer: &FooterRow) -> Vec<(String, String)> {
+        let mut values = Vec::new();
+
+        for agg in &footer.aggregations {
+            let label = agg
+                .label
+                .clone()
+                .unwrap_or_else(|| agg.agg_type.label().to_string());
+
+            let value = self
+                .compute_aggregation(&agg.column_key, agg.agg_type)
+                .map(|v| {
+                    if v.fract() == 0.0 {
+                        format!("{:.0}", v)
+                    } else {
+                        format!("{:.2}", v)
+                    }
+                })
+                .unwrap_or_else(|| "—".to_string());
+
+            values.push((agg.column_key.clone(), format!("{}: {}", label, value)));
+        }
+
+        values
     }
 
     /// Sort by column (cancels any active edit)
@@ -2062,1424 +2248,4 @@ pub fn grid_column(key: impl Into<String>, title: impl Into<String>) -> GridColu
 /// Create a new grid row
 pub fn grid_row() -> GridRow {
     GridRow::new()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
-
-    #[test]
-    fn test_grid_column() {
-        let col = GridColumn::new("name", "Name").width(20).sortable(true);
-
-        assert_eq!(col.key, "name");
-        assert_eq!(col.title, "Name");
-        assert_eq!(col.width, 20);
-        assert!(col.sortable);
-    }
-
-    #[test]
-    fn test_grid_row() {
-        let row = GridRow::new().cell("name", "John").cell("age", "30");
-
-        assert_eq!(row.get("name"), Some("John"));
-        assert_eq!(row.get("age"), Some("30"));
-        assert_eq!(row.get("unknown"), None);
-    }
-
-    #[test]
-    fn test_data_grid() {
-        let grid = DataGrid::new()
-            .column(GridColumn::new("name", "Name"))
-            .column(GridColumn::new("age", "Age"))
-            .row(GridRow::new().cell("name", "Alice").cell("age", "25"))
-            .row(GridRow::new().cell("name", "Bob").cell("age", "30"));
-
-        assert_eq!(grid.columns.len(), 2);
-        assert_eq!(grid.rows.len(), 2);
-    }
-
-    #[test]
-    fn test_sorting() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("name", "Name"))
-            .row(GridRow::new().cell("name", "Charlie"))
-            .row(GridRow::new().cell("name", "Alice"))
-            .row(GridRow::new().cell("name", "Bob"));
-
-        grid.sort(0);
-
-        assert_eq!(grid.rows[0].get("name"), Some("Alice"));
-        assert_eq!(grid.rows[1].get("name"), Some("Bob"));
-        assert_eq!(grid.rows[2].get("name"), Some("Charlie"));
-    }
-
-    #[test]
-    fn test_filtering() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("name", "Name"))
-            .row(GridRow::new().cell("name", "Alice"))
-            .row(GridRow::new().cell("name", "Bob"))
-            .row(GridRow::new().cell("name", "Alex"));
-
-        grid.set_filter("al");
-
-        let filtered = grid.filtered_rows();
-        assert_eq!(filtered.len(), 2);
-    }
-
-    #[test]
-    fn test_navigation() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A"))
-            .column(GridColumn::new("b", "B"))
-            .row(GridRow::new().cell("a", "1").cell("b", "2"))
-            .row(GridRow::new().cell("a", "3").cell("b", "4"));
-
-        assert_eq!(grid.selected_row, 0);
-
-        grid.select_next();
-        assert_eq!(grid.selected_row, 1);
-
-        grid.select_prev();
-        assert_eq!(grid.selected_row, 0);
-    }
-
-    #[test]
-    fn test_render() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let grid = DataGrid::new()
-            .column(GridColumn::new("name", "Name"))
-            .row(GridRow::new().cell("name", "Test"));
-
-        grid.render(&mut ctx);
-        // Smoke test
-    }
-
-    #[test]
-    fn test_natural_sorting() {
-        let mut grid = DataGrid::new()
-            .natural_sort(true)
-            .column(GridColumn::new("file", "File"))
-            .row(GridRow::new().cell("file", "file10.txt"))
-            .row(GridRow::new().cell("file", "file2.txt"))
-            .row(GridRow::new().cell("file", "file1.txt"));
-
-        grid.sort(0);
-
-        assert_eq!(grid.rows[0].get("file"), Some("file1.txt"));
-        assert_eq!(grid.rows[1].get("file"), Some("file2.txt"));
-        assert_eq!(grid.rows[2].get("file"), Some("file10.txt"));
-    }
-
-    #[test]
-    fn test_ascii_sorting() {
-        let mut grid = DataGrid::new()
-            .natural_sort(false)
-            .column(GridColumn::new("file", "File"))
-            .row(GridRow::new().cell("file", "file10.txt"))
-            .row(GridRow::new().cell("file", "file2.txt"))
-            .row(GridRow::new().cell("file", "file1.txt"));
-
-        grid.sort(0);
-
-        // ASCII sort: "file1" < "file10" < "file2"
-        assert_eq!(grid.rows[0].get("file"), Some("file1.txt"));
-        assert_eq!(grid.rows[1].get("file"), Some("file10.txt"));
-        assert_eq!(grid.rows[2].get("file"), Some("file2.txt"));
-    }
-
-    #[test]
-    fn test_filter_cache() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("name", "Name"))
-            .row(GridRow::new().cell("name", "Alice"))
-            .row(GridRow::new().cell("name", "Bob"))
-            .row(GridRow::new().cell("name", "Alex"))
-            .row(GridRow::new().cell("name", "Charlie"));
-
-        // Initial: all 4 rows
-        assert_eq!(grid.filtered_count(), 4);
-
-        // Multiple calls should use cache
-        assert_eq!(grid.filtered_count(), 4);
-        assert_eq!(grid.row_count(), 4);
-
-        // Filter: only "al" matches
-        grid.set_filter("al");
-        assert_eq!(grid.filtered_count(), 2);
-
-        // Cache should be invalidated and recomputed
-        assert_eq!(grid.filtered_rows().len(), 2);
-
-        // Clear filter
-        grid.set_filter("");
-        assert_eq!(grid.filtered_count(), 4);
-    }
-
-    #[test]
-    fn test_cache_invalidation_on_sort() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("name", "Name"))
-            .row(GridRow::new().cell("name", "Charlie"))
-            .row(GridRow::new().cell("name", "Alice"))
-            .row(GridRow::new().cell("name", "Bob"));
-
-        // Access cache
-        assert_eq!(grid.filtered_count(), 3);
-
-        // Sort should invalidate cache
-        grid.sort(0);
-
-        // Cache should still work correctly after sort
-        assert_eq!(grid.filtered_count(), 3);
-        let rows = grid.filtered_rows();
-        assert_eq!(rows[0].get("name"), Some("Alice"));
-    }
-
-    #[test]
-    fn test_cell_edit_start() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("name", "Name").editable(true))
-            .row(GridRow::new().cell("name", "Alice"));
-
-        assert!(!grid.is_editing());
-
-        // Start editing
-        assert!(grid.start_edit());
-        assert!(grid.is_editing());
-        assert_eq!(grid.edit_buffer(), Some("Alice"));
-    }
-
-    #[test]
-    fn test_cell_edit_non_editable() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("name", "Name").editable(false))
-            .row(GridRow::new().cell("name", "Alice"));
-
-        // Should not be able to edit non-editable column
-        assert!(!grid.start_edit());
-        assert!(!grid.is_editing());
-    }
-
-    #[test]
-    fn test_cell_edit_commit() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("name", "Name").editable(true))
-            .row(GridRow::new().cell("name", "Alice"));
-
-        grid.start_edit();
-
-        // Type some text
-        grid.handle_key(&Key::Backspace); // Delete 'e'
-        grid.handle_key(&Key::Backspace); // Delete 'c'
-        grid.handle_key(&Key::Backspace); // Delete 'i'
-        grid.handle_key(&Key::Backspace); // Delete 'l'
-        grid.handle_key(&Key::Backspace); // Delete 'A'
-        grid.handle_key(&Key::Char('B'));
-        grid.handle_key(&Key::Char('o'));
-        grid.handle_key(&Key::Char('b'));
-
-        // Commit with Enter
-        grid.handle_key(&Key::Enter);
-
-        assert!(!grid.is_editing());
-        assert_eq!(grid.rows[0].get("name"), Some("Bob"));
-    }
-
-    #[test]
-    fn test_cell_edit_cancel() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("name", "Name").editable(true))
-            .row(GridRow::new().cell("name", "Alice"));
-
-        grid.start_edit();
-
-        // Type some text
-        grid.handle_key(&Key::Char('X'));
-        grid.handle_key(&Key::Char('Y'));
-        grid.handle_key(&Key::Char('Z'));
-
-        // Cancel with Escape
-        grid.handle_key(&Key::Escape);
-
-        assert!(!grid.is_editing());
-        // Value should be unchanged
-        assert_eq!(grid.rows[0].get("name"), Some("Alice"));
-    }
-
-    #[test]
-    fn test_cell_edit_cursor_movement() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("name", "Name").editable(true))
-            .row(GridRow::new().cell("name", "Test"));
-
-        grid.start_edit();
-        assert_eq!(grid.edit_state.cursor, 4); // At end
-
-        // Move cursor left
-        grid.handle_key(&Key::Left);
-        assert_eq!(grid.edit_state.cursor, 3);
-
-        // Move to start
-        grid.handle_key(&Key::Home);
-        assert_eq!(grid.edit_state.cursor, 0);
-
-        // Move to end
-        grid.handle_key(&Key::End);
-        assert_eq!(grid.edit_state.cursor, 4);
-    }
-
-    #[test]
-    fn test_virtual_scroll_enabled_by_default() {
-        let grid = DataGrid::new();
-        assert!(grid.options.virtual_scroll);
-        assert_eq!(grid.options.row_height, 1);
-        assert_eq!(grid.options.overscan, 5);
-    }
-
-    #[test]
-    fn test_virtual_scroll_builder_methods() {
-        let grid = DataGrid::new()
-            .virtual_scroll(true)
-            .row_height(2)
-            .overscan(10);
-
-        assert!(grid.options.virtual_scroll);
-        assert_eq!(grid.options.row_height, 2);
-        assert_eq!(grid.options.overscan, 10);
-    }
-
-    #[test]
-    fn test_virtual_scroll_disabled() {
-        let grid = DataGrid::new().virtual_scroll(false);
-        assert!(!grid.options.virtual_scroll);
-    }
-
-    #[test]
-    fn test_large_dataset_100k_rows() {
-        // Create grid with 100,000 rows
-        let mut grid = DataGrid::new()
-            .virtual_scroll(true)
-            .overscan(5)
-            .column(GridColumn::new("id", "ID"))
-            .column(GridColumn::new("name", "Name"));
-
-        // Add 100,000 rows
-        let mut rows = Vec::with_capacity(100_000);
-        for i in 0..100_000 {
-            rows.push(
-                GridRow::new()
-                    .cell("id", i.to_string())
-                    .cell("name", format!("Row {}", i)),
-            );
-        }
-        grid = grid.rows(rows);
-
-        // Verify row count
-        assert_eq!(grid.row_count(), 100_000);
-
-        // Navigation should work
-        grid.select_last();
-        assert_eq!(grid.selected_row, 99_999);
-
-        grid.select_first();
-        assert_eq!(grid.selected_row, 0);
-
-        // Page navigation
-        grid.page_down(100);
-        assert_eq!(grid.selected_row, 100);
-
-        // Render should only process visible rows (smoke test)
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        grid.render(&mut ctx);
-        // If this completes quickly, virtual scroll is working
-    }
-
-    #[test]
-    fn test_virtual_scroll_render_range() {
-        let mut grid = DataGrid::new()
-            .virtual_scroll(true)
-            .overscan(3)
-            .column(GridColumn::new("id", "ID"));
-
-        // Add 100 rows
-        let rows: Vec<_> = (0..100)
-            .map(|i| GridRow::new().cell("id", i.to_string()))
-            .collect();
-        grid = grid.rows(rows);
-
-        // Scroll to middle
-        grid.selected_row = 50;
-        grid.scroll_row = 45;
-
-        // With viewport of 20 rows and overscan of 3:
-        // render_start = 45 - 3 = 42
-        // render_end = 45 + 20 + 3 = 68 (capped at 100)
-        let total = grid.filtered_count();
-        let visible_height = 20;
-        let overscan = grid.options.overscan;
-
-        let render_start = grid.scroll_row.saturating_sub(overscan);
-        let render_end = (grid.scroll_row + visible_height + overscan).min(total);
-
-        assert_eq!(render_start, 42);
-        assert_eq!(render_end, 68);
-    }
-
-    #[test]
-    fn test_row_height_calculation() {
-        let grid = DataGrid::new().row_height(2);
-        assert_eq!(grid.options.row_height, 2);
-
-        // Row height of 0 should be clamped to 1
-        let grid = DataGrid::new().row_height(0);
-        assert_eq!(grid.options.row_height, 1);
-    }
-
-    // ==================== GridColors Tests ====================
-
-    #[test]
-    fn test_grid_colors_new() {
-        let colors = GridColors::new();
-        assert_eq!(colors.header_bg, Color::rgb(60, 60, 80));
-    }
-
-    #[test]
-    fn test_grid_colors_dark() {
-        let colors = GridColors::dark();
-        assert_eq!(colors.header_bg, Color::rgb(60, 60, 80));
-        assert_eq!(colors.header_fg, Color::WHITE);
-    }
-
-    #[test]
-    fn test_grid_colors_light() {
-        let colors = GridColors::light();
-        assert_eq!(colors.header_bg, Color::rgb(220, 220, 230));
-        assert_eq!(colors.header_fg, Color::BLACK);
-        assert_eq!(colors.row_bg, Color::rgb(255, 255, 255));
-    }
-
-    #[test]
-    fn test_grid_colors_debug_clone() {
-        let colors = GridColors::default();
-        let cloned = colors.clone();
-        assert_eq!(colors.header_bg, cloned.header_bg);
-        let _ = format!("{:?}", colors);
-    }
-
-    // ==================== GridOptions Tests ====================
-
-    #[test]
-    fn test_grid_options_new() {
-        let options = GridOptions::new();
-        assert!(options.show_header);
-        assert!(!options.show_row_numbers);
-        assert!(options.zebra);
-    }
-
-    #[test]
-    fn test_grid_options_debug_clone() {
-        let options = GridOptions::default();
-        let cloned = options.clone();
-        assert_eq!(options.show_header, cloned.show_header);
-        let _ = format!("{:?}", options);
-    }
-
-    // ==================== ColumnType Tests ====================
-
-    #[test]
-    fn test_column_type_default() {
-        assert_eq!(ColumnType::default(), ColumnType::Text);
-    }
-
-    #[test]
-    fn test_column_type_variants() {
-        let _text = ColumnType::Text;
-        let _number = ColumnType::Number;
-        let _date = ColumnType::Date;
-        let _bool = ColumnType::Boolean;
-        let _custom = ColumnType::Custom;
-    }
-
-    #[test]
-    fn test_column_type_debug_clone_eq() {
-        let col_type = ColumnType::Number;
-        let cloned = col_type;
-        assert_eq!(col_type, cloned);
-        let _ = format!("{:?}", col_type);
-    }
-
-    // ==================== SortDirection Tests ====================
-
-    #[test]
-    fn test_sort_direction_toggle() {
-        let asc = SortDirection::Ascending;
-        assert_eq!(asc.toggle(), SortDirection::Descending);
-
-        let desc = SortDirection::Descending;
-        assert_eq!(desc.toggle(), SortDirection::Ascending);
-    }
-
-    #[test]
-    fn test_sort_direction_icon() {
-        assert_eq!(SortDirection::Ascending.icon(), '▲');
-        assert_eq!(SortDirection::Descending.icon(), '▼');
-    }
-
-    #[test]
-    fn test_sort_direction_debug_clone_eq() {
-        let dir = SortDirection::Ascending;
-        let cloned = dir;
-        assert_eq!(dir, cloned);
-        let _ = format!("{:?}", dir);
-    }
-
-    // ==================== Alignment Tests ====================
-
-    #[test]
-    fn test_alignment_default() {
-        assert_eq!(Alignment::default(), Alignment::Left);
-    }
-
-    #[test]
-    fn test_alignment_variants() {
-        let _left = Alignment::Left;
-        let _center = Alignment::Center;
-        let _right = Alignment::Right;
-    }
-
-    // ==================== GridColumn Builder Tests ====================
-
-    #[test]
-    fn test_grid_column_col_type() {
-        let col = GridColumn::new("num", "Number").col_type(ColumnType::Number);
-        assert_eq!(col.col_type, ColumnType::Number);
-    }
-
-    #[test]
-    fn test_grid_column_min_max_width() {
-        let col = GridColumn::new("test", "Test").min_width(10).max_width(100);
-        assert_eq!(col.min_width, 10);
-        assert_eq!(col.max_width, 100);
-    }
-
-    #[test]
-    fn test_grid_column_editable() {
-        let col = GridColumn::new("test", "Test").editable(true);
-        assert!(col.editable);
-    }
-
-    #[test]
-    fn test_grid_column_align() {
-        let col = GridColumn::new("test", "Test").align(Alignment::Right);
-        assert_eq!(col.align, Alignment::Right);
-    }
-
-    #[test]
-    fn test_grid_column_right() {
-        let col = GridColumn::new("test", "Test").right();
-        assert_eq!(col.align, Alignment::Right);
-    }
-
-    #[test]
-    fn test_grid_column_center() {
-        let col = GridColumn::new("test", "Test").center();
-        assert_eq!(col.align, Alignment::Center);
-    }
-
-    // ==================== GridRow Tests ====================
-
-    #[test]
-    fn test_grid_row_default() {
-        let row = GridRow::default();
-        assert!(row.data.is_empty());
-        assert!(!row.selected);
-        assert!(!row.expanded);
-        assert!(row.children.is_empty());
-    }
-
-    #[test]
-    fn test_grid_row_debug_clone() {
-        let row = GridRow::new().cell("key", "value");
-        let cloned = row.clone();
-        assert_eq!(row.get("key"), cloned.get("key"));
-        let _ = format!("{:?}", row);
-    }
-
-    // ==================== DataGrid Builder Tests ====================
-
-    #[test]
-    fn test_datagrid_default() {
-        let grid = DataGrid::default();
-        assert!(grid.columns.is_empty());
-        assert!(grid.rows.is_empty());
-    }
-
-    #[test]
-    fn test_datagrid_colors() {
-        let grid = DataGrid::new().colors(GridColors::light());
-        assert_eq!(grid.colors.header_fg, Color::BLACK);
-    }
-
-    #[test]
-    fn test_datagrid_options() {
-        let options = GridOptions {
-            show_row_numbers: true,
-            ..Default::default()
-        };
-        let grid = DataGrid::new().options(options);
-        assert!(grid.options.show_row_numbers);
-    }
-
-    #[test]
-    fn test_datagrid_colors_mut() {
-        let mut grid = DataGrid::new();
-        grid.colors_mut().header_fg = Color::RED;
-        assert_eq!(grid.colors.header_fg, Color::RED);
-    }
-
-    #[test]
-    fn test_datagrid_options_mut() {
-        let mut grid = DataGrid::new();
-        grid.options_mut().show_row_numbers = true;
-        assert!(grid.options.show_row_numbers);
-    }
-
-    #[test]
-    fn test_datagrid_columns_vec() {
-        let cols = vec![GridColumn::new("a", "A"), GridColumn::new("b", "B")];
-        let grid = DataGrid::new().columns(cols);
-        assert_eq!(grid.columns.len(), 2);
-    }
-
-    #[test]
-    fn test_datagrid_data_2d() {
-        let grid = DataGrid::new()
-            .column(GridColumn::new("col1", "Col1"))
-            .column(GridColumn::new("col2", "Col2"))
-            .data(vec![
-                vec!["a1".into(), "b1".into()],
-                vec!["a2".into(), "b2".into()],
-            ]);
-        assert_eq!(grid.rows.len(), 2);
-        assert_eq!(grid.rows[0].get("col1"), Some("a1"));
-    }
-
-    #[test]
-    fn test_datagrid_header() {
-        let grid = DataGrid::new().header(false);
-        assert!(!grid.options.show_header);
-    }
-
-    #[test]
-    fn test_datagrid_row_numbers() {
-        let grid = DataGrid::new().row_numbers(true);
-        assert!(grid.options.show_row_numbers);
-    }
-
-    #[test]
-    fn test_datagrid_zebra() {
-        let grid = DataGrid::new().zebra(false);
-        assert!(!grid.options.zebra);
-    }
-
-    #[test]
-    fn test_datagrid_multi_select() {
-        let grid = DataGrid::new().multi_select(true);
-        assert!(grid.options.multi_select);
-    }
-
-    // ==================== Selection Tests ====================
-
-    #[test]
-    fn test_toggle_selection() {
-        let mut grid = DataGrid::new()
-            .multi_select(true)
-            .row(GridRow::new().cell("a", "1"))
-            .row(GridRow::new().cell("a", "2"));
-
-        assert!(!grid.rows[0].selected);
-        grid.toggle_selection();
-        assert!(grid.rows[0].selected);
-        grid.toggle_selection();
-        assert!(!grid.rows[0].selected);
-    }
-
-    #[test]
-    fn test_toggle_selection_without_multi_select() {
-        let mut grid = DataGrid::new()
-            .multi_select(false)
-            .row(GridRow::new().cell("a", "1"));
-
-        grid.toggle_selection();
-        // Should not toggle when multi_select is disabled
-        assert!(!grid.rows[0].selected);
-    }
-
-    #[test]
-    fn test_selected_rows() {
-        let mut grid = DataGrid::new()
-            .multi_select(true)
-            .row(GridRow::new().cell("a", "1"))
-            .row(GridRow::new().cell("a", "2"))
-            .row(GridRow::new().cell("a", "3"));
-
-        grid.rows[0].selected = true;
-        grid.rows[2].selected = true;
-
-        let selected = grid.selected_rows();
-        assert_eq!(selected.len(), 2);
-    }
-
-    // ==================== Navigation Tests ====================
-
-    #[test]
-    fn test_select_next_col() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A"))
-            .column(GridColumn::new("b", "B"))
-            .column(GridColumn::new("c", "C"));
-
-        assert_eq!(grid.selected_col, 0);
-        grid.select_next_col();
-        assert_eq!(grid.selected_col, 1);
-        grid.select_next_col();
-        assert_eq!(grid.selected_col, 2);
-        grid.select_next_col();
-        assert_eq!(grid.selected_col, 2); // Can't go past last
-    }
-
-    #[test]
-    fn test_select_prev_col() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A"))
-            .column(GridColumn::new("b", "B"));
-
-        grid.selected_col = 1;
-        grid.select_prev_col();
-        assert_eq!(grid.selected_col, 0);
-        grid.select_prev_col();
-        assert_eq!(grid.selected_col, 0); // Can't go before first
-    }
-
-    #[test]
-    fn test_page_up() {
-        let mut grid = DataGrid::new().column(GridColumn::new("a", "A"));
-
-        let rows: Vec<_> = (0..50)
-            .map(|i| GridRow::new().cell("a", i.to_string()))
-            .collect();
-        grid = grid.rows(rows);
-
-        grid.selected_row = 25;
-        grid.page_up(10);
-        assert_eq!(grid.selected_row, 15);
-
-        grid.page_up(20);
-        assert_eq!(grid.selected_row, 0); // Clamped to 0
-    }
-
-    #[test]
-    fn test_ensure_visible_with_height() {
-        let mut grid = DataGrid::new().column(GridColumn::new("a", "A"));
-
-        let rows: Vec<_> = (0..100)
-            .map(|i| GridRow::new().cell("a", i.to_string()))
-            .collect();
-        grid = grid.rows(rows);
-
-        grid.selected_row = 50;
-        grid.scroll_row = 0;
-        grid.ensure_visible_with_height(10);
-
-        // Scroll should adjust to show selected row
-        assert!(grid.scroll_row > 0);
-    }
-
-    #[test]
-    fn test_set_viewport_height() {
-        let mut grid = DataGrid::new().column(GridColumn::new("a", "A"));
-
-        let rows: Vec<_> = (0..50)
-            .map(|i| GridRow::new().cell("a", i.to_string()))
-            .collect();
-        grid = grid.rows(rows);
-
-        grid.selected_row = 30;
-        grid.scroll_row = 0;
-        grid.set_viewport_height(10);
-
-        assert!(grid.scroll_row > 0);
-    }
-
-    #[test]
-    fn test_scroll_info() {
-        let grid = DataGrid::new()
-            .column(GridColumn::new("a", "A"))
-            .row(GridRow::new().cell("a", "1"))
-            .row(GridRow::new().cell("a", "2"));
-
-        let (scroll, total, _viewport) = grid.scroll_info();
-        assert_eq!(scroll, 0);
-        assert_eq!(total, 2);
-    }
-
-    #[test]
-    fn test_visible_row_count() {
-        let grid = DataGrid::new()
-            .column(GridColumn::new("a", "A"))
-            .row(GridRow::new().cell("a", "1"))
-            .row(GridRow::new().cell("a", "2"));
-
-        assert_eq!(grid.visible_row_count(), 2);
-    }
-
-    // ==================== Sorting Edge Cases ====================
-
-    #[test]
-    fn test_sort_invalid_column() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A"))
-            .row(GridRow::new().cell("a", "1"));
-
-        // Sorting invalid column should be no-op
-        grid.sort(99);
-        assert!(grid.sort_column.is_none());
-    }
-
-    #[test]
-    fn test_sort_unsortable_column() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A").sortable(false))
-            .row(GridRow::new().cell("a", "1"));
-
-        grid.sort(0);
-        assert!(grid.sort_column.is_none());
-    }
-
-    #[test]
-    fn test_sort_toggle_direction() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A"))
-            .row(GridRow::new().cell("a", "B"))
-            .row(GridRow::new().cell("a", "A"));
-
-        grid.sort(0); // Ascending
-        assert_eq!(grid.sort_direction, SortDirection::Ascending);
-        assert_eq!(grid.rows[0].get("a"), Some("A"));
-
-        grid.sort(0); // Toggle to descending
-        assert_eq!(grid.sort_direction, SortDirection::Descending);
-        assert_eq!(grid.rows[0].get("a"), Some("B"));
-    }
-
-    #[test]
-    fn test_sort_number_column() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("num", "Number").col_type(ColumnType::Number))
-            .row(GridRow::new().cell("num", "10"))
-            .row(GridRow::new().cell("num", "2"))
-            .row(GridRow::new().cell("num", "100"));
-
-        grid.sort(0);
-
-        assert_eq!(grid.rows[0].get("num"), Some("2"));
-        assert_eq!(grid.rows[1].get("num"), Some("10"));
-        assert_eq!(grid.rows[2].get("num"), Some("100"));
-    }
-
-    #[test]
-    fn test_sort_cancels_edit() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A").editable(true))
-            .row(GridRow::new().cell("a", "B"))
-            .row(GridRow::new().cell("a", "A"));
-
-        grid.start_edit();
-        assert!(grid.is_editing());
-
-        grid.sort(0);
-        assert!(!grid.is_editing());
-    }
-
-    // ==================== Filter Tests ====================
-
-    #[test]
-    fn test_filter_specific_column() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A"))
-            .column(GridColumn::new("b", "B"))
-            .row(GridRow::new().cell("a", "Alice").cell("b", "Smith"))
-            .row(GridRow::new().cell("a", "Bob").cell("b", "Alice"));
-
-        grid.filter_column = Some(0);
-        grid.set_filter("alice");
-
-        // Should only match first row (column A)
-        assert_eq!(grid.filtered_count(), 1);
-    }
-
-    #[test]
-    fn test_filter_cancels_edit() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A").editable(true))
-            .row(GridRow::new().cell("a", "test"));
-
-        grid.start_edit();
-        assert!(grid.is_editing());
-
-        grid.set_filter("x");
-        assert!(!grid.is_editing());
-    }
-
-    // ==================== Edit Mode Tests ====================
-
-    #[test]
-    fn test_edit_delete_key() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A").editable(true))
-            .row(GridRow::new().cell("a", "ABC"));
-
-        grid.start_edit();
-        grid.handle_key(&Key::Home); // Move to start
-        grid.handle_key(&Key::Delete); // Delete 'A'
-
-        assert_eq!(grid.edit_buffer(), Some("BC"));
-    }
-
-    #[test]
-    fn test_edit_right_key() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A").editable(true))
-            .row(GridRow::new().cell("a", "AB"));
-
-        grid.start_edit();
-        grid.handle_key(&Key::Home);
-        assert_eq!(grid.edit_state.cursor, 0);
-
-        grid.handle_key(&Key::Right);
-        assert_eq!(grid.edit_state.cursor, 1);
-    }
-
-    #[test]
-    fn test_edit_start_out_of_bounds() {
-        let mut grid = DataGrid::new().column(GridColumn::new("a", "A").editable(true));
-
-        // No rows, can't edit
-        assert!(!grid.start_edit());
-    }
-
-    #[test]
-    fn test_commit_edit_invalid_state() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A").editable(true))
-            .row(GridRow::new().cell("a", "test"));
-
-        // Not editing, commit should fail
-        assert!(!grid.commit_edit());
-    }
-
-    #[test]
-    fn test_edit_add_new_cell() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A").editable(true))
-            .row(GridRow::new()); // Row without the cell
-
-        grid.start_edit();
-        grid.handle_key(&Key::Char('X'));
-        grid.commit_edit();
-
-        assert_eq!(grid.rows[0].get("a"), Some("X"));
-    }
-
-    // ==================== Key Handling Tests ====================
-
-    #[test]
-    fn test_handle_key_navigation() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A"))
-            .column(GridColumn::new("b", "B"))
-            .row(GridRow::new().cell("a", "1").cell("b", "2"))
-            .row(GridRow::new().cell("a", "3").cell("b", "4"));
-
-        // Vim keys
-        assert!(grid.handle_key(&Key::Char('j'))); // Down
-        assert_eq!(grid.selected_row, 1);
-
-        assert!(grid.handle_key(&Key::Char('k'))); // Up
-        assert_eq!(grid.selected_row, 0);
-
-        assert!(grid.handle_key(&Key::Char('l'))); // Right
-        assert_eq!(grid.selected_col, 1);
-
-        assert!(grid.handle_key(&Key::Char('h'))); // Left
-        assert_eq!(grid.selected_col, 0);
-
-        // Home/End
-        assert!(grid.handle_key(&Key::Char('g'))); // Home
-        assert_eq!(grid.selected_row, 0);
-
-        assert!(grid.handle_key(&Key::Char('G'))); // End
-        assert_eq!(grid.selected_row, 1);
-    }
-
-    #[test]
-    fn test_handle_key_enter_non_editable() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A").editable(false).sortable(true))
-            .row(GridRow::new().cell("a", "B"))
-            .row(GridRow::new().cell("a", "A"));
-
-        // Enter on non-editable should sort
-        grid.handle_key(&Key::Enter);
-        assert_eq!(grid.sort_column, Some(0));
-    }
-
-    #[test]
-    fn test_handle_key_space_multi_select() {
-        let mut grid = DataGrid::new()
-            .multi_select(true)
-            .column(GridColumn::new("a", "A"))
-            .row(GridRow::new().cell("a", "1"));
-
-        assert!(grid.handle_key(&Key::Char(' ')));
-        assert!(grid.rows[0].selected);
-    }
-
-    #[test]
-    fn test_handle_key_unhandled() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A"))
-            .row(GridRow::new().cell("a", "1"));
-
-        assert!(!grid.handle_key(&Key::Tab));
-    }
-
-    // ==================== Rendering Tests ====================
-
-    #[test]
-    fn test_render_small_area() {
-        let mut buffer = Buffer::new(5, 2);
-        let area = Rect::new(0, 0, 5, 2);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let grid = DataGrid::new()
-            .column(GridColumn::new("a", "A"))
-            .row(GridRow::new().cell("a", "test"));
-
-        grid.render(&mut ctx);
-        // Should not panic with small area
-    }
-
-    #[test]
-    fn test_render_with_row_numbers() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let grid = DataGrid::new()
-            .row_numbers(true)
-            .column(GridColumn::new("a", "A"))
-            .row(GridRow::new().cell("a", "test"));
-
-        grid.render(&mut ctx);
-    }
-
-    #[test]
-    fn test_render_no_header() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let grid = DataGrid::new()
-            .header(false)
-            .column(GridColumn::new("a", "A"))
-            .row(GridRow::new().cell("a", "test"));
-
-        grid.render(&mut ctx);
-    }
-
-    #[test]
-    fn test_render_non_virtual_scroll() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let grid = DataGrid::new()
-            .virtual_scroll(false)
-            .column(GridColumn::new("a", "A"))
-            .row(GridRow::new().cell("a", "test"));
-
-        grid.render(&mut ctx);
-    }
-
-    #[test]
-    fn test_render_with_sorting() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A"))
-            .row(GridRow::new().cell("a", "B"))
-            .row(GridRow::new().cell("a", "A"));
-
-        grid.sort(0);
-        grid.render(&mut ctx);
-    }
-
-    #[test]
-    fn test_calculate_widths_empty() {
-        let grid = DataGrid::new();
-        let widths = grid.calculate_widths(80);
-        assert!(widths.is_empty());
-    }
-
-    // ==================== Helper Functions Tests ====================
-
-    #[test]
-    fn test_datagrid_helper() {
-        let grid = datagrid();
-        assert!(grid.columns.is_empty());
-    }
-
-    #[test]
-    fn test_grid_column_helper() {
-        let col = grid_column("key", "Title");
-        assert_eq!(col.key, "key");
-        assert_eq!(col.title, "Title");
-    }
-
-    #[test]
-    fn test_grid_row_helper() {
-        let row = grid_row();
-        assert!(row.data.is_empty());
-    }
-
-    // ==================== Column Resize Tests ====================
-
-    #[test]
-    fn test_grid_column_resizable() {
-        let col = GridColumn::new("name", "Name").resizable(true);
-        assert!(col.resizable);
-
-        let col2 = GridColumn::new("name", "Name").resizable(false);
-        assert!(!col2.resizable);
-    }
-
-    #[test]
-    fn test_column_resize_state() {
-        let grid = DataGrid::new()
-            .column(GridColumn::new("a", "A").width(10).resizable(true))
-            .column(GridColumn::new("b", "B").width(15).resizable(true))
-            .row(GridRow::new().cell("a", "1").cell("b", "2"));
-
-        // Initially no resize state
-        assert!(grid.resizing_col.is_none());
-        assert!(grid.hovered_resize.is_none());
-    }
-
-    #[test]
-    fn test_column_width_constraints() {
-        let mut grid = DataGrid::new()
-            .column(
-                GridColumn::new("a", "A")
-                    .width(10)
-                    .min_width(5)
-                    .max_width(20)
-                    .resizable(true),
-            )
-            .row(GridRow::new().cell("a", "test"));
-
-        // Set custom width
-        grid.set_column_width(0, 15);
-        assert_eq!(grid.column_widths.get(0), Some(&15));
-
-        // Test min constraint
-        grid.set_column_width(0, 2);
-        assert_eq!(grid.column_widths.get(0), Some(&5)); // constrained to min
-
-        // Test max constraint
-        grid.set_column_width(0, 100);
-        assert_eq!(grid.column_widths.get(0), Some(&20)); // constrained to max
-    }
-
-    #[test]
-    fn test_on_column_resize_callback() {
-        use std::cell::RefCell;
-        use std::rc::Rc;
-
-        let resized = Rc::new(RefCell::new(None::<(usize, u16)>));
-        let resized_clone = resized.clone();
-
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A").width(10).resizable(true))
-            .on_column_resize(move |col, width| {
-                *resized_clone.borrow_mut() = Some((col, width));
-            })
-            .row(GridRow::new().cell("a", "test"));
-
-        grid.set_column_width(0, 15);
-
-        assert_eq!(*resized.borrow(), Some((0, 15)));
-    }
-
-    #[test]
-    fn test_get_display_widths() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A").width(10))
-            .column(GridColumn::new("b", "B").width(15))
-            .row(GridRow::new().cell("a", "1").cell("b", "2"));
-
-        // Before any custom widths, should use calculated widths
-        let widths = grid.get_display_widths(100);
-        assert_eq!(widths.len(), 2);
-
-        // After setting custom width
-        grid.set_column_width(0, 20);
-        let widths = grid.get_display_widths(100);
-        assert_eq!(widths[0], 20);
-    }
-
-    // ==================== Column Reorder Tests ====================
-
-    #[test]
-    fn test_reorderable() {
-        let grid = DataGrid::new()
-            .reorderable(true)
-            .column(GridColumn::new("a", "A"))
-            .column(GridColumn::new("b", "B"));
-
-        assert!(grid.reorderable);
-    }
-
-    #[test]
-    fn test_column_order() {
-        let mut grid = DataGrid::new()
-            .reorderable(true)
-            .column(GridColumn::new("a", "A"))
-            .column(GridColumn::new("b", "B"))
-            .column(GridColumn::new("c", "C"))
-            .row(GridRow::new().cell("a", "1").cell("b", "2").cell("c", "3"));
-
-        // Initial order
-        assert!(grid.column_order.is_empty()); // empty means default order
-
-        // Simulate drag reorder (move column 0 to position 2)
-        grid.dragging_col = Some(0);
-        grid.drop_target_col = Some(2);
-        grid.end_column_drag();
-
-        // Check new order
-        assert_eq!(grid.column_order, vec![1, 0, 2]);
-    }
-
-    #[test]
-    fn test_move_column_left() {
-        let mut grid = DataGrid::new()
-            .reorderable(true)
-            .column(GridColumn::new("a", "A"))
-            .column(GridColumn::new("b", "B"))
-            .column(GridColumn::new("c", "C"))
-            .row(GridRow::new().cell("a", "1").cell("b", "2").cell("c", "3"));
-
-        // Select column 1 (B)
-        grid.selected_col = 1;
-        grid.move_column_left();
-
-        // B should now be at position 0 (columns swapped)
-        assert_eq!(grid.columns[0].key, "b");
-        assert_eq!(grid.columns[1].key, "a");
-        assert_eq!(grid.selected_col, 0);
-    }
-
-    #[test]
-    fn test_move_column_right() {
-        let mut grid = DataGrid::new()
-            .reorderable(true)
-            .column(GridColumn::new("a", "A"))
-            .column(GridColumn::new("b", "B"))
-            .column(GridColumn::new("c", "C"))
-            .row(GridRow::new().cell("a", "1").cell("b", "2").cell("c", "3"));
-
-        // Select column 0 (A)
-        grid.selected_col = 0;
-        grid.move_column_right();
-
-        // A should now be at position 1 (columns swapped)
-        assert_eq!(grid.columns[0].key, "b");
-        assert_eq!(grid.columns[1].key, "a");
-        assert_eq!(grid.selected_col, 1);
-    }
-
-    #[test]
-    fn test_on_column_reorder_callback() {
-        use std::cell::RefCell;
-        use std::rc::Rc;
-
-        let reordered = Rc::new(RefCell::new(None::<(usize, usize)>));
-        let reordered_clone = reordered.clone();
-
-        let mut grid = DataGrid::new()
-            .reorderable(true)
-            .column(GridColumn::new("a", "A"))
-            .column(GridColumn::new("b", "B"))
-            .on_column_reorder(move |from, to| {
-                *reordered_clone.borrow_mut() = Some((from, to));
-            })
-            .row(GridRow::new().cell("a", "1").cell("b", "2"));
-
-        grid.selected_col = 0;
-        grid.move_column_right();
-
-        assert_eq!(*reordered.borrow(), Some((0, 1)));
-    }
-
-    // ==================== Column Freeze Tests ====================
-
-    #[test]
-    fn test_grid_column_frozen() {
-        let col = GridColumn::new("name", "Name").frozen(true);
-        assert!(col.frozen);
-    }
-
-    #[test]
-    fn test_freeze_columns_left() {
-        let grid = DataGrid::new()
-            .freeze_columns_left(2)
-            .column(GridColumn::new("a", "A"))
-            .column(GridColumn::new("b", "B"))
-            .column(GridColumn::new("c", "C"));
-
-        assert_eq!(grid.frozen_left(), 2);
-    }
-
-    #[test]
-    fn test_freeze_columns_right() {
-        let grid = DataGrid::new()
-            .freeze_columns_right(1)
-            .column(GridColumn::new("a", "A"))
-            .column(GridColumn::new("b", "B"))
-            .column(GridColumn::new("c", "C"));
-
-        assert_eq!(grid.frozen_right(), 1);
-    }
-
-    #[test]
-    fn test_horizontal_scroll() {
-        let mut grid = DataGrid::new()
-            .freeze_columns_left(1)
-            .column(GridColumn::new("a", "A"))
-            .column(GridColumn::new("b", "B"))
-            .column(GridColumn::new("c", "C"))
-            .column(GridColumn::new("d", "D"))
-            .column(GridColumn::new("e", "E"))
-            .row(GridRow::new());
-
-        // Initial scroll position
-        assert_eq!(grid.scroll_col, 0);
-
-        // Scroll right
-        grid.scroll_col_right();
-        assert_eq!(grid.scroll_col, 1);
-
-        grid.scroll_col_right();
-        assert_eq!(grid.scroll_col, 2);
-
-        // Scroll left
-        grid.scroll_col_left();
-        assert_eq!(grid.scroll_col, 1);
-
-        // Can't scroll past 0
-        grid.scroll_col_left();
-        grid.scroll_col_left();
-        assert_eq!(grid.scroll_col, 0);
-    }
-
-    // ==================== Mouse Event Tests ====================
-
-    #[test]
-    fn test_hit_test_resize_handle() {
-        let mut grid = DataGrid::new()
-            .column(GridColumn::new("a", "A").width(10).resizable(true))
-            .column(GridColumn::new("b", "B").width(15).resizable(true))
-            .row(GridRow::new().cell("a", "1").cell("b", "2"));
-
-        // Set column widths explicitly for predictable hit testing
-        grid.set_column_width(0, 10);
-        grid.set_column_width(1, 15);
-
-        let area = Rect::new(0, 0, 80, 24);
-
-        // First column ends at x=10, separator at x=11
-        // hit_test checks col_x after adding width+1, so border at col_x=11
-        let hit = grid.hit_test_resize_handle(11, 0, area);
-        assert_eq!(hit, Some(0)); // First column border
-
-        // Second column ends at x=11+15=26, separator at x=27
-        let hit = grid.hit_test_resize_handle(27, 0, area);
-        assert_eq!(hit, Some(1)); // Second column border
-
-        // Not on border
-        let hit = grid.hit_test_resize_handle(5, 0, area);
-        assert!(hit.is_none());
-    }
-
-    #[test]
-    fn test_hit_test_header() {
-        let mut grid = DataGrid::new()
-            .reorderable(true)
-            .column(GridColumn::new("a", "A").width(10))
-            .column(GridColumn::new("b", "B").width(15))
-            .row(GridRow::new().cell("a", "1").cell("b", "2"));
-
-        // Set column widths explicitly for predictable hit testing
-        grid.set_column_width(0, 10);
-        grid.set_column_width(1, 15);
-
-        let area = Rect::new(0, 0, 80, 24);
-
-        // Test hit on first column header (y=0, x within first column 0-9)
-        let hit = grid.hit_test_header(5, 0, area);
-        assert_eq!(hit, Some(0)); // First column header
-
-        // Test hit on second column header (x=11-25)
-        let hit = grid.hit_test_header(15, 0, area);
-        assert_eq!(hit, Some(1)); // Second column header
-
-        // Test hit on data row (y=1) - should return None
-        let hit = grid.hit_test_header(5, 1, area);
-        assert!(hit.is_none());
-    }
-
-    #[test]
-    fn test_render_with_column_features() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let grid = DataGrid::new()
-            .reorderable(true)
-            .freeze_columns_left(1)
-            .column(GridColumn::new("id", "ID").width(5).frozen(true))
-            .column(GridColumn::new("name", "Name").width(15).resizable(true))
-            .column(GridColumn::new("value", "Value").width(10))
-            .row(
-                GridRow::new()
-                    .cell("id", "1")
-                    .cell("name", "Test")
-                    .cell("value", "100"),
-            );
-
-        grid.render(&mut ctx);
-        // Smoke test - just ensure render doesn't panic
-    }
 }
