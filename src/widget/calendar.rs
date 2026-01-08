@@ -86,6 +86,49 @@ impl Date {
         let first = first_day_of_month(self.year, self.month);
         (first + self.day - 1) % 7
     }
+
+    /// Get previous day
+    pub fn prev_day(&self) -> Self {
+        if self.day > 1 {
+            Self::new(self.year, self.month, self.day - 1)
+        } else if self.month > 1 {
+            let prev_month = self.month - 1;
+            let days = days_in_month(self.year, prev_month);
+            Self::new(self.year, prev_month, days)
+        } else {
+            Self::new(self.year - 1, 12, 31)
+        }
+    }
+
+    /// Get next day
+    pub fn next_day(&self) -> Self {
+        let days = days_in_month(self.year, self.month);
+        if self.day < days {
+            Self::new(self.year, self.month, self.day + 1)
+        } else if self.month < 12 {
+            Self::new(self.year, self.month + 1, 1)
+        } else {
+            Self::new(self.year + 1, 1, 1)
+        }
+    }
+
+    /// Subtract n days from this date
+    pub fn subtract_days(&self, n: u32) -> Self {
+        let mut result = *self;
+        for _ in 0..n {
+            result = result.prev_day();
+        }
+        result
+    }
+
+    /// Add n days to this date
+    pub fn add_days(&self, n: u32) -> Self {
+        let mut result = *self;
+        for _ in 0..n {
+            result = result.next_day();
+        }
+        result
+    }
 }
 
 impl Default for Date {
