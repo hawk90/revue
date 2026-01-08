@@ -214,7 +214,9 @@ mod masked_input;
 mod menu;
 mod mermaid;
 mod modal;
+mod multi_select;
 mod notification;
+mod number_input;
 mod option_list;
 mod pagination;
 mod positioned;
@@ -225,6 +227,7 @@ mod progress;
 #[cfg(feature = "qrcode")]
 mod qrcode;
 mod radio;
+mod range_picker;
 mod rating;
 mod resizable;
 mod richlog;
@@ -352,8 +355,12 @@ pub use mermaid::{
     NodeShape,
 };
 pub use modal::{modal, Modal, ModalButton, ModalButtonStyle};
+pub use multi_select::{multi_select, multi_select_from, MultiSelect, MultiSelectOption};
 pub use notification::{
     notification_center, Notification, NotificationCenter, NotificationLevel, NotificationPosition,
+};
+pub use number_input::{
+    currency_input, integer_input, number_input, percentage_input, NumberInput,
 };
 pub use option_list::{
     option_item, option_list, OptionEntry, OptionItem, OptionList,
@@ -370,6 +377,9 @@ pub use progress::{progress, Progress, ProgressStyle};
 #[cfg(feature = "qrcode")]
 pub use qrcode::{qrcode, qrcode_url, ErrorCorrection, QrCodeWidget, QrStyle};
 pub use radio::{radio_group, RadioGroup, RadioLayout, RadioStyle};
+pub use range_picker::{
+    analytics_range_picker, date_range_picker, range_picker, PresetRange, RangeFocus, RangePicker,
+};
 pub use rating::{rating, Rating, RatingSize, RatingStyle};
 pub use resizable::{resizable, Resizable, ResizeDirection, ResizeHandle, ResizeStyle};
 pub use richlog::{log_entry, richlog, LogEntry, LogLevel, RichLog};
