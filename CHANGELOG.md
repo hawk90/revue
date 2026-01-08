@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.15.0](https://github.com/hawk90/revue/compare/v2.14.0...v2.15.0) (2026-01-08)
+
+
+### Features
+
+* **widget:** add Footnotes and Admonition support for Markdown ([#96](https://github.com/hawk90/revue/issues/96)) ([c6b83c0](https://github.com/hawk90/revue/commit/c6b83c0ec5a6d4c97fde6fd0364e864e4dd8cf95)), closes [#47](https://github.com/hawk90/revue/issues/47) [#49](https://github.com/hawk90/revue/issues/49)
+
 ## [2.14.0](https://github.com/hawk90/revue/compare/v2.13.1...v2.14.0) (2026-01-08)
 
 
