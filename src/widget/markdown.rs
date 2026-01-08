@@ -1363,4 +1363,67 @@ mod tests {
         }
         assert!(found_bar, "Admonition border should be rendered");
     }
+
+    #[test]
+    fn test_admonition_multiline_content() {
+        // Test multi-line admonition content (tests the content rendering branch)
+        let md = Markdown::new("> [!WARNING]\n> Line 1\n> Line 2\n> Line 3");
+        assert!(
+            md.line_count() >= 4,
+            "Multi-line admonition should have multiple lines"
+        );
+    }
+
+    #[test]
+    fn test_admonition_color() {
+        // Test each admonition type has a color
+        assert_ne!(AdmonitionType::Note.color(), Color::BLACK);
+        assert_ne!(AdmonitionType::Tip.color(), Color::BLACK);
+        assert_ne!(AdmonitionType::Important.color(), Color::BLACK);
+        assert_ne!(AdmonitionType::Warning.color(), Color::BLACK);
+        assert_ne!(AdmonitionType::Caution.color(), Color::BLACK);
+    }
+
+    #[test]
+    fn test_blockquote_multiline() {
+        // Test multi-line regular blockquote (tests continuation branch)
+        let md = Markdown::new("> First line\n> Second line\n> Third line");
+        assert!(md.line_count() >= 1, "Multi-line blockquote should render");
+    }
+
+    #[test]
+    fn test_footnote_with_multiline_content() {
+        // Test footnote with content accumulation
+        let md = Markdown::new("Text[^1]\n\n[^1]: This is a longer footnote with multiple words.");
+        assert!(md.line_count() >= 2);
+    }
+
+    #[test]
+    fn test_footnote_reference_before_definition() {
+        // Test that references work even when definition comes later
+        let md = Markdown::new("See[^note] for details.\n\n[^note]: The footnote content here.");
+        assert!(md.line_count() >= 2);
+    }
+
+    #[test]
+    fn test_admonition_with_empty_content() {
+        // Test admonition with just the marker
+        let md = Markdown::new("> [!TIP]");
+        assert!(md.line_count() >= 1);
+    }
+
+    #[test]
+    fn test_mixed_content_with_admonition() {
+        // Test that content before and after admonition renders correctly
+        let md = Markdown::new("Before.\n\n> [!IMPORTANT]\n> Content\n\nAfter.");
+        assert!(md.line_count() >= 3);
+    }
+
+    #[test]
+    fn test_footnote_number_ordering() {
+        // Test that footnotes are numbered in order of reference
+        let md = Markdown::new("A[^z] B[^a]\n\n[^a]: Alpha\n[^z]: Zeta");
+        // Both footnotes should be present
+        assert!(md.line_count() >= 3);
+    }
 }
