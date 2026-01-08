@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
 
 concurrency:
@@ -35,7 +37,7 @@ jobs:
   fmt:
     name: Format
     needs: changes
-    if: needs.changes.outputs.code == 'true' && github.actor != 'dependabot[bot]'
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -47,7 +49,7 @@ jobs:
   clippy:
     name: Clippy
     needs: changes
-    if: needs.changes.outputs.code == 'true' && github.actor != 'dependabot[bot]'
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -62,6 +64,7 @@ jobs:
     needs: [changes, fmt, clippy]
     if: |
       always() &&
+      github.event_name == 'pull_request' &&
       needs.changes.outputs.code == 'true' &&
       (needs.fmt.result == 'success' || needs.fmt.result == 'skipped') &&
       (needs.clippy.result == 'success' || needs.clippy.result == 'skipped')
@@ -104,6 +107,7 @@ jobs:
     needs: [changes, fmt, clippy]
     if: |
       always() &&
+      github.event_name == 'pull_request' &&
       needs.changes.outputs.code == 'true' &&
       (needs.fmt.result == 'success' || needs.fmt.result == 'skipped') &&
       (needs.clippy.result == 'success' || needs.clippy.result == 'skipped')
@@ -116,6 +120,7 @@ jobs:
 
   typos:
     name: Typos
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
