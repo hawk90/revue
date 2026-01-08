@@ -49,6 +49,204 @@ struct EditState {
     cursor: usize,
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Tree Grid Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Tree node info for flattened display
+#[derive(Clone, Debug)]
+#[allow(dead_code)] // Fields used for tree rendering
+struct TreeNodeInfo {
+    /// Original row index in tree (path from root)
+    path: Vec<usize>,
+    /// Nesting depth (0 = root level)
+    depth: usize,
+    /// Has child rows
+    has_children: bool,
+    /// Currently expanded
+    is_expanded: bool,
+    /// Is last child at this level (for tree line rendering)
+    is_last_child: bool,
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Export Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Export format for clipboard/file export
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ExportFormat {
+    #[default]
+    Csv,
+    Tsv,
+    PlainText,
+}
+
+/// Export options
+#[derive(Clone, Debug)]
+pub struct ExportOptions {
+    /// Output format
+    pub format: ExportFormat,
+    /// Include column headers
+    pub include_headers: bool,
+    /// Export only selected rows
+    pub selected_only: bool,
+    /// Export only visible columns
+    pub visible_columns_only: bool,
+}
+
+impl Default for ExportOptions {
+    fn default() -> Self {
+        Self {
+            format: ExportFormat::Csv,
+            include_headers: true,
+            selected_only: false,
+            visible_columns_only: true,
+        }
+    }
+}
+
+impl ExportOptions {
+    /// Create new export options with defaults
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set format
+    pub fn format(mut self, format: ExportFormat) -> Self {
+        self.format = format;
+        self
+    }
+
+    /// Include headers
+    pub fn include_headers(mut self, include: bool) -> Self {
+        self.include_headers = include;
+        self
+    }
+
+    /// Export selected rows only
+    pub fn selected_only(mut self, selected: bool) -> Self {
+        self.selected_only = selected;
+        self
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Aggregation Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Aggregation function type
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum AggregationType {
+    #[default]
+    Sum,
+    Average,
+    Count,
+    Min,
+    Max,
+}
+
+impl AggregationType {
+    /// Get display label for aggregation type
+    pub fn label(&self) -> &'static str {
+        match self {
+            AggregationType::Sum => "Sum",
+            AggregationType::Average => "Avg",
+            AggregationType::Count => "Count",
+            AggregationType::Min => "Min",
+            AggregationType::Max => "Max",
+        }
+    }
+}
+
+/// Column aggregation configuration
+#[derive(Clone, Debug)]
+pub struct ColumnAggregation {
+    /// Column key to aggregate
+    pub column_key: String,
+    /// Aggregation type
+    pub agg_type: AggregationType,
+    /// Custom label (overrides default)
+    pub label: Option<String>,
+}
+
+impl ColumnAggregation {
+    /// Create new column aggregation
+    pub fn new(column_key: impl Into<String>, agg_type: AggregationType) -> Self {
+        Self {
+            column_key: column_key.into(),
+            agg_type,
+            label: None,
+        }
+    }
+
+    /// Set custom label
+    pub fn label(mut self, label: impl Into<String>) -> Self {
+        self.label = Some(label.into());
+        self
+    }
+}
+
+/// Footer row for aggregations
+#[derive(Clone, Debug, Default)]
+pub struct FooterRow {
+    /// Row label (e.g., "Totals")
+    pub label: String,
+    /// Column aggregations
+    pub aggregations: Vec<ColumnAggregation>,
+}
+
+impl FooterRow {
+    /// Create new footer row
+    pub fn new(label: impl Into<String>) -> Self {
+        Self {
+            label: label.into(),
+            aggregations: Vec::new(),
+        }
+    }
+
+    /// Add aggregation
+    pub fn aggregation(mut self, agg: ColumnAggregation) -> Self {
+        self.aggregations.push(agg);
+        self
+    }
+
+    /// Add sum aggregation for column
+    pub fn sum(mut self, column_key: impl Into<String>) -> Self {
+        self.aggregations
+            .push(ColumnAggregation::new(column_key, AggregationType::Sum));
+        self
+    }
+
+    /// Add average aggregation for column
+    pub fn average(mut self, column_key: impl Into<String>) -> Self {
+        self.aggregations
+            .push(ColumnAggregation::new(column_key, AggregationType::Average));
+        self
+    }
+
+    /// Add count aggregation for column
+    pub fn count(mut self, column_key: impl Into<String>) -> Self {
+        self.aggregations
+            .push(ColumnAggregation::new(column_key, AggregationType::Count));
+        self
+    }
+
+    /// Add min aggregation for column
+    pub fn min(mut self, column_key: impl Into<String>) -> Self {
+        self.aggregations
+            .push(ColumnAggregation::new(column_key, AggregationType::Min));
+        self
+    }
+
+    /// Add max aggregation for column
+    pub fn max(mut self, column_key: impl Into<String>) -> Self {
+        self.aggregations
+            .push(ColumnAggregation::new(column_key, AggregationType::Max));
+        self
+    }
+}
+
 /// Grid color scheme
 #[derive(Clone, Debug)]
 pub struct GridColors {
@@ -350,6 +548,29 @@ impl GridRow {
             .find(|(k, _)| k == key)
             .map(|(_, v)| v.as_str())
     }
+
+    /// Add a child row (for tree grid)
+    pub fn child(mut self, row: GridRow) -> Self {
+        self.children.push(row);
+        self
+    }
+
+    /// Add multiple child rows
+    pub fn children(mut self, rows: Vec<GridRow>) -> Self {
+        self.children.extend(rows);
+        self
+    }
+
+    /// Set expanded state
+    pub fn expanded(mut self, expanded: bool) -> Self {
+        self.expanded = expanded;
+        self
+    }
+
+    /// Check if row has children
+    pub fn has_children(&self) -> bool {
+        !self.children.is_empty()
+    }
 }
 
 impl Default for GridRow {
@@ -447,6 +668,22 @@ pub struct DataGrid {
     /// Horizontal scroll offset (column index)
     scroll_col: usize,
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tree Grid State
+    // ─────────────────────────────────────────────────────────────────────────
+    /// Enable tree grid mode (hierarchical display)
+    tree_mode: bool,
+    /// Flattened tree cache for display
+    tree_cache: Vec<TreeNodeInfo>,
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Export & Aggregation State
+    // ─────────────────────────────────────────────────────────────────────────
+    /// Footer rows for aggregation display
+    footer_rows: Vec<FooterRow>,
+    /// Show aggregation footer
+    show_footer: bool,
+
     /// Widget props for CSS integration
     props: WidgetProps,
 }
@@ -486,6 +723,12 @@ impl DataGrid {
             frozen_left: 0,
             frozen_right: 0,
             scroll_col: 0,
+            // Tree grid state
+            tree_mode: false,
+            tree_cache: Vec::new(),
+            // Footer state
+            footer_rows: Vec::new(),
+            show_footer: false,
             props: WidgetProps::new(),
         }
     }
@@ -658,6 +901,447 @@ impl DataGrid {
     pub fn freeze_columns_right(mut self, count: usize) -> Self {
         self.frozen_right = count;
         self
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tree Grid Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Enable tree grid mode for hierarchical data display
+    pub fn tree_mode(mut self, enabled: bool) -> Self {
+        self.tree_mode = enabled;
+        if enabled {
+            self.rebuild_tree_cache();
+        }
+        self
+    }
+
+    /// Check if tree mode is enabled
+    pub fn is_tree_mode(&self) -> bool {
+        self.tree_mode
+    }
+
+    /// Rebuild the flattened tree cache from rows
+    fn rebuild_tree_cache(&mut self) {
+        self.tree_cache.clear();
+        self.flatten_rows(&self.rows.clone(), 0, &mut vec![], &[]);
+    }
+
+    /// Recursively flatten rows into tree_cache
+    fn flatten_rows(
+        &mut self,
+        rows: &[GridRow],
+        depth: usize,
+        path: &mut Vec<usize>,
+        parent_is_last: &[bool],
+    ) {
+        let count = rows.len();
+        for (i, row) in rows.iter().enumerate() {
+            let is_last = i == count - 1;
+            path.push(i);
+
+            self.tree_cache.push(TreeNodeInfo {
+                path: path.clone(),
+                depth,
+                has_children: !row.children.is_empty(),
+                is_expanded: row.expanded,
+                is_last_child: is_last,
+            });
+
+            // Recurse into expanded children
+            if row.expanded && !row.children.is_empty() {
+                let mut new_parent_is_last = parent_is_last.to_vec();
+                new_parent_is_last.push(is_last);
+                self.flatten_rows(&row.children, depth + 1, path, &new_parent_is_last);
+            }
+
+            path.pop();
+        }
+    }
+
+    /// Get row by path through tree
+    #[allow(dead_code)] // Used for tree rendering
+    fn get_row_by_path(&self, path: &[usize]) -> Option<&GridRow> {
+        if path.is_empty() {
+            return None;
+        }
+
+        let mut current_rows = &self.rows;
+        let mut row: Option<&GridRow> = None;
+
+        for &idx in path {
+            if idx >= current_rows.len() {
+                return None;
+            }
+            row = Some(&current_rows[idx]);
+            current_rows = &current_rows[idx].children;
+        }
+
+        row
+    }
+
+    /// Get mutable row by path through tree
+    fn get_row_by_path_mut(&mut self, path: &[usize]) -> Option<&mut GridRow> {
+        if path.is_empty() {
+            return None;
+        }
+
+        let mut current_rows = &mut self.rows;
+
+        for (i, &idx) in path.iter().enumerate() {
+            if idx >= current_rows.len() {
+                return None;
+            }
+            if i == path.len() - 1 {
+                return Some(&mut current_rows[idx]);
+            }
+            current_rows = &mut current_rows[idx].children;
+        }
+
+        None
+    }
+
+    /// Toggle expand/collapse of selected row in tree mode
+    pub fn toggle_expand(&mut self) {
+        if !self.tree_mode {
+            return;
+        }
+
+        let visible_rows = if self.tree_mode {
+            self.tree_cache.len()
+        } else {
+            self.filtered_count()
+        };
+
+        if self.selected_row >= visible_rows {
+            return;
+        }
+
+        if let Some(node) = self.tree_cache.get(self.selected_row).cloned() {
+            if node.has_children {
+                if let Some(row) = self.get_row_by_path_mut(&node.path) {
+                    row.expanded = !row.expanded;
+                    self.rebuild_tree_cache();
+                }
+            }
+        }
+    }
+
+    /// Expand selected row in tree mode
+    pub fn expand(&mut self) {
+        if !self.tree_mode {
+            return;
+        }
+
+        if let Some(node) = self.tree_cache.get(self.selected_row).cloned() {
+            if node.has_children && !node.is_expanded {
+                if let Some(row) = self.get_row_by_path_mut(&node.path) {
+                    row.expanded = true;
+                    self.rebuild_tree_cache();
+                }
+            }
+        }
+    }
+
+    /// Collapse selected row in tree mode
+    pub fn collapse(&mut self) {
+        if !self.tree_mode {
+            return;
+        }
+
+        if let Some(node) = self.tree_cache.get(self.selected_row).cloned() {
+            if node.has_children && node.is_expanded {
+                if let Some(row) = self.get_row_by_path_mut(&node.path) {
+                    row.expanded = false;
+                    self.rebuild_tree_cache();
+                }
+            }
+        }
+    }
+
+    /// Expand all rows in tree mode
+    pub fn expand_all(&mut self) {
+        if !self.tree_mode {
+            return;
+        }
+        Self::set_expanded_recursive(&mut self.rows, true);
+        self.rebuild_tree_cache();
+    }
+
+    /// Collapse all rows in tree mode
+    pub fn collapse_all(&mut self) {
+        if !self.tree_mode {
+            return;
+        }
+        Self::set_expanded_recursive(&mut self.rows, false);
+        self.rebuild_tree_cache();
+    }
+
+    /// Recursively set expanded state for all rows
+    fn set_expanded_recursive(rows: &mut [GridRow], expanded: bool) {
+        for row in rows.iter_mut() {
+            if !row.children.is_empty() {
+                row.expanded = expanded;
+                Self::set_expanded_recursive(&mut row.children, expanded);
+            }
+        }
+    }
+
+    /// Get tree indent string for rendering
+    #[allow(dead_code)] // Used for tree rendering
+    fn get_tree_indent(&self, node: &TreeNodeInfo) -> String {
+        if node.depth == 0 {
+            return String::new();
+        }
+
+        let mut indent = String::new();
+
+        // Add vertical lines for parent levels
+        for _ in 0..node.depth.saturating_sub(1) {
+            indent.push_str("│ ");
+        }
+
+        // Add branch character for this level
+        if node.is_last_child {
+            indent.push_str("└─");
+        } else {
+            indent.push_str("├─");
+        }
+
+        indent
+    }
+
+    /// Get expand/collapse indicator for tree node
+    #[allow(dead_code)] // Used for tree rendering
+    fn get_tree_indicator(&self, node: &TreeNodeInfo) -> &'static str {
+        if !node.has_children {
+            "  "
+        } else if node.is_expanded {
+            "▼ "
+        } else {
+            "▶ "
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Export Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Export grid data with options
+    pub fn export(&self, options: &ExportOptions) -> String {
+        let separator = match options.format {
+            ExportFormat::Csv => ',',
+            ExportFormat::Tsv => '\t',
+            ExportFormat::PlainText => ' ',
+        };
+
+        let mut output = String::new();
+
+        // Get visible columns
+        let visible_cols: Vec<_> = if options.visible_columns_only {
+            self.columns
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.visible)
+                .collect()
+        } else {
+            self.columns.iter().enumerate().collect()
+        };
+
+        // Export headers
+        if options.include_headers {
+            let headers: Vec<_> = visible_cols
+                .iter()
+                .map(|(_, c)| self.escape_value(&c.title, options.format))
+                .collect();
+            output.push_str(&headers.join(&separator.to_string()));
+            output.push('\n');
+        }
+
+        // Get rows to export
+        let row_indices: Vec<usize> = if options.selected_only {
+            self.filtered_indices()
+                .iter()
+                .enumerate()
+                .filter(|(_, &idx)| self.rows.get(idx).is_some_and(|r| r.selected))
+                .map(|(i, _)| i)
+                .collect()
+        } else {
+            (0..self.filtered_count()).collect()
+        };
+
+        // Export rows
+        for row_idx in row_indices {
+            if let Some(&actual_idx) = self.filtered_indices().get(row_idx) {
+                if let Some(row) = self.rows.get(actual_idx) {
+                    let values: Vec<_> = visible_cols
+                        .iter()
+                        .map(|(_, c)| {
+                            let value = row.get(&c.key).unwrap_or("");
+                            self.escape_value(value, options.format)
+                        })
+                        .collect();
+                    output.push_str(&values.join(&separator.to_string()));
+                    output.push('\n');
+                }
+            }
+        }
+
+        output
+    }
+
+    /// Export as CSV
+    pub fn export_csv(&self) -> String {
+        self.export(&ExportOptions::new().format(ExportFormat::Csv))
+    }
+
+    /// Export as TSV
+    pub fn export_tsv(&self) -> String {
+        self.export(&ExportOptions::new().format(ExportFormat::Tsv))
+    }
+
+    /// Copy current cell value
+    pub fn copy_cell(&self) -> String {
+        let visible_cols: Vec<_> = self.columns.iter().filter(|c| c.visible).collect();
+
+        if let Some(col) = visible_cols.get(self.selected_col) {
+            if let Some(&actual_idx) = self.filtered_indices().get(self.selected_row) {
+                if let Some(row) = self.rows.get(actual_idx) {
+                    return row.get(&col.key).unwrap_or("").to_string();
+                }
+            }
+        }
+        String::new()
+    }
+
+    /// Copy selected rows as CSV
+    pub fn copy_selected(&self) -> String {
+        self.export(&ExportOptions::new().selected_only(true))
+    }
+
+    /// Escape value for export format
+    fn escape_value(&self, value: &str, format: ExportFormat) -> String {
+        match format {
+            ExportFormat::Csv => {
+                if value.contains(',') || value.contains('"') || value.contains('\n') {
+                    format!("\"{}\"", value.replace('"', "\"\""))
+                } else {
+                    value.to_string()
+                }
+            }
+            ExportFormat::Tsv => {
+                if value.contains('\t') || value.contains('\n') {
+                    value
+                        .chars()
+                        .map(|c| if c == '\t' || c == '\n' { ' ' } else { c })
+                        .collect()
+                } else {
+                    value.to_string()
+                }
+            }
+            ExportFormat::PlainText => value.to_string(),
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Aggregation Footer Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Add a footer row
+    pub fn footer(mut self, row: FooterRow) -> Self {
+        self.footer_rows.push(row);
+        self.show_footer = true;
+        self
+    }
+
+    /// Show/hide footer
+    pub fn show_footer(mut self, show: bool) -> Self {
+        self.show_footer = show;
+        self
+    }
+
+    /// Add a quick sum aggregation
+    pub fn add_sum(mut self, column_key: impl Into<String>) -> Self {
+        let key = column_key.into();
+        if self.footer_rows.is_empty() {
+            self.footer_rows.push(FooterRow::new("Total"));
+        }
+        if let Some(footer) = self.footer_rows.first_mut() {
+            footer
+                .aggregations
+                .push(ColumnAggregation::new(key, AggregationType::Sum));
+        }
+        self.show_footer = true;
+        self
+    }
+
+    /// Add a quick average aggregation
+    pub fn add_average(mut self, column_key: impl Into<String>) -> Self {
+        let key = column_key.into();
+        if self.footer_rows.is_empty() {
+            self.footer_rows.push(FooterRow::new("Average"));
+        }
+        if let Some(footer) = self.footer_rows.first_mut() {
+            footer
+                .aggregations
+                .push(ColumnAggregation::new(key, AggregationType::Average));
+        }
+        self.show_footer = true;
+        self
+    }
+
+    /// Compute aggregation value for a column
+    fn compute_aggregation(&self, column_key: &str, agg_type: AggregationType) -> Option<f64> {
+        let values: Vec<f64> = self
+            .filtered_indices()
+            .iter()
+            .filter_map(|&idx| {
+                self.rows
+                    .get(idx)
+                    .and_then(|r| r.get(column_key))
+                    .and_then(|v| v.parse::<f64>().ok())
+            })
+            .collect();
+
+        if values.is_empty() {
+            return None;
+        }
+
+        Some(match agg_type {
+            AggregationType::Sum => values.iter().sum(),
+            AggregationType::Average => values.iter().sum::<f64>() / values.len() as f64,
+            AggregationType::Count => values.len() as f64,
+            AggregationType::Min => values.iter().cloned().fold(f64::INFINITY, f64::min),
+            AggregationType::Max => values.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
+        })
+    }
+
+    /// Get computed footer values for rendering
+    #[allow(dead_code)] // Used for footer rendering
+    fn get_footer_values(&self, footer: &FooterRow) -> Vec<(String, String)> {
+        let mut values = Vec::new();
+
+        for agg in &footer.aggregations {
+            let label = agg
+                .label
+                .clone()
+                .unwrap_or_else(|| agg.agg_type.label().to_string());
+
+            let value = self
+                .compute_aggregation(&agg.column_key, agg.agg_type)
+                .map(|v| {
+                    if v.fract() == 0.0 {
+                        format!("{:.0}", v)
+                    } else {
+                        format!("{:.2}", v)
+                    }
+                })
+                .unwrap_or_else(|| "—".to_string());
+
+            values.push((agg.column_key.clone(), format!("{}: {}", label, value)));
+        }
+
+        values
     }
 
     /// Sort by column (cancels any active edit)
@@ -3481,5 +4165,590 @@ mod tests {
 
         grid.render(&mut ctx);
         // Smoke test - just ensure render doesn't panic
+    }
+
+    // ==================== Tree Grid Tests ====================
+
+    #[test]
+    fn test_tree_grid_basic() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(
+                GridRow::new()
+                    .cell("name", "Parent")
+                    .expanded(true)
+                    .child(GridRow::new().cell("name", "Child 1"))
+                    .child(GridRow::new().cell("name", "Child 2")),
+            )
+            .tree_mode(true);
+
+        assert!(grid.is_tree_mode());
+        // Tree cache should have 3 items: Parent + 2 children (expanded)
+        assert_eq!(grid.tree_cache.len(), 3);
+    }
+
+    #[test]
+    fn test_tree_grid_collapsed() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(
+                GridRow::new()
+                    .cell("name", "Parent")
+                    .expanded(false)
+                    .child(GridRow::new().cell("name", "Child 1"))
+                    .child(GridRow::new().cell("name", "Child 2")),
+            )
+            .tree_mode(true);
+
+        // Tree cache should have 1 item: only Parent (collapsed)
+        assert_eq!(grid.tree_cache.len(), 1);
+    }
+
+    #[test]
+    fn test_tree_grid_toggle_expand() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(
+                GridRow::new()
+                    .cell("name", "Parent")
+                    .expanded(false)
+                    .child(GridRow::new().cell("name", "Child")),
+            )
+            .tree_mode(true);
+
+        // Initially collapsed
+        assert_eq!(grid.tree_cache.len(), 1);
+
+        // Toggle expand
+        grid.toggle_expand();
+
+        // Now expanded
+        assert_eq!(grid.tree_cache.len(), 2);
+    }
+
+    #[test]
+    fn test_tree_grid_expand_collapse_all() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(
+                GridRow::new()
+                    .cell("name", "A")
+                    .expanded(false)
+                    .child(GridRow::new().cell("name", "A1")),
+            )
+            .row(
+                GridRow::new()
+                    .cell("name", "B")
+                    .expanded(false)
+                    .child(GridRow::new().cell("name", "B1")),
+            )
+            .tree_mode(true);
+
+        // Initially collapsed (2 parents only)
+        assert_eq!(grid.tree_cache.len(), 2);
+
+        // Expand all
+        grid.expand_all();
+        assert_eq!(grid.tree_cache.len(), 4); // 2 parents + 2 children
+
+        // Collapse all
+        grid.collapse_all();
+        assert_eq!(grid.tree_cache.len(), 2); // 2 parents only
+    }
+
+    #[test]
+    fn test_grid_row_children() {
+        let row = GridRow::new()
+            .cell("name", "Parent")
+            .child(GridRow::new().cell("name", "Child 1"))
+            .child(GridRow::new().cell("name", "Child 2"));
+
+        assert!(row.has_children());
+        assert_eq!(row.children.len(), 2);
+    }
+
+    // ==================== Export Tests ====================
+
+    #[test]
+    fn test_export_csv() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .column(GridColumn::new("value", "Value"))
+            .row(GridRow::new().cell("name", "Alice").cell("value", "100"))
+            .row(GridRow::new().cell("name", "Bob").cell("value", "200"));
+
+        let csv = grid.export_csv();
+        assert!(csv.contains("Name,Value"));
+        assert!(csv.contains("Alice,100"));
+        assert!(csv.contains("Bob,200"));
+    }
+
+    #[test]
+    fn test_export_csv_escaping() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(GridRow::new().cell("name", "Hello, World"));
+
+        let csv = grid.export_csv();
+        // Comma in value should be quoted
+        assert!(csv.contains("\"Hello, World\""));
+    }
+
+    #[test]
+    fn test_export_csv_quote_escaping() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("quote", "Quote"))
+            .row(GridRow::new().cell("quote", "He said \"Hello\""));
+
+        let csv = grid.export_csv();
+        // Quotes should be escaped with double quotes
+        assert!(csv.contains("\"He said \"\"Hello\"\"\""));
+    }
+
+    #[test]
+    fn test_export_tsv() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .column(GridColumn::new("value", "Value"))
+            .row(GridRow::new().cell("name", "Alice").cell("value", "100"));
+
+        let tsv = grid.export_tsv();
+        assert!(tsv.contains("Name\tValue"));
+        assert!(tsv.contains("Alice\t100"));
+    }
+
+    #[test]
+    fn test_export_options() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(GridRow::new().cell("name", "Test"));
+
+        // Without headers
+        let csv = grid.export(&ExportOptions::new().include_headers(false));
+        assert!(!csv.contains("Name"));
+        assert!(csv.contains("Test"));
+    }
+
+    #[test]
+    fn test_copy_cell() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(GridRow::new().cell("name", "Alice"))
+            .row(GridRow::new().cell("name", "Bob"));
+
+        let cell = grid.copy_cell();
+        assert_eq!(cell, "Alice");
+    }
+
+    // ==================== Aggregation Footer Tests ====================
+
+    #[test]
+    fn test_footer_sum() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("value", "Value"))
+            .row(GridRow::new().cell("value", "10"))
+            .row(GridRow::new().cell("value", "20"))
+            .row(GridRow::new().cell("value", "30"))
+            .add_sum("value");
+
+        assert!(grid.show_footer);
+        assert_eq!(grid.footer_rows.len(), 1);
+
+        let sum = grid.compute_aggregation("value", AggregationType::Sum);
+        assert_eq!(sum, Some(60.0));
+    }
+
+    #[test]
+    fn test_footer_average() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("value", "Value"))
+            .row(GridRow::new().cell("value", "10"))
+            .row(GridRow::new().cell("value", "20"))
+            .row(GridRow::new().cell("value", "30"))
+            .add_average("value");
+
+        let avg = grid.compute_aggregation("value", AggregationType::Average);
+        assert_eq!(avg, Some(20.0));
+    }
+
+    #[test]
+    fn test_footer_count() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("value", "Value"))
+            .row(GridRow::new().cell("value", "10"))
+            .row(GridRow::new().cell("value", "20"))
+            .row(GridRow::new().cell("value", "30"));
+
+        let count = grid.compute_aggregation("value", AggregationType::Count);
+        assert_eq!(count, Some(3.0));
+    }
+
+    #[test]
+    fn test_footer_min_max() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("value", "Value"))
+            .row(GridRow::new().cell("value", "5"))
+            .row(GridRow::new().cell("value", "15"))
+            .row(GridRow::new().cell("value", "10"));
+
+        let min = grid.compute_aggregation("value", AggregationType::Min);
+        assert_eq!(min, Some(5.0));
+
+        let max = grid.compute_aggregation("value", AggregationType::Max);
+        assert_eq!(max, Some(15.0));
+    }
+
+    #[test]
+    fn test_footer_row_builder() {
+        let footer = FooterRow::new("Totals")
+            .sum("price")
+            .average("quantity")
+            .count("items");
+
+        assert_eq!(footer.label, "Totals");
+        assert_eq!(footer.aggregations.len(), 3);
+        assert_eq!(footer.aggregations[0].agg_type, AggregationType::Sum);
+        assert_eq!(footer.aggregations[1].agg_type, AggregationType::Average);
+        assert_eq!(footer.aggregations[2].agg_type, AggregationType::Count);
+    }
+
+    #[test]
+    fn test_footer_with_filter() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .column(GridColumn::new("value", "Value"))
+            .row(GridRow::new().cell("name", "Apple").cell("value", "10"))
+            .row(GridRow::new().cell("name", "Banana").cell("value", "20"))
+            .row(GridRow::new().cell("name", "Cherry").cell("value", "30"));
+
+        // Sum all
+        let sum_all = grid.compute_aggregation("value", AggregationType::Sum);
+        assert_eq!(sum_all, Some(60.0));
+
+        // Filter to "Ap" items (only Apple matches)
+        grid.set_filter("Ap");
+
+        // Sum only filtered items (Apple=10)
+        let sum_filtered = grid.compute_aggregation("value", AggregationType::Sum);
+        assert_eq!(sum_filtered, Some(10.0));
+    }
+
+    #[test]
+    fn test_aggregation_non_numeric() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(GridRow::new().cell("name", "Alice"))
+            .row(GridRow::new().cell("name", "Bob"));
+
+        // Non-numeric values should return None for sum/avg
+        let sum = grid.compute_aggregation("name", AggregationType::Sum);
+        assert!(sum.is_none());
+    }
+
+    #[test]
+    fn test_aggregation_type_labels() {
+        assert_eq!(AggregationType::Sum.label(), "Sum");
+        assert_eq!(AggregationType::Average.label(), "Avg");
+        assert_eq!(AggregationType::Count.label(), "Count");
+        assert_eq!(AggregationType::Min.label(), "Min");
+        assert_eq!(AggregationType::Max.label(), "Max");
+    }
+
+    #[test]
+    fn test_export_format_default() {
+        let options = ExportOptions::default();
+        assert_eq!(options.format, ExportFormat::Csv);
+        assert!(options.include_headers);
+        assert!(!options.selected_only);
+        assert!(options.visible_columns_only);
+    }
+
+    // ==================== Additional Coverage Tests ====================
+
+    #[test]
+    fn test_tree_indent_depth_zero() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(GridRow::new().cell("name", "Root"))
+            .tree_mode(true);
+
+        // Root level node (depth 0) should have no indent
+        let node = &grid.tree_cache[0];
+        let indent = grid.get_tree_indent(node);
+        assert!(indent.is_empty());
+    }
+
+    #[test]
+    fn test_tree_indent_nested() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(
+                GridRow::new().cell("name", "Parent").expanded(true).child(
+                    GridRow::new()
+                        .cell("name", "Child")
+                        .expanded(true)
+                        .child(GridRow::new().cell("name", "Grandchild")),
+                ),
+            )
+            .tree_mode(true);
+
+        // Check that we have 3 nodes
+        assert_eq!(grid.tree_cache.len(), 3);
+
+        // Child (depth 1) should have branch
+        let child_node = &grid.tree_cache[1];
+        let indent = grid.get_tree_indent(child_node);
+        assert!(indent.contains('└') || indent.contains('├'));
+    }
+
+    #[test]
+    fn test_tree_indicator() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(
+                GridRow::new()
+                    .cell("name", "Parent")
+                    .expanded(true)
+                    .child(GridRow::new().cell("name", "Child")),
+            )
+            .row(GridRow::new().cell("name", "Leaf"))
+            .tree_mode(true);
+
+        // Parent (expanded, has children) -> ▼
+        let parent = &grid.tree_cache[0];
+        assert_eq!(grid.get_tree_indicator(parent), "▼ ");
+
+        // Leaf (no children) -> spaces
+        let leaf = &grid.tree_cache[2];
+        assert_eq!(grid.get_tree_indicator(leaf), "  ");
+    }
+
+    #[test]
+    fn test_tree_indicator_collapsed() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(
+                GridRow::new()
+                    .cell("name", "Parent")
+                    .expanded(false)
+                    .child(GridRow::new().cell("name", "Child")),
+            )
+            .tree_mode(true);
+
+        // Collapsed parent -> ▶
+        let parent = &grid.tree_cache[0];
+        assert_eq!(grid.get_tree_indicator(parent), "▶ ");
+    }
+
+    #[test]
+    fn test_get_row_by_path() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(
+                GridRow::new()
+                    .cell("name", "Parent")
+                    .child(GridRow::new().cell("name", "Child")),
+            )
+            .tree_mode(true);
+
+        // Get root row
+        let root = grid.get_row_by_path(&[0]);
+        assert!(root.is_some());
+        assert_eq!(root.unwrap().get("name"), Some("Parent"));
+
+        // Get child row
+        let child = grid.get_row_by_path(&[0, 0]);
+        assert!(child.is_some());
+        assert_eq!(child.unwrap().get("name"), Some("Child"));
+
+        // Invalid path
+        let invalid = grid.get_row_by_path(&[99]);
+        assert!(invalid.is_none());
+
+        // Empty path
+        let empty = grid.get_row_by_path(&[]);
+        assert!(empty.is_none());
+    }
+
+    #[test]
+    fn test_footer_values() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("value", "Value"))
+            .row(GridRow::new().cell("value", "10"))
+            .row(GridRow::new().cell("value", "20"))
+            .footer(FooterRow::new("Totals").sum("value"));
+
+        let values = grid.get_footer_values(&grid.footer_rows[0]);
+        assert_eq!(values.len(), 1);
+        assert!(values[0].1.contains("30")); // Sum of 10+20
+    }
+
+    #[test]
+    fn test_footer_values_with_label() {
+        let grid =
+            DataGrid::new()
+                .column(GridColumn::new("value", "Value"))
+                .row(GridRow::new().cell("value", "100"))
+                .footer(FooterRow::new("Stats").aggregation(
+                    ColumnAggregation::new("value", AggregationType::Sum).label("Total"),
+                ));
+
+        let values = grid.get_footer_values(&grid.footer_rows[0]);
+        assert!(values[0].1.contains("Total"));
+    }
+
+    #[test]
+    fn test_expand_on_leaf_node() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(GridRow::new().cell("name", "Leaf"))
+            .tree_mode(true);
+
+        // Expand on leaf should do nothing
+        let count_before = grid.tree_cache.len();
+        grid.expand();
+        assert_eq!(grid.tree_cache.len(), count_before);
+    }
+
+    #[test]
+    fn test_collapse_on_leaf_node() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(GridRow::new().cell("name", "Leaf"))
+            .tree_mode(true);
+
+        // Collapse on leaf should do nothing
+        let count_before = grid.tree_cache.len();
+        grid.collapse();
+        assert_eq!(grid.tree_cache.len(), count_before);
+    }
+
+    #[test]
+    fn test_tree_mode_disabled_operations() {
+        let mut grid = DataGrid::new().column(GridColumn::new("name", "Name")).row(
+            GridRow::new()
+                .cell("name", "Parent")
+                .child(GridRow::new().cell("name", "Child")),
+        );
+        // Tree mode is disabled by default
+
+        // These should be no-ops
+        grid.toggle_expand();
+        grid.expand();
+        grid.collapse();
+        grid.expand_all();
+        grid.collapse_all();
+
+        // Tree cache should be empty
+        assert!(grid.tree_cache.is_empty());
+    }
+
+    #[test]
+    fn test_export_plain_text() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .column(GridColumn::new("b", "B"))
+            .row(GridRow::new().cell("a", "1").cell("b", "2"));
+
+        let text = grid.export(&ExportOptions::new().format(ExportFormat::PlainText));
+        assert!(text.contains("A B"));
+        assert!(text.contains("1 2"));
+    }
+
+    #[test]
+    fn test_export_tsv_with_special_chars() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("text", "Text"))
+            .row(GridRow::new().cell("text", "has\ttab\nand\nnewline"));
+
+        let tsv = grid.export_tsv();
+        // Tabs and newlines should be replaced with spaces
+        assert!(!tsv.contains('\t') || tsv.lines().count() <= 2);
+    }
+
+    #[test]
+    fn test_column_aggregation_builder() {
+        let agg = ColumnAggregation::new("price", AggregationType::Sum).label("Total Price");
+
+        assert_eq!(agg.column_key, "price");
+        assert_eq!(agg.agg_type, AggregationType::Sum);
+        assert_eq!(agg.label, Some("Total Price".to_string()));
+    }
+
+    #[test]
+    fn test_footer_row_min_max() {
+        let footer = FooterRow::new("Stats").min("value").max("value");
+
+        assert_eq!(footer.aggregations.len(), 2);
+        assert_eq!(footer.aggregations[0].agg_type, AggregationType::Min);
+        assert_eq!(footer.aggregations[1].agg_type, AggregationType::Max);
+    }
+
+    #[test]
+    fn test_show_footer_toggle() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("a", "A"))
+            .add_sum("a")
+            .show_footer(false);
+
+        assert!(!grid.show_footer);
+    }
+
+    #[test]
+    fn test_copy_cell_empty() {
+        let grid = DataGrid::new().column(GridColumn::new("a", "A"));
+
+        // No rows, should return empty string
+        let cell = grid.copy_cell();
+        assert!(cell.is_empty());
+    }
+
+    #[test]
+    fn test_aggregation_empty_data() {
+        let grid = DataGrid::new().column(GridColumn::new("value", "Value"));
+
+        // No rows, should return None
+        let sum = grid.compute_aggregation("value", AggregationType::Sum);
+        assert!(sum.is_none());
+    }
+
+    #[test]
+    fn test_tree_grid_deep_nesting() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(
+                GridRow::new().cell("name", "L1").expanded(true).child(
+                    GridRow::new().cell("name", "L2").expanded(true).child(
+                        GridRow::new()
+                            .cell("name", "L3")
+                            .expanded(true)
+                            .child(GridRow::new().cell("name", "L4")),
+                    ),
+                ),
+            )
+            .tree_mode(true);
+
+        // Should have 4 nodes (all expanded)
+        assert_eq!(grid.tree_cache.len(), 4);
+
+        // Check depths
+        assert_eq!(grid.tree_cache[0].depth, 0);
+        assert_eq!(grid.tree_cache[1].depth, 1);
+        assert_eq!(grid.tree_cache[2].depth, 2);
+        assert_eq!(grid.tree_cache[3].depth, 3);
+    }
+
+    #[test]
+    fn test_toggle_expand_out_of_bounds() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("name", "Name"))
+            .row(GridRow::new().cell("name", "Only"))
+            .tree_mode(true);
+
+        // Select out of bounds
+        grid.selected_row = 999;
+
+        // Should not panic
+        grid.toggle_expand();
     }
 }
