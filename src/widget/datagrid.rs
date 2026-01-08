@@ -211,6 +211,10 @@ pub struct GridColumn {
     pub visible: bool,
     /// Alignment
     pub align: Alignment,
+    /// Is resizable (can drag to resize)
+    pub resizable: bool,
+    /// Is frozen (stays visible during horizontal scroll)
+    pub frozen: bool,
 }
 
 /// Text alignment
@@ -237,6 +241,8 @@ impl GridColumn {
             editable: false,
             visible: true,
             align: Alignment::Left,
+            resizable: true,
+            frozen: false,
         }
     }
 
@@ -291,6 +297,18 @@ impl GridColumn {
     /// Center align
     pub fn center(mut self) -> Self {
         self.align = Alignment::Center;
+        self
+    }
+
+    /// Set resizable (can drag to resize)
+    pub fn resizable(mut self, r: bool) -> Self {
+        self.resizable = r;
+        self
+    }
+
+    /// Set frozen (stays visible during horizontal scroll)
+    pub fn frozen(mut self, f: bool) -> Self {
+        self.frozen = f;
         self
     }
 }
@@ -388,6 +406,47 @@ pub struct DataGrid {
     // ─────────────────────────────────────────────────────────────────────────
     /// Cell editing state
     edit_state: EditState,
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Column Resize State
+    // ─────────────────────────────────────────────────────────────────────────
+    /// Column being resized (index)
+    resizing_col: Option<usize>,
+    /// X position when resize started
+    resize_start_x: u16,
+    /// Column width when resize started
+    resize_start_width: u16,
+    /// Column resize handle being hovered
+    hovered_resize: Option<usize>,
+    /// User-set column widths (overrides auto calculation)
+    column_widths: Vec<u16>,
+    /// Callback when column is resized
+    on_column_resize: Option<Box<dyn FnMut(usize, u16)>>,
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Column Reorder State
+    // ─────────────────────────────────────────────────────────────────────────
+    /// Column being dragged (index)
+    dragging_col: Option<usize>,
+    /// Drop target column (index)
+    drop_target_col: Option<usize>,
+    /// Column display order (maps display index to actual column index)
+    column_order: Vec<usize>,
+    /// Whether columns can be reordered
+    reorderable: bool,
+    /// Callback when column is reordered
+    on_column_reorder: Option<Box<dyn FnMut(usize, usize)>>,
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Column Freeze State
+    // ─────────────────────────────────────────────────────────────────────────
+    /// Number of columns frozen on the left
+    frozen_left: usize,
+    /// Number of columns frozen on the right
+    frozen_right: usize,
+    /// Horizontal scroll offset (column index)
+    scroll_col: usize,
+
     /// Widget props for CSS integration
     props: WidgetProps,
 }
@@ -410,6 +469,23 @@ impl DataGrid {
             options: GridOptions::default(),
             colors: GridColors::default(),
             edit_state: EditState::default(),
+            // Resize state
+            resizing_col: None,
+            resize_start_x: 0,
+            resize_start_width: 0,
+            hovered_resize: None,
+            column_widths: Vec::new(),
+            on_column_resize: None,
+            // Reorder state
+            dragging_col: None,
+            drop_target_col: None,
+            column_order: Vec::new(),
+            reorderable: false,
+            on_column_reorder: None,
+            // Freeze state
+            frozen_left: 0,
+            frozen_right: 0,
+            scroll_col: 0,
             props: WidgetProps::new(),
         }
     }
@@ -533,6 +609,54 @@ impl DataGrid {
     /// Default is 5 rows.
     pub fn overscan(mut self, rows: usize) -> Self {
         self.options.overscan = rows;
+        self
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Column Resize API
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Set callback for when a column is resized
+    pub fn on_column_resize<F>(mut self, callback: F) -> Self
+    where
+        F: FnMut(usize, u16) + 'static,
+    {
+        self.on_column_resize = Some(Box::new(callback));
+        self
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Column Reorder API
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Enable or disable column reordering via drag and drop
+    pub fn reorderable(mut self, enable: bool) -> Self {
+        self.reorderable = enable;
+        self
+    }
+
+    /// Set callback for when columns are reordered
+    pub fn on_column_reorder<F>(mut self, callback: F) -> Self
+    where
+        F: FnMut(usize, usize) + 'static,
+    {
+        self.on_column_reorder = Some(Box::new(callback));
+        self
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Column Freeze API
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Freeze N columns on the left (they stay visible during horizontal scroll)
+    pub fn freeze_columns_left(mut self, count: usize) -> Self {
+        self.frozen_left = count;
+        self
+    }
+
+    /// Freeze N columns on the right (they stay visible during horizontal scroll)
+    pub fn freeze_columns_right(mut self, count: usize) -> Self {
+        self.frozen_right = count;
         self
     }
 
@@ -1020,6 +1144,393 @@ impl DataGrid {
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Mouse Event Handling
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Handle mouse event for column resize, reorder, etc.
+    ///
+    /// Returns true if the event was handled.
+    pub fn handle_mouse(
+        &mut self,
+        kind: crate::event::MouseEventKind,
+        x: u16,
+        y: u16,
+        area: crate::layout::Rect,
+    ) -> bool {
+        use crate::event::{MouseButton, MouseEventKind};
+
+        match kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                // Check for resize handle first (higher priority)
+                if let Some(col) = self.hit_test_resize_handle(x, y, area) {
+                    self.start_resize(col, x, area);
+                    return true;
+                }
+                // Check for column header drag (reorder)
+                if self.reorderable {
+                    if let Some(col) = self.hit_test_header(x, y, area) {
+                        self.start_column_drag(col);
+                        return true;
+                    }
+                }
+                false
+            }
+            MouseEventKind::Drag(MouseButton::Left) => {
+                if self.resizing_col.is_some() {
+                    self.apply_resize_delta(x);
+                    return true;
+                }
+                if self.dragging_col.is_some() {
+                    self.update_drop_target(x, area);
+                    return true;
+                }
+                false
+            }
+            MouseEventKind::Up(MouseButton::Left) => {
+                if self.resizing_col.is_some() {
+                    self.end_resize();
+                    return true;
+                }
+                if self.dragging_col.is_some() {
+                    self.end_column_drag();
+                    return true;
+                }
+                false
+            }
+            MouseEventKind::Move => {
+                // Update hover state for resize handles
+                let prev = self.hovered_resize;
+                self.hovered_resize = self.hit_test_resize_handle(x, y, area);
+                prev != self.hovered_resize
+            }
+            _ => false,
+        }
+    }
+
+    /// Test if position is on a column resize handle
+    fn hit_test_resize_handle(&self, x: u16, y: u16, area: crate::layout::Rect) -> Option<usize> {
+        // Only detect in header row
+        if !self.options.show_header || y != area.y {
+            return None;
+        }
+
+        let row_num_width = if self.options.show_row_numbers { 5 } else { 0 };
+        let mut col_x = area.x + row_num_width;
+
+        let widths = self.get_display_widths(area.width);
+
+        for (i, col) in self.columns.iter().enumerate() {
+            if !col.visible {
+                continue;
+            }
+            let width = widths.get(i).copied().unwrap_or(col.min_width);
+            col_x += width + 1; // +1 for separator
+
+            // Check if x is within ±1 of column boundary
+            if x >= col_x.saturating_sub(1) && x <= col_x && col.resizable {
+                return Some(i);
+            }
+        }
+        None
+    }
+
+    /// Test if position is on a column header
+    fn hit_test_header(&self, x: u16, y: u16, area: crate::layout::Rect) -> Option<usize> {
+        // Only detect in header row
+        if !self.options.show_header || y != area.y {
+            return None;
+        }
+
+        let row_num_width = if self.options.show_row_numbers { 5 } else { 0 };
+        let mut col_x = area.x + row_num_width;
+
+        let widths = self.get_display_widths(area.width);
+
+        for (i, col) in self.columns.iter().enumerate() {
+            if !col.visible {
+                continue;
+            }
+            let width = widths.get(i).copied().unwrap_or(col.min_width);
+            let next_x = col_x + width;
+
+            if x >= col_x && x < next_x {
+                return Some(i);
+            }
+            col_x = next_x + 1; // +1 for separator
+        }
+        None
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Column Resize Implementation
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Start resizing a column
+    fn start_resize(&mut self, col: usize, x: u16, area: crate::layout::Rect) {
+        if col >= self.columns.len() || !self.columns[col].resizable {
+            return;
+        }
+
+        // Ensure column_widths is populated
+        if self.column_widths.is_empty() {
+            self.column_widths = self.get_display_widths(area.width);
+        }
+
+        self.resizing_col = Some(col);
+        self.resize_start_x = x;
+        self.resize_start_width = self.column_widths.get(col).copied().unwrap_or(10);
+    }
+
+    /// Apply resize delta
+    fn apply_resize_delta(&mut self, current_x: u16) {
+        let col_idx = match self.resizing_col {
+            Some(idx) => idx,
+            None => return,
+        };
+
+        let delta = current_x as i16 - self.resize_start_x as i16;
+        let new_width = (self.resize_start_width as i16 + delta).max(1) as u16;
+
+        let col = &self.columns[col_idx];
+        let constrained = new_width.max(col.min_width).min(if col.max_width > 0 {
+            col.max_width
+        } else {
+            u16::MAX
+        });
+
+        // Update column width
+        if col_idx < self.column_widths.len() {
+            let old_width = self.column_widths[col_idx];
+            if old_width != constrained {
+                self.column_widths[col_idx] = constrained;
+
+                // Call callback
+                if let Some(ref mut cb) = self.on_column_resize {
+                    cb(col_idx, constrained);
+                }
+            }
+        }
+    }
+
+    /// End resizing
+    fn end_resize(&mut self) {
+        self.resizing_col = None;
+    }
+
+    /// Check if currently resizing
+    pub fn is_resizing(&self) -> bool {
+        self.resizing_col.is_some()
+    }
+
+    /// Get the current width of a column
+    pub fn column_width(&self, col: usize) -> Option<u16> {
+        self.column_widths.get(col).copied()
+    }
+
+    /// Set a column width programmatically
+    pub fn set_column_width(&mut self, col: usize, width: u16) {
+        // Ensure column_widths is populated
+        while self.column_widths.len() <= col {
+            self.column_widths.push(10); // Default width
+        }
+
+        let col_def = self.columns.get(col);
+        let constrained = if let Some(c) = col_def {
+            width.max(c.min_width).min(if c.max_width > 0 {
+                c.max_width
+            } else {
+                u16::MAX
+            })
+        } else {
+            width
+        };
+
+        self.column_widths[col] = constrained;
+
+        if let Some(ref mut cb) = self.on_column_resize {
+            cb(col, constrained);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Column Reorder Implementation
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Start dragging a column
+    fn start_column_drag(&mut self, col: usize) {
+        if !self.reorderable || col >= self.columns.len() {
+            return;
+        }
+
+        // Initialize column order if not set
+        if self.column_order.is_empty() {
+            self.column_order = (0..self.columns.len()).collect();
+        }
+
+        self.dragging_col = Some(col);
+        self.drop_target_col = Some(col);
+    }
+
+    /// Update drop target during drag
+    fn update_drop_target(&mut self, x: u16, area: crate::layout::Rect) {
+        if self.dragging_col.is_none() {
+            return;
+        }
+
+        let row_num_width = if self.options.show_row_numbers { 5 } else { 0 };
+        let mut col_x = area.x + row_num_width;
+
+        let widths = self.get_display_widths(area.width);
+
+        for (i, col) in self.columns.iter().enumerate() {
+            if !col.visible {
+                continue;
+            }
+            let width = widths.get(i).copied().unwrap_or(col.min_width);
+            let mid = col_x + width / 2;
+
+            if x < mid {
+                self.drop_target_col = Some(i);
+                return;
+            }
+            col_x += width + 1;
+        }
+
+        // If past all columns, drop at the end
+        self.drop_target_col = Some(self.columns.len());
+    }
+
+    /// End column drag and perform reorder
+    fn end_column_drag(&mut self) {
+        if let (Some(from), Some(to)) = (self.dragging_col, self.drop_target_col) {
+            if from != to && to != from + 1 {
+                // Initialize column order if not set
+                if self.column_order.is_empty() {
+                    self.column_order = (0..self.columns.len()).collect();
+                }
+
+                // Perform reorder on column_order
+                let col_idx = self.column_order.remove(from);
+                let insert_idx = if to > from { to - 1 } else { to };
+                let insert_idx = insert_idx.min(self.column_order.len());
+                self.column_order.insert(insert_idx, col_idx);
+
+                // Also reorder column_widths if set
+                if !self.column_widths.is_empty() {
+                    let width = self.column_widths.remove(from);
+                    self.column_widths.insert(insert_idx, width);
+                }
+
+                // Reorder the actual columns vector
+                let col = self.columns.remove(from);
+                self.columns.insert(insert_idx, col);
+
+                // Call callback
+                if let Some(ref mut cb) = self.on_column_reorder {
+                    cb(from, insert_idx);
+                }
+            }
+        }
+
+        self.dragging_col = None;
+        self.drop_target_col = None;
+    }
+
+    /// Check if currently dragging a column
+    pub fn is_dragging_column(&self) -> bool {
+        self.dragging_col.is_some()
+    }
+
+    /// Move selected column left (keyboard reorder)
+    pub fn move_column_left(&mut self) {
+        if !self.reorderable || self.selected_col == 0 {
+            return;
+        }
+
+        let from = self.selected_col;
+        let to = self.selected_col - 1;
+
+        self.columns.swap(from, to);
+
+        if !self.column_widths.is_empty() && from < self.column_widths.len() {
+            self.column_widths.swap(from, to);
+        }
+
+        self.selected_col = to;
+
+        if let Some(ref mut cb) = self.on_column_reorder {
+            cb(from, to);
+        }
+    }
+
+    /// Move selected column right (keyboard reorder)
+    pub fn move_column_right(&mut self) {
+        if !self.reorderable || self.selected_col >= self.columns.len().saturating_sub(1) {
+            return;
+        }
+
+        let from = self.selected_col;
+        let to = self.selected_col + 1;
+
+        self.columns.swap(from, to);
+
+        if !self.column_widths.is_empty() && to < self.column_widths.len() {
+            self.column_widths.swap(from, to);
+        }
+
+        self.selected_col = to;
+
+        if let Some(ref mut cb) = self.on_column_reorder {
+            cb(from, to);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Column Freeze Implementation
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Scroll columns left
+    pub fn scroll_col_left(&mut self) {
+        if self.scroll_col > 0 {
+            self.scroll_col -= 1;
+        }
+    }
+
+    /// Scroll columns right
+    pub fn scroll_col_right(&mut self) {
+        let scrollable = self
+            .columns
+            .len()
+            .saturating_sub(self.frozen_left + self.frozen_right);
+        if self.scroll_col < scrollable.saturating_sub(1) {
+            self.scroll_col += 1;
+        }
+    }
+
+    /// Get frozen left column count
+    pub fn frozen_left(&self) -> usize {
+        self.frozen_left
+    }
+
+    /// Get frozen right column count
+    pub fn frozen_right(&self) -> usize {
+        self.frozen_right
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Width Calculation Helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Get display widths, using user-set widths if available
+    fn get_display_widths(&self, available: u16) -> Vec<u16> {
+        if !self.column_widths.is_empty() {
+            self.column_widths.clone()
+        } else {
+            self.calculate_widths(available)
+        }
+    }
+
     /// Calculate column widths
     fn calculate_widths(&self, available: u16) -> Vec<u16> {
         let visible_cols: Vec<_> = self.columns.iter().filter(|c| c.visible).collect();
@@ -1069,13 +1580,26 @@ impl View for DataGrid {
             return;
         }
 
-        let widths = self.calculate_widths(area.width);
-        let visible_cols: Vec<_> = self
-            .columns
-            .iter()
-            .enumerate()
-            .filter(|(_, c)| c.visible)
-            .collect();
+        let widths = self.get_display_widths(area.width);
+
+        // Get visible columns in display order (respecting column_order)
+        let visible_cols: Vec<_> = if self.column_order.is_empty() {
+            self.columns
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.visible)
+                .collect()
+        } else {
+            self.column_order
+                .iter()
+                .filter_map(|&orig_idx| {
+                    self.columns
+                        .get(orig_idx)
+                        .filter(|c| c.visible)
+                        .map(|c| (orig_idx, c))
+                })
+                .collect()
+        };
 
         let row_num_width: u16 = if self.options.show_row_numbers { 5 } else { 0 };
         let header_height: u16 = if self.options.show_header { 1 } else { 0 };
@@ -1224,6 +1748,15 @@ impl DataGrid {
             let w = widths[col_idx];
             let is_sort_col = self.sort_column == Some(*orig_idx);
             let is_selected = *orig_idx == self.selected_col;
+            let is_dragging = self.dragging_col == Some(col_idx);
+
+            // Draw drop indicator before this column
+            if self.drop_target_col == Some(col_idx) && self.dragging_col.is_some() {
+                let mut cell = Cell::new('│');
+                cell.fg = Some(Color::CYAN);
+                cell.modifier |= Modifier::BOLD;
+                ctx.buffer.set(x.saturating_sub(1), y, cell);
+            }
 
             // Draw header cell background
             let bg = if is_selected {
@@ -1244,15 +1777,57 @@ impl DataGrid {
                 title.push(self.sort_direction.icon());
             }
 
+            // Dim text if this column is being dragged
+            let fg = if is_dragging {
+                Color::rgb(100, 100, 100)
+            } else {
+                self.colors.header_fg
+            };
+
             for (j, ch) in title.chars().take(w as usize - 1).enumerate() {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(self.colors.header_fg);
+                cell.fg = Some(fg);
                 cell.bg = Some(bg);
-                cell.modifier |= Modifier::BOLD;
+                if !is_dragging {
+                    cell.modifier |= Modifier::BOLD;
+                } else {
+                    cell.modifier |= Modifier::DIM;
+                }
                 ctx.buffer.set(x + j as u16, y, cell);
             }
 
+            // Draw separator with resize indicator
+            let is_resize_hover = self.hovered_resize == Some(col_idx);
+            let is_resizing = self.resizing_col == Some(col_idx);
+            let sep_char = if is_resize_hover || is_resizing {
+                '⇔'
+            } else {
+                '│'
+            };
+            let sep_color = if is_resizing {
+                Color::CYAN
+            } else if is_resize_hover {
+                Color::YELLOW
+            } else {
+                self.colors.border_color
+            };
+
+            let mut sep = Cell::new(sep_char);
+            sep.fg = Some(sep_color);
+            sep.bg = Some(bg);
+            ctx.buffer.set(x + w, y, sep);
+
             x += w + 1;
+        }
+
+        // Draw drop indicator at the end if dropping after last column
+        if let Some(target) = self.drop_target_col {
+            if target >= visible_cols.len() && self.dragging_col.is_some() {
+                let mut cell = Cell::new('│');
+                cell.fg = Some(Color::CYAN);
+                cell.modifier |= Modifier::BOLD;
+                ctx.buffer.set(x.saturating_sub(1), y, cell);
+            }
         }
     }
 
@@ -2587,5 +3162,324 @@ mod tests {
     fn test_grid_row_helper() {
         let row = grid_row();
         assert!(row.data.is_empty());
+    }
+
+    // ==================== Column Resize Tests ====================
+
+    #[test]
+    fn test_grid_column_resizable() {
+        let col = GridColumn::new("name", "Name").resizable(true);
+        assert!(col.resizable);
+
+        let col2 = GridColumn::new("name", "Name").resizable(false);
+        assert!(!col2.resizable);
+    }
+
+    #[test]
+    fn test_column_resize_state() {
+        let grid = DataGrid::new()
+            .column(GridColumn::new("a", "A").width(10).resizable(true))
+            .column(GridColumn::new("b", "B").width(15).resizable(true))
+            .row(GridRow::new().cell("a", "1").cell("b", "2"));
+
+        // Initially no resize state
+        assert!(grid.resizing_col.is_none());
+        assert!(grid.hovered_resize.is_none());
+    }
+
+    #[test]
+    fn test_column_width_constraints() {
+        let mut grid = DataGrid::new()
+            .column(
+                GridColumn::new("a", "A")
+                    .width(10)
+                    .min_width(5)
+                    .max_width(20)
+                    .resizable(true),
+            )
+            .row(GridRow::new().cell("a", "test"));
+
+        // Set custom width
+        grid.set_column_width(0, 15);
+        assert_eq!(grid.column_widths.get(0), Some(&15));
+
+        // Test min constraint
+        grid.set_column_width(0, 2);
+        assert_eq!(grid.column_widths.get(0), Some(&5)); // constrained to min
+
+        // Test max constraint
+        grid.set_column_width(0, 100);
+        assert_eq!(grid.column_widths.get(0), Some(&20)); // constrained to max
+    }
+
+    #[test]
+    fn test_on_column_resize_callback() {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        let resized = Rc::new(RefCell::new(None::<(usize, u16)>));
+        let resized_clone = resized.clone();
+
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A").width(10).resizable(true))
+            .on_column_resize(move |col, width| {
+                *resized_clone.borrow_mut() = Some((col, width));
+            })
+            .row(GridRow::new().cell("a", "test"));
+
+        grid.set_column_width(0, 15);
+
+        assert_eq!(*resized.borrow(), Some((0, 15)));
+    }
+
+    #[test]
+    fn test_get_display_widths() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A").width(10))
+            .column(GridColumn::new("b", "B").width(15))
+            .row(GridRow::new().cell("a", "1").cell("b", "2"));
+
+        // Before any custom widths, should use calculated widths
+        let widths = grid.get_display_widths(100);
+        assert_eq!(widths.len(), 2);
+
+        // After setting custom width
+        grid.set_column_width(0, 20);
+        let widths = grid.get_display_widths(100);
+        assert_eq!(widths[0], 20);
+    }
+
+    // ==================== Column Reorder Tests ====================
+
+    #[test]
+    fn test_reorderable() {
+        let grid = DataGrid::new()
+            .reorderable(true)
+            .column(GridColumn::new("a", "A"))
+            .column(GridColumn::new("b", "B"));
+
+        assert!(grid.reorderable);
+    }
+
+    #[test]
+    fn test_column_order() {
+        let mut grid = DataGrid::new()
+            .reorderable(true)
+            .column(GridColumn::new("a", "A"))
+            .column(GridColumn::new("b", "B"))
+            .column(GridColumn::new("c", "C"))
+            .row(GridRow::new().cell("a", "1").cell("b", "2").cell("c", "3"));
+
+        // Initial order
+        assert!(grid.column_order.is_empty()); // empty means default order
+
+        // Simulate drag reorder (move column 0 to position 2)
+        grid.dragging_col = Some(0);
+        grid.drop_target_col = Some(2);
+        grid.end_column_drag();
+
+        // Check new order
+        assert_eq!(grid.column_order, vec![1, 0, 2]);
+    }
+
+    #[test]
+    fn test_move_column_left() {
+        let mut grid = DataGrid::new()
+            .reorderable(true)
+            .column(GridColumn::new("a", "A"))
+            .column(GridColumn::new("b", "B"))
+            .column(GridColumn::new("c", "C"))
+            .row(GridRow::new().cell("a", "1").cell("b", "2").cell("c", "3"));
+
+        // Select column 1 (B)
+        grid.selected_col = 1;
+        grid.move_column_left();
+
+        // B should now be at position 0 (columns swapped)
+        assert_eq!(grid.columns[0].key, "b");
+        assert_eq!(grid.columns[1].key, "a");
+        assert_eq!(grid.selected_col, 0);
+    }
+
+    #[test]
+    fn test_move_column_right() {
+        let mut grid = DataGrid::new()
+            .reorderable(true)
+            .column(GridColumn::new("a", "A"))
+            .column(GridColumn::new("b", "B"))
+            .column(GridColumn::new("c", "C"))
+            .row(GridRow::new().cell("a", "1").cell("b", "2").cell("c", "3"));
+
+        // Select column 0 (A)
+        grid.selected_col = 0;
+        grid.move_column_right();
+
+        // A should now be at position 1 (columns swapped)
+        assert_eq!(grid.columns[0].key, "b");
+        assert_eq!(grid.columns[1].key, "a");
+        assert_eq!(grid.selected_col, 1);
+    }
+
+    #[test]
+    fn test_on_column_reorder_callback() {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        let reordered = Rc::new(RefCell::new(None::<(usize, usize)>));
+        let reordered_clone = reordered.clone();
+
+        let mut grid = DataGrid::new()
+            .reorderable(true)
+            .column(GridColumn::new("a", "A"))
+            .column(GridColumn::new("b", "B"))
+            .on_column_reorder(move |from, to| {
+                *reordered_clone.borrow_mut() = Some((from, to));
+            })
+            .row(GridRow::new().cell("a", "1").cell("b", "2"));
+
+        grid.selected_col = 0;
+        grid.move_column_right();
+
+        assert_eq!(*reordered.borrow(), Some((0, 1)));
+    }
+
+    // ==================== Column Freeze Tests ====================
+
+    #[test]
+    fn test_grid_column_frozen() {
+        let col = GridColumn::new("name", "Name").frozen(true);
+        assert!(col.frozen);
+    }
+
+    #[test]
+    fn test_freeze_columns_left() {
+        let grid = DataGrid::new()
+            .freeze_columns_left(2)
+            .column(GridColumn::new("a", "A"))
+            .column(GridColumn::new("b", "B"))
+            .column(GridColumn::new("c", "C"));
+
+        assert_eq!(grid.frozen_left(), 2);
+    }
+
+    #[test]
+    fn test_freeze_columns_right() {
+        let grid = DataGrid::new()
+            .freeze_columns_right(1)
+            .column(GridColumn::new("a", "A"))
+            .column(GridColumn::new("b", "B"))
+            .column(GridColumn::new("c", "C"));
+
+        assert_eq!(grid.frozen_right(), 1);
+    }
+
+    #[test]
+    fn test_horizontal_scroll() {
+        let mut grid = DataGrid::new()
+            .freeze_columns_left(1)
+            .column(GridColumn::new("a", "A"))
+            .column(GridColumn::new("b", "B"))
+            .column(GridColumn::new("c", "C"))
+            .column(GridColumn::new("d", "D"))
+            .column(GridColumn::new("e", "E"))
+            .row(GridRow::new());
+
+        // Initial scroll position
+        assert_eq!(grid.scroll_col, 0);
+
+        // Scroll right
+        grid.scroll_col_right();
+        assert_eq!(grid.scroll_col, 1);
+
+        grid.scroll_col_right();
+        assert_eq!(grid.scroll_col, 2);
+
+        // Scroll left
+        grid.scroll_col_left();
+        assert_eq!(grid.scroll_col, 1);
+
+        // Can't scroll past 0
+        grid.scroll_col_left();
+        grid.scroll_col_left();
+        assert_eq!(grid.scroll_col, 0);
+    }
+
+    // ==================== Mouse Event Tests ====================
+
+    #[test]
+    fn test_hit_test_resize_handle() {
+        let mut grid = DataGrid::new()
+            .column(GridColumn::new("a", "A").width(10).resizable(true))
+            .column(GridColumn::new("b", "B").width(15).resizable(true))
+            .row(GridRow::new().cell("a", "1").cell("b", "2"));
+
+        // Set column widths explicitly for predictable hit testing
+        grid.set_column_width(0, 10);
+        grid.set_column_width(1, 15);
+
+        let area = Rect::new(0, 0, 80, 24);
+
+        // First column ends at x=10, separator at x=11
+        // hit_test checks col_x after adding width+1, so border at col_x=11
+        let hit = grid.hit_test_resize_handle(11, 0, area);
+        assert_eq!(hit, Some(0)); // First column border
+
+        // Second column ends at x=11+15=26, separator at x=27
+        let hit = grid.hit_test_resize_handle(27, 0, area);
+        assert_eq!(hit, Some(1)); // Second column border
+
+        // Not on border
+        let hit = grid.hit_test_resize_handle(5, 0, area);
+        assert!(hit.is_none());
+    }
+
+    #[test]
+    fn test_hit_test_header() {
+        let mut grid = DataGrid::new()
+            .reorderable(true)
+            .column(GridColumn::new("a", "A").width(10))
+            .column(GridColumn::new("b", "B").width(15))
+            .row(GridRow::new().cell("a", "1").cell("b", "2"));
+
+        // Set column widths explicitly for predictable hit testing
+        grid.set_column_width(0, 10);
+        grid.set_column_width(1, 15);
+
+        let area = Rect::new(0, 0, 80, 24);
+
+        // Test hit on first column header (y=0, x within first column 0-9)
+        let hit = grid.hit_test_header(5, 0, area);
+        assert_eq!(hit, Some(0)); // First column header
+
+        // Test hit on second column header (x=11-25)
+        let hit = grid.hit_test_header(15, 0, area);
+        assert_eq!(hit, Some(1)); // Second column header
+
+        // Test hit on data row (y=1) - should return None
+        let hit = grid.hit_test_header(5, 1, area);
+        assert!(hit.is_none());
+    }
+
+    #[test]
+    fn test_render_with_column_features() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let grid = DataGrid::new()
+            .reorderable(true)
+            .freeze_columns_left(1)
+            .column(GridColumn::new("id", "ID").width(5).frozen(true))
+            .column(GridColumn::new("name", "Name").width(15).resizable(true))
+            .column(GridColumn::new("value", "Value").width(10))
+            .row(
+                GridRow::new()
+                    .cell("id", "1")
+                    .cell("name", "Test")
+                    .cell("value", "100"),
+            );
+
+        grid.render(&mut ctx);
+        // Smoke test - just ensure render doesn't panic
     }
 }
