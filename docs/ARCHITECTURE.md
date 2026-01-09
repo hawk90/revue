@@ -43,25 +43,134 @@ Revue is a layered TUI framework inspired by web technologies (Vue.js, CSS) but 
 
 ### 1. Widget Layer (`src/widget/`)
 
-Provides the building blocks for UI construction.
+Provides the building blocks for UI construction. Contains 100+ widgets organized by category.
 
 ```
 src/widget/
 ├── mod.rs
-├── traits.rs        # View, Widget traits
-├── box.rs           # Box container
-├── text.rs          # Text display
-├── list.rs          # List widget
-├── table.rs         # Table widget
-├── input.rs         # Text input
-├── select.rs        # Dropdown select
-├── tabs.rs          # Tab container
-├── modal.rs         # Modal dialog
-├── toast.rs         # Toast notifications
-├── markdown.rs      # Markdown renderer
-├── image.rs         # Kitty image
-├── command_palette.rs  # Ctrl+P command palette
-└── menu.rs          # Menu bar
+├── traits.rs              # View, Widget traits
+├── macros.rs              # Widget builder macros
+│
+├── # Layout
+├── stack.rs               # VStack, HStack
+├── grid.rs                # Grid layout
+├── scroll.rs              # Scrollable container
+├── splitter.rs            # Split panes
+├── layer.rs               # Z-index layering
+├── positioned.rs          # Absolute positioning
+├── resizable.rs           # Resizable containers
+├── collapsible.rs         # Collapsible sections
+├── card.rs                # Card container
+│
+├── # Basic
+├── text.rs                # Text display
+├── richtext.rs            # Styled text
+├── bigtext.rs             # Large ASCII text
+├── button.rs              # Button widget
+├── link.rs                # Clickable links
+├── divider.rs             # Horizontal/vertical divider
+├── border.rs              # Border decoration
+│
+├── # Input
+├── input.rs               # Text input
+├── textarea.rs            # Multi-line editor
+├── masked_input.rs        # Password/masked input
+├── number_input.rs        # Numeric input
+├── checkbox.rs            # Checkbox
+├── radio.rs               # Radio buttons
+├── switch.rs              # Toggle switch
+├── select.rs              # Dropdown select
+├── multi_select.rs        # Multi-select
+├── slider.rs              # Slider control
+├── color_picker.rs        # Color picker
+├── datetime_picker.rs     # Date/time picker
+├── calendar.rs            # Calendar widget
+├── range_picker.rs        # Range selection
+├── autocomplete.rs        # Autocomplete input
+├── search_bar.rs          # Search bar
+│
+├── # Data Display
+├── list.rs                # List widget
+├── virtuallist.rs         # Virtualized list
+├── option_list.rs         # Option list
+├── selection_list.rs      # Selection list
+├── table.rs               # Data table
+├── tree.rs                # Tree view
+├── filetree.rs            # File tree
+│
+├── # Charts (Statistical)
+├── chart.rs               # Line/area chart
+├── chart_common.rs        # Shared chart types (Axis, Legend, etc.)
+├── chart_stats.rs         # Statistical functions (percentile, mean, bins)
+├── chart_render.rs        # Common chart rendering utilities
+├── barchart.rs            # Bar chart
+├── piechart.rs            # Pie/donut chart
+├── scatterchart.rs        # Scatter/bubble chart
+├── histogram.rs           # Histogram
+├── boxplot.rs             # Box-and-whisker plot
+├── candlechart.rs         # Candlestick chart
+├── heatmap.rs             # Heat map
+├── sparkline.rs           # Sparkline
+├── gauge.rs               # Gauge/meter
+├── timeseries.rs          # Time series
+├── streamline.rs          # Streaming chart
+├── waveline.rs            # Wave chart
+│
+├── # Navigation
+├── tabs.rs                # Tab container
+├── menu.rs                # Menu bar
+├── breadcrumb.rs          # Breadcrumb
+├── pagination.rs          # Pagination
+├── stepper.rs             # Step indicator
+├── command_palette.rs     # Ctrl+P command palette
+│
+├── # Feedback
+├── modal.rs               # Modal dialog
+├── toast.rs               # Toast notifications
+├── notification.rs        # Notification center
+├── alert.rs               # Alert box
+├── callout.rs             # Callout/admonition
+├── progress.rs            # Progress bar
+├── spinner.rs             # Loading spinner
+├── skeleton.rs            # Skeleton loader
+├── status_indicator.rs    # Status dot
+├── tooltip.rs             # Tooltip
+├── badge.rs               # Badge
+├── tag.rs                 # Tag/chip
+├── avatar.rs              # Avatar
+├── rating.rs              # Star rating
+│
+├── # Content
+├── markdown.rs            # Markdown renderer
+├── markdown_presentation.rs # Slidev-style presentations
+├── presentation.rs        # Presentation mode
+├── slides.rs              # Slide widget
+├── syntax.rs              # Syntax highlighting
+├── diff.rs                # Diff viewer
+├── mermaid.rs             # Mermaid diagrams
+├── qrcode.rs              # QR code
+├── image.rs               # Kitty image protocol
+├── canvas.rs              # Drawing canvas
+│
+├── # Advanced
+├── terminal.rs            # Embedded terminal
+├── httpclient.rs          # HTTP client widget
+├── aistream.rs            # AI streaming widget
+├── filepicker.rs          # File picker dialog
+├── dropzone.rs            # Drag-and-drop zone
+├── sortable.rs            # Sortable list
+├── vim.rs                 # Vim mode
+├── theme_picker.rs        # Theme selector
+├── timer.rs               # Timer widget
+├── digits.rs              # Digital display
+├── procmon.rs             # Process monitor
+├── richlog.rs             # Rich log viewer
+├── accordion.rs           # Accordion
+├── zen.rs                 # Zen mode
+├── screen.rs              # Screen widget
+├── statusbar.rs           # Status bar
+├── timeline.rs            # Timeline
+└── debug_overlay.rs       # Debug overlay
 ```
 
 **Key Traits:**

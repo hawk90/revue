@@ -3,6 +3,10 @@
 //! Supports scatter plots, bubble charts, multiple series, and trend lines.
 
 use super::chart_common::{Axis, ChartGrid, ColorScheme, Legend, LegendPosition, Marker};
+use super::chart_render::{
+    fill_background, render_axis_title, render_grid, render_legend, render_title,
+    render_x_axis_labels, render_y_axis_labels, LegendItem,
+};
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::layout::Rect;
 use crate::render::Cell;
@@ -253,45 +257,6 @@ impl ScatterChart {
         )
     }
 
-    /// Render grid lines
-    fn render_grid(&self, ctx: &mut RenderContext, chart_area: Rect) {
-        let grid_color = self.grid.effective_color();
-
-        if self.grid.x {
-            // Vertical grid lines
-            for i in 0..=self.x_axis.ticks {
-                let x = chart_area.x + (i as u16 * chart_area.width / self.x_axis.ticks as u16);
-                for y in chart_area.y..chart_area.y + chart_area.height {
-                    if x < chart_area.x + chart_area.width {
-                        let ch = if y == chart_area.y + chart_area.height - 1 {
-                            '┴'
-                        } else {
-                            '│'
-                        };
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(grid_color);
-                        ctx.buffer.set(x, y, cell);
-                    }
-                }
-            }
-        }
-
-        if self.grid.y {
-            // Horizontal grid lines
-            for i in 0..=self.y_axis.ticks {
-                let y = chart_area.y + (i as u16 * chart_area.height / self.y_axis.ticks as u16);
-                for x in chart_area.x..chart_area.x + chart_area.width {
-                    if y < chart_area.y + chart_area.height {
-                        let ch = if x == chart_area.x { '├' } else { '─' };
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(grid_color);
-                        ctx.buffer.set(x, y, cell);
-                    }
-                }
-            }
-        }
-    }
-
     /// Render data points
     fn render_points(
         &self,
@@ -347,156 +312,6 @@ impl ScatterChart {
             }
         }
     }
-
-    /// Render axis labels
-    fn render_axes(&self, ctx: &mut RenderContext, area: Rect, bounds: (f64, f64, f64, f64)) {
-        let (x_min, x_max, y_min, y_max) = bounds;
-
-        // Y axis labels (left side)
-        let y_label_width = 8;
-        for i in 0..=self.y_axis.ticks {
-            let value = y_min + (y_max - y_min) * (1.0 - i as f64 / self.y_axis.ticks as f64);
-            let label = self.y_axis.format_value(value);
-            let y = area.y + 1 + (i as u16 * (area.height - 2) / self.y_axis.ticks as u16);
-
-            for (j, ch) in label.chars().take(y_label_width as usize).enumerate() {
-                let x = area.x + j as u16;
-                if x < area.x + y_label_width && y < area.y + area.height {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(self.y_axis.color);
-                    ctx.buffer.set(x, y, cell);
-                }
-            }
-        }
-
-        // X axis labels (bottom)
-        let x_label_y = area.y + area.height - 1;
-        for i in 0..=self.x_axis.ticks {
-            let value = x_min + (x_max - x_min) * i as f64 / self.x_axis.ticks as f64;
-            let label = self.x_axis.format_value(value);
-            let x = area.x
-                + y_label_width
-                + (i as u16 * (area.width - y_label_width) / self.x_axis.ticks as u16);
-
-            for (j, ch) in label.chars().enumerate() {
-                let label_x = x + j as u16;
-                if label_x < area.x + area.width {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(self.x_axis.color);
-                    ctx.buffer.set(label_x, x_label_y, cell);
-                }
-            }
-        }
-
-        // Axis titles
-        if let Some(ref title) = self.x_axis.title {
-            let title_x = area.x + (area.width - title.len() as u16) / 2;
-            for (i, ch) in title.chars().enumerate() {
-                let x = title_x + i as u16;
-                if x < area.x + area.width {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(self.x_axis.color);
-                    ctx.buffer.set(x, area.y + area.height - 1, cell);
-                }
-            }
-        }
-    }
-
-    /// Render legend
-    fn render_legend(&self, ctx: &mut RenderContext, area: Rect) {
-        if !self.legend.is_visible() || self.series.is_empty() {
-            return;
-        }
-
-        let legend_width = self
-            .series
-            .iter()
-            .map(|s| s.name.len() + 4)
-            .max()
-            .unwrap_or(10) as u16;
-        let legend_height = self.series.len() as u16 + 2;
-
-        let (legend_x, legend_y) = match self.legend.position {
-            LegendPosition::TopLeft => (area.x + 1, area.y + 1),
-            LegendPosition::TopCenter => (area.x + (area.width - legend_width) / 2, area.y + 1),
-            LegendPosition::TopRight => (
-                area.x + area.width.saturating_sub(legend_width + 1),
-                area.y + 1,
-            ),
-            LegendPosition::BottomLeft => (
-                area.x + 1,
-                area.y + area.height.saturating_sub(legend_height + 1),
-            ),
-            LegendPosition::BottomCenter => (
-                area.x + (area.width - legend_width) / 2,
-                area.y + area.height.saturating_sub(legend_height + 1),
-            ),
-            LegendPosition::BottomRight => (
-                area.x + area.width.saturating_sub(legend_width + 1),
-                area.y + area.height.saturating_sub(legend_height + 1),
-            ),
-            LegendPosition::Left => (area.x + 1, area.y + (area.height - legend_height) / 2),
-            LegendPosition::Right => (
-                area.x + area.width.saturating_sub(legend_width + 1),
-                area.y + (area.height - legend_height) / 2,
-            ),
-            LegendPosition::None => return,
-        };
-
-        // Draw legend background
-        for dy in 0..legend_height {
-            for dx in 0..legend_width {
-                let x = legend_x + dx;
-                let y = legend_y + dy;
-                if x < area.x + area.width && y < area.y + area.height {
-                    let ch = if dy == 0 && dx == 0 {
-                        '┌'
-                    } else if dy == 0 && dx == legend_width - 1 {
-                        '┐'
-                    } else if dy == legend_height - 1 && dx == 0 {
-                        '└'
-                    } else if dy == legend_height - 1 && dx == legend_width - 1 {
-                        '┘'
-                    } else if dy == 0 || dy == legend_height - 1 {
-                        '─'
-                    } else if dx == 0 || dx == legend_width - 1 {
-                        '│'
-                    } else {
-                        ' '
-                    };
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(100, 100, 100));
-                    ctx.buffer.set(x, y, cell);
-                }
-            }
-        }
-
-        // Draw legend entries
-        for (i, series) in self.series.iter().enumerate() {
-            let y = legend_y + 1 + i as u16;
-            if y >= area.y + area.height - 1 {
-                break;
-            }
-
-            // Color indicator
-            let x = legend_x + 1;
-            if x < area.x + area.width {
-                let mut cell = Cell::new(series.marker.char());
-                cell.fg = Some(self.series_color(i));
-                ctx.buffer.set(x, y, cell);
-            }
-
-            // Label
-            for (j, ch) in series.name.chars().enumerate() {
-                let x = legend_x + 3 + j as u16;
-                if x < legend_x + legend_width - 1 {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::WHITE);
-                    ctx.buffer.set(x, y, cell);
-                }
-            }
-        }
-    }
 }
 
 impl View for ScatterChart {
@@ -511,30 +326,11 @@ impl View for ScatterChart {
 
         // Fill background if set
         if let Some(bg) = self.bg_color {
-            for y in area.y..area.y + area.height {
-                for x in area.x..area.x + area.width {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
-                }
-            }
+            fill_background(ctx, area, bg);
         }
 
-        // Draw title if set
-        let title_offset = if let Some(ref title) = self.title {
-            let title_x = area.x + (area.width.saturating_sub(title.len() as u16)) / 2;
-            for (i, ch) in title.chars().enumerate() {
-                let x = title_x + i as u16;
-                if x < area.x + area.width {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::WHITE);
-                    ctx.buffer.set(x, area.y, cell);
-                }
-            }
-            1
-        } else {
-            0
-        };
+        // Draw title using shared function
+        let title_offset = render_title(ctx, area, self.title.as_deref(), Color::WHITE);
 
         // Calculate chart area (leave room for axes)
         let y_label_width = 8u16;
@@ -554,12 +350,48 @@ impl View for ScatterChart {
         }
 
         let bounds = self.compute_bounds();
+        let (x_min, x_max, y_min, y_max) = bounds;
 
-        // Render components
-        self.render_grid(ctx, chart_area);
+        // Render components using shared functions
+        render_grid(
+            ctx,
+            chart_area,
+            &self.grid,
+            self.x_axis.ticks,
+            self.y_axis.ticks,
+        );
         self.render_points(ctx, chart_area, bounds);
-        self.render_axes(ctx, area, bounds);
-        self.render_legend(ctx, area);
+
+        // Render axes
+        render_y_axis_labels(ctx, area, &self.y_axis, y_min, y_max, y_label_width);
+        render_x_axis_labels(
+            ctx,
+            area,
+            &self.x_axis,
+            x_min,
+            x_max,
+            title_offset,
+            y_label_width,
+        );
+        render_axis_title(
+            ctx,
+            area,
+            self.x_axis.title.as_deref(),
+            self.x_axis.color,
+            true,
+        );
+
+        // Render legend using shared function
+        let legend_items: Vec<LegendItem<'_>> = self
+            .series
+            .iter()
+            .enumerate()
+            .map(|(i, s)| LegendItem {
+                label: &s.name,
+                color: self.series_color(i),
+            })
+            .collect();
+        render_legend(ctx, area, &self.legend, &legend_items);
     }
 }
 

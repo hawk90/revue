@@ -3,8 +3,8 @@
 //! Supports standard pie charts, donut charts, labels, legends, and exploded segments.
 
 use super::chart_common::{ColorScheme, Legend, LegendPosition};
+use super::chart_render::{fill_background, render_legend, render_title, LegendItem};
 use super::traits::{RenderContext, View, WidgetProps};
-use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::{impl_props_builders, impl_styled_view};
@@ -372,102 +372,6 @@ impl PieChart {
             current_angle += slice_angle;
         }
     }
-
-    /// Render legend
-    fn render_legend(&self, ctx: &mut RenderContext, area: Rect) {
-        if !self.legend.is_visible() || self.slices.is_empty() {
-            return;
-        }
-
-        let legend_width = self
-            .slices
-            .iter()
-            .map(|s| s.label.len() + 4)
-            .max()
-            .unwrap_or(10) as u16;
-        let legend_height = self.slices.len() as u16 + 2;
-
-        let (legend_x, legend_y) = match self.legend.position {
-            LegendPosition::TopLeft => (area.x + 1, area.y + 1),
-            LegendPosition::TopCenter => (area.x + (area.width - legend_width) / 2, area.y + 1),
-            LegendPosition::TopRight => (
-                area.x + area.width.saturating_sub(legend_width + 1),
-                area.y + 1,
-            ),
-            LegendPosition::BottomLeft => (
-                area.x + 1,
-                area.y + area.height.saturating_sub(legend_height + 1),
-            ),
-            LegendPosition::BottomCenter => (
-                area.x + (area.width - legend_width) / 2,
-                area.y + area.height.saturating_sub(legend_height + 1),
-            ),
-            LegendPosition::BottomRight => (
-                area.x + area.width.saturating_sub(legend_width + 1),
-                area.y + area.height.saturating_sub(legend_height + 1),
-            ),
-            LegendPosition::Left => (area.x + 1, area.y + (area.height - legend_height) / 2),
-            LegendPosition::Right => (
-                area.x + area.width.saturating_sub(legend_width + 1),
-                area.y + (area.height - legend_height) / 2,
-            ),
-            LegendPosition::None => return,
-        };
-
-        // Draw legend background
-        for dy in 0..legend_height {
-            for dx in 0..legend_width {
-                let x = legend_x + dx;
-                let y = legend_y + dy;
-                if x < area.x + area.width && y < area.y + area.height {
-                    let ch = if dy == 0 && dx == 0 {
-                        '┌'
-                    } else if dy == 0 && dx == legend_width - 1 {
-                        '┐'
-                    } else if dy == legend_height - 1 && dx == 0 {
-                        '└'
-                    } else if dy == legend_height - 1 && dx == legend_width - 1 {
-                        '┘'
-                    } else if dy == 0 || dy == legend_height - 1 {
-                        '─'
-                    } else if dx == 0 || dx == legend_width - 1 {
-                        '│'
-                    } else {
-                        ' '
-                    };
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(100, 100, 100));
-                    ctx.buffer.set(x, y, cell);
-                }
-            }
-        }
-
-        // Draw legend entries
-        for (i, slice) in self.slices.iter().enumerate() {
-            let y = legend_y + 1 + i as u16;
-            if y >= area.y + area.height - 1 {
-                break;
-            }
-
-            // Color indicator
-            let x = legend_x + 1;
-            if x < area.x + area.width {
-                let mut cell = Cell::new('■');
-                cell.fg = Some(self.slice_color(i));
-                ctx.buffer.set(x, y, cell);
-            }
-
-            // Label
-            for (j, ch) in slice.label.chars().enumerate() {
-                let x = legend_x + 3 + j as u16;
-                if x < legend_x + legend_width - 1 {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::WHITE);
-                    ctx.buffer.set(x, y, cell);
-                }
-            }
-        }
-    }
 }
 
 impl View for PieChart {
@@ -482,30 +386,11 @@ impl View for PieChart {
 
         // Fill background if set
         if let Some(bg) = self.bg_color {
-            for y in area.y..area.y + area.height {
-                for x in area.x..area.x + area.width {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
-                }
-            }
+            fill_background(ctx, area, bg);
         }
 
-        // Draw title if set
-        let title_offset = if let Some(ref title) = self.title {
-            let title_x = area.x + (area.width.saturating_sub(title.len() as u16)) / 2;
-            for (i, ch) in title.chars().enumerate() {
-                let x = title_x + i as u16;
-                if x < area.x + area.width {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::WHITE);
-                    ctx.buffer.set(x, area.y, cell);
-                }
-            }
-            1
-        } else {
-            0
-        };
+        // Draw title using shared function
+        let title_offset = render_title(ctx, area, self.title.as_deref(), Color::WHITE);
 
         // Calculate pie center and radius
         let chart_area_height = area.height.saturating_sub(title_offset);
@@ -521,8 +406,17 @@ impl View for PieChart {
         // Render labels
         self.render_labels(ctx, center_x, center_y, radius);
 
-        // Render legend
-        self.render_legend(ctx, area);
+        // Render legend using shared function
+        let legend_items: Vec<LegendItem<'_>> = self
+            .slices
+            .iter()
+            .enumerate()
+            .map(|(i, s)| LegendItem {
+                label: &s.label,
+                color: self.slice_color(i),
+            })
+            .collect();
+        render_legend(ctx, area, &self.legend, &legend_items);
     }
 }
 

@@ -3,6 +3,8 @@
 //! Displays median, quartiles, and outliers for comparing distributions across categories.
 
 use super::chart_common::{Axis, ChartGrid, ChartOrientation, ColorScheme, Legend};
+use super::chart_render::{fill_background, render_title};
+use super::chart_stats::percentile;
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::layout::Rect;
 use crate::render::Cell;
@@ -111,23 +113,6 @@ impl BoxStats {
             whisker_low,
             whisker_high,
         })
-    }
-}
-
-/// Calculate percentile from sorted data
-fn percentile(sorted: &[f64], p: f64) -> f64 {
-    if sorted.is_empty() {
-        return 0.0;
-    }
-    let k = (p / 100.0) * (sorted.len() - 1) as f64;
-    let lower = k.floor() as usize;
-    let upper = k.ceil() as usize;
-    let weight = k - lower as f64;
-
-    if upper >= sorted.len() {
-        sorted[sorted.len() - 1]
-    } else {
-        sorted[lower] * (1.0 - weight) + sorted[upper] * weight
     }
 }
 
@@ -587,32 +572,13 @@ impl View for BoxPlot {
             return;
         }
 
-        // Fill background
+        // Fill background using shared function
         if let Some(bg) = self.bg_color {
-            for y in area.y..area.y + area.height {
-                for x in area.x..area.x + area.width {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
-                }
-            }
+            fill_background(ctx, area, bg);
         }
 
-        // Draw title
-        let title_offset = if let Some(ref title) = self.title {
-            let title_x = area.x + (area.width.saturating_sub(title.len() as u16)) / 2;
-            for (i, ch) in title.chars().enumerate() {
-                let x = title_x + i as u16;
-                if x < area.x + area.width {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::WHITE);
-                    ctx.buffer.set(x, area.y, cell);
-                }
-            }
-            1
-        } else {
-            0
-        };
+        // Draw title using shared function
+        let title_offset = render_title(ctx, area, self.title.as_deref(), Color::WHITE);
 
         // Calculate chart area
         let y_label_width = 6u16;

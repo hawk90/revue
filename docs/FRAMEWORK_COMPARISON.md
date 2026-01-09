@@ -4,7 +4,7 @@
 
 | Framework | Language | Rendering | Widgets | Styling | Maturity |
 |-----------|----------|-----------|---------|---------|----------|
-| **Revue** | Rust | Retained | 80+ | CSS | New |
+| **Revue** | Rust | Retained | 100+ | CSS | New |
 | **Textual** | Python | Retained | 35+ | TCSS | Mature |
 | **Ratatui** | Rust | Immediate | 13 | Inline | Mature |
 | **Cursive** | Rust | Retained | 40+ | TOML | Mature |
@@ -50,6 +50,10 @@
 |--------|-------|---------|---------|-------|
 | Chart (line) | ✅ (1160L) | ❌ | ✅ (600L) | Revue richer |
 | BarChart | ✅ (505L) | ❌ | ✅ (500L) | Equal |
+| PieChart | ✅ | ❌ | ❌ | Revue unique (pie/donut) |
+| ScatterChart | ✅ | ❌ | ❌ | Revue unique (bubble) |
+| Histogram | ✅ | ❌ | ❌ | Revue unique (binning) |
+| BoxPlot | ✅ | ❌ | ❌ | Revue unique (quartiles) |
 | Sparkline | ✅ (395L) | ✅ | ✅ (260L) | All have |
 | CandleChart | ✅ | ❌ | ❌ | Revue unique |
 | TimeSeries | ✅ | ❌ | ❌ | Revue unique |

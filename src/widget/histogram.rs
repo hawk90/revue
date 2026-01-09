@@ -3,40 +3,16 @@
 //! Supports automatic binning, density normalization, cumulative histograms, and statistics overlay.
 
 use super::chart_common::{Axis, ChartGrid, ChartOrientation, Legend};
+use super::chart_render::{fill_background, render_title};
+use super::chart_stats::{self, mean, median};
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::{impl_props_builders, impl_styled_view};
 
-/// Bin configuration for histogram
-#[derive(Clone, Debug, Default)]
-pub enum BinConfig {
-    /// Automatic binning (Sturges' rule)
-    #[default]
-    Auto,
-    /// Fixed number of bins
-    Count(usize),
-    /// Fixed bin width
-    Width(f64),
-    /// Custom bin edges
-    Edges(Vec<f64>),
-}
-
-/// A single bin in the histogram
-#[derive(Clone, Debug)]
-pub struct HistogramBin {
-    /// Bin start (inclusive)
-    pub start: f64,
-    /// Bin end (exclusive)
-    pub end: f64,
-    /// Count of values in bin
-    pub count: usize,
-    /// Frequency (count / total)
-    pub frequency: f64,
-    /// Density (frequency / bin_width)
-    pub density: f64,
-}
+// Re-export from chart_stats for public API compatibility
+pub use super::chart_stats::{BinConfig, HistogramBin};
 
 /// Histogram widget
 pub struct Histogram {
@@ -223,128 +199,19 @@ impl Histogram {
         self
     }
 
-    /// Compute bins from data
+    /// Compute bins from data using shared stats module
     fn compute_bins(&mut self) {
-        if self.data.is_empty() {
-            self.bins.clear();
-            return;
-        }
-
-        // Filter valid values
-        let valid_data: Vec<f64> = self
-            .data
-            .iter()
-            .filter(|x| x.is_finite())
-            .copied()
-            .collect();
-        if valid_data.is_empty() {
-            self.bins.clear();
-            return;
-        }
-
-        let min = valid_data.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max = valid_data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        let range = (max - min).max(1.0);
-
-        // Determine bin edges
-        let edges = match &self.bin_config {
-            BinConfig::Auto => {
-                // Sturges' rule
-                let n = valid_data.len();
-                let bin_count = ((n as f64).log2() + 1.0).ceil() as usize;
-                let bin_count = bin_count.clamp(1, 100);
-                let bin_width = range / bin_count as f64;
-                (0..=bin_count)
-                    .map(|i| min + i as f64 * bin_width)
-                    .collect::<Vec<_>>()
-            }
-            BinConfig::Count(n) => {
-                let bin_count = (*n).max(1);
-                let bin_width = range / bin_count as f64;
-                (0..=bin_count)
-                    .map(|i| min + i as f64 * bin_width)
-                    .collect::<Vec<_>>()
-            }
-            BinConfig::Width(w) => {
-                let bin_width = (*w).max(0.001);
-                let bin_count = (range / bin_width).ceil() as usize;
-                (0..=bin_count)
-                    .map(|i| min + i as f64 * bin_width)
-                    .collect::<Vec<_>>()
-            }
-            BinConfig::Edges(edges) => edges.clone(),
-        };
-
-        // Count values in each bin
-        let total = valid_data.len();
-        let mut bins = Vec::new();
-
-        for i in 0..edges.len().saturating_sub(1) {
-            let start = edges[i];
-            let end = edges[i + 1];
-            let count = valid_data
-                .iter()
-                .filter(|&&x| {
-                    if i == edges.len() - 2 {
-                        x >= start && x <= end // Include last edge
-                    } else {
-                        x >= start && x < end
-                    }
-                })
-                .count();
-
-            let frequency = count as f64 / total as f64;
-            let bin_width = end - start;
-            let density = if bin_width > 0.0 {
-                frequency / bin_width
-            } else {
-                0.0
-            };
-
-            bins.push(HistogramBin {
-                start,
-                end,
-                count,
-                frequency,
-                density,
-            });
-        }
-
-        self.bins = bins;
+        self.bins = chart_stats::compute_bins(&self.data, &self.bin_config);
     }
 
     /// Get the mean of the data
-    fn mean(&self) -> Option<f64> {
-        let valid: Vec<f64> = self
-            .data
-            .iter()
-            .filter(|x| x.is_finite())
-            .copied()
-            .collect();
-        if valid.is_empty() {
-            return None;
-        }
-        Some(valid.iter().sum::<f64>() / valid.len() as f64)
+    pub fn mean(&self) -> Option<f64> {
+        mean(&self.data)
     }
 
     /// Get the median of the data
-    fn median(&self) -> Option<f64> {
-        let mut valid: Vec<f64> = self
-            .data
-            .iter()
-            .filter(|x| x.is_finite())
-            .copied()
-            .collect();
-        if valid.is_empty() {
-            return None;
-        }
-        valid.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        let mid = valid.len() / 2;
-        if valid.len().is_multiple_of(2) {
-            Some((valid[mid - 1] + valid[mid]) / 2.0)
-        } else {
-            Some(valid[mid])
-        }
+    pub fn median(&self) -> Option<f64> {
+        median(&self.data)
     }
 
     /// Get max value for y-axis
@@ -436,9 +303,9 @@ impl Histogram {
         let x_max = self.bins.last().map(|b| b.end).unwrap_or(1.0);
         let x_range = (x_max - x_min).max(1.0);
 
-        // Draw mean line
-        if let Some(mean) = self.mean() {
-            let x = chart_area.x + ((mean - x_min) / x_range * chart_area.width as f64) as u16;
+        // Draw mean line using shared stats function
+        if let Some(mean_val) = mean(&self.data) {
+            let x = chart_area.x + ((mean_val - x_min) / x_range * chart_area.width as f64) as u16;
             if x >= chart_area.x && x < chart_area.x + chart_area.width {
                 for y in chart_area.y..chart_area.y + chart_area.height {
                     let mut cell = Cell::new('│');
@@ -454,9 +321,10 @@ impl Histogram {
             }
         }
 
-        // Draw median line
-        if let Some(median) = self.median() {
-            let x = chart_area.x + ((median - x_min) / x_range * chart_area.width as f64) as u16;
+        // Draw median line using shared stats function
+        if let Some(median_val) = median(&self.data) {
+            let x =
+                chart_area.x + ((median_val - x_min) / x_range * chart_area.width as f64) as u16;
             if x >= chart_area.x && x < chart_area.x + chart_area.width {
                 for y in chart_area.y..chart_area.y + chart_area.height {
                     let mut cell = Cell::new('┊');
@@ -534,32 +402,13 @@ impl View for Histogram {
             return;
         }
 
-        // Fill background
+        // Fill background using shared function
         if let Some(bg) = self.bg_color {
-            for y in area.y..area.y + area.height {
-                for x in area.x..area.x + area.width {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
-                }
-            }
+            fill_background(ctx, area, bg);
         }
 
-        // Draw title
-        let title_offset = if let Some(ref title) = self.title {
-            let title_x = area.x + (area.width.saturating_sub(title.len() as u16)) / 2;
-            for (i, ch) in title.chars().enumerate() {
-                let x = title_x + i as u16;
-                if x < area.x + area.width {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::WHITE);
-                    ctx.buffer.set(x, area.y, cell);
-                }
-            }
-            1
-        } else {
-            0
-        };
+        // Draw title using shared function
+        let title_offset = render_title(ctx, area, self.title.as_deref(), Color::WHITE);
 
         // Calculate chart area
         let y_label_width = 6u16;
