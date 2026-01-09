@@ -64,7 +64,7 @@ let mut app = App::builder()
 
 ### Views and Widgets
 
-Views are the building blocks of your UI. Revue provides 80+ built-in widgets:
+Views are the building blocks of your UI. Revue provides 85+ built-in widgets:
 
 ```rust
 // Text display

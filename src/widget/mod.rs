@@ -1,6 +1,6 @@
 //! Widget system for Revue TUI framework.
 //!
-//! This module provides 80+ widgets for building terminal user interfaces.
+//! This module provides 85+ widgets for building terminal user interfaces.
 //! Widgets are organized into categories for easy discovery.
 //!
 //! # Widget Categories
@@ -174,6 +174,7 @@ mod badge;
 mod barchart;
 mod bigtext;
 mod border;
+mod boxplot;
 mod breadcrumb;
 mod button;
 mod calendar;
@@ -182,6 +183,7 @@ mod candlechart;
 mod canvas;
 mod card;
 mod chart;
+mod chart_common;
 mod checkbox;
 mod collapsible;
 mod color_picker;
@@ -199,6 +201,7 @@ mod filetree;
 mod gauge;
 mod grid;
 mod heatmap;
+mod histogram;
 mod httpclient;
 #[cfg(feature = "image")]
 mod image;
@@ -219,6 +222,7 @@ mod notification;
 mod number_input;
 mod option_list;
 mod pagination;
+mod piechart;
 mod positioned;
 mod presentation;
 #[cfg(feature = "sysinfo")]
@@ -232,6 +236,7 @@ mod rating;
 mod resizable;
 mod richlog;
 mod richtext;
+mod scatterchart;
 mod screen;
 mod scroll;
 mod search_bar;
@@ -284,6 +289,7 @@ pub use badge::{badge, dot_badge, Badge, BadgeShape, BadgeVariant};
 pub use barchart::{barchart, BarChart, BarOrientation};
 pub use bigtext::{bigtext, h1, h2, h3, BigText};
 pub use border::{border, Border, BorderType};
+pub use boxplot::{boxplot, BoxGroup, BoxPlot, BoxStats, WhiskerStyle};
 pub use breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
 pub use button::{button, Button, ButtonVariant};
 pub use calendar::{
@@ -299,9 +305,11 @@ pub use canvas::{
     DrawContext, FilledCircle, FilledRectangle, Line, Points, Rectangle, Shape,
 };
 pub use card::{card, Card, CardBorder, CardVariant};
-pub use chart::{
-    chart, line_chart, scatter_plot, Axis, AxisFormat, Chart, ChartType, LegendPosition, LineStyle,
-    Marker, Series,
+pub use chart::{chart, line_chart, scatter_plot, Chart, ChartType, LineStyle, Series};
+pub use chart_common::{
+    Axis, AxisFormat, ChartGrid, ChartOrientation, ChartTooltip, ChartTooltipFormat,
+    ChartTooltipPosition, ColorScheme, GridStyle, Legend, LegendOrientation, LegendPosition,
+    Marker,
 };
 pub use checkbox::{checkbox, Checkbox, CheckboxStyle};
 pub use collapsible::{collapsible, Collapsible};
@@ -331,6 +339,7 @@ pub use grid::{
     grid, grid_item, grid_template, Grid, GridAlign, GridItem, GridPlacement, TrackSize,
 };
 pub use heatmap::{contribution_map, heatmap, CellDisplay, ColorScale, HeatMap};
+pub use histogram::{histogram, BinConfig, Histogram, HistogramBin};
 pub use httpclient::{
     get as http_get, http_client, post as http_post, HttpClient, HttpMethod, HttpRequest,
     HttpResponse, RequestState, ResponseView,
@@ -367,6 +376,7 @@ pub use option_list::{
     SeparatorStyle as OptionSeparatorStyle,
 };
 pub use pagination::{pagination, Pagination, PaginationStyle};
+pub use piechart::{donut_chart, pie_chart, PieChart, PieLabelStyle, PieSlice, PieStyle};
 pub use positioned::{positioned, Anchor, Positioned};
 pub use presentation::{presentation, slide, Presentation, Slide, SlideAlign, Transition};
 #[cfg(feature = "sysinfo")]
@@ -384,6 +394,7 @@ pub use rating::{rating, Rating, RatingSize, RatingStyle};
 pub use resizable::{resizable, Resizable, ResizeDirection, ResizeHandle, ResizeStyle};
 pub use richlog::{log_entry, richlog, LogEntry, LogLevel, RichLog};
 pub use richtext::{markup, rich_text, span, style, RichText, Span, Style};
+pub use scatterchart::{bubble_chart, scatter_chart, ScatterChart, ScatterSeries};
 pub use screen::{screen, screen_stack, Screen, ScreenStack, ScreenTransition};
 pub use scroll::{scroll_view, ScrollView};
 pub use search_bar::{search_bar, SearchBar};

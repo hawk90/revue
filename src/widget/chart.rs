@@ -3,6 +3,7 @@
 //! Supports line charts, scatter plots, area charts, and step charts
 //! with multiple series, axes, legends, and grid lines.
 
+pub use super::chart_common::{Axis, AxisFormat, LegendPosition, Marker};
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::layout::Rect;
 use crate::render::Cell;
@@ -33,49 +34,6 @@ pub enum ChartType {
     StepAfter,
     /// Step chart (vertical then horizontal)
     StepBefore,
-}
-
-/// Marker style for data points
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Marker {
-    /// No marker
-    #[default]
-    None,
-    /// Dot marker (•)
-    Dot,
-    /// Circle marker (○)
-    Circle,
-    /// Square marker (□)
-    Square,
-    /// Diamond marker (◇)
-    Diamond,
-    /// Triangle marker (△)
-    Triangle,
-    /// Cross marker (+)
-    Cross,
-    /// X marker (×)
-    X,
-    /// Star marker (★)
-    Star,
-    /// Braille dots for high resolution
-    Braille,
-}
-
-impl Marker {
-    fn char(&self) -> char {
-        match self {
-            Marker::None => ' ',
-            Marker::Dot => '•',
-            Marker::Circle => '○',
-            Marker::Square => '□',
-            Marker::Diamond => '◇',
-            Marker::Triangle => '△',
-            Marker::Cross => '+',
-            Marker::X => '×',
-            Marker::Star => '★',
-            Marker::Braille => '⣿',
-        }
-    }
 }
 
 /// Line style
@@ -197,119 +155,6 @@ impl Series {
         self.chart_type = ChartType::StepAfter;
         self
     }
-}
-
-/// Axis configuration
-#[derive(Clone, Debug)]
-pub struct Axis {
-    /// Axis title
-    pub title: Option<String>,
-    /// Minimum value (auto if None)
-    pub min: Option<f64>,
-    /// Maximum value (auto if None)
-    pub max: Option<f64>,
-    /// Number of tick marks
-    pub ticks: usize,
-    /// Show grid lines
-    pub grid: bool,
-    /// Axis color
-    pub color: Color,
-    /// Label formatter
-    pub format: AxisFormat,
-}
-
-/// Axis label format
-#[derive(Clone, Debug, Default)]
-pub enum AxisFormat {
-    /// Auto format
-    #[default]
-    Auto,
-    /// Integer format
-    Integer,
-    /// Fixed decimal places
-    Fixed(usize),
-    /// Percentage
-    Percent,
-    /// Custom format string
-    Custom(String),
-}
-
-impl Default for Axis {
-    fn default() -> Self {
-        Self {
-            title: None,
-            min: None,
-            max: None,
-            ticks: 5,
-            grid: true,
-            color: Color::rgb(100, 100, 100),
-            format: AxisFormat::Auto,
-        }
-    }
-}
-
-impl Axis {
-    /// Create a new axis
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set title
-    pub fn title(mut self, title: impl Into<String>) -> Self {
-        self.title = Some(title.into());
-        self
-    }
-
-    /// Set bounds
-    pub fn bounds(mut self, min: f64, max: f64) -> Self {
-        self.min = Some(min);
-        self.max = Some(max);
-        self
-    }
-
-    /// Set number of ticks
-    pub fn ticks(mut self, ticks: usize) -> Self {
-        self.ticks = ticks;
-        self
-    }
-
-    /// Enable/disable grid
-    pub fn grid(mut self, show: bool) -> Self {
-        self.grid = show;
-        self
-    }
-
-    /// Set axis color
-    pub fn color(mut self, color: Color) -> Self {
-        self.color = color;
-        self
-    }
-
-    /// Set format
-    pub fn format(mut self, format: AxisFormat) -> Self {
-        self.format = format;
-        self
-    }
-}
-
-/// Legend position
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum LegendPosition {
-    /// Top left
-    TopLeft,
-    /// Top center
-    TopCenter,
-    /// Top right
-    #[default]
-    TopRight,
-    /// Bottom left
-    BottomLeft,
-    /// Bottom center
-    BottomCenter,
-    /// Bottom right
-    BottomRight,
-    /// Hidden
-    None,
 }
 
 /// Chart widget
@@ -965,6 +810,11 @@ impl View for Chart {
                 LegendPosition::BottomRight => (
                     inner_x + inner_w - legend_width - 1,
                     inner_y + inner_h - legend_height - 1,
+                ),
+                LegendPosition::Left => (inner_x + 1, inner_y + (inner_h - legend_height) / 2),
+                LegendPosition::Right => (
+                    inner_x + inner_w - legend_width - 1,
+                    inner_y + (inner_h - legend_height) / 2,
                 ),
                 LegendPosition::None => unreachable!(),
             };

@@ -7,7 +7,7 @@
 | **Styling** | CSS files, variables, selectors, transitions |
 | **Layout** | Flexbox, padding, margin, border |
 | **Reactivity** | Signal, Computed, Effect |
-| **Widgets** | 80+ built-in widgets |
+| **Widgets** | 85+ built-in widgets |
 | **Content** | Markdown, presentations, syntax highlighting, images |
 | **Navigation** | Routing, focus, layers, command palette |
 | **DX** | Hot reload, devtools, testing |
@@ -687,6 +687,182 @@ image("path/to/image.png")
     .width(40)
     .height(20)
 ```
+
+### Chart Widgets
+
+Statistical and data visualization widgets with standardized API.
+
+#### Common Components
+
+All chart widgets share common configuration types:
+
+```rust
+use revue::widget::{Axis, Legend, LegendPosition, ColorScheme, ChartGrid};
+
+// Axis configuration
+Axis::new()
+    .title("X Values")
+    .min(0.0)
+    .max(100.0)
+    .ticks(10)
+    .grid(true)
+
+// Legend positioning
+Legend::new()
+    .position(LegendPosition::TopRight)
+    .orientation(LegendOrientation::Horizontal)
+
+// Color palette
+ColorScheme::default_palette()  // 10 distinct colors
+ColorScheme::monochrome(Color::BLUE)
+```
+
+#### PieChart
+
+Pie and donut charts for showing proportions:
+
+```rust
+use revue::widget::{pie_chart, donut_chart, PieLabelStyle};
+
+// Basic pie chart
+pie_chart()
+    .slice("Category A", 30.0)
+    .slice("Category B", 50.0)
+    .slice("Category C", 20.0)
+    .legend(Legend::bottom())
+    .labels(PieLabelStyle::Percent)
+
+// Donut chart (pie with hole)
+donut_chart()
+    .slice("Used", 75.0)
+    .slice("Free", 25.0)
+    .donut_ratio(0.5)  // 50% hole
+
+// Exploded slice
+pie_chart()
+    .slice("Highlight", 40.0)
+    .slice("Other", 60.0)
+    .explode(0)  // Explode first slice
+```
+
+Features:
+- **Pie/Donut styles**: Solid pie or ring donut
+- **Labels**: None, value, percent, or label text
+- **Legend**: Configurable position and orientation
+- **Explode**: Highlight a slice by pulling it out
+- **Custom colors**: Per-slice or auto-palette
+
+#### ScatterChart
+
+Scatter and bubble charts for X-Y data:
+
+```rust
+use revue::widget::{scatter_chart, bubble_chart, ScatterSeries, Marker};
+
+// Basic scatter plot
+scatter_chart()
+    .series(ScatterSeries::new("Data A")
+        .points(&[(1.0, 2.0), (3.0, 4.0), (5.0, 3.0)]))
+    .x_axis(Axis::new().title("X"))
+    .y_axis(Axis::new().title("Y"))
+
+// Multiple series
+scatter_chart()
+    .series(ScatterSeries::new("Group 1").points(&data1))
+    .series(ScatterSeries::new("Group 2").points(&data2))
+    .legend(Legend::top_right())
+
+// Bubble chart (size by value)
+bubble_chart()
+    .series(ScatterSeries::new("Bubbles")
+        .points(&[(1.0, 2.0), (3.0, 4.0)])
+        .sizes(&[10.0, 20.0]))  // Bubble sizes
+```
+
+Features:
+- **Multiple series**: Compare different datasets
+- **Bubble mode**: Size points by third variable
+- **Markers**: Circle, square, triangle, diamond, cross
+- **Grid**: X/Y gridlines with configurable style
+- **Auto-scaling**: Automatic axis bounds calculation
+
+#### Histogram
+
+Distribution histograms for statistical data:
+
+```rust
+use revue::widget::{histogram, BinConfig};
+
+// Basic histogram
+histogram(&data)
+    .bins(BinConfig::Count(20))
+    .x_axis(Axis::new().title("Value"))
+    .y_axis(Axis::new().title("Frequency"))
+
+// Automatic binning (Sturges' rule)
+histogram(&data)
+    .bins(BinConfig::Auto)
+
+// Density histogram (normalized)
+histogram(&data)
+    .density(true)
+    .y_axis(Axis::new().title("Density"))
+
+// With statistics overlay
+histogram(&data)
+    .show_stats(true)  // Mean/median lines
+    .cumulative(true)  // Cumulative distribution
+
+// Custom bin edges
+histogram(&data)
+    .bins(BinConfig::Edges(vec![0.0, 10.0, 20.0, 50.0, 100.0]))
+```
+
+Features:
+- **Binning**: Auto, count, width, or custom edges
+- **Density**: Normalize to probability density
+- **Cumulative**: Show cumulative distribution
+- **Statistics**: Mean/median lines overlay
+- **Orientation**: Vertical or horizontal bars
+
+#### BoxPlot
+
+Box-and-whisker plots for distribution comparison:
+
+```rust
+use revue::widget::{boxplot, BoxGroup, WhiskerStyle};
+
+// Basic box plot
+boxplot()
+    .group("Group A", &data_a)
+    .group("Group B", &data_b)
+    .group("Group C", &data_c)
+    .value_axis(Axis::new().title("Values"))
+
+// Show outliers
+boxplot()
+    .group("Data", &data)
+    .show_outliers(true)
+    .whisker_style(WhiskerStyle::IQR)  // 1.5 * IQR
+
+// Notched box plot
+boxplot()
+    .group("Sample", &data)
+    .notched(true)  // Show confidence interval
+
+// Horizontal orientation
+boxplot()
+    .group("Distribution", &data)
+    .horizontal()
+```
+
+Features:
+- **Multiple groups**: Compare distributions side-by-side
+- **Outliers**: Show/hide outlier points
+- **Whisker styles**: IQR (1.5×), min-max, or percentile
+- **Notched**: Show median confidence interval
+- **Orientation**: Vertical or horizontal
+- **Statistics**: Min, Q1, median, Q3, max, outliers
 
 ### Special Widgets
 

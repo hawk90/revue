@@ -303,7 +303,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// - [`layout::Rect`] - Rectangle geometry
 ///
 /// ## Widgets
-/// All 80+ widgets and their constructors are included.
+/// All 85+ widgets and their constructors are included.
 /// See [`widget`] module documentation for the full list.
 ///
 /// ## Testing
