@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.17.0](https://github.com/hawk90/revue/compare/v2.16.0...v2.17.0) (2026-01-09)
+
+
+### Features
+
+* **widget:** add chart widgets (PieChart, ScatterChart, Histogram, BoxPlot) ([#99](https://github.com/hawk90/revue/issues/99)) ([9ab48d4](https://github.com/hawk90/revue/commit/9ab48d4ed649d7d161f1edb98487e9c8f1cb603c)), closes [#12](https://github.com/hawk90/revue/issues/12) [#13](https://github.com/hawk90/revue/issues/13) [#14](https://github.com/hawk90/revue/issues/14) [#15](https://github.com/hawk90/revue/issues/15) [#36](https://github.com/hawk90/revue/issues/36)
+
 ## [2.16.0](https://github.com/hawk90/revue/compare/v2.15.0...v2.16.0) (2026-01-09)
 
 
