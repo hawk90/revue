@@ -184,6 +184,8 @@ mod canvas;
 mod card;
 mod chart;
 mod chart_common;
+mod chart_render;
+mod chart_stats;
 mod checkbox;
 mod collapsible;
 mod color_picker;
