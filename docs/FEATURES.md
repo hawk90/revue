@@ -7,7 +7,8 @@
 | **Styling** | CSS files, variables, selectors, transitions |
 | **Layout** | Flexbox, padding, margin, border |
 | **Reactivity** | Signal, Computed, Effect |
-| **Widgets** | 85+ built-in widgets |
+| **Widgets** | 100+ built-in widgets |
+| **Charts** | Line, Bar, Pie, Scatter, Histogram, BoxPlot, HeatMap |
 | **Content** | Markdown, presentations, syntax highlighting, images |
 | **Navigation** | Routing, focus, layers, command palette |
 | **DX** | Hot reload, devtools, testing |

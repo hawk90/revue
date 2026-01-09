@@ -26,7 +26,7 @@
 
 - **CSS Styling** — Write styles in familiar CSS syntax with variables, selectors, and animations
 - **Reactive State** — Vue-inspired `Signal`/`Computed`/`Effect` system for automatic UI updates
-- **80+ Widgets** — Rich component library: inputs, tables, charts, markdown, images, and more
+- **100+ Widgets** — Rich component library: inputs, tables, charts, markdown, images, and more
 - **Hot Reload** — See CSS changes instantly without restarting your app
 - **Developer Tools** — Widget inspector, snapshot testing, and performance profiler built-in
 - **Single Binary** — Pure Rust, no runtime dependencies, blazing fast
