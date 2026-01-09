@@ -377,6 +377,96 @@ Features:
 | Tab | Switch between date and time mode |
 | Enter | Select current date |
 
+#### TextArea
+
+Multi-line text editor with syntax highlighting, undo/redo, find/replace, and multiple cursors:
+
+```rust
+use revue::widget::textarea;
+
+// Basic usage
+textarea()
+    .content("Initial text")
+    .placeholder("Enter text...")
+    .on_change(|text| content.set(text))
+
+// With syntax highlighting
+textarea()
+    .language("rust")
+    .theme("one-dark")
+    .line_numbers(true)
+
+// Read-only mode
+textarea()
+    .content(code)
+    .read_only(true)
+```
+
+**Find/Replace:**
+
+```rust
+let mut editor = textarea();
+
+// Open find panel (Ctrl+F)
+editor.open_find();
+editor.set_find_query("search term");
+
+// Search options
+editor.toggle_case_sensitive();
+editor.toggle_whole_word();
+editor.toggle_regex();
+
+// Navigate matches
+editor.find_next();      // F3
+editor.find_previous();  // Shift+F3
+
+// Replace (Ctrl+H)
+editor.open_replace();
+editor.set_replace_text("replacement");
+editor.replace_current();
+editor.replace_all();
+```
+
+**Multiple Cursors:**
+
+```rust
+// Add cursor at position
+editor.add_cursor_at(5, 10);  // line 5, column 10
+
+// Add cursor above/below current
+editor.add_cursor_above();  // Ctrl+Alt+Up
+editor.add_cursor_below();  // Ctrl+Alt+Down
+
+// Select next occurrence (Ctrl+D)
+editor.select_next_occurrence();
+
+// Clear secondary cursors
+editor.clear_secondary_cursors();  // Escape
+```
+
+| Key | Action |
+|-----|--------|
+| **Editing** |
+| Ctrl+Z | Undo |
+| Ctrl+Y / Ctrl+Shift+Z | Redo |
+| Ctrl+D | Duplicate line |
+| Ctrl+Shift+K | Delete line |
+| **Find/Replace** |
+| Ctrl+F | Open find panel |
+| Ctrl+H | Open replace panel |
+| F3 | Find next |
+| Shift+F3 | Find previous |
+| Escape | Close find panel |
+| **Multiple Cursors** |
+| Ctrl+D | Select next occurrence |
+| Ctrl+Alt+↑ | Add cursor above |
+| Ctrl+Alt+↓ | Add cursor below |
+| Escape | Clear secondary cursors |
+| **Selection** |
+| Ctrl+A | Select all |
+| Shift+Arrow | Extend selection |
+| Ctrl+Shift+Arrow | Extend selection by word |
+
 ### Navigation Widgets
 
 #### Tabs
