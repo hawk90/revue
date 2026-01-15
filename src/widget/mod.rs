@@ -1,6 +1,6 @@
 //! Widget system for Revue TUI framework.
 //!
-//! This module provides 90+ widgets for building terminal user interfaces.
+//! This module provides 92+ widgets for building terminal user interfaces.
 //! Widgets are organized into categories for easy discovery.
 //!
 //! # Widget Categories
@@ -193,6 +193,7 @@ mod chart_common;
 mod chart_render;
 mod chart_stats;
 mod checkbox;
+mod code_editor;
 mod collapsible;
 mod color_picker;
 mod combobox;
@@ -247,6 +248,7 @@ mod radio;
 mod range_picker;
 mod rating;
 mod resizable;
+mod rich_text_editor;
 mod richlog;
 mod richtext;
 mod scatterchart;
@@ -327,6 +329,9 @@ pub use chart_common::{
     Marker,
 };
 pub use checkbox::{checkbox, Checkbox, CheckboxStyle};
+pub use code_editor::{
+    code_editor, BracketMatch, BracketPair, CodeEditor, EditorConfig, IndentStyle,
+};
 pub use collapsible::{collapsible, Collapsible};
 pub use color_picker::{color_picker, ColorPalette, ColorPicker, ColorPickerMode};
 pub use combobox::{combobox, ComboOption, Combobox, FilterMode as ComboFilterMode};
@@ -414,6 +419,10 @@ pub use range_picker::{
 };
 pub use rating::{rating, Rating, RatingSize, RatingStyle};
 pub use resizable::{resizable, Resizable, ResizeDirection, ResizeHandle, ResizeStyle};
+pub use rich_text_editor::{
+    rich_text_editor, Block, BlockType, EditorViewMode, FormattedSpan, ImageRef,
+    Link as MarkdownLink, RichTextEditor, TextFormat, ToolbarAction,
+};
 pub use richlog::{log_entry, richlog, LogEntry, LogLevel, RichLog};
 pub use richtext::{markup, rich_text, span, style, RichText, Span, Style};
 pub use scatterchart::{bubble_chart, scatter_chart, ScatterChart, ScatterSeries};
