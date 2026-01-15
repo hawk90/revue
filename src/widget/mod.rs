@@ -1,6 +1,6 @@
 //! Widget system for Revue TUI framework.
 //!
-//! This module provides 86+ widgets for building terminal user interfaces.
+//! This module provides 87+ widgets for building terminal user interfaces.
 //! Widgets are organized into categories for easy discovery.
 //!
 //! # Widget Categories
@@ -94,6 +94,7 @@
 //! | [`NotificationCenter`] | Notification manager | [`notification_center()`] |
 //! | [`Menu`] | Dropdown menu | [`menu()`] |
 //! | [`ContextMenu`] | Right-click menu | [`context_menu()`] |
+//! | [`Popover`] | Anchor-positioned overlay | [`popover()`] |
 //! | [`StatusBar`] | App status bar | [`statusbar()`] |
 //!
 //! ## Developer Widgets
@@ -227,6 +228,7 @@ mod number_input;
 mod option_list;
 mod pagination;
 mod piechart;
+mod popover;
 mod positioned;
 mod presentation;
 #[cfg(feature = "sysinfo")]
@@ -384,6 +386,7 @@ pub use option_list::{
 };
 pub use pagination::{pagination, Pagination, PaginationStyle};
 pub use piechart::{donut_chart, pie_chart, PieChart, PieLabelStyle, PieSlice, PieStyle};
+pub use popover::{popover, Popover, PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger};
 pub use positioned::{positioned, Anchor, Positioned};
 pub use presentation::{presentation, slide, Presentation, Slide, SlideAlign, Transition};
 #[cfg(feature = "sysinfo")]
