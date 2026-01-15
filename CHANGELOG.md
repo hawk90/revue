@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.23.0](https://github.com/hawk90/revue/compare/v2.22.0...v2.23.0) (2026-01-15)
+
+
+### Features
+
+* **widget:** add CSV and JSON viewer widgets ([#113](https://github.com/hawk90/revue/issues/113)) ([7d8d9e3](https://github.com/hawk90/revue/commit/7d8d9e3c4ec6193e0ed9545953ddd2483a997780)), closes [#33](https://github.com/hawk90/revue/issues/33) [#34](https://github.com/hawk90/revue/issues/34)
+
 ## [2.22.0](https://github.com/hawk90/revue/compare/v2.21.0...v2.22.0) (2026-01-15)
 
 
