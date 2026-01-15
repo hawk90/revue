@@ -36,6 +36,7 @@
 //! | [`browser`] | System browser and URL utilities |
 //! | [`profiler`] | Performance profiling and timing |
 //! | [`lock`] | Lock utilities for consistent poison handling |
+//! | [`debounce`] | Debounce and throttle utilities for events |
 
 pub mod accessibility;
 pub mod accessibility_signal;
@@ -45,6 +46,7 @@ pub mod border;
 pub mod browser;
 pub mod clipboard;
 pub mod color;
+pub mod debounce;
 pub mod diff;
 pub mod easing;
 pub mod figlet;
@@ -287,3 +289,6 @@ pub use text_sizing::{is_supported as text_sizing_supported, TextSizing};
 
 // Lock utilities
 pub use lock::{lock_or_recover, read_or_recover, write_or_recover};
+
+// Debounce and Throttle
+pub use debounce::{debounce_ms, debouncer, throttle, throttle_ms, Debouncer, Edge, Throttle};
