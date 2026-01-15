@@ -1235,4 +1235,425 @@ mod tests {
     fn test_filter_mode_default() {
         assert_eq!(FilterMode::default(), FilterMode::Fuzzy);
     }
+
+    // Additional tests for coverage
+
+    #[test]
+    fn test_combobox_builder_methods() {
+        let cb = Combobox::new()
+            .loading_text("Please wait...")
+            .empty_text("Nothing found")
+            .width(50)
+            .input_style(Color::WHITE, Color::BLACK)
+            .selected_style(Color::BLACK, Color::WHITE)
+            .highlight_fg(Color::YELLOW)
+            .fg(Color::WHITE)
+            .bg(Color::BLACK);
+
+        assert_eq!(cb.loading_text, "Please wait...");
+        assert_eq!(cb.empty_text, "Nothing found");
+        assert_eq!(cb.width, Some(50));
+    }
+
+    #[test]
+    fn test_combobox_selected_values() {
+        let cb = Combobox::new()
+            .multi_select(true)
+            .selected_values(vec!["A".to_string(), "B".to_string()]);
+
+        assert_eq!(cb.selected_values_ref(), &["A", "B"]);
+    }
+
+    #[test]
+    fn test_combobox_delete_forward() {
+        let mut cb = Combobox::new().value("Hello");
+        cb.move_to_start();
+        cb.delete_forward();
+        assert_eq!(cb.input(), "ello");
+    }
+
+    #[test]
+    fn test_combobox_delete_forward_at_end() {
+        let mut cb = Combobox::new().value("Hi");
+        // Cursor at end, delete_forward should do nothing
+        cb.delete_forward();
+        assert_eq!(cb.input(), "Hi");
+    }
+
+    #[test]
+    fn test_combobox_delete_backward_at_start() {
+        let mut cb = Combobox::new().value("Hi");
+        cb.move_to_start();
+        cb.delete_backward();
+        assert_eq!(cb.input(), "Hi"); // Nothing deleted
+    }
+
+    #[test]
+    fn test_combobox_move_right_at_end() {
+        let mut cb = Combobox::new().value("Hi");
+        cb.move_right(); // Already at end
+        assert_eq!(cb.cursor, 2);
+    }
+
+    #[test]
+    fn test_combobox_move_left_at_start() {
+        let mut cb = Combobox::new().value("Hi");
+        cb.move_to_start();
+        cb.move_left(); // Already at start
+        assert_eq!(cb.cursor, 0);
+    }
+
+    #[test]
+    fn test_combobox_toggle_dropdown() {
+        let mut cb = Combobox::new().options(vec!["A", "B"]);
+        assert!(!cb.is_open());
+
+        cb.toggle_dropdown();
+        assert!(cb.is_open());
+
+        cb.toggle_dropdown();
+        assert!(!cb.is_open());
+    }
+
+    #[test]
+    fn test_combobox_handle_key_down_when_closed() {
+        use crate::event::Key;
+
+        let mut cb = Combobox::new().options(vec!["Apple", "Banana"]);
+        assert!(!cb.is_open());
+
+        cb.handle_key(&Key::Down);
+        assert!(cb.is_open()); // Down opens dropdown
+    }
+
+    #[test]
+    fn test_combobox_handle_key_tab_completion() {
+        use crate::event::Key;
+
+        let mut cb = Combobox::new().options(vec!["Apple", "Banana"]);
+        cb.open_dropdown();
+        cb.handle_key(&Key::Tab);
+
+        assert_eq!(cb.input(), "Apple"); // First option filled
+    }
+
+    #[test]
+    fn test_combobox_handle_key_delete() {
+        use crate::event::Key;
+
+        let mut cb = Combobox::new().value("Hello");
+        cb.move_to_start();
+        cb.handle_key(&Key::Delete);
+        assert_eq!(cb.input(), "ello");
+    }
+
+    #[test]
+    fn test_combobox_handle_key_home_end() {
+        use crate::event::Key;
+
+        let mut cb = Combobox::new().value("Hello");
+        cb.handle_key(&Key::Home);
+        assert_eq!(cb.cursor, 0);
+
+        cb.handle_key(&Key::End);
+        assert_eq!(cb.cursor, 5);
+    }
+
+    #[test]
+    fn test_combobox_handle_key_left_right() {
+        use crate::event::Key;
+
+        let mut cb = Combobox::new().value("Hi");
+        cb.handle_key(&Key::Left);
+        assert_eq!(cb.cursor, 1);
+
+        cb.handle_key(&Key::Right);
+        assert_eq!(cb.cursor, 2);
+    }
+
+    #[test]
+    fn test_combobox_handle_key_up_when_open() {
+        use crate::event::Key;
+
+        let mut cb = Combobox::new().options(vec!["A", "B", "C"]);
+        cb.open_dropdown();
+        cb.select_next(); // Go to B
+        cb.handle_key(&Key::Up);
+        assert_eq!(cb.selected_idx, 0); // Back to A
+    }
+
+    #[test]
+    fn test_combobox_handle_key_unhandled() {
+        use crate::event::Key;
+
+        let mut cb = Combobox::new();
+        let handled = cb.handle_key(&Key::F(1));
+        assert!(!handled);
+    }
+
+    #[test]
+    fn test_combobox_selected_value_from_option() {
+        let cb = Combobox::new()
+            .options(vec!["Apple", "Banana"])
+            .value("Apple");
+
+        assert_eq!(cb.selected_value(), Some("Apple"));
+    }
+
+    #[test]
+    fn test_combobox_selected_value_multi_select_returns_none() {
+        let cb = Combobox::new()
+            .options(vec!["A", "B"])
+            .multi_select(true)
+            .value("A");
+
+        assert_eq!(cb.selected_value(), None);
+    }
+
+    #[test]
+    fn test_combobox_selected_value_no_match_no_custom() {
+        let cb = Combobox::new()
+            .options(vec!["Apple", "Banana"])
+            .value("Custom");
+
+        assert_eq!(cb.selected_value(), None);
+    }
+
+    #[test]
+    fn test_combobox_get_match_non_fuzzy() {
+        let cb = Combobox::new()
+            .options(vec!["Apple"])
+            .filter_mode(FilterMode::Prefix)
+            .value("App");
+
+        // get_match only works for fuzzy mode
+        assert!(cb.get_match("Apple").is_none());
+    }
+
+    #[test]
+    fn test_combobox_select_on_empty_filtered() {
+        let mut cb = Combobox::new().options(vec!["Apple"]);
+        cb.set_input("xyz"); // No matches
+        let selected = cb.select_current();
+        assert!(!selected);
+    }
+
+    #[test]
+    fn test_combobox_navigation_empty_options() {
+        let mut cb = Combobox::new();
+        cb.select_next(); // Should not panic
+        cb.select_prev();
+        cb.select_last();
+        assert_eq!(cb.selected_idx, 0);
+    }
+
+    #[test]
+    fn test_combobox_render_loading_state() {
+        let mut buffer = Buffer::new(30, 10);
+        let area = Rect::new(0, 0, 30, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut cb = Combobox::new()
+            .options(vec!["A", "B"])
+            .loading(true)
+            .loading_text("Loading...")
+            .width(30); // Set explicit width
+        cb.open_dropdown();
+
+        cb.render(&mut ctx);
+
+        // Verify loading indicator is shown (at width - 2)
+        assert_eq!(buffer.get(28, 0).unwrap().symbol, '⟳');
+    }
+
+    #[test]
+    fn test_combobox_render_empty_state() {
+        let mut buffer = Buffer::new(30, 10);
+        let area = Rect::new(0, 0, 30, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut cb = Combobox::new()
+            .options(vec!["Apple", "Banana"])
+            .empty_text("No results");
+        cb.set_input("xyz"); // No matches
+        cb.open_dropdown();
+
+        cb.render(&mut ctx);
+        // Empty state should be rendered
+    }
+
+    #[test]
+    fn test_combobox_render_with_scroll_indicators() {
+        let mut buffer = Buffer::new(30, 5);
+        let area = Rect::new(0, 0, 30, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut cb = Combobox::new()
+            .options(vec!["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"])
+            .max_visible(3);
+        cb.open_dropdown();
+
+        // Navigate down to trigger scroll
+        for _ in 0..5 {
+            cb.select_next();
+        }
+
+        cb.render(&mut ctx);
+        // Scroll indicators should be visible
+    }
+
+    #[test]
+    fn test_combobox_render_multi_select() {
+        let mut buffer = Buffer::new(30, 10);
+        let area = Rect::new(0, 0, 30, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut cb = Combobox::new()
+            .options(vec!["A", "B", "C"])
+            .multi_select(true);
+        cb.open_dropdown();
+        cb.select_current(); // Select "A"
+
+        cb.render(&mut ctx);
+        // Multi-select checkboxes should be rendered
+    }
+
+    #[test]
+    fn test_combobox_render_with_input() {
+        let mut buffer = Buffer::new(30, 10);
+        let area = Rect::new(0, 0, 30, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut cb = Combobox::new().options(vec!["Apple", "Banana"]);
+        cb.set_input("App");
+        cb.open_dropdown();
+
+        cb.render(&mut ctx);
+        // Input and filtered options should be rendered with highlights
+    }
+
+    #[test]
+    fn test_combobox_render_disabled_option() {
+        let mut buffer = Buffer::new(30, 10);
+        let area = Rect::new(0, 0, 30, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut cb = Combobox::new().options_with(vec![
+            ComboOption::new("Enabled"),
+            ComboOption::new("Disabled").disabled(true),
+        ]);
+        cb.open_dropdown();
+
+        cb.render(&mut ctx);
+        // Disabled option should be rendered with disabled color
+    }
+
+    #[test]
+    fn test_combobox_render_small_area() {
+        let mut buffer = Buffer::new(2, 1);
+        let area = Rect::new(0, 0, 2, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let cb = Combobox::new().options(vec!["A"]);
+        cb.render(&mut ctx);
+        // Should handle small area gracefully (early return)
+    }
+
+    #[test]
+    fn test_combobox_render_height_one() {
+        let mut buffer = Buffer::new(30, 1);
+        let area = Rect::new(0, 0, 30, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut cb = Combobox::new().options(vec!["A", "B"]);
+        cb.open_dropdown();
+        cb.render(&mut ctx);
+        // Dropdown shouldn't render when height is 1
+    }
+
+    #[test]
+    fn test_combobox_default() {
+        let cb = Combobox::default();
+        assert!(cb.input().is_empty());
+        assert!(!cb.is_open());
+    }
+
+    #[test]
+    fn test_combo_option_from_string() {
+        let opt: ComboOption = "Test".into();
+        assert_eq!(opt.label, "Test");
+        assert_eq!(opt.get_value(), "Test");
+    }
+
+    #[test]
+    fn test_combobox_ensure_visible_scroll_up() {
+        let mut cb = Combobox::new()
+            .options(vec!["A", "B", "C", "D", "E", "F", "G", "H"])
+            .max_visible(3);
+
+        cb.open_dropdown();
+
+        // Scroll down
+        for _ in 0..7 {
+            cb.select_next();
+        }
+        assert!(cb.scroll_offset > 0);
+
+        // Now scroll back up
+        for _ in 0..7 {
+            cb.select_prev();
+        }
+        assert_eq!(cb.scroll_offset, 0);
+    }
+
+    #[test]
+    fn test_combobox_handle_key_enter_not_open_allow_custom() {
+        use crate::event::Key;
+
+        let mut cb = Combobox::new()
+            .options(vec!["A", "B"])
+            .allow_custom(true)
+            .value("Custom");
+
+        // Enter when not open with allow_custom
+        let handled = cb.handle_key(&Key::Enter);
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_combobox_option_with_separate_value() {
+        let mut cb = Combobox::new()
+            .options_with(vec![ComboOption::new("Display Name").value("actual_value")]);
+
+        cb.open_dropdown();
+        cb.select_current();
+
+        // Input should be label, but value lookup should work
+        assert_eq!(cb.input(), "Display Name");
+    }
+
+    #[test]
+    fn test_combobox_cursor_render_boundary() {
+        let mut buffer = Buffer::new(10, 5);
+        let area = Rect::new(0, 0, 10, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut cb = Combobox::new().value("Very long text that exceeds width");
+        cb.render(&mut ctx);
+        // Should handle cursor at boundary correctly
+    }
+
+    #[test]
+    fn test_combobox_render_highlighted_option() {
+        let mut buffer = Buffer::new(30, 10);
+        let area = Rect::new(0, 0, 30, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut cb = Combobox::new().options(vec!["Apple", "Banana", "Cherry"]);
+        cb.open_dropdown();
+        cb.select_next(); // Highlight "Banana"
+
+        cb.render(&mut ctx);
+        // Should render with selected style
+    }
 }
