@@ -1,0 +1,1599 @@
+//! Advanced Log Viewer widget
+//!
+//! Provides a feature-rich log viewer with regex search, filtering, bookmarks,
+//! JSON log parsing, live tail mode, and timestamp navigation.
+
+use super::traits::{RenderContext, View, WidgetProps};
+use crate::event::Key;
+use crate::render::{Cell, Modifier};
+use crate::style::Color;
+use crate::{impl_props_builders, impl_styled_view};
+
+/// Log level for filtering and display
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum LogLevel {
+    /// Trace-level logging (most verbose)
+    Trace,
+    /// Debug-level logging
+    Debug,
+    /// Info-level logging (default)
+    #[default]
+    Info,
+    /// Warning-level logging
+    Warning,
+    /// Error-level logging
+    Error,
+    /// Fatal/critical-level logging (most severe)
+    Fatal,
+}
+
+impl LogLevel {
+    /// Get display color for this log level
+    pub fn color(&self) -> Color {
+        match self {
+            LogLevel::Trace => Color::rgb(100, 100, 100),
+            LogLevel::Debug => Color::rgb(150, 150, 150),
+            LogLevel::Info => Color::CYAN,
+            LogLevel::Warning => Color::YELLOW,
+            LogLevel::Error => Color::RED,
+            LogLevel::Fatal => Color::rgb(255, 50, 50),
+        }
+    }
+
+    /// Get icon character for this log level
+    pub fn icon(&self) -> char {
+        match self {
+            LogLevel::Trace => '·',
+            LogLevel::Debug => '○',
+            LogLevel::Info => '●',
+            LogLevel::Warning => '⚠',
+            LogLevel::Error => '✗',
+            LogLevel::Fatal => '☠',
+        }
+    }
+
+    /// Get short label for this log level
+    pub fn label(&self) -> &'static str {
+        match self {
+            LogLevel::Trace => "TRC",
+            LogLevel::Debug => "DBG",
+            LogLevel::Info => "INF",
+            LogLevel::Warning => "WRN",
+            LogLevel::Error => "ERR",
+            LogLevel::Fatal => "FTL",
+        }
+    }
+
+    /// Parse log level from string (case-insensitive)
+    pub fn parse(s: &str) -> Option<LogLevel> {
+        match s.to_uppercase().as_str() {
+            "TRACE" | "TRC" => Some(LogLevel::Trace),
+            "DEBUG" | "DBG" => Some(LogLevel::Debug),
+            "INFO" | "INF" => Some(LogLevel::Info),
+            "WARN" | "WARNING" | "WRN" => Some(LogLevel::Warning),
+            "ERROR" | "ERR" => Some(LogLevel::Error),
+            "FATAL" | "FTL" | "CRITICAL" | "CRIT" => Some(LogLevel::Fatal),
+            _ => None,
+        }
+    }
+}
+
+/// Timestamp format for parsing and display
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TimestampFormat {
+    /// ISO 8601 format (2024-01-15T10:30:00)
+    #[default]
+    Iso8601,
+    /// Unix timestamp (seconds since epoch)
+    Unix,
+    /// Unix timestamp (milliseconds)
+    UnixMillis,
+    /// Time only (HH:MM:SS)
+    TimeOnly,
+    /// Date and time (YYYY-MM-DD HH:MM:SS)
+    DateTime,
+    /// Custom format (use with parser)
+    Custom,
+}
+
+/// A parsed log entry
+#[derive(Clone, Debug)]
+pub struct LogEntry {
+    /// Original raw line
+    pub raw: String,
+    /// Parsed message content
+    pub message: String,
+    /// Detected log level
+    pub level: LogLevel,
+    /// Parsed timestamp string
+    pub timestamp: Option<String>,
+    /// Timestamp as sortable value (for jump-to-time)
+    pub timestamp_value: Option<i64>,
+    /// Source/logger name
+    pub source: Option<String>,
+    /// Line number in original source
+    pub line_number: usize,
+    /// Is this line bookmarked
+    pub bookmarked: bool,
+    /// Parsed JSON fields (if JSON log)
+    pub json_fields: Option<Vec<(String, String)>>,
+    /// Is expanded to show full details
+    pub expanded: bool,
+}
+
+impl LogEntry {
+    /// Create a new log entry from raw text
+    pub fn new(raw: impl Into<String>, line_number: usize) -> Self {
+        let raw = raw.into();
+        Self {
+            message: raw.clone(),
+            raw,
+            level: LogLevel::Info,
+            timestamp: None,
+            timestamp_value: None,
+            source: None,
+            line_number,
+            bookmarked: false,
+            json_fields: None,
+            expanded: false,
+        }
+    }
+
+    /// Set log level
+    pub fn level(mut self, level: LogLevel) -> Self {
+        self.level = level;
+        self
+    }
+
+    /// Set message
+    pub fn message(mut self, msg: impl Into<String>) -> Self {
+        self.message = msg.into();
+        self
+    }
+
+    /// Set timestamp
+    pub fn timestamp(mut self, ts: impl Into<String>) -> Self {
+        self.timestamp = Some(ts.into());
+        self
+    }
+
+    /// Set timestamp value for sorting
+    pub fn timestamp_value(mut self, value: i64) -> Self {
+        self.timestamp_value = Some(value);
+        self
+    }
+
+    /// Set source
+    pub fn source(mut self, src: impl Into<String>) -> Self {
+        self.source = Some(src.into());
+        self
+    }
+
+    /// Set JSON fields
+    pub fn json_fields(mut self, fields: Vec<(String, String)>) -> Self {
+        self.json_fields = Some(fields);
+        self
+    }
+
+    /// Toggle bookmark status
+    pub fn toggle_bookmark(&mut self) {
+        self.bookmarked = !self.bookmarked;
+    }
+
+    /// Toggle expanded state
+    pub fn toggle_expanded(&mut self) {
+        self.expanded = !self.expanded;
+    }
+}
+
+/// Search match information
+#[derive(Clone, Debug)]
+pub struct SearchMatch {
+    /// Entry index
+    pub entry_index: usize,
+    /// Start position in message
+    pub start: usize,
+    /// End position in message
+    pub end: usize,
+}
+
+/// Filter configuration
+#[derive(Clone, Debug, Default)]
+pub struct LogFilter {
+    /// Minimum log level to display
+    pub min_level: Option<LogLevel>,
+    /// Show only specific levels
+    pub levels: Option<Vec<LogLevel>>,
+    /// Text contains filter
+    pub contains: Option<String>,
+    /// Source filter
+    pub source: Option<String>,
+    /// Show only bookmarked entries
+    pub bookmarked_only: bool,
+    /// Time range start
+    pub time_start: Option<i64>,
+    /// Time range end
+    pub time_end: Option<i64>,
+}
+
+impl LogFilter {
+    /// Create a new empty filter
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set minimum level
+    pub fn min_level(mut self, level: LogLevel) -> Self {
+        self.min_level = Some(level);
+        self
+    }
+
+    /// Set specific levels to show
+    pub fn levels(mut self, levels: Vec<LogLevel>) -> Self {
+        self.levels = Some(levels);
+        self
+    }
+
+    /// Set contains filter
+    pub fn contains(mut self, text: impl Into<String>) -> Self {
+        self.contains = Some(text.into());
+        self
+    }
+
+    /// Set source filter
+    pub fn source(mut self, src: impl Into<String>) -> Self {
+        self.source = Some(src.into());
+        self
+    }
+
+    /// Show only bookmarked
+    pub fn bookmarked_only(mut self) -> Self {
+        self.bookmarked_only = true;
+        self
+    }
+
+    /// Set time range
+    pub fn time_range(mut self, start: i64, end: i64) -> Self {
+        self.time_start = Some(start);
+        self.time_end = Some(end);
+        self
+    }
+
+    /// Check if entry matches filter
+    pub fn matches(&self, entry: &LogEntry) -> bool {
+        // Check minimum level
+        if let Some(min) = self.min_level {
+            if entry.level < min {
+                return false;
+            }
+        }
+
+        // Check specific levels
+        if let Some(ref levels) = self.levels {
+            if !levels.contains(&entry.level) {
+                return false;
+            }
+        }
+
+        // Check contains
+        if let Some(ref text) = self.contains {
+            let lower_text = text.to_lowercase();
+            if !entry.message.to_lowercase().contains(&lower_text)
+                && !entry.raw.to_lowercase().contains(&lower_text)
+            {
+                return false;
+            }
+        }
+
+        // Check source
+        if let Some(ref src) = self.source {
+            if let Some(ref entry_src) = entry.source {
+                if !entry_src.to_lowercase().contains(&src.to_lowercase()) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        // Check bookmarked
+        if self.bookmarked_only && !entry.bookmarked {
+            return false;
+        }
+
+        // Check time range
+        if let Some(ts) = entry.timestamp_value {
+            if let Some(start) = self.time_start {
+                if ts < start {
+                    return false;
+                }
+            }
+            if let Some(end) = self.time_end {
+                if ts > end {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+}
+
+/// Log parsing configuration
+#[derive(Clone, Debug)]
+pub struct LogParser {
+    /// Enable JSON log parsing
+    pub json_parsing: bool,
+    /// Timestamp regex pattern
+    pub timestamp_pattern: Option<String>,
+    /// Level regex pattern
+    pub level_pattern: Option<String>,
+    /// Source regex pattern
+    pub source_pattern: Option<String>,
+    /// Message regex pattern
+    pub message_pattern: Option<String>,
+    /// JSON level field name
+    pub json_level_field: String,
+    /// JSON message field name
+    pub json_message_field: String,
+    /// JSON timestamp field name
+    pub json_timestamp_field: String,
+    /// JSON source field name
+    pub json_source_field: String,
+}
+
+impl Default for LogParser {
+    fn default() -> Self {
+        Self {
+            json_parsing: true,
+            timestamp_pattern: None,
+            level_pattern: None,
+            source_pattern: None,
+            message_pattern: None,
+            json_level_field: "level".to_string(),
+            json_message_field: "msg".to_string(),
+            json_timestamp_field: "time".to_string(),
+            json_source_field: "source".to_string(),
+        }
+    }
+}
+
+impl LogParser {
+    /// Create a new parser with default settings
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Enable/disable JSON parsing
+    pub fn json_parsing(mut self, enable: bool) -> Self {
+        self.json_parsing = enable;
+        self
+    }
+
+    /// Set JSON field names
+    pub fn json_fields(
+        mut self,
+        level: impl Into<String>,
+        message: impl Into<String>,
+        timestamp: impl Into<String>,
+    ) -> Self {
+        self.json_level_field = level.into();
+        self.json_message_field = message.into();
+        self.json_timestamp_field = timestamp.into();
+        self
+    }
+
+    /// Parse a raw log line into a LogEntry
+    pub fn parse(&self, raw: &str, line_number: usize) -> LogEntry {
+        let mut entry = LogEntry::new(raw, line_number);
+
+        // Try JSON parsing first
+        if self.json_parsing && raw.trim_start().starts_with('{') {
+            if let Some(parsed) = self.parse_json(raw) {
+                return parsed.line_number(line_number);
+            }
+        }
+
+        // Try common log formats
+        self.parse_standard(&mut entry);
+
+        entry
+    }
+
+    /// Parse JSON log format
+    fn parse_json(&self, raw: &str) -> Option<LogEntry> {
+        // Simple JSON parsing without external dependency
+        let trimmed = raw.trim();
+        if !trimmed.starts_with('{') || !trimmed.ends_with('}') {
+            return None;
+        }
+
+        let mut entry = LogEntry::new(raw, 0);
+        let mut fields = Vec::new();
+
+        // Extract key-value pairs (simplified JSON parsing)
+        let content = &trimmed[1..trimmed.len() - 1];
+        let mut in_string = false;
+        let mut escape_next = false;
+        let mut current_key = String::new();
+        let mut current_value = String::new();
+        let mut parsing_key = true;
+        let mut depth = 0;
+
+        for ch in content.chars() {
+            if escape_next {
+                if parsing_key {
+                    current_key.push(ch);
+                } else {
+                    current_value.push(ch);
+                }
+                escape_next = false;
+                continue;
+            }
+
+            match ch {
+                '\\' => {
+                    escape_next = true;
+                }
+                '"' if depth == 0 => {
+                    in_string = !in_string;
+                }
+                ':' if !in_string && depth == 0 && parsing_key => {
+                    parsing_key = false;
+                }
+                ',' if !in_string && depth == 0 => {
+                    // End of key-value pair
+                    let key = current_key.trim().trim_matches('"').to_string();
+                    let value = current_value.trim().trim_matches('"').to_string();
+
+                    if !key.is_empty() {
+                        self.apply_json_field(&mut entry, &key, &value);
+                        fields.push((key, value));
+                    }
+
+                    current_key.clear();
+                    current_value.clear();
+                    parsing_key = true;
+                }
+                '{' | '[' => {
+                    depth += 1;
+                    if !parsing_key {
+                        current_value.push(ch);
+                    }
+                }
+                '}' | ']' => {
+                    if depth > 0 {
+                        depth -= 1;
+                    }
+                    if !parsing_key {
+                        current_value.push(ch);
+                    }
+                }
+                _ => {
+                    if parsing_key {
+                        current_key.push(ch);
+                    } else {
+                        current_value.push(ch);
+                    }
+                }
+            }
+        }
+
+        // Handle last pair
+        if !current_key.is_empty() {
+            let key = current_key.trim().trim_matches('"').to_string();
+            let value = current_value.trim().trim_matches('"').to_string();
+            self.apply_json_field(&mut entry, &key, &value);
+            fields.push((key, value));
+        }
+
+        if !fields.is_empty() {
+            entry.json_fields = Some(fields);
+            Some(entry)
+        } else {
+            None
+        }
+    }
+
+    /// Apply JSON field to entry based on configured field names
+    fn apply_json_field(&self, entry: &mut LogEntry, key: &str, value: &str) {
+        let key_lower = key.to_lowercase();
+
+        if key_lower == self.json_level_field.to_lowercase()
+            || key_lower == "level"
+            || key_lower == "severity"
+        {
+            if let Some(level) = LogLevel::parse(value) {
+                entry.level = level;
+            }
+        } else if key_lower == self.json_message_field.to_lowercase()
+            || key_lower == "msg"
+            || key_lower == "message"
+        {
+            entry.message = value.to_string();
+        } else if key_lower == self.json_timestamp_field.to_lowercase()
+            || key_lower == "time"
+            || key_lower == "timestamp"
+            || key_lower == "ts"
+        {
+            entry.timestamp = Some(value.to_string());
+            // Try to parse as number for sorting
+            if let Ok(ts) = value.parse::<i64>() {
+                entry.timestamp_value = Some(ts);
+            }
+        } else if key_lower == self.json_source_field.to_lowercase()
+            || key_lower == "source"
+            || key_lower == "logger"
+            || key_lower == "caller"
+        {
+            entry.source = Some(value.to_string());
+        }
+    }
+
+    /// Parse standard log formats
+    fn parse_standard(&self, entry: &mut LogEntry) {
+        let raw = entry.raw.clone();
+        let mut remaining = raw.as_str();
+
+        // Try to extract timestamp at beginning
+        // Common patterns: [2024-01-15 10:30:00], 2024-01-15T10:30:00, 10:30:00
+        if let Some(ts_end) = self.find_timestamp_end(remaining) {
+            let timestamp = &remaining[..ts_end];
+            entry.timestamp = Some(timestamp.trim_matches(|c| c == '[' || c == ']').to_string());
+            remaining = remaining[ts_end..].trim_start();
+        }
+
+        // Try to extract log level
+        // Common patterns: [INFO], INFO, info:
+        if let Some((level, end)) = self.find_level(remaining) {
+            entry.level = level;
+            remaining = remaining[end..].trim_start();
+        }
+
+        // Try to extract source
+        // Common patterns: [module], module:, (module)
+        if let Some((source, end)) = self.find_source(remaining) {
+            entry.source = Some(source);
+            remaining = remaining[end..].trim_start();
+        }
+
+        // Remaining is the message
+        if !remaining.is_empty() {
+            entry.message = remaining.to_string();
+        }
+    }
+
+    /// Find end of timestamp in string
+    fn find_timestamp_end(&self, s: &str) -> Option<usize> {
+        // Check for bracketed timestamp [...]
+        if s.starts_with('[') {
+            if let Some(end) = s.find(']') {
+                // Verify it looks like a timestamp
+                let content = &s[1..end];
+                if content.contains(':') || content.contains('-') || content.contains('/') {
+                    return Some(end + 1);
+                }
+            }
+        }
+
+        // Check for ISO timestamp
+        if s.len() >= 19 {
+            let prefix = &s[..19];
+            if prefix.chars().filter(|c| *c == '-').count() >= 2
+                && prefix.chars().filter(|c| *c == ':').count() >= 2
+            {
+                // Check for milliseconds
+                if s.len() > 19 && s.chars().nth(19) == Some('.') {
+                    let mut end = 20;
+                    while end < s.len() && s.chars().nth(end).is_some_and(|c| c.is_ascii_digit()) {
+                        end += 1;
+                    }
+                    return Some(end);
+                }
+                return Some(19);
+            }
+        }
+
+        // Check for time only HH:MM:SS
+        if s.len() >= 8 {
+            let prefix = &s[..8];
+            let chars: Vec<char> = prefix.chars().collect();
+            if chars.len() == 8
+                && chars[2] == ':'
+                && chars[5] == ':'
+                && chars[0].is_ascii_digit()
+                && chars[1].is_ascii_digit()
+                && chars[3].is_ascii_digit()
+                && chars[4].is_ascii_digit()
+                && chars[6].is_ascii_digit()
+                && chars[7].is_ascii_digit()
+            {
+                return Some(8);
+            }
+        }
+
+        None
+    }
+
+    /// Find log level in string
+    fn find_level(&self, s: &str) -> Option<(LogLevel, usize)> {
+        // Check for bracketed level [LEVEL]
+        if s.starts_with('[') {
+            if let Some(end) = s.find(']') {
+                let content = &s[1..end];
+                if let Some(level) = LogLevel::parse(content) {
+                    return Some((level, end + 1));
+                }
+            }
+        }
+
+        // Check for level followed by colon or space
+        let levels = [
+            ("TRACE", LogLevel::Trace),
+            ("DEBUG", LogLevel::Debug),
+            ("INFO", LogLevel::Info),
+            ("WARN", LogLevel::Warning),
+            ("WARNING", LogLevel::Warning),
+            ("ERROR", LogLevel::Error),
+            ("FATAL", LogLevel::Fatal),
+            ("CRITICAL", LogLevel::Fatal),
+        ];
+
+        let s_upper = s.to_uppercase();
+        for (name, level) in levels {
+            if s_upper.starts_with(name) {
+                let end = name.len();
+                if s.len() > end {
+                    let next = s.chars().nth(end);
+                    if next == Some(':') || next == Some(' ') || next == Some(']') {
+                        let skip = if next == Some(':') { 1 } else { 0 };
+                        return Some((level, end + skip));
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Find source/logger name in string
+    fn find_source(&self, s: &str) -> Option<(String, usize)> {
+        // Check for bracketed source [source]
+        if s.starts_with('[') {
+            if let Some(end) = s.find(']') {
+                let content = &s[1..end];
+                // Make sure it's not a level we already parsed
+                if LogLevel::parse(content).is_none()
+                    && !content.contains(' ')
+                    && content.len() < 50
+                {
+                    return Some((content.to_string(), end + 1));
+                }
+            }
+        }
+
+        // Check for source followed by colon
+        if let Some(colon_pos) = s.find(':') {
+            if colon_pos < 50 {
+                let potential = &s[..colon_pos];
+                // Should be a simple identifier
+                if !potential.contains(' ')
+                    && !potential.is_empty()
+                    && LogLevel::parse(potential).is_none()
+                {
+                    return Some((potential.to_string(), colon_pos + 1));
+                }
+            }
+        }
+
+        None
+    }
+}
+
+trait WithLineNumber {
+    fn line_number(self, n: usize) -> Self;
+}
+
+impl WithLineNumber for LogEntry {
+    fn line_number(mut self, n: usize) -> Self {
+        self.line_number = n;
+        self
+    }
+}
+
+/// Advanced Log Viewer widget
+pub struct LogViewer {
+    /// All log entries
+    entries: Vec<LogEntry>,
+    /// Current scroll position
+    scroll: usize,
+    /// Selected entry index (in filtered view)
+    selected: usize,
+    /// Current filter
+    filter: LogFilter,
+    /// Search query (regex pattern)
+    search_query: String,
+    /// Search matches
+    search_matches: Vec<SearchMatch>,
+    /// Current search match index
+    search_index: usize,
+    /// Live tail mode (auto-follow new entries)
+    tail_mode: bool,
+    /// Show line numbers
+    show_line_numbers: bool,
+    /// Show timestamps
+    show_timestamps: bool,
+    /// Show log levels
+    show_levels: bool,
+    /// Show source/logger
+    show_source: bool,
+    /// Word wrap enabled
+    wrap: bool,
+    /// Log parser configuration
+    parser: LogParser,
+    /// Maximum entries (0 = unlimited)
+    max_entries: usize,
+    /// Background color
+    bg: Option<Color>,
+    /// Line number color
+    line_number_fg: Color,
+    /// Timestamp color
+    timestamp_fg: Color,
+    /// Source color
+    source_fg: Color,
+    /// Search highlight color
+    search_highlight_bg: Color,
+    /// Bookmark indicator color
+    bookmark_fg: Color,
+    /// Selected line background
+    selected_bg: Color,
+    /// Widget props
+    props: WidgetProps,
+}
+
+impl LogViewer {
+    /// Create a new log viewer
+    pub fn new() -> Self {
+        Self {
+            entries: Vec::new(),
+            scroll: 0,
+            selected: 0,
+            filter: LogFilter::new(),
+            search_query: String::new(),
+            search_matches: Vec::new(),
+            search_index: 0,
+            tail_mode: true,
+            show_line_numbers: true,
+            show_timestamps: true,
+            show_levels: true,
+            show_source: true,
+            wrap: false,
+            parser: LogParser::new(),
+            max_entries: 10000,
+            bg: None,
+            line_number_fg: Color::rgb(100, 100, 100),
+            timestamp_fg: Color::rgb(120, 120, 120),
+            source_fg: Color::rgb(150, 120, 200),
+            search_highlight_bg: Color::YELLOW,
+            bookmark_fg: Color::rgb(255, 200, 50),
+            selected_bg: Color::rgb(50, 50, 80),
+            props: WidgetProps::new(),
+        }
+    }
+
+    /// Load log content from string (parses each line)
+    pub fn load(&mut self, content: &str) {
+        self.entries.clear();
+        for (i, line) in content.lines().enumerate() {
+            if !line.is_empty() {
+                let entry = self.parser.parse(line, i + 1);
+                self.entries.push(entry);
+            }
+        }
+        self.update_search();
+        if self.tail_mode {
+            self.scroll_to_bottom();
+        }
+    }
+
+    /// Add a single log line
+    pub fn push(&mut self, line: &str) {
+        let line_number = self.entries.len() + 1;
+        let entry = self.parser.parse(line, line_number);
+        self.entries.push(entry);
+
+        // Trim old entries if needed
+        if self.max_entries > 0 && self.entries.len() > self.max_entries {
+            let excess = self.entries.len() - self.max_entries;
+            self.entries.drain(0..excess);
+            self.scroll = self.scroll.saturating_sub(excess);
+        }
+
+        // Update search if active
+        if !self.search_query.is_empty() {
+            self.update_search();
+        }
+
+        // Auto-scroll in tail mode
+        if self.tail_mode {
+            self.scroll_to_bottom();
+        }
+    }
+
+    /// Add a pre-built log entry
+    pub fn push_entry(&mut self, entry: LogEntry) {
+        self.entries.push(entry);
+
+        if self.max_entries > 0 && self.entries.len() > self.max_entries {
+            let excess = self.entries.len() - self.max_entries;
+            self.entries.drain(0..excess);
+            self.scroll = self.scroll.saturating_sub(excess);
+        }
+
+        if !self.search_query.is_empty() {
+            self.update_search();
+        }
+
+        if self.tail_mode {
+            self.scroll_to_bottom();
+        }
+    }
+
+    /// Set filter
+    pub fn filter(mut self, filter: LogFilter) -> Self {
+        self.filter = filter;
+        self
+    }
+
+    /// Set minimum log level filter
+    pub fn min_level(mut self, level: LogLevel) -> Self {
+        self.filter.min_level = Some(level);
+        self
+    }
+
+    /// Set search query
+    pub fn search(&mut self, query: &str) {
+        self.search_query = query.to_string();
+        self.search_index = 0;
+        self.update_search();
+    }
+
+    /// Clear search
+    pub fn clear_search(&mut self) {
+        self.search_query.clear();
+        self.search_matches.clear();
+        self.search_index = 0;
+    }
+
+    /// Go to next search match
+    pub fn next_match(&mut self) {
+        if !self.search_matches.is_empty() {
+            self.search_index = (self.search_index + 1) % self.search_matches.len();
+            self.scroll_to_match(self.search_index);
+        }
+    }
+
+    /// Go to previous search match
+    pub fn prev_match(&mut self) {
+        if !self.search_matches.is_empty() {
+            self.search_index = if self.search_index == 0 {
+                self.search_matches.len() - 1
+            } else {
+                self.search_index - 1
+            };
+            self.scroll_to_match(self.search_index);
+        }
+    }
+
+    /// Scroll to specific search match
+    fn scroll_to_match(&mut self, match_index: usize) {
+        if let Some(m) = self.search_matches.get(match_index) {
+            // Find position in filtered view
+            let filtered: Vec<_> = self.filtered_entries().collect();
+            for (view_idx, (entry_idx, _)) in filtered.iter().enumerate() {
+                if *entry_idx == m.entry_index {
+                    self.selected = view_idx;
+                    self.ensure_visible(view_idx);
+                    break;
+                }
+            }
+        }
+    }
+
+    /// Update search matches
+    fn update_search(&mut self) {
+        self.search_matches.clear();
+
+        if self.search_query.is_empty() {
+            return;
+        }
+
+        let query_lower = self.search_query.to_lowercase();
+
+        for (idx, entry) in self.entries.iter().enumerate() {
+            let msg_lower = entry.message.to_lowercase();
+
+            let mut start = 0;
+            while let Some(pos) = msg_lower[start..].find(&query_lower) {
+                let actual_start = start + pos;
+                self.search_matches.push(SearchMatch {
+                    entry_index: idx,
+                    start: actual_start,
+                    end: actual_start + self.search_query.len(),
+                });
+                start = actual_start + 1;
+            }
+        }
+    }
+
+    /// Enable/disable tail mode
+    pub fn tail_mode(mut self, enable: bool) -> Self {
+        self.tail_mode = enable;
+        self
+    }
+
+    /// Toggle tail mode
+    pub fn toggle_tail(&mut self) {
+        self.tail_mode = !self.tail_mode;
+        if self.tail_mode {
+            self.scroll_to_bottom();
+        }
+    }
+
+    /// Enable/disable line numbers
+    pub fn show_line_numbers(mut self, show: bool) -> Self {
+        self.show_line_numbers = show;
+        self
+    }
+
+    /// Enable/disable timestamps
+    pub fn show_timestamps(mut self, show: bool) -> Self {
+        self.show_timestamps = show;
+        self
+    }
+
+    /// Enable/disable log levels
+    pub fn show_levels(mut self, show: bool) -> Self {
+        self.show_levels = show;
+        self
+    }
+
+    /// Enable/disable source
+    pub fn show_source(mut self, show: bool) -> Self {
+        self.show_source = show;
+        self
+    }
+
+    /// Enable/disable word wrap
+    pub fn wrap(mut self, enable: bool) -> Self {
+        self.wrap = enable;
+        self
+    }
+
+    /// Toggle word wrap
+    pub fn toggle_wrap(&mut self) {
+        self.wrap = !self.wrap;
+    }
+
+    /// Set parser configuration
+    pub fn parser(mut self, parser: LogParser) -> Self {
+        self.parser = parser;
+        self
+    }
+
+    /// Set maximum entries
+    pub fn max_entries(mut self, max: usize) -> Self {
+        self.max_entries = max;
+        self
+    }
+
+    /// Set background color
+    pub fn bg(mut self, color: Color) -> Self {
+        self.bg = Some(color);
+        self
+    }
+
+    /// Bookmark selected entry
+    pub fn toggle_bookmark(&mut self) {
+        let entry_idx = {
+            let filtered: Vec<_> = self.filtered_entries().collect();
+            filtered.get(self.selected).map(|(idx, _)| *idx)
+        };
+        if let Some(idx) = entry_idx {
+            if let Some(entry) = self.entries.get_mut(idx) {
+                entry.toggle_bookmark();
+            }
+        }
+    }
+
+    /// Get all bookmarked entries
+    pub fn bookmarked_entries(&self) -> Vec<&LogEntry> {
+        self.entries.iter().filter(|e| e.bookmarked).collect()
+    }
+
+    /// Jump to next bookmark
+    pub fn next_bookmark(&mut self) {
+        let filtered: Vec<_> = self.filtered_entries().collect();
+        let start = self.selected + 1;
+
+        // Search from current position to end
+        for i in start..filtered.len() {
+            if let Some((entry_idx, _)) = filtered.get(i) {
+                if self.entries[*entry_idx].bookmarked {
+                    self.selected = i;
+                    self.ensure_visible(i);
+                    return;
+                }
+            }
+        }
+
+        // Wrap around to beginning
+        for i in 0..start {
+            if let Some((entry_idx, _)) = filtered.get(i) {
+                if self.entries[*entry_idx].bookmarked {
+                    self.selected = i;
+                    self.ensure_visible(i);
+                    return;
+                }
+            }
+        }
+    }
+
+    /// Jump to previous bookmark
+    pub fn prev_bookmark(&mut self) {
+        let filtered: Vec<_> = self.filtered_entries().collect();
+
+        // Search from current position to beginning
+        for i in (0..self.selected).rev() {
+            if let Some((entry_idx, _)) = filtered.get(i) {
+                if self.entries[*entry_idx].bookmarked {
+                    self.selected = i;
+                    self.ensure_visible(i);
+                    return;
+                }
+            }
+        }
+
+        // Wrap around to end
+        for i in (self.selected..filtered.len()).rev() {
+            if let Some((entry_idx, _)) = filtered.get(i) {
+                if self.entries[*entry_idx].bookmarked {
+                    self.selected = i;
+                    self.ensure_visible(i);
+                    return;
+                }
+            }
+        }
+    }
+
+    /// Jump to timestamp
+    pub fn jump_to_timestamp(&mut self, timestamp: i64) {
+        let filtered: Vec<_> = self.filtered_entries().collect();
+
+        let mut best_idx = 0;
+        let mut best_diff = i64::MAX;
+
+        for (i, (entry_idx, _)) in filtered.iter().enumerate() {
+            if let Some(ts) = self.entries[*entry_idx].timestamp_value {
+                let diff = (ts - timestamp).abs();
+                if diff < best_diff {
+                    best_diff = diff;
+                    best_idx = i;
+                }
+            }
+        }
+
+        self.selected = best_idx;
+        self.ensure_visible(best_idx);
+    }
+
+    /// Jump to line number
+    pub fn jump_to_line(&mut self, line: usize) {
+        let filtered: Vec<_> = self.filtered_entries().collect();
+
+        for (i, (entry_idx, _)) in filtered.iter().enumerate() {
+            if self.entries[*entry_idx].line_number >= line {
+                self.selected = i;
+                self.ensure_visible(i);
+                return;
+            }
+        }
+    }
+
+    /// Get selected entry text (for copying)
+    pub fn selected_text(&self) -> Option<String> {
+        let filtered: Vec<_> = self.filtered_entries().collect();
+        filtered.get(self.selected).map(|(idx, _)| {
+            let entry = &self.entries[*idx];
+            entry.raw.clone()
+        })
+    }
+
+    /// Get selected entry
+    pub fn selected_entry(&self) -> Option<&LogEntry> {
+        let filtered: Vec<_> = self.filtered_entries().collect();
+        filtered
+            .get(self.selected)
+            .map(|(idx, _)| &self.entries[*idx])
+    }
+
+    /// Export filtered entries as text
+    pub fn export_filtered(&self) -> String {
+        self.filtered_entries()
+            .map(|(_, entry)| entry.raw.as_str())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    /// Export filtered entries with formatting
+    pub fn export_formatted(&self) -> String {
+        self.filtered_entries()
+            .map(|(_, entry)| {
+                let mut parts = Vec::new();
+
+                if let Some(ref ts) = entry.timestamp {
+                    parts.push(format!("[{}]", ts));
+                }
+
+                parts.push(format!("[{}]", entry.level.label()));
+
+                if let Some(ref src) = entry.source {
+                    parts.push(format!("[{}]", src));
+                }
+
+                parts.push(entry.message.clone());
+
+                parts.join(" ")
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    /// Get filtered entries iterator
+    fn filtered_entries(&self) -> impl Iterator<Item = (usize, &LogEntry)> {
+        self.entries
+            .iter()
+            .enumerate()
+            .filter(|(_, entry)| self.filter.matches(entry))
+    }
+
+    /// Scroll up
+    pub fn scroll_up(&mut self, lines: usize) {
+        self.scroll = self.scroll.saturating_sub(lines);
+        self.tail_mode = false;
+    }
+
+    /// Scroll down
+    pub fn scroll_down(&mut self, lines: usize) {
+        let count = self.filtered_entries().count();
+        self.scroll = (self.scroll + lines).min(count.saturating_sub(1));
+    }
+
+    /// Scroll to top
+    pub fn scroll_to_top(&mut self) {
+        self.scroll = 0;
+        self.selected = 0;
+        self.tail_mode = false;
+    }
+
+    /// Scroll to bottom
+    pub fn scroll_to_bottom(&mut self) {
+        let count = self.filtered_entries().count();
+        self.scroll = count.saturating_sub(1);
+        self.selected = count.saturating_sub(1);
+    }
+
+    /// Move selection up
+    pub fn select_prev(&mut self) {
+        if self.selected > 0 {
+            self.selected -= 1;
+            self.ensure_visible(self.selected);
+        }
+        self.tail_mode = false;
+    }
+
+    /// Move selection down
+    pub fn select_next(&mut self) {
+        let count = self.filtered_entries().count();
+        if self.selected < count.saturating_sub(1) {
+            self.selected += 1;
+            self.ensure_visible(self.selected);
+        }
+    }
+
+    /// Ensure index is visible
+    fn ensure_visible(&mut self, idx: usize) {
+        if idx < self.scroll {
+            self.scroll = idx;
+        }
+        // Note: actual visible height depends on render area
+    }
+
+    /// Clear all entries
+    pub fn clear(&mut self) {
+        self.entries.clear();
+        self.scroll = 0;
+        self.selected = 0;
+        self.search_matches.clear();
+    }
+
+    /// Get total entry count
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// Get filtered entry count
+    pub fn filtered_len(&self) -> usize {
+        self.filtered_entries().count()
+    }
+
+    /// Check if empty
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    /// Get search match count
+    pub fn search_match_count(&self) -> usize {
+        self.search_matches.len()
+    }
+
+    /// Get current search index
+    pub fn current_search_index(&self) -> usize {
+        self.search_index
+    }
+
+    /// Check if in tail mode
+    pub fn is_tail_mode(&self) -> bool {
+        self.tail_mode
+    }
+
+    /// Set the active filter
+    pub fn set_filter(&mut self, filter: LogFilter) {
+        self.filter = filter;
+        self.selected = 0;
+        self.scroll = 0;
+    }
+
+    /// Update minimum level filter
+    pub fn set_min_level(&mut self, level: LogLevel) {
+        self.filter.min_level = Some(level);
+        self.selected = 0;
+        self.scroll = 0;
+    }
+
+    /// Clear all filters
+    pub fn clear_filter(&mut self) {
+        self.filter = LogFilter::new();
+    }
+
+    /// Toggle expanded state of selected entry
+    pub fn toggle_selected_expanded(&mut self) {
+        let entry_idx = {
+            let filtered: Vec<_> = self.filtered_entries().collect();
+            filtered.get(self.selected).map(|(idx, _)| *idx)
+        };
+        if let Some(idx) = entry_idx {
+            if let Some(entry) = self.entries.get_mut(idx) {
+                entry.toggle_expanded();
+            }
+        }
+    }
+
+    /// Handle key input
+    pub fn handle_key(&mut self, key: &Key) -> bool {
+        match key {
+            Key::Up | Key::Char('k') => {
+                self.select_prev();
+                true
+            }
+            Key::Down | Key::Char('j') => {
+                self.select_next();
+                true
+            }
+            Key::PageUp => {
+                for _ in 0..10 {
+                    self.select_prev();
+                }
+                true
+            }
+            Key::PageDown => {
+                for _ in 0..10 {
+                    self.select_next();
+                }
+                true
+            }
+            Key::Home | Key::Char('g') => {
+                self.scroll_to_top();
+                true
+            }
+            Key::End | Key::Char('G') => {
+                self.scroll_to_bottom();
+                true
+            }
+            Key::Char('f') => {
+                self.toggle_tail();
+                true
+            }
+            Key::Char('w') => {
+                self.toggle_wrap();
+                true
+            }
+            Key::Char('b') => {
+                self.toggle_bookmark();
+                true
+            }
+            Key::Char('n') => {
+                self.next_match();
+                true
+            }
+            Key::Char('N') => {
+                self.prev_match();
+                true
+            }
+            Key::Char(']') => {
+                self.next_bookmark();
+                true
+            }
+            Key::Char('[') => {
+                self.prev_bookmark();
+                true
+            }
+            Key::Enter => {
+                self.toggle_selected_expanded();
+                true
+            }
+            _ => false,
+        }
+    }
+}
+
+impl Default for LogViewer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl View for LogViewer {
+    crate::impl_view_meta!("LogViewer");
+
+    fn render(&self, ctx: &mut RenderContext) {
+        let area = ctx.area;
+        let filtered: Vec<_> = self.filtered_entries().collect();
+
+        if filtered.is_empty() {
+            // Show empty message
+            let msg = "No log entries";
+            let x = area.x + (area.width.saturating_sub(msg.len() as u16)) / 2;
+            let y = area.y + area.height / 2;
+            for (i, ch) in msg.chars().enumerate() {
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(Color::rgb(100, 100, 100));
+                cell.bg = self.bg;
+                ctx.buffer.set(x + i as u16, y, cell);
+            }
+            return;
+        }
+
+        // Calculate column widths
+        let line_num_width = if self.show_line_numbers { 6 } else { 0 };
+        let timestamp_width = if self.show_timestamps { 12 } else { 0 };
+        let level_width = if self.show_levels { 5 } else { 0 };
+        let source_width = if self.show_source { 12 } else { 0 };
+        let bookmark_width = 2;
+
+        let prefix_width =
+            line_num_width + bookmark_width + timestamp_width + level_width + source_width;
+        let message_width = area.width.saturating_sub(prefix_width);
+
+        // Visible range
+        let visible_height = area.height as usize;
+        let start = self.scroll.min(filtered.len().saturating_sub(1));
+        let end = (start + visible_height).min(filtered.len());
+
+        for (view_idx, (entry_idx, entry)) in
+            filtered.iter().enumerate().skip(start).take(end - start)
+        {
+            let row = (view_idx - start) as u16;
+            let y = area.y + row;
+
+            if y >= area.y + area.height {
+                break;
+            }
+
+            let is_selected = view_idx == self.selected;
+            let level_color = entry.level.color();
+
+            // Fill background
+            let row_bg = if is_selected {
+                Some(self.selected_bg)
+            } else {
+                self.bg
+            };
+
+            for x in area.x..area.x + area.width {
+                let mut cell = Cell::new(' ');
+                cell.bg = row_bg;
+                ctx.buffer.set(x, y, cell);
+            }
+
+            let mut x = area.x;
+
+            // Draw line number
+            if self.show_line_numbers {
+                let num_str = format!("{:>5}", entry.line_number);
+                for ch in num_str.chars() {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(self.line_number_fg);
+                    cell.bg = row_bg;
+                    ctx.buffer.set(x, y, cell);
+                    x += 1;
+                }
+                x += 1; // Space after line number
+            }
+
+            // Draw bookmark indicator
+            let bookmark_char = if entry.bookmarked { '★' } else { ' ' };
+            let mut cell = Cell::new(bookmark_char);
+            cell.fg = Some(self.bookmark_fg);
+            cell.bg = row_bg;
+            ctx.buffer.set(x, y, cell);
+            x += bookmark_width;
+
+            // Draw timestamp
+            if self.show_timestamps {
+                if let Some(ref ts) = entry.timestamp {
+                    let ts_display: String =
+                        ts.chars().take(timestamp_width as usize - 1).collect();
+                    for ch in ts_display.chars() {
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(self.timestamp_fg);
+                        cell.bg = row_bg;
+                        ctx.buffer.set(x, y, cell);
+                        x += 1;
+                    }
+                }
+                x = area.x + line_num_width + bookmark_width + timestamp_width;
+            }
+
+            // Draw level
+            if self.show_levels {
+                let icon = entry.level.icon();
+                let mut cell = Cell::new(icon);
+                cell.fg = Some(level_color);
+                cell.bg = row_bg;
+                ctx.buffer.set(x, y, cell);
+                x += 1;
+
+                let label = entry.level.label();
+                for ch in label.chars().take(3) {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(level_color);
+                    cell.bg = row_bg;
+                    cell.modifier |= Modifier::BOLD;
+                    ctx.buffer.set(x, y, cell);
+                    x += 1;
+                }
+                x = area.x + line_num_width + bookmark_width + timestamp_width + level_width;
+            }
+
+            // Draw source
+            if self.show_source {
+                if let Some(ref src) = entry.source {
+                    let src_display: String = src.chars().take(source_width as usize - 1).collect();
+                    for ch in src_display.chars() {
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(self.source_fg);
+                        cell.bg = row_bg;
+                        ctx.buffer.set(x, y, cell);
+                        x += 1;
+                    }
+                }
+                x = area.x + prefix_width;
+            }
+
+            // Find search matches for this entry
+            let matches_for_entry: Vec<_> = self
+                .search_matches
+                .iter()
+                .filter(|m| m.entry_index == *entry_idx)
+                .collect();
+
+            // Draw message with search highlighting
+            let msg_chars: Vec<char> = entry.message.chars().collect();
+            for (i, ch) in msg_chars.iter().enumerate().take(message_width as usize) {
+                // Check if this character is in a search match
+                let in_match = matches_for_entry.iter().any(|m| i >= m.start && i < m.end);
+
+                let mut cell = Cell::new(*ch);
+                cell.fg = Some(if is_selected {
+                    Color::WHITE
+                } else {
+                    level_color
+                });
+                cell.bg = if in_match {
+                    Some(self.search_highlight_bg)
+                } else {
+                    row_bg
+                };
+                if in_match {
+                    cell.fg = Some(Color::BLACK);
+                    cell.modifier |= Modifier::BOLD;
+                }
+                if is_selected {
+                    cell.modifier |= Modifier::BOLD;
+                }
+                ctx.buffer.set(x, y, cell);
+                x += 1;
+            }
+        }
+
+        // Draw scroll indicator
+        if filtered.len() > visible_height {
+            let scroll_ratio = self.scroll as f32 / (filtered.len() - visible_height) as f32;
+            let indicator_pos = (scroll_ratio * (area.height as f32 - 1.0)) as u16;
+            let indicator_y = area.y + indicator_pos.min(area.height - 1);
+
+            let mut cell = Cell::new('█');
+            cell.fg = Some(Color::rgb(80, 80, 80));
+            ctx.buffer.set(area.x + area.width - 1, indicator_y, cell);
+        }
+
+        // Draw tail mode indicator
+        if self.tail_mode {
+            let indicator = "◉ TAIL";
+            let x = area.x + area.width - indicator.len() as u16 - 2;
+            let y = area.y;
+            for (i, ch) in indicator.chars().enumerate() {
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(Color::GREEN);
+                cell.bg = self.bg;
+                ctx.buffer.set(x + i as u16, y, cell);
+            }
+        }
+    }
+}
+
+impl_styled_view!(LogViewer);
+impl_props_builders!(LogViewer);
+
+/// Create a new log viewer
+pub fn log_viewer() -> LogViewer {
+    LogViewer::new()
+}
+
+/// Create a new log entry
+pub fn log_entry(raw: impl Into<String>, line_number: usize) -> LogEntry {
+    LogEntry::new(raw, line_number)
+}
+
+/// Create a new log filter
+pub fn log_filter() -> LogFilter {
+    LogFilter::new()
+}
+
+/// Create a new log parser
+pub fn log_parser() -> LogParser {
+    LogParser::new()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_log_level_ordering() {
+        assert!(LogLevel::Fatal > LogLevel::Error);
+        assert!(LogLevel::Error > LogLevel::Warning);
+        assert!(LogLevel::Warning > LogLevel::Info);
+        assert!(LogLevel::Info > LogLevel::Debug);
+        assert!(LogLevel::Debug > LogLevel::Trace);
+    }
+
+    #[test]
+    fn test_log_level_from_str() {
+        assert_eq!(LogLevel::parse("INFO"), Some(LogLevel::Info));
+        assert_eq!(LogLevel::parse("warn"), Some(LogLevel::Warning));
+        assert_eq!(LogLevel::parse("ERROR"), Some(LogLevel::Error));
+        assert_eq!(LogLevel::parse("invalid"), None);
+    }
+}
