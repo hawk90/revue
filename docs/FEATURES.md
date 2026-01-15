@@ -1174,6 +1174,78 @@ Key::Ctrl(Shift('p'))    // Ctrl+Shift+P
 
 ---
 
+## 11. Event Utilities
+
+### Debounce
+
+Delay execution until a period of inactivity:
+
+```rust
+use revue::utils::{Debouncer, debounce_ms};
+
+// Create a debouncer (300ms default)
+let mut search_debounce = debounce_ms(300);
+
+// In event handler
+fn on_input(&mut self, text: &str) {
+    if self.search_debounce.call() {
+        // Leading edge: won't fire for trailing
+    }
+}
+
+// In tick handler
+fn on_tick(&mut self) {
+    if self.search_debounce.is_ready() {
+        // Trailing edge: fire after 300ms of inactivity
+        self.perform_search();
+    }
+}
+```
+
+### Throttle
+
+Limit execution rate to at most once per interval:
+
+```rust
+use revue::utils::{Throttle, throttle_ms};
+
+// Create a throttle (100ms interval)
+let mut scroll_throttle = throttle_ms(100);
+
+// In event handler
+fn on_scroll(&mut self, delta: i32) {
+    if self.scroll_throttle.call() {
+        // Executes at most once per 100ms
+        self.update_scroll(delta);
+    }
+}
+```
+
+### Edge Modes
+
+```rust
+use revue::utils::{Debouncer, Throttle, Edge};
+
+// Leading edge: fire immediately, then wait
+Debouncer::leading(Duration::from_millis(300));
+
+// Trailing edge: fire after delay (default for debounce)
+Debouncer::new(Duration::from_millis(300));
+
+// Both edges: fire immediately and after delay
+Debouncer::both_edges(Duration::from_millis(300));
+
+// Cancel pending calls
+debouncer.cancel();
+
+// Check remaining time
+if let Some(remaining) = debouncer.remaining() {
+    println!("Fires in {:?}", remaining);
+}
+```
+
+---
+
 ## Feature Comparison
 
 | Feature | Revue | Textual | Ratatui | Cursive |
