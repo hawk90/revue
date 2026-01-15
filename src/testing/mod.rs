@@ -187,6 +187,7 @@
 mod actions;
 mod assertions;
 pub mod ci;
+pub mod mock;
 mod pilot;
 mod snapshot;
 mod test_app;
@@ -194,6 +195,11 @@ pub mod visual;
 
 pub use actions::{Action, ActionSequence, KeyAction, MouseAction};
 pub use assertions::{Assertion, AssertionResult};
+pub use mock::{
+    capture_render, mock_alt_key, mock_click, mock_ctrl_key, mock_key, mock_mouse, mock_terminal,
+    mock_time, simulate_user, EventSimulator, MockState, MockTerminal, MockTime, RenderCapture,
+    SimulatedEvent,
+};
 pub use pilot::{AsyncPilot, Pilot};
 pub use snapshot::SnapshotManager;
 pub use test_app::TestApp;
