@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.22.0](https://github.com/hawk90/revue/compare/v2.21.0...v2.22.0) (2026-01-15)
+
+
+### Features
+
+* **widget:** add Combobox widget with multi-select and filtering ([#111](https://github.com/hawk90/revue/issues/111)) ([9a61343](https://github.com/hawk90/revue/commit/9a6134353cb426dee8b30c09ef3541c3ad75af52)), closes [#20](https://github.com/hawk90/revue/issues/20)
+
 ## [2.21.0](https://github.com/hawk90/revue/compare/v2.20.0...v2.21.0) (2026-01-15)
 
 
