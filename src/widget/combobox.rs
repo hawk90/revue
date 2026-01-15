@@ -1638,7 +1638,7 @@ mod tests {
         let area = Rect::new(0, 0, 10, 5);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let mut cb = Combobox::new().value("Very long text that exceeds width");
+        let cb = Combobox::new().value("Very long text that exceeds width");
         cb.render(&mut ctx);
         // Should handle cursor at boundary correctly
     }
