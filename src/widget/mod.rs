@@ -1,6 +1,6 @@
 //! Widget system for Revue TUI framework.
 //!
-//! This module provides 87+ widgets for building terminal user interfaces.
+//! This module provides 89+ widgets for building terminal user interfaces.
 //! Widgets are organized into categories for easy discovery.
 //!
 //! # Widget Categories
@@ -75,6 +75,8 @@
 //! | [`DateTimePicker`] | Date/time picker | [`datetime_picker()`] |
 //! | [`Timeline`] | Event timeline | [`timeline()`] |
 //! | [`RichLog`] | Log viewer | [`richlog()`] |
+//! | [`CsvViewer`] | CSV/TSV data viewer | [`csv_viewer()`] |
+//! | [`JsonViewer`] | JSON tree viewer | [`json_viewer()`] |
 //!
 //! ## Chart Widgets
 //!
@@ -194,6 +196,7 @@ mod collapsible;
 mod color_picker;
 mod combobox;
 mod command_palette;
+mod csv_viewer;
 mod datagrid;
 mod datetime_picker;
 mod debug_overlay;
@@ -213,6 +216,7 @@ mod httpclient;
 #[cfg(feature = "image")]
 mod image;
 mod input;
+mod json_viewer;
 mod layer;
 mod link;
 mod list;
@@ -325,6 +329,7 @@ pub use collapsible::{collapsible, Collapsible};
 pub use color_picker::{color_picker, ColorPalette, ColorPicker, ColorPickerMode};
 pub use combobox::{combobox, ComboOption, Combobox, FilterMode as ComboFilterMode};
 pub use command_palette::{command_palette, Command, CommandPalette};
+pub use csv_viewer::{csv_viewer, CsvViewer, Delimiter, SortOrder as CsvSortOrder};
 pub use datagrid::{datagrid, grid_column, grid_row, DataGrid, GridColumn, GridRow, SortDirection};
 pub use datetime_picker::{
     date_picker, datetime_picker, time_picker, DateTime, DateTimeFormat, DateTimeMode,
@@ -360,6 +365,7 @@ pub use httpclient::{
 #[cfg(feature = "image")]
 pub use image::{image_from_file, try_image_from_file, Image, ImageError, ImageResult, ScaleMode};
 pub use input::{input, Input};
+pub use json_viewer::{json_viewer, JsonNode, JsonType, JsonViewer};
 pub use layer::{layers, Layers};
 pub use link::{link, url_link, Link, LinkStyle};
 pub use list::{list, List};
