@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.25.0](https://github.com/hawk90/revue/compare/v2.24.0...v2.25.0) (2026-01-15)
+
+
+### Features
+
+* **widget:** add advanced LogViewer widget ([#117](https://github.com/hawk90/revue/issues/117)) ([dc7c152](https://github.com/hawk90/revue/commit/dc7c152291a687032372248a2986123b88f61345))
+
 ## [2.24.0](https://github.com/hawk90/revue/compare/v2.23.0...v2.24.0) (2026-01-15)
 
 
