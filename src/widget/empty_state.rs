@@ -594,4 +594,119 @@ mod tests {
         let es = EmptyState::default();
         assert_eq!(es.title, "No items");
     }
+
+    #[test]
+    fn test_empty_state_type_colors() {
+        // Test all state type colors
+        let _ = EmptyStateType::Empty.color();
+        let _ = EmptyStateType::NoResults.color();
+        let _ = EmptyStateType::Error.color();
+        let _ = EmptyStateType::NoPermission.color();
+        let _ = EmptyStateType::Offline.color();
+        let _ = EmptyStateType::FirstUse.color();
+    }
+
+    #[test]
+    fn test_empty_state_render_full_with_action() {
+        let mut buffer = Buffer::new(40, 12);
+        let area = Rect::new(0, 0, 40, 12);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let es = EmptyState::new("No items")
+            .description("Create your first item")
+            .action("Create")
+            .variant(EmptyStateVariant::Full);
+        es.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_empty_state_render_compact_with_action() {
+        let mut buffer = Buffer::new(40, 5);
+        let area = Rect::new(0, 0, 40, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let es = EmptyState::new("No results")
+            .description("Try again")
+            .action("Retry")
+            .variant(EmptyStateVariant::Compact);
+        es.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_empty_state_render_compact_no_icon() {
+        let mut buffer = Buffer::new(40, 5);
+        let area = Rect::new(0, 0, 40, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let es = EmptyState::new("No results")
+            .description("Try again")
+            .action("Retry")
+            .variant(EmptyStateVariant::Compact)
+            .icon(false);
+        es.render(&mut ctx);
+
+        // First char should be 'N' from title
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'N');
+    }
+
+    #[test]
+    fn test_empty_state_render_minimal_no_icon() {
+        let mut buffer = Buffer::new(40, 1);
+        let area = Rect::new(0, 0, 40, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let es = EmptyState::new("Empty")
+            .variant(EmptyStateVariant::Minimal)
+            .icon(false);
+        es.render(&mut ctx);
+
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'E');
+    }
+
+    #[test]
+    fn test_empty_state_render_small_area() {
+        let mut buffer = Buffer::new(4, 1);
+        let area = Rect::new(0, 0, 4, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let es = EmptyState::new("Test");
+        es.render(&mut ctx);
+        // Should return early, not panic
+    }
+
+    #[test]
+    fn test_empty_state_render_zero_height() {
+        let mut buffer = Buffer::new(40, 1);
+        let area = Rect::new(0, 0, 40, 0);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let es = EmptyState::new("Test");
+        es.render(&mut ctx);
+        // Should return early, not panic
+    }
+
+    #[test]
+    fn test_empty_state_render_full_no_icon() {
+        let mut buffer = Buffer::new(40, 10);
+        let area = Rect::new(0, 0, 40, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let es = EmptyState::new("No items")
+            .variant(EmptyStateVariant::Full)
+            .icon(false);
+        es.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_empty_state_render_truncation() {
+        let mut buffer = Buffer::new(10, 5);
+        let area = Rect::new(0, 0, 10, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let es = EmptyState::new("This is a very long title that should be truncated")
+            .description("This description is also very long")
+            .variant(EmptyStateVariant::Compact);
+        es.render(&mut ctx);
+        // Should not panic, content gets truncated
+    }
 }
