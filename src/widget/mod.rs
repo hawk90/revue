@@ -76,6 +76,7 @@
 //! | [`DateTimePicker`] | Date/time picker | [`datetime_picker()`] |
 //! | [`Timeline`] | Event timeline | [`timeline()`] |
 //! | [`RichLog`] | Log viewer | [`richlog()`] |
+//! | [`LogViewer`] | Advanced log viewer | [`log_viewer()`] |
 //! | [`CsvViewer`] | CSV/TSV data viewer | [`csv_viewer()`] |
 //! | [`JsonViewer`] | JSON tree viewer | [`json_viewer()`] |
 //!
@@ -222,6 +223,7 @@ mod json_viewer;
 mod layer;
 mod link;
 mod list;
+mod log_viewer;
 #[cfg(feature = "markdown")]
 mod markdown;
 #[cfg(feature = "markdown")]
@@ -376,6 +378,10 @@ pub use json_viewer::{json_viewer, JsonNode, JsonType, JsonViewer};
 pub use layer::{layers, Layers};
 pub use link::{link, url_link, Link, LinkStyle};
 pub use list::{list, List};
+pub use log_viewer::{
+    log_entry as adv_log_entry, log_filter, log_parser, log_viewer, LogEntry as AdvLogEntry,
+    LogFilter, LogLevel as AdvLogLevel, LogParser, LogViewer, SearchMatch, TimestampFormat,
+};
 #[cfg(feature = "markdown")]
 pub use markdown::{markdown, Markdown};
 #[cfg(feature = "markdown")]
