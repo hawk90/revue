@@ -208,6 +208,212 @@ impl Shape for FilledCircle {
     }
 }
 
+/// An arc (portion of a circle)
+#[derive(Clone, Debug)]
+pub struct Arc {
+    /// Center X coordinate
+    pub x: f64,
+    /// Center Y coordinate
+    pub y: f64,
+    /// Radius
+    pub radius: f64,
+    /// Start angle in radians (0 = right, counter-clockwise)
+    pub start_angle: f64,
+    /// End angle in radians
+    pub end_angle: f64,
+    /// Arc color
+    pub color: Color,
+}
+
+impl Arc {
+    /// Create a new arc
+    pub fn new(
+        x: f64,
+        y: f64,
+        radius: f64,
+        start_angle: f64,
+        end_angle: f64,
+        color: Color,
+    ) -> Self {
+        Self {
+            x,
+            y,
+            radius,
+            start_angle,
+            end_angle,
+            color,
+        }
+    }
+
+    /// Create an arc from degrees
+    pub fn from_degrees(
+        x: f64,
+        y: f64,
+        radius: f64,
+        start_deg: f64,
+        end_deg: f64,
+        color: Color,
+    ) -> Self {
+        Self {
+            x,
+            y,
+            radius,
+            start_angle: start_deg.to_radians(),
+            end_angle: end_deg.to_radians(),
+            color,
+        }
+    }
+}
+
+impl Shape for Arc {
+    fn draw(&self, grid: &mut BrailleGrid) {
+        // Normalize angles
+        let start = self.start_angle;
+        let mut end = self.end_angle;
+
+        // Ensure we draw in the correct direction
+        while end < start {
+            end += std::f64::consts::TAU;
+        }
+
+        // Calculate number of steps based on arc length
+        let arc_length = self.radius * (end - start).abs();
+        let steps = (arc_length * 2.0).max(20.0) as usize;
+
+        let step_angle = (end - start) / steps as f64;
+
+        for i in 0..=steps {
+            let angle = start + step_angle * i as f64;
+            let px = self.x + self.radius * angle.cos();
+            let py = self.y + self.radius * angle.sin();
+
+            if px >= 0.0 && py >= 0.0 {
+                grid.set(px as usize, py as usize, self.color);
+            }
+        }
+    }
+}
+
+/// A polygon (closed shape with multiple vertices)
+#[derive(Clone, Debug)]
+pub struct Polygon {
+    /// Vertices as (x, y) coordinates
+    pub vertices: Vec<(f64, f64)>,
+    /// Polygon color
+    pub color: Color,
+}
+
+impl Polygon {
+    /// Create a new polygon
+    pub fn new(vertices: Vec<(f64, f64)>, color: Color) -> Self {
+        Self { vertices, color }
+    }
+
+    /// Create a regular polygon
+    pub fn regular(x: f64, y: f64, radius: f64, sides: usize, color: Color) -> Self {
+        let mut vertices = Vec::with_capacity(sides);
+        let angle_step = std::f64::consts::TAU / sides as f64;
+
+        for i in 0..sides {
+            let angle = angle_step * i as f64 - std::f64::consts::FRAC_PI_2;
+            vertices.push((x + radius * angle.cos(), y + radius * angle.sin()));
+        }
+
+        Self { vertices, color }
+    }
+}
+
+impl Shape for Polygon {
+    fn draw(&self, grid: &mut BrailleGrid) {
+        if self.vertices.len() < 2 {
+            return;
+        }
+
+        // Draw edges connecting consecutive vertices
+        for i in 0..self.vertices.len() {
+            let p0 = self.vertices[i];
+            let p1 = self.vertices[(i + 1) % self.vertices.len()];
+            Line::new(p0.0, p0.1, p1.0, p1.1, self.color).draw(grid);
+        }
+    }
+}
+
+/// A filled polygon
+#[derive(Clone, Debug)]
+pub struct FilledPolygon {
+    /// Vertices as (x, y) coordinates
+    pub vertices: Vec<(f64, f64)>,
+    /// Fill color
+    pub color: Color,
+}
+
+impl FilledPolygon {
+    /// Create a new filled polygon
+    pub fn new(vertices: Vec<(f64, f64)>, color: Color) -> Self {
+        Self { vertices, color }
+    }
+}
+
+impl Shape for FilledPolygon {
+    fn draw(&self, grid: &mut BrailleGrid) {
+        if self.vertices.len() < 3 {
+            return;
+        }
+
+        // Find bounding box
+        let min_x = self
+            .vertices
+            .iter()
+            .map(|(x, _)| *x)
+            .fold(f64::INFINITY, f64::min);
+        let max_x = self
+            .vertices
+            .iter()
+            .map(|(x, _)| *x)
+            .fold(f64::NEG_INFINITY, f64::max);
+        let min_y = self
+            .vertices
+            .iter()
+            .map(|(_, y)| *y)
+            .fold(f64::INFINITY, f64::min);
+        let max_y = self
+            .vertices
+            .iter()
+            .map(|(_, y)| *y)
+            .fold(f64::NEG_INFINITY, f64::max);
+
+        // Scanline fill using ray casting
+        for py in min_y.max(0.0) as usize..=max_y as usize {
+            for px in min_x.max(0.0) as usize..=max_x as usize {
+                if self.point_in_polygon(px as f64, py as f64) {
+                    grid.set(px, py, self.color);
+                }
+            }
+        }
+    }
+}
+
+impl FilledPolygon {
+    /// Check if point is inside polygon using ray casting
+    fn point_in_polygon(&self, x: f64, y: f64) -> bool {
+        let mut inside = false;
+        let n = self.vertices.len();
+
+        let mut j = n - 1;
+        for i in 0..n {
+            let (xi, yi) = self.vertices[i];
+            let (xj, yj) = self.vertices[j];
+
+            if ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi) {
+                inside = !inside;
+            }
+            j = i;
+        }
+
+        inside
+    }
+}
+
 /// A rectangle outline
 #[derive(Clone, Debug)]
 pub struct Rectangle {
@@ -331,6 +537,276 @@ impl Shape for Points {
 }
 
 // =============================================================================
+// Transformations
+// =============================================================================
+
+/// 2D transformation matrix for translate, scale, and rotate operations
+#[derive(Clone, Copy, Debug)]
+pub struct Transform {
+    /// Scale X
+    pub sx: f64,
+    /// Shear X (for rotation)
+    pub shx: f64,
+    /// Translate X
+    pub tx: f64,
+    /// Shear Y (for rotation)
+    pub shy: f64,
+    /// Scale Y
+    pub sy: f64,
+    /// Translate Y
+    pub ty: f64,
+}
+
+impl Default for Transform {
+    fn default() -> Self {
+        Self::identity()
+    }
+}
+
+impl Transform {
+    /// Create an identity transform (no transformation)
+    pub fn identity() -> Self {
+        Self {
+            sx: 1.0,
+            shx: 0.0,
+            tx: 0.0,
+            shy: 0.0,
+            sy: 1.0,
+            ty: 0.0,
+        }
+    }
+
+    /// Create a translation transform
+    pub fn translate(x: f64, y: f64) -> Self {
+        Self {
+            sx: 1.0,
+            shx: 0.0,
+            tx: x,
+            shy: 0.0,
+            sy: 1.0,
+            ty: y,
+        }
+    }
+
+    /// Create a scale transform
+    pub fn scale(sx: f64, sy: f64) -> Self {
+        Self {
+            sx,
+            shx: 0.0,
+            tx: 0.0,
+            shy: 0.0,
+            sy,
+            ty: 0.0,
+        }
+    }
+
+    /// Create a uniform scale transform
+    pub fn scale_uniform(s: f64) -> Self {
+        Self::scale(s, s)
+    }
+
+    /// Create a rotation transform (angle in radians)
+    pub fn rotate(angle: f64) -> Self {
+        let cos = angle.cos();
+        let sin = angle.sin();
+        Self {
+            sx: cos,
+            shx: -sin,
+            tx: 0.0,
+            shy: sin,
+            sy: cos,
+            ty: 0.0,
+        }
+    }
+
+    /// Create a rotation transform from degrees
+    pub fn rotate_degrees(degrees: f64) -> Self {
+        Self::rotate(degrees.to_radians())
+    }
+
+    /// Apply this transform to a point
+    pub fn apply(&self, x: f64, y: f64) -> (f64, f64) {
+        (
+            self.sx * x + self.shx * y + self.tx,
+            self.shy * x + self.sy * y + self.ty,
+        )
+    }
+
+    /// Combine with another transform (self * other)
+    pub fn then(&self, other: &Transform) -> Self {
+        Self {
+            sx: self.sx * other.sx + self.shx * other.shy,
+            shx: self.sx * other.shx + self.shx * other.sy,
+            tx: self.sx * other.tx + self.shx * other.ty + self.tx,
+            shy: self.shy * other.sx + self.sy * other.shy,
+            sy: self.shy * other.shx + self.sy * other.sy,
+            ty: self.shy * other.tx + self.sy * other.ty + self.ty,
+        }
+    }
+
+    /// Add a translation to this transform
+    pub fn with_translate(self, x: f64, y: f64) -> Self {
+        self.then(&Transform::translate(x, y))
+    }
+
+    /// Add a scale to this transform
+    pub fn with_scale(self, sx: f64, sy: f64) -> Self {
+        self.then(&Transform::scale(sx, sy))
+    }
+
+    /// Add a rotation to this transform
+    pub fn with_rotate(self, angle: f64) -> Self {
+        self.then(&Transform::rotate(angle))
+    }
+}
+
+// =============================================================================
+// Clipping Region
+// =============================================================================
+
+/// A rectangular clipping region
+#[derive(Clone, Copy, Debug)]
+pub struct ClipRegion {
+    /// Minimum X coordinate
+    pub x_min: f64,
+    /// Minimum Y coordinate
+    pub y_min: f64,
+    /// Maximum X coordinate
+    pub x_max: f64,
+    /// Maximum Y coordinate
+    pub y_max: f64,
+}
+
+impl ClipRegion {
+    /// Create a new clipping region
+    pub fn new(x: f64, y: f64, width: f64, height: f64) -> Self {
+        Self {
+            x_min: x,
+            y_min: y,
+            x_max: x + width,
+            y_max: y + height,
+        }
+    }
+
+    /// Create from min/max coordinates
+    pub fn from_bounds(x_min: f64, y_min: f64, x_max: f64, y_max: f64) -> Self {
+        Self {
+            x_min,
+            y_min,
+            x_max,
+            y_max,
+        }
+    }
+
+    /// Check if a point is inside the clipping region
+    pub fn contains(&self, x: f64, y: f64) -> bool {
+        x >= self.x_min && x <= self.x_max && y >= self.y_min && y <= self.y_max
+    }
+
+    /// Intersect with another clipping region
+    pub fn intersect(&self, other: &ClipRegion) -> Option<ClipRegion> {
+        let x_min = self.x_min.max(other.x_min);
+        let y_min = self.y_min.max(other.y_min);
+        let x_max = self.x_max.min(other.x_max);
+        let y_max = self.y_max.min(other.y_max);
+
+        if x_min <= x_max && y_min <= y_max {
+            Some(ClipRegion {
+                x_min,
+                y_min,
+                x_max,
+                y_max,
+            })
+        } else {
+            None
+        }
+    }
+}
+
+// =============================================================================
+// Layer Support
+// =============================================================================
+
+/// A drawable layer that can be composed with other layers
+///
+/// Layers wrap a BrailleGrid and add visibility and opacity controls.
+/// Multiple layers can be composited together for complex scenes.
+pub struct Layer {
+    /// The underlying grid
+    grid: BrailleGrid,
+    /// Visibility
+    visible: bool,
+    /// Opacity (0.0 - 1.0)
+    opacity: f32,
+}
+
+impl Layer {
+    /// Create a new layer
+    pub fn new(term_width: u16, term_height: u16) -> Self {
+        Self {
+            grid: BrailleGrid::new(term_width, term_height),
+            visible: true,
+            opacity: 1.0,
+        }
+    }
+
+    /// Set visibility
+    pub fn set_visible(&mut self, visible: bool) {
+        self.visible = visible;
+    }
+
+    /// Check if visible
+    pub fn is_visible(&self) -> bool {
+        self.visible
+    }
+
+    /// Set opacity (0.0 - 1.0)
+    pub fn set_opacity(&mut self, opacity: f32) {
+        self.opacity = opacity.clamp(0.0, 1.0);
+    }
+
+    /// Get opacity
+    pub fn opacity(&self) -> f32 {
+        self.opacity
+    }
+
+    /// Get width in braille dots
+    pub fn width(&self) -> usize {
+        self.grid.width()
+    }
+
+    /// Get height in braille dots
+    pub fn height(&self) -> usize {
+        self.grid.height()
+    }
+
+    /// Set a dot
+    pub fn set(&mut self, x: usize, y: usize, color: Color) {
+        self.grid.set(x, y, color);
+    }
+
+    /// Clear the layer
+    pub fn clear(&mut self) {
+        self.grid.clear();
+    }
+
+    /// Draw a shape onto the layer
+    pub fn draw<S: Shape>(&mut self, shape: &S) {
+        self.grid.draw(shape);
+    }
+
+    /// Get the underlying grid for reading
+    pub fn grid(&self) -> &BrailleGrid {
+        &self.grid
+    }
+
+    /// Get the underlying grid for writing
+    pub fn grid_mut(&mut self) -> &mut BrailleGrid {
+        &mut self.grid
+    }
+}
+
+// =============================================================================
 // Braille Grid
 // =============================================================================
 
@@ -442,6 +918,28 @@ impl BrailleGrid {
             }
         }
     }
+
+    /// Composite a layer onto this grid
+    ///
+    /// The layer's dots are OR'd with existing dots, and colors are overwritten.
+    pub fn composite_layer(&mut self, layer: &Layer) {
+        if !layer.is_visible() || layer.opacity() <= 0.0 {
+            return;
+        }
+
+        let layer_grid = layer.grid();
+        let max_cells = self.cells.len().min(layer_grid.cells.len());
+
+        for idx in 0..max_cells {
+            let pattern = layer_grid.cells[idx];
+            if pattern != 0 {
+                self.cells[idx] |= pattern;
+                if let Some(color) = layer_grid.colors[idx] {
+                    self.colors[idx] = Some(color);
+                }
+            }
+        }
+    }
 }
 
 // =============================================================================
@@ -502,6 +1000,47 @@ impl<'a> BrailleContext<'a> {
     /// Draw connected points
     pub fn points(&mut self, coords: Vec<(f64, f64)>, color: Color) {
         self.draw(&Points::new(coords, color));
+    }
+
+    /// Draw an arc
+    pub fn arc(
+        &mut self,
+        x: f64,
+        y: f64,
+        radius: f64,
+        start_angle: f64,
+        end_angle: f64,
+        color: Color,
+    ) {
+        self.draw(&Arc::new(x, y, radius, start_angle, end_angle, color));
+    }
+
+    /// Draw an arc using degrees
+    pub fn arc_degrees(
+        &mut self,
+        x: f64,
+        y: f64,
+        radius: f64,
+        start_deg: f64,
+        end_deg: f64,
+        color: Color,
+    ) {
+        self.draw(&Arc::from_degrees(x, y, radius, start_deg, end_deg, color));
+    }
+
+    /// Draw a polygon
+    pub fn polygon(&mut self, vertices: Vec<(f64, f64)>, color: Color) {
+        self.draw(&Polygon::new(vertices, color));
+    }
+
+    /// Draw a regular polygon
+    pub fn regular_polygon(&mut self, x: f64, y: f64, radius: f64, sides: usize, color: Color) {
+        self.draw(&Polygon::regular(x, y, radius, sides, color));
+    }
+
+    /// Draw a filled polygon
+    pub fn filled_polygon(&mut self, vertices: Vec<(f64, f64)>, color: Color) {
+        self.draw(&FilledPolygon::new(vertices, color));
     }
 
     /// Clear the canvas

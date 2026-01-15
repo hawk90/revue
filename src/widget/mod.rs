@@ -320,8 +320,9 @@ pub use callout::{
 };
 pub use candlechart::{candle_chart, ohlc_chart, Candle, CandleChart, ChartStyle as CandleStyle};
 pub use canvas::{
-    braille_canvas, canvas, BrailleCanvas, BrailleContext, BrailleGrid, Canvas, Circle,
-    DrawContext, FilledCircle, FilledRectangle, Line, Points, Rectangle, Shape,
+    braille_canvas, canvas, Arc, BrailleCanvas, BrailleContext, BrailleGrid, Canvas, Circle,
+    ClipRegion, DrawContext, FilledCircle, FilledPolygon, FilledRectangle, Layer, Line, Points,
+    Polygon, Rectangle, Shape, Transform,
 };
 pub use card::{card, Card, CardBorder, CardVariant};
 pub use chart::{chart, line_chart, scatter_plot, Chart, ChartType, LineStyle, Series};
