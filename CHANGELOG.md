@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.26.0](https://github.com/hawk90/revue/compare/v2.25.0...v2.26.0) (2026-01-15)
+
+
+### Features
+
+* **widget:** add CodeEditor and RichTextEditor widgets ([#119](https://github.com/hawk90/revue/issues/119)) ([358d48a](https://github.com/hawk90/revue/commit/358d48a0291fca7080d1b26f907200db0c813780)), closes [#10](https://github.com/hawk90/revue/issues/10) [#11](https://github.com/hawk90/revue/issues/11)
+* **widget:** enhance Canvas with arcs, polygons, transforms, and layers ([#120](https://github.com/hawk90/revue/issues/120)) ([c7b69a7](https://github.com/hawk90/revue/commit/c7b69a72c35dfb3cd9d0cde235e2895d681c7a16)), closes [#6](https://github.com/hawk90/revue/issues/6)
+
 ## [2.25.0](https://github.com/hawk90/revue/compare/v2.24.0...v2.25.0) (2026-01-15)
 
 
