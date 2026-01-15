@@ -32,6 +32,7 @@
 //! | [`Checkbox`] | Toggle checkbox | [`checkbox()`] |
 //! | [`RadioGroup`] | Radio selection | [`radio_group()`] |
 //! | [`Select`] | Dropdown menu | [`select()`] |
+//! | [`Combobox`] | Autocomplete dropdown | [`combobox()`] |
 //! | [`Switch`] | Toggle switch | [`switch()`] |
 //! | [`Slider`] | Value slider | [`slider()`] |
 //! | [`ColorPicker`] | Color selection | [`color_picker()`] |
@@ -191,6 +192,7 @@ mod chart_stats;
 mod checkbox;
 mod collapsible;
 mod color_picker;
+mod combobox;
 mod command_palette;
 mod datagrid;
 mod datetime_picker;
@@ -321,6 +323,7 @@ pub use chart_common::{
 pub use checkbox::{checkbox, Checkbox, CheckboxStyle};
 pub use collapsible::{collapsible, Collapsible};
 pub use color_picker::{color_picker, ColorPalette, ColorPicker, ColorPickerMode};
+pub use combobox::{combobox, ComboOption, Combobox, FilterMode as ComboFilterMode};
 pub use command_palette::{command_palette, Command, CommandPalette};
 pub use datagrid::{datagrid, grid_column, grid_row, DataGrid, GridColumn, GridRow, SortDirection};
 pub use datetime_picker::{
