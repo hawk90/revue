@@ -1,6 +1,6 @@
 //! Widget system for Revue TUI framework.
 //!
-//! This module provides 85+ widgets for building terminal user interfaces.
+//! This module provides 86+ widgets for building terminal user interfaces.
 //! Widgets are organized into categories for easy discovery.
 //!
 //! # Widget Categories
@@ -58,6 +58,7 @@
 //! | [`Stepper`] | Step indicator | [`stepper()`] |
 //! | [`Alert`] | Persistent feedback | [`alert()`] |
 //! | [`Callout`] | Info highlight block | [`callout()`], [`note()`], [`tip()`] |
+//! | [`EmptyState`] | No-data placeholder | [`empty_state()`] |
 //! | [`StatusIndicator`] | Availability status | [`status_indicator()`], [`online()`] |
 //!
 //! ## Data Widgets
@@ -198,6 +199,7 @@ mod diff;
 mod digits;
 mod divider;
 mod dropzone;
+mod empty_state;
 mod filepicker;
 mod filetree;
 mod gauge;
@@ -331,6 +333,9 @@ pub use diff::{diff, diff_viewer, ChangeType, DiffColors, DiffLine, DiffMode, Di
 pub use digits::{clock, digits, timer, DigitStyle, Digits};
 pub use divider::{divider, vdivider, Divider, DividerStyle, Orientation};
 pub use dropzone::{drop_zone, DropZone, DropZoneStyle};
+pub use empty_state::{
+    empty_error, empty_state, first_use, no_results, EmptyState, EmptyStateType, EmptyStateVariant,
+};
 pub use filepicker::{
     dir_picker, file_picker, save_picker, FileFilter, FilePicker, PickerEntry, PickerMode,
     PickerResult,

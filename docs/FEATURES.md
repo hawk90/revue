@@ -629,6 +629,33 @@ status_indicator(Status::Online)
     .pulsing(true)                              // Animated pulse
 ```
 
+#### EmptyState
+
+```rust
+// Empty state scenarios
+empty_state("No items yet")
+    .description("Create your first item to get started")
+    .action("Create");
+
+// State types
+EmptyState::no_results("No results found")
+    .description("Try adjusting your search");
+
+EmptyState::error("Failed to load")
+    .description("Check your connection")
+    .action("Retry");
+
+EmptyState::first_use("Welcome!")
+    .description("Get started by creating your first project");
+
+// Variants
+empty_state("Empty")
+    .variant(EmptyStateVariant::Full)     // Centered with icon
+    .variant(EmptyStateVariant::Compact)  // Inline display
+    .variant(EmptyStateVariant::Minimal)  // Text only
+    .custom_icon('📦')                    // Custom icon
+```
+
 ### Content Widgets
 
 #### Markdown
