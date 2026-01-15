@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.24.0](https://github.com/hawk90/revue/compare/v2.23.0...v2.24.0) (2026-01-15)
+
+
+### Features
+
+* **widget:** add Sidebar Navigation widget ([#115](https://github.com/hawk90/revue/issues/115)) ([0a68994](https://github.com/hawk90/revue/commit/0a68994f6959db5d6346c7f1c89fcbff5cbddfd6)), closes [#35](https://github.com/hawk90/revue/issues/35)
+
 ## [2.23.0](https://github.com/hawk90/revue/compare/v2.22.0...v2.23.0) (2026-01-15)
 
 
