@@ -21,6 +21,7 @@
 //! | [`Collapsible`] | Single expandable section | [`collapsible()`] |
 //! | [`Card`] | Content container | [`card()`] |
 //! | [`Screen`] | Screen navigation | [`screen()`] |
+//! | [`Sidebar`] | Vertical nav rail | [`sidebar()`] |
 //!
 //! ## Input Widgets
 //!
@@ -256,6 +257,7 @@ mod scroll;
 mod search_bar;
 mod select;
 mod selection_list;
+mod sidebar;
 mod skeleton;
 mod slider;
 #[cfg(feature = "markdown")]
@@ -427,6 +429,10 @@ pub use search_bar::{search_bar, SearchBar};
 pub use select::{select, Select};
 pub use selection_list::{
     selection_item, selection_list, SelectionItem, SelectionList, SelectionStyle,
+};
+pub use sidebar::{
+    sidebar, sidebar_item, sidebar_section, sidebar_section_titled, CollapseMode, FlattenedItem,
+    Sidebar, SidebarItem, SidebarSection,
 };
 pub use skeleton::{
     skeleton, skeleton_avatar, skeleton_paragraph, skeleton_text, Skeleton, SkeletonShape,
