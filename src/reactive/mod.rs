@@ -92,6 +92,7 @@
 //! 4. **Clone signals freely**: Signals are cheap to clone (reference-counted)
 
 mod async_state;
+mod batch;
 mod computed;
 mod effect;
 mod runtime;
@@ -100,6 +101,10 @@ mod tracker;
 
 pub use async_state::{
     use_async, use_async_immediate, use_async_poll, AsyncResource, AsyncResult, AsyncState,
+};
+pub use batch::{
+    batch, batch_count, batch_depth, end_batch, flush, is_batching, pending_count, queue_update,
+    start_batch, BatchGuard, Transaction,
 };
 pub use computed::Computed;
 pub use effect::Effect;
