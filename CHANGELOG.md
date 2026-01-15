@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.21.0](https://github.com/hawk90/revue/compare/v2.20.0...v2.21.0) (2026-01-15)
+
+
+### Features
+
+* **widget:** add ToastQueue for centralized toast management ([#107](https://github.com/hawk90/revue/issues/107)) ([61baed0](https://github.com/hawk90/revue/commit/61baed02ed55cbf7ea50361ca97f78b918364058))
+
 ## [2.20.0](https://github.com/hawk90/revue/compare/v2.19.0...v2.20.0) (2026-01-15)
 
 
