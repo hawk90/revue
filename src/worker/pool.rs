@@ -332,10 +332,26 @@ mod tests {
 
     #[test]
     fn test_worker_pool_priority() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+
         let pool = WorkerPool::new(1);
         let order = Arc::new(Mutex::new(Vec::new()));
 
-        // Submit low priority first
+        // Use a barrier to hold the worker while we queue both tasks
+        let barrier = Arc::new(AtomicBool::new(false));
+        let barrier_clone = barrier.clone();
+
+        // Submit a blocking task first to hold the worker
+        pool.submit(move || {
+            while !barrier_clone.load(Ordering::SeqCst) {
+                thread::sleep(std::time::Duration::from_millis(1));
+            }
+        });
+
+        // Give the worker time to pick up the blocking task
+        thread::sleep(std::time::Duration::from_millis(10));
+
+        // Now submit low and high priority tasks - they'll queue up
         let order1 = order.clone();
         pool.submit_with_priority(
             move || {
@@ -344,7 +360,6 @@ mod tests {
             Priority::Low,
         );
 
-        // Submit high priority second (should run first due to priority)
         let order2 = order.clone();
         pool.submit_with_priority(
             move || {
@@ -353,15 +368,17 @@ mod tests {
             Priority::High,
         );
 
+        // Release the barrier - worker will process queued tasks by priority
+        barrier.store(true, Ordering::SeqCst);
+
         // Wait for completion
         thread::sleep(std::time::Duration::from_millis(100));
         pool.shutdown();
 
         let result = order.lock().unwrap();
         // High priority should be processed first
-        if result.len() == 2 {
-            assert_eq!(result[0], "high");
-            assert_eq!(result[1], "low");
-        }
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], "high");
+        assert_eq!(result[1], "low");
     }
 }
