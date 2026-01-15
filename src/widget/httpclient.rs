@@ -2,6 +2,35 @@
 //! HTTP Client widget for REST API testing
 //!
 //! A Postman-like widget for making HTTP requests and viewing responses.
+//!
+//! # Features
+//!
+//! - Multiple HTTP methods (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+//! - Request headers and body
+//! - Query parameters with URL builder
+//! - Response body with JSON/XML formatting
+//! - Loading and error states
+//! - Request history navigation
+//!
+//! # Example
+//!
+//! ```rust,ignore
+//! use revue::widget::{HttpClient, HttpMethod};
+//!
+//! let mut client = HttpClient::new()
+//!     .url("https://api.example.com/users")
+//!     .method(HttpMethod::GET)
+//!     .header("Authorization", "Bearer token");
+//!
+//! // Send request
+//! client.send();
+//!
+//! // Check response
+//! if let Some(response) = client.response() {
+//!     println!("Status: {}", response.status);
+//!     println!("Body: {}", response.body);
+//! }
+//! ```
 
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
@@ -89,6 +118,38 @@ pub struct HttpResponse {
     pub size: usize,
 }
 
+/// Content type of response
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ContentType {
+    /// JSON content
+    Json,
+    /// XML content
+    Xml,
+    /// HTML content
+    Html,
+    /// Plain text
+    #[default]
+    Text,
+    /// Binary data
+    Binary,
+}
+
+impl ContentType {
+    /// Detect content type from Content-Type header
+    pub fn from_header(header: Option<&str>) -> Self {
+        match header {
+            Some(h) if h.contains("application/json") => Self::Json,
+            Some(h) if h.contains("text/json") => Self::Json,
+            Some(h) if h.contains("application/xml") => Self::Xml,
+            Some(h) if h.contains("text/xml") => Self::Xml,
+            Some(h) if h.contains("text/html") => Self::Html,
+            Some(h) if h.contains("text/plain") => Self::Text,
+            Some(h) if h.contains("application/octet-stream") => Self::Binary,
+            _ => Self::Text,
+        }
+    }
+}
+
 impl HttpResponse {
     /// Check if status is success (2xx)
     pub fn is_success(&self) -> bool {
@@ -103,6 +164,93 @@ impl HttpResponse {
             400..=499 => Color::rgb(224, 108, 117), // Red
             500..=599 => Color::rgb(198, 120, 221), // Purple
             _ => Color::rgb(171, 178, 191),         // Gray
+        }
+    }
+
+    /// Get content type
+    pub fn content_type(&self) -> ContentType {
+        ContentType::from_header(self.headers.get("Content-Type").map(|s| s.as_str()))
+    }
+
+    /// Try to format body as pretty JSON
+    pub fn pretty_json(&self) -> Option<String> {
+        self.format_json(&self.body)
+    }
+
+    /// Format JSON string with indentation
+    fn format_json(&self, json: &str) -> Option<String> {
+        // Simple JSON formatter without external dependencies
+        let mut result = String::new();
+        let mut indent = 0usize;
+        let mut in_string = false;
+        let mut escape_next = false;
+
+        for ch in json.chars() {
+            if escape_next {
+                result.push(ch);
+                escape_next = false;
+                continue;
+            }
+
+            if ch == '\\' && in_string {
+                result.push(ch);
+                escape_next = true;
+                continue;
+            }
+
+            if ch == '"' {
+                in_string = !in_string;
+                result.push(ch);
+                continue;
+            }
+
+            if in_string {
+                result.push(ch);
+                continue;
+            }
+
+            match ch {
+                '{' | '[' => {
+                    result.push(ch);
+                    indent += 1;
+                    result.push('\n');
+                    result.push_str(&"  ".repeat(indent));
+                }
+                '}' | ']' => {
+                    indent = indent.saturating_sub(1);
+                    result.push('\n');
+                    result.push_str(&"  ".repeat(indent));
+                    result.push(ch);
+                }
+                ',' => {
+                    result.push(ch);
+                    result.push('\n');
+                    result.push_str(&"  ".repeat(indent));
+                }
+                ':' => {
+                    result.push_str(": ");
+                }
+                ' ' | '\n' | '\r' | '\t' => {
+                    // Skip whitespace outside strings
+                }
+                _ => {
+                    result.push(ch);
+                }
+            }
+        }
+
+        if result.is_empty() {
+            None
+        } else {
+            Some(result)
+        }
+    }
+
+    /// Get formatted body based on content type
+    pub fn formatted_body(&self) -> String {
+        match self.content_type() {
+            ContentType::Json => self.pretty_json().unwrap_or_else(|| self.body.clone()),
+            _ => self.body.clone(),
         }
     }
 }
@@ -710,6 +858,293 @@ pub fn get(url: impl Into<String>) -> HttpClient {
 /// Create a POST request
 pub fn post(url: impl Into<String>) -> HttpClient {
     HttpClient::new().url(url).method(HttpMethod::POST)
+}
+
+/// Create a PUT request
+pub fn put(url: impl Into<String>) -> HttpClient {
+    HttpClient::new().url(url).method(HttpMethod::PUT)
+}
+
+/// Create a DELETE request
+pub fn delete(url: impl Into<String>) -> HttpClient {
+    HttpClient::new().url(url).method(HttpMethod::DELETE)
+}
+
+/// Create a PATCH request
+pub fn patch(url: impl Into<String>) -> HttpClient {
+    HttpClient::new().url(url).method(HttpMethod::PATCH)
+}
+
+// =============================================================================
+// Request Builder for Fluent API
+// =============================================================================
+
+/// A fluent request builder for constructing HTTP requests
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use revue::widget::RequestBuilder;
+///
+/// let request = RequestBuilder::get("https://api.example.com/users")
+///     .header("Authorization", "Bearer token")
+///     .param("page", "1")
+///     .param("limit", "10")
+///     .build();
+/// ```
+pub struct RequestBuilder {
+    request: HttpRequest,
+}
+
+impl RequestBuilder {
+    /// Create a new GET request builder
+    pub fn get(url: impl Into<String>) -> Self {
+        Self {
+            request: HttpRequest::new(url).method(HttpMethod::GET),
+        }
+    }
+
+    /// Create a new POST request builder
+    pub fn post(url: impl Into<String>) -> Self {
+        Self {
+            request: HttpRequest::new(url).method(HttpMethod::POST),
+        }
+    }
+
+    /// Create a new PUT request builder
+    pub fn put(url: impl Into<String>) -> Self {
+        Self {
+            request: HttpRequest::new(url).method(HttpMethod::PUT),
+        }
+    }
+
+    /// Create a new DELETE request builder
+    pub fn delete(url: impl Into<String>) -> Self {
+        Self {
+            request: HttpRequest::new(url).method(HttpMethod::DELETE),
+        }
+    }
+
+    /// Create a new PATCH request builder
+    pub fn patch(url: impl Into<String>) -> Self {
+        Self {
+            request: HttpRequest::new(url).method(HttpMethod::PATCH),
+        }
+    }
+
+    /// Add a header
+    pub fn header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.request = self.request.header(key, value);
+        self
+    }
+
+    /// Add a query parameter
+    pub fn param(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.request = self.request.param(key, value);
+        self
+    }
+
+    /// Set the request body
+    pub fn body(mut self, body: impl Into<String>) -> Self {
+        self.request = self.request.body(body);
+        self
+    }
+
+    /// Set JSON body with Content-Type header
+    pub fn json(self, body: impl Into<String>) -> Self {
+        self.header("Content-Type", "application/json").body(body)
+    }
+
+    /// Set form body with Content-Type header
+    pub fn form(self, body: impl Into<String>) -> Self {
+        self.header("Content-Type", "application/x-www-form-urlencoded")
+            .body(body)
+    }
+
+    /// Set bearer token authorization
+    pub fn bearer_auth(self, token: impl Into<String>) -> Self {
+        self.header("Authorization", format!("Bearer {}", token.into()))
+    }
+
+    /// Set basic authorization
+    pub fn basic_auth(self, username: impl Into<String>, password: impl Into<String>) -> Self {
+        use std::io::Write;
+        let mut encoder = Vec::new();
+        let credentials = format!("{}:{}", username.into(), password.into());
+        // Simple base64 encoding
+        let encoded = base64_encode(credentials.as_bytes());
+        let _ = write!(encoder, "Basic {}", encoded);
+        self.header(
+            "Authorization",
+            String::from_utf8(encoder).unwrap_or_default(),
+        )
+    }
+
+    /// Build the request
+    pub fn build(self) -> HttpRequest {
+        self.request
+    }
+}
+
+/// Simple base64 encoder (no external dependencies)
+fn base64_encode(data: &[u8]) -> String {
+    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    let mut result = String::new();
+    let chunks = data.chunks(3);
+
+    for chunk in chunks {
+        let b0 = chunk[0] as usize;
+        let b1 = chunk.get(1).copied().unwrap_or(0) as usize;
+        let b2 = chunk.get(2).copied().unwrap_or(0) as usize;
+
+        result.push(ALPHABET[b0 >> 2] as char);
+        result.push(ALPHABET[((b0 & 0x03) << 4) | (b1 >> 4)] as char);
+
+        if chunk.len() > 1 {
+            result.push(ALPHABET[((b1 & 0x0F) << 2) | (b2 >> 6)] as char);
+        } else {
+            result.push('=');
+        }
+
+        if chunk.len() > 2 {
+            result.push(ALPHABET[b2 & 0x3F] as char);
+        } else {
+            result.push('=');
+        }
+    }
+
+    result
+}
+
+// =============================================================================
+// HTTP Backend Trait
+// =============================================================================
+
+/// Trait for HTTP backend implementations
+///
+/// Implement this trait to provide actual HTTP functionality.
+/// This allows the widget to work with different HTTP libraries.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use revue::widget::{HttpBackend, HttpRequest, HttpResponse};
+///
+/// struct MyHttpBackend;
+///
+/// impl HttpBackend for MyHttpBackend {
+///     fn send(&self, request: &HttpRequest) -> Result<HttpResponse, String> {
+///         // Implement using reqwest, ureq, or other HTTP library
+///         todo!()
+///     }
+/// }
+/// ```
+pub trait HttpBackend: Send + Sync {
+    /// Send an HTTP request and return the response
+    fn send(&self, request: &HttpRequest) -> Result<HttpResponse, String>;
+}
+
+/// Mock HTTP backend for testing
+#[derive(Default)]
+pub struct MockHttpBackend {
+    responses: std::sync::RwLock<Vec<(String, HttpResponse)>>,
+}
+
+impl MockHttpBackend {
+    /// Create a new mock backend
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add a mock response for a URL pattern
+    pub fn mock_response(&self, url_pattern: impl Into<String>, response: HttpResponse) {
+        if let Ok(mut responses) = self.responses.write() {
+            responses.push((url_pattern.into(), response));
+        }
+    }
+
+    /// Add a mock JSON response
+    pub fn mock_json(&self, url_pattern: impl Into<String>, status: u16, json: impl Into<String>) {
+        let body = json.into();
+        let response = HttpResponse {
+            status,
+            status_text: Self::status_text(status).to_string(),
+            headers: [("Content-Type".to_string(), "application/json".to_string())]
+                .into_iter()
+                .collect(),
+            body: body.clone(),
+            time: Duration::from_millis(50),
+            size: body.len(),
+        };
+        self.mock_response(url_pattern, response);
+    }
+
+    /// Add a mock error response
+    pub fn mock_error(
+        &self,
+        url_pattern: impl Into<String>,
+        status: u16,
+        message: impl Into<String>,
+    ) {
+        let body = format!(r#"{{"error": "{}"}}"#, message.into());
+        let response = HttpResponse {
+            status,
+            status_text: Self::status_text(status).to_string(),
+            headers: [("Content-Type".to_string(), "application/json".to_string())]
+                .into_iter()
+                .collect(),
+            body: body.clone(),
+            time: Duration::from_millis(10),
+            size: body.len(),
+        };
+        self.mock_response(url_pattern, response);
+    }
+
+    fn status_text(status: u16) -> &'static str {
+        match status {
+            200 => "OK",
+            201 => "Created",
+            204 => "No Content",
+            301 => "Moved Permanently",
+            302 => "Found",
+            304 => "Not Modified",
+            400 => "Bad Request",
+            401 => "Unauthorized",
+            403 => "Forbidden",
+            404 => "Not Found",
+            405 => "Method Not Allowed",
+            500 => "Internal Server Error",
+            502 => "Bad Gateway",
+            503 => "Service Unavailable",
+            _ => "Unknown",
+        }
+    }
+}
+
+impl HttpBackend for MockHttpBackend {
+    fn send(&self, request: &HttpRequest) -> Result<HttpResponse, String> {
+        if let Ok(responses) = self.responses.read() {
+            for (pattern, response) in responses.iter().rev() {
+                if request.url.contains(pattern) || pattern == "*" {
+                    return Ok(response.clone());
+                }
+            }
+        }
+
+        // Default mock response
+        let body = r#"{"status": "mock", "message": "No mock configured"}"#;
+        Ok(HttpResponse {
+            status: 200,
+            status_text: "OK".to_string(),
+            headers: [("Content-Type".to_string(), "application/json".to_string())]
+                .into_iter()
+                .collect(),
+            body: body.to_string(),
+            time: Duration::from_millis(1),
+            size: body.len(),
+        })
+    }
 }
 
 #[cfg(test)]

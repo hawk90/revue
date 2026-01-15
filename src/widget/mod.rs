@@ -369,8 +369,9 @@ pub use grid::{
 pub use heatmap::{contribution_map, heatmap, CellDisplay, ColorScale, HeatMap};
 pub use histogram::{histogram, BinConfig, Histogram, HistogramBin};
 pub use httpclient::{
-    get as http_get, http_client, post as http_post, HttpClient, HttpMethod, HttpRequest,
-    HttpResponse, RequestState, ResponseView,
+    delete as http_delete, get as http_get, http_client, patch as http_patch, post as http_post,
+    put as http_put, ContentType, HttpBackend, HttpClient, HttpMethod, HttpRequest, HttpResponse,
+    MockHttpBackend, RequestBuilder, RequestState, ResponseView,
 };
 #[cfg(feature = "image")]
 pub use image::{image_from_file, try_image_from_file, Image, ImageError, ImageResult, ScaleMode};
