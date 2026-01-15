@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.18.0](https://github.com/hawk90/revue/compare/v2.17.0...v2.18.0) (2026-01-15)
+
+
+### Features
+
+* **widget:** add EmptyState widget for no-data scenarios ([#102](https://github.com/hawk90/revue/issues/102)) ([91351ab](https://github.com/hawk90/revue/commit/91351abd1ed51ff98438c30ee9a3b95d52f0224a))
+
 ## [2.17.0](https://github.com/hawk90/revue/compare/v2.16.0...v2.17.0) (2026-01-09)
 
 
