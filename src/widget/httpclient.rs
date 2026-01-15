@@ -2,6 +2,35 @@
 //! HTTP Client widget for REST API testing
 //!
 //! A Postman-like widget for making HTTP requests and viewing responses.
+//!
+//! # Features
+//!
+//! - Multiple HTTP methods (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+//! - Request headers and body
+//! - Query parameters with URL builder
+//! - Response body with JSON/XML formatting
+//! - Loading and error states
+//! - Request history navigation
+//!
+//! # Example
+//!
+//! ```rust,ignore
+//! use revue::widget::{HttpClient, HttpMethod};
+//!
+//! let mut client = HttpClient::new()
+//!     .url("https://api.example.com/users")
+//!     .method(HttpMethod::GET)
+//!     .header("Authorization", "Bearer token");
+//!
+//! // Send request
+//! client.send();
+//!
+//! // Check response
+//! if let Some(response) = client.response() {
+//!     println!("Status: {}", response.status);
+//!     println!("Body: {}", response.body);
+//! }
+//! ```
 
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
@@ -89,6 +118,38 @@ pub struct HttpResponse {
     pub size: usize,
 }
 
+/// Content type of response
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ContentType {
+    /// JSON content
+    Json,
+    /// XML content
+    Xml,
+    /// HTML content
+    Html,
+    /// Plain text
+    #[default]
+    Text,
+    /// Binary data
+    Binary,
+}
+
+impl ContentType {
+    /// Detect content type from Content-Type header
+    pub fn from_header(header: Option<&str>) -> Self {
+        match header {
+            Some(h) if h.contains("application/json") => Self::Json,
+            Some(h) if h.contains("text/json") => Self::Json,
+            Some(h) if h.contains("application/xml") => Self::Xml,
+            Some(h) if h.contains("text/xml") => Self::Xml,
+            Some(h) if h.contains("text/html") => Self::Html,
+            Some(h) if h.contains("text/plain") => Self::Text,
+            Some(h) if h.contains("application/octet-stream") => Self::Binary,
+            _ => Self::Text,
+        }
+    }
+}
+
 impl HttpResponse {
     /// Check if status is success (2xx)
     pub fn is_success(&self) -> bool {
@@ -103,6 +164,93 @@ impl HttpResponse {
             400..=499 => Color::rgb(224, 108, 117), // Red
             500..=599 => Color::rgb(198, 120, 221), // Purple
             _ => Color::rgb(171, 178, 191),         // Gray
+        }
+    }
+
+    /// Get content type
+    pub fn content_type(&self) -> ContentType {
+        ContentType::from_header(self.headers.get("Content-Type").map(|s| s.as_str()))
+    }
+
+    /// Try to format body as pretty JSON
+    pub fn pretty_json(&self) -> Option<String> {
+        self.format_json(&self.body)
+    }
+
+    /// Format JSON string with indentation
+    fn format_json(&self, json: &str) -> Option<String> {
+        // Simple JSON formatter without external dependencies
+        let mut result = String::new();
+        let mut indent = 0usize;
+        let mut in_string = false;
+        let mut escape_next = false;
+
+        for ch in json.chars() {
+            if escape_next {
+                result.push(ch);
+                escape_next = false;
+                continue;
+            }
+
+            if ch == '\\' && in_string {
+                result.push(ch);
+                escape_next = true;
+                continue;
+            }
+
+            if ch == '"' {
+                in_string = !in_string;
+                result.push(ch);
+                continue;
+            }
+
+            if in_string {
+                result.push(ch);
+                continue;
+            }
+
+            match ch {
+                '{' | '[' => {
+                    result.push(ch);
+                    indent += 1;
+                    result.push('\n');
+                    result.push_str(&"  ".repeat(indent));
+                }
+                '}' | ']' => {
+                    indent = indent.saturating_sub(1);
+                    result.push('\n');
+                    result.push_str(&"  ".repeat(indent));
+                    result.push(ch);
+                }
+                ',' => {
+                    result.push(ch);
+                    result.push('\n');
+                    result.push_str(&"  ".repeat(indent));
+                }
+                ':' => {
+                    result.push_str(": ");
+                }
+                ' ' | '\n' | '\r' | '\t' => {
+                    // Skip whitespace outside strings
+                }
+                _ => {
+                    result.push(ch);
+                }
+            }
+        }
+
+        if result.is_empty() {
+            None
+        } else {
+            Some(result)
+        }
+    }
+
+    /// Get formatted body based on content type
+    pub fn formatted_body(&self) -> String {
+        match self.content_type() {
+            ContentType::Json => self.pretty_json().unwrap_or_else(|| self.body.clone()),
+            _ => self.body.clone(),
         }
     }
 }
@@ -712,6 +860,293 @@ pub fn post(url: impl Into<String>) -> HttpClient {
     HttpClient::new().url(url).method(HttpMethod::POST)
 }
 
+/// Create a PUT request
+pub fn put(url: impl Into<String>) -> HttpClient {
+    HttpClient::new().url(url).method(HttpMethod::PUT)
+}
+
+/// Create a DELETE request
+pub fn delete(url: impl Into<String>) -> HttpClient {
+    HttpClient::new().url(url).method(HttpMethod::DELETE)
+}
+
+/// Create a PATCH request
+pub fn patch(url: impl Into<String>) -> HttpClient {
+    HttpClient::new().url(url).method(HttpMethod::PATCH)
+}
+
+// =============================================================================
+// Request Builder for Fluent API
+// =============================================================================
+
+/// A fluent request builder for constructing HTTP requests
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use revue::widget::RequestBuilder;
+///
+/// let request = RequestBuilder::get("https://api.example.com/users")
+///     .header("Authorization", "Bearer token")
+///     .param("page", "1")
+///     .param("limit", "10")
+///     .build();
+/// ```
+pub struct RequestBuilder {
+    request: HttpRequest,
+}
+
+impl RequestBuilder {
+    /// Create a new GET request builder
+    pub fn get(url: impl Into<String>) -> Self {
+        Self {
+            request: HttpRequest::new(url).method(HttpMethod::GET),
+        }
+    }
+
+    /// Create a new POST request builder
+    pub fn post(url: impl Into<String>) -> Self {
+        Self {
+            request: HttpRequest::new(url).method(HttpMethod::POST),
+        }
+    }
+
+    /// Create a new PUT request builder
+    pub fn put(url: impl Into<String>) -> Self {
+        Self {
+            request: HttpRequest::new(url).method(HttpMethod::PUT),
+        }
+    }
+
+    /// Create a new DELETE request builder
+    pub fn delete(url: impl Into<String>) -> Self {
+        Self {
+            request: HttpRequest::new(url).method(HttpMethod::DELETE),
+        }
+    }
+
+    /// Create a new PATCH request builder
+    pub fn patch(url: impl Into<String>) -> Self {
+        Self {
+            request: HttpRequest::new(url).method(HttpMethod::PATCH),
+        }
+    }
+
+    /// Add a header
+    pub fn header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.request = self.request.header(key, value);
+        self
+    }
+
+    /// Add a query parameter
+    pub fn param(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.request = self.request.param(key, value);
+        self
+    }
+
+    /// Set the request body
+    pub fn body(mut self, body: impl Into<String>) -> Self {
+        self.request = self.request.body(body);
+        self
+    }
+
+    /// Set JSON body with Content-Type header
+    pub fn json(self, body: impl Into<String>) -> Self {
+        self.header("Content-Type", "application/json").body(body)
+    }
+
+    /// Set form body with Content-Type header
+    pub fn form(self, body: impl Into<String>) -> Self {
+        self.header("Content-Type", "application/x-www-form-urlencoded")
+            .body(body)
+    }
+
+    /// Set bearer token authorization
+    pub fn bearer_auth(self, token: impl Into<String>) -> Self {
+        self.header("Authorization", format!("Bearer {}", token.into()))
+    }
+
+    /// Set basic authorization
+    pub fn basic_auth(self, username: impl Into<String>, password: impl Into<String>) -> Self {
+        use std::io::Write;
+        let mut encoder = Vec::new();
+        let credentials = format!("{}:{}", username.into(), password.into());
+        // Simple base64 encoding
+        let encoded = base64_encode(credentials.as_bytes());
+        let _ = write!(encoder, "Basic {}", encoded);
+        self.header(
+            "Authorization",
+            String::from_utf8(encoder).unwrap_or_default(),
+        )
+    }
+
+    /// Build the request
+    pub fn build(self) -> HttpRequest {
+        self.request
+    }
+}
+
+/// Simple base64 encoder (no external dependencies)
+fn base64_encode(data: &[u8]) -> String {
+    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    let mut result = String::new();
+    let chunks = data.chunks(3);
+
+    for chunk in chunks {
+        let b0 = chunk[0] as usize;
+        let b1 = chunk.get(1).copied().unwrap_or(0) as usize;
+        let b2 = chunk.get(2).copied().unwrap_or(0) as usize;
+
+        result.push(ALPHABET[b0 >> 2] as char);
+        result.push(ALPHABET[((b0 & 0x03) << 4) | (b1 >> 4)] as char);
+
+        if chunk.len() > 1 {
+            result.push(ALPHABET[((b1 & 0x0F) << 2) | (b2 >> 6)] as char);
+        } else {
+            result.push('=');
+        }
+
+        if chunk.len() > 2 {
+            result.push(ALPHABET[b2 & 0x3F] as char);
+        } else {
+            result.push('=');
+        }
+    }
+
+    result
+}
+
+// =============================================================================
+// HTTP Backend Trait
+// =============================================================================
+
+/// Trait for HTTP backend implementations
+///
+/// Implement this trait to provide actual HTTP functionality.
+/// This allows the widget to work with different HTTP libraries.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use revue::widget::{HttpBackend, HttpRequest, HttpResponse};
+///
+/// struct MyHttpBackend;
+///
+/// impl HttpBackend for MyHttpBackend {
+///     fn send(&self, request: &HttpRequest) -> Result<HttpResponse, String> {
+///         // Implement using reqwest, ureq, or other HTTP library
+///         todo!()
+///     }
+/// }
+/// ```
+pub trait HttpBackend: Send + Sync {
+    /// Send an HTTP request and return the response
+    fn send(&self, request: &HttpRequest) -> Result<HttpResponse, String>;
+}
+
+/// Mock HTTP backend for testing
+#[derive(Default)]
+pub struct MockHttpBackend {
+    responses: std::sync::RwLock<Vec<(String, HttpResponse)>>,
+}
+
+impl MockHttpBackend {
+    /// Create a new mock backend
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add a mock response for a URL pattern
+    pub fn mock_response(&self, url_pattern: impl Into<String>, response: HttpResponse) {
+        if let Ok(mut responses) = self.responses.write() {
+            responses.push((url_pattern.into(), response));
+        }
+    }
+
+    /// Add a mock JSON response
+    pub fn mock_json(&self, url_pattern: impl Into<String>, status: u16, json: impl Into<String>) {
+        let body = json.into();
+        let response = HttpResponse {
+            status,
+            status_text: Self::status_text(status).to_string(),
+            headers: [("Content-Type".to_string(), "application/json".to_string())]
+                .into_iter()
+                .collect(),
+            body: body.clone(),
+            time: Duration::from_millis(50),
+            size: body.len(),
+        };
+        self.mock_response(url_pattern, response);
+    }
+
+    /// Add a mock error response
+    pub fn mock_error(
+        &self,
+        url_pattern: impl Into<String>,
+        status: u16,
+        message: impl Into<String>,
+    ) {
+        let body = format!(r#"{{"error": "{}"}}"#, message.into());
+        let response = HttpResponse {
+            status,
+            status_text: Self::status_text(status).to_string(),
+            headers: [("Content-Type".to_string(), "application/json".to_string())]
+                .into_iter()
+                .collect(),
+            body: body.clone(),
+            time: Duration::from_millis(10),
+            size: body.len(),
+        };
+        self.mock_response(url_pattern, response);
+    }
+
+    fn status_text(status: u16) -> &'static str {
+        match status {
+            200 => "OK",
+            201 => "Created",
+            204 => "No Content",
+            301 => "Moved Permanently",
+            302 => "Found",
+            304 => "Not Modified",
+            400 => "Bad Request",
+            401 => "Unauthorized",
+            403 => "Forbidden",
+            404 => "Not Found",
+            405 => "Method Not Allowed",
+            500 => "Internal Server Error",
+            502 => "Bad Gateway",
+            503 => "Service Unavailable",
+            _ => "Unknown",
+        }
+    }
+}
+
+impl HttpBackend for MockHttpBackend {
+    fn send(&self, request: &HttpRequest) -> Result<HttpResponse, String> {
+        if let Ok(responses) = self.responses.read() {
+            for (pattern, response) in responses.iter().rev() {
+                if request.url.contains(pattern) || pattern == "*" {
+                    return Ok(response.clone());
+                }
+            }
+        }
+
+        // Default mock response
+        let body = r#"{"status": "mock", "message": "No mock configured"}"#;
+        Ok(HttpResponse {
+            status: 200,
+            status_text: "OK".to_string(),
+            headers: [("Content-Type".to_string(), "application/json".to_string())]
+                .into_iter()
+                .collect(),
+            body: body.to_string(),
+            time: Duration::from_millis(1),
+            size: body.len(),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -771,5 +1206,447 @@ mod tests {
     fn test_method_colors() {
         assert_ne!(HttpMethod::GET.color(), HttpMethod::POST.color());
         assert_ne!(HttpMethod::DELETE.color(), HttpMethod::PUT.color());
+    }
+
+    // ==========================================================================
+    // ContentType tests
+    // ==========================================================================
+
+    #[test]
+    fn test_content_type_from_header_json() {
+        assert_eq!(
+            ContentType::from_header(Some("application/json")),
+            ContentType::Json
+        );
+        assert_eq!(
+            ContentType::from_header(Some("application/json; charset=utf-8")),
+            ContentType::Json
+        );
+        assert_eq!(
+            ContentType::from_header(Some("text/json")),
+            ContentType::Json
+        );
+    }
+
+    #[test]
+    fn test_content_type_from_header_xml() {
+        assert_eq!(
+            ContentType::from_header(Some("application/xml")),
+            ContentType::Xml
+        );
+        assert_eq!(ContentType::from_header(Some("text/xml")), ContentType::Xml);
+    }
+
+    #[test]
+    fn test_content_type_from_header_html() {
+        assert_eq!(
+            ContentType::from_header(Some("text/html")),
+            ContentType::Html
+        );
+        assert_eq!(
+            ContentType::from_header(Some("text/html; charset=utf-8")),
+            ContentType::Html
+        );
+    }
+
+    #[test]
+    fn test_content_type_from_header_text() {
+        assert_eq!(
+            ContentType::from_header(Some("text/plain")),
+            ContentType::Text
+        );
+        assert_eq!(ContentType::from_header(None), ContentType::Text);
+    }
+
+    #[test]
+    fn test_content_type_from_header_binary() {
+        assert_eq!(
+            ContentType::from_header(Some("application/octet-stream")),
+            ContentType::Binary
+        );
+    }
+
+    // ==========================================================================
+    // HttpResponse tests
+    // ==========================================================================
+
+    #[test]
+    fn test_response_is_success() {
+        let mut response = HttpResponse::default();
+        response.status = 200;
+        assert!(response.is_success());
+
+        response.status = 201;
+        assert!(response.is_success());
+
+        response.status = 299;
+        assert!(response.is_success());
+
+        response.status = 404;
+        assert!(!response.is_success());
+
+        response.status = 500;
+        assert!(!response.is_success());
+    }
+
+    #[test]
+    fn test_response_status_color() {
+        let mut response = HttpResponse::default();
+
+        response.status = 200;
+        let green = response.status_color();
+
+        response.status = 404;
+        let red = response.status_color();
+
+        response.status = 301;
+        let yellow = response.status_color();
+
+        response.status = 500;
+        let purple = response.status_color();
+
+        assert_ne!(green, red);
+        assert_ne!(yellow, purple);
+    }
+
+    #[test]
+    fn test_response_content_type() {
+        let mut response = HttpResponse::default();
+        response
+            .headers
+            .insert("Content-Type".to_string(), "application/json".to_string());
+        assert_eq!(response.content_type(), ContentType::Json);
+    }
+
+    #[test]
+    fn test_response_pretty_json() {
+        let mut response = HttpResponse::default();
+        response.body = r#"{"name":"test","value":123}"#.to_string();
+
+        let pretty = response.pretty_json().unwrap();
+        assert!(pretty.contains('\n'));
+        assert!(pretty.contains("name"));
+        assert!(pretty.contains("test"));
+    }
+
+    #[test]
+    fn test_response_formatted_body_json() {
+        let mut response = HttpResponse::default();
+        response
+            .headers
+            .insert("Content-Type".to_string(), "application/json".to_string());
+        response.body = r#"{"key":"value"}"#.to_string();
+
+        let formatted = response.formatted_body();
+        assert!(formatted.contains('\n'));
+    }
+
+    #[test]
+    fn test_response_formatted_body_text() {
+        let mut response = HttpResponse::default();
+        response
+            .headers
+            .insert("Content-Type".to_string(), "text/plain".to_string());
+        response.body = "Hello, World!".to_string();
+
+        let formatted = response.formatted_body();
+        assert_eq!(formatted, "Hello, World!");
+    }
+
+    // ==========================================================================
+    // JSON formatting tests
+    // ==========================================================================
+
+    #[test]
+    fn test_format_json_simple_object() {
+        let response = HttpResponse::default();
+        let json = r#"{"key":"value"}"#;
+        let formatted = response.format_json(json).unwrap();
+
+        assert!(formatted.contains("{\n"));
+        assert!(formatted.contains("\"key\": \"value\""));
+    }
+
+    #[test]
+    fn test_format_json_nested_object() {
+        let response = HttpResponse::default();
+        let json = r#"{"outer":{"inner":"value"}}"#;
+        let formatted = response.format_json(json).unwrap();
+
+        assert!(formatted.contains("\"outer\": {\n"));
+        assert!(formatted.contains("\"inner\": \"value\""));
+    }
+
+    #[test]
+    fn test_format_json_array() {
+        let response = HttpResponse::default();
+        let json = r#"[1,2,3]"#;
+        let formatted = response.format_json(json).unwrap();
+
+        assert!(formatted.contains("[\n"));
+        assert!(formatted.contains("1,\n"));
+    }
+
+    #[test]
+    fn test_format_json_with_escaped_quotes() {
+        let response = HttpResponse::default();
+        let json = r#"{"message":"Hello \"World\""}"#;
+        let formatted = response.format_json(json).unwrap();
+
+        assert!(formatted.contains(r#"\"World\""#));
+    }
+
+    #[test]
+    fn test_format_json_empty_returns_none() {
+        let response = HttpResponse::default();
+        let result = response.format_json("");
+        assert!(result.is_none());
+    }
+
+    // ==========================================================================
+    // RequestBuilder tests
+    // ==========================================================================
+
+    #[test]
+    fn test_request_builder_get() {
+        let request = RequestBuilder::get("https://api.example.com").build();
+        assert_eq!(request.method, HttpMethod::GET);
+        assert_eq!(request.url, "https://api.example.com");
+    }
+
+    #[test]
+    fn test_request_builder_post() {
+        let request = RequestBuilder::post("https://api.example.com").build();
+        assert_eq!(request.method, HttpMethod::POST);
+    }
+
+    #[test]
+    fn test_request_builder_put() {
+        let request = RequestBuilder::put("https://api.example.com").build();
+        assert_eq!(request.method, HttpMethod::PUT);
+    }
+
+    #[test]
+    fn test_request_builder_delete() {
+        let request = RequestBuilder::delete("https://api.example.com").build();
+        assert_eq!(request.method, HttpMethod::DELETE);
+    }
+
+    #[test]
+    fn test_request_builder_patch() {
+        let request = RequestBuilder::patch("https://api.example.com").build();
+        assert_eq!(request.method, HttpMethod::PATCH);
+    }
+
+    #[test]
+    fn test_request_builder_with_header() {
+        let request = RequestBuilder::get("https://api.example.com")
+            .header("X-Custom", "value")
+            .build();
+
+        assert_eq!(request.headers.get("X-Custom"), Some(&"value".to_string()));
+    }
+
+    #[test]
+    fn test_request_builder_with_params() {
+        let request = RequestBuilder::get("https://api.example.com")
+            .param("page", "1")
+            .param("limit", "10")
+            .build();
+
+        let url = request.full_url();
+        assert!(url.contains("page=1"));
+        assert!(url.contains("limit=10"));
+    }
+
+    #[test]
+    fn test_request_builder_with_body() {
+        let request = RequestBuilder::post("https://api.example.com")
+            .body("test body")
+            .build();
+
+        assert_eq!(request.body, "test body");
+    }
+
+    #[test]
+    fn test_request_builder_json() {
+        let request = RequestBuilder::post("https://api.example.com")
+            .json(r#"{"key": "value"}"#)
+            .build();
+
+        assert_eq!(
+            request.headers.get("Content-Type"),
+            Some(&"application/json".to_string())
+        );
+        assert!(request.body.contains("key"));
+    }
+
+    #[test]
+    fn test_request_builder_form() {
+        let request = RequestBuilder::post("https://api.example.com")
+            .form("key=value&other=data")
+            .build();
+
+        assert_eq!(
+            request.headers.get("Content-Type"),
+            Some(&"application/x-www-form-urlencoded".to_string())
+        );
+    }
+
+    #[test]
+    fn test_request_builder_bearer_auth() {
+        let request = RequestBuilder::get("https://api.example.com")
+            .bearer_auth("my_token")
+            .build();
+
+        assert_eq!(
+            request.headers.get("Authorization"),
+            Some(&"Bearer my_token".to_string())
+        );
+    }
+
+    #[test]
+    fn test_request_builder_basic_auth() {
+        let request = RequestBuilder::get("https://api.example.com")
+            .basic_auth("user", "pass")
+            .build();
+
+        let auth = request.headers.get("Authorization").unwrap();
+        assert!(auth.starts_with("Basic "));
+    }
+
+    // ==========================================================================
+    // base64 encoding tests
+    // ==========================================================================
+
+    #[test]
+    fn test_base64_encode_simple() {
+        assert_eq!(base64_encode(b"Hello"), "SGVsbG8=");
+        assert_eq!(base64_encode(b"Hi"), "SGk=");
+        assert_eq!(base64_encode(b"A"), "QQ==");
+    }
+
+    #[test]
+    fn test_base64_encode_credentials() {
+        let credentials = "user:pass";
+        let encoded = base64_encode(credentials.as_bytes());
+        assert_eq!(encoded, "dXNlcjpwYXNz");
+    }
+
+    // ==========================================================================
+    // MockHttpBackend tests
+    // ==========================================================================
+
+    #[test]
+    fn test_mock_backend_default_response() {
+        let backend = MockHttpBackend::new();
+        let request = HttpRequest::new("https://api.example.com");
+
+        let response = backend.send(&request).unwrap();
+        assert_eq!(response.status, 200);
+        assert!(response.body.contains("mock"));
+    }
+
+    #[test]
+    fn test_mock_backend_custom_response() {
+        let backend = MockHttpBackend::new();
+
+        let custom_response = HttpResponse {
+            status: 201,
+            status_text: "Created".to_string(),
+            headers: HashMap::new(),
+            body: "custom body".to_string(),
+            time: Duration::from_millis(10),
+            size: 11,
+        };
+
+        backend.mock_response("api.example.com", custom_response);
+
+        let request = HttpRequest::new("https://api.example.com/users");
+        let response = backend.send(&request).unwrap();
+
+        assert_eq!(response.status, 201);
+        assert_eq!(response.body, "custom body");
+    }
+
+    #[test]
+    fn test_mock_backend_json_response() {
+        let backend = MockHttpBackend::new();
+        backend.mock_json("users", 200, r#"{"id": 1, "name": "Test"}"#);
+
+        let request = HttpRequest::new("https://api.example.com/users");
+        let response = backend.send(&request).unwrap();
+
+        assert_eq!(response.status, 200);
+        assert_eq!(response.content_type(), ContentType::Json);
+        assert!(response.body.contains("Test"));
+    }
+
+    #[test]
+    fn test_mock_backend_error_response() {
+        let backend = MockHttpBackend::new();
+        backend.mock_error("users", 404, "User not found");
+
+        let request = HttpRequest::new("https://api.example.com/users/999");
+        let response = backend.send(&request).unwrap();
+
+        assert_eq!(response.status, 404);
+        assert!(response.body.contains("User not found"));
+    }
+
+    #[test]
+    fn test_mock_backend_wildcard_pattern() {
+        let backend = MockHttpBackend::new();
+
+        let wildcard_response = HttpResponse {
+            status: 503,
+            status_text: "Service Unavailable".to_string(),
+            headers: HashMap::new(),
+            body: "maintenance".to_string(),
+            time: Duration::from_millis(1),
+            size: 11,
+        };
+
+        backend.mock_response("*", wildcard_response);
+
+        let request = HttpRequest::new("https://any.url.com/anything");
+        let response = backend.send(&request).unwrap();
+
+        assert_eq!(response.status, 503);
+    }
+
+    #[test]
+    fn test_mock_backend_most_recent_match() {
+        let backend = MockHttpBackend::new();
+
+        backend.mock_json("api", 200, r#"{"first": true}"#);
+        backend.mock_json("api", 201, r#"{"second": true}"#);
+
+        let request = HttpRequest::new("https://api.example.com");
+        let response = backend.send(&request).unwrap();
+
+        // Most recent match should win
+        assert_eq!(response.status, 201);
+        assert!(response.body.contains("second"));
+    }
+
+    // ==========================================================================
+    // HttpMethod tests
+    // ==========================================================================
+
+    #[test]
+    fn test_http_method_names() {
+        assert_eq!(HttpMethod::GET.name(), "GET");
+        assert_eq!(HttpMethod::POST.name(), "POST");
+        assert_eq!(HttpMethod::PUT.name(), "PUT");
+        assert_eq!(HttpMethod::DELETE.name(), "DELETE");
+        assert_eq!(HttpMethod::PATCH.name(), "PATCH");
+        assert_eq!(HttpMethod::HEAD.name(), "HEAD");
+        assert_eq!(HttpMethod::OPTIONS.name(), "OPTIONS");
+    }
+
+    #[test]
+    fn test_http_method_default() {
+        assert_eq!(HttpMethod::default(), HttpMethod::GET);
     }
 }

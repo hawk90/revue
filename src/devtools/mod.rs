@@ -36,7 +36,7 @@ mod state;
 mod style;
 
 pub use events::{EventFilter, EventLogger, EventType, LoggedEvent};
-pub use inspector::{Inspector, InspectorConfig, WidgetNode};
+pub use inspector::{ComponentPicker, Inspector, InspectorConfig, PickerMode, WidgetNode};
 pub use state::{StateDebugger, StateEntry, StateValue};
 pub use style::{ComputedProperty, PropertySource, StyleCategory, StyleInspector};
 
