@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.27.0](https://github.com/hawk90/revue/compare/v2.26.0...v2.27.0) (2026-01-15)
+
+
+### Features
+
+* implement HTTP client enhancements, mocking utilities, batched updates, and component picker ([#122](https://github.com/hawk90/revue/issues/122)) ([418cbd5](https://github.com/hawk90/revue/commit/418cbd54ac981bd666320098bed05e3307e6c0a0))
+
 ## [2.26.0](https://github.com/hawk90/revue/compare/v2.25.0...v2.26.0) (2026-01-15)
 
 
