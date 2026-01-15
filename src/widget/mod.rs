@@ -1,6 +1,6 @@
 //! Widget system for Revue TUI framework.
 //!
-//! This module provides 86+ widgets for building terminal user interfaces.
+//! This module provides 87+ widgets for building terminal user interfaces.
 //! Widgets are organized into categories for easy discovery.
 //!
 //! # Widget Categories
@@ -272,6 +272,7 @@ mod timeline;
 mod timer;
 mod timeseries;
 mod toast;
+mod toast_queue;
 mod tooltip;
 pub mod traits;
 mod tree;
@@ -457,6 +458,7 @@ pub use timeseries::{
     TimeFormat, TimeLineStyle, TimeMarker, TimePoint, TimeRange, TimeSeries, TimeSeriesData,
 };
 pub use toast::{toast, Toast, ToastLevel, ToastPosition};
+pub use toast_queue::{toast_queue, StackDirection, ToastEntry, ToastPriority, ToastQueue};
 pub use tooltip::{tooltip, Tooltip, TooltipArrow, TooltipPosition, TooltipStyle};
 pub use traits::{
     Draggable, Element, EventResult, FocusStyle, Interactive, RenderContext, StyledView, Timeout,
