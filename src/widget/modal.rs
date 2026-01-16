@@ -346,9 +346,9 @@ impl View for Modal {
         self.render_border(ctx, x, y, modal_width, modal_height);
 
         // Draw title
-        if !self.title.is_empty() {
+        if !self.title.is_empty() && modal_width > 4 {
             let title_x = x + 2;
-            let title_width = (modal_width - 4) as usize;
+            let title_width = modal_width.saturating_sub(4) as usize;
             let title: String = self.title.chars().take(title_width).collect();
 
             for (i, ch) in title.chars().enumerate() {
@@ -359,11 +359,12 @@ impl View for Modal {
             }
 
             // Title separator
-            for dx in 1..(modal_width - 1) {
+            for dx in 1..modal_width.saturating_sub(1) {
                 ctx.buffer.set(x + dx, y + 2, Cell::new('─'));
             }
             ctx.buffer.set(x, y + 2, Cell::new('├'));
-            ctx.buffer.set(x + modal_width - 1, y + 2, Cell::new('┤'));
+            ctx.buffer
+                .set(x + modal_width.saturating_sub(1), y + 2, Cell::new('┤'));
         }
 
         // Draw content
@@ -392,8 +393,8 @@ impl View for Modal {
         }
 
         // Draw buttons
-        if !self.buttons.is_empty() {
-            let button_y = y + modal_height - 2;
+        if !self.buttons.is_empty() && modal_height > 2 {
+            let button_y = y + modal_height.saturating_sub(2);
             let total_button_width: usize = self
                 .buttons
                 .iter()
@@ -401,7 +402,11 @@ impl View for Modal {
                 .sum::<usize>()
                 + (self.buttons.len() - 1) * 2; // spacing
 
-            let start_x = x + (modal_width - total_button_width as u16) / 2;
+            // Skip drawing buttons if they don't fit
+            if total_button_width as u16 > modal_width {
+                return;
+            }
+            let start_x = x + (modal_width.saturating_sub(total_button_width as u16)) / 2;
             let mut bx = start_x;
 
             for (i, button) in self.buttons.iter().enumerate() {
@@ -447,7 +452,7 @@ impl Modal {
         corner.fg = self.border_fg;
         ctx.buffer.set(x, y, corner);
 
-        for dx in 1..(width - 1) {
+        for dx in 1..width.saturating_sub(1) {
             let mut cell = Cell::new('─');
             cell.fg = self.border_fg;
             ctx.buffer.set(x + dx, y, cell);
@@ -455,30 +460,34 @@ impl Modal {
 
         let mut corner = Cell::new('┐');
         corner.fg = self.border_fg;
-        ctx.buffer.set(x + width - 1, y, corner);
+        ctx.buffer.set(x + width.saturating_sub(1), y, corner);
 
         // Sides
-        for dy in 1..(height - 1) {
+        for dy in 1..height.saturating_sub(1) {
             let mut cell = Cell::new('│');
             cell.fg = self.border_fg;
             ctx.buffer.set(x, y + dy, cell);
-            ctx.buffer.set(x + width - 1, y + dy, cell);
+            ctx.buffer.set(x + width.saturating_sub(1), y + dy, cell);
         }
 
         // Bottom border
         let mut corner = Cell::new('└');
         corner.fg = self.border_fg;
-        ctx.buffer.set(x, y + height - 1, corner);
+        ctx.buffer.set(x, y + height.saturating_sub(1), corner);
 
-        for dx in 1..(width - 1) {
+        for dx in 1..width.saturating_sub(1) {
             let mut cell = Cell::new('─');
             cell.fg = self.border_fg;
-            ctx.buffer.set(x + dx, y + height - 1, cell);
+            ctx.buffer.set(x + dx, y + height.saturating_sub(1), cell);
         }
 
         let mut corner = Cell::new('┘');
         corner.fg = self.border_fg;
-        ctx.buffer.set(x + width - 1, y + height - 1, corner);
+        ctx.buffer.set(
+            x + width.saturating_sub(1),
+            y + height.saturating_sub(1),
+            corner,
+        );
     }
 }
 
@@ -669,5 +678,79 @@ mod tests {
         let center_x = (80 - 50) / 2;
         let center_y = (24 - 12) / 2;
         assert_eq!(buffer.get(center_x, center_y).unwrap().symbol, '┌');
+    }
+
+    #[test]
+    fn test_modal_render_small_area_no_panic() {
+        // Test that rendering in very small areas doesn't panic
+        // This is the fix for issue #154
+
+        // Width = 0
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 0, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut m = Modal::new().title("Test").ok();
+        m.show();
+        m.render(&mut ctx); // Should not panic
+
+        // Width = 1
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 1, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut m = Modal::new().title("Test").ok();
+        m.show();
+        m.render(&mut ctx); // Should not panic
+
+        // Width = 2
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 2, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut m = Modal::new().title("Test").ok();
+        m.show();
+        m.render(&mut ctx); // Should not panic
+
+        // Height = 0
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 0);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut m = Modal::new().title("Test").ok();
+        m.show();
+        m.render(&mut ctx); // Should not panic
+
+        // Height = 1
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut m = Modal::new().title("Test").ok();
+        m.show();
+        m.render(&mut ctx); // Should not panic
+
+        // Height = 2
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 2);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut m = Modal::new().title("Test").ok();
+        m.show();
+        m.render(&mut ctx); // Should not panic
+
+        // Both width and height = 0
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 0, 0);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut m = Modal::new().title("Test").ok();
+        m.show();
+        m.render(&mut ctx); // Should not panic
+    }
+
+    #[test]
+    fn test_modal_render_width_2_border() {
+        // Specific test for width=2 which was mentioned in the issue
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 4, 10); // Small width after subtracting 4 for margins
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut m = Modal::new().title("X").width(2).height(4);
+        m.show();
+        m.render(&mut ctx); // Should not panic
     }
 }
