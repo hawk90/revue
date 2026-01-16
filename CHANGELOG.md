@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.31.4](https://github.com/hawk90/revue/compare/v2.31.3...v2.31.4) (2026-01-16)
+
+
+### Bug Fixes
+
+* **reactive:** add recursion guard to prevent stack overflow in effect callbacks ([#187](https://github.com/hawk90/revue/issues/187)) ([5d814ee](https://github.com/hawk90/revue/commit/5d814ee0407cf4ccfbef5ffa7821b40deafc5ebb)), closes [#142](https://github.com/hawk90/revue/issues/142)
+
 ## [2.31.3](https://github.com/hawk90/revue/compare/v2.31.2...v2.31.3) (2026-01-16)
 
 
