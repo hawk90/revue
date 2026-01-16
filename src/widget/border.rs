@@ -25,17 +25,25 @@ pub enum BorderType {
 }
 
 /// Border characters set
-struct BorderChars {
-    top_left: char,
-    top_right: char,
-    bottom_left: char,
-    bottom_right: char,
-    horizontal: char,
-    vertical: char,
+#[derive(Clone, Copy, Debug)]
+pub struct BorderChars {
+    /// Top-left corner character
+    pub top_left: char,
+    /// Top-right corner character
+    pub top_right: char,
+    /// Bottom-left corner character
+    pub bottom_left: char,
+    /// Bottom-right corner character
+    pub bottom_right: char,
+    /// Horizontal line character
+    pub horizontal: char,
+    /// Vertical line character
+    pub vertical: char,
 }
 
 impl BorderType {
-    fn chars(&self) -> BorderChars {
+    /// Get the character set for this border type
+    pub fn chars(&self) -> BorderChars {
         match self {
             BorderType::None => BorderChars {
                 top_left: ' ',
@@ -311,6 +319,84 @@ pub fn border() -> Border {
 
 impl_styled_view!(Border);
 impl_props_builders!(Border);
+
+/// Draw a border on a buffer
+///
+/// This is a utility function that can be used by other widgets to draw borders
+/// without needing to create a full Border widget.
+///
+/// # Arguments
+/// * `buffer` - The buffer to draw on
+/// * `area` - The area to draw the border in
+/// * `border_type` - The type of border to draw
+/// * `fg` - Optional foreground color
+/// * `bg` - Optional background color
+pub fn draw_border(
+    buffer: &mut crate::render::Buffer,
+    area: Rect,
+    border_type: BorderType,
+    fg: Option<Color>,
+    bg: Option<Color>,
+) {
+    if area.width < 2 || area.height < 2 || border_type == BorderType::None {
+        return;
+    }
+
+    let chars = border_type.chars();
+
+    // Top-left corner
+    let mut cell = Cell::new(chars.top_left);
+    cell.fg = fg;
+    cell.bg = bg;
+    buffer.set(area.x, area.y, cell);
+
+    // Top border
+    for x in 1..(area.width - 1) {
+        let mut c = Cell::new(chars.horizontal);
+        c.fg = fg;
+        c.bg = bg;
+        buffer.set(area.x + x, area.y, c);
+    }
+
+    // Top-right corner
+    let mut cell = Cell::new(chars.top_right);
+    cell.fg = fg;
+    cell.bg = bg;
+    buffer.set(area.x + area.width - 1, area.y, cell);
+
+    // Left and right borders
+    for y in 1..(area.height - 1) {
+        let mut left = Cell::new(chars.vertical);
+        left.fg = fg;
+        left.bg = bg;
+        buffer.set(area.x, area.y + y, left);
+
+        let mut right = Cell::new(chars.vertical);
+        right.fg = fg;
+        right.bg = bg;
+        buffer.set(area.x + area.width - 1, area.y + y, right);
+    }
+
+    // Bottom-left corner
+    let mut cell = Cell::new(chars.bottom_left);
+    cell.fg = fg;
+    cell.bg = bg;
+    buffer.set(area.x, area.y + area.height - 1, cell);
+
+    // Bottom border
+    for x in 1..(area.width - 1) {
+        let mut c = Cell::new(chars.horizontal);
+        c.fg = fg;
+        c.bg = bg;
+        buffer.set(area.x + x, area.y + area.height - 1, c);
+    }
+
+    // Bottom-right corner
+    let mut cell = Cell::new(chars.bottom_right);
+    cell.fg = fg;
+    cell.bg = bg;
+    buffer.set(area.x + area.width - 1, area.y + area.height - 1, cell);
+}
 
 #[cfg(test)]
 mod tests {
