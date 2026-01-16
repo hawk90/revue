@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.31.7](https://github.com/hawk90/revue/compare/v2.31.6...v2.31.7) (2026-01-16)
+
+
+### Bug Fixes
+
+* **widget:** prevent panic in Modal when width/height ≤ 2 ([#201](https://github.com/hawk90/revue/issues/201)) ([8708ce9](https://github.com/hawk90/revue/commit/8708ce9b89e9e3adb7c93f18087daf72e1592954)), closes [#154](https://github.com/hawk90/revue/issues/154)
+
 ## [2.31.6](https://github.com/hawk90/revue/compare/v2.31.5...v2.31.6) (2026-01-16)
 
 
