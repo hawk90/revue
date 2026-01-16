@@ -1,12 +1,18 @@
-//! Flexbox layout engine
+//! Layout engine for TUI
 //!
-//! Powered by taffy, the same engine used by Dioxus and Bevy.
+//! Custom layout engine optimized for terminal user interfaces.
+//! Supports flexbox, block, and grid layouts using integer cell coordinates.
 
-mod convert;
+mod block;
+mod compute;
 mod engine;
+mod flex;
+mod grid;
+mod node;
+mod position;
 pub mod responsive;
+mod tree;
 
-pub use convert::to_taffy_style;
 pub use engine::{LayoutEngine, LayoutError, LayoutResult};
 pub use responsive::{
     breakpoints, max_width, min_width, responsive as responsive_value, responsive_layout,
