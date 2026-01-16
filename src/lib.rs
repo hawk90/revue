@@ -8,7 +8,7 @@
 //! | Feature | Description |
 //! |---------|-------------|
 //! | **CSS Styling** | External CSS files with variables, selectors, transitions, and hot reload |
-//! | **Flexbox Layout** | Powered by [taffy](https://github.com/DioxusLabs/taffy) for flexible layouts |
+//! | **Flexbox Layout** | Custom TUI-optimized layout engine for flexible layouts |
 //! | **Reactive State** | Vue-inspired Signal/Computed/Effect pattern |
 //! | **80+ Widgets** | Text, Button, Input, Table, Tree, Modal, Toast, Charts, and more |
 //! | **Markdown & Images** | Built-in markdown rendering with Kitty image protocol support |

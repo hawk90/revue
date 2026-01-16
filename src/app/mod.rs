@@ -55,7 +55,7 @@ fn is_quit_key(key: &KeyEvent) -> bool {
 pub struct App {
     /// Manages all DOM nodes and style resolution
     dom: DomRenderer,
-    /// Manages layout (taffy)
+    /// Manages layout computation
     layout: LayoutEngine,
     /// Double buffers for efficient diffing
     buffers: [Buffer; 2],
