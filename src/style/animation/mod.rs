@@ -100,8 +100,10 @@ impl Tween {
     pub fn resume(&mut self) {
         if self.state == AnimationState::Paused {
             if let (Some(start), Some(pause)) = (self.start_time, self.pause_time) {
-                let paused_duration = pause.elapsed();
-                self.start_time = Some(start + paused_duration);
+                // Calculate how long the animation ran before pause
+                let elapsed_before_pause = pause.duration_since(start);
+                // Set new start time so elapsed time matches what it was at pause
+                self.start_time = Some(Instant::now() - elapsed_before_pause);
             }
             self.pause_time = None;
             self.state = AnimationState::Running;
@@ -134,6 +136,12 @@ impl Tween {
 
     /// Update and get current value
     pub fn value(&mut self) -> f32 {
+        // Pending state should return initial value, not final
+        if self.state == AnimationState::Pending {
+            return self.from;
+        }
+
+        // Paused or Completed returns value based on direction
         if self.state != AnimationState::Running {
             return if self.current_direction {
                 self.from
@@ -548,7 +556,7 @@ mod tests {
     #[test]
     fn test_tween_value_pending() {
         let mut tween = Tween::new(0.0, 100.0, Duration::from_secs(1));
-        assert_eq!(tween.value(), 100.0); // Returns 'to' value when not running
+        assert_eq!(tween.value(), 0.0); // Pending returns initial 'from' value
     }
 
     #[test]

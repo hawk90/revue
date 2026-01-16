@@ -534,6 +534,8 @@ impl GestureRecognizer {
             MouseEventKind::Move => self.handle_move(event.x, event.y),
             MouseEventKind::ScrollUp => self.handle_scroll(event.x, event.y, event.ctrl, true),
             MouseEventKind::ScrollDown => self.handle_scroll(event.x, event.y, event.ctrl, false),
+            // Horizontal scroll events - currently no gesture mapped
+            MouseEventKind::ScrollLeft | MouseEventKind::ScrollRight => None,
         }
     }
 

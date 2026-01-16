@@ -57,6 +57,10 @@ pub enum MouseEventKind {
     ScrollDown,
     /// Scroll wheel up
     ScrollUp,
+    /// Scroll wheel left (horizontal)
+    ScrollLeft,
+    /// Scroll wheel right (horizontal)
+    ScrollRight,
 }
 
 /// Mouse event with position and modifiers
@@ -103,7 +107,10 @@ impl MouseEvent {
     pub fn is_scroll(&self) -> bool {
         matches!(
             self.kind,
-            MouseEventKind::ScrollDown | MouseEventKind::ScrollUp
+            MouseEventKind::ScrollDown
+                | MouseEventKind::ScrollUp
+                | MouseEventKind::ScrollLeft
+                | MouseEventKind::ScrollRight
         )
     }
 }

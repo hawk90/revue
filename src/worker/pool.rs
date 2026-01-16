@@ -130,6 +130,11 @@ impl Default for WorkerPool {
 impl Drop for WorkerPool {
     fn drop(&mut self) {
         self.shutdown();
+
+        // Join all worker threads for clean shutdown
+        for worker in &mut self.workers {
+            worker.join();
+        }
     }
 }
 
@@ -137,8 +142,8 @@ impl Drop for WorkerPool {
 pub struct Worker {
     /// Worker ID
     id: usize,
-    /// Thread handle (kept for join on drop)
-    _thread: Option<JoinHandle<()>>,
+    /// Thread handle for joining on shutdown
+    thread: Option<JoinHandle<()>>,
     /// Active flag
     active: Arc<Mutex<bool>>,
 }
@@ -192,11 +197,7 @@ impl Worker {
             })
             .ok();
 
-        Self {
-            id,
-            _thread: thread,
-            active,
-        }
+        Self { id, thread, active }
     }
 
     /// Get worker ID
@@ -208,6 +209,13 @@ impl Worker {
     /// Check if worker is active
     pub fn is_active(&self) -> bool {
         self.active.lock().map(|a| *a).unwrap_or(false)
+    }
+
+    /// Join the worker thread, waiting for it to finish
+    pub fn join(&mut self) {
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
     }
 }
 

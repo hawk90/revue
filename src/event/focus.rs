@@ -75,8 +75,8 @@ pub struct FocusManager {
 /// Saved state for a focus trap
 #[derive(Clone, Debug)]
 struct TrapState {
-    /// Container ID of the trap
-    container_id: WidgetId,
+    /// Container ID of the trap (None if no trap was active)
+    container_id: Option<WidgetId>,
     /// Widget IDs in the trap
     trapped_ids: Vec<WidgetId>,
     /// Focus before this trap was activated
@@ -353,7 +353,7 @@ impl FocusManager {
     pub fn push_trap(&mut self, container_id: WidgetId, children: &[WidgetId]) {
         // Save current state
         let state = TrapState {
-            container_id: self.trap.unwrap_or(0),
+            container_id: self.trap,
             trapped_ids: self.trapped_ids.clone(),
             previous_focus: self.current(),
         };
@@ -373,11 +373,7 @@ impl FocusManager {
     pub fn pop_trap(&mut self) -> bool {
         if let Some(state) = self.trap_stack.pop() {
             // Restore previous trap state
-            self.trap = if state.container_id == 0 {
-                None
-            } else {
-                Some(state.container_id)
-            };
+            self.trap = state.container_id;
             self.trapped_ids = state.trapped_ids;
 
             // Restore focus

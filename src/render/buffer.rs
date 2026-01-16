@@ -113,7 +113,9 @@ impl Buffer {
                 if let Some(next_x) = curr_x.checked_add(1) {
                     if next_x < self.width {
                         let mut cont = Cell::continuation();
+                        cont.fg = fg; // Keep foreground for continuity
                         cont.bg = bg; // Keep background for continuity
+                        cont.modifier = cell.modifier; // Keep modifiers for continuity
                         self.set(next_x, y, cont);
                     }
                 }
@@ -266,7 +268,9 @@ impl Buffer {
                 if let Some(next_x) = curr_x.checked_add(1) {
                     if next_x < self.width {
                         let mut cont = Cell::continuation();
+                        cont.fg = fg;
                         cont.bg = bg;
+                        cont.modifier = cell.modifier;
                         cont.hyperlink_id = Some(link_id);
                         self.set(next_x, y, cont);
                     }

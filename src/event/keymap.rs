@@ -39,6 +39,8 @@ pub enum Key {
     Insert,
     /// Null (no key)
     Null,
+    /// Unknown key (not recognized)
+    Unknown,
 }
 
 impl Key {
