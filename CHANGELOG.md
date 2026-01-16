@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.31.9](https://github.com/hawk90/revue/compare/v2.31.8...v2.31.9) (2026-01-16)
+
+
+### Bug Fixes
+
+* **layout:** use safe i32 to u16 conversion in position offsets ([#205](https://github.com/hawk90/revue/issues/205)) ([2ced2ea](https://github.com/hawk90/revue/commit/2ced2eaa0b1d17feeaa9531db983bba93dc1f3e9)), closes [#150](https://github.com/hawk90/revue/issues/150)
+
 ## [2.31.8](https://github.com/hawk90/revue/compare/v2.31.7...v2.31.8) (2026-01-16)
 
 
