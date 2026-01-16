@@ -212,4 +212,70 @@ mod tests {
         let child = tree.get(child_ids[0]).unwrap();
         assert_eq!(child.computed.width, 50);
     }
+
+    #[test]
+    fn test_block_min_max_constraints() {
+        let (mut tree, parent_id, child_ids) = setup_tree_with_children(vec![Size::Auto]);
+
+        if let Some(child) = tree.get_mut(child_ids[0]) {
+            child.sizing.min_width = Size::Fixed(30);
+            child.sizing.max_width = Size::Fixed(50);
+        }
+
+        compute_block(&mut tree, parent_id, 100, 100);
+
+        let child = tree.get(child_ids[0]).unwrap();
+        // Auto would be 100, but clamped to max 50
+        assert_eq!(child.computed.width, 50);
+    }
+
+    #[test]
+    fn test_block_empty_children() {
+        let mut tree = LayoutTree::new();
+        let mut parent = LayoutNode::default();
+        parent.id = 1;
+        parent.children = vec![];
+        tree.insert(parent);
+        tree.set_root(1);
+
+        // Should not panic with empty children
+        compute_block(&mut tree, 1, 100, 100);
+    }
+
+    #[test]
+    fn test_block_zero_size_container() {
+        let (mut tree, parent_id, child_ids) =
+            setup_tree_with_children(vec![Size::Fixed(10), Size::Fixed(20)]);
+
+        compute_block(&mut tree, parent_id, 0, 0);
+
+        // Children should have zero or clamped sizes
+        let child1 = tree.get(child_ids[0]).unwrap();
+        assert_eq!(child1.computed.width, 0);
+    }
+
+    #[test]
+    fn test_block_percent_height() {
+        let (mut tree, parent_id, child_ids) = setup_tree_with_children(vec![Size::Percent(25.0)]);
+
+        compute_block(&mut tree, parent_id, 100, 100);
+
+        let child = tree.get(child_ids[0]).unwrap();
+        assert_eq!(child.computed.height, 25);
+    }
+
+    #[test]
+    fn test_block_fixed_width_exceeds_container() {
+        let (mut tree, parent_id, child_ids) = setup_tree_with_children(vec![Size::Fixed(10)]);
+
+        if let Some(child) = tree.get_mut(child_ids[0]) {
+            child.sizing.width = Size::Fixed(200); // Exceeds 100
+        }
+
+        compute_block(&mut tree, parent_id, 100, 100);
+
+        let child = tree.get(child_ids[0]).unwrap();
+        // Fixed width clamped to container width
+        assert_eq!(child.computed.width, 100);
+    }
 }

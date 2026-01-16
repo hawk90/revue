@@ -263,4 +263,112 @@ mod tests {
         let bc2 = tree.get(4).unwrap();
         assert_eq!(bc2.computed.y, 20);
     }
+
+    #[test]
+    fn test_deep_nesting_stress() {
+        let mut tree = LayoutTree::new();
+
+        // Create 10 levels of nested flex containers
+        let depth = 10;
+        for i in 1..=depth {
+            let mut node = LayoutNode::default();
+            node.id = i as u64;
+            node.display = Display::Flex;
+            node.flex.direction = if i % 2 == 0 {
+                FlexDirection::Row
+            } else {
+                FlexDirection::Column
+            };
+            if i < depth {
+                node.children = vec![(i + 1) as u64];
+            }
+            node.sizing.width = Size::Auto;
+            node.sizing.height = Size::Auto;
+            tree.insert(node);
+        }
+        tree.set_root(1);
+
+        // Should not panic or stack overflow
+        compute_layout(&mut tree, 1, 100, 100);
+
+        // Deepest node should have valid layout
+        let deepest = tree.get(depth as u64).unwrap();
+        assert!(deepest.computed.width > 0 || deepest.computed.height > 0);
+    }
+
+    #[test]
+    fn test_grid_in_flex() {
+        let mut tree = LayoutTree::new();
+
+        // Root (flex)
+        let mut root = LayoutNode::default();
+        root.id = 1;
+        root.display = Display::Flex;
+        root.children = vec![2];
+
+        // Grid container
+        let mut grid = LayoutNode::default();
+        grid.id = 2;
+        grid.display = Display::Grid;
+        grid.sizing.width = Size::Fixed(80);
+        grid.sizing.height = Size::Fixed(40);
+        grid.children = vec![3, 4];
+
+        // Grid items
+        let mut item1 = LayoutNode::default();
+        item1.id = 3;
+
+        let mut item2 = LayoutNode::default();
+        item2.id = 4;
+
+        tree.insert(root);
+        tree.insert(grid);
+        tree.insert(item1);
+        tree.insert(item2);
+        tree.set_root(1);
+
+        compute_layout(&mut tree, 1, 100, 100);
+
+        // Grid container should be positioned
+        let grid_node = tree.get(2).unwrap();
+        assert_eq!(grid_node.computed.width, 80);
+
+        // Grid items should be laid out
+        let i1 = tree.get(3).unwrap();
+        let i2 = tree.get(4).unwrap();
+        assert!(i1.computed.width > 0);
+        assert!(i2.computed.width > 0);
+    }
+
+    #[test]
+    fn test_missing_node_graceful() {
+        let mut tree = LayoutTree::new();
+
+        let mut root = LayoutNode::default();
+        root.id = 1;
+        root.display = Display::Flex;
+        root.children = vec![2, 999]; // 999 doesn't exist
+        tree.insert(root);
+
+        let mut child = LayoutNode::default();
+        child.id = 2;
+        child.sizing.width = Size::Fixed(50);
+        tree.insert(child);
+
+        tree.set_root(1);
+
+        // Should not panic with missing child
+        compute_layout(&mut tree, 1, 100, 100);
+
+        let c = tree.get(2).unwrap();
+        assert_eq!(c.computed.width, 50);
+    }
+
+    #[test]
+    fn test_zero_available_space() {
+        let (mut tree, _) = setup_simple_tree();
+
+        // Should not panic with zero space
+        compute_layout(&mut tree, 1, 0, 0);
+    }
 }

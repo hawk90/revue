@@ -487,4 +487,184 @@ mod tests {
         assert_eq!(child.computed.x, 10); // Left padding
         assert_eq!(child.computed.y, 5); // Top padding
     }
+
+    #[test]
+    fn test_flex_justify_end() {
+        let (mut tree, parent_id, child_ids) = setup_tree_with_parent_and_children(
+            100,
+            50,
+            vec![Size::Fixed(20), Size::Fixed(20)],
+            FlexDirection::Row,
+        );
+
+        if let Some(parent) = tree.get_mut(parent_id) {
+            parent.flex.justify_content = JustifyContent::End;
+        }
+
+        compute_flex(&mut tree, parent_id, 100, 50);
+
+        // Free space = 60, pushed to end
+        let child1 = tree.get(child_ids[0]).unwrap();
+        assert_eq!(child1.computed.x, 60);
+
+        let child2 = tree.get(child_ids[1]).unwrap();
+        assert_eq!(child2.computed.x, 80);
+    }
+
+    #[test]
+    fn test_flex_justify_space_around() {
+        let (mut tree, parent_id, child_ids) = setup_tree_with_parent_and_children(
+            100,
+            50,
+            vec![Size::Fixed(20), Size::Fixed(20)],
+            FlexDirection::Row,
+        );
+
+        if let Some(parent) = tree.get_mut(parent_id) {
+            parent.flex.justify_content = JustifyContent::SpaceAround;
+        }
+
+        compute_flex(&mut tree, parent_id, 100, 50);
+
+        // Free space = 60, distributed: space/2 at ends, space between
+        // space = 60 / 2 = 30, initial = 15
+        let child1 = tree.get(child_ids[0]).unwrap();
+        assert_eq!(child1.computed.x, 15);
+    }
+
+    #[test]
+    fn test_flex_align_end() {
+        let (mut tree, parent_id, child_ids) =
+            setup_tree_with_parent_and_children(100, 50, vec![Size::Fixed(30)], FlexDirection::Row);
+
+        if let Some(parent) = tree.get_mut(parent_id) {
+            parent.flex.align_items = AlignItems::End;
+        }
+        if let Some(child) = tree.get_mut(child_ids[0]) {
+            child.sizing.height = Size::Fixed(20);
+        }
+
+        compute_flex(&mut tree, parent_id, 100, 50);
+
+        let child = tree.get(child_ids[0]).unwrap();
+        assert_eq!(child.computed.y, 30); // 50 - 20 = 30
+    }
+
+    #[test]
+    fn test_flex_align_stretch() {
+        let (mut tree, parent_id, child_ids) =
+            setup_tree_with_parent_and_children(100, 50, vec![Size::Fixed(30)], FlexDirection::Row);
+
+        if let Some(parent) = tree.get_mut(parent_id) {
+            parent.flex.align_items = AlignItems::Stretch;
+        }
+        // Height Auto + Stretch = full cross size
+        if let Some(child) = tree.get_mut(child_ids[0]) {
+            child.sizing.height = Size::Auto;
+        }
+
+        compute_flex(&mut tree, parent_id, 100, 50);
+
+        let child = tree.get(child_ids[0]).unwrap();
+        assert_eq!(child.computed.height, 50); // Stretched to full height
+    }
+
+    #[test]
+    fn test_flex_mixed_sizes() {
+        let (mut tree, parent_id, child_ids) = setup_tree_with_parent_and_children(
+            100,
+            50,
+            vec![Size::Fixed(20), Size::Percent(30.0), Size::Auto],
+            FlexDirection::Row,
+        );
+
+        compute_flex(&mut tree, parent_id, 100, 50);
+
+        let child1 = tree.get(child_ids[0]).unwrap();
+        assert_eq!(child1.computed.width, 20);
+
+        let child2 = tree.get(child_ids[1]).unwrap();
+        assert_eq!(child2.computed.width, 30); // 30% of 100
+
+        let child3 = tree.get(child_ids[2]).unwrap();
+        assert_eq!(child3.computed.width, 50); // Remaining: 100 - 20 - 30
+    }
+
+    #[test]
+    fn test_flex_min_max_main_axis() {
+        let (mut tree, parent_id, child_ids) =
+            setup_tree_with_parent_and_children(100, 50, vec![Size::Auto], FlexDirection::Row);
+
+        if let Some(child) = tree.get_mut(child_ids[0]) {
+            child.sizing.min_width = Size::Fixed(30);
+            child.sizing.max_width = Size::Fixed(60);
+        }
+
+        compute_flex(&mut tree, parent_id, 100, 50);
+
+        let child = tree.get(child_ids[0]).unwrap();
+        // Auto would be 100, clamped to max 60
+        assert_eq!(child.computed.width, 60);
+    }
+
+    #[test]
+    fn test_flex_single_child() {
+        let (mut tree, parent_id, child_ids) =
+            setup_tree_with_parent_and_children(100, 50, vec![Size::Auto], FlexDirection::Row);
+
+        compute_flex(&mut tree, parent_id, 100, 50);
+
+        let child = tree.get(child_ids[0]).unwrap();
+        assert_eq!(child.computed.width, 100); // Takes all space
+        assert_eq!(child.computed.x, 0);
+    }
+
+    #[test]
+    fn test_flex_column_with_gap() {
+        let (mut tree, parent_id, child_ids) = setup_tree_with_parent_and_children(
+            50,
+            100,
+            vec![Size::Auto, Size::Auto, Size::Auto],
+            FlexDirection::Column,
+        );
+
+        // Set heights for column layout
+        for &id in &child_ids {
+            if let Some(node) = tree.get_mut(id) {
+                node.sizing.height = Size::Auto;
+                node.sizing.width = Size::Auto;
+            }
+        }
+
+        if let Some(parent) = tree.get_mut(parent_id) {
+            parent.flex.gap = 5;
+        }
+
+        compute_flex(&mut tree, parent_id, 50, 100);
+
+        // 100 - 10 (2 gaps) = 90 / 3 = 30 each
+        let child1 = tree.get(child_ids[0]).unwrap();
+        assert_eq!(child1.computed.height, 30);
+        assert_eq!(child1.computed.y, 0);
+
+        let child2 = tree.get(child_ids[1]).unwrap();
+        assert_eq!(child2.computed.y, 35); // 30 + 5 gap
+
+        let child3 = tree.get(child_ids[2]).unwrap();
+        assert_eq!(child3.computed.y, 70); // 35 + 30 + 5
+    }
+
+    #[test]
+    fn test_flex_empty_container() {
+        let mut tree = LayoutTree::new();
+        let mut parent = LayoutNode::default();
+        parent.id = 1;
+        parent.display = crate::style::Display::Flex;
+        parent.children = vec![];
+        tree.insert(parent);
+        tree.set_root(1);
+
+        // Should not panic
+        compute_flex(&mut tree, 1, 100, 50);
+    }
 }

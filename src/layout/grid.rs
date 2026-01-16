@@ -371,4 +371,180 @@ mod tests {
 
         assert_eq!(positions, vec![0, 35, 80, 110]);
     }
+
+    #[test]
+    fn test_grid_explicit_placement() {
+        let (mut tree, parent_id, child_ids) = setup_grid_tree(
+            vec![GridTrack::Fr(1.0), GridTrack::Fr(1.0), GridTrack::Fr(1.0)],
+            vec![GridTrack::Fr(1.0), GridTrack::Fr(1.0)],
+            2,
+        );
+
+        // Place first child at column 3, row 2 (1-indexed)
+        if let Some(child) = tree.get_mut(child_ids[0]) {
+            child.grid.column.start = 3;
+            child.grid.row.start = 2;
+        }
+
+        // Place second child at column 1, row 1
+        if let Some(child) = tree.get_mut(child_ids[1]) {
+            child.grid.column.start = 1;
+            child.grid.row.start = 1;
+        }
+
+        compute_grid(&mut tree, parent_id, 90, 60);
+
+        // Each cell: 30x30
+        let child1 = tree.get(child_ids[0]).unwrap();
+        assert_eq!(child1.computed.x, 60); // Column 3 (0-indexed: 2) * 30
+        assert_eq!(child1.computed.y, 30); // Row 2 (0-indexed: 1) * 30
+
+        let child2 = tree.get(child_ids[1]).unwrap();
+        assert_eq!(child2.computed.x, 0);
+        assert_eq!(child2.computed.y, 0);
+    }
+
+    #[test]
+    fn test_grid_spanning_columns() {
+        let (mut tree, parent_id, child_ids) = setup_grid_tree(
+            vec![GridTrack::Fr(1.0), GridTrack::Fr(1.0), GridTrack::Fr(1.0)],
+            vec![GridTrack::Fr(1.0)],
+            1,
+        );
+
+        // Span 2 columns using negative end (span notation)
+        if let Some(child) = tree.get_mut(child_ids[0]) {
+            child.grid.column.start = 1;
+            child.grid.column.end = -2; // Span 2 columns
+        }
+
+        compute_grid(&mut tree, parent_id, 90, 30);
+
+        let child = tree.get(child_ids[0]).unwrap();
+        // Should span columns 1-2 (60 pixels)
+        assert_eq!(child.computed.width, 60);
+    }
+
+    #[test]
+    fn test_grid_spanning_rows() {
+        let (mut tree, parent_id, child_ids) = setup_grid_tree(
+            vec![GridTrack::Fr(1.0)],
+            vec![GridTrack::Fr(1.0), GridTrack::Fr(1.0), GridTrack::Fr(1.0)],
+            1,
+        );
+
+        // Span 2 rows
+        if let Some(child) = tree.get_mut(child_ids[0]) {
+            child.grid.row.start = 1;
+            child.grid.row.end = 3; // End at row 3 (span 2)
+        }
+
+        compute_grid(&mut tree, parent_id, 30, 90);
+
+        let child = tree.get(child_ids[0]).unwrap();
+        assert_eq!(child.computed.height, 60); // 2 rows
+    }
+
+    #[test]
+    fn test_grid_auto_placement_many_items() {
+        let (mut tree, parent_id, child_ids) = setup_grid_tree(
+            vec![GridTrack::Fr(1.0), GridTrack::Fr(1.0)], // 2 columns
+            vec![],                                       // Auto rows
+            6,
+        );
+
+        compute_grid(&mut tree, parent_id, 100, 90);
+
+        // Should create 3 rows for 6 items in 2 columns
+        // Row heights: 90 / 3 = 30 each
+
+        // First row
+        let c1 = tree.get(child_ids[0]).unwrap();
+        assert_eq!(c1.computed.y, 0);
+
+        let c2 = tree.get(child_ids[1]).unwrap();
+        assert_eq!(c2.computed.y, 0);
+
+        // Second row
+        let c3 = tree.get(child_ids[2]).unwrap();
+        assert_eq!(c3.computed.y, 30);
+
+        // Third row
+        let c5 = tree.get(child_ids[4]).unwrap();
+        assert_eq!(c5.computed.y, 60);
+    }
+
+    #[test]
+    fn test_grid_empty_template() {
+        // No template defined - should auto-detect grid size
+        let (mut tree, parent_id, child_ids) = setup_grid_tree(vec![], vec![], 4);
+
+        compute_grid(&mut tree, parent_id, 100, 100);
+
+        // 4 items, sqrt(4) = 2, so 2x2 grid
+        let c1 = tree.get(child_ids[0]).unwrap();
+        assert_eq!(c1.computed.x, 0);
+        assert_eq!(c1.computed.y, 0);
+
+        let c2 = tree.get(child_ids[1]).unwrap();
+        assert_eq!(c2.computed.x, 50); // Second column
+
+        let c3 = tree.get(child_ids[2]).unwrap();
+        assert_eq!(c3.computed.y, 50); // Second row
+    }
+
+    #[test]
+    fn test_grid_single_item() {
+        let (mut tree, parent_id, child_ids) =
+            setup_grid_tree(vec![GridTrack::Fr(1.0)], vec![GridTrack::Fr(1.0)], 1);
+
+        compute_grid(&mut tree, parent_id, 100, 50);
+
+        let child = tree.get(child_ids[0]).unwrap();
+        assert_eq!(child.computed.width, 100);
+        assert_eq!(child.computed.height, 50);
+    }
+
+    #[test]
+    fn test_grid_with_padding() {
+        let (mut tree, parent_id, child_ids) = setup_grid_tree(
+            vec![GridTrack::Fr(1.0), GridTrack::Fr(1.0)],
+            vec![GridTrack::Fr(1.0)],
+            2,
+        );
+
+        if let Some(parent) = tree.get_mut(parent_id) {
+            parent.spacing.padding = crate::layout::node::Edges {
+                top: 10,
+                right: 10,
+                bottom: 10,
+                left: 10,
+            };
+        }
+
+        compute_grid(&mut tree, parent_id, 100, 50);
+
+        // Content: 80x30, each cell: 40x30
+        let child1 = tree.get(child_ids[0]).unwrap();
+        assert_eq!(child1.computed.x, 10); // Padding
+        assert_eq!(child1.computed.y, 10);
+        assert_eq!(child1.computed.width, 40);
+
+        let child2 = tree.get(child_ids[1]).unwrap();
+        assert_eq!(child2.computed.x, 50); // 10 + 40
+    }
+
+    #[test]
+    fn test_grid_empty_children() {
+        let mut tree = LayoutTree::new();
+        let mut parent = LayoutNode::default();
+        parent.id = 1;
+        parent.display = Display::Grid;
+        parent.children = vec![];
+        tree.insert(parent);
+        tree.set_root(1);
+
+        // Should not panic
+        compute_grid(&mut tree, 1, 100, 100);
+    }
 }
