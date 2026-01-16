@@ -759,6 +759,8 @@ mod tests {
         let backend = WindowsBackend::new();
         #[cfg(not(target_os = "windows"))]
         assert!(!backend.is_available());
+        #[cfg(target_os = "windows")]
+        let _ = backend.is_available(); // Just check it doesn't panic
     }
 
     #[test]
