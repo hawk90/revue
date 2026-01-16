@@ -1,16 +1,27 @@
 //! Event handling and keyboard input
 
+pub mod custom;
 pub mod drag;
 mod focus;
+pub mod gesture;
 mod handler;
 mod keymap;
 mod reader;
 
+pub use custom::{
+    AppEvent, CustomEvent, CustomEventBus, CustomHandlerId, DispatchPhase, DispatchResult,
+    ErrorEvent, EventDispatcher, EventEnvelope, EventId, EventMeta, EventPriority, EventRecord,
+    EventResponse, HandlerOptions, NavigateEvent, StateChangeEvent,
+};
 pub use drag::{
     cancel_drag, drag_context, end_drag, is_dragging, start_drag, update_drag_position,
     DragContext, DragData, DragId, DragState, DropResult, DropTarget,
 };
 pub use focus::{Direction, FocusManager, FocusTrap, FocusTrapConfig, WidgetId};
+pub use gesture::{
+    DragGesture, Gesture, GestureConfig, GestureRecognizer, GestureState, LongPressGesture,
+    PinchDirection, PinchGesture, SwipeDirection, SwipeGesture, TapGesture,
+};
 pub use handler::{EventContext, EventHandler, EventPhase, HandlerId};
 pub use keymap::{Key, KeyBinding, KeyMap};
 pub use reader::EventReader;
