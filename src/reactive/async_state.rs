@@ -28,9 +28,8 @@
 //! }
 //! ```
 
-use crate::utils::lock::write_or_recover;
+use crate::utils::lock::{read_or_recover, write_or_recover};
 use std::fmt;
-use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::sync::{Arc, RwLock};
 use std::thread;
 
@@ -193,6 +192,17 @@ where
     (state, trigger)
 }
 
+/// Internal state for poll-based async operations
+#[derive(Clone)]
+enum PollState<T> {
+    /// No task running
+    Idle,
+    /// Task is running (no result yet)
+    Running,
+    /// Task completed with result
+    Done(AsyncResult<T>),
+}
+
 /// Create an async state that polls in the tick loop
 ///
 /// This version is designed to work with the app's tick loop for polling.
@@ -200,6 +210,11 @@ where
 /// - state: The reactive state signal
 /// - start_fn: Call to begin the async operation
 /// - poll_fn: Call each tick to check for completion (returns true when done)
+///
+/// # Thread Safety
+///
+/// Both `start` and `poll` can be called from any thread. The result is
+/// communicated through thread-safe shared state (`Arc<RwLock>`).
 ///
 /// # Example
 ///
@@ -227,15 +242,17 @@ where
     F: Fn() -> AsyncResult<T> + Send + Sync + Clone + 'static,
 {
     let state: Signal<AsyncState<T>> = signal(AsyncState::Idle);
-    let receiver: Arc<RwLock<Option<Receiver<AsyncResult<T>>>>> = Arc::new(RwLock::new(None));
+    // Use thread-safe shared state instead of channel (Receiver is !Sync)
+    let poll_state: Arc<RwLock<PollState<T>>> = Arc::new(RwLock::new(PollState::Idle));
 
-    let receiver_start = receiver.clone();
+    let poll_state_start = poll_state.clone();
     let state_start = state.clone();
     let start = move || {
         state_start.set(AsyncState::Loading);
+        *write_or_recover(&poll_state_start) = PollState::Running;
 
-        let (tx, rx) = mpsc::channel();
         let f_clone = f.clone();
+        let poll_state_thread = poll_state_start.clone();
 
         thread::spawn(move || {
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f_clone));
@@ -243,36 +260,28 @@ where
                 Ok(r) => r,
                 Err(_) => Err("Task panicked".to_string()),
             };
-            let _ = tx.send(result);
+            *write_or_recover(&poll_state_thread) = PollState::Done(result);
         });
-
-        *write_or_recover(&receiver_start) = Some(rx);
     };
 
-    let receiver_poll = receiver.clone();
+    let poll_state_poll = poll_state.clone();
     let state_poll = state.clone();
     let poll = move || -> bool {
-        let mut rx_ref = write_or_recover(&receiver_poll);
-        if let Some(rx) = rx_ref.as_ref() {
-            match rx.try_recv() {
-                Ok(result) => {
-                    match result {
-                        Ok(value) => state_poll.set(AsyncState::Ready(value)),
-                        Err(e) => state_poll.set(AsyncState::Error(e)),
-                    }
-                    *rx_ref = None;
-                    true // Task completed
+        // First, read to check if done (avoids unnecessary write lock)
+        let is_done = matches!(*read_or_recover(&poll_state_poll), PollState::Done(_));
+
+        if is_done {
+            // Take the result with a write lock
+            let mut guard = write_or_recover(&poll_state_poll);
+            if let PollState::Done(result) = std::mem::replace(&mut *guard, PollState::Idle) {
+                match result {
+                    Ok(value) => state_poll.set(AsyncState::Ready(value)),
+                    Err(e) => state_poll.set(AsyncState::Error(e)),
                 }
-                Err(TryRecvError::Empty) => false, // Still running
-                Err(TryRecvError::Disconnected) => {
-                    state_poll.set(AsyncState::Error("Task disconnected".to_string()));
-                    *rx_ref = None;
-                    true // Task ended (with error)
-                }
+                return true; // Task completed
             }
-        } else {
-            false // No task running
         }
+        false // Still running or idle
     };
 
     (state, start, poll)
@@ -516,5 +525,70 @@ mod tests {
         }
 
         assert_eq!(state.get(), AsyncState::Ready(42));
+    }
+
+    #[test]
+    fn test_use_async_poll_cross_thread() {
+        // Test that start() and poll() can be called from different threads
+        // This is the fix for issue #149
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        let (state, start, poll) = use_async_poll(|| {
+            thread::sleep(Duration::from_millis(10));
+            Ok(42)
+        });
+
+        let completed = Arc::new(AtomicBool::new(false));
+        let completed_clone = completed.clone();
+
+        // Start from main thread
+        start();
+        assert!(state.get().is_loading());
+
+        // Poll from a different thread
+        let poll_thread = thread::spawn(move || {
+            for _ in 0..50 {
+                if poll() {
+                    completed_clone.store(true, Ordering::SeqCst);
+                    return true;
+                }
+                thread::sleep(Duration::from_millis(5));
+            }
+            false
+        });
+
+        let result = poll_thread.join().expect("poll thread should not panic");
+        assert!(result, "polling should complete successfully");
+        assert!(completed.load(Ordering::SeqCst));
+        assert_eq!(state.get(), AsyncState::Ready(42));
+    }
+
+    #[test]
+    fn test_use_async_poll_start_from_different_thread() {
+        // Test starting from a different thread and polling from main
+        let (state, start, poll) = use_async_poll(|| {
+            thread::sleep(Duration::from_millis(10));
+            Ok("cross-thread".to_string())
+        });
+
+        // Start from a different thread
+        let start_thread = thread::spawn(move || {
+            start();
+        });
+        start_thread.join().expect("start thread should not panic");
+
+        // Wait for loading state
+        thread::sleep(Duration::from_millis(5));
+        assert!(state.get().is_loading());
+
+        // Poll from main thread
+        for _ in 0..50 {
+            if poll() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+
+        assert_eq!(state.get(), AsyncState::Ready("cross-thread".to_string()));
     }
 }
