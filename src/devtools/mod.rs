@@ -35,12 +35,17 @@ mod inspector;
 mod profiler;
 mod state;
 mod style;
+mod time_travel;
 
 pub use events::{EventFilter, EventLogger, EventType, LoggedEvent};
 pub use inspector::{ComponentPicker, Inspector, InspectorConfig, PickerMode, WidgetNode};
 pub use profiler::{ComponentStats, Frame, Profiler, ProfilerView, RenderEvent, RenderReason};
 pub use state::{StateDebugger, StateEntry, StateValue};
 pub use style::{ComputedProperty, PropertySource, StyleCategory, StyleInspector};
+pub use time_travel::{
+    Action, SnapshotValue, StateDiff, StateSnapshot, TimeTravelConfig, TimeTravelDebugger,
+    TimeTravelView,
+};
 
 use crate::layout::Rect;
 use crate::render::Buffer;
@@ -112,6 +117,8 @@ pub enum DevToolsTab {
     Events,
     /// Performance profiler
     Profiler,
+    /// Time-travel debugger
+    TimeTravel,
 }
 
 impl DevToolsTab {
@@ -123,6 +130,7 @@ impl DevToolsTab {
             Self::Styles => "Styles",
             Self::Events => "Events",
             Self::Profiler => "Profiler",
+            Self::TimeTravel => "Travel",
         }
     }
 
@@ -134,6 +142,7 @@ impl DevToolsTab {
             DevToolsTab::Styles,
             DevToolsTab::Events,
             DevToolsTab::Profiler,
+            DevToolsTab::TimeTravel,
         ]
     }
 
@@ -144,18 +153,20 @@ impl DevToolsTab {
             Self::State => Self::Styles,
             Self::Styles => Self::Events,
             Self::Events => Self::Profiler,
-            Self::Profiler => Self::Inspector,
+            Self::Profiler => Self::TimeTravel,
+            Self::TimeTravel => Self::Inspector,
         }
     }
 
     /// Previous tab
     pub fn prev(&self) -> Self {
         match self {
-            Self::Inspector => Self::Profiler,
+            Self::Inspector => Self::TimeTravel,
             Self::State => Self::Inspector,
             Self::Styles => Self::State,
             Self::Events => Self::Styles,
             Self::Profiler => Self::Events,
+            Self::TimeTravel => Self::Profiler,
         }
     }
 }
@@ -178,6 +189,8 @@ pub struct DevTools {
     events: EventLogger,
     /// Performance profiler
     profiler: Profiler,
+    /// Time-travel debugger
+    time_travel: TimeTravelDebugger,
 }
 
 impl DevTools {
@@ -190,6 +203,7 @@ impl DevTools {
             styles: StyleInspector::new(),
             events: EventLogger::new(),
             profiler: Profiler::new(),
+            time_travel: TimeTravelDebugger::new(),
         }
     }
 
@@ -289,6 +303,16 @@ impl DevTools {
     /// Get mutable profiler
     pub fn profiler_mut(&mut self) -> &mut Profiler {
         &mut self.profiler
+    }
+
+    /// Get time-travel debugger
+    pub fn time_travel(&self) -> &TimeTravelDebugger {
+        &self.time_travel
+    }
+
+    /// Get mutable time-travel debugger
+    pub fn time_travel_mut(&mut self) -> &mut TimeTravelDebugger {
+        &mut self.time_travel
     }
 
     /// Calculate panel rect based on position
@@ -401,6 +425,10 @@ impl DevTools {
                 .render_content(buffer, content_area, &self.config),
             DevToolsTab::Profiler => {
                 self.profiler
+                    .render_content(buffer, content_area, &self.config)
+            }
+            DevToolsTab::TimeTravel => {
+                self.time_travel
                     .render_content(buffer, content_area, &self.config)
             }
         }
@@ -561,7 +589,7 @@ mod tests {
     fn test_devtools_tab_cycle() {
         let tab = DevToolsTab::Inspector;
         assert_eq!(tab.next(), DevToolsTab::State);
-        assert_eq!(tab.prev(), DevToolsTab::Profiler);
+        assert_eq!(tab.prev(), DevToolsTab::TimeTravel);
     }
 
     #[test]
