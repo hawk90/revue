@@ -482,7 +482,10 @@ pub use tabs::{tabs, Tab, Tabs};
 pub use tag::{chip, tag, Tag, TagStyle};
 pub use terminal::{terminal, CursorStyle, TermCell, TermLine, Terminal, TerminalAction};
 pub use text::{Alignment, Text};
-pub use textarea::{textarea, TextArea};
+pub use textarea::{
+    textarea, Cursor, CursorPos, CursorSet, FindMatch, FindOptions, FindReplaceMode,
+    FindReplaceState, Selection, TextArea,
+};
 pub use theme_picker::{theme_picker, ThemePicker};
 pub use timeline::{
     timeline, timeline_event, EventType, Timeline, TimelineEvent, TimelineOrientation,
