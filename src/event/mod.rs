@@ -119,6 +119,12 @@ pub enum Event {
     Resize(u16, u16),
     /// Tick event (for animations, updates)
     Tick,
+    /// Terminal gained focus
+    FocusGained,
+    /// Terminal lost focus
+    FocusLost,
+    /// Pasted text (requires bracketed paste mode)
+    Paste(String),
 }
 
 /// Key press event
