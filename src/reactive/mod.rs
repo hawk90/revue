@@ -94,6 +94,7 @@
 mod async_state;
 mod batch;
 mod computed;
+mod context;
 mod effect;
 mod runtime;
 mod signal;
@@ -107,6 +108,11 @@ pub use batch::{
     start_batch, BatchGuard, Transaction,
 };
 pub use computed::Computed;
+pub use context::{
+    clear_all_contexts, clear_context, create_context, create_context_with_default, has_context,
+    provide, provide_signal, use_context, use_context_signal, with_context_scope, Context,
+    ContextId, ContextScope, Provider,
+};
 pub use effect::Effect;
 pub use runtime::ReactiveRuntime;
 pub use signal::Signal;
