@@ -29,24 +29,22 @@ impl EventReader {
     }
 
     /// Read next event, blocking
+    ///
+    /// Polls for events up to `tick_rate` duration. If an event is available,
+    /// it is returned. If the timeout expires with no event, returns `Event::Tick`.
     pub fn read(&self) -> Result<Event> {
-        loop {
-            if poll(self.tick_rate)? {
-                match event::read()? {
-                    CrosstermEvent::Key(key) => {
-                        return Ok(Event::Key(convert_key_event(key)));
-                    }
-                    CrosstermEvent::Mouse(mouse) => {
-                        return Ok(Event::Mouse(convert_mouse_event(mouse)));
-                    }
-                    CrosstermEvent::Resize(width, height) => {
-                        return Ok(Event::Resize(width, height));
-                    }
-                    _ => {} // Ignore other events (FocusGained, FocusLost, Paste)
-                }
-            } else {
-                return Ok(Event::Tick);
-            }
+        if poll(self.tick_rate)? {
+            let event = match event::read()? {
+                CrosstermEvent::Key(key) => Event::Key(convert_key_event(key)),
+                CrosstermEvent::Mouse(mouse) => Event::Mouse(convert_mouse_event(mouse)),
+                CrosstermEvent::Resize(width, height) => Event::Resize(width, height),
+                CrosstermEvent::FocusGained => Event::FocusGained,
+                CrosstermEvent::FocusLost => Event::FocusLost,
+                CrosstermEvent::Paste(text) => Event::Paste(text),
+            };
+            Ok(event)
+        } else {
+            Ok(Event::Tick)
         }
     }
 
@@ -57,7 +55,9 @@ impl EventReader {
                 CrosstermEvent::Key(key) => Ok(Some(Event::Key(convert_key_event(key)))),
                 CrosstermEvent::Mouse(mouse) => Ok(Some(Event::Mouse(convert_mouse_event(mouse)))),
                 CrosstermEvent::Resize(width, height) => Ok(Some(Event::Resize(width, height))),
-                _ => Ok(None),
+                CrosstermEvent::FocusGained => Ok(Some(Event::FocusGained)),
+                CrosstermEvent::FocusLost => Ok(Some(Event::FocusLost)),
+                CrosstermEvent::Paste(text) => Ok(Some(Event::Paste(text))),
             }
         } else {
             Ok(None)
