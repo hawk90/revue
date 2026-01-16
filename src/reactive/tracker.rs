@@ -24,9 +24,15 @@
 //! ```
 
 use super::SignalId;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+
+/// Maximum recursion depth for notify_dependents to prevent stack overflow.
+///
+/// This limit prevents infinite recursion when circular dependencies exist
+/// (e.g., Signal A updates Signal B which updates Signal A).
+const MAX_NOTIFY_DEPTH: usize = 100;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Subscriber Types
@@ -205,6 +211,8 @@ impl Default for DependencyTracker {
 
 thread_local! {
     static TRACKER: RefCell<DependencyTracker> = RefCell::new(DependencyTracker::new());
+    /// Current recursion depth for notify_dependents
+    static NOTIFY_DEPTH: Cell<usize> = const { Cell::new(0) };
 }
 
 /// Access the thread-local dependency tracker
@@ -231,7 +239,30 @@ pub fn track_read(signal_id: SignalId) {
 ///
 /// Note: Collects callbacks first to avoid borrow conflicts when
 /// callbacks trigger more signal reads/writes.
+///
+/// # Panics
+///
+/// Panics if recursion depth exceeds `MAX_NOTIFY_DEPTH` (100), which indicates
+/// a circular dependency in the reactive graph.
 pub fn notify_dependents(signal_id: SignalId) {
+    // Check and increment recursion depth
+    let depth = NOTIFY_DEPTH.with(|d| {
+        let current = d.get();
+        let new_depth = current + 1;
+        d.set(new_depth);
+        new_depth
+    });
+
+    if depth > MAX_NOTIFY_DEPTH {
+        // Decrement before panicking to keep state consistent for any recovery
+        NOTIFY_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
+        panic!(
+            "Maximum reactive update depth ({}) exceeded. \
+             This usually indicates a circular dependency in your reactive graph.",
+            MAX_NOTIFY_DEPTH
+        );
+    }
+
     // Collect callbacks while holding borrow, then call them after releasing
     let callbacks: Vec<SubscriberCallback> = with_tracker(|t| {
         t.dependencies
@@ -249,6 +280,9 @@ pub fn notify_dependents(signal_id: SignalId) {
     for callback in callbacks {
         callback();
     }
+
+    // Decrement depth after all callbacks complete
+    NOTIFY_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
 }
 
 /// Dispose a subscriber (called when effect is dropped)
@@ -268,6 +302,7 @@ pub fn is_tracking() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
@@ -383,5 +418,69 @@ mod tests {
         tracker.dispose_subscriber(sub_id);
 
         assert_eq!(tracker.dependent_count(signal_id), 0);
+    }
+
+    #[test]
+    #[serial]
+    fn test_notify_depth_resets_after_normal_notify() {
+        // Verify depth tracking works correctly for normal (non-recursive) notifications
+        let signal_id = SignalId::new();
+        let sub_id = SubscriberId::new();
+
+        // Register a simple subscriber
+        let called = Arc::new(AtomicUsize::new(0));
+        let called_clone = called.clone();
+        let subscriber = Subscriber {
+            id: sub_id,
+            callback: Arc::new(move || {
+                called_clone.fetch_add(1, Ordering::SeqCst);
+            }),
+        };
+
+        with_tracker(|t| {
+            t.start_tracking(subscriber);
+            t.track_read(signal_id);
+            t.stop_tracking();
+        });
+
+        // Notify should work and depth should reset to 0 after
+        notify_dependents(signal_id);
+        assert_eq!(called.load(Ordering::SeqCst), 1);
+
+        // Verify depth is back to 0 (by doing another notify which should work)
+        notify_dependents(signal_id);
+        assert_eq!(called.load(Ordering::SeqCst), 2);
+
+        // Cleanup
+        dispose_subscriber(sub_id);
+    }
+
+    #[test]
+    #[serial]
+    #[should_panic(expected = "Maximum reactive update depth")]
+    fn test_notify_depth_guard_panics_on_circular_dependency() {
+        // Simulate a circular dependency where notifying signal_a causes
+        // a callback that notifies signal_a again, infinitely
+
+        let signal_a = SignalId::new();
+        let sub_id = SubscriberId::new();
+
+        // Create a subscriber that re-notifies the same signal (circular)
+        let subscriber = Subscriber {
+            id: sub_id,
+            callback: Arc::new(move || {
+                // This creates infinite recursion: signal_a -> callback -> signal_a -> ...
+                notify_dependents(signal_a);
+            }),
+        };
+
+        with_tracker(|t| {
+            t.start_tracking(subscriber);
+            t.track_read(signal_a);
+            t.stop_tracking();
+        });
+
+        // This should panic with "Maximum reactive update depth exceeded"
+        notify_dependents(signal_a);
     }
 }
