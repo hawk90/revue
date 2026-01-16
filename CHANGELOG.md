@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.31.10](https://github.com/hawk90/revue/compare/v2.31.9...v2.31.10) (2026-01-16)
+
+
+### Bug Fixes
+
+* **reactive:** use thread-safe shared state in use_async_poll ([#207](https://github.com/hawk90/revue/issues/207)) ([2ef5261](https://github.com/hawk90/revue/commit/2ef5261290e32d49cedc74102d9c299ea322a782)), closes [#149](https://github.com/hawk90/revue/issues/149)
+
 ## [2.31.9](https://github.com/hawk90/revue/compare/v2.31.8...v2.31.9) (2026-01-16)
 
 
