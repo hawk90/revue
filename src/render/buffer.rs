@@ -109,10 +109,14 @@ impl Buffer {
             self.set(curr_x, y, cell);
 
             // For wide characters (width=2), mark next cell as continuation
-            if width == 2 && curr_x + 1 < self.width {
-                let mut cont = Cell::continuation();
-                cont.bg = bg; // Keep background for continuity
-                self.set(curr_x + 1, y, cont);
+            if width == 2 {
+                if let Some(next_x) = curr_x.checked_add(1) {
+                    if next_x < self.width {
+                        let mut cont = Cell::continuation();
+                        cont.bg = bg; // Keep background for continuity
+                        self.set(next_x, y, cont);
+                    }
+                }
             }
 
             offset = offset.saturating_add(width);
@@ -124,8 +128,14 @@ impl Buffer {
     /// Fill a rectangular area with a cell
     pub fn fill(&mut self, x: u16, y: u16, width: u16, height: u16, cell: Cell) {
         for dy in 0..height {
+            let Some(cy) = y.checked_add(dy) else {
+                break;
+            };
             for dx in 0..width {
-                self.set(x + dx, y + dy, cell); // Cell is Copy now
+                let Some(cx) = x.checked_add(dx) else {
+                    break;
+                };
+                self.set(cx, cy, cell); // Cell is Copy now
             }
         }
     }
@@ -252,11 +262,15 @@ impl Buffer {
             cell.modifier |= super::cell::Modifier::UNDERLINE;
             self.set(curr_x, y, cell);
 
-            if width == 2 && curr_x + 1 < self.width {
-                let mut cont = Cell::continuation();
-                cont.bg = bg;
-                cont.hyperlink_id = Some(link_id);
-                self.set(curr_x + 1, y, cont);
+            if width == 2 {
+                if let Some(next_x) = curr_x.checked_add(1) {
+                    if next_x < self.width {
+                        let mut cont = Cell::continuation();
+                        cont.bg = bg;
+                        cont.hyperlink_id = Some(link_id);
+                        self.set(next_x, y, cont);
+                    }
+                }
             }
 
             offset = offset.saturating_add(width);
@@ -529,5 +543,56 @@ mod tests {
         // Should not panic, cells outside bounds are ignored
         let first = buf.get(8, 4).unwrap();
         assert!(first.sequence_id.is_some());
+    }
+
+    #[test]
+    fn test_buffer_fill_no_overflow_near_u16_max() {
+        // Test that fill doesn't panic near u16::MAX
+        // This is the fix for issue #145
+        let mut buf = Buffer::new(100, 100);
+
+        // Fill starting near the edge of the buffer - should not panic
+        buf.fill(90, 90, 20, 20, Cell::new('#'));
+
+        // Verify cells within bounds were filled
+        assert_eq!(buf.get(90, 90).unwrap().symbol, '#');
+        assert_eq!(buf.get(99, 99).unwrap().symbol, '#');
+
+        // Fill with coordinates that would overflow if not handled
+        // x + width would overflow u16::MAX
+        buf.fill(u16::MAX - 5, 0, 10, 1, Cell::new('X'));
+        // y + height would overflow u16::MAX
+        buf.fill(0, u16::MAX - 5, 1, 10, Cell::new('Y'));
+        // Both would overflow
+        buf.fill(u16::MAX - 5, u16::MAX - 5, 10, 10, Cell::new('Z'));
+
+        // Should not panic - out of bounds writes are silently ignored
+    }
+
+    #[test]
+    fn test_buffer_put_str_no_overflow_near_u16_max() {
+        // Test that put_str doesn't panic with wide chars near u16::MAX
+        let mut buf = Buffer::new(100, 100);
+
+        // Put string starting near the edge - should not panic
+        buf.put_str(95, 0, "Hello");
+
+        // Put wide chars near the edge - the continuation cell handling
+        // should not overflow
+        buf.put_str(98, 0, "한글"); // Korean chars are 2 cells wide
+
+        // Verify what was written within bounds
+        assert_eq!(buf.get(98, 0).unwrap().symbol, '한');
+    }
+
+    #[test]
+    fn test_buffer_put_hyperlink_no_overflow() {
+        let mut buf = Buffer::new(100, 100);
+
+        // Put hyperlink with wide chars near the edge
+        buf.put_hyperlink(98, 0, "한글", "http://example.com", None, None);
+
+        // Should not panic
+        assert_eq!(buf.get(98, 0).unwrap().symbol, '한');
     }
 }

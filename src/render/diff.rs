@@ -39,13 +39,12 @@ pub fn diff(old: &Buffer, new: &Buffer, dirty_rects: &[Rect]) -> Vec<Change> {
     let mut checked_cells = std::collections::HashSet::with_capacity(dirty_rects.len() * 10);
 
     for rect in dirty_rects {
-        for y in rect.y..(rect.y + rect.height) {
-            for x in rect.x..(rect.x + rect.width) {
-                // Ensure we don't check outside the buffer bounds
-                if x >= new.width() || y >= new.height() {
-                    continue;
-                }
+        // Use saturating_add to prevent overflow near u16::MAX
+        let y_end = rect.y.saturating_add(rect.height).min(new.height());
+        let x_end = rect.x.saturating_add(rect.width).min(new.width());
 
+        for y in rect.y..y_end {
+            for x in rect.x..x_end {
                 if checked_cells.insert((x, y)) {
                     let old_cell = old.get(x, y);
                     let new_cell = new.get(x, y);
@@ -168,5 +167,48 @@ mod tests {
         buf2_same.set(5, 5, Cell::new('X'));
         let changes_same = diff(&buf1_same, &buf2_same, &[full_rect]);
         assert!(changes_same.is_empty());
+    }
+
+    #[test]
+    fn test_diff_no_overflow_near_u16_max() {
+        // Test that diff doesn't panic with rects that would overflow u16::MAX
+        // This is the fix for issue #145
+        let buf1 = Buffer::new(100, 100);
+        let buf2 = Buffer::new(100, 100);
+
+        // Rect where x + width would overflow
+        let overflow_x = rect(u16::MAX - 5, 0, 10, 1);
+        let changes = diff(&buf1, &buf2, &[overflow_x]);
+        assert!(changes.is_empty()); // No changes, but importantly no panic
+
+        // Rect where y + height would overflow
+        let overflow_y = rect(0, u16::MAX - 5, 1, 10);
+        let changes = diff(&buf1, &buf2, &[overflow_y]);
+        assert!(changes.is_empty());
+
+        // Rect where both would overflow
+        let overflow_both = rect(u16::MAX - 5, u16::MAX - 5, 10, 10);
+        let changes = diff(&buf1, &buf2, &[overflow_both]);
+        assert!(changes.is_empty());
+
+        // Rect at exact u16::MAX
+        let at_max = rect(u16::MAX, u16::MAX, 1, 1);
+        let changes = diff(&buf1, &buf2, &[at_max]);
+        assert!(changes.is_empty());
+    }
+
+    #[test]
+    fn test_diff_rect_exceeds_buffer() {
+        // Test that rects larger than the buffer are handled correctly
+        let buf1 = Buffer::new(10, 10);
+        let mut buf2 = Buffer::new(10, 10);
+        buf2.set(5, 5, Cell::new('X'));
+
+        // Rect larger than buffer
+        let large_rect = rect(0, 0, 1000, 1000);
+        let changes = diff(&buf1, &buf2, &[large_rect]);
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].x, 5);
+        assert_eq!(changes[0].y, 5);
     }
 }
