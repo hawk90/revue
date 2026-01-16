@@ -3,6 +3,7 @@
 pub mod custom;
 pub mod drag;
 mod focus;
+pub mod gesture;
 mod handler;
 mod keymap;
 mod reader;
@@ -17,6 +18,10 @@ pub use drag::{
     DragContext, DragData, DragId, DragState, DropResult, DropTarget,
 };
 pub use focus::{Direction, FocusManager, FocusTrap, FocusTrapConfig, WidgetId};
+pub use gesture::{
+    DragGesture, Gesture, GestureConfig, GestureRecognizer, GestureState, LongPressGesture,
+    PinchDirection, PinchGesture, SwipeDirection, SwipeGesture, TapGesture,
+};
 pub use handler::{EventContext, EventHandler, EventPhase, HandlerId};
 pub use keymap::{Key, KeyBinding, KeyMap};
 pub use reader::EventReader;
