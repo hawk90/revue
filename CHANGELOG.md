@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.31.3](https://github.com/hawk90/revue/compare/v2.31.2...v2.31.3) (2026-01-16)
+
+
+### Bug Fixes
+
+* **event:** handle FocusGained, FocusLost, and Paste events ([#186](https://github.com/hawk90/revue/issues/186)) ([3d24d7c](https://github.com/hawk90/revue/commit/3d24d7c96cd9042ffdff135a27f2279942c7ba34)), closes [#143](https://github.com/hawk90/revue/issues/143)
+
 ## [2.31.2](https://github.com/hawk90/revue/compare/v2.31.1...v2.31.2) (2026-01-16)
 
 
