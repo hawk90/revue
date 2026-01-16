@@ -5,6 +5,7 @@ pub mod drag;
 mod focus;
 pub mod gesture;
 mod handler;
+pub mod ime;
 mod keymap;
 mod reader;
 
@@ -23,6 +24,10 @@ pub use gesture::{
     PinchDirection, PinchGesture, SwipeDirection, SwipeGesture, TapGesture,
 };
 pub use handler::{EventContext, EventHandler, EventPhase, HandlerId};
+pub use ime::{
+    Candidate, CompositionEvent, CompositionState, CompositionStyle, ImeConfig, ImeState,
+    PreeditSegment, PreeditString,
+};
 pub use keymap::{Key, KeyBinding, KeyMap};
 pub use reader::EventReader;
 
