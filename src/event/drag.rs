@@ -498,37 +498,78 @@ pub fn drag_context() -> Arc<RwLock<DragContext>> {
 }
 
 /// Start a drag using the global context
-pub fn start_drag(data: DragData, x: u16, y: u16) {
-    if let Ok(mut ctx) = drag_context().write() {
-        ctx.start_drag(data, x, y);
+///
+/// Returns `true` if the drag was started successfully, `false` if the lock was poisoned.
+pub fn start_drag(data: DragData, x: u16, y: u16) -> bool {
+    match drag_context().write() {
+        Ok(mut ctx) => {
+            ctx.start_drag(data, x, y);
+            true
+        }
+        Err(_) => {
+            debug_assert!(false, "drag context lock poisoned in start_drag");
+            false
+        }
     }
 }
 
 /// Update drag position using the global context
-pub fn update_drag_position(x: u16, y: u16) {
-    if let Ok(mut ctx) = drag_context().write() {
-        ctx.update_position(x, y);
+///
+/// Returns `true` if the position was updated successfully, `false` if the lock was poisoned.
+pub fn update_drag_position(x: u16, y: u16) -> bool {
+    match drag_context().write() {
+        Ok(mut ctx) => {
+            ctx.update_position(x, y);
+            true
+        }
+        Err(_) => {
+            debug_assert!(false, "drag context lock poisoned in update_drag_position");
+            false
+        }
     }
 }
 
 /// End drag using the global context
+///
+/// Returns `Some((data, target))` if a drag was in progress and ended successfully,
+/// `None` if no drag was in progress or if the lock was poisoned.
 pub fn end_drag() -> Option<(DragData, Option<DragId>)> {
-    drag_context().write().ok()?.end_drag()
+    match drag_context().write() {
+        Ok(mut ctx) => ctx.end_drag(),
+        Err(_) => {
+            debug_assert!(false, "drag context lock poisoned in end_drag");
+            None
+        }
+    }
 }
 
 /// Cancel drag using the global context
-pub fn cancel_drag() {
-    if let Ok(mut ctx) = drag_context().write() {
-        ctx.cancel();
+///
+/// Returns `true` if the cancel was processed, `false` if the lock was poisoned.
+pub fn cancel_drag() -> bool {
+    match drag_context().write() {
+        Ok(mut ctx) => {
+            ctx.cancel();
+            true
+        }
+        Err(_) => {
+            debug_assert!(false, "drag context lock poisoned in cancel_drag");
+            false
+        }
     }
 }
 
 /// Check if dragging using the global context
+///
+/// Returns `false` if not dragging or if the lock was poisoned.
 pub fn is_dragging() -> bool {
-    drag_context()
-        .read()
-        .map(|ctx| ctx.is_dragging())
-        .unwrap_or(false)
+    match drag_context().read() {
+        Ok(ctx) => ctx.is_dragging(),
+        Err(_) => {
+            debug_assert!(false, "drag context lock poisoned in is_dragging");
+            false
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

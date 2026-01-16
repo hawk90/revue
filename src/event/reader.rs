@@ -94,7 +94,10 @@ fn convert_key_event(key: CrosstermKeyEvent) -> KeyEvent {
         KeyCode::PageUp => Key::PageUp,
         KeyCode::PageDown => Key::PageDown,
         KeyCode::F(n) => Key::F(n),
-        _ => Key::Char('\0'), // Unknown key
+        KeyCode::BackTab => Key::BackTab,
+        KeyCode::Insert => Key::Insert,
+        KeyCode::Null => Key::Null,
+        _ => Key::Unknown,
     };
 
     KeyEvent {
@@ -138,8 +141,8 @@ fn convert_mouse_event(mouse: CrosstermMouseEvent) -> MouseEvent {
         CrosstermMouseEventKind::Moved => MouseEventKind::Move,
         CrosstermMouseEventKind::ScrollDown => MouseEventKind::ScrollDown,
         CrosstermMouseEventKind::ScrollUp => MouseEventKind::ScrollUp,
-        CrosstermMouseEventKind::ScrollLeft => MouseEventKind::ScrollUp, // Map to up for now
-        CrosstermMouseEventKind::ScrollRight => MouseEventKind::ScrollDown, // Map to down for now
+        CrosstermMouseEventKind::ScrollLeft => MouseEventKind::ScrollLeft,
+        CrosstermMouseEventKind::ScrollRight => MouseEventKind::ScrollRight,
     };
 
     MouseEvent {

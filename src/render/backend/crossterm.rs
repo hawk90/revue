@@ -4,7 +4,10 @@
 
 use crossterm::{
     cursor::{Hide, MoveTo, Show},
-    event::{DisableMouseCapture, EnableMouseCapture},
+    event::{
+        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
+        EnableFocusChange, EnableMouseCapture,
+    },
     execute, queue,
     style::{
         Attribute, Color as CrosstermColor, ResetColor, SetAttribute, SetBackgroundColor,
@@ -30,6 +33,8 @@ pub struct CrosstermBackend<W: Write> {
     writer: W,
     raw_mode: bool,
     mouse_enabled: bool,
+    bracketed_paste_enabled: bool,
+    focus_events_enabled: bool,
 }
 
 impl<W: Write> CrosstermBackend<W> {
@@ -39,6 +44,8 @@ impl<W: Write> CrosstermBackend<W> {
             writer,
             raw_mode: false,
             mouse_enabled: false,
+            bracketed_paste_enabled: false,
+            focus_events_enabled: false,
         }
     }
 
@@ -77,6 +84,8 @@ impl<W: Write> Backend for CrosstermBackend<W> {
                 self.writer,
                 EnterAlternateScreen,
                 EnableMouseCapture,
+                EnableBracketedPaste,
+                EnableFocusChange,
                 Hide,
                 Clear(ClearType::All)
             )?;
@@ -85,10 +94,14 @@ impl<W: Write> Backend for CrosstermBackend<W> {
             execute!(
                 self.writer,
                 EnterAlternateScreen,
+                EnableBracketedPaste,
+                EnableFocusChange,
                 Hide,
                 Clear(ClearType::All)
             )?;
         }
+        self.bracketed_paste_enabled = true;
+        self.focus_events_enabled = true;
         Ok(())
     }
 
@@ -98,16 +111,27 @@ impl<W: Write> Backend for CrosstermBackend<W> {
                 execute!(
                     self.writer,
                     DisableMouseCapture,
+                    DisableBracketedPaste,
+                    DisableFocusChange,
                     ResetColor,
                     Show,
                     LeaveAlternateScreen
                 )?;
             } else {
-                execute!(self.writer, ResetColor, Show, LeaveAlternateScreen)?;
+                execute!(
+                    self.writer,
+                    DisableBracketedPaste,
+                    DisableFocusChange,
+                    ResetColor,
+                    Show,
+                    LeaveAlternateScreen
+                )?;
             }
             disable_raw_mode()?;
             self.raw_mode = false;
             self.mouse_enabled = false;
+            self.bracketed_paste_enabled = false;
+            self.focus_events_enabled = false;
         }
         Ok(())
     }

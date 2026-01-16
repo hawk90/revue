@@ -213,6 +213,7 @@ pub fn format_key_binding(binding: &KeyBinding) -> String {
         Key::Insert => "Ins".to_string(),
         Key::F(n) => format!("F{}", n),
         Key::Null => "Null".to_string(),
+        Key::Unknown => "Unknown".to_string(),
     };
 
     parts.push(&key_str);

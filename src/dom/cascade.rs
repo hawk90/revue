@@ -274,17 +274,26 @@ impl<'a> StyleResolver<'a> {
             if !self.matches_part(part, node) {
                 // For descendant combinator, try ancestors
                 if part_idx < selector.parts.len() - 1 {
-                    if let Some((_, Some(Combinator::Descendant))) =
-                        selector.parts.get(part_idx + 1)
-                    {
-                        // Try parent
-                        if let Some(parent_id) = node.parent {
-                            if let Some(parent) = get_node(parent_id) {
-                                current_node = Some(parent);
-                                part_idx += 1; // Retry this part with parent
+                    match selector.parts.get(part_idx + 1) {
+                        Some((_, Some(Combinator::Descendant))) => {
+                            // Try parent
+                            if let Some(parent_id) = node.parent {
+                                if let Some(parent) = get_node(parent_id) {
+                                    current_node = Some(parent);
+                                    part_idx += 1; // Retry this part with parent
+                                    continue;
+                                }
+                            }
+                        }
+                        Some((_, Some(Combinator::GeneralSibling))) => {
+                            // Try previous sibling (general sibling matches any previous)
+                            if let Some(sibling) = self.get_previous_sibling(node, get_node) {
+                                current_node = Some(sibling);
+                                part_idx += 1; // Retry this part with previous sibling
                                 continue;
                             }
                         }
+                        _ => {}
                     }
                 }
                 return false;

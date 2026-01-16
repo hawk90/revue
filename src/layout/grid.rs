@@ -168,10 +168,11 @@ fn calculate_track_sizes(
         for (i, track) in tracks.iter().enumerate() {
             match track {
                 GridTrack::Fr(fr) => {
-                    sizes[i] = (per_fr * fr) as u16;
+                    // Use round() to avoid precision loss from truncation
+                    sizes[i] = (per_fr * fr).round() as u16;
                 }
                 GridTrack::Auto | GridTrack::MinContent | GridTrack::MaxContent => {
-                    sizes[i] = per_fr as u16;
+                    sizes[i] = per_fr.round() as u16;
                 }
                 _ => {}
             }
@@ -360,8 +361,8 @@ mod tests {
         );
 
         assert_eq!(sizes[0], 20); // Fixed
-        assert_eq!(sizes[1], 26); // 80 / 3 = 26.67
-        assert_eq!(sizes[2], 53); // 80 * 2 / 3 = 53.33
+        assert_eq!(sizes[1], 27); // 80 / 3 = 26.67 rounds to 27
+        assert_eq!(sizes[2], 53); // 80 * 2 / 3 = 53.33 rounds to 53
     }
 
     #[test]
