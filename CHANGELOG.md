@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.31.1](https://github.com/hawk90/revue/compare/v2.31.0...v2.31.1) (2026-01-16)
+
+
+### Bug Fixes
+
+* **core:** improve error handling and centralize border rendering ([#136](https://github.com/hawk90/revue/issues/136)) ([f5b1262](https://github.com/hawk90/revue/commit/f5b126293389badbcbf9a1c838d923ee40cde7e9)), closes [#133](https://github.com/hawk90/revue/issues/133) [#135](https://github.com/hawk90/revue/issues/135)
+
 ## [2.31.0](https://github.com/hawk90/revue/compare/v2.30.0...v2.31.0) (2026-01-16)
 
 
