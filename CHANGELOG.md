@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.31.2](https://github.com/hawk90/revue/compare/v2.31.1...v2.31.2) (2026-01-16)
+
+
+### Bug Fixes
+
+* **reactive:** prevent data race in Computed concurrent recomputation ([#173](https://github.com/hawk90/revue/issues/173)) ([ab172d0](https://github.com/hawk90/revue/commit/ab172d0752da7e2af9e4548f5c461302e6c746a0)), closes [#140](https://github.com/hawk90/revue/issues/140)
+
 ## [2.31.1](https://github.com/hawk90/revue/compare/v2.31.0...v2.31.1) (2026-01-16)
 
 
