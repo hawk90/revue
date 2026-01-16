@@ -263,28 +263,32 @@ for event in parser {
 - Blockquotes
 - Tables
 
-### syntect
+### tree-sitter
 
-Syntax highlighting using Sublime Text syntax definitions.
+Accurate syntax highlighting using tree-sitter incremental parsing.
 
 ```rust
-use syntect::easy::HighlightLines;
-use syntect::parsing::SyntaxSet;
-use syntect::highlighting::{ThemeSet, Style};
+use revue::widget::{TreeSitterHighlighter, Language, SyntaxTheme};
 
-let ps = SyntaxSet::load_defaults_newlines();
-let ts = ThemeSet::load_defaults();
+// Create highlighter for Rust code
+let mut highlighter = TreeSitterHighlighter::with_theme(
+    Language::Rust,
+    SyntaxTheme::dark(),
+);
 
-let syntax = ps.find_syntax_by_extension("rs").unwrap();
-let mut h = HighlightLines::new(syntax, &ts.themes["base16-ocean.dark"]);
+// Highlight a line of code
+let spans = highlighter.highlight_line("fn main() { println!(\"hello\"); }");
 
-for line in code.lines() {
-    let ranges: Vec<(Style, &str)> = h.highlight_line(line, &ps)?;
-    // Render styled ranges
-}
+// Or highlight multiple lines for better accuracy
+let code = "fn main() {\n    println!(\"hello\");\n}";
+let line_spans = highlighter.highlight_code(code);
 ```
 
-**Languages:** 100+ supported via Sublime syntax files
+**Supported Languages:**
+- Rust, Python, JavaScript, Go
+- JSON, TOML, YAML
+- HTML, CSS, SQL
+- Bash/Shell, Markdown
 
 ### image
 
