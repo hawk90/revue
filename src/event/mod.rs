@@ -119,6 +119,12 @@ pub enum Event {
     Resize(u16, u16),
     /// Tick event (for animations, updates)
     Tick,
+    /// Terminal gained focus
+    FocusGained,
+    /// Terminal lost focus
+    FocusLost,
+    /// Pasted text (requires bracketed paste mode)
+    Paste(String),
 }
 
 /// Key press event
@@ -245,5 +251,39 @@ mod tests {
 
         assert_eq!(binding.key, Key::Char('s'));
         assert!(binding.ctrl);
+    }
+
+    #[test]
+    fn test_event_focus_gained() {
+        let event = Event::FocusGained;
+        assert!(matches!(event, Event::FocusGained));
+    }
+
+    #[test]
+    fn test_event_focus_lost() {
+        let event = Event::FocusLost;
+        assert!(matches!(event, Event::FocusLost));
+    }
+
+    #[test]
+    fn test_event_paste() {
+        let event = Event::Paste("hello world".to_string());
+        if let Event::Paste(text) = event {
+            assert_eq!(text, "hello world");
+        } else {
+            panic!("Expected Paste event");
+        }
+    }
+
+    #[test]
+    fn test_event_variants_equality() {
+        assert_eq!(Event::FocusGained, Event::FocusGained);
+        assert_eq!(Event::FocusLost, Event::FocusLost);
+        assert_eq!(
+            Event::Paste("test".to_string()),
+            Event::Paste("test".to_string())
+        );
+        assert_ne!(Event::FocusGained, Event::FocusLost);
+        assert_ne!(Event::Paste("a".to_string()), Event::Paste("b".to_string()));
     }
 }
