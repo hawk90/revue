@@ -1,0 +1,354 @@
+//! Cursor types for TextArea
+//!
+//! Provides cursor positioning and multi-cursor support.
+
+use super::selection::Selection;
+
+/// Maximum number of cursors allowed
+pub const MAX_CURSORS: usize = 100;
+
+/// A cursor position in the text (line, column)
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CursorPos {
+    /// Line index (0-based)
+    pub line: usize,
+    /// Column index (0-based)
+    pub col: usize,
+}
+
+impl CursorPos {
+    /// Create a new cursor position
+    pub fn new(line: usize, col: usize) -> Self {
+        Self { line, col }
+    }
+}
+
+impl From<(usize, usize)> for CursorPos {
+    fn from((line, col): (usize, usize)) -> Self {
+        Self { line, col }
+    }
+}
+
+impl From<CursorPos> for (usize, usize) {
+    fn from(pos: CursorPos) -> Self {
+        (pos.line, pos.col)
+    }
+}
+
+/// A cursor with optional selection anchor
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Cursor {
+    /// Current position
+    pub pos: CursorPos,
+    /// Selection anchor (if selecting)
+    pub anchor: Option<CursorPos>,
+}
+
+impl Cursor {
+    /// Create a new cursor at position
+    pub fn new(pos: CursorPos) -> Self {
+        Self { pos, anchor: None }
+    }
+
+    /// Create a cursor with selection
+    pub fn with_selection(pos: CursorPos, anchor: CursorPos) -> Self {
+        Self {
+            pos,
+            anchor: Some(anchor),
+        }
+    }
+
+    /// Get the selection as a Selection struct if selecting
+    pub fn selection(&self) -> Option<Selection> {
+        self.anchor.map(|anchor| {
+            let start = if self.pos < anchor {
+                (self.pos.line, self.pos.col)
+            } else {
+                (anchor.line, anchor.col)
+            };
+            let end = if self.pos < anchor {
+                (anchor.line, anchor.col)
+            } else {
+                (self.pos.line, self.pos.col)
+            };
+            Selection::new(start, end)
+        })
+    }
+
+    /// Check if this cursor is selecting
+    pub fn is_selecting(&self) -> bool {
+        self.anchor.is_some()
+    }
+
+    /// Start selection at current position
+    pub fn start_selection(&mut self) {
+        self.anchor = Some(self.pos);
+    }
+
+    /// Clear selection
+    pub fn clear_selection(&mut self) {
+        self.anchor = None;
+    }
+}
+
+/// Collection of cursors (always has at least one - the primary cursor)
+#[derive(Clone, Debug)]
+pub struct CursorSet {
+    /// All cursors, primary is at index 0
+    cursors: Vec<Cursor>,
+}
+
+impl CursorSet {
+    /// Create a new cursor set with a single cursor at position
+    pub fn new(pos: CursorPos) -> Self {
+        Self {
+            cursors: vec![Cursor::new(pos)],
+        }
+    }
+
+    /// Get the primary cursor (immutable)
+    pub fn primary(&self) -> &Cursor {
+        &self.cursors[0]
+    }
+
+    /// Get the primary cursor (mutable)
+    pub fn primary_mut(&mut self) -> &mut Cursor {
+        &mut self.cursors[0]
+    }
+
+    /// Get all cursors
+    #[allow(dead_code)]
+    pub fn all(&self) -> &[Cursor] {
+        &self.cursors
+    }
+
+    /// Get all cursors (mutable)
+    #[allow(dead_code)]
+    pub fn all_mut(&mut self) -> &mut [Cursor] {
+        &mut self.cursors
+    }
+
+    /// Get the number of cursors
+    pub fn len(&self) -> usize {
+        self.cursors.len()
+    }
+
+    /// Check if empty (always false - always has at least one cursor)
+    #[allow(dead_code)]
+    pub fn is_empty(&self) -> bool {
+        false
+    }
+
+    /// Check if there's only one cursor
+    #[allow(dead_code)]
+    pub fn is_single(&self) -> bool {
+        self.cursors.len() == 1
+    }
+
+    /// Add a cursor at position
+    pub fn add(&mut self, cursor: Cursor) {
+        if self.cursors.len() < MAX_CURSORS {
+            self.cursors.push(cursor);
+            self.normalize();
+        }
+    }
+
+    /// Add a cursor at position (convenience method)
+    pub fn add_at(&mut self, pos: CursorPos) {
+        self.add(Cursor::new(pos));
+    }
+
+    /// Clear all secondary cursors, keeping only the primary
+    pub fn clear_secondary(&mut self) {
+        self.cursors.truncate(1);
+    }
+
+    /// Set the primary cursor position
+    pub fn set_primary(&mut self, pos: CursorPos) {
+        self.cursors[0].pos = pos;
+    }
+
+    /// Iterate over all cursors
+    pub fn iter(&self) -> impl Iterator<Item = &Cursor> {
+        self.cursors.iter()
+    }
+
+    /// Iterate over all cursors (mutable)
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Cursor> {
+        self.cursors.iter_mut()
+    }
+
+    /// Sort cursors by position and merge overlapping ones
+    fn normalize(&mut self) {
+        // Sort by position (line, then column)
+        self.cursors.sort_by(|a, b| a.pos.cmp(&b.pos));
+
+        // Remove duplicates (cursors at same position)
+        self.cursors.dedup_by(|a, b| a.pos == b.pos);
+
+        // Ensure we always have at least one cursor
+        if self.cursors.is_empty() {
+            self.cursors.push(Cursor::new(CursorPos::new(0, 0)));
+        }
+    }
+
+    /// Get positions of all cursors sorted in reverse order (for editing)
+    #[allow(dead_code)]
+    pub fn positions_reversed(&self) -> Vec<CursorPos> {
+        let mut positions: Vec<CursorPos> = self.cursors.iter().map(|c| c.pos).collect();
+        positions.sort_by(|a, b| b.cmp(a)); // Reverse order
+        positions
+    }
+}
+
+impl Default for CursorSet {
+    fn default() -> Self {
+        Self::new(CursorPos::new(0, 0))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cursor_pos_new() {
+        let pos = CursorPos::new(5, 10);
+        assert_eq!(pos.line, 5);
+        assert_eq!(pos.col, 10);
+    }
+
+    #[test]
+    fn test_cursor_pos_from_tuple() {
+        let pos: CursorPos = (3, 7).into();
+        assert_eq!(pos.line, 3);
+        assert_eq!(pos.col, 7);
+    }
+
+    #[test]
+    fn test_cursor_pos_into_tuple() {
+        let pos = CursorPos::new(2, 4);
+        let tuple: (usize, usize) = pos.into();
+        assert_eq!(tuple, (2, 4));
+    }
+
+    #[test]
+    fn test_cursor_new() {
+        let cursor = Cursor::new(CursorPos::new(1, 2));
+        assert_eq!(cursor.pos, CursorPos::new(1, 2));
+        assert!(cursor.anchor.is_none());
+        assert!(!cursor.is_selecting());
+    }
+
+    #[test]
+    fn test_cursor_with_selection() {
+        let cursor = Cursor::with_selection(CursorPos::new(1, 5), CursorPos::new(1, 0));
+        assert_eq!(cursor.pos, CursorPos::new(1, 5));
+        assert_eq!(cursor.anchor, Some(CursorPos::new(1, 0)));
+        assert!(cursor.is_selecting());
+    }
+
+    #[test]
+    fn test_cursor_selection() {
+        let cursor = Cursor::with_selection(CursorPos::new(1, 5), CursorPos::new(1, 0));
+        let sel = cursor.selection().unwrap();
+        assert_eq!(sel.start, (1, 0));
+        assert_eq!(sel.end, (1, 5));
+    }
+
+    #[test]
+    fn test_cursor_start_clear_selection() {
+        let mut cursor = Cursor::new(CursorPos::new(1, 5));
+        assert!(!cursor.is_selecting());
+
+        cursor.start_selection();
+        assert!(cursor.is_selecting());
+        assert_eq!(cursor.anchor, Some(CursorPos::new(1, 5)));
+
+        cursor.clear_selection();
+        assert!(!cursor.is_selecting());
+    }
+
+    #[test]
+    fn test_cursor_set_new() {
+        let set = CursorSet::new(CursorPos::new(2, 3));
+        assert_eq!(set.len(), 1);
+        assert_eq!(set.primary().pos, CursorPos::new(2, 3));
+    }
+
+    #[test]
+    fn test_cursor_set_default() {
+        let set = CursorSet::default();
+        assert_eq!(set.len(), 1);
+        assert_eq!(set.primary().pos, CursorPos::new(0, 0));
+    }
+
+    #[test]
+    fn test_cursor_set_add() {
+        let mut set = CursorSet::new(CursorPos::new(0, 0));
+        set.add_at(CursorPos::new(1, 0));
+        set.add_at(CursorPos::new(2, 0));
+        assert_eq!(set.len(), 3);
+    }
+
+    #[test]
+    fn test_cursor_set_add_duplicate() {
+        let mut set = CursorSet::new(CursorPos::new(0, 0));
+        set.add_at(CursorPos::new(0, 0)); // duplicate
+        assert_eq!(set.len(), 1); // normalized away
+    }
+
+    #[test]
+    fn test_cursor_set_clear_secondary() {
+        let mut set = CursorSet::new(CursorPos::new(0, 0));
+        set.add_at(CursorPos::new(1, 0));
+        set.add_at(CursorPos::new(2, 0));
+        assert_eq!(set.len(), 3);
+
+        set.clear_secondary();
+        assert_eq!(set.len(), 1);
+    }
+
+    #[test]
+    fn test_cursor_set_set_primary() {
+        let mut set = CursorSet::new(CursorPos::new(0, 0));
+        set.set_primary(CursorPos::new(5, 10));
+        assert_eq!(set.primary().pos, CursorPos::new(5, 10));
+    }
+
+    #[test]
+    fn test_cursor_set_is_empty() {
+        let set = CursorSet::default();
+        assert!(!set.is_empty()); // always has at least one
+    }
+
+    #[test]
+    fn test_cursor_set_is_single() {
+        let mut set = CursorSet::default();
+        assert!(set.is_single());
+
+        set.add_at(CursorPos::new(1, 0));
+        assert!(!set.is_single());
+    }
+
+    #[test]
+    fn test_cursor_set_positions_reversed() {
+        let mut set = CursorSet::new(CursorPos::new(0, 0));
+        set.add_at(CursorPos::new(2, 5));
+        set.add_at(CursorPos::new(1, 3));
+
+        let positions = set.positions_reversed();
+        assert_eq!(positions[0], CursorPos::new(2, 5));
+        assert_eq!(positions[1], CursorPos::new(1, 3));
+        assert_eq!(positions[2], CursorPos::new(0, 0));
+    }
+
+    #[test]
+    fn test_cursor_set_max_cursors() {
+        let mut set = CursorSet::default();
+        for i in 0..MAX_CURSORS + 10 {
+            set.add_at(CursorPos::new(i, 0));
+        }
+        assert_eq!(set.len(), MAX_CURSORS);
+    }
+}
