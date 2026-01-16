@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.31.11](https://github.com/hawk90/revue/compare/v2.31.10...v2.31.11) (2026-01-16)
+
+
+### Bug Fixes
+
+* **reactive:** make batch state fully thread-local ([#209](https://github.com/hawk90/revue/issues/209)) ([28ede69](https://github.com/hawk90/revue/commit/28ede690f9e73cf9c1d3c22de152d94f1110ce37)), closes [#152](https://github.com/hawk90/revue/issues/152)
+
 ## [2.31.10](https://github.com/hawk90/revue/compare/v2.31.9...v2.31.10) (2026-01-16)
 
 
