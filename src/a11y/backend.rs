@@ -251,29 +251,29 @@ impl ScreenReader for MacOSBackend {
     #[allow(unused_variables)]
     fn announce(&self, message: &str, priority: Priority) {
         if !self.available {
-            return;
-        }
+            // Not available, do nothing
+        } else {
+            // Use NSAccessibility to post notification
+            // In a real implementation, this would use objc or cocoa crate
+            #[cfg(target_os = "macos")]
+            {
+                use std::process::Command;
 
-        // Use NSAccessibility to post notification
-        // In a real implementation, this would use objc or cocoa crate
-        #[cfg(target_os = "macos")]
-        {
-            use std::process::Command;
+                // Use osascript to trigger VoiceOver announcement
+                let script = if priority == Priority::Assertive {
+                    format!(
+                        "tell application \"VoiceOver\" to output \"{}\"",
+                        message.replace('"', "\\\"")
+                    )
+                } else {
+                    format!(
+                        "tell application \"System Events\" to set value of attribute \"AXDescription\" of menu bar 1 to \"{}\"",
+                        message.replace('"', "\\\"")
+                    )
+                };
 
-            // Use osascript to trigger VoiceOver announcement
-            let script = if priority == Priority::Assertive {
-                format!(
-                    "tell application \"VoiceOver\" to output \"{}\"",
-                    message.replace('"', "\\\"")
-                )
-            } else {
-                format!(
-                    "tell application \"System Events\" to set value of attribute \"AXDescription\" of menu bar 1 to \"{}\"",
-                    message.replace('"', "\\\"")
-                )
-            };
-
-            let _ = Command::new("osascript").arg("-e").arg(&script).spawn();
+                let _ = Command::new("osascript").arg("-e").arg(&script).spawn();
+            }
         }
     }
 
