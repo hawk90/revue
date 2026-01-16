@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.31.8](https://github.com/hawk90/revue/compare/v2.31.7...v2.31.8) (2026-01-16)
+
+
+### Bug Fixes
+
+* **render:** prevent integer overflow in Buffer operations near u16::MAX ([#203](https://github.com/hawk90/revue/issues/203)) ([2faec97](https://github.com/hawk90/revue/commit/2faec97009722b3ed32086e791b9f92c7e23d236)), closes [#145](https://github.com/hawk90/revue/issues/145)
+
 ## [2.31.7](https://github.com/hawk90/revue/compare/v2.31.6...v2.31.7) (2026-01-16)
 
 
