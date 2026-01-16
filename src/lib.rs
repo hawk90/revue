@@ -216,6 +216,7 @@ macro_rules! log_error {
 }
 pub(crate) use log_error;
 
+pub mod a11y;
 pub mod app;
 pub mod constants;
 pub mod devtools;
