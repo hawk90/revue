@@ -309,7 +309,7 @@ pub use avatar::{avatar, avatar_icon, Avatar, AvatarShape, AvatarSize};
 pub use badge::{badge, dot_badge, Badge, BadgeShape, BadgeVariant};
 pub use barchart::{barchart, BarChart, BarOrientation};
 pub use bigtext::{bigtext, h1, h2, h3, BigText};
-pub use border::{border, Border, BorderType};
+pub use border::{border, draw_border, Border, BorderChars, BorderType};
 pub use boxplot::{boxplot, BoxGroup, BoxPlot, BoxStats, WhiskerStyle};
 pub use breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
 pub use button::{button, Button, ButtonVariant};

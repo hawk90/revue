@@ -22,6 +22,7 @@
 //!     .title("Tip");
 //! ```
 
+use super::border::{draw_border, BorderType};
 use super::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
@@ -316,7 +317,7 @@ impl Alert {
         }
 
         // Draw border
-        self.draw_border(ctx, border_color, bg_color);
+        self.draw_alert_border(ctx, border_color, bg_color);
 
         // Content area
         let content_x = area.x + 2;
@@ -516,53 +517,15 @@ impl Alert {
         }
     }
 
-    fn draw_border(&self, ctx: &mut RenderContext, border_color: Color, bg_color: Color) {
-        let area = ctx.area;
-        let x = area.x;
-        let y = area.y;
-        let w = area.width;
-        let h = area.height;
-
-        // Corners
-        let corners = [
-            (x, y, '╭'),
-            (x + w - 1, y, '╮'),
-            (x, y + h - 1, '╰'),
-            (x + w - 1, y + h - 1, '╯'),
-        ];
-
-        for (cx, cy, ch) in corners {
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(border_color);
-            cell.bg = Some(bg_color);
-            ctx.buffer.set(cx, cy, cell);
-        }
-
-        // Horizontal lines
-        for dx in 1..w - 1 {
-            let mut top = Cell::new('─');
-            top.fg = Some(border_color);
-            top.bg = Some(bg_color);
-            ctx.buffer.set(x + dx, y, top);
-
-            let mut bottom = Cell::new('─');
-            bottom.fg = Some(border_color);
-            bottom.bg = Some(bg_color);
-            ctx.buffer.set(x + dx, y + h - 1, bottom);
-        }
-
-        // Vertical lines
-        for dy in 1..h - 1 {
-            let mut left = Cell::new('│');
-            left.fg = Some(border_color);
-            left.bg = Some(bg_color);
-            ctx.buffer.set(x, y + dy, left);
-
-            let mut right = Cell::new('│');
-            right.fg = Some(border_color);
-            right.bg = Some(bg_color);
-            ctx.buffer.set(x + w - 1, y + dy, right);
-        }
+    fn draw_alert_border(&self, ctx: &mut RenderContext, border_color: Color, bg_color: Color) {
+        // Use centralized border drawing utility
+        draw_border(
+            ctx.buffer,
+            ctx.area,
+            BorderType::Rounded,
+            Some(border_color),
+            Some(bg_color),
+        );
     }
 }
 
