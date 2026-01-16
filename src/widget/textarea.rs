@@ -689,8 +689,16 @@ impl TextArea {
         } else {
             // Multi-line selection
             // Get the content before and after selection
-            let before: String = self.lines[sel.start.0].chars().take(sel.start.1).collect();
-            let after: String = self.lines[sel.end.0].chars().skip(sel.end.1).collect();
+            let before: String = self
+                .lines
+                .get(sel.start.0)
+                .map(|l| l.chars().take(sel.start.1).collect())
+                .unwrap_or_default();
+            let after: String = self
+                .lines
+                .get(sel.end.0)
+                .map(|l| l.chars().skip(sel.end.1).collect())
+                .unwrap_or_default();
 
             // Remove lines between start and end
             for _ in sel.start.0..=sel.end.0 {
@@ -974,13 +982,15 @@ impl TextArea {
         } else if line > 0 {
             // Merge with previous line
             let current = self.lines.remove(line);
-            let prev_len = self.lines[line - 1].len();
-            self.lines[line - 1].push_str(&current);
-            self.push_undo(EditOperation::MergeLines {
-                line: line - 1,
-                col: prev_len,
-            });
-            self.set_primary_cursor(line - 1, prev_len);
+            if let Some(prev_line) = self.lines.get_mut(line - 1) {
+                let prev_len = prev_line.len();
+                prev_line.push_str(&current);
+                self.push_undo(EditOperation::MergeLines {
+                    line: line - 1,
+                    col: prev_len,
+                });
+                self.set_primary_cursor(line - 1, prev_len);
+            }
         }
     }
 
@@ -997,18 +1007,24 @@ impl TextArea {
 
         let cursor_pos = self.cursors.primary().pos;
         let (line, col) = (cursor_pos.line, cursor_pos.col);
-        if let Some(l) = self.lines.get_mut(line) {
-            if col < l.len() {
+
+        // Check if we can delete within the current line
+        let can_delete_in_line = self.lines.get(line).map(|l| col < l.len()).unwrap_or(false);
+
+        if can_delete_in_line {
+            if let Some(l) = self.lines.get_mut(line) {
                 let deleted = l.remove(col);
                 self.push_undo(EditOperation::Delete {
                     line,
                     col,
                     text: deleted.to_string(),
                 });
-            } else if line + 1 < self.lines.len() {
-                // Merge with next line
-                let next = self.lines.remove(line + 1);
-                self.lines[line].push_str(&next);
+            }
+        } else if line + 1 < self.lines.len() {
+            // Merge with next line
+            let next = self.lines.remove(line + 1);
+            if let Some(current_line) = self.lines.get_mut(line) {
+                current_line.push_str(&next);
                 self.push_undo(EditOperation::MergeLines { line, col });
             }
         }
@@ -1037,13 +1053,14 @@ impl TextArea {
 
         let cursor_pos = self.cursors.primary().pos;
         let line = cursor_pos.line;
-        let content = self.lines[line].clone();
-        self.lines.insert(line + 1, content.clone());
-        self.push_undo(EditOperation::InsertLine {
-            line: line + 1,
-            content,
-        });
-        self.set_primary_cursor(line + 1, cursor_pos.col);
+        if let Some(content) = self.lines.get(line).cloned() {
+            self.lines.insert(line + 1, content.clone());
+            self.push_undo(EditOperation::InsertLine {
+                line: line + 1,
+                content,
+            });
+            self.set_primary_cursor(line + 1, cursor_pos.col);
+        }
     }
 
     /// Move cursor left
@@ -1134,7 +1151,9 @@ impl TextArea {
             return;
         }
 
-        let line = &self.lines[pos.line];
+        let Some(line) = self.lines.get(pos.line) else {
+            return;
+        };
         let chars: Vec<char> = line.chars().collect();
         let mut col = pos.col.min(chars.len());
 
@@ -1154,7 +1173,9 @@ impl TextArea {
     /// Move cursor by word to the right
     pub fn move_word_right(&mut self) {
         let pos = self.cursors.primary().pos;
-        let line = &self.lines[pos.line];
+        let Some(line) = self.lines.get(pos.line) else {
+            return;
+        };
         let chars: Vec<char> = line.chars().collect();
         let mut col = pos.col;
 
@@ -1530,8 +1551,16 @@ impl TextArea {
             }
         } else {
             // Multi-line replacement
-            let before: String = self.lines[start.line].chars().take(start.col).collect();
-            let after: String = self.lines[end.line].chars().skip(end.col).collect();
+            let before: String = self
+                .lines
+                .get(start.line)
+                .map(|l| l.chars().take(start.col).collect())
+                .unwrap_or_default();
+            let after: String = self
+                .lines
+                .get(end.line)
+                .map(|l| l.chars().skip(end.col).collect())
+                .unwrap_or_default();
 
             // Remove lines between start and end
             for _ in start.line..=end.line {
@@ -1588,10 +1617,9 @@ impl TextArea {
     /// Get word at cursor position
     fn get_word_at_cursor(&self) -> String {
         let pos = self.cursors.primary().pos;
-        if pos.line >= self.lines.len() {
+        let Some(line) = self.lines.get(pos.line) else {
             return String::new();
-        }
-        let line = &self.lines[pos.line];
+        };
         let chars: Vec<char> = line.chars().collect();
 
         if chars.is_empty() || pos.col >= chars.len() {
@@ -1634,7 +1662,9 @@ impl TextArea {
 
         // Search from the position after `from`
         for line_idx in from.line..self.lines.len() {
-            let line = &self.lines[line_idx];
+            let Some(line) = self.lines.get(line_idx) else {
+                continue;
+            };
             let line_lower = line.to_lowercase();
 
             let start_col = if line_idx == from.line {
@@ -1651,8 +1681,10 @@ impl TextArea {
         }
 
         // Wrap around to beginning
-        for line_idx in 0..=from.line {
-            let line = &self.lines[line_idx];
+        for line_idx in 0..=from.line.min(self.lines.len().saturating_sub(1)) {
+            let Some(line) = self.lines.get(line_idx) else {
+                continue;
+            };
             let line_lower = line.to_lowercase();
 
             let end_col = if line_idx == from.line {
