@@ -32,11 +32,13 @@
 
 mod events;
 mod inspector;
+mod profiler;
 mod state;
 mod style;
 
 pub use events::{EventFilter, EventLogger, EventType, LoggedEvent};
 pub use inspector::{ComponentPicker, Inspector, InspectorConfig, PickerMode, WidgetNode};
+pub use profiler::{ComponentStats, Frame, Profiler, ProfilerView, RenderEvent, RenderReason};
 pub use state::{StateDebugger, StateEntry, StateValue};
 pub use style::{ComputedProperty, PropertySource, StyleCategory, StyleInspector};
 
@@ -108,6 +110,8 @@ pub enum DevToolsTab {
     Styles,
     /// Event logger
     Events,
+    /// Performance profiler
+    Profiler,
 }
 
 impl DevToolsTab {
@@ -118,6 +122,7 @@ impl DevToolsTab {
             Self::State => "State",
             Self::Styles => "Styles",
             Self::Events => "Events",
+            Self::Profiler => "Profiler",
         }
     }
 
@@ -128,6 +133,7 @@ impl DevToolsTab {
             DevToolsTab::State,
             DevToolsTab::Styles,
             DevToolsTab::Events,
+            DevToolsTab::Profiler,
         ]
     }
 
@@ -137,17 +143,19 @@ impl DevToolsTab {
             Self::Inspector => Self::State,
             Self::State => Self::Styles,
             Self::Styles => Self::Events,
-            Self::Events => Self::Inspector,
+            Self::Events => Self::Profiler,
+            Self::Profiler => Self::Inspector,
         }
     }
 
     /// Previous tab
     pub fn prev(&self) -> Self {
         match self {
-            Self::Inspector => Self::Events,
+            Self::Inspector => Self::Profiler,
             Self::State => Self::Inspector,
             Self::Styles => Self::State,
             Self::Events => Self::Styles,
+            Self::Profiler => Self::Events,
         }
     }
 }
@@ -168,6 +176,8 @@ pub struct DevTools {
     styles: StyleInspector,
     /// Event logger
     events: EventLogger,
+    /// Performance profiler
+    profiler: Profiler,
 }
 
 impl DevTools {
@@ -179,6 +189,7 @@ impl DevTools {
             state: StateDebugger::new(),
             styles: StyleInspector::new(),
             events: EventLogger::new(),
+            profiler: Profiler::new(),
         }
     }
 
@@ -268,6 +279,16 @@ impl DevTools {
     /// Get mutable event logger
     pub fn events_mut(&mut self) -> &mut EventLogger {
         &mut self.events
+    }
+
+    /// Get profiler
+    pub fn profiler(&self) -> &Profiler {
+        &self.profiler
+    }
+
+    /// Get mutable profiler
+    pub fn profiler_mut(&mut self) -> &mut Profiler {
+        &mut self.profiler
     }
 
     /// Calculate panel rect based on position
@@ -378,6 +399,10 @@ impl DevTools {
             DevToolsTab::Events => self
                 .events
                 .render_content(buffer, content_area, &self.config),
+            DevToolsTab::Profiler => {
+                self.profiler
+                    .render_content(buffer, content_area, &self.config)
+            }
         }
     }
 
@@ -536,7 +561,7 @@ mod tests {
     fn test_devtools_tab_cycle() {
         let tab = DevToolsTab::Inspector;
         assert_eq!(tab.next(), DevToolsTab::State);
-        assert_eq!(tab.prev(), DevToolsTab::Events);
+        assert_eq!(tab.prev(), DevToolsTab::Profiler);
     }
 
     #[test]
