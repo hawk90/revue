@@ -5,10 +5,55 @@
 
 use super::tracker::{notify_dependents, track_read};
 use super::SignalId;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
+/// Unique identifier for a signal subscription
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct SubscriptionId(u64);
+
+impl SubscriptionId {
+    fn new() -> Self {
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        Self(COUNTER.fetch_add(1, AtomicOrdering::Relaxed))
+    }
+}
+
 /// Type alias for thread-safe subscriber callbacks
-type Subscribers = Arc<RwLock<Vec<Box<dyn Fn() + Send + Sync>>>>;
+type SubscriberCallback = Box<dyn Fn() + Send + Sync>;
+type Subscribers = Arc<RwLock<HashMap<SubscriptionId, SubscriberCallback>>>;
+
+/// Handle to a signal subscription that automatically unsubscribes when dropped
+///
+/// This prevents memory leaks by ensuring callbacks are removed when no longer needed.
+///
+/// # Example
+///
+/// ```ignore
+/// let count = signal(0);
+///
+/// // Subscription is active while `sub` is in scope
+/// let sub = count.subscribe(|| println!("changed!"));
+///
+/// count.set(1);  // Prints "changed!"
+///
+/// drop(sub);     // Unsubscribes
+///
+/// count.set(2);  // No output - callback was removed
+/// ```
+pub struct Subscription {
+    id: SubscriptionId,
+    subscribers: Subscribers,
+}
+
+impl Drop for Subscription {
+    fn drop(&mut self) {
+        if let Ok(mut subs) = self.subscribers.write() {
+            subs.remove(&self.id);
+        }
+    }
+}
 
 /// A reactive state container that triggers updates when changed
 ///
@@ -59,7 +104,7 @@ impl<T: 'static> Signal<T> {
         Self {
             id: SignalId::new(),
             value: Arc::new(RwLock::new(value)),
-            subscribers: Arc::new(RwLock::new(Vec::new())),
+            subscribers: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -172,6 +217,9 @@ impl<T: 'static> Signal<T> {
 
     /// Subscribe to changes manually (callback must be Send + Sync)
     ///
+    /// Returns a [`Subscription`] handle that automatically unsubscribes when dropped.
+    /// This prevents memory leaks from accumulated callbacks.
+    ///
     /// This provides **explicit** subscription, unlike the **automatic** dependency
     /// tracking used by `Effect` and `Computed`.
     ///
@@ -188,19 +236,27 @@ impl<T: 'static> Signal<T> {
     /// let count = signal(0);
     ///
     /// // Manual: always called when count changes
-    /// count.subscribe(|| println!("count changed!"));
+    /// let sub = count.subscribe(|| println!("count changed!"));
     ///
-    /// // Automatic: only tracks signals actually read
-    /// Effect::new(move || {
-    ///     println!("count is {}", count.get()); // auto-subscribes to count
-    /// });
+    /// count.set(1);  // Calls callback
+    ///
+    /// drop(sub);     // Unsubscribes - callback is removed
+    ///
+    /// count.set(2);  // No callback called
     /// ```
-    pub fn subscribe(&self, callback: impl Fn() + Send + Sync + 'static) {
-        let mut subs = self
-            .subscribers
-            .write()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        subs.push(Box::new(callback));
+    pub fn subscribe(&self, callback: impl Fn() + Send + Sync + 'static) -> Subscription {
+        let id = SubscriptionId::new();
+        {
+            let mut subs = self
+                .subscribers
+                .write()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            subs.insert(id, Box::new(callback));
+        }
+        Subscription {
+            id,
+            subscribers: Arc::clone(&self.subscribers),
+        }
     }
 
     /// Manually trigger notification to subscribers
@@ -217,8 +273,8 @@ impl<T: 'static> Signal<T> {
             .subscribers
             .read()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        for subscriber in subs.iter() {
-            subscriber();
+        for callback in subs.values() {
+            callback();
         }
     }
 
@@ -303,7 +359,7 @@ mod tests {
         let called = Arc::new(AtomicUsize::new(0));
 
         let called_clone = called.clone();
-        count.subscribe(move || {
+        let _sub = count.subscribe(move || {
             called_clone.fetch_add(1, Ordering::SeqCst);
         });
 
@@ -314,6 +370,57 @@ mod tests {
 
         count.set(2);
         assert_eq!(called.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn test_signal_unsubscribe_on_drop() {
+        let count = Signal::new(0);
+        let called = Arc::new(AtomicUsize::new(0));
+
+        let called_clone = called.clone();
+        let sub = count.subscribe(move || {
+            called_clone.fetch_add(1, Ordering::SeqCst);
+        });
+
+        // Subscription is active
+        count.set(1);
+        assert_eq!(called.load(Ordering::SeqCst), 1);
+
+        // Drop the subscription
+        drop(sub);
+
+        // Callback should no longer be called
+        count.set(2);
+        assert_eq!(called.load(Ordering::SeqCst), 1); // Still 1, not 2
+    }
+
+    #[test]
+    fn test_signal_multiple_subscriptions() {
+        let count = Signal::new(0);
+        let called1 = Arc::new(AtomicUsize::new(0));
+        let called2 = Arc::new(AtomicUsize::new(0));
+
+        let c1 = called1.clone();
+        let sub1 = count.subscribe(move || {
+            c1.fetch_add(1, Ordering::SeqCst);
+        });
+
+        let c2 = called2.clone();
+        let _sub2 = count.subscribe(move || {
+            c2.fetch_add(1, Ordering::SeqCst);
+        });
+
+        count.set(1);
+        assert_eq!(called1.load(Ordering::SeqCst), 1);
+        assert_eq!(called2.load(Ordering::SeqCst), 1);
+
+        // Drop first subscription
+        drop(sub1);
+
+        count.set(2);
+        // First callback not called, second still called
+        assert_eq!(called1.load(Ordering::SeqCst), 1);
+        assert_eq!(called2.load(Ordering::SeqCst), 2);
     }
 
     #[test]
@@ -411,7 +518,7 @@ mod tests {
         let notified = Arc::new(AtomicUsize::new(0));
 
         let notified_clone = notified.clone();
-        count.subscribe(move || {
+        let _sub = count.subscribe(move || {
             notified_clone.fetch_add(1, Ordering::SeqCst);
         });
 
