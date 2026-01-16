@@ -80,3 +80,100 @@ pub fn back_out(t: f32) -> f32 {
     let c3 = c1 + 1.0;
     1.0 + c3 * (t - 1.0).powi(3) + c1 * (t - 1.0).powi(2)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_linear() {
+        assert_eq!(linear(0.0), 0.0);
+        assert_eq!(linear(0.5), 0.5);
+        assert_eq!(linear(1.0), 1.0);
+    }
+
+    #[test]
+    fn test_ease_in() {
+        assert_eq!(ease_in(0.0), 0.0);
+        assert_eq!(ease_in(1.0), 1.0);
+        assert!(ease_in(0.5) < 0.5); // slow start
+    }
+
+    #[test]
+    fn test_ease_out() {
+        assert_eq!(ease_out(0.0), 0.0);
+        assert_eq!(ease_out(1.0), 1.0);
+        assert!(ease_out(0.5) > 0.5); // fast start
+    }
+
+    #[test]
+    fn test_ease_in_out() {
+        assert_eq!(ease_in_out(0.0), 0.0);
+        assert_eq!(ease_in_out(1.0), 1.0);
+        assert_eq!(ease_in_out(0.5), 0.5); // midpoint is exact
+    }
+
+    #[test]
+    fn test_ease_in_cubic() {
+        assert_eq!(ease_in_cubic(0.0), 0.0);
+        assert_eq!(ease_in_cubic(1.0), 1.0);
+        assert!(ease_in_cubic(0.5) < 0.5);
+    }
+
+    #[test]
+    fn test_ease_out_cubic() {
+        assert_eq!(ease_out_cubic(0.0), 0.0);
+        assert_eq!(ease_out_cubic(1.0), 1.0);
+        assert!(ease_out_cubic(0.5) > 0.5);
+    }
+
+    #[test]
+    fn test_ease_in_out_cubic() {
+        assert_eq!(ease_in_out_cubic(0.0), 0.0);
+        assert_eq!(ease_in_out_cubic(1.0), 1.0);
+        assert_eq!(ease_in_out_cubic(0.5), 0.5);
+    }
+
+    #[test]
+    fn test_bounce_out() {
+        assert_eq!(bounce_out(0.0), 0.0);
+        assert!((bounce_out(1.0) - 1.0).abs() < 0.001);
+        // Bounce should have values > 0 in the middle
+        assert!(bounce_out(0.5) > 0.0);
+    }
+
+    #[test]
+    fn test_elastic_out() {
+        assert_eq!(elastic_out(0.0), 0.0);
+        assert_eq!(elastic_out(1.0), 1.0);
+        // Elastic can overshoot
+        assert!(elastic_out(0.5) > 0.0);
+    }
+
+    #[test]
+    fn test_back_out() {
+        assert_eq!(back_out(0.0), 0.0);
+        assert!((back_out(1.0) - 1.0).abs() < 0.001);
+        // Back can overshoot
+        assert!(back_out(0.5) > 0.0);
+    }
+
+    #[test]
+    fn test_all_easing_bounds() {
+        // All easing functions should be between -0.5 and 1.5 for t in [0, 1]
+        for i in 0..=10 {
+            let t = i as f32 / 10.0;
+            assert!(linear(t) >= 0.0 && linear(t) <= 1.0);
+            assert!(ease_in(t) >= 0.0 && ease_in(t) <= 1.0);
+            assert!(ease_out(t) >= 0.0 && ease_out(t) <= 1.0);
+            assert!(ease_in_out(t) >= 0.0 && ease_in_out(t) <= 1.0);
+            assert!(ease_in_cubic(t) >= 0.0 && ease_in_cubic(t) <= 1.0);
+            assert!(ease_out_cubic(t) >= 0.0 && ease_out_cubic(t) <= 1.0);
+            assert!(ease_in_out_cubic(t) >= 0.0 && ease_in_out_cubic(t) <= 1.0);
+            assert!(bounce_out(t) >= 0.0 && bounce_out(t) <= 1.1);
+            // elastic and back can overshoot, so wider bounds
+            assert!(elastic_out(t) >= -0.5 && elastic_out(t) <= 1.5);
+            assert!(back_out(t) >= -0.5 && back_out(t) <= 1.5);
+        }
+    }
+}

@@ -183,3 +183,126 @@ impl Validators {
         Box::new(f)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validation_error_new() {
+        let err = ValidationError::new("test error");
+        assert_eq!(err.message, "test error");
+    }
+
+    #[test]
+    fn test_required_validator() {
+        let validator = Validators::required();
+        assert!(validator("hello").is_ok());
+        assert!(validator("  ").is_err());
+        assert!(validator("").is_err());
+    }
+
+    #[test]
+    fn test_min_length_validator() {
+        let validator = Validators::min_length(3);
+        assert!(validator("abc").is_ok());
+        assert!(validator("abcd").is_ok());
+        assert!(validator("ab").is_err());
+    }
+
+    #[test]
+    fn test_max_length_validator() {
+        let validator = Validators::max_length(5);
+        assert!(validator("abc").is_ok());
+        assert!(validator("abcde").is_ok());
+        assert!(validator("abcdef").is_err());
+    }
+
+    #[test]
+    fn test_email_validator() {
+        let validator = Validators::email();
+        assert!(validator("test@example.com").is_ok());
+        assert!(validator("").is_ok()); // empty is ok
+        assert!(validator("invalid").is_err());
+        assert!(validator("no-at-sign.com").is_err());
+    }
+
+    #[test]
+    fn test_numeric_validator() {
+        let validator = Validators::numeric();
+        assert!(validator("123").is_ok());
+        assert!(validator("12.34").is_ok());
+        assert!(validator("-5.5").is_ok());
+        assert!(validator("").is_ok());
+        assert!(validator("abc").is_err());
+    }
+
+    #[test]
+    fn test_integer_validator() {
+        let validator = Validators::integer();
+        assert!(validator("123").is_ok());
+        assert!(validator("-456").is_ok());
+        assert!(validator("").is_ok());
+        assert!(validator("12.34").is_err());
+        assert!(validator("abc").is_err());
+    }
+
+    #[test]
+    fn test_min_value_validator() {
+        let validator = Validators::min_value(10.0);
+        assert!(validator("10").is_ok());
+        assert!(validator("15").is_ok());
+        assert!(validator("").is_ok());
+        assert!(validator("5").is_err());
+        assert!(validator("abc").is_err());
+    }
+
+    #[test]
+    fn test_max_value_validator() {
+        let validator = Validators::max_value(100.0);
+        assert!(validator("100").is_ok());
+        assert!(validator("50").is_ok());
+        assert!(validator("").is_ok());
+        assert!(validator("150").is_err());
+        assert!(validator("abc").is_err());
+    }
+
+    #[test]
+    fn test_contains_validator() {
+        let validator = Validators::contains("@", "Must contain @");
+        assert!(validator("test@example").is_ok());
+        assert!(validator("").is_ok());
+        assert!(validator("no-at-sign").is_err());
+    }
+
+    #[test]
+    fn test_alphanumeric_validator() {
+        let validator = Validators::alphanumeric();
+        assert!(validator("abc123").is_ok());
+        assert!(validator("").is_ok());
+        assert!(validator("abc-123").is_err());
+        assert!(validator("abc 123").is_err());
+    }
+
+    #[test]
+    fn test_no_whitespace_validator() {
+        let validator = Validators::no_whitespace();
+        assert!(validator("abc123").is_ok());
+        assert!(validator("").is_ok());
+        assert!(validator("abc 123").is_err());
+        assert!(validator("abc\t123").is_err());
+    }
+
+    #[test]
+    fn test_custom_validator() {
+        let validator = Validators::custom(|value| {
+            if value.starts_with("test") {
+                Ok(())
+            } else {
+                Err(ValidationError::new("Must start with 'test'"))
+            }
+        });
+        assert!(validator("test123").is_ok());
+        assert!(validator("hello").is_err());
+    }
+}
