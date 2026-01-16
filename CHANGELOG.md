@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.31.0](https://github.com/hawk90/revue/compare/v2.30.0...v2.31.0) (2026-01-16)
+
+
+### Features
+
+* **a11y:** add screen reader backend integration ([#130](https://github.com/hawk90/revue/issues/130)) ([a954da0](https://github.com/hawk90/revue/commit/a954da0770377fe5ae7c76267b2571400ee75b15)), closes [#26](https://github.com/hawk90/revue/issues/26)
+
 ## [2.30.0](https://github.com/hawk90/revue/compare/v2.29.0...v2.30.0) (2026-01-16)
 
 
