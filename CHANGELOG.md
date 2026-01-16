@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.31.6](https://github.com/hawk90/revue/compare/v2.31.5...v2.31.6) (2026-01-16)
+
+
+### Bug Fixes
+
+* **widget:** replace unchecked array indexing with bounds-checked access in TextArea ([#196](https://github.com/hawk90/revue/issues/196)) ([f44aa4e](https://github.com/hawk90/revue/commit/f44aa4e1482dc829606792713e313130189b0669)), closes [#144](https://github.com/hawk90/revue/issues/144)
+
 ## [2.31.5](https://github.com/hawk90/revue/compare/v2.31.4...v2.31.5) (2026-01-16)
 
 
