@@ -76,10 +76,19 @@ impl Stats {
 
         let count = samples.len();
         let total: Duration = samples.iter().map(|s| s.duration).sum();
-        let min = samples.iter().map(|s| s.duration).min().unwrap();
-        let max = samples.iter().map(|s| s.duration).max().unwrap();
+        // Safety: samples is guaranteed non-empty by early return above
+        let min = samples
+            .iter()
+            .map(|s| s.duration)
+            .min()
+            .expect("samples non-empty");
+        let max = samples
+            .iter()
+            .map(|s| s.duration)
+            .max()
+            .expect("samples non-empty");
         let avg = total / count as u32;
-        let last = samples.last().unwrap().duration;
+        let last = samples.last().expect("samples non-empty").duration;
 
         // Calculate throughput based on time window
         let throughput = if let (Some(first), Some(last_sample)) = (samples.first(), samples.last())
