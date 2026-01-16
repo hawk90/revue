@@ -22,24 +22,21 @@
 //! ```
 
 use std::cell::RefCell;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 // =============================================================================
 // Batch State
 // =============================================================================
 
 thread_local! {
-    /// Batch depth counter for nested batches
+    /// Batch depth counter for nested batches (per-thread)
     static BATCH_DEPTH: RefCell<usize> = const { RefCell::new(0) };
 
-    /// Pending updates to flush
+    /// Pending updates to flush (per-thread)
     static PENDING_UPDATES: RefCell<Vec<Box<dyn FnOnce()>>> = const { RefCell::new(Vec::new()) };
 }
 
-/// Global flag indicating if batching is active
-static BATCHING_ACTIVE: AtomicBool = AtomicBool::new(false);
-
-/// Counter for tracking batch operations
+/// Counter for tracking batch operations (for debugging)
 static BATCH_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 // =============================================================================
@@ -94,11 +91,7 @@ where
 /// ```
 pub fn start_batch() {
     BATCH_DEPTH.with(|depth| {
-        let mut d = depth.borrow_mut();
-        if *d == 0 {
-            BATCHING_ACTIVE.store(true, Ordering::SeqCst);
-        }
-        *d += 1;
+        *depth.borrow_mut() += 1;
     });
     BATCH_COUNTER.fetch_add(1, Ordering::Relaxed);
 }
@@ -112,15 +105,17 @@ pub fn end_batch() {
         *d = d.saturating_sub(1);
 
         if *d == 0 {
-            BATCHING_ACTIVE.store(false, Ordering::SeqCst);
             flush_updates();
         }
     });
 }
 
 /// Check if currently in a batch
+///
+/// This checks the thread-local batch depth, making batching a per-thread concept.
+/// Each thread maintains its own independent batch state.
 pub fn is_batching() -> bool {
-    BATCHING_ACTIVE.load(Ordering::SeqCst)
+    batch_depth() > 0
 }
 
 /// Get current batch depth (for debugging)
@@ -323,7 +318,7 @@ impl Drop for BatchGuard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::AtomicUsize;
+    use std::sync::atomic::{AtomicBool, AtomicUsize};
     use std::sync::Arc;
 
     #[test]
@@ -615,5 +610,88 @@ mod tests {
 
         // Should not go negative
         assert!(depth_after <= depth_before);
+    }
+
+    #[test]
+    fn test_batch_state_is_thread_local() {
+        // This test verifies the fix for issue #152:
+        // Batch state should be per-thread, not global.
+        // Thread A ending its batch should not affect Thread B's batch state.
+        use std::sync::Barrier;
+        use std::thread;
+
+        let barrier = Arc::new(Barrier::new(2));
+        let thread_b_saw_batching = Arc::new(AtomicBool::new(false));
+
+        let barrier_a = barrier.clone();
+        let barrier_b = barrier.clone();
+        let result = thread_b_saw_batching.clone();
+
+        // Thread A: start batch, wait, then end batch
+        let handle_a = thread::spawn(move || {
+            start_batch();
+            assert!(is_batching());
+            barrier_a.wait(); // Sync point 1: both threads are in their batches
+            barrier_a.wait(); // Sync point 2: wait for B to check state before A ends
+            end_batch();
+            assert!(!is_batching());
+        });
+
+        // Thread B: start batch, wait for A to end, verify B's state is unaffected
+        let handle_b = thread::spawn(move || {
+            start_batch();
+            assert!(is_batching());
+            barrier_b.wait(); // Sync point 1: both threads are in their batches
+            barrier_b.wait(); // Sync point 2: let A proceed to end_batch
+
+            // Small delay to allow Thread A to call end_batch()
+            thread::sleep(std::time::Duration::from_millis(10));
+
+            // Critical check: Thread B should STILL be batching
+            // even though Thread A ended its batch
+            result.store(is_batching(), Ordering::SeqCst);
+            end_batch();
+        });
+
+        handle_a.join().expect("Thread A panicked");
+        handle_b.join().expect("Thread B panicked");
+
+        // Thread B should still have seen itself as batching
+        // despite Thread A ending its batch
+        assert!(
+            thread_b_saw_batching.load(Ordering::SeqCst),
+            "Thread B's batch state was affected by Thread A ending its batch"
+        );
+    }
+
+    #[test]
+    fn test_independent_thread_batches() {
+        // Test that multiple threads can have independent batches
+        use std::thread;
+
+        let counter = Arc::new(AtomicUsize::new(0));
+        let mut handles = vec![];
+
+        for _ in 0..4 {
+            let c = counter.clone();
+            handles.push(thread::spawn(move || {
+                // Each thread has its own batch
+                batch(|| {
+                    assert!(is_batching());
+                    queue_update(move || {
+                        c.fetch_add(1, Ordering::SeqCst);
+                    });
+                    assert!(is_batching());
+                });
+                assert!(!is_batching());
+            }));
+        }
+
+        for handle in handles {
+            handle.join().expect("Thread panicked");
+        }
+
+        // All 4 threads should have executed their updates
+        assert_eq!(counter.load(Ordering::SeqCst), 4);
     }
 }
