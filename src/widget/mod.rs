@@ -290,6 +290,8 @@ mod toast_queue;
 mod tooltip;
 pub mod traits;
 mod tree;
+#[cfg(feature = "syntax-highlighting")]
+mod tree_sitter_highlight;
 mod vim;
 mod virtuallist;
 mod waveline;
@@ -500,6 +502,8 @@ pub use traits::{
     View, WidgetProps, WidgetState, DISABLED_BG, DISABLED_FG,
 };
 pub use tree::{tree, tree_node, Tree, TreeNode};
+#[cfg(feature = "syntax-highlighting")]
+pub use tree_sitter_highlight::TreeSitterHighlighter;
 pub use vim::{vim_state, VimAction, VimCommandResult, VimMode, VimMotion, VimState};
 pub use virtuallist::{virtual_list, ScrollAlignment, ScrollMode, VirtualList};
 pub use waveline::{
