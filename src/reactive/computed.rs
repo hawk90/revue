@@ -4,7 +4,7 @@
 
 use super::tracker::{start_tracking, stop_tracking, Subscriber, SubscriberId};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 /// A derived value that automatically updates when dependencies change
 ///
@@ -18,6 +18,8 @@ pub struct Computed<T> {
     cached: Arc<RwLock<Option<T>>>,
     /// Whether cache is invalid (shared via Arc for callbacks)
     dirty: Arc<AtomicBool>,
+    /// Lock to prevent concurrent recomputation (avoids data race)
+    recompute_lock: Arc<Mutex<()>>,
 }
 
 // Computed<T> auto-derives Send when T: Send, Sync when T: Send + Sync.
@@ -38,6 +40,7 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
             compute,
             cached: Arc::new(RwLock::new(None)),
             dirty: Arc::new(AtomicBool::new(true)),
+            recompute_lock: Arc::new(Mutex::new(())),
         }
     }
 
@@ -45,7 +48,22 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
     ///
     /// This automatically tracks dependencies during computation
     /// and invalidates when any dependency changes.
+    ///
+    /// Thread-safe: uses a lock to prevent concurrent recomputation.
     pub fn get(&self) -> T {
+        // Fast path: check if we can use cached value without locking
+        if !self.needs_recompute() {
+            return self.get_cached();
+        }
+
+        // Slow path: acquire recompute lock to prevent data race
+        // Multiple threads may reach here, but only one will recompute
+        let _guard = self
+            .recompute_lock
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+        // Double-check after acquiring lock: another thread may have computed
         if self.needs_recompute() {
             self.recompute_and_cache()
         } else {
@@ -66,6 +84,8 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
     }
 
     /// Recompute the value and cache it
+    ///
+    /// SAFETY: Caller must hold `recompute_lock` to prevent concurrent recomputation.
     fn recompute_and_cache(&self) -> T {
         // Create a subscriber that invalidates when dependencies change
         let dirty_flag = self.dirty.clone();
@@ -91,13 +111,16 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
         value
     }
 
-    /// Get the cached value (assumes cache exists)
+    /// Get the cached value
+    ///
+    /// Returns the cached value if present, or panics if cache is empty.
+    /// This should only be called when `needs_recompute()` returns false.
     fn get_cached(&self) -> T {
         self.cached
             .read()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .as_ref()
-            .unwrap()
+            .expect("get_cached called but cache is empty; this is a bug in Computed")
             .clone()
     }
 
@@ -114,13 +137,14 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
 
 impl<T: Clone + Send + Sync + 'static> Clone for Computed<T> {
     /// Clone creates a shared reference to the same computed value.
-    /// Both clones share the same cache and dirty flag.
+    /// Both clones share the same cache, dirty flag, and recompute lock.
     fn clone(&self) -> Self {
         Self {
             id: self.id,
             compute: self.compute.clone(),
             cached: self.cached.clone(),
             dirty: self.dirty.clone(),
+            recompute_lock: self.recompute_lock.clone(),
         }
     }
 }
@@ -276,5 +300,88 @@ mod tests {
         for h in handles {
             h.join().unwrap();
         }
+    }
+
+    #[test]
+    fn test_computed_no_data_race_on_concurrent_recompute() {
+        use std::thread;
+        use std::time::Duration;
+
+        // This test verifies that concurrent calls to get() on a dirty computed
+        // do not cause a data race (double recomputation with inconsistent results).
+        let call_count = Arc::new(AtomicUsize::new(0));
+        let call_count_clone = call_count.clone();
+
+        // Computation that takes some time and increments counter
+        let computed = Arc::new(Computed::new(move || {
+            call_count_clone.fetch_add(1, Ordering::SeqCst);
+            // Small delay to increase chance of race condition
+            thread::sleep(Duration::from_micros(100));
+            42
+        }));
+
+        // Spawn multiple threads that all try to get() simultaneously
+        // when the computed is dirty
+        let handles: Vec<_> = (0..8)
+            .map(|_| {
+                let c = computed.clone();
+                thread::spawn(move || c.get())
+            })
+            .collect();
+
+        let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+
+        // All threads should get the same value
+        assert!(results.iter().all(|&v| v == 42));
+
+        // The computation should only have run ONCE despite 8 concurrent callers
+        // (the recompute_lock ensures only one thread recomputes)
+        assert_eq!(
+            call_count.load(Ordering::SeqCst),
+            1,
+            "Computation should run exactly once, but ran {} times",
+            call_count.load(Ordering::SeqCst)
+        );
+    }
+
+    #[test]
+    fn test_computed_recomputes_after_invalidation_with_contention() {
+        use std::thread;
+
+        let call_count = Arc::new(AtomicUsize::new(0));
+        let call_count_clone = call_count.clone();
+
+        let computed = Arc::new(Computed::new(move || {
+            call_count_clone.fetch_add(1, Ordering::SeqCst)
+        }));
+
+        // First get: computes once
+        let v1 = computed.get();
+        assert_eq!(v1, 0);
+        assert_eq!(call_count.load(Ordering::SeqCst), 1);
+
+        // Multiple gets without invalidation: uses cache
+        for _ in 0..10 {
+            assert_eq!(computed.get(), 0);
+        }
+        assert_eq!(call_count.load(Ordering::SeqCst), 1);
+
+        // Invalidate and get from multiple threads
+        computed.invalidate();
+
+        let handles: Vec<_> = (0..4)
+            .map(|_| {
+                let c = computed.clone();
+                thread::spawn(move || c.get())
+            })
+            .collect();
+
+        let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+
+        // All should get the new value (1, since call_count was incremented)
+        assert!(results.iter().all(|&v| v == 1));
+
+        // Should have computed exactly twice total (initial + after invalidation)
+        assert_eq!(call_count.load(Ordering::SeqCst), 2);
     }
 }
