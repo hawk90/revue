@@ -1,93 +1,11 @@
 //! Animation system with easing and tweening
 
+pub mod easing;
+
 use std::time::{Duration, Instant};
 
 /// Easing function type
 pub type EasingFn = fn(f32) -> f32;
-
-/// Standard easing functions
-pub mod easing {
-    /// Linear interpolation (no easing)
-    pub fn linear(t: f32) -> f32 {
-        t
-    }
-
-    /// Ease in (slow start)
-    pub fn ease_in(t: f32) -> f32 {
-        t * t
-    }
-
-    /// Ease out (slow end)
-    pub fn ease_out(t: f32) -> f32 {
-        1.0 - (1.0 - t) * (1.0 - t)
-    }
-
-    /// Ease in-out (slow start and end)
-    pub fn ease_in_out(t: f32) -> f32 {
-        if t < 0.5 {
-            2.0 * t * t
-        } else {
-            1.0 - (-2.0 * t + 2.0).powi(2) / 2.0
-        }
-    }
-
-    /// Cubic ease in
-    pub fn ease_in_cubic(t: f32) -> f32 {
-        t * t * t
-    }
-
-    /// Cubic ease out
-    pub fn ease_out_cubic(t: f32) -> f32 {
-        1.0 - (1.0 - t).powi(3)
-    }
-
-    /// Cubic ease in-out
-    pub fn ease_in_out_cubic(t: f32) -> f32 {
-        if t < 0.5 {
-            4.0 * t * t * t
-        } else {
-            1.0 - (-2.0 * t + 2.0).powi(3) / 2.0
-        }
-    }
-
-    /// Bounce ease out
-    pub fn bounce_out(t: f32) -> f32 {
-        let n1 = 7.5625;
-        let d1 = 2.75;
-
-        if t < 1.0 / d1 {
-            n1 * t * t
-        } else if t < 2.0 / d1 {
-            let t = t - 1.5 / d1;
-            n1 * t * t + 0.75
-        } else if t < 2.5 / d1 {
-            let t = t - 2.25 / d1;
-            n1 * t * t + 0.9375
-        } else {
-            let t = t - 2.625 / d1;
-            n1 * t * t + 0.984375
-        }
-    }
-
-    /// Elastic ease out
-    pub fn elastic_out(t: f32) -> f32 {
-        if t == 0.0 {
-            0.0
-        } else if t == 1.0 {
-            1.0
-        } else {
-            let c4 = (2.0 * std::f32::consts::PI) / 3.0;
-            2.0_f32.powf(-10.0 * t) * ((t * 10.0 - 0.75) * c4).sin() + 1.0
-        }
-    }
-
-    /// Back ease out (overshoot)
-    pub fn back_out(t: f32) -> f32 {
-        let c1 = 1.70158;
-        let c3 = c1 + 1.0;
-        1.0 + c3 * (t - 1.0).powi(3) + c1 * (t - 1.0).powi(2)
-    }
-}
 
 /// Animation state
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
