@@ -1097,4 +1097,75 @@ mod tests {
         assert_eq!(style.spacing.left, Some(20));
         assert_eq!(style.visual.z_index, 100);
     }
+
+    // =========================================================================
+    // Issue #181: Byte-slicing grid parsing tests
+    // =========================================================================
+
+    #[test]
+    fn test_parse_grid_template_repeat() {
+        // Test repeat() function parsing with byte-slicing
+        let template = parse_grid_template("repeat(3, 1fr)");
+        assert_eq!(template.tracks.len(), 3);
+        assert!(matches!(template.tracks[0], GridTrack::Fr(v) if (v - 1.0).abs() < 0.01));
+        assert!(matches!(template.tracks[1], GridTrack::Fr(v) if (v - 1.0).abs() < 0.01));
+        assert!(matches!(template.tracks[2], GridTrack::Fr(v) if (v - 1.0).abs() < 0.01));
+    }
+
+    #[test]
+    fn test_parse_grid_template_repeat_fixed() {
+        // Test repeat() with fixed values
+        let template = parse_grid_template("repeat(2, 100px)");
+        assert_eq!(template.tracks.len(), 2);
+        assert!(matches!(template.tracks[0], GridTrack::Fixed(100)));
+        assert!(matches!(template.tracks[1], GridTrack::Fixed(100)));
+    }
+
+    #[test]
+    fn test_parse_grid_template_minmax() {
+        // Test minmax() function parsing with byte-slicing
+        let template = parse_grid_template("minmax(100px, 1fr)");
+        assert_eq!(template.tracks.len(), 1);
+        // Currently uses max value (simplified implementation)
+        assert!(matches!(template.tracks[0], GridTrack::Fr(_)));
+    }
+
+    #[test]
+    fn test_parse_grid_template_repeat_with_minmax() {
+        // Test nested repeat() with minmax()
+        let template = parse_grid_template("repeat(2, minmax(50px, 1fr))");
+        assert_eq!(template.tracks.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_grid_template_complex() {
+        // Test complex grid template with mixed values
+        let template = parse_grid_template("100px repeat(2, 1fr) auto");
+        assert_eq!(template.tracks.len(), 4);
+        assert!(matches!(template.tracks[0], GridTrack::Fixed(100)));
+        assert!(matches!(template.tracks[1], GridTrack::Fr(_)));
+        assert!(matches!(template.tracks[2], GridTrack::Fr(_)));
+        assert!(matches!(template.tracks[3], GridTrack::Auto));
+    }
+
+    #[test]
+    fn test_parse_grid_template_whitespace() {
+        // Test that whitespace is handled correctly
+        let template = parse_grid_template("  1fr   2fr   ");
+        assert_eq!(template.tracks.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_repeat_function_invalid() {
+        // Test that invalid repeat() returns None through parse_grid_template
+        let template = parse_grid_template("repeat(abc, 1fr)");
+        assert!(template.tracks.is_empty());
+    }
+
+    #[test]
+    fn test_parse_minmax_function_invalid() {
+        // Test that invalid minmax() is handled
+        let template = parse_grid_template("minmax(100px)"); // Missing second arg
+        assert!(template.tracks.is_empty());
+    }
 }
