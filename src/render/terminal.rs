@@ -122,9 +122,41 @@ impl<W: Write> Terminal<W> {
     }
 
     /// Render a buffer to the terminal using diff-based updates
+    ///
+    /// This performs a full-screen diff. For optimized rendering with dirty regions,
+    /// use [`render_dirty`](Self::render_dirty) instead.
     pub fn render(&mut self, buffer: &Buffer) -> Result<()> {
-        let changes = diff(&self.current, buffer, &[]); // Old diff call, uses full screen if no rects
+        let changes = diff(&self.current, buffer, &[]);
 
+        self.draw_changes(changes, buffer)
+    }
+
+    /// Render a buffer with dirty-rect tracking for optimized updates
+    ///
+    /// Only cells within the specified dirty regions will be compared and updated.
+    /// This significantly reduces CPU usage for mostly-static UIs where only
+    /// specific regions change each frame.
+    ///
+    /// # Arguments
+    ///
+    /// * `buffer` - The new buffer state to render
+    /// * `dirty_rects` - Regions that may have changed since last render
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use revue::layout::Rect;
+    ///
+    /// // Only diff the area where a widget was updated
+    /// let dirty = [Rect::new(10, 5, 20, 3)];
+    /// terminal.render_dirty(&buffer, &dirty)?;
+    /// ```
+    pub fn render_dirty(
+        &mut self,
+        buffer: &Buffer,
+        dirty_rects: &[crate::layout::Rect],
+    ) -> Result<()> {
+        let changes = diff(&self.current, buffer, dirty_rects);
         self.draw_changes(changes, buffer)
     }
 
