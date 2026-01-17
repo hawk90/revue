@@ -12,8 +12,8 @@ use super::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::unicode::char_width;
 use crate::{impl_props_builders, impl_state_builders, impl_styled_view};
-use unicode_width::UnicodeWidthChar;
 
 /// Preset date ranges
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -807,8 +807,8 @@ impl RangePicker {
     ) {
         let mut offset = 0u16;
         for ch in text.chars() {
-            let char_width = ch.width().unwrap_or(0) as u16;
-            if char_width == 0 {
+            let ch_width = char_width(ch) as u16;
+            if ch_width == 0 {
                 continue;
             }
             let mut cell = Cell::new(ch);
@@ -817,10 +817,10 @@ impl RangePicker {
                 cell.modifier |= Modifier::BOLD;
             }
             ctx.buffer.set(x + offset, y, cell);
-            for i in 1..char_width {
+            for i in 1..ch_width {
                 ctx.buffer.set(x + offset + i, y, Cell::continuation());
             }
-            offset += char_width;
+            offset += ch_width;
         }
     }
 }

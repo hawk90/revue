@@ -11,6 +11,7 @@ ratatui = "ratatui"  # lowercase variant
 [default.extend-identifiers]
 # Test data for typo correction features
 backgrond = "backgrond"  # intentional typo in suggest_property test
+pading = "pading"        # intentional typo in suggest_property test
 
 [files]
 extend-exclude = [

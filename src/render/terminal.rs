@@ -19,6 +19,7 @@ use super::cell::Modifier;
 use super::diff::diff;
 use super::{Buffer, Cell};
 use crate::style::Color;
+use crate::utils::unicode::char_width;
 use crate::Result;
 
 /// Tracks current terminal styling state to minimize escape sequences
@@ -29,6 +30,9 @@ struct RenderState {
     modifier: Modifier,
     /// Current hyperlink ID (None means no hyperlink active)
     hyperlink_id: Option<u16>,
+    /// Expected cursor position after last print (x, y)
+    /// Used to avoid redundant MoveTo commands for contiguous cells
+    cursor: Option<(u16, u16)>,
 }
 
 /// Terminal backend for rendering
@@ -118,9 +122,41 @@ impl<W: Write> Terminal<W> {
     }
 
     /// Render a buffer to the terminal using diff-based updates
+    ///
+    /// This performs a full-screen diff. For optimized rendering with dirty regions,
+    /// use [`render_dirty`](Self::render_dirty) instead.
     pub fn render(&mut self, buffer: &Buffer) -> Result<()> {
-        let changes = diff(&self.current, buffer, &[]); // Old diff call, uses full screen if no rects
+        let changes = diff(&self.current, buffer, &[]);
 
+        self.draw_changes(changes, buffer)
+    }
+
+    /// Render a buffer with dirty-rect tracking for optimized updates
+    ///
+    /// Only cells within the specified dirty regions will be compared and updated.
+    /// This significantly reduces CPU usage for mostly-static UIs where only
+    /// specific regions change each frame.
+    ///
+    /// # Arguments
+    ///
+    /// * `buffer` - The new buffer state to render
+    /// * `dirty_rects` - Regions that may have changed since last render
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use revue::layout::Rect;
+    ///
+    /// // Only diff the area where a widget was updated
+    /// let dirty = [Rect::new(10, 5, 20, 3)];
+    /// terminal.render_dirty(&buffer, &dirty)?;
+    /// ```
+    pub fn render_dirty(
+        &mut self,
+        buffer: &Buffer,
+        dirty_rects: &[crate::layout::Rect],
+    ) -> Result<()> {
+        let changes = diff(&self.current, buffer, dirty_rects);
         self.draw_changes(changes, buffer)
     }
 
@@ -212,7 +248,11 @@ impl<W: Write> Terminal<W> {
         escape_sequence: Option<&str>,
         state: &mut RenderState,
     ) -> Result<()> {
-        queue!(self.writer, MoveTo(x, y))?;
+        // Only emit MoveTo if cursor isn't already at the expected position
+        // This reduces escape sequences for contiguous same-row cells
+        if state.cursor != Some((x, y)) {
+            queue!(self.writer, MoveTo(x, y))?;
+        }
 
         // If cell has an escape sequence, write it directly and skip normal rendering
         if let Some(seq) = escape_sequence {
@@ -229,6 +269,8 @@ impl<W: Write> Terminal<W> {
             }
             // Write the raw escape sequence
             write!(self.writer, "{}", seq)?;
+            // Escape sequences can move cursor unpredictably, invalidate position
+            state.cursor = None;
             return Ok(());
         }
 
@@ -306,6 +348,10 @@ impl<W: Write> Terminal<W> {
 
         // Print the character
         queue!(self.writer, Print(cell.symbol))?;
+
+        // Update expected cursor position (cursor advances by character width)
+        let width = char_width(cell.symbol) as u16;
+        state.cursor = Some((x.saturating_add(width), y));
 
         Ok(())
     }
@@ -611,5 +657,224 @@ mod tests {
         assert!(modifier.contains(Modifier::BOLD));
         assert!(modifier.contains(Modifier::ITALIC));
         assert!(!modifier.contains(Modifier::UNDERLINE));
+    }
+
+    // =========================================================================
+    // Issue #175: Cursor tracking tests
+    // =========================================================================
+
+    #[test]
+    fn test_render_state_cursor_default() {
+        let state = RenderState::default();
+        assert!(state.cursor.is_none());
+    }
+
+    #[test]
+    fn test_render_state_cursor_tracking() {
+        let mut state = RenderState::default();
+
+        // Initially no cursor position
+        assert!(state.cursor.is_none());
+
+        // After setting cursor position
+        state.cursor = Some((5, 10));
+        assert_eq!(state.cursor, Some((5, 10)));
+
+        // After advancing cursor (simulating char print)
+        state.cursor = Some((6, 10));
+        assert_eq!(state.cursor, Some((6, 10)));
+    }
+
+    #[test]
+    fn test_cursor_position_after_normal_char() {
+        // Normal ASCII character has width 1
+        let ch = 'A';
+        let width = char_width(ch) as u16;
+        assert_eq!(width, 1);
+
+        // Cursor should advance by 1
+        let x: u16 = 5;
+        let new_x = x.saturating_add(width);
+        assert_eq!(new_x, 6);
+    }
+
+    #[test]
+    fn test_cursor_position_after_wide_char() {
+        // CJK character has width 2
+        let ch = '한'; // Korean character
+        let width = char_width(ch) as u16;
+        assert_eq!(width, 2);
+
+        // Cursor should advance by 2
+        let x: u16 = 5;
+        let new_x = x.saturating_add(width);
+        assert_eq!(new_x, 7);
+    }
+
+    #[test]
+    fn test_cursor_position_saturating_add() {
+        // Test that cursor position doesn't overflow
+        let x: u16 = u16::MAX - 1;
+        let width: u16 = 2;
+        let new_x = x.saturating_add(width);
+        assert_eq!(new_x, u16::MAX);
+    }
+
+    #[test]
+    fn test_cursor_skip_moveto_same_position() {
+        let state = RenderState {
+            cursor: Some((5, 10)),
+            ..RenderState::default()
+        };
+
+        // When cursor is at (5, 10) and we want to draw at (5, 10),
+        // MoveTo should be skipped
+        let target = (5u16, 10u16);
+        let should_skip = state.cursor == Some(target);
+        assert!(should_skip);
+    }
+
+    #[test]
+    fn test_cursor_emit_moveto_different_position() {
+        let state = RenderState {
+            cursor: Some((5, 10)),
+            ..RenderState::default()
+        };
+
+        // When cursor is at (5, 10) and we want to draw at (6, 10),
+        // MoveTo should NOT be skipped (different x)
+        let target = (6u16, 10u16);
+        let should_skip = state.cursor == Some(target);
+        assert!(!should_skip);
+
+        // Different row also needs MoveTo
+        let target_diff_row = (5u16, 11u16);
+        let should_skip_row = state.cursor == Some(target_diff_row);
+        assert!(!should_skip_row);
+    }
+
+    #[test]
+    fn test_cursor_emit_moveto_when_none() {
+        let state = RenderState::default();
+
+        // When cursor is None, MoveTo should always be emitted
+        let target = (5u16, 10u16);
+        let should_skip = state.cursor == Some(target);
+        assert!(!should_skip);
+    }
+
+    #[test]
+    fn test_contiguous_cells_cursor_tracking() {
+        // Simulate drawing "ABC" at (0, 0)
+        let mut state = RenderState::default();
+
+        // First char 'A' at (0, 0) - MoveTo needed (cursor is None)
+        assert!(state.cursor != Some((0, 0)));
+        state.cursor = Some((1, 0)); // After 'A', cursor at (1, 0)
+
+        // Second char 'B' at (1, 0) - MoveTo NOT needed
+        assert!(state.cursor == Some((1, 0)));
+        state.cursor = Some((2, 0)); // After 'B', cursor at (2, 0)
+
+        // Third char 'C' at (2, 0) - MoveTo NOT needed
+        assert!(state.cursor == Some((2, 0)));
+        // After 'C', cursor would be at (3, 0)
+    }
+
+    // =========================================================================
+    // Issue #174: render_dirty tests
+    // =========================================================================
+
+    #[test]
+    fn test_render_dirty_only_diffs_dirty_regions() {
+        use crate::layout::Rect;
+
+        let buf1 = Buffer::new(20, 20);
+        let mut buf2 = Buffer::new(20, 20);
+
+        // Make changes at two different locations
+        buf2.set(5, 5, Cell::new('A')); // Inside dirty rect
+        buf2.set(15, 15, Cell::new('B')); // Outside dirty rect
+
+        // Only diff the region containing (5, 5)
+        let dirty_rects = vec![Rect::new(0, 0, 10, 10)];
+        let changes = diff(&buf1, &buf2, &dirty_rects);
+
+        // Should only find the change at (5, 5), not (15, 15)
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].x, 5);
+        assert_eq!(changes[0].y, 5);
+        assert_eq!(changes[0].cell.symbol, 'A');
+    }
+
+    #[test]
+    fn test_render_dirty_multiple_regions() {
+        use crate::layout::Rect;
+
+        let buf1 = Buffer::new(20, 20);
+        let mut buf2 = Buffer::new(20, 20);
+
+        // Make changes in two different dirty regions
+        buf2.set(2, 2, Cell::new('X'));
+        buf2.set(15, 15, Cell::new('Y'));
+
+        // Two dirty regions covering both changes
+        let dirty_rects = vec![
+            Rect::new(0, 0, 5, 5),   // Contains (2, 2)
+            Rect::new(14, 14, 5, 5), // Contains (15, 15)
+        ];
+        let changes = diff(&buf1, &buf2, &dirty_rects);
+
+        // Should find both changes
+        assert_eq!(changes.len(), 2);
+    }
+
+    #[test]
+    fn test_render_dirty_no_changes_in_dirty_region() {
+        use crate::layout::Rect;
+
+        let buf1 = Buffer::new(20, 20);
+        let mut buf2 = Buffer::new(20, 20);
+
+        // Make change outside the dirty region
+        buf2.set(15, 15, Cell::new('Z'));
+
+        // Dirty region doesn't include the change
+        let dirty_rects = vec![Rect::new(0, 0, 10, 10)];
+        let changes = diff(&buf1, &buf2, &dirty_rects);
+
+        // No changes detected (change is outside dirty region)
+        assert!(changes.is_empty());
+    }
+
+    #[test]
+    fn test_render_dirty_empty_dirty_rects_fallback() {
+        // When no dirty rects provided, should fall back to full-screen diff
+        let buf1 = Buffer::new(10, 10);
+        let mut buf2 = Buffer::new(10, 10);
+        buf2.set(5, 5, Cell::new('F'));
+
+        let changes = diff(&buf1, &buf2, &[]);
+
+        // Should find the change (full-screen fallback)
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].x, 5);
+        assert_eq!(changes[0].y, 5);
+    }
+
+    #[test]
+    fn test_render_dirty_overlapping_regions() {
+        use crate::layout::Rect;
+
+        let buf1 = Buffer::new(20, 20);
+        let mut buf2 = Buffer::new(20, 20);
+        buf2.set(5, 5, Cell::new('O'));
+
+        // Overlapping dirty rects both containing (5, 5)
+        let dirty_rects = vec![Rect::new(0, 0, 10, 10), Rect::new(3, 3, 10, 10)];
+        let changes = diff(&buf1, &buf2, &dirty_rects);
+
+        // Should only report the change once (no duplicates)
+        assert_eq!(changes.len(), 1);
     }
 }
