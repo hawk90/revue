@@ -61,6 +61,62 @@ mod tests {
     }
 
     #[test]
+    fn test_draw_text_overlay_with_offset() {
+        let mut buffer = Buffer::new(20, 5);
+        draw_text_overlay(&mut buffer, 5, 2, "Test", Color::RED);
+
+        assert_eq!(buffer.get(5, 2).unwrap().symbol, 'T');
+        assert_eq!(buffer.get(6, 2).unwrap().symbol, 'e');
+        assert_eq!(buffer.get(7, 2).unwrap().symbol, 's');
+        assert_eq!(buffer.get(8, 2).unwrap().symbol, 't');
+        assert_eq!(buffer.get(5, 2).unwrap().fg, Some(Color::RED));
+    }
+
+    #[test]
+    fn test_draw_text_overlay_preserves_bg() {
+        let mut buffer = Buffer::new(20, 5);
+        // Set background color first
+        if let Some(cell) = buffer.get_mut(0, 0) {
+            cell.bg = Some(Color::BLUE);
+        }
+        draw_text_overlay(&mut buffer, 0, 0, "X", Color::WHITE);
+
+        // Background should be preserved
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'X');
+        assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::BLUE));
+    }
+
+    #[test]
+    fn test_draw_text_overlay_clips_at_boundary() {
+        let mut buffer = Buffer::new(5, 1);
+        // Try to draw text that extends beyond buffer
+        draw_text_overlay(&mut buffer, 3, 0, "Hello", Color::WHITE);
+
+        // Only first 2 chars should be drawn
+        assert_eq!(buffer.get(3, 0).unwrap().symbol, 'H');
+        assert_eq!(buffer.get(4, 0).unwrap().symbol, 'e');
+    }
+
+    #[test]
+    fn test_draw_text_overlay_empty_string() {
+        let mut buffer = Buffer::new(10, 1);
+        let original_symbol = buffer.get(0, 0).unwrap().symbol;
+        draw_text_overlay(&mut buffer, 0, 0, "", Color::WHITE);
+
+        // Nothing should change
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, original_symbol);
+    }
+
+    #[test]
+    fn test_draw_text_overlay_unicode() {
+        let mut buffer = Buffer::new(20, 1);
+        draw_text_overlay(&mut buffer, 0, 0, "한글", Color::WHITE);
+
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '한');
+        assert_eq!(buffer.get(1, 0).unwrap().symbol, '글');
+    }
+
+    #[test]
     fn test_draw_separator_overlay() {
         let mut buffer = Buffer::new(10, 3);
         draw_separator_overlay(&mut buffer, 0, 1, 10, Color::BLUE);
@@ -68,5 +124,39 @@ mod tests {
         for x in 0..10 {
             assert_eq!(buffer.get(x, 1).unwrap().symbol, '─');
         }
+    }
+
+    #[test]
+    fn test_draw_separator_overlay_with_offset() {
+        let mut buffer = Buffer::new(20, 5);
+        draw_separator_overlay(&mut buffer, 5, 2, 8, Color::GREEN);
+
+        for x in 5..13 {
+            assert_eq!(buffer.get(x, 2).unwrap().symbol, '─');
+            assert_eq!(buffer.get(x, 2).unwrap().fg, Some(Color::GREEN));
+        }
+        // Before and after should be unchanged
+        assert_ne!(buffer.get(4, 2).unwrap().symbol, '─');
+        assert_ne!(buffer.get(13, 2).unwrap().symbol, '─');
+    }
+
+    #[test]
+    fn test_draw_separator_overlay_zero_width() {
+        let mut buffer = Buffer::new(10, 1);
+        let original_symbol = buffer.get(0, 0).unwrap().symbol;
+        draw_separator_overlay(&mut buffer, 0, 0, 0, Color::WHITE);
+
+        // Nothing should change
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, original_symbol);
+    }
+
+    #[test]
+    fn test_draw_separator_overlay_clips_at_boundary() {
+        let mut buffer = Buffer::new(5, 1);
+        draw_separator_overlay(&mut buffer, 3, 0, 10, Color::WHITE);
+
+        // Only positions 3 and 4 should be drawn
+        assert_eq!(buffer.get(3, 0).unwrap().symbol, '─');
+        assert_eq!(buffer.get(4, 0).unwrap().symbol, '─');
     }
 }
