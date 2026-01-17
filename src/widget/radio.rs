@@ -4,6 +4,7 @@ use super::traits::{RenderContext, View, WidgetProps};
 use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::Selection;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Radio button style variants
@@ -60,7 +61,7 @@ pub enum RadioLayout {
 #[derive(Clone)]
 pub struct RadioGroup {
     options: Vec<String>,
-    selected: usize,
+    selection: Selection,
     focused: bool,
     disabled: bool,
     style: RadioStyle,
@@ -78,9 +79,11 @@ impl RadioGroup {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
+        let opts: Vec<String> = options.into_iter().map(|s| s.into()).collect();
+        let len = opts.len();
         Self {
-            options: options.into_iter().map(|s| s.into()).collect(),
-            selected: 0,
+            options: opts,
+            selection: Selection::new(len),
             focused: false,
             disabled: false,
             style: RadioStyle::default(),
@@ -94,9 +97,7 @@ impl RadioGroup {
 
     /// Set selected index
     pub fn selected(mut self, index: usize) -> Self {
-        if index < self.options.len() {
-            self.selected = index;
-        }
+        self.selection.set(index);
         self
     }
 
@@ -144,12 +145,12 @@ impl RadioGroup {
 
     /// Get selected index
     pub fn selected_index(&self) -> usize {
-        self.selected
+        self.selection.index
     }
 
     /// Get selected option value
     pub fn selected_value(&self) -> Option<&str> {
-        self.options.get(self.selected).map(|s| s.as_str())
+        self.options.get(self.selection.index).map(|s| s.as_str())
     }
 
     /// Check if focused
@@ -162,21 +163,17 @@ impl RadioGroup {
         self.disabled
     }
 
-    /// Select next option
+    /// Select next option (wraps around)
     pub fn select_next(&mut self) {
-        if !self.disabled && !self.options.is_empty() {
-            self.selected = (self.selected + 1) % self.options.len();
+        if !self.disabled {
+            self.selection.next();
         }
     }
 
-    /// Select previous option
+    /// Select previous option (wraps around)
     pub fn select_prev(&mut self) {
-        if !self.disabled && !self.options.is_empty() {
-            self.selected = if self.selected == 0 {
-                self.options.len() - 1
-            } else {
-                self.selected - 1
-            };
+        if !self.disabled {
+            self.selection.prev();
         }
     }
 
@@ -187,9 +184,7 @@ impl RadioGroup {
 
     /// Set selected index (mutable)
     pub fn set_selected(&mut self, index: usize) {
-        if index < self.options.len() {
-            self.selected = index;
-        }
+        self.selection.set(index);
     }
 
     /// Handle key input, returns true if selection changed
@@ -218,7 +213,7 @@ impl RadioGroup {
             Key::Char(c) if c.is_ascii_digit() => {
                 let index = c.to_digit(10).unwrap() as usize;
                 if index > 0 && index <= self.options.len() {
-                    self.selected = index - 1;
+                    self.selection.set(index - 1);
                     true
                 } else {
                     false
@@ -235,7 +230,7 @@ impl RadioGroup {
             return 0;
         }
 
-        let is_selected = index == self.selected;
+        let is_selected = self.selection.is_selected(index);
         let (selected_char, unselected_char) = self.style.chars();
         let (left_bracket, right_bracket) = self.style.brackets();
         let has_brackets = self.style.has_brackets();
@@ -385,7 +380,7 @@ mod tests {
     fn test_radio_group_new() {
         let rg = RadioGroup::new(vec!["Option 1", "Option 2", "Option 3"]);
         assert_eq!(rg.options.len(), 3);
-        assert_eq!(rg.selected, 0);
+        assert_eq!(rg.selected_index(), 0);
         assert!(!rg.focused);
         assert!(!rg.disabled);
     }
@@ -400,7 +395,7 @@ mod tests {
             .layout(RadioLayout::Horizontal)
             .gap(2);
 
-        assert_eq!(rg.selected, 1);
+        assert_eq!(rg.selected_index(), 1);
         assert!(rg.focused);
         assert!(!rg.disabled);
         assert_eq!(rg.style, RadioStyle::Unicode);

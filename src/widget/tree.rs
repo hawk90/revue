@@ -3,7 +3,7 @@
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::{fuzzy_match, FuzzyMatch};
+use crate::utils::{fuzzy_match, FuzzyMatch, Selection};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// A tree node
@@ -59,8 +59,7 @@ impl TreeNode {
 /// A tree widget for displaying hierarchical data
 pub struct Tree {
     root: Vec<TreeNode>,
-    selected: usize,
-    visible_count: usize,
+    selection: Selection,
     fg: Option<Color>,
     bg: Option<Color>,
     selected_fg: Option<Color>,
@@ -84,8 +83,7 @@ impl Tree {
     pub fn new() -> Self {
         Self {
             root: Vec::new(),
-            selected: 0,
-            visible_count: 0,
+            selection: Selection::new(0),
             fg: None,
             bg: None,
             selected_fg: Some(Color::WHITE),
@@ -115,20 +113,20 @@ impl Tree {
     /// Set root nodes
     pub fn nodes(mut self, nodes: Vec<TreeNode>) -> Self {
         self.root = nodes;
-        self.visible_count = self.count_visible();
+        self.selection.set_len(self.count_visible());
         self
     }
 
     /// Add a root node
     pub fn node(mut self, node: TreeNode) -> Self {
         self.root.push(node);
-        self.visible_count = self.count_visible();
+        self.selection.set_len(self.count_visible());
         self
     }
 
     /// Set selected index
     pub fn selected(mut self, index: usize) -> Self {
-        self.selected = index.min(self.visible_count.saturating_sub(1));
+        self.selection.set(index);
         self
     }
 
@@ -159,7 +157,7 @@ impl Tree {
 
     /// Get selected index
     pub fn selected_index(&self) -> usize {
-        self.selected
+        self.selection.index
     }
 
     /// Count visible nodes (expanded recursively)
@@ -228,54 +226,50 @@ impl Tree {
 
     /// Select next visible node
     pub fn select_next(&mut self) {
-        if self.visible_count > 0 {
-            self.selected = (self.selected + 1).min(self.visible_count - 1);
-        }
+        self.selection.down();
     }
 
     /// Select previous visible node
     pub fn select_prev(&mut self) {
-        self.selected = self.selected.saturating_sub(1);
+        self.selection.up();
     }
 
     /// Select first node
     pub fn select_first(&mut self) {
-        self.selected = 0;
+        self.selection.first();
     }
 
     /// Select last visible node
     pub fn select_last(&mut self) {
-        if self.visible_count > 0 {
-            self.selected = self.visible_count - 1;
-        }
+        self.selection.last();
     }
 
     /// Toggle expand/collapse of selected node
     pub fn toggle_expand(&mut self) {
-        if let Some(node) = self.get_node_mut_at(self.selected) {
+        if let Some(node) = self.get_node_mut_at(self.selection.index) {
             if node.has_children() {
                 node.expanded = !node.expanded;
-                self.visible_count = self.count_visible();
+                self.selection.set_len(self.count_visible());
             }
         }
     }
 
     /// Expand selected node
     pub fn expand(&mut self) {
-        if let Some(node) = self.get_node_mut_at(self.selected) {
+        if let Some(node) = self.get_node_mut_at(self.selection.index) {
             if node.has_children() && !node.expanded {
                 node.expanded = true;
-                self.visible_count = self.count_visible();
+                self.selection.set_len(self.count_visible());
             }
         }
     }
 
     /// Collapse selected node
     pub fn collapse(&mut self) {
-        if let Some(node) = self.get_node_mut_at(self.selected) {
+        if let Some(node) = self.get_node_mut_at(self.selection.index) {
             if node.expanded {
                 node.expanded = false;
-                self.visible_count = self.count_visible();
+                self.selection.set_len(self.count_visible());
             }
         }
     }
@@ -356,7 +350,7 @@ impl Tree {
 
         // Jump to first match
         if let Some(&first) = self.matches.first() {
-            self.selected = first;
+            self.selection.set(first);
         }
     }
 
@@ -366,7 +360,7 @@ impl Tree {
             return false;
         }
         self.current_match = (self.current_match + 1) % self.matches.len();
-        self.selected = self.matches[self.current_match];
+        self.selection.set(self.matches[self.current_match]);
         true
     }
 
@@ -379,7 +373,7 @@ impl Tree {
             .current_match
             .checked_sub(1)
             .unwrap_or(self.matches.len() - 1);
-        self.selected = self.matches[self.current_match];
+        self.selection.set(self.matches[self.current_match]);
         true
     }
 
@@ -433,64 +427,64 @@ impl Tree {
 
         match key {
             Key::Up | Key::Char('k') if !self.searchable => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_prev();
-                old != self.selected
+                old != self.selection.index
             }
             Key::Up if self.searchable => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_prev();
-                old != self.selected
+                old != self.selection.index
             }
             Key::Down | Key::Char('j') if !self.searchable => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_next();
-                old != self.selected
+                old != self.selection.index
             }
             Key::Down if self.searchable => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_next();
-                old != self.selected
+                old != self.selection.index
             }
             Key::Enter | Key::Char(' ') if !self.searchable => {
-                let old_count = self.visible_count;
+                let old_count = self.selection.len;
                 self.toggle_expand();
-                old_count != self.visible_count
+                old_count != self.selection.len
             }
             Key::Enter if self.searchable => {
-                let old_count = self.visible_count;
+                let old_count = self.selection.len;
                 self.toggle_expand();
-                old_count != self.visible_count
+                old_count != self.selection.len
             }
             Key::Right | Key::Char('l') if !self.searchable => {
-                let old_count = self.visible_count;
+                let old_count = self.selection.len;
                 self.expand();
-                old_count != self.visible_count
+                old_count != self.selection.len
             }
             Key::Right if self.searchable => {
-                let old_count = self.visible_count;
+                let old_count = self.selection.len;
                 self.expand();
-                old_count != self.visible_count
+                old_count != self.selection.len
             }
             Key::Left | Key::Char('h') if !self.searchable => {
-                let old_count = self.visible_count;
+                let old_count = self.selection.len;
                 self.collapse();
-                old_count != self.visible_count
+                old_count != self.selection.len
             }
             Key::Left if self.searchable => {
-                let old_count = self.visible_count;
+                let old_count = self.selection.len;
                 self.collapse();
-                old_count != self.visible_count
+                old_count != self.selection.len
             }
             Key::Home => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_first();
-                old != self.selected
+                old != self.selection.index
             }
             Key::End => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_last();
-                old != self.selected
+                old != self.selection.index
             }
             _ => false,
         }
@@ -508,12 +502,12 @@ impl Tree {
 
     /// Get number of visible nodes
     pub fn visible_count(&self) -> usize {
-        self.visible_count
+        self.selection.len
     }
 
     /// Get selected node label
     pub fn selected_label(&self) -> Option<&str> {
-        self.get_node_at(self.selected)
+        self.get_node_at(self.selection.index)
             .map(|(n, _)| n.label.as_str())
     }
 }
@@ -552,7 +546,7 @@ impl View for Tree {
                     return;
                 }
 
-                let is_selected = *visible_index == tree.selected;
+                let is_selected = *visible_index == tree.selection.index;
                 let is_last = i == nodes.len() - 1;
 
                 let (fg, bg) = if is_selected {

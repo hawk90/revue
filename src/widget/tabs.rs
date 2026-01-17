@@ -3,6 +3,7 @@
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::Selection;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Tab item
@@ -24,7 +25,7 @@ impl Tab {
 /// Tabs widget for tabbed navigation
 pub struct Tabs {
     tabs: Vec<Tab>,
-    selected: usize,
+    selection: Selection,
     fg: Option<Color>,
     bg: Option<Color>,
     active_fg: Option<Color>,
@@ -38,7 +39,7 @@ impl Tabs {
     pub fn new() -> Self {
         Self {
             tabs: Vec::new(),
-            selected: 0,
+            selection: Selection::new(0),
             fg: None,
             bg: None,
             active_fg: Some(Color::WHITE),
@@ -51,18 +52,20 @@ impl Tabs {
     /// Set tabs
     pub fn tabs(mut self, tabs: Vec<impl Into<String>>) -> Self {
         self.tabs = tabs.into_iter().map(|t| Tab::new(t)).collect();
+        self.selection.set_len(self.tabs.len());
         self
     }
 
     /// Add a tab
     pub fn tab(mut self, label: impl Into<String>) -> Self {
         self.tabs.push(Tab::new(label));
+        self.selection.set_len(self.tabs.len());
         self
     }
 
     /// Set selected tab index
     pub fn selected(mut self, index: usize) -> Self {
-        self.selected = index.min(self.tabs.len().saturating_sub(1));
+        self.selection.set(index);
         self
     }
 
@@ -93,45 +96,39 @@ impl Tabs {
 
     /// Get selected tab index
     pub fn selected_index(&self) -> usize {
-        self.selected
+        self.selection.index
     }
 
     /// Get selected tab label
     pub fn selected_label(&self) -> Option<&str> {
-        self.tabs.get(self.selected).map(|t| t.label.as_str())
+        self.tabs
+            .get(self.selection.index)
+            .map(|t| t.label.as_str())
     }
 
-    /// Select next tab
+    /// Select next tab (wraps around)
     pub fn select_next(&mut self) {
-        if !self.tabs.is_empty() {
-            self.selected = (self.selected + 1) % self.tabs.len();
-        }
+        self.selection.next();
     }
 
-    /// Select previous tab
+    /// Select previous tab (wraps around)
     pub fn select_prev(&mut self) {
-        if !self.tabs.is_empty() {
-            self.selected = self.selected.checked_sub(1).unwrap_or(self.tabs.len() - 1);
-        }
+        self.selection.prev();
     }
 
     /// Select first tab
     pub fn select_first(&mut self) {
-        self.selected = 0;
+        self.selection.first();
     }
 
     /// Select last tab
     pub fn select_last(&mut self) {
-        if !self.tabs.is_empty() {
-            self.selected = self.tabs.len() - 1;
-        }
+        self.selection.last();
     }
 
     /// Select tab by index
     pub fn select(&mut self, index: usize) {
-        if index < self.tabs.len() {
-            self.selected = index;
-        }
+        self.selection.set(index);
     }
 
     /// Handle key input, returns true if selection changed
@@ -140,31 +137,31 @@ impl Tabs {
 
         match key {
             Key::Left | Key::Char('h') => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_prev();
-                old != self.selected
+                old != self.selection.index
             }
             Key::Right | Key::Char('l') => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_next();
-                old != self.selected
+                old != self.selection.index
             }
             Key::Home => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_first();
-                old != self.selected
+                old != self.selection.index
             }
             Key::End => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_last();
-                old != self.selected
+                old != self.selection.index
             }
             Key::Char(c) if c.is_ascii_digit() => {
                 let index = (*c as usize) - ('1' as usize);
                 if index < self.tabs.len() {
-                    let old = self.selected;
-                    self.selected = index;
-                    old != self.selected
+                    let old = self.selection.index;
+                    self.selection.index = index;
+                    old != self.selection.index
                 } else {
                     false
                 }
@@ -200,7 +197,7 @@ impl View for Tabs {
         let mut x = area.x;
 
         for (i, tab) in self.tabs.iter().enumerate() {
-            let is_active = i == self.selected;
+            let is_active = i == self.selection.index;
             let (fg, bg) = if is_active {
                 (self.active_fg, self.active_bg)
             } else {

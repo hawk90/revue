@@ -7,6 +7,7 @@ use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::border::render_border;
+use crate::utils::Selection;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Accordion section
@@ -77,6 +78,7 @@ impl AccordionSection {
     }
 
     /// Get total height (header + content if expanded)
+    #[cfg(test)]
     fn height(&self) -> u16 {
         if self.expanded {
             1 + self.content.len() as u16
@@ -90,8 +92,8 @@ impl AccordionSection {
 pub struct Accordion {
     /// Sections
     sections: Vec<AccordionSection>,
-    /// Selected section index
-    selected: usize,
+    /// Selection state
+    selection: Selection,
     /// Allow multiple expanded sections
     multi_expand: bool,
     /// Header background color
@@ -108,8 +110,6 @@ pub struct Accordion {
     border_color: Option<Color>,
     /// Show dividers between sections
     show_dividers: bool,
-    /// Scroll offset
-    scroll_offset: u16,
     /// Widget properties
     props: WidgetProps,
 }
@@ -119,7 +119,7 @@ impl Accordion {
     pub fn new() -> Self {
         Self {
             sections: Vec::new(),
-            selected: 0,
+            selection: Selection::new(0),
             multi_expand: false,
             header_bg: Color::rgb(50, 50, 50),
             header_fg: Color::WHITE,
@@ -128,7 +128,6 @@ impl Accordion {
             content_fg: Color::rgb(200, 200, 200),
             border_color: None,
             show_dividers: true,
-            scroll_offset: 0,
             props: WidgetProps::new(),
         }
     }
@@ -136,12 +135,14 @@ impl Accordion {
     /// Add a section
     pub fn section(mut self, section: AccordionSection) -> Self {
         self.sections.push(section);
+        self.selection.set_len(self.sections.len());
         self
     }
 
     /// Add multiple sections
     pub fn sections(mut self, sections: Vec<AccordionSection>) -> Self {
         self.sections.extend(sections);
+        self.selection.set_len(self.sections.len());
         self
     }
 
@@ -183,28 +184,19 @@ impl Accordion {
         self
     }
 
-    /// Select next section
+    /// Select next section (wraps around)
     pub fn select_next(&mut self) {
-        if !self.sections.is_empty() {
-            self.selected = (self.selected + 1) % self.sections.len();
-            self.ensure_visible();
-        }
+        self.selection.next();
     }
 
-    /// Select previous section
+    /// Select previous section (wraps around)
     pub fn select_prev(&mut self) {
-        if !self.sections.is_empty() {
-            self.selected = self
-                .selected
-                .checked_sub(1)
-                .unwrap_or(self.sections.len() - 1);
-            self.ensure_visible();
-        }
+        self.selection.prev();
     }
 
     /// Toggle selected section
     pub fn toggle_selected(&mut self) {
-        if let Some(section) = self.sections.get_mut(self.selected) {
+        if let Some(section) = self.sections.get_mut(self.selection.index) {
             if self.multi_expand {
                 section.expanded = !section.expanded;
             } else {
@@ -214,14 +206,14 @@ impl Accordion {
                     s.expanded = false;
                 }
                 // Toggle selected
-                self.sections[self.selected].expanded = !was_expanded;
+                self.sections[self.selection.index].expanded = !was_expanded;
             }
         }
     }
 
     /// Expand selected section
     pub fn expand_selected(&mut self) {
-        if self.selected >= self.sections.len() {
+        if self.selection.index >= self.sections.len() {
             return;
         }
         if !self.multi_expand {
@@ -229,12 +221,12 @@ impl Accordion {
                 s.expanded = false;
             }
         }
-        self.sections[self.selected].expanded = true;
+        self.sections[self.selection.index].expanded = true;
     }
 
     /// Collapse selected section
     pub fn collapse_selected(&mut self) {
-        if let Some(section) = self.sections.get_mut(self.selected) {
+        if let Some(section) = self.sections.get_mut(self.selection.index) {
             section.expanded = false;
         }
     }
@@ -255,14 +247,12 @@ impl Accordion {
 
     /// Get selected section index
     pub fn selected(&self) -> usize {
-        self.selected
+        self.selection.index
     }
 
     /// Set selected section
     pub fn set_selected(&mut self, index: usize) {
-        if index < self.sections.len() {
-            self.selected = index;
-        }
+        self.selection.set(index);
     }
 
     /// Get section count
@@ -273,25 +263,6 @@ impl Accordion {
     /// Check if empty
     pub fn is_empty(&self) -> bool {
         self.sections.is_empty()
-    }
-
-    /// Ensure selected section is visible
-    fn ensure_visible(&mut self) {
-        // Calculate position of selected header
-        let mut y = 0u16;
-        for (i, section) in self.sections.iter().enumerate() {
-            if i == self.selected {
-                break;
-            }
-            y += section.height();
-            if self.show_dividers && i < self.sections.len() - 1 {
-                y += 1;
-            }
-        }
-
-        if y < self.scroll_offset {
-            self.scroll_offset = y;
-        }
     }
 
     /// Handle key input
@@ -326,15 +297,14 @@ impl Accordion {
     /// Add section dynamically
     pub fn add_section(&mut self, section: AccordionSection) {
         self.sections.push(section);
+        self.selection.set_len(self.sections.len());
     }
 
     /// Remove section by index
     pub fn remove_section(&mut self, index: usize) -> Option<AccordionSection> {
         if index < self.sections.len() {
             let section = self.sections.remove(index);
-            if self.selected >= self.sections.len() && !self.sections.is_empty() {
-                self.selected = self.sections.len() - 1;
-            }
+            self.selection.set_len(self.sections.len());
             Some(section)
         } else {
             None
@@ -381,7 +351,7 @@ impl View for Accordion {
                 break;
             }
 
-            let is_selected = section_idx == self.selected;
+            let is_selected = self.selection.is_selected(section_idx);
 
             // Render header
             let header_bg = if is_selected {

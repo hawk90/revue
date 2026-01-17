@@ -31,6 +31,7 @@
 //! ```
 
 mod events;
+mod helpers;
 mod inspector;
 mod profiler;
 mod state;

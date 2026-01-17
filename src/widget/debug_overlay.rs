@@ -21,6 +21,7 @@
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
+use crate::utils::draw_text_overlay;
 use crate::widget::{RenderContext, View};
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
@@ -607,13 +608,7 @@ impl<V: View> DebugOverlay<V> {
 
     /// Draw text at position
     fn draw_text(&self, buffer: &mut Buffer, x: u16, y: u16, text: &str, color: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            let px = x + i as u16;
-            if let Some(cell) = buffer.get_mut(px, y) {
-                cell.symbol = ch;
-                cell.fg = Some(color);
-            }
-        }
+        draw_text_overlay(buffer, x, y, text, color);
     }
 
     /// Draw border around rect

@@ -619,15 +619,15 @@ fn parse_signed_length(value: &str) -> Option<i16> {
 fn parse_grid_template(value: &str) -> GridTemplate {
     let value = value.trim();
     let mut tracks: Vec<GridTrack> = Vec::new();
+    let bytes = value.as_bytes();
     let mut pos = 0;
-    let chars: Vec<char> = value.chars().collect();
 
-    while pos < chars.len() {
-        // Skip whitespace
-        while pos < chars.len() && chars[pos].is_whitespace() {
+    while pos < bytes.len() {
+        // Skip whitespace (CSS grid values are ASCII-only)
+        while pos < bytes.len() && bytes[pos].is_ascii_whitespace() {
             pos += 1;
         }
-        if pos >= chars.len() {
+        if pos >= bytes.len() {
             break;
         }
 
@@ -649,15 +649,16 @@ fn parse_grid_template(value: &str) -> GridTemplate {
             }
         }
 
-        // Parse regular token (no spaces)
+        // Parse regular token (no spaces) - use byte slicing directly
         let start = pos;
-        while pos < chars.len() && !chars[pos].is_whitespace() {
+        while pos < bytes.len() && !bytes[pos].is_ascii_whitespace() {
             pos += 1;
         }
 
         if pos > start {
-            let token: String = chars[start..pos].iter().collect();
-            if let Some(track) = parse_grid_track(&token) {
+            // Direct slice - no allocation needed
+            let token = &value[start..pos];
+            if let Some(track) = parse_grid_track(token) {
                 tracks.push(track);
             }
         }

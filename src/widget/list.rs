@@ -3,12 +3,13 @@
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::Selection;
 use std::fmt::Display;
 
 /// A list widget for displaying items
 pub struct List<T> {
     items: Vec<T>,
-    selected: usize,
+    selection: Selection,
     highlight_fg: Option<Color>,
     highlight_bg: Option<Color>,
     props: WidgetProps,
@@ -17,9 +18,10 @@ pub struct List<T> {
 impl<T> List<T> {
     /// Create a new list with items
     pub fn new(items: Vec<T>) -> Self {
+        let len = items.len();
         Self {
             items,
-            selected: 0,
+            selection: Selection::new(len),
             highlight_fg: None,
             highlight_bg: Some(Color::BLUE),
             props: WidgetProps::new(),
@@ -28,7 +30,7 @@ impl<T> List<T> {
 
     /// Set selected index
     pub fn selected(mut self, idx: usize) -> Self {
-        self.selected = idx.min(self.items.len().saturating_sub(1));
+        self.selection.set(idx);
         self
     }
 
@@ -51,7 +53,7 @@ impl<T> List<T> {
 
     /// Get selected index
     pub fn selected_index(&self) -> usize {
-        self.selected
+        self.selection.index
     }
 
     /// Get number of items
@@ -64,18 +66,14 @@ impl<T> List<T> {
         self.items.is_empty()
     }
 
-    /// Select next item
+    /// Select next item (wraps around)
     pub fn select_next(&mut self) {
-        if !self.items.is_empty() {
-            self.selected = (self.selected + 1) % self.items.len();
-        }
+        self.selection.next();
     }
 
-    /// Select previous item
+    /// Select previous item (wraps around)
     pub fn select_prev(&mut self) {
-        if !self.items.is_empty() {
-            self.selected = self.selected.checked_sub(1).unwrap_or(self.items.len() - 1);
-        }
+        self.selection.prev();
     }
 }
 
@@ -94,7 +92,7 @@ impl<T: Display> View for List<T> {
             }
 
             let y = area.y + i as u16;
-            let is_selected = i == self.selected;
+            let is_selected = self.selection.is_selected(i);
 
             let text = item.to_string();
             let mut x = area.x;
@@ -258,5 +256,112 @@ mod tests {
         let list: List<&str> = List::new(vec![]);
         assert!(list.is_empty());
         assert_eq!(list.len(), 0);
+    }
+
+    #[test]
+    fn test_list_navigate_to_end() {
+        let mut list = List::new(vec!["A", "B", "C", "D", "E"]);
+
+        // Navigate to end using next
+        for _ in 0..4 {
+            list.select_next();
+        }
+        assert_eq!(list.selected_index(), 4);
+
+        // Navigate back to start using prev (wraps)
+        list.select_prev();
+        list.select_prev();
+        list.select_prev();
+        list.select_prev();
+        assert_eq!(list.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_list_selected_builder_with_items() {
+        // Use builder to set initial selection
+        let list = List::new(vec!["A", "B", "C"]).selected(2);
+        assert_eq!(list.selected_index(), 2);
+
+        let list2 = List::new(vec!["X", "Y", "Z"]).selected(0);
+        assert_eq!(list2.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_list_items_access() {
+        let list = List::new(vec!["Apple", "Banana", "Cherry"]).selected(1);
+        assert_eq!(list.items()[1], "Banana");
+        assert_eq!(list.selected_index(), 1);
+    }
+
+    #[test]
+    fn test_list_empty_selection() {
+        let list: List<&str> = List::new(vec![]);
+        assert!(list.is_empty());
+        assert_eq!(list.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_list_wrap_navigation() {
+        let mut list = List::new(vec!["A", "B"]);
+
+        // Forward wrap
+        assert_eq!(list.selected_index(), 0);
+        list.select_next();
+        assert_eq!(list.selected_index(), 1);
+        list.select_next();
+        assert_eq!(list.selected_index(), 0); // Wrapped
+
+        // Backward wrap
+        list.select_prev();
+        assert_eq!(list.selected_index(), 1); // Wrapped back
+    }
+
+    #[test]
+    fn test_list_single_item() {
+        let mut list = List::new(vec!["Only"]);
+        assert_eq!(list.selected_index(), 0);
+
+        list.select_next();
+        assert_eq!(list.selected_index(), 0); // Stays at 0 (wraps to same)
+
+        list.select_prev();
+        assert_eq!(list.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_list_items() {
+        let list = List::new(vec!["A", "B", "C"]);
+        let items = list.items();
+        assert_eq!(items.len(), 3);
+        assert_eq!(items[0], "A");
+        assert_eq!(items[2], "C");
+    }
+
+    #[test]
+    fn test_list_helper_function() {
+        let l = list(vec!["X", "Y"]);
+        assert_eq!(l.len(), 2);
+        assert_eq!(l.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_list_render_empty() {
+        let mut buffer = Buffer::new(10, 3);
+        let area = Rect::new(0, 0, 10, 3);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let list: List<&str> = List::new(vec![]);
+        list.render(&mut ctx);
+        // Should not crash on empty list
+    }
+
+    #[test]
+    fn test_list_selection_bounds_on_items_change() {
+        let list = List::new(vec!["A", "B", "C"]).selected(2);
+        assert_eq!(list.selected_index(), 2);
+
+        // Selection is clamped to valid range
+        let list2 = List::new(vec!["A"]).selected(5);
+        assert_eq!(list2.selected_index(), 0); // Clamped to 0 (only valid index)
     }
 }

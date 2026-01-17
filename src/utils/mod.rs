@@ -50,6 +50,7 @@ pub mod debounce;
 pub mod diff;
 pub mod easing;
 pub mod figlet;
+pub mod filter;
 pub mod format;
 pub mod fuzzy;
 pub mod gradient;
@@ -58,6 +59,7 @@ pub mod i18n;
 pub mod keymap;
 pub mod layout;
 pub mod lock;
+pub mod overlay;
 pub mod path;
 pub mod profiler;
 pub mod selection;
@@ -292,3 +294,9 @@ pub use lock::{lock_or_recover, read_or_recover, write_or_recover};
 
 // Debounce and Throttle
 pub use debounce::{debounce_ms, debouncer, throttle, throttle_ms, Debouncer, Edge, Throttle};
+
+// Filter mode
+pub use filter::FilterMode;
+
+// Overlay rendering
+pub use overlay::{draw_separator_overlay, draw_text_overlay};

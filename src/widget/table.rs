@@ -3,6 +3,7 @@
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::Selection;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Row rendering style configuration
@@ -49,7 +50,7 @@ impl Column {
 pub struct Table {
     columns: Vec<Column>,
     rows: Vec<Vec<String>>,
-    selected: usize,
+    selection: Selection,
     header_fg: Option<Color>,
     header_bg: Option<Color>,
     selected_fg: Option<Color>,
@@ -64,7 +65,7 @@ impl Table {
         Self {
             columns,
             rows: Vec::new(),
-            selected: 0,
+            selection: Selection::new(0),
             header_fg: Some(Color::WHITE),
             header_bg: None,
             selected_fg: Some(Color::WHITE),
@@ -78,18 +79,20 @@ impl Table {
     pub fn row(mut self, cells: Vec<impl Into<String>>) -> Self {
         self.rows
             .push(cells.into_iter().map(|c| c.into()).collect());
+        self.selection.set_len(self.rows.len());
         self
     }
 
     /// Set rows data
     pub fn rows(mut self, rows: Vec<Vec<String>>) -> Self {
         self.rows = rows;
+        self.selection.set_len(self.rows.len());
         self
     }
 
     /// Set selected row index
     pub fn selected(mut self, index: usize) -> Self {
-        self.selected = index.min(self.rows.len().saturating_sub(1));
+        self.selection.set(index);
         self
     }
 
@@ -115,7 +118,7 @@ impl Table {
 
     /// Get selected index
     pub fn selected_index(&self) -> usize {
-        self.selected
+        self.selection.index
     }
 
     /// Get number of rows
@@ -123,28 +126,24 @@ impl Table {
         self.rows.len()
     }
 
-    /// Select next row
+    /// Select next row (no wrap)
     pub fn select_next(&mut self) {
-        if !self.rows.is_empty() {
-            self.selected = (self.selected + 1).min(self.rows.len() - 1);
-        }
+        self.selection.down();
     }
 
-    /// Select previous row
+    /// Select previous row (no wrap)
     pub fn select_prev(&mut self) {
-        self.selected = self.selected.saturating_sub(1);
+        self.selection.up();
     }
 
     /// Select first row
     pub fn select_first(&mut self) {
-        self.selected = 0;
+        self.selection.first();
     }
 
     /// Select last row
     pub fn select_last(&mut self) {
-        if !self.rows.is_empty() {
-            self.selected = self.rows.len() - 1;
-        }
+        self.selection.last();
     }
 
     /// Calculate column widths
@@ -247,7 +246,7 @@ impl View for Table {
                 break;
             }
 
-            let is_selected = i == self.selected;
+            let is_selected = self.selection.is_selected(i);
             let (fg, bg) = if is_selected {
                 (self.selected_fg, self.selected_bg)
             } else {
@@ -455,5 +454,152 @@ mod tests {
 
         assert_eq!(t.columns.len(), 2);
         assert_eq!(t.row_count(), 1);
+    }
+
+    #[test]
+    fn test_table_no_wrap_navigation() {
+        let mut t = Table::new(vec![Column::new("X")])
+            .row(vec!["a"])
+            .row(vec!["b"]);
+
+        // At start, can't go up
+        assert_eq!(t.selected_index(), 0);
+        t.select_prev();
+        assert_eq!(t.selected_index(), 0); // Stays at 0
+
+        // At end, can't go down
+        t.select_last();
+        assert_eq!(t.selected_index(), 1);
+        t.select_next();
+        assert_eq!(t.selected_index(), 1); // Stays at 1
+    }
+
+    #[test]
+    fn test_table_navigation_comprehensive() {
+        let mut t = Table::new(vec![Column::new("X")])
+            .row(vec!["a"])
+            .row(vec!["b"])
+            .row(vec!["c"]);
+
+        // Start at first
+        assert_eq!(t.selected_index(), 0);
+
+        // Go to last
+        t.select_last();
+        assert_eq!(t.selected_index(), 2);
+
+        // Go back to first
+        t.select_first();
+        assert_eq!(t.selected_index(), 0);
+
+        // Navigate down twice
+        t.select_next();
+        t.select_next();
+        assert_eq!(t.selected_index(), 2);
+
+        // Navigate up once
+        t.select_prev();
+        assert_eq!(t.selected_index(), 1);
+    }
+
+    #[test]
+    fn test_table_selected_index_with_rows() {
+        let t = Table::new(vec![Column::new("Name")])
+            .row(vec!["Alice"])
+            .row(vec!["Bob"])
+            .selected(1);
+
+        assert_eq!(t.selected_index(), 1);
+        assert_eq!(t.row_count(), 2);
+    }
+
+    #[test]
+    fn test_table_empty() {
+        let t = Table::new(vec![Column::new("X")]);
+        assert_eq!(t.row_count(), 0);
+    }
+
+    #[test]
+    fn test_table_single_row() {
+        let mut t = Table::new(vec![Column::new("X")]).row(vec!["only"]);
+
+        assert_eq!(t.selected_index(), 0);
+
+        t.select_next();
+        assert_eq!(t.selected_index(), 0); // Can't go further
+
+        t.select_prev();
+        assert_eq!(t.selected_index(), 0); // Can't go back
+    }
+
+    #[test]
+    fn test_table_rows_builder() {
+        let t = Table::new(vec![Column::new("A")]).rows(vec![
+            vec!["1".into()],
+            vec!["2".into()],
+            vec!["3".into()],
+        ]);
+
+        assert_eq!(t.row_count(), 3);
+    }
+
+    #[test]
+    fn test_table_render_empty() {
+        let mut buffer = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let t = Table::new(vec![Column::new("Header")]);
+        t.render(&mut ctx);
+        // Should not crash on empty table
+    }
+
+    #[test]
+    fn test_table_selection_builder() {
+        let t = Table::new(vec![Column::new("X")])
+            .row(vec!["a"])
+            .row(vec!["b"])
+            .row(vec!["c"])
+            .selected(2);
+
+        assert_eq!(t.selected_index(), 2);
+    }
+
+    #[test]
+    fn test_table_selection_bounds() {
+        let t = Table::new(vec![Column::new("X")])
+            .row(vec!["a"])
+            .row(vec!["b"])
+            .selected(10); // Out of bounds
+
+        // Should be clamped to valid range
+        assert!(t.selected_index() <= 1);
+    }
+
+    #[test]
+    fn test_table_selected_style() {
+        let t = Table::new(vec![Column::new("X")])
+            .row(vec!["a"])
+            .selected_style(Color::WHITE, Color::BLUE);
+
+        assert_eq!(t.selected_fg, Some(Color::WHITE));
+        assert_eq!(t.selected_bg, Some(Color::BLUE));
+    }
+
+    #[test]
+    fn test_table_header_style() {
+        let t = Table::new(vec![Column::new("X")]).header_style(Color::YELLOW, Some(Color::BLACK));
+
+        assert_eq!(t.header_fg, Some(Color::YELLOW));
+        assert_eq!(t.header_bg, Some(Color::BLACK));
+    }
+
+    #[test]
+    fn test_table_border_toggle() {
+        let t = Table::new(vec![Column::new("X")]).border(false);
+        assert!(!t.border);
+
+        let t2 = Table::new(vec![Column::new("X")]).border(true);
+        assert!(t2.border);
     }
 }

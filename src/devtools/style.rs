@@ -1,5 +1,6 @@
 //! Style inspector for CSS debugging
 
+use super::helpers::draw_text_overlay;
 use super::DevToolsConfig;
 use crate::layout::Rect;
 use crate::render::Buffer;
@@ -10,7 +11,9 @@ use std::collections::HashMap;
 struct RenderCtx<'a> {
     buffer: &'a mut Buffer,
     x: u16,
+    #[allow(dead_code)]
     width: u16,
+    #[allow(dead_code)]
     config: &'a DevToolsConfig,
 }
 
@@ -25,12 +28,7 @@ impl<'a> RenderCtx<'a> {
     }
 
     fn draw_text(&mut self, y: u16, text: &str, color: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            if let Some(cell) = self.buffer.get_mut(self.x + i as u16, y) {
-                cell.symbol = ch;
-                cell.fg = Some(color);
-            }
-        }
+        draw_text_overlay(self.buffer, self.x, y, text, color);
     }
 }
 

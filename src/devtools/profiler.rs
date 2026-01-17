@@ -31,6 +31,7 @@ use crate::style::Color;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+use super::helpers::draw_text_overlay;
 use super::DevToolsConfig;
 
 // =============================================================================
@@ -720,12 +721,7 @@ impl Profiler {
     }
 
     fn render_text(&self, buffer: &mut Buffer, x: u16, y: u16, text: &str, color: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            if let Some(cell) = buffer.get_mut(x + i as u16, y) {
-                cell.symbol = ch;
-                cell.fg = Some(color);
-            }
-        }
+        draw_text_overlay(buffer, x, y, text, color);
     }
 }
 

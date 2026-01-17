@@ -1,5 +1,6 @@
 //! Event logger for debugging event flow
 
+use super::helpers::{draw_separator, draw_text_overlay};
 use super::DevToolsConfig;
 use crate::layout::Rect;
 use crate::render::Buffer;
@@ -26,21 +27,11 @@ impl<'a> RenderCtx<'a> {
     }
 
     fn draw_text(&mut self, y: u16, text: &str, color: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            if let Some(cell) = self.buffer.get_mut(self.x + i as u16, y) {
-                cell.symbol = ch;
-                cell.fg = Some(color);
-            }
-        }
+        draw_text_overlay(self.buffer, self.x, y, text, color);
     }
 
     fn draw_separator(&mut self, y: u16) {
-        for px in self.x..self.x + self.width {
-            if let Some(cell) = self.buffer.get_mut(px, y) {
-                cell.symbol = '─';
-                cell.fg = Some(self.config.accent_color);
-            }
-        }
+        draw_separator(self.buffer, self.x, y, self.width, self.config.accent_color);
     }
 }
 

@@ -12,22 +12,8 @@
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::{fuzzy_match, FuzzyMatch};
+use crate::utils::{fuzzy_match, FilterMode, FuzzyMatch};
 use crate::{impl_props_builders, impl_styled_view};
-
-/// Filter mode for matching options
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum FilterMode {
-    /// Fuzzy matching (e.g., "hw" matches "Hello World")
-    #[default]
-    Fuzzy,
-    /// Prefix matching (e.g., "Hel" matches "Hello")
-    Prefix,
-    /// Exact matching (case-insensitive)
-    Exact,
-    /// Contains matching (substring anywhere)
-    Contains,
-}
 
 /// Option item for combobox
 #[derive(Clone, Debug)]
@@ -653,6 +639,7 @@ impl Combobox {
                         None
                     }
                 }
+                FilterMode::None => Some(0), // No filtering, include all with neutral score
             };
 
             if let Some(s) = score {

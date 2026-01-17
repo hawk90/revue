@@ -7,7 +7,6 @@ use crate::style::{Color, Style};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use super::event::FocusStyle;
-use super::widget_state::{DISABLED_BG, DISABLED_FG};
 
 /// Progress bar rendering configuration
 pub struct ProgressBarConfig {
@@ -714,27 +713,8 @@ impl<'a> RenderContext<'a> {
         self.style.map(|s| s.layout.gap).unwrap_or(0)
     }
 
-    /// Resolve effective foreground color considering CSS, widget state, and disabled state
-    pub fn resolve_fg(&self, widget_override: Option<Color>, default: Color) -> Color {
-        if self.is_disabled() {
-            return DISABLED_FG;
-        }
-        if let Some(color) = widget_override {
-            return color;
-        }
-        self.css_color(default)
-    }
-
-    /// Resolve effective background color considering CSS, widget state, and disabled state
-    pub fn resolve_bg(&self, widget_override: Option<Color>, default: Color) -> Color {
-        if self.is_disabled() {
-            return DISABLED_BG;
-        }
-        if let Some(color) = widget_override {
-            return color;
-        }
-        self.css_background(default)
-    }
+    // NOTE: Color resolution is handled by WidgetState::resolve_fg/resolve_bg/resolve_colors_interactive
+    // Use self.state.resolve_colors_interactive(ctx.style, default_fg, default_bg) for widget color resolution
 
     // =========================================================================
     // Accessibility - Focus Indicators
