@@ -50,6 +50,7 @@ pub mod debounce;
 pub mod diff;
 pub mod easing;
 pub mod figlet;
+pub mod filter;
 pub mod format;
 pub mod fuzzy;
 pub mod gradient;
@@ -292,3 +293,6 @@ pub use lock::{lock_or_recover, read_or_recover, write_or_recover};
 
 // Debounce and Throttle
 pub use debounce::{debounce_ms, debouncer, throttle, throttle_ms, Debouncer, Edge, Throttle};
+
+// Filter mode
+pub use filter::FilterMode;

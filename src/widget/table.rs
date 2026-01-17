@@ -3,6 +3,7 @@
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::Selection;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Row rendering style configuration
@@ -49,7 +50,7 @@ impl Column {
 pub struct Table {
     columns: Vec<Column>,
     rows: Vec<Vec<String>>,
-    selected: usize,
+    selection: Selection,
     header_fg: Option<Color>,
     header_bg: Option<Color>,
     selected_fg: Option<Color>,
@@ -64,7 +65,7 @@ impl Table {
         Self {
             columns,
             rows: Vec::new(),
-            selected: 0,
+            selection: Selection::new(0),
             header_fg: Some(Color::WHITE),
             header_bg: None,
             selected_fg: Some(Color::WHITE),
@@ -78,18 +79,20 @@ impl Table {
     pub fn row(mut self, cells: Vec<impl Into<String>>) -> Self {
         self.rows
             .push(cells.into_iter().map(|c| c.into()).collect());
+        self.selection.set_len(self.rows.len());
         self
     }
 
     /// Set rows data
     pub fn rows(mut self, rows: Vec<Vec<String>>) -> Self {
         self.rows = rows;
+        self.selection.set_len(self.rows.len());
         self
     }
 
     /// Set selected row index
     pub fn selected(mut self, index: usize) -> Self {
-        self.selected = index.min(self.rows.len().saturating_sub(1));
+        self.selection.set(index);
         self
     }
 
@@ -115,7 +118,7 @@ impl Table {
 
     /// Get selected index
     pub fn selected_index(&self) -> usize {
-        self.selected
+        self.selection.index
     }
 
     /// Get number of rows
@@ -123,28 +126,24 @@ impl Table {
         self.rows.len()
     }
 
-    /// Select next row
+    /// Select next row (no wrap)
     pub fn select_next(&mut self) {
-        if !self.rows.is_empty() {
-            self.selected = (self.selected + 1).min(self.rows.len() - 1);
-        }
+        self.selection.down();
     }
 
-    /// Select previous row
+    /// Select previous row (no wrap)
     pub fn select_prev(&mut self) {
-        self.selected = self.selected.saturating_sub(1);
+        self.selection.up();
     }
 
     /// Select first row
     pub fn select_first(&mut self) {
-        self.selected = 0;
+        self.selection.first();
     }
 
     /// Select last row
     pub fn select_last(&mut self) {
-        if !self.rows.is_empty() {
-            self.selected = self.rows.len() - 1;
-        }
+        self.selection.last();
     }
 
     /// Calculate column widths
@@ -247,7 +246,7 @@ impl View for Table {
                 break;
             }
 
-            let is_selected = i == self.selected;
+            let is_selected = self.selection.is_selected(i);
             let (fg, bg) = if is_selected {
                 (self.selected_fg, self.selected_bg)
             } else {

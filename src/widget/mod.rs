@@ -304,7 +304,7 @@ pub use aistream::{ai_response, ai_stream, AiStream, StreamCursor, StreamStatus,
 pub use alert::{
     alert, error_alert, info_alert, success_alert, warning_alert, Alert, AlertLevel, AlertVariant,
 };
-pub use autocomplete::{autocomplete, Autocomplete, FilterMode, Suggestion};
+pub use autocomplete::{autocomplete, Autocomplete, Suggestion};
 pub use avatar::{avatar, avatar_icon, Avatar, AvatarShape, AvatarSize};
 pub use badge::{badge, dot_badge, Badge, BadgeShape, BadgeVariant};
 pub use barchart::{barchart, BarChart, BarOrientation};
@@ -339,7 +339,7 @@ pub use code_editor::{
 };
 pub use collapsible::{collapsible, Collapsible};
 pub use color_picker::{color_picker, ColorPalette, ColorPicker, ColorPickerMode};
-pub use combobox::{combobox, ComboOption, Combobox, FilterMode as ComboFilterMode};
+pub use combobox::{combobox, ComboOption, Combobox};
 pub use command_palette::{command_palette, Command, CommandPalette};
 pub use csv_viewer::{csv_viewer, CsvViewer, Delimiter, SortOrder as CsvSortOrder};
 pub use datagrid::{datagrid, grid_column, grid_row, DataGrid, GridColumn, GridRow, SortDirection};

@@ -6,7 +6,7 @@ use super::traits::{RenderContext, View, WidgetProps};
 use crate::event::{Key, KeyEvent};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::fuzzy_match;
+use crate::utils::{fuzzy_match, FilterMode};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Suggestion item with display text and optional value
@@ -61,22 +61,6 @@ impl<S: Into<String>> From<S> for Suggestion {
     fn from(s: S) -> Self {
         Suggestion::new(s)
     }
-}
-
-/// Filter mode for suggestions
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum FilterMode {
-    /// Fuzzy matching (typo tolerant)
-    #[default]
-    Fuzzy,
-    /// Prefix matching (starts with)
-    Prefix,
-    /// Contains matching
-    Contains,
-    /// Exact matching
-    Exact,
-    /// No filtering (show all)
-    None,
 }
 
 /// Autocomplete widget

@@ -5,6 +5,7 @@
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::Selection;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Breadcrumb item
@@ -79,8 +80,8 @@ impl SeparatorStyle {
 pub struct Breadcrumb {
     /// Items in the breadcrumb
     items: Vec<BreadcrumbItem>,
-    /// Selected item index
-    selected: usize,
+    /// Selection state
+    selection: Selection,
     /// Separator style
     separator: SeparatorStyle,
     /// Item color
@@ -106,7 +107,7 @@ impl Breadcrumb {
     pub fn new() -> Self {
         Self {
             items: Vec::new(),
-            selected: 0,
+            selection: Selection::new(0),
             separator: SeparatorStyle::Chevron,
             item_color: Color::rgb(150, 150, 150),
             selected_color: Color::CYAN,
@@ -122,14 +123,16 @@ impl Breadcrumb {
     /// Add an item
     pub fn item(mut self, item: BreadcrumbItem) -> Self {
         self.items.push(item);
-        self.selected = self.items.len().saturating_sub(1);
+        self.selection.set_len(self.items.len());
+        self.selection.last(); // Select last item
         self
     }
 
     /// Add item from string
     pub fn push(mut self, label: impl Into<String>) -> Self {
         self.items.push(BreadcrumbItem::new(label));
-        self.selected = self.items.len().saturating_sub(1);
+        self.selection.set_len(self.items.len());
+        self.selection.last(); // Select last item
         self
     }
 
@@ -140,7 +143,8 @@ impl Breadcrumb {
             .filter(|s| !s.is_empty())
             .map(BreadcrumbItem::new)
             .collect();
-        self.selected = self.items.len().saturating_sub(1);
+        self.selection.set_len(self.items.len());
+        self.selection.last(); // Select last item
         self
     }
 
@@ -192,35 +196,29 @@ impl Breadcrumb {
         self
     }
 
-    /// Select next item
+    /// Select next item (no wrap)
     pub fn select_next(&mut self) {
-        if self.selected < self.items.len().saturating_sub(1) {
-            self.selected += 1;
-        }
+        self.selection.down();
     }
 
-    /// Select previous item
+    /// Select previous item (no wrap)
     pub fn select_prev(&mut self) {
-        if self.selected > 0 {
-            self.selected -= 1;
-        }
+        self.selection.up();
     }
 
     /// Get selected index
     pub fn selected(&self) -> usize {
-        self.selected
+        self.selection.index
     }
 
     /// Set selected index
     pub fn set_selected(&mut self, index: usize) {
-        if index < self.items.len() {
-            self.selected = index;
-        }
+        self.selection.set(index);
     }
 
     /// Get selected item
     pub fn selected_item(&self) -> Option<&BreadcrumbItem> {
-        self.items.get(self.selected)
+        self.items.get(self.selection.index)
     }
 
     /// Get path string
@@ -262,9 +260,7 @@ impl Breadcrumb {
     /// Pop last item (go up one level)
     pub fn pop(&mut self) -> Option<BreadcrumbItem> {
         let item = self.items.pop();
-        if self.selected >= self.items.len() && !self.items.is_empty() {
-            self.selected = self.items.len() - 1;
-        }
+        self.selection.set_len(self.items.len());
         item
     }
 
@@ -272,7 +268,8 @@ impl Breadcrumb {
     pub fn navigate_to(&mut self, index: usize) {
         if index < self.items.len() {
             self.items.truncate(index + 1);
-            self.selected = index;
+            self.selection.set_len(self.items.len());
+            self.selection.set(index);
         }
     }
 
@@ -352,7 +349,7 @@ impl View for Breadcrumb {
         // First item if collapsing
         if show_ellipsis && !self.items.is_empty() {
             let item = &self.items[0];
-            let is_selected = self.selected == 0;
+            let is_selected = self.selection.is_selected(0);
 
             if let Some(icon) = item.icon {
                 let mut cell = Cell::new(icon);
@@ -415,7 +412,7 @@ impl View for Breadcrumb {
 
         for (i, item) in items_to_show.iter().enumerate() {
             let actual_idx = if show_ellipsis { start_idx + i } else { i };
-            let is_selected = actual_idx == self.selected;
+            let is_selected = self.selection.is_selected(actual_idx);
             let is_last = actual_idx == self.items.len() - 1;
 
             if x >= area.x + max_width {

@@ -22,7 +22,7 @@
 use super::cell::{Cell, Modifier};
 use crate::layout::Rect;
 use crate::style::Color;
-use crate::text::char_width;
+use crate::utils::char_width;
 
 /// A single render operation
 #[derive(Debug, Clone)]

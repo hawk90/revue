@@ -3,12 +3,13 @@
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::Selection;
 use std::fmt::Display;
 
 /// A list widget for displaying items
 pub struct List<T> {
     items: Vec<T>,
-    selected: usize,
+    selection: Selection,
     highlight_fg: Option<Color>,
     highlight_bg: Option<Color>,
     props: WidgetProps,
@@ -17,9 +18,10 @@ pub struct List<T> {
 impl<T> List<T> {
     /// Create a new list with items
     pub fn new(items: Vec<T>) -> Self {
+        let len = items.len();
         Self {
             items,
-            selected: 0,
+            selection: Selection::new(len),
             highlight_fg: None,
             highlight_bg: Some(Color::BLUE),
             props: WidgetProps::new(),
@@ -28,7 +30,7 @@ impl<T> List<T> {
 
     /// Set selected index
     pub fn selected(mut self, idx: usize) -> Self {
-        self.selected = idx.min(self.items.len().saturating_sub(1));
+        self.selection.set(idx);
         self
     }
 
@@ -51,7 +53,7 @@ impl<T> List<T> {
 
     /// Get selected index
     pub fn selected_index(&self) -> usize {
-        self.selected
+        self.selection.index
     }
 
     /// Get number of items
@@ -64,18 +66,14 @@ impl<T> List<T> {
         self.items.is_empty()
     }
 
-    /// Select next item
+    /// Select next item (wraps around)
     pub fn select_next(&mut self) {
-        if !self.items.is_empty() {
-            self.selected = (self.selected + 1) % self.items.len();
-        }
+        self.selection.next();
     }
 
-    /// Select previous item
+    /// Select previous item (wraps around)
     pub fn select_prev(&mut self) {
-        if !self.items.is_empty() {
-            self.selected = self.selected.checked_sub(1).unwrap_or(self.items.len() - 1);
-        }
+        self.selection.prev();
     }
 }
 
@@ -94,7 +92,7 @@ impl<T: Display> View for List<T> {
             }
 
             let y = area.y + i as u16;
-            let is_selected = i == self.selected;
+            let is_selected = self.selection.is_selected(i);
 
             let text = item.to_string();
             let mut x = area.x;

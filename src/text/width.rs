@@ -191,10 +191,11 @@ impl Default for CharWidthTable {
 }
 
 /// Get character width using default table
+///
+/// This delegates to `utils::unicode::char_width` for consistency across the codebase.
+/// The return type is `u8` for compatibility with terminal cell operations.
 pub fn char_width(ch: char) -> u8 {
-    unicode_width::UnicodeWidthChar::width(ch)
-        .map(|w| w as u8)
-        .unwrap_or(1)
+    crate::utils::unicode::char_width(ch) as u8
 }
 
 /// Get string width
