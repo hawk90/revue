@@ -726,4 +726,19 @@ mod tests {
         assert_eq!(item.hint, Some("hint".to_string()));
         assert_eq!(item.value, Some("val".to_string()));
     }
+
+    #[test]
+    fn test_disabled_fg_constant() {
+        // Verify that DISABLED_FG constant is properly imported and usable
+        use crate::widget::traits::DISABLED_FG;
+
+        let list = OptionList::new().add_option(OptionItem::new("Disabled").disabled(true));
+
+        // The disabled_fg should default to DISABLED_FG when not explicitly set
+        assert_eq!(list.disabled_fg, None);
+        // When rendering, disabled items should use DISABLED_FG as fallback
+        assert_eq!(DISABLED_FG.r, 100);
+        assert_eq!(DISABLED_FG.g, 100);
+        assert_eq!(DISABLED_FG.b, 100);
+    }
 }

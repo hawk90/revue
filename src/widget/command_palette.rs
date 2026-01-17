@@ -939,4 +939,42 @@ mod tests {
         assert!(result[2].1); // 'l' matched
         assert!(result[3].1); // 'l' matched
     }
+
+    #[test]
+    fn test_palette_selection_utility() {
+        // Test that Selection utility is properly integrated
+        let mut p = CommandPalette::new()
+            .command(Command::new("cmd1", "Command 1"))
+            .command(Command::new("cmd2", "Command 2"))
+            .command(Command::new("cmd3", "Command 3"));
+
+        p.show();
+
+        // Initial selection should be 0
+        assert_eq!(p.selection.index, 0);
+
+        // Navigate next
+        p.select_next();
+        assert_eq!(p.selection.index, 1);
+
+        // Navigate prev
+        p.select_prev();
+        assert_eq!(p.selection.index, 0);
+
+        // Wrap around forward
+        p.select_next();
+        p.select_next();
+        p.select_next();
+        assert_eq!(p.selection.index, 0);
+
+        // Wrap around backward
+        p.select_prev();
+        assert_eq!(p.selection.index, 2);
+    }
+
+    #[test]
+    fn test_palette_max_visible() {
+        let p = CommandPalette::new().max_visible(5);
+        assert_eq!(p.max_visible, 5);
+    }
 }

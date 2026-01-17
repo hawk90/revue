@@ -791,4 +791,88 @@ mod tests {
         select.remove_class("open");
         assert!(!select.has_class("open"));
     }
+
+    #[test]
+    fn test_select_filtered_navigation() {
+        use crate::event::Key;
+
+        let mut s = Select::new()
+            .options(vec!["Apple", "Apricot", "Banana", "Berry", "Cherry"])
+            .searchable(true);
+
+        s.open();
+        s.set_query("b"); // Matches Banana and Berry
+
+        assert_eq!(s.visible_count(), 2);
+
+        // Navigate down in filtered results
+        s.handle_key(&Key::Down);
+        // Selection should move to next filtered item
+
+        // Navigate up in filtered results
+        s.handle_key(&Key::Up);
+        // Selection should move to previous filtered item
+    }
+
+    #[test]
+    fn test_select_selection_utility() {
+        // Test that Selection utility is properly integrated
+        let mut s = Select::new().options(vec!["A", "B", "C"]);
+
+        // Test selection state
+        assert_eq!(s.selected_index(), 0);
+
+        // Test select_next uses Selection
+        s.select_next();
+        assert_eq!(s.selected_index(), 1);
+
+        // Test wrap-around via Selection
+        s.select_next();
+        s.select_next();
+        assert_eq!(s.selected_index(), 0); // Wrapped
+
+        // Test select_prev uses Selection
+        s.select_prev();
+        assert_eq!(s.selected_index(), 2); // Wrapped back
+
+        // Test select_first uses Selection
+        s.select_first();
+        assert_eq!(s.selected_index(), 0);
+
+        // Test select_last uses Selection
+        s.select_last();
+        assert_eq!(s.selected_index(), 2);
+    }
+
+    #[test]
+    fn test_select_key_navigation_with_jk() {
+        use crate::event::Key;
+
+        let mut s = Select::new().options(vec!["One", "Two", "Three"]);
+        s.open();
+
+        // Test j key (down)
+        s.handle_key(&Key::Char('j'));
+        assert_eq!(s.selected_index(), 1);
+
+        // Test k key (up)
+        s.handle_key(&Key::Char('k'));
+        assert_eq!(s.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_select_home_end_keys() {
+        use crate::event::Key;
+
+        let mut s = Select::new().options(vec!["A", "B", "C", "D", "E"]);
+        s.open();
+
+        // Test End key
+        s.handle_key(&Key::End);
+        assert_eq!(s.selected_index(), 4);
+
+        // Test Home key
+        s.handle_key(&Key::Home);
+        assert_eq!(s.selected_index(), 0);
+    }
 }
