@@ -443,4 +443,58 @@ mod tests {
         assert_eq!(buffer.get(0, 4).unwrap().symbol, '╰');
         assert_eq!(buffer.get(9, 4).unwrap().symbol, '╯');
     }
+
+    #[test]
+    fn test_border_type_chars() {
+        // Test that BorderType::chars() returns correct consolidated BorderChars
+        let none = BorderType::None.chars();
+        assert_eq!(none.top_left, ' ');
+        assert_eq!(none.horizontal, ' ');
+
+        let single = BorderType::Single.chars();
+        assert_eq!(single.top_left, '┌');
+        assert_eq!(single.horizontal, '─');
+
+        let double = BorderType::Double.chars();
+        assert_eq!(double.top_left, '╔');
+        assert_eq!(double.horizontal, '═');
+
+        let rounded = BorderType::Rounded.chars();
+        assert_eq!(rounded.top_left, '╭');
+        assert_eq!(rounded.bottom_right, '╯');
+
+        let thick = BorderType::Thick.chars();
+        assert_eq!(thick.top_left, '┏');
+        assert_eq!(thick.horizontal, '━');
+
+        let ascii = BorderType::Ascii.chars();
+        assert_eq!(ascii.top_left, '+');
+        assert_eq!(ascii.horizontal, '-');
+    }
+
+    #[test]
+    fn test_draw_border_utility() {
+        // Test the draw_border utility function
+        let mut buffer = Buffer::new(10, 5);
+        let area = Rect::new(0, 0, 10, 5);
+
+        draw_border(&mut buffer, area, BorderType::Single, None, None);
+
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '┌');
+        assert_eq!(buffer.get(9, 0).unwrap().symbol, '┐');
+        assert_eq!(buffer.get(0, 4).unwrap().symbol, '└');
+        assert_eq!(buffer.get(9, 4).unwrap().symbol, '┘');
+    }
+
+    #[test]
+    fn test_draw_border_none_type() {
+        // Test that BorderType::None draws nothing
+        let mut buffer = Buffer::new(10, 5);
+        let area = Rect::new(0, 0, 10, 5);
+
+        draw_border(&mut buffer, area, BorderType::None, None, None);
+
+        // Border should not be drawn
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
+    }
 }
