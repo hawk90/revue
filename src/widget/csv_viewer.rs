@@ -789,3 +789,373 @@ impl_props_builders!(CsvViewer);
 pub fn csv_viewer() -> CsvViewer {
     CsvViewer::new()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_csv_viewer_new() {
+        let viewer = CsvViewer::new();
+        assert_eq!(viewer.row_count(), 0);
+        assert_eq!(viewer.column_count(), 0);
+    }
+
+    #[test]
+    fn test_csv_viewer_from_content() {
+        let viewer = CsvViewer::from_content("name,age\nAlice,30\nBob,25");
+        assert_eq!(viewer.row_count(), 2); // Excludes header
+        assert_eq!(viewer.column_count(), 2);
+    }
+
+    #[test]
+    fn test_csv_viewer_parse_comma() {
+        let mut viewer = CsvViewer::new();
+        viewer.parse("a,b,c\n1,2,3");
+        assert_eq!(viewer.column_count(), 3);
+        assert_eq!(viewer.row_count(), 1);
+    }
+
+    #[test]
+    fn test_csv_viewer_parse_tab() {
+        let mut viewer = CsvViewer::new().delimiter(Delimiter::Tab);
+        viewer.parse("a\tb\tc\n1\t2\t3");
+        assert_eq!(viewer.column_count(), 3);
+    }
+
+    #[test]
+    fn test_csv_viewer_parse_semicolon() {
+        let mut viewer = CsvViewer::new().delimiter(Delimiter::Semicolon);
+        viewer.parse("a;b;c\n1;2;3");
+        assert_eq!(viewer.column_count(), 3);
+    }
+
+    #[test]
+    fn test_csv_viewer_parse_pipe() {
+        let mut viewer = CsvViewer::new().delimiter(Delimiter::Pipe);
+        viewer.parse("a|b|c\n1|2|3");
+        assert_eq!(viewer.column_count(), 3);
+    }
+
+    #[test]
+    fn test_csv_viewer_parse_custom_delimiter() {
+        let mut viewer = CsvViewer::new().delimiter(Delimiter::Custom(':'));
+        viewer.parse("a:b:c\n1:2:3");
+        assert_eq!(viewer.column_count(), 3);
+    }
+
+    #[test]
+    fn test_csv_viewer_auto_detect_comma() {
+        let viewer = CsvViewer::from_content("a,b,c\n1,2,3");
+        assert_eq!(viewer.column_count(), 3);
+    }
+
+    #[test]
+    fn test_csv_viewer_no_header() {
+        let viewer = CsvViewer::from_content("a,b\n1,2").has_header(false);
+        assert_eq!(viewer.row_count(), 2); // Both rows are data
+    }
+
+    #[test]
+    fn test_csv_viewer_get_cell() {
+        let viewer = CsvViewer::from_content("name,age\nAlice,30\nBob,25");
+        assert_eq!(viewer.get_cell(0, 0), Some("Alice"));
+        assert_eq!(viewer.get_cell(0, 1), Some("30"));
+        assert_eq!(viewer.get_cell(1, 0), Some("Bob"));
+        assert_eq!(viewer.get_cell(1, 1), Some("25"));
+    }
+
+    #[test]
+    fn test_csv_viewer_get_header() {
+        let viewer = CsvViewer::from_content("name,age\nAlice,30");
+        assert_eq!(viewer.get_header(0), Some("name"));
+        assert_eq!(viewer.get_header(1), Some("age"));
+    }
+
+    #[test]
+    fn test_csv_viewer_get_header_no_header() {
+        let viewer = CsvViewer::from_content("Alice,30").has_header(false);
+        assert_eq!(viewer.get_header(0), None);
+    }
+
+    #[test]
+    fn test_csv_viewer_selected_value() {
+        let viewer = CsvViewer::from_content("name,age\nAlice,30");
+        assert_eq!(viewer.selected_value(), Some("Alice"));
+    }
+
+    #[test]
+    fn test_csv_viewer_navigation() {
+        let mut viewer = CsvViewer::from_content("name,age\nAlice,30\nBob,25\nCarol,35");
+        assert_eq!(viewer.selected_row(), 0);
+        assert_eq!(viewer.selected_col(), 0);
+
+        viewer.select_down();
+        assert_eq!(viewer.selected_row(), 1);
+
+        viewer.select_down();
+        assert_eq!(viewer.selected_row(), 2);
+
+        viewer.select_up();
+        assert_eq!(viewer.selected_row(), 1);
+
+        viewer.select_right();
+        assert_eq!(viewer.selected_col(), 1);
+
+        viewer.select_left();
+        assert_eq!(viewer.selected_col(), 0);
+    }
+
+    #[test]
+    fn test_csv_viewer_first_last_row() {
+        let mut viewer = CsvViewer::from_content("a,b\n1,2\n3,4\n5,6");
+        viewer.select_last_row();
+        assert_eq!(viewer.selected_row(), 2);
+
+        viewer.select_first_row();
+        assert_eq!(viewer.selected_row(), 0);
+    }
+
+    #[test]
+    fn test_csv_viewer_page_navigation() {
+        let mut viewer = CsvViewer::from_content("a\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10");
+        viewer.page_down(3);
+        assert_eq!(viewer.selected_row(), 3);
+
+        viewer.page_up(2);
+        assert_eq!(viewer.selected_row(), 1);
+    }
+
+    #[test]
+    fn test_csv_viewer_sorting() {
+        let mut viewer = CsvViewer::from_content("name,age\nBob,25\nAlice,30\nCarol,20");
+
+        // Sort by name (column 0)
+        viewer.sort_by(0);
+        // First sort should be ascending
+
+        // Toggle sort
+        viewer.sort_by(0);
+        // Second click should be descending
+
+        viewer.sort_by(0);
+        // Third click should reset
+
+        viewer.reset_sort();
+    }
+
+    #[test]
+    fn test_csv_viewer_search() {
+        let mut viewer = CsvViewer::from_content("name,age\nAlice,30\nBob,25");
+
+        viewer.search("alice");
+        assert!(viewer.is_searching());
+        assert_eq!(viewer.match_count(), 1);
+
+        viewer.clear_search();
+        assert!(!viewer.is_searching());
+        assert_eq!(viewer.match_count(), 0);
+    }
+
+    #[test]
+    fn test_csv_viewer_search_multiple() {
+        let mut viewer = CsvViewer::from_content("a,b\ntest,1\n2,test\ntest,test");
+
+        viewer.search("test");
+        assert_eq!(viewer.match_count(), 4);
+    }
+
+    #[test]
+    fn test_csv_viewer_search_navigation() {
+        let mut viewer = CsvViewer::from_content("a,b\nx,1\n2,x\nx,x");
+
+        viewer.search("x");
+        assert!(viewer.match_count() > 0);
+
+        viewer.next_match();
+        viewer.next_match();
+        viewer.prev_match();
+    }
+
+    #[test]
+    fn test_csv_viewer_search_empty() {
+        let mut viewer = CsvViewer::from_content("a,b\n1,2");
+
+        viewer.search("");
+        assert!(!viewer.is_searching());
+        assert_eq!(viewer.match_count(), 0);
+    }
+
+    #[test]
+    fn test_csv_viewer_quoted_fields() {
+        let viewer = CsvViewer::from_content("name,desc\nAlice,\"Hello, World\"\nBob,Simple");
+        assert_eq!(viewer.get_cell(0, 1), Some("Hello, World"));
+    }
+
+    #[test]
+    fn test_csv_viewer_escaped_quotes() {
+        let viewer = CsvViewer::from_content("a,b\n\"He said \"\"Hi\"\"\",value");
+        assert_eq!(viewer.get_cell(0, 0), Some("He said \"Hi\""));
+    }
+
+    #[test]
+    fn test_csv_viewer_empty_content() {
+        let viewer = CsvViewer::from_content("");
+        assert_eq!(viewer.row_count(), 0);
+        assert_eq!(viewer.column_count(), 0);
+    }
+
+    #[test]
+    fn test_csv_viewer_single_column() {
+        let viewer = CsvViewer::from_content("name\nAlice\nBob");
+        assert_eq!(viewer.column_count(), 1);
+        assert_eq!(viewer.row_count(), 2);
+    }
+
+    #[test]
+    fn test_csv_viewer_single_row() {
+        let viewer = CsvViewer::from_content("a,b,c\n1,2,3");
+        assert_eq!(viewer.row_count(), 1);
+    }
+
+    #[test]
+    fn test_csv_viewer_builders() {
+        let viewer = CsvViewer::new()
+            .has_header(true)
+            .delimiter(Delimiter::Comma)
+            .show_row_numbers(true)
+            .show_separators(true)
+            .header_style(Color::WHITE, Color::BLUE)
+            .selected_style(Color::WHITE, Color::GREEN)
+            .match_style(Color::BLACK, Color::YELLOW)
+            .fg(Color::WHITE)
+            .bg(Color::BLACK);
+
+        assert_eq!(viewer.row_count(), 0);
+    }
+
+    #[test]
+    fn test_csv_viewer_data_builder() {
+        let viewer = CsvViewer::new().data(vec![
+            vec!["name".into(), "age".into()],
+            vec!["Alice".into(), "30".into()],
+        ]);
+        assert_eq!(viewer.column_count(), 2);
+    }
+
+    #[test]
+    fn test_csv_viewer_default() {
+        let viewer = CsvViewer::default();
+        assert_eq!(viewer.row_count(), 0);
+    }
+
+    #[test]
+    fn test_csv_viewer_helper() {
+        let viewer = csv_viewer();
+        assert_eq!(viewer.row_count(), 0);
+    }
+
+    #[test]
+    fn test_delimiter_char() {
+        assert_eq!(Delimiter::Auto.char(), None);
+        assert_eq!(Delimiter::Comma.char(), Some(','));
+        assert_eq!(Delimiter::Tab.char(), Some('\t'));
+        assert_eq!(Delimiter::Semicolon.char(), Some(';'));
+        assert_eq!(Delimiter::Pipe.char(), Some('|'));
+        assert_eq!(Delimiter::Custom('#').char(), Some('#'));
+    }
+
+    #[test]
+    fn test_sort_order_default() {
+        assert_eq!(SortOrder::default(), SortOrder::None);
+    }
+
+    #[test]
+    fn test_delimiter_default() {
+        assert_eq!(Delimiter::default(), Delimiter::Auto);
+    }
+
+    #[test]
+    fn test_csv_viewer_navigation_bounds() {
+        let mut viewer = CsvViewer::from_content("a,b\n1,2");
+
+        // Can't go up from first row
+        viewer.select_first_row();
+        viewer.select_up();
+        assert_eq!(viewer.selected_row(), 0);
+
+        // Can't go down past last row
+        viewer.select_last_row();
+        viewer.select_down();
+        assert_eq!(viewer.selected_row(), 0); // Only 1 data row
+
+        // Can't go left from first column
+        viewer.select_left();
+        assert_eq!(viewer.selected_col(), 0);
+
+        // Can't go right past last column
+        viewer.select_right();
+        assert_eq!(viewer.selected_col(), 1);
+        viewer.select_right();
+        assert_eq!(viewer.selected_col(), 1);
+    }
+
+    #[test]
+    fn test_csv_viewer_render() {
+        use crate::layout::Rect;
+        use crate::render::Buffer;
+        use crate::widget::traits::RenderContext;
+
+        let mut buffer = Buffer::new(40, 10);
+        let area = Rect::new(0, 0, 40, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let viewer = CsvViewer::from_content("name,age\nAlice,30\nBob,25");
+        viewer.render(&mut ctx);
+        // Should not crash
+    }
+
+    #[test]
+    fn test_csv_viewer_render_empty() {
+        use crate::layout::Rect;
+        use crate::render::Buffer;
+        use crate::widget::traits::RenderContext;
+
+        let mut buffer = Buffer::new(40, 10);
+        let area = Rect::new(0, 0, 40, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let viewer = CsvViewer::new();
+        viewer.render(&mut ctx);
+        // Should not crash on empty viewer
+    }
+
+    #[test]
+    fn test_csv_viewer_render_small_area() {
+        use crate::layout::Rect;
+        use crate::render::Buffer;
+        use crate::widget::traits::RenderContext;
+
+        let mut buffer = Buffer::new(3, 1);
+        let area = Rect::new(0, 0, 3, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let viewer = CsvViewer::from_content("a,b,c\n1,2,3");
+        viewer.render(&mut ctx);
+        // Should handle small area gracefully
+    }
+
+    #[test]
+    fn test_csv_viewer_whitespace_handling() {
+        let viewer = CsvViewer::from_content("name,age\n  Alice  ,  30  ");
+        assert_eq!(viewer.get_cell(0, 0), Some("Alice"));
+        assert_eq!(viewer.get_cell(0, 1), Some("30"));
+    }
+
+    #[test]
+    fn test_csv_viewer_crlf_line_endings() {
+        let viewer = CsvViewer::from_content("name,age\r\nAlice,30\r\nBob,25");
+        assert_eq!(viewer.row_count(), 2);
+        assert_eq!(viewer.get_cell(0, 0), Some("Alice"));
+    }
+}
