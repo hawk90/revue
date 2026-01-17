@@ -6,7 +6,7 @@ use super::traits::{RenderContext, View, WidgetProps};
 use crate::event::{Key, KeyEvent};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::{fuzzy_match, FilterMode};
+use crate::utils::{fuzzy_match, FilterMode, Selection};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Suggestion item with display text and optional value
@@ -73,8 +73,8 @@ pub struct Autocomplete {
     suggestions: Vec<Suggestion>,
     /// Filtered suggestions
     filtered: Vec<usize>,
-    /// Selected suggestion index
-    selected: usize,
+    /// Selected suggestion index in filtered list
+    selection: Selection,
     /// Is dropdown visible
     dropdown_visible: bool,
     /// Filter mode
@@ -115,7 +115,7 @@ impl Autocomplete {
             cursor: 0,
             suggestions: Vec::new(),
             filtered: Vec::new(),
-            selected: 0,
+            selection: Selection::new(0),
             dropdown_visible: false,
             filter_mode: FilterMode::Fuzzy,
             min_chars: 1,
@@ -234,7 +234,7 @@ impl Autocomplete {
     /// Get selected suggestion
     pub fn selected_suggestion(&self) -> Option<&Suggestion> {
         self.filtered
-            .get(self.selected)
+            .get(self.selection.index)
             .and_then(|&idx| self.suggestions.get(idx))
     }
 
@@ -287,7 +287,8 @@ impl Autocomplete {
             .collect();
 
         self.dropdown_visible = !self.filtered.is_empty();
-        self.selected = 0;
+        self.selection.set_len(self.filtered.len());
+        self.selection.first();
     }
 
     /// Handle key event
@@ -331,15 +332,11 @@ impl Autocomplete {
                 true
             }
             Key::Up if self.dropdown_visible => {
-                if self.selected > 0 {
-                    self.selected -= 1;
-                }
+                self.selection.up();
                 true
             }
             Key::Down if self.dropdown_visible => {
-                if self.selected + 1 < self.filtered.len() {
-                    self.selected += 1;
-                }
+                self.selection.down();
                 true
             }
             Key::Enter | Key::Tab if self.dropdown_visible => {
@@ -424,7 +421,7 @@ impl View for Autocomplete {
             {
                 let suggestion = &self.suggestions[suggestion_idx];
                 let y = dropdown_y + i as u16;
-                let is_selected = i == self.selected;
+                let is_selected = i == self.selection.index;
 
                 let (fg, bg) = if is_selected {
                     (self.selected_fg, self.selected_bg)
