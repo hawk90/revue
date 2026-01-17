@@ -27,6 +27,7 @@
 //! ```
 
 use crate::style::Color;
+use crate::widget::traits::DISABLED_FG;
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -523,7 +524,7 @@ impl View for OptionList {
 
                     // Determine colors
                     let fg = if item.disabled {
-                        self.disabled_fg.unwrap_or(Color::rgb(100, 100, 100))
+                        self.disabled_fg.unwrap_or(DISABLED_FG)
                     } else if is_highlighted {
                         self.highlighted_fg.unwrap_or(Color::CYAN)
                     } else if is_selected {
@@ -724,5 +725,20 @@ mod tests {
         let item = option_item("Test").hint("hint").value("val");
         assert_eq!(item.hint, Some("hint".to_string()));
         assert_eq!(item.value, Some("val".to_string()));
+    }
+
+    #[test]
+    fn test_disabled_fg_constant() {
+        // Verify that DISABLED_FG constant is properly imported and usable
+        use crate::widget::traits::DISABLED_FG;
+
+        let list = OptionList::new().add_option(OptionItem::new("Disabled").disabled(true));
+
+        // The disabled_fg should default to DISABLED_FG when not explicitly set
+        assert_eq!(list.disabled_fg, None);
+        // When rendering, disabled items should use DISABLED_FG as fallback
+        assert_eq!(DISABLED_FG.r, 100);
+        assert_eq!(DISABLED_FG.g, 100);
+        assert_eq!(DISABLED_FG.b, 100);
     }
 }

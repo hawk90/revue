@@ -6,7 +6,7 @@
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::utils::{fuzzy_match, FuzzyMatch};
+use crate::utils::{fuzzy_match, FuzzyMatch, Selection};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Command item
@@ -153,16 +153,14 @@ pub struct CommandPalette {
     query: String,
     /// Filtered command indices
     filtered: Vec<usize>,
-    /// Selected index in filtered list
-    selected: usize,
+    /// Selection state for filtered list (uses Selection utility)
+    selection: Selection,
     /// Visible state
     visible: bool,
     /// Width
     width: u16,
     /// Max visible items
     max_visible: u16,
-    /// Scroll offset
-    scroll_offset: usize,
     /// Placeholder text
     placeholder: String,
     /// Title
@@ -185,15 +183,16 @@ pub struct CommandPalette {
 impl CommandPalette {
     /// Create a new command palette
     pub fn new() -> Self {
+        let selection = Selection::new(0);
+        selection.set_visible(10);
         Self {
             commands: Vec::new(),
             query: String::new(),
             filtered: Vec::new(),
-            selected: 0,
+            selection,
             visible: false,
             width: 60,
             max_visible: 10,
-            scroll_offset: 0,
             placeholder: "Type to search...".to_string(),
             title: None,
             show_descriptions: true,
@@ -230,6 +229,7 @@ impl CommandPalette {
     /// Set max visible items
     pub fn max_visible(mut self, max: u16) -> Self {
         self.max_visible = max.max(3);
+        self.selection.set_visible(self.max_visible as usize);
         self
     }
 
@@ -275,8 +275,8 @@ impl CommandPalette {
     pub fn show(&mut self) {
         self.visible = true;
         self.query.clear();
-        self.selected = 0;
-        self.scroll_offset = 0;
+        self.selection.first();
+        self.selection.reset_offset();
         self.update_filter();
     }
 
@@ -331,43 +331,24 @@ impl CommandPalette {
         });
 
         // Reset selection
-        self.selected = 0;
-        self.scroll_offset = 0;
+        self.selection.set_len(self.filtered.len());
+        self.selection.first();
     }
 
     /// Select next item
     pub fn select_next(&mut self) {
-        if !self.filtered.is_empty() {
-            self.selected = (self.selected + 1) % self.filtered.len();
-            self.ensure_visible();
-        }
+        self.selection.next();
     }
 
     /// Select previous item
     pub fn select_prev(&mut self) {
-        if !self.filtered.is_empty() {
-            self.selected = self
-                .selected
-                .checked_sub(1)
-                .unwrap_or(self.filtered.len() - 1);
-            self.ensure_visible();
-        }
-    }
-
-    /// Ensure selected item is visible
-    fn ensure_visible(&mut self) {
-        let max_vis = self.max_visible as usize;
-        if self.selected < self.scroll_offset {
-            self.scroll_offset = self.selected;
-        } else if self.selected >= self.scroll_offset + max_vis {
-            self.scroll_offset = self.selected - max_vis + 1;
-        }
+        self.selection.prev();
     }
 
     /// Get selected command
     pub fn selected_command(&self) -> Option<&Command> {
         self.filtered
-            .get(self.selected)
+            .get(self.selection.index)
             .map(|&idx| &self.commands[idx])
     }
 
@@ -642,16 +623,17 @@ impl View for CommandPalette {
         current_y += 1;
 
         // Command items
+        let scroll_offset = self.selection.offset();
         let visible_items: Vec<_> = self
             .filtered
             .iter()
-            .skip(self.scroll_offset)
+            .skip(scroll_offset)
             .take(self.max_visible as usize)
             .collect();
 
         for (i, &cmd_idx) in visible_items.iter().enumerate() {
             let cmd = &self.commands[*cmd_idx];
-            let is_selected = self.scroll_offset + i == self.selected;
+            let is_selected = self.selection.is_selected(scroll_offset + i);
             let item_y = current_y + i as u16;
 
             // Left border
@@ -880,19 +862,19 @@ mod tests {
 
         p.show();
 
-        assert_eq!(p.selected, 0);
+        assert_eq!(p.selection.index, 0);
 
         p.select_next();
-        assert_eq!(p.selected, 1);
+        assert_eq!(p.selection.index, 1);
 
         p.select_next();
-        assert_eq!(p.selected, 2);
+        assert_eq!(p.selection.index, 2);
 
         p.select_next();
-        assert_eq!(p.selected, 0); // Wrap
+        assert_eq!(p.selection.index, 0); // Wrap
 
         p.select_prev();
-        assert_eq!(p.selected, 2); // Wrap back
+        assert_eq!(p.selection.index, 2); // Wrap back
     }
 
     #[test]
@@ -956,5 +938,43 @@ mod tests {
         assert!(result[1].1); // 'e' matched
         assert!(result[2].1); // 'l' matched
         assert!(result[3].1); // 'l' matched
+    }
+
+    #[test]
+    fn test_palette_selection_utility() {
+        // Test that Selection utility is properly integrated
+        let mut p = CommandPalette::new()
+            .command(Command::new("cmd1", "Command 1"))
+            .command(Command::new("cmd2", "Command 2"))
+            .command(Command::new("cmd3", "Command 3"));
+
+        p.show();
+
+        // Initial selection should be 0
+        assert_eq!(p.selection.index, 0);
+
+        // Navigate next
+        p.select_next();
+        assert_eq!(p.selection.index, 1);
+
+        // Navigate prev
+        p.select_prev();
+        assert_eq!(p.selection.index, 0);
+
+        // Wrap around forward
+        p.select_next();
+        p.select_next();
+        p.select_next();
+        assert_eq!(p.selection.index, 0);
+
+        // Wrap around backward
+        p.select_prev();
+        assert_eq!(p.selection.index, 2);
+    }
+
+    #[test]
+    fn test_palette_max_visible() {
+        let p = CommandPalette::new().max_visible(5);
+        assert_eq!(p.max_visible, 5);
     }
 }

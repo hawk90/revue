@@ -80,6 +80,11 @@ impl Switch {
         self
     }
 
+    /// Set initial state (alias for `on()` to match Checkbox API)
+    pub fn checked(self, checked: bool) -> Self {
+        self.on(checked)
+    }
+
     /// Set label
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
@@ -158,6 +163,11 @@ impl Switch {
     /// Get current state
     pub fn is_on(&self) -> bool {
         self.on
+    }
+
+    /// Get current state (alias for `is_on()` to match Checkbox API)
+    pub fn is_checked(&self) -> bool {
+        self.is_on()
     }
 
     /// Handle key input
@@ -575,5 +585,17 @@ mod tests {
     fn test_toggle_helper() {
         let s = toggle("Enable");
         assert_eq!(s.label, Some("Enable".to_string()));
+    }
+
+    #[test]
+    fn test_switch_checked_alias() {
+        // Test checked() is an alias for on()
+        let s = Switch::new().checked(true);
+        assert!(s.is_on());
+        assert!(s.is_checked());
+
+        let s = Switch::new().checked(false);
+        assert!(!s.is_on());
+        assert!(!s.is_checked());
     }
 }

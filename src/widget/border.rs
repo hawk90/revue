@@ -4,6 +4,7 @@ use super::traits::{RenderContext, View, WidgetProps};
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::border::BorderChars;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Border style characters
@@ -24,75 +25,26 @@ pub enum BorderType {
     Ascii,
 }
 
-/// Border characters set
-#[derive(Clone, Copy, Debug)]
-pub struct BorderChars {
-    /// Top-left corner character
-    pub top_left: char,
-    /// Top-right corner character
-    pub top_right: char,
-    /// Bottom-left corner character
-    pub bottom_left: char,
-    /// Bottom-right corner character
-    pub bottom_right: char,
-    /// Horizontal line character
-    pub horizontal: char,
-    /// Vertical line character
-    pub vertical: char,
-}
+/// Empty border chars (for BorderType::None)
+const NONE_CHARS: BorderChars = BorderChars {
+    top_left: ' ',
+    top_right: ' ',
+    bottom_left: ' ',
+    bottom_right: ' ',
+    horizontal: ' ',
+    vertical: ' ',
+};
 
 impl BorderType {
     /// Get the character set for this border type
     pub fn chars(&self) -> BorderChars {
         match self {
-            BorderType::None => BorderChars {
-                top_left: ' ',
-                top_right: ' ',
-                bottom_left: ' ',
-                bottom_right: ' ',
-                horizontal: ' ',
-                vertical: ' ',
-            },
-            BorderType::Single => BorderChars {
-                top_left: '┌',
-                top_right: '┐',
-                bottom_left: '└',
-                bottom_right: '┘',
-                horizontal: '─',
-                vertical: '│',
-            },
-            BorderType::Double => BorderChars {
-                top_left: '╔',
-                top_right: '╗',
-                bottom_left: '╚',
-                bottom_right: '╝',
-                horizontal: '═',
-                vertical: '║',
-            },
-            BorderType::Rounded => BorderChars {
-                top_left: '╭',
-                top_right: '╮',
-                bottom_left: '╰',
-                bottom_right: '╯',
-                horizontal: '─',
-                vertical: '│',
-            },
-            BorderType::Thick => BorderChars {
-                top_left: '┏',
-                top_right: '┓',
-                bottom_left: '┗',
-                bottom_right: '┛',
-                horizontal: '━',
-                vertical: '┃',
-            },
-            BorderType::Ascii => BorderChars {
-                top_left: '+',
-                top_right: '+',
-                bottom_left: '+',
-                bottom_right: '+',
-                horizontal: '-',
-                vertical: '|',
-            },
+            BorderType::None => NONE_CHARS,
+            BorderType::Single => BorderChars::SINGLE,
+            BorderType::Double => BorderChars::DOUBLE,
+            BorderType::Rounded => BorderChars::ROUNDED,
+            BorderType::Thick => BorderChars::BOLD,
+            BorderType::Ascii => BorderChars::ASCII,
         }
     }
 }
@@ -490,5 +442,59 @@ mod tests {
         assert_eq!(buffer.get(9, 0).unwrap().symbol, '╮');
         assert_eq!(buffer.get(0, 4).unwrap().symbol, '╰');
         assert_eq!(buffer.get(9, 4).unwrap().symbol, '╯');
+    }
+
+    #[test]
+    fn test_border_type_chars() {
+        // Test that BorderType::chars() returns correct consolidated BorderChars
+        let none = BorderType::None.chars();
+        assert_eq!(none.top_left, ' ');
+        assert_eq!(none.horizontal, ' ');
+
+        let single = BorderType::Single.chars();
+        assert_eq!(single.top_left, '┌');
+        assert_eq!(single.horizontal, '─');
+
+        let double = BorderType::Double.chars();
+        assert_eq!(double.top_left, '╔');
+        assert_eq!(double.horizontal, '═');
+
+        let rounded = BorderType::Rounded.chars();
+        assert_eq!(rounded.top_left, '╭');
+        assert_eq!(rounded.bottom_right, '╯');
+
+        let thick = BorderType::Thick.chars();
+        assert_eq!(thick.top_left, '┏');
+        assert_eq!(thick.horizontal, '━');
+
+        let ascii = BorderType::Ascii.chars();
+        assert_eq!(ascii.top_left, '+');
+        assert_eq!(ascii.horizontal, '-');
+    }
+
+    #[test]
+    fn test_draw_border_utility() {
+        // Test the draw_border utility function
+        let mut buffer = Buffer::new(10, 5);
+        let area = Rect::new(0, 0, 10, 5);
+
+        draw_border(&mut buffer, area, BorderType::Single, None, None);
+
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '┌');
+        assert_eq!(buffer.get(9, 0).unwrap().symbol, '┐');
+        assert_eq!(buffer.get(0, 4).unwrap().symbol, '└');
+        assert_eq!(buffer.get(9, 4).unwrap().symbol, '┘');
+    }
+
+    #[test]
+    fn test_draw_border_none_type() {
+        // Test that BorderType::None draws nothing
+        let mut buffer = Buffer::new(10, 5);
+        let area = Rect::new(0, 0, 10, 5);
+
+        draw_border(&mut buffer, area, BorderType::None, None, None);
+
+        // Border should not be drawn
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
     }
 }

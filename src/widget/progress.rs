@@ -143,13 +143,8 @@ impl View for Progress {
         if self.show_percentage {
             let pct = format!("{:3.0}%", self.progress * 100.0);
             let start_x = area.x + bar_width + 1;
-            for (i, ch) in pct.chars().enumerate() {
-                if start_x + i as u16 >= area.x + area.width {
-                    break;
-                }
-                let cell = Cell::new(ch);
-                ctx.buffer.set(start_x + i as u16, area.y, cell);
-            }
+            let max_width = (area.x + area.width).saturating_sub(start_x);
+            ctx.draw_text_clipped(start_x, area.y, &pct, Color::WHITE, max_width);
         }
     }
 

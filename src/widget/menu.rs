@@ -2,7 +2,7 @@
 //!
 //! Provides horizontal menu bars and dropdown/context menus.
 
-use super::traits::{RenderContext, View, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps, DISABLED_FG};
 use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
@@ -170,7 +170,7 @@ impl MenuBar {
             fg: Color::WHITE,
             selected_bg: Color::rgb(60, 100, 180),
             selected_fg: Color::WHITE,
-            disabled_fg: Color::rgb(100, 100, 100),
+            disabled_fg: DISABLED_FG,
             shortcut_fg: Color::rgb(150, 150, 150),
             props: WidgetProps::new(),
         }
