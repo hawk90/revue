@@ -1303,3 +1303,333 @@ fn test_battery_helper() {
     let g = battery(80.0);
     assert_eq!(g.get_value(), 0.8);
 }
+
+// =============================================================================
+// Tabs Tests
+// =============================================================================
+
+use revue::widget::{tabs, Tabs};
+
+#[test]
+fn test_tabs_new() {
+    let t = Tabs::new();
+    assert!(t.is_empty());
+    assert_eq!(t.selected_index(), 0);
+}
+
+#[test]
+fn test_tabs_builder() {
+    let t = Tabs::new().tab("Home").tab("Settings").tab("Help");
+
+    assert_eq!(t.len(), 3);
+    assert_eq!(t.selected_label(), Some("Home"));
+}
+
+#[test]
+fn test_tabs_from_vec() {
+    let t = Tabs::new().tabs(vec!["A", "B", "C"]);
+
+    assert_eq!(t.len(), 3);
+}
+
+#[test]
+fn test_tabs_navigation() {
+    let mut t = Tabs::new().tabs(vec!["One", "Two", "Three"]);
+
+    assert_eq!(t.selected_index(), 0);
+
+    t.select_next();
+    assert_eq!(t.selected_index(), 1);
+
+    t.select_next();
+    assert_eq!(t.selected_index(), 2);
+
+    t.select_next(); // Wraps around
+    assert_eq!(t.selected_index(), 0);
+
+    t.select_prev(); // Wraps around backward
+    assert_eq!(t.selected_index(), 2);
+
+    t.select_first();
+    assert_eq!(t.selected_index(), 0);
+
+    t.select_last();
+    assert_eq!(t.selected_index(), 2);
+
+    t.select(1);
+    assert_eq!(t.selected_index(), 1);
+}
+
+#[test]
+fn test_tabs_handle_key() {
+    let mut t = Tabs::new().tabs(vec!["A", "B", "C"]);
+
+    let changed = t.handle_key(&Key::Right);
+    assert!(changed);
+    assert_eq!(t.selected_index(), 1);
+
+    let changed = t.handle_key(&Key::Left);
+    assert!(changed);
+    assert_eq!(t.selected_index(), 0);
+
+    // Number keys (1-indexed)
+    t.handle_key(&Key::Char('3'));
+    assert_eq!(t.selected_index(), 2);
+
+    t.handle_key(&Key::Char('1'));
+    assert_eq!(t.selected_index(), 0);
+}
+
+#[test]
+fn test_tabs_render() {
+    let mut buffer = Buffer::new(40, 5);
+    let area = Rect::new(0, 0, 40, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let t = Tabs::new().tab("Files").tab("Edit");
+
+    t.render(&mut ctx);
+
+    // Check first tab label
+    assert_eq!(buffer.get(1, 0).unwrap().symbol, 'F');
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, 'i');
+}
+
+#[test]
+fn test_tabs_selected_label() {
+    let t = Tabs::new().tabs(vec!["Alpha", "Beta"]);
+
+    assert_eq!(t.selected_label(), Some("Alpha"));
+}
+
+#[test]
+fn test_tabs_helper() {
+    let t = tabs().tab("Test");
+
+    assert_eq!(t.len(), 1);
+}
+
+#[test]
+fn test_tabs_default() {
+    let t = Tabs::default();
+    assert!(t.is_empty());
+}
+
+#[test]
+fn test_tabs_handle_key_h_l() {
+    let mut t = Tabs::new().tabs(vec!["A", "B", "C"]);
+
+    // l for right
+    t.handle_key(&Key::Char('l'));
+    assert_eq!(t.selected_index(), 1);
+
+    // h for left
+    t.handle_key(&Key::Char('h'));
+    assert_eq!(t.selected_index(), 0);
+}
+
+#[test]
+fn test_tabs_handle_key_home_end() {
+    let mut t = Tabs::new().tabs(vec!["A", "B", "C"]);
+
+    t.handle_key(&Key::End);
+    assert_eq!(t.selected_index(), 2);
+
+    t.handle_key(&Key::Home);
+    assert_eq!(t.selected_index(), 0);
+}
+
+#[test]
+fn test_tabs_handle_key_number_out_of_range() {
+    let mut t = Tabs::new().tabs(vec!["A", "B"]);
+
+    // Pressing '9' when there are only 2 tabs should do nothing
+    let changed = t.handle_key(&Key::Char('9'));
+    assert!(!changed);
+    assert_eq!(t.selected_index(), 0);
+}
+
+#[test]
+fn test_tabs_handle_key_unhandled() {
+    let mut t = Tabs::new().tabs(vec!["A", "B"]);
+
+    let changed = t.handle_key(&Key::Escape);
+    assert!(!changed);
+}
+
+#[test]
+fn test_tabs_selected_label_empty() {
+    let t = Tabs::new();
+    assert!(t.selected_label().is_none());
+}
+
+#[test]
+fn test_tabs_render_empty() {
+    let mut buffer = Buffer::new(40, 5);
+    let area = Rect::new(0, 0, 40, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let t = Tabs::new();
+    t.render(&mut ctx);
+    // Empty tabs should not panic
+}
+
+#[test]
+fn test_tabs_render_small_area() {
+    let mut buffer = Buffer::new(2, 1);
+    let area = Rect::new(0, 0, 2, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let t = Tabs::new().tab("Test");
+    t.render(&mut ctx);
+    // Small area should not panic
+}
+
+// =============================================================================
+// Tooltip Tests
+// =============================================================================
+
+use revue::widget::{tooltip, Tooltip, TooltipPosition, TooltipStyle};
+
+#[test]
+fn test_tooltip_visibility() {
+    let mut t = Tooltip::new("Test");
+
+    t.hide();
+    assert!(!t.is_visible());
+
+    t.show();
+    // Note: is_visible checks delay too, but delay defaults to 0
+    assert!(t.is_visible());
+
+    t.toggle();
+    assert!(!t.is_visible());
+}
+
+#[test]
+fn test_tooltip_delay() {
+    let mut t = Tooltip::new("Test").delay(5);
+    assert!(!t.is_visible());
+
+    for _ in 0..4 {
+        t.tick();
+    }
+    assert!(!t.is_visible());
+
+    t.tick();
+    assert!(t.is_visible());
+}
+
+#[test]
+fn test_tooltip_render() {
+    let mut buffer = Buffer::new(40, 20);
+    let area = Rect::new(0, 0, 40, 20);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let t = Tooltip::new("Hello World")
+        .anchor(20, 10)
+        .position(TooltipPosition::Top)
+        .style(TooltipStyle::Bordered);
+
+    t.render(&mut ctx);
+    // Smoke test - renders without panic
+}
+
+#[test]
+fn test_tooltip_helper() {
+    let t = tooltip("Quick tooltip");
+    assert!(t.is_visible());
+}
+
+// =============================================================================
+// Input Tests
+// =============================================================================
+
+use revue::widget::{input, Input};
+
+#[test]
+fn test_input_new() {
+    let i = Input::new();
+    assert_eq!(i.text(), "");
+    assert_eq!(i.cursor(), 0);
+}
+
+#[test]
+fn test_input_with_value() {
+    let i = Input::new().value("hello");
+    assert_eq!(i.text(), "hello");
+    assert_eq!(i.cursor(), 5);
+}
+
+#[test]
+fn test_input_type_char() {
+    let mut i = Input::new();
+    i.handle_key(&Key::Char('a'));
+    i.handle_key(&Key::Char('b'));
+    i.handle_key(&Key::Char('c'));
+    assert_eq!(i.text(), "abc");
+    assert_eq!(i.cursor(), 3);
+}
+
+#[test]
+fn test_input_backspace() {
+    let mut i = Input::new().value("abc");
+    i.handle_key(&Key::Backspace);
+    assert_eq!(i.text(), "ab");
+    assert_eq!(i.cursor(), 2);
+}
+
+#[test]
+fn test_input_cursor_movement() {
+    let mut i = Input::new().value("hello");
+    assert_eq!(i.cursor(), 5);
+
+    i.handle_key(&Key::Left);
+    assert_eq!(i.cursor(), 4);
+
+    i.handle_key(&Key::Home);
+    assert_eq!(i.cursor(), 0);
+
+    i.handle_key(&Key::End);
+    assert_eq!(i.cursor(), 5);
+
+    i.handle_key(&Key::Right);
+    assert_eq!(i.cursor(), 5); // Can't go past end
+}
+
+#[test]
+fn test_input_clear() {
+    let mut i = Input::new().value("hello");
+    i.clear();
+    assert_eq!(i.text(), "");
+    assert_eq!(i.cursor(), 0);
+}
+
+#[test]
+fn test_input_select_all() {
+    let mut i = Input::new().value("hello world");
+    i.select_all();
+
+    assert!(i.has_selection());
+    assert_eq!(i.selection(), Some((0, 11)));
+    assert_eq!(i.selected_text(), Some("hello world"));
+}
+
+#[test]
+fn test_input_can_undo_redo() {
+    let mut i = Input::new();
+
+    i.handle_key(&Key::Char('a'));
+    assert!(i.can_undo());
+    assert!(!i.can_redo());
+
+    i.undo();
+    assert!(!i.can_undo());
+    assert!(i.can_redo());
+}
+
+#[test]
+fn test_input_helper() {
+    let i = input().value("test");
+    assert_eq!(i.text(), "test");
+}

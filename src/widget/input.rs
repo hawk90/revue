@@ -796,44 +796,15 @@ pub fn input() -> Input {
     Input::new()
 }
 
+// Most tests moved to tests/widget_tests.rs
+// Tests below access private fields and must stay inline
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::layout::Rect;
     use crate::render::Buffer;
     use crate::widget::StyledView;
-
-    #[test]
-    fn test_input_new() {
-        let input = Input::new();
-        assert_eq!(input.text(), "");
-        assert_eq!(input.cursor(), 0);
-    }
-
-    #[test]
-    fn test_input_with_value() {
-        let input = Input::new().value("hello");
-        assert_eq!(input.text(), "hello");
-        assert_eq!(input.cursor(), 5);
-    }
-
-    #[test]
-    fn test_input_type_char() {
-        let mut input = Input::new();
-        input.handle_key(&Key::Char('a'));
-        input.handle_key(&Key::Char('b'));
-        input.handle_key(&Key::Char('c'));
-        assert_eq!(input.text(), "abc");
-        assert_eq!(input.cursor(), 3);
-    }
-
-    #[test]
-    fn test_input_backspace() {
-        let mut input = Input::new().value("abc");
-        input.handle_key(&Key::Backspace);
-        assert_eq!(input.text(), "ab");
-        assert_eq!(input.cursor(), 2);
-    }
 
     #[test]
     fn test_input_delete() {
@@ -844,38 +815,12 @@ mod tests {
     }
 
     #[test]
-    fn test_input_cursor_movement() {
-        let mut input = Input::new().value("hello");
-        assert_eq!(input.cursor(), 5);
-
-        input.handle_key(&Key::Left);
-        assert_eq!(input.cursor(), 4);
-
-        input.handle_key(&Key::Home);
-        assert_eq!(input.cursor(), 0);
-
-        input.handle_key(&Key::End);
-        assert_eq!(input.cursor(), 5);
-
-        input.handle_key(&Key::Right);
-        assert_eq!(input.cursor(), 5); // Can't go past end
-    }
-
-    #[test]
     fn test_input_insert_middle() {
         let mut input = Input::new().value("ac");
         input.cursor = 1;
         input.handle_key(&Key::Char('b'));
         assert_eq!(input.text(), "abc");
         assert_eq!(input.cursor(), 2);
-    }
-
-    #[test]
-    fn test_input_clear() {
-        let mut input = Input::new().value("hello");
-        input.clear();
-        assert_eq!(input.text(), "");
-        assert_eq!(input.cursor(), 0);
     }
 
     #[test]
@@ -905,16 +850,6 @@ mod tests {
         assert!(input.has_selection());
         assert_eq!(input.selection(), Some((0, 5)));
         assert_eq!(input.selected_text(), Some("hello"));
-    }
-
-    #[test]
-    fn test_input_select_all() {
-        let mut input = Input::new().value("hello world");
-        input.select_all();
-
-        assert!(input.has_selection());
-        assert_eq!(input.selection(), Some((0, 11)));
-        assert_eq!(input.selected_text(), Some("hello world"));
     }
 
     #[test]
