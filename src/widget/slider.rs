@@ -589,11 +589,12 @@ pub fn volume_slider() -> Slider {
         .style(SliderStyle::Block)
 }
 
+// Most tests moved to tests/widget_tests.rs
+// Tests below access private fields and must stay inline
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
 
     #[test]
     fn test_slider_new() {
@@ -640,84 +641,12 @@ mod tests {
     }
 
     #[test]
-    fn test_slider_increment_decrement() {
-        let mut s = Slider::new().range(0.0, 100.0).step(10.0).value(50.0);
-
-        s.increment();
-        assert_eq!(s.value, 60.0);
-
-        s.decrement();
-        assert_eq!(s.value, 50.0);
-    }
-
-    #[test]
-    fn test_slider_min_max() {
-        let mut s = Slider::new().range(0.0, 100.0).value(50.0);
-
-        s.set_min();
-        assert_eq!(s.value, 0.0);
-
-        s.set_max();
-        assert_eq!(s.value, 100.0);
-    }
-
-    #[test]
-    fn test_slider_disabled() {
-        let mut s = Slider::new().disabled(true).focused(true).value(50.0);
-        let handled = s.handle_key(&crate::event::Key::Right);
-        assert!(!handled);
-        assert_eq!(s.value, 50.0); // Value unchanged
-    }
-
-    #[test]
     fn test_slider_orientation() {
         let h = Slider::new().horizontal();
         assert!(matches!(h.orientation, SliderOrientation::Horizontal));
 
         let v = Slider::new().vertical();
         assert!(matches!(v.orientation, SliderOrientation::Vertical));
-    }
-
-    #[test]
-    fn test_slider_styles() {
-        let styles = [
-            SliderStyle::Block,
-            SliderStyle::Line,
-            SliderStyle::Thin,
-            SliderStyle::Gradient,
-            SliderStyle::Dots,
-        ];
-
-        for style in styles {
-            let mut buffer = Buffer::new(40, 3);
-            let area = Rect::new(0, 0, 40, 3);
-            let mut ctx = RenderContext::new(&mut buffer, area);
-
-            let s = Slider::new().style(style).value(50.0);
-            s.render(&mut ctx);
-        }
-    }
-
-    #[test]
-    fn test_slider_render_horizontal() {
-        let mut buffer = Buffer::new(40, 2);
-        let area = Rect::new(0, 0, 40, 2);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let s = Slider::new().value(50.0).label("Volume");
-        s.render(&mut ctx);
-
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'V');
-    }
-
-    #[test]
-    fn test_slider_render_vertical() {
-        let mut buffer = Buffer::new(10, 20);
-        let area = Rect::new(0, 0, 10, 20);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let s = Slider::new().vertical().length(15).value(50.0);
-        s.render(&mut ctx);
     }
 
     #[test]

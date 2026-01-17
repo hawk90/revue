@@ -1545,7 +1545,10 @@ fn test_tooltip_helper() {
 // Input Tests
 // =============================================================================
 
-use revue::widget::{input, Input};
+use revue::widget::{
+    input, list, percentage_slider, select, slider, slider_range, volume_slider, Input, List,
+    Select, Slider, SliderOrientation, SliderStyle,
+};
 
 #[test]
 fn test_input_new() {
@@ -1632,4 +1635,703 @@ fn test_input_can_undo_redo() {
 fn test_input_helper() {
     let i = input().value("test");
     assert_eq!(i.text(), "test");
+}
+
+// =============================================================================
+// Select Tests
+// =============================================================================
+
+#[test]
+fn test_select_new() {
+    let s = Select::new();
+    assert!(s.is_empty());
+    assert_eq!(s.selected_index(), 0);
+    assert!(!s.is_open());
+}
+
+#[test]
+fn test_select_with_options() {
+    let s = Select::new()
+        .option("Apple")
+        .option("Banana")
+        .option("Cherry");
+
+    assert_eq!(s.len(), 3);
+    assert_eq!(s.value(), Some("Apple"));
+}
+
+#[test]
+fn test_select_options_vec() {
+    let s = Select::new().options(vec!["One", "Two", "Three"]);
+
+    assert_eq!(s.len(), 3);
+    assert_eq!(s.value(), Some("One"));
+}
+
+#[test]
+fn test_select_navigation() {
+    let mut s = Select::new().options(vec!["A", "B", "C"]);
+
+    assert_eq!(s.selected_index(), 0);
+
+    s.select_next();
+    assert_eq!(s.selected_index(), 1);
+
+    s.select_next();
+    assert_eq!(s.selected_index(), 2);
+
+    s.select_next(); // Wraps around
+    assert_eq!(s.selected_index(), 0);
+
+    s.select_prev(); // Wraps around backward
+    assert_eq!(s.selected_index(), 2);
+
+    s.select_first();
+    assert_eq!(s.selected_index(), 0);
+
+    s.select_last();
+    assert_eq!(s.selected_index(), 2);
+}
+
+#[test]
+fn test_select_toggle() {
+    let mut s = Select::new();
+    assert!(!s.is_open());
+
+    s.toggle();
+    assert!(s.is_open());
+
+    s.toggle();
+    assert!(!s.is_open());
+
+    s.open();
+    assert!(s.is_open());
+
+    s.close();
+    assert!(!s.is_open());
+}
+
+#[test]
+fn test_select_handle_key() {
+    let mut s = Select::new().options(vec!["X", "Y", "Z"]);
+
+    // Toggle open
+    s.handle_key(&Key::Enter);
+    assert!(s.is_open());
+
+    // Navigate down
+    let changed = s.handle_key(&Key::Down);
+    assert!(changed);
+    assert_eq!(s.selected_index(), 1);
+
+    // Navigate up
+    let changed = s.handle_key(&Key::Up);
+    assert!(changed);
+    assert_eq!(s.selected_index(), 0);
+
+    // Close with Escape
+    s.handle_key(&Key::Escape);
+    assert!(!s.is_open());
+}
+
+#[test]
+fn test_select_render_closed() {
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let s = Select::new()
+        .options(vec!["Option 1", "Option 2"])
+        .placeholder("Choose...");
+
+    s.render(&mut ctx);
+
+    // Should show arrow
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '▼');
+}
+
+#[test]
+fn test_select_render_open() {
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let mut s = Select::new().options(vec!["Apple", "Banana"]);
+    s.open();
+
+    s.render(&mut ctx);
+
+    // Should show up arrow when open
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '▲');
+    // First option should have selection indicator
+    assert_eq!(buffer.get(0, 1).unwrap().symbol, '›');
+}
+
+#[test]
+fn test_select_helper() {
+    let s = select().option("Test").placeholder("Pick one");
+
+    assert_eq!(s.len(), 1);
+}
+
+#[test]
+fn test_select_empty_value() {
+    let s = Select::new();
+    assert_eq!(s.value(), None);
+}
+
+#[test]
+fn test_select_searchable() {
+    let mut s = Select::new()
+        .options(vec!["Apple", "Apricot", "Banana", "Blueberry", "Cherry"])
+        .searchable(true);
+
+    assert!(s.is_searchable());
+    assert_eq!(s.query(), "");
+
+    // Set query
+    s.set_query("ap");
+    assert_eq!(s.query(), "ap");
+
+    // Should filter to Apple and Apricot
+    assert_eq!(s.visible_count(), 2);
+    assert!(s.filtered_options().contains(&0)); // Apple
+    assert!(s.filtered_options().contains(&1)); // Apricot
+
+    // Clear query
+    s.clear_query();
+    assert_eq!(s.query(), "");
+    assert_eq!(s.visible_count(), 5);
+}
+
+#[test]
+fn test_select_fuzzy_filter() {
+    let mut s = Select::new()
+        .options(vec!["Save File", "Open File", "Close Window", "Save All"])
+        .searchable(true);
+
+    // Fuzzy match "sf" -> "Save File", "Save All"
+    s.set_query("sf");
+    assert!(s.filtered_options().contains(&0)); // Save File
+    assert!(!s.filtered_options().contains(&1)); // Open File - no match
+    assert!(!s.filtered_options().contains(&2)); // Close Window - no match
+
+    // Fuzzy match "ow" -> "Close Window"
+    s.set_query("ow");
+    assert!(s.filtered_options().contains(&2)); // Close Window
+}
+
+#[test]
+fn test_select_searchable_keys() {
+    let mut s = Select::new()
+        .options(vec!["Apple", "Banana", "Cherry"])
+        .searchable(true);
+
+    // Open
+    s.handle_key(&Key::Enter);
+    assert!(s.is_open());
+
+    // Type 'a'
+    s.handle_key(&Key::Char('a'));
+    assert_eq!(s.query(), "a");
+    assert_eq!(s.visible_count(), 2); // Apple and Banana (both have 'a')
+
+    // Type 'p' -> "ap" only matches Apple
+    s.handle_key(&Key::Char('p'));
+    assert_eq!(s.query(), "ap");
+    assert_eq!(s.visible_count(), 1); // Only Apple
+
+    // Backspace
+    s.handle_key(&Key::Backspace);
+    assert_eq!(s.query(), "a");
+
+    // Close and clear
+    s.handle_key(&Key::Escape);
+    assert!(!s.is_open());
+    assert_eq!(s.query(), ""); // Query cleared on close
+}
+
+#[test]
+fn test_select_get_match() {
+    let mut s = Select::new().options(vec!["Hello World"]).searchable(true);
+
+    // No match when no query
+    assert!(s.get_match("Hello World").is_none());
+
+    // Set query
+    s.set_query("hw");
+
+    // Should have match with indices
+    let m = s.get_match("Hello World");
+    assert!(m.is_some());
+    let m = m.unwrap();
+    assert!(m.indices.contains(&0)); // H
+    assert!(m.indices.contains(&6)); // W
+}
+
+#[test]
+fn test_select_css_id() {
+    let select = Select::new()
+        .options(vec!["A", "B"])
+        .element_id("country-select");
+    assert_eq!(View::id(&select), Some("country-select"));
+
+    let meta = select.meta();
+    assert_eq!(meta.id, Some("country-select".to_string()));
+}
+
+#[test]
+fn test_select_css_classes() {
+    let select = Select::new()
+        .options(vec!["A", "B"])
+        .class("dropdown")
+        .class("form-control");
+
+    assert!(select.has_class("dropdown"));
+    assert!(select.has_class("form-control"));
+    assert!(!select.has_class("hidden"));
+
+    let meta = select.meta();
+    assert!(meta.classes.contains("dropdown"));
+    assert!(meta.classes.contains("form-control"));
+}
+
+#[test]
+fn test_select_styled_view() {
+    let mut select = Select::new().options(vec!["A", "B"]);
+
+    select.set_id("test-select");
+    assert_eq!(View::id(&select), Some("test-select"));
+
+    select.add_class("active");
+    assert!(select.has_class("active"));
+
+    select.toggle_class("active");
+    assert!(!select.has_class("active"));
+
+    select.toggle_class("open");
+    assert!(select.has_class("open"));
+
+    select.remove_class("open");
+    assert!(!select.has_class("open"));
+}
+
+#[test]
+fn test_select_filtered_navigation() {
+    let mut s = Select::new()
+        .options(vec!["Apple", "Apricot", "Banana", "Berry", "Cherry"])
+        .searchable(true);
+
+    s.open();
+    s.set_query("b"); // Matches Banana and Berry
+
+    assert_eq!(s.visible_count(), 2);
+
+    // Navigate down in filtered results
+    s.handle_key(&Key::Down);
+    // Selection should move to next filtered item
+
+    // Navigate up in filtered results
+    s.handle_key(&Key::Up);
+    // Selection should move to previous filtered item
+}
+
+#[test]
+fn test_select_selection_utility() {
+    // Test that Selection utility is properly integrated
+    let mut s = Select::new().options(vec!["A", "B", "C"]);
+
+    // Test selection state
+    assert_eq!(s.selected_index(), 0);
+
+    // Test select_next uses Selection
+    s.select_next();
+    assert_eq!(s.selected_index(), 1);
+
+    // Test wrap-around via Selection
+    s.select_next();
+    s.select_next();
+    assert_eq!(s.selected_index(), 0); // Wrapped
+
+    // Test select_prev uses Selection
+    s.select_prev();
+    assert_eq!(s.selected_index(), 2); // Wrapped back
+
+    // Test select_first uses Selection
+    s.select_first();
+    assert_eq!(s.selected_index(), 0);
+
+    // Test select_last uses Selection
+    s.select_last();
+    assert_eq!(s.selected_index(), 2);
+}
+
+#[test]
+fn test_select_key_navigation_with_jk() {
+    let mut s = Select::new().options(vec!["One", "Two", "Three"]);
+    s.open();
+
+    // Test j key (down)
+    s.handle_key(&Key::Char('j'));
+    assert_eq!(s.selected_index(), 1);
+
+    // Test k key (up)
+    s.handle_key(&Key::Char('k'));
+    assert_eq!(s.selected_index(), 0);
+}
+
+#[test]
+fn test_select_home_end_keys() {
+    let mut s = Select::new().options(vec!["A", "B", "C", "D", "E"]);
+    s.open();
+
+    // Test End key
+    s.handle_key(&Key::End);
+    assert_eq!(s.selected_index(), 4);
+
+    // Test Home key
+    s.handle_key(&Key::Home);
+    assert_eq!(s.selected_index(), 0);
+}
+
+// =============================================================================
+// Slider Tests
+// =============================================================================
+
+#[test]
+fn test_slider_get_set_value() {
+    let mut s = Slider::new();
+    s.set_value(50.0);
+    assert_eq!(s.get_value(), 50.0);
+}
+
+#[test]
+fn test_slider_increment_decrement() {
+    let mut s = Slider::new().range(0.0, 100.0).step(10.0).value(50.0);
+
+    s.increment();
+    assert_eq!(s.get_value(), 60.0);
+
+    s.decrement();
+    assert_eq!(s.get_value(), 50.0);
+}
+
+#[test]
+fn test_slider_min_max() {
+    let mut s = Slider::new().range(0.0, 100.0).value(50.0);
+
+    s.set_min();
+    assert_eq!(s.get_value(), 0.0);
+
+    s.set_max();
+    assert_eq!(s.get_value(), 100.0);
+}
+
+#[test]
+fn test_slider_handle_key_horizontal() {
+    let mut s = Slider::new()
+        .range(0.0, 100.0)
+        .step(10.0)
+        .value(50.0)
+        .focused(true);
+
+    let changed = s.handle_key(&Key::Right);
+    assert!(changed);
+    assert_eq!(s.get_value(), 60.0);
+
+    let changed = s.handle_key(&Key::Left);
+    assert!(changed);
+    assert_eq!(s.get_value(), 50.0);
+
+    let changed = s.handle_key(&Key::End);
+    assert!(changed);
+    assert_eq!(s.get_value(), 100.0);
+
+    let changed = s.handle_key(&Key::Home);
+    assert!(changed);
+    assert_eq!(s.get_value(), 0.0);
+}
+
+#[test]
+fn test_slider_handle_key_vertical() {
+    let mut s = Slider::new()
+        .range(0.0, 100.0)
+        .step(10.0)
+        .value(50.0)
+        .vertical()
+        .focused(true);
+
+    let changed = s.handle_key(&Key::Up);
+    assert!(changed);
+    assert_eq!(s.get_value(), 60.0);
+
+    let changed = s.handle_key(&Key::Down);
+    assert!(changed);
+    assert_eq!(s.get_value(), 50.0);
+}
+
+#[test]
+fn test_slider_disabled_handle_key() {
+    let mut s = Slider::new().disabled(true).focused(true).value(50.0);
+    let handled = s.handle_key(&Key::Right);
+    assert!(!handled);
+    assert_eq!(s.get_value(), 50.0); // Value unchanged
+}
+
+#[test]
+fn test_slider_render_styles() {
+    let styles = [
+        SliderStyle::Block,
+        SliderStyle::Line,
+        SliderStyle::Thin,
+        SliderStyle::Gradient,
+        SliderStyle::Dots,
+    ];
+
+    for style in styles {
+        let mut buffer = Buffer::new(40, 3);
+        let area = Rect::new(0, 0, 40, 3);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let s = Slider::new().style(style).value(50.0);
+        s.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_slider_render_horizontal() {
+    let mut buffer = Buffer::new(40, 2);
+    let area = Rect::new(0, 0, 40, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let s = Slider::new().value(50.0).label("Volume");
+    s.render(&mut ctx);
+
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'V');
+}
+
+#[test]
+fn test_slider_render_vertical() {
+    let mut buffer = Buffer::new(10, 20);
+    let area = Rect::new(0, 0, 10, 20);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let s = Slider::new().vertical().length(15).value(50.0);
+    s.render(&mut ctx);
+}
+
+#[test]
+fn test_slider_helper() {
+    let s = slider().value(50.0);
+    assert_eq!(s.get_value(), 50.0);
+}
+
+#[test]
+fn test_slider_range_helper() {
+    let s = slider_range(0.0, 10.0).value(5.0);
+    assert_eq!(s.get_value(), 5.0);
+}
+
+#[test]
+fn test_slider_percentage_helper() {
+    let s = percentage_slider().value(75.0);
+    assert_eq!(s.get_value(), 75.0);
+}
+
+#[test]
+fn test_slider_volume_helper() {
+    let s = volume_slider().value(50.0);
+    assert_eq!(s.get_value(), 50.0);
+}
+
+#[test]
+fn test_slider_value_clamp() {
+    let mut s = Slider::new().range(0.0, 100.0);
+
+    s.set_value(150.0);
+    assert_eq!(s.get_value(), 100.0);
+
+    s.set_value(-50.0);
+    assert_eq!(s.get_value(), 0.0);
+}
+
+// =============================================================================
+// List Tests
+// =============================================================================
+
+#[test]
+fn test_list_new() {
+    let list: List<String> = List::new(vec!["A".into(), "B".into()]);
+    assert_eq!(list.len(), 2);
+    assert!(!list.is_empty());
+    assert_eq!(list.selected_index(), 0);
+}
+
+#[test]
+fn test_list_select_bounds() {
+    let list = List::new(vec!["A", "B"]).selected(10);
+    assert_eq!(list.selected_index(), 1); // Clamped to max
+}
+
+#[test]
+fn test_list_navigation() {
+    let mut list = List::new(vec!["A", "B", "C"]);
+    assert_eq!(list.selected_index(), 0);
+
+    list.select_next();
+    assert_eq!(list.selected_index(), 1);
+
+    list.select_next();
+    assert_eq!(list.selected_index(), 2);
+
+    list.select_next();
+    assert_eq!(list.selected_index(), 0); // Wraps around
+
+    list.select_prev();
+    assert_eq!(list.selected_index(), 2); // Wraps backwards
+}
+
+#[test]
+fn test_list_render() {
+    let mut buffer = Buffer::new(10, 3);
+    let area = Rect::new(0, 0, 10, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let list = List::new(vec!["One", "Two", "Three"]);
+    list.render(&mut ctx);
+
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'O');
+    assert_eq!(buffer.get(0, 1).unwrap().symbol, 'T');
+    assert_eq!(buffer.get(0, 2).unwrap().symbol, 'T');
+}
+
+#[test]
+fn test_list_render_selected_highlight() {
+    let mut buffer = Buffer::new(10, 2);
+    let area = Rect::new(0, 0, 10, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let list = List::new(vec!["A", "B"])
+        .selected(1)
+        .highlight_bg(Color::RED);
+    list.render(&mut ctx);
+
+    // First row should have no background
+    assert_eq!(buffer.get(0, 0).unwrap().bg, None);
+    // Second row (selected) should have red background
+    assert_eq!(buffer.get(0, 1).unwrap().bg, Some(Color::RED));
+}
+
+#[test]
+fn test_list_empty() {
+    let list: List<&str> = List::new(vec![]);
+    assert!(list.is_empty());
+    assert_eq!(list.len(), 0);
+}
+
+#[test]
+fn test_list_navigate_to_end() {
+    let mut list = List::new(vec!["A", "B", "C", "D", "E"]);
+
+    // Navigate to end using next
+    for _ in 0..4 {
+        list.select_next();
+    }
+    assert_eq!(list.selected_index(), 4);
+
+    // Navigate back to start using prev (wraps)
+    list.select_prev();
+    list.select_prev();
+    list.select_prev();
+    list.select_prev();
+    assert_eq!(list.selected_index(), 0);
+}
+
+#[test]
+fn test_list_selected_builder_with_items() {
+    // Use builder to set initial selection
+    let list = List::new(vec!["A", "B", "C"]).selected(2);
+    assert_eq!(list.selected_index(), 2);
+
+    let list2 = List::new(vec!["X", "Y", "Z"]).selected(0);
+    assert_eq!(list2.selected_index(), 0);
+}
+
+#[test]
+fn test_list_items_access() {
+    let list = List::new(vec!["Apple", "Banana", "Cherry"]).selected(1);
+    assert_eq!(list.items()[1], "Banana");
+    assert_eq!(list.selected_index(), 1);
+}
+
+#[test]
+fn test_list_empty_selection() {
+    let list: List<&str> = List::new(vec![]);
+    assert!(list.is_empty());
+    assert_eq!(list.selected_index(), 0);
+}
+
+#[test]
+fn test_list_wrap_navigation() {
+    let mut list = List::new(vec!["A", "B"]);
+
+    // Forward wrap
+    assert_eq!(list.selected_index(), 0);
+    list.select_next();
+    assert_eq!(list.selected_index(), 1);
+    list.select_next();
+    assert_eq!(list.selected_index(), 0); // Wrapped
+
+    // Backward wrap
+    list.select_prev();
+    assert_eq!(list.selected_index(), 1); // Wrapped back
+}
+
+#[test]
+fn test_list_single_item() {
+    let mut list = List::new(vec!["Only"]);
+    assert_eq!(list.selected_index(), 0);
+
+    list.select_next();
+    assert_eq!(list.selected_index(), 0); // Stays at 0 (wraps to same)
+
+    list.select_prev();
+    assert_eq!(list.selected_index(), 0);
+}
+
+#[test]
+fn test_list_items() {
+    let list = List::new(vec!["A", "B", "C"]);
+    let items = list.items();
+    assert_eq!(items.len(), 3);
+    assert_eq!(items[0], "A");
+    assert_eq!(items[2], "C");
+}
+
+#[test]
+fn test_list_helper_function() {
+    let l = list(vec!["X", "Y"]);
+    assert_eq!(l.len(), 2);
+    assert_eq!(l.selected_index(), 0);
+}
+
+#[test]
+fn test_list_render_empty() {
+    let mut buffer = Buffer::new(10, 3);
+    let area = Rect::new(0, 0, 10, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let list: List<&str> = List::new(vec![]);
+    list.render(&mut ctx);
+    // Should not crash on empty list
+}
+
+#[test]
+fn test_list_selection_bounds_on_items_change() {
+    let list = List::new(vec!["A", "B", "C"]).selected(2);
+    assert_eq!(list.selected_index(), 2);
+
+    // Selection is clamped to valid range
+    let list2 = List::new(vec!["A"]).selected(5);
+    assert_eq!(list2.selected_index(), 0); // Clamped to 0 (only valid index)
 }
