@@ -3,14 +3,15 @@
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::{fuzzy_match, FuzzyMatch};
+use crate::utils::{fuzzy_match, FuzzyMatch, Selection};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// A select/dropdown widget with optional fuzzy search
 #[derive(Clone, Debug)]
 pub struct Select {
     options: Vec<String>,
-    selected: usize,
+    /// Selection state for options (uses Selection utility)
+    selection: Selection,
     open: bool,
     placeholder: String,
     fg: Option<Color>,
@@ -25,8 +26,8 @@ pub struct Select {
     searchable: bool,
     /// Filtered indices (into options) based on query
     filtered: Vec<usize>,
-    /// Selected index within filtered results
-    filtered_selected: usize,
+    /// Selection state for filtered results (uses Selection utility)
+    filtered_selection: Selection,
     /// CSS styling properties (id, classes)
     props: WidgetProps,
 }
@@ -36,7 +37,7 @@ impl Select {
     pub fn new() -> Self {
         Self {
             options: Vec::new(),
-            selected: 0,
+            selection: Selection::new(0),
             open: false,
             placeholder: "Select...".to_string(),
             fg: None,
@@ -48,7 +49,7 @@ impl Select {
             query: String::new(),
             searchable: false,
             filtered: Vec::new(),
-            filtered_selected: 0,
+            filtered_selection: Selection::new(0),
             props: WidgetProps::new(),
         }
     }
@@ -56,6 +57,7 @@ impl Select {
     /// Set options
     pub fn options(mut self, options: Vec<impl Into<String>>) -> Self {
         self.options = options.into_iter().map(|o| o.into()).collect();
+        self.selection.set_len(self.options.len());
         self.reset_filter();
         self
     }
@@ -63,6 +65,7 @@ impl Select {
     /// Add a single option
     pub fn option(mut self, option: impl Into<String>) -> Self {
         self.options.push(option.into());
+        self.selection.set_len(self.options.len());
         self.reset_filter();
         self
     }
@@ -81,7 +84,7 @@ impl Select {
 
     /// Set selected index
     pub fn selected(mut self, index: usize) -> Self {
-        self.selected = index.min(self.options.len().saturating_sub(1));
+        self.selection.set(index);
         self
     }
 
@@ -118,12 +121,12 @@ impl Select {
 
     /// Get selected index
     pub fn selected_index(&self) -> usize {
-        self.selected
+        self.selection.index
     }
 
     /// Get selected value
     pub fn value(&self) -> Option<&str> {
-        self.options.get(self.selected).map(|s| s.as_str())
+        self.options.get(self.selection.index).map(|s| s.as_str())
     }
 
     /// Check if dropdown is open
@@ -148,31 +151,22 @@ impl Select {
 
     /// Select next option
     pub fn select_next(&mut self) {
-        if !self.options.is_empty() {
-            self.selected = (self.selected + 1) % self.options.len();
-        }
+        self.selection.next();
     }
 
     /// Select previous option
     pub fn select_prev(&mut self) {
-        if !self.options.is_empty() {
-            self.selected = self
-                .selected
-                .checked_sub(1)
-                .unwrap_or(self.options.len() - 1);
-        }
+        self.selection.prev();
     }
 
     /// Select first option
     pub fn select_first(&mut self) {
-        self.selected = 0;
+        self.selection.first();
     }
 
     /// Select last option
     pub fn select_last(&mut self) {
-        if !self.options.is_empty() {
-            self.selected = self.options.len() - 1;
-        }
+        self.selection.last();
     }
 
     // --- Fuzzy search methods ---
@@ -216,7 +210,8 @@ impl Select {
     /// Reset filter to show all options
     fn reset_filter(&mut self) {
         self.filtered = (0..self.options.len()).collect();
-        self.filtered_selected = 0;
+        self.filtered_selection.set_len(self.filtered.len());
+        self.filtered_selection.first();
     }
 
     /// Update filter based on current query
@@ -238,11 +233,12 @@ impl Select {
         matches.sort_by(|a, b| b.1.cmp(&a.1));
 
         self.filtered = matches.into_iter().map(|(i, _)| i).collect();
-        self.filtered_selected = 0;
+        self.filtered_selection.set_len(self.filtered.len());
+        self.filtered_selection.first();
 
         // Update selected to first filtered item if available
         if let Some(&first) = self.filtered.first() {
-            self.selected = first;
+            self.selection.set(first);
         }
     }
 
@@ -258,19 +254,18 @@ impl Select {
     /// Select next in filtered results
     fn select_next_filtered(&mut self) {
         if !self.filtered.is_empty() {
-            self.filtered_selected = (self.filtered_selected + 1) % self.filtered.len();
-            self.selected = self.filtered[self.filtered_selected];
+            self.filtered_selection.next();
+            self.selection
+                .set(self.filtered[self.filtered_selection.index]);
         }
     }
 
     /// Select previous in filtered results
     fn select_prev_filtered(&mut self) {
         if !self.filtered.is_empty() {
-            self.filtered_selected = self
-                .filtered_selected
-                .checked_sub(1)
-                .unwrap_or(self.filtered.len() - 1);
-            self.selected = self.filtered[self.filtered_selected];
+            self.filtered_selection.prev();
+            self.selection
+                .set(self.filtered[self.filtered_selection.index]);
         }
     }
 
@@ -293,32 +288,32 @@ impl Select {
                 false
             }
             Key::Up | Key::Char('k') if self.open && !self.searchable => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_prev();
-                old != self.selected
+                old != self.selection.index
             }
             Key::Down | Key::Char('j') if self.open && !self.searchable => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_next();
-                old != self.selected
+                old != self.selection.index
             }
             Key::Up if self.open && self.searchable => {
-                let old = self.selected;
+                let old = self.selection.index;
                 if self.query.is_empty() {
                     self.select_prev();
                 } else {
                     self.select_prev_filtered();
                 }
-                old != self.selected
+                old != self.selection.index
             }
             Key::Down if self.open && self.searchable => {
-                let old = self.selected;
+                let old = self.selection.index;
                 if self.query.is_empty() {
                     self.select_next();
                 } else {
                     self.select_next_filtered();
                 }
-                old != self.selected
+                old != self.selection.index
             }
             Key::Escape if self.open => {
                 self.close();
@@ -336,14 +331,14 @@ impl Select {
                 true
             }
             Key::Home if self.open => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_first();
-                old != self.selected
+                old != self.selection.index
             }
             Key::End if self.open => {
-                let old = self.selected;
+                let old = self.selection.index;
                 self.select_last();
-                old != self.selected
+                old != self.selection.index
             }
             _ => false,
         }
@@ -447,7 +442,7 @@ impl View for Select {
             for (row, (option_idx, option)) in visible_options.iter().enumerate().take(max_visible)
             {
                 let y = area.y + 1 + row as u16;
-                let is_selected = *option_idx == self.selected;
+                let is_selected = self.selection.is_selected(*option_idx);
 
                 let (fg, bg) = if is_selected {
                     (self.selected_fg, self.selected_bg)
