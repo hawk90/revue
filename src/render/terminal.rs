@@ -19,6 +19,7 @@ use super::cell::Modifier;
 use super::diff::diff;
 use super::{Buffer, Cell};
 use crate::style::Color;
+use crate::utils::unicode::char_width;
 use crate::Result;
 
 /// Tracks current terminal styling state to minimize escape sequences
@@ -29,6 +30,9 @@ struct RenderState {
     modifier: Modifier,
     /// Current hyperlink ID (None means no hyperlink active)
     hyperlink_id: Option<u16>,
+    /// Expected cursor position after last print (x, y)
+    /// Used to avoid redundant MoveTo commands for contiguous cells
+    cursor: Option<(u16, u16)>,
 }
 
 /// Terminal backend for rendering
@@ -212,7 +216,11 @@ impl<W: Write> Terminal<W> {
         escape_sequence: Option<&str>,
         state: &mut RenderState,
     ) -> Result<()> {
-        queue!(self.writer, MoveTo(x, y))?;
+        // Only emit MoveTo if cursor isn't already at the expected position
+        // This reduces escape sequences for contiguous same-row cells
+        if state.cursor != Some((x, y)) {
+            queue!(self.writer, MoveTo(x, y))?;
+        }
 
         // If cell has an escape sequence, write it directly and skip normal rendering
         if let Some(seq) = escape_sequence {
@@ -229,6 +237,8 @@ impl<W: Write> Terminal<W> {
             }
             // Write the raw escape sequence
             write!(self.writer, "{}", seq)?;
+            // Escape sequences can move cursor unpredictably, invalidate position
+            state.cursor = None;
             return Ok(());
         }
 
@@ -306,6 +316,10 @@ impl<W: Write> Terminal<W> {
 
         // Print the character
         queue!(self.writer, Print(cell.symbol))?;
+
+        // Update expected cursor position (cursor advances by character width)
+        let width = char_width(cell.symbol) as u16;
+        state.cursor = Some((x.saturating_add(width), y));
 
         Ok(())
     }
