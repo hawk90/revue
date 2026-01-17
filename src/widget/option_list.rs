@@ -27,6 +27,7 @@
 //! ```
 
 use crate::style::Color;
+use crate::widget::traits::DISABLED_FG;
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -523,7 +524,7 @@ impl View for OptionList {
 
                     // Determine colors
                     let fg = if item.disabled {
-                        self.disabled_fg.unwrap_or(Color::rgb(100, 100, 100))
+                        self.disabled_fg.unwrap_or(DISABLED_FG)
                     } else if is_highlighted {
                         self.highlighted_fg.unwrap_or(Color::CYAN)
                     } else if is_selected {

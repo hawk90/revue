@@ -12,7 +12,7 @@
 //! - Header/footer slots
 //! - Keyboard navigation
 
-use super::traits::{RenderContext, View, WidgetProps};
+use super::traits::{RenderContext, View, WidgetProps, DISABLED_FG};
 use crate::render::Cell;
 use crate::style::Color;
 use crate::{impl_props_builders, impl_styled_view};
@@ -181,7 +181,7 @@ impl Sidebar {
             selected_bg: Some(Color::BLUE),
             hover_fg: Some(Color::WHITE),
             hover_bg: Some(Color::rgb(50, 50, 70)),
-            disabled_fg: Some(Color::rgb(100, 100, 100)),
+            disabled_fg: Some(DISABLED_FG),
             section_fg: Some(Color::rgb(128, 128, 128)),
             badge_fg: Some(Color::WHITE),
             badge_bg: Some(Color::RED),
