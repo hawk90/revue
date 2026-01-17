@@ -1,7 +1,6 @@
 //! Divider widget for visual separation
 
 use super::traits::{RenderContext, View, WidgetProps};
-use crate::render::Cell;
 use crate::style::Color;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -202,54 +201,28 @@ impl View for Divider {
                         let label_end = label_start + label_len + 2;
 
                         // Left part
-                        for x in start_x..label_start {
-                            let mut cell = Cell::new(line_char);
-                            cell.fg = Some(self.color);
-                            ctx.buffer.set(x, y, cell);
-                        }
+                        ctx.draw_hline(start_x, y, label_start - start_x, line_char, self.color);
 
                         // Space before label
-                        let mut space = Cell::new(' ');
-                        space.fg = Some(self.color);
-                        ctx.buffer.set(label_start, y, space);
+                        ctx.draw_char(label_start, y, ' ', self.color);
 
                         // Label
                         let label_color = self.label_color.unwrap_or(self.color);
-                        for (i, ch) in label.chars().enumerate() {
-                            let mut cell = Cell::new(ch);
-                            cell.fg = Some(label_color);
-                            ctx.buffer.set(label_start + 1 + i as u16, y, cell);
-                        }
+                        ctx.draw_text(label_start + 1, y, label, label_color);
 
                         // Space after label
-                        let mut space = Cell::new(' ');
-                        space.fg = Some(self.color);
-                        ctx.buffer.set(label_end - 1, y, space);
+                        ctx.draw_char(label_end - 1, y, ' ', self.color);
 
                         // Right part
-                        for x in label_end..end_x {
-                            let mut cell = Cell::new(line_char);
-                            cell.fg = Some(self.color);
-                            ctx.buffer.set(x, y, cell);
-                        }
+                        ctx.draw_hline(label_end, y, end_x - label_end, line_char, self.color);
                     } else {
-                        // Not enough space, just draw label
-                        for (i, ch) in label.chars().enumerate() {
-                            if start_x + i as u16 >= end_x {
-                                break;
-                            }
-                            let mut cell = Cell::new(ch);
-                            cell.fg = Some(self.label_color.unwrap_or(self.color));
-                            ctx.buffer.set(start_x + i as u16, y, cell);
-                        }
+                        // Not enough space, just draw label (clipped)
+                        let label_color = self.label_color.unwrap_or(self.color);
+                        ctx.draw_text_clipped(start_x, y, label, label_color, end_x - start_x);
                     }
                 } else {
                     // Simple line without label
-                    for x in start_x..end_x {
-                        let mut cell = Cell::new(line_char);
-                        cell.fg = Some(self.color);
-                        ctx.buffer.set(x, y, cell);
-                    }
+                    ctx.draw_hline(start_x, y, end_x - start_x, line_char, self.color);
                 }
             }
             Orientation::Vertical => {
@@ -261,11 +234,7 @@ impl View for Divider {
                     area.y + area.height.saturating_sub(self.margin)
                 };
 
-                for y in start_y..end_y {
-                    let mut cell = Cell::new(line_char);
-                    cell.fg = Some(self.color);
-                    ctx.buffer.set(x, y, cell);
-                }
+                ctx.draw_vline(x, start_y, end_y - start_y, line_char, self.color);
             }
         }
     }
