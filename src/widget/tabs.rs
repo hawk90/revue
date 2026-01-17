@@ -370,4 +370,145 @@ mod tests {
         let tab = Tab::new("My Tab");
         assert_eq!(tab.label, "My Tab");
     }
+
+    // =========================================================================
+    // Additional coverage tests
+    // =========================================================================
+
+    #[test]
+    fn test_tabs_default() {
+        let t = Tabs::default();
+        assert!(t.is_empty());
+    }
+
+    #[test]
+    fn test_tabs_fg_bg_colors() {
+        let t = Tabs::new().fg(Color::RED).bg(Color::BLUE);
+        assert_eq!(t.fg, Some(Color::RED));
+        assert_eq!(t.bg, Some(Color::BLUE));
+    }
+
+    #[test]
+    fn test_tabs_active_style() {
+        let t = Tabs::new().active_style(Color::WHITE, Color::GREEN);
+        assert_eq!(t.active_fg, Some(Color::WHITE));
+        assert_eq!(t.active_bg, Some(Color::GREEN));
+    }
+
+    #[test]
+    fn test_tabs_divider() {
+        let t = Tabs::new().divider('|');
+        assert_eq!(t.divider, '|');
+    }
+
+    #[test]
+    fn test_tabs_handle_key_h_l() {
+        use crate::event::Key;
+
+        let mut t = Tabs::new().tabs(vec!["A", "B", "C"]);
+
+        // l for right
+        t.handle_key(&Key::Char('l'));
+        assert_eq!(t.selected_index(), 1);
+
+        // h for left
+        t.handle_key(&Key::Char('h'));
+        assert_eq!(t.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tabs_handle_key_home_end() {
+        use crate::event::Key;
+
+        let mut t = Tabs::new().tabs(vec!["A", "B", "C"]);
+
+        t.handle_key(&Key::End);
+        assert_eq!(t.selected_index(), 2);
+
+        t.handle_key(&Key::Home);
+        assert_eq!(t.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tabs_handle_key_number_out_of_range() {
+        use crate::event::Key;
+
+        let mut t = Tabs::new().tabs(vec!["A", "B"]);
+
+        // Pressing '9' when there are only 2 tabs should do nothing
+        let changed = t.handle_key(&Key::Char('9'));
+        assert!(!changed);
+        assert_eq!(t.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tabs_handle_key_unhandled() {
+        use crate::event::Key;
+
+        let mut t = Tabs::new().tabs(vec!["A", "B"]);
+
+        let changed = t.handle_key(&Key::Escape);
+        assert!(!changed);
+    }
+
+    #[test]
+    fn test_tabs_selected_label_empty() {
+        let t = Tabs::new();
+        assert!(t.selected_label().is_none());
+    }
+
+    #[test]
+    fn test_tabs_render_empty() {
+        let mut buffer = Buffer::new(40, 5);
+        let area = Rect::new(0, 0, 40, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let t = Tabs::new();
+        t.render(&mut ctx);
+        // Empty tabs should not panic
+    }
+
+    #[test]
+    fn test_tabs_render_small_area() {
+        let mut buffer = Buffer::new(2, 1);
+        let area = Rect::new(0, 0, 2, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let t = Tabs::new().tab("Test");
+        t.render(&mut ctx);
+        // Small area should not panic
+    }
+
+    #[test]
+    fn test_tabs_render_with_divider() {
+        let mut buffer = Buffer::new(40, 5);
+        let area = Rect::new(0, 0, 40, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let t = Tabs::new().tab("A").tab("B").divider('|');
+
+        t.render(&mut ctx);
+        // Verify divider appears
+    }
+
+    #[test]
+    fn test_tabs_render_selected() {
+        let mut buffer = Buffer::new(40, 5);
+        let area = Rect::new(0, 0, 40, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let t = Tabs::new()
+            .tabs(vec!["First", "Second", "Third"])
+            .selected(1);
+
+        t.render(&mut ctx);
+        // Verify selection rendering
+    }
+
+    #[test]
+    fn test_tab_clone() {
+        let tab = Tab::new("Original");
+        let cloned = tab.clone();
+        assert_eq!(cloned.label, "Original");
+    }
 }

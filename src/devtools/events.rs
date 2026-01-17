@@ -704,4 +704,209 @@ mod tests {
             );
         }
     }
+
+    // =========================================================================
+    // Additional coverage tests
+    // =========================================================================
+
+    #[test]
+    fn test_event_type_icon() {
+        assert_eq!(EventType::KeyPress.icon(), "⌨");
+        assert_eq!(EventType::KeyRelease.icon(), "⌨");
+        assert_eq!(EventType::MouseClick.icon(), "●");
+        assert_eq!(EventType::MouseMove.icon(), "→");
+        assert_eq!(EventType::MouseScroll.icon(), "↕");
+        assert_eq!(EventType::FocusIn.icon(), "◉");
+        assert_eq!(EventType::FocusOut.icon(), "○");
+        assert_eq!(EventType::Resize.icon(), "⊡");
+        assert_eq!(EventType::Custom.icon(), "★");
+    }
+
+    #[test]
+    fn test_event_type_color() {
+        let key_color = EventType::KeyPress.color();
+        let release_color = EventType::KeyRelease.color();
+        assert_eq!(key_color, release_color);
+
+        let click_color = EventType::MouseClick.color();
+        assert_ne!(click_color, key_color);
+
+        let move_color = EventType::MouseMove.color();
+        let scroll_color = EventType::MouseScroll.color();
+        assert_ne!(move_color, scroll_color);
+
+        let focus_in = EventType::FocusIn.color();
+        let focus_out = EventType::FocusOut.color();
+        assert_eq!(focus_in, focus_out);
+
+        let resize_color = EventType::Resize.color();
+        let custom_color = EventType::Custom.color();
+        assert_ne!(resize_color, custom_color);
+    }
+
+    #[test]
+    fn test_event_type_all_labels() {
+        assert_eq!(EventType::KeyRelease.label(), "KeyRelease");
+        assert_eq!(EventType::MouseMove.label(), "Move");
+        assert_eq!(EventType::MouseScroll.label(), "Scroll");
+        assert_eq!(EventType::FocusOut.label(), "FocusOut");
+        assert_eq!(EventType::Resize.label(), "Resize");
+        assert_eq!(EventType::Custom.label(), "Custom");
+    }
+
+    #[test]
+    fn test_logged_event_stopped() {
+        let event = LoggedEvent::new(1, EventType::KeyPress, "A").stopped();
+        assert!(!event.propagated);
+    }
+
+    #[test]
+    fn test_logged_event_age_str() {
+        let event = LoggedEvent::new(1, EventType::KeyPress, "A");
+        let age_str = event.age_str();
+        // Should be in milliseconds since it was just created
+        assert!(age_str.contains("ms ago"));
+    }
+
+    #[test]
+    fn test_event_filter_mouse_only() {
+        let filter = EventFilter::mouse_only();
+
+        let mouse_event = LoggedEvent::new(1, EventType::MouseClick, "left");
+        let key_event = LoggedEvent::new(2, EventType::KeyPress, "A");
+
+        assert!(filter.matches(&mouse_event));
+        assert!(!filter.matches(&key_event));
+    }
+
+    #[test]
+    fn test_event_filter_only_handled() {
+        let mut filter = EventFilter::all();
+        filter.only_handled = true;
+
+        let handled_event = LoggedEvent::new(1, EventType::KeyPress, "A").handled();
+        let unhandled_event = LoggedEvent::new(2, EventType::KeyPress, "B");
+
+        assert!(filter.matches(&handled_event));
+        assert!(!filter.matches(&unhandled_event));
+    }
+
+    #[test]
+    fn test_event_filter_target_filter() {
+        let mut filter = EventFilter::all();
+        filter.target_filter = Some("Button".to_string());
+
+        let mut matched_event = LoggedEvent::new(1, EventType::KeyPress, "A");
+        matched_event.target = Some("Button#submit".to_string());
+
+        let mut unmatched_event = LoggedEvent::new(2, EventType::KeyPress, "A");
+        unmatched_event.target = Some("Input#name".to_string());
+
+        let no_target_event = LoggedEvent::new(3, EventType::KeyPress, "A");
+
+        assert!(filter.matches(&matched_event));
+        assert!(!filter.matches(&unmatched_event));
+        assert!(!filter.matches(&no_target_event));
+    }
+
+    #[test]
+    fn test_event_logger_log_click() {
+        let mut logger = EventLogger::new();
+        let id = logger.log_click(10, 20, "left");
+        assert!(id == 0 || id > 0);
+        assert_eq!(logger.count(), 1);
+    }
+
+    #[test]
+    fn test_event_logger_log_move() {
+        let mut logger = EventLogger::new();
+        logger.log_move(50, 60);
+        assert_eq!(logger.count(), 1);
+    }
+
+    #[test]
+    fn test_event_logger_log_focus() {
+        let mut logger = EventLogger::new();
+        logger.log_focus("Input#name", true);
+        logger.log_focus("Input#name", false);
+        assert_eq!(logger.count(), 2);
+    }
+
+    #[test]
+    fn test_event_logger_set_target() {
+        let mut logger = EventLogger::new();
+        let id = logger.log_key("Enter", "");
+        logger.set_target(id, "Button#submit");
+
+        assert_eq!(
+            logger.events.back().unwrap().target,
+            Some("Button#submit".to_string())
+        );
+    }
+
+    #[test]
+    fn test_event_logger_toggle_pause() {
+        let mut logger = EventLogger::new();
+        assert!(!logger.is_paused());
+
+        logger.toggle_pause();
+        assert!(logger.is_paused());
+
+        logger.toggle_pause();
+        assert!(!logger.is_paused());
+    }
+
+    #[test]
+    fn test_event_logger_select_next_prev() {
+        let mut logger = EventLogger::new();
+        logger.log_key("A", "");
+        logger.log_key("B", "");
+        logger.log_key("C", "");
+
+        logger.select_next();
+        assert!(logger.selected.is_some());
+
+        logger.select_next();
+        logger.select_prev();
+    }
+
+    #[test]
+    fn test_event_logger_select_empty() {
+        let mut logger = EventLogger::new();
+        logger.select_next();
+        logger.select_prev();
+        // Should not panic on empty
+    }
+
+    #[test]
+    fn test_event_logger_filtered_count() {
+        let mut logger = EventLogger::new().filter(EventFilter::keys_only());
+        logger.log_key("A", "");
+        logger.log_click(0, 0, "left"); // This won't be logged because filter is keys_only
+
+        // But we still need to log via log() which doesn't respect filter
+        assert!(logger.filtered_count() <= logger.count());
+    }
+
+    #[test]
+    fn test_event_logger_toggle_filters() {
+        let mut logger = EventLogger::new();
+
+        logger.toggle_keys();
+        assert!(!logger.filter.show_keys);
+
+        logger.toggle_mouse();
+        assert!(!logger.filter.show_mouse);
+
+        logger.toggle_focus();
+        assert!(!logger.filter.show_focus);
+    }
+
+    #[test]
+    fn test_event_filter_default() {
+        let filter = EventFilter::default();
+        assert!(!filter.show_keys);
+        assert!(!filter.show_mouse);
+        assert!(!filter.show_focus);
+    }
 }

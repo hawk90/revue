@@ -359,3 +359,524 @@ impl WidgetState {
             || self.hovered != other.hovered
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // WidgetProps Tests
+    // =========================================================================
+
+    #[test]
+    fn test_widget_props_new() {
+        let props = WidgetProps::new();
+        assert!(props.id.is_none());
+        assert!(props.classes.is_empty());
+        assert!(props.inline_style.is_none());
+    }
+
+    #[test]
+    fn test_widget_props_default() {
+        let props = WidgetProps::default();
+        assert!(props.id.is_none());
+        assert!(props.classes.is_empty());
+    }
+
+    #[test]
+    fn test_widget_props_id() {
+        let props = WidgetProps::new().id("my-widget");
+        assert_eq!(props.id, Some("my-widget".to_string()));
+    }
+
+    #[test]
+    fn test_widget_props_class() {
+        let props = WidgetProps::new().class("primary").class("large");
+        assert_eq!(props.classes.len(), 2);
+        assert_eq!(props.classes[0], "primary");
+        assert_eq!(props.classes[1], "large");
+    }
+
+    #[test]
+    fn test_widget_props_style() {
+        let style = Style::default();
+        let props = WidgetProps::new().style(style);
+        assert!(props.inline_style.is_some());
+    }
+
+    #[test]
+    fn test_widget_props_classes_slice() {
+        let props = WidgetProps::new().class("a").class("b");
+        let slice = props.classes_slice();
+        assert_eq!(slice.len(), 2);
+    }
+
+    #[test]
+    fn test_widget_props_classes_vec() {
+        let props = WidgetProps::new().class("a").class("b");
+        let vec = props.classes_vec();
+        assert_eq!(vec.len(), 2);
+        assert_eq!(vec[0], "a");
+    }
+
+    #[test]
+    fn test_widget_props_clone() {
+        let props = WidgetProps::new().id("test").class("primary");
+        let cloned = props.clone();
+        assert_eq!(cloned.id, Some("test".to_string()));
+        assert_eq!(cloned.classes.len(), 1);
+    }
+
+    #[test]
+    fn test_widget_props_debug() {
+        let props = WidgetProps::new().id("test");
+        let debug = format!("{:?}", props);
+        assert!(debug.contains("WidgetProps"));
+    }
+
+    // =========================================================================
+    // WidgetState Creation Tests
+    // =========================================================================
+
+    #[test]
+    fn test_widget_state_new() {
+        let state = WidgetState::new();
+        assert!(!state.focused);
+        assert!(!state.disabled);
+        assert!(!state.pressed);
+        assert!(!state.hovered);
+        assert!(state.fg.is_none());
+        assert!(state.bg.is_none());
+    }
+
+    #[test]
+    fn test_widget_state_default() {
+        let state = WidgetState::default();
+        assert!(!state.focused);
+    }
+
+    // =========================================================================
+    // WidgetState Builder Tests
+    // =========================================================================
+
+    #[test]
+    fn test_widget_state_focused_builder() {
+        let state = WidgetState::new().focused(true);
+        assert!(state.focused);
+    }
+
+    #[test]
+    fn test_widget_state_disabled_builder() {
+        let state = WidgetState::new().disabled(true);
+        assert!(state.disabled);
+    }
+
+    #[test]
+    fn test_widget_state_pressed_builder() {
+        let state = WidgetState::new().pressed(true);
+        assert!(state.pressed);
+    }
+
+    #[test]
+    fn test_widget_state_hovered_builder() {
+        let state = WidgetState::new().hovered(true);
+        assert!(state.hovered);
+    }
+
+    #[test]
+    fn test_widget_state_fg_builder() {
+        let state = WidgetState::new().fg(Color::RED);
+        assert_eq!(state.fg, Some(Color::RED));
+    }
+
+    #[test]
+    fn test_widget_state_bg_builder() {
+        let state = WidgetState::new().bg(Color::BLUE);
+        assert_eq!(state.bg, Some(Color::BLUE));
+    }
+
+    // =========================================================================
+    // WidgetState Check Tests
+    // =========================================================================
+
+    #[test]
+    fn test_widget_state_is_focused() {
+        let state = WidgetState::new().focused(true);
+        assert!(state.is_focused());
+    }
+
+    #[test]
+    fn test_widget_state_is_disabled() {
+        let state = WidgetState::new().disabled(true);
+        assert!(state.is_disabled());
+    }
+
+    #[test]
+    fn test_widget_state_is_pressed() {
+        let state = WidgetState::new().pressed(true);
+        assert!(state.is_pressed());
+    }
+
+    #[test]
+    fn test_widget_state_is_hovered() {
+        let state = WidgetState::new().hovered(true);
+        assert!(state.is_hovered());
+    }
+
+    #[test]
+    fn test_widget_state_is_interactive() {
+        // Not interactive when disabled
+        let disabled = WidgetState::new().disabled(true).focused(true);
+        assert!(!disabled.is_interactive());
+
+        // Interactive when focused and not disabled
+        let focused = WidgetState::new().focused(true);
+        assert!(focused.is_interactive());
+
+        // Interactive when hovered
+        let hovered = WidgetState::new().hovered(true);
+        assert!(hovered.is_interactive());
+
+        // Interactive when pressed
+        let pressed = WidgetState::new().pressed(true);
+        assert!(pressed.is_interactive());
+
+        // Not interactive when nothing set
+        let default = WidgetState::new();
+        assert!(!default.is_interactive());
+    }
+
+    // =========================================================================
+    // Color Resolution Tests
+    // =========================================================================
+
+    #[test]
+    fn test_effective_fg_default() {
+        let state = WidgetState::new();
+        let color = state.effective_fg(Color::WHITE);
+        assert_eq!(color, Color::WHITE);
+    }
+
+    #[test]
+    fn test_effective_fg_custom() {
+        let state = WidgetState::new().fg(Color::RED);
+        let color = state.effective_fg(Color::WHITE);
+        assert_eq!(color, Color::RED);
+    }
+
+    #[test]
+    fn test_effective_fg_disabled() {
+        let state = WidgetState::new().disabled(true).fg(Color::RED);
+        let color = state.effective_fg(Color::WHITE);
+        assert_eq!(color, DISABLED_FG);
+    }
+
+    #[test]
+    fn test_effective_bg_default() {
+        let state = WidgetState::new();
+        let color = state.effective_bg(Color::BLACK);
+        assert_eq!(color, Color::BLACK);
+    }
+
+    #[test]
+    fn test_effective_bg_custom() {
+        let state = WidgetState::new().bg(Color::BLUE);
+        let color = state.effective_bg(Color::BLACK);
+        assert_eq!(color, Color::BLUE);
+    }
+
+    #[test]
+    fn test_effective_bg_disabled() {
+        let state = WidgetState::new().disabled(true).bg(Color::BLUE);
+        let color = state.effective_bg(Color::BLACK);
+        assert_eq!(color, DISABLED_BG);
+    }
+
+    #[test]
+    fn test_state_colors_normal() {
+        let state = WidgetState::new();
+        let (fg, bg) = state.state_colors(Color::WHITE, Color::BLACK, Color::BLUE);
+        assert_eq!(fg, Color::WHITE);
+        assert_eq!(bg, Color::BLACK);
+    }
+
+    #[test]
+    fn test_state_colors_hovered() {
+        let state = WidgetState::new().hovered(true);
+        let (fg, bg) = state.state_colors(Color::WHITE, Color::BLACK, Color::BLUE);
+        assert_eq!(fg, Color::WHITE);
+        assert_eq!(bg, Color::BLUE);
+    }
+
+    #[test]
+    fn test_state_colors_pressed() {
+        let state = WidgetState::new().pressed(true);
+        let (fg, bg) = state.state_colors(Color::WHITE, Color::BLACK, Color::BLUE);
+        assert_eq!(fg, Color::WHITE);
+        assert_eq!(bg, Color::BLUE);
+    }
+
+    #[test]
+    fn test_state_colors_disabled() {
+        let state = WidgetState::new().disabled(true);
+        let (fg, bg) = state.state_colors(Color::WHITE, Color::BLACK, Color::BLUE);
+        assert_eq!(fg, DISABLED_FG);
+        assert_eq!(bg, DISABLED_BG);
+    }
+
+    // =========================================================================
+    // State Mutation Tests
+    // =========================================================================
+
+    #[test]
+    fn test_reset_transient() {
+        let mut state = WidgetState::new().pressed(true).hovered(true).focused(true);
+
+        state.reset_transient();
+        assert!(!state.pressed);
+        assert!(!state.hovered);
+        assert!(state.focused); // Should be preserved
+    }
+
+    #[test]
+    fn test_set_focused() {
+        let mut state = WidgetState::new();
+        state.set_focused(true);
+        assert!(state.focused);
+        state.set_focused(false);
+        assert!(!state.focused);
+    }
+
+    #[test]
+    fn test_set_disabled() {
+        let mut state = WidgetState::new();
+        state.set_disabled(true);
+        assert!(state.disabled);
+    }
+
+    #[test]
+    fn test_set_hovered() {
+        let mut state = WidgetState::new();
+        state.set_hovered(true);
+        assert!(state.hovered);
+    }
+
+    #[test]
+    fn test_set_pressed() {
+        let mut state = WidgetState::new();
+        state.set_pressed(true);
+        assert!(state.pressed);
+    }
+
+    #[test]
+    fn test_set_fg() {
+        let mut state = WidgetState::new();
+        state.set_fg(Some(Color::RED));
+        assert_eq!(state.fg, Some(Color::RED));
+        state.set_fg(None);
+        assert!(state.fg.is_none());
+    }
+
+    #[test]
+    fn test_set_bg() {
+        let mut state = WidgetState::new();
+        state.set_bg(Some(Color::BLUE));
+        assert_eq!(state.bg, Some(Color::BLUE));
+        state.set_bg(None);
+        assert!(state.bg.is_none());
+    }
+
+    // =========================================================================
+    // Effective Colors with Option Tests
+    // =========================================================================
+
+    #[test]
+    fn test_effective_fg_opt_none() {
+        let state = WidgetState::new();
+        assert!(state.effective_fg_opt().is_none());
+    }
+
+    #[test]
+    fn test_effective_fg_opt_some() {
+        let state = WidgetState::new().fg(Color::RED);
+        assert_eq!(state.effective_fg_opt(), Some(Color::RED));
+    }
+
+    #[test]
+    fn test_effective_fg_opt_disabled() {
+        let state = WidgetState::new().disabled(true);
+        assert_eq!(state.effective_fg_opt(), Some(DISABLED_FG));
+    }
+
+    #[test]
+    fn test_effective_bg_opt_none() {
+        let state = WidgetState::new();
+        assert!(state.effective_bg_opt().is_none());
+    }
+
+    #[test]
+    fn test_effective_bg_opt_some() {
+        let state = WidgetState::new().bg(Color::BLUE);
+        assert_eq!(state.effective_bg_opt(), Some(Color::BLUE));
+    }
+
+    #[test]
+    fn test_effective_bg_opt_disabled() {
+        let state = WidgetState::new().disabled(true);
+        assert_eq!(state.effective_bg_opt(), Some(DISABLED_BG));
+    }
+
+    // =========================================================================
+    // CSS Color Resolution Tests
+    // =========================================================================
+
+    #[test]
+    fn test_resolve_fg_default() {
+        let state = WidgetState::new();
+        let color = state.resolve_fg(None, Color::WHITE);
+        assert_eq!(color, Color::WHITE);
+    }
+
+    #[test]
+    fn test_resolve_fg_inline_override() {
+        let state = WidgetState::new().fg(Color::RED);
+        let color = state.resolve_fg(None, Color::WHITE);
+        assert_eq!(color, Color::RED);
+    }
+
+    #[test]
+    fn test_resolve_fg_disabled() {
+        let state = WidgetState::new().disabled(true);
+        let color = state.resolve_fg(None, Color::WHITE);
+        assert_eq!(color, DISABLED_FG);
+    }
+
+    #[test]
+    fn test_resolve_fg_with_css_style() {
+        let state = WidgetState::new();
+        let mut style = Style::default();
+        style.visual.color = Color::CYAN;
+        let color = state.resolve_fg(Some(&style), Color::WHITE);
+        assert_eq!(color, Color::CYAN);
+    }
+
+    #[test]
+    fn test_resolve_bg_default() {
+        let state = WidgetState::new();
+        let color = state.resolve_bg(None, Color::BLACK);
+        assert_eq!(color, Color::BLACK);
+    }
+
+    #[test]
+    fn test_resolve_bg_inline_override() {
+        let state = WidgetState::new().bg(Color::BLUE);
+        let color = state.resolve_bg(None, Color::BLACK);
+        assert_eq!(color, Color::BLUE);
+    }
+
+    #[test]
+    fn test_resolve_bg_disabled() {
+        let state = WidgetState::new().disabled(true);
+        let color = state.resolve_bg(None, Color::BLACK);
+        assert_eq!(color, DISABLED_BG);
+    }
+
+    #[test]
+    fn test_resolve_colors() {
+        let state = WidgetState::new();
+        let (fg, bg) = state.resolve_colors(None, Color::WHITE, Color::BLACK);
+        assert_eq!(fg, Color::WHITE);
+        assert_eq!(bg, Color::BLACK);
+    }
+
+    #[test]
+    fn test_resolve_colors_interactive_disabled() {
+        let state = WidgetState::new().disabled(true);
+        let (fg, bg) = state.resolve_colors_interactive(None, Color::WHITE, Color::BLACK);
+        assert_eq!(fg, DISABLED_FG);
+        assert_eq!(bg, DISABLED_BG);
+    }
+
+    #[test]
+    fn test_resolve_colors_interactive_normal() {
+        let state = WidgetState::new();
+        let (fg, _bg) = state.resolve_colors_interactive(None, Color::WHITE, Color::BLACK);
+        assert_eq!(fg, Color::WHITE);
+    }
+
+    // =========================================================================
+    // Visual Changed Tests
+    // =========================================================================
+
+    #[test]
+    fn test_visual_changed_no_change() {
+        let state1 = WidgetState::new();
+        let state2 = WidgetState::new();
+        assert!(!state1.visual_changed(&state2));
+    }
+
+    #[test]
+    fn test_visual_changed_focused() {
+        let state1 = WidgetState::new().focused(true);
+        let state2 = WidgetState::new();
+        assert!(state1.visual_changed(&state2));
+    }
+
+    #[test]
+    fn test_visual_changed_disabled() {
+        let state1 = WidgetState::new().disabled(true);
+        let state2 = WidgetState::new();
+        assert!(state1.visual_changed(&state2));
+    }
+
+    #[test]
+    fn test_visual_changed_pressed() {
+        let state1 = WidgetState::new().pressed(true);
+        let state2 = WidgetState::new();
+        assert!(state1.visual_changed(&state2));
+    }
+
+    #[test]
+    fn test_visual_changed_hovered() {
+        let state1 = WidgetState::new().hovered(true);
+        let state2 = WidgetState::new();
+        assert!(state1.visual_changed(&state2));
+    }
+
+    // =========================================================================
+    // Clone and Debug Tests
+    // =========================================================================
+
+    #[test]
+    fn test_widget_state_clone() {
+        let state = WidgetState::new().focused(true).fg(Color::RED);
+        let cloned = state.clone();
+        assert!(cloned.focused);
+        assert_eq!(cloned.fg, Some(Color::RED));
+    }
+
+    #[test]
+    fn test_widget_state_debug() {
+        let state = WidgetState::new().focused(true);
+        let debug = format!("{:?}", state);
+        assert!(debug.contains("WidgetState"));
+    }
+
+    // =========================================================================
+    // Constant Tests
+    // =========================================================================
+
+    #[test]
+    fn test_disabled_fg_constant() {
+        assert_eq!(DISABLED_FG.r, 100);
+        assert_eq!(DISABLED_FG.g, 100);
+        assert_eq!(DISABLED_FG.b, 100);
+    }
+
+    #[test]
+    fn test_disabled_bg_constant() {
+        assert_eq!(DISABLED_BG.r, 50);
+        assert_eq!(DISABLED_BG.g, 50);
+        assert_eq!(DISABLED_BG.b, 50);
+    }
+}

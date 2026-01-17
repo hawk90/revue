@@ -295,4 +295,173 @@ mod tests {
         assert_eq!(node.widget_type(), "Button");
         assert!(node.has_class("primary"));
     }
+
+    #[test]
+    fn test_widget_meta_default() {
+        let meta = WidgetMeta::default();
+        assert!(meta.widget_type.is_empty());
+        assert!(meta.id.is_none());
+        assert!(meta.classes.is_empty());
+    }
+
+    #[test]
+    fn test_widget_meta_classes_builder() {
+        let meta = WidgetMeta::new("Div").classes(vec!["foo", "bar", "baz"]);
+        assert!(meta.has_class("foo"));
+        assert!(meta.has_class("bar"));
+        assert!(meta.has_class("baz"));
+        assert!(!meta.has_class("qux"));
+    }
+
+    #[test]
+    fn test_node_state_builders() {
+        let state = NodeState::new()
+            .focused(true)
+            .hovered(true)
+            .disabled(false)
+            .selected(true)
+            .checked(true)
+            .dirty(true);
+
+        assert!(state.focused);
+        assert!(state.hovered);
+        assert!(!state.disabled);
+        assert!(state.selected);
+        assert!(state.checked);
+        assert!(state.dirty);
+    }
+
+    #[test]
+    fn test_node_state_update_position_first() {
+        let mut state = NodeState::new();
+        state.update_position(0, 5);
+
+        assert!(state.first_child);
+        assert!(!state.last_child);
+        assert!(!state.only_child);
+        assert_eq!(state.child_index, 0);
+        assert_eq!(state.sibling_count, 5);
+    }
+
+    #[test]
+    fn test_node_state_update_position_last() {
+        let mut state = NodeState::new();
+        state.update_position(4, 5);
+
+        assert!(!state.first_child);
+        assert!(state.last_child);
+        assert!(!state.only_child);
+    }
+
+    #[test]
+    fn test_node_state_update_position_only() {
+        let mut state = NodeState::new();
+        state.update_position(0, 1);
+
+        assert!(state.first_child);
+        assert!(state.last_child);
+        assert!(state.only_child);
+    }
+
+    #[test]
+    fn test_dom_id() {
+        let id = DomId::new(42);
+        assert_eq!(id.inner(), 42);
+        assert_eq!(id.0, 42);
+
+        let id2 = DomId::new(42);
+        assert_eq!(id, id2);
+    }
+
+    #[test]
+    fn test_dom_node_element_id() {
+        let meta = WidgetMeta::new("Input").id("username");
+        let node = DomNode::new(DomId::new(1), meta);
+        assert_eq!(node.element_id(), Some("username"));
+    }
+
+    #[test]
+    fn test_dom_node_no_element_id() {
+        let meta = WidgetMeta::new("Input");
+        let node = DomNode::new(DomId::new(1), meta);
+        assert_eq!(node.element_id(), None);
+    }
+
+    #[test]
+    fn test_dom_node_classes_iter() {
+        let meta = WidgetMeta::new("Div").class("a").class("b");
+        let node = DomNode::new(DomId::new(1), meta);
+        let classes: Vec<_> = node.classes().collect();
+        assert_eq!(classes.len(), 2);
+    }
+
+    #[test]
+    fn test_dom_node_children() {
+        let meta = WidgetMeta::new("Container");
+        let mut node = DomNode::new(DomId::new(1), meta);
+
+        assert!(!node.has_children());
+        assert_eq!(node.child_count(), 0);
+
+        node.add_child(DomId::new(2));
+        node.add_child(DomId::new(3));
+
+        assert!(node.has_children());
+        assert_eq!(node.child_count(), 2);
+
+        node.remove_child(DomId::new(2));
+        assert_eq!(node.child_count(), 1);
+    }
+
+    #[test]
+    fn test_dom_node_inline_style() {
+        let meta = WidgetMeta::new("Box");
+        let mut node = DomNode::new(DomId::new(1), meta);
+
+        assert!(node.inline_style.is_none());
+
+        let style = Style::default();
+        node.set_inline_style(style);
+        assert!(node.inline_style.is_some());
+    }
+
+    #[test]
+    fn test_dom_node_matches_pseudo_focus() {
+        let meta = WidgetMeta::new("Input");
+        let mut node = DomNode::new(DomId::new(1), meta);
+        node.state.focused = true;
+
+        assert!(node.matches_pseudo(&super::super::PseudoClass::Focus));
+        assert!(!node.matches_pseudo(&super::super::PseudoClass::Hover));
+    }
+
+    #[test]
+    fn test_dom_node_matches_pseudo_disabled() {
+        let meta = WidgetMeta::new("Button");
+        let mut node = DomNode::new(DomId::new(1), meta);
+        node.state.disabled = true;
+
+        assert!(node.matches_pseudo(&super::super::PseudoClass::Disabled));
+        assert!(!node.matches_pseudo(&super::super::PseudoClass::Enabled));
+    }
+
+    #[test]
+    fn test_dom_node_matches_pseudo_nth_child() {
+        let meta = WidgetMeta::new("Item");
+        let mut node = DomNode::new(DomId::new(1), meta);
+        node.state.child_index = 2; // 0-indexed, so this is 3rd child
+
+        assert!(node.matches_pseudo(&super::super::PseudoClass::NthChild(3)));
+        assert!(!node.matches_pseudo(&super::super::PseudoClass::NthChild(2)));
+    }
+
+    #[test]
+    fn test_dom_node_matches_pseudo_not() {
+        let meta = WidgetMeta::new("Item");
+        let mut node = DomNode::new(DomId::new(1), meta);
+        node.state.focused = false;
+
+        let not_focus = super::super::PseudoClass::Not(Box::new(super::super::PseudoClass::Focus));
+        assert!(node.matches_pseudo(&not_focus));
+    }
 }

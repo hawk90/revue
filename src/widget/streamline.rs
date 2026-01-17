@@ -668,4 +668,218 @@ mod tests {
         assert_eq!(stacks.len(), 2);
         assert_eq!(stacks[0].len(), 2);
     }
+
+    #[test]
+    fn test_streamline_default() {
+        let chart = Streamline::default();
+        assert!(chart.title.is_none());
+        assert!(chart.layers.is_empty());
+        assert_eq!(chart.baseline, StreamBaseline::Symmetric);
+    }
+
+    #[test]
+    fn test_streamline_builders() {
+        let chart = streamline()
+            .title("My Chart")
+            .baseline(StreamBaseline::Wiggle)
+            .order(StreamOrder::Descending)
+            .show_legend(false)
+            .show_labels(false)
+            .x_labels(vec!["Jan".to_string(), "Feb".to_string()])
+            .bg(Color::BLACK)
+            .height(20)
+            .highlight(0);
+
+        assert_eq!(chart.title, Some("My Chart".to_string()));
+        assert_eq!(chart.baseline, StreamBaseline::Wiggle);
+        assert_eq!(chart.order, StreamOrder::Descending);
+        assert!(!chart.show_legend);
+        assert!(!chart.show_labels);
+        assert_eq!(chart.x_labels.len(), 2);
+        assert_eq!(chart.bg_color, Some(Color::BLACK));
+        assert_eq!(chart.height, Some(20));
+        assert_eq!(chart.highlighted, Some(0));
+    }
+
+    #[test]
+    fn test_streamline_layers_builder() {
+        let layers = vec![
+            StreamLayer::new("A").data(vec![1.0, 2.0]),
+            StreamLayer::new("B").data(vec![3.0, 4.0]),
+        ];
+        let chart = streamline().layers(layers);
+        assert_eq!(chart.layers.len(), 2);
+    }
+
+    #[test]
+    fn test_streamline_palette() {
+        let chart = streamline().palette(vec![Color::RED, Color::BLUE]);
+        assert_eq!(chart.palette.len(), 2);
+    }
+
+    #[test]
+    fn test_stream_layer_no_color() {
+        let layer = StreamLayer::new("Test").data(vec![1.0, 2.0]);
+        assert!(layer.color.is_none());
+    }
+
+    #[test]
+    fn test_get_layer_color_custom() {
+        let chart = streamline().layer(StreamLayer::new("A").data(vec![1.0]).color(Color::GREEN));
+        let color = chart.get_layer_color(0);
+        assert_eq!(color, Color::GREEN);
+    }
+
+    #[test]
+    fn test_get_layer_color_palette() {
+        let chart = streamline()
+            .palette(vec![Color::RED, Color::BLUE])
+            .layer(StreamLayer::new("A").data(vec![1.0]));
+        let color = chart.get_layer_color(0);
+        assert_eq!(color, Color::RED);
+    }
+
+    #[test]
+    fn test_get_layer_color_palette_wrap() {
+        let chart = streamline()
+            .palette(vec![Color::RED])
+            .layer(StreamLayer::new("A").data(vec![1.0]))
+            .layer(StreamLayer::new("B").data(vec![2.0]));
+        // Second layer should wrap to first palette color
+        let color = chart.get_layer_color(1);
+        assert_eq!(color, Color::RED);
+    }
+
+    #[test]
+    fn test_compute_stacks_empty() {
+        let chart = streamline();
+        let stacks = chart.compute_stacks();
+        assert!(stacks.is_empty());
+    }
+
+    #[test]
+    fn test_compute_stacks_empty_values() {
+        let chart = streamline().layer(StreamLayer::new("A"));
+        let stacks = chart.compute_stacks();
+        assert!(stacks.is_empty());
+    }
+
+    #[test]
+    fn test_compute_stacks_symmetric() {
+        let chart = streamline()
+            .layer(StreamLayer::new("A").data(vec![10.0]))
+            .baseline(StreamBaseline::Symmetric);
+        let stacks = chart.compute_stacks();
+        assert_eq!(stacks.len(), 1);
+        // Symmetric centers around 0
+        let (y0, y1) = stacks[0][0];
+        assert!(y0 < 0.0);
+        assert!(y1 > 0.0);
+    }
+
+    #[test]
+    fn test_compute_stacks_expand() {
+        let chart = streamline()
+            .layer(StreamLayer::new("A").data(vec![10.0]))
+            .layer(StreamLayer::new("B").data(vec![10.0]))
+            .baseline(StreamBaseline::Expand);
+        let stacks = chart.compute_stacks();
+        // Expand normalizes to 0-1
+        let (_, y1_a) = stacks[0][0];
+        let (_, y1_b) = stacks[1][0];
+        assert!((y1_b - 1.0).abs() < 0.01);
+        assert!((y1_a - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_compute_stacks_order_ascending() {
+        let chart = streamline()
+            .layer(StreamLayer::new("Big").data(vec![100.0]))
+            .layer(StreamLayer::new("Small").data(vec![10.0]))
+            .order(StreamOrder::Ascending)
+            .baseline(StreamBaseline::Zero);
+        let stacks = chart.compute_stacks();
+        // Should still have 2 stacks
+        assert_eq!(stacks.len(), 2);
+    }
+
+    #[test]
+    fn test_compute_stacks_order_descending() {
+        let chart = streamline()
+            .layer(StreamLayer::new("Small").data(vec![10.0]))
+            .layer(StreamLayer::new("Big").data(vec![100.0]))
+            .order(StreamOrder::Descending)
+            .baseline(StreamBaseline::Zero);
+        let stacks = chart.compute_stacks();
+        assert_eq!(stacks.len(), 2);
+    }
+
+    #[test]
+    fn test_compute_stacks_order_inside_out() {
+        let chart = streamline()
+            .layer(StreamLayer::new("A").data(vec![10.0]))
+            .layer(StreamLayer::new("B").data(vec![50.0]))
+            .layer(StreamLayer::new("C").data(vec![30.0]))
+            .order(StreamOrder::InsideOut)
+            .baseline(StreamBaseline::Zero);
+        let stacks = chart.compute_stacks();
+        assert_eq!(stacks.len(), 3);
+    }
+
+    #[test]
+    fn test_genre_stream() {
+        let data = vec![
+            ("Rock", vec![10.0, 20.0, 30.0]),
+            ("Pop", vec![5.0, 15.0, 25.0]),
+        ];
+        let chart = genre_stream(data);
+        assert_eq!(chart.title, Some("Music Genre Trends".to_string()));
+        assert_eq!(chart.layers.len(), 2);
+    }
+
+    #[test]
+    fn test_traffic_stream() {
+        let data = vec![
+            ("Direct", vec![100.0, 150.0]),
+            ("Search", vec![200.0, 250.0]),
+        ];
+        let chart = traffic_stream(data);
+        assert_eq!(chart.title, Some("Traffic Sources".to_string()));
+        assert_eq!(chart.baseline, StreamBaseline::Expand);
+    }
+
+    #[test]
+    fn test_resource_stream() {
+        let chart = resource_stream(
+            vec![10.0, 20.0],
+            vec![30.0, 40.0],
+            vec![5.0, 10.0],
+            vec![15.0, 25.0],
+        );
+        assert_eq!(chart.title, Some("Resource Usage".to_string()));
+        assert_eq!(chart.layers.len(), 4);
+        assert_eq!(chart.baseline, StreamBaseline::Zero);
+    }
+
+    #[test]
+    fn test_streamline_with_data() {
+        let layers = vec![
+            StreamLayer::new("X").data(vec![1.0]),
+            StreamLayer::new("Y").data(vec![2.0]),
+        ];
+        let chart = streamline_with_data(layers);
+        assert_eq!(chart.layers.len(), 2);
+    }
+
+    #[test]
+    fn test_stream_baseline_default() {
+        let baseline = StreamBaseline::default();
+        assert_eq!(baseline, StreamBaseline::Symmetric);
+    }
+
+    #[test]
+    fn test_stream_order_default() {
+        let order = StreamOrder::default();
+        assert_eq!(order, StreamOrder::None);
+    }
 }

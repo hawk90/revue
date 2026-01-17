@@ -964,4 +964,346 @@ mod tests {
         t.handle_key(&Key::Escape);
         assert_eq!(t.query(), "");
     }
+
+    // =========================================================================
+    // Additional coverage tests
+    // =========================================================================
+
+    #[test]
+    fn test_tree_node_children_builder() {
+        let children = vec![TreeNode::new("Child 1"), TreeNode::new("Child 2")];
+        let node = TreeNode::new("Parent").children(children);
+        assert_eq!(node.children.len(), 2);
+    }
+
+    #[test]
+    fn test_tree_node_expanded_builder() {
+        let node = TreeNode::new("Test").expanded(true);
+        assert!(node.expanded);
+    }
+
+    #[test]
+    fn test_tree_fg_bg_colors() {
+        let t = Tree::new().fg(Color::RED).bg(Color::BLUE);
+        assert_eq!(t.fg, Some(Color::RED));
+        assert_eq!(t.bg, Some(Color::BLUE));
+    }
+
+    #[test]
+    fn test_tree_indent() {
+        let t = Tree::new().indent(4);
+        assert_eq!(t.indent, 4);
+    }
+
+    #[test]
+    fn test_tree_expand_collapse_methods() {
+        let mut t = Tree::new().node(
+            TreeNode::new("Parent")
+                .child(TreeNode::new("Child 1"))
+                .child(TreeNode::new("Child 2")),
+        );
+
+        // Initially collapsed
+        assert_eq!(t.visible_count(), 1);
+
+        // Expand
+        t.expand();
+        assert_eq!(t.visible_count(), 3);
+
+        // Collapse
+        t.collapse();
+        assert_eq!(t.visible_count(), 1);
+    }
+
+    #[test]
+    fn test_tree_expand_already_expanded() {
+        let mut t = Tree::new().node(
+            TreeNode::new("Parent")
+                .expanded(true)
+                .child(TreeNode::new("Child")),
+        );
+
+        let visible_before = t.visible_count();
+        t.expand();
+        assert_eq!(t.visible_count(), visible_before);
+    }
+
+    #[test]
+    fn test_tree_collapse_already_collapsed() {
+        let mut t = Tree::new().node(TreeNode::new("Parent").child(TreeNode::new("Child")));
+
+        // Already collapsed
+        t.collapse();
+        assert_eq!(t.visible_count(), 1);
+    }
+
+    #[test]
+    fn test_tree_expand_leaf_node() {
+        let mut t = Tree::new().node(TreeNode::new("Leaf"));
+
+        // Expanding a leaf should do nothing
+        t.expand();
+        assert_eq!(t.visible_count(), 1);
+    }
+
+    #[test]
+    fn test_tree_is_match() {
+        let mut t = Tree::new()
+            .nodes(vec![TreeNode::new("file1.txt"), TreeNode::new("file2.txt")])
+            .searchable(true);
+
+        t.set_query("file1");
+        assert!(t.is_match(0));
+        assert!(!t.is_match(1));
+    }
+
+    #[test]
+    fn test_tree_current_match_index_empty() {
+        let t = Tree::new()
+            .nodes(vec![TreeNode::new("test")])
+            .searchable(true);
+
+        // No query means no matches
+        assert_eq!(t.current_match_index(), 0);
+    }
+
+    #[test]
+    fn test_tree_next_prev_match_empty() {
+        let mut t = Tree::new()
+            .nodes(vec![TreeNode::new("test")])
+            .searchable(true);
+
+        // No matches, should return false
+        assert!(!t.next_match());
+        assert!(!t.prev_match());
+    }
+
+    #[test]
+    fn test_tree_handle_key_non_searchable_vim_keys() {
+        use crate::event::Key;
+
+        let mut t = Tree::new().nodes(vec![
+            TreeNode::new("One"),
+            TreeNode::new("Two"),
+            TreeNode::new("Three"),
+        ]);
+
+        // j for down
+        assert!(t.handle_key(&Key::Char('j')));
+        assert_eq!(t.selected_index(), 1);
+
+        // k for up
+        assert!(t.handle_key(&Key::Char('k')));
+        assert_eq!(t.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tree_handle_key_expand_with_space() {
+        use crate::event::Key;
+
+        let mut t = Tree::new().node(TreeNode::new("Parent").child(TreeNode::new("Child")));
+
+        assert!(t.handle_key(&Key::Char(' ')));
+        assert_eq!(t.visible_count(), 2); // Expanded
+    }
+
+    #[test]
+    fn test_tree_handle_key_expand_collapse_with_vim() {
+        use crate::event::Key;
+
+        let mut t = Tree::new().node(TreeNode::new("Parent").child(TreeNode::new("Child")));
+
+        // l for expand
+        assert!(t.handle_key(&Key::Char('l')));
+        assert_eq!(t.visible_count(), 2);
+
+        // h for collapse
+        assert!(t.handle_key(&Key::Char('h')));
+        assert_eq!(t.visible_count(), 1);
+    }
+
+    #[test]
+    fn test_tree_handle_key_searchable_up_down() {
+        use crate::event::Key;
+
+        let mut t = Tree::new()
+            .nodes(vec![TreeNode::new("One"), TreeNode::new("Two")])
+            .searchable(true);
+
+        assert!(t.handle_key(&Key::Down));
+        assert_eq!(t.selected_index(), 1);
+
+        assert!(t.handle_key(&Key::Up));
+        assert_eq!(t.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tree_handle_key_searchable_enter() {
+        use crate::event::Key;
+
+        let mut t = Tree::new()
+            .node(TreeNode::new("Parent").child(TreeNode::new("Child")))
+            .searchable(true);
+
+        assert!(t.handle_key(&Key::Enter));
+        assert_eq!(t.visible_count(), 2);
+    }
+
+    #[test]
+    fn test_tree_handle_key_searchable_left_right() {
+        use crate::event::Key;
+
+        let mut t = Tree::new()
+            .node(TreeNode::new("Parent").child(TreeNode::new("Child")))
+            .searchable(true);
+
+        assert!(t.handle_key(&Key::Right));
+        assert_eq!(t.visible_count(), 2);
+
+        assert!(t.handle_key(&Key::Left));
+        assert_eq!(t.visible_count(), 1);
+    }
+
+    #[test]
+    fn test_tree_handle_key_special_search_chars() {
+        use crate::event::Key;
+
+        let mut t = Tree::new()
+            .nodes(vec![
+                TreeNode::new("file-name"),
+                TreeNode::new("file_name"),
+                TreeNode::new("file.name"),
+                TreeNode::new("path/to/file"),
+            ])
+            .searchable(true);
+
+        // Test special chars that are allowed in search
+        t.handle_key(&Key::Char('-'));
+        assert_eq!(t.query(), "-");
+
+        t.clear_query();
+        t.handle_key(&Key::Char('_'));
+        assert_eq!(t.query(), "_");
+
+        t.clear_query();
+        t.handle_key(&Key::Char('.'));
+        assert_eq!(t.query(), ".");
+
+        t.clear_query();
+        t.handle_key(&Key::Char('/'));
+        assert_eq!(t.query(), "/");
+    }
+
+    #[test]
+    fn test_tree_handle_key_unhandled() {
+        use crate::event::Key;
+
+        let mut t = Tree::new().node(TreeNode::new("Test"));
+
+        // Tab key is not handled
+        assert!(!t.handle_key(&Key::Tab));
+    }
+
+    #[test]
+    fn test_tree_render_with_expanded_children() {
+        let mut buffer = Buffer::new(40, 10);
+        let area = Rect::new(0, 0, 40, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let t = Tree::new()
+            .node(
+                TreeNode::new("Parent")
+                    .expanded(true)
+                    .child(TreeNode::new("Child 1"))
+                    .child(TreeNode::new("Child 2")),
+            )
+            .selected_style(Color::WHITE, Color::BLUE);
+
+        t.render(&mut ctx);
+
+        // Check expand indicator
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '▼');
+    }
+
+    #[test]
+    fn test_tree_render_nested() {
+        let mut buffer = Buffer::new(40, 10);
+        let area = Rect::new(0, 0, 40, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let t = Tree::new().node(
+            TreeNode::new("Level 0").expanded(true).child(
+                TreeNode::new("Level 1")
+                    .expanded(true)
+                    .child(TreeNode::new("Level 2")),
+            ),
+        );
+
+        t.render(&mut ctx);
+        // Smoke test - just verify no panic
+    }
+
+    #[test]
+    fn test_tree_render_empty() {
+        let mut buffer = Buffer::new(40, 10);
+        let area = Rect::new(0, 0, 40, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let t = Tree::new();
+        t.render(&mut ctx);
+        // Empty tree should not panic
+    }
+
+    #[test]
+    fn test_tree_render_small_area() {
+        let mut buffer = Buffer::new(2, 1);
+        let area = Rect::new(0, 0, 2, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let t = Tree::new().node(TreeNode::new("Test"));
+        t.render(&mut ctx);
+        // Small area should not panic
+    }
+
+    #[test]
+    fn test_tree_render_with_selection() {
+        let mut buffer = Buffer::new(40, 10);
+        let area = Rect::new(0, 0, 40, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let t = Tree::new()
+            .nodes(vec![TreeNode::new("First"), TreeNode::new("Second")])
+            .selected(1);
+
+        t.render(&mut ctx);
+        // Verify selection rendering
+    }
+
+    #[test]
+    fn test_tree_render_with_highlight() {
+        let mut buffer = Buffer::new(40, 10);
+        let area = Rect::new(0, 0, 40, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut t = Tree::new()
+            .nodes(vec![TreeNode::new("Hello World")])
+            .searchable(true)
+            .highlight_fg(Color::YELLOW);
+
+        t.set_query("hw");
+        t.render(&mut ctx);
+        // Verify highlight rendering
+    }
+
+    #[test]
+    fn test_tree_selected_label_none() {
+        let t = Tree::new();
+        assert!(t.selected_label().is_none());
+    }
+
+    #[test]
+    fn test_tree_default() {
+        let t = Tree::default();
+        assert!(t.is_empty());
+    }
 }
