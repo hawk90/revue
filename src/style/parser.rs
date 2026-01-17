@@ -668,19 +668,20 @@ fn parse_grid_template(value: &str) -> GridTemplate {
 }
 
 /// Parse repeat(count, track) function
-/// Returns (expanded tracks, chars consumed)
+/// Returns (expanded tracks, bytes consumed)
 fn parse_repeat_function(value: &str) -> Option<(Vec<GridTrack>, usize)> {
-    if !value.starts_with("repeat(") {
+    let bytes = value.as_bytes();
+    if !bytes.starts_with(b"repeat(") {
         return None;
     }
 
-    // Find matching closing paren
+    // Find matching closing paren using byte iteration (ASCII-only)
     let mut paren_depth = 0;
     let mut end_pos = 0;
-    for (i, ch) in value.chars().enumerate() {
-        match ch {
-            '(' => paren_depth += 1,
-            ')' => {
+    for (i, &b) in bytes.iter().enumerate() {
+        match b {
+            b'(' => paren_depth += 1,
+            b')' => {
                 paren_depth -= 1;
                 if paren_depth == 0 {
                     end_pos = i;
@@ -718,19 +719,20 @@ fn parse_repeat_function(value: &str) -> Option<(Vec<GridTrack>, usize)> {
 }
 
 /// Parse minmax(min, max) function
-/// Returns (GridTrack, chars consumed)
+/// Returns (GridTrack, bytes consumed)
 fn parse_minmax_function(value: &str) -> Option<(GridTrack, usize)> {
-    if !value.starts_with("minmax(") {
+    let bytes = value.as_bytes();
+    if !bytes.starts_with(b"minmax(") {
         return None;
     }
 
-    // Find matching closing paren
+    // Find matching closing paren using byte iteration (ASCII-only)
     let mut paren_depth = 0;
     let mut end_pos = 0;
-    for (i, ch) in value.chars().enumerate() {
-        match ch {
-            '(' => paren_depth += 1,
-            ')' => {
+    for (i, &b) in bytes.iter().enumerate() {
+        match b {
+            b'(' => paren_depth += 1,
+            b')' => {
                 paren_depth -= 1;
                 if paren_depth == 0 {
                     end_pos = i;
