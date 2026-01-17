@@ -13,6 +13,7 @@
 //! - Configurable snapshot limits
 //! - Pause/resume recording
 
+use super::helpers::draw_text_overlay;
 use super::DevToolsConfig;
 use crate::layout::Rect;
 use crate::render::Buffer;
@@ -927,12 +928,7 @@ impl TimeTravelDebugger {
     }
 
     fn draw_text(buffer: &mut Buffer, x: u16, y: u16, text: &str, color: Color) {
-        for (i, ch) in text.chars().enumerate() {
-            if let Some(cell) = buffer.get_mut(x + i as u16, y) {
-                cell.symbol = ch;
-                cell.fg = Some(color);
-            }
-        }
+        draw_text_overlay(buffer, x, y, text, color);
     }
 }
 

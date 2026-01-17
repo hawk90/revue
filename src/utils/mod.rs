@@ -59,6 +59,7 @@ pub mod i18n;
 pub mod keymap;
 pub mod layout;
 pub mod lock;
+pub mod overlay;
 pub mod path;
 pub mod profiler;
 pub mod selection;
@@ -296,3 +297,6 @@ pub use debounce::{debounce_ms, debouncer, throttle, throttle_ms, Debouncer, Edg
 
 // Filter mode
 pub use filter::FilterMode;
+
+// Overlay rendering
+pub use overlay::{draw_separator_overlay, draw_text_overlay};
