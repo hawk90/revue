@@ -253,11 +253,12 @@ pub fn vdivider() -> Divider {
     Divider::vertical()
 }
 
+// Most tests moved to tests/widget_tests.rs
+// Tests below access private fields and must stay inline
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
 
     #[test]
     fn test_divider_new() {
@@ -279,47 +280,6 @@ mod tests {
         assert_eq!(d.style, DividerStyle::Dashed);
         assert_eq!(d.label, Some("Test".to_string()));
         assert_eq!(d.margin, 2);
-    }
-
-    #[test]
-    fn test_divider_render_horizontal() {
-        let mut buffer = Buffer::new(20, 1);
-        let area = Rect::new(0, 0, 20, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let d = divider();
-        d.render(&mut ctx);
-
-        // Check first character is a horizontal line
-        assert_eq!(buffer.get(0, 0).map(|c| c.symbol), Some('─'));
-    }
-
-    #[test]
-    fn test_divider_render_vertical() {
-        let mut buffer = Buffer::new(1, 10);
-        let area = Rect::new(0, 0, 1, 10);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let d = vdivider();
-        d.render(&mut ctx);
-
-        assert_eq!(buffer.get(0, 0).map(|c| c.symbol), Some('│'));
-    }
-
-    #[test]
-    fn test_divider_with_label() {
-        let mut buffer = Buffer::new(30, 1);
-        let area = Rect::new(0, 0, 30, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let d = divider().label("Section");
-        d.render(&mut ctx);
-
-        // Label should be somewhere in the middle
-        let text: String = (0..30)
-            .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
-            .collect();
-        assert!(text.contains("Section"));
     }
 
     #[test]
@@ -347,53 +307,5 @@ mod tests {
 
         let v = vdivider();
         assert_eq!(v.orientation, Orientation::Vertical);
-    }
-
-    #[test]
-    fn test_divider_render_uses_helpers() {
-        // Test that divider rendering works correctly after migration to helpers
-        let mut buffer = Buffer::new(30, 1);
-        let area = Rect::new(0, 0, 30, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let d = divider().label("Test");
-        d.render(&mut ctx);
-
-        // Verify label is rendered
-        let text: String = (0..30)
-            .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
-            .collect();
-        assert!(text.contains("Test"));
-
-        // Verify horizontal lines are drawn
-        assert!(text.contains("─"));
-    }
-
-    #[test]
-    fn test_divider_label_clipping() {
-        // Test that label is clipped when not enough space
-        let mut buffer = Buffer::new(10, 1);
-        let area = Rect::new(0, 0, 10, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let d = divider().label("VeryLongLabelThatWontFit");
-        d.render(&mut ctx);
-        // Should not panic and render what fits
-    }
-
-    #[test]
-    fn test_divider_vertical_uses_vline() {
-        // Test vertical divider uses draw_vline
-        let mut buffer = Buffer::new(1, 5);
-        let area = Rect::new(0, 0, 1, 5);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let d = vdivider();
-        d.render(&mut ctx);
-
-        // All cells should have vertical line
-        for y in 0..5 {
-            assert_eq!(buffer.get(0, y).map(|c| c.symbol), Some('│'));
-        }
     }
 }

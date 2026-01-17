@@ -363,12 +363,12 @@ pub fn button(label: impl Into<String>) -> Button {
 impl_styled_view!(Button);
 impl_widget_builders!(Button);
 
+// Most tests moved to tests/widget_tests.rs
+// Tests below access private fields and must stay inline
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
-    use crate::widget::StyledView;
 
     #[test]
     fn test_button_new() {
@@ -420,35 +420,6 @@ mod tests {
     }
 
     #[test]
-    fn test_button_render() {
-        let btn = Button::new("OK").width(6);
-        let mut buffer = Buffer::new(20, 3);
-        let area = Rect::new(1, 1, 10, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        btn.render(&mut ctx);
-        // Button should be rendered
-    }
-
-    #[test]
-    fn test_button_focused_render() {
-        let btn = Button::new("Submit").focused(true);
-        let mut buffer = Buffer::new(20, 3);
-        let area = Rect::new(2, 1, 15, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        btn.render(&mut ctx);
-        // Focused button should have brackets
-    }
-
-    #[test]
-    fn test_button_disabled() {
-        let btn = Button::new("Disabled").disabled(true);
-        assert!(btn.is_disabled());
-        assert!(!btn.is_focused());
-    }
-
-    #[test]
     fn test_button_helper() {
         let btn = button("Helper");
         assert_eq!(btn.label, "Helper");
@@ -463,90 +434,10 @@ mod tests {
     }
 
     #[test]
-    fn test_button_handle_mouse_click() {
-        let mut btn = Button::new("Test");
-        let area = Rect::new(10, 5, 10, 1);
-
-        // Mouse down inside button
-        let down = MouseEvent::new(15, 5, MouseEventKind::Down(MouseButton::Left));
-        let (needs_render, clicked) = btn.handle_mouse(&down, area);
-        assert!(needs_render);
-        assert!(!clicked);
-        assert!(btn.is_pressed());
-
-        // Mouse up inside button - should trigger click
-        let up = MouseEvent::new(15, 5, MouseEventKind::Up(MouseButton::Left));
-        let (needs_render, clicked) = btn.handle_mouse(&up, area);
-        assert!(needs_render);
-        assert!(clicked);
-        assert!(!btn.is_pressed());
-    }
-
-    #[test]
-    fn test_button_handle_mouse_click_outside() {
-        let mut btn = Button::new("Test");
-        let area = Rect::new(10, 5, 10, 1);
-
-        // Mouse down inside
-        let down = MouseEvent::new(15, 5, MouseEventKind::Down(MouseButton::Left));
-        btn.handle_mouse(&down, area);
-        assert!(btn.is_pressed());
-
-        // Mouse up outside - should not trigger click
-        let up = MouseEvent::new(0, 0, MouseEventKind::Up(MouseButton::Left));
-        let (needs_render, clicked) = btn.handle_mouse(&up, area);
-        assert!(needs_render);
-        assert!(!clicked);
-    }
-
-    #[test]
-    fn test_button_handle_mouse_hover() {
-        let mut btn = Button::new("Test");
-        let area = Rect::new(10, 5, 10, 1);
-
-        // Mouse move into button
-        let enter = MouseEvent::new(15, 5, MouseEventKind::Move);
-        let (needs_render, _) = btn.handle_mouse(&enter, area);
-        assert!(needs_render);
-        assert!(btn.is_hovered());
-
-        // Mouse move while inside - no change
-        let inside = MouseEvent::new(16, 5, MouseEventKind::Move);
-        let (needs_render, _) = btn.handle_mouse(&inside, area);
-        assert!(!needs_render);
-        assert!(btn.is_hovered());
-
-        // Mouse move outside
-        let leave = MouseEvent::new(0, 0, MouseEventKind::Move);
-        let (needs_render, _) = btn.handle_mouse(&leave, area);
-        assert!(needs_render);
-        assert!(!btn.is_hovered());
-    }
-
-    #[test]
-    fn test_button_handle_mouse_disabled() {
-        let mut btn = Button::new("Test").disabled(true);
-        let area = Rect::new(10, 5, 10, 1);
-
-        // Mouse click should not work on disabled button
-        let down = MouseEvent::new(15, 5, MouseEventKind::Down(MouseButton::Left));
-        let (needs_render, clicked) = btn.handle_mouse(&down, area);
-        assert!(!needs_render);
-        assert!(!clicked);
-        assert!(!btn.is_pressed());
-    }
-
-    #[test]
     fn test_button_with_icon() {
         let btn = Button::new("Save").icon('💾');
         assert_eq!(btn.icon, Some('💾'));
         assert_eq!(btn.label, "Save");
-
-        // Test render with icon
-        let mut buffer = Buffer::new(20, 3);
-        let area = Rect::new(1, 1, 15, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-        btn.render(&mut ctx);
     }
 
     #[test]
@@ -554,106 +445,7 @@ mod tests {
         let btn_no_icon = Button::new("OK");
         let btn_with_icon = Button::new("OK").icon('✓');
 
-        // Button with icon should have wider content
         assert!(btn_with_icon.icon.is_some());
         assert!(btn_no_icon.icon.is_none());
-    }
-
-    // CSS integration tests
-    #[test]
-    fn test_button_css_id() {
-        use crate::widget::View;
-
-        let btn = Button::new("Submit").element_id("submit-btn");
-        assert_eq!(View::id(&btn), Some("submit-btn"));
-
-        let meta = btn.meta();
-        assert_eq!(meta.id, Some("submit-btn".to_string()));
-    }
-
-    #[test]
-    fn test_button_css_classes() {
-        let btn = Button::new("Action").class("primary").class("large");
-
-        assert!(btn.has_class("primary"));
-        assert!(btn.has_class("large"));
-        assert!(!btn.has_class("small"));
-
-        let meta = btn.meta();
-        assert!(meta.classes.contains("primary"));
-        assert!(meta.classes.contains("large"));
-    }
-
-    #[test]
-    fn test_button_styled_view() {
-        use crate::widget::View;
-
-        let mut btn = Button::new("Test");
-
-        // Set ID via StyledView
-        btn.set_id("test-id");
-        assert_eq!(View::id(&btn), Some("test-id"));
-
-        // Add/remove classes
-        btn.add_class("active");
-        assert!(btn.has_class("active"));
-
-        btn.remove_class("active");
-        assert!(!btn.has_class("active"));
-
-        // Toggle class
-        btn.toggle_class("selected");
-        assert!(btn.has_class("selected"));
-
-        btn.toggle_class("selected");
-        assert!(!btn.has_class("selected"));
-    }
-
-    #[test]
-    fn test_button_css_colors_from_context() {
-        use crate::style::{Style, VisualStyle};
-
-        let btn = Button::new("CSS");
-        let mut buffer = Buffer::new(20, 3);
-        let area = Rect::new(1, 1, 15, 1);
-
-        // Create style with custom colors
-        let mut style = Style::default();
-        style.visual = VisualStyle {
-            color: Color::RED,
-            background: Color::BLUE,
-            ..VisualStyle::default()
-        };
-
-        // Render with CSS style
-        let mut ctx = RenderContext::with_style(&mut buffer, area, &style);
-        btn.render(&mut ctx);
-
-        // The button should use CSS colors (checked via get_colors_from_ctx internally)
-    }
-
-    #[test]
-    fn test_button_inline_override_css() {
-        use crate::style::{Style, VisualStyle};
-
-        // Inline color should override CSS color
-        let btn = Button::new("Override").fg(Color::GREEN).bg(Color::YELLOW);
-
-        let mut buffer = Buffer::new(20, 3);
-        let area = Rect::new(1, 1, 15, 1);
-
-        // Create CSS style
-        let mut style = Style::default();
-        style.visual = VisualStyle {
-            color: Color::RED,
-            background: Color::BLUE,
-            ..VisualStyle::default()
-        };
-
-        let mut ctx = RenderContext::with_style(&mut buffer, area, &style);
-        btn.render(&mut ctx);
-
-        // Inline colors (.fg()/.bg()) should take priority over CSS
-        // Verified internally via get_colors_from_ctx
     }
 }

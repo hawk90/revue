@@ -276,11 +276,12 @@ pub fn dot_badge() -> Badge {
 impl_styled_view!(Badge);
 impl_props_builders!(Badge);
 
+// Most tests moved to tests/widget_tests.rs
+// Tests below access private fields and must stay inline
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
 
     #[test]
     fn test_badge_new() {
@@ -314,41 +315,6 @@ mod tests {
     fn test_badge_dot() {
         let b = Badge::dot().success();
         assert_eq!(b.shape, BadgeShape::Dot);
-    }
-
-    #[test]
-    fn test_badge_render() {
-        let mut buffer = Buffer::new(20, 1);
-        let area = Rect::new(0, 0, 20, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let b = badge("NEW").primary();
-        b.render(&mut ctx);
-
-        // Should have padding + text
-        let text: String = (0..20)
-            .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
-            .collect();
-        assert!(text.contains("NEW"));
-    }
-
-    #[test]
-    fn test_badge_dot_render() {
-        let mut buffer = Buffer::new(5, 1);
-        let area = Rect::new(0, 0, 5, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let b = dot_badge().success();
-        b.render(&mut ctx);
-
-        assert_eq!(buffer.get(0, 0).map(|c| c.symbol), Some('●'));
-    }
-
-    #[test]
-    fn test_variant_colors() {
-        let (bg, fg) = BadgeVariant::Success.colors();
-        assert_eq!(fg, Color::WHITE);
-        assert_ne!(bg, Color::WHITE);
     }
 
     #[test]
