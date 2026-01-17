@@ -110,7 +110,7 @@ impl<T: Display> View for List<T> {
 
                 ctx.buffer.set(x, y, cell);
 
-                let char_width = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as u16;
+                let char_width = crate::utils::unicode::char_width(ch).max(1) as u16;
                 if char_width == 2 && x + 1 < area.x + area.width {
                     let mut cont = Cell::continuation();
                     if is_selected {

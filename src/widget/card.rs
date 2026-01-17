@@ -31,8 +31,8 @@ use crate::event::Key;
 use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::unicode::char_width;
 use crate::{impl_props_builders, impl_state_builders, impl_styled_view};
-use unicode_width::UnicodeWidthChar;
 
 /// Card visual variant
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -595,11 +595,11 @@ impl TextDraw<'_> {
     fn draw(self, ctx: &mut RenderContext) {
         let mut offset = 0u16;
         for ch in self.text.chars() {
-            let char_width = ch.width().unwrap_or(0) as u16;
-            if char_width == 0 {
+            let ch_width = char_width(ch) as u16;
+            if ch_width == 0 {
                 continue;
             }
-            if offset + char_width > self.max_width {
+            if offset + ch_width > self.max_width {
                 break;
             }
             let mut cell = Cell::new(ch);
@@ -608,11 +608,11 @@ impl TextDraw<'_> {
                 cell.modifier |= Modifier::BOLD;
             }
             ctx.buffer.set(self.x + offset, self.y, cell);
-            for i in 1..char_width {
+            for i in 1..ch_width {
                 ctx.buffer
                     .set(self.x + offset + i, self.y, Cell::continuation());
             }
-            offset += char_width;
+            offset += ch_width;
         }
     }
 }

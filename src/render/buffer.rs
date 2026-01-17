@@ -2,7 +2,7 @@
 
 use super::Cell;
 use crate::style::Color;
-use unicode_width::UnicodeWidthChar;
+use crate::utils::unicode::char_width;
 
 /// A buffer holding the terminal state
 #[derive(Debug, Clone)]
@@ -92,7 +92,7 @@ impl Buffer {
         let mut offset = 0u16;
 
         for ch in s.chars() {
-            let width = ch.width().unwrap_or(0) as u16;
+            let width = char_width(ch) as u16;
             if width == 0 {
                 continue;
             }
@@ -246,7 +246,7 @@ impl Buffer {
         let mut offset = 0u16;
 
         for ch in text.chars() {
-            let width = ch.width().unwrap_or(0) as u16;
+            let width = char_width(ch) as u16;
             if width == 0 {
                 continue;
             }

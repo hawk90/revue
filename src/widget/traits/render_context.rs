@@ -4,7 +4,7 @@ use crate::dom::NodeState;
 use crate::layout::Rect;
 use crate::render::{Buffer, Cell};
 use crate::style::{Color, Style};
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+use crate::utils::unicode::{char_width, display_width};
 
 use super::event::FocusStyle;
 
@@ -124,7 +124,7 @@ impl<'a> RenderContext<'a> {
     {
         let mut offset = 0u16;
         for ch in text.chars() {
-            let width = ch.width().unwrap_or(0) as u16;
+            let width = char_width(ch) as u16;
             if width == 0 {
                 continue;
             }
@@ -150,7 +150,7 @@ impl<'a> RenderContext<'a> {
     {
         let mut offset = 0u16;
         for ch in text.chars() {
-            let width = ch.width().unwrap_or(0) as u16;
+            let width = char_width(ch) as u16;
             if width == 0 {
                 continue;
             }
@@ -259,7 +259,7 @@ impl<'a> RenderContext<'a> {
         let mut pos = x + 2;
         for (text, color) in parts {
             self.draw_text(pos, y, text, *color);
-            pos += text.width() as u16;
+            pos += display_width(text) as u16;
         }
         let end = x + width - 1;
         while pos < end {
@@ -366,7 +366,7 @@ impl<'a> RenderContext<'a> {
 
     /// Draw text centered within a given width
     pub fn draw_text_centered(&mut self, x: u16, y: u16, width: u16, text: &str, fg: Color) {
-        let text_width = text.width() as u16;
+        let text_width = display_width(text) as u16;
         let start_x = if text_width >= width {
             x
         } else {
@@ -377,7 +377,7 @@ impl<'a> RenderContext<'a> {
 
     /// Draw text right-aligned within a given width
     pub fn draw_text_right(&mut self, x: u16, y: u16, width: u16, text: &str, fg: Color) {
-        let text_width = text.width() as u16;
+        let text_width = display_width(text) as u16;
         let start_x = if text_width >= width {
             x
         } else {
@@ -469,18 +469,18 @@ impl<'a> RenderContext<'a> {
         while pos < border_end {
             if pos >= title_start {
                 if let Some(ch) = title_chars.next() {
-                    let char_width = ch.width().unwrap_or(0) as u16;
-                    if char_width == 0 {
+                    let ch_width = char_width(ch) as u16;
+                    if ch_width == 0 {
                         continue;
                     }
-                    if pos + char_width > border_end {
+                    if pos + ch_width > border_end {
                         break;
                     }
                     self.draw_char(x + pos, y, ch, fg);
-                    for i in 1..char_width {
+                    for i in 1..ch_width {
                         self.buffer.set(x + pos + i, y, Cell::continuation());
                     }
-                    pos += char_width;
+                    pos += ch_width;
                     continue;
                 }
             }
@@ -545,7 +545,7 @@ impl<'a> RenderContext<'a> {
         let mut cx = x;
         for (text, color) in segments {
             self.draw_text(cx, y, text, *color);
-            cx += text.width() as u16;
+            cx += display_width(text) as u16;
         }
         cx
     }
@@ -563,10 +563,10 @@ impl<'a> RenderContext<'a> {
         for (i, (text, color)) in segments.iter().enumerate() {
             if i > 0 {
                 self.draw_text(cx, y, sep, sep_color);
-                cx += sep.width() as u16;
+                cx += display_width(sep) as u16;
             }
             self.draw_text(cx, y, text, *color);
-            cx += text.width() as u16;
+            cx += display_width(text) as u16;
         }
         cx
     }
@@ -583,9 +583,9 @@ impl<'a> RenderContext<'a> {
         let mut cx = x;
         for (key, action) in hints {
             self.draw_text_bold(cx, y, key, key_color);
-            cx += key.width() as u16 + 1;
+            cx += display_width(key) as u16 + 1;
             self.draw_text(cx, y, action, action_color);
-            cx += action.width() as u16 + 2;
+            cx += display_width(action) as u16 + 2;
         }
         cx
     }
