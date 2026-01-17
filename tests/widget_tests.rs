@@ -754,3 +754,552 @@ fn test_divider_vertical_uses_vline() {
         assert_eq!(buffer.get(0, y).map(|c| c.symbol), Some('│'));
     }
 }
+
+// =============================================================================
+// RadioGroup Tests
+// =============================================================================
+
+use revue::widget::{RadioGroup, RadioLayout};
+
+#[test]
+fn test_radio_group_selection() {
+    let mut rg = RadioGroup::new(vec!["A", "B", "C"]);
+
+    assert_eq!(rg.selected_index(), 0);
+    assert_eq!(rg.selected_value(), Some("A"));
+
+    rg.select_next();
+    assert_eq!(rg.selected_index(), 1);
+    assert_eq!(rg.selected_value(), Some("B"));
+
+    rg.select_next();
+    assert_eq!(rg.selected_index(), 2);
+
+    rg.select_next();
+    assert_eq!(rg.selected_index(), 0); // Wraps around
+
+    rg.select_prev();
+    assert_eq!(rg.selected_index(), 2); // Wraps around
+}
+
+#[test]
+fn test_radio_group_disabled_selection() {
+    let mut rg = RadioGroup::new(vec!["A", "B"]).disabled(true);
+
+    rg.select_next();
+    assert_eq!(rg.selected_index(), 0); // Should not change
+}
+
+#[test]
+fn test_radio_group_handle_key() {
+    let mut rg = RadioGroup::new(vec!["A", "B", "C"]);
+
+    assert!(rg.handle_key(&Key::Down));
+    assert_eq!(rg.selected_index(), 1);
+
+    assert!(rg.handle_key(&Key::Up));
+    assert_eq!(rg.selected_index(), 0);
+
+    assert!(rg.handle_key(&Key::Char('j')));
+    assert_eq!(rg.selected_index(), 1);
+
+    assert!(rg.handle_key(&Key::Char('k')));
+    assert_eq!(rg.selected_index(), 0);
+
+    // Number keys
+    assert!(rg.handle_key(&Key::Char('2')));
+    assert_eq!(rg.selected_index(), 1);
+
+    assert!(!rg.handle_key(&Key::Char('a'))); // Invalid key
+}
+
+#[test]
+fn test_radio_group_horizontal_keys() {
+    let mut rg = RadioGroup::new(vec!["A", "B", "C"]).layout(RadioLayout::Horizontal);
+
+    assert!(rg.handle_key(&Key::Right));
+    assert_eq!(rg.selected_index(), 1);
+
+    assert!(rg.handle_key(&Key::Left));
+    assert_eq!(rg.selected_index(), 0);
+}
+
+#[test]
+fn test_radio_group_render() {
+    let rg = RadioGroup::new(vec!["Option A", "Option B"]).selected(0);
+    let mut buffer = Buffer::new(30, 5);
+    let area = Rect::new(1, 1, 25, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rg.render(&mut ctx);
+    // Smoke test - should render without panic
+}
+
+#[test]
+fn test_radio_group_empty() {
+    let rg = RadioGroup::new(Vec::<String>::new());
+    assert_eq!(rg.selected_value(), None);
+}
+
+// =============================================================================
+// Switch Tests
+// =============================================================================
+
+use revue::widget::{Switch, SwitchStyle};
+
+#[test]
+fn test_switch_new() {
+    let s = Switch::new();
+    assert!(!s.is_on());
+}
+
+#[test]
+fn test_switch_on() {
+    let s = Switch::new().on(true);
+    assert!(s.is_on());
+}
+
+#[test]
+fn test_switch_toggle() {
+    let mut s = Switch::new();
+    assert!(!s.is_on());
+
+    s.toggle();
+    assert!(s.is_on());
+
+    s.toggle();
+    assert!(!s.is_on());
+}
+
+#[test]
+fn test_switch_disabled() {
+    let mut s = Switch::new().disabled(true);
+    assert!(!s.is_on());
+
+    s.toggle();
+    assert!(!s.is_on()); // Should not change when disabled
+}
+
+#[test]
+fn test_switch_render_default() {
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let s = Switch::new().on(true);
+    s.render(&mut ctx);
+}
+
+#[test]
+fn test_switch_render_all_styles() {
+    let styles = [
+        SwitchStyle::Default,
+        SwitchStyle::IOS,
+        SwitchStyle::Material,
+        SwitchStyle::Text,
+        SwitchStyle::Emoji,
+        SwitchStyle::Block,
+    ];
+
+    for style in styles {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let s = Switch::new().style(style);
+        s.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_switch_with_label() {
+    use revue::widget::switch;
+    let mut buffer = Buffer::new(30, 1);
+    let area = Rect::new(0, 0, 30, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let s = switch().label("Dark Mode");
+    s.render(&mut ctx);
+
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'D');
+}
+
+#[test]
+fn test_switch_handle_key() {
+    use revue::event::Key;
+    use revue::widget::switch;
+
+    let mut s = switch().focused(true);
+    assert!(!s.is_on());
+
+    assert!(s.handle_key(&Key::Enter));
+    assert!(s.is_on());
+
+    assert!(s.handle_key(&Key::Char(' ')));
+    assert!(!s.is_on());
+}
+
+#[test]
+fn test_switch_helper() {
+    use revue::widget::switch;
+    let s = switch().on(true);
+    assert!(s.is_on());
+}
+
+#[test]
+fn test_switch_checked_alias() {
+    // Test checked() is an alias for on()
+    let s = Switch::new().checked(true);
+    assert!(s.is_on());
+    assert!(s.is_checked());
+
+    let s = Switch::new().checked(false);
+    assert!(!s.is_on());
+    assert!(!s.is_checked());
+}
+
+// =============================================================================
+// Avatar Tests
+// =============================================================================
+
+use revue::widget::{avatar, avatar_icon, Avatar, AvatarSize};
+
+#[test]
+fn test_avatar_render_small() {
+    let mut buffer = Buffer::new(5, 1);
+    let area = Rect::new(0, 0, 5, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let a = avatar("John Doe").small();
+    a.render(&mut ctx);
+
+    assert_eq!(buffer.get(0, 0).map(|c| c.symbol), Some('J'));
+}
+
+#[test]
+fn test_avatar_render_medium() {
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let a = avatar("John Doe");
+    a.render(&mut ctx);
+
+    // Should have initials in the middle
+    let text: String = (0..10)
+        .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
+        .collect();
+    assert!(text.contains('J') || text.contains('D'));
+}
+
+// =============================================================================
+// Alert Tests
+// =============================================================================
+
+use revue::widget::{Alert, AlertLevel, AlertVariant};
+
+#[test]
+fn test_alert_dismiss() {
+    let mut a = Alert::new("Test").dismissible(true);
+    assert!(!a.is_dismissed());
+
+    a.dismiss();
+    assert!(a.is_dismissed());
+
+    a.reset();
+    assert!(!a.is_dismissed());
+}
+
+#[test]
+fn test_alert_handle_key() {
+    let mut a = Alert::new("Test").dismissible(true);
+
+    assert!(a.handle_key(&Key::Char('x')));
+    assert!(a.is_dismissed());
+
+    a.reset();
+    assert!(a.handle_key(&Key::Escape));
+    assert!(a.is_dismissed());
+}
+
+#[test]
+fn test_alert_handle_key_not_dismissible() {
+    let mut a = Alert::new("Test").dismissible(false);
+    assert!(!a.handle_key(&Key::Char('x')));
+    assert!(!a.is_dismissed());
+}
+
+#[test]
+fn test_alert_height() {
+    let minimal = Alert::new("msg").variant(AlertVariant::Minimal);
+    assert_eq!(minimal.height(), 1);
+
+    let minimal_title = Alert::new("msg")
+        .title("Title")
+        .variant(AlertVariant::Minimal);
+    assert_eq!(minimal_title.height(), 2);
+
+    let filled = Alert::new("msg").variant(AlertVariant::Filled);
+    assert_eq!(filled.height(), 3);
+
+    let filled_title = Alert::new("msg")
+        .title("Title")
+        .variant(AlertVariant::Filled);
+    assert_eq!(filled_title.height(), 4);
+
+    let mut dismissed = Alert::new("msg").dismissible(true);
+    dismissed.dismiss();
+    assert_eq!(dismissed.height(), 0);
+}
+
+#[test]
+fn test_alert_level_colors() {
+    assert_eq!(AlertLevel::Info.color(), Color::CYAN);
+    assert_eq!(AlertLevel::Success.color(), Color::GREEN);
+    assert_eq!(AlertLevel::Warning.color(), Color::YELLOW);
+    assert_eq!(AlertLevel::Error.color(), Color::RED);
+}
+
+#[test]
+fn test_alert_level_icons() {
+    assert_eq!(AlertLevel::Info.icon(), 'ℹ');
+    assert_eq!(AlertLevel::Success.icon(), '✓');
+    assert_eq!(AlertLevel::Warning.icon(), '⚠');
+    assert_eq!(AlertLevel::Error.icon(), '✗');
+}
+
+#[test]
+fn test_alert_render_filled() {
+    let mut buffer = Buffer::new(40, 5);
+    let area = Rect::new(0, 0, 40, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let a = Alert::new("Test message").variant(AlertVariant::Filled);
+    a.render(&mut ctx);
+
+    // Check border corners
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '╭');
+    assert_eq!(buffer.get(39, 0).unwrap().symbol, '╮');
+}
+
+#[test]
+fn test_alert_render_outlined() {
+    let mut buffer = Buffer::new(40, 3);
+    let area = Rect::new(0, 0, 40, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let a = Alert::new("Test").variant(AlertVariant::Outlined);
+    a.render(&mut ctx);
+
+    // Check left accent border
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '┃');
+    assert_eq!(buffer.get(0, 1).unwrap().symbol, '┃');
+}
+
+#[test]
+fn test_alert_render_minimal() {
+    let mut buffer = Buffer::new(40, 2);
+    let area = Rect::new(0, 0, 40, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let a = Alert::new("Test").variant(AlertVariant::Minimal);
+    a.render(&mut ctx);
+
+    // Check icon
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'ℹ');
+}
+
+#[test]
+fn test_alert_render_dismissed() {
+    let mut buffer = Buffer::new(40, 5);
+    let area = Rect::new(0, 0, 40, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let mut a = Alert::new("Test");
+    a.dismiss();
+    a.render(&mut ctx);
+
+    // Should not render anything (buffer should be default)
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
+}
+
+// =============================================================================
+// Accordion Tests
+// =============================================================================
+
+use revue::widget::{accordion, section, Accordion, AccordionSection};
+
+#[test]
+fn test_accordion_new() {
+    let acc = Accordion::new();
+    assert!(acc.is_empty());
+    assert_eq!(acc.selected(), 0);
+}
+
+#[test]
+fn test_accordion_sections() {
+    let acc = Accordion::new()
+        .section(AccordionSection::new("A"))
+        .section(AccordionSection::new("B"));
+
+    assert_eq!(acc.len(), 2);
+}
+
+#[test]
+fn test_accordion_selection() {
+    let mut acc = Accordion::new()
+        .section(AccordionSection::new("A"))
+        .section(AccordionSection::new("B"))
+        .section(AccordionSection::new("C"));
+
+    assert_eq!(acc.selected(), 0);
+
+    acc.select_next();
+    assert_eq!(acc.selected(), 1);
+
+    acc.select_next();
+    assert_eq!(acc.selected(), 2);
+
+    acc.select_next();
+    assert_eq!(acc.selected(), 0); // Wrap
+
+    acc.select_prev();
+    assert_eq!(acc.selected(), 2); // Wrap back
+}
+
+#[test]
+fn test_accordion_set_selected() {
+    let mut acc = Accordion::new()
+        .section(AccordionSection::new("A"))
+        .section(AccordionSection::new("B"));
+
+    acc.set_selected(1);
+    assert_eq!(acc.selected(), 1);
+}
+
+#[test]
+fn test_accordion_render() {
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let acc = Accordion::new()
+        .section(
+            AccordionSection::new("Section 1")
+                .line("Content 1")
+                .expanded(true),
+        )
+        .section(AccordionSection::new("Section 2").line("Content 2"));
+
+    acc.render(&mut ctx);
+    // Smoke test - should not panic
+}
+
+#[test]
+fn test_accordion_with_border() {
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let acc = Accordion::new()
+        .border(Color::WHITE)
+        .section(AccordionSection::new("Test"));
+
+    acc.render(&mut ctx);
+
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '┌');
+}
+
+#[test]
+fn test_accordion_add_remove() {
+    let mut acc = Accordion::new();
+
+    acc.add_section(AccordionSection::new("A"));
+    acc.add_section(AccordionSection::new("B"));
+    assert_eq!(acc.len(), 2);
+
+    let removed = acc.remove_section(0);
+    assert!(removed.is_some());
+    assert_eq!(acc.len(), 1);
+}
+
+#[test]
+fn test_accordion_remove_section_out_of_range() {
+    let mut acc = Accordion::new().section(AccordionSection::new("A"));
+
+    let removed = acc.remove_section(10);
+    assert!(removed.is_none());
+    assert_eq!(acc.len(), 1);
+}
+
+#[test]
+fn test_accordion_default() {
+    let acc = Accordion::default();
+    assert!(acc.is_empty());
+}
+
+// =============================================================================
+// Gauge Tests
+// =============================================================================
+
+use revue::widget::{battery, gauge, percentage, Gauge, GaugeStyle};
+
+#[test]
+fn test_gauge_set_get_value() {
+    let mut g = Gauge::new();
+    g.set_value(0.8);
+    assert_eq!(g.get_value(), 0.8);
+}
+
+#[test]
+fn test_gauge_render_all_styles() {
+    let styles = [
+        GaugeStyle::Bar,
+        GaugeStyle::Battery,
+        GaugeStyle::Thermometer,
+        GaugeStyle::Arc,
+        GaugeStyle::Circle,
+        GaugeStyle::Vertical,
+        GaugeStyle::Segments,
+        GaugeStyle::Dots,
+    ];
+
+    for style in styles {
+        let mut buffer = Buffer::new(30, 5);
+        let area = Rect::new(0, 0, 30, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let g = Gauge::new().style(style).percent(50.0);
+        g.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_gauge_with_title() {
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 30, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let g = Gauge::new().title("CPU Usage").percent(75.0);
+    g.render(&mut ctx);
+
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'C');
+}
+
+#[test]
+fn test_gauge_helper() {
+    let g = gauge().percent(50.0);
+    assert_eq!(g.get_value(), 0.5);
+}
+
+#[test]
+fn test_percentage_helper() {
+    let g = percentage(75.0);
+    assert_eq!(g.get_value(), 0.75);
+}
+
+#[test]
+fn test_battery_helper() {
+    let g = battery(80.0);
+    assert_eq!(g.get_value(), 0.8);
+}
