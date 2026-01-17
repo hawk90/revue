@@ -299,6 +299,7 @@ mod zen;
 #[macro_use]
 mod macros;
 
+pub use crate::utils::border::BorderChars;
 pub use accordion::{accordion, section, Accordion, AccordionSection};
 pub use aistream::{ai_response, ai_stream, AiStream, StreamCursor, StreamStatus, TypingStyle};
 pub use alert::{
@@ -309,7 +310,7 @@ pub use avatar::{avatar, avatar_icon, Avatar, AvatarShape, AvatarSize};
 pub use badge::{badge, dot_badge, Badge, BadgeShape, BadgeVariant};
 pub use barchart::{barchart, BarChart, BarOrientation};
 pub use bigtext::{bigtext, h1, h2, h3, BigText};
-pub use border::{border, draw_border, Border, BorderChars, BorderType};
+pub use border::{border, draw_border, Border, BorderType};
 pub use boxplot::{boxplot, BoxGroup, BoxPlot, BoxStats, WhiskerStyle};
 pub use breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
 pub use button::{button, Button, ButtonVariant};
