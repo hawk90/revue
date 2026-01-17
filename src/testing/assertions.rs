@@ -315,4 +315,158 @@ mod tests {
         let assertion = CellEquals::new(1, 0, 'B');
         assert!(assertion.check(&buffer).is_pass());
     }
+
+    #[test]
+    fn test_assertion_result_clone() {
+        let result = AssertionResult::Pass;
+        let cloned = result.clone();
+        assert!(cloned.is_pass());
+
+        let fail = AssertionResult::Fail("error".to_string());
+        let fail_cloned = fail.clone();
+        assert!(fail_cloned.is_fail());
+    }
+
+    #[test]
+    fn test_assertion_result_debug() {
+        let pass = AssertionResult::Pass;
+        let debug = format!("{:?}", pass);
+        assert!(debug.contains("Pass"));
+
+        let fail = AssertionResult::Fail("test error".to_string());
+        let debug = format!("{:?}", fail);
+        assert!(debug.contains("Fail"));
+        assert!(debug.contains("test error"));
+    }
+
+    #[test]
+    #[should_panic(expected = "Assertion failed")]
+    fn test_assertion_result_unwrap_fail() {
+        let result = AssertionResult::Fail("test failure".to_string());
+        result.unwrap();
+    }
+
+    #[test]
+    fn test_assertion_result_unwrap_pass() {
+        let result = AssertionResult::Pass;
+        result.unwrap(); // Should not panic
+    }
+
+    #[test]
+    fn test_contains_text_description() {
+        let assertion = ContainsText::new("test");
+        assert_eq!(assertion.description(), "Screen contains 'test'");
+    }
+
+    #[test]
+    fn test_not_contains_text_description() {
+        let assertion = NotContainsText::new("test");
+        assert_eq!(assertion.description(), "Screen does not contain 'test'");
+    }
+
+    #[test]
+    fn test_not_contains_text_fail() {
+        let buffer = make_buffer("Hello, World!");
+        let assertion = NotContainsText::new("Hello");
+        assert!(assertion.check(&buffer).is_fail());
+    }
+
+    #[test]
+    fn test_line_contains_description() {
+        let assertion = LineContains::new(5, "text");
+        assert_eq!(assertion.description(), "Line 5 contains 'text'");
+    }
+
+    #[test]
+    fn test_line_contains_fail() {
+        let buffer = make_buffer("Line 1\nLine 2\nLine 3");
+        let assertion = LineContains::new(1, "foo");
+        assert!(assertion.check(&buffer).is_fail());
+    }
+
+    #[test]
+    fn test_line_contains_out_of_bounds() {
+        let buffer = make_buffer("Line 1\nLine 2");
+        let assertion = LineContains::new(10, "text"); // Out of bounds
+                                                       // Out of bounds line should fail (empty line)
+        assert!(assertion.check(&buffer).is_fail());
+    }
+
+    #[test]
+    fn test_cell_equals_description() {
+        let assertion = CellEquals::new(5, 10, 'X');
+        assert_eq!(assertion.description(), "Cell (5, 10) equals 'X'");
+    }
+
+    #[test]
+    fn test_cell_equals_fail() {
+        let buffer = make_buffer("ABC");
+        let assertion = CellEquals::new(0, 0, 'Z');
+        assert!(assertion.check(&buffer).is_fail());
+    }
+
+    #[test]
+    fn test_cell_equals_out_of_bounds() {
+        let buffer = make_buffer("ABC");
+        let assertion = CellEquals::new(100, 100, 'X');
+        let result = assertion.check(&buffer);
+        assert!(result.is_fail());
+    }
+
+    #[test]
+    fn test_screen_equals_pass() {
+        let buffer = make_buffer("Hello\nWorld");
+        let assertion = ScreenEquals::new("Hello\nWorld");
+        assert!(assertion.check(&buffer).is_pass());
+    }
+
+    #[test]
+    fn test_screen_equals_fail() {
+        let buffer = make_buffer("Hello\nWorld");
+        let assertion = ScreenEquals::new("Goodbye\nWorld");
+        assert!(assertion.check(&buffer).is_fail());
+    }
+
+    #[test]
+    fn test_screen_equals_description() {
+        let assertion = ScreenEquals::new("test");
+        assert_eq!(assertion.description(), "Screen matches expected text");
+    }
+
+    #[test]
+    fn test_screen_equals_trims_whitespace() {
+        let buffer = make_buffer("Hello");
+        let assertion = ScreenEquals::new("  Hello  ");
+        assert!(assertion.check(&buffer).is_pass());
+    }
+
+    #[test]
+    fn test_buffer_to_string_empty() {
+        let buffer = Buffer::new(5, 5);
+        let s = buffer_to_string(&buffer);
+        assert!(s.is_empty() || s.chars().all(|c| c.is_whitespace() || c == '\n'));
+    }
+
+    #[test]
+    fn test_get_line_out_of_bounds() {
+        let buffer = Buffer::new(10, 5);
+        let line = get_line(&buffer, 100);
+        assert!(line.is_empty());
+    }
+
+    #[test]
+    fn test_multiline_buffer() {
+        let buffer = make_buffer("Line A\nLine B\nLine C");
+
+        // Test contains across lines
+        let assertion = ContainsText::new("Line B");
+        assert!(assertion.check(&buffer).is_pass());
+
+        // Test specific lines
+        let assertion = LineContains::new(0, "Line A");
+        assert!(assertion.check(&buffer).is_pass());
+
+        let assertion = LineContains::new(2, "Line C");
+        assert!(assertion.check(&buffer).is_pass());
+    }
 }

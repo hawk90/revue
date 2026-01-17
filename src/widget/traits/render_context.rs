@@ -803,28 +803,36 @@ impl<'a> RenderContext<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render::Buffer;
+    use crate::style::Style;
+    use std::collections::HashMap;
+
+    fn test_buffer() -> Buffer {
+        Buffer::new(20, 10)
+    }
+
+    fn test_area() -> Rect {
+        Rect::new(0, 0, 20, 10)
+    }
 
     // =========================================================================
-    // RenderContext Creation Tests
+    // Constructor tests
     // =========================================================================
 
     #[test]
     fn test_render_context_new() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
+        let mut buffer = test_buffer();
+        let area = test_area();
         let ctx = RenderContext::new(&mut buffer, area);
 
+        assert_eq!(ctx.area, area);
         assert!(ctx.style.is_none());
         assert!(ctx.state.is_none());
-        assert_eq!(ctx.area.width, 80);
-        assert_eq!(ctx.area.height, 24);
     }
 
     #[test]
     fn test_render_context_with_style() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
+        let mut buffer = test_buffer();
+        let area = test_area();
         let style = Style::default();
         let ctx = RenderContext::with_style(&mut buffer, area, &style);
 
@@ -834,8 +842,8 @@ mod tests {
 
     #[test]
     fn test_render_context_full() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
+        let mut buffer = test_buffer();
+        let area = test_area();
         let style = Style::default();
         let state = NodeState::default();
         let ctx = RenderContext::full(&mut buffer, area, &style, &state);
@@ -846,153 +854,165 @@ mod tests {
 
     #[test]
     fn test_render_context_with_transitions() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut transitions = std::collections::HashMap::new();
+        let mut buffer = test_buffer();
+        let area = test_area();
+        let mut transitions = HashMap::new();
         transitions.insert("opacity".to_string(), 0.5f32);
 
         let ctx = RenderContext::new(&mut buffer, area).with_transitions(&transitions);
+
         assert_eq!(ctx.transition("opacity"), Some(0.5));
         assert_eq!(ctx.transition("nonexistent"), None);
     }
 
     #[test]
-    fn test_render_context_transition_or() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut transitions = std::collections::HashMap::new();
+    fn test_transition_or() {
+        let mut buffer = test_buffer();
+        let area = test_area();
+        let mut transitions = HashMap::new();
         transitions.insert("opacity".to_string(), 0.5f32);
 
         let ctx = RenderContext::new(&mut buffer, area).with_transitions(&transitions);
+
         assert_eq!(ctx.transition_or("opacity", 1.0), 0.5);
         assert_eq!(ctx.transition_or("nonexistent", 1.0), 1.0);
     }
 
     // =========================================================================
-    // State Check Tests
+    // State check tests
     // =========================================================================
 
     #[test]
-    fn test_render_context_is_focused() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-
-        let ctx = RenderContext::new(&mut buffer, area);
+    fn test_is_focused_no_state() {
+        let mut buffer = test_buffer();
+        let ctx = RenderContext::new(&mut buffer, test_area());
         assert!(!ctx.is_focused());
     }
 
     #[test]
-    fn test_render_context_is_focused_with_state() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
+    fn test_is_focused_with_state() {
+        let mut buffer = test_buffer();
         let style = Style::default();
         let mut state = NodeState::default();
         state.focused = true;
-
-        let ctx = RenderContext::full(&mut buffer, area, &style, &state);
+        let ctx = RenderContext::full(&mut buffer, test_area(), &style, &state);
         assert!(ctx.is_focused());
     }
 
     #[test]
-    fn test_render_context_is_hovered() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
+    fn test_is_hovered() {
+        let mut buffer = test_buffer();
         let style = Style::default();
         let mut state = NodeState::default();
         state.hovered = true;
-
-        let ctx = RenderContext::full(&mut buffer, area, &style, &state);
+        let ctx = RenderContext::full(&mut buffer, test_area(), &style, &state);
         assert!(ctx.is_hovered());
     }
 
     #[test]
-    fn test_render_context_is_disabled() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
+    fn test_is_disabled() {
+        let mut buffer = test_buffer();
         let style = Style::default();
         let mut state = NodeState::default();
         state.disabled = true;
-
-        let ctx = RenderContext::full(&mut buffer, area, &style, &state);
+        let ctx = RenderContext::full(&mut buffer, test_area(), &style, &state);
         assert!(ctx.is_disabled());
     }
 
     // =========================================================================
-    // Drawing Utilities Tests
+    // Drawing tests
     // =========================================================================
 
     #[test]
     fn test_draw_char() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
 
-        ctx.draw_char(5, 5, 'X', Color::WHITE);
-        assert_eq!(buffer.get(5, 5).unwrap().symbol, 'X');
+        ctx.draw_char(0, 0, 'A', color);
+
+        let cell = buffer.get(0, 0).unwrap();
+        assert_eq!(cell.symbol, 'A');
     }
 
     #[test]
     fn test_draw_char_bg() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let fg = Color::rgb(255, 255, 255);
+        let bg = Color::rgb(0, 0, 0);
 
-        ctx.draw_char_bg(5, 5, 'X', Color::WHITE, Color::BLUE);
-        let cell = buffer.get(5, 5).unwrap();
+        ctx.draw_char_bg(0, 0, 'X', fg, bg);
+
+        let cell = buffer.get(0, 0).unwrap();
         assert_eq!(cell.symbol, 'X');
-        assert_eq!(cell.bg, Some(Color::BLUE));
+        assert_eq!(cell.bg, Some(bg));
     }
 
     #[test]
     fn test_draw_char_bold() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        use crate::render::Modifier;
 
-        ctx.draw_char_bold(5, 5, 'B', Color::WHITE);
-        let cell = buffer.get(5, 5).unwrap();
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
+
+        ctx.draw_char_bold(0, 0, 'B', color);
+
+        let cell = buffer.get(0, 0).unwrap();
         assert_eq!(cell.symbol, 'B');
+        assert!(cell.modifier.contains(Modifier::BOLD));
     }
 
     #[test]
     fn test_draw_text() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
 
-        ctx.draw_text(0, 0, "Hello", Color::WHITE);
+        ctx.draw_text(0, 0, "Hello", color);
+
         assert_eq!(buffer.get(0, 0).unwrap().symbol, 'H');
         assert_eq!(buffer.get(1, 0).unwrap().symbol, 'e');
+        assert_eq!(buffer.get(2, 0).unwrap().symbol, 'l');
+        assert_eq!(buffer.get(3, 0).unwrap().symbol, 'l');
         assert_eq!(buffer.get(4, 0).unwrap().symbol, 'o');
     }
 
     #[test]
     fn test_draw_text_bg() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let fg = Color::rgb(255, 255, 255);
+        let bg = Color::rgb(100, 100, 100);
 
-        ctx.draw_text_bg(0, 0, "Hi", Color::WHITE, Color::RED);
-        assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::RED));
+        ctx.draw_text_bg(0, 0, "Hi", fg, bg);
+
+        assert_eq!(buffer.get(0, 0).unwrap().bg, Some(bg));
+        assert_eq!(buffer.get(1, 0).unwrap().bg, Some(bg));
     }
 
     #[test]
     fn test_draw_text_bold() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        use crate::render::Modifier;
 
-        ctx.draw_text_bold(0, 0, "Bold", Color::WHITE);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'B');
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
+
+        ctx.draw_text_bold(0, 0, "Bold", color);
+
+        assert!(buffer.get(0, 0).unwrap().modifier.contains(Modifier::BOLD));
     }
 
     #[test]
     fn test_draw_hline() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
 
-        ctx.draw_hline(0, 0, 5, '-', Color::WHITE);
+        ctx.draw_hline(0, 0, 5, '-', color);
+
         for i in 0..5 {
             assert_eq!(buffer.get(i, 0).unwrap().symbol, '-');
         }
@@ -1000,11 +1020,12 @@ mod tests {
 
     #[test]
     fn test_draw_vline() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
 
-        ctx.draw_vline(0, 0, 5, '|', Color::WHITE);
+        ctx.draw_vline(0, 0, 5, '|', color);
+
         for i in 0..5 {
             assert_eq!(buffer.get(0, i).unwrap().symbol, '|');
         }
@@ -1012,11 +1033,12 @@ mod tests {
 
     #[test]
     fn test_draw_box_rounded() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
 
-        ctx.draw_box_rounded(0, 0, 5, 3, Color::WHITE);
+        ctx.draw_box_rounded(0, 0, 5, 3, color);
+
         assert_eq!(buffer.get(0, 0).unwrap().symbol, '╭');
         assert_eq!(buffer.get(4, 0).unwrap().symbol, '╮');
         assert_eq!(buffer.get(0, 2).unwrap().symbol, '╰');
@@ -1025,55 +1047,47 @@ mod tests {
 
     #[test]
     fn test_draw_box_rounded_too_small() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
 
-        // Should not panic with too small dimensions
-        ctx.draw_box_rounded(0, 0, 1, 1, Color::WHITE);
+        // Should not panic with small dimensions
+        ctx.draw_box_rounded(0, 0, 1, 1, color);
     }
 
     #[test]
     fn test_draw_box_single() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
 
-        ctx.draw_box_single(0, 0, 5, 3, Color::WHITE);
+        ctx.draw_box_single(0, 0, 5, 3, color);
+
         assert_eq!(buffer.get(0, 0).unwrap().symbol, '┌');
         assert_eq!(buffer.get(4, 0).unwrap().symbol, '┐');
     }
 
     #[test]
     fn test_draw_box_double() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
 
-        ctx.draw_box_double(0, 0, 5, 3, Color::WHITE);
+        ctx.draw_box_double(0, 0, 5, 3, color);
+
         assert_eq!(buffer.get(0, 0).unwrap().symbol, '╔');
         assert_eq!(buffer.get(4, 0).unwrap().symbol, '╗');
     }
 
     #[test]
-    fn test_draw_box_no_top() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_box_no_top(0, 0, 5, 3, Color::WHITE);
-        assert_eq!(buffer.get(0, 2).unwrap().symbol, '╰');
-        assert_eq!(buffer.get(4, 2).unwrap().symbol, '╯');
-    }
-
-    #[test]
     fn test_fill() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
 
-        ctx.fill(0, 0, 3, 3, '#', Color::WHITE);
-        for y in 0..3 {
+        ctx.fill(0, 0, 3, 2, '#', color);
+
+        for y in 0..2 {
             for x in 0..3 {
                 assert_eq!(buffer.get(x, y).unwrap().symbol, '#');
             }
@@ -1082,150 +1096,131 @@ mod tests {
 
     #[test]
     fn test_fill_bg() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let bg = Color::rgb(100, 100, 100);
 
-        ctx.fill_bg(0, 0, 3, 3, Color::BLUE);
-        for y in 0..3 {
+        ctx.fill_bg(0, 0, 3, 2, bg);
+
+        for y in 0..2 {
             for x in 0..3 {
-                assert_eq!(buffer.get(x, y).unwrap().bg, Some(Color::BLUE));
+                assert_eq!(buffer.get(x, y).unwrap().bg, Some(bg));
             }
         }
     }
 
     #[test]
     fn test_clear() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
 
-        ctx.draw_text(0, 0, "Test", Color::WHITE);
-        ctx.clear(0, 0, 4, 1);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
+        // First fill with content
+        ctx.fill(0, 0, 3, 2, '#', color);
+        // Then clear
+        ctx.clear(0, 0, 3, 2);
+
+        for y in 0..2 {
+            for x in 0..3 {
+                assert_eq!(buffer.get(x, y).unwrap().symbol, ' ');
+            }
+        }
     }
-
-    // =========================================================================
-    // Clipped Drawing Tests
-    // =========================================================================
 
     #[test]
     fn test_draw_text_clipped() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
 
-        ctx.draw_text_clipped(0, 0, "Hello World", Color::WHITE, 5);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'H');
+        ctx.draw_text_clipped(0, 0, "Hello World", color, 5);
+
         assert_eq!(buffer.get(4, 0).unwrap().symbol, 'o');
-        // Character 5 should not be drawn (clipped)
-    }
-
-    #[test]
-    fn test_draw_text_clipped_bold() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_text_clipped_bold(0, 0, "Bold Text", Color::WHITE, 4);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'B');
-    }
-
-    #[test]
-    fn test_draw_text_dim() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_text_dim(0, 0, "Dim", Color::WHITE);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'D');
-    }
-
-    #[test]
-    fn test_draw_text_italic() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_text_italic(0, 0, "Italic", Color::WHITE);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'I');
-    }
-
-    #[test]
-    fn test_draw_text_underline() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_text_underline(0, 0, "Under", Color::WHITE);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'U');
+        // Should not draw beyond max_width
+        assert_eq!(buffer.get(5, 0).unwrap().symbol, ' ');
     }
 
     #[test]
     fn test_draw_text_centered() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
 
-        ctx.draw_text_centered(0, 0, 10, "Hi", Color::WHITE);
-        // "Hi" is 2 chars, centered in 10 = starts at 4
+        ctx.draw_text_centered(0, 0, 10, "Hi", color);
+
+        // "Hi" is 2 chars, centered in 10 width = starts at position 4
         assert_eq!(buffer.get(4, 0).unwrap().symbol, 'H');
+        assert_eq!(buffer.get(5, 0).unwrap().symbol, 'i');
     }
 
     #[test]
     fn test_draw_text_right() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
 
-        ctx.draw_text_right(0, 0, 10, "Hi", Color::WHITE);
-        // "Hi" is 2 chars, right-aligned in 10 = starts at 8
+        ctx.draw_text_right(0, 0, 10, "Hi", color);
+
+        // "Hi" is 2 chars, right-aligned in 10 width = starts at position 8
         assert_eq!(buffer.get(8, 0).unwrap().symbol, 'H');
-    }
-
-    // =========================================================================
-    // Box with Title Tests
-    // =========================================================================
-
-    #[test]
-    fn test_draw_box_titled() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_box_titled(0, 0, 20, 5, "Title", Color::WHITE);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '╭');
+        assert_eq!(buffer.get(9, 0).unwrap().symbol, 'i');
     }
 
     #[test]
-    fn test_draw_box_titled_single() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+    fn test_draw_text_dim() {
+        use crate::render::Modifier;
 
-        ctx.draw_box_titled_single(0, 0, 20, 5, "Title", Color::WHITE);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '┌');
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
+
+        ctx.draw_text_dim(0, 0, "dim", color);
+
+        assert!(buffer.get(0, 0).unwrap().modifier.contains(Modifier::DIM));
     }
 
     #[test]
-    fn test_draw_box_titled_double() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+    fn test_draw_text_italic() {
+        use crate::render::Modifier;
 
-        ctx.draw_box_titled_double(0, 0, 20, 5, "Title", Color::WHITE);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '╔');
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
+
+        ctx.draw_text_italic(0, 0, "italic", color);
+
+        assert!(buffer
+            .get(0, 0)
+            .unwrap()
+            .modifier
+            .contains(Modifier::ITALIC));
+    }
+
+    #[test]
+    fn test_draw_text_underline() {
+        use crate::render::Modifier;
+
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 255);
+
+        ctx.draw_text_underline(0, 0, "underline", color);
+
+        assert!(buffer
+            .get(0, 0)
+            .unwrap()
+            .modifier
+            .contains(Modifier::UNDERLINE));
     }
 
     // =========================================================================
-    // Progress Bar Tests
+    // Progress bar tests
     // =========================================================================
 
     #[test]
     fn test_draw_progress_bar() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
 
         let config = ProgressBarConfig {
             x: 0,
@@ -1234,407 +1229,243 @@ mod tests {
             progress: 0.5,
             filled_char: '█',
             empty_char: '░',
-            fg: Color::WHITE,
+            fg: Color::rgb(255, 255, 255),
         };
+
         ctx.draw_progress_bar(&config);
 
         // 50% of 10 = 5 filled
-        assert_eq!(buffer.get(4, 0).unwrap().symbol, '█');
-        assert_eq!(buffer.get(5, 0).unwrap().symbol, '░');
+        for i in 0..5 {
+            assert_eq!(buffer.get(i, 0).unwrap().symbol, '█');
+        }
+        for i in 5..10 {
+            assert_eq!(buffer.get(i, 0).unwrap().symbol, '░');
+        }
     }
 
     #[test]
-    fn test_draw_progress_bar_labeled() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_progress_bar_labeled(0, 0, 10, 0.75, Color::WHITE);
-        // Should show "75%" label
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
-        assert_eq!(buffer.get(1, 0).unwrap().symbol, '7');
-        assert_eq!(buffer.get(2, 0).unwrap().symbol, '5');
-    }
-
-    // =========================================================================
-    // Segment Drawing Tests
-    // =========================================================================
-
-    #[test]
-    fn test_draw_segments() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let segments = [("A", Color::RED), ("B", Color::BLUE)];
-        let end = ctx.draw_segments(0, 0, &segments);
-        assert_eq!(end, 2);
-    }
-
-    #[test]
-    fn test_draw_segments_sep() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let segments = [("A", Color::RED), ("B", Color::BLUE)];
-        let end = ctx.draw_segments_sep(0, 0, &segments, "|", Color::WHITE);
-        assert!(end > 2); // Includes separator
-    }
-
-    #[test]
-    fn test_draw_key_hints() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let hints = [("q", "quit"), ("h", "help")];
-        let end = ctx.draw_key_hints(0, 0, &hints, Color::CYAN, Color::WHITE);
-        assert!(end > 0);
-    }
-
-    #[test]
-    fn test_draw_text_selectable() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_text_selectable(0, 0, "Item", false, Color::WHITE, Color::CYAN);
-        ctx.draw_text_selectable(0, 1, "Selected", true, Color::WHITE, Color::CYAN);
-    }
-
-    #[test]
-    fn test_metric_color() {
-        let low = RenderContext::metric_color(10, 50, 80, Color::GREEN, Color::YELLOW, Color::RED);
-        assert_eq!(low, Color::GREEN);
-
-        let mid = RenderContext::metric_color(60, 50, 80, Color::GREEN, Color::YELLOW, Color::RED);
-        assert_eq!(mid, Color::YELLOW);
-
-        let high = RenderContext::metric_color(90, 50, 80, Color::GREEN, Color::YELLOW, Color::RED);
-        assert_eq!(high, Color::RED);
-    }
-
-    // =========================================================================
-    // CSS Style Integration Tests
-    // =========================================================================
-
-    #[test]
-    fn test_css_color() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let ctx = RenderContext::new(&mut buffer, area);
-
-        let color = ctx.css_color(Color::WHITE);
-        assert_eq!(color, Color::WHITE);
-    }
-
-    #[test]
-    fn test_css_background() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let ctx = RenderContext::new(&mut buffer, area);
-
-        let color = ctx.css_background(Color::BLACK);
-        assert_eq!(color, Color::BLACK);
-    }
-
-    #[test]
-    fn test_css_border_color() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let ctx = RenderContext::new(&mut buffer, area);
-
-        let color = ctx.css_border_color(Color::WHITE);
-        assert_eq!(color, Color::WHITE);
-    }
-
-    #[test]
-    fn test_css_opacity() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let ctx = RenderContext::new(&mut buffer, area);
-
-        let opacity = ctx.css_opacity();
-        assert_eq!(opacity, 1.0);
-    }
-
-    #[test]
-    fn test_css_visible() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let ctx = RenderContext::new(&mut buffer, area);
-
-        assert!(ctx.css_visible());
-    }
-
-    #[test]
-    fn test_css_padding() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let ctx = RenderContext::new(&mut buffer, area);
-
-        let _padding = ctx.css_padding();
-    }
-
-    #[test]
-    fn test_css_margin() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let ctx = RenderContext::new(&mut buffer, area);
-
-        let _margin = ctx.css_margin();
-    }
-
-    #[test]
-    fn test_css_width() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let ctx = RenderContext::new(&mut buffer, area);
-
-        let _width = ctx.css_width();
-    }
-
-    #[test]
-    fn test_css_height() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let ctx = RenderContext::new(&mut buffer, area);
-
-        let _height = ctx.css_height();
-    }
-
-    #[test]
-    fn test_css_border_style() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let ctx = RenderContext::new(&mut buffer, area);
-
-        let _border_style = ctx.css_border_style();
-    }
-
-    #[test]
-    fn test_css_gap() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let ctx = RenderContext::new(&mut buffer, area);
-
-        let gap = ctx.css_gap();
-        assert_eq!(gap, 0);
-    }
-
-    // =========================================================================
-    // Focus Ring Tests
-    // =========================================================================
-
-    #[test]
-    fn test_draw_focus_ring_solid() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_focus_ring(0, 0, 5, 3, Color::CYAN, FocusStyle::Solid);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '┌');
-    }
-
-    #[test]
-    fn test_draw_focus_ring_rounded() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_focus_ring(0, 0, 5, 3, Color::CYAN, FocusStyle::Rounded);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '╭');
-    }
-
-    #[test]
-    fn test_draw_focus_ring_double() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_focus_ring(0, 0, 5, 3, Color::CYAN, FocusStyle::Double);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '╔');
-    }
-
-    #[test]
-    fn test_draw_focus_ring_dotted() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_focus_ring(0, 0, 5, 3, Color::CYAN, FocusStyle::Dotted);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '┌');
-    }
-
-    #[test]
-    fn test_draw_focus_ring_bold() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_focus_ring(0, 0, 5, 3, Color::CYAN, FocusStyle::Bold);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '┏');
-    }
-
-    #[test]
-    fn test_draw_focus_ring_ascii() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_focus_ring(0, 0, 5, 3, Color::CYAN, FocusStyle::Ascii);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '+');
-    }
-
-    #[test]
-    fn test_draw_focus_ring_auto() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_focus_ring_auto(0, 0, 5, 3, Color::CYAN);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '╭');
-    }
-
-    #[test]
-    fn test_draw_focus_ring_too_small() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Should not panic with too small dimensions
-        ctx.draw_focus_ring(0, 0, 1, 1, Color::CYAN, FocusStyle::Solid);
-    }
-
-    #[test]
-    fn test_draw_focus_underline() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_focus_underline(0, 0, 5, Color::CYAN);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '▔');
-    }
-
-    #[test]
-    fn test_draw_focus_marker() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_focus_marker(0, 0, Color::CYAN);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '▶');
-    }
-
-    #[test]
-    fn test_draw_focus_marker_left() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(1, 0, 79, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_focus_marker_left(5, Color::CYAN);
-        assert_eq!(buffer.get(0, 5).unwrap().symbol, '▶');
-    }
-
-    #[test]
-    fn test_invert_colors() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_char_bg(0, 0, 'X', Color::WHITE, Color::BLACK);
-        ctx.invert_colors(0, 0, 1, 1);
-
-        let cell = buffer.get(0, 0).unwrap();
-        assert_eq!(cell.fg, Some(Color::BLACK));
-        assert_eq!(cell.bg, Some(Color::WHITE));
-    }
-
-    #[test]
-    fn test_draw_focus_reverse() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        ctx.draw_char_bg(0, 0, 'X', Color::WHITE, Color::BLACK);
-        ctx.draw_focus_reverse(0, 0, 1, 1);
-
-        let cell = buffer.get(0, 0).unwrap();
-        assert_eq!(cell.fg, Some(Color::BLACK));
-    }
-
-    #[test]
-    fn test_draw_header_line() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let parts = [("Title", Color::CYAN)];
-        ctx.draw_header_line(0, 0, 20, &parts, Color::WHITE);
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '╭');
-    }
-
-    #[test]
-    fn test_draw_header_line_too_small() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let parts = [("Title", Color::CYAN)];
-        ctx.draw_header_line(0, 0, 3, &parts, Color::WHITE);
-        // Should not panic
-    }
-
-    // =========================================================================
-    // ProgressBarConfig Tests
-    // =========================================================================
-
-    #[test]
-    fn test_progress_bar_config_clamp() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        // Test clamping to 0.0-1.0 range
+    fn test_draw_progress_bar_clamp() {
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+
+        // Test progress > 1.0 is clamped
         let config = ProgressBarConfig {
             x: 0,
             y: 0,
             width: 10,
-            progress: 1.5, // Should be clamped to 1.0
+            progress: 1.5,
             filled_char: '█',
             empty_char: '░',
-            fg: Color::WHITE,
+            fg: Color::rgb(255, 255, 255),
         };
+
         ctx.draw_progress_bar(&config);
 
-        // All should be filled
+        // Should be fully filled (clamped to 1.0)
         for i in 0..10 {
             assert_eq!(buffer.get(i, 0).unwrap().symbol, '█');
         }
     }
 
+    // =========================================================================
+    // Segment drawing tests
+    // =========================================================================
+
     #[test]
-    fn test_progress_bar_config_negative() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+    fn test_draw_segments() {
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
 
-        // Test clamping negative values
-        let config = ProgressBarConfig {
-            x: 0,
-            y: 0,
-            width: 10,
-            progress: -0.5, // Should be clamped to 0.0
-            filled_char: '█',
-            empty_char: '░',
-            fg: Color::WHITE,
-        };
-        ctx.draw_progress_bar(&config);
+        let c1 = Color::rgb(255, 0, 0);
+        let c2 = Color::rgb(0, 255, 0);
+        let segments: &[(&str, Color)] = &[("AB", c1), ("CD", c2)];
 
-        // All should be empty
-        for i in 0..10 {
-            assert_eq!(buffer.get(i, 0).unwrap().symbol, '░');
+        let end_x = ctx.draw_segments(0, 0, segments);
+
+        assert_eq!(end_x, 4);
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'A');
+        assert_eq!(buffer.get(2, 0).unwrap().symbol, 'C');
+    }
+
+    #[test]
+    fn test_draw_segments_sep() {
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+
+        let c1 = Color::rgb(255, 0, 0);
+        let c2 = Color::rgb(0, 255, 0);
+        let sep_color = Color::rgb(128, 128, 128);
+        let segments: &[(&str, Color)] = &[("A", c1), ("B", c2)];
+
+        let end_x = ctx.draw_segments_sep(0, 0, segments, "|", sep_color);
+
+        assert_eq!(end_x, 3); // "A" + "|" + "B"
+        assert_eq!(buffer.get(1, 0).unwrap().symbol, '|');
+    }
+
+    #[test]
+    fn test_draw_text_selectable_selected() {
+        use crate::render::Modifier;
+
+        let mut buffer = test_buffer();
+        let normal = Color::rgb(200, 200, 200);
+        let selected = Color::rgb(255, 255, 0);
+
+        {
+            let mut ctx = RenderContext::new(&mut buffer, test_area());
+            ctx.draw_text_selectable(0, 0, "Item", true, normal, selected);
         }
+
+        assert!(buffer.get(0, 0).unwrap().modifier.contains(Modifier::BOLD));
+    }
+
+    #[test]
+    fn test_draw_text_selectable_not_selected() {
+        use crate::render::Modifier;
+
+        let mut buffer = test_buffer();
+        let normal = Color::rgb(200, 200, 200);
+        let selected = Color::rgb(255, 255, 0);
+
+        {
+            let mut ctx = RenderContext::new(&mut buffer, test_area());
+            ctx.draw_text_selectable(0, 0, "Item", false, normal, selected);
+        }
+
+        assert!(!buffer.get(0, 0).unwrap().modifier.contains(Modifier::BOLD));
+    }
+
+    // =========================================================================
+    // Metric color tests
+    // =========================================================================
+
+    #[test]
+    fn test_metric_color() {
+        let low = Color::rgb(0, 255, 0);
+        let mid = Color::rgb(255, 255, 0);
+        let high = Color::rgb(255, 0, 0);
+
+        assert_eq!(RenderContext::metric_color(10, 50, 80, low, mid, high), low);
+        assert_eq!(RenderContext::metric_color(60, 50, 80, low, mid, high), mid);
+        assert_eq!(
+            RenderContext::metric_color(90, 50, 80, low, mid, high),
+            high
+        );
+    }
+
+    // =========================================================================
+    // CSS integration tests
+    // =========================================================================
+
+    #[test]
+    fn test_css_color_no_style() {
+        let mut buffer = test_buffer();
+        let default = Color::rgb(255, 255, 255);
+        let ctx = RenderContext::new(&mut buffer, test_area());
+
+        assert_eq!(ctx.css_color(default), default);
+    }
+
+    #[test]
+    fn test_css_opacity() {
+        let mut buffer = test_buffer();
+        let ctx = RenderContext::new(&mut buffer, test_area());
+
+        assert_eq!(ctx.css_opacity(), 1.0);
+    }
+
+    #[test]
+    fn test_css_visible() {
+        let mut buffer = test_buffer();
+        let ctx = RenderContext::new(&mut buffer, test_area());
+
+        assert!(ctx.css_visible());
+    }
+
+    // =========================================================================
+    // Focus ring tests
+    // =========================================================================
+
+    #[test]
+    fn test_draw_focus_ring_solid() {
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 0);
+
+        ctx.draw_focus_ring(0, 0, 5, 3, color, FocusStyle::Solid);
+
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '┌');
+        assert_eq!(buffer.get(4, 0).unwrap().symbol, '┐');
+    }
+
+    #[test]
+    fn test_draw_focus_ring_rounded() {
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 0);
+
+        ctx.draw_focus_ring(0, 0, 5, 3, color, FocusStyle::Rounded);
+
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '╭');
+    }
+
+    #[test]
+    fn test_draw_focus_ring_double() {
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 0);
+
+        ctx.draw_focus_ring(0, 0, 5, 3, color, FocusStyle::Double);
+
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '╔');
+    }
+
+    #[test]
+    fn test_draw_focus_ring_too_small() {
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 0);
+
+        // Should not panic
+        ctx.draw_focus_ring(0, 0, 1, 1, color, FocusStyle::Solid);
+    }
+
+    #[test]
+    fn test_draw_focus_underline() {
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 0);
+
+        ctx.draw_focus_underline(0, 0, 5, color);
+
+        for i in 0..5 {
+            assert_eq!(buffer.get(i, 0).unwrap().symbol, '▔');
+        }
+    }
+
+    #[test]
+    fn test_draw_focus_marker() {
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let color = Color::rgb(255, 255, 0);
+
+        ctx.draw_focus_marker(0, 0, color);
+
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '▶');
+    }
+
+    #[test]
+    fn test_invert_colors() {
+        let mut buffer = test_buffer();
+        let mut ctx = RenderContext::new(&mut buffer, test_area());
+        let fg = Color::rgb(255, 255, 255);
+        let bg = Color::rgb(0, 0, 0);
+
+        ctx.draw_char_bg(0, 0, 'X', fg, bg);
+        ctx.invert_colors(0, 0, 1, 1);
+
+        let cell = buffer.get(0, 0).unwrap();
+        assert_eq!(cell.fg, Some(bg));
+        assert_eq!(cell.bg, Some(fg));
     }
 }

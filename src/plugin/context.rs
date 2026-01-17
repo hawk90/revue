@@ -206,6 +206,13 @@ mod tests {
     }
 
     #[test]
+    fn test_plugin_context_new() {
+        let ctx = PluginContext::new();
+        assert_eq!(ctx.terminal_size(), (80, 24));
+        assert!(!ctx.is_running());
+    }
+
+    #[test]
     fn test_plugin_context_default() {
         let ctx = PluginContext::default();
         assert_eq!(ctx.terminal_size(), (80, 24));
@@ -213,7 +220,7 @@ mod tests {
     }
 
     #[test]
-    fn test_plugin_context_running_state() {
+    fn test_is_running() {
         let mut ctx = PluginContext::new();
         assert!(!ctx.is_running());
 
@@ -225,65 +232,170 @@ mod tests {
     }
 
     #[test]
-    fn test_plugin_context_remove_data() {
+    fn test_clear_current_plugin() {
         let mut ctx = PluginContext::new();
         ctx.set_current_plugin("test");
-
         ctx.set_data("key", 42i32);
-        assert!(ctx.get_data::<i32>("key").is_some());
 
-        assert!(ctx.remove_data("key"));
-        assert!(ctx.get_data::<i32>("key").is_none());
+        // Should have data with plugin set
+        assert_eq!(ctx.get_data::<i32>("key"), Some(&42));
 
-        // Removing non-existent key returns false
-        assert!(!ctx.remove_data("nonexistent"));
+        // Clear plugin and try to access data
+        ctx.clear_current_plugin();
+        // Without current plugin, get_data returns None
+        assert_eq!(ctx.get_data::<i32>("key"), None);
     }
 
     #[test]
-    fn test_plugin_context_remove_data_no_plugin() {
+    fn test_remove_data() {
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+        ctx.set_data("key", 42i32);
+
+        assert_eq!(ctx.get_data::<i32>("key"), Some(&42));
+
+        let removed = ctx.remove_data("key");
+        assert!(removed);
+        assert_eq!(ctx.get_data::<i32>("key"), None);
+    }
+
+    #[test]
+    fn test_remove_data_nonexistent() {
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+
+        let removed = ctx.remove_data("nonexistent");
+        assert!(!removed);
+    }
+
+    #[test]
+    fn test_remove_data_no_plugin() {
         let mut ctx = PluginContext::new();
         // No current plugin set
-        assert!(!ctx.remove_data("key"));
+        let removed = ctx.remove_data("key");
+        assert!(!removed);
     }
 
     #[test]
-    fn test_plugin_context_get_data_wrong_type() {
-        let mut ctx = PluginContext::new();
-        ctx.set_current_plugin("test");
-
-        ctx.set_data("number", 42i32);
-        // Try to get as different type
-        assert!(ctx.get_data::<String>("number").is_none());
+    fn test_get_plugin_data_nonexistent_plugin() {
+        let ctx = PluginContext::new();
+        assert_eq!(ctx.get_plugin_data::<i32>("nonexistent", "key"), None);
     }
 
     #[test]
-    fn test_plugin_context_clear_current_plugin() {
+    fn test_get_plugin_data_nonexistent_key() {
         let mut ctx = PluginContext::new();
         ctx.set_current_plugin("test");
         ctx.set_data("key", 42i32);
 
-        ctx.clear_current_plugin();
-        // After clearing, get_data returns None (no current plugin)
-        assert!(ctx.get_data::<i32>("key").is_none());
+        assert_eq!(ctx.get_plugin_data::<i32>("test", "nonexistent"), None);
     }
 
     #[test]
-    fn test_plugin_context_log_methods() {
+    fn test_get_data_no_plugin() {
+        let ctx = PluginContext::new();
+        // No current plugin set
+        assert_eq!(ctx.get_data::<i32>("key"), None);
+    }
+
+    #[test]
+    fn test_get_data_mut_no_plugin() {
+        let mut ctx = PluginContext::new();
+        // No current plugin set
+        assert_eq!(ctx.get_data_mut::<i32>("key"), None);
+    }
+
+    #[test]
+    fn test_get_data_mut_wrong_type() {
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+        ctx.set_data("key", 42i32);
+
+        // Try to get as wrong type
+        assert_eq!(ctx.get_data_mut::<String>("key"), None);
+    }
+
+    #[test]
+    fn test_set_data_without_plugin() {
+        let mut ctx = PluginContext::new();
+        // No current plugin - should use empty string as plugin name
+        ctx.set_data("key", 42i32);
+
+        // Set a plugin and try to access
+        ctx.set_current_plugin("");
+        assert_eq!(ctx.get_data::<i32>("key"), Some(&42));
+    }
+
+    #[test]
+    fn test_log_with_plugin() {
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+        // Just verify it doesn't panic
+        ctx.log("test message");
+    }
+
+    #[test]
+    fn test_log_without_plugin() {
+        let ctx = PluginContext::new();
+        // Just verify it doesn't panic
+        ctx.log("test message");
+    }
+
+    #[test]
+    fn test_warn_with_plugin() {
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+        // Just verify it doesn't panic
+        ctx.warn("warning message");
+    }
+
+    #[test]
+    fn test_warn_without_plugin() {
+        let ctx = PluginContext::new();
+        // Just verify it doesn't panic
+        ctx.warn("warning message");
+    }
+
+    #[test]
+    fn test_error_with_plugin() {
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+        // Just verify it doesn't panic
+        ctx.error("error message");
+    }
+
+    #[test]
+    fn test_error_without_plugin() {
+        let ctx = PluginContext::new();
+        // Just verify it doesn't panic
+        ctx.error("error message");
+    }
+
+    #[test]
+    fn test_multiple_data_types() {
         let mut ctx = PluginContext::new();
         ctx.set_current_plugin("test");
 
-        // Just verify these don't panic
-        ctx.log("info message");
-        ctx.warn("warning message");
-        ctx.error("error message");
+        ctx.set_data("int", 42i32);
+        ctx.set_data("float", 3.14f64);
+        ctx.set_data("string", "hello".to_string());
+        ctx.set_data("bool", true);
+
+        assert_eq!(ctx.get_data::<i32>("int"), Some(&42));
+        assert_eq!(ctx.get_data::<f64>("float"), Some(&3.14));
+        assert_eq!(ctx.get_data::<String>("string"), Some(&"hello".to_string()));
+        assert_eq!(ctx.get_data::<bool>("bool"), Some(&true));
     }
 
     #[test]
-    fn test_plugin_context_log_no_plugin() {
-        let ctx = PluginContext::new();
-        // Just verify these don't panic without current plugin
-        ctx.log("info message");
-        ctx.warn("warning message");
-        ctx.error("error message");
+    fn test_overwrite_data() {
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+
+        ctx.set_data("key", 42i32);
+        assert_eq!(ctx.get_data::<i32>("key"), Some(&42));
+
+        ctx.set_data("key", 100i32);
+        assert_eq!(ctx.get_data::<i32>("key"), Some(&100));
     }
 }

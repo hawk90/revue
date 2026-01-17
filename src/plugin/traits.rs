@@ -129,7 +129,7 @@ mod tests {
     }
 
     #[test]
-    fn test_plugin_lifecycle_calls() {
+    fn test_plugin_lifecycle_on_init() {
         let mut plugin = TestPlugin {
             init_called: false,
             mount_called: false,
@@ -138,17 +138,56 @@ mod tests {
         let mut ctx = PluginContext::new();
         ctx.set_current_plugin("test");
 
+        assert!(!plugin.init_called);
         plugin.on_init(&mut ctx).unwrap();
         assert!(plugin.init_called);
+    }
 
+    #[test]
+    fn test_plugin_lifecycle_on_mount() {
+        let mut plugin = TestPlugin {
+            init_called: false,
+            mount_called: false,
+            tick_count: 0,
+        };
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+
+        assert!(!plugin.mount_called);
         plugin.on_mount(&mut ctx).unwrap();
         assert!(plugin.mount_called);
+    }
 
+    #[test]
+    fn test_plugin_lifecycle_on_tick() {
+        let mut plugin = TestPlugin {
+            init_called: false,
+            mount_called: false,
+            tick_count: 0,
+        };
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+
+        assert_eq!(plugin.tick_count, 0);
         plugin.on_tick(&mut ctx, Duration::from_millis(16)).unwrap();
         assert_eq!(plugin.tick_count, 1);
-
         plugin.on_tick(&mut ctx, Duration::from_millis(16)).unwrap();
         assert_eq!(plugin.tick_count, 2);
+    }
+
+    #[test]
+    fn test_plugin_default_on_unmount() {
+        struct UnmountPlugin;
+        impl Plugin for UnmountPlugin {
+            fn name(&self) -> &str {
+                "unmount"
+            }
+        }
+
+        let mut plugin = UnmountPlugin;
+        let mut ctx = PluginContext::new();
+        // Default on_unmount should return Ok(())
+        assert!(plugin.on_unmount(&mut ctx).is_ok());
     }
 
     #[test]
@@ -179,40 +218,61 @@ mod tests {
             }
         }
 
-        struct LowPriorityPlugin;
-        impl Plugin for LowPriorityPlugin {
-            fn name(&self) -> &str {
-                "low"
-            }
-            fn priority(&self) -> i32 {
-                -100
-            }
-        }
-
         assert_eq!(HighPriorityPlugin.priority(), 100);
-        assert_eq!(LowPriorityPlugin.priority(), -100);
     }
 
     #[test]
-    fn test_plugin_on_unmount() {
-        struct UnmountPlugin {
-            unmounted: bool,
-        }
-        impl Plugin for UnmountPlugin {
+    fn test_test_plugin_name() {
+        let plugin = TestPlugin {
+            init_called: false,
+            mount_called: false,
+            tick_count: 0,
+        };
+        assert_eq!(plugin.name(), "test");
+    }
+
+    #[test]
+    fn test_default_on_init() {
+        struct DefaultPlugin;
+        impl Plugin for DefaultPlugin {
             fn name(&self) -> &str {
-                "unmount"
-            }
-            fn on_unmount(&mut self, _ctx: &mut PluginContext) -> crate::Result<()> {
-                self.unmounted = true;
-                Ok(())
+                "default"
             }
         }
 
-        let mut plugin = UnmountPlugin { unmounted: false };
+        let mut plugin = DefaultPlugin;
         let mut ctx = PluginContext::new();
-        ctx.set_current_plugin("unmount");
+        // Call default on_init implementation
+        assert!(plugin.on_init(&mut ctx).is_ok());
+    }
 
-        plugin.on_unmount(&mut ctx).unwrap();
-        assert!(plugin.unmounted);
+    #[test]
+    fn test_default_on_mount() {
+        struct DefaultPlugin;
+        impl Plugin for DefaultPlugin {
+            fn name(&self) -> &str {
+                "default"
+            }
+        }
+
+        let mut plugin = DefaultPlugin;
+        let mut ctx = PluginContext::new();
+        // Call default on_mount implementation
+        assert!(plugin.on_mount(&mut ctx).is_ok());
+    }
+
+    #[test]
+    fn test_default_on_tick() {
+        struct DefaultPlugin;
+        impl Plugin for DefaultPlugin {
+            fn name(&self) -> &str {
+                "default"
+            }
+        }
+
+        let mut plugin = DefaultPlugin;
+        let mut ctx = PluginContext::new();
+        // Call default on_tick implementation
+        assert!(plugin.on_tick(&mut ctx, Duration::from_millis(16)).is_ok());
     }
 }

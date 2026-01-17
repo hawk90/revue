@@ -235,125 +235,299 @@ mod tests {
         assert_eq!(action.position(), (10, 20));
     }
 
+    // =========================================================================
+    // Action enum tests
+    // =========================================================================
+
     #[test]
-    fn test_action_variants() {
-        let key_action = Action::Key(KeyAction::Press(Key::Enter));
-        assert!(matches!(key_action, Action::Key(_)));
-
-        let mouse_action = Action::Mouse(MouseAction::Click(5, 10));
-        assert!(matches!(mouse_action, Action::Mouse(_)));
-
-        let wait_action = Action::Wait(Duration::from_millis(100));
-        assert!(matches!(wait_action, Action::Wait(_)));
-
-        let resize_action = Action::Resize(80, 24);
-        assert!(matches!(resize_action, Action::Resize(80, 24)));
-
-        let custom_action = Action::Custom("test".to_string());
-        assert!(matches!(custom_action, Action::Custom(_)));
+    fn test_action_key() {
+        let action = Action::Key(KeyAction::Press(Key::Enter));
+        assert!(matches!(action, Action::Key(_)));
     }
 
     #[test]
-    fn test_key_action_constructors() {
-        let press = KeyAction::press(Key::Tab);
-        assert_eq!(press.key(), Some(Key::Tab));
-
-        let ctrl = KeyAction::press_ctrl(Key::Char('c'));
-        assert_eq!(ctrl.key(), Some(Key::Char('c')));
-
-        let alt = KeyAction::press_alt(Key::Char('x'));
-        assert_eq!(alt.key(), Some(Key::Char('x')));
-
-        let type_action = KeyAction::type_text("hello");
-        assert_eq!(type_action.key(), None);
+    fn test_action_mouse() {
+        let action = Action::Mouse(MouseAction::Click(10, 20));
+        assert!(matches!(action, Action::Mouse(_)));
     }
 
     #[test]
-    fn test_key_action_hold_release() {
-        let hold = KeyAction::Hold(Key::Char('a'), Duration::from_millis(500));
-        assert_eq!(hold.key(), Some(Key::Char('a')));
-
-        let release = KeyAction::Release(Key::Char('a'));
-        assert_eq!(release.key(), Some(Key::Char('a')));
+    fn test_action_wait() {
+        let action = Action::Wait(Duration::from_millis(100));
+        assert!(matches!(action, Action::Wait(d) if d == Duration::from_millis(100)));
     }
 
     #[test]
-    fn test_mouse_action_constructors() {
-        assert_eq!(MouseAction::double_click(5, 10).position(), (5, 10));
-        assert_eq!(MouseAction::right_click(15, 20).position(), (15, 20));
-        assert_eq!(MouseAction::move_to(25, 30).position(), (25, 30));
+    fn test_action_resize() {
+        let action = Action::Resize(120, 40);
+        assert!(matches!(action, Action::Resize(120, 40)));
+    }
+
+    #[test]
+    fn test_action_custom() {
+        let action = Action::Custom("my-action".to_string());
+        assert!(matches!(action, Action::Custom(s) if s == "my-action"));
+    }
+
+    #[test]
+    fn test_action_clone() {
+        let action = Action::Resize(80, 24);
+        let cloned = action.clone();
+        assert!(matches!(cloned, Action::Resize(80, 24)));
+    }
+
+    // =========================================================================
+    // KeyAction tests
+    // =========================================================================
+
+    #[test]
+    fn test_key_action_press() {
+        let action = KeyAction::press(Key::Tab);
+        assert_eq!(action.key(), Some(Key::Tab));
+    }
+
+    #[test]
+    fn test_key_action_press_ctrl() {
+        let action = KeyAction::press_ctrl(Key::Char('c'));
+        assert_eq!(action.key(), Some(Key::Char('c')));
+        assert!(matches!(action, KeyAction::PressCtrl(_)));
+    }
+
+    #[test]
+    fn test_key_action_press_alt() {
+        let action = KeyAction::press_alt(Key::Char('x'));
+        assert_eq!(action.key(), Some(Key::Char('x')));
+        assert!(matches!(action, KeyAction::PressAlt(_)));
+    }
+
+    #[test]
+    fn test_key_action_type_text() {
+        let action = KeyAction::type_text("hello");
+        assert_eq!(action.key(), None);
+        assert!(matches!(action, KeyAction::Type(s) if s == "hello"));
+    }
+
+    #[test]
+    fn test_key_action_hold() {
+        let action = KeyAction::Hold(Key::Enter, Duration::from_millis(500));
+        assert_eq!(action.key(), Some(Key::Enter));
+    }
+
+    #[test]
+    fn test_key_action_release() {
+        let action = KeyAction::Release(Key::Escape);
+        assert_eq!(action.key(), Some(Key::Escape));
+    }
+
+    #[test]
+    fn test_key_action_key_none_for_type() {
+        let action = KeyAction::Type("test".to_string());
+        assert_eq!(action.key(), None);
+    }
+
+    #[test]
+    fn test_key_action_clone() {
+        let action = KeyAction::Press(Key::Enter);
+        let cloned = action.clone();
+        assert_eq!(cloned.key(), Some(Key::Enter));
+    }
+
+    // =========================================================================
+    // MouseAction tests
+    // =========================================================================
+
+    #[test]
+    fn test_mouse_action_click() {
+        let action = MouseAction::click(5, 10);
+        assert_eq!(action.position(), (5, 10));
+        assert!(matches!(action, MouseAction::Click(5, 10)));
+    }
+
+    #[test]
+    fn test_mouse_action_double_click() {
+        let action = MouseAction::double_click(15, 25);
+        assert_eq!(action.position(), (15, 25));
+        assert!(matches!(action, MouseAction::DoubleClick(15, 25)));
+    }
+
+    #[test]
+    fn test_mouse_action_right_click() {
+        let action = MouseAction::right_click(30, 40);
+        assert_eq!(action.position(), (30, 40));
+        assert!(matches!(action, MouseAction::RightClick(30, 40)));
+    }
+
+    #[test]
+    fn test_mouse_action_move_to() {
+        let action = MouseAction::move_to(50, 60);
+        assert_eq!(action.position(), (50, 60));
+        assert!(matches!(action, MouseAction::Move(50, 60)));
     }
 
     #[test]
     fn test_mouse_action_drag() {
-        let drag = MouseAction::drag(0, 0, 100, 100);
-        assert_eq!(drag.position(), (0, 0)); // Start position
+        let action = MouseAction::drag(10, 20, 30, 40);
+        // Position returns the start position
+        assert_eq!(action.position(), (10, 20));
+        assert!(matches!(action, MouseAction::Drag(10, 20, 30, 40)));
     }
 
     #[test]
-    fn test_mouse_action_scroll_positions() {
-        let scroll_up = MouseAction::ScrollUp(10, 20, 3);
-        assert_eq!(scroll_up.position(), (10, 20));
-
-        let scroll_down = MouseAction::ScrollDown(30, 40, 5);
-        assert_eq!(scroll_down.position(), (30, 40));
+    fn test_mouse_action_scroll_up() {
+        let action = MouseAction::ScrollUp(10, 20, 3);
+        assert_eq!(action.position(), (10, 20));
     }
 
     #[test]
-    fn test_action_sequence_empty() {
+    fn test_mouse_action_scroll_down() {
+        let action = MouseAction::ScrollDown(15, 25, 5);
+        assert_eq!(action.position(), (15, 25));
+    }
+
+    #[test]
+    fn test_mouse_action_clone() {
+        let action = MouseAction::Click(10, 20);
+        let cloned = action.clone();
+        assert_eq!(cloned.position(), (10, 20));
+    }
+
+    // =========================================================================
+    // ActionSequence tests
+    // =========================================================================
+
+    #[test]
+    fn test_action_sequence_new() {
         let seq = ActionSequence::new();
         assert!(seq.is_empty());
         assert_eq!(seq.len(), 0);
     }
 
     #[test]
-    fn test_action_sequence_push() {
-        let mut seq = ActionSequence::new();
-        seq.push(Action::Key(KeyAction::Press(Key::Enter)));
-        assert_eq!(seq.len(), 1);
-        assert!(!seq.is_empty());
+    fn test_action_sequence_default() {
+        let seq = ActionSequence::default();
+        assert!(seq.is_empty());
     }
 
     #[test]
-    fn test_action_sequence_wait() {
-        let seq = ActionSequence::new()
-            .wait(Duration::from_secs(1))
-            .wait_ms(500);
+    fn test_action_sequence_push() {
+        let mut seq = ActionSequence::new();
+        seq.push(Action::Key(KeyAction::Press(Key::Enter)));
+
+        assert!(!seq.is_empty());
+        assert_eq!(seq.len(), 1);
+    }
+
+    #[test]
+    fn test_action_sequence_press() {
+        let seq = ActionSequence::new().press(Key::Up).press(Key::Down);
+
         assert_eq!(seq.len(), 2);
     }
 
     #[test]
-    fn test_action_sequence_iter() {
-        let seq = ActionSequence::new().press(Key::Up).press(Key::Down);
-        let actions: Vec<_> = seq.iter().collect();
-        assert_eq!(actions.len(), 2);
+    fn test_action_sequence_type_text_chars() {
+        let seq = ActionSequence::new().type_text("abc");
+
+        // Each character becomes a separate key press
+        assert_eq!(seq.len(), 3);
     }
 
     #[test]
-    fn test_action_sequence_into_iter() {
-        let seq = ActionSequence::new().press(Key::Left).press(Key::Right);
-        let actions: Vec<_> = seq.into_iter().collect();
-        assert_eq!(actions.len(), 2);
+    fn test_action_sequence_type_text_empty() {
+        let seq = ActionSequence::new().type_text("");
+
+        assert!(seq.is_empty());
+    }
+
+    #[test]
+    fn test_action_sequence_click() {
+        let seq = ActionSequence::new().click(10, 20);
+
+        assert_eq!(seq.len(), 1);
+        let actions = seq.actions();
+        assert!(matches!(
+            actions[0],
+            Action::Mouse(MouseAction::Click(10, 20))
+        ));
+    }
+
+    #[test]
+    fn test_action_sequence_wait() {
+        let seq = ActionSequence::new().wait(Duration::from_secs(1));
+
+        assert_eq!(seq.len(), 1);
+        let actions = seq.actions();
+        assert!(matches!(actions[0], Action::Wait(d) if d == Duration::from_secs(1)));
+    }
+
+    #[test]
+    fn test_action_sequence_wait_ms() {
+        let seq = ActionSequence::new().wait_ms(500);
+
+        assert_eq!(seq.len(), 1);
+        let actions = seq.actions();
+        assert!(matches!(actions[0], Action::Wait(d) if d == Duration::from_millis(500)));
     }
 
     #[test]
     fn test_action_sequence_actions() {
-        let seq = ActionSequence::new().click(5, 10);
+        let seq = ActionSequence::new().press(Key::Enter).click(0, 0);
+
         let actions = seq.actions();
-        assert_eq!(actions.len(), 1);
+        assert_eq!(actions.len(), 2);
     }
 
     #[test]
-    fn test_action_clone() {
-        let action = Action::Key(KeyAction::Press(Key::Enter));
-        let cloned = action.clone();
-        assert!(matches!(cloned, Action::Key(KeyAction::Press(Key::Enter))));
+    fn test_action_sequence_iter() {
+        let seq = ActionSequence::new()
+            .press(Key::Up)
+            .press(Key::Down)
+            .press(Key::Enter);
+
+        let count = seq.iter().count();
+        assert_eq!(count, 3);
     }
 
     #[test]
-    fn test_action_debug() {
-        let action = Action::Resize(100, 50);
-        let debug = format!("{:?}", action);
-        assert!(debug.contains("Resize"));
+    fn test_action_sequence_into_iter() {
+        let seq = ActionSequence::new().press(Key::Up).press(Key::Down);
+
+        let collected: Vec<Action> = seq.into_iter().collect();
+        assert_eq!(collected.len(), 2);
+    }
+
+    #[test]
+    fn test_action_sequence_chained() {
+        let seq = ActionSequence::new()
+            .press(Key::Tab)
+            .type_text("user")
+            .press(Key::Tab)
+            .type_text("pass")
+            .press(Key::Enter);
+
+        // Tab + 4 chars + Tab + 4 chars + Enter = 11
+        assert_eq!(seq.len(), 11);
+    }
+
+    #[test]
+    fn test_action_sequence_clone() {
+        let seq = ActionSequence::new().press(Key::Enter).click(10, 20);
+
+        let cloned = seq.clone();
+        assert_eq!(cloned.len(), 2);
+    }
+
+    #[test]
+    fn test_action_sequence_complex() {
+        let seq = ActionSequence::new()
+            .click(100, 50) // Click on input
+            .type_text("hello") // Type 5 chars
+            .wait_ms(100) // Wait
+            .press(Key::Tab) // Next field
+            .type_text("world") // Type 5 chars
+            .press(Key::Enter); // Submit
+
+        // 1 + 5 + 1 + 1 + 5 + 1 = 14
+        assert_eq!(seq.len(), 14);
     }
 }

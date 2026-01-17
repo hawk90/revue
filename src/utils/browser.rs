@@ -134,6 +134,7 @@ pub fn reveal_in_finder(path: &str) -> bool {
 #[cfg(test)]
 mod tests {
     // Note: These tests don't actually open browsers, just check compilation
+    // Actual browser opening behavior cannot be tested in unit tests
     use super::*;
 
     #[test]
@@ -145,4 +146,42 @@ mod tests {
         let _ = open_folder;
         let _ = reveal_in_finder;
     }
+
+    #[test]
+    fn test_open_browser_return_type() {
+        // Verify open_browser returns a bool
+        let _: fn(&str) -> bool = open_browser;
+    }
+
+    #[test]
+    fn test_open_url_return_type() {
+        // Verify open_url returns a Result
+        let _: fn(&str) -> std::io::Result<()> = open_url;
+    }
+
+    #[test]
+    fn test_open_file_return_type() {
+        // Verify open_file returns a bool
+        let _: fn(&str) -> bool = open_file;
+    }
+
+    #[test]
+    fn test_open_folder_return_type() {
+        // Verify open_folder returns a bool
+        let _: fn(&str) -> bool = open_folder;
+    }
+
+    #[test]
+    fn test_reveal_in_finder_return_type() {
+        // Verify reveal_in_finder returns a bool
+        let _: fn(&str) -> bool = reveal_in_finder;
+    }
+
+    // Note: We can't actually test the browser opening behavior
+    // without mocking the Command execution, as it would:
+    // 1. Open actual browsers/file managers
+    // 2. Be platform-dependent
+    // 3. Fail in CI environments without display
+    //
+    // The main test coverage comes from integration tests or manual testing.
 }

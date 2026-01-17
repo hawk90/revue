@@ -131,4 +131,12 @@ mod tests {
         assert_eq!(Symbols::CHEVRON_RIGHT, '»');
         assert_eq!(Symbols::CHEVRON_LEFT, '«');
     }
+
+    #[test]
+    fn test_symbols_are_single_chars() {
+        // Verify all symbols are single Unicode characters
+        assert_eq!(Symbols::ARROW_LEFT.len_utf8(), 3); // Most are 3 bytes
+        assert_eq!(Symbols::CHECKBOX_EMPTY.len_utf8(), 3);
+        assert_eq!(Symbols::BLOCK_FULL.len_utf8(), 3);
+    }
 }

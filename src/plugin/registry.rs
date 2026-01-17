@@ -282,4 +282,314 @@ mod tests {
         let styles = registry.collect_styles();
         assert!(styles.contains(".plugin-widget"));
     }
+
+    // =========================================================================
+    // PluginRegistry constructor tests
+    // =========================================================================
+
+    #[test]
+    fn test_registry_new() {
+        let registry = PluginRegistry::new();
+        assert!(registry.is_empty());
+        assert_eq!(registry.len(), 0);
+    }
+
+    #[test]
+    fn test_registry_default() {
+        let registry = PluginRegistry::default();
+        assert!(registry.is_empty());
+    }
+
+    // =========================================================================
+    // PluginRegistry registration tests
+    // =========================================================================
+
+    #[test]
+    fn test_registry_is_empty() {
+        let mut registry = PluginRegistry::new();
+        assert!(registry.is_empty());
+
+        registry.register(CounterPlugin::new("test", 0));
+        assert!(!registry.is_empty());
+    }
+
+    #[test]
+    fn test_registry_len() {
+        let mut registry = PluginRegistry::new();
+        assert_eq!(registry.len(), 0);
+
+        registry.register(CounterPlugin::new("one", 0));
+        assert_eq!(registry.len(), 1);
+
+        registry.register(CounterPlugin::new("two", 0));
+        assert_eq!(registry.len(), 2);
+    }
+
+    #[test]
+    fn test_registry_plugin_names() {
+        let mut registry = PluginRegistry::new();
+        registry.register(CounterPlugin::new("alpha", 0));
+        registry.register(CounterPlugin::new("beta", 0));
+
+        let names = registry.plugin_names();
+        assert_eq!(names.len(), 2);
+        assert!(names.contains(&"alpha"));
+        assert!(names.contains(&"beta"));
+    }
+
+    #[test]
+    fn test_registry_has_plugin() {
+        let mut registry = PluginRegistry::new();
+        registry.register(CounterPlugin::new("test", 0));
+
+        assert!(registry.has_plugin("test"));
+        assert!(!registry.has_plugin("nonexistent"));
+    }
+
+    #[test]
+    fn test_registry_priority_descending() {
+        let mut registry = PluginRegistry::new();
+        registry.register(CounterPlugin::new("low", -100));
+        registry.register(CounterPlugin::new("high", 100));
+        registry.register(CounterPlugin::new("medium", 0));
+
+        let names = registry.plugin_names();
+        assert_eq!(names[0], "high");
+        assert_eq!(names[1], "medium");
+        assert_eq!(names[2], "low");
+    }
+
+    #[test]
+    fn test_registry_same_priority() {
+        let mut registry = PluginRegistry::new();
+        registry.register(CounterPlugin::new("first", 0));
+        registry.register(CounterPlugin::new("second", 0));
+        registry.register(CounterPlugin::new("third", 0));
+
+        // All same priority, order depends on stable sort
+        assert_eq!(registry.len(), 3);
+    }
+
+    // =========================================================================
+    // PluginRegistry context tests
+    // =========================================================================
+
+    #[test]
+    fn test_registry_context() {
+        let registry = PluginRegistry::new();
+        let context = registry.context();
+
+        // Context should exist and be accessible
+        assert!(!context.is_running());
+    }
+
+    #[test]
+    fn test_registry_context_mut() {
+        let mut registry = PluginRegistry::new();
+        let context = registry.context_mut();
+
+        context.set_terminal_size(100, 50);
+        // Just verify we can mutate
+    }
+
+    // =========================================================================
+    // PluginRegistry lifecycle tests
+    // =========================================================================
+
+    #[test]
+    fn test_registry_init_once() {
+        let mut registry = PluginRegistry::new();
+        registry.register(CounterPlugin::new("test", 0));
+
+        // First init should succeed
+        assert!(registry.init().is_ok());
+        // Second init should be no-op (return Ok)
+        assert!(registry.init().is_ok());
+    }
+
+    #[test]
+    fn test_registry_mount_once() {
+        let mut registry = PluginRegistry::new();
+        registry.register(CounterPlugin::new("test", 0));
+        registry.init().unwrap();
+
+        assert!(registry.mount().is_ok());
+        assert!(registry.mount().is_ok()); // Idempotent
+    }
+
+    #[test]
+    fn test_registry_unmount_not_mounted() {
+        let mut registry = PluginRegistry::new();
+        registry.register(CounterPlugin::new("test", 0));
+
+        // Unmounting without mounting should be fine
+        assert!(registry.unmount().is_ok());
+    }
+
+    #[test]
+    fn test_registry_full_lifecycle() {
+        let mut registry = PluginRegistry::new();
+        registry.register(CounterPlugin::new("first", 10));
+        registry.register(CounterPlugin::new("second", 5));
+
+        registry.init().unwrap();
+        registry.mount().unwrap();
+        registry.tick(Duration::from_millis(16)).unwrap();
+        registry.tick(Duration::from_millis(16)).unwrap();
+        registry.unmount().unwrap();
+
+        // No panic means success
+    }
+
+    #[test]
+    fn test_registry_update_terminal_size() {
+        let mut registry = PluginRegistry::new();
+        registry.update_terminal_size(120, 40);
+
+        let context = registry.context();
+        let (w, h) = context.terminal_size();
+        assert_eq!(w, 120);
+        assert_eq!(h, 40);
+    }
+
+    // =========================================================================
+    // PluginRegistry styles tests
+    // =========================================================================
+
+    #[test]
+    fn test_collect_styles_empty() {
+        let registry = PluginRegistry::new();
+        let styles = registry.collect_styles();
+        assert!(styles.is_empty());
+    }
+
+    #[test]
+    fn test_collect_styles_no_styles() {
+        let mut registry = PluginRegistry::new();
+        registry.register(CounterPlugin::new("test", 0));
+
+        let styles = registry.collect_styles();
+        assert!(styles.is_empty());
+    }
+
+    struct MultiStylePlugin {
+        name: &'static str,
+        styles: &'static str,
+    }
+
+    impl Plugin for MultiStylePlugin {
+        fn name(&self) -> &str {
+            self.name
+        }
+
+        fn styles(&self) -> Option<&str> {
+            Some(self.styles)
+        }
+    }
+
+    #[test]
+    fn test_collect_styles_multiple() {
+        let mut registry = PluginRegistry::new();
+        registry.register(MultiStylePlugin {
+            name: "style1",
+            styles: ".widget1 { color: red; }",
+        });
+        registry.register(MultiStylePlugin {
+            name: "style2",
+            styles: ".widget2 { color: blue; }",
+        });
+
+        let styles = registry.collect_styles();
+        assert!(styles.contains(".widget1"));
+        assert!(styles.contains(".widget2"));
+        // Styles should be joined with double newlines
+        assert!(styles.contains("\n\n"));
+    }
+
+    // =========================================================================
+    // Error handling tests
+    // =========================================================================
+
+    struct FailingPlugin {
+        fail_on: &'static str,
+    }
+
+    impl Plugin for FailingPlugin {
+        fn name(&self) -> &str {
+            "failing"
+        }
+
+        fn on_init(&mut self, _ctx: &mut PluginContext) -> crate::Result<()> {
+            if self.fail_on == "init" {
+                return Err(crate::Error::Other("init failed".to_string()));
+            }
+            Ok(())
+        }
+
+        fn on_mount(&mut self, _ctx: &mut PluginContext) -> crate::Result<()> {
+            if self.fail_on == "mount" {
+                return Err(crate::Error::Other("mount failed".to_string()));
+            }
+            Ok(())
+        }
+
+        fn on_tick(&mut self, _ctx: &mut PluginContext, _delta: Duration) -> crate::Result<()> {
+            if self.fail_on == "tick" {
+                return Err(crate::Error::Other("tick failed".to_string()));
+            }
+            Ok(())
+        }
+
+        fn on_unmount(&mut self, _ctx: &mut PluginContext) -> crate::Result<()> {
+            if self.fail_on == "unmount" {
+                return Err(crate::Error::Other("unmount failed".to_string()));
+            }
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_init_error_propagates() {
+        let mut registry = PluginRegistry::new();
+        registry.register(FailingPlugin { fail_on: "init" });
+
+        let result = registry.init();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_mount_error_propagates() {
+        let mut registry = PluginRegistry::new();
+        registry.register(FailingPlugin { fail_on: "mount" });
+        registry.init().unwrap();
+
+        let result = registry.mount();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_tick_error_continues() {
+        let mut registry = PluginRegistry::new();
+        registry.register(FailingPlugin { fail_on: "tick" });
+        registry.register(CounterPlugin::new("other", -10));
+        registry.init().unwrap();
+        registry.mount().unwrap();
+
+        // Tick should continue even if one plugin fails
+        let result = registry.tick(Duration::from_millis(16));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_unmount_error_continues() {
+        let mut registry = PluginRegistry::new();
+        registry.register(FailingPlugin { fail_on: "unmount" });
+        registry.register(CounterPlugin::new("other", -10));
+        registry.init().unwrap();
+        registry.mount().unwrap();
+
+        // Unmount should continue even if one plugin fails
+        let result = registry.unmount();
+        assert!(result.is_ok());
+    }
 }

@@ -280,4 +280,146 @@ mod tests {
         assert!(!executed);
         assert!(confirm.is_active()); // Should still be active
     }
+
+    #[test]
+    fn test_confirm_action_clone() {
+        let action = ConfirmAction::Delete;
+        let cloned = action.clone();
+        assert_eq!(action, cloned);
+    }
+
+    #[test]
+    fn test_confirm_action_debug() {
+        let action = ConfirmAction::Restart;
+        let debug = format!("{:?}", action);
+        assert!(debug.contains("Restart"));
+    }
+
+    #[test]
+    fn test_confirm_action_all_messages() {
+        assert_eq!(ConfirmAction::Delete.message(), "Delete? (y/n)");
+        assert_eq!(
+            ConfirmAction::OpenBrowser.message(),
+            "Open in browser? (y/n)"
+        );
+        assert_eq!(ConfirmAction::Restart.message(), "Restart? (y/n)");
+        assert_eq!(ConfirmAction::Abort.message(), "Abort? (y/n)");
+        assert_eq!(
+            ConfirmAction::Custom("Custom message".to_string()).message(),
+            "Custom message"
+        );
+    }
+
+    #[test]
+    fn test_confirm_action_eq() {
+        assert_eq!(ConfirmAction::Delete, ConfirmAction::Delete);
+        assert_ne!(ConfirmAction::Delete, ConfirmAction::Restart);
+        assert_eq!(
+            ConfirmAction::Custom("a".to_string()),
+            ConfirmAction::Custom("a".to_string())
+        );
+        assert_ne!(
+            ConfirmAction::Custom("a".to_string()),
+            ConfirmAction::Custom("b".to_string())
+        );
+    }
+
+    #[test]
+    fn test_confirm_state_default() {
+        let confirm = ConfirmState::default();
+        assert!(!confirm.is_active());
+        assert!(confirm.get().is_none());
+        assert!(confirm.message().is_none());
+    }
+
+    #[test]
+    fn test_confirm_state_get() {
+        let mut confirm = ConfirmState::new();
+        assert!(confirm.get().is_none());
+
+        confirm.request(ConfirmAction::Delete);
+        let action = confirm.get();
+        assert!(action.is_some());
+        assert_eq!(action.unwrap(), &ConfirmAction::Delete);
+    }
+
+    #[test]
+    fn test_confirm_state_clear() {
+        let mut confirm = ConfirmState::new();
+        confirm.request(ConfirmAction::Delete);
+        assert!(confirm.is_active());
+
+        confirm.clear();
+        assert!(!confirm.is_active());
+    }
+
+    #[test]
+    fn test_execute_no_action() {
+        let mut confirm = ConfirmState::new();
+
+        let mut executed = false;
+        confirm.execute(|_| {
+            executed = true;
+        });
+
+        assert!(!executed);
+    }
+
+    #[test]
+    fn test_execute_if_no_action() {
+        let mut confirm = ConfirmState::new();
+
+        let mut predicate_called = false;
+        let mut executed = false;
+        confirm.execute_if(
+            |_| {
+                predicate_called = true;
+                true
+            },
+            |_| executed = true,
+        );
+
+        assert!(!predicate_called);
+        assert!(!executed);
+    }
+
+    #[test]
+    fn test_confirm_state_clone() {
+        let mut confirm = ConfirmState::new();
+        confirm.request(ConfirmAction::OpenBrowser);
+
+        let cloned = confirm.clone();
+        assert!(cloned.is_active());
+        assert_eq!(cloned.get(), Some(&ConfirmAction::OpenBrowser));
+    }
+
+    #[test]
+    fn test_confirm_state_debug() {
+        let mut confirm = ConfirmState::new();
+        confirm.request(ConfirmAction::Abort);
+
+        let debug = format!("{:?}", confirm);
+        assert!(debug.contains("Abort"));
+    }
+
+    #[test]
+    fn test_request_replaces_previous() {
+        let mut confirm = ConfirmState::new();
+        confirm.request(ConfirmAction::Delete);
+        assert_eq!(confirm.get(), Some(&ConfirmAction::Delete));
+
+        confirm.request(ConfirmAction::Restart);
+        assert_eq!(confirm.get(), Some(&ConfirmAction::Restart));
+    }
+
+    #[test]
+    fn test_execute_clears_state() {
+        let mut confirm = ConfirmState::new();
+        confirm.request(ConfirmAction::Delete);
+
+        confirm.execute(|_| {});
+
+        assert!(!confirm.is_active());
+        assert!(confirm.get().is_none());
+    }
 }

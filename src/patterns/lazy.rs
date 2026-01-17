@@ -820,4 +820,305 @@ mod tests {
         let data: LazySync<Vec<i32>, _> = lazy_sync(|| vec![1, 2, 3]);
         assert_eq!(data.get().unwrap(), vec![1, 2, 3]);
     }
+
+    #[test]
+    fn test_load_state_clone() {
+        let state = LoadState::Loading;
+        let cloned = state.clone();
+        assert_eq!(state, cloned);
+    }
+
+    #[test]
+    fn test_load_state_copy() {
+        let state = LoadState::Loaded;
+        let copied = state; // Copy, not move
+        assert_eq!(state, copied);
+    }
+
+    #[test]
+    fn test_load_state_eq() {
+        assert_eq!(LoadState::Idle, LoadState::Idle);
+        assert_ne!(LoadState::Idle, LoadState::Loading);
+        assert_ne!(LoadState::Loading, LoadState::Loaded);
+        assert_ne!(LoadState::Loaded, LoadState::Failed);
+    }
+
+    #[test]
+    fn test_load_state_debug() {
+        let state = LoadState::Failed;
+        let debug = format!("{:?}", state);
+        assert!(debug.contains("Failed"));
+    }
+
+    #[test]
+    fn test_lazy_sync_clone() {
+        let data: LazySync<i32, _> = LazySync::new(|| 42);
+        let cloned = data.clone();
+
+        // Both should share the same internal state
+        let value1 = data.get();
+        let value2 = cloned.get();
+
+        assert_eq!(value1, value2);
+        assert!(data.is_loaded());
+        assert!(cloned.is_loaded());
+    }
+
+    #[test]
+    fn test_lazy_sync_state() {
+        let data: LazySync<i32, _> = LazySync::new(|| 42);
+        assert_eq!(data.state(), LoadState::Idle);
+
+        data.get();
+        assert_eq!(data.state(), LoadState::Loaded);
+    }
+
+    #[test]
+    fn test_paged_data_out_of_bounds() {
+        let data = PagedData::new(10, 5, |page, _size| {
+            (page * 5..(page + 1) * 5).collect::<Vec<_>>()
+        });
+
+        // Out of bounds access
+        assert!(data.get(10).is_none());
+        assert!(data.get(100).is_none());
+    }
+
+    // Note: get_range() has a RefCell borrowing design issue when collecting
+    // multiple Ref<T> values, so we skip testing that method directly.
+
+    #[test]
+    fn test_paged_data_invalidate_page() {
+        let data = PagedData::new(20, 10, |page, _size| {
+            (page * 10..(page + 1) * 10).collect::<Vec<_>>()
+        });
+
+        // Load page
+        data.get(5);
+        assert!(data.is_page_loaded(0));
+
+        // Invalidate
+        data.invalidate_page(0);
+        assert!(!data.is_page_loaded(0));
+    }
+
+    #[test]
+    fn test_paged_data_invalidate_all() {
+        let data = PagedData::new(30, 10, |page, _size| {
+            (page * 10..(page + 1) * 10).collect::<Vec<_>>()
+        });
+
+        // Load all pages
+        data.get(5); // Page 0
+        data.get(15); // Page 1
+        data.get(25); // Page 2
+
+        assert!(data.is_page_loaded(0));
+        assert!(data.is_page_loaded(1));
+        assert!(data.is_page_loaded(2));
+
+        // Invalidate all
+        data.invalidate_all();
+
+        assert!(!data.is_page_loaded(0));
+        assert!(!data.is_page_loaded(1));
+        assert!(!data.is_page_loaded(2));
+    }
+
+    #[test]
+    fn test_paged_data_prefetch_beyond_pages() {
+        let data = PagedData::new(20, 10, |page, _size| {
+            (page * 10..(page + 1) * 10).collect::<Vec<_>>()
+        });
+
+        // Prefetch beyond available pages - should not panic
+        data.prefetch(0, 100);
+        assert!(data.is_page_loaded(0));
+        assert!(data.is_page_loaded(1));
+    }
+
+    #[test]
+    fn test_lazy_list_loaded_count() {
+        let list = LazyList::<i32>::new(10);
+        assert_eq!(list.loaded_count(), 0);
+
+        list.set(0, 1);
+        list.set(5, 2);
+        list.set(9, 3);
+
+        assert_eq!(list.loaded_count(), 3);
+
+        list.clear(5);
+        assert_eq!(list.loaded_count(), 2);
+    }
+
+    #[test]
+    fn test_lazy_list_clear_all() {
+        let list = LazyList::<i32>::new(5);
+
+        for i in 0..5 {
+            list.set(i, i as i32);
+        }
+        assert_eq!(list.loaded_count(), 5);
+
+        list.clear_all();
+        assert_eq!(list.loaded_count(), 0);
+
+        for i in 0..5 {
+            assert!(!list.is_loaded(i));
+        }
+    }
+
+    #[test]
+    fn test_lazy_list_out_of_bounds() {
+        let list = LazyList::<i32>::new(5);
+
+        // Out of bounds get should return None
+        assert!(list.get(10).is_none());
+
+        // Out of bounds set should be a no-op
+        list.set(10, 42);
+        assert!(!list.is_loaded(10));
+
+        // Out of bounds clear should be a no-op
+        list.clear(10);
+    }
+
+    #[test]
+    fn test_progressive_loader_empty() {
+        let items: Vec<i32> = vec![];
+        let loader = ProgressiveLoader::new(items, 10);
+
+        assert_eq!(loader.total(), 0);
+        assert!(loader.is_complete());
+        assert_eq!(loader.progress(), 1.0); // Empty is 100% complete
+
+        let chunk = loader.load_next();
+        assert!(chunk.is_empty());
+    }
+
+    #[test]
+    fn test_progressive_loader_loaded_items() {
+        let items: Vec<i32> = (0..25).collect();
+        let loader = ProgressiveLoader::new(items, 10);
+
+        // No items loaded yet
+        assert!(loader.loaded_items().is_empty());
+
+        // Load first chunk
+        loader.load_next();
+        let loaded = loader.loaded_items();
+        assert_eq!(loaded.len(), 10);
+        assert_eq!(loaded[0], 0);
+        assert_eq!(loaded[9], 9);
+
+        // Load more
+        loader.load_next();
+        let loaded = loader.loaded_items();
+        assert_eq!(loaded.len(), 20);
+    }
+
+    #[test]
+    fn test_progressive_loader_chunk_size_minimum() {
+        let items: Vec<i32> = vec![1, 2, 3];
+        // Chunk size 0 should be treated as 1
+        let loader = ProgressiveLoader::new(items, 0);
+
+        let chunk = loader.load_next();
+        assert_eq!(chunk.len(), 1);
+    }
+
+    #[test]
+    fn test_paged_helper() {
+        let data = paged(20, 10, |page, _size| {
+            (page * 10..(page + 1) * 10).collect::<Vec<_>>()
+        });
+
+        assert_eq!(data.total(), 20);
+        assert_eq!(data.page_size(), 10);
+    }
+
+    #[test]
+    fn test_progressive_helper() {
+        let loader = progressive(vec![1, 2, 3, 4, 5], 2);
+        assert_eq!(loader.total(), 5);
+
+        let chunk = loader.load_next();
+        assert_eq!(chunk, vec![1, 2]);
+    }
+
+    #[test]
+    fn test_lazy_data_multiple_gets() {
+        use std::cell::Cell;
+        let counter = Rc::new(Cell::new(0));
+        let counter_clone = counter.clone();
+
+        let data = LazyData::new(move || {
+            counter_clone.set(counter_clone.get() + 1);
+            42
+        });
+
+        // Multiple gets should only call loader once
+        let _ = data.get();
+        let _ = data.get();
+        let _ = data.get();
+
+        assert_eq!(counter.get(), 1);
+    }
+
+    #[test]
+    fn test_lazy_reloadable_state() {
+        let data = LazyReloadable::new(|| 42);
+
+        assert_eq!(data.state(), LoadState::Idle);
+        assert!(!data.is_loaded());
+
+        data.get();
+        assert_eq!(data.state(), LoadState::Loaded);
+        assert!(data.is_loaded());
+
+        data.invalidate();
+        assert_eq!(data.state(), LoadState::Idle);
+        assert!(!data.is_loaded());
+    }
+
+    #[test]
+    fn test_paged_data_uneven_pages() {
+        // 15 items with page size 10 = 2 pages (10 + 5)
+        let data = PagedData::new(15, 10, |page, _size| {
+            let start = page * 10;
+            let end = (page * 10 + 10).min(15);
+            (start..end).collect::<Vec<_>>()
+        });
+
+        assert_eq!(data.page_count(), 2);
+
+        // Access last item
+        let item = data.get(14);
+        assert!(item.is_some());
+        assert_eq!(*item.unwrap(), 14);
+    }
+
+    #[test]
+    fn test_lazy_sync_try_read() {
+        let data: LazySync<i32, _> = LazySync::new(|| 42);
+
+        // try_read doesn't trigger loading
+        {
+            let guard = data.try_read();
+            assert!(guard.is_some());
+            // Value is None before loading
+            assert!(guard.unwrap().is_none());
+        }
+
+        // Trigger load with get
+        assert_eq!(data.get(), Some(42));
+
+        // After loading, value should be Some
+        {
+            let guard = data.try_read();
+            assert!(guard.is_some());
+            assert!(guard.unwrap().is_some());
+        }
+    }
 }

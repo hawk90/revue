@@ -220,4 +220,204 @@ mod tests {
         let path = manager.snapshot_path("test_widget");
         assert_eq!(path, PathBuf::from("tests/snapshots/test_widget.snap"));
     }
+
+    // =========================================================================
+    // SnapshotManager constructor tests
+    // =========================================================================
+
+    #[test]
+    fn test_snapshot_manager_default() {
+        let manager = SnapshotManager::default();
+        assert_eq!(manager.snapshot_dir, PathBuf::from("tests/snapshots"));
+    }
+
+    #[test]
+    fn test_snapshot_manager_with_dir() {
+        let manager = SnapshotManager::with_dir("custom/snapshots");
+        assert_eq!(manager.snapshot_dir, PathBuf::from("custom/snapshots"));
+    }
+
+    #[test]
+    fn test_snapshot_manager_with_pathbuf_dir() {
+        let dir = PathBuf::from("/tmp/test_snapshots");
+        let manager = SnapshotManager::with_dir(dir.clone());
+        assert_eq!(manager.snapshot_dir, dir);
+    }
+
+    // =========================================================================
+    // Snapshot path tests
+    // =========================================================================
+
+    #[test]
+    fn test_snapshot_path_with_custom_dir() {
+        let manager = SnapshotManager::with_dir("my/path");
+        let path = manager.snapshot_path("widget");
+        assert_eq!(path, PathBuf::from("my/path/widget.snap"));
+    }
+
+    #[test]
+    fn test_snapshot_path_nested_name() {
+        let manager = SnapshotManager::new();
+        let path = manager.snapshot_path("widgets/button");
+        assert_eq!(path, PathBuf::from("tests/snapshots/widgets/button.snap"));
+    }
+
+    // =========================================================================
+    // buffer_to_string tests
+    // =========================================================================
+
+    #[test]
+    fn test_buffer_to_string_empty() {
+        let buffer = Buffer::new(5, 3);
+        let text = buffer_to_string(&buffer);
+        // Empty buffer should produce empty string (all spaces trimmed)
+        assert!(text.is_empty() || text.chars().all(|c| c.is_whitespace() || c == '\n'));
+    }
+
+    #[test]
+    fn test_buffer_to_string_single_line() {
+        let buffer = make_buffer("Hello");
+        let text = buffer_to_string(&buffer);
+        assert_eq!(text, "Hello");
+    }
+
+    #[test]
+    fn test_buffer_to_string_multiple_lines() {
+        let buffer = make_buffer("Line1\nLine2\nLine3");
+        let text = buffer_to_string(&buffer);
+        assert_eq!(text, "Line1\nLine2\nLine3");
+    }
+
+    #[test]
+    fn test_buffer_to_string_unicode() {
+        let buffer = make_buffer("Hello 世界");
+        let text = buffer_to_string(&buffer);
+        assert_eq!(text, "Hello 世界");
+    }
+
+    #[test]
+    fn test_buffer_to_string_with_box_chars() {
+        let buffer = make_buffer("┌───┐\n│   │\n└───┘");
+        let text = buffer_to_string(&buffer);
+        assert!(text.contains("┌"));
+        assert!(text.contains("└"));
+    }
+
+    // =========================================================================
+    // Snapshot exists tests
+    // =========================================================================
+
+    #[test]
+    fn test_snapshot_exists_nonexistent() {
+        let manager = SnapshotManager::with_dir("/tmp/nonexistent_snapshot_dir_12345");
+        assert!(!manager.snapshot_exists("definitely_does_not_exist"));
+    }
+
+    // =========================================================================
+    // List snapshots tests
+    // =========================================================================
+
+    #[test]
+    fn test_list_snapshots_nonexistent_dir() {
+        let manager = SnapshotManager::with_dir("/tmp/nonexistent_snapshot_dir_12345");
+        let snapshots = manager.list_snapshots();
+        assert!(snapshots.is_empty());
+    }
+
+    // =========================================================================
+    // Integration tests with temp directory
+    // =========================================================================
+
+    #[test]
+    fn test_full_snapshot_workflow() {
+        use std::env;
+
+        // Create temp directory
+        let temp_dir = env::temp_dir().join("revue_snapshot_test");
+        let _ = fs::remove_dir_all(&temp_dir); // Clean up any previous run
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let manager = SnapshotManager::with_dir(&temp_dir);
+
+        // Initially no snapshots
+        assert!(!manager.snapshot_exists("test_snap"));
+        assert!(manager.list_snapshots().is_empty());
+
+        // Create a snapshot
+        manager.assert_snapshot("test_snap", "Hello World");
+
+        // Should now exist
+        assert!(manager.snapshot_exists("test_snap"));
+        let snapshots = manager.list_snapshots();
+        assert!(snapshots.contains(&"test_snap".to_string()));
+
+        // Delete the snapshot
+        manager.delete_snapshot("test_snap");
+        assert!(!manager.snapshot_exists("test_snap"));
+
+        // Cleanup
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_assert_snapshot_creates_file() {
+        use std::env;
+
+        let temp_dir = env::temp_dir().join("revue_snapshot_test_2");
+        let _ = fs::remove_dir_all(&temp_dir);
+
+        let manager = SnapshotManager::with_dir(&temp_dir);
+        manager.assert_snapshot("new_snapshot", "Test content");
+
+        let path = temp_dir.join("new_snapshot.snap");
+        assert!(path.exists());
+
+        let content = fs::read_to_string(&path).unwrap();
+        assert_eq!(content, "Test content");
+
+        // Cleanup
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_assert_snapshot_matches() {
+        use std::env;
+
+        let temp_dir = env::temp_dir().join("revue_snapshot_test_3");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        // Pre-create a snapshot file
+        let path = temp_dir.join("existing.snap");
+        fs::write(&path, "Expected content").unwrap();
+
+        let manager = SnapshotManager::with_dir(&temp_dir);
+
+        // This should not panic since content matches
+        manager.assert_snapshot("existing", "Expected content");
+
+        // Cleanup
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_buffer_snapshot() {
+        use std::env;
+
+        let temp_dir = env::temp_dir().join("revue_snapshot_test_4");
+        let _ = fs::remove_dir_all(&temp_dir);
+
+        let manager = SnapshotManager::with_dir(&temp_dir);
+        let buffer = make_buffer("Test\nBuffer");
+
+        manager.assert_buffer_snapshot("buffer_test", &buffer);
+
+        let path = temp_dir.join("buffer_test.snap");
+        let content = fs::read_to_string(&path).unwrap();
+        assert!(content.contains("Test"));
+        assert!(content.contains("Buffer"));
+
+        // Cleanup
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
 }

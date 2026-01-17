@@ -250,4 +250,373 @@ mod tests {
         assert_eq!(layout.content_width(&padding), 80);
         assert_eq!(layout.content_height(&padding), 40);
     }
+
+    // =========================================================================
+    // LayoutNode tests
+    // =========================================================================
+
+    #[test]
+    fn test_layout_node_default() {
+        let node = LayoutNode::default();
+        assert_eq!(node.id, 0);
+        assert!(node.children.is_empty());
+        assert!(node.parent.is_none());
+    }
+
+    #[test]
+    fn test_layout_node_with_children() {
+        let mut node = LayoutNode::default();
+        node.id = 1;
+        node.children = vec![2, 3, 4];
+
+        assert_eq!(node.children.len(), 3);
+        assert!(node.children.contains(&2));
+    }
+
+    #[test]
+    fn test_layout_node_with_parent() {
+        let mut node = LayoutNode::default();
+        node.id = 5;
+        node.parent = Some(1);
+
+        assert_eq!(node.parent, Some(1));
+    }
+
+    #[test]
+    fn test_layout_node_clone() {
+        let mut node = LayoutNode::default();
+        node.id = 10;
+        node.children = vec![20, 30];
+
+        let cloned = node.clone();
+        assert_eq!(cloned.id, 10);
+        assert_eq!(cloned.children, vec![20, 30]);
+    }
+
+    // =========================================================================
+    // FlexProps tests
+    // =========================================================================
+
+    #[test]
+    fn test_flex_props_default() {
+        let props = FlexProps::default();
+        assert_eq!(props.gap, 0);
+        assert_eq!(props.column_gap, None);
+        assert_eq!(props.row_gap, None);
+    }
+
+    #[test]
+    fn test_flex_props_main_gap_row() {
+        let mut props = FlexProps::default();
+        props.direction = FlexDirection::Row;
+        props.gap = 8;
+
+        assert_eq!(props.main_gap(), 8);
+
+        props.column_gap = Some(16);
+        assert_eq!(props.main_gap(), 16);
+    }
+
+    #[test]
+    fn test_flex_props_main_gap_column() {
+        let mut props = FlexProps::default();
+        props.direction = FlexDirection::Column;
+        props.gap = 8;
+
+        assert_eq!(props.main_gap(), 8);
+
+        props.row_gap = Some(12);
+        assert_eq!(props.main_gap(), 12);
+    }
+
+    #[test]
+    fn test_flex_props_cross_gap_row() {
+        let mut props = FlexProps::default();
+        props.direction = FlexDirection::Row;
+        props.gap = 8;
+
+        assert_eq!(props.cross_gap(), 8);
+
+        props.row_gap = Some(4);
+        assert_eq!(props.cross_gap(), 4);
+    }
+
+    #[test]
+    fn test_flex_props_cross_gap_column() {
+        let mut props = FlexProps::default();
+        props.direction = FlexDirection::Column;
+        props.gap = 8;
+
+        assert_eq!(props.cross_gap(), 8);
+
+        props.column_gap = Some(20);
+        assert_eq!(props.cross_gap(), 20);
+    }
+
+    // =========================================================================
+    // GridProps tests
+    // =========================================================================
+
+    #[test]
+    fn test_grid_props_default() {
+        let props = GridProps::default();
+        assert!(props.template_columns.is_empty());
+        assert!(props.template_rows.is_empty());
+    }
+
+    #[test]
+    fn test_grid_props_clone() {
+        let props = GridProps::default();
+        let cloned = props.clone();
+        assert!(cloned.template_columns.is_empty());
+    }
+
+    // =========================================================================
+    // LayoutSpacing tests
+    // =========================================================================
+
+    #[test]
+    fn test_layout_spacing_default() {
+        let spacing = LayoutSpacing::default();
+        assert_eq!(spacing.padding.top, 0);
+        assert_eq!(spacing.margin.left, 0);
+    }
+
+    #[test]
+    fn test_layout_spacing_copy() {
+        let spacing = LayoutSpacing {
+            padding: Edges {
+                top: 1,
+                right: 2,
+                bottom: 3,
+                left: 4,
+            },
+            margin: Edges::default(),
+            inset: Inset::default(),
+        };
+        let copied = spacing;
+        assert_eq!(copied.padding.top, 1);
+    }
+
+    // =========================================================================
+    // Edges tests
+    // =========================================================================
+
+    #[test]
+    fn test_edges_default() {
+        let edges = Edges::default();
+        assert_eq!(edges.top, 0);
+        assert_eq!(edges.right, 0);
+        assert_eq!(edges.bottom, 0);
+        assert_eq!(edges.left, 0);
+    }
+
+    #[test]
+    fn test_edges_horizontal() {
+        let edges = Edges {
+            top: 0,
+            right: 15,
+            bottom: 0,
+            left: 5,
+        };
+        assert_eq!(edges.horizontal(), 20);
+    }
+
+    #[test]
+    fn test_edges_vertical() {
+        let edges = Edges {
+            top: 10,
+            right: 0,
+            bottom: 20,
+            left: 0,
+        };
+        assert_eq!(edges.vertical(), 30);
+    }
+
+    #[test]
+    fn test_edges_horizontal_saturating() {
+        let edges = Edges {
+            top: 0,
+            right: u16::MAX,
+            bottom: 0,
+            left: 100,
+        };
+        // Should saturate instead of overflow
+        assert_eq!(edges.horizontal(), u16::MAX);
+    }
+
+    #[test]
+    fn test_edges_vertical_saturating() {
+        let edges = Edges {
+            top: u16::MAX,
+            right: 0,
+            bottom: 50,
+            left: 0,
+        };
+        assert_eq!(edges.vertical(), u16::MAX);
+    }
+
+    #[test]
+    fn test_edges_equality() {
+        let e1 = Edges {
+            top: 1,
+            right: 2,
+            bottom: 3,
+            left: 4,
+        };
+        let e2 = Edges {
+            top: 1,
+            right: 2,
+            bottom: 3,
+            left: 4,
+        };
+        let e3 = Edges {
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+        };
+
+        assert_eq!(e1, e2);
+        assert_ne!(e1, e3);
+    }
+
+    // =========================================================================
+    // Inset tests
+    // =========================================================================
+
+    #[test]
+    fn test_inset_default() {
+        let inset = Inset::default();
+        assert_eq!(inset.top, None);
+        assert_eq!(inset.right, None);
+        assert_eq!(inset.bottom, None);
+        assert_eq!(inset.left, None);
+    }
+
+    #[test]
+    fn test_inset_with_values() {
+        let inset = Inset {
+            top: Some(10),
+            right: Some(-5),
+            bottom: None,
+            left: Some(20),
+        };
+        assert_eq!(inset.top, Some(10));
+        assert_eq!(inset.right, Some(-5));
+        assert_eq!(inset.bottom, None);
+        assert_eq!(inset.left, Some(20));
+    }
+
+    #[test]
+    fn test_inset_copy() {
+        let inset = Inset {
+            top: Some(5),
+            right: None,
+            bottom: None,
+            left: None,
+        };
+        let copied = inset;
+        assert_eq!(copied.top, Some(5));
+    }
+
+    // =========================================================================
+    // SizeConstraints tests
+    // =========================================================================
+
+    #[test]
+    fn test_size_constraints_default() {
+        let constraints = SizeConstraints::default();
+        assert_eq!(constraints.width, Size::Auto);
+        assert_eq!(constraints.height, Size::Auto);
+    }
+
+    #[test]
+    fn test_size_constraints_copy() {
+        let constraints = SizeConstraints {
+            width: Size::Fixed(100),
+            height: Size::Fixed(50),
+            ..Default::default()
+        };
+        let copied = constraints;
+        assert_eq!(copied.width, Size::Fixed(100));
+    }
+
+    // =========================================================================
+    // ComputedLayout tests
+    // =========================================================================
+
+    #[test]
+    fn test_computed_layout_default() {
+        let layout = ComputedLayout::default();
+        assert_eq!(layout.x, 0);
+        assert_eq!(layout.y, 0);
+        assert_eq!(layout.width, 0);
+        assert_eq!(layout.height, 0);
+    }
+
+    #[test]
+    fn test_computed_layout_new() {
+        let layout = ComputedLayout::new(10, 20, 100, 50);
+        assert_eq!(layout.x, 10);
+        assert_eq!(layout.y, 20);
+        assert_eq!(layout.width, 100);
+        assert_eq!(layout.height, 50);
+    }
+
+    #[test]
+    fn test_computed_layout_content_width() {
+        let layout = ComputedLayout::new(0, 0, 80, 40);
+        let padding = Edges {
+            top: 0,
+            right: 10,
+            bottom: 0,
+            left: 10,
+        };
+        assert_eq!(layout.content_width(&padding), 60);
+    }
+
+    #[test]
+    fn test_computed_layout_content_height() {
+        let layout = ComputedLayout::new(0, 0, 80, 40);
+        let padding = Edges {
+            top: 5,
+            right: 0,
+            bottom: 5,
+            left: 0,
+        };
+        assert_eq!(layout.content_height(&padding), 30);
+    }
+
+    #[test]
+    fn test_computed_layout_content_saturating() {
+        let layout = ComputedLayout::new(0, 0, 10, 10);
+        let padding = Edges {
+            top: 20,
+            right: 30,
+            bottom: 20,
+            left: 30,
+        };
+        // Should not underflow
+        assert_eq!(layout.content_width(&padding), 0);
+        assert_eq!(layout.content_height(&padding), 0);
+    }
+
+    #[test]
+    fn test_computed_layout_equality() {
+        let l1 = ComputedLayout::new(0, 0, 100, 50);
+        let l2 = ComputedLayout::new(0, 0, 100, 50);
+        let l3 = ComputedLayout::new(10, 10, 100, 50);
+
+        assert_eq!(l1, l2);
+        assert_ne!(l1, l3);
+    }
+
+    #[test]
+    fn test_computed_layout_copy() {
+        let layout = ComputedLayout::new(5, 10, 200, 100);
+        let copied = layout;
+        assert_eq!(copied.x, 5);
+        assert_eq!(copied.y, 10);
+    }
 }
