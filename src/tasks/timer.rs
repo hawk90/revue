@@ -168,6 +168,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_timer_new() {
+        let timer = Timer::new();
+        assert!(!timer.has_pending());
+        assert_eq!(timer.count(), 0);
+    }
+
+    #[test]
+    fn test_timer_default() {
+        let timer = Timer::default();
+        assert!(!timer.has_pending());
+    }
+
+    #[test]
     fn test_timer_set_and_poll() {
         let mut timer = Timer::new();
         timer.set("test", Duration::from_millis(10));
@@ -207,5 +220,141 @@ mod tests {
         assert!(timer.is_active("cancel_me"));
         timer.cancel("cancel_me");
         assert!(!timer.is_active("cancel_me"));
+    }
+
+    #[test]
+    fn test_timer_pause_resume() {
+        let mut timer = Timer::new();
+        timer.set("pausable", Duration::from_secs(10));
+
+        assert!(timer.is_active("pausable"));
+        timer.pause("pausable");
+        assert!(!timer.is_active("pausable"));
+        timer.resume("pausable");
+        assert!(timer.is_active("pausable"));
+    }
+
+    #[test]
+    fn test_timer_is_active_nonexistent() {
+        let timer = Timer::new();
+        assert!(!timer.is_active("nonexistent"));
+    }
+
+    #[test]
+    fn test_timer_remaining() {
+        let mut timer = Timer::new();
+        timer.set("check", Duration::from_secs(5));
+
+        let remaining = timer.remaining("check");
+        assert!(remaining.is_some());
+        // Should be close to 5 seconds (with some tolerance)
+        assert!(remaining.unwrap() <= Duration::from_secs(5));
+    }
+
+    #[test]
+    fn test_timer_remaining_nonexistent() {
+        let timer = Timer::new();
+        assert!(timer.remaining("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_timer_has_pending() {
+        let mut timer = Timer::new();
+        assert!(!timer.has_pending());
+
+        timer.set("pending", Duration::from_secs(10));
+        assert!(timer.has_pending());
+    }
+
+    #[test]
+    fn test_timer_count() {
+        let mut timer = Timer::new();
+        assert_eq!(timer.count(), 0);
+
+        timer.set("one", Duration::from_secs(10));
+        assert_eq!(timer.count(), 1);
+
+        timer.set("two", Duration::from_secs(10));
+        assert_eq!(timer.count(), 2);
+
+        timer.cancel("one");
+        assert_eq!(timer.count(), 1);
+    }
+
+    #[test]
+    fn test_timer_clear() {
+        let mut timer = Timer::new();
+        timer.set("a", Duration::from_secs(10));
+        timer.set("b", Duration::from_secs(10));
+        timer.set("c", Duration::from_secs(10));
+
+        assert_eq!(timer.count(), 3);
+        timer.clear();
+        assert_eq!(timer.count(), 0);
+        assert!(!timer.has_pending());
+    }
+
+    #[test]
+    fn test_timer_multiple_timers() {
+        let mut timer = Timer::new();
+        timer.set("first", Duration::from_millis(10));
+        timer.set("second", Duration::from_millis(20));
+        timer.set("third", Duration::from_millis(30));
+
+        assert_eq!(timer.count(), 3);
+        assert!(timer.is_active("first"));
+        assert!(timer.is_active("second"));
+        assert!(timer.is_active("third"));
+    }
+
+    #[test]
+    fn test_timer_poll_expired_empty() {
+        let mut timer = Timer::new();
+        assert!(timer.poll_expired().is_none());
+    }
+
+    #[test]
+    fn test_timer_entry_debug() {
+        let entry = TimerEntry {
+            expires_at: Instant::now() + Duration::from_secs(10),
+            repeat: None,
+            active: true,
+        };
+        let debug = format!("{:?}", entry);
+        assert!(debug.contains("TimerEntry"));
+    }
+
+    #[test]
+    fn test_timer_entry_clone() {
+        let entry = TimerEntry {
+            expires_at: Instant::now() + Duration::from_secs(10),
+            repeat: Some(Duration::from_secs(5)),
+            active: true,
+        };
+        let cloned = entry.clone();
+        assert_eq!(cloned.active, entry.active);
+        assert_eq!(cloned.repeat, entry.repeat);
+    }
+
+    #[test]
+    fn test_timer_pause_nonexistent() {
+        let mut timer = Timer::new();
+        timer.pause("nonexistent"); // Should not panic
+    }
+
+    #[test]
+    fn test_timer_resume_nonexistent() {
+        let mut timer = Timer::new();
+        timer.resume("nonexistent"); // Should not panic
+    }
+
+    #[test]
+    fn test_timer_overwrite() {
+        let mut timer = Timer::new();
+        timer.set("test", Duration::from_secs(10));
+        timer.set("test", Duration::from_secs(20)); // Overwrite
+
+        // Should still have only 1 timer
+        assert_eq!(timer.count(), 1);
     }
 }
