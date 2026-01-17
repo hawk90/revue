@@ -339,4 +339,192 @@ mod tests {
         assert!(matches!(debugger.states[0].value, StateValue::Int(5)));
         assert_eq!(debugger.states[0].update_count, 1);
     }
+
+    // =========================================================================
+    // Additional coverage tests
+    // =========================================================================
+
+    #[test]
+    fn test_state_value_display_all() {
+        assert_eq!(StateValue::Float(3.14159).display(), "3.14");
+        assert_eq!(StateValue::Bool(false).display(), "false");
+        assert_eq!(StateValue::Null.display(), "null");
+
+        let list = StateValue::List(vec![
+            StateValue::Int(1),
+            StateValue::Int(2),
+            StateValue::Int(3),
+        ]);
+        assert_eq!(list.display(), "[3 items]");
+
+        let mut map = std::collections::HashMap::new();
+        map.insert("key".to_string(), StateValue::Int(1));
+        let map_value = StateValue::Map(map);
+        assert!(map_value.display().contains("1"));
+    }
+
+    #[test]
+    fn test_state_value_type_name() {
+        assert_eq!(StateValue::String("".into()).type_name(), "String");
+        assert_eq!(StateValue::Int(0).type_name(), "i64");
+        assert_eq!(StateValue::Float(0.0).type_name(), "f64");
+        assert_eq!(StateValue::Bool(true).type_name(), "bool");
+        assert_eq!(StateValue::List(vec![]).type_name(), "Vec");
+        assert_eq!(
+            StateValue::Map(std::collections::HashMap::new()).type_name(),
+            "Map"
+        );
+        assert_eq!(StateValue::Null.type_name(), "null");
+    }
+
+    #[test]
+    fn test_state_entry_updated() {
+        let mut entry = StateEntry::new("count", StateValue::Int(0));
+        assert_eq!(entry.update_count, 0);
+
+        entry.updated();
+        assert_eq!(entry.update_count, 1);
+
+        entry.updated();
+        assert_eq!(entry.update_count, 2);
+    }
+
+    #[test]
+    fn test_state_debugger_remove() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("first", StateValue::Int(1)));
+        debugger.add(StateEntry::new("second", StateValue::Int(2)));
+
+        assert_eq!(debugger.states.len(), 2);
+
+        debugger.remove("first");
+        assert_eq!(debugger.states.len(), 1);
+        assert_eq!(debugger.states[0].name, "second");
+    }
+
+    #[test]
+    fn test_state_debugger_clear() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("a", StateValue::Int(1)));
+        debugger.add(StateEntry::new("b", StateValue::Int(2)));
+
+        debugger.clear();
+        assert!(debugger.states.is_empty());
+        assert!(debugger.selected.is_none());
+    }
+
+    #[test]
+    fn test_state_debugger_set_filter() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("counter", StateValue::Int(0)));
+        debugger.add(StateEntry::new(
+            "user_name",
+            StateValue::String("test".into()),
+        ));
+
+        debugger.set_filter("counter");
+        assert_eq!(debugger.filter, "counter");
+        assert!(debugger.selected.is_none());
+    }
+
+    #[test]
+    fn test_state_debugger_filtered() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("counter", StateValue::Int(0)));
+        debugger.add(StateEntry::new(
+            "user_name",
+            StateValue::String("test".into()),
+        ));
+        debugger.add(StateEntry::new("count2", StateValue::Int(5)));
+
+        debugger.set_filter("count");
+        let filtered = debugger.filtered();
+        assert_eq!(filtered.len(), 2); // counter and count2
+    }
+
+    #[test]
+    fn test_state_debugger_filtered_computed() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("regular", StateValue::Int(0)));
+        debugger.add(StateEntry::new("computed", StateValue::Int(0)).computed());
+
+        // Initially show_computed is true
+        assert_eq!(debugger.filtered().len(), 2);
+
+        // Hide computed values
+        debugger.show_computed = false;
+        assert_eq!(debugger.filtered().len(), 1);
+    }
+
+    #[test]
+    fn test_state_debugger_select_next_prev() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("a", StateValue::Int(1)));
+        debugger.add(StateEntry::new("b", StateValue::Int(2)));
+        debugger.add(StateEntry::new("c", StateValue::Int(3)));
+
+        debugger.select_next();
+        assert_eq!(debugger.selected, Some(0));
+
+        debugger.select_next();
+        assert_eq!(debugger.selected, Some(1));
+
+        debugger.select_next();
+        assert_eq!(debugger.selected, Some(2));
+
+        debugger.select_next();
+        assert_eq!(debugger.selected, Some(2)); // Can't go beyond last
+
+        debugger.select_prev();
+        assert_eq!(debugger.selected, Some(1));
+
+        debugger.select_prev();
+        assert_eq!(debugger.selected, Some(0));
+
+        debugger.select_prev();
+        assert_eq!(debugger.selected, Some(0)); // Can't go below 0
+    }
+
+    #[test]
+    fn test_state_debugger_select_empty() {
+        let mut debugger = StateDebugger::new();
+        debugger.select_next();
+        debugger.select_prev();
+        // Should not panic on empty
+    }
+
+    #[test]
+    fn test_state_debugger_default() {
+        let debugger = StateDebugger::default();
+        assert!(debugger.states.is_empty());
+    }
+
+    #[test]
+    fn test_state_debugger_new() {
+        let debugger = StateDebugger::new();
+        assert!(debugger.show_computed);
+    }
+
+    #[test]
+    fn test_state_entry_clone() {
+        let entry = StateEntry::new("test", StateValue::Int(42))
+            .computed()
+            .subscribers(5);
+
+        let cloned = entry.clone();
+        assert_eq!(cloned.name, "test");
+        assert!(cloned.is_computed);
+        assert_eq!(cloned.subscribers, 5);
+    }
+
+    #[test]
+    fn test_state_value_clone() {
+        let value = StateValue::String("hello".into());
+        let cloned = value.clone();
+        if let StateValue::String(s) = cloned {
+            assert_eq!(s, "hello");
+        } else {
+            panic!("Clone failed");
+        }
+    }
 }

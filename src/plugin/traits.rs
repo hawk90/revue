@@ -127,4 +127,92 @@ mod tests {
         assert_eq!(plugin.priority(), 0);
         assert!(plugin.styles().is_none());
     }
+
+    #[test]
+    fn test_plugin_lifecycle_calls() {
+        let mut plugin = TestPlugin {
+            init_called: false,
+            mount_called: false,
+            tick_count: 0,
+        };
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+
+        plugin.on_init(&mut ctx).unwrap();
+        assert!(plugin.init_called);
+
+        plugin.on_mount(&mut ctx).unwrap();
+        assert!(plugin.mount_called);
+
+        plugin.on_tick(&mut ctx, Duration::from_millis(16)).unwrap();
+        assert_eq!(plugin.tick_count, 1);
+
+        plugin.on_tick(&mut ctx, Duration::from_millis(16)).unwrap();
+        assert_eq!(plugin.tick_count, 2);
+    }
+
+    #[test]
+    fn test_plugin_with_styles() {
+        struct StyledPlugin;
+        impl Plugin for StyledPlugin {
+            fn name(&self) -> &str {
+                "styled"
+            }
+            fn styles(&self) -> Option<&str> {
+                Some(".button { color: red; }")
+            }
+        }
+
+        let plugin = StyledPlugin;
+        assert_eq!(plugin.styles(), Some(".button { color: red; }"));
+    }
+
+    #[test]
+    fn test_plugin_with_priority() {
+        struct HighPriorityPlugin;
+        impl Plugin for HighPriorityPlugin {
+            fn name(&self) -> &str {
+                "high"
+            }
+            fn priority(&self) -> i32 {
+                100
+            }
+        }
+
+        struct LowPriorityPlugin;
+        impl Plugin for LowPriorityPlugin {
+            fn name(&self) -> &str {
+                "low"
+            }
+            fn priority(&self) -> i32 {
+                -100
+            }
+        }
+
+        assert_eq!(HighPriorityPlugin.priority(), 100);
+        assert_eq!(LowPriorityPlugin.priority(), -100);
+    }
+
+    #[test]
+    fn test_plugin_on_unmount() {
+        struct UnmountPlugin {
+            unmounted: bool,
+        }
+        impl Plugin for UnmountPlugin {
+            fn name(&self) -> &str {
+                "unmount"
+            }
+            fn on_unmount(&mut self, _ctx: &mut PluginContext) -> crate::Result<()> {
+                self.unmounted = true;
+                Ok(())
+            }
+        }
+
+        let mut plugin = UnmountPlugin { unmounted: false };
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("unmount");
+
+        plugin.on_unmount(&mut ctx).unwrap();
+        assert!(plugin.unmounted);
+    }
 }

@@ -204,4 +204,86 @@ mod tests {
         ctx.set_terminal_size(120, 40);
         assert_eq!(ctx.terminal_size(), (120, 40));
     }
+
+    #[test]
+    fn test_plugin_context_default() {
+        let ctx = PluginContext::default();
+        assert_eq!(ctx.terminal_size(), (80, 24));
+        assert!(!ctx.is_running());
+    }
+
+    #[test]
+    fn test_plugin_context_running_state() {
+        let mut ctx = PluginContext::new();
+        assert!(!ctx.is_running());
+
+        ctx.set_running(true);
+        assert!(ctx.is_running());
+
+        ctx.set_running(false);
+        assert!(!ctx.is_running());
+    }
+
+    #[test]
+    fn test_plugin_context_remove_data() {
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+
+        ctx.set_data("key", 42i32);
+        assert!(ctx.get_data::<i32>("key").is_some());
+
+        assert!(ctx.remove_data("key"));
+        assert!(ctx.get_data::<i32>("key").is_none());
+
+        // Removing non-existent key returns false
+        assert!(!ctx.remove_data("nonexistent"));
+    }
+
+    #[test]
+    fn test_plugin_context_remove_data_no_plugin() {
+        let mut ctx = PluginContext::new();
+        // No current plugin set
+        assert!(!ctx.remove_data("key"));
+    }
+
+    #[test]
+    fn test_plugin_context_get_data_wrong_type() {
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+
+        ctx.set_data("number", 42i32);
+        // Try to get as different type
+        assert!(ctx.get_data::<String>("number").is_none());
+    }
+
+    #[test]
+    fn test_plugin_context_clear_current_plugin() {
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+        ctx.set_data("key", 42i32);
+
+        ctx.clear_current_plugin();
+        // After clearing, get_data returns None (no current plugin)
+        assert!(ctx.get_data::<i32>("key").is_none());
+    }
+
+    #[test]
+    fn test_plugin_context_log_methods() {
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("test");
+
+        // Just verify these don't panic
+        ctx.log("info message");
+        ctx.warn("warning message");
+        ctx.error("error message");
+    }
+
+    #[test]
+    fn test_plugin_context_log_no_plugin() {
+        let ctx = PluginContext::new();
+        // Just verify these don't panic without current plugin
+        ctx.log("info message");
+        ctx.warn("warning message");
+        ctx.error("error message");
+    }
 }

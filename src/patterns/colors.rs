@@ -248,4 +248,99 @@ mod tests {
         assert_eq!(priority_color(3), BLUE);
         assert_eq!(priority_color(4), FG_DIM);
     }
+
+    #[test]
+    fn test_priority_color_high_values() {
+        // Values > 4 should return FG_DIM
+        assert_eq!(priority_color(5), FG_DIM);
+        assert_eq!(priority_color(100), FG_DIM);
+        assert_eq!(priority_color(255), FG_DIM);
+    }
+
+    #[test]
+    fn test_primary_colors_rgb() {
+        // Verify CYAN
+        if let Color::Rgb { r, g, b } = CYAN {
+            assert_eq!(r, 118);
+            assert_eq!(g, 217);
+            assert_eq!(b, 224);
+        }
+
+        // Verify GREEN
+        if let Color::Rgb { r, g, b } = GREEN {
+            assert_eq!(r, 63);
+            assert_eq!(g, 185);
+            assert_eq!(b, 80);
+        }
+
+        // Verify RED
+        if let Color::Rgb { r, g, b } = RED {
+            assert_eq!(r, 248);
+            assert_eq!(g, 81);
+            assert_eq!(b, 73);
+        }
+    }
+
+    #[test]
+    fn test_foreground_colors() {
+        // Verify FG is brightest
+        if let Color::Rgb { r, g, b } = FG {
+            assert!(r > 200 && g > 200 && b > 200);
+        }
+
+        // Verify FG_DIM is dimmer
+        if let Color::Rgb { r, g, b } = FG_DIM {
+            assert!(r < 200 && g < 200 && b < 200);
+        }
+
+        // Verify FG_SUBTLE is dimmest
+        if let Color::Rgb { r, g, b } = FG_SUBTLE {
+            assert!(r < 100 && g < 100 && b < 110);
+        }
+    }
+
+    #[test]
+    fn test_background_colors() {
+        // Verify BG is darkest
+        if let Color::Rgb { r, g, b } = BG {
+            assert!(r < 20 && g < 20 && b < 30);
+        }
+
+        // Verify BG_INSET is even darker
+        if let Color::Rgb { r, g, b } = BG_INSET {
+            assert!(r < 10 && g < 10 && b < 15);
+        }
+    }
+
+    #[test]
+    fn test_semantic_color_aliases() {
+        assert_eq!(SUCCESS, GREEN);
+        assert_eq!(ERROR, RED);
+        assert_eq!(WARNING, YELLOW);
+        assert_eq!(INFO, BLUE);
+    }
+
+    #[test]
+    fn test_border_colors() {
+        // Verify BORDER is between BG and FG brightness
+        if let Color::Rgb { r, g, b } = BORDER {
+            assert!(r > 40 && r < 60);
+            assert!(g > 50 && g < 60);
+            assert!(b > 55 && b < 70);
+        }
+
+        // Verify BORDER_MUTED is dimmer than BORDER
+        if let (Color::Rgb { r: r1, .. }, Color::Rgb { r: r2, .. }) = (BORDER, BORDER_MUTED) {
+            assert!(r1 > r2);
+        }
+    }
+
+    #[test]
+    fn test_build_color_all_states() {
+        // Test all combinations
+        assert_eq!(build_color(true, true), YELLOW); // Building, was success
+        assert_eq!(build_color(true, false), YELLOW); // Building, was failure
+        assert_eq!(build_color(false, true), GREEN); // Not building, success
+        assert_eq!(build_color(false, false), RED); // Not building, failure
+    }
 }

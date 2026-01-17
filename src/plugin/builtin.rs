@@ -281,4 +281,87 @@ mod tests {
 
         plugin.on_unmount(&mut ctx).unwrap();
     }
+
+    #[test]
+    fn test_logger_plugin_default() {
+        let plugin = LoggerPlugin::new();
+        assert_eq!(plugin.name(), "logger");
+        assert_eq!(plugin.priority(), 100);
+    }
+
+    #[test]
+    fn test_logger_plugin_builders() {
+        let plugin = LoggerPlugin::new().verbose(true).log_interval(30);
+        assert!(plugin.verbose);
+        assert_eq!(plugin.log_interval, 30);
+    }
+
+    #[test]
+    fn test_logger_plugin_default_trait() {
+        let plugin = LoggerPlugin::default();
+        assert!(!plugin.verbose);
+        assert_eq!(plugin.log_interval, 60);
+    }
+
+    #[test]
+    fn test_performance_plugin_default() {
+        let plugin = PerformancePlugin::new();
+        assert_eq!(plugin.name(), "performance");
+        assert_eq!(plugin.priority(), -100);
+    }
+
+    #[test]
+    fn test_performance_plugin_builders() {
+        let plugin = PerformancePlugin::new()
+            .max_samples(60)
+            .report_interval(Duration::from_secs(10));
+        assert_eq!(plugin.max_samples, 60);
+        assert_eq!(plugin.report_interval, Duration::from_secs(10));
+    }
+
+    #[test]
+    fn test_performance_plugin_default_trait() {
+        let plugin = PerformancePlugin::default();
+        assert_eq!(plugin.max_samples, 120);
+    }
+
+    #[test]
+    fn test_performance_calculate_fps_empty() {
+        let plugin = PerformancePlugin::new();
+        assert_eq!(plugin.calculate_fps(), 0.0);
+    }
+
+    #[test]
+    fn test_performance_frame_time_stats_empty() {
+        let plugin = PerformancePlugin::new();
+        let (min, max, avg) = plugin.frame_time_stats();
+        assert_eq!(min, Duration::ZERO);
+        assert_eq!(max, Duration::ZERO);
+        assert_eq!(avg, Duration::ZERO);
+    }
+
+    #[test]
+    fn test_performance_frame_time_stats() {
+        let mut plugin = PerformancePlugin::new();
+        plugin.frame_times.push(Duration::from_millis(10));
+        plugin.frame_times.push(Duration::from_millis(20));
+        plugin.frame_times.push(Duration::from_millis(30));
+
+        let (min, max, avg) = plugin.frame_time_stats();
+        assert_eq!(min, Duration::from_millis(10));
+        assert_eq!(max, Duration::from_millis(30));
+        assert_eq!(avg, Duration::from_millis(20));
+    }
+
+    #[test]
+    fn test_logger_tick_count() {
+        let mut plugin = LoggerPlugin::new();
+        let mut ctx = PluginContext::new();
+        ctx.set_current_plugin("logger");
+
+        for _ in 0..5 {
+            plugin.on_tick(&mut ctx, Duration::from_millis(16)).unwrap();
+        }
+        assert_eq!(plugin.tick_count, 5);
+    }
 }
