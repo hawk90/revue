@@ -23,7 +23,7 @@ use crate::style::Color;
 use crate::widget::traits::{
     Draggable, EventResult, Interactive, RenderContext, View, WidgetProps, WidgetState,
 };
-use crate::{impl_styled_view, impl_view_meta};
+use crate::{impl_styled_view, impl_view_meta, impl_widget_builders};
 
 /// Atomic counter for generating unique sortable list IDs
 static SORTABLE_ID_COUNTER: AtomicU64 = AtomicU64::new(1000);
@@ -80,8 +80,8 @@ pub struct SortableList {
     selected_color: Color,
     /// Drag indicator color
     drag_color: Color,
-    /// Widget state (for future focus management)
-    _state: WidgetState,
+    /// Widget state
+    state: WidgetState,
     /// Widget props
     props: WidgetProps,
     /// Unique ID for drag operations (for future drag tracking)
@@ -115,7 +115,7 @@ impl SortableList {
             item_color: Color::rgb(200, 200, 200),
             selected_color: Color::rgb(100, 150, 255),
             drag_color: Color::rgb(255, 200, 100),
-            _state: WidgetState::new(),
+            state: WidgetState::new(),
             props: WidgetProps::new(),
             _id: id,
         }
@@ -393,8 +393,8 @@ impl View for SortableList {
     impl_view_meta!("SortableList");
 }
 
-// Note: impl_widget_builders! not used, state field is intentionally unused (_state)
 impl_styled_view!(SortableList);
+impl_widget_builders!(SortableList);
 
 impl Interactive for SortableList {
     fn handle_key(&mut self, event: &KeyEvent) -> EventResult {
