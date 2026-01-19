@@ -3,341 +3,25 @@
 //! A WYSIWYG-style text editor with formatting toolbar, markdown shortcuts,
 //! live preview, and export capabilities.
 
+mod block;
+mod link;
+mod text_format;
+mod types;
+
 use super::traits::{RenderContext, View, WidgetProps};
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::{impl_props_builders, impl_styled_view};
 
+// Public exports (also used internally)
+pub use block::{Block, BlockType, FormattedSpan};
+pub use link::{ImageRef, Link};
+pub use text_format::TextFormat;
+pub use types::{EditorViewMode, ToolbarAction};
+
 /// Maximum undo history size
 const MAX_UNDO_HISTORY: usize = 100;
-
-/// Text formatting options
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct TextFormat {
-    /// Bold text
-    pub bold: bool,
-    /// Italic text
-    pub italic: bool,
-    /// Underline text
-    pub underline: bool,
-    /// Strikethrough text
-    pub strikethrough: bool,
-    /// Code/monospace text
-    pub code: bool,
-}
-
-impl TextFormat {
-    /// Create default format
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Toggle bold
-    pub fn toggle_bold(mut self) -> Self {
-        self.bold = !self.bold;
-        self
-    }
-
-    /// Toggle italic
-    pub fn toggle_italic(mut self) -> Self {
-        self.italic = !self.italic;
-        self
-    }
-
-    /// Toggle underline
-    pub fn toggle_underline(mut self) -> Self {
-        self.underline = !self.underline;
-        self
-    }
-
-    /// Toggle strikethrough
-    pub fn toggle_strikethrough(mut self) -> Self {
-        self.strikethrough = !self.strikethrough;
-        self
-    }
-
-    /// Toggle code
-    pub fn toggle_code(mut self) -> Self {
-        self.code = !self.code;
-        self
-    }
-}
-
-/// Block type for paragraphs
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum BlockType {
-    /// Normal paragraph
-    #[default]
-    Paragraph,
-    /// Heading level 1
-    Heading1,
-    /// Heading level 2
-    Heading2,
-    /// Heading level 3
-    Heading3,
-    /// Heading level 4
-    Heading4,
-    /// Heading level 5
-    Heading5,
-    /// Heading level 6
-    Heading6,
-    /// Blockquote
-    Quote,
-    /// Code block
-    CodeBlock,
-    /// Unordered list item
-    BulletList,
-    /// Ordered list item
-    NumberedList,
-    /// Horizontal rule
-    HorizontalRule,
-}
-
-impl BlockType {
-    /// Get markdown prefix for this block type
-    pub fn markdown_prefix(&self) -> &'static str {
-        match self {
-            BlockType::Paragraph => "",
-            BlockType::Heading1 => "# ",
-            BlockType::Heading2 => "## ",
-            BlockType::Heading3 => "### ",
-            BlockType::Heading4 => "#### ",
-            BlockType::Heading5 => "##### ",
-            BlockType::Heading6 => "###### ",
-            BlockType::Quote => "> ",
-            BlockType::CodeBlock => "```\n",
-            BlockType::BulletList => "- ",
-            BlockType::NumberedList => "1. ",
-            BlockType::HorizontalRule => "---",
-        }
-    }
-}
-
-/// A formatted text span
-#[derive(Clone, Debug)]
-pub struct FormattedSpan {
-    /// Text content
-    pub text: String,
-    /// Format applied
-    pub format: TextFormat,
-}
-
-impl FormattedSpan {
-    /// Create new span
-    pub fn new(text: impl Into<String>) -> Self {
-        Self {
-            text: text.into(),
-            format: TextFormat::default(),
-        }
-    }
-
-    /// Set format
-    pub fn with_format(mut self, format: TextFormat) -> Self {
-        self.format = format;
-        self
-    }
-}
-
-/// A line/block in the document
-#[derive(Clone, Debug)]
-pub struct Block {
-    /// Block type
-    pub block_type: BlockType,
-    /// Spans of formatted text
-    pub spans: Vec<FormattedSpan>,
-    /// Language for code blocks
-    pub language: Option<String>,
-}
-
-impl Block {
-    /// Create new paragraph
-    pub fn paragraph(text: impl Into<String>) -> Self {
-        Self {
-            block_type: BlockType::Paragraph,
-            spans: vec![FormattedSpan::new(text)],
-            language: None,
-        }
-    }
-
-    /// Create new block with type
-    pub fn new(block_type: BlockType) -> Self {
-        Self {
-            block_type,
-            spans: vec![FormattedSpan::new("")],
-            language: None,
-        }
-    }
-
-    /// Get plain text content
-    pub fn text(&self) -> String {
-        self.spans.iter().map(|s| s.text.as_str()).collect()
-    }
-
-    /// Set text content (single span)
-    pub fn set_text(&mut self, text: impl Into<String>) {
-        self.spans = vec![FormattedSpan::new(text)];
-    }
-
-    /// Get text length
-    pub fn len(&self) -> usize {
-        self.spans.iter().map(|s| s.text.len()).sum()
-    }
-
-    /// Check if empty
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Convert to markdown
-    pub fn to_markdown(&self) -> String {
-        let prefix = self.block_type.markdown_prefix();
-        let text = self.spans_to_markdown();
-
-        match self.block_type {
-            BlockType::CodeBlock => {
-                let lang = self.language.as_deref().unwrap_or("");
-                format!("```{}\n{}\n```", lang, text)
-            }
-            BlockType::HorizontalRule => "---".to_string(),
-            _ => format!("{}{}", prefix, text),
-        }
-    }
-
-    /// Convert spans to markdown
-    fn spans_to_markdown(&self) -> String {
-        self.spans
-            .iter()
-            .map(|span| {
-                let mut text = span.text.clone();
-                if span.format.code {
-                    text = format!("`{}`", text);
-                }
-                if span.format.bold {
-                    text = format!("**{}**", text);
-                }
-                if span.format.italic {
-                    text = format!("*{}*", text);
-                }
-                if span.format.strikethrough {
-                    text = format!("~~{}~~", text);
-                }
-                text
-            })
-            .collect()
-    }
-}
-
-/// Link data
-#[derive(Clone, Debug)]
-pub struct Link {
-    /// Display text
-    pub text: String,
-    /// URL
-    pub url: String,
-    /// Title (optional)
-    pub title: Option<String>,
-}
-
-impl Link {
-    /// Create new link
-    pub fn new(text: impl Into<String>, url: impl Into<String>) -> Self {
-        Self {
-            text: text.into(),
-            url: url.into(),
-            title: None,
-        }
-    }
-
-    /// Set title
-    pub fn with_title(mut self, title: impl Into<String>) -> Self {
-        self.title = Some(title.into());
-        self
-    }
-
-    /// Convert to markdown
-    pub fn to_markdown(&self) -> String {
-        match &self.title {
-            Some(title) => format!("[{}]({} \"{}\")", self.text, self.url, title),
-            None => format!("[{}]({})", self.text, self.url),
-        }
-    }
-}
-
-/// Image data
-#[derive(Clone, Debug)]
-pub struct ImageRef {
-    /// Alt text
-    pub alt: String,
-    /// Image URL/path
-    pub src: String,
-    /// Title (optional)
-    pub title: Option<String>,
-}
-
-impl ImageRef {
-    /// Create new image
-    pub fn new(alt: impl Into<String>, src: impl Into<String>) -> Self {
-        Self {
-            alt: alt.into(),
-            src: src.into(),
-            title: None,
-        }
-    }
-
-    /// Set title
-    pub fn with_title(mut self, title: impl Into<String>) -> Self {
-        self.title = Some(title.into());
-        self
-    }
-
-    /// Convert to markdown
-    pub fn to_markdown(&self) -> String {
-        match &self.title {
-            Some(title) => format!("![{}]({} \"{}\")", self.alt, self.src, title),
-            None => format!("![{}]({})", self.alt, self.src),
-        }
-    }
-}
-
-/// Toolbar action
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ToolbarAction {
-    /// Toggle bold formatting
-    Bold,
-    /// Toggle italic formatting
-    Italic,
-    /// Toggle underline formatting
-    Underline,
-    /// Toggle strikethrough formatting
-    Strikethrough,
-    /// Toggle inline code formatting
-    Code,
-    /// Insert link
-    Link,
-    /// Insert image
-    Image,
-    /// Set block to heading 1
-    Heading1,
-    /// Set block to heading 2
-    Heading2,
-    /// Set block to heading 3
-    Heading3,
-    /// Set block to quote
-    Quote,
-    /// Set block to bullet list
-    BulletList,
-    /// Set block to numbered list
-    NumberedList,
-    /// Set block to code block
-    CodeBlock,
-    /// Insert horizontal rule
-    HorizontalRule,
-    /// Undo last action
-    Undo,
-    /// Redo last undone action
-    Redo,
-}
 
 /// Edit operation for undo/redo
 #[derive(Clone, Debug)]
@@ -382,18 +66,6 @@ enum EditOp {
     },
 }
 
-/// View mode for the editor
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum EditorViewMode {
-    /// Editor only
-    #[default]
-    Editor,
-    /// Preview only
-    Preview,
-    /// Split view (editor + preview)
-    Split,
-}
-
 /// Dialog type
 #[derive(Clone, Debug)]
 enum DialogType {
@@ -409,7 +81,6 @@ enum DialogType {
         field: usize,
     },
 }
-
 /// Rich text editor widget
 pub struct RichTextEditor {
     /// Document blocks
