@@ -27,7 +27,7 @@ use super::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_props_builders, impl_state_builders, impl_styled_view};
+use crate::{impl_styled_view, impl_widget_builders};
 
 /// Alert severity level
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -530,8 +530,7 @@ impl Alert {
 }
 
 impl_styled_view!(Alert);
-impl_state_builders!(Alert);
-impl_props_builders!(Alert);
+impl_widget_builders!(Alert);
 
 /// Helper function to create an Alert
 pub fn alert(message: impl Into<String>) -> Alert {

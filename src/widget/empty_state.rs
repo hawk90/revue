@@ -26,7 +26,7 @@
 use super::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_props_builders, impl_state_builders, impl_styled_view};
+use crate::{impl_styled_view, impl_widget_builders};
 
 /// Empty state type/scenario
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -401,8 +401,7 @@ impl EmptyState {
 }
 
 impl_styled_view!(EmptyState);
-impl_state_builders!(EmptyState);
-impl_props_builders!(EmptyState);
+impl_widget_builders!(EmptyState);
 
 /// Helper function to create an EmptyState
 pub fn empty_state(title: impl Into<String>) -> EmptyState {

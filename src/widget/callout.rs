@@ -29,7 +29,7 @@ use super::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_props_builders, impl_state_builders, impl_styled_view};
+use crate::{impl_styled_view, impl_widget_builders};
 use unicode_width::UnicodeWidthChar;
 
 /// Callout type determines the styling and default icon
@@ -658,8 +658,7 @@ impl Callout {
 }
 
 impl_styled_view!(Callout);
-impl_state_builders!(Callout);
-impl_props_builders!(Callout);
+impl_widget_builders!(Callout);
 
 /// Helper function to create a Callout
 pub fn callout(content: impl Into<String>) -> Callout {

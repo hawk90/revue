@@ -32,7 +32,7 @@ use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::unicode::char_width;
-use crate::{impl_props_builders, impl_state_builders, impl_styled_view};
+use crate::{impl_styled_view, impl_widget_builders};
 
 /// Card visual variant
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -618,8 +618,7 @@ impl TextDraw<'_> {
 }
 
 impl_styled_view!(Card);
-impl_state_builders!(Card);
-impl_props_builders!(Card);
+impl_widget_builders!(Card);
 
 /// Helper function to create a Card
 pub fn card() -> Card {

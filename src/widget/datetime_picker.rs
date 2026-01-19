@@ -26,7 +26,7 @@ use super::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_props_builders, impl_state_builders, impl_styled_view};
+use crate::{impl_styled_view, impl_widget_builders};
 use unicode_width::UnicodeWidthChar;
 
 /// Time of day
@@ -879,8 +879,7 @@ impl View for DateTimePicker {
 }
 
 impl_styled_view!(DateTimePicker);
-impl_state_builders!(DateTimePicker);
-impl_props_builders!(DateTimePicker);
+impl_widget_builders!(DateTimePicker);
 
 /// Helper function to get month name
 fn month_name(month: u32) -> &'static str {

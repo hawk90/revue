@@ -23,7 +23,7 @@ use super::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::{impl_props_builders, impl_state_builders, impl_styled_view};
+use crate::{impl_styled_view, impl_widget_builders};
 
 /// A single collapsible/expandable section widget
 ///
@@ -356,8 +356,7 @@ impl View for Collapsible {
 }
 
 impl_styled_view!(Collapsible);
-impl_state_builders!(Collapsible);
-impl_props_builders!(Collapsible);
+impl_widget_builders!(Collapsible);
 
 /// Helper function to create a Collapsible widget
 pub fn collapsible(title: impl Into<String>) -> Collapsible {
