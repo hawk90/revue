@@ -5,7 +5,7 @@ use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::traits::RenderContext;
-use revue::widget::{Switch, SwitchStyle, View};
+use revue::widget::{toggle, Switch, SwitchStyle, View};
 
 #[test]
 fn test_switch_new() {
@@ -115,6 +115,21 @@ fn test_switch_checked_alias() {
     let s = Switch::new().checked(false);
     assert!(!s.is_on());
     assert!(!s.is_checked());
+}
+
+// New tests from main branch
+#[test]
+fn test_toggle_helper() {
+    let s = toggle("Enable");
+    let mut buffer = Buffer::new(30, 1);
+    let area = Rect::new(0, 0, 30, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    s.render(&mut ctx);
+
+    let text: String = (0..30)
+        .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
+        .collect();
+    assert!(text.contains("Enable"));
 }
 
 // =============================================================================
