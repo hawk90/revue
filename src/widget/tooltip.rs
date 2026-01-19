@@ -571,11 +571,12 @@ pub fn tooltip(text: impl Into<String>) -> Tooltip {
     Tooltip::new(text)
 }
 
+// Most tests moved to tests/widget_tests.rs
+// Tests below access private fields and must stay inline
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
 
     #[test]
     fn test_tooltip_new() {
@@ -615,35 +616,6 @@ mod tests {
     }
 
     #[test]
-    fn test_tooltip_visibility() {
-        let mut t = Tooltip::new("Test");
-        assert!(t.visible);
-
-        t.hide();
-        assert!(!t.visible);
-
-        t.show();
-        assert!(t.visible);
-
-        t.toggle();
-        assert!(!t.visible);
-    }
-
-    #[test]
-    fn test_tooltip_delay() {
-        let mut t = Tooltip::new("Test").delay(5);
-        assert!(!t.is_visible());
-
-        for _ in 0..4 {
-            t.tick();
-        }
-        assert!(!t.is_visible());
-
-        t.tick();
-        assert!(t.is_visible());
-    }
-
-    #[test]
     fn test_tooltip_wrap_text() {
         let t = Tooltip::new("This is a very long text that should be wrapped").max_width(20);
         let lines = t.wrap_text();
@@ -670,21 +642,6 @@ mod tests {
     }
 
     #[test]
-    fn test_tooltip_render() {
-        let mut buffer = Buffer::new(40, 20);
-        let area = Rect::new(0, 0, 40, 20);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let t = Tooltip::new("Hello World")
-            .anchor(20, 10)
-            .position(TooltipPosition::Top)
-            .style(TooltipStyle::Bordered);
-
-        t.render(&mut ctx);
-        // Smoke test - renders without panic
-    }
-
-    #[test]
     fn test_tooltip_auto_position() {
         let t = Tooltip::new("Test")
             .position(TooltipPosition::Auto)
@@ -696,7 +653,7 @@ mod tests {
     }
 
     #[test]
-    fn test_tooltip_helper() {
+    fn test_tooltip_helper_text() {
         let t = tooltip("Quick tooltip");
         assert_eq!(t.text, "Quick tooltip");
     }

@@ -533,11 +533,12 @@ pub fn avatar_icon(icon: char) -> Avatar {
     Avatar::from_icon(icon)
 }
 
+// Most tests moved to tests/widget_tests.rs
+// Tests below access private fields and must stay inline
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
 
     #[test]
     fn test_avatar_new() {
@@ -589,34 +590,6 @@ mod tests {
 
         let a = avatar("John").busy();
         assert!(a.status.is_some());
-    }
-
-    #[test]
-    fn test_avatar_render_small() {
-        let mut buffer = Buffer::new(5, 1);
-        let area = Rect::new(0, 0, 5, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let a = avatar("John Doe").small();
-        a.render(&mut ctx);
-
-        assert_eq!(buffer.get(0, 0).map(|c| c.symbol), Some('J'));
-    }
-
-    #[test]
-    fn test_avatar_render_medium() {
-        let mut buffer = Buffer::new(10, 1);
-        let area = Rect::new(0, 0, 10, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let a = avatar("John Doe");
-        a.render(&mut ctx);
-
-        // Should have initials in the middle
-        let text: String = (0..10)
-            .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
-            .collect();
-        assert!(text.contains('J') || text.contains('D'));
     }
 
     #[test]

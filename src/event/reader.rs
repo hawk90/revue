@@ -155,6 +155,9 @@ fn convert_mouse_event(mouse: CrosstermMouseEvent) -> MouseEvent {
     }
 }
 
+// Note: All tests for EventReader stay inline because they access private
+// fields (tick_rate) or private functions (convert_key_event).
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -316,18 +316,12 @@ impl Default for Text {
 impl_styled_view!(Text);
 impl_props_builders!(Text);
 
+// Most tests moved to tests/widget_tests.rs
+// Tests below access private fields and must stay inline
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
-    use crate::widget::StyledView;
-
-    #[test]
-    fn test_text_new() {
-        let text = Text::new("Hello");
-        assert_eq!(text.content(), "Hello");
-    }
 
     #[test]
     fn test_text_builder() {
@@ -339,155 +333,5 @@ mod tests {
         assert_eq!(text.fg, Some(Color::RED));
         assert!(text.bold);
         assert_eq!(text.align, Alignment::Center);
-    }
-
-    #[test]
-    fn test_text_render() {
-        let mut buffer = Buffer::new(20, 5);
-        let area = Rect::new(0, 0, 20, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let text = Text::new("Hello");
-        text.render(&mut ctx);
-
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'H');
-        assert_eq!(buffer.get(1, 0).unwrap().symbol, 'e');
-        assert_eq!(buffer.get(4, 0).unwrap().symbol, 'o');
-    }
-
-    #[test]
-    fn test_text_render_centered() {
-        let mut buffer = Buffer::new(20, 5);
-        let area = Rect::new(0, 0, 20, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let text = Text::new("Hi").align(Alignment::Center);
-        text.render(&mut ctx);
-
-        // "Hi" is 2 chars, in 20 width, centered at (20-2)/2 = 9
-        assert_eq!(buffer.get(9, 0).unwrap().symbol, 'H');
-        assert_eq!(buffer.get(10, 0).unwrap().symbol, 'i');
-    }
-
-    // CSS integration tests
-    #[test]
-    fn test_text_css_id() {
-        use crate::widget::View;
-
-        let text = Text::new("Title").element_id("page-title");
-        assert_eq!(View::id(&text), Some("page-title"));
-
-        let meta = text.meta();
-        assert_eq!(meta.id, Some("page-title".to_string()));
-    }
-
-    #[test]
-    fn test_text_css_classes() {
-        let text = Text::new("Warning").class("alert").class("bold");
-
-        assert!(text.has_class("alert"));
-        assert!(text.has_class("bold"));
-        assert!(!text.has_class("hidden"));
-
-        let meta = text.meta();
-        assert!(meta.classes.contains("alert"));
-        assert!(meta.classes.contains("bold"));
-    }
-
-    #[test]
-    fn test_text_styled_view() {
-        use crate::widget::View;
-
-        let mut text = Text::new("Test");
-
-        text.set_id("test-text");
-        assert_eq!(View::id(&text), Some("test-text"));
-
-        text.add_class("highlight");
-        assert!(text.has_class("highlight"));
-
-        text.toggle_class("highlight");
-        assert!(!text.has_class("highlight"));
-
-        text.toggle_class("active");
-        assert!(text.has_class("active"));
-
-        text.remove_class("active");
-        assert!(!text.has_class("active"));
-    }
-
-    #[test]
-    fn test_text_css_colors_from_context() {
-        use crate::style::{Style, VisualStyle};
-
-        let text = Text::new("CSS Text");
-        let mut buffer = Buffer::new(20, 3);
-        let area = Rect::new(0, 0, 20, 1);
-
-        let mut style = Style::default();
-        style.visual = VisualStyle {
-            color: Color::MAGENTA,
-            ..VisualStyle::default()
-        };
-
-        let mut ctx = RenderContext::with_style(&mut buffer, area, &style);
-        text.render(&mut ctx);
-        // Text should use CSS color
-    }
-
-    #[test]
-    fn test_text_justify_alignment() {
-        // "Hello World" = 10 chars (5+5), width 20 = 10 extra spaces
-        // gap_count = 1, so 10 spaces between "Hello" and "World"
-        // Hello(0-4), gap(5-14), World(15-19)
-        let text = Text::new("Hello World").align(Alignment::Justify);
-        let mut buffer = Buffer::new(20, 1);
-        let area = Rect::new(0, 0, 20, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        text.render(&mut ctx);
-
-        // First word starts at 0
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'H');
-        assert_eq!(buffer.get(4, 0).unwrap().symbol, 'o');
-
-        // Last word ends at 19 (width - 1)
-        assert_eq!(buffer.get(19, 0).unwrap().symbol, 'd');
-        assert_eq!(buffer.get(15, 0).unwrap().symbol, 'W');
-    }
-
-    #[test]
-    fn test_text_justify_single_word() {
-        // Single word should fall back to left alignment
-        let text = Text::new("Hello").align(Alignment::Justify);
-        let mut buffer = Buffer::new(20, 1);
-        let area = Rect::new(0, 0, 20, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        text.render(&mut ctx);
-
-        // Should be left-aligned
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'H');
-        assert_eq!(buffer.get(4, 0).unwrap().symbol, 'o');
-    }
-
-    #[test]
-    fn test_text_justify_multiple_words() {
-        // "A B C" = 5 chars, width 11 = 6 extra spaces, 2 gaps = 3 each
-        let text = Text::new("A B C").align(Alignment::Justify);
-        let mut buffer = Buffer::new(11, 1);
-        let area = Rect::new(0, 0, 11, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        text.render(&mut ctx);
-
-        // A at 0, B at 4, C at 8 (3 spaces between each)
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'A');
-        // Extra space distributed: 6/2 = 3 each, remainder 0
-        // A(0) + 4 spaces = B(4), B(4) + 4 spaces = ... wait
-        // Actually: 11 width - 3 chars = 8 spaces, 2 gaps = 4 each
-        // A(0), gap(1-4), B(5), gap(6-9), C(10)
-        assert_eq!(buffer.get(5, 0).unwrap().symbol, 'B');
-        assert_eq!(buffer.get(10, 0).unwrap().symbol, 'C');
     }
 }
