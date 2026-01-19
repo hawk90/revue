@@ -1,11 +1,10 @@
 //! IME (Input Method Editor) tests
 
-use revue::event::{
-    Candidate, CompositionEvent, CompositionState, ImeConfig, ImeState, PreeditString,
-};
+use revue::event::{Candidate, CompositionState, ImeConfig, ImeState, PreeditString};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
+#[test]
 fn test_composition_state_default() {
     let ime = ImeState::new();
     assert_eq!(ime.state(), CompositionState::Idle);

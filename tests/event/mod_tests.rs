@@ -1,10 +1,6 @@
 //! Event module tests
 
-use revue::event::{Event, EventReader, Key, KeyEvent};
-use revue::layout::Rect;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, RwLock};
-use std::time::Duration;
+use revue::event::{Event, Key, KeyEvent};
 
 #[test]
 fn test_key_event_new() {

@@ -6,6 +6,7 @@ use revue::style::Color;
 use revue::widget::traits::RenderContext;
 use revue::widget::{badge, dot_badge, BadgeVariant, View};
 
+#[test]
 fn test_badge_render() {
     let mut buffer = Buffer::new(20, 1);
     let area = Rect::new(0, 0, 20, 1);

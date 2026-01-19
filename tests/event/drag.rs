@@ -1,11 +1,9 @@
 //! Drag event tests
 
-use revue::event::{
-    DragContext, DragData, DragGesture, DragState, DropTarget, MouseButton, MouseEvent,
-    MouseEventKind,
-};
+use revue::event::{DragContext, DragData, DragState, DropTarget};
 use revue::layout::Rect;
 
+#[test]
 fn test_drag_data_text() {
     let data = DragData::text("Hello");
     assert_eq!(data.type_id, "text");

@@ -1,8 +1,8 @@
 //! Custom event tests
 
 use revue::event::{
-    AppEvent, CustomEvent, CustomEventBus, EventContext, EventDispatcher, EventHandler, EventMeta,
-    EventPhase, EventPriority, EventResponse, HandlerOptions, NavigateEvent,
+    AppEvent, CustomEvent, CustomEventBus, EventDispatcher, EventMeta, EventPriority,
+    EventResponse, HandlerOptions, NavigateEvent,
 };
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};

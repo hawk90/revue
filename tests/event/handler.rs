@@ -1,10 +1,8 @@
 //! Event handler tests
 
-use revue::event::{
-    Event, EventContext, EventHandler, EventResponse, HandlerOptions, Key, KeyEvent, MouseButton,
-    MouseEvent, MouseEventKind,
-};
+use revue::event::{Event, EventContext, EventHandler, Key, KeyEvent};
 
+#[test]
 fn test_event_context() {
     let mut ctx = EventContext::new();
 

@@ -2,6 +2,7 @@
 
 use revue::event::{Key, KeyBinding, KeyMap};
 
+#[test]
 fn test_key_char() {
     let key = Key::Char('a');
     assert_eq!(key, Key::Char('a'));

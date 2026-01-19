@@ -1,8 +1,9 @@
 //! Focus management tests
 
-use revue::event::{Direction, FocusManager, FocusTrap, FocusTrapConfig, NavigateEvent};
+use revue::event::{Direction, FocusManager, FocusTrap, FocusTrapConfig};
 use revue::layout::Rect;
 
+#[test]
 fn test_focus_manager_new() {
     let fm = FocusManager::new();
     assert!(fm.current().is_none());
