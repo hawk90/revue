@@ -3,7 +3,7 @@
 //! Run with: cargo run --example card
 
 use revue::prelude::*;
-use revue::widget::{card, CardBorder, CardVariant, Text};
+use revue::widget::{card, BorderType, CardVariant, Text};
 
 /// Current view mode
 #[derive(Clone, Copy, PartialEq)]
@@ -194,28 +194,28 @@ impl CardDemo {
                 card()
                     .title("Single Border")
                     .body(Text::new("Standard single-line border"))
-                    .border_style(CardBorder::Single),
+                    .border_style(BorderType::Single),
             )
             .child(Text::new(""))
             .child(
                 card()
                     .title("Rounded Border")
                     .body(Text::new("Rounded corners"))
-                    .border_style(CardBorder::Rounded),
+                    .border_style(BorderType::Rounded),
             )
             .child(Text::new(""))
             .child(
                 card()
                     .title("Double Border")
                     .body(Text::new("Double-line border"))
-                    .border_style(CardBorder::Double),
+                    .border_style(BorderType::Double),
             )
             .child(Text::new(""))
             .child(
                 card()
                     .title("No Border")
                     .body(Text::new("No visible border"))
-                    .border_style(CardBorder::None)
+                    .border_style(BorderType::None)
                     .variant(CardVariant::Filled),
             )
     }

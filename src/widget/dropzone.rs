@@ -334,6 +334,78 @@ where
     impl_view_meta!("DropZone");
 }
 
+// Builder methods (manually implemented due to generic type parameter)
+impl DropZone<fn(DragData) -> bool> {
+    /// Set the focused state
+    pub fn focused(mut self, focused: bool) -> Self {
+        self.state.focused = focused;
+        self
+    }
+
+    /// Set the disabled state
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.state.disabled = disabled;
+        self
+    }
+
+    /// Set the foreground color
+    pub fn fg(mut self, color: Color) -> Self {
+        self.state.fg = Some(color);
+        self
+    }
+
+    /// Set the background color
+    pub fn bg(mut self, color: Color) -> Self {
+        self.state.bg = Some(color);
+        self
+    }
+
+    /// Check if the widget is focused
+    pub fn is_focused(&self) -> bool {
+        self.state.focused
+    }
+
+    /// Check if the widget is disabled
+    pub fn is_disabled(&self) -> bool {
+        self.state.disabled
+    }
+
+    /// Set the focused state (mutable)
+    pub fn set_focused(&mut self, focused: bool) {
+        self.state.focused = focused;
+    }
+}
+
+// StyledView trait for CSS class management
+impl crate::widget::traits::StyledView for DropZone<fn(DragData) -> bool> {
+    fn set_id(&mut self, id: impl Into<String>) {
+        self.props.id = Some(id.into());
+    }
+
+    fn add_class(&mut self, class: impl Into<String>) {
+        let class_str = class.into();
+        if !self.props.classes.contains(&class_str) {
+            self.props.classes.push(class_str);
+        }
+    }
+
+    fn remove_class(&mut self, class: &str) {
+        self.props.classes.retain(|c| c != class);
+    }
+
+    fn toggle_class(&mut self, class: &str) {
+        if self.props.classes.contains(&class.to_string()) {
+            self.remove_class(class);
+        } else {
+            self.add_class(class);
+        }
+    }
+
+    fn has_class(&self, class: &str) -> bool {
+        self.props.classes.contains(&class.to_string())
+    }
+}
+
 impl<F> Draggable for DropZone<F>
 where
     F: FnMut(DragData) -> bool,

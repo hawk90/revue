@@ -11,7 +11,7 @@ use super::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::{impl_props_builders, impl_state_builders, impl_styled_view, impl_view_meta};
+use crate::{impl_styled_view, impl_view_meta, impl_widget_builders};
 
 /// A number input widget with increment/decrement controls
 ///
@@ -552,8 +552,7 @@ impl View for NumberInput {
 }
 
 impl_styled_view!(NumberInput);
-impl_state_builders!(NumberInput);
-impl_props_builders!(NumberInput);
+impl_widget_builders!(NumberInput);
 
 // =============================================================================
 // Helper functions

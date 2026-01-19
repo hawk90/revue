@@ -202,6 +202,11 @@ impl<'a> RenderContext<'a> {
         self.draw_text_with_style(x, y, text, |ch| Cell::new(ch).fg(fg).bold());
     }
 
+    /// Draw bold text with background color
+    pub fn draw_text_bg_bold(&mut self, x: u16, y: u16, text: &str, fg: Color, bg: Color) {
+        self.draw_text_with_style(x, y, text, |ch| Cell::new(ch).fg(fg).bg(bg).bold());
+    }
+
     /// Draw a horizontal line
     pub fn draw_hline(&mut self, x: u16, y: u16, len: u16, ch: char, fg: Color) {
         for i in 0..len {

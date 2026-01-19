@@ -22,7 +22,7 @@
 use super::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::{impl_props_builders, impl_state_builders, impl_styled_view};
+use crate::{impl_styled_view, impl_widget_builders};
 use unicode_width::UnicodeWidthChar;
 
 /// Predefined status states
@@ -441,8 +441,7 @@ impl StatusIndicator {
 }
 
 impl_styled_view!(StatusIndicator);
-impl_state_builders!(StatusIndicator);
-impl_props_builders!(StatusIndicator);
+impl_widget_builders!(StatusIndicator);
 
 /// Helper function to create a StatusIndicator
 pub fn status_indicator(status: Status) -> StatusIndicator {

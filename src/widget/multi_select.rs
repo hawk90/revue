@@ -11,7 +11,7 @@ use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::{fuzzy_match, FuzzyMatch};
-use crate::{impl_props_builders, impl_state_builders, impl_styled_view, impl_view_meta};
+use crate::{impl_styled_view, impl_view_meta, impl_widget_builders};
 
 /// An option in the multi-select widget
 #[derive(Debug, Clone)]
@@ -749,8 +749,7 @@ impl View for MultiSelect {
 }
 
 impl_styled_view!(MultiSelect);
-impl_state_builders!(MultiSelect);
-impl_props_builders!(MultiSelect);
+impl_widget_builders!(MultiSelect);
 
 // =============================================================================
 // Helper functions

@@ -15,10 +15,10 @@
 //! ```
 
 use crate::event::Key;
-use crate::impl_view_meta;
 use crate::layout::Rect;
 use crate::style::Color;
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
+use crate::{impl_styled_view, impl_view_meta, impl_widget_builders};
 
 /// Resize handle positions
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -641,6 +641,9 @@ where
 
     impl_view_meta!("Resizable");
 }
+
+impl_styled_view!(Resizable);
+impl_widget_builders!(Resizable);
 
 /// Create a new resizable wrapper
 pub fn resizable(width: u16, height: u16) -> Resizable<fn(u16, u16)> {

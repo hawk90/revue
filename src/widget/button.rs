@@ -254,18 +254,10 @@ impl View for Button {
         }
 
         // Render label
-        for ch in self.label.chars() {
-            if x >= area.x + button_width {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(fg);
-            cell.bg = Some(bg);
-            if self.state.focused && !self.state.disabled {
-                cell.modifier = crate::render::Modifier::BOLD;
-            }
-            ctx.buffer.set(x, area.y, cell);
-            x += 1;
+        if self.state.focused && !self.state.disabled {
+            ctx.draw_text_bg_bold(x, area.y, &self.label, fg, bg);
+        } else {
+            ctx.draw_text_bg(x, area.y, &self.label, fg, bg);
         }
 
         // Render focus indicator

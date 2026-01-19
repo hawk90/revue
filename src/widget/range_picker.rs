@@ -13,7 +13,7 @@ use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::unicode::char_width;
-use crate::{impl_props_builders, impl_state_builders, impl_styled_view};
+use crate::{impl_styled_view, impl_widget_builders};
 
 /// Preset date ranges
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -907,8 +907,7 @@ impl View for RangePicker {
 }
 
 impl_styled_view!(RangePicker);
-impl_state_builders!(RangePicker);
-impl_props_builders!(RangePicker);
+impl_widget_builders!(RangePicker);
 
 /// Helper function to get month name
 fn month_name(month: u32) -> &'static str {

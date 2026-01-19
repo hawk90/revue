@@ -25,7 +25,7 @@ use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::border::BorderChars;
-use crate::{impl_props_builders, impl_state_builders, impl_styled_view};
+use crate::{impl_styled_view, impl_widget_builders};
 
 /// Popover position relative to anchor
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -629,8 +629,7 @@ impl View for Popover {
 }
 
 impl_styled_view!(Popover);
-impl_state_builders!(Popover);
-impl_props_builders!(Popover);
+impl_widget_builders!(Popover);
 
 /// Helper function to create a popover
 pub fn popover(content: impl Into<String>) -> Popover {
