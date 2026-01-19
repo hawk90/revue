@@ -26,6 +26,7 @@
 //!     .body(details_content);
 //! ```
 
+use super::border::BorderType;
 use super::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::event::Key;
 use crate::layout::Rect;
@@ -48,32 +49,6 @@ pub enum CardVariant {
     Flat,
 }
 
-/// Card border style
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum CardBorder {
-    /// No border
-    None,
-    /// Single line border
-    #[default]
-    Single,
-    /// Rounded corners
-    Rounded,
-    /// Double line border
-    Double,
-}
-
-impl CardBorder {
-    fn chars(&self) -> (char, char, char, char, char, char) {
-        // (top_left, top_right, bottom_left, bottom_right, horizontal, vertical)
-        match self {
-            CardBorder::None => (' ', ' ', ' ', ' ', ' ', ' '),
-            CardBorder::Single => ('┌', '┐', '└', '┘', '─', '│'),
-            CardBorder::Rounded => ('╭', '╮', '╰', '╯', '─', '│'),
-            CardBorder::Double => ('╔', '╗', '╚', '╝', '═', '║'),
-        }
-    }
-}
-
 /// A card widget for grouping content with structure
 pub struct Card {
     /// Card title
@@ -89,7 +64,7 @@ pub struct Card {
     /// Visual variant
     variant: CardVariant,
     /// Border style
-    border: CardBorder,
+    border: BorderType,
     /// Background color
     bg_color: Option<Color>,
     /// Border/accent color
@@ -120,7 +95,7 @@ impl Card {
             body: None,
             footer: None,
             variant: CardVariant::default(),
-            border: CardBorder::default(),
+            border: BorderType::default(),
             bg_color: None,
             border_color: None,
             title_color: None,
@@ -170,7 +145,7 @@ impl Card {
     }
 
     /// Set the border style
-    pub fn border_style(mut self, border: CardBorder) -> Self {
+    pub fn border_style(mut self, border: BorderType) -> Self {
         self.border = border;
         self
     }
@@ -196,13 +171,13 @@ impl Card {
     /// Use flat variant (no border)
     pub fn flat(mut self) -> Self {
         self.variant = CardVariant::Flat;
-        self.border = CardBorder::None;
+        self.border = BorderType::None;
         self
     }
 
     /// Use rounded border
     pub fn rounded(mut self) -> Self {
-        self.border = CardBorder::Rounded;
+        self.border = BorderType::Rounded;
         self
     }
 
@@ -363,8 +338,8 @@ impl View for Card {
         }
 
         let (bg_color, border_color, title_color) = self.effective_colors();
-        let (tl, tr, bl, br, h, v) = self.border.chars();
-        let has_border = self.border != CardBorder::None;
+        let chars = self.border.chars();
+        let has_border = self.border != BorderType::None;
 
         // Fill background for filled/elevated variants
         if let Some(bg) = bg_color {
@@ -398,35 +373,43 @@ impl View for Card {
         if has_border {
             // Corners
             ctx.buffer
-                .set(area.x, area.y, Cell::new(tl).fg(border_color));
+                .set(area.x, area.y, Cell::new(chars.top_left).fg(border_color));
             ctx.buffer.set(
                 area.x + area.width - 1,
                 area.y,
-                Cell::new(tr).fg(border_color),
+                Cell::new(chars.top_right).fg(border_color),
             );
             ctx.buffer.set(
                 area.x,
                 area.y + area.height - 1,
-                Cell::new(bl).fg(border_color),
+                Cell::new(chars.bottom_left).fg(border_color),
             );
             ctx.buffer.set(
                 area.x + area.width - 1,
                 area.y + area.height - 1,
-                Cell::new(br).fg(border_color),
+                Cell::new(chars.bottom_right).fg(border_color),
             );
 
             // Top and bottom borders
             for x in area.x + 1..area.x + area.width - 1 {
-                ctx.buffer.set(x, area.y, Cell::new(h).fg(border_color));
                 ctx.buffer
-                    .set(x, area.y + area.height - 1, Cell::new(h).fg(border_color));
+                    .set(x, area.y, Cell::new(chars.horizontal).fg(border_color));
+                ctx.buffer.set(
+                    x,
+                    area.y + area.height - 1,
+                    Cell::new(chars.horizontal).fg(border_color),
+                );
             }
 
             // Side borders
             for y in area.y + 1..area.y + area.height - 1 {
-                ctx.buffer.set(area.x, y, Cell::new(v).fg(border_color));
                 ctx.buffer
-                    .set(area.x + area.width - 1, y, Cell::new(v).fg(border_color));
+                    .set(area.x, y, Cell::new(chars.vertical).fg(border_color));
+                ctx.buffer.set(
+                    area.x + area.width - 1,
+                    y,
+                    Cell::new(chars.vertical).fg(border_color),
+                );
             }
         }
 
@@ -670,10 +653,10 @@ mod tests {
     #[test]
     fn test_card_border_styles() {
         let c = Card::new().rounded();
-        assert_eq!(c.border, CardBorder::Rounded);
+        assert_eq!(c.border, BorderType::Rounded);
 
-        let c = Card::new().border_style(CardBorder::Double);
-        assert_eq!(c.border, CardBorder::Double);
+        let c = Card::new().border_style(BorderType::Double);
+        assert_eq!(c.border, BorderType::Double);
     }
 
     #[test]
@@ -802,16 +785,16 @@ mod tests {
 
     #[test]
     fn test_card_border_chars() {
-        let (tl, tr, bl, br, h, v) = CardBorder::Single.chars();
-        assert_eq!(tl, '┌');
-        assert_eq!(tr, '┐');
-        assert_eq!(bl, '└');
-        assert_eq!(br, '┘');
-        assert_eq!(h, '─');
-        assert_eq!(v, '│');
+        let chars = BorderType::Single.chars();
+        assert_eq!(chars.top_left, '┌');
+        assert_eq!(chars.top_right, '┐');
+        assert_eq!(chars.bottom_left, '└');
+        assert_eq!(chars.bottom_right, '┘');
+        assert_eq!(chars.horizontal, '─');
+        assert_eq!(chars.vertical, '│');
 
-        let (tl, _, _, _, _, _) = CardBorder::Rounded.chars();
-        assert_eq!(tl, '╭');
+        let chars = BorderType::Rounded.chars();
+        assert_eq!(chars.top_left, '╭');
     }
 
     #[test]

@@ -327,7 +327,7 @@ pub use canvas::{
     ClipRegion, DrawContext, FilledCircle, FilledPolygon, FilledRectangle, Layer, Line, Points,
     Polygon, Rectangle, Shape, Transform,
 };
-pub use card::{card, Card, CardBorder, CardVariant};
+pub use card::{card, Card, CardVariant};
 pub use chart::{chart, line_chart, scatter_plot, Chart, ChartType, LineStyle, Series};
 pub use chart_common::{
     Axis, AxisFormat, ChartGrid, ChartOrientation, ChartTooltip, ChartTooltipFormat,
