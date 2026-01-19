@@ -11,6 +11,7 @@ mod gauge;
 mod input;
 mod progress;
 mod radio;
+mod select;
 mod spinner;
 mod switch;
 mod tabs;

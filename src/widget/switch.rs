@@ -490,4 +490,16 @@ mod tests {
         let s = toggle("Enable");
         assert_eq!(s.label, Some("Enable".to_string()));
     }
+
+    #[test]
+    fn test_switch_checked_alias() {
+        // Test checked() is an alias for on()
+        let s = Switch::new().checked(true);
+        assert!(s.is_on());
+        assert!(s.is_checked());
+
+        let s = Switch::new().checked(false);
+        assert!(!s.is_on());
+        assert!(!s.is_checked());
+    }
 }
