@@ -334,6 +334,7 @@ where
     impl_view_meta!("DropZone");
 }
 
+// Note: impl_widget_builders! and impl_styled_view! not used due to generic type parameter
 impl<F> Draggable for DropZone<F>
 where
     F: FnMut(DragData) -> bool,

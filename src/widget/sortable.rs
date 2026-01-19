@@ -18,12 +18,12 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::event::drag::{DragData, DragId};
 use crate::event::{KeyEvent, MouseButton, MouseEvent, MouseEventKind};
-use crate::impl_view_meta;
 use crate::layout::Rect;
 use crate::style::Color;
 use crate::widget::traits::{
     Draggable, EventResult, Interactive, RenderContext, View, WidgetProps, WidgetState,
 };
+use crate::{impl_styled_view, impl_view_meta};
 
 /// Atomic counter for generating unique sortable list IDs
 static SORTABLE_ID_COUNTER: AtomicU64 = AtomicU64::new(1000);
@@ -392,6 +392,9 @@ impl View for SortableList {
 
     impl_view_meta!("SortableList");
 }
+
+// Note: impl_widget_builders! not used, state field is intentionally unused (_state)
+impl_styled_view!(SortableList);
 
 impl Interactive for SortableList {
     fn handle_key(&mut self, event: &KeyEvent) -> EventResult {
