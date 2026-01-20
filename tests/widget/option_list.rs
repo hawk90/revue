@@ -401,7 +401,7 @@ fn test_option_list_option_count_empty() {
 
 #[test]
 fn test_option_list_get_highlighted() {
-    let mut list = OptionList::new()
+    let list = OptionList::new()
         .option("Item 1", "")
         .option("Item 2", "")
         .focused(true);

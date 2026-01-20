@@ -921,16 +921,15 @@ fn test_datagrid_is_resizing() {
 
 #[test]
 fn test_datagrid_on_column_resize_callback() {
-    let mut resize_count = 0;
+    let _resize_count = 0;
     let mut grid = DataGrid::new().column(grid_column("name", "Name"));
 
     grid = grid.on_column_resize(move |_col, _width| {
-        resize_count += 1;
+        let _ = _resize_count;
     });
 
     grid.set_column_width(0, 20);
     // Note: callback behavior depends on implementation
-    let _ = resize_count;
 }
 
 // =============================================================================

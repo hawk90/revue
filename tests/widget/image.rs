@@ -731,8 +731,7 @@ fn test_image_scale_zero_bounds() {
 
     let (w, h) = img.scaled_dimensions(0, 0);
     // 0으로 나누기 등의 오류가 발생하지 않아야 함
-    assert!(w >= 0);
-    assert!(h >= 0);
+    let _ = (w, h);
 }
 
 #[test]

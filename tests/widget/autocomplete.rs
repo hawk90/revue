@@ -9,7 +9,10 @@ use revue::widget::traits::{StyledView, View};
 use revue::widget::{autocomplete, Autocomplete, Suggestion};
 
 // Helper to create RenderContext
-fn create_render_context(buffer: &mut Buffer, area: Rect) -> revue::widget::traits::RenderContext {
+fn create_render_context(
+    buffer: &mut Buffer,
+    area: Rect,
+) -> revue::widget::traits::RenderContext<'_> {
     revue::widget::traits::RenderContext::new(buffer, area)
 }
 

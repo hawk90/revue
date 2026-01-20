@@ -5,7 +5,7 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
-use revue::widget::{Resizable, ResizeDirection, ResizeHandle, ResizeStyle, StyledView, View};
+use revue::widget::{Resizable, ResizeHandle, ResizeStyle, StyledView, View};
 
 // ==================== Basic Creation Tests ====================
 
@@ -644,7 +644,7 @@ fn test_resizable_key_unhandled_key() {
 
 #[test]
 fn test_resizable_key_without_required_handle() {
-    let mut r = Resizable::new(20, 10).handles(ResizeHandle::CORNERS);
+    let r = Resizable::new(20, 10).handles(ResizeHandle::CORNERS);
     let mut r = r.focused(true);
 
     // Right handle not in CORNERS
@@ -655,7 +655,7 @@ fn test_resizable_key_without_required_handle() {
 
 #[test]
 fn test_resizable_key_respects_min_width() {
-    let mut r = Resizable::new(5, 5).min_size(5, 5);
+    let r = Resizable::new(5, 5).min_size(5, 5);
     let mut r = r.focused(true);
 
     r.handle_key(&Key::Left);
@@ -665,7 +665,7 @@ fn test_resizable_key_respects_min_width() {
 
 #[test]
 fn test_resizable_key_respects_max_width() {
-    let mut r = Resizable::new(20, 10).max_size(25, 15);
+    let r = Resizable::new(20, 10).max_size(25, 15);
     let mut r = r.focused(true);
 
     r.handle_key(&Key::Right);

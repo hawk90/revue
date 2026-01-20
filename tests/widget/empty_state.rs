@@ -132,11 +132,11 @@ fn test_empty_state_no_results() {
     es.render(&mut ctx);
 
     // Check for no results icon
-    let mut found_icon = false;
+    let mut _found_icon = false;
     for x in 0..40 {
         if let Some(cell) = buffer.get(x, 0) {
             if cell.symbol == '🔍' {
-                found_icon = true;
+                _found_icon = true;
                 break;
             }
         }
@@ -162,11 +162,11 @@ fn test_empty_state_error() {
     es.render(&mut ctx);
 
     // Check for error icon
-    let mut found_icon = false;
+    let mut _found_icon = false;
     for x in 0..40 {
         if let Some(cell) = buffer.get(x, 0) {
             if cell.symbol == '⚠' {
-                found_icon = true;
+                _found_icon = true;
                 break;
             }
         }
@@ -192,11 +192,11 @@ fn test_empty_state_no_permission() {
     es.render(&mut ctx);
 
     // Check for no permission icon
-    let mut found_icon = false;
+    let mut _found_icon = false;
     for x in 0..40 {
         if let Some(cell) = buffer.get(x, 0) {
             if cell.symbol == '🔒' {
-                found_icon = true;
+                _found_icon = true;
                 break;
             }
         }
@@ -212,11 +212,11 @@ fn test_empty_state_offline() {
     es.render(&mut ctx);
 
     // Check for offline icon
-    let mut found_icon = false;
+    let mut _found_icon = false;
     for x in 0..40 {
         if let Some(cell) = buffer.get(x, 0) {
             if cell.symbol == '📡' {
-                found_icon = true;
+                _found_icon = true;
                 break;
             }
         }
@@ -232,11 +232,11 @@ fn test_empty_state_first_use() {
     es.render(&mut ctx);
 
     // Check for first use icon
-    let mut found_icon = false;
+    let mut _found_icon = false;
     for x in 0..40 {
         if let Some(cell) = buffer.get(x, 0) {
             if cell.symbol == '🚀' {
-                found_icon = true;
+                _found_icon = true;
                 break;
             }
         }
@@ -276,11 +276,11 @@ fn test_empty_state_type_builder() {
     es.render(&mut ctx);
 
     // Check for no results icon
-    let mut found_icon = false;
+    let mut _found_icon = false;
     for x in 0..40 {
         if let Some(cell) = buffer.get(x, 0) {
             if cell.symbol == '🔍' {
-                found_icon = true;
+                _found_icon = true;
                 break;
             }
         }
@@ -326,11 +326,11 @@ fn test_empty_state_icon_show() {
     es.render(&mut ctx);
 
     // Icon should be present
-    let mut found_icon = false;
+    let mut _found_icon = false;
     for x in 0..40 {
         if let Some(cell) = buffer.get(x, 0) {
             if cell.symbol == '📭' {
-                found_icon = true;
+                _found_icon = true;
                 break;
             }
         }
@@ -357,11 +357,11 @@ fn test_empty_state_custom_icon() {
     es.render(&mut ctx);
 
     // Custom icon should be present
-    let mut found_icon = false;
+    let mut _found_icon = false;
     for x in 0..40 {
         if let Some(cell) = buffer.get(x, 0) {
             if cell.symbol == '★' {
-                found_icon = true;
+                _found_icon = true;
                 break;
             }
         }
@@ -393,11 +393,11 @@ fn test_empty_state_builder_chain() {
     es.render(&mut ctx);
 
     // Custom icon should be present
-    let mut found_icon = false;
+    let mut _found_icon = false;
     for x in 0..40 {
         if let Some(cell) = buffer.get(x, 0) {
             if cell.symbol == '🔎' {
-                found_icon = true;
+                _found_icon = true;
                 break;
             }
         }

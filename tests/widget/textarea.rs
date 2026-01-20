@@ -47,7 +47,7 @@ fn test_textarea_with_empty_content() {
 
 #[test]
 fn test_textarea_line_numbers() {
-    let ta = TextArea::new().line_numbers(true);
+    let _ta = TextArea::new().line_numbers(true);
     // Can't directly access show_line_numbers, but we can test render
     // This tests the builder accepts the parameter
     let ta2 = TextArea::new().line_numbers(false);
@@ -56,7 +56,7 @@ fn test_textarea_line_numbers() {
 
 #[test]
 fn test_textarea_wrap() {
-    let ta = TextArea::new().wrap(true);
+    let _ta = TextArea::new().wrap(true);
     let ta2 = TextArea::new().wrap(false);
     // Test that builder accepts the parameter
     assert_eq!(ta2.line_count(), 1);
@@ -71,7 +71,7 @@ fn test_textarea_read_only() {
 
 #[test]
 fn test_textarea_focused() {
-    let ta = TextArea::new().focused(false);
+    let _ta = TextArea::new().focused(false);
     let ta2 = TextArea::new().focused(true);
     // Test that builder accepts the parameter
     assert_eq!(ta2.line_count(), 1);
@@ -79,7 +79,7 @@ fn test_textarea_focused() {
 
 #[test]
 fn test_textarea_tab_width() {
-    let ta = TextArea::new().tab_width(2);
+    let _ta = TextArea::new().tab_width(2);
     let ta2 = TextArea::new().tab_width(8);
     // Test that builder accepts the parameter
     assert_eq!(ta2.line_count(), 1);
@@ -880,7 +880,7 @@ fn test_open_replace() {
     let mut ta = TextArea::new().content("Hello World");
     ta.open_replace();
     assert!(ta.is_find_open());
-    let state = ta.find_state().unwrap();
+    let _state = ta.find_state().unwrap();
     // Should be in Replace mode
 }
 
@@ -1192,7 +1192,7 @@ fn test_render_with_cursor() {
     let ta = TextArea::new().content("Hi");
     View::render(&ta, &mut ctx);
     // Cursor should be visible at position 2
-    let cell = buffer.get(2, 0).unwrap();
+    let _cell = buffer.get(2, 0).unwrap();
     // Cursor position should have special rendering
 }
 

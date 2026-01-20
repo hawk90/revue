@@ -928,7 +928,7 @@ fn test_handle_key_h_toggles() {
 }
 
 #[test]
-fn test_handle_key_H_toggles_hidden() {
+fn test_handle_key_h_toggles_hidden() {
     let mut tree = FileTree::new()
         .entry(FileEntry::file("visible.txt", "/visible.txt"))
         .entry(FileEntry::new(".hidden", "/.hidden", FileType::Hidden));

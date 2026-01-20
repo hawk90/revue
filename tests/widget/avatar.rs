@@ -854,15 +854,8 @@ fn test_avatar_color_generation_different_names() {
     a2.render(&mut ctx2);
 
     // Different names should (usually) generate different colors
-    // We just verify they're valid colors (u8 is always 0-255)
-    let c1 = buffer1.get(1, 0).unwrap().bg.unwrap();
-    let c2 = buffer2.get(1, 0).unwrap().bg.unwrap();
-    assert!(c1.r <= 255);
-    assert!(c1.g <= 255);
-    assert!(c1.b <= 255);
-    assert!(c2.r <= 255);
-    assert!(c2.g <= 255);
-    assert!(c2.b <= 255);
+    let _c1 = buffer1.get(1, 0).unwrap().bg.unwrap();
+    let _c2 = buffer2.get(1, 0).unwrap().bg.unwrap();
 }
 
 #[test]

@@ -9,11 +9,11 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
+use revue::widget::View;
 use revue::widget::{
     date_picker, datetime_picker, time_picker, Date, DateTime, DateTimeFormat, DateTimeMode,
     DateTimePicker, FirstDayOfWeek, Time,
 };
-use revue::widget::{StyledView, View};
 
 // =============================================================================
 // 생성자 및 빌더 테스트 (Constructor and Builder Tests)
