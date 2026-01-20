@@ -452,6 +452,7 @@ pub fn drop_zone(placeholder: impl Into<String>) -> DropZone<fn(DragData) -> boo
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::widget::traits::StyledView;
 
     #[test]
     fn test_dropzone_new() {
@@ -718,5 +719,119 @@ mod tests {
             let zone = DropZone::new("Zone").style(style);
             assert_eq!(zone.style, style);
         }
+    }
+
+    #[test]
+    fn test_dropzone_styled_view_id() {
+        let mut zone = DropZone::new("Zone");
+        zone.set_id("test-zone");
+        assert_eq!(zone.props.id.as_deref(), Some("test-zone"));
+    }
+
+    #[test]
+    fn test_dropzone_styled_view_classes() {
+        let mut zone = DropZone::new("Zone");
+
+        zone.add_class("active");
+        assert!(zone.has_class("active"));
+        assert_eq!(zone.props.classes.len(), 1);
+
+        zone.add_class("highlighted");
+        assert!(zone.has_class("highlighted"));
+        assert_eq!(zone.props.classes.len(), 2);
+    }
+
+    #[test]
+    fn test_dropzone_styled_view_remove_class() {
+        let mut zone = DropZone::new("Zone");
+        zone.add_class("active");
+        zone.add_class("highlighted");
+
+        zone.remove_class("active");
+        assert!(!zone.has_class("active"));
+        assert!(zone.has_class("highlighted"));
+        assert_eq!(zone.props.classes.len(), 1);
+    }
+
+    #[test]
+    fn test_dropzone_styled_view_toggle_class() {
+        let mut zone = DropZone::new("Zone");
+
+        zone.toggle_class("active");
+        assert!(zone.has_class("active"));
+
+        zone.toggle_class("active");
+        assert!(!zone.has_class("active"));
+    }
+
+    #[test]
+    fn test_dropzone_builder_focused() {
+        let zone = DropZone::new("Zone").focused(true);
+        assert!(zone.is_focused());
+
+        let zone = DropZone::new("Zone").focused(false);
+        assert!(!zone.is_focused());
+    }
+
+    #[test]
+    fn test_dropzone_builder_disabled() {
+        let zone = DropZone::new("Zone").disabled(true);
+        assert!(zone.is_disabled());
+
+        let zone = DropZone::new("Zone").disabled(false);
+        assert!(!zone.is_disabled());
+    }
+
+    #[test]
+    fn test_dropzone_builder_colors() {
+        let zone = DropZone::new("Zone").fg(Color::CYAN).bg(Color::BLUE);
+
+        assert_eq!(zone.state.fg, Some(Color::CYAN));
+        assert_eq!(zone.state.bg, Some(Color::BLUE));
+    }
+
+    #[test]
+    fn test_dropzone_builder_set_focused() {
+        let mut zone = DropZone::new("Zone");
+        assert!(!zone.is_focused());
+
+        zone.set_focused(true);
+        assert!(zone.is_focused());
+
+        zone.set_focused(false);
+        assert!(!zone.is_focused());
+    }
+
+    #[test]
+    fn test_dropzone_drag_enter_with_accepted_type() {
+        let mut zone = DropZone::new("Zone").accepts(&["text"]);
+
+        let data = DragData::text("test content");
+        zone.on_drag_enter(&data);
+
+        assert!(zone.hovered);
+        assert!(zone.can_accept_current);
+    }
+
+    #[test]
+    fn test_dropzone_drag_enter_with_rejected_type() {
+        let mut zone = DropZone::new("Zone").accepts(&["file"]);
+
+        let data = DragData::text("test content"); // text is not in accepts
+        zone.on_drag_enter(&data);
+
+        assert!(zone.hovered);
+        assert!(!zone.can_accept_current);
+    }
+
+    #[test]
+    fn test_dropzone_drag_enter_accepts_all() {
+        let mut zone = DropZone::new("Zone").accepts_all();
+
+        let data = DragData::text("test content");
+        zone.on_drag_enter(&data);
+
+        assert!(zone.hovered);
+        assert!(zone.can_accept_current);
     }
 }

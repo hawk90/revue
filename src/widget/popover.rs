@@ -394,49 +394,71 @@ impl Popover {
             1
         };
 
-        let position = if matches!(self.position, PopoverPosition::Auto) {
-            let space_above = anchor_y;
-            let space_below = area_height.saturating_sub(anchor_y + 1);
-            let space_left = anchor_x;
-            let space_right = area_width.saturating_sub(anchor_x + 1);
+        let (x, y, position) = match self.position {
+            PopoverPosition::Auto => {
+                // Auto-detect best position based on available space
+                let space_above = anchor_y;
+                let space_below = area_height.saturating_sub(anchor_y + 1);
+                let space_left = anchor_x;
+                let space_right = area_width.saturating_sub(anchor_x + 1);
 
-            if space_below >= popup_h + arrow_offset {
-                PopoverPosition::Bottom
-            } else if space_above >= popup_h + arrow_offset {
-                PopoverPosition::Top
-            } else if space_right >= popup_w + arrow_offset {
-                PopoverPosition::Right
-            } else if space_left >= popup_w + arrow_offset {
-                PopoverPosition::Left
-            } else {
-                PopoverPosition::Bottom
+                let pos = if space_below >= popup_h + arrow_offset {
+                    PopoverPosition::Bottom
+                } else if space_above >= popup_h + arrow_offset {
+                    PopoverPosition::Top
+                } else if space_right >= popup_w + arrow_offset {
+                    PopoverPosition::Right
+                } else if space_left >= popup_w + arrow_offset {
+                    PopoverPosition::Left
+                } else {
+                    PopoverPosition::Bottom
+                };
+
+                let (x, y) = match pos {
+                    PopoverPosition::Top => {
+                        let x = anchor_x.saturating_sub(popup_w / 2);
+                        let y = anchor_y.saturating_sub(popup_h + arrow_offset);
+                        (x, y)
+                    }
+                    PopoverPosition::Bottom => {
+                        let x = anchor_x.saturating_sub(popup_w / 2);
+                        let y = anchor_y + 1 + arrow_offset;
+                        (x, y)
+                    }
+                    PopoverPosition::Left => {
+                        let x = anchor_x.saturating_sub(popup_w + arrow_offset);
+                        let y = anchor_y.saturating_sub(popup_h / 2);
+                        (x, y)
+                    }
+                    PopoverPosition::Right => {
+                        let x = anchor_x + 1 + arrow_offset;
+                        let y = anchor_y.saturating_sub(popup_h / 2);
+                        (x, y)
+                    }
+                    PopoverPosition::Auto => unreachable!(),
+                };
+                (x, y, pos)
             }
-        } else {
-            self.position
-        };
-
-        let (x, y) = match position {
             PopoverPosition::Top => {
                 let x = anchor_x.saturating_sub(popup_w / 2);
                 let y = anchor_y.saturating_sub(popup_h + arrow_offset);
-                (x, y)
+                (x, y, PopoverPosition::Top)
             }
             PopoverPosition::Bottom => {
                 let x = anchor_x.saturating_sub(popup_w / 2);
                 let y = anchor_y + 1 + arrow_offset;
-                (x, y)
+                (x, y, PopoverPosition::Bottom)
             }
             PopoverPosition::Left => {
                 let x = anchor_x.saturating_sub(popup_w + arrow_offset);
                 let y = anchor_y.saturating_sub(popup_h / 2);
-                (x, y)
+                (x, y, PopoverPosition::Left)
             }
             PopoverPosition::Right => {
                 let x = anchor_x + 1 + arrow_offset;
                 let y = anchor_y.saturating_sub(popup_h / 2);
-                (x, y)
+                (x, y, PopoverPosition::Right)
             }
-            PopoverPosition::Auto => unreachable!(),
         };
 
         let x = x.min(area_width.saturating_sub(popup_w));
@@ -616,7 +638,9 @@ impl View for Popover {
                 PopoverPosition::Bottom => (self.anchor.0, popup_y.saturating_sub(1)),
                 PopoverPosition::Left => (popup_x + popup_w, self.anchor.1),
                 PopoverPosition::Right => (popup_x.saturating_sub(1), self.anchor.1),
-                PopoverPosition::Auto => unreachable!(),
+                // Auto is already resolved to a concrete position in calculate_position
+                // This case should never be reached, but use Bottom as fallback
+                PopoverPosition::Auto => (self.anchor.0, popup_y.saturating_sub(1)),
             };
 
             if arrow_x < area.width && arrow_y < area.height {
