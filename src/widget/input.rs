@@ -261,8 +261,10 @@ impl Input {
         #[cfg(feature = "clipboard")]
         if let Ok(mut ctx) = arboard::Clipboard::new() {
             if let Ok(text) = ctx.get_text() {
-                self.paste_text(&text);
-                return true;
+                if !text.is_empty() {
+                    self.paste_text(&text);
+                    return true;
+                }
             }
         }
 
