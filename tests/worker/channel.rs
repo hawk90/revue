@@ -2,7 +2,7 @@
 //!
 //! Tests for channel communication, message types, and sender/receiver pairs.
 
-use revue::worker::{WorkerChannel, WorkerCommand, WorkerMessage, WorkerReceiver, WorkerSender};
+use revue::worker::{WorkerChannel, WorkerCommand, WorkerMessage};
 use std::thread;
 
 // =============================================================================

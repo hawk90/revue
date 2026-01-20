@@ -2,7 +2,7 @@
 //!
 //! Tests for task handles, state management, and result retrieval.
 
-use revue::worker::{WorkerError, WorkerHandle, WorkerResult, WorkerState};
+use revue::worker::{WorkerError, WorkerHandle, WorkerState};
 use std::thread;
 use std::time::Duration;
 
@@ -250,8 +250,6 @@ fn test_join_panic_result() {
 #[cfg(feature = "async")]
 #[test]
 fn test_spawn_async_basic() {
-    use std::future;
-
     let handle = WorkerHandle::spawn(async {
         thread::sleep(Duration::from_millis(10));
         42
@@ -264,8 +262,6 @@ fn test_spawn_async_basic() {
 #[cfg(feature = "async")]
 #[test]
 fn test_spawn_async_multiple_await() {
-    use std::future;
-
     let handle = WorkerHandle::spawn(async {
         let a = async { 1 }.await;
         let b = async { 2 }.await;
@@ -405,8 +401,6 @@ fn test_run_blocking_convenience() {
 #[cfg(feature = "async")]
 #[test]
 fn test_spawn_convenience() {
-    use std::future;
-
     let handle = revue::worker::spawn(async {
         thread::sleep(Duration::from_millis(10));
         "async result"
