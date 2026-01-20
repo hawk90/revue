@@ -816,7 +816,8 @@ impl View for Chart {
                     inner_x + inner_w - legend_width - 1,
                     inner_y + (inner_h - legend_height) / 2,
                 ),
-                LegendPosition::None => unreachable!(),
+                // None is filtered out by the if condition above, but provide fallback
+                LegendPosition::None => (inner_x + 1, inner_y + 1),
             };
 
             // Draw legend background
