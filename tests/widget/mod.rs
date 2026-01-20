@@ -1,19 +1,46 @@
 //! Widget integration tests - split into modules by widget type
 
 mod accordion;
+mod aistream;
 mod alert;
+mod autocomplete;
 mod avatar;
 mod badge;
+mod breadcrumb;
 mod button;
+mod calendar;
+mod callout;
+mod candlechart;
 mod checkbox;
+mod code_editor;
+mod collapsible;
+mod color_picker;
+mod combobox;
+mod command_palette;
+mod datagrid;
+mod datetime_picker;
+mod diff;
 mod divider;
+mod empty_state;
+mod filetree;
 mod gauge;
+#[cfg(feature = "image")]
+mod image;
 mod input;
+mod masked_input;
+mod option_list;
+mod presentation;
 mod progress;
 mod radio;
+mod resizable;
 mod select;
 mod spinner;
+mod statusbar;
 mod switch;
+mod syntax;
 mod tabs;
 mod text;
+mod textarea;
+mod theme_picker;
 mod tooltip;
+mod waveline;
