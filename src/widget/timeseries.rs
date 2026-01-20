@@ -479,7 +479,22 @@ impl TimeSeries {
                     format!("{}d", diff / 86400)
                 }
             }
-            TimeFormat::Auto => unreachable!(),
+            TimeFormat::Auto => {
+                // Auto-detect best format based on timestamp magnitude
+                if timestamp < 3600 {
+                    // Less than an hour - show seconds
+                    format!("{:02}:{:02}:{:02}", hours, mins, secs)
+                } else if timestamp < 86400 {
+                    // Less than a day - show hours:minutes
+                    format!("{:02}:{:02}", hours, mins)
+                } else if timestamp < 31536000 {
+                    // Less than a year - show month/day
+                    format!("{:02}/{:02}", months + 1, days + 1)
+                } else {
+                    // Year or more - show year/month
+                    format!("{}/{:02}", 1970 + timestamp / 31536000, months + 1)
+                }
+            }
         }
     }
 }
@@ -706,7 +721,8 @@ impl View for TimeSeries {
                                         ' '
                                     }
                                 }
-                                TimeLineStyle::Step => unreachable!(),
+                                // Step is handled by the outer match (line 673), use fallback here
+                                TimeLineStyle::Step => '─',
                             };
 
                             if ch != ' ' {

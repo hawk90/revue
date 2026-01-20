@@ -337,50 +337,71 @@ impl Tooltip {
             1
         };
 
-        let position = if matches!(self.position, TooltipPosition::Auto) {
-            // Auto-detect best position
-            let space_above = anchor_y;
-            let space_below = area_height.saturating_sub(anchor_y + 1);
-            let space_left = anchor_x;
-            let space_right = area_width.saturating_sub(anchor_x + 1);
+        let (x, y, position) = match self.position {
+            TooltipPosition::Auto => {
+                // Auto-detect best position based on available space
+                let space_above = anchor_y;
+                let space_below = area_height.saturating_sub(anchor_y + 1);
+                let space_left = anchor_x;
+                let space_right = area_width.saturating_sub(anchor_x + 1);
 
-            if space_above >= tooltip_h + arrow_offset {
-                TooltipPosition::Top
-            } else if space_below >= tooltip_h + arrow_offset {
-                TooltipPosition::Bottom
-            } else if space_right >= tooltip_w + arrow_offset {
-                TooltipPosition::Right
-            } else if space_left >= tooltip_w + arrow_offset {
-                TooltipPosition::Left
-            } else {
-                TooltipPosition::Top // Default fallback
+                let pos = if space_above >= tooltip_h + arrow_offset {
+                    TooltipPosition::Top
+                } else if space_below >= tooltip_h + arrow_offset {
+                    TooltipPosition::Bottom
+                } else if space_right >= tooltip_w + arrow_offset {
+                    TooltipPosition::Right
+                } else if space_left >= tooltip_w + arrow_offset {
+                    TooltipPosition::Left
+                } else {
+                    TooltipPosition::Top // Default fallback
+                };
+
+                let (x, y) = match pos {
+                    TooltipPosition::Top => {
+                        let x = anchor_x.saturating_sub(tooltip_w / 2);
+                        let y = anchor_y.saturating_sub(tooltip_h + arrow_offset);
+                        (x, y)
+                    }
+                    TooltipPosition::Bottom => {
+                        let x = anchor_x.saturating_sub(tooltip_w / 2);
+                        let y = anchor_y + 1 + arrow_offset;
+                        (x, y)
+                    }
+                    TooltipPosition::Left => {
+                        let x = anchor_x.saturating_sub(tooltip_w + arrow_offset);
+                        let y = anchor_y.saturating_sub(tooltip_h / 2);
+                        (x, y)
+                    }
+                    TooltipPosition::Right => {
+                        let x = anchor_x + 1 + arrow_offset;
+                        let y = anchor_y.saturating_sub(tooltip_h / 2);
+                        (x, y)
+                    }
+                    TooltipPosition::Auto => unreachable!(),
+                };
+                (x, y, pos)
             }
-        } else {
-            self.position
-        };
-
-        let (x, y) = match position {
             TooltipPosition::Top => {
                 let x = anchor_x.saturating_sub(tooltip_w / 2);
                 let y = anchor_y.saturating_sub(tooltip_h + arrow_offset);
-                (x, y)
+                (x, y, TooltipPosition::Top)
             }
             TooltipPosition::Bottom => {
                 let x = anchor_x.saturating_sub(tooltip_w / 2);
                 let y = anchor_y + 1 + arrow_offset;
-                (x, y)
+                (x, y, TooltipPosition::Bottom)
             }
             TooltipPosition::Left => {
                 let x = anchor_x.saturating_sub(tooltip_w + arrow_offset);
                 let y = anchor_y.saturating_sub(tooltip_h / 2);
-                (x, y)
+                (x, y, TooltipPosition::Left)
             }
             TooltipPosition::Right => {
                 let x = anchor_x + 1 + arrow_offset;
                 let y = anchor_y.saturating_sub(tooltip_h / 2);
-                (x, y)
+                (x, y, TooltipPosition::Right)
             }
-            TooltipPosition::Auto => unreachable!(),
         };
 
         // Clamp to screen bounds
@@ -551,7 +572,9 @@ impl View for Tooltip {
                 TooltipPosition::Bottom => (self.anchor.0, tooltip_y.saturating_sub(1)),
                 TooltipPosition::Left => (tooltip_x + tooltip_w, self.anchor.1),
                 TooltipPosition::Right => (tooltip_x.saturating_sub(1), self.anchor.1),
-                TooltipPosition::Auto => unreachable!(),
+                // Auto is already resolved to a concrete position in calculate_position
+                // This case should never be reached, but use Top as fallback
+                TooltipPosition::Auto => (self.anchor.0, tooltip_y + tooltip_h),
             };
 
             if arrow_x < area.width && arrow_y < area.height {
