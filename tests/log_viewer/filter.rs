@@ -127,3 +127,39 @@ fn test_filter_combined_criteria() {
     assert!(!filter.matches(&entry2)); // INFO (below WARNING)
     assert!(!filter.matches(&entry3)); // WARNING but no "error"
 }
+
+#[test]
+fn test_log_filter_matches_specific_levels() {
+    // Test the levels filter (not min_level, but specific levels)
+    let filter = log_filter().levels(vec![AdvLogLevel::Error, AdvLogLevel::Fatal]);
+
+    let error_entry = AdvLogEntry::new("Error", 1).level(AdvLogLevel::Error);
+    let fatal_entry = AdvLogEntry::new("Fatal", 2).level(AdvLogLevel::Fatal);
+    let warn_entry = AdvLogEntry::new("Warning", 3).level(AdvLogLevel::Warning);
+    let info_entry = AdvLogEntry::new("Info", 4).level(AdvLogLevel::Info);
+
+    assert!(filter.matches(&error_entry));
+    assert!(filter.matches(&fatal_entry));
+    assert!(!filter.matches(&warn_entry));
+    assert!(!filter.matches(&info_entry));
+}
+
+#[test]
+fn test_log_filter_matches_source_case_insensitive() {
+    let filter = log_filter().source("MAIN");
+
+    let entry1 = AdvLogEntry::new("Message", 1).source("main");
+    let entry2 = AdvLogEntry::new("Message", 2).source("MainModule");
+
+    assert!(filter.matches(&entry1));
+    assert!(filter.matches(&entry2));
+}
+
+#[test]
+fn test_log_filter_empty_levels_vector() {
+    // Empty levels vector should not match any entry with a level
+    let filter = log_filter().levels(vec![]);
+
+    let entry = AdvLogEntry::new("Message", 1).level(AdvLogLevel::Info);
+    assert!(!filter.matches(&entry));
+}
