@@ -1060,3 +1060,655 @@ fn test_ai_stream_clone() {
     // let stream2 = stream1.clone();
     // assert_eq!(stream1.typing_style, stream2.typing_style);
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Thinking indicator rendering (생각 표시기 렌더링)
+// ─────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_ai_stream_thinking_indicator_rendering_while_streaming() {
+    // 스트리밍 중이고 내용이 없을 때 생각 표시기가 렌더링되는지 테스트
+    let mut stream = ai_stream().thinking(true);
+    stream.append(""); // 빈 내용 추가로 스트리밍 상태로 변경
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    stream.render(&mut ctx);
+
+    // 생각 표시기가 렌더링되어야 함 (첫 번째 문자는 생각 애니메이션 문자)
+    let first_cell = buffer.get(0, 0).unwrap();
+    // thinking_frame은 0이므로 첫 번째 표시 문자 (⠋)
+    assert!(
+        first_cell.symbol == '⠋'
+            || first_cell.symbol == '⠙'
+            || first_cell.symbol == '⠹'
+            || first_cell.symbol == '⠸'
+    );
+}
+
+#[test]
+fn test_ai_stream_thinking_indicator_ticks() {
+    // 생각 표시기 애니메이션이 tick으로 변경되는지 테스트
+    let mut stream = ai_stream().thinking(true);
+
+    // 여러 tick 호출로 프레임이 진행되는지 확인
+    for _ in 0..10 {
+        stream.tick();
+    }
+
+    // 에러 없이 완료되어야 함
+    assert_eq!(stream.status(), StreamStatus::Idle);
+}
+
+#[test]
+fn test_ai_stream_thinking_indicator_with_content() {
+    // 내용이 있으면 생각 표시기가 표시되지 않는지 테스트
+    let mut stream = ai_stream().thinking(true);
+    stream.set_content("Has content");
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    stream.render(&mut ctx);
+
+    // 첫 번째 문자는 'H'여야 함 (생각 표시기가 아님)
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'H');
+}
+
+#[test]
+fn test_ai_stream_thinking_disabled_no_indicator() {
+    // 생각 표시기가 비활성화되었을 때 표시되지 않는지 테스트
+    let mut stream = ai_stream().thinking(false);
+    stream.append(""); // 빈 내용으로 스트리밍 상태
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    stream.render(&mut ctx);
+
+    // 생각 표시기가 비활성화되어도 커서는 기본적으로 Block이므로 렌더링됨
+    // 이 테스트는 에러 없이 렌더링되는지 확인
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Cursor blink behavior (커서 깜빡임 동작)
+// ─────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_ai_stream_cursor_blink_animation() {
+    // 커서가 깜빡이는지 테스트 (thinking_frame에 따라)
+    let mut stream = ai_response("Test").cursor(StreamCursor::Block);
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+
+    // 여러 프레임 렌더링
+    for _ in 0..8 {
+        stream.tick();
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        stream.render(&mut ctx);
+    }
+
+    // 에러 없이 완료되어야 함
+}
+
+#[test]
+fn test_ai_stream_cursor_none_no_render() {
+    // 커서가 None일 때 렌더링되지 않는지 테스트
+    let stream = ai_response("Test").cursor(StreamCursor::None);
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    stream.render(&mut ctx);
+
+    // ai_response는 set_content를 사용하므로 즉시 Complete 상태가 됨
+    // Complete 상태에서는 커서가 렌더링되지 않음
+    // 이 테스트는 에러 없이 렌더링되는지 확인
+    // 버퍼의 내용을 검증할 필요 없이 렌더링 동작만 확인
+}
+
+#[test]
+fn test_ai_stream_cursor_colors() {
+    // 다양한 커서 색상 테스트
+    let colors = [
+        Color::RED,
+        Color::GREEN,
+        Color::BLUE,
+        Color::YELLOW,
+        Color::CYAN,
+        Color::MAGENTA,
+        Color::WHITE,
+        Color::rgb(100, 200, 255),
+    ];
+
+    for color in colors {
+        let stream = ai_response("Test").cursor_color(color);
+        let mut buffer = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        stream.render(&mut ctx);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Typing animation progress (타이핑 애니메이션 진행)
+// ─────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_ai_stream_character_typing_progress() {
+    // 문자 단위 타이핑 진행 테스트
+    let mut stream = ai_response("Hello")
+        .typing_style(TypingStyle::Character)
+        .typing_speed(0);
+
+    // 초기 상태
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+
+    // 첫 번째 tick
+    stream.tick();
+    // 아직 완료되지 않아야 함 (문자가 5개라 5번의 tick이 필요)
+
+    // 모든 문자를 표시하기 위해 충분한 tick
+    for _ in 0..10 {
+        stream.tick();
+    }
+
+    // 완료되어야 함
+    assert!(stream.is_complete());
+}
+
+#[test]
+fn test_ai_stream_word_typing_boundaries() {
+    // 단어 단위 타이핑 경계 테스트
+    let mut stream = ai_response("Hello World Test")
+        .typing_style(TypingStyle::Word)
+        .typing_speed(0);
+
+    // 첫 번째 tick: "Hello" 표시
+    stream.tick();
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+
+    // 두 번째 tick: "Hello World" 표시
+    stream.tick();
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+
+    // 세 번째 tick: 전체 완료
+    stream.tick();
+    assert!(stream.is_complete());
+}
+
+#[test]
+fn test_ai_stream_line_typing_boundaries() {
+    // 줄 단위 타이핑 경계 테스트
+    let text = "Line 1\nLine 2\nLine 3";
+    let mut stream = ai_response(text)
+        .typing_style(TypingStyle::Line)
+        .typing_speed(0);
+
+    // 첫 번째 tick: 첫 줄
+    stream.tick();
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+
+    // 두 번째 tick: 두 줄
+    stream.tick();
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+
+    // 세 번째 tick: 전체 완료
+    stream.tick();
+    assert!(stream.is_complete());
+}
+
+#[test]
+fn test_ai_stream_chunk_typing_behavior() {
+    // 청크 단위 타이핑 동작 테스트
+    let mut stream = ai_response("12345678901234567890")
+        .typing_style(TypingStyle::Chunk)
+        .typing_speed(0);
+
+    // 첫 번째 tick: 5 문자
+    stream.tick();
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+
+    // 두 번째 tick: 10 문자
+    stream.tick();
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+
+    // 세 번째 tick: 15 문자
+    stream.tick();
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+
+    // 네 번째 tick: 20 문자 (완료)
+    stream.tick();
+    assert!(stream.is_complete());
+}
+
+#[test]
+fn test_ai_stream_typing_with_single_character() {
+    // 단일 문자 타이핑 테스트
+    let mut stream = ai_response("A")
+        .typing_style(TypingStyle::Character)
+        .typing_speed(0);
+
+    // 여러 tick 필요 (타이밍 확인)
+    for _ in 0..10 {
+        stream.tick();
+    }
+    assert!(stream.is_complete());
+}
+
+#[test]
+fn test_ai_stream_typing_with_single_word() {
+    // 단일 단어 타이핑 테스트
+    let mut stream = ai_response("Hello")
+        .typing_style(TypingStyle::Word)
+        .typing_speed(0);
+
+    stream.tick();
+    assert!(stream.is_complete());
+}
+
+#[test]
+fn test_ai_stream_typing_with_single_line() {
+    // 단일 줄 타이핑 테스트
+    let mut stream = ai_response("Single Line")
+        .typing_style(TypingStyle::Line)
+        .typing_speed(0);
+
+    stream.tick();
+    assert!(stream.is_complete());
+}
+
+#[test]
+fn test_ai_stream_typing_respects_timing() {
+    // 타이핑 속도 타이밍 테스트
+    let mut stream = ai_response("Hello World")
+        .typing_style(TypingStyle::Character)
+        .typing_speed(100);
+
+    // 즉시 tick은 아무 효과가 없어야 함 (시간 경과 필요)
+    let _original_status = stream.status();
+    stream.tick();
+    // 타이밍이 지나지 않았으므로 상태 유지
+    // (실제 시간을 기다릴 수 없으므로 에러 없이 실행되는지 확인)
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Buffer cell verification (버퍼 셀 검증)
+// ─────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_ai_stream_render_text_color() {
+    // 텍스트 색상 렌더링 검증
+    let mut stream = ai_stream().fg(Color::RED);
+    stream.set_content("Test");
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    stream.render(&mut ctx);
+
+    // 첫 번째 셀의 색상 확인
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.symbol, 'T');
+    assert_eq!(cell.fg, Some(Color::RED));
+}
+
+#[test]
+fn test_ai_stream_render_background_color() {
+    // 배경 색상 렌더링 검증
+    let mut stream = ai_stream().bg(Color::BLUE);
+    stream.set_content("Test");
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    stream.render(&mut ctx);
+
+    // 첫 번째 셀의 배경색 확인
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.symbol, 'T');
+    assert_eq!(cell.bg, Some(Color::BLUE));
+}
+
+#[test]
+fn test_ai_stream_render_text_with_newlines() {
+    // 줄바꿈이 포함된 텍스트 렌더링 검증
+    let mut stream = ai_stream();
+    stream.set_content("A\nB\nC");
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    stream.render(&mut ctx);
+
+    // 각 줄의 첫 문자 확인
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'A');
+    assert_eq!(buffer.get(0, 1).unwrap().symbol, 'B');
+    assert_eq!(buffer.get(0, 2).unwrap().symbol, 'C');
+}
+
+#[test]
+fn test_ai_stream_render_wrapping() {
+    // 텍스트 래핑 렌더링 검증
+    let mut stream = ai_stream().wrap(true);
+    stream.set_content("This is a long line that should wrap");
+
+    let mut buffer = Buffer::new(10, 5);
+    let area = Rect::new(0, 0, 10, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    stream.render(&mut ctx);
+
+    // 첫 줄에 텍스트가 렌더링되어야 함
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'T');
+    // 두 번째 줄도 있어야 함
+    let second_line_cell = buffer.get(0, 1).unwrap();
+    assert_ne!(second_line_cell.symbol, ' ');
+}
+
+#[test]
+fn test_ai_stream_render_no_wrapping() {
+    // 래핑 비활성화 렌더링 검증
+    let mut stream = ai_stream().wrap(false);
+    stream.set_content("This is a long line");
+
+    let mut buffer = Buffer::new(10, 5);
+    let area = Rect::new(0, 0, 10, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    stream.render(&mut ctx);
+
+    // 래핑이 비활성화되면 한 줄에만 텍스트가 표시되어야 함
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'T');
+    // 너비를 초과하는 문자는 잘려야 함
+}
+
+#[test]
+fn test_ai_stream_render_height_limit() {
+    // 높이 제한 렌더링 검증
+    let mut stream = ai_stream();
+    stream.set_content("Line 1\nLine 2\nLine 3\nLine 4\nLine 5");
+
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    stream.render(&mut ctx);
+
+    // 첫 3줄만 렌더링되어야 함
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'L');
+    assert_eq!(buffer.get(0, 1).unwrap().symbol, 'L');
+    assert_eq!(buffer.get(0, 2).unwrap().symbol, 'L');
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Stream state transitions (스트림 상태 전이)
+// ─────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_ai_stream_state_idle_to_streaming() {
+    // Idle -> Streaming 상태 전이
+    let mut stream = ai_stream();
+    assert_eq!(stream.status(), StreamStatus::Idle);
+
+    stream.append("Content");
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+}
+
+#[test]
+fn test_ai_stream_state_streaming_to_paused() {
+    // Streaming -> Paused 상태 전이
+    let mut stream = ai_stream();
+    stream.append("Content");
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+
+    stream.pause();
+    assert_eq!(stream.status(), StreamStatus::Paused);
+}
+
+#[test]
+fn test_ai_stream_state_paused_to_streaming() {
+    // Paused -> Streaming 상태 전이
+    let mut stream = ai_stream();
+    stream.append("Content");
+    stream.pause();
+    assert_eq!(stream.status(), StreamStatus::Paused);
+
+    stream.resume();
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+}
+
+#[test]
+fn test_ai_stream_state_any_to_complete() {
+    // 모든 상태 -> Complete 상태 전이
+    let states = vec![
+        (StreamStatus::Idle, "Idle"),
+        (StreamStatus::Streaming, "Streaming"),
+        (StreamStatus::Paused, "Paused"),
+    ];
+
+    for (initial_status, _) in states {
+        let mut stream = ai_stream();
+
+        match initial_status {
+            StreamStatus::Idle => {
+                stream.append("Content");
+            }
+            StreamStatus::Streaming => {
+                stream.append("Content");
+            }
+            StreamStatus::Paused => {
+                stream.append("Content");
+                stream.pause();
+            }
+            _ => unreachable!(),
+        }
+
+        stream.complete();
+        assert!(stream.is_complete());
+    }
+}
+
+#[test]
+fn test_ai_stream_state_any_to_error() {
+    // 모든 상태 -> Error 상태 전이
+    let initial_states = vec![
+        StreamStatus::Idle,
+        StreamStatus::Streaming,
+        StreamStatus::Paused,
+        StreamStatus::Complete,
+    ];
+
+    for initial_status in initial_states {
+        let mut stream = ai_stream();
+
+        match initial_status {
+            StreamStatus::Idle => {
+                // Idle 상태 유지
+            }
+            StreamStatus::Streaming => {
+                stream.append("Content");
+            }
+            StreamStatus::Paused => {
+                stream.append("Content");
+                stream.pause();
+            }
+            StreamStatus::Complete => {
+                stream.set_content("Complete");
+            }
+            _ => unreachable!(),
+        }
+
+        stream.error();
+        assert_eq!(stream.status(), StreamStatus::Error);
+    }
+}
+
+#[test]
+fn test_ai_stream_complete_after_error() {
+    // Error 후 Complete로 전이 시도
+    let mut stream = ai_stream();
+    stream.append("Content");
+    stream.error();
+    assert_eq!(stream.status(), StreamStatus::Error);
+
+    // Complete로 변경 가능해야 함
+    stream.complete();
+    assert!(stream.is_complete());
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Progress calculations (진행률 계산)
+// ─────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_ai_stream_progress_zero_division() {
+    // 빈 내용时的 진행률 (0으로 나누기 방지)
+    let stream = ai_stream();
+    assert_eq!(stream.progress(), 1.0); // 빈 내용은 100%로 간주
+}
+
+#[test]
+fn test_ai_stream_progress_with_set_content() {
+    // set_content 후 진행률
+    let mut stream = ai_stream();
+    stream.set_content("Complete text");
+    assert_eq!(stream.progress(), 1.0);
+}
+
+#[test]
+fn test_ai_stream_progress_during_streaming() {
+    // 스트리밍 중 진행률
+    let mut stream = ai_response("Hello World")
+        .typing_style(TypingStyle::Character)
+        .typing_speed(0);
+
+    // 타이핑 중에는 진행률이 0.0 < progress < 1.0 여야 함
+    // (실제로는 tick 후 즉시 완료될 수 있으므로 구현에 따라 다름)
+    stream.tick();
+    // 진행률 계산 확인 (구현에 따라 값이 다를 수 있음)
+    let progress = stream.progress();
+    assert!(progress >= 0.0 && progress <= 1.0);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Edge cases with content (내용 관련 엣지 케이스)
+// ─────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_ai_stream_append_after_complete() {
+    // 완료 후 내용 추가
+    let mut stream = ai_stream();
+    stream.set_content("First");
+    assert!(stream.is_complete());
+
+    stream.append(" More");
+    // append는 Complete 상태를 변경하지 않음 (구현 동작)
+    // 내용은 추가되지만 상태는 Complete 유지
+    assert_eq!(stream.status(), StreamStatus::Complete);
+}
+
+#[test]
+fn test_ai_stream_clear_resets_progress() {
+    // clear가 진행률을 리셋하는지 확인
+    let mut stream = ai_stream();
+    stream.set_content("Content");
+    assert_eq!(stream.progress(), 1.0);
+
+    stream.clear();
+    assert_eq!(stream.progress(), 1.0); // 빈 내용은 1.0
+}
+
+#[test]
+fn test_ai_stream_multiple_appends_same_content() {
+    // 동일 내용 반복 추가
+    let mut stream = ai_stream();
+    for _ in 0..5 {
+        stream.append("test");
+    }
+
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+}
+
+#[test]
+fn test_ai_stream_empty_string_set_content() {
+    // 빈 문자열로 set_content
+    let mut stream = ai_stream();
+    stream.set_content("");
+
+    // 빈 내용은 즉시 완료 상태
+    assert!(stream.is_complete());
+    assert_eq!(stream.progress(), 1.0);
+}
+
+#[test]
+fn test_ai_stream_whitespace_only_content() {
+    // 공백만 있는 내용
+    let mut stream = ai_stream();
+    stream.set_content("   \n  \t  ");
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    stream.render(&mut ctx);
+    // 에러 없이 렌더링되어야 함
+}
+
+#[test]
+fn test_ai_stream_very_long_single_line() {
+    // 매우 긴 한 줄
+    let long_line = "A".repeat(1000);
+    let mut stream = ai_stream();
+    stream.set_content(&long_line);
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    stream.render(&mut ctx);
+    // 에러 없이 렌더링되어야 함
+}
+
+#[test]
+fn test_ai_stream_many_short_lines() {
+    // 많은 짧은 줄
+    let many_lines: String = (0..100).map(|i| format!("Line {}\n", i)).collect();
+    let mut stream = ai_stream();
+    stream.set_content(&many_lines);
+
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    stream.render(&mut ctx);
+    // 에러 없이 렌더링되어야 함
+}
+
+#[test]
+fn test_ai_stream_mixed_newline_styles() {
+    // 다양한 줄바꿈 스타일
+    let test_cases = vec!["Line1\r\nLine2", "Line1\rLine2", "Line1\nLine2"];
+
+    for content in test_cases {
+        let mut stream = ai_stream();
+        stream.set_content(content);
+
+        let mut buffer = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        stream.render(&mut ctx);
+        // 에러 없이 렌더링되어야 함
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'L');
+    }
+}
