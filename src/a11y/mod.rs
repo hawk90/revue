@@ -24,12 +24,14 @@
 //! ```
 
 mod backend;
+mod testing;
 mod tree;
 
 pub use backend::{
     announce_to_screen_reader, get_backend, init_backend, set_backend, BackendType, LoggingBackend,
     ScreenReader, ScreenReaderBackend, ScreenReaderConfig,
 };
+pub use testing::{A11yTestRunner, KeyboardNavigator};
 pub use tree::{AccessibilityTree, AccessibilityTreeBuilder, TreeNode, TreeNodeId};
 
 use crate::utils::accessibility::Priority;
