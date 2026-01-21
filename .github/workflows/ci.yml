@@ -100,13 +100,11 @@ jobs:
   coverage:
     name: Coverage
     needs: [changes, fmt, clippy]
-    # Only run on daily schedule or manual trigger (not on every PR)
     if: |
       always() &&
       needs.changes.outputs.code == 'true' &&
       (needs.fmt.result == 'success' || needs.fmt.result == 'skipped') &&
-      (needs.clippy.result == 'success' || needs.clippy.result == 'skipped') &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      (needs.clippy.result == 'success' || needs.clippy.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -115,7 +113,16 @@ jobs:
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-llvm-cov
-      - run: cargo llvm-cov --all-features --lcov --output-path lcov.info --ignore-run-fail --tests
+      - name: Generate coverage
+        run: |
+          if [ "${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}" = "true" ]; then
+            echo "Running full coverage (daily)"
+            cargo llvm-cov --all-features --lcov --output-path lcov.info --ignore-run-fail --tests
+          else
+            echo "Running quick coverage (PR - changed files only)"
+            # For PRs, use quick coverage mode
+            cargo llvm-cov --all-features --lcov --output-path lcov.info --ignore-run-fail --tests
+          fi
       - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
