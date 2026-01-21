@@ -211,6 +211,7 @@ mod dropzone;
 mod empty_state;
 mod filepicker;
 mod filetree;
+mod form;
 mod gauge;
 mod grid;
 mod heatmap;
@@ -366,6 +367,7 @@ pub use filepicker::{
     PickerResult,
 };
 pub use filetree::{dir_entry, file_entry, file_tree, FileEntry, FileTree, FileType};
+pub use form::{form, form_field, ErrorDisplayStyle, Form, FormField, FormFieldWidget, InputType};
 pub use gauge::{battery, gauge, percentage, Gauge, GaugeStyle, LabelPosition};
 pub use grid::{
     grid, grid_item, grid_template, Grid, GridAlign, GridItem, GridPlacement, TrackSize,
