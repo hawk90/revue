@@ -17,6 +17,7 @@ mod batch;
 mod buffer;
 mod cell;
 mod diff;
+#[cfg(feature = "image")]
 pub mod image_protocol;
 mod terminal;
 
@@ -25,6 +26,7 @@ pub use batch::{BatchStats, RenderBatch, RenderOp};
 pub use buffer::Buffer;
 pub use cell::{Cell, Modifier};
 pub use diff::{diff, Change};
+#[cfg(feature = "image")]
 pub use image_protocol::{
     GraphicsCapabilities, ImageEncoder, ImageProtocol, Iterm2Image, KittyImage, PixelFormat,
     SixelEncoder,

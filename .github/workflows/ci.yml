@@ -96,8 +96,10 @@ jobs:
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-llvm-cov
-      - run: cargo llvm-cov --all-features --lcov --output-path lcov.info --ignore-run-fail --tests
+      # PR: Quick coverage check without report
+      - run: cargo llvm-cov --all-features --ignore-run-fail --tests --no-report
       - uses: codecov/codecov-action@v5
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
