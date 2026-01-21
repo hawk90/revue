@@ -3,7 +3,6 @@
 //! Tests for task handles, state management, and result retrieval.
 
 use revue::worker::{WorkerError, WorkerHandle, WorkerState};
-use serial_test::serial;
 use std::thread;
 use std::time::Duration;
 
@@ -11,7 +10,6 @@ use std::time::Duration;
 // Blocking Tasks Tests
 // =============================================================================
 
-#[serial]
 #[test]
 fn test_spawn_blocking_return_types() {
     // Test various return types
@@ -31,7 +29,6 @@ fn test_spawn_blocking_return_types() {
     assert_eq!(handle5.join().unwrap(), (1, "two", 3.0));
 }
 
-#[serial]
 #[test]
 fn test_spawn_blocking_panic_recovery() {
     let handle = WorkerHandle::spawn_blocking(|| {
@@ -42,7 +39,6 @@ fn test_spawn_blocking_panic_recovery() {
     assert!(matches!(result, Err(WorkerError::Panicked(_))));
 }
 
-#[serial]
 #[test]
 fn test_spawn_blocking_large_result() {
     let large_data: Vec<u8> = (0..10000).map(|i| i as u8).collect();
@@ -52,7 +48,6 @@ fn test_spawn_blocking_large_result() {
     assert_eq!(handle.join().unwrap(), 10000);
 }
 
-#[serial]
 #[test]
 fn test_spawn_blocking_immediate() {
     let handle = WorkerHandle::spawn_blocking(|| 42);
@@ -68,7 +63,6 @@ fn test_spawn_blocking_immediate() {
 // State Management Tests
 // =============================================================================
 
-#[serial]
 #[test]
 fn test_state_transitions() {
     let handle = WorkerHandle::spawn_blocking(|| {
@@ -88,7 +82,6 @@ fn test_state_transitions() {
     assert!(matches!(handle.state(), WorkerState::Completed));
 }
 
-#[serial]
 #[test]
 fn test_is_finished_success() {
     let handle = WorkerHandle::spawn_blocking(|| {
@@ -104,7 +97,6 @@ fn test_is_finished_success() {
     assert!(handle.is_success());
 }
 
-#[serial]
 #[test]
 fn test_is_finished_failure() {
     let handle = WorkerHandle::spawn_blocking(|| {
@@ -120,7 +112,6 @@ fn test_is_finished_failure() {
     assert!(!handle.is_success());
 }
 
-#[serial]
 #[test]
 fn test_is_running() {
     let handle = WorkerHandle::spawn_blocking(|| {
@@ -143,7 +134,6 @@ fn test_is_running() {
     assert!(handle.is_finished());
 }
 
-#[serial]
 #[test]
 fn test_cancel_running_task() {
     let handle = WorkerHandle::spawn_blocking(|| {
@@ -161,7 +151,6 @@ fn test_cancel_running_task() {
     let _ = result;
 }
 
-#[serial]
 #[test]
 fn test_cancel_before_start() {
     let handle = WorkerHandle::spawn_blocking(|| {
@@ -181,7 +170,6 @@ fn test_cancel_before_start() {
 // Result Retrieval Tests
 // =============================================================================
 
-#[serial]
 #[test]
 fn test_try_join_not_ready() {
     let handle = WorkerHandle::spawn_blocking(|| {
@@ -194,7 +182,6 @@ fn test_try_join_not_ready() {
     assert!(result.is_none());
 }
 
-#[serial]
 #[test]
 fn test_try_join_ready() {
     let handle = WorkerHandle::spawn_blocking(|| 42);
@@ -208,7 +195,6 @@ fn test_try_join_ready() {
     assert_eq!(result.unwrap().unwrap(), 42);
 }
 
-#[serial]
 #[test]
 fn test_join_timeout_success() {
     let handle = WorkerHandle::spawn_blocking(|| {
@@ -220,7 +206,6 @@ fn test_join_timeout_success() {
     assert_eq!(result.unwrap(), 42);
 }
 
-#[serial]
 #[test]
 fn test_join_timeout_failure() {
     let handle = WorkerHandle::spawn_blocking(|| {
@@ -232,7 +217,6 @@ fn test_join_timeout_failure() {
     assert!(matches!(result, Err(WorkerError::Timeout)));
 }
 
-#[serial]
 #[test]
 fn test_join_consume() {
     let handle = WorkerHandle::spawn_blocking(|| 42);
@@ -243,7 +227,6 @@ fn test_join_consume() {
     // handle is consumed after join
 }
 
-#[serial]
 #[test]
 fn test_join_panic_result() {
     let handle = WorkerHandle::spawn_blocking(|| {
@@ -265,7 +248,6 @@ fn test_join_panic_result() {
 // =============================================================================
 
 #[cfg(feature = "async")]
-#[serial]
 #[test]
 fn test_spawn_async_basic() {
     let handle = WorkerHandle::spawn(async {
@@ -278,7 +260,6 @@ fn test_spawn_async_basic() {
 }
 
 #[cfg(feature = "async")]
-#[serial]
 #[test]
 fn test_spawn_async_multiple_await() {
     let handle = WorkerHandle::spawn(async {
@@ -295,7 +276,6 @@ fn test_spawn_async_multiple_await() {
 // Poll Tests
 // =============================================================================
 
-#[serial]
 #[test]
 fn test_poll_returns_state() {
     let handle = WorkerHandle::spawn_blocking(|| {
@@ -310,17 +290,24 @@ fn test_poll_returns_state() {
         WorkerState::Pending | WorkerState::Running
     ));
 
-    thread::sleep(Duration::from_millis(50));
-
-    let state = handle.poll();
-    assert!(matches!(state, Some(WorkerState::Completed)));
+    // Wait for completion with a timeout
+    let start = std::time::Instant::now();
+    loop {
+        let state = handle.poll();
+        if matches!(state, Some(WorkerState::Completed)) {
+            break;
+        }
+        if start.elapsed() > Duration::from_millis(500) {
+            panic!("Worker did not complete in time");
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
 }
 
 // =============================================================================
 // Error Tests
 // =============================================================================
 
-#[serial]
 #[test]
 fn test_worker_error_display() {
     let err = WorkerError::Cancelled;
@@ -339,7 +326,6 @@ fn test_worker_error_display() {
     assert!(format!("{}", err).contains("custom error"));
 }
 
-#[serial]
 #[test]
 fn test_worker_error_clone() {
     let err1 = WorkerError::Custom("test".to_string());
@@ -351,7 +337,6 @@ fn test_worker_error_clone() {
 // Integration Tests
 // =============================================================================
 
-#[serial]
 #[test]
 fn test_multiple_handles_concurrent() {
     let handles: Vec<_> = (0..10)
@@ -373,7 +358,6 @@ fn test_multiple_handles_concurrent() {
     assert_eq!(results[9], 18);
 }
 
-#[serial]
 #[test]
 fn test_handle_drop_cancels() {
     // Handle drop sets cancel flag
@@ -388,7 +372,6 @@ fn test_handle_drop_cancels() {
     // Task may have already completed, that's ok
 }
 
-#[serial]
 #[test]
 fn test_state_after_completion() {
     let handle = WorkerHandle::spawn_blocking(|| 42);
@@ -400,7 +383,6 @@ fn test_state_after_completion() {
     assert!(handle.is_success());
 }
 
-#[serial]
 #[test]
 fn test_state_after_panic() {
     let handle = WorkerHandle::spawn_blocking(|| {
@@ -414,7 +396,6 @@ fn test_state_after_panic() {
     assert!(!handle.is_success());
 }
 
-#[serial]
 #[test]
 fn test_run_blocking_convenience() {
     let handle = revue::worker::run_blocking(|| {
@@ -426,7 +407,6 @@ fn test_run_blocking_convenience() {
 }
 
 #[cfg(feature = "async")]
-#[serial]
 #[test]
 fn test_spawn_convenience() {
     let handle = revue::worker::spawn(async {
@@ -437,7 +417,6 @@ fn test_spawn_convenience() {
     assert_eq!(handle.join().unwrap(), "async result");
 }
 
-#[serial]
 #[test]
 fn test_try_join_consumes() {
     let handle = WorkerHandle::spawn_blocking(|| 42);
