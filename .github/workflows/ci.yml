@@ -4,10 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-  schedule:
-    # Run full CI daily at 00:00 UTC
-    - cron: '0 0 * * *'
-  workflow_dispatch:  # Allow manual trigger
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -68,6 +64,7 @@ jobs:
     needs: [changes, fmt, clippy]
     if: |
       always() &&
+      github.event_name == 'pull_request' &&
       needs.changes.outputs.code == 'true' &&
       (needs.fmt.result == 'success' || needs.fmt.result == 'skipped') &&
       (needs.clippy.result == 'success' || needs.clippy.result == 'skipped')
@@ -76,26 +73,12 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    outputs:
-      is_daily: ${{ steps.meta.outputs.is_daily }}
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-nextest
-      - id: meta
-        run: echo "is_daily=${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}" >> $GITHUB_OUTPUT
-      - name: Run tests
-        run: |
-          if [ "${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}" = "true" ]; then
-            echo "Running all tests (daily full test suite)"
-            cargo nextest run --all-features --tests
-          else
-            echo "Running only changed tests (PR quick test)"
-            # For PRs, test only changed files based on merge-base
-            BASE_SHA=$(git merge-base HEAD origin/main)
-            cargo nextest run --all-features --tests --changed-since "$BASE_SHA"
-          fi
+      - run: cargo nextest run --all-features --tests
 
   coverage:
     name: Coverage
@@ -113,16 +96,7 @@ jobs:
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-llvm-cov
-      - name: Generate coverage
-        run: |
-          if [ "${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}" = "true" ]; then
-            echo "Running full coverage (daily)"
-            cargo llvm-cov --all-features --lcov --output-path lcov.info --ignore-run-fail --tests
-          else
-            echo "Running quick coverage (PR - changed files only)"
-            # For PRs, use quick coverage mode
-            cargo llvm-cov --all-features --lcov --output-path lcov.info --ignore-run-fail --tests
-          fi
+      - run: cargo llvm-cov --all-features --lcov --output-path lcov.info --ignore-run-fail --tests
       - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -132,13 +106,12 @@ jobs:
   msrv:
     name: MSRV (1.87)
     needs: [changes, fmt, clippy]
-    # Only run on daily schedule or manual trigger (not on every PR)
     if: |
       always() &&
+      github.event_name == 'pull_request' &&
       needs.changes.outputs.code == 'true' &&
       (needs.fmt.result == 'success' || needs.fmt.result == 'skipped') &&
-      (needs.clippy.result == 'success' || needs.clippy.result == 'skipped') &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      (needs.clippy.result == 'success' || needs.clippy.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -155,79 +128,4 @@ jobs:
       - uses: crate-ci/typos@master
         with:
           config: .typos.toml
-
-  # Create issue if daily tests fail
-  report_failure:
-    name: Report Failed Tests
-    needs: [test]
-    # Only run on daily schedule, regardless of test result
-    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-    steps:
-      - uses: actions/checkout@v6
-      - name: Check test results and create issue if needed
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const runId = context.runId;
-            const { data: run } = await github.rest.actions.getWorkflowRun({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: runId
-            });
-
-            // Only create issue if the workflow failed
-            if (run.conclusion === 'failure') {
-              const runUrl = run.html_url;
-              const issueTitle = `🚨 Daily CI Test Failure - ${new Date().toISOString().split('T')[0]}`;
-
-              // Check if an issue already exists for today
-              const today = new Date().toISOString().split('T')[0];
-              const { data: issues } = await github.rest.issues.listForRepo({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'open',
-                per_page: 20
-              });
-
-              const existingIssue = issues.find(i =>
-                i.title.includes('Daily CI Test Failure') && i.title.includes(today)
-              );
-
-              if (existingIssue) {
-                console.log('Issue already exists for today, updating...');
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: existingIssue.number,
-                  body: `Another test failure detected.\n\n**Workflow Run**: ${runUrl}`
-                });
-              } else {
-                console.log('Creating new issue...');
-                await github.rest.issues.create({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  title: issueTitle,
-                  body: `## Daily CI Test Failed
-
-The scheduled daily test run has failed.
-
-**Workflow Run**: ${runUrl}
-
-**Date**: ${new Date().toISOString()}
-
-Please investigate the failure and fix any issues.
-
----
-
-This issue was automatically created by the CI workflow.
-                  `,
-                  labels: ['ci', 'bug', 'automated']
-                });
-              }
-            } else {
-              console.log('Workflow passed, no issue needed');
-            }
 
