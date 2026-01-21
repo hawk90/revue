@@ -79,3 +79,14 @@ pre-push:
           echo "No Rust files changed, skipping tests"
         fi
       fail_text: "Tests failed."
+
+    coverage:
+      # Quick coverage check for changed src files (local only)
+      run: |
+        CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '^src/' || true)
+        if [ -n "$CHANGED" ]; then
+          echo "📊 Quick coverage check (no report)..."
+          cargo llvm-cov --lib --no-report --ignore-run-fail
+        fi
+      fail_text: "Coverage check failed."
+      skip: [ -n "$CI" ]  # Skip in CI, only run locally

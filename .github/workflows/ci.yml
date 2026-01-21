@@ -91,13 +91,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Get full history for changed files
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-llvm-cov
-      # PR: Quick coverage check without report
-      - run: cargo llvm-cov --all-features --ignore-run-fail --tests --no-report
+      - name: Get changed files
+        id: changed
+        run: |
+          CHANGED=$(git diff --name-only origin/main...HEAD | grep '^src/' || true)
+          echo "changed<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      # PR: Quick coverage check without report (lib only for speed)
+      - name: Coverage (PR)
+        if: github.event_name == 'pull_request'
+        run: cargo llvm-cov --lib --no-report --ignore-run-fail
+      # Main: Full coverage with lcov for badge
+      - name: Coverage (Main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: cargo llvm-cov --all-features --lcov --output-path lcov.info --ignore-run-fail
       - uses: codecov/codecov-action@v5
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
