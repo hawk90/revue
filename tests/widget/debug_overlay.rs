@@ -272,9 +272,9 @@ fn test_perf_metrics_start_frame() {
 fn test_perf_metrics_multiple_frames() {
     let mut metrics = PerfMetrics::new();
 
-    // Simulate frame timing
+    // Simulate frame timing - use longer duration for reliability
     metrics.start_frame();
-    std::thread::sleep(Duration::from_millis(10));
+    std::thread::sleep(Duration::from_millis(50));
     metrics.start_frame();
 
     // Should have recorded a frame time
@@ -876,7 +876,7 @@ fn test_perf_metrics_single_frame() {
     let mut metrics = PerfMetrics::new();
 
     metrics.start_frame();
-    std::thread::sleep(Duration::from_millis(10));
+    std::thread::sleep(Duration::from_millis(50));
     metrics.start_frame();
 
     assert!(metrics.avg_frame_time_ms() > 0.0);

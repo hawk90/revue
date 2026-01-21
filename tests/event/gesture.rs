@@ -7,7 +7,27 @@ use revue::event::{
 };
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, Instant};
+
+/// Poll for a condition with a timeout, returning when the condition becomes true
+/// or the timeout elapses. Returns true if condition was met, false on timeout.
+fn poll_until<F>(mut condition: F, timeout_ms: u64) -> bool
+where
+    F: FnMut() -> bool,
+{
+    let start = Instant::now();
+    let timeout = Duration::from_millis(timeout_ms);
+    let poll_interval = Duration::from_millis(2);
+
+    while start.elapsed() < timeout {
+        if condition() {
+            return true;
+        }
+        thread::sleep(poll_interval);
+    }
+    false
+}
 
 #[test]
 fn test_swipe_direction() {
@@ -159,12 +179,16 @@ fn test_long_press() {
     let down_event = MouseEvent::new(5, 5, MouseEventKind::Down(MouseButton::Left));
     recognizer.handle_mouse_event(&down_event);
 
-    // Wait for long press
-    std::thread::sleep(Duration::from_millis(20));
+    // Wait for long press with polling
+    let result = poll_until(
+        || {
+            recognizer.check_long_press();
+            long_pressed.load(Ordering::SeqCst)
+        },
+        100,
+    );
 
-    // Check for long press
-    recognizer.check_long_press();
-
+    assert!(result, "Long press should have been triggered");
     assert!(long_pressed.load(Ordering::SeqCst));
 }
 
@@ -651,8 +675,8 @@ fn test_swipe_too_slow() {
     let down_event = MouseEvent::new(0, 5, MouseEventKind::Down(MouseButton::Left));
     recognizer.handle_mouse_event(&down_event);
 
-    // Wait a bit to make it slow
-    std::thread::sleep(Duration::from_millis(10));
+    // Wait to ensure slow movement (higher duration for reliability)
+    std::thread::sleep(Duration::from_millis(50));
 
     // Release (should be tap instead of swipe)
     let up_event = MouseEvent::new(10, 5, MouseEventKind::Up(MouseButton::Left));
