@@ -3,12 +3,14 @@
 //! Tests for channel communication, message types, and sender/receiver pairs.
 
 use revue::worker::{WorkerChannel, WorkerCommand, WorkerMessage};
+use serial_test::serial;
 use std::thread;
 
 // =============================================================================
 // Message Tests
 // =============================================================================
 
+#[serial]
 #[test]
 fn test_message_progress_clamp() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -23,6 +25,7 @@ fn test_message_progress_clamp() {
     assert!(sender.progress(2.0));
 }
 
+#[serial]
 #[test]
 fn test_message_clone_large_data() {
     // Clone large message
@@ -38,6 +41,7 @@ fn test_message_clone_large_data() {
     }
 }
 
+#[serial]
 #[test]
 fn test_message_all_variants() {
     // Test all message variants can be created
@@ -53,6 +57,7 @@ fn test_message_all_variants() {
 // Channel Communication Tests
 // =============================================================================
 
+#[serial]
 #[test]
 fn test_channel_capacity_limit() {
     let channel: WorkerChannel<i32> = WorkerChannel::with_capacity(3);
@@ -73,6 +78,7 @@ fn test_channel_capacity_limit() {
     assert!(channel.send(WorkerMessage::Complete(4)));
 }
 
+#[serial]
 #[test]
 fn test_channel_concurrent_senders() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -98,6 +104,7 @@ fn test_channel_concurrent_senders() {
     assert_eq!(receiver.message_count(), 4);
 }
 
+#[serial]
 #[test]
 fn test_channel_split_behavior() {
     let channel: WorkerChannel<String> = WorkerChannel::new();
@@ -126,6 +133,7 @@ fn test_channel_split_behavior() {
 // WorkerSender Tests
 // =============================================================================
 
+#[serial]
 #[test]
 fn test_sender_all_methods() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -141,6 +149,7 @@ fn test_sender_all_methods() {
     assert_eq!(receiver.message_count(), 5);
 }
 
+#[serial]
 #[test]
 fn test_sender_check_command() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -160,6 +169,7 @@ fn test_sender_check_command() {
     assert!(sender.check_command().is_none());
 }
 
+#[serial]
 #[test]
 fn test_sender_is_cancelled() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -175,6 +185,7 @@ fn test_sender_is_cancelled() {
     assert!(!sender.is_cancelled());
 }
 
+#[serial]
 #[test]
 fn test_sender_clone_independent() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -194,6 +205,7 @@ fn test_sender_clone_independent() {
 // WorkerReceiver Tests
 // =============================================================================
 
+#[serial]
 #[test]
 fn test_receiver_recv_all() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -210,6 +222,7 @@ fn test_receiver_recv_all() {
     assert!(receiver.recv_all().is_empty());
 }
 
+#[serial]
 #[test]
 fn test_receiver_all_commands() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -230,6 +243,7 @@ fn test_receiver_all_commands() {
     assert!(matches!(cmd3, Some(WorkerCommand::Resume)));
 }
 
+#[serial]
 #[test]
 fn test_receiver_has_messages() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -247,6 +261,7 @@ fn test_receiver_has_messages() {
     assert!(!receiver.has_messages());
 }
 
+#[serial]
 #[test]
 fn test_receiver_message_count() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -260,6 +275,7 @@ fn test_receiver_message_count() {
     }
 }
 
+#[serial]
 #[test]
 fn test_receiver_clone() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -280,6 +296,7 @@ fn test_receiver_clone() {
 // WorkerCommand Tests
 // =============================================================================
 
+#[serial]
 #[test]
 fn test_command_all_variants() {
     let _ = WorkerCommand::Cancel;
@@ -288,6 +305,7 @@ fn test_command_all_variants() {
     let _ = WorkerCommand::Custom("custom".to_string());
 }
 
+#[serial]
 #[test]
 fn test_command_clone() {
     let cmd1 = WorkerCommand::Custom("test".to_string());
@@ -301,6 +319,7 @@ fn test_command_clone() {
     }
 }
 
+#[serial]
 #[test]
 fn test_command_custom_content() {
     let cmd = WorkerCommand::Custom("my-command".to_string());
@@ -311,6 +330,7 @@ fn test_command_custom_content() {
 // Integration Tests
 // =============================================================================
 
+#[serial]
 #[test]
 fn test_bidirectional_communication() {
     let channel: WorkerChannel<String> = WorkerChannel::new();
@@ -335,6 +355,7 @@ fn test_bidirectional_communication() {
     assert_eq!(messages.len(), 3);
 }
 
+#[serial]
 #[test]
 fn test_multiple_command_types() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -360,6 +381,7 @@ fn test_multiple_command_types() {
     assert!(matches!(cmd4, Some(WorkerCommand::Custom(_))));
 }
 
+#[serial]
 #[test]
 fn test_channel_fifo_ordering() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -382,6 +404,7 @@ fn test_channel_fifo_ordering() {
     ));
 }
 
+#[serial]
 #[test]
 fn test_channel_default_capacity() {
     let channel: WorkerChannel<i32> = WorkerChannel::default();
@@ -392,6 +415,7 @@ fn test_channel_default_capacity() {
     assert!(!channel.send(WorkerMessage::Progress(0.5)));
 }
 
+#[serial]
 #[test]
 fn test_channel_has_messages_commands() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -406,6 +430,7 @@ fn test_channel_has_messages_commands() {
     assert!(channel.has_commands());
 }
 
+#[serial]
 #[test]
 fn test_channel_send_command() {
     let channel: WorkerChannel<i32> = WorkerChannel::new();
@@ -418,6 +443,7 @@ fn test_channel_send_command() {
     assert!(!channel.has_commands());
 }
 
+#[serial]
 #[test]
 fn test_channel_send_command_full() {
     let channel: WorkerChannel<i32> = WorkerChannel::with_capacity(1);
