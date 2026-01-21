@@ -62,6 +62,20 @@ let mut app = App::builder()
     .build();
 ```
 
+#### Available Builder Methods
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `.style(path)` | Load CSS from file | `.style("styles.css")` |
+| `.css(string)` | Add inline CSS | `.css(".box { color: red; }")` |
+| `.hot_reload(bool)` | Enable CSS hot reload | `.hot_reload(true)` |
+| `.devtools(bool)` | Enable developer tools | `.devtools(true)` |
+| `.mouse_capture(bool)` | Enable mouse events | `.mouse_capture(true)` |
+| `.plugin(plugin)` | Register a plugin | `.plugin(LoggerPlugin::new())` |
+| `.build()` | Create the App instance | `.build()` |
+
+See the [App Builder Guide](../guides/app-builder.md) for complete documentation.
+
 ### Views and Widgets
 
 Views are the building blocks of your UI. Revue provides 86+ built-in widgets:
@@ -108,6 +122,7 @@ app.run(view, |event, view, _app| {
 
 ## Next Steps
 
+- [App Builder Guide](../guides/app-builder.md) - Complete App Builder API reference
 - [Counter App Tutorial](./02-counter.md) - Build an interactive counter
 - [Todo App Tutorial](./03-todo.md) - Create a full-featured todo list
 - [Styling Guide](../guides/styling.md) - Learn about CSS-like styling

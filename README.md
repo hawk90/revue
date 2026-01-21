@@ -219,6 +219,7 @@ cargo run --example data_explorer # JSON/CSV viewer
 
 - **[Getting Started](docs/tutorials/01-getting-started.md)** — 5-minute tutorial
 - **[Widget Catalog](docs/FEATURES.md)** — Complete widget reference
+- **[App Builder Guide](docs/guides/app-builder.md)** — Complete App Builder API reference
 - **[Styling Guide](docs/guides/styling.md)** — CSS properties and theming
 - **[State Management](docs/guides/state.md)** — Signals, Computed, Effects
 - **[API Reference](https://docs.rs/revue)** — Full API documentation
