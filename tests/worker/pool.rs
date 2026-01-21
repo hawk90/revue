@@ -3,7 +3,6 @@
 //! Tests for worker pool construction, task submission, and lifecycle.
 
 use revue::worker::{Priority, WorkerConfig, WorkerPool};
-use serial_test::serial;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -13,14 +12,12 @@ use std::time::Duration;
 // WorkerPool Construction Tests
 // =============================================================================
 
-#[serial]
 #[test]
 fn test_pool_config_threads() {
     let pool = WorkerPool::new(4);
     assert_eq!(pool.thread_count(), 4);
 }
 
-#[serial]
 #[test]
 fn test_pool_config_queue_capacity() {
     let config = WorkerConfig {
@@ -37,7 +34,6 @@ fn test_pool_config_queue_capacity() {
     }
 }
 
-#[serial]
 #[test]
 fn test_pool_config_timeout() {
     let config = WorkerConfig {
@@ -49,7 +45,6 @@ fn test_pool_config_timeout() {
     assert_eq!(pool.thread_count(), 1);
 }
 
-#[serial]
 #[test]
 fn test_pool_default() {
     let pool = WorkerPool::default();
@@ -57,7 +52,6 @@ fn test_pool_default() {
     assert!(pool.thread_count() >= 1);
 }
 
-#[serial]
 #[test]
 fn test_pool_with_threads() {
     let pool = WorkerPool::new(8);
@@ -68,7 +62,6 @@ fn test_pool_with_threads() {
 // Task Submission Tests
 // =============================================================================
 
-#[serial]
 #[test]
 fn test_pool_submit_full_queue() {
     let config = WorkerConfig {
@@ -99,7 +92,6 @@ fn test_pool_submit_full_queue() {
     assert!(!pool.submit(|| {}));
 }
 
-#[serial]
 #[test]
 fn test_pool_submit_priority_ordering() {
     let pool = WorkerPool::new(1);
@@ -156,7 +148,6 @@ fn test_pool_submit_priority_ordering() {
     assert_eq!(result[2], "low");
 }
 
-#[serial]
 #[test]
 fn test_pool_submit_many_tasks() {
     let pool = WorkerPool::new(4);
@@ -176,7 +167,6 @@ fn test_pool_submit_many_tasks() {
     assert_eq!(counter.load(Ordering::SeqCst), 100);
 }
 
-#[serial]
 #[test]
 fn test_pool_shutdown_graceful() {
     let pool = WorkerPool::new(2);
@@ -199,7 +189,6 @@ fn test_pool_shutdown_graceful() {
     assert!(counter.load(Ordering::SeqCst) > 0);
 }
 
-#[serial]
 #[test]
 fn test_pool_submit_after_shutdown() {
     let pool = WorkerPool::new(1);
@@ -214,7 +203,6 @@ fn test_pool_submit_after_shutdown() {
 // Priority Queue Tests
 // =============================================================================
 
-#[serial]
 #[test]
 fn test_priority_fifo_same_priority() {
     let pool = WorkerPool::new(1);
@@ -254,7 +242,6 @@ fn test_priority_fifo_same_priority() {
     assert_eq!(*result, vec![0, 1, 2, 3, 4]);
 }
 
-#[serial]
 #[test]
 fn test_priority_high_preempts_low() {
     let pool = WorkerPool::new(1);
@@ -311,7 +298,6 @@ fn test_priority_high_preempts_low() {
 // Pool State Tests
 // =============================================================================
 
-#[serial]
 #[test]
 fn test_pool_active_workers() {
     let pool = WorkerPool::new(4);
@@ -322,7 +308,6 @@ fn test_pool_active_workers() {
     let _active = pool.active_workers();
 }
 
-#[serial]
 #[test]
 fn test_pool_queue_length() {
     let config = WorkerConfig {
@@ -356,7 +341,6 @@ fn test_pool_queue_length() {
     barrier.store(1, Ordering::SeqCst);
 }
 
-#[serial]
 #[test]
 fn test_pool_is_shutdown() {
     let pool = WorkerPool::new(2);
@@ -366,7 +350,6 @@ fn test_pool_is_shutdown() {
     assert!(pool.is_shutdown());
 }
 
-#[serial]
 #[test]
 fn test_pool_multiple_shutdowns() {
     let pool = WorkerPool::new(2);
@@ -381,7 +364,6 @@ fn test_pool_multiple_shutdowns() {
 // Integration Tests
 // =============================================================================
 
-#[serial]
 #[test]
 fn test_pool_concurrent_submissions() {
     let pool = Arc::new(WorkerPool::new(4));
