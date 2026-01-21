@@ -47,9 +47,10 @@ fn get_accessibility() -> &'static Arc<RwLock<AccessibilityManager>> {
 /// announce("Selection changed to item 3");
 /// ```
 pub fn announce(message: impl Into<String>) {
-    let mut manager = get_accessibility()
-        .write()
-        .expect("Accessibility lock poisoned");
+    let mut manager = get_accessibility().write().unwrap_or_else(|e| {
+        crate::log_error!("Accessibility lock poisoned: {e}");
+        e.into_inner()
+    });
     manager.announce_polite(message);
 }
 
@@ -65,9 +66,10 @@ pub fn announce(message: impl Into<String>) {
 /// announce_now("Alert: Connection lost");
 /// ```
 pub fn announce_now(message: impl Into<String>) {
-    let mut manager = get_accessibility()
-        .write()
-        .expect("Accessibility lock poisoned");
+    let mut manager = get_accessibility().write().unwrap_or_else(|e| {
+        crate::log_error!("Accessibility lock poisoned: {e}");
+        e.into_inner()
+    });
     manager.announce_assertive(message);
 }
 
@@ -76,9 +78,10 @@ pub fn announce_now(message: impl Into<String>) {
 /// Call this during the render/tick loop to process announcements.
 /// Returns a vector of pending announcements.
 pub fn take_announcements() -> Vec<Announcement> {
-    let mut manager = get_accessibility()
-        .write()
-        .expect("Accessibility lock poisoned");
+    let mut manager = get_accessibility().write().unwrap_or_else(|e| {
+        crate::log_error!("Accessibility lock poisoned: {e}");
+        e.into_inner()
+    });
     let announcements = manager.pending_announcements().to_vec();
     manager.clear_announcements();
     announcements
@@ -86,9 +89,10 @@ pub fn take_announcements() -> Vec<Announcement> {
 
 /// Check if there are pending announcements
 pub fn has_announcements() -> bool {
-    let manager = get_accessibility()
-        .read()
-        .expect("Accessibility lock poisoned");
+    let manager = get_accessibility().read().unwrap_or_else(|e| {
+        crate::log_warn!("Accessibility read lock poisoned: {e}");
+        e.into_inner()
+    });
     !manager.pending_announcements().is_empty()
 }
 
@@ -96,9 +100,10 @@ pub fn has_announcements() -> bool {
 ///
 /// When enabled, animations should be skipped or minimized.
 pub fn set_reduced_motion(enabled: bool) {
-    let mut manager = get_accessibility()
-        .write()
-        .expect("Accessibility lock poisoned");
+    let mut manager = get_accessibility().write().unwrap_or_else(|e| {
+        crate::log_error!("Accessibility lock poisoned: {e}");
+        e.into_inner()
+    });
     manager.set_reduce_motion(enabled);
 }
 
@@ -119,9 +124,10 @@ pub fn set_reduced_motion(enabled: bool) {
 /// }
 /// ```
 pub fn prefers_reduced_motion() -> bool {
-    let manager = get_accessibility()
-        .read()
-        .expect("Accessibility lock poisoned");
+    let manager = get_accessibility().read().unwrap_or_else(|e| {
+        crate::log_warn!("Accessibility read lock poisoned: {e}");
+        e.into_inner()
+    });
     manager.prefers_reduced_motion()
 }
 
@@ -129,9 +135,10 @@ pub fn prefers_reduced_motion() -> bool {
 ///
 /// When enabled, widgets should use higher contrast colors.
 pub fn set_high_contrast(enabled: bool) {
-    let mut manager = get_accessibility()
-        .write()
-        .expect("Accessibility lock poisoned");
+    let mut manager = get_accessibility().write().unwrap_or_else(|e| {
+        crate::log_error!("Accessibility lock poisoned: {e}");
+        e.into_inner()
+    });
     manager.set_high_contrast(enabled);
 }
 
@@ -149,25 +156,28 @@ pub fn set_high_contrast(enabled: bool) {
 /// }
 /// ```
 pub fn is_high_contrast() -> bool {
-    let manager = get_accessibility()
-        .read()
-        .expect("Accessibility lock poisoned");
+    let manager = get_accessibility().read().unwrap_or_else(|e| {
+        crate::log_warn!("Accessibility read lock poisoned: {e}");
+        e.into_inner()
+    });
     manager.is_high_contrast()
 }
 
 /// Enable or disable the accessibility system
 pub fn set_accessibility_enabled(enabled: bool) {
-    let mut manager = get_accessibility()
-        .write()
-        .expect("Accessibility lock poisoned");
+    let mut manager = get_accessibility().write().unwrap_or_else(|e| {
+        crate::log_error!("Accessibility lock poisoned: {e}");
+        e.into_inner()
+    });
     manager.set_enabled(enabled);
 }
 
 /// Check if accessibility is enabled
 pub fn is_accessibility_enabled() -> bool {
-    let manager = get_accessibility()
-        .read()
-        .expect("Accessibility lock poisoned");
+    let manager = get_accessibility().read().unwrap_or_else(|e| {
+        crate::log_warn!("Accessibility read lock poisoned: {e}");
+        e.into_inner()
+    });
     manager.is_enabled()
 }
 
