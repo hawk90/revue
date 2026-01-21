@@ -338,6 +338,342 @@ impl RegistrationForm {
 }
 ```
 
+## Advanced Patterns
+
+### Multi-Step Forms
+
+For complex forms, break them into steps:
+
+```rust
+use revue::prelude::*;
+use revue::patterns::form::FormState;
+
+struct MultiStepForm {
+    step: usize,
+    personal: FormState,
+    address: FormState,
+    confirmation: FormState,
+}
+
+impl MultiStepForm {
+    fn new() -> Self {
+        let personal = FormState::new()
+            .field("name", |f| f.label("Name").required().min_length(2))
+            .field("email", |f| f.email().label("Email").required())
+            .build();
+
+        let address = FormState::new()
+            .field("street", |f| f.label("Street").required())
+            .field("city", |f| f.label("City").required())
+            .field("zip", |f| f.label("ZIP Code").required().integer())
+            .build();
+
+        let confirmation = FormState::new()
+            .field("confirmed", |f| f.label("I confirm the information is correct"))
+            .build();
+
+        Self {
+            step: 0,
+            personal,
+            address,
+            confirmation,
+        }
+    }
+
+    fn next_step(&mut self) -> bool {
+        match self.step {
+            0 if self.personal.is_valid() => {
+                self.step = 1;
+                true
+            }
+            1 if self.address.is_valid() => {
+                self.step = 2;
+                true
+            }
+            2 if self.confirmation.value("confirmed").as_deref() == Some("true") => {
+                // Submit form
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn prev_step(&mut self) {
+        if self.step > 0 {
+            self.step -= 1;
+        }
+    }
+
+    fn current_form(&mut self) -> &mut FormState {
+        match self.step {
+            0 => &mut self.personal,
+            1 => &mut self.address,
+            _ => &mut self.confirmation,
+        }
+    }
+
+    fn all_values(&self) -> HashMap<String, String> {
+        let mut values = HashMap::new();
+        values.extend(self.personal.values());
+        values.extend(self.address.values());
+        values.extend(self.confirmation.values());
+        values
+    }
+}
+```
+
+### Dynamic Fields
+
+Add or remove fields at runtime:
+
+```rust
+use revue::prelude::*;
+use revue::patterns::form::{FormState, FormFieldBuilder};
+
+struct DynamicForm {
+    form: FormState,
+    field_count: usize,
+}
+
+impl DynamicForm {
+    fn new() -> Self {
+        let mut form = FormState::new()
+            .field("title", |f| f.label("Title").required())
+            .build();
+
+        Self {
+            form,
+            field_count: 0,
+        }
+    }
+
+    fn add_field(&mut self) {
+        self.field_count += 1;
+        let name = format!("item_{}", self.field_count);
+
+        // Rebuild form with new field
+        let mut builder = FormState::new();
+        for (field_name, field) in self.form.iter() {
+            builder = builder.field(field_name, |f| {
+                let f = f.label(field.label)
+                    .placeholder(&field.placeholder)
+                    .initial_value(&field.value());
+                if field.field_type == FieldType::Integer {
+                    f.integer()
+                } else {
+                    f.text()
+                }
+            });
+        }
+
+        builder = builder.field(&name, |f| f
+            .label(format!("Item {}", self.field_count))
+            .text());
+
+        self.form = builder.build();
+    }
+
+    fn remove_field(&mut self) {
+        if self.field_count > 0 {
+            let name = format!("item_{}", self.field_count);
+            // Note: FormState doesn't support direct field removal
+            // You would need to rebuild the form without that field
+            self.field_count -= 1;
+        }
+    }
+}
+```
+
+### Conditional Validation
+
+Validate fields based on other field values:
+
+```rust
+use revue::patterns::form::{FormState, Validators, ValidationError};
+
+let form = FormState::new()
+    .field("has_shipping", |f| f.label("Require shipping?"))
+    .field("address", |f| f
+        .label("Shipping Address")
+        .custom(|value| {
+            // Only validate if has_shipping is "true"
+            if let Ok(shipping) = std::env::var("has_shipping") {
+                if shipping == "true" && value.is_empty() {
+                    return Err(ValidationError::new("Address required when shipping is enabled"));
+                }
+            }
+            Ok(())
+        }))
+    .build();
+
+// In your handler, set the environment variable or use shared state
+// when has_shipping changes
+```
+
+### Form with Hot Reload
+
+Integrate forms with CSS hot reload for instant styling updates:
+
+```rust
+use revue::prelude::*;
+use revue::patterns::form::FormState;
+
+fn main() -> Result<()> {
+    let mut app = App::builder()
+        .style("styles.css")
+        .hot_reload(true)  // Enable hot reload
+        .devtools(true)    // Enable devtools for inspecting form
+        .build();
+
+    app.run(MyForm::new(), handler)?;
+    Ok(())
+}
+```
+
+```css
+/* styles.css */
+.form-field {
+    border: rounded gray;
+    padding: 1;
+    margin: 1 0;
+}
+
+.form-field:focus {
+    border: double cyan;
+}
+
+.form-error {
+    color: red;
+    margin: 0 0 0 2;
+}
+
+.form-valid {
+    color: green;
+}
+```
+
+Now when you edit `styles.css`, the form styling updates instantly without restarting!
+
+### Form Sections
+
+Group related fields together:
+
+```rust
+use revue::prelude::*;
+use revue::patterns::form::FormState;
+
+struct SectionedForm {
+    personal: FormState,
+    contact: FormState,
+    preferences: FormState,
+}
+
+impl SectionedForm {
+    fn new() -> Self {
+        Self {
+            personal: FormState::new()
+                .field("first_name", |f| f.label("First Name").required())
+                .field("last_name", |f| f.label("Last Name").required())
+                .field("dob", |f| f.label("Date of Birth"))
+                .build(),
+            contact: FormState::new()
+                .field("email", |f| f.email().label("Email").required())
+                .field("phone", |f| f.label("Phone").numeric())
+                .build(),
+            preferences: FormState::new()
+                .field("newsletter", |f| f.label("Subscribe to newsletter"))
+                .field("notifications", |f| f.label("Enable notifications"))
+                .build(),
+        }
+    }
+
+    fn is_valid(&self) -> bool {
+        self.personal.is_valid() && self.contact.is_valid()
+    }
+
+    fn all_values(&self) -> HashMap<String, String> {
+        let mut values = HashMap::new();
+        values.extend(self.personal.values());
+        values.extend(self.contact.values());
+        values.extend(self.preferences.values());
+        values
+    }
+}
+```
+
+### Performance Tips for Large Forms
+
+For forms with many fields:
+
+```rust
+// 1. Lazy validation - only validate visible fields
+impl LargeForm {
+    fn validate_current_step(&self) -> bool {
+        match self.current_step {
+            0 => self.step1.is_valid(),
+            1 => self.step2.is_valid(),
+            _ => true,
+        }
+    }
+}
+
+// 2. Batch updates to avoid multiple re-renders
+impl LargeForm {
+    fn update_multiple_fields(&mut self) {
+        // Collect all changes
+        let updates = vec![
+            ("field1", "value1"),
+            ("field2", "value2"),
+            ("field3", "value3"),
+        ];
+
+        // Apply all at once
+        for (field, value) in updates {
+            self.form.set_value(field, value);
+        }
+        // Single re-render after all updates
+    }
+}
+
+// 3. Use iterators for rendering many fields
+impl View for LargeForm {
+    fn render(&self, ctx: &mut RenderContext) {
+        let form_view = vstack()
+            .gap(1)
+            .extend(self.form.field_names().iter().map(|name| {
+                // Render each field
+                self.render_field(name)
+            }))
+            .render(ctx);
+    }
+}
+```
+
+### Form with DevTools Integration
+
+Use DevTools to inspect form state:
+
+```rust
+use revue::prelude::*;
+
+impl MyForm {
+    fn handle_key(&mut self, key: &Key) -> bool {
+        match key {
+            Key::F12 => {
+                // Toggle devtools to inspect form state
+                // Requires devtools to be enabled
+                true
+            }
+            Key::Char('d') if KeyModifiers::CONTROL.matches(key.modifiers) => {
+                // Press Ctrl+D to open devtools
+                true
+            }
+            _ => self.form_handle_key(key),
+        }
+    }
+}
+```
+
 ## Best Practices
 
 ### 1. Use appropriate field types

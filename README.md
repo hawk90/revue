@@ -149,6 +149,7 @@ cargo run --example slideshow    # Slidev-style presentations
 ## Documentation
 
 - [API Reference](https://docs.rs/revue) — Full API documentation
+- [App Builder Guide](docs/guides/app-builder.md) — Complete App Builder API reference
 - [Styling Guide](docs/guides/styling.md) — CSS properties and theming
 - [Features](docs/FEATURES.md) — Widget catalog and capabilities
 - [Architecture](docs/ARCHITECTURE.md) — System design
