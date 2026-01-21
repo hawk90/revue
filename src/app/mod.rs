@@ -361,11 +361,9 @@ impl App {
         // Always compute styles (has internal dirty checking optimization)
         self.dom.compute_styles_with_inheritance();
 
-        let root_dom_id = self
-            .dom
-            .tree()
-            .root_id()
-            .expect("Root DOM node must exist to draw.");
+        let root_dom_id = self.dom.tree().root_id().ok_or_else(|| {
+            crate::Error::Other("Root DOM node not found. DOM may not have been built.".to_string())
+        })?;
 
         // Only rebuild layout tree if needed (e.g., on resize or structural changes)
         // DOM build() now performs incremental updates (reuses nodes by ID/position)

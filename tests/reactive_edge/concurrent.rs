@@ -3,10 +3,12 @@
 #![allow(unused_imports)]
 
 use revue::reactive::*;
+use serial_test::serial;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 #[test]
+#[serial]
 fn test_multiple_signal_updates_batch() {
     // Test that multiple updates in sequence work correctly
     let a = signal(0);
@@ -45,6 +47,7 @@ fn test_multiple_signal_updates_batch() {
 }
 
 #[test]
+#[serial]
 fn test_rapid_signal_updates() {
     let signal = signal(0);
     let last_value = Arc::new(AtomicUsize::new(0));

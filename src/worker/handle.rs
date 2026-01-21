@@ -127,12 +127,14 @@ impl<T: Send + 'static> WorkerHandle<T> {
             }
 
             // Use shared runtime for async task (avoids ~100KB allocation per task)
-            let handle = super::get_runtime_handle();
-            let value = handle.block_on(future);
+            let result_value = match super::get_runtime_handle() {
+                Ok(handle) => Ok(handle.block_on(future)),
+                Err(e) => Err(crate::worker::WorkerError::RuntimeCreationFailed(e)),
+            };
 
             // Store result
             if let Ok(mut r) = result_clone.lock() {
-                *r = Some(Ok(value));
+                *r = Some(result_value);
             }
             if let Ok(mut s) = state_clone.lock() {
                 *s = WorkerState::Completed;

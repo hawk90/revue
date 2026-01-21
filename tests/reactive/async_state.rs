@@ -5,7 +5,27 @@
 use revue::reactive::*;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, Instant};
+
+/// Poll for a condition with a timeout, returning when the condition becomes true
+/// or the timeout elapses. Returns true if condition was met, false on timeout.
+fn poll_until<F>(mut condition: F, timeout_ms: u64) -> bool
+where
+    F: FnMut() -> bool,
+{
+    let start = Instant::now();
+    let timeout = Duration::from_millis(timeout_ms);
+    let poll_interval = Duration::from_millis(2);
+
+    while start.elapsed() < timeout {
+        if condition() {
+            return true;
+        }
+        thread::sleep(poll_interval);
+    }
+    false
+}
 
 #[test]
 fn test_async_state_variants() {
@@ -50,7 +70,7 @@ fn test_async_state_unwrap_or() {
 #[test]
 fn test_use_async() {
     let (state, trigger) = use_async(|| {
-        std::thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(10));
         Ok(42)
     });
 
@@ -58,12 +78,8 @@ fn test_use_async() {
 
     trigger();
 
-    for _ in 0..100 {
-        if state.get().is_ready() {
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(10));
-    }
+    // Wait for async operation to complete (up to 1 second)
+    poll_until(|| state.get().is_ready(), 1000);
 
     assert_eq!(state.get(), AsyncState::Ready(42));
 }
@@ -74,12 +90,8 @@ fn test_use_async_error() {
 
     trigger();
 
-    for _ in 0..100 {
-        if state.get().is_error() {
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(10));
-    }
+    // Wait for async operation to complete with error (up to 1 second)
+    poll_until(|| state.get().is_error(), 1000);
 
     assert!(state.get().is_error());
     assert_eq!(state.get().error(), Some("Something went wrong"));
@@ -88,7 +100,7 @@ fn test_use_async_error() {
 #[test]
 fn test_use_async_poll() {
     let (state, start, poll) = use_async_poll(|| {
-        std::thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(10));
         Ok("done".to_string())
     });
 
@@ -97,12 +109,8 @@ fn test_use_async_poll() {
     start();
     assert!(state.get().is_loading());
 
-    for _ in 0..20 {
-        if poll() {
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(5));
-    }
+    // Wait for async operation to complete (up to 500ms)
+    poll_until(|| poll(), 500);
 
     assert_eq!(state.get(), AsyncState::Ready("done".to_string()));
 }
@@ -110,18 +118,14 @@ fn test_use_async_poll() {
 #[test]
 fn test_use_async_immediate() {
     let state = use_async_immediate(|| {
-        std::thread::sleep(Duration::from_millis(5));
+        thread::sleep(Duration::from_millis(5));
         Ok(100)
     });
 
     assert!(state.get().is_loading());
 
-    for _ in 0..100 {
-        if state.get() == AsyncState::Ready(100) {
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(10));
-    }
+    // Wait for async operation to complete (up to 1 second)
+    poll_until(|| state.get() == AsyncState::Ready(100), 1000);
 
     assert_eq!(state.get(), AsyncState::Ready(100));
 }
@@ -144,7 +148,7 @@ fn test_async_state_display() {
 #[test]
 fn test_use_async_multiple_triggers() {
     let (state, trigger) = use_async(|| {
-        std::thread::sleep(Duration::from_millis(5));
+        thread::sleep(Duration::from_millis(5));
         Ok(42)
     });
 
@@ -154,12 +158,8 @@ fn test_use_async_multiple_triggers() {
     trigger();
     assert!(state.get().is_loading());
 
-    for _ in 0..100 {
-        if state.get() == AsyncState::Ready(42) {
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(10));
-    }
+    // Wait for async operation to complete (up to 1 second)
+    poll_until(|| state.get() == AsyncState::Ready(42), 1000);
 
     assert_eq!(state.get(), AsyncState::Ready(42));
 }
@@ -167,7 +167,7 @@ fn test_use_async_multiple_triggers() {
 #[test]
 fn test_use_async_poll_cross_thread() {
     let (state, start, poll) = use_async_poll(|| {
-        std::thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(10));
         Ok(42)
     });
 
@@ -177,13 +177,14 @@ fn test_use_async_poll_cross_thread() {
     start();
     assert!(state.get().is_loading());
 
-    let poll_thread = std::thread::spawn(move || {
-        for _ in 0..50 {
+    let poll_thread = thread::spawn(move || {
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_millis(500) {
             if poll() {
                 completed_clone.store(true, Ordering::SeqCst);
                 return true;
             }
-            std::thread::sleep(Duration::from_millis(5));
+            thread::sleep(Duration::from_millis(2));
         }
         false
     });
@@ -197,24 +198,20 @@ fn test_use_async_poll_cross_thread() {
 #[test]
 fn test_use_async_poll_start_from_different_thread() {
     let (state, start, poll) = use_async_poll(|| {
-        std::thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(10));
         Ok("cross-thread".to_string())
     });
 
-    let start_thread = std::thread::spawn(move || {
+    let start_thread = thread::spawn(move || {
         start();
     });
     start_thread.join().expect("start thread should not panic");
 
-    std::thread::sleep(Duration::from_millis(5));
+    thread::sleep(Duration::from_millis(5));
     assert!(state.get().is_loading());
 
-    for _ in 0..50 {
-        if poll() {
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(5));
-    }
+    // Wait for async operation to complete (up to 500ms)
+    poll_until(|| poll(), 500);
 
     assert_eq!(state.get(), AsyncState::Ready("cross-thread".to_string()));
 }
