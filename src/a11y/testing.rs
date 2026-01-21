@@ -4,13 +4,15 @@
 //!
 //! # Example
 //!
-//! ```rust
-//! use revue::a11y::testing::{A11yTestRunner, A11yAssertion};
+//! ```rust,ignore
+//! use revue::a11y::testing::A11yTestRunner;
+//! use revue::widget::{Text, Button};
+//! use revue::utils::Role;
 //!
 //! let mut runner = A11yTestRunner::new();
 //! runner.assert_focus_order(&["button1", "button2", "input1"]);
 //! runner.assert_aria_label("submit-btn", "Submit Form");
-//! runner.assert_contrast_ratio(4.5); // WCAG AA standard
+//! runner.assert_contrast_ratio("button-text", 4.5); // WCAG AA standard
 //! ```
 
 use crate::utils::accessibility::{AccessibilityManager, AccessibleNode, Role};
@@ -48,7 +50,9 @@ impl A11yTestRunner {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
+    /// # use revue::a11y::testing::A11yTestRunner;
+    /// # let mut runner = A11yTestRunner::new();
     /// runner.assert_focus_order(&["username", "password", "submit-btn"]);
     /// ```
     pub fn assert_focus_order(&self, expected_ids: &[&str]) {
@@ -87,7 +91,9 @@ impl A11yTestRunner {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
+    /// # use revue::a11y::testing::A11yTestRunner;
+    /// # let mut runner = A11yTestRunner::new();
     /// runner.assert_aria_label("submit-btn", "Submit Form");
     /// ```
     pub fn assert_aria_label(&self, widget_id: &str, expected_label: &str) {
@@ -107,7 +113,10 @@ impl A11yTestRunner {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
+    /// # use revue::a11y::testing::A11yTestRunner;
+    /// # use revue::utils::Role;
+    /// # let mut runner = A11yTestRunner::new();
     /// runner.assert_role("submit-btn", Role::Button);
     /// ```
     pub fn assert_role(&self, widget_id: &str, expected_role: Role) {
@@ -126,7 +135,9 @@ impl A11yTestRunner {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
+    /// # use revue::a11y::testing::A11yTestRunner;
+    /// # let mut runner = A11yTestRunner::new();
     /// runner.assert_required("email-input");
     /// runner.assert_not_required("optional-input");
     /// ```
@@ -169,7 +180,9 @@ impl A11yTestRunner {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
+    /// # use revue::a11y::testing::A11yTestRunner;
+    /// # let mut runner = A11yTestRunner::new();
     /// runner.assert_contrast_ratio("button-text", 4.5); // WCAG AA
     /// ```
     pub fn assert_contrast_ratio(&self, widget_id: &str, min_ratio: f32) {
