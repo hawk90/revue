@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.33.0](https://github.com/hawk90/revue/compare/v2.32.0...v2.33.0) (2026-01-21)
+
+
+### Features
+
+* **a11y:** add accessibility testing helpers ([83f07ca](https://github.com/hawk90/revue/commit/83f07cad06f646482b67d65cf249a97e90d4b11a))
+* **a11y:** add accessibility testing helpers ([ef7dd6b](https://github.com/hawk90/revue/commit/ef7dd6be84a2bab21928cd08680ce861bf51e19d))
+* **a11y:** add ARIA attribute generation and modularize accessibility module ([29fde8c](https://github.com/hawk90/revue/commit/29fde8c3adb8abf08a289d2486fda43df19924f8))
+* **a11y:** add ARIA attribute generation and modularize accessibility module ([96729ad](https://github.com/hawk90/revue/commit/96729ad618b196352c3ad2491913cd76dd405421))
+
+
+### Bug Fixes
+
+* handle empty clipboard on Windows and make paste test robust ([32763cc](https://github.com/hawk90/revue/commit/32763ccf9120272b386fcd8717394e0e2d3f9ea3))
+* resolve compiler warnings causing CI failures ([fbd0385](https://github.com/hawk90/revue/commit/fbd038560d5ccb12e5bfd0bb599a0181cf1d62c0))
+* **test:** remove unused imports in worker tests ([f699c04](https://github.com/hawk90/revue/commit/f699c044ff9ede91541aa3b98874255d4ee4e2b9))
+
 ## [2.32.0](https://github.com/hawk90/revue/compare/v2.31.12...v2.32.0) (2026-01-20)
 
 
