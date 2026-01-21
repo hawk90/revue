@@ -44,3 +44,7 @@ mod textarea;
 mod theme_picker;
 mod tooltip;
 mod waveline;
+
+mod qrcode;
+mod richtext;
+mod terminal;
