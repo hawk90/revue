@@ -42,5 +42,5 @@ pre-push:
   parallel: true
   commands:
     test:
-      run: cargo test --all-features
+      run: cargo nextest run --all-features
       fail_text: "Tests failed."
