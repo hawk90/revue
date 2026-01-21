@@ -4,7 +4,26 @@
 
 use revue::worker::{WorkerError, WorkerHandle, WorkerState};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+/// Poll for a condition with a timeout, returning when the condition becomes true
+/// or the timeout elapses. Returns true if condition was met, false on timeout.
+fn poll_until<F>(mut condition: F, timeout_ms: u64) -> bool
+where
+    F: FnMut() -> bool,
+{
+    let start = Instant::now();
+    let timeout = Duration::from_millis(timeout_ms);
+    let poll_interval = Duration::from_millis(2);
+
+    while start.elapsed() < timeout {
+        if condition() {
+            return true;
+        }
+        thread::sleep(poll_interval);
+    }
+    false
+}
 
 // =============================================================================
 // Blocking Tasks Tests
@@ -53,8 +72,8 @@ fn test_spawn_blocking_immediate() {
     let handle = WorkerHandle::spawn_blocking(|| 42);
     assert!(!handle.is_finished());
 
-    // Small sleep to let task start
-    thread::sleep(Duration::from_millis(10));
+    // Wait for task to finish
+    poll_until(|| handle.is_finished(), 500);
 
     assert!(handle.is_finished());
 }
@@ -77,7 +96,8 @@ fn test_state_transitions() {
         WorkerState::Pending | WorkerState::Running | WorkerState::Completed
     ));
 
-    thread::sleep(Duration::from_millis(100));
+    // Wait for completion
+    poll_until(|| matches!(handle.state(), WorkerState::Completed), 500);
 
     assert!(matches!(handle.state(), WorkerState::Completed));
 }
@@ -91,7 +111,7 @@ fn test_is_finished_success() {
 
     assert!(!handle.is_finished());
 
-    thread::sleep(Duration::from_millis(50));
+    poll_until(|| handle.is_finished(), 500);
 
     assert!(handle.is_finished());
     assert!(handle.is_success());
@@ -106,7 +126,7 @@ fn test_is_finished_failure() {
 
     assert!(!handle.is_finished());
 
-    thread::sleep(Duration::from_millis(50));
+    poll_until(|| handle.is_finished(), 500);
 
     assert!(handle.is_finished());
     assert!(!handle.is_success());
@@ -122,14 +142,12 @@ fn test_is_running() {
     // May be running or pending initially
     let _initial_state = handle.state();
 
-    thread::sleep(Duration::from_millis(50));
-
-    // Should be running
+    // Wait a bit then check running state
+    poll_until(|| handle.is_running(), 200);
     assert!(handle.is_running());
 
-    thread::sleep(Duration::from_millis(100));
-
-    // Should be finished
+    // Wait for completion
+    poll_until(|| !handle.is_running(), 500);
     assert!(!handle.is_running());
     assert!(handle.is_finished());
 }
@@ -184,12 +202,12 @@ fn test_try_join_not_ready() {
 
 #[test]
 fn test_try_join_ready() {
-    let handle = WorkerHandle::spawn_blocking(|| 42);
+    let mut handle = WorkerHandle::spawn_blocking(|| 42);
 
-    thread::sleep(Duration::from_millis(50));
+    // Wait a bit for task to complete
+    poll_until(|| handle.try_join().is_some(), 200);
 
-    let mut handle_ref = handle;
-    let result = handle_ref.try_join();
+    let result = handle.try_join();
     assert!(result.is_some());
     assert!(result.as_ref().unwrap().is_ok());
     assert_eq!(result.unwrap().unwrap(), 42);
@@ -290,18 +308,12 @@ fn test_poll_returns_state() {
         WorkerState::Pending | WorkerState::Running
     ));
 
-    // Wait for completion with a timeout
-    let start = std::time::Instant::now();
-    loop {
-        let state = handle.poll();
-        if matches!(state, Some(WorkerState::Completed)) {
-            break;
-        }
-        if start.elapsed() > Duration::from_millis(500) {
-            panic!("Worker did not complete in time");
-        }
-        thread::sleep(Duration::from_millis(10));
-    }
+    // Wait for completion with timeout
+    let completed = poll_until(
+        || matches!(handle.poll(), Some(WorkerState::Completed)),
+        500,
+    );
+    assert!(completed, "Worker did not complete in time");
 }
 
 // =============================================================================
