@@ -289,6 +289,7 @@ mod toast;
 mod toast_queue;
 mod tooltip;
 pub mod traits;
+mod transition;
 mod tree;
 #[cfg(feature = "syntax-highlighting")]
 mod tree_sitter_highlight;
@@ -504,6 +505,10 @@ pub use tooltip::{tooltip, Tooltip, TooltipArrow, TooltipPosition, TooltipStyle}
 pub use traits::{
     Draggable, Element, EventResult, FocusStyle, Interactive, RenderContext, StyledView, Timeout,
     View, WidgetProps, WidgetState, DISABLED_BG, DISABLED_FG,
+};
+pub use transition::{
+    transition, transition_group, Animation, AnimationPreset, Transition as AnimationTransition,
+    TransitionGroup,
 };
 pub use tree::{tree, tree_node, Tree, TreeNode};
 #[cfg(feature = "syntax-highlighting")]
