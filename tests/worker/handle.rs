@@ -207,8 +207,9 @@ fn test_try_join_ready() {
         42
     });
 
-    // Wait for task to complete
-    poll_until(|| handle.try_join().is_some(), 500);
+    // Wait for task to complete - use is_finished() instead of try_join()
+    // because try_join() consumes the result, leaving nothing for the assertion
+    poll_until(|| handle.is_finished(), 500);
 
     let result = handle.try_join();
     assert!(result.is_some(), "Task should be ready by now");
