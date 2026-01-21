@@ -138,7 +138,8 @@ fn test_computed_no_data_race_on_concurrent_recompute() {
 
     let computed = Arc::new(Computed::new(move || {
         call_count_clone.fetch_add(1, Ordering::SeqCst);
-        std::thread::sleep(Duration::from_micros(100));
+        // Use longer duration to ensure concurrent access on all systems
+        std::thread::sleep(Duration::from_millis(5));
         42
     }));
 

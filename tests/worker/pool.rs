@@ -6,7 +6,26 @@ use revue::worker::{Priority, WorkerConfig, WorkerPool};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+/// Poll for a condition with a timeout, returning when the condition becomes true
+/// or the timeout elapses. Returns true if condition was met, false on timeout.
+fn poll_until<F>(mut condition: F, timeout_ms: u64) -> bool
+where
+    F: FnMut() -> bool,
+{
+    let start = Instant::now();
+    let timeout = Duration::from_millis(timeout_ms);
+    let poll_interval = Duration::from_millis(2);
+
+    while start.elapsed() < timeout {
+        if condition() {
+            return true;
+        }
+        thread::sleep(poll_interval);
+    }
+    false
+}
 
 // =============================================================================
 // WorkerPool Construction Tests
@@ -81,8 +100,6 @@ fn test_pool_submit_full_queue() {
         }
     });
 
-    thread::sleep(Duration::from_millis(50));
-
     // Fill the queue
     for _ in 0..4 {
         assert!(pool.submit(|| {}));
@@ -107,7 +124,8 @@ fn test_pool_submit_priority_ordering() {
         }
     });
 
-    thread::sleep(Duration::from_millis(10));
+    // Wait for barrier task to start
+    poll_until(|| barrier.load(Ordering::SeqCst) == 0, 50);
 
     // Queue tasks with different priorities
     let order1 = order.clone();
@@ -138,7 +156,13 @@ fn test_pool_submit_priority_ordering() {
     barrier.store(1, Ordering::SeqCst);
 
     // Wait for completion
-    thread::sleep(Duration::from_millis(200));
+    poll_until(
+        || {
+            let result = order.lock().unwrap();
+            result.len() == 3
+        },
+        500,
+    );
     pool.shutdown();
 
     let result = order.lock().unwrap();
@@ -162,7 +186,7 @@ fn test_pool_submit_many_tasks() {
     }
 
     // Wait for completion
-    thread::sleep(Duration::from_millis(500));
+    poll_until(|| counter.load(Ordering::SeqCst) == 100, 2000);
 
     assert_eq!(counter.load(Ordering::SeqCst), 100);
 }
@@ -183,7 +207,9 @@ fn test_pool_shutdown_graceful() {
 
     // Shutdown should wait for tasks to complete
     pool.shutdown();
-    thread::sleep(Duration::from_millis(200));
+
+    // Wait a bit for shutdown to complete
+    poll_until(|| counter.load(Ordering::SeqCst) > 0, 500);
 
     // Most tasks should have completed
     assert!(counter.load(Ordering::SeqCst) > 0);
@@ -218,7 +244,8 @@ fn test_priority_fifo_same_priority() {
         }
     });
 
-    thread::sleep(Duration::from_millis(10));
+    // Wait for barrier task to start
+    poll_until(|| barrier.load(Ordering::SeqCst) == 0, 50);
 
     // Queue multiple normal priority tasks
     for i in 0..5 {
@@ -234,7 +261,14 @@ fn test_priority_fifo_same_priority() {
     // Release
     barrier.store(1, Ordering::SeqCst);
 
-    thread::sleep(Duration::from_millis(200));
+    // Wait for all tasks to complete
+    poll_until(
+        || {
+            let result = order.lock().unwrap();
+            result.len() == 5
+        },
+        500,
+    );
     pool.shutdown();
 
     let result = order.lock().unwrap();
@@ -257,7 +291,8 @@ fn test_priority_high_preempts_low() {
         }
     });
 
-    thread::sleep(Duration::from_millis(10));
+    // Wait for barrier task to start
+    poll_until(|| barrier.load(Ordering::SeqCst) == 0, 50);
 
     // Queue: low, high, low
     let order1 = order.clone();
@@ -286,7 +321,14 @@ fn test_priority_high_preempts_low() {
 
     barrier.store(1, Ordering::SeqCst);
 
-    thread::sleep(Duration::from_millis(200));
+    // Wait for tasks to complete
+    poll_until(
+        || {
+            let result = order.lock().unwrap();
+            result.len() == 3
+        },
+        500,
+    );
     pool.shutdown();
 
     let result = order.lock().unwrap();
@@ -303,8 +345,7 @@ fn test_pool_active_workers() {
     let pool = WorkerPool::new(4);
 
     // All workers should be active (waiting for tasks)
-    thread::sleep(Duration::from_millis(50));
-    // Workers may not all show as active if they're waiting
+    // Just check that the method works, actual count is implementation-dependent
     let _active = pool.active_workers();
 }
 
@@ -327,7 +368,8 @@ fn test_pool_queue_length() {
         }
     });
 
-    thread::sleep(Duration::from_millis(10));
+    // Wait for barrier task to start
+    poll_until(|| barrier.load(Ordering::SeqCst) == 0, 50);
 
     // Queue some tasks
     for _ in 0..10 {
@@ -391,6 +433,7 @@ fn test_pool_concurrent_submissions() {
         handle.join().unwrap();
     }
 
-    thread::sleep(Duration::from_millis(500));
+    // Wait for all tasks to complete
+    poll_until(|| counter.load(Ordering::SeqCst) == 100, 2000);
     assert_eq!(counter.load(Ordering::SeqCst), 100);
 }
