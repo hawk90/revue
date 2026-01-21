@@ -211,6 +211,7 @@ mod dropzone;
 mod empty_state;
 mod filepicker;
 mod filetree;
+mod form;
 mod gauge;
 mod grid;
 mod heatmap;
@@ -289,6 +290,7 @@ mod toast;
 mod toast_queue;
 mod tooltip;
 pub mod traits;
+mod transition;
 mod tree;
 #[cfg(feature = "syntax-highlighting")]
 mod tree_sitter_highlight;
@@ -365,6 +367,7 @@ pub use filepicker::{
     PickerResult,
 };
 pub use filetree::{dir_entry, file_entry, file_tree, FileEntry, FileTree, FileType};
+pub use form::{form, form_field, ErrorDisplayStyle, Form, FormField, FormFieldWidget, InputType};
 pub use gauge::{battery, gauge, percentage, Gauge, GaugeStyle, LabelPosition};
 pub use grid::{
     grid, grid_item, grid_template, Grid, GridAlign, GridItem, GridPlacement, TrackSize,
@@ -504,6 +507,10 @@ pub use tooltip::{tooltip, Tooltip, TooltipArrow, TooltipPosition, TooltipStyle}
 pub use traits::{
     Draggable, Element, EventResult, FocusStyle, Interactive, RenderContext, StyledView, Timeout,
     View, WidgetProps, WidgetState, DISABLED_BG, DISABLED_FG,
+};
+pub use transition::{
+    transition, transition_group, Animation, AnimationPreset, Transition as AnimationTransition,
+    TransitionGroup,
 };
 pub use tree::{tree, tree_node, Tree, TreeNode};
 #[cfg(feature = "syntax-highlighting")]

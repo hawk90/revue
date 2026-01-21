@@ -3,22 +3,26 @@
 #![allow(unused_imports)]
 
 use revue::reactive::*;
+use serial_test::serial;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+#[serial]
 #[test]
 fn test_create_context() {
     let ctx: Context<String> = create_context();
     assert!(ctx.default().is_none());
 }
 
+#[serial]
 #[test]
 fn test_create_context_with_default() {
     let ctx = create_context_with_default("default_value".to_string());
     assert_eq!(ctx.default(), Some(&"default_value".to_string()));
 }
 
+#[serial]
 #[test]
 fn test_provide_and_use_context() {
     clear_all_contexts();
@@ -32,6 +36,7 @@ fn test_provide_and_use_context() {
     clear_all_contexts();
 }
 
+#[serial]
 #[test]
 fn test_use_context_default() {
     clear_all_contexts();
@@ -48,6 +53,7 @@ fn test_use_context_default() {
     clear_all_contexts();
 }
 
+#[serial]
 #[test]
 fn test_use_context_no_provider_no_default() {
     clear_all_contexts();
@@ -59,6 +65,7 @@ fn test_use_context_no_provider_no_default() {
     clear_all_contexts();
 }
 
+#[serial]
 #[test]
 fn test_provide_signal_reactive() {
     clear_all_contexts();
@@ -74,6 +81,7 @@ fn test_provide_signal_reactive() {
     clear_all_contexts();
 }
 
+#[serial]
 #[test]
 fn test_use_context_signal() {
     clear_all_contexts();
@@ -88,6 +96,7 @@ fn test_use_context_signal() {
     clear_all_contexts();
 }
 
+#[serial]
 #[test]
 fn test_has_context() {
     clear_all_contexts();
@@ -104,6 +113,7 @@ fn test_has_context() {
     clear_all_contexts();
 }
 
+#[serial]
 #[test]
 fn test_clear_context() {
     clear_all_contexts();
@@ -119,6 +129,7 @@ fn test_clear_context() {
     clear_all_contexts();
 }
 
+#[serial]
 #[test]
 fn test_context_scope() {
     clear_all_contexts();
@@ -139,6 +150,7 @@ fn test_context_scope() {
     clear_all_contexts();
 }
 
+#[serial]
 #[test]
 fn test_nested_context_scopes() {
     clear_all_contexts();
@@ -169,6 +181,7 @@ fn test_nested_context_scopes() {
     clear_all_contexts();
 }
 
+#[serial]
 #[test]
 fn test_with_context_scope() {
     clear_all_contexts();
@@ -187,6 +200,7 @@ fn test_with_context_scope() {
     clear_all_contexts();
 }
 
+#[serial]
 #[test]
 fn test_multiple_contexts() {
     clear_all_contexts();
@@ -206,6 +220,7 @@ fn test_multiple_contexts() {
     clear_all_contexts();
 }
 
+#[serial]
 #[test]
 fn test_context_id_uniqueness() {
     let ctx1: Context<i32> = create_context();
@@ -214,6 +229,7 @@ fn test_context_id_uniqueness() {
     assert_ne!(ctx1.id(), ctx2.id());
 }
 
+#[serial]
 #[test]
 fn test_provider_struct() {
     let ctx: Context<String> = create_context();
@@ -228,6 +244,7 @@ fn test_provider_struct() {
     assert_eq!(provider.get(), "updated!");
 }
 
+#[serial]
 #[test]
 fn test_context_clone() {
     let ctx = create_context_with_default(42);

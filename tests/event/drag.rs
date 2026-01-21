@@ -2,7 +2,9 @@
 
 use revue::event::{DragContext, DragData, DragState, DropTarget};
 use revue::layout::Rect;
+use serial_test::serial;
 
+#[serial]
 #[test]
 fn test_drag_data_text() {
     let data = DragData::text("Hello");
@@ -11,6 +13,7 @@ fn test_drag_data_text() {
     assert_eq!(data.display_label(), "Hello");
 }
 
+#[serial]
 #[test]
 fn test_drag_data_list_item() {
     let data = DragData::list_item(5, "Item 5");
@@ -19,6 +22,7 @@ fn test_drag_data_list_item() {
     assert_eq!(data.display_label(), "Item 5");
 }
 
+#[serial]
 #[test]
 fn test_drag_data_custom() {
     #[derive(Debug)]
@@ -31,6 +35,7 @@ fn test_drag_data_custom() {
     assert_eq!(data.get::<MyData>().map(|d| d.value), Some(42));
 }
 
+#[serial]
 #[test]
 fn test_drag_state() {
     assert!(!DragState::Idle.is_active());
@@ -42,6 +47,7 @@ fn test_drag_state() {
     assert!(DragState::OverTarget.is_over_target());
 }
 
+#[serial]
 #[test]
 fn test_drag_context_basic() {
     let mut ctx = DragContext::new();
@@ -56,6 +62,7 @@ fn test_drag_context_basic() {
     assert!(ctx.is_dragging());
 }
 
+#[serial]
 #[test]
 fn test_drag_context_threshold() {
     let mut ctx = DragContext::new().threshold(5);
@@ -71,6 +78,7 @@ fn test_drag_context_threshold() {
     assert_eq!(ctx.state(), DragState::Dragging);
 }
 
+#[serial]
 #[test]
 fn test_drop_target() {
     let target = DropTarget::new(1, Rect::new(10, 10, 20, 10)).accepts(&["text", "file"]);
@@ -85,6 +93,7 @@ fn test_drop_target() {
     assert!(!target.can_accept(&other_data));
 }
 
+#[serial]
 #[test]
 fn test_drop_target_accepts_all() {
     let target = DropTarget::new(1, Rect::new(0, 0, 10, 10)).accepts_all();
@@ -96,6 +105,7 @@ fn test_drop_target_accepts_all() {
     assert!(target.can_accept(&other_data));
 }
 
+#[serial]
 #[test]
 fn test_drag_context_with_targets() {
     let mut ctx = DragContext::new().threshold(0);
@@ -118,6 +128,7 @@ fn test_drag_context_with_targets() {
     assert_eq!(ctx.hovered_target(), None);
 }
 
+#[serial]
 #[test]
 fn test_drag_context_end_drag() {
     let mut ctx = DragContext::new().threshold(0);
@@ -137,6 +148,7 @@ fn test_drag_context_end_drag() {
     assert_eq!(ctx.state(), DragState::Dropped);
 }
 
+#[serial]
 #[test]
 fn test_drag_context_cancel() {
     let mut ctx = DragContext::new().threshold(0);
@@ -151,6 +163,7 @@ fn test_drag_context_cancel() {
     assert!(ctx.data().is_none());
 }
 
+#[serial]
 #[test]
 fn test_drag_offset() {
     let mut ctx = DragContext::new();
