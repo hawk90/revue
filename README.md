@@ -115,21 +115,86 @@ button:hover {
 
 | Category | Components |
 |:---------|:-----------|
-| **Layout** | `vstack` `hstack` `grid` `scroll` `tabs` `accordion` `splitter` |
-| **Input** | `input` `textarea` `select` `checkbox` `radio` `switch` `slider` |
+| **Layout** | `vstack` `hstack` `grid` `scroll` `tabs` `accordion` `splitter` `layers` |
+| **Input** | `input` `textarea` `select` `checkbox` `radio` `switch` `slider` `number_input` |
+| **Forms** | `form` `form_field` validation system |
 | **Display** | `text` `markdown` `table` `tree` `list` `progress` `badge` `image` `presentation` |
-| **Feedback** | `modal` `toast` `notification` `tooltip` `popover` |
-| **Charts** | `barchart` `line_chart` `sparkline` `heatmap` `gauge` |
+| **Feedback** | `modal` `toast` `notification` `tooltip` `popover` `alert` `callout` |
+| **Charts** | `barchart` `line_chart` `sparkline` `heatmap` `gauge` `boxplot` `histogram` |
+| **Advanced** | `rich_text_editor` `json_viewer` `csv_viewer` `diagram` `command_palette` |
+| **Dev** | `debug_overlay` `snapshot_test` `profiler` |
+
+> **100+ Widgets** — See [FEATURES.md](docs/FEATURES.md) for complete catalog
+
+<br>
+
+## Key Features
+
+### Reactive Forms
+Automatic validation with type-safe form state:
+```rust
+Form::new()
+    .field(FormField::new("email").label("Email").required())
+    .field(FormField::new("password").label("Password").min_length(8))
+    .on_submit(|data| handle_login(data))
+```
+
+### Animation System
+Rich animations with easing functions:
+```rust
+text("Hello!")
+    .animation(Animation::fade_in().duration(300))
+    .animation(Animation::slide_in_left())
+```
+
+### Worker Pool
+Background task execution:
+```rust
+let handle = WorkerHandle::spawn_blocking(|| heavy_computation());
+pool.submit(|| fetch_data_from_api());
+```
+
+### Hot Reload
+CSS changes update instantly without restart:
+```rust
+App::builder()
+    .style("styles.css")
+    .hot_reload(true)
+    .build()
+```
+
+### DevTools
+Built-in widget inspector and profiler:
+```rust
+App::builder()
+    .devtools(true)
+    .build()
+```
 
 <br>
 
 ## Examples
 
 ```bash
-cargo run --example counter      # Basic counter
-cargo run --example todo         # Todo app
-cargo run --example dashboard    # Charts & widgets
-cargo run --example slideshow    # Slidev-style presentations
+# Basics
+cargo run --example counter       # Reactive counter with Signal
+cargo run --example todo          # Full-featured todo app
+cargo run --example hello_world   # Minimal "Hello World"
+
+# UI Components
+cargo run --example form          # Form validation demo
+cargo run --example dashboard     # Charts and data widgets
+cargo run --example gallery       # Widget showcase
+
+# Advanced
+cargo run --example animations    # Animation system
+cargo run --example worker        # Background tasks
+cargo run --example slideshow     # Terminal presentations
+cargo run --example ide           # Rich text editor
+
+# Real-world
+cargo run --example chat          # Multi-user chat
+cargo run --example data_explorer # JSON/CSV viewer
 ```
 
 <br>
@@ -141,17 +206,23 @@ cargo run --example slideshow    # Slidev-style presentations
 | **Language** | Rust | Rust | Rust | Python |
 | **Styling** | CSS | Code | Theme | CSS |
 | **Reactivity** | Signal | Manual | Event | Reactive |
+| **Forms** | ✅ Built-in | ❌ | ❌ | ✅ |
+| **Animation** | ✅ Tween+Keyframes | ❌ | ❌ | ✅ |
+| **Worker Pool** | ✅ | ❌ | ❌ | ❌ |
 | **Hot Reload** | ✅ | ❌ | ❌ | ✅ |
 | **Devtools** | ✅ | ❌ | ❌ | ✅ |
+| **Single Binary** | ✅ | ✅ | ✅ | ❌ |
 
 <br>
 
 ## Documentation
 
-- [API Reference](https://docs.rs/revue) — Full API documentation
-- [Styling Guide](docs/guides/styling.md) — CSS properties and theming
-- [Features](docs/FEATURES.md) — Widget catalog and capabilities
-- [Architecture](docs/ARCHITECTURE.md) — System design
+- **[Getting Started](docs/tutorials/01-getting-started.md)** — 5-minute tutorial
+- **[Widget Catalog](docs/FEATURES.md)** — Complete widget reference
+- **[Styling Guide](docs/guides/styling.md)** — CSS properties and theming
+- **[State Management](docs/guides/state.md)** — Signals, Computed, Effects
+- **[API Reference](https://docs.rs/revue)** — Full API documentation
+- **[Architecture](docs/ARCHITECTURE.md)** — System design
 
 <br>
 

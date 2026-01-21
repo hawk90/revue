@@ -1246,6 +1246,344 @@ if let Some(remaining) = debouncer.remaining() {
 
 ---
 
+## Advanced Widgets (New)
+
+### Form System
+
+Complete form validation with automatic field management:
+
+```rust
+use revue::widget::form::{Form, FormField, FormState};
+
+// Define form data
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct LoginForm {
+    username: String,
+    password: String,
+    remember: bool,
+}
+
+// Create form with validation
+let form = Form::new()
+    .field(FormField::new("username")
+        .label("Username")
+        .placeholder("Enter username")
+        .required()
+        .min_length(3))
+    .field(FormField::new("password")
+        .label("Password")
+        .password()
+        .required()
+        .min_length(8))
+    .field(FormField::new("remember")
+        .label("Remember me")
+        .checkbox())
+    .on_submit(|data| {
+        // Handle validated form data
+        println!("Form submitted: {:?}", data);
+    });
+
+// Access form state
+if let Some(errors) = form.state().errors() {
+    // Display validation errors
+}
+```
+
+### Animation System
+
+Rich animation support with easing functions:
+
+```rust
+use revue::animation::{Animation, Easing, presets};
+
+// Fade in animation
+let fade_in = Animation::fade_in()
+    .duration(Duration::from_millis(300))
+    .easing(Easing::EaseOutCubic);
+
+// Slide animation
+let slide = Animation::slide_in_left()
+    .duration(Duration::from_millis(400))
+    .delay(Duration::from_millis(100));
+
+// CSS-like keyframes
+Animation::keyframes("bounce")
+    .step(0%, |anim| anim.scale(1.0))
+    .step(50%, |anim| anim.scale(1.2))
+    .step(100%, |anim| anim.scale(1.0));
+
+// Apply to widget
+text("Animated!")
+    .animation(fade_in)
+```
+
+### Worker Pool
+
+Background task execution with state tracking:
+
+```rust
+use revue::worker::{WorkerPool, WorkerHandle};
+
+// Create worker pool
+let pool = WorkerPool::new(4);
+
+// Submit blocking task
+let handle = WorkerHandle::spawn_blocking(|| {
+    // Perform expensive computation
+    heavy_computation()
+});
+
+// Check state
+match handle.state() {
+    WorkerState::Pending => {},
+    WorkerState::Running => {},
+    WorkerState::Completed => {
+        let result = handle.join()?;
+    },
+    WorkerState::Failed => {},
+}
+
+// Submit to pool
+pool.submit(|| {
+    // Background work
+    fetch_data_from_api();
+});
+```
+
+### Command Palette
+
+Fuzzy search command menu:
+
+```rust
+command_palette()
+    .commands(vec![
+        Command::new("Save", 's', || save_file()),
+        Command::new("Open", 'o', || open_file()),
+        Command::new("Quit", 'q', || quit_app()),
+    ])
+    .placeholder("Type a command...")
+    .show(show_palette.get())
+```
+
+### File Pickers
+
+File and directory selection:
+
+```rust
+// File picker
+file_picker()
+    .title("Open File")
+    .filter("*.rs")
+    .on_select(|path| load_file(path))
+
+// Directory picker
+dir_picker()
+    .title("Select Directory")
+    .on_select(|path| change_directory(path))
+
+// Save picker
+save_picker()
+    .title("Save As")
+    .default_name("untitled.rs")
+    .on_select(|path| save_file(path))
+```
+
+### Color Picker
+
+Interactive color selection:
+
+```rust
+color_picker()
+    .value(selected_color.get())
+    .on_change(|color| {
+        selected_color.set(color);
+    })
+```
+
+### Advanced Charts
+
+More chart types:
+
+```rust
+// Box plot
+boxplot()
+    .data(dataset)
+    .title("Distribution")
+
+// Heatmap
+heatmap()
+    .data(matrix)
+    .color_scale(HeatmapColor::Viridis)
+
+// Candle chart (financial)
+candlestick()
+    .data(ohlc_data)
+    .title("Stock Price")
+
+// Histogram
+histogram()
+    .data(values)
+    .bins(20)
+```
+
+### Process Monitor
+
+htop-style process viewer:
+
+```rust
+procmon()
+    .refresh_rate(Duration::from_secs(1))
+    .sort_by(ProcessSort::CPU)
+```
+
+### HTTP Client
+
+REST API client widget:
+
+```rust
+http_client()
+    .base_url("https://api.example.com")
+    .endpoint("/users")
+    .method(Method::GET)
+    .on_response(|data| handle_response(data))
+```
+
+### QR Code
+
+QR code generation:
+
+```rust
+qrcode()
+    .data("https://example.com")
+    .size(QrSize::Medium)
+    .error_correction(QrLevel::M)
+```
+
+### Rating
+
+Star rating component:
+
+```rust
+rating()
+    .value(rating.get())
+    .max(5)
+    .interactive(true)
+    .on_change(|rating| rating.set(rating))
+```
+
+### Drop Zone
+
+File drag-and-drop zone:
+
+```rust
+drop_zone()
+    .label("Drop files here")
+    .on_drop(|files| handle_files(files))
+```
+
+### Search Bar
+
+Search with suggestions:
+
+```rust
+search_bar()
+    .placeholder("Search...")
+    .suggestions(suggestions)
+    .on_select(|item| navigate_to(item))
+```
+
+### Multi Select
+
+Multiple selection list:
+
+```rust
+multi_select()
+    .items(items)
+    .selected(selected_items)
+    .on_change(|items| selected_items.set(items))
+```
+
+### Status Indicator
+
+Online/busy/offline status:
+
+```rust
+status_indicator()
+    .status(Status::Online)
+    .label("Available")
+```
+
+### Big Text
+
+Large text with size presets:
+
+```rust
+h1().child("Heading 1")  // Largest
+h2().child("Heading 2")
+h3().child("Heading 3")
+
+// Or use generic bigtext
+bigtext().size(BigTextSize::XL).child("XL Text")
+```
+
+### Skeleton
+
+Loading placeholder:
+
+```rust
+skeleton()
+    .width(20)
+    .height(1)
+```
+
+### Tag/Chip
+
+Label tags:
+
+```rust
+tag("Rust").color(Color::ORANGE)
+chip("v1.0").variant(ChipVariant::Outlined)
+```
+
+### Number Input
+
+Numeric input with validation:
+
+```rust
+number_input()
+    .value(number.get())
+    .min(0)
+    .max(100)
+    .step(5)
+    .on_change(|n| number.set(n))
+```
+
+### Range Picker
+
+Date range selection:
+
+```rust
+range_picker()
+    .start(start_date.get())
+    .end(end_date.get())
+    .on_change(|(start, end)| {
+        start_date.set(start);
+        end_date.set(end);
+    })
+```
+
+### Zen Mode
+
+Distraction-free mode:
+
+```rust
+zen()
+    .content(main_view())
+    .exit_key(Key::Escape)
+```
+
+---
+
 ## Feature Comparison
 
 | Feature | Revue | Textual | Ratatui | Cursive |
@@ -1256,6 +1594,9 @@ if let Some(remaining) = debouncer.remaining() {
 | Signal/Reactivity | ✅ | ✅ | ❌ | ❌ |
 | Hot Reload | ✅ | ✅ | ❌ | ❌ |
 | Devtools | ✅ | ✅ | ❌ | ❌ |
+| Form Validation | ✅ | ❌ | ❌ | ❌ |
+| Animation System | ✅ | ❌ | ❌ | ❌ |
+| Worker Pool | ✅ | ❌ | ❌ | ❌ |
 | Command Palette | ✅ | ✅ | ❌ | ❌ |
 | Markdown | ✅ | ✅ | △ | ❌ |
 | Image | ✅ Kitty | △ | △ | ❌ |
