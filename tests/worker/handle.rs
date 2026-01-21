@@ -310,10 +310,18 @@ fn test_poll_returns_state() {
         WorkerState::Pending | WorkerState::Running
     ));
 
-    thread::sleep(Duration::from_millis(50));
-
-    let state = handle.poll();
-    assert!(matches!(state, Some(WorkerState::Completed)));
+    // Wait for completion with a timeout
+    let start = std::time::Instant::now();
+    loop {
+        let state = handle.poll();
+        if matches!(state, Some(WorkerState::Completed)) {
+            break;
+        }
+        if start.elapsed() > Duration::from_millis(500) {
+            panic!("Worker did not complete in time");
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
 }
 
 // =============================================================================
