@@ -34,3 +34,4 @@ sav = "sav"          # partial match in save
 Ded = "Ded"          # partial match in Dead
 hel = "hel"          # lowercase partial
 nd = "nd"            # partial match in and
+labelled = "labelled"  # ARIA attribute: aria-labelledby
