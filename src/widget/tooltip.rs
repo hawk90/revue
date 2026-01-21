@@ -378,7 +378,7 @@ impl Tooltip {
                         let y = anchor_y.saturating_sub(tooltip_h / 2);
                         (x, y)
                     }
-                    TooltipPosition::Auto => unreachable!(),
+                    _ => unreachable!("Auto position should be resolved before this match"),
                 };
                 (x, y, pos)
             }

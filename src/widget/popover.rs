@@ -435,7 +435,7 @@ impl Popover {
                         let y = anchor_y.saturating_sub(popup_h / 2);
                         (x, y)
                     }
-                    PopoverPosition::Auto => unreachable!(),
+                    _ => unreachable!("Auto position should be resolved before this match"),
                 };
                 (x, y, pos)
             }
