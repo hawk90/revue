@@ -14,7 +14,7 @@
 [![Rust 1.87+](https://img.shields.io/badge/MSRV-1.87%2B-orange?style=flat-square&logo=rust)](https://www.rust-lang.org)
 [![downloads](https://img.shields.io/crates/d/revue?style=flat-square&label=downloads&color=blue)](https://crates.io/crates/revue)
 
-[Quick Start](#quick-start) · [Examples](examples/) · [Documentation](https://docs.rs/revue) · [Contributing](CONTRIBUTING.md)
+[Quick Start](#quick-start) · [Tutorials](docs/tutorials/) · [Examples](examples/) · [Documentation](docs/) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -111,13 +111,138 @@ button:hover {
 
 <br>
 
+## Key Features
+
+### Reactive Forms
+
+Automatic validation with type-safe form state:
+
+```rust
+use revue::patterns::form::FormState;
+
+let form = FormState::new()
+    .field("email", |f| f
+        .label("Email")
+        .email()
+        .required())
+    .field("password", |f| f
+        .label("Password")
+        .password()
+        .min_length(8))
+    .field("confirm", |f| f
+        .label("Confirm Password")
+        .password()
+        .matches("password"))
+    .build();
+
+// Reactive validation - errors auto-update when values change
+form.set_value("email", "invalid");
+assert!(!form.is_valid());
+
+form.set_value("email", "user@example.com");
+// Validation automatically recalculates
+```
+
+See [Forms Tutorial](docs/tutorials/06-forms.md) for complete guide.
+
+### Animation System
+
+Rich animations with easing functions and keyframes:
+
+```rust
+use revue::animation::{Animation, Easing};
+
+// Fade in with custom easing
+text("Hello!")
+    .animation(Animation::fade_in()
+        .duration(300)
+        .easing(Easing::EaseInOutCubic))
+
+// Slide in from left
+text("Welcome!")
+    .animation(Animation::slide_in_left()
+        .duration(500)
+        .delay(100))
+
+// Keyframe animation
+text("Pulsing!")
+    .animation(Animation::keyframe(|keyframes| {
+        keyframes
+            .at(0, |kf| kf.scale(1.0).opacity(1.0))
+            .at(50, |kf| kf.scale(1.2).opacity(0.8))
+            .at(100, |kf| kf.scale(1.0).opacity(1.0))
+    }))
+```
+
+### Worker Pool
+
+Execute background tasks without blocking the UI:
+
+```rust
+use revue::worker::{WorkerHandle, WorkerPool};
+
+// Spawn blocking task
+let handle = WorkerHandle::spawn_blocking(|| {
+    heavy_computation()
+});
+
+// Use worker pool
+let pool = WorkerPool::new(4);
+pool.submit(|| {
+    fetch_data_from_api()
+});
+
+// Get result when ready
+if let Some(result) = handle.try_recv() {
+    // Update UI with result
+}
+```
+
+### Hot Reload
+
+CSS changes update instantly without restart:
+
+```rust
+let mut app = App::builder()
+    .style("styles.css")
+    .hot_reload(true)  // Enable hot reload
+    .build();
+
+app.run(view, handler)?;
+```
+
+Edit `styles.css` and see changes immediately - no restart needed!
+
+### DevTools
+
+Built-in widget inspector and profiler:
+
+```rust
+let mut app = App::builder()
+    .devtools(true)  // Enable devtools
+    .build();
+
+app.run(view, handler)?;
+```
+
+**Keyboard shortcuts:**
+- `Ctrl+D` — Toggle devtools overlay
+- `Ctrl+I` — Open widget inspector
+
+**Features:**
+- Widget inspector with computed styles
+- Performance profiler for identifying bottlenecks
+- Snapshot testing for UI regression testing
+
+<br>
+
 ## Widgets
 
 | Category | Components |
 |:---------|:-----------|
 | **Layout** | `vstack` `hstack` `grid` `scroll` `tabs` `accordion` `splitter` `layers` |
 | **Input** | `input` `textarea` `select` `checkbox` `radio` `switch` `slider` `number_input` |
-| **Forms** | `form` `form_field` validation system |
+| **Forms** | `form` `form_field` — Built-in validation system |
 | **Display** | `text` `markdown` `table` `tree` `list` `progress` `badge` `image` `presentation` |
 | **Feedback** | `modal` `toast` `notification` `tooltip` `popover` `alert` `callout` |
 | **Charts** | `barchart` `line_chart` `sparkline` `heatmap` `gauge` `boxplot` `histogram` |
@@ -131,45 +256,125 @@ button:hover {
 ## Key Features
 
 ### Reactive Forms
+
 Automatic validation with type-safe form state:
+
 ```rust
-Form::new()
-    .field(FormField::new("email").label("Email").required())
-    .field(FormField::new("password").label("Password").min_length(8))
-    .on_submit(|data| handle_login(data))
+use revue::patterns::form::FormState;
+
+let form = FormState::new()
+    .field("email", |f| f
+        .label("Email")
+        .email()
+        .required())
+    .field("password", |f| f
+        .label("Password")
+        .password()
+        .min_length(8))
+    .field("confirm", |f| f
+        .label("Confirm Password")
+        .password()
+        .matches("password"))
+    .build();
+
+// Reactive validation - errors auto-update when values change
+form.set_value("email", "invalid");
+assert!(!form.is_valid());
+
+form.set_value("email", "user@example.com");
+// Validation automatically recalculates
 ```
 
+See [Forms Tutorial](docs/tutorials/06-forms.md) for complete guide.
+
 ### Animation System
-Rich animations with easing functions:
+
+Rich animations with easing functions and keyframes:
+
 ```rust
+use revue::animation::{Animation, Easing};
+
+// Fade in with custom easing
 text("Hello!")
-    .animation(Animation::fade_in().duration(300))
-    .animation(Animation::slide_in_left())
+    .animation(Animation::fade_in()
+        .duration(300)
+        .easing(Easing::EaseInOutCubic))
+
+// Slide in from left
+text("Welcome!")
+    .animation(Animation::slide_in_left()
+        .duration(500)
+        .delay(100))
+
+// Keyframe animation
+text("Pulsing!")
+    .animation(Animation::keyframe(|keyframes| {
+        keyframes
+            .at(0, |kf| kf.scale(1.0).opacity(1.0))
+            .at(50, |kf| kf.scale(1.2).opacity(0.8))
+            .at(100, |kf| kf.scale(1.0).opacity(1.0))
+    }))
 ```
 
 ### Worker Pool
-Background task execution:
+
+Execute background tasks without blocking the UI:
+
 ```rust
-let handle = WorkerHandle::spawn_blocking(|| heavy_computation());
-pool.submit(|| fetch_data_from_api());
+use revue::worker::{WorkerHandle, WorkerPool};
+
+// Spawn blocking task
+let handle = WorkerHandle::spawn_blocking(|| {
+    heavy_computation()
+});
+
+// Use worker pool
+let pool = WorkerPool::new(4);
+pool.submit(|| {
+    fetch_data_from_api()
+});
+
+// Get result when ready
+if let Some(result) = handle.try_recv() {
+    // Update UI with result
+}
 ```
 
 ### Hot Reload
+
 CSS changes update instantly without restart:
+
 ```rust
-App::builder()
+let mut app = App::builder()
     .style("styles.css")
-    .hot_reload(true)
-    .build()
+    .hot_reload(true)  // Enable hot reload
+    .build();
+
+app.run(view, handler)?;
 ```
 
+Edit `styles.css` and see changes immediately - no restart needed!
+
 ### DevTools
+
 Built-in widget inspector and profiler:
+
 ```rust
-App::builder()
-    .devtools(true)
-    .build()
+let mut app = App::builder()
+    .devtools(true)  // Enable devtools
+    .build();
+
+app.run(view, handler)?;
 ```
+
+**Keyboard shortcuts:**
+- `Ctrl+D` — Toggle devtools overlay
+- `Ctrl+I` — Open widget inspector
+
+**Features:**
+- Widget inspector with computed styles
+- Performance profiler for identifying bottlenecks
+- Snapshot testing for UI regression testing
 
 <br>
 
@@ -196,6 +401,35 @@ cargo run --example ide           # Rich text editor
 cargo run --example chat          # Multi-user chat
 cargo run --example data_explorer # JSON/CSV viewer
 ```
+
+Browse all examples in the [examples/](examples/) directory.
+
+<br>
+
+## Tutorials
+
+| Tutorial | Description | Time |
+|:---------|:------------|:-----|
+| [Getting Started](docs/tutorials/01-getting-started.md) | Install and create your first app | 5 min |
+| [Counter App](docs/tutorials/02-counter.md) | Learn state management with signals | 10 min |
+| [Todo App](docs/tutorials/03-todo.md) | Build a full-featured todo list | 20 min |
+| [Reactive State](docs/tutorials/04-reactive.md) | Deep dive into Signal, Computed, Effect | 15 min |
+| [Styling](docs/tutorials/05-styling.md) | CSS styling and theming | 15 min |
+| [Forms](docs/tutorials/06-forms.md) | Form handling with validation | 20 min |
+
+<br>
+
+## Guides
+
+| Guide | Description |
+|:------|:------------|
+| [App Builder](docs/guides/app-builder.md) | Complete App Builder API reference |
+| [Styling](docs/guides/styling.md) | CSS properties, selectors, and theming |
+| [State Management](docs/guides/state.md) | Reactive state with signals |
+| [Testing](docs/guides/testing.md) | Test your TUI apps |
+| [Accessibility](docs/guides/accessibility.md) | Build inclusive apps |
+| [Performance](docs/guides/performance.md) | Optimization tips |
+| [Plugin System](docs/guides/plugins.md) | Create and use plugins |
 
 <br>
 
@@ -236,6 +470,13 @@ git clone https://github.com/hawk90/revue.git
 cd revue && cargo test
 ```
 
+**Development workflow:**
+1. Fork the repository
+2. Create a feature branch (`feat/your-feature`, `fix/your-bug`)
+3. Make your changes with tests
+4. Run `cargo test` and `cargo clippy`
+5. Submit a pull request
+
 <br>
 
 ## License
@@ -246,6 +487,8 @@ MIT License — see [LICENSE](LICENSE) for details.
 <br>
 
 **[↑ Back to Top](#why-revue)**
+
+[crates.io](https://crates.io/crates/revue) · [docs.rs](https://docs.rs/revue) · [GitHub](https://github.com/hawk90/revue)
 
 <sub>Built with Rust</sub>
 

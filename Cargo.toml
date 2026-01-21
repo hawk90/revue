@@ -124,8 +124,12 @@ name = "dom"
 harness = false
 
 [features]
-default = ["full"]
-# All features enabled (current behavior)
+# Default features - essential for most apps
+default = [
+    "async",
+    "config",
+]
+# All features enabled (for examples/tests)
 full = [
     "devtools",
     "async",
@@ -141,6 +145,11 @@ full = [
     "hot-reload",
 ]
 devtools = []
+
+# Preset feature groups
+std = ["async", "config", "tracing"]
+gui = ["async", "config", "markdown", "image"]
+all-gui = ["std", "syntax-highlighting", "qrcode", "sysinfo", "diff", "clipboard", "hot-reload"]
 
 # Core optional features
 async = ["dep:tokio"]
@@ -181,3 +190,17 @@ required-features = ["markdown"]
 version = "1"
 features = ["rt-multi-thread", "macros", "time", "sync"]
 optional = true
+
+# Optimize for smaller binary size
+[profile.release]
+strip = true              # Remove debug symbols
+lto = true                  # Link-time optimization
+codegen-units = 1         # Better optimization at cost of compile time
+opt-level = "z"             # Optimize for size
+panic = "abort"            # Reduce binary size
+
+# Maintain debug info for profiling
+[profile.release-debug]
+inherits = "release"
+debug = true
+strip = false
