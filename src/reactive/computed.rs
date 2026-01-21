@@ -53,7 +53,10 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
     pub fn get(&self) -> T {
         // Fast path: check if we can use cached value without locking
         if !self.needs_recompute() {
-            return self.get_cached();
+            if let Some(value) = self.get_cached() {
+                return value;
+            }
+            // Cache unexpectedly empty, fall through to recompute
         }
 
         // Slow path: acquire recompute lock to prevent data race
@@ -67,7 +70,11 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
         if self.needs_recompute() {
             self.recompute_and_cache()
         } else {
-            self.get_cached()
+            // Cache should exist here, but handle gracefully if not
+            match self.get_cached() {
+                Some(value) => value,
+                None => self.recompute_and_cache(),
+            }
         }
     }
 
@@ -113,15 +120,15 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
 
     /// Get the cached value
     ///
-    /// Returns the cached value if present, or panics if cache is empty.
-    /// This should only be called when `needs_recompute()` returns false.
-    fn get_cached(&self) -> T {
+    /// Returns the cached value if present, or None if cache is empty.
+    /// This should only be called when `needs_recompute()` returns false,
+    /// but handles the empty cache case gracefully.
+    fn get_cached(&self) -> Option<T> {
         self.cached
             .read()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .as_ref()
-            .expect("get_cached called but cache is empty; this is a bug in Computed")
-            .clone()
+            .cloned()
     }
 
     /// Force recalculation on next get

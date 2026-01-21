@@ -6,7 +6,26 @@ use revue::style::Color;
 use revue::widget::traits::{RenderContext, StyledView};
 use revue::widget::{Timer, TimerFormat, TimerState, View};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+/// Poll for a condition with a timeout, returning when the condition becomes true
+/// or the timeout elapses. Returns true if condition was met, false on timeout.
+fn poll_until<F>(mut condition: F, timeout_ms: u64) -> bool
+where
+    F: FnMut() -> bool,
+{
+    let start = Instant::now();
+    let timeout = Duration::from_millis(timeout_ms);
+    let poll_interval = Duration::from_millis(5);
+
+    while start.elapsed() < timeout {
+        if condition() {
+            return true;
+        }
+        thread::sleep(poll_interval);
+    }
+    false
+}
 
 // =============================================================================
 // Constructor Tests
@@ -232,9 +251,14 @@ fn test_timer_stop() {
 fn test_timer_reset() {
     let mut timer = Timer::countdown(60);
     timer.start();
-    thread::sleep(Duration::from_millis(100));
-    timer.update();
-
+    // Wait for timer to advance (poll for up to 500ms)
+    poll_until(
+        || {
+            timer.update();
+            timer.remaining_seconds() < 60
+        },
+        500,
+    );
     let remaining = timer.remaining_seconds();
     timer.reset();
     assert_eq!(timer.remaining_seconds(), 60);
@@ -283,7 +307,14 @@ fn test_timer_toggle_from_completed() {
 fn test_timer_resume_from_pause() {
     let mut timer = Timer::countdown(60);
     timer.start();
-    thread::sleep(Duration::from_millis(100));
+    // Wait for timer to advance
+    poll_until(
+        || {
+            timer.update();
+            timer.remaining_seconds() < 60
+        },
+        500,
+    );
     timer.pause();
 
     let paused_remaining = timer.remaining_seconds();
@@ -311,8 +342,14 @@ fn test_timer_progress_half() {
     let mut timer = Timer::countdown(60);
     let initial = timer.progress();
     timer.start();
-    thread::sleep(Duration::from_millis(100));
-    timer.update();
+    // Wait for progress to increase
+    poll_until(
+        || {
+            timer.update();
+            timer.progress() > initial
+        },
+        500,
+    );
     // Progress should increase as time passes
     assert!(timer.progress() > initial);
 }
@@ -339,8 +376,14 @@ fn test_timer_progress_increases() {
     let initial_progress = timer.progress();
 
     timer.start();
-    thread::sleep(Duration::from_millis(100));
-    timer.update();
+    // Wait for progress to increase
+    poll_until(
+        || {
+            timer.update();
+            timer.progress() > initial_progress
+        },
+        500,
+    );
 
     let later_progress = timer.progress();
     assert!(later_progress > initial_progress);
@@ -371,8 +414,14 @@ fn test_timer_update_when_paused() {
 fn test_timer_update_decrements_time() {
     let mut timer = Timer::countdown(60);
     timer.start();
-    thread::sleep(Duration::from_millis(100));
-    timer.update();
+    // Wait for timer to decrement
+    poll_until(
+        || {
+            timer.update();
+            timer.remaining_seconds() < 60
+        },
+        500,
+    );
 
     assert!(timer.remaining_seconds() < 60);
     assert!(timer.remaining_seconds() > 0);
@@ -407,8 +456,8 @@ fn test_timer_auto_restart() {
 #[test]
 fn test_timer_color_normal() {
     let timer = Timer::countdown(120); // Above warning threshold
-    // Default warning is 60s
-    // current_color returns white when above warning
+                                       // Default warning is 60s
+                                       // current_color returns white when above warning
     assert_eq!(timer.remaining_seconds(), 120);
 }
 
@@ -706,7 +755,9 @@ fn test_timer_format_precise_zero() {
 #[test]
 fn test_timer_threshold_edge_case() {
     // Test with timer exactly at warning threshold
-    let timer = Timer::countdown(10).warning_threshold(10).danger_threshold(5);
+    let timer = Timer::countdown(10)
+        .warning_threshold(10)
+        .danger_threshold(5);
     assert_eq!(timer.remaining_seconds(), 10);
     // Exactly at warning threshold
 }
@@ -841,7 +892,9 @@ fn test_timer_view_classes_with_values() {
 
 #[test]
 fn test_timer_view_meta() {
-    let timer = Timer::countdown(60).element_id("test-id").class("test-class");
+    let timer = Timer::countdown(60)
+        .element_id("test-id")
+        .class("test-class");
     let meta = timer.meta();
     assert_eq!(meta.widget_type, "Timer");
     assert_eq!(meta.id, Some("test-id".to_string()));
@@ -974,8 +1027,14 @@ fn test_timer_tick_integration() {
     let mut timer = Timer::countdown(1); // 1 second
     timer.start();
 
-    thread::sleep(Duration::from_millis(500));
-    timer.update();
+    // Wait for timer to progress (but not complete)
+    poll_until(
+        || {
+            timer.update();
+            timer.remaining_seconds() < 1
+        },
+        500,
+    );
 
     // Should have progressed but not completed
     assert!(timer.remaining_seconds() < 1);

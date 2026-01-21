@@ -41,22 +41,31 @@ mod shared_runtime {
     static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 
     /// Get or create the shared runtime handle
-    pub fn handle() -> Handle {
+    ///
+    /// Returns an error string if runtime creation fails instead of panicking.
+    pub fn handle() -> Result<Handle, String> {
         // First, try to get the current runtime if we're already in one
         if let Ok(handle) = Handle::try_current() {
-            return handle;
+            return Ok(handle);
         }
 
-        // Otherwise, use/create the shared runtime
-        RUNTIME
-            .get_or_init(|| {
-                tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("Failed to create shared tokio runtime")
-            })
-            .handle()
-            .clone()
+        // Try to get or create the shared runtime
+        // If initialization failed, return an error instead of panicking
+        if let Some(runtime) = RUNTIME.get() {
+            Ok(runtime.handle().clone())
+        } else {
+            // Attempt to create the runtime
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map(|runtime| {
+                    RUNTIME
+                        .set(runtime)
+                        .expect("Another thread initialized runtime first");
+                    RUNTIME.get().unwrap().handle().clone()
+                })
+                .map_err(|e| format!("Failed to create tokio runtime: {}", e))
+        }
     }
 }
 
@@ -82,6 +91,8 @@ pub enum WorkerError {
     Timeout,
     /// Custom error
     Custom(String),
+    /// Runtime creation failed
+    RuntimeCreationFailed(String),
 }
 
 impl std::fmt::Display for WorkerError {
@@ -92,6 +103,9 @@ impl std::fmt::Display for WorkerError {
             WorkerError::ChannelClosed => write!(f, "Worker channel closed"),
             WorkerError::Timeout => write!(f, "Worker task timed out"),
             WorkerError::Custom(msg) => write!(f, "Worker error: {}", msg),
+            WorkerError::RuntimeCreationFailed(msg) => {
+                write!(f, "Failed to create tokio runtime: {}", msg)
+            }
         }
     }
 }

@@ -42,6 +42,7 @@ mod tabs;
 mod text;
 mod textarea;
 mod theme_picker;
+mod timer;
 mod tooltip;
 mod waveline;
 
