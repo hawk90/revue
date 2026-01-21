@@ -24,7 +24,7 @@
 //! ```
 
 mod backend;
-mod testing;
+pub mod testing;
 mod tree;
 
 pub use backend::{
