@@ -24,7 +24,7 @@ impl CodeEditor {
     pub(super) fn get_highlights(&self, line: &str) -> Vec<crate::widget::syntax::HighlightSpan> {
         self.highlighter
             .as_ref()
-            .map(|h| h.highlight_line(line))
+            .map(|h: &crate::widget::syntax::SyntaxHighlighter| h.highlight_line(line))
             .unwrap_or_default()
     }
 

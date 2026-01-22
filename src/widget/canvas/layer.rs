@@ -1,6 +1,6 @@
 //! Layer support for canvas composition
 
-use super::braille::BrailleGrid;
+use super::braille::{BrailleGrid, Shape};
 use crate::style::Color;
 
 /// A drawable layer that can be composed with other layers
@@ -64,6 +64,11 @@ impl Layer {
     /// Clear the layer
     pub fn clear(&mut self) {
         self.grid.clear();
+    }
+
+    /// Draw a shape on this layer
+    pub fn draw<S: Shape>(&mut self, shape: &S) {
+        self.grid.draw(shape);
     }
 
     /// Get the underlying grid for reading
