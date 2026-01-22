@@ -45,8 +45,6 @@
 //! |--------|-------------|-------------|
 //! | [`Text`] | Styled text | [`text()`] |
 //! | [`RichText`] | Markup text | [`rich_text()`] |
-//! | [`Markdown`] | Markdown renderer | [`markdown()`] |
-//! | [`Image`] | Terminal images | [`image_from_file()`] |
 //! | [`Progress`] | Progress bar | [`progress()`] |
 //! | [`Spinner`] | Loading indicator | [`spinner()`] |
 //! | [`Gauge`] | Circular gauge | [`gauge()`] |
@@ -106,11 +104,8 @@
 //!
 //! | Widget | Description | Constructor |
 //! |--------|-------------|-------------|
-//! | [`QrCodeWidget`] | QR code generator | [`qrcode()`] |
-//! | [`DiffViewer`] | Side-by-side diff | [`diff_viewer()`] |
 //! | [`AiStream`] | AI streaming text | [`ai_stream()`] |
 //! | [`Presentation`] | Terminal slideshows | [`presentation()`] |
-//! | [`ProcessMonitor`] | htop-style monitor | [`process_monitor()`] |
 //! | [`Diagram`] | Mermaid diagrams | [`diagram()`] |
 //! | [`VimState`] | Vim mode support | [`vim_state()`] |
 //! | [`HttpClient`] | REST API client | [`http_client()`] |
