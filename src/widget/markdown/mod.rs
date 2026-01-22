@@ -141,7 +141,8 @@ impl Markdown {
 
     /// Parse markdown into styled lines with current options
     fn parse_with_options(&self) -> Vec<Line> {
-        use pulldown_cmark::{Event, Parser};
+        #[allow(unused_imports)]
+        use pulldown_cmark::{Event, Parser, Tag, TagEnd};
 
         let parser = Parser::new_ext(&self.source, parser::ParserContext::parser_options());
         let mut ctx = parser::ParserContext::new(&self.source, &self.config);
