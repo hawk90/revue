@@ -274,21 +274,37 @@ impl Clipboard {
     }
 
     /// Copy text to clipboard
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(ClipboardError)` if the clipboard backend cannot set the content.
     pub fn set(&self, content: &str) -> ClipboardResult<()> {
         self.backend.set(content)
     }
 
     /// Get text from clipboard
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(ClipboardError)` if the clipboard backend cannot access the content.
     pub fn get(&self) -> ClipboardResult<String> {
         self.backend.get()
     }
 
     /// Check if clipboard contains text
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(ClipboardError)` if the clipboard backend cannot be accessed.
     pub fn has_text(&self) -> ClipboardResult<bool> {
         self.backend.has_text()
     }
 
     /// Clear clipboard
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(ClipboardError)` if the clipboard backend cannot clear the content.
     pub fn clear(&self) -> ClipboardResult<()> {
         self.backend.clear()
     }
@@ -303,21 +319,37 @@ impl Default for Clipboard {
 // Convenience functions using system clipboard
 
 /// Copy text to system clipboard
+///
+/// # Errors
+///
+/// Returns `Err(ClipboardError)` if the system clipboard cannot be accessed or set.
 pub fn copy(content: &str) -> ClipboardResult<()> {
     SystemClipboard::new().set(content)
 }
 
 /// Get text from system clipboard
+///
+/// # Errors
+///
+/// Returns `Err(ClipboardError)` if the system clipboard cannot be accessed.
 pub fn paste() -> ClipboardResult<String> {
     SystemClipboard::new().get()
 }
 
 /// Check if system clipboard has text
+///
+/// # Errors
+///
+/// Returns `Err(ClipboardError)` if the system clipboard cannot be accessed.
 pub fn has_text() -> ClipboardResult<bool> {
     SystemClipboard::new().has_text()
 }
 
 /// Clear system clipboard
+///
+/// # Errors
+///
+/// Returns `Err(ClipboardError)` if the system clipboard cannot be cleared.
 pub fn clear() -> ClipboardResult<()> {
     SystemClipboard::new().clear()
 }

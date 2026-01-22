@@ -155,7 +155,14 @@ impl Link {
         self.disabled
     }
 
-    /// Open the link in default browser
+    /// Open the link in the system default browser
+    ///
+    /// Does nothing if the link is disabled.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(io::Error)` if the browser cannot be opened.
+    /// See [`crate::utils::browser::open_url`] for details.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn open(&self) -> std::io::Result<()> {
         if self.disabled {

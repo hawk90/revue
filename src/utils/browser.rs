@@ -47,9 +47,16 @@ pub fn open_browser(url: &str) -> bool {
     result.is_ok()
 }
 
-/// Open a URL and return the result
+/// Open a URL in the system default browser
 ///
 /// Same as `open_browser` but returns a Result for error handling.
+///
+/// # Errors
+///
+/// Returns `Err(io::Error)` if:
+/// - The platform is not supported (not macOS, Linux, or Windows)
+/// - The browser command cannot be spawned
+/// - The URL is invalid or inaccessible
 pub fn open_url(url: &str) -> std::io::Result<()> {
     #[cfg(target_os = "macos")]
     let mut child = Command::new("open").arg(url).spawn()?;

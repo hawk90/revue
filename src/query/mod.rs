@@ -334,6 +334,13 @@ impl Query {
     }
 
     /// Parse a query string
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(ParseError)` if:
+    /// - The query syntax is invalid
+    /// - A field operator is not recognized
+    /// - A value cannot be parsed for its expected type
     pub fn parse(input: &str) -> Result<Self, ParseError> {
         parser::parse(input)
     }

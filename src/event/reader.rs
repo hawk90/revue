@@ -32,6 +32,12 @@ impl EventReader {
     ///
     /// Polls for events up to `tick_rate` duration. If an event is available,
     /// it is returned. If the timeout expires with no event, returns `Event::Tick`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(io::Error)` if:
+    /// - Terminal event polling fails
+    /// - Event reading fails (e.g., terminal disconnected)
     pub fn read(&self) -> Result<Event> {
         if poll(self.tick_rate)? {
             let event = match event::read()? {
@@ -49,6 +55,13 @@ impl EventReader {
     }
 
     /// Try to read event without blocking
+    ///
+    /// Returns immediately with `Some(event)` if an event is available,
+    /// or `None` if no event is pending.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(io::Error)` if terminal event polling or reading fails.
     pub fn try_read(&self) -> Result<Option<Event>> {
         if poll(POLL_IMMEDIATE)? {
             match event::read()? {
@@ -65,6 +78,12 @@ impl EventReader {
     }
 
     /// Check if an event is available
+    ///
+    /// Returns `true` if an event is available to read, `false` otherwise.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(io::Error)` if terminal event polling fails.
     pub fn has_event(&self) -> Result<bool> {
         Ok(poll(Duration::from_millis(0))?)
     }

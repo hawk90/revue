@@ -170,6 +170,36 @@ impl App {
     }
 
     /// Run the application with a root view and event handler
+    ///
+    /// # Arguments
+    ///
+    /// * `view` - The root view component to render
+    /// * `handler` - Callback for handling events, returns whether to redraw
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Terminal initialization fails (e.g., not a TTY)
+    /// - Mouse capture initialization fails
+    /// - Drawing to terminal fails
+    /// - Event reading fails (e.g., terminal disconnected)
+    /// - Terminal restoration fails
+    /// - Hot-reload CSS parsing fails (when `hot-reload` feature is enabled)
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use revue::prelude::*;
+    ///
+    /// let mut app = App::new();
+    /// app.run(MyView::new(), |event, view, app| {
+    ///     match event {
+    ///         Event::Key(key) if key.key == 'q' => app.quit(),
+    ///         _ => {}
+    ///     }
+    ///     false
+    /// });
+    /// ```
     pub fn run<V, H>(&mut self, mut view: V, mut handler: H) -> crate::Result<()>
     where
         V: View,
@@ -232,11 +262,25 @@ impl App {
     /// that only receives `KeyEvent` instead of all `Event` types.
     ///
     /// # Arguments
+    ///
     /// * `view` - The root view component
     /// * `handler` - A function that handles key events and returns whether to redraw
     ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Terminal initialization fails (e.g., not a TTY)
+    /// - Mouse capture initialization fails
+    /// - Drawing to terminal fails
+    /// - Event reading fails (e.g., terminal disconnected)
+    /// - Terminal restoration fails
+    /// - Hot-reload CSS parsing fails (when `hot-reload` feature is enabled)
+    ///
     /// # Example
+    ///
     /// ```ignore
+    /// use revue::prelude::*;
+    ///
     /// app.run_with_handler(my_view, |key_event, view| {
     ///     view.handle_key(&key_event.key)
     /// })

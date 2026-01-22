@@ -39,6 +39,13 @@ impl std::fmt::Display for ParseError {
 impl std::error::Error for ParseError {}
 
 /// Parse a query string into a Query
+///
+/// # Errors
+///
+/// Returns `Err(ParseError)` if:
+/// - The query syntax is invalid
+/// - A field operator is not recognized
+/// - A value cannot be parsed for its expected type
 pub fn parse(input: &str) -> Result<Query, ParseError> {
     let mut query = Query::new();
     let input = input.trim();
