@@ -109,8 +109,6 @@
 //!
 //! ### Display
 //! - [`widget::Text`] - Styled text display
-//! - [`widget::Markdown`] - Markdown rendering with syntax highlighting
-//! - [`widget::Image`] - Terminal images (Kitty protocol)
 //! - [`widget::Progress`] - Progress bar
 //! - [`widget::Spinner`] - Loading spinner
 //! - [`widget::Badge`] / [`widget::Tag`] - Labels and tags
