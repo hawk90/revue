@@ -17,6 +17,8 @@ mod types;
 
 // Re-export public API
 pub use parser::{parse_selector, parse_selectors};
+#[cfg(test)]
+pub use types::SelectorParseError;
 pub use types::{AttributeOp, AttributeSelector, Combinator, PseudoClass, Selector, SelectorPart};
 
 #[cfg(test)]
