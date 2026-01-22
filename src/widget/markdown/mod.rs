@@ -142,7 +142,7 @@ impl Markdown {
     /// Parse markdown into styled lines with current options
     fn parse_with_options(&self) -> Vec<Line> {
         #[allow(unused_imports)]
-        use pulldown_cmark::{Event, Parser, Tag, TagEnd};
+        use pulldown_cmark::{Event, HeadingLevel, Parser, Tag, TagEnd};
 
         let parser = Parser::new_ext(&self.source, parser::ParserContext::parser_options());
         let mut ctx = parser::ParserContext::new(&self.source, &self.config);
@@ -200,7 +200,17 @@ impl Markdown {
 
     fn handle_start_tag(&self, ctx: &mut parser::ParserContext, tag: Tag) {
         match tag {
-            Tag::Heading { .. } => {
+            Tag::Heading { level, .. } => {
+                ctx.in_heading = true;
+                ctx.heading_level = match level {
+                    pulldown_cmark::HeadingLevel::H1 => 1,
+                    pulldown_cmark::HeadingLevel::H2 => 2,
+                    pulldown_cmark::HeadingLevel::H3 => 3,
+                    pulldown_cmark::HeadingLevel::H4 => 4,
+                    pulldown_cmark::HeadingLevel::H5 => 5,
+                    pulldown_cmark::HeadingLevel::H6 => 6,
+                };
+                ctx.heading_text.clear();
                 ctx.current_modifier |= Modifier::BOLD;
                 ctx.current_fg = Some(ctx.heading_fg);
             }
@@ -258,7 +268,13 @@ impl Markdown {
     fn handle_end_tag(&self, ctx: &mut parser::ParserContext, tag_end: TagEnd) {
         match tag_end {
             TagEnd::Heading(_) => {
+                // Add the heading text to the current line
+                if !ctx.heading_text.is_empty() {
+                    let text = ctx.heading_text.clone();
+                    ctx.add_text(&text);
+                }
                 ctx.in_heading = false;
+                ctx.new_line();
             }
             TagEnd::Paragraph => {
                 ctx.new_line();
