@@ -107,6 +107,9 @@ fn test_pool_submit_full_queue() {
 
     // Queue is now full, next submission should fail
     assert!(!pool.submit(|| {}));
+
+    // Release the worker to prevent infinite loop
+    barrier.store(1, Ordering::SeqCst);
 }
 
 #[test]
