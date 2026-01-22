@@ -8,6 +8,8 @@
 //! - Line numbers
 //! - Word wrap
 //! - Scrolling
+//! - Multi-cursor support
+//! - Find/replace functionality
 
 mod cursor;
 mod edit;
@@ -47,49 +49,49 @@ const MAX_UNDO_HISTORY: usize = 100;
 /// ```
 pub struct TextArea {
     /// Lines of text
-    lines: Vec<String>,
+    pub(super) lines: Vec<String>,
     /// Multiple cursors (primary cursor is at index 0)
-    cursors: CursorSet,
+    pub(super) cursors: CursorSet,
     /// Scroll offset (line, column)
-    scroll: (usize, usize),
+    pub(super) scroll: (usize, usize),
     /// Undo history
-    undo_stack: Vec<EditOperation>,
+    pub(super) undo_stack: Vec<edit::EditOperation>,
     /// Redo history
-    redo_stack: Vec<EditOperation>,
+    pub(super) redo_stack: Vec<edit::EditOperation>,
     /// Show line numbers
-    show_line_numbers: bool,
+    pub(super) show_line_numbers: bool,
     /// Enable word wrap
-    wrap: bool,
+    pub(super) wrap: bool,
     /// Read-only mode
-    read_only: bool,
+    pub(super) read_only: bool,
     /// Focused state
-    focused: bool,
+    pub(super) focused: bool,
     /// Tab width
-    tab_width: usize,
+    pub(super) tab_width: usize,
     /// Placeholder text
-    placeholder: Option<String>,
+    pub(super) placeholder: Option<String>,
     /// Maximum lines (0 = unlimited)
-    max_lines: usize,
+    pub(super) max_lines: usize,
     /// Text color
-    fg: Option<Color>,
+    pub(super) fg: Option<Color>,
     /// Background color
-    bg: Option<Color>,
+    pub(super) bg: Option<Color>,
     /// Cursor color
-    cursor_fg: Option<Color>,
+    pub(super) cursor_fg: Option<Color>,
     /// Selection color
-    selection_bg: Option<Color>,
+    pub(super) selection_bg: Option<Color>,
     /// Line number color
-    line_number_fg: Option<Color>,
+    pub(super) line_number_fg: Option<Color>,
     /// Syntax highlighter for code coloring
-    highlighter: Option<SyntaxHighlighter>,
+    pub(super) highlighter: Option<SyntaxHighlighter>,
     /// Find/Replace state
-    find_replace: Option<FindReplaceState>,
+    pub(super) find_replace: Option<FindReplaceState>,
     /// Match highlight color
-    match_highlight_bg: Option<Color>,
+    pub(super) match_highlight_bg: Option<Color>,
     /// Current match highlight color
-    current_match_bg: Option<Color>,
+    pub(super) current_match_bg: Option<Color>,
     /// CSS styling properties (id, classes)
-    props: WidgetProps,
+    pub(super) props: WidgetProps,
 }
 
 impl TextArea {
@@ -104,40 +106,36 @@ impl TextArea {
             show_line_numbers: false,
             wrap: false,
             read_only: false,
-            focused: true,
+            focused: false,
             tab_width: 4,
             placeholder: None,
             max_lines: 0,
             fg: None,
             bg: None,
-            cursor_fg: Some(Color::BLACK),
-            selection_bg: Some(Color::rgb(70, 130, 180)),
-            line_number_fg: Some(Color::rgb(128, 128, 128)),
+            cursor_fg: None,
+            selection_bg: None,
+            line_number_fg: None,
             highlighter: None,
             find_replace: None,
-            match_highlight_bg: Some(Color::rgb(100, 100, 0)),
-            current_match_bg: Some(Color::rgb(255, 200, 0)),
+            match_highlight_bg: None,
+            current_match_bg: None,
             props: WidgetProps::new(),
         }
     }
 
     /// Set initial content
     pub fn content(mut self, text: impl Into<String>) -> Self {
-        let text = text.into();
-        self.lines = text.lines().map(String::from).collect();
-        if self.lines.is_empty() {
-            self.lines.push(String::new());
-        }
+        self.set_content(&text.into());
         self
     }
 
-    /// Enable or disable line numbers
+    /// Show/hide line numbers
     pub fn line_numbers(mut self, show: bool) -> Self {
         self.show_line_numbers = show;
         self
     }
 
-    /// Enable or disable word wrap
+    /// Enable/disable word wrap
     pub fn wrap(mut self, wrap: bool) -> Self {
         self.wrap = wrap;
         self
@@ -157,7 +155,7 @@ impl TextArea {
 
     /// Set tab width
     pub fn tab_width(mut self, width: usize) -> Self {
-        self.tab_width = width.max(1);
+        self.tab_width = width;
         self
     }
 
@@ -167,7 +165,7 @@ impl TextArea {
         self
     }
 
-    /// Set maximum number of lines
+    /// Set maximum lines (0 = unlimited)
     pub fn max_lines(mut self, max: usize) -> Self {
         self.max_lines = max;
         self
@@ -197,6 +195,24 @@ impl TextArea {
         self
     }
 
+    /// Set line number color
+    pub fn line_number_fg(mut self, color: Color) -> Self {
+        self.line_number_fg = Some(color);
+        self
+    }
+
+    /// Set match highlight background color
+    pub fn match_highlight_bg(mut self, color: Color) -> Self {
+        self.match_highlight_bg = Some(color);
+        self
+    }
+
+    /// Set current match highlight background color
+    pub fn current_match_bg(mut self, color: Color) -> Self {
+        self.current_match_bg = Some(color);
+        self
+    }
+
     /// Enable syntax highlighting for a language
     pub fn syntax(mut self, language: Language) -> Self {
         self.highlighter = Some(SyntaxHighlighter::new(language));
@@ -208,15 +224,18 @@ impl TextArea {
         self.highlighter = Some(SyntaxHighlighter::with_theme(language, theme));
         self
     }
+}
 
-    /// Set the syntax highlighting language (mutable)
-    pub fn set_language(&mut self, language: Language) {
-        if language == Language::None {
-            self.highlighter = None;
-        } else {
-            self.highlighter = Some(SyntaxHighlighter::new(language));
-        }
+impl Default for TextArea {
+    fn default() -> Self {
+        Self::new()
     }
+}
+
+impl TextArea {
+    // =========================================================================
+    // Content Access Methods
+    // =========================================================================
 
     /// Get the current highlighting language
     pub fn get_syntax_language(&self) -> Language {
@@ -224,6 +243,15 @@ impl TextArea {
             .as_ref()
             .map(|h| h.get_language())
             .unwrap_or(Language::None)
+    }
+
+    /// Set the syntax highlighting language
+    pub fn set_language(&mut self, language: Language) {
+        if language == Language::None {
+            self.highlighter = None;
+        } else {
+            self.highlighter = Some(SyntaxHighlighter::new(language));
+        }
     }
 
     /// Get the current text content
@@ -277,12 +305,6 @@ impl TextArea {
     /// Get length of a specific line
     fn line_len(&self, line: usize) -> usize {
         self.lines.get(line).map(|l| l.len()).unwrap_or(0)
-    }
-
-    /// Get current line length (primary cursor's line)
-    #[allow(dead_code)]
-    fn current_line_len(&self) -> usize {
-        self.line_len(self.cursors.primary().pos.line)
     }
 
     /// Get selected text (from primary cursor)
@@ -406,6 +428,10 @@ impl TextArea {
         self.cursors.set_primary(CursorPos::new(line, col));
     }
 
+    // =========================================================================
+    // Undo/Redo Methods
+    // =========================================================================
+
     /// Undo the last operation
     pub fn undo(&mut self) {
         if let Some(op) = self.undo_stack.pop() {
@@ -503,6 +529,10 @@ impl TextArea {
             self.undo_stack.push(op);
         }
     }
+
+    // =========================================================================
+    // Text Editing Methods
+    // =========================================================================
 
     /// Insert a character at cursor
     pub fn insert_char(&mut self, ch: char) {
@@ -716,6 +746,10 @@ impl TextArea {
         }
     }
 
+    // =========================================================================
+    // Cursor Navigation Methods
+    // =========================================================================
+
     /// Move cursor left
     pub fn move_left(&mut self) {
         let pos = self.cursors.primary().pos;
@@ -879,6 +913,77 @@ impl TextArea {
         self.cursors.primary_mut().anchor = Some(CursorPos::new(0, 0));
     }
 
+    // =========================================================================
+    // Key Handling
+    // =========================================================================
+
+    /// Handle key event
+    pub fn handle_key(&mut self, key: &Key) -> bool {
+        match key {
+            Key::Char(ch) => {
+                self.insert_char(*ch);
+                true
+            }
+            Key::Enter => {
+                self.insert_char('\n');
+                true
+            }
+            Key::Tab => {
+                self.insert_char('\t');
+                true
+            }
+            Key::Backspace => {
+                self.delete_char_before();
+                true
+            }
+            Key::Delete => {
+                self.delete_char_at();
+                true
+            }
+            Key::Left => {
+                self.clear_selection();
+                self.move_left();
+                true
+            }
+            Key::Right => {
+                self.clear_selection();
+                self.move_right();
+                true
+            }
+            Key::Up => {
+                self.clear_selection();
+                self.move_up();
+                true
+            }
+            Key::Down => {
+                self.clear_selection();
+                self.move_down();
+                true
+            }
+            Key::Home => {
+                self.clear_selection();
+                self.move_home();
+                true
+            }
+            Key::End => {
+                self.clear_selection();
+                self.move_end();
+                true
+            }
+            Key::PageUp => {
+                self.page_up(10);
+                true
+            }
+            Key::PageDown => {
+                self.page_down(10);
+                true
+            }
+            _ => false,
+        }
+    }
+}
+
+impl TextArea {
     // =========================================================================
     // Find/Replace Methods
     // =========================================================================
@@ -1079,19 +1184,9 @@ impl TextArea {
             self.find_matches_in_line(line_idx, line, &query, &options, &mut matches);
         }
 
-        // Update state
         if let Some(ref mut state) = self.find_replace {
+            state.current_match = if matches.is_empty() { None } else { Some(0) };
             state.matches = matches;
-            // Reset to first match or maintain position
-            if !state.matches.is_empty() {
-                if state.current_match.is_none()
-                    || state.current_match.unwrap() >= state.matches.len()
-                {
-                    state.current_match = Some(0);
-                }
-            } else {
-                state.current_match = None;
-            }
         }
     }
 
@@ -1376,80 +1471,13 @@ impl TextArea {
         if let Some(match_pos) = self.find_next_from(&text, last_pos) {
             let end_col = match_pos.col + text.len();
             let new_cursor =
-                Cursor::with_selection(CursorPos::new(match_pos.line, end_col), match_pos);
+                cursor::Cursor::with_selection(CursorPos::new(match_pos.line, end_col), match_pos);
             self.cursors.add(new_cursor);
         }
     }
+}
 
-    // =========================================================================
-    // Key Handling
-    // =========================================================================
-
-    /// Handle key event
-    pub fn handle_key(&mut self, key: &Key) -> bool {
-        match key {
-            Key::Char(ch) => {
-                self.insert_char(*ch);
-                true
-            }
-            Key::Enter => {
-                self.insert_char('\n');
-                true
-            }
-            Key::Tab => {
-                self.insert_char('\t');
-                true
-            }
-            Key::Backspace => {
-                self.delete_char_before();
-                true
-            }
-            Key::Delete => {
-                self.delete_char_at();
-                true
-            }
-            Key::Left => {
-                self.clear_selection();
-                self.move_left();
-                true
-            }
-            Key::Right => {
-                self.clear_selection();
-                self.move_right();
-                true
-            }
-            Key::Up => {
-                self.clear_selection();
-                self.move_up();
-                true
-            }
-            Key::Down => {
-                self.clear_selection();
-                self.move_down();
-                true
-            }
-            Key::Home => {
-                self.clear_selection();
-                self.move_home();
-                true
-            }
-            Key::End => {
-                self.clear_selection();
-                self.move_end();
-                true
-            }
-            Key::PageUp => {
-                self.page_up(10);
-                true
-            }
-            Key::PageDown => {
-                self.page_down(10);
-                true
-            }
-            _ => false,
-        }
-    }
-
+impl TextArea {
     /// Get line number width
     fn line_number_width(&self) -> u16 {
         if self.show_line_numbers {
@@ -1459,12 +1487,6 @@ impl TextArea {
         } else {
             0
         }
-    }
-}
-
-impl Default for TextArea {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
