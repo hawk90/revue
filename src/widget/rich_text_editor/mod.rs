@@ -5,11 +5,19 @@
 
 mod block;
 mod core;
+mod cursor;
+mod dialog;
 mod editing;
+mod editor_view;
+mod format;
 mod link;
-mod rendering;
+mod preview;
+mod selection;
+mod text_edit;
 mod text_format;
+mod toolbar;
 mod types;
+mod undo;
 
 use super::traits::{RenderContext, View};
 use crate::render::Cell;
