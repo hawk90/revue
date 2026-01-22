@@ -207,7 +207,8 @@ fn test_use_async_poll_start_from_different_thread() {
     });
     start_thread.join().expect("start thread should not panic");
 
-    thread::sleep(Duration::from_millis(5));
+    // Wait for async operation to enter loading state (with timeout)
+    let _ = poll_until(|| state.get().is_loading(), 100);
     assert!(state.get().is_loading());
 
     // Wait for async operation to complete (up to 500ms)
