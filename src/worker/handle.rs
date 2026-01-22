@@ -183,9 +183,13 @@ impl<T: Send + 'static> WorkerHandle<T> {
             }
 
             // Simple polling executor
-            // SAFETY: RawWaker vtable is properly configured with no-op functions
-            // (clone, wake, wake_by_ref, drop). The waker is only used for polling
-            // and never actually wakes anything - this is a busy-polling executor.
+            // SAFETY:
+            // - The vtable functions are all no-ops that don't access any data
+            // - RawWaker is created with a null pointer since no data is needed
+            // - The waker is only used as a placeholder for Context
+            // - We never call wake() or wake_by_ref() on this waker
+            // - Only clone() and drop() are called, which are safe no-ops
+            // - This is a busy-polling executor that never actually needs to wake anything
             let waker = unsafe { Waker::from_raw(dummy_raw_waker()) };
             let mut cx = Context::from_waker(&waker);
             let mut future = Box::pin(future);
