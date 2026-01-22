@@ -156,7 +156,8 @@ impl<'a> StyleResolver<'a> {
     where
         F: Fn(DomId) -> Option<&'a DomNode>,
     {
-        let mut matched = Vec::new();
+        // Pre-allocate with reasonable capacity (most nodes match < 8 rules)
+        let mut matched = Vec::with_capacity(4);
 
         for (selector, rule_idx) in &self.selectors {
             if self.matches(selector, node, &get_node) {
