@@ -33,14 +33,17 @@ use crate::dom::DomRenderer;
 use crate::event::{Event, KeyEvent};
 use crate::layout::{LayoutEngine, Rect};
 use crate::render::{Buffer, Terminal};
-use crate::style::{parse_css, StyleSheet, TransitionManager};
+use crate::style::{StyleSheet, TransitionManager};
 use crate::widget::View;
 use std::io::stdout;
-use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 #[cfg(feature = "hot-reload")]
+use crate::style::parse_css;
+#[cfg(feature = "hot-reload")]
 use std::fs;
+#[cfg(feature = "hot-reload")]
+use std::path::PathBuf;
 
 /// Tick handler callback type
 pub type TickHandler<V> = Box<dyn FnMut(&mut V, Duration) -> bool>;
