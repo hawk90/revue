@@ -71,7 +71,12 @@ pub enum ImageFormat {
 impl Image {
     /// Create an image from raw PNG data
     ///
-    /// Returns an error if the image cannot be decoded.
+    /// # Errors
+    ///
+    /// Returns `Err(ImageError::DecodeError)` if:
+    /// - The data is not a valid image format
+    /// - The image is corrupted
+    /// - The image format is not supported
     pub fn from_png(data: Vec<u8>) -> ImageResult<Self> {
         // Try to decode to get dimensions
         let reader = image::ImageReader::new(std::io::Cursor::new(&data))
@@ -102,7 +107,13 @@ impl Image {
 
     /// Create an image from a file path
     ///
-    /// Returns an error if the file cannot be read or the image cannot be decoded.
+    /// # Errors
+    ///
+    /// Returns `Err(ImageError::FileRead)` if:
+    /// - The file does not exist
+    /// - The file cannot be read (permission denied, etc.)
+    ///
+    /// Returns `Err(ImageError::DecodeError)` if the image cannot be decoded.
     pub fn from_file(path: impl AsRef<std::path::Path>) -> ImageResult<Self> {
         let path_ref = path.as_ref();
         let data = std::fs::read(path_ref).map_err(|e| ImageError::FileRead {

@@ -268,6 +268,14 @@ impl<T: Send + 'static> WorkerHandle<T> {
     }
 
     /// Wait for the task to complete and get result
+    ///
+    /// This blocks the current thread until the task completes.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(WorkerError::ChannelClosed)` if the result channel is closed.
+    /// Returns `Err(WorkerError::Cancelled)` if the task was cancelled.
+    /// Returns `Err(WorkerError::Panicked)` if the task panicked.
     pub fn join(mut self) -> WorkerResult<T> {
         // Wait for thread to finish
         if let Some(thread) = self.thread.take() {
@@ -283,6 +291,15 @@ impl<T: Send + 'static> WorkerHandle<T> {
     }
 
     /// Try to get result without blocking
+    ///
+    /// Returns `None` if the task is still running.
+    ///
+    /// # Errors
+    ///
+    /// If the task is finished, returns `Some(Ok(value))` or `Some(Err(...))`:
+    /// - `Err(WorkerError::ChannelClosed)` if the result channel is closed
+    /// - `Err(WorkerError::Cancelled)` if the task was cancelled
+    /// - `Err(WorkerError::Panicked)` if the task panicked
     pub fn try_join(&mut self) -> Option<WorkerResult<T>> {
         if !self.is_finished() {
             return None;
@@ -292,6 +309,13 @@ impl<T: Send + 'static> WorkerHandle<T> {
     }
 
     /// Wait for completion with timeout
+    ///
+    /// This blocks the current thread until the task completes or the timeout elapses.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(WorkerError::Timeout)` if the timeout elapses before completion.
+    /// May also return other errors as documented in [`join`](Self::join).
     pub fn join_timeout(self, timeout: Duration) -> WorkerResult<T> {
         let start = std::time::Instant::now();
 

@@ -365,6 +365,12 @@ impl FormValidator {
     }
 
     /// Validate all fields
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(Vec<ValidationError>)` with a list of validation errors
+    /// if any field fails validation. Each error includes the field name
+    /// and a description of what went wrong.
     pub fn validate(&self, values: &[(&str, &str)]) -> Result<(), Vec<ValidationError>> {
         let mut errors = Vec::new();
 

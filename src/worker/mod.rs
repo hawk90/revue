@@ -43,6 +43,12 @@ mod shared_runtime {
     /// Get or create the shared runtime handle
     ///
     /// Returns an error string if runtime creation fails instead of panicking.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(String)` if:
+    /// - The tokio runtime cannot be created (e.g., insufficient resources, system limits)
+    /// - The runtime thread pool cannot be initialized
     pub fn handle() -> Result<Handle, String> {
         // First, try to get the current runtime if we're already in one
         if let Ok(handle) = Handle::try_current() {

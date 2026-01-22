@@ -66,7 +66,10 @@ impl LayoutEngine {
 
     /// Create a new node with the given style
     ///
-    /// Returns an error if node creation fails.
+    /// # Errors
+    ///
+    /// Returns `Err(LayoutError::NodeNotFound)` if the node cannot be created
+    /// or if a node with the same ID already exists.
     pub fn create_node(&mut self, dom_id: DomId, style: &Style) -> LayoutResult<()> {
         let node_id = dom_id.inner();
         let node = style_to_layout_node(node_id, style);
@@ -77,7 +80,10 @@ impl LayoutEngine {
 
     /// Create a node with children
     ///
-    /// Returns an error if node creation fails.
+    /// # Errors
+    ///
+    /// Returns `Err(LayoutError::NodeNotFound)` if any child node is not found
+    /// in the layout tree.
     pub fn create_node_with_children(
         &mut self,
         dom_id: DomId,
@@ -109,7 +115,10 @@ impl LayoutEngine {
 
     /// Update a node's style
     ///
-    /// Returns an error if the node is not found.
+    /// # Errors
+    ///
+    /// Returns `Err(LayoutError::NodeNotFound)` if the node with the given ID
+    /// does not exist in the layout tree.
     pub fn update_style(&mut self, dom_id: DomId, style: &Style) -> LayoutResult<()> {
         let node_id = dom_id.inner();
         if let Some(node) = self.tree.get_mut(node_id) {
@@ -122,7 +131,11 @@ impl LayoutEngine {
 
     /// Add a child to a node
     ///
-    /// Returns an error if either node is not found.
+    /// # Errors
+    ///
+    /// Returns `Err(LayoutError::NodeNotFound)` if:
+    /// - The parent node with the given ID does not exist
+    /// - The child node with the given ID does not exist
     pub fn add_child(&mut self, parent_dom_id: DomId, child_dom_id: DomId) -> LayoutResult<()> {
         let parent_id = parent_dom_id.inner();
         let child_id = child_dom_id.inner();
@@ -138,9 +151,9 @@ impl LayoutEngine {
         Ok(())
     }
 
-    /// Remove a node
+    /// Remove a node from the layout tree
     ///
-    /// Returns Ok if node doesn't exist or was successfully removed.
+    /// Returns Ok even if the node doesn't exist (idempotent).
     pub fn remove_node(&mut self, dom_id: DomId) -> LayoutResult<()> {
         let node_id = dom_id.inner();
         self.tree.remove(node_id);
@@ -148,9 +161,12 @@ impl LayoutEngine {
         Ok(())
     }
 
-    /// Compute layout for a root node
+    /// Compute layout for a root node and all its descendants
     ///
-    /// Returns an error if the root node is not found.
+    /// # Errors
+    ///
+    /// Returns `Err(LayoutError::NodeNotFound)` if the root node with the given ID
+    /// does not exist in the layout tree.
     pub fn compute(
         &mut self,
         root_dom_id: DomId,
@@ -168,7 +184,10 @@ impl LayoutEngine {
 
     /// Get the computed layout for a node
     ///
-    /// Returns an error if the node is not found.
+    /// # Errors
+    ///
+    /// Returns `Err(LayoutError::NodeNotFound)` if the node with the given ID
+    /// does not exist in the layout tree.
     pub fn layout(&self, dom_id: DomId) -> LayoutResult<Rect> {
         let node_id = dom_id.inner();
         self.tree

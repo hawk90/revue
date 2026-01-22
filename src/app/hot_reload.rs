@@ -47,11 +47,24 @@ pub struct HotReload {
 
 impl HotReload {
     /// Create a new hot reload watcher
+    ///
+    /// # Errors
+    ///
+    /// Returns `notify::Error` if the file system watcher cannot be created.
+    /// This can happen if:
+    /// - The operating system doesn't support file watching
+    /// - The watcher limit has been reached
+    /// - Insufficient permissions
     pub fn new() -> Result<Self, notify::Error> {
         Self::with_config(HotReloadConfig::default())
     }
 
     /// Create with custom configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns `notify::Error` if the file system watcher cannot be created
+    /// with the specified configuration.
     pub fn with_config(config: HotReloadConfig) -> Result<Self, notify::Error> {
         let (tx, rx) = channel();
         let sender = tx.clone();
@@ -95,7 +108,16 @@ impl HotReload {
         })
     }
 
-    /// Watch a file or directory
+    /// Watch a file or directory for changes
+    ///
+    /// Directories are watched recursively. Files are watched non-recursively.
+    ///
+    /// # Errors
+    ///
+    /// Returns `notify::Error` if:
+    /// - The path doesn't exist
+    /// - Insufficient permissions to watch the path
+    /// - The watcher limit has been reached
     pub fn watch(&mut self, path: impl AsRef<Path>) -> Result<(), notify::Error> {
         let path = path.as_ref().to_path_buf();
         let mode = if path.is_dir() {
@@ -109,7 +131,11 @@ impl HotReload {
         Ok(())
     }
 
-    /// Unwatch a path
+    /// Unwatch a previously watched path
+    ///
+    /// # Errors
+    ///
+    /// Returns `notify::Error` if the path was not being watched.
     pub fn unwatch(&mut self, path: impl AsRef<Path>) -> Result<(), notify::Error> {
         let path = path.as_ref();
         self._watcher.unwatch(path)?;
@@ -203,6 +229,12 @@ impl HotReloadBuilder {
     }
 
     /// Build the hot reload watcher
+    ///
+    /// # Errors
+    ///
+    /// Returns `notify::Error` if:
+    /// - The watcher cannot be created
+    /// - Any of the configured paths cannot be watched
     pub fn build(self) -> Result<HotReload, notify::Error> {
         let mut hr = HotReload::with_config(self.config)?;
         for path in self.paths {
