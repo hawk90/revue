@@ -16,6 +16,7 @@ mod search;
 mod types;
 mod view;
 
+pub use search::Search;
 pub use types::{JsonNode, JsonType};
 pub use view::JsonViewer;
 

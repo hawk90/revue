@@ -1,23 +1,33 @@
 //! Braille canvas drawing context
 
-use super::super::grid::Grid;
+use super::grid_impl::BrailleGrid;
 use super::shapes::{self, Shape};
 use crate::style::Color;
 
 /// A context for high-resolution braille drawing
 pub struct BrailleContext<'a> {
-    grid: &'a mut dyn Grid,
+    grid: &'a mut BrailleGrid,
 }
 
 impl<'a> BrailleContext<'a> {
     /// Create a new braille context
-    pub fn new(grid: &'a mut dyn Grid) -> Self {
+    pub fn new(grid: &'a mut BrailleGrid) -> Self {
         Self { grid }
     }
 
-    /// Get the underlying grid
-    pub fn grid(&self) -> &dyn Grid {
-        self.grid
+    /// Get the grid width
+    pub fn width(&self) -> usize {
+        self.grid.width()
+    }
+
+    /// Get the grid height
+    pub fn height(&self) -> usize {
+        self.grid.height()
+    }
+
+    /// Clear all dots
+    pub fn clear(&mut self) {
+        self.grid.clear();
     }
 
     /// Set a single dot
