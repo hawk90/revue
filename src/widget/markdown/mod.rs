@@ -296,6 +296,7 @@ impl Markdown {
             Tag::BlockQuote(_) => {
                 ctx.in_blockquote = true;
                 ctx.blockquote_first_text = true;
+                ctx.current_admonition = None;
             }
             _ => {}
         }
@@ -310,10 +311,26 @@ impl Markdown {
                     ctx.add_text(&text);
                 }
                 ctx.in_heading = false;
+                ctx.current_modifier &= !Modifier::BOLD;
+                ctx.current_fg = None;
                 ctx.new_line();
             }
             TagEnd::Paragraph => {
+                ctx.flush_line();
                 ctx.new_line();
+            }
+            TagEnd::Strong => {
+                ctx.current_modifier &= !Modifier::BOLD;
+            }
+            TagEnd::Emphasis => {
+                ctx.current_modifier &= !Modifier::ITALIC;
+            }
+            TagEnd::Strikethrough => {
+                ctx.current_modifier &= !Modifier::CROSSED_OUT;
+            }
+            TagEnd::Link => {
+                ctx.current_fg = None;
+                ctx.current_modifier &= !Modifier::UNDERLINE;
             }
             TagEnd::CodeBlock => {
                 self.render_code_block(ctx);
@@ -328,6 +345,13 @@ impl Markdown {
             TagEnd::BlockQuote(_) => {
                 ctx.in_blockquote = false;
                 ctx.flush_line();
+                // Add empty line after admonition
+                if ctx.current_admonition.is_some() {
+                    ctx.lines.push(std::mem::take(&mut ctx.current_line));
+                    let empty_line = Line::new();
+                    ctx.lines.push(empty_line);
+                }
+                ctx.current_admonition = None;
             }
             TagEnd::List(_) => {
                 ctx.list_depth = ctx.list_depth.saturating_sub(1);
@@ -356,15 +380,28 @@ impl Markdown {
             ctx.heading_text.push_str(text);
         } else if ctx.blockquote_first_text {
             ctx.blockquote_first_text = false;
-            // Check if this is an admonition
-            if let Some(admonition) = ctx.current_admonition {
+            // Check if this is an admonition marker
+            if let Some(admonition) = AdmonitionType::from_marker(text) {
+                ctx.current_admonition = Some(admonition);
+                // Start new line for admonition header
                 ctx.flush_line();
-                let icon = admonition.icon();
-                let color = admonition.color();
-                ctx.add_text(icon);
-                ctx.current_fg = Some(color);
+                // Render admonition header with icon and label
+                ctx.add_text(&format!("{} {}", admonition.icon(), admonition.label()));
+                ctx.current_fg = Some(admonition.color());
+                ctx.current_modifier |= Modifier::BOLD;
+            } else {
+                // Regular blockquote - add quote prefix first
+                ctx.current_modifier |= Modifier::ITALIC;
+                ctx.add_text("│ ");
+                ctx.current_fg = Some(ctx.quote_fg);
+                ctx.add_text(text);
             }
-            ctx.add_text(text);
+        } else if let Some(_admonition) = ctx.current_admonition {
+            // Admonition content - add quote prefix
+            ctx.add_text(&format!("│ {}", text));
+        } else if ctx.in_blockquote {
+            // Regular blockquote continuation
+            ctx.add_text(&format!("│ {}", text));
         } else {
             ctx.add_text(text);
         }
