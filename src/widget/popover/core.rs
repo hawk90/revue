@@ -1,127 +1,8 @@
-//! Popover widget for anchor-positioned interactive overlays
-//!
-//! Unlike Tooltip (hover-only), Popover supports click triggers, focus trapping,
-//! and interactive content. Essential for DatePicker, Combobox, etc.
-//!
-//! # Example
-//!
-//! ```rust,ignore
-//! use revue::widget::{Popover, PopoverPosition, popover};
-//!
-//! // Basic popover
-//! Popover::new("Click me for details")
-//!     .anchor(10, 5)
-//!     .position(PopoverPosition::Bottom);
-//!
-//! // Interactive popover with trigger
-//! popover("Menu content")
-//!     .trigger(PopoverTrigger::Click)
-//!     .close_on_escape(true)
-//!     .close_on_click_outside(true);
-//! ```
-
-use super::traits::{RenderContext, View, WidgetProps, WidgetState};
+use super::types::{PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger};
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::utils::border::BorderChars;
-use crate::{impl_styled_view, impl_widget_builders};
-
-/// Popover position relative to anchor
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum PopoverPosition {
-    /// Above the anchor
-    Top,
-    /// Below the anchor
-    #[default]
-    Bottom,
-    /// To the left of anchor
-    Left,
-    /// To the right of anchor
-    Right,
-    /// Auto-detect best position
-    Auto,
-}
-
-/// Popover trigger type
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum PopoverTrigger {
-    /// Triggered by click
-    #[default]
-    Click,
-    /// Triggered by hover
-    Hover,
-    /// Triggered by focus
-    Focus,
-    /// Manually controlled (no automatic trigger)
-    Manual,
-}
-
-/// Popover arrow style
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum PopoverArrow {
-    /// No arrow
-    #[default]
-    None,
-    /// Simple ASCII arrow
-    Simple,
-    /// Unicode arrow
-    Unicode,
-}
-
-impl PopoverArrow {
-    fn chars(&self, position: PopoverPosition) -> char {
-        match (self, position) {
-            (PopoverArrow::None, _) => ' ',
-            (PopoverArrow::Simple, PopoverPosition::Top) => 'v',
-            (PopoverArrow::Simple, PopoverPosition::Bottom) => '^',
-            (PopoverArrow::Simple, PopoverPosition::Left) => '>',
-            (PopoverArrow::Simple, PopoverPosition::Right) => '<',
-            (PopoverArrow::Simple, PopoverPosition::Auto) => 'v',
-            (PopoverArrow::Unicode, PopoverPosition::Top) => '▼',
-            (PopoverArrow::Unicode, PopoverPosition::Bottom) => '▲',
-            (PopoverArrow::Unicode, PopoverPosition::Left) => '▶',
-            (PopoverArrow::Unicode, PopoverPosition::Right) => '◀',
-            (PopoverArrow::Unicode, PopoverPosition::Auto) => '▼',
-        }
-    }
-}
-
-/// Popover visual style
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum PopoverStyle {
-    /// Default bordered style
-    #[default]
-    Default,
-    /// Rounded corners
-    Rounded,
-    /// Minimal without border
-    Minimal,
-    /// Elevated with shadow effect
-    Elevated,
-}
-
-impl PopoverStyle {
-    fn colors(&self) -> (Color, Color, Color) {
-        // (fg, bg, border)
-        match self {
-            PopoverStyle::Default => (Color::WHITE, Color::rgb(30, 30, 35), Color::rgb(70, 70, 80)),
-            PopoverStyle::Rounded => (Color::WHITE, Color::rgb(35, 35, 40), Color::rgb(80, 80, 90)),
-            PopoverStyle::Minimal => (Color::WHITE, Color::rgb(40, 40, 45), Color::rgb(40, 40, 45)),
-            PopoverStyle::Elevated => {
-                (Color::WHITE, Color::rgb(25, 25, 30), Color::rgb(60, 60, 70))
-            }
-        }
-    }
-
-    fn border_chars(&self) -> Option<BorderChars> {
-        match self {
-            PopoverStyle::Minimal => None,
-            PopoverStyle::Rounded => Some(BorderChars::ROUNDED),
-            _ => Some(BorderChars::SINGLE),
-        }
-    }
-}
+use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 
 /// A popover widget for interactive overlays
 ///
@@ -130,33 +11,33 @@ impl PopoverStyle {
 /// to close on escape or click outside.
 pub struct Popover {
     /// Content text (for simple popovers)
-    content: String,
+    pub(crate) content: String,
     /// Anchor point (x, y)
-    anchor: (u16, u16),
+    pub(crate) anchor: (u16, u16),
     /// Position relative to anchor
-    position: PopoverPosition,
+    pub(crate) position: PopoverPosition,
     /// Trigger type
-    trigger: PopoverTrigger,
+    pub(crate) trigger: PopoverTrigger,
     /// Visual style
-    popover_style: PopoverStyle,
+    pub(crate) popover_style: PopoverStyle,
     /// Arrow style
-    arrow: PopoverArrow,
+    pub(crate) arrow: PopoverArrow,
     /// Whether popover is open
-    open: bool,
+    pub(crate) open: bool,
     /// Close on escape key
-    close_on_escape: bool,
+    pub(crate) close_on_escape: bool,
     /// Close when clicking outside
-    close_on_click_outside: bool,
+    pub(crate) close_on_click_outside: bool,
     /// Title (optional)
-    title: Option<String>,
+    pub(crate) title: Option<String>,
     /// Max width (0 = auto)
-    max_width: u16,
+    pub(crate) max_width: u16,
     /// Custom border color
-    border_color: Option<Color>,
+    pub(crate) border_color: Option<Color>,
     /// Widget state
-    state: WidgetState,
+    pub(crate) state: WidgetState,
     /// Widget properties
-    props: WidgetProps,
+    pub(crate) props: WidgetProps,
 }
 
 impl Popover {
@@ -652,279 +533,4 @@ impl View for Popover {
     }
 }
 
-impl_styled_view!(Popover);
-impl_widget_builders!(Popover);
-
-/// Helper function to create a popover
-pub fn popover(content: impl Into<String>) -> Popover {
-    Popover::new(content)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
-
-    #[test]
-    fn test_popover_new() {
-        let p = Popover::new("Test content");
-        assert_eq!(p.content, "Test content");
-        assert!(!p.is_open());
-        assert!(p.close_on_escape);
-        assert!(p.close_on_click_outside);
-    }
-
-    #[test]
-    fn test_popover_builder() {
-        let p = Popover::new("Content")
-            .anchor(10, 5)
-            .position(PopoverPosition::Top)
-            .trigger(PopoverTrigger::Hover)
-            .popover_style(PopoverStyle::Rounded)
-            .arrow(PopoverArrow::Unicode)
-            .title("Title")
-            .max_width(30)
-            .close_on_escape(false)
-            .close_on_click_outside(false);
-
-        assert_eq!(p.anchor, (10, 5));
-        assert!(matches!(p.position, PopoverPosition::Top));
-        assert!(matches!(p.trigger, PopoverTrigger::Hover));
-        assert!(matches!(p.popover_style, PopoverStyle::Rounded));
-        assert!(matches!(p.arrow, PopoverArrow::Unicode));
-        assert_eq!(p.title, Some("Title".to_string()));
-        assert_eq!(p.max_width, 30);
-        assert!(!p.close_on_escape);
-        assert!(!p.close_on_click_outside);
-    }
-
-    #[test]
-    fn test_popover_visibility() {
-        let mut p = Popover::new("Test");
-        assert!(!p.is_open());
-
-        p.show();
-        assert!(p.is_open());
-
-        p.hide();
-        assert!(!p.is_open());
-
-        p.toggle();
-        assert!(p.is_open());
-
-        p.toggle();
-        assert!(!p.is_open());
-    }
-
-    #[test]
-    fn test_popover_handle_escape() {
-        let mut p = Popover::new("Test").open(true);
-        assert!(p.is_open());
-
-        assert!(p.handle_key(&Key::Escape));
-        assert!(!p.is_open());
-    }
-
-    #[test]
-    fn test_popover_handle_escape_disabled() {
-        let mut p = Popover::new("Test").open(true).close_on_escape(false);
-        assert!(!p.handle_key(&Key::Escape));
-        assert!(p.is_open());
-    }
-
-    #[test]
-    fn test_popover_handle_key_closed() {
-        let mut p = Popover::new("Test");
-        assert!(!p.handle_key(&Key::Escape));
-    }
-
-    #[test]
-    fn test_popover_calculate_dimensions() {
-        let p = Popover::new("Short content");
-        let (w, h) = p.calculate_dimensions();
-        assert!(w >= 10);
-        assert!(h >= 3);
-    }
-
-    #[test]
-    fn test_popover_calculate_dimensions_with_title() {
-        let p = Popover::new("Content").title("Title");
-        let (_, h) = p.calculate_dimensions();
-        assert!(h >= 4);
-    }
-
-    #[test]
-    fn test_popover_wrap_content() {
-        let p = Popover::new("This is a very long text that should be wrapped").max_width(20);
-        let lines = p.wrap_content();
-        assert!(lines.len() > 1);
-        assert!(lines.iter().all(|l| l.len() <= 20));
-    }
-
-    #[test]
-    fn test_popover_position_auto() {
-        let p = Popover::new("Test")
-            .position(PopoverPosition::Auto)
-            .anchor(20, 20);
-
-        let (_, _, pos) = p.calculate_position(40, 40);
-        assert!(!matches!(pos, PopoverPosition::Auto));
-    }
-
-    #[test]
-    fn test_popover_render_closed() {
-        let mut buffer = Buffer::new(40, 20);
-        let area = Rect::new(0, 0, 40, 20);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let p = Popover::new("Content");
-        p.render(&mut ctx);
-        // Should not render when closed
-    }
-
-    #[test]
-    fn test_popover_render_open() {
-        let mut buffer = Buffer::new(40, 20);
-        let area = Rect::new(0, 0, 40, 20);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let p = Popover::new("Hello World").anchor(20, 10).open(true);
-        p.render(&mut ctx);
-        // Smoke test - renders without panic
-    }
-
-    #[test]
-    fn test_popover_render_elevated() {
-        let mut buffer = Buffer::new(40, 20);
-        let area = Rect::new(0, 0, 40, 20);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let p = Popover::new("Elevated")
-            .popover_style(PopoverStyle::Elevated)
-            .anchor(20, 10)
-            .open(true);
-        p.render(&mut ctx);
-    }
-
-    #[test]
-    fn test_popover_render_minimal() {
-        let mut buffer = Buffer::new(40, 20);
-        let area = Rect::new(0, 0, 40, 20);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let p = Popover::new("Minimal")
-            .popover_style(PopoverStyle::Minimal)
-            .anchor(20, 10)
-            .open(true);
-        p.render(&mut ctx);
-    }
-
-    #[test]
-    fn test_popover_render_with_arrow() {
-        let mut buffer = Buffer::new(40, 20);
-        let area = Rect::new(0, 0, 40, 20);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let p = Popover::new("Arrow")
-            .arrow(PopoverArrow::Unicode)
-            .anchor(20, 10)
-            .open(true);
-        p.render(&mut ctx);
-    }
-
-    #[test]
-    fn test_popover_styles() {
-        let styles = [
-            PopoverStyle::Default,
-            PopoverStyle::Rounded,
-            PopoverStyle::Minimal,
-            PopoverStyle::Elevated,
-        ];
-
-        for style in styles {
-            let (fg, bg, border) = style.colors();
-            let _ = (fg.r, bg.r, border.r);
-        }
-    }
-
-    #[test]
-    fn test_popover_arrow_chars() {
-        let arrow = PopoverArrow::Unicode;
-        assert_eq!(arrow.chars(PopoverPosition::Top), '▼');
-        assert_eq!(arrow.chars(PopoverPosition::Bottom), '▲');
-        assert_eq!(arrow.chars(PopoverPosition::Left), '▶');
-        assert_eq!(arrow.chars(PopoverPosition::Right), '◀');
-    }
-
-    #[test]
-    fn test_popover_helper() {
-        let p = popover("Quick popover");
-        assert_eq!(p.content, "Quick popover");
-    }
-
-    #[test]
-    fn test_popover_default() {
-        let p = Popover::default();
-        assert_eq!(p.content, "");
-    }
-
-    #[test]
-    fn test_popover_set_anchor() {
-        let mut p = Popover::new("Test");
-        p.set_anchor(15, 25);
-        assert_eq!(p.anchor, (15, 25));
-    }
-
-    #[test]
-    fn test_popover_trigger_types() {
-        let _ = Popover::new("Test").trigger(PopoverTrigger::Click);
-        let _ = Popover::new("Test").trigger(PopoverTrigger::Hover);
-        let _ = Popover::new("Test").trigger(PopoverTrigger::Focus);
-        let _ = Popover::new("Test").trigger(PopoverTrigger::Manual);
-    }
-
-    #[test]
-    fn test_popover_custom_colors() {
-        let p = Popover::new("Test")
-            .fg(Color::RED)
-            .bg(Color::BLUE)
-            .border_color(Color::GREEN);
-
-        assert_eq!(p.state.fg, Some(Color::RED));
-        assert_eq!(p.state.bg, Some(Color::BLUE));
-        assert_eq!(p.border_color, Some(Color::GREEN));
-    }
-
-    #[test]
-    fn test_popover_handle_click_inside() {
-        let mut p = Popover::new("Test").anchor(20, 10).open(true);
-
-        // Click inside the popover area
-        let handled = p.handle_click(20, 12, 40, 20);
-        assert!(handled);
-        assert!(p.is_open()); // Should stay open
-    }
-
-    #[test]
-    fn test_popover_handle_click_outside() {
-        let mut p = Popover::new("Test").anchor(20, 10).open(true);
-
-        // Click outside the popover
-        let handled = p.handle_click(0, 0, 40, 20);
-        assert!(handled);
-        assert!(!p.is_open()); // Should close
-    }
-
-    #[test]
-    fn test_popover_handle_click_outside_disabled() {
-        let mut p = Popover::new("Test")
-            .anchor(20, 10)
-            .open(true)
-            .close_on_click_outside(false);
-
-        let handled = p.handle_click(0, 0, 40, 20);
-        assert!(!handled);
-        assert!(p.is_open()); // Should stay open
-    }
-}
+crate::impl_styled_view!(Popover);
