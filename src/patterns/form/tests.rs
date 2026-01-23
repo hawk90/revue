@@ -1,7 +1,6 @@
 //! Form pattern tests
 
 use super::*;
-use crate::reactive::{signal, Signal};
 
 // ValidationError tests
 #[test]

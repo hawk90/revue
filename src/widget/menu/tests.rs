@@ -1,7 +1,6 @@
 //! Tests for Menu widgets
 
 use super::context_menu::ContextMenu;
-use super::helpers::{context_menu, menu, menu_bar, menu_item};
 use super::menu_bar::MenuBar;
 use super::types::{Menu, MenuItem};
 use crate::event::Key;
