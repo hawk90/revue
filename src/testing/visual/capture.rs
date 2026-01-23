@@ -114,7 +114,7 @@ impl VisualCapture {
     }
 
     /// Serialize to string format
-    fn serialize(&self) -> String {
+    pub fn serialize(&self) -> String {
         let mut output = String::new();
 
         // Header
@@ -194,7 +194,7 @@ impl VisualCapture {
     }
 
     /// Deserialize from string format
-    fn deserialize(content: &str) -> std::io::Result<Self> {
+    pub fn deserialize(content: &str) -> std::io::Result<Self> {
         let mut width = 0u16;
         let mut height = 0u16;
         let mut include_styles = true;

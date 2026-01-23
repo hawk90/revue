@@ -7,9 +7,8 @@ use crate::style::Color;
 use crate::testing::visual::{
     comparison::colors_match,
     helpers::parse_hex_color,
-    types::{
-        CapturedCell, VisualCapture, VisualDiff, VisualTest, VisualTestConfig, VisualTestResult,
-    },
+    types::{CapturedCell, VisualCapture, VisualDiff, VisualTestConfig, VisualTestResult},
+    VisualTest,
 };
 
 fn make_buffer(text: &str) -> crate::render::Buffer {
