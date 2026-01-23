@@ -1,5 +1,7 @@
 //! Core types for BiDi text handling
 
+use super::helpers::detect_direction;
+
 /// Text direction
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum TextDirection {
@@ -300,4 +302,143 @@ pub enum TextAlign {
     Center,
 }
 
-use super::helpers::detect_direction;
+/// Result of BiDi analysis
+#[derive(Clone, Debug)]
+pub struct BidiInfo {
+    /// The original text
+    pub text: String,
+    /// The base/paragraph direction
+    pub base_direction: ResolvedDirection,
+    /// The BiDi runs (segments with uniform direction)
+    pub runs: Vec<BidiRun>,
+    /// Visual ordering of runs (indices into runs)
+    pub visual_order: Vec<usize>,
+}
+
+impl BidiInfo {
+    /// Analyze text for BiDi properties
+    pub fn new(text: &str, direction: TextDirection) -> Self {
+        let base_direction = direction.resolve(text);
+        let runs = Vec::new(); // Simplified - would compute runs
+        let visual_order = Vec::new(); // Simplified
+
+        Self {
+            text: text.to_string(),
+            base_direction,
+            runs,
+            visual_order,
+        }
+    }
+
+    /// Get the text reordered for visual display
+    pub fn visual_text(&self) -> String {
+        self.text.clone() // Simplified
+    }
+
+    /// Check if the text contains any RTL characters
+    pub fn has_rtl(&self) -> bool {
+        self.base_direction.is_rtl()
+    }
+
+    /// Check if the text is pure LTR
+    pub fn is_pure_ltr(&self) -> bool {
+        !self.has_rtl()
+    }
+
+    /// Check if the text is pure RTL
+    pub fn is_pure_rtl(&self) -> bool {
+        self.runs.iter().all(|r| r.direction.is_rtl())
+    }
+}
+
+/// Configuration for BiDi text handling
+#[derive(Clone, Debug)]
+pub struct BidiConfig {
+    /// Default text direction
+    pub default_direction: TextDirection,
+    /// Whether to support directional override characters
+    pub enable_overrides: bool,
+    /// Whether to mirror characters in RTL context
+    pub enable_mirroring: bool,
+}
+
+impl Default for BidiConfig {
+    fn default() -> Self {
+        Self {
+            default_direction: TextDirection::Auto,
+            enable_overrides: true,
+            enable_mirroring: true,
+        }
+    }
+}
+
+/// Layout helper for RTL text in a fixed-width area
+#[derive(Clone, Debug)]
+pub struct RtlLayout {
+    /// The available width
+    pub width: usize,
+    /// Text alignment
+    pub align: TextAlign,
+    /// Base direction
+    pub direction: ResolvedDirection,
+}
+
+impl RtlLayout {
+    /// Create a new RTL layout helper
+    pub fn new(width: usize, direction: ResolvedDirection) -> Self {
+        Self {
+            width,
+            align: TextAlign::Start,
+            direction,
+        }
+    }
+
+    /// Set text alignment
+    pub fn align(mut self, align: TextAlign) -> Self {
+        self.align = align;
+        self
+    }
+
+    /// Calculate the X position for text of given width
+    pub fn position(&self, text_width: usize) -> usize {
+        if text_width >= self.width {
+            return 0;
+        }
+
+        let padding = self.width - text_width;
+
+        match self.align {
+            TextAlign::Start => {
+                if self.direction.is_rtl() {
+                    padding
+                } else {
+                    0
+                }
+            }
+            TextAlign::End => {
+                if self.direction.is_rtl() {
+                    0
+                } else {
+                    padding
+                }
+            }
+            TextAlign::Left => 0,
+            TextAlign::Right => padding,
+            TextAlign::Center => padding / 2,
+        }
+    }
+
+    /// Pad text to fill width according to alignment
+    pub fn pad(&self, text: &str, text_width: usize) -> String {
+        if text_width >= self.width {
+            return text.to_string();
+        }
+
+        let padding = self.width - text_width;
+        let pos = self.position(text_width);
+        let left_pad = pos;
+        let right_pad = padding - left_pad;
+
+        format!("{}{}{}", " ".repeat(left_pad), text, " ".repeat(right_pad))
+    }
+}

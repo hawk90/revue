@@ -1,6 +1,6 @@
-//! Core types and enums for the range picker widget
+//! Date/time range picker types
 
-use super::calendar::{days_in_month, Date};
+use crate::widget::calendar::{days_in_month, Date};
 
 /// Preset date ranges
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
