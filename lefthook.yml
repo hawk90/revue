@@ -62,8 +62,11 @@ pre-push:
           if echo "$CHANGED" | grep -q "^tests/event"; then
             TEST_TARGETS+=("--test" "event_tests")
           fi
-          # Other test files
-          OTHER_TESTS=$(echo "$CHANGED" | grep "^tests/" | grep -v "^tests/widget/" | grep -v "^tests/reactive" | grep -v "^tests/worker" | grep -v "^tests/event" | sed 's/tests\///' | sed 's/\.rs$//' | sed 's/$/_tests/' | tr '\n' ' ' | tr -s ' ')
+          if echo "$CHANGED" | grep -q "^tests/render_module/"; then
+            TEST_TARGETS+=("--test" "render_tests")
+          fi
+          # Other test files (top-level tests/*.rs only)
+          OTHER_TESTS=$(echo "$CHANGED" | grep "^tests/[^/]*\.rs$" | sed 's/tests\///' | sed 's/\.rs$//' | sed 's/$/_tests/' | tr '\n' ' ' | tr -s ' ')
           for test in $OTHER_TESTS; do
             TEST_TARGETS+=("--test" "$test")
           done
