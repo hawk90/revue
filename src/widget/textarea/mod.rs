@@ -117,7 +117,7 @@ impl TextArea {
             fg: None,
             bg: None,
             cursor_fg: None,
-            selection_bg: None,
+            selection_bg: Some(Color::rgb(50, 50, 150)),
             line_number_fg: None,
             highlighter: None,
             find_replace: None,
