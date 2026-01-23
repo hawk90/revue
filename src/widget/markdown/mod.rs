@@ -155,7 +155,28 @@ impl Markdown {
                 Event::Code(text) => self.handle_code(&mut ctx, &text),
                 Event::Html(text) => self.handle_html(&mut ctx, &text),
                 Event::FootnoteReference(text) => self.handle_footnote_reference(&mut ctx, &text),
-                // Handle remaining events - inline math, display math, soft/hard breaks
+                Event::Rule => {
+                    ctx.flush_line();
+                    let rule_line = Line::new();
+                    ctx.lines.push(rule_line);
+                }
+                Event::SoftBreak => {
+                    ctx.add_text(" ");
+                }
+                Event::HardBreak => {
+                    ctx.flush_line();
+                    ctx.new_line();
+                }
+                Event::TaskListMarker(checked) => {
+                    // Task list item - add checkbox
+                    if checked {
+                        ctx.add_text("[x] ");
+                    } else {
+                        ctx.add_text("[ ] ");
+                    }
+                    ctx.item_needs_bullet = false;
+                }
+                // Handle remaining events
                 _ => {}
             }
         }
@@ -239,12 +260,27 @@ impl Markdown {
                     CodeBlockKind::Indented => {}
                 }
             }
-            Tag::List(mut _num) => {}
+            Tag::List(num) => {
+                ctx.list_depth += 1;
+                ctx.ordered_list_num = num;
+            }
             Tag::Item => {
-                ctx.item_needs_bullet = true;
+                let indent = "  ".repeat(ctx.list_depth.saturating_sub(1));
+                ctx.add_text(&indent);
+
+                // For ordered lists, add the number now
+                if let Some(n) = ctx.ordered_list_num {
+                    ctx.ordered_list_num = Some(n + 1);
+                    ctx.add_text(&format!("{}. ", n));
+                    ctx.item_needs_bullet = false;
+                } else {
+                    // For unordered lists, wait to see if it's a task list
+                    ctx.item_needs_bullet = true;
+                }
             }
             Tag::Paragraph => {
-                // Start of paragraph
+                // Start new line if not empty
+                ctx.flush_line();
             }
             Tag::Table(_) | Tag::TableHead | Tag::TableRow | Tag::TableCell => {
                 ctx.in_table = true;
@@ -289,6 +325,22 @@ impl Markdown {
                 });
                 ctx.in_footnote_definition = false;
             }
+            TagEnd::BlockQuote(_) => {
+                ctx.in_blockquote = false;
+                ctx.flush_line();
+            }
+            TagEnd::List(_) => {
+                ctx.list_depth = ctx.list_depth.saturating_sub(1);
+                ctx.flush_line();
+            }
+            TagEnd::Item => {
+                // Add bullet if needed (wasn't a task list)
+                if ctx.item_needs_bullet {
+                    ctx.add_text("• ");
+                }
+                ctx.flush_line();
+                ctx.item_needs_bullet = false;
+            }
             _ => {}
         }
     }
@@ -302,6 +354,17 @@ impl Markdown {
             ctx.current_cell.push_str(text);
         } else if ctx.in_heading {
             ctx.heading_text.push_str(text);
+        } else if ctx.blockquote_first_text {
+            ctx.blockquote_first_text = false;
+            // Check if this is an admonition
+            if let Some(admonition) = ctx.current_admonition {
+                ctx.flush_line();
+                let icon = admonition.icon();
+                let color = admonition.color();
+                ctx.add_text(icon);
+                ctx.current_fg = Some(color);
+            }
+            ctx.add_text(text);
         } else {
             ctx.add_text(text);
         }
