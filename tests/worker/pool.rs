@@ -86,7 +86,7 @@ fn test_pool_submit_full_queue() {
     let config = WorkerConfig {
         threads: 1,
         queue_capacity: 5,
-        default_timeout_ms: None,
+        default_timeout_ms: Some(100),
     };
     let pool = WorkerPool::with_config(config);
 
