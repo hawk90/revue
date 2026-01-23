@@ -1,4 +1,4 @@
-//! Core types for terminal widget
+//! Terminal widget types
 
 use crate::render::Modifier;
 use crate::style::Color;
