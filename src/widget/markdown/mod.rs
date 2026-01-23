@@ -352,6 +352,7 @@ impl Markdown {
                     ctx.lines.push(empty_line);
                 }
                 ctx.current_admonition = None;
+                ctx.accumulated_blockquote.clear();
             }
             TagEnd::List(_) => {
                 ctx.list_depth = ctx.list_depth.saturating_sub(1);
@@ -379,22 +380,34 @@ impl Markdown {
         } else if ctx.in_heading {
             ctx.heading_text.push_str(text);
         } else if ctx.blockquote_first_text {
+            // Accumulate text for admonition detection
+            ctx.accumulated_blockquote.push_str(text);
             ctx.blockquote_first_text = false;
-            // Check if this is an admonition marker
-            if let Some(admonition) = AdmonitionType::from_marker(text) {
+
+            // Try to detect admonition marker
+            let full_text = ctx.accumulated_blockquote.trim().to_string();
+            if let Some(admonition) = AdmonitionType::from_marker(&full_text) {
                 ctx.current_admonition = Some(admonition);
-                // Start new line for admonition header
                 ctx.flush_line();
                 // Render admonition header with icon and label
-                ctx.add_text(&format!("{} {}", admonition.icon(), admonition.label()));
-                ctx.current_fg = Some(admonition.color());
+                let color = admonition.color();
+                ctx.current_fg = Some(color);
                 ctx.current_modifier |= Modifier::BOLD;
+                ctx.add_text(&format!("{} {}", admonition.icon(), admonition.label()));
+                ctx.accumulated_blockquote.clear();
             } else {
-                // Regular blockquote - add quote prefix first
-                ctx.current_modifier |= Modifier::ITALIC;
-                ctx.add_text("│ ");
-                ctx.current_fg = Some(ctx.quote_fg);
-                ctx.add_text(text);
+                // Not a complete admonition marker yet, keep accumulating
+                if !full_text.ends_with(']') {
+                    // Might be split across events, wait for more
+                } else {
+                    // Complete text but not an admonition
+                    let color = ctx.quote_fg;
+                    ctx.current_modifier |= Modifier::ITALIC;
+                    ctx.current_fg = Some(color);
+                    ctx.add_text("│ ");
+                    ctx.add_text(&full_text);
+                    ctx.accumulated_blockquote.clear();
+                }
             }
         } else if let Some(_admonition) = ctx.current_admonition {
             // Admonition content - add quote prefix
