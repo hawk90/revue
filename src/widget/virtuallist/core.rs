@@ -1,115 +1,49 @@
-//! Virtual list widget for efficiently rendering large datasets
-//!
-//! Only renders visible items, making it suitable for lists with
-//! hundreds of thousands of items without performance degradation.
-//!
-//! # Features
-//!
-//! - **Variable height items**: Each item can have different heights
-//! - **Jump-to-index**: Quickly scroll to any item by index
-//! - **Smooth scrolling**: Configurable scroll behavior
-//! - **Overscan**: Render extra items for smoother scrolling
-//! - **Async loading**: Support for lazy-loaded data sources
-//!
-//! # Example
-//!
-//! ```ignore
-//! use revue::widget::{VirtualList, VirtualListItem};
-//!
-//! // Create a virtual list with 100,000 items
-//! let items: Vec<String> = (0..100_000)
-//!     .map(|i| format!("Item {}", i))
-//!     .collect();
-//!
-//! let list = VirtualList::new(items)
-//!     .item_height(1)
-//!     .selected(0);
-//!
-//! // With variable heights
-//! let list = VirtualList::new(items)
-//!     .variable_height(|item, _idx| if item.len() > 50 { 2 } else { 1 });
-//!
-//! // Jump to specific index
-//! list.jump_to(5000);
-//! ```
-
-use super::traits::{RenderContext, View, WidgetProps};
+use super::types::*;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::traits::{RenderContext, WidgetProps};
 use std::ops::Range;
-
-/// Item renderer function type
-pub type ItemRenderer<T> = Box<dyn Fn(&T, usize, bool) -> String>;
-
-/// Height calculator function type for variable heights
-pub type HeightCalculator<T> = Box<dyn Fn(&T, usize) -> u16>;
-
-/// Scroll behavior mode
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum ScrollMode {
-    /// Item-by-item scrolling
-    #[default]
-    Item,
-    /// Smooth pixel-based scrolling (simulated with sub-item offsets)
-    Smooth,
-    /// Center selected item when possible
-    Center,
-}
-
-/// Scroll alignment when jumping to an item
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum ScrollAlignment {
-    /// Align to top of viewport
-    #[default]
-    Start,
-    /// Align to center of viewport
-    Center,
-    /// Align to bottom of viewport
-    End,
-    /// Nearest edge (minimal scroll)
-    Nearest,
-}
 
 /// A virtual list that only renders visible items
 pub struct VirtualList<T> {
     /// All items (only visible ones are rendered)
-    items: Vec<T>,
+    pub items: Vec<T>,
     /// Height of each item in rows (uniform height)
-    item_height: u16,
+    pub item_height: u16,
     /// Variable height calculator (overrides item_height if set)
-    height_calculator: Option<HeightCalculator<T>>,
+    pub height_calculator: Option<HeightCalculator<T>>,
     /// Cached heights for variable-height mode
-    height_cache: Vec<u16>,
+    pub height_cache: Vec<u16>,
     /// Cached cumulative heights (prefix sums for fast lookup)
-    cumulative_heights: Vec<u32>,
+    pub cumulative_heights: Vec<u32>,
     /// Current scroll offset (in items for uniform, in rows for variable)
-    scroll_offset: usize,
+    pub scroll_offset: usize,
     /// Sub-item scroll offset (for smooth scrolling, 0-item_height)
-    scroll_sub_offset: u16,
+    pub scroll_sub_offset: u16,
     /// Currently selected index
-    selected: Option<usize>,
+    pub selected: Option<usize>,
     /// Selection background color
-    selected_bg: Color,
+    pub selected_bg: Color,
     /// Selection foreground color
-    selected_fg: Color,
+    pub selected_fg: Color,
     /// Normal item foreground color
-    item_fg: Color,
+    pub item_fg: Color,
     /// Show scrollbar
-    show_scrollbar: bool,
+    pub show_scrollbar: bool,
     /// Scrollbar foreground color
-    scrollbar_fg: Color,
+    pub scrollbar_fg: Color,
     /// Scrollbar background color
-    scrollbar_bg: Color,
+    pub scrollbar_bg: Color,
     /// Custom item renderer
-    renderer: Option<ItemRenderer<T>>,
+    pub renderer: Option<ItemRenderer<T>>,
     /// Overscan (extra items to render above/below viewport)
-    overscan: usize,
+    pub overscan: usize,
     /// Enable wrap-around navigation
-    wrap_navigation: bool,
+    pub wrap_navigation: bool,
     /// Scroll mode
-    scroll_mode: ScrollMode,
+    pub scroll_mode: ScrollMode,
     /// CSS styling properties (id, classes)
-    props: WidgetProps,
+    pub props: WidgetProps,
 }
 
 impl<T: ToString + Clone> VirtualList<T> {
@@ -526,7 +460,7 @@ impl<T: ToString + Clone> VirtualList<T> {
     }
 
     /// Scroll to make selected item visible
-    fn ensure_visible(&mut self, viewport_height: u16) {
+    pub fn ensure_visible(&mut self, viewport_height: u16) {
         let visible_count = (viewport_height / self.item_height) as usize;
         if let Some(idx) = self.selected {
             if idx < self.scroll_offset {
@@ -538,7 +472,7 @@ impl<T: ToString + Clone> VirtualList<T> {
     }
 
     /// Get visible item range
-    fn visible_range(&self, viewport_height: u16) -> Range<usize> {
+    pub fn visible_range(&self, viewport_height: u16) -> Range<usize> {
         let visible_count = (viewport_height / self.item_height) as usize;
         let start = self.scroll_offset.saturating_sub(self.overscan);
         let end = (self.scroll_offset + visible_count + self.overscan).min(self.items.len());
@@ -546,7 +480,7 @@ impl<T: ToString + Clone> VirtualList<T> {
     }
 
     /// Render item text
-    fn render_item(&self, item: &T, index: usize, is_selected: bool) -> String {
+    pub fn render_item(&self, item: &T, index: usize, is_selected: bool) -> String {
         if let Some(ref renderer) = self.renderer {
             renderer(item, index, is_selected)
         } else {
@@ -555,7 +489,7 @@ impl<T: ToString + Clone> VirtualList<T> {
     }
 
     /// Render scrollbar
-    fn render_scrollbar(&self, ctx: &mut RenderContext, viewport_height: u16) {
+    pub fn render_scrollbar(&self, ctx: &mut RenderContext, viewport_height: u16) {
         let area = ctx.area;
         let scrollbar_x = area.x + area.width - 1;
 
@@ -587,405 +521,5 @@ impl<T: ToString + Clone> VirtualList<T> {
                 ctx.buffer.set(scrollbar_x, abs_y, Cell::new(ch).fg(color));
             }
         }
-    }
-}
-
-impl<T: ToString + Clone> View for VirtualList<T> {
-    crate::impl_view_meta!("VirtualList");
-
-    fn render(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
-        if area.width < 2 || area.height < 1 {
-            return;
-        }
-
-        let viewport_height = area.height;
-        let content_width = if self.show_scrollbar {
-            area.width.saturating_sub(1)
-        } else {
-            area.width
-        };
-
-        // Ensure selected item is visible
-        let mut this = self.clone();
-        this.ensure_visible(viewport_height);
-
-        // Get visible range
-        let visible_range = this.visible_range(viewport_height);
-
-        // Render visible items
-        for item_idx in visible_range {
-            let item = &this.items[item_idx];
-            let is_selected = this.selected == Some(item_idx);
-
-            // Calculate Y position (accounting for scroll offset)
-            let relative_idx = item_idx.saturating_sub(this.scroll_offset);
-            let y_offset = (relative_idx as u16) * this.item_height;
-
-            if y_offset >= viewport_height {
-                break;
-            }
-
-            // Get item text
-            let text = this.render_item(item, item_idx, is_selected);
-
-            // Render item rows
-            for row in 0..this.item_height {
-                let y = area.y + y_offset + row;
-                if y >= area.y + viewport_height {
-                    break;
-                }
-
-                // Get the line for this row (for multi-row items)
-                let line = if row == 0 { &text } else { "" };
-
-                // Render each character
-                for x in 0..content_width {
-                    let ch = line.chars().nth(x as usize).unwrap_or(' ');
-                    let mut cell = Cell::new(ch);
-
-                    if is_selected {
-                        cell.fg = Some(this.selected_fg);
-                        cell.bg = Some(this.selected_bg);
-                    } else {
-                        cell.fg = Some(this.item_fg);
-                    }
-
-                    ctx.buffer.set(area.x + x, y, cell);
-                }
-            }
-        }
-
-        // Render scrollbar
-        if this.show_scrollbar && this.items.len() > (viewport_height / this.item_height) as usize {
-            // Use a mutable reference for scrollbar rendering
-            let this_clone = this.clone();
-            this_clone.render_scrollbar(ctx, viewport_height);
-        }
-    }
-}
-
-impl<T: ToString + Clone> Clone for VirtualList<T> {
-    fn clone(&self) -> Self {
-        Self {
-            items: self.items.clone(),
-            item_height: self.item_height,
-            height_calculator: None, // Can't clone closures
-            height_cache: self.height_cache.clone(),
-            cumulative_heights: self.cumulative_heights.clone(),
-            scroll_offset: self.scroll_offset,
-            scroll_sub_offset: self.scroll_sub_offset,
-            selected: self.selected,
-            selected_bg: self.selected_bg,
-            selected_fg: self.selected_fg,
-            item_fg: self.item_fg,
-            show_scrollbar: self.show_scrollbar,
-            scrollbar_fg: self.scrollbar_fg,
-            scrollbar_bg: self.scrollbar_bg,
-            renderer: None, // Can't clone closures
-            overscan: self.overscan,
-            wrap_navigation: self.wrap_navigation,
-            scroll_mode: self.scroll_mode,
-            props: self.props.clone(),
-        }
-    }
-}
-
-impl<T: ToString + Clone> VirtualList<T> {
-    /// Get element ID
-    pub fn get_element_id(&self) -> Option<&str> {
-        self.props.id.as_deref()
-    }
-
-    /// Get CSS classes
-    pub fn get_classes(&self) -> &[String] {
-        &self.props.classes
-    }
-}
-
-impl<T: ToString + Clone + Default> Default for VirtualList<T> {
-    fn default() -> Self {
-        Self::new(Vec::new())
-    }
-}
-
-// Manual implementations for generic type
-impl<T: ToString + Clone> crate::widget::StyledView for VirtualList<T> {
-    fn set_id(&mut self, id: impl Into<String>) {
-        self.props.id = Some(id.into());
-    }
-
-    fn add_class(&mut self, class: impl Into<String>) {
-        let class_str = class.into();
-        if !self.props.classes.iter().any(|c| c == &class_str) {
-            self.props.classes.push(class_str);
-        }
-    }
-
-    fn remove_class(&mut self, class: &str) {
-        self.props.classes.retain(|c| c != class);
-    }
-
-    fn toggle_class(&mut self, class: &str) {
-        if self.props.classes.iter().any(|c| c == class) {
-            self.props.classes.retain(|c| c != class);
-        } else {
-            self.props.classes.push(class.to_string());
-        }
-    }
-
-    fn has_class(&self, class: &str) -> bool {
-        self.props.classes.iter().any(|c| c == class)
-    }
-}
-
-impl<T: ToString + Clone> VirtualList<T> {
-    /// Set element ID for CSS selector (#id)
-    pub fn element_id(mut self, id: impl Into<String>) -> Self {
-        self.props.id = Some(id.into());
-        self
-    }
-
-    /// Add a CSS class
-    pub fn class(mut self, class: impl Into<String>) -> Self {
-        let class_str = class.into();
-        if !self.props.classes.iter().any(|c| c == &class_str) {
-            self.props.classes.push(class_str);
-        }
-        self
-    }
-
-    /// Add multiple CSS classes
-    pub fn classes<I, S>(mut self, classes: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        for class in classes {
-            let class_str = class.into();
-            if !self.props.classes.iter().any(|c| c == &class_str) {
-                self.props.classes.push(class_str);
-            }
-        }
-        self
-    }
-}
-
-/// Helper function to create a virtual list
-pub fn virtual_list<T: ToString + Clone>(items: Vec<T>) -> VirtualList<T> {
-    VirtualList::new(items)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
-
-    #[test]
-    fn test_virtual_list_new() {
-        let items = vec!["a", "b", "c"];
-        let list = VirtualList::new(items);
-        assert_eq!(list.len(), 3);
-        assert_eq!(list.selected_index(), Some(0));
-    }
-
-    #[test]
-    fn test_virtual_list_large() {
-        // Test with 100k items
-        let items: Vec<String> = (0..100_000).map(|i| format!("Item {}", i)).collect();
-        let list = VirtualList::new(items);
-        assert_eq!(list.len(), 100_000);
-    }
-
-    #[test]
-    fn test_virtual_list_navigation() {
-        let items = vec!["a", "b", "c", "d", "e"];
-        let mut list = VirtualList::new(items);
-
-        assert_eq!(list.selected_index(), Some(0));
-
-        list.select_next();
-        assert_eq!(list.selected_index(), Some(1));
-
-        list.select_next();
-        list.select_next();
-        list.select_next();
-        assert_eq!(list.selected_index(), Some(4));
-
-        // At end, should not move without wrap
-        list.select_next();
-        assert_eq!(list.selected_index(), Some(4));
-
-        list.select_prev();
-        assert_eq!(list.selected_index(), Some(3));
-    }
-
-    #[test]
-    fn test_virtual_list_wrap_navigation() {
-        let items = vec!["a", "b", "c"];
-        let mut list = VirtualList::new(items).wrap_navigation(true);
-
-        list.select_last();
-        assert_eq!(list.selected_index(), Some(2));
-
-        list.select_next();
-        assert_eq!(list.selected_index(), Some(0));
-
-        list.select_prev();
-        assert_eq!(list.selected_index(), Some(2));
-    }
-
-    #[test]
-    fn test_virtual_list_visible_range() {
-        let items: Vec<String> = (0..100).map(|i| format!("Item {}", i)).collect();
-        let list = VirtualList::new(items).overscan(2);
-
-        // With viewport of 10 rows and item_height of 1
-        let range = list.visible_range(10);
-        assert!(range.start == 0); // scroll_offset is 0, minus overscan clamped to 0
-        assert!(range.end <= 14); // 0 + 10 + 2*overscan
-    }
-
-    #[test]
-    fn test_virtual_list_set_items() {
-        let mut list = VirtualList::new(vec!["a", "b", "c"]);
-        list.selected = Some(2);
-
-        list.set_items(vec!["x", "y"]);
-        assert_eq!(list.len(), 2);
-        assert_eq!(list.selected_index(), Some(1)); // Adjusted to last item
-    }
-
-    #[test]
-    fn test_virtual_list_push_remove() {
-        let mut list = VirtualList::new(vec!["a", "b"]);
-
-        list.push("c");
-        assert_eq!(list.len(), 3);
-
-        let removed = list.remove(0);
-        assert_eq!(removed, Some("a"));
-        assert_eq!(list.len(), 2);
-    }
-
-    #[test]
-    fn test_virtual_list_clear() {
-        let mut list = VirtualList::new(vec!["a", "b", "c"]);
-        list.clear();
-        assert!(list.is_empty());
-        assert_eq!(list.selected_index(), None);
-    }
-
-    #[test]
-    fn test_virtual_list_render() {
-        let mut buffer = Buffer::new(20, 5);
-        let area = Rect::new(0, 0, 20, 5);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let items: Vec<String> = (0..100).map(|i| format!("Item {}", i)).collect();
-        let list = VirtualList::new(items);
-        list.render(&mut ctx);
-
-        // First item should be visible
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'I');
-    }
-
-    #[test]
-    fn test_virtual_list_helper() {
-        let list = virtual_list(vec!["a", "b", "c"]);
-        assert_eq!(list.len(), 3);
-    }
-
-    #[test]
-    fn test_virtual_list_page_navigation() {
-        let items: Vec<String> = (0..100).map(|i| format!("Item {}", i)).collect();
-        let mut list = VirtualList::new(items);
-
-        list.page_down(10);
-        assert_eq!(list.selected_index(), Some(10));
-
-        list.page_up(10);
-        assert_eq!(list.selected_index(), Some(0));
-    }
-
-    #[test]
-    fn test_virtual_list_jump_to() {
-        let items: Vec<String> = (0..1000).map(|i| format!("Item {}", i)).collect();
-        let mut list = VirtualList::new(items);
-
-        list.jump_to(500);
-        assert_eq!(list.selected_index(), Some(500));
-        assert_eq!(list.scroll_offset, 500);
-
-        // Jump to out of bounds should be ignored
-        list.jump_to(5000);
-        assert_eq!(list.selected_index(), Some(500));
-    }
-
-    #[test]
-    fn test_virtual_list_scroll_position() {
-        let items: Vec<String> = (0..100).map(|i| format!("Item {}", i)).collect();
-        let mut list = VirtualList::new(items);
-
-        assert_eq!(list.scroll_position(), 0.0);
-
-        list.set_scroll_position(0.5);
-        assert!(list.scroll_offset > 0);
-
-        list.set_scroll_position(1.0);
-        assert_eq!(list.scroll_offset, 99);
-    }
-
-    #[test]
-    fn test_virtual_list_variable_height() {
-        let items: Vec<String> = (0..10).map(|i| format!("Item {}", i)).collect();
-        let list =
-            VirtualList::new(items).variable_height(|_item, idx| if idx % 2 == 0 { 2 } else { 1 });
-
-        // Even items have height 2, odd items have height 1
-        assert_eq!(list.get_item_height(0), 2);
-        assert_eq!(list.get_item_height(1), 1);
-        assert_eq!(list.get_item_height(2), 2);
-
-        // Total height: 5 even items * 2 + 5 odd items * 1 = 15
-        assert_eq!(list.total_height(), 15);
-    }
-
-    #[test]
-    fn test_virtual_list_row_calculations() {
-        let items: Vec<String> = (0..5).map(|i| format!("Item {}", i)).collect();
-        let list = VirtualList::new(items).variable_height(|_item, idx| (idx + 1) as u16); // Heights: 1, 2, 3, 4, 5
-
-        // Cumulative heights: 1, 3, 6, 10, 15
-        assert_eq!(list.row_of_index(0), 0);
-        assert_eq!(list.row_of_index(1), 1);
-        assert_eq!(list.row_of_index(2), 3);
-        assert_eq!(list.row_of_index(3), 6);
-        assert_eq!(list.row_of_index(4), 10);
-
-        // Index at row
-        assert_eq!(list.index_at_row(0), 0);
-        assert_eq!(list.index_at_row(1), 1);
-        assert_eq!(list.index_at_row(2), 1);
-        assert_eq!(list.index_at_row(3), 2);
-        assert_eq!(list.index_at_row(6), 3);
-    }
-
-    #[test]
-    fn test_virtual_list_scroll_mode() {
-        let items = vec!["a", "b", "c"];
-        let list = VirtualList::new(items).scroll_mode(ScrollMode::Center);
-        assert_eq!(list.scroll_mode, ScrollMode::Center);
-    }
-
-    #[test]
-    fn test_virtual_list_scroll_by() {
-        let items: Vec<String> = (0..100).map(|i| format!("Item {}", i)).collect();
-        let mut list = VirtualList::new(items).item_height(2);
-
-        list.scroll_by(3);
-        // With item_height=2, scrolling 3 rows moves 1 item + 1 sub-offset
-        assert!(list.scroll_offset >= 1);
     }
 }
