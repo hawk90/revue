@@ -19,6 +19,7 @@ mod combobox;
 mod command_palette;
 mod datagrid;
 mod datetime_picker;
+#[cfg(feature = "diff")]
 mod diff;
 mod divider;
 mod empty_state;
@@ -46,6 +47,7 @@ mod timer;
 mod tooltip;
 mod waveline;
 
+#[cfg(feature = "qrcode")]
 mod qrcode;
 mod richtext;
 mod terminal;

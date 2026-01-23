@@ -1,5 +1,6 @@
 //! Image Protocol tests (from src/render/image_protocol.rs)
 
+#![cfg(feature = "image")]
 #![allow(unused_imports)]
 
 use revue::layout::Rect;

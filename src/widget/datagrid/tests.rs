@@ -1,8 +1,11 @@
 //! DataGrid widget tests
 
 use super::*;
+use crate::event::Key;
 use crate::layout::Rect;
 use crate::render::Buffer;
+use crate::style::Color;
+use crate::widget::traits::{RenderContext, View};
 
 #[test]
 fn test_grid_column() {

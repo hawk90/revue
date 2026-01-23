@@ -377,7 +377,7 @@ pub use httpclient::{
 #[cfg(feature = "image")]
 pub use image::{image_from_file, try_image_from_file, Image, ImageError, ImageResult, ScaleMode};
 pub use input::{input, Input};
-pub use json_viewer::{json_viewer, JsonNode, JsonType, JsonViewer};
+pub use json_viewer::{json_viewer, JsonNode, JsonType, JsonViewer, Search};
 pub use layer::{layers, Layers};
 pub use link::{link, url_link, Link, LinkStyle};
 pub use list::{list, List};
