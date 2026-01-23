@@ -382,7 +382,6 @@ impl Markdown {
         } else if ctx.blockquote_first_text {
             // Accumulate text for admonition detection
             ctx.accumulated_blockquote.push_str(text);
-            ctx.blockquote_first_text = false;
 
             // Try to detect admonition marker
             let full_text = ctx.accumulated_blockquote.trim().to_string();
@@ -395,18 +394,21 @@ impl Markdown {
                 ctx.current_modifier |= Modifier::BOLD;
                 ctx.add_text(&format!("{} {}", admonition.icon(), admonition.label()));
                 ctx.accumulated_blockquote.clear();
+                ctx.blockquote_first_text = false;
             } else {
                 // Not a complete admonition marker yet, keep accumulating
                 if !full_text.ends_with(']') {
-                    // Might be split across events, wait for more
+                    // Might be split across events, keep accumulating
                 } else {
                     // Complete text but not an admonition
+                    ctx.flush_line();
                     let color = ctx.quote_fg;
                     ctx.current_modifier |= Modifier::ITALIC;
                     ctx.current_fg = Some(color);
                     ctx.add_text("│ ");
                     ctx.add_text(&full_text);
                     ctx.accumulated_blockquote.clear();
+                    ctx.blockquote_first_text = false;
                 }
             }
         } else if let Some(_admonition) = ctx.current_admonition {
