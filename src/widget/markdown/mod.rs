@@ -161,7 +161,12 @@ impl Markdown {
                     ctx.lines.push(rule_line);
                 }
                 Event::SoftBreak => {
-                    ctx.add_text(" ");
+                    if ctx.in_blockquote || ctx.current_admonition.is_some() {
+                        ctx.flush_line();
+                        ctx.new_line();
+                    } else {
+                        ctx.add_text(" ");
+                    }
                 }
                 Event::HardBreak => {
                     ctx.flush_line();
@@ -393,12 +398,24 @@ impl Markdown {
                 ctx.current_fg = Some(color);
                 ctx.current_modifier |= Modifier::BOLD;
                 ctx.add_text(&format!("{} {}", admonition.icon(), admonition.label()));
+                ctx.new_line();
                 ctx.accumulated_blockquote.clear();
                 ctx.blockquote_first_text = false;
             } else {
                 // Not a complete admonition marker yet, keep accumulating
                 if !full_text.ends_with(']') {
-                    // Might be split across events, keep accumulating
+                    // If text doesn't contain '[', it's definitely not an admonition
+                    if !full_text.contains('[') {
+                        ctx.flush_line();
+                        let color = ctx.quote_fg;
+                        ctx.current_modifier |= Modifier::ITALIC;
+                        ctx.current_fg = Some(color);
+                        ctx.add_text("│ ");
+                        ctx.add_text(&full_text);
+                        ctx.accumulated_blockquote.clear();
+                        ctx.blockquote_first_text = false;
+                    }
+                    // Otherwise keep accumulating
                 } else {
                     // Complete text but not an admonition
                     ctx.flush_line();
@@ -431,6 +448,14 @@ impl Markdown {
     fn handle_html(&self, ctx: &mut parser::ParserContext, text: &str) {
         if let Some(admonition) = AdmonitionType::from_marker(text) {
             ctx.current_admonition = Some(admonition);
+            ctx.flush_line();
+            // Render admonition header with icon and label
+            let color = admonition.color();
+            ctx.current_fg = Some(color);
+            ctx.current_modifier |= Modifier::BOLD;
+            ctx.add_text(&format!("{} {}", admonition.icon(), admonition.label()));
+            ctx.new_line();
+            ctx.blockquote_first_text = false;
         }
     }
 

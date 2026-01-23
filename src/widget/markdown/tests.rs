@@ -61,15 +61,17 @@ fn test_markdown_render() {
     let md = Markdown::new("# Test\n\nHello world.");
     md.render(&mut ctx);
 
-    // Check that something was rendered
-    let mut found_hash = false;
+    // Check that heading was rendered with bold modifier
+    let mut found_bold = false;
     for x in 0..10 {
-        if buffer.get(x, 0).unwrap().symbol == '#' {
-            found_hash = true;
-            break;
+        if let Some(cell) = buffer.get(x, 0) {
+            if cell.symbol == 'T' && cell.modifier.contains(crate::render::Modifier::BOLD) {
+                found_bold = true;
+                break;
+            }
         }
     }
-    assert!(found_hash);
+    assert!(found_bold);
 }
 
 #[test]
