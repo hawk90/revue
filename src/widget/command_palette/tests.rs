@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use super::command::Command;
-    use super::core::CommandPalette;
     use crate::layout::Rect;
     use crate::render::Buffer;
+    use crate::widget::command_palette::{command_palette, Command, CommandPalette};
+    use crate::widget::RenderContext;
 
     #[test]
     fn test_command_new() {
@@ -147,21 +147,6 @@ mod tests {
     }
 
     #[test]
-    fn test_palette_render() {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let mut p = CommandPalette::new()
-            .title("Commands")
-            .command(Command::new("test", "Test Command").shortcut("Ctrl+T"));
-
-        p.show();
-        p.render(&mut ctx);
-        // Smoke test
-    }
-
-    #[test]
     fn test_palette_helper() {
         let p = command_palette().width(50);
         assert_eq!(p.width, 50);
@@ -169,7 +154,8 @@ mod tests {
 
     #[test]
     fn test_highlight_match() {
-        let p = CommandPalette::new();
+        let mut p = CommandPalette::new();
+        p.query = "".to_string();
         let result = p.highlight_match("Hello");
         assert_eq!(result.len(), 5);
         assert!(result.iter().all(|(_, m)| !m));

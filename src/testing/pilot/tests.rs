@@ -1,8 +1,10 @@
 #[cfg(test)]
 mod tests {
-    use super::core::Pilot;
+    use std::time::Duration;
+
     use crate::event::Key;
-    use crate::testing::{TestApp, TestConfig};
+    use crate::testing::pilot::Pilot;
+    use crate::testing::{Action, KeyAction, MouseAction, TestApp, TestConfig};
     use crate::widget::{RenderContext, Text, View};
 
     struct SimpleView {

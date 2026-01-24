@@ -3,8 +3,14 @@
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app::screen::{
+        screen_manager, simple_screen, Screen, ScreenConfig, ScreenEvent, ScreenId, ScreenManager,
+        ScreenMode, ScreenResult, Transition,
+    };
     use crate::layout::Rect;
     use crate::render::Buffer;
+    use crate::widget::RenderContext;
+    use std::time::Duration;
 
     struct TestScreen {
         id: ScreenId,

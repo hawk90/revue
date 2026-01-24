@@ -1,7 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use super::core::SortableList;
-    use super::types::SortableItem;
+    use crate::event::{DragData, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+    use crate::style::Color;
+    use crate::widget::sortable::{sortable_list, SortableItem, SortableList};
+    use crate::widget::RenderContext;
 
     #[test]
     fn test_sortable_list_new() {
@@ -204,8 +208,6 @@ mod tests {
 
     #[test]
     fn test_sortable_list_render() {
-        use crate::render::Buffer;
-
         let mut buffer = Buffer::new(40, 10);
         let area = Rect::new(0, 0, 40, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
@@ -216,8 +218,6 @@ mod tests {
 
     #[test]
     fn test_sortable_list_render_with_selection() {
-        use crate::render::Buffer;
-
         let mut buffer = Buffer::new(40, 10);
         let area = Rect::new(0, 0, 40, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
@@ -229,8 +229,6 @@ mod tests {
 
     #[test]
     fn test_sortable_list_render_dragging() {
-        use crate::render::Buffer;
-
         let mut buffer = Buffer::new(40, 10);
         let area = Rect::new(0, 0, 40, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);

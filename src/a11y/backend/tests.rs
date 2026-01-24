@@ -1,9 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::a11y::backend::{
-        BackendType, LinuxBackend, LoggedAnnouncement, MacOSBackend, ScreenReaderBackend,
-        ScreenReaderConfig, WindowsBackend,
-    };
+    use crate::a11y::backend::{BackendType, LoggingBackend, ScreenReaderBackend, ScreenReaderConfig};
+    use crate::a11y::backend::platform::{LinuxBackend, LoggedAnnouncement, MacOSBackend, NullBackend, WindowsBackend};
     use crate::utils::accessibility::Priority;
 
     #[test]

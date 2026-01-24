@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use super::group::{GroupedUndoHistory, UndoGroup};
-    use super::types::Mergeable;
-    use super::types::UndoHistory;
+    use crate::utils::undo::{GroupedUndoHistory, Mergeable, UndoGroup, UndoHistory};
 
     // Simple test operation
     #[derive(Clone, Debug, PartialEq)]

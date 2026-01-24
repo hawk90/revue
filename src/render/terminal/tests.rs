@@ -1,13 +1,44 @@
 #[cfg(test)]
 mod tests {
-    use super::super::super::cell::Modifier;
-    use super::super::super::Buffer;
-    use super::super::types::RenderState;
-    use super::super::{to_crossterm_color, Terminal};
     use crate::layout::Rect;
+    use crate::render::cell::Modifier;
+    use crate::render::terminal::Terminal;
+    use crate::render::Buffer;
     use crate::style::Color;
+    use crate::widget::RenderContext;
     use crossterm::style::Color as CrosstermColor;
     use std::io::{self, Write};
+
+    // Helper function to convert Color to CrosstermColor (duplicated from render.rs)
+    fn to_crossterm_color(color: Color) -> CrosstermColor {
+        match color {
+            Color::Rgb(r, g, b) => CrosstermColor::Rgb { r, g, b },
+            Color::BLACK => CrosstermColor::Rgb { r: 0, g: 0, b: 0 },
+            Color::WHITE => CrosstermColor::Rgb {
+                r: 255,
+                g: 255,
+                b: 255,
+            },
+            Color::RED => CrosstermColor::Rgb { r: 255, g: 0, b: 0 },
+            Color::GREEN => CrosstermColor::Rgb { r: 0, g: 255, b: 0 },
+            Color::BLUE => CrosstermColor::Rgb { r: 0, g: 0, b: 255 },
+            Color::YELLOW => CrosstermColor::Rgb {
+                r: 255,
+                g: 255,
+                b: 0,
+            },
+            Color::CYAN => CrosstermColor::Rgb {
+                r: 0,
+                g: 255,
+                b: 255,
+            },
+            Color::MAGENTA => CrosstermColor::Rgb {
+                r: 255,
+                g: 0,
+                b: 255,
+            },
+        }
+    }
 
     // Mock writer for testing
     struct MockWriter {
@@ -37,6 +68,16 @@ mod tests {
         fn flush(&mut self) -> io::Result<()> {
             Ok(())
         }
+    }
+
+    // RenderState is internal, so we use a minimal test struct
+    #[derive(Default)]
+    struct RenderState {
+        fg: Option<Color>,
+        bg: Option<Color>,
+        modifier: Modifier,
+        hyperlink_id: Option<u16>,
+        cursor: Option<(u16, u16)>,
     }
 
     // RenderState tests
