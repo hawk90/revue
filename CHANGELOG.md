@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.34.0](https://github.com/hawk90/revue/compare/v2.33.4...v2.34.0) (2026-01-24)
+
+
+### Features
+
+* **tests:** add property-based tests with proptest ([#274](https://github.com/hawk90/revue/issues/274)) ([8e75b08](https://github.com/hawk90/revue/commit/8e75b084ea1025a920f2591fe1c7843df724cd67))
+
 ## [Unreleased]
 
 ### Changed
