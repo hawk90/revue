@@ -6,8 +6,6 @@ mod helpers;
 mod impls;
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use crate::event::Key;
     use crate::layout::Rect;
     use crate::render::Buffer;

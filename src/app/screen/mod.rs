@@ -15,17 +15,17 @@ pub use types::{
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
     use crate::widget::RenderContext;
     use std::time::Duration;
 
+    #[allow(dead_code)]
     struct TestScreen {
         id: ScreenId,
         events: Vec<ScreenEvent>,
     }
 
     impl TestScreen {
+        #[allow(dead_code)]
         fn new(id: impl Into<ScreenId>) -> Self {
             Self {
                 id: id.into(),

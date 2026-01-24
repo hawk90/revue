@@ -11,11 +11,7 @@ mod tests {
     use super::*;
 
     use crate::event::{Key, KeyEvent};
-    use crate::layout::Rect;
-    use crate::render::Buffer;
-    use crate::style::Color;
     use crate::utils::FilterMode;
-    use crate::widget::traits::RenderContext;
 
     #[test]
     fn test_suggestion_new() {

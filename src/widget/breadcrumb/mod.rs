@@ -16,8 +16,6 @@ pub use helper::{breadcrumb, crumb};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use crate::layout::Rect;
     use crate::render::Buffer;
     use crate::style::Color;

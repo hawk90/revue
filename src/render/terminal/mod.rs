@@ -12,7 +12,6 @@ pub use types::Terminal;
 mod tests {
     use crate::layout::Rect;
     use crate::render::cell::{Cell, Modifier};
-    use crate::render::terminal::Terminal;
     use crate::render::Buffer;
     use crate::style::Color;
     use crossterm::style::Color as CrosstermColor;

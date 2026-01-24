@@ -36,8 +36,6 @@ pub use types::{CiEnvironment, CiProvider};
 // Include tests from tests.rs
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use super::super::{CiEnvironment, CiProvider, TestReport, TestResult};
     use std::path::PathBuf;
 

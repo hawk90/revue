@@ -28,8 +28,6 @@ pub use helper::{wrap_next, wrap_prev};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use crate::utils::selection::{wrap_next, wrap_prev, SectionedSelection, Selection};
 
     #[test]

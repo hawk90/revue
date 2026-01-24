@@ -28,8 +28,6 @@ mod merge;
 mod query;
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use crate::utils::undo::{GroupedUndoHistory, Mergeable, UndoGroup, UndoHistory};
 
     // Simple test operation

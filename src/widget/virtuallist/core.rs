@@ -171,6 +171,7 @@ impl<T: ToString + Clone> VirtualList<T> {
 
     /// Get height of item at index
     #[cfg(test)]
+    #[allow(dead_code)]
     fn get_item_height(&self, index: usize) -> u16 {
         if self.height_calculator.is_some() && index < self.height_cache.len() {
             self.height_cache[index]
