@@ -183,6 +183,26 @@
 
 #![warn(missing_docs)]
 
+/// The version of the library, including the git commit hash in development builds.
+///
+/// In production releases (from crates.io), this will be a semver like "2.33.4".
+///
+/// In development builds, this will be in the format "2.33.4-SHA" where SHA is the
+/// short git commit hash, allowing precise identification of the exact code version.
+pub const VERSION: &str = env!("REVUE_VERSION");
+
+/// The full git commit hash of this build.
+///
+/// Empty in release builds, contains the 40-character commit SHA in development builds.
+pub const GIT_SHA: &str = env!("GIT_SHA");
+
+/// Whether this is a development build (with commit hash in version) or a release build.
+///
+/// Returns `true` for development builds (version includes SHA), `false` for releases.
+pub fn is_dev_build() -> bool {
+    env!("REVUE_IS_DEV") == "true"
+}
+
 // Internal logging macros - no-op when tracing feature is disabled
 #[cfg(feature = "tracing")]
 macro_rules! log_debug {

@@ -20,8 +20,12 @@ mod width;
 #[cfg(test)]
 mod tests;
 
-// Re-export all types
-pub use types::*;
+// Re-export all types (explicit to avoid conflict with mod export)
+#[allow(unused_imports)]
+pub use types::{
+    AggregationType, Alignment, ColumnAggregation, ColumnType, ExportFormat, ExportOptions,
+    FooterRow, GridColors, GridColumn, GridOptions, GridRow, SortDirection,
+};
 
 // Re-export main widget
 pub use core::DataGrid;

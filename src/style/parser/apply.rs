@@ -1,12 +1,11 @@
-//! Declaration application functions
+//! CSS property application functions
 
 use crate::style::{
-    AlignItems, BorderStyle, Color, Display, FlexDirection, GridPlacement, GridTemplate,
-    JustifyContent, Position, Size, Spacing, Style,
+    AlignItems, BorderStyle, Display, FlexDirection, GridPlacement, GridTemplate, JustifyContent,
+    Position,
 };
+use crate::style::{Color, Size, Spacing, Style};
 use std::collections::HashMap;
-
-use super::value_parsers::{parse_color, parse_grid_placement, parse_grid_template, parse_length, parse_signed_length, parse_size};
 
 /// Apply a declaration to a style
 pub fn apply_declaration(
@@ -90,27 +89,6 @@ fn apply_display_layout(style: &mut Style, property: &str, value: &str) -> bool 
                 _ => return false,
             };
             true
-        }
-        "gap" => {
-            if let Some(v) = parse_length(value) {
-                style.layout.gap = v;
-                return true;
-            }
-            false
-        }
-        "column-gap" => {
-            if let Some(v) = parse_length(value) {
-                style.layout.column_gap = Some(v);
-                return true;
-            }
-            false
-        }
-        "row-gap" => {
-            if let Some(v) = parse_length(value) {
-                style.layout.row_gap = Some(v);
-                return true;
-            }
-            false
         }
         _ => false,
     }
@@ -264,4 +242,93 @@ fn apply_visual(style: &mut Style, property: &str, value: &str) {
         }
         _ => {} // Unknown property, ignore
     }
+}
+
+fn parse_length(value: &str) -> Option<u16> {
+    let value = value.trim();
+    if let Some(stripped) = value.strip_suffix("px") {
+        stripped.trim().parse().ok()
+    } else {
+        value.parse().ok()
+    }
+}
+
+fn parse_signed_length(value: &str) -> Option<i16> {
+    let value = value.trim();
+    if let Some(stripped) = value.strip_suffix("px") {
+        stripped.trim().parse().ok()
+    } else {
+        value.parse().ok()
+    }
+}
+
+fn parse_grid_template(_value: &str) -> GridTemplate {
+    // Simplified - return empty template
+    GridTemplate::new(Vec::new())
+}
+
+fn parse_grid_placement(_value: &str) -> GridPlacement {
+    // Simplified - return auto
+    GridPlacement::auto()
+}
+
+fn parse_size(value: &str) -> Size {
+    let value = value.trim();
+    if value == "auto" {
+        Size::Auto
+    } else if let Some(stripped) = value.strip_suffix('%') {
+        stripped
+            .trim()
+            .parse()
+            .map(Size::Percent)
+            .unwrap_or(Size::Auto)
+    } else {
+        parse_length(value).map(Size::Fixed).unwrap_or(Size::Auto)
+    }
+}
+
+fn parse_color(value: &str) -> Option<Color> {
+    let value = value.trim();
+
+    // Named colors
+    match value.to_lowercase().as_str() {
+        "white" => return Some(Color::WHITE),
+        "black" => return Some(Color::BLACK),
+        "red" => return Some(Color::RED),
+        "green" => return Some(Color::GREEN),
+        "blue" => return Some(Color::BLUE),
+        "cyan" => return Some(Color::CYAN),
+        "yellow" => return Some(Color::YELLOW),
+        "magenta" => return Some(Color::MAGENTA),
+        _ => {}
+    }
+
+    // Hex color
+    if let Some(hex) = value.strip_prefix('#') {
+        if hex.len() == 6 {
+            if let Ok(v) = u32::from_str_radix(hex, 16) {
+                return Some(Color::hex(v));
+            }
+        } else if hex.len() == 3 {
+            let chars: Vec<char> = hex.chars().collect();
+            let r = u8::from_str_radix(&format!("{}{}", chars[0], chars[0]), 16).ok()?;
+            let g = u8::from_str_radix(&format!("{}{}", chars[1], chars[1]), 16).ok()?;
+            let b = u8::from_str_radix(&format!("{}{}", chars[2], chars[2]), 16).ok()?;
+            return Some(Color::rgb(r, g, b));
+        }
+    }
+
+    // rgb(r, g, b)
+    if value.starts_with("rgb(") && value.ends_with(')') {
+        let inner = &value[4..value.len() - 1];
+        let parts: Vec<&str> = inner.split(',').collect();
+        if parts.len() == 3 {
+            let r: u8 = parts[0].trim().parse().ok()?;
+            let g: u8 = parts[1].trim().parse().ok()?;
+            let b: u8 = parts[2].trim().parse().ok()?;
+            return Some(Color::rgb(r, g, b));
+        }
+    }
+
+    None
 }

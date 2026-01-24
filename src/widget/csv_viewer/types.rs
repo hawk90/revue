@@ -1,6 +1,4 @@
-//! Core types for CSV Viewer widget
-
-use crate::style::Color;
+//! Types for the CSV Viewer widget
 
 /// CSV delimiter options
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

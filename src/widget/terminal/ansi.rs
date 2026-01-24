@@ -1,8 +1,8 @@
 //! ANSI escape sequence parser
 
 use super::types::TermCell;
-use crate::style::Color;
 use crate::render::Modifier;
+use crate::style::Color;
 
 /// ANSI parser state
 #[derive(Clone, Debug, Default)]
@@ -40,6 +40,14 @@ impl AnsiParser {
         self.fg = Color::WHITE;
         self.bg = Color::BLACK;
         self.modifiers = Modifier::empty();
+    }
+
+    pub(super) fn reset_fg(&mut self, color: Color) {
+        self.fg = color;
+    }
+
+    pub(super) fn reset_bg(&mut self, color: Color) {
+        self.bg = color;
     }
 
     /// Parse a character and return cell if printable

@@ -1,4 +1,4 @@
-//! Spring physics simulation for smooth, natural motion
+//! Spring physics animations
 
 /// Spring physics simulation for smooth, natural motion
 ///

@@ -1,4 +1,4 @@
-//! Timer implementation for animation timing
+//! Timer for animation timing
 
 use crate::utils::easing::Easing;
 use std::time::{Duration, Instant};
@@ -7,8 +7,11 @@ use std::time::{Duration, Instant};
 #[derive(Clone, Debug)]
 pub struct Timer {
     start: Option<Instant>,
-    duration: Duration,
+    /// Duration of the timer
+    pub duration: Duration,
+    /// Time elapsed while paused
     elapsed_on_pause: Duration,
+    /// Whether the timer is paused
     paused: bool,
 }
 
