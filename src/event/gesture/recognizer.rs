@@ -475,7 +475,7 @@ impl GestureRecognizer {
     // Helpers
     // -------------------------------------------------------------------------
 
-    pub(crate) fn calculate_swipe_direction(
+    fn calculate_swipe_direction(
         start_x: u16,
         start_y: u16,
         end_x: u16,
