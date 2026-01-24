@@ -22,7 +22,7 @@ mod tests {
 
     #[test]
     fn test_terminal_new() {
-        let term = Terminal::new(80, 24);
+        let _term = Terminal::new(80, 24);
         // Private fields - can't test directly
     }
 
@@ -121,16 +121,16 @@ mod tests {
 
     #[test]
     fn test_terminal_presets() {
-        let shell = Terminal::shell(80, 24);
+        let _shell = Terminal::shell(80, 24);
         // Private field - can't test directly
 
-        let log = Terminal::log_viewer(80, 24);
+        let _log = Terminal::log_viewer(80, 24);
         // Private field - can't test directly
     }
 
     #[test]
     fn test_terminal_helper() {
-        let term = super::terminal(120, 40);
+        let _term = super::terminal(120, 40);
         // Private fields - can't test directly
     }
 }

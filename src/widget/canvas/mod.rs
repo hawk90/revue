@@ -16,7 +16,6 @@ mod layer;
 mod tests {
     use super::*;
 
-    use super::super::*;
     use crate::layout::Rect;
     use crate::prelude::RenderContext;
     use crate::render::Buffer;

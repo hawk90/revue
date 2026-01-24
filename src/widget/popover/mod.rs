@@ -93,12 +93,12 @@ mod tests {
 
     #[test]
     fn test_popover_helper() {
-        let p = popover("Quick popover");
+        let _p = popover("Quick popover");
     }
 
     #[test]
     fn test_popover_default() {
-        let p = Popover::default();
+        let _p = Popover::default();
     }
 
     #[test]

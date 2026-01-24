@@ -141,7 +141,7 @@ mod tests {
 
     #[test]
     fn test_calendar_range() {
-        let cal = Calendar::new(2025, 1).range(Date::new(2025, 1, 10), Date::new(2025, 1, 20));
+        let _cal = Calendar::new(2025, 1).range(Date::new(2025, 1, 10), Date::new(2025, 1, 20));
 
         let render_state = render::CalendarRender {
             year: 2025,
@@ -196,8 +196,8 @@ mod tests {
 
     #[test]
     fn test_calendar_first_day() {
-        let cal_sun = Calendar::new(2025, 1).first_day(FirstDayOfWeek::Sunday);
-        let cal_mon = Calendar::new(2025, 1).first_day(FirstDayOfWeek::Monday);
+        let _cal_sun = Calendar::new(2025, 1).first_day(FirstDayOfWeek::Sunday);
+        let _cal_mon = Calendar::new(2025, 1).first_day(FirstDayOfWeek::Monday);
 
         let render_state_sun = render::CalendarRender {
             year: 2025,
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn test_iso_week_number() {
-        let cal = Calendar::new(2025, 1);
+        let _cal = Calendar::new(2025, 1);
 
         let render_state = render::CalendarRender {
             year: 2025,
@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn test_iso_week_number_edge_cases() {
-        let cal = Calendar::new(2020, 1);
+        let _cal = Calendar::new(2020, 1);
 
         let render_state = render::CalendarRender {
             year: 2020,

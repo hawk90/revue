@@ -18,8 +18,6 @@ crate::impl_props_builders!(Diagram);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
     use crate::widget::mermaid::types::{DiagramColors, Direction};
 
     // ========================================================================

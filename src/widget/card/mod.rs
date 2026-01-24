@@ -35,48 +35,44 @@ mod tests {
     use super::*;
 
     use crate::event::Key;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
-    use crate::style::{BorderStyle, Color};
-    use crate::widget::traits::RenderContext;
-    use crate::widget::Text;
+    use crate::style::Color;
 
     #[test]
     fn test_card_new() {
-        let c = Card::new();
+        let _c = Card::new();
         // Private fields - test via public API behavior only
     }
 
     #[test]
     fn test_card_title() {
-        let c = Card::new().title("My Card");
+        let _c = Card::new().title("My Card");
         // Private field - can't test directly
     }
 
     #[test]
     fn test_card_subtitle() {
-        let c = Card::new().subtitle("Description");
+        let _c = Card::new().subtitle("Description");
         // Private field - can't test directly
     }
 
     #[test]
     fn test_card_variants() {
-        let c = Card::new().outlined();
+        let _c = Card::new().outlined();
         // Private field - can't test directly
 
-        let c = Card::new().filled();
+        let _c = Card::new().filled();
         // Private field - can't test directly
 
-        let c = Card::new().elevated();
+        let _c = Card::new().elevated();
         // Private field - can't test directly
 
-        let c = Card::new().flat();
+        let _c = Card::new().flat();
         // Private field - can't test directly
     }
 
     #[test]
     fn test_card_border_styles() {
-        let c = Card::new().rounded();
+        let _c = Card::new().rounded();
         // Private field - can't test directly
 
         // Can't test border_style with private BorderType enum
@@ -136,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_card_colors() {
-        let c = Card::new()
+        let _c = Card::new()
             .background(Color::RED)
             .border_color(Color::BLUE)
             .title_color(Color::GREEN);
@@ -145,7 +141,7 @@ mod tests {
 
     #[test]
     fn test_card_padding() {
-        let c = Card::new().padding(2);
+        let _c = Card::new().padding(2);
         // Private field - can't test directly
     }
 
@@ -166,13 +162,13 @@ mod tests {
 
     #[test]
     fn test_card_default() {
-        let c = Card::default();
+        let _c = Card::default();
         // Private field - can't test directly
     }
 
     #[test]
     fn test_card_helper() {
-        let c = card().title("Helper");
+        let _c = card().title("Helper");
         // Private field - can't test directly
     }
 
@@ -193,7 +189,7 @@ mod tests {
 
     #[test]
     fn test_card_clickable() {
-        let c = Card::new().clickable(true);
+        let _c = Card::new().clickable(true);
         // Private field - can't test directly
     }
 }

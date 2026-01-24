@@ -18,12 +18,9 @@ mod state;
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use super::super::*;
     use crate::layout::Rect;
     use crate::prelude::RenderContext;
     use crate::render::Buffer;
-    use crate::style::Color;
     use crate::utils::FilterMode;
     use crate::widget::traits::View;
 

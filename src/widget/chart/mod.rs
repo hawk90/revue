@@ -23,13 +23,13 @@ mod tests {
 
     #[test]
     fn test_chart_new() {
-        let c = Chart::new();
+        let _c = Chart::new();
         // Private fields - can't test directly
     }
 
     #[test]
     fn test_series_builder() {
-        let s = Series::new("Test")
+        let _s = Series::new("Test")
             .data(vec![(0.0, 1.0), (1.0, 2.0)])
             .color(Color::RED)
             .marker(Marker::Dot);
@@ -39,20 +39,20 @@ mod tests {
 
     #[test]
     fn test_series_data_y() {
-        let s = Series::new("Test").data_y(&[1.0, 2.0, 3.0]);
+        let _s = Series::new("Test").data_y(&[1.0, 2.0, 3.0]);
         // Private field - can't test directly
     }
 
     #[test]
     fn test_chart_bounds() {
-        let c = Chart::new().series(Series::new("A").data(vec![(0.0, 0.0), (10.0, 100.0)]));
+        let _c = Chart::new().series(Series::new("A").data(vec![(0.0, 0.0), (10.0, 100.0)]));
 
         // compute_bounds() is private - can't test
     }
 
     #[test]
     fn test_axis_builder() {
-        let axis = Axis::new()
+        let _axis = Axis::new()
             .title("Value")
             .bounds(0.0, 100.0)
             .ticks(10)
@@ -68,19 +68,19 @@ mod tests {
 
     #[test]
     fn test_quick_line_chart() {
-        let c = super::line_chart(&[1.0, 2.0, 3.0, 2.0, 1.0]);
+        let _c = super::line_chart(&[1.0, 2.0, 3.0, 2.0, 1.0]);
         // Private fields - can't test directly
     }
 
     #[test]
     fn test_quick_scatter_plot() {
-        let c = super::scatter_plot(&[(0.0, 1.0), (1.0, 2.0), (2.0, 1.5)]);
+        let _c = super::scatter_plot(&[(0.0, 1.0), (1.0, 2.0), (2.0, 1.5)]);
         // Private fields - can't test directly
     }
 
     #[test]
     fn test_multiple_series() {
-        let c = Chart::new()
+        let _c = Chart::new()
             .series(Series::new("A").data_y(&[1.0, 2.0, 3.0]).color(Color::RED))
             .series(Series::new("B").data_y(&[3.0, 2.0, 1.0]).color(Color::BLUE));
 
@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn test_area_chart() {
-        let s = Series::new("Area")
+        let _s = Series::new("Area")
             .data_y(&[1.0, 3.0, 2.0])
             .area(Color::CYAN);
 
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_format_labels() {
-        let c = Chart::new();
+        let _c = Chart::new();
 
         // format_label() is private - can't test
     }
@@ -121,7 +121,7 @@ mod tests {
     #[test]
     fn test_legend_positions() {
         use crate::widget::chart_common::LegendPosition;
-        let c = Chart::new()
+        let _c = Chart::new()
             .series(Series::new("Test").data_y(&[1.0, 2.0]))
             .legend(LegendPosition::BottomLeft);
 

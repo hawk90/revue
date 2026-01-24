@@ -82,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_transition_new() {
-        let transition = Transition::new("Hello");
+        let _transition = Transition::new("Hello");
         // Private fields - cannot test directly
     }
 
@@ -90,7 +90,7 @@ mod tests {
     fn test_transition_builder() {
         let enter = Animation::fade_in();
         let leave = Animation::fade_out();
-        let transition = Transition::new("Test")
+        let _transition = Transition::new("Test")
             .enter(enter.clone())
             .leave(leave.clone());
         // Private fields - cannot test directly
@@ -124,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_transition_group_builder() {
-        let group = TransitionGroup::new(vec!["A", "B"])
+        let _group = TransitionGroup::new(vec!["A", "B"])
             .enter(Animation::fade_in())
             .leave(Animation::fade_out())
             .stagger(50);
@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_convenience_functions() {
-        let transition = transition("Hello");
+        let _transition = transition("Hello");
         // Private fields - cannot test directly
 
         let group = transition_group(vec!["A", "B"]);

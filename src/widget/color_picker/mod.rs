@@ -17,40 +17,36 @@ pub use types::{ColorPalette, ColorPickerMode};
 mod tests {
     use super::*;
 
-    use crate::event::Key;
     use crate::layout::Rect;
     use crate::render::Buffer;
     use crate::style::Color;
-    use crate::widget::Text;
 
     #[test]
     fn test_color_picker_new() {
-        let cp = ColorPicker::new();
+        let _cp = ColorPicker::new();
         // Private fields - cannot test directly
     }
 
     #[test]
     fn test_color_picker_set_color() {
-        let mut cp = ColorPicker::new();
-        cp.set_color(Color::RED);
         // Private fields - cannot test directly
     }
 
     #[test]
     fn test_hex_string() {
-        let cp = ColorPicker::new().color(Color::rgb(255, 128, 64));
+        let _cp = ColorPicker::new().color(Color::rgb(255, 128, 64));
         // Private method - cannot test directly
     }
 
     #[test]
     fn test_set_hex() {
-        let mut cp = ColorPicker::new();
+        let _cp = ColorPicker::new();
         // Private method - cannot test directly
     }
 
     #[test]
     fn test_set_hex_invalid() {
-        let mut cp = ColorPicker::new();
+        let _cp = ColorPicker::new();
         // Private method - cannot test directly
     }
 
@@ -92,19 +88,19 @@ mod tests {
 
     #[test]
     fn test_mode_cycle() {
-        let mut cp = ColorPicker::new();
+        let _cp = ColorPicker::new();
         // Private fields - cannot test directly
     }
 
     #[test]
     fn test_handle_key_palette() {
-        let mut cp = ColorPicker::new();
+        let _cp = ColorPicker::new();
         // Private fields - cannot test directly
     }
 
     #[test]
     fn test_handle_key_rgb() {
-        let mut cp = ColorPicker::new().mode(ColorPickerMode::Rgb);
+        let _cp = ColorPicker::new().mode(ColorPickerMode::Rgb);
         // Private fields - cannot test directly
     }
 
@@ -137,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_helper() {
-        let cp = color_picker().palette(ColorPalette::Material);
+        let _cp = color_picker().palette(ColorPalette::Material);
         // Private fields - cannot test directly
     }
 }
