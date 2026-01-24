@@ -19,18 +19,18 @@ pub enum DiagramType {
 /// Node shape
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum NodeShape {
-    /// Rectangle [text]
+    /// Rectangle `[text]` (Mermaid syntax)
     #[default]
     Rectangle,
-    /// Rounded rectangle (text)
+    /// Rounded rectangle `(text)` (Mermaid syntax)
     Rounded,
-    /// Diamond {text}
+    /// Diamond `{text}` (Mermaid syntax)
     Diamond,
-    /// Circle ((text))
+    /// Circle `((text))` (Mermaid syntax)
     Circle,
-    /// Parallelogram /text/
+    /// Parallelogram `/text/` (Mermaid syntax)
     Parallelogram,
-    /// Database [(text)]
+    /// Database `[(text)]` (Mermaid syntax)
     Database,
 }
 
