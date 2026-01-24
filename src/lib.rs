@@ -293,8 +293,96 @@ pub enum Error {
 /// Result type alias for Revue operations.
 ///
 /// Shorthand for `std::result::Result<T, revue::Error>`.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use revue::Result;
+///
+/// fn load_config() -> Result<String> {
+///     let content = std::fs::read_to_string("config.css")?;
+///     Ok(content)
+/// }
+/// ```
 pub type Result<T> = std::result::Result<T, Error>;
 
+// ─────────────────────────────────────────────────────────────────────────
+// Error Handling Guidelines
+// ─────────────────────────────────────────────────────────────────────────
+
+/// # Error Handling Guidelines
+///
+/// Revue follows these error handling patterns to provide clear, actionable error messages.
+///
+/// ## Public APIs
+///
+/// **Always return `Result<T>`** for public APIs that can fail:
+///
+/// ```rust,ignore
+/// use revue::Result;
+///
+/// pub fn parse_css(input: &str) -> Result<Stylesheet> {
+///     // Parse and return Ok(stylesheet) or Err(Error)
+/// }
+/// ```
+///
+/// ## Internal Code
+///
+/// Choose the appropriate error handling strategy:
+///
+/// | Situation | Use | Example |
+/// |-----------|-----|---------|
+/// | Recoverable error | `Result<T, E>` | File not found, invalid input |
+/// | Optional value | `Option<T>` | Missing config, lookup by ID |
+/// | Truly invariant | `expect(msg)` | Logic errors, "never happens" |
+/// | Never fails | `unwrap()` // With comment explaining why | Static constants, known-good values |
+///
+/// ## Error Type Hierarchy
+///
+/// Revue uses `thiserror` for error definitions:
+///
+/// ```rust,ignore
+/// #[derive(Debug, thiserror::Error)]
+/// pub enum Error {
+///     #[error("CSS error: {0}")]
+///     Css(#[from] style::ParseError),
+///
+///     #[error("I/O error: {0}")]
+///     Io(#[from] std::io::Error),
+///
+///     #[error("{0}")]
+///     Other(String),
+/// }
+/// ```
+///
+/// ## Error Context
+///
+/// **Good: Add context for clarity**
+///
+/// ```rust,ignore
+/// let file = std::fs::read_to_string(path)
+///     .map_err(|e| Error::Other(format!("Failed to read config: {}", e)))?;
+/// ```
+///
+/// **Bad: Lose context**
+///
+/// ```rust,ignore
+/// let file = std::fs::read_to_string(path)?;  // Error doesn't mention config
+/// ```
+///
+/// ## Converting Errors
+///
+/// Use `?` operator for automatic conversion:
+///
+/// ```rust,ignore
+/// use revue::Result;
+///
+/// fn load_stylesheet(path: &str) -> Result<Stylesheet> {
+///     let content = std::fs::read_to_string(path)?;  // io::Error → Error::Io
+///     Ok(parse_css(&content)?)
+/// }
+/// ```
+///
 /// Prelude module for convenient imports.
 ///
 /// Import everything you need with a single line:
