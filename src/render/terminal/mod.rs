@@ -11,7 +11,7 @@ pub use types::Terminal;
 #[cfg(test)]
 mod tests {
     use crate::layout::Rect;
-    use crate::render::cell::Modifier;
+    use crate::render::cell::{Cell, Modifier};
     use crate::render::terminal::Terminal;
     use crate::render::Buffer;
     use crate::style::Color;
@@ -407,8 +407,8 @@ mod tests {
         let mut buf2 = Buffer::new(20, 20);
 
         // Make changes at two different locations
-        buf2.set(5, 5, *Buffer::new(0, 0).get(0, 0).unwrap()); // Inside dirty rect
-        buf2.set(15, 15, *Buffer::new(0, 0).get(0, 0).unwrap()); // Outside dirty rect
+        buf2.set(5, 5, Cell::new('X')); // Inside dirty rect
+        buf2.set(15, 15, Cell::new('Y')); // Outside dirty rect
 
         // Only diff the region containing (5, 5)
         let dirty_rects = vec![Rect::new(0, 0, 10, 10)];
@@ -426,8 +426,8 @@ mod tests {
         let mut buf2 = Buffer::new(20, 20);
 
         // Make changes in two different dirty regions
-        buf2.set(2, 2, *Buffer::new(0, 0).get(0, 0).unwrap());
-        buf2.set(15, 15, *Buffer::new(0, 0).get(0, 0).unwrap());
+        buf2.set(2, 2, Cell::new('X'));
+        buf2.set(15, 15, Cell::new('Y'));
 
         // Two dirty regions covering both changes
         let dirty_rects = vec![
@@ -446,7 +446,7 @@ mod tests {
         let mut buf2 = Buffer::new(20, 20);
 
         // Make change outside the dirty region
-        buf2.set(15, 15, *Buffer::new(0, 0).get(0, 0).unwrap());
+        buf2.set(15, 15, Cell::new('Z'));
 
         // Dirty region doesn't include the change
         let dirty_rects = vec![Rect::new(0, 0, 10, 10)];
@@ -461,7 +461,7 @@ mod tests {
         // When no dirty rects provided, should fall back to full-screen diff
         let buf1 = Buffer::new(10, 10);
         let mut buf2 = Buffer::new(10, 10);
-        buf2.set(5, 5, *Buffer::new(0, 0).get(0, 0).unwrap());
+        buf2.set(5, 5, Cell::new('X'));
 
         let changes = crate::render::diff::diff(&buf1, &buf2, &[]);
 
@@ -475,7 +475,7 @@ mod tests {
     fn test_render_dirty_overlapping_regions() {
         let buf1 = Buffer::new(20, 20);
         let mut buf2 = Buffer::new(20, 20);
-        buf2.set(5, 5, *Buffer::new(0, 0).get(0, 0).unwrap());
+        buf2.set(5, 5, Cell::new('X'));
 
         // Overlapping dirty rects both containing (5, 5)
         let dirty_rects = vec![Rect::new(0, 0, 10, 10), Rect::new(3, 3, 10, 10)];
