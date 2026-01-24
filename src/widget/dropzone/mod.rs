@@ -23,7 +23,12 @@ mod types;
 mod tests {
     use super::*;
 
+    use crate::event::DragData;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
     use crate::style::Color;
+    use crate::widget::traits::Draggable;
+    use crate::widget::traits::RenderContext;
 
     #[test]
     fn test_dropzone_new() {

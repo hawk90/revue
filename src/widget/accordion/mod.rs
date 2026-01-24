@@ -445,6 +445,7 @@ pub fn section(title: impl Into<String>) -> AccordionSection {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::render::Buffer;
 
     #[test]
     fn test_section_new() {

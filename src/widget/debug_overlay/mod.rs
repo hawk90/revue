@@ -702,6 +702,7 @@ pub fn toggle_debug() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::widget::Text;
 
     #[test]
     fn test_perf_metrics() {

@@ -18,6 +18,7 @@ pub use types::{GridAlign, GridItem, GridPlacement, TrackSize};
 mod tests {
     use super::*;
 
+    use crate::render::Buffer;
     use crate::widget::Text;
 
     #[test]

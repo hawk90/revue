@@ -262,17 +262,17 @@ fn parse_signed_length(value: &str) -> Option<i16> {
     }
 }
 
-fn parse_grid_template(_value: &str) -> GridTemplate {
+pub(crate) fn parse_grid_template(_value: &str) -> GridTemplate {
     // Simplified - return empty template
     GridTemplate::new(Vec::new())
 }
 
-fn parse_grid_placement(_value: &str) -> GridPlacement {
+pub(crate) fn parse_grid_placement(_value: &str) -> GridPlacement {
     // Simplified - return auto
     GridPlacement::auto()
 }
 
-fn parse_size(value: &str) -> Size {
+pub(crate) fn parse_size(value: &str) -> Size {
     let value = value.trim();
     if value == "auto" {
         Size::Auto
@@ -287,7 +287,7 @@ fn parse_size(value: &str) -> Size {
     }
 }
 
-fn parse_color(value: &str) -> Option<Color> {
+pub(crate) fn parse_color(value: &str) -> Option<Color> {
     let value = value.trim();
 
     // Named colors

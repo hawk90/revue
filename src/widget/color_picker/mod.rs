@@ -17,6 +17,8 @@ pub use types::{ColorPalette, ColorPickerMode};
 mod tests {
     use super::*;
 
+    use crate::event::Key;
+    use crate::layout::Rect;
     use crate::render::Buffer;
     use crate::style::Color;
     use crate::widget::Text;

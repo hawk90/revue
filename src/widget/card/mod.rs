@@ -34,9 +34,12 @@ mod types;
 mod tests {
     use super::*;
 
+    use crate::event::Key;
     use crate::layout::Rect;
     use crate::render::Buffer;
     use crate::style::{BorderStyle, Color};
+    use crate::widget::traits::RenderContext;
+    use crate::widget::Text;
 
     #[test]
     fn test_card_new() {

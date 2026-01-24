@@ -503,6 +503,7 @@ impl_props_builders!(Modal);
 mod tests {
     use super::*;
 
+    use crate::layout::Rect;
     use crate::render::Buffer;
 
     #[test]

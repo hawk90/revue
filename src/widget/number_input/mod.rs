@@ -13,6 +13,10 @@ mod helper;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::event::Key;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+    use crate::widget::traits::RenderContext;
 
     #[test]
     fn test_number_input_new() {

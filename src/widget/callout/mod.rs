@@ -9,6 +9,7 @@ mod tests {
     use super::*;
 
     use crate::event::Key;
+    use crate::layout::Rect;
     use crate::render::Buffer;
     use crate::widget::callout::core::Callout;
     use crate::widget::callout::helpers::*;

@@ -473,6 +473,7 @@ impl Default for Profiler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::devtools::profiler::types::RenderReason;
 
     #[test]
     fn test_profiler_creation() {

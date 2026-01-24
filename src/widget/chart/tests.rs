@@ -3,7 +3,11 @@
 #![allow(unused_imports)]
 
 use super::*;
+use crate::layout::Rect;
+use crate::render::Buffer;
 use crate::style::Color;
+use crate::widget::chart_common::Axis;
+use crate::widget::traits::RenderContext;
 use crate::widget::Marker;
 
 #[test]
@@ -59,7 +63,7 @@ fn test_axis_builder() {
 fn test_chart_render() {
     let mut buffer = Buffer::new(60, 20);
     let area = Rect::new(0, 0, 60, 20);
-    let mut ctx = crate::traits::RenderContext::new(&mut buffer, area);
+    let mut ctx = RenderContext::new(&mut buffer, area);
 
     let c = Chart::new().title("Test Chart").series(
         Series::new("Data")
@@ -151,7 +155,7 @@ fn test_legend_positions() {
 fn test_chart_with_all_options() {
     let mut buffer = Buffer::new(80, 30);
     let area = Rect::new(0, 0, 80, 30);
-    let mut ctx = crate::traits::RenderContext::new(&mut buffer, area);
+    let mut ctx = RenderContext::new(&mut buffer, area);
 
     let c = Chart::new()
         .title("Full Chart")

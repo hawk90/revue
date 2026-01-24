@@ -573,6 +573,7 @@ pub fn draw_title_center(ctx: &mut RenderContext, area: Rect, text: &str, color:
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::render::Buffer;
 
     #[test]
     fn test_border_chars() {

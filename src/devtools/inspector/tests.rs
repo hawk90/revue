@@ -3,6 +3,7 @@
 #![allow(unused_imports)]
 
 use super::super::{Inspector, PickerMode, WidgetNode};
+use crate::layout::Rect;
 
 #[test]
 fn test_inspector_add_nodes() {
@@ -225,7 +226,7 @@ fn test_inspector_picker_click() {
 
     // Add a node with a rect
     let id = inspector.add_root("Button");
-    if let Some(node) = inspector.nodes.get_mut(&id) {
+    if let Some(node) = inspector.get_mut(id) {
         node.rect = Rect::new(0, 0, 50, 20);
     }
 
@@ -245,10 +246,10 @@ fn test_inspector_reveal_node() {
     let child2 = inspector.add_child(child1, "Child2");
 
     // Collapse all initially
-    if let Some(node) = inspector.nodes.get_mut(&root) {
+    if let Some(node) = inspector.get_mut(root) {
         node.expanded = false;
     }
-    if let Some(node) = inspector.nodes.get_mut(&child1) {
+    if let Some(node) = inspector.get_mut(child1) {
         node.expanded = false;
     }
 
@@ -256,8 +257,8 @@ fn test_inspector_reveal_node() {
     inspector.reveal_node(child2);
 
     // Parent nodes should now be expanded
-    assert!(inspector.nodes.get(&root).unwrap().expanded);
-    assert!(inspector.nodes.get(&child1).unwrap().expanded);
+    assert!(inspector.get(root).unwrap().expanded);
+    assert!(inspector.get(child1).unwrap().expanded);
 }
 
 #[test]

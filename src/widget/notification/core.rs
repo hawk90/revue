@@ -520,6 +520,7 @@ mod tests {
     use super::*;
     use crate::layout::Rect;
     use crate::render::Buffer;
+    use crate::widget::notification::types::NotificationLevel;
 
     #[test]
     fn test_notification_new() {

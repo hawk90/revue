@@ -11,6 +11,10 @@ pub use types::{Declaration, Rule, StyleSheet};
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::style::parser::apply::{
+        parse_color, parse_grid_placement, parse_grid_template, parse_size,
+    };
+    use crate::style::{Color, Display, FlexDirection, GridTrack, Position, Size, Spacing, Style};
 
     #[test]
     fn test_parse_empty() {

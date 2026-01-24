@@ -1,5 +1,14 @@
 //! Tests for terminal widget
 
+#![allow(unused_imports)]
+
+use super::*;
+use crate::event::{Key, KeyEvent};
+use crate::layout::Rect;
+use crate::render::Buffer;
+use crate::style::Color;
+use crate::widget::traits::RenderContext;
+
 #[test]
 fn test_terminal_new() {
     let term = Terminal::new(80, 24);
@@ -100,7 +109,7 @@ fn test_terminal_history() {
 fn test_terminal_render() {
     let mut buffer = Buffer::new(80, 24);
     let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = crate::traits::RenderContext::new(&mut buffer, area);
+    let mut ctx = RenderContext::new(&mut buffer, area);
 
     let mut term = Terminal::new(80, 24);
     term.write("Test");
