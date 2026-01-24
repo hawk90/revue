@@ -6,6 +6,7 @@ mod block;
 mod mini;
 mod slant;
 mod small;
+#[cfg(test)]
 mod tests;
 mod types;
 

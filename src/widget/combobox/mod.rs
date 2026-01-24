@@ -15,6 +15,7 @@ mod input;
 mod option;
 mod render;
 mod state;
+#[cfg(test)]
 mod tests;
 
 pub use option::ComboOption;

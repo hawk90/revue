@@ -15,6 +15,4 @@ pub use core::Breadcrumb;
 pub use helper::{breadcrumb, crumb};
 
 #[cfg(test)]
-mod tests {
-    include!("tests.rs");
-}
+mod tests;

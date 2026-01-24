@@ -1,5 +1,6 @@
 pub mod core;
 pub mod helper;
+#[cfg(test)]
 pub mod tests;
 pub mod traits;
 pub mod types;

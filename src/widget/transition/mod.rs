@@ -38,6 +38,4 @@ pub use group::TransitionGroup;
 pub use helper::{transition, transition_group};
 
 #[cfg(test)]
-mod tests {
-    include!("tests.rs");
-}
+mod tests;

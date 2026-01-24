@@ -571,4 +571,5 @@ pub fn draw_title_center(ctx: &mut RenderContext, area: Rect, text: &str, color:
 }
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests;

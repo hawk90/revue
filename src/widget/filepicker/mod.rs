@@ -685,4 +685,5 @@ pub fn dir_picker() -> FilePicker {
 }
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests;

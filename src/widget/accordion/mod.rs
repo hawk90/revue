@@ -442,5 +442,8 @@ pub fn section(title: impl Into<String>) -> AccordionSection {
     AccordionSection::new(title)
 }
 
+#[cfg(test)]
+mod tests;
+
 // Most tests moved to tests/widget_tests.rs
 // Tests below access private fields and must stay inline

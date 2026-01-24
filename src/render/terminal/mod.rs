@@ -10,4 +10,5 @@ pub use types::Terminal;
 
 // Include tests from tests.rs
 #[cfg(test)]
+#[cfg(test)]
 mod tests;

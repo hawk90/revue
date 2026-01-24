@@ -11,6 +11,7 @@ mod core;
 mod helper;
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests;
 
 // Re-exports

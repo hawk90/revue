@@ -258,4 +258,5 @@ impl DomNode {
 }
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests;

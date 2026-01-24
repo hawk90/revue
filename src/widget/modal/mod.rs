@@ -500,4 +500,5 @@ impl_styled_view!(Modal);
 impl_props_builders!(Modal);
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests;

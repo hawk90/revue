@@ -27,6 +27,4 @@ pub use types::{SectionedSelection, Selection};
 pub use helper::{wrap_next, wrap_prev};
 
 #[cfg(test)]
-mod tests {
-    include!("tests.rs");
-}
+mod tests;

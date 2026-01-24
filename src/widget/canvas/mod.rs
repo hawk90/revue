@@ -12,6 +12,7 @@ mod clip;
 mod draw;
 mod grid;
 mod layer;
+#[cfg(test)]
 mod tests;
 mod transform;
 mod widget;

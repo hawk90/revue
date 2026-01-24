@@ -443,4 +443,5 @@ pub fn histogram(data: &[f64]) -> Histogram {
 }
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests;

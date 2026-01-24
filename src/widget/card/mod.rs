@@ -31,6 +31,7 @@ mod helper;
 mod types;
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests;
 
 // Re-exports

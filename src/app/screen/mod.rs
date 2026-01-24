@@ -4,6 +4,7 @@
 
 mod core;
 mod state;
+#[cfg(test)]
 mod tests;
 mod types;
 

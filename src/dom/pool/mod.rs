@@ -578,4 +578,5 @@ pub fn vec_pool<T>(capacity: usize) -> VecPool<T> {
 }
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests;

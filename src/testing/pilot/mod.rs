@@ -4,6 +4,7 @@ mod async_pilot;
 mod core;
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests;
 
 // Re-exports

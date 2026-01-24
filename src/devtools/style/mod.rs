@@ -5,6 +5,7 @@ mod core;
 mod helper;
 mod impls;
 mod style_inspector;
+#[cfg(test)]
 mod tests;
 mod types;
 mod view;

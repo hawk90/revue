@@ -4,6 +4,7 @@ mod callout_type;
 mod core;
 mod helpers;
 mod impls;
+#[cfg(test)]
 mod tests;
 mod types;
 mod view;

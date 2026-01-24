@@ -35,4 +35,5 @@ pub use types::{CiEnvironment, CiProvider};
 
 // Include tests from tests.rs
 #[cfg(test)]
+#[cfg(test)]
 mod tests;

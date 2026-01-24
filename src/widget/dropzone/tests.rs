@@ -1,392 +1,382 @@
-use crate::event::drag::DragData;
-use crate::widget::traits::StyledView;
+use super::*;
 
-use super::core::DropZone;
-use super::helper::drop_zone;
-use super::types::DropZoneStyle;
+#[test]
+fn test_dropzone_new() {
+    let zone = DropZone::new("Drop here");
+    assert_eq!(zone.placeholder, "Drop here");
+    assert!(zone.accepts.is_empty());
+}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[test]
+fn test_dropzone_accepts() {
+    let zone = DropZone::new("Drop files").accepts(&["file", "text"]);
 
-    #[test]
-    fn test_dropzone_new() {
-        let zone = DropZone::new("Drop here");
-        assert_eq!(zone.placeholder, "Drop here");
-        assert!(zone.accepts.is_empty());
-    }
+    assert_eq!(zone.accepts.len(), 2);
+    assert!(zone.accepts.contains(&"file"));
+    assert!(zone.accepts.contains(&"text"));
+}
 
-    #[test]
-    fn test_dropzone_accepts() {
-        let zone = DropZone::new("Drop files").accepts(&["file", "text"]);
+#[test]
+fn test_dropzone_style() {
+    let zone = DropZone::new("Test").style(DropZoneStyle::Dashed);
 
-        assert_eq!(zone.accepts.len(), 2);
-        assert!(zone.accepts.contains(&"file"));
-        assert!(zone.accepts.contains(&"text"));
-    }
+    assert_eq!(zone.style, DropZoneStyle::Dashed);
+}
 
-    #[test]
-    fn test_dropzone_style() {
-        let zone = DropZone::new("Test").style(DropZoneStyle::Dashed);
+#[test]
+fn test_dropzone_as_target() {
+    let zone = DropZone::new("Test").accepts(&["text"]);
 
-        assert_eq!(zone.style, DropZoneStyle::Dashed);
-    }
+    let bounds = Rect::new(10, 5, 20, 10);
+    let target = zone.as_target(bounds);
 
-    #[test]
-    fn test_dropzone_as_target() {
-        let zone = DropZone::new("Test").accepts(&["text"]);
+    assert_eq!(target.bounds, bounds);
+    assert!(target.accepts.contains(&"text"));
+}
 
-        let bounds = Rect::new(10, 5, 20, 10);
-        let target = zone.as_target(bounds);
+#[test]
+fn test_dropzone_hover_state() {
+    let mut zone = DropZone::new("Test");
 
-        assert_eq!(target.bounds, bounds);
-        assert!(target.accepts.contains(&"text"));
-    }
+    assert!(!zone.hovered);
+    zone.set_hovered(true, true);
+    assert!(zone.hovered);
+    assert!(zone.can_accept_current);
 
-    #[test]
-    fn test_dropzone_hover_state() {
-        let mut zone = DropZone::new("Test");
+    zone.set_hovered(false, false);
+    assert!(!zone.hovered);
+}
 
-        assert!(!zone.hovered);
-        zone.set_hovered(true, true);
-        assert!(zone.hovered);
-        assert!(zone.can_accept_current);
+#[test]
+fn test_dropzone_draggable_trait() {
+    let zone = DropZone::new("Test").accepts(&["file"]);
 
-        zone.set_hovered(false, false);
-        assert!(!zone.hovered);
-    }
+    assert!(zone.can_drop());
+    assert_eq!(zone.accepted_types(), &["file"]);
+}
 
-    #[test]
-    fn test_dropzone_draggable_trait() {
-        let zone = DropZone::new("Test").accepts(&["file"]);
+#[test]
+fn test_dropzone_accepts_all() {
+    let zone = DropZone::new("Drop anything")
+        .accepts(&["file"])
+        .accepts_all();
 
-        assert!(zone.can_drop());
-        assert_eq!(zone.accepted_types(), &["file"]);
-    }
+    assert!(zone.accepts.is_empty());
+}
 
-    #[test]
-    fn test_dropzone_accepts_all() {
-        let zone = DropZone::new("Drop anything")
-            .accepts(&["file"])
-            .accepts_all();
+#[test]
+fn test_dropzone_colors() {
+    let zone = DropZone::new("Zone")
+        .border_color(Color::RED)
+        .hover_color(Color::BLUE);
 
-        assert!(zone.accepts.is_empty());
-    }
+    assert_eq!(zone.border_color, Color::RED);
+    assert_eq!(zone.hover_color, Color::BLUE);
+}
 
-    #[test]
-    fn test_dropzone_colors() {
-        let zone = DropZone::new("Zone")
-            .border_color(Color::RED)
-            .hover_color(Color::BLUE);
+#[test]
+fn test_dropzone_min_height() {
+    let zone = DropZone::new("Zone").min_height(5);
+    assert_eq!(zone.min_height, 5);
+}
 
-        assert_eq!(zone.border_color, Color::RED);
-        assert_eq!(zone.hover_color, Color::BLUE);
-    }
+#[test]
+fn test_dropzone_on_drop_handler() {
+    use std::cell::Cell;
+    use std::rc::Rc;
 
-    #[test]
-    fn test_dropzone_min_height() {
-        let zone = DropZone::new("Zone").min_height(5);
-        assert_eq!(zone.min_height, 5);
-    }
+    let called = Rc::new(Cell::new(false));
+    let called_clone = called.clone();
 
-    #[test]
-    fn test_dropzone_on_drop_handler() {
-        use std::cell::Cell;
-        use std::rc::Rc;
+    let mut zone = DropZone::new("Zone").on_drop(move |_data| {
+        called_clone.set(true);
+        true
+    });
 
-        let called = Rc::new(Cell::new(false));
-        let called_clone = called.clone();
+    let data = DragData::text("test");
+    let result = Draggable::on_drop(&mut zone, data);
 
-        let mut zone = DropZone::new("Zone").on_drop(move |_data| {
-            called_clone.set(true);
-            true
-        });
+    assert!(result);
+    assert!(called.get());
+}
 
-        let data = DragData::text("test");
-        let result = Draggable::on_drop(&mut zone, data);
+#[test]
+fn test_dropzone_id() {
+    let zone1 = DropZone::new("Zone 1");
+    let zone2 = DropZone::new("Zone 2");
 
-        assert!(result);
-        assert!(called.get());
-    }
+    // IDs should be unique
+    assert_ne!(zone1.id(), zone2.id());
+}
 
-    #[test]
-    fn test_dropzone_id() {
-        let zone1 = DropZone::new("Zone 1");
-        let zone2 = DropZone::new("Zone 2");
+#[test]
+fn test_dropzone_current_border_color() {
+    let mut zone = DropZone::new("Zone");
 
-        // IDs should be unique
-        assert_ne!(zone1.id(), zone2.id());
-    }
+    // Not hovered - use border_color
+    assert_eq!(zone.current_border_color(), zone.border_color);
 
-    #[test]
-    fn test_dropzone_current_border_color() {
-        let mut zone = DropZone::new("Zone");
+    // Hovered and can accept - use accept_color
+    zone.set_hovered(true, true);
+    assert_eq!(zone.current_border_color(), zone.accept_color);
 
-        // Not hovered - use border_color
-        assert_eq!(zone.current_border_color(), zone.border_color);
+    // Hovered but cannot accept - use reject_color
+    zone.set_hovered(true, false);
+    assert_eq!(zone.current_border_color(), zone.reject_color);
+}
 
-        // Hovered and can accept - use accept_color
-        zone.set_hovered(true, true);
-        assert_eq!(zone.current_border_color(), zone.accept_color);
+#[test]
+fn test_dropzone_border_chars() {
+    let solid = DropZone::new("Zone").style(DropZoneStyle::Solid);
+    let chars = solid.border_chars();
+    assert_eq!(chars.0, '┌');
+    assert_eq!(chars.4, '─');
 
-        // Hovered but cannot accept - use reject_color
-        zone.set_hovered(true, false);
-        assert_eq!(zone.current_border_color(), zone.reject_color);
-    }
+    let dashed = DropZone::new("Zone").style(DropZoneStyle::Dashed);
+    let chars = dashed.border_chars();
+    assert_eq!(chars.4, '╌');
 
-    #[test]
-    fn test_dropzone_border_chars() {
-        let solid = DropZone::new("Zone").style(DropZoneStyle::Solid);
-        let chars = solid.border_chars();
-        assert_eq!(chars.0, '┌');
-        assert_eq!(chars.4, '─');
+    let highlight = DropZone::new("Zone").style(DropZoneStyle::Highlight);
+    let chars = highlight.border_chars();
+    assert_eq!(chars.0, ' ');
+}
 
-        let dashed = DropZone::new("Zone").style(DropZoneStyle::Dashed);
-        let chars = dashed.border_chars();
-        assert_eq!(chars.4, '╌');
+#[test]
+fn test_dropzone_drag_enter_leave() {
+    let mut zone = DropZone::new("Zone").accepts(&["file"]);
 
-        let highlight = DropZone::new("Zone").style(DropZoneStyle::Highlight);
-        let chars = highlight.border_chars();
-        assert_eq!(chars.0, ' ');
-    }
+    let data = DragData::text("test");
+    zone.on_drag_enter(&data);
+    assert!(zone.hovered);
 
-    #[test]
-    fn test_dropzone_drag_enter_leave() {
-        let mut zone = DropZone::new("Zone").accepts(&["file"]);
+    zone.on_drag_leave();
+    assert!(!zone.hovered);
+    assert!(!zone.can_accept_current);
+}
 
-        let data = DragData::text("test");
-        zone.on_drag_enter(&data);
-        assert!(zone.hovered);
+#[test]
+fn test_dropzone_drop_bounds() {
+    let zone = DropZone::new("Zone");
+    let area = Rect::new(5, 5, 20, 10);
+    let bounds = zone.drop_bounds(area);
 
-        zone.on_drag_leave();
-        assert!(!zone.hovered);
-        assert!(!zone.can_accept_current);
-    }
+    assert_eq!(bounds, area);
+}
 
-    #[test]
-    fn test_dropzone_drop_bounds() {
-        let zone = DropZone::new("Zone");
-        let area = Rect::new(5, 5, 20, 10);
-        let bounds = zone.drop_bounds(area);
+#[test]
+fn test_dropzone_render() {
+    use crate::render::Buffer;
 
-        assert_eq!(bounds, area);
-    }
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
 
-    #[test]
-    fn test_dropzone_render() {
-        use crate::render::Buffer;
+    let zone = DropZone::new("Drop files here");
+    zone.render(&mut ctx);
+}
 
+#[test]
+fn test_dropzone_render_hovered() {
+    use crate::render::Buffer;
+
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let mut zone = DropZone::new("Drop files here");
+    zone.set_hovered(true, true);
+    zone.render(&mut ctx);
+}
+
+#[test]
+fn test_dropzone_render_rejected() {
+    use crate::render::Buffer;
+
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let mut zone = DropZone::new("Drop files here");
+    zone.set_hovered(true, false);
+    zone.render(&mut ctx);
+}
+
+#[test]
+fn test_dropzone_render_styles() {
+    use crate::render::Buffer;
+
+    for style in [
+        DropZoneStyle::Solid,
+        DropZoneStyle::Dashed,
+        DropZoneStyle::Highlight,
+        DropZoneStyle::Minimal,
+    ] {
         let mut buffer = Buffer::new(40, 10);
         let area = Rect::new(0, 0, 40, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let zone = DropZone::new("Drop files here");
+        let zone = DropZone::new("Zone").style(style);
         zone.render(&mut ctx);
     }
+}
 
-    #[test]
-    fn test_dropzone_render_hovered() {
-        use crate::render::Buffer;
+#[test]
+fn test_dropzone_render_small_area() {
+    use crate::render::Buffer;
 
-        let mut buffer = Buffer::new(40, 10);
-        let area = Rect::new(0, 0, 40, 10);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+    let mut buffer = Buffer::new(5, 2);
+    let area = Rect::new(0, 0, 5, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
 
-        let mut zone = DropZone::new("Drop files here");
-        zone.set_hovered(true, true);
-        zone.render(&mut ctx);
+    let zone = DropZone::new("This is a long placeholder text");
+    zone.render(&mut ctx);
+}
+
+#[test]
+fn test_dropzone_helper() {
+    let zone = drop_zone("Drop here");
+    assert_eq!(zone.placeholder, "Drop here");
+}
+
+#[test]
+fn test_dropzone_style_default() {
+    assert_eq!(DropZoneStyle::default(), DropZoneStyle::Solid);
+}
+
+#[test]
+fn test_dropzone_on_drop_no_handler() {
+    let mut zone = DropZone::new("Zone");
+    let data = DragData::text("test");
+
+    let result = Draggable::on_drop(&mut zone, data);
+    assert!(!result); // No handler, returns false
+}
+
+#[test]
+fn test_dropzone_all_styles() {
+    let styles = [
+        DropZoneStyle::Solid,
+        DropZoneStyle::Dashed,
+        DropZoneStyle::Highlight,
+        DropZoneStyle::Minimal,
+    ];
+
+    for style in styles {
+        let zone = DropZone::new("Zone").style(style);
+        assert_eq!(zone.style, style);
     }
+}
 
-    #[test]
-    fn test_dropzone_render_rejected() {
-        use crate::render::Buffer;
+#[test]
+fn test_dropzone_styled_view_id() {
+    let mut zone = DropZone::new("Zone");
+    zone.set_id("test-zone");
+    assert_eq!(zone.props.id.as_deref(), Some("test-zone"));
+}
 
-        let mut buffer = Buffer::new(40, 10);
-        let area = Rect::new(0, 0, 40, 10);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+#[test]
+fn test_dropzone_styled_view_classes() {
+    let mut zone = DropZone::new("Zone");
 
-        let mut zone = DropZone::new("Drop files here");
-        zone.set_hovered(true, false);
-        zone.render(&mut ctx);
-    }
+    zone.add_class("active");
+    assert!(zone.has_class("active"));
+    assert_eq!(zone.props.classes.len(), 1);
 
-    #[test]
-    fn test_dropzone_render_styles() {
-        use crate::render::Buffer;
+    zone.add_class("highlighted");
+    assert!(zone.has_class("highlighted"));
+    assert_eq!(zone.props.classes.len(), 2);
+}
 
-        for style in [
-            DropZoneStyle::Solid,
-            DropZoneStyle::Dashed,
-            DropZoneStyle::Highlight,
-            DropZoneStyle::Minimal,
-        ] {
-            let mut buffer = Buffer::new(40, 10);
-            let area = Rect::new(0, 0, 40, 10);
-            let mut ctx = RenderContext::new(&mut buffer, area);
+#[test]
+fn test_dropzone_styled_view_remove_class() {
+    let mut zone = DropZone::new("Zone");
+    zone.add_class("active");
+    zone.add_class("highlighted");
 
-            let zone = DropZone::new("Zone").style(style);
-            zone.render(&mut ctx);
-        }
-    }
+    zone.remove_class("active");
+    assert!(!zone.has_class("active"));
+    assert!(zone.has_class("highlighted"));
+    assert_eq!(zone.props.classes.len(), 1);
+}
 
-    #[test]
-    fn test_dropzone_render_small_area() {
-        use crate::render::Buffer;
+#[test]
+fn test_dropzone_styled_view_toggle_class() {
+    let mut zone = DropZone::new("Zone");
 
-        let mut buffer = Buffer::new(5, 2);
-        let area = Rect::new(0, 0, 5, 2);
-        let mut ctx = RenderContext::new(&mut buffer, area);
+    zone.toggle_class("active");
+    assert!(zone.has_class("active"));
 
-        let zone = DropZone::new("This is a long placeholder text");
-        zone.render(&mut ctx);
-    }
+    zone.toggle_class("active");
+    assert!(!zone.has_class("active"));
+}
 
-    #[test]
-    fn test_dropzone_helper() {
-        let zone = drop_zone("Drop here");
-        assert_eq!(zone.placeholder, "Drop here");
-    }
+#[test]
+fn test_dropzone_builder_focused() {
+    let zone = DropZone::new("Zone").focused(true);
+    assert!(zone.is_focused());
 
-    #[test]
-    fn test_dropzone_style_default() {
-        assert_eq!(DropZoneStyle::default(), DropZoneStyle::Solid);
-    }
+    let zone = DropZone::new("Zone").focused(false);
+    assert!(!zone.is_focused());
+}
 
-    #[test]
-    fn test_dropzone_on_drop_no_handler() {
-        let mut zone = DropZone::new("Zone");
-        let data = DragData::text("test");
+#[test]
+fn test_dropzone_builder_disabled() {
+    let zone = DropZone::new("Zone").disabled(true);
+    assert!(zone.is_disabled());
 
-        let result = Draggable::on_drop(&mut zone, data);
-        assert!(!result); // No handler, returns false
-    }
+    let zone = DropZone::new("Zone").disabled(false);
+    assert!(!zone.is_disabled());
+}
 
-    #[test]
-    fn test_dropzone_all_styles() {
-        let styles = [
-            DropZoneStyle::Solid,
-            DropZoneStyle::Dashed,
-            DropZoneStyle::Highlight,
-            DropZoneStyle::Minimal,
-        ];
+#[test]
+fn test_dropzone_builder_colors() {
+    let zone = DropZone::new("Zone").fg(Color::CYAN).bg(Color::BLUE);
 
-        for style in styles {
-            let zone = DropZone::new("Zone").style(style);
-            assert_eq!(zone.style, style);
-        }
-    }
+    assert_eq!(zone.state.fg, Some(Color::CYAN));
+    assert_eq!(zone.state.bg, Some(Color::BLUE));
+}
 
-    #[test]
-    fn test_dropzone_styled_view_id() {
-        let mut zone = DropZone::new("Zone");
-        zone.set_id("test-zone");
-        assert_eq!(zone.props.id.as_deref(), Some("test-zone"));
-    }
+#[test]
+fn test_dropzone_builder_set_focused() {
+    let mut zone = DropZone::new("Zone");
+    assert!(!zone.is_focused());
 
-    #[test]
-    fn test_dropzone_styled_view_classes() {
-        let mut zone = DropZone::new("Zone");
+    zone.set_focused(true);
+    assert!(zone.is_focused());
 
-        zone.add_class("active");
-        assert!(zone.has_class("active"));
-        assert_eq!(zone.props.classes.len(), 1);
+    zone.set_focused(false);
+    assert!(!zone.is_focused());
+}
 
-        zone.add_class("highlighted");
-        assert!(zone.has_class("highlighted"));
-        assert_eq!(zone.props.classes.len(), 2);
-    }
+#[test]
+fn test_dropzone_drag_enter_with_accepted_type() {
+    let mut zone = DropZone::new("Zone").accepts(&["text"]);
 
-    #[test]
-    fn test_dropzone_styled_view_remove_class() {
-        let mut zone = DropZone::new("Zone");
-        zone.add_class("active");
-        zone.add_class("highlighted");
+    let data = DragData::text("test content");
+    zone.on_drag_enter(&data);
 
-        zone.remove_class("active");
-        assert!(!zone.has_class("active"));
-        assert!(zone.has_class("highlighted"));
-        assert_eq!(zone.props.classes.len(), 1);
-    }
+    assert!(zone.hovered);
+    assert!(zone.can_accept_current);
+}
 
-    #[test]
-    fn test_dropzone_styled_view_toggle_class() {
-        let mut zone = DropZone::new("Zone");
+#[test]
+fn test_dropzone_drag_enter_with_rejected_type() {
+    let mut zone = DropZone::new("Zone").accepts(&["file"]);
 
-        zone.toggle_class("active");
-        assert!(zone.has_class("active"));
+    let data = DragData::text("test content"); // text is not in accepts
+    zone.on_drag_enter(&data);
 
-        zone.toggle_class("active");
-        assert!(!zone.has_class("active"));
-    }
+    assert!(zone.hovered);
+    assert!(!zone.can_accept_current);
+}
 
-    #[test]
-    fn test_dropzone_builder_focused() {
-        let zone = DropZone::new("Zone").focused(true);
-        assert!(zone.is_focused());
+#[test]
+fn test_dropzone_drag_enter_accepts_all() {
+    let mut zone = DropZone::new("Zone").accepts_all();
 
-        let zone = DropZone::new("Zone").focused(false);
-        assert!(!zone.is_focused());
-    }
+    let data = DragData::text("test content");
+    zone.on_drag_enter(&data);
 
-    #[test]
-    fn test_dropzone_builder_disabled() {
-        let zone = DropZone::new("Zone").disabled(true);
-        assert!(zone.is_disabled());
-
-        let zone = DropZone::new("Zone").disabled(false);
-        assert!(!zone.is_disabled());
-    }
-
-    #[test]
-    fn test_dropzone_builder_colors() {
-        let zone = DropZone::new("Zone").fg(Color::CYAN).bg(Color::BLUE);
-
-        assert_eq!(zone.state.fg, Some(Color::CYAN));
-        assert_eq!(zone.state.bg, Some(Color::BLUE));
-    }
-
-    #[test]
-    fn test_dropzone_builder_set_focused() {
-        let mut zone = DropZone::new("Zone");
-        assert!(!zone.is_focused());
-
-        zone.set_focused(true);
-        assert!(zone.is_focused());
-
-        zone.set_focused(false);
-        assert!(!zone.is_focused());
-    }
-
-    #[test]
-    fn test_dropzone_drag_enter_with_accepted_type() {
-        let mut zone = DropZone::new("Zone").accepts(&["text"]);
-
-        let data = DragData::text("test content");
-        zone.on_drag_enter(&data);
-
-        assert!(zone.hovered);
-        assert!(zone.can_accept_current);
-    }
-
-    #[test]
-    fn test_dropzone_drag_enter_with_rejected_type() {
-        let mut zone = DropZone::new("Zone").accepts(&["file"]);
-
-        let data = DragData::text("test content"); // text is not in accepts
-        zone.on_drag_enter(&data);
-
-        assert!(zone.hovered);
-        assert!(!zone.can_accept_current);
-    }
-
-    #[test]
-    fn test_dropzone_drag_enter_accepts_all() {
-        let mut zone = DropZone::new("Zone").accepts_all();
-
-        let data = DragData::text("test content");
-        zone.on_drag_enter(&data);
-
-        assert!(zone.hovered);
-        assert!(zone.can_accept_current);
-    }
+    assert!(zone.hovered);
+    assert!(zone.can_accept_current);
 }

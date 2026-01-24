@@ -9,7 +9,8 @@ pub mod data;
 pub mod recognizer;
 
 /// Gesture recognition tests
-pub mod tests;
+#[cfg(test)]
+mod tests;
 
 /// Gesture type definitions
 pub mod types;

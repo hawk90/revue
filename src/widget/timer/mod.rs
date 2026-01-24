@@ -689,4 +689,5 @@ pub fn pomodoro() -> Timer {
 }
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests;

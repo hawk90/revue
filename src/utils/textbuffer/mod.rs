@@ -510,4 +510,5 @@ impl TextBuffer {
 }
 
 #[cfg(test)]
+#[cfg(test)]
 mod tests;

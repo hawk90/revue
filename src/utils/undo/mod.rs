@@ -26,6 +26,7 @@ mod core;
 mod group;
 mod merge;
 mod query;
+#[cfg(test)]
 mod tests;
 mod types;
 mod undo_redo;

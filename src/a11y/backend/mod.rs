@@ -20,6 +20,4 @@ pub use platform::LoggingBackend;
 pub use global::{announce_to_screen_reader, get_backend, init_backend, set_backend};
 
 #[cfg(test)]
-mod tests {
-    include!("tests.rs");
-}
+mod tests;

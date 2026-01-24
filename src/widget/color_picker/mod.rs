@@ -14,4 +14,5 @@ pub use types::{ColorPalette, ColorPickerMode};
 
 // Include tests from tests.rs
 #[cfg(test)]
+#[cfg(test)]
 mod tests;
