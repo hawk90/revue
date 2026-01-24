@@ -1,4 +1,4 @@
-use super::super::{CiEnvironment, CiProvider, TestReport};
+use super::super::{CiEnvironment, CiProvider, TestReport, TestResult};
 use std::path::PathBuf;
 
 #[test]
@@ -187,7 +187,7 @@ fn test_ci_environment_clone() {
 
 #[test]
 fn test_test_result_passed() {
-    let result = super::super::report::TestResult {
+    let result = TestResult {
         name: "my_test".to_string(),
         passed: true,
         message: None,
@@ -200,7 +200,7 @@ fn test_test_result_passed() {
 
 #[test]
 fn test_test_result_failed() {
-    let result = super::super::report::TestResult {
+    let result = TestResult {
         name: "failing_test".to_string(),
         passed: false,
         message: Some("Assertion failed".to_string()),
@@ -214,7 +214,7 @@ fn test_test_result_failed() {
 
 #[test]
 fn test_test_result_clone() {
-    let result = super::super::report::TestResult {
+    let result = TestResult {
         name: "test".to_string(),
         passed: true,
         message: None,

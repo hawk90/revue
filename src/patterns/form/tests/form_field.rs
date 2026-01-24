@@ -1,6 +1,6 @@
 //! FormField and FormFieldBuilder tests
 
-use crate::patterns::form::{FieldType, FormField, Validators};
+use crate::patterns::form::{FieldType, FormField, ValidationError, Validators};
 
 // FormField construction tests
 #[test]

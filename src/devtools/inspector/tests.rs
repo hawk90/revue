@@ -1,5 +1,9 @@
 //! Tests for widget inspector
 
+#![allow(unused_imports)]
+
+use super::super::{Inspector, PickerMode, WidgetNode};
+
 #[test]
 fn test_inspector_add_nodes() {
     let mut inspector = Inspector::new();

@@ -1,6 +1,6 @@
 //! Validator tests
 
-use crate::patterns::form::Validators;
+use crate::patterns::form::{ValidationError, Validators};
 
 // Required validator tests
 #[test]

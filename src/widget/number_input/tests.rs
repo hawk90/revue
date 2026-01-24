@@ -1,4 +1,5 @@
 use super::*;
+use crate::event::Key;
 
 #[test]
 fn test_number_input_new() {

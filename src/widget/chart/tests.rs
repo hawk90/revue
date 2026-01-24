@@ -1,5 +1,11 @@
 //! Tests for chart widget
 
+#![allow(unused_imports)]
+
+use super::*;
+use crate::style::Color;
+use crate::widget::Marker;
+
 #[test]
 fn test_chart_new() {
     let c = Chart::new();

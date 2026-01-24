@@ -1,4 +1,4 @@
-use crate::utils::selection::{SectionedSelection, Selection};
+use crate::utils::selection::{wrap_next, wrap_prev, SectionedSelection, Selection};
 
 #[test]
 fn test_next_prev_wrap() {

@@ -1,6 +1,9 @@
 use crate::layout::Rect;
 use crate::render::Buffer;
-use crate::widget::breadcrumb::{Breadcrumb, BreadcrumbItem, SeparatorStyle};
+use crate::style::Color;
+use crate::widget::breadcrumb::{breadcrumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
+use crate::widget::crumb;
+use crate::widget::traits::{RenderContext, View};
 
 #[test]
 fn test_breadcrumb_item() {

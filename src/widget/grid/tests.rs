@@ -1,5 +1,6 @@
 use super::*;
 use crate::render::Buffer;
+use crate::widget::Text;
 
 #[test]
 fn test_grid_new() {

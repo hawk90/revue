@@ -1,5 +1,6 @@
 use crate::style::easing;
 use crate::widget::transition::{Animation, AnimationPreset, Transition, TransitionGroup};
+use std::time::Duration;
 
 #[test]
 fn test_animation_defaults() {

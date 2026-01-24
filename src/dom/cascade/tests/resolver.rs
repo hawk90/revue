@@ -3,7 +3,7 @@
 use crate::dom::cascade::resolver::StyleResolver;
 use crate::dom::node::{DomNode, WidgetMeta};
 use crate::dom::DomId;
-use crate::style::{Rule, StyleSheet};
+use crate::style::{Declaration, Rule, StyleSheet};
 
 fn create_test_stylesheet() -> StyleSheet {
     StyleSheet {

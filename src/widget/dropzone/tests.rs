@@ -1,4 +1,6 @@
 use super::*;
+use crate::layout::Rect;
+use crate::style::Color;
 
 #[test]
 fn test_dropzone_new() {

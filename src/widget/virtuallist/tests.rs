@@ -1,6 +1,7 @@
 use super::*;
 use crate::layout::Rect;
 use crate::render::Buffer;
+use crate::widget::traits::RenderContext;
 
 #[test]
 fn test_virtual_list_new() {

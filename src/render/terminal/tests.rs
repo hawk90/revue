@@ -3,39 +3,14 @@ use crate::render::cell::Modifier;
 use crate::render::terminal::Terminal;
 use crate::render::Buffer;
 use crate::style::Color;
-use crate::widget::RenderContext;
 use crossterm::style::Color as CrosstermColor;
 use std::io::{self, Write};
 
 // Helper function to convert Color to CrosstermColor (duplicated from render.rs)
 fn to_crossterm_color(color: Color) -> CrosstermColor {
-    match color {
-        Color::Rgb(r, g, b) => CrosstermColor::Rgb { r, g, b },
-        Color::BLACK => CrosstermColor::Rgb { r: 0, g: 0, b: 0 },
-        Color::WHITE => CrosstermColor::Rgb {
-            r: 255,
-            g: 255,
-            b: 255,
-        },
-        Color::RED => CrosstermColor::Rgb { r: 255, g: 0, b: 0 },
-        Color::GREEN => CrosstermColor::Rgb { r: 0, g: 255, b: 0 },
-        Color::BLUE => CrosstermColor::Rgb { r: 0, g: 0, b: 255 },
-        Color::YELLOW => CrosstermColor::Rgb {
-            r: 255,
-            g: 255,
-            b: 0,
-        },
-        Color::CYAN => CrosstermColor::Rgb {
-            r: 0,
-            g: 255,
-            b: 255,
-        },
-        Color::MAGENTA => CrosstermColor::Rgb {
-            r: 255,
-            g: 0,
-            b: 255,
-        },
-    }
+    // Check if it's a named color (using helper methods)
+    let Color { r, g, b, a: _ } = color;
+    CrosstermColor::Rgb { r, g, b }
 }
 
 // Mock writer for testing
@@ -420,8 +395,8 @@ fn test_render_dirty_only_diffs_dirty_regions() {
     let mut buf2 = Buffer::new(20, 20);
 
     // Make changes at two different locations
-    buf2.set(5, 5, Buffer::new(0, 0).get(0, 0).unwrap()); // Inside dirty rect
-    buf2.set(15, 15, Buffer::new(0, 0).get(0, 0).unwrap()); // Outside dirty rect
+    buf2.set(5, 5, *Buffer::new(0, 0).get(0, 0).unwrap()); // Inside dirty rect
+    buf2.set(15, 15, *Buffer::new(0, 0).get(0, 0).unwrap()); // Outside dirty rect
 
     // Only diff the region containing (5, 5)
     let dirty_rects = vec![Rect::new(0, 0, 10, 10)];
@@ -439,8 +414,8 @@ fn test_render_dirty_multiple_regions() {
     let mut buf2 = Buffer::new(20, 20);
 
     // Make changes in two different dirty regions
-    buf2.set(2, 2, Buffer::new(0, 0).get(0, 0).unwrap());
-    buf2.set(15, 15, Buffer::new(0, 0).get(0, 0).unwrap());
+    buf2.set(2, 2, *Buffer::new(0, 0).get(0, 0).unwrap());
+    buf2.set(15, 15, *Buffer::new(0, 0).get(0, 0).unwrap());
 
     // Two dirty regions covering both changes
     let dirty_rects = vec![
@@ -459,7 +434,7 @@ fn test_render_dirty_no_changes_in_dirty_region() {
     let mut buf2 = Buffer::new(20, 20);
 
     // Make change outside the dirty region
-    buf2.set(15, 15, Buffer::new(0, 0).get(0, 0).unwrap());
+    buf2.set(15, 15, *Buffer::new(0, 0).get(0, 0).unwrap());
 
     // Dirty region doesn't include the change
     let dirty_rects = vec![Rect::new(0, 0, 10, 10)];

@@ -3,7 +3,7 @@
 use crate::dom::cascade::resolver::StyleResolver;
 use crate::dom::node::{DomNode, WidgetMeta};
 use crate::dom::DomId;
-use crate::style::{Rule, StyleSheet};
+use crate::style::{Declaration, Rule, StyleSheet};
 
 #[test]
 fn test_match_pseudo_hover() {

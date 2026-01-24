@@ -3,7 +3,11 @@ use crate::layout::Rect;
 use crate::prelude::RenderContext;
 use crate::render::Buffer;
 use crate::style::Color;
+use crate::widget::canvas::{BrailleGrid, DrawContext};
 use crate::widget::traits::View;
+
+// Import braille shapes using the re-exported path
+use crate::widget::canvas::{Circle, FilledCircle, FilledRectangle, Line, Rectangle};
 
 // Standard canvas tests
 
@@ -168,41 +172,35 @@ fn test_braille_grid_get_char() {
 #[test]
 fn test_braille_line() {
     let mut grid = BrailleGrid::new(20, 10);
-    grid.draw(&braille::Line::new(0.0, 0.0, 39.0, 39.0, Color::CYAN));
+    grid.draw(&Line::new(0.0, 0.0, 39.0, 39.0, Color::CYAN));
     // Line should be drawn
 }
 
 #[test]
 fn test_braille_circle() {
     let mut grid = BrailleGrid::new(20, 10);
-    grid.draw(&braille::Circle::new(20.0, 20.0, 10.0, Color::YELLOW));
+    grid.draw(&Circle::new(20.0, 20.0, 10.0, Color::YELLOW));
     // Circle should be drawn
 }
 
 #[test]
 fn test_braille_filled_circle() {
     let mut grid = BrailleGrid::new(20, 10);
-    grid.draw(&braille::FilledCircle::new(20.0, 20.0, 10.0, Color::GREEN));
+    grid.draw(&FilledCircle::new(20.0, 20.0, 10.0, Color::GREEN));
     // Filled circle should be drawn
 }
 
 #[test]
 fn test_braille_rectangle() {
     let mut grid = BrailleGrid::new(20, 10);
-    grid.draw(&braille::Rectangle::new(5.0, 5.0, 20.0, 15.0, Color::RED));
+    grid.draw(&Rectangle::new(5.0, 5.0, 20.0, 15.0, Color::RED));
     // Rectangle should be drawn
 }
 
 #[test]
 fn test_braille_filled_rectangle() {
     let mut grid = BrailleGrid::new(20, 10);
-    grid.draw(&braille::FilledRectangle::new(
-        5.0,
-        5.0,
-        20.0,
-        15.0,
-        Color::BLUE,
-    ));
+    grid.draw(&FilledRectangle::new(5.0, 5.0, 20.0, 15.0, Color::BLUE));
     // Filled rectangle should be drawn
 }
 
@@ -215,7 +213,7 @@ fn test_braille_points() {
             (x as f64, y)
         })
         .collect();
-    grid.draw(&braille::Points::new(coords, Color::MAGENTA));
+    grid.draw(&Points::new(coords, Color::MAGENTA));
     // Points should be drawn
 }
 

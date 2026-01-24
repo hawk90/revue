@@ -1,4 +1,8 @@
 use super::*;
+use crate::event::Key;
+use crate::layout::Rect;
+use crate::render::Buffer;
+use crate::style::{BorderStyle, Color};
 
 #[test]
 fn test_card_new() {
@@ -39,10 +43,10 @@ fn test_card_variants() {
 #[test]
 fn test_card_border_styles() {
     let c = Card::new().rounded();
-    assert_eq!(c.border, BorderType::Rounded);
+    assert_eq!(c.border, BorderStyle::Rounded);
 
-    let c = Card::new().border_style(BorderType::Double);
-    assert_eq!(c.border, BorderType::Double);
+    let c = Card::new().border_style(BorderStyle::Double);
+    assert_eq!(c.border, BorderStyle::Double);
 }
 
 #[test]
@@ -171,7 +175,7 @@ fn test_card_helper() {
 
 #[test]
 fn test_card_border_chars() {
-    let chars = BorderType::Single.chars();
+    let chars = BorderStyle::Single.chars();
     assert_eq!(chars.top_left, '┌');
     assert_eq!(chars.top_right, '┐');
     assert_eq!(chars.bottom_left, '└');
@@ -179,7 +183,7 @@ fn test_card_border_chars() {
     assert_eq!(chars.horizontal, '─');
     assert_eq!(chars.vertical, '│');
 
-    let chars = BorderType::Rounded.chars();
+    let chars = BorderStyle::Rounded.chars();
     assert_eq!(chars.top_left, '╭');
 }
 

@@ -1,6 +1,6 @@
 //! Tests for calendar module
 
-use super::types::{DateMarker, FirstDayOfWeek};
+use super::types::{CalendarMode, DateMarker, FirstDayOfWeek};
 use super::*;
 use crate::layout::Rect;
 use crate::render::Buffer;
