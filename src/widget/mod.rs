@@ -127,6 +127,59 @@
 //!     .child(ui);
 //! ```
 //!
+//! # Constructor Pattern
+//!
+//! Revue uses a **hybrid constructor pattern** to balance ergonomics and clarity:
+//!
+//! ## Function-Style (Simple Widgets)
+//!
+//! Widgets with fewer than 5 configuration options use function-style constructors:
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! // Simple, single-purpose widgets
+//! let btn = button("Click me");
+//! let chk = checkbox("Enable");
+//! let txt = text("Hello");
+//! let badge = badge("New");
+//! let divider = divider();
+//! ```
+//!
+//! **Benefits**: Concise, chainable, IDE-friendly autocomplete.
+//!
+//! ## Builder-Style (Complex Widgets)
+//!
+//! Widgets with 5+ configuration options use builder-style:
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! // Complex widgets with many options
+//! let grid = DataGrid::builder()
+//!     .columns(vec![/* ... */])
+//!     .data(&data)
+//!     .selectable(true)
+//!     .sortable(true)
+//!     .build();
+//! ```
+//!
+//! **Benefits**: Clear option names, handles complex configuration well.
+//!
+//! ## Creating New Widgets
+//!
+//! When adding new widgets, follow this guideline:
+//!
+//! | Config Options | Pattern | Example |
+//! |----------------|---------|---------|
+//! | < 5 | Function-style | `button()`, `text()` |
+//! | >= 5 | Builder-style | `DataGrid::builder()` |
+//!
+//! ## Transition Period
+//!
+//! Some widgets may have both patterns during migration. Prefer function-style
+//! for simple widgets, but `Widget::new()` remains valid for all widgets.
+//!
 //! # Creating Custom Widgets
 //!
 //! Implement the [`View`] trait to create custom widgets:
