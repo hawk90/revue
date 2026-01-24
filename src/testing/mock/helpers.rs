@@ -23,7 +23,8 @@ pub fn mock_alt_key(key: Key) -> KeyEvent {
 
 /// Create a mock mouse click event
 pub fn mock_click(x: u16, y: u16) -> MouseEvent {
-    MouseEvent::new(x, y, MouseEventKind::Down(crate::event::MouseButton::Left))
+    use crate::event::MouseButton;
+    MouseEvent::new(x, y, MouseEventKind::Down(MouseButton::Left))
 }
 
 /// Create a mock mouse event

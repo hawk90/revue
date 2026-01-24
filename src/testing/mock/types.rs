@@ -1,6 +1,6 @@
 //! Core types for testing utilities
 
-use crate::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+use crate::event::{KeyEvent, MouseEvent};
 use std::time::Duration;
 
 /// Simulated event for testing
