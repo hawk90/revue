@@ -657,336 +657,373 @@ impl_props_builders!(Markdown);
 
 #[cfg(test)]
 mod tests {
-//! Markdown widget tests
+    //! Markdown widget tests
 
-use super::*;
-use crate::layout::Rect;
-use crate::render::Buffer;
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
 
-#[test]
-fn test_markdown_new() {
-    let md = Markdown::new("# Hello");
-    assert_eq!(md.source(), "# Hello");
-}
+    #[test]
+    fn test_markdown_new() {
+        let md = Markdown::new("# Hello");
+        assert_eq!(md.source(), "# Hello");
+    }
 
-#[test]
-fn test_markdown_heading() {
-    let md = Markdown::new("# Heading 1");
-    assert!(md.line_count() > 0);
-}
+    #[test]
+    fn test_markdown_heading() {
+        let md = Markdown::new("# Heading 1");
+        assert!(md.line_count() > 0);
+    }
 
-#[test]
-fn test_markdown_paragraph() {
-    let md = Markdown::new("This is a paragraph.
+    #[test]
+    fn test_markdown_paragraph() {
+        let md = Markdown::new(
+            "This is a paragraph.
 
-Another paragraph.");
-    assert!(md.line_count() >= 2);
-}
+Another paragraph.",
+        );
+        assert!(md.line_count() >= 2);
+    }
 
-#[test]
-fn test_markdown_bold() {
-    let md = Markdown::new("This is **bold** text.");
-    assert!(md.line_count() >= 1);
-}
+    #[test]
+    fn test_markdown_bold() {
+        let md = Markdown::new("This is **bold** text.");
+        assert!(md.line_count() >= 1);
+    }
 
-#[test]
-fn test_markdown_italic() {
-    let md = Markdown::new("This is *italic* text.");
-    assert!(md.line_count() >= 1);
-}
+    #[test]
+    fn test_markdown_italic() {
+        let md = Markdown::new("This is *italic* text.");
+        assert!(md.line_count() >= 1);
+    }
 
-#[test]
-fn test_markdown_code() {
-    let md = Markdown::new("Inline `code` here.");
-    assert!(md.line_count() >= 1);
-}
+    #[test]
+    fn test_markdown_code() {
+        let md = Markdown::new("Inline `code` here.");
+        assert!(md.line_count() >= 1);
+    }
 
-#[test]
-fn test_markdown_list() {
-    let md = Markdown::new("- Item 1
+    #[test]
+    fn test_markdown_list() {
+        let md = Markdown::new(
+            "- Item 1
 - Item 2
-- Item 3");
-    assert!(md.line_count() >= 3);
-}
+- Item 3",
+        );
+        assert!(md.line_count() >= 3);
+    }
 
-#[test]
-fn test_markdown_ordered_list() {
-    let md = Markdown::new("1. First
+    #[test]
+    fn test_markdown_ordered_list() {
+        let md = Markdown::new(
+            "1. First
 2. Second
-3. Third");
-    assert!(md.line_count() >= 3);
-}
+3. Third",
+        );
+        assert!(md.line_count() >= 3);
+    }
 
-#[test]
-fn test_markdown_render() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+    #[test]
+    fn test_markdown_render() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let md = Markdown::new("# Test
+        let md = Markdown::new(
+            "# Test
 
-Hello world.");
-    md.render(&mut ctx);
+Hello world.",
+        );
+        md.render(&mut ctx);
 
-    // Check that heading was rendered with bold modifier
-    let mut found_bold = false;
-    for x in 0..10 {
-        if let Some(cell) = buffer.get(x, 0) {
-            if cell.symbol == 'T' && cell.modifier.contains(crate::render::Modifier::BOLD) {
-                found_bold = true;
-                break;
+        // Check that heading was rendered with bold modifier
+        let mut found_bold = false;
+        for x in 0..10 {
+            if let Some(cell) = buffer.get(x, 0) {
+                if cell.symbol == 'T' && cell.modifier.contains(crate::render::Modifier::BOLD) {
+                    found_bold = true;
+                    break;
+                }
             }
         }
+        assert!(found_bold);
     }
-    assert!(found_bold);
-}
 
-#[test]
-fn test_markdown_helper() {
-    let md = markdown("Test content");
-    assert_eq!(md.source(), "Test content");
-}
+    #[test]
+    fn test_markdown_helper() {
+        let md = markdown("Test content");
+        assert_eq!(md.source(), "Test content");
+    }
 
-#[test]
-fn test_markdown_quote() {
-    let md = Markdown::new("> This is a quote");
-    assert!(md.line_count() >= 1);
-}
+    #[test]
+    fn test_markdown_quote() {
+        let md = Markdown::new("> This is a quote");
+        assert!(md.line_count() >= 1);
+    }
 
-#[test]
-fn test_markdown_link() {
-    let md = Markdown::new("[Link](https://example.com)");
-    assert!(md.line_count() >= 1);
-}
+    #[test]
+    fn test_markdown_link() {
+        let md = Markdown::new("[Link](https://example.com)");
+        assert!(md.line_count() >= 1);
+    }
 
-#[test]
-fn test_markdown_rule() {
-    let md = Markdown::new("Above
+    #[test]
+    fn test_markdown_rule() {
+        let md = Markdown::new(
+            "Above
 
 ---
 
-Below");
-    assert!(md.line_count() >= 3);
-}
+Below",
+        );
+        assert!(md.line_count() >= 3);
+    }
 
-#[test]
-fn test_footnote_reference() {
-    let md = Markdown::new("Text with footnote[^1]
+    #[test]
+    fn test_footnote_reference() {
+        let md = Markdown::new(
+            "Text with footnote[^1]
 
-[^1]: This is the footnote.");
-    assert!(md.line_count() >= 2);
-}
+[^1]: This is the footnote.",
+        );
+        assert!(md.line_count() >= 2);
+    }
 
-#[test]
-fn test_multiple_footnotes() {
-    let md =
-        Markdown::new("First[^a] and second[^b].
+    #[test]
+    fn test_multiple_footnotes() {
+        let md = Markdown::new(
+            "First[^a] and second[^b].
 
 [^a]: First footnote.
-[^b]: Second footnote.");
-    assert!(md.line_count() >= 3);
-}
-
-#[test]
-fn test_footnote_section_rendered() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let md = Markdown::new("Text[^note]
-
-[^note]: My footnote.");
-    md.render(&mut ctx);
-
-    let mut found_separator = false;
-    for y in 0..24 {
-        if buffer.get(0, y).unwrap().symbol == '─' {
-            found_separator = true;
-            break;
-        }
-    }
-    assert!(found_separator);
-}
-
-#[test]
-fn test_admonition_type_from_marker() {
-    assert_eq!(
-        AdmonitionType::from_marker("[!NOTE]"),
-        Some(AdmonitionType::Note)
-    );
-    assert_eq!(
-        AdmonitionType::from_marker("[!TIP]"),
-        Some(AdmonitionType::Tip)
-    );
-    assert_eq!(
-        AdmonitionType::from_marker("[!IMPORTANT]"),
-        Some(AdmonitionType::Important)
-    );
-    assert_eq!(
-        AdmonitionType::from_marker("[!WARNING]"),
-        Some(AdmonitionType::Warning)
-    );
-    assert_eq!(
-        AdmonitionType::from_marker("[!CAUTION]"),
-        Some(AdmonitionType::Caution)
-    );
-    assert_eq!(
-        AdmonitionType::from_marker("[!note]"),
-        Some(AdmonitionType::Note)
-    );
-    assert_eq!(AdmonitionType::from_marker("NOTE"), None);
-    assert_eq!(AdmonitionType::from_marker("[NOTE]"), None);
-    assert_eq!(AdmonitionType::from_marker("[!UNKNOWN]"), None);
-}
-
-#[test]
-fn test_admonition_icon() {
-    assert_eq!(AdmonitionType::Note.icon(), "ℹ️ ");
-    assert_eq!(AdmonitionType::Tip.icon(), "💡");
-    assert_eq!(AdmonitionType::Important.icon(), "❗");
-    assert_eq!(AdmonitionType::Warning.icon(), "⚠️ ");
-    assert_eq!(AdmonitionType::Caution.icon(), "🔴");
-}
-
-#[test]
-fn test_admonition_label() {
-    assert_eq!(AdmonitionType::Note.label(), "Note");
-    assert_eq!(AdmonitionType::Tip.label(), "Tip");
-    assert_eq!(AdmonitionType::Important.label(), "Important");
-    assert_eq!(AdmonitionType::Warning.label(), "Warning");
-    assert_eq!(AdmonitionType::Caution.label(), "Caution");
-}
-
-#[test]
-fn test_admonition_note() {
-    let md = Markdown::new("> [!NOTE]
-> This is a note.");
-    assert!(md.line_count() >= 2);
-}
-
-#[test]
-fn test_admonition_warning() {
-    let md = Markdown::new("> [!WARNING]
-> Be careful!");
-    assert!(md.line_count() >= 2);
-}
-
-#[test]
-fn test_admonition_all_types() {
-    for (marker, label) in [
-        ("[!NOTE]", "Note"),
-        ("[!TIP]", "Tip"),
-        ("[!IMPORTANT]", "Important"),
-        ("[!WARNING]", "Warning"),
-        ("[!CAUTION]", "Caution"),
-    ] {
-        let source = format!("> {}
-> Content for {}.", marker, label);
-        let md = Markdown::new(source);
-        assert!(
-            md.line_count() >= 2,
-            "Admonition {} should render at least 2 lines",
-            label
+[^b]: Second footnote.",
         );
+        assert!(md.line_count() >= 3);
     }
-}
 
-#[test]
-fn test_regular_blockquote_not_admonition() {
-    let md = Markdown::new("> This is a regular quote
-> Not an admonition");
-    assert!(md.line_count() >= 1);
-}
+    #[test]
+    fn test_footnote_section_rendered() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
 
-#[test]
-fn test_admonition_render() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+        let md = Markdown::new(
+            "Text[^note]
 
-    let md = Markdown::new("> [!NOTE]
-> Important information.");
-    md.render(&mut ctx);
+[^note]: My footnote.",
+        );
+        md.render(&mut ctx);
 
-    let mut found_bar = false;
-    for y in 0..24 {
-        if buffer.get(0, y).unwrap().symbol == '│' {
-            found_bar = true;
-            break;
+        let mut found_separator = false;
+        for y in 0..24 {
+            if buffer.get(0, y).unwrap().symbol == '─' {
+                found_separator = true;
+                break;
+            }
+        }
+        assert!(found_separator);
+    }
+
+    #[test]
+    fn test_admonition_type_from_marker() {
+        assert_eq!(
+            AdmonitionType::from_marker("[!NOTE]"),
+            Some(AdmonitionType::Note)
+        );
+        assert_eq!(
+            AdmonitionType::from_marker("[!TIP]"),
+            Some(AdmonitionType::Tip)
+        );
+        assert_eq!(
+            AdmonitionType::from_marker("[!IMPORTANT]"),
+            Some(AdmonitionType::Important)
+        );
+        assert_eq!(
+            AdmonitionType::from_marker("[!WARNING]"),
+            Some(AdmonitionType::Warning)
+        );
+        assert_eq!(
+            AdmonitionType::from_marker("[!CAUTION]"),
+            Some(AdmonitionType::Caution)
+        );
+        assert_eq!(
+            AdmonitionType::from_marker("[!note]"),
+            Some(AdmonitionType::Note)
+        );
+        assert_eq!(AdmonitionType::from_marker("NOTE"), None);
+        assert_eq!(AdmonitionType::from_marker("[NOTE]"), None);
+        assert_eq!(AdmonitionType::from_marker("[!UNKNOWN]"), None);
+    }
+
+    #[test]
+    fn test_admonition_icon() {
+        assert_eq!(AdmonitionType::Note.icon(), "ℹ️ ");
+        assert_eq!(AdmonitionType::Tip.icon(), "💡");
+        assert_eq!(AdmonitionType::Important.icon(), "❗");
+        assert_eq!(AdmonitionType::Warning.icon(), "⚠️ ");
+        assert_eq!(AdmonitionType::Caution.icon(), "🔴");
+    }
+
+    #[test]
+    fn test_admonition_label() {
+        assert_eq!(AdmonitionType::Note.label(), "Note");
+        assert_eq!(AdmonitionType::Tip.label(), "Tip");
+        assert_eq!(AdmonitionType::Important.label(), "Important");
+        assert_eq!(AdmonitionType::Warning.label(), "Warning");
+        assert_eq!(AdmonitionType::Caution.label(), "Caution");
+    }
+
+    #[test]
+    fn test_admonition_note() {
+        let md = Markdown::new(
+            "> [!NOTE]
+> This is a note.",
+        );
+        assert!(md.line_count() >= 2);
+    }
+
+    #[test]
+    fn test_admonition_warning() {
+        let md = Markdown::new(
+            "> [!WARNING]
+> Be careful!",
+        );
+        assert!(md.line_count() >= 2);
+    }
+
+    #[test]
+    fn test_admonition_all_types() {
+        for (marker, label) in [
+            ("[!NOTE]", "Note"),
+            ("[!TIP]", "Tip"),
+            ("[!IMPORTANT]", "Important"),
+            ("[!WARNING]", "Warning"),
+            ("[!CAUTION]", "Caution"),
+        ] {
+            let source = format!(
+                "> {}
+> Content for {}.",
+                marker, label
+            );
+            let md = Markdown::new(source);
+            assert!(
+                md.line_count() >= 2,
+                "Admonition {} should render at least 2 lines",
+                label
+            );
         }
     }
-    assert!(found_bar);
-}
 
-#[test]
-fn test_admonition_multiline_content() {
-    let md = Markdown::new("> [!WARNING]
+    #[test]
+    fn test_regular_blockquote_not_admonition() {
+        let md = Markdown::new(
+            "> This is a regular quote
+> Not an admonition",
+        );
+        assert!(md.line_count() >= 1);
+    }
+
+    #[test]
+    fn test_admonition_render() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let md = Markdown::new(
+            "> [!NOTE]
+> Important information.",
+        );
+        md.render(&mut ctx);
+
+        let mut found_bar = false;
+        for y in 0..24 {
+            if buffer.get(0, y).unwrap().symbol == '│' {
+                found_bar = true;
+                break;
+            }
+        }
+        assert!(found_bar);
+    }
+
+    #[test]
+    fn test_admonition_multiline_content() {
+        let md = Markdown::new(
+            "> [!WARNING]
 > Line 1
 > Line 2
-> Line 3");
-    assert!(
-        md.line_count() >= 4,
-        "Multi-line admonition should have multiple lines"
-    );
-}
+> Line 3",
+        );
+        assert!(
+            md.line_count() >= 4,
+            "Multi-line admonition should have multiple lines"
+        );
+    }
 
-#[test]
-fn test_admonition_color() {
-    assert_ne!(AdmonitionType::Note.color(), Color::BLACK);
-    assert_ne!(AdmonitionType::Tip.color(), Color::BLACK);
-    assert_ne!(AdmonitionType::Important.color(), Color::BLACK);
-    assert_ne!(AdmonitionType::Warning.color(), Color::BLACK);
-    assert_ne!(AdmonitionType::Caution.color(), Color::BLACK);
-}
+    #[test]
+    fn test_admonition_color() {
+        assert_ne!(AdmonitionType::Note.color(), Color::BLACK);
+        assert_ne!(AdmonitionType::Tip.color(), Color::BLACK);
+        assert_ne!(AdmonitionType::Important.color(), Color::BLACK);
+        assert_ne!(AdmonitionType::Warning.color(), Color::BLACK);
+        assert_ne!(AdmonitionType::Caution.color(), Color::BLACK);
+    }
 
-#[test]
-fn test_blockquote_multiline() {
-    let md = Markdown::new("> First line
+    #[test]
+    fn test_blockquote_multiline() {
+        let md = Markdown::new(
+            "> First line
 > Second line
-> Third line");
-    assert!(md.line_count() >= 1);
-}
+> Third line",
+        );
+        assert!(md.line_count() >= 1);
+    }
 
-#[test]
-fn test_footnote_with_multiline_content() {
-    let md = Markdown::new("Text[^1]
+    #[test]
+    fn test_footnote_with_multiline_content() {
+        let md = Markdown::new(
+            "Text[^1]
 
-[^1]: This is a longer footnote with multiple words.");
-    assert!(md.line_count() >= 2);
-}
+[^1]: This is a longer footnote with multiple words.",
+        );
+        assert!(md.line_count() >= 2);
+    }
 
-#[test]
-fn test_footnote_reference_before_definition() {
-    let md = Markdown::new("See[^note] for details.
+    #[test]
+    fn test_footnote_reference_before_definition() {
+        let md = Markdown::new(
+            "See[^note] for details.
 
-[^note]: The footnote content here.");
-    assert!(md.line_count() >= 2);
-}
+[^note]: The footnote content here.",
+        );
+        assert!(md.line_count() >= 2);
+    }
 
-#[test]
-fn test_admonition_with_empty_content() {
-    let md = Markdown::new("> [!TIP]");
-    assert!(md.line_count() >= 1);
-}
+    #[test]
+    fn test_admonition_with_empty_content() {
+        let md = Markdown::new("> [!TIP]");
+        assert!(md.line_count() >= 1);
+    }
 
-#[test]
-fn test_mixed_content_with_admonition() {
-    let md = Markdown::new("Before.
+    #[test]
+    fn test_mixed_content_with_admonition() {
+        let md = Markdown::new(
+            "Before.
 
 > [!IMPORTANT]
 > Content
 
-After.");
-    assert!(md.line_count() >= 3);
-}
+After.",
+        );
+        assert!(md.line_count() >= 3);
+    }
 
-#[test]
-fn test_footnote_number_ordering() {
-    let md = Markdown::new("A[^z] B[^a]
+    #[test]
+    fn test_footnote_number_ordering() {
+        let md = Markdown::new(
+            "A[^z] B[^a]
 
 [^a]: Alpha
-[^z]: Zeta");
-    assert!(md.line_count() >= 3);
-}
-
+[^z]: Zeta",
+        );
+        assert!(md.line_count() >= 3);
+    }
 }
