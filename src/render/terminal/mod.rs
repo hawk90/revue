@@ -461,7 +461,7 @@ mod tests {
         // When no dirty rects provided, should fall back to full-screen diff
         let buf1 = Buffer::new(10, 10);
         let mut buf2 = Buffer::new(10, 10);
-        buf2.set(5, 5, Buffer::new(0, 0).get(0, 0).unwrap());
+        buf2.set(5, 5, *Buffer::new(0, 0).get(0, 0).unwrap());
 
         let changes = crate::render::diff::diff(&buf1, &buf2, &[]);
 
@@ -475,7 +475,7 @@ mod tests {
     fn test_render_dirty_overlapping_regions() {
         let buf1 = Buffer::new(20, 20);
         let mut buf2 = Buffer::new(20, 20);
-        buf2.set(5, 5, Buffer::new(0, 0).get(0, 0).unwrap());
+        buf2.set(5, 5, *Buffer::new(0, 0).get(0, 0).unwrap());
 
         // Overlapping dirty rects both containing (5, 5)
         let dirty_rects = vec![Rect::new(0, 0, 10, 10), Rect::new(3, 3, 10, 10)];

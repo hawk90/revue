@@ -159,7 +159,8 @@ mod tests {
             .child(Text::new("C"))
             .child(Text::new("D"));
 
-        g.render(&mut ctx);
+        use crate::widget::traits::View;
+        View::render(&g, &mut ctx);
         // Smoke test
     }
 
@@ -176,7 +177,8 @@ mod tests {
             .item(GridItem::new(Text::new("Sidebar")).at(1, 2).row_span(2))
             .item(GridItem::new(Text::new("Content")).at(2, 2).col_span(2));
 
-        g.render(&mut ctx);
+        use crate::widget::traits::View;
+        View::render(&g, &mut ctx);
     }
 
     #[test]
