@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.34.1](https://github.com/hawk90/revue/compare/v2.34.0...v2.34.1) (2026-01-24)
+
+
+### Performance Improvements
+
+* add benchmark suite for reactive updates ([#276](https://github.com/hawk90/revue/issues/276)) ([9c58314](https://github.com/hawk90/revue/commit/9c58314b5bf43753826eef9f58d6beb0cfe50305)), closes [#255](https://github.com/hawk90/revue/issues/255)
+
 ## [2.34.0](https://github.com/hawk90/revue/compare/v2.33.4...v2.34.0) (2026-01-24)
 
 
