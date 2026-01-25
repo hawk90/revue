@@ -142,6 +142,22 @@ mod tests {
             assert!((easing::back_out(1.0) - 1.0).abs() < 0.001); // Ends at 1
         }
 
+        #[test]
+        fn test_easing_spring_out() {
+            assert_eq!(easing::spring_out(0.0), 0.0);
+            assert_eq!(easing::spring_out(1.0), 1.0);
+        }
+
+        #[test]
+        fn test_easing_spring_out_oscillates() {
+            // Spring should oscillate around the target value
+            let v1 = easing::spring_out(0.3);
+            let v2 = easing::spring_out(0.5);
+            let v3 = easing::spring_out(0.7);
+            // Should overshoot and then settle
+            assert!(v2 > v1 || v3 > v2);
+        }
+
         // AnimationState tests
         #[test]
         fn test_animation_state_eq() {

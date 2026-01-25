@@ -81,4 +81,24 @@ pub fn back_out(t: f32) -> f32 {
     1.0 + c3 * (t - 1.0).powi(3) + c1 * (t - 1.0).powi(2)
 }
 
+/// Spring ease out (elastic oscillation)
+///
+/// Simulates a spring-like oscillation that settles at the target value.
+/// Uses damped harmonic motion with smooth decay.
+pub fn spring_out(t: f32) -> f32 {
+    if t == 0.0 {
+        0.0
+    } else if t == 1.0 {
+        1.0
+    } else {
+        // Spring parameters: frequency and damping
+        let frequency = 6.0; // Higher = more oscillations
+        let damping = 0.5; // Lower = more bounce
+
+        let decay = (-damping * t * 10.0).exp();
+        let phase = frequency * t * 2.0 * std::f32::consts::PI;
+        1.0 + decay * (phase).sin()
+    }
+}
+
 // Tests moved to tests/style_tests.rs
