@@ -23,6 +23,7 @@ use super::cell::{Cell, Modifier};
 use crate::layout::Rect;
 use crate::style::Color;
 use crate::utils::char_width;
+use crate::utils::unicode::display_width;
 
 /// A single render operation
 #[derive(Debug, Clone)]
@@ -131,7 +132,7 @@ impl RenderBatch {
                 self.mark_dirty(Rect::new(*x, *y, 1, *len));
             }
             RenderOp::Text { x, y, text, .. } => {
-                self.mark_dirty(Rect::new(*x, *y, text.len() as u16, 1));
+                self.mark_dirty(Rect::new(*x, *y, display_width(text) as u16, 1));
             }
             RenderOp::Clear => {
                 // Clear resets everything, no need to track
@@ -371,20 +372,40 @@ impl RenderBatch {
                     buffer.set(*x, *y, *cell);
                 }
                 RenderOp::FillRect { rect, cell } => {
-                    for y in rect.y..(rect.y + rect.height) {
-                        for x in rect.x..(rect.x + rect.width) {
-                            buffer.set(x, y, *cell);
+                    let y_end = rect.bottom();
+                    let x_end = rect.right();
+                    let mut yy = rect.y;
+                    while yy < y_end {
+                        let mut xx = rect.x;
+                        while xx < x_end {
+                            buffer.set(xx, yy, *cell);
+                            match xx.checked_add(1) {
+                                Some(nx) => xx = nx,
+                                None => break,
+                            }
+                        }
+                        match yy.checked_add(1) {
+                            Some(ny) => yy = ny,
+                            None => break,
                         }
                     }
                 }
                 RenderOp::HLine { x, y, len, cell } => {
                     for dx in 0..*len {
-                        buffer.set(*x + dx, *y, *cell);
+                        if let Some(px) = x.checked_add(dx) {
+                            buffer.set(px, *y, *cell);
+                        } else {
+                            break;
+                        }
                     }
                 }
                 RenderOp::VLine { x, y, len, cell } => {
                     for dy in 0..*len {
-                        buffer.set(*x, *y + dy, *cell);
+                        if let Some(py) = y.checked_add(dy) {
+                            buffer.set(*x, py, *cell);
+                        } else {
+                            break;
+                        }
                     }
                 }
                 RenderOp::Text {
@@ -468,7 +489,7 @@ impl BatchStats {
                 }
                 RenderOp::Text { text, .. } => {
                     stats.text_ops += 1;
-                    stats.cells_written += text.len();
+                    stats.cells_written += display_width(text);
                 }
                 _ => {}
             }

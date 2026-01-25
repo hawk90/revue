@@ -277,12 +277,21 @@ impl ImageEncoder {
             PixelFormat::Png => return self.data.clone(),
         };
 
-        let _ = image::codecs::png::PngEncoder::new(&mut png_data).write_image(
+        if let Err(err) = image::codecs::png::PngEncoder::new(&mut png_data).write_image(
             &self.data,
             self.width,
             self.height,
             color_type,
-        );
+        ) {
+            // Avoid hard failure here; return empty data and log for diagnosis
+            log_warn!(
+                "PNG encoding failed: {} ({}x{}, format {:?})",
+                err,
+                self.width,
+                self.height,
+                color_type
+            );
+        }
 
         png_data
     }

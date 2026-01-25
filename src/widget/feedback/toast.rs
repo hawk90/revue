@@ -162,14 +162,15 @@ impl Toast {
         let border_width = if self.show_border { 2 } else { 0 };
         let padding = 2; // 1 char padding on each side
 
-        let content_width = self.message.len() as u16 + icon_width;
+        let content_width = crate::utils::unicode::display_width(&self.message) as u16 + icon_width;
         let total_width = self.width.unwrap_or(content_width + border_width + padding);
         let width = total_width.min(max_width);
 
         // Calculate height based on message wrapping
         let inner_width = width.saturating_sub(border_width + padding + icon_width);
+        let msg_cols = crate::utils::unicode::display_width(&self.message) as u16;
         let lines = if inner_width > 0 {
-            (self.message.len() as u16).div_ceil(inner_width)
+            msg_cols.saturating_add(inner_width - 1) / inner_width
         } else {
             1
         };
@@ -304,17 +305,18 @@ impl View for Toast {
                 .set(area.x + content_x, area.y + content_y, icon_cell);
         }
 
-        // Draw message
+        // Draw message (clipped to available width, wide-char safe)
         let msg_x = content_x + if self.show_icon { 2 } else { 0 };
-        for (i, ch) in self.message.chars().enumerate() {
-            let pos = msg_x + i as u16;
-            if pos < x + toast_width - if self.show_border { 1 } else { 0 } {
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
-                cell.bg = Some(bg);
-                ctx.buffer.set(area.x + pos, area.y + content_y, cell);
-            }
-        }
+        let max_text_width = toast_width
+            .saturating_sub(if self.show_border { 1 } else { 0 })
+            .saturating_sub(msg_x - x);
+        ctx.draw_text_clipped(
+            area.x + msg_x,
+            area.y + content_y,
+            &self.message,
+            Color::WHITE,
+            max_text_width,
+        );
     }
 }
 
