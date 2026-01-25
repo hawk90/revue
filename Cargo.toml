@@ -12,6 +12,7 @@ readme = "README.md"
 keywords = ["tui", "terminal", "css", "reactive", "ui"]
 categories = ["command-line-interface", "gui"]
 include = [
+    "build.rs",
     "src/**/*.rs",
     "src/style/themes/*.css",
     "Cargo.toml",
