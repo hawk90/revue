@@ -1,5 +1,6 @@
 //! Event handling and keyboard input
 
+pub mod click;
 pub mod custom;
 pub mod drag;
 mod focus;
@@ -9,6 +10,7 @@ pub mod ime;
 mod keymap;
 mod reader;
 
+pub use click::{ClickDetector, ClickType};
 pub use custom::{
     AppEvent, CustomEvent, CustomEventBus, CustomHandlerId, DispatchPhase, DispatchResult,
     ErrorEvent, EventDispatcher, EventEnvelope, EventId, EventMeta, EventPriority, EventRecord,
