@@ -3,6 +3,9 @@ name = "revue-macros"
 version = "2.37.3"
 edition = "2021"
 rust-version = "1.87"
+description = "Internal proc-macros for revue framework"
+license = "MIT"
+repository = "https://github.com/hawk90/revue"
 
 [lib]
 proc-macro = true
