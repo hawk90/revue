@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.37.4](https://github.com/hawk90/revue/compare/v2.37.3...v2.37.4) (2026-01-25)
+
+### Bug Fixes
+
+* **ci:** add revue-macros to release-please extra-files ([694dd3d](https://github.com/hawk90/revue/commit/694dd3d))
+* **ci:** fix release logic - prioritize crates.io over changelog ([694dd3d](https://github.comhawk90/revue/commit/694dd3d))
+
+### Miscellaneous
+
+* **ci:** add workflow_dispatch to release-please ([5fcbdbb](https://github.com/hawk90/revue/commit/5fcbdbb))
+* **ci:** simplify publish workflow to use only Trusted Publishing ([c1352f8](https://github.com/hawk90/revue/commit/c1352f8))
+* **ci:** enable revue-macros publishing and add version to dependency ([8f40cf6](https://github.com/hawk90/revue/commit/8f40cf6))
+
 ## [2.37.3](https://github.com/hawk90/revue/compare/v2.37.2...v2.37.3) (2026-01-25)
 
 
