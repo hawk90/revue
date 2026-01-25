@@ -357,6 +357,9 @@ impl Tooltip {
                     TooltipPosition::Top // Default fallback
                 };
 
+                // Calculate position for the auto-detected position
+                // Note: pos is guaranteed to be Top/Bottom/Left/Right (never Auto)
+                // because Auto was resolved to a concrete position above
                 let (x, y) = match pos {
                     TooltipPosition::Top => {
                         let x = anchor_x.saturating_sub(tooltip_w / 2);
@@ -378,7 +381,10 @@ impl Tooltip {
                         let y = anchor_y.saturating_sub(tooltip_h / 2);
                         (x, y)
                     }
-                    _ => unreachable!("Auto position should be resolved before this match"),
+                    // Auto is handled above and never reaches here
+                    TooltipPosition::Auto => {
+                        unreachable!("Auto position resolved to concrete position above")
+                    }
                 };
                 (x, y, pos)
             }

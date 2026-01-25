@@ -12,6 +12,8 @@ use super::response::HttpResponse;
 ///
 /// # Example
 ///
+/// Implementing a custom HTTP backend:
+///
 /// ```rust,ignore
 /// use revue::widget::{HttpBackend, HttpRequest, HttpResponse};
 ///
@@ -19,8 +21,21 @@ use super::response::HttpResponse;
 ///
 /// impl HttpBackend for MyHttpBackend {
 ///     fn send(&self, request: &HttpRequest) -> Result<HttpResponse, String> {
-///         // Implement using reqwest, ureq, or other HTTP library
-///         todo!()
+///         // Example using ureq:
+///         // let response = ureq::request(&request.method.to_string(), &request.url)
+///         //     .send()
+///         //     .map_err(|e| e.to_string())?;
+///         //
+///         // Ok(HttpResponse {
+///         //     status: response.status(),
+///         //     headers: response.headers_names()
+///         //         .map(|name| (name, response.header(&name).unwrap().to_string()))
+///         //         .collect(),
+///         //     body: response.into_string().map_err(|e| e.to_string())?,
+///         // })
+///
+///         // For mock implementations in tests, see MockHttpBackend
+///         Err("Not implemented".to_string())
 ///     }
 /// }
 /// ```
