@@ -1,8 +1,6 @@
 //! Value parsing functions for CSS property values
 
-use crate::style::{
-    Color, GridPlacement, GridTemplate, GridTrack, Size, Spacing,
-};
+use crate::style::{Color, GridPlacement, GridTemplate, GridTrack, Size, Spacing};
 
 /// Parse a length value (e.g., "100", "100px")
 pub fn parse_length(value: &str) -> Option<u16> {
@@ -309,4 +307,79 @@ pub fn parse_grid_placement(value: &str) -> GridPlacement {
     }
 
     GridPlacement::auto()
+}
+
+/// Parse spacing values with shorthand support
+///
+/// Supports CSS shorthand syntax for padding and margin:
+/// - 1 value: all sides (e.g., `padding: 10px`)
+/// - 2 values: vertical | horizontal (e.g., `padding: 10px 20px`)
+/// - 3 values: top | horizontal | bottom (e.g., `padding: 10px 20px 5px`)
+/// - 4 values: top | right | bottom | left (e.g., `padding: 10px 20px 15px 25px`)
+///
+/// # Examples
+///
+/// ```ignore
+/// use revue::style::parser::parse_spacing;
+///
+/// // 1 value: all sides
+/// let spacing = parse_spacing("10px");  // top:10, right:10, bottom:10, left:10
+///
+/// // 2 values: vertical | horizontal
+/// let spacing = parse_spacing("10px 20px");  // top:10, right:20, bottom:10, left:20
+///
+/// // 3 values: top | horizontal | bottom
+/// let spacing = parse_spacing("10px 20px 5px");  // top:10, right:20, bottom:5, left:20
+///
+/// // 4 values: top | right | bottom | left
+/// let spacing = parse_spacing("10px 20px 15px 25px");  // top:10, right:20, bottom:15, left:25
+/// ```
+pub fn parse_spacing(value: &str) -> Option<Spacing> {
+    let values: Vec<&str> = value.split_whitespace().collect();
+
+    match values.len() {
+        0 => None,
+        1 => {
+            // padding: 10px -> all sides
+            let v = parse_length(values[0])?;
+            Some(Spacing::all(v))
+        }
+        2 => {
+            // padding: 10px 20px -> top/bottom: 10, left/right: 20
+            let v = parse_length(values[0])?;
+            let h = parse_length(values[1])?;
+            Some(Spacing {
+                top: v,
+                right: h,
+                bottom: v,
+                left: h,
+            })
+        }
+        3 => {
+            // padding: 10px 20px 5px -> top: 10, left/right: 20, bottom: 5
+            let top = parse_length(values[0])?;
+            let h = parse_length(values[1])?;
+            let bottom = parse_length(values[2])?;
+            Some(Spacing {
+                top,
+                right: h,
+                bottom,
+                left: h,
+            })
+        }
+        4 => {
+            // padding: 10px 20px 15px 25px -> top: 10, right: 20, bottom: 15, left: 25
+            let top = parse_length(values[0])?;
+            let right = parse_length(values[1])?;
+            let bottom = parse_length(values[2])?;
+            let left = parse_length(values[3])?;
+            Some(Spacing {
+                top,
+                right,
+                bottom,
+                left,
+            })
+        }
+        _ => None,
+    }
 }

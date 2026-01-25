@@ -276,3 +276,123 @@ fn test_parse_minmax_function_invalid() {
     let template = parse_grid_template("minmax(100px)"); // Missing second arg
     assert!(template.tracks.is_empty());
 }
+
+// Tests for spacing shorthand parsing (#180)
+#[test]
+fn test_parse_spacing_one_value() {
+    // padding: 10px -> all sides
+    let spacing = parse_spacing("10px").unwrap();
+    assert_eq!(spacing.top, 10);
+    assert_eq!(spacing.right, 10);
+    assert_eq!(spacing.bottom, 10);
+    assert_eq!(spacing.left, 10);
+}
+
+#[test]
+fn test_parse_spacing_one_value_no_unit() {
+    // padding: 10 -> all sides
+    let spacing = parse_spacing("10").unwrap();
+    assert_eq!(spacing.top, 10);
+    assert_eq!(spacing.right, 10);
+    assert_eq!(spacing.bottom, 10);
+    assert_eq!(spacing.left, 10);
+}
+
+#[test]
+fn test_parse_spacing_two_values() {
+    // padding: 10px 20px -> top/bottom: 10, left/right: 20
+    let spacing = parse_spacing("10px 20px").unwrap();
+    assert_eq!(spacing.top, 10);
+    assert_eq!(spacing.right, 20);
+    assert_eq!(spacing.bottom, 10);
+    assert_eq!(spacing.left, 20);
+}
+
+#[test]
+fn test_parse_spacing_three_values() {
+    // padding: 10px 20px 5px -> top: 10, left/right: 20, bottom: 5
+    let spacing = parse_spacing("10px 20px 5px").unwrap();
+    assert_eq!(spacing.top, 10);
+    assert_eq!(spacing.right, 20);
+    assert_eq!(spacing.bottom, 5);
+    assert_eq!(spacing.left, 20);
+}
+
+#[test]
+fn test_parse_spacing_four_values() {
+    // padding: 10px 20px 15px 25px
+    let spacing = parse_spacing("10px 20px 15px 25px").unwrap();
+    assert_eq!(spacing.top, 10);
+    assert_eq!(spacing.right, 20);
+    assert_eq!(spacing.bottom, 15);
+    assert_eq!(spacing.left, 25);
+}
+
+#[test]
+fn test_parse_spacing_with_extra_whitespace() {
+    // Extra whitespace should be handled correctly
+    let spacing = parse_spacing("  10px   20px  ").unwrap();
+    assert_eq!(spacing.top, 10);
+    assert_eq!(spacing.right, 20);
+    assert_eq!(spacing.bottom, 10);
+    assert_eq!(spacing.left, 20);
+}
+
+#[test]
+fn test_parse_spacing_invalid() {
+    // Empty string
+    assert!(parse_spacing("").is_none());
+
+    // Too many values (5+)
+    assert!(parse_spacing("10 20 30 40 50").is_none());
+}
+
+#[test]
+fn test_apply_padding_shorthand() {
+    // Test that shorthand padding works through CSS parser
+    let css = r#"
+        .box {
+            padding: 10px 20px;
+        }
+    "#;
+    let sheet = parse(css).unwrap();
+    let style = sheet.apply(".box", &Style::default());
+
+    assert_eq!(style.spacing.padding.top, 10);
+    assert_eq!(style.spacing.padding.right, 20);
+    assert_eq!(style.spacing.padding.bottom, 10);
+    assert_eq!(style.spacing.padding.left, 20);
+}
+
+#[test]
+fn test_apply_margin_shorthand() {
+    // Test that shorthand margin works through CSS parser
+    let css = r#"
+        .box {
+            margin: 5 10 15 20;
+        }
+    "#;
+    let sheet = parse(css).unwrap();
+    let style = sheet.apply(".box", &Style::default());
+
+    assert_eq!(style.spacing.margin.top, 5);
+    assert_eq!(style.spacing.margin.right, 10);
+    assert_eq!(style.spacing.margin.bottom, 15);
+    assert_eq!(style.spacing.margin.left, 20);
+}
+
+#[test]
+fn test_apply_padding_three_values() {
+    let css = r#"
+        .box {
+            padding: 10 20 5;
+        }
+    "#;
+    let sheet = parse(css).unwrap();
+    let style = sheet.apply(".box", &Style::default());
+
+    assert_eq!(style.spacing.padding.top, 10);
+    assert_eq!(style.spacing.padding.right, 20);
+    assert_eq!(style.spacing.padding.bottom, 5);
+    assert_eq!(style.spacing.padding.left, 20);
+}
