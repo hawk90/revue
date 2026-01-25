@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.37.0](https://github.com/hawk90/revue/compare/v2.36.2...v2.37.0) (2026-01-25)
+
+
+### Features
+
+* **reactive:** implement Pinia-style store system with derive macro ([#296](https://github.com/hawk90/revue/issues/296)) ([652dbb9](https://github.com/hawk90/revue/commit/652dbb9b29a8ed5715c8fe632be25d46d5651828))
+
 ## [2.36.2](https://github.com/hawk90/revue/compare/v2.36.1...v2.36.2) (2026-01-25)
 
 
