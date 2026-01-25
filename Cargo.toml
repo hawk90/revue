@@ -13,6 +13,7 @@ keywords = ["tui", "terminal", "css", "reactive", "ui"]
 categories = ["command-line-interface", "gui"]
 include = [
     "src/**/*.rs",
+    "src/style/themes/*.css",
     "Cargo.toml",
     "LICENSE*",
     "README.md",
