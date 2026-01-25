@@ -5,6 +5,17 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      release-type:
+        description: 'Release type (bump, minor, major, patch)'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - bump
+          - minor
+          - major
+          - patch
 
 concurrency:
   group: release-please
@@ -27,6 +38,8 @@ jobs:
           release-type: rust
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          extra-files: |
+            revue-macros/Cargo.toml
 
   publish:
     needs: release-please
