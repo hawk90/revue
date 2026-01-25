@@ -416,10 +416,7 @@ impl<'a> SelectorParser<'a> {
 
     fn parse_attribute_value(&mut self) -> Result<String, SelectorParseError> {
         let quote = match self.peek() {
-            Some('"') | Some('\'') => {
-                let q = self.advance().unwrap();
-                Some(q)
-            }
+            Some('"') | Some('\'') => self.advance(), // Safe: peek confirmed char exists
             _ => None,
         };
 

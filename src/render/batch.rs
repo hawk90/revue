@@ -308,7 +308,8 @@ impl RenderBatch {
             return;
         }
 
-        let y = pending_y.unwrap();
+        // If we have cells but no y coordinate, skip this batch (shouldn't happen)
+        let Some(y) = pending_y else { return };
 
         if pending_cells.len() == 1 {
             // Single cell, keep as SetCell
