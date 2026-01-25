@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.36.1](https://github.com/hawk90/revue/compare/v2.36.0...v2.36.1) (2026-01-25)
+
+
+### Bug Fixes
+
+* **safety,text:** unwrap removal, text width, and worker improvements ([#290](https://github.com/hawk90/revue/issues/290)) ([13e22e1](https://github.com/hawk90/revue/commit/13e22e1ad3bed2cf0174154309d8ab2ece38e5fd))
+
 ## [2.36.0](https://github.com/hawk90/revue/compare/v2.35.0...v2.36.0) (2026-01-25)
 
 
