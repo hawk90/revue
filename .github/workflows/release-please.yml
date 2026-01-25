@@ -38,11 +38,8 @@ jobs:
           release-type: rust
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-          extra-files: |
-            revue-macros/Cargo.toml
-          command: release
           # Force release even if no changes
-          skip-release-pull-request: true
+          skip-github-pull-request: true
 
   publish:
     needs: release-please
