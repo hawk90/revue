@@ -11,6 +11,15 @@ documentation = "https://docs.rs/revue"
 readme = "README.md"
 keywords = ["tui", "terminal", "css", "reactive", "ui"]
 categories = ["command-line-interface", "gui"]
+include = [
+    "src/**/*.rs",
+    "Cargo.toml",
+    "LICENSE*",
+    "README.md",
+    "benches/**/*.rs",
+    "examples/**/*.rs",
+    "tests/**/*.rs",
+]
 exclude = [
     "revue-cli/",
     "references/",
@@ -21,12 +30,14 @@ exclude = [
     "tree-sitter-revue-css/",
     ".claude/",
     ".github/",
-    "tests/",
-    "benches/",
     "*.md",
     "cliff.toml",
     "deny.toml",
     "lefthook.yml",
+    "*.rlib",
+    "badge",
+    "spinner",
+    "tabs",
 ]
 
 [dependencies]
