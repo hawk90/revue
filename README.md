@@ -11,7 +11,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/hawk90/revue/ci.yml?style=flat-square&label=CI)](https://github.com/hawk90/revue/actions/workflows/ci.yml)
 [![codecov](https://img.shields.io/codecov/c/github/hawk90/revue?style=flat-square&logo=codecov&logoColor=white)](https://codecov.io/gh/hawk90/revue)
 [![license](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![Rust 1.87+](https://img.shields.io/badge/MSRV-1.87%2B-orange?style=flat-square&logo=rust)](https://www.rust-lang.org)
+[![Rust 1.93+](https://img.shields.io/badge/MSRV-1.93%2B-orange?style=flat-square&logo=rust)](https://www.rust-lang.org)
 [![downloads](https://img.shields.io/crates/d/revue?style=flat-square&label=downloads&color=blue)](https://crates.io/crates/revue)
 
 [Quick Start](#quick-start) · [Tutorials](docs/tutorials/) · [Examples](examples/) · [Documentation](docs/) · [Contributing](CONTRIBUTING.md)
