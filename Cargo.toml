@@ -1,3 +1,7 @@
+[workspace]
+members = ["revue-macros"]
+resolver = "2"
+
 [package]
 name = "revue"
 version = "2.37.0"
