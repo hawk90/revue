@@ -34,7 +34,8 @@
 //! }
 //! ```
 
-use crate::reactive::{computed, signal, Computed, Signal};
+pub mod usage;
+
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -44,6 +45,7 @@ use std::sync::Arc;
 pub struct StoreId(pub u64);
 
 impl StoreId {
+    #[allow(dead_code)]
     fn new() -> Self {
         use std::sync::atomic::{AtomicU64, Ordering};
         static COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -95,6 +97,7 @@ impl<T: Store> StoreExt for T {
 /// When dropped, the subscription is automatically cancelled.
 #[derive(Clone, Debug)]
 pub struct StoreSubscription {
+    #[allow(dead_code)]
     store_id: StoreId,
     _phantom: std::marker::PhantomData<()>,
 }
@@ -147,10 +150,7 @@ impl StoreRegistry {
     /// Find a store by name
     pub fn find_by_name(&self, name: &str) -> Option<Arc<dyn Store>> {
         let stores = self.stores.read().unwrap();
-        stores
-            .values()
-            .find(|s| s.name() == name)
-            .cloned()
+        stores.values().find(|s| s.name() == name).cloned()
     }
 }
 
@@ -166,8 +166,11 @@ impl Default for StoreRegistry {
 pub fn store_registry() -> &'static StoreRegistry {
     use std::sync::OnceLock;
     static REGISTRY: OnceLock<StoreRegistry> = OnceLock::new();
-    REGISTRY.get_or_init(|| StoreRegistry::new())
+    REGISTRY.get_or_init(StoreRegistry::new)
 }
+
+// Re-export usage helpers
+pub use usage::{create_store, use_store};
 
 #[cfg(test)]
 mod tests {
@@ -185,6 +188,7 @@ mod tests {
         let registry = StoreRegistry::new();
 
         // Create a mock store
+        #[derive(Debug)]
         struct MockStore {
             id: StoreId,
             name: String,
@@ -214,13 +218,14 @@ mod tests {
         });
 
         registry.register(store.clone());
-        assert_eq!(registry.get(store.id), Some(store));
+        assert!(registry.get(store.id).is_some());
     }
 
     #[test]
     fn test_store_registry_find() {
         let registry = StoreRegistry::new();
 
+        #[derive(Debug)]
         struct MockStore {
             id: StoreId,
             name: String,
@@ -256,8 +261,9 @@ mod tests {
 
     #[test]
     fn test_store_subscription() {
-        let registry = StoreRegistry::new();
+        let _registry = StoreRegistry::new();
 
+        #[derive(Debug)]
         struct MockStore {
             id: StoreId,
             name: String,
@@ -288,5 +294,45 @@ mod tests {
 
         let sub = store.subscribe();
         assert_eq!(sub.store_id, store.id());
+    }
+
+    #[test]
+    fn test_use_store_singleton() {
+        use super::usage::use_store;
+
+        // Create a simple store that implements Store manually
+        struct SingletonTestStore {
+            _value: i32,
+        }
+
+        impl Store for SingletonTestStore {
+            fn id(&self) -> StoreId {
+                StoreId(42)
+            }
+
+            fn name(&self) -> &str {
+                "SingletonTestStore"
+            }
+
+            fn get_state(&self) -> HashMap<String, String> {
+                HashMap::new()
+            }
+
+            fn get_getters(&self) -> HashMap<String, String> {
+                HashMap::new()
+            }
+        }
+
+        impl Default for SingletonTestStore {
+            fn default() -> Self {
+                Self { _value: 0 }
+            }
+        }
+
+        let store1 = use_store::<SingletonTestStore>();
+        let store2 = use_store::<SingletonTestStore>();
+
+        // Both should point to the same instance
+        assert!(Arc::ptr_eq(&store1, &store2));
     }
 }

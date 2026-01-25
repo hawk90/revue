@@ -98,6 +98,7 @@ mod context;
 mod effect;
 mod runtime;
 mod signal;
+pub mod store;
 mod tracker;
 
 pub use async_state::{
@@ -116,6 +117,10 @@ pub use context::{
 pub use effect::Effect;
 pub use runtime::ReactiveRuntime;
 pub use signal::{Signal, Subscription, SubscriptionId};
+pub use store::{
+    create_store, store_registry, use_store, Store, StoreExt, StoreId, StoreRegistry,
+    StoreSubscription,
+};
 pub use tracker::{
     dispose_subscriber, is_tracking, notify_dependents, start_tracking, stop_tracking, track_read,
     with_tracker, DependencyTracker, Subscriber, SubscriberCallback, SubscriberId,

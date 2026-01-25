@@ -254,6 +254,9 @@ pub mod utils;
 pub mod widget;
 pub mod worker;
 
+// Re-export derive macros
+pub use revue_macros::Store;
+
 /// Error type for Revue operations.
 ///
 /// This enum covers all error cases that can occur when using Revue,
@@ -419,6 +422,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// ## Workers
 /// - [`worker::WorkerPool`], [`worker::WorkerHandle`] - Background tasks
 pub mod prelude {
+    // Macros
+    pub use crate::Store;
+
     // App
     pub use crate::app::App;
 
@@ -430,6 +436,9 @@ pub mod prelude {
 
     // Reactive primitives
     pub use crate::reactive::{computed, effect, signal, Computed, Signal};
+
+    // Store support
+    pub use crate::reactive::{create_store, use_store, Store, StoreExt, StoreRegistry};
 
     // Async support
     pub use crate::reactive::{
