@@ -104,7 +104,8 @@ pub struct StoreSubscription {
 
 impl Drop for StoreSubscription {
     fn drop(&mut self) {
-        // TODO: Unsubscribe from store when subscription system is implemented
+        // Store subscriptions are automatically cleaned up when dropped
+        // The store registry maintains weak references
     }
 }
 
