@@ -118,10 +118,9 @@ fn test_apply_grid_properties() {
     let style = sheet.apply(".grid", &Style::default());
 
     assert_eq!(style.layout.display, Display::Grid);
-    // Note: parse_grid_template is simplified and returns empty template
-    // This test should be updated when full grid template parsing is implemented
-    assert_eq!(style.layout.grid_template_columns.tracks.len(), 0);
-    assert_eq!(style.layout.grid_template_rows.tracks.len(), 0);
+    // Grid template parsing is now implemented
+    assert_eq!(style.layout.grid_template_columns.tracks.len(), 2);
+    assert_eq!(style.layout.grid_template_rows.tracks.len(), 2);
 }
 
 #[test]
