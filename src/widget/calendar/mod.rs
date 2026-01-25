@@ -3,8 +3,8 @@
 //! Supports month/year navigation, date selection, range selection,
 //! and custom styling for different date types.
 
-use super::traits::{RenderContext, View, WidgetProps};
 use crate::style::Color;
+use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 mod date;

@@ -19,6 +19,7 @@ pub use types::{AdmonitionType, FootnoteDefinition, Line, StyledText, TocEntry};
 pub use helpers::markdown;
 
 // Import pulldown-cmark types for parser
+#[cfg(feature = "markdown")]
 use pulldown_cmark::{CodeBlockKind, Tag, TagEnd};
 
 /// Markdown configuration options
@@ -87,6 +88,7 @@ impl Markdown {
 
     /// Extract table of contents from markdown source
     fn extract_toc(source: &str) -> Vec<TocEntry> {
+        #[cfg(feature = "markdown")]
         use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
         let mut options = Options::empty();
@@ -142,6 +144,7 @@ impl Markdown {
     /// Parse markdown into styled lines with current options
     fn parse_with_options(&self) -> Vec<Line> {
         #[allow(unused_imports)]
+        #[cfg(feature = "markdown")]
         use pulldown_cmark::{Event, HeadingLevel, Parser, Tag, TagEnd};
 
         let parser = Parser::new_ext(&self.source, parser::ParserContext::parser_options());

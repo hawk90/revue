@@ -7,6 +7,7 @@ use crate::render::Modifier;
 use crate::style::Color;
 use crate::utils::figlet::FigletFont;
 use crate::utils::syntax::{Language, SyntaxHighlighter, SyntaxTheme};
+#[cfg(feature = "markdown")]
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
 /// Markdown parser context - tracks state during parsing

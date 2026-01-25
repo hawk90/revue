@@ -1,156 +1,46 @@
-//! Chart widget for data visualization
+//! Chart widgets - Data visualization components
 //!
-//! Supports line charts, scatter plots, area charts, and step charts
-//! with multiple series, axes, legends, and grid lines.
+//! Widgets for displaying data in various chart formats.
 
+pub mod barchart;
+pub mod boxplot;
+pub mod candlechart;
+pub mod chart_common;
+pub mod chart_render;
+pub mod chart_stats;
+pub mod heatmap;
+pub mod helper;
+pub mod histogram;
+pub mod piechart;
+pub mod scatterchart;
+pub mod sparkline;
+pub mod timeseries;
+pub mod types;
+pub mod waveline;
+
+// Re-exports for convenience
+// Some chart_common types are re-exported for public API but not used internally
+#[allow(unused_imports)]
+pub use chart_common::{
+    Axis, AxisFormat, ChartGrid, ChartOrientation, ColorScheme, GridStyle, Legend,
+    LegendOrientation, LegendPosition, Marker,
+};
+
+pub use barchart::{barchart, BarChart, BarOrientation};
+pub use boxplot::{boxplot, BoxGroup, BoxPlot, BoxStats, WhiskerStyle};
+pub use candlechart::{candle_chart, ohlc_chart, Candle, CandleChart, ChartStyle as CandleStyle};
+pub use heatmap::{contribution_map, heatmap, CellDisplay, ColorScale, HeatMap};
 pub use helper::{chart, line_chart, scatter_plot, Chart};
+pub use histogram::{histogram, BinConfig, Histogram, HistogramBin};
+pub use piechart::{donut_chart, pie_chart, PieChart, PieLabelStyle, PieSlice, PieStyle};
+pub use scatterchart::{bubble_chart, scatter_chart, ScatterChart, ScatterSeries};
+pub use sparkline::{sparkline, Sparkline, SparklineStyle};
+pub use timeseries::{
+    cpu_chart, memory_chart, network_chart, time_series, time_series_with_data, MarkerStyle,
+    TimeFormat, TimeLineStyle, TimeMarker, TimePoint, TimeRange, TimeSeries, TimeSeriesData,
+};
 pub use types::{ChartType, LineStyle, Series};
-
-mod helper;
-#[cfg(test)]
-mod tests {
-    //! Tests for chart widget
-
-    #![allow(unused_imports)]
-
-    use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
-    use crate::style::Color;
-    use crate::widget::chart_common::Axis;
-    use crate::widget::traits::RenderContext;
-    use crate::widget::Marker;
-
-    #[test]
-    fn test_chart_new() {
-        let _c = Chart::new();
-        // Private fields - can't test directly
-    }
-
-    #[test]
-    fn test_series_builder() {
-        let _s = Series::new("Test")
-            .data(vec![(0.0, 1.0), (1.0, 2.0)])
-            .color(Color::RED)
-            .marker(Marker::Dot);
-
-        // Private fields - can't test directly
-    }
-
-    #[test]
-    fn test_series_data_y() {
-        let _s = Series::new("Test").data_y(&[1.0, 2.0, 3.0]);
-        // Private field - can't test directly
-    }
-
-    #[test]
-    fn test_chart_bounds() {
-        let _c = Chart::new().series(Series::new("A").data(vec![(0.0, 0.0), (10.0, 100.0)]));
-
-        // compute_bounds() is private - can't test
-    }
-
-    #[test]
-    fn test_axis_builder() {
-        let _axis = Axis::new()
-            .title("Value")
-            .bounds(0.0, 100.0)
-            .ticks(10)
-            .grid(true);
-
-        // Private fields - can't test directly
-    }
-
-    #[test]
-    fn test_chart_render() {
-        // Chart::render doesn't exist - remove test
-    }
-
-    #[test]
-    fn test_quick_line_chart() {
-        let _c = super::line_chart(&[1.0, 2.0, 3.0, 2.0, 1.0]);
-        // Private fields - can't test directly
-    }
-
-    #[test]
-    fn test_quick_scatter_plot() {
-        let _c = super::scatter_plot(&[(0.0, 1.0), (1.0, 2.0), (2.0, 1.5)]);
-        // Private fields - can't test directly
-    }
-
-    #[test]
-    fn test_multiple_series() {
-        let _c = Chart::new()
-            .series(Series::new("A").data_y(&[1.0, 2.0, 3.0]).color(Color::RED))
-            .series(Series::new("B").data_y(&[3.0, 2.0, 1.0]).color(Color::BLUE));
-
-        // Private field - can't test directly
-    }
-
-    #[test]
-    fn test_area_chart() {
-        let _s = Series::new("Area")
-            .data_y(&[1.0, 3.0, 2.0])
-            .area(Color::CYAN);
-
-        // Private fields - can't test directly
-    }
-
-    #[test]
-    fn test_step_chart() {
-        let s = Series::new("Step").data_y(&[1.0, 2.0, 3.0]).step();
-        assert!(matches!(s.chart_type, ChartType::StepAfter));
-    }
-
-    #[test]
-    fn test_marker_chars() {
-        assert_eq!(Marker::Dot.char(), '•');
-        assert_eq!(Marker::Circle.char(), '○');
-        assert_eq!(Marker::Square.char(), '□');
-        assert_eq!(Marker::Diamond.char(), '◇');
-        assert_eq!(Marker::Cross.char(), '+');
-    }
-
-    #[test]
-    fn test_format_labels() {
-        let _c = Chart::new();
-
-        // format_label() is private - can't test
-    }
-
-    #[test]
-    fn test_legend_positions() {
-        use crate::widget::chart_common::LegendPosition;
-        let _c = Chart::new()
-            .series(Series::new("Test").data_y(&[1.0, 2.0]))
-            .legend(LegendPosition::BottomLeft);
-
-        // Private field - can't test directly
-    }
-
-    #[test]
-    fn test_chart_with_all_options() {
-        // Chart::render doesn't exist - remove test
-    }
-
-    #[test]
-    fn test_compute_bounds_empty_data() {
-        // compute_bounds() is private - remove test
-    }
-
-    #[test]
-    fn test_compute_bounds_single_point() {
-        // compute_bounds() is private - remove test
-    }
-
-    #[test]
-    fn test_compute_bounds_zero_range() {
-        // compute_bounds() is private - remove test
-    }
-
-    #[test]
-    fn test_compute_bounds_nan_values() {
-        // compute_bounds() is private - remove test
-    }
-}
-mod types;
+pub use waveline::{
+    area_wave, audio_waveform, sawtooth_wave, signal_wave, sine_wave, spectrum, square_wave,
+    waveline, Interpolation, WaveStyle, Waveline,
+};

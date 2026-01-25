@@ -1,9 +1,9 @@
 //! Transition widget for single element animations
 
-use super::super::traits::{RenderContext, View, WidgetProps};
 use super::types::{Animation, AnimationPreset, TransitionPhase};
 use crate::render::Cell;
 use crate::style::{AnimationState as TweenState, Color, Tween};
+use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Transition widget for single element animations

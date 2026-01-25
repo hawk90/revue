@@ -220,150 +220,76 @@
 //!     .fg(Color::BLUE);
 //! ```
 
-mod accordion;
-mod aistream;
-mod alert;
-mod autocomplete;
-mod avatar;
-mod badge;
-mod barchart;
-mod bigtext;
-mod border;
-mod boxplot;
 mod breadcrumb;
-mod button;
 mod calendar;
 mod callout;
-mod candlechart;
 mod canvas;
-mod card;
 mod chart;
-mod chart_common;
-mod chart_render;
-mod chart_stats;
-mod checkbox;
-mod code_editor;
-mod collapsible;
-mod color_picker;
-mod combobox;
 mod command_palette;
-mod csv_viewer;
-mod datagrid;
+mod data;
 mod datetime_picker;
 mod debug_overlay;
-#[cfg(feature = "diff")]
-mod diff;
-mod digits;
-mod divider;
+mod developer;
+mod display;
 mod dropzone;
-mod empty_state;
+mod feedback;
 mod filepicker;
-mod filetree;
 mod form;
-mod gauge;
-mod grid;
-mod heatmap;
-mod histogram;
-mod httpclient;
 #[cfg(feature = "image")]
 mod image;
-mod input;
-mod json_viewer;
-mod layer;
+mod input_widgets;
+mod layout;
 mod link;
-mod list;
-mod log_viewer;
 #[cfg(feature = "markdown")]
-mod markdown;
+pub mod markdown;
 #[cfg(feature = "markdown")]
 mod markdown_presentation;
-mod masked_input;
-mod menu;
 mod mermaid;
-mod modal;
 mod multi_select;
-mod notification;
-mod number_input;
 mod option_list;
 mod pagination;
-mod piechart;
-mod popover;
-mod positioned;
-mod presentation;
-#[cfg(feature = "sysinfo")]
-mod procmon;
-mod progress;
 #[cfg(feature = "qrcode")]
 mod qrcode;
-mod radio;
 mod range_picker;
-mod rating;
-mod resizable;
-mod rich_text_editor;
-mod richlog;
-mod richtext;
-mod scatterchart;
-mod screen;
-mod scroll;
-mod search_bar;
-mod select;
-mod selection_list;
-mod sidebar;
-mod skeleton;
-mod slider;
 #[cfg(feature = "markdown")]
-pub mod slides;
+mod slides;
 mod sortable;
-mod sparkline;
-mod spinner;
-mod splitter;
-mod stack;
-mod status_indicator;
-mod statusbar;
-mod stepper;
 mod streamline;
-mod switch;
 mod syntax;
-mod table;
-mod tabs;
-mod tag;
-mod terminal;
-mod text;
-mod textarea;
 mod theme_picker;
-mod timeline;
 mod timer;
-mod timeseries;
-mod toast;
-mod toast_queue;
-mod tooltip;
 pub mod traits;
 mod transition;
-mod tree;
-#[cfg(feature = "syntax-highlighting")]
-mod tree_sitter_highlight;
-mod vim;
-mod virtuallist;
-mod waveline;
 mod zen;
 #[macro_use]
 mod macros;
 
 pub use crate::utils::border::BorderChars;
-pub use accordion::{accordion, section, Accordion, AccordionSection};
-pub use aistream::{ai_response, ai_stream, AiStream, StreamCursor, StreamStatus, TypingStyle};
-pub use alert::{
-    alert, error_alert, info_alert, success_alert, warning_alert, Alert, AlertLevel, AlertVariant,
+// Display widgets (re-exported from display module)
+pub use display::{
+    avatar, avatar_icon, away_indicator, badge, battery, bigtext, busy_indicator, chip, clock,
+    digits, divider, dot_badge, empty_error, empty_state, first_use, gauge, h1, h2, h3, log_entry,
+    markup, no_results, offline, online, percentage, progress, rich_text, richlog, skeleton,
+    skeleton_avatar, skeleton_paragraph, skeleton_text, span, spinner, status_indicator, style,
+    tag, text, vdivider, Alignment, Avatar, AvatarShape, AvatarSize, Badge, BadgeShape,
+    BadgeVariant, BigText, DigitStyle, Digits, Divider, DividerStyle, EmptyState, EmptyStateType,
+    EmptyStateVariant, Gauge, GaugeStyle, LabelPosition, LogEntry, LogLevel, Orientation, Progress,
+    ProgressStyle, RichLog, RichText, Skeleton, SkeletonShape, Span, Spinner, SpinnerStyle, Status,
+    StatusIndicator, StatusSize, StatusStyle, Style, Tag, TagStyle, Text,
 };
-pub use autocomplete::{autocomplete, Autocomplete, Suggestion};
-pub use avatar::{avatar, avatar_icon, Avatar, AvatarShape, AvatarSize};
-pub use badge::{badge, dot_badge, Badge, BadgeShape, BadgeVariant};
-pub use barchart::{barchart, BarChart, BarOrientation};
-pub use bigtext::{bigtext, h1, h2, h3, BigText};
-pub use border::{border, draw_border, Border, BorderType};
-pub use boxplot::{boxplot, BoxGroup, BoxPlot, BoxStats, WhiskerStyle};
+// Layout widgets (re-exported from layout module)
+pub use layout::{
+    accordion, border, card, collapsible, draw_border, grid, grid_item, grid_template, hsplit,
+    hstack, layer, layers, pane, positioned, resizable, screen, screen_stack, scroll, scroll_view,
+    section, sidebar, sidebar_item, sidebar_section, sidebar_section_titled, splitter, stack, tabs,
+    vsplit, vstack, Accordion, AccordionSection, Anchor, Border, BorderType, Card, CardVariant,
+    CollapseMode, Collapsible, Direction, FlattenedItem, Grid, GridAlign, GridItem, GridPlacement,
+    HSplit, Layers, Pane, Positioned, Resizable, ResizeDirection, ResizeHandle, ResizeStyle,
+    Screen, ScreenStack, ScreenTransition, ScrollView, Sidebar, SidebarItem, SidebarSection,
+    SplitOrientation, Splitter, Stack, Tab, Tabs, TrackSize, VSplit,
+};
+// Input widgets (re-exported from input_widgets module)
 pub use breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
-pub use button::{button, Button, ButtonVariant};
 pub use calendar::{
     calendar, days_in_month, Calendar, CalendarMode, Date, DateMarker, FirstDayOfWeek,
 };
@@ -371,29 +297,12 @@ pub use callout::{
     callout, danger, important, info_callout, note, tip, warning_callout, Callout, CalloutType,
     CalloutVariant,
 };
-pub use candlechart::{candle_chart, ohlc_chart, Candle, CandleChart, ChartStyle as CandleStyle};
 pub use canvas::{
     braille_canvas, canvas, Arc, BrailleCanvas, BrailleContext, BrailleGrid, Canvas, Circle,
     ClipRegion, DrawContext, FilledCircle, FilledPolygon, FilledRectangle, Layer, Line, Points,
     Polygon, Rectangle, Shape, Transform,
 };
-pub use card::{card, Card, CardVariant};
-pub use chart::{chart, line_chart, scatter_plot, Chart, ChartType, LineStyle, Series};
-pub use chart_common::{
-    Axis, AxisFormat, ChartGrid, ChartOrientation, ChartTooltip, ChartTooltipFormat,
-    ChartTooltipPosition, ColorScheme, GridStyle, Legend, LegendOrientation, LegendPosition,
-    Marker,
-};
-pub use checkbox::{checkbox, Checkbox, CheckboxStyle};
-pub use code_editor::{
-    code_editor, BracketMatch, BracketPair, CodeEditor, EditorConfig, IndentStyle,
-};
-pub use collapsible::{collapsible, Collapsible};
-pub use color_picker::{color_picker, ColorPalette, ColorPicker, ColorPickerMode};
-pub use combobox::{combobox, ComboOption, Combobox};
 pub use command_palette::{command_palette, Command, CommandPalette};
-pub use csv_viewer::{csv_viewer, CsvViewer, Delimiter, SortOrder as CsvSortOrder};
-pub use datagrid::{datagrid, grid_column, grid_row, DataGrid, GridColumn, GridRow, SortDirection};
 pub use datetime_picker::{
     date_picker, datetime_picker, time_picker, DateTime, DateTimeFormat, DateTimeMode,
     DateTimePicker, Time, TimeField,
@@ -402,156 +311,61 @@ pub use debug_overlay::{
     disable_debug, enable_debug, is_debug_enabled, toggle_debug, DebugConfig, DebugEvent,
     DebugOverlay, DebugPosition, EventLog, PerfMetrics, WidgetInfo,
 };
-#[cfg(feature = "diff")]
-pub use diff::{diff, diff_viewer, ChangeType, DiffColors, DiffLine, DiffMode, DiffViewer};
-pub use digits::{clock, digits, timer, DigitStyle, Digits};
-pub use divider::{divider, vdivider, Divider, DividerStyle, Orientation};
 pub use dropzone::{drop_zone, DropZone, DropZoneStyle};
-pub use empty_state::{
-    empty_error, empty_state, first_use, no_results, EmptyState, EmptyStateType, EmptyStateVariant,
-};
 pub use filepicker::{
     dir_picker, file_picker, save_picker, FileFilter, FilePicker, PickerEntry, PickerMode,
     PickerResult,
 };
-pub use filetree::{dir_entry, file_entry, file_tree, FileEntry, FileTree, FileType};
-pub use form::{form, form_field, ErrorDisplayStyle, Form, FormField, FormFieldWidget, InputType};
-pub use gauge::{battery, gauge, percentage, Gauge, GaugeStyle, LabelPosition};
-pub use grid::{
-    grid, grid_item, grid_template, Grid, GridAlign, GridItem, GridPlacement, TrackSize,
+pub use input_widgets::{
+    autocomplete, button, checkbox, color_picker, combobox, currency_input, input, integer_input,
+    number_input, percentage_input, percentage_slider, radio_group, rating, search_bar, select,
+    selection_item, selection_list, slider, slider_range, step, stepper, switch, textarea, toggle,
+    volume_slider, Autocomplete, Button, ButtonVariant, Checkbox, CheckboxStyle, ColorPalette,
+    ColorPicker, ColorPickerMode, ComboOption, Combobox, Input, NumberInput, RadioGroup,
+    RadioLayout, RadioStyle, Rating, RatingSize, RatingStyle, SearchBar, Select, SelectionItem,
+    SelectionList, SelectionStyle, Slider, SliderOrientation, SliderStyle, Step, StepStatus,
+    Stepper, StepperOrientation, StepperStyle, Suggestion, Switch, SwitchStyle, TextArea,
 };
-pub use heatmap::{contribution_map, heatmap, CellDisplay, ColorScale, HeatMap};
-pub use histogram::{histogram, BinConfig, Histogram, HistogramBin};
-pub use httpclient::{
-    delete as http_delete, get as http_get, http_client, patch as http_patch, post as http_post,
-    put as http_put, ContentType, HttpBackend, HttpClient, HttpMethod, HttpRequest, HttpResponse,
-    MockHttpBackend, RequestBuilder, RequestState, ResponseView,
+// Form widgets (re-exported from form module)
+#[cfg(feature = "qrcode")]
+pub use self::qrcode::{qrcode, qrcode_url, ErrorCorrection, QrCodeWidget, QrStyle};
+pub use form::{
+    credit_card_input, form as form_widget, form_field, masked_input, password_input, pin_input,
+    rich_text_editor, Block, BlockType, EditorViewMode, ErrorDisplayStyle, Form, FormField,
+    FormFieldWidget, FormattedSpan, ImageRef, InputType, MarkdownLink, MaskStyle, MaskedInput,
+    RichTextEditor, TextFormat, ToolbarAction, ValidationState,
 };
 #[cfg(feature = "image")]
 pub use image::{image_from_file, try_image_from_file, Image, ImageError, ImageResult, ScaleMode};
-pub use input::{input, Input};
-pub use json_viewer::{json_viewer, JsonNode, JsonType, JsonViewer, Search};
-pub use layer::{layers, Layers};
 pub use link::{link, url_link, Link, LinkStyle};
-pub use list::{list, List};
-pub use log_viewer::{
-    log_entry as adv_log_entry, log_filter, log_parser, log_viewer, LogEntry as AdvLogEntry,
-    LogFilter, LogLevel as AdvLogLevel, LogParser, LogViewer, SearchMatch, TimestampFormat,
-};
 #[cfg(feature = "markdown")]
 pub use markdown::{markdown, Markdown};
 #[cfg(feature = "markdown")]
 pub use markdown_presentation::{markdown_presentation, MarkdownPresentation, ViewMode};
-pub use masked_input::{
-    credit_card_input, masked_input, password_input, pin_input, MaskStyle, MaskedInput,
-    ValidationState,
-};
-pub use menu::{context_menu, menu, menu_bar, menu_item, ContextMenu, Menu, MenuBar, MenuItem};
 pub use mermaid::{
     diagram, edge, flowchart, node, ArrowStyle, Diagram, DiagramEdge, DiagramNode, DiagramType,
     NodeShape,
 };
-pub use modal::{modal, Modal, ModalButton, ModalButtonStyle};
 pub use multi_select::{multi_select, multi_select_from, MultiSelect, MultiSelectOption};
-pub use notification::{
-    notification_center, Notification, NotificationCenter, NotificationLevel, NotificationPosition,
-};
-pub use number_input::{
-    currency_input, integer_input, number_input, percentage_input, NumberInput,
-};
 pub use option_list::{
     option_item, option_list, OptionEntry, OptionItem, OptionList,
     SeparatorStyle as OptionSeparatorStyle,
 };
 pub use pagination::{pagination, Pagination, PaginationStyle};
-pub use piechart::{donut_chart, pie_chart, PieChart, PieLabelStyle, PieSlice, PieStyle};
-pub use popover::{popover, Popover, PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger};
-pub use positioned::{positioned, Anchor, Positioned};
-pub use presentation::{presentation, slide, Presentation, Slide, SlideAlign, Transition};
-#[cfg(feature = "sysinfo")]
-pub use procmon::{
-    htop, process_monitor, ProcColors, ProcessInfo, ProcessMonitor, ProcessSort, ProcessView,
-};
-pub use progress::{progress, Progress, ProgressStyle};
-#[cfg(feature = "qrcode")]
-pub use qrcode::{qrcode, qrcode_url, ErrorCorrection, QrCodeWidget, QrStyle};
-pub use radio::{radio_group, RadioGroup, RadioLayout, RadioStyle};
 pub use range_picker::{
     analytics_range_picker, date_range_picker, range_picker, PresetRange, RangeFocus, RangePicker,
-};
-pub use rating::{rating, Rating, RatingSize, RatingStyle};
-pub use resizable::{resizable, Resizable, ResizeDirection, ResizeHandle, ResizeStyle};
-pub use rich_text_editor::{
-    rich_text_editor, Block, BlockType, EditorViewMode, FormattedSpan, ImageRef,
-    Link as MarkdownLink, RichTextEditor, TextFormat, ToolbarAction,
-};
-pub use richlog::{log_entry, richlog, LogEntry, LogLevel, RichLog};
-pub use richtext::{markup, rich_text, span, style, RichText, Span, Style};
-pub use scatterchart::{bubble_chart, scatter_chart, ScatterChart, ScatterSeries};
-pub use screen::{screen, screen_stack, Screen, ScreenStack, ScreenTransition};
-pub use scroll::{scroll_view, ScrollView};
-pub use search_bar::{search_bar, SearchBar};
-pub use select::{select, Select};
-pub use selection_list::{
-    selection_item, selection_list, SelectionItem, SelectionList, SelectionStyle,
-};
-pub use sidebar::{
-    sidebar, sidebar_item, sidebar_section, sidebar_section_titled, CollapseMode, FlattenedItem,
-    Sidebar, SidebarItem, SidebarSection,
-};
-pub use skeleton::{
-    skeleton, skeleton_avatar, skeleton_paragraph, skeleton_text, Skeleton, SkeletonShape,
-};
-pub use slider::{
-    percentage_slider, slider, slider_range, volume_slider, Slider, SliderOrientation, SliderStyle,
 };
 #[cfg(feature = "markdown")]
 pub use slides::{parse_slides, SlideContent, SlideNav};
 pub use sortable::{sortable_list, SortableItem, SortableList};
-pub use sparkline::{sparkline, Sparkline, SparklineStyle};
-pub use spinner::{spinner, Spinner, SpinnerStyle};
-pub use splitter::{
-    hsplit, pane, splitter, vsplit, HSplit, Pane, SplitOrientation, Splitter, VSplit,
-};
-pub use stack::{hstack, vstack, Direction, Stack};
-pub use status_indicator::{
-    away_indicator, busy_indicator, offline, online, status_indicator, Status, StatusIndicator,
-    StatusSize, StatusStyle,
-};
-pub use statusbar::{
-    footer, header, key_hint, section as status_section, statusbar, KeyHint, SectionAlign,
-    StatusBar, StatusSection,
-};
-pub use stepper::{step, stepper, Step, StepStatus, Stepper, StepperOrientation, StepperStyle};
 pub use streamline::{
     genre_stream, resource_stream, streamline, streamline_with_data, traffic_stream,
     StreamBaseline, StreamLayer, StreamOrder, Streamline,
 };
-pub use switch::{switch, toggle, Switch, SwitchStyle};
 pub use syntax::{HighlightSpan, Language, SyntaxHighlighter, SyntaxTheme};
-pub use table::{column, table, Column, Table};
-pub use tabs::{tabs, Tab, Tabs};
-pub use tag::{chip, tag, Tag, TagStyle};
-pub use terminal::{terminal, CursorStyle, TermCell, TermLine, Terminal, TerminalAction};
-pub use text::{Alignment, Text};
-pub use textarea::{
-    textarea, Cursor, CursorPos, CursorSet, FindMatch, FindOptions, FindReplaceMode,
-    FindReplaceState, Selection, TextArea,
-};
 pub use theme_picker::{theme_picker, ThemePicker};
-pub use timeline::{
-    timeline, timeline_event, EventType, Timeline, TimelineEvent, TimelineOrientation,
-    TimelineStyle,
-};
 pub use timer::{pomodoro, timer as timer_widget, Timer, TimerFormat, TimerState};
 pub use timer::{stopwatch, Stopwatch};
-pub use timeseries::{
-    cpu_chart, memory_chart, network_chart, time_series, time_series_with_data, MarkerStyle,
-    TimeFormat, TimeLineStyle, TimeMarker, TimePoint, TimeRange, TimeSeries, TimeSeriesData,
-};
-pub use toast::{toast, Toast, ToastLevel, ToastPosition};
-pub use toast_queue::{toast_queue, StackDirection, ToastEntry, ToastPriority, ToastQueue};
-pub use tooltip::{tooltip, Tooltip, TooltipArrow, TooltipPosition, TooltipStyle};
 pub use traits::{
     Draggable, Element, EventResult, FocusStyle, Interactive, RenderContext, StyledView, Timeout,
     View, WidgetProps, WidgetState, DISABLED_BG, DISABLED_FG,
@@ -560,16 +374,63 @@ pub use transition::{
     transition, transition_group, Animation, AnimationPreset, Transition as AnimationTransition,
     TransitionGroup,
 };
-pub use tree::{tree, tree_node, Tree, TreeNode};
-#[cfg(feature = "syntax-highlighting")]
-pub use tree_sitter_highlight::TreeSitterHighlighter;
-pub use vim::{vim_state, VimAction, VimCommandResult, VimMode, VimMotion, VimState};
-pub use virtuallist::{virtual_list, ScrollAlignment, ScrollMode, VirtualList};
-pub use waveline::{
-    area_wave, audio_waveform, sawtooth_wave, signal_wave, sine_wave, spectrum, square_wave,
-    waveline, Interpolation, WaveStyle, Waveline,
-};
 pub use zen::{zen, zen_dark, zen_light, ZenMode};
+
+// Chart widgets (re-exported from chart module)
+pub use chart::{
+    area_wave, audio_waveform, barchart, boxplot, bubble_chart, candle_chart, chart,
+    contribution_map, cpu_chart, donut_chart, heatmap, histogram, line_chart, memory_chart,
+    network_chart, ohlc_chart, pie_chart, piechart, sawtooth_wave, scatter_chart, scatter_plot,
+    scatterchart, signal_wave, sine_wave, sparkline, spectrum, square_wave, time_series,
+    time_series_with_data, waveline, BarChart, BarOrientation, BinConfig, BoxGroup, BoxPlot,
+    BoxStats, Candle, CandleChart, CandleStyle, CellDisplay, Chart, ChartType, ColorScale, HeatMap,
+    Histogram, HistogramBin, Interpolation, LineStyle, MarkerStyle, PieChart, PieLabelStyle,
+    PieSlice, PieStyle, ScatterChart, ScatterSeries, Series, Sparkline, SparklineStyle, TimeFormat,
+    TimeLineStyle, TimeMarker, TimePoint, TimeRange, TimeSeries, TimeSeriesData, WaveStyle,
+    Waveline, WhiskerStyle,
+};
+
+// Data widgets (re-exported from data module)
+pub use data::{
+    adv_log_entry, column, csv_viewer, datagrid, dir_entry, file_entry, file_tree, grid_column,
+    grid_row, json_viewer, list, log_filter, log_parser, log_viewer, table, timeline,
+    timeline_event, tree, tree_node, virtual_list, AdvLogEntry, AdvLogLevel, Column, CsvSortOrder,
+    CsvViewer, DataGrid, Delimiter, EventType, FileEntry, FileTree, FileType, GridColumn, GridRow,
+    JsonNode, JsonType, JsonViewer, List, LogFilter, LogParser, LogViewer, ScrollAlignment,
+    ScrollMode, Search, SearchMatch, SortDirection, Table, Timeline, TimelineEvent,
+    TimelineOrientation, TimelineStyle, TimestampFormat, Tree, TreeNode, VirtualList,
+};
+
+// Feedback widgets (re-exported from feedback module)
+pub use feedback::{
+    alert, context_menu, error_alert, footer, header, info_alert, key_hint, menu, menu_bar,
+    menu_item, modal, notification_center, popover, status_section, statusbar, success_alert,
+    toast, toast_queue, tooltip, warning_alert, Alert, AlertLevel, AlertVariant, ContextMenu,
+    KeyHint, Menu, MenuBar, MenuItem, Modal, ModalButton, ModalButtonStyle, Notification,
+    NotificationCenter, NotificationLevel, NotificationPosition, Popover, PopoverArrow,
+    PopoverPosition, PopoverStyle, PopoverTrigger, SectionAlign, StackDirection, StatusBar,
+    StatusSection, Toast, ToastEntry, ToastLevel, ToastPosition, ToastPriority, ToastQueue,
+    Tooltip, TooltipArrow, TooltipPosition, TooltipStyle,
+};
+
+// Developer widgets (re-exported from developer module)
+#[cfg(feature = "syntax-highlighting")]
+pub use developer::TreeSitterHighlighter;
+pub use developer::{
+    ai_response, ai_stream, code_editor, http_client, http_delete, http_get, http_patch, http_post,
+    http_put, presentation, slide, terminal, vim_state, AiStream, BracketMatch, BracketPair,
+    CodeEditor, ContentType, CursorStyle, EditorConfig, HttpBackend, HttpClient, HttpMethod,
+    HttpRequest, HttpResponse, IndentStyle, MockHttpBackend, Presentation, RequestBuilder,
+    RequestState, ResponseView, Slide, SlideAlign, StreamCursor, StreamStatus, TermCell, TermLine,
+    Terminal, TerminalAction, Transition, TypingStyle, VimAction, VimCommandResult, VimMode,
+    VimMotion, VimState,
+};
+#[cfg(feature = "diff")]
+pub use developer::{diff, diff_viewer, ChangeType, DiffColors, DiffLine, DiffMode, DiffViewer};
+#[cfg(feature = "sysinfo")]
+pub use developer::{
+    htop, process_monitor, ProcColors, ProcessInfo, ProcessMonitor, ProcessSort, ProcessView,
+};
 
 // Re-export common widget constructors
 

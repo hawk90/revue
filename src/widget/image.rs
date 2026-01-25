@@ -1,7 +1,7 @@
 //! Image widget for displaying images using Kitty graphics protocol
 
-use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
+use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use std::path::PathBuf;
