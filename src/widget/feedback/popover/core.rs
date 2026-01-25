@@ -295,6 +295,9 @@ impl Popover {
                     PopoverPosition::Bottom
                 };
 
+                // Calculate position for the auto-detected position
+                // Note: pos is guaranteed to be Top/Bottom/Left/Right (never Auto)
+                // because Auto was resolved to a concrete position above
                 let (x, y) = match pos {
                     PopoverPosition::Top => {
                         let x = anchor_x.saturating_sub(popup_w / 2);
@@ -316,7 +319,10 @@ impl Popover {
                         let y = anchor_y.saturating_sub(popup_h / 2);
                         (x, y)
                     }
-                    _ => unreachable!("Auto position should be resolved before this match"),
+                    // Auto is handled above and never reaches here
+                    PopoverPosition::Auto => {
+                        unreachable!("Auto position resolved to concrete position above")
+                    }
                 };
                 (x, y, pos)
             }
