@@ -31,6 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
+      release_output: ${{ steps.release.outputs }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -40,6 +41,9 @@ jobs:
           manifest-file: .release-please-manifest.json
           extra-files: |
             revue-macros/Cargo.toml
+          command: release
+          # Force release even if no changes
+          skip-release-pull-request: true
 
   publish:
     needs: release-please
