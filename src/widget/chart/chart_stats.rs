@@ -45,7 +45,8 @@ pub fn median(data: &[f64]) -> Option<f64> {
     if valid.is_empty() {
         return None;
     }
-    valid.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    // Safe: filter_finite() removes NaN, so partial_cmp always returns Some
+    valid.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let mid = valid.len() / 2;
     if valid.len().is_multiple_of(2) {
         Some((valid[mid - 1] + valid[mid]) / 2.0)
@@ -60,7 +61,8 @@ pub fn quartiles(data: &[f64]) -> Option<(f64, f64, f64)> {
     if valid.is_empty() {
         return None;
     }
-    valid.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    // Safe: filter_finite() removes NaN, so partial_cmp always returns Some
+    valid.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     let q1 = percentile(&valid, 25.0);
     let med = percentile(&valid, 50.0);
@@ -91,7 +93,8 @@ pub fn outliers_iqr(data: &[f64]) -> Vec<f64> {
     if valid.is_empty() {
         return Vec::new();
     }
-    valid.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    // Safe: filter_finite() removes NaN, so partial_cmp always returns Some
+    valid.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     let q1 = percentile(&valid, 25.0);
     let q3 = percentile(&valid, 75.0);
