@@ -99,7 +99,7 @@ proptest! {
     fn test_alpha_f32_in_range(a in 0u8..) {
         let color = Color::rgba(0, 0, 0, a);
         let alpha = color.alpha_f32();
-        prop_assert!(alpha >= 0.0 && alpha <= 1.0);
+        prop_assert!((0.0..=1.0).contains(&alpha));
     }
 
     /// Test that with_alpha_f32 is idempotent for clamped values
@@ -646,8 +646,6 @@ proptest! {
         // Test that we don't panic on large values
         let clamped = value.min(u16::MAX as u32) as u16;
         let _size2 = Size::Fixed(clamped);
-
-        prop_assert!(clamped <= u16::MAX);
     }
 
     /// Test that spacing values are non-negative

@@ -2,7 +2,7 @@
 //!
 //! Benchmarks for the Taffy-based layout engine.
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use revue::dom::DomId;
 use revue::layout::{LayoutEngine, Rect};
 use revue::style::Style;
@@ -22,7 +22,7 @@ fn bench_layout_engine(c: &mut Criterion) {
 
     group.bench_function("create", |b| {
         b.iter(|| {
-            black_box(LayoutEngine::new());
+            std::hint::black_box(LayoutEngine::new());
         });
     });
 
@@ -30,7 +30,7 @@ fn bench_layout_engine(c: &mut Criterion) {
         b.iter(|| {
             let mut engine = LayoutEngine::new();
             engine.create_node(next_dom_id(), &Style::default());
-            black_box(engine);
+            std::hint::black_box(engine);
         });
     });
 
@@ -66,7 +66,7 @@ fn bench_layout_children(c: &mut Criterion) {
                     },
                     |(mut engine, parent_id)| {
                         engine.compute(parent_id, 80, 24);
-                        black_box(engine);
+                        std::hint::black_box(engine);
                     },
                     criterion::BatchSize::SmallInput,
                 );
@@ -101,7 +101,7 @@ fn bench_nested_layout(c: &mut Criterion) {
                 },
                 |(mut engine, root_id)| {
                     engine.compute(root_id, 80, 24);
-                    black_box(engine);
+                    std::hint::black_box(engine);
                 },
                 criterion::BatchSize::SmallInput,
             );
@@ -120,25 +120,25 @@ fn bench_rect_ops(c: &mut Criterion) {
 
     group.bench_function("contains", |b| {
         b.iter(|| {
-            black_box(rect1.contains(25, 25));
+            std::hint::black_box(rect1.contains(25, 25));
         });
     });
 
     group.bench_function("intersects", |b| {
         b.iter(|| {
-            black_box(rect1.intersects(&rect2));
+            std::hint::black_box(rect1.intersects(&rect2));
         });
     });
 
     group.bench_function("intersection", |b| {
         b.iter(|| {
-            black_box(rect1.intersection(&rect2));
+            std::hint::black_box(rect1.intersection(&rect2));
         });
     });
 
     group.bench_function("union", |b| {
         b.iter(|| {
-            black_box(rect1.union(&rect2));
+            std::hint::black_box(rect1.union(&rect2));
         });
     });
 

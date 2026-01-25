@@ -2,7 +2,7 @@
 //!
 //! Benchmarks for CSS parsing and style resolution.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use revue::style::{parse_css, Color};
 
 /// Benchmark CSS parsing
@@ -19,7 +19,7 @@ fn bench_css_parse(c: &mut Criterion) {
 
     group.bench_function("simple", |b| {
         b.iter(|| {
-            black_box(parse_css(simple_css).unwrap());
+            std::hint::black_box(parse_css(simple_css).unwrap());
         });
     });
 
@@ -62,7 +62,7 @@ fn bench_css_parse(c: &mut Criterion) {
 
     group.bench_function("medium", |b| {
         b.iter(|| {
-            black_box(parse_css(medium_css).unwrap());
+            std::hint::black_box(parse_css(medium_css).unwrap());
         });
     });
 
@@ -71,7 +71,7 @@ fn bench_css_parse(c: &mut Criterion) {
 
     group.bench_function("large_100_rules", |b| {
         b.iter(|| {
-            black_box(parse_css(&large_css).unwrap());
+            std::hint::black_box(parse_css(&large_css).unwrap());
         });
     });
 
@@ -123,7 +123,7 @@ fn bench_style_apply(c: &mut Criterion) {
 
     group.bench_function("single_rule", |b| {
         b.iter(|| {
-            black_box(sheet.apply(".button", &base_style));
+            std::hint::black_box(sheet.apply(".button", &base_style));
         });
     });
 
@@ -136,19 +136,19 @@ fn bench_color_ops(c: &mut Criterion) {
 
     group.bench_function("rgb", |b| {
         b.iter(|| {
-            black_box(Color::rgb(255, 128, 64));
+            std::hint::black_box(Color::rgb(255, 128, 64));
         });
     });
 
     group.bench_function("hex_u32", |b| {
         b.iter(|| {
-            black_box(Color::hex(0xFFFFFF));
+            std::hint::black_box(Color::hex(0xFFFFFF));
         });
     });
 
     group.bench_function("rgba", |b| {
         b.iter(|| {
-            black_box(Color::rgba(255, 128, 64, 200));
+            std::hint::black_box(Color::rgba(255, 128, 64, 200));
         });
     });
 
@@ -172,21 +172,21 @@ fn bench_selector_match(c: &mut Criterion) {
     group.bench_function("simple_element", |b| {
         let base = revue::style::Style::default();
         b.iter(|| {
-            black_box(sheet.apply("button", &base));
+            std::hint::black_box(sheet.apply("button", &base));
         });
     });
 
     group.bench_function("class", |b| {
         let base = revue::style::Style::default();
         b.iter(|| {
-            black_box(sheet.apply(".primary", &base));
+            std::hint::black_box(sheet.apply(".primary", &base));
         });
     });
 
     group.bench_function("id", |b| {
         let base = revue::style::Style::default();
         b.iter(|| {
-            black_box(sheet.apply("#submit", &base));
+            std::hint::black_box(sheet.apply("#submit", &base));
         });
     });
 

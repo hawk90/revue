@@ -2,7 +2,7 @@
 //!
 //! Benchmarks for the signal/computed reactive system.
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use revue::reactive::{computed, effect, signal};
 
 /// Benchmark signal creation and updates
@@ -13,7 +13,7 @@ fn bench_signal_updates(c: &mut Criterion) {
     group.bench_function("single", |b| {
         let sig = signal(0);
         b.iter(|| {
-            sig.set(black_box(42));
+            sig.set(std::hint::black_box(42));
         });
     });
 
@@ -22,7 +22,7 @@ fn bench_signal_updates(c: &mut Criterion) {
         let sig = signal(0);
         b.iter(|| {
             for i in 0..100 {
-                sig.set(black_box(i));
+                sig.set(std::hint::black_box(i));
             }
         });
     });
@@ -49,7 +49,7 @@ fn bench_signal_subscribers(c: &mut Criterion) {
                 }
 
                 b.iter(|| {
-                    sig.set(black_box(42));
+                    sig.set(std::hint::black_box(42));
                 });
             },
         );
@@ -69,8 +69,8 @@ fn bench_computed(c: &mut Criterion) {
         let comp = computed(move || source_c.get() * 2);
 
         b.iter(|| {
-            source.set(black_box(20));
-            black_box(comp.get());
+            source.set(std::hint::black_box(20));
+            std::hint::black_box(comp.get());
         });
     });
 
@@ -88,7 +88,7 @@ fn bench_computed(c: &mut Criterion) {
         let _c3 = computed(move || c2_c.get() * 2);
 
         b.iter(|| {
-            s1.set(black_box(5));
+            s1.set(std::hint::black_box(5));
             let _val = c2.get();
         });
     });
@@ -106,10 +106,10 @@ fn bench_computed(c: &mut Criterion) {
         let comp3 = computed(move || source_c3.get() - 1);
 
         b.iter(|| {
-            source.set(black_box(20));
-            black_box(comp1.get());
-            black_box(comp2.get());
-            black_box(comp3.get());
+            source.set(std::hint::black_box(20));
+            std::hint::black_box(comp1.get());
+            std::hint::black_box(comp2.get());
+            std::hint::black_box(comp3.get());
         });
     });
 
@@ -132,7 +132,7 @@ fn bench_effects(c: &mut Criterion) {
         });
 
         b.iter(|| {
-            sig.set(black_box(43));
+            sig.set(std::hint::black_box(43));
         });
     });
 
@@ -148,7 +148,7 @@ fn bench_effects(c: &mut Criterion) {
         });
 
         b.iter(|| {
-            source.set(black_box(20));
+            source.set(std::hint::black_box(20));
         });
     });
 
@@ -166,7 +166,7 @@ fn bench_derived_state(c: &mut Criterion) {
         let mapped = computed(move || source_c.get().iter().map(|x| x * 2).collect::<Vec<_>>());
 
         b.iter(|| {
-            black_box(mapped.get());
+            std::hint::black_box(mapped.get());
         });
     });
 
@@ -184,7 +184,7 @@ fn bench_derived_state(c: &mut Criterion) {
         });
 
         b.iter(|| {
-            black_box(filtered.get());
+            std::hint::black_box(filtered.get());
         });
     });
 
@@ -202,7 +202,7 @@ fn bench_derived_state(c: &mut Criterion) {
         });
 
         b.iter(|| {
-            black_box(transformed.get());
+            std::hint::black_box(transformed.get());
         });
     });
 
@@ -217,7 +217,7 @@ fn bench_memory(c: &mut Criterion) {
     group.bench_function("create_signals", |b| {
         b.iter(|| {
             for i in 0..100 {
-                black_box(signal(i));
+                std::hint::black_box(signal(i));
             }
         });
     });
@@ -227,7 +227,7 @@ fn bench_memory(c: &mut Criterion) {
         let sig = signal(42);
         b.iter(|| {
             for _ in 0..10 {
-                black_box(sig.clone());
+                std::hint::black_box(sig.clone());
             }
         });
     });
@@ -246,7 +246,7 @@ fn bench_propagation(c: &mut Criterion) {
         let _derived = computed(move || source_c.get() + 1);
 
         b.iter(|| {
-            source.set(black_box(1));
+            source.set(std::hint::black_box(1));
         });
     });
 
@@ -264,7 +264,7 @@ fn bench_propagation(c: &mut Criterion) {
         let _c3 = computed(move || c2_c.get() + 1);
 
         b.iter(|| {
-            source.set(black_box(1));
+            source.set(std::hint::black_box(1));
         });
     });
 
@@ -279,9 +279,9 @@ fn bench_propagation(c: &mut Criterion) {
         }
 
         b.iter(|| {
-            source.set(black_box(1));
+            source.set(std::hint::black_box(1));
             for d in &derived {
-                black_box(d.get());
+                std::hint::black_box(d.get());
             }
         });
     });

@@ -252,7 +252,7 @@ mod pagination;
 mod qrcode;
 mod range_picker;
 #[cfg(feature = "markdown")]
-mod slides;
+pub mod slides;
 mod sortable;
 mod streamline;
 mod syntax;

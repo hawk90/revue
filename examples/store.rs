@@ -18,20 +18,12 @@ impl Default for CounterStore {
 }
 
 impl CounterStore {
-    fn new() -> Self {
-        Self::default()
-    }
-
     fn increment(&self) {
         self.count.update(|c| *c += 1);
     }
 
     fn decrement(&self) {
         self.count.update(|c| *c -= 1);
-    }
-
-    fn reset(&self) {
-        self.count.set(0);
     }
 
     fn double(&self) -> Computed<i32> {
@@ -59,10 +51,6 @@ impl Default for UserStore {
 }
 
 impl UserStore {
-    fn new() -> Self {
-        Self::default()
-    }
-
     fn login(&self, username: String, email: String) {
         self.username.set(username);
         self.email.set(email);

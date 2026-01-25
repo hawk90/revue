@@ -2,7 +2,7 @@
 //!
 //! Benchmarks for the rendering pipeline.
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use revue::prelude::*;
 use revue::render::Buffer;
 use revue::testing::TestApp;
@@ -19,7 +19,7 @@ fn bench_text_render(c: &mut Criterion) {
 
             b.iter(|| {
                 app.render();
-                black_box(&app);
+                std::hint::black_box(&app);
             });
         });
     }
@@ -36,14 +36,14 @@ fn bench_nested_layout(c: &mut Criterion) {
             // Create a nested vstack structure
             let mut view = vstack().child(text("Leaf"));
             for i in 0..depth {
-                view = vstack().child(text(&format!("Level {}", i))).child(view);
+                view = vstack().child(text(format!("Level {}", i))).child(view);
             }
 
             let mut app = TestApp::new(view);
 
             b.iter(|| {
                 app.render();
-                black_box(&app);
+                std::hint::black_box(&app);
             });
         });
     }
@@ -66,7 +66,7 @@ fn bench_list_render(c: &mut Criterion) {
 
                 b.iter(|| {
                     app.render();
-                    black_box(&app);
+                    std::hint::black_box(&app);
                 });
             },
         );
@@ -102,7 +102,7 @@ fn bench_table_render(c: &mut Criterion) {
 
                 b.iter(|| {
                     app.render();
-                    black_box(&app);
+                    std::hint::black_box(&app);
                 });
             },
         );
@@ -118,7 +118,7 @@ fn bench_buffer_ops(c: &mut Criterion) {
     // Buffer creation
     group.bench_function("create_80x24", |b| {
         b.iter(|| {
-            black_box(Buffer::new(80, 24));
+            std::hint::black_box(Buffer::new(80, 24));
         });
     });
 
@@ -127,7 +127,7 @@ fn bench_buffer_ops(c: &mut Criterion) {
         let mut buffer = Buffer::new(80, 24);
         b.iter(|| {
             buffer.clear();
-            black_box(&buffer);
+            std::hint::black_box(&buffer);
         });
     });
 
@@ -137,7 +137,7 @@ fn bench_buffer_ops(c: &mut Criterion) {
         b.iter(|| {
             buffer.resize(120, 40);
             buffer.resize(80, 24);
-            black_box(&buffer);
+            std::hint::black_box(&buffer);
         });
     });
 
@@ -146,7 +146,7 @@ fn bench_buffer_ops(c: &mut Criterion) {
         let mut buffer = Buffer::new(80, 24);
         b.iter(|| {
             buffer.put_str(0, 0, "Hello, World!");
-            black_box(&buffer);
+            std::hint::black_box(&buffer);
         });
     });
 
@@ -155,7 +155,7 @@ fn bench_buffer_ops(c: &mut Criterion) {
         let long_str = "X".repeat(80);
         b.iter(|| {
             buffer.put_str(0, 0, &long_str);
-            black_box(&buffer);
+            std::hint::black_box(&buffer);
         });
     });
 

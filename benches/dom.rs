@@ -2,7 +2,7 @@
 //!
 //! Benchmarks for DOM tree operations and incremental updates.
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use revue::dom::DomRenderer;
 use revue::widget::{Stack, Text};
 
@@ -16,7 +16,7 @@ fn bench_dom_build(c: &mut Criterion) {
         b.iter(|| {
             let mut renderer = DomRenderer::new();
             renderer.build(&view);
-            black_box(&renderer);
+            std::hint::black_box(&renderer);
         });
     });
 
@@ -37,7 +37,7 @@ fn bench_dom_build(c: &mut Criterion) {
         b.iter(|| {
             let mut renderer = DomRenderer::new();
             renderer.build(&view);
-            black_box(&renderer);
+            std::hint::black_box(&renderer);
         });
     });
 
@@ -63,7 +63,7 @@ fn bench_dom_incremental(c: &mut Criterion) {
         b.iter(|| {
             let mut renderer = DomRenderer::new();
             renderer.build(&view);
-            black_box(&renderer);
+            std::hint::black_box(&renderer);
         });
     });
 
@@ -76,7 +76,7 @@ fn bench_dom_incremental(c: &mut Criterion) {
         b.iter(|| {
             let view = create_view("");
             renderer.build(&view);
-            black_box(&renderer);
+            std::hint::black_box(&renderer);
         });
     });
 
@@ -92,7 +92,7 @@ fn bench_dom_incremental(c: &mut Criterion) {
             let suffix = if counter % 2 == 0 { "A" } else { "B" };
             let view = create_view(suffix);
             renderer.build(&view);
-            black_box(&renderer);
+            std::hint::black_box(&renderer);
         });
     });
 
@@ -119,7 +119,7 @@ fn bench_dom_many_children(c: &mut Criterion) {
                 let mut renderer = DomRenderer::new();
                 let view = create_view();
                 renderer.build(&view);
-                black_box(&renderer);
+                std::hint::black_box(&renderer);
             });
         });
 
@@ -131,7 +131,7 @@ fn bench_dom_many_children(c: &mut Criterion) {
             b.iter(|| {
                 let view = create_view();
                 renderer.build(&view);
-                black_box(&renderer);
+                std::hint::black_box(&renderer);
             });
         });
     }
@@ -155,7 +155,7 @@ fn bench_dom_invalidate(c: &mut Criterion) {
 
         b.iter(|| {
             renderer.build(&view);
-            black_box(&renderer);
+            std::hint::black_box(&renderer);
         });
     });
 
@@ -167,7 +167,7 @@ fn bench_dom_invalidate(c: &mut Criterion) {
         b.iter(|| {
             renderer.invalidate();
             renderer.build(&view);
-            black_box(&renderer);
+            std::hint::black_box(&renderer);
         });
     });
 

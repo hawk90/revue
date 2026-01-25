@@ -13,7 +13,6 @@ mod selection;
 mod types;
 
 #[cfg(test)]
-#[cfg(test)]
 mod tests {
     use super::super::*;
 

@@ -23,8 +23,8 @@ fn test_animation_state_eq() {
 #[test]
 fn test_animation_state_clone() {
     let state = AnimationState::Running;
-    let cloned = state.clone();
-    assert_eq!(state, cloned);
+    let copied = state;
+    assert_eq!(state, copied);
 }
 
 #[test]
