@@ -470,4 +470,11 @@ mod tests {
         // Combining character shouldn't add width
         assert_eq!(char_width('\u{0301}'), 0); // Combining acute accent
     }
+
+    #[test]
+    fn test_fullwidth_chars() {
+        // Full-width ASCII characters
+        assert_eq!(display_width("ＡＢＣ"), 6); // Full-width ABC
+        assert_eq!(char_width('Ａ'), 2);
+    }
 }
