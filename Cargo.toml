@@ -4,7 +4,7 @@ resolver = "2"
 
 [package]
 name = "revue"
-version = "2.37.1"
+version = "2.37.2"
 edition = "2021"
 rust-version = "1.87"
 description = "A Vue-style TUI framework for Rust with CSS styling"

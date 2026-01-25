@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.37.2](https://github.com/hawk90/revue/compare/v2.37.1...v2.37.2) (2026-01-25)
+
+
+### Bug Fixes
+
+* add workspace configuration for revue-macros ([#300](https://github.com/hawk90/revue/issues/300)) ([3ee4301](https://github.com/hawk90/revue/commit/3ee4301ed1b47b814b1660d85ff41a985eccb904))
+* **test:** update grid template test expectations ([769f086](https://github.com/hawk90/revue/commit/769f0862b833463e59c3bed1279dfacdef21df39))
+
 ## [2.37.1](https://github.com/hawk90/revue/compare/v2.37.0...v2.37.1) (2026-01-25)
 
 
