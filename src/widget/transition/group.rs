@@ -1,9 +1,9 @@
 //! TransitionGroup for animating lists with automatic reordering
 
-use super::super::traits::{RenderContext, View, WidgetProps};
 use super::types::Animation;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// TransitionGroup for animating lists with automatic reordering

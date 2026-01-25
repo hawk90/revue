@@ -1,6 +1,6 @@
 //! Chart types and enums
 
-use super::super::chart_common::Marker;
+use super::chart_common::Marker;
 use crate::style::Color;
 
 /// Chart type

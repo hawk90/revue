@@ -1,6 +1,6 @@
 //! Helper functions for chart widget
 
-use super::super::chart_common::{Axis, AxisFormat, LegendPosition, Marker};
+use super::chart_common::{Axis, AxisFormat, LegendPosition, Marker};
 use super::types::{ChartType, LineStyle, Series};
 use crate::layout::Rect;
 use crate::render::Cell;

@@ -41,12 +41,12 @@
 
 use super::bigtext::BigText;
 use super::markdown::Markdown;
-use super::slides::{SlideContent, SlideNav};
-use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::figlet::FigletFont;
 use crate::utils::text_sizing::is_supported as text_sizing_supported;
+use crate::widget::slides::{SlideContent, SlideNav};
+use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Viewing mode for markdown presentation

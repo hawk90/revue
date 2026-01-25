@@ -22,10 +22,10 @@
 //!     .render(ctx);
 //! ```
 
-use super::traits::{EventResult, Interactive, RenderContext, View, WidgetProps};
 use crate::event::{Key, KeyEvent};
 use crate::render::Cell;
 use crate::style::{get_theme, set_theme_by_id, theme_ids, use_theme, Color, Theme};
+use crate::widget::traits::{EventResult, Interactive, RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Theme picker widget for selecting themes

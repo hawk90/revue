@@ -4,10 +4,12 @@
 //! Generates and displays QR codes using Unicode block characters
 //! for high-resolution rendering in the terminal.
 
-use super::traits::{RenderContext, View, WidgetProps};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
+
+#[cfg(feature = "qrcode")]
 use qrcode::{EcLevel, QrCode};
 
 /// QR Code display style

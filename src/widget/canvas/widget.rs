@@ -1,8 +1,8 @@
 //! Canvas widget implementations
 
-use super::super::traits::{RenderContext, View};
 use super::braille::{BrailleContext, BrailleGrid};
 use super::draw::DrawContext;
+use crate::widget::traits::{RenderContext, View};
 
 /// A canvas widget for custom drawing (character-based)
 pub struct Canvas<F>
