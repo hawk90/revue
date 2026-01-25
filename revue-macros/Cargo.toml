@@ -1,0 +1,13 @@
+[package]
+name = "revue-macros"
+version = "2.36.0"
+edition = "2021"
+rust-version = "1.87"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
