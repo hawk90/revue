@@ -3,6 +3,7 @@
 use super::platform::{LinuxBackend, LoggingBackend, MacOSBackend, NullBackend, WindowsBackend};
 use super::types::{BackendType, ScreenReader, ScreenReaderConfig};
 use crate::utils::accessibility::Priority;
+use crate::utils::lock::write_or_recover;
 use std::sync::RwLock;
 
 /// Main screen reader backend
@@ -58,7 +59,7 @@ impl ScreenReaderBackend {
         // Debounce check
         if self.config.debounce_ms > 0 {
             let now = std::time::Instant::now();
-            let mut last = self.last_announcement.write().unwrap();
+            let mut last = write_or_recover(&self.last_announcement);
 
             if let Some(last_time) = *last {
                 let elapsed = now.duration_since(last_time).as_millis() as u64;

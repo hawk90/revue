@@ -1,6 +1,7 @@
 //! Screen reader backend - platform-specific implementations
 
 use crate::utils::accessibility::Priority;
+use crate::utils::lock::{read_or_recover, write_or_recover};
 use std::sync::{Arc, RwLock};
 
 use super::types::ScreenReader;
@@ -231,17 +232,17 @@ impl LoggingBackend {
 
     /// Get all logged announcements
     pub fn announcements(&self) -> Vec<LoggedAnnouncement> {
-        self.announcements.read().unwrap().clone()
+        read_or_recover(&self.announcements).clone()
     }
 
     /// Clear logged announcements
     pub fn clear(&self) {
-        self.announcements.write().unwrap().clear();
+        write_or_recover(&self.announcements).clear();
     }
 
     /// Get the last announcement
     pub fn last(&self) -> Option<LoggedAnnouncement> {
-        self.announcements.read().unwrap().last().cloned()
+        read_or_recover(&self.announcements).last().cloned()
     }
 }
 
@@ -259,7 +260,7 @@ impl ScreenReader for LoggingBackend {
             timestamp: std::time::Instant::now(),
         };
 
-        self.announcements.write().unwrap().push(announcement);
+        write_or_recover(&self.announcements).push(announcement);
 
         // Also print to stderr for visibility
         let priority_str = match priority {

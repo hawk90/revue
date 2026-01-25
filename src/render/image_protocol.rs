@@ -24,6 +24,29 @@ pub enum ImageProtocol {
 impl ImageProtocol {
     /// Detect the best available protocol for the current terminal
     pub fn detect() -> Self {
+        // Check for user override first (highest priority)
+        if let Ok(override_protocol) = std::env::var("REVUE_IMAGE_PROTOCOL") {
+            return match override_protocol.to_lowercase().as_str() {
+                "kitty" => ImageProtocol::Kitty,
+                "iterm2" => ImageProtocol::Iterm2,
+                "sixel" => ImageProtocol::Sixel,
+                "none" => ImageProtocol::None,
+                protocol => {
+                    eprintln!(
+                        "Unknown REVUE_IMAGE_PROTOCOL: {}, using auto-detection",
+                        protocol
+                    );
+                    // Fall through to auto-detect
+                    Self::detect_auto()
+                }
+            };
+        }
+
+        Self::detect_auto()
+    }
+
+    /// Auto-detect protocol without checking user override
+    fn detect_auto() -> Self {
         // Check for Kitty first (most capable)
         if is_kitty_terminal() {
             return ImageProtocol::Kitty;
@@ -35,7 +58,7 @@ impl ImageProtocol {
         }
 
         // Check for Sixel support
-        if is_sixel_capable() {
+        if is_sixel_capable_auto() {
             return ImageProtocol::Sixel;
         }
 
@@ -78,6 +101,13 @@ pub fn is_iterm2_terminal() -> bool {
 
 /// Check if terminal supports Sixel
 pub fn is_sixel_capable() -> bool {
+    // Note: ImageProtocol::detect() handles REVUE_IMAGE_PROTOCOL override
+    // This is kept for backward compatibility and direct use
+    is_sixel_capable_auto()
+}
+
+/// Auto-detect Sixel capability without checking user override
+fn is_sixel_capable_auto() -> bool {
     // Check for known Sixel-capable terminals
     if let Ok(term) = std::env::var("TERM") {
         // mlterm, xterm with Sixel, foot, etc.
@@ -313,10 +343,18 @@ impl ImageEncoder {
             }
             PixelFormat::Png => {
                 // Decode PNG to RGBA
-                if let Ok(img) = image::load_from_memory(&self.data) {
-                    img.to_rgba8().into_raw()
-                } else {
-                    vec![0; (self.width * self.height * 4) as usize]
+                match image::load_from_memory(&self.data) {
+                    Ok(img) => img.to_rgba8().into_raw(),
+                    Err(err) => {
+                        log_warn!(
+                            "PNG decoding failed: {} ({}x{}, {} bytes)",
+                            err,
+                            self.width,
+                            self.height,
+                            self.data.len()
+                        );
+                        vec![0; (self.width * self.height * 4) as usize]
+                    }
                 }
             }
         }
