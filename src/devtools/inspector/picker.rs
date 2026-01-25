@@ -204,7 +204,7 @@ impl ComponentPicker {
 
         // Draw tooltip background
         let padding = 1u16;
-        let width = text.len() as u16 + padding * 2;
+        let width = crate::utils::unicode::display_width(text) as u16 + padding * 2;
 
         for dx in 0..width {
             if let Some(cell) = buffer.get_mut(tooltip_x + dx, tooltip_y) {
@@ -213,13 +213,13 @@ impl ComponentPicker {
             }
         }
 
-        // Draw tooltip text
-        for (i, ch) in text.chars().enumerate() {
-            if let Some(cell) = buffer.get_mut(tooltip_x + padding + i as u16, tooltip_y) {
-                cell.symbol = ch;
-                cell.fg = Some(Color::WHITE);
-                cell.bg = Some(Color::rgb(40, 40, 50));
-            }
-        }
+        // Draw tooltip text (wide-char safe)
+        let _ = buffer.put_str_styled(
+            tooltip_x + padding,
+            tooltip_y,
+            text,
+            Some(Color::WHITE),
+            Some(Color::rgb(40, 40, 50)),
+        );
     }
 }

@@ -211,7 +211,8 @@ impl RadioGroup {
                 true
             }
             Key::Char(c) if c.is_ascii_digit() => {
-                let index = c.to_digit(10).unwrap() as usize;
+                // Safe: c is '0'..='9' after is_ascii_digit() check
+                let index = (*c as u8 - b'0') as usize;
                 if index > 0 && index <= self.options.len() {
                     self.selection.set(index - 1);
                     true

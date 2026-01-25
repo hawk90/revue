@@ -164,11 +164,22 @@ impl PerformancePlugin {
             return (Duration::ZERO, Duration::ZERO, Duration::ZERO);
         }
 
-        let min = *self.frame_times.iter().min().unwrap();
-        let max = *self.frame_times.iter().max().unwrap();
-        let sum: Duration = self.frame_times.iter().sum();
-        let avg = sum / self.frame_times.len() as u32;
+        // Single pass to compute min, max, and sum
+        let mut min = Duration::MAX;
+        let mut max = Duration::ZERO;
+        let mut sum = Duration::ZERO;
 
+        for &ft in &self.frame_times {
+            if ft < min {
+                min = ft;
+            }
+            if ft > max {
+                max = ft;
+            }
+            sum += ft;
+        }
+
+        let avg = sum / self.frame_times.len() as u32;
         (min, max, avg)
     }
 }

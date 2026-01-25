@@ -193,7 +193,7 @@ impl View for Divider {
                 // Draw the line
                 if let Some(ref label) = self.label {
                     // Line with label centered
-                    let label_len = label.chars().count() as u16;
+                    let label_len = crate::utils::unicode::display_width(label) as u16;
                     let total_width = end_x - start_x;
 
                     if label_len + 4 <= total_width {
