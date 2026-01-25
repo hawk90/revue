@@ -217,8 +217,8 @@ impl<T: Send + 'static> WorkerHandle<T> {
                         return;
                     }
                     Poll::Pending => {
-                        // Yield to other threads
-                        thread::yield_now();
+                        // Yield to other threads (sleep 1ms to avoid busy-waiting)
+                        thread::sleep(Duration::from_millis(1));
                     }
                 }
             }
