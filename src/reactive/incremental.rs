@@ -239,7 +239,7 @@ mod tests {
 
     #[test]
     fn test_incremental_handlers_new() {
-        let handlers: IncrementalHandlers<i32, Vec<i32>> = IncrementalHandlers::new();
+        let _handlers: IncrementalHandlers<i32, Vec<i32>> = IncrementalHandlers::new();
         // Just verify it compiles
         assert!(true);
     }
@@ -250,10 +250,10 @@ mod tests {
             .insert(|result, index, value| {
                 result.insert(index, value);
             })
-            .update(|result, _index, _old, _new| {
+            .update(|_result, _index, _old, _new| {
                 // Update handler
             })
-            .remove(|result, _index, _value| {
+            .remove(|_result, _index, _value| {
                 // Remove handler
             })
             .replace(|_source: &SignalVec<i32>| vec![]);
