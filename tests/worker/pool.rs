@@ -85,7 +85,7 @@ fn test_pool_with_threads() {
 fn test_pool_submit_full_queue() {
     let config = WorkerConfig {
         threads: 1,
-        queue_capacity: 5,
+        queue_capacity: 3,
         default_timeout_ms: Some(100),
     };
     let pool = WorkerPool::with_config(config);
@@ -100,15 +100,18 @@ fn test_pool_submit_full_queue() {
         }
     });
 
-    // Fill the queue
-    for _ in 0..4 {
+    // Give worker time to start the barrier task
+    thread::sleep(Duration::from_millis(50));
+
+    // Fill the queue (capacity is 3)
+    for _ in 0..3 {
         assert!(pool.submit(|| {}));
     }
 
     // Queue is now full, next submission should fail
     assert!(!pool.submit(|| {}));
 
-    // Release the worker to prevent infinite loop
+    // Release the worker to prevent hang
     barrier.store(1, Ordering::SeqCst);
 }
 
