@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.41.0](https://github.com/hawk90/revue/compare/v2.40.1...v2.41.0) (2026-01-26)
+
+
+### Features
+
+* **layout:** implement dirty-flag incremental layout optimization ([#319](https://github.com/hawk90/revue/issues/319)) ([fc89e65](https://github.com/hawk90/revue/commit/fc89e6554b6320645449ffa5c246783dad469407))
+* **style:** add CSS size limits and layout performance docs ([#317](https://github.com/hawk90/revue/issues/317)) ([0b155ff](https://github.com/hawk90/revue/commit/0b155ff699b4dab3eb4024774b324af402f52927))
+
 ## [2.40.1](https://github.com/hawk90/revue/compare/v2.40.0...v2.40.1) (2026-01-26)
 
 
