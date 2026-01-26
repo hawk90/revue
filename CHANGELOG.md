@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.38.1](https://github.com/hawk90/revue/compare/v2.38.0...v2.38.1) (2026-01-26)
+
+
+### Bug Fixes
+
+* remove invalid output mapping in release-please workflow ([12eaf8a](https://github.com/hawk90/revue/commit/12eaf8a83655a8266b052e9909498d16508f6a6b))
+
 ## [2.38.0](https://github.com/hawk90/revue/compare/v2.37.3...v2.38.0) (2026-01-26)
 
 
