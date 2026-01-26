@@ -98,6 +98,7 @@ mod context;
 mod effect;
 mod runtime;
 mod signal;
+mod signal_vec;
 pub mod store;
 mod tracker;
 
@@ -117,6 +118,7 @@ pub use context::{
 pub use effect::Effect;
 pub use runtime::ReactiveRuntime;
 pub use signal::{Signal, Subscription, SubscriptionId};
+pub use signal_vec::{SignalVec, VecDiff, VecSubscription};
 pub use store::{
     create_store, store_registry, use_store, Store, StoreExt, StoreId, StoreRegistry,
     StoreSubscription,
@@ -166,4 +168,23 @@ pub fn computed<T: Clone + Send + Sync + 'static>(
 /// This is automatically satisfied when capturing Signals.
 pub fn effect(f: impl Fn() + Send + Sync + 'static) -> Effect {
     Effect::new(f)
+}
+
+/// Create a reactive vector with fine-grained change tracking
+///
+/// Unlike `signal(Vec<T>)`, this tracks individual insert/remove/update
+/// operations for efficient incremental updates.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let items = signal_vec(vec![1, 2, 3]);
+///
+/// // Each operation emits a granular change
+/// items.push(4);      // VecDiff::Insert { index: 3, value: 4 }
+/// items.remove(1);    // VecDiff::Remove { index: 1, value: 2 }
+/// items.update(0, 10); // VecDiff::Update { index: 0, old: 1, new: 10 }
+/// ```
+pub fn signal_vec<T: Send + Sync + Clone + 'static>(values: Vec<T>) -> SignalVec<T> {
+    SignalVec::new(values)
 }
