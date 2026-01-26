@@ -96,6 +96,7 @@ mod batch;
 mod computed;
 mod context;
 mod effect;
+mod incremental;
 mod runtime;
 mod signal;
 mod signal_vec;
@@ -116,6 +117,7 @@ pub use context::{
     ContextId, ContextScope, Provider,
 };
 pub use effect::Effect;
+pub use incremental::{IncrementalComputed, IncrementalHandlers};
 pub use runtime::ReactiveRuntime;
 pub use signal::{Signal, Subscription, SubscriptionId};
 pub use signal_vec::{SignalVec, VecDiff, VecSubscription};
