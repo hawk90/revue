@@ -508,6 +508,7 @@ pub fn start_drag(data: DragData, x: u16, y: u16) -> bool {
         }
         Err(_) => {
             debug_assert!(false, "drag context lock poisoned in start_drag");
+            crate::log_warn!("Drag context lock poisoned in start_drag - drag not started");
             false
         }
     }
@@ -524,6 +525,7 @@ pub fn update_drag_position(x: u16, y: u16) -> bool {
         }
         Err(_) => {
             debug_assert!(false, "drag context lock poisoned in update_drag_position");
+            crate::log_warn!("Drag context lock poisoned in update_drag_position - update ignored");
             false
         }
     }
@@ -538,6 +540,7 @@ pub fn end_drag() -> Option<(DragData, Option<DragId>)> {
         Ok(mut ctx) => ctx.end_drag(),
         Err(_) => {
             debug_assert!(false, "drag context lock poisoned in end_drag");
+            crate::log_warn!("Drag context lock poisoned in end_drag - returning None");
             None
         }
     }
@@ -554,6 +557,7 @@ pub fn cancel_drag() -> bool {
         }
         Err(_) => {
             debug_assert!(false, "drag context lock poisoned in cancel_drag");
+            crate::log_warn!("Drag context lock poisoned in cancel_drag - cancel ignored");
             false
         }
     }
@@ -567,6 +571,7 @@ pub fn is_dragging() -> bool {
         Ok(ctx) => ctx.is_dragging(),
         Err(_) => {
             debug_assert!(false, "drag context lock poisoned in is_dragging");
+            crate::log_warn!("Drag context lock poisoned in is_dragging - returning false");
             false
         }
     }

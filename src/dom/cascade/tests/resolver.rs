@@ -154,8 +154,8 @@ fn test_with_cached_selectors() {
     // Get cached selectors
     let cached = resolver1.selectors.clone();
 
-    // Create new resolver with cached selectors
-    let resolver2 = StyleResolver::with_cached_selectors(&stylesheet, cached);
+    // Create new resolver with cached selectors (pass reference)
+    let resolver2 = StyleResolver::with_cached_selectors(&stylesheet, &cached);
 
     let node = create_button_node(1);
     let get_node = |_: DomId| -> Option<&DomNode> { None };

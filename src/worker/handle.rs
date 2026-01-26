@@ -182,17 +182,19 @@ impl<T: Send + 'static> WorkerHandle<T> {
                 *s = WorkerState::Running;
             }
 
-            // Simple polling executor
+            // Simple polling executor with exponential backoff
             // SAFETY:
             // - The vtable functions are all no-ops that don't access any data
             // - RawWaker is created with a null pointer since no data is needed
             // - The waker is only used as a placeholder for Context
             // - We never call wake() or wake_by_ref() on this waker
             // - Only clone() and drop() are called, which are safe no-ops
-            // - This is a busy-polling executor that never actually needs to wake anything
+            // - This is a polling executor that never actually needs to wake anything
             let waker = unsafe { Waker::from_raw(dummy_raw_waker()) };
             let mut cx = Context::from_waker(&waker);
             let mut future = Box::pin(future);
+            let mut sleep_duration = Duration::from_millis(1);
+            const MAX_SLEEP: Duration = Duration::from_millis(10);
 
             loop {
                 // Check cancellation
@@ -217,8 +219,9 @@ impl<T: Send + 'static> WorkerHandle<T> {
                         return;
                     }
                     Poll::Pending => {
-                        // Yield to other threads (sleep 1ms to avoid busy-waiting)
-                        thread::sleep(Duration::from_millis(1));
+                        // Exponential backoff: gradually increase sleep up to MAX_SLEEP
+                        thread::sleep(sleep_duration);
+                        sleep_duration = (sleep_duration * 2).min(MAX_SLEEP);
                     }
                 }
             }

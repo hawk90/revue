@@ -65,10 +65,15 @@ mod shared_runtime {
                 .enable_all()
                 .build()
                 .map(|runtime| {
+                    // Gracefully handle races where another thread sets the runtime first.
+                    if RUNTIME.set(runtime).is_err() {
+                        // Another thread initialized the runtime; fall back to the existing one.
+                    }
                     RUNTIME
-                        .set(runtime)
-                        .expect("Another thread initialized runtime first");
-                    RUNTIME.get().unwrap().handle().clone()
+                        .get()
+                        .expect("Shared runtime should be initialized")
+                        .handle()
+                        .clone()
                 })
                 .map_err(|e| format!("Failed to create tokio runtime: {}", e))
         }

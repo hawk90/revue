@@ -2,14 +2,14 @@
 //!
 //! Thread-safe computed values using Arc and atomic operations.
 
-use super::tracker::{start_tracking, stop_tracking, Subscriber, SubscriberId};
-use std::sync::atomic::{AtomicBool, Ordering};
+use super::tracker::{dispose_subscriber, start_tracking, stop_tracking, Subscriber, SubscriberId};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 
 /// A derived value that automatically updates when dependencies change
 ///
 /// Thread-safe: can be shared across threads.
-pub struct Computed<T> {
+pub struct Computed<T: Clone + Send + Sync + 'static> {
     /// Unique identifier for this computed value
     id: SubscriberId,
     /// The computation function
@@ -20,6 +20,8 @@ pub struct Computed<T> {
     dirty: Arc<AtomicBool>,
     /// Lock to prevent concurrent recomputation (avoids data race)
     recompute_lock: Arc<Mutex<()>>,
+    /// Reference count for clones (for proper subscriber disposal)
+    ref_count: Arc<AtomicUsize>,
 }
 
 // Computed<T> auto-derives Send when T: Send, Sync when T: Send + Sync.
@@ -41,6 +43,7 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
             cached: Arc::new(RwLock::new(None)),
             dirty: Arc::new(AtomicBool::new(true)),
             recompute_lock: Arc::new(Mutex::new(())),
+            ref_count: Arc::new(AtomicUsize::new(1)),
         }
     }
 
@@ -146,12 +149,30 @@ impl<T: Clone + Send + Sync + 'static> Clone for Computed<T> {
     /// Clone creates a shared reference to the same computed value.
     /// Both clones share the same cache, dirty flag, and recompute lock.
     fn clone(&self) -> Self {
+        // Increment reference count
+        self.ref_count.fetch_add(1, Ordering::SeqCst);
+
         Self {
             id: self.id,
             compute: self.compute.clone(),
             cached: self.cached.clone(),
             dirty: self.dirty.clone(),
             recompute_lock: self.recompute_lock.clone(),
+            ref_count: self.ref_count.clone(),
+        }
+    }
+}
+
+impl<T: Clone + Send + Sync + 'static> Drop for Computed<T> {
+    /// Dispose subscriber when the last clone is dropped.
+    ///
+    /// This prevents memory leaks in the dependency tracker by removing
+    /// the subscriber callback when the Computed value is no longer used.
+    fn drop(&mut self) {
+        // Decrement reference count and check if this is the last clone
+        if self.ref_count.fetch_sub(1, Ordering::SeqCst) == 1 {
+            // This was the last reference, dispose the subscriber
+            dispose_subscriber(self.id);
         }
     }
 }

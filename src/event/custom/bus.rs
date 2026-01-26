@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
@@ -10,8 +11,8 @@ use super::types::{CustomEvent, EventId, EventMeta};
 /// Global event bus for application-wide events
 pub struct CustomEventBus {
     dispatcher: EventDispatcher,
-    /// Event history for debugging
-    history: Arc<RwLock<Vec<EventRecord>>>,
+    /// Event history for debugging (use VecDeque for O(1) front removal)
+    history: Arc<RwLock<VecDeque<EventRecord>>>,
     /// Maximum history size
     max_history: usize,
 }
@@ -36,7 +37,7 @@ impl CustomEventBus {
     pub fn new() -> Self {
         Self {
             dispatcher: EventDispatcher::new(),
-            history: Arc::new(RwLock::new(Vec::new())),
+            history: Arc::new(RwLock::new(VecDeque::new())),
             max_history: 100,
         }
     }
@@ -83,7 +84,7 @@ impl CustomEventBus {
 
         // Record in history
         if let Ok(mut history) = self.history.write() {
-            history.push(EventRecord {
+            history.push_back(EventRecord {
                 id: result.event_id,
                 event_type: E::event_type(),
                 timestamp: SystemTime::now(),
@@ -91,9 +92,9 @@ impl CustomEventBus {
                 handler_count: result.handler_count,
             });
 
-            // Trim history
+            // Trim history (O(1) with VecDeque::pop_front)
             while history.len() > self.max_history {
-                history.remove(0);
+                history.pop_front();
             }
         }
 
@@ -102,7 +103,10 @@ impl CustomEventBus {
 
     /// Get event history
     pub fn history(&self) -> Vec<EventRecord> {
-        self.history.read().map(|h| h.clone()).unwrap_or_default()
+        self.history
+            .read()
+            .map(|h| h.iter().cloned().collect())
+            .unwrap_or_default()
     }
 
     /// Clear history
