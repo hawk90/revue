@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.39.1](https://github.com/hawk90/revue/compare/v2.39.0...v2.39.1) (2026-01-26)
+
+
+### Bug Fixes
+
+* **core:** address critical bugs and add fine-grained reactivity ([#313](https://github.com/hawk90/revue/issues/313)) ([b386919](https://github.com/hawk90/revue/commit/b3869197bb5bc76350185bd860d1bab5d4974ce9))
+* **core:** address critical bugs and performance issues ([#311](https://github.com/hawk90/revue/issues/311)) ([f9e9d00](https://github.com/hawk90/revue/commit/f9e9d00cc7cf9a9e4c39c9a17008b12d38dd7df7))
+
 ## [2.39.0](https://github.com/hawk90/revue/compare/v2.38.3...v2.39.0) (2026-01-26)
 
 
