@@ -7,6 +7,26 @@
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 
+/// Image encoding/decoding errors
+#[derive(Debug, thiserror::Error)]
+pub enum ImageError {
+    /// PNG encoding failed
+    #[error("PNG encoding failed: {0}")]
+    EncodeFailed(String),
+
+    /// PNG decoding failed
+    #[error("PNG decoding failed: {0}")]
+    DecodeFailed(String),
+
+    /// Invalid image format
+    #[error("Invalid image format: {0}")]
+    InvalidFormat(String),
+
+    /// Invalid image dimensions
+    #[error("Invalid image dimensions: {0}x{1}")]
+    InvalidDimensions(u32, u32),
+}
+
 /// Supported terminal image protocols
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ImageProtocol {
@@ -210,6 +230,13 @@ impl ImageEncoder {
         self.protocol
     }
 
+    /// Encode the image as PNG bytes
+    ///
+    /// Returns the PNG-encoded data or an error if encoding fails.
+    pub fn encode_to_png(&self) -> Result<Vec<u8>, ImageError> {
+        self.encode_to_png_internal()
+    }
+
     /// Encode the image for terminal display
     pub fn encode(&self, cols: u16, rows: u16, image_id: u32) -> String {
         match self.protocol {
@@ -264,8 +291,16 @@ impl ImageEncoder {
     fn encode_iterm2(&self, cols: u16, rows: u16) -> String {
         // Convert to PNG if not already
         let png_data = match self.format {
-            PixelFormat::Png => self.data.clone(),
-            PixelFormat::Rgb | PixelFormat::Rgba => self.encode_to_png(),
+            PixelFormat::Png => Ok(self.data.clone()),
+            PixelFormat::Rgb | PixelFormat::Rgba => self.encode_to_png_internal(),
+        };
+
+        let png_data = match png_data {
+            Ok(data) => data,
+            Err(e) => {
+                log_warn!("Failed to encode PNG for iTerm2: {}", e);
+                return String::new();
+            }
         };
 
         // Base64 encode the image
@@ -294,36 +329,29 @@ impl ImageEncoder {
         sixel.encode()
     }
 
-    /// Convert image data to PNG format
-    fn encode_to_png(&self) -> Vec<u8> {
+    /// Convert image data to PNG format (internal)
+    fn encode_to_png_internal(&self) -> Result<Vec<u8>, ImageError> {
         use image::ImageEncoder;
 
         let mut png_data = Vec::new();
+
+        // Validate dimensions
+        if self.width == 0 || self.height == 0 {
+            return Err(ImageError::InvalidDimensions(self.width, self.height));
+        }
 
         // Use image crate to encode
         let color_type = match self.format {
             PixelFormat::Rgb => image::ExtendedColorType::Rgb8,
             PixelFormat::Rgba => image::ExtendedColorType::Rgba8,
-            PixelFormat::Png => return self.data.clone(),
+            PixelFormat::Png => return Ok(self.data.clone()),
         };
 
-        if let Err(err) = image::codecs::png::PngEncoder::new(&mut png_data).write_image(
-            &self.data,
-            self.width,
-            self.height,
-            color_type,
-        ) {
-            // Avoid hard failure here; return empty data and log for diagnosis
-            log_warn!(
-                "PNG encoding failed: {} ({}x{}, format {:?})",
-                err,
-                self.width,
-                self.height,
-                color_type
-            );
-        }
+        image::codecs::png::PngEncoder::new(&mut png_data)
+            .write_image(&self.data, self.width, self.height, color_type)
+            .map_err(|e| ImageError::EncodeFailed(e.to_string()))?;
 
-        png_data
+        Ok(png_data)
     }
 
     /// Convert to RGBA data
@@ -753,5 +781,49 @@ mod tests {
 
         assert!(!palette.is_empty());
         assert!(palette.len() <= 256);
+    }
+
+    // Tests for error handling
+    #[test]
+    fn test_encode_to_png_valid_dimensions() {
+        let data = vec![255, 0, 0, 255, 0, 255, 0, 255];
+        let encoder = ImageEncoder::from_rgba(data, 2, 1);
+        let result = encoder.encode_to_png();
+        assert!(result.is_ok());
+        let png_data = result.unwrap();
+        assert!(!png_data.is_empty());
+    }
+
+    #[test]
+    fn test_encode_to_png_invalid_dimensions() {
+        let data = vec![255, 0, 0, 255];
+        let encoder = ImageEncoder::from_rgba(data, 0, 1);
+        let result = encoder.encode_to_png();
+        assert!(result.is_err());
+        match result {
+            Err(ImageError::InvalidDimensions(0, 1)) => {}
+            _ => panic!("Expected InvalidDimensions error"),
+        }
+    }
+
+    #[test]
+    fn test_encode_to_png_zero_height() {
+        let data = vec![255, 0, 0, 255];
+        let encoder = ImageEncoder::from_rgba(data, 1, 0);
+        let result = encoder.encode_to_png();
+        assert!(result.is_err());
+        match result {
+            Err(ImageError::InvalidDimensions(1, 0)) => {}
+            _ => panic!("Expected InvalidDimensions error"),
+        }
+    }
+
+    #[test]
+    fn test_image_error_display() {
+        let err = ImageError::EncodeFailed("test error".to_string());
+        assert_eq!(format!("{}", err), "PNG encoding failed: test error");
+
+        let err = ImageError::InvalidDimensions(0, 100);
+        assert_eq!(format!("{}", err), "Invalid image dimensions: 0x100");
     }
 }
