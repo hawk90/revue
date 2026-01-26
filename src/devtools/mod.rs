@@ -584,6 +584,7 @@ mod tests {
         assert!(!config.visible);
         assert_eq!(config.position, DevToolsPosition::Right);
         assert_eq!(config.active_tab, DevToolsTab::Inspector);
+        assert_eq!(config.size, 50);
     }
 
     #[test]
@@ -616,16 +617,343 @@ mod tests {
 
         assert_eq!(panel.x, 70);
         assert_eq!(panel.width, 30);
+        assert_eq!(panel.height, 50);
     }
 
     #[test]
-    fn test_content_rect() {
+    fn test_panel_rect_left() {
+        let mut devtools = DevTools::new().size(25);
+        devtools.set_visible(true);
+        devtools.config.position = DevToolsPosition::Left;
+
+        let area = Rect::new(10, 5, 100, 50);
+        let panel = devtools.panel_rect(area).unwrap();
+
+        assert_eq!(panel.x, 10);
+        assert_eq!(panel.y, 5);
+        assert_eq!(panel.width, 25);
+        assert_eq!(panel.height, 50);
+    }
+
+    #[test]
+    fn test_panel_rect_bottom() {
+        let mut devtools = DevTools::new().size(15);
+        devtools.set_visible(true);
+        devtools.config.position = DevToolsPosition::Bottom;
+
+        let area = Rect::new(0, 0, 100, 50);
+        let panel = devtools.panel_rect(area).unwrap();
+
+        assert_eq!(panel.x, 0);
+        assert_eq!(panel.y, 35);
+        assert_eq!(panel.width, 100);
+        assert_eq!(panel.height, 15);
+    }
+
+    #[test]
+    fn test_panel_rect_overlay() {
+        let mut devtools = DevTools::new();
+        devtools.set_visible(true);
+        devtools.config.position = DevToolsPosition::Overlay;
+
+        let area = Rect::new(0, 0, 100, 50);
+        let panel = devtools.panel_rect(area).unwrap();
+
+        // Overlay should be centered: 2/3 of width/height, capped at 80/30
+        assert_eq!(panel.width, 66); // 100 * 2 / 3 = 66
+        assert_eq!(panel.height, 30); // 50 * 2 / 3 = 33, capped at 30
+    }
+
+    #[test]
+    fn test_panel_rect_invisible() {
+        let mut devtools = DevTools::new();
+        devtools.set_visible(false);
+
+        let area = Rect::new(0, 0, 100, 50);
+        assert!(devtools.panel_rect(area).is_none());
+    }
+
+    #[test]
+    fn test_content_rect_right() {
         let mut devtools = DevTools::new().size(30);
         devtools.set_visible(true);
 
         let area = Rect::new(0, 0, 100, 50);
         let content = devtools.content_rect(area);
 
+        assert_eq!(content.x, 0);
+        assert_eq!(content.y, 0);
         assert_eq!(content.width, 70);
+        assert_eq!(content.height, 50);
+    }
+
+    #[test]
+    fn test_content_rect_left() {
+        let mut devtools = DevTools::new().size(30);
+        devtools.set_visible(true);
+        devtools.config.position = DevToolsPosition::Left;
+
+        let area = Rect::new(0, 0, 100, 50);
+        let content = devtools.content_rect(area);
+
+        assert_eq!(content.x, 30);
+        assert_eq!(content.width, 70);
+    }
+
+    #[test]
+    fn test_content_rect_bottom() {
+        let mut devtools = DevTools::new().size(20);
+        devtools.set_visible(true);
+        devtools.config.position = DevToolsPosition::Bottom;
+
+        let area = Rect::new(0, 0, 100, 50);
+        let content = devtools.content_rect(area);
+
+        assert_eq!(content.y, 0);
+        assert_eq!(content.height, 30);
+    }
+
+    #[test]
+    fn test_content_rect_overlay() {
+        let mut devtools = DevTools::new();
+        devtools.set_visible(true);
+        devtools.config.position = DevToolsPosition::Overlay;
+
+        let area = Rect::new(0, 0, 100, 50);
+        let content = devtools.content_rect(area);
+
+        // Overlay doesn't reduce content area
+        assert_eq!(content, area);
+    }
+
+    #[test]
+    fn test_content_rect_invisible() {
+        let mut devtools = DevTools::new();
+        devtools.set_visible(false);
+
+        let area = Rect::new(0, 0, 100, 50);
+        let content = devtools.content_rect(area);
+
+        assert_eq!(content, area);
+    }
+
+    #[test]
+    fn test_devtools_new() {
+        let devtools = DevTools::new();
+        assert!(!devtools.is_visible());
+        assert_eq!(devtools.config.active_tab, DevToolsTab::Inspector);
+    }
+
+    #[test]
+    fn test_devtools_default() {
+        let devtools = DevTools::default();
+        assert!(!devtools.is_visible());
+        assert_eq!(devtools.config.active_tab, DevToolsTab::Inspector);
+    }
+
+    #[test]
+    fn test_devtools_config_builder() {
+        let config = DevToolsConfig {
+            position: DevToolsPosition::Left,
+            size: 40,
+            visible: true,
+            active_tab: DevToolsTab::Profiler,
+            bg_color: Color::rgb(10, 10, 10),
+            fg_color: Color::rgb(255, 255, 255),
+            accent_color: Color::rgb(100, 100, 255),
+        };
+
+        let devtools = DevTools::new().config(config);
+        assert!(devtools.is_visible());
+        assert_eq!(devtools.config.position, DevToolsPosition::Left);
+        assert_eq!(devtools.config.size, 40);
+        assert_eq!(devtools.config.active_tab, DevToolsTab::Profiler);
+    }
+
+    #[test]
+    fn test_devtools_position() {
+        let devtools = DevTools::new().position(DevToolsPosition::Bottom);
+        assert_eq!(devtools.config.position, DevToolsPosition::Bottom);
+    }
+
+    #[test]
+    fn test_devtools_size() {
+        let devtools = DevTools::new().size(60);
+        assert_eq!(devtools.config.size, 60);
+    }
+
+    #[test]
+    fn test_devtools_set_visible() {
+        let mut devtools = DevTools::new();
+        assert!(!devtools.is_visible());
+
+        devtools.set_visible(true);
+        assert!(devtools.is_visible());
+
+        devtools.set_visible(false);
+        assert!(!devtools.is_visible());
+    }
+
+    #[test]
+    fn test_devtools_set_tab() {
+        let mut devtools = DevTools::new();
+        assert_eq!(devtools.config.active_tab, DevToolsTab::Inspector);
+
+        devtools.set_tab(DevToolsTab::Profiler);
+        assert_eq!(devtools.config.active_tab, DevToolsTab::Profiler);
+    }
+
+    #[test]
+    fn test_devtools_next_tab() {
+        let mut devtools = DevTools::new();
+        assert_eq!(devtools.config.active_tab, DevToolsTab::Inspector);
+
+        devtools.next_tab();
+        assert_eq!(devtools.config.active_tab, DevToolsTab::State);
+
+        devtools.next_tab();
+        assert_eq!(devtools.config.active_tab, DevToolsTab::Styles);
+    }
+
+    #[test]
+    fn test_devtools_prev_tab() {
+        let mut devtools = DevTools::new();
+        assert_eq!(devtools.config.active_tab, DevToolsTab::Inspector);
+
+        devtools.prev_tab();
+        assert_eq!(devtools.config.active_tab, DevToolsTab::TimeTravel);
+
+        devtools.prev_tab();
+        assert_eq!(devtools.config.active_tab, DevToolsTab::Profiler);
+    }
+
+    #[test]
+    fn test_devtools_getters() {
+        let devtools = DevTools::new();
+
+        // Test inspector getter - just check it returns a reference
+        let _inspector = devtools.inspector();
+        let _state = devtools.state();
+        let _styles = devtools.styles();
+        let _events = devtools.events();
+        let _profiler = devtools.profiler();
+        let _time_travel = devtools.time_travel();
+    }
+
+    #[test]
+    fn test_devtools_getters_mut() {
+        let mut devtools = DevTools::new();
+
+        // Test mutable getters
+        devtools.inspector_mut();
+        devtools.state_mut();
+        devtools.styles_mut();
+        devtools.events_mut();
+        devtools.profiler_mut();
+        devtools.time_travel_mut();
+    }
+
+    #[test]
+    fn test_devtools_tab_label() {
+        assert_eq!(DevToolsTab::Inspector.label(), "Inspector");
+        assert_eq!(DevToolsTab::State.label(), "State");
+        assert_eq!(DevToolsTab::Styles.label(), "Styles");
+        assert_eq!(DevToolsTab::Events.label(), "Events");
+        assert_eq!(DevToolsTab::Profiler.label(), "Profiler");
+        assert_eq!(DevToolsTab::TimeTravel.label(), "Travel");
+    }
+
+    #[test]
+    fn test_devtools_tab_all() {
+        let all = DevToolsTab::all();
+        assert_eq!(all.len(), 6);
+        assert_eq!(all[0], DevToolsTab::Inspector);
+        assert_eq!(all[5], DevToolsTab::TimeTravel);
+    }
+
+    #[test]
+    fn test_devtools_tab_next_cycle() {
+        assert_eq!(DevToolsTab::Inspector.next(), DevToolsTab::State);
+        assert_eq!(DevToolsTab::State.next(), DevToolsTab::Styles);
+        assert_eq!(DevToolsTab::Styles.next(), DevToolsTab::Events);
+        assert_eq!(DevToolsTab::Events.next(), DevToolsTab::Profiler);
+        assert_eq!(DevToolsTab::Profiler.next(), DevToolsTab::TimeTravel);
+        assert_eq!(DevToolsTab::TimeTravel.next(), DevToolsTab::Inspector);
+    }
+
+    #[test]
+    fn test_devtools_tab_prev_cycle() {
+        assert_eq!(DevToolsTab::Inspector.prev(), DevToolsTab::TimeTravel);
+        assert_eq!(DevToolsTab::TimeTravel.prev(), DevToolsTab::Profiler);
+        assert_eq!(DevToolsTab::Profiler.prev(), DevToolsTab::Events);
+        assert_eq!(DevToolsTab::Events.prev(), DevToolsTab::Styles);
+        assert_eq!(DevToolsTab::Styles.prev(), DevToolsTab::State);
+        assert_eq!(DevToolsTab::State.prev(), DevToolsTab::Inspector);
+    }
+
+    #[test]
+    fn test_devtools_position_default() {
+        assert_eq!(DevToolsPosition::default(), DevToolsPosition::Right);
+    }
+
+    #[test]
+    fn test_devtools_tab_default() {
+        assert_eq!(DevToolsTab::default(), DevToolsTab::Inspector);
+    }
+
+    #[test]
+    fn test_panel_rect_saturation() {
+        let mut devtools = DevTools::new().size(200);
+        devtools.set_visible(true);
+
+        let area = Rect::new(0, 0, 100, 50);
+        let panel = devtools.panel_rect(area).unwrap();
+
+        // Size should be capped at area size
+        assert_eq!(panel.width, 100);
+        assert_eq!(panel.height, 50);
+    }
+
+    #[test]
+    fn test_content_rect_saturation() {
+        let mut devtools = DevTools::new().size(200);
+        devtools.set_visible(true);
+
+        let area = Rect::new(0, 0, 100, 50);
+        let content = devtools.content_rect(area);
+
+        // Content should handle large size gracefully
+        assert_eq!(content.width, 0); // 100 - 100 = 0
+        assert_eq!(content.height, 50);
+    }
+
+    #[test]
+    fn test_global_enable_disable_devtools() {
+        // Reset state first
+        disable_devtools();
+        assert!(!is_devtools_enabled());
+
+        enable_devtools();
+        assert!(is_devtools_enabled());
+
+        disable_devtools();
+        assert!(!is_devtools_enabled());
+    }
+
+    #[test]
+    fn test_global_toggle_devtools() {
+        // Set known state first
+        disable_devtools();
+        assert!(!is_devtools_enabled());
+
+        // Toggle should enable
+        let result = toggle_devtools();
+        assert!(result); // Returns new state (enabled)
+        assert!(is_devtools_enabled());
+
+        // Toggle should disable
+        let result = toggle_devtools();
+        assert!(!result); // Returns new state (disabled)
+        assert!(!is_devtools_enabled());
     }
 }
