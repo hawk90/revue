@@ -17,12 +17,47 @@ fn missing_brace_error(css: &str, pos: usize, expected: char) -> ParseError {
     )
 }
 
+/// Maximum allowed CSS size to prevent memory exhaustion
+const MAX_CSS_SIZE: usize = 1_000_000; // 1MB
+/// Maximum number of rules to prevent excessive memory usage
+const MAX_RULES: usize = 10_000;
+/// Maximum number of total declarations across all rules
+const MAX_DECLARATIONS: usize = 10_000; // Lowered for testing
+
 pub fn parse(css: &str) -> Result<StyleSheet, ParseError> {
+    // Check CSS size limit before parsing
+    if css.len() > MAX_CSS_SIZE {
+        return Err(make_error(
+            css,
+            css.len().min(css.len()),
+            &format!(
+                "CSS input too large: {} bytes (max: {} bytes). Consider splitting into multiple files.",
+                css.len(),
+                MAX_CSS_SIZE
+            ),
+            ErrorCode::InvalidValue,
+        ));
+    }
+
     let mut sheet = StyleSheet::new();
     let bytes = css.as_bytes();
     let mut pos = 0;
+    let mut total_declarations = 0;
 
     while pos < bytes.len() {
+        // Check rule limit
+        if sheet.rules.len() >= MAX_RULES {
+            return Err(make_error(
+                css,
+                pos,
+                &format!(
+                    "Too many CSS rules: {} (max: {}). Consider simplifying your styles.",
+                    sheet.rules.len(),
+                    MAX_RULES
+                ),
+                ErrorCode::InvalidValue,
+            ));
+        }
         // Skip whitespace and comments
         pos = skip_whitespace_bytes(bytes, pos);
         if pos >= bytes.len() {
@@ -64,6 +99,20 @@ pub fn parse(css: &str) -> Result<StyleSheet, ParseError> {
         // Parse declarations
         let (declarations, new_pos) = parse_declarations_str(css, pos)?;
         pos = new_pos;
+
+        // Check total declaration limit
+        total_declarations += declarations.len();
+        if total_declarations > MAX_DECLARATIONS {
+            return Err(make_error(
+                css,
+                pos,
+                &format!(
+                    "Too many CSS declarations: {} (max: {}). Consider simplifying your styles.",
+                    total_declarations, MAX_DECLARATIONS
+                ),
+                ErrorCode::InvalidValue,
+            ));
+        }
 
         // Expect '}'
         if pos >= bytes.len() || bytes[pos] != b'}' {
@@ -260,4 +309,83 @@ fn parse_declarations_str(
     }
 
     Ok((declarations, pos))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_normal_css() {
+        let css = r#"
+            .button {
+                background: blue;
+                color: white;
+            }
+        "#;
+        assert!(parse(css).is_ok());
+    }
+
+    #[test]
+    fn test_css_size_limit() {
+        // Create CSS that exceeds 1MB
+        let mut large_css = String::new();
+        large_css.push_str(".test { content: ");
+        for _ in 0..1_200_000 {
+            large_css.push('x');
+        }
+        large_css.push_str("; }");
+
+        let result = parse(&large_css);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("too large"));
+    }
+
+    #[test]
+    fn test_css_rules_limit() {
+        // Create CSS with many rules
+        let mut css = String::new();
+        for i in 0..10_001 {
+            css.push_str(&format!(".class{} {{ color: red; }}", i));
+        }
+
+        let result = parse(&css);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("Too many CSS rules"));
+    }
+
+    #[test]
+    fn test_css_declarations_limit() {
+        // Create CSS with many declarations (exceeds 10,000 limit)
+        let mut css = String::new();
+        for rule in 0..2 {
+            css.push_str(&format!(".rule{} {{ ", rule));
+            for i in 0..5_001 {
+                css.push_str(&format!("prop{}: val{}; ", i, i));
+            }
+            css.push_str("} ");
+        }
+
+        let result = parse(&css);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("CSS declarations") || err.message.contains("declarations"));
+    }
+
+    #[test]
+    fn test_css_within_limits() {
+        // CSS within all limits should parse fine
+        let mut css = String::new();
+        for i in 0..100 {
+            css.push_str(&format!(".class{} {{ ", i));
+            for j in 0..10 {
+                css.push_str(&format!("prop{}: val{}; ", j, j));
+            }
+            css.push_str("}");
+        }
+
+        assert!(parse(&css).is_ok());
+    }
 }
