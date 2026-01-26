@@ -8,7 +8,7 @@
 //!
 //! # Example
 //!
-//! ```ignore
+//! ```text
 //! use revue::widget::layout::dock::{DockManager, DockArea, Panel};
 //!
 //! DockManager::new()
