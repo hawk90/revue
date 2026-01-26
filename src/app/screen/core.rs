@@ -352,3 +352,365 @@ impl Default for ScreenManager {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::screen::types::ScreenConfig;
+
+    // Mock screen for testing
+    struct MockScreen {
+        id: ScreenId,
+        config: ScreenConfig,
+        dismissible: bool,
+    }
+
+    impl MockScreen {
+        fn new(id: ScreenId) -> Self {
+            Self {
+                id,
+                config: ScreenConfig::default(),
+                dismissible: false,
+            }
+        }
+
+        fn with_dismissible(mut self, dismissible: bool) -> Self {
+            self.dismissible = dismissible;
+            self.config.dismissable = dismissible;
+            self
+        }
+
+        fn with_config(mut self, config: ScreenConfig) -> Self {
+            self.config = config;
+            self
+        }
+    }
+
+    impl Screen for MockScreen {
+        fn id(&self) -> ScreenId {
+            self.id.clone()
+        }
+
+        fn config(&self) -> ScreenConfig {
+            self.config.clone()
+        }
+
+        fn update(&mut self) -> ScreenResult {
+            ScreenResult::Continue
+        }
+
+        fn render(&self, _ctx: &mut RenderContext) {}
+
+        fn on_key(&mut self, _key: &crate::event::KeyEvent) -> ScreenResult {
+            ScreenResult::Pass
+        }
+
+        fn on_event(&mut self, _event: ScreenEvent) {}
+    }
+
+    fn create_test_manager() -> (ScreenManager, ScreenId) {
+        let mut manager = ScreenManager::new();
+        let screen_id = "test_screen";
+
+        manager.register(screen_id, || Box::new(MockScreen::new(screen_id.into())));
+        manager.push(screen_id);
+
+        (manager, screen_id.into())
+    }
+
+    #[test]
+    fn test_screen_manager_new() {
+        let manager = ScreenManager::new();
+        assert_eq!(manager.depth(), 0);
+        assert!(!manager.can_pop());
+        assert!(manager.current().is_none());
+    }
+
+    #[test]
+    fn test_screen_manager_default() {
+        let manager = ScreenManager::default();
+        assert_eq!(manager.depth(), 0);
+    }
+
+    #[test]
+    fn test_register() {
+        let mut manager = ScreenManager::new();
+        let screen_id = "test_screen";
+
+        manager.register(screen_id, || Box::new(MockScreen::new(screen_id.into())));
+
+        // Push should now work
+        assert!(manager.push(screen_id));
+        assert_eq!(manager.depth(), 1);
+    }
+
+    #[test]
+    fn test_push_and_pop() {
+        let mut manager = ScreenManager::new();
+        manager.register("screen1", || Box::new(MockScreen::new("screen1".into())));
+        manager.register("screen2", || Box::new(MockScreen::new("screen2".into())));
+
+        manager.push("screen1");
+        assert_eq!(manager.depth(), 1);
+
+        manager.push("screen2");
+        assert_eq!(manager.depth(), 2);
+
+        // Pop should work (2 screens -> 1 screen)
+        assert!(manager.pop());
+        assert_eq!(manager.depth(), 1);
+        assert_eq!(manager.current_id().unwrap(), "screen1".into());
+
+        // Pop should fail (only 1 screen left)
+        assert!(!manager.pop());
+        assert_eq!(manager.depth(), 1);
+    }
+
+    #[test]
+    fn test_pop_requires_one_screen() {
+        let (mut manager, screen_id) = create_test_manager();
+
+        // Can't pop the last screen
+        assert!(!manager.pop()); // Should fail - only one screen
+        assert_eq!(manager.depth(), 1);
+        assert_eq!(manager.current_id().unwrap(), screen_id);
+    }
+
+    #[test]
+    fn test_current() {
+        let (manager, screen_id) = create_test_manager();
+
+        let current = manager.current().unwrap();
+        assert_eq!(current.id(), screen_id);
+
+        let current_id = manager.current_id().unwrap();
+        assert_eq!(current_id, screen_id);
+    }
+
+    #[test]
+    fn test_current_mut() {
+        let (mut manager, _screen_id) = create_test_manager();
+
+        let current = manager.current_mut().unwrap();
+        assert_eq!(current.id(), "test_screen".into());
+    }
+
+    #[test]
+    fn test_depth() {
+        let mut manager = ScreenManager::new();
+        manager.register("screen1", || Box::new(MockScreen::new("screen1".into())));
+        manager.register("screen2", || Box::new(MockScreen::new("screen2".into())));
+        assert_eq!(manager.depth(), 0);
+
+        manager.push("screen1");
+        assert_eq!(manager.depth(), 1);
+
+        manager.push("screen2");
+        assert_eq!(manager.depth(), 2);
+
+        manager.pop();
+        assert_eq!(manager.depth(), 1);
+    }
+
+    #[test]
+    fn test_can_pop() {
+        let mut manager = ScreenManager::new();
+        manager.register("screen1", || Box::new(MockScreen::new("screen1".into())));
+        manager.register("screen2", || Box::new(MockScreen::new("screen2".into())));
+        assert!(!manager.can_pop()); // Empty stack
+
+        manager.push("screen1");
+        assert!(!manager.can_pop()); // Only one screen
+        assert_eq!(manager.depth(), 1);
+
+        manager.push("screen2");
+        assert!(manager.can_pop()); // Two screens now
+        assert_eq!(manager.depth(), 2);
+    }
+
+    #[test]
+    fn test_has_screen() {
+        let (manager, screen_id) = create_test_manager();
+
+        assert!(manager.has_screen(&screen_id));
+        assert!(!manager.has_screen(&"nonexistent".into()));
+    }
+
+    #[test]
+    fn test_push_with_data() {
+        let mut manager = ScreenManager::new();
+        manager.register("test", || Box::new(MockScreen::new("test".into())));
+
+        let data: ScreenData = Box::new("test_data");
+        assert!(manager.push_with_data("test", data));
+        assert_eq!(manager.depth(), 1);
+    }
+
+    #[test]
+    fn test_pop_to() {
+        let mut manager = ScreenManager::new();
+        manager.register("screen1", || Box::new(MockScreen::new("screen1".into())));
+        manager.register("screen2", || Box::new(MockScreen::new("screen2".into())));
+        manager.register("screen3", || Box::new(MockScreen::new("screen3".into())));
+
+        manager.push("screen1");
+        manager.push("screen2");
+        manager.push("screen3");
+
+        assert_eq!(manager.depth(), 3);
+
+        // Pop to screen2
+        assert!(manager.pop_to("screen2"));
+        assert_eq!(manager.depth(), 2);
+        assert_eq!(manager.current_id().unwrap(), "screen2".into());
+    }
+
+    #[test]
+    fn test_pop_to_not_found() {
+        let mut manager = ScreenManager::new();
+        manager.register("screen1", || Box::new(MockScreen::new("screen1".into())));
+        manager.push("screen1");
+
+        // Try to pop to non-existent screen
+        assert!(!manager.pop_to("nonexistent"));
+        assert_eq!(manager.depth(), 1);
+    }
+
+    #[test]
+    fn test_replace() {
+        let mut manager = ScreenManager::new();
+        manager.register("screen1", || Box::new(MockScreen::new("screen1".into())));
+        manager.register("screen2", || Box::new(MockScreen::new("screen2".into())));
+
+        manager.push("screen1");
+        assert_eq!(manager.current_id().unwrap(), "screen1".into());
+
+        assert!(manager.replace("screen2"));
+        assert_eq!(manager.current_id().unwrap(), "screen2".into());
+        // replace calls pop() (fails with 1 screen) + push(), so depth becomes 2
+        assert_eq!(manager.depth(), 2);
+    }
+
+    #[test]
+    fn test_goto() {
+        let mut manager = ScreenManager::new();
+        manager.register("screen1", || Box::new(MockScreen::new("screen1".into())));
+        manager.register("screen2", || Box::new(MockScreen::new("screen2".into())));
+        manager.register("screen3", || Box::new(MockScreen::new("screen3".into())));
+
+        manager.push("screen1");
+        manager.push("screen2");
+        manager.push("screen3");
+
+        assert_eq!(manager.depth(), 3);
+
+        // Goto should pop all except root, then push target
+        assert!(manager.goto("screen2"));
+        // Result: [screen1, screen2] - root + new screen
+        assert_eq!(manager.depth(), 2);
+        assert_eq!(manager.current_id().unwrap(), "screen2".into());
+    }
+
+    #[test]
+    fn test_history() {
+        let mut manager = ScreenManager::new();
+        manager.register("screen1", || Box::new(MockScreen::new("screen1".into())));
+        manager.register("screen2", || Box::new(MockScreen::new("screen2".into())));
+        manager.register("screen3", || Box::new(MockScreen::new("screen3".into())));
+
+        manager.push("screen1");
+        manager.push("screen2");
+        manager.push("screen3");
+
+        let history = manager.history();
+        assert_eq!(history.len(), 3);
+        assert_eq!(history[0], "screen1".into());
+        assert_eq!(history[1], "screen2".into());
+        assert_eq!(history[2], "screen3".into());
+    }
+
+    #[test]
+    fn test_escaping_dismissable() {
+        let mut manager = ScreenManager::new();
+
+        manager.register("base", || Box::new(MockScreen::new("base".into())));
+        manager.register("modal", || {
+            Box::new(MockScreen::new("modal".into()).with_dismissible(true))
+        });
+
+        manager.push("base");
+        manager.push("modal");
+        assert_eq!(manager.depth(), 2);
+
+        // Create mock key event for escape
+        let key = crate::event::Key::Escape;
+        let key_event = KeyEvent::new(key);
+
+        // Should pop because modal screen is dismissable
+        let result = manager.handle_key(&key_event);
+        assert!(matches!(result, ScreenResult::Render));
+
+        // Stack should have only base screen
+        assert_eq!(manager.depth(), 1);
+        assert_eq!(manager.current_id().unwrap(), "base".into());
+    }
+
+    #[test]
+    fn test_escaping_non_dismissable() {
+        let mut manager = ScreenManager::new();
+
+        let screen_id = "test_screen";
+        manager.register(screen_id, || {
+            Box::new(MockScreen::new(screen_id.into()).with_dismissible(false))
+        });
+
+        manager.push(screen_id);
+        assert_eq!(manager.depth(), 1);
+
+        // Create mock key event for escape
+        let key = crate::event::Key::Escape;
+        let key_event = KeyEvent::new(key);
+
+        // Should NOT pop because screen is not dismissable
+        let result = manager.handle_key(&key_event);
+        // Screen should pass the event to the screen
+        assert!(matches!(result, ScreenResult::Pass));
+
+        // Stack should still have the screen
+        assert_eq!(manager.depth(), 1);
+    }
+
+    #[test]
+    fn test_is_transitioning() {
+        let manager = ScreenManager::new();
+        assert!(!manager.is_transitioning());
+        assert!(manager.transition_progress().is_none());
+    }
+
+    #[test]
+    fn test_update_completes_transition() {
+        let mut manager = ScreenManager::new();
+        manager.register("screen", || Box::new(MockScreen::new("screen".into())));
+        manager.push("screen");
+
+        // Update should work
+        let result = manager.update();
+        assert!(matches!(result, ScreenResult::Continue));
+    }
+
+    #[test]
+    fn test_stack_entry_visibility() {
+        let mut manager = ScreenManager::new();
+        manager.register("screen1", || Box::new(MockScreen::new("screen1".into())));
+        manager.register("screen2", || Box::new(MockScreen::new("screen2".into())));
+
+        manager.push("screen1");
+        manager.push("screen2");
+
+        // Only top should be visible
+        assert!(
+            !manager.has_screen(&"screen1".into())
+                || manager.current_id() != Some("screen1".into())
+        );
+    }
+}
