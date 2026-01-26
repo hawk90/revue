@@ -60,9 +60,14 @@ mod shared_runtime {
         if let Some(runtime) = RUNTIME.get() {
             Ok(runtime.handle().clone())
         } else {
-            // Attempt to create the runtime
-            tokio::runtime::Builder::new_current_thread()
+            // Use multi_thread runtime to allow block_on() from within runtime context
+            tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
+                .worker_threads(
+                    std::thread::available_parallelism()
+                        .map(|n| n.get())
+                        .unwrap_or(4),
+                )
                 .build()
                 .map(|runtime| {
                     // Gracefully handle races where another thread sets the runtime first.
