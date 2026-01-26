@@ -75,6 +75,26 @@ impl LayoutTree {
         self.root
     }
 
+    /// Mark a node as dirty, triggering recalculation on next compute
+    ///
+    /// This also marks all descendants as dirty to ensure correct layout propagation.
+    #[allow(dead_code)]
+    pub fn mark_dirty(&mut self, id: u64) {
+        // Mark this node and all descendants as dirty
+        let mut stack = vec![id];
+
+        while let Some(current_id) = stack.pop() {
+            if let Some(node) = self.nodes.get_mut(&current_id) {
+                node.dirty = true;
+
+                // Add children to stack for processing
+                for &child_id in &node.children {
+                    stack.push(child_id);
+                }
+            }
+        }
+    }
+
     /// Get children IDs for a node
     #[allow(dead_code)]
     pub fn children(&self, id: u64) -> &[u64] {

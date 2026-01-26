@@ -8,7 +8,7 @@ use crate::style::{
 };
 
 /// A node in the layout tree
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct LayoutNode {
     /// Node identifier (matches DomId)
     pub id: u64,
@@ -39,6 +39,28 @@ pub struct LayoutNode {
 
     /// Computed layout result (filled after compute)
     pub computed: ComputedLayout,
+
+    /// Dirty flag for incremental layout updates
+    /// When true, this node needs layout recalculation
+    pub dirty: bool,
+}
+
+impl Default for LayoutNode {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            display: Display::default(),
+            position: Position::default(),
+            flex: FlexProps::default(),
+            grid: GridProps::default(),
+            spacing: LayoutSpacing::default(),
+            sizing: SizeConstraints::default(),
+            children: Vec::new(),
+            parent: None,
+            computed: ComputedLayout::default(),
+            dirty: true, // New nodes are always dirty
+        }
+    }
 }
 
 /// Flexbox layout properties
