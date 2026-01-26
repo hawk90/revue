@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.40.0](https://github.com/hawk90/revue/compare/v2.39.1...v2.40.0) (2026-01-26)
+
+
+### Features
+
+* **reactive:** add incremental computed for SignalVec ([3268f56](https://github.com/hawk90/revue/commit/3268f564b1babbdb188da0d2818196dfb67405ec))
+
 ## [2.39.1](https://github.com/hawk90/revue/compare/v2.39.0...v2.39.1) (2026-01-26)
 
 
