@@ -28,10 +28,11 @@ impl DomRenderer {
         }
 
         // Get cached selectors (parsed once, reused across all nodes)
-        let cached_selectors = self.get_cached_selectors().clone();
+        // Clone the cached selectors to end the mutable borrow before creating resolver
+        let cached_selectors: Vec<_> = self.get_cached_selectors().clone();
 
         // Create resolver with cached selectors (avoids reparsing)
-        let resolver = StyleResolver::with_cached_selectors(&self.stylesheet, cached_selectors);
+        let resolver = StyleResolver::with_cached_selectors(&self.stylesheet, &cached_selectors);
         let node = self.tree.get(node_id)?;
 
         // Create closure for node lookup
@@ -63,10 +64,11 @@ impl DomRenderer {
         let parent_style = parent_id.and_then(|pid| self.styles.get(&pid).cloned());
 
         // Get cached selectors (parsed once, reused across all nodes)
-        let cached_selectors = self.get_cached_selectors().clone();
+        // Clone the cached selectors to end the mutable borrow before creating resolver
+        let cached_selectors: Vec<_> = self.get_cached_selectors().clone();
 
         // Create resolver with cached selectors (avoids reparsing)
-        let resolver = StyleResolver::with_cached_selectors(&self.stylesheet, cached_selectors);
+        let resolver = StyleResolver::with_cached_selectors(&self.stylesheet, &cached_selectors);
         let node = self.tree.get(node_id)?;
 
         // Create closure for node lookup

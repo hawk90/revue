@@ -59,13 +59,13 @@ pub fn open_browser(url: &str) -> bool {
 /// - The URL is invalid or inaccessible
 pub fn open_url(url: &str) -> std::io::Result<()> {
     #[cfg(target_os = "macos")]
-    let mut child = Command::new("open").arg(url).spawn()?;
+    let child = Command::new("open").arg(url).spawn()?;
 
     #[cfg(target_os = "linux")]
-    let mut child = Command::new("xdg-open").arg(url).spawn()?;
+    let child = Command::new("xdg-open").arg(url).spawn()?;
 
     #[cfg(target_os = "windows")]
-    let mut child = Command::new("cmd").args(["/C", "start", "", url]).spawn()?;
+    let child = Command::new("cmd").args(["/C", "start", "", url]).spawn()?;
 
     #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
     return Err(std::io::Error::new(
@@ -74,7 +74,8 @@ pub fn open_url(url: &str) -> std::io::Result<()> {
     ));
 
     // Detach - don't wait for browser to close
-    let _ = child.wait();
+    // Dropping the child detaches it (no wait() call)
+    drop(child);
     Ok(())
 }
 

@@ -48,13 +48,16 @@ impl<'a> StyleResolver<'a> {
     }
 
     /// Create a style resolver with pre-parsed selectors (avoids reparsing)
+    ///
+    /// Takes a slice reference to avoid unnecessary cloning of the selector cache.
+    /// The selectors are copied into the resolver's internal Vec for storage.
     pub fn with_cached_selectors(
         stylesheet: &'a StyleSheet,
-        selectors: Vec<(Selector, usize)>,
+        selectors: &[(Selector, usize)],
     ) -> Self {
         Self {
             stylesheet,
-            selectors,
+            selectors: selectors.to_vec(),
         }
     }
 

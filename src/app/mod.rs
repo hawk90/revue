@@ -423,7 +423,12 @@ impl App {
             self.update_layout_tree(root_dom_id);
         }
 
-        let (width, height) = terminal.size();
+        // Use current buffer size directly for layout (matches rendering size)
+        // terminal.size() returns internal buffer size which may lag after resize
+        let (width, height) = (
+            self.buffers[self.current_buffer].width(),
+            self.buffers[self.current_buffer].height(),
+        );
         let _ = self.layout.compute(root_dom_id, width, height);
 
         let dirty_dom_ids = self.dom.tree_mut().get_dirty_nodes();
@@ -515,10 +520,14 @@ impl App {
             return;
         };
 
-        let style = self
-            .dom
-            .style_for_with_inheritance(dom_id)
-            .expect("Style should exist");
+        // Use default style if computation fails (defensive programming)
+        let style = match self.dom.style_for_with_inheritance(dom_id) {
+            Some(s) => s,
+            None => {
+                crate::log_warn!("Style not found for DOM node {:?}, using default", dom_id);
+                crate::style::Style::default()
+            }
+        };
         let _ = self
             .layout
             .create_node_with_children(dom_id, &style, &children);

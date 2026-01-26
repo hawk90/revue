@@ -96,7 +96,11 @@ impl AppBuilder {
 
     /// Build the application
     pub fn build(mut self) -> App {
-        let initial_size = crossterm::terminal::size().unwrap_or((80, 24));
+        let initial_size = {
+            let (w, h) = crossterm::terminal::size().unwrap_or((80, 24));
+            // Clamp to a sane minimum to avoid 0x0 buffers on some environments
+            (w.max(1), h.max(1))
+        };
 
         // Collect and merge plugin styles
         let plugin_css = self.plugins.collect_styles();

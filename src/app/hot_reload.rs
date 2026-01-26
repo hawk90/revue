@@ -2,6 +2,7 @@
 
 use crate::constants::DEBOUNCE_FILE_SYSTEM;
 use notify::{Event, EventKind, RecursiveMode, Watcher};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver};
 use std::time::{Duration, Instant};
@@ -41,7 +42,9 @@ pub struct HotReload {
     _watcher: notify::RecommendedWatcher,
     receiver: Receiver<HotReloadEvent>,
     watched_paths: Vec<PathBuf>,
-    last_event: Option<Instant>,
+    /// Per-path debounce tracking: maps (event_type_variant, path) -> last_event_time
+    /// This prevents different files from debouncing each other
+    last_events: HashMap<String, Instant>,
     debounce: Duration,
 }
 
@@ -103,7 +106,7 @@ impl HotReload {
             _watcher: watcher,
             receiver: rx,
             watched_paths: Vec::new(),
-            last_event: None,
+            last_events: HashMap::new(),
             debounce: config.debounce,
         })
     }
@@ -152,14 +155,22 @@ impl HotReload {
     pub fn poll(&mut self) -> Option<HotReloadEvent> {
         match self.receiver.try_recv() {
             Ok(event) => {
-                // Apply debouncing
+                // Apply per-path debouncing
                 let now = Instant::now();
-                if let Some(last) = self.last_event {
+                // Create a unique key based on event type and path
+                let event_key = match &event {
+                    HotReloadEvent::StylesheetChanged(p) => format!("changed:{}", p.display()),
+                    HotReloadEvent::FileCreated(p) => format!("created:{}", p.display()),
+                    HotReloadEvent::FileDeleted(p) => format!("deleted:{}", p.display()),
+                    HotReloadEvent::Error(_) => format!("error:{}", now.elapsed().as_millis()),
+                };
+
+                if let Some(&last) = self.last_events.get(&event_key) {
                     if now.duration_since(last) < self.debounce {
-                        return None;
+                        return None; // Debounced
                     }
                 }
-                self.last_event = Some(now);
+                self.last_events.insert(event_key, now);
                 Some(event)
             }
             Err(_) => None,
@@ -170,7 +181,15 @@ impl HotReload {
     pub fn wait(&mut self) -> Option<HotReloadEvent> {
         match self.receiver.recv() {
             Ok(event) => {
-                self.last_event = Some(Instant::now());
+                let now = Instant::now();
+                // Create a unique key based on event type and path
+                let event_key = match &event {
+                    HotReloadEvent::StylesheetChanged(p) => format!("changed:{}", p.display()),
+                    HotReloadEvent::FileCreated(p) => format!("created:{}", p.display()),
+                    HotReloadEvent::FileDeleted(p) => format!("deleted:{}", p.display()),
+                    HotReloadEvent::Error(_) => format!("error:{}", now.elapsed().as_millis()),
+                };
+                self.last_events.insert(event_key, now);
                 Some(event)
             }
             Err(_) => None,
@@ -181,7 +200,15 @@ impl HotReload {
     pub fn wait_timeout(&mut self, timeout: Duration) -> Option<HotReloadEvent> {
         match self.receiver.recv_timeout(timeout) {
             Ok(event) => {
-                self.last_event = Some(Instant::now());
+                let now = Instant::now();
+                // Create a unique key based on event type and path
+                let event_key = match &event {
+                    HotReloadEvent::StylesheetChanged(p) => format!("changed:{}", p.display()),
+                    HotReloadEvent::FileCreated(p) => format!("created:{}", p.display()),
+                    HotReloadEvent::FileDeleted(p) => format!("deleted:{}", p.display()),
+                    HotReloadEvent::Error(_) => format!("error:{}", now.elapsed().as_millis()),
+                };
+                self.last_events.insert(event_key, now);
                 Some(event)
             }
             Err(_) => None,
@@ -192,7 +219,13 @@ impl HotReload {
     pub fn css_changed(&mut self) -> Option<PathBuf> {
         while let Some(event) = self.poll() {
             if let HotReloadEvent::StylesheetChanged(path) = event {
-                if path.extension().map(|e| e == "css").unwrap_or(false) {
+                // Case-insensitive extension check (handles .CSS, .Css, etc.)
+                if path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| e.eq_ignore_ascii_case("css"))
+                    .unwrap_or(false)
+                {
                     return Some(path);
                 }
             }

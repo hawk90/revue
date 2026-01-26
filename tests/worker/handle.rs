@@ -287,7 +287,6 @@ fn test_spawn_async_basic() {
 // This test needs the worker pool to be async-aware or use a different approach.
 #[cfg(feature = "async")]
 #[test]
-#[ignore = "Worker pool doesn't support async tasks - runtime conflict"]
 fn test_spawn_async_multiple_await() {
     let handle = WorkerHandle::spawn(async {
         let a = async { 1 }.await;

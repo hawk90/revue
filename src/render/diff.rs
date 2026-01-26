@@ -34,6 +34,30 @@ pub fn diff(old: &Buffer, new: &Buffer, dirty_rects: &[Rect]) -> Vec<Change> {
         return diff(old, new, &[full_screen]);
     }
 
+    // Optimization: skip HashSet for single rect (no overlap possible)
+    // For 2+ rects, we need deduplication for overlapping regions
+    if dirty_rects.len() == 1 {
+        for rect in dirty_rects {
+            // Use saturating_add to prevent overflow near u16::MAX
+            let y_end = rect.y.saturating_add(rect.height).min(new.height());
+            let x_end = rect.x.saturating_add(rect.width).min(new.width());
+
+            for y in rect.y..y_end {
+                for x in rect.x..x_end {
+                    let old_cell = old.get(x, y);
+                    let new_cell = new.get(x, y);
+
+                    if old_cell != new_cell {
+                        if let Some(new) = new_cell {
+                            changes.push(Change { x, y, cell: *new });
+                        }
+                    }
+                }
+            }
+        }
+        return changes;
+    }
+
     // A set to keep track of checked cells to avoid redundant comparisons from overlapping rects.
     // This is more efficient than creating a huge list of changes and then deduping.
     let mut checked_cells = std::collections::HashSet::with_capacity(dirty_rects.len() * 10);
