@@ -6,6 +6,7 @@ pub mod accordion;
 pub mod border;
 pub mod card;
 pub mod collapsible;
+pub mod dock;
 pub mod grid;
 pub mod layer;
 pub mod positioned;
@@ -22,6 +23,8 @@ pub use accordion::{accordion, section, Accordion, AccordionSection};
 pub use border::{border, draw_border, Border, BorderType};
 pub use card::{card, Card, CardVariant};
 pub use collapsible::{collapsible, Collapsible};
+#[allow(unused_imports)]
+pub use dock::{dock, dock_area, DockArea, DockManager, DockPosition, TabContent};
 pub use grid::{
     grid, grid_item, grid_template, Grid, GridAlign, GridItem, GridPlacement, TrackSize,
 };
