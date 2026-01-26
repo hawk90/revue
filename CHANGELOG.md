@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.40.1](https://github.com/hawk90/revue/compare/v2.40.0...v2.40.1) (2026-01-26)
+
+
+### Bug Fixes
+
+* **docs,tests:** correct MSRV badge and fix worker test hang ([51538a0](https://github.com/hawk90/revue/commit/51538a0683dde779f2a543d567eeca6e8d0db621))
+* **docs:** change dock.rs code block from ignore to text ([1119922](https://github.com/hawk90/revue/commit/11199222e47e173ea157365e8f384e38f865d8d3))
+
 ## [2.40.0](https://github.com/hawk90/revue/compare/v2.39.1...v2.40.0) (2026-01-26)
 
 
