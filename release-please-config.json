@@ -15,11 +15,11 @@
   "changelog-sections": [
     { "type": "feat", "section": "Features" },
     { "type": "fix", "section": "Bug Fixes" },
-    { "type": "perf", "section": "Performance" },
-    { "type": "docs", "section": "Documentation" },
-    { "type": "refactor", "section": "Code Refactoring" },
-    { "type": "test", "section": "Tests" },
-    { "type": "chore", "section": "Miscellaneous", "hidden": true }
+    { "type": "perf", "section": "Performance", "release-type": "none" },
+    { "type": "docs", "section": "Documentation", "release-type": "none" },
+    { "type": "refactor", "section": "Code Refactoring", "release-type": "none" },
+    { "type": "test", "section": "Tests", "release-type": "none" },
+    { "type": "chore", "section": "Miscellaneous", "hidden": true, "release-type": "none" }
   ],
   "pull-request-title-pattern": "chore: release ${version}",
   "pull-request-header": ":robot: This PR was created by release-please.",
