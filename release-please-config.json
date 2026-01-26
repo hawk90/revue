@@ -8,8 +8,7 @@
       "changelog-path": "CHANGELOG.md",
       "versioning": "default",
       "extra-files": [
-        "Cargo.toml",
-        "revue-macros/Cargo.toml"
+        "Cargo.toml"
       ]
     }
   },

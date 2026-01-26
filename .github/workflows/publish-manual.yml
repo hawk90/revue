@@ -1,0 +1,64 @@
+name: Publish Manual (Fallback)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (uses manifest if empty)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  publish-macros:
+    name: Publish revue-macros to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Get version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            VERSION=$(cat .release-please-manifest.json | jq -r '."."')
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          fi
+      - name: Update revue-macros version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -i "s/^version = .*/version = \"$VERSION\"/" revue-macros/Cargo.toml
+          cat revue-macros/Cargo.toml
+      - name: Publish revue-macros
+        run: |
+          cd revue-macros
+          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  publish:
+    name: Publish revue to crates.io
+    runs-on: ubuntu-latest
+    needs: publish-macros
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Wait for crates.io
+        run: sleep 30
+      - name: Get version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            VERSION=$(cat .release-please-manifest.json | jq -r '."."')
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          fi
+      - name: Update Cargo.toml dependency
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -i "s/revue-macros = { path = \"revue-macros\", version = \".*\" }/revue-macros = { path = \"revue-macros\", version = \"$VERSION\" }/" Cargo.toml
+          grep revue-macros Cargo.toml
+      - name: Publish revue
+        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
