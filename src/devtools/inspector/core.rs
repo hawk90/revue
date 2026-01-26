@@ -410,3 +410,438 @@ impl Inspector {
         draw_text_overlay(buffer, x, y, text, color);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_inspector() -> Inspector {
+        Inspector::new()
+    }
+
+    #[test]
+    fn test_inspector_new() {
+        let inspector = Inspector::new();
+        assert!(inspector.nodes.is_empty());
+        assert!(inspector.roots.is_empty());
+        assert!(inspector.selected.is_none());
+        assert_eq!(inspector.next_id, 0);
+    }
+
+    #[test]
+    fn test_inspector_default() {
+        let inspector = Inspector::default();
+        assert!(inspector.nodes.is_empty());
+        assert!(inspector.roots.is_empty());
+    }
+
+    #[test]
+    fn test_show_bounds() {
+        let inspector = Inspector::new().show_bounds(true);
+        assert!(inspector.config.show_bounds);
+    }
+
+    #[test]
+    fn test_show_ids() {
+        let inspector = Inspector::new().show_ids(true);
+        assert!(inspector.config.show_ids);
+    }
+
+    #[test]
+    fn test_show_classes() {
+        let inspector = Inspector::new().show_classes(true);
+        assert!(inspector.config.show_classes);
+    }
+
+    #[test]
+    fn test_config() {
+        let config = InspectorConfig {
+            show_bounds: true,
+            show_ids: true,
+            show_classes: true,
+            show_rect: true,
+            highlight_color: Color::rgb(255, 255, 255),
+        };
+        let inspector = Inspector::new().config(config);
+        assert!(inspector.config.show_bounds);
+        assert!(inspector.config.show_ids);
+        assert!(inspector.config.show_classes);
+        assert!(inspector.config.show_rect);
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut inspector = Inspector::new();
+        inspector.add_root("Root");
+        inspector.select(Some(0));
+        assert_eq!(inspector.nodes.len(), 1);
+        assert!(inspector.selected.is_some());
+
+        inspector.clear();
+        assert!(inspector.nodes.is_empty());
+        assert!(inspector.roots.is_empty());
+        assert!(inspector.selected.is_none());
+        assert_eq!(inspector.next_id, 0);
+    }
+
+    #[test]
+    fn test_add_root() {
+        let mut inspector = Inspector::new();
+
+        let id1 = inspector.add_root("Root1");
+        assert_eq!(id1, 0);
+        assert_eq!(inspector.nodes.len(), 1);
+        assert_eq!(inspector.roots.len(), 1);
+        assert_eq!(inspector.next_id, 1);
+
+        let id2 = inspector.add_root("Root2");
+        assert_eq!(id2, 1);
+        assert_eq!(inspector.nodes.len(), 2);
+        assert_eq!(inspector.roots.len(), 2);
+        assert_eq!(inspector.next_id, 2);
+    }
+
+    #[test]
+    fn test_add_child() {
+        let mut inspector = Inspector::new();
+
+        let root = inspector.add_root("Root");
+        assert_eq!(root, 0);
+
+        let child = inspector.add_child(root, "Child");
+        assert_eq!(child, 1);
+        assert_eq!(inspector.nodes.len(), 2);
+
+        // Check parent-child relationship
+        let parent = inspector.get(root).unwrap();
+        assert_eq!(parent.children.len(), 1);
+        assert_eq!(parent.children[0], child);
+
+        let child_node = inspector.get(child).unwrap();
+        assert_eq!(child_node.parent, Some(root));
+    }
+
+    #[test]
+    fn test_get() {
+        let mut inspector = Inspector::new();
+
+        let id = inspector.add_root("Root");
+        let node = inspector.get(id);
+        assert!(node.is_some());
+        assert_eq!(node.unwrap().type_name, "Root");
+
+        let non_existent = inspector.get(999);
+        assert!(non_existent.is_none());
+    }
+
+    #[test]
+    fn test_get_mut() {
+        let mut inspector = Inspector::new();
+
+        let id = inspector.add_root("Root");
+        let node = inspector.get_mut(id);
+        assert!(node.is_some());
+        assert_eq!(node.unwrap().type_name, "Root");
+
+        let non_existent = inspector.get_mut(999);
+        assert!(non_existent.is_none());
+    }
+
+    #[test]
+    fn test_select() {
+        let mut inspector = Inspector::new();
+
+        let id1 = inspector.add_root("Root1");
+        let id2 = inspector.add_root("Root2");
+
+        // Select first node
+        inspector.select(Some(id1));
+        assert_eq!(inspector.selected, Some(id1));
+        let node = inspector.get(id1).unwrap();
+        assert!(node.selected);
+
+        // Select second node (first should be deselected)
+        inspector.select(Some(id2));
+        assert_eq!(inspector.selected, Some(id2));
+        let node1 = inspector.get(id1).unwrap();
+        assert!(!node1.selected);
+        let node2 = inspector.get(id2).unwrap();
+        assert!(node2.selected);
+
+        // Deselect
+        inspector.select(None);
+        assert!(inspector.selected.is_none());
+        let node2 = inspector.get(id2).unwrap();
+        assert!(!node2.selected);
+    }
+
+    #[test]
+    fn test_selected() {
+        let mut inspector = Inspector::new();
+
+        assert!(inspector.selected().is_none());
+
+        let id = inspector.add_root("Root");
+        inspector.select(Some(id));
+
+        let selected = inspector.selected();
+        assert!(selected.is_some());
+        assert_eq!(selected.unwrap().type_name, "Root");
+    }
+
+    #[test]
+    fn test_toggle_expand() {
+        let mut inspector = Inspector::new();
+
+        let root = inspector.add_root("Root");
+        inspector.add_child(root, "Child");
+
+        let node = inspector.get(root).unwrap();
+        // Nodes start expanded by default
+        assert!(node.expanded);
+
+        // Collapse it
+        inspector.toggle_expand(root);
+        let node = inspector.get(root).unwrap();
+        assert!(!node.expanded);
+
+        // Expand it again
+        inspector.toggle_expand(root);
+        let node = inspector.get(root).unwrap();
+        assert!(node.expanded);
+    }
+
+    #[test]
+    fn test_select_next() {
+        let mut inspector = Inspector::new();
+
+        let id1 = inspector.add_root("Root1");
+        let id2 = inspector.add_root("Root2");
+        let id3 = inspector.add_root("Root3");
+
+        // No selection - select_next advances to second node
+        inspector.select_next();
+        assert_eq!(inspector.selected, Some(id2));
+
+        // Select next (now at third)
+        inspector.select_next();
+        assert_eq!(inspector.selected, Some(id3));
+
+        // Select next again
+        inspector.select_next();
+        assert_eq!(inspector.selected, Some(id3));
+
+        // Already at last - should stay at last
+        inspector.select_next();
+        assert_eq!(inspector.selected, Some(id3));
+    }
+
+    #[test]
+    fn test_select_prev() {
+        let mut inspector = Inspector::new();
+
+        let id1 = inspector.add_root("Root1");
+        let id2 = inspector.add_root("Root2");
+        let id3 = inspector.add_root("Root3");
+
+        // Select last first
+        inspector.select(Some(id3));
+
+        // Select previous
+        inspector.select_prev();
+        assert_eq!(inspector.selected, Some(id2));
+
+        // Select previous again
+        inspector.select_prev();
+        assert_eq!(inspector.selected, Some(id1));
+
+        // Already at first - should stay at first
+        inspector.select_prev();
+        assert_eq!(inspector.selected, Some(id1));
+    }
+
+    #[test]
+    fn test_select_next_with_children() {
+        let mut inspector = Inspector::new();
+
+        let root = inspector.add_root("Root");
+        let child1 = inspector.add_child(root, "Child1");
+        let child2 = inspector.add_child(root, "Child2");
+
+        // Parent starts expanded by default, so children are visible
+        // No selection -> select_next advances to second visible node
+        inspector.select_next();
+        assert_eq!(inspector.selected, Some(child1));
+
+        // Next should be third node (child2)
+        inspector.select_next();
+        assert_eq!(inspector.selected, Some(child2));
+    }
+
+    #[test]
+    fn test_picker() {
+        let inspector = Inspector::new();
+        let _picker = inspector.picker();
+    }
+
+    #[test]
+    fn test_picker_mut() {
+        let mut inspector = Inspector::new();
+        let _picker = inspector.picker_mut();
+    }
+
+    #[test]
+    fn test_is_picker_active() {
+        let inspector = Inspector::new();
+        assert!(!inspector.is_picker_active());
+    }
+
+    #[test]
+    fn test_toggle_picker() {
+        let mut inspector = Inspector::new();
+        assert!(!inspector.is_picker_active());
+
+        inspector.toggle_picker();
+        // The picker state might be internal, just check it doesn't crash
+
+        inspector.toggle_picker();
+        // Just check it doesn't crash
+    }
+
+    #[test]
+    fn test_enable_picker() {
+        let mut inspector = Inspector::new();
+        inspector.enable_picker();
+        // Just check it doesn't crash
+    }
+
+    #[test]
+    fn test_disable_picker() {
+        let mut inspector = Inspector::new();
+        inspector.disable_picker();
+        // Just check it doesn't crash
+    }
+
+    #[test]
+    fn test_picker_mouse_move() {
+        let mut inspector = Inspector::new();
+        inspector.picker_mouse_move(10, 20);
+        // Just check it doesn't crash when picker is inactive
+    }
+
+    #[test]
+    fn test_picker_click() {
+        let mut inspector = Inspector::new();
+        let result = inspector.picker_click(10, 20);
+        // Should return None when picker is inactive
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_reveal_node() {
+        let mut inspector = Inspector::new();
+
+        let root = inspector.add_root("Root");
+        let child1 = inspector.add_child(root, "Child1");
+        let child2 = inspector.add_child(child1, "Child2");
+
+        // All nodes start expanded by default
+        let root_node = inspector.get(root).unwrap();
+        assert!(root_node.expanded);
+        let child1_node = inspector.get(child1).unwrap();
+        assert!(child1_node.expanded);
+
+        // Collapse them first to test reveal
+        inspector.toggle_expand(root);
+        inspector.toggle_expand(child1);
+
+        // Verify collapsed
+        assert!(!inspector.get(root).unwrap().expanded);
+        assert!(!inspector.get(child1).unwrap().expanded);
+
+        // Reveal the nested child
+        inspector.reveal_node(child2);
+
+        // Parents should now be expanded
+        let root_node = inspector.get(root).unwrap();
+        assert!(root_node.expanded);
+        let child1_node = inspector.get(child1).unwrap();
+        assert!(child1_node.expanded);
+    }
+
+    #[test]
+    fn test_reveal_root_node() {
+        let mut inspector = Inspector::new();
+
+        let root = inspector.add_root("Root");
+        inspector.reveal_node(root);
+
+        // Should not crash for root node (no parents)
+        // Root should remain expanded (its default state)
+        let root_node = inspector.get(root).unwrap();
+        assert!(root_node.expanded);
+    }
+
+    #[test]
+    fn test_visible_nodes_single() {
+        let mut inspector = Inspector::new();
+        inspector.add_root("Root");
+
+        // Use public methods that depend on visible_nodes
+        let visible_count = {
+            let inspector = &inspector;
+            inspector.visible_nodes().len()
+        };
+
+        assert_eq!(visible_count, 1);
+    }
+
+    #[test]
+    fn test_visible_nodes_with_hierarchy() {
+        let mut inspector = Inspector::new();
+
+        let root = inspector.add_root("Root");
+        inspector.add_child(root, "Child1");
+        inspector.add_child(root, "Child2");
+
+        // Children are visible by default (parent is expanded)
+        let visible = inspector.visible_nodes();
+        assert_eq!(visible.len(), 3);
+        assert_eq!(visible[0], root);
+
+        // Collapse root
+        inspector.toggle_expand(root);
+
+        // Now children should not be visible
+        let visible = inspector.visible_nodes();
+        assert_eq!(visible.len(), 1);
+        assert_eq!(visible[0], root);
+    }
+
+    #[test]
+    fn test_multiple_roots() {
+        let mut inspector = Inspector::new();
+
+        let root1 = inspector.add_root("Root1");
+        let _root2 = inspector.add_root("Root2");
+        let _child1 = inspector.add_child(root1, "Child1");
+
+        // First root is expanded by default
+        let visible = inspector.visible_nodes();
+        assert_eq!(visible.len(), 3); // root1 (expanded with child1), root2
+    }
+
+    #[test]
+    fn test_select_wrapping() {
+        let mut inspector = Inspector::new();
+
+        let id = inspector.add_root("Root");
+
+        // At single node, next/prev should stay at that node
+        inspector.select_next();
+        assert_eq!(inspector.selected, Some(id));
+
+        inspector.select_prev();
+        assert_eq!(inspector.selected, Some(id));
+    }
+}
