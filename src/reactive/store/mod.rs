@@ -36,6 +36,7 @@
 
 pub mod usage;
 
+use crate::utils::lock::{read_or_recover, write_or_recover};
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -126,31 +127,31 @@ impl StoreRegistry {
 
     /// Register a store
     pub fn register(&self, store: Arc<dyn Store>) {
-        let mut stores = self.stores.write().unwrap();
+        let mut stores = write_or_recover(&self.stores);
         stores.insert(store.id(), store);
     }
 
     /// Unregister a store
     pub fn unregister(&self, id: StoreId) {
-        let mut stores = self.stores.write().unwrap();
+        let mut stores = write_or_recover(&self.stores);
         stores.remove(&id);
     }
 
     /// Get a store by ID
     pub fn get(&self, id: StoreId) -> Option<Arc<dyn Store>> {
-        let stores = self.stores.read().unwrap();
+        let stores = read_or_recover(&self.stores);
         stores.get(&id).cloned()
     }
 
     /// Get all stores
     pub fn all(&self) -> Vec<Arc<dyn Store>> {
-        let stores = self.stores.read().unwrap();
+        let stores = read_or_recover(&self.stores);
         stores.values().cloned().collect()
     }
 
     /// Find a store by name
     pub fn find_by_name(&self, name: &str) -> Option<Arc<dyn Store>> {
-        let stores = self.stores.read().unwrap();
+        let stores = read_or_recover(&self.stores);
         stores.values().find(|s| s.name() == name).cloned()
     }
 }

@@ -36,7 +36,7 @@ exclude = [
     "tree-sitter-revue-css/",
     ".claude/",
     ".github/",
-    "*.md",
+    "CONTRIBUTING.md",
     "cliff.toml",
     "deny.toml",
     "lefthook.yml",

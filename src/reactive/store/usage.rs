@@ -1,6 +1,7 @@
 //! Store helper functions
 
 use super::Store;
+use crate::utils::lock::{read_or_recover, write_or_recover};
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -28,7 +29,7 @@ impl TypeStoreCache {
 
         // Try to read from cache
         {
-            let stores = self.stores.read().unwrap();
+            let stores = read_or_recover(&self.stores);
             if let Some(store_any) = stores.get(&type_id) {
                 // Try to downcast to Arc<T>
                 if let Ok(store) = Arc::downcast::<T>(store_any.clone()) {
@@ -43,7 +44,7 @@ impl TypeStoreCache {
 
         // Insert into cache
         {
-            let mut stores = self.stores.write().unwrap();
+            let mut stores = write_or_recover(&self.stores);
             stores.insert(type_id, store_any);
         }
 
