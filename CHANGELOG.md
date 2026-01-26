@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.38.3](https://github.com/hawk90/revue/compare/v2.38.2...v2.38.3) (2026-01-26)
+
+
+### Bug Fixes
+
+* **image:** add proper error handling for PNG encoding ([#307](https://github.com/hawk90/revue/issues/307)) ([fbd863a](https://github.com/hawk90/revue/commit/fbd863a7c6676ff21637c67ce8c7c363b36a2b07)), closes [#288](https://github.com/hawk90/revue/issues/288)
+
 ## [2.38.2](https://github.com/hawk90/revue/compare/v2.38.1...v2.38.2) (2026-01-26)
 
 
