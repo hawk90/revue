@@ -263,6 +263,7 @@ fn style_to_layout_node(id: u64, style: &Style) -> LayoutNode {
         children: Vec::new(),
         parent: None,
         computed: ComputedLayout::default(),
+        dirty: true,
     }
 }
 
@@ -302,6 +303,7 @@ fn update_node_from_style(node: &mut LayoutNode, style: &Style) {
         min_height: style.sizing.min_height,
         max_height: style.sizing.max_height,
     };
+    node.dirty = true;
 }
 
 #[cfg(test)]

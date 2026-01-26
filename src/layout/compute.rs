@@ -20,10 +20,16 @@ use crate::style::Display;
 /// * `root_id` - Root node ID
 /// * `width` - Available width
 /// * `height` - Available height
+///
+/// # Performance
+///
+/// This function currently computes the entire tree. For incremental updates,
+/// nodes marked as \`dirty\` will be recomputed, while clean nodes may skip computation.
 pub fn compute_layout(tree: &mut LayoutTree, root_id: u64, width: u16, height: u16) {
     // Set root node size and position
     if let Some(root) = tree.get_mut(root_id) {
         root.computed = ComputedLayout::new(0, 0, width, height);
+        root.dirty = true; // Root is always dirty on full layout
     }
 
     // Recursively compute layout
@@ -48,6 +54,23 @@ fn compute_node(
         // Set zero size for hidden nodes
         if let Some(node_mut) = tree.get_mut(node_id) {
             node_mut.computed = ComputedLayout::default();
+            node_mut.dirty = false; // Mark as clean
+        }
+        return;
+    }
+
+    // Check dirty flag - skip computation if already clean and viewport unchanged
+    let node = match tree.get(node_id) {
+        Some(n) => n,
+        None => return,
+    };
+
+    if !node.dirty {
+        // Node is clean and viewport hasn't changed, skip computation
+        // but still need to process children that might be dirty
+        let children = node.children.clone();
+        for &child_id in &children {
+            compute_node(tree, child_id, available_width, available_height, viewport);
         }
         return;
     }
@@ -92,6 +115,11 @@ fn compute_node(
         if let Some(child_mut) = tree.get_mut(child_id) {
             position::apply_position_offsets(child_mut, parent_layout, viewport);
         }
+    }
+
+    // Mark this node as clean after computing
+    if let Some(node_mut) = tree.get_mut(node_id) {
+        node_mut.dirty = false;
     }
 }
 
