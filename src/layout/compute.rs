@@ -1,6 +1,12 @@
 //! Layout computation orchestration
 //!
 //! Main entry point for computing layout across the tree.
+//!
+//! # Performance
+//!
+//! The layout engine uses efficient recursive traversal and only computes
+//! nodes that are visible (not Display::None). For large trees, consider
+//! splitting your UI into separate components to minimize recalculation scope.
 
 use super::node::ComputedLayout;
 use super::tree::LayoutTree;
