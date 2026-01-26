@@ -41,6 +41,10 @@ commit-msg:
 pre-push:
   parallel: true
   commands:
+    doc:
+      run: cargo doc --no-deps --all-features --document-private-items
+      fail_text: "Documentation build failed. Check for invalid code blocks."
+
     test:
       # Only run tests for changed Rust files
       run: |
