@@ -190,3 +190,81 @@ where
 {
     WorkerHandle::spawn(future)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_worker_error_display() {
+        assert_eq!(
+            format!("{}", WorkerError::Cancelled),
+            "Worker task was cancelled"
+        );
+        assert_eq!(
+            format!("{}", WorkerError::Panicked("test".to_string())),
+            "Worker task panicked: test"
+        );
+        assert_eq!(
+            format!("{}", WorkerError::ChannelClosed),
+            "Worker channel closed"
+        );
+        assert_eq!(format!("{}", WorkerError::Timeout), "Worker task timed out");
+        assert_eq!(
+            format!("{}", WorkerError::Custom("error".to_string())),
+            "Worker error: error"
+        );
+        assert_eq!(
+            format!(
+                "{}",
+                WorkerError::RuntimeCreationFailed("failed".to_string())
+            ),
+            "Failed to create tokio runtime: failed"
+        );
+    }
+
+    #[test]
+    fn test_priority_ordering() {
+        assert!(Priority::Low < Priority::Normal);
+        assert!(Priority::Normal < Priority::High);
+        assert!(Priority::Low < Priority::High);
+        assert_eq!(Priority::Normal, Priority::default());
+    }
+
+    #[test]
+    fn test_worker_config_default() {
+        let config = WorkerConfig::default();
+        assert!(config.threads >= 1);
+        assert_eq!(config.queue_capacity, 1000);
+        assert!(config.default_timeout_ms.is_none());
+    }
+
+    #[test]
+    fn test_worker_config_with_threads() {
+        let config = WorkerConfig::with_threads(4);
+        assert_eq!(config.threads, 4);
+        assert_eq!(config.queue_capacity, 1000);
+
+        // Minimum 1 thread
+        let config = WorkerConfig::with_threads(0);
+        assert_eq!(config.threads, 1);
+    }
+
+    #[test]
+    fn test_run_blocking() {
+        let handle = run_blocking(|| 42);
+        // Handle is created successfully
+        drop(handle);
+    }
+
+    #[cfg(feature = "async")]
+    #[test]
+    fn test_shared_runtime_handle() {
+        // Multiple calls should return handles
+        let result1 = shared_runtime::handle();
+        assert!(result1.is_ok());
+
+        let result2 = shared_runtime::handle();
+        assert!(result2.is_ok());
+    }
+}
