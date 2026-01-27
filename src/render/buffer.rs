@@ -3,6 +3,7 @@
 use super::Cell;
 use crate::style::Color;
 use crate::utils::unicode::char_width;
+use std::collections::HashMap;
 
 /// A buffer holding the terminal state
 #[derive(Debug, Clone)]
@@ -12,6 +13,8 @@ pub struct Buffer {
     height: u16,
     /// Hyperlink URL registry (indexed by hyperlink_id in Cell)
     hyperlinks: Vec<String>,
+    /// Hyperlink URL cache for O(1) lookup (URL -> id)
+    hyperlink_cache: HashMap<String, u16>,
     /// Escape sequence registry (indexed by sequence_id in Cell)
     /// Used for raw escape sequences like OSC 66 text sizing
     sequences: Vec<String>,
@@ -33,6 +36,7 @@ impl Buffer {
             width,
             height,
             hyperlinks: Vec::new(),
+            hyperlink_cache: HashMap::new(),
             sequences: Vec::new(),
         }
     }
@@ -208,11 +212,13 @@ impl Buffer {
     /// Register a hyperlink URL and return its ID
     pub fn register_hyperlink(&mut self, url: impl Into<String>) -> u16 {
         let url = url.into();
-        // Check if URL already exists
-        if let Some(idx) = self.hyperlinks.iter().position(|u| u == &url) {
-            return idx as u16;
+        // Check cache first (O(1) lookup)
+        if let Some(&id) = self.hyperlink_cache.get(&url) {
+            return id;
         }
+        // Add new hyperlink
         let id = self.hyperlinks.len() as u16;
+        self.hyperlink_cache.insert(url.clone(), id);
         self.hyperlinks.push(url);
         id
     }

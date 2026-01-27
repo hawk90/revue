@@ -63,6 +63,7 @@ pub fn fuzzy_match(pattern: &str, target: &str) -> Option<FuzzyMatch> {
     }
 
     let pattern_lower: Vec<char> = pattern.to_lowercase().chars().collect();
+    let pattern_chars: Vec<char> = pattern.chars().collect();
     let target_chars: Vec<char> = target.chars().collect();
     let target_lower: Vec<char> = target.to_lowercase().chars().collect();
 
@@ -79,7 +80,7 @@ pub fn fuzzy_match(pattern: &str, target: &str) -> Option<FuzzyMatch> {
             score += 1;
 
             // Bonus for case-sensitive match
-            if target_chars[i] == pattern.chars().nth(pattern_idx).unwrap_or(' ') {
+            if target_chars[i] == pattern_chars.get(pattern_idx).copied().unwrap_or(' ') {
                 score += 1;
             }
 
@@ -166,7 +167,7 @@ pub struct FuzzyMatcher {
     /// Pattern to match (lowercase)
     pattern: Vec<char>,
     /// Original pattern for case-sensitive bonus
-    original: String,
+    original_chars: Vec<char>,
     /// Minimum score threshold
     min_score: i32,
 }
@@ -176,7 +177,7 @@ impl FuzzyMatcher {
     pub fn new(pattern: &str) -> Self {
         Self {
             pattern: pattern.to_lowercase().chars().collect(),
-            original: pattern.to_string(),
+            original_chars: pattern.chars().collect(),
             min_score: 0,
         }
     }
@@ -212,7 +213,7 @@ impl FuzzyMatcher {
                 score += 1;
 
                 // Case-sensitive bonus
-                if let Some(orig_ch) = self.original.chars().nth(pattern_idx) {
+                if let Some(orig_ch) = self.original_chars.get(pattern_idx).copied() {
                     if target_chars[i] == orig_ch {
                         score += 1;
                     }

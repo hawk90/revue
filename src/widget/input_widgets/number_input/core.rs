@@ -305,7 +305,8 @@ impl NumberInput {
         if self.cursor > 0 {
             self.cursor -= 1;
             let byte_idx = Self::char_to_byte_index(&self.input_buffer, self.cursor);
-            if let Some(ch) = self.input_buffer.chars().nth(self.cursor) {
+            // Get char directly from byte index for O(1) instead of O(n²) with .chars().nth()
+            if let Some(ch) = self.input_buffer[byte_idx..].chars().next() {
                 self.input_buffer.drain(byte_idx..byte_idx + ch.len_utf8());
             }
         }
@@ -315,7 +316,8 @@ impl NumberInput {
         let char_count = self.buffer_char_count();
         if self.cursor < char_count {
             let byte_idx = Self::char_to_byte_index(&self.input_buffer, self.cursor);
-            if let Some(ch) = self.input_buffer.chars().nth(self.cursor) {
+            // Get char directly from byte index for O(1) instead of O(n²) with .chars().nth()
+            if let Some(ch) = self.input_buffer[byte_idx..].chars().next() {
                 self.input_buffer.drain(byte_idx..byte_idx + ch.len_utf8());
             }
         }

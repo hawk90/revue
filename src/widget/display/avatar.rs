@@ -396,9 +396,11 @@ impl View for Avatar {
                         left.fg = Some(bg);
                         ctx.buffer.set(area.x, area.y + 1, left);
 
+                        // Pre-collect initials chars for O(1) access
+                        let initials_chars: Vec<char> = initials.chars().collect();
                         for i in 1..4 {
                             let ch = if i == 1 || i == 2 {
-                                initials.chars().nth(i - 1).unwrap_or(' ')
+                                initials_chars.get(i - 1).copied().unwrap_or(' ')
                             } else {
                                 ' '
                             };
@@ -441,9 +443,11 @@ impl View for Avatar {
                         left.fg = Some(bg);
                         ctx.buffer.set(area.x, area.y + 1, left);
 
+                        // Pre-collect initials chars for O(1) access
+                        let initials_chars: Vec<char> = initials.chars().collect();
                         for i in 1..4 {
                             let ch = if i == 1 || i == 2 {
-                                initials.chars().nth(i - 1).unwrap_or(' ')
+                                initials_chars.get(i - 1).copied().unwrap_or(' ')
                             } else {
                                 ' '
                             };
@@ -485,9 +489,11 @@ impl View for Avatar {
                         left.fg = Some(bg);
                         ctx.buffer.set(area.x, area.y + 1, left);
 
+                        // Pre-collect initials chars for O(1) access
+                        let initials_chars: Vec<char> = initials.chars().collect();
                         for i in 1..4 {
                             let ch = if i == 1 || i == 2 {
-                                initials.chars().nth(i - 1).unwrap_or(' ')
+                                initials_chars.get(i - 1).copied().unwrap_or(' ')
                             } else {
                                 ' '
                             };

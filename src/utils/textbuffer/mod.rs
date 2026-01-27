@@ -24,11 +24,15 @@
 ///
 /// All positions are in CHARACTER indices, not byte indices.
 /// This ensures correct handling of multi-byte UTF-8 characters
-/// (emoji, CJK, etc).
+/// (emoji, CJK, etc.).
 #[derive(Clone, Debug, Default)]
 pub struct TextBuffer {
     /// The text content
     content: String,
+    /// Pre-computed character array for O(1) access
+    chars: Vec<char>,
+    /// Pre-computed byte indices for O(1) char_to_byte conversion
+    byte_indices: Vec<usize>,
     /// Cursor position in CHARACTER index
     cursor: usize,
     /// Selection anchor in CHARACTER index (where selection started)
@@ -40,6 +44,8 @@ impl TextBuffer {
     pub fn new() -> Self {
         Self {
             content: String::new(),
+            chars: Vec::new(),
+            byte_indices: vec![0],
             cursor: 0,
             selection_anchor: None,
         }
@@ -48,12 +54,19 @@ impl TextBuffer {
     /// Create a text buffer with initial content
     pub fn with_content(text: impl Into<String>) -> Self {
         let content = text.into();
-        let cursor = content.chars().count();
-        Self {
-            content,
-            cursor,
-            selection_anchor: None,
-        }
+        let mut buffer = Self::new();
+        buffer.content = content.clone();
+        buffer.rebuild_cache();
+        buffer.cursor = buffer.chars.len();
+        buffer
+    }
+
+    /// Rebuild the character and byte index cache from content
+    fn rebuild_cache(&mut self) {
+        self.chars = self.content.chars().collect();
+        self.byte_indices = self.content.char_indices().map(|(i, _)| i).collect();
+        // Add the end byte position for convenience
+        self.byte_indices.push(self.content.len());
     }
 
     // =========================================================================
@@ -75,7 +88,7 @@ impl TextBuffer {
     /// Get character count
     #[inline]
     pub fn char_count(&self) -> usize {
-        self.content.chars().count()
+        self.chars.len()
     }
 
     /// Check if buffer is empty
@@ -100,10 +113,9 @@ impl TextBuffer {
     /// If `char_idx` is beyond the text, returns the byte length.
     #[inline]
     pub fn char_to_byte(&self, char_idx: usize) -> usize {
-        self.content
-            .char_indices()
-            .nth(char_idx)
-            .map(|(i, _)| i)
+        self.byte_indices
+            .get(char_idx)
+            .copied()
             .unwrap_or(self.content.len())
     }
 
@@ -111,10 +123,9 @@ impl TextBuffer {
     ///
     /// Returns the character position that contains `byte_idx`.
     pub fn byte_to_char(&self, byte_idx: usize) -> usize {
-        self.content
-            .char_indices()
-            .take_while(|(i, _)| *i < byte_idx)
-            .count()
+        self.byte_indices
+            .partition_point(|&i| i <= byte_idx)
+            .saturating_sub(1)
     }
 
     /// Get substring by character range
@@ -126,7 +137,7 @@ impl TextBuffer {
 
     /// Get character at position
     pub fn char_at(&self, pos: usize) -> Option<char> {
-        self.content.chars().nth(pos)
+        self.chars.get(pos).copied()
     }
 
     // =========================================================================
@@ -139,6 +150,7 @@ impl TextBuffer {
     pub fn insert_char(&mut self, ch: char) -> usize {
         let byte_idx = self.char_to_byte(self.cursor);
         self.content.insert(byte_idx, ch);
+        self.rebuild_cache();
         self.cursor += 1;
         self.cursor
     }
@@ -149,6 +161,7 @@ impl TextBuffer {
     pub fn insert_str(&mut self, s: &str) -> usize {
         let byte_idx = self.char_to_byte(self.cursor);
         self.content.insert_str(byte_idx, s);
+        self.rebuild_cache();
         self.cursor += s.chars().count();
         self.cursor
     }
@@ -159,6 +172,7 @@ impl TextBuffer {
     pub fn insert_char_at(&mut self, pos: usize, ch: char) -> usize {
         let byte_idx = self.char_to_byte(pos);
         self.content.insert(byte_idx, ch);
+        self.rebuild_cache();
         pos + 1
     }
 
@@ -168,6 +182,7 @@ impl TextBuffer {
     pub fn insert_str_at(&mut self, pos: usize, s: &str) -> usize {
         let byte_idx = self.char_to_byte(pos);
         self.content.insert_str(byte_idx, s);
+        self.rebuild_cache();
         pos + s.chars().count()
     }
 
@@ -180,24 +195,30 @@ impl TextBuffer {
         }
 
         self.cursor -= 1;
-        let byte_idx = self.char_to_byte(self.cursor);
-        let ch = self.content.chars().nth(self.cursor)?;
-        self.content.drain(byte_idx..byte_idx + ch.len_utf8());
-        Some(ch)
+        let ch = self.chars.get(self.cursor)?;
+        let byte_idx = self.byte_indices[self.cursor];
+        let byte_len = ch.len_utf8();
+        let ch_copy = *ch; // Copy the char before mutating
+        self.content.drain(byte_idx..byte_idx + byte_len);
+        self.rebuild_cache();
+        Some(ch_copy)
     }
 
     /// Delete character at cursor (delete key)
     ///
     /// Returns the deleted character, if any.
     pub fn delete_char_at(&mut self) -> Option<char> {
-        if self.cursor >= self.char_count() {
+        if self.cursor >= self.chars.len() {
             return None;
         }
 
-        let byte_idx = self.char_to_byte(self.cursor);
-        let ch = self.content.chars().nth(self.cursor)?;
-        self.content.drain(byte_idx..byte_idx + ch.len_utf8());
-        Some(ch)
+        let ch = self.chars.get(self.cursor)?;
+        let byte_idx = self.byte_indices[self.cursor];
+        let byte_len = ch.len_utf8();
+        let ch_copy = *ch; // Copy the char before mutating
+        self.content.drain(byte_idx..byte_idx + byte_len);
+        self.rebuild_cache();
+        Some(ch_copy)
     }
 
     /// Delete a range of characters
@@ -207,6 +228,7 @@ impl TextBuffer {
         let start_byte = self.char_to_byte(start);
         let end_byte = self.char_to_byte(end);
         let deleted: String = self.content.drain(start_byte..end_byte).collect();
+        self.rebuild_cache();
 
         // Adjust cursor if it was in or after the deleted range
         if self.cursor > end {
@@ -221,13 +243,15 @@ impl TextBuffer {
     /// Set content (replaces all text)
     pub fn set_content(&mut self, text: impl Into<String>) {
         self.content = text.into();
-        self.cursor = self.char_count();
+        self.rebuild_cache();
+        self.cursor = self.chars.len();
         self.selection_anchor = None;
     }
 
     /// Clear all content
     pub fn clear(&mut self) {
         self.content.clear();
+        self.rebuild_cache();
         self.cursor = 0;
         self.selection_anchor = None;
     }
@@ -272,7 +296,7 @@ impl TextBuffer {
 
     /// Move cursor to end
     pub fn move_to_end(&mut self) {
-        self.cursor = self.char_count();
+        self.cursor = self.chars.len();
     }
 
     /// Move cursor left by one word
@@ -315,18 +339,15 @@ impl TextBuffer {
     ///
     /// A word is a sequence of non-whitespace characters.
     pub fn move_word_right(&mut self) {
-        let char_len = self.char_count();
+        let char_len = self.chars.len();
         if self.cursor >= char_len {
             return;
         }
 
-        let byte_pos = self.char_to_byte(self.cursor);
-        let after_cursor = &self.content[byte_pos..];
-
         let mut advance = 0;
 
         // Skip current word characters
-        for ch in after_cursor.chars() {
+        for ch in self.chars.iter().skip(self.cursor) {
             if !ch.is_whitespace() {
                 advance += 1;
             } else {
@@ -335,9 +356,7 @@ impl TextBuffer {
         }
 
         // Skip whitespace
-        let new_byte_pos = self.char_to_byte(self.cursor + advance);
-        let remaining = &self.content[new_byte_pos..];
-        for ch in remaining.chars() {
+        for ch in self.chars.iter().skip(self.cursor + advance) {
             if ch.is_whitespace() {
                 advance += 1;
             } else {
@@ -445,17 +464,17 @@ impl TextBuffer {
 
     /// Check if position is at a word boundary
     pub fn is_word_boundary(&self, pos: usize) -> bool {
-        if pos == 0 || pos >= self.char_count() {
+        if pos == 0 || pos >= self.chars.len() {
             return true;
         }
 
-        let prev = self.char_at(pos - 1);
-        let curr = self.char_at(pos);
+        let prev = self.chars.get(pos - 1);
+        let curr = self.chars.get(pos);
 
         match (prev, curr) {
             (Some(p), Some(c)) => {
-                let p_word = !p.is_whitespace();
-                let c_word = !c.is_whitespace();
+                let p_word = !(*p).is_whitespace();
+                let c_word = !(*c).is_whitespace();
                 p_word != c_word
             }
             _ => true,
@@ -470,13 +489,13 @@ impl TextBuffer {
             return (0, 0);
         }
 
-        let char_len = self.char_count();
+        let char_len = self.chars.len();
         let mut start = self.cursor.min(char_len.saturating_sub(1));
         let mut end = start;
 
         // Expand start backwards
         while start > 0 {
-            if let Some(ch) = self.char_at(start - 1) {
+            if let Some(ch) = self.chars.get(start - 1) {
                 if ch.is_whitespace() {
                     break;
                 }
@@ -488,7 +507,7 @@ impl TextBuffer {
 
         // Expand end forwards
         while end < char_len {
-            if let Some(ch) = self.char_at(end) {
+            if let Some(ch) = self.chars.get(end) {
                 if ch.is_whitespace() {
                     break;
                 }

@@ -323,16 +323,18 @@ impl Default for Config {
             Key::Char('w') => {
                 // Word forward
                 let line = self.current_line();
+                // Collect chars for O(1) access
+                let chars: Vec<char> = line.chars().collect();
                 let mut col = self.cursor_col;
                 // Skip current word
-                while col < line.len() && !line.chars().nth(col).is_none_or(|c| c.is_whitespace()) {
+                while col < chars.len() && !chars.get(col).is_none_or(|c| c.is_whitespace()) {
                     col += 1;
                 }
                 // Skip whitespace
-                while col < line.len() && line.chars().nth(col).is_some_and(|c| c.is_whitespace()) {
+                while col < chars.len() && chars.get(col).is_some_and(|c| c.is_whitespace()) {
                     col += 1;
                 }
-                if col >= line.len() && self.cursor_row < self.lines.len() - 1 {
+                if col >= chars.len() && self.cursor_row < self.lines.len() - 1 {
                     self.cursor_row += 1;
                     self.cursor_col = 0;
                 } else {
@@ -347,13 +349,19 @@ impl Default for Config {
                     self.cursor_col = self.current_line_len();
                 } else {
                     let line = self.current_line();
+                    // Collect chars for O(1) access
+                    let chars: Vec<char> = line.chars().collect();
                     let mut col = self.cursor_col.saturating_sub(1);
                     // Skip whitespace
-                    while col > 0 && line.chars().nth(col).is_some_and(|c| c.is_whitespace()) {
+                    while col > 0 && chars.get(col).is_some_and(|c| c.is_whitespace()) {
                         col -= 1;
                     }
                     // Skip word
-                    while col > 0 && !line.chars().nth(col - 1).is_none_or(|c| c.is_whitespace()) {
+                    while col > 0
+                        && !chars
+                            .get(col.saturating_sub(1))
+                            .is_none_or(|c| c.is_whitespace())
+                    {
                         col -= 1;
                     }
                     self.cursor_col = col;
@@ -925,7 +933,8 @@ impl View for TextEditor {
             let text = if is_cursor_row && self.mode == Mode::Normal {
                 // Highlight cursor position
                 let before = Self::substr_before(line, self.cursor_col.min(line_char_len));
-                let cursor_char = line.chars().nth(self.cursor_col).unwrap_or(' ');
+                // Use skip().next() for O(n) instead of O(n²) with .chars().nth()
+                let cursor_char = line.chars().skip(self.cursor_col).next().unwrap_or(' ');
                 let after = if self.cursor_col < line_char_len {
                     Self::substr_from(line, self.cursor_col + 1)
                 } else {

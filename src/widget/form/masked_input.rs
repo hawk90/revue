@@ -2,6 +2,8 @@
 //!
 //! Provides input fields that hide or mask the entered text, perfect for
 //! passwords, PINs, credit card numbers, and other sensitive information.
+
+#![allow(clippy::iter_skip_next)]
 //!
 //! # Example
 //!
@@ -450,7 +452,13 @@ impl MaskedInput {
             MaskStyle::Peek => {
                 if self.peek_countdown > 0 && self.cursor > 0 && self.cursor <= len {
                     // Show the last typed character
-                    let last_char = self.value.chars().nth(self.cursor - 1).unwrap_or(' ');
+                    // Use char_indices for O(n) instead of O(n²) with .chars().nth()
+                    let last_char = self
+                        .value
+                        .char_indices()
+                        .nth(self.cursor - 1)
+                        .map(|(_, c)| c)
+                        .unwrap_or(' ');
                     let mut result = String::with_capacity(len);
                     result.extend(std::iter::repeat_n(self.mask_char, self.cursor - 1));
                     result.push(last_char);
@@ -507,9 +515,10 @@ impl View for MaskedInput {
 
         // Insert cursor if focused
         let display_with_cursor = if self.focused && !self.disabled {
-            let cursor_pos = self.cursor.min(padded.len());
+            let cursor_pos = self.cursor.min(padded.chars().count());
+            // Use iterators for O(n) instead of O(n²) with .chars().nth()
             let before: String = padded.chars().take(cursor_pos).collect();
-            let cursor_char = padded.chars().nth(cursor_pos).unwrap_or(' ');
+            let cursor_char = padded.chars().skip(cursor_pos).next().unwrap_or(' ');
             let after: String = padded.chars().skip(cursor_pos + 1).collect();
             (before, cursor_char, after)
         } else {

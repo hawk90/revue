@@ -239,13 +239,15 @@ impl View for Badge {
                 };
 
                 // Render background and text
+                // Pre-collect chars to avoid O(n²) with .chars().nth() in loop
+                let text_chars: Vec<char> = self.text.chars().collect();
                 for i in 0..width {
                     let x = area.x + i;
                     let ch = if i < padding || i >= width - padding {
                         ' '
                     } else {
                         let char_idx = (i - padding) as usize;
-                        self.text.chars().nth(char_idx).unwrap_or(' ')
+                        text_chars.get(char_idx).copied().unwrap_or(' ')
                     };
 
                     let mut cell = Cell::new(ch);

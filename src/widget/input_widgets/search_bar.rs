@@ -3,6 +3,8 @@
 //! A search input widget that parses queries in real-time and provides
 //! visual feedback for query syntax.
 
+#![allow(clippy::iter_skip_next)]
+//!
 use crate::query::{ParseError, Query};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
@@ -354,7 +356,8 @@ impl View for SearchBar {
         if self.focused {
             let cursor_x = input_x + (self.cursor.saturating_sub(0)) as u16;
             if cursor_x < area.x + width - 1 {
-                let cursor_char = self.input.chars().nth(self.cursor).unwrap_or(' ');
+                // Use skip().next() for O(n) instead of O(n²) with .chars().nth()
+                let cursor_char = self.input.chars().skip(self.cursor).next().unwrap_or(' ');
                 let mut cursor_cell = Cell::new(cursor_char);
                 cursor_cell.fg = Some(self.bg_color);
                 cursor_cell.bg = Some(self.text_color);

@@ -1,11 +1,15 @@
 //! Worker pool implementation
 //!
 //! Uses Condvar for efficient thread signaling instead of busy-polling.
+//! Uses BinaryHeap for O(log n) priority queue operations.
 
 use super::{Priority, WorkerConfig, WorkerHandle};
-use std::collections::VecDeque;
+use std::collections::BinaryHeap;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
+
+// Use lock utilities for consistent poison handling
+use crate::utils::lock as lock_util;
 
 /// Shared state between pool and workers
 struct SharedState {
@@ -74,16 +78,20 @@ impl WorkerPool {
         F: FnOnce() + Send + 'static,
     {
         let (lock, cvar) = &*self.state;
-        if let Ok(mut state) = lock.lock() {
-            if state.shutdown {
-                return false;
-            }
-            let task = QueuedTask::new(f, priority);
-            if state.queue.push(task) {
-                // Wake one waiting worker
-                cvar.notify_one();
-                return true;
-            }
+        let mut state = lock_util::lock_or_recover(lock);
+        if state.shutdown {
+            return false;
+        }
+
+        // Get and increment sequence number for FIFO ordering
+        let seq = state.queue.next_seq;
+        state.queue.next_seq = state.queue.next_seq.wrapping_add(1);
+
+        let task = QueuedTask::new(f, priority, seq);
+        if state.queue.push(task) {
+            // Wake one waiting worker
+            cvar.notify_one();
+            return true;
         }
         false
     }
@@ -96,7 +104,7 @@ impl WorkerPool {
     /// Get queue length
     pub fn queue_len(&self) -> usize {
         let (lock, _) = &*self.state;
-        lock.lock().map(|s| s.queue.len()).unwrap_or(0)
+        lock_util::lock_or_recover(lock).queue.len()
     }
 
     /// Get thread count
@@ -107,17 +115,16 @@ impl WorkerPool {
     /// Shutdown the pool gracefully
     pub fn shutdown(&self) {
         let (lock, cvar) = &*self.state;
-        if let Ok(mut state) = lock.lock() {
-            state.shutdown = true;
-            // Wake all workers so they can exit
-            cvar.notify_all();
-        }
+        let mut state = lock_util::lock_or_recover(lock);
+        state.shutdown = true;
+        // Wake all workers so they can exit
+        cvar.notify_all();
     }
 
     /// Check if pool is shutdown
     pub fn is_shutdown(&self) -> bool {
         let (lock, _) = &*self.state;
-        lock.lock().map(|s| s.shutdown).unwrap_or(true)
+        lock_util::lock_or_recover(lock).shutdown
     }
 }
 
@@ -162,17 +169,15 @@ impl Worker {
                 loop {
                     // Wait for a task or shutdown signal
                     let task = {
-                        let mut state = match lock.lock() {
-                            Ok(guard) => guard,
-                            Err(poisoned) => poisoned.into_inner(),
-                        };
+                        let mut state = lock_util::lock_or_recover(lock);
 
                         // Wait while queue is empty and not shutting down
                         while state.queue.is_empty() && !state.shutdown {
-                            state = match cvar.wait(state) {
-                                Ok(guard) => guard,
-                                Err(poisoned) => poisoned.into_inner(),
-                            };
+                            // Condvar::wait can also return poisoned, handle it
+                            state = cvar.wait(state).unwrap_or_else(|poisoned| {
+                                log_warn!("Condvar wait was poisoned, recovering");
+                                poisoned.into_inner()
+                            });
                         }
 
                         // Check if we should exit
@@ -208,7 +213,7 @@ impl Worker {
 
     /// Check if worker is active
     pub fn is_active(&self) -> bool {
-        self.active.lock().map(|a| *a).unwrap_or(false)
+        *lock_util::lock_or_recover(&self.active)
     }
 
     /// Join the worker thread, waiting for it to finish
@@ -221,17 +226,20 @@ impl Worker {
 
 /// Task queue for worker pool
 struct TaskQueue {
-    /// Tasks waiting to be executed
-    tasks: VecDeque<QueuedTask>,
+    /// Tasks waiting to be executed (using BinaryHeap for O(log n) operations)
+    tasks: BinaryHeap<QueuedTask>,
     /// Maximum capacity
     capacity: usize,
+    /// Next sequence number (for FIFO ordering within same priority)
+    next_seq: u64,
 }
 
 impl TaskQueue {
     fn new(capacity: usize) -> Self {
         Self {
-            tasks: VecDeque::with_capacity(capacity),
+            tasks: BinaryHeap::with_capacity(capacity),
             capacity,
+            next_seq: 0,
         }
     }
 
@@ -248,38 +256,65 @@ impl TaskQueue {
             return false;
         }
 
-        // Insert based on priority
-        let insert_pos = self
-            .tasks
-            .iter()
-            .position(|t| t.priority < task.priority)
-            .unwrap_or(self.tasks.len());
-
-        self.tasks.insert(insert_pos, task);
+        self.tasks.push(task);
         true
     }
 
     fn pop(&mut self) -> Option<QueuedTask> {
-        self.tasks.pop_front()
+        self.tasks.pop()
     }
 }
 
-/// A queued task
+/// A queued task with priority and sequence number for FIFO ordering
 struct QueuedTask {
     /// Task to execute
     task: Box<dyn FnOnce() + Send + 'static>,
-    /// Priority
+    /// Priority (higher values = higher priority)
     priority: Priority,
+    /// Sequence number for FIFO ordering within same priority
+    seq: u64,
 }
 
 impl QueuedTask {
-    fn new<F>(task: F, priority: Priority) -> Self
+    fn new<F>(task: F, priority: Priority, seq: u64) -> Self
     where
         F: FnOnce() + Send + 'static,
     {
         Self {
             task: Box::new(task),
             priority,
+            seq,
+        }
+    }
+}
+
+// Implement Ord for BinaryHeap
+// BinaryHeap is a max-heap, so we want higher priority tasks to compare as "greater"
+// For same priority, lower sequence number (earlier) should come first (FIFO)
+impl PartialEq for QueuedTask {
+    fn eq(&self, other: &Self) -> bool {
+        self.priority == other.priority && self.seq == other.seq
+    }
+}
+
+impl Eq for QueuedTask {}
+
+impl PartialOrd for QueuedTask {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for QueuedTask {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // First compare by priority (higher priority = greater)
+        match self.priority.cmp(&other.priority) {
+            std::cmp::Ordering::Equal => {
+                // For same priority, lower sequence number (earlier) should come first
+                // Reverse the seq comparison so lower seq = "greater" in max-heap
+                other.seq.cmp(&self.seq)
+            }
+            other => other,
         }
     }
 }
