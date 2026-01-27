@@ -585,4 +585,128 @@ mod tests {
         assert!(!settings.state.first_child);
         assert!(settings.state.last_child);
     }
+
+    #[test]
+    fn test_query_result_methods() {
+        let tree = create_test_tree();
+
+        let results = tree.query_all("Button");
+        assert_eq!(results.len(), 2);
+        assert!(!results.is_empty());
+
+        // Test first()
+        let first = results.first();
+        assert!(first.is_some());
+
+        // Test all()
+        let all = results.all();
+        assert_eq!(all.len(), 2);
+
+        // Test iter()
+        let count = results.iter().count();
+        assert_eq!(count, 2);
+
+        // Test empty result
+        let empty = tree.query_all("NonExistent");
+        assert!(empty.is_empty());
+        assert_eq!(empty.len(), 0);
+        assert!(empty.first().is_none());
+    }
+
+    #[test]
+    fn test_dom_tree_basic_methods() {
+        let mut tree = create_test_tree();
+
+        // Test get() and get_mut()
+        let root_id = tree.root_id().unwrap();
+        assert!(tree.get(root_id).is_some());
+        assert!(tree.get_mut(root_id).is_some());
+
+        // Test root()
+        let root = tree.root();
+        assert!(root.is_some());
+        assert_eq!(root.unwrap().widget_type(), "App");
+
+        // Test len() and is_empty()
+        assert!(!tree.is_empty());
+        assert!(tree.len() > 0);
+
+        // Test nodes() iterator
+        let count = tree.nodes().count();
+        assert_eq!(count, 7); // 1 root + 1 sidebar + 2 buttons + 1 content + 2 cards
+    }
+
+    #[test]
+    fn test_dom_tree_state_methods() {
+        let mut tree = create_test_tree();
+        let root_id = tree.root_id().unwrap();
+
+        // Test set_state()
+        let mut new_state = tree.get(root_id).unwrap().state.clone();
+        new_state.focused = true;
+        tree.set_state(root_id, new_state);
+        assert!(tree.get(root_id).unwrap().state.focused);
+
+        // Test set_focused()
+        let button_id = tree.get_by_id("nav-home").unwrap().id;
+        tree.set_focused(Some(button_id));
+        assert!(tree.get(button_id).unwrap().state.focused);
+        assert!(!tree.get(root_id).unwrap().state.focused);
+
+        // Test set_hovered()
+        tree.set_hovered(Some(button_id));
+        assert!(tree.get(button_id).unwrap().state.hovered);
+
+        // Clear focus
+        tree.set_focused(None);
+        assert!(!tree.get(button_id).unwrap().state.focused);
+    }
+
+    #[test]
+    fn test_dom_tree_dirty_nodes() {
+        let mut tree = create_test_tree();
+
+        // Initially all nodes are dirty (just created)
+        let dirty = tree.get_dirty_nodes();
+        assert!(!dirty.is_empty());
+
+        // Clear dirty flags
+        tree.clear_dirty_flags();
+        let dirty = tree.get_dirty_nodes();
+        assert!(dirty.is_empty());
+    }
+
+    #[test]
+    fn test_query_combinators() {
+        let mut tree = DomTree::new();
+
+        // Create structure: App > Container > Button
+        let root = tree.create_root(WidgetMeta::new("App").id("app"));
+        let container = tree.add_child(root, WidgetMeta::new("Container").id("container"));
+        let _button = tree.add_child(container, WidgetMeta::new("Button").id("btn"));
+
+        // Descendant selector (space)
+        let result = tree.query_one("Container Button");
+        assert!(result.is_some());
+
+        // Child selector (>)
+        let result = tree.query_one("Container > Button");
+        assert!(result.is_some());
+
+        // Should not match non-direct child
+        let result = tree.query_one("App > Button");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_remove_node() {
+        let mut tree = create_test_tree();
+
+        // Remove a child by ID
+        let content_id = tree.get_by_type("Container").first().unwrap().id;
+        tree.remove(content_id);
+
+        // Verify removed
+        assert!(tree.get(content_id).is_none());
+    }
 }

@@ -649,4 +649,84 @@ mod tests {
         profiler.select_frame(None);
         assert_eq!(profiler.selected_frame, None);
     }
+
+    #[test]
+    fn test_stats_by_count() {
+        let mut profiler = Profiler::new();
+        profiler.start_recording();
+
+        // Record with different counts
+        profiler.record_render(RenderEvent::new("Once", Duration::from_micros(100)));
+        profiler.record_render(RenderEvent::new("Twice", Duration::from_micros(50)));
+        profiler.record_render(RenderEvent::new("Twice", Duration::from_micros(50)));
+
+        let by_count = profiler.stats_by_count();
+        assert_eq!(by_count[0].name, "Twice");
+        assert_eq!(by_count[1].name, "Once");
+    }
+
+    #[test]
+    fn test_set_view() {
+        let mut profiler = Profiler::new();
+        assert_eq!(profiler.view(), ProfilerView::Flamegraph);
+        assert_eq!(profiler.scroll_offset, 0);
+
+        profiler.set_view(ProfilerView::Timeline);
+        assert_eq!(profiler.view(), ProfilerView::Timeline);
+        // Scroll offset should reset when changing view
+        assert_eq!(profiler.scroll_offset, 0);
+
+        profiler.scroll_down();
+        assert_eq!(profiler.scroll_offset, 1);
+
+        profiler.set_view(ProfilerView::Ranked);
+        assert_eq!(profiler.view(), ProfilerView::Ranked);
+        assert_eq!(profiler.scroll_offset, 0);
+    }
+
+    #[test]
+    fn test_recording_duration() {
+        let mut profiler = Profiler::new();
+
+        // Not recording - duration should be zero
+        assert_eq!(profiler.recording_duration(), Duration::ZERO);
+
+        profiler.start_recording();
+        // Duration should be non-zero while recording
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        let duration_while_recording = profiler.recording_duration();
+        assert!(duration_while_recording >= Duration::from_millis(2));
+
+        profiler.stop_recording();
+
+        // After stopping, duration returns to zero (no start time)
+        assert_eq!(profiler.recording_duration(), Duration::ZERO);
+    }
+
+    #[test]
+    fn test_avg_frame_time_empty() {
+        let profiler = Profiler::new();
+        assert_eq!(profiler.avg_frame_time(), Duration::ZERO);
+    }
+
+    #[test]
+    fn test_avg_frame_time() {
+        let mut profiler = Profiler::new();
+        profiler.start_recording();
+
+        profiler.record_render(RenderEvent::new("Test", Duration::from_micros(100)));
+        std::thread::sleep(std::time::Duration::from_millis(1));
+        profiler.end_frame();
+
+        profiler.record_render(RenderEvent::new("Test", Duration::from_micros(200)));
+        std::thread::sleep(std::time::Duration::from_millis(1));
+        profiler.end_frame();
+
+        profiler.stop_recording();
+
+        // Average should be the average of frame durations (wall-clock time)
+        // Each frame is at least 1ms due to sleep
+        let avg = profiler.avg_frame_time();
+        assert!(avg >= Duration::from_millis(1));
+    }
 }
