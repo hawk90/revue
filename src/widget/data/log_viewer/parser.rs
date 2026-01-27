@@ -1,5 +1,6 @@
 //! Log parsing functionality for advanced log viewer
 
+#![allow(clippy::iter_skip_next)]
 use super::entry::LogEntry;
 use super::types::LogLevel;
 
@@ -267,12 +268,21 @@ impl LogParser {
                 && prefix.chars().filter(|c| *c == ':').count() >= 2
             {
                 // Check for milliseconds
-                if s.len() > 19 && s.chars().nth(19) == Some('.') {
-                    let mut end = 20;
-                    while end < s.len() && s.chars().nth(end).is_some_and(|c| c.is_ascii_digit()) {
-                        end += 1;
+                // Use char_indices for O(n) instead of O(n²) with .chars().nth()
+                if s.len() > 19 {
+                    if let Some((idx, ch)) = s.char_indices().nth(19) {
+                        if ch == '.' {
+                            let mut end = idx + 1;
+                            // Check for digits after the dot
+                            for (byte_idx, c) in s[end..].char_indices() {
+                                if !c.is_ascii_digit() {
+                                    return Some(end + byte_idx);
+                                }
+                                end += byte_idx;
+                            }
+                            return Some(end);
+                        }
                     }
-                    return Some(end);
                 }
                 return Some(19);
             }
@@ -328,7 +338,8 @@ impl LogParser {
             if s_upper.starts_with(name) {
                 let end = name.len();
                 if s.len() > end {
-                    let next = s.chars().nth(end);
+                    // Use skip().next() for O(n) instead of O(n²) with .chars().nth()
+                    let next = s.chars().skip(end).next();
                     if next == Some(':') || next == Some(' ') || next == Some(']') {
                         let skip = if next == Some(':') { 1 } else { 0 };
                         return Some((level, end + skip));

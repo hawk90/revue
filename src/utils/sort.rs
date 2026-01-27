@@ -32,7 +32,20 @@ impl<'a> PartialOrd for Segment<'a> {
 impl<'a> Ord for Segment<'a> {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (Segment::Text(a), Segment::Text(b)) => a.to_lowercase().cmp(&b.to_lowercase()),
+            // Case-insensitive text comparison without allocation
+            (Segment::Text(a), Segment::Text(b)) => {
+                for (ca, cb) in a
+                    .chars()
+                    .map(|c| c.to_ascii_lowercase())
+                    .zip(b.chars().map(|c| c.to_ascii_lowercase()))
+                {
+                    match ca.cmp(&cb) {
+                        Ordering::Equal => continue,
+                        other => return other,
+                    }
+                }
+                a.len().cmp(&b.len())
+            }
             (Segment::Number(a), Segment::Number(b)) => a.cmp(b),
             // Numbers come before text
             (Segment::Number(_), Segment::Text(_)) => Ordering::Less,

@@ -52,8 +52,13 @@ impl<T: ToString + Clone> View for VirtualList<T> {
                 let line = if row == 0 { &text } else { "" };
 
                 // Render each character
-                for x in 0..content_width {
-                    let ch = line.chars().nth(x as usize).unwrap_or(' ');
+                // Iterate directly for O(n) instead of O(n²) with .chars().nth(x) in loop
+                for (x, ch) in line
+                    .chars()
+                    .chain(std::iter::repeat(' '))
+                    .take(content_width as usize)
+                    .enumerate()
+                {
                     let mut cell = Cell::new(ch);
 
                     if is_selected {
@@ -63,7 +68,7 @@ impl<T: ToString + Clone> View for VirtualList<T> {
                         cell.fg = Some(this.item_fg);
                     }
 
-                    ctx.buffer.set(area.x + x, y, cell);
+                    ctx.buffer.set(area.x + x as u16, y, cell);
                 }
             }
         }

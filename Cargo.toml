@@ -213,13 +213,19 @@ version = "1"
 features = ["rt-multi-thread", "macros", "time", "sync"]
 optional = true
 
-# Optimize for smaller binary size
+# Optimize for runtime speed (default release profile)
 [profile.release]
 strip = true              # Remove debug symbols
 lto = true                  # Link-time optimization
 codegen-units = 1         # Better optimization at cost of compile time
-opt-level = "z"             # Optimize for size
+opt-level = 3              # Optimize for speed (was "z" for size)
 panic = "abort"            # Reduce binary size
+
+# Profile for size optimization (use with: cargo build --profile release-min-size)
+[profile.release-min-size]
+inherits = "release"
+opt-level = "z"            # Optimize for size
+strip = true
 
 # Maintain debug info for profiling
 [profile.release-debug]

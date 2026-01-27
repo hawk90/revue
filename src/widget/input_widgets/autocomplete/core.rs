@@ -2,6 +2,7 @@
 //!
 //! Provides a text input with dropdown suggestions based on user input.
 
+#![allow(clippy::iter_skip_next)]
 use crate::event::{Key, KeyEvent};
 use crate::render::Cell;
 use crate::style::Color;
@@ -347,7 +348,8 @@ impl View for Autocomplete {
         if self.focused {
             let cursor_x = area.x + self.cursor as u16;
             if cursor_x < area.x + input_width {
-                let cursor_char = self.value.chars().nth(self.cursor).unwrap_or(' ');
+                // Use skip().next() for O(n) instead of O(n²) with .chars().nth()
+                let cursor_char = self.value.chars().skip(self.cursor).next().unwrap_or(' ');
                 ctx.buffer.set(
                     cursor_x,
                     area.y,

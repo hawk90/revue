@@ -6,6 +6,9 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+// Use lock utilities for consistent poison handling
+use crate::utils::lock as lock_util;
+
 /// State of a worker task
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkerState {
@@ -49,18 +52,17 @@ impl<T: Send + 'static> WorkerHandle<T> {
 
         let thread = thread::spawn(move || {
             // Update state to running
-            if let Ok(mut s) = state_clone.lock() {
+            {
+                let mut s = lock_util::lock_or_recover(&state_clone);
                 *s = WorkerState::Running;
             }
 
             // Check if cancelled before starting
-            if cancelled_clone.lock().map(|c| *c).unwrap_or(false) {
-                if let Ok(mut s) = state_clone.lock() {
-                    *s = WorkerState::Cancelled;
-                }
-                if let Ok(mut r) = result_clone.lock() {
-                    *r = Some(Err(WorkerError::Cancelled));
-                }
+            if *lock_util::lock_or_recover(&cancelled_clone) {
+                let mut s = lock_util::lock_or_recover(&state_clone);
+                *s = WorkerState::Cancelled;
+                let mut r = lock_util::lock_or_recover(&result_clone);
+                *r = Some(Err(WorkerError::Cancelled));
                 return;
             }
 
@@ -70,12 +72,10 @@ impl<T: Send + 'static> WorkerHandle<T> {
             // Store result
             match task_result {
                 Ok(value) => {
-                    if let Ok(mut r) = result_clone.lock() {
-                        *r = Some(Ok(value));
-                    }
-                    if let Ok(mut s) = state_clone.lock() {
-                        *s = WorkerState::Completed;
-                    }
+                    let mut r = lock_util::lock_or_recover(&result_clone);
+                    *r = Some(Ok(value));
+                    let mut s = lock_util::lock_or_recover(&state_clone);
+                    *s = WorkerState::Completed;
                 }
                 Err(panic_info) => {
                     let msg = if let Some(s) = panic_info.downcast_ref::<&str>() {
@@ -86,12 +86,10 @@ impl<T: Send + 'static> WorkerHandle<T> {
                         "Unknown panic".to_string()
                     };
 
-                    if let Ok(mut r) = result_clone.lock() {
-                        *r = Some(Err(WorkerError::Panicked(msg)));
-                    }
-                    if let Ok(mut s) = state_clone.lock() {
-                        *s = WorkerState::Failed;
-                    }
+                    let mut r = lock_util::lock_or_recover(&result_clone);
+                    *r = Some(Err(WorkerError::Panicked(msg)));
+                    let mut s = lock_util::lock_or_recover(&state_clone);
+                    *s = WorkerState::Failed;
                 }
             }
         });
@@ -122,7 +120,8 @@ impl<T: Send + 'static> WorkerHandle<T> {
 
         let thread = thread::spawn(move || {
             // Update state to running
-            if let Ok(mut s) = state_clone.lock() {
+            {
+                let mut s = lock_util::lock_or_recover(&state_clone);
                 *s = WorkerState::Running;
             }
 
@@ -133,12 +132,12 @@ impl<T: Send + 'static> WorkerHandle<T> {
             };
 
             // Store result
-            if let Ok(mut r) = result_clone.lock() {
+            {
+                let mut r = lock_util::lock_or_recover(&result_clone);
                 *r = Some(result_value);
             }
-            if let Ok(mut s) = state_clone.lock() {
-                *s = WorkerState::Completed;
-            }
+            let mut s = lock_util::lock_or_recover(&state_clone);
+            *s = WorkerState::Completed;
         });
 
         Self {
@@ -158,16 +157,6 @@ impl<T: Send + 'static> WorkerHandle<T> {
         use std::pin::Pin;
         use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
-        // Simple waker that does nothing (busy-polling)
-        fn dummy_raw_waker() -> RawWaker {
-            fn no_op(_: *const ()) {}
-            fn clone(_: *const ()) -> RawWaker {
-                dummy_raw_waker()
-            }
-            let vtable = &RawWakerVTable::new(clone, no_op, no_op, no_op);
-            RawWaker::new(std::ptr::null(), vtable)
-        }
-
         let state = Arc::new(Mutex::new(WorkerState::Pending));
         let result: Arc<Mutex<Option<WorkerResult<T>>>> = Arc::new(Mutex::new(None));
         let cancelled = Arc::new(Mutex::new(false));
@@ -178,19 +167,33 @@ impl<T: Send + 'static> WorkerHandle<T> {
 
         let thread = thread::spawn(move || {
             // Update state to running
-            if let Ok(mut s) = state_clone.lock() {
+            {
+                let mut s = lock_util::lock_or_recover(&state_clone);
                 *s = WorkerState::Running;
             }
 
             // Simple polling executor with exponential backoff
             // SAFETY:
             // - The vtable functions are all no-ops that don't access any data
-            // - RawWaker is created with a null pointer since no data is needed
+            // - RawWaker is created with a dummy pointer since no data is needed
             // - The waker is only used as a placeholder for Context
             // - We never call wake() or wake_by_ref() on this waker
             // - Only clone() and drop() are called, which are safe no-ops
             // - This is a polling executor that never actually needs to wake anything
-            let waker = unsafe { Waker::from_raw(dummy_raw_waker()) };
+            //
+            // Note: This fallback is only used when the "async" feature is disabled.
+            // When async is enabled, the proper tokio runtime is used instead.
+            static DUMMY: () = ();
+            let dummy_raw_waker = {
+                fn no_op(_: *const ()) {}
+                fn clone(_: *const ()) -> RawWaker {
+                    // Use a valid pointer to DUMMY static instead of null
+                    let vtable = &RawWakerVTable::new(clone, no_op, no_op, no_op);
+                    RawWaker::new(&DUMMY as *const () as *const (), vtable)
+                }
+                dummy_raw_waker()
+            };
+            let waker = unsafe { Waker::from_raw(dummy_raw_waker) };
             let mut cx = Context::from_waker(&waker);
             let mut future = Box::pin(future);
             let mut sleep_duration = Duration::from_millis(1);
@@ -198,24 +201,20 @@ impl<T: Send + 'static> WorkerHandle<T> {
 
             loop {
                 // Check cancellation
-                if cancelled_clone.lock().map(|c| *c).unwrap_or(false) {
-                    if let Ok(mut s) = state_clone.lock() {
-                        *s = WorkerState::Cancelled;
-                    }
-                    if let Ok(mut r) = result_clone.lock() {
-                        *r = Some(Err(WorkerError::Cancelled));
-                    }
+                if *lock_util::lock_or_recover(&cancelled_clone) {
+                    let mut s = lock_util::lock_or_recover(&state_clone);
+                    *s = WorkerState::Cancelled;
+                    let mut r = lock_util::lock_or_recover(&result_clone);
+                    *r = Some(Err(WorkerError::Cancelled));
                     return;
                 }
 
                 match Pin::as_mut(&mut future).poll(&mut cx) {
                     Poll::Ready(value) => {
-                        if let Ok(mut r) = result_clone.lock() {
-                            *r = Some(Ok(value));
-                        }
-                        if let Ok(mut s) = state_clone.lock() {
-                            *s = WorkerState::Completed;
-                        }
+                        let mut r = lock_util::lock_or_recover(&result_clone);
+                        *r = Some(Ok(value));
+                        let mut s = lock_util::lock_or_recover(&state_clone);
+                        *s = WorkerState::Completed;
                         return;
                     }
                     Poll::Pending => {
@@ -237,7 +236,7 @@ impl<T: Send + 'static> WorkerHandle<T> {
 
     /// Get current state
     pub fn state(&self) -> WorkerState {
-        self.state.lock().map(|s| *s).unwrap_or(WorkerState::Failed)
+        *lock_util::lock_or_recover(&self.state)
     }
 
     /// Check if task is finished (completed, failed, or cancelled)
@@ -260,13 +259,13 @@ impl<T: Send + 'static> WorkerHandle<T> {
 
     /// Cancel the task
     pub fn cancel(&self) {
-        if let Ok(mut c) = self.cancelled.lock() {
+        {
+            let mut c = lock_util::lock_or_recover(&self.cancelled);
             *c = true;
         }
-        if let Ok(mut s) = self.state.lock() {
-            if *s == WorkerState::Pending {
-                *s = WorkerState::Cancelled;
-            }
+        let mut s = lock_util::lock_or_recover(&self.state);
+        if *s == WorkerState::Pending {
+            *s = WorkerState::Cancelled;
         }
     }
 
@@ -286,10 +285,8 @@ impl<T: Send + 'static> WorkerHandle<T> {
         }
 
         // Get result
-        self.result
-            .lock()
-            .ok()
-            .and_then(|mut r| r.take())
+        lock_util::lock_or_recover(&self.result)
+            .take()
             .unwrap_or(Err(WorkerError::ChannelClosed))
     }
 
@@ -308,7 +305,7 @@ impl<T: Send + 'static> WorkerHandle<T> {
             return None;
         }
 
-        self.result.lock().ok().and_then(|mut r| r.take())
+        lock_util::lock_or_recover(&self.result).take()
     }
 
     /// Wait for completion with timeout
@@ -342,9 +339,8 @@ impl<T: Send + 'static> WorkerHandle<T> {
 impl<T> Drop for WorkerHandle<T> {
     fn drop(&mut self) {
         // Cancel task if still running - just set the flag
-        if let Ok(mut c) = self.cancelled.lock() {
-            *c = true;
-        }
+        let mut c = lock_util::lock_or_recover(&self.cancelled);
+        *c = true;
     }
 }
 

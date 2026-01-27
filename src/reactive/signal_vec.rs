@@ -3,10 +3,12 @@
 //! `SignalVec<T>` tracks individual changes (insert/remove/update) to enable
 //! incremental updates in derived computations, avoiding full recomputation.
 
+#![allow(clippy::type_complexity)]
 use super::signal::{Signal, Subscription};
 use super::tracker::notify_dependents;
 use super::SignalId;
 use std::sync::Arc;
+use std::sync::Mutex as StdMutex;
 
 /// Granular change to a vector element
 #[derive(Debug, Clone, PartialEq)]
@@ -106,6 +108,8 @@ pub struct SignalVec<T> {
     inner: Signal<Vec<T>>,
     /// Unique ID for this signal vector
     id: SignalId,
+    /// Diff subscribers (callbacks for granular changes)
+    diff_subscribers: Arc<StdMutex<Vec<Arc<dyn Fn(VecDiff<T>) + Send + Sync>>>>,
 }
 
 impl<T: Send + Sync + Clone + 'static> SignalVec<T> {
@@ -113,7 +117,11 @@ impl<T: Send + Sync + Clone + 'static> SignalVec<T> {
     pub fn new(values: Vec<T>) -> Self {
         let inner = Signal::new(values);
         let id = SignalId::new();
-        Self { inner, id }
+        Self {
+            inner,
+            id,
+            diff_subscribers: Arc::new(StdMutex::new(Vec::new())),
+        }
     }
 
     /// Get the current vector as a slice (zero-copy)
@@ -238,19 +246,32 @@ impl<T: Send + Sync + Clone + 'static> SignalVec<T> {
         &self,
         callback: impl Fn(VecDiff<T>) + Send + Sync + 'static,
     ) -> VecSubscription<T> {
-        // Create a subscription to the inner signal
+        let callback = Arc::new(callback);
+
+        // Register the callback
+        if let Ok(mut subs) = self.diff_subscribers.lock() {
+            subs.push(callback.clone());
+        }
+
+        // Create a subscription to the inner signal (to keep it alive)
         let inner_sub = self.inner.subscribe(|| {});
 
         VecSubscription {
             _inner: inner_sub,
-            _callback: Arc::new(callback),
+            _callback: callback,
+            _diff_subscribers: self.diff_subscribers.clone(),
         }
     }
 
     /// Notify diff subscribers
-    fn notify_diff(&self, _diff: VecDiff<T>) {
-        // In a full implementation, this would emit to diff subscribers
-        // For now, we just notify regular signal dependents
+    fn notify_diff(&self, diff: VecDiff<T>) {
+        // Emit to all diff subscribers
+        if let Ok(subs) = self.diff_subscribers.lock() {
+            for callback in subs.iter() {
+                callback(diff.clone());
+            }
+        }
+        // Also notify regular signal dependents
         notify_dependents(self.id);
     }
 
@@ -270,6 +291,7 @@ impl<T: Send + Sync + Clone + 'static> Clone for SignalVec<T> {
         Self {
             inner: self.inner.clone(),
             id: self.id,
+            diff_subscribers: Arc::clone(&self.diff_subscribers),
         }
     }
 }
@@ -278,6 +300,16 @@ impl<T: Send + Sync + Clone + 'static> Clone for SignalVec<T> {
 pub struct VecSubscription<T> {
     _inner: Subscription,
     _callback: Arc<dyn Fn(VecDiff<T>) + Send + Sync>,
+    _diff_subscribers: Arc<StdMutex<Vec<Arc<dyn Fn(VecDiff<T>) + Send + Sync>>>>,
+}
+
+impl<T> Drop for VecSubscription<T> {
+    fn drop(&mut self) {
+        // Remove the callback from subscribers when dropped
+        if let Ok(mut subs) = self._diff_subscribers.lock() {
+            subs.retain(|cb| !Arc::ptr_eq(cb, &self._callback));
+        }
+    }
 }
 
 #[cfg(test)]

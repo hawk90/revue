@@ -33,3 +33,8 @@ coverage.lcov
 lcov.info
 *.profraw
 *.profdata
+
+# Rust compiled artifacts (in addition to /target/)
+*.rlib
+*.rmeta
+tabs

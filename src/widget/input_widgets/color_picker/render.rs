@@ -168,10 +168,17 @@ impl ColorPicker {
 
         // Input field
         let input_x = area.x + label.len() as u16;
-        for i in 0..6 {
-            let ch = self.hex_input.chars().nth(i).unwrap_or('_');
+        let input_len = self.hex_input.chars().count();
+        // Iterate directly over chars for O(n) instead of O(n²) with .chars().nth(i) in loop
+        for (i, ch) in self
+            .hex_input
+            .chars()
+            .chain(std::iter::repeat('_'))
+            .take(6)
+            .enumerate()
+        {
             let mut cell = Cell::new(ch);
-            cell.fg = Some(if i < self.hex_input.len() {
+            cell.fg = Some(if i < input_len {
                 Color::CYAN
             } else {
                 Color::rgb(60, 60, 60)

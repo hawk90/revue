@@ -1,6 +1,7 @@
 //! Worker channel for communication between workers and UI
 
 use std::collections::VecDeque;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Message types for worker communication
@@ -28,6 +29,10 @@ pub struct WorkerChannel<T> {
     to_worker: Arc<Mutex<VecDeque<WorkerCommand>>>,
     /// Channel capacity
     capacity: usize,
+    /// Atomic counter for lock-free message count reads
+    message_count: Arc<AtomicUsize>,
+    /// Atomic counter for lock-free command count reads
+    command_count: Arc<AtomicUsize>,
 }
 
 impl<T: Clone> WorkerChannel<T> {
@@ -42,6 +47,8 @@ impl<T: Clone> WorkerChannel<T> {
             to_ui: Arc::new(Mutex::new(VecDeque::with_capacity(capacity))),
             to_worker: Arc::new(Mutex::new(VecDeque::with_capacity(capacity))),
             capacity,
+            message_count: Arc::new(AtomicUsize::new(0)),
+            command_count: Arc::new(AtomicUsize::new(0)),
         }
     }
 
@@ -52,10 +59,14 @@ impl<T: Clone> WorkerChannel<T> {
                 to_ui: self.to_ui.clone(),
                 to_worker: self.to_worker.clone(),
                 capacity: self.capacity,
+                message_count: self.message_count.clone(),
+                command_count: self.command_count.clone(),
             },
             WorkerReceiver {
                 to_ui: self.to_ui.clone(),
                 to_worker: self.to_worker.clone(),
+                message_count: self.message_count.clone(),
+                command_count: self.command_count.clone(),
             },
         )
     }
@@ -65,6 +76,7 @@ impl<T: Clone> WorkerChannel<T> {
         if let Ok(mut queue) = self.to_ui.lock() {
             if queue.len() < self.capacity {
                 queue.push_back(msg);
+                self.message_count.fetch_add(1, Ordering::Release);
                 return true;
             }
             log_warn!(
@@ -77,7 +89,11 @@ impl<T: Clone> WorkerChannel<T> {
 
     /// Receive message on UI side
     pub fn recv(&self) -> Option<WorkerMessage<T>> {
-        self.to_ui.lock().ok().and_then(|mut q| q.pop_front())
+        let msg = self.to_ui.lock().ok().and_then(|mut q| q.pop_front());
+        if msg.is_some() {
+            self.message_count.fetch_sub(1, Ordering::Release);
+        }
+        msg
     }
 
     /// Send command from UI to worker
@@ -85,6 +101,7 @@ impl<T: Clone> WorkerChannel<T> {
         if let Ok(mut queue) = self.to_worker.lock() {
             if queue.len() < self.capacity {
                 queue.push_back(cmd);
+                self.command_count.fetch_add(1, Ordering::Release);
                 return true;
             }
             log_warn!(
@@ -98,25 +115,26 @@ impl<T: Clone> WorkerChannel<T> {
 
     /// Receive command on worker side
     pub fn recv_command(&self) -> Option<WorkerCommand> {
-        self.to_worker.lock().ok().and_then(|mut q| q.pop_front())
+        let cmd = self.to_worker.lock().ok().and_then(|mut q| q.pop_front());
+        if cmd.is_some() {
+            self.command_count.fetch_sub(1, Ordering::Release);
+        }
+        cmd
     }
 
-    /// Check if there are pending messages for UI
+    /// Check if there are pending messages for UI (lock-free)
     pub fn has_messages(&self) -> bool {
-        self.to_ui.lock().map(|q| !q.is_empty()).unwrap_or(false)
+        self.message_count.load(Ordering::Acquire) > 0
     }
 
-    /// Check if there are pending commands for worker
+    /// Check if there are pending commands for worker (lock-free)
     pub fn has_commands(&self) -> bool {
-        self.to_worker
-            .lock()
-            .map(|q| !q.is_empty())
-            .unwrap_or(false)
+        self.command_count.load(Ordering::Acquire) > 0
     }
 
-    /// Get number of pending messages
+    /// Get number of pending messages (lock-free)
     pub fn message_count(&self) -> usize {
-        self.to_ui.lock().map(|q| q.len()).unwrap_or(0)
+        self.message_count.load(Ordering::Acquire)
     }
 }
 
@@ -132,6 +150,8 @@ impl<T: Clone> Clone for WorkerChannel<T> {
             to_ui: self.to_ui.clone(),
             to_worker: self.to_worker.clone(),
             capacity: self.capacity,
+            message_count: self.message_count.clone(),
+            command_count: self.command_count.clone(),
         }
     }
 }
@@ -154,6 +174,8 @@ pub struct WorkerSender<T> {
     to_ui: Arc<Mutex<VecDeque<WorkerMessage<T>>>>,
     to_worker: Arc<Mutex<VecDeque<WorkerCommand>>>,
     capacity: usize,
+    message_count: Arc<AtomicUsize>,
+    command_count: Arc<AtomicUsize>,
 }
 
 impl<T: Clone> WorkerSender<T> {
@@ -162,6 +184,7 @@ impl<T: Clone> WorkerSender<T> {
         if let Ok(mut queue) = self.to_ui.lock() {
             if queue.len() < self.capacity {
                 queue.push_back(msg);
+                self.message_count.fetch_add(1, Ordering::Release);
                 return true;
             }
         }
@@ -195,11 +218,18 @@ impl<T: Clone> WorkerSender<T> {
 
     /// Check for commands from UI
     pub fn check_command(&self) -> Option<WorkerCommand> {
-        self.to_worker.lock().ok().and_then(|mut q| q.pop_front())
+        let cmd = self.to_worker.lock().ok().and_then(|mut q| q.pop_front());
+        if cmd.is_some() {
+            self.command_count.fetch_sub(1, Ordering::Release);
+        }
+        cmd
     }
 
-    /// Check if cancelled
+    /// Check if cancelled (lock-free check for command count, full check for Cancel command)
     pub fn is_cancelled(&self) -> bool {
+        if self.command_count.load(Ordering::Acquire) == 0 {
+            return false;
+        }
         self.to_worker
             .lock()
             .ok()
@@ -214,6 +244,8 @@ impl<T: Clone> Clone for WorkerSender<T> {
             to_ui: self.to_ui.clone(),
             to_worker: self.to_worker.clone(),
             capacity: self.capacity,
+            message_count: self.message_count.clone(),
+            command_count: self.command_count.clone(),
         }
     }
 }
@@ -222,27 +254,44 @@ impl<T: Clone> Clone for WorkerSender<T> {
 pub struct WorkerReceiver<T> {
     to_ui: Arc<Mutex<VecDeque<WorkerMessage<T>>>>,
     to_worker: Arc<Mutex<VecDeque<WorkerCommand>>>,
+    message_count: Arc<AtomicUsize>,
+    command_count: Arc<AtomicUsize>,
 }
 
 impl<T: Clone> WorkerReceiver<T> {
     /// Receive message from worker
     pub fn recv(&self) -> Option<WorkerMessage<T>> {
-        self.to_ui.lock().ok().and_then(|mut q| q.pop_front())
+        let msg = self.to_ui.lock().ok().and_then(|mut q| q.pop_front());
+        if msg.is_some() {
+            self.message_count.fetch_sub(1, Ordering::Release);
+        }
+        msg
     }
 
     /// Receive all pending messages
     pub fn recv_all(&self) -> Vec<WorkerMessage<T>> {
-        self.to_ui
+        let messages = self
+            .to_ui
             .lock()
             .ok()
-            .map(|mut q| q.drain(..).collect())
-            .unwrap_or_default()
+            .map(|mut q| {
+                let count = q.len();
+                let msgs: Vec<WorkerMessage<T>> = q.drain(..).collect();
+                // Update the atomic counter
+                if count > 0 {
+                    self.message_count.fetch_sub(count, Ordering::Release);
+                }
+                msgs
+            })
+            .unwrap_or_default();
+        messages
     }
 
     /// Send command to worker
     pub fn send_command(&self, cmd: WorkerCommand) -> bool {
         if let Ok(mut queue) = self.to_worker.lock() {
             queue.push_back(cmd);
+            self.command_count.fetch_add(1, Ordering::Release);
             return true;
         }
         false
@@ -263,14 +312,14 @@ impl<T: Clone> WorkerReceiver<T> {
         self.send_command(WorkerCommand::Resume)
     }
 
-    /// Check if there are pending messages
+    /// Check if there are pending messages (lock-free)
     pub fn has_messages(&self) -> bool {
-        self.to_ui.lock().map(|q| !q.is_empty()).unwrap_or(false)
+        self.message_count.load(Ordering::Acquire) > 0
     }
 
-    /// Get message count
+    /// Get message count (lock-free)
     pub fn message_count(&self) -> usize {
-        self.to_ui.lock().map(|q| q.len()).unwrap_or(0)
+        self.message_count.load(Ordering::Acquire)
     }
 }
 
@@ -279,6 +328,8 @@ impl<T: Clone> Clone for WorkerReceiver<T> {
         Self {
             to_ui: self.to_ui.clone(),
             to_worker: self.to_worker.clone(),
+            message_count: self.message_count.clone(),
+            command_count: self.command_count.clone(),
         }
     }
 }

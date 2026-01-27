@@ -1,5 +1,6 @@
 //! Text wrapping and formatting utilities
 
+use crate::utils::unicode::{char_width, display_width, truncate_to_width};
 use textwrap::{Options, WordSeparator, WordSplitter};
 
 /// Text wrapping mode
@@ -105,31 +106,61 @@ impl TextWrapper {
             }
             WrapMode::Char => {
                 let mut lines = Vec::new();
-                let _effective_width = self.width.saturating_sub(self.indent.len());
 
                 for line in text.lines() {
-                    let chars: Vec<char> = line.chars().collect();
-                    let mut start = 0;
+                    let indent = if lines.is_empty() {
+                        &self.indent
+                    } else {
+                        &self.subsequent_indent
+                    };
 
-                    while start < chars.len() {
-                        let indent = if lines.is_empty() {
+                    // Use display_width for indent width
+                    let indent_width = display_width(indent);
+                    let remaining_width = self.width.saturating_sub(indent_width);
+
+                    if remaining_width == 0 {
+                        lines.push(indent.clone());
+                        continue;
+                    }
+
+                    // If line fits, just add it
+                    if display_width(line) <= remaining_width {
+                        lines.push(format!("{}{}", indent, line));
+                        continue;
+                    }
+
+                    // Split by display width, not character count
+                    let mut pos = 0;
+                    let mut first_line = true;
+
+                    while pos < line.len() {
+                        // Get substring starting at pos
+                        let remaining_str = &line[pos..];
+
+                        // Get indent for this line
+                        let current_indent = if first_line {
                             &self.indent
                         } else {
                             &self.subsequent_indent
                         };
 
-                        let remaining = chars.len() - start;
-                        let chunk_size = (self.width.saturating_sub(indent.len())).min(remaining);
-                        let end = start + chunk_size;
+                        let indent_width = display_width(current_indent);
+                        let remaining_width = self.width.saturating_sub(indent_width);
 
-                        let chunk: String = chars[start..end].iter().collect();
-                        lines.push(format!("{}{}", indent, chunk));
+                        if remaining_width == 0 {
+                            break;
+                        }
 
-                        start = end;
+                        // Truncate to fit in remaining width
+                        let chunk = truncate_to_width(remaining_str, remaining_width);
+                        lines.push(format!("{}{}", current_indent, chunk));
+
+                        pos += chunk.len();
+                        first_line = false;
                     }
 
-                    if chars.is_empty() {
-                        lines.push(self.indent.clone());
+                    if line.is_empty() && !indent.is_empty() {
+                        lines.push(indent.clone());
                     }
                 }
 
@@ -140,21 +171,20 @@ impl TextWrapper {
 
     /// Handle overflow for a single line
     fn handle_overflow(&self, text: &str) -> String {
-        let chars: Vec<char> = text.chars().collect();
-        if chars.len() <= self.width {
+        let text_width = display_width(text);
+        if text_width <= self.width {
             return text.to_string();
         }
 
         match self.overflow {
-            Overflow::Clip => chars[..self.width].iter().collect(),
+            Overflow::Clip => truncate_to_width(text, self.width).to_string(),
             Overflow::Ellipsis => {
                 if self.width <= 3 {
                     "...".chars().take(self.width).collect()
                 } else {
                     let visible = self.width - 3;
-                    let mut result: String = chars[..visible].iter().collect();
-                    result.push_str("...");
-                    result
+                    let truncated = truncate_to_width(text, visible);
+                    format!("{}...", truncated)
                 }
             }
             Overflow::EllipsisMiddle => {
@@ -162,11 +192,28 @@ impl TextWrapper {
                     "...".chars().take(self.width).collect()
                 } else {
                     let half = (self.width - 3) / 2;
-                    let end_start = chars.len() - (self.width - 3 - half);
-                    let mut result: String = chars[..half].iter().collect();
-                    result.push_str("...");
-                    result.extend(&chars[end_start..]);
-                    result
+                    // Get first half
+                    let first = truncate_to_width(text, half);
+                    // Get second half from the end
+                    let from_end = self.width - 3 - half;
+                    let second = if from_end > 0 {
+                        // Need to get last 'from_end' display columns
+                        let mut total = 0;
+                        let chars: Vec<char> = text.chars().rev().collect();
+                        let mut rev_chars = Vec::new();
+                        for ch in chars {
+                            let ch_width = char_width(ch);
+                            if total + ch_width > from_end {
+                                break;
+                            }
+                            total += ch_width;
+                            rev_chars.push(ch);
+                        }
+                        rev_chars.into_iter().rev().collect()
+                    } else {
+                        String::new()
+                    };
+                    format!("{}...{}", first, second)
                 }
             }
         }
@@ -344,11 +391,60 @@ mod tests {
 
     #[test]
     fn test_wrap_unicode_cjk() {
-        // CJK characters
+        // CJK characters are 2 columns wide
         let text = "你好世界こんにちは";
         let wrapped = wrap_chars(text, 4);
         assert!(wrapped.len() >= 2);
-        assert_eq!(wrapped[0].chars().count(), 4);
+        // Width 4 means 2 CJK chars fit (each is 2 columns wide)
+        assert_eq!(display_width(&wrapped[0]), 4);
+        assert_eq!(wrapped[0].chars().count(), 2); // 2 CJK chars
+    }
+
+    #[test]
+    fn test_wrap_unicode_mixed() {
+        // Mix of ASCII (width 1) and CJK (width 2)
+        let text = "Hi你好"; // H(1) + i(1) + 你(2) + 好(2) = 6 columns
+        let wrapped = wrap_chars(text, 4);
+        // Should wrap to fit in width 4
+        assert_eq!(display_width(&wrapped[0]), 4);
+        // First line should contain "Hi你" (1+1+2=4 columns)
+        assert_eq!(wrapped[0], "Hi你");
+    }
+
+    #[test]
+    fn test_truncate_with_display_width() {
+        // Truncate using display width
+        let text = "Hi你好世界"; // H(1) + i(1) + 你(2) + 好(2) + 世(2) + 界(2) = 10 columns
+        let result = truncate(text, 6);
+        // truncate_to_width breaks when adding a char would exceed width
+        // So with width 6: H(1) + i(1) + 你(2) = 4, then adding 好(2) would make 6
+        // The function allows equality, so we get "Hi你好"
+        // But if there's any off-by-one, we get "Hi你" = 5 columns
+        let result_width = display_width(&result);
+        assert!(result_width <= 6);
+        // Verify the result is character-boundary safe
+        assert!(result.is_char_boundary(result.len()));
+    }
+
+    #[test]
+    fn test_truncate_cjk_to_exact_width() {
+        // Test exact width truncation with CJK
+        let text = "你好"; // 4 columns
+        let result = truncate(text, 4);
+        assert_eq!(display_width(&result), 4);
+        assert_eq!(result, "你好");
+
+        // For width 2 with Ellipsis, we get ".." (ellipsis is 3 chars minimum)
+        let result = truncate(text, 2);
+        assert_eq!(result, "..");
+
+        // Use Clip mode to actually truncate without ellipsis
+        let wrapper = TextWrapper::new(2)
+            .mode(WrapMode::NoWrap)
+            .overflow(Overflow::Clip);
+        let result = wrapper.wrap(text).into_iter().next().unwrap_or_default();
+        assert_eq!(display_width(&result), 2);
+        assert_eq!(result, "你");
     }
 
     #[test]

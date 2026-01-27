@@ -67,6 +67,29 @@ pub fn parse(input: &str) -> Result<Query, ParseError> {
                     "sort" => {
                         // sort:field or sort:field:desc
                         let parts: Vec<&str> = value.split(':').collect();
+
+                        // Validate that we have a non-empty field name
+                        if parts.is_empty() || parts[0].is_empty() {
+                            return Err(ParseError::new(
+                                "sort requires a field name (e.g., sort:name or sort:name:desc)",
+                                input.len() - value.len(),
+                            ));
+                        }
+
+                        // Validate direction if provided
+                        if parts.len() > 1 && !parts[1].is_empty() {
+                            let dir_lower = parts[1].to_lowercase();
+                            if dir_lower != "asc" && dir_lower != "desc" {
+                                return Err(ParseError::new(
+                                    format!(
+                                        "invalid sort direction '{}', use 'asc' or 'desc'",
+                                        parts[1]
+                                    ),
+                                    input.len() - value.len() + parts[0].len() + 1,
+                                ));
+                            }
+                        }
+
                         let field = parts[0].to_string();
                         let direction = if parts.len() > 1 && parts[1].to_lowercase() == "desc" {
                             SortDirection::Descending
@@ -324,5 +347,46 @@ mod tests {
         assert_eq!(query.filters.len(), 2);
         assert!(query.sort.is_some());
         assert_eq!(query.limit, Some(20));
+    }
+
+    #[test]
+    fn test_parse_sort_empty_field() {
+        // sort: with empty value is not recognized as a field token
+        // It's treated as regular text instead
+        let result = parse("sort:");
+        assert!(result.is_ok());
+        let query = result.unwrap();
+        // No sort field should be set (it was treated as text)
+        assert!(query.sort.is_none());
+        // The text "sort:" should be in filters
+        assert_eq!(query.filters.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_sort_empty_field_with_direction() {
+        // sort::desc should error (empty field)
+        let result = parse("sort::desc");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("field name"));
+    }
+
+    #[test]
+    fn test_parse_sort_invalid_direction() {
+        // sort:name:foo should error (invalid direction)
+        let result = parse("sort:name:foo");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .message
+            .contains("invalid sort direction"));
+    }
+
+    #[test]
+    fn test_parse_sort_asc_explicit() {
+        // sort:name:asc should work
+        let query = parse("sort:name:asc").unwrap();
+        let sort = query.sort.unwrap();
+        assert_eq!(sort.field, "name");
+        assert_eq!(sort.direction, SortDirection::Ascending);
     }
 }
