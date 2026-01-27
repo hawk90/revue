@@ -577,6 +577,7 @@ pub fn toggle_devtools() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app::App;
 
     #[test]
     fn test_devtools_config_default() {
@@ -929,31 +930,33 @@ mod tests {
 
     #[test]
     fn test_global_enable_disable_devtools() {
-        // Reset state first
-        disable_devtools();
-        assert!(!is_devtools_enabled());
+        // Use App methods instead of deprecated global functions
+        // Start with devtools explicitly disabled
+        let mut app = App::builder().devtools(false).build();
+        assert!(!app.is_devtools_enabled());
 
-        enable_devtools();
-        assert!(is_devtools_enabled());
+        app.enable_devtools();
+        assert!(app.is_devtools_enabled());
 
-        disable_devtools();
-        assert!(!is_devtools_enabled());
+        app.disable_devtools();
+        assert!(!app.is_devtools_enabled());
     }
 
     #[test]
     fn test_global_toggle_devtools() {
-        // Set known state first
-        disable_devtools();
-        assert!(!is_devtools_enabled());
+        // Use App methods instead of deprecated global functions
+        // Start with devtools explicitly disabled
+        let mut app = App::builder().devtools(false).build();
+        assert!(!app.is_devtools_enabled());
 
         // Toggle should enable
-        let result = toggle_devtools();
+        let result = app.toggle_devtools();
         assert!(result); // Returns new state (enabled)
-        assert!(is_devtools_enabled());
+        assert!(app.is_devtools_enabled());
 
         // Toggle should disable
-        let result = toggle_devtools();
+        let result = app.toggle_devtools();
         assert!(!result); // Returns new state (disabled)
-        assert!(!is_devtools_enabled());
+        assert!(!app.is_devtools_enabled());
     }
 }
