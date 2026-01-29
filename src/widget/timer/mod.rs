@@ -780,4 +780,295 @@ mod tests {
         let p = pomodoro();
         assert_eq!(p.remaining_seconds(), 25 * 60);
     }
+
+    #[test]
+    fn test_timer_toggle() {
+        let mut timer = Timer::countdown(60);
+        assert_eq!(timer.state(), TimerState::Stopped);
+
+        timer.toggle();
+        assert_eq!(timer.state(), TimerState::Running);
+
+        timer.toggle();
+        assert_eq!(timer.state(), TimerState::Paused);
+
+        timer.toggle();
+        assert_eq!(timer.state(), TimerState::Running);
+    }
+
+    #[test]
+    fn test_timer_stop() {
+        let mut timer = Timer::countdown(60);
+        timer.start();
+        assert_eq!(timer.state(), TimerState::Running);
+
+        timer.stop();
+        assert_eq!(timer.state(), TimerState::Stopped);
+        assert_eq!(timer.remaining_seconds(), 60);
+        assert!(timer.started_at.is_none());
+    }
+
+    #[test]
+    fn test_timer_reset() {
+        let mut timer = Timer::countdown(60);
+        timer.remaining_ms = 30000;
+        timer.start();
+
+        timer.reset();
+        assert_eq!(timer.remaining_seconds(), 60);
+        assert!(timer.started_at.is_some()); // Still running
+    }
+
+    #[test]
+    fn test_timer_reset_when_stopped() {
+        let mut timer = Timer::countdown(60);
+        timer.remaining_ms = 30000;
+
+        timer.reset();
+        assert_eq!(timer.remaining_seconds(), 60);
+        assert!(timer.started_at.is_none()); // Not running
+    }
+
+    #[test]
+    fn test_timer_is_completed() {
+        let mut timer = Timer::countdown(60);
+        assert!(!timer.is_completed());
+
+        timer.state = TimerState::Completed;
+        assert!(timer.is_completed());
+    }
+
+    #[test]
+    fn test_timer_is_running() {
+        let mut timer = Timer::countdown(60);
+        assert!(!timer.is_running());
+
+        timer.start();
+        assert!(timer.is_running());
+
+        timer.pause();
+        assert!(!timer.is_running());
+    }
+
+    #[test]
+    fn test_timer_format_precise() {
+        let timer = Timer::countdown(65).format(TimerFormat::Precise);
+        assert_eq!(timer.format_remaining(), "05.000");
+    }
+
+    #[test]
+    fn test_timer_progress_zero_total() {
+        let timer = Timer::countdown(0);
+        assert_eq!(timer.progress(), 1.0);
+    }
+
+    #[test]
+    fn test_timer_short_break() {
+        let timer = Timer::short_break();
+        assert_eq!(timer.remaining_seconds(), 5 * 60);
+        assert_eq!(timer.title, Some("Short Break".to_string()));
+    }
+
+    #[test]
+    fn test_timer_long_break() {
+        let timer = Timer::long_break();
+        assert_eq!(timer.remaining_seconds(), 15 * 60);
+        assert_eq!(timer.title, Some("Long Break".to_string()));
+    }
+
+    #[test]
+    fn test_timer_show_progress() {
+        let timer = Timer::countdown(60).show_progress(false);
+        assert!(!timer.show_progress);
+    }
+
+    #[test]
+    fn test_timer_progress_width() {
+        let timer = Timer::countdown(60).progress_width(50);
+        assert_eq!(timer.progress_width, 50);
+    }
+
+    #[test]
+    fn test_timer_large_digits() {
+        let timer = Timer::countdown(60).large_digits(true);
+        assert!(timer.large_digits);
+    }
+
+    #[test]
+    fn test_timer_auto_restart() {
+        let timer = Timer::countdown(60).auto_restart(true);
+        assert!(timer.auto_restart);
+    }
+
+    #[test]
+    fn test_stopwatch_toggle() {
+        let mut sw = Stopwatch::new();
+        assert_eq!(sw.state, TimerState::Stopped);
+
+        sw.toggle();
+        assert_eq!(sw.state, TimerState::Running);
+
+        sw.toggle();
+        assert_eq!(sw.state, TimerState::Paused);
+
+        sw.toggle();
+        assert_eq!(sw.state, TimerState::Running);
+    }
+
+    #[test]
+    fn test_stopwatch_stop() {
+        let mut sw = Stopwatch::new();
+        sw.start();
+        assert_eq!(sw.state, TimerState::Running);
+
+        sw.stop();
+        assert_eq!(sw.state, TimerState::Stopped);
+        assert_eq!(sw.elapsed_ms, 0);
+        assert!(sw.started_at.is_none());
+        assert!(sw.laps.is_empty());
+    }
+
+    #[test]
+    fn test_stopwatch_reset() {
+        let mut sw = Stopwatch::new();
+        sw.start();
+        sw.elapsed_ms = 5000;
+        sw.laps.push(1000);
+
+        sw.reset();
+        assert_eq!(sw.elapsed_ms, 0);
+        assert!(sw.started_at.is_some()); // Still running
+        assert!(sw.laps.is_empty());
+    }
+
+    #[test]
+    fn test_stopwatch_reset_when_stopped() {
+        let mut sw = Stopwatch::new();
+        sw.elapsed_ms = 5000;
+        sw.laps.push(1000);
+
+        sw.reset();
+        assert_eq!(sw.elapsed_ms, 0);
+        assert!(sw.started_at.is_none()); // Not running
+        assert!(sw.laps.is_empty());
+    }
+
+    #[test]
+    fn test_stopwatch_format_elapsed() {
+        let mut sw = Stopwatch::new();
+        sw.elapsed_ms = 3661000; // 1h 1m 1s
+        assert_eq!(sw.format_elapsed(), "01:01:01");
+
+        sw.elapsed_ms = 65000;
+        assert_eq!(sw.format_elapsed(), "01:05");
+    }
+
+    #[test]
+    fn test_stopwatch_elapsed_seconds() {
+        let mut sw = Stopwatch::new();
+        assert_eq!(sw.elapsed_seconds(), 0.0);
+
+        sw.elapsed_ms = 5500;
+        assert_eq!(sw.elapsed_seconds(), 5.5);
+    }
+
+    #[test]
+    fn test_stopwatch_is_running() {
+        let mut sw = Stopwatch::new();
+        assert!(!sw.is_running());
+
+        sw.start();
+        assert!(sw.is_running());
+
+        sw.pause();
+        assert!(!sw.is_running());
+    }
+
+    #[test]
+    fn test_stopwatch_show_laps() {
+        let sw = Stopwatch::new().show_laps(false);
+        assert!(!sw.show_laps);
+    }
+
+    #[test]
+    fn test_stopwatch_max_laps() {
+        let sw = Stopwatch::new().max_laps(10);
+        assert_eq!(sw.max_laps, 10);
+    }
+
+    #[test]
+    fn test_stopwatch_title() {
+        let sw = Stopwatch::new().title("My Stopwatch");
+        assert_eq!(sw.title, Some("My Stopwatch".to_string()));
+    }
+
+    #[test]
+    fn test_stopwatch_large_digits() {
+        let sw = Stopwatch::new().large_digits(true);
+        assert!(sw.large_digits);
+    }
+
+    #[test]
+    fn test_format_ms_compact_seconds_only() {
+        assert_eq!(format_ms(500, TimerFormat::Compact), "0.5s");
+    }
+
+    #[test]
+    fn test_format_ms_compact_hours() {
+        assert_eq!(format_ms(3665000, TimerFormat::Compact), "1h 1m 5s");
+    }
+
+    #[test]
+    fn test_render_large_time() {
+        let result = render_large_time("12:34");
+        assert_eq!(result.len(), 3);
+        assert!(result[0].contains('█'));
+        assert!(result[1].contains('█'));
+        assert!(result[2].contains('▀'));
+    }
+
+    #[test]
+    fn test_render_large_time_with_colon() {
+        let result = render_large_time("1:23");
+        assert_eq!(result.len(), 3);
+        // Each digit is 4 chars (3 pattern + 1 space), colon is 2 chars
+        // "1" (4) + ":" (2) + "2" (4) + "3" (4) = 14 chars roughly
+        assert!(!result[0].is_empty());
+        assert!(!result[1].is_empty());
+        assert!(!result[2].is_empty());
+    }
+
+    #[test]
+    fn test_render_large_time_empty() {
+        let result = render_large_time("");
+        assert_eq!(result.len(), 3);
+        assert!(result[0].is_empty());
+        assert!(result[1].is_empty());
+        assert!(result[2].is_empty());
+    }
+
+    #[test]
+    fn test_render_large_time_invalid_chars() {
+        let result = render_large_time("ab:cd");
+        // Invalid chars should be skipped
+        assert_eq!(result.len(), 3);
+    }
+
+    #[test]
+    fn test_stopwatch_default() {
+        let sw = Stopwatch::default();
+        assert_eq!(sw.elapsed_ms, 0);
+        assert_eq!(sw.state, TimerState::Stopped);
+    }
+
+    #[test]
+    fn test_timer_state_equality() {
+        assert_eq!(TimerState::Stopped, TimerState::Stopped);
+        assert_ne!(TimerState::Running, TimerState::Stopped);
+    }
+
+    #[test]
+    fn test_timer_format_default() {
+        assert_eq!(TimerFormat::default(), TimerFormat::Full);
+    }
 }

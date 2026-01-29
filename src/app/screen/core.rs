@@ -380,6 +380,7 @@ mod tests {
             self
         }
 
+        #[allow(dead_code)]
         fn with_config(mut self, config: ScreenConfig) -> Self {
             self.config = config;
             self
