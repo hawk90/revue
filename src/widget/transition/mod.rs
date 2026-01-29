@@ -28,7 +28,7 @@ mod group;
 mod helper;
 mod types;
 
-pub use types::{Animation, AnimationPreset};
+pub use types::{Animation, AnimationPreset, TransitionPhase};
 
 // Re-export main widgets
 pub use core::Transition;
