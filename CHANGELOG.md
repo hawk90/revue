@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.42.3](https://github.com/hawk90/revue/compare/v2.42.2...v2.42.3) (2026-01-30)
+
+
+### Bug Fixes
+
+* **tests:** add missing filepicker module to widget tests ([57263f0](https://github.com/hawk90/revue/commit/57263f05e17a0e0e520c79d275bac11248fa780c))
+* **tests:** prefix unused variables with underscore in filepicker tests ([fade4dc](https://github.com/hawk90/revue/commit/fade4dc8b73d6f139413d0e6c507637c68a4ab62))
+
 ## [2.42.2](https://github.com/hawk90/revue/compare/v2.42.1...v2.42.2) (2026-01-30)
 
 
