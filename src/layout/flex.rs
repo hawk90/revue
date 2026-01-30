@@ -667,4 +667,168 @@ mod tests {
         // Should not panic
         compute_flex(&mut tree, 1, 100, 50);
     }
+
+    // ==================== Edge Case Tests ====================
+
+    #[test]
+    fn test_flex_no_auto_children() {
+        // Test that auto_count = 0 doesn't cause division by zero at line 87
+        let mut tree = LayoutTree::new();
+        let mut parent = LayoutNode::default();
+        parent.id = 1;
+        parent.flex.direction = FlexDirection::Row;
+        parent.sizing.width = Size::Fixed(100);
+        parent.sizing.height = Size::Fixed(50);
+
+        let mut child1 = LayoutNode::default();
+        child1.id = 2;
+        child1.sizing.width = Size::Fixed(30);
+        child1.sizing.height = Size::Auto;
+
+        let mut child2 = LayoutNode::default();
+        child2.id = 3;
+        child2.sizing.width = Size::Fixed(40);
+        child2.sizing.height = Size::Auto;
+
+        tree.insert(child1);
+        tree.insert(child2);
+
+        parent.children = vec![2, 3];
+        tree.insert(parent);
+        tree.set_root(1);
+
+        // No auto children - should not panic due to division by zero
+        compute_flex(&mut tree, 1, 100, 50);
+
+        let child1 = tree.get(2).unwrap();
+        let child2 = tree.get(3).unwrap();
+        assert_eq!(child1.computed.width, 30);
+        assert_eq!(child2.computed.width, 40);
+    }
+
+    #[test]
+    fn test_flex_all_percent_children() {
+        // All children are percentage sized - no Auto children
+        let mut tree = LayoutTree::new();
+        let mut parent = LayoutNode::default();
+        parent.id = 1;
+        parent.flex.direction = FlexDirection::Row;
+        parent.sizing.width = Size::Fixed(100);
+        parent.sizing.height = Size::Fixed(50);
+
+        let mut child1 = LayoutNode::default();
+        child1.id = 2;
+        child1.sizing.width = Size::Percent(30.0);
+        child1.sizing.height = Size::Auto;
+
+        let mut child2 = LayoutNode::default();
+        child2.id = 3;
+        child2.sizing.width = Size::Percent(50.0);
+        child2.sizing.height = Size::Auto;
+
+        tree.insert(child1);
+        tree.insert(child2);
+
+        parent.children = vec![2, 3];
+        tree.insert(parent);
+        tree.set_root(1);
+
+        compute_flex(&mut tree, 1, 100, 50);
+
+        let child1 = tree.get(2).unwrap();
+        let child2 = tree.get(3).unwrap();
+        assert_eq!(child1.computed.width, 30);
+        assert_eq!(child2.computed.width, 50);
+    }
+
+    #[test]
+    fn test_flex_zero_width_container() {
+        // Should not panic with zero width
+        let mut tree = LayoutTree::new();
+        let mut parent = LayoutNode::default();
+        parent.id = 1;
+        parent.flex.direction = FlexDirection::Row;
+        parent.sizing.width = Size::Fixed(0);
+        parent.sizing.height = Size::Fixed(50);
+
+        let mut child = LayoutNode::default();
+        child.id = 2;
+        child.sizing.width = Size::Auto;
+        child.sizing.height = Size::Auto;
+
+        tree.insert(child);
+
+        parent.children = vec![2];
+        tree.insert(parent);
+        tree.set_root(1);
+
+        compute_flex(&mut tree, 1, 0, 50);
+
+        let child = tree.get(2).unwrap();
+        assert_eq!(child.computed.width, 0);
+    }
+
+    #[test]
+    fn test_flex_justify_space_between_single_child() {
+        // Should not divide by zero with single child
+        let mut tree = LayoutTree::new();
+        let mut parent = LayoutNode::default();
+        parent.id = 1;
+        parent.flex.direction = FlexDirection::Row;
+        parent.flex.justify_content = JustifyContent::SpaceBetween;
+        parent.sizing.width = Size::Fixed(100);
+        parent.sizing.height = Size::Fixed(50);
+
+        let mut child = LayoutNode::default();
+        child.id = 2;
+        child.sizing.width = Size::Fixed(30);
+        child.sizing.height = Size::Auto;
+
+        tree.insert(child);
+
+        parent.children = vec![2];
+        tree.insert(parent);
+        tree.set_root(1);
+
+        compute_flex(&mut tree, 1, 100, 50);
+
+        let child = tree.get(2).unwrap();
+        assert_eq!(child.computed.x, 0);
+    }
+
+    #[test]
+    fn test_flex_justify_space_around_empty() {
+        // Should not divide by zero with empty children
+        let mut tree = LayoutTree::new();
+        let mut parent = LayoutNode::default();
+        parent.id = 1;
+        parent.flex.direction = FlexDirection::Row;
+        parent.flex.justify_content = JustifyContent::SpaceAround;
+        parent.sizing.width = Size::Fixed(100);
+        parent.sizing.height = Size::Fixed(50);
+        parent.children = vec![];
+
+        tree.insert(parent);
+        tree.set_root(1);
+
+        compute_flex(&mut tree, 1, 100, 50);
+    }
+
+    #[test]
+    fn test_flex_gap_with_empty() {
+        // Should not panic with gap but no children
+        let mut tree = LayoutTree::new();
+        let mut parent = LayoutNode::default();
+        parent.id = 1;
+        parent.flex.direction = FlexDirection::Row;
+        parent.flex.gap = 10;
+        parent.sizing.width = Size::Fixed(100);
+        parent.sizing.height = Size::Fixed(50);
+        parent.children = vec![];
+
+        tree.insert(parent);
+        tree.set_root(1);
+
+        compute_flex(&mut tree, 1, 100, 50);
+    }
 }

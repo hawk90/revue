@@ -7,7 +7,10 @@ impl RenderContext<'_> {
     /// Draw a horizontal progress bar
     pub fn draw_progress_bar(&mut self, config: &ProgressBarConfig) {
         let progress = config.progress.clamp(0.0, 1.0);
-        let filled = (config.width as f32 * progress).round() as u16;
+        // Clamp the filled width to prevent overflow
+        let filled = (config.width as f32 * progress)
+            .round()
+            .clamp(0.0, config.width as f32) as u16;
 
         for i in 0..config.width {
             let ch = if i < filled {
