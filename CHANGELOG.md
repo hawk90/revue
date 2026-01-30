@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.42.4](https://github.com/hawk90/revue/compare/v2.42.3...v2.42.4) (2026-01-30)
+
+
+### Bug Fixes
+
+* **security:** add path traversal validation to FilePicker ([#333](https://github.com/hawk90/revue/issues/333)) ([e9efa31](https://github.com/hawk90/revue/commit/e9efa31518e3c3bec00781dae621c3807eb50dff))
+
 ## [2.42.3](https://github.com/hawk90/revue/compare/v2.42.2...v2.42.3) (2026-01-30)
 
 
