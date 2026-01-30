@@ -1096,7 +1096,12 @@ fn test_picker_result_multiple_empty() {
 fn test_picker_result_selected_absolute_path() {
     use std::path::PathBuf;
 
-    let path = PathBuf::from("/absolute/path/test.txt");
+    // Use platform-appropriate absolute path
+    let path = if cfg!(windows) {
+        PathBuf::from("C:\\absolute\\path\\test.txt")
+    } else {
+        PathBuf::from("/absolute/path/test.txt")
+    };
     let result = PickerResult::Selected(path.clone());
 
     match result {
