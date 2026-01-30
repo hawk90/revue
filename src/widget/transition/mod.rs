@@ -170,7 +170,7 @@ mod tests {
     #[test]
     fn test_transition_show_when_visible() {
         let mut transition = Transition::new("Test");
-        let initial_phase = transition.phase();
+        let _initial_phase = transition.phase();
         transition.show();
         // Should remain visible
         assert!(transition.is_visible());
@@ -310,7 +310,7 @@ mod tests {
 
     #[test]
     fn test_transition_group_stagger() {
-        let group = TransitionGroup::new(vec!["A", "B"]).stagger(50);
+        let _group = TransitionGroup::new(vec!["A", "B"]).stagger(50);
         // Can't directly test stagger_delay, but verify builder works
     }
 
