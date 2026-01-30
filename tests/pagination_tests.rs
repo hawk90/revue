@@ -23,19 +23,19 @@ fn test_pagination_style_full() {
 
 #[test]
 fn test_pagination_style_simple() {
-    let p = pagination(10).simple();
+    let _p = pagination(10).simple();
     // Simple style was set
 }
 
 #[test]
 fn test_pagination_style_compact() {
-    let p = pagination(10).compact();
+    let _p = pagination(10).compact();
     // Compact style was set
 }
 
 #[test]
 fn test_pagination_style_dots() {
-    let p = pagination(10).dots();
+    let _p = pagination(10).dots();
     // Dots style was set
 }
 
@@ -46,12 +46,12 @@ fn test_pagination_max_visible() {
 
 #[test]
 fn test_pagination_no_arrows() {
-    let p = pagination(10).no_arrows();
+    let _p = pagination(10).no_arrows();
 }
 
 #[test]
 fn test_pagination_no_edges() {
-    let p = pagination(10).no_edges();
+    let _p = pagination(10).no_edges();
 }
 
 #[test]

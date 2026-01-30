@@ -26,19 +26,17 @@ fn test_image_from_rgba() {
 #[cfg(feature = "image")]
 #[test]
 fn test_image_scale_modes() {
-    let img = Image::from_rgb(vec![0; 300], 10, 10);
-
-    // Test that scale builder method works
-    let _img_stretch = img.clone();
-    let _img_fit = img.clone();
-    let _img_fill = img.clone();
-    let _img_none = img;
+    // Test that scale builder method works - each image is created fresh
+    let _img_stretch = Image::from_rgb(vec![0; 300], 10, 10);
+    let _img_fit = Image::from_rgb(vec![0; 300], 10, 10);
+    let _img_fill = Image::from_rgb(vec![0; 300], 10, 10);
+    let _img_none = Image::from_rgb(vec![0; 300], 10, 10);
 }
 
 #[cfg(feature = "image")]
 #[test]
 fn test_image_placeholder() {
-    let img = Image::from_rgb(vec![0; 300], 10, 10).placeholder('#');
+    let _img = Image::from_rgb(vec![0; 300], 10, 10).placeholder('#');
     // Placeholder was set successfully
 }
 

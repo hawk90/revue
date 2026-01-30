@@ -49,13 +49,13 @@ fn test_streamline_helper() {
 
 #[test]
 fn test_streamline_layer() {
-    let chart = streamline().layer(StreamLayer::new("Sales").data(vec![10.0, 20.0]));
+    let _chart = streamline().layer(StreamLayer::new("Sales").data(vec![10.0, 20.0]));
     // Layer added successfully
 }
 
 #[test]
 fn test_streamline_multiple_layers() {
-    let chart = streamline()
+    let _chart = streamline()
         .layer(StreamLayer::new("Sales").data(vec![10.0, 20.0, 15.0]))
         .layer(StreamLayer::new("Marketing").data(vec![5.0, 8.0, 12.0]))
         .layer(StreamLayer::new("Support").data(vec![3.0, 4.0, 6.0]));
@@ -141,7 +141,7 @@ fn test_traffic_stream() {
 
 #[test]
 fn test_streamline_builder_pattern() {
-    let chart = streamline()
+    let _chart = streamline()
         .layer(
             StreamLayer::new("Sales")
                 .data(vec![10.0, 20.0])
