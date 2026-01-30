@@ -249,7 +249,7 @@ fn test_breakpoint_xl_const() {
 
 #[test]
 fn test_breakpoints_new() {
-    let bp = Breakpoints::new();
+    let _bp = Breakpoints::new();
     // Empty breakpoints returns a reference that may be invalid
     // Skip this test for now as it requires understanding the fallback behavior
 }
