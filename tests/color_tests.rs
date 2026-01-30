@@ -174,7 +174,6 @@ fn test_color_darken_pct() {
 #[test]
 fn test_color_lighten_pct() {
     let c = Color::rgb(100, 100, 100).lighten_pct(0.2);
-    let c = Color::rgb(100, 100, 100).lighten_pct(0.2);
     assert!(c.r > 100);
 }
 
