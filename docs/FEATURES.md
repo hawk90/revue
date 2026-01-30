@@ -1586,19 +1586,19 @@ zen()
 
 ## Feature Comparison
 
-| Feature | Revue | Textual | Ratatui | Cursive |
-|---------|-------|---------|---------|---------|
-| CSS Styling | ✅ | ✅ | ❌ | ❌ |
-| CSS Variables | ✅ | ✅ | ❌ | ❌ |
-| Flexbox | ✅ | ✅ | ❌ | △ |
-| Signal/Reactivity | ✅ | ✅ | ❌ | ❌ |
-| Hot Reload | ✅ | ✅ | ❌ | ❌ |
-| Devtools | ✅ | ✅ | ❌ | ❌ |
-| Form Validation | ✅ | ❌ | ❌ | ❌ |
-| Animation System | ✅ | ❌ | ❌ | ❌ |
-| Worker Pool | ✅ | ❌ | ❌ | ❌ |
-| Command Palette | ✅ | ✅ | ❌ | ❌ |
-| Markdown | ✅ | ✅ | △ | ❌ |
-| Image | ✅ Kitty | △ | △ | ❌ |
-| Single Binary | ✅ | ❌ | ✅ | ✅ |
-| Performance | ⚡⚡⚡ | ⚡ | ⚡⚡⚡ | ⚡⚡⚡ |
+| Feature | Revue | Textual | ratatui | reratui | Cursive |
+|---------|-------|---------|---------|---------|---------|
+| CSS Styling | ✅ | ✅ | ❌ | ❌ | ❌ |
+| CSS Variables | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Flexbox | ✅ | ✅ | ❌ | △ | △ |
+| Signal/Reactivity | ✅ | ✅ | ❌ | ✅ Hooks | ❌ |
+| Hot Reload | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Devtools | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Form Validation | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Animation System | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Worker Pool | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Command Palette | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Markdown | ✅ | ✅ | △ | △ | ❌ |
+| Image | ✅ Kitty | △ | △ | △ | ❌ |
+| Single Binary | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Performance | ⚡⚡⚡ | ⚡ | ⚡⚡⚡ | ⚡⚡⚡ | ⚡⚡⚡ |
