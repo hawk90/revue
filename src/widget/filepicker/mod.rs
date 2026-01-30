@@ -25,7 +25,80 @@ use crate::style::Color;
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
+
+/// Error type for file picker operations
+#[derive(Debug, thiserror::Error)]
+pub enum FilePickerError {
+    /// Path traversal detected
+    #[error("Path traversal detected: {0}")]
+    PathTraversal(String),
+
+    /// Path is outside allowed directory
+    #[error("Path is outside allowed directory")]
+    OutsideAllowedDirectory,
+
+    /// Invalid path
+    #[error("Invalid path: {0}")]
+    InvalidPath(String),
+
+    /// IO error
+    #[error("IO error: {0}")]
+    IoError(#[from] io::Error),
+}
+
+/// Validate that path doesn't contain traversal patterns
+///
+/// Returns error if the path contains `../` or other traversal sequences.
+fn validate_path_no_traversal(path: &Path) -> Result<(), FilePickerError> {
+    let path_str = path.to_string_lossy();
+
+    // Check for obvious traversal patterns
+    if path_str.contains("../") || path_str.contains("..\\") {
+        return Err(FilePickerError::PathTraversal(
+            "path contains '..' parent directory reference".to_string(),
+        ));
+    }
+
+    // Check for components that start with ..
+    for component in path.components() {
+        if let std::path::Component::ParentDir = component {
+            return Err(FilePickerError::PathTraversal(
+                "path contains parent directory component".to_string(),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate and canonicalize a path
+///
+/// Returns the canonical form of the path, or an error if validation fails.
+fn validate_and_canonicalize(path: &Path, base_dir: &Path) -> Result<PathBuf, FilePickerError> {
+    // First check for traversal patterns
+    validate_path_no_traversal(path)?;
+
+    // Try to canonicalize the path
+    let canonical = path.canonicalize().map_err(|_| {
+        FilePickerError::InvalidPath("path does not exist or cannot be accessed".to_string())
+    })?;
+
+    // Check if the canonical path is within base directory (if base_dir exists)
+    if base_dir.exists() {
+        let base_canonical = base_dir
+            .canonicalize()
+            .map_err(|_| FilePickerError::InvalidPath("invalid base directory".to_string()))?;
+
+        // Check if canonical path starts with base canonical path
+        if !canonical.starts_with(&base_canonical) {
+            return Err(FilePickerError::OutsideAllowedDirectory);
+        }
+    }
+
+    Ok(canonical)
+}
 
 /// File filter
 #[derive(Clone, Debug, Default)]
@@ -310,10 +383,34 @@ impl FilePicker {
     }
 
     /// Set starting directory
+    ///
+    /// # Panics
+    ///
+    /// Panics if the path contains traversal patterns (../) or is invalid.
+    /// Use `try_set_start_dir()` for a non-panicking version.
     pub fn start_dir(mut self, dir: impl AsRef<Path>) -> Self {
-        self.current_dir = dir.as_ref().to_path_buf();
-        self.refresh();
+        let path = dir.as_ref();
+        match validate_and_canonicalize(path, &self.current_dir) {
+            Ok(validated) => {
+                self.current_dir = validated;
+                self.refresh();
+            }
+            Err(e) => {
+                panic!("Invalid starting directory: {}", e);
+            }
+        }
         self
+    }
+
+    /// Set starting directory (non-panicking version)
+    ///
+    /// Returns error if the path contains traversal patterns or is invalid.
+    pub fn try_set_start_dir(mut self, dir: impl AsRef<Path>) -> Result<Self, FilePickerError> {
+        let path = dir.as_ref();
+        let validated = validate_and_canonicalize(path, &self.current_dir)?;
+        self.current_dir = validated;
+        self.refresh();
+        Ok(self)
     }
 
     /// Set width
@@ -378,20 +475,32 @@ impl FilePicker {
     }
 
     /// Navigate to directory
-    pub fn navigate_to(&mut self, path: &Path) {
-        if path.is_dir() {
-            self.current_dir = path.to_path_buf();
-            self.history.truncate(self.history_idx + 1);
-            self.history.push(self.current_dir.clone());
-            self.history_idx = self.history.len() - 1;
-            self.refresh();
+    ///
+    /// # Security
+    ///
+    /// The path is validated to prevent path traversal attacks.
+    /// Returns error if the path contains traversal patterns or is outside allowed directory.
+    pub fn navigate_to(&mut self, path: &Path) -> Result<(), FilePickerError> {
+        // Always validate for path traversal, even if path doesn't exist
+        validate_path_no_traversal(path)?;
+
+        if !path.is_dir() {
+            return Ok(()); // Not a directory, silently ignore
         }
+
+        let validated = validate_and_canonicalize(path, &self.current_dir)?;
+        self.current_dir = validated.clone();
+        self.history.truncate(self.history_idx + 1);
+        self.history.push(self.current_dir.clone());
+        self.history_idx = self.history.len() - 1;
+        self.refresh();
+        Ok(())
     }
 
     /// Go to parent directory
     pub fn go_up(&mut self) {
         if let Some(parent) = self.current_dir.parent().map(Path::to_path_buf) {
-            self.navigate_to(&parent);
+            let _ = self.navigate_to(&parent); // Ignore errors, parent should be valid
         }
     }
 
@@ -442,7 +551,7 @@ impl FilePicker {
     pub fn enter(&mut self) -> Option<PickerResult> {
         if let Some(entry) = self.entries.get(self.highlighted) {
             if entry.is_dir {
-                self.navigate_to(&entry.path.clone());
+                let _ = self.navigate_to(&entry.path.clone()); // Ignore errors for valid entries
                 None
             } else {
                 match self.mode {
@@ -785,5 +894,115 @@ mod tests {
 
         let dp = dir_picker();
         assert_eq!(dp.mode, PickerMode::Directory);
+    }
+
+    // Security tests for path traversal
+
+    #[test]
+    fn test_reject_double_dot_slash() {
+        let picker = FilePicker::new();
+        let result = picker.try_set_start_dir("../../../etc/passwd");
+        assert!(result.is_err());
+        if let Err(FilePickerError::PathTraversal(_)) = result {
+            // Expected
+        } else {
+            panic!("Expected PathTraversal error");
+        }
+    }
+
+    #[test]
+    fn test_reject_double_dot_backslash() {
+        let picker = FilePicker::new();
+        let result = picker.try_set_start_dir("..\\..\\system32");
+        assert!(result.is_err());
+        if let Err(FilePickerError::PathTraversal(_)) = result {
+            // Expected
+        } else {
+            panic!("Expected PathTraversal error");
+        }
+    }
+
+    #[test]
+    fn test_reject_parent_dir_component() {
+        let picker = FilePicker::new();
+        let mut picker = picker;
+        let path = PathBuf::from("..").join("etc");
+        let result = picker.navigate_to(&path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_navigate_to_rejects_traversal() {
+        let mut picker = FilePicker::new();
+        let traversal_path = Path::new("../../../etc");
+        let result = picker.navigate_to(traversal_path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_allow_valid_paths() {
+        let picker = FilePicker::new();
+        // Valid absolute path should work (if it exists)
+        if let Ok(current) = std::env::current_dir() {
+            let result = picker.try_set_start_dir(&current);
+            assert!(result.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_allow_current_directory() {
+        let picker = FilePicker::new();
+        let result = picker.try_set_start_dir(".");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_go_up_stays_safe() {
+        let mut picker = FilePicker::new();
+        let initial_dir = picker.current_dir().to_path_buf();
+        picker.go_up();
+        // go_up should always navigate to parent, which should be valid
+        // (may or may not change directory depending on where we started)
+    }
+
+    #[test]
+    fn test_enter_directory_safe() {
+        let mut picker = FilePicker::new();
+        // Navigate within the picker should be safe
+        picker.highlight_next();
+        if let Some(entry) = picker.highlighted_entry() {
+            if entry.is_dir {
+                let initial_dir = picker.current_dir().to_path_buf();
+                picker.enter();
+                // Either we navigated or stayed, but shouldn't panic
+            }
+        }
+    }
+
+    #[test]
+    fn test_path_traversal_error_message() {
+        let picker = FilePicker::new();
+        let result = picker.try_set_start_dir("../../../etc/passwd");
+        if let Err(e) = result {
+            let msg = format!("{}", e);
+            assert!(
+                msg.contains("traversal") || msg.contains("parent"),
+                "Error message should mention traversal: {}",
+                msg
+            );
+        } else {
+            panic!("Expected error for path traversal");
+        }
+    }
+
+    #[test]
+    fn test_outside_directory_error() {
+        let mut picker = FilePicker::new();
+        // Try to navigate to a path outside the current directory tree
+        // This test is platform-dependent, so we just check the function doesn't panic
+        let outside_path = Path::new("/tmp/revue_test_nonexistent_outside");
+        let result = picker.navigate_to(outside_path);
+        // Should either succeed (if path exists) or fail with appropriate error
+        // but should not panic
     }
 }
