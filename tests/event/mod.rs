@@ -3,6 +3,7 @@
 mod custom;
 mod drag;
 mod focus;
+mod focus_edge_cases;
 mod gesture;
 mod handler;
 mod ime;

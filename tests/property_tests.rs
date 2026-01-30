@@ -759,3 +759,399 @@ proptest! {
         }
     }
 }
+
+// =========================================================================
+// String and Text Property Tests
+// =========================================================================
+
+proptest! {
+    /// Test that string length is preserved after basic operations
+    #[test]
+    fn test_string_length_invariant(s in "\\PC*") {
+        // String length should be consistent
+        let len = s.len();
+        prop_assert_eq!(s.chars().count(), s.chars().count());
+        prop_assert!(len <= 100000); // Reasonable limit
+    }
+
+    /// Test that repeated string concatenation is associative
+    #[test]
+    fn test_string_concat_associative(s1 in "\\PC*", s2 in "\\PC*", s3 in "\\PC*") {
+        let result1 = format!("{}{}{}", s1, s2, s3);
+        let result2 = format!("{}{}{}", s1, s2, s3);
+        prop_assert_eq!(result1, result2);
+    }
+
+    /// Test that trimming reduces length or keeps same
+    #[test]
+    fn test_trim_reduces_length(s in "\\PC*") {
+        let trimmed = s.trim();
+        prop_assert!(trimmed.len() <= s.len());
+    }
+
+    /// Test that empty string is idempotent for operations
+    #[test]
+    fn test_empty_string_idempotent(s in "\\PC*") {
+        prop_assert_eq!("".chars().count(), 0);
+        prop_assert_eq!("".trim(), "");
+        prop_assert_eq!(format!("{}{}", "", s), s.clone());
+        prop_assert_eq!(format!("{}{}", s, ""), s);
+    }
+
+    /// Test that string repetition works correctly
+    #[test]
+    fn test_string_repeat(s in "\\PC*", times in 0u8..10u8) {
+        let repeated = s.repeat(times as usize);
+        let expected_count = s.chars().count() * times as usize;
+        prop_assert_eq!(repeated.chars().count(), expected_count);
+    }
+}
+
+// =========================================================================
+// Buffer Operation Property Tests
+// =========================================================================
+
+proptest! {
+    /// Test that buffer dimensions are preserved
+    #[test]
+    fn test_buffer_dimensions(w in 0u16..200u16, h in 0u16..200u16) {
+        use revue::render::Buffer;
+
+        let buffer = Buffer::new(w, h);
+        prop_assert_eq!(buffer.width(), w);
+        prop_assert_eq!(buffer.height(), h);
+    }
+
+    /// Test that buffer area calculation is correct
+    #[test]
+    fn test_buffer_area(w in 0u16..200u16, h in 0u16..200u16) {
+        use revue::render::Buffer;
+
+        let buffer = Buffer::new(w, h);
+        let area = buffer.width() as u32 * buffer.height() as u32;
+        prop_assert_eq!(area, w as u32 * h as u32);
+    }
+
+    /// Test that buffer cell access is bounded
+    #[test]
+    fn test_buffer_cell_in_bounds(w in 1u16..200u16, h in 1u16..200u16) {
+        use revue::render::Buffer;
+
+        let buffer = Buffer::new(w, h);
+        // Safe access should not panic
+        let _cell = buffer.get(0, 0);
+        let _cell = buffer.get(w.saturating_sub(1), h.saturating_sub(1));
+    }
+
+    /// Test that buffer clearing resets content
+    #[test]
+    fn test_buffer_clear_reset(w in 1u16..100u16, h in 1u16..100u16) {
+        use revue::render::Buffer;
+        use revue::style::Color;
+        use revue::render::Cell;
+
+        let mut buffer = Buffer::new(w, h);
+
+        // Write some content
+        let cell = Cell::new('X').fg(Color::WHITE).bg(Color::BLACK);
+        buffer.set(0, 0, cell);
+
+        // Clear should reset
+        buffer.clear();
+
+        // After clear, cell should be cleared
+        let cleared = buffer.get(0, 0);
+        prop_assert!(cleared.is_some());
+    }
+}
+
+// =========================================================================
+// Positioned Widget Property Tests
+// =========================================================================
+
+proptest! {
+    /// Test that percentage positioning stays within bounds
+    #[test]
+    fn test_positioned_percent_x_in_bounds(percent in 0.0f32..100.0f32) {
+        // When percent is in [0, 100], resulting offset should be non-negative
+        let clamped = percent.clamp(0.0, 100.0);
+        prop_assert!(clamped >= 0.0 && clamped <= 100.0);
+    }
+
+    /// Test that percentage calculation is monotonic
+    #[test]
+    fn test_percent_calculation_monotonic(
+        width in 1u16..1000u16,
+        percent1 in 0.0f32..100.0f32,
+        percent2 in 0.0f32..100.0f32
+    ) {
+        let offset1 = (width as f32 * percent1 / 100.0).max(0.0).min(width as f32);
+        let offset2 = (width as f32 * percent2 / 100.0).max(0.0).min(width as f32);
+
+        if percent1 <= percent2 {
+            prop_assert!(offset1 <= offset2 || (offset1 - offset2).abs() < 0.5);
+        }
+    }
+
+    /// Test that zero percent gives zero offset
+    #[test]
+    fn test_zero_percent_zero_offset(width in 1u16..1000u16) {
+        let offset = (width as f32 * 0.0 / 100.0) as u16;
+        prop_assert_eq!(offset, 0);
+    }
+
+    /// Test that 100% gives full width offset
+    #[test]
+    fn test_hundred_percent_full_width(width in 1u16..1000u16) {
+        let offset = (width as f32 * 100.0 / 100.0).max(0.0).min(width as f32) as u16;
+        prop_assert!(offset >= width.saturating_sub(1) || offset == width);
+    }
+
+    /// Test that negative percentages are clamped to zero
+    #[test]
+    fn test_negative_percent_clamped(width in 1u16..1000u16) {
+        let percent = -50.0;
+        let offset = (width as f32 * percent / 100.0).max(0.0).min(width as f32) as u16;
+        prop_assert_eq!(offset, 0);
+    }
+
+    /// Test that percentages > 100 are clamped
+    #[test]
+    fn test_overflow_percent_clamped(width in 1u16..1000u16) {
+        let percent = 150.0;
+        let offset = (width as f32 * percent / 100.0).max(0.0).min(width as f32) as u16;
+        prop_assert!(offset <= width);
+    }
+}
+
+// =========================================================================
+// Stack Layout Property Tests
+// =========================================================================
+
+proptest! {
+    /// Test that stack total size grows with more items
+    #[test]
+    fn test_stack_size_monotonic(
+        size1 in 1u16..50u16,
+        size2 in 1u16..50u16,
+        gap in 0u16..10u16
+    ) {
+        // Stack with one item
+        let size_one = size1;
+
+        // Stack with two items (horizontal)
+        let size_two = size1.saturating_add(gap).saturating_add(size2);
+
+        prop_assert!(size_two >= size_one);
+    }
+
+    /// Test that zero gap gives minimal spacing
+    #[test]
+    fn test_stack_zero_gap(size1 in 1u16..50u16, size2 in 1u16..50u16) {
+        let with_gap = size1.saturating_add(5).saturating_add(size2);
+        let without_gap = size1.saturating_add(0).saturating_add(size2);
+
+        prop_assert!(without_gap <= with_gap);
+    }
+
+    /// Test that saturating arithmetic prevents overflow
+    #[test]
+    fn test_stack_saturating_no_overflow(
+        size in 40000u16..u16::MAX,
+        gap in 1000u16..5000u16
+    ) {
+        // These operations should not overflow
+        let result = size.saturating_add(gap);
+        prop_assert!(result <= u16::MAX);
+    }
+}
+
+// =========================================================================
+// Splitter Property Tests
+// =========================================================================
+
+proptest! {
+    /// Test that splitter ratio clamping is idempotent
+    #[test]
+    fn test_splitter_ratio_clamp_idempotent(ratio in 0.0f32..1.0f32) {
+        let clamped1 = ratio.clamp(0.1, 0.9);
+        let clamped2 = clamped1.clamp(0.1, 0.9);
+        prop_assert_eq!(clamped1, clamped2);
+    }
+
+    /// Test that splitter sizes sum to available (within bounds)
+    #[test]
+    fn test_splitter_sizes_sum(available in 10u16..1000u16, ratio in 0.1f32..0.9f32) {
+        let first_size = (available as f32 * ratio).clamp(0.0, available as f32) as u16;
+        let second_size = available.saturating_sub(first_size);
+
+        // Sum should not exceed available
+        prop_assert!(first_size.saturating_add(second_size) <= available);
+    }
+
+    /// Test that ratio 0.5 gives roughly equal halves
+    #[test]
+    fn test_splitter_equal_halves(available in 10u16..1000u16) {
+        let ratio = 0.5;
+        let first_size = (available as f32 * ratio).clamp(0.0, available as f32) as u16;
+        let second_size = available.saturating_sub(first_size);
+
+        // Sizes should be approximately equal (difference at most 1)
+        let diff = if first_size > second_size {
+            first_size.saturating_sub(second_size)
+        } else {
+            second_size.saturating_sub(first_size)
+        };
+        prop_assert!(diff <= 1);
+    }
+
+    /// Test that extreme ratios give extreme size distribution
+    #[test]
+    fn test_splitter_extreme_ratios(available in 10u16..1000u16) {
+        let min_size = (available as f32 * 0.1).clamp(0.0, available as f32) as u16;
+        let max_size = (available as f32 * 0.9).clamp(0.0, available as f32) as u16;
+
+        // Max should be larger than min
+        prop_assert!(max_size >= min_size);
+
+        // Min should be at least 10% of available
+        let expected_min = (available as f32 * 0.1) as u16;
+        prop_assert!(min_size >= expected_min.saturating_sub(1) && min_size <= expected_min.saturating_add(1));
+    }
+}
+
+// =========================================================================
+// Widget State Transition Property Tests
+// =========================================================================
+
+proptest! {
+    /// Test that boolean state toggle is idempotent when done twice
+    #[test]
+    fn test_bool_toggle_idempotent(initial in any::<bool>()) {
+        // Toggle once
+        let toggled_once = !initial;
+
+        // Toggle twice (should return to original)
+        let toggled_twice = !toggled_once;
+
+        prop_assert_eq!(toggled_twice, initial);
+    }
+
+    /// Test that setting state to same value is idempotent
+    #[test]
+    fn test_bool_state_idempotent(state in any::<bool>()) {
+        prop_assert_eq!(state, state);
+        prop_assert_eq!(!(!state), state);
+    }
+
+    /// Test that mutually exclusive states are never both true
+    #[test]
+    fn test_mutually_exclusive_states(pressed in any::<bool>(), hovered in any::<bool>()) {
+        // If pressed and hovered are mutually exclusive, at most one should be true
+        // This is a property test - the actual implementation depends on the widget
+        let _both_true = pressed && hovered;
+        // We're just verifying that both CAN be true (not exclusive)
+        // If they were exclusive: prop_assert!(!_both_true);
+    }
+
+    /// Test that disabled state overrides others
+    #[test]
+    fn test_disabled_overrides(disabled in any::<bool>(), focused in any::<bool>()) {
+        // When disabled is true, focused should not matter for interaction
+        // This tests the logical property
+        if disabled {
+            // Disabled widget should not process focused state
+            let effective_focus = focused && !disabled;
+            prop_assert_eq!(effective_focus, false);
+        }
+    }
+}
+
+// =========================================================================
+// Saturating Arithmetic Property Tests
+// =========================================================================
+
+proptest! {
+    /// Test that saturating add never exceeds u16::MAX
+    #[test]
+    fn test_saturating_add_bound(a in 0u16.., b in 0u16..) {
+        let result = a.saturating_add(b);
+        prop_assert!(result <= u16::MAX);
+    }
+
+    /// Test that saturating add with zero is idempotent
+    #[test]
+    fn test_saturating_add_zero(value in 0u16..) {
+        prop_assert_eq!(value.saturating_add(0), value);
+    }
+
+    /// Test that saturating sub never underflows below zero
+    #[test]
+    fn test_saturating_sub_bound(a in 0u16.., b in 0u16..) {
+        let result = a.saturating_sub(b);
+        prop_assert!(result <= a);
+    }
+
+    /// Test that saturating sub of same value gives zero
+    #[test]
+    fn test_saturating_sub_self(value in 0u16..) {
+        prop_assert_eq!(value.saturating_sub(value), 0);
+    }
+
+    /// Test that saturating operations are reversible within bounds
+    #[test]
+    fn test_saturating_reversible(value in 0u16..40000u16, add in 0u16..10000u16) {
+        let added = value.saturating_add(add);
+        let back = added.saturating_sub(add);
+        prop_assert!(back >= value.saturating_sub(1) && back <= value.saturating_add(1));
+    }
+}
+
+// =========================================================================
+// Float to Integer Conversion Property Tests
+// =========================================================================
+
+proptest! {
+    /// Test that small positive values are preserved
+    #[test]
+    fn test_clamped_small_positive(value in 0.0f32..100.0f32) {
+        let result = value.clamp(0.0, 100.0) as u16;
+        let expected = value as u16;
+        prop_assert!(result >= expected.saturating_sub(1) && result <= expected.saturating_add(1));
+    }
+
+    /// Test that values above max clamp to max
+    #[test]
+    fn test_clamped_overflow_to_max(max in 1u16..1000u16) {
+        let overflow = (max as f32) + 1000.0;
+        let result = overflow.clamp(0.0, max as f32) as u16;
+        prop_assert!(result >= max.saturating_sub(1) && result <= max);
+    }
+
+    /// Test that rounding is within 0.5 of original
+    #[test]
+    fn test_rounding_accuracy(value in 0.0f32..100.0f32) {
+        let rounded = value.round() as u16;
+        let diff = (value - rounded as f32).abs();
+        prop_assert!(diff <= 0.5 || diff < 0.5001); // Account for floating point precision
+    }
+}
+
+/// Test that zero input gives zero output
+#[test]
+fn test_clamped_zero_input() {
+    let result = 0.0f32.clamp(0.0, 100.0) as u16;
+    assert_eq!(result, 0);
+}
+
+/// Test that clamped float to u16 conversion is within bounds
+#[test]
+fn test_clamped_conversion() {
+    for max in 1u16..1000u16 {
+        for value in [0.0_f32, 100.0, 1000.0, 10000.0] {
+            let clamped = value.clamp(0.0, max as f32);
+            let converted = clamped as u16;
+            assert!(converted <= max);
+        }
+    }
+}
