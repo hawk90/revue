@@ -506,6 +506,7 @@ impl Shape for Points {
 #[cfg(test)]
 mod tests {
     use super::super::BrailleGrid;
+    use super::*;
 
     fn make_grid() -> BrailleGrid {
         BrailleGrid::new(40, 20)
