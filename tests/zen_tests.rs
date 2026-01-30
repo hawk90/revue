@@ -1,7 +1,7 @@
 //! Integration tests for ZenMode widget
 
 use revue::style::Color;
-use revue::widget::{text, Text, ZenMode};
+use revue::widget::{Text, ZenMode};
 
 #[test]
 fn test_zen_mode_new() {

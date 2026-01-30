@@ -7,39 +7,39 @@ use revue::widget::{theme_picker, ThemePicker};
 
 #[test]
 fn test_theme_picker_new() {
-    let picker = ThemePicker::new();
+    let _picker = ThemePicker::new();
     // Picker created successfully
 }
 
 #[test]
 fn test_theme_picker_themes() {
-    let picker = ThemePicker::new().themes(["dark", "light", "dracula"]);
+    let _picker = ThemePicker::new().themes(["dark", "light", "dracula"]);
     // Themes were set successfully
 }
 
 #[test]
 fn test_theme_picker_compact() {
-    let picker = ThemePicker::new().compact(true);
+    let _picker = ThemePicker::new().compact(true);
 }
 
 #[test]
 fn test_theme_picker_show_preview() {
-    let picker = ThemePicker::new().show_preview(false);
+    let _picker = ThemePicker::new().show_preview(false);
 }
 
 #[test]
 fn test_theme_picker_width() {
-    let picker = ThemePicker::new().width(50);
+    let _picker = ThemePicker::new().width(50);
 }
 
 #[test]
 fn test_theme_picker_fg() {
-    let picker = ThemePicker::new().fg(Color::CYAN);
+    let _picker = ThemePicker::new().fg(Color::CYAN);
 }
 
 #[test]
 fn test_theme_picker_bg() {
-    let picker = ThemePicker::new().bg(Color::BLUE);
+    let _picker = ThemePicker::new().bg(Color::BLUE);
 }
 
 #[test]
@@ -195,7 +195,7 @@ fn test_theme_picker_handle_key_tab() {
 
 #[test]
 fn test_theme_picker_builder_pattern() {
-    let picker = theme_picker()
+    let _picker = theme_picker()
         .themes(["dark", "light"])
         .compact(true)
         .width(40)
@@ -207,7 +207,7 @@ fn test_theme_picker_builder_pattern() {
 
 #[test]
 fn test_theme_picker_default() {
-    let picker = ThemePicker::default();
+    let _picker = ThemePicker::default();
     // Default picker created
 }
 
