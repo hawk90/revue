@@ -34,7 +34,7 @@ fn test_masked_input_credit_card() {
 
 #[test]
 fn test_masked_input_value() {
-    let mut input = MaskedInput::new().value("test123");
+    let input = MaskedInput::new().value("test123");
 
     assert_eq!(input.get_value(), "test123");
 }
@@ -205,7 +205,7 @@ fn test_masked_input_move_end() {
 
 #[test]
 fn test_masked_input_password_strength() {
-    let mut input = MaskedInput::new().value("weak");
+    let input = MaskedInput::new().value("weak");
 
     // Password strength can be calculated
     let _strength = input.password_strength();
@@ -213,7 +213,7 @@ fn test_masked_input_password_strength() {
 
 #[test]
 fn test_masked_input_strength_label() {
-    let mut input = MaskedInput::new().value("test");
+    let input = MaskedInput::new().value("test");
 
     // Strength label can be retrieved
     let _label = input.strength_label();
@@ -221,7 +221,7 @@ fn test_masked_input_strength_label() {
 
 #[test]
 fn test_masked_input_strength_color() {
-    let mut input = MaskedInput::new().value("test");
+    let input = MaskedInput::new().value("test");
 
     // Strength color can be retrieved
     let _color = input.strength_color();
@@ -230,7 +230,7 @@ fn test_masked_input_strength_color() {
 
 #[test]
 fn test_masked_input_validate() {
-    let mut input = MaskedInput::new().value("test123");
+    let input = MaskedInput::new().value("test123");
 
     assert!(input.validate());
 }
