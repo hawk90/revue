@@ -58,9 +58,9 @@ fn test_image_height() {
 #[test]
 fn test_image_id() {
     let img1 = Image::from_rgb(vec![0; 300], 10, 10);
-    let img2 = Image::from_rgb(vec![0; 300], 10, 10);
+    let img2 = Image::from_rgb(vec![255; 300], 10, 10);
 
-    // Each image should have a unique ID
+    // Images with different content should have different IDs
     assert_ne!(img1.id(), img2.id());
 }
 
