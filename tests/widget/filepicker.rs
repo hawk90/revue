@@ -66,7 +66,7 @@ fn test_file_picker_multi_select() {
 fn test_file_picker_mode_builder() {
     let picker = FilePicker::new().mode(PickerMode::Save);
     // 모드 빌더는 confirm() 동작으로 확인
-    let result = picker.confirm();
+    let _result = picker.confirm();
     // Save 모드 동작 확인
 }
 
@@ -123,7 +123,7 @@ fn test_file_picker_start_dir() {
 
 #[test]
 fn test_file_picker_show_hidden() {
-    let picker = FilePicker::new().show_hidden(true);
+    let _picker = FilePicker::new().show_hidden(true);
     // show_hidden 설정은 toggle_hidden() 동작으로 확인
     // 기본값이 true로 설정되어야 함
 }
@@ -369,7 +369,7 @@ fn test_file_picker_go_up() {
 
     // 루트가 아닌 경우 상위로 이동 가능
     if picker.current_dir().parent().is_some() {
-        let initial_path = picker.current_dir().to_path_buf();
+        let _initial_path = picker.current_dir().to_path_buf();
         picker.go_up();
         // 상위 디렉토리로 이동했거나 루트에 도달
     }
@@ -416,7 +416,7 @@ fn test_file_picker_highlighted_entry() {
     let picker = FilePicker::new();
 
     // highlighted_entry는 Option을 반환
-    let entry = picker.highlighted_entry();
+    let _entry = picker.highlighted_entry();
     // 항목이 있거나 없어야 함 (파일시스템 의존적)
 }
 
@@ -910,7 +910,7 @@ fn test_file_picker_empty_directory_handling() {
 #[test]
 fn test_file_picker_nonexistent_start_dir() {
     // 존재하지 않는 디렉토리로 시작해도 패닉하지 않아야 함
-    let picker = FilePicker::new().start_dir("/nonexistent/path/that/does/not/exist");
+    let _picker = FilePicker::new().start_dir("/nonexistent/path/that/does/not/exist");
     // 안전하게 처리되어야 함
 }
 
@@ -1400,7 +1400,7 @@ fn test_file_picker_multi_select_workflow() {
     // 확인
     let result = picker.confirm();
     match result {
-        PickerResult::Multiple(paths) => {
+        PickerResult::Multiple(_paths) => {
             // 선택된 항목들
         }
         PickerResult::None => {
@@ -1510,7 +1510,7 @@ fn test_file_picker_state_after_operations() {
     // 여러 작업 후 상태 일관성 테스트
     let mut picker = FilePicker::new();
 
-    let initial_dir = picker.current_dir().to_path_buf();
+    let _initial_dir = picker.current_dir().to_path_buf();
 
     // 다양한 작업 수행
     picker.highlight_next();
