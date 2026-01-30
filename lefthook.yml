@@ -89,11 +89,13 @@ pre-push:
 
     coverage:
       # Quick coverage check for changed src files (local only)
+      # Fails if tests fail during coverage run
       run: |
         CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '^src/' || true)
         if [ -n "$CHANGED" ]; then
-          echo "📊 Quick coverage check (no report)..."
-          cargo llvm-cov --lib --no-report --ignore-run-fail
+          echo "📊 Running coverage check..."
+          # This will fail if any tests fail
+          cargo llvm-cov --lib --no-report
         fi
-      fail_text: "Coverage check failed."
+      fail_text: "Coverage check failed. Tests did not pass successfully."
       skip: [ -n "$CI" ]  # Skip in CI, only run locally
