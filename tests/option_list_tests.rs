@@ -164,7 +164,7 @@ fn test_option_list_add_separator() {
 
 #[test]
 fn test_option_list_add_group() {
-    let list = OptionList::new().group("File Menu");
+    let _list = OptionList::new().group("File Menu");
 
     // Group was added
 }
