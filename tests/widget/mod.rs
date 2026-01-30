@@ -23,6 +23,7 @@ mod datetime_picker;
 mod diff;
 mod divider;
 mod empty_state;
+mod filepicker;
 mod filetree;
 mod gauge;
 #[cfg(feature = "image")]

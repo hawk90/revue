@@ -5,7 +5,10 @@
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::traits::{RenderContext, StyledView, View};
-use revue::widget::{file_picker, save_picker, dir_picker, FileFilter, FilePicker, PickerEntry, PickerMode, PickerResult};
+use revue::widget::{
+    dir_picker, file_picker, save_picker, FileFilter, FilePicker, PickerEntry, PickerMode,
+    PickerResult,
+};
 use std::path::Path;
 
 // =============================================================================
@@ -819,9 +822,7 @@ fn test_file_picker_add_class() {
 
 #[test]
 fn test_file_picker_multiple_classes() {
-    let picker = FilePicker::new()
-        .class("primary")
-        .class("large");
+    let picker = FilePicker::new().class("primary").class("large");
 
     assert!(picker.has_class("primary"));
     assert!(picker.has_class("large"));
@@ -887,9 +888,7 @@ fn test_file_picker_duplicate_class_not_added() {
 
 #[test]
 fn test_file_picker_meta() {
-    let picker = FilePicker::new()
-        .element_id("test-picker")
-        .class("primary");
+    let picker = FilePicker::new().element_id("test-picker").class("primary");
 
     let meta = picker.meta();
     assert_eq!(meta.widget_type, "FilePicker");
@@ -955,10 +954,7 @@ fn test_file_picker_unicode_in_default_name() {
 
 #[test]
 fn test_file_picker_clone() {
-    let picker1 = FilePicker::new()
-        .title("Test")
-        .width(80)
-        .show_hidden(true);
+    let picker1 = FilePicker::new().title("Test").width(80).show_hidden(true);
 
     let picker2 = picker1.clone();
 
@@ -1338,8 +1334,7 @@ fn test_file_picker_complete_workflow() {
 #[test]
 fn test_file_picker_save_workflow() {
     // 저장 파일 선택 워크플로우
-    let mut picker = FilePicker::save()
-        .title("Save File As");
+    let mut picker = FilePicker::save().title("Save File As");
 
     // 파일명 입력
     picker.input_char('m');
@@ -1566,7 +1561,7 @@ fn test_file_picker_title_variations() {
         "",
         "A very long title that might exceed normal rendering bounds",
         "타이틀 한글", // Korean title
-        "Титул", // Cyrillic title
+        "Титул",       // Cyrillic title
     ];
 
     for title in titles {
