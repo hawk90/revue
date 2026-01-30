@@ -435,17 +435,23 @@ Browse all examples in the [examples/](examples/) directory.
 
 ## Comparison
 
-| | Revue | Ratatui | Cursive | Textual |
-|:--|:--:|:--:|:--:|:--:|
-| **Language** | Rust | Rust | Rust | Python |
-| **Styling** | CSS | Code | Theme | CSS |
-| **Reactivity** | Signal | Manual | Event | Reactive |
-| **Forms** | ✅ Built-in | ❌ | ❌ | ✅ |
-| **Animation** | ✅ Tween+Keyframes | ❌ | ❌ | ✅ |
-| **Worker Pool** | ✅ | ❌ | ❌ | ❌ |
-| **Hot Reload** | ✅ | ❌ | ❌ | ✅ |
-| **Devtools** | ✅ | ❌ | ❌ | ✅ |
-| **Single Binary** | ✅ | ✅ | ✅ | ❌ |
+| | Revue | ratatui | reratui | Cursive | Textual |
+|:--|:--:|:--:|:--:|:--:|:--:|
+| **Type** | Framework | Library | Framework | Framework | Framework |
+| **Language** | Rust | Rust | Rust | Rust | Python |
+| **Architecture** | Retained | Immediate | Immediate | Retained | Retained |
+| **Styling** | CSS Files | Inline | Inline-style | TOML | CSS |
+| **State** | Signals | Manual | Hooks | Event | Reactive |
+| **Widgets** | 100+ | 15 built-in | Components | 40+ | 35+ |
+| **Layout** | Flex+Grid | Constraint | Flex | Dock | Dock+Grid |
+| **Forms** | ✅ Built-in | ❌ | ❌ | ❌ | ✅ |
+| **Animation** | ✅ Tween+Keyframes | ❌ | ❌ | ❌ | ✅ |
+| **Worker Pool** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Hot Reload** | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **Devtools** | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **Single Binary** | ✅ | ✅ | ✅ | ✅ | ❌ |
+
+> **Note**: [ratatui](https://crates.io/crates/ratatui) is a low-level TUI library (like React's DOM), while [reratui](https://crates.io/crates/reratui) is a React-like framework built on top of ratatui. See [Framework Comparison](docs/FRAMEWORK_COMPARISON.md#11-ratatui-vs-reratui-which-one-to-choose) for detailed analysis.
 
 <br>
 

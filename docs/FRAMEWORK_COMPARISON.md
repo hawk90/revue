@@ -6,9 +6,12 @@
 |-----------|----------|-----------|---------|---------|----------|
 | **Revue** | Rust | Retained | 100+ | CSS | New |
 | **Textual** | Python | Retained | 35+ | TCSS | Mature |
-| **Ratatui** | Rust | Immediate | 13 | Inline | Mature |
+| **ratatui** | Rust | Immediate | 15+ | Inline | Mature |
+| **reratui** | Rust | Immediate (on ratatui) | Components (on ratatui) | Inline-style | New |
 | **Cursive** | Rust | Retained | 40+ | TOML | Mature |
 | **Bubbletea** | Go | Immediate | 15+ | Inline | Mature |
+
+**Note:** reratui (framework) builds on ratatui (library), similar to React (framework) on DOM (library)
 
 ---
 
@@ -310,8 +313,98 @@ Features that Revue has but competitors don't:
 | vs Framework | Revue Score | Notes |
 |--------------|-------------|-------|
 | vs Textual | **90%** | Missing: DataGrid advanced features, TextArea find/replace |
-| vs Ratatui | **120%** | More widgets, CSS styling |
+| vs ratatui | **110%** | More widgets, CSS styling, reactive state system |
+| vs reratui | **95%** | More widgets, CSS styling, but reratui has React-like ergonomics |
 | vs Cursive | **110%** | Modern API, CSS styling |
 | vs Bubbletea | **130%** | More widgets, better styling |
 
 **Revue is already competitive with mature frameworks and has unique strengths in visualization and styling.**
+
+---
+
+## 11. ratatui vs reratui: Which One to Choose?
+
+### Key Differences
+
+| Aspect | ratatui | reratui |
+|--------|---------|---------|
+| **Type** | TUI library (low-level) | TUI framework (high-level) |
+| **Architecture** | Widget traits | Component-based (React-like) |
+| | `Widget`, `StatefulWidget` | `Component`, `useReducer`, `useEffect` |
+| **State Management** | Manual (within StatefulWidget) | Hooks-based (useReducer, useEffect, useState) |
+| **Rendering** | Immediate-mode | Immediate-mode (on ratatui) |
+| **Styling** | Inline (Style API) | Inline-style API |
+| **Layout** | Constraint-based (Cassowary) | Flex-like (built on ratatui) |
+| **Reactivity** | Manual re-renders | Automatic with hooks |
+| **Maturity** | Mature (2023+) | New (Oct 2025) |
+
+### When to Use ratatui
+
+✅ Choose **ratatui** if you:
+- Want low-level control over every render
+- Prefer explicit state management
+- Are building a custom framework on top
+- Need maximum performance
+- Want minimal dependencies
+
+**Example:**
+```rust
+impl Widget for MyApp {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        // Direct buffer manipulation
+        buf.set_string(area.x, area.y, "Hello", Style::default());
+    }
+}
+```
+
+### When to Use reratui
+
+✅ Choose **reratui** if you:
+- Like React's component model
+- Want hooks-based state management
+- Prefer declarative UI patterns
+- Are building complex interactive apps
+- Want automatic re-renders on state change
+
+**Example:**
+```rust
+#[component]
+fn Counter(cx: Scope) -> Element {
+    let mut count = use cx.use_state(|| 0);
+
+    let on_increment = |_| {
+        count.set(*count + 1);
+    };
+
+    vstack!([
+        Button::new(format!("Count: {}", count)).on_click(on_increment),
+        Button::new("Increment").on_click(on_increment),
+    ])
+}
+```
+
+### Feature Comparison
+
+| Feature | ratatui | reratui | Revue |
+|---------|---------|---------|-------|
+| Widgets | 15 built-in | Component wrappers | 100+ |
+| Layout | Constraint-based | Flex-like (on ratatui) | CSS (Flex + Grid) |
+| Styling | Inline `Style` API | Inline-style | CSS files |
+| State | Manual (StatefulWidget) | Hooks (useReducer, useState) | Reactive signals |
+| Hot Reload | ❌ | ❌ | ✅ |
+| CSS Support | ❌ | ❌ | ✅ |
+| Async | ❌ | ❌ | ✅ (worker system) |
+
+### Summary
+
+- **ratatui** = React's DOM - low-level, full control
+- **reratui** = React - high-level, developer-friendly
+- **Revue** = React + CSS + Signals = Modern web-like TUI
+
+**Sources:**
+- [ratatui on crates.io](https://crates.io/crates/ratatui) - 2000+ crates depend on it
+- [reratui on crates.io](https://crates.io/crates/reratui) - React-like for TUI
+- [Ratatui official docs](https://ratatui.rs/) - "Cook up delicious terminal UIs"
+- [reratui GitHub](https://github.com/sabry-awad97/reratui) - Component framework
+
+

@@ -459,14 +459,17 @@ opt-level = 1           # Faster dev builds
 | Syntax | Pygments | syntect (Sublime) |
 | Runtime | asyncio | tokio |
 
-### vs Ratatui (Rust)
+### vs ratatui (Rust)
 
-| Aspect | Ratatui | Revue |
-|--------|---------|-------|
-| Styling | Code only | CSS files |
-| Layout | Manual Rect | taffy Flexbox |
-| Reactivity | None | Signal/Computed |
-| Level | Low | High |
+| Aspect | ratatui | reratui | Revue |
+|--------|---------|---------|-------|
+| Type | Library | Framework | Framework |
+| Styling | Code only | Inline-style | CSS files |
+| Layout | Constraint (Cassowary) | Flex-like | taffy Flexbox |
+| Reactivity | Manual | Hooks (useState) | Signal/Computed |
+| Level | Low | High | High |
+
+> **Note**: ratatui is a low-level library (like React's DOM), while reratui is a React-like framework built on ratatui. |
 
 ### vs Cursive (Rust)
 

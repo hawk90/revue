@@ -106,7 +106,7 @@ impl View for Counter {
 
 - [System Architecture](ARCHITECTURE.md) - Design overview
 - [Features](FEATURES.md) - Widget catalog
-- [Framework Comparison](FRAMEWORK_COMPARISON.md) - vs Ratatui, Cursive, Textual
+- [Framework Comparison](FRAMEWORK_COMPARISON.md) - vs ratatui, reratui, Cursive, Textual
 
 ---
 
