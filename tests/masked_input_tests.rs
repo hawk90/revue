@@ -34,7 +34,7 @@ fn test_masked_input_credit_card() {
 
 #[test]
 fn test_masked_input_value() {
-    let _input = MaskedInput::new().value("test123");
+    let mut input = MaskedInput::new().value("test123");
 
     assert_eq!(input.get_value(), "test123");
 }
