@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.42.0](https://github.com/hawk90/revue/compare/v2.41.2...v2.42.0) (2026-01-30)
+
+
+### Features
+
+* add comprehensive unit tests for canvas braille modules ([#326](https://github.com/hawk90/revue/issues/326)) ([445b524](https://github.com/hawk90/revue/commit/445b5244199c9934899d01630b1e5a23acef1f72))
+
 ## [2.41.2](https://github.com/hawk90/revue/compare/v2.41.1...v2.41.2) (2026-01-27)
 
 
