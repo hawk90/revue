@@ -73,9 +73,19 @@ fn validate_path_no_traversal(path: &Path) -> Result<(), FilePickerError> {
     Ok(())
 }
 
+/// Validate a path for security issues only (doesn't check existence or bounds)
+///
+/// This is used for `start_dir()` to allow setting paths that don't exist yet.
+fn validate_security_only(path: &Path) -> Result<PathBuf, FilePickerError> {
+    // Only check for traversal patterns - don't require existence
+    validate_path_no_traversal(path)?;
+    Ok(path.to_path_buf())
+}
+
 /// Validate and canonicalize a path
 ///
 /// Returns the canonical form of the path, or an error if validation fails.
+/// This requires the path to exist and be within the allowed directory.
 fn validate_and_canonicalize(path: &Path, base_dir: &Path) -> Result<PathBuf, FilePickerError> {
     // First check for traversal patterns
     validate_path_no_traversal(path)?;
@@ -390,7 +400,7 @@ impl FilePicker {
     /// Use `try_set_start_dir()` for a non-panicking version.
     pub fn start_dir(mut self, dir: impl AsRef<Path>) -> Self {
         let path = dir.as_ref();
-        match validate_and_canonicalize(path, &self.current_dir) {
+        match validate_security_only(path) {
             Ok(validated) => {
                 self.current_dir = validated;
                 self.refresh();
