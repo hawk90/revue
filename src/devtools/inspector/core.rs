@@ -415,6 +415,7 @@ impl Inspector {
 mod tests {
     use super::*;
 
+    #[allow(dead_code)]
     fn create_test_inspector() -> Inspector {
         Inspector::new()
     }
@@ -615,7 +616,7 @@ mod tests {
     fn test_select_next() {
         let mut inspector = Inspector::new();
 
-        let id1 = inspector.add_root("Root1");
+        let _id1 = inspector.add_root("Root1");
         let id2 = inspector.add_root("Root2");
         let id3 = inspector.add_root("Root3");
 

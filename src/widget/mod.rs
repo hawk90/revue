@@ -372,7 +372,7 @@ pub use traits::{
 };
 pub use transition::{
     transition, transition_group, Animation, AnimationPreset, Transition as AnimationTransition,
-    TransitionGroup,
+    TransitionGroup, TransitionPhase,
 };
 pub use zen::{zen, zen_dark, zen_light, ZenMode};
 

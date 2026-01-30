@@ -407,4 +407,213 @@ mod tests {
         let result = handle.join();
         assert!(matches!(result, Err(WorkerError::Panicked(_))));
     }
+
+    #[test]
+    fn test_is_success() {
+        let handle = WorkerHandle::spawn_blocking(|| {
+            // Spin loop instead of sleep
+            for _ in 0..1000 {
+                std::hint::spin_loop();
+            }
+            42
+        });
+
+        // Spin until finished
+        let timeout = std::time::Instant::now() + Duration::from_millis(100);
+        while !handle.is_finished() && std::time::Instant::now() < timeout {
+            std::hint::spin_loop();
+        }
+
+        // After completion, should be success
+        assert!(handle.is_success());
+
+        let _result = handle.join();
+    }
+
+    #[test]
+    fn test_is_success_after_panic() {
+        let handle = WorkerHandle::spawn_blocking(|| {
+            for _ in 0..100 {
+                std::hint::spin_loop();
+            }
+            panic!("test panic");
+        });
+
+        // Spin until finished
+        let timeout = std::time::Instant::now() + Duration::from_millis(100);
+        while !handle.is_finished() && std::time::Instant::now() < timeout {
+            std::hint::spin_loop();
+        }
+
+        // After panic, should not be success
+        assert!(!handle.is_success());
+
+        let _result = handle.join();
+    }
+
+    #[test]
+    fn test_is_running() {
+        let handle = WorkerHandle::spawn_blocking(|| {
+            // Longer spin to keep it running
+            for _ in 0..10000 {
+                std::hint::spin_loop();
+            }
+            42
+        });
+
+        // Should be running or pending immediately after spawn
+        let state = handle.state();
+        assert!(matches!(state, WorkerState::Pending | WorkerState::Running));
+
+        // Spin until finished
+        let timeout = std::time::Instant::now() + Duration::from_millis(100);
+        while !handle.is_finished() && std::time::Instant::now() < timeout {
+            std::hint::spin_loop();
+        }
+
+        // Should no longer be running
+        assert!(!handle.is_running());
+
+        let _result = handle.join();
+    }
+
+    #[test]
+    fn test_try_join_not_finished() {
+        let mut handle = WorkerHandle::spawn_blocking(|| {
+            // Spin to simulate work
+            for _ in 0..10000 {
+                std::hint::spin_loop();
+            }
+            42
+        });
+
+        // Immediately should return None (not finished yet)
+        assert!(handle.try_join().is_none());
+
+        // Spin until finished
+        let timeout = std::time::Instant::now() + Duration::from_millis(100);
+        while !handle.is_finished() && std::time::Instant::now() < timeout {
+            std::hint::spin_loop();
+        }
+
+        // After joining, result is taken
+        let _result = handle.join();
+    }
+
+    #[test]
+    fn test_try_join_finished() {
+        let mut handle = WorkerHandle::spawn_blocking(|| {
+            for _ in 0..100 {
+                std::hint::spin_loop();
+            }
+            42
+        });
+
+        // Spin until finished
+        let timeout = std::time::Instant::now() + Duration::from_millis(100);
+        while !handle.is_finished() && std::time::Instant::now() < timeout {
+            std::hint::spin_loop();
+        }
+
+        let result = handle.try_join();
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().unwrap(), 42);
+    }
+
+    #[test]
+    fn test_poll() {
+        let handle = WorkerHandle::spawn_blocking(|| {
+            for _ in 0..100 {
+                std::hint::spin_loop();
+            }
+            42
+        });
+
+        // poll should always return Some(state)
+        assert!(handle.poll().is_some());
+
+        // After completion - join consumes the handle
+        let result = handle.join();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_cancel_pending_task() {
+        let handle = WorkerHandle::spawn_blocking(|| {
+            thread::sleep(Duration::from_millis(100));
+            42
+        });
+
+        // Cancel immediately (might be pending or just started)
+        handle.cancel();
+
+        // The task should be cancelled
+        let result = handle.join();
+        // Either cancelled or completed (race condition)
+        assert!(result.is_ok() || matches!(result, Err(WorkerError::Cancelled)));
+    }
+
+    #[test]
+    fn test_join_timeout_success() {
+        let handle = WorkerHandle::spawn_blocking(|| {
+            thread::sleep(Duration::from_millis(10));
+            42
+        });
+
+        let result = handle.join_timeout(Duration::from_millis(100));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    fn test_join_timeout_zero() {
+        let handle = WorkerHandle::spawn_blocking(|| {
+            thread::sleep(Duration::from_millis(10));
+            42
+        });
+
+        let result = handle.join_timeout(Duration::ZERO);
+        // Should timeout or succeed depending on timing
+        assert!(result.is_ok() || matches!(result, Err(WorkerError::Timeout)));
+    }
+
+    #[test]
+    fn test_state_transitions() {
+        let handle = WorkerHandle::spawn_blocking(|| {
+            thread::sleep(Duration::from_millis(10));
+            42
+        });
+
+        // Initial state should be Pending or Running
+        let initial_state = handle.state();
+        assert!(matches!(
+            initial_state,
+            WorkerState::Pending | WorkerState::Running
+        ));
+
+        // After completion, we can't check state because join consumes the handle
+        // But we can verify the result is correct
+        let result = handle.join();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    fn test_multiple_try_join_calls() {
+        let mut handle = WorkerHandle::spawn_blocking(|| {
+            thread::sleep(Duration::from_millis(10));
+            42
+        });
+
+        // Wait for completion
+        thread::sleep(Duration::from_millis(50));
+
+        // First call returns the result
+        let result1 = handle.try_join();
+        assert!(result1.is_some());
+
+        // Second call returns None (result was taken)
+        let result2 = handle.try_join();
+        assert!(result2.is_none());
+    }
 }

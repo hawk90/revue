@@ -295,3 +295,246 @@ impl ScreenReader for NullBackend {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // MacOSBackend tests
+    #[test]
+    fn test_macos_backend_new() {
+        let backend = MacOSBackend::new();
+        // available depends on VoiceOver running, just verify it creates
+        let _ = backend.available;
+    }
+
+    #[test]
+    fn test_macos_backend_default() {
+        let backend = MacOSBackend::default();
+        let _ = backend.available;
+    }
+
+    #[test]
+    fn test_macos_backend_is_available() {
+        let backend = MacOSBackend::new();
+        let _ = backend.is_available();
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_macos_backend_active_screen_reader() {
+        let backend = MacOSBackend::new();
+        let name = backend.active_screen_reader();
+        // Should return Some("VoiceOver") if available, None otherwise
+        if backend.is_available() {
+            assert_eq!(name, Some("VoiceOver".to_string()));
+        } else {
+            assert!(name.is_none());
+        }
+    }
+
+    #[test]
+    fn test_macos_backend_announce_not_available() {
+        let backend = MacOSBackend { available: false };
+        // Should not panic when not available
+        backend.announce("test", Priority::Polite);
+    }
+
+    // WindowsBackend tests
+    #[test]
+    fn test_windows_backend_new() {
+        let backend = WindowsBackend::new();
+        let _ = backend.available;
+    }
+
+    #[test]
+    fn test_windows_backend_default() {
+        let backend = WindowsBackend::default();
+        let _ = backend.available;
+    }
+
+    #[test]
+    fn test_windows_backend_is_available() {
+        let backend = WindowsBackend::new();
+        let _ = backend.is_available();
+    }
+
+    #[test]
+    fn test_windows_backend_announce_not_available() {
+        let backend = WindowsBackend { available: false };
+        backend.announce("test", Priority::Polite);
+    }
+
+    // LinuxBackend tests
+    #[test]
+    fn test_linux_backend_new() {
+        let backend = LinuxBackend::new();
+        let _ = backend.available;
+    }
+
+    #[test]
+    fn test_linux_backend_default() {
+        let backend = LinuxBackend::default();
+        let _ = backend.available;
+    }
+
+    #[test]
+    fn test_linux_backend_is_available() {
+        let backend = LinuxBackend::new();
+        let _ = backend.is_available();
+    }
+
+    #[test]
+    fn test_linux_backend_active_screen_reader() {
+        let backend = LinuxBackend::new();
+        let name = backend.active_screen_reader();
+        if backend.is_available() {
+            assert_eq!(name, Some("AT-SPI".to_string()));
+        } else {
+            assert!(name.is_none());
+        }
+    }
+
+    #[test]
+    fn test_linux_backend_announce_not_available() {
+        let backend = LinuxBackend { available: false };
+        backend.announce("test", Priority::Polite);
+    }
+
+    // LoggingBackend tests
+    #[test]
+    fn test_logging_backend_new() {
+        let backend = LoggingBackend::new();
+        assert!(backend.announcements().is_empty());
+    }
+
+    #[test]
+    fn test_logging_backend_default() {
+        let backend = LoggingBackend::default();
+        assert!(backend.announcements().is_empty());
+    }
+
+    #[test]
+    fn test_logging_backend_announce() {
+        let backend = LoggingBackend::new();
+        backend.announce("Hello world", Priority::Polite);
+
+        let announcements = backend.announcements();
+        assert_eq!(announcements.len(), 1);
+        assert_eq!(announcements[0].message, "Hello world");
+        assert_eq!(announcements[0].priority, Priority::Polite);
+    }
+
+    #[test]
+    fn test_logging_backend_multiple_announces() {
+        let backend = LoggingBackend::new();
+        backend.announce("Message 1", Priority::Polite);
+        backend.announce("Message 2", Priority::Assertive);
+        backend.announce("Message 3", Priority::Polite);
+
+        let announcements = backend.announcements();
+        assert_eq!(announcements.len(), 3);
+        assert_eq!(announcements[0].message, "Message 1");
+        assert_eq!(announcements[1].message, "Message 2");
+        assert_eq!(announcements[2].message, "Message 3");
+    }
+
+    #[test]
+    fn test_logging_backend_clear() {
+        let backend = LoggingBackend::new();
+        backend.announce("Test", Priority::Polite);
+        backend.announce("Test 2", Priority::Polite);
+
+        assert_eq!(backend.announcements().len(), 2);
+
+        backend.clear();
+        assert!(backend.announcements().is_empty());
+    }
+
+    #[test]
+    fn test_logging_backend_last() {
+        let backend = LoggingBackend::new();
+        assert!(backend.last().is_none());
+
+        backend.announce("First", Priority::Polite);
+        assert_eq!(backend.last().unwrap().message, "First");
+
+        backend.announce("Second", Priority::Assertive);
+        assert_eq!(backend.last().unwrap().message, "Second");
+    }
+
+    #[test]
+    fn test_logging_backend_is_available() {
+        let backend = LoggingBackend::new();
+        assert!(backend.is_available());
+    }
+
+    #[test]
+    fn test_logging_backend_active_screen_reader() {
+        let backend = LoggingBackend::new();
+        assert_eq!(
+            backend.active_screen_reader(),
+            Some("LoggingBackend".to_string())
+        );
+    }
+
+    #[test]
+    fn test_logged_announcement_fields() {
+        let backend = LoggingBackend::new();
+        backend.announce("Test message", Priority::Assertive);
+
+        let announcements = backend.announcements();
+        let logged = &announcements[0];
+
+        assert_eq!(logged.message, "Test message");
+        assert_eq!(logged.priority, Priority::Assertive);
+        // timestamp should be very recent
+        let elapsed = logged.timestamp.elapsed().as_millis();
+        assert!(elapsed < 100); // Should be less than 100ms
+    }
+
+    // NullBackend tests
+    #[test]
+    fn test_null_backend_announce() {
+        let backend = NullBackend;
+        // Should not panic
+        backend.announce("test", Priority::Polite);
+    }
+
+    #[test]
+    fn test_null_backend_is_available() {
+        let backend = NullBackend;
+        assert!(!backend.is_available());
+    }
+
+    #[test]
+    fn test_null_backend_active_screen_reader() {
+        let backend = NullBackend;
+        assert!(backend.active_screen_reader().is_none());
+    }
+
+    #[test]
+    fn test_macos_backend_stop() {
+        let backend = MacOSBackend::new();
+        // Should not panic
+        backend.stop();
+    }
+
+    #[test]
+    fn test_linux_backend_stop() {
+        let backend = LinuxBackend::new();
+        // Should not panic
+        backend.stop();
+    }
+
+    #[test]
+    fn test_windows_backend_active_screen_reader() {
+        let backend = WindowsBackend::new();
+        let name = backend.active_screen_reader();
+        if backend.is_available() {
+            assert!(name.is_some());
+        } else {
+            assert!(name.is_none());
+        }
+    }
+}
