@@ -109,7 +109,7 @@ impl View for Stack {
                     let mut child_ctx = RenderContext::new(ctx.buffer, child_area);
                     child.render(&mut child_ctx);
 
-                    x += w + self.gap;
+                    x = x.saturating_add(w).saturating_add(self.gap);
                 }
             }
             Direction::Column => {
@@ -126,7 +126,7 @@ impl View for Stack {
                     let mut child_ctx = RenderContext::new(ctx.buffer, child_area);
                     child.render(&mut child_ctx);
 
-                    y += h + self.gap;
+                    y = y.saturating_add(h).saturating_add(self.gap);
                 }
             }
         }
