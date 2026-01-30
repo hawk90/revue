@@ -153,7 +153,9 @@ impl Positioned {
                 parent.x.saturating_sub((-x) as u16)
             }
         } else if let Some(percent) = self.percent_x {
-            let offset = (parent.width as f32 * percent / 100.0) as u16;
+            let offset = (parent.width as f32 * percent / 100.0)
+                .max(0.0)
+                .min(parent.width as f32) as u16;
             parent.x.saturating_add(offset)
         } else {
             parent.x
@@ -166,7 +168,9 @@ impl Positioned {
                 parent.y.saturating_sub((-y) as u16)
             }
         } else if let Some(percent) = self.percent_y {
-            let offset = (parent.height as f32 * percent / 100.0) as u16;
+            let offset = (parent.height as f32 * percent / 100.0)
+                .max(0.0)
+                .min(parent.height as f32) as u16;
             parent.y.saturating_add(offset)
         } else {
             parent.y

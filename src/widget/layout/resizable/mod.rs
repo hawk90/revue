@@ -290,8 +290,10 @@ where
             let current_ratio = width as f32 / height.max(1) as f32;
             if (current_ratio - self.aspect_ratio).abs() > 0.01 {
                 // Adjust height to match aspect ratio
-                height = (width as f32 / self.aspect_ratio) as u16;
-                height = height.max(self.min_height);
+                let new_height = (width as f32 / self.aspect_ratio)
+                    .max(0.0)
+                    .min(u16::MAX as f32) as u16;
+                height = new_height.max(self.min_height);
                 if self.max_height > 0 {
                     height = height.min(self.max_height);
                 }

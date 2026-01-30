@@ -175,7 +175,9 @@ impl ScrollView {
             0.0
         };
 
-        let thumb_position = ((viewport_height - thumb_height) as f32 * scroll_ratio) as u16;
+        let thumb_position = ((viewport_height - thumb_height) as f32 * scroll_ratio)
+            .max(0.0)
+            .min((viewport_height - thumb_height) as f32) as u16;
 
         // Draw scrollbar track
         for y in 0..viewport_height {
