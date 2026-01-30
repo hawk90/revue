@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.42.2](https://github.com/hawk90/revue/compare/v2.42.1...v2.42.2) (2026-01-30)
+
+
+### Bug Fixes
+
+* **security:** add URL validation to prevent command injection ([#331](https://github.com/hawk90/revue/issues/331)) ([d0828e1](https://github.com/hawk90/revue/commit/d0828e1d887b640c3285672d52746d0dc1ba919c))
+
 ## [2.42.1](https://github.com/hawk90/revue/compare/v2.42.0...v2.42.1) (2026-01-30)
 
 
