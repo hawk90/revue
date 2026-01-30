@@ -1,6 +1,6 @@
 //! Integration tests for Transition widget public API
 
-use revue::widget::{transition, Animation, AnimationPreset, AnimationTransition, TransitionPhase};
+use revue::widget::{transition, Animation, AnimationTransition, TransitionPhase};
 
 // ============================================================================
 // Transition Widget Tests
