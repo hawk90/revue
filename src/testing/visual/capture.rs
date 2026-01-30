@@ -345,3 +345,419 @@ impl VisualCapture {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::Cell;
+
+    fn create_test_buffer(width: u16, height: u16) -> Buffer {
+        let mut buffer = Buffer::new(width, height);
+        // Add some test content
+        for y in 0..height {
+            for x in 0..width {
+                let digit = ((x + y) % 10) as u8 + b'0';
+                let mut cell = Cell::new(digit as char);
+                if x == 0 && y == 0 {
+                    cell.fg = Some(Color::RED);
+                    cell.modifier |= Modifier::BOLD;
+                }
+                if x == 1 && y == 0 {
+                    cell.bg = Some(Color::BLUE);
+                    cell.modifier |= Modifier::ITALIC;
+                }
+                buffer.set(x, y, cell);
+            }
+        }
+        buffer
+    }
+
+    #[test]
+    fn test_from_buffer_basic() {
+        let buffer = create_test_buffer(5, 3);
+        let capture = VisualCapture::from_buffer(&buffer, false, false);
+
+        assert_eq!(capture.width, 5);
+        assert_eq!(capture.height, 3);
+        assert_eq!(capture.cells.len(), 15);
+        assert!(!capture.include_styles);
+        assert!(!capture.include_colors);
+    }
+
+    #[test]
+    fn test_from_buffer_with_styles() {
+        let buffer = create_test_buffer(5, 3);
+        let capture = VisualCapture::from_buffer(&buffer, true, false);
+
+        assert!(capture.include_styles);
+        // First cell should have bold
+        assert!(capture.cells[0].bold);
+        // Second cell should have italic
+        assert!(capture.cells[1].italic);
+    }
+
+    #[test]
+    fn test_from_buffer_with_colors() {
+        let buffer = create_test_buffer(5, 3);
+        let capture = VisualCapture::from_buffer(&buffer, false, true);
+
+        assert!(capture.include_colors);
+        // First cell should have red fg
+        assert_eq!(capture.cells[0].fg, Some(Color::RED));
+        // Second cell should have blue bg
+        assert_eq!(capture.cells[1].bg, Some(Color::BLUE));
+    }
+
+    #[test]
+    fn test_from_buffer_empty_cell() {
+        let mut buffer = Buffer::new(3, 3);
+        // Don't set anything - cells should be empty
+
+        let capture = VisualCapture::from_buffer(&buffer, false, false);
+        assert_eq!(capture.cells.len(), 9);
+    }
+
+    #[test]
+    fn test_get_valid_position() {
+        let buffer = create_test_buffer(5, 3);
+        let capture = VisualCapture::from_buffer(&buffer, false, false);
+
+        assert!(capture.get(0, 0).is_some());
+        assert!(capture.get(4, 2).is_some());
+        assert!(capture.get(2, 1).is_some());
+    }
+
+    #[test]
+    fn test_get_out_of_bounds() {
+        let buffer = create_test_buffer(5, 3);
+        let capture = VisualCapture::from_buffer(&buffer, false, false);
+
+        assert!(capture.get(5, 0).is_none()); // x out of bounds
+        assert!(capture.get(0, 3).is_none()); // y out of bounds
+        assert!(capture.get(10, 10).is_none()); // both out of bounds
+    }
+
+    #[test]
+    fn test_get_index_calculation() {
+        let buffer = create_test_buffer(5, 3);
+        let capture = VisualCapture::from_buffer(&buffer, false, false);
+
+        // Index should be y * width + x
+        // At (2, 1): index = 1 * 5 + 2 = 7
+        let cell = capture.get(2, 1).unwrap();
+        assert_eq!(capture.cells[7].symbol, cell.symbol);
+    }
+
+    #[test]
+    fn test_diff_identical() {
+        let buffer = create_test_buffer(5, 3);
+        let capture1 = VisualCapture::from_buffer(&buffer, false, false);
+        let capture2 = VisualCapture::from_buffer(&buffer, false, false);
+
+        let diff = capture1.diff(&capture2, 0);
+        assert!(diff.size_mismatch.is_none());
+        assert!(diff.differences.is_empty());
+    }
+
+    #[test]
+    fn test_diff_size_mismatch() {
+        let buffer1 = create_test_buffer(5, 3);
+        let buffer2 = create_test_buffer(4, 2);
+        let capture1 = VisualCapture::from_buffer(&buffer1, false, false);
+        let capture2 = VisualCapture::from_buffer(&buffer2, false, false);
+
+        let diff = capture1.diff(&capture2, 0);
+        assert!(diff.size_mismatch.is_some());
+        assert_eq!(diff.actual_width, 5);
+        assert_eq!(diff.actual_height, 3);
+        assert_eq!(diff.expected_width, 4);
+        assert_eq!(diff.expected_height, 2);
+    }
+
+    #[test]
+    fn test_diff_cell_difference() {
+        let mut buffer1 = Buffer::new(3, 3);
+        let mut cell1 = Cell::new('A');
+        buffer1.set(0, 0, cell1);
+
+        let mut buffer2 = Buffer::new(3, 3);
+        let mut cell2 = Cell::new('B');
+        buffer2.set(0, 0, cell2);
+
+        let capture1 = VisualCapture::from_buffer(&buffer1, false, false);
+        let capture2 = VisualCapture::from_buffer(&buffer2, false, false);
+
+        let diff = capture1.diff(&capture2, 0);
+        assert!(diff.size_mismatch.is_none());
+        assert_eq!(diff.differences.len(), 1);
+        assert_eq!(diff.differences[0].x, 0);
+        assert_eq!(diff.differences[0].y, 0);
+    }
+
+    #[test]
+    fn test_serialize_text_section() {
+        let buffer = create_test_buffer(3, 2);
+        let capture = VisualCapture::from_buffer(&buffer, false, false);
+
+        let serialized = capture.serialize();
+        assert!(serialized.contains("# Visual Golden File"));
+        assert!(serialized.contains("# Size: 3x2"));
+        assert!(serialized.contains("## Text"));
+    }
+
+    #[test]
+    fn test_serialize_with_styles() {
+        let buffer = create_test_buffer(3, 2);
+        let capture = VisualCapture::from_buffer(&buffer, true, false);
+
+        let serialized = capture.serialize();
+        assert!(serialized.contains("# Styles: true"));
+        assert!(serialized.contains("## Styles"));
+    }
+
+    #[test]
+    fn test_serialize_with_colors() {
+        let buffer = create_test_buffer(3, 2);
+        let capture = VisualCapture::from_buffer(&buffer, false, true);
+
+        let serialized = capture.serialize();
+        assert!(serialized.contains("# Colors: true"));
+        assert!(serialized.contains("## Colors"));
+    }
+
+    #[test]
+    fn test_serialize_color_format() {
+        let buffer = create_test_buffer(3, 2);
+        let capture = VisualCapture::from_buffer(&buffer, false, true);
+
+        let serialized = capture.serialize();
+        // Red should be #ff0000, Blue should be #0000ff
+        assert!(serialized.contains("#ff0000") || serialized.contains("#FF0000"));
+    }
+
+    #[test]
+    fn test_serialize_style_format() {
+        let buffer = create_test_buffer(3, 2);
+        let capture = VisualCapture::from_buffer(&buffer, true, false);
+
+        let serialized = capture.serialize();
+        // Should contain B for bold and I for italic
+        assert!(serialized.contains('B') || serialized.contains('I'));
+    }
+
+    #[test]
+    fn test_deserialize_basic() {
+        let content = "# Visual Golden File
+# Size: 2x2
+# Styles: false
+# Colors: false
+
+## Text
+AB
+CD";
+
+        let capture = VisualCapture::deserialize(content).unwrap();
+        assert_eq!(capture.width, 2);
+        assert_eq!(capture.height, 2);
+        assert_eq!(capture.cells[0].symbol, 'A');
+        assert_eq!(capture.cells[1].symbol, 'B');
+        assert_eq!(capture.cells[2].symbol, 'C');
+        assert_eq!(capture.cells[3].symbol, 'D');
+    }
+
+    #[test]
+    fn test_deserialize_with_styles() {
+        let content = "# Visual Golden File
+# Size: 2x1
+# Styles: true
+# Colors: false
+
+## Text
+AB
+
+## Styles
+0:0:B
+1:0:I";
+
+        let capture = VisualCapture::deserialize(content).unwrap();
+        assert!(capture.include_styles);
+        assert!(capture.cells[0].bold);
+        assert!(capture.cells[1].italic);
+    }
+
+    #[test]
+    fn test_deserialize_with_colors() {
+        let content = "# Visual Golden File
+# Size: 2x1
+# Styles: false
+# Colors: true
+
+## Text
+AB
+
+## Colors
+0:0,fg:#ff0000
+1:0,bg:#0000ff";
+
+        let capture = VisualCapture::deserialize(content).unwrap();
+        assert!(capture.include_colors);
+        assert_eq!(capture.cells[0].fg, Some(Color::rgb(255, 0, 0)));
+        assert_eq!(capture.cells[1].bg, Some(Color::rgb(0, 0, 255)));
+    }
+
+    #[test]
+    fn test_deserialize_infer_size() {
+        let content = "# Visual Golden File
+# Size: 0x0
+# Styles: false
+# Colors: false
+
+## Text
+ABC
+DE";
+
+        let capture = VisualCapture::deserialize(content).unwrap();
+        assert_eq!(capture.width, 3); // Longest line
+        assert_eq!(capture.height, 2); // Number of text lines
+    }
+
+    #[test]
+    fn test_deserialize_partial_colors() {
+        let content = "# Visual Golden File
+# Size: 2x2
+# Styles: false
+# Colors: true
+
+## Text
+AB
+CD
+
+## Colors
+0:0,fg:#ff0000
+1:1,bg:#00ff00";
+
+        let capture = VisualCapture::deserialize(content).unwrap();
+        // (0,0) should have red fg
+        assert_eq!(capture.cells[0].fg, Some(Color::rgb(255, 0, 0)));
+        // (1,1) should have green bg
+        assert_eq!(capture.cells[3].bg, Some(Color::rgb(0, 255, 0)));
+        // Other cells should have no colors
+        assert!(capture.cells[1].fg.is_none());
+        assert!(capture.cells[2].bg.is_none());
+    }
+
+    #[test]
+    fn test_deserialize_multiple_styles_per_cell() {
+        let content = "# Visual Golden File
+# Size: 1x1
+# Styles: true
+# Colors: false
+
+## Text
+A
+
+## Styles
+0:0:BIUD";
+
+        let capture = VisualCapture::deserialize(content).unwrap();
+        assert!(capture.cells[0].bold);
+        assert!(capture.cells[0].italic);
+        assert!(capture.cells[0].underline);
+        assert!(capture.cells[0].dim);
+    }
+
+    #[test]
+    fn test_deserialize_with_comments() {
+        let content = "# Visual Golden File
+# Size: 0x0
+# Styles: false
+# Colors: false
+
+## Text
+A
+# This is a comment in the text section (should be skipped)
+B";
+
+        let capture = VisualCapture::deserialize(content).unwrap();
+        // Size 0x0 means infer from text lines
+        // We have 2 text lines ("A" and "B") - comment is skipped
+        assert_eq!(capture.height, 2);
+        assert_eq!(capture.width, 1);
+        assert_eq!(capture.cells[0].symbol, 'A');
+        assert_eq!(capture.cells[1].symbol, 'B');
+    }
+
+    #[test]
+    fn test_deserialize_empty_content() {
+        let content = "";
+        let result = VisualCapture::deserialize(content);
+        // Should create a 0x0 capture
+        assert!(result.is_ok());
+        let capture = result.unwrap();
+        assert_eq!(capture.width, 0);
+        assert_eq!(capture.height, 0);
+    }
+
+    #[test]
+    fn test_serialize_roundtrip() {
+        let buffer = create_test_buffer(3, 2);
+        let original = VisualCapture::from_buffer(&buffer, true, true);
+
+        let serialized = original.serialize();
+        let deserialized = VisualCapture::deserialize(&serialized).unwrap();
+
+        assert_eq!(original.width, deserialized.width);
+        assert_eq!(original.height, deserialized.height);
+        assert_eq!(original.cells.len(), deserialized.cells.len());
+    }
+
+    #[test]
+    fn test_diff_with_tolerance() {
+        let mut buffer1 = Buffer::new(2, 2);
+        let mut cell = Cell::new('A');
+        cell.fg = Some(Color::rgb(255, 0, 0));
+        buffer1.set(0, 0, cell);
+
+        let mut buffer2 = Buffer::new(2, 2);
+        let mut cell2 = Cell::new('A');
+        cell2.fg = Some(Color::rgb(254, 0, 0)); // Very similar color
+        buffer2.set(0, 0, cell2);
+
+        let capture1 = VisualCapture::from_buffer(&buffer1, false, true);
+        let capture2 = VisualCapture::from_buffer(&buffer2, false, true);
+
+        // With tolerance 0, should have difference
+        let diff = capture1.diff(&capture2, 0);
+        assert!(!diff.differences.is_empty());
+
+        // With tolerance 10, should match
+        let diff = capture1.diff(&capture2, 10);
+        assert!(diff.differences.is_empty());
+    }
+
+    #[test]
+    fn test_serialize_includes_all_flags() {
+        let content = "# Visual Golden File
+# Size: 1x1
+# Styles: true
+# Colors: true
+
+## Text
+A
+
+## Colors
+0:0,fg:#ff0000 0:0,bg:#00ff00
+
+## Styles
+0:0:BIUD";
+
+        let capture = VisualCapture::deserialize(content).unwrap();
+        let serialized = capture.serialize();
+
+        assert!(serialized.contains("# Styles: true"));
+        assert!(serialized.contains("# Colors: true"));
+        assert!(serialized.contains("## Text"));
+        assert!(serialized.contains("## Colors"));
+        assert!(serialized.contains("## Styles"));
+    }
+}

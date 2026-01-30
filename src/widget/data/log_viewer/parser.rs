@@ -272,15 +272,14 @@ impl LogParser {
                 if s.len() > 19 {
                     if let Some((idx, ch)) = s.char_indices().nth(19) {
                         if ch == '.' {
-                            let mut end = idx + 1;
+                            let start = idx + 1;
                             // Check for digits after the dot
-                            for (byte_idx, c) in s[end..].char_indices() {
+                            for (byte_idx, c) in s[start..].char_indices() {
                                 if !c.is_ascii_digit() {
-                                    return Some(end + byte_idx);
+                                    return Some(start + byte_idx);
                                 }
-                                end += byte_idx;
                             }
-                            return Some(end);
+                            return Some(s.len());
                         }
                     }
                 }

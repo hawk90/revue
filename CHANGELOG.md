@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.41.2](https://github.com/hawk90/revue/compare/v2.41.1...v2.41.2) (2026-01-27)
+
+
+### Bug Fixes
+
+* replace deprecated global devtools functions with App methods in tests ([#324](https://github.com/hawk90/revue/issues/324)) ([47196f8](https://github.com/hawk90/revue/commit/47196f88d6898504fe84b60718f2428d98c7dc2a))
+
+## [2.41.1](https://github.com/hawk90/revue/compare/v2.41.0...v2.41.1) (2026-01-27)
+
+
+### Performance Improvements
+
+* optimize critical performance bottlenecks and complete SignalVec implementation ([#322](https://github.com/hawk90/revue/issues/322)) ([f37c5b2](https://github.com/hawk90/revue/commit/f37c5b2e83a2b407bebe5c5148b1859fb5a1b657))
+
 ## [2.41.0](https://github.com/hawk90/revue/compare/v2.40.1...v2.41.0) (2026-01-26)
 
 

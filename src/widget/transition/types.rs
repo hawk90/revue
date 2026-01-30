@@ -240,3 +240,228 @@ pub enum TransitionPhase {
     /// Leaving (disappearing)
     Leaving,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::style::easing;
+
+    #[test]
+    fn test_animation_default() {
+        let anim = Animation::default();
+        assert_eq!(anim.preset(), AnimationPreset::Fade);
+        assert_eq!(anim.get_duration(), Duration::from_millis(300));
+    }
+
+    #[test]
+    fn test_animation_fade() {
+        let anim = Animation::fade();
+        assert_eq!(anim.preset(), AnimationPreset::Fade);
+        assert_eq!(anim.get_duration(), Duration::from_millis(300));
+        // Test that easing function works
+        let result = anim.get_easing()(0.5);
+        assert!((result - 0.5).abs() < 1.0);
+        assert_eq!(anim.get_delay(), Duration::ZERO);
+    }
+
+    #[test]
+    fn test_animation_fade_in_out() {
+        let fade_in = Animation::fade_in();
+        let fade_out = Animation::fade_out();
+        assert_eq!(fade_in.preset(), AnimationPreset::Fade);
+        assert_eq!(fade_out.preset(), AnimationPreset::Fade);
+    }
+
+    #[test]
+    fn test_animation_slide_left() {
+        let anim = Animation::slide_left();
+        assert_eq!(anim.preset(), AnimationPreset::SlideLeft);
+        // Test that easing function works
+        let _result = anim.get_easing()(0.5);
+    }
+
+    #[test]
+    fn test_animation_slide_right() {
+        let anim = Animation::slide_right();
+        assert_eq!(anim.preset(), AnimationPreset::SlideRight);
+    }
+
+    #[test]
+    fn test_animation_slide_up() {
+        let anim = Animation::slide_up();
+        assert_eq!(anim.preset(), AnimationPreset::SlideUp);
+    }
+
+    #[test]
+    fn test_animation_slide_down() {
+        let anim = Animation::slide_down();
+        assert_eq!(anim.preset(), AnimationPreset::SlideDown);
+    }
+
+    #[test]
+    fn test_animation_slide_in_left() {
+        let anim = Animation::slide_in_left();
+        assert_eq!(anim.preset(), AnimationPreset::SlideLeft);
+    }
+
+    #[test]
+    fn test_animation_slide_out_left() {
+        let anim = Animation::slide_out_left();
+        assert_eq!(anim.preset(), AnimationPreset::SlideLeft);
+    }
+
+    #[test]
+    fn test_animation_slide_in_right() {
+        let anim = Animation::slide_in_right();
+        assert_eq!(anim.preset(), AnimationPreset::SlideRight);
+    }
+
+    #[test]
+    fn test_animation_slide_out_right() {
+        let anim = Animation::slide_out_right();
+        assert_eq!(anim.preset(), AnimationPreset::SlideRight);
+    }
+
+    #[test]
+    fn test_animation_slide_in_up() {
+        let anim = Animation::slide_in_up();
+        assert_eq!(anim.preset(), AnimationPreset::SlideUp);
+    }
+
+    #[test]
+    fn test_animation_slide_out_up() {
+        let anim = Animation::slide_out_up();
+        assert_eq!(anim.preset(), AnimationPreset::SlideUp);
+    }
+
+    #[test]
+    fn test_animation_slide_in_down() {
+        let anim = Animation::slide_in_down();
+        assert_eq!(anim.preset(), AnimationPreset::SlideDown);
+    }
+
+    #[test]
+    fn test_animation_slide_out_down() {
+        let anim = Animation::slide_out_down();
+        assert_eq!(anim.preset(), AnimationPreset::SlideDown);
+    }
+
+    #[test]
+    fn test_animation_scale() {
+        let anim = Animation::scale();
+        assert_eq!(anim.preset(), AnimationPreset::Scale);
+        // Test that easing function works
+        let _result = anim.get_easing()(0.5);
+    }
+
+    #[test]
+    fn test_animation_scale_up() {
+        let anim = Animation::scale_up();
+        assert_eq!(anim.preset(), AnimationPreset::Scale);
+    }
+
+    #[test]
+    fn test_animation_scale_down() {
+        let anim = Animation::scale_down();
+        assert_eq!(anim.preset(), AnimationPreset::Scale);
+    }
+
+    #[test]
+    fn test_animation_custom() {
+        let anim = Animation::custom(Some(0.5), Some(10), Some(-5), Some(0.8));
+        assert!(matches!(anim.preset(), AnimationPreset::Custom { .. }));
+    }
+
+    #[test]
+    fn test_animation_custom_all_none() {
+        let anim = Animation::custom(None, None, None, None);
+        assert!(matches!(anim.preset(), AnimationPreset::Custom { .. }));
+    }
+
+    #[test]
+    fn test_animation_duration() {
+        let anim = Animation::fade().duration(500);
+        assert_eq!(anim.get_duration(), Duration::from_millis(500));
+    }
+
+    #[test]
+    fn test_animation_easing() {
+        let anim = Animation::fade().easing(easing::linear);
+        // Test that the easing function can be set and called
+        let result = anim.get_easing()(0.5);
+        assert_eq!(result, 0.5); // linear should return the same value
+    }
+
+    #[test]
+    fn test_animation_delay() {
+        let anim = Animation::fade().delay(100);
+        assert_eq!(anim.get_delay(), Duration::from_millis(100));
+    }
+
+    #[test]
+    fn test_animation_clone() {
+        let anim = Animation::fade().duration(500).easing(easing::linear);
+        let cloned = anim.clone();
+        assert_eq!(anim.preset(), cloned.preset());
+        assert_eq!(anim.get_duration(), cloned.get_duration());
+        // Test that both easing functions produce same result
+        assert_eq!(anim.get_easing()(0.5), cloned.get_easing()(0.5));
+    }
+
+    #[test]
+    fn test_animation_preset_all_variants() {
+        // Test all AnimationPreset variants can be created
+        let _ = Animation::fade();
+        let _ = Animation::slide_left();
+        let _ = Animation::slide_right();
+        let _ = Animation::slide_up();
+        let _ = Animation::slide_down();
+        let _ = Animation::scale();
+        let _ = Animation::custom(Some(0.5), Some(10), Some(-5), Some(0.8));
+    }
+
+    #[test]
+    fn test_animation_preset_partial_equality() {
+        let fade1 = Animation::fade();
+        let fade2 = Animation::fade();
+        assert_eq!(fade1.preset(), fade2.preset());
+
+        let slide = Animation::slide_left();
+        assert_ne!(fade1.preset(), slide.preset());
+    }
+
+    #[test]
+    fn test_transition_phase_all_variants() {
+        let entering = TransitionPhase::Entering;
+        let visible = TransitionPhase::Visible;
+        let leaving = TransitionPhase::Leaving;
+
+        assert_eq!(entering, TransitionPhase::Entering);
+        assert_eq!(visible, TransitionPhase::Visible);
+        assert_eq!(leaving, TransitionPhase::Leaving);
+
+        assert_ne!(entering, visible);
+        assert_ne!(visible, leaving);
+        assert_ne!(entering, leaving);
+    }
+
+    #[test]
+    fn test_transition_phase_clone() {
+        let phase = TransitionPhase::Entering;
+        assert_eq!(phase, phase.clone());
+    }
+
+    #[test]
+    fn test_animation_builder_chain() {
+        let anim = Animation::fade()
+            .duration(500)
+            .delay(100)
+            .easing(easing::linear);
+
+        assert_eq!(anim.get_duration(), Duration::from_millis(500));
+        assert_eq!(anim.get_delay(), Duration::from_millis(100));
+        // Test the easing function
+        let result = anim.get_easing()(0.5);
+        assert_eq!(result, 0.5); // linear should return the same value
+    }
+}
