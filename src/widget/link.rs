@@ -24,6 +24,9 @@ use crate::style::Color;
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
+#[cfg(not(target_arch = "wasm32"))]
+use crate::utils::browser;
+
 /// Link style
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum LinkStyle {
@@ -161,14 +164,18 @@ impl Link {
     ///
     /// # Errors
     ///
-    /// Returns `Err(io::Error)` if the browser cannot be opened.
+    /// Returns `Err(BrowserError)` if:
+    /// - The URL contains dangerous characters
+    /// - The URL format is invalid
+    /// - The browser cannot be opened
+    ///
     /// See [`crate::utils::browser::open_url`] for details.
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn open(&self) -> std::io::Result<()> {
+    pub fn open(&self) -> Result<(), browser::BrowserError> {
         if self.disabled {
             return Ok(());
         }
-        open_url(&self.url)
+        browser::open_url(&self.url)
     }
 
     /// Format display text with style
@@ -256,35 +263,6 @@ pub fn link(url: impl Into<String>, text: impl Into<String>) -> Link {
 /// Create a link with just URL
 pub fn url_link(url: impl Into<String>) -> Link {
     Link::new(url)
-}
-
-/// Open URL in default browser
-#[cfg(target_os = "macos")]
-fn open_url(url: &str) -> std::io::Result<()> {
-    std::process::Command::new("open").arg(url).spawn()?;
-    Ok(())
-}
-
-#[cfg(target_os = "linux")]
-fn open_url(url: &str) -> std::io::Result<()> {
-    std::process::Command::new("xdg-open").arg(url).spawn()?;
-    Ok(())
-}
-
-#[cfg(target_os = "windows")]
-fn open_url(url: &str) -> std::io::Result<()> {
-    std::process::Command::new("cmd")
-        .args(["/C", "start", "", url])
-        .spawn()?;
-    Ok(())
-}
-
-#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-fn open_url(_url: &str) -> std::io::Result<()> {
-    Err(std::io::Error::new(
-        std::io::ErrorKind::Unsupported,
-        "Platform not supported for opening URLs",
-    ))
 }
 
 #[cfg(test)]

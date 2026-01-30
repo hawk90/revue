@@ -15,6 +15,118 @@
 
 use std::process::Command;
 
+/// Error type for browser operations
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum BrowserError {
+    /// Invalid URL format
+    #[error("Invalid URL: {0}")]
+    InvalidUrl(String),
+
+    /// URL contains dangerous characters
+    #[error("URL contains dangerous characters: {0}")]
+    DangerousCharacters(String),
+
+    /// IO error from command execution
+    #[error("IO error: {0}")]
+    IoError(String),
+}
+
+/// Validate that input doesn't contain shell metacharacters
+///
+/// Blocks characters that could be used for command injection:
+/// - `&`, `|`, `;` - command separators
+/// - `` ` `` - command substitution
+/// - `$(` - command substitution (bash)
+/// - `\n`, `\r` - command separators
+/// - `0x00` - null byte
+fn validate_shell_safe(input: &str) -> Result<(), BrowserError> {
+    let dangerous = ['&', '|', ';', '`', '\n', '\r', '\x00'];
+
+    for ch in input.chars() {
+        if dangerous.contains(&ch) {
+            return Err(BrowserError::DangerousCharacters(format!(
+                "character '{}' not allowed",
+                if ch == '\n' {
+                    "\\n".to_string()
+                } else if ch == '\r' {
+                    "\\r".to_string()
+                } else if ch == '\x00' {
+                    "\\x00".to_string()
+                } else {
+                    ch.to_string()
+                }
+            )));
+        }
+    }
+
+    // Also check for $( pattern (bash command substitution)
+    if input.contains("$(") {
+        return Err(BrowserError::DangerousCharacters(
+            "pattern '$(' not allowed".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+/// Validate URL format
+///
+/// Performs basic validation to ensure the input looks like a URL or file path.
+fn validate_url_format(url: &str) -> Result<(), BrowserError> {
+    if url.is_empty() {
+        return Err(BrowserError::InvalidUrl("URL cannot be empty".to_string()));
+    }
+
+    // Block dangerous schemes that use single colon (without //)
+    let dangerous_schemes = ["javascript:", "data:", "vbscript:"];
+    for dangerous in dangerous_schemes {
+        if url.to_lowercase().starts_with(dangerous) {
+            return Err(BrowserError::InvalidUrl(format!(
+                "URL scheme '{}' is not allowed",
+                dangerous.trim_end_matches(':')
+            )));
+        }
+    }
+
+    // Allow file paths (starting with / or ./ or ../ or containing \ on Windows)
+    if url.starts_with('/')
+        || url.starts_with("./")
+        || url.starts_with("../")
+        || url.contains('\\')
+        || (url.len() > 1 && url.chars().nth(1) == Some(':'))
+    // Windows drive letter
+    {
+        return Ok(());
+    }
+
+    // Check for URL scheme (http, https, ftp, etc.)
+    if url.contains("://") {
+        let scheme_end = url.find("://").unwrap();
+        let scheme = &url[..scheme_end];
+
+        // Only allow certain schemes
+        let allowed_schemes = [
+            "http", "https", "ftp", "ftps", "file", "mailto", "tel", "ws", "wss",
+        ];
+
+        if !allowed_schemes.contains(&scheme) {
+            return Err(BrowserError::InvalidUrl(format!(
+                "URL scheme '{}' is not allowed",
+                scheme
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate input is safe for shell execution
+fn validate_input(input: &str) -> Result<(), BrowserError> {
+    validate_shell_safe(input)?;
+    validate_url_format(input)?;
+    Ok(())
+}
+
 /// Open a URL or file in the system's default browser/application
 ///
 /// Platform support:
@@ -27,8 +139,15 @@ use std::process::Command;
 ///
 /// # Returns
 /// * `true` if the command was spawned successfully
-/// * `false` if spawning failed
+/// * `false` if spawning failed or validation failed
+///
+/// # Security
+/// The input is validated for shell metacharacters to prevent command injection.
 pub fn open_browser(url: &str) -> bool {
+    if validate_input(url).is_err() {
+        return false;
+    }
+
     #[cfg(target_os = "macos")]
     let result = Command::new("open").arg(url).spawn();
 
@@ -53,25 +172,34 @@ pub fn open_browser(url: &str) -> bool {
 ///
 /// # Errors
 ///
-/// Returns `Err(io::Error)` if:
+/// Returns `Err(BrowserError)` if:
+/// - The URL contains dangerous characters
+/// - The URL format is invalid
 /// - The platform is not supported (not macOS, Linux, or Windows)
 /// - The browser command cannot be spawned
-/// - The URL is invalid or inaccessible
-pub fn open_url(url: &str) -> std::io::Result<()> {
+pub fn open_url(url: &str) -> Result<(), BrowserError> {
+    validate_input(url)?;
+
     #[cfg(target_os = "macos")]
-    let child = Command::new("open").arg(url).spawn()?;
+    let child = Command::new("open")
+        .arg(url)
+        .spawn()
+        .map_err(|e| BrowserError::IoError(e.to_string()))?;
 
     #[cfg(target_os = "linux")]
-    let child = Command::new("xdg-open").arg(url).spawn()?;
+    let child = Command::new("xdg-open")
+        .arg(url)
+        .spawn()
+        .map_err(|e| BrowserError::IoError(e.to_string()))?;
 
     #[cfg(target_os = "windows")]
-    let child = Command::new("cmd").args(["/C", "start", "", url]).spawn()?;
+    let child = Command::new("cmd")
+        .args(["/C", "start", "", url])
+        .spawn()
+        .map_err(|e| BrowserError::IoError(e.to_string()))?;
 
     #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-    return Err(std::io::Error::new(
-        std::io::ErrorKind::Unsupported,
-        "Unsupported platform",
-    ));
+    return Err(BrowserError::IoError("Unsupported platform".to_string()));
 
     // Detach - don't wait for browser to close
     // Dropping the child detaches it (no wait() call)
@@ -90,7 +218,14 @@ pub fn open_file(path: &str) -> bool {
 ///
 /// # Arguments
 /// * `path` - Path to the folder
+///
+/// # Security
+/// The input is validated for shell metacharacters to prevent command injection.
 pub fn open_folder(path: &str) -> bool {
+    if validate_input(path).is_err() {
+        return false;
+    }
+
     #[cfg(target_os = "macos")]
     let result = Command::new("open").arg(path).spawn();
 
@@ -113,7 +248,14 @@ pub fn open_folder(path: &str) -> bool {
 ///
 /// # Arguments
 /// * `path` - Path to the file to reveal
+///
+/// # Security
+/// The input is validated for shell metacharacters to prevent command injection.
 pub fn reveal_in_finder(path: &str) -> bool {
+    if validate_input(path).is_err() {
+        return false;
+    }
+
     #[cfg(target_os = "macos")]
     let result = Command::new("open").args(["-R", path]).spawn();
 
@@ -141,8 +283,6 @@ pub fn reveal_in_finder(path: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    // Note: These tests don't actually open browsers, just check compilation
-    // Actual browser opening behavior cannot be tested in unit tests
     use super::*;
 
     #[test]
@@ -164,7 +304,7 @@ mod tests {
     #[test]
     fn test_open_url_return_type() {
         // Verify open_url returns a Result
-        let _: fn(&str) -> std::io::Result<()> = open_url;
+        let _: fn(&str) -> Result<(), BrowserError> = open_url;
     }
 
     #[test]
@@ -185,11 +325,77 @@ mod tests {
         let _: fn(&str) -> bool = reveal_in_finder;
     }
 
-    // Note: We can't actually test the browser opening behavior
-    // without mocking the Command execution, as it would:
-    // 1. Open actual browsers/file managers
-    // 2. Be platform-dependent
-    // 3. Fail in CI environments without display
-    //
-    // The main test coverage comes from integration tests or manual testing.
+    // Security tests
+
+    #[test]
+    fn test_reject_shell_metacharacter_ampersand() {
+        assert!(!open_browser("https://example.com & malware.exe"));
+        assert!(open_url("https://example.com & malware.exe").is_err());
+        assert!(!open_folder("/path & rm -rf /"));
+    }
+
+    #[test]
+    fn test_reject_shell_metacharacter_pipe() {
+        assert!(!open_browser("https://example.com | cat /etc/passwd"));
+        assert!(open_url("url | malicious").is_err());
+    }
+
+    #[test]
+    fn test_reject_shell_metacharacter_semicolon() {
+        assert!(!open_browser("https://example.com; rm -rf /"));
+        assert!(open_url("url; malicious").is_err());
+    }
+
+    #[test]
+    fn test_reject_backtick() {
+        assert!(!open_browser("https://example.com`malicious`"));
+        assert!(open_url("url`malicious`").is_err());
+    }
+
+    #[test]
+    fn test_reject_newline() {
+        assert!(!open_browser("https://example.com\nrm -rf /"));
+        assert!(open_url("url\nmalicious").is_err());
+    }
+
+    #[test]
+    fn test_reject_command_substitution() {
+        assert!(!open_browser("https://example.com$(rm -rf /)"));
+        assert!(open_url("url$(malicious)").is_err());
+    }
+
+    #[test]
+    fn test_allow_valid_urls() {
+        // These should pass validation (may fail on command execution in tests)
+        assert!(validate_input("https://example.com").is_ok());
+        assert!(validate_input("http://example.com").is_ok());
+        assert!(validate_input("https://github.com/hawk90/revue").is_ok());
+        assert!(validate_input("ftp://files.example.com/file.txt").is_ok());
+    }
+
+    #[test]
+    fn test_allow_valid_paths() {
+        assert!(validate_input("/path/to/file.pdf").is_ok());
+        assert!(validate_input("./relative/path").is_ok());
+        assert!(validate_input("../parent/path").is_ok());
+    }
+
+    #[test]
+    fn test_reject_empty_url() {
+        assert!(validate_input("").is_err());
+        assert!(open_url("").is_err());
+    }
+
+    #[test]
+    fn test_reject_dangerous_scheme() {
+        assert!(validate_input("javascript:alert(1)").is_err());
+        assert!(validate_input("data:text/html,<script>").is_err());
+        assert!(validate_input("file:///etc/passwd").is_ok()); // file is allowed
+    }
+
+    #[test]
+    fn test_error_messages() {
+        let err = open_url("https://example.com & malware").unwrap_err();
+        assert!(err.to_string().contains("dangerous") || err.to_string().contains("character"));
+    }
 }
