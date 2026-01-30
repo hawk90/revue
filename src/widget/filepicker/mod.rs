@@ -989,7 +989,7 @@ mod tests {
     #[test]
     fn test_go_up_stays_safe() {
         let mut picker = FilePicker::new();
-        let initial_dir = picker.current_dir().to_path_buf();
+        let _initial_dir = picker.current_dir().to_path_buf();
         picker.go_up();
         // go_up should always navigate to parent, which should be valid
         // (may or may not change directory depending on where we started)
@@ -1002,7 +1002,7 @@ mod tests {
         picker.highlight_next();
         if let Some(entry) = picker.highlighted_entry() {
             if entry.is_dir {
-                let initial_dir = picker.current_dir().to_path_buf();
+                let _initial_dir = picker.current_dir().to_path_buf();
                 picker.enter();
                 // Either we navigated or stayed, but shouldn't panic
             }
@@ -1031,7 +1031,7 @@ mod tests {
         // Try to navigate to a path outside the current directory tree
         // This test is platform-dependent, so we just check the function doesn't panic
         let outside_path = Path::new("/tmp/revue_test_nonexistent_outside");
-        let result = picker.navigate_to(outside_path);
+        let _result = picker.navigate_to(outside_path);
         // Should either succeed (if path exists) or fail with appropriate error
         // but should not panic
     }
