@@ -594,6 +594,9 @@ impl FilePicker {
     }
 
     /// Confirm selection
+    ///
+    /// Returns a canonicalized absolute path for the selected file(s).
+    /// This ensures platform-independent consistent behavior.
     pub fn confirm(&self) -> PickerResult {
         match self.mode {
             PickerMode::Open | PickerMode::Directory => {
@@ -601,7 +604,12 @@ impl FilePicker {
                     let valid_selection = (self.mode == PickerMode::Directory && entry.is_dir)
                         || (self.mode == PickerMode::Open && !entry.is_dir);
                     if valid_selection {
-                        PickerResult::Selected(entry.path.clone())
+                        // Return canonicalized absolute path for consistent cross-platform behavior
+                        let path = entry
+                            .path
+                            .canonicalize()
+                            .unwrap_or_else(|_| entry.path.clone());
+                        PickerResult::Selected(path)
                     } else {
                         PickerResult::None
                     }
@@ -612,7 +620,9 @@ impl FilePicker {
             PickerMode::Save => {
                 if !self.input_name.is_empty() {
                     let path = self.current_dir.join(&self.input_name);
-                    PickerResult::Selected(path)
+                    // For new files, try to canonicalize but fall back to joined path
+                    let canonical = path.canonicalize().unwrap_or(path);
+                    PickerResult::Selected(canonical)
                 } else {
                     PickerResult::None
                 }
@@ -621,7 +631,17 @@ impl FilePicker {
                 if self.selected.is_empty() {
                     PickerResult::None
                 } else {
-                    PickerResult::Multiple(self.selected.clone())
+                    // Canonicalize all selected paths for consistency
+                    let paths: Vec<PathBuf> = self
+                        .selected
+                        .iter()
+                        .filter_map(|p| p.canonicalize().ok())
+                        .collect();
+                    if paths.is_empty() {
+                        PickerResult::None
+                    } else {
+                        PickerResult::Multiple(paths)
+                    }
                 }
             }
         }
