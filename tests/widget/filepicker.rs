@@ -347,7 +347,9 @@ fn test_file_picker_navigate_to() {
 
     // 존재하는 디렉토리로 이동
     let _ = picker.navigate_to(&test_dir);
-    assert_eq!(picker.current_dir(), test_dir);
+    // navigate_to는 경로를 canonicalize하므로 비교를 위해 canonicalize 필요
+    let canonical_test_dir = test_dir.canonicalize().unwrap_or(test_dir);
+    assert_eq!(picker.current_dir(), canonical_test_dir);
 }
 
 #[test]

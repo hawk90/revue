@@ -605,8 +605,11 @@ mod tests {
             42
         });
 
-        // Wait for completion
-        thread::sleep(Duration::from_millis(50));
+        // Wait for completion using is_finished() instead of fixed sleep
+        let timeout = std::time::Instant::now() + Duration::from_millis(200);
+        while !handle.is_finished() && std::time::Instant::now() < timeout {
+            thread::sleep(Duration::from_millis(1));
+        }
 
         // First call returns the result
         let result1 = handle.try_join();
