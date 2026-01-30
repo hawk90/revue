@@ -346,8 +346,10 @@ fn test_file_picker_navigate_to() {
     let test_dir = std::env::current_dir().unwrap();
 
     // 존재하는 디렉토리로 이동
-    picker.navigate_to(&test_dir);
-    assert_eq!(picker.current_dir(), test_dir);
+    let _ = picker.navigate_to(&test_dir);
+    // navigate_to는 경로를 canonicalize하므로 비교를 위해 canonicalize 필요
+    let canonical_test_dir = test_dir.canonicalize().unwrap_or(test_dir);
+    assert_eq!(picker.current_dir(), canonical_test_dir);
 }
 
 #[test]
@@ -357,7 +359,7 @@ fn test_file_picker_navigate_to_non_directory() {
 
     // 존재하지 않는 경로로 이동 시도
     let initial_dir = picker.current_dir().to_path_buf();
-    picker.navigate_to(file_path);
+    let _ = picker.navigate_to(file_path);
 
     // 디렉토리가 아니면 변경되지 않아야 함
     assert_eq!(picker.current_dir(), &initial_dir);
@@ -920,7 +922,7 @@ fn test_file_picker_very_long_path() {
 
     // 매우 긴 경로에서도 안전해야 함
     let long_path = Path::new("/a").join("a".repeat(100));
-    picker.navigate_to(&long_path);
+    let _ = picker.navigate_to(&long_path);
     // 패닉하지 않아야 함
 }
 
