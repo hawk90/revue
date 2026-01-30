@@ -464,4 +464,259 @@ mod tests {
         entry.updated();
         assert_eq!(entry.update_count, 2);
     }
+
+    // Tests for RenderCtx
+    #[test]
+    fn test_render_ctx_new() {
+        let buffer = &mut Buffer::new(10, 5);
+        let config = DevToolsConfig::default();
+        let ctx = RenderCtx::new(buffer, 5, 10, &config);
+
+        assert_eq!(ctx.x, 5);
+        assert_eq!(ctx.width, 10);
+    }
+
+    // Tests for render_content
+    #[test]
+    fn test_render_content_empty() {
+        let debugger = StateDebugger::new();
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let config = DevToolsConfig::default();
+
+        // Should not panic on empty debugger
+        debugger.render_content(&mut buffer, area, &config);
+    }
+
+    #[test]
+    fn test_render_content_with_states() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("test", StateValue::Int(42)));
+
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let config = DevToolsConfig::default();
+
+        debugger.render_content(&mut buffer, area, &config);
+        // Should render header and state entry
+    }
+
+    #[test]
+    fn test_render_content_with_selection() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(
+            StateEntry::new("test", StateValue::Int(42))
+                .subscribers(3)
+                .computed(),
+        );
+
+        debugger.selected = Some(0);
+
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let config = DevToolsConfig::default();
+
+        debugger.render_content(&mut buffer, area, &config);
+        // Should render with selection highlighting and details
+    }
+
+    #[test]
+    fn test_render_content_scroll_limit() {
+        let mut debugger = StateDebugger::new();
+        for i in 0..20 {
+            debugger.add(StateEntry::new(format!("state_{}", i), StateValue::Int(i)));
+        }
+        debugger.scroll = 10; // Skip first 10 entries
+
+        let mut buffer = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let config = DevToolsConfig::default();
+
+        debugger.render_content(&mut buffer, area, &config);
+        // Should render starting from scrolled position
+    }
+
+    #[test]
+    fn test_render_content_truncates_at_bottom() {
+        let mut debugger = StateDebugger::new();
+        for i in 0..10 {
+            debugger.add(StateEntry::new(format!("state_{}", i), StateValue::Int(i)));
+        }
+
+        let mut buffer = Buffer::new(20, 3);
+        let area = Rect::new(0, 0, 20, 3);
+        let config = DevToolsConfig::default();
+
+        debugger.render_content(&mut buffer, area, &config);
+        // Should only fit a few entries in small area
+    }
+
+    #[test]
+    fn test_render_entry_non_computed() {
+        let entry = StateEntry::new("signal", StateValue::Int(42));
+        let mut buffer = Buffer::new(20, 5);
+        let config = DevToolsConfig::default();
+        let mut ctx = RenderCtx::new(&mut buffer, 0, 20, &config);
+
+        // Should render with ● prefix for non-computed
+        StateDebugger::render_entry(&mut ctx, 0, &entry, false);
+    }
+
+    #[test]
+    fn test_render_entry_selected() {
+        let entry = StateEntry::new("signal", StateValue::Int(42));
+        let mut buffer = Buffer::new(20, 5);
+        let config = DevToolsConfig::default();
+        let mut ctx = RenderCtx::new(&mut buffer, 0, 20, &config);
+
+        // Should render with inverted colors for selected
+        StateDebugger::render_entry(&mut ctx, 0, &entry, true);
+    }
+
+    #[test]
+    fn test_render_entry_long_name_truncates() {
+        let entry = StateEntry::new(
+            "very_long_signal_name_that_exceeds_width",
+            StateValue::Int(42),
+        );
+        let mut buffer = Buffer::new(10, 5);
+        let config = DevToolsConfig::default();
+        let mut ctx = RenderCtx::new(&mut buffer, 0, 10, &config);
+
+        // Should not panic on long names
+        StateDebugger::render_entry(&mut ctx, 0, &entry, false);
+    }
+
+    #[test]
+    fn test_render_details() {
+        let mut entry = StateEntry::new("test", StateValue::Int(42)).subscribers(5);
+        entry.updated();
+        entry.updated();
+
+        let mut buffer = Buffer::new(30, 5);
+        let config = DevToolsConfig::default();
+        let mut ctx = RenderCtx::new(&mut buffer, 0, 30, &config);
+
+        // Should render type, subscribers, and update count
+        StateDebugger::render_details(&mut ctx, 0, &entry);
+    }
+
+    #[test]
+    fn test_filter_case_insensitive() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("MySignal", StateValue::Int(1)));
+        debugger.add(StateEntry::new("OtherSignal", StateValue::Int(2)));
+
+        debugger.set_filter("mysignal");
+        let filtered = debugger.filtered();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].name, "MySignal");
+    }
+
+    #[test]
+    fn test_filter_empty_string_shows_all() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("a", StateValue::Int(1)));
+        debugger.add(StateEntry::new("b", StateValue::Int(2)));
+
+        debugger.set_filter("");
+        let filtered = debugger.filtered();
+        assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn test_select_next_with_filter() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("signal_a", StateValue::Int(1)));
+        debugger.add(StateEntry::new("signal_b", StateValue::Int(2)));
+        debugger.add(StateEntry::new("computed", StateValue::Int(3)).computed());
+
+        debugger.show_computed = false;
+        debugger.select_next();
+        assert_eq!(debugger.selected, Some(0));
+
+        debugger.select_next();
+        assert_eq!(debugger.selected, Some(1)); // Only non-computed states
+    }
+
+    #[test]
+    fn test_select_prev_with_filter() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("signal_a", StateValue::Int(1)));
+        debugger.add(StateEntry::new("signal_b", StateValue::Int(2)));
+
+        debugger.selected = Some(1);
+        debugger.select_prev();
+        assert_eq!(debugger.selected, Some(0));
+    }
+
+    #[test]
+    fn test_update_nonexistent_state() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("a", StateValue::Int(1)));
+
+        // Should not panic or add new state
+        debugger.update("b", StateValue::Int(2));
+        assert_eq!(debugger.states.len(), 1);
+    }
+
+    #[test]
+    fn test_remove_nonexistent_state() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("a", StateValue::Int(1)));
+
+        // Should not panic
+        debugger.remove("b");
+        assert_eq!(debugger.states.len(), 1);
+    }
+
+    #[test]
+    fn test_state_debugger_default() {
+        let debugger = StateDebugger::default();
+        assert!(debugger.states.is_empty());
+        assert!(debugger.selected.is_none());
+        // Default from derive sets show_computed to false
+        assert!(!debugger.show_computed);
+    }
+
+    #[test]
+    fn test_select_next_clamps_to_filtered_length() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("a", StateValue::Int(1)));
+        debugger.add(StateEntry::new("b", StateValue::Int(2)));
+        debugger.add(StateEntry::new("c", StateValue::Int(3)).computed());
+
+        debugger.show_computed = false;
+        debugger.selected = Some(1);
+
+        // With computed hidden, only 2 items
+        debugger.select_next();
+        assert_eq!(debugger.selected, Some(1)); // Should clamp
+    }
+
+    #[test]
+    fn test_filter_match_substring() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("user_count", StateValue::Int(1)));
+        debugger.add(StateEntry::new("user_name", StateValue::Int(2)));
+        debugger.add(StateEntry::new("total_count", StateValue::Int(3)));
+
+        debugger.set_filter("count");
+        let filtered = debugger.filtered();
+        assert_eq!(filtered.len(), 2); // user_count and total_count
+    }
+
+    #[test]
+    fn test_render_content_no_room_for_details() {
+        let mut debugger = StateDebugger::new();
+        debugger.add(StateEntry::new("test", StateValue::Int(42)));
+        debugger.selected = Some(0);
+
+        let mut buffer = Buffer::new(20, 2);
+        let area = Rect::new(0, 0, 20, 2);
+        let config = DevToolsConfig::default();
+
+        // Not enough room for details panel
+        debugger.render_content(&mut buffer, area, &config);
+    }
 }
