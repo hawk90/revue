@@ -410,7 +410,7 @@ mod tests {
 
     #[test]
     fn test_is_success() {
-        let mut handle = WorkerHandle::spawn_blocking(|| {
+        let handle = WorkerHandle::spawn_blocking(|| {
             // Spin loop instead of sleep
             for _ in 0..1000 {
                 std::hint::spin_loop();
@@ -432,7 +432,7 @@ mod tests {
 
     #[test]
     fn test_is_success_after_panic() {
-        let mut handle = WorkerHandle::spawn_blocking(|| {
+        let handle = WorkerHandle::spawn_blocking(|| {
             for _ in 0..100 {
                 std::hint::spin_loop();
             }
@@ -453,7 +453,7 @@ mod tests {
 
     #[test]
     fn test_is_running() {
-        let mut handle = WorkerHandle::spawn_blocking(|| {
+        let handle = WorkerHandle::spawn_blocking(|| {
             // Longer spin to keep it running
             for _ in 0..10000 {
                 std::hint::spin_loop();

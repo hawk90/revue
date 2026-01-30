@@ -1,7 +1,7 @@
 //! Integration tests for stepper widget
 
 use revue::style::Color;
-use revue::widget::{StepStatus, Stepper, StepperOrientation};
+use revue::widget::{StepStatus, Stepper};
 
 #[test]
 fn test_step_builder() {
@@ -61,42 +61,42 @@ fn test_stepper_with_steps_vec() {
 
 #[test]
 fn test_stepper_orientation_horizontal() {
-    let stepper = Stepper::new().horizontal();
+    let _stepper = Stepper::new().horizontal();
 
     // Orientation was set successfully
 }
 
 #[test]
 fn test_stepper_orientation_vertical() {
-    let stepper = Stepper::new().vertical();
+    let _stepper = Stepper::new().vertical();
 
     // Orientation was set successfully
 }
 
 #[test]
 fn test_stepper_active_color() {
-    let stepper = Stepper::new().active_color(Color::CYAN);
+    let _stepper = Stepper::new().active_color(Color::CYAN);
 
     // Color was set successfully
 }
 
 #[test]
 fn test_stepper_completed_color() {
-    let stepper = Stepper::new().completed_color(Color::GREEN);
+    let _stepper = Stepper::new().completed_color(Color::GREEN);
 
     // Color was set successfully
 }
 
 #[test]
 fn test_stepper_descriptions() {
-    let stepper = Stepper::new().descriptions(true);
+    let _stepper = Stepper::new().descriptions(true);
 
     // Descriptions enabled successfully
 }
 
 #[test]
 fn test_stepper_numbers() {
-    let stepper = Stepper::new().numbers(true);
+    let _stepper = Stepper::new().numbers(true);
 
     // Numbers enabled successfully
 }

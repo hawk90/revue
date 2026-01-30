@@ -410,7 +410,7 @@ mod tests {
 
     #[test]
     fn test_from_buffer_empty_cell() {
-        let mut buffer = Buffer::new(3, 3);
+        let buffer = Buffer::new(3, 3);
         // Don't set anything - cells should be empty
 
         let capture = VisualCapture::from_buffer(&buffer, false, false);
@@ -477,11 +477,11 @@ mod tests {
     #[test]
     fn test_diff_cell_difference() {
         let mut buffer1 = Buffer::new(3, 3);
-        let mut cell1 = Cell::new('A');
+        let cell1 = Cell::new('A');
         buffer1.set(0, 0, cell1);
 
         let mut buffer2 = Buffer::new(3, 3);
-        let mut cell2 = Cell::new('B');
+        let cell2 = Cell::new('B');
         buffer2.set(0, 0, cell2);
 
         let capture1 = VisualCapture::from_buffer(&buffer1, false, false);
