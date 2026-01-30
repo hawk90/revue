@@ -220,7 +220,8 @@ impl Splitter {
             } else {
                 1.0 / visible_panes.len() as f32
             };
-            let mut size = (available as f32 * ratio) as u16;
+            let size = (available as f32 * ratio).clamp(0.0, available as f32);
+            let mut size = size as u16;
 
             // Apply constraints
             size = size.max(pane.min_size);
@@ -448,7 +449,8 @@ impl HSplit {
         let splitter_width = if self.show_splitter { 1 } else { 0 };
         let available = area.width.saturating_sub(splitter_width);
 
-        let mut left_width = (available as f32 * self.ratio) as u16;
+        let left_width = (available as f32 * self.ratio).clamp(0.0, available as f32);
+        let mut left_width = left_width as u16;
         left_width = left_width.max(self.min_left);
         left_width = left_width.min(available.saturating_sub(self.min_right));
 
@@ -514,7 +516,8 @@ impl VSplit {
         let splitter_height = if self.show_splitter { 1 } else { 0 };
         let available = area.height.saturating_sub(splitter_height);
 
-        let mut top_height = (available as f32 * self.ratio) as u16;
+        let top_height = (available as f32 * self.ratio).clamp(0.0, available as f32);
+        let mut top_height = top_height as u16;
         top_height = top_height.max(self.min_top);
         top_height = top_height.min(available.saturating_sub(self.min_bottom));
 
