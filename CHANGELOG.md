@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.42.1](https://github.com/hawk90/revue/compare/v2.42.0...v2.42.1) (2026-01-30)
+
+
+### Bug Fixes
+
+* **test:** update Image widget tests to use correct API ([#329](https://github.com/hawk90/revue/issues/329)) ([919779b](https://github.com/hawk90/revue/commit/919779b9dc6c789aa7beea62f58e2d13efec8ea1))
+
 ## [2.42.0](https://github.com/hawk90/revue/compare/v2.41.2...v2.42.0) (2026-01-30)
 
 
