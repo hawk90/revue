@@ -89,7 +89,11 @@ impl QueryValue {
     /// Check if value contains substring (case-insensitive)
     pub fn contains(&self, needle: &str) -> bool {
         match self {
-            Self::String(s) => s.to_lowercase().contains(&needle.to_lowercase()),
+            Self::String(s) => {
+                // Convert needle once instead of twice
+                let needle_lower = needle.to_lowercase();
+                s.to_lowercase().contains(&needle_lower)
+            }
             Self::Int(n) => n.to_string().contains(needle),
             Self::Float(n) => n.to_string().contains(needle),
             Self::Bool(b) => b.to_string() == needle.to_lowercase(),
@@ -101,7 +105,11 @@ impl QueryValue {
     /// Check equality with a string
     pub fn equals_str(&self, other: &str) -> bool {
         match self {
-            Self::String(s) => s.to_lowercase() == other.to_lowercase(),
+            Self::String(s) => {
+                // Convert other once instead of twice
+                let other_lower = other.to_lowercase();
+                s.to_lowercase() == other_lower
+            }
             Self::Int(n) => other.parse::<i64>().map(|o| *n == o).unwrap_or(false),
             Self::Float(n) => other
                 .parse::<f64>()
@@ -242,8 +250,10 @@ impl Filter {
         match self {
             Self::Text(text) => {
                 let full_text = item.full_text();
+                // Convert full_text once instead of per-word
+                let full_text_lower = full_text.to_lowercase();
                 text.split_whitespace()
-                    .all(|word| full_text.to_lowercase().contains(&word.to_lowercase()))
+                    .all(|word| full_text_lower.contains(&word.to_lowercase()))
             }
             Self::Field { name, op, value } => {
                 if let Some(field_value) = item.field_value(name) {
