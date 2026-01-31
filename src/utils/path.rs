@@ -48,22 +48,14 @@ impl std::error::Error for PathError {}
 
 /// Validate that path doesn't contain traversal patterns
 ///
-/// Returns error if the path contains `..` components or other traversal sequences.
+/// Returns error if the path contains `..` components (ParentDir).
+/// Note: File names containing ".." like "file..txt" are allowed - only actual
+/// parent directory components (..) are rejected.
 pub fn validate_no_traversal(path: &Path) -> Result<(), PathError> {
     // Check components using the Path API
     for component in path.components() {
-        match component {
-            Component::ParentDir => {
-                return Err(PathError::PathTraversal(path.display().to_string()));
-            }
-            Component::Normal(s) => {
-                // Check for suspicious patterns in normal components
-                let s = s.to_string_lossy();
-                if s.contains("..") {
-                    return Err(PathError::PathTraversal(path.display().to_string()));
-                }
-            }
-            _ => {}
+        if component == Component::ParentDir {
+            return Err(PathError::PathTraversal(path.display().to_string()));
         }
     }
     Ok(())
@@ -81,18 +73,31 @@ pub fn validate_characters(path: &Path) -> Result<(), PathError> {
 /// Validate that a path stays within a base directory
 ///
 /// Returns error if the path, when canonicalized, escapes the base directory.
+/// Also checks parent directories for symlinks that might escape the base.
 pub fn validate_within_base(path: &Path, base: &Path) -> Result<(), PathError> {
     // First validate for traversal patterns
     validate_no_traversal(path)?;
 
-    // If base exists, canonicalize and check prefix
-    if base.exists() {
-        if let Ok(base_canonical) = base.canonicalize() {
-            if path.exists() {
-                if let Ok(path_canonical) = path.canonicalize() {
-                    if !path_canonical.starts_with(&base_canonical) {
+    // Check parent directories for symlink escape
+    // Even if the leaf doesn't exist, its parent should be within base
+    if let Some(parent) = path.parent() {
+        if parent.exists() {
+            if let Ok(base_canonical) = base.canonicalize() {
+                if let Ok(parent_canonical) = parent.canonicalize() {
+                    if !parent_canonical.starts_with(&base_canonical) {
                         return Err(PathError::OutsideBounds);
                     }
+                }
+            }
+        }
+    }
+
+    // If both base and path exist, verify the path stays within base
+    if base.exists() && path.exists() {
+        if let Ok(base_canonical) = base.canonicalize() {
+            if let Ok(path_canonical) = path.canonicalize() {
+                if !path_canonical.starts_with(&base_canonical) {
+                    return Err(PathError::OutsideBounds);
                 }
             }
         }
@@ -152,9 +157,31 @@ pub fn try_expand_home(path: impl AsRef<Path>) -> Result<PathBuf, PathError> {
 
     if let Some(rest) = path_str.strip_prefix("~/") {
         if let Some(home) = home_dir() {
-            // Validate the rest doesn't contain traversal patterns
             let rest_path = Path::new(rest);
+
+            // Validate the rest doesn't contain traversal patterns
             validate_no_traversal(rest_path)?;
+
+            // Reject absolute paths after ~/ - they would escape home
+            if rest_path.is_absolute() {
+                return Err(PathError::PathTraversal(format!(
+                    "Absolute path not allowed after ~/: {}",
+                    rest
+                )));
+            }
+
+            // Also check for RootDir and Prefix components in rest
+            for component in rest_path.components() {
+                match component {
+                    std::path::Component::RootDir | std::path::Component::Prefix(_) => {
+                        return Err(PathError::PathTraversal(format!(
+                            "Root or prefix component not allowed after ~/: {}",
+                            rest
+                        )));
+                    }
+                    _ => {}
+                }
+            }
 
             let expanded = home.join(rest_path);
 
@@ -214,10 +241,13 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
 
     if filename.len() + 4 > max_width {
         // Even filename doesn't fit, truncate it
-        return format!(
-            "...{}",
-            &filename[filename.len().saturating_sub(max_width - 3)..]
-        );
+        // Use char_indices for safe UTF-8 truncation
+        let filename_end = filename
+            .char_indices()
+            .map(|(i, _)| i)
+            .nth(max_width.saturating_sub(3))
+            .unwrap_or(filename.len());
+        return format!("...{}", &filename[..filename_end]);
     }
 
     // Try to include as many trailing components as possible
@@ -375,13 +405,37 @@ pub fn join_paths(base: impl AsRef<Path>, parts: &[&str]) -> PathBuf {
 
 /// Join paths with proper separators (non-panicking version)
 ///
-/// Returns error if any path part contains traversal patterns.
+/// Returns error if any path part contains traversal patterns or is absolute.
 pub fn try_join_paths(base: impl AsRef<Path>, parts: &[&str]) -> Result<PathBuf, PathError> {
     let mut result = base.as_ref().to_path_buf();
 
     for part in parts {
         let part_path = Path::new(part);
+
+        // Check for traversal patterns
         validate_no_traversal(part_path)?;
+
+        // Reject absolute paths - they would escape the base
+        if part_path.is_absolute() {
+            return Err(PathError::PathTraversal(format!(
+                "Absolute path not allowed in join_paths: {}",
+                part
+            )));
+        }
+
+        // Also check for RootDir and Prefix components
+        for component in part_path.components() {
+            match component {
+                std::path::Component::RootDir | std::path::Component::Prefix(_) => {
+                    return Err(PathError::PathTraversal(format!(
+                        "Root or prefix component not allowed: {}",
+                        part
+                    )));
+                }
+                _ => {}
+            }
+        }
+
         result = result.join(part_path);
     }
 
@@ -746,5 +800,91 @@ mod tests {
         let result = try_expand_home("/usr/local/bin");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), PathBuf::from("/usr/local/bin"));
+    }
+
+    // ============================================================================
+    // Additional Security Tests
+    // ============================================================================
+
+    #[test]
+    fn test_try_join_paths_rejects_absolute_unix() {
+        let result = try_join_paths(Path::new("/home/user"), &["/etc/passwd"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_try_join_paths_rejects_absolute_windows() {
+        let result = try_join_paths(Path::new("C:\\Users"), &["C:\\Windows\\System32"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_try_join_paths_rejects_unc_path() {
+        let result = try_join_paths(Path::new("/home/user"), &["//server/share"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_try_expand_home_rejects_double_slash_absolute() {
+        let result = try_expand_home("~//etc/passwd");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_try_expand_home_rejects_slash_absolute() {
+        let result = try_expand_home(r"~/\etc");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_try_expand_home_rejects_tilde_slash() {
+        let result = try_expand_home("~//");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_no_traversal_accepts_dots_in_filename() {
+        // Filenames with .. should be allowed now
+        let result = validate_no_traversal(Path::new("file..txt"));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_no_traversal_accepts_backup_dots() {
+        // Backup files with .. should be allowed
+        let result = validate_no_traversal(Path::new("backup...old"));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_within_base_non_existent_within() {
+        // Non-existent path within base should be accepted
+        if let Some(home) = home_dir() {
+            if home.exists() {
+                let non_existent = home.join("non_existent_file.txt");
+                let result = validate_within_base(&non_existent, &home);
+                // Should succeed since parent (home) is within base
+                assert!(result.is_ok());
+            }
+        }
+    }
+
+    #[test]
+    fn test_shorten_path_unicode_filename() {
+        // Test with Unicode filename to ensure no panic
+        let short = shorten_path("/tmp/한글파일.txt", 20);
+        // Should contain the filename or be shortened appropriately
+        assert!(short.len() <= 20);
+        // Should not panic on UTF-8 boundaries
+    }
+
+    #[test]
+    fn test_shorten_path_small_width() {
+        // Test with very small max_width
+        let short = shorten_path("/tmp/한글파일.txt", 5);
+        // Should return "..." or similar short form
+        assert!(short.len() <= 5);
+        // For very small widths, should be mostly ellipsis
+        assert!(short.starts_with("..."));
     }
 }
