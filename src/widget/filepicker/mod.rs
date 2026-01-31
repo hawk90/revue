@@ -1230,14 +1230,13 @@ mod tests {
         // Test Windows reserved device names
         #[cfg(windows)]
         {
-            let picker = FilePicker::new();
             let reserved_names = ["CON", "PRN", "AUX", "NUL", "COM1", "LPT1"];
             for name in reserved_names {
+                let picker = FilePicker::new();
                 let path = PathBuf::from("/tmp").join(name);
-                // try_set_start_dir takes ownership, so reassign the result
-                picker = picker.try_set_start_dir(&path);
-                // Should fail or at least validate the name
-                // The test passes if we get here without panicking
+                // try_set_start_dir returns Result - just verify it doesn't panic
+                // The validation should handle reserved names gracefully
+                let _ = picker.try_set_start_dir(&path);
             }
         }
         #[cfg(not(windows))]
