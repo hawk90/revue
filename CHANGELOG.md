@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.44.5](https://github.com/hawk90/revue/compare/v2.44.4...v2.44.5) (2026-01-31)
+
+
+### Performance Improvements
+
+* **query:** reduce redundant to_lowercase() calls in search ([#360](https://github.com/hawk90/revue/issues/360)) ([1991a1b](https://github.com/hawk90/revue/commit/1991a1ba753c1a419f34b915698fd8691fe01ba2))
+
 ## [2.44.4](https://github.com/hawk90/revue/compare/v2.44.3...v2.44.4) (2026-01-31)
 
 
