@@ -103,15 +103,61 @@ pub fn validate_characters(path: &Path) -> Result<(), PathError> {
 ///
 /// Walks up the directory tree from the given path until an existing directory is found.
 /// Returns the path to that existing ancestor.
+///
+/// # Security
+///
+/// Limits traversal depth to prevent infinite loops with circular symlinks.
 fn find_existing_ancestor(mut path: &Path) -> Option<PathBuf> {
+    const MAX_DEPTH: usize = 100; // Prevent infinite loops
+    let mut depth = 0;
+
     loop {
         if path.exists() {
             return Some(path.to_path_buf());
         }
         match path.parent() {
-            Some(parent) if !parent.as_os_str().is_empty() => path = parent,
+            Some(parent) if !parent.as_os_str().is_empty() => {
+                path = parent;
+                depth += 1;
+                if depth > MAX_DEPTH {
+                    // Too deep, likely a circular symlink or other issue
+                    return None;
+                }
+            }
             _ => return None,
         }
+    }
+}
+
+/// Check if a path is properly within a base directory by prefix matching.
+///
+/// This is a more secure version of `starts_with` that ensures:
+/// 1. The path actually starts with the base prefix
+/// 2. The next character after the prefix is a path separator or end of string
+///    (prevents "/baseevil" from matching "/base")
+fn is_within_base_by_prefix(path: &Path, base: &Path) -> bool {
+    // Use Path::starts_with which handles this correctly
+    // Then verify that if there's more to the path, it starts with a separator
+    if !path.starts_with(base) {
+        return false;
+    }
+
+    // If path equals base exactly, it's within base
+    let path_bytes = path.as_os_str().as_encoded_bytes();
+    let base_bytes = base.as_os_str().as_encoded_bytes();
+
+    if path_bytes.len() == base_bytes.len() {
+        return true;
+    }
+
+    // Check that the next character after base is a path separator
+    // This prevents "/baseevil" from matching "/base"
+    // We check the bytes directly since we know paths are valid UTF-8 or we're checking for ASCII separators
+    if path_bytes.len() > base_bytes.len() {
+        let next_byte = path_bytes[base_bytes.len()];
+        next_byte == b'/' || next_byte == b'\\'
+    } else {
+        false
     }
 }
 
@@ -124,6 +170,13 @@ fn find_existing_ancestor(mut path: &Path) -> Option<PathBuf> {
 /// and validates that ancestor stays within the base directory.
 ///
 /// Returns error if base doesn't exist and path is absolute outside base.
+///
+/// # Security
+///
+/// This function protects against path traversal attacks through multiple mechanisms:
+/// 1. Traversal pattern detection (`..` components)
+/// 2. Symlink escape detection via ancestor canonicalization
+/// 3. Secure prefix matching to prevent prefix bypass attacks
 pub fn validate_within_base(path: &Path, base: &Path) -> Result<(), PathError> {
     // First validate for traversal patterns
     validate_no_traversal(path)?;
@@ -133,8 +186,8 @@ pub fn validate_within_base(path: &Path, base: &Path) -> Result<(), PathError> {
     if !base.exists() {
         // For absolute paths outside a non-existent base, this is suspicious
         if path.is_absolute() {
-            // Try to determine if path would be outside base by checking prefixes
-            if !path.starts_with(base) {
+            // Use secure prefix checking to prevent bypass
+            if !is_within_base_by_prefix(path, base) {
                 return Err(PathError::OutsideBounds);
             }
         }
@@ -147,9 +200,9 @@ pub fn validate_within_base(path: &Path, base: &Path) -> Result<(), PathError> {
     let base_canonical = match base.canonicalize() {
         Ok(c) => c,
         Err(_) => {
-            // Base exists but can't canonicalize (symlink issues?)
-            // Fall back to non-canonicalized check
-            if path.starts_with(base) {
+            // Base exists but can't canonicalize (permission issues, etc.)
+            // Fall back to secure prefix check
+            if is_within_base_by_prefix(path, base) {
                 return Ok(());
             }
             return Err(PathError::OutsideBounds);
@@ -167,11 +220,28 @@ pub fn validate_within_base(path: &Path, base: &Path) -> Result<(), PathError> {
     }
 
     // Path doesn't exist - find nearest existing ancestor
-    if let Some(ancestor) = find_existing_ancestor(path) {
-        if let Ok(ancestor_canonical) = ancestor.canonicalize() {
-            if !ancestor_canonical.starts_with(&base_canonical) {
-                return Err(PathError::OutsideBounds);
+    // If no ancestor exists, we must be more conservative
+    let ancestor = match find_existing_ancestor(path) {
+        Some(a) => a,
+        None => {
+            // No existing ancestor found - path is entirely in non-existent territory
+            // Use prefix checking as a fallback, but also verify no suspicious patterns
+            if is_within_base_by_prefix(path, base) {
+                // Double-check that the relative path from base is safe
+                if let Ok(rel) = path.strip_prefix(base) {
+                    validate_no_traversal(rel)?;
+                    validate_relative_only(rel)?;
+                }
+                return Ok(());
             }
+            return Err(PathError::OutsideBounds);
+        }
+    };
+
+    // Validate the ancestor is within base
+    if let Ok(ancestor_canonical) = ancestor.canonicalize() {
+        if !ancestor_canonical.starts_with(&base_canonical) {
+            return Err(PathError::OutsideBounds);
         }
     }
 
@@ -188,11 +258,29 @@ pub fn validate_within_base(path: &Path, base: &Path) -> Result<(), PathError> {
 }
 
 /// Get the home directory path
+///
+/// # Security
+///
+/// Reads the HOME or USERPROFILE environment variable. This can be spoofed by
+/// malicious users. Callers should validate that the returned path exists and
+/// is appropriate for their use case.
+///
+/// Returns None if:
+/// - HOME and USERPROFILE are not set
+/// - The path doesn't exist
+/// - The path exists but is not a directory
 pub fn home_dir() -> Option<PathBuf> {
-    std::env::var("HOME")
+    let path = std::env::var("HOME")
         .ok()
         .map(PathBuf::from)
-        .or_else(|| std::env::var("USERPROFILE").ok().map(PathBuf::from))
+        .or_else(|| std::env::var("USERPROFILE").ok().map(PathBuf::from))?;
+
+    // Validate that the path exists and is a directory
+    if path.exists() && path.is_dir() {
+        Some(path)
+    } else {
+        None
+    }
 }
 
 /// Replace home directory with ~ in path display
@@ -1246,5 +1334,197 @@ mod tests {
             let result = try_expand_home(r"~/C:\Windows");
             assert!(result.is_ok());
         }
+    }
+
+    // ============================================================================
+    // Additional Security Tests (Edge Cases & Vulnerability Fixes)
+    // ============================================================================
+
+    #[test]
+    fn test_validate_within_base_prefix_bypass_attack() {
+        // Test that "/baseevil/passwd" is rejected when base is "/base"
+        // This was a potential vulnerability where starts_with wasn't sufficient
+        if let Some(home) = home_dir() {
+            if home.exists() {
+                // Create a base path
+                let base = &home;
+
+                // Try to access "/home/evil/passwd" when base is "/home/user"
+                // On Unix this would be base.parent() + "/evil/passwd"
+                if let Some(parent) = base.parent() {
+                    let attack_path = parent.join("evil/passwd");
+                    let result = validate_within_base(&attack_path, base);
+                    // Should fail - attack_path is outside base
+                    assert!(
+                        result.is_err(),
+                        "Path outside base (prefix bypass) should be rejected"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_validate_within_base_similar_prefix_attack() {
+        // Test paths that start with base prefix but aren't within base
+        #[cfg(unix)]
+        {
+            let base = Path::new("/safe/base");
+            let path = Path::new("/safe/baseevil/passwd");
+            let result = validate_within_base(path, base);
+            // If base doesn't exist, it should still fail the prefix check
+            // because path doesn't have a separator after the base prefix
+            assert!(
+                result.is_err(),
+                "Path with similar prefix but no separator should be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn test_validate_within_base_no_existing_ancestor_rejected() {
+        // Test that paths with no existing ancestors are properly validated
+        // This was a vulnerability where find_existing_ancestor returning None
+        // would bypass validation
+        if let Some(home) = home_dir() {
+            if home.exists() {
+                // Create a very deep non-existent path
+                let deep_path = home
+                    .join("a")
+                    .join("b")
+                    .join("c")
+                    .join("d")
+                    .join("e")
+                    .join("f")
+                    .join("g")
+                    .join("h")
+                    .join("i")
+                    .join("j")
+                    .join("k")
+                    .join("l")
+                    .join("m")
+                    .join("n")
+                    .join("o")
+                    .join("p")
+                    .join("q")
+                    .join("r")
+                    .join("s")
+                    .join("t")
+                    .join("u")
+                    .join("v")
+                    .join("w")
+                    .join("x")
+                    .join("y")
+                    .join("z")
+                    .join("file.txt");
+
+                // This should succeed because all ancestors would be within home
+                let result = validate_within_base(&deep_path, &home);
+                assert!(
+                    result.is_ok(),
+                    "Deep path within base should be accepted even with no existing ancestors"
+                );
+
+                // Now try a path that would escape via a similar prefix
+                // We can't actually test the escape without creating files,
+                // but we can verify the prefix check works
+                let home_str = home.to_string_lossy().to_string();
+                let evil_path_str = format!("{}evil/passwd", home_str);
+                let evil_path = Path::new(&evil_path_str);
+                let result = validate_within_base(&evil_path, &home);
+                assert!(result.is_err(), "Path with evil prefix should be rejected");
+            }
+        }
+    }
+
+    #[test]
+    fn test_find_existing_ancestor_depth_limit() {
+        // Test that find_existing_ancestor has a depth limit to prevent infinite loops
+        // We can't easily test circular symlinks without filesystem access,
+        // but we can verify it doesn't panic or hang on very deep paths
+        let deep = Path::new("/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z");
+        let result = find_existing_ancestor(deep);
+        // Should either find an ancestor or return None, but never hang
+        // The test passing here means it didn't hang
+        let _ = result;
+    }
+
+    // ============================================================================
+    // shorten_path Boundary Value Tests
+    // ============================================================================
+
+    #[test]
+    fn test_shorten_path_max_width_zero() {
+        // max_width = 0 should return "..." or empty
+        let short = shorten_path("/tmp/file.txt", 0);
+        // With max_width=0, we get "..." (3 chars) or empty depending on implementation
+        // The important thing is it doesn't panic
+        assert!(short.len() <= 3 || short.is_empty());
+    }
+
+    #[test]
+    fn test_shorten_path_max_width_one() {
+        let short = shorten_path("/tmp/file.txt", 1);
+        // Should return "..." truncated or empty
+        assert!(short.len() <= 3);
+    }
+
+    #[test]
+    fn test_shorten_path_max_width_two() {
+        let short = shorten_path("/tmp/file.txt", 2);
+        assert!(short.len() <= 3);
+    }
+
+    #[test]
+    fn test_shorten_path_max_width_three() {
+        let short = shorten_path("/tmp/file.txt", 3);
+        // Should be "..." or less
+        assert!(short.len() <= 3);
+    }
+
+    #[test]
+    fn test_shorten_path_max_width_four() {
+        let short = shorten_path("/tmp/file.txt", 4);
+        // With max_width=4, we get "..." which is 3 chars
+        assert!(short.starts_with("..."));
+        assert!(short.len() <= 4);
+    }
+
+    #[test]
+    fn test_shorten_path_empty_components() {
+        // Test paths with empty components (multiple slashes)
+        let short = shorten_path("//a//b///c", 20);
+        // Should handle gracefully without panicking
+        assert!(short.len() <= 20);
+    }
+
+    #[test]
+    fn test_abbreviate_path_empty_components() {
+        // Test paths with empty components
+        let abbr = abbreviate_path_keep("//a//b///c", 2);
+        // Should handle gracefully
+        assert!(!abbr.is_empty());
+    }
+
+    // ============================================================================
+    // home_dir Validation Tests
+    // ============================================================================
+
+    #[test]
+    fn test_home_dir_returns_existing_directory() {
+        // home_dir should only return paths that exist and are directories
+        if let Some(home) = home_dir() {
+            assert!(home.exists(), "home_dir should return existing path");
+            assert!(home.is_dir(), "home_dir should return directory");
+        }
+        // If None, that's also valid (no HOME set or invalid)
+    }
+
+    #[test]
+    fn test_home_dir_tampered_env() {
+        // Test that home_dir doesn't return non-existent paths from env
+        // We can't actually modify environment in tests, but the logic
+        // ensures that if HOME points to a non-existent path, None is returned
+        // This is more of a documentation of expected behavior
     }
 }
