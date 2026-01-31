@@ -36,6 +36,7 @@
 //! | [`browser`] | System browser and URL utilities |
 //! | [`profiler`] | Performance profiling and timing |
 //! | [`lock`] | Lock utilities for consistent poison handling |
+//! | [`shell`] | Shell-safe string escaping |
 //! | [`debounce`] | Debounce and throttle utilities for events |
 
 pub mod accessibility;
@@ -63,6 +64,7 @@ pub mod overlay;
 pub mod path;
 pub mod profiler;
 pub mod selection;
+pub mod shell;
 pub mod sort;
 pub mod syntax;
 pub mod table;
@@ -291,6 +293,9 @@ pub use text_sizing::{is_supported as text_sizing_supported, TextSizing};
 
 // Lock utilities
 pub use lock::{lock_or_recover, read_or_recover, write_or_recover};
+
+// Shell escaping
+pub use shell::{escape_applescript, escape_powershell, sanitize_string};
 
 // Debounce and Throttle
 pub use debounce::{debounce_ms, debouncer, throttle, throttle_ms, Debouncer, Edge, Throttle};
