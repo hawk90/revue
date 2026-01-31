@@ -92,8 +92,12 @@ pub struct DomTree {
     nodes: HashMap<DomId, DomNode>,
     /// Root node ID
     root: Option<DomId>,
-    /// ID to DomId mapping
+    /// ID to DomId mapping (for #id queries)
     id_map: HashMap<String, DomId>,
+    /// Type index: maps widget type to list of node IDs (for type queries)
+    type_index: HashMap<String, Vec<DomId>>,
+    /// Class index: maps class name to list of node IDs (for .class queries)
+    class_index: HashMap<String, Vec<DomId>>,
 }
 
 impl DomTree {
@@ -110,8 +114,20 @@ impl DomTree {
         // Mark new nodes as dirty so they get rendered
         node.state.dirty = true;
 
+        // Update ID index
         if let Some(ref element_id) = node.meta.id {
             self.id_map.insert(element_id.clone(), id);
+        }
+
+        // Update type index
+        self.type_index
+            .entry(node.widget_type().to_string())
+            .or_default()
+            .push(id);
+
+        // Update class index
+        for class in &node.meta.classes {
+            self.class_index.entry(class.clone()).or_default().push(id);
         }
 
         self.nodes.insert(id, node);
@@ -128,8 +144,20 @@ impl DomTree {
         // Mark new nodes as dirty so they get rendered
         node.state.dirty = true;
 
+        // Update ID index
         if let Some(ref element_id) = node.meta.id {
             self.id_map.insert(element_id.clone(), id);
+        }
+
+        // Update type index
+        self.type_index
+            .entry(node.widget_type().to_string())
+            .or_default()
+            .push(id);
+
+        // Update class index
+        for class in &node.meta.classes {
+            self.class_index.entry(class.clone()).or_default().push(id);
         }
 
         // Add to parent's children and collect IDs for position update
@@ -162,11 +190,18 @@ impl DomTree {
     /// Remove a node and its children
     pub fn remove(&mut self, id: DomId) {
         // Collect info we need before modifying
-        let (parent_id, element_id, children) = if let Some(node) = self.nodes.get(&id) {
-            (node.parent, node.meta.id.clone(), node.children.clone())
-        } else {
-            return;
-        };
+        let (parent_id, element_id, widget_type, classes, children) =
+            if let Some(node) = self.nodes.get(&id) {
+                (
+                    node.parent,
+                    node.meta.id.clone(),
+                    node.widget_type().to_string(),
+                    node.meta.classes.clone(),
+                    node.children.clone(),
+                )
+            } else {
+                return;
+            };
 
         // Remove from parent
         if let Some(parent_id) = parent_id {
@@ -178,6 +213,24 @@ impl DomTree {
         // Remove from ID map
         if let Some(element_id) = element_id {
             self.id_map.remove(&element_id);
+        }
+
+        // Remove from type index
+        if let Some(type_ids) = self.type_index.get_mut(&widget_type) {
+            type_ids.retain(|&x| x != id);
+            if type_ids.is_empty() {
+                self.type_index.remove(&widget_type);
+            }
+        }
+
+        // Remove from class index
+        for class in &classes {
+            if let Some(class_ids) = self.class_index.get_mut(class) {
+                class_ids.retain(|&x| x != id);
+                if class_ids.is_empty() {
+                    self.class_index.remove(class);
+                }
+            }
         }
 
         // Remove children recursively
@@ -446,21 +499,27 @@ impl Query for DomTree {
     }
 
     fn get_by_class(&self, class: &str) -> QueryResult<'_> {
-        let nodes: Vec<_> = self
-            .nodes
-            .values()
-            .filter(|node| node.has_class(class))
-            .collect();
-        QueryResult::from_nodes(nodes)
+        // Use class index for O(k) lookup where k = nodes with that class
+        // Instead of O(n) where n = total nodes
+        let node_ids = self.class_index.get(class);
+        if let Some(ids) = node_ids {
+            let nodes: Vec<_> = ids.iter().filter_map(|id| self.nodes.get(id)).collect();
+            QueryResult::from_nodes(nodes)
+        } else {
+            QueryResult::empty()
+        }
     }
 
     fn get_by_type(&self, widget_type: &str) -> QueryResult<'_> {
-        let nodes: Vec<_> = self
-            .nodes
-            .values()
-            .filter(|node| node.widget_type() == widget_type)
-            .collect();
-        QueryResult::from_nodes(nodes)
+        // Use type index for O(k) lookup where k = nodes with that type
+        // Instead of O(n) where n = total nodes
+        let node_ids = self.type_index.get(widget_type);
+        if let Some(ids) = node_ids {
+            let nodes: Vec<_> = ids.iter().filter_map(|id| self.nodes.get(id)).collect();
+            QueryResult::from_nodes(nodes)
+        } else {
+            QueryResult::empty()
+        }
     }
 }
 

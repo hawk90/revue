@@ -198,6 +198,9 @@ pub fn display_width(s: &str) -> usize {
 /// If truncation occurs, the result may be shorter than `max_width`
 /// to avoid splitting a wide character.
 ///
+/// # Safety
+/// Ensures the returned slice is always at a valid UTF-8 boundary.
+///
 /// # Example
 ///
 /// ```rust,ignore
@@ -217,6 +220,23 @@ pub fn truncate_to_width(s: &str, max_width: usize) -> &str {
         }
         width += cw;
         end_idx = i + c.len_utf8();
+    }
+
+    // Ensure end_idx is at a valid UTF-8 boundary
+    if end_idx == 0 {
+        return "";
+    }
+    if end_idx >= s.len() {
+        return s;
+    }
+    if !s.is_char_boundary(end_idx) {
+        // Find the previous valid boundary
+        for (i, _) in s.char_indices() {
+            if i >= end_idx {
+                break;
+            }
+            end_idx = i;
+        }
     }
 
     &s[..end_idx]
@@ -326,8 +346,13 @@ pub fn wrap_to_width(s: &str, max_width: usize) -> Vec<String> {
                 let mut remaining = word;
                 while !remaining.is_empty() {
                     let (chunk, rest) = split_at_width(remaining, max_width);
-                    if !chunk.is_empty() {
-                        lines.push(chunk.to_string());
+                    if chunk.is_empty() {
+                        // Can't fit even a single character, skip to avoid infinite loop
+                        break;
+                    }
+                    lines.push(chunk.to_string());
+                    if rest.is_empty() {
+                        break;
                     }
                     remaining = rest;
                 }
@@ -350,13 +375,16 @@ pub fn wrap_to_width(s: &str, max_width: usize) -> Vec<String> {
                 let mut remaining = word;
                 while !remaining.is_empty() {
                     let (chunk, rest) = split_at_width(remaining, max_width);
-                    if !chunk.is_empty() {
-                        if rest.is_empty() {
-                            current_line = chunk.to_string();
-                            current_width = display_width(chunk);
-                        } else {
-                            lines.push(chunk.to_string());
-                        }
+                    if chunk.is_empty() {
+                        // Can't fit even a single character (e.g., wide char in narrow width)
+                        // Skip this word to avoid infinite loop
+                        break;
+                    }
+                    if rest.is_empty() {
+                        current_line = chunk.to_string();
+                        current_width = display_width(chunk);
+                    } else {
+                        lines.push(chunk.to_string());
                     }
                     remaining = rest;
                 }
@@ -476,5 +504,173 @@ mod tests {
         // Full-width ASCII characters
         assert_eq!(display_width("ＡＢＣ"), 6); // Full-width ABC
         assert_eq!(char_width('Ａ'), 2);
+    }
+
+    // =========================================================================
+    // Edge Case Tests - UTF-8 Boundary Safety
+    // =========================================================================
+
+    #[test]
+    fn test_truncate_empty_string() {
+        assert_eq!(truncate_to_width("", 10), "");
+        assert_eq!(truncate_to_width("", 0), "");
+    }
+
+    #[test]
+    fn test_truncate_zero_width() {
+        assert_eq!(truncate_to_width("hello", 0), "");
+        assert_eq!(truncate_to_width("안녕", 0), "");
+    }
+
+    #[test]
+    fn test_truncate_single_wide_char() {
+        // Can't fit even one wide character
+        assert_eq!(truncate_to_width("안", 1), "");
+        // Can fit exactly one wide character
+        assert_eq!(truncate_to_width("안", 2), "안");
+    }
+
+    #[test]
+    fn test_truncate_wider_than_available() {
+        assert_eq!(truncate_to_width("hi", 100), "hi");
+        assert_eq!(truncate_to_width("안녕", 100), "안녕");
+    }
+
+    #[test]
+    fn test_split_at_width_edge_cases() {
+        // Empty string
+        let (left, right) = split_at_width("", 5);
+        assert_eq!(left, "");
+        assert_eq!(right, "");
+
+        // Zero width
+        let (left, right) = split_at_width("hello", 0);
+        assert_eq!(left, "");
+        assert_eq!(right, "hello");
+
+        // Width larger than string
+        let (left, right) = split_at_width("hi", 100);
+        assert_eq!(left, "hi");
+        assert_eq!(right, "");
+    }
+
+    #[test]
+    fn test_split_at_width_wide_chars() {
+        let (left, _right) = split_at_width("안녕하세요", 4);
+        assert_eq!(left, "안녕");
+        assert_eq!(display_width(left), 4);
+    }
+
+    #[test]
+    fn test_truncate_with_suffix_edge_cases() {
+        // Empty string
+        assert_eq!(truncate_with_suffix("", 5, "…"), "");
+
+        // Zero max width - can't fit anything, returns empty
+        assert_eq!(truncate_with_suffix("hello", 0, "…"), "");
+
+        // String already fits
+        assert_eq!(truncate_with_suffix("hi", 5, "…"), "hi");
+
+        // Max width exactly fits suffix
+        assert_eq!(truncate_with_suffix("hello world", 1, "…"), "…");
+    }
+
+    #[test]
+    fn test_pad_to_width_edge_cases() {
+        // Empty string
+        assert_eq!(pad_to_width("", 5), "     ");
+
+        // Zero width
+        assert_eq!(pad_to_width("hello", 0), "hello");
+
+        // Already at target width
+        assert_eq!(pad_to_width("abc", 3), "abc");
+    }
+
+    #[test]
+    fn test_center_to_width_edge_cases() {
+        // Empty string
+        assert_eq!(center_to_width("", 5), "     ");
+
+        // Zero width
+        assert_eq!(center_to_width("hello", 0), "hello");
+
+        // Odd padding
+        assert_eq!(center_to_width("x", 4), " x  ");
+    }
+
+    #[test]
+    fn test_right_align_to_width_edge_cases() {
+        // Empty string
+        assert_eq!(right_align_to_width("", 5), "     ");
+
+        // Zero width
+        assert_eq!(right_align_to_width("hello", 0), "hello");
+    }
+
+    #[test]
+    fn test_wrap_to_width_edge_cases() {
+        // Empty string
+        assert!(wrap_to_width("", 10).is_empty());
+
+        // Zero width
+        assert!(wrap_to_width("hello", 0).is_empty());
+
+        // Single character wider than max
+        let lines = wrap_to_width("안", 1);
+        assert!(lines.is_empty()); // Can't fit
+    }
+
+    #[test]
+    fn test_display_width_edge_cases() {
+        // Empty string
+        assert_eq!(display_width(""), 0);
+
+        // Control characters
+        assert_eq!(display_width("\n\t"), 0);
+
+        // Zero-width characters
+        assert_eq!(display_width("a\u{0301}"), 1); // a + combining acute = 1 width
+    }
+
+    #[test]
+    fn test_char_width_control_chars() {
+        assert_eq!(char_width('\0'), 0);
+        assert_eq!(char_width('\n'), 0);
+        assert_eq!(char_width('\t'), 0);
+        assert_eq!(char_width('\r'), 0);
+    }
+
+    #[test]
+    fn test_char_width_ascii_printable() {
+        for c in '!'..='~' {
+            assert_eq!(char_width(c), 1, "Character '{}' should have width 1", c);
+        }
+    }
+
+    #[test]
+    fn test_truncate_preserves_valid_utf8() {
+        // Test that truncated strings are always valid UTF-8
+        let s = "Hello世界안녕🎉";
+
+        for width in 0..=20 {
+            let truncated = truncate_to_width(s, width);
+            // Verify it's valid UTF-8 by trying to count chars
+            let _ = truncated.chars().count();
+        }
+    }
+
+    #[test]
+    fn test_split_preserves_valid_utf8() {
+        // Test that both parts of split are valid UTF-8
+        let s = "Hello世界안녕🎉";
+
+        for width in 0..=20 {
+            let (left, right) = split_at_width(s, width);
+            // Verify both are valid UTF-8
+            let _ = left.chars().count();
+            let _ = right.chars().count();
+        }
     }
 }

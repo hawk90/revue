@@ -29,6 +29,7 @@
 //! ```
 
 use crate::layout::Rect;
+use std::collections::HashSet;
 
 /// Widget identifier for focus tracking
 pub type WidgetId = u64;
@@ -250,11 +251,16 @@ impl FocusManager {
         };
 
         let ids = self.focusable_ids();
+        // Convert to HashSet for O(1) lookup (prevents O(n²) complexity)
+        let focusable_set: HashSet<WidgetId> = ids.iter().copied().collect();
+
+        let current_id = self.widgets[current_idx].id;
+
         let candidates: Vec<_> = self
             .widgets
             .iter()
-            .filter(|w| ids.contains(&w.id))
-            .filter(|w| w.id != self.widgets[current_idx].id)
+            .filter(|w| focusable_set.contains(&w.id)) // O(1) lookup now
+            .filter(|w| w.id != current_id)
             .filter_map(|w| w.position.map(|p| (w.id, p)))
             .filter(|(_, pos)| match direction {
                 Direction::Up => pos.1 < current_pos.1,

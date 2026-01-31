@@ -53,9 +53,33 @@ pub fn char_to_byte_index_with_char(s: &str, char_idx: usize) -> (usize, Option<
 ///
 /// # Returns
 /// The character index, or character count if byte_idx is at or past end
+///
+/// # Safety
+/// This function safely handles invalid byte indices by clamping to string bounds
+/// and validating UTF-8 boundaries.
 #[inline]
 pub fn byte_to_char_index(s: &str, byte_idx: usize) -> usize {
-    s[..byte_idx.min(s.len())].chars().count()
+    // Clamp to valid range
+    let byte_idx = byte_idx.min(s.len());
+
+    // Use is_char_boundary to safely handle invalid byte positions
+    // If not at a valid boundary, find the nearest valid boundary
+    let safe_idx = if s.is_char_boundary(byte_idx) {
+        byte_idx
+    } else {
+        // Find the previous valid character boundary by scanning backwards
+        let mut safe = 0;
+        for (i, _) in s.char_indices() {
+            if i <= byte_idx && s.is_char_boundary(i) {
+                safe = i;
+            } else if i > byte_idx {
+                break;
+            }
+        }
+        safe
+    };
+
+    s[..safe_idx].chars().count()
 }
 
 /// Count characters in a string (more explicit than .chars().count())
@@ -73,13 +97,22 @@ pub fn char_count(s: &str) -> usize {
 ///
 /// # Returns
 /// The substring, or empty string if indices are invalid
+///
+/// # Safety
+/// This function safely handles out-of-bounds indices and ensures
+/// all byte indices are at valid UTF-8 character boundaries.
 pub fn char_slice(s: &str, start: usize, end: usize) -> &str {
-    if start >= end {
+    if start >= end || start >= char_count(s) {
         return "";
     }
 
     let start_byte = char_to_byte_index(s, start);
-    let end_byte = char_to_byte_index(s, end);
+    let end_byte = char_to_byte_index(s, end).min(s.len());
+
+    // Ensure both indices are at valid UTF-8 boundaries
+    if !s.is_char_boundary(start_byte) || !s.is_char_boundary(end_byte) {
+        return "";
+    }
 
     &s[start_byte..end_byte]
 }
@@ -147,13 +180,31 @@ pub fn remove_char_range(s: &mut String, start: usize, end: usize) {
 /// assert_eq!(short, "Hello…");
 /// ```
 pub fn truncate(text: &str, max_width: usize) -> String {
-    if text.chars().count() <= max_width {
-        text.to_string()
+    let char_count = text.chars().count();
+
+    if char_count <= max_width {
+        // Fast path: no truncation needed
+        // Pre-allocate exact capacity to avoid reallocation
+        let mut result = String::with_capacity(text.len());
+        result.push_str(text);
+        result
     } else if max_width <= 1 {
-        "…".to_string()
+        // Edge case: just the ellipsis
+        String::from("…")
     } else {
-        let truncated: String = text.chars().take(max_width - 1).collect();
-        format!("{}…", truncated)
+        // Pre-allocate capacity for truncated text + ellipsis
+        // Estimate: (max_width - 1) chars * 3 bytes/char (UTF-8 worst case) + 3 bytes for ellipsis
+        let capacity = (max_width.saturating_sub(1)) * 3 + 3;
+        let mut result = String::with_capacity(capacity);
+
+        for (i, c) in text.chars().enumerate() {
+            if i >= max_width.saturating_sub(1) {
+                break;
+            }
+            result.push(c);
+        }
+        result.push('…');
+        result
     }
 }
 
@@ -166,14 +217,31 @@ pub fn truncate(text: &str, max_width: usize) -> String {
 /// ```
 pub fn truncate_start(text: &str, max_width: usize) -> String {
     let char_count = text.chars().count();
+
     if char_count <= max_width {
-        text.to_string()
+        // Fast path: no truncation needed
+        let mut result = String::with_capacity(text.len());
+        result.push_str(text);
+        result
     } else if max_width <= 1 {
-        "…".to_string()
+        // Edge case: just the ellipsis
+        String::from("…")
     } else {
-        let skip = char_count - max_width + 1;
-        let truncated: String = text.chars().skip(skip).collect();
-        format!("…{}", truncated)
+        // Pre-allocate capacity
+        let keep = max_width.saturating_sub(1);
+        let capacity = keep * 3 + 3; // Estimate for UTF-8 + ellipsis
+        let mut result = String::with_capacity(capacity);
+
+        result.push('…');
+
+        let skip = char_count - keep;
+        for (i, c) in text.chars().enumerate() {
+            if i >= skip {
+                result.push(c);
+            }
+        }
+
+        result
     }
 }
 
@@ -188,12 +256,26 @@ pub fn truncate_start(text: &str, max_width: usize) -> String {
 pub fn center(text: &str, width: usize) -> String {
     let text_len = text.chars().count();
     if text_len >= width {
-        text.to_string()
+        // Fast path: no padding needed
+        let mut result = String::with_capacity(text.len());
+        result.push_str(text);
+        result
     } else {
+        // Pre-allocate exact capacity
         let padding = width - text_len;
         let left_pad = padding / 2;
         let right_pad = padding - left_pad;
-        format!("{}{}{}", " ".repeat(left_pad), text, " ".repeat(right_pad))
+        let capacity = text.len() + left_pad + right_pad;
+
+        let mut result = String::with_capacity(capacity);
+        for _ in 0..left_pad {
+            result.push(' ');
+        }
+        result.push_str(text);
+        for _ in 0..right_pad {
+            result.push(' ');
+        }
+        result
     }
 }
 
@@ -201,9 +283,21 @@ pub fn center(text: &str, width: usize) -> String {
 pub fn pad_left(text: &str, width: usize) -> String {
     let text_len = text.chars().count();
     if text_len >= width {
-        text.to_string()
+        // Fast path: no padding needed
+        let mut result = String::with_capacity(text.len());
+        result.push_str(text);
+        result
     } else {
-        format!("{}{}", " ".repeat(width - text_len), text)
+        // Pre-allocate exact capacity
+        let padding = width - text_len;
+        let capacity = text.len() + padding;
+
+        let mut result = String::with_capacity(capacity);
+        for _ in 0..padding {
+            result.push(' ');
+        }
+        result.push_str(text);
+        result
     }
 }
 
@@ -211,9 +305,21 @@ pub fn pad_left(text: &str, width: usize) -> String {
 pub fn pad_right(text: &str, width: usize) -> String {
     let text_len = text.chars().count();
     if text_len >= width {
-        text.to_string()
+        // Fast path: no padding needed
+        let mut result = String::with_capacity(text.len());
+        result.push_str(text);
+        result
     } else {
-        format!("{}{}", text, " ".repeat(width - text_len))
+        // Pre-allocate exact capacity
+        let padding = width - text_len;
+        let capacity = text.len() + padding;
+
+        let mut result = String::with_capacity(capacity);
+        result.push_str(text);
+        for _ in 0..padding {
+            result.push(' ');
+        }
+        result
     }
 }
 
@@ -329,7 +435,17 @@ pub fn progress_bar(value: f64, width: usize) -> String {
     let filled = (value * width as f64).round() as usize;
     let empty = width.saturating_sub(filled);
 
-    format!("{}{}", "█".repeat(filled), "░".repeat(empty))
+    // Pre-allocate exact capacity (each char is 1-3 bytes, but 3 is safe)
+    let capacity = width * 3;
+    let mut result = String::with_capacity(capacity);
+
+    for _ in 0..filled {
+        result.push('█');
+    }
+    for _ in 0..empty {
+        result.push('░');
+    }
+    result
 }
 
 /// Create a horizontal bar with partial fill character
@@ -355,12 +471,18 @@ pub fn progress_bar_precise(value: f64, width: usize) -> String {
         .saturating_sub(full_blocks)
         .saturating_sub(if remainder > 0 { 1 } else { 0 });
 
-    format!(
-        "{}{}{}",
-        "█".repeat(full_blocks),
-        partial,
-        " ".repeat(empty)
-    )
+    // Pre-allocate capacity
+    let capacity = (full_blocks + partial.len() + empty) * 3;
+    let mut result = String::with_capacity(capacity);
+
+    for _ in 0..full_blocks {
+        result.push('█');
+    }
+    result.push_str(partial);
+    for _ in 0..empty {
+        result.push(' ');
+    }
+    result
 }
 
 #[cfg(test)]
@@ -562,5 +684,202 @@ mod tests {
         let mut s = String::from("hello");
         remove_char_range(&mut s, 3, 3); // Empty range
         assert_eq!(s, "hello");
+    }
+
+    // =========================================================================
+    // Edge Case Tests - UTF-8 Boundary Safety
+    // =========================================================================
+
+    #[test]
+    fn test_byte_to_char_index_misaligned() {
+        // Test with byte index in the middle of a UTF-8 character
+        let s = "héllo"; // é is 2 bytes at positions 1-2
+                         // byte_idx=2 is in the middle of 'é', should not panic
+        let count = byte_to_char_index(s, 2);
+        assert!(count <= 2); // Should be 0, 1, or 2 (safe handling)
+    }
+
+    #[test]
+    fn test_byte_to_char_index_out_of_bounds() {
+        let s = "hello";
+        assert_eq!(byte_to_char_index(s, 100), 5); // Returns char count
+        assert_eq!(byte_to_char_index(s, 5), 5);
+    }
+
+    #[test]
+    fn test_byte_to_char_index_empty_string() {
+        let s = "";
+        assert_eq!(byte_to_char_index(s, 0), 0);
+        assert_eq!(byte_to_char_index(s, 10), 0);
+    }
+
+    #[test]
+    fn test_char_slice_boundary_safety() {
+        let s = "héllo world";
+
+        // Safe slices
+        assert_eq!(char_slice(s, 0, 5), "héllo");
+        assert_eq!(char_slice(s, 6, 11), "world");
+
+        // Edge cases
+        assert_eq!(char_slice(s, 0, 0), ""); // Empty range
+        assert_eq!(char_slice(s, 5, 3), ""); // Invalid range
+        assert_eq!(char_slice(s, 100, 110), ""); // Out of bounds
+    }
+
+    #[test]
+    fn test_char_slice_unicode() {
+        let s = "Hello 世界 World"; // Chinese characters are 3 bytes each
+
+        // Slice including Unicode
+        let result = char_slice(s, 6, 8); // Should get the two Chinese chars
+        assert_eq!(result, "世界");
+
+        // Empty edge cases
+        assert_eq!(char_slice(s, 100, 110), "");
+        assert_eq!(char_slice(s, 5, 3), "");
+    }
+
+    #[test]
+    fn test_char_slice_emoji() {
+        let s = "a🎉b🎉c"; // Emojis are 4 bytes each
+
+        assert_eq!(char_slice(s, 1, 2), "🎉");
+        assert_eq!(char_slice(s, 0, 5), "a🎉b🎉c");
+        assert_eq!(char_slice(s, 0, 0), "");
+        assert_eq!(char_slice(s, 10, 20), "");
+    }
+
+    #[test]
+    fn test_char_to_byte_index_edge_cases() {
+        let s = "hello";
+
+        // Out of bounds should return string length
+        assert_eq!(char_to_byte_index(s, 100), 5);
+        assert_eq!(char_to_byte_index(s, 5), 5);
+        assert_eq!(char_to_byte_index(s, 0), 0);
+    }
+
+    #[test]
+    fn test_char_to_byte_index_empty_string() {
+        let s = "";
+        assert_eq!(char_to_byte_index(s, 0), 0);
+        assert_eq!(char_to_byte_index(s, 10), 0);
+    }
+
+    #[test]
+    fn test_insert_at_char_edge_cases() {
+        let mut s = String::from("hello");
+
+        // Insert at end
+        let pos = insert_at_char(&mut s, 5, "!");
+        assert_eq!(s, "hello!");
+        assert_eq!(pos, 6);
+
+        // Insert at beginning
+        let mut s = String::from("hello");
+        let pos = insert_at_char(&mut s, 0, ">");
+        assert_eq!(s, ">hello");
+        assert_eq!(pos, 1);
+    }
+
+    #[test]
+    fn test_remove_char_at_edge_cases() {
+        let mut s = String::from("a");
+
+        // Remove only character
+        let removed = remove_char_at(&mut s, 0);
+        assert_eq!(s, "");
+        assert_eq!(removed, Some('a'));
+
+        // Try to remove from empty string
+        let removed = remove_char_at(&mut s, 0);
+        assert_eq!(removed, None);
+
+        // Out of bounds
+        let mut s = String::from("hello");
+        let removed = remove_char_at(&mut s, 100);
+        assert_eq!(s, "hello");
+        assert_eq!(removed, None);
+    }
+
+    #[test]
+    fn test_truncate_edge_cases() {
+        assert_eq!(truncate("", 5), "");
+        assert_eq!(truncate("hi", 0), "…");
+        assert_eq!(truncate("a", 1), "a");
+    }
+
+    #[test]
+    fn test_truncate_start_edge_cases() {
+        assert_eq!(truncate_start("", 5), "");
+        assert_eq!(truncate_start("hi", 0), "…");
+        assert_eq!(truncate_start("a", 1), "a");
+    }
+
+    #[test]
+    fn test_center_edge_cases() {
+        assert_eq!(center("", 5), "     ");
+        assert_eq!(center("x", 0), "x");
+        assert_eq!(center("hello", 5), "hello");
+    }
+
+    #[test]
+    fn test_wrap_text_very_long_word() {
+        // Word much longer than max_width
+        let lines = wrap_text("abcdefghij", 3);
+        assert_eq!(lines, vec!["abc", "def", "ghi", "j"]);
+    }
+
+    #[test]
+    fn test_wrap_text_preserve_newlines() {
+        let lines = wrap_text("Line1\n\nLine2", 10);
+        assert_eq!(lines, vec!["Line1", "", "Line2"]);
+    }
+
+    #[test]
+    fn test_split_fixed_width_edge_cases() {
+        assert_eq!(split_fixed_width("", 5), vec![""]);
+        assert_eq!(split_fixed_width("a", 0), Vec::<String>::new());
+        assert_eq!(split_fixed_width("abc", 10), vec!["abc"]);
+    }
+
+    #[test]
+    fn test_progress_bar_edge_cases() {
+        assert_eq!(progress_bar(-1.0, 5), "░░░░░"); // Negative clamped to 0
+        assert_eq!(progress_bar(2.0, 5), "█████"); // >1 clamped to 1
+        assert_eq!(progress_bar(0.5, 0), ""); // Zero width
+    }
+
+    #[test]
+    fn test_char_to_byte_index_with_char_edge_cases() {
+        let s = "hello";
+
+        // Out of bounds
+        let (byte_idx, ch) = char_to_byte_index_with_char(s, 100);
+        assert_eq!(byte_idx, 5);
+        assert_eq!(ch, None);
+
+        let (byte_idx, ch) = char_to_byte_index_with_char(s, 4);
+        assert_eq!(byte_idx, 4);
+        assert_eq!(ch, Some('o'));
+    }
+
+    #[test]
+    fn test_empty_string_operations() {
+        let mut s = String::from("");
+
+        // All these should handle empty string safely
+        assert_eq!(char_slice(&s, 0, 0), "");
+        assert_eq!(char_to_byte_index(&s, 0), 0);
+        assert_eq!(byte_to_char_index(&s, 0), 0);
+        assert_eq!(char_count(&s), 0);
+
+        let removed = remove_char_at(&mut s, 0);
+        assert_eq!(removed, None);
+
+        let pos = insert_at_char(&mut s, 0, "a");
+        assert_eq!(s, "a");
+        assert_eq!(pos, 1);
     }
 }

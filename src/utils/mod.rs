@@ -167,7 +167,8 @@ pub use diff::{
 pub use path::{
     abbreviate_path, abbreviate_path_keep, common_prefix, expand_home, extension, filename,
     home_dir, home_relative, is_hidden, join_paths, normalize_separators, parent, relative_to,
-    shorten_path, stem, PathDisplay,
+    shorten_path, stem, try_expand_home, try_join_paths, validate_characters,
+    validate_no_traversal, validate_within_base, PathDisplay, PathError,
 };
 
 // ANSI parsing
