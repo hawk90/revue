@@ -67,9 +67,22 @@ When using Revue in your applications:
 
 Revue includes several security features:
 
-- No unsafe code in core library (where possible)
-- Input sanitization for text widgets
-- Memory-safe Rust implementation
-- Regular dependency audits via `cargo-deny`
+- **No unsafe code** in core library (where possible)
+- **Input sanitization** for text widgets
+- **Memory-safe Rust** implementation
+- **Regular dependency audits** via `cargo-deny`
+- **Command injection protection** for accessibility backends (macOS osascript, Windows PowerShell)
+- **Path traversal validation** in FilePicker to prevent directory escape attacks
+- **Shell escaping utilities** (`escape_applescript()`, `escape_powershell()`) for safe command execution
+
+### Recent Security Fixes
+
+- **v2.43.1** (PR #340): Fixed command injection in accessibility backends
+  - macOS osascript commands now properly escape quotes, backslashes, and control characters
+  - Windows PowerShell commands use single-quote escaping for safe parameter passing
+- **v2.43.0** (PR #337): Hardened FilePicker security validation
+  - Added validation to prevent path traversal attacks (e.g., `../`, absolute paths)
+  - Windows reserved name detection (CON, PRN, AUX, NUL, COM*, LPT*)
+  - Empty path component detection
 
 Thank you for helping keep Revue and its users safe!

@@ -193,12 +193,58 @@ fn bench_selector_match(c: &mut Criterion) {
     group.finish();
 }
 
+/// Benchmark selector matching with many rules
+/// Tests the performance impact of selector indexing (PR #345)
+fn bench_selector_indexing(c: &mut Criterion) {
+    let mut group = c.benchmark_group("selector_indexing");
+
+    // Generate CSS with many rules to test indexing benefits
+    let css = generate_large_css(100);
+
+    let sheet = parse_css(&css).unwrap();
+    let base = revue::style::Style::default();
+
+    // Matching a specific class should be fast with indexing
+    group.bench_function("match_class_in_100_rules", |b| {
+        b.iter(|| {
+            std::hint::black_box(sheet.apply(".widget-50", &base));
+        });
+    });
+
+    // Matching element should be fast
+    group.bench_function("match_element_in_100_rules", |b| {
+        b.iter(|| {
+            // Note: This tests the old API, uses internal matching
+            std::hint::black_box(sheet.apply("button", &base));
+        });
+    });
+
+    // Test with different selector types
+    for rule_count in [10, 50, 100, 500].iter() {
+        let css = generate_large_css(*rule_count);
+        let sheet = parse_css(&css).unwrap();
+
+        group.bench_with_input(
+            criterion::BenchmarkId::new("match_specific", rule_count),
+            rule_count,
+            |b, &_count| {
+                b.iter(|| {
+                    std::hint::black_box(sheet.apply(".widget-0", &base));
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_css_parse,
     bench_style_apply,
     bench_color_ops,
     bench_selector_match,
+    bench_selector_indexing,
 );
 
 criterion_main!(benches);
