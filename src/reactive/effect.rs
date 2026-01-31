@@ -115,11 +115,14 @@ impl Effect {
         let callback_cell_clone = callback_cell.clone();
         let callback: CallbackType = Arc::new(move || {
             // Get reference to ourselves for re-registration
+            // SAFETY: callback_cell is always initialized before this closure can be called
+            // - Initial call: stored at line 137-139 before any callback invocation
+            // - Subsequent calls: callback persists in cell for the lifetime of the effect
             let self_callback = callback_cell_clone
                 .read()
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                 .as_ref()
-                .expect("Callback not initialized")
+                .expect("Callback must be initialized before invocation")
                 .clone();
 
             // Re-establish tracking with same callback
