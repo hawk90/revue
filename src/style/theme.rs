@@ -561,6 +561,8 @@ impl ThemeManager {
     /// Switches between `dark_theme` (default: "dark") and `light_theme` (default: "light").
     /// Use [`Self::set_dark_theme`] and [`Self::set_light_theme`] to customize toggle targets.
     pub fn toggle_dark_light(&mut self) {
+        // Clone is necessary here due to Rust borrowing rules - we can't hold
+        // a reference to self.light_theme/self.dark_theme while calling set_theme(&mut self)
         let new_id = if self.current().is_dark() {
             self.light_theme.clone()
         } else {
@@ -571,7 +573,7 @@ impl ThemeManager {
 
     /// Cycle through all themes
     pub fn cycle(&mut self) {
-        let ids: Vec<_> = self.themes.keys().cloned().collect();
+        let ids: Vec<String> = self.themes.keys().cloned().collect();
         if ids.is_empty() {
             return;
         }
@@ -581,12 +583,12 @@ impl ThemeManager {
             .position(|id| id == &self.current_id)
             .unwrap_or(0);
         let next_idx = (current_idx + 1) % ids.len();
-        self.set_theme(ids[next_idx].clone());
+        self.set_theme(&ids[next_idx]);
     }
 
     /// Cycle through dark themes only
     pub fn cycle_dark(&mut self) {
-        let dark_ids: Vec<_> = self
+        let dark_ids: Vec<String> = self
             .themes
             .iter()
             .filter(|(_, t)| t.is_dark())
@@ -602,12 +604,12 @@ impl ThemeManager {
             .position(|id| id == &self.current_id)
             .unwrap_or(0);
         let next_idx = (current_idx + 1) % dark_ids.len();
-        self.set_theme(dark_ids[next_idx].clone());
+        self.set_theme(&dark_ids[next_idx]);
     }
 
     /// Cycle through light themes only
     pub fn cycle_light(&mut self) {
-        let light_ids: Vec<_> = self
+        let light_ids: Vec<String> = self
             .themes
             .iter()
             .filter(|(_, t)| t.is_light())
@@ -623,7 +625,7 @@ impl ThemeManager {
             .position(|id| id == &self.current_id)
             .unwrap_or(0);
         let next_idx = (current_idx + 1) % light_ids.len();
-        self.set_theme(light_ids[next_idx].clone());
+        self.set_theme(&light_ids[next_idx]);
     }
 
     /// Add theme change listener
