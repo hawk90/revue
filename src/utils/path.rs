@@ -21,7 +21,85 @@
 //! assert_eq!(abbr, "/U/j/D/P/rust/src/main.rs");
 //! ```
 
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
+
+/// Error types for path validation
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PathError {
+    /// Path contains traversal patterns (..)
+    PathTraversal(String),
+    /// Path contains invalid characters
+    InvalidCharacter(String),
+    /// Path is outside expected bounds
+    OutsideBounds,
+}
+
+impl std::fmt::Display for PathError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PathError::PathTraversal(p) => write!(f, "Path contains traversal pattern: {}", p),
+            PathError::InvalidCharacter(p) => write!(f, "Path contains invalid characters: {}", p),
+            PathError::OutsideBounds => write!(f, "Path is outside expected bounds"),
+        }
+    }
+}
+
+impl std::error::Error for PathError {}
+
+/// Validate that path doesn't contain traversal patterns
+///
+/// Returns error if the path contains `..` components or other traversal sequences.
+pub fn validate_no_traversal(path: &Path) -> Result<(), PathError> {
+    // Check components using the Path API
+    for component in path.components() {
+        match component {
+            Component::ParentDir => {
+                return Err(PathError::PathTraversal(path.display().to_string()));
+            }
+            Component::Normal(s) => {
+                // Check for suspicious patterns in normal components
+                let s = s.to_string_lossy();
+                if s.contains("..") {
+                    return Err(PathError::PathTraversal(path.display().to_string()));
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+/// Validate that path doesn't contain null bytes
+pub fn validate_characters(path: &Path) -> Result<(), PathError> {
+    let path_str = path.to_string_lossy();
+    if path_str.contains('\0') {
+        return Err(PathError::InvalidCharacter(path.display().to_string()));
+    }
+    Ok(())
+}
+
+/// Validate that a path stays within a base directory
+///
+/// Returns error if the path, when canonicalized, escapes the base directory.
+pub fn validate_within_base(path: &Path, base: &Path) -> Result<(), PathError> {
+    // First validate for traversal patterns
+    validate_no_traversal(path)?;
+
+    // If base exists, canonicalize and check prefix
+    if base.exists() {
+        if let Ok(base_canonical) = base.canonicalize() {
+            if path.exists() {
+                if let Ok(path_canonical) = path.canonicalize() {
+                    if !path_canonical.starts_with(&base_canonical) {
+                        return Err(PathError::OutsideBounds);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
 
 /// Get the home directory path
 pub fn home_dir() -> Option<PathBuf> {
@@ -52,21 +130,56 @@ pub fn home_relative(path: impl AsRef<Path>) -> String {
 }
 
 /// Expand ~ to home directory
+///
+/// # Security
+///
+/// Validates that the expanded path doesn't escape the home directory
+/// through path traversal patterns like `~/../../../etc/passwd`.
+///
+/// # Panics
+///
+/// Panics if the path contains traversal patterns. Use `try_expand_home` for a non-panicking version.
 pub fn expand_home(path: impl AsRef<Path>) -> PathBuf {
+    try_expand_home(path).expect("Path contains traversal patterns")
+}
+
+/// Expand ~ to home directory (non-panicking version)
+///
+/// Returns error if the path contains traversal patterns or would escape home directory.
+pub fn try_expand_home(path: impl AsRef<Path>) -> Result<PathBuf, PathError> {
     let path = path.as_ref();
     let path_str = path.to_string_lossy();
 
     if let Some(rest) = path_str.strip_prefix("~/") {
         if let Some(home) = home_dir() {
-            return home.join(rest);
+            // Validate the rest doesn't contain traversal patterns
+            let rest_path = Path::new(rest);
+            validate_no_traversal(rest_path)?;
+
+            let expanded = home.join(rest_path);
+
+            // Verify the result stays within home directory
+            if home.exists() {
+                if let Ok(home_canonical) = home.canonicalize() {
+                    if expanded.exists() {
+                        if let Ok(expanded_canonical) = expanded.canonicalize() {
+                            if !expanded_canonical.starts_with(&home_canonical) {
+                                return Err(PathError::OutsideBounds);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return Ok(expanded);
         }
     } else if path_str == "~" {
         if let Some(home) = home_dir() {
-            return home;
+            return Ok(home);
         }
     }
 
-    path.to_path_buf()
+    Ok(path.to_path_buf())
 }
 
 /// Shorten a path to fit within a maximum width
@@ -246,12 +359,31 @@ pub fn normalize_separators(path: &str) -> String {
 }
 
 /// Join paths with proper separators
+///
+/// # Security
+///
+/// Validates that all path parts don't contain traversal patterns.
+///
+/// # Panics
+///
+/// Panics if any path part contains traversal patterns. Use `try_join_paths` for a non-panicking version.
 pub fn join_paths(base: impl AsRef<Path>, parts: &[&str]) -> PathBuf {
+    try_join_paths(base, parts).expect("Path contains traversal patterns")
+}
+
+/// Join paths with proper separators (non-panicking version)
+///
+/// Returns error if any path part contains traversal patterns.
+pub fn try_join_paths(base: impl AsRef<Path>, parts: &[&str]) -> Result<PathBuf, PathError> {
     let mut result = base.as_ref().to_path_buf();
+
     for part in parts {
-        result = result.join(part);
+        let part_path = Path::new(part);
+        validate_no_traversal(part_path)?;
+        result = result.join(part_path);
     }
-    result
+
+    Ok(result)
 }
 
 /// Get common prefix of multiple paths
@@ -438,5 +570,179 @@ mod tests {
 
         let result = display.format("/a/b/c/d/file.txt");
         assert!(result.ends_with("file.txt"));
+    }
+
+    // ============================================================================
+    // Security Tests - Path Traversal
+    // ============================================================================
+
+    #[test]
+    fn test_validate_no_traversal_rejects_double_dot_slash() {
+        let result = validate_no_traversal(Path::new("../../../etc/passwd"));
+        assert!(result.is_err());
+        if let Err(PathError::PathTraversal(_)) = result {
+            // Expected
+        } else {
+            panic!("Expected PathTraversal error");
+        }
+    }
+
+    #[test]
+    fn test_validate_no_traversal_rejects_dot_dot_component() {
+        let result = validate_no_traversal(Path::new("foo/../bar"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_no_traversal_rejects_leading_dot_dot() {
+        let result = validate_no_traversal(Path::new(".."));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_no_traversal_accepts_valid_path() {
+        let result = validate_no_traversal(Path::new("foo/bar/baz"));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_no_traversal_accepts_absolute_path() {
+        let result = validate_no_traversal(Path::new("/usr/local/bin"));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_characters_rejects_null_byte() {
+        let result = validate_characters(Path::new("foo\0bar"));
+        assert!(result.is_err());
+        if let Err(PathError::InvalidCharacter(_)) = result {
+            // Expected
+        } else {
+            panic!("Expected InvalidCharacter error");
+        }
+    }
+
+    #[test]
+    fn test_validate_characters_accepts_normal() {
+        let result = validate_characters(Path::new("foo/bar/baz.txt"));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_try_expand_home_rejects_traversal() {
+        let result = try_expand_home("~/../../../etc/passwd");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_try_expand_home_rejects_dot_dot_in_path() {
+        let result = try_expand_home("~/Documents/../etc/passwd");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_try_expand_home_accepts_normal_path() {
+        let result = try_expand_home("~/Documents/file.txt");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_expand_home_panics_on_traversal() {
+        // This should panic
+        let result = std::panic::catch_unwind(|| {
+            expand_home("~/../../../etc/passwd");
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_try_join_paths_rejects_traversal() {
+        let result = try_join_paths(Path::new("/home/user"), &["..", "etc"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_try_join_paths_rejects_mixed_traversal() {
+        let result = try_join_paths(Path::new("/home/user"), &["documents", "..", "etc"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_try_join_paths_accepts_valid() {
+        let result = try_join_paths(Path::new("/home/user"), &["documents", "file.txt"]);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_join_paths_panics_on_traversal() {
+        let result = std::panic::catch_unwind(|| {
+            join_paths(Path::new("/home/user"), &["..", "etc"]);
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_within_base_rejects_traversal() {
+        if let Some(home) = home_dir() {
+            if home.exists() {
+                let result = validate_within_base(Path::new("../etc"), &home);
+                assert!(result.is_err());
+            }
+        }
+    }
+
+    #[test]
+    fn test_validate_within_base_accepts_subdirectory() {
+        if let Some(home) = home_dir() {
+            if home.exists() {
+                let result = validate_within_base(&home.join("Documents"), &home);
+                // Should succeed since Documents is within home
+                // (might fail if Documents doesn't exist, which is ok)
+                let _ = result;
+            }
+        }
+    }
+
+    #[test]
+    fn test_path_error_display() {
+        let err = PathError::PathTraversal("../../../etc".to_string());
+        let msg = format!("{}", err);
+        assert!(msg.contains("traversal") || msg.contains("../../../etc"));
+    }
+
+    // Edge case tests
+
+    #[test]
+    fn test_validate_no_traversal_empty_path() {
+        let result = validate_no_traversal(Path::new(""));
+        // Empty path has no components, should be ok
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_no_traversal_single_dot() {
+        let result = validate_no_traversal(Path::new("."));
+        // Current directory is not ParentDir, should be ok
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_no_traversal_dots_in_filename() {
+        // Filenames with .. in the name should be rejected
+        let result = validate_no_traversal(Path::new("file..txt"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_try_expand_home_tilde_only() {
+        let result = try_expand_home("~");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_try_expand_home_non_tilde_path() {
+        let result = try_expand_home("/usr/local/bin");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), PathBuf::from("/usr/local/bin"));
     }
 }

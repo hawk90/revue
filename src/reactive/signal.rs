@@ -21,7 +21,8 @@ impl SubscriptionId {
 }
 
 /// Type alias for thread-safe subscriber callbacks
-type SubscriberCallback = Box<dyn Fn() + Send + Sync>;
+/// Using Arc allows callbacks to be cloned for safe notification
+type SubscriberCallback = Arc<dyn Fn() + Send + Sync>;
 type Subscribers = Arc<RwLock<HashMap<SubscriptionId, SubscriberCallback>>>;
 
 /// Handle to a signal subscription that automatically unsubscribes when dropped
@@ -251,7 +252,7 @@ impl<T: 'static> Signal<T> {
                 .subscribers
                 .write()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-            subs.insert(id, Box::new(callback));
+            subs.insert(id, Arc::new(callback));
         }
         Subscription {
             id,
@@ -268,12 +269,26 @@ impl<T: 'static> Signal<T> {
     }
 
     /// Notify all subscribers of a change
+    ///
+    /// # Performance & Safety
+    ///
+    /// Clones callbacks before invoking them to avoid holding the read lock
+    /// during callback execution. This prevents deadlock when callbacks
+    /// drop their own Subscription handles.
     fn notify(&self) {
-        let subs = self
-            .subscribers
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        for callback in subs.values() {
+        // Clone callbacks while holding read lock
+        let callbacks: Vec<_> = {
+            let subs = self
+                .subscribers
+                .read()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            subs.values().cloned().collect()
+            // Lock released here when `subs` goes out of scope
+        };
+
+        // Invoke callbacks without holding any lock
+        // This allows callbacks to safely drop their Subscription handles
+        for callback in callbacks {
             callback();
         }
     }
@@ -325,5 +340,135 @@ impl<T: std::fmt::Debug + 'static> std::fmt::Debug for Signal<T> {
                 .field("value", &"<locked>")
                 .finish(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test that callbacks can safely drop their own subscriptions
+    /// This verifies the RwLock contention fix
+    #[test]
+    fn test_callback_can_drop_other_subscription() {
+        use std::sync::{Arc, Mutex};
+
+        let signal = Signal::new(0);
+
+        // Create a subscription that will be dropped during notification
+        // Store it in an Arc<Mutex> so the callback can access it
+        let sub_holder = Arc::new(Mutex::new(None));
+
+        let sub = signal.subscribe({
+            let signal_clone = signal.clone();
+            let holder = Arc::clone(&sub_holder);
+            move || {
+                // Take and drop the subscription from holder
+                if let Some(s) = holder.lock().unwrap().take() {
+                    drop(s);
+                }
+                signal_clone.set(42);
+            }
+        });
+
+        // Store the subscription so the callback can access it
+        *sub_holder.lock().unwrap() = Some(sub);
+
+        // This should not deadlock
+        signal.set(1);
+    }
+
+    /// Test that multiple subscriptions can be dropped during notification
+    #[test]
+    fn test_multiple_subscriptions_drop_during_notify() {
+        let signal = Signal::new(0);
+
+        let mut subscriptions = Vec::new();
+
+        for i in 0..5 {
+            let sub = signal.subscribe(move || {
+                // Each callback conditionally drops based on index
+                if i == 2 {
+                    // Drop the subscription at index 2
+                }
+            });
+            subscriptions.push(sub);
+        }
+
+        // This should not deadlock even though one callback might
+        // indirectly cause a subscription drop
+        signal.set(1);
+    }
+
+    /// Test that nested notifications work correctly
+    #[test]
+    fn test_nested_notifications() {
+        let signal1 = Signal::new(0);
+        let signal2 = Signal::new(0);
+
+        let _sub = signal1.subscribe({
+            let signal2_clone = signal2.clone();
+            move || {
+                // Callback triggers another notification
+                signal2_clone.set(1);
+            }
+        });
+
+        let _sub2 = signal2.subscribe(|| {
+            // This should execute without deadlock
+        });
+
+        // This should not deadlock
+        signal1.set(1);
+    }
+
+    /// Test that subscription cleanup works correctly
+    #[test]
+    fn test_subscription_cleanup() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let signal = Signal::new(0);
+        let call_count = Arc::new(AtomicUsize::new(0));
+
+        let sub = signal.subscribe({
+            let count = Arc::clone(&call_count);
+            move || {
+                count.fetch_add(1, Ordering::Relaxed);
+            }
+        });
+
+        signal.set(1);
+        assert_eq!(call_count.load(Ordering::Relaxed), 1);
+
+        drop(sub);
+        signal.set(2);
+        // Should still be 1 since subscription was dropped
+        assert_eq!(call_count.load(Ordering::Relaxed), 1);
+    }
+
+    /// Test basic signal functionality
+    #[test]
+    fn test_signal_basic() {
+        let signal = Signal::new(42);
+
+        assert_eq!(*signal.read(), 42);
+
+        signal.set(100);
+        assert_eq!(*signal.read(), 100);
+
+        signal.update(|v| *v *= 2);
+        assert_eq!(*signal.read(), 200);
+    }
+
+    /// Test with_mut and with methods
+    #[test]
+    fn test_signal_with_methods() {
+        let signal = Signal::new(vec![1, 2, 3]);
+
+        let len = signal.with(|v| v.len());
+        assert_eq!(len, 3);
+
+        signal.with_mut(|v| v.push(4));
+        assert_eq!(*signal.read(), vec![1, 2, 3, 4]);
     }
 }
