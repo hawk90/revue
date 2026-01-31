@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.43.2](https://github.com/hawk90/revue/compare/v2.43.1...v2.43.2) (2026-01-31)
+
+
+### Performance Improvements
+
+* **text:** remove per-character allocation in justified text ([#342](https://github.com/hawk90/revue/issues/342)) ([fca7f6d](https://github.com/hawk90/revue/commit/fca7f6db0b97e3f75949fa485b7a11999eb9cd74))
+
 ## [2.43.1](https://github.com/hawk90/revue/compare/v2.43.0...v2.43.1) (2026-01-31)
 
 
