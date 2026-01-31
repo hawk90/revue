@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.44.7](https://github.com/hawk90/revue/compare/v2.44.6...v2.44.7) (2026-01-31)
+
+
+### Bug Fixes
+
+* **security:** validate non-existent paths in validate_within_base ([51f35b5](https://github.com/hawk90/revue/commit/51f35b5f99a432aff70daa33a6e6c47766efd8c6))
+
 ## [2.44.6](https://github.com/hawk90/revue/compare/v2.44.5...v2.44.6) (2026-01-31)
 
 
