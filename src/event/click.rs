@@ -23,6 +23,12 @@
 
 use std::time::{Duration, Instant};
 
+/// Default double-click threshold (500ms - platform standard)
+const DEFAULT_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(500);
+
+/// Default maximum distance between clicks (5 pixels)
+const DEFAULT_MAX_DISTANCE: u16 = 5;
+
 /// Type of click detected
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClickType {
@@ -77,8 +83,8 @@ impl ClickDetector {
         Self {
             last_click: None,
             click_count: 0,
-            double_click_threshold: Duration::from_millis(500),
-            max_distance: 5,
+            double_click_threshold: DEFAULT_DOUBLE_CLICK_THRESHOLD,
+            max_distance: DEFAULT_MAX_DISTANCE,
         }
     }
 
