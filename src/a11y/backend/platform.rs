@@ -35,18 +35,19 @@ impl ScreenReader for MacOSBackend {
             // In a real implementation, this would use objc or cocoa crate
             #[cfg(target_os = "macos")]
             {
+                use crate::utils::shell::escape_applescript;
                 use std::process::Command;
 
                 // Use osascript to trigger VoiceOver announcement
                 let script = if priority == Priority::Assertive {
                     format!(
                         "tell application \"VoiceOver\" to output \"{}\"",
-                        message.replace('"', "\\\"")
+                        escape_applescript(message)
                     )
                 } else {
                     format!(
                         "tell application \"System Events\" to set value of attribute \"AXDescription\" of menu bar 1 to \"{}\"",
-                        message.replace('"', "\\\"")
+                        escape_applescript(message)
                     )
                 };
 
@@ -108,14 +109,16 @@ impl ScreenReader for WindowsBackend {
             // In a real implementation, this would use windows-rs crate
             #[cfg(target_os = "windows")]
             {
+                use crate::utils::shell::escape_powershell;
                 use std::process::Command;
 
                 // Use PowerShell to trigger announcement via SAPI
+                // Using single-quoted string with proper escaping
                 let script = format!(
                     "Add-Type -AssemblyName System.Speech; \
                      $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer; \
                      $synth.Speak('{}')",
-                    message.replace('\'', "''")
+                    escape_powershell(message)
                 );
 
                 let _ = Command::new("powershell")
