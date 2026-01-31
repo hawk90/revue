@@ -263,7 +263,7 @@ pub fn reveal_in_finder(path: &str) -> bool {
     let result = {
         let parent = std::path::Path::new(path)
             .parent()
-            .map(|p| p.to_string_lossy().to_string())
+            .map(|p| p.to_string_lossy().into_owned())
             .unwrap_or_else(|| path.to_string());
         Command::new("xdg-open").arg(&parent).spawn()
     };
