@@ -61,6 +61,35 @@ pub fn validate_no_traversal(path: &Path) -> Result<(), PathError> {
     Ok(())
 }
 
+/// Validate that a path is relative (not absolute)
+///
+/// Returns error if the path is absolute or contains RootDir/Prefix components.
+/// This is a security helper to ensure paths stay within a designated base directory.
+pub fn validate_relative_only(path: &Path) -> Result<(), PathError> {
+    if path.is_absolute() {
+        return Err(PathError::PathTraversal(format!(
+            "Absolute path not allowed: {}",
+            path.display()
+        )));
+    }
+
+    // Also check for RootDir and Prefix components explicitly
+    // This catches edge cases like UNC paths (//server/share) on Unix
+    for component in path.components() {
+        match component {
+            Component::RootDir | Component::Prefix(_) => {
+                return Err(PathError::PathTraversal(format!(
+                    "Root or prefix component not allowed: {}",
+                    path.display()
+                )));
+            }
+            _ => {}
+        }
+    }
+
+    Ok(())
+}
+
 /// Validate that path doesn't contain null bytes
 pub fn validate_characters(path: &Path) -> Result<(), PathError> {
     let path_str = path.to_string_lossy();
@@ -93,17 +122,45 @@ fn find_existing_ancestor(mut path: &Path) -> Option<PathBuf> {
 ///
 /// For non-existent paths, walks up the directory tree to find an existing ancestor
 /// and validates that ancestor stays within the base directory.
+///
+/// Returns error if base doesn't exist and path is absolute outside base.
 pub fn validate_within_base(path: &Path, base: &Path) -> Result<(), PathError> {
     // First validate for traversal patterns
     validate_no_traversal(path)?;
 
+    // Base must exist for proper validation
+    // If base doesn't exist, we can't reliably validate containment
+    if !base.exists() {
+        // For absolute paths outside a non-existent base, this is suspicious
+        if path.is_absolute() {
+            // Try to determine if path would be outside base by checking prefixes
+            if !path.starts_with(base) {
+                return Err(PathError::OutsideBounds);
+            }
+        }
+        // For relative paths, we can't validate without base existing
+        // This is a limitation - caller should ensure base exists first
+        return Ok(());
+    }
+
+    // Cache base canonicalization
+    let base_canonical = match base.canonicalize() {
+        Ok(c) => c,
+        Err(_) => {
+            // Base exists but can't canonicalize (symlink issues?)
+            // Fall back to non-canonicalized check
+            if path.starts_with(base) {
+                return Ok(());
+            }
+            return Err(PathError::OutsideBounds);
+        }
+    };
+
     // If path exists, validate directly
     if path.exists() {
-        if let Ok(base_canonical) = base.canonicalize() {
-            if let Ok(path_canonical) = path.canonicalize() {
-                if !path_canonical.starts_with(&base_canonical) {
-                    return Err(PathError::OutsideBounds);
-                }
+        if let Ok(path_canonical) = path.canonicalize() {
+            if !path_canonical.starts_with(&base_canonical) {
+                return Err(PathError::OutsideBounds);
             }
         }
         return Ok(());
@@ -111,11 +168,9 @@ pub fn validate_within_base(path: &Path, base: &Path) -> Result<(), PathError> {
 
     // Path doesn't exist - find nearest existing ancestor
     if let Some(ancestor) = find_existing_ancestor(path) {
-        if let Ok(base_canonical) = base.canonicalize() {
-            if let Ok(ancestor_canonical) = ancestor.canonicalize() {
-                if !ancestor_canonical.starts_with(&base_canonical) {
-                    return Err(PathError::OutsideBounds);
-                }
+        if let Ok(ancestor_canonical) = ancestor.canonicalize() {
+            if !ancestor_canonical.starts_with(&base_canonical) {
+                return Err(PathError::OutsideBounds);
             }
         }
     }
@@ -125,6 +180,8 @@ pub fn validate_within_base(path: &Path, base: &Path) -> Result<(), PathError> {
     if let Ok(rel) = path.strip_prefix(base) {
         // Double-check no traversal in the relative path
         validate_no_traversal(rel)?;
+        // Also ensure the relative part is not absolute
+        validate_relative_only(rel)?;
     }
 
     Ok(())
@@ -187,25 +244,7 @@ pub fn try_expand_home(path: impl AsRef<Path>) -> Result<PathBuf, PathError> {
             validate_no_traversal(rest_path)?;
 
             // Reject absolute paths after ~/ - they would escape home
-            if rest_path.is_absolute() {
-                return Err(PathError::PathTraversal(format!(
-                    "Absolute path not allowed after ~/: {}",
-                    rest
-                )));
-            }
-
-            // Also check for RootDir and Prefix components in rest
-            for component in rest_path.components() {
-                match component {
-                    std::path::Component::RootDir | std::path::Component::Prefix(_) => {
-                        return Err(PathError::PathTraversal(format!(
-                            "Root or prefix component not allowed after ~/: {}",
-                            rest
-                        )));
-                    }
-                    _ => {}
-                }
-            }
+            validate_relative_only(rest_path)?;
 
             let expanded = home.join(rest_path);
 
@@ -267,14 +306,21 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
         // Even filename doesn't fit, truncate it
         // Use char_indices for safe UTF-8 truncation
         let max_bytes = max_width.saturating_sub(3);
-        let mut filename_end = 0;
-        for (byte_pos, _char) in filename.char_indices() {
-            if byte_pos > max_bytes {
+
+        // Find the byte position where we should truncate
+        // We want to include characters that fit within max_bytes
+        let mut truncate_pos = 0;
+        for (byte_start, ch) in filename.char_indices() {
+            let byte_end = byte_start + ch.len_utf8();
+            if byte_end > max_bytes {
+                // This character would exceed the limit
                 break;
             }
-            filename_end = byte_pos;
+            // This character fits, include it
+            truncate_pos = byte_end;
         }
-        return format!("...{}", &filename[..filename_end]);
+
+        return format!("...{}", &filename[..truncate_pos]);
     }
 
     // Try to include as many trailing components as possible
@@ -443,25 +489,7 @@ pub fn try_join_paths(base: impl AsRef<Path>, parts: &[&str]) -> Result<PathBuf,
         validate_no_traversal(part_path)?;
 
         // Reject absolute paths - they would escape the base
-        if part_path.is_absolute() {
-            return Err(PathError::PathTraversal(format!(
-                "Absolute path not allowed in join_paths: {}",
-                part
-            )));
-        }
-
-        // Also check for RootDir and Prefix components
-        for component in part_path.components() {
-            match component {
-                std::path::Component::RootDir | std::path::Component::Prefix(_) => {
-                    return Err(PathError::PathTraversal(format!(
-                        "Root or prefix component not allowed: {}",
-                        part
-                    )));
-                }
-                _ => {}
-            }
-        }
+        validate_relative_only(part_path)?;
 
         result = result.join(part_path);
     }
@@ -1038,5 +1066,155 @@ mod tests {
         let result = validate_within_base(traversal, base);
         // Should fail because of .. pattern
         assert!(result.is_err());
+    }
+
+    // ============================================================================
+    // validate_relative_only Tests
+    // ============================================================================
+
+    #[test]
+    fn test_validate_relative_only_accepts_relative() {
+        assert!(validate_relative_only(Path::new("foo/bar")).is_ok());
+        assert!(validate_relative_only(Path::new("baz")).is_ok());
+        assert!(validate_relative_only(Path::new(".")).is_ok());
+    }
+
+    #[test]
+    fn test_validate_relative_only_rejects_absolute_unix() {
+        assert!(validate_relative_only(Path::new("/etc/passwd")).is_err());
+        assert!(validate_relative_only(Path::new("/usr/local/bin")).is_err());
+    }
+
+    #[test]
+    fn test_validate_relative_only_rejects_unc_path() {
+        // UNC paths should be rejected
+        assert!(validate_relative_only(Path::new("//server/share")).is_err());
+    }
+
+    #[test]
+    fn test_validate_relative_only_accepts_dots_in_filename() {
+        // Filenames with .. should be allowed
+        assert!(validate_relative_only(Path::new("file..txt")).is_ok());
+        assert!(validate_relative_only(Path::new("backup...old")).is_ok());
+    }
+
+    // ============================================================================
+    // Non-existent Base Tests
+    // ============================================================================
+
+    #[test]
+    fn test_validate_within_base_non_existent_base_absolute_path_outside() {
+        // Base doesn't exist, path is absolute and clearly outside
+        let base = Path::new("/non/existent/base");
+        let path = Path::new("/etc/passwd");
+        let result = validate_within_base(path, base);
+        assert!(
+            result.is_err(),
+            "Absolute path outside non-existent base should fail"
+        );
+    }
+
+    #[test]
+    fn test_validate_within_base_non_existent_base_absolute_path_inside() {
+        // Base doesn't exist, path is absolute but starts with base prefix
+        let base = Path::new("/non/existent/base");
+        let path = Path::new("/non/existent/base/subdir/file.txt");
+        let result = validate_within_base(path, base);
+        // Should succeed since path starts with base
+        assert!(
+            result.is_ok(),
+            "Path starting with base prefix should be accepted"
+        );
+    }
+
+    #[test]
+    fn test_validate_within_base_non_existent_base_relative_path() {
+        // Base doesn't exist, path is relative
+        // This is a limitation - we can't validate without base existing
+        let base = Path::new("/non/existent/base");
+        let path = Path::new("relative/path.txt");
+        let result = validate_within_base(path, base);
+        // Should succeed but caller should ensure base exists first
+        assert!(
+            result.is_ok(),
+            "Relative path with non-existent base is accepted"
+        );
+    }
+
+    // ============================================================================
+    // UTF-8 Truncation Edge Cases
+    // ============================================================================
+
+    #[test]
+    fn test_shorten_path_ascii_exactly_fits() {
+        // Test ASCII filename that exactly fits in width
+        let short = shorten_path("/tmp/test.txt", 12); // "/tmp/test.txt" is 13 chars, should shorten
+        assert!(short.len() <= 12);
+    }
+
+    #[test]
+    fn test_shorten_path_one_char_overflow() {
+        // Test with width that fits all but one character
+        let short = shorten_path("/tmp/abcde.txt", 11);
+        // "/tmp/abcde.txt" is 13 chars, with max_width=11 we get "..." + 8 chars
+        // Actually since this is > 4+8=12, it will be truncated
+        assert!(short.len() <= 11);
+    }
+
+    #[test]
+    fn test_shorten_path_unicode_boundary() {
+        // Test at boundary where last character is multi-byte
+        let short = shorten_path("/tmp/한글.txt", 11);
+        // "/tmp/한글.txt" = 11 chars but "한글" are 3 bytes each = 6 bytes
+        // Total = 10 bytes + /tmp/ = 5 + .txt = 4 = 15 bytes
+        assert!(short.len() <= 11);
+        // Should not panic on UTF-8 boundary
+    }
+
+    #[test]
+    fn test_shorten_path_ascii_width_7() {
+        // Test with max_width=7 (edge case for "...abc")
+        let short = shorten_path("/tmp/abcdef.txt", 7);
+        assert!(short.len() <= 7);
+        assert!(short.starts_with("..."));
+    }
+
+    // ============================================================================
+    // Windows UNC Path Tests
+    // ============================================================================
+
+    #[test]
+    fn test_try_join_paths_rejects_backslash_unc() {
+        // Test \\server\share style UNC paths
+        let result = try_join_paths(Path::new("/base"), &[r"\\server\share"]);
+        // On Unix, backslashes are just characters, so this is ok
+        // On Windows, this would be a UNC path and should be rejected
+        #[cfg(unix)]
+        {
+            // On Unix, backslashes are filename characters
+            assert!(result.is_ok());
+        }
+        #[cfg(windows)]
+        {
+            // On Windows, \\server\share is a UNC path (absolute)
+            assert!(result.is_err());
+        }
+    }
+
+    #[test]
+    fn test_try_expand_home_windows_path() {
+        // Test Windows paths in try_expand_home
+        #[cfg(windows)]
+        {
+            let result = try_expand_home(r"~/C:\Windows");
+            // On Windows, C:\ is an absolute path with Prefix component
+            assert!(result.is_err());
+        }
+        #[cfg(unix)]
+        {
+            // On Unix, backslashes are just characters
+            let result = try_expand_home(r"~/C:\Windows");
+            assert!(result.is_ok());
+        }
     }
 }
