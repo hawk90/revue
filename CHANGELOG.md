@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.43.3](https://github.com/hawk90/revue/compare/v2.43.2...v2.43.3) (2026-01-31)
+
+
+### Performance Improvements
+
+* **css:** add selector indexing to reduce O(n²) complexity ([#345](https://github.com/hawk90/revue/issues/345)) ([8b756c5](https://github.com/hawk90/revue/commit/8b756c56c043973cd841f7d1661dfb3065c8055d))
+* **reactive:** avoid Arc clones in notify_subscribers ([#344](https://github.com/hawk90/revue/issues/344)) ([65485f2](https://github.com/hawk90/revue/commit/65485f261357fa00a4f6d434de22a2b47fe810f9))
+
 ## [2.43.2](https://github.com/hawk90/revue/compare/v2.43.1...v2.43.2) (2026-01-31)
 
 
