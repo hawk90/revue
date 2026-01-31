@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.44.8](https://github.com/hawk90/revue/compare/v2.44.7...v2.44.8) (2026-01-31)
+
+
+### Bug Fixes
+
+* **security:** address remaining path validation edge cases ([#368](https://github.com/hawk90/revue/issues/368)) ([b2395c3](https://github.com/hawk90/revue/commit/b2395c344c4e70fdd203cff1c08d0a751dfc0871))
+
 ## [2.44.7](https://github.com/hawk90/revue/compare/v2.44.6...v2.44.7) (2026-01-31)
 
 
