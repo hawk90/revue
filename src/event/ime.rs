@@ -302,6 +302,18 @@ impl ImeState {
     // Composition Control
     // -------------------------------------------------------------------------
 
+    /// Emit CandidatesChanged event with current candidates
+    ///
+    /// Helper method to avoid repeated string cloning code.
+    /// Called whenever the candidate selection changes.
+    fn emit_candidates_changed(&mut self) {
+        let candidates: Vec<String> = self.candidates.iter().map(|c| c.text.clone()).collect();
+        self.emit(CompositionEvent::CandidatesChanged {
+            candidates,
+            selected: self.selected_candidate,
+        });
+    }
+
     /// Start composition
     pub fn start_composition(&mut self) {
         if !self.enabled {
@@ -341,10 +353,7 @@ impl ImeState {
             self.state = CompositionState::Selecting;
         }
 
-        self.emit(CompositionEvent::CandidatesChanged {
-            candidates: self.candidates.iter().map(|c| c.text.clone()).collect(),
-            selected: self.selected_candidate,
-        });
+        self.emit_candidates_changed();
     }
 
     /// Select next candidate
@@ -355,10 +364,7 @@ impl ImeState {
 
         self.selected_candidate = (self.selected_candidate + 1) % self.candidates.len();
 
-        self.emit(CompositionEvent::CandidatesChanged {
-            candidates: self.candidates.iter().map(|c| c.text.clone()).collect(),
-            selected: self.selected_candidate,
-        });
+        self.emit_candidates_changed();
     }
 
     /// Select previous candidate
@@ -373,10 +379,7 @@ impl ImeState {
             self.selected_candidate - 1
         };
 
-        self.emit(CompositionEvent::CandidatesChanged {
-            candidates: self.candidates.iter().map(|c| c.text.clone()).collect(),
-            selected: self.selected_candidate,
-        });
+        self.emit_candidates_changed();
     }
 
     /// Select candidate by index
@@ -384,10 +387,7 @@ impl ImeState {
         if index < self.candidates.len() {
             self.selected_candidate = index;
 
-            self.emit(CompositionEvent::CandidatesChanged {
-                candidates: self.candidates.iter().map(|c| c.text.clone()).collect(),
-                selected: self.selected_candidate,
-            });
+            self.emit_candidates_changed();
         }
     }
 
