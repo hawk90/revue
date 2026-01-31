@@ -198,7 +198,7 @@ impl Text {
     /// Render text with justify alignment (distribute space between words)
     fn render_justified(&self, ctx: &mut RenderContext) {
         use crate::render::{Cell, Modifier};
-        use unicode_width::UnicodeWidthStr;
+        use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
         let area = ctx.area;
         let words: Vec<&str> = self.content.split_whitespace().collect();
@@ -255,7 +255,7 @@ impl Text {
                 cell.bg = self.bg;
                 cell.modifier = modifier;
                 ctx.buffer.set(x, area.y, cell);
-                x += UnicodeWidthStr::width(ch.to_string().as_str()) as u16;
+                x += UnicodeWidthChar::width(ch).unwrap_or(0) as u16;
             }
 
             // Add spacing after word (except last word)
