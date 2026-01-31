@@ -810,14 +810,14 @@ mod tests {
 
     #[test]
     fn test_try_join_paths_rejects_absolute_windows() {
-        let result = try_join_paths(Path::new("C:\\Users"), &["C:\\Windows\\System32"]);
+        let _result = try_join_paths(Path::new("C:\\Users"), &["C:\\Windows\\System32"]);
         // On Unix, "C:\\Windows\\System32" is treated as a relative path, not absolute
         // On Windows, it would be absolute. This test documents the behavior.
         // The important thing is we're checking for RootDir/Prefix components.
         #[cfg(unix)]
         {
             // On Unix, backslashes are just filename characters
-            assert!(result.is_ok());
+            assert!(_result.is_ok());
         }
     }
 
