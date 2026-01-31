@@ -1234,12 +1234,10 @@ mod tests {
             let reserved_names = ["CON", "PRN", "AUX", "NUL", "COM1", "LPT1"];
             for name in reserved_names {
                 let path = PathBuf::from("/tmp").join(name);
-                let result = picker.try_set_start_dir(&path);
+                // try_set_start_dir takes ownership, so reassign the result
+                picker = picker.try_set_start_dir(&path);
                 // Should fail or at least validate the name
-                if let Err(FilePickerError::ReservedDeviceName(_)) = result {
-                    // Good - explicitly rejected
-                }
-                // Other errors are OK too (path doesn't exist, etc.)
+                // The test passes if we get here without panicking
             }
         }
         #[cfg(not(windows))]
