@@ -1107,26 +1107,54 @@ mod tests {
     #[test]
     fn test_validate_within_base_non_existent_base_absolute_path_outside() {
         // Base doesn't exist, path is absolute and clearly outside
-        let base = Path::new("/non/existent/base");
-        let path = Path::new("/etc/passwd");
-        let result = validate_within_base(path, base);
-        assert!(
-            result.is_err(),
-            "Absolute path outside non-existent base should fail"
-        );
+        // Note: On Windows, Unix-style paths starting with / are not considered absolute
+        #[cfg(unix)]
+        {
+            let base = Path::new("/non/existent/base");
+            let path = Path::new("/etc/passwd");
+            let result = validate_within_base(path, base);
+            assert!(
+                result.is_err(),
+                "Absolute path outside non-existent base should fail"
+            );
+        }
+        #[cfg(windows)]
+        {
+            // On Windows, use a Windows-style absolute path
+            let base = Path::new("C:\\non\\existent\\base");
+            let path = Path::new("D:\\etc\\passwd");
+            let result = validate_within_base(path, base);
+            assert!(
+                result.is_err(),
+                "Absolute path outside non-existent base should fail"
+            );
+        }
     }
 
     #[test]
     fn test_validate_within_base_non_existent_base_absolute_path_inside() {
         // Base doesn't exist, path is absolute but starts with base prefix
-        let base = Path::new("/non/existent/base");
-        let path = Path::new("/non/existent/base/subdir/file.txt");
-        let result = validate_within_base(path, base);
-        // Should succeed since path starts with base
-        assert!(
-            result.is_ok(),
-            "Path starting with base prefix should be accepted"
-        );
+        #[cfg(unix)]
+        {
+            let base = Path::new("/non/existent/base");
+            let path = Path::new("/non/existent/base/subdir/file.txt");
+            let result = validate_within_base(path, base);
+            // Should succeed since path starts with base
+            assert!(
+                result.is_ok(),
+                "Path starting with base prefix should be accepted"
+            );
+        }
+        #[cfg(windows)]
+        {
+            let base = Path::new("C:\\non\\existent\\base");
+            let path = Path::new("C:\\non\\existent\\base\\subdir\\file.txt");
+            let result = validate_within_base(path, base);
+            assert!(
+                result.is_ok(),
+                "Path starting with base prefix should be accepted"
+            );
+        }
     }
 
     #[test]
