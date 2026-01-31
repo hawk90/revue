@@ -838,11 +838,19 @@ mod tests {
 
     #[test]
     fn test_try_expand_home_rejects_slash_absolute() {
-        // Note: ~/etc is not an absolute path - the backslash is just a character
-        // Real absolute paths start with / or drive letter
+        // On Unix, ~/\etc is home + "etc" with backslash in name (valid)
+        // On Windows, \etc is an absolute path (RootDir), so it should be rejected
         let result = try_expand_home(r"~/\etc");
-        // This is actually valid (home directory + "etc" file with backslash in name)
-        assert!(result.is_ok());
+        #[cfg(unix)]
+        {
+            // On Unix, backslash is just a character
+            assert!(result.is_ok());
+        }
+        #[cfg(windows)]
+        {
+            // On Windows, \etc is an absolute path
+            assert!(result.is_err());
+        }
     }
 
     #[test]
