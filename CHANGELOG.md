@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.44.4](https://github.com/hawk90/revue/compare/v2.44.3...v2.44.4) (2026-01-31)
+
+
+### Performance Improvements
+
+* **utils:** optimize Cow&lt;str&gt; to String conversion with into_owned() ([#358](https://github.com/hawk90/revue/issues/358)) ([0f6713a](https://github.com/hawk90/revue/commit/0f6713a88cb34f9f6c71566cacb70298829e0876))
+
 ## [2.44.3](https://github.com/hawk90/revue/compare/v2.44.2...v2.44.3) (2026-01-31)
 
 
