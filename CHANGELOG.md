@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.44.0](https://github.com/hawk90/revue/compare/v2.43.4...v2.44.0) (2026-01-31)
+
+
+### Features
+
+* **utils:** add Once utility for one-shot execution ([#350](https://github.com/hawk90/revue/issues/350)) ([1629307](https://github.com/hawk90/revue/commit/16293071ae0faaf6b71346cf8ec1c1d083618d74))
+
 ## [2.43.4](https://github.com/hawk90/revue/compare/v2.43.3...v2.43.4) (2026-01-31)
 
 
