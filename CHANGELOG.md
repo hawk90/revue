@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.44.3](https://github.com/hawk90/revue/compare/v2.44.2...v2.44.3) (2026-01-31)
+
+
+### Bug Fixes
+
+* **utils:** improve edge case handling in path and browser utilities ([#356](https://github.com/hawk90/revue/issues/356)) ([34b3e89](https://github.com/hawk90/revue/commit/34b3e89f3fe1a42ee364c16bdbc83a41fe21fa8f))
+
 ## [2.44.2](https://github.com/hawk90/revue/compare/v2.44.1...v2.44.2) (2026-01-31)
 
 
