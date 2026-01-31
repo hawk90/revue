@@ -40,6 +40,34 @@ use crate::event::MouseButton;
 use std::time::{Duration, Instant};
 
 // =============================================================================
+// Constants
+// =============================================================================
+
+/// Default minimum distance for swipe detection (pixels)
+const DEFAULT_SWIPE_THRESHOLD: u16 = 3;
+
+/// Default maximum duration for swipe gesture (300ms)
+const DEFAULT_SWIPE_MAX_DURATION: Duration = Duration::from_millis(300);
+
+/// Default minimum velocity for swipe (pixels/second)
+const DEFAULT_SWIPE_MIN_VELOCITY: f64 = 10.0;
+
+/// Default duration for long press gesture (500ms)
+const DEFAULT_LONG_PRESS_DURATION: Duration = Duration::from_millis(500);
+
+/// Default minimum distance for drag detection (pixels)
+const DEFAULT_DRAG_THRESHOLD: u16 = 2;
+
+/// Default pinch scale per scroll wheel tick
+const DEFAULT_PINCH_SCALE_PER_SCROLL: f64 = 0.1;
+
+/// Default interval between double taps (300ms)
+const DEFAULT_DOUBLE_TAP_INTERVAL: Duration = Duration::from_millis(300);
+
+/// Default maximum distance between double taps (pixels)
+const DEFAULT_DOUBLE_TAP_DISTANCE: u16 = 2;
+
+// =============================================================================
 // Gesture Types
 // =============================================================================
 
@@ -315,14 +343,14 @@ pub struct GestureConfig {
 impl Default for GestureConfig {
     fn default() -> Self {
         Self {
-            swipe_threshold: 3,
-            swipe_max_duration: Duration::from_millis(300),
-            swipe_min_velocity: 10.0,
-            long_press_duration: Duration::from_millis(500),
-            drag_threshold: 2,
-            pinch_scale_per_scroll: 0.1,
-            double_tap_interval: Duration::from_millis(300),
-            double_tap_distance: 2,
+            swipe_threshold: DEFAULT_SWIPE_THRESHOLD,
+            swipe_max_duration: DEFAULT_SWIPE_MAX_DURATION,
+            swipe_min_velocity: DEFAULT_SWIPE_MIN_VELOCITY,
+            long_press_duration: DEFAULT_LONG_PRESS_DURATION,
+            drag_threshold: DEFAULT_DRAG_THRESHOLD,
+            pinch_scale_per_scroll: DEFAULT_PINCH_SCALE_PER_SCROLL,
+            double_tap_interval: DEFAULT_DOUBLE_TAP_INTERVAL,
+            double_tap_distance: DEFAULT_DOUBLE_TAP_DISTANCE,
         }
     }
 }
