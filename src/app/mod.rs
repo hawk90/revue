@@ -514,11 +514,15 @@ impl App {
 
     /// Recursively build the layout tree from the DOM tree
     fn build_layout_tree(&mut self, dom_id: crate::dom::DomId) {
-        let children = if let Some(node) = self.dom.tree().get(dom_id) {
-            node.children.clone()
-        } else {
-            return;
-        };
+        // Clone children to own the Vec - necessary because we need mutable access to self
+        // during recursion, and holding a slice reference would prevent that.
+        // DomId (u64) is Copy, so this is just copying IDs, not deep cloning.
+        let children = self
+            .dom
+            .tree()
+            .get(dom_id)
+            .map(|node| node.children.clone())
+            .unwrap_or_default();
 
         // Use default style if computation fails (defensive programming)
         let style = match self.dom.style_for_with_inheritance(dom_id) {
@@ -565,7 +569,9 @@ impl App {
             }
         }
 
-        // Recursively update children
+        // Recursively update children - clone to own the Vec
+        // Necessary because we need mutable access to self during recursion.
+        // DomId (u64) is Copy, so this is just copying IDs, not deep cloning.
         let children = self
             .dom
             .tree()

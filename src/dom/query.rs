@@ -15,6 +15,7 @@
 use super::selector::{parse_selector, Combinator, Selector, SelectorPart};
 use super::{DomId, DomNode};
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 /// Query result - found nodes
 pub struct QueryResult<'a> {
@@ -93,11 +94,14 @@ pub struct DomTree {
     /// Root node ID
     root: Option<DomId>,
     /// ID to DomId mapping (for #id queries)
-    id_map: HashMap<String, DomId>,
+    id_map: HashMap<Arc<str>, DomId>,
     /// Type index: maps widget type to list of node IDs (for type queries)
-    type_index: HashMap<String, Vec<DomId>>,
+    type_index: HashMap<Arc<str>, Vec<DomId>>,
     /// Class index: maps class name to list of node IDs (for .class queries)
-    class_index: HashMap<String, Vec<DomId>>,
+    class_index: HashMap<Arc<str>, Vec<DomId>>,
+    /// Selector cache: maps selector string to parsed Selector (for repeated queries)
+    /// Uses RwLock for interior mutability since Query trait takes &self
+    selector_cache: RwLock<HashMap<String, Selector>>,
 }
 
 impl DomTree {
@@ -114,20 +118,23 @@ impl DomTree {
         // Mark new nodes as dirty so they get rendered
         node.state.dirty = true;
 
-        // Update ID index
+        // Update ID index (zero-copy with Arc<str>)
         if let Some(ref element_id) = node.meta.id {
-            self.id_map.insert(element_id.clone(), id);
+            self.id_map.insert(Arc::from(element_id.as_str()), id);
         }
 
-        // Update type index
+        // Update type index (zero-copy with Arc<str>)
         self.type_index
-            .entry(node.widget_type().to_string())
+            .entry(Arc::from(node.widget_type()))
             .or_default()
             .push(id);
 
-        // Update class index
+        // Update class index (zero-copy with Arc<str>)
         for class in &node.meta.classes {
-            self.class_index.entry(class.clone()).or_default().push(id);
+            self.class_index
+                .entry(Arc::from(class.as_str()))
+                .or_default()
+                .push(id);
         }
 
         self.nodes.insert(id, node);
@@ -144,20 +151,23 @@ impl DomTree {
         // Mark new nodes as dirty so they get rendered
         node.state.dirty = true;
 
-        // Update ID index
+        // Update ID index (zero-copy with Arc<str>)
         if let Some(ref element_id) = node.meta.id {
-            self.id_map.insert(element_id.clone(), id);
+            self.id_map.insert(Arc::from(element_id.as_str()), id);
         }
 
-        // Update type index
+        // Update type index (zero-copy with Arc<str>)
         self.type_index
-            .entry(node.widget_type().to_string())
+            .entry(Arc::from(node.widget_type()))
             .or_default()
             .push(id);
 
-        // Update class index
+        // Update class index (zero-copy with Arc<str>)
         for class in &node.meta.classes {
-            self.class_index.entry(class.clone()).or_default().push(id);
+            self.class_index
+                .entry(Arc::from(class.as_str()))
+                .or_default()
+                .push(id);
         }
 
         // Add to parent's children and collect IDs for position update
@@ -189,14 +199,18 @@ impl DomTree {
 
     /// Remove a node and its children
     pub fn remove(&mut self, id: DomId) {
-        // Collect info we need before modifying
+        // Collect info we need before modifying (convert to Arc<str> for lookup)
         let (parent_id, element_id, widget_type, classes, children) =
             if let Some(node) = self.nodes.get(&id) {
                 (
                     node.parent,
-                    node.meta.id.clone(),
-                    node.widget_type().to_string(),
-                    node.meta.classes.clone(),
+                    node.meta.id.as_ref().map(|s| Arc::from(s.as_str())),
+                    Arc::from(node.widget_type()),
+                    node.meta
+                        .classes
+                        .iter()
+                        .map(|s| Arc::from(s.as_str()))
+                        .collect::<Vec<_>>(),
                     node.children.clone(),
                 )
             } else {
@@ -467,20 +481,54 @@ impl DomTree {
             None
         }
     }
+
+    /// Get a parsed selector from cache, or parse and cache it
+    ///
+    /// This avoids re-parsing the same selector string multiple times,
+    /// which is especially beneficial for repeated queries in loops.
+    fn get_or_parse_selector(&self, selector_str: &str) -> Option<Selector> {
+        // Try read lock first to check cache
+        {
+            let cache = self.selector_cache.read().ok()?;
+            if let Some(selector) = cache.get(selector_str) {
+                return Some(selector.clone());
+            }
+        }
+
+        // Not in cache, need to parse
+        let parsed = parse_selector(selector_str).ok()?;
+
+        // Upgrade to write lock to insert into cache
+        if let Ok(mut cache) = self.selector_cache.write() {
+            cache.insert(selector_str.to_string(), parsed.clone());
+        }
+
+        Some(parsed)
+    }
+
+    /// Clear the selector cache (useful for memory management)
+    ///
+    /// Call this periodically if the app uses many unique selectors
+    /// to prevent unbounded cache growth.
+    pub fn clear_selector_cache(&self) {
+        if let Ok(mut cache) = self.selector_cache.write() {
+            cache.clear();
+        }
+    }
 }
 
 impl Query for DomTree {
     fn query_one(&self, selector_str: &str) -> Option<&DomNode> {
-        let selector = parse_selector(selector_str).ok()?;
+        let selector = self.get_or_parse_selector(selector_str)?;
         self.nodes
             .values()
             .find(|node| self.matches_selector(node, &selector))
     }
 
     fn query_all(&self, selector_str: &str) -> QueryResult<'_> {
-        let selector = match parse_selector(selector_str) {
-            Ok(s) => s,
-            Err(_) => return QueryResult::empty(),
+        let selector = match self.get_or_parse_selector(selector_str) {
+            Some(s) => s,
+            None => return QueryResult::empty(),
         };
 
         let nodes: Vec<_> = self

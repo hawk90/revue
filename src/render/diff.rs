@@ -60,7 +60,12 @@ pub fn diff(old: &Buffer, new: &Buffer, dirty_rects: &[Rect]) -> Vec<Change> {
 
     // A set to keep track of checked cells to avoid redundant comparisons from overlapping rects.
     // This is more efficient than creating a huge list of changes and then deduping.
-    let mut checked_cells = std::collections::HashSet::with_capacity(dirty_rects.len() * 10);
+    // Calculate capacity based on actual dirty region area to minimize reallocations.
+    let total_area: usize = dirty_rects
+        .iter()
+        .map(|r| (r.width as usize) * (r.height as usize))
+        .sum();
+    let mut checked_cells = std::collections::HashSet::with_capacity(total_area);
 
     for rect in dirty_rects {
         // Use saturating_add to prevent overflow near u16::MAX

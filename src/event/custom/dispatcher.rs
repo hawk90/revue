@@ -1,4 +1,5 @@
 use std::any::TypeId;
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use super::handler::{BoxedHandler, CustomHandlerId, HandlerEntry, HandlerOptions};
@@ -7,8 +8,12 @@ use super::types::{CustomEvent, DispatchPhase, EventEnvelope, EventMeta};
 use super::DispatchResult;
 
 /// Thread-safe event dispatcher
+///
+/// Uses HashMap indexed by TypeId for O(1) handler lookup instead of O(n) linear scan.
 pub struct EventDispatcher {
-    handlers: Arc<RwLock<Vec<HandlerEntry>>>,
+    /// Handlers indexed by event TypeId for O(1) lookup
+    /// Each TypeId maps to a list of handlers sorted by priority
+    handlers: Arc<RwLock<HashMap<TypeId, Vec<HandlerEntry>>>>,
     pending_removals: Arc<RwLock<Vec<CustomHandlerId>>>,
 }
 
@@ -16,7 +21,7 @@ impl EventDispatcher {
     /// Create a new event dispatcher
     pub fn new() -> Self {
         Self {
-            handlers: Arc::new(RwLock::new(Vec::new())),
+            handlers: Arc::new(RwLock::new(HashMap::new())),
             pending_removals: Arc::new(RwLock::new(Vec::new())),
         }
     }
@@ -54,9 +59,11 @@ impl EventDispatcher {
         };
 
         if let Ok(mut handlers) = self.handlers.write() {
-            handlers.push(entry);
+            // Get or create the handler list for this event type
+            let type_handlers = handlers.entry(type_id).or_default();
+            type_handlers.push(entry);
             // Sort by priority (higher priority first)
-            handlers.sort_by(|a, b| b.options.priority.cmp(&a.options.priority));
+            type_handlers.sort_by(|a, b| b.options.priority.cmp(&a.options.priority));
         }
 
         id
@@ -73,7 +80,12 @@ impl EventDispatcher {
     /// Remove an event handler
     pub fn off(&mut self, handler_id: CustomHandlerId) {
         if let Ok(mut handlers) = self.handlers.write() {
-            handlers.retain(|h| h.id != handler_id);
+            // Remove from all type lists
+            for type_handlers in handlers.values_mut() {
+                type_handlers.retain(|h| h.id != handler_id);
+            }
+            // Clean up empty type lists
+            handlers.retain(|_, list| !list.is_empty());
         }
     }
 
@@ -81,7 +93,7 @@ impl EventDispatcher {
     pub fn off_all<E: CustomEvent>(&mut self) {
         let type_id = TypeId::of::<E>();
         if let Ok(mut handlers) = self.handlers.write() {
-            handlers.retain(|h| h.type_id != type_id);
+            handlers.remove(&type_id);
         }
     }
 
@@ -104,16 +116,52 @@ impl EventDispatcher {
         let mut handlers_to_remove = Vec::new();
         let mut handler_count = 0;
 
-        // Get read lock and process handlers
+        // Get read lock and process handlers - O(1) lookup by TypeId
         let handlers = match self.handlers.read() {
             Ok(h) => h,
             Err(_) => return DispatchResult::error("Failed to acquire lock"),
         };
 
+        // Get handlers for this specific event type (O(1) lookup)
+        let type_handlers = match handlers.get(&type_id) {
+            Some(h) => h,
+            None => {
+                // No handlers for this event type
+                return DispatchResult {
+                    event_id: meta.id,
+                    cancelled: false,
+                    propagation_stopped: false,
+                    handler_count: 0,
+                    error: None,
+                };
+            }
+        };
+
         // Process capture phase handlers first
-        for entry in handlers.iter().filter(|h| h.type_id == type_id) {
-            if entry.options.capture {
-                meta.phase = DispatchPhase::Capture;
+        for entry in type_handlers.iter().filter(|h| h.options.capture) {
+            meta.phase = DispatchPhase::Capture;
+            let response = (entry.handler)(&event, &mut meta);
+            handler_count += 1;
+
+            if entry.options.once {
+                handlers_to_remove.push(entry.id);
+            }
+
+            if response.should_cancel() {
+                meta.cancel();
+            }
+            if response.should_stop() {
+                meta.stop_propagation();
+            }
+            if meta.is_propagation_stopped() || meta.is_immediate_propagation_stopped() {
+                break;
+            }
+        }
+
+        // Process target/bubble phase handlers
+        if !meta.is_propagation_stopped() {
+            for entry in type_handlers.iter().filter(|h| !h.options.capture) {
+                meta.phase = DispatchPhase::Target;
                 let response = (entry.handler)(&event, &mut meta);
                 handler_count += 1;
 
@@ -129,31 +177,6 @@ impl EventDispatcher {
                 }
                 if meta.is_propagation_stopped() || meta.is_immediate_propagation_stopped() {
                     break;
-                }
-            }
-        }
-
-        // Process target/bubble phase handlers
-        if !meta.is_propagation_stopped() {
-            for entry in handlers.iter().filter(|h| h.type_id == type_id) {
-                if !entry.options.capture {
-                    meta.phase = DispatchPhase::Target;
-                    let response = (entry.handler)(&event, &mut meta);
-                    handler_count += 1;
-
-                    if entry.options.once {
-                        handlers_to_remove.push(entry.id);
-                    }
-
-                    if response.should_cancel() {
-                        meta.cancel();
-                    }
-                    if response.should_stop() {
-                        meta.stop_propagation();
-                    }
-                    if meta.is_propagation_stopped() || meta.is_immediate_propagation_stopped() {
-                        break;
-                    }
                 }
             }
         }
@@ -185,7 +208,7 @@ impl EventDispatcher {
         let type_id = TypeId::of::<E>();
         self.handlers
             .read()
-            .map(|h| h.iter().any(|entry| entry.type_id == type_id))
+            .map(|h| h.get(&type_id).is_some_and(|list| !list.is_empty()))
             .unwrap_or(false)
     }
 
@@ -194,7 +217,7 @@ impl EventDispatcher {
         let type_id = TypeId::of::<E>();
         self.handlers
             .read()
-            .map(|h| h.iter().filter(|entry| entry.type_id == type_id).count())
+            .map(|h| h.get(&type_id).map_or(0, |list| list.len()))
             .unwrap_or(0)
     }
 
@@ -209,7 +232,12 @@ impl EventDispatcher {
 
         if !pending.is_empty() {
             if let Ok(mut handlers) = self.handlers.write() {
-                handlers.retain(|h| !pending.contains(&h.id));
+                // Remove pending handler IDs from all type lists
+                for type_handlers in handlers.values_mut() {
+                    type_handlers.retain(|h| !pending.contains(&h.id));
+                }
+                // Clean up empty type lists
+                handlers.retain(|_, list| !list.is_empty());
             }
         }
     }

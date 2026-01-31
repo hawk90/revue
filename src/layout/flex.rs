@@ -70,7 +70,8 @@ pub fn compute_flex(
                 total_fixed = total_fixed.saturating_add(v);
             }
             Size::Percent(pct) => {
-                let v = ((available_main as f32) * pct / 100.0) as u16;
+                // Clamp to prevent overflow when converting f32 to u16
+                let v = ((available_main as f32) * pct / 100.0).clamp(0.0, u16::MAX as f32) as u16;
                 let v = apply_main_constraints(child, direction, v, available_main);
                 child_main_sizes[i] = v;
                 total_fixed = total_fixed.saturating_add(v);
@@ -141,7 +142,10 @@ pub fn compute_flex(
 
         let child_cross = match cross_size_prop {
             Size::Fixed(v) => v,
-            Size::Percent(pct) => ((cross_size as f32) * pct / 100.0) as u16,
+            // Clamp to prevent overflow when converting f32 to u16
+            Size::Percent(pct) => {
+                ((cross_size as f32) * pct / 100.0).clamp(0.0, u16::MAX as f32) as u16
+            }
             Size::Auto => {
                 if align == AlignItems::Stretch {
                     cross_size
@@ -226,7 +230,8 @@ fn resolve_constraint(size: Size, available: u16, default: u16) -> u16 {
     match size {
         Size::Auto => default,
         Size::Fixed(v) => v,
-        Size::Percent(pct) => ((available as f32) * pct / 100.0) as u16,
+        // Clamp to prevent overflow when converting f32 to u16
+        Size::Percent(pct) => ((available as f32) * pct / 100.0).clamp(0.0, u16::MAX as f32) as u16,
     }
 }
 

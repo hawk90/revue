@@ -66,5 +66,6 @@ pub struct HandlerEntry {
     pub id: CustomHandlerId,
     pub handler: BoxedHandler,
     pub options: HandlerOptions,
+    #[allow(dead_code)]
     pub type_id: TypeId,
 }

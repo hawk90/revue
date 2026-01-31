@@ -46,14 +46,20 @@ pub fn compute_block(
         // Block children take full width by default
         let child_width = match child.sizing.width {
             Size::Fixed(v) => v.min(content_width),
-            Size::Percent(pct) => ((content_width as f32) * pct / 100.0) as u16,
+            // Clamp to prevent overflow when converting f32 to u16
+            Size::Percent(pct) => {
+                ((content_width as f32) * pct / 100.0).clamp(0.0, u16::MAX as f32) as u16
+            }
             Size::Auto => content_width.saturating_sub(margin.horizontal()),
         };
 
         // Height defaults to 1 for auto
         let child_height = match child.sizing.height {
             Size::Fixed(v) => v,
-            Size::Percent(pct) => ((content_height as f32) * pct / 100.0) as u16,
+            // Clamp to prevent overflow when converting f32 to u16
+            Size::Percent(pct) => {
+                ((content_height as f32) * pct / 100.0).clamp(0.0, u16::MAX as f32) as u16
+            }
             Size::Auto => 1, // Minimum height for block items
         };
 
@@ -93,13 +99,15 @@ fn apply_constraints(size: u16, min: Size, max: Size, available: u16) -> u16 {
     let min_val = match min {
         Size::Auto => 0,
         Size::Fixed(v) => v,
-        Size::Percent(pct) => ((available as f32) * pct / 100.0) as u16,
+        // Clamp to prevent overflow when converting f32 to u16
+        Size::Percent(pct) => ((available as f32) * pct / 100.0).clamp(0.0, u16::MAX as f32) as u16,
     };
 
     let max_val = match max {
         Size::Auto => u16::MAX,
         Size::Fixed(v) => v,
-        Size::Percent(pct) => ((available as f32) * pct / 100.0) as u16,
+        // Clamp to prevent overflow when converting f32 to u16
+        Size::Percent(pct) => ((available as f32) * pct / 100.0).clamp(0.0, u16::MAX as f32) as u16,
     };
 
     size.clamp(min_val, max_val)
