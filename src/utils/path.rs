@@ -284,7 +284,9 @@ pub fn try_expand_home(path: impl AsRef<Path>) -> Result<PathBuf, PathError> {
 /// ```
 pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
     let path = path.as_ref();
-    let full = path.display().to_string();
+
+    // Convert to display string with normalized separators for consistent handling
+    let full = normalize_separators(&path.display().to_string());
 
     if full.len() <= max_width {
         return full;
