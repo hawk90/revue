@@ -346,22 +346,22 @@ impl App {
         // Non-blocking check for events
         if let Some(event) = hr.poll() {
             match event {
-                HotReloadEvent::StylesheetChanged(path) => {
+                HotReloadEvent::StylesheetChanged(ref path) => {
                     crate::log_debug!("Hot reload: stylesheet changed {:?}", path);
-                    self.reload_stylesheet(&path);
+                    self.reload_stylesheet(path);
                     return Some(true);
                 }
-                HotReloadEvent::FileCreated(path) => {
+                HotReloadEvent::FileCreated(ref path) => {
                     crate::log_debug!("Hot reload: file created {:?}", path);
-                    if self.style_paths.contains(&path) {
-                        self.reload_stylesheet(&path);
+                    if self.style_paths.contains(path) {
+                        self.reload_stylesheet(path);
                         return Some(true);
                     }
                 }
-                HotReloadEvent::FileDeleted(path) => {
+                HotReloadEvent::FileDeleted(ref path) => {
                     crate::log_debug!("Hot reload: file deleted {:?}", path);
                 }
-                HotReloadEvent::Error(e) => {
+                HotReloadEvent::Error(ref e) => {
                     crate::log_warn!("Hot reload error: {}", e);
                 }
             }
