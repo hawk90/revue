@@ -93,15 +93,14 @@ fn validate_url_format(url: &str) -> Result<(), BrowserError> {
         || url.starts_with("./")
         || url.starts_with("../")
         || url.contains('\\')
-        || (url.len() > 1 && url.chars().nth(1) == Some(':'))
-    // Windows drive letter
+        || (url.len() > 1 && url.as_bytes().get(1) == Some(&b':'))
+    // Windows drive letter (use byte indexing for O(1))
     {
         return Ok(());
     }
 
     // Check for URL scheme (http, https, ftp, etc.)
-    if url.contains("://") {
-        let scheme_end = url.find("://").unwrap();
+    if let Some(scheme_end) = url.find("://") {
         let scheme = &url[..scheme_end];
 
         // Only allow certain schemes

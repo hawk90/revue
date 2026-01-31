@@ -207,8 +207,10 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
         return full;
     }
 
-    // Always keep the filename
-    let filename = components.last().unwrap();
+    // Always keep the filename (safe due to is_empty check above)
+    let filename = components
+        .last()
+        .expect("components should not be empty after is_empty check");
 
     if filename.len() + 4 > max_width {
         // Even filename doesn't fit, truncate it
