@@ -38,6 +38,7 @@
 //! | [`lock`] | Lock utilities for consistent poison handling |
 //! | [`shell`] | Shell-safe string escaping |
 //! | [`debounce`] | Debounce and throttle utilities for events |
+//! | [`mod@once`] | One-shot execution utility (call only once) |
 
 pub mod accessibility;
 pub mod accessibility_signal;
@@ -60,6 +61,7 @@ pub mod i18n;
 pub mod keymap;
 pub mod layout;
 pub mod lock;
+pub mod once;
 pub mod overlay;
 pub mod path;
 pub mod profiler;
@@ -299,6 +301,9 @@ pub use shell::{escape_applescript, escape_powershell, sanitize_string};
 
 // Debounce and Throttle
 pub use debounce::{debounce_ms, debouncer, throttle, throttle_ms, Debouncer, Edge, Throttle};
+
+// Once (one-shot execution)
+pub use once::{once, Once};
 
 // Filter mode
 pub use filter::FilterMode;

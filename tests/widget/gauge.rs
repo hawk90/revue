@@ -199,22 +199,45 @@ fn test_gauge_set_value_boundary() {
 }
 
 #[test]
-fn test_gauge_ratio_boundary() {
-    // Test ratio() method at boundaries
-    let g = Gauge::new().ratio(0.0);
+fn test_gauge_value_boundary() {
+    // Test value() method at boundaries (0.0 - 1.0 range)
+    let g = Gauge::new().value(0.0);
     assert_eq!(g.get_value(), 0.0);
 
-    let g = Gauge::new().ratio(0.5);
+    let g = Gauge::new().value(0.5);
     assert_eq!(g.get_value(), 0.5);
 
-    let g = Gauge::new().ratio(1.0);
+    let g = Gauge::new().value(1.0);
     assert_eq!(g.get_value(), 1.0);
 
     // Test clamping
-    let g = Gauge::new().ratio(-0.5);
+    let g = Gauge::new().value(-0.5);
     assert_eq!(g.get_value(), 0.0);
 
-    let g = Gauge::new().ratio(1.5);
+    let g = Gauge::new().value(1.5);
+    assert_eq!(g.get_value(), 1.0);
+}
+
+#[test]
+fn test_gauge_value_range() {
+    // Test value_range() with custom min/max
+    let g = Gauge::new().value_range(50.0, 0.0, 100.0);
+    assert!((g.get_value() - 0.5).abs() < 0.001);
+
+    // At min
+    let g = Gauge::new().value_range(0.0, 0.0, 100.0);
+    assert_eq!(g.get_value(), 0.0);
+
+    // At max
+    let g = Gauge::new().value_range(100.0, 0.0, 100.0);
+    assert_eq!(g.get_value(), 1.0);
+
+    // Clamping below min
+    let g = Gauge::new().value_range(-10.0, 0.0, 100.0);
+    assert_eq!(g.get_value(), 0.0);
+
+    // Clamping above max
+    let g = Gauge::new().value_range(150.0, 0.0, 100.0);
     assert_eq!(g.get_value(), 1.0);
 }
 
