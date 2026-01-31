@@ -279,3 +279,185 @@ fn test_form_reset_clears_errors() {
     // After reset, empty again = has errors
     assert!(!form.get("name").unwrap().errors().is_empty());
 }
+
+// Edge case tests
+#[test]
+fn test_form_state_whitespace_only_required() {
+    // Whitespace-only strings should fail required validation
+    let form = FormState::new().field("name", |f| f.required()).build();
+    form.set_value("name", "   ");
+    assert!(!form.is_valid());
+}
+
+#[test]
+fn test_form_state_whitespace_only_min_length() {
+    // Whitespace-only strings should fail min_length validation
+    let form = FormState::new().field("name", |f| f.min_length(3)).build();
+    form.set_value("name", "  "); // Only spaces
+    assert!(!form.is_valid());
+}
+
+#[test]
+fn test_form_state_empty_string_required() {
+    // Empty string should fail required validation
+    let form = FormState::new().field("name", |f| f.required()).build();
+    form.set_value("name", "");
+    assert!(!form.is_valid());
+}
+
+#[test]
+fn test_form_state_trimming_whitespace() {
+    // String with leading/trailing whitespace should be trimmed
+    let form = FormState::new().field("name", |f| f.min_length(3)).build();
+    form.set_value("name", "  abc  "); // Should trim to "abc" (length 3)
+    assert!(form.is_valid());
+}
+
+#[test]
+fn test_form_state_max_length_boundary() {
+    // Test exact boundary condition for max_length
+    let form = FormState::new().field("name", |f| f.max_length(5)).build();
+
+    // Exactly at boundary should pass
+    form.set_value("name", "12345");
+    assert!(form.is_valid());
+
+    // One over boundary should fail
+    form.set_value("name", "123456");
+    assert!(!form.is_valid());
+}
+
+#[test]
+fn test_form_state_min_length_boundary() {
+    // Test exact boundary condition for min_length
+    let form = FormState::new().field("name", |f| f.min_length(3)).build();
+
+    // One under boundary should fail
+    form.set_value("name", "12");
+    assert!(!form.is_valid());
+
+    // Exactly at boundary should pass
+    form.set_value("name", "123");
+    assert!(form.is_valid());
+}
+
+#[test]
+fn test_form_state_value_range_boundaries() {
+    // Test numeric value range boundaries
+    let form = FormState::new()
+        .field("count", |f| f.number().min(1.0).max(10.0))
+        .build();
+
+    // Below minimum
+    form.set_value("count", "0");
+    assert!(!form.is_valid());
+
+    // At minimum
+    form.set_value("count", "1");
+    assert!(form.is_valid());
+
+    // At maximum
+    form.set_value("count", "10");
+    assert!(form.is_valid());
+
+    // Above maximum
+    form.set_value("count", "11");
+    assert!(!form.is_valid());
+}
+
+#[test]
+fn test_form_state_unicode_emoji() {
+    // Form should handle emoji correctly
+    let form = FormState::new().field("emoji", |f| f.min_length(1)).build();
+    form.set_value("emoji", "😀"); // Single emoji
+    assert!(form.is_valid());
+}
+
+#[test]
+fn test_form_state_unicode_combining_characters() {
+    // Form should handle combining characters
+    let form = FormState::new()
+        .field("accented", |f| f.min_length(1))
+        .build();
+    form.set_value("accented", "é"); // 'e' + combining acute
+    assert!(form.is_valid());
+}
+
+#[test]
+fn test_form_state_special_characters_email() {
+    // Email validation should handle edge cases
+    let form = FormState::new().field("email", |f| f.email()).build();
+
+    // Valid email with special characters
+    form.set_value("email", "user+test@example.com");
+    assert!(form.is_valid());
+
+    // Invalid: no @
+    form.set_value("email", "userexample.com");
+    assert!(!form.is_valid());
+
+    // Invalid: no domain
+    form.set_value("email", "user@");
+    assert!(!form.is_valid());
+}
+
+#[test]
+fn test_form_state_numeric_with_special_chars() {
+    // Numeric validation should reject special characters
+    let form = FormState::new().field("number", |f| f.number()).build();
+
+    // Valid numbers
+    form.set_value("number", "123");
+    assert!(form.is_valid());
+
+    form.set_value("number", "-123"); // Negative
+    assert!(form.is_valid());
+
+    form.set_value("number", "12.5"); // Decimal
+    assert!(form.is_valid());
+
+    // Invalid: letters
+    form.set_value("number", "12a3");
+    assert!(!form.is_valid());
+
+    // Invalid: special characters
+    form.set_value("number", "12$3");
+    assert!(!form.is_valid());
+}
+
+#[test]
+fn test_form_state_multiple_fields_validation() {
+    // Test form with multiple dependent fields
+    let form = FormState::new()
+        .field("password", |f| f.min_length(8).label("Password"))
+        .field("confirm", |f| f.matches("password").label("Confirm"))
+        .build();
+
+    // Set matching values
+    form.set_value("password", "secure123");
+    form.set_value("confirm", "secure123");
+    assert!(form.is_valid());
+
+    // Set non-matching values
+    form.set_value("password", "secure123");
+    form.set_value("confirm", "different");
+    assert!(!form.is_valid());
+}
+
+#[test]
+fn test_form_state_email_with_subdomain() {
+    // Email should handle subdomains correctly
+    let form = FormState::new().field("email", |f| f.email()).build();
+
+    form.set_value("email", "user@mail.example.com");
+    assert!(form.is_valid());
+}
+
+#[test]
+fn test_form_state_email_with_hyphenated_local() {
+    // Email should handle hyphenated local parts
+    let form = FormState::new().field("email", |f| f.email()).build();
+
+    form.set_value("email", "user-name@example.com");
+    assert!(form.is_valid());
+}
