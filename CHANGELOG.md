@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.44.6](https://github.com/hawk90/revue/compare/v2.44.5...v2.44.6) (2026-01-31)
+
+
+### Bug Fixes
+
+* **hot-reload:** use ref binding in match to avoid move error ([#365](https://github.com/hawk90/revue/issues/365)) ([54b6eea](https://github.com/hawk90/revue/commit/54b6eeacb7735228f4bc6eb00eaa2ea1a4c13bf0))
+* **security:** improve path validation security ([#364](https://github.com/hawk90/revue/issues/364)) ([9f764fd](https://github.com/hawk90/revue/commit/9f764fdce4c8853e999b1cbd16beed2a51c4d799))
+
 ## [2.44.5](https://github.com/hawk90/revue/compare/v2.44.4...v2.44.5) (2026-01-31)
 
 
