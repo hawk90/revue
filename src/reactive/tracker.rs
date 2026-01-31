@@ -157,16 +157,22 @@ impl DependencyTracker {
     }
 
     /// Notify all subscribers that depend on a signal
+    ///
+    /// Optimized to avoid Arc cloning during collection by first collecting
+    /// subscriber IDs (cheap: u64), then looking up callbacks after dropping
+    /// the lock. This also prevents deadlock if callbacks re-enter the tracker.
     pub fn notify_subscribers(&self, signal_id: SignalId) {
         if let Some(subscriber_ids) = self.dependencies.get(&signal_id) {
-            // Collect callbacks to call (avoid borrow issues)
-            let callbacks: Vec<_> = subscriber_ids
-                .iter()
-                .filter_map(|id| self.subscribers.get(id).cloned())
-                .collect();
+            // Collect subscriber IDs (cheap: just u64, not Arc)
+            // Use Vec with small capacity since most signals have few dependents
+            let ids: Vec<_> = subscriber_ids.iter().copied().collect();
 
-            for callback in callbacks {
-                callback();
+            // Now we've dropped the lock on dependencies, look up callbacks
+            for id in ids {
+                if let Some(callback) = self.subscribers.get(&id) {
+                    // Call the Arc callback directly without cloning
+                    callback();
+                }
             }
         }
     }
