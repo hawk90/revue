@@ -70,30 +70,35 @@ pub fn validate_characters(path: &Path) -> Result<(), PathError> {
     Ok(())
 }
 
+/// Find the nearest existing ancestor of a path.
+///
+/// Walks up the directory tree from the given path until an existing directory is found.
+/// Returns the path to that existing ancestor.
+fn find_existing_ancestor(mut path: &Path) -> Option<PathBuf> {
+    loop {
+        if path.exists() {
+            return Some(path.to_path_buf());
+        }
+        match path.parent() {
+            Some(parent) if !parent.as_os_str().is_empty() => path = parent,
+            _ => return None,
+        }
+    }
+}
+
 /// Validate that a path stays within a base directory
 ///
 /// Returns error if the path, when canonicalized, escapes the base directory.
 /// Also checks parent directories for symlinks that might escape the base.
+///
+/// For non-existent paths, walks up the directory tree to find an existing ancestor
+/// and validates that ancestor stays within the base directory.
 pub fn validate_within_base(path: &Path, base: &Path) -> Result<(), PathError> {
     // First validate for traversal patterns
     validate_no_traversal(path)?;
 
-    // Check parent directories for symlink escape
-    // Even if the leaf doesn't exist, its parent should be within base
-    if let Some(parent) = path.parent() {
-        if parent.exists() {
-            if let Ok(base_canonical) = base.canonicalize() {
-                if let Ok(parent_canonical) = parent.canonicalize() {
-                    if !parent_canonical.starts_with(&base_canonical) {
-                        return Err(PathError::OutsideBounds);
-                    }
-                }
-            }
-        }
-    }
-
-    // If both base and path exist, verify the path stays within base
-    if base.exists() && path.exists() {
+    // If path exists, validate directly
+    if path.exists() {
         if let Ok(base_canonical) = base.canonicalize() {
             if let Ok(path_canonical) = path.canonicalize() {
                 if !path_canonical.starts_with(&base_canonical) {
@@ -101,6 +106,25 @@ pub fn validate_within_base(path: &Path, base: &Path) -> Result<(), PathError> {
                 }
             }
         }
+        return Ok(());
+    }
+
+    // Path doesn't exist - find nearest existing ancestor
+    if let Some(ancestor) = find_existing_ancestor(path) {
+        if let Ok(base_canonical) = base.canonicalize() {
+            if let Ok(ancestor_canonical) = ancestor.canonicalize() {
+                if !ancestor_canonical.starts_with(&base_canonical) {
+                    return Err(PathError::OutsideBounds);
+                }
+            }
+        }
+    }
+
+    // Also validate that the relative path from base doesn't contain suspicious patterns
+    // This catches cases where the path might look legitimate but point outside base
+    if let Ok(rel) = path.strip_prefix(base) {
+        // Double-check no traversal in the relative path
+        validate_no_traversal(rel)?;
     }
 
     Ok(())
@@ -906,5 +930,113 @@ mod tests {
         // The result will be "..." + truncated filename
         // For "한글파일.txt", truncating to 7 bytes gives "한글" (6 bytes) or similar
         assert!(short.len() <= 10);
+    }
+
+    // ============================================================================
+    // Non-existent Path Validation Tests
+    // ============================================================================
+
+    #[test]
+    fn test_validate_within_base_non_existent_within_base() {
+        // Non-existent path within base should be accepted
+        if let Some(home) = home_dir() {
+            if home.exists() {
+                let non_existent = home.join("some/deeply/nested/non_existent.txt");
+                let result = validate_within_base(&non_existent, &home);
+                // Should succeed since the path hierarchy would be within home
+                assert!(
+                    result.is_ok(),
+                    "Non-existent path within base should be accepted"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_validate_within_base_non_existent_outside_base() {
+        // Non-existent path outside base should fail via traversal check
+        if let Some(home) = home_dir() {
+            if home.exists() {
+                // Create a path that would be outside base (contains ..)
+                let outside = home.join("documents/../etc/passwd");
+                let result = validate_within_base(&outside, &home);
+                // Should fail because of traversal pattern
+                assert!(result.is_err(), "Path with traversal should be rejected");
+            }
+        }
+    }
+
+    #[test]
+    fn test_validate_within_base_non_existent_deep_nesting() {
+        // Deeply nested non-existent path should be validated via ancestor
+        if let Some(home) = home_dir() {
+            if home.exists() {
+                let deep = home.join("a/b/c/d/e/f/g/h/i/j/file.txt");
+                let result = validate_within_base(&deep, &home);
+                // Should succeed - all ancestors would be within home
+                assert!(
+                    result.is_ok(),
+                    "Deep non-existent path within base should be accepted"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_find_existing_ancestor_existing_path() {
+        // When path exists, should return the path itself
+        if let Some(home) = home_dir() {
+            if home.exists() {
+                let result = find_existing_ancestor(&home);
+                assert_eq!(result, Some(home.clone()));
+            }
+        }
+    }
+
+    #[test]
+    fn test_find_existing_ancestor_non_existent() {
+        // For non-existent path, should find existing ancestor
+        if let Some(home) = home_dir() {
+            if home.exists() {
+                let non_existent = home.join("does/not/exist/file.txt");
+                let result = find_existing_ancestor(&non_existent);
+                // Should find home or some existing ancestor
+                assert!(result.is_some(), "Should find an existing ancestor");
+                assert!(
+                    result.unwrap().starts_with(&home),
+                    "Ancestor should be within home"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_find_existing_ancestor_empty_path() {
+        // Empty path should return None
+        let result = find_existing_ancestor(Path::new(""));
+        assert!(
+            result.is_none(),
+            "Empty path should have no existing ancestor"
+        );
+    }
+
+    #[test]
+    fn test_validate_within_base_relative_non_existent() {
+        // Test with relative paths
+        let base = Path::new("/tmp");
+        let non_existent = Path::new("/tmp/test/subdir/file.txt");
+        let result = validate_within_base(non_existent, base);
+        // Should accept since the path would be within base
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_within_base_traversal_via_relative() {
+        // Test that traversal is caught even in non-existent paths
+        let base = Path::new("/tmp/test");
+        let traversal = Path::new("/tmp/test/../etc/passwd");
+        let result = validate_within_base(traversal, base);
+        // Should fail because of .. pattern
+        assert!(result.is_err());
     }
 }
