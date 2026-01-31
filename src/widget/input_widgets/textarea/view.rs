@@ -9,7 +9,8 @@ impl TextArea {
     fn line_number_width(&self) -> u16 {
         if self.show_line_numbers {
             let max_line = self.lines.len();
-            let digits = format!("{}", max_line).len();
+            // Use ilog10() for O(1) digit count instead of O(n) string allocation
+            let digits = max_line.ilog10() as usize + 1;
             (digits + 2) as u16 // digits + space + separator
         } else {
             0

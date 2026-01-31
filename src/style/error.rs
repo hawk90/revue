@@ -319,7 +319,8 @@ impl RichParseError {
         let line_idx = self.location.line.saturating_sub(1);
 
         if line_idx < lines.len() {
-            let line_num_width = (self.location.line + 1).to_string().len().max(3);
+            // Use ilog10() for O(1) digit count instead of O(n) string allocation
+            let line_num_width = ((self.location.line + 1).ilog10() as usize + 1).max(3);
 
             // Context line before
             if line_idx > 0 {
