@@ -1227,10 +1227,10 @@ mod tests {
 
     #[test]
     fn test_reject_windows_reserved_names() {
-        let picker = FilePicker::new();
-        // Test Windows reserved device names (will pass on non-Windows but that's OK)
+        // Test Windows reserved device names
         #[cfg(windows)]
         {
+            let picker = FilePicker::new();
             let reserved_names = ["CON", "PRN", "AUX", "NUL", "COM1", "LPT1"];
             for name in reserved_names {
                 let path = PathBuf::from("/tmp").join(name);
@@ -1241,6 +1241,12 @@ mod tests {
                 }
                 // Other errors are OK too (path doesn't exist, etc.)
             }
+        }
+        #[cfg(not(windows))]
+        {
+            // On non-Windows, this test is not applicable
+            // Just verify that FilePicker creation doesn't panic
+            let _picker = FilePicker::new();
         }
     }
 
