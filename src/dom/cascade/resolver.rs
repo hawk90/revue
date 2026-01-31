@@ -7,6 +7,7 @@ use super::super::selector::{Combinator, Selector};
 use super::super::DomId;
 use super::specificity::Specificity;
 use crate::style::{apply_declaration, Rule, Style, StyleSheet};
+use std::collections::{HashMap, HashSet};
 
 // Import StyleMerge trait for merge() method
 use super::merge::StyleMerge;
@@ -22,12 +23,117 @@ pub struct MatchedRule<'a> {
     pub specificity: Specificity,
 }
 
+/// Index for fast selector lookup by key (element, class, id, or universal)
+///
+/// This reduces the number of selector comparisons from O(n*m) to O(n*k)
+/// where n = nodes, m = total selectors, k = relevant selectors per node (usually << m).
+struct SelectorIndex {
+    /// Map from element name to selector indices
+    by_element: HashMap<String, Vec<usize>>,
+    /// Map from class name to selector indices
+    by_class: HashMap<String, Vec<usize>>,
+    /// Map from id to selector indices
+    by_id: HashMap<String, Vec<usize>>,
+    /// Universal selectors that match everything
+    universal: Vec<usize>,
+}
+
+impl SelectorIndex {
+    /// Build an index from selectors
+    fn build(selectors: &[(Selector, usize)]) -> Self {
+        let mut by_element: HashMap<String, Vec<usize>> = HashMap::new();
+        let mut by_class: HashMap<String, Vec<usize>> = HashMap::new();
+        let mut by_id: HashMap<String, Vec<usize>> = HashMap::new();
+        let mut universal: Vec<usize> = Vec::new();
+
+        for (idx, (selector, _rule_idx)) in selectors.iter().enumerate() {
+            // Get the target (rightmost) part of the selector
+            let target = match selector.target() {
+                Some(t) => t,
+                None => continue,
+            };
+
+            // Determine the primary key for this selector
+            // Priority: id > element > class > universal
+            if let Some(ref id) = target.id {
+                by_id.entry(id.clone()).or_default().push(idx);
+            } else if let Some(ref element) = target.element {
+                by_element.entry(element.clone()).or_default().push(idx);
+            } else if !target.classes.is_empty() {
+                // Index by first class for simplicity
+                if let Some(first_class) = target.classes.first() {
+                    by_class.entry(first_class.clone()).or_default().push(idx);
+                }
+            } else {
+                // Universal selector or pseudo-class only
+                universal.push(idx);
+            }
+        }
+
+        Self {
+            by_element,
+            by_class,
+            by_id,
+            universal,
+        }
+    }
+
+    /// Get candidate selector indices for a node
+    fn get_candidates(&self, node: &DomNode) -> Vec<usize> {
+        let mut candidates = Vec::new();
+        let mut seen = HashSet::new();
+
+        // Always include universal selectors
+        for &idx in &self.universal {
+            if seen.insert(idx) {
+                candidates.push(idx);
+            }
+        }
+
+        // Check by id (highest priority)
+        if let Some(id) = node.element_id() {
+            if let Some(indices) = self.by_id.get(id) {
+                for &idx in indices {
+                    if seen.insert(idx) {
+                        candidates.push(idx);
+                    }
+                }
+            }
+        }
+
+        // Check by element
+        let element = node.widget_type();
+        if let Some(indices) = self.by_element.get(element) {
+            for &idx in indices {
+                if seen.insert(idx) {
+                    candidates.push(idx);
+                }
+            }
+        }
+
+        // Check by class (add all matching classes)
+        for class in &node.meta.classes {
+            if let Some(indices) = self.by_class.get(class) {
+                for &idx in indices {
+                    if seen.insert(idx) {
+                        candidates.push(idx);
+                    }
+                }
+            }
+        }
+
+        candidates
+    }
+}
+
 /// Style resolver - matches selectors and computes styles
 pub struct StyleResolver<'a> {
     /// Parsed stylesheet
     stylesheet: &'a StyleSheet,
     /// Parsed selectors for each rule
     pub selectors: Vec<(Selector, usize)>,
+    /// Index for fast selector lookup
+    index: SelectorIndex,
 }
 
 impl<'a> StyleResolver<'a> {
@@ -41,9 +147,13 @@ impl<'a> StyleResolver<'a> {
             }
         }
 
+        // Build the index for fast lookup
+        let index = SelectorIndex::build(&selectors);
+
         Self {
             stylesheet,
             selectors,
+            index,
         }
     }
 
@@ -55,21 +165,32 @@ impl<'a> StyleResolver<'a> {
         stylesheet: &'a StyleSheet,
         selectors: &[(Selector, usize)],
     ) -> Self {
+        let selectors = selectors.to_vec();
+        let index = SelectorIndex::build(&selectors);
         Self {
             stylesheet,
-            selectors: selectors.to_vec(),
+            selectors,
+            index,
         }
     }
 
     /// Find all rules matching a node
+    ///
+    /// Uses the selector index to only check relevant selectors, reducing
+    /// comparisons from O(all selectors) to O(relevant selectors).
     pub fn match_node<F>(&self, node: &DomNode, get_node: F) -> Vec<MatchedRule<'_>>
     where
         F: Fn(DomId) -> Option<&'a DomNode>,
     {
+        // Get candidate selectors using the index (fast path)
+        let candidates = self.index.get_candidates(node);
+
         // Pre-allocate with reasonable capacity (most nodes match < 8 rules)
         let mut matched = Vec::with_capacity(4);
 
-        for (selector, rule_idx) in &self.selectors {
+        // Only check candidate selectors (not all selectors)
+        for &idx in &candidates {
+            let (selector, rule_idx) = &self.selectors[idx];
             if self.matches(selector, node, &get_node) {
                 let (a, b, c) = selector.specificity();
                 let specificity = Specificity::new(a, b, c, *rule_idx);
