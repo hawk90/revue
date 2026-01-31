@@ -259,7 +259,7 @@ impl ProcessMonitor {
                 ProcessInfo {
                     pid: pid.as_u32(),
                     parent_pid: proc.parent().map(|p| p.as_u32()),
-                    name: proc.name().to_string_lossy().to_string(),
+                    name: proc.name().to_string_lossy().into_owned(),
                     cpu: proc.cpu_usage(),
                     memory,
                     memory_percent: (memory as f32 / total_memory) * 100.0,
@@ -267,7 +267,7 @@ impl ProcessMonitor {
                     cmd: proc
                         .cmd()
                         .iter()
-                        .map(|s| s.to_string_lossy().to_string())
+                        .map(|s| s.to_string_lossy().into_owned())
                         .collect::<Vec<_>>()
                         .join(" "),
                     user: proc.user_id().map(|u| u.to_string()).unwrap_or_default(),
