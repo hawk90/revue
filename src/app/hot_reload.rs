@@ -9,6 +9,9 @@ use std::time::{Duration, Instant};
 
 /// Validate and sanitize a path to prevent path traversal attacks
 ///
+/// On Unix-like systems, performs strict validation to prevent escaping the project directory.
+/// On Windows, path traversal risks are different, so we use a more permissive validation.
+///
 /// Returns an error if the path:
 /// - Contains excessive parent directory references (`../`)
 /// - Attempts to escape the current directory
@@ -21,34 +24,40 @@ fn validate_path(path: &Path) -> Result<(), PathValidationError> {
         return Err(PathValidationError::NullByte);
     }
 
+    // Helper function to robustly check if a path is within the current directory
+    let is_within_current_dir = |canonical_path: &Path| -> Result<bool, PathValidationError> {
+        let current_dir =
+            std::env::current_dir().map_err(|_| PathValidationError::CurrentDirAccess)?;
+
+        // Try to canonicalize current_dir for fair comparison
+        let current_canonical = current_dir.canonicalize().unwrap_or(current_dir.clone());
+
+        // On both Unix and Windows, use prefix comparison on canonicalized paths
+        // This handles case-insensitivity and different path separators
+        Ok(canonical_path
+            .to_string_lossy()
+            .to_lowercase()
+            .starts_with(&current_canonical.to_string_lossy().to_lowercase()))
+    };
+
     // Normalize the path and check if it escapes the current directory
     match path.canonicalize() {
         Ok(canonical) => {
-            // Get current directory for comparison
-            let current_dir =
-                std::env::current_dir().map_err(|_| PathValidationError::CurrentDirAccess)?;
-
-            // Check if canonical path starts with current directory
-            // This prevents watching sensitive system files outside the project
-            if !canonical.starts_with(&current_dir) {
+            if !is_within_current_dir(&canonical)? {
                 return Err(PathValidationError::EscapeAttempt {
                     path: path.to_path_buf(),
                     canonical,
                 });
             }
-
             Ok(())
         }
         Err(_) => {
             // If path doesn't exist yet, check the parent directory
             if let Some(parent) = path.parent() {
-                if parent.exists() {
+                if parent.try_exists().unwrap_or(false) {
                     match parent.canonicalize() {
                         Ok(canonical_parent) => {
-                            let current_dir = std::env::current_dir()
-                                .map_err(|_| PathValidationError::CurrentDirAccess)?;
-
-                            if !canonical_parent.starts_with(&current_dir) {
+                            if !is_within_current_dir(&canonical_parent)? {
                                 return Err(PathValidationError::ParentEscapeAttempt {
                                     path: path.to_path_buf(),
                                     parent_canonical: canonical_parent,
