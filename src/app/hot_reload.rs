@@ -7,6 +7,113 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver};
 use std::time::{Duration, Instant};
 
+/// Validate and sanitize a path to prevent path traversal attacks
+///
+/// Returns an error if the path:
+/// - Contains excessive parent directory references (`../`)
+/// - Attempts to escape the current directory
+/// - Contains null bytes
+fn validate_path(path: &Path) -> Result<(), PathValidationError> {
+    let path_str = path.to_string_lossy();
+
+    // Check for null bytes (potential for string truncation attacks)
+    if path_str.contains('\0') {
+        return Err(PathValidationError::NullByte);
+    }
+
+    // Normalize the path and check if it escapes the current directory
+    match path.canonicalize() {
+        Ok(canonical) => {
+            // Get current directory for comparison
+            let current_dir =
+                std::env::current_dir().map_err(|_| PathValidationError::CurrentDirAccess)?;
+
+            // Check if canonical path starts with current directory
+            // This prevents watching sensitive system files outside the project
+            if !canonical.starts_with(&current_dir) {
+                return Err(PathValidationError::EscapeAttempt {
+                    path: path.to_path_buf(),
+                    canonical,
+                });
+            }
+
+            Ok(())
+        }
+        Err(_) => {
+            // If path doesn't exist yet, check the parent directory
+            if let Some(parent) = path.parent() {
+                if parent.exists() {
+                    match parent.canonicalize() {
+                        Ok(canonical_parent) => {
+                            let current_dir = std::env::current_dir()
+                                .map_err(|_| PathValidationError::CurrentDirAccess)?;
+
+                            if !canonical_parent.starts_with(&current_dir) {
+                                return Err(PathValidationError::ParentEscapeAttempt {
+                                    path: path.to_path_buf(),
+                                    parent_canonical: canonical_parent,
+                                });
+                            }
+                        }
+                        Err(_) => {
+                            return Err(PathValidationError::InvalidPath {
+                                path: path.to_path_buf(),
+                            });
+                        }
+                    }
+                }
+            }
+            // Path doesn't exist and parent doesn't exist - allow it (might be created later)
+            Ok(())
+        }
+    }
+}
+
+/// Errors that can occur during path validation
+#[derive(Debug, Clone, PartialEq)]
+pub enum PathValidationError {
+    /// Path contains null byte
+    NullByte,
+    /// Path attempts to escape the current directory
+    EscapeAttempt { path: PathBuf, canonical: PathBuf },
+    /// Parent directory attempts to escape the current directory
+    ParentEscapeAttempt {
+        path: PathBuf,
+        parent_canonical: PathBuf,
+    },
+    /// Invalid path that cannot be canonicalized
+    InvalidPath { path: PathBuf },
+    /// Cannot access current directory
+    CurrentDirAccess,
+}
+
+impl std::fmt::Display for PathValidationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NullByte => write!(f, "Path contains null byte"),
+            Self::EscapeAttempt { path, canonical } => write!(
+                f,
+                "Path escapes current directory: {:?} -> {:?}",
+                path, canonical
+            ),
+            Self::ParentEscapeAttempt {
+                path,
+                parent_canonical,
+            } => write!(
+                f,
+                "Parent directory escapes current directory: {:?} -> {:?}",
+                path, parent_canonical
+            ),
+            Self::InvalidPath { path } => {
+                write!(f, "Invalid path that cannot be canonicalized: {:?}", path)
+            }
+            Self::CurrentDirAccess => write!(f, "Cannot access current directory"),
+        }
+    }
+}
+
+impl std::error::Error for PathValidationError {}
+
 /// Hot reload event
 #[derive(Debug, Clone)]
 pub enum HotReloadEvent {
@@ -115,14 +222,32 @@ impl HotReload {
     ///
     /// Directories are watched recursively. Files are watched non-recursively.
     ///
+    /// # Security
+    ///
+    /// This function validates paths to prevent path traversal attacks.
+    /// Paths attempting to escape the current directory will be rejected.
+    ///
     /// # Errors
     ///
     /// Returns `notify::Error` if:
     /// - The path doesn't exist
     /// - Insufficient permissions to watch the path
     /// - The watcher limit has been reached
+    ///
+    /// Returns `PathValidationError` if:
+    /// - The path contains null bytes
+    /// - The path attempts to escape the current directory (e.g., `../../../etc/passwd`)
     pub fn watch(&mut self, path: impl AsRef<Path>) -> Result<(), notify::Error> {
         let path = path.as_ref().to_path_buf();
+
+        // Validate path to prevent traversal attacks
+        validate_path(&path).map_err(|e| {
+            notify::Error::new(notify::ErrorKind::Io(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                format!("Path validation failed: {}", e),
+            )))
+        })?;
+
         let mode = if path.is_dir() {
             RecursiveMode::Recursive
         } else {

@@ -23,6 +23,8 @@ const MAX_CSS_SIZE: usize = 1_000_000; // 1MB
 const MAX_RULES: usize = 10_000;
 /// Maximum number of total declarations across all rules
 const MAX_DECLARATIONS: usize = 10_000; // Lowered for testing
+/// Maximum comment length to prevent denial-of-service
+const MAX_COMMENT_LENGTH: usize = 100_000; // 100KB
 
 pub fn parse(css: &str) -> Result<StyleSheet, ParseError> {
     // Check CSS size limit before parsing
@@ -139,17 +141,36 @@ fn skip_whitespace_bytes(bytes: &[u8], mut pos: usize) -> usize {
 }
 
 /// Skip whitespace and block comments using byte slice (no allocation)
+///
+/// This function includes protection against malicious input that attempts
+/// to cause denial-of-service through malformed or unterminated comments.
 fn skip_whitespace_and_comments_bytes(bytes: &[u8], mut pos: usize) -> usize {
     loop {
         pos = skip_whitespace_bytes(bytes, pos);
+        // Check for block comment start (/*)
         if pos + 1 < bytes.len() && bytes[pos] == b'/' && bytes[pos + 1] == b'*' {
             // Skip block comment
             pos += 2;
-            while pos + 1 < bytes.len() && !(bytes[pos] == b'*' && bytes[pos + 1] == b'/') {
+            let comment_start = pos;
+
+            // Look for comment end (*/), with protection against malformed comments
+            while pos + 1 < bytes.len() {
+                // Check for maliciously long comments that could cause DoS
+                if pos - comment_start > MAX_COMMENT_LENGTH {
+                    // Return an error position that signals the comment is too long
+                    return bytes.len(); // Signal error condition
+                }
+
+                if bytes[pos] == b'*' && bytes[pos + 1] == b'/' {
+                    pos += 2; // Skip the closing */
+                    break;
+                }
                 pos += 1;
             }
-            if pos + 1 < bytes.len() {
-                pos += 2;
+
+            // If we reached the end without finding a closing */, signal an error
+            if pos >= bytes.len() || pos + 1 >= bytes.len() {
+                return pos;
             }
         } else {
             break;

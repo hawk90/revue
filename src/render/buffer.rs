@@ -20,17 +20,83 @@ pub struct Buffer {
     sequences: Vec<String>,
 }
 
+/// Maximum allowed buffer dimensions to prevent memory exhaustion
+/// Using u16::MAX squared would be 4+ billion cells, which is too large
+const MAX_BUFFER_DIMENSION: u16 = 16_384; // 16384x16384 = 268M cells max
+/// Maximum total buffer size (cells) to prevent memory exhaustion
+const MAX_BUFFER_SIZE: usize = 10_000_000; // 10M cells
+
+/// Error type for buffer creation failures
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::enum_variant_names)]
+pub enum BufferError {
+    /// Width exceeds maximum allowed dimension
+    InvalidWidth { width: u16, max: u16 },
+    /// Height exceeds maximum allowed dimension
+    InvalidHeight { height: u16, max: u16 },
+    /// Total buffer size would be too large
+    InvalidSize { size: usize, max: usize },
+}
+
+impl std::fmt::Display for BufferError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidWidth { width, max } => write!(
+                f,
+                "Buffer width {} exceeds maximum allowed dimension {}",
+                width, max
+            ),
+            Self::InvalidHeight { height, max } => write!(
+                f,
+                "Buffer height {} exceeds maximum allowed dimension {}",
+                height, max
+            ),
+            Self::InvalidSize { size, max } => write!(
+                f,
+                "Buffer size {} cells exceeds maximum allowed {} cells",
+                size, max
+            ),
+        }
+    }
+}
+
+impl std::error::Error for BufferError {}
+
 impl Buffer {
     /// Create a new buffer with the given dimensions
+    ///
+    /// # Panics
+    ///
+    /// Panics if:
+    /// - Width exceeds `MAX_BUFFER_DIMENSION` (16384)
+    /// - Height exceeds `MAX_BUFFER_DIMENSION` (16384)
+    /// - Total size (width * height) exceeds `MAX_BUFFER_SIZE` (10,000,000 cells)
+    ///
+    /// Use [`Buffer::try_new()`](Self::try_new) for a non-panicking version.
     pub fn new(width: u16, height: u16) -> Self {
+        // Validate individual dimensions first (runtime, not just debug_assert)
+        if width > MAX_BUFFER_DIMENSION {
+            panic!(
+                "Buffer width {} exceeds maximum allowed dimension {}",
+                width, MAX_BUFFER_DIMENSION
+            );
+        }
+        if height > MAX_BUFFER_DIMENSION {
+            panic!(
+                "Buffer height {} exceeds maximum allowed dimension {}",
+                height, MAX_BUFFER_DIMENSION
+            );
+        }
+
+        // Check total size (with overflow protection) - runtime check
         let size = (width as usize).saturating_mul(height as usize);
-        debug_assert!(
-            size <= (u16::MAX as usize) * (u16::MAX as usize),
-            "Buffer size overflow: {}x{} = {}",
-            width,
-            height,
-            size
-        );
+        if size > MAX_BUFFER_SIZE {
+            panic!(
+                "Buffer size {} cells ({}x{}) exceeds maximum allowed {} cells",
+                size, width, height, MAX_BUFFER_SIZE
+            );
+        }
+
         Self {
             cells: vec![Cell::default(); size],
             width,
@@ -39,6 +105,50 @@ impl Buffer {
             hyperlink_cache: HashMap::new(),
             sequences: Vec::new(),
         }
+    }
+
+    /// Try to create a new buffer with the given dimensions
+    ///
+    /// Returns `Ok(buffer)` if dimensions are valid, `Err(BufferError)` otherwise.
+    ///
+    /// # Errors
+    ///
+    /// Returns `BufferError` if:
+    /// - Width exceeds `MAX_BUFFER_DIMENSION` (16384)
+    /// - Height exceeds `MAX_BUFFER_DIMENSION` (16384)
+    /// - Total size (width * height) exceeds `MAX_BUFFER_SIZE` (10,000,000 cells)
+    pub fn try_new(width: u16, height: u16) -> Result<Self, BufferError> {
+        // Validate individual dimensions first
+        if width > MAX_BUFFER_DIMENSION {
+            return Err(BufferError::InvalidWidth {
+                width,
+                max: MAX_BUFFER_DIMENSION,
+            });
+        }
+        if height > MAX_BUFFER_DIMENSION {
+            return Err(BufferError::InvalidHeight {
+                height,
+                max: MAX_BUFFER_DIMENSION,
+            });
+        }
+
+        // Check total size (with overflow protection)
+        let size = (width as usize).saturating_mul(height as usize);
+        if size > MAX_BUFFER_SIZE {
+            return Err(BufferError::InvalidSize {
+                size,
+                max: MAX_BUFFER_SIZE,
+            });
+        }
+
+        Ok(Self {
+            cells: vec![Cell::default(); size],
+            width,
+            height,
+            hyperlinks: Vec::new(),
+            hyperlink_cache: HashMap::new(),
+            sequences: Vec::new(),
+        })
     }
 
     /// Get the index for a position
