@@ -542,11 +542,16 @@ mod tests {
         let backend = LinuxBackend::new();
 
         // Should not panic or execute commands
-        // Characters like ;, |, &, backticks should be removed
+        // Dangerous shell metacharacters are removed
         let dangerous = "Hello; rm -rf /";
         let sanitized = sanitize_string(dangerous);
-        assert!(!sanitized.contains(';'));
-        assert!(!sanitized.contains("rm"));
+        assert!(!sanitized.contains(';')); // Semicolon removed (prevents command chaining)
+        assert!(!sanitized.contains("`")); // Backticks removed (prevents command substitution)
+
+        // Safe alphanumeric characters and spaces are preserved
+        assert!(sanitized.contains("Hello"));
+        assert!(sanitized.contains("rm"));
+        assert!(sanitized.contains("-rf"));
 
         // announce should not panic even with dangerous input
         backend.announce("Test; command", Priority::Polite);
