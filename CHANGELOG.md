@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.44.12](https://github.com/hawk90/revue/compare/v2.44.11...v2.44.12) (2026-02-01)
+
+
+### Bug Fixes
+
+* **form:** improve email validation with better format checking ([#378](https://github.com/hawk90/revue/issues/378)) ([f6bc9b7](https://github.com/hawk90/revue/commit/f6bc9b7492e99456dce026e8dbb1fa8157e28068))
+
 ## [2.44.11](https://github.com/hawk90/revue/compare/v2.44.10...v2.44.11) (2026-02-01)
 
 
