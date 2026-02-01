@@ -108,7 +108,10 @@ impl TextSizing {
     pub fn scaled_width(width: u16, tier: u8) -> u16 {
         let (n, d) = Self::size_ratio(tier);
         // Formula: width / 2 * d / n (from mdfried)
-        width / 2 * u16::from(d) / u16::from(n)
+        // Use saturating arithmetic to prevent overflow for large width values
+        // Width is first halved, then multiplied by d, then divided by n
+        let half_width = width / 2;
+        half_width.saturating_mul(u16::from(d)) / u16::from(n)
     }
 
     /// Generate the OSC 66 escape sequence for scaled text
