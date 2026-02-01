@@ -84,20 +84,25 @@ static GLOBAL_CONTEXTS: RefCell<HashMap<ContextId, ContextValue>> = RefCell::new
 ## High Priority
 
 ### 4. HIGH: Code Duplication - Poisoned Lock Recovery
-**Status**: Pending
+**Status**: ✅ Complete
 **Location**: 80+ instances across reactive system
 **Task ID**: #4
 
 **Description**: Pattern `.unwrap_or_else(|poisoned| poisoned.into_inner())` repeated 80+ times.
 
-**Fix**: Create utility function:
-```rust
-fn unwrap_lock_or_recover<T>(guard: Result<T, PoisonError<T>>) -> T {
-    guard.unwrap_or_else(|poisoned| poisoned.into_inner())
-}
-```
+**Resolution**: Replaced all 25 occurrences with centralized utility functions from `src/utils/lock.rs`:
+- `read_or_recover()` for RwLock read guards
+- `write_or_recover()` for RwLock write guards
+- `lock_or_recover()` for Mutex guards
 
-**Impact**: Reduce code duplication, improve maintainability
+Updated files:
+- src/reactive/signal.rs: 9 occurrences
+- src/reactive/computed.rs: 4 occurrences
+- src/reactive/effect.rs: 2 occurrences
+- src/reactive/incremental.rs: 2 occurrences
+- src/patterns/lazy/lazy_sync.rs: 8 occurrences
+
+**Impact**: Reduced code duplication, improved maintainability
 
 ---
 
@@ -366,10 +371,10 @@ const DEFAULT_PINCH_SCALE_PER_SCROLL: f64 = 0.1;
 | Category | Total | Completed | Pending |
 |----------|-------|-----------|---------|
 | Critical Bugs | 3 | 3 | 0 |
-| High Priority | 8 | 0 | 8 |
+| High Priority | 8 | 1 | 7 |
 | Medium Priority | 10 | 0 | 10 |
 | Low Priority | 4 | 0 | 4 |
-| **Total** | **25** | **3** | **22** |
+| **Total** | **25** | **4** | **21** |
 
 ---
 
