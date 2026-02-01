@@ -143,8 +143,25 @@ fn validate_file_url(url: &str) -> Result<(), BrowserError> {
     // file://localhost/etc/passwd -> /etc/passwd
     let path_str = if let Some(stripped) = url.strip_prefix("file://localhost/") {
         stripped.to_string()
-    } else if let Some(stripped) = url.strip_prefix("file://") {
+    } else if let Some(stripped) = url.strip_prefix("file:///") {
         stripped.to_string()
+    } else if let Some(stripped) = url.strip_prefix("file://") {
+        // file:// with something after it - check if it's a remote host
+        let rest = stripped;
+        // If there's no "/" after "file://", or the first "/" is after a hostname,
+        // it's a remote URL (file://evil.com/etc/passwd)
+        if rest.contains('/') {
+            let first_slash = rest.find('/').unwrap();
+            // Check if there's a hostname before the first slash
+            // (i.e., the path doesn't start with "/")
+            if !rest[..first_slash].is_empty() && !rest.starts_with('/') {
+                return Err(BrowserError::InvalidUrl(
+                    "Remote file:// URLs not allowed".to_string(),
+                ));
+            }
+        }
+        // Local file:// URL (file:///path or file://localhost/path)
+        rest.to_string()
     } else {
         return Err(BrowserError::InvalidUrl("Invalid file:// URL".to_string()));
     };
