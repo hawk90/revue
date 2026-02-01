@@ -460,7 +460,10 @@ pub fn format_number_short(n: u64) -> String {
 /// assert_eq!(format_percent(0.333), "33%");
 /// ```
 pub fn format_percent(ratio: f64) -> String {
-    format!("{}%", (ratio * 100.0).round() as i32)
+    // Clamp to i32 range to prevent overflow, then format
+    let percent = (ratio * 100.0).round();
+    let clamped = percent.clamp(i32::MIN as f64, i32::MAX as f64) as i32;
+    format!("{}%", clamped)
 }
 
 /// Format a percentage with decimals

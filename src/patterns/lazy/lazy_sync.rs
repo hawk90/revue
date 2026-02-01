@@ -1,8 +1,8 @@
 //! Thread-safe lazy data
 
-use std::sync::{Arc, RwLock};
-
 use crate::patterns::lazy::types::LoadState;
+use crate::utils::lock::{read_or_recover, write_or_recover};
+use std::sync::{Arc, RwLock};
 
 /// Thread-safe lazy data
 pub struct LazySync<T, F>
@@ -39,10 +39,7 @@ where
         T: Clone,
     {
         self.ensure_loaded();
-        self.value
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .clone()
+        read_or_recover(&self.value).clone()
     }
 
     /// Get a read guard to the value without cloning (zero-copy access)
@@ -60,9 +57,7 @@ where
     /// ```
     pub fn read(&self) -> std::sync::RwLockReadGuard<'_, Option<T>> {
         self.ensure_loaded();
-        self.value
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        read_or_recover(&self.value)
     }
 
     /// Try to get a read guard without blocking
@@ -74,59 +69,35 @@ where
 
     /// Check if data is loaded
     pub fn is_loaded(&self) -> bool {
-        *self
-            .state
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            == LoadState::Loaded
+        *read_or_recover(&self.state) == LoadState::Loaded
     }
 
     /// Get current state
     pub fn state(&self) -> LoadState {
-        *self
-            .state
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        *read_or_recover(&self.state)
     }
 
     /// Ensure the data is loaded
     fn ensure_loaded(&self) {
         {
-            let state = self
-                .state
-                .read()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let state = read_or_recover(&self.state);
             if *state != LoadState::Idle {
                 return;
             }
         }
 
         {
-            let mut state = self
-                .state
-                .write()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut state = write_or_recover(&self.state);
             if *state != LoadState::Idle {
                 return; // Double-check after acquiring write lock
             }
             *state = LoadState::Loading;
         }
 
-        if let Some(loader) = self
-            .loader
-            .write()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .take()
-        {
+        if let Some(loader) = write_or_recover(&self.loader).take() {
             let value = loader();
-            *self
-                .value
-                .write()
-                .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(value);
-            *self
-                .state
-                .write()
-                .unwrap_or_else(|poisoned| poisoned.into_inner()) = LoadState::Loaded;
+            *write_or_recover(&self.value) = Some(value);
+            *write_or_recover(&self.state) = LoadState::Loaded;
         }
     }
 }

@@ -159,9 +159,21 @@ type ContextValue = Arc<dyn Any + Send + Sync>;
 
 thread_local! {
     /// Stack of context scopes for nested providers
+    ///
+    /// Each scope is a HashMap of ContextId -> ContextValue.
+    /// Scopes are pushed/popped by [`ContextScope`] for automatic cleanup.
     static CONTEXT_STACK: RefCell<Vec<HashMap<ContextId, ContextValue>>> = RefCell::new(Vec::new());
 
     /// Global context store for root-level providers
+    ///
+    /// Stores context values that persist until explicitly cleared.
+    /// Use [`clear_context`] or [`clear_all_contexts`] for cleanup.
+    ///
+    /// # Memory Notes
+    ///
+    /// - Contexts persist for the lifetime of the thread
+    /// - Creating many unique contexts over time may consume unbounded memory
+    /// - For dynamic/contextual contexts, use [`ContextScope`] instead
     static GLOBAL_CONTEXTS: RefCell<HashMap<ContextId, ContextValue>> = RefCell::new(HashMap::new());
 }
 
@@ -199,6 +211,12 @@ pub fn create_context_with_default<T>(default: T) -> Context<T> {
 ///
 /// The value will be available to all descendants via [`use_context`].
 ///
+/// # Notes
+///
+/// - Provided values persist until explicitly cleared with [`clear_context`]
+/// - Creating many unique contexts over time may consume unbounded memory
+/// - For scoped contexts, consider using [`ContextScope`] instead
+///
 /// # Example
 ///
 /// ```rust,ignore
@@ -219,6 +237,12 @@ pub fn provide<T: Clone + Send + Sync + 'static>(context: &Context<T>, value: T)
 /// Provide a context value with a signal for reactive updates
 ///
 /// Returns the signal so you can update the value later.
+///
+/// # Notes
+///
+/// - Provided values persist until explicitly cleared with [`clear_context`]
+/// - Creating many unique contexts over time may consume unbounded memory
+/// - For scoped contexts, consider using [`ContextScope`] instead
 ///
 /// # Example
 ///
@@ -372,13 +396,31 @@ pub fn has_context<T: Clone + Send + Sync + 'static>(context: &Context<T>) -> bo
 }
 
 /// Clear a context value
+///
+/// Removes the context value from the global store.
+/// Use this to free memory when a context is no longer needed.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use revue::reactive::{create_context, provide, clear_context};
+///
+/// let theme = create_context::<String>();
+/// provide(&theme, "dark".to_string());
+///
+/// // Later, when the theme is no longer needed:
+/// clear_context(&theme);
+/// ```
 pub fn clear_context<T>(context: &Context<T>) {
     GLOBAL_CONTEXTS.with(|store| {
         store.borrow_mut().remove(&context.id);
     });
 }
 
-/// Clear all context values (useful for testing)
+/// Clear all context values
+///
+/// Removes all context values from both the global store and the scope stack.
+/// Useful for testing or resetting the application state.
 pub fn clear_all_contexts() {
     GLOBAL_CONTEXTS.with(|store| {
         store.borrow_mut().clear();

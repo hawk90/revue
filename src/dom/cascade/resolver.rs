@@ -203,7 +203,8 @@ impl<'a> StyleResolver<'a> {
         }
 
         // Sort by specificity (ascending)
-        matched.sort_by(|a, b| a.specificity.cmp(&b.specificity));
+        // Use insertion sort for small arrays (typically < 10 items) for better performance
+        Self::sort_matched_small(&mut matched);
 
         matched
     }
@@ -657,6 +658,21 @@ impl<'a> StyleResolver<'a> {
             get_node(parent.children[idx - 1])
         } else {
             None
+        }
+    }
+
+    /// Insertion sort for small arrays
+    ///
+    /// For small collections (typically < 10 items), insertion sort is faster
+    /// than quicksort/merge sort due to lower constant factors and better cache locality.
+    /// This is optimal for style matching where most nodes match < 8 rules.
+    fn sort_matched_small(matched: &mut [MatchedRule<'_>]) {
+        for i in 1..matched.len() {
+            let mut j = i;
+            while j > 0 && matched[j - 1].specificity > matched[j].specificity {
+                matched.swap(j - 1, j);
+                j -= 1;
+            }
         }
     }
 }
