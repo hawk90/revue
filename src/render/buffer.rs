@@ -132,16 +132,28 @@ impl Buffer {
     }
 
     /// Fill a rectangular area with a cell
+    ///
+    /// Optimized using slice operations for better performance.
     pub fn fill(&mut self, x: u16, y: u16, width: u16, height: u16, cell: Cell) {
-        for dy in 0..height {
-            let Some(cy) = y.checked_add(dy) else {
-                break;
-            };
-            for dx in 0..width {
-                let Some(cx) = x.checked_add(dx) else {
-                    break;
-                };
-                self.set(cx, cy, cell); // Cell is Copy now
+        // Clamp the fill region to buffer bounds
+        let x_end = x.saturating_add(width).min(self.width);
+        let y_end = y.saturating_add(height).min(self.height);
+        let x = x.min(self.width);
+        let y = y.min(self.height);
+
+        if x >= x_end || y >= y_end {
+            return;
+        }
+
+        let row_width = self.width as usize;
+        let fill_width = (x_end - x) as usize;
+
+        // Fill each row using slice operations for better performance
+        for row_y in y..y_end {
+            let start_idx = (row_y as usize) * row_width + (x as usize);
+            let end_idx = start_idx + fill_width;
+            if end_idx <= self.cells.len() {
+                self.cells[start_idx..end_idx].fill(cell);
             }
         }
     }
@@ -153,27 +165,31 @@ impl Buffer {
     }
 
     /// Clear the buffer
+    ///
+    /// Optimized using slice::fill with default cell.
     pub fn clear(&mut self) {
-        for cell in &mut self.cells {
-            cell.reset();
-        }
+        self.cells.fill(Cell::default());
     }
 
     /// Resize the buffer, keeping content where possible
+    ///
+    /// Optimized using slice copy operations for better performance.
     pub fn resize(&mut self, width: u16, height: u16) {
         let new_size = (width as usize) * (height as usize);
         let mut new_cells = vec![Cell::empty(); new_size];
 
-        // Copy existing content
+        // Copy existing content using slice operations
+        let old_row_width = self.width as usize;
+        let new_row_width = width as usize;
         let copy_width = self.width.min(width) as usize;
         let copy_height = self.height.min(height) as usize;
 
         for y in 0..copy_height {
-            for x in 0..copy_width {
-                let old_idx = y * (self.width as usize) + x;
-                let new_idx = y * (width as usize) + x;
-                new_cells[new_idx] = self.cells[old_idx]; // Cell is Copy
-            }
+            let old_start = y * old_row_width;
+            let new_start = y * new_row_width;
+            // Copy entire row at once using slice copy
+            new_cells[new_start..new_start + copy_width]
+                .copy_from_slice(&self.cells[old_start..old_start + copy_width]);
         }
 
         self.cells = new_cells;
