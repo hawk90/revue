@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.44.13](https://github.com/hawk90/revue/compare/v2.44.12...v2.44.13) (2026-02-01)
+
+
+### Bug Fixes
+
+* **security:** harden against path traversal, buffer overflow, and DoS ([#380](https://github.com/hawk90/revue/issues/380)) ([f6b0b1e](https://github.com/hawk90/revue/commit/f6b0b1efd2e49f89d340536a189c9b95de6a01fa))
+
 ## [2.44.12](https://github.com/hawk90/revue/compare/v2.44.11...v2.44.12) (2026-02-01)
 
 
