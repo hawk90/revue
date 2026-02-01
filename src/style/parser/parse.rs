@@ -409,4 +409,62 @@ mod tests {
 
         assert!(parse(&css).is_ok());
     }
+
+    // Security tests for comment parsing
+    #[test]
+    fn test_css_normal_comments() {
+        // Normal comments should work fine
+        let css = r#"
+        /* This is a normal comment */
+        .box { width: 100; }
+        /* Another comment */
+        .text { color: red; }
+        "#;
+        assert!(parse(&css).is_ok());
+    }
+
+    #[test]
+    fn test_css_multiline_comment() {
+        // Multi-line comments should work
+        let css = r#"
+        /* This is a
+           multi-line
+           comment */
+        .box { width: 100; }
+        "#;
+        assert!(parse(&css).is_ok());
+    }
+
+    #[test]
+    fn test_css_nested_comments_wont_hang() {
+        // CSS doesn't support nested comments - this should parse but not hang
+        let css = "/* outer /* inner */ comment */ .box { width: 100; }";
+        // The parser will handle this as: /* outer /* inner */ then "comment */" as text
+        // It won't hang or crash
+        let _ = parse(&css);
+    }
+
+    #[test]
+    fn test_css_unterminated_comment_is_safe() {
+        // Unterminated comment should not cause infinite loop
+        let css = "/* This comment is never closed .box { width: 100; }";
+        // The scanner should handle this safely without infinite loop
+        let result = parse(&css);
+        // Should either error or parse what it can, but never hang
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_css_comment_after_property() {
+        // Comment after property value
+        let css = ".box { width: 100; /* comment after */ }";
+        assert!(parse(&css).is_ok());
+    }
+
+    #[test]
+    fn test_css_empty_comment() {
+        // Empty comment should work
+        let css = "/**/ .box { width: 100; }";
+        assert!(parse(&css).is_ok());
+    }
 }

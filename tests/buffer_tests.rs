@@ -1,6 +1,6 @@
 //! Integration tests for Buffer and related render APIs
 
-use revue::render::{Buffer, Cell, Modifier};
+use revue::render::{Buffer, BufferError, Cell, Modifier};
 use revue::style::Color;
 
 #[test]
@@ -354,4 +354,104 @@ fn test_modifier_merge() {
     let merged = m1.merge(&m2);
     assert!(merged.contains(Modifier::BOLD));
     assert!(merged.contains(Modifier::ITALIC));
+}
+
+// Security tests for buffer size limits
+#[test]
+fn test_buffer_try_new_valid_dimensions() {
+    let buffer = Buffer::try_new(100, 50);
+    assert!(buffer.is_ok());
+    assert_eq!(buffer.unwrap().width(), 100);
+}
+
+#[test]
+fn test_buffer_try_new_width_exceeds_maximum() {
+    // MAX_BUFFER_DIMENSION is 16,384
+    let result = Buffer::try_new(20_000, 10);
+    assert!(result.is_err());
+    match result {
+        Err(BufferError::InvalidWidth { width, max }) => {
+            assert_eq!(width, 20_000);
+            assert_eq!(max, 16_384);
+        }
+        _ => panic!("Expected InvalidWidth error"),
+    }
+}
+
+#[test]
+fn test_buffer_try_new_height_exceeds_maximum() {
+    let result = Buffer::try_new(10, 20_000);
+    assert!(result.is_err());
+    match result {
+        Err(BufferError::InvalidHeight { height, max }) => {
+            assert_eq!(height, 20_000);
+            assert_eq!(max, 16_384);
+        }
+        _ => panic!("Expected InvalidHeight error"),
+    }
+}
+
+#[test]
+fn test_buffer_try_new_size_exceeds_maximum() {
+    // MAX_BUFFER_SIZE is 10,000,000 cells
+    // 4000 x 3000 = 12,000,000 which exceeds the limit
+    let result = Buffer::try_new(4000, 3000);
+    assert!(result.is_err());
+    match result {
+        Err(BufferError::InvalidSize { size, max }) => {
+            assert_eq!(size, 12_000_000);
+            assert_eq!(max, 10_000_000);
+        }
+        _ => panic!("Expected InvalidSize error"),
+    }
+}
+
+#[test]
+fn test_buffer_try_new_exactly_at_limits() {
+    // Test boundary conditions - exactly at the limit should work
+    let result = Buffer::try_new(16_384, 10);
+    assert!(result.is_ok());
+
+    // But 16_384 x 611 = 10,010,304 which exceeds size limit
+    let result = Buffer::try_new(16_384, 611);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_buffer_error_display() {
+    let err = BufferError::InvalidWidth {
+        width: 20_000,
+        max: 16_384,
+    };
+    let msg = err.to_string();
+    assert!(msg.contains("width"));
+    assert!(msg.contains("20000"));
+    assert!(msg.contains("16384"));
+
+    let err = BufferError::InvalidHeight {
+        height: 20_000,
+        max: 16_384,
+    };
+    let msg = err.to_string();
+    assert!(msg.contains("height"));
+
+    let err = BufferError::InvalidSize {
+        size: 12_000_000,
+        max: 10_000_000,
+    };
+    let msg = err.to_string();
+    assert!(msg.contains("size"));
+}
+
+#[test]
+#[should_panic(expected = "width")]
+fn test_buffer_new_panics_on_invalid_width() {
+    // Buffer::new() should panic on invalid dimensions
+    let _ = Buffer::new(20_000, 10);
+}
+
+#[test]
+#[should_panic(expected = "size")]
+fn test_buffer_new_panics_on_invalid_size() {
+    let _ = Buffer::new(4000, 3000);
 }

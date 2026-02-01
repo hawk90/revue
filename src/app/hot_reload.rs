@@ -595,4 +595,60 @@ mod tests {
         assert_eq!(builder.config.debounce, Duration::from_millis(150));
         assert_eq!(builder.paths.len(), 3);
     }
+
+    // Security tests for path validation
+    #[test]
+    fn test_hot_reload_watch_null_byte_rejected() {
+        let mut hr = HotReload::new().unwrap();
+        // Path with null byte should be rejected
+        let result = hr.watch("test\x00file");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hot_reload_watch_path_traversal_rejected() {
+        let mut hr = HotReload::new().unwrap();
+        // Attempt to escape current directory should be rejected
+        let result = hr.watch("../../../etc/passwd");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hot_reload_watch_absolute_path_outside_rejected() {
+        let mut hr = HotReload::new().unwrap();
+        // Absolute path outside project should be rejected
+        let result = hr.watch("/etc/passwd");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hot_reload_watch_relative_path_accepted() {
+        let mut hr = HotReload::new().unwrap();
+        // Valid relative path within project should be accepted
+        let result = hr.watch("src");
+        // Only check if src exists, otherwise we expect an error from the watcher
+        if std::path::Path::new("src").exists() {
+            assert!(result.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_hot_reload_watch_current_dir_accepted() {
+        let mut hr = HotReload::new().unwrap();
+        // Current directory should always be accepted
+        let result = hr.watch(".");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_path_validation_error_display() {
+        let err = PathValidationError::NullByte;
+        assert!(err.to_string().contains("null byte"));
+
+        let err = PathValidationError::EscapeAttempt {
+            path: PathBuf::from("../../../etc/passwd"),
+            canonical: PathBuf::from("/etc/passwd"),
+        };
+        assert!(err.to_string().contains("escapes"));
+    }
 }
