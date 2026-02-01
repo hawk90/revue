@@ -637,4 +637,37 @@ mod tests {
         assert_eq!(format_rate(1024), "1.0 KB/s");
         assert_eq!(format_rate(1048576), "1.0 MB/s");
     }
+
+    // Edge case tests for large values
+
+    #[test]
+    fn test_format_size_petabyte_range() {
+        // Test very large values that might lose precision with f64
+        let pb = 1_000_000_000_000_000_u64; // 1 PB
+        let result = format_size(pb);
+        // Should handle without panic, format may vary
+        assert!(result.contains("PB") || result.contains("TB") || result.contains("EB"));
+    }
+
+    #[test]
+    fn test_duration_parts_max_seconds() {
+        // Test with u64::MAX - should handle gracefully
+        let parts = DurationParts::from_seconds(u64::MAX);
+        // Should produce some reasonable output without panic
+        let _format = format!(
+            "{}d {}h {}m {}s",
+            parts.days, parts.hours, parts.minutes, parts.seconds
+        );
+        // We just verify it doesn't panic - the exact values aren't important
+        assert!(parts.days > 0 || parts.hours > 0);
+    }
+
+    #[test]
+    fn test_duration_parts_zero() {
+        let parts = DurationParts::from_seconds(0);
+        assert_eq!(parts.days, 0);
+        assert_eq!(parts.hours, 0);
+        assert_eq!(parts.minutes, 0);
+        assert_eq!(parts.seconds, 0);
+    }
 }

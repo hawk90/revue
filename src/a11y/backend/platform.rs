@@ -2,6 +2,8 @@
 
 use crate::utils::accessibility::Priority;
 use crate::utils::lock::{read_or_recover, write_or_recover};
+#[cfg(target_os = "linux")]
+use crate::utils::shell::sanitize_string;
 use std::sync::{Arc, RwLock};
 
 use super::types::ScreenReader;
@@ -174,6 +176,9 @@ impl ScreenReader for LinuxBackend {
             {
                 use std::process::Command;
 
+                // Sanitize message to prevent command injection
+                let sanitized = sanitize_string(message);
+
                 // Use spd-say (speech-dispatcher) as fallback
                 let mut cmd = Command::new("spd-say");
 
@@ -181,7 +186,7 @@ impl ScreenReader for LinuxBackend {
                     cmd.arg("--priority").arg("important");
                 }
 
-                cmd.arg(message);
+                cmd.arg(&sanitized);
                 let _ = cmd.spawn();
             }
         }
@@ -528,6 +533,25 @@ mod tests {
         let backend = LinuxBackend::new();
         // Should not panic
         backend.stop();
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_linux_backend_sanitizes_dangerous_input() {
+        use crate::utils::shell::sanitize_string;
+        let backend = LinuxBackend::new();
+
+        // Should not panic or execute commands
+        // Characters like ;, |, &, backticks should be removed
+        let dangerous = "Hello; rm -rf /";
+        let sanitized = sanitize_string(dangerous);
+        assert!(!sanitized.contains(';'));
+        assert!(!sanitized.contains("rm"));
+
+        // announce should not panic even with dangerous input
+        backend.announce("Test; command", Priority::Polite);
+        backend.announce("Test | pipe", Priority::Polite);
+        backend.announce("Test `backtick`", Priority::Polite);
     }
 
     #[test]

@@ -6,6 +6,9 @@ use crate::widget::{RenderContext, View};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Maximum file size for snapshot files to prevent DoS
+const MAX_SNAPSHOT_FILE_SIZE: u64 = 10 * 1024 * 1024; // 10MB (snapshots can be large)
+
 /// Snapshot test result
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SnapshotResult {
@@ -196,8 +199,21 @@ impl Snapshot {
             let _ = fs::create_dir_all(parent);
         }
 
-        // Read existing snapshot
-        let expected = fs::read_to_string(&path).ok();
+        // Read existing snapshot with size validation
+        let expected = if path.exists() {
+            // Check file size to prevent DoS
+            let metadata_ok = fs::metadata(&path)
+                .map(|m| m.len() <= MAX_SNAPSHOT_FILE_SIZE)
+                .unwrap_or(false);
+
+            if metadata_ok {
+                fs::read_to_string(&path).ok()
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
         match expected {
             Some(expected) if expected == *actual => SnapshotResult::Match,

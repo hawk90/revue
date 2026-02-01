@@ -13,6 +13,8 @@
 //! open_browser("/path/to/file.pdf");
 //! ```
 
+use std::path::Path;
+
 use std::process::Command;
 
 /// Error type for browser operations
@@ -39,10 +41,12 @@ pub enum BrowserError {
 /// - `$(` - command substitution (bash)
 /// - `\n`, `\r` - command separators
 /// - `0x00` - null byte
+/// - Unicode control characters (U+0080-U+009F)
 fn validate_shell_safe(input: &str) -> Result<(), BrowserError> {
     let dangerous = ['&', '|', ';', '`', '\n', '\r', '\x00'];
 
     for ch in input.chars() {
+        // Check ASCII dangerous characters
         if dangerous.contains(&ch) {
             return Err(BrowserError::DangerousCharacters(format!(
                 "character '{}' not allowed",
@@ -55,6 +59,14 @@ fn validate_shell_safe(input: &str) -> Result<(), BrowserError> {
                 } else {
                     ch.to_string()
                 }
+            )));
+        }
+
+        // Check Unicode control characters (C1 control characters: U+0080-U+009F)
+        if ('\u{0080}'..='\u{009F}').contains(&ch) {
+            return Err(BrowserError::DangerousCharacters(format!(
+                "control character U+{:04X} not allowed",
+                ch as u32
             )));
         }
     }
@@ -113,6 +125,64 @@ fn validate_url_format(url: &str) -> Result<(), BrowserError> {
                 "URL scheme '{}' is not allowed",
                 scheme
             )));
+        }
+
+        // Additional validation for file:// URLs to prevent access to sensitive files
+        if scheme == "file" {
+            validate_file_url(url)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate file:// URLs to prevent access to sensitive system files
+fn validate_file_url(url: &str) -> Result<(), BrowserError> {
+    // Extract the path from file:// URL
+    // file:///etc/passwd -> /etc/passwd
+    // file://localhost/etc/passwd -> /etc/passwd
+    let path_str = if let Some(stripped) = url.strip_prefix("file://localhost/") {
+        stripped.to_string()
+    } else if let Some(stripped) = url.strip_prefix("file://") {
+        stripped.to_string()
+    } else {
+        return Err(BrowserError::InvalidUrl("Invalid file:// URL".to_string()));
+    };
+
+    let path = Path::new(&path_str);
+
+    // Check for path traversal components in file:// URLs
+    for component in path.components() {
+        use std::path::Component;
+        match component {
+            Component::ParentDir => {
+                return Err(BrowserError::InvalidUrl(
+                    "Path traversal not allowed in file:// URLs".to_string(),
+                ));
+            }
+            Component::RootDir => {
+                // Absolute paths in file:// URLs could access system files
+                // Block access to sensitive system directories
+                let path_str_lower = path_str.to_lowercase();
+                for sensitive in &[
+                    "/etc/passwd",
+                    "/etc/shadow",
+                    "/etc/hosts",
+                    "/etc/sudoers",
+                    "/root/",
+                    "/boot/",
+                    "/sys/",
+                    "/proc/",
+                ] {
+                    if path_str_lower.starts_with(sensitive) {
+                        return Err(BrowserError::InvalidUrl(format!(
+                            "Access to {} is not allowed",
+                            sensitive
+                        )));
+                    }
+                }
+            }
+            _ => {}
         }
     }
 
@@ -389,7 +459,45 @@ mod tests {
     fn test_reject_dangerous_scheme() {
         assert!(validate_input("javascript:alert(1)").is_err());
         assert!(validate_input("data:text/html,<script>").is_err());
-        assert!(validate_input("file:///etc/passwd").is_ok()); // file is allowed
+    }
+
+    #[test]
+    fn test_reject_unicode_control_characters() {
+        // C1 control characters (U+0080-U+009F)
+        assert!(validate_input("https://example.com\u{0080}test").is_err());
+        assert!(validate_input("https://example.com\u{009F}test").is_err());
+        assert!(open_url("https://example.com\u{0090}malicious").is_err());
+    }
+
+    #[test]
+    fn test_reject_file_url_with_path_traversal() {
+        // file:// URLs with .. should be rejected
+        assert!(validate_input("file:///etc/../passwd").is_err());
+        assert!(open_url("file://../../../etc/passwd").is_err());
+    }
+
+    #[test]
+    fn test_reject_file_url_sensitive_paths() {
+        // Sensitive system files should be blocked
+        assert!(validate_input("file:///etc/passwd").is_err());
+        assert!(validate_input("file:///etc/shadow").is_err());
+        assert!(validate_input("file:///etc/hosts").is_err());
+        assert!(validate_input("file:///root/.ssh/id_rsa").is_err());
+        assert!(open_url("file:///etc/passwd").is_err());
+    }
+
+    #[test]
+    fn test_allow_safe_file_urls() {
+        // Safe file:// URLs should be allowed
+        assert!(validate_input("file:///home/user/document.pdf").is_ok());
+        assert!(validate_input("file:///tmp/file.txt").is_ok());
+    }
+
+    #[test]
+    fn test_reject_remote_file_urls() {
+        // file:// URLs with remote hosts should be rejected
+        assert!(validate_input("file://evil.com/etc/passwd").is_err());
+        assert!(validate_input("file://192.168.1.1/share/file").is_err());
     }
 
     #[test]

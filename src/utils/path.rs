@@ -691,6 +691,7 @@ impl PathDisplay {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::shell::{escape_applescript, escape_powershell};
 
     #[test]
     fn test_shorten_path() {
@@ -1526,5 +1527,74 @@ mod tests {
         // We can't actually modify environment in tests, but the logic
         // ensures that if HOME points to a non-existent path, None is returned
         // This is more of a documentation of expected behavior
+    }
+
+    // Additional edge case tests
+
+    #[test]
+    #[cfg(unix)]
+    fn test_home_dir_with_unset_env() {
+        // Temporarily unset HOME and USERPROFILE
+        let home_backup = std::env::var("HOME").ok();
+        let userprofile_backup = std::env::var("USERPROFILE").ok();
+
+        std::env::remove_var("HOME");
+        std::env::remove_var("USERPROFILE");
+
+        let result = home_dir();
+        assert!(
+            result.is_none(),
+            "home_dir should return None when HOME/USERPROFILE not set"
+        );
+
+        // Restore environment
+        if let Some(home) = home_backup {
+            std::env::set_var("HOME", home);
+        }
+        if let Some(up) = userprofile_backup {
+            std::env::set_var("USERPROFILE", up);
+        }
+    }
+
+    #[test]
+    fn test_home_dir_with_nonexistent_path() {
+        // Set HOME to a path that doesn't exist
+        let home_backup = std::env::var("HOME").ok();
+        let userprofile_backup = std::env::var("USERPROFILE").ok();
+
+        std::env::set_var("HOME", "/nonexistent/path/that/does/not/exist");
+        std::env::remove_var("USERPROFILE");
+
+        let result = home_dir();
+        assert!(
+            result.is_none(),
+            "home_dir should return None for nonexistent path"
+        );
+
+        // Restore environment
+        if let Some(home) = home_backup {
+            std::env::set_var("HOME", home);
+        } else {
+            std::env::remove_var("HOME");
+        }
+        if let Some(up) = userprofile_backup {
+            std::env::set_var("USERPROFILE", up);
+        }
+    }
+
+    #[test]
+    fn test_escape_applescript_unicode() {
+        // Test with various Unicode characters
+        assert_eq!(escape_applescript("Hello 世界"), r#"Hello 世界"#);
+        assert_eq!(escape_applescript("Café au lait"), r#"Café au lait"#);
+        // Test with emoji (4-byte UTF-8)
+        assert_eq!(escape_applescript("Hello 👋"), r#"Hello 👋"#);
+    }
+
+    #[test]
+    fn test_escape_powershell_unicode() {
+        // Test with Unicode - should pass through unchanged
+        assert_eq!(escape_powershell("Hello 世界"), "Hello 世界");
+        assert_eq!(escape_powershell("Café"), "Café");
     }
 }

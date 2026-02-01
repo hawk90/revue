@@ -233,10 +233,20 @@ impl Image {
         let encoded = BASE64.encode(&self.data);
 
         // Split into chunks (max 4096 bytes per chunk)
-        let chunks: Vec<&str> = encoded
+        let chunks: Vec<String> = encoded
             .as_bytes()
             .chunks(4096)
-            .map(|c| std::str::from_utf8(c).unwrap_or(""))
+            .filter_map(|c| {
+                std::str::from_utf8(c)
+                    .ok()
+                    .map(|s| s.to_string())
+                    .or_else(|| {
+                        log_warn!(
+                            "Invalid UTF-8 in base64 chunk, skipping (this should not happen)"
+                        );
+                        None
+                    })
+            })
             .collect();
 
         for (i, chunk) in chunks.iter().enumerate() {

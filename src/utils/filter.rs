@@ -21,6 +21,9 @@ pub enum FilterMode {
 
 impl FilterMode {
     /// Check if a text matches the pattern using this filter mode
+    ///
+    /// Uses Unicode-aware case folding for non-ASCII characters,
+    /// ensuring proper matching for text like "É" vs "é".
     pub fn matches(&self, text: &str, pattern: &str) -> bool {
         if pattern.is_empty() {
             return true;
@@ -29,23 +32,43 @@ impl FilterMode {
         match self {
             FilterMode::Fuzzy => {
                 // Simple fuzzy: all pattern chars appear in order
+                // Use Unicode-aware case comparison for non-ASCII
                 let mut pattern_chars = pattern.chars().peekable();
                 for ch in text.chars() {
                     if let Some(&p) = pattern_chars.peek() {
+                        // Try ASCII case compare first (fast path)
                         if ch.eq_ignore_ascii_case(&p) {
                             pattern_chars.next();
+                        } else {
+                            // Fallback to Unicode case folding for non-ASCII
+                            let ch_lower = ch.to_lowercase().next().unwrap_or(ch);
+                            let p_lower = p.to_lowercase().next().unwrap_or(p);
+                            if ch_lower == p_lower {
+                                pattern_chars.next();
+                            }
                         }
                     }
                 }
                 pattern_chars.peek().is_none()
             }
-            FilterMode::Prefix => text
-                .to_ascii_lowercase()
-                .starts_with(&pattern.to_ascii_lowercase()),
-            FilterMode::Contains => text
-                .to_ascii_lowercase()
-                .contains(&pattern.to_ascii_lowercase()),
-            FilterMode::Exact => text.eq_ignore_ascii_case(pattern),
+            FilterMode::Prefix => {
+                // Use Unicode to_lowercase for proper case-insensitive comparison
+                let text_lower = text.to_lowercase();
+                let pattern_lower = pattern.to_lowercase();
+                text_lower.starts_with(&pattern_lower)
+            }
+            FilterMode::Contains => {
+                // Use Unicode to_lowercase for proper case-insensitive comparison
+                let text_lower = text.to_lowercase();
+                let pattern_lower = pattern.to_lowercase();
+                text_lower.contains(&pattern_lower)
+            }
+            FilterMode::Exact => {
+                // Use Unicode to_lowercase for proper case-insensitive comparison
+                let text_lower = text.to_lowercase();
+                let pattern_lower = pattern.to_lowercase();
+                text_lower == pattern_lower
+            }
             FilterMode::None => true,
         }
     }
@@ -226,5 +249,48 @@ mod tests {
         assert!(FilterMode::Prefix.matches("123abc", "123"));
         assert!(FilterMode::Contains.matches("abc123def", "123"));
         assert!(FilterMode::Exact.matches("123", "123"));
+    }
+
+    // Non-ASCII Unicode tests - proper case folding
+
+    #[test]
+    fn test_unicode_accented_e() {
+        // É (U+00C9) should match é (U+00E9) case-insensitively
+        assert!(FilterMode::Exact.matches("Éléphant", "éléphant"));
+        assert!(FilterMode::Exact.matches("ÉLÉPHANT", "éléphant"));
+        assert!(FilterMode::Exact.matches("éléphant", "ÉLÉPHANT"));
+        assert!(FilterMode::Prefix.matches("Éléphant", "él"));
+        assert!(FilterMode::Contains.matches("Éléphant", "lé"));
+    }
+
+    #[test]
+    fn test_unicode_german_umlaut() {
+        // Ä should match ä case-insensitively
+        assert!(FilterMode::Exact.matches("Ärger", "ärger"));
+        assert!(FilterMode::Prefix.matches("Ärger", "är"));
+        assert!(FilterMode::Contains.matches("Ärger", "rg"));
+    }
+
+    #[test]
+    fn test_unicode_cjk() {
+        // CJK characters don't have case, but should still match
+        assert!(FilterMode::Exact.matches("你好", "你好"));
+        assert!(FilterMode::Prefix.matches("你好世界", "你好"));
+        assert!(FilterMode::Contains.matches("你好世界", "好"));
+    }
+
+    #[test]
+    fn test_unicode_mixed_script() {
+        // Mixed ASCII and non-ASCII
+        assert!(FilterMode::Exact.matches("Café", "café"));
+        assert!(FilterMode::Contains.matches("Café au lait", "fé"));
+        assert!(FilterMode::Prefix.matches("Éclair", "écl"));
+    }
+
+    #[test]
+    fn test_unicode_fuzzy() {
+        // Fuzzy matching with Unicode
+        assert!(FilterMode::Fuzzy.matches("Éléphant", "éph"));
+        assert!(FilterMode::Fuzzy.matches("Café au lait", "cal"));
     }
 }
