@@ -342,4 +342,29 @@ mod tests {
         // server2(7) + 1 space = 8, spacing = 1, 2 spaces + 15ms(4) = 6
         assert_eq!(row2, "server2    15ms");
     }
+
+    #[test]
+    fn test_table_row_with_missing_values() {
+        let table = Table::new()
+            .col_left("NAME", 10)
+            .col_right("VALUE", 8)
+            .spacing(1);
+
+        // Missing values should be filled with empty strings (no panic)
+        // Empty values: 10 spaces + 1 space + 8 spaces = 19 spaces
+        assert_eq!(table.row(&[]), "                   ");
+        // One value: "only_one" padded to 10, spacing 1, 8 spaces for empty VALUE
+        assert_eq!(table.row(&["only_one"]), "only_one           ");
+        // Extra values are ignored: only first 2 values used
+        assert_eq!(table.row(&["one", "two", "three"]), "one             two");
+    }
+
+    #[test]
+    fn test_table_row_empty_values() {
+        let table = Table::new().col_left("A", 4).col_right("B", 4).spacing(1);
+
+        // Empty values array should not panic
+        // Column 0: 4 spaces, spacing: 1 space, Column 1: 4 spaces = 9 total
+        assert_eq!(table.row(&[]), "         ");
+    }
 }

@@ -312,7 +312,20 @@ pub fn home_relative(path: impl AsRef<Path>) -> String {
 ///
 /// # Panics
 ///
-/// Panics if the path contains traversal patterns. Use `try_expand_home` for a non-panicking version.
+/// **Panics if the path contains traversal patterns.**
+///
+/// Use `try_expand_home` for a non-panicking version, especially when
+/// handling user input or untrusted paths.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// // Safe: hardcoded paths
+/// let path = expand_home("~/Documents");
+///
+/// // For user input, use the non-panicking version:
+/// let path = try_expand_home(user_input)?;
+/// ```
 pub fn expand_home(path: impl AsRef<Path>) -> PathBuf {
     try_expand_home(path).expect("Path contains traversal patterns")
 }
@@ -557,11 +570,26 @@ pub fn normalize_separators(path: &str) -> String {
 ///
 /// # Security
 ///
+/// Join paths with proper separators
+///
 /// Validates that all path parts don't contain traversal patterns.
 ///
 /// # Panics
 ///
-/// Panics if any path part contains traversal patterns. Use `try_join_paths` for a non-panicking version.
+/// **Panics if any path part contains traversal patterns.**
+///
+/// Use `try_join_paths` for a non-panicking version, especially when
+/// handling user input or untrusted path parts.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// // Safe: hardcoded path parts
+/// let path = join_paths(Path::new("/home/user"), &["documents", "file.txt"]);
+///
+/// // For user input, use the non-panicking version:
+/// let path = try_join_paths(base, &user_parts)?;
+/// ```
 pub fn join_paths(base: impl AsRef<Path>, parts: &[&str]) -> PathBuf {
     try_join_paths(base, parts).expect("Path contains traversal patterns")
 }
