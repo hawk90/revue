@@ -31,11 +31,26 @@ const MAX_BUFFER_SIZE: usize = 10_000_000; // 10M cells
 #[allow(clippy::enum_variant_names)]
 pub enum BufferError {
     /// Width exceeds maximum allowed dimension
-    InvalidWidth { width: u16, max: u16 },
+    InvalidWidth {
+        /// The requested width
+        width: u16,
+        /// Maximum allowed width
+        max: u16,
+    },
     /// Height exceeds maximum allowed dimension
-    InvalidHeight { height: u16, max: u16 },
+    InvalidHeight {
+        /// The requested height
+        height: u16,
+        /// Maximum allowed height
+        max: u16,
+    },
     /// Total buffer size would be too large
-    InvalidSize { size: usize, max: usize },
+    InvalidSize {
+        /// The requested buffer size in cells
+        size: usize,
+        /// Maximum allowed buffer size in cells
+        max: usize,
+    },
 }
 
 impl std::fmt::Display for BufferError {

@@ -23,7 +23,7 @@ mod terminal;
 
 pub use backend::{Backend, BackendCapabilities, CrosstermBackend};
 pub use batch::{BatchStats, RenderBatch, RenderOp};
-pub use buffer::Buffer;
+pub use buffer::{Buffer, BufferError};
 pub use cell::{Cell, Modifier};
 pub use diff::{diff, Change};
 #[cfg(feature = "image")]
