@@ -168,21 +168,23 @@ fn test_progress_bar_zero_width() {
 
 #[test]
 fn test_progress_bar_max_width() {
-    let mut buffer = Buffer::new(u16::MAX, 1);
-    let area = Rect::new(0, 0, u16::MAX, 1);
+    // Buffer has a security limit of MAX_BUFFER_DIMENSION (16,384)
+    // instead of u16::MAX
+    let mut buffer = Buffer::new(16_384, 1);
+    let area = Rect::new(0, 0, 16_384, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     let config = ProgressBarConfig {
         x: 0,
         y: 0,
-        width: u16::MAX,
+        width: 16_384,
         progress: 0.5,
         filled_char: '█',
         empty_char: '░',
         fg: Color::WHITE,
     };
 
-    // Should not panic with u16::MAX width
+    // Should not panic with maximum allowed width
     ctx.draw_progress_bar(&config);
 }
 

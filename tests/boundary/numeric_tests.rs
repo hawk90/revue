@@ -61,14 +61,18 @@ mod max_values {
 
     #[test]
     fn test_buffer_with_max_width() {
-        let buffer = Buffer::new(u16::MAX, 10);
-        assert_eq!(buffer.width(), u16::MAX);
+        // Buffer has a security limit of MAX_BUFFER_DIMENSION (16,384)
+        // instead of u16::MAX
+        let buffer = Buffer::new(16_384, 10);
+        assert_eq!(buffer.width(), 16_384);
     }
 
     #[test]
     fn test_buffer_with_max_height() {
-        let buffer = Buffer::new(10, u16::MAX);
-        assert_eq!(buffer.height(), u16::MAX);
+        // Buffer has a security limit of MAX_BUFFER_DIMENSION (16,384)
+        // instead of u16::MAX
+        let buffer = Buffer::new(10, 16_384);
+        assert_eq!(buffer.height(), 16_384);
     }
 
     #[test]
