@@ -310,30 +310,18 @@ pub fn home_relative(path: impl AsRef<Path>) -> String {
 /// Validates that the expanded path doesn't escape the home directory
 /// through path traversal patterns like `~/../../../etc/passwd`.
 ///
-/// # Panics
-///
-/// **Panics if the path contains traversal patterns.**
-///
-/// Use `try_expand_home` for a non-panicking version, especially when
-/// handling user input or untrusted paths.
+/// Returns error if the path contains traversal patterns or would escape home directory.
 ///
 /// # Example
 ///
 /// ```rust,ignore
-/// // Safe: hardcoded paths
-/// let path = expand_home("~/Documents");
+/// // Use with proper error handling:
+/// let path = expand_home(user_input)?;
 ///
-/// // For user input, use the non-panicking version:
-/// let path = try_expand_home(user_input)?;
+/// // For hardcoded safe paths, use unwrap():
+/// let path = expand_home("~/Documents").unwrap();
 /// ```
-pub fn expand_home(path: impl AsRef<Path>) -> PathBuf {
-    try_expand_home(path).expect("Path contains traversal patterns")
-}
-
-/// Expand ~ to home directory (non-panicking version)
-///
-/// Returns error if the path contains traversal patterns or would escape home directory.
-pub fn try_expand_home(path: impl AsRef<Path>) -> Result<PathBuf, PathError> {
+pub fn expand_home(path: impl AsRef<Path>) -> Result<PathBuf, PathError> {
     let path = path.as_ref();
     let path_str = path.to_string_lossy();
 
@@ -401,9 +389,11 @@ pub fn shorten_path(path: impl AsRef<Path>, max_width: usize) -> String {
     }
 
     // Always keep the filename (safe due to is_empty check above)
-    let filename = components
-        .last()
-        .expect("components should not be empty after is_empty check");
+    let filename = match components.last() {
+        Some(f) => f,
+        // This is unreachable due to is_empty check above
+        None => return full,
+    };
 
     if filename.len() + 4 > max_width {
         // Even filename doesn't fit, truncate it
@@ -570,34 +560,20 @@ pub fn normalize_separators(path: &str) -> String {
 ///
 /// # Security
 ///
-/// Join paths with proper separators
-///
 /// Validates that all path parts don't contain traversal patterns.
 ///
-/// # Panics
-///
-/// **Panics if any path part contains traversal patterns.**
-///
-/// Use `try_join_paths` for a non-panicking version, especially when
-/// handling user input or untrusted path parts.
+/// Returns error if any path part contains traversal patterns or is absolute.
 ///
 /// # Example
 ///
 /// ```rust,ignore
-/// // Safe: hardcoded path parts
-/// let path = join_paths(Path::new("/home/user"), &["documents", "file.txt"]);
+/// // Use with proper error handling:
+/// let path = join_paths(base, &parts)?;
 ///
-/// // For user input, use the non-panicking version:
-/// let path = try_join_paths(base, &user_parts)?;
+/// // For hardcoded safe paths, use unwrap():
+/// let path = join_paths(Path::new("/home/user"), &["documents", "file.txt"]).unwrap();
 /// ```
-pub fn join_paths(base: impl AsRef<Path>, parts: &[&str]) -> PathBuf {
-    try_join_paths(base, parts).expect("Path contains traversal patterns")
-}
-
-/// Join paths with proper separators (non-panicking version)
-///
-/// Returns error if any path part contains traversal patterns or is absolute.
-pub fn try_join_paths(base: impl AsRef<Path>, parts: &[&str]) -> Result<PathBuf, PathError> {
+pub fn join_paths(base: impl AsRef<Path>, parts: &[&str]) -> Result<PathBuf, PathError> {
     let mut result = base.as_ref().to_path_buf();
 
     for part in parts {
@@ -752,7 +728,7 @@ mod tests {
 
     #[test]
     fn test_expand_home() {
-        let expanded = expand_home("~");
+        let expanded = expand_home("~").unwrap();
         if home_dir().is_some() {
             assert!(!expanded.to_string_lossy().contains('~'));
         }
@@ -859,55 +835,51 @@ mod tests {
     }
 
     #[test]
-    fn test_try_expand_home_rejects_traversal() {
-        let result = try_expand_home("~/../../../etc/passwd");
+    fn test_expand_home_rejects_traversal() {
+        let result = expand_home("~/../../../etc/passwd");
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_try_expand_home_rejects_dot_dot_in_path() {
-        let result = try_expand_home("~/Documents/../etc/passwd");
+    fn test_expand_home_rejects_dot_dot_in_path() {
+        let result = expand_home("~/Documents/../etc/passwd");
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_try_expand_home_accepts_normal_path() {
-        let result = try_expand_home("~/Documents/file.txt");
+    fn test_expand_home_accepts_normal_path() {
+        let result = expand_home("~/Documents/file.txt");
         assert!(result.is_ok());
     }
 
     #[test]
-    fn test_expand_home_panics_on_traversal() {
-        // This should panic
-        let result = std::panic::catch_unwind(|| {
-            expand_home("~/../../../etc/passwd");
-        });
+    fn test_expand_home_errors_on_traversal() {
+        // This should return error, not panic
+        let result = expand_home("~/../../../etc/passwd");
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_try_join_paths_rejects_traversal() {
-        let result = try_join_paths(Path::new("/home/user"), &["..", "etc"]);
+    fn test_join_paths_rejects_traversal() {
+        let result = join_paths(Path::new("/home/user"), &["..", "etc"]);
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_try_join_paths_rejects_mixed_traversal() {
-        let result = try_join_paths(Path::new("/home/user"), &["documents", "..", "etc"]);
+    fn test_join_paths_rejects_mixed_traversal() {
+        let result = join_paths(Path::new("/home/user"), &["documents", "..", "etc"]);
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_try_join_paths_accepts_valid() {
-        let result = try_join_paths(Path::new("/home/user"), &["documents", "file.txt"]);
+    fn test_join_paths_accepts_valid() {
+        let result = join_paths(Path::new("/home/user"), &["documents", "file.txt"]);
         assert!(result.is_ok());
     }
 
     #[test]
-    fn test_join_paths_panics_on_traversal() {
-        let result = std::panic::catch_unwind(|| {
-            join_paths(Path::new("/home/user"), &["..", "etc"]);
-        });
+    fn test_join_paths_errors_on_traversal() {
+        let result = join_paths(Path::new("/home/user"), &["..", "etc"]);
         assert!(result.is_err());
     }
 
@@ -957,14 +929,14 @@ mod tests {
     }
 
     #[test]
-    fn test_try_expand_home_tilde_only() {
-        let result = try_expand_home("~");
+    fn test_expand_home_tilde_only() {
+        let result = expand_home("~");
         assert!(result.is_ok());
     }
 
     #[test]
-    fn test_try_expand_home_non_tilde_path() {
-        let result = try_expand_home("/usr/local/bin");
+    fn test_expand_home_non_tilde_path() {
+        let result = expand_home("/usr/local/bin");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), PathBuf::from("/usr/local/bin"));
     }
@@ -974,14 +946,14 @@ mod tests {
     // ============================================================================
 
     #[test]
-    fn test_try_join_paths_rejects_absolute_unix() {
-        let result = try_join_paths(Path::new("/home/user"), &["/etc/passwd"]);
+    fn test_join_paths_rejects_absolute_unix() {
+        let result = join_paths(Path::new("/home/user"), &["/etc/passwd"]);
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_try_join_paths_rejects_absolute_windows() {
-        let _result = try_join_paths(Path::new("C:\\Users"), &["C:\\Windows\\System32"]);
+    fn test_join_paths_rejects_absolute_windows() {
+        let _result = join_paths(Path::new("C:\\Users"), &["C:\\Windows\\System32"]);
         // On Unix, "C:\\Windows\\System32" is treated as a relative path, not absolute
         // On Windows, it would be absolute. This test documents the behavior.
         // The important thing is we're checking for RootDir/Prefix components.
@@ -993,8 +965,8 @@ mod tests {
     }
 
     #[test]
-    fn test_try_join_paths_rejects_unc_path() {
-        let result = try_join_paths(Path::new("/home/user"), &["//server/share"]);
+    fn test_join_paths_rejects_unc_path() {
+        let result = join_paths(Path::new("/home/user"), &["//server/share"]);
         // UNC paths like //server/share are absolute on Windows
         // On Unix, paths starting with / are absolute (even //server/share)
         // So this should be rejected as an absolute path on both platforms
@@ -1002,16 +974,16 @@ mod tests {
     }
 
     #[test]
-    fn test_try_expand_home_rejects_double_slash_absolute() {
-        let result = try_expand_home("~//etc/passwd");
+    fn test_expand_home_rejects_double_slash_absolute() {
+        let result = expand_home("~//etc/passwd");
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_try_expand_home_rejects_slash_absolute() {
+    fn test_expand_home_rejects_slash_absolute() {
         // On Unix, ~/\etc is home + "etc" with backslash in name (valid)
         // On Windows, \etc is an absolute path (RootDir), so it should be rejected
-        let result = try_expand_home(r"~/\etc");
+        let result = expand_home(r"~/\etc");
         #[cfg(unix)]
         {
             // On Unix, backslash is just a character
@@ -1025,8 +997,8 @@ mod tests {
     }
 
     #[test]
-    fn test_try_expand_home_rejects_tilde_slash() {
-        let result = try_expand_home("~//");
+    fn test_expand_home_rejects_tilde_slash() {
+        let result = expand_home("~//");
         assert!(result.is_err());
     }
 
@@ -1331,9 +1303,9 @@ mod tests {
     // ============================================================================
 
     #[test]
-    fn test_try_join_paths_rejects_backslash_unc() {
+    fn test_join_paths_rejects_backslash_unc() {
         // Test \\server\share style UNC paths
-        let result = try_join_paths(Path::new("/base"), &[r"\\server\share"]);
+        let result = join_paths(Path::new("/base"), &[r"\\server\share"]);
         // On Unix, backslashes are just characters, so this is ok
         // On Windows, this would be a UNC path and should be rejected
         #[cfg(unix)]
@@ -1349,18 +1321,18 @@ mod tests {
     }
 
     #[test]
-    fn test_try_expand_home_windows_path() {
-        // Test Windows paths in try_expand_home
+    fn test_expand_home_windows_path() {
+        // Test Windows paths in expand_home
         #[cfg(windows)]
         {
-            let result = try_expand_home(r"~/C:\Windows");
+            let result = expand_home(r"~/C:\Windows");
             // On Windows, C:\ is an absolute path with Prefix component
             assert!(result.is_err());
         }
         #[cfg(unix)]
         {
             // On Unix, backslashes are just characters
-            let result = try_expand_home(r"~/C:\Windows");
+            let result = expand_home(r"~/C:\Windows");
             assert!(result.is_ok());
         }
     }
