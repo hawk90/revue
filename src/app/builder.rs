@@ -1,6 +1,7 @@
 //! Application builder
 
 use super::App;
+use crate::constants::MAX_CSS_FILE_SIZE;
 use crate::plugin::{Plugin, PluginRegistry};
 use crate::style::{parse_css, StyleSheet};
 use std::fs;
@@ -8,9 +9,6 @@ use std::path::PathBuf;
 
 #[cfg(feature = "hot-reload")]
 use super::HotReload;
-
-/// Maximum file size for CSS files to prevent DoS
-const MAX_CSS_FILE_SIZE: u64 = 1024 * 1024; // 1MB
 
 /// Builder for configuring and creating an App
 pub struct AppBuilder {

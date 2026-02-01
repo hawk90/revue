@@ -18,11 +18,9 @@
 //! ```
 
 use super::lock::lock_or_recover;
+use crate::constants::MAX_CLIPBOARD_SIZE;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
-
-/// Maximum clipboard content size to prevent DoS (10MB)
-const MAX_CLIPBOARD_SIZE: usize = 10 * 1024 * 1024;
 
 /// Sanitize clipboard content by removing dangerous characters
 fn sanitize_clipboard_content(content: &str) -> String {

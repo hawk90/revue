@@ -40,8 +40,7 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Maximum file size for config files to prevent DoS
-const MAX_CONFIG_FILE_SIZE: u64 = 1024 * 1024; // 1MB
+use crate::constants::MAX_CONFIG_FILE_SIZE;
 
 /// Configuration loading errors
 #[derive(Debug, Clone)]
