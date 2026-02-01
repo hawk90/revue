@@ -68,11 +68,64 @@ impl Validators {
             if value.is_empty() {
                 return Ok(());
             }
-            if value.contains('@') && value.contains('.') {
-                Ok(())
-            } else {
-                Err(ValidationError::new("Invalid email format"))
+
+            // Basic email validation without regex
+            // 1. Must contain exactly one '@'
+            // 2. Must have at least one character before '@'
+            // 3. Must have at least one '.' after '@'
+            // 4. Must have at least one character after the last '.'
+            // 5. No whitespace allowed
+            // 6. Reasonable length limits
+
+            if value.contains(char::is_whitespace) {
+                return Err(ValidationError::new(
+                    "Invalid email: cannot contain whitespace",
+                ));
             }
+
+            if value.len() > 254 {
+                return Err(ValidationError::new(
+                    "Invalid email: too long (max 254 characters)",
+                ));
+            }
+
+            let parts: Vec<&str> = value.split('@').collect();
+            if parts.len() != 2 {
+                return Err(ValidationError::new(
+                    "Invalid email: must contain exactly one '@'",
+                ));
+            }
+
+            let local_part = parts[0];
+            let domain_part = parts[1];
+
+            if local_part.is_empty() || local_part.len() > 64 {
+                return Err(ValidationError::new("Invalid email: local part is invalid"));
+            }
+
+            if domain_part.is_empty() || domain_part.len() > 253 {
+                return Err(ValidationError::new(
+                    "Invalid email: domain part is invalid",
+                ));
+            }
+
+            // Domain must contain at least one dot
+            if !domain_part.contains('.') {
+                return Err(ValidationError::new(
+                    "Invalid email: domain must contain '.'",
+                ));
+            }
+
+            // Last dot must not be at the end
+            if let Some(last_dot_pos) = domain_part.rfind('.') {
+                if last_dot_pos == domain_part.len() - 1 {
+                    return Err(ValidationError::new(
+                        "Invalid email: domain must have characters after '.'",
+                    ));
+                }
+            }
+
+            Ok(())
         })
     }
 
@@ -221,10 +274,22 @@ mod tests {
     #[test]
     fn test_email_validator() {
         let validator = Validators::email();
+
+        // Valid emails
         assert!(validator("test@example.com").is_ok());
         assert!(validator("").is_ok()); // empty is ok
-        assert!(validator("invalid").is_err());
-        assert!(validator("no-at-sign.com").is_err());
+        assert!(validator("user.name@example.com").is_ok());
+        assert!(validator("user+tag@example.co.uk").is_ok());
+
+        // Invalid emails
+        assert!(validator("invalid").is_err()); // no @
+        assert!(validator("no-at-sign.com").is_err()); // no @
+        assert!(validator("@example.com").is_err()); // no local part
+        assert!(validator("user@").is_err()); // no domain
+        assert!(validator("user@domain").is_err()); // no dot in domain
+        assert!(validator("user@domain.").is_err()); // dot at end
+        assert!(validator("user @example.com").is_err()); // whitespace
+        assert!(validator("a@b.c").is_ok()); // minimal valid email
     }
 
     #[test]
