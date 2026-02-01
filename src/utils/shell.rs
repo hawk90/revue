@@ -61,7 +61,7 @@ pub fn escape_powershell(s: &str) -> String {
 /// # Example
 /// ```
 /// use revue::utils::shell::sanitize_string;
-/// assert_eq!(sanitize_string("foo; rm -rf /"), "foo rm -rf ");
+/// assert_eq!(sanitize_string("foo; rm -rf /"), "foo rm -rf /");
 /// ```
 pub fn sanitize_string(s: &str) -> String {
     // Shell metacharacters to remove

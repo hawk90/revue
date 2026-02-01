@@ -21,6 +21,22 @@ use super::lock::lock_or_recover;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
 
+/// Maximum clipboard content size to prevent DoS (10MB)
+const MAX_CLIPBOARD_SIZE: usize = 10 * 1024 * 1024;
+
+/// Sanitize clipboard content by removing dangerous characters
+fn sanitize_clipboard_content(content: &str) -> String {
+    content
+        .chars()
+        .filter(|&c| {
+            // Keep printable characters and common whitespace
+            // Filter out null bytes and other control characters except:
+            // - \t (tab), \n (newline), \r (carriage return)
+            c >= ' ' || c == '\t' || c == '\n' || c == '\r'
+        })
+        .collect()
+}
+
 /// Clipboard error type
 #[derive(Debug)]
 pub enum ClipboardError {
@@ -32,6 +48,8 @@ pub enum ClipboardError {
     CommandFailed(String),
     /// Invalid UTF-8 in clipboard content
     InvalidUtf8,
+    /// Invalid input (e.g., too large)
+    InvalidInput(String),
 }
 
 impl std::fmt::Display for ClipboardError {
@@ -41,6 +59,7 @@ impl std::fmt::Display for ClipboardError {
             ClipboardError::Io(e) => write!(f, "I/O error: {}", e),
             ClipboardError::CommandFailed(msg) => write!(f, "Command failed: {}", msg),
             ClipboardError::InvalidUtf8 => write!(f, "Invalid UTF-8 in clipboard content"),
+            ClipboardError::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
         }
     }
 }
@@ -149,6 +168,18 @@ impl SystemClipboard {
 
 impl ClipboardBackend for SystemClipboard {
     fn set(&self, content: &str) -> ClipboardResult<()> {
+        // Validate size to prevent DoS
+        if content.len() > MAX_CLIPBOARD_SIZE {
+            return Err(ClipboardError::InvalidInput(format!(
+                "Clipboard content too large ({} bytes, max {})",
+                content.len(),
+                MAX_CLIPBOARD_SIZE
+            )));
+        }
+
+        // Sanitize content to remove dangerous control characters
+        let sanitized = sanitize_clipboard_content(content);
+
         let (cmd, args) = Self::copy_command().ok_or(ClipboardError::NoClipboardTool)?;
 
         let mut child = Command::new(cmd)
@@ -159,7 +190,7 @@ impl ClipboardBackend for SystemClipboard {
             .spawn()?;
 
         if let Some(mut stdin) = child.stdin.take() {
-            stdin.write_all(content.as_bytes())?;
+            stdin.write_all(sanitized.as_bytes())?;
         }
 
         let status = child.wait()?;

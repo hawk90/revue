@@ -40,6 +40,9 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Maximum file size for config files to prevent DoS
+const MAX_CONFIG_FILE_SIZE: u64 = 1024 * 1024; // 1MB
+
 /// Configuration loading errors
 #[derive(Debug, Clone)]
 pub enum ConfigError {
@@ -136,6 +139,21 @@ pub trait AppConfig: Sized + DeserializeOwned {
     fn load_from(path: &Path) -> Result<Self, ConfigError> {
         if !path.exists() {
             return Err(ConfigError::NotFound(path.to_path_buf()));
+        }
+
+        // Check file size to prevent DoS
+        let metadata = fs::metadata(path)
+            .map_err(|e| ConfigError::ReadError(path.to_path_buf(), e.to_string()))?;
+
+        if metadata.len() > MAX_CONFIG_FILE_SIZE {
+            return Err(ConfigError::ReadError(
+                path.to_path_buf(),
+                format!(
+                    "Config file too large ({} bytes, max {})",
+                    metadata.len(),
+                    MAX_CONFIG_FILE_SIZE
+                ),
+            ));
         }
 
         let contents = fs::read_to_string(path)

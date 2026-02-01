@@ -364,15 +364,19 @@ mod tests {
             let holder = Arc::clone(&sub_holder);
             move || {
                 // Take and drop the subscription from holder
-                if let Some(s) = holder.lock().unwrap().take() {
-                    drop(s);
+                if let Ok(mut guard) = holder.lock() {
+                    if let Some(s) = guard.take() {
+                        drop(s);
+                    }
                 }
                 signal_clone.set(42);
             }
         });
 
         // Store the subscription so the callback can access it
-        *sub_holder.lock().unwrap() = Some(sub);
+        if let Ok(mut guard) = sub_holder.lock() {
+            *guard = Some(sub);
+        }
 
         // This should not deadlock
         signal.set(1);

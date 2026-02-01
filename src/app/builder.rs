@@ -9,6 +9,9 @@ use std::path::PathBuf;
 #[cfg(feature = "hot-reload")]
 use super::HotReload;
 
+/// Maximum file size for CSS files to prevent DoS
+const MAX_CSS_FILE_SIZE: u64 = 1024 * 1024; // 1MB
+
 /// Builder for configuring and creating an App
 pub struct AppBuilder {
     stylesheet: StyleSheet,
@@ -56,13 +59,40 @@ impl AppBuilder {
     pub fn style(mut self, path: impl Into<PathBuf>) -> Self {
         let path = path.into();
         self.style_paths.push(path.clone());
-        match fs::read_to_string(&path) {
-            Ok(content) => match parse_css(&content) {
-                Ok(sheet) => self.stylesheet.merge(sheet),
-                Err(e) => log_warn!("Failed to parse CSS from {:?}: {}", path, e),
-            },
-            Err(e) => log_warn!("Failed to read CSS file {:?}: {}", path, e),
+
+        // Check file size to prevent DoS
+        match fs::metadata(&path) {
+            Ok(metadata) => {
+                if metadata.len() > MAX_CSS_FILE_SIZE {
+                    log_warn!(
+                        "CSS file too large ({} bytes, max {}): {:?}",
+                        metadata.len(),
+                        MAX_CSS_FILE_SIZE,
+                        path
+                    );
+                    return self;
+                }
+            }
+            Err(e) => {
+                log_warn!("Failed to read CSS file metadata {:?}: {}", path, e);
+                return self;
+            }
         }
+
+        // Read and parse CSS file
+        let content = match fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(e) => {
+                log_warn!("Failed to read CSS file {:?}: {}", path, e);
+                return self;
+            }
+        };
+
+        match parse_css(&content) {
+            Ok(sheet) => self.stylesheet.merge(sheet),
+            Err(e) => log_warn!("Failed to parse CSS from {:?}: {}", path, e),
+        }
+
         self
     }
 
