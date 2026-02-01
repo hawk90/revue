@@ -42,22 +42,24 @@ use std::env;
 use std::fmt::Write;
 use std::sync::OnceLock;
 
+use crate::utils::terminal::{terminal_type, TerminalType};
+
 /// Cached result of text sizing support detection
 static TEXT_SIZING_SUPPORTED: OnceLock<bool> = OnceLock::new();
 
 /// Check if the current terminal supports the Text Sizing Protocol
 ///
 /// This function caches its result for performance. The detection is based on:
-/// 1. KITTY_WINDOW_ID environment variable (indicates Kitty terminal)
-/// 2. KITTY_PID environment variable (backup check)
+/// 1. Centralized terminal detection for Kitty
+/// 2. GHOSTTY_RESOURCES_DIR environment variable (Ghostty check)
 ///
 /// Note: This is a heuristic. Kitty versions < 0.40 don't support OSC 66,
 /// but there's no reliable way to query the version without side effects.
 /// In practice, most Kitty users keep their terminal updated.
 pub fn is_supported() -> bool {
     *TEXT_SIZING_SUPPORTED.get_or_init(|| {
-        // Check for Kitty terminal
-        if env::var("KITTY_WINDOW_ID").is_ok() || env::var("KITTY_PID").is_ok() {
+        // Use centralized terminal detection for Kitty
+        if terminal_type() == TerminalType::Kitty {
             return true;
         }
 

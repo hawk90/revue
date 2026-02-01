@@ -5,6 +5,7 @@
 //! - iTerm2 inline images (OSC 1337, macOS)
 //! - Sixel graphics (legacy, wide support)
 
+use crate::utils::terminal::{is_sixel_capable, terminal_type, TerminalType};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 
 /// Image encoding/decoding errors
@@ -67,22 +68,18 @@ impl ImageProtocol {
 
     /// Auto-detect protocol without checking user override
     fn detect_auto() -> Self {
-        // Check for Kitty first (most capable)
-        if is_kitty_terminal() {
-            return ImageProtocol::Kitty;
+        // Use centralized terminal detection
+        match terminal_type() {
+            TerminalType::Kitty => ImageProtocol::Kitty,
+            TerminalType::Iterm2 => ImageProtocol::Iterm2,
+            TerminalType::Unknown => {
+                // Check for Sixel support as fallback
+                if is_sixel_capable() {
+                    return ImageProtocol::Sixel;
+                }
+                ImageProtocol::None
+            }
         }
-
-        // Check for iTerm2
-        if is_iterm2_terminal() {
-            return ImageProtocol::Iterm2;
-        }
-
-        // Check for Sixel support
-        if is_sixel_capable_auto() {
-            return ImageProtocol::Sixel;
-        }
-
-        ImageProtocol::None
     }
 
     /// Check if this protocol is supported
@@ -99,63 +96,6 @@ impl ImageProtocol {
             ImageProtocol::None => "None",
         }
     }
-}
-
-/// Check if running in Kitty terminal
-pub fn is_kitty_terminal() -> bool {
-    std::env::var("KITTY_WINDOW_ID").is_ok()
-        || std::env::var("TERM_PROGRAM")
-            .map(|v| v == "kitty")
-            .unwrap_or(false)
-}
-
-/// Check if running in iTerm2 terminal
-pub fn is_iterm2_terminal() -> bool {
-    std::env::var("TERM_PROGRAM")
-        .map(|v| v == "iTerm.app")
-        .unwrap_or(false)
-        || std::env::var("LC_TERMINAL")
-            .map(|v| v == "iTerm2")
-            .unwrap_or(false)
-}
-
-/// Check if terminal supports Sixel
-pub fn is_sixel_capable() -> bool {
-    // Note: ImageProtocol::detect() handles REVUE_IMAGE_PROTOCOL override
-    // This is kept for backward compatibility and direct use
-    is_sixel_capable_auto()
-}
-
-/// Auto-detect Sixel capability without checking user override
-fn is_sixel_capable_auto() -> bool {
-    // Check for known Sixel-capable terminals
-    if let Ok(term) = std::env::var("TERM") {
-        // mlterm, xterm with Sixel, foot, etc.
-        if term.contains("mlterm")
-            || term.contains("yaft")
-            || term.contains("foot")
-            || term.contains("contour")
-        {
-            return true;
-        }
-    }
-
-    // Check for VTE-based terminals with Sixel support
-    if std::env::var("VTE_VERSION").is_ok() {
-        if let Ok(colorterm) = std::env::var("COLORTERM") {
-            if colorterm == "truecolor" {
-                // Modern VTE may support Sixel
-                return true;
-            }
-        }
-    }
-
-    // xterm with Sixel support
-    if std::env::var("XTERM_VERSION").is_ok() {
-        return true;
-    }
-
-    false
 }
 
 /// Image encoder for terminal protocols
