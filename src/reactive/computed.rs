@@ -3,6 +3,7 @@
 //! Thread-safe computed values using Arc and atomic operations.
 
 use super::tracker::{dispose_subscriber, start_tracking, stop_tracking, Subscriber, SubscriberId};
+use crate::utils::lock::{lock_or_recover, read_or_recover, write_or_recover};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -64,10 +65,7 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
 
         // Slow path: acquire recompute lock to prevent data race
         // Multiple threads may reach here, but only one will recompute
-        let _guard = self
-            .recompute_lock
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = lock_or_recover(&self.recompute_lock);
 
         // Double-check after acquiring lock: another thread may have computed
         if self.needs_recompute() {
@@ -84,11 +82,7 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
     /// Check if recomputation is needed
     fn needs_recompute(&self) -> bool {
         let is_dirty = self.dirty.load(Ordering::SeqCst);
-        let has_cache = self
-            .cached
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .is_some();
+        let has_cache = read_or_recover(&self.cached).is_some();
 
         is_dirty || !has_cache
     }
@@ -112,10 +106,7 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
         stop_tracking();
 
         // Cache the result and mark as clean
-        *self
-            .cached
-            .write()
-            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(value.clone());
+        *write_or_recover(&self.cached) = Some(value.clone());
         self.dirty.store(false, Ordering::SeqCst);
 
         value
@@ -127,11 +118,7 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
     /// This should only be called when `needs_recompute()` returns false,
     /// but handles the empty cache case gracefully.
     fn get_cached(&self) -> Option<T> {
-        self.cached
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .as_ref()
-            .cloned()
+        read_or_recover(&self.cached).as_ref().cloned()
     }
 
     /// Force recalculation on next get

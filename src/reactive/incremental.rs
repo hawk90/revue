@@ -60,6 +60,7 @@
 use super::signal_vec::SignalVec;
 use super::tracker::notify_dependents;
 use super::SignalId;
+use crate::utils::lock::lock_or_recover;
 use std::sync::{Arc, Mutex};
 
 /// Handlers for incremental updates from a SignalVec
@@ -241,17 +242,12 @@ impl<T: Clone + Send + Sync + 'static, R: Clone + Send + Sync + 'static> Increme
 
     /// Get the current cached value
     pub fn get(&self) -> R {
-        self.cached
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .clone()
+        lock_or_recover(&self.cached).clone()
     }
 
     /// Get the inner cached value (zero-copy with guard)
     pub fn read(&self) -> std::sync::MutexGuard<'_, R> {
-        self.cached
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        lock_or_recover(&self.cached)
     }
 
     /// Get the source SignalVec

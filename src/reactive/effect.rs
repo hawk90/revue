@@ -4,6 +4,7 @@
 //! dependencies change.
 
 use super::tracker::{dispose_subscriber, start_tracking, stop_tracking, Subscriber, SubscriberId};
+use crate::utils::lock::{read_or_recover, write_or_recover};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
@@ -118,9 +119,7 @@ impl Effect {
             // SAFETY: callback_cell is always initialized before this closure can be called
             // - Initial call: stored at line 137-139 before any callback invocation
             // - Subsequent calls: callback persists in cell for the lifetime of the effect
-            let self_callback = callback_cell_clone
-                .read()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
+            let self_callback = read_or_recover(&callback_cell_clone)
                 .as_ref()
                 .expect("Callback must be initialized before invocation")
                 .clone();
@@ -137,9 +136,7 @@ impl Effect {
         });
 
         // Store callback in cell so it can reference itself
-        *callback_cell
-            .write()
-            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(callback.clone());
+        *write_or_recover(&callback_cell) = Some(callback.clone());
 
         // Initial run with tracking
         let subscriber = Subscriber { id, callback };

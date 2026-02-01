@@ -5,6 +5,7 @@
 
 use super::tracker::{notify_dependents, track_read};
 use super::SignalId;
+use crate::utils::lock::{read_or_recover, write_or_recover};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -122,9 +123,7 @@ impl<T: 'static> Signal<T> {
     #[inline]
     pub fn read(&self) -> RwLockReadGuard<'_, T> {
         track_read(self.id);
-        self.value
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        read_or_recover(&self.value)
     }
 
     /// Borrow the value immutably (alias for read, zero-copy)
@@ -144,9 +143,7 @@ impl<T: 'static> Signal<T> {
     /// If the lock is poisoned, this method recovers by returning the underlying data.
     #[inline]
     pub fn write(&self) -> RwLockWriteGuard<'_, T> {
-        self.value
-            .write()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        write_or_recover(&self.value)
     }
 
     /// Borrow the value mutably (alias for write, zero-copy)
@@ -167,10 +164,7 @@ impl<T: 'static> Signal<T> {
     #[inline]
     pub fn with<R>(&self, f: impl FnOnce(&T) -> R) -> R {
         track_read(self.id);
-        let guard = self
-            .value
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let guard = read_or_recover(&self.value);
         f(&*guard)
     }
 
@@ -179,10 +173,7 @@ impl<T: 'static> Signal<T> {
     /// Like `with` but for mutations. Does NOT notify subscribers.
     #[inline]
     pub fn with_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
-        let mut guard = self
-            .value
-            .write()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut guard = write_or_recover(&self.value);
         f(&mut *guard)
     }
 
@@ -191,10 +182,7 @@ impl<T: 'static> Signal<T> {
     /// Notifies both manual subscribers and auto-tracked dependents.
     pub fn set(&self, value: T) {
         {
-            let mut guard = self
-                .value
-                .write()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut guard = write_or_recover(&self.value);
             *guard = value;
         }
         self.notify();
@@ -206,10 +194,7 @@ impl<T: 'static> Signal<T> {
     /// Notifies both manual subscribers and auto-tracked dependents.
     pub fn update(&self, f: impl FnOnce(&mut T)) {
         {
-            let mut guard = self
-                .value
-                .write()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut guard = write_or_recover(&self.value);
             f(&mut *guard);
         }
         self.notify();
@@ -248,10 +233,7 @@ impl<T: 'static> Signal<T> {
     pub fn subscribe(&self, callback: impl Fn() + Send + Sync + 'static) -> Subscription {
         let id = SubscriptionId::new();
         {
-            let mut subs = self
-                .subscribers
-                .write()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut subs = write_or_recover(&self.subscribers);
             subs.insert(id, Arc::new(callback));
         }
         Subscription {
@@ -278,10 +260,7 @@ impl<T: 'static> Signal<T> {
     fn notify(&self) {
         // Clone callbacks while holding read lock
         let callbacks: Vec<_> = {
-            let subs = self
-                .subscribers
-                .read()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let subs = read_or_recover(&self.subscribers);
             subs.values().cloned().collect()
             // Lock released here when `subs` goes out of scope
         };
@@ -308,10 +287,7 @@ impl<T: Clone + 'static> Signal<T> {
     #[inline]
     pub fn get(&self) -> T {
         track_read(self.id);
-        let guard = self
-            .value
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let guard = read_or_recover(&self.value);
         guard.clone()
     }
 }
