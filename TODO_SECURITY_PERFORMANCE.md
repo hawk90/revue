@@ -320,9 +320,17 @@ pub fn matches(&self, text: &str, pattern: &str) -> bool {
 | Edge Cases | 2 | 2 | 0 | 0 |
 | **Total** | **15** | **15** | **0** | **0** |
 
-## Status: ✅ COMPLETE
+## Status: ✅ COMPLETE & PR CREATED
 
-All tasks completed and committed on `fix/security-vulnerabilities-2` branch.
+**PR**: #374 - https://github.com/hawk90/revue/pull/374
+**Branch**: `fix/comprehensive-security-improvements`
+**Commits**: 4 commits
+- docs: add TODO_SECURITY_PERFORMANCE.md
+- fix(security): comprehensive security and bug fixes
+- fix(browser): reject remote file:// URLs properly
+- test(browser): remove conflicting sensitive path test
+
+All 15 tasks completed and pushed.
 
 ---
 
