@@ -24,9 +24,11 @@ pub fn compute_grid(
     let padding = node.spacing.padding;
     let col_gap = node.flex.column_gap.unwrap_or(node.flex.gap);
     let row_gap = node.flex.row_gap.unwrap_or(node.flex.gap);
-    let template_columns = node.grid.template_columns.clone();
-    let template_rows = node.grid.template_rows.clone();
-    let children: Vec<u64> = node.children.clone();
+    // Use references for template vectors (often large, expensive to clone)
+    let template_columns = &node.grid.template_columns;
+    let template_rows = &node.grid.template_rows;
+    // Collect just child IDs (Vec<u64> is cheap to clone)
+    let children: Vec<u64> = node.children.to_vec();
 
     if children.is_empty() {
         return;
@@ -57,8 +59,8 @@ pub fn compute_grid(
     };
 
     // Calculate track sizes
-    let col_sizes = calculate_track_sizes(content_width, &template_columns, num_cols, col_gap);
-    let row_sizes = calculate_track_sizes(content_height, &template_rows, num_rows, row_gap);
+    let col_sizes = calculate_track_sizes(content_width, template_columns, num_cols, col_gap);
+    let row_sizes = calculate_track_sizes(content_height, template_rows, num_rows, row_gap);
 
     // Calculate track positions
     let col_positions = track_positions(&col_sizes, col_gap);
