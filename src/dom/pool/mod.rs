@@ -520,9 +520,9 @@ impl<'a, T> Pooled<'a, T> {
 
     /// Take the value, preventing automatic release
     pub fn take(mut self) -> T {
-        self.value
-            .take()
-            .expect("Pooled value already taken - this is a bug in Pooled implementation")
+        self.value.take().unwrap_or_else(|| {
+            panic!("Pooled value already taken - this is a bug in Pooled implementation")
+        })
     }
 }
 
@@ -530,19 +530,19 @@ impl<T> std::ops::Deref for Pooled<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        // Safety: value is always Some until take() is called, which consumes self
-        self.value
-            .as_ref()
-            .expect("Pooled value is None - deref called after take(), this is a bug")
+        // value is always Some until take() is called, which consumes self
+        self.value.as_ref().unwrap_or_else(|| {
+            panic!("Pooled value is None - deref called after take(), this is a bug")
+        })
     }
 }
 
 impl<T> std::ops::DerefMut for Pooled<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        // Safety: value is always Some until take() is called, which consumes self
-        self.value
-            .as_mut()
-            .expect("Pooled value is None - deref_mut called after take(), this is a bug")
+        // value is always Some until take() is called, which consumes self
+        self.value.as_mut().unwrap_or_else(|| {
+            panic!("Pooled value is None - deref_mut called after take(), this is a bug")
+        })
     }
 }
 

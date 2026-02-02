@@ -74,13 +74,15 @@ mod shared_runtime {
                     if RUNTIME.set(runtime).is_err() {
                         // Another thread initialized the runtime; fall back to the existing one.
                     }
-                    // SAFETY: RUNTIME is guaranteed to be initialized here because:
+                    // RUNTIME is guaranteed to be initialized here because:
                     // 1. Either this thread just successfully set it (line 74 above)
                     // 2. Or another thread set it (causing the Err case at line 74)
                     // In both cases, RUNTIME.get() returns Some.
                     RUNTIME
                         .get()
-                        .expect("Shared runtime must be initialized after line 74")
+                        .unwrap_or_else(|| {
+                            panic!("Shared runtime must be initialized after line 74")
+                        })
                         .handle()
                         .clone()
                 })
