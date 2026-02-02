@@ -145,6 +145,18 @@ harness = false
 name = "dom"
 harness = false
 
+[[bench]]
+name = "widget"
+harness = false
+
+[[bench]]
+name = "patterns"
+harness = false
+
+[[bench]]
+name = "utils"
+harness = false
+
 [features]
 # Default features - essential for most apps
 default = [
