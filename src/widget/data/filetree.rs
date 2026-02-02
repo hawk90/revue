@@ -5,7 +5,7 @@
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::utils::natural_cmp;
+use crate::utils::{format_size_compact, natural_cmp};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 use std::path::{Path, PathBuf};
@@ -158,17 +158,7 @@ impl FileEntry {
     /// Format size for display
     pub fn format_size(&self) -> String {
         match self.size {
-            Some(size) => {
-                if size < 1024 {
-                    format!("{}B", size)
-                } else if size < 1024 * 1024 {
-                    format!("{:.1}K", size as f64 / 1024.0)
-                } else if size < 1024 * 1024 * 1024 {
-                    format!("{:.1}M", size as f64 / (1024.0 * 1024.0))
-                } else {
-                    format!("{:.1}G", size as f64 / (1024.0 * 1024.0 * 1024.0))
-                }
-            }
+            Some(size) => format_size_compact(size),
             None => String::new(),
         }
     }
@@ -613,10 +603,10 @@ mod tests {
     #[test]
     fn test_format_size() {
         let entry = FileEntry::file("test", "/test").size(1024);
-        assert_eq!(entry.format_size(), "1.0K");
+        assert_eq!(entry.format_size(), "1K");
 
         let entry = FileEntry::file("test", "/test").size(1024 * 1024);
-        assert_eq!(entry.format_size(), "1.0M");
+        assert_eq!(entry.format_size(), "1M");
     }
 
     #[test]

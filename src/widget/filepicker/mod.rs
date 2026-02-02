@@ -22,6 +22,7 @@
 //! ```
 
 use crate::style::Color;
+use crate::utils::format_size;
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 use std::fs;
@@ -362,19 +363,7 @@ impl PickerEntry {
             return "<DIR>".to_string();
         }
 
-        const KB: u64 = 1024;
-        const MB: u64 = KB * 1024;
-        const GB: u64 = MB * 1024;
-
-        if self.size >= GB {
-            format!("{:.1} GB", self.size as f64 / GB as f64)
-        } else if self.size >= MB {
-            format!("{:.1} MB", self.size as f64 / MB as f64)
-        } else if self.size >= KB {
-            format!("{:.1} KB", self.size as f64 / KB as f64)
-        } else {
-            format!("{} B", self.size)
-        }
+        format_size(self.size)
     }
 }
 

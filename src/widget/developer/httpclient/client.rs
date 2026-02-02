@@ -6,6 +6,7 @@ use super::request::HttpRequest;
 use super::response::HttpResponse;
 use super::types::{HttpColors, HttpMethod, RequestState, ResponseView};
 
+use crate::utils::format_size_compact;
 use crate::widget::traits::WidgetProps;
 
 /// HTTP Client widget
@@ -261,13 +262,7 @@ impl HttpClient {
 
     /// Format size
     pub(super) fn format_size(bytes: usize) -> String {
-        if bytes < 1024 {
-            format!("{}B", bytes)
-        } else if bytes < 1024 * 1024 {
-            format!("{:.1}KB", bytes as f64 / 1024.0)
-        } else {
-            format!("{:.1}MB", bytes as f64 / (1024.0 * 1024.0))
-        }
+        format_size_compact(bytes as u64)
     }
 }
 
