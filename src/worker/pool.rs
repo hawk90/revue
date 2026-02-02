@@ -398,7 +398,8 @@ mod tests {
         let order1 = order.clone();
         pool.submit_with_priority(
             move || {
-                order1.lock().unwrap().push("low");
+                let mut order = lock_util::lock_or_recover(&order1);
+                order.push("low");
             },
             Priority::Low,
         );
@@ -406,7 +407,8 @@ mod tests {
         let order2 = order.clone();
         pool.submit_with_priority(
             move || {
-                order2.lock().unwrap().push("high");
+                let mut order = lock_util::lock_or_recover(&order2);
+                order.push("high");
             },
             Priority::High,
         );
@@ -418,7 +420,7 @@ mod tests {
         thread::sleep(std::time::Duration::from_millis(100));
         pool.shutdown();
 
-        let result = order.lock().unwrap();
+        let result = lock_util::lock_or_recover(&order);
         // High priority should be processed first
         assert_eq!(result.len(), 2);
         assert_eq!(result[0], "high");
