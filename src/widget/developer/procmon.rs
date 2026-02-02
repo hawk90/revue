@@ -603,8 +603,8 @@ mod tests {
     fn test_format_bytes() {
         assert_eq!(ProcessMonitor::format_bytes(500), "500B");
         assert_eq!(ProcessMonitor::format_bytes(1024), "1K");
-        assert_eq!(ProcessMonitor::format_bytes(1024 * 1024), "1.0M");
-        assert_eq!(ProcessMonitor::format_bytes(1024 * 1024 * 1024), "1.0G");
+        assert_eq!(ProcessMonitor::format_bytes(1024 * 1024), "1M");
+        assert_eq!(ProcessMonitor::format_bytes(1024 * 1024 * 1024), "1G");
     }
 
     #[test]
