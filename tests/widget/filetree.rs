@@ -299,19 +299,19 @@ fn test_file_entry_format_size_bytes() {
 #[test]
 fn test_file_entry_format_size_kb() {
     let entry = FileEntry::file("medium", "/medium").size(1024 * 5);
-    assert_eq!(entry.format_size(), "5.0K");
+    assert_eq!(entry.format_size(), "5K");
 }
 
 #[test]
 fn test_file_entry_format_size_mb() {
     let entry = FileEntry::file("large", "/large").size(1024 * 1024 * 10);
-    assert_eq!(entry.format_size(), "10.0M");
+    assert_eq!(entry.format_size(), "10M");
 }
 
 #[test]
 fn test_file_entry_format_size_gb() {
     let entry = FileEntry::file("huge", "/huge").size(1024 * 1024 * 1024 * 2);
-    assert_eq!(entry.format_size(), "2.0G");
+    assert_eq!(entry.format_size(), "2G");
 }
 
 #[test]
@@ -1265,7 +1265,7 @@ fn test_edge_case_zero_size_file() {
 #[test]
 fn test_edge_case_very_large_file() {
     let entry = FileEntry::file("huge", "/huge").size(1024 * 1024 * 1024 * 1024);
-    assert_eq!(entry.format_size(), "1024.0G");
+    assert_eq!(entry.format_size(), "1T");
 }
 
 #[test]

@@ -8,6 +8,7 @@ use sysinfo::System;
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::format_size_compact;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -354,19 +355,7 @@ impl ProcessMonitor {
 
     /// Format bytes to human readable
     fn format_bytes(bytes: u64) -> String {
-        const KB: u64 = 1024;
-        const MB: u64 = KB * 1024;
-        const GB: u64 = MB * 1024;
-
-        if bytes >= GB {
-            format!("{:.1}G", bytes as f64 / GB as f64)
-        } else if bytes >= MB {
-            format!("{:.1}M", bytes as f64 / MB as f64)
-        } else if bytes >= KB {
-            format!("{:.0}K", bytes as f64 / KB as f64)
-        } else {
-            format!("{}B", bytes)
-        }
+        format_size_compact(bytes)
     }
 
     /// Render header
@@ -614,8 +603,8 @@ mod tests {
     fn test_format_bytes() {
         assert_eq!(ProcessMonitor::format_bytes(500), "500B");
         assert_eq!(ProcessMonitor::format_bytes(1024), "1K");
-        assert_eq!(ProcessMonitor::format_bytes(1024 * 1024), "1.0M");
-        assert_eq!(ProcessMonitor::format_bytes(1024 * 1024 * 1024), "1.0G");
+        assert_eq!(ProcessMonitor::format_bytes(1024 * 1024), "1M");
+        assert_eq!(ProcessMonitor::format_bytes(1024 * 1024 * 1024), "1G");
     }
 
     #[test]

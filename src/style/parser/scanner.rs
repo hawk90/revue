@@ -1,8 +1,10 @@
 //! Zero-copy scanner functions using byte slicing
 
+use crate::constants::MAX_COMMENT_LENGTH;
+
 /// Maximum comment length to prevent denial-of-service from malicious input
 /// Comments longer than this will cause a parse error instead of being processed
-const MAX_COMMENT_LENGTH: usize = 100_000; // 100KB max comment length
+/// Note: This constant is defined in src/constants.rs as MAX_COMMENT_LENGTH
 
 /// Skip ASCII whitespace using byte slice (no allocation)
 #[inline]

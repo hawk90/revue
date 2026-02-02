@@ -1,5 +1,6 @@
 //! CSS parser for TUI styling
 
+use crate::constants::{MAX_COMMENT_LENGTH, MAX_CSS_FILE_SIZE};
 use crate::style::{Declaration, ErrorCode, ParseError, Rule, StyleSheet};
 
 /// Create a ParseError at the given position
@@ -18,13 +19,11 @@ fn missing_brace_error(css: &str, pos: usize, expected: char) -> ParseError {
 }
 
 /// Maximum allowed CSS size to prevent memory exhaustion
-const MAX_CSS_SIZE: usize = 1_000_000; // 1MB
+const MAX_CSS_SIZE: usize = MAX_CSS_FILE_SIZE as usize;
 /// Maximum number of rules to prevent excessive memory usage
 const MAX_RULES: usize = 10_000;
 /// Maximum number of total declarations across all rules
 const MAX_DECLARATIONS: usize = 10_000; // Lowered for testing
-/// Maximum comment length to prevent denial-of-service
-const MAX_COMMENT_LENGTH: usize = 100_000; // 100KB
 
 pub fn parse(css: &str) -> Result<StyleSheet, ParseError> {
     // Check CSS size limit before parsing

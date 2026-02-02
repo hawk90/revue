@@ -20,6 +20,44 @@
 use std::time::Duration;
 
 // =============================================================================
+// File Size Constants
+// =============================================================================
+
+/// One kilobyte in bytes (1024 bytes)
+pub const KB: u64 = 1024;
+
+/// One megabyte in bytes (1024 KB)
+pub const MB: u64 = 1024 * KB;
+
+/// One gigabyte in bytes (1024 MB)
+pub const GB: u64 = 1024 * MB;
+
+/// Maximum CSS file size (1MB)
+///
+/// Used to prevent DoS attacks when loading CSS files.
+pub const MAX_CSS_FILE_SIZE: u64 = MB;
+
+/// Maximum config file size (1MB)
+///
+/// Used to prevent DoS attacks when loading config files.
+pub const MAX_CONFIG_FILE_SIZE: u64 = MB;
+
+/// Maximum snapshot file size (10MB)
+///
+/// Snapshots can be large, so we allow more space than CSS/config files.
+pub const MAX_SNAPSHOT_FILE_SIZE: u64 = 10 * MB;
+
+/// Maximum clipboard content size (10MB)
+///
+/// Used to prevent DoS attacks when reading from the system clipboard.
+pub const MAX_CLIPBOARD_SIZE: usize = 10 * MB as usize;
+
+/// Maximum comment length in CSS (100KB)
+///
+/// Used to prevent unreasonably long comments in CSS parsing.
+pub const MAX_COMMENT_LENGTH: usize = 100 * KB as usize;
+
+// =============================================================================
 // Frame Rate Constants
 // =============================================================================
 

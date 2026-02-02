@@ -70,6 +70,7 @@ pub mod shell;
 pub mod sort;
 pub mod syntax;
 pub mod table;
+pub mod terminal;
 pub mod text;
 pub mod text_sizing;
 pub mod textbuffer;
@@ -311,3 +312,6 @@ pub use filter::FilterMode;
 
 // Overlay rendering
 pub use overlay::{draw_separator_overlay, draw_text_overlay};
+
+// Terminal detection
+pub use terminal::{is_sixel_capable, terminal_type, TerminalType};

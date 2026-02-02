@@ -6,8 +6,7 @@ use crate::widget::{RenderContext, View};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Maximum file size for snapshot files to prevent DoS
-const MAX_SNAPSHOT_FILE_SIZE: u64 = 10 * 1024 * 1024; // 10MB (snapshots can be large)
+use crate::constants::MAX_SNAPSHOT_FILE_SIZE;
 
 /// Snapshot test result
 #[derive(Debug, Clone, PartialEq, Eq)]
