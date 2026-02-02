@@ -108,25 +108,16 @@ impl ScreenManager {
         let id = id.into();
 
         // Create screen from registry or find in stack
-        let mut screen: Option<Box<dyn Screen>> = None;
-
-        // Check if already in stack
-        if let Some(idx) = self.stack.iter().position(|e| e.screen.id() == id) {
+        let mut screen = if let Some(idx) = self.stack.iter().position(|e| e.screen.id() == id) {
             // Move to top
-            let entry = self.stack.remove(idx);
-            screen = Some(entry.screen);
-        }
-
-        // If not found in stack, try to create from registry
-        if screen.is_none() {
-            if let Some(factory) = self.registry.get(&id) {
-                screen = Some(factory());
-            } else {
-                return false;
+            self.stack.remove(idx).screen
+        } else {
+            // Try to create from registry
+            match self.registry.get(&id) {
+                Some(factory) => factory(),
+                None => return false,
             }
-        }
-
-        let mut screen = screen.unwrap();
+        };
 
         // Send suspend to current top
         if let Some(current) = self.stack.last_mut() {

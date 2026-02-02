@@ -192,10 +192,13 @@ impl ConfirmState {
         P: FnOnce(&ConfirmAction) -> bool,
         F: FnOnce(ConfirmAction),
     {
-        if let Some(action) = &self.action {
-            if predicate(action) {
-                let action = self.action.take().unwrap();
+        // Take action first if it exists, then check predicate
+        if let Some(action) = self.action.take() {
+            if predicate(&action) {
                 f(action);
+            } else {
+                // Predicate failed, put action back
+                self.action = Some(action);
             }
         }
     }

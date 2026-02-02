@@ -150,8 +150,7 @@ fn validate_file_url(url: &str) -> Result<(), BrowserError> {
         let rest = stripped;
         // If there's no "/" after "file://", or the first "/" is after a hostname,
         // it's a remote URL (file://evil.com/etc/passwd)
-        if rest.contains('/') {
-            let first_slash = rest.find('/').unwrap();
+        if let Some(first_slash) = rest.find('/') {
             // Check if there's a hostname before the first slash
             // (i.e., the path doesn't start with "/")
             if !rest[..first_slash].is_empty() && !rest.starts_with('/') {

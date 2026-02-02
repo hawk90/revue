@@ -343,12 +343,11 @@ impl RichText {
 
                 // Parse tag
                 let mut tag = String::new();
-                while let Some(&c) = chars.peek() {
+                for c in chars.by_ref() {
                     if c == ']' {
-                        chars.next();
                         break;
                     }
-                    tag.push(chars.next().unwrap());
+                    tag.push(c);
                 }
 
                 // Handle reset tag

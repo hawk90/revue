@@ -270,8 +270,8 @@ impl VimState {
     fn handle_normal(&mut self, key: &KeyEvent) -> VimAction {
         // Handle digits for count
         if let Key::Char(ch) = key.key {
-            if ch.is_ascii_digit() {
-                let digit = ch.to_digit(10).unwrap() as usize;
+            if let Some(digit) = ch.to_digit(10) {
+                let digit = digit as usize;
                 self.count = Some(self.count.unwrap_or(0) * 10 + digit);
                 return VimAction::None;
             }
