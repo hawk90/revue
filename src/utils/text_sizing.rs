@@ -145,21 +145,21 @@ impl TextSizing {
 
         // Erase-character dance (clears the rendering area)
         // ECH (Erase Character) + disable auto-wrap
-        write!(result, "\x1b[{}X\x1b[?7l", width).expect("write to string");
+        let _ = write!(result, "\x1b[{}X\x1b[?7l", width);
         // Move down 1 line
-        write!(result, "\x1b[1B").expect("write to string");
+        let _ = write!(result, "\x1b[1B");
         // ECH + disable auto-wrap on second line
-        write!(result, "\x1b[{}X\x1b[?7l", width).expect("write to string");
+        let _ = write!(result, "\x1b[{}X\x1b[?7l", width);
         // Move back up 1 line
-        write!(result, "\x1b[1A").expect("write to string");
+        let _ = write!(result, "\x1b[1A");
 
         // Generate OSC 66 sequences for each chunk
         for chunk in chars.chunks(d as usize) {
             // OSC 66 sequence: \x1b]66;s=2:n={n}:d={d}:w={n};{text}\x1b\\
-            write!(result, "\x1b]66;s=2:n={n}:d={d}:w={n};").expect("write to string");
+            let _ = write!(result, "\x1b]66;s=2:n={n}:d={d}:w={n};");
             result.extend(chunk);
             // String Terminator
-            write!(result, "\x1b\\").expect("write to string");
+            let _ = write!(result, "\x1b\\");
         }
 
         result

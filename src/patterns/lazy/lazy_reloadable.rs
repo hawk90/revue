@@ -33,10 +33,10 @@ where
     /// Get the value, loading if necessary
     pub fn get(&self) -> std::cell::Ref<'_, T> {
         self.ensure_loaded();
-        // SAFETY: ensure_loaded() guarantees value is Some() after completion
+        // ensure_loaded() guarantees value is Some() after completion
         std::cell::Ref::map(self.value.borrow(), |opt| {
             opt.as_ref()
-                .expect("value should be loaded after ensure_loaded()")
+                .unwrap_or_else(|| panic!("value should be loaded after ensure_loaded()"))
         })
     }
 
