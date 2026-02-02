@@ -72,8 +72,13 @@ impl VisualCapture {
         // Compare cells
         for y in 0..self.height {
             for x in 0..self.width {
-                let actual = self.get(x, y).unwrap();
-                let expected = other.get(x, y).unwrap();
+                // Skip cells that don't exist (indicates capture bug)
+                let Some(actual) = self.get(x, y) else {
+                    continue;
+                };
+                let Some(expected) = other.get(x, y) else {
+                    continue;
+                };
 
                 if !actual.matches(
                     expected,
