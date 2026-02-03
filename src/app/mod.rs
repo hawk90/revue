@@ -1,6 +1,93 @@
 //! Application lifecycle and coordination
 //!
 //! This module provides the main entry point for Revue applications.
+//!
+//! # Application Lifecycle
+//!
+//! A Revue application follows this lifecycle:
+//!
+//! ```text
+//! 1. INITIALIZATION (App::new, AppBuilder)
+//!    ├─ Create DOM renderer with stylesheet
+//!    ├─ Create layout engine
+//!    ├─ Allocate double buffers
+//!    ├─ Initialize plugin registry
+//!    └─ Set up optional features (hot reload, devtools, etc.)
+//!
+//! 2. RUN LOOP (App::run)
+//!    ├─ Initialize terminal
+//!    ├─ Mount plugins
+//!    ├─ Build initial DOM
+//!    ├─ Enter event loop:
+//!    │   ├─ Check hot reload (if enabled)
+//!    │   ├─ Read next event
+//!    │   ├─ Handle event → may trigger redraw
+//!    │   └─ Draw frame (if needed)
+//!    ├─ Unmount plugins
+//!    └─ Restore terminal
+//!
+//! 3. EVENT HANDLING (handle_event)
+//!    ├─ Quit keys (Ctrl+C, 'q') → stop running
+//!    ├─ Resize events → update buffers, rebuild layout
+//!    ├─ Tick events → update transitions, tick plugins
+//!    └─ User handler → custom application logic
+//!
+//! 4. DRAW CYCLE (draw)
+//!    ├─ Update DOM (if needed)
+//!    ├─ Compute styles (always, with dirty checking)
+//!    ├─ Update layout (if needed)
+//!    ├─ Collect dirty regions
+//!    ├─ Render to new buffer
+//!    ├─ Diff buffers
+//!    └─ Draw changes to terminal
+//!
+//! 5. CLEANUP
+//!    ├─ Unmount plugins
+//!    └─ Restore terminal state
+//! ```
+//!
+//! # State Flags
+//!
+//! The `App` uses several boolean flags to track what needs to be updated:
+//!
+//! | Flag | Purpose | When Set |
+//! |------|---------|----------|
+//! | `running` | Controls the event loop | Set to `true` on run start, `false` on quit |
+//! | `needs_force_redraw` | Full screen redraw | On resize, explicit request, or stylesheet reload |
+//! | `needs_layout_rebuild` | Rebuild layout tree | On resize or structural DOM changes |
+//! | `needs_dom_rebuild` | Rebuild DOM root | On first frame or explicit request |
+//!
+//! # Buffer Management
+//!
+//! Revue uses **double buffering** for efficient rendering:
+//!
+//! 1. Two buffers are allocated at the terminal size
+//! 2. Each frame renders to the "new" buffer
+//! 3. Buffers are diffed to find minimal changes
+//! 4. Only changed cells are drawn to the terminal
+//! 5. Buffers are swapped for the next frame
+//!
+//! # Threading Model
+//!
+//! The `App` is **single-threaded** by design:
+//! - All UI updates happen on the main thread
+//! - Event handling is synchronous
+//! - Plugin operations run in sequence
+//! - For async operations, use the worker pool module
+//!
+//! # Plugins
+//!
+//! Plugins can extend application functionality:
+//! - Access terminal size via `update_terminal_size`
+//! - Receive tick events via `tick`
+//! - Lifecycle hooks: `mount`, `unmount`
+//!
+//! # Hot Reload
+//!
+//! With the `hot-reload` feature enabled:
+//! - CSS files are watched for changes
+//! - Stylesheets are automatically reloaded on change
+//! - Invalid CSS logs warnings but doesn't crash the app
 
 mod builder;
 #[cfg(feature = "hot-reload")]
@@ -31,7 +118,7 @@ pub use snapshot::{snapshot, Snapshot, SnapshotConfig, SnapshotResult};
 use crate::constants::FRAME_DURATION_60FPS;
 use crate::dom::DomRenderer;
 use crate::event::{Event, KeyEvent};
-use crate::layout::{LayoutEngine, Rect};
+use crate::layout::LayoutEngine;
 use crate::render::{Buffer, Terminal};
 use crate::style::{StyleSheet, TransitionManager};
 use crate::widget::View;
@@ -55,6 +142,46 @@ fn is_quit_key(key: &KeyEvent) -> bool {
 }
 
 /// Main application struct
+///
+/// The `App` struct manages the entire application lifecycle including:
+/// - DOM tree and style resolution
+/// - Layout computation
+/// - Double-buffered rendering
+/// - Event loop and handling
+/// - Plugin management
+/// - Transition animations
+///
+/// # Creating an App
+///
+/// Use [`AppBuilder`] for configuration:
+///
+/// ```ignore
+/// use revue::prelude::*;
+///
+/// let app = App::builder()
+///     .stylesheet(StyleSheet::default())
+///     .mouse_capture(true)
+///     .build()
+///     .unwrap();
+/// ```
+///
+/// # Running the App
+///
+/// Use [`App::run()`] to start the event loop with a view and event handler:
+///
+/// ```ignore
+/// app.run(my_view, |event, view, app| {
+///     // Handle events, return true to trigger redraw
+///     true
+/// })?;
+/// ```
+///
+/// # Requesting Updates
+///
+/// Use these methods to trigger updates:
+/// - [`request_redraw()`] - Force full screen redraw on next frame
+/// - [`request_layout_rebuild()`] - Rebuild layout tree on next frame
+/// - [`request_dom_rebuild()`] - Rebuild DOM root on next frame
 pub struct App {
     /// Manages all DOM nodes and style resolution
     dom: DomRenderer,
@@ -343,48 +470,69 @@ impl App {
     fn check_hot_reload(&mut self) -> Option<bool> {
         let hr = self.hot_reload.as_mut()?;
 
-        // Non-blocking check for events
-        if let Some(event) = hr.poll() {
-            match event {
-                HotReloadEvent::StylesheetChanged(ref path) => {
-                    crate::log_debug!("Hot reload: stylesheet changed {:?}", path);
+        hr.poll().map(|event| self.handle_hot_reload_event(event))
+    }
+
+    /// Handle a single hot reload event, returns true if redraw is needed
+    #[cfg(feature = "hot-reload")]
+    fn handle_hot_reload_event(&mut self, event: HotReloadEvent) -> bool {
+        match event {
+            HotReloadEvent::StylesheetChanged(ref path) => {
+                self.log_and_reload(path, "stylesheet changed");
+                true
+            }
+            HotReloadEvent::FileCreated(ref path) => {
+                crate::log_debug!("Hot reload: file created {:?}", path);
+                if self.style_paths.contains(path) {
                     self.reload_stylesheet(path);
-                    return Some(true);
-                }
-                HotReloadEvent::FileCreated(ref path) => {
-                    crate::log_debug!("Hot reload: file created {:?}", path);
-                    if self.style_paths.contains(path) {
-                        self.reload_stylesheet(path);
-                        return Some(true);
-                    }
-                }
-                HotReloadEvent::FileDeleted(ref path) => {
-                    crate::log_debug!("Hot reload: file deleted {:?}", path);
-                }
-                HotReloadEvent::Error(ref e) => {
-                    crate::log_warn!("Hot reload error: {}", e);
+                    true
+                } else {
+                    false
                 }
             }
+            HotReloadEvent::FileDeleted(ref path) => {
+                crate::log_debug!("Hot reload: file deleted {:?}", path);
+                false
+            }
+            HotReloadEvent::Error(ref e) => {
+                crate::log_warn!("Hot reload error: {}", e);
+                false
+            }
         }
-        Some(false)
+    }
+
+    /// Log a hot reload event and reload the stylesheet
+    #[cfg(feature = "hot-reload")]
+    fn log_and_reload(&mut self, path: &PathBuf, action: &str) {
+        crate::log_debug!("Hot reload: {action} {:?}", path);
+        self.reload_stylesheet(path);
     }
 
     /// Reload a single stylesheet file
     #[cfg(feature = "hot-reload")]
     fn reload_stylesheet(&mut self, path: &PathBuf) {
-        match fs::read_to_string(path) {
-            Ok(content) => match parse_css(&content) {
-                Ok(sheet) => {
-                    self.dom.stylesheet_mut().merge(sheet);
-                    self.needs_force_redraw = true;
-                    crate::log_debug!("Hot reload: reloaded {:?}", path);
-                }
-                Err(e) => {
-                    crate::log_warn!("Hot reload: failed to parse CSS from {:?}: {}", path, e);
-                }
-            },
+        let content = match fs::read_to_string(path) {
+            Ok(c) => c,
             Err(e) => {
                 crate::log_warn!("Hot reload: failed to read {:?}: {}", path, e);
+                return;
+            }
+        };
+
+        self.parse_and_merge_stylesheet(path, &content);
+    }
+
+    /// Parse CSS content and merge into stylesheet
+    #[cfg(feature = "hot-reload")]
+    fn parse_and_merge_stylesheet(&mut self, path: &PathBuf, content: &str) {
+        match parse_css(content) {
+            Ok(sheet) => {
+                self.dom.stylesheet_mut().merge(sheet);
+                self.needs_force_redraw = true;
+                crate::log_debug!("Hot reload: reloaded {:?}", path);
+            }
+            Err(e) => {
+                crate::log_warn!("Hot reload: failed to parse CSS from {:?}: {}", path, e);
             }
         }
     }
@@ -396,8 +544,24 @@ impl App {
         terminal: &mut Terminal<W>,
         force_redraw: bool,
     ) -> crate::Result<()> {
+        let root_dom_id = self.update_dom_and_get_root(view)?;
+        let (width, height) = self.get_buffer_size();
+        self.update_layout_tree(root_dom_id, width, height);
+        let dirty_rects = self.collect_dirty_regions(width, height, force_redraw);
+
+        let new_buffer_idx = self.swap_buffers();
+        self.render_to_buffer(view, new_buffer_idx);
+        self.draw_to_terminal(terminal, new_buffer_idx, force_redraw, &dirty_rects)?;
+
+        // Clear dirty flags after rendering
+        self.dom.tree_mut().clear_dirty_flags();
+
+        Ok(())
+    }
+
+    /// Update DOM and return the root DOM ID
+    fn update_dom_and_get_root<V: View>(&mut self, view: &V) -> crate::Result<crate::dom::DomId> {
         // Only rebuild DOM root if needed (first frame or explicit request)
-        // This is a major optimization since build() clears the entire tree and style cache
         if self.needs_dom_rebuild {
             self.dom.build(view);
             self.needs_dom_rebuild = false;
@@ -408,31 +572,44 @@ impl App {
         // Always compute styles (has internal dirty checking optimization)
         self.dom.compute_styles_with_inheritance();
 
-        let root_dom_id = self.dom.tree().root_id().ok_or_else(|| {
+        self.dom.tree().root_id().ok_or_else(|| {
             crate::Error::Other(anyhow::anyhow!(
                 "Root DOM node not found. DOM may not have been built."
             ))
-        })?;
+        })
+    }
 
+    /// Get the current buffer size
+    fn get_buffer_size(&self) -> (u16, u16) {
+        (
+            self.buffers[self.current_buffer].width(),
+            self.buffers[self.current_buffer].height(),
+        )
+    }
+
+    /// Update layout tree with the given dimensions
+    fn update_layout_tree(&mut self, root_dom_id: crate::dom::DomId, width: u16, height: u16) {
         // Only rebuild layout tree if needed (e.g., on resize or structural changes)
-        // DOM build() now performs incremental updates (reuses nodes by ID/position)
         if self.needs_layout_rebuild {
             self.layout.clear();
             self.build_layout_tree(root_dom_id);
             self.needs_layout_rebuild = false;
         } else {
             // Incremental update: only update nodes that changed
-            self.update_layout_tree(root_dom_id);
+            self.update_layout_tree_incremental(root_dom_id);
         }
 
-        // Use current buffer size directly for layout (matches rendering size)
-        // terminal.size() returns internal buffer size which may lag after resize
-        let (width, height) = (
-            self.buffers[self.current_buffer].width(),
-            self.buffers[self.current_buffer].height(),
-        );
+        // Compute layout for the given dimensions
         let _ = self.layout.compute(root_dom_id, width, height);
+    }
 
+    /// Collect dirty regions that need to be redrawn
+    fn collect_dirty_regions(
+        &mut self,
+        width: u16,
+        height: u16,
+        force_redraw: bool,
+    ) -> Vec<crate::layout::Rect> {
         let dirty_dom_ids = self.dom.tree_mut().get_dirty_nodes();
         let mut dirty_rects = Vec::new();
         for dom_id in &dirty_dom_ids {
@@ -446,71 +623,89 @@ impl App {
             dirty_rects = crate::layout::merge_rects(&dirty_rects);
         }
 
-        // Only force full-screen redraw when explicitly requested or necessary
-        // With proper dirty tracking, this should rarely trigger
+        // Collect transition rects if no dirty rects
         if dirty_rects.is_empty() {
-            if force_redraw || self.needs_force_redraw {
-                // Explicit full redraw request
-                let full_screen_rect = Rect::new(0, 0, width, height);
-                dirty_rects.push(full_screen_rect);
-            } else if self.transitions.has_active() {
-                // Active transitions need redraws - only redraw affected nodes
-                // Collect rects for nodes with active transitions
-                let transition_rects: Vec<Rect> = self
-                    .transitions
-                    .active_node_ids()
-                    .filter_map(|element_id| {
-                        // Look up DOM node by element ID and get its layout rect
-                        self.dom
-                            .get_by_id(element_id)
-                            .map(|node| node.id)
-                            .and_then(|dom_id| self.layout.layout(dom_id).ok())
-                    })
-                    .collect();
-
-                if transition_rects.is_empty() {
-                    // Fallback: if no node-aware transitions, use legacy behavior
-                    // This handles global transitions that aren't tied to specific nodes
-                    if self.transitions.active_properties().next().is_some() {
-                        let full_screen_rect = Rect::new(0, 0, width, height);
-                        dirty_rects.push(full_screen_rect);
-                    }
-                } else {
-                    dirty_rects.extend(transition_rects);
-                }
-            }
-            // Otherwise, if dirty_rects is empty, nothing changed - skip rendering
+            dirty_rects = self.collect_transition_rects(width, height);
         }
 
-        let new_buffer_idx = 1 - self.current_buffer;
+        // Force full redraw if explicitly requested
+        if dirty_rects.is_empty() && (self.needs_force_redraw || force_redraw) {
+            let full_screen_rect = crate::layout::Rect::new(0, 0, width, height);
+            dirty_rects.push(full_screen_rect);
+            self.needs_force_redraw = false;
+        }
 
-        // Split buffers to get separate mutable and immutable references
-        let (old_buffer, new_buffer) = if self.current_buffer == 0 {
-            let (old, new) = self.buffers.split_at_mut(1);
-            (&old[0], &mut new[0])
-        } else {
-            let (new, old) = self.buffers.split_at_mut(1);
-            (&old[0], &mut new[0])
-        };
+        dirty_rects
+    }
 
-        let area = Rect::new(0, 0, new_buffer.width(), new_buffer.height());
+    /// Collect rects for nodes with active transitions
+    fn collect_transition_rects(&mut self, width: u16, height: u16) -> Vec<crate::layout::Rect> {
+        let mut dirty_rects = Vec::new();
+
+        if self.transitions.has_active() {
+            // Active transitions need redraws - only redraw affected nodes
+            let transition_rects: Vec<crate::layout::Rect> = self
+                .transitions
+                .active_node_ids()
+                .filter_map(|element_id| {
+                    // Look up DOM node by element ID and get its layout rect
+                    self.dom
+                        .get_by_id(element_id)
+                        .map(|node| node.id)
+                        .and_then(|dom_id| self.layout.layout(dom_id).ok())
+                })
+                .collect();
+
+            if transition_rects.is_empty() {
+                // Fallback: if no node-aware transitions, use legacy behavior
+                // This handles global transitions that aren't tied to specific nodes
+                if self.transitions.active_properties().next().is_some() {
+                    let full_screen_rect = crate::layout::Rect::new(0, 0, width, height);
+                    dirty_rects.push(full_screen_rect);
+                }
+            } else {
+                dirty_rects.extend(transition_rects);
+            }
+        }
+
+        dirty_rects
+    }
+
+    /// Swap buffers and return the new buffer index
+    fn swap_buffers(&mut self) -> usize {
+        1 - self.current_buffer
+    }
+
+    /// Render the view to the given buffer
+    fn render_to_buffer<V: View>(&mut self, view: &V, buffer_idx: usize) {
+        let new_buffer = &mut self.buffers[buffer_idx];
+        let area = crate::layout::Rect::new(0, 0, new_buffer.width(), new_buffer.height());
 
         new_buffer.clear();
         self.dom.render(view, new_buffer, area);
+    }
+
+    /// Draw the buffer to the terminal
+    fn draw_to_terminal<W: std::io::Write>(
+        &mut self,
+        terminal: &mut Terminal<W>,
+        buffer_idx: usize,
+        force_redraw: bool,
+        dirty_rects: &[crate::layout::Rect],
+    ) -> crate::Result<()> {
+        let old_buffer = &self.buffers[self.current_buffer];
+        let new_buffer = &self.buffers[buffer_idx];
 
         if force_redraw || self.needs_force_redraw {
             terminal.force_redraw(new_buffer)?;
             self.needs_force_redraw = false;
         } else {
-            let changes = crate::render::diff(old_buffer, new_buffer, &dirty_rects);
+            let changes = crate::render::diff(old_buffer, new_buffer, dirty_rects);
             terminal.draw_changes(changes, new_buffer)?;
         }
 
-        self.current_buffer = new_buffer_idx;
-
-        // Clear dirty flags after rendering
-        self.dom.tree_mut().clear_dirty_flags();
-
+        // Swap to the new buffer
+        self.current_buffer = buffer_idx;
         Ok(())
     }
 
@@ -546,7 +741,7 @@ impl App {
     /// Incrementally update layout tree (only update changed nodes)
     ///
     /// Works with the incremental DOM build to only update dirty nodes.
-    fn update_layout_tree(&mut self, dom_id: crate::dom::DomId) {
+    fn update_layout_tree_incremental(&mut self, dom_id: crate::dom::DomId) {
         // Check if this node exists in layout
         let node_exists = self.layout.layout(dom_id).is_ok();
 
@@ -582,7 +777,7 @@ impl App {
             .unwrap_or_default();
 
         for child_id in children {
-            self.update_layout_tree(child_id);
+            self.update_layout_tree_incremental(child_id);
         }
     }
 

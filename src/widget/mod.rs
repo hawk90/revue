@@ -260,6 +260,7 @@ mod theme_picker;
 mod timer;
 pub mod traits;
 mod transition;
+pub mod validation;
 mod zen;
 #[macro_use]
 mod macros;
@@ -374,6 +375,7 @@ pub use transition::{
     transition, transition_group, Animation, AnimationPreset, Transition as AnimationTransition,
     TransitionGroup, TransitionPhase,
 };
+pub use validation::{validators, Validatable, ValidationError, ValidationResult};
 pub use zen::{zen, zen_dark, zen_light, ZenMode};
 
 // Chart widgets (re-exported from chart module)
