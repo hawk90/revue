@@ -39,6 +39,12 @@
 
 use std::sync::Arc;
 
+/// Maximum allowed composition text length to prevent memory exhaustion
+const MAX_COMPOSITION_LENGTH: usize = 10_000;
+
+/// Maximum allowed number of candidates to prevent memory exhaustion
+const MAX_CANDIDATES: usize = 1_000;
+
 // =============================================================================
 // Composition State
 // =============================================================================
@@ -335,6 +341,11 @@ impl ImeState {
             self.start_composition();
         }
 
+        // Reject overly long compositions to prevent memory exhaustion
+        if text.len() > MAX_COMPOSITION_LENGTH {
+            return;
+        }
+
         self.composing_text = text.to_string();
         self.cursor = cursor.min(text.chars().count());
 
@@ -346,6 +357,11 @@ impl ImeState {
 
     /// Set candidates
     pub fn set_candidates(&mut self, candidates: Vec<Candidate>) {
+        // Reject excessive candidates to prevent memory exhaustion
+        if candidates.len() > MAX_CANDIDATES {
+            return;
+        }
+
         self.candidates = candidates;
         self.selected_candidate = 0;
 
