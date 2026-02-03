@@ -32,7 +32,8 @@ impl DomRenderer {
         let cached_selectors: Vec<_> = self.get_cached_selectors().clone();
 
         // Create resolver with cached selectors (avoids reparsing)
-        let resolver = StyleResolver::with_cached_selectors(&self.stylesheet, &cached_selectors);
+        let mut resolver =
+            StyleResolver::with_cached_selectors(&self.stylesheet, &cached_selectors);
         let node = self.tree.get(node_id)?;
 
         // Create closure for node lookup
@@ -68,7 +69,8 @@ impl DomRenderer {
         let cached_selectors: Vec<_> = self.get_cached_selectors().clone();
 
         // Create resolver with cached selectors (avoids reparsing)
-        let resolver = StyleResolver::with_cached_selectors(&self.stylesheet, &cached_selectors);
+        let mut resolver =
+            StyleResolver::with_cached_selectors(&self.stylesheet, &cached_selectors);
         let node = self.tree.get(node_id)?;
 
         // Create closure for node lookup

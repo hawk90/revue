@@ -14,7 +14,7 @@ fn test_attribute_class_exists() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(dom_id, WidgetMeta::new("Button").class("primary"));
@@ -38,7 +38,7 @@ fn test_attribute_class_contains_word() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(
@@ -60,7 +60,7 @@ fn test_attribute_id_exists() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(dom_id, WidgetMeta::new("Button").id("submit"));
@@ -79,7 +79,7 @@ fn test_attribute_id_equals() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(dom_id, WidgetMeta::new("Button").id("submit"));
@@ -98,7 +98,7 @@ fn test_attribute_id_starts_with() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(dom_id, WidgetMeta::new("Button").id("btn-submit"));
@@ -117,7 +117,7 @@ fn test_attribute_id_ends_with() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(dom_id, WidgetMeta::new("Button").id("btn-submit"));
@@ -136,7 +136,7 @@ fn test_attribute_id_contains() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(dom_id, WidgetMeta::new("Button").id("btn-submit-form"));
@@ -155,7 +155,7 @@ fn test_attribute_type_exists() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(dom_id, WidgetMeta::new("Button"));
@@ -174,7 +174,7 @@ fn test_attribute_type_equals() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(dom_id, WidgetMeta::new("Button"));
@@ -193,7 +193,7 @@ fn test_attribute_type_contains() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(dom_id, WidgetMeta::new("Button"));
@@ -212,7 +212,7 @@ fn test_attribute_disabled_exists() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Button"));
@@ -232,7 +232,7 @@ fn test_attribute_disabled_equals() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Button"));
@@ -252,7 +252,7 @@ fn test_attribute_checked_exists() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Checkbox"));
@@ -272,7 +272,7 @@ fn test_attribute_selected_exists() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Option"));
@@ -292,7 +292,7 @@ fn test_attribute_focused_exists() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Input"));
@@ -312,7 +312,7 @@ fn test_attribute_hovered_exists() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Button"));
@@ -332,7 +332,7 @@ fn test_attribute_unknown() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(dom_id, WidgetMeta::new("Button"));
