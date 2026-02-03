@@ -31,7 +31,7 @@ pub use snapshot::{snapshot, Snapshot, SnapshotConfig, SnapshotResult};
 use crate::constants::FRAME_DURATION_60FPS;
 use crate::dom::DomRenderer;
 use crate::event::{Event, KeyEvent};
-use crate::layout::{LayoutEngine, Rect};
+use crate::layout::LayoutEngine;
 use crate::render::{Buffer, Terminal};
 use crate::style::{StyleSheet, TransitionManager};
 use crate::widget::View;
@@ -396,8 +396,24 @@ impl App {
         terminal: &mut Terminal<W>,
         force_redraw: bool,
     ) -> crate::Result<()> {
+        let root_dom_id = self.update_dom_and_get_root(view)?;
+        let (width, height) = self.get_buffer_size();
+        self.update_layout_tree(root_dom_id, width, height);
+        let dirty_rects = self.collect_dirty_regions(width, height, force_redraw);
+
+        let new_buffer_idx = self.swap_buffers();
+        self.render_to_buffer(view, new_buffer_idx);
+        self.draw_to_terminal(terminal, new_buffer_idx, force_redraw, &dirty_rects)?;
+
+        // Clear dirty flags after rendering
+        self.dom.tree_mut().clear_dirty_flags();
+
+        Ok(())
+    }
+
+    /// Update DOM and return the root DOM ID
+    fn update_dom_and_get_root<V: View>(&mut self, view: &V) -> crate::Result<crate::dom::DomId> {
         // Only rebuild DOM root if needed (first frame or explicit request)
-        // This is a major optimization since build() clears the entire tree and style cache
         if self.needs_dom_rebuild {
             self.dom.build(view);
             self.needs_dom_rebuild = false;
@@ -408,31 +424,44 @@ impl App {
         // Always compute styles (has internal dirty checking optimization)
         self.dom.compute_styles_with_inheritance();
 
-        let root_dom_id = self.dom.tree().root_id().ok_or_else(|| {
+        self.dom.tree().root_id().ok_or_else(|| {
             crate::Error::Other(anyhow::anyhow!(
                 "Root DOM node not found. DOM may not have been built."
             ))
-        })?;
+        })
+    }
 
+    /// Get the current buffer size
+    fn get_buffer_size(&self) -> (u16, u16) {
+        (
+            self.buffers[self.current_buffer].width(),
+            self.buffers[self.current_buffer].height(),
+        )
+    }
+
+    /// Update layout tree with the given dimensions
+    fn update_layout_tree(&mut self, root_dom_id: crate::dom::DomId, width: u16, height: u16) {
         // Only rebuild layout tree if needed (e.g., on resize or structural changes)
-        // DOM build() now performs incremental updates (reuses nodes by ID/position)
         if self.needs_layout_rebuild {
             self.layout.clear();
             self.build_layout_tree(root_dom_id);
             self.needs_layout_rebuild = false;
         } else {
             // Incremental update: only update nodes that changed
-            self.update_layout_tree(root_dom_id);
+            self.update_layout_tree_incremental(root_dom_id);
         }
 
-        // Use current buffer size directly for layout (matches rendering size)
-        // terminal.size() returns internal buffer size which may lag after resize
-        let (width, height) = (
-            self.buffers[self.current_buffer].width(),
-            self.buffers[self.current_buffer].height(),
-        );
+        // Compute layout for the given dimensions
         let _ = self.layout.compute(root_dom_id, width, height);
+    }
 
+    /// Collect dirty regions that need to be redrawn
+    fn collect_dirty_regions(
+        &mut self,
+        width: u16,
+        height: u16,
+        force_redraw: bool,
+    ) -> Vec<crate::layout::Rect> {
         let dirty_dom_ids = self.dom.tree_mut().get_dirty_nodes();
         let mut dirty_rects = Vec::new();
         for dom_id in &dirty_dom_ids {
@@ -446,71 +475,89 @@ impl App {
             dirty_rects = crate::layout::merge_rects(&dirty_rects);
         }
 
-        // Only force full-screen redraw when explicitly requested or necessary
-        // With proper dirty tracking, this should rarely trigger
+        // Collect transition rects if no dirty rects
         if dirty_rects.is_empty() {
-            if force_redraw || self.needs_force_redraw {
-                // Explicit full redraw request
-                let full_screen_rect = Rect::new(0, 0, width, height);
-                dirty_rects.push(full_screen_rect);
-            } else if self.transitions.has_active() {
-                // Active transitions need redraws - only redraw affected nodes
-                // Collect rects for nodes with active transitions
-                let transition_rects: Vec<Rect> = self
-                    .transitions
-                    .active_node_ids()
-                    .filter_map(|element_id| {
-                        // Look up DOM node by element ID and get its layout rect
-                        self.dom
-                            .get_by_id(element_id)
-                            .map(|node| node.id)
-                            .and_then(|dom_id| self.layout.layout(dom_id).ok())
-                    })
-                    .collect();
-
-                if transition_rects.is_empty() {
-                    // Fallback: if no node-aware transitions, use legacy behavior
-                    // This handles global transitions that aren't tied to specific nodes
-                    if self.transitions.active_properties().next().is_some() {
-                        let full_screen_rect = Rect::new(0, 0, width, height);
-                        dirty_rects.push(full_screen_rect);
-                    }
-                } else {
-                    dirty_rects.extend(transition_rects);
-                }
-            }
-            // Otherwise, if dirty_rects is empty, nothing changed - skip rendering
+            dirty_rects = self.collect_transition_rects(width, height);
         }
 
-        let new_buffer_idx = 1 - self.current_buffer;
+        // Force full redraw if explicitly requested
+        if dirty_rects.is_empty() && (self.needs_force_redraw || force_redraw) {
+            let full_screen_rect = crate::layout::Rect::new(0, 0, width, height);
+            dirty_rects.push(full_screen_rect);
+            self.needs_force_redraw = false;
+        }
 
-        // Split buffers to get separate mutable and immutable references
-        let (old_buffer, new_buffer) = if self.current_buffer == 0 {
-            let (old, new) = self.buffers.split_at_mut(1);
-            (&old[0], &mut new[0])
-        } else {
-            let (new, old) = self.buffers.split_at_mut(1);
-            (&old[0], &mut new[0])
-        };
+        dirty_rects
+    }
 
-        let area = Rect::new(0, 0, new_buffer.width(), new_buffer.height());
+    /// Collect rects for nodes with active transitions
+    fn collect_transition_rects(&mut self, width: u16, height: u16) -> Vec<crate::layout::Rect> {
+        let mut dirty_rects = Vec::new();
+
+        if self.transitions.has_active() {
+            // Active transitions need redraws - only redraw affected nodes
+            let transition_rects: Vec<crate::layout::Rect> = self
+                .transitions
+                .active_node_ids()
+                .filter_map(|element_id| {
+                    // Look up DOM node by element ID and get its layout rect
+                    self.dom
+                        .get_by_id(element_id)
+                        .map(|node| node.id)
+                        .and_then(|dom_id| self.layout.layout(dom_id).ok())
+                })
+                .collect();
+
+            if transition_rects.is_empty() {
+                // Fallback: if no node-aware transitions, use legacy behavior
+                // This handles global transitions that aren't tied to specific nodes
+                if self.transitions.active_properties().next().is_some() {
+                    let full_screen_rect = crate::layout::Rect::new(0, 0, width, height);
+                    dirty_rects.push(full_screen_rect);
+                }
+            } else {
+                dirty_rects.extend(transition_rects);
+            }
+        }
+
+        dirty_rects
+    }
+
+    /// Swap buffers and return the new buffer index
+    fn swap_buffers(&mut self) -> usize {
+        1 - self.current_buffer
+    }
+
+    /// Render the view to the given buffer
+    fn render_to_buffer<V: View>(&mut self, view: &V, buffer_idx: usize) {
+        let new_buffer = &mut self.buffers[buffer_idx];
+        let area = crate::layout::Rect::new(0, 0, new_buffer.width(), new_buffer.height());
 
         new_buffer.clear();
         self.dom.render(view, new_buffer, area);
+    }
+
+    /// Draw the buffer to the terminal
+    fn draw_to_terminal<W: std::io::Write>(
+        &mut self,
+        terminal: &mut Terminal<W>,
+        buffer_idx: usize,
+        force_redraw: bool,
+        dirty_rects: &[crate::layout::Rect],
+    ) -> crate::Result<()> {
+        let old_buffer = &self.buffers[self.current_buffer];
+        let new_buffer = &self.buffers[buffer_idx];
 
         if force_redraw || self.needs_force_redraw {
             terminal.force_redraw(new_buffer)?;
             self.needs_force_redraw = false;
         } else {
-            let changes = crate::render::diff(old_buffer, new_buffer, &dirty_rects);
+            let changes = crate::render::diff(old_buffer, new_buffer, dirty_rects);
             terminal.draw_changes(changes, new_buffer)?;
         }
 
-        self.current_buffer = new_buffer_idx;
-
-        // Clear dirty flags after rendering
-        self.dom.tree_mut().clear_dirty_flags();
-
+        // Swap to the new buffer
+        self.current_buffer = buffer_idx;
         Ok(())
     }
 
@@ -546,7 +593,7 @@ impl App {
     /// Incrementally update layout tree (only update changed nodes)
     ///
     /// Works with the incremental DOM build to only update dirty nodes.
-    fn update_layout_tree(&mut self, dom_id: crate::dom::DomId) {
+    fn update_layout_tree_incremental(&mut self, dom_id: crate::dom::DomId) {
         // Check if this node exists in layout
         let node_exists = self.layout.layout(dom_id).is_ok();
 
@@ -582,7 +629,7 @@ impl App {
             .unwrap_or_default();
 
         for child_id in children {
-            self.update_layout_tree(child_id);
+            self.update_layout_tree_incremental(child_id);
         }
     }
 
