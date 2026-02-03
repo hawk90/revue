@@ -1,6 +1,93 @@
 //! Application lifecycle and coordination
 //!
 //! This module provides the main entry point for Revue applications.
+//!
+//! # Application Lifecycle
+//!
+//! A Revue application follows this lifecycle:
+//!
+//! ```text
+//! 1. INITIALIZATION (App::new, AppBuilder)
+//!    ├─ Create DOM renderer with stylesheet
+//!    ├─ Create layout engine
+//!    ├─ Allocate double buffers
+//!    ├─ Initialize plugin registry
+//!    └─ Set up optional features (hot reload, devtools, etc.)
+//!
+//! 2. RUN LOOP (App::run)
+//!    ├─ Initialize terminal
+//!    ├─ Mount plugins
+//!    ├─ Build initial DOM
+//!    ├─ Enter event loop:
+//!    │   ├─ Check hot reload (if enabled)
+//!    │   ├─ Read next event
+//!    │   ├─ Handle event → may trigger redraw
+//!    │   └─ Draw frame (if needed)
+//!    ├─ Unmount plugins
+//!    └─ Restore terminal
+//!
+//! 3. EVENT HANDLING (handle_event)
+//!    ├─ Quit keys (Ctrl+C, 'q') → stop running
+//!    ├─ Resize events → update buffers, rebuild layout
+//!    ├─ Tick events → update transitions, tick plugins
+//!    └─ User handler → custom application logic
+//!
+//! 4. DRAW CYCLE (draw)
+//!    ├─ Update DOM (if needed)
+//!    ├─ Compute styles (always, with dirty checking)
+//!    ├─ Update layout (if needed)
+//!    ├─ Collect dirty regions
+//!    ├─ Render to new buffer
+//!    ├─ Diff buffers
+//!    └─ Draw changes to terminal
+//!
+//! 5. CLEANUP
+//!    ├─ Unmount plugins
+//!    └─ Restore terminal state
+//! ```
+//!
+//! # State Flags
+//!
+//! The `App` uses several boolean flags to track what needs to be updated:
+//!
+//! | Flag | Purpose | When Set |
+//! |------|---------|----------|
+//! | `running` | Controls the event loop | Set to `true` on run start, `false` on quit |
+//! | `needs_force_redraw` | Full screen redraw | On resize, explicit request, or stylesheet reload |
+//! | `needs_layout_rebuild` | Rebuild layout tree | On resize or structural DOM changes |
+//! | `needs_dom_rebuild` | Rebuild DOM root | On first frame or explicit request |
+//!
+//! # Buffer Management
+//!
+//! Revue uses **double buffering** for efficient rendering:
+//!
+//! 1. Two buffers are allocated at the terminal size
+//! 2. Each frame renders to the "new" buffer
+//! 3. Buffers are diffed to find minimal changes
+//! 4. Only changed cells are drawn to the terminal
+//! 5. Buffers are swapped for the next frame
+//!
+//! # Threading Model
+//!
+//! The `App` is **single-threaded** by design:
+//! - All UI updates happen on the main thread
+//! - Event handling is synchronous
+//! - Plugin operations run in sequence
+//! - For async operations, use the worker pool module
+//!
+//! # Plugins
+//!
+//! Plugins can extend application functionality:
+//! - Access terminal size via `update_terminal_size`
+//! - Receive tick events via `tick`
+//! - Lifecycle hooks: `mount`, `unmount`
+//!
+//! # Hot Reload
+//!
+//! With the `hot-reload` feature enabled:
+//! - CSS files are watched for changes
+//! - Stylesheets are automatically reloaded on change
+//! - Invalid CSS logs warnings but doesn't crash the app
 
 mod builder;
 #[cfg(feature = "hot-reload")]
@@ -55,6 +142,46 @@ fn is_quit_key(key: &KeyEvent) -> bool {
 }
 
 /// Main application struct
+///
+/// The `App` struct manages the entire application lifecycle including:
+/// - DOM tree and style resolution
+/// - Layout computation
+/// - Double-buffered rendering
+/// - Event loop and handling
+/// - Plugin management
+/// - Transition animations
+///
+/// # Creating an App
+///
+/// Use [`AppBuilder`] for configuration:
+///
+/// ```ignore
+/// use revue::prelude::*;
+///
+/// let app = App::builder()
+///     .stylesheet(StyleSheet::default())
+///     .mouse_capture(true)
+///     .build()
+///     .unwrap();
+/// ```
+///
+/// # Running the App
+///
+/// Use [`App::run()`] to start the event loop with a view and event handler:
+///
+/// ```ignore
+/// app.run(my_view, |event, view, app| {
+///     // Handle events, return true to trigger redraw
+///     true
+/// })?;
+/// ```
+///
+/// # Requesting Updates
+///
+/// Use these methods to trigger updates:
+/// - [`request_redraw()`] - Force full screen redraw on next frame
+/// - [`request_layout_rebuild()`] - Rebuild layout tree on next frame
+/// - [`request_dom_rebuild()`] - Rebuild DOM root on next frame
 pub struct App {
     /// Manages all DOM nodes and style resolution
     dom: DomRenderer,
