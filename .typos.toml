@@ -35,3 +35,6 @@ Ded = "Ded"          # partial match in Dead
 hel = "hel"          # lowercase partial
 nd = "nd"            # partial match in and
 labelled = "labelled"  # ARIA attribute: aria-labelledby
+
+[type.rust.extend-identifiers]
+consts = "consts"      # std::f32::consts and std::f64::consts (Rust std lib modules)
