@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.45.0](https://github.com/hawk90/revue/compare/v2.44.13...v2.45.0) (2026-02-02)
+
+
+### Features
+
+* **bench:** add widget, patterns, and utils benchmarks ([#388](https://github.com/hawk90/revue/issues/388)) ([04d9a6b](https://github.com/hawk90/revue/commit/04d9a6bb40391deb83706d524595233b030cc34b))
+
 ## [2.44.13](https://github.com/hawk90/revue/compare/v2.44.12...v2.44.13) (2026-02-01)
 
 

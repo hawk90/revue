@@ -19,6 +19,7 @@ pub(super) struct LineSegment {
 }
 
 /// Chart widget
+#[derive(Debug)]
 pub struct Chart {
     /// Chart title
     title: Option<String>,
