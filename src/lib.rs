@@ -286,11 +286,24 @@ pub enum Error {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// Layout error.
+    ///
+    /// Occurs during layout computation.
+    #[error("Layout error: {0}")]
+    Layout(#[from] layout::LayoutError),
+
+    /// Rendering error.
+    ///
+    /// Occurs during buffer operations or rendering.
+    #[error("Render error: {0}")]
+    Render(String),
+
     /// Generic error with custom message.
     ///
     /// Used for errors that don't fit other categories.
-    #[error("{0}")]
-    Other(String),
+    /// This variant preserves the underlying error source for better debugging.
+    #[error("Unexpected error: {0}")]
+    Other(#[from] anyhow::Error),
 }
 
 /// Result type alias for Revue operations.
@@ -353,18 +366,26 @@ pub type Result<T> = std::result::Result<T, Error>;
 ///     #[error("I/O error: {0}")]
 ///     Io(#[from] std::io::Error),
 ///
-///     #[error("{0}")]
-///     Other(String),
+///     #[error("Layout error: {0}")]
+///     Layout(#[from] layout::LayoutError),
+///
+///     #[error("Render error: {0}")]
+///     Render(String),
+///
+///     #[error("Unexpected error: {0}")]
+///     Other(#[from] anyhow::Error),
 /// }
 /// ```
 ///
 /// ## Error Context
 ///
-/// **Good: Add context for clarity**
+/// **Good: Use anyhow for context**
 ///
 /// ```rust,ignore
+/// use anyhow::Context;
+///
 /// let file = std::fs::read_to_string(path)
-///     .map_err(|e| Error::Other(format!("Failed to read config: {}", e)))?;
+///     .context("Failed to read config")?;
 /// ```
 ///
 /// **Bad: Lose context**

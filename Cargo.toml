@@ -118,7 +118,9 @@ thiserror = "2.0"
 # ═══════════════════════════════════════════
 # Internal Macros
 # ═══════════════════════════════════════════
+# Internal Macros
 revue-macros = { path = "revue-macros", version = "2.45.3" }
+anyhow = "1.0.100"
 
 [dev-dependencies]
 insta = "1.34"
