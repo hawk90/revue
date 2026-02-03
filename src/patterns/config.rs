@@ -61,19 +61,39 @@ impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ConfigError::NotFound(path) => {
-                write!(f, "Config file not found: {}", path.display())
+                write!(
+                    f,
+                    "Config file not found: {}\n  Hint: Create the file or use load_or_default() to use defaults",
+                    path.display()
+                )
             }
             ConfigError::NoHome => {
-                write!(f, "Could not determine home directory")
+                write!(
+                    f,
+                    "Could not determine home directory\n  Hint: Ensure HOME environment variable is set"
+                )
             }
             ConfigError::ReadError(path, err) => {
-                write!(f, "Failed to read {}: {}", path.display(), err)
+                write!(
+                    f,
+                    "Failed to read config {}: {}\n  Hint: Check file permissions and ensure the file exists",
+                    path.display(),
+                    err
+                )
             }
             ConfigError::ParseError(err) => {
-                write!(f, "Failed to parse config: {}", err)
+                write!(
+                    f,
+                    "Failed to parse config: {}\n  Hint: Ensure TOML syntax is valid (check for unmatched brackets, quotes, etc.)",
+                    err
+                )
             }
             ConfigError::ValidationError(err) => {
-                write!(f, "Invalid config: {}", err)
+                write!(
+                    f,
+                    "Invalid config: {}\n  Hint: Review config values against expected types and ranges",
+                    err
+                )
             }
         }
     }

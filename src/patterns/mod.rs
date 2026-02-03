@@ -4,45 +4,134 @@
 //! (jira-revue, jenkins-tui, sshfs-tui, todo-tui). These patterns follow Clean Code and
 //! Single Responsibility Principle.
 //!
-//! # Modules
+//! # Pattern Categories
 //!
-//! | Module | Description |
-//! |--------|-------------|
-//! | [`colors`] | GitHub Dark theme color constants |
-//! | [`message`] | Message display with auto-timeout |
-//! | [`confirm`] | Confirmation dialog state |
-//! | [`async_ops`] | Async polling patterns with mpsc channels |
-//! | [`config`] | TOML config loading utilities |
-//! | [`keys`] | Layered key handling pattern |
+//! ## State Management Patterns
 //!
-//! # Example
+//! | Pattern | Description | Use Case |
+//! |---------|-------------|----------|
+//! | [`MessageState`] | Auto-expiring messages | Toast notifications, status updates |
+//! | [`ConfirmState`] | Confirmation dialogs | Destructive actions, confirmations |
+//! | [`SearchState`] | Search/filter input | List filtering, query input |
+//!
+//! ## Async Patterns
+//!
+//! | Pattern | Description | Use Case |
+//! |---------|-------------|----------|
+//! | [`AsyncTask`] | Async polling with mpsc | API calls, file I/O, background work |
+//! | [`ProgressiveLoader`] | Progressive data loading | Large datasets, pagination |
+//!
+//! ## Data Loading Patterns
+//!
+//! | Pattern | Description | Use Case |
+//! |---------|-------------|----------|
+//! | [`LazyData`] | On-demand data loading | Expensive computations, caching |
+//! | [`LazySync`] | Synchronized lazy loading | Thread-safe lazy initialization |
+//! | [`LazyReloadable`] | Reloadable data | Hot-reload, refreshable content |
+//! | [`PagedData`] | Paginated data | Large lists, API pagination |
+//!
+//! ## Configuration Patterns
+//!
+//! | Pattern | Description | Use Case |
+//! |---------|-------------|----------|
+//! | [`AppConfig`] | TOML config loading | Application configuration |
+//!
+//! ## Interaction Patterns
+//!
+//! | Pattern | Description | Use Case |
+//! |---------|-------------|----------|
+//! | [`KeyHandler`] | Layered key handling | Modal UI, context-sensitive keys |
+//! | [`FormState`] | Form field management | Multi-field input forms |
+//! | [`NavigationState`] | Navigation stack | Breadcrumbs, route history |
+//!
+//! ## UI Patterns
+//!
+//! | Pattern | Description | Use Case |
+//! |---------|-------------|----------|
+//! | [`colors`] | Color constants | Themed UIs |
+//!
+//! # Examples
+//!
+//! ## Message with Auto-Timeout
 //!
 //! ```ignore
-//! use revue::patterns::*;
+//! use revue::patterns::MessageState;
 //!
 //! struct App {
 //!     message: MessageState,
-//!     confirm: ConfirmState,
-//!     async_task: Option<AsyncTask<Vec<Item>>>,
 //! }
 //!
 //! impl App {
+//!     fn show_status(&mut self, msg: String) {
+//!         self.message.set(msg);  // Auto-clears after 3 seconds
+//!     }
+//!
 //!     fn poll(&mut self) -> bool {
-//!         let mut needs_redraw = false;
+//!         self.message.check_timeout()  // Returns true if expired
+//!     }
+//! }
+//! ```
 //!
-//!         // Check message timeout
-//!         needs_redraw |= self.message.check_timeout();
+//! ## Async Task with Spinner
 //!
-//!         // Poll async task
-//!         if let Some(task) = &mut self.async_task {
-//!             if let Some(result) = task.try_recv() {
-//!                 self.handle_result(result);
-//!                 self.async_task = None;
-//!                 needs_redraw = true;
+//! ```ignore
+//! use revue::patterns::{AsyncTask, spinner_char};
+//!
+//! struct App {
+//!     task: Option<AsyncTask<Vec<Item>>>,
+//! }
+//!
+//! impl App {
+//!     fn start_loading(&mut self) {
+//!         self.task = Some(AsyncTask::new(async {
+//!             // Expensive operation
+//!             fetch_items().await
+//!         }));
+//!     }
+//!
+//!     fn poll(&mut self) -> bool {
+//!         if let Some(task) = &mut self.task {
+//!             match task.try_recv() {
+//!                 Some(result) => {
+//!                     self.items = result;
+//!                     self.task = None;
+//!                     true
+//!                 }
+//!                 None => {
+//!                     // Show spinner
+//!                     let frame = spinner_char();
+//!                     self.draw_spinner(frame);
+//!                     false
+//!                 }
 //!             }
+//!         } else {
+//!             false
 //!         }
+//!     }
+//! }
+//! ```
 //!
-//!         needs_redraw
+//! ## Form with Validation
+//!
+//! ```ignore
+//! use revue::patterns::FormState;
+//!
+//! struct App {
+//!     form: FormState,
+//! }
+//!
+//! impl App {
+//!     fn new() -> Self {
+//!         Self {
+//!             form: FormState::new()
+//!                 .field("username", FieldType::Text)
+//!                 .field("password", FieldType::Password)
+//!                 .field("remember", FieldType::Checkbox),
+//!         }
+//!     }
+//!
+//!     fn submit(&self) -> Result<(), Vec<ValidationError>> {
+//!         self.form.validate()
 //!     }
 //! }
 //! ```
