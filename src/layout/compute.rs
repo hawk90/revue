@@ -68,15 +68,17 @@ fn compute_node(
     if !node.dirty {
         // Node is clean and viewport hasn't changed, skip computation
         // but still need to process children that might be dirty
-        let children = node.children.clone();
-        for &child_id in &children {
+        // Collect children IDs first to release the borrow on node
+        let children: Vec<u64> = node.children.to_vec();
+        for child_id in children {
             compute_node(tree, child_id, available_width, available_height, viewport);
         }
         return;
     }
 
     let display = node.display;
-    let children: Vec<u64> = node.children.clone();
+    // Collect children IDs - use to_vec() instead of clone() for better performance
+    let children: Vec<u64> = node.children.to_vec();
 
     // Compute this node's children layout based on display mode
     match display {

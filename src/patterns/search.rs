@@ -38,6 +38,8 @@ pub enum SearchMode {
 pub struct SearchState {
     /// Current search query
     query: String,
+    /// Cached lowercase query for case-insensitive search
+    query_lowercased: String,
     /// Search mode
     mode: SearchMode,
     /// Whether search is active (input visible)
@@ -61,6 +63,7 @@ impl SearchState {
     pub fn new() -> Self {
         Self {
             query: String::new(),
+            query_lowercased: String::new(),
             mode: SearchMode::Contains,
             active: false,
             last_update: None,
@@ -120,24 +123,33 @@ impl SearchState {
     /// Set search query
     pub fn set_query(&mut self, query: impl Into<String>) {
         self.query = query.into();
+        // Cache lowercase version for case-insensitive search
+        self.query_lowercased = self.query.to_lowercase();
         self.last_update = Some(Instant::now());
     }
 
     /// Clear search query
     pub fn clear(&mut self) {
         self.query.clear();
+        self.query_lowercased.clear();
         self.last_update = None;
     }
 
     /// Push a character to the query
     pub fn push(&mut self, ch: char) {
         self.query.push(ch);
+        // Update cached lowercase version
+        for c in ch.to_lowercase() {
+            self.query_lowercased.push(c);
+        }
         self.last_update = Some(Instant::now());
     }
 
     /// Pop a character from the query
     pub fn pop(&mut self) -> Option<char> {
         let ch = self.query.pop();
+        // Rebuild cached lowercase version (simpler than tracking multi-char UTF-8)
+        self.query_lowercased = self.query.to_lowercase();
         self.last_update = Some(Instant::now());
         ch
     }
@@ -156,23 +168,27 @@ impl SearchState {
             return true;
         }
 
+        // Use cached lowercase query for better performance
         let query = if self.case_sensitive {
-            self.query.clone()
+            &self.query
         } else {
-            self.query.to_lowercase()
+            &self.query_lowercased
         };
 
-        let text = if self.case_sensitive {
-            text.to_string()
+        // For case-insensitive search, lowercase the search text once
+        let text_lower = if self.case_sensitive {
+            None
         } else {
-            text.to_lowercase()
+            Some(text.to_lowercase())
         };
+
+        let search_text = text_lower.as_deref().unwrap_or(text);
 
         match self.mode {
-            SearchMode::Contains => text.contains(&query),
-            SearchMode::Prefix => text.starts_with(&query),
-            SearchMode::Exact => text == query,
-            SearchMode::Fuzzy => fuzzy_match(&query, &text).is_some(),
+            SearchMode::Contains => search_text.contains(query),
+            SearchMode::Prefix => search_text.starts_with(query),
+            SearchMode::Exact => search_text == query,
+            SearchMode::Fuzzy => fuzzy_match(query, search_text).is_some(),
         }
     }
 
@@ -214,26 +230,30 @@ impl SearchState {
             return Some(0);
         }
 
+        // Use cached lowercase query for better performance
         let query = if self.case_sensitive {
-            self.query.clone()
+            &self.query
         } else {
-            self.query.to_lowercase()
+            &self.query_lowercased
         };
 
-        let text = if self.case_sensitive {
-            text.to_string()
+        // For case-insensitive search, lowercase the search text once
+        let text_lower = if self.case_sensitive {
+            None
         } else {
-            text.to_lowercase()
+            Some(text.to_lowercase())
         };
+
+        let search_text = text_lower.as_deref().unwrap_or(text);
 
         match self.mode {
-            SearchMode::Fuzzy => fuzzy_match(&query, &text).map(|m| m.score),
-            SearchMode::Exact if text == query => Some(100),
-            SearchMode::Prefix if text.starts_with(&query) => {
-                Some(50 + (query.len() as i32 * 100 / text.len().max(1) as i32))
+            SearchMode::Fuzzy => fuzzy_match(query, search_text).map(|m| m.score),
+            SearchMode::Exact if search_text == query => Some(100),
+            SearchMode::Prefix if search_text.starts_with(query) => {
+                Some(50 + (query.len() as i32 * 100 / search_text.len().max(1) as i32))
             }
-            SearchMode::Contains if text.contains(&query) => {
-                let pos = text.find(&query).unwrap_or(0);
+            SearchMode::Contains if search_text.contains(query) => {
+                let pos = search_text.find(query).unwrap_or(0);
                 Some(25 - pos as i32)
             }
             _ => None,
