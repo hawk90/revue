@@ -170,7 +170,11 @@ impl Buffer {
     #[inline]
     fn index(&self, x: u16, y: u16) -> Option<usize> {
         if x < self.width && y < self.height {
-            Some((y as usize) * (self.width as usize) + (x as usize))
+            // Use saturating arithmetic to prevent overflow with very large dimensions
+            let idx = (y as usize)
+                .saturating_mul(self.width as usize)
+                .saturating_add(x as usize);
+            Some(idx)
         } else {
             None
         }
@@ -189,9 +193,15 @@ impl Buffer {
     /// Get a slice of cells for a given row
     pub fn get_row(&self, y: u16) -> Option<&[Cell]> {
         if y < self.height {
-            let start = (y as usize) * (self.width as usize);
-            let end = start + (self.width as usize);
-            Some(&self.cells[start..end])
+            // Use saturating arithmetic to prevent overflow
+            let start = (y as usize).saturating_mul(self.width as usize);
+            let end = start.saturating_add(self.width as usize);
+            // Ensure end is within bounds
+            if end <= self.cells.len() {
+                Some(&self.cells[start..end])
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -275,8 +285,11 @@ impl Buffer {
 
         // Fill each row using slice operations for better performance
         for row_y in y..y_end {
-            let start_idx = (row_y as usize) * row_width + (x as usize);
-            let end_idx = start_idx + fill_width;
+            // Use saturating arithmetic to prevent overflow
+            let start_idx = (row_y as usize)
+                .saturating_mul(row_width)
+                .saturating_add(x as usize);
+            let end_idx = start_idx.saturating_add(fill_width);
             if end_idx <= self.cells.len() {
                 self.cells[start_idx..end_idx].fill(cell);
             }
@@ -300,7 +313,8 @@ impl Buffer {
     ///
     /// Optimized using slice copy operations for better performance.
     pub fn resize(&mut self, width: u16, height: u16) {
-        let new_size = (width as usize) * (height as usize);
+        // Use saturating arithmetic to prevent overflow
+        let new_size = (width as usize).saturating_mul(height as usize);
         let mut new_cells = vec![Cell::empty(); new_size];
 
         // Copy existing content using slice operations

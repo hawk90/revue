@@ -174,8 +174,8 @@ impl<T: Send + 'static> WorkerHandle<T> {
 
             // Simple polling executor with exponential backoff
             // SAFETY:
-            // - The vtable functions are all no-ops that don't access any data
-            // - RawWaker is created with a dummy pointer since no data is needed
+            // - The vtable functions properly handle the pointer according to RawWaker contract
+            // - RawWaker is created with a null pointer since no data is needed
             // - The waker is only used as a placeholder for Context
             // - We never call wake() or wake_by_ref() on this waker
             // - Only clone() and drop() are called, which are safe no-ops
@@ -183,16 +183,17 @@ impl<T: Send + 'static> WorkerHandle<T> {
             //
             // Note: This fallback is only used when the "async" feature is disabled.
             // When async is enabled, the proper tokio runtime is used instead.
-            static DUMMY: () = ();
-            let dummy_raw_waker = {
-                fn no_op(_: *const ()) {}
-                fn clone(_: *const ()) -> RawWaker {
-                    // Use a valid pointer to DUMMY static instead of null
-                    let vtable = &RawWakerVTable::new(clone, no_op, no_op, no_op);
-                    RawWaker::new(&DUMMY as *const () as *const (), vtable)
-                }
-                dummy_raw_waker()
-            };
+            static VTABLE: RawWakerVTable = RawWakerVTable::new(
+                // clone: Create a new RawWaker from the same pointer
+                |_ptr| RawWaker::new(std::ptr::null(), &VTABLE),
+                // wake: No-op since we never wake
+                |_ptr| {},
+                // wake_by_ref: No-op since we never wake
+                |_ptr| {},
+                // drop: No-op since we have no resources to clean up
+                |_ptr| {},
+            );
+            let dummy_raw_waker = RawWaker::new(std::ptr::null(), &VTABLE);
             let waker = unsafe { Waker::from_raw(dummy_raw_waker) };
             let mut cx = Context::from_waker(&waker);
             let mut future = Box::pin(future);
