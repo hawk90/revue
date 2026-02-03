@@ -446,7 +446,7 @@ impl DomTree {
         }
 
         // Check ID
-        if let Some(ref id) = part.id {
+        if let Some(id) = &part.id {
             if node.element_id() != Some(id.as_str()) {
                 return false;
             }
