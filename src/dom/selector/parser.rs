@@ -5,6 +5,9 @@ use super::types::{
     SelectorPart,
 };
 
+/// Maximum allowed length for CSS identifiers to prevent DoS attacks
+const MAX_IDENTIFIER_LENGTH: usize = 256;
+
 /// Parse a single selector
 pub fn parse_selector(input: &str) -> Result<Selector, SelectorParseError> {
     let mut parser = SelectorParser::new(input);
@@ -62,17 +65,28 @@ impl<'a> SelectorParser<'a> {
         }
     }
 
-    fn parse_identifier(&mut self) -> String {
+    fn parse_identifier(&mut self) -> Result<String, SelectorParseError> {
         let mut ident = String::new();
         while let Some(ch) = self.peek() {
             if ch.is_alphanumeric() || ch == '-' || ch == '_' {
                 ident.push(ch);
                 self.advance();
+
+                // Prevent DoS via excessively long identifiers
+                if ident.len() > MAX_IDENTIFIER_LENGTH {
+                    return Err(SelectorParseError {
+                        message: format!(
+                            "Identifier exceeds maximum length of {}",
+                            MAX_IDENTIFIER_LENGTH
+                        ),
+                        position: self.pos,
+                    });
+                }
             } else {
                 break;
             }
         }
-        ident
+        Ok(ident)
     }
 
     fn parse_selector(&mut self) -> Result<Selector, SelectorParseError> {
@@ -160,7 +174,7 @@ impl<'a> SelectorParser<'a> {
                 }
                 Some('#') => {
                     self.advance();
-                    let id = self.parse_identifier();
+                    let id = self.parse_identifier()?;
                     if id.is_empty() {
                         return Err(SelectorParseError {
                             message: "Expected ID after #".to_string(),
@@ -171,7 +185,7 @@ impl<'a> SelectorParser<'a> {
                 }
                 Some('.') => {
                     self.advance();
-                    let class = self.parse_identifier();
+                    let class = self.parse_identifier()?;
                     if class.is_empty() {
                         return Err(SelectorParseError {
                             message: "Expected class name after .".to_string(),
@@ -190,9 +204,9 @@ impl<'a> SelectorParser<'a> {
                     let attr = self.parse_attribute_selector()?;
                     part.attributes.push(attr);
                 }
-                Some(ch) if ch.is_alphabetic() || ch == '_' => {
+                Some(ch) if ch.is_alphanumeric() || ch == '_' => {
                     if part.element.is_none() && !part.universal {
-                        let elem = self.parse_identifier();
+                        let elem = self.parse_identifier()?;
                         part.element = Some(elem);
                     } else {
                         break;
@@ -206,7 +220,7 @@ impl<'a> SelectorParser<'a> {
     }
 
     fn parse_pseudo_class(&mut self) -> Result<PseudoClass, SelectorParseError> {
-        let name = self.parse_identifier();
+        let name = self.parse_identifier()?;
 
         let pseudo = match name.to_lowercase().as_str() {
             "focus" => PseudoClass::Focus,
@@ -298,7 +312,7 @@ impl<'a> SelectorParser<'a> {
 
     fn parse_attribute_selector(&mut self) -> Result<AttributeSelector, SelectorParseError> {
         self.skip_whitespace();
-        let name = self.parse_identifier();
+        let name = self.parse_identifier()?;
 
         if name.is_empty() {
             return Err(SelectorParseError {
