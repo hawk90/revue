@@ -343,48 +343,69 @@ impl App {
     fn check_hot_reload(&mut self) -> Option<bool> {
         let hr = self.hot_reload.as_mut()?;
 
-        // Non-blocking check for events
-        if let Some(event) = hr.poll() {
-            match event {
-                HotReloadEvent::StylesheetChanged(ref path) => {
-                    crate::log_debug!("Hot reload: stylesheet changed {:?}", path);
+        hr.poll().map(|event| self.handle_hot_reload_event(event))
+    }
+
+    /// Handle a single hot reload event, returns true if redraw is needed
+    #[cfg(feature = "hot-reload")]
+    fn handle_hot_reload_event(&mut self, event: HotReloadEvent) -> bool {
+        match event {
+            HotReloadEvent::StylesheetChanged(ref path) => {
+                self.log_and_reload(path, "stylesheet changed");
+                true
+            }
+            HotReloadEvent::FileCreated(ref path) => {
+                crate::log_debug!("Hot reload: file created {:?}", path);
+                if self.style_paths.contains(path) {
                     self.reload_stylesheet(path);
-                    return Some(true);
-                }
-                HotReloadEvent::FileCreated(ref path) => {
-                    crate::log_debug!("Hot reload: file created {:?}", path);
-                    if self.style_paths.contains(path) {
-                        self.reload_stylesheet(path);
-                        return Some(true);
-                    }
-                }
-                HotReloadEvent::FileDeleted(ref path) => {
-                    crate::log_debug!("Hot reload: file deleted {:?}", path);
-                }
-                HotReloadEvent::Error(ref e) => {
-                    crate::log_warn!("Hot reload error: {}", e);
+                    true
+                } else {
+                    false
                 }
             }
+            HotReloadEvent::FileDeleted(ref path) => {
+                crate::log_debug!("Hot reload: file deleted {:?}", path);
+                false
+            }
+            HotReloadEvent::Error(ref e) => {
+                crate::log_warn!("Hot reload error: {}", e);
+                false
+            }
         }
-        Some(false)
+    }
+
+    /// Log a hot reload event and reload the stylesheet
+    #[cfg(feature = "hot-reload")]
+    fn log_and_reload(&mut self, path: &PathBuf, action: &str) {
+        crate::log_debug!("Hot reload: {action} {:?}", path);
+        self.reload_stylesheet(path);
     }
 
     /// Reload a single stylesheet file
     #[cfg(feature = "hot-reload")]
     fn reload_stylesheet(&mut self, path: &PathBuf) {
-        match fs::read_to_string(path) {
-            Ok(content) => match parse_css(&content) {
-                Ok(sheet) => {
-                    self.dom.stylesheet_mut().merge(sheet);
-                    self.needs_force_redraw = true;
-                    crate::log_debug!("Hot reload: reloaded {:?}", path);
-                }
-                Err(e) => {
-                    crate::log_warn!("Hot reload: failed to parse CSS from {:?}: {}", path, e);
-                }
-            },
+        let content = match fs::read_to_string(path) {
+            Ok(c) => c,
             Err(e) => {
                 crate::log_warn!("Hot reload: failed to read {:?}: {}", path, e);
+                return;
+            }
+        };
+
+        self.parse_and_merge_stylesheet(path, &content);
+    }
+
+    /// Parse CSS content and merge into stylesheet
+    #[cfg(feature = "hot-reload")]
+    fn parse_and_merge_stylesheet(&mut self, path: &PathBuf, content: &str) {
+        match parse_css(content) {
+            Ok(sheet) => {
+                self.dom.stylesheet_mut().merge(sheet);
+                self.needs_force_redraw = true;
+                crate::log_debug!("Hot reload: reloaded {:?}", path);
+            }
+            Err(e) => {
+                crate::log_warn!("Hot reload: failed to parse CSS from {:?}: {}", path, e);
             }
         }
     }
