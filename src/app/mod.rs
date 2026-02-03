@@ -409,7 +409,9 @@ impl App {
         self.dom.compute_styles_with_inheritance();
 
         let root_dom_id = self.dom.tree().root_id().ok_or_else(|| {
-            crate::Error::Other("Root DOM node not found. DOM may not have been built.".to_string())
+            crate::Error::Other(anyhow::anyhow!(
+                "Root DOM node not found. DOM may not have been built."
+            ))
         })?;
 
         // Only rebuild layout tree if needed (e.g., on resize or structural changes)

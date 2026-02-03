@@ -521,28 +521,28 @@ mod tests {
 
         fn on_init(&mut self, _ctx: &mut PluginContext) -> crate::Result<()> {
             if self.fail_on == "init" {
-                return Err(crate::Error::Other("init failed".to_string()));
+                return Err(crate::Error::Other(anyhow::anyhow!("init failed")));
             }
             Ok(())
         }
 
         fn on_mount(&mut self, _ctx: &mut PluginContext) -> crate::Result<()> {
             if self.fail_on == "mount" {
-                return Err(crate::Error::Other("mount failed".to_string()));
+                return Err(crate::Error::Other(anyhow::anyhow!("mount failed")));
             }
             Ok(())
         }
 
         fn on_tick(&mut self, _ctx: &mut PluginContext, _delta: Duration) -> crate::Result<()> {
             if self.fail_on == "tick" {
-                return Err(crate::Error::Other("tick failed".to_string()));
+                return Err(crate::Error::Other(anyhow::anyhow!("tick failed")));
             }
             Ok(())
         }
 
         fn on_unmount(&mut self, _ctx: &mut PluginContext) -> crate::Result<()> {
             if self.fail_on == "unmount" {
-                return Err(crate::Error::Other("unmount failed".to_string()));
+                return Err(crate::Error::Other(anyhow::anyhow!("unmount failed")));
             }
             Ok(())
         }
