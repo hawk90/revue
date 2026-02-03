@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.45.1](https://github.com/hawk90/revue/compare/v2.45.0...v2.45.1) (2026-02-03)
+
+
+### Bug Fixes
+
+* **ci:** allow 'consts' identifier in typos configuration ([a59c9d7](https://github.com/hawk90/revue/commit/a59c9d7d226d8cc0f18a03782d842bb50929704f))
+
+
+### Performance Improvements
+
+* **layout:** optimize grid layout to reduce cloning ([#391](https://github.com/hawk90/revue/issues/391)) ([8d0259c](https://github.com/hawk90/revue/commit/8d0259c4696f9b20340dfeb38f850d8416724bf8))
+
 ## [2.45.0](https://github.com/hawk90/revue/compare/v2.44.13...v2.45.0) (2026-02-02)
 
 
