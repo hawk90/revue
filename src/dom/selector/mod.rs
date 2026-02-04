@@ -586,4 +586,52 @@ mod tests {
         assert!(display.contains("sidebar"));
         assert!(display.contains("Button"));
     }
+
+    // Identifier length limit tests (DoS prevention)
+    #[test]
+    fn test_parse_error_identifier_too_long() {
+        // Create a 257-character identifier (exceeds 256 limit)
+        let long_id = "a".repeat(257);
+        let result = parse_selector(&format!("#{}", long_id));
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("Identifier exceeds maximum length"));
+    }
+
+    #[test]
+    fn test_parse_identifier_at_max_length() {
+        // Create a 256-character identifier (at the limit)
+        let long_id = "a".repeat(256);
+        let result = parse_selector(&format!("#{}", long_id));
+        // Should succeed - 256 is allowed
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parse_error_class_too_long() {
+        // Create a 257-character class name
+        let long_class = "b".repeat(257);
+        let result = parse_selector(&format!(".{}", long_class));
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("Identifier exceeds maximum length"));
+    }
+
+    #[test]
+    fn test_parse_error_element_too_long() {
+        // Create a 257-character element name
+        let long_element = "c".repeat(257);
+        let result = parse_selector(&long_element);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("Identifier exceeds maximum length"));
+    }
+
+    #[test]
+    fn test_parse_error_attribute_name_too_long() {
+        // Create a 257-character attribute name
+        let long_attr = "d".repeat(257);
+        let result = parse_selector(&format!("[{}]", long_attr));
+        assert!(result.is_err());
+    }
 }

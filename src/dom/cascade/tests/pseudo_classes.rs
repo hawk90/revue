@@ -17,7 +17,7 @@ fn test_match_pseudo_hover() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Button"));
@@ -43,7 +43,7 @@ fn test_match_pseudo_focus() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Input"));
@@ -68,7 +68,7 @@ fn test_match_pseudo_disabled() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Button"));
@@ -88,7 +88,7 @@ fn test_match_pseudo_first_child() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Item"));
@@ -113,7 +113,7 @@ fn test_match_pseudo_last_child() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Item"));
@@ -133,7 +133,7 @@ fn test_match_pseudo_checked() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Checkbox"));
@@ -158,7 +158,7 @@ fn test_match_pseudo_selected() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Option"));
@@ -178,7 +178,7 @@ fn test_match_pseudo_only_child() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Item"));

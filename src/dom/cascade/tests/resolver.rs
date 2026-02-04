@@ -61,7 +61,7 @@ fn test_resolver_new() {
 #[test]
 fn test_resolver_match_by_type() {
     let stylesheet = create_test_stylesheet();
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let node = create_button_node(1);
     let get_node = |_: DomId| -> Option<&DomNode> { None };
@@ -74,7 +74,7 @@ fn test_resolver_match_by_type() {
 #[test]
 fn test_resolver_match_by_class() {
     let stylesheet = create_test_stylesheet();
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let node = create_node_with_class(1, "Text", "primary");
     let get_node = |_: DomId| -> Option<&DomNode> { None };
@@ -87,7 +87,7 @@ fn test_resolver_match_by_class() {
 #[test]
 fn test_resolver_match_by_id() {
     let stylesheet = create_test_stylesheet();
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let node = create_node_with_id(1, "Button", "submit");
     let get_node = |_: DomId| -> Option<&DomNode> { None };
@@ -100,7 +100,7 @@ fn test_resolver_match_by_id() {
 #[test]
 fn test_resolver_match_multiple() {
     let stylesheet = create_test_stylesheet();
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     // Node that matches type, class, and id
     let dom_id = DomId::new(1);
@@ -123,7 +123,7 @@ fn test_resolver_match_multiple() {
 #[test]
 fn test_resolver_no_match() {
     let stylesheet = create_test_stylesheet();
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(dom_id, WidgetMeta::new("Text")); // No matching rules
@@ -136,7 +136,7 @@ fn test_resolver_no_match() {
 #[test]
 fn test_compute_style_basic() {
     let stylesheet = create_test_stylesheet();
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let node = create_button_node(1);
     let get_node = |_: DomId| -> Option<&DomNode> { None };
@@ -149,13 +149,13 @@ fn test_compute_style_basic() {
 #[test]
 fn test_with_cached_selectors() {
     let stylesheet = create_test_stylesheet();
-    let resolver1 = StyleResolver::new(&stylesheet);
+    let mut resolver1 = StyleResolver::new(&stylesheet);
 
     // Get cached selectors
     let cached = resolver1.selectors.clone();
 
     // Create new resolver with cached selectors (pass reference)
-    let resolver2 = StyleResolver::with_cached_selectors(&stylesheet, &cached);
+    let mut resolver2 = StyleResolver::with_cached_selectors(&stylesheet, &cached);
 
     let node = create_button_node(1);
     let get_node = |_: DomId| -> Option<&DomNode> { None };
@@ -193,7 +193,7 @@ fn test_universal_selector() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let node = create_button_node(1);
     let get_node = |_: DomId| -> Option<&DomNode> { None };
@@ -214,7 +214,7 @@ fn test_compute_style_with_inline() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let mut node = DomNode::new(dom_id, WidgetMeta::new("Button"));
@@ -238,7 +238,7 @@ fn test_compute_style_with_parent() {
         rules: vec![],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(dom_id, WidgetMeta::new("Text"));
@@ -259,7 +259,7 @@ fn test_compute_style_with_parent_none() {
         rules: vec![],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let dom_id = DomId::new(1);
     let node = DomNode::new(dom_id, WidgetMeta::new("Text"));

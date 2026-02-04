@@ -14,7 +14,7 @@ fn test_match_descendant_combinator() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     // Create parent node
     let parent_id = DomId::new(1);
@@ -47,7 +47,7 @@ fn test_match_child_combinator() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let parent_id = DomId::new(1);
     let parent = DomNode::new(parent_id, WidgetMeta::new("Container"));
@@ -77,7 +77,7 @@ fn test_match_adjacent_sibling_combinator() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     let parent_id = DomId::new(1);
     let sibling_id = DomId::new(2);
@@ -113,7 +113,7 @@ fn test_match_no_parent() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let resolver = StyleResolver::new(&stylesheet);
+    let mut resolver = StyleResolver::new(&stylesheet);
 
     // Node without parent
     let dom_id = DomId::new(1);
