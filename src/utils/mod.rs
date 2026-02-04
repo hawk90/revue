@@ -1,44 +1,99 @@
 //! Common utilities for widget rendering
 //!
 //! This module provides shared functionality used across multiple widgets.
+//! Utilities are organized by category for easy discovery.
 //!
-//! # Modules
+//! # Categories
 //!
-//! | Module | Description |
-//! |--------|-------------|
-//! | [`border`] | Border rendering utilities |
-//! | [`text`] | Text truncation, padding, wrapping |
-//! | [`color`] | Color manipulation (blend, darken, lighten) |
-//! | [`sort`] | Natural sorting (file2 < file10) |
-//! | [`fuzzy`] | Fuzzy string matching for search |
-//! | [`unicode`] | Unicode display width calculation |
-//! | [`mod@highlight`] | Search result highlighting |
-//! | [`mod@format`] | Human-friendly formatting (duration, size) |
-//! | [`diff`] | Text difference comparison |
-//! | [`path`] | Path manipulation and display |
-//! | [`ansi`] | ANSI escape sequence parsing |
-//! | [`easing`] | Animation easing functions |
-//! | [`mod@figlet`] | ASCII art text rendering |
-//! | [`syntax`] | Syntax highlighting for code |
-//! | [`clipboard`] | System clipboard access |
-//! | [`validation`] | Form input validation |
-//! | [`i18n`] | Internationalization support |
-//! | [`keymap`] | Key binding configuration |
-//! | [`accessibility`] | Screen reader and a11y support |
-//! | [`textbuffer`] | UTF-8 aware text buffer for editing |
-//! | [`undo`] | Generic undo/redo history management |
-//! | [`gradient`] | Multi-stop color gradients (linear, radial) |
-//! | [`animation`] | Frame-based animation (spring, keyframes, sequences) |
-//! | [`table`] | Table/column formatting with alignment |
-//! | [`tree`] | Tree navigation with collapsible sections |
-//! | [`selection`] | List selection with viewport scrolling |
-//! | [`layout`] | Box layout calculation for bordered boxes |
-//! | [`browser`] | System browser and URL utilities |
-//! | [`profiler`] | Performance profiling and timing |
-//! | [`lock`] | Lock utilities for consistent poison handling |
-//! | [`shell`] | Shell-safe string escaping |
-//! | [`debounce`] | Debounce and throttle utilities for events |
-//! | [`mod@once`] | One-shot execution utility (call only once) |
+//! ## Text Processing
+//!
+//! | Module | Description | Use Case |
+//!|--------|-------------|----------|
+//! | [`text`] | Text truncation, padding, wrapping | Text display |
+//! | [`textbuffer`] | UTF-8 aware text buffer | Text editing |
+//! | [`unicode`] | Unicode display width | Emoji, CJK support |
+//!
+//! ## Styling & Visual
+//!
+//! | Module | Description | Use Case |
+//!|--------|-------------|----------|
+//! | [`color`] | Color manipulation | Blending, darkening |
+//! | [`gradient`] | Multi-stop gradients | Linear, radial |
+//! | [`border`] | Border rendering | Bordered containers |
+//! | [`format`] | Human formatting | Duration, file size |
+//! | [`syntax`] | Syntax highlighting | Code display |
+//! | [`figlet`] | ASCII art text | Large text |
+//! | [`highlight`] | Search highlighting | Fuzzy matches |
+//!
+//! ## Data Structures
+//!
+//! | Module | Description | Use Case |
+//!|--------|-------------|----------|
+//! | [`table`] | Table formatting | Column alignment |
+//! | [`tree`] | Tree navigation | Collapsible trees |
+//! | [`selection`] | List selection | Viewport scrolling |
+//! | [`layout`] | Box layout | Bordered widgets |
+//!
+//! ## Utilities
+//!
+//! | Module | Description | Use Case |
+//!|--------|-------------|----------|
+//! | [`fuzzy`] | Fuzzy string matching | Search/filter |
+//! | [`sort`] | Natural sorting | File names (file2 < file10) |
+//! | [`diff`] | Text comparison | Diffs, patches |
+//! | [`path`] | Path manipulation | File display |
+//! | [`ansi`] | ANSI escape parsing | Terminal output |
+//! | [`easing`] | Animation easing | Smooth transitions |
+//! | [`animation`] | Frame-based animation | Spring, keyframes |
+//! | [`debounce`] | Event debouncing | Rate limiting |
+//! | [`once`] | One-shot execution | Call once pattern |
+//! | [`profiler`] | Performance timing | Benchmarks |
+//! | [`lock`] | Lock handling | Poison errors |
+//! | [`shell`] | Shell escaping | Command safety |
+//!
+//! ## System Integration
+//!
+//! | Module | Description | Use Case |
+//!|--------|-------------|----------|
+//! | [`clipboard`] | Clipboard access | Copy/paste |
+//! | [`i18n`] | Internationalization | Multi-language |
+//! | [`accessibility`] | Screen reader support | A11y features |
+//! | [`validation`] | Form validation | Input checking |
+//! | [`keymap`] | Key bindings | Keyboard shortcuts |
+//! | [`browser`] | System browser | Open URLs |
+//!
+//! # Quick Start
+//!
+//! ## Color Manipulation
+//!
+//! ```rust,ignore
+//! use revue::utils::color::{darken, lighten, blend};
+//! use revue::style::Color;
+//!
+//! let color = Color::BLUE;
+//! let darker = darken(color, 0.2);
+//! let lighter = lighten(color, 0.3);
+//! let blended = blend(color, Color::WHITE, 0.5);
+//! ```
+//!
+//! ## Fuzzy Search
+//!
+//! ```rust,ignore
+//! use revue::utils::fuzzy::fuzzy_match;
+//!
+//! let matches = fuzzy_match("hello", "hallo"); // High score
+//! let no_match = fuzzy_match("hello", "bye"); // Low score
+//! ```
+//!
+//! ## Natural Sorting
+//!
+//! ```rust,ignore
+//! use revue::utils::sort::natural_cmp;
+//!
+//! let files = vec!["file10.txt", "file2.txt"];
+//! files.sort_by(|a, b| natural_cmp(a, b));
+//! // Result: file2.txt, file10.txt
+//! ```
 
 pub mod accessibility;
 pub mod accessibility_signal;

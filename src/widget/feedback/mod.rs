@@ -1,6 +1,101 @@
 //! Feedback widgets - User feedback and notification components
 //!
-//! Widgets for providing feedback to users through various modal and notification mechanisms.
+//! This module provides widgets for providing feedback to users through
+//! modals, notifications, alerts, tooltips, and other feedback mechanisms.
+//!
+//! # Widget Categories
+//!
+//! ## Modal & Dialog
+//!
+//! | Widget | Description | Constructor |
+//! |--------|-------------|-------------|
+//! | [`Modal`] | Modal dialog overlay | [`modal()`] |
+//!
+//! ## Notifications
+//!
+//! | Widget | Description | Constructor |
+//! |--------|-------------|-------------|
+//! | [`Toast`] | Temporary notification popup | [`toast()`] |
+//! | [`ToastQueue`] | Multiple toasts with queue | [`toast_queue()`] |
+//! | [`NotificationCenter`] | Notification center | [`notification_center()`] |
+//!
+//! ## Alerts & Messages
+//!
+//! | Widget | Description | Constructor |
+//! |--------|-------------|-------------|
+//! | [`Alert`] | Alert box with levels | [`alert()`], [`error_alert()`] |
+//!
+//! ## Contextual Help
+//!
+//! | Widget | Description | Constructor |
+//! |--------|-------------|-------------|
+//! | [`Tooltip`] | Hover tooltip | [`tooltip()`] |
+//! | [`Popover`] | Anchor-positioned overlay | [`popover()`] |
+//! | [`ContextMenu`] | Right-click menu | [`context_menu()`] |
+//!
+//! ## Status
+//!
+//! | Widget | Description | Constructor |
+//! |--------|-------------|-------------|
+//! | [`StatusBar`] | Application status bar | [`statusbar()`], [`header()`], [`footer()`] |
+//! | [`KeyHint`] | Keyboard shortcut hint | [`key_hint()`] |
+//!
+//! # Quick Start
+//!
+//! ## Toast Notification
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! toast()
+//!     .message("Operation completed successfully!")
+//!     .level(ToastLevel::Success)
+//!     .duration(Duration::from_secs(3));
+//! ```
+//!
+//! ## Modal Dialog
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! modal()
+//!     .title("Confirm Action")
+//!     .content("Are you sure you want to proceed?")
+//!     .button("Yes", || println!("Confirmed"))
+//!     .button("No", || println!("Cancelled"));
+//! ```
+//!
+//! ## Alert
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! alert()
+//!     .level(AlertLevel::Warning)
+//!     .title("Warning")
+//!     .content("This action cannot be undone");
+//! ```
+//!
+//! ## Tooltip
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! tooltip()
+//!     .content("Hover for more information")
+//!     .position(TooltipPosition::Top);
+//! ```
+//!
+//! ## Status Bar
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! statusbar()
+//!     .section("Mode", "Normal")
+//!     .section("File", "main.rs")
+//!     .key_hint("^Q", "Quit");
+//! ```
 
 pub mod alert;
 pub mod menu;

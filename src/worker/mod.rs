@@ -1,24 +1,65 @@
 //! Worker system for background tasks
 //!
 //! Run CPU-intensive or I/O operations without blocking the UI.
+//! Built on tokio with worker pools for efficient task management.
 //!
-//! # Example
+//! # Features
 //!
-//! ```ignore
-//! use revue::worker::{Worker, WorkerPool};
+//! - **Non-blocking UI** - Run heavy computations without freezing the UI
+//! - **Worker Pools** - Reusable thread pools for common operations
+//! - **Async/Await** - Full async/await support with tokio
+//! - **Easy API** - Simple spawn and check operations
+//! - **Platform Detection** - Auto-detects optimal worker count
 //!
+//! # Quick Start
+//!
+//! ## Worker Pool
+//!
+//! ```rust,ignore
+//! use revue::worker::WorkerPool;
+//!
+//! // Create pool with 4 workers
 //! let pool = WorkerPool::new(4);
 //!
-//! // Spawn a background task
-//! let handle = pool.spawn(async {
+//! // Submit work
+//! pool.submit(|| {
+//!     // Heavy computation
+//!     expensive_calculation()
+//! });
+//!
+//! // Graceful shutdown
+//! pool.shutdown().await;
+//! ```
+//!
+//! ## Spawn Task
+//!
+//! ```rust,ignore
+//! use revue::worker::WorkerHandle;
+//!
+//! // Spawn a single background task
+//! let handle = WorkerHandle::spawn(async {
 //!     // Long-running operation
-//!     fetch_data().await
+//!     fetch_data_from_api().await
 //! });
 //!
 //! // Check if done
-//! if handle.is_finished() {
-//!     let result = handle.join().unwrap();
+//! if let Some(result) = handle.try_recv() {
+//!     // Use result
 //! }
+//! ```
+//!
+//! ## Task with Return Value
+//!
+//! ```rust,ignore
+//! use revue::worker::WorkerHandle;
+//!
+//! let handle = WorkerHandle::spawn(async {
+//!     // Return a value
+//!     compute_result()
+//! });
+//!
+//! // Get result when ready
+//! let result = handle.join().await;
 //! ```
 
 mod channel;

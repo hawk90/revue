@@ -1,27 +1,78 @@
-//! Screen reader backend integration
+//! Accessibility support for screen readers and assistive technologies
 //!
-//! Provides actual screen reader integration for accessibility announcements.
-//! Supports multiple backends:
+//! This module provides screen reader integration for accessibility announcements,
+//! accessibility tree generation, and A11y testing utilities.
 //!
-//! - **macOS**: NSAccessibility / VoiceOver
-//! - **Windows**: UI Automation / MSAA
-//! - **Linux**: AT-SPI
-//! - **Testing**: Logging backend for tests
+//! # Features
 //!
-//! # Example
+//! | Feature | Description | Supported Platforms |
+//!|---------|-------------|----------------------|
+//! | **Screen Reader** | VoiceOver, Narrator, AT-SPI | macOS, Windows, Linux |
+//! | **Auto-detection** | Detects available screen readers | All platforms |
+//! | **Priority Levels** | Polite, Assertive, Urgent | All platforms |
+//! | **A11y Testing** | Test accessibility features | All platforms |
+//! | **Accessibility Tree** | Generate A11y tree from DOM | All platforms |
+//! | **Keyboard Nav** | Test keyboard navigation | All platforms |
+//!
+//! # Supported Backends
+//!
+//! | Platform | Backend | Screen Reader |
+//!|----------|---------|---------------|
+//! | macOS | NSAccessibility | VoiceOver |
+//! | Windows | UI Automation | Narrator |
+//! | Linux | AT-SPI via Orca | Orca |
+//! | All | Logging (for testing) | - |
+//!
+//! # Quick Start
+//!
+//! ## Auto-Detection
 //!
 //! ```rust,ignore
-//! use revue::a11y::{ScreenReaderBackend, announce_to_screen_reader};
+//! use revue::a11y::init;
 //!
-//! // Initialize with auto-detected backend
-//! let backend = ScreenReaderBackend::detect();
+//! // Auto-detect and initialize
+//! init();
 //!
-//! // Announce to screen reader
-//! backend.announce("Button clicked", Priority::Polite);
-//!
-//! // Or use the global function
-//! announce_to_screen_reader("Form submitted");
+//! // Check if available
+//! if is_available() {
+//!     println!("Screen reader: {:?}", active_screen_reader());
+//! }
 //! ```
+//!
+//! ## Announcements
+//!
+//! ```rust,ignore
+//! use revue::a11y::{announce, announce_now};
+//!
+//! // Polite announcement (default)
+//! announce("Button clicked");
+//!
+//! // Assertive announcement (immediate)
+//! announce_now("Error occurred");
+//!
+//! // Custom priority
+//! announce_to_screen_reader("Message", Priority::Urgent);
+//! ```
+//!
+//! ## Accessibility Tree
+//!
+//! ```rust,ignore
+//! use revue::a11y::AccessibilityTree;
+//!
+//! // Generate A11y tree from widget
+//! let tree = AccessibilityTree::from_widget(&widget);
+//!
+//! // Get nodes for screen reader
+//! let nodes = tree.get_a11y_nodes();
+//! ```
+//!
+//! # Priority Levels
+//!
+//! | Priority | Description | Use Case |
+//!|----------|-------------|----------|
+//! | `Polite` | Low priority | Status updates, info |
+//! | `Assertive` | Medium priority | Form errors, state changes |
+//! | `Urgent` | High priority | Critical errors, warnings |
 
 mod backend;
 pub mod testing;
