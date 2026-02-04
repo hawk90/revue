@@ -1,4 +1,51 @@
 //! Markdown widget for rendering markdown content
+//!
+//! This module provides a comprehensive markdown renderer with syntax highlighting,
+//! table of contents generation, and support for CommonMark syntax.
+//!
+//! ## Features
+//!
+//! - **Full CommonMark support** via pulldown-cmark
+//! - **Syntax highlighting** for code blocks (via syntect)
+//! - **Table of contents** generation
+//! - **Admonitions** (note, tip, warning, danger)
+//! - **Footnotes** support
+//! - **Task lists** with checkboxes
+//! - **Headings** with FIGLET big text option
+//! - **Links** with styling
+//! - **Block quotes** with styling
+//! - **Code blocks** with line numbers
+//! - **Horizontal rules**
+//!
+//! # Quick Start
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! let markdown = "# Welcome to Revue\n\nThis is **bold** and this is *italic*.\n\n## Features\n\n- CSS styling\n- Reactive state\n- 100+ widgets\n\n> Tip: Check out the docs!";
+//!
+//! markdown()
+//!     .content(markdown)
+//!     .width(60);
+//! ```
+//!
+//! # Configuration
+//!
+//! ```rust,ignore
+//! use revue::widget::markdown::MarkdownConfig;
+//! use revue::style::Color;
+//!
+//! let config = MarkdownConfig {
+//!     link_fg: Color::CYAN,
+//!     code_fg: Color::YELLOW,
+//!     heading_fg: Color::WHITE,
+//!     quote_fg: Color::rgb(128, 128, 128),
+//!     show_toc: true,
+//!     syntax_highlight: true,
+//!     code_line_numbers: true,
+//!     ..Default::default()
+//! };
+//! ```
 
 #![allow(missing_docs)]
 

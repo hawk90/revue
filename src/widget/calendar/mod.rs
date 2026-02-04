@@ -1,7 +1,60 @@
 //! Calendar widget for date display and selection
 //!
-//! Supports month/year navigation, date selection, range selection,
-//! and custom styling for different date types.
+//! This module provides calendar widgets for displaying and selecting dates.
+//! Supports month/year navigation, date selection, range selection, and custom styling.
+//!
+//! # Features
+//!
+//! - **Date selection** - Single date or range selection
+//! - **Month/year navigation** - Navigate between months and years
+//! - **Custom styling** - Style weekends, holidays, selected dates
+//! - **First day of week** - Configure Sunday or Monday as first day
+//! - **Date markers** - Mark special dates (holidays, events)
+//! - **Week numbers** - Show ISO week numbers
+//!
+//! # Quick Start
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! calendar()
+//!     .year(2025)
+//!     .month(1)
+//!     .on_select(|date| println!("Selected: {:?}", date))
+//!     .width(30)
+//!     .height(12);
+//! ```
+//!
+//! # Date Range Selection
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! calendar()
+//!     .mode(CalendarMode::Range)
+//!     .start_date(Date::today())
+//!     .on_range_select(|start, end| {
+//!         println!("Range: {:?} to {:?}", start, end);
+//!     });
+//! ```
+//!
+//! # Custom Date Styling
+//!
+//! ```rust,ignore
+//! use revue::style::Color;
+//!
+//! calendar()
+//!     .weekend_color(Color::BLUE)
+//!     .selected_color(Color::YELLOW)
+//!     .today_marker("Today")
+//!     .date_marker(|date| {
+//!         if is_holiday(date) {
+//!             Some(DateMarker::holiday("Holiday"))
+//!         } else {
+//!             None
+//!         }
+//!     });
+//! ```
 
 use crate::style::Color;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
