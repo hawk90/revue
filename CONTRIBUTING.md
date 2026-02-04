@@ -1,6 +1,8 @@
 # Contributing to Revue
 
-Thank you for your interest in contributing to Revue!
+Thank you for your interest in contributing to Revue! We welcome contributions of all kinds.
+
+---
 
 ## Development Setup
 
@@ -24,6 +26,8 @@ cd revue
 cargo build
 cargo test
 ```
+
+---
 
 ## Git Workflow
 
@@ -115,6 +119,8 @@ feat!(api): change View trait signature
 - The PR title becomes the final commit message
 - Delete branch after merge
 
+---
+
 ## Code Quality
 
 ### Pre-commit Checks
@@ -147,37 +153,214 @@ PRs must pass all CI checks:
 
 ### Code Guidelines
 
-1. **Document public APIs**
-   ```rust
-   /// Creates a new button with the given label.
-   ///
-   /// # Examples
-   ///
-   /// ```
-   /// let button = Button::new("Click me");
-   /// ```
-   pub fn new(label: &str) -> Self { ... }
-   ```
+#### 1. Document Public APIs
 
-2. **Use `thiserror` for error handling**
-   ```rust
-   #[derive(Debug, thiserror::Error)]
-   pub enum ParseError {
-       #[error("invalid syntax at line {line}")]
-       InvalidSyntax { line: usize },
-   }
-   ```
+All public items must have documentation:
 
-3. **Write tests in the same file**
-   ```rust
-   #[cfg(test)]
-   mod tests {
-       use super::*;
+```rust
+/// Creates a new button with the given label.
+///
+/// # Examples
+///
+/// ```
+/// use revue::widget::Button;
+/// let button = Button::new("Click me");
+/// ```
+///
+/// # Arguments
+///
+/// * `label` - The text to display on the button
+///
+/// # Returns
+///
+/// A new Button widget
+pub fn new(label: &str) -> Self { ... }
+```
 
-       #[test]
-       fn test_button_new() { ... }
-   }
-   ```
+#### 2. Use `thiserror` for Error Handling
+
+```rust
+#[derive(Debug, thiserror::Error)]
+pub enum ParseError {
+    #[error("invalid syntax at line {line}")]
+    InvalidSyntax { line: usize },
+
+    #[error("unexpected token: {0}")]
+    UnexpectedToken(String),
+}
+```
+
+#### 3. Write Tests in the Same File
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_button_new() {
+        let button = Button::new("Test");
+        assert_eq!(button.label, "Test");
+    }
+}
+```
+
+#### 4. Use `Result` for Fallible Operations
+
+```rust
+pub fn parse_css(input: &str) -> Result<StyleSheet, ParseError> {
+    // ...
+}
+```
+
+#### 5. Prefer Builder Pattern for Widgets
+
+```rust
+pub struct Button {
+    label: String,
+    on_click: Option<Callback>,
+}
+
+impl Button {
+    pub fn new(label: impl Into<String>) -> Self {
+        Self {
+            label: label.into(),
+            on_click: None,
+        }
+    }
+
+    pub fn on_click(mut self, callback: Callback) -> Self {
+        self.on_click = Some(callback);
+        self
+    }
+}
+```
+
+#### 6. Module Documentation
+
+Each module should have a top-level doc comment:
+
+```rust
+//! Button widget for clickable actions
+//!
+//! This module provides the Button widget and related types.
+//!
+//! # Examples
+//!
+//! ```rust,ignore
+//! use revue::widget::Button;
+//!
+//! let button = Button::new("Click me")
+//!     .on_click(|| println!("Clicked!"));
+//! ```
+```
+
+---
+
+## Testing Guidelines
+
+### Test Coverage
+
+- Aim for >80% code coverage
+- Write unit tests for all public functions
+- Write integration tests for complex interactions
+- Use `#[test]` for simple tests
+- Use `#[tokio::test]` for async tests
+
+### Test Organization
+
+```rust
+// Unit tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_basic_functionality() { }
+}
+
+// Integration tests (in tests/ directory)
+// #[cfg(test)]
+// mod integration_tests {
+//     use super::*;
+//
+//     #[test]
+//     fn test_full_workflow() { }
+// }
+```
+
+### Property-Based Testing
+
+For functions with simple input/output relationships, consider property-based testing:
+
+```rust
+#[cfg(test)]
+mod property_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn test_roundtrip(input in any::<String>()) {
+            let parsed = parse(&input);
+            prop_assert_eq!(input, parsed);
+        }
+    }
+}
+```
+
+---
+
+## Documentation Guidelines
+
+### Rust Doc Comments
+
+- Use `///` for item documentation
+- Use `//!` for module-level documentation
+- Include examples for all public APIs
+- Use proper markdown formatting
+
+### Markdown Documentation
+
+- Use tables for comparisons
+- Use code blocks for examples
+- Include syntax highlighting
+- Add badges and links where appropriate
+
+### Examples
+
+All examples in documentation should:
+
+- Compile and run correctly
+- Demonstrate real usage
+- Include necessary imports
+- Show expected output
+
+---
+
+## Project Structure
+
+```
+revue/
+├── src/
+│   ├── app/           # Application lifecycle
+│   ├── dom/           # Virtual DOM and CSS cascade
+│   ├── event/         # Event handling
+│   ├── layout/        # Layout engine
+│   ├── reactive/      # Signal/Computed/Effect
+│   ├── render/        # Terminal rendering
+│   ├── style/         # CSS parsing and theming
+│   ├── widget/        # Widget implementations
+│   ├── patterns/      # Reusable patterns
+│   ├── utils/         # Utility functions
+│   └── lib.rs         # Library root
+├── docs/              # Documentation
+├── examples/          # Example applications
+├── tests/             # Integration tests
+└── Cargo.toml         # Package manifest
+```
+
+---
 
 ## PR Checklist
 
@@ -187,7 +370,10 @@ Before submitting a PR:
 - [ ] Run `cargo clippy --all-features` with no warnings
 - [ ] Run `cargo test --all-features` and all tests pass
 - [ ] Update documentation for public API changes
+- [ ] Add tests for new functionality
 - [ ] Note breaking changes in PR description (use `feat!:` or `BREAKING CHANGE:`)
+
+---
 
 ## Release Process
 
@@ -205,7 +391,24 @@ Version is determined automatically based on Conventional Commits:
 - `feat:` → minor (0.1.0 → 0.2.0)
 - `feat!:` or `BREAKING CHANGE:` → major (0.1.0 → 1.0.0)
 
-## Need Help?
+---
 
-- Open an issue on [GitHub Issues](https://github.com/hawk90/revue/issues)
-- Look for issues labeled `good first issue` to get started
+## Getting Help
+
+- **[GitHub Issues](https://github.com/hawk90/revue/issues)** - Bug reports and feature requests
+- **[GitHub Discussions](https://github.com/hawk90/revue/discussions)** - Questions and discussions
+- **[Documentation](https://docs.rs/revue)** - API reference
+
+Look for issues labeled `good first issue` to get started!
+
+---
+
+## Code of Conduct
+
+Be respectful, inclusive, and constructive. We're all here to build something great together.
+
+---
+
+## License
+
+By contributing to Revue, you agree that your contributions will be licensed under the [MIT License](LICENSE).

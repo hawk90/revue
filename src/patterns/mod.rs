@@ -4,6 +4,8 @@
 //! (jira-revue, jenkins-tui, sshfs-tui, todo-tui). These patterns follow Clean Code and
 //! Single Responsibility Principle.
 //!
+#![allow(rustdoc::broken_intra_doc_links)]
+//!
 //! # Pattern Categories
 //!
 //! ## State Management Patterns

@@ -1,6 +1,109 @@
 //! Input widgets - User input components
 //!
-//! Widgets for collecting user input through various mechanisms.
+//! This module provides widgets for collecting user input through various mechanisms.
+//! Input widgets handle text entry, selection, toggles, and specialized input patterns.
+//!
+//! # Widget Categories
+//!
+//! ## Text Input
+//!
+//! | Widget | Description | Constructor |
+//! |--------|-------------|-------------|
+//! | [`Input`] | Single-line text input | [`input()`] |
+//! | [`TextArea`] | Multi-line text input | [`textarea()`] |
+//! | [`SearchBar`] | Search input with filtering | [`search_bar()`] |
+//!
+//! ## Buttons & Toggles
+//!
+//! | Widget | Description | Constructor |
+//! |--------|-------------|-------------|
+//! | [`Button`] | Clickable button | [`button()`] |
+//! | [`Switch`] | On/off toggle switch | [`switch()`], [`toggle()`] |
+//! | [`Checkbox`] | Checkbox for binary choice | [`checkbox()`] |
+//! | [`RadioGroup`] | Exclusive radio buttons | [`radio_group()`] |
+//!
+//! ## Selection
+//!
+//! | Widget | Description | Constructor |
+//! |--------|-------------|-------------|
+//! | [`Select`] | Dropdown selection | [`select()`] |
+//! | [`Combobox`] | Editable dropdown | [`combobox()`] |
+//! | [`SelectionList`] | Select from list | [`selection_list()`] |
+//! | [`Autocomplete`] | Text with suggestions | [`autocomplete()`] |
+//!
+//! ## Numeric Input
+//!
+//! | Widget | Description | Constructor |
+//! |--------|-------------|-------------|
+//! | [`NumberInput`] | Numeric text input | [`number_input()`] |
+//! | [`Slider`] | Range slider | [`slider()`] |
+//! | [`Stepper`] | Increment/decrement steps | [`stepper()`] |
+//! | [`Rating`] | Star rating widget | [`rating()`] |
+//!
+//! ## Specialized Input
+//!
+//! | Widget | Description | Constructor |
+//! |--------|-------------|-------------|
+//! | [`ColorPicker`] | Color selection | [`color_picker()`] |
+//! | [`SliderRange`] | Dual-handle range | [`slider_range()`] |
+//!
+//! # Quick Start
+//!
+//! ## Text Input
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! input()
+//!     .placeholder("Enter your name...")
+//!     .value("Default text");
+//! ```
+//!
+//! ## Button
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! button("Click Me")
+//!     .variant(ButtonVariant::Primary)
+//!     .on_click(|_| println!("Clicked!"));
+//! ```
+//!
+//! ## Checkbox
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! checkbox("Remember me")
+//!     .checked(true)
+//!     .on_change(|checked| println!("Checked: {}", checked));
+//! ```
+//!
+//! ## Slider
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! slider()
+//!     .min(0)
+//!     .max(100)
+//!     .value(50)
+//!     .step(5);
+//! ```
+//!
+//! ## Select
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! select()
+//!     .options(vec![
+//!         ("Option 1", "1"),
+//!         ("Option 2", "2"),
+//!         ("Option 3", "3"),
+//!     ])
+//!     .selected("1");
+//! ```
 
 pub mod autocomplete;
 pub mod button;

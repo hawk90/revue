@@ -1,4 +1,94 @@
-//! Widget traits and common types
+//! Widget traits and common types for Revue components
+//!
+//! This module defines the core traits that all widgets implement, along with
+//! supporting types for rendering, events, and state management.
+//!
+//! # Core Traits
+//!
+//! | Trait | Description | Use Case |
+//! |-------|-------------|----------|
+//! | [`View`] | Core rendering trait | All renderable widgets |
+//! | [`StyledView`] | View with CSS styling | Styled widgets |
+//! | [`Interactive`] | Handle keyboard/mouse | Interactive widgets |
+//! | [`Draggable`] | Drag and drop support | Draggable widgets |
+//!
+//! # View Trait
+//!
+//! The [`View`] trait is the foundation of all widgets:
+//!
+//! ```rust,ignore
+//! use revue::widget::View;
+//!
+//! pub struct MyWidget;
+//!
+//! impl View for MyWidget {
+//!     fn render(&self, ctx: &mut RenderContext) {
+//!         // Render widget to context
+//!         Text::new("Hello").render(ctx);
+//!     }
+//! }
+//! ```
+//!
+//! # StyledView Trait
+//!
+//! [`StyledView`] extends View with CSS styling support:
+//!
+//! ```rust,ignore
+//! use revue::widget::StyledView;
+//!
+//! impl StyledView for MyWidget {
+//!     // Inherit CSS styling support
+//!     fn style(&self) -> Style {
+//!         Style::default()
+//!     }
+//! }
+//! ```
+//!
+//! # Interactive Trait
+//!
+//! [`Interactive`] enables keyboard and mouse event handling:
+//!
+//! ```rust,ignore
+//! use revue::widget::Interactive;
+//!
+//! impl Interactive for MyWidget {
+//!     fn handle_key(&mut self, key: &KeyEvent) -> EventResult {
+//!         match key.key {
+//!             Key::Enter => EventResult::Consumed,
+//!             _ => EventResult::Ignored,
+//!         }
+//!     }
+//! }
+//! ```
+//!
+//! # Common Types
+//!
+//! | Type | Description |
+//! |------|-------------|
+//! | [`Element`] | Widget element container |
+//! | [`RenderContext`] | Rendering context and utilities |
+//! | [`WidgetState`] | Common widget state (focus, disabled, colors) |
+//! | [`EventResult`] | Event handling result |
+//! | [`FocusStyle`] | Focus indicator style |
+//!
+//! # Builder Macros
+//!
+//! The [`impl_state_builders!`] macro generates builder methods for widgets:
+//!
+//! ```rust,ignore
+//! struct MyWidget {
+//!     state: WidgetState,
+//! }
+//!
+//! impl_state_builders!(MyWidget);
+//!
+//! // Now available:
+//! let widget = MyWidget { state: WidgetState::default() }
+//!     .focused(true)
+//!     .disabled(false)
+//!     .fg(Color::Blue)
+//!     .bg(Color::Black);
+//! ```
 
 mod element;
 mod event;

@@ -1,4 +1,136 @@
-//! Event handling and keyboard input
+//! Event handling and keyboard input for TUI applications
+//!
+//! This module provides comprehensive event handling including keyboard, mouse,
+//! drag-and-drop, gestures, focus management, and custom events.
+//!
+//! # Core Event Types
+//!
+//! | Event | Description | Use Case |
+//! |-------|-------------|----------|
+//! | [`KeyEvent`] | Keyboard input | All keyboard interaction |
+//! | [`MouseEvent`] | Mouse input | Clicks, scrolls, movement |
+//! | [`Event`] | Unified event type | Main event loop handling |
+//!
+//! # Quick Start
+//!
+//! ```rust,ignore
+//! use revue::prelude::*;
+//!
+//! struct MyApp;
+//!
+//! impl MyApp {
+//!     fn handle_event(&mut self, event: &Event) -> bool {
+//!         match event {
+//!             Event::Key(key) => self.handle_key(key),
+//!             Event::Mouse(mouse) => self.handle_mouse(mouse),
+//!             Event::Resize(width, height) => self.handle_resize(*width, *height),
+//!             Event::Tick => self.update_animation(),
+//!         }
+//!     }
+//! }
+//! ```
+//!
+//! # Keyboard Input
+//!
+//! ```rust,ignore
+//! use revue::event::{Key, KeyEvent, Modifiers};
+//!
+//! fn handle_key(key: &KeyEvent) {
+//!     match key.key {
+//!         Key::Char('c') if key.ctrl => println!("Ctrl+C pressed"),
+//!         Key::Char('q') => println!("Quit"),
+//!         Key::Up => println!("Arrow up"),
+//!         Key::Enter => println!("Enter"),
+//!         _ => {}
+//!     }
+//! }
+//! ```
+//!
+//! # Mouse Input
+//!
+//! ```rust,ignore
+//! use revue::event::{MouseEvent, MouseEventKind, MouseButton};
+//!
+//! fn handle_mouse(mouse: &MouseEvent) {
+//!     match mouse.kind {
+//!         MouseEventKind::Down(MouseButton::Left) => {
+//!             println!("Click at {}, {}", mouse.x, mouse.y);
+//!         }
+//!         MouseEventKind::ScrollUp => {
+//!             println!("Scroll up");
+//!         }
+//!         _ => {}
+//!     }
+//! }
+//! ```
+//!
+//! # Drag and Drop
+//!
+//! ```rust,ignore
+//! use revue::event::{start_drag, DragData, DragId};
+//!
+//! // Start dragging
+//! let drag_id = start_drag(
+//!     DragId::new(1),
+//!     DragData::new("my_data")
+//! );
+//!
+//! // Check if dragging
+//! if is_dragging(drag_id) {
+//!     // Update drag position
+//! }
+//!
+//! // End drag with result
+//! end_drag(drag_id);
+//! ```
+//!
+//! # Focus Management
+//!
+//! ```rust,ignore
+//! use revue::event::{FocusManager, Direction};
+//!
+//! let mut focus = FocusManager::new();
+//!
+//! // Add widgets to focus system
+//! focus.register("input1");
+//! focus.register("input2");
+//!
+//! // Navigate focus
+//! focus.move_focus(Direction::Forward);  // Tab
+//! focus.move_focus(Direction::Backward); // Shift+Tab
+//! ```
+//!
+//! # Gestures
+//!
+//! ```rust,ignore
+//! use revue::event::{Gesture, SwipeGesture, TapGesture};
+//!
+//! // Tap gesture
+//! let tap = TapGesture::new()
+//!     .on_tap(|point| println!("Tap at {:?}", point));
+//!
+//! // Swipe gesture
+//! let swipe = SwipeGesture::new()
+//!     .on_swipe(|direction| println!("Swiped {:?}", direction));
+//! ```
+//!
+//! # Custom Events
+//!
+//! ```rust,ignore
+//! use revue::event::{CustomEvent, EventDispatcher};
+//!
+//! #[derive(Debug, Clone)]
+//! pub struct MyEvent {
+//!     pub data: String,
+//! }
+//!
+//! impl CustomEvent for MyEvent {
+//!     fn id(&self) -> &'static str { "my_event" }
+//! }
+//!
+//! // Dispatch custom event
+//! dispatcher.dispatch(MyEvent { data: "Hello".to_string() });
+//! ```
 
 pub mod click;
 pub mod custom;
