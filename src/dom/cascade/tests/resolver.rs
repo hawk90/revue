@@ -52,7 +52,7 @@ fn create_node_with_id(id: u64, widget_type: &str, element_id: &str) -> DomNode 
 #[test]
 fn test_resolver_new() {
     let stylesheet = create_test_stylesheet();
-    let mut resolver = StyleResolver::new(&stylesheet);
+    let resolver = StyleResolver::new(&stylesheet);
 
     // Should have parsed 3 selectors
     assert_eq!(resolver.selectors.len(), 3);
@@ -175,7 +175,7 @@ fn test_resolver_invalid_selector() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let mut resolver = StyleResolver::new(&stylesheet);
+    let resolver = StyleResolver::new(&stylesheet);
 
     // Invalid selectors should be skipped
     assert_eq!(resolver.selectors.len(), 0);
