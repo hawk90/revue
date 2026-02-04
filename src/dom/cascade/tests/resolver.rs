@@ -175,7 +175,7 @@ fn test_resolver_invalid_selector() {
         }],
         variables: std::collections::HashMap::new(),
     };
-    let mut resolver = StyleResolver::new(&stylesheet);
+    let resolver = StyleResolver::new(&stylesheet);
 
     // Invalid selectors should be skipped
     assert_eq!(resolver.selectors.len(), 0);
