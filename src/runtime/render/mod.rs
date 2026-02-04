@@ -9,11 +9,11 @@
 //! | Component | Description | Module |
 //! |-----------|-------------|--------|
 //! | **Backend** | Low-level terminal I/O abstraction | [`backend`] |
-//! | **Buffer** | Double-buffered screen state | [`buffer`] |
-//! | **Cell** | Individual terminal cell (char, colors, modifiers) | [`cell`] |
-//! | **Terminal** | High-level diff-based renderer | [`terminal`] |
-//! | **Diff** | Efficient buffer diffing algorithm | [`diff`] |
-//! | **Images** | Kitty, iTerm2, and Sixel graphics | [`image_protocol`] |
+//! | **Buffer** | Double-buffered screen state | (see [`Buffer`]) |
+//! | **Cell** | Individual terminal cell (char, colors, modifiers) | (see [`Cell`]) |
+//! | **Terminal** | High-level diff-based renderer | (see [`Terminal`]) |
+//! | **Diff** | Efficient buffer diffing algorithm | (see [`diff`](diff())) |
+//! | **Images** | Kitty, iTerm2, and Sixel graphics | Available with `image` feature |
 //!
 //! # Quick Start
 //!

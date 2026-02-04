@@ -35,14 +35,18 @@
 //!
 //! | Widget | Description | Constructor |
 //! |--------|-------------|-------------|
-//! | [`ProcessMonitor`] | System process monitor | [`htop()`], [`process_monitor()`] |
+//! | `ProcessMonitor` | System process monitor | `htop()`, `process_monitor()` |
+//!
+//! *Requires `sysinfo` feature*
 //!
 //! ## Text Processing
 //!
 //! | Widget | Description | Constructor |
 //! |--------|-------------|-------------|
-//! | [`DiffViewer`] | Diff/patch viewer | [`diff_viewer()`] |
-//! | [`TreeSitterHighlighter`] | Syntax highlighting | - |
+//! | `DiffViewer` | Diff/patch viewer | `diff_viewer()` |
+//! | `TreeSitterHighlighter` | Syntax highlighting | - |
+//!
+//! *Requires `diff` feature for DiffViewer, `syntax-highlighting` for TreeSitterHighlighter*
 //!
 //! ## Editor Modes
 //!

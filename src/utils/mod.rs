@@ -20,10 +20,10 @@
 //! | [`color`] | Color manipulation | Blending, darkening |
 //! | [`gradient`] | Multi-stop gradients | Linear, radial |
 //! | [`border`] | Border rendering | Bordered containers |
-//! | [`format`] | Human formatting | Duration, file size |
+//! | [`mod@format`] | Human formatting | Duration, file size |
 //! | [`syntax`] | Syntax highlighting | Code display |
-//! | [`figlet`] | ASCII art text | Large text |
-//! | [`highlight`] | Search highlighting | Fuzzy matches |
+//! | [`mod@figlet`] | ASCII art text | Large text |
+//! | [`mod@highlight`] | Search highlighting | Fuzzy matches |
 //!
 //! ## Data Structures
 //!
@@ -46,7 +46,7 @@
 //! | [`easing`] | Animation easing | Smooth transitions |
 //! | [`animation`] | Frame-based animation | Spring, keyframes |
 //! | [`debounce`] | Event debouncing | Rate limiting |
-//! | [`once`] | One-shot execution | Call once pattern |
+//! | [`mod@once`] | One-shot execution | Call once pattern |
 //! | [`profiler`] | Performance timing | Benchmarks |
 //! | [`lock`] | Lock handling | Poison errors |
 //! | [`shell`] | Shell escaping | Command safety |

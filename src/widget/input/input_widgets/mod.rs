@@ -45,7 +45,7 @@
 //! | Widget | Description | Constructor |
 //! |--------|-------------|-------------|
 //! | [`ColorPicker`] | Color selection | [`color_picker()`] |
-//! | [`SliderRange`] | Dual-handle range | [`slider_range()`] |
+//! | `slider_range()` | Dual-handle range slider | See function |
 //!
 //! # Quick Start
 //!
