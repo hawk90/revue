@@ -33,24 +33,27 @@ mod masked_input;
 mod option_list;
 mod presentation;
 mod progress;
+#[cfg(feature = "qrcode")]
+mod qrcode;
 mod radio;
 mod range_picker;
 mod resizable;
+mod richtext;
 mod select;
+#[cfg(feature = "markdown")]
 mod slides;
 mod spinner;
+mod statusbar;
 mod streamline;
 mod switch;
 mod syntax;
 mod tabs;
+mod terminal;
 mod text;
 mod textarea;
 mod theme_picker;
 mod timer;
 mod tooltip;
+mod transition;
+mod validation;
 mod waveline;
-
-#[cfg(feature = "qrcode")]
-mod qrcode;
-mod richtext;
-mod terminal;
