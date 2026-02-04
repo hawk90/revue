@@ -104,10 +104,10 @@
 //!
 //! # Helper Functions
 //!
-//! - [`lazy()`] - Create a LazyData
-//! - [`paged()`] - Create a PagedData
-//! - [`progressive()`] - Create a ProgressiveLoader
-//! - [`lazy_reloadable()`] - Create a LazyReloadable
+//! - [`lazy()`][helpers::lazy] - Create a LazyData
+//! - [`paged()`][helpers::paged] - Create a PagedData
+//! - [`progressive()`][helpers::progressive] - Create a ProgressiveLoader
+//! - [`lazy_reloadable()`][helpers::lazy_reloadable] - Create a LazyReloadable
 //!
 //! # State Management
 //!

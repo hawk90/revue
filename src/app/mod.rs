@@ -179,10 +179,9 @@ fn is_quit_key(key: &KeyEvent) -> bool {
 /// # Requesting Updates
 ///
 /// Use these methods to trigger updates:
-/// - [`request_redraw()`] - Force full screen redraw on next frame
-/// - [`request_layout_rebuild()`] - Rebuild layout tree on next frame
-/// - [`request_dom_rebuild()`] - Rebuild DOM root on next frame
-#[allow(rustdoc::broken_intra_doc_links)]
+/// - [`request_redraw()`][Self::request_redraw] - Force full screen redraw on next frame
+/// - [`request_layout_rebuild()`][Self::request_layout_rebuild] - Rebuild layout tree on next frame
+/// - [`request_dom_rebuild()`][Self::request_dom_rebuild] - Rebuild DOM root on next frame
 pub struct App {
     /// Manages all DOM nodes and style resolution
     dom: DomRenderer,
