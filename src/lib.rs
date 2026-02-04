@@ -234,25 +234,26 @@ macro_rules! log_error {
 }
 pub(crate) use log_error;
 
+// Core modules
+pub mod core;
+pub use core::constants; // Re-export from core
+
+// Runtime systems
+pub mod runtime;
+pub use runtime::{dom, event, layout, render, style};
+
+// State management
+pub mod state;
+pub use state::{patterns, plugin, reactive, tasks, worker};
+
+// Other modules (keep at root for now)
 pub mod a11y;
-pub mod app;
-pub mod constants;
 pub mod devtools;
-pub mod dom;
-pub mod event;
-pub mod layout;
-pub mod patterns;
-pub mod plugin;
 pub mod query;
-pub mod reactive;
-pub mod render;
-pub mod style;
-pub mod tasks;
 pub mod testing;
 pub mod text;
 pub mod utils;
 pub mod widget;
-pub mod worker;
 
 // Re-export derive macros
 pub use revue_macros::Store;
@@ -447,7 +448,7 @@ pub mod prelude {
     pub use crate::Store;
 
     // App
-    pub use crate::app::App;
+    pub use crate::core::app::App;
 
     // Events
     pub use crate::event::{Event, Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};

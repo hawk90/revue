@@ -31,7 +31,7 @@ pub mod types;
 
 use crate::event::Key;
 use crate::style::Color;
-use crate::widget::calendar::{Date, FirstDayOfWeek};
+use crate::widget::data::calendar::{Date, FirstDayOfWeek};
 use crate::widget::datetime_picker::render::Rendering;
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
@@ -494,8 +494,8 @@ mod tests {
     use crate::event::Key;
     use crate::layout::Rect;
     use crate::render::Buffer;
-    use crate::widget::calendar::Date;
-    use crate::widget::calendar::FirstDayOfWeek;
+    use crate::widget::data::calendar::Date;
+    use crate::widget::data::calendar::FirstDayOfWeek;
     use crate::widget::traits::{RenderContext, View};
 
     // =========================================================================

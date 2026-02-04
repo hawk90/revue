@@ -1,6 +1,6 @@
 //! DateTime picker navigation
 
-use super::super::calendar::{days_in_month, Date};
+use super::super::data::calendar::{days_in_month, Date};
 use super::types::{TimeField, TimeField::Hour};
 
 /// Navigation trait for DateTimePicker

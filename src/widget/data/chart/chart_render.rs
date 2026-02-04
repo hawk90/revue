@@ -173,7 +173,9 @@ pub fn render_axis_title(
 
 /// A legend item with label and color
 pub struct LegendItem<'a> {
+    /// The text label for this legend item
     pub label: &'a str,
+    /// The color to display for this legend item
     pub color: Color,
 }
 

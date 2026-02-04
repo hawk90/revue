@@ -27,9 +27,9 @@ pub use cursor::{Cursor, CursorPos, CursorSet};
 pub use find_replace::{FindMatch, FindOptions, FindReplaceMode, FindReplaceState};
 pub use selection::Selection;
 
-use super::super::syntax::{Language, SyntaxHighlighter, SyntaxTheme};
 use crate::event::Key;
 use crate::style::Color;
+use crate::widget::syntax::{Language, SyntaxHighlighter, SyntaxTheme};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 

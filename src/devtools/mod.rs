@@ -577,7 +577,7 @@ pub fn toggle_devtools() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::App;
+    use crate::core::app::App;
 
     #[test]
     fn test_devtools_config_default() {

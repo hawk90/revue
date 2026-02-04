@@ -221,12 +221,11 @@
 //! ```
 
 mod breadcrumb;
-mod calendar;
+// Note: calendar moved to data/calendar
 mod callout;
 mod canvas;
-mod chart;
 mod command_palette;
-mod data;
+pub mod data; // Data widgets (calendar, chart, table, timer, etc.)
 mod datetime_picker;
 mod debug_overlay;
 mod developer;
@@ -237,7 +236,9 @@ mod filepicker;
 mod form;
 #[cfg(feature = "image")]
 mod image;
-mod input_widgets;
+// Input widgets (moved to input/input_widgets/)
+#[path = "input/input_widgets/mod.rs"]
+pub mod input_widgets;
 mod layout;
 mod link;
 #[cfg(feature = "markdown")]
@@ -255,9 +256,9 @@ mod range_picker;
 pub mod slides;
 mod sortable;
 mod streamline;
-mod syntax;
+pub mod syntax; // Syntax highlighting module
 mod theme_picker;
-mod timer;
+// Note: timer moved to data/timer
 pub mod traits;
 mod transition;
 pub mod validation;
@@ -291,9 +292,6 @@ pub use layout::{
 };
 // Input widgets (re-exported from input_widgets module)
 pub use breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
-pub use calendar::{
-    calendar, days_in_month, Calendar, CalendarMode, Date, DateMarker, FirstDayOfWeek,
-};
 pub use callout::{
     callout, danger, important, info_callout, note, tip, warning_callout, Callout, CalloutType,
     CalloutVariant,
@@ -304,6 +302,9 @@ pub use canvas::{
     Polygon, Rectangle, Shape, Transform,
 };
 pub use command_palette::{command_palette, Command, CommandPalette};
+pub use data::calendar::{
+    calendar, days_in_month, Calendar, CalendarMode, Date, DateMarker, FirstDayOfWeek,
+};
 pub use datetime_picker::{
     date_picker, datetime_picker, time_picker, DateTime, DateTimeFormat, DateTimeMode,
     DateTimePicker, Time, TimeField,
@@ -330,6 +331,8 @@ pub use input_widgets::{
 // Form widgets (re-exported from form module)
 #[cfg(feature = "qrcode")]
 pub use self::qrcode::{qrcode, qrcode_url, ErrorCorrection, QrCodeWidget, QrStyle};
+pub use data::timer::{pomodoro, timer as timer_widget, Timer, TimerFormat, TimerState};
+pub use data::timer::{stopwatch, Stopwatch};
 pub use form::{
     credit_card_input, form as form_widget, form_field, masked_input, password_input, pin_input,
     rich_text_editor, Block, BlockType, EditorViewMode, ErrorDisplayStyle, Form, FormField,
@@ -365,8 +368,6 @@ pub use streamline::{
 };
 pub use syntax::{HighlightSpan, Language, SyntaxHighlighter, SyntaxTheme};
 pub use theme_picker::{theme_picker, ThemePicker};
-pub use timer::{pomodoro, timer as timer_widget, Timer, TimerFormat, TimerState};
-pub use timer::{stopwatch, Stopwatch};
 pub use traits::{
     Draggable, Element, EventResult, FocusStyle, Interactive, RenderContext, StyledView, Timeout,
     View, WidgetProps, WidgetState, DISABLED_BG, DISABLED_FG,
@@ -379,7 +380,7 @@ pub use validation::{validators, Validatable, ValidationError, ValidationResult}
 pub use zen::{zen, zen_dark, zen_light, ZenMode};
 
 // Chart widgets (re-exported from chart module)
-pub use chart::{
+pub use data::chart::{
     area_wave, audio_waveform, barchart, boxplot, bubble_chart, candle_chart, chart,
     contribution_map, cpu_chart, donut_chart, heatmap, histogram, line_chart, memory_chart,
     network_chart, ohlc_chart, pie_chart, piechart, sawtooth_wave, scatter_chart, scatter_plot,

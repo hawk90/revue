@@ -3,7 +3,7 @@
 use super::core::RangePicker;
 use super::types::RangeFocus;
 use crate::event::Key;
-use crate::widget::calendar::{days_in_month, Date};
+use crate::widget::data::calendar::{days_in_month, Date};
 
 impl RangePicker {
     // =========================================================================

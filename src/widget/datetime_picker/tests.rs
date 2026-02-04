@@ -7,8 +7,8 @@ use super::{date_picker, datetime_picker, time_picker, DateTimePicker};
 use crate::event::Key;
 use crate::layout::Rect;
 use crate::render::Buffer;
-use crate::widget::calendar::Date;
-use crate::widget::calendar::FirstDayOfWeek;
+use crate::widget::data::calendar::Date;
+use crate::widget::data::calendar::FirstDayOfWeek;
 use crate::widget::traits::{RenderContext, View};
 
 // =========================================================================
