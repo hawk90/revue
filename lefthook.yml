@@ -46,41 +46,35 @@ pre-push:
       fail_text: "Documentation build failed. Check for invalid code blocks."
 
     test:
-      # Only run tests for changed Rust files
+      # Run tests for changed Rust files
       run: |
         CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '\.rs$' || true)
         if [ -n "$CHANGED" ]; then
           echo "Testing changed files:"
           echo "$CHANGED"
-          # Map test file paths to actual test targets
-          TEST_TARGETS=()
-          if echo "$CHANGED" | grep -q "^tests/widget/"; then
-            TEST_TARGETS+=("--test" "widget_tests")
-          fi
-          if echo "$CHANGED" | grep -q "^tests/reactive"; then
-            TEST_TARGETS+=("--test" "reactive_tests")
-          fi
-          if echo "$CHANGED" | grep -q "^tests/worker"; then
-            TEST_TARGETS+=("--test" "worker_tests")
-          fi
-          if echo "$CHANGED" | grep -q "^tests/event"; then
-            TEST_TARGETS+=("--test" "event_tests")
-          fi
-          if echo "$CHANGED" | grep -q "^tests/render_module/"; then
-            TEST_TARGETS+=("--test" "render_tests")
-          fi
-          # Other test files (top-level tests/*.rs only)
-          OTHER_TESTS=$(echo "$CHANGED" | grep "^tests/[^/]*\.rs$" | sed 's/tests\///' | sed 's/\.rs$//' | tr '\n' ' ' | tr -s ' ')
-          for test in $OTHER_TESTS; do
-            TEST_TARGETS+=("--test" "$test")
-          done
+          # Run all tests if any src/ file changed
           if echo "$CHANGED" | grep -q "^src/"; then
-            # For src/ changes, run lib tests too
-            TEST_TARGETS+=("--lib")
-          fi
-          if [ ${#TEST_TARGETS[@]} -gt 0 ]; then
-            echo "Running test targets: ${TEST_TARGETS[*]}"
-            cargo test "${TEST_TARGETS[@]}" --all-features
+            echo "Running all tests (src/ changed)..."
+            cargo test --all-features
+          else
+            # Run tests for specific test files that changed
+            TEST_TARGETS=()
+            for file in $CHANGED; do
+              if echo "$file" | grep -q "^tests/[^/]*\.rs$"; then
+                # Top-level test files (e.g., tests/buffer_tests.rs)
+                test_name=$(basename "$file" .rs)
+                TEST_TARGETS+=("--test" "$test_name")
+              elif echo "$file" | grep -q "^tests/[^/]+/"; then
+                # Test directories - run all tests
+                echo "Test directory changed, running all tests..."
+                cargo test --all-features
+                exit 0
+              fi
+            done
+            if [ ${#TEST_TARGETS[@]} -gt 0 ]; then
+              echo "Running test targets: ${TEST_TARGETS[*]}"
+              cargo test "${TEST_TARGETS[@]}" --all-features
+            fi
           fi
         else
           echo "No Rust files changed, skipping tests"
@@ -89,7 +83,6 @@ pre-push:
 
     coverage:
       # Quick coverage check for changed src files (local only)
-      # Fails if tests fail during coverage run
       run: |
         CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '^src/' || true)
         if [ -n "$CHANGED" ]; then
