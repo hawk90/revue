@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * phase 4 additional security hardening ([#404](https://github.com/hawk90/revue/issues/404)) ([1e28801](https://github.com/hawk90/revue/commit/1e2880135f0350ee9a270aa0629397ff12f7c258))
 
+
+### Performance Improvements
+
+* medium-priority optimizations for worker channel and CSS cascade ([#403](https://github.com/hawk90/revue/issues/403)) ([2cc464e](https://github.com/hawk90/revue/commit/2cc464ef2ce6bf983e9c59f4b6dc36b285b2577b))
+
 ## [2.45.3](https://github.com/hawk90/revue/compare/v2.45.2...v2.45.3) (2026-02-03)
 
 
