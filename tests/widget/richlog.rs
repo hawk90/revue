@@ -437,7 +437,7 @@ fn test_richlog_scroll_up_from_top() {
 
     log.info("Message");
     log.scroll_up(10); // 위로 더 스크롤하려고 시도
-    // 0 미만으로 내려가지 않아야 함 (saturating_sub)
+                       // 0 미만으로 내려가지 않아야 함 (saturating_sub)
     let _ = log;
 }
 
@@ -447,7 +447,7 @@ fn test_richlog_scroll_down_past_end() {
 
     log.info("Message");
     log.scroll_down(100); // 끝을 지나서 스크롤
-    // entries.len()을 초과하지 않아야 함
+                          // entries.len()을 초과하지 않아야 함
     let _ = log;
 }
 

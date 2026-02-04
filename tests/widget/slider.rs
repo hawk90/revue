@@ -16,7 +16,10 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
-use revue::widget::{percentage_slider, slider, slider_range, volume_slider, Slider, SliderOrientation, SliderStyle, StyledView, View};
+use revue::widget::{
+    percentage_slider, slider, slider_range, volume_slider, Slider, SliderOrientation, SliderStyle,
+    StyledView, View,
+};
 
 // =============================================================================
 // 생성자 및 빌더 메서드 테스트
@@ -594,7 +597,10 @@ fn test_slider_render_disabled() {
 
 #[test]
 fn test_slider_render_disabled_horizontal() {
-    let s = Slider::new().disabled(true).style(SliderStyle::Block).value(50.0);
+    let s = Slider::new()
+        .disabled(true)
+        .style(SliderStyle::Block)
+        .value(50.0);
     let mut buffer = Buffer::new(30, 3);
     let area = Rect::new(0, 0, 30, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
@@ -607,7 +613,11 @@ fn test_slider_render_disabled_horizontal() {
 
 #[test]
 fn test_slider_render_disabled_vertical() {
-    let s = Slider::new().disabled(true).vertical().style(SliderStyle::Dots).value(50.0);
+    let s = Slider::new()
+        .disabled(true)
+        .vertical()
+        .style(SliderStyle::Dots)
+        .value(50.0);
     let mut buffer = Buffer::new(10, 20);
     let area = Rect::new(0, 0, 10, 20);
     let mut ctx = RenderContext::new(&mut buffer, area);
@@ -839,10 +849,7 @@ fn test_slider_range_affects_existing_value() {
 
 #[test]
 fn test_slider_step_rounding() {
-    let mut s = Slider::new()
-        .range(0.0, 100.0)
-        .step(10.0)
-        .value(0.0);
+    let mut s = Slider::new().range(0.0, 100.0).step(10.0).value(0.0);
 
     s.set_value(14.0);
     assert!((s.get_value() - 10.0).abs() < 0.1);
@@ -1003,9 +1010,7 @@ fn test_slider_value_format_decimal() {
 
 #[test]
 fn test_slider_value_format_custom() {
-    let s = Slider::new()
-        .value(75.0)
-        .value_format("{}%");
+    let s = Slider::new().value(75.0).value_format("{}%");
     let mut buffer = Buffer::new(30, 3);
     let area = Rect::new(0, 0, 30, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
@@ -1033,9 +1038,7 @@ fn test_slider_element_id() {
 
 #[test]
 fn test_slider_css_classes() {
-    let s = Slider::new()
-        .class("volume-control")
-        .class("audio");
+    let s = Slider::new().class("volume-control").class("audio");
 
     assert!(s.has_class("volume-control"));
     assert!(s.has_class("audio"));
@@ -1095,9 +1098,7 @@ fn test_slider_render_small_area() {
 
 #[test]
 fn test_slider_render_with_label_truncation() {
-    let s = Slider::new()
-        .label("Long label")
-        .value(50.0);
+    let s = Slider::new().label("Long label").value(50.0);
     let mut buffer = Buffer::new(30, 3);
     let area = Rect::new(0, 0, 20, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
@@ -1221,10 +1222,7 @@ fn test_slider_key_sequence() {
 
 #[test]
 fn test_slider_disabled_with_focus() {
-    let mut s = Slider::new()
-        .focused(true)
-        .disabled(true)
-        .value(50.0);
+    let mut s = Slider::new().focused(true).disabled(true).value(50.0);
 
     assert!(!s.handle_key(&Key::Right));
     assert_eq!(s.get_value(), 50.0);
@@ -1240,9 +1238,7 @@ fn test_slider_disabled_with_focus() {
 
 #[test]
 fn test_slider_value_format_persistence() {
-    let s = Slider::new()
-        .value_format("{} dB")
-        .value(75.0);
+    let s = Slider::new().value_format("{} dB").value(75.0);
 
     let mut buffer = Buffer::new(30, 3);
     let area = Rect::new(0, 0, 30, 1);
@@ -1270,9 +1266,7 @@ fn test_slider_range_with_negative_clamp() {
 
 #[test]
 fn test_slider_increment_decrement_with_negative_range() {
-    let mut s = Slider::new()
-        .range(-50.0, 50.0)
-        .value(0.0);
+    let mut s = Slider::new().range(-50.0, 50.0).value(0.0);
 
     s.increment();
     assert_eq!(s.get_value(), 1.0);
@@ -1353,9 +1347,7 @@ fn test_slider_view_id() {
 
 #[test]
 fn test_slider_view_meta() {
-    let s = Slider::new()
-        .element_id("test")
-        .class("slider-class");
+    let s = Slider::new().element_id("test").class("slider-class");
 
     let meta = View::meta(&s);
     assert_eq!(meta.id, Some("test".to_string()));
@@ -1423,7 +1415,9 @@ fn test_slider_all_orientations_with_all_styles() {
     for &orientation in &orientations {
         for &style in &styles {
             let s = match orientation {
-                SliderOrientation::Horizontal => Slider::new().horizontal().style(style).value(50.0),
+                SliderOrientation::Horizontal => {
+                    Slider::new().horizontal().style(style).value(50.0)
+                }
                 SliderOrientation::Vertical => Slider::new().vertical().style(style).value(50.0),
             };
 

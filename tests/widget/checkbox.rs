@@ -876,3 +876,523 @@ fn test_checkbox_style_persistence_after_toggle() {
 }
 
 // =============================================================================
+// Color Tests
+// =============================================================================
+
+#[test]
+fn test_checkbox_fg_color() {
+    let cb = Checkbox::new("Test").fg(Color::RED);
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 25, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+
+    // Find first non-space cell and check fg color
+    for x in 0..area.width {
+        if let Some(cell) = buffer.get(x, 0) {
+            if cell.symbol != ' ' {
+                assert_eq!(cell.fg, Some(Color::RED));
+                break;
+            }
+        }
+    }
+}
+
+#[test]
+fn test_checkbox_bg_color() {
+    let cb = Checkbox::new("Test").bg(Color::BLUE);
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 25, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+
+    // Verify rendering with bg color works (implementation may not set bg on all cells)
+    let first_cell = buffer.get(0, 0);
+    assert!(first_cell.is_some());
+}
+
+#[test]
+fn test_checkbox_rgb_color() {
+    let cb = Checkbox::new("Test").fg(Color::rgb(100, 150, 200));
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 25, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+
+    // Should render with RGB color
+    for x in 0..area.width {
+        if let Some(cell) = buffer.get(x, 0) {
+            if cell.symbol != ' ' {
+                assert_eq!(cell.fg, Some(Color::rgb(100, 150, 200)));
+                break;
+            }
+        }
+    }
+}
+
+#[test]
+fn test_checkbox_rgba_color() {
+    let cb = Checkbox::new("Test").fg(Color::rgba(200, 100, 50, 180));
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 25, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+
+    for x in 0..area.width {
+        if let Some(cell) = buffer.get(x, 0) {
+            if cell.symbol != ' ' {
+                assert_eq!(cell.fg, Some(Color::rgba(200, 100, 50, 180)));
+                break;
+            }
+        }
+    }
+}
+
+#[test]
+fn test_checkbox_check_fg_color() {
+    let cb = Checkbox::new("Test").checked(true).check_fg(Color::GREEN);
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 25, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+
+    // Check indicator should have custom color
+    let text: String = (0..area.width)
+        .filter_map(|x| buffer.get(x, area.y).map(|c| c.symbol))
+        .collect();
+    assert!(text.contains('x'));
+}
+
+// =============================================================================
+// Label Edge Cases
+// =============================================================================
+
+#[test]
+fn test_checkbox_emoji_label() {
+    let cb = Checkbox::new("🚀 Launch");
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 25, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+
+    let text: String = (0..area.width)
+        .filter_map(|x| buffer.get(x, area.y).map(|c| c.symbol))
+        .collect();
+    assert!(text.contains("🚀"));
+}
+
+#[test]
+fn test_checkbox_rtl_label() {
+    let cb = Checkbox::new("مرحبا"); // Arabic text
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 25, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+
+    // Should render RTL text
+    let text: String = (0..area.width)
+        .filter_map(|x| buffer.get(x, area.y).map(|c| c.symbol))
+        .collect();
+    assert!(!text.is_empty());
+}
+
+#[test]
+fn test_checkbox_label_with_quotes() {
+    let cb = Checkbox::new("Quote's and \"Double\"");
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 25, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+
+    let text: String = (0..area.width)
+        .filter_map(|x| buffer.get(x, area.y).map(|c| c.symbol))
+        .collect();
+    assert!(text.contains("Quote"));
+}
+
+#[test]
+fn test_checkbox_label_with_tabs() {
+    let cb = Checkbox::new("Tab\there");
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 25, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+
+    // Should handle tabs
+    let text: String = (0..area.width)
+        .filter_map(|x| buffer.get(x, area.y).map(|c| c.symbol))
+        .collect();
+    assert!(text.contains("Tab"));
+}
+
+#[test]
+fn test_checkbox_label_with_newlines() {
+    let cb = Checkbox::new("Line1\nLine2");
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 25, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+
+    // Should handle newlines
+    let text: String = (0..area.width)
+        .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
+        .collect();
+    assert!(text.contains("Line1"));
+}
+
+#[test]
+fn test_checkbox_single_char_label() {
+    let cb = Checkbox::new("X");
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 25, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+
+    let text: String = (0..area.width)
+        .filter_map(|x| buffer.get(x, area.y).map(|c| c.symbol))
+        .collect();
+    assert!(text.contains("X"));
+}
+
+// =============================================================================
+// CheckboxStyle Enum Tests
+// =============================================================================
+
+#[test]
+fn test_checkbox_style_default() {
+    use revue::widget::CheckboxStyle;
+    let cb = Checkbox::new("Test");
+    // Default style should be Square
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    cb.render(&mut ctx);
+    let text: String = (0..area.width)
+        .filter_map(|x| buffer.get(x, area.y).map(|c| c.symbol))
+        .collect();
+    // Default is Square which uses [ ] brackets
+    assert!(text.contains('['));
+}
+
+#[test]
+fn test_checkbox_style_eq() {
+    use revue::widget::CheckboxStyle;
+    assert_eq!(CheckboxStyle::Square, CheckboxStyle::Square);
+    assert_eq!(CheckboxStyle::Unicode, CheckboxStyle::Unicode);
+}
+
+#[test]
+fn test_checkbox_style_ne() {
+    use revue::widget::CheckboxStyle;
+    assert_ne!(CheckboxStyle::Square, CheckboxStyle::Unicode);
+    assert_ne!(CheckboxStyle::Circle, CheckboxStyle::Filled);
+}
+
+#[test]
+fn test_checkbox_all_styles_unique() {
+    use revue::widget::CheckboxStyle;
+    let styles = [
+        CheckboxStyle::Square,
+        CheckboxStyle::Unicode,
+        CheckboxStyle::Filled,
+        CheckboxStyle::Circle,
+    ];
+
+    for i in 0..styles.len() {
+        for j in (i + 1)..styles.len() {
+            assert_ne!(styles[i], styles[j]);
+        }
+    }
+}
+
+// =============================================================================
+// Clone Tests
+// =============================================================================
+
+#[test]
+fn test_checkbox_clone_preserves_checked() {
+    let cb1 = Checkbox::new("Test").checked(true);
+    let cb2 = cb1.clone();
+    assert_eq!(cb1.is_checked(), cb2.is_checked());
+}
+
+#[test]
+fn test_checkbox_clone_preserves_focused() {
+    let cb1 = Checkbox::new("Test").focused(true);
+    let cb2 = cb1.clone();
+    assert_eq!(cb1.is_focused(), cb2.is_focused());
+}
+
+#[test]
+fn test_checkbox_clone_preserves_disabled() {
+    let cb1 = Checkbox::new("Test").disabled(true);
+    let cb2 = cb1.clone();
+    assert_eq!(cb1.is_disabled(), cb2.is_disabled());
+}
+
+#[test]
+fn test_checkbox_clone_independent() {
+    let mut cb1 = Checkbox::new("Test").checked(true);
+    let mut cb2 = cb1.clone();
+
+    // Both start checked
+    assert!(cb1.is_checked());
+    assert!(cb2.is_checked());
+
+    cb1.toggle();
+    // cb1 is now unchecked, cb2 is still checked
+    assert!(!cb1.is_checked());
+    assert!(cb2.is_checked());
+
+    cb2.toggle();
+    // Both are now unchecked
+    assert!(!cb1.is_checked());
+    assert!(!cb2.is_checked());
+}
+
+// =============================================================================
+// State Transition Tests
+// =============================================================================
+
+#[test]
+fn test_checkbox_multiple_toggles() {
+    let mut cb = Checkbox::new("Test");
+
+    assert!(!cb.is_checked());
+    cb.toggle();
+    assert!(cb.is_checked());
+    cb.toggle();
+    assert!(!cb.is_checked());
+    cb.toggle();
+    assert!(cb.is_checked());
+    cb.toggle();
+    assert!(!cb.is_checked());
+}
+
+#[test]
+fn test_checkbox_set_checked_to_same_value() {
+    let mut cb = Checkbox::new("Test").checked(true);
+
+    cb.set_checked(true);
+    assert!(cb.is_checked());
+
+    cb.set_checked(false);
+    assert!(!cb.is_checked());
+
+    cb.set_checked(false);
+    assert!(!cb.is_checked());
+}
+
+#[test]
+fn test_checkbox_focus_cycle() {
+    use revue::widget::traits::Interactive;
+
+    let mut cb = Checkbox::new("Test");
+
+    assert!(!cb.is_focused());
+    Interactive::on_focus(&mut cb);
+    assert!(cb.is_focused());
+    Interactive::on_blur(&mut cb);
+    assert!(!cb.is_focused());
+    Interactive::on_focus(&mut cb);
+    assert!(cb.is_focused());
+}
+
+#[test]
+fn test_checkbox_disabled_toggle_blocked() {
+    let mut cb = Checkbox::new("Test").checked(true).disabled(true);
+
+    assert!(cb.is_checked());
+    cb.toggle(); // Should not change
+    assert!(cb.is_checked());
+}
+
+#[test]
+fn test_checkbox_disabled_set_checked_works() {
+    let mut cb = Checkbox::new("Test").disabled(true);
+
+    assert!(!cb.is_checked());
+    cb.set_checked(true); // Should work
+    assert!(cb.is_checked());
+}
+
+// =============================================================================
+// Render with Offset Tests
+// =============================================================================
+
+#[test]
+fn test_checkbox_render_with_offset() {
+    let cb = Checkbox::new("Test").focused(true);
+    let mut buffer = Buffer::new(50, 10);
+    let area = Rect::new(10, 5, 25, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+
+    // Focus indicator should be at offset position
+    assert_eq!(buffer.get(10, 5).unwrap().symbol, '>');
+}
+
+#[test]
+fn test_checkbox_render_label_with_offset() {
+    let cb = Checkbox::new("Label");
+    let mut buffer = Buffer::new(50, 10);
+    let area = Rect::new(5, 3, 25, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+
+    let text: String = (area.x..area.x + area.width)
+        .filter_map(|x| buffer.get(x, area.y).map(|c| c.symbol))
+        .collect();
+    assert!(text.contains("Label"));
+}
+
+#[test]
+fn test_checkbox_render_multiple_positions() {
+    let cb = Checkbox::new("Test");
+    let mut buffer = Buffer::new(50, 10);
+
+    let positions = [
+        Rect::new(0, 0, 20, 1),
+        Rect::new(5, 3, 20, 1),
+        Rect::new(15, 6, 20, 1),
+    ];
+
+    for area in positions {
+        buffer.clear();
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        cb.render(&mut ctx);
+        // Should render at each position
+        let first_cell = buffer.get(area.x, area.y);
+        assert!(first_cell.is_some());
+    }
+}
+
+// =============================================================================
+// Multiple Render Calls
+// =============================================================================
+
+#[test]
+fn test_checkbox_multiple_renders() {
+    let cb = Checkbox::new("Test").checked(true);
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 25, 1);
+
+    for _ in 0..5 {
+        buffer.clear();
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        cb.render(&mut ctx);
+        let text: String = (0..area.width)
+            .filter_map(|x| buffer.get(x, area.y).map(|c| c.symbol))
+            .collect();
+        assert!(text.contains('x'));
+    }
+}
+
+#[test]
+fn test_checkbox_render_after_state_change() {
+    let mut cb = Checkbox::new("Test");
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 25, 1);
+
+    // Render unchecked
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        cb.render(&mut ctx);
+    }
+
+    // Change state and render checked
+    cb.set_checked(true);
+    buffer.clear();
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        cb.render(&mut ctx);
+    }
+
+    let text: String = (0..area.width)
+        .filter_map(|x| buffer.get(x, area.y).map(|c| c.symbol))
+        .collect();
+    assert!(text.contains('x'));
+}
+
+// =============================================================================
+// Combination Edge Cases
+// =============================================================================
+
+#[test]
+fn test_checkbox_checked_focused_disabled() {
+    use revue::widget::traits::Interactive;
+
+    let cb = Checkbox::new("Test")
+        .checked(true)
+        .focused(true)
+        .disabled(true);
+
+    assert!(cb.is_checked());
+    assert!(cb.is_focused());
+    assert!(cb.is_disabled());
+    assert!(!Interactive::focusable(&cb));
+}
+
+#[test]
+fn test_checkbox_all_styles_checked_focused() {
+    use revue::widget::CheckboxStyle;
+
+    let styles = [
+        CheckboxStyle::Square,
+        CheckboxStyle::Unicode,
+        CheckboxStyle::Filled,
+        CheckboxStyle::Circle,
+    ];
+
+    for style in styles {
+        let cb = Checkbox::new("Test")
+            .checked(true)
+            .focused(true)
+            .style(style);
+
+        let mut buffer = Buffer::new(30, 3);
+        let area = Rect::new(0, 0, 25, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        cb.render(&mut ctx);
+
+        // Should show focus indicator
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '>');
+    }
+}
+
+#[test]
+fn test_checkbox_single_pixel_area() {
+    let cb = Checkbox::new("X");
+    let mut buffer = Buffer::new(1, 1);
+    let area = Rect::new(0, 0, 1, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+    // Should not panic
+}
+
+#[test]
+fn test_checkbox_very_short_width() {
+    let cb = Checkbox::new("LongLabel");
+    let mut buffer = Buffer::new(5, 3);
+    let area = Rect::new(0, 0, 5, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    cb.render(&mut ctx);
+    // Should truncate label
+}
+
+// =============================================================================

@@ -7,7 +7,9 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::{RenderContext, StyledView, View};
-use revue::widget::{hsplit, pane, splitter, vsplit, HSplit, Pane, SplitOrientation, Splitter, VSplit};
+use revue::widget::{
+    hsplit, pane, splitter, vsplit, HSplit, Pane, SplitOrientation, Splitter, VSplit,
+};
 
 // =============================================================================
 // Constructor and Builder Tests
@@ -215,7 +217,11 @@ fn test_pane_toggle_collapse_when_not_collapsible() {
 
 #[test]
 fn test_pane_builder_chain() {
-    let p = pane("main").min_size(10).max_size(50).ratio(0.6).collapsible();
+    let p = pane("main")
+        .min_size(10)
+        .max_size(50)
+        .ratio(0.6)
+        .collapsible();
     assert_eq!(p.id, "main");
     assert_eq!(p.min_size, 10);
     assert_eq!(p.max_size, 50);
@@ -739,9 +745,7 @@ fn test_splitter_resize_clamps_to_bounds() {
 
 #[test]
 fn test_splitter_handle_key_tab() {
-    let mut split = Splitter::new()
-        .pane(Pane::new("a"))
-        .pane(Pane::new("b"));
+    let mut split = Splitter::new().pane(Pane::new("a")).pane(Pane::new("b"));
 
     assert_eq!(split.focused(), Some("a"));
     let handled = split.handle_key(&Key::Tab);
@@ -871,9 +875,7 @@ fn test_splitter_handle_key_escape_stops_resize() {
 
 #[test]
 fn test_splitter_handle_key_unhandled() {
-    let mut split = Splitter::new()
-        .pane(Pane::new("a"))
-        .pane(Pane::new("b"));
+    let mut split = Splitter::new().pane(Pane::new("a")).pane(Pane::new("b"));
 
     let handled = split.handle_key(&Key::Char('x'));
     assert!(!handled);
@@ -925,9 +927,7 @@ fn test_splitter_toggle_pane_valid() {
 
 #[test]
 fn test_splitter_toggle_pane_invalid_index() {
-    let mut split = Splitter::new()
-        .pane(Pane::new("a"))
-        .pane(Pane::new("b"));
+    let mut split = Splitter::new().pane(Pane::new("a")).pane(Pane::new("b"));
 
     // 패닉하지 않아야 함
     split.toggle_pane(5);
@@ -935,9 +935,7 @@ fn test_splitter_toggle_pane_invalid_index() {
 
 #[test]
 fn test_splitter_toggle_non_collapsible_pane() {
-    let mut split = Splitter::new()
-        .pane(Pane::new("a"))
-        .pane(Pane::new("b"));
+    let mut split = Splitter::new().pane(Pane::new("a")).pane(Pane::new("b"));
 
     let area = Rect::new(0, 0, 100, 24);
 

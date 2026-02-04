@@ -566,7 +566,7 @@ fn test_rating_render_all_styles() {
         ('●', '○'), // Circle
         ('■', '□'), // Square
         ('●', '○'), // Numeric
-        ('A', 'B'),  // Custom
+        ('A', 'B'), // Custom
     ];
 
     for (style, (filled, _)) in styles.iter().zip(expected_chars.iter()) {
@@ -933,7 +933,10 @@ fn test_rating_readonly_doesnt_affect_rendering() {
     r2.render(&mut ctx2);
 
     // 렌더링 결과는 동일해야 함
-    assert_eq!(buffer1.get(0, 0).unwrap().symbol, buffer2.get(0, 0).unwrap().symbol);
+    assert_eq!(
+        buffer1.get(0, 0).unwrap().symbol,
+        buffer2.get(0, 0).unwrap().symbol
+    );
 }
 
 #[test]

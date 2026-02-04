@@ -763,3 +763,321 @@ fn test_dot_badge_all_variants() {
 }
 
 // =============================================================================
+
+// =============================================================================
+// Additional Edge Cases
+// =============================================================================
+
+#[test]
+fn test_badge_very_long_text() {
+    let long_text = "This is a very long badge text that exceeds normal width";
+    let b = badge(long_text);
+    let mut buffer = Buffer::new(30, 1);
+    let area = Rect::new(0, 0, 30, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+}
+
+#[test]
+fn test_badge_render_with_offset_area() {
+    let mut buffer = Buffer::new(50, 5);
+    let area = Rect::new(10, 2, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    let b = badge("Offset");
+    b.render(&mut ctx);
+}
+
+#[test]
+fn test_badge_render_very_narrow_area() {
+    let mut buffer = Buffer::new(3, 1);
+    let area = Rect::new(0, 0, 3, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    let b = badge("Test");
+    b.render(&mut ctx);
+}
+
+#[test]
+fn test_badge_combine_variant_and_custom_colors() {
+    let b = badge("Custom")
+        .success()
+        .colors(Color::MAGENTA, Color::YELLOW);
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+    let cell = buffer.get(1, 0).unwrap();
+    assert_eq!(cell.bg, Some(Color::MAGENTA));
+    assert_eq!(cell.fg, Some(Color::YELLOW));
+}
+
+#[test]
+fn test_badge_empty_text_with_max_width() {
+    let b = badge("").max_width(10);
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+}
+
+#[test]
+fn test_badge_unicode_max_width() {
+    let b = badge("日本語テスト").max_width(10);
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+}
+
+#[test]
+fn test_badge_emoji_max_width() {
+    let b = badge("🎉🎊🎁").max_width(5);
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+}
+
+#[test]
+fn test_badge_mixed_content() {
+    let b = badge("Text123!@#");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+}
+
+#[test]
+fn test_badge_multiple_renders() {
+    let b = badge("Test");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    for _ in 0..5 {
+        buffer.clear();
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        b.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_badge_variant_partial_eq() {
+    assert_eq!(BadgeVariant::Default, BadgeVariant::Default);
+    assert_eq!(BadgeVariant::Primary, BadgeVariant::Primary);
+    assert_ne!(BadgeVariant::Default, BadgeVariant::Primary);
+}
+
+#[test]
+fn test_badge_shape_partial_eq() {
+    assert_eq!(BadgeShape::Rounded, BadgeShape::Rounded);
+    assert_eq!(BadgeShape::Square, BadgeShape::Square);
+    assert_eq!(BadgeShape::Pill, BadgeShape::Pill);
+    assert_eq!(BadgeShape::Dot, BadgeShape::Dot);
+    assert_ne!(BadgeShape::Rounded, BadgeShape::Square);
+}
+
+#[test]
+fn test_badge_colors_override_variant() {
+    let b = badge("Test").success().colors(Color::BLUE, Color::RED);
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+    let cell = buffer.get(1, 0).unwrap();
+    assert_eq!(cell.bg, Some(Color::BLUE));
+    assert_eq!(cell.fg, Some(Color::RED));
+}
+
+#[test]
+fn test_badge_variant_then_bg() {
+    let b = badge("Test").success().bg(Color::CYAN);
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+    let cell = buffer.get(1, 0).unwrap();
+    assert_eq!(cell.bg, Some(Color::CYAN));
+}
+
+#[test]
+fn test_badge_bg_then_variant() {
+    let b = badge("Test").bg(Color::CYAN).success();
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+    let cell = buffer.get(1, 0).unwrap();
+    // bg() before success() - CYAN is kept
+    assert_eq!(cell.bg, Some(Color::CYAN));
+}
+
+#[test]
+fn test_badge_zero_area() {
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 0, 0);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    let b = badge("Test");
+    b.render(&mut ctx);
+}
+
+#[test]
+fn test_badge_spaces_in_text() {
+    let b = badge("  Spaces  ");
+    let mut buffer = Buffer::new(30, 1);
+    let area = Rect::new(0, 0, 30, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+}
+
+#[test]
+fn test_badge_variant_enum_all_values() {
+    let _ = BadgeVariant::Default;
+    let _ = BadgeVariant::Primary;
+    let _ = BadgeVariant::Success;
+    let _ = BadgeVariant::Warning;
+    let _ = BadgeVariant::Error;
+    let _ = BadgeVariant::Info;
+}
+
+#[test]
+fn test_badge_shape_enum_all_values() {
+    let _ = BadgeShape::Rounded;
+    let _ = BadgeShape::Square;
+    let _ = BadgeShape::Pill;
+    let _ = BadgeShape::Dot;
+}
+
+#[test]
+fn test_badge_default_variant() {
+    let (bg, fg) = BadgeVariant::Default.colors();
+    assert_eq!(bg, Color::rgb(80, 80, 80));
+    assert_eq!(fg, Color::WHITE);
+}
+
+#[test]
+fn test_badge_warning_has_black_fg() {
+    let (bg, fg) = BadgeVariant::Warning.colors();
+    assert_eq!(fg, Color::BLACK);
+    assert!(bg.r > 150);
+}
+
+#[test]
+fn test_badge_success_with_dark_bg() {
+    let (bg, fg) = BadgeVariant::Success.colors();
+    assert!(bg.g > 100 && bg.b < 100);
+    assert_eq!(fg, Color::WHITE);
+}
+
+#[test]
+fn test_badge_error_with_red_bg() {
+    let (bg, fg) = BadgeVariant::Error.colors();
+    assert!(bg.r > 150 && bg.g < 100 && bg.b < 100);
+    assert_eq!(fg, Color::WHITE);
+}
+
+#[test]
+fn test_badge_info_with_cyan_bg() {
+    let (bg, fg) = BadgeVariant::Info.colors();
+    assert!(bg.b > 100);
+    assert_eq!(fg, Color::WHITE);
+}
+
+#[test]
+fn test_badge_render_output_exists() {
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    let b = badge("Test");
+    b.render(&mut ctx);
+    let mut has_content = false;
+    for x in 0..20 {
+        if let Some(cell) = buffer.get(x, 0) {
+            if cell.symbol != ' ' {
+                has_content = true;
+                break;
+            }
+        }
+    }
+    assert!(has_content);
+}
+
+#[test]
+fn test_badge_text_content_preserved() {
+    let text = "MyBadge";
+    let b = badge(text);
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+    let rendered: String = (0..20)
+        .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
+        .collect();
+    assert!(rendered.contains("MyBadge"));
+}
+
+#[test]
+fn test_badge_all_variants_render() {
+    let variants = [
+        BadgeVariant::Default,
+        BadgeVariant::Primary,
+        BadgeVariant::Success,
+        BadgeVariant::Warning,
+        BadgeVariant::Error,
+        BadgeVariant::Info,
+    ];
+
+    for variant in variants {
+        let b = match variant {
+            BadgeVariant::Default => badge("Test"),
+            BadgeVariant::Primary => badge("Test").primary(),
+            BadgeVariant::Success => badge("Test").success(),
+            BadgeVariant::Warning => badge("Test").warning(),
+            BadgeVariant::Error => badge("Test").error(),
+            BadgeVariant::Info => badge("Test").info(),
+        };
+
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        b.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_badge_all_shapes_with_padding() {
+    let shapes = [BadgeShape::Rounded, BadgeShape::Square, BadgeShape::Pill];
+
+    for shape in shapes {
+        let b = badge("Test").shape(shape);
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        b.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_badge_dot_with_all_variants() {
+    let b = dot_badge().primary();
+    let mut buffer = Buffer::new(5, 1);
+    let area = Rect::new(0, 0, 5, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).map(|c| c.symbol), Some('●'));
+}
+
+#[test]
+fn test_badge_right_to_left_text() {
+    let b = badge("مرحبا");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+}
+
+#[test]
+fn test_badge_newline_in_text() {
+    let b = badge("Line1\nLine2");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    b.render(&mut ctx);
+}

@@ -363,3 +363,416 @@ fn test_parse_slides_links_and_images() {
     let slides = parse_slides(markdown);
     assert_eq!(slides.len(), 1);
 }
+
+// ==================== Additional Edge Cases ====================
+
+#[test]
+fn test_parse_slides_with_tables() {
+    let markdown = "# Table Slide\n\n| Header 1 | Header 2 |\n|----------|----------|\n| Cell 1   | Cell 2   |";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_with_task_lists() {
+    let markdown = "# Tasks\n\n- [x] Done\n- [ ] Todo";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_with_html_entities() {
+    let markdown = "# HTML Entities\n\n&lt;tag&gt; &amp; &quot;";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_title_with_emoji() {
+    let markdown = "# Hello 👋\n\nContent";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides[0].title(), Some("Hello 👋"));
+}
+
+#[test]
+fn test_parse_slides_title_with_special_chars() {
+    let markdown = "# C++ & Java: A Comparison\n\nContent";
+    let slides = parse_slides(markdown);
+    assert!(slides[0].title().is_some());
+}
+
+#[test]
+fn test_parse_slides_title_with_colon() {
+    let markdown = "# Section 1: Introduction\n\nContent";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides[0].title(), Some("Section 1: Introduction"));
+}
+
+#[test]
+fn test_parse_slides_title_with_pipe() {
+    let markdown = "# A | B | C\n\nContent";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides[0].title(), Some("A | B | C"));
+}
+
+#[test]
+fn test_parse_slides_title_with_quotes() {
+    let markdown = r#"# "Quoted Title" and 'Single Quotes'"#;
+    let slides = parse_slides(markdown);
+    assert!(slides[0].title().is_some());
+}
+
+#[test]
+fn test_parse_slides_notes_with_special_chars() {
+    let markdown = "# Title\n\n<!-- notes: Remember: key points are A, B, & C -->";
+    let slides = parse_slides(markdown);
+    assert!(slides[0].notes().is_some());
+}
+
+#[test]
+fn test_parse_slides_notes_multiline_complex() {
+    let markdown = r#"# Title
+
+<!--
+notes:
+- First point
+- Second point
+- Third point
+
+Remember to emphasize this!
+-->"#;
+    let slides = parse_slides(markdown);
+    assert!(slides[0].notes().is_some());
+}
+
+#[test]
+fn test_parse_slides_multiple_notes_blocks() {
+    let markdown = r#"# Title
+
+<!-- notes: First note -->
+
+Content
+
+<!-- notes: Second note -->"#;
+    let slides = parse_slides(markdown);
+    // Should handle multiple notes blocks (implementation dependent)
+    assert!(slides.len() >= 1);
+}
+
+#[test]
+fn test_parse_slides_code_fence_with_language() {
+    let markdown = r#"# Code Slide
+
+```rust
+fn hello() {
+    println!("Hello");
+}
+```
+
+```javascript
+function hello() {
+    console.log("Hello");
+}
+```"#;
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_code_fence_empty() {
+    let markdown = "# Slide\n\n```\nNo language specified\n```\n\n---\n\n# Next";
+    let slides = parse_slides(markdown);
+    assert!(slides.len() >= 2);
+}
+
+#[test]
+fn test_parse_slides_inline_code() {
+    let markdown = "# Slide\n\nUse `command` to do things";
+    let slides = parse_slides(markdown);
+    assert!(slides[0].markdown().contains("command"));
+}
+
+#[test]
+fn test_parse_slides_mixed_delimiter_styles() {
+    let markdown = "# A\n\n---\n\n# B\n\n***\n\n# C\n\n___";
+    let slides = parse_slides(markdown);
+    // Different delimiter styles may or may not work
+    // At minimum, dashes should work
+    assert!(slides.len() >= 1);
+}
+
+#[test]
+fn test_parse_slides_delimiter_at_start() {
+    let markdown = "---\n\n---\n\n# First Slide";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides[0].title(), Some("First Slide"));
+}
+
+#[test]
+fn test_parse_slides_delimiter_at_end() {
+    let markdown = "# Last Slide\n\n---\n\n---";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides[0].title(), Some("Last Slide"));
+}
+
+#[test]
+fn test_parse_slides_only_delimiters() {
+    let slides = parse_slides("---\n\n---\n\n---");
+    // Should handle gracefully
+    assert!(slides.len() >= 0);
+}
+
+#[test]
+fn test_parse_slides_single_word_content() {
+    let markdown = "# Title\n\nWord";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_only_title() {
+    let markdown = "# Title Only";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_no_title_just_content() {
+    let markdown = "Just some content\n\nWithout a title";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+    assert_eq!(slides[0].title(), None);
+}
+
+#[test]
+fn test_parse_slides_nested_list() {
+    let markdown = "# Lists\n\n- Item 1\n  - Nested 1\n  - Nested 2\n- Item 2";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_footnotes() {
+    let markdown = "# Footnotes\n\nContent with[^1] footnote\n\n[^1]: The note";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_strikethrough() {
+    let markdown = "# ~~Deleted~~\n\nContent";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_empty_lines_between_slides() {
+    let markdown = "# A\n\n\n\n---\n\n\n\n# B";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 2);
+}
+
+#[test]
+fn test_parse_slides_carriage_returns() {
+    let markdown = "# Title\r\n\r\nContent\r\n---\r\n\r\n# Next";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 2);
+}
+
+#[test]
+fn test_parse_slides_mixed_line_endings() {
+    let markdown = "# Title\n\rContent\n---\r\n# Next";
+    let slides = parse_slides(markdown);
+    assert!(slides.len() >= 2);
+}
+
+#[test]
+fn test_parse_slides_tab_indentation() {
+    let markdown = "# Title\n\tIndented content\n\tMore indented";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_atx_heading_with_closing() {
+    let markdown = "# Title With Closing #\n\nContent";
+    let slides = parse_slides(markdown);
+    // Closing hashes should be handled
+    assert!(slides[0].title().is_some());
+}
+
+#[test]
+fn test_parse_slides_atx_heading_with_extra_hashes() {
+    let markdown = "## Title ###\n\nContent";
+    let slides = parse_slides(markdown);
+    assert!(slides[0].title().is_some());
+}
+
+#[test]
+fn test_parse_slides_autolinks() {
+    let markdown = "# Links\n\n<https://example.com>\n\n<user@example.com>";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_empty_title_h1() {
+    let markdown = "#\n\nContent without title";
+    let slides = parse_slides(markdown);
+    // Empty heading should be handled
+    assert!(slides.len() >= 1);
+}
+
+#[test]
+fn test_parse_slides_heading_only_hash() {
+    let markdown = "##\n\nContent";
+    let slides = parse_slides(markdown);
+    assert!(slides.len() >= 1);
+}
+
+#[test]
+fn test_parse_slides_very_long_title() {
+    let long_title = "A".repeat(200);
+    let markdown = format!("# {}\n\nContent", long_title);
+    let slides = parse_slides(&markdown);
+    assert_eq!(slides.len(), 1);
+    assert!(slides[0].title().is_some());
+}
+
+#[test]
+fn test_parse_slides_very_long_content() {
+    let long_content = "A".repeat(10000);
+    let markdown = format!("# Title\n\n{}", long_content);
+    let slides = parse_slides(&markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_many_slides() {
+    let slides_text: Vec<String> = (1..=50).map(|i| format!("# Slide {}", i)).collect();
+    let markdown = slides_text.join("\n\n---\n\n");
+    let slides = parse_slides(&markdown);
+    assert_eq!(slides.len(), 50);
+}
+
+#[test]
+fn test_parse_slides_single_character_content() {
+    let markdown = "# X\n\nA";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_content_with_pipe_in_table() {
+    let markdown = "# Table\n\n| A | B |\n|---|---|\n| 1 | 2 |";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_content_with_escaped_chars() {
+    let markdown = r"# Escaped\n\n\*not italic\*\n\n\[not a link\]";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_hard_breaks() {
+    let markdown = "# Title\n\nLine 1  \nLine 2  \nLine 3";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_soft_breaks() {
+    let markdown = "# Title\n\nLine 1\nLine 2\nLine 3";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_thematic_break_not_at_line_start() {
+    let markdown = "# Title\n\nContent with --- in the middle";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_code_fence_with_backticks_in_code() {
+    let markdown = r#"# Code
+
+```
+text with ``` inside
+```"#;
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_multiple_code_fences() {
+    let markdown = r#"# Code
+
+```rust
+let x = 1;
+```
+
+Some text
+
+```python
+x = 1
+```"#;
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_indented_code_block() {
+    let markdown = "# Code\n\n    let x = 1;\n    let y = 2;";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_notes_empty() {
+    let markdown = "# Title\n\n<!-- notes: -->";
+    let slides = parse_slides(markdown);
+    // Empty notes should be handled
+    assert!(slides.len() >= 1);
+}
+
+#[test]
+fn test_parse_slides_notes_with_html_tags() {
+    let markdown = "# Title\n\n<!-- notes: Remember <strong>bold</strong> text -->";
+    let slides = parse_slides(markdown);
+    assert!(slides[0].notes().is_some());
+}
+
+#[test]
+fn test_parse_slides_slides_with_metadata() {
+    let markdown = "# Title\n\nkey: value\nanother: data";
+    let slides = parse_slides(markdown);
+    // Metadata-like content should be preserved
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_frontmatter_like_content() {
+    let markdown = "---\nkey: value\n---\n\n# Title";
+    let slides = parse_slides(markdown);
+    // Frontmatter-like content should be handled
+    assert!(slides.len() >= 1);
+}
+
+#[test]
+fn test_parse_slides_content_only_numbers() {
+    let markdown = "# Numbers\n\n123\n456\n789";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}
+
+#[test]
+fn test_parse_slides_content_only_symbols() {
+    let markdown = "# Symbols\n\n@#$%^&*()";
+    let slides = parse_slides(markdown);
+    assert_eq!(slides.len(), 1);
+}

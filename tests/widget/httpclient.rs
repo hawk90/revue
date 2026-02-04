@@ -15,11 +15,11 @@
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::traits::RenderContext;
+use revue::widget::{http_delete, http_get, http_patch, http_post, http_put};
 use revue::widget::{
-    ContentType, HttpClient, HttpBackend, HttpMethod, HttpRequest, HttpResponse, MockHttpBackend,
+    ContentType, HttpBackend, HttpClient, HttpMethod, HttpRequest, HttpResponse, MockHttpBackend,
     RequestBuilder, RequestState, ResponseView, View,
 };
-use revue::widget::{http_delete, http_get, http_patch, http_post, http_put};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -650,10 +650,7 @@ fn test_content_type_xml() {
         ContentType::from_header(Some("application/xml")),
         ContentType::Xml
     );
-    assert_eq!(
-        ContentType::from_header(Some("text/xml")),
-        ContentType::Xml
-    );
+    assert_eq!(ContentType::from_header(Some("text/xml")), ContentType::Xml);
 }
 
 /// HTML 콘텐츠 타입 감지 테스트

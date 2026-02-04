@@ -552,3 +552,445 @@ fn test_gauge_thresholds_swapped() {
 }
 
 // =============================================================================
+// CSS Integration Tests
+// =============================================================================
+
+#[test]
+fn test_gauge_element_id() {
+    let g = Gauge::new().element_id("cpu-gauge");
+    assert_eq!(View::id(&g), Some("cpu-gauge"));
+}
+
+#[test]
+fn test_gauge_single_class() {
+    let g = Gauge::new().class("metric");
+    assert!(View::classes(&g).contains(&"metric".to_string()));
+}
+
+#[test]
+fn test_gauge_multiple_classes() {
+    let g = Gauge::new().class("primary").class("gauge").class("cpu");
+    let classes = View::classes(&g);
+    assert!(classes.contains(&"primary".to_string()));
+    assert!(classes.contains(&"gauge".to_string()));
+    assert!(classes.contains(&"cpu".to_string()));
+}
+
+#[test]
+fn test_gauge_classes_vec() {
+    let g = Gauge::new().classes(vec!["metric", "widget", "colored"]);
+    let classes = View::classes(&g);
+    assert!(classes.contains(&"metric".to_string()));
+    assert!(classes.contains(&"widget".to_string()));
+    assert!(classes.contains(&"colored".to_string()));
+}
+
+#[test]
+fn test_gauge_meta() {
+    let g = Gauge::new()
+        .element_id("test-gauge")
+        .class("primary")
+        .title("Test");
+
+    let meta = g.meta();
+    assert_eq!(meta.id, Some("test-gauge".to_string()));
+    assert!(meta.classes.contains("primary"));
+    assert_eq!(meta.widget_type, "Gauge");
+}
+
+#[test]
+fn test_gauge_view_children() {
+    let g = Gauge::new();
+    assert!(View::children(&g).is_empty());
+}
+
+#[test]
+fn test_gauge_view_widget_type() {
+    let g = Gauge::new();
+    assert_eq!(g.widget_type(), "Gauge");
+}
+
+// =============================================================================
+// Color Tests
+// =============================================================================
+
+#[test]
+fn test_gauge_fill_color_variants() {
+    let colors = [
+        Color::RED,
+        Color::GREEN,
+        Color::BLUE,
+        Color::YELLOW,
+        Color::CYAN,
+        Color::MAGENTA,
+        Color::WHITE,
+        Color::BLACK,
+    ];
+
+    for color in colors {
+        let g = Gauge::new().fill_color(color);
+        let mut buffer = Buffer::new(20, 3);
+        let area = Rect::new(0, 0, 20, 3);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        g.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_gauge_empty_color_variants() {
+    let colors = [
+        Color::rgb(50, 50, 50),
+        Color::rgb(100, 100, 100),
+        Color::rgb(150, 150, 150),
+    ];
+
+    for color in colors {
+        let g = Gauge::new().empty_color(color);
+        let mut buffer = Buffer::new(20, 3);
+        let area = Rect::new(0, 0, 20, 3);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        g.render(&mut ctx);
+    }
+}
+
+// =============================================================================
+// Label Edge Cases
+// =============================================================================
+
+#[test]
+fn test_gauge_label_emoji() {
+    let g = Gauge::new().label("🔥 100%");
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    g.render(&mut ctx);
+}
+
+#[test]
+fn test_gauge_label_unicode() {
+    let g = Gauge::new().label("進行中 50%");
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    g.render(&mut ctx);
+}
+
+#[test]
+fn test_gauge_label_rtl() {
+    let g = Gauge::new().label("مرحبا"); // Arabic
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    g.render(&mut ctx);
+}
+
+#[test]
+fn test_gauge_label_special_chars() {
+    let g = Gauge::new().label("Test@#$%^&*()");
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    g.render(&mut ctx);
+}
+
+#[test]
+fn test_gauge_label_with_newline() {
+    let g = Gauge::new().label("Line1\nLine2");
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    g.render(&mut ctx);
+}
+
+// =============================================================================
+// GaugeStyle Enum Tests
+// =============================================================================
+
+#[test]
+fn test_gauge_style_eq() {
+    assert_eq!(GaugeStyle::Bar, GaugeStyle::Bar);
+    assert_eq!(GaugeStyle::Battery, GaugeStyle::Battery);
+}
+
+#[test]
+fn test_gauge_style_ne() {
+    assert_ne!(GaugeStyle::Bar, GaugeStyle::Battery);
+    assert_ne!(GaugeStyle::Circle, GaugeStyle::Vertical);
+}
+
+#[test]
+fn test_gauge_all_styles_unique() {
+    let styles = [
+        GaugeStyle::Bar,
+        GaugeStyle::Battery,
+        GaugeStyle::Thermometer,
+        GaugeStyle::Arc,
+        GaugeStyle::Circle,
+        GaugeStyle::Vertical,
+        GaugeStyle::Segments,
+        GaugeStyle::Dots,
+    ];
+
+    for i in 0..styles.len() {
+        for j in (i + 1)..styles.len() {
+            assert_ne!(styles[i], styles[j]);
+        }
+    }
+}
+
+// =============================================================================
+// LabelPosition Enum Tests
+// =============================================================================
+
+#[test]
+fn test_label_position_eq() {
+    assert_eq!(LabelPosition::None, LabelPosition::None);
+    assert_eq!(LabelPosition::Inside, LabelPosition::Inside);
+}
+
+#[test]
+fn test_label_position_ne() {
+    assert_ne!(LabelPosition::None, LabelPosition::Inside);
+    assert_ne!(LabelPosition::Left, LabelPosition::Right);
+}
+
+#[test]
+fn test_all_label_positions_unique() {
+    let positions = [
+        LabelPosition::None,
+        LabelPosition::Inside,
+        LabelPosition::Left,
+        LabelPosition::Right,
+        LabelPosition::Above,
+        LabelPosition::Below,
+    ];
+
+    for i in 0..positions.len() {
+        for j in (i + 1)..positions.len() {
+            assert_ne!(positions[i], positions[j]);
+        }
+    }
+}
+
+// =============================================================================
+// Render with Offset Tests
+// =============================================================================
+
+#[test]
+fn test_gauge_render_with_offset() {
+    let g = Gauge::new().percent(50.0);
+    let mut buffer = Buffer::new(50, 10);
+    let area = Rect::new(10, 5, 20, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    g.render(&mut ctx);
+    // Should render at offset
+}
+
+#[test]
+fn test_gauge_render_multiple_positions() {
+    let g = Gauge::new().percent(75.0);
+    let mut buffer = Buffer::new(50, 10);
+
+    let positions = [
+        Rect::new(0, 0, 20, 3),
+        Rect::new(5, 3, 20, 3),
+        Rect::new(15, 6, 20, 3),
+    ];
+
+    for area in positions {
+        buffer.clear();
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        g.render(&mut ctx);
+    }
+}
+
+// =============================================================================
+// Multiple Render Calls
+// =============================================================================
+
+#[test]
+fn test_gauge_multiple_renders() {
+    let g = Gauge::new().percent(50.0);
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+
+    for _ in 0..5 {
+        buffer.clear();
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        g.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_gauge_render_after_value_change() {
+    let mut g = Gauge::new();
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+
+    // Render at 0%
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        g.render(&mut ctx);
+    }
+
+    g.set_value(0.5);
+    buffer.clear();
+
+    // Render at 50%
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        g.render(&mut ctx);
+    }
+
+    g.set_value(1.0);
+    buffer.clear();
+
+    // Render at 100%
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        g.render(&mut ctx);
+    }
+}
+
+// =============================================================================
+// Special Value Tests
+// =============================================================================
+
+#[test]
+fn test_gauge_nan_value() {
+    let g = Gauge::new().value(f64::NAN);
+    // Gauge stores NaN as-is
+    let value = g.get_value();
+    assert!(value.is_nan());
+}
+
+#[test]
+fn test_gauge_infinity_value() {
+    let g1 = Gauge::new().value(f64::INFINITY);
+    // Infinity should be clamped to 1.0
+    assert_eq!(g1.get_value(), 1.0);
+
+    let g2 = Gauge::new().value(f64::NEG_INFINITY);
+    // Negative infinity should be clamped to 0.0
+    assert_eq!(g2.get_value(), 0.0);
+}
+
+#[test]
+fn test_gauge_very_small_positive() {
+    let g = Gauge::new().value(0.0001);
+    assert!((g.get_value() - 0.0001).abs() < 0.00001);
+}
+
+#[test]
+fn test_gauge_very_close_to_one() {
+    let g = Gauge::new().value(0.9999);
+    assert!((g.get_value() - 0.9999).abs() < 0.00001);
+}
+
+// =============================================================================
+// Combination Tests
+// =============================================================================
+
+#[test]
+fn test_gauge_all_colors() {
+    let g = Gauge::new()
+        .fill_color(Color::GREEN)
+        .empty_color(Color::rgb(50, 50, 50))
+        .border(Color::YELLOW);
+
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    g.render(&mut ctx);
+}
+
+#[test]
+fn test_gauge_with_all_options() {
+    let g = Gauge::new()
+        .value(0.67)
+        .style(GaugeStyle::Segments)
+        .width(20)
+        .height(3)
+        .label("67%")
+        .label_position(LabelPosition::Right)
+        .show_percent(false)
+        .fill_color(Color::GREEN)
+        .empty_color(Color::rgb(60, 60, 60))
+        .border(Color::WHITE)
+        .thresholds(0.5, 0.2)
+        .warning_color(Color::YELLOW)
+        .critical_color(Color::RED)
+        .segments(10)
+        .title("Progress")
+        .element_id("test-gauge")
+        .class("primary");
+
+    let mut buffer = Buffer::new(30, 5);
+    let area = Rect::new(0, 0, 30, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    g.render(&mut ctx);
+
+    assert_eq!(View::id(&g), Some("test-gauge"));
+    assert!(View::classes(&g).contains(&"primary".to_string()));
+}
+
+#[test]
+fn test_gauge_battery_style_all_levels() {
+    let levels = [0.0, 0.25, 0.5, 0.75, 1.0];
+
+    for level in levels {
+        let g = Gauge::new().style(GaugeStyle::Battery).value(level);
+        let mut buffer = Buffer::new(20, 3);
+        let area = Rect::new(0, 0, 20, 3);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        g.render(&mut ctx);
+    }
+}
+
+// =============================================================================
+// Width and Height Edge Cases
+// =============================================================================
+
+#[test]
+fn test_gauge_very_large_width() {
+    let g = Gauge::new().width(1000);
+    let mut buffer = Buffer::new(100, 3);
+    let area = Rect::new(0, 0, 100, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    g.render(&mut ctx);
+}
+
+#[test]
+fn test_gauge_very_large_height() {
+    let g = Gauge::new().height(100);
+    let mut buffer = Buffer::new(20, 100);
+    let area = Rect::new(0, 0, 20, 100);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    g.render(&mut ctx);
+}
+
+#[test]
+fn test_gauge_single_pixel_width() {
+    let g = Gauge::new().width(1);
+    let mut buffer = Buffer::new(5, 3);
+    let area = Rect::new(0, 0, 5, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    g.render(&mut ctx);
+}
+
+#[test]
+fn test_gauge_single_pixel_height() {
+    let g = Gauge::new().height(1);
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    g.render(&mut ctx);
+}
+
+// =============================================================================

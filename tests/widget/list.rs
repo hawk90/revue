@@ -601,3 +601,458 @@ fn test_list_rapid_navigation() {
     // Should not panic and selection should be valid
     assert!(list.selected_index() < 100);
 }
+
+// =============================================================================
+// Clone Tests
+// =============================================================================
+
+#[test]
+fn test_list_clone_preserves_items() {
+    let list1 = List::new(vec!["A", "B", "C"]);
+    let list2 = list1.clone();
+    assert_eq!(list1.items(), list2.items());
+}
+
+#[test]
+fn test_list_clone_preserves_selection() {
+    let list1 = List::new(vec!["A", "B", "C"]).selected(1);
+    let list2 = list1.clone();
+    assert_eq!(list1.selected_index(), list2.selected_index());
+}
+
+#[test]
+fn test_list_clone_independent() {
+    let mut list1 = List::new(vec!["A", "B", "C"]).selected(0);
+    let mut list2 = list1.clone();
+
+    list1.select_next();
+    assert_eq!(list1.selected_index(), 1);
+    assert_eq!(list2.selected_index(), 0);
+
+    list2.select_next();
+    assert_eq!(list1.selected_index(), 1);
+    assert_eq!(list2.selected_index(), 1);
+}
+
+// =============================================================================
+// RGB/RGBA Color Tests
+// =============================================================================
+
+#[test]
+fn test_list_highlight_rgb() {
+    let list = List::new(vec!["A", "B"])
+        .selected(0)
+        .highlight_fg(Color::rgb(255, 128, 0))
+        .highlight_bg(Color::rgb(50, 100, 150));
+
+    let mut buffer = Buffer::new(10, 2);
+    let area = Rect::new(0, 0, 10, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    list.render(&mut ctx);
+
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.fg, Some(Color::rgb(255, 128, 0)));
+    assert_eq!(cell.bg, Some(Color::rgb(50, 100, 150)));
+}
+
+#[test]
+fn test_list_highlight_rgba() {
+    let list = List::new(vec!["A", "B"])
+        .selected(0)
+        .highlight_fg(Color::rgba(200, 100, 50, 180))
+        .highlight_bg(Color::rgba(30, 60, 90, 200));
+
+    let mut buffer = Buffer::new(10, 2);
+    let area = Rect::new(0, 0, 10, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    list.render(&mut ctx);
+
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.fg, Some(Color::rgba(200, 100, 50, 180)));
+    assert_eq!(cell.bg, Some(Color::rgba(30, 60, 90, 200)));
+}
+
+// =============================================================================
+// Multiple Render Calls
+// =============================================================================
+
+#[test]
+fn test_list_multiple_renders() {
+    let list = List::new(vec!["A", "B", "C"]).selected(1);
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+
+    for _ in 0..5 {
+        buffer.clear();
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        list.render(&mut ctx);
+
+        // Selection should be consistent
+        let cell = buffer.get(0, 1).unwrap();
+        assert_eq!(cell.bg, Some(Color::BLUE));
+    }
+}
+
+#[test]
+fn test_list_render_after_selection_change() {
+    let mut list = List::new(vec!["A", "B", "C"]);
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+
+    // Render with selection at 0
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        list.render(&mut ctx);
+    }
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.bg, Some(Color::BLUE));
+
+    // Change selection and render again
+    list.select_next();
+    buffer.clear();
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        list.render(&mut ctx);
+    }
+    let cell = buffer.get(0, 1).unwrap();
+    assert_eq!(cell.bg, Some(Color::BLUE));
+}
+
+// =============================================================================
+// State Transition Tests
+// =============================================================================
+
+#[test]
+fn test_list_full_selection_cycle() {
+    let mut list = List::new(vec!["A", "B", "C"]);
+
+    // Start at 0
+    assert_eq!(list.selected_index(), 0);
+
+    // Move to end
+    list.select_next();
+    assert_eq!(list.selected_index(), 1);
+    list.select_next();
+    assert_eq!(list.selected_index(), 2);
+
+    // Wrap to start
+    list.select_next();
+    assert_eq!(list.selected_index(), 0);
+
+    // Wrap to end
+    list.select_prev();
+    assert_eq!(list.selected_index(), 2);
+}
+
+#[test]
+fn test_list_selection_boundaries() {
+    let mut list = List::new(vec!["A", "B", "C", "D", "E"]);
+
+    // Select middle item
+    list = List::new(vec!["A", "B", "C", "D", "E"]).selected(2);
+    assert_eq!(list.selected_index(), 2);
+
+    // Navigate to boundaries
+    for _ in 0..10 {
+        list.select_prev();
+    }
+    // Should be somewhere valid due to wrapping
+    assert!(list.selected_index() < 5);
+
+    for _ in 0..10 {
+        list.select_next();
+    }
+    // Should be somewhere valid due to wrapping
+    assert!(list.selected_index() < 5);
+}
+
+// =============================================================================
+// Selection Edge Cases
+// =============================================================================
+
+#[test]
+fn test_list_selection_last_item() {
+    let list = List::new(vec!["A", "B", "C"]).selected(2);
+    assert_eq!(list.selected_index(), 2);
+
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    list.render(&mut ctx);
+
+    // Last row should have highlight
+    let cell = buffer.get(0, 2).unwrap();
+    assert_eq!(cell.bg, Some(Color::BLUE));
+}
+
+#[test]
+fn test_list_selection_middle_item() {
+    let list = List::new(vec!["A", "B", "C", "D", "E"]).selected(2);
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    list.render(&mut ctx);
+
+    // Middle row should have highlight
+    let cell = buffer.get(0, 2).unwrap();
+    assert_eq!(cell.bg, Some(Color::BLUE));
+}
+
+#[test]
+fn test_list_selection_changes_dont_affect_items() {
+    let mut list = List::new(vec!["A", "B", "C"]);
+    let original_items = list.items();
+
+    list.select_next();
+    assert_eq!(list.items(), original_items);
+
+    list.select_prev();
+    assert_eq!(list.items(), original_items);
+}
+
+// =============================================================================
+// Builder CSS Tests
+// =============================================================================
+
+#[test]
+fn test_list_element_id_builder() {
+    let list = List::new(vec!["A", "B"]).element_id("my-list");
+    assert_eq!(View::id(&list), Some("my-list"));
+}
+
+#[test]
+fn test_list_class_builder() {
+    let list = List::new(vec!["A", "B"]).class("primary").class("large");
+
+    assert!(list.has_class("primary"));
+    assert!(list.has_class("large"));
+}
+
+#[test]
+fn test_list_classes_vec_builder() {
+    let list = List::new(vec!["A", "B"]).classes(vec!["class1", "class2", "class3"]);
+
+    assert!(list.has_class("class1"));
+    assert!(list.has_class("class2"));
+    assert!(list.has_class("class3"));
+}
+
+#[test]
+fn test_list_builder_with_css() {
+    let list = List::new(vec!["A", "B"])
+        .element_id("test-list")
+        .class("primary")
+        .class("large")
+        .selected(0)
+        .highlight_fg(Color::YELLOW)
+        .highlight_bg(Color::BLUE);
+
+    assert_eq!(View::id(&list), Some("test-list"));
+    assert!(list.has_class("primary"));
+    assert!(list.has_class("large"));
+}
+
+// =============================================================================
+// Emoji and Special Character Tests
+// =============================================================================
+
+#[test]
+fn test_list_emoji_items() {
+    let list = List::new(vec!["🍎 Apple", "🍌 Banana", "🍒 Cherry"]);
+    assert_eq!(list.len(), 3);
+
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    list.render(&mut ctx);
+
+    // First character should render
+    let cell = buffer.get(0, 0).unwrap();
+    assert_ne!(cell.symbol, ' ');
+}
+
+#[test]
+fn test_list_mixed_unicode() {
+    let list = List::new(vec!["English", "한글", "日本語", "中文"]);
+    assert_eq!(list.len(), 4);
+
+    let mut buffer = Buffer::new(20, 4);
+    let area = Rect::new(0, 0, 20, 4);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    list.render(&mut ctx);
+
+    // All should render
+    for y in 0..4 {
+        let cell = buffer.get(0, y).unwrap();
+        assert_ne!(cell.symbol, ' ');
+    }
+}
+
+#[test]
+fn test_list_special_chars() {
+    let list = List::new(vec!["Item@#", "Test$%", "Data^&*"]);
+    assert_eq!(list.len(), 3);
+
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    list.render(&mut ctx);
+}
+
+#[test]
+fn test_list_tab_characters() {
+    let list = List::new(vec!["Item\tOne", "Item\tTwo"]);
+    assert_eq!(list.len(), 2);
+
+    let mut buffer = Buffer::new(20, 2);
+    let area = Rect::new(0, 0, 20, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    list.render(&mut ctx);
+}
+
+#[test]
+fn test_list_newline_characters() {
+    let list = List::new(vec!["Line1\nBreak", "Line2\nBreak"]);
+    assert_eq!(list.len(), 2);
+
+    let mut buffer = Buffer::new(20, 2);
+    let area = Rect::new(0, 0, 20, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    list.render(&mut ctx);
+}
+
+// =============================================================================
+// Single Item List Edge Cases
+// =============================================================================
+
+#[test]
+fn test_list_single_item_navigation() {
+    let mut list = List::new(vec!["Only Item"]);
+
+    assert_eq!(list.selected_index(), 0);
+
+    list.select_next();
+    assert_eq!(list.selected_index(), 0);
+
+    list.select_prev();
+    assert_eq!(list.selected_index(), 0);
+}
+
+#[test]
+fn test_list_single_item_render() {
+    let list = List::new(vec!["Single"]).selected(0);
+
+    let mut buffer = Buffer::new(20, 3);
+    let area = Rect::new(0, 0, 20, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    list.render(&mut ctx);
+
+    // First row should have highlight
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.bg, Some(Color::BLUE));
+}
+
+#[test]
+fn test_list_single_item_with_colors() {
+    let list = List::new(vec!["Single"])
+        .selected(0)
+        .highlight_fg(Color::RED)
+        .highlight_bg(Color::GREEN);
+
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    list.render(&mut ctx);
+
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.fg, Some(Color::RED));
+    assert_eq!(cell.bg, Some(Color::GREEN));
+}
+
+// =============================================================================
+// Render Position Tests
+// =============================================================================
+
+#[test]
+fn test_list_render_at_different_offsets() {
+    let list = List::new(vec!["A", "B", "C"]);
+
+    let offsets = [
+        Rect::new(0, 0, 10, 3),
+        Rect::new(5, 2, 10, 3),
+        Rect::new(10, 5, 10, 3),
+    ];
+
+    for area in offsets {
+        let mut buffer = Buffer::new(30, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        list.render(&mut ctx);
+
+        // Check that first item is rendered at offset
+        let cell = buffer.get(area.x, area.y).unwrap();
+        assert_eq!(cell.symbol, 'A');
+    }
+}
+
+#[test]
+fn test_list_render_single_pixel_width() {
+    let list = List::new(vec!["A", "B"]);
+    let mut buffer = Buffer::new(1, 2);
+    let area = Rect::new(0, 0, 1, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    list.render(&mut ctx);
+}
+
+#[test]
+fn test_list_render_single_pixel_height() {
+    let list = List::new(vec!["A"]);
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    list.render(&mut ctx);
+}
+
+// =============================================================================
+// View Trait Tests (Extended)
+// =============================================================================
+
+#[test]
+fn test_list_view_widget_type() {
+    let list = List::new(vec!["A", "B"]);
+    assert_eq!(list.widget_type(), "List");
+}
+
+#[test]
+fn test_list_view_children_empty() {
+    let list = List::new(vec!["A", "B"]);
+    assert!(View::children(&list).is_empty());
+}
+
+#[test]
+fn test_list_view_meta_complete() {
+    let mut list = List::new(vec!["A", "B"]);
+    list.set_id("test-id");
+    list.add_class("class1");
+
+    let meta = list.meta();
+    assert_eq!(meta.widget_type, "List");
+    assert_eq!(meta.id, Some("test-id".to_string()));
+    assert!(meta.classes.contains("class1"));
+}
+
+// =============================================================================

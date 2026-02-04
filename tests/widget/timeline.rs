@@ -5,7 +5,10 @@ use revue::render::{Buffer, Modifier};
 use revue::style::Color;
 use revue::widget::traits::{RenderContext, StyledView};
 use revue::widget::View;
-use revue::widget::{timeline, timeline_event, EventType, Timeline, TimelineEvent, TimelineOrientation, TimelineStyle};
+use revue::widget::{
+    timeline, timeline_event, EventType, Timeline, TimelineEvent, TimelineOrientation,
+    TimelineStyle,
+};
 
 // =============================================================================
 // Constructor Tests
@@ -102,8 +105,14 @@ fn test_timeline_event_builder_meta() {
         .meta("key1", "value1")
         .meta("key2", "value2");
     assert_eq!(event.metadata.len(), 2);
-    assert_eq!(event.metadata[0], ("key1".to_string(), "value1".to_string()));
-    assert_eq!(event.metadata[1], ("key2".to_string(), "value2".to_string()));
+    assert_eq!(
+        event.metadata[0],
+        ("key1".to_string(), "value1".to_string())
+    );
+    assert_eq!(
+        event.metadata[1],
+        ("key2".to_string(), "value2".to_string())
+    );
 }
 
 #[test]
@@ -578,10 +587,11 @@ fn test_timeline_render_vertical_multiple_events() {
 
 #[test]
 fn test_timeline_render_vertical_with_description() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event 1")
+    let tl = Timeline::new().event(
+        TimelineEvent::new("Event 1")
             .description("This is a description")
-            .timestamp("10:00"));
+            .timestamp("10:00"),
+    );
 
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -744,8 +754,7 @@ fn test_timeline_render_vertical_event_types() {
 
 #[test]
 fn test_timeline_render_vertical_custom_event_icon() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Custom").event_type(EventType::Custom('★')));
+    let tl = Timeline::new().event(TimelineEvent::new("Custom").event_type(EventType::Custom('★')));
 
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -838,8 +847,7 @@ fn test_timeline_render_horizontal_without_timestamps() {
 
 #[test]
 fn test_timeline_zero_area() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event 1"));
+    let tl = Timeline::new().event(TimelineEvent::new("Event 1"));
     let mut buffer = Buffer::new(0, 0);
     let area = Rect::new(0, 0, 0, 0);
     let mut ctx = RenderContext::new(&mut buffer, area);
@@ -850,8 +858,7 @@ fn test_timeline_zero_area() {
 #[test]
 fn test_timeline_very_long_title() {
     let long_title = "This is a very long title that exceeds the available width";
-    let tl = Timeline::new()
-        .event(TimelineEvent::new(long_title));
+    let tl = Timeline::new().event(TimelineEvent::new(long_title));
 
     let mut buffer = Buffer::new(30, 10);
     let area = Rect::new(0, 0, 30, 10);
@@ -862,9 +869,9 @@ fn test_timeline_very_long_title() {
 
 #[test]
 fn test_timeline_very_long_description() {
-    let long_desc = "This is a very long description that exceeds the available width and should be truncated";
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event").description(long_desc));
+    let long_desc =
+        "This is a very long description that exceeds the available width and should be truncated";
+    let tl = Timeline::new().event(TimelineEvent::new("Event").description(long_desc));
 
     let mut buffer = Buffer::new(30, 10);
     let area = Rect::new(0, 0, 30, 10);
@@ -876,8 +883,7 @@ fn test_timeline_very_long_description() {
 #[test]
 fn test_timeline_very_long_timestamp() {
     let long_ts = "2024-01-15 10:30:45.123456";
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event").timestamp(long_ts));
+    let tl = Timeline::new().event(TimelineEvent::new("Event").timestamp(long_ts));
 
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -930,8 +936,7 @@ fn test_timeline_render_with_custom_colors() {
 
 #[test]
 fn test_timeline_render_with_event_custom_color() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event 1").color(Color::YELLOW));
+    let tl = Timeline::new().event(TimelineEvent::new("Event 1").color(Color::YELLOW));
 
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -1112,30 +1117,40 @@ fn test_timeline_complex_scenario() {
         .timestamps(true)
         .descriptions(true)
         .line_color(Color::rgb(100, 100, 100))
-        .event(TimelineEvent::new("Application Started")
-            .timestamp("09:00")
-            .success()
-            .description("Application initialized successfully"))
-        .event(TimelineEvent::new("User Login")
-            .timestamp("09:05")
-            .event_type(EventType::Info)
-            .description("User 'alice' logged in")
-            .meta("user_id", "12345"))
-        .event(TimelineEvent::new("Configuration Error")
-            .timestamp("09:10")
-            .warning()
-            .description("Invalid configuration in config.yml")
-            .meta("file", "config.yml"))
-        .event(TimelineEvent::new("Connection Failed")
-            .timestamp("09:15")
-            .error()
-            .description("Failed to connect to database")
-            .meta("host", "db.example.com")
-            .meta("port", "5432"))
-        .event(TimelineEvent::new("Retry Attempt")
-            .timestamp("09:16")
-            .event_type(EventType::Custom('↻'))
-            .description("Attempting to reconnect..."));
+        .event(
+            TimelineEvent::new("Application Started")
+                .timestamp("09:00")
+                .success()
+                .description("Application initialized successfully"),
+        )
+        .event(
+            TimelineEvent::new("User Login")
+                .timestamp("09:05")
+                .event_type(EventType::Info)
+                .description("User 'alice' logged in")
+                .meta("user_id", "12345"),
+        )
+        .event(
+            TimelineEvent::new("Configuration Error")
+                .timestamp("09:10")
+                .warning()
+                .description("Invalid configuration in config.yml")
+                .meta("file", "config.yml"),
+        )
+        .event(
+            TimelineEvent::new("Connection Failed")
+                .timestamp("09:15")
+                .error()
+                .description("Failed to connect to database")
+                .meta("host", "db.example.com")
+                .meta("port", "5432"),
+        )
+        .event(
+            TimelineEvent::new("Retry Attempt")
+                .timestamp("09:16")
+                .event_type(EventType::Custom('↻'))
+                .description("Attempting to reconnect..."),
+        );
 
     assert_eq!(tl.len(), 5);
 
@@ -1161,7 +1176,12 @@ fn test_timeline_complex_scenario() {
     for y in 0..area.height {
         for x in 0..area.width {
             if let Some(cell) = buffer.get(x, y) {
-                if cell.symbol == '●' || cell.symbol == '✓' || cell.symbol == '⚠' || cell.symbol == '✗' || cell.symbol == '↻' {
+                if cell.symbol == '●'
+                    || cell.symbol == '✓'
+                    || cell.symbol == '⚠'
+                    || cell.symbol == '✗'
+                    || cell.symbol == '↻'
+                {
                     found_events += 1;
                     break;
                 }
@@ -1203,9 +1223,21 @@ fn test_timeline_horizontal_complex_scenario() {
 fn test_timeline_minimal_style_no_lines() {
     let tl = Timeline::new()
         .style(TimelineStyle::Minimal)
-        .event(TimelineEvent::new("Event 1").timestamp("10:00").description("Description 1"))
-        .event(TimelineEvent::new("Event 2").timestamp("11:00").description("Description 2"))
-        .event(TimelineEvent::new("Event 3").timestamp("12:00").description("Description 3"));
+        .event(
+            TimelineEvent::new("Event 1")
+                .timestamp("10:00")
+                .description("Description 1"),
+        )
+        .event(
+            TimelineEvent::new("Event 2")
+                .timestamp("11:00")
+                .description("Description 2"),
+        )
+        .event(
+            TimelineEvent::new("Event 3")
+                .timestamp("12:00")
+                .description("Description 3"),
+        );
 
     let mut buffer = Buffer::new(40, 15);
     let area = Rect::new(0, 0, 40, 15);

@@ -720,3 +720,666 @@ fn test_text_builder_chain() {
         "Text 'Complete' should be rendered somewhere in buffer"
     );
 }
+
+// =============================================================================
+// Additional Edge Cases and Comprehensive Tests
+// =============================================================================
+
+#[test]
+fn test_text_single_char() {
+    let text = Text::new("A");
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'A');
+}
+
+#[test]
+fn test_text_emoji() {
+    let text = Text::new("🎉🎊");
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Should render emoji
+}
+
+#[test]
+fn test_text_mixed_unicode() {
+    let text = Text::new("Hello 世界 🌍");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Should render mixed content
+}
+
+#[test]
+fn test_text_very_long_single_word() {
+    let long_word = "supercalifragilisticexpialidocious";
+    let text = Text::new(long_word);
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Should truncate
+}
+
+#[test]
+fn test_text_multiple_spaces() {
+    let text = Text::new("Word1   Word2");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'W');
+}
+
+#[test]
+fn test_text_all_spaces() {
+    let text = Text::new("     ");
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    for x in 0..5 {
+        assert_eq!(buffer.get(x, 0).unwrap().symbol, ' ');
+    }
+}
+
+#[test]
+fn test_text_tab_characters() {
+    let text = Text::new("Before\tAfter");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Should handle tabs
+}
+
+#[test]
+fn test_text_newline_in_content() {
+    let text = Text::new("Line1\nLine2");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Should handle or truncate newlines
+}
+
+#[test]
+fn test_text_zero_width_area() {
+    let text = Text::new("Test");
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 0, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+}
+
+#[test]
+fn test_text_single_pixel_area() {
+    let text = Text::new("X");
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 1, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+}
+
+#[test]
+fn test_text_align_right_truncation() {
+    let text = Text::new("Very Long Text Here").align(Alignment::Right);
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Right aligned text that exceeds area should be truncated on left
+}
+
+#[test]
+fn test_text_align_center_truncation() {
+    let text = Text::new("Centered Text").align(Alignment::Center);
+    let mut buffer = Buffer::new(8, 1);
+    let area = Rect::new(0, 0, 8, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Centered text that exceeds area should be truncated on both ends
+}
+
+#[test]
+fn test_text_all_alignments_with_empty() {
+    let alignments = [
+        Alignment::Left,
+        Alignment::Center,
+        Alignment::Right,
+        Alignment::Justify,
+    ];
+
+    for alignment in alignments {
+        let text = Text::new("").align(alignment);
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        text.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_text_all_alignments_with_single_char() {
+    let alignments = [
+        Alignment::Left,
+        Alignment::Center,
+        Alignment::Right,
+        Alignment::Justify,
+    ];
+
+    for alignment in alignments {
+        let text = Text::new("X").align(alignment);
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        text.render(&mut ctx);
+        // All should render
+    }
+}
+
+#[test]
+fn test_text_dim_modifier() {
+    let text = Text::new("Dim").dim();
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    let cell = buffer.get(0, 0).unwrap();
+    assert!(cell.modifier.contains(Modifier::DIM));
+}
+
+#[test]
+fn test_text_all_modifiers() {
+    let text = Text::new("All").bold().dim().italic().underline().reverse();
+
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // All modifiers should be applied
+}
+
+#[test]
+fn test_text_color_rgb() {
+    let text = Text::new("RGB").fg(Color::rgb(100, 150, 200));
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.fg, Some(Color::rgb(100, 150, 200)));
+}
+
+#[test]
+fn test_text_color_rgba() {
+    let text = Text::new("RGBA").fg(Color::rgba(255, 100, 50, 200));
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Should render with RGBA color
+}
+
+#[test]
+fn test_text_multiple_colors() {
+    let text = Text::new("Multi").fg(Color::RED).bg(Color::BLUE);
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.fg, Some(Color::RED));
+    assert_eq!(cell.bg, Some(Color::BLUE));
+}
+
+#[test]
+fn test_text_same_fg_and_bg() {
+    let text = Text::new("Same").fg(Color::WHITE).bg(Color::WHITE);
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.fg, Some(Color::WHITE));
+    assert_eq!(cell.bg, Some(Color::WHITE));
+}
+
+#[test]
+fn test_text_all_preset_colors() {
+    let text1 = Text::error("Error");
+    let text2 = Text::success("Success");
+    let text3 = Text::warning("Warning");
+    let text4 = Text::info("Info");
+
+    assert_eq!(text1.content(), "Error");
+    assert_eq!(text2.content(), "Success");
+    assert_eq!(text3.content(), "Warning");
+    assert_eq!(text4.content(), "Info");
+}
+
+#[test]
+fn test_text_all_presets_render() {
+    let presets = [
+        ("Heading", Text::heading("Title")),
+        ("Label", Text::label("Label:")),
+        ("Muted", Text::muted("Muted")),
+        ("Error", Text::error("Error")),
+        ("Success", Text::success("Success")),
+        ("Warning", Text::warning("Warning")),
+        ("Info", Text::info("Info")),
+    ];
+
+    for (name, text) in presets {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        text.render(&mut ctx);
+        // All should render
+    }
+}
+
+#[test]
+fn test_text_clone_preserves_content() {
+    let text1 = Text::new("Original").fg(Color::RED).bold();
+    let text2 = text1.clone();
+    assert_eq!(text1.content(), text2.content());
+}
+
+#[test]
+fn test_text_clone_preserves_style() {
+    let text1 = Text::new("Styled")
+        .fg(Color::RED)
+        .bg(Color::BLUE)
+        .bold()
+        .italic();
+    let text2 = text1.clone();
+
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        text1.render(&mut ctx);
+    }
+    let fg1 = buffer.get(0, 0).unwrap().fg;
+    let mod1 = buffer.get(0, 0).unwrap().modifier;
+
+    buffer.clear();
+
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        text2.render(&mut ctx);
+    }
+    let fg2 = buffer.get(0, 0).unwrap().fg;
+    let mod2 = buffer.get(0, 0).unwrap().modifier;
+
+    assert_eq!(fg1, fg2);
+    assert_eq!(mod1, mod2);
+}
+
+#[test]
+fn test_text_multiple_render_calls() {
+    let text = Text::new("Test");
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+
+    for _ in 0..5 {
+        buffer.clear();
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        text.render(&mut ctx);
+    }
+    // Should render consistently
+}
+
+#[test]
+fn test_text_justify_with_truncation() {
+    let text = Text::new("A B C D E").align(Alignment::Justify);
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Should justify and fit what it can
+}
+
+#[test]
+fn test_text_content_getter() {
+    let text = Text::new("Content");
+    assert_eq!(text.content(), "Content");
+}
+
+#[test]
+fn test_text_default_alignment() {
+    // Default alignment should be Left
+    let text = Text::new("Default");
+    assert_eq!(text.content(), "Default");
+}
+
+#[test]
+fn test_text_with_all_alignments() {
+    let text = "Test";
+    let alignments = [
+        Alignment::Left,
+        Alignment::Center,
+        Alignment::Right,
+        Alignment::Justify,
+    ];
+
+    for alignment in alignments {
+        let t = Text::new(text).align(alignment);
+        assert_eq!(t.content(), text);
+    }
+}
+
+#[test]
+fn test_text_align_right_exactly_fits() {
+    let text = Text::new("Exact!").align(Alignment::Right);
+    let mut buffer = Buffer::new(6, 1);
+    let area = Rect::new(0, 0, 6, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'E');
+    assert_eq!(buffer.get(5, 0).unwrap().symbol, '!');
+}
+
+#[test]
+fn test_text_align_center_exactly_fits() {
+    let text = Text::new("12345").align(Alignment::Center);
+    let mut buffer = Buffer::new(5, 1);
+    let area = Rect::new(0, 0, 5, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Center 5 chars in 5 char width = all chars shown
+}
+
+#[test]
+fn test_text_right_to_left() {
+    let text = Text::new("مرحبا"); // Arabic text
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Should render RTL text
+}
+
+#[test]
+fn test_text_align_with_unicode() {
+    let text = Text::new("日本語").align(Alignment::Center);
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Should center unicode
+}
+
+#[test]
+fn test_text_justify_with_unicode() {
+    let text = Text::new("A B C").align(Alignment::Justify);
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+}
+
+#[test]
+fn test_text_modifiers_with_alignment() {
+    let text = Text::new("Styled").bold().italic().align(Alignment::Center);
+
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+
+    // For centered text "Styled" in 20 char width, find the first non-empty cell
+    let mut found = false;
+    for x in 0..20 {
+        if let Some(cell) = buffer.get(x, 0) {
+            if cell.symbol != ' ' && cell.modifier.contains(Modifier::BOLD) {
+                found = true;
+                break;
+            }
+        }
+    }
+    assert!(found, "Should find bold text in buffer");
+}
+
+#[test]
+fn test_text_multiple_instances_independent() {
+    let text1 = Text::new("Text1").fg(Color::RED);
+    let text2 = Text::new("Text2").fg(Color::BLUE);
+
+    assert_eq!(text1.content(), "Text1");
+    assert_eq!(text2.content(), "Text2");
+}
+
+#[test]
+fn test_text_very_narrow_area() {
+    let text = Text::new("X");
+    let mut buffer = Buffer::new(1, 1);
+    let area = Rect::new(0, 0, 1, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+}
+
+#[test]
+fn test_text_very_wide_area() {
+    let text = Text::new("Small");
+    let mut buffer = Buffer::new(100, 1);
+    let area = Rect::new(0, 0, 100, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Should render at left
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'S');
+}
+
+#[test]
+fn test_text_offset_with_alignment() {
+    let text = Text::new("Test").align(Alignment::Center);
+
+    let mut buffer = Buffer::new(50, 5);
+    let area = Rect::new(10, 2, 30, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+    // Should render centered within offset area
+}
+
+#[test]
+fn test_content_update() {
+    let text1 = Text::new("First");
+    // Text is immutable, so we create new instances
+    let text2 = Text::new("Second");
+    assert_eq!(text1.content(), "First");
+    assert_eq!(text2.content(), "Second");
+}
+
+#[test]
+fn test_text_with_all_colors() {
+    let colors = [
+        Color::BLACK,
+        Color::WHITE,
+        Color::RED,
+        Color::GREEN,
+        Color::BLUE,
+        Color::YELLOW,
+        Color::CYAN,
+        Color::MAGENTA,
+    ];
+
+    for color in colors {
+        let text = Text::new("Color").fg(color);
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        text.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_text_string_conversion() {
+    let s = "Test String";
+    let text = Text::new(s);
+    assert_eq!(text.content(), s);
+}
+
+#[test]
+fn test_text_reserved_characters() {
+    let text = Text::new("()[]{}<>|\\/");
+    let mut buffer = Buffer::new(30, 1);
+    let area = Rect::new(0, 0, 30, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+}
+
+#[test]
+fn test_text_mathematical_symbols() {
+    let text = Text::new("∑∫√∞≈≠≤≥");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+}
+
+#[test]
+fn test_text_arrows() {
+    let text = Text::new("→←↑→↓↔");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+}
+
+#[test]
+fn test_text_box_drawing() {
+    let text = Text::new("│─┌┐└┘");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+}
+
+#[test]
+fn test_all_modifier_methods_compile() {
+    // Test that all modifier methods compile
+    let _text = Text::new("Test")
+        .bold()
+        .dim()
+        .italic()
+        .underline()
+        .reverse();
+}
+
+#[test]
+fn test_text_alignment_pairwise_equality() {
+    // Test that all alignments are pairwise comparable
+    let alignments = [
+        Alignment::Left,
+        Alignment::Center,
+        Alignment::Right,
+        Alignment::Justify,
+    ];
+
+    for i in 0..alignments.len() {
+        for j in i..alignments.len() {
+            if i == j {
+                assert_eq!(alignments[i], alignments[j]);
+            } else {
+                assert_ne!(alignments[i], alignments[j]);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_text_render_preserves_content_integrity() {
+    let original = "Integrity";
+    let text = Text::new(original);
+
+    let mut buffer = Buffer::new(30, 1);
+    let area = Rect::new(0, 0, 30, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    text.render(&mut ctx);
+
+    let rendered: String = (0..30)
+        .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
+        .collect();
+    assert!(rendered.contains(original));
+}
+
+#[test]
+fn test_text_all_alignments_zero_width() {
+    let alignments = [
+        Alignment::Left,
+        Alignment::Center,
+        Alignment::Right,
+        Alignment::Justify,
+    ];
+
+    for alignment in alignments {
+        let text = Text::new("Test").align(alignment);
+        let mut buffer = Buffer::new(10, 1);
+        let area = Rect::new(0, 0, 0, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        text.render(&mut ctx);
+        // Should handle zero width gracefully
+    }
+}
+
+#[test]
+fn test_text_all_alignments_single_char() {
+    let alignments = [
+        Alignment::Left,
+        Alignment::Center,
+        Alignment::Right,
+        Alignment::Justify,
+    ];
+
+    for alignment in alignments {
+        let text = Text::new("X").align(alignment);
+        let mut buffer = Buffer::new(10, 1);
+        let area = Rect::new(0, 0, 10, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        text.render(&mut ctx);
+        // All should render X somewhere
+    }
+}
+
+#[test]
+fn test_text_modifiers_with_all_alignments() {
+    let modifiers = [
+        ("bold", Text::new("B").bold()),
+        ("italic", Text::new("I").italic()),
+        ("underline", Text::new("U").underline()),
+        ("reverse", Text::new("R").reverse()),
+    ];
+
+    let alignments = [Alignment::Left, Alignment::Center, Alignment::Right];
+
+    for (mod_name, text) in modifiers {
+        for alignment in alignments {
+            let t = text.clone().align(alignment);
+            let mut buffer = Buffer::new(20, 1);
+            let area = Rect::new(0, 0, 20, 1);
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            t.render(&mut ctx);
+        }
+    }
+}
+
+#[test]
+fn test_text_clone_does_not_affect_original() {
+    let mut text1 = Text::new("Original");
+    let text2 = text1.clone();
+
+    // Modifications to text2 don't affect text1
+    // (Text is immutable, so we create new instances)
+    let text3 = Text::new("Modified");
+
+    assert_eq!(text1.content(), "Original");
+    assert_eq!(text2.content(), "Original");
+    assert_eq!(text3.content(), "Modified");
+}

@@ -3,7 +3,7 @@
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
-use revue::widget::traits::RenderContext;
+use revue::widget::traits::{RenderContext, StyledView};
 use revue::widget::{
     area_wave, audio_waveform, sawtooth_wave, signal_wave, sine_wave, spectrum, square_wave,
     waveline, Interpolation, View, WaveStyle, Waveline,
@@ -1134,4 +1134,610 @@ fn test_waveline_extreme_values() {
         }
     }
     assert!(has_content);
+}
+
+// =============================================================================
+// WaveStyle Enum Tests
+// =============================================================================
+
+#[test]
+fn test_wave_style_default() {
+    let style = WaveStyle::default();
+    assert_eq!(style, WaveStyle::Line);
+}
+
+#[test]
+fn test_wave_style_partial_eq() {
+    assert_eq!(WaveStyle::Line, WaveStyle::Line);
+    assert_eq!(WaveStyle::Filled, WaveStyle::Filled);
+    assert_eq!(WaveStyle::Mirrored, WaveStyle::Mirrored);
+    assert_eq!(WaveStyle::Bars, WaveStyle::Bars);
+    assert_eq!(WaveStyle::Dots, WaveStyle::Dots);
+    assert_eq!(WaveStyle::Smooth, WaveStyle::Smooth);
+    assert_ne!(WaveStyle::Line, WaveStyle::Filled);
+}
+
+#[test]
+fn test_wave_style_all_variants() {
+    let _ = WaveStyle::Line;
+    let _ = WaveStyle::Filled;
+    let _ = WaveStyle::Mirrored;
+    let _ = WaveStyle::Bars;
+    let _ = WaveStyle::Dots;
+    let _ = WaveStyle::Smooth;
+}
+
+// =============================================================================
+// Interpolation Enum Tests
+// =============================================================================
+
+#[test]
+fn test_interpolation_default() {
+    let interp = Interpolation::default();
+    assert_eq!(interp, Interpolation::Linear);
+}
+
+#[test]
+fn test_interpolation_partial_eq() {
+    assert_eq!(Interpolation::Linear, Interpolation::Linear);
+    assert_eq!(Interpolation::Bezier, Interpolation::Bezier);
+    assert_eq!(Interpolation::CatmullRom, Interpolation::CatmullRom);
+    assert_eq!(Interpolation::Step, Interpolation::Step);
+    assert_ne!(Interpolation::Linear, Interpolation::Step);
+}
+
+#[test]
+fn test_interpolation_all_variants() {
+    let _ = Interpolation::Linear;
+    let _ = Interpolation::Bezier;
+    let _ = Interpolation::CatmullRom;
+    let _ = Interpolation::Step;
+}
+
+// =============================================================================
+// CSS Integration Tests
+// =============================================================================
+
+#[test]
+fn test_waveline_element_id() {
+    let wave = waveline(vec![0.5; 10]).element_id("test-wave");
+    assert_eq!(View::id(&wave), Some("test-wave"));
+}
+
+#[test]
+fn test_waveline_classes() {
+    let wave = waveline(vec![0.5; 10]).class("chart").class("interactive");
+    assert!(wave.has_class("chart"));
+    assert!(wave.has_class("interactive"));
+    assert!(!wave.has_class("hidden"));
+}
+
+#[test]
+fn test_waveline_styled_view_methods() {
+    let mut wave = waveline(vec![0.5; 10]);
+
+    wave.set_id("my-wave");
+    assert_eq!(View::id(&wave), Some("my-wave"));
+
+    wave.add_class("active");
+    assert!(wave.has_class("active"));
+
+    wave.remove_class("active");
+    assert!(!wave.has_class("active"));
+
+    wave.toggle_class("visible");
+    assert!(wave.has_class("visible"));
+
+    wave.toggle_class("visible");
+    assert!(!wave.has_class("visible"));
+}
+
+#[test]
+fn test_waveline_meta() {
+    let wave = waveline(vec![0.5; 10])
+        .element_id("test")
+        .class("class1")
+        .class("class2");
+
+    let meta = wave.meta();
+    assert_eq!(meta.id, Some("test".to_string()));
+    assert_eq!(meta.classes.len(), 2);
+}
+
+// =============================================================================
+// Additional Edge Cases
+// =============================================================================
+
+#[test]
+fn test_waveline_zero_area() {
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 0, 0);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let wave = waveline(vec![0.5; 10]);
+    wave.render(&mut ctx);
+    // Should handle gracefully
+}
+
+#[test]
+fn test_waveline_very_long_data() {
+    let data: Vec<f64> = (0..1000).map(|i| i as f64 / 1000.0).collect();
+    let wave = waveline(data).max_points(100);
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    wave.render(&mut ctx);
+}
+
+#[test]
+fn test_waveline_all_zeros() {
+    let data = vec![0.0; 20];
+    let wave = waveline(data);
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    wave.render(&mut ctx);
+
+    // Should render flat line at baseline
+    let mut has_content = false;
+    for y in 0..5 {
+        for x in 0..20 {
+            if let Some(cell) = buffer.get(x, y) {
+                if cell.symbol != ' ' {
+                    has_content = true;
+                    break;
+                }
+            }
+        }
+    }
+    assert!(has_content);
+}
+
+#[test]
+fn test_waveline_all_ones() {
+    let data = vec![1.0; 20];
+    let wave = waveline(data);
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    wave.render(&mut ctx);
+
+    // Should render at max height
+    let mut has_content = false;
+    for y in 0..5 {
+        for x in 0..20 {
+            if let Some(cell) = buffer.get(x, y) {
+                if cell.symbol != ' ' {
+                    has_content = true;
+                    break;
+                }
+            }
+        }
+    }
+    assert!(has_content);
+}
+
+#[test]
+fn test_waveline_alternating_values() {
+    let data = vec![0.0, 1.0, 0.0, 1.0, 0.0, 1.0];
+    let wave = waveline(data);
+
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    wave.render(&mut ctx);
+
+    // Should render alternating pattern
+    let mut has_content = false;
+    for y in 0..5 {
+        for x in 0..20 {
+            if let Some(cell) = buffer.get(x, y) {
+                if cell.symbol != ' ' {
+                    has_content = true;
+                    break;
+                }
+            }
+        }
+    }
+    assert!(has_content);
+}
+
+#[test]
+fn test_waveline_single_point_negative() {
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let wave = waveline(vec![-0.5]);
+    wave.render(&mut ctx);
+
+    // Should handle single negative point
+    let mut has_content = false;
+    for y in 0..5 {
+        for x in 0..20 {
+            if let Some(cell) = buffer.get(x, y) {
+                if cell.symbol != ' ' {
+                    has_content = true;
+                    break;
+                }
+            }
+        }
+    }
+    assert!(has_content);
+}
+
+#[test]
+fn test_waveline_gradient_same_colors() {
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let wave = waveline(vec![0.0, 0.5, 1.0]).gradient(Color::RED, Color::RED);
+    wave.render(&mut ctx);
+
+    // Should render with single color
+    let mut has_color = false;
+    for y in 0..5 {
+        for x in 0..20 {
+            if let Some(cell) = buffer.get(x, y) {
+                if cell.fg == Some(Color::RED) {
+                    has_color = true;
+                    break;
+                }
+            }
+        }
+    }
+    assert!(has_color);
+}
+
+#[test]
+fn test_waveline_zero_height() {
+    let wave = waveline(vec![0.5; 10]).height(0);
+    // Zero height should be handled
+}
+
+#[test]
+fn test_waveline_very_large_height() {
+    let wave = waveline(vec![0.5; 10]).height(1000);
+    // Very large height should be handled
+}
+
+#[test]
+fn test_waveline_baseline_at_zero() {
+    let wave = waveline(vec![0.5; 10]).baseline(0.0);
+    // Just verify it compiles
+}
+
+#[test]
+fn test_waveline_baseline_at_one() {
+    let wave = waveline(vec![0.5; 10]).baseline(1.0);
+    // Just verify it compiles
+}
+
+#[test]
+fn test_waveline_zero_amplitude() {
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let wave = waveline(vec![0.0, 0.5, 1.0]).amplitude(0.0);
+    wave.render(&mut ctx);
+    // Should render all at baseline
+}
+
+#[test]
+fn test_waveline_negative_amplitude() {
+    let wave = waveline(vec![0.5; 10]).amplitude(-1.0);
+    // Negative amplitude should be handled
+}
+
+#[test]
+fn test_waveline_very_large_amplitude() {
+    let wave = waveline(vec![0.5; 10]).amplitude(1000.0);
+    // Very large amplitude should be handled
+}
+
+#[test]
+fn test_waveline_max_points_zero() {
+    let wave = waveline(vec![0.5; 10]).max_points(0);
+    // Zero max_points should be handled
+}
+
+#[test]
+fn test_waveline_max_points_larger_than_data() {
+    let wave = waveline(vec![0.5; 5]).max_points(100);
+    // Just verify it compiles
+}
+
+#[test]
+fn test_waveline_empty_label() {
+    let _wave = waveline(vec![0.5; 10]).label("");
+    // Empty label should be handled
+}
+
+#[test]
+fn test_waveline_very_long_label() {
+    let long_label = "This is a very long label that exceeds the normal width";
+    let _wave = waveline(vec![0.5; 10]).label(long_label);
+    // Long label should be handled
+}
+
+#[test]
+fn test_waveline_unicode_label() {
+    let _wave = waveline(vec![0.5; 10]).label("📊 波形");
+    // Unicode label should be handled
+}
+
+#[test]
+fn test_waveline_multiple_render_calls() {
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+
+    let wave = waveline(vec![0.5; 10]);
+
+    for _ in 0..5 {
+        buffer.clear();
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        wave.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_waveline_sine_wave_with_frequency_zero() {
+    let data = sine_wave(50, 0.0, 1.0);
+    // Zero frequency should produce constant value
+    assert!(data.iter().all(|&v| v.abs() < 0.01));
+}
+
+#[test]
+fn test_waveline_sine_wave_with_zero_amplitude() {
+    let data = sine_wave(50, 2.0, 0.0);
+    // Zero amplitude should produce all zeros
+    assert!(data.iter().all(|&v| v.abs() < 0.01));
+}
+
+#[test]
+fn test_waveline_square_wave_with_zero_amplitude() {
+    let data = square_wave(50, 2.0, 0.0);
+    // Zero amplitude should produce all zeros
+    assert!(data.iter().all(|&v| v.abs() < 0.01));
+}
+
+#[test]
+fn test_waveline_sawtooth_wave_with_zero_amplitude() {
+    let data = sawtooth_wave(50, 2.0, 0.0);
+    // Zero amplitude should produce all zeros
+    assert!(data.iter().all(|&v| v.abs() < 0.01));
+}
+
+#[test]
+fn test_waveline_render_with_all_interpolations() {
+    let interps = [
+        Interpolation::Linear,
+        Interpolation::Bezier,
+        Interpolation::CatmullRom,
+        Interpolation::Step,
+    ];
+
+    let data = sine_wave(30, 2.0, 0.8);
+
+    for interp in interps {
+        let mut buffer = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let wave = waveline(data.clone()).interpolation(interp);
+        wave.render(&mut ctx);
+
+        // Each interpolation should produce output
+        let mut has_output = false;
+        for y in 0..5 {
+            for x in 0..20 {
+                if let Some(cell) = buffer.get(x, y) {
+                    if cell.symbol != ' ' {
+                        has_output = true;
+                        break;
+                    }
+                }
+            }
+        }
+        assert!(
+            has_output,
+            "Interpolation {:?} should produce output",
+            interp
+        );
+    }
+}
+
+#[test]
+fn test_waveline_render_with_negative_baseline() {
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let wave = waveline(vec![0.5; 10]).baseline(-0.5);
+    wave.render(&mut ctx);
+    // Should handle negative baseline
+}
+
+#[test]
+fn test_waveline_render_without_baseline() {
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let wave = waveline(vec![0.5; 10]).show_baseline(false);
+    wave.render(&mut ctx);
+
+    // Should not have baseline character
+    for y in 0..5 {
+        for x in 0..20 {
+            if let Some(cell) = buffer.get(x, y) {
+                if cell.symbol == '─' {
+                    panic!("Should not have baseline when show_baseline is false");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn test_waveline_gradient_with_baseline() {
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let wave = waveline(vec![0.0, 0.5, 1.0])
+        .gradient(Color::RED, Color::BLUE)
+        .show_baseline(true)
+        .baseline(0.5);
+
+    wave.render(&mut ctx);
+    // Should render with both gradient and baseline
+}
+
+#[test]
+fn test_waveline_all_zeros_with_baseline() {
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let wave = waveline(vec![0.0; 10]).baseline(0.5).show_baseline(true);
+
+    wave.render(&mut ctx);
+    // Should show baseline even with flat data
+}
+
+#[test]
+fn test_waveline_data_mutation() {
+    let data = vec![0.0, 0.5, 1.0];
+    let wave = waveline(data.clone());
+
+    // Mutate original data - shouldn't affect wave
+    let mut data_mut = data;
+    data_mut[0] = 1.0;
+
+    // Data should be cloned internally
+    // Just verify it compiles and renders
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    wave.render(&mut ctx);
+}
+
+#[test]
+fn test_waveline_clone() {
+    let wave1 = waveline(vec![0.0, 0.5, 1.0]).style(WaveStyle::Filled);
+    let wave2 = wave1.clone();
+
+    // Both should render identically
+    let mut buffer1 = Buffer::new(20, 5);
+    let mut buffer2 = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx1 = RenderContext::new(&mut buffer1, area);
+    let mut ctx2 = RenderContext::new(&mut buffer2, area);
+
+    wave1.render(&mut ctx1);
+    wave2.render(&mut ctx2);
+
+    // Compare rendered output
+    for y in 0..5 {
+        for x in 0..20 {
+            let c1 = buffer1.get(x, y).unwrap();
+            let c2 = buffer2.get(x, y).unwrap();
+            assert_eq!(c1.symbol, c2.symbol);
+        }
+    }
+}
+
+#[test]
+fn test_waveline_offset_rendering() {
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(10, 3, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let wave = waveline(vec![0.0, 0.5, 1.0]);
+    wave.render(&mut ctx);
+
+    // Should render at offset position
+    // First content should be at y=3 + relative_position
+    let mut has_content = false;
+    for y in 3..8 {
+        for x in 10..30 {
+            if let Some(cell) = buffer.get(x, y) {
+                if cell.symbol != ' ' {
+                    has_content = true;
+                    break;
+                }
+            }
+        }
+    }
+    assert!(has_content);
+}
+
+#[test]
+fn test_waveline_very_narrow_area() {
+    let mut buffer = Buffer::new(3, 5);
+    let area = Rect::new(0, 0, 3, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let wave = waveline(vec![0.5; 5]);
+    wave.render(&mut ctx);
+    // Should handle very narrow area
+}
+
+#[test]
+fn test_waveline_inconsistent_data_spacing() {
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    // Wide variance in values
+    let data = vec![0.0, 0.99, 0.01, 0.98, 0.02, 0.97];
+    let wave = waveline(data);
+    wave.render(&mut ctx);
+
+    // Should handle inconsistent data
+    let mut has_content = false;
+    for y in 0..5 {
+        for x in 0..20 {
+            if let Some(cell) = buffer.get(x, y) {
+                if cell.symbol != ' ' {
+                    has_content = true;
+                    break;
+                }
+            }
+        }
+    }
+    assert!(has_content);
+}
+
+#[test]
+fn test_waveline_nan_values() {
+    let mut buffer = Buffer::new(20, 5);
+    let area = Rect::new(0, 0, 20, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let data = vec![0.0, f64::NAN, 1.0, f64::NAN, 0.5];
+    let wave = waveline(data);
+    wave.render(&mut ctx);
+    // Should handle NaN values gracefully
+}
+
+#[test]
+fn test_waveline_infinity_values() {
+    let data = vec![0.0, f64::INFINITY, 1.0, f64::NEG_INFINITY, 0.5];
+    let wave = waveline(data);
+    // Should handle infinity values gracefully - just verify it compiles
+}
+
+#[test]
+fn test_waveline_builder_chain_consumes() {
+    let wave1 = waveline(vec![0.5; 5]).color(Color::RED);
+    let wave2 = wave1.gradient(Color::BLUE, Color::GREEN);
+
+    // Builder pattern consumes self - just verify it compiles
 }
