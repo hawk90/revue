@@ -182,6 +182,7 @@ fn is_quit_key(key: &KeyEvent) -> bool {
 /// - [`request_redraw()`] - Force full screen redraw on next frame
 /// - [`request_layout_rebuild()`] - Rebuild layout tree on next frame
 /// - [`request_dom_rebuild()`] - Rebuild DOM root on next frame
+#[allow(rustdoc::broken_intra_doc_links)]
 pub struct App {
     /// Manages all DOM nodes and style resolution
     dom: DomRenderer,
