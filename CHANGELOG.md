@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.45.4](https://github.com/hawk90/revue/compare/v2.45.3...v2.45.4) (2026-02-04)
+
+
+### Bug Fixes
+
+* phase 4 additional security hardening ([#404](https://github.com/hawk90/revue/issues/404)) ([1e28801](https://github.com/hawk90/revue/commit/1e2880135f0350ee9a270aa0629397ff12f7c258))
+
 ## [2.45.3](https://github.com/hawk90/revue/compare/v2.45.2...v2.45.3) (2026-02-03)
 
 
