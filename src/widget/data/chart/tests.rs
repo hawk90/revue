@@ -2,12 +2,13 @@
 
 #![allow(unused_imports)]
 
-use super::super::{chart, line_chart, scatter_plot, Chart};
+use super::helper::{chart as chart_fn, line_chart, Chart};
+use super::scatterchart::{scatter_chart, ScatterSeries};
 use super::types::{ChartType, LineStyle, Series};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use crate::widget::chart::chart_common::{Axis, AxisFormat, LegendPosition, Marker};
+use crate::widget::data::chart::chart_common::{Axis, AxisFormat, LegendPosition, Marker};
 use crate::widget::RenderContext;
 use crate::widget::View;
 
@@ -254,11 +255,11 @@ fn test_chart_builder_chain() {
 
 #[test]
 fn test_chart_helper() {
-    let chart = chart();
+    let my_chart = chart_fn();
     let mut buffer = Buffer::new(40, 20);
     let area = Rect::new(0, 0, 40, 20);
     let mut ctx = RenderContext::new(&mut buffer, area);
-    chart.render(&mut ctx);
+    my_chart.render(&mut ctx);
 }
 
 #[test]
@@ -290,7 +291,11 @@ fn test_line_chart_helper_single_point() {
 
 #[test]
 fn test_scatter_plot_helper() {
-    let chart = scatter_plot(&[(1.0, 2.0), (3.0, 4.0), (5.0, 6.0)]);
+    let chart = scatter_chart().series(ScatterSeries::new("Data").points(&[
+        (1.0, 2.0),
+        (3.0, 4.0),
+        (5.0, 6.0),
+    ]));
     let mut buffer = Buffer::new(40, 20);
     let area = Rect::new(0, 0, 40, 20);
     let mut ctx = RenderContext::new(&mut buffer, area);
@@ -299,7 +304,7 @@ fn test_scatter_plot_helper() {
 
 #[test]
 fn test_scatter_plot_helper_empty() {
-    let chart = scatter_plot(&[]);
+    let chart = scatter_chart();
     let mut buffer = Buffer::new(40, 20);
     let area = Rect::new(0, 0, 40, 20);
     let mut ctx = RenderContext::new(&mut buffer, area);

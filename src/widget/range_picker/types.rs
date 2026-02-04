@@ -1,6 +1,6 @@
 //! Date/time range picker types
 
-use crate::widget::calendar::{days_in_month, Date};
+use crate::widget::data::calendar::{days_in_month, Date};
 
 /// Preset date ranges
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

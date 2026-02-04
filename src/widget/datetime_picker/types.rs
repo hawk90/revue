@@ -1,6 +1,6 @@
 //! DateTime picker types
 
-use super::super::calendar::Date;
+use super::super::data::calendar::Date;
 
 /// Time of day
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]

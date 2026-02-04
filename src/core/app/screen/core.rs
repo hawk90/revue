@@ -347,7 +347,7 @@ impl Default for ScreenManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::screen::types::ScreenConfig;
+    use crate::core::app::screen::types::ScreenConfig;
 
     // Mock screen for testing
     struct MockScreen {

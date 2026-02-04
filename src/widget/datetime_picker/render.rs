@@ -2,17 +2,17 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::calendar::{days_in_month, FirstDayOfWeek};
+use crate::widget::data::calendar::{days_in_month, FirstDayOfWeek};
 use crate::widget::traits::RenderContext;
 use unicode_width::UnicodeWidthChar;
 
 /// Rendering methods for DateTimePicker
 pub trait Rendering {
     // Required getters
-    fn date(&self) -> crate::widget::calendar::Date;
+    fn date(&self) -> crate::widget::data::calendar::Date;
     fn time(&self) -> super::types::Time;
     fn mode(&self) -> super::types::DateTimeMode;
-    fn first_day(&self) -> crate::widget::calendar::FirstDayOfWeek;
+    fn first_day(&self) -> crate::widget::data::calendar::FirstDayOfWeek;
     fn cursor_day(&self) -> u32;
     fn time_field(&self) -> super::types::TimeField;
     fn show_seconds(&self) -> bool;

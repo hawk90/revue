@@ -3,7 +3,7 @@
 use super::core::RangePicker;
 use super::types::{PresetRange, RangeFocus};
 use crate::style::Color;
-use crate::widget::calendar::{Date, FirstDayOfWeek};
+use crate::widget::data::calendar::{Date, FirstDayOfWeek};
 use crate::widget::datetime_picker::{DateTime, Time};
 
 impl RangePicker {

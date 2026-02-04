@@ -2,8 +2,8 @@
 //!
 //! Run with: cargo run --example demo
 
+use revue::prelude::App;
 use revue::{
-    app::App,
     event::Key,
     style::Color,
     widget::{hstack, vstack, Border, Input, List, Progress, RenderContext, Text, View},
@@ -140,5 +140,7 @@ fn main() -> revue::Result<()> {
     let mut app = App::builder().build();
     let view = MainView::new();
 
-    app.run_with_handler(view, |key_event, view| view.handle_key(&key_event.key))
+    app.run_with_handler(view, |key_event, view: &mut MainView| {
+        view.handle_key(&key_event.key)
+    })
 }

@@ -5,7 +5,7 @@ use super::types::RangeFocus;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::unicode::char_width;
-use crate::widget::calendar::{days_in_month, Date};
+use crate::widget::data::calendar::{days_in_month, Date};
 use crate::widget::traits::{RenderContext, View};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -110,8 +110,8 @@ impl RangePicker {
         let h = ((h + 6) % 7 + 7) % 7;
 
         match self.first_day {
-            crate::widget::calendar::FirstDayOfWeek::Sunday => h as u32,
-            crate::widget::calendar::FirstDayOfWeek::Monday => ((h + 6) % 7) as u32,
+            crate::widget::data::calendar::FirstDayOfWeek::Sunday => h as u32,
+            crate::widget::data::calendar::FirstDayOfWeek::Monday => ((h + 6) % 7) as u32,
         }
     }
 
@@ -147,8 +147,8 @@ impl RangePicker {
 
         // Day headers
         let day_headers = match self.first_day {
-            crate::widget::calendar::FirstDayOfWeek::Sunday => "Su Mo Tu We Th Fr Sa",
-            crate::widget::calendar::FirstDayOfWeek::Monday => "Mo Tu We Th Fr Sa Su",
+            crate::widget::data::calendar::FirstDayOfWeek::Sunday => "Su Mo Tu We Th Fr Sa",
+            crate::widget::data::calendar::FirstDayOfWeek::Monday => "Mo Tu We Th Fr Sa Su",
         };
         self.draw_text(ctx, x, y + 1, day_headers, Color::rgb(150, 150, 150), false);
 

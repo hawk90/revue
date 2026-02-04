@@ -22,7 +22,7 @@ pub use impls::range_picker;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::widget::calendar::Date;
+    use crate::widget::data::calendar::Date;
 
     #[test]
     fn test_range_picker_new() {

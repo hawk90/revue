@@ -52,7 +52,7 @@ impl<'a> BoxPlotRender<'a> {
     pub fn group_color(
         &self,
         index: usize,
-        colors: &crate::widget::chart::chart_common::ColorScheme,
+        colors: &crate::widget::data::chart::chart_common::ColorScheme,
     ) -> Color {
         self.groups
             .get(index)
@@ -64,7 +64,7 @@ impl<'a> BoxPlotRender<'a> {
     pub fn render_boxes(
         &self,
         ctx: &mut RenderContext,
-        colors: &crate::widget::chart::chart_common::ColorScheme,
+        colors: &crate::widget::data::chart::chart_common::ColorScheme,
     ) {
         if self.groups.is_empty() {
             return;
@@ -215,8 +215,8 @@ impl<'a> BoxPlotRender<'a> {
         &self,
         ctx: &mut RenderContext,
         area: Rect,
-        value_axis: &crate::widget::chart::chart_common::Axis,
-        category_axis: &crate::widget::chart::chart_common::Axis,
+        value_axis: &crate::widget::data::chart::chart_common::Axis,
+        category_axis: &crate::widget::data::chart::chart_common::Axis,
     ) {
         if self.groups.is_empty() {
             return;
