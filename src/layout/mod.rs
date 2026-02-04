@@ -1,7 +1,62 @@
-//! Layout engine for TUI
+//! Layout engine for TUI applications
 //!
-//! Custom layout engine optimized for terminal user interfaces.
-//! Supports flexbox, block, and grid layouts using integer cell coordinates.
+//! Custom layout engine optimized for terminal user interfaces with integer cell coordinates.
+//!
+//! # Features
+//!
+//! - **Flexbox Layout**: Full CSS flexbox implementation optimized for TUI
+//! - **Grid Layout**: CSS Grid-style 2D layout system
+//! - **Block Layout**: Simple block-based layout for containers
+//! - **Responsive**: Breakpoint-based responsive layout support
+//! - **Integer Coordinates**: All calculations use integer cells (no floating point)
+//!
+//! # Quick Start
+//!
+//! ```rust,ignore
+//! use revue::layout::{Rect, vstack, hstack};
+//!
+//! // Stack layouts automatically handle children
+//! let ui = vstack()
+//!     .gap(1)
+//!     .children([
+//!         Text::new("Header"),
+//!         Text::new("Content"),
+//!         Text::new("Footer"),
+//!     ]);
+//! ```
+//!
+//! # Layout Types
+//!
+//! | Layout | Description | Use Case |
+//! |--------|-------------|----------|
+//! | Flexbox | One-dimensional layout | Rows, columns |
+//! | Grid | Two-dimensional layout | Complex UIs |
+//! | Block | Simple container | Basic panels |
+//!
+//! # Rect
+//!
+//! The [`Rect`] type represents positions and sizes:
+//!
+//! ```rust,ignore
+//! use revue::layout::Rect;
+//!
+//! let rect = Rect::new(x: 0, y: 0, width: 80, height: 24);
+//! assert_eq!(rect.contains(10, 10), true);
+//! assert_eq!(rect.right(), 80);
+//! assert_eq!(rect.bottom(), 24);
+//! ```
+//!
+//! # Responsive Design
+//!
+//! Use the [`responsive`] module for breakpoint-based layouts:
+//!
+//! ```rust,ignore
+//! use revue::layout::responsive::{responsive, breakpoints};
+//!
+//! let layout = responsive()
+//!     .mobile(breakpoints::SMALL, || mobile_view())
+//!     .desktop(breakpoints::LARGE, || desktop_view());
+//! ```
 
 mod block;
 mod compute;
