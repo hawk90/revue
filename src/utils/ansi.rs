@@ -255,12 +255,22 @@ fn apply_sgr(state: &mut AnsiState, params: &str) {
             }
 
             // True color mode
+            // Validate RGB values to prevent overflow - clamp to 0-255 range
+            // Note: codes are u8, but min() provides explicit defensive programming
+            #[allow(clippy::unnecessary_min_or_max)]
             38 if i + 4 < codes.len() && codes[i + 1] == 2 => {
-                state.fg = Some(Color::rgb(codes[i + 2], codes[i + 3], codes[i + 4]));
+                let r = codes[i + 2].min(255);
+                let g = codes[i + 3].min(255);
+                let b = codes[i + 4].min(255);
+                state.fg = Some(Color::rgb(r, g, b));
                 i += 4;
             }
+            #[allow(clippy::unnecessary_min_or_max)]
             48 if i + 4 < codes.len() && codes[i + 1] == 2 => {
-                state.bg = Some(Color::rgb(codes[i + 2], codes[i + 3], codes[i + 4]));
+                let r = codes[i + 2].min(255);
+                let g = codes[i + 3].min(255);
+                let b = codes[i + 4].min(255);
+                state.bg = Some(Color::rgb(r, g, b));
                 i += 4;
             }
 

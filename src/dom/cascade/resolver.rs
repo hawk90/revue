@@ -665,7 +665,7 @@ impl<'a> StyleResolver<'a> {
                         if let Some(ref val) = attr.value {
                             node.meta.classes.iter().any(|c| {
                                 if attr.case_insensitive {
-                                    c.to_lowercase().contains(&val.to_lowercase())
+                                    c.to_lowercase().contains(val.to_lowercase().as_str())
                                 } else {
                                     c.contains(val.as_str())
                                 }
@@ -755,7 +755,7 @@ impl<'a> StyleResolver<'a> {
                     AttributeOp::Contains => {
                         if let Some(ref val) = attr.value {
                             if attr.case_insensitive {
-                                node_id.to_lowercase().contains(&val.to_lowercase())
+                                node_id.to_lowercase().contains(val.to_lowercase().as_str())
                             } else {
                                 node_id.contains(val.as_str())
                             }
@@ -781,7 +781,9 @@ impl<'a> StyleResolver<'a> {
                     AttributeOp::Contains => {
                         if let Some(ref val) = attr.value {
                             if attr.case_insensitive {
-                                widget_type.to_lowercase().contains(&val.to_lowercase())
+                                widget_type
+                                    .to_lowercase()
+                                    .contains(val.to_lowercase().as_str())
                             } else {
                                 widget_type.contains(val.as_str())
                             }
@@ -796,7 +798,8 @@ impl<'a> StyleResolver<'a> {
                 AttributeOp::Exists => node.state.disabled,
                 AttributeOp::Equals => {
                     if let Some(ref val) = attr.value {
-                        let is_true = val == "true" || val == "1" || val.is_empty();
+                        let is_true =
+                            val.as_str() == "true" || val.as_str() == "1" || val.is_empty();
                         node.state.disabled == is_true
                     } else {
                         node.state.disabled
@@ -808,7 +811,8 @@ impl<'a> StyleResolver<'a> {
                 AttributeOp::Exists => node.state.checked,
                 AttributeOp::Equals => {
                     if let Some(ref val) = attr.value {
-                        let is_true = val == "true" || val == "1" || val.is_empty();
+                        let is_true =
+                            val.as_str() == "true" || val.as_str() == "1" || val.is_empty();
                         node.state.checked == is_true
                     } else {
                         node.state.checked
@@ -820,7 +824,8 @@ impl<'a> StyleResolver<'a> {
                 AttributeOp::Exists => node.state.selected,
                 AttributeOp::Equals => {
                     if let Some(ref val) = attr.value {
-                        let is_true = val == "true" || val == "1" || val.is_empty();
+                        let is_true =
+                            val.as_str() == "true" || val.as_str() == "1" || val.is_empty();
                         node.state.selected == is_true
                     } else {
                         node.state.selected
