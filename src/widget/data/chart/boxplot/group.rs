@@ -139,7 +139,7 @@ mod tests {
     #[test]
     fn test_box_group_empty_data() {
         let group = BoxGroup::new("test", &[]);
-        assert_eq!(group.data, vec![]);
+        assert_eq!(group.data, Vec::<f64>::new());
         assert!(group.stats.is_none());
     }
 

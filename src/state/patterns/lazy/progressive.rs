@@ -189,7 +189,7 @@ mod tests {
     fn test_progressive_loader_empty_vec() {
         let loader: ProgressiveLoader<i32> = ProgressiveLoader::new(vec![], 1);
         assert!(loader.is_complete());
-        assert_eq!(loader.load_next(), vec![]);
-        assert_eq!(loader.loaded_items(), vec![] as Vec<i32>);
+        assert_eq!(loader.load_next(), Vec::<i32>::new());
+        assert_eq!(loader.loaded_items(), Vec::<i32>::new());
     }
 }

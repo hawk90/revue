@@ -130,3 +130,117 @@ impl View for TransitionGroup {
 
 impl_styled_view!(TransitionGroup);
 impl_props_builders!(TransitionGroup);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::widget::transition::types::Animation;
+
+    #[test]
+    fn test_transition_group_new() {
+        let group = TransitionGroup::new(vec!["a", "b", "c"]);
+        assert_eq!(group.len(), 3);
+        assert!(!group.is_empty());
+    }
+
+    #[test]
+    fn test_transition_group_new_empty() {
+        let group = TransitionGroup::new(std::iter::empty::<&str>());
+        assert_eq!(group.len(), 0);
+        assert!(group.is_empty());
+    }
+
+    #[test]
+    fn test_transition_group_from_vec() {
+        let items = vec!["x", "y", "z"];
+        let group = TransitionGroup::new(items);
+        assert_eq!(group.len(), 3);
+    }
+
+    #[test]
+    fn test_transition_group_default() {
+        let group = TransitionGroup::default();
+        assert_eq!(group.len(), 0);
+        assert!(group.is_empty());
+    }
+
+    #[test]
+    fn test_transition_group_enter() {
+        let group = TransitionGroup::new(vec!["a"]).enter(Animation::fade());
+        let _ = group;
+    }
+
+    #[test]
+    fn test_transition_group_leave() {
+        let group = TransitionGroup::new(vec!["a"]).leave(Animation::fade());
+        let _ = group;
+    }
+
+    #[test]
+    fn test_transition_group_move_animation() {
+        let group = TransitionGroup::new(vec!["a"]).move_animation(Animation::slide_left());
+        let _ = group;
+    }
+
+    #[test]
+    fn test_transition_group_stagger() {
+        let group = TransitionGroup::new(vec!["a", "b"]).stagger(100);
+        let _ = group;
+    }
+
+    #[test]
+    fn test_transition_group_push() {
+        let mut group = TransitionGroup::new(vec!["a"]);
+        assert_eq!(group.len(), 1);
+        group.push("b");
+        assert_eq!(group.len(), 2);
+    }
+
+    #[test]
+    fn test_transition_group_push_string() {
+        let mut group = TransitionGroup::new(vec!["a"]);
+        group.push("b".to_string());
+        assert_eq!(group.len(), 2);
+    }
+
+    #[test]
+    fn test_transition_group_remove_valid() {
+        let mut group = TransitionGroup::new(vec!["a", "b", "c"]);
+        let removed = group.remove(1);
+        assert_eq!(removed, Some("b".to_string()));
+        assert_eq!(group.len(), 2);
+    }
+
+    #[test]
+    fn test_transition_group_remove_invalid() {
+        let mut group = TransitionGroup::new(vec!["a", "b"]);
+        let removed = group.remove(5);
+        assert_eq!(removed, None);
+        assert_eq!(group.len(), 2);
+    }
+
+    #[test]
+    fn test_transition_group_len() {
+        let group = TransitionGroup::new(vec!["a", "b", "c", "d"]);
+        assert_eq!(group.len(), 4);
+    }
+
+    #[test]
+    fn test_transition_group_is_empty() {
+        let mut group = TransitionGroup::new(vec!["a"]);
+        assert!(!group.is_empty());
+        group.remove(0);
+        assert!(group.is_empty());
+    }
+
+    #[test]
+    fn test_transition_group_items() {
+        let items = vec!["x", "y", "z"];
+        let group = TransitionGroup::new(items.clone());
+        let retrieved = group.items();
+        assert_eq!(retrieved.len(), 3);
+        assert_eq!(retrieved[0], "x");
+        assert_eq!(retrieved[1], "y");
+        assert_eq!(retrieved[2], "z");
+    }
+}

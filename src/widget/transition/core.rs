@@ -144,3 +144,93 @@ impl View for Transition {
 
 impl_styled_view!(Transition);
 impl_props_builders!(Transition);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::widget::transition::types::{Animation, TransitionPhase};
+
+    #[test]
+    fn test_transition_new() {
+        let t = Transition::new("test content");
+        assert!(t.is_visible());
+        assert_eq!(t.phase(), TransitionPhase::Visible);
+    }
+
+    #[test]
+    fn test_transition_default() {
+        let t = Transition::default();
+        assert!(t.is_visible());
+    }
+
+    #[test]
+    fn test_transition_new_with_string() {
+        let t = Transition::new("hello".to_string());
+        assert!(t.is_visible());
+    }
+
+    #[test]
+    fn test_transition_new_empty() {
+        let t = Transition::new("");
+        assert!(t.is_visible());
+    }
+
+    #[test]
+    fn test_transition_enter() {
+        let t = Transition::new("test").enter(Animation::fade());
+        let _ = t;
+    }
+
+    #[test]
+    fn test_transition_leave() {
+        let t = Transition::new("test").leave(Animation::fade());
+        let _ = t;
+    }
+
+    #[test]
+    fn test_transition_animations() {
+        let t = Transition::new("test").animations(Animation::fade(), Animation::fade());
+        let _ = t;
+    }
+
+    #[test]
+    fn test_transition_show() {
+        let mut t = Transition::new("test");
+        t.hide();
+        assert!(!t.is_visible()); // hide() without leave_animation sets visible = false
+        t.show();
+        assert!(t.is_visible()); // show() sets visible = true
+    }
+
+    #[test]
+    fn test_transition_hide() {
+        let mut t = Transition::new("test");
+        assert!(t.is_visible());
+        t.hide();
+        // Note: hide() without leave_animation doesn't change visible immediately
+        // It just starts the phase transition
+    }
+
+    #[test]
+    fn test_transition_toggle() {
+        let mut t = Transition::new("test");
+        let initial_visible = t.is_visible();
+        t.toggle();
+        // Toggle behavior depends on whether leave animation is set
+        // This just verifies the method can be called
+        let _ = initial_visible;
+    }
+
+    #[test]
+    fn test_transition_is_visible() {
+        let t = Transition::new("test");
+        assert!(t.is_visible());
+    }
+
+    #[test]
+    fn test_transition_phase() {
+        let t = Transition::new("test");
+        let phase = t.phase();
+        assert_eq!(phase, TransitionPhase::Visible);
+    }
+}
