@@ -76,3 +76,92 @@ where
         *self.state.borrow_mut() = LoadState::Loaded;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::patterns::lazy::types::LoadState;
+
+    #[test]
+    fn test_lazy_reloadable_new() {
+        let lazy = LazyReloadable::new(|| 42);
+        assert!(!lazy.is_loaded());
+        assert_eq!(lazy.state(), LoadState::Idle);
+    }
+
+    #[test]
+    fn test_lazy_reloadable_get_loads() {
+        let lazy = LazyReloadable::new(|| 42);
+        let value = lazy.get();
+        assert_eq!(*value, 42);
+        assert!(lazy.is_loaded());
+    }
+
+    #[test]
+    fn test_lazy_reloadable_is_loaded() {
+        let lazy = LazyReloadable::new(|| 42);
+        assert!(!lazy.is_loaded());
+        lazy.get();
+        assert!(lazy.is_loaded());
+    }
+
+    #[test]
+    fn test_lazy_reloadable_state() {
+        let lazy = LazyReloadable::new(|| 42);
+        assert_eq!(lazy.state(), LoadState::Idle);
+        lazy.get();
+        assert_eq!(lazy.state(), LoadState::Loaded);
+    }
+
+    #[test]
+    fn test_lazy_reloadable_reload() {
+        let lazy = LazyReloadable::new(|| 42);
+        lazy.get();
+        assert!(lazy.is_loaded());
+        lazy.reload();
+        assert!(lazy.is_loaded());
+        assert_eq!(*lazy.get(), 42);
+    }
+
+    #[test]
+    fn test_lazy_reloadable_invalidate() {
+        let lazy = LazyReloadable::new(|| 42);
+        lazy.get();
+        assert!(lazy.is_loaded());
+        lazy.invalidate();
+        assert!(!lazy.is_loaded());
+        // Getting after invalidate should reload
+        assert_eq!(*lazy.get(), 42);
+        assert!(lazy.is_loaded());
+    }
+
+    #[test]
+    fn test_lazy_reloadable_get_returns_value() {
+        let lazy = LazyReloadable::new(|| "hello".to_string());
+        let value = lazy.get();
+        assert_eq!(*value, "hello");
+    }
+
+    #[test]
+    fn test_lazy_reloadable_with_vec() {
+        let lazy = LazyReloadable::new(|| vec![1, 2, 3, 4, 5]);
+        let value = lazy.get();
+        assert_eq!(*value, vec![1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn test_lazy_reloadable_with_closure() {
+        let x = 10;
+        let lazy = LazyReloadable::new(|| x * 2);
+        let value = lazy.get();
+        assert_eq!(*value, 20);
+    }
+
+    #[test]
+    fn test_lazy_reloadable_get_caches() {
+        let lazy = LazyReloadable::new(|| 42);
+        let value1 = lazy.get();
+        let value2 = lazy.get();
+        assert_eq!(*value1, *value2);
+    }
+}

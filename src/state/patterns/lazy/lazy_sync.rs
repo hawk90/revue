@@ -115,3 +115,93 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::patterns::lazy::types::LoadState;
+
+    #[test]
+    fn test_lazy_sync_new() {
+        let lazy = LazySync::new(|| 42);
+        assert!(!lazy.is_loaded());
+        assert_eq!(lazy.state(), LoadState::Idle);
+    }
+
+    #[test]
+    fn test_lazy_sync_get_loads() {
+        let lazy = LazySync::new(|| 42);
+        let value = lazy.get();
+        assert!(value.is_some());
+        assert_eq!(value.unwrap(), 42);
+        assert!(lazy.is_loaded());
+    }
+
+    #[test]
+    fn test_lazy_sync_is_loaded() {
+        let lazy = LazySync::new(|| 42);
+        assert!(!lazy.is_loaded());
+        lazy.get();
+        assert!(lazy.is_loaded());
+    }
+
+    #[test]
+    fn test_lazy_sync_state() {
+        let lazy = LazySync::new(|| 42);
+        assert_eq!(lazy.state(), LoadState::Idle);
+        lazy.get();
+        assert_eq!(lazy.state(), LoadState::Loaded);
+    }
+
+    #[test]
+    fn test_lazy_sync_read() {
+        let lazy = LazySync::new(|| vec![1, 2, 3, 4, 5]);
+        lazy.get(); // trigger loading
+        let guard = lazy.read();
+        assert!(guard.is_some());
+        assert_eq!(guard.as_ref().unwrap().len(), 5);
+    }
+
+    #[test]
+    fn test_lazy_sync_try_read() {
+        let lazy = LazySync::new(|| 42);
+        lazy.get(); // trigger loading
+        let guard = lazy.try_read();
+        assert!(guard.is_some());
+        assert_eq!(guard.unwrap().as_ref().unwrap(), &42);
+    }
+
+    #[test]
+    fn test_lazy_sync_try_read_before_load() {
+        let lazy = LazySync::new(|| 42);
+        let guard = lazy.try_read();
+        assert!(guard.is_some());
+        // Should be None since not loaded yet
+        assert!(guard.unwrap().is_none());
+    }
+
+    #[test]
+    fn test_lazy_sync_clone() {
+        let lazy = LazySync::new(|| 42);
+        lazy.get();
+        let cloned = lazy.clone();
+        assert!(cloned.is_loaded());
+        assert_eq!(cloned.get().unwrap(), 42);
+    }
+
+    #[test]
+    fn test_lazy_sync_get_caches() {
+        let lazy = LazySync::new(|| 42);
+        let value1 = lazy.get();
+        let value2 = lazy.get();
+        assert_eq!(value1.unwrap(), value2.unwrap());
+    }
+
+    #[test]
+    fn test_lazy_sync_with_string() {
+        let lazy = LazySync::new(|| "hello".to_string());
+        let value = lazy.get();
+        assert!(value.is_some());
+        assert_eq!(value.unwrap(), "hello");
+    }
+}

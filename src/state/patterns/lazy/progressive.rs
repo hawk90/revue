@@ -71,3 +71,125 @@ impl<T: Clone> ProgressiveLoader<T> {
         *self.loaded.borrow_mut() = 0;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_progressive_loader_new() {
+        let loader = ProgressiveLoader::new(vec![1, 2, 3, 4, 5], 2);
+        assert_eq!(loader.total(), 5);
+        assert_eq!(loader.loaded_count(), 0);
+        assert!(!loader.is_complete());
+    }
+
+    #[test]
+    fn test_progressive_loader_total() {
+        let loader = ProgressiveLoader::new(vec![1, 2, 3], 1);
+        assert_eq!(loader.total(), 3);
+
+        let empty: ProgressiveLoader<i32> = ProgressiveLoader::new(vec![], 1);
+        assert_eq!(empty.total(), 0);
+    }
+
+    #[test]
+    fn test_progressive_loader_loaded_count() {
+        let loader = ProgressiveLoader::new(vec![1, 2, 3, 4, 5], 2);
+        assert_eq!(loader.loaded_count(), 0);
+        loader.load_next();
+        assert_eq!(loader.loaded_count(), 2);
+        loader.load_next();
+        assert_eq!(loader.loaded_count(), 4);
+        loader.load_next();
+        assert_eq!(loader.loaded_count(), 5);
+    }
+
+    #[test]
+    fn test_progressive_loader_is_complete() {
+        let loader = ProgressiveLoader::new(vec![1, 2, 3], 3);
+        assert!(!loader.is_complete());
+        loader.load_next();
+        assert!(loader.is_complete());
+    }
+
+    #[test]
+    fn test_progressive_loader_progress() {
+        let loader = ProgressiveLoader::new(vec![1, 2, 3, 4, 5], 2);
+        assert_eq!(loader.progress(), 0.0);
+        loader.load_next();
+        assert_eq!(loader.progress(), 2.0 / 5.0);
+        loader.load_next();
+        assert_eq!(loader.progress(), 4.0 / 5.0);
+        loader.load_next();
+        assert_eq!(loader.progress(), 1.0);
+    }
+
+    #[test]
+    fn test_progressive_loader_progress_empty() {
+        let loader: ProgressiveLoader<i32> = ProgressiveLoader::new(vec![], 1);
+        assert_eq!(loader.progress(), 1.0);
+    }
+
+    #[test]
+    fn test_progressive_loader_load_next() {
+        let loader = ProgressiveLoader::new(vec![1, 2, 3, 4, 5], 2);
+        let chunk1 = loader.load_next();
+        assert_eq!(chunk1, vec![1, 2]);
+        let chunk2 = loader.load_next();
+        assert_eq!(chunk2, vec![3, 4]);
+        let chunk3 = loader.load_next();
+        assert_eq!(chunk3, vec![5]);
+        let chunk4 = loader.load_next();
+        assert!(chunk4.is_empty());
+    }
+
+    #[test]
+    fn test_progressive_loader_loaded_items() {
+        let loader = ProgressiveLoader::new(vec![1, 2, 3, 4, 5], 2);
+        assert_eq!(loader.loaded_items(), vec![] as Vec<i32>);
+        loader.load_next();
+        assert_eq!(loader.loaded_items(), vec![1, 2]);
+        loader.load_next();
+        assert_eq!(loader.loaded_items(), vec![1, 2, 3, 4]);
+        loader.load_next();
+        assert_eq!(loader.loaded_items(), vec![1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn test_progressive_loader_reset() {
+        let loader = ProgressiveLoader::new(vec![1, 2, 3, 4, 5], 2);
+        loader.load_next();
+        loader.load_next();
+        assert_eq!(loader.loaded_count(), 4);
+        loader.reset();
+        assert_eq!(loader.loaded_count(), 0);
+        assert!(!loader.is_complete());
+    }
+
+    #[test]
+    fn test_progressive_loader_with_strings() {
+        let loader = ProgressiveLoader::new(vec!["a", "b", "c"], 2);
+        let chunk1 = loader.load_next();
+        assert_eq!(chunk1, vec!["a", "b"]);
+        let chunk2 = loader.load_next();
+        assert_eq!(chunk2, vec!["c"]);
+    }
+
+    #[test]
+    fn test_progressive_loader_chunk_size_minimum() {
+        let loader = ProgressiveLoader::new(vec![1, 2, 3], 0);
+        // chunk_size should be max(1, 0) = 1
+        let chunk1 = loader.load_next();
+        assert_eq!(chunk1, vec![1]);
+        assert_eq!(loader.loaded_count(), 1);
+    }
+
+    #[test]
+    fn test_progressive_loader_empty_vec() {
+        let loader: ProgressiveLoader<i32> = ProgressiveLoader::new(vec![], 1);
+        assert!(loader.is_complete());
+        assert_eq!(loader.load_next(), vec![]);
+        assert_eq!(loader.loaded_items(), vec![] as Vec<i32>);
+    }
+}
