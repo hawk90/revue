@@ -210,3 +210,188 @@ impl<E: CustomEvent> EventEnvelope<E> {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Mock event for testing
+    #[derive(Debug, Clone)]
+    struct TestEvent {
+        pub data: String,
+    }
+
+    impl CustomEvent for TestEvent {
+        fn event_type() -> &'static str {
+            "test"
+        }
+    }
+
+    #[test]
+    fn test_event_id_new() {
+        let id1 = EventId::new();
+        let id2 = EventId::new();
+        assert_ne!(id1, id2);
+        assert!(id2.value() > id1.value());
+    }
+
+    #[test]
+    fn test_event_id_value() {
+        let id = EventId::new();
+        assert_eq!(id.value(), id.0);
+    }
+
+    #[test]
+    fn test_event_id_default() {
+        let id = EventId::default();
+        assert!(id.value() > 0);
+    }
+
+    #[test]
+    fn test_event_priority_ordering() {
+        assert!(EventPriority::Critical > EventPriority::High);
+        assert!(EventPriority::High > EventPriority::Normal);
+        assert!(EventPriority::Normal > EventPriority::Low);
+    }
+
+    #[test]
+    fn test_dispatch_phase_default() {
+        assert_eq!(DispatchPhase::default(), DispatchPhase::Target);
+    }
+
+    #[test]
+    fn test_event_meta_new() {
+        let meta = EventMeta::new("test_event");
+        assert_eq!(meta.event_type, "test_event");
+        assert!(meta.source.is_none());
+        assert!(meta.target.is_none());
+        assert_eq!(meta.phase, DispatchPhase::Target);
+        assert_eq!(meta.priority, EventPriority::Normal);
+        assert!(!meta.is_cancelled());
+        assert!(!meta.is_propagation_stopped());
+    }
+
+    #[test]
+    fn test_event_meta_with_source() {
+        let meta = EventMeta::new("test").with_source("widget_1");
+        assert_eq!(meta.source, Some("widget_1".to_string()));
+    }
+
+    #[test]
+    fn test_event_meta_with_target() {
+        let meta = EventMeta::new("test").with_target("widget_2");
+        assert_eq!(meta.target, Some("widget_2".to_string()));
+    }
+
+    #[test]
+    fn test_event_meta_with_priority() {
+        let meta = EventMeta::new("test").with_priority(EventPriority::High);
+        assert_eq!(meta.priority, EventPriority::High);
+    }
+
+    #[test]
+    fn test_event_meta_cancel() {
+        let mut meta = EventMeta::new("test");
+        assert!(!meta.is_cancelled());
+        meta.cancel();
+        assert!(meta.is_cancelled());
+    }
+
+    #[test]
+    fn test_event_meta_stop_propagation() {
+        let mut meta = EventMeta::new("test");
+        assert!(!meta.is_propagation_stopped());
+        meta.stop_propagation();
+        assert!(meta.is_propagation_stopped());
+    }
+
+    #[test]
+    fn test_event_meta_stop_immediate_propagation() {
+        let mut meta = EventMeta::new("test");
+        assert!(!meta.is_immediate_propagation_stopped());
+        assert!(!meta.is_propagation_stopped());
+        meta.stop_immediate_propagation();
+        assert!(meta.is_immediate_propagation_stopped());
+        assert!(meta.is_propagation_stopped());
+    }
+
+    #[test]
+    fn test_event_meta_elapsed() {
+        let meta = EventMeta::new("test");
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let elapsed = meta.elapsed();
+        assert!(elapsed.as_millis() >= 10);
+    }
+
+    #[test]
+    fn test_event_meta_builder_pattern() {
+        let meta = EventMeta::new("test")
+            .with_source("src")
+            .with_target("dest")
+            .with_priority(EventPriority::Critical);
+        assert_eq!(meta.source, Some("src".to_string()));
+        assert_eq!(meta.target, Some("dest".to_string()));
+        assert_eq!(meta.priority, EventPriority::Critical);
+    }
+
+    #[test]
+    fn test_event_envelope_new() {
+        let event = TestEvent {
+            data: "test".to_string(),
+        };
+        let envelope = EventEnvelope::new(event);
+        assert_eq!(envelope.event.data, "test");
+        assert_eq!(envelope.meta.event_type, "test");
+    }
+
+    #[test]
+    fn test_event_envelope_with_source() {
+        let event = TestEvent {
+            data: "test".to_string(),
+        };
+        let envelope = EventEnvelope::new(event).with_source("source");
+        assert_eq!(envelope.meta.source, Some("source".to_string()));
+    }
+
+    #[test]
+    fn test_event_envelope_with_target() {
+        let event = TestEvent {
+            data: "test".to_string(),
+        };
+        let envelope = EventEnvelope::new(event).with_target("target");
+        assert_eq!(envelope.meta.target, Some("target".to_string()));
+    }
+
+    #[test]
+    fn test_event_envelope_with_priority() {
+        let event = TestEvent {
+            data: "test".to_string(),
+        };
+        let envelope = EventEnvelope::new(event).with_priority(EventPriority::Low);
+        assert_eq!(envelope.meta.priority, EventPriority::Low);
+    }
+
+    #[test]
+    fn test_event_envelope_builder_pattern() {
+        let event = TestEvent {
+            data: "test".to_string(),
+        };
+        let envelope = EventEnvelope::new(event)
+            .with_source("src")
+            .with_target("dest")
+            .with_priority(EventPriority::High);
+        assert_eq!(envelope.meta.source, Some("src".to_string()));
+        assert_eq!(envelope.meta.target, Some("dest".to_string()));
+        assert_eq!(envelope.meta.priority, EventPriority::High);
+    }
+
+    #[test]
+    fn test_custom_event_default_bubbles() {
+        assert!(TestEvent::bubbles());
+    }
+
+    #[test]
+    fn test_custom_event_default_cancellable() {
+        assert!(TestEvent::cancellable());
+    }
+}

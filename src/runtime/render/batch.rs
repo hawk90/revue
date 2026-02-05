@@ -537,4 +537,310 @@ mod tests {
             panic!("Expected Text operation");
         }
     }
+
+    #[test]
+    fn test_batch_new() {
+        let batch = RenderBatch::new();
+        assert!(batch.is_empty());
+        assert_eq!(batch.len(), 0);
+        assert!(batch.dirty_regions().is_empty());
+    }
+
+    #[test]
+    fn test_batch_default() {
+        let batch = RenderBatch::default();
+        assert!(batch.is_empty());
+    }
+
+    #[test]
+    fn test_batch_with_capacity() {
+        let mut batch = RenderBatch::with_capacity(10);
+        assert!(batch.is_empty());
+        // Can't directly check capacity, but we can verify it works
+        batch.set_cell(0, 0, 'X', None, None);
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_set_optimize() {
+        let mut batch = RenderBatch::new();
+        batch.set_optimize(false);
+        batch.set_optimize(true);
+        assert!(batch.is_empty());
+    }
+
+    #[test]
+    fn test_batch_len() {
+        let mut batch = RenderBatch::new();
+        assert_eq!(batch.len(), 0);
+        batch.set_cell(0, 0, 'X', None, None);
+        assert_eq!(batch.len(), 1);
+        batch.set_cell(1, 0, 'Y', None, None);
+        assert_eq!(batch.len(), 2);
+    }
+
+    #[test]
+    fn test_batch_is_empty() {
+        let mut batch = RenderBatch::new();
+        assert!(batch.is_empty());
+        batch.set_cell(0, 0, 'X', None, None);
+        assert!(!batch.is_empty());
+    }
+
+    #[test]
+    fn test_batch_clear() {
+        let mut batch = RenderBatch::new();
+        batch.set_cell(0, 0, 'X', None, None);
+        batch.set_cell(1, 0, 'Y', None, None);
+        assert_eq!(batch.len(), 2);
+        assert!(!batch.dirty_regions().is_empty());
+
+        batch.clear();
+        assert!(batch.is_empty());
+        assert!(batch.dirty_regions().is_empty());
+    }
+
+    #[test]
+    fn test_batch_push_set_cell() {
+        let mut batch = RenderBatch::new();
+        let cell = Cell::new('A');
+        batch.push(RenderOp::SetCell { x: 5, y: 10, cell });
+        assert_eq!(batch.len(), 1);
+        assert!(!batch.dirty_regions().is_empty());
+    }
+
+    #[test]
+    fn test_batch_push_fill_rect() {
+        let mut batch = RenderBatch::new();
+        let rect = Rect::new(0, 0, 10, 5);
+        let cell = Cell::new(' ');
+        batch.push(RenderOp::FillRect { rect, cell });
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_push_hline() {
+        let mut batch = RenderBatch::new();
+        let cell = Cell::new('-');
+        batch.push(RenderOp::HLine {
+            x: 0,
+            y: 5,
+            len: 10,
+            cell,
+        });
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_push_vline() {
+        let mut batch = RenderBatch::new();
+        let cell = Cell::new('|');
+        batch.push(RenderOp::VLine {
+            x: 5,
+            y: 0,
+            len: 10,
+            cell,
+        });
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_push_text() {
+        let mut batch = RenderBatch::new();
+        batch.push(RenderOp::Text {
+            x: 0,
+            y: 0,
+            text: "hello".to_string(),
+            fg: None,
+            bg: None,
+            modifier: Modifier::empty(),
+        });
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_push_clear() {
+        let mut batch = RenderBatch::new();
+        batch.set_cell(0, 0, 'X', None, None);
+        assert!(!batch.dirty_regions().is_empty());
+
+        batch.push(RenderOp::Clear);
+        // Clear resets dirty regions
+        assert!(batch.dirty_regions().is_empty());
+    }
+
+    #[test]
+    fn test_batch_push_move_cursor() {
+        let mut batch = RenderBatch::new();
+        batch.push(RenderOp::MoveCursor { x: 10, y: 5 });
+        assert_eq!(batch.len(), 1);
+        // Move cursor doesn't add dirty regions
+        assert!(batch.dirty_regions().is_empty());
+    }
+
+    #[test]
+    fn test_batch_push_show_cursor() {
+        let mut batch = RenderBatch::new();
+        batch.push(RenderOp::ShowCursor(true));
+        batch.push(RenderOp::ShowCursor(false));
+        assert_eq!(batch.len(), 2);
+    }
+
+    #[test]
+    fn test_batch_set_cell() {
+        let mut batch = RenderBatch::new();
+        batch.set_cell(5, 10, 'X', Some(Color::RED), None);
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_set_styled_cell() {
+        let mut batch = RenderBatch::new();
+        let mut cell = Cell::new('Y');
+        cell.fg = Some(Color::BLUE);
+        cell.bg = Some(Color::BLACK);
+        batch.set_styled_cell(3, 7, cell);
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_fill_rect() {
+        let mut batch = RenderBatch::new();
+        let rect = Rect::new(0, 0, 80, 24);
+        batch.fill_rect(rect, ' ', None, Some(Color::BLUE));
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_hline() {
+        let mut batch = RenderBatch::new();
+        batch.hline(0, 10, 20, '-', None);
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_vline() {
+        let mut batch = RenderBatch::new();
+        batch.vline(10, 0, 15, '|', None);
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_text() {
+        let mut batch = RenderBatch::new();
+        batch.text(5, 5, "Hello", Some(Color::GREEN), None);
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_styled_text() {
+        let mut batch = RenderBatch::new();
+        batch.styled_text(0, 0, "World", Some(Color::YELLOW), None, Modifier::BOLD);
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_clear_screen() {
+        let mut batch = RenderBatch::new();
+        batch.clear_screen();
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_move_cursor() {
+        let mut batch = RenderBatch::new();
+        batch.move_cursor(42, 13);
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_show_cursor() {
+        let mut batch = RenderBatch::new();
+        batch.show_cursor(true);
+        batch.show_cursor(false);
+        assert_eq!(batch.len(), 2);
+    }
+
+    #[test]
+    fn test_batch_dirty_regions() {
+        let mut batch = RenderBatch::new();
+        assert!(batch.dirty_regions().is_empty());
+
+        batch.set_cell(0, 0, 'A', None, None);
+        assert_eq!(batch.dirty_regions().len(), 1);
+
+        batch.set_cell(10, 10, 'B', None, None);
+        assert_eq!(batch.dirty_regions().len(), 2);
+
+        batch.clear();
+        assert!(batch.dirty_regions().is_empty());
+    }
+
+    #[test]
+    fn test_batch_optimize_empty() {
+        let mut batch = RenderBatch::new();
+        batch.optimize();
+        assert!(batch.is_empty());
+    }
+
+    #[test]
+    fn test_batch_optimize_single() {
+        let mut batch = RenderBatch::new();
+        batch.set_cell(5, 10, 'X', None, None);
+        batch.optimize();
+        assert_eq!(batch.len(), 1);
+    }
+
+    #[test]
+    fn test_batch_optimize_disabled() {
+        let mut batch = RenderBatch::new();
+        batch.set_optimize(false);
+        batch.set_cell(0, 0, 'H', Some(Color::WHITE), None);
+        batch.set_cell(1, 0, 'i', Some(Color::WHITE), None);
+        batch.set_cell(2, 0, '!', Some(Color::WHITE), None);
+        assert_eq!(batch.len(), 3);
+
+        batch.optimize();
+        // Should not optimize when disabled
+        assert_eq!(batch.len(), 3);
+    }
+
+    #[test]
+    fn test_batch_optimize_different_rows() {
+        let mut batch = RenderBatch::new();
+        batch.set_cell(0, 0, 'A', Some(Color::WHITE), None);
+        batch.set_cell(0, 1, 'B', Some(Color::WHITE), None);
+        batch.set_cell(0, 2, 'C', Some(Color::WHITE), None);
+        assert_eq!(batch.len(), 3);
+
+        batch.optimize();
+        // Different rows shouldn't merge
+        assert_eq!(batch.len(), 3);
+    }
+
+    #[test]
+    fn test_batch_optimize_different_styles() {
+        let mut batch = RenderBatch::new();
+        batch.set_cell(0, 0, 'A', Some(Color::RED), None);
+        batch.set_cell(1, 0, 'B', Some(Color::BLUE), None);
+        batch.set_cell(2, 0, 'C', Some(Color::GREEN), None);
+        assert_eq!(batch.len(), 3);
+
+        batch.optimize();
+        // Different styles should remain as separate cells
+        assert_eq!(batch.len(), 3);
+    }
+
+    #[test]
+    fn test_batch_optimize_non_consecutive() {
+        let mut batch = RenderBatch::new();
+        batch.set_cell(0, 0, 'A', Some(Color::WHITE), None);
+        batch.set_cell(2, 0, 'B', Some(Color::WHITE), None);
+        batch.set_cell(4, 0, 'C', Some(Color::WHITE), None);
+        assert_eq!(batch.len(), 3);
+
+        batch.optimize();
+        // Non-consecutive cells shouldn't merge
+        assert_eq!(batch.len(), 3);
+    }
 }

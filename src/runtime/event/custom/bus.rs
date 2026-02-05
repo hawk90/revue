@@ -127,3 +127,166 @@ impl Default for CustomEventBus {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::runtime::event::custom::events::AppEvent;
+    use crate::runtime::event::custom::response::EventResponse;
+    use crate::runtime::event::custom::types::EventMeta;
+
+    #[test]
+    fn test_event_bus_new() {
+        let bus = CustomEventBus::new();
+        let history = bus.history();
+        assert!(history.is_empty());
+    }
+
+    #[test]
+    fn test_event_bus_default() {
+        let bus = CustomEventBus::default();
+        let history = bus.history();
+        assert!(history.is_empty());
+    }
+
+    #[test]
+    fn test_event_bus_with_max_history() {
+        let bus = CustomEventBus::new().with_max_history(50);
+        // Can't directly access max_history, but we can verify it works by adding events
+        assert!(bus.history().is_empty());
+    }
+
+    #[test]
+    fn test_event_bus_emit() {
+        let bus = CustomEventBus::new();
+        let event = AppEvent::new("test_event");
+        let result = bus.emit(event);
+        assert!(!result.cancelled);
+        let history = bus.history();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].event_type, "app");
+    }
+
+    #[test]
+    fn test_event_bus_emit_with_history_limit() {
+        let bus = CustomEventBus::new().with_max_history(3);
+        for i in 0..5 {
+            let event = AppEvent::new(format!("event_{}", i));
+            bus.emit(event);
+        }
+        let history = bus.history();
+        assert_eq!(history.len(), 3); // Should be limited to max_history
+    }
+
+    #[test]
+    fn test_event_bus_on_handler() {
+        let mut bus = CustomEventBus::new();
+        let handler_id = bus.on(|_event: &AppEvent, _meta: &mut EventMeta| EventResponse::Handled);
+        bus.emit(AppEvent::new("test"));
+        let history = bus.history();
+        assert_eq!(history.len(), 1);
+        // Handler was called (handler_count should be 1)
+        assert_eq!(history[0].handler_count, 1);
+        bus.off(handler_id);
+    }
+
+    #[test]
+    fn test_event_bus_once_handler() {
+        let mut bus = CustomEventBus::new();
+        let handler_id =
+            bus.once(|_event: &AppEvent, _meta: &mut EventMeta| EventResponse::Handled);
+
+        // First emit - handler should be called
+        bus.emit(AppEvent::new("test1"));
+        let history1 = bus.history();
+        assert_eq!(history1.len(), 1);
+        assert_eq!(history1[0].handler_count, 1);
+
+        // Second emit - handler should not be called (removed after once)
+        bus.emit(AppEvent::new("test2"));
+        let history2 = bus.history();
+        assert_eq!(history2.len(), 2);
+        assert_eq!(history2[1].handler_count, 0); // No handlers called
+
+        bus.off(handler_id);
+    }
+
+    #[test]
+    fn test_event_bus_off_handler() {
+        let mut bus = CustomEventBus::new();
+        let handler_id = bus.on(|_event: &AppEvent, _meta: &mut EventMeta| EventResponse::Handled);
+
+        // Emit with handler
+        bus.emit(AppEvent::new("test1"));
+        let history1 = bus.history();
+        assert_eq!(history1[0].handler_count, 1);
+
+        // Remove handler
+        bus.off(handler_id);
+
+        // Emit without handler
+        bus.emit(AppEvent::new("test2"));
+        let history2 = bus.history();
+        assert_eq!(history2.len(), 2);
+        assert_eq!(history2[1].handler_count, 0);
+    }
+
+    #[test]
+    fn test_event_bus_clear_history() {
+        let bus = CustomEventBus::new();
+        bus.emit(AppEvent::new("test1"));
+        bus.emit(AppEvent::new("test2"));
+        assert_eq!(bus.history().len(), 2);
+
+        bus.clear_history();
+        assert!(bus.history().is_empty());
+    }
+
+    #[test]
+    fn test_event_bus_clear() {
+        let mut bus = CustomEventBus::new();
+        bus.on(|_event: &AppEvent, _meta: &mut EventMeta| EventResponse::Handled);
+        bus.emit(AppEvent::new("test"));
+
+        bus.clear();
+        // After clear, no handlers should be called
+        bus.emit(AppEvent::new("test2"));
+        let history = bus.history();
+        assert_eq!(history.len(), 2);
+        assert_eq!(history[1].handler_count, 0);
+    }
+
+    #[test]
+    fn test_event_record_fields() {
+        let bus = CustomEventBus::new();
+        bus.emit(AppEvent::new("test"));
+
+        let history = bus.history();
+        assert_eq!(history.len(), 1);
+        let record = &history[0];
+
+        // Verify public fields are accessible
+        assert!(record.id.value() > 0);
+        assert_eq!(record.event_type, "app");
+        assert!(!record.cancelled);
+        assert_eq!(record.handler_count, 0); // No handlers registered
+    }
+
+    #[test]
+    fn test_event_bus_multiple_handlers() {
+        let mut bus = CustomEventBus::new();
+        bus.on(|_event: &AppEvent, _meta: &mut EventMeta| EventResponse::Handled);
+        bus.on(|_event: &AppEvent, _meta: &mut EventMeta| EventResponse::Handled);
+
+        bus.emit(AppEvent::new("test"));
+        let history = bus.history();
+        assert_eq!(history[0].handler_count, 2);
+    }
+
+    #[test]
+    fn test_event_bus_builder_pattern() {
+        let bus = CustomEventBus::new().with_max_history(10);
+        bus.emit(AppEvent::new("test"));
+        assert!(!bus.history().is_empty());
+    }
+}

@@ -159,3 +159,122 @@ impl CustomEvent for ErrorEvent {
         false
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::runtime::event::custom::types::CustomEvent as CustomEventTrait;
+
+    #[test]
+    fn test_app_event_new() {
+        let event = AppEvent::new("test_event");
+        assert_eq!(event.name, "test_event");
+        assert!(event.data.is_empty());
+    }
+
+    #[test]
+    fn test_app_event_with_data() {
+        let event = AppEvent::new("test_event")
+            .with_data("key1", "value1")
+            .with_data("key2", "value2");
+        assert_eq!(event.data.len(), 2);
+        assert_eq!(event.data.get("key1"), Some(&"value1".to_string()));
+        assert_eq!(event.data.get("key2"), Some(&"value2".to_string()));
+    }
+
+    #[test]
+    fn test_app_event_event_type() {
+        assert_eq!(AppEvent::event_type(), "app");
+    }
+
+    #[test]
+    fn test_state_change_event_new() {
+        let event = StateChangeEvent::new("my_key");
+        assert_eq!(event.key, "my_key");
+        assert!(event.old_value.is_none());
+        assert!(event.new_value.is_none());
+    }
+
+    #[test]
+    fn test_state_change_event_from_to() {
+        let event = StateChangeEvent::new("my_key").from("old").to("new");
+        assert_eq!(event.old_value, Some("old".to_string()));
+        assert_eq!(event.new_value, Some("new".to_string()));
+    }
+
+    #[test]
+    fn test_state_change_event_event_type() {
+        assert_eq!(StateChangeEvent::event_type(), "state_change");
+    }
+
+    #[test]
+    fn test_navigate_event_new() {
+        let event = NavigateEvent::new("/home");
+        assert_eq!(event.path, "/home");
+        assert!(event.params.is_empty());
+        assert!(!event.replace);
+    }
+
+    #[test]
+    fn test_navigate_event_with_param() {
+        let event = NavigateEvent::new("/home")
+            .with_param("id", "123")
+            .with_param("tab", "profile");
+        assert_eq!(event.params.len(), 2);
+        assert_eq!(event.params.get("id"), Some(&"123".to_string()));
+        assert_eq!(event.params.get("tab"), Some(&"profile".to_string()));
+    }
+
+    #[test]
+    fn test_navigate_event_replace() {
+        let event = NavigateEvent::new("/home").replace(true);
+        assert!(event.replace);
+    }
+
+    #[test]
+    fn test_navigate_event_event_type() {
+        assert_eq!(NavigateEvent::event_type(), "navigate");
+    }
+
+    #[test]
+    fn test_error_event_new() {
+        let event = ErrorEvent::new("E001", "Something went wrong");
+        assert_eq!(event.code, "E001");
+        assert_eq!(event.message, "Something went wrong");
+        assert!(event.source.is_none());
+        assert!(event.recoverable); // default
+    }
+
+    #[test]
+    fn test_error_event_with_source() {
+        let event = ErrorEvent::new("E001", "Error").with_source("database");
+        assert_eq!(event.source, Some("database".to_string()));
+    }
+
+    #[test]
+    fn test_error_event_recoverable() {
+        let event = ErrorEvent::new("E001", "Error").recoverable(false);
+        assert!(!event.recoverable);
+    }
+
+    #[test]
+    fn test_error_event_event_type() {
+        assert_eq!(ErrorEvent::event_type(), "error");
+    }
+
+    #[test]
+    fn test_error_event_cancellable() {
+        assert!(!ErrorEvent::cancellable());
+    }
+
+    #[test]
+    fn test_error_event_with_all_fields() {
+        let event = ErrorEvent::new("E002", "Critical failure")
+            .with_source("network")
+            .recoverable(true);
+        assert_eq!(event.code, "E002");
+        assert_eq!(event.message, "Critical failure");
+        assert_eq!(event.source, Some("network".to_string()));
+        assert!(event.recoverable);
+    }
+}

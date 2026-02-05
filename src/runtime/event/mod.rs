@@ -348,4 +348,217 @@ impl KeyEvent {
     }
 }
 
-// Tests moved to tests/event_tests.rs
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mouse_event_new() {
+        let event = MouseEvent::new(10, 20, MouseEventKind::Down(MouseButton::Left));
+        assert_eq!(event.x, 10);
+        assert_eq!(event.y, 20);
+        assert!(!event.ctrl);
+        assert!(!event.alt);
+        assert!(!event.shift);
+    }
+
+    #[test]
+    fn test_mouse_event_is_left_click() {
+        let event = MouseEvent::new(0, 0, MouseEventKind::Down(MouseButton::Left));
+        assert!(event.is_left_click());
+
+        let event = MouseEvent::new(0, 0, MouseEventKind::Down(MouseButton::Right));
+        assert!(!event.is_left_click());
+
+        let event = MouseEvent::new(0, 0, MouseEventKind::Up(MouseButton::Left));
+        assert!(!event.is_left_click());
+    }
+
+    #[test]
+    fn test_mouse_event_is_right_click() {
+        let event = MouseEvent::new(0, 0, MouseEventKind::Down(MouseButton::Right));
+        assert!(event.is_right_click());
+
+        let event = MouseEvent::new(0, 0, MouseEventKind::Down(MouseButton::Left));
+        assert!(!event.is_right_click());
+    }
+
+    #[test]
+    fn test_mouse_event_is_scroll() {
+        assert!(MouseEvent::new(0, 0, MouseEventKind::ScrollUp).is_scroll());
+        assert!(MouseEvent::new(0, 0, MouseEventKind::ScrollDown).is_scroll());
+        assert!(MouseEvent::new(0, 0, MouseEventKind::ScrollLeft).is_scroll());
+        assert!(MouseEvent::new(0, 0, MouseEventKind::ScrollRight).is_scroll());
+        assert!(!MouseEvent::new(0, 0, MouseEventKind::Move).is_scroll());
+    }
+
+    #[test]
+    fn test_key_event_new() {
+        let event = KeyEvent::new(Key::Char('a'));
+        assert_eq!(event.key, Key::Char('a'));
+        assert!(!event.ctrl);
+        assert!(!event.alt);
+        assert!(!event.shift);
+    }
+
+    #[test]
+    fn test_key_event_ctrl() {
+        let event = KeyEvent::ctrl(Key::Char('c'));
+        assert!(event.ctrl);
+        assert!(!event.alt);
+        assert!(!event.shift);
+    }
+
+    #[test]
+    fn test_key_event_alt() {
+        let event = KeyEvent::alt(Key::Char('x'));
+        assert!(!event.ctrl);
+        assert!(event.alt);
+        assert!(!event.shift);
+    }
+
+    #[test]
+    fn test_key_event_is_ctrl_c() {
+        let event = KeyEvent::ctrl(Key::Char('c'));
+        assert!(event.is_ctrl_c());
+
+        let event = KeyEvent::new(Key::Char('c'));
+        assert!(!event.is_ctrl_c());
+    }
+
+    #[test]
+    fn test_key_event_is_escape() {
+        let event = KeyEvent::new(Key::Escape);
+        assert!(event.is_escape());
+
+        let event = KeyEvent::new(Key::Enter);
+        assert!(!event.is_escape());
+    }
+
+    #[test]
+    fn test_key_event_is_enter() {
+        let event = KeyEvent::new(Key::Enter);
+        assert!(event.is_enter());
+
+        let event = KeyEvent::new(Key::Tab);
+        assert!(!event.is_enter());
+    }
+
+    #[test]
+    fn test_key_event_is_tab() {
+        let event = KeyEvent::new(Key::Tab);
+        assert!(event.is_tab());
+
+        let event = KeyEvent {
+            key: Key::Tab,
+            ctrl: false,
+            alt: false,
+            shift: true,
+        };
+        assert!(!event.is_tab());
+    }
+
+    #[test]
+    fn test_key_event_is_shift_tab() {
+        let event = KeyEvent {
+            key: Key::Tab,
+            ctrl: false,
+            alt: false,
+            shift: true,
+        };
+        assert!(event.is_shift_tab());
+
+        let event = KeyEvent::new(Key::Tab);
+        assert!(!event.is_shift_tab());
+    }
+
+    #[test]
+    fn test_key_event_to_binding() {
+        let event = KeyEvent {
+            key: Key::Char('a'),
+            ctrl: true,
+            alt: false,
+            shift: true,
+        };
+        let binding = event.to_binding();
+        assert_eq!(binding.key, Key::Char('a'));
+        assert!(binding.ctrl);
+        assert!(!binding.alt);
+        assert!(binding.shift);
+    }
+
+    #[test]
+    fn test_event_enum_variants() {
+        let key_event = Event::Key(KeyEvent::new(Key::Char('a')));
+        let mouse_event = Event::Mouse(MouseEvent::new(0, 0, MouseEventKind::Move));
+        let resize_event = Event::Resize(80, 24);
+        let tick_event = Event::Tick;
+        let focus_gained = Event::FocusGained;
+        let focus_lost = Event::FocusLost;
+        let paste_event = Event::Paste("test".to_string());
+
+        // Just verify they all compile - variants exist
+        match key_event {
+            Event::Key(_) => {}
+            _ => panic!("Expected Key event"),
+        }
+        match mouse_event {
+            Event::Mouse(_) => {}
+            _ => panic!("Expected Mouse event"),
+        }
+        match resize_event {
+            Event::Resize(_, _) => {}
+            _ => panic!("Expected Resize event"),
+        }
+        match tick_event {
+            Event::Tick => {}
+            _ => panic!("Expected Tick event"),
+        }
+        match focus_gained {
+            Event::FocusGained => {}
+            _ => panic!("Expected FocusGained event"),
+        }
+        match focus_lost {
+            Event::FocusLost => {}
+            _ => panic!("Expected FocusLost event"),
+        }
+        match paste_event {
+            Event::Paste(_) => {}
+            _ => panic!("Expected Paste event"),
+        }
+    }
+
+    #[test]
+    fn test_mouse_button_variants() {
+        let _left = MouseButton::Left;
+        let _right = MouseButton::Right;
+        let _middle = MouseButton::Middle;
+    }
+
+    #[test]
+    fn test_mouse_event_kind_variants() {
+        let _down = MouseEventKind::Down(MouseButton::Left);
+        let _up = MouseEventKind::Up(MouseButton::Right);
+        let _drag = MouseEventKind::Drag(MouseButton::Middle);
+        let _move = MouseEventKind::Move;
+        let _scroll_down = MouseEventKind::ScrollDown;
+        let _scroll_up = MouseEventKind::ScrollUp;
+        let _scroll_left = MouseEventKind::ScrollLeft;
+        let _scroll_right = MouseEventKind::ScrollRight;
+    }
+
+    #[test]
+    fn test_mouse_event_with_modifiers() {
+        let event = MouseEvent {
+            x: 10,
+            y: 20,
+            kind: MouseEventKind::Down(MouseButton::Left),
+            ctrl: true,
+            alt: false,
+            shift: true,
+        };
+        assert!(event.ctrl);
+        assert!(event.shift);
+        assert!(!event.alt);
+    }
+}

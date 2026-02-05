@@ -116,4 +116,161 @@ pub trait Backend: Write {
     fn name(&self) -> &'static str;
 }
 
-// Tests moved to tests/render_tests.rs
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io;
+
+    // Mock backend for testing trait default implementations
+    struct MockBackend {
+        data: Vec<u8>,
+    }
+
+    impl MockBackend {
+        fn new() -> Self {
+            Self { data: Vec::new() }
+        }
+    }
+
+    impl Write for MockBackend {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.data.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl Backend for MockBackend {
+        fn init(&mut self) -> Result<()> {
+            Ok(())
+        }
+
+        fn init_with_mouse(&mut self, _enable_mouse: bool) -> Result<()> {
+            Ok(())
+        }
+
+        fn restore(&mut self) -> Result<()> {
+            Ok(())
+        }
+
+        fn size(&self) -> Result<(u16, u16)> {
+            Ok((80, 24))
+        }
+
+        fn clear(&mut self) -> Result<()> {
+            Ok(())
+        }
+
+        fn hide_cursor(&mut self) -> Result<()> {
+            Ok(())
+        }
+
+        fn show_cursor(&mut self) -> Result<()> {
+            Ok(())
+        }
+
+        fn set_cursor(&mut self, _x: u16, _y: u16) -> Result<()> {
+            Ok(())
+        }
+
+        fn set_fg(&mut self, _color: Color) -> Result<()> {
+            Ok(())
+        }
+
+        fn set_bg(&mut self, _color: Color) -> Result<()> {
+            Ok(())
+        }
+
+        fn reset_fg(&mut self) -> Result<()> {
+            Ok(())
+        }
+
+        fn reset_bg(&mut self) -> Result<()> {
+            Ok(())
+        }
+
+        fn set_modifier(&mut self, _modifier: Modifier) -> Result<()> {
+            Ok(())
+        }
+
+        fn reset_style(&mut self) -> Result<()> {
+            Ok(())
+        }
+
+        fn enable_mouse(&mut self) -> Result<()> {
+            Ok(())
+        }
+
+        fn disable_mouse(&mut self) -> Result<()> {
+            Ok(())
+        }
+
+        fn name(&self) -> &'static str {
+            "mock"
+        }
+    }
+
+    #[test]
+    fn test_backend_capabilities_default() {
+        let caps = BackendCapabilities::default();
+        assert!(!caps.true_color);
+        assert!(!caps.hyperlinks);
+        assert!(!caps.mouse);
+        assert!(!caps.bracketed_paste);
+        assert!(!caps.focus_events);
+    }
+
+    #[test]
+    fn test_backend_capabilities_all_true() {
+        let caps = BackendCapabilities {
+            true_color: true,
+            hyperlinks: true,
+            mouse: true,
+            bracketed_paste: true,
+            focus_events: true,
+        };
+        assert!(caps.true_color);
+        assert!(caps.hyperlinks);
+        assert!(caps.mouse);
+        assert!(caps.bracketed_paste);
+        assert!(caps.focus_events);
+    }
+
+    #[test]
+    fn test_backend_write_hyperlink_start() {
+        let mut backend = MockBackend::new();
+        let result = backend.write_hyperlink_start("https://example.com");
+        assert!(result.is_ok());
+        let output = String::from_utf8_lossy(&backend.data);
+        assert!(output.contains("\x1b]8;;"));
+        assert!(output.contains("https://example.com"));
+        assert!(output.contains("\x1b\\"));
+    }
+
+    #[test]
+    fn test_backend_write_hyperlink_end() {
+        let mut backend = MockBackend::new();
+        let result = backend.write_hyperlink_end();
+        assert!(result.is_ok());
+        let output = String::from_utf8_lossy(&backend.data);
+        assert_eq!(output, "\x1b]8;;\x1b\\");
+    }
+
+    #[test]
+    fn test_backend_capabilities_default_impl() {
+        let backend = MockBackend::new();
+        let caps = backend.capabilities();
+        // Default implementation returns default capabilities
+        assert!(!caps.true_color);
+        assert!(!caps.hyperlinks);
+    }
+
+    #[test]
+    fn test_backend_name() {
+        let backend = MockBackend::new();
+        assert_eq!(backend.name(), "mock");
+    }
+}
