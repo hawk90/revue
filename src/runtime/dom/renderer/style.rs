@@ -136,3 +136,118 @@ impl DomRenderer {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_renderer_with_nodes() -> DomRenderer {
+        let mut renderer = DomRenderer::with_stylesheet(crate::style::StyleSheet::new());
+        let root_meta = crate::dom::WidgetMeta::new("root");
+        let child_meta = crate::dom::WidgetMeta::new("child");
+        renderer.build_tree(root_meta, vec![child_meta]);
+        renderer
+    }
+
+    #[test]
+    fn test_style_for_nonexistent_node() {
+        let mut renderer = create_test_renderer_with_nodes();
+        let fake_id = crate::dom::DomId::new(999);
+        let result = renderer.style_for(fake_id);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_style_for_with_inheritance_nonexistent_node() {
+        let mut renderer = create_test_renderer_with_nodes();
+        let fake_id = crate::dom::DomId::new(999);
+        let result = renderer.style_for_with_inheritance(fake_id);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_compute_styles_empty_tree() {
+        let mut renderer = DomRenderer::with_stylesheet(crate::style::StyleSheet::new());
+        renderer.compute_styles();
+        assert!(renderer.styles.is_empty());
+    }
+
+    #[test]
+    fn test_compute_styles_with_inheritance_empty_tree() {
+        let mut renderer = DomRenderer::with_stylesheet(crate::style::StyleSheet::new());
+        renderer.compute_styles_with_inheritance();
+        assert!(renderer.styles.is_empty());
+    }
+
+    #[test]
+    fn test_compute_styles_with_tree() {
+        let mut renderer = create_test_renderer_with_nodes();
+        assert!(renderer.styles.is_empty());
+
+        renderer.compute_styles();
+
+        // Should compute styles for all nodes
+        assert!(!renderer.styles.is_empty());
+    }
+
+    #[test]
+    fn test_compute_styles_with_inheritance_with_tree() {
+        let mut renderer = create_test_renderer_with_nodes();
+        assert!(renderer.styles.is_empty());
+
+        renderer.compute_styles_with_inheritance();
+
+        // Should compute styles for all nodes
+        assert!(!renderer.styles.is_empty());
+    }
+
+    #[test]
+    fn test_style_for_caches_result() {
+        let mut renderer = create_test_renderer_with_nodes();
+        let root_id = renderer.tree.root_id().unwrap();
+
+        // First call
+        let style1 = renderer.style_for(root_id);
+        assert!(style1.is_some());
+
+        // Second call should return cached result
+        let style2 = renderer.style_for(root_id);
+        assert!(style2.is_some());
+
+        // Both should be the same style
+        assert_eq!(style1.unwrap().layout.gap, style2.unwrap().layout.gap);
+    }
+
+    #[test]
+    fn test_style_for_with_inheritance_caches_result() {
+        let mut renderer = create_test_renderer_with_nodes();
+        let root_id = renderer.tree.root_id().unwrap();
+
+        // First call
+        let style1 = renderer.style_for_with_inheritance(root_id);
+        assert!(style1.is_some());
+
+        // Second call should return cached result
+        let style2 = renderer.style_for_with_inheritance(root_id);
+        assert!(style2.is_some());
+
+        // Both should be the same style
+        assert_eq!(style1.unwrap().layout.gap, style2.unwrap().layout.gap);
+    }
+
+    #[test]
+    fn test_style_for_with_inheritance_computes_parent_first() {
+        let mut renderer = create_test_renderer_with_nodes();
+        let root_id = renderer.tree.root_id().unwrap();
+
+        // Computing child style should also compute parent style
+        let children: Vec<crate::dom::DomId> = renderer.tree.nodes().map(|n| n.id).collect();
+        let child_id = children.into_iter().find(|id| id != &root_id).unwrap();
+
+        let child_style = renderer.style_for_with_inheritance(child_id);
+        assert!(child_style.is_some());
+
+        // Parent style should also be cached
+        assert!(renderer.styles.contains_key(&root_id));
+    }
+}
