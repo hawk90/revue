@@ -6,7 +6,9 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::{RenderContext, StyledView};
-use revue::widget::{skeleton, skeleton_avatar, skeleton_paragraph, skeleton_text, Skeleton, SkeletonShape, View};
+use revue::widget::{
+    skeleton, skeleton_avatar, skeleton_paragraph, skeleton_text, Skeleton, SkeletonShape, View,
+};
 
 // =============================================================================
 // Constructor and Builder Tests
@@ -578,7 +580,11 @@ fn test_skeleton_render_circle_with_color() {
     let area = Rect::new(0, 0, 5, 5);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let s = skeleton().circle().height(2).color(Color::BLUE).no_animate();
+    let s = skeleton()
+        .circle()
+        .height(2)
+        .color(Color::BLUE)
+        .no_animate();
     s.render(&mut ctx);
 
     assert_eq!(buffer.get(0, 0).unwrap().symbol, '╭');
@@ -699,7 +705,11 @@ fn test_skeleton_render_paragraph_with_color() {
     let area = Rect::new(0, 0, 20, 5);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let s = skeleton().paragraph().lines(2).color(Color::GREEN).no_animate();
+    let s = skeleton()
+        .paragraph()
+        .lines(2)
+        .color(Color::GREEN)
+        .no_animate();
     s.render(&mut ctx);
 
     assert_eq!(buffer.get(0, 0).unwrap().symbol, '░');
@@ -978,7 +988,11 @@ fn test_skeleton_render_circle_with_custom_color() {
     let area = Rect::new(0, 0, 5, 5);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let s = skeleton().circle().height(3).color(Color::YELLOW).no_animate();
+    let s = skeleton()
+        .circle()
+        .height(3)
+        .color(Color::YELLOW)
+        .no_animate();
     s.render(&mut ctx);
 
     // All circle elements should have the custom color
@@ -993,7 +1007,11 @@ fn test_skeleton_render_paragraph_with_custom_color() {
     let area = Rect::new(0, 0, 20, 5);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let s = skeleton().paragraph().lines(3).color(Color::WHITE).no_animate();
+    let s = skeleton()
+        .paragraph()
+        .lines(3)
+        .color(Color::WHITE)
+        .no_animate();
     s.render(&mut ctx);
 
     assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::WHITE));

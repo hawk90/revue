@@ -73,7 +73,7 @@
 //!
 //! # Builder Macros
 //!
-//! The [`impl_state_builders!`] macro generates builder methods for widgets:
+//! The `impl_state_builders!` macro generates builder methods for widgets:
 //!
 //! ```rust,ignore
 //! struct MyWidget {

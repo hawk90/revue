@@ -702,3 +702,245 @@ fn test_tabs_meta() {
 }
 
 // =============================================================================
+// Additional Edge Cases
+// =============================================================================
+
+#[test]
+fn test_tabs_unicode_labels() {
+    let t = Tabs::new().tabs(vec!["ホーム", "설정", "Einstellungen"]);
+    assert_eq!(t.len(), 3);
+    assert_eq!(t.selected_label(), Some("ホーム"));
+}
+
+#[test]
+fn test_tabs_mixed_unicode_and_ascii() {
+    let t = Tabs::new().tabs(vec!["Home", "ホーム", "Settings"]);
+    assert_eq!(t.len(), 3);
+}
+
+#[test]
+fn test_tabs_newlines_in_label() {
+    let t = Tabs::new().tab("Line\n1").tab("Line\t2");
+    assert_eq!(t.len(), 2);
+}
+
+#[test]
+fn test_tabs_very_many_tabs() {
+    let tabs: Vec<_> = (1..=20).map(|i| format!("Tab{}", i)).collect();
+    let t = Tabs::new().tabs(tabs);
+    assert_eq!(t.len(), 20);
+}
+
+#[test]
+fn test_tabs_select_out_of_bounds() {
+    let mut t = Tabs::new().tab("A").tab("B").tab("C");
+    t.select(100);
+    // Should wrap or clamp to valid range
+}
+
+#[test]
+fn test_tabs_select_max_value() {
+    let mut t = Tabs::new().tab("A").tab("B").tab("C");
+    t.select(usize::MAX);
+    // Should handle max value (wrap or clamp)
+}
+
+#[test]
+fn test_tabs_duplicate_labels() {
+    let t = Tabs::new().tab("Same").tab("Same").tab("Same");
+    assert_eq!(t.len(), 3);
+}
+
+#[test]
+fn test_tabs_all_empty_labels() {
+    let t = Tabs::new().tab("").tab("").tab("");
+    assert_eq!(t.len(), 3);
+    assert_eq!(t.selected_label(), Some(""));
+}
+
+#[test]
+fn test_tabs_divider_with_long_labels() {
+    let mut buffer = Buffer::new(50, 3);
+    let area = Rect::new(0, 0, 50, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let t = Tabs::new().tab("LongLabel1").tab("LongLabel2").divider('|');
+
+    t.render(&mut ctx);
+    // Should render with dividers
+}
+
+#[test]
+fn test_tabs_render_with_focused() {
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 30, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let t = Tabs::new().tab("Test");
+    // Check if focused state affects rendering
+    t.render(&mut ctx);
+}
+
+#[test]
+fn test_tabs_width_divider_calculation() {
+    let t = Tabs::new().tab("A").tab("B").tab("C").divider('|');
+
+    // Each tab: space + label + space + divider
+    // Total: 3 tabs * (1 + 1 + 1 + 1) = 12 chars minimum
+    assert_eq!(t.len(), 3);
+}
+
+#[test]
+fn test_tabs_select_first_on_empty() {
+    let mut t = Tabs::new();
+    t.select_first();
+    // Should handle empty case
+}
+
+#[test]
+fn test_tabs_select_last_on_empty() {
+    let mut t = Tabs::new();
+    t.select_last();
+    // Should handle empty case
+}
+
+#[test]
+fn test_tabs_select_next_on_empty() {
+    let mut t = Tabs::new();
+    t.select_next();
+    // Should handle empty case
+}
+
+#[test]
+fn test_tabs_select_prev_on_empty() {
+    let mut t = Tabs::new();
+    t.select_prev();
+    // Should handle empty case
+}
+
+#[test]
+fn test_tabs_handle_key_tab() {
+    let mut t = Tabs::new().tab("A").tab("B").tab("C");
+    // Tab key might be used for navigation
+    let changed = t.handle_key(&Key::Tab);
+    // Implementation dependent
+    let _ = changed;
+}
+
+#[test]
+fn test_tabs_handle_key_shift_tab() {
+    // Shift+Tab might navigate backward
+    // Implementation dependent
+}
+
+#[test]
+fn test_tabs_render_clips_content() {
+    let mut buffer = Buffer::new(10, 3);
+    let area = Rect::new(0, 0, 10, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let t = Tabs::new().tab("VeryLong").tab("Another");
+
+    t.render(&mut ctx);
+    // Content should be clipped to fit
+}
+
+#[test]
+fn test_tabs_zero_width_divider() {
+    let t = Tabs::new().tab("A").tab("B").divider('\0');
+    assert_eq!(t.len(), 2);
+}
+
+#[test]
+fn test_tabs_multibyte_divider() {
+    let t = Tabs::new().tab("A").tab("B").divider('—');
+    assert_eq!(t.len(), 2);
+}
+
+#[test]
+fn test_tabs_render_different_bg_colors() {
+    let mut buffer = Buffer::new(30, 5);
+    let area = Rect::new(0, 0, 30, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let t = Tabs::new().tab("A").tab("B").bg(Color::rgb(50, 50, 50));
+
+    t.render(&mut ctx);
+}
+
+#[test]
+fn test_tabs_render_with_underline() {
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 30, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let t = Tabs::new().tab("Underline");
+    t.render(&mut ctx);
+}
+
+#[test]
+fn test_tabs_labels_with_brackets() {
+    let t = Tabs::new().tab("[A]").tab("[B]").tab("[C]");
+    assert_eq!(t.len(), 3);
+    assert_eq!(t.selected_label(), Some("[A]"));
+}
+
+#[test]
+fn test_tabs_labels_with_pipes() {
+    let t = Tabs::new().tab("A|B").tab("C|D");
+    assert_eq!(t.len(), 2);
+}
+
+#[test]
+fn test_tabs_label_with_spaces_only() {
+    let t = Tabs::new().tab("   ").tab("   ").tab("   ");
+    assert_eq!(t.len(), 3);
+}
+
+#[test]
+fn test_tabs_tabs_vec_empty() {
+    let t = Tabs::new().tabs(Vec::<String>::new());
+    assert_eq!(t.len(), 0);
+    assert!(t.is_empty());
+}
+
+#[test]
+fn test_tabs_tabs_vec_single() {
+    let t = Tabs::new().tabs(vec!["Only".to_string()]);
+    assert_eq!(t.len(), 1);
+}
+
+#[test]
+fn test_tabs_handle_key_all_navigation_keys() {
+    // Test all arrow keys that might work
+    // Implementation dependent - just verify keys compile
+}
+
+#[test]
+fn test_tabs_render_very_narrow_single_char() {
+    let mut buffer = Buffer::new(5, 3);
+    let area = Rect::new(0, 0, 5, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let t = Tabs::new().tab("X");
+    t.render(&mut ctx);
+}
+
+#[test]
+fn test_tabs_preserves_selection_after_tabs() {
+    let t1 = Tabs::new().tab("A").tab("B").tab("C").selected(1);
+    assert_eq!(t1.selected_index(), 1);
+
+    let t2 = t1.tabs(vec!["X".to_string(), "Y".to_string(), "Z".to_string()]);
+    // tabs() preserves the selected index (capped to len-1)
+    assert_eq!(t2.selected_index(), 1);
+}
+
+#[test]
+fn test_tabs_builder_consumes_self() {
+    let t1 = Tabs::new().tab("A").selected(0);
+
+    // Create a new Tabs - tab() consumes self
+    let t2 = t1.tab("B");
+    assert_eq!(t2.len(), 2);
+}

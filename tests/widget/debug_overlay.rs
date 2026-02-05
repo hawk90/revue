@@ -6,8 +6,8 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::debug_overlay::{
-    DebugConfig, DebugEvent, DebugOverlay, DebugPosition, EventLog, PerfMetrics, WidgetInfo,
-    enable_debug, disable_debug, is_debug_enabled, toggle_debug,
+    disable_debug, enable_debug, is_debug_enabled, toggle_debug, DebugConfig, DebugEvent,
+    DebugOverlay, DebugPosition, EventLog, PerfMetrics, WidgetInfo,
 };
 use revue::widget::traits::RenderContext;
 use revue::widget::Text;
@@ -507,9 +507,7 @@ fn test_widget_info_id() {
 
 #[test]
 fn test_widget_info_class() {
-    let info = WidgetInfo::new("Button")
-        .class("primary")
-        .class("large");
+    let info = WidgetInfo::new("Button").class("primary").class("large");
 
     assert_eq!(info.classes.len(), 2);
     assert!(info.classes.contains(&"primary".to_string()));
@@ -657,9 +655,7 @@ fn test_debug_overlay_render_not_visible() {
 #[test]
 fn test_debug_overlay_render_with_metrics() {
     let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text)
-        .show_metrics(true)
-        .width(30);
+    let mut overlay = DebugOverlay::wrap(text).show_metrics(true).width(30);
 
     overlay.metrics.start_frame();
     overlay.metrics.record_layout(Duration::from_millis(5));
@@ -681,9 +677,7 @@ fn test_debug_overlay_render_with_metrics() {
 #[test]
 fn test_debug_overlay_render_with_tree() {
     let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text)
-        .show_tree(true)
-        .width(30);
+    let mut overlay = DebugOverlay::wrap(text).show_tree(true).width(30);
 
     overlay.record_widget(WidgetInfo::new("Button").id("submit"));
 
@@ -702,9 +696,7 @@ fn test_debug_overlay_render_with_tree() {
 #[test]
 fn test_debug_overlay_render_with_events() {
     let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text)
-        .show_events(true)
-        .width(30);
+    let mut overlay = DebugOverlay::wrap(text).show_events(true).width(30);
 
     overlay.log_event(DebugEvent::KeyPress("a".to_string()));
 

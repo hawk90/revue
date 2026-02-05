@@ -12,9 +12,9 @@ use revue::widget::link;
 use revue::widget::url_link;
 use revue::widget::Link;
 use revue::widget::LinkStyle;
+use revue::widget::RenderContext;
 use revue::widget::StyledView;
 use revue::widget::View;
-use revue::widget::RenderContext;
 
 // ─────────────────────────────────────────────────────────────────────────
 // Constructor and Builder Tests
@@ -789,8 +789,7 @@ fn test_link_styled_view_has_class() {
 
 #[test]
 fn test_link_classes_builder() {
-    let link = Link::new("https://example.com")
-        .classes(vec!["class1", "class2", "class3"]);
+    let link = Link::new("https://example.com").classes(vec!["class1", "class2", "class3"]);
 
     assert!(link.has_class("class1"));
     assert!(link.has_class("class2"));
@@ -800,9 +799,7 @@ fn test_link_classes_builder() {
 
 #[test]
 fn test_link_duplicate_class_not_added() {
-    let link = Link::new("https://example.com")
-        .class("test")
-        .class("test");
+    let link = Link::new("https://example.com").class("test").class("test");
 
     let classes = View::classes(&link);
     assert_eq!(classes.len(), 1);
@@ -1093,8 +1090,7 @@ fn test_link_render_disabled_color() {
 #[test]
 fn test_link_render_custom_color_overrides_default() {
     // 사용자 정의 색상이 기본 색상을 오버라이드하는지 테스트
-    let link = Link::new("https://example.com")
-        .fg(Color::MAGENTA);
+    let link = Link::new("https://example.com").fg(Color::MAGENTA);
     let mut buffer = Buffer::new(30, 1);
     let area = Rect::new(0, 0, 30, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);
@@ -1110,9 +1106,7 @@ fn test_link_render_custom_color_overrides_default() {
 
 #[test]
 fn test_link_render_text_content() {
-    let link = Link::new("https://example.com")
-        .text("Hello")
-        .osc8(false); // OSC 8 비활성화하여 단순 텍스트 렌더링 테스트
+    let link = Link::new("https://example.com").text("Hello").osc8(false); // OSC 8 비활성화하여 단순 텍스트 렌더링 테스트
     let mut buffer = Buffer::new(20, 1);
     let area = Rect::new(0, 0, 20, 1);
     let mut ctx = RenderContext::new(&mut buffer, area);

@@ -607,3 +607,393 @@ fn test_spinner_style_ne() {
     assert_ne!(SpinnerStyle::Dots, SpinnerStyle::Line);
     assert_ne!(SpinnerStyle::Circle, SpinnerStyle::Arrow);
 }
+
+// =============================================================================
+// Color Tests
+// =============================================================================
+
+#[test]
+fn test_spinner_rgb_color() {
+    let s = Spinner::new().fg(Color::rgb(255, 128, 0));
+    let mut buffer = Buffer::new(5, 1);
+    let area = Rect::new(0, 0, 5, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::rgb(255, 128, 0)));
+}
+
+#[test]
+fn test_spinner_rgba_color() {
+    let s = Spinner::new().fg(Color::rgba(200, 100, 50, 180));
+    let mut buffer = Buffer::new(5, 1);
+    let area = Rect::new(0, 0, 5, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    assert_eq!(
+        buffer.get(0, 0).unwrap().fg,
+        Some(Color::rgba(200, 100, 50, 180))
+    );
+}
+
+#[test]
+fn test_spinner_multiple_fg_calls() {
+    let s = Spinner::new().fg(Color::YELLOW).fg(Color::RED);
+    let mut buffer = Buffer::new(5, 1);
+    let area = Rect::new(0, 0, 5, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    // Last call wins
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::RED));
+}
+
+// =============================================================================
+// Label Edge Cases
+// =============================================================================
+
+#[test]
+fn test_spinner_empty_label() {
+    let s = Spinner::new().label("");
+    let mut buffer = Buffer::new(5, 1);
+    let area = Rect::new(0, 0, 5, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '⠋');
+}
+
+#[test]
+fn test_spinner_unicode_label() {
+    let s = Spinner::new().label("로딩 중"); // Korean "Loading"
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '⠋');
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, '로');
+}
+
+#[test]
+fn test_spinner_emoji_label() {
+    let s = Spinner::new().label("🚀 Loading");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '⠋');
+    // Emoji renders correctly
+}
+
+#[test]
+fn test_spinner_very_long_label() {
+    let long_label = "This is a very long label that goes on and on and on";
+    let s = Spinner::new().label(long_label);
+    let mut buffer = Buffer::new(30, 1);
+    let area = Rect::new(0, 0, 30, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    // Should truncate to fit buffer
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '⠋');
+}
+
+#[test]
+fn test_spinner_label_with_spaces() {
+    let s = Spinner::new().label("  Multiple  Spaces  ");
+    let mut buffer = Buffer::new(30, 1);
+    let area = Rect::new(0, 0, 30, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    // Spaces should be preserved
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '⠋');
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, ' ');
+}
+
+#[test]
+fn test_spinner_label_single_char() {
+    let s = Spinner::new().label("X");
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '⠋');
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, 'X');
+}
+
+// =============================================================================
+// Frame Wrapping Edge Cases
+// =============================================================================
+
+#[test]
+fn test_spinner_wrap_large_frame() {
+    let mut s = Spinner::new().style(SpinnerStyle::Line);
+    s.set_frame(1000);
+    assert_eq!(s.frame(), 1000 % 4);
+}
+
+#[test]
+fn test_spinner_wrap_negative_frame() {
+    let mut s = Spinner::new().style(SpinnerStyle::Dots);
+    s.set_frame(9); // Last frame for Dots (10 frames: 0-9)
+    s.tick(); // Should wrap to 0
+    assert_eq!(s.frame(), 0);
+}
+
+#[test]
+fn test_spinner_all_styles_frame_count() {
+    let styles = [
+        (SpinnerStyle::Dots, 10),
+        (SpinnerStyle::Line, 4),
+        (SpinnerStyle::Circle, 4),
+        (SpinnerStyle::Arrow, 8),
+        (SpinnerStyle::Box, 4),
+        (SpinnerStyle::Bounce, 4),
+    ];
+
+    for (style, expected_frames) in styles {
+        let mut s = Spinner::new().style(style);
+        for i in 0..expected_frames {
+            s.set_frame(i);
+            assert_eq!(s.frame(), i, "Frame {} for {:?}", i, style);
+            s.tick();
+        }
+        // Should be back to 0 after full cycle
+        assert_eq!(
+            s.frame(),
+            0,
+            "Should wrap to 0 after {} ticks for {:?}",
+            expected_frames,
+            style
+        );
+    }
+}
+
+#[test]
+fn test_spinner_multiple_wraps() {
+    let mut s = Spinner::new().style(SpinnerStyle::Line);
+    for _ in 0..20 {
+        s.tick();
+    }
+    assert_eq!(s.frame(), 20 % 4);
+}
+
+// =============================================================================
+// State Transition Tests
+// =============================================================================
+
+#[test]
+fn test_spinner_state_transitions() {
+    let mut s = Spinner::new().style(SpinnerStyle::Line);
+
+    // Test each state transition
+    let expected_frames = ['|', '/', '-', '\\', '|'];
+    for (i, expected) in expected_frames.iter().enumerate() {
+        let mut buffer = Buffer::new(5, 1);
+        let area = Rect::new(0, 0, 5, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        s.render(&mut ctx);
+        assert_eq!(
+            buffer.get(0, 0).unwrap().symbol,
+            *expected,
+            "Frame {} should be {}",
+            i,
+            expected
+        );
+        s.tick();
+    }
+}
+
+#[test]
+fn test_spinner_reset_from_middle() {
+    let mut s = Spinner::new().style(SpinnerStyle::Circle);
+    s.set_frame(2);
+    assert_eq!(s.frame(), 2);
+    s.reset();
+    assert_eq!(s.frame(), 0);
+}
+
+#[test]
+fn test_spinner_reset_after_multiple_ticks() {
+    let mut s = Spinner::new().style(SpinnerStyle::Arrow);
+    for _ in 0..15 {
+        s.tick();
+    }
+    assert_ne!(s.frame(), 0);
+    s.reset();
+    assert_eq!(s.frame(), 0);
+}
+
+#[test]
+fn test_spinner_style_change_preserves_frame() {
+    // Create new instance with different style
+    let mut s1 = Spinner::new().style(SpinnerStyle::Line);
+    let mut s2 = Spinner::new().style(SpinnerStyle::Circle);
+    s1.set_frame(2);
+    s2.set_frame(2);
+    // Both should have same frame regardless of style
+    assert_eq!(s1.frame(), 2);
+    assert_eq!(s2.frame(), 2);
+}
+
+// =============================================================================
+// Render Multiple Times
+// =============================================================================
+
+#[test]
+fn test_spinner_render_multiple_times_same_position() {
+    let s = Spinner::new();
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+
+    for _ in 0..5 {
+        buffer.clear();
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        s.render(&mut ctx);
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '⠋');
+    }
+}
+
+#[test]
+fn test_spinner_render_at_different_areas() {
+    let s = Spinner::new().label("Test");
+    let mut buffer = Buffer::new(30, 5);
+
+    let areas = [
+        Rect::new(0, 0, 10, 1),
+        Rect::new(5, 2, 10, 1),
+        Rect::new(10, 4, 10, 1),
+    ];
+
+    for area in areas {
+        buffer.clear();
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        s.render(&mut ctx);
+        // Should render at each area
+        assert_eq!(buffer.get(area.x, area.y).unwrap().symbol, '⠋');
+    }
+}
+
+// =============================================================================
+// CSS Integration Tests (Extended)
+// =============================================================================
+
+#[test]
+fn test_spinner_multiple_classes() {
+    let s = Spinner::new()
+        .class("fast")
+        .class("spinner")
+        .class("loading");
+    assert!(s.has_class("fast"));
+    assert!(s.has_class("spinner"));
+    assert!(s.has_class("loading"));
+    assert_eq!(View::classes(&s).len(), 3);
+}
+
+#[test]
+fn test_spinner_class_operations() {
+    let mut s = Spinner::new();
+
+    StyledView::add_class(&mut s, "first");
+    assert!(StyledView::has_class(&s, "first"));
+
+    StyledView::add_class(&mut s, "second");
+    assert!(StyledView::has_class(&s, "second"));
+    assert_eq!(View::classes(&s).len(), 2);
+
+    StyledView::remove_class(&mut s, "first");
+    assert!(!StyledView::has_class(&s, "first"));
+    assert_eq!(View::classes(&s).len(), 1);
+}
+
+// =============================================================================
+// Additional Edge Cases
+// =============================================================================
+
+#[test]
+fn test_spinner_zero_area() {
+    let s = Spinner::new().label("Test");
+    let mut buffer = Buffer::new(10, 10);
+    let area = Rect::new(0, 0, 0, 0);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    // Should not panic
+}
+
+#[test]
+fn test_spinner_single_pixel_area() {
+    let s = Spinner::new();
+    let mut buffer = Buffer::new(1, 1);
+    let area = Rect::new(0, 0, 1, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '⠋');
+}
+
+#[test]
+fn test_spinner_label_with_newline() {
+    let s = Spinner::new().label("Line1\nLine2");
+    let mut buffer = Buffer::new(20, 2);
+    let area = Rect::new(0, 0, 20, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    // Should handle newlines
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '⠋');
+}
+
+#[test]
+fn test_spinner_label_with_tabs() {
+    let s = Spinner::new().label("Tab\there");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    // Should handle tabs
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '⠋');
+}
+
+#[test]
+fn test_spinner_all_styles_with_label() {
+    let styles = [
+        SpinnerStyle::Dots,
+        SpinnerStyle::Line,
+        SpinnerStyle::Circle,
+        SpinnerStyle::Arrow,
+        SpinnerStyle::Box,
+        SpinnerStyle::Bounce,
+    ];
+
+    for style in styles {
+        let s = Spinner::new().style(style).label("Test");
+        let mut buffer = Buffer::new(15, 1);
+        let area = Rect::new(0, 0, 15, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        s.render(&mut ctx);
+        // All should render spinner and label
+        assert_eq!(buffer.get(2, 0).unwrap().symbol, 'T');
+        assert_eq!(buffer.get(3, 0).unwrap().symbol, 'e');
+    }
+}
+
+#[test]
+fn test_spinner_label_color_independence() {
+    let s = Spinner::new().fg(Color::RED).label("Test");
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    s.render(&mut ctx);
+    // Spinner has color, label uses default
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::RED));
+    assert_eq!(buffer.get(2, 0).unwrap().fg, None);
+}

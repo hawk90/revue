@@ -475,7 +475,9 @@ fn test_digits_render_thin_style() {
 #[test]
 fn test_digits_render_braille_style() {
     // Braille 스타일 렌더링 테스트
-    let d = Digits::new("1234").style(DigitStyle::Braille).fg(Color::YELLOW);
+    let d = Digits::new("1234")
+        .style(DigitStyle::Braille)
+        .fg(Color::YELLOW);
     let mut buffer = Buffer::new(20, 10);
     let area = Rect::new(0, 0, 20, 10);
     let mut ctx = RenderContext::new(&mut buffer, area);
@@ -486,7 +488,9 @@ fn test_digits_render_braille_style() {
 #[test]
 fn test_digits_render_ascii_style() {
     // ASCII 스타일 렌더링 테스트
-    let d = Digits::new("5678").style(DigitStyle::Ascii).fg(Color::MAGENTA);
+    let d = Digits::new("5678")
+        .style(DigitStyle::Ascii)
+        .fg(Color::MAGENTA);
     let mut buffer = Buffer::new(30, 10);
     let area = Rect::new(0, 0, 30, 10);
     let mut ctx = RenderContext::new(&mut buffer, area);
@@ -937,9 +941,16 @@ fn test_digits_thin_style_characters() {
     let lines = d.render_lines();
     // Thin 스타일은 박스 드로잉 문자 사용
     let has_box_char = lines.iter().any(|l| {
-        l.contains('┌') || l.contains('┐') || l.contains('└') || l.contains('┘')
-            || l.contains('│') || l.contains('─') || l.contains('┬')
-            || l.contains('├') || l.contains('┤') || l.contains('┴')
+        l.contains('┌')
+            || l.contains('┐')
+            || l.contains('└')
+            || l.contains('┘')
+            || l.contains('│')
+            || l.contains('─')
+            || l.contains('┬')
+            || l.contains('├')
+            || l.contains('┤')
+            || l.contains('┴')
     });
     assert!(has_box_char);
 }
@@ -950,9 +961,9 @@ fn test_digits_ascii_style_characters() {
     let d = Digits::new("0").style(DigitStyle::Ascii);
     let lines = d.render_lines();
     // ASCII 스타일은 +, -, | 문자 사용
-    let has_ascii_char = lines.iter().any(|l| {
-        l.contains('+') || l.contains('-') || l.contains('|')
-    });
+    let has_ascii_char = lines
+        .iter()
+        .any(|l| l.contains('+') || l.contains('-') || l.contains('|'));
     assert!(has_ascii_char);
 }
 

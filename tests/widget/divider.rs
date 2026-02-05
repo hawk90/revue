@@ -731,3 +731,486 @@ fn test_orientation_partial_eq() {
 }
 
 // =============================================================================
+// Color Combination Tests
+// =============================================================================
+
+// =============================================================================
+// RGB/RGBA Color Tests
+// =============================================================================
+
+#[test]
+fn test_divider_rgb_color() {
+    let d = Divider::new().color(Color::rgb(255, 128, 0));
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::rgb(255, 128, 0)));
+}
+
+#[test]
+fn test_divider_rgba_color() {
+    let d = Divider::new().color(Color::rgba(200, 100, 50, 180));
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+    assert_eq!(
+        buffer.get(0, 0).unwrap().fg,
+        Some(Color::rgba(200, 100, 50, 180))
+    );
+}
+
+#[test]
+fn test_divider_multiple_colors() {
+    let d = Divider::new().color(Color::RED).label_color(Color::GREEN);
+
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+
+    // Find divider and check its color
+    for x in 0..20 {
+        if let Some(cell) = buffer.get(x, 0) {
+            if cell.symbol == '─' {
+                assert_eq!(cell.fg, Some(Color::RED));
+                break;
+            }
+        }
+    }
+}
+
+#[test]
+fn test_divider_all_color_presets() {
+    let colors = [
+        Color::RED,
+        Color::GREEN,
+        Color::BLUE,
+        Color::YELLOW,
+        Color::CYAN,
+        Color::MAGENTA,
+        Color::WHITE,
+        Color::BLACK,
+    ];
+
+    for color in colors {
+        let d = Divider::new().color(color);
+        let mut buffer = Buffer::new(10, 1);
+        let area = Rect::new(0, 0, 10, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        d.render(&mut ctx);
+
+        assert_eq!(buffer.get(0, 0).unwrap().fg, Some(color));
+    }
+}
+
+// =============================================================================
+// Multiple Render Calls
+// =============================================================================
+
+#[test]
+fn test_divider_multiple_renders() {
+    let d = divider().label("Test");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+
+    for _ in 0..5 {
+        buffer.clear();
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        d.render(&mut ctx);
+
+        // Should render consistently
+        let cell = buffer.get(0, 0).unwrap();
+        assert!(cell.symbol != ' ');
+    }
+}
+
+#[test]
+fn test_divider_multiple_areas() {
+    let d = divider();
+    let mut buffer = Buffer::new(30, 5);
+
+    let areas = [
+        Rect::new(0, 0, 10, 1),
+        Rect::new(10, 2, 10, 1),
+        Rect::new(20, 4, 10, 1),
+    ];
+
+    for area in areas {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        d.render(&mut ctx);
+    }
+}
+
+// =============================================================================
+// Label Edge Cases
+// =============================================================================
+
+#[test]
+fn test_divider_empty_label() {
+    let d = divider().label("");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+    // Should render without label
+}
+
+#[test]
+fn test_divider_whitespace_label() {
+    let d = divider().label("   ");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+}
+
+#[test]
+fn test_divider_emoji_label() {
+    let d = divider().label("🔥");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+}
+
+#[test]
+fn test_divider_unicode_label() {
+    let d = divider().label("日本語");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+}
+
+#[test]
+fn test_divider_rtl_label() {
+    let d = divider().label("مرحبا");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+}
+
+#[test]
+fn test_divider_special_chars_label() {
+    let d = divider().label("@#$%^&*()");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+}
+
+#[test]
+fn test_divider_newline_in_label() {
+    let d = divider().label("Line1\nLine2");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+}
+
+#[test]
+fn test_divider_tabs_in_label() {
+    let d = divider().label("Tab\tHere");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+}
+
+// =============================================================================
+// Additional Edge Cases
+// =============================================================================
+
+#[test]
+fn test_divider_very_small_length() {
+    let d = divider().length(1);
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '─');
+}
+
+#[test]
+fn test_divider_zero_length() {
+    let d = divider().length(0);
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+    // Should handle gracefully
+}
+
+#[test]
+fn test_divider_large_margin() {
+    let d = divider().margin(15);
+    let mut buffer = Buffer::new(40, 1);
+    let area = Rect::new(0, 0, 40, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+    // Margin should be respected
+}
+
+#[test]
+fn test_divider_zero_margin() {
+    let d = divider().margin(0);
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+}
+
+#[test]
+fn test_divider_single_pixel_width() {
+    let d = divider();
+    let mut buffer = Buffer::new(1, 1);
+    let area = Rect::new(0, 0, 1, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+}
+
+#[test]
+fn test_divider_single_pixel_height() {
+    let d = vdivider();
+    let mut buffer = Buffer::new(1, 1);
+    let area = Rect::new(0, 0, 1, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    d.render(&mut ctx);
+}
+
+#[test]
+fn test_divider_all_styles_vertical() {
+    let styles = [
+        DividerStyle::Solid,
+        DividerStyle::Dashed,
+        DividerStyle::Dotted,
+        DividerStyle::Double,
+        DividerStyle::Thick,
+    ];
+
+    for style in styles {
+        let d = Divider::new()
+            .orientation(Orientation::Vertical)
+            .style(style);
+
+        let mut buffer = Buffer::new(1, 10);
+        let area = Rect::new(0, 0, 1, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        d.render(&mut ctx);
+        // Should render without panic
+    }
+}
+
+#[test]
+fn test_divider_all_colors_with_styles() {
+    let colors = [Color::RED, Color::GREEN, Color::BLUE, Color::YELLOW];
+
+    for color in colors {
+        let d = divider().color(color).dashed();
+        let mut buffer = Buffer::new(10, 1);
+        let area = Rect::new(0, 0, 10, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        d.render(&mut ctx);
+
+        assert_eq!(buffer.get(0, 0).unwrap().fg, Some(color));
+    }
+}
+
+#[test]
+fn test_divider_label_with_all_styles() {
+    let styles = [
+        divider().label("Test"),
+        divider().dashed().label("Test"),
+        divider().dotted().label("Test"),
+        divider().double().label("Test"),
+        divider().thick().label("Test"),
+    ];
+
+    for d in styles {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        d.render(&mut ctx);
+
+        let text: String = (0..20)
+            .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
+            .collect();
+        assert!(text.contains("Test"));
+    }
+}
+
+#[test]
+fn test_divider_style_combinations() {
+    let combos = [
+        (DividerStyle::Dashed, Color::RED),
+        (DividerStyle::Dotted, Color::GREEN),
+        (DividerStyle::Double, Color::BLUE),
+        (DividerStyle::Thick, Color::YELLOW),
+        (DividerStyle::Solid, Color::CYAN),
+    ];
+
+    for (style, color) in combos {
+        let d = Divider::new().style(style).color(color);
+        let mut buffer = Buffer::new(10, 1);
+        let area = Rect::new(0, 0, 10, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        d.render(&mut ctx);
+
+        assert_eq!(buffer.get(0, 0).unwrap().fg, Some(color));
+    }
+}
+
+#[test]
+fn test_divider_label_all_colors() {
+    let colors = [
+        Color::RED,
+        Color::GREEN,
+        Color::BLUE,
+        Color::YELLOW,
+        Color::CYAN,
+        Color::MAGENTA,
+    ];
+
+    for color in colors {
+        let d = divider().label("X").label_color(color);
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        d.render(&mut ctx);
+
+        // Find label and check color
+        for x in 0..20 {
+            if let Some(cell) = buffer.get(x, 0) {
+                if cell.symbol == 'X' {
+                    assert_eq!(cell.fg, Some(color));
+                    break;
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn test_divider_all_styles_with_label() {
+    let styles = [
+        DividerStyle::Solid,
+        DividerStyle::Dashed,
+        DividerStyle::Dotted,
+        DividerStyle::Double,
+        DividerStyle::Thick,
+    ];
+
+    for style in styles {
+        let d = divider().style(style).label("Test");
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        d.render(&mut ctx);
+
+        let text: String = (0..20)
+            .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
+            .collect();
+        assert!(text.contains("Test"));
+    }
+}
+
+#[test]
+fn test_divider_orientation_with_all_styles() {
+    let styles = [
+        DividerStyle::Solid,
+        DividerStyle::Dashed,
+        DividerStyle::Dotted,
+        DividerStyle::Double,
+        DividerStyle::Thick,
+    ];
+
+    for style in styles {
+        // Horizontal
+        let d1 = Divider::new().style(style);
+        let mut buffer = Buffer::new(10, 1);
+        let area = Rect::new(0, 0, 10, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        d1.render(&mut ctx);
+
+        // Vertical
+        let d2 = Divider::new()
+            .orientation(Orientation::Vertical)
+            .style(style);
+        let mut buffer = Buffer::new(1, 10);
+        let area = Rect::new(0, 0, 1, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        d2.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_divider_width_variations() {
+    let widths = [1, 5, 10, 15, 20];
+
+    for width in widths {
+        let d = divider().length(width);
+        let mut buffer = Buffer::new(30, 1);
+        let area = Rect::new(0, 0, 30, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        d.render(&mut ctx);
+
+        // First char should always be the divider
+        let cell = buffer.get(0, 0).unwrap();
+        assert!(
+            cell.symbol == '─'
+                || cell.symbol == '═'
+                || cell.symbol == '━'
+                || cell.symbol == '╌'
+                || cell.symbol == '┄'
+                || cell.symbol == '═'
+        );
+    }
+}
+
+#[test]
+fn test_divider_height_variations() {
+    let heights = [1, 5, 10, 15, 20];
+
+    for height in heights {
+        let d = Divider::new()
+            .orientation(Orientation::Vertical)
+            .length(height);
+        let mut buffer = Buffer::new(1, 30);
+        let area = Rect::new(0, 0, 1, 30);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        d.render(&mut ctx);
+
+        // First char should always be the divider
+        let cell = buffer.get(0, 0).unwrap();
+        assert!(
+            cell.symbol == '│'
+                || cell.symbol == '║'
+                || cell.symbol == '┃'
+                || cell.symbol == '╎'
+                || cell.symbol == '┆'
+                || cell.symbol == '║'
+        );
+    }
+}
+
+// =============================================================================

@@ -5,8 +5,8 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
-use revue::widget::{card, Card, CardVariant, BorderType, StyledView, View};
 use revue::widget::Text;
+use revue::widget::{card, BorderType, Card, CardVariant, StyledView, View};
 
 // =============================================================================
 // Constructor and Builder Tests
@@ -81,9 +81,7 @@ fn test_card_subtitle_korean() {
 
 #[test]
 fn test_card_title_and_subtitle() {
-    let c = Card::new()
-        .title("Main Title")
-        .subtitle("Description");
+    let c = Card::new().title("Main Title").subtitle("Description");
     let mut buffer = Buffer::new(20, 10);
     let area = Rect::new(0, 0, 20, 10);
     let mut ctx = RenderContext::new(&mut buffer, area);
@@ -597,9 +595,7 @@ fn test_card_render_with_title_and_subtitle() {
     let area = Rect::new(0, 0, 20, 10);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let c = Card::new()
-        .title("Title")
-        .subtitle("Subtitle");
+    let c = Card::new().title("Title").subtitle("Subtitle");
     c.render(&mut ctx);
 
     // Check border
@@ -612,9 +608,7 @@ fn test_card_render_with_body() {
     let area = Rect::new(0, 0, 20, 10);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let c = Card::new()
-        .title("Title")
-        .body(Text::new("Body content"));
+    let c = Card::new().title("Title").body(Text::new("Body content"));
     c.render(&mut ctx);
 
     // Should have separator between title and body
@@ -767,9 +761,7 @@ fn test_card_css_id() {
 
 #[test]
 fn test_card_css_classes() {
-    let c = Card::new()
-        .class("card-primary")
-        .class("shadow");
+    let c = Card::new().class("card-primary").class("shadow");
 
     assert!(c.has_class("card-primary"));
     assert!(c.has_class("shadow"));
@@ -880,9 +872,7 @@ fn test_card_multiple_chained_builders() {
 
 #[test]
 fn test_card_disabled_keyboard() {
-    let mut c = Card::new()
-        .collapsible(true)
-        .disabled(true);
+    let mut c = Card::new().collapsible(true).disabled(true);
     assert!(c.is_disabled());
 
     // Should not handle keys when disabled
@@ -952,10 +942,7 @@ fn test_card_without_border_padding() {
     let area = Rect::new(0, 0, 20, 10);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    let c = Card::new()
-        .flat()
-        .padding(0)
-        .title("No padding");
+    let c = Card::new().flat().padding(0).title("No padding");
     c.render(&mut ctx);
 
     // Should render without issues

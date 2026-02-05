@@ -438,9 +438,7 @@ fn test_scroll_view_render_scrollbar_colors() {
 
 #[test]
 fn test_render_content() {
-    let sv = ScrollView::new()
-        .content_height(50)
-        .scroll_offset(10);
+    let sv = ScrollView::new().content_height(50).scroll_offset(10);
 
     let mut content_buffer = Buffer::new(15, 50);
     // Fill content with some test data
@@ -470,9 +468,7 @@ fn test_render_content() {
 
 #[test]
 fn test_render_content_with_offset() {
-    let sv = ScrollView::new()
-        .content_height(100)
-        .scroll_offset(50);
+    let sv = ScrollView::new().content_height(100).scroll_offset(50);
 
     let mut content_buffer = Buffer::new(15, 100);
     for y in 0..100 {
@@ -518,9 +514,7 @@ fn test_content_area_without_scrollbar() {
 
 #[test]
 fn test_content_area_scrollbar_disabled() {
-    let sv = ScrollView::new()
-        .content_height(100)
-        .show_scrollbar(false);
+    let sv = ScrollView::new().content_height(100).show_scrollbar(false);
     let area = Rect::new(0, 0, 80, 24);
 
     let content_area = sv.content_area(area);
@@ -706,8 +700,7 @@ fn test_scrollbar_position_middle() {
 
     // Scrollbar thumb should be somewhere in the middle
     let scrollbar_x = area.x + area.width - 1;
-    let thumb_found = (0..20)
-        .any(|y| buffer.get(scrollbar_x, y).unwrap().symbol == '█');
+    let thumb_found = (0..20).any(|y| buffer.get(scrollbar_x, y).unwrap().symbol == '█');
     assert!(thumb_found);
 }
 
@@ -750,9 +743,7 @@ fn test_scroll_view_classes_with_values() {
 
 #[test]
 fn test_scroll_view_meta() {
-    let sv = ScrollView::new()
-        .element_id("test-scroll")
-        .class("scroll");
+    let sv = ScrollView::new().element_id("test-scroll").class("scroll");
     let meta = sv.meta();
     assert_eq!(meta.widget_type, "ScrollView");
     assert_eq!(meta.id, Some("test-scroll".to_string()));

@@ -132,7 +132,7 @@
 //!
 //! | Module | Description |
 //! |--------|-------------|
-//! | [`app`] | Application lifecycle and event loop |
+//! | [`core::app`] | Application lifecycle and event loop |
 //! | [`dom`] | Virtual DOM and rendering tree |
 //! | [`event`] | Keyboard/mouse events and keymaps |
 //! | [`layout`] | Flexbox layout engine |
@@ -419,7 +419,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// # Included Items
 ///
 /// ## Core Types
-/// - [`app::App`] - Application builder and runner
+/// - [`core::app::App`] - Application builder and runner
 /// - [`widget::View`], [`widget::RenderContext`] - Widget rendering trait
 /// - [`Result`] - Error handling
 ///

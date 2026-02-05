@@ -463,25 +463,19 @@ fn test_markdown_table_simple() {
 
 #[test]
 fn test_markdown_table_multiple_rows() {
-    let md = Markdown::new(
-        "| Name | Age |\n|------|-----|\n| Alice | 30 |\n| Bob | 25 |",
-    );
+    let md = Markdown::new("| Name | Age |\n|------|-----|\n| Alice | 30 |\n| Bob | 25 |");
     assert!(md.line_count() >= 5);
 }
 
 #[test]
 fn test_markdown_table_multiple_columns() {
-    let md = Markdown::new(
-        "| A | B | C | D |\n|---|---|---|---|\n| 1 | 2 | 3 | 4 |",
-    );
+    let md = Markdown::new("| A | B | C | D |\n|---|---|---|---|\n| 1 | 2 | 3 | 4 |");
     assert!(md.line_count() >= 4);
 }
 
 #[test]
 fn test_markdown_table_with_content() {
-    let md = Markdown::new(
-        "| Header 1 | Header 2 |\n|----------|----------|\n| Data 1 | Data 2 |",
-    );
+    let md = Markdown::new("| Header 1 | Header 2 |\n|----------|----------|\n| Data 1 | Data 2 |");
     assert!(md.line_count() >= 4);
 }
 
@@ -497,9 +491,8 @@ fn test_markdown_footnote_reference() {
 
 #[test]
 fn test_markdown_multiple_footnotes() {
-    let md = Markdown::new(
-        "First[^a] and second[^b].\n\n[^a]: First footnote.\n[^b]: Second footnote.",
-    );
+    let md =
+        Markdown::new("First[^a] and second[^b].\n\n[^a]: First footnote.\n[^b]: Second footnote.");
     assert!(md.line_count() >= 3);
 }
 
@@ -581,13 +574,17 @@ fn test_markdown_figlet_font_banner() {
 
 #[test]
 fn test_markdown_figlet_max_level_1() {
-    let md = Markdown::new("# H1\n\n## H2\n\n### H3").figlet_headings(true).figlet_max_level(1);
+    let md = Markdown::new("# H1\n\n## H2\n\n### H3")
+        .figlet_headings(true)
+        .figlet_max_level(1);
     assert!(md.line_count() >= 3);
 }
 
 #[test]
 fn test_markdown_figlet_max_level_2() {
-    let md = Markdown::new("# H1\n\n## H2\n\n### H3").figlet_headings(true).figlet_max_level(2);
+    let md = Markdown::new("# H1\n\n## H2\n\n### H3")
+        .figlet_headings(true)
+        .figlet_max_level(2);
     assert!(md.line_count() >= 3);
 }
 
@@ -830,7 +827,9 @@ fn test_markdown_view_classes_with_values() {
 
 #[test]
 fn test_markdown_view_meta() {
-    let md = Markdown::new("# Test").element_id("test-id").class("test-class");
+    let md = Markdown::new("# Test")
+        .element_id("test-id")
+        .class("test-class");
     let meta = md.meta();
     assert_eq!(meta.widget_type, "Markdown");
     assert_eq!(meta.id, Some("test-id".to_string()));

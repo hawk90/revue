@@ -9,7 +9,7 @@
 //!
 //! | Widget | Description | Constructor |
 //! |--------|-------------|-------------|
-//! | [`Text`] | Styled text | [`text()`] |
+//! | [`Text`] | Styled text | `text()` |
 //! | [`RichText`] | Markup-styled text | [`rich_text()`], [`markup()`] |
 //! | [`BigText`] | Large heading text | [`h1()`], [`h2()`], [`h3()`], [`bigtext()`] |
 //!

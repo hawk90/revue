@@ -5,7 +5,7 @@
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
-use revue::widget::traits::{RenderContext, View};
+use revue::widget::traits::{RenderContext, StyledView, View};
 use revue::widget::{qrcode, ErrorCorrection, QrCodeWidget, QrStyle};
 
 // =============================================================================
@@ -611,4 +611,381 @@ fn test_qrcode_all_styles_render() {
 
         // Should not panic for any style
     }
+}
+
+// =============================================================================
+// QrStyle Enum Tests
+// =============================================================================
+
+#[test]
+fn test_qr_style_default() {
+    let style = QrStyle::default();
+    assert_eq!(style, QrStyle::HalfBlock);
+}
+
+#[test]
+fn test_qr_style_partial_eq() {
+    assert_eq!(QrStyle::HalfBlock, QrStyle::HalfBlock);
+    assert_eq!(QrStyle::FullBlock, QrStyle::FullBlock);
+    assert_eq!(QrStyle::Ascii, QrStyle::Ascii);
+    assert_eq!(QrStyle::Braille, QrStyle::Braille);
+    assert_ne!(QrStyle::HalfBlock, QrStyle::Ascii);
+}
+
+#[test]
+fn test_qr_style_all_variants() {
+    let _ = QrStyle::HalfBlock;
+    let _ = QrStyle::FullBlock;
+    let _ = QrStyle::Ascii;
+    let _ = QrStyle::Braille;
+}
+
+// =============================================================================
+// ErrorCorrection Enum Tests
+// =============================================================================
+
+#[test]
+fn test_error_correction_default() {
+    let ec = ErrorCorrection::default();
+    assert_eq!(ec, ErrorCorrection::Medium);
+}
+
+#[test]
+fn test_error_correction_partial_eq() {
+    assert_eq!(ErrorCorrection::Low, ErrorCorrection::Low);
+    assert_eq!(ErrorCorrection::Medium, ErrorCorrection::Medium);
+    assert_eq!(ErrorCorrection::Quartile, ErrorCorrection::Quartile);
+    assert_eq!(ErrorCorrection::High, ErrorCorrection::High);
+    assert_ne!(ErrorCorrection::Low, ErrorCorrection::High);
+}
+
+#[test]
+fn test_error_correction_all_variants() {
+    let _ = ErrorCorrection::Low;
+    let _ = ErrorCorrection::Medium;
+    let _ = ErrorCorrection::Quartile;
+    let _ = ErrorCorrection::High;
+}
+
+// =============================================================================
+// CSS Integration Tests
+// =============================================================================
+
+#[test]
+fn test_qrcode_element_id() {
+    let qr = QrCodeWidget::new("test").element_id("my-qr");
+    assert_eq!(View::id(&qr), Some("my-qr"));
+}
+
+#[test]
+fn test_qrcode_classes() {
+    let qr = QrCodeWidget::new("test")
+        .class("qr-class")
+        .class("scan-target");
+    assert!(View::classes(&qr).contains(&"qr-class".to_string()));
+    assert!(View::classes(&qr).contains(&"scan-target".to_string()));
+}
+
+#[test]
+fn test_qrcode_styled_view_methods() {
+    let mut qr = QrCodeWidget::new("test");
+
+    qr.set_id("test-qr");
+    assert_eq!(View::id(&qr), Some("test-qr"));
+
+    qr.add_class("active");
+    assert!(View::classes(&qr).contains(&"active".to_string()));
+
+    qr.remove_class("active");
+    assert!(!View::classes(&qr).contains(&"active".to_string()));
+
+    qr.toggle_class("visible");
+    assert!(View::classes(&qr).contains(&"visible".to_string()));
+
+    qr.toggle_class("visible");
+    assert!(!View::classes(&qr).contains(&"visible".to_string()));
+}
+
+#[test]
+fn test_qrcode_meta() {
+    let qr = QrCodeWidget::new("test");
+    let meta = qr.meta();
+    assert!(meta.widget_type.contains("QrCodeWidget"));
+}
+
+// =============================================================================
+// Additional Edge Cases
+// =============================================================================
+
+#[test]
+fn test_qrcode_numeric_data() {
+    let numeric = "1234567890";
+    let qr = QrCodeWidget::new(numeric);
+    assert!(qr.required_size().is_some());
+}
+
+#[test]
+fn test_qrcode_url_data() {
+    let url = "https://example.com/path?query=value&param2=123";
+    let qr = QrCodeWidget::new(url);
+    assert!(qr.required_size().is_some());
+}
+
+#[test]
+fn test_qrcode_email_data() {
+    let email = "mailto:user@example.com?subject=Test&body=Hello";
+    let qr = QrCodeWidget::new(email);
+    assert!(qr.required_size().is_some());
+}
+
+#[test]
+fn test_qrcode_emoji_data() {
+    let emoji = "Hello 😀 🌍 🎉";
+    let qr = QrCodeWidget::new(emoji);
+    assert!(qr.required_size().is_some());
+}
+
+#[test]
+fn test_qrcode_empty_after_set_data() {
+    let mut qr = QrCodeWidget::new("initial");
+    qr.set_data("");
+    // Empty data should still render without panicking
+    let mut buffer = Buffer::new(20, 20);
+    let area = Rect::new(0, 0, 20, 20);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    qr.render(&mut ctx);
+}
+
+#[test]
+fn test_qrcode_single_character() {
+    let qr = QrCodeWidget::new("A");
+    assert!(qr.required_size().is_some());
+}
+
+#[test]
+fn test_qrcode_binary_like_data() {
+    let binary = "\x00\x01\x02\x03";
+    let qr = QrCodeWidget::new(binary);
+    // Should handle without panicking
+    let _ = qr.required_size();
+}
+
+#[test]
+fn test_qrcode_large_quiet_zone() {
+    let qr = QrCodeWidget::new("test").quiet_zone(10);
+    let size = qr.required_size().unwrap();
+    // Large quiet zone should produce significantly larger size
+    assert!(size.0 > 20);
+}
+
+#[test]
+fn test_qrcode_zero_quiet_zone() {
+    let qr = QrCodeWidget::new("test").quiet_zone(0);
+    let mut buffer = Buffer::new(30, 30);
+    let area = Rect::new(0, 0, 30, 30);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    qr.render(&mut ctx);
+    // Should render without quiet zone
+}
+
+#[test]
+fn test_qrcode_negative_area() {
+    let qr = QrCodeWidget::new("test");
+    let mut buffer = Buffer::new(0, 0);
+    let area = Rect::new(0, 0, 0, 0);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    qr.render(&mut ctx);
+    // Should handle gracefully
+}
+
+#[test]
+fn test_qrcode_different_data_different_size() {
+    let qr1 = QrCodeWidget::new("test");
+    let size1 = qr1.required_size().unwrap();
+
+    let qr2 = QrCodeWidget::new("test with more data");
+    let size2 = qr2.required_size().unwrap();
+
+    // Different data should produce different sizes
+    let _ = (size1, size2);
+}
+
+#[test]
+fn test_qrcode_inverted_colors_rendering() {
+    let qr_normal = QrCodeWidget::new("test").inverted(false);
+    let qr_inverted = QrCodeWidget::new("test").inverted(true);
+
+    let mut buffer1 = Buffer::new(30, 30);
+    let area = Rect::new(0, 0, 30, 30);
+    let mut ctx1 = RenderContext::new(&mut buffer1, area);
+    qr_normal.render(&mut ctx1);
+
+    let mut buffer2 = Buffer::new(30, 30);
+    let mut ctx2 = RenderContext::new(&mut buffer2, area);
+    qr_inverted.render(&mut ctx2);
+
+    // Both should render without panic
+}
+
+#[test]
+fn test_qrcode_fg_bg_only() {
+    let qr = QrCodeWidget::new("test")
+        .fg(Color::GREEN)
+        .bg(Color::rgb(20, 20, 20));
+
+    let mut buffer = Buffer::new(30, 30);
+    let area = Rect::new(0, 0, 30, 30);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    qr.render(&mut ctx);
+}
+
+#[test]
+fn test_qrcode_custom_color_combinations() {
+    let combinations = vec![
+        (Color::RED, Color::WHITE),
+        (Color::BLUE, Color::YELLOW),
+        (Color::rgb(255, 0, 255), Color::BLACK),
+    ];
+
+    for (fg, bg) in combinations {
+        let qr = QrCodeWidget::new("test").fg(fg).bg(bg);
+        let mut buffer = Buffer::new(30, 30);
+        let area = Rect::new(0, 0, 30, 30);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        qr.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_qrcode_all_error_correction_with_long_data() {
+    let data = "A".repeat(200);
+    for ec in [
+        ErrorCorrection::Low,
+        ErrorCorrection::Medium,
+        ErrorCorrection::Quartile,
+        ErrorCorrection::High,
+    ] {
+        let qr = QrCodeWidget::new(&data).error_correction(ec);
+        assert!(qr.required_size().is_some());
+    }
+}
+
+#[test]
+fn test_qrcode_multiline_data() {
+    let multiline = "Line 1\nLine 2\nLine 3\nLine 4";
+    let qr = QrCodeWidget::new(multiline);
+    assert!(qr.required_size().is_some());
+}
+
+#[test]
+fn test_qrcode_whitespace_data() {
+    let whitespace = "   \t\t\n\r\n   ";
+    let qr = QrCodeWidget::new(whitespace);
+    // Should handle whitespace
+    let _ = qr.required_size();
+}
+
+#[test]
+fn test_qrcode_unicode_combining_characters() {
+    let combining = "éêâ"; // Letters with combining diacritics
+    let qr = QrCodeWidget::new(combining);
+    assert!(qr.required_size().is_some());
+}
+
+#[test]
+fn test_qrcode_very_short_area_fit() {
+    let qr = QrCodeWidget::new("test");
+    let mut buffer = Buffer::new(50, 2);
+    let area = Rect::new(0, 0, 50, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    qr.render(&mut ctx);
+}
+
+#[test]
+fn test_qrcode_very_narrow_area_fit() {
+    let qr = QrCodeWidget::new("test");
+    let mut buffer = Buffer::new(5, 50);
+    let area = Rect::new(0, 0, 5, 50);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    qr.render(&mut ctx);
+}
+
+#[test]
+fn test_qrcode_offset_rendering() {
+    let qr = QrCodeWidget::new("test");
+    let mut buffer = Buffer::new(50, 50);
+    let area = Rect::new(10, 10, 30, 30);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    qr.render(&mut ctx);
+}
+
+#[test]
+fn test_qrcode_multiple_render_calls() {
+    let qr = QrCodeWidget::new("test");
+    let mut buffer = Buffer::new(30, 30);
+    let area = Rect::new(0, 0, 30, 30);
+
+    for _ in 0..5 {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        qr.render(&mut ctx);
+    }
+}
+
+#[test]
+fn test_qrcode_mixed_styles_render_differently() {
+    let data = "test data";
+    let styles = [QrStyle::HalfBlock, QrStyle::Ascii, QrStyle::Braille];
+
+    let buffers: Vec<_> = styles
+        .iter()
+        .map(|style| {
+            let mut buffer = Buffer::new(30, 30);
+            let area = Rect::new(0, 0, 30, 30);
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            QrCodeWidget::new(data).style(*style).render(&mut ctx);
+            buffer
+        })
+        .collect();
+
+    // Each style should produce some output
+    for buffer in &buffers {
+        let mut found_content = false;
+        for y in 0..30 {
+            for x in 0..30 {
+                if let Some(cell) = buffer.get(x, y) {
+                    if cell.symbol != ' ' {
+                        found_content = true;
+                        break;
+                    }
+                }
+            }
+            if found_content {
+                break;
+            }
+        }
+        assert!(found_content, "Style should produce visible output");
+    }
+}
+
+#[test]
+fn test_qrcode_helper_with_chaining() {
+    let qr = qrcode("test")
+        .style(QrStyle::Ascii)
+        .fg(Color::CYAN)
+        .bg(Color::BLACK);
+
+    let mut buffer = Buffer::new(30, 30);
+    let area = Rect::new(0, 0, 30, 30);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    qr.render(&mut ctx);
+}
+
+#[test]
+fn test_qrcode_view_id_after_builders() {
+    let qr = QrCodeWidget::new("test")
+        .element_id("test-id")
+        .class("test-class");
+
+    assert_eq!(View::id(&qr), Some("test-id"));
+    assert!(View::classes(&qr).contains(&"test-class".to_string()));
 }

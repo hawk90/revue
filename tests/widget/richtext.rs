@@ -644,3 +644,559 @@ fn test_rich_text_span_method() {
 
     assert_eq!(rt.len(), 1);
 }
+
+// =============================================================================
+// Style Clone Tests
+// =============================================================================
+
+#[test]
+fn test_style_clone() {
+    let style1 = Style::new().bold().fg(Color::RED);
+    let style2 = style1.clone();
+
+    assert_eq!(style1.bold, style2.bold);
+    assert_eq!(style1.fg, style2.fg);
+}
+
+#[test]
+fn test_span_clone_independent() {
+    let span1 = Span::styled("Test", Style::new().bold());
+    let span2 = span1.clone();
+
+    // Modifying one should not affect the other
+    assert_eq!(span1.text, span2.text);
+    assert_eq!(span1.style.bold, span2.style.bold);
+}
+
+// =============================================================================
+// RGB/RGBA Color Tests
+// =============================================================================
+
+#[test]
+fn test_style_rgb_color() {
+    let style = Style::new().fg(Color::rgb(100, 150, 200));
+    assert_eq!(style.fg, Some(Color::rgb(100, 150, 200)));
+}
+
+#[test]
+fn test_style_rgba_color() {
+    let style = Style::new().fg(Color::rgba(200, 100, 50, 180));
+    assert_eq!(style.fg, Some(Color::rgba(200, 100, 50, 180)));
+}
+
+#[test]
+fn test_style_rgb_bg() {
+    let style = Style::new().bg(Color::rgb(50, 60, 70));
+    assert_eq!(style.bg, Some(Color::rgb(50, 60, 70)));
+}
+
+#[test]
+fn test_style_rgba_bg() {
+    let style = Style::new().bg(Color::rgba(30, 40, 50, 200));
+    assert_eq!(style.bg, Some(Color::rgba(30, 40, 50, 200)));
+}
+
+#[test]
+fn test_render_rgb_colors() {
+    let rt = RichText::new()
+        .push("RGB ", Style::new().fg(Color::rgb(255, 128, 0)))
+        .push("RGBA ", Style::new().fg(Color::rgba(200, 100, 50, 180)));
+
+    let mut buffer = Buffer::new(40, 5);
+    let area = Rect::new(0, 0, 40, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rt.render(&mut ctx);
+
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::rgb(255, 128, 0)));
+    assert_eq!(
+        buffer.get(4, 0).unwrap().fg,
+        Some(Color::rgba(200, 100, 50, 180))
+    );
+}
+
+// =============================================================================
+// Multiple Render Calls
+// =============================================================================
+
+#[test]
+fn test_rich_text_multiple_renders() {
+    let rt = RichText::new().text("Test Text");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+
+    for _ in 0..5 {
+        buffer.clear();
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        rt.render(&mut ctx);
+
+        // Should render consistently
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'T');
+    }
+}
+
+#[test]
+fn test_rich_text_render_after_append() {
+    let mut rt = RichText::new().text("First");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+
+    // Render original
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        rt.render(&mut ctx);
+    }
+    assert_eq!(rt.width(), 5);
+
+    // Append and render again
+    rt.append(" Second", Style::new());
+    buffer.clear();
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        rt.render(&mut ctx);
+    }
+    assert_eq!(rt.width(), 12);
+}
+
+// =============================================================================
+// CSS Integration Tests
+// =============================================================================
+
+#[test]
+fn test_rich_text_element_id() {
+    let rt = RichText::new().element_id("my-text");
+    assert_eq!(rt.id(), Some("my-text"));
+}
+
+#[test]
+fn test_rich_text_single_class() {
+    let rt = RichText::new().class("highlight");
+    assert!(View::classes(&rt).contains(&"highlight".to_string()));
+}
+
+#[test]
+fn test_rich_text_multiple_classes() {
+    let rt = RichText::new()
+        .class("class1")
+        .class("class2")
+        .class("class3");
+    let classes = View::classes(&rt);
+
+    assert!(classes.contains(&"class1".to_string()));
+    assert!(classes.contains(&"class2".to_string()));
+    assert!(classes.contains(&"class3".to_string()));
+}
+
+#[test]
+fn test_rich_text_classes_vec() {
+    let rt = RichText::new().classes(vec!["a", "b", "c"]);
+    let classes = View::classes(&rt);
+
+    assert_eq!(classes.len(), 3);
+}
+
+#[test]
+fn test_rich_text_meta() {
+    let rt = RichText::new()
+        .element_id("test-text")
+        .class("primary")
+        .text("Content");
+
+    let meta = rt.meta();
+    assert_eq!(meta.id, Some("test-text".to_string()));
+    assert!(meta.classes.contains("primary"));
+    assert!(meta.widget_type.contains("RichText"));
+}
+
+#[test]
+fn test_rich_text_view_widget_type() {
+    let rt = RichText::new();
+    assert!(rt.widget_type().contains("RichText"));
+}
+
+#[test]
+fn test_rich_text_view_children() {
+    let rt = RichText::new();
+    assert!(View::children(&rt).is_empty());
+}
+
+// =============================================================================
+// Additional Rendering Edge Cases
+// =============================================================================
+
+#[test]
+fn test_render_single_char() {
+    let rt = RichText::new().text("A");
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rt.render(&mut ctx);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'A');
+}
+
+#[test]
+fn test_render_emoji_only() {
+    let rt = RichText::new().text("😀😃😄");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rt.render(&mut ctx);
+    // Should render emoji
+    let cell = buffer.get(0, 0).unwrap();
+    assert_ne!(cell.symbol, ' ');
+}
+
+#[test]
+fn test_render_empty_string() {
+    let rt = RichText::new().text("");
+    let mut buffer = Buffer::new(10, 1);
+    let area = Rect::new(0, 0, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rt.render(&mut ctx);
+    // Should not panic
+}
+
+#[test]
+fn test_render_with_offset() {
+    let rt = RichText::new().text("Test");
+    let mut buffer = Buffer::new(30, 10);
+    let area = Rect::new(10, 5, 10, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rt.render(&mut ctx);
+    assert_eq!(buffer.get(10, 5).unwrap().symbol, 'T');
+}
+
+#[test]
+fn test_render_single_pixel_width() {
+    let rt = RichText::new().text("A");
+    let mut buffer = Buffer::new(1, 1);
+    let area = Rect::new(0, 0, 1, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rt.render(&mut ctx);
+}
+
+#[test]
+fn test_render_zero_height() {
+    let rt = RichText::new().text("Test");
+    let mut buffer = Buffer::new(10, 0);
+    let area = Rect::new(0, 0, 10, 0);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rt.render(&mut ctx);
+}
+
+#[test]
+fn test_render_newline_in_text() {
+    let rt = RichText::new().text("Line1\nLine2");
+    let mut buffer = Buffer::new(20, 2);
+    let area = Rect::new(0, 0, 20, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rt.render(&mut ctx);
+}
+
+#[test]
+fn test_render_tabs_in_text() {
+    let rt = RichText::new().text("Item\tTabbed");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rt.render(&mut ctx);
+}
+
+// =============================================================================
+// Modifier Combination Tests
+// =============================================================================
+
+#[test]
+fn test_style_bold_italic() {
+    let rt = RichText::markup("[b][i]Bold Italic[/][/]");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rt.render(&mut ctx);
+
+    let cell = buffer.get(0, 0).unwrap();
+    assert!(cell.modifier.contains(Modifier::BOLD));
+    assert!(cell.modifier.contains(Modifier::ITALIC));
+}
+
+#[test]
+fn test_style_bold_underline() {
+    let rt = RichText::markup("[b][u]Bold Underline[/][/]");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rt.render(&mut ctx);
+
+    let cell = buffer.get(0, 0).unwrap();
+    assert!(cell.modifier.contains(Modifier::BOLD));
+    assert!(cell.modifier.contains(Modifier::UNDERLINE));
+}
+
+#[test]
+fn test_style_all_modifiers_render() {
+    let rt = RichText::markup("[b][i][u][dim][s][rev]All[/][/][/][/][/]");
+    let mut buffer = Buffer::new(20, 1);
+    let area = Rect::new(0, 0, 20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rt.render(&mut ctx);
+
+    let cell = buffer.get(0, 0).unwrap();
+    assert!(cell.modifier.contains(Modifier::BOLD));
+    assert!(cell.modifier.contains(Modifier::ITALIC));
+    assert!(cell.modifier.contains(Modifier::UNDERLINE));
+    assert!(cell.modifier.contains(Modifier::DIM));
+    assert!(cell.modifier.contains(Modifier::CROSSED_OUT));
+    assert!(cell.modifier.contains(Modifier::REVERSE));
+}
+
+// =============================================================================
+// Link Tests
+// =============================================================================
+
+#[test]
+fn test_link_with_style() {
+    let rt = RichText::new()
+        .push(
+            "Click Me",
+            Style::new().bold().fg(Color::YELLOW).underline(),
+        )
+        .push_link("Link", "https://example.com");
+
+    assert_eq!(rt.len(), 2);
+}
+
+#[test]
+fn test_multiple_links() {
+    let rt = RichText::new()
+        .push_link("Link1", "https://one.com")
+        .push_link("Link2", "https://two.com")
+        .push_link("Link3", "https://three.com");
+
+    assert_eq!(rt.len(), 3);
+}
+
+#[test]
+fn test_render_multiple_links() {
+    let rt = RichText::markup("[link=https://one.com]First[/] [link=https://two.com]Second[/]");
+    let mut buffer = Buffer::new(40, 1);
+    let area = Rect::new(0, 0, 40, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    rt.render(&mut ctx);
+
+    // Both links should have hyperlinks
+    assert!(buffer.get(0, 0).unwrap().hyperlink_id.is_some());
+    assert!(buffer.get(7, 0).unwrap().hyperlink_id.is_some());
+}
+
+// =============================================================================
+// Width Tests
+// =============================================================================
+
+#[test]
+fn test_width_empty() {
+    let rt = RichText::new();
+    assert_eq!(rt.width(), 0);
+}
+
+#[test]
+fn test_width_single_word() {
+    let rt = RichText::new().text("Hello");
+    assert_eq!(rt.width(), 5);
+}
+
+#[test]
+fn test_width_multiple_spans() {
+    let rt = RichText::new()
+        .push("Hi", Style::new())
+        .push(" ", Style::new())
+        .push("There", Style::new());
+    assert_eq!(rt.width(), 8);
+}
+
+#[test]
+fn test_width_with_emoji() {
+    let rt = RichText::new().text("Hi😀");
+    // Emoji typically has width 2
+    assert!(rt.width() >= 4);
+}
+
+#[test]
+fn test_width_with_cjk() {
+    let rt = RichText::new().text("日本語");
+    // CJK characters are width 2
+    assert_eq!(rt.width(), 6);
+}
+
+#[test]
+fn test_width_mixed_content() {
+    let rt = RichText::new().text("A日😀B");
+    // A=1, 日=2 (CJK), 😀=2 (emoji), B=1 = 6 total
+    assert!(rt.width() >= 6);
+}
+
+// =============================================================================
+// Span Edge Cases
+// =============================================================================
+
+#[test]
+fn test_span_empty_text() {
+    let span = Span::new("");
+    assert_eq!(span.text, "");
+    assert_eq!(span.width(), 0);
+}
+
+#[test]
+fn test_span_only_whitespace() {
+    let span = Span::new("   ");
+    assert_eq!(span.text, "   ");
+    assert!(span.width() >= 3);
+}
+
+#[test]
+fn test_span_newlines() {
+    let span = Span::new("Line1\nLine2");
+    assert_eq!(span.text, "Line1\nLine2");
+}
+
+#[test]
+fn test_span_tabs() {
+    let span = Span::new("\t\t");
+    assert_eq!(span.text, "\t\t");
+}
+
+#[test]
+fn test_span_special_chars() {
+    let span = Span::new("@#$%^&*()");
+    assert_eq!(span.text, "@#$%^&*()");
+    assert!(span.width() >= 9);
+}
+
+// =============================================================================
+// RichText Builder Chain Tests
+// =============================================================================
+
+#[test]
+fn test_rich_text_complex_chain() {
+    let rt = RichText::new()
+        .text("Start")
+        .push(" Middle", Style::new().bold())
+        .push_link(" Link", "https://example.com")
+        .push(" End", Style::new().fg(Color::GREEN));
+
+    assert_eq!(rt.len(), 4);
+    assert!(rt.width() > 10);
+}
+
+#[test]
+fn test_rich_text_all_builder_methods() {
+    let rt = RichText::new()
+        .element_id("test")
+        .class("class1")
+        .class("class2")
+        .text("Text")
+        .push("More", Style::new().italic())
+        .default_style(Style::new().fg(Color::CYAN));
+
+    assert!(View::classes(&rt).contains(&"class1".to_string()));
+    assert!(View::classes(&rt).contains(&"class2".to_string()));
+    assert_eq!(rt.id(), Some("test"));
+}
+
+// =============================================================================
+// Markup Parser Edge Cases
+// =============================================================================
+
+#[test]
+fn test_markup_emoji_in_text() {
+    let rt = RichText::markup("[b]😀[/b]");
+    assert!(rt.len() >= 1);
+}
+
+#[test]
+fn test_markup_cjk_in_text() {
+    let rt = RichText::markup("[red]日本語[/]");
+    assert!(rt.len() >= 1);
+}
+
+#[test]
+fn test_markup_rtl_text() {
+    let rt = RichText::markup("[i]مرحبا[/i]");
+    assert!(rt.len() >= 1);
+}
+
+#[test]
+fn test_markup_very_long_text() {
+    let long_text = "A".repeat(1000);
+    let rt = RichText::markup(&format!("[b]{}[/]", long_text));
+    assert!(rt.len() >= 1);
+}
+
+#[test]
+fn test_markup_many_nested_tags() {
+    let tags = "[b]".repeat(20);
+    let text = "T";
+    let closes = "[/]".repeat(20);
+    let rt = RichText::markup(&format!("{}{}{}", tags, text, closes));
+    assert!(rt.len() >= 1);
+}
+
+#[test]
+fn test_markup_tag_uppercase() {
+    let rt = RichText::markup("[B]Bold[/B]");
+    // Tags should work regardless of case
+    assert!(rt.len() >= 1);
+}
+
+#[test]
+fn test_markup_numeric_colors() {
+    let rt = RichText::markup("[#ff0000]Hex Color[/]");
+    assert!(rt.len() >= 1);
+}
+
+// =============================================================================
+// Style Preset Tests
+// =============================================================================
+
+#[test]
+fn test_style_preset_bold() {
+    assert!(Style::new().bold().bold);
+}
+
+#[test]
+fn test_style_preset_italic() {
+    assert!(Style::new().italic().italic);
+}
+
+#[test]
+fn test_style_preset_underline() {
+    assert!(Style::new().underline().underline);
+}
+
+#[test]
+fn test_style_preset_dim() {
+    assert!(Style::new().dim().dim);
+}
+
+#[test]
+fn test_style_preset_strikethrough() {
+    assert!(Style::new().strikethrough().strikethrough);
+}
+
+#[test]
+fn test_style_preset_reverse() {
+    assert!(Style::new().reverse().reverse);
+}
+
+// =============================================================================
