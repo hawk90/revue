@@ -67,3 +67,57 @@ impl SeparatorStyle {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_breadcrumb_item_new() {
+        let item = BreadcrumbItem::new("Home");
+        assert_eq!(item.label, "Home");
+        assert!(item.icon.is_none());
+        assert!(item.clickable);
+    }
+
+    #[test]
+    fn test_breadcrumb_item_builder() {
+        let item = BreadcrumbItem::new("Folder").icon('📁').clickable(true);
+        assert_eq!(item.label, "Folder");
+        assert_eq!(item.icon, Some('📁'));
+        assert!(item.clickable);
+    }
+
+    #[test]
+    fn test_breadcrumb_item_not_clickable() {
+        let item = BreadcrumbItem::new("Locked").clickable(false);
+        assert!(!item.clickable);
+    }
+
+    #[test]
+    fn test_breadcrumb_item_clone() {
+        let item = BreadcrumbItem::new("Test");
+        let cloned = item.clone();
+        assert_eq!(item.label, cloned.label);
+    }
+
+    #[test]
+    fn test_separator_style_default() {
+        let style = SeparatorStyle::default();
+        assert_eq!(style, SeparatorStyle::Slash);
+    }
+
+    #[test]
+    fn test_separator_style_equality() {
+        assert_eq!(SeparatorStyle::Arrow, SeparatorStyle::Arrow);
+        assert_eq!(SeparatorStyle::Chevron, SeparatorStyle::Chevron);
+        assert_ne!(SeparatorStyle::Slash, SeparatorStyle::Pipe);
+    }
+
+    #[test]
+    fn test_separator_style_custom() {
+        let style = SeparatorStyle::Custom('-');
+        assert_eq!(style, SeparatorStyle::Custom('-'));
+        assert_ne!(style, SeparatorStyle::Custom('>'));
+    }
+}
