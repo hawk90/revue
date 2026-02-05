@@ -44,3 +44,26 @@ pub(crate) fn month_name(month: u32) -> &'static str {
         _ => "???",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_range_picker_function() {
+        let picker = range_picker();
+        let _ = picker;
+    }
+
+    #[test]
+    fn test_date_range_picker_function() {
+        let picker = date_range_picker();
+        let _ = picker;
+    }
+
+    #[test]
+    fn test_analytics_range_picker_function() {
+        let picker = analytics_range_picker();
+        let _ = picker;
+    }
+}

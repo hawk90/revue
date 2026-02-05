@@ -36,3 +36,50 @@ pub fn danger(content: impl Into<String>) -> Callout {
 pub fn info_callout(content: impl Into<String>) -> Callout {
     Callout::info(content)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_callout_function() {
+        let callout = callout("test content");
+        let _ = callout;
+    }
+
+    #[test]
+    fn test_note_function() {
+        let callout = note("note content");
+        let _ = callout;
+    }
+
+    #[test]
+    fn test_tip_function() {
+        let callout = tip("tip content");
+        let _ = callout;
+    }
+
+    #[test]
+    fn test_important_function() {
+        let callout = important("important content");
+        let _ = callout;
+    }
+
+    #[test]
+    fn test_warning_callout_function() {
+        let callout = warning_callout("warning content");
+        let _ = callout;
+    }
+
+    #[test]
+    fn test_danger_function() {
+        let callout = danger("danger content");
+        let _ = callout;
+    }
+
+    #[test]
+    fn test_info_callout_function() {
+        let callout = info_callout("info content");
+        let _ = callout;
+    }
+}

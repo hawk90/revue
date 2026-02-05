@@ -88,3 +88,53 @@ pub fn resource_stream(
                 .color(Color::rgb(241, 196, 15)),
         )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_streamline_function() {
+        let chart = streamline();
+        let _ = chart;
+    }
+
+    #[test]
+    fn test_streamline_with_data_function() {
+        use crate::style::Color;
+        let layers = vec![
+            StreamLayer::new("Layer1").data(vec![1.0, 2.0, 3.0]),
+            StreamLayer::new("Layer2").data(vec![2.0, 3.0, 4.0]),
+        ];
+        let chart = streamline_with_data(layers);
+        let _ = chart;
+    }
+
+    #[test]
+    fn test_genre_stream_function() {
+        let data = vec![("Rock", vec![1.0, 2.0, 3.0]), ("Pop", vec![2.0, 3.0, 4.0])];
+        let chart = genre_stream(data);
+        let _ = chart;
+    }
+
+    #[test]
+    fn test_traffic_stream_function() {
+        let data = vec![
+            ("Organic", vec![10.0, 20.0, 30.0]),
+            ("Direct", vec![15.0, 25.0, 35.0]),
+        ];
+        let chart = traffic_stream(data);
+        let _ = chart;
+    }
+
+    #[test]
+    fn test_resource_stream_function() {
+        let chart = resource_stream(
+            vec![10.0, 20.0],
+            vec![30.0, 40.0],
+            vec![50.0, 60.0],
+            vec![70.0, 80.0],
+        );
+        let _ = chart;
+    }
+}

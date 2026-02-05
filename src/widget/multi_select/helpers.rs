@@ -28,3 +28,42 @@ where
 {
     MultiSelect::new().options(items.into_iter().map(|s| s.into()).collect())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_multi_select_function() {
+        let select = multi_select();
+        let _ = select;
+    }
+
+    #[test]
+    fn test_multi_select_from_function() {
+        let fruits = vec!["Apple", "Banana", "Cherry"];
+        let select = multi_select_from(fruits);
+        let _ = select;
+    }
+
+    #[test]
+    fn test_multi_select_from_vec() {
+        let fruits = vec!["Apple", "Banana"];
+        let select = multi_select_from(fruits.clone());
+        let _ = select;
+    }
+
+    #[test]
+    fn test_multi_select_from_iterator() {
+        let fruits = vec!["Apple", "Banana"];
+        let select = multi_select_from(fruits.iter().copied());
+        let _ = select;
+    }
+
+    #[test]
+    fn test_multi_select_from_empty() {
+        let items: Vec<&str> = vec![];
+        let select = multi_select_from(items);
+        let _ = select;
+    }
+}
