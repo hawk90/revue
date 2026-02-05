@@ -62,3 +62,61 @@ where
 {
     SimpleScreen::new(id, render_fn)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::app::screen::types::ScreenMode;
+
+    #[test]
+    fn test_simple_screen_new() {
+        let screen = SimpleScreen::new("test", |_ctx| {});
+        assert_eq!(screen.id().as_str(), "test");
+    }
+
+    #[test]
+    fn test_simple_screen_with_screen_id() {
+        let screen = SimpleScreen::new(ScreenId::new("my_screen"), |_ctx| {});
+        assert_eq!(screen.id().as_str(), "my_screen");
+    }
+
+    #[test]
+    fn test_simple_screen_config() {
+        let config = ScreenConfig::modal();
+        let screen = SimpleScreen::new("test", |_ctx| {}).config(config);
+        // Config builder works - just verify the screen exists
+        let _ = screen;
+    }
+
+    #[test]
+    fn test_simple_screen_id() {
+        let screen = SimpleScreen::new("abc123", |_ctx| {});
+        assert_eq!(screen.id(), ScreenId::new("abc123"));
+    }
+
+    #[test]
+    fn test_simple_screen_render() {
+        let screen = SimpleScreen::new("test", |_ctx| {});
+        // Note: Can't actually call render without a RenderContext
+        // This test just verifies the screen can be created
+        let _ = screen;
+    }
+
+    #[test]
+    fn test_screen_manager_function() {
+        let manager = screen_manager();
+        let _ = manager;
+    }
+
+    #[test]
+    fn test_simple_screen_function() {
+        let screen = simple_screen("test", |_ctx| {});
+        assert_eq!(screen.id().as_str(), "test");
+    }
+
+    #[test]
+    fn test_simple_screen_function_with_screen_id() {
+        let screen = simple_screen(ScreenId::new("my_screen"), |_ctx| {});
+        assert_eq!(screen.id().as_str(), "my_screen");
+    }
+}
