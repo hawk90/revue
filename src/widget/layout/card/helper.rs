@@ -4,3 +4,14 @@ use super::core::Card;
 pub fn card() -> Card {
     Card::new()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_card_function() {
+        let c = card();
+        let _ = c;
+    }
+}
