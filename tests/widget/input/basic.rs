@@ -181,4 +181,3 @@ fn test_input_clone_independence() {
     assert_eq!(i1.text(), "changed");
     assert_eq!(i2.text(), "test");
 }
-

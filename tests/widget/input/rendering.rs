@@ -153,4 +153,3 @@ fn test_input_render_offset_position() {
     let mut ctx = RenderContext::new(&mut b, a);
     i.render(&mut ctx);
 }
-

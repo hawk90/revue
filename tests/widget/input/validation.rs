@@ -94,4 +94,3 @@ fn test_input_validate_with_string_pattern() {
     let i = input().validate(move |s| s.starts_with(pattern));
     assert!(i.validator.is_some());
 }
-
