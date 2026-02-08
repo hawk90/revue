@@ -956,7 +956,7 @@ mod tests {
 
     #[test]
     fn test_selected_process() {
-        let monitor = ProcessMonitor::new();
+        let mut monitor = ProcessMonitor::new();
         monitor.refresh();
 
         let selected = monitor.selected_process();
