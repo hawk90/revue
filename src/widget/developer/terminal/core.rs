@@ -8,7 +8,7 @@
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::event::{Key, KeyEvent, MouseButton, MouseEventKind};
+    use crate::event::{Key, KeyEvent};
     use crate::style::Color;
 
     // =========================================================================

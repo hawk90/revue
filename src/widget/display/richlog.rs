@@ -1309,7 +1309,7 @@ mod tests {
     }
 
     #[test]
-    fn test_handle_key_G() {
+    fn test_handle_key_shift_g() {
         let mut log = RichLog::new();
         log.info("Test");
         assert!(log.handle_key(&Key::Char('G')));

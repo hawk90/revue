@@ -1431,7 +1431,7 @@ mod tests {
         vim.map("jj", VimAction::Escape);
 
         vim.handle_key(&KeyEvent::new(Key::Char('j')));
-        let action = vim.handle_key(&KeyEvent::new(Key::Char('j')));
+        let _action = vim.handle_key(&KeyEvent::new(Key::Char('j')));
         // Should trigger custom mapping
     }
 

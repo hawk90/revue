@@ -281,7 +281,6 @@ mod tests {
     use super::super::types::PresetRange;
     use super::*;
     use crate::widget::data::calendar::Date;
-    use crate::widget::datetime_picker::Time;
 
     // =========================================================================
     // Focus navigation tests

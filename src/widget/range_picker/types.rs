@@ -724,7 +724,7 @@ mod tests {
     #[test]
     fn test_calculate_last_week_excludes_this_week() {
         let today = Date::new(2024, 6, 12); // Wednesday
-        let (start, end) = PresetRange::LastWeek.calculate(today);
+        let (_start, end) = PresetRange::LastWeek.calculate(today);
         // This week is June 9-15
         // Last week should not include June 9 or later
         assert!(end < Date::new(2024, 6, 9));

@@ -432,7 +432,7 @@ mod tests {
     fn test_delete_block_updates_cursor() {
         let mut editor = RichTextEditor::new().content("line1\nline2");
         editor.move_down();
-        let pos = editor.cursor_position();
+        let _pos = editor.cursor_position();
         editor.delete_block();
         // Cursor should be adjusted
         assert_eq!(editor.get_content(), "line1");

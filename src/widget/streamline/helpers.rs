@@ -101,7 +101,6 @@ mod tests {
 
     #[test]
     fn test_streamline_with_data_function() {
-        use crate::style::Color;
         let layers = vec![
             StreamLayer::new("Layer1").data(vec![1.0, 2.0, 3.0]),
             StreamLayer::new("Layer2").data(vec![2.0, 3.0, 4.0]),

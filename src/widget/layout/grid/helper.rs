@@ -19,7 +19,7 @@ pub fn grid_template(cols: usize, rows: usize) -> Grid {
 
 #[cfg(test)]
 mod tests {
-    use super::super::types::{GridItem, GridPlacement};
+    use super::super::types::GridPlacement;
     use super::*;
     use crate::widget::grid::GridAlign;
     use crate::widget::Text;

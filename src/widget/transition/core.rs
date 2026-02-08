@@ -149,7 +149,6 @@ impl_props_builders!(Transition);
 mod tests {
     use super::*;
     use crate::widget::transition::types::{Animation, TransitionPhase};
-    use std::time::Duration;
 
     // =========================================================================
     // Constructor tests

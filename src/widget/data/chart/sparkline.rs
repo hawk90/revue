@@ -596,7 +596,7 @@ mod tests {
     fn test_sparkline_nan_handling() {
         let sl = Sparkline::new(vec![1.0, f64::NAN, 3.0]);
         // NaN should be handled in calculations
-        let (min, max) = sl.calc_bounds();
+        let (min, _max) = sl.calc_bounds();
         // min/max should skip NaN
         assert!(min.is_finite());
     }

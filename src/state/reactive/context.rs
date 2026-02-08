@@ -726,7 +726,7 @@ mod tests {
     #[test]
     fn test_context_scope_provide_signal() {
         let ctx = create_context::<i32>();
-        let signal = {
+        let _signal = {
             let scope = ContextScope::new();
             let signal = scope.provide_signal(&ctx, 42);
             assert_eq!(signal.get(), 42);

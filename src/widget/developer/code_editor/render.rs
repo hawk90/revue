@@ -6,7 +6,6 @@ mod tests {
     use crate::event::Key;
     use crate::layout::Rect;
     use crate::render::Buffer;
-    use crate::style::Color;
     use crate::widget::traits::{RenderContext, View};
 
     // =========================================================================

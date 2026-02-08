@@ -965,7 +965,6 @@ mod tests {
     #[test]
     fn test_store_macro_is_reexported() {
         // Just verify Store is accessible from prelude
-        use crate::Store;
         // This test passes if it compiles
     }
 
@@ -975,7 +974,6 @@ mod tests {
 
     #[test]
     fn test_constants_module_is_reexported() {
-        use crate::constants;
         // Verify constants module is accessible
         // This test passes if it compiles
     }
@@ -986,31 +984,26 @@ mod tests {
 
     #[test]
     fn test_dom_module_is_reexported() {
-        use crate::dom;
         // Verify dom module is accessible
     }
 
     #[test]
     fn test_event_module_is_reexported() {
-        use crate::event;
         // Verify event module is accessible
     }
 
     #[test]
     fn test_layout_module_is_reexported() {
-        use crate::layout;
         // Verify layout module is accessible
     }
 
     #[test]
     fn test_render_module_is_reexported() {
-        use crate::render;
         // Verify render module is accessible
     }
 
     #[test]
     fn test_style_module_is_reexported() {
-        use crate::style;
         // Verify style module is accessible
     }
 
@@ -1020,13 +1013,11 @@ mod tests {
 
     #[test]
     fn test_patterns_module_is_reexported() {
-        use crate::patterns;
         // Verify patterns module is accessible
     }
 
     #[test]
     fn test_reactive_module_is_reexported() {
-        use crate::reactive;
         // Verify reactive module is accessible
     }
 
@@ -1036,43 +1027,36 @@ mod tests {
 
     #[test]
     fn test_a11y_module_is_reexported() {
-        use crate::a11y;
         // Verify a11y module is accessible
     }
 
     #[test]
     fn test_devtools_module_is_reexported() {
-        use crate::devtools;
         // Verify devtools module is accessible
     }
 
     #[test]
     fn test_query_module_is_reexported() {
-        use crate::query;
         // Verify query module is accessible
     }
 
     #[test]
     fn test_testing_module_is_reexported() {
-        use crate::testing;
         // Verify testing module is accessible
     }
 
     #[test]
     fn test_text_module_is_reexported() {
-        use crate::text;
         // Verify text module is accessible
     }
 
     #[test]
     fn test_utils_module_is_reexported() {
-        use crate::utils;
         // Verify utils module is accessible
     }
 
     #[test]
     fn test_widget_module_is_reexported() {
-        use crate::widget;
         // Verify widget module is accessible
     }
 }

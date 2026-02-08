@@ -57,7 +57,7 @@ impl DataGrid {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::widget::data::datagrid::types::{GridColumn, GridRow};
+    use crate::widget::data::datagrid::types::GridColumn;
 
     // =========================================================================
     // calculate_widths tests

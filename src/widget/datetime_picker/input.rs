@@ -110,7 +110,6 @@ pub trait Input {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::widget::datetime_picker::types::Time;
 
     // Mock struct for testing Input trait
     struct MockInputPicker {

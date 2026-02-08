@@ -1118,7 +1118,7 @@ mod tests {
             Candle::new(103.0, 108.0, 102.0, 100.0),
         ];
         let chart = CandleChart::new(data);
-        let (change, percent) = chart.price_change().unwrap();
+        let (change, _percent) = chart.price_change().unwrap();
         assert_eq!(change, -3.0);
     }
 

@@ -30,7 +30,7 @@ mod tests {
     use crate::event::Key;
     use crate::layout::Rect;
     use crate::render::Buffer;
-    use crate::widget::traits::{RenderContext, View};
+    use crate::widget::traits::View;
 
     #[test]
     fn test_popover_new() {

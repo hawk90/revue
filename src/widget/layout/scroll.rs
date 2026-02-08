@@ -263,7 +263,6 @@ pub fn scroll_view() -> ScrollView {
 mod tests {
     use super::*;
     use crate::render::Buffer;
-    use crate::widget::Text;
 
     // =========================================================================
     // ScrollView::new and default tests

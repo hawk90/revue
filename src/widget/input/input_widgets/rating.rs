@@ -988,7 +988,7 @@ mod tests {
 
     #[test]
     fn test_rating_quarter_values() {
-        let mut r = Rating::new().value(2.25);
+        let r = Rating::new().value(2.25);
         // Should store the value as-is
         assert_eq!(r.get_value(), 2.25);
     }

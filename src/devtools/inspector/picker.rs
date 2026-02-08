@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn test_component_picker_new() {
-        let mut picker = ComponentPicker::new();
+        let picker = ComponentPicker::new();
         assert_eq!(picker.mode(), PickerMode::Disabled);
         assert!(!picker.is_active());
         assert_eq!(picker.hovered_node(), None);
@@ -310,7 +310,7 @@ mod tests {
     fn test_component_picker_find_node_at() {
         use super::super::types::WidgetNode;
 
-        let mut picker = ComponentPicker::new();
+        let picker = ComponentPicker::new();
         let mut nodes = HashMap::new();
 
         // Create a node at (5, 5) with size 10x10
@@ -400,7 +400,7 @@ mod tests {
 
     #[test]
     fn test_component_picker_render_overlay_disabled() {
-        let mut picker = ComponentPicker::new();
+        let picker = ComponentPicker::new();
         let mut buffer = Buffer::new(80, 24);
         let area = Rect::new(0, 0, 80, 24);
         let nodes = HashMap::new();

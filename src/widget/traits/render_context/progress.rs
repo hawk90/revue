@@ -61,6 +61,7 @@ mod tests {
     use crate::widget::{RenderContext, View};
 
     // Test widget to create a render context
+    #[allow(dead_code)]
     struct TestWidget;
     impl View for TestWidget {
         fn render(&self, _ctx: &mut RenderContext) {}

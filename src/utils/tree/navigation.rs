@@ -603,7 +603,7 @@ mod tests {
 
     #[test]
     fn test_tree_nav_selected_row() {
-        let mut nav = TreeNav::new();
+        let nav = TreeNav::new();
         assert_eq!(nav.selected_row(), 0);
     }
 

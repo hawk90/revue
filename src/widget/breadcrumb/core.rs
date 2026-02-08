@@ -401,7 +401,6 @@ mod tests {
     use super::*;
     use crate::event::Key;
     use crate::style::Color;
-    use crate::widget::layout::border::BorderType;
 
     // =========================================================================
     // Breadcrumb::new() and default tests

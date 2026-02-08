@@ -775,14 +775,14 @@ mod tests {
     #[test]
     fn test_pagination_visible_range_near_start() {
         let p = pagination(20).current(2);
-        let (start, end) = p.visible_range();
+        let (start, _end) = p.visible_range();
         assert_eq!(start, 1);
     }
 
     #[test]
     fn test_pagination_visible_range_near_end() {
         let p = pagination(20).current(19);
-        let (start, end) = p.visible_range();
+        let (_start, end) = p.visible_range();
         assert_eq!(end, 20);
     }
 

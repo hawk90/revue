@@ -66,7 +66,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::app::screen::types::ScreenMode;
 
     #[test]
     fn test_simple_screen_new() {

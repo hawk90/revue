@@ -980,7 +980,7 @@ mod tests {
 
     #[test]
     fn test_snapshot_diff_empty() {
-        let mut profiler = Profiler::new();
+        let profiler = Profiler::new();
         let snap1 = Snapshot::from_profiler(&profiler);
         let snap2 = Snapshot::from_profiler(&profiler);
         let diff = snap2.compare(&snap1);

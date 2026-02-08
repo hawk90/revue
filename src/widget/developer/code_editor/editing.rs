@@ -3,7 +3,6 @@
 #[cfg(test)]
 mod tests {
     use super::super::*;
-    use crate::event::Key;
 
     // =========================================================================
     // insert_char tests
@@ -52,7 +51,7 @@ mod tests {
         editor.move_right();
         editor.move_right();
         editor.move_right();
-        let before = editor.get_content();
+        let _before = editor.get_content();
         editor.insert_char('X');
         assert_eq!(editor.get_content(), "X world");
         assert!(!editor.has_selection());

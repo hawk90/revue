@@ -445,8 +445,8 @@ mod tests {
 
         // Color utilities
         let c = crate::style::Color::rgb(100, 100, 100);
-        let darker = darken(c, 0.2);
-        let lighter = lighten(c, 0.2);
+        let _darker = darken(c, 0.2);
+        let _lighter = lighten(c, 0.2);
 
         // Border chars
         let border = BorderChars::ROUNDED;

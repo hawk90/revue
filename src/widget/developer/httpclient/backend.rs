@@ -216,7 +216,7 @@ mod tests {
         let backend_clone = Arc::clone(&backend);
 
         std::thread::spawn(move || {
-            let mut b = backend_clone.lock().unwrap();
+            let b = backend_clone.lock().unwrap();
             b.mock_response(
                 "test",
                 HttpResponse {

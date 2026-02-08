@@ -431,7 +431,6 @@ pub fn dock_area(id: impl Into<String>) -> DockArea {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::widget::layout::splitter::Pane;
 
     // =========================================================================
     // DockPosition enum tests

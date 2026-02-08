@@ -490,7 +490,7 @@ impl_props_builders!(DataGrid);
 
 #[cfg(test)]
 mod tests {
-    use super::super::types::{GridColors, GridOptions};
+    use super::super::types::GridColors;
     use super::*;
 
     // =========================================================================

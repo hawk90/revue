@@ -129,9 +129,7 @@ impl GridColumn {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::widget::data::datagrid::types::column_types::{
-        Alignment, ColumnType, SortDirection,
-    };
+    use crate::widget::data::datagrid::types::column_types::{Alignment, ColumnType};
 
     // =========================================================================
     // Constructor tests

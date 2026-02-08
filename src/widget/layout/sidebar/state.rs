@@ -761,7 +761,7 @@ mod tests {
 
     #[test]
     fn test_set_expanded_deep_nesting() {
-        let mut grandchild = SidebarItem::new("grandchild", "Grandchild");
+        let grandchild = SidebarItem::new("grandchild", "Grandchild");
         let mut child = SidebarItem::new("child", "Child");
         child.children.push(grandchild);
         let mut parent = SidebarItem::new("parent", "Parent");

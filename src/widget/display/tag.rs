@@ -513,7 +513,7 @@ mod tests {
     #[test]
     fn test_effective_colors_with_text_color() {
         let t = Tag::new("Test").text_color(Color::CYAN);
-        let (bg, fg) = t.effective_colors();
+        let (_bg, fg) = t.effective_colors();
         assert_eq!(fg, Color::CYAN);
     }
 }

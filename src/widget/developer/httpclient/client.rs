@@ -12,7 +12,6 @@ use crate::widget::traits::WidgetProps;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::style::Color;
 
     // =========================================================================
     // Constructor tests

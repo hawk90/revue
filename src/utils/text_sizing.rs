@@ -385,9 +385,9 @@ mod tests {
         let h1 = TextSizing::size_ratio(1);
         let h2 = TextSizing::size_ratio(2);
         let h3 = TextSizing::size_ratio(3);
-        let h4 = TextSizing::size_ratio(4);
-        let h5 = TextSizing::size_ratio(5);
-        let h6 = TextSizing::size_ratio(6);
+        let _h4 = TextSizing::size_ratio(4);
+        let _h5 = TextSizing::size_ratio(5);
+        let _h6 = TextSizing::size_ratio(6);
 
         // Check the trend (ratios get smaller as tier increases)
         let h1_ratio = h1.0 as f64 / h1.1 as f64;

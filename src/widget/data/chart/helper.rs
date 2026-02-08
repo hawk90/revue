@@ -1005,7 +1005,7 @@ mod tests {
             (f64::NAN, 4.0),
             (5.0, 6.0),
         ]));
-        let (x_min, x_max, y_min, y_max) = chart.compute_bounds();
+        let (x_min, x_max, _y_min, _y_max) = chart.compute_bounds();
         // NaN values should be filtered out
         assert_eq!(x_min, 1.0);
         assert_eq!(x_max, 5.0);
@@ -1018,7 +1018,7 @@ mod tests {
             (f64::INFINITY, 4.0),
             (5.0, 6.0),
         ]));
-        let (x_min, x_max, y_min, y_max) = chart.compute_bounds();
+        let (x_min, x_max, _y_min, _y_max) = chart.compute_bounds();
         // Infinite values should be filtered out
         assert_eq!(x_min, 1.0);
         assert_eq!(x_max, 5.0);

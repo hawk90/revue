@@ -325,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_incremental_handlers_default() {
-        let handlers: IncrementalHandlers<i32, Vec<i32>> = IncrementalHandlers::default();
+        let _handlers: IncrementalHandlers<i32, Vec<i32>> = IncrementalHandlers::default();
         // Just verify it works
         assert!(true);
     }
@@ -430,9 +430,9 @@ mod tests {
     fn test_incremental_handlers_with_string() {
         use crate::reactive::signal_vec;
 
-        let items = signal_vec(vec!["a", "b", "c"]);
+        let _items = signal_vec(vec!["a", "b", "c"]);
 
-        let handlers = IncrementalHandlers::<&str, String>::new()
+        let _handlers = IncrementalHandlers::<&str, String>::new()
             .insert(|result, _, value| {
                 result.push_str(value);
             })
@@ -503,7 +503,7 @@ mod tests {
     fn test_incremental_handlers_update_method() {
         let mut result = vec![1, 2, 3];
         let handlers =
-            IncrementalHandlers::<i32, Vec<i32>>::new().update(|res, index, old, new| {
+            IncrementalHandlers::<i32, Vec<i32>>::new().update(|res, index, _old, new| {
                 res[index] = new;
             });
 
