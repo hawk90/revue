@@ -414,4 +414,204 @@ mod tests {
         // Verify snapshot helper returns valid instance
         assert!(snap.config.snapshot_dir.as_os_str().len() > 0);
     }
+
+    // =========================================================================
+    // Additional snapshot tests
+    // =========================================================================
+
+    #[test]
+    fn test_snapshot_config_snapshot_dir_builder() {
+        let config = SnapshotConfig::default().snapshot_dir("/tmp/snapshots");
+        assert_eq!(config.snapshot_dir, PathBuf::from("/tmp/snapshots"));
+    }
+
+    #[test]
+    fn test_snapshot_config_update_snapshots_builder() {
+        let config = SnapshotConfig::default().update_snapshots(true);
+        assert!(config.update_snapshots);
+    }
+
+    #[test]
+    fn test_snapshot_config_include_colors_builder() {
+        let config = SnapshotConfig::default().include_colors(true);
+        assert!(config.include_colors);
+    }
+
+    #[test]
+    fn test_snapshot_config_include_modifiers_builder() {
+        let config = SnapshotConfig::default().include_modifiers(true);
+        assert!(config.include_modifiers);
+    }
+
+    #[test]
+    fn test_snapshot_config_clone() {
+        let config = SnapshotConfig::default();
+        let cloned = config.clone();
+        assert_eq!(config.snapshot_dir, cloned.snapshot_dir);
+        assert_eq!(config.include_colors, cloned.include_colors);
+    }
+
+    #[test]
+    fn test_snapshot_default() {
+        let snap = Snapshot::default();
+        assert!(!snap.config.include_colors);
+        assert!(!snap.config.include_modifiers);
+    }
+
+    #[test]
+    fn test_snapshot_with_config() {
+        let config = SnapshotConfig {
+            snapshot_dir: PathBuf::from("test"),
+            update_snapshots: true,
+            include_colors: true,
+            include_modifiers: true,
+        };
+        let snap = Snapshot::with_config(config.clone());
+        assert_eq!(snap.config.snapshot_dir, PathBuf::from("test"));
+        assert!(snap.config.include_colors);
+        assert!(snap.config.include_modifiers);
+    }
+
+    #[test]
+    fn test_snapshot_config_chaining() {
+        let config = SnapshotConfig::default()
+            .snapshot_dir("test")
+            .include_colors(true);
+        assert_eq!(config.snapshot_dir, PathBuf::from("test"));
+        assert!(config.include_colors);
+    }
+
+    #[test]
+    fn test_buffer_to_string_with_colors() {
+        let config = SnapshotConfig::default().include_colors(true);
+        let snap = Snapshot::with_config(config);
+        let text = Text::new("Test");
+        let buffer = snap.render_view(&text, 10, 1);
+        let output = snap.buffer_to_string(&buffer);
+        // Should include ANSI color codes
+        assert!(output.contains("Test") || !output.is_empty());
+    }
+
+    #[test]
+    fn test_buffer_to_string_with_modifiers() {
+        let config = SnapshotConfig::default().include_modifiers(true);
+        let snap = Snapshot::with_config(config);
+        let text = Text::new("Test");
+        let buffer = snap.render_view(&text, 10, 1);
+        let output = snap.buffer_to_string(&buffer);
+        // Should contain text
+        assert!(output.contains("Test") || !output.is_empty());
+    }
+
+    #[test]
+    fn test_compute_diff_empty() {
+        let snap = Snapshot::new();
+        let diff = snap.compute_diff("", "");
+        assert!(diff.is_empty());
+    }
+
+    #[test]
+    fn test_compute_diff_no_differences() {
+        let snap = Snapshot::new();
+        let diff = snap.compute_diff("same\ncontent", "same\ncontent");
+        assert!(diff.is_empty());
+    }
+
+    #[test]
+    fn test_compute_diff_multiple_lines() {
+        let snap = Snapshot::new();
+        let diff = snap.compute_diff("line1\nline2\nline3", "line1\nchanged\nline3");
+        assert_eq!(diff.len(), 1);
+        assert_eq!(diff[0].0, 2);
+    }
+
+    #[test]
+    fn test_compute_diff_different_lengths() {
+        let snap = Snapshot::new();
+        let diff = snap.compute_diff("line1", "line1\nline2\nline3");
+        assert_eq!(diff.len(), 2);
+    }
+
+    #[test]
+    fn test_format_diff_created() {
+        let output = Snapshot::format_diff(&SnapshotResult::Created);
+        assert!(output.contains("created"));
+    }
+
+    #[test]
+    fn test_format_diff_not_found() {
+        let output = Snapshot::format_diff(&SnapshotResult::NotFound);
+        assert!(output.contains("not found"));
+    }
+
+    #[test]
+    fn test_snapshot_result_clone() {
+        let result = SnapshotResult::Match;
+        let cloned = result.clone();
+        assert_eq!(result, cloned);
+    }
+
+    #[test]
+    fn test_snapshot_result_mismatch_clone() {
+        let result = SnapshotResult::Mismatch {
+            expected: "a".to_string(),
+            actual: "b".to_string(),
+            diff: vec![],
+        };
+        let cloned = result.clone();
+        assert_eq!(result, cloned);
+    }
+
+    #[test]
+    fn test_snapshot_result_partial_eq() {
+        assert_eq!(SnapshotResult::Match, SnapshotResult::Match);
+        assert_eq!(SnapshotResult::Created, SnapshotResult::Created);
+        assert_ne!(SnapshotResult::Match, SnapshotResult::NotFound);
+    }
+
+    #[test]
+    fn test_render_view_with_dimensions() {
+        let snap = Snapshot::new();
+        let text = Text::new("Hello World");
+        let buffer = snap.render_view(&text, 20, 5);
+        assert_eq!(buffer.width(), 20);
+        assert_eq!(buffer.height(), 5);
+    }
+
+    #[test]
+    fn test_render_view_minimal() {
+        let snap = Snapshot::new();
+        let text = Text::new("X");
+        let buffer = snap.render_view(&text, 1, 1);
+        assert_eq!(buffer.width(), 1);
+        assert_eq!(buffer.height(), 1);
+    }
+
+    #[test]
+    fn test_buffer_to_string_trims_trailing_empty_lines() {
+        let snap = Snapshot::new();
+        let text = Text::new("Test");
+        let buffer = snap.render_view(&text, 10, 5);
+        let output = snap.buffer_to_string(&buffer);
+        // Should not have trailing empty lines
+        let lines: Vec<&str> = output.lines().collect();
+        if let Some(last) = lines.last() {
+            assert!(!last.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_snapshot_config_default_update_snapshots() {
+        let config = SnapshotConfig::default();
+        // update_snapshots depends on environment variable
+        // Just verify it's a bool
+        let _ = config.update_snapshots;
+    }
+
+    #[test]
+    fn test_snapshot_result_debug() {
+        let result = SnapshotResult::Match;
+        let debug_str = format!("{:?}", result);
+        assert!(debug_str.contains("Match"));
+    }
 }

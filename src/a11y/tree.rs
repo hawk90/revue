@@ -749,4 +749,360 @@ mod tests {
         assert!(tree.root().is_none());
         assert!(tree.focus_id().is_none());
     }
+
+    // =========================================================================
+    // Additional a11y tree tests
+    // =========================================================================
+
+    #[test]
+    fn test_tree_node_new_with_string_id() {
+        let id = String::from("test_id");
+        let node = TreeNode::new(id.clone(), Role::Button);
+        assert_eq!(node.id, id);
+    }
+
+    #[test]
+    fn test_tree_node_description() {
+        let node = TreeNode::new("test", Role::Button).description("Click to submit");
+        assert_eq!(node.description, Some("Click to submit".to_string()));
+    }
+
+    #[test]
+    fn test_tree_node_state_builder() {
+        let state = AccessibleState::new().disabled(true).selected(true);
+        let node = TreeNode::new("test", Role::Button).state(state);
+        assert!(node.state.disabled);
+        assert!(node.state.selected);
+    }
+
+    #[test]
+    fn test_tree_node_bounds() {
+        let node = TreeNode::new("test", Role::Button).bounds(10, 20, 100, 50);
+        assert_eq!(node.bounds, Some((10, 20, 100, 50)));
+    }
+
+    #[test]
+    fn test_tree_node_property() {
+        let node = TreeNode::new("test", Role::Button)
+            .property("custom", "value")
+            .property("data", "123");
+        assert_eq!(node.properties.get("custom"), Some(&"value".to_string()));
+        assert_eq!(node.properties.get("data"), Some(&"123".to_string()));
+    }
+
+    #[test]
+    fn test_tree_node_accessible_name_fallback() {
+        let node = TreeNode::new("test", Role::Button);
+        assert_eq!(node.accessible_name(), "button");
+    }
+
+    #[test]
+    fn test_tree_node_describe_with_value() {
+        let node = TreeNode::new("slider", Role::Slider)
+            .name("Volume")
+            .state(AccessibleState::new().value_range(0.5, 0.0, 1.0));
+        let desc = node.describe();
+        assert!(desc.contains("Volume"));
+        assert!(desc.contains("slider"));
+        assert!(desc.contains("50%"));
+    }
+
+    #[test]
+    fn test_tree_node_describe_with_position() {
+        let node =
+            TreeNode::new("item3", Role::ListItem).state(AccessibleState::new().position(3, 10));
+        let desc = node.describe();
+        assert!(desc.contains("3 of 10"));
+    }
+
+    #[test]
+    fn test_tree_node_describe_expanded() {
+        let node = TreeNode::new("group", Role::Group).state(AccessibleState::new().expanded(true));
+        let desc = node.describe();
+        assert!(desc.contains("expanded"));
+    }
+
+    #[test]
+    fn test_tree_node_describe_collapsed() {
+        let node =
+            TreeNode::new("group", Role::Group).state(AccessibleState::new().expanded(false));
+        let desc = node.describe();
+        assert!(desc.contains("collapsed"));
+    }
+
+    #[test]
+    fn test_tree_node_describe_disabled() {
+        let node = TreeNode::new("btn", Role::Button).state(AccessibleState::new().disabled(true));
+        let desc = node.describe();
+        assert!(desc.contains("disabled"));
+    }
+
+    #[test]
+    fn test_tree_node_describe_selected() {
+        let node =
+            TreeNode::new("item", Role::ListItem).state(AccessibleState::new().selected(true));
+        let desc = node.describe();
+        assert!(desc.contains("selected"));
+    }
+
+    #[test]
+    fn test_tree_node_is_focusable_hidden() {
+        let mut state = AccessibleState::new();
+        state.hidden = true;
+        let node = TreeNode::new("btn", Role::Button).state(state);
+        assert!(!node.is_focusable());
+    }
+
+    #[test]
+    fn test_accessibility_tree_default() {
+        let tree = AccessibilityTree::default();
+        assert!(tree.is_empty());
+    }
+
+    #[test]
+    fn test_accessibility_tree_set_root() {
+        let mut tree = AccessibilityTree::new();
+        tree.set_root("root_id".to_string());
+        assert_eq!(tree.root, Some("root_id".to_string()));
+    }
+
+    #[test]
+    fn test_accessibility_tree_get() {
+        let mut tree = AccessibilityTree::new();
+        let node = TreeNode::new("test", Role::Button);
+        tree.add_node(node);
+        assert!(tree.get(&"test".to_string()).is_some());
+    }
+
+    #[test]
+    fn test_accessibility_tree_get_mut() {
+        let mut tree = AccessibilityTree::new();
+        let node = TreeNode::new("test", Role::Button);
+        tree.add_node(node);
+        if let Some(node_mut) = tree.get_mut(&"test".to_string()) {
+            node_mut.name = Some("Modified".to_string());
+        }
+        assert_eq!(
+            tree.get(&"test".to_string()).unwrap().name,
+            Some("Modified".to_string())
+        );
+    }
+
+    #[test]
+    fn test_accessibility_tree_add_node() {
+        let mut tree = AccessibilityTree::new();
+        let node = TreeNode::new("test", Role::Button);
+        tree.add_node(node);
+        assert_eq!(tree.len(), 1);
+    }
+
+    #[test]
+    fn test_accessibility_tree_remove_nonexistent() {
+        let mut tree = AccessibilityTree::new();
+        let result = tree.remove_node(&"nonexistent".to_string());
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_accessibility_tree_focus_nonexistent() {
+        let mut tree = AccessibilityTree::new();
+        assert!(!tree.set_focus(&"nonexistent".to_string()));
+    }
+
+    #[test]
+    fn test_accessibility_tree_focus_next_empty() {
+        let mut tree = AccessibilityTree::new();
+        assert!(tree.focus_next().is_none());
+    }
+
+    #[test]
+    fn test_accessibility_tree_focus_prev_empty() {
+        let mut tree = AccessibilityTree::new();
+        assert!(tree.focus_prev().is_none());
+    }
+
+    #[test]
+    fn test_accessibility_tree_focus_next_wraps() {
+        let mut tree = AccessibilityTree::new();
+        tree.add_node(TreeNode::new("btn1", Role::Button));
+        tree.add_node(TreeNode::new("btn2", Role::Button));
+        tree.set_focus(&"btn2".to_string());
+        tree.focus_next();
+        assert_eq!(tree.focus_id(), Some(&"btn1".to_string()));
+    }
+
+    #[test]
+    fn test_accessibility_tree_focus_prev_wraps() {
+        let mut tree = AccessibilityTree::new();
+        tree.add_node(TreeNode::new("btn1", Role::Button));
+        tree.add_node(TreeNode::new("btn2", Role::Button));
+        tree.set_focus(&"btn1".to_string());
+        tree.focus_prev();
+        assert_eq!(tree.focus_id(), Some(&"btn2".to_string()));
+    }
+
+    #[test]
+    fn test_accessibility_tree_nodes_iteration() {
+        let mut tree = AccessibilityTree::new();
+        tree.add_node(TreeNode::new("a", Role::Button));
+        tree.add_node(TreeNode::new("b", Role::Button));
+        let count = tree.nodes().count();
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_accessibility_tree_focusable_nodes() {
+        let mut tree = AccessibilityTree::new();
+        tree.add_node(TreeNode::new("btn1", Role::Button));
+        tree.add_node(TreeNode::new("btn2", Role::Button));
+        tree.add_node(TreeNode::new("div", Role::Generic));
+        let focusable = tree.focusable_nodes();
+        assert_eq!(focusable.len(), 2);
+    }
+
+    #[test]
+    fn test_accessibility_tree_parent() {
+        let mut tree = AccessibilityTree::new();
+        tree.add_node(TreeNode::new("root", Role::Main));
+        tree.add_child(&"root".to_string(), TreeNode::new("child", Role::Button));
+        let parent = tree.parent(&"child".to_string());
+        assert!(parent.is_some());
+        assert_eq!(parent.unwrap().id, "root");
+    }
+
+    #[test]
+    fn test_accessibility_tree_parent_of_root() {
+        let tree = AccessibilityTreeBuilder::new()
+            .root(TreeNode::new("root", Role::Main))
+            .build();
+        let parent = tree.parent(&"root".to_string());
+        assert!(parent.is_none());
+    }
+
+    #[test]
+    fn test_accessibility_tree_ancestors_of_root() {
+        let tree = AccessibilityTreeBuilder::new()
+            .root(TreeNode::new("root", Role::Main))
+            .build();
+        let ancestors = tree.ancestors(&"root".to_string());
+        assert!(ancestors.is_empty());
+    }
+
+    #[test]
+    fn test_accessibility_tree_path_to_root() {
+        let tree = AccessibilityTreeBuilder::new()
+            .root(TreeNode::new("root", Role::Main))
+            .build();
+        let path = tree.path_to(&"root".to_string());
+        assert_eq!(path.len(), 1);
+        assert_eq!(path[0].id, "root");
+    }
+
+    #[test]
+    fn test_accessibility_tree_len() {
+        let mut tree = AccessibilityTree::new();
+        tree.add_node(TreeNode::new("a", Role::Button));
+        tree.add_node(TreeNode::new("b", Role::Button));
+        assert_eq!(tree.len(), 2);
+    }
+
+    #[test]
+    fn test_accessibility_tree_set_focus_clears_old() {
+        let mut tree = AccessibilityTree::new();
+        tree.add_node(TreeNode::new("btn1", Role::Button));
+        tree.add_node(TreeNode::new("btn2", Role::Button));
+        tree.set_focus(&"btn1".to_string());
+        tree.set_focus(&"btn2".to_string());
+        assert!(tree.get(&"btn1".to_string()).unwrap().state.focused == false);
+        assert!(tree.get(&"btn2".to_string()).unwrap().state.focused == true);
+    }
+
+    #[test]
+    fn test_accessibility_tree_builder_default() {
+        let builder = AccessibilityTreeBuilder::default();
+        assert!(builder.tree.is_empty());
+    }
+
+    #[test]
+    fn test_accessibility_tree_builder_without_root() {
+        let tree = AccessibilityTreeBuilder::new()
+            .child(TreeNode::new("orphan", Role::Button))
+            .build();
+        assert!(tree.get(&"orphan".to_string()).is_some());
+    }
+
+    #[test]
+    fn test_accessibility_tree_remove_clears_focus() {
+        let mut tree = AccessibilityTree::new();
+        tree.add_node(TreeNode::new("btn1", Role::Button));
+        tree.add_node(TreeNode::new("btn2", Role::Button));
+        tree.set_focus(&"btn1".to_string());
+        tree.remove_node(&"btn1".to_string());
+        assert!(tree.focus_id().is_none());
+    }
+
+    #[test]
+    fn test_tree_node_clone() {
+        let node = TreeNode::new("test", Role::Button)
+            .name("Test")
+            .description("A button");
+        let cloned = node.clone();
+        assert_eq!(node.id, cloned.id);
+        assert_eq!(node.name, cloned.name);
+    }
+
+    #[test]
+    fn test_accessibility_tree_clone() {
+        let tree = AccessibilityTreeBuilder::new()
+            .root(TreeNode::new("root", Role::Main))
+            .child(TreeNode::new("btn", Role::Button))
+            .build();
+        let cloned = tree.clone();
+        assert_eq!(tree.len(), cloned.len());
+    }
+
+    #[test]
+    fn test_tree_node_describe_with_value_text() {
+        let mut state = AccessibleState::new();
+        state.value_text = Some("50%".to_string());
+        let node = TreeNode::new("slider", Role::Slider).state(state);
+        let desc = node.describe();
+        assert!(desc.contains("50%"));
+    }
+
+    #[test]
+    fn test_accessibility_tree_debug_string_with_focus() {
+        let mut tree = AccessibilityTreeBuilder::new()
+            .root(TreeNode::new("root", Role::Main).name("App"))
+            .child(TreeNode::new("btn", Role::Button).name("Click"))
+            .build();
+        tree.set_focus(&"btn".to_string());
+        let debug = tree.debug_string();
+        assert!(debug.contains("*"));
+    }
+
+    #[test]
+    fn test_accessibility_tree_children_of_nonexistent() {
+        let tree = AccessibilityTree::new();
+        let children = tree.children(&"nonexistent".to_string());
+        assert!(children.is_empty());
+    }
+
+    #[test]
+    fn test_accessibility_tree_children_empty() {
+        let mut tree = AccessibilityTree::new();
+        tree.add_node(TreeNode::new("childless", Role::Group));
+        let children = tree.children(&"childless".to_string());
+        assert!(children.is_empty());
+    }
+
+    #[test]
+    fn test_accessibility_tree_multiple_children() {
+        let mut tree = AccessibilityTree::new();
+        tree.add_node(TreeNode::new("root", Role::Main));
+        tree.add_child(&"root".to_string(), TreeNode::new("child1", Role::Button));
+        tree.add_child(&"root".to_string(), TreeNode::new("child2", Role::Button));
+        let children = tree.children(&"root".to_string());
+        assert_eq!(children.len(), 2);
+    }
 }

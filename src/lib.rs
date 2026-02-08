@@ -794,3 +794,51 @@ pub mod prelude {
         TICK_RATE_DEFAULT,
     };
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_version_constant_is_not_empty() {
+        assert!(!VERSION.is_empty(), "VERSION should not be empty");
+    }
+
+    #[test]
+    fn test_version_contains_digits() {
+        assert!(
+            VERSION.chars().any(|c| c.is_ascii_digit()),
+            "VERSION should contain digits"
+        );
+    }
+
+    #[test]
+    fn test_git_sha_is_valid() {
+        // GIT_SHA is either empty (release) or 40 chars (dev)
+        if is_dev_build() {
+            assert_eq!(
+                GIT_SHA.len(),
+                40,
+                "GIT_SHA should be 40 characters in dev builds"
+            );
+            assert!(
+                GIT_SHA.chars().all(|c| c.is_ascii_hexdigit()),
+                "GIT_SHA should be hex"
+            );
+        } else {
+            assert_eq!(GIT_SHA, "", "GIT_SHA should be empty in release builds");
+        }
+    }
+
+    #[test]
+    fn test_is_dev_build_returns_bool() {
+        let result = is_dev_build();
+        // Just verify it returns a boolean without panicking
+        if result {
+            assert!(
+                VERSION.contains('-'),
+                "Dev build VERSION should contain dash"
+            );
+        }
+    }
+}

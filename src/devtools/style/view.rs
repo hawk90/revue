@@ -130,3 +130,134 @@ impl StyleInspector {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::devtools::DevToolsConfig;
+    use crate::layout::Rect;
+
+    #[test]
+    fn test_render_content_empty_inspector() {
+        let inspector = StyleInspector::default();
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let config = DevToolsConfig::default();
+
+        // Should not panic
+        inspector.render_content(&mut buffer, area, &config);
+    }
+
+    #[test]
+    fn test_render_content_with_widget_type() {
+        let mut inspector = StyleInspector::default();
+        inspector.widget_type = "Button".to_string();
+        inspector.widget_id = Some("my-button".to_string());
+
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let config = DevToolsConfig::default();
+
+        // Should not panic
+        inspector.render_content(&mut buffer, area, &config);
+    }
+
+    #[test]
+    fn test_render_content_with_classes() {
+        let mut inspector = StyleInspector::default();
+        inspector.widget_type = "Button".to_string();
+        inspector.classes = vec!["btn".to_string(), "primary".to_string()];
+
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let config = DevToolsConfig::default();
+
+        // Should not panic
+        inspector.render_content(&mut buffer, area, &config);
+    }
+
+    #[test]
+    fn test_render_content_with_properties() {
+        use crate::devtools::style::types::{ComputedProperty, PropertySource};
+
+        let mut inspector = StyleInspector::default();
+        inspector.widget_type = "Button".to_string();
+        inspector.properties = vec![
+            ComputedProperty {
+                name: "color".to_string(),
+                value: "red".to_string(),
+                source: PropertySource::Class,
+                overridden: false,
+            },
+            ComputedProperty {
+                name: "background".to_string(),
+                value: "blue".to_string(),
+                source: PropertySource::Inline,
+                overridden: false,
+            },
+        ];
+
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let config = DevToolsConfig::default();
+
+        // Should not panic
+        inspector.render_content(&mut buffer, area, &config);
+    }
+
+    #[test]
+    fn test_render_content_no_styles_message() {
+        let mut inspector = StyleInspector::default();
+        inspector.widget_type = "Button".to_string();
+        // Empty properties should show "No styles to display"
+
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let config = DevToolsConfig::default();
+
+        inspector.render_content(&mut buffer, area, &config);
+    }
+
+    #[test]
+    fn test_render_content_with_selected_property() {
+        use crate::devtools::style::types::{ComputedProperty, PropertySource};
+
+        let mut inspector = StyleInspector::default();
+        inspector.widget_type = "Button".to_string();
+        inspector.properties = vec![ComputedProperty {
+            name: "color".to_string(),
+            value: "red".to_string(),
+            source: PropertySource::Class,
+            overridden: false,
+        }];
+        inspector.selected = Some(0);
+
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let config = DevToolsConfig::default();
+
+        // Should not panic
+        inspector.render_content(&mut buffer, area, &config);
+    }
+
+    #[test]
+    fn test_render_content_with_overridden_property() {
+        use crate::devtools::style::types::{ComputedProperty, PropertySource};
+
+        let mut inspector = StyleInspector::default();
+        inspector.widget_type = "Button".to_string();
+        inspector.properties = vec![ComputedProperty {
+            name: "color".to_string(),
+            value: "red".to_string(),
+            source: PropertySource::Class,
+            overridden: true,
+        }];
+
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let config = DevToolsConfig::default();
+
+        // Should not panic
+        inspector.render_content(&mut buffer, area, &config);
+    }
+}

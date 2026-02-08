@@ -717,4 +717,642 @@ mod tests {
         let oc = ohlc_chart(data);
         assert_eq!(oc.style, ChartStyle::Ohlc);
     }
+
+    // =========================================================================
+    // Candle::with_volume tests
+    // =========================================================================
+
+    #[test]
+    fn test_candle_with_volume() {
+        let candle = Candle::with_volume(100.0, 110.0, 95.0, 105.0, 5000.0);
+        assert_eq!(candle.volume, Some(5000.0));
+        assert_eq!(candle.open, 100.0);
+    }
+
+    #[test]
+    fn test_candle_with_volume_none() {
+        let candle = Candle::new(100.0, 110.0, 95.0, 105.0);
+        assert!(candle.volume.is_none());
+    }
+
+    // =========================================================================
+    // Candle::timestamp tests
+    // =========================================================================
+
+    #[test]
+    fn test_candle_timestamp() {
+        let candle = Candle::new(100.0, 110.0, 95.0, 105.0).timestamp(1234567890);
+        assert_eq!(candle.timestamp, Some(1234567890));
+    }
+
+    #[test]
+    fn test_candle_timestamp_none() {
+        let candle = Candle::new(100.0, 110.0, 95.0, 105.0);
+        assert!(candle.timestamp.is_none());
+    }
+
+    // =========================================================================
+    // Candle::is_bullish edge cases
+    // =========================================================================
+
+    #[test]
+    fn test_candle_is_bullish_equal() {
+        let candle = Candle::new(100.0, 110.0, 95.0, 100.0);
+        // close >= open means bullish
+        assert!(candle.is_bullish());
+    }
+
+    // =========================================================================
+    // Candle::body_size tests
+    // =========================================================================
+
+    #[test]
+    fn test_candle_body_size_zero() {
+        let candle = Candle::new(100.0, 110.0, 95.0, 100.0);
+        assert_eq!(candle.body_size(), 0.0);
+    }
+
+    #[test]
+    fn test_candle_body_size_bearish() {
+        let candle = Candle::new(100.0, 110.0, 90.0, 95.0);
+        assert_eq!(candle.body_size(), 5.0);
+    }
+
+    // =========================================================================
+    // Candle::upper_shadow tests
+    // =========================================================================
+
+    #[test]
+    fn test_candle_upper_shadow_zero() {
+        let candle = Candle::new(100.0, 105.0, 95.0, 105.0);
+        // high - max(open, close) = 105 - max(100, 105) = 105 - 105 = 0
+        assert_eq!(candle.upper_shadow(), 0.0);
+    }
+
+    #[test]
+    fn test_candle_upper_shadow_bearish() {
+        let candle = Candle::new(100.0, 120.0, 90.0, 95.0);
+        // high - max(open, close) = 120 - 100 = 20
+        assert_eq!(candle.upper_shadow(), 20.0);
+    }
+
+    // =========================================================================
+    // Candle::lower_shadow tests
+    // =========================================================================
+
+    #[test]
+    fn test_candle_lower_shadow_zero() {
+        let candle = Candle::new(100.0, 110.0, 100.0, 105.0);
+        assert_eq!(candle.lower_shadow(), 0.0);
+    }
+
+    #[test]
+    fn test_candle_lower_shadow_bullish() {
+        let candle = Candle::new(100.0, 110.0, 80.0, 105.0);
+        // min(open, close) - low = 100 - 80 = 20
+        assert_eq!(candle.lower_shadow(), 20.0);
+    }
+
+    // =========================================================================
+    // Candle::range tests
+    // =========================================================================
+
+    #[test]
+    fn test_candle_range_zero() {
+        let candle = Candle::new(100.0, 100.0, 100.0, 100.0);
+        assert_eq!(candle.range(), 0.0);
+    }
+
+    // =========================================================================
+    // Candle Clone trait
+    // =========================================================================
+
+    #[test]
+    fn test_candle_clone() {
+        let candle1 = Candle::new(100.0, 110.0, 95.0, 105.0).timestamp(123);
+        let candle2 = candle1.clone();
+        assert_eq!(candle1.open, candle2.open);
+        assert_eq!(candle1.timestamp, candle2.timestamp);
+    }
+
+    // =========================================================================
+    // Candle Copy trait (since all fields implement Copy)
+    // =========================================================================
+
+    #[test]
+    fn test_candle_copy() {
+        let candle1 = Candle::new(100.0, 110.0, 95.0, 105.0);
+        let candle2 = candle1;
+        assert_eq!(candle2.open, 100.0);
+    }
+
+    // =========================================================================
+    // ChartStyle enum tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_style_default() {
+        assert_eq!(ChartStyle::default(), ChartStyle::Candle);
+    }
+
+    #[test]
+    fn test_chart_style_clone() {
+        let style1 = ChartStyle::Ohlc;
+        let style2 = style1.clone();
+        assert_eq!(style1, style2);
+    }
+
+    #[test]
+    fn test_chart_style_copy() {
+        let style1 = ChartStyle::Hollow;
+        let style2 = style1;
+        assert_eq!(style2, ChartStyle::Hollow);
+    }
+
+    #[test]
+    fn test_chart_style_partial_eq() {
+        assert_eq!(ChartStyle::Candle, ChartStyle::Candle);
+        assert_eq!(ChartStyle::Ohlc, ChartStyle::Ohlc);
+        assert_ne!(ChartStyle::Candle, ChartStyle::HeikinAshi);
+    }
+
+    #[test]
+    fn test_chart_style_debug() {
+        let debug_str = format!("{:?}", ChartStyle::Candle);
+        assert!(debug_str.contains("Candle"));
+    }
+
+    // =========================================================================
+    // CandleChart::style tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_style_ohlc() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).style(ChartStyle::Ohlc);
+        assert_eq!(chart.style, ChartStyle::Ohlc);
+    }
+
+    #[test]
+    fn test_chart_style_hollow() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).style(ChartStyle::Hollow);
+        assert_eq!(chart.style, ChartStyle::Hollow);
+    }
+
+    #[test]
+    fn test_chart_style_heikin_ashi() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).style(ChartStyle::HeikinAshi);
+        assert_eq!(chart.style, ChartStyle::HeikinAshi);
+    }
+
+    // =========================================================================
+    // CandleChart::size tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_size() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).size(30, 12);
+        assert_eq!(chart.width, 30);
+        assert_eq!(chart.height, 12);
+    }
+
+    // =========================================================================
+    // CandleChart::height tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_height() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).height(20);
+        assert_eq!(chart.height, 20);
+    }
+
+    // =========================================================================
+    // CandleChart::width tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_width() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).width(50);
+        assert_eq!(chart.width, 50);
+    }
+
+    // =========================================================================
+    // CandleChart::bullish_color tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_bullish_color() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).bullish_color(Color::rgb(0, 255, 0));
+        assert_eq!(chart.bullish_color, Color::rgb(0, 255, 0));
+    }
+
+    // =========================================================================
+    // CandleChart::bearish_color tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_bearish_color() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).bearish_color(Color::rgb(255, 0, 0));
+        assert_eq!(chart.bearish_color, Color::rgb(255, 0, 0));
+    }
+
+    // =========================================================================
+    // CandleChart::show_volume tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_show_volume_true() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).show_volume(true);
+        assert!(chart.show_volume);
+    }
+
+    #[test]
+    fn test_chart_show_volume_false() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).show_volume(false);
+        assert!(!chart.show_volume);
+    }
+
+    // =========================================================================
+    // CandleChart::show_axis tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_show_axis_true() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).show_axis(true);
+        assert!(chart.show_axis);
+    }
+
+    #[test]
+    fn test_chart_show_axis_false() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).show_axis(false);
+        assert!(!chart.show_axis);
+    }
+
+    // =========================================================================
+    // CandleChart::show_grid tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_show_grid_true() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).show_grid(true);
+        assert!(chart.show_grid);
+    }
+
+    // =========================================================================
+    // CandleChart::title tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_title_str() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).title("AAPL");
+        assert_eq!(chart.title, Some("AAPL".to_string()));
+    }
+
+    #[test]
+    fn test_chart_title_string() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).title(String::from("GOOGL"));
+        assert_eq!(chart.title, Some("GOOGL".to_string()));
+    }
+
+    // =========================================================================
+    // CandleChart::crosshair tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_crosshair() {
+        let data = vec![
+            Candle::new(100.0, 105.0, 98.0, 103.0),
+            Candle::new(103.0, 108.0, 102.0, 107.0),
+        ];
+        let chart = CandleChart::new(data).crosshair(1);
+        assert_eq!(chart.crosshair, Some(1));
+    }
+
+    // =========================================================================
+    // CandleChart::precision tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_precision() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).precision(4);
+        assert_eq!(chart.precision, 4);
+    }
+
+    // =========================================================================
+    // CandleChart::price_range tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_price_range_method() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data).price_range(90.0, 120.0);
+        assert_eq!(chart.min_price, Some(90.0));
+        assert_eq!(chart.max_price, Some(120.0));
+    }
+
+    // =========================================================================
+    // CandleChart::scroll tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_scroll() {
+        let data = vec![
+            Candle::new(100.0, 105.0, 98.0, 103.0),
+            Candle::new(103.0, 108.0, 102.0, 107.0),
+            Candle::new(107.0, 112.0, 106.0, 111.0),
+        ];
+        let chart = CandleChart::new(data).scroll(1);
+        assert_eq!(chart.offset, 1);
+    }
+
+    // =========================================================================
+    // CandleChart::current_price tests
+    // =========================================================================
+
+    #[test]
+    fn test_current_price_some() {
+        let data = vec![
+            Candle::new(100.0, 105.0, 98.0, 103.0),
+            Candle::new(103.0, 108.0, 102.0, 107.0),
+        ];
+        let chart = CandleChart::new(data);
+        assert_eq!(chart.current_price(), Some(107.0));
+    }
+
+    #[test]
+    fn test_current_price_none() {
+        let chart = CandleChart::new(vec![]);
+        assert_eq!(chart.current_price(), None);
+    }
+
+    // =========================================================================
+    // CandleChart::price_change tests
+    // =========================================================================
+
+    #[test]
+    fn test_price_change_single_candle() {
+        let data = vec![Candle::new(100.0, 105.0, 98.0, 103.0)];
+        let chart = CandleChart::new(data);
+        assert_eq!(chart.price_change(), None);
+    }
+
+    #[test]
+    fn test_price_change_negative() {
+        let data = vec![
+            Candle::new(100.0, 105.0, 98.0, 103.0),
+            Candle::new(103.0, 108.0, 102.0, 100.0),
+        ];
+        let chart = CandleChart::new(data);
+        let (change, percent) = chart.price_change().unwrap();
+        assert_eq!(change, -3.0);
+    }
+
+    // =========================================================================
+    // CandleChart::visible_candles tests
+    // =========================================================================
+
+    #[test]
+    fn test_visible_candles_partial() {
+        let data = vec![
+            Candle::new(100.0, 105.0, 98.0, 103.0),
+            Candle::new(103.0, 108.0, 102.0, 107.0),
+            Candle::new(107.0, 112.0, 106.0, 111.0),
+        ];
+        let chart = CandleChart::new(data).width(2).scroll(1);
+        let visible = chart.visible_candles();
+        assert_eq!(visible.len(), 2);
+    }
+
+    #[test]
+    fn test_visible_candles_empty() {
+        let chart = CandleChart::new(vec![]);
+        let visible = chart.visible_candles();
+        assert_eq!(visible.len(), 0);
+    }
+
+    // =========================================================================
+    // CandleChart Clone trait
+    // =========================================================================
+
+    #[test]
+    fn test_chart_clone() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart1 = CandleChart::new(data).title("Test");
+        let chart2 = chart1.clone();
+        assert_eq!(chart1.title, chart2.title);
+    }
+
+    // =========================================================================
+    // CandleChart Debug trait
+    // =========================================================================
+
+    #[test]
+    fn test_chart_debug() {
+        let data = vec![Candle::new(100.0, 110.0, 95.0, 105.0)];
+        let chart = CandleChart::new(data);
+        let debug_str = format!("{:?}", chart);
+        assert!(debug_str.contains("CandleChart"));
+    }
+
+    // =========================================================================
+    // CandleChart builder chain test
+    // =========================================================================
+
+    #[test]
+    fn test_chart_builder_chain() {
+        let data = vec![
+            Candle::with_volume(100.0, 105.0, 98.0, 103.0, 1000.0),
+            Candle::with_volume(103.0, 108.0, 102.0, 107.0, 1500.0),
+        ];
+        let chart = CandleChart::new(data)
+            .title("Stock Chart")
+            .style(ChartStyle::Ohlc)
+            .size(40, 15)
+            .bullish_color(Color::rgb(0, 200, 0))
+            .bearish_color(Color::rgb(200, 0, 0))
+            .show_volume(true)
+            .show_axis(true)
+            .show_grid(true)
+            .crosshair(0)
+            .precision(3)
+            .price_range(95.0, 115.0)
+            .scroll(0);
+
+        assert_eq!(chart.title, Some("Stock Chart".to_string()));
+        assert_eq!(chart.style, ChartStyle::Ohlc);
+        assert_eq!(chart.width, 40);
+        assert_eq!(chart.height, 15);
+        assert!(chart.show_volume);
+        assert!(chart.show_axis);
+        assert!(chart.show_grid);
+        assert_eq!(chart.crosshair, Some(0));
+        assert_eq!(chart.precision, 3);
+        assert_eq!(chart.min_price, Some(95.0));
+        assert_eq!(chart.max_price, Some(115.0));
+        assert_eq!(chart.offset, 0);
+    }
+
+    // =========================================================================
+    // Render tests
+    // =========================================================================
+
+    #[test]
+    fn test_candlechart_render_basic() {
+        use crate::layout::Rect;
+        use crate::render::Buffer;
+        use crate::widget::RenderContext;
+
+        let data = vec![
+            Candle::new(100.0, 105.0, 98.0, 103.0),
+            Candle::new(103.0, 108.0, 102.0, 107.0),
+            Candle::new(107.0, 112.0, 106.0, 111.0),
+        ];
+
+        let chart = CandleChart::new(data);
+        let mut buffer = Buffer::new(40, 20);
+        let area = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        chart.render(&mut ctx);
+        // Should render without panic
+    }
+
+    #[test]
+    fn test_candlechart_render_with_title() {
+        use crate::layout::Rect;
+        use crate::render::Buffer;
+        use crate::widget::RenderContext;
+
+        let data = vec![Candle::new(100.0, 105.0, 98.0, 103.0)];
+        let chart = CandleChart::new(data).title("AAPL");
+
+        let mut buffer = Buffer::new(40, 20);
+        let area = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        chart.render(&mut ctx);
+
+        // Title should be rendered
+        let mut title_found = false;
+        for x in 0..40 {
+            if let Some(cell) = buffer.get(x, 0) {
+                if cell.symbol == 'A' {
+                    title_found = true;
+                    break;
+                }
+            }
+        }
+        assert!(title_found);
+    }
+
+    #[test]
+    fn test_candlechart_render_with_volume() {
+        use crate::layout::Rect;
+        use crate::render::Buffer;
+        use crate::widget::RenderContext;
+
+        let data = vec![
+            Candle::with_volume(100.0, 105.0, 98.0, 103.0, 1000.0),
+            Candle::with_volume(103.0, 108.0, 102.0, 107.0, 1500.0),
+        ];
+        let chart = CandleChart::new(data).show_volume(true);
+
+        let mut buffer = Buffer::new(40, 20);
+        let area = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        chart.render(&mut ctx);
+        // Should render volume bars
+    }
+
+    #[test]
+    fn test_candlechart_render_empty() {
+        use crate::layout::Rect;
+        use crate::render::Buffer;
+        use crate::widget::RenderContext;
+
+        let chart = CandleChart::new(vec![]);
+
+        let mut buffer = Buffer::new(40, 20);
+        let area = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        chart.render(&mut ctx);
+        // Should handle empty data gracefully
+    }
+
+    #[test]
+    fn test_candlechart_render_ohlc() {
+        use crate::layout::Rect;
+        use crate::render::Buffer;
+        use crate::widget::RenderContext;
+
+        let data = vec![
+            Candle::new(100.0, 105.0, 98.0, 103.0),
+            Candle::new(103.0, 108.0, 102.0, 107.0),
+        ];
+        let chart = CandleChart::new(data).style(ChartStyle::Ohlc);
+
+        let mut buffer = Buffer::new(40, 20);
+        let area = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        chart.render(&mut ctx);
+        // Should render OHLC bars
+    }
+
+    #[test]
+    fn test_candlechart_render_hollow() {
+        use crate::layout::Rect;
+        use crate::render::Buffer;
+        use crate::widget::RenderContext;
+
+        let data = vec![
+            Candle::new(100.0, 105.0, 98.0, 103.0),
+            Candle::new(103.0, 108.0, 102.0, 107.0),
+        ];
+        let chart = CandleChart::new(data).style(ChartStyle::Hollow);
+
+        let mut buffer = Buffer::new(40, 20);
+        let area = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        chart.render(&mut ctx);
+        // Should render hollow candles
+    }
+
+    #[test]
+    fn test_candlechart_render_heikin_ashi() {
+        use crate::layout::Rect;
+        use crate::render::Buffer;
+        use crate::widget::RenderContext;
+
+        let data = vec![
+            Candle::new(100.0, 105.0, 98.0, 103.0),
+            Candle::new(103.0, 108.0, 102.0, 107.0),
+        ];
+        let chart = CandleChart::new(data).style(ChartStyle::HeikinAshi);
+
+        let mut buffer = Buffer::new(40, 20);
+        let area = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        chart.render(&mut ctx);
+        // Should render Heikin-Ashi candles
+    }
 }

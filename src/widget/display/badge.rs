@@ -336,4 +336,289 @@ mod tests {
         let d = dot_badge();
         assert_eq!(d.shape, BadgeShape::Dot);
     }
+
+    // =========================================================================
+    // BadgeVariant enum tests
+    // =========================================================================
+
+    #[test]
+    fn test_badge_variant_default() {
+        let v = BadgeVariant::default();
+        assert_eq!(v, BadgeVariant::Default);
+    }
+
+    #[test]
+    fn test_badge_variant_clone() {
+        let v = BadgeVariant::Success;
+        let cloned = v.clone();
+        assert_eq!(v, cloned);
+    }
+
+    #[test]
+    fn test_badge_variant_copy() {
+        let v1 = BadgeVariant::Error;
+        let v2 = v1;
+        assert_eq!(v1, BadgeVariant::Error);
+        assert_eq!(v2, BadgeVariant::Error);
+    }
+
+    #[test]
+    fn test_badge_variant_partial_eq() {
+        assert_eq!(BadgeVariant::Primary, BadgeVariant::Primary);
+        assert_ne!(BadgeVariant::Primary, BadgeVariant::Warning);
+    }
+
+    #[test]
+    fn test_badge_variant_debug() {
+        let v = BadgeVariant::Info;
+        assert!(format!("{:?}", v).contains("Info"));
+    }
+
+    #[test]
+    fn test_badge_variant_colors_default() {
+        let (bg, fg) = BadgeVariant::Default.colors();
+        assert_eq!(bg, Color::rgb(80, 80, 80));
+        assert_eq!(fg, Color::WHITE);
+    }
+
+    #[test]
+    fn test_badge_variant_colors_primary() {
+        let (bg, fg) = BadgeVariant::Primary.colors();
+        assert_eq!(bg, Color::rgb(50, 100, 200));
+        assert_eq!(fg, Color::WHITE);
+    }
+
+    #[test]
+    fn test_badge_variant_colors_success() {
+        let (bg, fg) = BadgeVariant::Success.colors();
+        assert_eq!(bg, Color::rgb(40, 160, 80));
+        assert_eq!(fg, Color::WHITE);
+    }
+
+    #[test]
+    fn test_badge_variant_colors_warning() {
+        let (bg, fg) = BadgeVariant::Warning.colors();
+        assert_eq!(bg, Color::rgb(200, 150, 40));
+        assert_eq!(fg, Color::BLACK);
+    }
+
+    #[test]
+    fn test_badge_variant_colors_error() {
+        let (bg, fg) = BadgeVariant::Error.colors();
+        assert_eq!(bg, Color::rgb(200, 60, 60));
+        assert_eq!(fg, Color::WHITE);
+    }
+
+    #[test]
+    fn test_badge_variant_colors_info() {
+        let (bg, fg) = BadgeVariant::Info.colors();
+        assert_eq!(bg, Color::rgb(60, 160, 180));
+        assert_eq!(fg, Color::WHITE);
+    }
+
+    // =========================================================================
+    // BadgeShape enum tests
+    // =========================================================================
+
+    #[test]
+    fn test_badge_shape_default() {
+        let s = BadgeShape::default();
+        assert_eq!(s, BadgeShape::Rounded);
+    }
+
+    #[test]
+    fn test_badge_shape_clone() {
+        let s = BadgeShape::Pill;
+        let cloned = s.clone();
+        assert_eq!(s, cloned);
+    }
+
+    #[test]
+    fn test_badge_shape_copy() {
+        let s1 = BadgeShape::Square;
+        let s2 = s1;
+        assert_eq!(s1, BadgeShape::Square);
+        assert_eq!(s2, BadgeShape::Square);
+    }
+
+    #[test]
+    fn test_badge_shape_partial_eq() {
+        assert_eq!(BadgeShape::Rounded, BadgeShape::Rounded);
+        assert_ne!(BadgeShape::Rounded, BadgeShape::Dot);
+    }
+
+    #[test]
+    fn test_badge_shape_debug() {
+        let s = BadgeShape::Pill;
+        assert!(format!("{:?}", s).contains("Pill"));
+    }
+
+    // =========================================================================
+    // Badge builder tests
+    // =========================================================================
+
+    #[test]
+    fn test_badge_variant_builder() {
+        let b = Badge::new("Test").variant(BadgeVariant::Warning);
+        assert_eq!(b.variant, BadgeVariant::Warning);
+    }
+
+    #[test]
+    fn test_badge_shape_builder() {
+        let b = Badge::new("Test").shape(BadgeShape::Square);
+        assert_eq!(b.shape, BadgeShape::Square);
+    }
+
+    #[test]
+    fn test_badge_primary_shorthand() {
+        let b = badge("New").primary();
+        assert_eq!(b.variant, BadgeVariant::Primary);
+    }
+
+    #[test]
+    fn test_badge_success_shorthand() {
+        let b = badge("Done").success();
+        assert_eq!(b.variant, BadgeVariant::Success);
+    }
+
+    #[test]
+    fn test_badge_warning_shorthand() {
+        let b = badge("Wait").warning();
+        assert_eq!(b.variant, BadgeVariant::Warning);
+    }
+
+    #[test]
+    fn test_badge_error_shorthand() {
+        let b = badge("Fail").error();
+        assert_eq!(b.variant, BadgeVariant::Error);
+    }
+
+    #[test]
+    fn test_badge_info_shorthand() {
+        let b = badge("Help").info();
+        assert_eq!(b.variant, BadgeVariant::Info);
+    }
+
+    #[test]
+    fn test_badge_pill_shorthand() {
+        let b = badge("Label").pill();
+        assert_eq!(b.shape, BadgeShape::Pill);
+    }
+
+    #[test]
+    fn test_badge_square_shorthand() {
+        let b = badge("Box").square();
+        assert_eq!(b.shape, BadgeShape::Square);
+    }
+
+    #[test]
+    fn test_badge_colors_builder() {
+        let b = badge("Test").colors(Color::CYAN, Color::MAGENTA);
+        assert_eq!(b.bg_color, Some(Color::CYAN));
+        assert_eq!(b.fg_color, Some(Color::MAGENTA));
+    }
+
+    #[test]
+    fn test_badge_bold() {
+        let b = badge("Bold").bold();
+        assert!(b.bold);
+    }
+
+    #[test]
+    fn test_badge_max_width() {
+        let b = badge("Wide").max_width(10);
+        assert_eq!(b.max_width, 10);
+    }
+
+    #[test]
+    fn test_badge_new_with_str() {
+        let b = Badge::new("Text");
+        assert_eq!(b.text, "Text");
+    }
+
+    #[test]
+    fn test_badge_new_with_string() {
+        let s = String::from("Owned");
+        let b = Badge::new(s);
+        assert_eq!(b.text, "Owned");
+    }
+
+    #[test]
+    fn test_badge_new_empty() {
+        let b = Badge::new("");
+        assert_eq!(b.text, "");
+        assert!(b.text.is_empty());
+    }
+
+    #[test]
+    fn test_badge_dot_with_variant() {
+        let b = Badge::dot().error();
+        assert_eq!(b.shape, BadgeShape::Dot);
+        assert_eq!(b.variant, BadgeVariant::Error);
+    }
+
+    #[test]
+    fn test_badge_effective_colors_fallback() {
+        let b = badge("Test");
+        let (bg, fg) = b.effective_colors();
+        // Should use variant default colors
+        let (expected_bg, expected_fg) = BadgeVariant::Default.colors();
+        assert_eq!(bg, expected_bg);
+        assert_eq!(fg, expected_fg);
+    }
+
+    #[test]
+    fn test_badge_effective_colors_custom_bg() {
+        let b = badge("Test").bg(Color::YELLOW);
+        let (bg, fg) = b.effective_colors();
+        assert_eq!(bg, Color::YELLOW);
+        // fg should use variant default
+        let (_, expected_fg) = BadgeVariant::Default.colors();
+        assert_eq!(fg, expected_fg);
+    }
+
+    #[test]
+    fn test_badge_effective_colors_custom_fg() {
+        let b = badge("Test").fg(Color::CYAN);
+        let (bg, fg) = b.effective_colors();
+        // bg should use variant default
+        let (expected_bg, _) = BadgeVariant::Default.colors();
+        assert_eq!(bg, expected_bg);
+        assert_eq!(fg, Color::CYAN);
+    }
+
+    // =========================================================================
+    // Badge Default trait tests
+    // =========================================================================
+
+    #[test]
+    fn test_badge_default_trait() {
+        let b = Badge::default();
+        assert_eq!(b.text, "");
+        assert_eq!(b.variant, BadgeVariant::Default);
+        assert_eq!(b.shape, BadgeShape::Rounded);
+    }
+
+    // =========================================================================
+    // Builder chain tests
+    // =========================================================================
+
+    #[test]
+    fn test_badge_builder_chain() {
+        let b = badge("Chain").primary().pill().bold().max_width(20);
+        assert_eq!(b.text, "Chain");
+        assert_eq!(b.variant, BadgeVariant::Primary);
+        assert_eq!(b.shape, BadgeShape::Pill);
+        assert!(b.bold);
+        assert_eq!(b.max_width, 20);
+    }
+
+    #[test]
+    fn test_badge_variant_chain() {
+        let b = Badge::new("X")
+            .variant(BadgeVariant::Info)
+            .shape(BadgeShape::Square);
+        assert_eq!(b.variant, BadgeVariant::Info);
+        assert_eq!(b.shape, BadgeShape::Square);
+    }
 }

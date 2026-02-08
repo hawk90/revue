@@ -288,4 +288,296 @@ mod tests {
         assert_eq!(buffer.get(0, 0).unwrap().symbol, 'A');
         assert_eq!(buffer.get(11, 0).unwrap().symbol, 'B');
     }
+
+    // =========================================================================
+    // Direction enum tests
+    // =========================================================================
+
+    #[test]
+    fn test_direction_default() {
+        let dir = Direction::default();
+        assert_eq!(dir, Direction::Row);
+    }
+
+    #[test]
+    fn test_direction_clone() {
+        let dir = Direction::Column;
+        let cloned = dir.clone();
+        assert_eq!(dir, cloned);
+    }
+
+    #[test]
+    fn test_direction_copy() {
+        let dir1 = Direction::Row;
+        let dir2 = dir1;
+        assert_eq!(dir1, Direction::Row);
+        assert_eq!(dir2, Direction::Row);
+    }
+
+    #[test]
+    fn test_direction_partial_eq() {
+        assert_eq!(Direction::Row, Direction::Row);
+        assert_ne!(Direction::Row, Direction::Column);
+    }
+
+    #[test]
+    fn test_direction_debug() {
+        let dir = Direction::Column;
+        assert!(format!("{:?}", dir).contains("Column"));
+    }
+
+    // =========================================================================
+    // Stack builder tests
+    // =========================================================================
+
+    #[test]
+    fn test_stack_new_default_values() {
+        let s = Stack::new();
+        assert!(s.is_empty());
+        assert_eq!(s.len(), 0);
+        assert_eq!(s.direction, Direction::Row);
+        assert_eq!(s.gap, 0);
+        assert!(s.sizes.is_empty());
+    }
+
+    #[test]
+    fn test_stack_direction_row() {
+        let s = Stack::new().direction(Direction::Row);
+        assert_eq!(s.direction, Direction::Row);
+    }
+
+    #[test]
+    fn test_stack_gap() {
+        let s = Stack::new().gap(5);
+        assert_eq!(s.gap, 5);
+    }
+
+    #[test]
+    fn test_stack_child_sized() {
+        let s = Stack::new().child_sized(Text::new("Test"), 10);
+        assert_eq!(s.len(), 1);
+        assert_eq!(s.sizes.len(), 1);
+        assert_eq!(s.sizes[0], Some(10));
+    }
+
+    #[test]
+    fn test_stack_child_auto_size() {
+        let s = Stack::new().child(Text::new("Test"));
+        assert_eq!(s.sizes[0], None);
+    }
+
+    // =========================================================================
+    // Stack Default trait tests
+    // =========================================================================
+
+    #[test]
+    fn test_stack_default() {
+        let s = Stack::default();
+        assert!(s.is_empty());
+        assert_eq!(s.direction, Direction::Row);
+    }
+
+    // =========================================================================
+    // Stack len and is_empty tests
+    // =========================================================================
+
+    #[test]
+    fn test_stack_len_empty() {
+        let s = Stack::new();
+        assert_eq!(s.len(), 0);
+    }
+
+    #[test]
+    fn test_stack_len_multiple() {
+        let s = Stack::new()
+            .child(Text::new("A"))
+            .child(Text::new("B"))
+            .child(Text::new("C"));
+        assert_eq!(s.len(), 3);
+    }
+
+    #[test]
+    fn test_stack_is_empty_true() {
+        let s = Stack::new();
+        assert!(s.is_empty());
+    }
+
+    #[test]
+    fn test_stack_is_empty_false() {
+        let s = Stack::new().child(Text::new("X"));
+        assert!(!s.is_empty());
+    }
+
+    // =========================================================================
+    // Helper function tests
+    // =========================================================================
+
+    #[test]
+    fn test_vstack_creates_column() {
+        let s = vstack();
+        assert_eq!(s.direction, Direction::Column);
+    }
+
+    #[test]
+    fn test_hstack_creates_row() {
+        let s = hstack();
+        assert_eq!(s.direction, Direction::Row);
+    }
+
+    // =========================================================================
+    // Builder chain tests
+    // =========================================================================
+
+    #[test]
+    fn test_stack_builder_chain() {
+        let s = Stack::new()
+            .direction(Direction::Column)
+            .gap(3)
+            .child(Text::new("A"))
+            .child_sized(Text::new("B"), 10);
+        assert_eq!(s.direction, Direction::Column);
+        assert_eq!(s.gap, 3);
+        assert_eq!(s.len(), 2);
+        assert_eq!(s.sizes[0], None);
+        assert_eq!(s.sizes[1], Some(10));
+    }
+
+    // =========================================================================
+    // Render edge case tests
+    // =========================================================================
+
+    #[test]
+    fn test_stack_render_empty() {
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let s = Stack::new();
+        s.render(&mut ctx);
+        // Should not crash
+    }
+
+    #[test]
+    fn test_stack_render_zero_width() {
+        let mut buffer = Buffer::new(0, 10);
+        let area = Rect::new(0, 0, 0, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let s = hstack().child(Text::new("Test"));
+        s.render(&mut ctx);
+        // Should not crash
+    }
+
+    #[test]
+    fn test_stack_render_zero_height() {
+        let mut buffer = Buffer::new(10, 0);
+        let area = Rect::new(0, 0, 10, 0);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let s = vstack().child(Text::new("Test"));
+        s.render(&mut ctx);
+        // Should not crash
+    }
+
+    // =========================================================================
+    // child_sized render tests
+    // =========================================================================
+
+    #[test]
+    fn test_stack_child_sized_row() {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let s = hstack()
+            .child_sized(Text::new("A"), 5)
+            .child_sized(Text::new("B"), 10);
+
+        s.render(&mut ctx);
+
+        // A at 0-4, B at 5-14
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'A');
+        assert_eq!(buffer.get(5, 0).unwrap().symbol, 'B');
+    }
+
+    #[test]
+    fn test_stack_child_sized_column() {
+        let mut buffer = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 10, 10);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let s = vstack()
+            .child_sized(Text::new("Top"), 3)
+            .child_sized(Text::new("Bottom"), 5);
+
+        s.render(&mut ctx);
+
+        // Top at 0-2, Bottom at 3-7
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'T');
+        assert_eq!(buffer.get(0, 3).unwrap().symbol, 'B');
+    }
+
+    #[test]
+    fn test_stack_mixed_sizes_row() {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        // Fixed 5, auto (gets remaining 15), fixed 3
+        let s = hstack()
+            .gap(1)
+            .child_sized(Text::new("A"), 5)
+            .child(Text::new("B"))
+            .child_sized(Text::new("C"), 3);
+
+        s.render(&mut ctx);
+
+        // A: 0-4, gap: 5, B: 6-20 (auto gets 15), gap: 21 (clamped), C: 22+
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'A');
+        assert_eq!(buffer.get(6, 0).unwrap().symbol, 'B');
+    }
+
+    // =========================================================================
+    // calculate_sizes edge cases
+    // =========================================================================
+
+    #[test]
+    fn test_calculate_sizes_empty() {
+        let s = Stack::new();
+        let sizes = s.calculate_sizes(100, 0);
+        assert!(sizes.is_empty());
+    }
+
+    #[test]
+    fn test_calculate_sizes_all_auto() {
+        let s = Stack::new()
+            .child(Text::new("A"))
+            .child(Text::new("B"))
+            .child(Text::new("C"));
+        let sizes = s.calculate_sizes(30, 3);
+        // Each gets 30/3 = 10
+        assert_eq!(sizes, vec![10, 10, 10]);
+    }
+
+    #[test]
+    fn test_calculate_sizes_all_fixed() {
+        let s = Stack::new()
+            .child_sized(Text::new("A"), 5)
+            .child_sized(Text::new("B"), 10)
+            .child_sized(Text::new("C"), 15);
+        let sizes = s.calculate_sizes(100, 3);
+        assert_eq!(sizes, vec![5, 10, 15]);
+    }
+
+    #[test]
+    fn test_calculate_sizes_insufficient_space() {
+        let s = Stack::new()
+            .child_sized(Text::new("A"), 50)
+            .child(Text::new("B"));
+        let sizes = s.calculate_sizes(30, 2);
+        // Fixed: 50, but available is only 30
+        // Auto gets minimal 1
+        assert_eq!(sizes[0], 50); // Fixed size preserved
+        assert_eq!(sizes[1], 1); // Auto gets minimal
+    }
 }

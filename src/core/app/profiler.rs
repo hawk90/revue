@@ -735,4 +735,270 @@ mod tests {
         assert!(summary.contains("FPS"));
         assert!(summary.contains("render"));
     }
+
+    // =========================================================================
+    // Additional profiler tests
+    // =========================================================================
+
+    #[test]
+    fn test_profiler_default() {
+        let profiler = Profiler::default();
+        assert!(profiler.is_enabled());
+    }
+
+    #[test]
+    fn test_profiler_register() {
+        let mut profiler = Profiler::new();
+        profiler.register("custom_metric", MetricType::Custom);
+        assert!(profiler.stats("custom_metric").is_none()); // No samples yet
+    }
+
+    #[test]
+    fn test_profiler_start_without_register() {
+        let mut profiler = Profiler::new();
+        profiler.start("auto_register"); // Should auto-register
+        let _ = profiler.end("auto_register");
+        assert!(profiler.stats("auto_register").is_some());
+    }
+
+    #[test]
+    fn test_profiler_record_without_register() {
+        let mut profiler = Profiler::new();
+        profiler.record("auto_record", Duration::from_millis(10));
+        assert!(profiler.stats("auto_record").is_some());
+    }
+
+    #[test]
+    fn test_profiler_metrics_iteration() {
+        let mut profiler = Profiler::new();
+        profiler.record("metric1", Duration::from_millis(10));
+        profiler.record("metric2", Duration::from_millis(20));
+
+        let mut count = 0;
+        for (name, _metric) in profiler.metrics() {
+            assert!(name == "metric1" || name == "metric2");
+            count += 1;
+        }
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_profiler_clear() {
+        let mut profiler = Profiler::new();
+        profiler.record("test", Duration::from_millis(10));
+        profiler.clear();
+        assert!(profiler.stats("test").is_none());
+        assert_eq!(profiler.fps(), 0.0);
+    }
+
+    #[test]
+    fn test_profiler_runtime() {
+        let profiler = Profiler::new();
+        thread::sleep(Duration::from_millis(10));
+        let runtime = profiler.runtime();
+        assert!(runtime >= Duration::from_millis(10));
+    }
+
+    #[test]
+    fn test_profiler_time_returns_result() {
+        let mut profiler = Profiler::new();
+        let result = profiler.time("calc", || 2 + 2);
+        assert_eq!(result, 4);
+    }
+
+    #[test]
+    fn test_profiler_frame() {
+        let mut profiler = Profiler::new();
+        profiler.frame();
+        profiler.frame();
+        profiler.frame();
+        // FPS should be calculated
+        let fps = profiler.fps();
+        // May be very high since we didn't sleep
+        assert!(fps >= 0.0);
+    }
+
+    #[test]
+    fn test_profiler_set_enabled() {
+        let mut profiler = Profiler::new();
+        assert!(profiler.is_enabled());
+        profiler.set_enabled(false);
+        assert!(!profiler.is_enabled());
+        profiler.set_enabled(true);
+        assert!(profiler.is_enabled());
+    }
+
+    #[test]
+    fn test_metric_new_with_string() {
+        let name = String::from("string_metric");
+        let metric = Metric::new(name.clone(), MetricType::Event);
+        assert_eq!(metric.name, name);
+    }
+
+    #[test]
+    fn test_metric_clear() {
+        let mut metric = Metric::new("test", MetricType::Render);
+        metric.add_sample(Duration::from_millis(10));
+        metric.clear();
+        assert_eq!(metric.sample_count(), 0);
+    }
+
+    #[test]
+    fn test_metric_samples_slice() {
+        let mut metric = Metric::new("test", MetricType::Render);
+        metric.add_sample(Duration::from_millis(10));
+        metric.add_sample(Duration::from_millis(20));
+        let samples = metric.samples();
+        assert_eq!(samples.len(), 2);
+    }
+
+    #[test]
+    fn test_metric_stats_empty() {
+        let metric = Metric::new("test", MetricType::Render);
+        assert!(metric.stats().is_none());
+    }
+
+    #[test]
+    fn test_metric_end_without_start() {
+        let mut metric = Metric::new("test", MetricType::Render);
+        let result = metric.end();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_metric_double_start() {
+        let mut metric = Metric::new("test", MetricType::Render);
+        metric.start();
+        thread::sleep(Duration::from_millis(5));
+        metric.start(); // Should reset start time
+        thread::sleep(Duration::from_millis(2));
+        let duration = metric.end();
+        assert!(duration.unwrap() < Duration::from_millis(10));
+    }
+
+    #[test]
+    fn test_stats_from_samples_empty() {
+        let stats = Stats::from_samples(&[]);
+        assert!(stats.is_none());
+    }
+
+    #[test]
+    fn test_stats_from_samples_single() {
+        let samples = vec![Sample::new(Duration::from_millis(10))];
+        let stats = Stats::from_samples(&samples).unwrap();
+        assert_eq!(stats.count, 1);
+        assert_eq!(stats.avg, Duration::from_millis(10));
+        assert_eq!(stats.min, Duration::from_millis(10));
+        assert_eq!(stats.max, Duration::from_millis(10));
+    }
+
+    #[test]
+    fn test_fps_counter_default() {
+        let fps = FpsCounter::default();
+        assert_eq!(fps.fps(), 0.0);
+    }
+
+    #[test]
+    fn test_fps_counter_window() {
+        let fps = FpsCounter::new().window(Duration::from_secs(2));
+        // Just verify it can be set
+        let _ = fps;
+    }
+
+    #[test]
+    fn test_fps_counter_frame_time() {
+        let mut fps = FpsCounter::new();
+        fps.frame();
+        fps.frame();
+        let frame_time = fps.frame_time();
+        // With only 2 frames, may or may not have valid FPS
+        let _ = frame_time;
+    }
+
+    #[test]
+    fn test_fps_counter_reset() {
+        let mut fps = FpsCounter::new();
+        fps.frame();
+        fps.frame();
+        fps.reset();
+        assert_eq!(fps.fps(), 0.0);
+    }
+
+    #[test]
+    fn test_metric_type_all_variants() {
+        let types = [
+            MetricType::Render,
+            MetricType::Event,
+            MetricType::Layout,
+            MetricType::Custom,
+        ];
+        for (i, t1) in types.iter().enumerate() {
+            for (j, t2) in types.iter().enumerate() {
+                if i == j {
+                    assert_eq!(t1, t2);
+                } else {
+                    assert_ne!(t1, t2);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_sample_new() {
+        let duration = Duration::from_millis(100);
+        let sample = Sample::new(duration);
+        assert_eq!(sample.duration, duration);
+    }
+
+    #[test]
+    fn test_sample_timestamp() {
+        let before = Instant::now();
+        let sample = Sample::new(Duration::ZERO);
+        let after = Instant::now();
+        assert!(sample.timestamp >= before);
+        assert!(sample.timestamp <= after);
+    }
+
+    #[test]
+    fn test_timing_guard_drop() {
+        let mut profiler = Profiler::new();
+        {
+            let _guard = TimingGuard::new(&mut profiler, "guard_test");
+            thread::sleep(Duration::from_millis(5));
+        } // Guard drops here
+        assert!(profiler.stats("guard_test").is_some());
+    }
+
+    #[test]
+    fn test_snapshot_all_fields() {
+        let mut profiler = Profiler::new();
+        profiler.record("test", Duration::from_millis(10));
+        let snapshot = Snapshot::from_profiler(&profiler);
+        assert!(snapshot.stats.contains_key("test"));
+        assert!(snapshot.runtime >= Duration::ZERO);
+    }
+
+    #[test]
+    fn test_snapshot_diff_empty() {
+        let mut profiler = Profiler::new();
+        let snap1 = Snapshot::from_profiler(&profiler);
+        let snap2 = Snapshot::from_profiler(&profiler);
+        let diff = snap2.compare(&snap1);
+        assert!(diff.metric_diffs.is_empty());
+    }
+
+    #[test]
+    fn test_snapshot_diff_different_metrics() {
+        let mut profiler1 = Profiler::new();
+        profiler1.record("metric1", Duration::from_millis(10));
+        let snap1 = Snapshot::from_profiler(&profiler1);
+
+        let mut profiler2 = Profiler::new();
+        profiler2.record("metric2", Duration::from_millis(20));
+        let snap2 = Snapshot::from_profiler(&profiler2);
+
+        let diff = snap2.compare(&snap1);
+        // No common metrics to compare
+        assert!(diff.metric_diffs.is_empty());
+    }
 }

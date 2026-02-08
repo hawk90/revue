@@ -468,4 +468,68 @@ mod tests {
             );
         }
     }
+
+    // =========================================================================
+    // File size constant tests
+    // =========================================================================
+
+    #[test]
+    fn test_kb_value() {
+        assert_eq!(KB, 1024);
+    }
+
+    #[test]
+    fn test_mb_value() {
+        assert_eq!(MB, 1024 * 1024);
+    }
+
+    #[test]
+    fn test_gb_value() {
+        assert_eq!(GB, 1024 * 1024 * 1024);
+    }
+
+    #[test]
+    fn test_size_units_relationship() {
+        assert!(KB < MB);
+        assert!(MB < GB);
+    }
+
+    #[test]
+    fn test_max_css_file_size() {
+        assert_eq!(MAX_CSS_FILE_SIZE, MB);
+    }
+
+    #[test]
+    fn test_max_config_file_size() {
+        assert_eq!(MAX_CONFIG_FILE_SIZE, MB);
+    }
+
+    #[test]
+    fn test_max_snapshot_file_size() {
+        assert_eq!(MAX_SNAPSHOT_FILE_SIZE, 10 * MB);
+    }
+
+    #[test]
+    fn test_max_clipboard_size() {
+        assert_eq!(MAX_CLIPBOARD_SIZE, 10 * MB as usize);
+    }
+
+    #[test]
+    fn test_max_comment_length() {
+        assert_eq!(MAX_COMMENT_LENGTH, 100 * KB as usize);
+    }
+
+    #[test]
+    fn test_snapshot_larger_than_css() {
+        assert!(MAX_SNAPSHOT_FILE_SIZE > MAX_CSS_FILE_SIZE);
+    }
+
+    #[test]
+    fn test_all_max_sizes_positive() {
+        assert!(MAX_CSS_FILE_SIZE > 0);
+        assert!(MAX_CONFIG_FILE_SIZE > 0);
+        assert!(MAX_SNAPSHOT_FILE_SIZE > 0);
+        assert!(MAX_CLIPBOARD_SIZE > 0);
+        assert!(MAX_COMMENT_LENGTH > 0);
+    }
 }

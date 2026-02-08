@@ -370,3 +370,220 @@ pub use overlay::{draw_separator_overlay, draw_text_overlay};
 
 // Terminal detection
 pub use terminal::{is_sixel_capable, terminal_type, TerminalType};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // Module Export Tests
+    // =========================================================================
+    //
+    // This test module verifies that all publicly exported types and functions
+    // from the utils module are accessible and compile correctly.
+    //
+    // These tests use compile-time type checking to verify the API surface
+    // without executing functionality, which is tested in individual modules.
+
+    #[test]
+    fn test_all_modules_compile() {
+        // This test ensures that importing and using the utility API compiles correctly.
+        // The actual functionality is tested in each module's own test suite.
+
+        // Filter modes
+        let mode = FilterMode::default();
+        assert_eq!(mode, FilterMode::Fuzzy);
+
+        // Terminal type
+        let term = terminal_type();
+        match term {
+            TerminalType::Kitty | TerminalType::Iterm2 | TerminalType::Unknown => {}
+        }
+
+        // Once utility
+        let mut once = Once::new();
+        assert!(once.call());
+        assert!(!once.call());
+
+        // Text sizing
+        let _ = text_sizing_supported();
+
+        // Shell escaping
+        let escaped = escape_applescript("test");
+        assert_eq!(escaped, "test");
+        let escaped = escape_powershell("test");
+        assert_eq!(escaped, "test");
+        let sanitized = sanitize_string("test");
+        assert_eq!(sanitized, "test");
+
+        // Format utilities
+        let size = format_size(1024);
+        assert!(!size.is_empty());
+        let duration = format_duration(60); // Takes u64 seconds
+        assert!(!duration.is_empty());
+
+        // Sort utilities
+        let order = natural_cmp("file1", "file2");
+        let _ = order; // Verify it compiles
+        let _ = NaturalKey::new("file1");
+
+        // Unicode utilities
+        let width = display_width("hello");
+        assert_eq!(width, 5);
+
+        // Highlight utilities
+        let spans = highlight_substring("hello world", "hello");
+        assert!(!spans.is_empty());
+
+        // ANSI utilities
+        let stripped = strip_ansi("test");
+        assert_eq!(stripped, "test");
+
+        // Easing functions
+        let eased = ease_in_out_quad(0.5);
+        assert!((0.0..=1.0).contains(&eased));
+
+        // Color utilities
+        let c = crate::style::Color::rgb(100, 100, 100);
+        let darker = darken(c, 0.2);
+        let lighter = lighten(c, 0.2);
+
+        // Border chars
+        let border = BorderChars::ROUNDED;
+        let _ = border.top_left;
+        let _ = border.top_right;
+        let _ = border.bottom_left;
+        let _ = border.bottom_right;
+
+        // Figlet
+        let art = figlet("Hi");
+        assert!(!art.is_empty());
+
+        // I18n
+        let mut i18n = I18n::new();
+        i18n.add_translation("en", "test", "Test");
+        assert_eq!(i18n.t("test"), "Test");
+
+        // Validation
+        let validator = required();
+        let result = validator("value");
+        assert!(result.is_ok());
+
+        // Path utilities
+        let name = filename("/path/to/file.txt");
+        assert_eq!(name, Some("file.txt".to_string()));
+
+        // Diff utilities
+        let diffs = diff_lines("line1\nline2", "line1\nline3");
+        assert!(!diffs.is_empty());
+
+        // Fuzzy matching - use pattern that matches in order
+        let score = fuzzy_score("hl", "hello");
+        assert!(score > 0);
+
+        // Filter mode
+        assert!(FilterMode::Fuzzy.matches("hello", "hl"));
+        assert!(FilterMode::Prefix.matches("hello", "he"));
+        assert!(FilterMode::Contains.matches("hello", "el"));
+        assert!(FilterMode::Exact.matches("hello", "hello"));
+        assert!(FilterMode::None.matches("hello", "xyz"));
+
+        // Debounce/throttle - just verify types compile
+        let _ = debouncer(std::time::Duration::from_millis(100));
+        let _ = debounce_ms(100);
+        let _ = throttle(std::time::Duration::from_millis(100));
+        let _ = throttle_ms(100);
+
+        // Verify lock utilities compile
+        let mutex = std::sync::Mutex::new(42);
+        let guard = lock_or_recover(&mutex);
+        assert_eq!(*guard, 42);
+
+        let rwlock = std::sync::RwLock::new(42);
+        let read_guard = read_or_recover(&rwlock);
+        assert_eq!(*read_guard, 42);
+
+        // Browser utilities - these return bool but we can't test actual execution
+        // without a real environment
+        let result = open_browser("https://example.com");
+        let _ = result; // Just verify it compiles
+
+        // Profiler
+        let _ = profiler_report();
+
+        // Text buffer
+        let buffer = TextBuffer::new();
+        assert!(buffer.is_empty());
+
+        // Undo history
+        let history: UndoHistory<String> = UndoHistory::new();
+        assert!(!history.can_undo());
+        assert!(!history.can_redo());
+
+        // Selection
+        let selection = Selection::new(10);
+        assert_eq!(selection.index, 0);
+
+        // Table
+        let table = Table::new();
+        assert_eq!(table.total_width(), 0);
+
+        // Tree navigation
+        let tree = TreeNav::new();
+        assert_eq!(tree.selected(), 0);
+
+        // Gradient - verify compilation only
+        use crate::utils::gradient::Gradient;
+        let _ = LinearGradient::new(
+            Gradient::linear(crate::style::Color::RED, crate::style::Color::BLUE),
+            GradientDirection::ToRight,
+        );
+
+        // Animation - verify compilation only (call one of the preset functions)
+        let _ = animation_presets::fade_in(300);
+
+        // Syntax highlighting - verify compilation only
+        let _ = Language::from_fence("rust");
+        let _ = SyntaxTheme::monokai();
+
+        // Accessibility - verify compilation only
+        let _ = shared_accessibility();
+        let _ = accessibility_manager();
+        announce("Test announcement");
+        let _ = take_announcements();
+        let _ = has_announcements();
+        set_reduced_motion(false);
+        let _ = prefers_reduced_motion();
+        set_high_contrast(false);
+        let _ = is_high_contrast();
+        set_accessibility_enabled(true);
+        let _ = is_accessibility_enabled();
+
+        // Keymap - verify compilation only
+        let _ = emacs_preset();
+        let _ = vim_preset();
+        let _ = KeymapConfig::default();
+
+        // Box layout
+        let layout = BoxLayout::new(0, 0, 20, 10);
+        let _ = layout;
+
+        // Check types are Copy/Clone where expected
+        let mode1 = FilterMode::Fuzzy;
+        let mode2 = mode1;
+        assert_eq!(mode1, mode2);
+
+        let term1 = TerminalType::Kitty;
+        let term2 = term1;
+        assert_eq!(term1, term2);
+
+        // Verify Direction is Copy/Clone
+        let dir1 = Direction::Ltr;
+        let dir2 = dir1;
+        assert_eq!(dir1, dir2);
+
+        // Verify LocaleId is just String
+        let id: LocaleId = "en".to_string();
+        assert_eq!(id, "en");
+    }
+}

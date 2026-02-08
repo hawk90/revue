@@ -716,4 +716,286 @@ mod tests {
         let (bottom, _) = arrow.chars(TooltipPosition::Bottom);
         assert_eq!(bottom, '▲');
     }
+
+    // =========================================================================
+    // TooltipPosition enum tests
+    // =========================================================================
+
+    #[test]
+    fn test_tooltip_position_default() {
+        assert_eq!(TooltipPosition::default(), TooltipPosition::Top);
+    }
+
+    #[test]
+    fn test_tooltip_position_clone() {
+        let pos1 = TooltipPosition::Bottom;
+        let pos2 = pos1.clone();
+        assert_eq!(pos1, pos2);
+    }
+
+    #[test]
+    fn test_tooltip_position_copy() {
+        let pos1 = TooltipPosition::Left;
+        let pos2 = pos1;
+        assert_eq!(pos2, TooltipPosition::Left);
+        // pos1 is still valid because of Copy
+        assert_eq!(pos1, TooltipPosition::Left);
+    }
+
+    #[test]
+    fn test_tooltip_position_partial_eq() {
+        assert_eq!(TooltipPosition::Top, TooltipPosition::Top);
+        assert_eq!(TooltipPosition::Bottom, TooltipPosition::Bottom);
+        assert_eq!(TooltipPosition::Left, TooltipPosition::Left);
+        assert_eq!(TooltipPosition::Right, TooltipPosition::Right);
+        assert_eq!(TooltipPosition::Auto, TooltipPosition::Auto);
+
+        assert_ne!(TooltipPosition::Top, TooltipPosition::Bottom);
+        assert_ne!(TooltipPosition::Left, TooltipPosition::Right);
+        assert_ne!(TooltipPosition::Auto, TooltipPosition::Top);
+    }
+
+    #[test]
+    fn test_tooltip_position_all_variants() {
+        let positions = [
+            TooltipPosition::Top,
+            TooltipPosition::Bottom,
+            TooltipPosition::Left,
+            TooltipPosition::Right,
+            TooltipPosition::Auto,
+        ];
+
+        // Verify all variants are distinct
+        for (i, pos1) in positions.iter().enumerate() {
+            for (j, pos2) in positions.iter().enumerate() {
+                if i == j {
+                    assert_eq!(pos1, pos2);
+                } else {
+                    assert_ne!(pos1, pos2);
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // TooltipArrow enum tests
+    // =========================================================================
+
+    #[test]
+    fn test_tooltip_arrow_default() {
+        assert_eq!(TooltipArrow::default(), TooltipArrow::None);
+    }
+
+    #[test]
+    fn test_tooltip_arrow_clone() {
+        let arrow1 = TooltipArrow::Unicode;
+        let arrow2 = arrow1.clone();
+        assert_eq!(arrow1, arrow2);
+    }
+
+    #[test]
+    fn test_tooltip_arrow_copy() {
+        let arrow1 = TooltipArrow::Simple;
+        let arrow2 = arrow1;
+        assert_eq!(arrow2, TooltipArrow::Simple);
+        // arrow1 is still valid because of Copy
+        assert_eq!(arrow1, TooltipArrow::Simple);
+    }
+
+    #[test]
+    fn test_tooltip_arrow_partial_eq() {
+        assert_eq!(TooltipArrow::None, TooltipArrow::None);
+        assert_eq!(TooltipArrow::Simple, TooltipArrow::Simple);
+        assert_eq!(TooltipArrow::Unicode, TooltipArrow::Unicode);
+
+        assert_ne!(TooltipArrow::None, TooltipArrow::Simple);
+        assert_ne!(TooltipArrow::Simple, TooltipArrow::Unicode);
+        assert_ne!(TooltipArrow::Unicode, TooltipArrow::None);
+    }
+
+    #[test]
+    fn test_tooltip_arrow_all_variants() {
+        let arrows = [
+            TooltipArrow::None,
+            TooltipArrow::Simple,
+            TooltipArrow::Unicode,
+        ];
+
+        // Verify all variants are distinct
+        for (i, arrow1) in arrows.iter().enumerate() {
+            for (j, arrow2) in arrows.iter().enumerate() {
+                if i == j {
+                    assert_eq!(arrow1, arrow2);
+                } else {
+                    assert_ne!(arrow1, arrow2);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_tooltip_arrow_chars_all_combinations() {
+        let arrows = [
+            TooltipArrow::None,
+            TooltipArrow::Simple,
+            TooltipArrow::Unicode,
+        ];
+        let positions = [
+            TooltipPosition::Top,
+            TooltipPosition::Bottom,
+            TooltipPosition::Left,
+            TooltipPosition::Right,
+            TooltipPosition::Auto,
+        ];
+
+        for arrow in arrows {
+            for pos in positions {
+                let (char1, char2) = arrow.chars(pos);
+                // Verify chars are valid (no panics) and are valid Unicode chars
+                assert!(char1.len_utf8() >= 1);
+                assert!(char2.len_utf8() >= 1);
+            }
+        }
+    }
+
+    // =========================================================================
+    // TooltipStyle enum tests
+    // =========================================================================
+
+    #[test]
+    fn test_tooltip_style_default() {
+        assert_eq!(TooltipStyle::default(), TooltipStyle::Plain);
+    }
+
+    #[test]
+    fn test_tooltip_style_clone() {
+        let style1 = TooltipStyle::Info;
+        let style2 = style1.clone();
+        assert_eq!(style1, style2);
+    }
+
+    #[test]
+    fn test_tooltip_style_copy() {
+        let style1 = TooltipStyle::Warning;
+        let style2 = style1;
+        assert_eq!(style2, TooltipStyle::Warning);
+        // style1 is still valid because of Copy
+        assert_eq!(style1, TooltipStyle::Warning);
+    }
+
+    #[test]
+    fn test_tooltip_style_partial_eq() {
+        assert_eq!(TooltipStyle::Plain, TooltipStyle::Plain);
+        assert_eq!(TooltipStyle::Bordered, TooltipStyle::Bordered);
+        assert_eq!(TooltipStyle::Rounded, TooltipStyle::Rounded);
+        assert_eq!(TooltipStyle::Info, TooltipStyle::Info);
+        assert_eq!(TooltipStyle::Warning, TooltipStyle::Warning);
+        assert_eq!(TooltipStyle::Error, TooltipStyle::Error);
+        assert_eq!(TooltipStyle::Success, TooltipStyle::Success);
+
+        assert_ne!(TooltipStyle::Plain, TooltipStyle::Bordered);
+        assert_ne!(TooltipStyle::Info, TooltipStyle::Warning);
+        assert_ne!(TooltipStyle::Error, TooltipStyle::Success);
+    }
+
+    #[test]
+    fn test_tooltip_style_all_variants() {
+        let styles = [
+            TooltipStyle::Plain,
+            TooltipStyle::Bordered,
+            TooltipStyle::Rounded,
+            TooltipStyle::Info,
+            TooltipStyle::Warning,
+            TooltipStyle::Error,
+            TooltipStyle::Success,
+        ];
+
+        // Verify all variants are distinct
+        for (i, style1) in styles.iter().enumerate() {
+            for (j, style2) in styles.iter().enumerate() {
+                if i == j {
+                    assert_eq!(style1, style2);
+                } else {
+                    assert_ne!(style1, style2);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_tooltip_style_colors_all_variants() {
+        let styles = [
+            TooltipStyle::Plain,
+            TooltipStyle::Bordered,
+            TooltipStyle::Rounded,
+            TooltipStyle::Info,
+            TooltipStyle::Warning,
+            TooltipStyle::Error,
+            TooltipStyle::Success,
+        ];
+
+        for style in styles {
+            let (fg, bg) = style.colors();
+            // Verify colors are valid (have RGB components)
+            assert!(fg.r <= 255);
+            assert!(fg.g <= 255);
+            assert!(fg.b <= 255);
+            assert!(bg.r <= 255);
+            assert!(bg.g <= 255);
+            assert!(bg.b <= 255);
+        }
+    }
+
+    #[test]
+    fn test_tooltip_style_border_chars_all_variants() {
+        let styles = [
+            TooltipStyle::Plain,
+            TooltipStyle::Bordered,
+            TooltipStyle::Rounded,
+            TooltipStyle::Info,
+            TooltipStyle::Warning,
+            TooltipStyle::Error,
+            TooltipStyle::Success,
+        ];
+
+        for style in styles {
+            let border = style.border_chars();
+            // Plain should have no border
+            if matches!(style, TooltipStyle::Plain) {
+                assert!(border.is_none());
+            } else {
+                assert!(border.is_some());
+            }
+        }
+    }
+
+    // =========================================================================
+    // Tooltip Default trait tests
+    // =========================================================================
+
+    #[test]
+    fn test_tooltip_default_trait() {
+        let tooltip = Tooltip::default();
+        assert_eq!(tooltip.text, "");
+        assert!(tooltip.visible);
+        assert_eq!(tooltip.position, TooltipPosition::Top);
+        assert_eq!(tooltip.anchor, (0, 0));
+        assert_eq!(tooltip.style, TooltipStyle::Bordered);
+        assert_eq!(tooltip.arrow, TooltipArrow::Unicode);
+        assert_eq!(tooltip.max_width, 40);
+        assert_eq!(tooltip.fg, None);
+        assert_eq!(tooltip.bg, None);
+        assert_eq!(tooltip.title, None);
+        assert_eq!(tooltip.delay, 0);
+        assert_eq!(tooltip.delay_counter, 0);
+    }
+
+    #[test]
+    fn test_tooltip_default_vs_new_empty() {
+        let default_tooltip = Tooltip::default();
+        let new_tooltip = Tooltip::new("");
+
+        assert_eq!(default_tooltip.text, new_tooltip.text);
+        assert_eq!(default_tooltip.visible, new_tooltip.visible);
+    }
 }

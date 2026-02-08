@@ -145,4 +145,162 @@ mod tests {
         assert!(!sel.contains(11, 0));
         assert!(!sel.contains(100, 0));
     }
+
+    // =========================================================================
+    // Selection trait tests
+    // =========================================================================
+
+    #[test]
+    fn test_selection_clone() {
+        let sel1 = Selection::new((1, 5), (3, 10));
+        let sel2 = sel1.clone();
+        assert_eq!(sel1, sel2);
+    }
+
+    #[test]
+    fn test_selection_copy() {
+        let sel1 = Selection::new((1, 5), (3, 10));
+        let sel2 = sel1;
+        assert_eq!(sel1.start, (1, 5));
+        assert_eq!(sel1.end, (3, 10));
+        assert_eq!(sel2.start, (1, 5));
+        assert_eq!(sel2.end, (3, 10));
+    }
+
+    #[test]
+    fn test_selection_partial_eq() {
+        let sel1 = Selection::new((1, 5), (3, 10));
+        let sel2 = Selection::new((1, 5), (3, 10));
+        let sel3 = Selection::new((1, 5), (3, 11));
+        assert_eq!(sel1, sel2);
+        assert_ne!(sel1, sel3);
+    }
+
+    #[test]
+    fn test_selection_eq() {
+        assert_eq!(
+            Selection::new((0, 0), (1, 1)),
+            Selection::new((0, 0), (1, 1))
+        );
+        assert_ne!(
+            Selection::new((0, 0), (1, 1)),
+            Selection::new((0, 0), (1, 2))
+        );
+    }
+
+    #[test]
+    fn test_selection_debug() {
+        let sel = Selection::new((1, 5), (3, 10));
+        let debug_str = format!("{:?}", sel);
+        assert!(debug_str.contains("Selection"));
+    }
+
+    // =========================================================================
+    // Selection edge case tests
+    // =========================================================================
+
+    #[test]
+    fn test_selection_empty() {
+        let sel = Selection::new((1, 5), (1, 5));
+        assert_eq!(sel.start, (1, 5));
+        assert_eq!(sel.end, (1, 5));
+        // Empty selection doesn't contain anything (end is exclusive)
+        assert!(!sel.contains(1, 5));
+    }
+
+    #[test]
+    fn test_selection_zero_position() {
+        let sel = Selection::new((0, 0), (0, 5));
+        assert!(sel.contains(0, 0));
+        assert!(sel.contains(0, 4));
+        assert!(!sel.contains(0, 5));
+    }
+
+    #[test]
+    fn test_selection_large_values() {
+        let sel = Selection::new((1000, 1000), (2000, 2000));
+        assert!(sel.contains(1500, 1500));
+        assert!(!sel.contains(0, 0));
+        assert!(!sel.contains(3000, 3000));
+    }
+
+    #[test]
+    fn test_selection_contains_same_line_start_column() {
+        let sel = Selection::new((2, 5), (2, 10));
+        assert!(sel.contains(2, 5));
+    }
+
+    #[test]
+    fn test_selection_contains_same_line_end_column() {
+        let sel = Selection::new((2, 5), (2, 10));
+        // End column is exclusive
+        assert!(!sel.contains(2, 10));
+    }
+
+    #[test]
+    fn test_selection_contains_middle_line_all_columns() {
+        let sel = Selection::new((1, 5), (5, 10));
+        // Line 3 is in the middle - should contain all columns
+        assert!(sel.contains(3, 0));
+        assert!(sel.contains(3, 999));
+    }
+
+    #[test]
+    fn test_selection_contains_first_line_boundary() {
+        let sel = Selection::new((2, 5), (4, 10));
+        // First line boundary
+        assert!(sel.contains(2, 5));
+        assert!(!sel.contains(2, 4));
+    }
+
+    #[test]
+    fn test_selection_contains_last_line_boundary() {
+        let sel = Selection::new((2, 5), (4, 10));
+        // Last line boundary
+        assert!(sel.contains(4, 9));
+        assert!(!sel.contains(4, 10));
+    }
+
+    #[test]
+    fn test_selection_normalized_idempotent() {
+        let sel = Selection::new((3, 10), (1, 5));
+        let norm1 = sel.normalized();
+        let norm2 = norm1.normalized();
+        assert_eq!(norm1, norm2);
+    }
+
+    #[test]
+    fn test_selection_normalized_zero() {
+        let sel = Selection::new((0, 0), (0, 0));
+        let norm = sel.normalized();
+        assert_eq!(norm.start, (0, 0));
+        assert_eq!(norm.end, (0, 0));
+    }
+
+    #[test]
+    fn test_selection_public_fields() {
+        let sel = Selection {
+            start: (5, 10),
+            end: (15, 20),
+        };
+        assert_eq!(sel.start, (5, 10));
+        assert_eq!(sel.end, (15, 20));
+    }
+
+    #[test]
+    fn test_selection_contains_on_single_column_selection() {
+        let sel = Selection::new((2, 5), (2, 6));
+        assert!(sel.contains(2, 5));
+        assert!(!sel.contains(2, 6));
+        assert!(!sel.contains(2, 4));
+    }
+
+    #[test]
+    fn test_selection_contains_two_lines_same_column() {
+        let sel = Selection::new((2, 10), (3, 10));
+        // Both lines have same column
+        assert!(sel.contains(2, 10));
+        assert!(sel.contains(3, 9));
+        assert!(!sel.contains(3, 10));
+    }
 }

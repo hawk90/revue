@@ -41,4 +41,41 @@ mod tests {
         assert_eq!(item.label, "File");
         assert_eq!(item.icon, Some('📄'));
     }
+
+    // =========================================================================
+    // Edge cases
+    // =========================================================================
+
+    #[test]
+    fn test_crumb_empty_label() {
+        let item = crumb("");
+        assert_eq!(item.label, "");
+    }
+
+    #[test]
+    fn test_crumb_long_label() {
+        let long_label = "A".repeat(100);
+        let item = crumb(&long_label);
+        assert_eq!(item.label.len(), 100);
+    }
+
+    #[test]
+    fn test_crumb_with_special_chars() {
+        let item = crumb("Path/To/File");
+        assert_eq!(item.label, "Path/To/File");
+    }
+
+    #[test]
+    fn test_crumb_with_unicode() {
+        let item = crumb("🏠 Home");
+        assert_eq!(item.label, "🏠 Home");
+    }
+
+    #[test]
+    fn test_breadcrumb_multiple_times() {
+        let bc1 = breadcrumb();
+        let bc2 = breadcrumb();
+        let _ = bc1;
+        let _ = bc2;
+    }
 }

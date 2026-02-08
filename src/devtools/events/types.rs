@@ -225,3 +225,210 @@ impl EventFilter {
         true
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_event_type_label() {
+        assert_eq!(EventType::KeyPress.label(), "KeyPress");
+        assert_eq!(EventType::KeyRelease.label(), "KeyRelease");
+        assert_eq!(EventType::MouseClick.label(), "Click");
+        assert_eq!(EventType::MouseMove.label(), "Move");
+        assert_eq!(EventType::MouseScroll.label(), "Scroll");
+        assert_eq!(EventType::FocusIn.label(), "FocusIn");
+        assert_eq!(EventType::FocusOut.label(), "FocusOut");
+        assert_eq!(EventType::Resize.label(), "Resize");
+        assert_eq!(EventType::Custom.label(), "Custom");
+    }
+
+    #[test]
+    fn test_event_type_icon() {
+        assert!(!EventType::KeyPress.icon().is_empty());
+        assert!(!EventType::MouseClick.icon().is_empty());
+        assert!(!EventType::FocusIn.icon().is_empty());
+    }
+
+    #[test]
+    fn test_event_type_color() {
+        let _ = EventType::KeyPress.color();
+        let _ = EventType::MouseClick.color();
+        let _ = EventType::FocusIn.color();
+        let _ = EventType::Resize.color();
+        let _ = EventType::Custom.color();
+    }
+
+    #[test]
+    fn test_logged_event_new() {
+        let event = LoggedEvent::new(1, EventType::KeyPress, "Pressed 'a'");
+        assert_eq!(event.id, 1);
+        assert_eq!(event.event_type, EventType::KeyPress);
+        assert_eq!(event.details, "Pressed 'a'");
+        assert_eq!(event.target, None);
+        assert!(!event.handled);
+        assert!(event.propagated);
+    }
+
+    #[test]
+    fn test_logged_event_builder() {
+        let event = LoggedEvent::new(1, EventType::KeyPress, "Pressed 'a'")
+            .target("Button")
+            .handled()
+            .stopped();
+
+        assert_eq!(event.target, Some("Button".to_string()));
+        assert!(event.handled);
+        assert!(!event.propagated);
+    }
+
+    #[test]
+    fn test_logged_event_public_fields() {
+        let mut event = LoggedEvent::new(1, EventType::KeyPress, "test");
+        event.id = 5;
+        event.details = "modified".to_string();
+        event.handled = true;
+
+        assert_eq!(event.id, 5);
+        assert_eq!(event.details, "modified");
+        assert!(event.handled);
+    }
+
+    #[test]
+    fn test_logged_event_age() {
+        let event = LoggedEvent::new(1, EventType::KeyPress, "test");
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let age = event.age();
+        assert!(age.as_millis() >= 10);
+    }
+
+    #[test]
+    fn test_logged_event_age_str() {
+        let event = LoggedEvent::new(1, EventType::KeyPress, "test");
+        let age_str = event.age_str();
+        // Should be in milliseconds since just created
+        assert!(age_str.contains("ms ago"));
+    }
+
+    #[test]
+    fn test_event_filter_default() {
+        let filter = EventFilter::default();
+        assert!(!filter.show_keys);
+        assert!(!filter.show_mouse);
+        assert!(!filter.show_focus);
+        assert!(!filter.show_resize);
+        assert!(!filter.show_custom);
+        assert_eq!(filter.target_filter, None);
+        assert!(!filter.only_handled);
+    }
+
+    #[test]
+    fn test_event_filter_all() {
+        let filter = EventFilter::all();
+        assert!(filter.show_keys);
+        assert!(filter.show_mouse);
+        assert!(filter.show_focus);
+        assert!(filter.show_resize);
+        assert!(filter.show_custom);
+        assert_eq!(filter.target_filter, None);
+        assert!(!filter.only_handled);
+    }
+
+    #[test]
+    fn test_event_filter_keys_only() {
+        let filter = EventFilter::keys_only();
+        assert!(filter.show_keys);
+        assert!(!filter.show_mouse);
+        assert!(!filter.show_focus);
+        assert!(!filter.show_resize);
+        assert!(!filter.show_custom);
+    }
+
+    #[test]
+    fn test_event_filter_mouse_only() {
+        let filter = EventFilter::mouse_only();
+        assert!(!filter.show_keys);
+        assert!(filter.show_mouse);
+        assert!(!filter.show_focus);
+        assert!(!filter.show_resize);
+        assert!(!filter.show_custom);
+    }
+
+    #[test]
+    fn test_event_filter_matches_key_event() {
+        let filter = EventFilter::keys_only();
+        let event = LoggedEvent::new(1, EventType::KeyPress, "test");
+        assert!(filter.matches(&event));
+
+        let mouse_event = LoggedEvent::new(2, EventType::MouseClick, "test");
+        assert!(!filter.matches(&mouse_event));
+    }
+
+    #[test]
+    fn test_event_filter_matches_mouse_event() {
+        let filter = EventFilter::mouse_only();
+        let event = LoggedEvent::new(1, EventType::MouseClick, "test");
+        assert!(filter.matches(&event));
+
+        let key_event = LoggedEvent::new(2, EventType::KeyPress, "test");
+        assert!(!filter.matches(&key_event));
+    }
+
+    #[test]
+    fn test_event_filter_only_handled() {
+        let filter = EventFilter {
+            show_keys: true,
+            only_handled: true,
+            ..Default::default()
+        };
+
+        let handled_event = LoggedEvent::new(1, EventType::KeyPress, "test").handled();
+        assert!(filter.matches(&handled_event));
+
+        let unhandled_event = LoggedEvent::new(2, EventType::KeyPress, "test");
+        assert!(!filter.matches(&unhandled_event));
+    }
+
+    #[test]
+    fn test_event_filter_target() {
+        let filter = EventFilter {
+            show_keys: true,
+            target_filter: Some("Button".to_string()),
+            ..Default::default()
+        };
+
+        let matching_event = LoggedEvent::new(1, EventType::KeyPress, "test").target("MyButton");
+        assert!(filter.matches(&matching_event));
+
+        let non_matching_event =
+            LoggedEvent::new(2, EventType::KeyPress, "test").target("TextField");
+        assert!(!filter.matches(&non_matching_event));
+
+        let no_target_event = LoggedEvent::new(3, EventType::KeyPress, "test");
+        assert!(!filter.matches(&no_target_event));
+    }
+
+    #[test]
+    fn test_event_filter_target_case_insensitive() {
+        let filter = EventFilter {
+            show_keys: true,
+            target_filter: Some("button".to_string()),
+            ..Default::default()
+        };
+
+        let event = LoggedEvent::new(1, EventType::KeyPress, "test").target("MyButton");
+        assert!(filter.matches(&event));
+    }
+
+    #[test]
+    fn test_event_filter_public_fields() {
+        let mut filter = EventFilter::default();
+        filter.show_keys = true;
+        filter.show_mouse = true;
+        filter.only_handled = true;
+
+        assert!(filter.show_keys);
+        assert!(filter.show_mouse);
+        assert!(filter.only_handled);
+    }
+}

@@ -700,4 +700,116 @@ mod tests {
         assert_eq!(result.len(), 2);
         assert_eq!(result[0].name, "B");
     }
+
+    // QueryValue method tests
+    #[test]
+    fn test_query_value_string() {
+        let val = QueryValue::string("hello");
+        assert_eq!(val, QueryValue::String("hello".to_string()));
+    }
+
+    #[test]
+    fn test_query_value_int() {
+        let val = QueryValue::int(42);
+        assert_eq!(val, QueryValue::Int(42));
+    }
+
+    #[test]
+    fn test_query_value_float() {
+        let val = QueryValue::float(3.14);
+        assert_eq!(val, QueryValue::Float(3.14));
+    }
+
+    #[test]
+    fn test_query_value_bool() {
+        let val = QueryValue::bool(true);
+        assert_eq!(val, QueryValue::Bool(true));
+    }
+
+    #[test]
+    fn test_query_value_contains_string() {
+        let val = QueryValue::string("Hello World");
+        assert!(val.contains("hello"));
+        assert!(val.contains("WORLD"));
+        assert!(!val.contains("xyz"));
+    }
+
+    #[test]
+    fn test_query_value_contains_int() {
+        let val = QueryValue::int(12345);
+        assert!(val.contains("123"));
+        assert!(!val.contains("999"));
+    }
+
+    #[test]
+    fn test_query_value_contains_float() {
+        let val = QueryValue::float(3.14);
+        assert!(val.contains("3.14"));
+        assert!(val.contains("3"));
+        assert!(!val.contains("999"));
+    }
+
+    #[test]
+    fn test_query_value_contains_bool() {
+        let val = QueryValue::bool(true);
+        assert!(val.contains("true"));
+        assert!(val.contains("TRUE"));
+        assert!(!val.contains("false"));
+
+        let val = QueryValue::bool(false);
+        assert!(val.contains("false"));
+        assert!(!val.contains("true"));
+    }
+
+    #[test]
+    fn test_query_value_contains_null() {
+        let val = QueryValue::Null;
+        assert!(!val.contains("anything"));
+    }
+
+    #[test]
+    fn test_query_value_equals_str_string() {
+        let val = QueryValue::string("Hello");
+        assert!(val.equals_str("hello"));
+        assert!(val.equals_str("HELLO"));
+        assert!(!val.equals_str("world"));
+    }
+
+    #[test]
+    fn test_query_value_equals_str_int() {
+        let val = QueryValue::int(42);
+        assert!(val.equals_str("42"));
+        assert!(!val.equals_str("999"));
+    }
+
+    #[test]
+    fn test_query_value_equals_str_bool() {
+        let val = QueryValue::bool(true);
+        assert!(val.equals_str("true"));
+        assert!(!val.equals_str("false"));
+    }
+
+    #[test]
+    fn test_query_value_equals_str_null() {
+        let val = QueryValue::Null;
+        assert!(val.equals_str("null"));
+        assert!(val.equals_str(""));
+        assert!(!val.equals_str("value"));
+    }
+
+    #[test]
+    fn test_query_value_compare_int() {
+        let val = QueryValue::int(50);
+        assert_eq!(val.compare("30"), Some(std::cmp::Ordering::Greater));
+        assert_eq!(val.compare("50"), Some(std::cmp::Ordering::Equal));
+        assert_eq!(val.compare("70"), Some(std::cmp::Ordering::Less));
+    }
+
+    #[test]
+    fn test_query_value_compare_float() {
+        let val = QueryValue::float(3.5);
+        assert_eq!(val.compare("2.5"), Some(std::cmp::Ordering::Greater));
+        assert_eq!(val.compare("3.5"), Some(std::cmp::Ordering::Equal));
+        assert_eq!(val.compare("4.5"), Some(std::cmp::Ordering::Less));
+    }
 }

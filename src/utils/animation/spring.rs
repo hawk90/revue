@@ -149,3 +149,214 @@ impl Spring {
         self.update(1.0 / 60.0)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_spring_new() {
+        let spring = Spring::new(0.0, 100.0);
+        assert_eq!(spring.value(), 0.0);
+        assert_eq!(spring.target(), 100.0);
+        assert_eq!(spring.velocity(), 0.0);
+    }
+
+    #[test]
+    fn test_spring_at() {
+        let spring = Spring::at(50.0);
+        assert_eq!(spring.value(), 50.0);
+        assert_eq!(spring.target(), 50.0);
+        assert!(spring.is_settled());
+    }
+
+    #[test]
+    fn test_spring_stiffness() {
+        let spring = Spring::new(0.0, 100.0).stiffness(200.0);
+        assert_eq!(spring.stiffness, 200.0);
+    }
+
+    #[test]
+    fn test_spring_stiffness_clamps_minimum() {
+        let spring = Spring::new(0.0, 100.0).stiffness(0.0);
+        assert_eq!(spring.stiffness, 0.1);
+    }
+
+    #[test]
+    fn test_spring_damping() {
+        let spring = Spring::new(0.0, 100.0).damping(20.0);
+        assert_eq!(spring.damping, 20.0);
+    }
+
+    #[test]
+    fn test_spring_damping_clamps_minimum() {
+        let spring = Spring::new(0.0, 100.0).damping(0.0);
+        assert_eq!(spring.damping, 0.1);
+    }
+
+    #[test]
+    fn test_spring_mass() {
+        let spring = Spring::new(0.0, 100.0).mass(2.0);
+        assert_eq!(spring.mass, 2.0);
+    }
+
+    #[test]
+    fn test_spring_mass_clamps_minimum() {
+        let spring = Spring::new(0.0, 100.0).mass(0.0);
+        assert_eq!(spring.mass, 0.01);
+    }
+
+    #[test]
+    fn test_spring_threshold() {
+        let spring = Spring::new(0.0, 100.0).threshold(0.1);
+        assert_eq!(spring.threshold, 0.1);
+    }
+
+    #[test]
+    fn test_spring_threshold_clamps_minimum() {
+        let spring = Spring::new(0.0, 100.0).threshold(0.0);
+        assert_eq!(spring.threshold, 0.0001);
+    }
+
+    #[test]
+    fn test_spring_snappy() {
+        let spring = Spring::snappy();
+        assert_eq!(spring.value(), 0.0);
+        assert_eq!(spring.target(), 0.0);
+        assert_eq!(spring.stiffness, 400.0);
+        assert_eq!(spring.damping, 30.0);
+    }
+
+    #[test]
+    fn test_spring_gentle() {
+        let spring = Spring::gentle();
+        assert_eq!(spring.value(), 0.0);
+        assert_eq!(spring.target(), 0.0);
+        assert_eq!(spring.stiffness, 100.0);
+        assert_eq!(spring.damping, 15.0);
+    }
+
+    #[test]
+    fn test_spring_bouncy() {
+        let spring = Spring::bouncy();
+        assert_eq!(spring.value(), 0.0);
+        assert_eq!(spring.target(), 0.0);
+        assert_eq!(spring.stiffness, 200.0);
+        assert_eq!(spring.damping, 8.0);
+    }
+
+    #[test]
+    fn test_spring_slow() {
+        let spring = Spring::slow();
+        assert_eq!(spring.value(), 0.0);
+        assert_eq!(spring.target(), 0.0);
+        assert_eq!(spring.stiffness, 50.0);
+        assert_eq!(spring.damping, 10.0);
+    }
+
+    #[test]
+    fn test_spring_set_target() {
+        let mut spring = Spring::new(0.0, 100.0);
+        spring.set_target(50.0);
+        assert_eq!(spring.target(), 50.0);
+    }
+
+    #[test]
+    fn test_spring_set_value() {
+        let mut spring = Spring::new(0.0, 100.0);
+        spring.set_value(75.0);
+        assert_eq!(spring.value(), 75.0);
+        assert_eq!(spring.velocity(), 0.0);
+    }
+
+    #[test]
+    fn test_spring_is_settled() {
+        let spring = Spring::at(50.0);
+        assert!(spring.is_settled());
+    }
+
+    #[test]
+    fn test_spring_is_settled_false() {
+        let spring = Spring::new(0.0, 100.0);
+        assert!(!spring.is_settled());
+    }
+
+    #[test]
+    fn test_spring_update_changes_value() {
+        let mut spring = Spring::new(0.0, 100.0);
+        let value1 = spring.update(0.016);
+        let value2 = spring.update(0.016);
+        // Spring should move toward target
+        assert!(value2 > value1);
+        assert!(value2 <= 100.0);
+    }
+
+    #[test]
+    fn test_spring_tick() {
+        let mut spring = Spring::new(0.0, 100.0);
+        let value1 = spring.tick();
+        let value2 = spring.tick();
+        // Spring should move toward target
+        assert!(value2 > value1);
+    }
+
+    #[test]
+    fn test_spring_update_settled() {
+        let mut spring = Spring::at(50.0);
+        spring.set_target(50.0);
+        let value = spring.update(0.016);
+        // Already at target
+        assert_eq!(value, 50.0);
+    }
+
+    #[test]
+    fn test_spring_default_fields() {
+        let spring = Spring::new(0.0, 100.0);
+        assert_eq!(spring.velocity(), 0.0);
+        assert_eq!(spring.stiffness, 180.0);
+        assert_eq!(spring.damping, 12.0);
+        assert_eq!(spring.mass, 1.0);
+        assert_eq!(spring.threshold, 0.01);
+    }
+
+    #[test]
+    fn test_spring_velocity_changes() {
+        let mut spring = Spring::new(0.0, 100.0);
+        let v1 = spring.velocity();
+        spring.update(0.016);
+        let v2 = spring.velocity();
+        // Velocity should change as spring accelerates
+        assert_ne!(v1, v2);
+    }
+
+    #[test]
+    fn test_spring_velocity_toward_target() {
+        let mut spring = Spring::new(0.0, 100.0);
+        spring.update(0.016);
+        // Velocity should be positive (toward 100)
+        assert!(spring.velocity() > 0.0);
+    }
+
+    #[test]
+    fn test_spring_velocity_from_target() {
+        let mut spring = Spring::new(100.0, 0.0);
+        spring.update(0.016);
+        // Velocity should be negative (toward 0)
+        assert!(spring.velocity() < 0.0);
+    }
+
+    #[test]
+    fn test_spring_is_settled_near_target() {
+        let mut spring = Spring::new(0.0, 10.0);
+        // Move close to target
+        for _ in 0..1000 {
+            spring.update(0.016);
+            if spring.is_settled() {
+                break;
+            }
+        }
+        // Should eventually settle
+        assert!(spring.is_settled());
+        assert!((spring.value() - 10.0).abs() < 0.1);
+    }
+}

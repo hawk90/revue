@@ -513,4 +513,274 @@ mod tests {
         assert_eq!(parse_duration("0.3s"), Some(Duration::from_millis(300)));
         assert_eq!(parse_duration("1s"), Some(Duration::from_secs(1)));
     }
+
+    #[test]
+    fn test_easing_apply_linear() {
+        assert_eq!(Easing::Linear.apply(0.0), 0.0);
+        assert_eq!(Easing::Linear.apply(0.5), 0.5);
+        assert_eq!(Easing::Linear.apply(1.0), 1.0);
+    }
+
+    #[test]
+    fn test_easing_apply_ease_in() {
+        assert_eq!(Easing::EaseIn.apply(0.0), 0.0);
+        assert_eq!(Easing::EaseIn.apply(0.5), 0.25);
+        assert_eq!(Easing::EaseIn.apply(1.0), 1.0);
+    }
+
+    #[test]
+    fn test_easing_apply_ease_out() {
+        assert_eq!(Easing::EaseOut.apply(0.0), 0.0);
+        assert_eq!(Easing::EaseOut.apply(0.5), 0.75);
+        assert_eq!(Easing::EaseOut.apply(1.0), 1.0);
+    }
+
+    #[test]
+    fn test_easing_apply_ease_in_out() {
+        assert_eq!(Easing::EaseInOut.apply(0.0), 0.0);
+        assert_eq!(Easing::EaseInOut.apply(0.25), 0.125);
+        assert_eq!(Easing::EaseInOut.apply(0.5), 0.5);
+        assert_eq!(Easing::EaseInOut.apply(0.75), 0.875);
+        assert_eq!(Easing::EaseInOut.apply(1.0), 1.0);
+    }
+
+    #[test]
+    fn test_easing_apply_clamps() {
+        assert_eq!(Easing::Linear.apply(-0.5), 0.0);
+        assert_eq!(Easing::Linear.apply(1.5), 1.0);
+    }
+
+    #[test]
+    fn test_easing_parse() {
+        assert_eq!(Easing::parse("linear"), Some(Easing::Linear));
+        assert_eq!(Easing::parse("ease"), Some(Easing::EaseInOut));
+        assert_eq!(Easing::parse("ease-in"), Some(Easing::EaseIn));
+        assert_eq!(Easing::parse("ease-out"), Some(Easing::EaseOut));
+        assert_eq!(Easing::parse("ease-in-out"), Some(Easing::EaseInOut));
+    }
+
+    #[test]
+    fn test_easing_parse_case_insensitive() {
+        assert_eq!(Easing::parse("LINEAR"), Some(Easing::Linear));
+        assert_eq!(Easing::parse("Ease-In"), Some(Easing::EaseIn));
+        assert_eq!(Easing::parse("  EASE-OUT  "), Some(Easing::EaseOut));
+    }
+
+    #[test]
+    fn test_easing_parse_cubic_bezier() {
+        assert_eq!(
+            Easing::parse("cubic-bezier(0.25, 0.1, 0.25, 1.0)"),
+            Some(Easing::CubicBezier(0.25, 0.1, 0.25, 1.0))
+        );
+    }
+
+    #[test]
+    fn test_easing_parse_invalid() {
+        assert_eq!(Easing::parse("invalid"), None);
+        assert_eq!(Easing::parse("cubic-bezier(0.25, 0.1)"), None);
+    }
+
+    #[test]
+    fn test_easing_default() {
+        assert_eq!(Easing::default(), Easing::Linear);
+    }
+
+    #[test]
+    fn test_transition_new() {
+        let transition = Transition::new("opacity", Duration::from_millis(300));
+        assert_eq!(transition.property, "opacity");
+        assert_eq!(transition.duration, Duration::from_millis(300));
+        assert_eq!(transition.delay, Duration::ZERO);
+        assert_eq!(transition.easing, Easing::EaseInOut);
+    }
+
+    #[test]
+    fn test_transition_builder() {
+        let transition = Transition::new("color", Duration::from_millis(200))
+            .delay(Duration::from_millis(50))
+            .easing(Easing::EaseOut);
+        assert_eq!(transition.property, "color");
+        assert_eq!(transition.duration, Duration::from_millis(200));
+        assert_eq!(transition.delay, Duration::from_millis(50));
+        assert_eq!(transition.easing, Easing::EaseOut);
+    }
+
+    #[test]
+    fn test_transition_parse() {
+        let transition = Transition::parse("opacity 0.3s ease-in-out").unwrap();
+        assert_eq!(transition.property, "opacity");
+        assert_eq!(transition.duration, Duration::from_millis(300));
+        assert_eq!(transition.easing, Easing::EaseInOut);
+    }
+
+    #[test]
+    fn test_transition_parse_with_delay() {
+        let transition = Transition::parse("opacity 0.1s 0.3s").unwrap();
+        assert_eq!(transition.property, "opacity");
+        // First duration (100ms) is used as duration since it's the first parsed
+        assert_eq!(transition.duration, Duration::from_millis(100));
+        // Second duration (300ms) becomes delay
+        assert_eq!(transition.delay, Duration::from_millis(300));
+    }
+
+    #[test]
+    fn test_transition_default() {
+        let transition = Transition::default();
+        assert_eq!(transition.property, "all");
+        assert_eq!(transition.duration, Duration::from_millis(300));
+    }
+
+    #[test]
+    fn test_transitions_new() {
+        let transitions = Transitions::new();
+        assert!(transitions.is_empty());
+    }
+
+    #[test]
+    fn test_transitions_default() {
+        let transitions = Transitions::default();
+        assert!(transitions.is_empty());
+    }
+
+    #[test]
+    fn test_transitions_with() {
+        let transitions =
+            Transitions::new().with(Transition::new("opacity", Duration::from_millis(300)));
+        assert!(!transitions.is_empty());
+    }
+
+    #[test]
+    fn test_transitions_get() {
+        let transitions =
+            Transitions::new().with(Transition::new("opacity", Duration::from_millis(300)));
+        assert!(transitions.get("opacity").is_some());
+        assert!(transitions.get("color").is_none());
+    }
+
+    #[test]
+    fn test_transitions_get_all() {
+        let transitions =
+            Transitions::new().with(Transition::new("all", Duration::from_millis(300)));
+        assert!(transitions.get("opacity").is_some());
+        assert!(transitions.get("color").is_some());
+    }
+
+    #[test]
+    fn test_transitions_has() {
+        let transitions =
+            Transitions::new().with(Transition::new("opacity", Duration::from_millis(300)));
+        assert!(transitions.has("opacity"));
+        assert!(!transitions.has("color"));
+    }
+
+    #[test]
+    fn test_transitions_parse() {
+        let transitions = Transitions::parse("opacity 0.3s, color 0.5s ease-out");
+        assert_eq!(transitions.items.len(), 2);
+    }
+
+    #[test]
+    fn test_active_transition_new() {
+        let transition = Transition::new("opacity", Duration::from_millis(300));
+        let active = ActiveTransition::new("opacity", 0.0, 1.0, &transition);
+        assert_eq!(active.property, "opacity");
+        assert_eq!(active.from, 0.0);
+        assert_eq!(active.to, 1.0);
+        assert!(active.started); // delay is zero, so should be started immediately
+    }
+
+    #[test]
+    fn test_active_transition_current_before_start() {
+        let transition = Transition::new("opacity", Duration::from_millis(300))
+            .delay(Duration::from_millis(100));
+        let active = ActiveTransition::new("opacity", 0.0, 1.0, &transition);
+        assert_eq!(active.current(), 0.0); // Should return from value
+    }
+
+    #[test]
+    fn test_active_transition_update() {
+        let transition = Transition::new("opacity", Duration::from_millis(300));
+        let mut active = ActiveTransition::new("opacity", 0.0, 1.0, &transition);
+        active.update(Duration::from_millis(150));
+        assert!(active.started);
+    }
+
+    #[test]
+    fn test_active_transition_is_complete() {
+        let transition = Transition::new("opacity", Duration::from_millis(300));
+        let mut active = ActiveTransition::new("opacity", 0.0, 1.0, &transition);
+        assert!(!active.is_complete());
+        active.update(Duration::from_millis(300));
+        assert!(active.is_complete());
+    }
+
+    #[test]
+    fn test_transition_manager_new() {
+        let manager = TransitionManager::new();
+        assert!(!manager.has_active());
+    }
+
+    #[test]
+    fn test_transition_manager_default() {
+        let manager = TransitionManager::default();
+        assert!(!manager.has_active());
+    }
+
+    #[test]
+    fn test_transition_manager_start() {
+        let mut manager = TransitionManager::new();
+        let transition = Transition::new("opacity", Duration::from_millis(300));
+        manager.start("opacity", 0.0, 1.0, &transition);
+        assert!(manager.has_active());
+    }
+
+    #[test]
+    fn test_transition_manager_get() {
+        let mut manager = TransitionManager::new();
+        let transition = Transition::new("opacity", Duration::from_millis(300));
+        manager.start("opacity", 0.0, 1.0, &transition);
+        assert!(manager.get("opacity").is_some());
+    }
+
+    #[test]
+    fn test_transition_manager_clear() {
+        let mut manager = TransitionManager::new();
+        let transition = Transition::new("opacity", Duration::from_millis(300));
+        manager.start("opacity", 0.0, 1.0, &transition);
+        manager.clear();
+        assert!(!manager.has_active());
+    }
+
+    #[test]
+    fn test_transition_manager_update() {
+        let mut manager = TransitionManager::new();
+        let transition = Transition::new("opacity", Duration::from_millis(300));
+        manager.start("opacity", 0.0, 1.0, &transition);
+        manager.update(Duration::from_millis(400));
+        assert!(!manager.has_active()); // Complete transition removed
+    }
+
+    #[test]
+    fn test_transition_manager_current_values() {
+        let mut manager = TransitionManager::new();
+        let transition = Transition::new("opacity", Duration::from_millis(300));
+        manager.start("opacity", 0.0, 1.0, &transition);
+        manager.update(Duration::from_millis(150));
+        let values = manager.current_values();
+        assert!(values.contains_key("opacity"));
+    }
+
+    #[test]
+    fn test_lerp_f32() {
+        assert_eq!(lerp_f32(0.0, 10.0, 0.5), 5.0);
+        assert_eq!(lerp_f32(0.0, 10.0, 0.0), 0.0);
+        assert_eq!(lerp_f32(0.0, 10.0, 1.0), 10.0);
+    }
+
+    #[test]
+    fn test_lerp_u8() {
+        assert_eq!(lerp_u8(0, 255, 0.5), 128);
+        assert_eq!(lerp_u8(0, 255, 0.0), 0);
+        assert_eq!(lerp_u8(0, 255, 1.0), 255);
+    }
 }

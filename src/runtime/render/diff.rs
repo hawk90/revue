@@ -91,3 +91,97 @@ pub fn diff(old: &Buffer, new: &Buffer, dirty_rects: &[Rect]) -> Vec<Change> {
 }
 
 // Tests moved to tests/render_tests.rs
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::style::Color;
+
+    #[test]
+    fn test_change_struct() {
+        let cell = Cell::new('A').fg(Color::RED);
+        let change = Change { x: 10, y: 20, cell };
+        assert_eq!(change.x, 10);
+        assert_eq!(change.y, 20);
+        assert_eq!(change.cell.symbol, 'A');
+    }
+
+    #[test]
+    fn test_diff_empty_dirty_rects() {
+        let old = Buffer::new(80, 24);
+        let new = Buffer::new(80, 24);
+        let changes = diff(&old, &new, &[]);
+        // Should treat as full screen diff (no changes in empty buffers)
+        assert!(changes.is_empty());
+    }
+
+    #[test]
+    fn test_diff_single_rect() {
+        let old = Buffer::new(80, 24);
+        let mut new = Buffer::new(80, 24);
+
+        // Make a change at (5, 5)
+        new.get_mut(5, 5).map(|c| *c = Cell::new('X'));
+
+        let rect = Rect::new(0, 0, 80, 24);
+        let changes = diff(&old, &new, &[rect]);
+
+        // Should have one change
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].x, 5);
+        assert_eq!(changes[0].y, 5);
+    }
+
+    #[test]
+    fn test_diff_no_changes() {
+        let old = Buffer::new(80, 24);
+        let new = Buffer::new(80, 24);
+
+        let rect = Rect::new(0, 0, 80, 24);
+        let changes = diff(&old, &new, &[rect]);
+
+        assert!(changes.is_empty());
+    }
+
+    #[test]
+    fn test_diff_multiple_rects() {
+        let old = Buffer::new(80, 24);
+        let mut new = Buffer::new(80, 24);
+
+        // Make changes in different regions
+        new.get_mut(10, 10).map(|c| *c = Cell::new('A'));
+        new.get_mut(50, 15).map(|c| *c = Cell::new('B'));
+
+        let rect1 = Rect::new(0, 0, 20, 20);
+        let rect2 = Rect::new(40, 10, 20, 20);
+        let changes = diff(&old, &new, &[rect1, rect2]);
+
+        assert_eq!(changes.len(), 2);
+    }
+
+    #[test]
+    fn test_diff_overlapping_rects() {
+        let old = Buffer::new(80, 24);
+        let mut new = Buffer::new(80, 24);
+
+        // Make a single change in the overlap region
+        new.get_mut(15, 15).map(|c| *c = Cell::new('X'));
+
+        let rect1 = Rect::new(0, 0, 20, 20);
+        let rect2 = Rect::new(10, 10, 20, 20);
+        let changes = diff(&old, &new, &[rect1, rect2]);
+
+        // Should only report the change once despite overlapping rects
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].x, 15);
+        assert_eq!(changes[0].y, 15);
+    }
+
+    #[test]
+    fn test_change_partial_eq() {
+        let cell = Cell::new('A');
+        let change1 = Change { x: 5, y: 10, cell };
+        let change2 = Change { x: 5, y: 10, cell };
+        assert_eq!(change1, change2);
+    }
+}

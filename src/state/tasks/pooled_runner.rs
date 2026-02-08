@@ -346,4 +346,92 @@ mod tests {
         // This is a property of the thread pool design
         assert_eq!(runner._workers.len(), 2);
     }
+
+    #[test]
+    fn test_pooled_runner_pending_count() {
+        let mut runner = PooledTaskRunner::new(2);
+
+        assert_eq!(runner.pending_count(), 0);
+
+        runner.spawn("task1", || 42);
+        runner.spawn("task2", || 100);
+        runner.spawn("task3", || 200);
+
+        assert_eq!(runner.pending_count(), 3);
+
+        // Wait for one result
+        while runner.poll().is_none() {
+            thread::sleep(Duration::from_millis(10));
+        }
+
+        assert!(runner.pending_count() < 3);
+    }
+
+    #[test]
+    fn test_pooled_runner_is_pending() {
+        let mut runner = PooledTaskRunner::new(2);
+
+        assert!(!runner.is_pending("task1"));
+
+        runner.spawn("task1", || 42);
+        assert!(runner.is_pending("task1"));
+        assert!(!runner.is_pending("task2"));
+
+        // Wait for completion
+        while runner.poll().is_none() {
+            thread::sleep(Duration::from_millis(10));
+        }
+
+        assert!(!runner.is_pending("task1"));
+    }
+
+    #[test]
+    fn test_pooled_runner_spawn_result_ok() {
+        let mut runner = PooledTaskRunner::new(2);
+
+        runner.spawn_result("task1", || Ok::<i32, &str>(42));
+
+        while let Some(result) = runner.poll() {
+            assert_eq!(result.id, "task1");
+            assert!(result.result.is_ok());
+            assert_eq!(result.result.unwrap(), 42);
+        }
+    }
+
+    #[test]
+    fn test_pooled_runner_spawn_result_err() {
+        let mut runner = PooledTaskRunner::new(2);
+
+        runner.spawn_result("task1", || Err::<i32, &str>("error"));
+
+        while let Some(result) = runner.poll() {
+            assert_eq!(result.id, "task1");
+            assert!(result.result.is_err());
+        }
+    }
+
+    #[test]
+    fn test_pooled_runner_no_workers_panics() {
+        // Creating with 0 workers should panic
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _runner = PooledTaskRunner::<i32>::new(0);
+        }));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_pooled_runner_poll_empty() {
+        let mut runner = PooledTaskRunner::<i32>::new(2);
+        assert!(runner.poll().is_none());
+    }
+
+    #[test]
+    fn test_task_result_fields() {
+        let result = TaskResult {
+            id: "test".to_string(),
+            result: Ok(42),
+        };
+        assert_eq!(result.id, "test");
+        assert_eq!(result.result.unwrap(), 42);
+    }
 }

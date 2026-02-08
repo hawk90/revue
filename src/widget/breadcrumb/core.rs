@@ -395,3 +395,488 @@ impl View for Breadcrumb {
 
 impl_styled_view!(Breadcrumb);
 impl_props_builders!(Breadcrumb);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::event::Key;
+    use crate::style::Color;
+    use crate::widget::layout::border::BorderType;
+
+    // =========================================================================
+    // Breadcrumb::new() and default tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_new() {
+        let bc = Breadcrumb::new();
+        assert!(bc.is_empty());
+        assert_eq!(bc.len(), 0);
+        assert_eq!(bc.selected(), 0);
+        assert!(bc.show_home);
+        assert!(bc.collapse);
+    }
+
+    #[test]
+    fn test_breadcrumb_default() {
+        let bc = Breadcrumb::default();
+        assert!(bc.is_empty());
+    }
+
+    // =========================================================================
+    // Breadcrumb::item() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_item() {
+        let bc = Breadcrumb::new().item(BreadcrumbItem::new("Home"));
+        assert_eq!(bc.len(), 1);
+        assert_eq!(bc.selected(), 0);
+    }
+
+    #[test]
+    fn test_breadcrumb_item_multiple() {
+        let bc = Breadcrumb::new()
+            .item(BreadcrumbItem::new("Home"))
+            .item(BreadcrumbItem::new("Folder"))
+            .item(BreadcrumbItem::new("File"));
+        assert_eq!(bc.len(), 3);
+        assert_eq!(bc.selected(), 2); // Last item selected
+    }
+
+    #[test]
+    fn test_breadcrumb_item_with_icon() {
+        let bc = Breadcrumb::new().item(BreadcrumbItem::new("Home").icon('🏠'));
+        assert_eq!(bc.items[0].icon, Some('🏠'));
+    }
+
+    #[test]
+    fn test_breadcrumb_item_not_clickable() {
+        let bc = Breadcrumb::new().item(BreadcrumbItem::new("Locked").clickable(false));
+        assert!(!bc.items[0].clickable);
+    }
+
+    // =========================================================================
+    // Breadcrumb::push() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_push() {
+        let bc = Breadcrumb::new().push("Home");
+        assert_eq!(bc.len(), 1);
+        assert_eq!(bc.items[0].label, "Home");
+    }
+
+    #[test]
+    fn test_breadcrumb_push_multiple() {
+        let bc = Breadcrumb::new().push("Home").push("Folder").push("File");
+        assert_eq!(bc.len(), 3);
+    }
+
+    #[test]
+    fn test_breadcrumb_push_string() {
+        let bc = Breadcrumb::new().push(String::from("Home"));
+        assert_eq!(bc.items[0].label, "Home");
+    }
+
+    // =========================================================================
+    // Breadcrumb::path() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_path() {
+        let bc = Breadcrumb::new().path("Home/Folder/File");
+        assert_eq!(bc.len(), 3);
+        assert_eq!(bc.items[0].label, "Home");
+        assert_eq!(bc.items[1].label, "Folder");
+        assert_eq!(bc.items[2].label, "File");
+    }
+
+    #[test]
+    fn test_breadcrumb_path_empty() {
+        let bc = Breadcrumb::new().path("");
+        assert!(bc.is_empty());
+    }
+
+    #[test]
+    fn test_breadcrumb_path_with_empty_parts() {
+        let bc = Breadcrumb::new().path("/Home//Folder/");
+        assert_eq!(bc.len(), 2); // Empty parts filtered
+    }
+
+    // =========================================================================
+    // Breadcrumb::separator() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_separator() {
+        let bc = Breadcrumb::new().separator(SeparatorStyle::Arrow);
+        assert_eq!(bc.separator, SeparatorStyle::Arrow);
+    }
+
+    #[test]
+    fn test_breadcrumb_separator_default() {
+        let bc = Breadcrumb::new();
+        assert_eq!(bc.separator, SeparatorStyle::Chevron);
+    }
+
+    // =========================================================================
+    // Breadcrumb color setters tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_item_color() {
+        let bc = Breadcrumb::new().item_color(Color::RED);
+        assert_eq!(bc.item_color, Color::RED);
+    }
+
+    #[test]
+    fn test_breadcrumb_selected_color() {
+        let bc = Breadcrumb::new().selected_color(Color::GREEN);
+        assert_eq!(bc.selected_color, Color::GREEN);
+    }
+
+    #[test]
+    fn test_breadcrumb_separator_color() {
+        let bc = Breadcrumb::new().separator_color(Color::BLUE);
+        assert_eq!(bc.separator_color, Color::BLUE);
+    }
+
+    // =========================================================================
+    // Breadcrumb::home() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_home_true() {
+        let bc = Breadcrumb::new().home(true);
+        assert!(bc.show_home);
+    }
+
+    #[test]
+    fn test_breadcrumb_home_false() {
+        let bc = Breadcrumb::new().home(false);
+        assert!(!bc.show_home);
+    }
+
+    #[test]
+    fn test_breadcrumb_home_default() {
+        let bc = Breadcrumb::new();
+        assert!(bc.show_home);
+    }
+
+    // =========================================================================
+    // Breadcrumb::home_icon() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_home_icon() {
+        let bc = Breadcrumb::new().home_icon('⌂');
+        assert_eq!(bc.home_icon, '⌂');
+    }
+
+    #[test]
+    fn test_breadcrumb_home_icon_default() {
+        let bc = Breadcrumb::new();
+        assert_eq!(bc.home_icon, '🏠');
+    }
+
+    // =========================================================================
+    // Breadcrumb::max_width() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_max_width() {
+        let bc = Breadcrumb::new().max_width(50);
+        assert_eq!(bc.max_width, 50);
+    }
+
+    #[test]
+    fn test_breadcrumb_max_width_zero_no_limit() {
+        let bc = Breadcrumb::new();
+        assert_eq!(bc.max_width, 0);
+    }
+
+    // =========================================================================
+    // Breadcrumb::collapse() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_collapse_true() {
+        let bc = Breadcrumb::new().collapse(true);
+        assert!(bc.collapse);
+    }
+
+    #[test]
+    fn test_breadcrumb_collapse_false() {
+        let bc = Breadcrumb::new().collapse(false);
+        assert!(!bc.collapse);
+    }
+
+    // =========================================================================
+    // Breadcrumb selection tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_selected() {
+        let bc = Breadcrumb::new().push("Home").push("Folder");
+        assert_eq!(bc.selected(), 1); // Last item
+    }
+
+    #[test]
+    fn test_breadcrumb_set_selected() {
+        let mut bc = Breadcrumb::new().push("Home").push("Folder").push("File");
+        bc.set_selected(1);
+        assert_eq!(bc.selected(), 1);
+    }
+
+    #[test]
+    fn test_breadcrumb_selected_item() {
+        let bc = Breadcrumb::new().push("Home").push("Folder");
+        let item = bc.selected_item();
+        assert!(item.is_some());
+        assert_eq!(item.unwrap().label, "Folder");
+    }
+
+    #[test]
+    fn test_breadcrumb_selected_item_none() {
+        let bc = Breadcrumb::new();
+        assert!(bc.selected_item().is_none());
+    }
+
+    // =========================================================================
+    // Breadcrumb::select_next() / select_prev() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_select_next() {
+        let mut bc = Breadcrumb::new().push("Home").push("Folder").push("File");
+        bc.set_selected(0);
+        bc.select_next();
+        assert_eq!(bc.selected(), 1);
+    }
+
+    #[test]
+    fn test_breadcrumb_select_next_at_end() {
+        let mut bc = Breadcrumb::new().push("Home").push("Folder");
+        bc.select_next(); // Already at end
+        assert_eq!(bc.selected(), 1); // No change (no wrap)
+    }
+
+    #[test]
+    fn test_breadcrumb_select_prev() {
+        let mut bc = Breadcrumb::new().push("Home").push("Folder").push("File");
+        bc.set_selected(2);
+        bc.select_prev();
+        assert_eq!(bc.selected(), 1);
+    }
+
+    #[test]
+    fn test_breadcrumb_select_prev_at_start() {
+        let mut bc = Breadcrumb::new().push("Home").push("Folder");
+        bc.set_selected(0);
+        bc.select_prev();
+        assert_eq!(bc.selected(), 0); // No change (no wrap)
+    }
+
+    // =========================================================================
+    // Breadcrumb::handle_key() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_handle_key_left() {
+        let mut bc = Breadcrumb::new().push("Home").push("Folder").push("File");
+        bc.set_selected(2);
+        assert!(bc.handle_key(&Key::Left));
+        assert_eq!(bc.selected(), 1);
+    }
+
+    #[test]
+    fn test_breadcrumb_handle_key_right() {
+        let mut bc = Breadcrumb::new().push("Home").push("Folder").push("File");
+        bc.set_selected(0);
+        assert!(bc.handle_key(&Key::Right));
+        assert_eq!(bc.selected(), 1);
+    }
+
+    #[test]
+    fn test_breadcrumb_handle_key_h() {
+        let mut bc = Breadcrumb::new().push("Home").push("Folder");
+        bc.set_selected(1);
+        assert!(bc.handle_key(&Key::Char('h')));
+        assert_eq!(bc.selected(), 0);
+    }
+
+    #[test]
+    fn test_breadcrumb_handle_key_l() {
+        let mut bc = Breadcrumb::new().push("Home").push("Folder");
+        bc.set_selected(0);
+        assert!(bc.handle_key(&Key::Char('l')));
+        assert_eq!(bc.selected(), 1);
+    }
+
+    #[test]
+    fn test_breadcrumb_handle_key_unhandled() {
+        let mut bc = Breadcrumb::new().push("Home");
+        assert!(!bc.handle_key(&Key::Char('x')));
+        assert_eq!(bc.selected(), 0);
+    }
+
+    // =========================================================================
+    // Breadcrumb::pop() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_pop() {
+        let mut bc = Breadcrumb::new().push("Home").push("Folder").push("File");
+        let item = bc.pop();
+        assert!(item.is_some());
+        assert_eq!(item.unwrap().label, "File");
+        assert_eq!(bc.len(), 2);
+    }
+
+    #[test]
+    fn test_breadcrumb_pop_empty() {
+        let mut bc = Breadcrumb::new();
+        assert!(bc.pop().is_none());
+    }
+
+    // =========================================================================
+    // Breadcrumb::navigate_to() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_navigate_to() {
+        let mut bc = Breadcrumb::new()
+            .push("Home")
+            .push("Folder")
+            .push("Subfolder")
+            .push("File");
+        bc.navigate_to(1);
+        assert_eq!(bc.len(), 2); // Truncated to Home + Folder
+        assert_eq!(bc.selected(), 1);
+    }
+
+    #[test]
+    fn test_breadcrumb_navigate_to_last() {
+        let mut bc = Breadcrumb::new().push("Home").push("Folder").push("File");
+        bc.navigate_to(2);
+        assert_eq!(bc.len(), 3); // No truncation
+        assert_eq!(bc.selected(), 2);
+    }
+
+    #[test]
+    fn test_breadcrumb_navigate_to_out_of_bounds() {
+        let mut bc = Breadcrumb::new().push("Home").push("Folder");
+        bc.navigate_to(5);
+        assert_eq!(bc.len(), 2); // No change
+    }
+
+    // =========================================================================
+    // Breadcrumb::path_string() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_path_string() {
+        let bc = Breadcrumb::new().push("Home").push("Folder").push("File");
+        assert_eq!(bc.path_string(), "Home/Folder/File");
+    }
+
+    #[test]
+    fn test_breadcrumb_path_string_empty() {
+        let bc = Breadcrumb::new();
+        assert_eq!(bc.path_string(), "");
+    }
+
+    #[test]
+    fn test_breadcrumb_path_string_single() {
+        let bc = Breadcrumb::new().push("Home");
+        assert_eq!(bc.path_string(), "Home");
+    }
+
+    // =========================================================================
+    // Breadcrumb::len() / is_empty() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_len_empty() {
+        let bc = Breadcrumb::new();
+        assert_eq!(bc.len(), 0);
+    }
+
+    #[test]
+    fn test_breadcrumb_len_multiple() {
+        let bc = Breadcrumb::new().push("Home").push("Folder").push("File");
+        assert_eq!(bc.len(), 3);
+    }
+
+    #[test]
+    fn test_breadcrumb_is_empty_true() {
+        let bc = Breadcrumb::new();
+        assert!(bc.is_empty());
+    }
+
+    #[test]
+    fn test_breadcrumb_is_empty_false() {
+        let bc = Breadcrumb::new().push("Home");
+        assert!(!bc.is_empty());
+    }
+
+    // =========================================================================
+    // Breadcrumb::total_width() tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_total_width_empty() {
+        let bc = Breadcrumb::new();
+        // Home icon
+        assert_eq!(bc.total_width(), 2);
+    }
+
+    #[test]
+    fn test_breadcrumb_total_width_no_home() {
+        let bc = Breadcrumb::new().home(false).push("Home");
+        assert_eq!(bc.total_width(), 4); // "Home" = 4 chars
+    }
+
+    #[test]
+    fn test_breadcrumb_total_width_with_separator() {
+        let bc = Breadcrumb::new().home(false).push("Home").push("Folder");
+        // Home(4) + sep(3) + Folder(6) = 13
+        assert_eq!(bc.total_width(), 13);
+    }
+
+    #[test]
+    fn test_breadcrumb_total_width_with_icon() {
+        let bc = Breadcrumb::new()
+            .home(false)
+            .item(BreadcrumbItem::new("Home").icon('🏠'));
+        // icon(2) + Home(4) = 6
+        assert_eq!(bc.total_width(), 6);
+    }
+
+    // =========================================================================
+    // Breadcrumb builder chain tests
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_builder_chain() {
+        let bc = Breadcrumb::new()
+            .push("Home")
+            .push("Folder")
+            .separator(SeparatorStyle::Arrow)
+            .item_color(Color::WHITE)
+            .selected_color(Color::CYAN)
+            .separator_color(Color::rgb(128, 128, 128))
+            .home(false)
+            .max_width(80)
+            .collapse(false);
+
+        assert_eq!(bc.len(), 2);
+        assert_eq!(bc.separator, SeparatorStyle::Arrow);
+        assert_eq!(bc.item_color, Color::WHITE);
+        assert_eq!(bc.selected_color, Color::CYAN);
+        assert!(!bc.show_home);
+        assert_eq!(bc.max_width, 80);
+        assert!(!bc.collapse);
+    }
+}

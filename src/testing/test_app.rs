@@ -312,4 +312,163 @@ mod tests {
         assert_eq!(app.width, 100);
         assert_eq!(app.height, 50);
     }
+
+    #[test]
+    fn test_app_view_accessors() {
+        let app = TestApp::new(HelloView);
+        // Just verify the methods are accessible
+        let _view_ref = app.view();
+        let _view = &app.view;
+    }
+
+    #[test]
+    fn test_app_buffer() {
+        let app = TestApp::new(HelloView);
+        let buffer = app.buffer();
+        assert!(buffer.width() > 0);
+        assert!(buffer.height() > 0);
+    }
+
+    #[test]
+    fn test_app_get_cell() {
+        let app = TestApp::new(HelloView);
+        let cell = app.get_cell(0, 0);
+        assert!(cell.is_some());
+        assert_eq!(cell.unwrap(), 'H');
+    }
+
+    #[test]
+    fn test_app_get_cell_out_of_bounds() {
+        let app = TestApp::new(HelloView);
+        let cell = app.get_cell(999, 999);
+        assert!(cell.is_none());
+    }
+
+    #[test]
+    fn test_app_get_line_out_of_bounds() {
+        let app = TestApp::new(HelloView);
+        let line = app.get_line(999);
+        assert!(line.is_empty());
+    }
+
+    #[test]
+    fn test_app_contains() {
+        let app = TestApp::new(HelloView);
+        assert!(app.contains("Hello"));
+        assert!(!app.contains("NotFound"));
+    }
+
+    #[test]
+    fn test_app_find_text_not_found() {
+        let app = TestApp::new(HelloView);
+        let pos = app.find_text("NotFound");
+        assert!(pos.is_none());
+    }
+
+    #[test]
+    fn test_app_is_running() {
+        let app = TestApp::new(HelloView);
+        assert!(app.is_running());
+    }
+
+    #[test]
+    fn test_app_quit() {
+        let mut app = TestApp::new(HelloView);
+        app.quit();
+        assert!(!app.is_running());
+    }
+
+    #[test]
+    fn test_app_send_key() {
+        let mut app = TestApp::new(HelloView);
+        // Just verify it doesn't panic
+        let key_event = KeyEvent::new(crate::event::Key::Char('a'));
+        app.send_key(key_event);
+        // App should still be running
+        assert!(app.is_running());
+    }
+
+    #[test]
+    fn test_app_send_click() {
+        let mut app = TestApp::new(HelloView);
+        // Just verify it doesn't panic
+        app.send_click(10, 10);
+        // App should still be running
+        assert!(app.is_running());
+    }
+
+    #[test]
+    fn test_app_send_mouse() {
+        let mut app = TestApp::new(HelloView);
+        let mouse_event = MouseEvent::new(5, 5, MouseEventKind::Down(MouseButton::Left));
+        // Just verify it doesn't panic
+        app.send_mouse(mouse_event);
+        // App should still be running
+        assert!(app.is_running());
+    }
+
+    #[test]
+    fn test_app_send_scroll() {
+        let mut app = TestApp::new(HelloView);
+        // Just verify it doesn't panic
+        app.send_scroll(10, 10, 5);
+        // App should still be running
+        assert!(app.is_running());
+    }
+
+    #[test]
+    fn test_app_scroll_up() {
+        let mut app = TestApp::new(HelloView);
+        // Just verify it doesn't panic
+        app.scroll_up(10, 10);
+        // App should still be running
+        assert!(app.is_running());
+    }
+
+    #[test]
+    fn test_app_scroll_down() {
+        let mut app = TestApp::new(HelloView);
+        // Just verify it doesn't panic
+        app.scroll_down(10, 10);
+        // App should still be running
+        assert!(app.is_running());
+    }
+
+    #[test]
+    fn test_app_with_config() {
+        let config = TestConfig {
+            width: 100,
+            height: 40,
+            timeout_ms: 5000,
+            debug: false,
+        };
+        let app = TestApp::with_config(HelloView, config);
+        assert!(app.contains("Hello"));
+    }
+
+    #[test]
+    fn test_app_on_key_handler() {
+        let mut app = TestApp::new(HelloView).on_key(|_event, _view| false);
+        let key_event = KeyEvent::new(crate::event::Key::Char('a'));
+        app.send_key(key_event);
+        // Handler was called (return false = no re-render)
+        assert!(app.is_running());
+    }
+
+    #[test]
+    fn test_app_on_mouse_handler() {
+        let mut app = TestApp::new(HelloView).on_mouse(|_event, _view| false);
+        let mouse_event = MouseEvent::new(5, 5, MouseEventKind::Down(MouseButton::Left));
+        app.send_mouse(mouse_event);
+        // Handler was called
+        assert!(app.is_running());
+    }
+
+    #[test]
+    fn test_app_on_scroll_handler() {
+        let mut app = TestApp::new(HelloView).on_scroll(|_x, _y, _delta, _view| false);
+        app.send_scroll(10, 10, 5);
+        // Handler was called
+        assert!(app.is_running());
+    }
 }

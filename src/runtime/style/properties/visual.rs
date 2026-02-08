@@ -36,3 +36,70 @@ impl Default for VisualStyle {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_visual_style_default() {
+        let style = VisualStyle::default();
+        assert_eq!(style.border_style, BorderStyle::default());
+        assert_eq!(style.border_color, Color::default());
+        assert_eq!(style.color, Color::default());
+        assert_eq!(style.background, Color::default());
+        assert_eq!(style.opacity, 1.0);
+        assert_eq!(style.visible, true);
+        assert_eq!(style.z_index, 0);
+    }
+
+    #[test]
+    fn test_visual_style_clone() {
+        let mut style = VisualStyle::default();
+        style.opacity = 0.5;
+        let cloned = style.clone();
+        assert_eq!(cloned.opacity, 0.5);
+    }
+
+    #[test]
+    fn test_visual_style_partial_eq() {
+        let style1 = VisualStyle::default();
+        let style2 = VisualStyle::default();
+        assert_eq!(style1, style2);
+    }
+
+    #[test]
+    fn test_visual_style_not_equal() {
+        let mut style1 = VisualStyle::default();
+        style1.opacity = 0.5;
+        let style2 = VisualStyle::default();
+        assert_ne!(style1, style2);
+    }
+
+    #[test]
+    fn test_visual_style_copy_trait() {
+        let style1 = VisualStyle {
+            opacity: 0.5,
+            ..Default::default()
+        };
+        let style2 = style1;
+        assert_eq!(style2.opacity, 0.5);
+    }
+
+    #[test]
+    fn test_visual_style_debug() {
+        let style = VisualStyle::default();
+        let debug_str = format!("{:?}", style);
+        assert!(debug_str.contains("VisualStyle"));
+    }
+
+    #[test]
+    fn test_visual_style_default_values() {
+        let style = VisualStyle::default();
+        // Check inherited property defaults
+        assert_eq!(style.opacity, 1.0);
+        assert_eq!(style.visible, true);
+        // Check non-inherited property defaults
+        assert_eq!(style.z_index, 0);
+    }
+}

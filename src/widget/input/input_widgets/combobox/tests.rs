@@ -724,4 +724,481 @@ mod tests {
         cb.render(&mut ctx);
         // Should render with selected style
     }
+
+    // =========================================================================
+    // Additional tests for actions.rs module
+    // =========================================================================
+
+    #[test]
+    fn test_combobox_open_dropdown() {
+        let mut cb = Combobox::new().options(vec!["A", "B"]);
+        assert!(!cb.is_open());
+
+        cb.open_dropdown();
+        assert!(cb.is_open());
+        assert_eq!(cb.selected_idx, 0);
+        assert_eq!(cb.scroll_offset, 0);
+    }
+
+    #[test]
+    fn test_combobox_close_dropdown() {
+        let mut cb = Combobox::new().options(vec!["A", "B"]);
+        cb.open_dropdown();
+        cb.select_next();
+        assert!(cb.is_open());
+        assert_eq!(cb.selected_idx, 1);
+
+        cb.close_dropdown();
+        assert!(!cb.is_open());
+        assert_eq!(cb.selected_idx, 0);
+        assert_eq!(cb.scroll_offset, 0);
+    }
+
+    #[test]
+    fn test_combobox_select_current_empty_filtered() {
+        let mut cb = Combobox::new().options(vec!["Apple"]);
+        cb.set_input("xyz"); // No matches
+        let selected = cb.select_current();
+        assert!(!selected);
+    }
+
+    #[test]
+    fn test_combobox_select_current_disabled() {
+        let mut cb = Combobox::new().options_with(vec![
+            ComboOption::new("Enabled"),
+            ComboOption::new("Disabled").disabled(true),
+        ]);
+
+        cb.open_dropdown();
+        cb.select_next(); // Move to disabled option
+        let selected = cb.select_current();
+        assert!(!selected);
+    }
+
+    #[test]
+    fn test_combobox_select_next_empty_options() {
+        let mut cb = Combobox::new();
+        cb.select_next(); // Should not panic
+        assert_eq!(cb.selected_idx, 0);
+    }
+
+    #[test]
+    fn test_combobox_select_prev_empty_options() {
+        let mut cb = Combobox::new();
+        cb.select_prev(); // Should not panic
+        assert_eq!(cb.selected_idx, 0);
+    }
+
+    #[test]
+    fn test_combobox_select_last_empty_options() {
+        let mut cb = Combobox::new();
+        cb.select_last(); // Should not panic
+        assert_eq!(cb.selected_idx, 0);
+    }
+
+    #[test]
+    fn test_combobox_select_first_resets_scroll() {
+        let mut cb = Combobox::new()
+            .options(vec!["A", "B", "C", "D", "E", "F", "G", "H"])
+            .max_visible(3);
+
+        cb.open_dropdown();
+        // Navigate down to trigger scroll
+        for _ in 0..5 {
+            cb.select_next();
+        }
+        assert!(cb.scroll_offset > 0);
+
+        cb.select_first();
+        assert_eq!(cb.selected_idx, 0);
+        assert_eq!(cb.scroll_offset, 0);
+    }
+
+    #[test]
+    fn test_combobox_ensure_visible_above_viewport() {
+        let mut cb = Combobox::new()
+            .options(vec!["A", "B", "C", "D", "E", "F", "G", "H"])
+            .max_visible(3);
+
+        cb.open_dropdown();
+        // Scroll down
+        for _ in 0..5 {
+            cb.select_next();
+        }
+        assert!(cb.scroll_offset > 0);
+
+        // Now jump back to first
+        cb.selected_idx = 0;
+        cb.ensure_visible();
+        assert_eq!(cb.scroll_offset, 0);
+    }
+
+    #[test]
+    fn test_combobox_ensure_visible_below_viewport() {
+        let mut cb = Combobox::new()
+            .options(vec!["A", "B", "C", "D", "E", "F", "G", "H"])
+            .max_visible(3);
+
+        cb.open_dropdown();
+        // Jump to last
+        cb.selected_idx = 7;
+        cb.ensure_visible();
+        assert!(cb.scroll_offset > 0);
+    }
+
+    #[test]
+    fn test_combobox_ensure_visible_already_visible() {
+        let mut cb = Combobox::new()
+            .options(vec!["A", "B", "C", "D", "E", "F", "G", "H"])
+            .max_visible(3);
+
+        cb.open_dropdown();
+        cb.select_next(); // Now at index 1
+        let initial_offset = cb.scroll_offset;
+        cb.ensure_visible();
+        assert_eq!(cb.scroll_offset, initial_offset);
+    }
+
+    #[test]
+    fn test_combobox_set_input_updates_cursor() {
+        let mut cb = Combobox::new();
+        cb.set_input("Hello");
+        assert_eq!(cb.input(), "Hello");
+        assert_eq!(cb.cursor, 5);
+    }
+
+    #[test]
+    fn test_combobox_set_input_opens_dropdown() {
+        let mut cb = Combobox::new().options(vec!["A", "B"]);
+        assert!(!cb.is_open());
+
+        cb.set_input("test");
+        assert!(cb.is_open());
+    }
+
+    #[test]
+    fn test_combobox_set_input_empty_does_not_open() {
+        let mut cb = Combobox::new().options(vec!["A", "B"]);
+        assert!(!cb.is_open());
+
+        cb.set_input("");
+        assert!(!cb.is_open());
+    }
+
+    #[test]
+    fn test_combobox_set_input_updates_filter() {
+        let mut cb = Combobox::new().options(vec!["Apple", "Banana", "Cherry"]);
+        cb.set_input("App");
+        assert_eq!(cb.filtered_count(), 1);
+    }
+
+    #[test]
+    fn test_combobox_clear_input_resets_cursor() {
+        let mut cb = Combobox::new();
+        cb.set_input("Hello");
+        assert_eq!(cb.cursor, 5);
+
+        cb.clear_input();
+        assert_eq!(cb.input(), "");
+        assert_eq!(cb.cursor, 0);
+    }
+
+    #[test]
+    fn test_combobox_clear_input_updates_filter() {
+        let mut cb = Combobox::new().options(vec!["Apple", "Banana", "Cherry"]);
+        cb.set_input("xyz");
+        assert_eq!(cb.filtered_count(), 0);
+
+        cb.clear_input();
+        assert_eq!(cb.filtered_count(), 3);
+    }
+
+    #[test]
+    fn test_combobox_toggle_dropdown_from_closed() {
+        let mut cb = Combobox::new().options(vec!["A", "B"]);
+        assert!(!cb.is_open());
+
+        cb.toggle_dropdown();
+        assert!(cb.is_open());
+    }
+
+    #[test]
+    fn test_combobox_toggle_dropdown_from_open() {
+        let mut cb = Combobox::new().options(vec!["A", "B"]);
+        cb.open_dropdown();
+        assert!(cb.is_open());
+
+        cb.toggle_dropdown();
+        assert!(!cb.is_open());
+    }
+
+    // =========================================================================
+    // Additional tests for state.rs module
+    // =========================================================================
+
+    #[test]
+    fn test_combobox_input() {
+        let cb = Combobox::new().value("test value");
+        assert_eq!(cb.input(), "test value");
+    }
+
+    #[test]
+    fn test_combobox_input_empty() {
+        let cb = Combobox::new();
+        assert!(cb.input().is_empty());
+    }
+
+    #[test]
+    fn test_combobox_selected_value_matching_label() {
+        let cb = Combobox::new()
+            .options(vec!["Apple", "Banana"])
+            .value("Apple");
+
+        assert_eq!(cb.selected_value(), Some("Apple"));
+    }
+
+    #[test]
+    fn test_combobox_selected_value_no_match() {
+        let cb = Combobox::new()
+            .options(vec!["Apple", "Banana"])
+            .value("Cherry");
+
+        assert_eq!(cb.selected_value(), None);
+    }
+
+    #[test]
+    fn test_combobox_selected_value_custom_allowed() {
+        let cb = Combobox::new()
+            .options(vec!["Apple", "Banana"])
+            .allow_custom(true)
+            .value("Custom");
+
+        assert_eq!(cb.selected_value(), Some("Custom"));
+    }
+
+    #[test]
+    fn test_combobox_selected_value_custom_empty() {
+        let cb = Combobox::new()
+            .options(vec!["Apple", "Banana"])
+            .allow_custom(true)
+            .value("");
+
+        assert_eq!(cb.selected_value(), None);
+    }
+
+    #[test]
+    fn test_combobox_selected_values_ref_empty() {
+        let cb = Combobox::new().multi_select(true);
+        assert!(cb.selected_values_ref().is_empty());
+    }
+
+    #[test]
+    fn test_combobox_selected_values_ref_with_values() {
+        let cb = Combobox::new()
+            .multi_select(true)
+            .selected_values(vec!["A".to_string(), "B".to_string()]);
+
+        assert_eq!(cb.selected_values_ref(), &["A", "B"]);
+    }
+
+    #[test]
+    fn test_combobox_is_open_true() {
+        let mut cb = Combobox::new();
+        cb.open_dropdown();
+        assert!(cb.is_open());
+    }
+
+    #[test]
+    fn test_combobox_is_open_false() {
+        let cb = Combobox::new();
+        assert!(!cb.is_open());
+    }
+
+    #[test]
+    fn test_combobox_is_loading_true() {
+        let cb = Combobox::new().loading(true);
+        assert!(cb.is_loading());
+    }
+
+    #[test]
+    fn test_combobox_is_loading_false() {
+        let cb = Combobox::new();
+        assert!(!cb.is_loading());
+    }
+
+    #[test]
+    fn test_combobox_option_count() {
+        let cb = Combobox::new().options(vec!["A", "B", "C", "D"]);
+        assert_eq!(cb.option_count(), 4);
+    }
+
+    #[test]
+    fn test_combobox_option_count_empty() {
+        let cb = Combobox::new();
+        assert_eq!(cb.option_count(), 0);
+    }
+
+    #[test]
+    fn test_combobox_filtered_count_no_filter() {
+        let cb = Combobox::new().options(vec!["A", "B", "C"]);
+        assert_eq!(cb.filtered_count(), 3);
+    }
+
+    #[test]
+    fn test_combobox_filtered_count_with_filter() {
+        let mut cb = Combobox::new().options(vec!["Apple", "Banana", "Cherry"]);
+        cb.set_input("App");
+        assert_eq!(cb.filtered_count(), 1);
+    }
+
+    #[test]
+    fn test_combobox_is_selected_true() {
+        let cb = Combobox::new()
+            .multi_select(true)
+            .selected_values(vec!["A".to_string(), "B".to_string()]);
+
+        assert!(cb.is_selected("A"));
+        assert!(cb.is_selected("B"));
+    }
+
+    #[test]
+    fn test_combobox_is_selected_false() {
+        let cb = Combobox::new()
+            .multi_select(true)
+            .selected_values(vec!["A".to_string()]);
+
+        assert!(!cb.is_selected("B"));
+    }
+
+    #[test]
+    fn test_combobox_is_selected_empty() {
+        let cb = Combobox::new().multi_select(true);
+        assert!(!cb.is_selected("A"));
+    }
+
+    #[test]
+    fn test_combobox_selected_value_with_separate_value() {
+        let cb = Combobox::new()
+            .options_with(vec![ComboOption::new("Display").value("actual")])
+            .value("Display");
+
+        assert_eq!(cb.selected_value(), Some("actual"));
+    }
+
+    // =========================================================================
+    // Additional tests for filter.rs module
+    // =========================================================================
+
+    #[test]
+    fn test_combobox_update_filter_empty_input() {
+        let mut cb = Combobox::new().options(vec!["Apple", "Banana", "Cherry"]);
+        cb.set_input("App"); // Filter
+        assert_eq!(cb.filtered_count(), 1);
+
+        cb.clear_input(); // Empty input
+        assert_eq!(cb.filtered_count(), 3); // All shown
+        assert_eq!(cb.selected_idx, 0);
+        assert_eq!(cb.scroll_offset, 0);
+    }
+
+    #[test]
+    fn test_combobox_update_filter_resets_selection() {
+        let mut cb = Combobox::new().options(vec!["Apple", "Banana", "Cherry"]);
+        cb.open_dropdown();
+        cb.select_next();
+        assert_eq!(cb.selected_idx, 1);
+
+        cb.set_input("App");
+        assert_eq!(cb.selected_idx, 0); // Reset to first match
+        assert_eq!(cb.scroll_offset, 0);
+    }
+
+    #[test]
+    fn test_combobox_get_match_fuzzy_mode() {
+        let cb = Combobox::new()
+            .options(vec!["Hello World"])
+            .filter_mode(FilterMode::Fuzzy)
+            .value("hw");
+
+        let match_result = cb.get_match("Hello World");
+        assert!(match_result.is_some());
+    }
+
+    #[test]
+    fn test_combobox_get_match_empty_input() {
+        let cb = Combobox::new()
+            .options(vec!["Apple"])
+            .filter_mode(FilterMode::Fuzzy);
+
+        let match_result = cb.get_match("Apple");
+        assert!(match_result.is_none());
+    }
+
+    #[test]
+    fn test_combobox_get_match_non_fuzzy_mode() {
+        let cb = Combobox::new()
+            .options(vec!["Apple"])
+            .filter_mode(FilterMode::Prefix)
+            .value("App");
+
+        let match_result = cb.get_match("Apple");
+        assert!(match_result.is_none());
+    }
+
+    #[test]
+    fn test_combobox_filter_mode_none() {
+        let mut cb = Combobox::new()
+            .options(vec!["Apple", "Banana", "Cherry"])
+            .filter_mode(FilterMode::None);
+
+        cb.set_input("xyz"); // Non-matching query
+        // None mode shows all options
+        assert_eq!(cb.filtered_count(), 3);
+    }
+
+    #[test]
+    fn test_combobox_filter_prefix_case_insensitive() {
+        let mut cb = Combobox::new()
+            .options(vec!["apple", "APPLE", "Apple"])
+            .filter_mode(FilterMode::Prefix);
+
+        cb.set_input("APP");
+        assert_eq!(cb.filtered_count(), 3); // All match case-insensitively
+    }
+
+    #[test]
+    fn test_combobox_filter_exact_case_insensitive() {
+        let mut cb = Combobox::new()
+            .options(vec!["apple", "APPLE", "Apple"])
+            .filter_mode(FilterMode::Exact);
+
+        cb.set_input("apple");
+        assert_eq!(cb.filtered_count(), 3);
+    }
+
+    #[test]
+    fn test_combobox_filter_contains_case_insensitive() {
+        let mut cb = Combobox::new()
+            .options(vec!["Apple", "Pineapple", "apple"])
+            .filter_mode(FilterMode::Contains);
+
+        cb.set_input("APP");
+        assert_eq!(cb.filtered_count(), 3);
+    }
+
+    #[test]
+    fn test_combobox_update_filter_multiple_times() {
+        let mut cb = Combobox::new()
+            .options(vec!["Apple", "Banana", "Cherry", "Date"])
+            .filter_mode(FilterMode::Prefix);
+
+        cb.set_input("A");
+        assert_eq!(cb.filtered_count(), 1);
+
+        cb.set_input("B");
+        assert_eq!(cb.filtered_count(), 1);
+
+        cb.set_input("");
+        assert_eq!(cb.filtered_count(), 4);
+    }
 }

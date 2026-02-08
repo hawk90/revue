@@ -8,6 +8,7 @@ use crate::style::Color;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Rich text editor widget
+#[derive(Clone)]
 pub struct RichTextEditor {
     /// Document blocks
     pub(super) blocks: Vec<Block>,
@@ -357,3 +358,318 @@ impl Default for RichTextEditor {
 
 impl_styled_view!(RichTextEditor);
 impl_props_builders!(RichTextEditor);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // RichTextEditor construction tests
+    // =========================================================================
+
+    #[test]
+    fn test_rich_text_editor_new() {
+        let editor = RichTextEditor::new();
+        assert_eq!(editor.blocks.len(), 1);
+    }
+
+    #[test]
+    fn test_rich_text_editor_default() {
+        let editor = RichTextEditor::default();
+        assert_eq!(editor.blocks.len(), 1);
+    }
+
+    // =========================================================================
+    // Content builder tests
+    // =========================================================================
+
+    #[test]
+    fn test_rich_text_editor_content_plain() {
+        let editor = RichTextEditor::new().content("Hello world");
+        assert_eq!(editor.blocks.len(), 1);
+    }
+
+    #[test]
+    fn test_rich_text_editor_content_multiline() {
+        let editor = RichTextEditor::new().content("Line 1\nLine 2\nLine 3");
+        assert_eq!(editor.blocks.len(), 3);
+    }
+
+    #[test]
+    fn test_rich_text_editor_content_empty() {
+        let editor = RichTextEditor::new().content("");
+        // Empty content should still have one block
+        assert_eq!(editor.blocks.len(), 1);
+    }
+
+    #[test]
+    fn test_rich_text_editor_from_markdown() {
+        let editor = RichTextEditor::new().from_markdown("# Heading\n\nParagraph");
+        // Creates 3 blocks: heading, empty paragraph, actual paragraph
+        assert_eq!(editor.blocks.len(), 3);
+    }
+
+    #[test]
+    fn test_rich_text_editor_from_markdown_empty() {
+        let editor = RichTextEditor::new().from_markdown("");
+        assert_eq!(editor.blocks.len(), 1);
+    }
+
+    // =========================================================================
+    // Markdown parsing tests
+    // =========================================================================
+
+    #[test]
+    fn test_markdown_heading1() {
+        let editor = RichTextEditor::new().from_markdown("# Title");
+        assert_eq!(editor.blocks.len(), 1);
+    }
+
+    #[test]
+    fn test_markdown_heading2() {
+        let editor = RichTextEditor::new().from_markdown("## Subtitle");
+        assert_eq!(editor.blocks.len(), 1);
+    }
+
+    #[test]
+    fn test_markdown_heading3() {
+        let editor = RichTextEditor::new().from_markdown("### Section");
+        assert_eq!(editor.blocks.len(), 1);
+    }
+
+    #[test]
+    fn test_markdown_bullet_list() {
+        let editor = RichTextEditor::new().from_markdown("- Item 1\n- Item 2");
+        assert_eq!(editor.blocks.len(), 2);
+    }
+
+    #[test]
+    fn test_markdown_numbered_list() {
+        let editor = RichTextEditor::new().from_markdown("1. First\n2. Second");
+        assert_eq!(editor.blocks.len(), 2);
+    }
+
+    #[test]
+    fn test_markdown_quote() {
+        let editor = RichTextEditor::new().from_markdown("> Quote text");
+        assert_eq!(editor.blocks.len(), 1);
+    }
+
+    #[test]
+    fn test_markdown_code_block() {
+        let editor = RichTextEditor::new().from_markdown("```\ncode here\n```");
+        assert_eq!(editor.blocks.len(), 1);
+    }
+
+    #[test]
+    fn test_markdown_code_block_with_language() {
+        let editor = RichTextEditor::new().from_markdown("```rust\nfn main() {}\n```");
+        assert_eq!(editor.blocks.len(), 1);
+    }
+
+    #[test]
+    fn test_markdown_horizontal_rule() {
+        let editor = RichTextEditor::new().from_markdown("---");
+        assert_eq!(editor.blocks.len(), 1);
+    }
+
+    #[test]
+    fn test_markdown_horizontal_rule_alt() {
+        let editor = RichTextEditor::new().from_markdown("***");
+        assert_eq!(editor.blocks.len(), 1);
+    }
+
+    // =========================================================================
+    // Dialog tests
+    // =========================================================================
+
+    #[test]
+    fn test_dialog_not_open_initially() {
+        let editor = RichTextEditor::new();
+        assert!(!editor.is_dialog_open());
+    }
+
+    #[test]
+    fn test_open_link_dialog() {
+        let mut editor = RichTextEditor::new();
+        editor.open_link_dialog();
+        assert!(editor.is_dialog_open());
+    }
+
+    #[test]
+    fn test_open_image_dialog() {
+        let mut editor = RichTextEditor::new();
+        editor.open_image_dialog();
+        assert!(editor.is_dialog_open());
+    }
+
+    #[test]
+    fn test_close_dialog() {
+        let mut editor = RichTextEditor::new();
+        editor.open_link_dialog();
+        editor.close_dialog();
+        assert!(!editor.is_dialog_open());
+    }
+
+    // =========================================================================
+    // Insert tests
+    // =========================================================================
+
+    #[test]
+    fn test_insert_link() {
+        let mut editor = RichTextEditor::new();
+        editor.insert_link("text", "url");
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_insert_image() {
+        let mut editor = RichTextEditor::new();
+        editor.insert_image("alt", "src");
+        // Just verify it doesn't panic
+    }
+
+    // =========================================================================
+    // Builder tests
+    // =========================================================================
+
+    #[test]
+    fn test_view_mode_builder() {
+        let editor = RichTextEditor::new().view_mode(EditorViewMode::Preview);
+        assert!(editor.blocks.len() >= 1);
+    }
+
+    #[test]
+    fn test_toolbar_builder() {
+        let editor = RichTextEditor::new().toolbar(false);
+        assert!(editor.blocks.len() >= 1);
+    }
+
+    #[test]
+    fn test_focused_builder() {
+        let editor = RichTextEditor::new().focused(false);
+        assert!(editor.blocks.len() >= 1);
+    }
+
+    #[test]
+    fn test_bg_builder() {
+        let editor = RichTextEditor::new().bg(Color::BLACK);
+        assert!(editor.blocks.len() >= 1);
+    }
+
+    #[test]
+    fn test_fg_builder() {
+        let editor = RichTextEditor::new().fg(Color::WHITE);
+        assert!(editor.blocks.len() >= 1);
+    }
+
+    // =========================================================================
+    // Content access tests
+    // =========================================================================
+
+    #[test]
+    fn test_get_content() {
+        let editor = RichTextEditor::new().content("Hello world");
+        let content = editor.get_content();
+        assert_eq!(content, "Hello world");
+    }
+
+    #[test]
+    fn test_get_content_empty() {
+        let editor = RichTextEditor::new();
+        let content = editor.get_content();
+        assert_eq!(content, "");
+    }
+
+    #[test]
+    fn test_to_markdown() {
+        let editor = RichTextEditor::new().content("# Title");
+        let markdown = editor.to_markdown();
+        assert!(markdown.contains("# Title"));
+    }
+
+    // =========================================================================
+    // Cursor tests
+    // =========================================================================
+
+    #[test]
+    fn test_cursor_position() {
+        let editor = RichTextEditor::new();
+        let pos = editor.cursor_position();
+        assert_eq!(pos, (0, 0));
+    }
+
+    #[test]
+    fn test_set_cursor() {
+        let mut editor = RichTextEditor::new();
+        editor.set_cursor(0, 5);
+        // Just verify it doesn't panic
+    }
+
+    // =========================================================================
+    // Block tests
+    // =========================================================================
+
+    #[test]
+    fn test_block_count() {
+        let editor = RichTextEditor::new().content("Line 1\nLine 2");
+        assert_eq!(editor.block_count(), 2);
+    }
+
+    #[test]
+    fn test_block_count_empty() {
+        let editor = RichTextEditor::new();
+        assert_eq!(editor.block_count(), 1);
+    }
+
+    // =========================================================================
+    // Format tests
+    // =========================================================================
+
+    #[test]
+    fn test_toggle_bold() {
+        let mut editor = RichTextEditor::new();
+        editor.toggle_bold();
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_toggle_italic() {
+        let mut editor = RichTextEditor::new();
+        editor.toggle_italic();
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_toggle_code() {
+        let mut editor = RichTextEditor::new();
+        editor.toggle_code();
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_current_format() {
+        let editor = RichTextEditor::new();
+        let format = editor.current_format();
+        // Just verify it doesn't panic
+        let _ = format;
+    }
+
+    // =========================================================================
+    // Undo/Redo tests
+    // =========================================================================
+
+    #[test]
+    fn test_undo_empty() {
+        let mut editor = RichTextEditor::new();
+        editor.undo();
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_redo_empty() {
+        let mut editor = RichTextEditor::new();
+        editor.redo();
+        // Just verify it doesn't panic
+    }
+}

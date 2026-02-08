@@ -265,11 +265,265 @@ impl_props_builders!(Tabs);
 mod tests {
     use super::*;
 
+    // =========================================================================
+    // Tab tests
+    // =========================================================================
+
     #[test]
-    fn test_tab_item() {
+    fn test_tab_new() {
         let tab = Tab::new("My Tab");
         assert_eq!(tab.label, "My Tab");
     }
+
+    #[test]
+    fn test_tab_new_from_string() {
+        let tab = Tab::new(String::from("Owned"));
+        assert_eq!(tab.label, "Owned");
+    }
+
+    #[test]
+    fn test_tab_new_from_str() {
+        let tab = Tab::new("str");
+        assert_eq!(tab.label, "str");
+    }
+
+    #[test]
+    fn test_tab_clone() {
+        let tab = Tab::new("Original");
+        let cloned = tab.clone();
+        assert_eq!(cloned.label, "Original");
+    }
+
+    #[test]
+    fn test_tab_empty_label() {
+        let tab = Tab::new("");
+        assert_eq!(tab.label, "");
+    }
+
+    #[test]
+    fn test_tab_unicode_label() {
+        let tab = Tab::new("タブ");
+        assert_eq!(tab.label, "タブ");
+    }
+
+    // =========================================================================
+    // Tabs::new and default tests
+    // =========================================================================
+
+    #[test]
+    fn test_tabs_new() {
+        let tabs = Tabs::new();
+        assert!(tabs.is_empty());
+        assert_eq!(tabs.len(), 0);
+        assert_eq!(tabs.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tabs_default() {
+        let tabs = Tabs::default();
+        assert!(tabs.is_empty());
+    }
+
+    #[test]
+    fn test_tabs_helper() {
+        let tabs = tabs();
+        assert!(tabs.is_empty());
+    }
+
+    // =========================================================================
+    // Tabs builder tests
+    // =========================================================================
+
+    #[test]
+    fn test_tabs_with_single_tab() {
+        let tabs = Tabs::new().tab("Home");
+        assert_eq!(tabs.len(), 1);
+        assert_eq!(tabs.selected_label(), Some("Home"));
+    }
+
+    #[test]
+    fn test_tabs_with_multiple_tabs() {
+        let tabs = Tabs::new().tab("Tab1").tab("Tab2").tab("Tab3");
+        assert_eq!(tabs.len(), 3);
+        assert_eq!(tabs.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tabs_builder() {
+        let tabs = Tabs::new().tabs(vec!["A", "B", "C"]);
+        assert_eq!(tabs.len(), 3);
+    }
+
+    #[test]
+    fn test_tabs_builder_empty_vec() {
+        let tabs = Tabs::new().tabs(vec![""; 0]);
+        assert!(tabs.is_empty());
+    }
+
+    // =========================================================================
+    // Tabs selection tests
+    // =========================================================================
+
+    #[test]
+    fn test_tabs_selected() {
+        let tabs = Tabs::new().tab("Tab1").tab("Tab2").selected(1);
+        assert_eq!(tabs.selected_index(), 1);
+        assert_eq!(tabs.selected_label(), Some("Tab2"));
+    }
+
+    #[test]
+    fn test_tabs_select_next() {
+        let mut tabs = Tabs::new().tab("Tab1").tab("Tab2").tab("Tab3").selected(0);
+
+        tabs.select_next();
+        assert_eq!(tabs.selected_index(), 1);
+
+        tabs.select_next();
+        assert_eq!(tabs.selected_index(), 2);
+
+        // Wrap around
+        tabs.select_next();
+        assert_eq!(tabs.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tabs_select_prev() {
+        let mut tabs = Tabs::new().tab("Tab1").tab("Tab2").tab("Tab3").selected(0);
+
+        tabs.select_prev();
+        assert_eq!(tabs.selected_index(), 2); // Wrap around
+
+        tabs.select_prev();
+        assert_eq!(tabs.selected_index(), 1);
+    }
+
+    #[test]
+    fn test_tabs_select_first() {
+        let mut tabs = Tabs::new().tab("Tab1").tab("Tab2").tab("Tab3").selected(2);
+
+        tabs.select_first();
+        assert_eq!(tabs.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tabs_select_last() {
+        let mut tabs = Tabs::new().tab("Tab1").tab("Tab2").selected(0);
+
+        tabs.select_last();
+        assert_eq!(tabs.selected_index(), 1);
+    }
+
+    #[test]
+    fn test_tabs_select_by_index() {
+        let mut tabs = Tabs::new().tab("Tab1").tab("Tab2").tab("Tab3");
+
+        tabs.select(2);
+        assert_eq!(tabs.selected_index(), 2);
+        assert_eq!(tabs.selected_label(), Some("Tab3"));
+    }
+
+    #[test]
+    fn test_tabs_selected_label_none() {
+        let tabs = Tabs::new();
+        assert_eq!(tabs.selected_label(), None);
+    }
+
+    // =========================================================================
+    // Tabs handle_key tests
+    // =========================================================================
+
+    #[test]
+    fn test_tabs_handle_key_left() {
+        let mut tabs = Tabs::new().tab("Tab1").tab("Tab2").selected(1);
+
+        use crate::event::Key;
+        let handled = tabs.handle_key(&Key::Left);
+        assert!(handled);
+        assert_eq!(tabs.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tabs_handle_key_right() {
+        let mut tabs = Tabs::new().tab("Tab1").tab("Tab2").selected(0);
+
+        use crate::event::Key;
+        let handled = tabs.handle_key(&Key::Right);
+        assert!(handled);
+        assert_eq!(tabs.selected_index(), 1);
+    }
+
+    #[test]
+    fn test_tabs_handle_key_h() {
+        let mut tabs = Tabs::new().tab("Tab1").tab("Tab2").selected(1);
+
+        use crate::event::Key;
+        let handled = tabs.handle_key(&Key::Char('h'));
+        assert!(handled);
+        assert_eq!(tabs.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tabs_handle_key_l() {
+        let mut tabs = Tabs::new().tab("Tab1").tab("Tab2").selected(0);
+
+        use crate::event::Key;
+        let handled = tabs.handle_key(&Key::Char('l'));
+        assert!(handled);
+        assert_eq!(tabs.selected_index(), 1);
+    }
+
+    #[test]
+    fn test_tabs_handle_key_home() {
+        let mut tabs = Tabs::new().tab("Tab1").tab("Tab2").selected(1);
+
+        use crate::event::Key;
+        let handled = tabs.handle_key(&Key::Home);
+        assert!(handled);
+        assert_eq!(tabs.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tabs_handle_key_end() {
+        let mut tabs = Tabs::new().tab("Tab1").tab("Tab2").selected(0);
+
+        use crate::event::Key;
+        let handled = tabs.handle_key(&Key::End);
+        assert!(handled);
+        assert_eq!(tabs.selected_index(), 1);
+    }
+
+    #[test]
+    fn test_tabs_handle_key_digit() {
+        let mut tabs = Tabs::new().tab("Tab1").tab("Tab2").selected(1);
+
+        use crate::event::Key;
+        // Index 2 (key '3') is out of range for 2 tabs
+        let handled = tabs.handle_key(&Key::Char('3'));
+        assert!(!handled); // Index 2 out of range
+
+        // Index 1 (key '2') should select second tab (but already selected)
+        let handled = tabs.handle_key(&Key::Char('2'));
+        assert!(!handled); // No change because already at index 1
+
+        // Index 0 (key '1') should select first tab
+        let handled = tabs.handle_key(&Key::Char('1'));
+        assert!(handled);
+        assert_eq!(tabs.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tabs_handle_key_unhandled() {
+        let mut tabs = Tabs::new().tab("Tab1").selected(0);
+
+        use crate::event::Key;
+        let handled = tabs.handle_key(&Key::Up);
+        assert!(!handled);
+        assert_eq!(tabs.selected_index(), 0);
+    }
+
+    // =========================================================================
+    // Tabs style tests
+    // =========================================================================
 
     #[test]
     fn test_tabs_fg_bg_colors() {
@@ -292,9 +546,67 @@ mod tests {
     }
 
     #[test]
-    fn test_tab_clone() {
-        let tab = Tab::new("Original");
-        let cloned = tab.clone();
-        assert_eq!(cloned.label, "Original");
+    fn test_tabs_divider_unicode() {
+        let t = Tabs::new().divider('┃');
+        assert_eq!(t.divider, '┃');
+    }
+
+    // =========================================================================
+    // Tabs query methods
+    // =========================================================================
+
+    #[test]
+    fn test_tabs_len() {
+        let tabs = Tabs::new().tab("A").tab("B").tab("C");
+        assert_eq!(tabs.len(), 3);
+    }
+
+    #[test]
+    fn test_tabs_is_empty_true() {
+        let tabs = Tabs::new();
+        assert!(tabs.is_empty());
+    }
+
+    #[test]
+    fn test_tabs_is_empty_false() {
+        let tabs = Tabs::new().tab("A");
+        assert!(!tabs.is_empty());
+    }
+
+    // =========================================================================
+    // Tabs edge cases
+    // =========================================================================
+
+    #[test]
+    fn test_tabs_empty_selected_label() {
+        let tabs = Tabs::new();
+        assert_eq!(tabs.selected_label(), None);
+    }
+
+    #[test]
+    fn test_tabs_single_tab() {
+        let mut tabs = Tabs::new().tab("Only");
+        assert_eq!(tabs.len(), 1);
+        assert_eq!(tabs.selected_label(), Some("Only"));
+        // Next and prev should wrap to same tab
+        tabs.select_next();
+        assert_eq!(tabs.selected_index(), 0);
+        tabs.select_prev();
+        assert_eq!(tabs.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_tabs_chain_builder() {
+        let tabs = Tabs::new()
+            .tab("A")
+            .tab("B")
+            .selected(1)
+            .fg(Color::CYAN)
+            .bg(Color::BLACK)
+            .active_style(Color::WHITE, Color::BLUE)
+            .divider('│');
+
+        assert_eq!(tabs.len(), 2);
+        assert_eq!(tabs.selected_index(), 1);
     }
 }

@@ -497,6 +497,357 @@ impl Drop for ContextScope {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Context::new tests
+    #[test]
+    fn test_context_new() {
+        let ctx: Context<i32> = Context::new();
+        assert!(ctx.default().is_none());
+    }
+
+    #[test]
+    fn test_context_new_string() {
+        let ctx: Context<String> = Context::new();
+        assert!(ctx.default().is_none());
+    }
+
+    // Context::with_default tests
+    #[test]
+    fn test_context_with_default() {
+        let ctx: Context<i32> = Context::with_default(42);
+        assert_eq!(ctx.default(), Some(&42));
+    }
+
+    #[test]
+    fn test_context_with_default_string() {
+        let ctx: Context<String> = Context::with_default("hello".to_string());
+        assert_eq!(ctx.default(), Some(&"hello".to_string()));
+    }
+
+    // Context::default trait tests
+    #[test]
+    fn test_context_default_trait() {
+        let ctx: Context<i32> = Default::default();
+        assert!(ctx.default().is_none());
+    }
+
+    // Context::id tests
+    #[test]
+    fn test_context_id() {
+        let ctx1: Context<i32> = Context::new();
+        let ctx2: Context<i32> = Context::new();
+        assert_ne!(ctx1.id(), ctx2.id());
+    }
+
+    // Context::clone tests
+    #[test]
+    fn test_context_clone_without_default() {
+        let ctx1: Context<i32> = Context::new();
+        let ctx2 = ctx1.clone();
+        assert_eq!(ctx1.id(), ctx2.id());
+        assert!(ctx2.default().is_none());
+    }
+
+    #[test]
+    fn test_context_clone_with_default() {
+        let ctx1: Context<i32> = Context::with_default(42);
+        let ctx2 = ctx1.clone();
+        assert_eq!(ctx1.id(), ctx2.id());
+        assert_eq!(ctx2.default(), Some(&42));
+    }
+
+    // create_context tests
+    #[test]
+    fn test_create_context() {
+        let ctx = create_context::<i32>();
+        assert!(ctx.default().is_none());
+    }
+
+    #[test]
+    fn test_create_context_string() {
+        let ctx = create_context::<String>();
+        assert!(ctx.default().is_none());
+    }
+
+    // create_context_with_default tests
+    #[test]
+    fn test_create_context_with_default() {
+        let ctx = create_context_with_default(42);
+        assert_eq!(ctx.default(), Some(&42));
+    }
+
+    // provide/use_context tests
+    #[test]
+    fn test_provide_and_use_context() {
+        let ctx = create_context::<i32>();
+        provide(&ctx, 42);
+        assert_eq!(use_context(&ctx), Some(42));
+        clear_context(&ctx);
+    }
+
+    #[test]
+    fn test_provide_and_use_context_string() {
+        let ctx = create_context::<String>();
+        provide(&ctx, "hello".to_string());
+        assert_eq!(use_context(&ctx), Some("hello".to_string()));
+        clear_context(&ctx);
+    }
+
+    #[test]
+    fn test_use_context_not_provided() {
+        let ctx = create_context::<i32>();
+        assert_eq!(use_context(&ctx), None);
+    }
+
+    #[test]
+    fn test_use_context_with_default_not_provided() {
+        let ctx = create_context_with_default(42);
+        assert_eq!(use_context(&ctx), Some(42));
+    }
+
+    #[test]
+    fn test_use_context_default_overridden_by_provide() {
+        let ctx = create_context_with_default(42);
+        provide(&ctx, 100);
+        assert_eq!(use_context(&ctx), Some(100));
+        clear_context(&ctx);
+    }
+
+    // provide_signal tests
+    #[test]
+    fn test_provide_signal_and_use_context() {
+        let ctx = create_context::<i32>();
+        let signal = provide_signal(&ctx, 42);
+        assert_eq!(signal.get(), 42);
+        assert_eq!(use_context(&ctx), Some(42));
+        clear_context(&ctx);
+    }
+
+    #[test]
+    fn test_provide_signal_update() {
+        let ctx = create_context::<i32>();
+        let signal = provide_signal(&ctx, 42);
+        assert_eq!(use_context(&ctx), Some(42));
+
+        signal.set(100);
+        assert_eq!(use_context(&ctx), Some(100));
+        clear_context(&ctx);
+    }
+
+    // use_context_signal tests
+    #[test]
+    fn test_use_context_signal() {
+        let ctx = create_context::<i32>();
+        provide(&ctx, 42);
+        let signal = use_context_signal(&ctx);
+        assert!(signal.is_some());
+        assert_eq!(signal.unwrap().get(), 42);
+        clear_context(&ctx);
+    }
+
+    #[test]
+    fn test_use_context_signal_not_provided() {
+        let ctx = create_context::<i32>();
+        let signal = use_context_signal(&ctx);
+        assert!(signal.is_none());
+    }
+
+    // has_context tests
+    #[test]
+    fn test_has_context_false() {
+        let ctx = create_context::<i32>();
+        assert!(!has_context(&ctx));
+    }
+
+    #[test]
+    fn test_has_context_true() {
+        let ctx = create_context::<i32>();
+        provide(&ctx, 42);
+        assert!(has_context(&ctx));
+        clear_context(&ctx);
+    }
+
+    // clear_context tests
+    #[test]
+    fn test_clear_context() {
+        let ctx = create_context::<i32>();
+        provide(&ctx, 42);
+        assert!(has_context(&ctx));
+
+        clear_context(&ctx);
+        assert!(!has_context(&ctx));
+    }
+
+    // clear_all_contexts tests
+    #[test]
+    fn test_clear_all_contexts() {
+        let ctx1 = create_context::<i32>();
+        let ctx2 = create_context::<String>();
+        provide(&ctx1, 42);
+        provide(&ctx2, "hello".to_string());
+
+        assert!(has_context(&ctx1));
+        assert!(has_context(&ctx2));
+
+        clear_all_contexts();
+
+        assert!(!has_context(&ctx1));
+        assert!(!has_context(&ctx2));
+    }
+
+    // ContextScope tests
+    #[test]
+    fn test_context_scope_new() {
+        let _scope = ContextScope::new();
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_context_scope_default() {
+        let _scope = ContextScope::default();
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_context_scope_provide() {
+        let ctx = create_context::<i32>();
+        {
+            let scope = ContextScope::new();
+            scope.provide(&ctx, 42);
+            assert_eq!(use_context(&ctx), Some(42));
+        }
+        // After scope is dropped
+        assert_eq!(use_context(&ctx), None);
+    }
+
+    #[test]
+    fn test_context_scope_provide_signal() {
+        let ctx = create_context::<i32>();
+        let signal = {
+            let scope = ContextScope::new();
+            let signal = scope.provide_signal(&ctx, 42);
+            assert_eq!(signal.get(), 42);
+            assert_eq!(use_context(&ctx), Some(42));
+            signal
+        };
+        // After scope is dropped, signal still exists but context is gone
+        assert_eq!(use_context(&ctx), None);
+    }
+
+    #[test]
+    fn test_context_scope_nested() {
+        let ctx = create_context::<i32>();
+
+        // Outer scope
+        let scope1 = ContextScope::new();
+        scope1.provide(&ctx, 10);
+        assert_eq!(use_context(&ctx), Some(10));
+
+        // Inner scope overrides
+        {
+            let scope2 = ContextScope::new();
+            scope2.provide(&ctx, 20);
+            assert_eq!(use_context(&ctx), Some(20));
+        }
+
+        // After inner scope dropped, outer value is restored
+        assert_eq!(use_context(&ctx), Some(10));
+    }
+
+    // Provider tests
+    #[test]
+    fn test_provider_new() {
+        let ctx = create_context::<i32>();
+        let provider = Provider::new(&ctx, 42);
+        assert_eq!(provider.get(), 42);
+    }
+
+    #[test]
+    fn test_provider_get() {
+        let ctx = create_context::<i32>();
+        let provider = Provider::new(&ctx, 42);
+        assert_eq!(provider.get(), 42);
+    }
+
+    #[test]
+    fn test_provider_set() {
+        let ctx = create_context::<i32>();
+        let provider = Provider::new(&ctx, 42);
+        assert_eq!(provider.get(), 42);
+
+        provider.set(100);
+        assert_eq!(provider.get(), 100);
+    }
+
+    #[test]
+    fn test_provider_update() {
+        let ctx = create_context::<i32>();
+        let provider = Provider::new(&ctx, 42);
+        provider.update(|v| *v *= 2);
+        assert_eq!(provider.get(), 84);
+    }
+
+    #[test]
+    fn test_provider_signal() {
+        let ctx = create_context::<i32>();
+        let provider = Provider::new(&ctx, 42);
+        let signal = provider.signal();
+        assert_eq!(signal.get(), 42);
+    }
+
+    #[test]
+    fn test_provider_clone() {
+        let ctx = create_context::<i32>();
+        let provider1 = Provider::new(&ctx, 42);
+        let provider2 = provider1.clone();
+        assert_eq!(provider2.get(), 42);
+    }
+
+    // Integration tests with different types
+    #[test]
+    fn test_context_with_bool() {
+        let ctx = create_context::<bool>();
+        provide(&ctx, true);
+        assert_eq!(use_context(&ctx), Some(true));
+        clear_context(&ctx);
+    }
+
+    #[test]
+    fn test_context_with_vec() {
+        let ctx = create_context::<Vec<i32>>();
+        provide(&ctx, vec![1, 2, 3]);
+        assert_eq!(use_context(&ctx), Some(vec![1, 2, 3]));
+        clear_context(&ctx);
+    }
+
+    #[test]
+    fn test_context_with_option() {
+        let ctx = create_context::<Option<i32>>();
+        provide(&ctx, Some(42));
+        assert_eq!(use_context(&ctx), Some(Some(42)));
+        clear_context(&ctx);
+    }
+
+    // Multiple contexts test
+    #[test]
+    fn test_multiple_independent_contexts() {
+        let ctx1 = create_context::<i32>();
+        let ctx2 = create_context::<String>();
+
+        provide(&ctx1, 42);
+        provide(&ctx2, "hello".to_string());
+
+        assert_eq!(use_context(&ctx1), Some(42));
+        assert_eq!(use_context(&ctx2), Some("hello".to_string()));
+
+        clear_context(&ctx1);
+        clear_context(&ctx2);
+    }
+}
+
 /// Run a function with a scoped context
 ///
 /// # Example

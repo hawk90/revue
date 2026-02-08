@@ -41,7 +41,7 @@ pub enum ThemeVariant {
 }
 
 /// Color palette
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Palette {
     /// Primary brand color
     pub primary: Color,
@@ -102,7 +102,7 @@ impl Palette {
 }
 
 /// Theme colors
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ThemeColors {
     /// Background color
     pub background: Color,
@@ -178,7 +178,7 @@ impl ThemeColors {
 }
 
 /// Complete theme
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Theme {
     /// Theme name
     pub name: String,
@@ -743,4 +743,7 @@ pub fn shared_theme() -> SharedTheme {
     SharedTheme::new()
 }
 
-// Tests moved to tests/style_tests.rs
+// Tests
+
+#[cfg(test)]
+mod tests;

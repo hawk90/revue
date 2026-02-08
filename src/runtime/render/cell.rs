@@ -163,3 +163,166 @@ impl Cell {
 }
 
 // Tests moved to tests/render_tests.rs
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_modifier_flags() {
+        assert_eq!(Modifier::BOLD.bits(), 0b00000001);
+        assert_eq!(Modifier::ITALIC.bits(), 0b00000010);
+        assert_eq!(Modifier::UNDERLINE.bits(), 0b00000100);
+        assert_eq!(Modifier::DIM.bits(), 0b00001000);
+        assert_eq!(Modifier::CROSSED_OUT.bits(), 0b00010000);
+        assert_eq!(Modifier::REVERSE.bits(), 0b00100000);
+    }
+
+    #[test]
+    fn test_modifier_combine() {
+        let combined = Modifier::BOLD | Modifier::ITALIC;
+        assert!(combined.contains(Modifier::BOLD));
+        assert!(combined.contains(Modifier::ITALIC));
+        assert!(!combined.contains(Modifier::UNDERLINE));
+    }
+
+    #[test]
+    fn test_modifier_merge() {
+        let m1 = Modifier::BOLD;
+        let m2 = Modifier::ITALIC;
+        let merged = m1.merge(&m2);
+        assert!(merged.contains(Modifier::BOLD));
+        assert!(merged.contains(Modifier::ITALIC));
+    }
+
+    #[test]
+    fn test_modifier_default() {
+        let m = Modifier::default();
+        assert_eq!(m, Modifier::empty());
+    }
+
+    #[test]
+    fn test_cell_new() {
+        let cell = Cell::new('A');
+        assert_eq!(cell.symbol, 'A');
+        assert!(cell.fg.is_none());
+        assert!(cell.bg.is_none());
+        assert_eq!(cell.modifier, Modifier::empty());
+    }
+
+    #[test]
+    fn test_cell_default() {
+        let cell = Cell::default();
+        assert_eq!(cell.symbol, ' ');
+        assert!(cell.fg.is_none());
+        assert!(cell.bg.is_none());
+        assert!(cell.hyperlink_id.is_none());
+        assert!(cell.sequence_id.is_none());
+    }
+
+    #[test]
+    fn test_cell_empty() {
+        let cell = Cell::empty();
+        assert_eq!(cell.symbol, ' ');
+    }
+
+    #[test]
+    fn test_cell_is_continuation() {
+        let cell = Cell::continuation();
+        assert!(cell.is_continuation());
+        assert!(!Cell::new('A').is_continuation());
+    }
+
+    #[test]
+    fn test_cell_builder_fg() {
+        let cell = Cell::new('A').fg(Color::RED);
+        assert_eq!(cell.symbol, 'A');
+        assert_eq!(cell.fg, Some(Color::RED));
+        assert!(cell.bg.is_none());
+    }
+
+    #[test]
+    fn test_cell_builder_bg() {
+        let cell = Cell::new('A').bg(Color::BLUE);
+        assert_eq!(cell.symbol, 'A');
+        assert!(cell.fg.is_none());
+        assert_eq!(cell.bg, Some(Color::BLUE));
+    }
+
+    #[test]
+    fn test_cell_builder_bold() {
+        let cell = Cell::new('A').bold();
+        assert!(cell.modifier.contains(Modifier::BOLD));
+    }
+
+    #[test]
+    fn test_cell_builder_italic() {
+        let cell = Cell::new('A').italic();
+        assert!(cell.modifier.contains(Modifier::ITALIC));
+    }
+
+    #[test]
+    fn test_cell_builder_underline() {
+        let cell = Cell::new('A').underline();
+        assert!(cell.modifier.contains(Modifier::UNDERLINE));
+    }
+
+    #[test]
+    fn test_cell_builder_dim() {
+        let cell = Cell::new('A').dim();
+        assert!(cell.modifier.contains(Modifier::DIM));
+    }
+
+    #[test]
+    fn test_cell_builder_reverse() {
+        let cell = Cell::new('A').reverse();
+        assert!(cell.modifier.contains(Modifier::REVERSE));
+    }
+
+    #[test]
+    fn test_cell_builder_chaining() {
+        let cell = Cell::new('X')
+            .fg(Color::GREEN)
+            .bg(Color::BLACK)
+            .bold()
+            .underline();
+        assert_eq!(cell.fg, Some(Color::GREEN));
+        assert_eq!(cell.bg, Some(Color::BLACK));
+        assert!(cell.modifier.contains(Modifier::BOLD));
+        assert!(cell.modifier.contains(Modifier::UNDERLINE));
+    }
+
+    #[test]
+    fn test_cell_sequence() {
+        let cell = Cell::new('A').sequence(42);
+        assert_eq!(cell.sequence_id, Some(42));
+    }
+
+    #[test]
+    fn test_cell_hyperlink() {
+        let cell = Cell::new('A').hyperlink(100);
+        assert_eq!(cell.hyperlink_id, Some(100));
+    }
+
+    #[test]
+    fn test_cell_reset() {
+        let mut cell = Cell::new('X').fg(Color::RED).bg(Color::BLUE).bold();
+        cell.reset();
+        assert_eq!(cell.symbol, ' ');
+        assert!(cell.fg.is_none());
+        assert!(cell.bg.is_none());
+        assert_eq!(cell.modifier, Modifier::empty());
+        assert!(cell.hyperlink_id.is_none());
+        assert!(cell.sequence_id.is_none());
+    }
+
+    #[test]
+    fn test_cell_equality() {
+        let cell1 = Cell::new('A').fg(Color::RED);
+        let cell2 = Cell::new('A').fg(Color::RED);
+        let cell3 = Cell::new('B').fg(Color::RED);
+
+        assert_eq!(cell1, cell2);
+        assert_ne!(cell1, cell3);
+    }
+}

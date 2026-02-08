@@ -255,4 +255,170 @@ mod tests {
         assert!(validators::range(15, 0, 10, "Value").is_err());
         assert!(validators::range(-5, 0, 10, "Value").is_err());
     }
+
+    // =========================================================================
+    // ValidationError::new tests
+    // =========================================================================
+
+    #[test]
+    fn test_validation_error_new() {
+        let err = ValidationError::new("Custom error", "CUSTOM");
+        assert_eq!(err.message, "Custom error");
+        assert_eq!(err.code, "CUSTOM");
+    }
+
+    // =========================================================================
+    // ValidationError::min_length tests
+    // =========================================================================
+
+    #[test]
+    fn test_validation_error_min_length() {
+        let err = ValidationError::min_length("Password", 8);
+        assert!(err.message.contains("Password"));
+        assert!(err.message.contains("8"));
+        assert!(err.message.contains("at least"));
+        assert_eq!(err.code, "MIN_LENGTH");
+    }
+
+    // =========================================================================
+    // ValidationError::max_length tests
+    // =========================================================================
+
+    #[test]
+    fn test_validation_error_max_length() {
+        let err = ValidationError::max_length("Username", 20);
+        assert!(err.message.contains("Username"));
+        assert!(err.message.contains("20"));
+        assert!(err.message.contains("at most"));
+        assert_eq!(err.code, "MAX_LENGTH");
+    }
+
+    // =========================================================================
+    // ValidationError::pattern tests
+    // =========================================================================
+
+    #[test]
+    fn test_validation_error_pattern() {
+        let err = ValidationError::pattern("Field", "[0-9]+");
+        assert!(err.message.contains("Field"));
+        assert!(err.message.contains("[0-9]+"));
+        assert!(err.message.contains("pattern"));
+        assert_eq!(err.code, "PATTERN");
+    }
+
+    // =========================================================================
+    // ValidationError::range tests
+    // =========================================================================
+
+    #[test]
+    fn test_validation_error_range() {
+        let err = ValidationError::range(150, 0, 100);
+        assert!(err.message.contains("150"));
+        assert!(err.message.contains("0"));
+        assert!(err.message.contains("100"));
+        assert!(err.message.contains("between"));
+        assert_eq!(err.code, "RANGE");
+    }
+
+    // =========================================================================
+    // validators::custom tests
+    // =========================================================================
+
+    #[test]
+    fn test_validator_custom_passes() {
+        let value = 42;
+        let result = validators::custom(
+            &value,
+            |v| *v > 18,
+            || ValidationError::new("Must be adult", "ADULT"),
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validator_custom_fails() {
+        let value = 15;
+        let result = validators::custom(
+            &value,
+            |v| *v > 18,
+            || ValidationError::new("Must be adult", "ADULT"),
+        );
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().code, "ADULT");
+    }
+
+    // =========================================================================
+    // validators::pattern tests
+    // =========================================================================
+
+    #[test]
+    fn test_validator_pattern_matches() {
+        assert!(validators::pattern("hello world", "world", "Field").is_ok());
+    }
+
+    #[test]
+    fn test_validator_pattern_no_match() {
+        let result = validators::pattern("hello", "world", "Field");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().code, "PATTERN");
+    }
+
+    // =========================================================================
+    // ValidationError Display trait tests
+    // =========================================================================
+
+    #[test]
+    fn test_validation_error_display() {
+        let err = ValidationError::new("Test error", "TEST");
+        let display_string = format!("{}", err);
+        assert_eq!(display_string, "Test error");
+    }
+
+    // =========================================================================
+    // ValidationError Debug trait tests
+    // =========================================================================
+
+    #[test]
+    fn test_validation_error_debug() {
+        let err = ValidationError::new("Test", "TEST");
+        let debug_string = format!("{:?}", err);
+        assert!(debug_string.contains("Test"));
+        assert!(debug_string.contains("TEST"));
+    }
+
+    // =========================================================================
+    // ValidationError PartialEq tests
+    // =========================================================================
+
+    #[test]
+    fn test_validation_error_eq_same() {
+        let err1 = ValidationError::new("Same", "CODE");
+        let err2 = ValidationError::new("Same", "CODE");
+        assert_eq!(err1, err2);
+    }
+
+    #[test]
+    fn test_validation_error_eq_different_message() {
+        let err1 = ValidationError::new("First", "CODE");
+        let err2 = ValidationError::new("Second", "CODE");
+        assert_ne!(err1, err2);
+    }
+
+    #[test]
+    fn test_validation_error_eq_different_code() {
+        let err1 = ValidationError::new("Same", "CODE1");
+        let err2 = ValidationError::new("Same", "CODE2");
+        assert_ne!(err1, err2);
+    }
+
+    // =========================================================================
+    // ValidationError Clone tests
+    // =========================================================================
+
+    #[test]
+    fn test_validation_error_clone() {
+        let err1 = ValidationError::new("Test", "CODE");
+        let err2 = err1.clone();
+        assert_eq!(err1, err2);
+    }
 }

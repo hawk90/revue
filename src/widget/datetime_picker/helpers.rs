@@ -78,4 +78,74 @@ mod tests {
         let picker = time_picker();
         let _ = picker;
     }
+
+    // =========================================================================
+    // Additional helper function tests
+    // =========================================================================
+
+    #[test]
+    fn test_datetime_picker_multiple() {
+        let picker1 = datetime_picker();
+        let picker2 = datetime_picker();
+        let _ = picker1;
+        let _ = picker2;
+    }
+
+    #[test]
+    fn test_date_picker_multiple() {
+        let picker1 = date_picker();
+        let picker2 = date_picker();
+        let _ = picker1;
+        let _ = picker2;
+    }
+
+    #[test]
+    fn test_time_picker_multiple() {
+        let picker1 = time_picker();
+        let picker2 = time_picker();
+        let _ = picker1;
+        let _ = picker2;
+    }
+
+    // =========================================================================
+    // Edge case month name tests
+    // =========================================================================
+
+    #[test]
+    fn test_month_name_u32_max() {
+        assert_eq!(month_name(u32::MAX), "Unknown");
+    }
+
+    #[test]
+    fn test_month_name_negative_wrapped() {
+        // When u32 wraps around (like -1 as u32)
+        assert_eq!(month_name(u32::MAX - 10), "Unknown");
+    }
+
+    #[test]
+    fn test_month_name_each_month_length() {
+        // Verify month names have reasonable lengths
+        assert!(month_name(1).len() > 3); // January
+        assert!(month_name(2).len() > 3); // February
+        assert!(month_name(3).len() > 3); // March
+        assert!(month_name(4).len() > 3); // April
+        assert!(month_name(5).len() > 2); // May
+        assert!(month_name(6).len() > 3); // June
+        assert!(month_name(7).len() > 3); // July
+        assert!(month_name(8).len() > 3); // August
+        assert!(month_name(9).len() > 3); // September
+        assert!(month_name(10).len() > 3); // October
+        assert!(month_name(11).len() > 3); // November
+        assert!(month_name(12).len() > 3); // December
+    }
+
+    #[test]
+    fn test_month_name_february() {
+        assert_eq!(month_name(2), "February");
+    }
+
+    #[test]
+    fn test_month_name_september() {
+        assert_eq!(month_name(9), "September");
+    }
 }

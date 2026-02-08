@@ -591,4 +591,659 @@ impl TextDraw<'_> {
 impl_styled_view!(Card);
 impl_widget_builders!(Card);
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::event::Key;
+    use crate::widget::layout::border::BorderType;
+
+    // =========================================================================
+    // Constructor tests
+    // =========================================================================
+
+    #[test]
+    fn test_card_new_creates_default_card() {
+        let card = Card::new();
+        assert!(card.is_expanded());
+        assert!(!card.is_collapsible());
+    }
+
+    #[test]
+    fn test_card_default_creates_same_as_new() {
+        let card_new = Card::new();
+        let card_default = Card::default();
+        // Both should have same default state
+        assert_eq!(card_new.is_expanded(), card_default.is_expanded());
+        assert_eq!(card_new.is_collapsible(), card_default.is_collapsible());
+    }
+
+    // =========================================================================
+    // Title and subtitle tests
+    // =========================================================================
+
+    #[test]
+    fn test_card_title_with_str() {
+        let card = Card::new().title("Test Title");
+        // Title is set via builder pattern
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_title_with_string() {
+        let card = Card::new().title(String::from("Test Title"));
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_title_chainable() {
+        let card = Card::new().title("First Title").title("Second Title");
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_subtitle_with_str() {
+        let card = Card::new().subtitle("Test Subtitle");
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_subtitle_with_string() {
+        let card = Card::new().subtitle(String::from("Test Subtitle"));
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_title_and_subtitle_chainable() {
+        let card = Card::new().title("Title").subtitle("Subtitle");
+        let _ = card;
+    }
+
+    // =========================================================================
+    // Content sections (header, body, footer) tests
+    // =========================================================================
+
+    #[test]
+    fn test_card_header_with_view() {
+        // Create a simple mock view for testing
+        struct MockView {
+            props: crate::widget::traits::WidgetProps,
+        }
+        impl crate::widget::traits::View for MockView {
+            crate::impl_view_meta!("MockView");
+            fn render(&self, _ctx: &mut RenderContext) {}
+        }
+
+        let card = Card::new().header(MockView {
+            props: crate::widget::traits::WidgetProps::new(),
+        });
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_body_with_view() {
+        struct MockView {
+            props: crate::widget::traits::WidgetProps,
+        }
+        impl crate::widget::traits::View for MockView {
+            crate::impl_view_meta!("MockView");
+            fn render(&self, _ctx: &mut RenderContext) {}
+        }
+
+        let card = Card::new().body(MockView {
+            props: crate::widget::traits::WidgetProps::new(),
+        });
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_footer_with_view() {
+        struct MockView {
+            props: crate::widget::traits::WidgetProps,
+        }
+        impl crate::widget::traits::View for MockView {
+            crate::impl_view_meta!("MockView");
+            fn render(&self, _ctx: &mut RenderContext) {}
+        }
+
+        let card = Card::new().footer(MockView {
+            props: crate::widget::traits::WidgetProps::new(),
+        });
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_all_sections_chainable() {
+        struct MockView {
+            props: crate::widget::traits::WidgetProps,
+        }
+        impl crate::widget::traits::View for MockView {
+            crate::impl_view_meta!("MockView");
+            fn render(&self, _ctx: &mut RenderContext) {}
+        }
+
+        let card = Card::new()
+            .title("Title")
+            .header(MockView {
+                props: crate::widget::traits::WidgetProps::new(),
+            })
+            .body(MockView {
+                props: crate::widget::traits::WidgetProps::new(),
+            })
+            .footer(MockView {
+                props: crate::widget::traits::WidgetProps::new(),
+            });
+        let _ = card;
+    }
+
+    // =========================================================================
+    // Variant tests
+    // =========================================================================
+
+    #[test]
+    fn test_card_variant_outlined() {
+        let card = Card::new().outlined();
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_variant_filled() {
+        let card = Card::new().filled();
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_variant_elevated() {
+        let card = Card::new().elevated();
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_variant_flat() {
+        let card = Card::new().flat();
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_variant_with_enum() {
+        let card = Card::new().variant(CardVariant::Filled);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_variant_override() {
+        let card = Card::new().outlined().filled();
+        let _ = card;
+    }
+
+    // =========================================================================
+    // Border style tests
+    // =========================================================================
+
+    #[test]
+    fn test_card_border_style_default() {
+        let card = Card::new();
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_border_style_rounded() {
+        let card = Card::new().rounded();
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_border_style_double() {
+        let card = Card::new().border_style(BorderType::Double);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_border_style_thick() {
+        let card = Card::new().border_style(BorderType::Thick);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_border_style_dashed() {
+        let card = Card::new().border_style(BorderType::Thick);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_border_style_none() {
+        let card = Card::new().border_style(BorderType::None);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_flat_sets_no_border() {
+        let card = Card::new().flat();
+        // flat() sets both variant and border to None
+        let _ = card;
+    }
+
+    // =========================================================================
+    // Color tests
+    // =========================================================================
+
+    #[test]
+    fn test_card_background_color() {
+        let card = Card::new().background(Color::RED);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_background_multiple() {
+        let card = Card::new().background(Color::RED).background(Color::BLUE);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_border_color() {
+        let card = Card::new().border_color(Color::GREEN);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_title_color() {
+        let card = Card::new().title_color(Color::YELLOW);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_all_colors_chainable() {
+        let card = Card::new()
+            .background(Color::RED)
+            .border_color(Color::GREEN)
+            .title_color(Color::BLUE);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_with_rgb_color() {
+        let card = Card::new().background(Color::rgb(255, 0, 0));
+        let _ = card;
+    }
+
+    // =========================================================================
+    // Collapsible state tests
+    // =========================================================================
+
+    #[test]
+    fn test_card_collapsible_true() {
+        let card = Card::new().collapsible(true);
+        assert!(card.is_collapsible());
+    }
+
+    #[test]
+    fn test_card_collapsible_false() {
+        let card = Card::new().collapsible(false);
+        assert!(!card.is_collapsible());
+    }
+
+    #[test]
+    fn test_card_collapsible_default() {
+        let card = Card::new();
+        assert!(!card.is_collapsible());
+    }
+
+    #[test]
+    fn test_card_expanded_true() {
+        let card = Card::new().expanded(true);
+        assert!(card.is_expanded());
+    }
+
+    #[test]
+    fn test_card_expanded_false() {
+        let card = Card::new().expanded(false);
+        assert!(!card.is_expanded());
+    }
+
+    #[test]
+    fn test_card_expanded_default() {
+        let card = Card::new();
+        assert!(card.is_expanded());
+    }
+
+    #[test]
+    fn test_card_collapsible_and_expanded() {
+        let card = Card::new().collapsible(true).expanded(false);
+        assert!(card.is_collapsible());
+        assert!(!card.is_expanded());
+    }
+
+    // =========================================================================
+    // State mutation tests (expand, collapse, toggle)
+    // =========================================================================
+
+    #[test]
+    fn test_card_expand_when_collapsed() {
+        let mut card = Card::new().expanded(false);
+        assert!(!card.is_expanded());
+        card.expand();
+        assert!(card.is_expanded());
+    }
+
+    #[test]
+    fn test_card_expand_when_already_expanded() {
+        let mut card = Card::new().expanded(true);
+        assert!(card.is_expanded());
+        card.expand();
+        assert!(card.is_expanded());
+    }
+
+    #[test]
+    fn test_card_collapse_when_expanded() {
+        let mut card = Card::new().expanded(true);
+        assert!(card.is_expanded());
+        card.collapse();
+        assert!(!card.is_expanded());
+    }
+
+    #[test]
+    fn test_card_collapse_when_already_collapsed() {
+        let mut card = Card::new().expanded(false);
+        assert!(!card.is_expanded());
+        card.collapse();
+        assert!(!card.is_expanded());
+    }
+
+    #[test]
+    fn test_card_toggle_from_expanded_to_collapsed() {
+        let mut card = Card::new().collapsible(true).expanded(true);
+        assert!(card.is_expanded());
+        card.toggle();
+        assert!(!card.is_expanded());
+    }
+
+    #[test]
+    fn test_card_toggle_from_collapsed_to_expanded() {
+        let mut card = Card::new().collapsible(true).expanded(false);
+        assert!(!card.is_expanded());
+        card.toggle();
+        assert!(card.is_expanded());
+    }
+
+    #[test]
+    fn test_card_toggle_multiple_times() {
+        let mut card = Card::new().collapsible(true).expanded(true);
+        assert!(card.is_expanded());
+        card.toggle();
+        assert!(!card.is_expanded());
+        card.toggle();
+        assert!(card.is_expanded());
+        card.toggle();
+        assert!(!card.is_expanded());
+    }
+
+    #[test]
+    fn test_card_toggle_when_not_collapsible() {
+        let mut card = Card::new().collapsible(false).expanded(true);
+        assert!(card.is_expanded());
+        card.toggle();
+        // Should remain expanded when not collapsible
+        assert!(card.is_expanded());
+    }
+
+    // =========================================================================
+    // Clickable tests
+    // =========================================================================
+
+    #[test]
+    fn test_card_clickable_true() {
+        let card = Card::new().clickable(true);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_clickable_false() {
+        let card = Card::new().clickable(false);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_clickable_default() {
+        let card = Card::new();
+        // Default is false
+        let _ = card;
+    }
+
+    // =========================================================================
+    // Padding tests
+    // =========================================================================
+
+    #[test]
+    fn test_card_padding_zero() {
+        let card = Card::new().padding(0);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_padding_one() {
+        let card = Card::new().padding(1);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_padding_large() {
+        let card = Card::new().padding(100);
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_padding_multiple() {
+        let card = Card::new().padding(1).padding(2);
+        let _ = card;
+    }
+
+    // =========================================================================
+    // Key handling tests
+    // =========================================================================
+
+    #[test]
+    fn test_handle_key_enter_toggles() {
+        let mut card = Card::new().collapsible(true).expanded(true);
+        assert!(card.handle_key(&Key::Enter));
+        assert!(!card.is_expanded());
+    }
+
+    #[test]
+    fn test_handle_key_space_toggles() {
+        let mut card = Card::new().collapsible(true).expanded(true);
+        assert!(card.handle_key(&Key::Char(' ')));
+        assert!(!card.is_expanded());
+    }
+
+    #[test]
+    fn test_handle_key_right_expands() {
+        let mut card = Card::new().collapsible(true).expanded(false);
+        assert!(card.handle_key(&Key::Right));
+        assert!(card.is_expanded());
+    }
+
+    #[test]
+    fn test_handle_key_char_l_expands() {
+        let mut card = Card::new().collapsible(true).expanded(false);
+        assert!(card.handle_key(&Key::Char('l')));
+        assert!(card.is_expanded());
+    }
+
+    #[test]
+    fn test_handle_key_left_collapses() {
+        let mut card = Card::new().collapsible(true).expanded(true);
+        assert!(card.handle_key(&Key::Left));
+        assert!(!card.is_expanded());
+    }
+
+    #[test]
+    fn test_handle_key_char_h_collapses() {
+        let mut card = Card::new().collapsible(true).expanded(true);
+        assert!(card.handle_key(&Key::Char('h')));
+        assert!(!card.is_expanded());
+    }
+
+    #[test]
+    fn test_handle_key_unknown_returns_false() {
+        let mut card = Card::new().collapsible(true).expanded(true);
+        assert!(!card.handle_key(&Key::Char('x')));
+        assert!(card.is_expanded());
+    }
+
+    #[test]
+    fn test_handle_key_escape_returns_false() {
+        let mut card = Card::new().collapsible(true).expanded(true);
+        assert!(!card.handle_key(&Key::Escape));
+        assert!(card.is_expanded());
+    }
+
+    #[test]
+    fn test_handle_key_when_not_collapsible() {
+        let mut card = Card::new().collapsible(false).expanded(true);
+        assert!(!card.handle_key(&Key::Enter));
+        assert!(card.is_expanded());
+    }
+
+    #[test]
+    fn test_handle_key_when_disabled() {
+        let mut card = Card::new().collapsible(true).disabled(true);
+        assert!(!card.handle_key(&Key::Enter));
+    }
+
+    // =========================================================================
+    // Complex chain tests
+    // =========================================================================
+
+    #[test]
+    fn test_card_full_builder_chain() {
+        let card = Card::new()
+            .title("Full Card")
+            .subtitle("With all options")
+            .outlined()
+            .rounded()
+            .background(Color::BLUE)
+            .border_color(Color::RED)
+            .title_color(Color::GREEN)
+            .collapsible(true)
+            .expanded(true)
+            .clickable(true)
+            .padding(2);
+        assert!(card.is_collapsible());
+        assert!(card.is_expanded());
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_minimal_chain() {
+        let card = Card::new().title("Minimal");
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_multiple_variants() {
+        let card = Card::new().outlined().filled().elevated().flat();
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_collapsible_with_all_keys() {
+        let mut card = Card::new().collapsible(true).expanded(true);
+
+        // Test all key combinations
+        assert!(card.handle_key(&Key::Enter));
+        assert!(!card.is_expanded());
+
+        assert!(card.handle_key(&Key::Right));
+        assert!(card.is_expanded());
+
+        assert!(card.handle_key(&Key::Left));
+        assert!(!card.is_expanded());
+
+        assert!(card.handle_key(&Key::Char(' ')));
+        assert!(card.is_expanded());
+
+        assert!(card.handle_key(&Key::Char('h')));
+        assert!(!card.is_expanded());
+
+        assert!(card.handle_key(&Key::Char('l')));
+        assert!(card.is_expanded());
+    }
+
+    // =========================================================================
+    // Is methods tests
+    // =========================================================================
+
+    #[test]
+    fn test_is_expanded_true() {
+        let card = Card::new().expanded(true);
+        assert!(card.is_expanded());
+    }
+
+    #[test]
+    fn test_is_expanded_false() {
+        let card = Card::new().expanded(false);
+        assert!(!card.is_expanded());
+    }
+
+    #[test]
+    fn test_is_collapsible_true() {
+        let card = Card::new().collapsible(true);
+        assert!(card.is_collapsible());
+    }
+
+    #[test]
+    fn test_is_collapsible_false() {
+        let card = Card::new().collapsible(false);
+        assert!(!card.is_collapsible());
+    }
+
+    // =========================================================================
+    // Edge case tests
+    // =========================================================================
+
+    #[test]
+    fn test_card_empty_title() {
+        let card = Card::new().title("");
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_empty_subtitle() {
+        let card = Card::new().subtitle("");
+        let _ = card;
+    }
+
+    #[test]
+    fn test_card_toggle_collapse_expand_sequence() {
+        let mut card = Card::new().collapsible(true).expanded(true);
+
+        card.collapse();
+        assert!(!card.is_expanded());
+
+        card.expand();
+        assert!(card.is_expanded());
+
+        card.toggle();
+        assert!(!card.is_expanded());
+
+        card.toggle();
+        assert!(card.is_expanded());
+    }
+
+    #[test]
+    fn test_card_expand_not_affect_collapsible() {
+        let mut card = Card::new().collapsible(false);
+        assert!(!card.is_collapsible());
+        card.expand();
+        assert!(!card.is_collapsible());
+    }
+
+    #[test]
+    fn test_card_collapse_not_affect_collapsible() {
+        let mut card = Card::new().collapsible(false);
+        assert!(!card.is_collapsible());
+        card.collapse();
+        assert!(!card.is_collapsible());
+    }
+}
+
 // Helper function is in helper.rs module

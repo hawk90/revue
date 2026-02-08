@@ -120,4 +120,99 @@ mod tests {
         assert_eq!(style, SeparatorStyle::Custom('-'));
         assert_ne!(style, SeparatorStyle::Custom('>'));
     }
+
+    // =========================================================================
+    // SeparatorStyle enum tests
+    // =========================================================================
+
+    #[test]
+    fn test_separator_style_clone() {
+        let style = SeparatorStyle::Arrow;
+        let cloned = style.clone();
+        assert_eq!(style, cloned);
+    }
+
+    #[test]
+    fn test_separator_style_copy() {
+        let style1 = SeparatorStyle::Chevron;
+        let style2 = style1;
+        assert_eq!(style1, SeparatorStyle::Chevron);
+        assert_eq!(style2, SeparatorStyle::Chevron);
+    }
+
+    #[test]
+    fn test_separator_style_debug() {
+        let style = SeparatorStyle::Dot;
+        assert!(format!("{:?}", style).contains("Dot"));
+    }
+
+    // =========================================================================
+    // SeparatorStyle::char() tests
+    // =========================================================================
+
+    #[test]
+    fn test_separator_style_char_slash() {
+        assert_eq!(SeparatorStyle::Slash.char(), '/');
+    }
+
+    #[test]
+    fn test_separator_style_char_arrow() {
+        assert_eq!(SeparatorStyle::Arrow.char(), '>');
+    }
+
+    #[test]
+    fn test_separator_style_char_chevron() {
+        assert_eq!(SeparatorStyle::Chevron.char(), '›');
+    }
+
+    #[test]
+    fn test_separator_style_char_double_arrow() {
+        assert_eq!(SeparatorStyle::DoubleArrow.char(), '»');
+    }
+
+    #[test]
+    fn test_separator_style_char_dot() {
+        assert_eq!(SeparatorStyle::Dot.char(), '•');
+    }
+
+    #[test]
+    fn test_separator_style_char_pipe() {
+        assert_eq!(SeparatorStyle::Pipe.char(), '|');
+    }
+
+    #[test]
+    fn test_separator_style_char_custom() {
+        assert_eq!(SeparatorStyle::Custom('*').char(), '*');
+    }
+
+    // =========================================================================
+    // BreadcrumbItem edge cases
+    // =========================================================================
+
+    #[test]
+    fn test_breadcrumb_item_empty_label() {
+        let item = BreadcrumbItem::new("");
+        assert_eq!(item.label, "");
+        assert!(item.clickable);
+    }
+
+    #[test]
+    fn test_breadcrumb_item_icon() {
+        let item = BreadcrumbItem::new("Home").icon('H');
+        assert_eq!(item.icon, Some('H'));
+    }
+
+    #[test]
+    fn test_breadcrumb_item_clickable_false() {
+        let item = BreadcrumbItem::new("Current").clickable(false);
+        assert!(!item.clickable);
+    }
+
+    #[test]
+    fn test_breadcrumb_item_builder_chain() {
+        let item = BreadcrumbItem::new("Chain").icon('C').clickable(false);
+        assert_eq!(item.label, "Chain");
+        assert_eq!(item.icon, Some('C'));
+        assert!(!item.clickable);
+    }
 }

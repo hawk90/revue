@@ -100,3 +100,111 @@ where
 {
     BrailleCanvas::new(draw_fn)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::Buffer;
+
+    // =========================================================================
+    // Canvas tests
+    // =========================================================================
+
+    #[test]
+    fn test_canvas_new() {
+        let canvas = Canvas::new(|_ctx| {
+            // Drawing function
+        });
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_canvas_with_draw_fn() {
+        let canvas = Canvas::new(|ctx| {
+            ctx.text(0, 0, "test", None);
+        });
+        // Just verify it creates successfully
+    }
+
+    // =========================================================================
+    // canvas helper function tests
+    // =========================================================================
+
+    #[test]
+    fn test_canvas_helper() {
+        let canvas = canvas(|_ctx| {
+            // Drawing function
+        });
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_canvas_helper_with_draw_fn() {
+        let canvas = canvas(|ctx| {
+            ctx.set(5, 5, 'X');
+        });
+        // Just verify it creates successfully
+    }
+
+    // =========================================================================
+    // BrailleCanvas tests
+    // =========================================================================
+
+    #[test]
+    fn test_braille_canvas_new() {
+        let canvas = BrailleCanvas::new(|_ctx| {
+            // Drawing function
+        });
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_braille_canvas_with_draw_fn() {
+        let canvas = BrailleCanvas::new(|_ctx| {
+            // Drawing function would go here
+        });
+        // Just verify it creates successfully
+    }
+
+    // =========================================================================
+    // braille_canvas helper function tests
+    // =========================================================================
+
+    #[test]
+    fn test_braille_canvas_helper() {
+        let canvas = braille_canvas(|_ctx| {
+            // Drawing function
+        });
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_braille_canvas_helper_with_draw_fn() {
+        let canvas = braille_canvas(|_ctx| {
+            // Drawing function would go here
+        });
+        // Just verify it creates successfully
+    }
+
+    // =========================================================================
+    // Closure capture tests
+    // =========================================================================
+
+    #[test]
+    fn test_canvas_closure_capture() {
+        let text = "captured";
+        let canvas = Canvas::new(move |ctx| {
+            ctx.text(0, 0, text, None);
+        });
+        // Just verify closure captures work
+    }
+
+    #[test]
+    fn test_braille_canvas_closure_capture() {
+        let value = 42;
+        let canvas = BrailleCanvas::new(move |_ctx| {
+            let _ = value;
+        });
+        // Just verify closure captures work
+    }
+}

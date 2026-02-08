@@ -298,7 +298,8 @@ impl Style {
         if self.visual.opacity != 1.0 {
             result.visual.opacity = self.visual.opacity;
         }
-        if !self.visual.visible {
+        // Only override visible if child's value is not the default (true)
+        if self.visual.visible != VisualStyle::default().visible {
             result.visual.visible = self.visual.visible;
         }
         if self.visual.z_index != 0 {
@@ -306,5 +307,446 @@ impl Style {
         }
 
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Layout accessor tests
+    #[test]
+    fn test_style_display_accessor() {
+        let mut style = Style::default();
+        style.layout.display = Display::Grid;
+        assert_eq!(style.display(), Display::Grid);
+    }
+
+    #[test]
+    fn test_style_position_accessor() {
+        let mut style = Style::default();
+        style.layout.position = Position::Absolute;
+        assert_eq!(style.position(), Position::Absolute);
+    }
+
+    #[test]
+    fn test_style_flex_direction_accessor() {
+        let mut style = Style::default();
+        style.layout.flex_direction = FlexDirection::Column;
+        assert_eq!(style.flex_direction(), FlexDirection::Column);
+    }
+
+    #[test]
+    fn test_style_justify_content_accessor() {
+        let mut style = Style::default();
+        style.layout.justify_content = JustifyContent::Center;
+        assert_eq!(style.justify_content(), JustifyContent::Center);
+    }
+
+    #[test]
+    fn test_style_align_items_accessor() {
+        let mut style = Style::default();
+        style.layout.align_items = AlignItems::Stretch;
+        assert_eq!(style.align_items(), AlignItems::Stretch);
+    }
+
+    #[test]
+    fn test_style_gap_accessor() {
+        let mut style = Style::default();
+        style.layout.gap = 10;
+        assert_eq!(style.gap(), 10);
+    }
+
+    #[test]
+    fn test_style_column_gap_accessor() {
+        let mut style = Style::default();
+        style.layout.column_gap = Some(5);
+        assert_eq!(style.column_gap(), Some(5));
+    }
+
+    #[test]
+    fn test_style_row_gap_accessor() {
+        let mut style = Style::default();
+        style.layout.row_gap = Some(5);
+        assert_eq!(style.row_gap(), Some(5));
+    }
+
+    #[test]
+    fn test_style_grid_template_columns_accessor() {
+        let mut style = Style::default();
+        let template = GridTemplate::fr(&[1.0, 2.0]);
+        style.layout.grid_template_columns = template.clone();
+        assert_eq!(style.grid_template_columns(), &template);
+    }
+
+    #[test]
+    fn test_style_grid_template_rows_accessor() {
+        let mut style = Style::default();
+        let template = GridTemplate::fr(&[1.0, 2.0]);
+        style.layout.grid_template_rows = template.clone();
+        assert_eq!(style.grid_template_rows(), &template);
+    }
+
+    #[test]
+    fn test_style_grid_column_accessor() {
+        let mut style = Style::default();
+        style.layout.grid_column = GridPlacement::span(2);
+        assert_eq!(style.grid_column(), GridPlacement::span(2));
+    }
+
+    #[test]
+    fn test_style_grid_row_accessor() {
+        let mut style = Style::default();
+        style.layout.grid_row = GridPlacement::span(2);
+        assert_eq!(style.grid_row(), GridPlacement::span(2));
+    }
+
+    // Spacing accessor tests
+    #[test]
+    fn test_style_padding_accessor() {
+        let mut style = Style::default();
+        style.spacing.padding = Spacing::all(10);
+        assert_eq!(style.padding(), Spacing::all(10));
+    }
+
+    #[test]
+    fn test_style_margin_accessor() {
+        let mut style = Style::default();
+        style.spacing.margin = Spacing::all(10);
+        assert_eq!(style.margin(), Spacing::all(10));
+    }
+
+    #[test]
+    fn test_style_top_accessor() {
+        let mut style = Style::default();
+        style.spacing.top = Some(10);
+        assert_eq!(style.top(), Some(10));
+    }
+
+    #[test]
+    fn test_style_right_accessor() {
+        let mut style = Style::default();
+        style.spacing.right = Some(10);
+        assert_eq!(style.right(), Some(10));
+    }
+
+    #[test]
+    fn test_style_bottom_accessor() {
+        let mut style = Style::default();
+        style.spacing.bottom = Some(10);
+        assert_eq!(style.bottom(), Some(10));
+    }
+
+    #[test]
+    fn test_style_left_accessor() {
+        let mut style = Style::default();
+        style.spacing.left = Some(10);
+        assert_eq!(style.left(), Some(10));
+    }
+
+    // Sizing accessor tests
+    #[test]
+    fn test_style_width_accessor() {
+        let mut style = Style::default();
+        style.sizing.width = Size::Fixed(100);
+        assert_eq!(style.width(), Size::Fixed(100));
+    }
+
+    #[test]
+    fn test_style_height_accessor() {
+        let mut style = Style::default();
+        style.sizing.height = Size::Fixed(100);
+        assert_eq!(style.height(), Size::Fixed(100));
+    }
+
+    #[test]
+    fn test_style_min_width_accessor() {
+        let mut style = Style::default();
+        style.sizing.min_width = Size::Fixed(50);
+        assert_eq!(style.min_width(), Size::Fixed(50));
+    }
+
+    #[test]
+    fn test_style_max_width_accessor() {
+        let mut style = Style::default();
+        style.sizing.max_width = Size::Fixed(200);
+        assert_eq!(style.max_width(), Size::Fixed(200));
+    }
+
+    #[test]
+    fn test_style_min_height_accessor() {
+        let mut style = Style::default();
+        style.sizing.min_height = Size::Fixed(50);
+        assert_eq!(style.min_height(), Size::Fixed(50));
+    }
+
+    #[test]
+    fn test_style_max_height_accessor() {
+        let mut style = Style::default();
+        style.sizing.max_height = Size::Fixed(200);
+        assert_eq!(style.max_height(), Size::Fixed(200));
+    }
+
+    // Visual accessor tests
+    #[test]
+    fn test_style_border_style_accessor() {
+        let mut style = Style::default();
+        style.visual.border_style = BorderStyle::Solid;
+        assert_eq!(style.border_style(), BorderStyle::Solid);
+    }
+
+    #[test]
+    fn test_style_border_color_accessor() {
+        let mut style = Style::default();
+        style.visual.border_color = Color::RED;
+        assert_eq!(style.border_color(), Color::RED);
+    }
+
+    #[test]
+    fn test_style_color_accessor() {
+        let mut style = Style::default();
+        style.visual.color = Color::BLUE;
+        assert_eq!(style.color(), Color::BLUE);
+    }
+
+    #[test]
+    fn test_style_background_accessor() {
+        let mut style = Style::default();
+        style.visual.background = Color::WHITE;
+        assert_eq!(style.background(), Color::WHITE);
+    }
+
+    #[test]
+    fn test_style_opacity_accessor() {
+        let mut style = Style::default();
+        style.visual.opacity = 0.5;
+        assert_eq!(style.opacity(), 0.5);
+    }
+
+    #[test]
+    fn test_style_visible_accessor() {
+        let mut style = Style::default();
+        style.visual.visible = false;
+        assert_eq!(style.visible(), false);
+    }
+
+    #[test]
+    fn test_style_z_index_accessor() {
+        let mut style = Style::default();
+        style.visual.z_index = 10;
+        assert_eq!(style.z_index(), 10);
+    }
+
+    // Inheritance tests
+    #[test]
+    fn test_style_inherit_creates_new_style() {
+        let parent = Style::default();
+        let child = Style::inherit(&parent);
+        // Child should be a new style
+        assert_eq!(child.layout.display, Display::default());
+        assert_eq!(child.spacing.padding, Spacing::default());
+    }
+
+    #[test]
+    fn test_style_inherit_copies_inherited_properties() {
+        let mut parent = Style::default();
+        parent.visual.color = Color::RED;
+        parent.visual.opacity = 0.5;
+        parent.visual.visible = false;
+
+        let child = Style::inherit(&parent);
+        assert_eq!(child.visual.color, Color::RED);
+        assert_eq!(child.visual.opacity, 0.5);
+        assert_eq!(child.visual.visible, false);
+    }
+
+    #[test]
+    fn test_style_inherit_resets_non_inherited() {
+        let mut parent = Style::default();
+        parent.layout.gap = 10;
+        parent.layout.display = Display::Grid;
+        parent.spacing.padding = Spacing::all(5);
+
+        let child = Style::inherit(&parent);
+        assert_eq!(child.layout.gap, 0);
+        assert_eq!(child.layout.display, Display::default());
+        assert_eq!(child.spacing.padding, Spacing::default());
+    }
+
+    #[test]
+    fn test_style_with_inheritance_merges_styles() {
+        let mut parent = Style::default();
+        parent.visual.color = Color::RED;
+
+        let mut child = Style::default();
+        child.layout.gap = 10;
+
+        let result = child.with_inheritance(&parent);
+        assert_eq!(result.visual.color, Color::RED);
+        assert_eq!(result.layout.gap, 10);
+    }
+
+    #[test]
+    fn test_style_with_inheritance_child_overrides_parent() {
+        let mut parent = Style::default();
+        parent.visual.color = Color::RED;
+
+        let mut child = Style::default();
+        child.visual.color = Color::BLUE;
+
+        let result = child.with_inheritance(&parent);
+        assert_eq!(result.visual.color, Color::BLUE);
+    }
+
+    #[test]
+    fn test_style_with_inheritance_default_child_uses_parent() {
+        let mut parent = Style::default();
+        parent.visual.color = Color::RED;
+
+        let child = Style::default();
+
+        let result = child.with_inheritance(&parent);
+        assert_eq!(result.visual.color, Color::RED);
+    }
+
+    #[test]
+    fn test_style_with_inheritance_layout_not_inherited() {
+        let mut parent = Style::default();
+        parent.layout.gap = 10;
+        parent.layout.display = Display::Grid;
+
+        let child = Style::default();
+        let result = child.with_inheritance(&parent);
+        assert_eq!(result.layout.gap, 0);
+        assert_eq!(result.layout.display, Display::default());
+    }
+
+    #[test]
+    fn test_style_with_inheritance_explicit_layout_preserved() {
+        let mut parent = Style::default();
+        parent.layout.gap = 10;
+
+        let mut child = Style::default();
+        child.layout.gap = 20;
+
+        let result = child.with_inheritance(&parent);
+        assert_eq!(result.layout.gap, 20);
+    }
+
+    #[test]
+    fn test_style_with_inheritance_opacity_inherited() {
+        let mut parent = Style::default();
+        parent.visual.opacity = 0.5;
+
+        let child = Style::default();
+        let result = child.with_inheritance(&parent);
+        assert_eq!(result.visual.opacity, 0.5);
+    }
+
+    #[test]
+    fn test_style_with_inheritance_opacity_override() {
+        let mut parent = Style::default();
+        parent.visual.opacity = 0.5;
+
+        let mut child = Style::default();
+        child.visual.opacity = 0.8;
+
+        let result = child.with_inheritance(&parent);
+        assert_eq!(result.visual.opacity, 0.8);
+    }
+
+    #[test]
+    fn test_style_with_inheritance_visible_inherited() {
+        let mut parent = Style::default();
+        parent.visual.visible = false;
+
+        let child = Style::default();
+        let result = child.with_inheritance(&parent);
+        assert_eq!(result.visual.visible, false);
+    }
+
+    #[test]
+    fn test_style_with_inheritance_visible_override() {
+        let mut parent = Style::default();
+        parent.visual.visible = true; // Parent is visible
+
+        let mut child = Style::default();
+        child.visual.visible = false; // Child explicitly sets to hidden (not default)
+
+        let result = child.with_inheritance(&parent);
+        assert_eq!(result.visual.visible, false); // Child's non-default value should override
+    }
+
+    #[test]
+    fn test_style_with_inheritance_spacing_not_inherited() {
+        let mut parent = Style::default();
+        parent.spacing.padding = Spacing::all(10);
+        parent.spacing.margin = Spacing::all(5);
+
+        let child = Style::default();
+        let result = child.with_inheritance(&parent);
+        assert_eq!(result.spacing.padding, Spacing::default());
+        assert_eq!(result.spacing.margin, Spacing::default());
+    }
+
+    #[test]
+    fn test_style_with_inheritance_sizing_not_inherited() {
+        let mut parent = Style::default();
+        parent.sizing.width = Size::Fixed(100);
+        parent.sizing.height = Size::Fixed(50);
+
+        let child = Style::default();
+        let result = child.with_inheritance(&parent);
+        assert_eq!(result.sizing.width, Size::default());
+        assert_eq!(result.sizing.height, Size::default());
+    }
+
+    #[test]
+    fn test_style_with_inheritance_background_not_inherited() {
+        let mut parent = Style::default();
+        parent.visual.background = Color::RED;
+
+        let child = Style::default();
+        let result = child.with_inheritance(&parent);
+        assert_eq!(result.visual.background, Color::default());
+    }
+
+    #[test]
+    fn test_style_with_inheritance_background_explicit() {
+        let mut parent = Style::default();
+        parent.visual.background = Color::RED;
+
+        let mut child = Style::default();
+        child.visual.background = Color::BLUE;
+
+        let result = child.with_inheritance(&parent);
+        assert_eq!(result.visual.background, Color::BLUE);
+    }
+
+    #[test]
+    fn test_style_default() {
+        let style = Style::default();
+        assert_eq!(style.layout.display, Display::default());
+        assert_eq!(style.spacing.padding, Spacing::default());
+        assert_eq!(style.sizing.width, Size::default());
+        assert_eq!(style.visual.border_style, BorderStyle::default());
+    }
+
+    #[test]
+    fn test_style_clone() {
+        let mut style = Style::default();
+        style.layout.gap = 10;
+        style.visual.color = Color::RED;
+
+        let cloned = style.clone();
+        assert_eq!(cloned.layout.gap, 10);
+        assert_eq!(cloned.visual.color, Color::RED);
+    }
+
+    #[test]
+    fn test_style_debug() {
+        let style = Style::default();
+        let debug_str = format!("{:?}", style);
+        assert!(debug_str.contains("Style"));
     }
 }

@@ -554,4 +554,79 @@ mod tests {
         assert!(!nav.jump_to("nonexistent"));
         assert_eq!(nav.current_focus(), Some("field3")); // Focus unchanged
     }
+
+    #[test]
+    fn test_a11y_test_runner_new() {
+        let runner = A11yTestRunner::new();
+        assert!(runner.widgets.is_empty());
+        assert!(runner.announcements.is_empty());
+    }
+
+    #[test]
+    fn test_a11y_test_runner_default() {
+        let runner = A11yTestRunner::default();
+        assert!(runner.widgets.is_empty());
+    }
+
+    #[test]
+    fn test_a11y_test_runner_announcements() {
+        let runner = A11yTestRunner::new();
+        assert_eq!(runner.announcements().len(), 0);
+
+        // Since we can't easily make announcements, test the accessor
+        let _ = runner.announcements();
+    }
+
+    #[test]
+    fn test_a11y_test_runner_clear_announcements() {
+        let mut runner = A11yTestRunner::new();
+        // Can't add announcements easily, so just test it doesn't panic
+        runner.clear_announcements();
+        assert_eq!(runner.announcements().len(), 0);
+    }
+
+    #[test]
+    fn test_keyboard_navigator_empty() {
+        let mut nav = KeyboardNavigator::new(vec![]);
+        assert_eq!(nav.current_focus(), None);
+        assert_eq!(nav.tab(), None);
+        assert_eq!(nav.shift_tab(), None);
+        assert!(!nav.jump_to("anything"));
+    }
+
+    #[test]
+    fn test_keyboard_navigator_single_item() {
+        let mut nav = KeyboardNavigator::new(vec!["only".to_string()]);
+        assert_eq!(nav.current_focus(), Some("only"));
+
+        // Tab wraps around to same element
+        assert_eq!(nav.tab(), Some("only"));
+        assert_eq!(nav.tab(), Some("only"));
+
+        // Shift+Tab also stays on same element
+        assert_eq!(nav.shift_tab(), Some("only"));
+    }
+
+    #[test]
+    fn test_assert_not_focusable() {
+        let mut runner = A11yTestRunner::new();
+
+        runner.register_widget(
+            "disabled-btn",
+            AccessibleNode::with_id("disabled-btn", Role::Button)
+                .state(crate::utils::accessibility::AccessibleState::new().disabled(true)),
+        );
+
+        runner.assert_not_focusable("disabled-btn");
+    }
+
+    #[test]
+    fn test_assert_announced_not_found() {
+        let runner = A11yTestRunner::new();
+        // Should panic since announcement wasn't made
+        let result = std::panic::catch_unwind(|| {
+            runner.assert_announced("test message");
+        });
+        assert!(result.is_err());
+    }
 }

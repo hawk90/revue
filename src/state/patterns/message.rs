@@ -241,4 +241,134 @@ mod tests {
         thread::sleep(Duration::from_millis(1200));
         assert!(msg.is_expiring());
     }
+
+    #[test]
+    fn test_message_state_new() {
+        let msg = MessageState::new();
+        assert!(!msg.has_message());
+        assert_eq!(msg.get(), None);
+        assert_eq!(msg.remaining(), None);
+        assert!(!msg.is_expiring());
+    }
+
+    #[test]
+    fn test_message_state_default() {
+        let msg = MessageState::default();
+        assert!(!msg.has_message());
+    }
+
+    #[test]
+    fn test_message_state_with_duration() {
+        let msg = MessageState::with_duration(Duration::from_secs(10));
+        assert!(!msg.has_message());
+    }
+
+    #[test]
+    fn test_set_overwrites() {
+        let mut msg = MessageState::new();
+        msg.set("First".to_string());
+        assert_eq!(msg.get(), Some("First"));
+
+        msg.set("Second".to_string());
+        assert_eq!(msg.get(), Some("Second"));
+    }
+
+    #[test]
+    fn test_set_with_duration() {
+        let mut msg = MessageState::new();
+        msg.set_with_duration("Test".to_string(), Duration::from_millis(50));
+        assert_eq!(msg.get(), Some("Test"));
+
+        thread::sleep(Duration::from_millis(100));
+        assert!(msg.check_timeout());
+    }
+
+    #[test]
+    fn test_has_message() {
+        let msg = MessageState::new();
+        assert!(!msg.has_message());
+
+        let mut msg = MessageState::new();
+        msg.set("Test".to_string());
+        assert!(msg.has_message());
+    }
+
+    #[test]
+    fn test_check_timeout_returns_true() {
+        let mut msg = MessageState::with_duration(Duration::from_millis(50));
+        msg.set("Test".to_string());
+
+        thread::sleep(Duration::from_millis(100));
+        assert!(msg.check_timeout());
+    }
+
+    #[test]
+    fn test_check_timeout_no_message() {
+        let mut msg = MessageState::new();
+        assert!(!msg.check_timeout());
+    }
+
+    #[test]
+    fn test_remaining_no_message() {
+        let msg = MessageState::new();
+        assert_eq!(msg.remaining(), None);
+    }
+
+    #[test]
+    fn test_is_expiring_no_message() {
+        let msg = MessageState::new();
+        assert!(!msg.is_expiring());
+    }
+
+    #[test]
+    fn test_is_expiring_already_expired() {
+        let mut msg = MessageState::with_duration(Duration::from_millis(50));
+        msg.set("Test".to_string());
+
+        thread::sleep(Duration::from_millis(100));
+        // Check timeout to clear the message first
+        msg.check_timeout();
+        // Now that message is cleared, is_expiring should return false
+        assert!(!msg.is_expiring());
+    }
+
+    #[test]
+    fn test_default_message_duration() {
+        assert_eq!(DEFAULT_MESSAGE_DURATION.as_secs(), 3);
+    }
+
+    #[test]
+    fn test_set_empty_string() {
+        let mut msg = MessageState::new();
+        msg.set("".to_string());
+        assert_eq!(msg.get(), Some(""));
+    }
+
+    #[test]
+    fn test_multiple_timeouts() {
+        let mut msg = MessageState::with_duration(Duration::from_millis(100));
+
+        msg.set("First".to_string());
+        thread::sleep(Duration::from_millis(150));
+        assert!(msg.check_timeout());
+        assert!(!msg.has_message());
+
+        msg.set("Second".to_string());
+        thread::sleep(Duration::from_millis(150));
+        assert!(msg.check_timeout());
+        assert!(!msg.has_message());
+    }
+
+    #[test]
+    fn test_check_timeout_returns_true_only_once() {
+        let mut msg = MessageState::with_duration(Duration::from_millis(50));
+        msg.set("Test".to_string());
+
+        thread::sleep(Duration::from_millis(100));
+
+        // First call should clear and return true
+        assert!(msg.check_timeout());
+        // Second call should return false (already cleared)
+        assert!(!msg.check_timeout());
+    }
 }
