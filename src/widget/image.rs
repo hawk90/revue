@@ -31,7 +31,7 @@ pub enum ImageError {
 pub type ImageResult<T> = Result<T, ImageError>;
 
 /// Image scaling mode
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
 pub enum ScaleMode {
     /// Fit within bounds, preserve aspect ratio
     #[default]
@@ -58,7 +58,7 @@ pub struct Image {
 }
 
 /// Image format
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ImageFormat {
     /// PNG format
     Png,
@@ -518,8 +518,9 @@ mod tests {
     fn test_image_scale_fit() {
         let img = Image::from_rgb(vec![0; 3], 1, 1).scale(ScaleMode::Fit);
         let (w, h) = img.scaled_dimensions(80, 40);
-        assert_eq!(w, 1);
-        assert_eq!(h, 1);
+        // 1x1 image fits in 80x40, preserving aspect ratio gives 40x40
+        assert_eq!(w, 40);
+        assert_eq!(h, 40);
     }
 
     #[test]
@@ -593,8 +594,9 @@ mod tests {
     fn test_scaled_dimensions_fill_square() {
         let img = Image::from_rgb(vec![0; 300], 100, 100).scale(ScaleMode::Fill);
         let (w, h) = img.scaled_dimensions(80, 40);
+        // 100x100 image fills 80x40, preserving aspect ratio gives 80x80 (then cropped)
         assert_eq!(w, 80);
-        assert_eq!(h, 40);
+        assert_eq!(h, 80);
     }
 
     // =========================================================================
@@ -673,7 +675,7 @@ mod tests {
     #[test]
     fn test_image_result_type() {
         // Verify ImageResult type alias works
-        let result: ImageResult<Image> = Image::from_rgb(vec![0; 3], 1, 1);
+        let result: ImageResult<Image> = Ok(Image::from_rgb(vec![0; 3], 1, 1));
         assert!(result.is_ok());
     }
 

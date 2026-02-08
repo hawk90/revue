@@ -63,6 +63,7 @@ pub enum ViewMode {
 ///
 /// Combines markdown rendering with slide navigation, supporting both
 /// preview mode and presentation mode.
+#[derive(Debug, Clone)]
 pub struct MarkdownPresentation {
     /// Original markdown source
     source: String,
