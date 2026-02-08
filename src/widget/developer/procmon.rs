@@ -976,7 +976,7 @@ mod tests {
 
     #[test]
     fn test_process_count() {
-        let monitor = ProcessMonitor::new();
+        let mut monitor = ProcessMonitor::new();
         monitor.refresh();
         let count = monitor.process_count();
         assert!(count >= 0);
