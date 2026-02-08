@@ -325,11 +325,11 @@ mod tests {
     #[test]
     fn test_edge_bidirectional_consistency() {
         let edge_ab = edge("A", "B");
-        let edge_ba = edge("B", "A");
+        let edge_reverse = edge("B", "A");
         assert_eq!(edge_ab.from, "A");
         assert_eq!(edge_ab.to, "B");
-        assert_eq!(edge_ba.from, "B");
-        assert_eq!(edge_ba.to, "A");
+        assert_eq!(edge_reverse.from, "B");
+        assert_eq!(edge_reverse.to, "A");
     }
 
     // =========================================================================
