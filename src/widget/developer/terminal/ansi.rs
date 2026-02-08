@@ -676,9 +676,8 @@ mod tests {
     fn test_color_256_range_216_middle() {
         // Color 123 should be some computed color
         let color = color_256(123);
-        assert!(color.r >= 0 && color.r <= 255);
-        assert!(color.g >= 0 && color.g <= 255);
-        assert!(color.b >= 0 && color.b <= 255);
+        // Just verify the color exists (u8 values are always valid 0-255)
+        let _ = color;
     }
 
     #[test]

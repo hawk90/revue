@@ -186,7 +186,7 @@ mod tests {
         let grid = DataGrid::new().column(GridColumn::new("a", "A").min_width(0));
         let widths = grid.calculate_widths(20);
         // Should still allocate some space
-        assert!(widths[0] >= 0);
+        assert!(widths[0] >= 5); // At least min_width
     }
 
     #[test]

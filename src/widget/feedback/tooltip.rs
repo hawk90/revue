@@ -936,13 +936,8 @@ mod tests {
 
         for style in styles {
             let (fg, bg) = style.colors();
-            // Verify colors are valid (have RGB components)
-            assert!(fg.r <= 255);
-            assert!(fg.g <= 255);
-            assert!(fg.b <= 255);
-            assert!(bg.r <= 255);
-            assert!(bg.g <= 255);
-            assert!(bg.b <= 255);
+            // u8 values are always valid 0-255, just verify colors exist
+            let _ = (fg.r, fg.g, fg.b, bg.r, bg.g, bg.b);
         }
     }
 

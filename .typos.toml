@@ -19,6 +19,7 @@ extend-exclude = [
     "*.lock",
     "tests/",
     "CHANGELOG.md",
+    "coverage/",
 ]
 
 [default]
@@ -35,6 +36,10 @@ Ded = "Ded"          # partial match in Dead
 hel = "hel"          # lowercase partial
 nd = "nd"            # partial match in and
 labelled = "labelled"  # ARIA attribute: aria-labelledby
+insid = "insid"      # partial match in inside
+visibl = "visibl"    # partial match in visible
+ba = "ba"            # variable edge_ba (renamed to edge_reverse)
+valu = "valu"        # partial match in value
 
 [type.rust.extend-identifiers]
 consts = "consts"      # std::f32::consts and std::f64::consts (Rust std lib modules)

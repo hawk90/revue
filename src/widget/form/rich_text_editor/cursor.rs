@@ -180,8 +180,9 @@ mod tests {
         let mut editor = RichTextEditor::new().content("ab\ncd");
         editor.move_down();
         editor.move_left();
-        // Should move to previous block end
-        assert!(editor.cursor_position().0 >= 0);
+        // Should move to previous block end (column is usize, always >= 0)
+        let pos = editor.cursor_position();
+        assert!(pos.0 < 10); // Just verify it's in reasonable range
     }
 
     // =========================================================================
@@ -202,7 +203,8 @@ mod tests {
         let mut editor = RichTextEditor::new().content("line 1\nline 2\nline 3");
         editor.move_document_end();
         assert_eq!(editor.cursor_position().0, 2);
-        assert!(editor.cursor_position().1 >= 0);
+        // Column is usize, always >= 0, just verify it's reasonable
+        assert!(editor.cursor_position().1 < 100);
     }
 
     #[test]

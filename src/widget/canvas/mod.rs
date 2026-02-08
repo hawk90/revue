@@ -382,7 +382,7 @@ mod tests {
         ];
 
         let c = canvas(|ctx| {
-            for (i, color) in colors.iter().enumerate() {
+            for (i, _color) in colors.iter().enumerate() {
                 ctx.set(i as u16, 0, '█');
             }
         });

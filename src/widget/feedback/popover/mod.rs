@@ -468,15 +468,10 @@ mod tests {
 
         for style in styles {
             let (fg, bg, border) = style.colors();
-            assert!(fg.r <= 255);
-            assert!(fg.g <= 255);
-            assert!(fg.b <= 255);
-            assert!(bg.r <= 255);
-            assert!(bg.g <= 255);
-            assert!(bg.b <= 255);
-            assert!(border.r <= 255);
-            assert!(border.g <= 255);
-            assert!(border.b <= 255);
+            // u8 values are always valid 0-255, just verify colors exist
+            let _ = (
+                fg.r, fg.g, fg.b, bg.r, bg.g, bg.b, border.r, border.g, border.b,
+            );
         }
     }
 
