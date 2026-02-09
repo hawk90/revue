@@ -703,6 +703,7 @@ pub fn toggle_debug() -> bool {
 mod tests {
     use super::*;
     use crate::widget::Text;
+    use serial_test::serial;
 
     #[test]
     fn test_perf_metrics() {
@@ -1200,6 +1201,7 @@ mod tests {
     // =========================================================================
 
     #[test]
+    #[serial]
     fn test_enable_debug() {
         disable_debug();
         enable_debug();
@@ -1207,6 +1209,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_disable_debug() {
         enable_debug();
         disable_debug();
@@ -1214,6 +1217,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_toggle_debug_returns_new_state() {
         disable_debug();
         let enabled = toggle_debug();
