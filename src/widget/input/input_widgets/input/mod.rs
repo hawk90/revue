@@ -1456,6 +1456,7 @@ mod tests {
         assert_eq!(input.text(), "");
     }
 
+    #[cfg(not(feature = "clipboard"))]
     #[test]
     fn test_input_copy_cut_paste_workflow() {
         let mut input1 = Input::new().value("hello");

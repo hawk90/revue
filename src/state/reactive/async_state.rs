@@ -615,9 +615,7 @@ mod tests {
     fn test_use_async_immediate() {
         let state = use_async_immediate(|| Ok::<i32, String>(42));
 
-        // May be loading or ready immediately depending on timing
-        let initial = state.get();
-        // After 100ms, should definitely be ready
+        // Wait for completion
         std::thread::sleep(Duration::from_millis(100));
 
         assert!(state.get().is_ready());
