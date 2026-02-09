@@ -979,7 +979,8 @@ mod tests {
         let mut monitor = ProcessMonitor::new();
         monitor.refresh();
         let count = monitor.process_count();
-        assert!(count >= 0);
+        // usize is always >= 0, just verify we can get the count
+        let _ = count;
     }
 
     #[test]
