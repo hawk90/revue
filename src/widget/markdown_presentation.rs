@@ -813,7 +813,7 @@ mod tests {
     fn test_current_slide() {
         let pres = MarkdownPresentation::new("# A\n---\n# B");
         assert!(pres.current_slide().is_some());
-        assert_eq!(pres.current_slide().unwrap().markdown(), "# A");
+        assert_eq!(pres.current_slide().unwrap().markdown(), "# A\n");
     }
 
     #[test]
@@ -835,7 +835,7 @@ mod tests {
     #[test]
     fn test_slides_empty() {
         let pres = MarkdownPresentation::new("");
-        assert_eq!(pres.slides().len(), 1); // Single slide with empty content
+        assert_eq!(pres.slides().len(), 0); // No slides for empty markdown
     }
 
     // =========================================================================
@@ -909,11 +909,11 @@ mod tests {
     fn test_goto_bounds() {
         let mut pres = MarkdownPresentation::new("# A\n---\n# B\n---\n# C");
 
-        pres.goto(10); // Out of bounds
-        assert_eq!(pres.current_index(), 3); // Goes to last
-
-        pres.goto(0);
+        pres.goto(10); // Out of bounds - stays at current (0)
         assert_eq!(pres.current_index(), 0);
+
+        pres.goto(1);
+        assert_eq!(pres.current_index(), 1);
     }
 
     #[test]

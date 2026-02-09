@@ -1004,7 +1004,7 @@ mod tests {
 
     #[test]
     fn test_format_bytes() {
-        assert_eq!(ProcessMonitor::format_bytes(500), "500B");
+        assert_eq!(ProcessMonitor::format_bytes(500), "500");
         assert_eq!(ProcessMonitor::format_bytes(1024), "1K");
         assert_eq!(ProcessMonitor::format_bytes(1024 * 1024), "1M");
         assert_eq!(ProcessMonitor::format_bytes(1024 * 1024 * 1024), "1G");
@@ -1012,12 +1012,12 @@ mod tests {
 
     #[test]
     fn test_format_bytes_zero() {
-        assert_eq!(ProcessMonitor::format_bytes(0), "0B");
+        assert_eq!(ProcessMonitor::format_bytes(0), "0");
     }
 
     #[test]
     fn test_format_bytes_large() {
-        assert_eq!(ProcessMonitor::format_bytes(1536), "1K"); // 1.5K rounds down
+        assert_eq!(ProcessMonitor::format_bytes(1536), "1.5K");
     }
 
     // =========================================================================

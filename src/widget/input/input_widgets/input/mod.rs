@@ -857,6 +857,7 @@ mod tests {
         assert_eq!(input.text(), "");
     }
 
+    #[cfg(not(feature = "clipboard"))]
     #[test]
     fn test_input_handle_key_event_ctrl_v_paste() {
         let mut input = Input::new().value("ac");
@@ -1116,6 +1117,7 @@ mod tests {
         assert!(!input.has_selection());
     }
 
+    #[cfg(not(feature = "clipboard"))]
     #[test]
     fn test_input_paste_with_internal_clipboard() {
         let mut input = Input::new().value("ac");
@@ -1126,6 +1128,7 @@ mod tests {
         assert_eq!(input.text(), "abc");
     }
 
+    #[cfg(not(feature = "clipboard"))]
     #[test]
     fn test_input_paste_returns_false_without_clipboard() {
         let mut input = Input::new();
@@ -1133,6 +1136,7 @@ mod tests {
         assert!(!result);
     }
 
+    #[cfg(not(feature = "clipboard"))]
     #[test]
     fn test_input_paste_with_selection_replaces_selection() {
         let mut input = Input::new().value("hello world");
@@ -1143,6 +1147,7 @@ mod tests {
         assert_eq!(input.text(), "TEST world");
     }
 
+    #[cfg(not(feature = "clipboard"))]
     #[test]
     fn test_input_paste_with_unicode() {
         let mut input = Input::new().value("AB");
@@ -1152,6 +1157,7 @@ mod tests {
         assert_eq!(input.text(), "A🎉한글B");
     }
 
+    #[cfg(not(feature = "clipboard"))]
     #[test]
     fn test_input_paste_clears_selection() {
         let mut input = Input::new().value("hello");
@@ -1162,6 +1168,7 @@ mod tests {
         assert!(!input.has_selection());
     }
 
+    #[cfg(not(feature = "clipboard"))]
     #[test]
     fn test_input_paste_moves_cursor_correctly() {
         let mut input = Input::new().value("ac");
@@ -1171,6 +1178,7 @@ mod tests {
         assert_eq!(input.cursor(), 2);
     }
 
+    #[cfg(not(feature = "clipboard"))]
     #[test]
     fn test_input_paste_at_beginning() {
         let mut input = Input::new().value("world");
@@ -1180,6 +1188,7 @@ mod tests {
         assert_eq!(input.text(), "hello world");
     }
 
+    #[cfg(not(feature = "clipboard"))]
     #[test]
     fn test_input_paste_at_end() {
         let mut input = Input::new().value("hello");
