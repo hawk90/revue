@@ -1033,7 +1033,7 @@ mod tests {
 
     #[test]
     fn test_needs_update_true() {
-        let mut monitor = ProcessMonitor::new().update_interval(1);
+        let monitor = ProcessMonitor::new().update_interval(1);
         std::thread::sleep(std::time::Duration::from_millis(10));
         assert!(monitor.needs_update());
     }

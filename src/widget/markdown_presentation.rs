@@ -764,7 +764,7 @@ mod tests {
 
     #[test]
     fn test_text_sizing() {
-        let pres = MarkdownPresentation::new("# Test").text_sizing(true);
+        let _pres = MarkdownPresentation::new("# Test").text_sizing(true);
         // The actual value depends on terminal support
         // Just verify the method doesn't panic
     }
