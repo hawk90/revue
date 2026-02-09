@@ -360,4 +360,224 @@ mod tests {
         // 50% of 50 = 25, minus half of 4 = 23
         assert_eq!(y, 23);
     }
+
+    // =========================================================================
+    // Anchor enum tests
+    // =========================================================================
+
+    #[test]
+    fn test_anchor_default() {
+        assert_eq!(Anchor::default(), Anchor::TopLeft);
+    }
+
+    #[test]
+    fn test_anchor_all_variants_unique() {
+        let variants = [
+            Anchor::TopLeft,
+            Anchor::TopCenter,
+            Anchor::TopRight,
+            Anchor::MiddleLeft,
+            Anchor::Center,
+            Anchor::MiddleRight,
+            Anchor::BottomLeft,
+            Anchor::BottomCenter,
+            Anchor::BottomRight,
+        ];
+
+        // Check all are different from TopLeft
+        for variant in variants.iter().skip(1) {
+            assert_ne!(*variant, Anchor::TopLeft);
+        }
+    }
+
+    #[test]
+    fn test_anchor_top_center() {
+        let p = Positioned::new(Text::new("Test"))
+            .at(50, 10)
+            .anchor(Anchor::TopCenter);
+
+        let parent = Rect::new(0, 0, 100, 50);
+        let (x, y) = p.calculate_position(&parent, 20, 3);
+
+        // x: 50 - half of 20 = 40
+        assert_eq!(x, 40);
+        // y: 10
+        assert_eq!(y, 10);
+    }
+
+    #[test]
+    fn test_anchor_top_right() {
+        let p = Positioned::new(Text::new("Test"))
+            .at(50, 10)
+            .anchor(Anchor::TopRight);
+
+        let parent = Rect::new(0, 0, 100, 50);
+        let (x, y) = p.calculate_position(&parent, 20, 3);
+
+        // x: 50 - 20 = 30
+        assert_eq!(x, 30);
+        assert_eq!(y, 10);
+    }
+
+    #[test]
+    fn test_anchor_middle_left() {
+        let p = Positioned::new(Text::new("Test"))
+            .at(50, 25)
+            .anchor(Anchor::MiddleLeft);
+
+        let parent = Rect::new(0, 0, 100, 50);
+        let (x, y) = p.calculate_position(&parent, 20, 4);
+
+        assert_eq!(x, 50);
+        // y: 25 - half of 4 = 23
+        assert_eq!(y, 23);
+    }
+
+    #[test]
+    fn test_anchor_middle_right() {
+        let p = Positioned::new(Text::new("Test"))
+            .at(50, 25)
+            .anchor(Anchor::MiddleRight);
+
+        let parent = Rect::new(0, 0, 100, 50);
+        let (x, y) = p.calculate_position(&parent, 20, 4);
+
+        // x: 50 - 20 = 30
+        assert_eq!(x, 30);
+        // y: 25 - half of 4 = 23
+        assert_eq!(y, 23);
+    }
+
+    #[test]
+    fn test_anchor_bottom_left() {
+        let p = Positioned::new(Text::new("Test"))
+            .at(50, 40)
+            .anchor(Anchor::BottomLeft);
+
+        let parent = Rect::new(0, 0, 100, 50);
+        let (x, y) = p.calculate_position(&parent, 20, 3);
+
+        assert_eq!(x, 50);
+        // y: 40 - 3 = 37
+        assert_eq!(y, 37);
+    }
+
+    #[test]
+    fn test_anchor_bottom_center() {
+        let p = Positioned::new(Text::new("Test"))
+            .at(50, 40)
+            .anchor(Anchor::BottomCenter);
+
+        let parent = Rect::new(0, 0, 100, 50);
+        let (x, y) = p.calculate_position(&parent, 20, 3);
+
+        // x: 50 - half of 20 = 40
+        assert_eq!(x, 40);
+        // y: 40 - 3 = 37
+        assert_eq!(y, 37);
+    }
+
+    #[test]
+    fn test_anchor_bottom_right() {
+        let p = Positioned::new(Text::new("Test"))
+            .at(50, 40)
+            .anchor(Anchor::BottomRight);
+
+        let parent = Rect::new(0, 0, 100, 50);
+        let (x, y) = p.calculate_position(&parent, 20, 3);
+
+        // x: 50 - 20 = 30
+        assert_eq!(x, 30);
+        // y: 40 - 3 = 37
+        assert_eq!(y, 37);
+    }
+
+    #[test]
+    fn test_positioned_negative_x() {
+        let p = Positioned::new(Text::new("Test")).x(-5);
+
+        assert_eq!(p.x, Some(-5));
+    }
+
+    #[test]
+    fn test_positioned_negative_y() {
+        let p = Positioned::new(Text::new("Test")).y(-10);
+
+        assert_eq!(p.y, Some(-10));
+    }
+
+    #[test]
+    fn test_positioned_clears_percent_on_x() {
+        let p = Positioned::new(Text::new("Test")).percent_x(50.0).x(10);
+
+        assert_eq!(p.x, Some(10));
+        assert_eq!(p.percent_x, None);
+    }
+
+    #[test]
+    fn test_positioned_clears_percent_on_y() {
+        let p = Positioned::new(Text::new("Test")).percent_y(50.0).y(10);
+
+        assert_eq!(p.y, Some(10));
+        assert_eq!(p.percent_y, None);
+    }
+
+    #[test]
+    fn test_positioned_clears_x_on_percent_x() {
+        let p = Positioned::new(Text::new("Test")).x(10).percent_x(50.0);
+
+        assert_eq!(p.x, None);
+        assert_eq!(p.percent_x, Some(50.0));
+    }
+
+    #[test]
+    fn test_positioned_clears_y_on_percent_y() {
+        let p = Positioned::new(Text::new("Test")).y(10).percent_y(50.0);
+
+        assert_eq!(p.y, None);
+        assert_eq!(p.percent_y, Some(50.0));
+    }
+
+    #[test]
+    fn test_calculate_position_negative_x_right() {
+        let p = Positioned::new(Text::new("Test"))
+            .x(-10)
+            .anchor(Anchor::TopRight);
+
+        let parent = Rect::new(20, 0, 100, 50);
+        let (x, y) = p.calculate_position(&parent, 20, 3);
+
+        // base_x: 20 - 10 = 10 (negative moves left from parent origin)
+        // then anchor adjustment: 10 - 20 = 0 (saturates)
+        assert_eq!(x, 0);
+        assert_eq!(y, 0);
+    }
+
+    #[test]
+    fn test_calculate_position_negative_y_bottom() {
+        let p = Positioned::new(Text::new("Test"))
+            .y(-5)
+            .anchor(Anchor::BottomLeft);
+
+        let parent = Rect::new(0, 10, 100, 50);
+        let (x, y) = p.calculate_position(&parent, 20, 3);
+
+        assert_eq!(x, 0);
+        // base_y: 10 - 5 = 5 (negative moves up from parent origin)
+        // then anchor adjustment: 5 - 3 = 2
+        assert_eq!(y, 2);
+    }
+
+    #[test]
+    fn test_calculate_position_clamping() {
+        // When position would place child outside parent, it's clamped
+        let p = Positioned::new(Text::new("Test")).x(200).y(300);
+
+        let parent = Rect::new(0, 0, 100, 50);
+        let (x, y) = p.calculate_position(&parent, 20, 3);
+
+        // X would be 200, but should be clamped by rendering
+        assert!(x >= parent.x);
+        assert!(y >= parent.y);
+    }
 }

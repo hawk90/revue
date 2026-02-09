@@ -322,4 +322,218 @@ mod tests {
         let result = filtered.get();
         assert_eq!(result, vec![2, 4]);
     }
+
+    #[test]
+    fn test_incremental_handlers_default() {
+        let _handlers: IncrementalHandlers<i32, Vec<i32>> = IncrementalHandlers::default();
+        // Just verify it works
+        assert!(true);
+    }
+
+    #[test]
+    fn test_incremental_handlers_clone() {
+        let handlers = IncrementalHandlers::<i32, Vec<i32>>::new()
+            .insert(|_, _, _| {})
+            .update(|_, _, _, _| {})
+            .remove(|_, _, _| {})
+            .replace(|_| vec![]);
+
+        let _cloned = handlers.clone();
+        // Verify cloning works
+    }
+
+    #[test]
+    fn test_incremental_computed_get() {
+        use crate::reactive::signal_vec;
+
+        let items = signal_vec(vec![1, 2, 3]);
+
+        let computed =
+            IncrementalComputed::new(items.clone(), |v| v.len(), IncrementalHandlers::new());
+
+        assert_eq!(computed.get(), 3);
+    }
+
+    #[test]
+    fn test_incremental_computed_source() {
+        use crate::reactive::signal_vec;
+
+        let items = signal_vec(vec![1, 2, 3]);
+
+        let computed =
+            IncrementalComputed::new(items.clone(), |v| v.len(), IncrementalHandlers::new());
+
+        // Verify we can access the source
+        let _source_ref = computed.source();
+    }
+
+    #[test]
+    fn test_incremental_computed_clone() {
+        use crate::reactive::signal_vec;
+
+        let items = signal_vec(vec![1, 2, 3]);
+
+        let computed1 =
+            IncrementalComputed::new(items.clone(), |v| v.len(), IncrementalHandlers::new());
+
+        let computed2 = computed1.clone();
+
+        // Both should return the same result
+        assert_eq!(computed1.get(), 3);
+        assert_eq!(computed2.get(), 3);
+    }
+
+    #[test]
+    fn test_incremental_computed_invalidate() {
+        use crate::reactive::signal_vec;
+
+        let items = signal_vec(vec![1, 2, 3]);
+
+        let computed =
+            IncrementalComputed::new(items.clone(), |v| v.len(), IncrementalHandlers::new());
+
+        computed.invalidate();
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_incremental_computed_id() {
+        use crate::reactive::signal_vec;
+
+        let items = signal_vec(vec![1, 2, 3]);
+
+        let computed1 =
+            IncrementalComputed::new(items.clone(), |v| v.len(), IncrementalHandlers::new());
+
+        let computed2 =
+            IncrementalComputed::new(items.clone(), |v| v.len(), IncrementalHandlers::new());
+
+        // IDs should be different
+        assert_ne!(computed1.id(), computed2.id());
+    }
+
+    #[test]
+    fn test_incremental_computed_read() {
+        use crate::reactive::signal_vec;
+
+        let items = signal_vec(vec![1, 2, 3]);
+
+        let computed =
+            IncrementalComputed::new(items.clone(), |v| v.len(), IncrementalHandlers::new());
+
+        // Read should work
+        let guard = computed.read();
+        assert_eq!(*guard, 3);
+    }
+
+    #[test]
+    fn test_incremental_handlers_with_string() {
+        use crate::reactive::signal_vec;
+
+        let _items = signal_vec(vec!["a", "b", "c"]);
+
+        let _handlers = IncrementalHandlers::<&str, String>::new()
+            .insert(|result, _, value| {
+                result.push_str(value);
+            })
+            .update(|result, _, old, new| {
+                *result = result.replace(old, new);
+            })
+            .remove(|result, _, value| {
+                *result = result.replace(value, "");
+            })
+            .replace(|source| source.get().join(","));
+
+        // Just verify it compiles and works
+        assert!(true);
+    }
+
+    #[test]
+    fn test_incremental_computed_with_vec_result() {
+        use crate::reactive::signal_vec;
+
+        let items = signal_vec(vec![1, 2, 3]);
+
+        let computed =
+            IncrementalComputed::new(items.clone(), |v| v.to_vec(), IncrementalHandlers::new());
+
+        assert_eq!(computed.get(), vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_incremental_computed_with_count_result() {
+        use crate::reactive::signal_vec;
+
+        let items = signal_vec(vec![1, 2, 3, 4, 5]);
+
+        let computed =
+            IncrementalComputed::new(items.clone(), |v| v.len(), IncrementalHandlers::new());
+
+        assert_eq!(computed.get(), 5);
+    }
+
+    #[test]
+    fn test_incremental_computed_with_sum_result() {
+        use crate::reactive::signal_vec;
+
+        let items = signal_vec(vec![1, 2, 3, 4, 5]);
+
+        let computed = IncrementalComputed::new(
+            items.clone(),
+            |v| v.iter().sum::<i32>(),
+            IncrementalHandlers::new(),
+        );
+
+        assert_eq!(computed.get(), 15);
+    }
+
+    #[test]
+    fn test_incremental_handlers_insert_method() {
+        let mut result = Vec::new();
+        let handlers = IncrementalHandlers::<i32, Vec<i32>>::new().insert(|res, index, value| {
+            res.insert(index, value);
+        });
+
+        // Call the insert handler
+        (handlers.on_insert)(&mut result, 0, 42);
+        assert_eq!(result, vec![42]);
+    }
+
+    #[test]
+    fn test_incremental_handlers_update_method() {
+        let mut result = vec![1, 2, 3];
+        let handlers =
+            IncrementalHandlers::<i32, Vec<i32>>::new().update(|res, index, _old, new| {
+                res[index] = new;
+            });
+
+        // Call the update handler
+        (handlers.on_update)(&mut result, 1, 2, 20);
+        assert_eq!(result, vec![1, 20, 3]);
+    }
+
+    #[test]
+    fn test_incremental_handlers_remove_method() {
+        let mut result = vec![1, 2, 3];
+        let handlers = IncrementalHandlers::<i32, Vec<i32>>::new().remove(|res, index, _value| {
+            res.remove(index);
+        });
+
+        // Call the remove handler
+        (handlers.on_remove)(&mut result, 1, 2);
+        assert_eq!(result, vec![1, 3]);
+    }
+
+    #[test]
+    fn test_incremental_handlers_replace_method() {
+        use crate::reactive::signal_vec;
+
+        let items = signal_vec(vec![1, 2, 3]);
+        let handlers =
+            IncrementalHandlers::<i32, usize>::new().replace(|source| source.get().len());
+
+        // Call the replace handler
+        let result = (handlers.on_replace)(&items);
+        assert_eq!(result, 3);
+    }
 }

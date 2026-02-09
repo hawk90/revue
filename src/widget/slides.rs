@@ -527,4 +527,316 @@ Content
         nav.last();
         assert!((nav.progress() - 1.0).abs() < 0.01); // 4/4
     }
+
+    // =========================================================================
+    // SlideContent struct tests
+    // =========================================================================
+
+    #[test]
+    fn test_slide_content_new() {
+        let slide = SlideContent::new("# Test\n\nContent");
+        assert_eq!(slide.title(), Some("Test"));
+        assert!(!slide.is_empty());
+    }
+
+    #[test]
+    fn test_slide_content_empty() {
+        let slide = SlideContent::new("");
+        assert!(slide.is_empty());
+    }
+
+    #[test]
+    fn test_slide_content_markdown_accessor() {
+        let slide = SlideContent::new("# Title\n\nContent");
+        assert!(slide.markdown().contains("Title"));
+        assert!(slide.markdown().contains("Content"));
+    }
+
+    #[test]
+    fn test_slide_content_no_notes() {
+        let slide = SlideContent::new("# Title");
+        assert!(slide.notes().is_none());
+    }
+
+    #[test]
+    fn test_slide_content_clone() {
+        let slide1 = SlideContent::new("# Test\n\nContent");
+        let slide2 = slide1.clone();
+        assert_eq!(slide1.title(), slide2.title());
+    }
+
+    #[test]
+    fn test_slide_content_multi_line_notes() {
+        let md = r#"
+# Title
+
+Content
+
+<!--
+notes:
+- Point 1
+- Point 2
+-->
+"#;
+        let slide = SlideContent::new(md);
+        assert!(slide.notes().is_some());
+        let notes = slide.notes().unwrap();
+        assert!(notes.contains("Point 1") || notes.contains("point 1"));
+    }
+
+    #[test]
+    fn test_extract_notes_format2() {
+        let md = r#"
+# Title
+
+<!--
+
+notes:
+Multi-line note here
+
+-->
+"#;
+        let slide = SlideContent::new(md);
+        // Note: This format is not parsed as notes by the current implementation
+        assert!(slide.notes().is_none());
+    }
+
+    // =========================================================================
+    // parse_slides function tests
+    // =========================================================================
+
+    #[test]
+    fn test_parse_empty_content() {
+        let slides = parse_slides("");
+        assert!(slides.is_empty());
+    }
+
+    #[test]
+    fn test_parse_no_delimiter() {
+        let md = "# Single\n\nContent\n\nMore content";
+        let slides = parse_slides(md);
+        assert_eq!(slides.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_leading_delimiter() {
+        let md = "---\n\n# First Slide";
+        let slides = parse_slides(md);
+        assert_eq!(slides.len(), 1);
+        assert_eq!(slides[0].title(), Some("First Slide"));
+    }
+
+    #[test]
+    fn test_parse_trailing_delimiter() {
+        let md = "# Last Slide\n\n---";
+        let slides = parse_slides(md);
+        assert_eq!(slides.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_preserves_content() {
+        let md = "# Title\n\n- Item 1\n- Item 2";
+        let slides = parse_slides(md);
+        assert!(slides[0].markdown().contains("Item 1"));
+    }
+
+    #[test]
+    fn test_parse_h2_title() {
+        let md = "## Subtitle\n\nContent";
+        let slides = parse_slides(md);
+        assert_eq!(slides[0].title(), Some("Subtitle"));
+    }
+
+    #[test]
+    fn test_parse_h3_not_title() {
+        let md = "### Not Title\n\nContent";
+        let slides = parse_slides(md);
+        // H3 is not extracted as title
+        assert_eq!(slides[0].title(), None);
+    }
+
+    // =========================================================================
+    // SlideNav struct tests
+    // =========================================================================
+
+    #[test]
+    fn test_slide_nav_new() {
+        let nav = SlideNav::new("# 1\n---\n# 2");
+        assert_eq!(nav.slide_count(), 2);
+        assert_eq!(nav.current_index(), 0);
+    }
+
+    #[test]
+    fn test_slide_nav_from_slides() {
+        let slides = vec![
+            SlideContent::new("# Slide 1"),
+            SlideContent::new("# Slide 2"),
+        ];
+        let nav = SlideNav::from_slides(slides);
+        assert_eq!(nav.slide_count(), 2);
+        assert_eq!(nav.current_index(), 0);
+    }
+
+    #[test]
+    fn test_slide_nav_current_slide() {
+        let nav = SlideNav::new("# 1\n---\n# 2");
+        let slide = nav.current_slide().unwrap();
+        assert_eq!(slide.title(), Some("1"));
+    }
+
+    #[test]
+    fn test_slide_nav_current_slide_empty() {
+        let nav = SlideNav::new("");
+        assert!(nav.current_slide().is_none());
+    }
+
+    #[test]
+    fn test_slide_nav_advance_at_end() {
+        let mut nav = SlideNav::new("# 1");
+        assert!(!nav.advance());
+        assert_eq!(nav.current_index(), 0);
+    }
+
+    #[test]
+    fn test_slide_nav_prev_at_start() {
+        let mut nav = SlideNav::new("# 1");
+        assert!(!nav.prev());
+        assert_eq!(nav.current_index(), 0);
+    }
+
+    #[test]
+    fn test_slide_nav_goto() {
+        let mut nav = SlideNav::new("# 1\n---\n# 2\n---\n# 3");
+        nav.goto(2);
+        assert_eq!(nav.current_index(), 2);
+    }
+
+    #[test]
+    fn test_slide_nav_goto_out_of_bounds() {
+        let mut nav = SlideNav::new("# 1\n---\n# 2");
+        nav.goto(10); // Out of bounds
+        assert_eq!(nav.current_index(), 0); // Unchanged
+    }
+
+    #[test]
+    fn test_slide_nav_indicator_bracketed() {
+        let nav = SlideNav::new("# 1\n---\n# 2\n---\n# 3");
+        assert_eq!(nav.indicator_bracketed(), "[1/3]");
+    }
+
+    #[test]
+    fn test_slide_nav_slides_accessor() {
+        let nav = SlideNav::new("# 1\n---\n# 2");
+        let slides = nav.slides();
+        assert_eq!(slides.len(), 2);
+    }
+
+    #[test]
+    fn test_slide_nav_empty_progress() {
+        let nav = SlideNav::new("");
+        assert_eq!(nav.progress(), 0.0);
+    }
+
+    #[test]
+    fn test_slide_nav_default() {
+        let nav = SlideNav::default();
+        assert_eq!(nav.slide_count(), 0);
+        assert_eq!(nav.current_index(), 0);
+    }
+
+    // =========================================================================
+    // is_slide_delimiter tests
+    // =========================================================================
+
+    #[test]
+    fn test_is_slide_delimiter_exactly_three() {
+        assert!(is_slide_delimiter("---"));
+    }
+
+    #[test]
+    fn test_is_slide_delimiter_many_dashes() {
+        assert!(is_slide_delimiter("-----"));
+    }
+
+    #[test]
+    fn test_is_slide_delimiter_with_spaces() {
+        assert!(is_slide_delimiter("  ---  "));
+        assert!(is_slide_delimiter("\t---\t"));
+    }
+
+    #[test]
+    fn test_is_slide_delimiter_two_dashes() {
+        assert!(!is_slide_delimiter("--"));
+    }
+
+    #[test]
+    fn test_is_slide_delimiter_one_dash() {
+        assert!(!is_slide_delimiter("-"));
+    }
+
+    #[test]
+    fn test_is_slide_delimiter_with_text() {
+        assert!(!is_slide_delimiter("--- text"));
+        assert!(!is_slide_delimiter("text ---"));
+    }
+
+    #[test]
+    fn test_is_slide_delimiter_mixed_content() {
+        assert!(!is_slide_delimiter("- -"));
+        assert!(!is_slide_delimiter("-_-"));
+    }
+
+    // =========================================================================
+    // Edge case tests
+    // =========================================================================
+
+    #[test]
+    fn test_slide_with_inline_code() {
+        let md = r#"
+# Slide with `code`
+
+Content
+"#;
+        let slides = parse_slides(md);
+        assert_eq!(slides.len(), 1);
+        assert!(slides[0].title().unwrap().contains("code"));
+    }
+
+    #[test]
+    fn test_slide_with_empty_lines() {
+        let md = "\n\n# Title\n\n\n\nContent\n\n";
+        let slides = parse_slides(md);
+        assert_eq!(slides.len(), 1);
+    }
+
+    #[test]
+    fn test_multiple_consecutive_delimiters() {
+        let md = "Content\n---\n---\n---\n\n# Next";
+        let slides = parse_slides(md);
+        assert_eq!(slides.len(), 2);
+    }
+
+    #[test]
+    fn test_slide_with_code_fence_language() {
+        let md = r#"
+# Slide
+
+```rust
+fn main() {
+    println!("---");
+}
+```
+"#;
+        let slides = parse_slides(md);
+        assert_eq!(slides.len(), 1);
+        assert!(slides[0].markdown().contains("println!(\"---\")"));
+    }
+
+    #[test]
+    fn test_parse_title_with_inline_code() {
+        let md = "# Title with `code` word";
+        let slide = SlideContent::new(md);
+        let title = slide.title().unwrap();
+        assert!(title.contains("code"));
+    }
 }

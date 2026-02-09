@@ -547,4 +547,320 @@ mod tests {
 
         assert_eq!(group.total_duration(), Duration::from_millis(300));
     }
+
+    #[test]
+    fn test_animation_group_start() {
+        let mut group = AnimationGroup::parallel()
+            .with_animation(KeyframeAnimation::new("a").duration(Duration::from_millis(100)));
+
+        group.start();
+        assert!(group.animations_mut()[0].is_running());
+    }
+
+    #[test]
+    fn test_animation_group_is_completed() {
+        let mut group = AnimationGroup::parallel()
+            .with_animation(KeyframeAnimation::new("a").duration(Duration::from_millis(1)));
+
+        assert!(!group.is_completed());
+        group.start();
+        group.update();
+        // Should complete quickly
+    }
+
+    // Stagger tests
+    #[test]
+    fn test_stagger() {
+        let stagger = Stagger::new(5, Duration::from_millis(50));
+        assert_eq!(stagger.delay_for(0), Duration::ZERO);
+        assert_eq!(stagger.delay_for(1), Duration::from_millis(50));
+        assert_eq!(stagger.delay_for(4), Duration::from_millis(200));
+    }
+
+    #[test]
+    fn test_stagger_start_delay() {
+        let stagger = Stagger::new(3, Duration::from_millis(100))
+            .start_delay(Duration::from_millis(50));
+
+        assert_eq!(stagger.delay_for(0), Duration::from_millis(50));
+        assert_eq!(stagger.delay_for(1), Duration::from_millis(150));
+        assert_eq!(stagger.delay_for(2), Duration::from_millis(250));
+    }
+
+    #[test]
+    fn test_stagger_easing() {
+        let stagger = Stagger::new(3, Duration::from_millis(100))
+            .easing(easing::ease_in);
+
+        // First item should have shorter delay with ease_in
+        let delay0 = stagger.delay_for(0).as_millis();
+        let delay1 = stagger.delay_for(1).as_millis();
+        let delay2 = stagger.delay_for(2).as_millis();
+
+        assert!(delay0 < delay1);
+        assert!(delay1 < delay2);
+    }
+
+    #[test]
+    fn test_stagger_total_duration() {
+        let stagger = Stagger::new(5, Duration::from_millis(50));
+        let item_duration = Duration::from_millis(100);
+        let total = stagger.total_duration(item_duration);
+
+        assert_eq!(total, Duration::from_millis(200 + 100)); // last delay + item duration
+    }
+
+    #[test]
+    fn test_stagger_zero_count() {
+        let stagger = Stagger::new(0, Duration::from_millis(50));
+        assert_eq!(stagger.delay_for(0), Duration::ZERO);
+        assert_eq!(stagger.total_duration(Duration::from_millis(100)), Duration::ZERO);
+    }
+
+    #[test]
+    fn test_stagger_single_item() {
+        let stagger = Stagger::new(1, Duration::from_millis(50));
+        assert_eq!(stagger.delay_for(0), Duration::ZERO);
+    }
+
+    #[test]
+    fn test_stagger_apply() {
+        let stagger = Stagger::new(3, Duration::from_millis(50));
+        let animations = stagger.apply(|i| KeyframeAnimation::new(format!("anim-{}", i)));
+
+        assert_eq!(animations.len(), 3);
+        assert_eq!(animations[0].delay, Duration::ZERO);
+        assert_eq!(animations[1].delay, Duration::from_millis(50));
+        assert_eq!(animations[2].delay, Duration::from_millis(100));
+    }
+
+    // Choreographer tests
+    #[test]
+    fn test_choreographer_new() {
+        let choreo = Choreographer::new();
+        assert!(choreo.is_completed("nonexistent"));
+    }
+
+    #[test]
+    fn test_choreographer_default() {
+        let choreo = Choreographer::default();
+        assert!(choreo.is_completed("test"));
+    }
+
+    #[test]
+    fn test_choreographer_add_group() {
+        let mut choreo = Choreographer::new();
+        let group = AnimationGroup::parallel()
+            .with_animation(KeyframeAnimation::new("a").duration(Duration::from_millis(100)));
+
+        choreo.add_group("test-group", group);
+        choreo.start("test-group");
+        assert!(!choreo.is_completed("test-group"));
+    }
+
+    #[test]
+    fn test_choreographer_add_staggered() {
+        let mut choreo = Choreographer::new();
+        choreo.add_staggered(
+            "items",
+            3,
+            Duration::from_millis(50),
+            |i| KeyframeAnimation::new(format!("item-{}", i))
+        );
+
+        assert_eq!(choreo.get_staggered("items", 0, "opacity"), 0.0);
+    }
+
+    #[test]
+    fn test_choreographer_start_nonexistent() {
+        let mut choreo = Choreographer::new();
+        choreo.start("nonexistent"); // Should not panic
+        assert!(choreo.is_completed("nonexistent"));
+    }
+
+    #[test]
+    fn test_choreographer_update() {
+        let mut choreo = Choreographer::new();
+        let group = AnimationGroup::parallel()
+            .with_animation(KeyframeAnimation::new("a").duration(Duration::from_millis(1)));
+
+        choreo.add_group("test", group);
+        choreo.start("test");
+        choreo.update(); // Should not panic
+    }
+
+    #[test]
+    fn test_choreographer_is_completed_empty() {
+        let choreo = Choreographer::new();
+        assert!(choreo.is_completed("empty"));
+    }
+
+    #[test]
+    fn test_choreographer_get_staggered_nonexistent() {
+        let mut choreo = Choreographer::new();
+        assert_eq!(choreo.get_staggered("nonexistent", 0, "opacity"), 0.0);
+    }
+
+    #[test]
+    fn test_choreographer_get_staggered_out_of_bounds() {
+        let mut choreo = Choreographer::new();
+        choreo.add_staggered("items", 2, Duration::from_millis(50), |i| {
+            KeyframeAnimation::new(format!("item-{}", i))
+        });
+
+        assert_eq!(choreo.get_staggered("items", 10, "opacity"), 0.0);
+    }
+
+    // GroupMode tests
+    #[test]
+    fn test_group_mode_default() {
+        let mode = GroupMode::default();
+        assert_eq!(mode, GroupMode::Parallel);
+    }
+
+    #[test]
+    fn test_group_mode_variants() {
+        assert_eq!(GroupMode::Parallel, GroupMode::Parallel);
+        assert_eq!(GroupMode::Sequential, GroupMode::Sequential);
+        assert_ne!(GroupMode::Parallel, GroupMode::Sequential);
+    }
+
+    // widget_animations presets tests
+    #[test]
+    fn test_widget_animations_fade_in() {
+        let anim = widget_animations::fade_in(300);
+        assert_eq!(anim.name(), "fade-in");
+        assert_eq!(anim.duration, Duration::from_millis(300));
+    }
+
+    #[test]
+    fn test_widget_animations_fade_out() {
+        let anim = widget_animations::fade_out(300);
+        assert_eq!(anim.name(), "fade-out");
+        assert_eq!(anim.duration, Duration::from_millis(300));
+    }
+
+    #[test]
+    fn test_widget_animations_slide_in_left() {
+        let anim = widget_animations::slide_in_left(100.0, 300);
+        assert_eq!(anim.name(), "slide-in-left");
+        assert_eq!(anim.duration, Duration::from_millis(300));
+    }
+
+    #[test]
+    fn test_widget_animations_slide_in_right() {
+        let anim = widget_animations::slide_in_right(100.0, 300);
+        assert_eq!(anim.name(), "slide-in-right");
+        assert_eq!(anim.duration, Duration::from_millis(300));
+    }
+
+    #[test]
+    fn test_widget_animations_slide_in_top() {
+        let anim = widget_animations::slide_in_top(100.0, 300);
+        assert_eq!(anim.name(), "slide-in-top");
+        assert_eq!(anim.duration, Duration::from_millis(300));
+    }
+
+    #[test]
+    fn test_widget_animations_slide_in_bottom() {
+        let anim = widget_animations::slide_in_bottom(100.0, 300);
+        assert_eq!(anim.name(), "slide-in-bottom");
+        assert_eq!(anim.duration, Duration::from_millis(300));
+    }
+
+    #[test]
+    fn test_widget_animations_scale_up() {
+        let anim = widget_animations::scale_up(300);
+        assert_eq!(anim.name(), "scale-up");
+        assert_eq!(anim.duration, Duration::from_millis(300));
+    }
+
+    #[test]
+    fn test_widget_animations_scale_down() {
+        let anim = widget_animations::scale_down(300);
+        assert_eq!(anim.name(), "scale-down");
+        assert_eq!(anim.duration, Duration::from_millis(300));
+    }
+
+    #[test]
+    fn test_widget_animations_bounce() {
+        let anim = widget_animations::bounce(300);
+        assert_eq!(anim.name(), "bounce");
+        assert_eq!(anim.duration, Duration::from_millis(300));
+    }
+
+    #[test]
+    fn test_widget_animations_shake() {
+        let anim = widget_animations::shake(300);
+        assert_eq!(anim.name(), "shake");
+        assert_eq!(anim.duration, Duration::from_millis(300));
+    }
+
+    #[test]
+    fn test_widget_animations_pulse() {
+        let anim = widget_animations::pulse(500);
+        assert_eq!(anim.name(), "pulse");
+        assert_eq!(anim.iterations, 0); // Infinite
+        assert_eq!(anim.duration, Duration::from_millis(500));
+    }
+
+    #[test]
+    fn test_widget_animations_blink() {
+        let anim = widget_animations::blink(500);
+        assert_eq!(anim.name(), "blink");
+        assert_eq!(anim.iterations, 0); // Infinite
+        assert_eq!(anim.duration, Duration::from_millis(500));
+    }
+
+    #[test]
+    fn test_widget_animations_spin() {
+        let anim = widget_animations::spin(1000);
+        assert_eq!(anim.name(), "spin");
+        assert_eq!(anim.iterations, 0); // Infinite
+        assert_eq!(anim.duration, Duration::from_millis(1000));
+    }
+
+    #[test]
+    fn test_widget_animations_cursor_blink() {
+        let anim = widget_animations::cursor_blink();
+        assert_eq!(anim.name(), "cursor-blink");
+        assert_eq!(anim.iterations, 0); // Infinite
+        assert_eq!(anim.duration, Duration::from_millis(1000));
+    }
+
+    #[test]
+    fn test_widget_animations_toast_enter() {
+        let anim = widget_animations::toast_enter();
+        assert_eq!(anim.name(), "toast-enter");
+        assert_eq!(anim.duration, Duration::from_millis(200));
+    }
+
+    #[test]
+    fn test_widget_animations_toast_exit() {
+        let anim = widget_animations::toast_exit();
+        assert_eq!(anim.name(), "toast-exit");
+        assert_eq!(anim.duration, Duration::from_millis(200));
+    }
+
+    #[test]
+    fn test_widget_animations_modal_enter() {
+        let anim = widget_animations::modal_enter();
+        assert_eq!(anim.name(), "modal-enter");
+        assert_eq!(anim.duration, Duration::from_millis(200));
+    }
+
+    #[test]
+    fn test_widget_animations_modal_exit() {
+        let anim = widget_animations::modal_exit();
+        assert_eq!(anim.name(), "modal-exit");
+        assert_eq!(anim.duration, Duration::from_millis(150));
+    }
+
+    #[test]
+    fn test_widget_animations_shimmer() {
+        let anim = widget_animations::shimmer(1500);
+        assert_eq!(anim.name(), "shimmer");
+        assert_eq!(anim.iterations, 0); // Infinite
+        assert_eq!(anim.duration, Duration::from_millis(1500));
+    }
 }

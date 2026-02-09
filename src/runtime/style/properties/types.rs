@@ -289,3 +289,297 @@ pub enum Property {
     /// Border color property value
     BorderColor(Color),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Display tests
+    #[test]
+    fn test_display_default() {
+        assert_eq!(Display::default(), Display::Flex);
+    }
+
+    #[test]
+    fn test_display_variants() {
+        assert_eq!(Display::Flex, Display::Flex);
+        assert_eq!(Display::Block, Display::Block);
+        assert_eq!(Display::Grid, Display::Grid);
+        assert_eq!(Display::None, Display::None);
+    }
+
+    // Position tests
+    #[test]
+    fn test_position_default() {
+        assert_eq!(Position::default(), Position::Static);
+    }
+
+    #[test]
+    fn test_position_variants() {
+        assert_eq!(Position::Static, Position::Static);
+        assert_eq!(Position::Relative, Position::Relative);
+        assert_eq!(Position::Absolute, Position::Absolute);
+        assert_eq!(Position::Fixed, Position::Fixed);
+    }
+
+    // GridTrack tests
+    #[test]
+    fn test_grid_track_default() {
+        assert_eq!(GridTrack::default(), GridTrack::Auto);
+    }
+
+    #[test]
+    fn test_grid_track_fixed() {
+        let track = GridTrack::Fixed(10);
+        assert_eq!(track, GridTrack::Fixed(10));
+    }
+
+    #[test]
+    fn test_grid_track_fr() {
+        let track = GridTrack::Fr(1.5);
+        assert_eq!(track, GridTrack::Fr(1.5));
+    }
+
+    #[test]
+    fn test_grid_track_min_content() {
+        let track = GridTrack::MinContent;
+        assert_eq!(track, GridTrack::MinContent);
+    }
+
+    #[test]
+    fn test_grid_track_max_content() {
+        let track = GridTrack::MaxContent;
+        assert_eq!(track, GridTrack::MaxContent);
+    }
+
+    // GridTemplate tests
+    #[test]
+    fn test_grid_template_default() {
+        let template = GridTemplate::default();
+        assert!(template.tracks.is_empty());
+    }
+
+    #[test]
+    fn test_grid_template_new() {
+        let template = GridTemplate::new(vec![GridTrack::Fixed(10), GridTrack::Fr(1.0)]);
+        assert_eq!(template.tracks.len(), 2);
+    }
+
+    #[test]
+    fn test_grid_template_repeat() {
+        let template = GridTemplate::repeat(3, GridTrack::Fixed(10));
+        assert_eq!(template.tracks.len(), 3);
+        assert!(template.tracks.iter().all(|t| t == &GridTrack::Fixed(10)));
+    }
+
+    #[test]
+    fn test_grid_template_fr() {
+        let template = GridTemplate::fr(&[1.0, 2.0, 1.5]);
+        assert_eq!(template.tracks.len(), 3);
+        assert_eq!(template.tracks[0], GridTrack::Fr(1.0));
+        assert_eq!(template.tracks[1], GridTrack::Fr(2.0));
+        assert_eq!(template.tracks[2], GridTrack::Fr(1.5));
+    }
+
+    #[test]
+    fn test_grid_template_fixed() {
+        let template = GridTemplate::fixed(&[10, 20, 30]);
+        assert_eq!(template.tracks.len(), 3);
+        assert_eq!(template.tracks[0], GridTrack::Fixed(10));
+        assert_eq!(template.tracks[1], GridTrack::Fixed(20));
+        assert_eq!(template.tracks[2], GridTrack::Fixed(30));
+    }
+
+    // GridPlacement tests
+    #[test]
+    fn test_grid_placement_default() {
+        let placement = GridPlacement::default();
+        assert_eq!(placement.start, 0);
+        assert_eq!(placement.end, 0);
+    }
+
+    #[test]
+    fn test_grid_placement_auto() {
+        let placement = GridPlacement::auto();
+        assert_eq!(placement.start, 0);
+        assert_eq!(placement.end, 0);
+    }
+
+    #[test]
+    fn test_grid_placement_line() {
+        let placement = GridPlacement::line(5);
+        assert_eq!(placement.start, 5);
+        assert_eq!(placement.end, 0);
+    }
+
+    #[test]
+    fn test_grid_placement_span() {
+        let placement = GridPlacement::span(3);
+        assert_eq!(placement.start, 0);
+        assert_eq!(placement.end, -3);
+    }
+
+    #[test]
+    fn test_grid_placement_from_to() {
+        let placement = GridPlacement::from_to(2, 5);
+        assert_eq!(placement.start, 2);
+        assert_eq!(placement.end, 5);
+    }
+
+    // FlexDirection tests
+    #[test]
+    fn test_flex_direction_default() {
+        assert_eq!(FlexDirection::default(), FlexDirection::Row);
+    }
+
+    #[test]
+    fn test_flex_direction_variants() {
+        assert_eq!(FlexDirection::Row, FlexDirection::Row);
+        assert_eq!(FlexDirection::Column, FlexDirection::Column);
+    }
+
+    // JustifyContent tests
+    #[test]
+    fn test_justify_content_default() {
+        assert_eq!(JustifyContent::default(), JustifyContent::Start);
+    }
+
+    #[test]
+    fn test_justify_content_variants() {
+        assert_eq!(JustifyContent::Start, JustifyContent::Start);
+        assert_eq!(JustifyContent::Center, JustifyContent::Center);
+        assert_eq!(JustifyContent::End, JustifyContent::End);
+        assert_eq!(JustifyContent::SpaceBetween, JustifyContent::SpaceBetween);
+        assert_eq!(JustifyContent::SpaceAround, JustifyContent::SpaceAround);
+    }
+
+    // AlignItems tests
+    #[test]
+    fn test_align_items_default() {
+        assert_eq!(AlignItems::default(), AlignItems::Start);
+    }
+
+    #[test]
+    fn test_align_items_variants() {
+        assert_eq!(AlignItems::Start, AlignItems::Start);
+        assert_eq!(AlignItems::Center, AlignItems::Center);
+        assert_eq!(AlignItems::End, AlignItems::End);
+        assert_eq!(AlignItems::Stretch, AlignItems::Stretch);
+    }
+
+    // Spacing tests
+    #[test]
+    fn test_spacing_default() {
+        let spacing = Spacing::default();
+        assert_eq!(spacing.top, 0);
+        assert_eq!(spacing.right, 0);
+        assert_eq!(spacing.bottom, 0);
+        assert_eq!(spacing.left, 0);
+    }
+
+    #[test]
+    fn test_spacing_all() {
+        let spacing = Spacing::all(10);
+        assert_eq!(spacing.top, 10);
+        assert_eq!(spacing.right, 10);
+        assert_eq!(spacing.bottom, 10);
+        assert_eq!(spacing.left, 10);
+    }
+
+    #[test]
+    fn test_spacing_vertical() {
+        let spacing = Spacing::vertical(10);
+        assert_eq!(spacing.top, 10);
+        assert_eq!(spacing.right, 0);
+        assert_eq!(spacing.bottom, 10);
+        assert_eq!(spacing.left, 0);
+    }
+
+    #[test]
+    fn test_spacing_horizontal() {
+        let spacing = Spacing::horizontal(10);
+        assert_eq!(spacing.top, 0);
+        assert_eq!(spacing.right, 10);
+        assert_eq!(spacing.bottom, 0);
+        assert_eq!(spacing.left, 10);
+    }
+
+    #[test]
+    fn test_spacing_new() {
+        let spacing = Spacing::new(10, 20, 30, 40);
+        assert_eq!(spacing.top, 10);
+        assert_eq!(spacing.right, 20);
+        assert_eq!(spacing.bottom, 30);
+        assert_eq!(spacing.left, 40);
+    }
+
+    // Size tests
+    #[test]
+    fn test_size_default() {
+        assert_eq!(Size::default(), Size::Auto);
+    }
+
+    #[test]
+    fn test_size_auto() {
+        assert_eq!(Size::Auto, Size::Auto);
+    }
+
+    #[test]
+    fn test_size_fixed() {
+        let size = Size::Fixed(100);
+        assert_eq!(size, Size::Fixed(100));
+    }
+
+    #[test]
+    fn test_size_percent() {
+        let size = Size::Percent(50.0);
+        assert_eq!(size, Size::Percent(50.0));
+    }
+
+    // BorderStyle tests
+    #[test]
+    fn test_border_style_default() {
+        assert_eq!(BorderStyle::default(), BorderStyle::None);
+    }
+
+    #[test]
+    fn test_border_style_variants() {
+        assert_eq!(BorderStyle::None, BorderStyle::None);
+        assert_eq!(BorderStyle::Solid, BorderStyle::Solid);
+        assert_eq!(BorderStyle::Dashed, BorderStyle::Dashed);
+        assert_eq!(BorderStyle::Double, BorderStyle::Double);
+        assert_eq!(BorderStyle::Rounded, BorderStyle::Rounded);
+    }
+
+    // Color tests
+    #[test]
+    fn test_color_default() {
+        let color = Color::default();
+        assert_eq!(color.r, 0);
+        assert_eq!(color.g, 0);
+        assert_eq!(color.b, 0);
+        assert_eq!(color.a, 0);
+    }
+
+    #[test]
+    fn test_color_partial_eq() {
+        let color1 = Color::rgb(255, 0, 0);
+        let color2 = Color::rgb(255, 0, 0);
+        assert_eq!(color1, color2);
+    }
+
+    #[test]
+    fn test_color_partial_ne() {
+        let color1 = Color::rgb(255, 0, 0);
+        let color2 = Color::rgb(0, 255, 0);
+        assert_ne!(color1, color2);
+    }
+
+    #[test]
+    fn test_color_copy_trait() {
+        let color1 = Color::rgb(255, 0, 0);
+        let color2 = color1;
+        assert_eq!(color1.r, 255);
+        assert_eq!(color2.r, 255);
+    }
+}

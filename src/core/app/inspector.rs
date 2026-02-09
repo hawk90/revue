@@ -567,4 +567,231 @@ mod tests {
         // Check that inspector panel was rendered
         // The border character should be present
     }
+
+    // =========================================================================
+    // Additional inspector tests
+    // =========================================================================
+
+    #[test]
+    fn test_inspector_default() {
+        let insp = Inspector::default();
+        assert!(!insp.is_visible());
+        assert_eq!(insp.selected, 0);
+        assert!(insp.root.is_none());
+    }
+
+    #[test]
+    fn test_inspector_clear() {
+        let mut insp = Inspector::new();
+        insp.set_root(WidgetInfo::new("Root", Rect::new(0, 0, 80, 24)));
+        insp.select_next();
+        insp.clear();
+        assert!(insp.root.is_none());
+        assert_eq!(insp.selected, 0);
+    }
+
+    #[test]
+    fn test_inspector_select_next_empty() {
+        let mut insp = Inspector::new();
+        insp.select_next();
+        insp.select_prev();
+        // Should not panic when no root is set
+    }
+
+    #[test]
+    fn test_inspector_select_next_wraps() {
+        let mut insp = Inspector::new();
+        insp.set_root(WidgetInfo::new("Root", Rect::new(0, 0, 80, 24)));
+        insp.select_next();
+        // Should wrap back to 0
+        assert_eq!(insp.selected, 0);
+    }
+
+    #[test]
+    fn test_inspector_select_prev_wraps() {
+        let mut insp = Inspector::new();
+        let root = WidgetInfo::new("Root", Rect::new(0, 0, 80, 24))
+            .child(WidgetInfo::new("Child", Rect::new(0, 0, 40, 12)));
+        insp.set_root(root);
+        insp.selected = 0;
+        insp.select_prev();
+        // Should wrap to last
+        assert_eq!(insp.selected, 1);
+    }
+
+    #[test]
+    fn test_inspector_handle_key_j() {
+        use crate::event::Key;
+
+        let mut insp = Inspector::new();
+        insp.show();
+        let root = WidgetInfo::new("Root", Rect::new(0, 0, 80, 24));
+        insp.set_root(root);
+        assert!(insp.handle_key(&Key::Char('j')));
+    }
+
+    #[test]
+    fn test_inspector_handle_key_k() {
+        use crate::event::Key;
+
+        let mut insp = Inspector::new();
+        insp.show();
+        let root = WidgetInfo::new("Root", Rect::new(0, 0, 80, 24));
+        insp.set_root(root);
+        assert!(insp.handle_key(&Key::Char('k')));
+    }
+
+    #[test]
+    fn test_inspector_handle_key_b() {
+        use crate::event::Key;
+
+        let mut insp = Inspector::new();
+        insp.show();
+        insp.handle_key(&Key::Char('b'));
+        assert!(!insp.show_bounds);
+        insp.handle_key(&Key::Char('b'));
+        assert!(insp.show_bounds);
+    }
+
+    #[test]
+    fn test_inspector_handle_key_when_hidden() {
+        use crate::event::Key;
+
+        let mut insp = Inspector::new();
+        assert!(!insp.handle_key(&Key::Down));
+        assert!(!insp.handle_key(&Key::Up));
+        assert!(!insp.handle_key(&Key::Escape));
+    }
+
+    #[test]
+    fn test_inspector_handle_key_unknown() {
+        use crate::event::Key;
+
+        let mut insp = Inspector::new();
+        insp.show();
+        assert!(!insp.handle_key(&Key::Char('x')));
+        assert!(!insp.handle_key(&Key::Enter));
+        assert!(!insp.handle_key(&Key::Tab));
+    }
+
+    #[test]
+    fn test_inspector_panel_width_builder() {
+        let insp = Inspector::new().panel_width(60);
+        assert_eq!(insp.panel_width, 60);
+    }
+
+    #[test]
+    fn test_inspector_show_bounds_builder() {
+        let insp = Inspector::new().show_bounds(false);
+        assert!(!insp.show_bounds);
+    }
+
+    #[test]
+    fn test_inspector_highlight_color_builder() {
+        let insp = Inspector::new().highlight_color(Color::RED);
+        assert_eq!(insp.highlight_color, Color::RED);
+    }
+
+    #[test]
+    fn test_widget_info_new_with_string() {
+        let type_name = String::from("CustomWidget");
+        let info = WidgetInfo::new(type_name.clone(), Rect::new(0, 0, 10, 10));
+        assert_eq!(info.type_name, type_name);
+    }
+
+    #[test]
+    fn test_widget_info_property_builder() {
+        let info = WidgetInfo::new("Test", Rect::new(0, 0, 10, 10))
+            .property("key1", "value1")
+            .property("key2", "value2");
+        assert_eq!(info.properties.len(), 2);
+    }
+
+    #[test]
+    fn test_widget_info_focused_builder() {
+        let info = WidgetInfo::new("Test", Rect::new(0, 0, 10, 10)).focused(true);
+        assert!(info.focused);
+    }
+
+    #[test]
+    fn test_widget_info_hovered_builder() {
+        let info = WidgetInfo::new("Test", Rect::new(0, 0, 10, 10)).hovered(true);
+        assert!(info.hovered);
+    }
+
+    #[test]
+    fn test_widget_info_multiple_children() {
+        let child1 = WidgetInfo::new("Child1", Rect::new(0, 0, 5, 5));
+        let child2 = WidgetInfo::new("Child2", Rect::new(5, 0, 5, 5));
+        let child3 = WidgetInfo::new("Child3", Rect::new(0, 5, 5, 5));
+        let parent = WidgetInfo::new("Parent", Rect::new(0, 0, 10, 10))
+            .child(child1)
+            .child(child2)
+            .child(child3);
+        assert_eq!(parent.children.len(), 3);
+        assert_eq!(parent.descendant_count(), 3);
+    }
+
+    #[test]
+    fn test_widget_info_nested_children() {
+        let grandchild = WidgetInfo::new("Grandchild", Rect::new(0, 0, 5, 5));
+        let child = WidgetInfo::new("Child", Rect::new(0, 0, 10, 10)).child(grandchild);
+        let parent = WidgetInfo::new("Parent", Rect::new(0, 0, 20, 20)).child(child);
+        assert_eq!(parent.descendant_count(), 2);
+    }
+
+    #[test]
+    fn test_widget_info_clone() {
+        let info = WidgetInfo::new("Test", Rect::new(0, 0, 10, 10))
+            .property("key", "value")
+            .focused(true);
+        let cloned = info.clone();
+        assert_eq!(cloned.type_name, info.type_name);
+        assert_eq!(cloned.properties.len(), info.properties.len());
+        assert_eq!(cloned.focused, info.focused);
+    }
+
+    #[test]
+    fn test_widget_info_empty_children() {
+        let info = WidgetInfo::new("Test", Rect::new(0, 0, 10, 10));
+        assert!(info.children.is_empty());
+        assert_eq!(info.descendant_count(), 0);
+    }
+
+    #[test]
+    fn test_inspector_render_when_hidden() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let insp = Inspector::new();
+        // Don't show, render should do nothing
+        insp.render(&mut ctx);
+        // Should not panic
+    }
+
+    #[test]
+    fn test_inspector_selected_widget_none() {
+        let insp = Inspector::new();
+        assert!(insp.selected_widget().is_none());
+    }
+
+    #[test]
+    fn test_inspector_render_with_no_root() {
+        let mut buffer = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut insp = Inspector::new();
+        insp.show();
+        insp.render(&mut ctx);
+        // Should render panel but no tree
+    }
+
+    #[test]
+    fn test_inspector_helper_function() {
+        let insp = inspector();
+        assert!(!insp.is_visible());
+        assert_eq!(insp.panel_width, 40);
+    }
 }

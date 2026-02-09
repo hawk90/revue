@@ -61,3 +61,102 @@ pub(crate) fn build_children_internal(
         build_children_internal(renderer, child_id, child.children());
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_renderer() -> DomRenderer {
+        DomRenderer::with_stylesheet(crate::style::StyleSheet::new())
+    }
+
+    #[test]
+    fn test_invalidate() {
+        let mut renderer = create_test_renderer();
+        // Add some data to verify it's cleared
+        renderer
+            .styles
+            .insert(crate::dom::DomId::new(1), crate::style::Style::default());
+
+        renderer.invalidate();
+
+        assert!(renderer.tree.is_empty());
+        assert!(renderer.styles.is_empty());
+    }
+
+    #[test]
+    fn test_build_tree() {
+        let mut renderer = create_test_renderer();
+        let root_meta = WidgetMeta::new("root");
+        let child1_meta = WidgetMeta::new("child1");
+        let child2_meta = WidgetMeta::new("child2");
+
+        renderer.build_tree(root_meta, vec![child1_meta, child2_meta]);
+
+        assert!(!renderer.tree.is_empty());
+        // Tree should have root + 2 children = 3 nodes
+        assert_eq!(renderer.tree.len(), 3);
+    }
+
+    #[test]
+    fn test_build_tree_clears_previous_state() {
+        let mut renderer = create_test_renderer();
+        let root_meta = WidgetMeta::new("root");
+
+        // First build
+        renderer.build_tree(root_meta.clone(), vec![]);
+        assert_eq!(renderer.tree.len(), 1);
+
+        // Add some style data
+        use crate::dom::DomId;
+        renderer
+            .styles
+            .insert(DomId::new(1), crate::style::Style::default());
+
+        // Second build should clear previous state
+        let child_meta = WidgetMeta::new("child");
+        renderer.build_tree(root_meta, vec![child_meta]);
+
+        assert_eq!(renderer.tree.len(), 2);
+        assert!(renderer.styles.is_empty());
+    }
+
+    #[test]
+    fn test_build_tree_empty_children() {
+        let mut renderer = create_test_renderer();
+        let root_meta = WidgetMeta::new("root");
+
+        renderer.build_tree(root_meta, vec![]);
+
+        assert_eq!(renderer.tree.len(), 1);
+    }
+
+    #[test]
+    fn test_build_tree_single_child() {
+        let mut renderer = create_test_renderer();
+        let root_meta = WidgetMeta::new("root");
+        let child_meta = WidgetMeta::new("child");
+
+        renderer.build_tree(root_meta, vec![child_meta]);
+
+        assert_eq!(renderer.tree.len(), 2);
+    }
+
+    #[test]
+    fn test_invalidate_clears_styles() {
+        let mut renderer = create_test_renderer();
+        use crate::dom::DomId;
+
+        renderer
+            .styles
+            .insert(DomId::new(1), crate::style::Style::default());
+        renderer
+            .styles
+            .insert(DomId::new(2), crate::style::Style::default());
+        assert_eq!(renderer.styles.len(), 2);
+
+        renderer.invalidate();
+
+        assert!(renderer.styles.is_empty());
+    }
+}

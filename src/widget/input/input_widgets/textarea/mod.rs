@@ -312,3 +312,321 @@ impl_props_builders!(TextArea);
 pub fn textarea() -> TextArea {
     TextArea::new()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::event::Key;
+
+    #[test]
+    fn test_textarea_new_creates_empty_editor() {
+        let textarea = TextArea::new();
+        assert_eq!(textarea.lines.len(), 1);
+        assert_eq!(textarea.lines[0], "");
+        assert_eq!(textarea.scroll, (0, 0));
+        assert!(!textarea.show_line_numbers);
+        assert!(!textarea.wrap);
+        assert!(!textarea.read_only);
+        assert!(!textarea.focused);
+        assert_eq!(textarea.tab_width, 4);
+        assert!(textarea.placeholder.is_none());
+        assert_eq!(textarea.max_lines, 0);
+    }
+
+    #[test]
+    fn test_textarea_default_trait() {
+        let textarea = TextArea::default();
+        assert_eq!(textarea.lines.len(), 1);
+        assert_eq!(textarea.tab_width, 4);
+    }
+
+    #[test]
+    fn test_textarea_content_builder() {
+        let textarea = TextArea::new().content("Hello\nWorld");
+        assert_eq!(textarea.lines.len(), 2);
+        assert_eq!(textarea.lines[0], "Hello");
+        assert_eq!(textarea.lines[1], "World");
+    }
+
+    #[test]
+    fn test_textarea_content_builder_single_line() {
+        let textarea = TextArea::new().content("Single line");
+        assert_eq!(textarea.lines.len(), 1);
+        assert_eq!(textarea.lines[0], "Single line");
+    }
+
+    #[test]
+    fn test_textarea_line_numbers_builder() {
+        let textarea = TextArea::new().line_numbers(true);
+        assert!(textarea.show_line_numbers);
+
+        let textarea = TextArea::new().line_numbers(false);
+        assert!(!textarea.show_line_numbers);
+    }
+
+    #[test]
+    fn test_textarea_wrap_builder() {
+        let textarea = TextArea::new().wrap(true);
+        assert!(textarea.wrap);
+
+        let textarea = TextArea::new().wrap(false);
+        assert!(!textarea.wrap);
+    }
+
+    #[test]
+    fn test_textarea_read_only_builder() {
+        let textarea = TextArea::new().read_only(true);
+        assert!(textarea.read_only);
+
+        let textarea = TextArea::new().read_only(false);
+        assert!(!textarea.read_only);
+    }
+
+    #[test]
+    fn test_textarea_focused_builder() {
+        let textarea = TextArea::new().focused(true);
+        assert!(textarea.focused);
+
+        let textarea = TextArea::new().focused(false);
+        assert!(!textarea.focused);
+    }
+
+    #[test]
+    fn test_textarea_tab_width_builder() {
+        let textarea = TextArea::new().tab_width(8);
+        assert_eq!(textarea.tab_width, 8);
+
+        let textarea = TextArea::new().tab_width(2);
+        assert_eq!(textarea.tab_width, 2);
+    }
+
+    #[test]
+    fn test_textarea_placeholder_builder() {
+        let textarea = TextArea::new().placeholder("Enter text here");
+        assert_eq!(textarea.placeholder, Some("Enter text here".to_string()));
+    }
+
+    #[test]
+    fn test_textarea_max_lines_builder() {
+        let textarea = TextArea::new().max_lines(100);
+        assert_eq!(textarea.max_lines, 100);
+
+        let textarea = TextArea::new().max_lines(0);
+        assert_eq!(textarea.max_lines, 0);
+    }
+
+    #[test]
+    fn test_textarea_fg_builder() {
+        let textarea = TextArea::new().fg(Color::RED);
+        assert_eq!(textarea.fg, Some(Color::RED));
+    }
+
+    #[test]
+    fn test_textarea_bg_builder() {
+        let textarea = TextArea::new().bg(Color::BLUE);
+        assert_eq!(textarea.bg, Some(Color::BLUE));
+    }
+
+    #[test]
+    fn test_textarea_cursor_fg_builder() {
+        let textarea = TextArea::new().cursor_fg(Color::GREEN);
+        assert_eq!(textarea.cursor_fg, Some(Color::GREEN));
+    }
+
+    #[test]
+    fn test_textarea_selection_bg_builder() {
+        let textarea = TextArea::new().selection_bg(Color::YELLOW);
+        assert_eq!(textarea.selection_bg, Some(Color::YELLOW));
+    }
+
+    #[test]
+    fn test_textarea_line_number_fg_builder() {
+        let textarea = TextArea::new().line_number_fg(Color::CYAN);
+        assert_eq!(textarea.line_number_fg, Some(Color::CYAN));
+    }
+
+    #[test]
+    fn test_textarea_match_highlight_bg_builder() {
+        let textarea = TextArea::new().match_highlight_bg(Color::rgb(255, 255, 0));
+        assert_eq!(textarea.match_highlight_bg, Some(Color::rgb(255, 255, 0)));
+    }
+
+    #[test]
+    fn test_textarea_current_match_bg_builder() {
+        let textarea = TextArea::new().current_match_bg(Color::rgb(0, 255, 255));
+        assert_eq!(textarea.current_match_bg, Some(Color::rgb(0, 255, 255)));
+    }
+
+    #[test]
+    fn test_textarea_syntax_builder() {
+        let textarea = TextArea::new().syntax(Language::Rust);
+        assert!(textarea.highlighter.is_some());
+    }
+
+    #[test]
+    fn test_textarea_syntax_with_theme_builder() {
+        let textarea = TextArea::new().syntax_with_theme(Language::Rust, SyntaxTheme::monokai());
+        assert!(textarea.highlighter.is_some());
+    }
+
+    #[test]
+    fn test_textarea_builder_chaining() {
+        let textarea = TextArea::new()
+            .content("Test content")
+            .line_numbers(true)
+            .wrap(true)
+            .read_only(false)
+            .focused(true)
+            .tab_width(4)
+            .placeholder("Placeholder")
+            .max_lines(100)
+            .fg(Color::WHITE)
+            .bg(Color::BLACK);
+
+        assert_eq!(textarea.lines[0], "Test content");
+        assert!(textarea.show_line_numbers);
+        assert!(textarea.wrap);
+        assert!(!textarea.read_only);
+        assert!(textarea.focused);
+        assert_eq!(textarea.tab_width, 4);
+        assert_eq!(textarea.placeholder, Some("Placeholder".to_string()));
+        assert_eq!(textarea.max_lines, 100);
+        assert_eq!(textarea.fg, Some(Color::WHITE));
+        assert_eq!(textarea.bg, Some(Color::BLACK));
+    }
+
+    #[test]
+    fn test_textarea_handle_key_char() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::Char('a'));
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_enter() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::Enter);
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_tab() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::Tab);
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_backspace() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::Backspace);
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_delete() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::Delete);
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_left() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::Left);
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_right() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::Right);
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_up() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::Up);
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_down() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::Down);
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_home() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::Home);
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_end() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::End);
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_page_up() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::PageUp);
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_page_down() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::PageDown);
+        assert!(handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_unknown() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::Escape);
+        assert!(!handled);
+    }
+
+    #[test]
+    fn test_textarea_handle_key_f1() {
+        let mut textarea = TextArea::new();
+        let handled = textarea.handle_key(&Key::F(1));
+        assert!(!handled);
+    }
+
+    #[test]
+    fn test_textarea_default_selection_bg() {
+        let textarea = TextArea::new();
+        assert_eq!(textarea.selection_bg, Some(Color::rgb(50, 50, 150)));
+    }
+
+    #[test]
+    fn test_textarea_empty_undo_stack() {
+        let textarea = TextArea::new();
+        assert_eq!(textarea.undo_stack.len(), 0);
+    }
+
+    #[test]
+    fn test_textarea_empty_redo_stack() {
+        let textarea = TextArea::new();
+        assert_eq!(textarea.redo_stack.len(), 0);
+    }
+
+    #[test]
+    fn test_textarea_no_find_replace_by_default() {
+        let textarea = TextArea::new();
+        assert!(textarea.find_replace.is_none());
+    }
+
+    #[test]
+    fn test_textarea_no_highlighter_by_default() {
+        let textarea = TextArea::new();
+        assert!(textarea.highlighter.is_none());
+    }
+}

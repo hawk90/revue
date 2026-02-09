@@ -271,3 +271,273 @@ impl std::fmt::Display for VisualDiff {
         write!(f, "{}", self.summary())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // VisualTestConfig tests
+    // =========================================================================
+
+    #[test]
+    fn test_visual_test_config_default() {
+        let config = VisualTestConfig::default();
+        assert_eq!(config.golden_dir, PathBuf::from("tests/golden"));
+        assert_eq!(config.color_tolerance, 0);
+        assert!(config.generate_diff);
+        assert!(!config.fail_on_missing);
+        assert!(config.include_styles);
+        assert!(config.include_colors);
+    }
+
+    #[test]
+    fn test_visual_test_config_with_dir() {
+        let config = VisualTestConfig::with_dir("custom/path");
+        assert_eq!(config.golden_dir, PathBuf::from("custom/path"));
+        // Other fields should have defaults
+        assert!(config.include_styles);
+    }
+
+    #[test]
+    fn test_visual_test_config_tolerance() {
+        let config = VisualTestConfig::default().tolerance(10);
+        assert_eq!(config.color_tolerance, 10);
+    }
+
+    #[test]
+    fn test_visual_test_config_generate_diff() {
+        let config = VisualTestConfig::default().generate_diff(false);
+        assert!(!config.generate_diff);
+    }
+
+    #[test]
+    fn test_visual_test_config_include_styles() {
+        let config = VisualTestConfig::default().include_styles(false);
+        assert!(!config.include_styles);
+    }
+
+    #[test]
+    fn test_visual_test_config_include_colors() {
+        let config = VisualTestConfig::default().include_colors(false);
+        assert!(!config.include_colors);
+    }
+
+    // =========================================================================
+    // VisualTestResult tests
+    // =========================================================================
+
+    #[test]
+    fn test_visual_test_result_variants() {
+        let _ = VisualTestResult::Passed;
+        let _ = VisualTestResult::Created;
+        let _ = VisualTestResult::Updated;
+        let _ = VisualTestResult::Failed;
+    }
+
+    #[test]
+    fn test_visual_test_result_equality() {
+        assert_eq!(VisualTestResult::Passed, VisualTestResult::Passed);
+        assert_ne!(VisualTestResult::Passed, VisualTestResult::Failed);
+    }
+
+    // =========================================================================
+    // CapturedCell tests
+    // =========================================================================
+
+    #[test]
+    fn test_captured_cell_default() {
+        let cell = CapturedCell::default();
+        assert_eq!(cell.symbol, ' ');
+        assert!(cell.fg.is_none());
+        assert!(cell.bg.is_none());
+        assert!(!cell.bold);
+        assert!(!cell.italic);
+        assert!(!cell.underline);
+        assert!(!cell.dim);
+    }
+
+    #[test]
+    fn test_captured_cell_from_char() {
+        let cell = CapturedCell::from_char('X');
+        assert_eq!(cell.symbol, 'X');
+        assert!(!cell.bold); // Should use defaults
+    }
+
+    #[test]
+    fn test_captured_cell_matches_symbol() {
+        let cell1 = CapturedCell::from_char('A');
+        let cell2 = CapturedCell::from_char('A');
+        let cell3 = CapturedCell::from_char('B');
+
+        assert!(cell1.matches(&cell2, 0, false, false));
+        assert!(!cell1.matches(&cell3, 0, false, false));
+    }
+
+    #[test]
+    fn test_captured_cell_matches_styles() {
+        let mut cell1 = CapturedCell::from_char('A');
+        cell1.bold = true;
+        let cell2 = CapturedCell::from_char('A');
+
+        assert!(cell1.matches(&cell2, 0, false, false)); // Styles not checked
+        assert!(!cell1.matches(&cell2, 0, true, false)); // Styles checked
+    }
+
+    #[test]
+    fn test_captured_cell_matches_colors() {
+        let mut cell1 = CapturedCell::from_char('A');
+        cell1.fg = Some(Color::RED);
+        let cell2 = CapturedCell::from_char('A');
+
+        assert!(cell1.matches(&cell2, 0, false, false)); // Colors not checked
+        assert!(!cell1.matches(&cell2, 0, false, true)); // Colors checked
+    }
+
+    // =========================================================================
+    // VisualDiff tests
+    // =========================================================================
+
+    #[test]
+    fn test_visual_diff_has_differences() {
+        let diff = VisualDiff {
+            size_mismatch: None,
+            differences: vec![],
+            actual_width: 80,
+            actual_height: 24,
+            expected_width: 80,
+            expected_height: 24,
+        };
+        assert!(!diff.has_differences());
+
+        let mut diff_with_cells = diff;
+        diff_with_cells.differences.push(CellDiff {
+            x: 0,
+            y: 0,
+            actual: CapturedCell::from_char('A'),
+            expected: CapturedCell::from_char('B'),
+        });
+        assert!(diff_with_cells.has_differences());
+    }
+
+    #[test]
+    fn test_visual_diff_has_differences_size_mismatch() {
+        let diff = VisualDiff {
+            size_mismatch: Some(((80, 24), (100, 50))),
+            differences: vec![],
+            actual_width: 80,
+            actual_height: 24,
+            expected_width: 100,
+            expected_height: 50,
+        };
+        assert!(diff.has_differences());
+    }
+
+    #[test]
+    fn test_visual_diff_summary_empty() {
+        let diff = VisualDiff {
+            size_mismatch: None,
+            differences: vec![],
+            actual_width: 80,
+            actual_height: 24,
+            expected_width: 80,
+            expected_height: 24,
+        };
+        let summary = diff.summary();
+        assert!(summary.contains("0 cell difference"));
+    }
+
+    #[test]
+    fn test_visual_diff_summary_with_differences() {
+        let diff = VisualDiff {
+            size_mismatch: None,
+            differences: vec![CellDiff {
+                x: 0,
+                y: 0,
+                actual: CapturedCell::from_char('A'),
+                expected: CapturedCell::from_char('B'),
+            }],
+            actual_width: 80,
+            actual_height: 24,
+            expected_width: 80,
+            expected_height: 24,
+        };
+        let summary = diff.summary();
+        assert!(summary.contains("1 cell difference"));
+        assert!(summary.contains("(0, 0)"));
+    }
+
+    #[test]
+    fn test_visual_diff_summary_size_mismatch() {
+        let diff = VisualDiff {
+            size_mismatch: Some(((80, 24), (100, 50))),
+            differences: vec![],
+            actual_width: 80,
+            actual_height: 24,
+            expected_width: 100,
+            expected_height: 50,
+        };
+        let summary = diff.summary();
+        assert!(summary.contains("Size mismatch"));
+        assert!(summary.contains("80x24"));
+        assert!(summary.contains("100x50"));
+    }
+
+    #[test]
+    fn test_visual_diff_summary_many_differences() {
+        let mut differences = vec![];
+        for i in 0..15 {
+            differences.push(CellDiff {
+                x: i,
+                y: 0,
+                actual: CapturedCell::from_char('A'),
+                expected: CapturedCell::from_char('B'),
+            });
+        }
+
+        let diff = VisualDiff {
+            size_mismatch: None,
+            differences,
+            actual_width: 80,
+            actual_height: 24,
+            expected_width: 80,
+            expected_height: 24,
+        };
+        let summary = diff.summary();
+        assert!(summary.contains("... and 5 more"));
+    }
+
+    // =========================================================================
+    // CellDiff tests
+    // =========================================================================
+
+    #[test]
+    fn test_cell_diff_fields() {
+        let diff = CellDiff {
+            x: 10,
+            y: 20,
+            actual: CapturedCell {
+                symbol: 'A',
+                fg: None,
+                bg: None,
+                bold: true,
+                italic: false,
+                underline: false,
+                dim: false,
+            },
+            expected: CapturedCell {
+                symbol: 'B',
+                fg: Some(Color::RED),
+                bg: None,
+                bold: false,
+                italic: false,
+                underline: false,
+                dim: false,
+            },
+        };
+        assert_eq!(diff.x, 10);
+        assert_eq!(diff.y, 20);
+        assert_eq!(diff.actual.symbol, 'A');
+        assert_eq!(diff.expected.symbol, 'B');
+    }
+}

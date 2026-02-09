@@ -46,3 +46,33 @@ impl DomRenderer {
         &mut self.tree
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_dom_renderer_tree() {
+        // Can't directly create DomRenderer since new_internal is pub(crate)
+        // But we can test the public API through other constructors
+        let renderer = DomRenderer::with_stylesheet(crate::style::StyleSheet::new());
+        let tree = renderer.tree();
+        assert!(tree.is_empty());
+    }
+
+    #[test]
+    fn test_dom_renderer_tree_mut() {
+        let mut renderer = DomRenderer::with_stylesheet(crate::style::StyleSheet::new());
+        let tree = renderer.tree_mut();
+        assert!(tree.is_empty());
+    }
+
+    #[test]
+    fn test_dom_renderer_tree_and_tree_mut_different() {
+        let mut renderer = DomRenderer::with_stylesheet(crate::style::StyleSheet::new());
+        let tree_ref = renderer.tree() as *const DomTree;
+        let tree_mut = renderer.tree_mut() as *const DomTree;
+        // Both should point to the same tree
+        assert_eq!(tree_ref, tree_mut);
+    }
+}

@@ -1,3 +1,4 @@
 pub mod basic;
-pub mod suggestions;
+pub mod core;
 pub mod selection;
+pub mod suggestions;

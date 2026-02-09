@@ -247,3 +247,26 @@ impl TestConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_test_config_default() {
+        let config = TestConfig::default();
+        assert_eq!(config.width, 80);
+        assert_eq!(config.height, 24);
+        assert_eq!(config.timeout_ms, 5000);
+        assert!(!config.debug);
+    }
+
+    #[test]
+    fn test_test_config_with_size() {
+        let config = TestConfig::with_size(120, 40);
+        assert_eq!(config.width, 120);
+        assert_eq!(config.height, 40);
+        assert_eq!(config.timeout_ms, 5000); // Default value
+        assert!(!config.debug);
+    }
+}

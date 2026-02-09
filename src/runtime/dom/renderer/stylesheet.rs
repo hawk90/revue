@@ -40,3 +40,67 @@ impl DomRenderer {
         self.styles.clear();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_with_stylesheet() {
+        let stylesheet = StyleSheet::new();
+        let renderer = DomRenderer::with_stylesheet(stylesheet);
+        assert!(renderer.tree().is_empty());
+        assert!(renderer.styles.is_empty());
+        assert!(renderer.cached_selectors.is_none());
+    }
+
+    #[test]
+    fn test_set_stylesheet() {
+        let mut renderer = DomRenderer::with_stylesheet(StyleSheet::new());
+        let new_stylesheet = StyleSheet::new();
+
+        renderer.set_stylesheet(new_stylesheet);
+
+        // Caches should be invalidated
+        assert!(renderer.styles.is_empty());
+        assert!(renderer.cached_selectors.is_none());
+    }
+
+    #[test]
+    fn test_stylesheet_mut() {
+        let mut renderer = DomRenderer::with_stylesheet(StyleSheet::new());
+
+        {
+            let _sheet = renderer.stylesheet_mut();
+            // Caches should be invalidated after getting mutable access
+            assert!(renderer.styles.is_empty());
+            assert!(renderer.cached_selectors.is_none());
+        }
+    }
+
+    #[test]
+    fn test_invalidate_styles() {
+        let mut renderer = DomRenderer::with_stylesheet(StyleSheet::new());
+        use crate::dom::DomId;
+        let dom_id = DomId::new(1);
+        renderer
+            .styles
+            .insert(dom_id, crate::style::Style::default());
+        renderer.cached_selectors = Some(Vec::new());
+
+        renderer.invalidate_styles();
+
+        assert!(renderer.styles.is_empty());
+        assert!(renderer.cached_selectors.is_none());
+    }
+
+    #[test]
+    fn test_stylesheet_mut_invalidates_on_access() {
+        let mut renderer = DomRenderer::with_stylesheet(StyleSheet::new());
+        renderer.cached_selectors = Some(vec![]);
+
+        // Accessing stylesheet_mut should invalidate cached selectors
+        let _sheet = renderer.stylesheet_mut();
+        assert!(renderer.cached_selectors.is_none());
+    }
+}

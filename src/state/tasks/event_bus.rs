@@ -238,4 +238,89 @@ mod tests {
         let data = event.data::<MyEvent>().unwrap();
         assert_eq!(data.value, "hello");
     }
+
+    #[test]
+    fn test_take_data() {
+        let mut bus = EventBus::new();
+        bus.emit("test", 42i32);
+
+        let mut event = bus.poll().unwrap();
+        let data = event.take_data::<i32>().unwrap();
+        assert_eq!(data, 42);
+
+        // Data should be None after taking
+        assert!(event.take_data::<i32>().is_none());
+    }
+
+    #[test]
+    fn test_clear_events() {
+        let mut bus = EventBus::new();
+        bus.emit("a", 1i32);
+        bus.emit("b", 2i32);
+
+        assert_eq!(bus.event_count(), 2);
+        bus.clear();
+        assert_eq!(bus.event_count(), 0);
+        assert!(!bus.has_events());
+    }
+
+    #[test]
+    fn test_subscribe_unsubscribe() {
+        let mut bus = EventBus::new();
+
+        assert!(!bus.is_subscribed("my_event"));
+
+        bus.subscribe("my_event");
+        assert!(bus.is_subscribed("my_event"));
+
+        bus.unsubscribe("my_event");
+        assert!(!bus.is_subscribed("my_event"));
+    }
+
+    #[test]
+    fn test_multiple_subscriptions() {
+        let mut bus = EventBus::new();
+
+        bus.subscribe("event_a");
+        bus.subscribe("event_b");
+        bus.subscribe("event_c");
+
+        assert!(bus.is_subscribed("event_a"));
+        assert!(bus.is_subscribed("event_b"));
+        assert!(bus.is_subscribed("event_c"));
+        assert!(!bus.is_subscribed("event_d"));
+    }
+
+    #[test]
+    fn test_default_event_bus() {
+        let bus = EventBus::default();
+        assert!(!bus.has_events());
+        assert_eq!(bus.event_count(), 0);
+    }
+
+    #[test]
+    fn test_poll_empty_returns_none() {
+        let mut bus = EventBus::new();
+        assert!(bus.poll().is_none());
+        assert!(bus.poll_id("test").is_none());
+    }
+
+    #[test]
+    fn test_event_data_none_for_signal() {
+        let mut bus = EventBus::new();
+        bus.emit_signal("signal");
+
+        let event = bus.poll().unwrap();
+        assert!(event.data::<i32>().is_none());
+    }
+
+    #[test]
+    fn test_wrong_type_downcast() {
+        let mut bus = EventBus::new();
+        bus.emit("test", 42i32);
+
+        let event = bus.poll().unwrap();
+        // Trying to get data as wrong type should return None
+        assert!(event.data::<String>().is_none());
+    }
 }

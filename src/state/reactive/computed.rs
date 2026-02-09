@@ -163,3 +163,201 @@ impl<T: Clone + Send + Sync + 'static> Drop for Computed<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Computed::new tests
+    #[test]
+    fn test_computed_new() {
+        let c = Computed::new(|| 42);
+        assert_eq!(c.get(), 42);
+    }
+
+    #[test]
+    fn test_computed_new_string() {
+        let c = Computed::new(|| "hello".to_string());
+        assert_eq!(c.get(), "hello");
+    }
+
+    #[test]
+    fn test_computed_new_vec() {
+        let c = Computed::new(|| vec![1, 2, 3]);
+        assert_eq!(c.get(), vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_computed_new_closure_with_captures() {
+        let x = 10;
+        let c = Computed::new(move || x * 2);
+        assert_eq!(c.get(), 20);
+    }
+
+    // Computed::get tests
+    #[test]
+    fn test_computed_get_basic() {
+        let c = Computed::new(|| 42);
+        let result = c.get();
+        assert_eq!(result, 42);
+    }
+
+    #[test]
+    fn test_computed_get_multiple_calls() {
+        let c = Computed::new(|| 42);
+        assert_eq!(c.get(), 42);
+        assert_eq!(c.get(), 42);
+        assert_eq!(c.get(), 42);
+    }
+
+    #[test]
+    fn test_computed_get_returns_cloned_value() {
+        let c = Computed::new(|| vec![1, 2, 3]);
+        let v1 = c.get();
+        let v2 = c.get();
+        // Each get should return a clone of the cached value
+        assert_eq!(v1, vec![1, 2, 3]);
+        assert_eq!(v2, vec![1, 2, 3]);
+    }
+
+    // Computed::invalidate tests
+    #[test]
+    fn test_computed_invalidate() {
+        let c = Computed::new(|| 42);
+        // First get should compute
+        assert_eq!(c.get(), 42);
+
+        // Invalidate the cache
+        c.invalidate();
+        assert!(c.is_dirty());
+
+        // Next get should recompute
+        assert_eq!(c.get(), 42);
+    }
+
+    #[test]
+    fn test_computed_invalidate_multiple() {
+        let c = Computed::new(|| 42);
+        c.invalidate();
+        c.invalidate();
+        c.invalidate();
+        assert!(c.is_dirty());
+    }
+
+    // Computed::is_dirty tests
+    #[test]
+    fn test_computed_is_dirty_initially() {
+        let c = Computed::new(|| 42);
+        assert!(c.is_dirty(), "Should be dirty initially (cache empty)");
+    }
+
+    #[test]
+    fn test_computed_is_dirty_after_get() {
+        let c = Computed::new(|| 42);
+        c.get();
+        assert!(!c.is_dirty(), "Should be clean after first get");
+    }
+
+    #[test]
+    fn test_computed_is_dirty_after_invalidate() {
+        let c = Computed::new(|| 42);
+        c.get();
+        assert!(!c.is_dirty());
+
+        c.invalidate();
+        assert!(c.is_dirty());
+    }
+
+    // Computed::clone tests
+    #[test]
+    fn test_computed_clone_shares_cache() {
+        let c1 = Computed::new(|| 42);
+        // Get from first instance
+        assert_eq!(c1.get(), 42);
+
+        // Clone should share the same cache
+        let c2 = c1.clone();
+        assert_eq!(c2.get(), 42);
+    }
+
+    #[test]
+    fn test_computed_clone_invalidate_affects_both() {
+        let c1 = Computed::new(|| 42);
+        c1.get();
+
+        let c2 = c1.clone();
+        // Invalidate c1 should affect c2 as well (same cache)
+        c1.invalidate();
+        assert!(c2.is_dirty());
+    }
+
+    // Computed with different types
+    #[test]
+    fn test_computed_with_i32() {
+        let c = Computed::new(|| 123_i32);
+        assert_eq!(c.get(), 123);
+    }
+
+    #[test]
+    fn test_computed_with_u64() {
+        let c = Computed::new(|| 999_u64);
+        assert_eq!(c.get(), 999);
+    }
+
+    #[test]
+    fn test_computed_with_f64() {
+        let c = Computed::new(|| 3.14_f64);
+        assert!((c.get() - 3.14).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_computed_with_bool() {
+        let c = Computed::new(|| true);
+        assert!(c.get());
+    }
+
+    #[test]
+    fn test_computed_with_option() {
+        let c = Computed::new(|| Some(42));
+        assert_eq!(c.get(), Some(42));
+    }
+
+    #[test]
+    fn test_computed_with_result() {
+        let c = Computed::new(|| Ok::<i32, &str>(42));
+        assert_eq!(c.get(), Ok(42));
+    }
+
+    // Computed with complex computation
+    #[test]
+    fn test_computed_with_complex_calculation() {
+        let c = Computed::new(|| {
+            let mut sum = 0;
+            for i in 1..=100 {
+                sum += i;
+            }
+            sum
+        });
+        assert_eq!(c.get(), 5050);
+    }
+
+    #[test]
+    fn test_computed_with_string_concat() {
+        let c = Computed::new(|| {
+            let mut s = String::new();
+            for i in 1..=5 {
+                s.push_str(&i.to_string());
+            }
+            s
+        });
+        assert_eq!(c.get(), "12345");
+    }
+
+    // Thread-safety tests (basic)
+    #[test]
+    fn test_computed_send_sync() {
+        // This test just verifies that Computed implements Send and Sync
+        fn is_send_sync<T: Send + Sync>() {}
+        is_send_sync::<Computed<i32>>();
+    }
+}

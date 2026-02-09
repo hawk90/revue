@@ -270,4 +270,121 @@ mod tests {
         ];
         assert_eq!(layout.len(), 3);
     }
+
+    // =========================================================================
+    // hstack! macro tests
+    // =========================================================================
+
+    #[test]
+    fn test_hstack_macro_with_gap() {
+        let stack = hstack![gap: 2;
+            Text::new("A"),
+            Text::new("B"),
+        ];
+        assert_eq!(stack.len(), 2);
+    }
+
+    // =========================================================================
+    // text! macro color variants
+    // =========================================================================
+
+    #[test]
+    fn test_text_macro_green() {
+        let t = text!("Success", green);
+        assert_eq!(t.content(), "Success");
+    }
+
+    #[test]
+    fn test_text_macro_yellow() {
+        let t = text!("Warning", yellow);
+        assert_eq!(t.content(), "Warning");
+    }
+
+    #[test]
+    fn test_text_macro_cyan() {
+        let t = text!("Info", cyan);
+        assert_eq!(t.content(), "Info");
+    }
+
+    // =========================================================================
+    // text! macro with modifiers
+    // =========================================================================
+
+    #[test]
+    fn test_text_macro_bold_modifier() {
+        let t = text!("Bold", WHITE, bold);
+        assert_eq!(t.content(), "Bold");
+    }
+
+    #[test]
+    fn test_text_macro_italic_modifier() {
+        let t = text!("Italic", CYAN, italic);
+        assert_eq!(t.content(), "Italic");
+    }
+
+    // =========================================================================
+    // bordered! macro edge cases
+    // =========================================================================
+
+    #[test]
+    fn test_bordered_macro_border_type_and_title() {
+        let b = bordered![double, "Card"; Text::new("Content")];
+        let mut buffer = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        b.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_bordered_macro_rounded() {
+        let b = bordered![rounded, "Card"; Text::new("Content")];
+        let mut buffer = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        b.render(&mut ctx);
+    }
+
+    // =========================================================================
+    // Macro edge cases
+    // =========================================================================
+
+    #[test]
+    fn test_vstack_macro_trailing_comma() {
+        let stack = vstack![Text::new("A"), Text::new("B"),];
+        assert_eq!(stack.len(), 2);
+    }
+
+    #[test]
+    fn test_hstack_macro_trailing_comma() {
+        let stack = hstack![Text::new("A"), Text::new("B"),];
+        assert_eq!(stack.len(), 2);
+    }
+
+    #[test]
+    fn test_vstack_macro_single_child() {
+        let stack = vstack![Text::new("Only")];
+        assert_eq!(stack.len(), 1);
+    }
+
+    #[test]
+    fn test_hstack_macro_single_child() {
+        let stack = hstack![Text::new("Only")];
+        assert_eq!(stack.len(), 1);
+    }
+
+    // =========================================================================
+    // vstack! macro with no children edge case
+    // =========================================================================
+
+    #[test]
+    fn test_vstack_macro_empty() {
+        let stack = vstack![];
+        assert_eq!(stack.len(), 0);
+    }
+
+    #[test]
+    fn test_hstack_macro_empty() {
+        let stack = hstack![];
+        assert_eq!(stack.len(), 0);
+    }
 }

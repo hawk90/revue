@@ -63,6 +63,7 @@ pub enum ViewMode {
 ///
 /// Combines markdown rendering with slide navigation, supporting both
 /// preview mode and presentation mode.
+#[derive(Debug, Clone)]
 pub struct MarkdownPresentation {
     /// Original markdown source
     source: String,
@@ -700,5 +701,309 @@ mod tests {
         let content2 = "## Subtitle\n\nMore content";
         let stripped2 = pres.strip_title(content2);
         assert_eq!(stripped2.trim(), "More content");
+    }
+
+    // =========================================================================
+    // ViewMode enum tests
+    // =========================================================================
+
+    #[test]
+    fn test_view_mode_default() {
+        let mode = ViewMode::default();
+        assert_eq!(mode, ViewMode::Preview);
+    }
+
+    #[test]
+    fn test_view_mode_clone() {
+        let mode = ViewMode::Slides;
+        let cloned = mode;
+        assert_eq!(mode, cloned);
+    }
+
+    #[test]
+    fn test_view_mode_copy() {
+        let mode1 = ViewMode::Slides;
+        let mode2 = mode1;
+        assert_eq!(mode1, ViewMode::Slides);
+        assert_eq!(mode2, ViewMode::Slides);
+    }
+
+    #[test]
+    fn test_view_mode_partial_eq() {
+        assert_eq!(ViewMode::Preview, ViewMode::Preview);
+        assert_ne!(ViewMode::Preview, ViewMode::Slides);
+    }
+
+    // =========================================================================
+    // MarkdownPresentation::from_slides tests
+    // =========================================================================
+
+    #[test]
+    fn test_from_slides() {
+        use crate::widget::slides::SlideContent;
+
+        let slides = vec![
+            SlideContent::new("# Slide 1"),
+            SlideContent::new("# Slide 2"),
+        ];
+
+        let pres = MarkdownPresentation::from_slides(slides);
+        assert_eq!(pres.slide_count(), 2);
+        assert_eq!(pres.source(), "# Slide 1\n---\n# Slide 2");
+    }
+
+    #[test]
+    fn test_from_slides_empty() {
+        let pres = MarkdownPresentation::from_slides(vec![]);
+        assert_eq!(pres.slide_count(), 0);
+    }
+
+    // =========================================================================
+    // MarkdownPresentation::text_sizing tests
+    // =========================================================================
+
+    #[test]
+    fn test_text_sizing() {
+        let _pres = MarkdownPresentation::new("# Test").text_sizing(true);
+        // The actual value depends on terminal support
+        // Just verify the method doesn't panic
+    }
+
+    #[test]
+    fn test_text_sizing_disabled() {
+        let pres = MarkdownPresentation::new("# Test").text_sizing(false);
+        assert!(!pres.use_text_sizing);
+    }
+
+    // =========================================================================
+    // MarkdownPresentation::figlet_font tests
+    // =========================================================================
+
+    #[test]
+    fn test_figlet_font() {
+        let pres = MarkdownPresentation::new("# Test").figlet_font(FigletFont::Small);
+        assert_eq!(pres.figlet_font, FigletFont::Small);
+    }
+
+    // =========================================================================
+    // MarkdownPresentation::link_fg tests
+    // =========================================================================
+
+    #[test]
+    fn test_link_fg() {
+        let pres = MarkdownPresentation::new("# Test").link_fg(Color::RED);
+        assert_eq!(pres.link_fg, Color::RED);
+    }
+
+    // =========================================================================
+    // MarkdownPresentation::code_fg tests
+    // =========================================================================
+
+    #[test]
+    fn test_code_fg() {
+        let pres = MarkdownPresentation::new("# Test").code_fg(Color::GREEN);
+        assert_eq!(pres.code_fg, Color::GREEN);
+    }
+
+    // =========================================================================
+    // MarkdownPresentation::current_slide tests
+    // =========================================================================
+
+    #[test]
+    fn test_current_slide() {
+        let pres = MarkdownPresentation::new("# A\n---\n# B");
+        assert!(pres.current_slide().is_some());
+        assert_eq!(pres.current_slide().unwrap().markdown(), "# A\n");
+    }
+
+    #[test]
+    fn test_current_slide_empty() {
+        let pres = MarkdownPresentation::new("");
+        assert!(pres.current_slide().is_none());
+    }
+
+    // =========================================================================
+    // MarkdownPresentation::slides tests
+    // =========================================================================
+
+    #[test]
+    fn test_slides() {
+        let pres = MarkdownPresentation::new("# A\n---\n# B\n---\n# C");
+        assert_eq!(pres.slides().len(), 3);
+    }
+
+    #[test]
+    fn test_slides_empty() {
+        let pres = MarkdownPresentation::new("");
+        assert_eq!(pres.slides().len(), 0); // No slides for empty markdown
+    }
+
+    // =========================================================================
+    // MarkdownPresentation::source tests
+    // =========================================================================
+
+    #[test]
+    fn test_source() {
+        let markdown = "# Hello\n\nWorld";
+        let pres = MarkdownPresentation::new(markdown);
+        assert_eq!(pres.source(), markdown);
+    }
+
+    // =========================================================================
+    // MarkdownPresentation::prev_slide tests
+    // =========================================================================
+
+    #[test]
+    fn test_prev_slide() {
+        let mut pres = MarkdownPresentation::new("# A\n---\n# B\n---\n# C");
+        pres.last();
+        assert_eq!(pres.current_index(), 2);
+
+        assert!(pres.prev_slide());
+        assert_eq!(pres.current_index(), 1);
+
+        assert!(pres.prev_slide());
+        assert_eq!(pres.current_index(), 0);
+
+        assert!(!pres.prev_slide()); // Can't go before first
+        assert_eq!(pres.current_index(), 0);
+    }
+
+    // =========================================================================
+    // Helper function tests
+    // =========================================================================
+
+    #[test]
+    fn test_markdown_presentation_helper() {
+        let pres = markdown_presentation("# Test");
+        assert_eq!(pres.source(), "# Test");
+    }
+
+    // =========================================================================
+    // MarkdownPresentation Default tests
+    // =========================================================================
+
+    #[test]
+    fn test_default() {
+        let pres = MarkdownPresentation::default();
+        assert_eq!(pres.source(), "");
+        assert_eq!(pres.current_mode(), ViewMode::Preview);
+    }
+
+    // =========================================================================
+    // Edge case tests
+    // =========================================================================
+
+    #[test]
+    fn test_scroll_edge_cases() {
+        let mut pres = MarkdownPresentation::new("# Test");
+
+        pres.scroll_up(10); // Should not go negative
+        assert_eq!(pres.scroll_offset, 0);
+
+        pres.scroll_down(usize::MAX); // Should saturate
+        assert!(pres.scroll_offset > 0);
+    }
+
+    #[test]
+    fn test_goto_bounds() {
+        let mut pres = MarkdownPresentation::new("# A\n---\n# B\n---\n# C");
+
+        pres.goto(10); // Out of bounds - stays at current (0)
+        assert_eq!(pres.current_index(), 0);
+
+        pres.goto(1);
+        assert_eq!(pres.current_index(), 1);
+    }
+
+    #[test]
+    fn test_mode_setter() {
+        let pres = MarkdownPresentation::new("# Test").mode(ViewMode::Slides);
+        assert_eq!(pres.current_mode(), ViewMode::Slides);
+    }
+
+    // =========================================================================
+    // ViewMode::Slides tests
+    // =========================================================================
+
+    #[test]
+    fn test_view_mode_slides_rendering() {
+        let pres = MarkdownPresentation::new("# Slide 1\n\n---\n# Slide 2").mode(ViewMode::Slides);
+        assert_eq!(pres.current_mode(), ViewMode::Slides);
+    }
+
+    // =========================================================================
+    // Clone tests
+    // =========================================================================
+
+    #[test]
+    fn test_clone() {
+        let pres1 = MarkdownPresentation::new("# Test")
+            .bg(Color::BLACK)
+            .accent(Color::RED)
+            .mode(ViewMode::Slides);
+        let pres2 = pres1.clone();
+
+        assert_eq!(pres1.source(), pres2.source());
+        assert_eq!(pres1.current_mode(), pres2.current_mode());
+    }
+
+    // =========================================================================
+    // Debug trait tests
+    // =========================================================================
+
+    #[test]
+    fn test_view_mode_debug() {
+        let mode = ViewMode::Slides;
+        let debug_str = format!("{:?}", mode);
+        assert!(debug_str.contains("Slides"));
+    }
+
+    #[test]
+    fn test_markdown_presentation_debug() {
+        let pres = MarkdownPresentation::new("# Test");
+        let debug_str = format!("{:?}", pres);
+        assert!(debug_str.contains("MarkdownPresentation"));
+    }
+
+    // =========================================================================
+    // Combined builder tests
+    // =========================================================================
+
+    #[test]
+    fn test_combined_builder() {
+        let pres = MarkdownPresentation::new("# Test")
+            .bg(Color::rgb(10, 10, 20))
+            .accent(Color::MAGENTA)
+            .heading_fg(Color::WHITE)
+            .link_fg(Color::CYAN)
+            .code_fg(Color::YELLOW)
+            .numbers(true)
+            .progress(true)
+            .mode(ViewMode::Slides);
+
+        assert_eq!(pres.current_mode(), ViewMode::Slides);
+        assert!(pres.show_numbers);
+        assert!(pres.show_progress);
+    }
+
+    // =========================================================================
+    // Strip title edge cases
+    // =========================================================================
+
+    #[test]
+    fn test_strip_title_no_heading() {
+        let pres = MarkdownPresentation::new("");
+        let content = "Just some content\n\nNo heading";
+        let stripped = pres.strip_title(content);
+        assert_eq!(stripped.trim(), "Just some content\n\nNo heading");
+    }
+
+    #[test]
+    fn test_strip_title_only_heading() {
+        let pres = MarkdownPresentation::new("");
+        let content = "# Title Only";
+        let stripped = pres.strip_title(content);
+        assert!(stripped.trim().is_empty());
     }
 }

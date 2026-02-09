@@ -143,9 +143,13 @@ impl Streamline {
 
     /// Get the color for a layer at the given index
     pub fn get_layer_color(&self, index: usize) -> Color {
-        self.layers[index]
-            .color
-            .unwrap_or_else(|| self.palette[index % self.palette.len()])
+        if index < self.layers.len() {
+            self.layers[index]
+                .color
+                .unwrap_or_else(|| self.palette[index % self.palette.len()])
+        } else {
+            self.palette[index % self.palette.len()]
+        }
     }
 
     /// Compute stack positions for all layers

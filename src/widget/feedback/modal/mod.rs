@@ -19,7 +19,7 @@ pub struct ModalButton {
 }
 
 /// Style preset for modal buttons
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum ModalButtonStyle {
     /// Default neutral button
     #[default]
@@ -53,6 +53,12 @@ impl ModalButton {
             label: label.into(),
             style: ModalButtonStyle::Danger,
         }
+    }
+
+    /// Set button style
+    pub fn style(mut self, style: ModalButtonStyle) -> Self {
+        self.style = style;
+        self
     }
 }
 
@@ -756,5 +762,277 @@ World",
         let mut m = Modal::new().title("X").width(2).height(4);
         m.show();
         m.render(&mut ctx); // Should not panic
+    }
+
+    // =========================================================================
+    // ModalButtonStyle enum tests
+    // =========================================================================
+
+    #[test]
+    fn test_modal_button_style_default() {
+        let style = ModalButtonStyle::default();
+        assert!(matches!(style, ModalButtonStyle::Default));
+    }
+
+    #[test]
+    fn test_modal_button_style_clone() {
+        let style1 = ModalButtonStyle::Primary;
+        let style2 = style1.clone();
+        assert_eq!(style1, style2);
+    }
+
+    #[test]
+    fn test_modal_button_style_copy() {
+        let style1 = ModalButtonStyle::Danger;
+        let style2 = style1;
+        assert_eq!(style2, ModalButtonStyle::Danger);
+        // style1 is still valid because of Copy
+        assert_eq!(style1, ModalButtonStyle::Danger);
+    }
+
+    #[test]
+    fn test_modal_button_style_partial_eq() {
+        assert_eq!(ModalButtonStyle::Default, ModalButtonStyle::Default);
+        assert_eq!(ModalButtonStyle::Primary, ModalButtonStyle::Primary);
+        assert_eq!(ModalButtonStyle::Danger, ModalButtonStyle::Danger);
+
+        assert_ne!(ModalButtonStyle::Default, ModalButtonStyle::Primary);
+        assert_ne!(ModalButtonStyle::Primary, ModalButtonStyle::Danger);
+        assert_ne!(ModalButtonStyle::Danger, ModalButtonStyle::Default);
+    }
+
+    #[test]
+    fn test_modal_button_style_all_variants() {
+        let styles = [
+            ModalButtonStyle::Default,
+            ModalButtonStyle::Primary,
+            ModalButtonStyle::Danger,
+        ];
+
+        for (i, style1) in styles.iter().enumerate() {
+            for (j, style2) in styles.iter().enumerate() {
+                if i == j {
+                    assert_eq!(style1, style2);
+                } else {
+                    assert_ne!(style1, style2);
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // ModalButton Clone trait tests
+    // =========================================================================
+
+    #[test]
+    fn test_modal_button_clone() {
+        let btn1 = ModalButton::new("Test").style(ModalButtonStyle::Primary);
+        let btn2 = btn1.clone();
+
+        assert_eq!(btn1.label, btn2.label);
+        assert_eq!(btn1.style, btn2.style);
+    }
+
+    // =========================================================================
+    // ModalButton builder method tests
+    // =========================================================================
+
+    #[test]
+    fn test_modal_button_new_with_string() {
+        let label = String::from("Owned Label");
+        let btn = ModalButton::new(label);
+        assert_eq!(btn.label, "Owned Label");
+        assert!(matches!(btn.style, ModalButtonStyle::Default));
+    }
+
+    #[test]
+    fn test_modal_button_new_with_str() {
+        let btn = ModalButton::new("Test Label");
+        assert_eq!(btn.label, "Test Label");
+        assert!(matches!(btn.style, ModalButtonStyle::Default));
+    }
+
+    #[test]
+    fn test_modal_button_empty_label() {
+        let btn = ModalButton::new("");
+        assert_eq!(btn.label, "");
+    }
+
+    #[test]
+    fn test_modal_button_primary_with_string() {
+        let label = String::from("Submit");
+        let btn = ModalButton::primary(label);
+        assert_eq!(btn.label, "Submit");
+        assert!(matches!(btn.style, ModalButtonStyle::Primary));
+    }
+
+    #[test]
+    fn test_modal_button_primary_with_str() {
+        let btn = ModalButton::primary("OK");
+        assert_eq!(btn.label, "OK");
+        assert!(matches!(btn.style, ModalButtonStyle::Primary));
+    }
+
+    #[test]
+    fn test_modal_button_danger_with_string() {
+        let label = String::from("Delete");
+        let btn = ModalButton::danger(label);
+        assert_eq!(btn.label, "Delete");
+        assert!(matches!(btn.style, ModalButtonStyle::Danger));
+    }
+
+    #[test]
+    fn test_modal_button_danger_with_str() {
+        let btn = ModalButton::danger("Cancel");
+        assert_eq!(btn.label, "Cancel");
+        assert!(matches!(btn.style, ModalButtonStyle::Danger));
+    }
+
+    #[test]
+    fn test_modal_button_all_distinct() {
+        let default_btn = ModalButton::new("Default");
+        let primary_btn = ModalButton::primary("Primary");
+        let danger_btn = ModalButton::danger("Danger");
+
+        assert!(matches!(default_btn.style, ModalButtonStyle::Default));
+        assert!(matches!(primary_btn.style, ModalButtonStyle::Primary));
+        assert!(matches!(danger_btn.style, ModalButtonStyle::Danger));
+    }
+
+    // =========================================================================
+    // Modal builder method tests for edge cases
+    // =========================================================================
+
+    #[test]
+    fn test_modal_empty_title() {
+        let m = Modal::new().title("");
+        assert_eq!(m.title, "");
+    }
+
+    #[test]
+    fn test_modal_empty_content() {
+        let m = Modal::new().content("");
+        assert!(m.content.is_empty());
+    }
+
+    #[test]
+    fn test_modal_content_with_multiline() {
+        let m = Modal::new().content("Line 1\nLine 2\nLine 3");
+        assert_eq!(m.content.len(), 3);
+        assert_eq!(m.content[0], "Line 1");
+        assert_eq!(m.content[1], "Line 2");
+        assert_eq!(m.content[2], "Line 3");
+    }
+
+    #[test]
+    fn test_modal_line_multiple() {
+        let m = Modal::new().line("Line 1").line("Line 2").line("Line 3");
+        assert_eq!(m.content.len(), 3);
+    }
+
+    #[test]
+    fn test_modal_buttons_empty() {
+        let m = Modal::new().buttons(vec![]);
+        assert!(m.buttons.is_empty());
+    }
+
+    #[test]
+    fn test_modal_width_zero() {
+        let m = Modal::new().width(0);
+        assert_eq!(m.width, 0);
+    }
+
+    #[test]
+    fn test_modal_height_zero() {
+        let m = Modal::new().height(0);
+        assert_eq!(m.height, Some(0));
+    }
+
+    #[test]
+    fn test_modal_title_colors() {
+        let m = Modal::new().title_fg(Color::CYAN);
+        assert_eq!(m.title_fg, Some(Color::CYAN));
+    }
+
+    #[test]
+    fn test_modal_border_colors() {
+        let m = Modal::new().border_fg(Color::MAGENTA);
+        assert_eq!(m.border_fg, Some(Color::MAGENTA));
+    }
+
+    #[test]
+    fn test_modal_selected_button_initial() {
+        let m = Modal::new();
+        assert_eq!(m.selected_button(), 0);
+    }
+
+    #[test]
+    fn test_modal_next_button_empty() {
+        let mut m = Modal::new();
+        m.next_button(); // Should not panic
+        assert_eq!(m.selected_button(), 0);
+    }
+
+    #[test]
+    fn test_modal_prev_button_empty() {
+        let mut m = Modal::new();
+        m.prev_button(); // Should not panic
+        assert_eq!(m.selected_button(), 0);
+    }
+
+    #[test]
+    fn test_modal_handle_key_no_buttons() {
+        use crate::event::Key;
+
+        let mut m = Modal::new();
+        let result = m.handle_key(&Key::Enter);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_modal_handle_key_unknown() {
+        use crate::event::Key;
+
+        let mut m = Modal::new().ok();
+        let result = m.handle_key(&Key::Char('x'));
+        assert_eq!(result, None);
+    }
+
+    // =========================================================================
+    // Modal builder chain tests
+    // =========================================================================
+
+    #[test]
+    fn test_modal_builder_chain_full() {
+        let m = Modal::new()
+            .title("Chain Title")
+            .content("Chain content")
+            .width(60)
+            .height(10)
+            .title_fg(Color::YELLOW)
+            .border_fg(Color::GREEN);
+
+        assert_eq!(m.title, "Chain Title");
+        assert_eq!(m.content.len(), 1);
+        assert_eq!(m.content[0], "Chain content");
+        assert_eq!(m.width, 60);
+        assert_eq!(m.height, Some(10));
+        assert_eq!(m.title_fg, Some(Color::YELLOW));
+        assert_eq!(m.border_fg, Some(Color::GREEN));
+    }
+
+    #[test]
+    fn test_modal_buttons_builder_chain() {
+        let buttons = vec![
+            ModalButton::new("One"),
+            ModalButton::primary("Two"),
+            ModalButton::danger("Three"),
+        ];
+        let m = Modal::new().buttons(buttons.clone());
+
+        assert_eq!(m.buttons.len(), 3);
+        assert_eq!(m.buttons[0].label, "One");
+        assert_eq!(m.buttons[1].label, "Two");
+        assert_eq!(m.buttons[2].label, "Three");
     }
 }

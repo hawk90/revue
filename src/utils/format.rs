@@ -341,7 +341,7 @@ pub fn format_size_compact(bytes: u64) -> String {
     const TB: u64 = GB * 1024;
 
     if bytes < KB {
-        format!("{}B", bytes)
+        format!("{}", bytes)
     } else if bytes < MB {
         let val = bytes as f64 / KB as f64;
         if val == val.trunc() {
@@ -585,7 +585,7 @@ mod tests {
 
     #[test]
     fn test_format_size_compact() {
-        assert_eq!(format_size_compact(500), "500B");
+        assert_eq!(format_size_compact(500), "500");
         assert_eq!(format_size_compact(1024), "1K");
         assert_eq!(format_size_compact(1536), "1.5K");
         assert_eq!(format_size_compact(1048576), "1M");

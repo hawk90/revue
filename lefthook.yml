@@ -55,7 +55,7 @@ pre-push:
           # Run all tests if any src/ file changed
           if echo "$CHANGED" | grep -q "^src/"; then
             echo "Running all tests (src/ changed)..."
-            cargo test --all-features
+            cargo test --all-features || exit 1
           else
             # Run tests for specific test files that changed
             TEST_TARGETS=()
@@ -67,13 +67,13 @@ pre-push:
               elif echo "$file" | grep -q "^tests/[^/]+/"; then
                 # Test directories - run all tests
                 echo "Test directory changed, running all tests..."
-                cargo test --all-features
+                cargo test --all-features || exit 1
                 exit 0
               fi
             done
             if [ ${#TEST_TARGETS[@]} -gt 0 ]; then
               echo "Running test targets: ${TEST_TARGETS[*]}"
-              cargo test "${TEST_TARGETS[@]}" --all-features
+              cargo test "${TEST_TARGETS[@]}" --all-features || exit 1
             fi
           fi
         else

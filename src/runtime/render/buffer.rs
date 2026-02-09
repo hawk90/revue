@@ -506,3 +506,242 @@ impl Buffer {
 }
 
 // Tests moved to tests/render_tests.rs
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_buffer_new() {
+        let buffer = Buffer::new(80, 24);
+        assert_eq!(buffer.width(), 80);
+        assert_eq!(buffer.height(), 24);
+        assert_eq!(buffer.cells().len(), 80 * 24);
+    }
+
+    #[test]
+    fn test_buffer_width_height() {
+        let buffer = Buffer::new(100, 50);
+        assert_eq!(buffer.width(), 100);
+        assert_eq!(buffer.height(), 50);
+    }
+
+    #[test]
+    fn test_buffer_get() {
+        let buffer = Buffer::new(80, 24);
+        let cell = buffer.get(0, 0);
+        assert!(cell.is_some());
+        assert_eq!(cell.unwrap().symbol, ' ');
+
+        let out_of_bounds = buffer.get(999, 999);
+        assert!(out_of_bounds.is_none());
+    }
+
+    #[test]
+    fn test_buffer_get_mut() {
+        let mut buffer = Buffer::new(80, 24);
+        if let Some(cell) = buffer.get_mut(10, 10) {
+            cell.symbol = 'X';
+        }
+        assert_eq!(buffer.get(10, 10).unwrap().symbol, 'X');
+    }
+
+    #[test]
+    fn test_buffer_set() {
+        let mut buffer = Buffer::new(80, 24);
+        let cell = Cell::new('A');
+        buffer.set(5, 5, cell);
+        assert_eq!(buffer.get(5, 5).unwrap().symbol, 'A');
+    }
+
+    #[test]
+    fn test_buffer_put_str() {
+        let mut buffer = Buffer::new(80, 24);
+        let written = buffer.put_str(0, 0, "Hello");
+        assert_eq!(written, 5); // 5 characters
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'H');
+        assert_eq!(buffer.get(1, 0).unwrap().symbol, 'e');
+    }
+
+    #[test]
+    fn test_buffer_put_str_styled() {
+        let mut buffer = Buffer::new(80, 24);
+        buffer.put_str_styled(0, 0, "Test", Some(Color::RED), Some(Color::BLUE));
+        let cell = buffer.get(0, 0).unwrap();
+        assert_eq!(cell.symbol, 'T');
+        assert_eq!(cell.fg, Some(Color::RED));
+        assert_eq!(cell.bg, Some(Color::BLUE));
+    }
+
+    #[test]
+    fn test_buffer_fill_char() {
+        let mut buffer = Buffer::new(80, 24);
+        buffer.fill_char(0, 0, 10, 5, 'X');
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'X');
+        assert_eq!(buffer.get(9, 4).unwrap().symbol, 'X');
+        assert_eq!(buffer.get(10, 0).unwrap().symbol, ' ');
+    }
+
+    #[test]
+    fn test_buffer_clear() {
+        let mut buffer = Buffer::new(80, 24);
+        buffer.set(5, 5, Cell::new('A'));
+        buffer.clear();
+        assert_eq!(buffer.get(5, 5).unwrap().symbol, ' ');
+    }
+
+    #[test]
+    fn test_buffer_resize() {
+        let mut buffer = Buffer::new(80, 24);
+        buffer.set(10, 10, Cell::new('X'));
+        buffer.resize(100, 50);
+        assert_eq!(buffer.width(), 100);
+        assert_eq!(buffer.height(), 50);
+        // Content should be preserved where possible
+        assert_eq!(buffer.get(10, 10).unwrap().symbol, 'X');
+    }
+
+    #[test]
+    fn test_buffer_iter_cells() {
+        let buffer = Buffer::new(3, 2);
+        let cells: Vec<_> = buffer.iter_cells().take(4).collect();
+        assert_eq!(cells.len(), 4);
+        assert_eq!(cells[0].0, 0); // x
+        assert_eq!(cells[0].1, 0); // y
+    }
+
+    #[test]
+    fn test_buffer_register_hyperlink() {
+        let mut buffer = Buffer::new(80, 24);
+        let id1 = buffer.register_hyperlink("https://example.com");
+        let id2 = buffer.register_hyperlink("https://example.com"); // Same URL, same ID
+        assert_eq!(id1, id2);
+        assert_eq!(buffer.get_hyperlink(id1), Some("https://example.com"));
+    }
+
+    #[test]
+    fn test_buffer_hyperlinks() {
+        let mut buffer = Buffer::new(80, 24);
+        buffer.register_hyperlink("https://example.com");
+        buffer.register_hyperlink("https://test.com");
+        assert_eq!(buffer.hyperlinks().len(), 2);
+    }
+
+    #[test]
+    fn test_buffer_clear_hyperlinks() {
+        let mut buffer = Buffer::new(80, 24);
+        buffer.register_hyperlink("https://example.com");
+        buffer.clear_hyperlinks();
+        assert_eq!(buffer.hyperlinks().len(), 0);
+    }
+
+    #[test]
+    fn test_buffer_register_sequence() {
+        let mut buffer = Buffer::new(80, 24);
+        let id = buffer.register_sequence("\x1b]66;1\x07");
+        assert_eq!(id, 0);
+        assert_eq!(buffer.get_sequence(id), Some("\x1b]66;1\x07"));
+    }
+
+    #[test]
+    fn test_buffer_sequences() {
+        let mut buffer = Buffer::new(80, 24);
+        buffer.register_sequence("seq1");
+        buffer.register_sequence("seq2");
+        assert_eq!(buffer.sequences().len(), 2);
+    }
+
+    #[test]
+    fn test_buffer_clear_sequences() {
+        let mut buffer = Buffer::new(80, 24);
+        buffer.register_sequence("seq1");
+        buffer.clear_sequences();
+        assert_eq!(buffer.sequences().len(), 0);
+    }
+
+    #[test]
+    fn test_buffer_try_new_valid() {
+        let buffer = Buffer::try_new(80, 24).unwrap();
+        assert_eq!(buffer.width(), 80);
+        assert_eq!(buffer.height(), 24);
+    }
+
+    #[test]
+    fn test_buffer_try_new_invalid_width() {
+        let result = Buffer::try_new(MAX_BUFFER_DIMENSION + 1, 24);
+        assert!(result.is_err());
+        match result {
+            Err(BufferError::InvalidWidth { width, .. }) => {
+                assert_eq!(width, MAX_BUFFER_DIMENSION + 1);
+            }
+            _ => panic!("Expected InvalidWidth error"),
+        }
+    }
+
+    #[test]
+    fn test_buffer_try_new_invalid_height() {
+        let result = Buffer::try_new(80, MAX_BUFFER_DIMENSION + 1);
+        assert!(result.is_err());
+        match result {
+            Err(BufferError::InvalidHeight { height, .. }) => {
+                assert_eq!(height, MAX_BUFFER_DIMENSION + 1);
+            }
+            _ => panic!("Expected InvalidHeight error"),
+        }
+    }
+
+    #[test]
+    fn test_buffer_try_new_invalid_size() {
+        let result = Buffer::try_new(10000, 10000); // Would be 100M cells
+        assert!(result.is_err());
+        match result {
+            Err(BufferError::InvalidSize { .. }) => {}
+            _ => panic!("Expected InvalidSize error"),
+        }
+    }
+
+    #[test]
+    fn test_buffer_error_display() {
+        let err = BufferError::InvalidWidth {
+            width: 20000,
+            max: MAX_BUFFER_DIMENSION,
+        };
+        let msg = format!("{}", err);
+        assert!(msg.contains("20000"));
+        assert!(msg.contains("exceeds"));
+    }
+
+    #[test]
+    fn test_buffer_get_row() {
+        let buffer = Buffer::new(5, 3);
+        let row = buffer.get_row(0);
+        assert!(row.is_some());
+        assert_eq!(row.unwrap().len(), 5);
+
+        let out_of_bounds = buffer.get_row(999);
+        assert!(out_of_bounds.is_none());
+    }
+
+    #[test]
+    fn test_buffer_put_hyperlink() {
+        let mut buffer = Buffer::new(80, 24);
+        let written = buffer.put_hyperlink(0, 0, "Click me", "https://example.com", None, None);
+        assert!(written > 0);
+        assert_eq!(buffer.get(0, 0).unwrap().hyperlink_id, Some(0));
+    }
+
+    #[test]
+    fn test_buffer_put_sequence() {
+        let mut buffer = Buffer::new(80, 24);
+        buffer.put_sequence(0, 0, "\x1b]66;1\x07", 5, 1);
+        let cell = buffer.get(0, 0).unwrap();
+        assert!(cell.sequence_id.is_some());
+    }
+
+    #[test]
+    fn test_buffer_cells_accessor() {
+        let buffer = Buffer::new(10, 5);
+        let cells = buffer.cells();
+        assert_eq!(cells.len(), 50);
+    }
+}

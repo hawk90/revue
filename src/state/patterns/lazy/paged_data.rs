@@ -156,3 +156,119 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_paged() -> PagedData<usize, impl Fn(usize, usize) -> Vec<usize>> {
+        PagedData::new(100, 10, |page, size| {
+            (page * size..(page + 1) * size).collect()
+        })
+    }
+
+    #[test]
+    fn test_paged_data_new() {
+        let paged = create_test_paged();
+        assert_eq!(paged.total(), 100);
+        assert_eq!(paged.page_size(), 10);
+        assert_eq!(paged.page_count(), 10);
+    }
+
+    #[test]
+    fn test_paged_data_total() {
+        let paged: PagedData<i32, _> = PagedData::new(50, 10, |_, _| vec![]);
+        assert_eq!(paged.total(), 50);
+    }
+
+    #[test]
+    fn test_paged_data_page_size() {
+        let paged: PagedData<i32, _> = PagedData::new(100, 25, |_, _| vec![]);
+        assert_eq!(paged.page_size(), 25);
+    }
+
+    #[test]
+    fn test_paged_data_page_count() {
+        let paged: PagedData<i32, _> = PagedData::new(100, 10, |_, _| vec![]);
+        assert_eq!(paged.page_count(), 10);
+
+        let paged2: PagedData<i32, _> = PagedData::new(95, 10, |_, _| vec![]);
+        assert_eq!(paged2.page_count(), 10); // div_ceil
+    }
+
+    #[test]
+    fn test_paged_data_is_page_loaded() {
+        let paged = create_test_paged();
+        assert!(!paged.is_page_loaded(0));
+        paged.get(0);
+        assert!(paged.is_page_loaded(0));
+    }
+
+    #[test]
+    fn test_paged_data_get() {
+        let paged = create_test_paged();
+        let item = paged.get(5);
+        assert!(item.is_some());
+        assert_eq!(*item.unwrap(), 5);
+    }
+
+    #[test]
+    fn test_paged_data_get_out_of_bounds() {
+        let paged = create_test_paged();
+        let item = paged.get(100);
+        assert!(item.is_none());
+    }
+
+    #[test]
+    fn test_paged_data_get_range() {
+        let paged = create_test_paged();
+        let range = paged.get_range(5, 10);
+        assert_eq!(range.len(), 5);
+        // First item should be 5
+        assert_eq!(*range[0], 5);
+        // Last item should be 9
+        assert_eq!(*range[4], 9);
+    }
+
+    #[test]
+    fn test_paged_data_prefetch() {
+        let paged = create_test_paged();
+        paged.prefetch(0, 25);
+        // Should load pages 0, 1, 2
+        assert!(paged.is_page_loaded(0));
+        assert!(paged.is_page_loaded(1));
+        assert!(paged.is_page_loaded(2));
+    }
+
+    #[test]
+    fn test_paged_data_invalidate_page() {
+        let paged = create_test_paged();
+        paged.get(0);
+        assert!(paged.is_page_loaded(0));
+        paged.invalidate_page(0);
+        assert!(!paged.is_page_loaded(0));
+    }
+
+    #[test]
+    fn test_paged_data_invalidate_all() {
+        let paged = create_test_paged();
+        paged.prefetch(0, 50);
+        assert!(paged.is_page_loaded(0));
+        assert!(paged.is_page_loaded(1));
+        paged.invalidate_all();
+        assert!(!paged.is_page_loaded(0));
+        assert!(!paged.is_page_loaded(1));
+    }
+
+    #[test]
+    fn test_paged_data_with_strings() {
+        let paged = PagedData::new(20, 5, |page, size| {
+            (0..size)
+                .map(|i| format!("item_{}", page * size + i))
+                .collect()
+        });
+        let item = paged.get(7);
+        assert!(item.is_some());
+        assert_eq!(*item.unwrap(), "item_7");
+    }
+}

@@ -755,3 +755,994 @@ pub fn line_chart(data: &[f64]) -> Chart {
 pub fn scatter_plot(data: &[(f64, f64)]) -> Chart {
     Chart::new().series(Series::new("Data").data(data.to_vec()).scatter())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+    use crate::style::Color;
+    use crate::widget::data::chart::chart_common::Marker;
+    use crate::widget::data::chart::types::{ChartType, LineStyle};
+    use crate::widget::View;
+
+    // =========================================================================
+    // Chart::new tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_new() {
+        let chart = Chart::new();
+        assert!(chart.title.is_none());
+        assert!(chart.series.is_empty());
+        assert_eq!(chart.legend, LegendPosition::TopRight);
+        assert!(chart.bg_color.is_none());
+        assert!(chart.border_color.is_none());
+        assert!(!chart.braille_mode);
+    }
+
+    // =========================================================================
+    // Chart::title tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_title() {
+        let chart = Chart::new().title("My Chart");
+        assert_eq!(chart.title, Some("My Chart".to_string()));
+    }
+
+    #[test]
+    fn test_chart_title_from_string() {
+        let chart = Chart::new().title(String::from("Owned String"));
+        assert_eq!(chart.title, Some("Owned String".to_string()));
+    }
+
+    #[test]
+    fn test_chart_title_from_str() {
+        let chart = Chart::new().title("Str Title");
+        assert_eq!(chart.title, Some("Str Title".to_string()));
+    }
+
+    // =========================================================================
+    // Chart::series tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_series() {
+        let series = Series::new("Test").data(vec![(1.0, 2.0), (3.0, 4.0)]);
+        let chart = Chart::new().series(series.clone());
+        assert_eq!(chart.series.len(), 1);
+        assert_eq!(chart.series[0].name, "Test");
+    }
+
+    #[test]
+    fn test_chart_series_multiple() {
+        let chart = Chart::new()
+            .series(Series::new("A").data(vec![(1.0, 2.0)]))
+            .series(Series::new("B").data(vec![(3.0, 4.0)]));
+        assert_eq!(chart.series.len(), 2);
+    }
+
+    #[test]
+    fn test_chart_series_vec() {
+        let series = vec![
+            Series::new("A").data(vec![(1.0, 2.0)]),
+            Series::new("B").data(vec![(3.0, 4.0)]),
+        ];
+        let chart = Chart::new().series_vec(series);
+        assert_eq!(chart.series.len(), 2);
+    }
+
+    #[test]
+    fn test_chart_series_vec_empty() {
+        let series: Vec<Series> = vec![];
+        let chart = Chart::new().series_vec(series);
+        assert_eq!(chart.series.len(), 0);
+    }
+
+    // =========================================================================
+    // Chart::x_axis / y_axis tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_x_axis() {
+        let axis = Axis::new().title("X Axis");
+        let chart = Chart::new().x_axis(axis.clone());
+        assert_eq!(chart.x_axis.title, Some("X Axis".to_string()));
+    }
+
+    #[test]
+    fn test_chart_y_axis() {
+        let axis = Axis::new().title("Y Axis");
+        let chart = Chart::new().y_axis(axis.clone());
+        assert_eq!(chart.y_axis.title, Some("Y Axis".to_string()));
+    }
+
+    #[test]
+    fn test_chart_both_axes() {
+        let chart = Chart::new()
+            .x_axis(Axis::new().title("X"))
+            .y_axis(Axis::new().title("Y"));
+        assert_eq!(chart.x_axis.title, Some("X".to_string()));
+        assert_eq!(chart.y_axis.title, Some("Y".to_string()));
+    }
+
+    // =========================================================================
+    // Chart::legend tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_legend() {
+        let chart = Chart::new().legend(LegendPosition::BottomLeft);
+        assert_eq!(chart.legend, LegendPosition::BottomLeft);
+    }
+
+    #[test]
+    fn test_chart_legend_top_right() {
+        let chart = Chart::new().legend(LegendPosition::TopRight);
+        assert_eq!(chart.legend, LegendPosition::TopRight);
+    }
+
+    #[test]
+    fn test_chart_no_legend() {
+        let chart = Chart::new().no_legend();
+        assert_eq!(chart.legend, LegendPosition::None);
+    }
+
+    #[test]
+    fn test_chart_legend_all_positions() {
+        let positions = vec![
+            LegendPosition::TopLeft,
+            LegendPosition::TopCenter,
+            LegendPosition::TopRight,
+            LegendPosition::BottomLeft,
+            LegendPosition::BottomCenter,
+            LegendPosition::BottomRight,
+            LegendPosition::Left,
+            LegendPosition::Right,
+            LegendPosition::None,
+        ];
+
+        for pos in positions {
+            let chart = Chart::new().legend(pos);
+            assert_eq!(chart.legend, pos);
+        }
+    }
+
+    // =========================================================================
+    // Chart::bg tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_bg() {
+        let chart = Chart::new().bg(Color::BLUE);
+        assert_eq!(chart.bg_color, Some(Color::BLUE));
+    }
+
+    #[test]
+    fn test_chart_bg_multiple() {
+        let chart = Chart::new().bg(Color::RED).bg(Color::GREEN);
+        assert_eq!(chart.bg_color, Some(Color::GREEN));
+    }
+
+    // =========================================================================
+    // Chart::border tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_border() {
+        let chart = Chart::new().border(Color::WHITE);
+        assert_eq!(chart.border_color, Some(Color::WHITE));
+    }
+
+    #[test]
+    fn test_chart_border_multiple() {
+        let chart = Chart::new().border(Color::YELLOW).border(Color::CYAN);
+        assert_eq!(chart.border_color, Some(Color::CYAN));
+    }
+
+    // =========================================================================
+    // Chart::braille tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_braille() {
+        let chart = Chart::new().braille();
+        assert!(chart.braille_mode);
+    }
+
+    #[test]
+    fn test_chart_braille_default_false() {
+        let chart = Chart::new();
+        assert!(!chart.braille_mode);
+    }
+
+    // =========================================================================
+    // Chart::compute_bounds tests
+    // =========================================================================
+
+    #[test]
+    fn test_compute_bounds_empty() {
+        let chart = Chart::new();
+        let (x_min, x_max, y_min, y_max) = chart.compute_bounds();
+        // Default bounds with Y padding applied
+        assert_eq!(x_min, 0.0);
+        assert_eq!(x_max, 1.0);
+        // Y gets 5% padding: 0 - (1-0)*0.05 = -0.05
+        assert!((y_min + 0.05).abs() < 0.001);
+        assert!((y_max - 1.05).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_bounds_single_point() {
+        let chart = Chart::new().series(Series::new("Test").data(vec![(5.0, 10.0)]));
+        let (x_min, x_max, y_min, y_max) = chart.compute_bounds();
+        // EPSILON padding adds +/- 0.5 for zero range, then Y padding applied
+        assert_eq!(x_min, 4.5);
+        assert_eq!(x_max, 5.5);
+        // Y: (10.0 - 0.5) = 9.5, then padding: 9.5 - (1.0 * 0.05) = 9.45
+        assert!((y_min - 9.45).abs() < 0.01);
+        assert!((y_max - 10.55).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_compute_bounds_multiple_points() {
+        let chart =
+            Chart::new().series(Series::new("Test").data(vec![(1.0, 2.0), (3.0, 4.0), (5.0, 6.0)]));
+        let (x_min, x_max, y_min, y_max) = chart.compute_bounds();
+        // X has no padding
+        assert_eq!(x_min, 1.0);
+        assert_eq!(x_max, 5.0);
+        // Y gets 5% padding: 2 - (6-2)*0.05 = 1.8, 6 + (6-2)*0.05 = 6.2
+        assert!((y_min - 1.8).abs() < 0.01);
+        assert!((y_max - 6.2).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_compute_bounds_with_nan() {
+        let chart = Chart::new().series(Series::new("Test").data(vec![
+            (1.0, 2.0),
+            (f64::NAN, 4.0),
+            (5.0, 6.0),
+        ]));
+        let (x_min, x_max, _y_min, _y_max) = chart.compute_bounds();
+        // NaN values should be filtered out
+        assert_eq!(x_min, 1.0);
+        assert_eq!(x_max, 5.0);
+    }
+
+    #[test]
+    fn test_compute_bounds_with_infinity() {
+        let chart = Chart::new().series(Series::new("Test").data(vec![
+            (1.0, 2.0),
+            (f64::INFINITY, 4.0),
+            (5.0, 6.0),
+        ]));
+        let (x_min, x_max, _y_min, _y_max) = chart.compute_bounds();
+        // Infinite values should be filtered out
+        assert_eq!(x_min, 1.0);
+        assert_eq!(x_max, 5.0);
+    }
+
+    #[test]
+    fn test_compute_bounds_negative_values() {
+        let chart = Chart::new().series(Series::new("Test").data(vec![(-5.0, -10.0), (5.0, 10.0)]));
+        let (x_min, x_max, y_min, y_max) = chart.compute_bounds();
+        // X has no padding
+        assert_eq!(x_min, -5.0);
+        assert_eq!(x_max, 5.0);
+        // Y gets 5% padding: -10 - (20)*0.05 = -11, 10 + (20)*0.05 = 11
+        assert!((y_min - (-11.0)).abs() < 0.1);
+        assert!((y_max - 11.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_compute_bounds_axis_override() {
+        let chart = Chart::new()
+            .series(Series::new("Test").data(vec![(1.0, 2.0), (3.0, 4.0)]))
+            .x_axis(Axis::new().min(0.0).max(10.0))
+            .y_axis(Axis::new().min(-5.0).max(15.0));
+
+        let (x_min, x_max, y_min, y_max) = chart.compute_bounds();
+        assert_eq!(x_min, 0.0);
+        assert_eq!(x_max, 10.0);
+        assert_eq!(y_min, -5.0);
+        assert_eq!(y_max, 15.0);
+    }
+
+    #[test]
+    fn test_compute_bounds_same_values_adds_padding() {
+        let chart = Chart::new().series(Series::new("Test").data(vec![(5.0, 5.0)]));
+        let (x_min, x_max, _y_min, _y_max) = chart.compute_bounds();
+        // Should add epsilon padding for zero range
+        assert!(x_min < 5.0);
+        assert!(x_max > 5.0);
+    }
+
+    #[test]
+    fn test_compute_bounds_auto_padding() {
+        let chart = Chart::new().series(Series::new("Test").data(vec![(0.0, 0.0), (100.0, 100.0)]));
+        let (x_min, x_max, y_min, y_max) = chart.compute_bounds();
+        // Only Y axis gets 5% padding, not X
+        assert_eq!(x_min, 0.0);
+        assert_eq!(x_max, 100.0);
+        // Y: 0 - 100*0.05 = -5, 100 + 100*0.05 = 105
+        assert!((y_min - (-5.0)).abs() < 0.1);
+        assert!((y_max - 105.0).abs() < 0.1);
+    }
+
+    // =========================================================================
+    // Chart::format_label tests
+    // =========================================================================
+
+    #[test]
+    fn test_format_label_auto_integer() {
+        let chart = Chart::new();
+        let result = chart.format_label(5.0, &AxisFormat::Auto);
+        assert_eq!(result, "5");
+    }
+
+    #[test]
+    fn test_format_label_auto_decimal() {
+        let chart = Chart::new();
+        let result = chart.format_label(5.67, &AxisFormat::Auto);
+        assert_eq!(result, "5.67");
+    }
+
+    #[test]
+    fn test_format_label_auto_scientific_small() {
+        let chart = Chart::new();
+        let result = chart.format_label(0.001, &AxisFormat::Auto);
+        assert!(result.contains("e"));
+    }
+
+    #[test]
+    fn test_format_label_auto_scientific_large() {
+        let chart = Chart::new();
+        let result = chart.format_label(10000.0, &AxisFormat::Auto);
+        assert!(result.contains("e"));
+    }
+
+    #[test]
+    fn test_format_label_integer() {
+        let chart = Chart::new();
+        // 5.67 rounds to 6 with standard rounding
+        let result = chart.format_label(5.67, &AxisFormat::Integer);
+        assert_eq!(result, "6");
+    }
+
+    #[test]
+    fn test_format_label_fixed() {
+        let chart = Chart::new();
+        let result = chart.format_label(5.6789, &AxisFormat::Fixed(3));
+        assert_eq!(result, "5.679");
+    }
+
+    #[test]
+    fn test_format_label_percent() {
+        let chart = Chart::new();
+        let result = chart.format_label(0.5, &AxisFormat::Percent);
+        assert_eq!(result, "50%");
+    }
+
+    #[test]
+    fn test_format_label_custom() {
+        let chart = Chart::new();
+        let result = chart.format_label(42.0, &AxisFormat::Custom("Value: {}".to_string()));
+        assert_eq!(result, "Value: 42");
+    }
+
+    // =========================================================================
+    // Chart::map_point tests
+    // =========================================================================
+
+    #[test]
+    fn test_map_point_min_bounds() {
+        let chart = Chart::new();
+        let bounds = (0.0, 10.0, 0.0, 10.0);
+        let chart_area = (10, 10, 20, 20);
+
+        let (x, y) = chart.map_point(0.0, 0.0, bounds, chart_area);
+        assert_eq!(x, 10);
+        assert_eq!(y, 29); // Inverted y
+    }
+
+    #[test]
+    fn test_map_point_max_bounds() {
+        let chart = Chart::new();
+        let bounds = (0.0, 10.0, 0.0, 10.0);
+        let chart_area = (10, 10, 20, 20);
+
+        let (x, y) = chart.map_point(10.0, 10.0, bounds, chart_area);
+        assert_eq!(x, 29);
+        assert_eq!(y, 10);
+    }
+
+    #[test]
+    fn test_map_point_center() {
+        let chart = Chart::new();
+        let bounds = (0.0, 10.0, 0.0, 10.0);
+        let chart_area = (10, 10, 20, 20);
+
+        let (x, _y) = chart.map_point(5.0, 5.0, bounds, chart_area);
+        assert_eq!(x, 19);
+    }
+
+    #[test]
+    fn test_map_point_zero_range_x() {
+        let chart = Chart::new();
+        let bounds = (5.0, 5.0, 0.0, 10.0);
+        let chart_area = (10, 10, 20, 20);
+
+        let (_x, _y) = chart.map_point(5.0, 5.0, bounds, chart_area);
+        // Center of x range
+    }
+
+    #[test]
+    fn test_map_point_zero_range_y() {
+        let chart = Chart::new();
+        let bounds = (0.0, 10.0, 5.0, 5.0);
+        let chart_area = (10, 10, 20, 20);
+
+        let (_x, _y) = chart.map_point(5.0, 5.0, bounds, chart_area);
+        // Center of y range
+    }
+
+    // =========================================================================
+    // Chart::get_line_char tests
+    // =========================================================================
+
+    #[test]
+    fn test_get_line_char_horizontal() {
+        let chart = Chart::new();
+        assert_eq!(chart.get_line_char(1, 0), '─');
+        assert_eq!(chart.get_line_char(-1, 0), '─');
+    }
+
+    #[test]
+    fn test_get_line_char_vertical() {
+        let chart = Chart::new();
+        assert_eq!(chart.get_line_char(0, 1), '│');
+        assert_eq!(chart.get_line_char(0, -1), '│');
+    }
+
+    #[test]
+    fn test_get_line_char_diagonal_up_right() {
+        let chart = Chart::new();
+        assert_eq!(chart.get_line_char(1, -1), '╱');
+        assert_eq!(chart.get_line_char(-1, 1), '╱');
+    }
+
+    #[test]
+    fn test_get_line_char_diagonal_down_right() {
+        let chart = Chart::new();
+        assert_eq!(chart.get_line_char(1, 1), '╲');
+        assert_eq!(chart.get_line_char(-1, -1), '╲');
+    }
+
+    #[test]
+    fn test_get_line_char_zero() {
+        let chart = Chart::new();
+        assert_eq!(chart.get_line_char(0, 0), '·');
+    }
+
+    // =========================================================================
+    // Chart::draw_line tests (smoke tests for different styles)
+    // =========================================================================
+
+    #[test]
+    fn test_draw_line_solid() {
+        let chart = Chart::new();
+        let mut buffer = Buffer::new(20, 10);
+        let rect = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        let seg = LineSegment {
+            x0: 2,
+            y0: 2,
+            x1: 10,
+            y1: 2,
+            color: Color::WHITE,
+            style: LineStyle::Solid,
+        };
+
+        chart.draw_line(&mut ctx, &seg, &rect);
+        // Should render without panic
+    }
+
+    #[test]
+    fn test_draw_line_dashed() {
+        let chart = Chart::new();
+        let mut buffer = Buffer::new(20, 10);
+        let rect = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        let seg = LineSegment {
+            x0: 2,
+            y0: 2,
+            x1: 10,
+            y1: 2,
+            color: Color::WHITE,
+            style: LineStyle::Dashed,
+        };
+
+        chart.draw_line(&mut ctx, &seg, &rect);
+    }
+
+    #[test]
+    fn test_draw_line_dotted() {
+        let chart = Chart::new();
+        let mut buffer = Buffer::new(20, 10);
+        let rect = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        let seg = LineSegment {
+            x0: 2,
+            y0: 2,
+            x1: 10,
+            y1: 2,
+            color: Color::WHITE,
+            style: LineStyle::Dotted,
+        };
+
+        chart.draw_line(&mut ctx, &seg, &rect);
+    }
+
+    #[test]
+    fn test_draw_line_none() {
+        let chart = Chart::new();
+        let mut buffer = Buffer::new(20, 10);
+        let rect = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        let seg = LineSegment {
+            x0: 2,
+            y0: 2,
+            x1: 10,
+            y1: 2,
+            color: Color::WHITE,
+            style: LineStyle::None,
+        };
+
+        chart.draw_line(&mut ctx, &seg, &rect);
+        // Should render nothing
+    }
+
+    #[test]
+    fn test_draw_line_out_of_bounds() {
+        let chart = Chart::new();
+        let mut buffer = Buffer::new(20, 10);
+        let rect = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        let seg = LineSegment {
+            x0: 100,
+            y0: 100,
+            x1: 200,
+            y1: 200,
+            color: Color::WHITE,
+            style: LineStyle::Solid,
+        };
+
+        chart.draw_line(&mut ctx, &seg, &rect);
+        // Should not panic even when out of bounds
+    }
+
+    // =========================================================================
+    // Chart::draw_area_fill tests
+    // =========================================================================
+
+    #[test]
+    fn test_draw_area_fill_basic() {
+        let chart = Chart::new();
+        let mut buffer = Buffer::new(20, 10);
+        let rect = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        let points = vec![(5, 5), (10, 5), (15, 3)];
+        chart.draw_area_fill(&mut ctx, &points, Color::BLUE, (5, 5, 15, 5), 8);
+        // Should render without panic
+    }
+
+    #[test]
+    fn test_draw_area_fill_empty_points() {
+        let chart = Chart::new();
+        let mut buffer = Buffer::new(20, 10);
+        let rect = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        let points: Vec<(u16, u16)> = vec![];
+        chart.draw_area_fill(&mut ctx, &points, Color::BLUE, (5, 5, 15, 5), 8);
+        // Should handle empty points gracefully
+    }
+
+    // =========================================================================
+    // Chart::Default tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_default() {
+        let chart = Chart::default();
+        assert!(chart.series.is_empty());
+        assert!(chart.title.is_none());
+        assert_eq!(chart.legend, LegendPosition::TopRight);
+    }
+
+    // =========================================================================
+    // Chart::render tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_render_basic() {
+        let chart = Chart::new().series(Series::new("Test").data(vec![(1.0, 2.0), (3.0, 4.0)]));
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Should render without panic
+    }
+
+    #[test]
+    fn test_chart_render_with_title() {
+        let chart = Chart::new()
+            .title("Test Chart")
+            .series(Series::new("Test").data(vec![(1.0, 2.0)]));
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+
+        // Title should be rendered centered at top
+        // "Test Chart" is 10 chars, in a 40-char wide buffer, centered at position 15
+        assert_eq!(buffer.get(15, 0).unwrap().symbol, 'T');
+        assert_eq!(buffer.get(16, 0).unwrap().symbol, 'e');
+    }
+
+    #[test]
+    fn test_chart_render_with_background() {
+        let chart = Chart::new()
+            .bg(Color::BLUE)
+            .series(Series::new("Test").data(vec![(1.0, 2.0)]));
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Background should be set
+    }
+
+    #[test]
+    fn test_chart_render_with_border() {
+        let chart = Chart::new()
+            .border(Color::WHITE)
+            .series(Series::new("Test").data(vec![(1.0, 2.0)]));
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+
+        // Border corners should be rendered
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '┌');
+        assert_eq!(buffer.get(39, 0).unwrap().symbol, '┐');
+        assert_eq!(buffer.get(0, 19).unwrap().symbol, '└');
+        assert_eq!(buffer.get(39, 19).unwrap().symbol, '┘');
+    }
+
+    #[test]
+    fn test_chart_render_too_small() {
+        let chart = Chart::new().series(Series::new("Test").data(vec![(1.0, 2.0)]));
+
+        let mut buffer = Buffer::new(5, 2);
+        let rect = Rect::new(0, 0, 5, 2);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Should return early without rendering
+    }
+
+    #[test]
+    fn test_chart_render_empty_series() {
+        let chart = Chart::new();
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Should render axes even without data
+    }
+
+    #[test]
+    fn test_chart_render_with_legend() {
+        let chart = Chart::new()
+            .series(Series::new("Series A").data(vec![(1.0, 2.0)]))
+            .series(Series::new("Series B").data(vec![(3.0, 4.0)]));
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Legend should be rendered by default
+    }
+
+    #[test]
+    fn test_chart_render_no_legend() {
+        let chart = Chart::new()
+            .no_legend()
+            .series(Series::new("Test").data(vec![(1.0, 2.0)]));
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Legend should not be rendered
+    }
+
+    #[test]
+    fn test_chart_render_line_chart() {
+        let chart = Chart::new().series(
+            Series::new("Test")
+                .data(vec![(1.0, 2.0), (3.0, 4.0), (5.0, 6.0)])
+                .line(),
+        );
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Should render lines
+    }
+
+    #[test]
+    fn test_chart_render_area_chart() {
+        let chart = Chart::new().series(
+            Series::new("Test")
+                .data(vec![(1.0, 2.0), (3.0, 4.0), (5.0, 6.0)])
+                .area(Color::BLUE),
+        );
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Should render area fill
+    }
+
+    #[test]
+    fn test_chart_render_scatter_chart() {
+        let chart = Chart::new().series(
+            Series::new("Test")
+                .data(vec![(1.0, 2.0), (3.0, 4.0), (5.0, 6.0)])
+                .scatter(),
+        );
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Should render markers
+    }
+
+    #[test]
+    fn test_chart_render_step() {
+        let chart = Chart::new().series(
+            Series::new("Test")
+                .data(vec![(1.0, 2.0), (3.0, 4.0), (5.0, 6.0)])
+                .step(),
+        );
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Should render step lines
+    }
+
+    #[test]
+    fn test_chart_render_step_before_variant() {
+        let chart = Chart::new().series(
+            Series::new("Test")
+                .data(vec![(1.0, 2.0), (3.0, 4.0), (5.0, 6.0)])
+                .chart_type(ChartType::StepBefore),
+        );
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Should render step lines
+    }
+
+    #[test]
+    fn test_chart_render_with_axis_titles() {
+        let chart = Chart::new()
+            .x_axis(Axis::new().title("X Axis"))
+            .y_axis(Axis::new().title("Y Axis"))
+            .series(Series::new("Test").data(vec![(1.0, 2.0)]));
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Should render axis titles
+    }
+
+    #[test]
+    fn test_chart_render_with_grid() {
+        let chart = Chart::new().series(Series::new("Test").data(vec![(1.0, 2.0), (10.0, 20.0)]));
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Should render grid lines
+    }
+
+    #[test]
+    fn test_chart_render_with_markers() {
+        let chart = Chart::new().series(
+            Series::new("Test")
+                .data(vec![(1.0, 2.0), (3.0, 4.0)])
+                .marker(Marker::Circle),
+        );
+
+        let mut buffer = Buffer::new(40, 20);
+        let rect = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Should render markers
+    }
+
+    // =========================================================================
+    // Helper function tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_helper() {
+        let chart = chart();
+        assert!(chart.series.is_empty());
+    }
+
+    #[test]
+    fn test_line_chart_helper() {
+        let data = vec![1.0, 2.0, 3.0, 4.0];
+        let chart = line_chart(&data);
+        assert_eq!(chart.series.len(), 1);
+        assert_eq!(chart.series[0].name, "Data");
+        // Verify it's a line chart by checking line style
+        assert_eq!(chart.series[0].line_style, LineStyle::Solid);
+    }
+
+    #[test]
+    fn test_line_chart_helper_empty() {
+        let data: Vec<f64> = vec![];
+        let chart = line_chart(&data);
+        assert_eq!(chart.series.len(), 1);
+    }
+
+    #[test]
+    fn test_scatter_plot_helper() {
+        let data = vec![(1.0, 2.0), (3.0, 4.0), (5.0, 6.0)];
+        let chart = scatter_plot(&data);
+        assert_eq!(chart.series.len(), 1);
+        assert_eq!(chart.series[0].name, "Data");
+    }
+
+    #[test]
+    fn test_scatter_plot_helper_empty() {
+        let data: Vec<(f64, f64)> = vec![];
+        let chart = scatter_plot(&data);
+        assert_eq!(chart.series.len(), 1);
+    }
+
+    // =========================================================================
+    // ChartType enum tests (derived traits)
+    // =========================================================================
+
+    #[test]
+    fn test_chart_type_clone() {
+        let ct1 = ChartType::Line;
+        let ct2 = ct1.clone();
+        assert_eq!(ct1, ct2);
+    }
+
+    #[test]
+    fn test_chart_type_copy() {
+        let ct1 = ChartType::Area;
+        let ct2 = ct1;
+        assert_eq!(ct2, ChartType::Area);
+    }
+
+    #[test]
+    fn test_chart_type_partial_eq() {
+        assert_eq!(ChartType::Line, ChartType::Line);
+        assert_eq!(ChartType::Scatter, ChartType::Scatter);
+        assert_ne!(ChartType::Line, ChartType::Area);
+    }
+
+    // =========================================================================
+    // LineStyle enum tests (derived traits)
+    // =========================================================================
+
+    #[test]
+    fn test_line_style_clone() {
+        let ls1 = LineStyle::Dashed;
+        let ls2 = ls1.clone();
+        assert_eq!(ls1, ls2);
+    }
+
+    #[test]
+    fn test_line_style_copy() {
+        let ls1 = LineStyle::Dotted;
+        let ls2 = ls1;
+        assert_eq!(ls2, LineStyle::Dotted);
+    }
+
+    #[test]
+    fn test_line_style_partial_eq() {
+        assert_eq!(LineStyle::Solid, LineStyle::Solid);
+        assert_eq!(LineStyle::Dashed, LineStyle::Dashed);
+        assert_ne!(LineStyle::Solid, LineStyle::Dotted);
+    }
+
+    // =========================================================================
+    // Integration tests
+    // =========================================================================
+
+    #[test]
+    fn test_chart_complex_render() {
+        let chart = Chart::new()
+            .title("Complex Chart")
+            .x_axis(Axis::new().title("Time").min(0.0).max(10.0))
+            .y_axis(Axis::new().title("Value").min(0.0).max(100.0))
+            .legend(LegendPosition::BottomRight)
+            .border(Color::WHITE)
+            .bg(Color::BLACK)
+            .series(
+                Series::new("Series 1")
+                    .data(vec![(1.0, 20.0), (5.0, 50.0), (9.0, 80.0)])
+                    .color(Color::RED)
+                    .marker(Marker::Circle)
+                    .line(),
+            )
+            .series(
+                Series::new("Series 2")
+                    .data(vec![(1.0, 30.0), (5.0, 60.0), (9.0, 90.0)])
+                    .color(Color::BLUE)
+                    .marker(Marker::Square)
+                    .line(),
+            );
+
+        let mut buffer = Buffer::new(60, 30);
+        let rect = Rect::new(0, 0, 60, 30);
+        let mut ctx = RenderContext::new(&mut buffer, rect);
+
+        chart.render(&mut ctx);
+        // Complex chart should render without panic
+    }
+
+    #[test]
+    fn test_chart_view_meta() {
+        let chart = Chart::new();
+        // View impl_view_meta! macro creates meta() method
+        let meta = chart.meta();
+        assert_eq!(meta.widget_type, "Chart");
+    }
+}

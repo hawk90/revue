@@ -206,3 +206,143 @@ fn to_crossterm_color(color: Color) -> CrosstermColor {
         b: color.b,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::style::Color;
+
+    #[test]
+    fn test_to_crossterm_color_rgb() {
+        let color = Color {
+            r: 255,
+            g: 128,
+            b: 0,
+            a: 255,
+        };
+        let crossterm_color = to_crossterm_color(color);
+        match crossterm_color {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 255);
+                assert_eq!(g, 128);
+                assert_eq!(b, 0);
+            }
+            _ => panic!("Expected Rgb color"),
+        }
+    }
+
+    #[test]
+    fn test_to_crossterm_color_black() {
+        let color = Color {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 255,
+        };
+        let crossterm_color = to_crossterm_color(color);
+        match crossterm_color {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 0);
+                assert_eq!(g, 0);
+                assert_eq!(b, 0);
+            }
+            _ => panic!("Expected Rgb color"),
+        }
+    }
+
+    #[test]
+    fn test_to_crossterm_color_white() {
+        let color = Color {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 255,
+        };
+        let crossterm_color = to_crossterm_color(color);
+        match crossterm_color {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 255);
+                assert_eq!(g, 255);
+                assert_eq!(b, 255);
+            }
+            _ => panic!("Expected Rgb color"),
+        }
+    }
+
+    #[test]
+    fn test_to_crossterm_color_gray() {
+        let color = Color {
+            r: 128,
+            g: 128,
+            b: 128,
+            a: 255,
+        };
+        let crossterm_color = to_crossterm_color(color);
+        match crossterm_color {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 128);
+                assert_eq!(g, 128);
+                assert_eq!(b, 128);
+            }
+            _ => panic!("Expected Rgb color"),
+        }
+    }
+
+    #[test]
+    fn test_to_crossterm_color_red() {
+        let color = Color {
+            r: 255,
+            g: 0,
+            b: 0,
+            a: 255,
+        };
+        let crossterm_color = to_crossterm_color(color);
+        match crossterm_color {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 255);
+                assert_eq!(g, 0);
+                assert_eq!(b, 0);
+            }
+            _ => panic!("Expected Rgb color"),
+        }
+    }
+
+    #[test]
+    fn test_to_crossterm_color_green() {
+        let color = Color {
+            r: 0,
+            g: 255,
+            b: 0,
+            a: 255,
+        };
+        let crossterm_color = to_crossterm_color(color);
+        match crossterm_color {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 0);
+                assert_eq!(g, 255);
+                assert_eq!(b, 0);
+            }
+            _ => panic!("Expected Rgb color"),
+        }
+    }
+
+    #[test]
+    fn test_to_crossterm_color_blue() {
+        let color = Color {
+            r: 0,
+            g: 0,
+            b: 255,
+            a: 255,
+        };
+        let crossterm_color = to_crossterm_color(color);
+        match crossterm_color {
+            CrosstermColor::Rgb { r, g, b } => {
+                assert_eq!(r, 0);
+                assert_eq!(g, 0);
+                assert_eq!(b, 255);
+            }
+            _ => panic!("Expected Rgb color"),
+        }
+    }
+}

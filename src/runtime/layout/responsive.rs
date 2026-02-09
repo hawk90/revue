@@ -453,4 +453,379 @@ pub fn max_width(w: u16) -> MediaQuery {
     MediaQuery::MaxWidth(w)
 }
 
-// Tests moved to tests/layout_tests.rs
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_breakpoint_new() {
+        let bp = Breakpoint::new("custom", 50);
+        assert_eq!(bp.name, "custom");
+        assert_eq!(bp.min_width, 50);
+    }
+
+    #[test]
+    fn test_breakpoint_constants() {
+        assert_eq!(Breakpoint::XS.name, "xs");
+        assert_eq!(Breakpoint::XS.min_width, 0);
+        assert_eq!(Breakpoint::SM.name, "sm");
+        assert_eq!(Breakpoint::SM.min_width, 40);
+        assert_eq!(Breakpoint::MD.name, "md");
+        assert_eq!(Breakpoint::MD.min_width, 80);
+        assert_eq!(Breakpoint::LG.name, "lg");
+        assert_eq!(Breakpoint::LG.min_width, 120);
+        assert_eq!(Breakpoint::XL.name, "xl");
+        assert_eq!(Breakpoint::XL.min_width, 160);
+    }
+
+    #[test]
+    fn test_breakpoints_new() {
+        let bp = Breakpoints::new();
+        assert!(bp.points.is_empty());
+        assert!(bp.current(100).name == "xs"); // Falls back to XS when empty
+    }
+
+    #[test]
+    fn test_breakpoints_terminal() {
+        let bp = Breakpoints::terminal();
+        assert_eq!(bp.points.len(), 5);
+        assert_eq!(bp.current(30).name, "xs");
+        assert_eq!(bp.current(40).name, "sm");
+        assert_eq!(bp.current(80).name, "md");
+        assert_eq!(bp.current(120).name, "lg");
+        assert_eq!(bp.current(160).name, "xl");
+    }
+
+    #[test]
+    fn test_breakpoints_simple() {
+        let bp = Breakpoints::simple();
+        assert_eq!(bp.points.len(), 3);
+        // Should fall back to SM (smallest in simple set)
+        assert!(bp.current(30).min_width >= 40 || bp.current(30).name == "sm");
+    }
+
+    #[test]
+    fn test_breakpoints_add() {
+        let bp = Breakpoints::new()
+            .add(Breakpoint::new("small", 20))
+            .add(Breakpoint::new("large", 100))
+            .add(Breakpoint::new("medium", 60));
+        assert_eq!(bp.points.len(), 3);
+        // Points should be sorted by min_width
+        assert_eq!(bp.points[0].name, "small");
+        assert_eq!(bp.points[1].name, "medium");
+        assert_eq!(bp.points[2].name, "large");
+    }
+
+    #[test]
+    fn test_breakpoints_get() {
+        let bp = Breakpoints::terminal();
+        assert!(bp.get("sm").is_some());
+        assert!(bp.get("md").is_some());
+        assert!(bp.get("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_breakpoints_matches() {
+        let bp = Breakpoints::terminal();
+        assert!(bp.matches(40, "sm"));
+        assert!(bp.matches(80, "md"));
+        assert!(!bp.matches(30, "sm"));
+    }
+
+    #[test]
+    fn test_breakpoints_at_least() {
+        let bp = Breakpoints::terminal();
+        assert!(bp.at_least(80, "sm"));
+        assert!(bp.at_least(80, "md"));
+        assert!(!bp.at_least(40, "md"));
+    }
+
+    #[test]
+    fn test_breakpoints_below() {
+        let bp = Breakpoints::terminal();
+        assert!(bp.below(40, "md"));
+        assert!(!bp.below(80, "md"));
+    }
+
+    #[test]
+    fn test_breakpoints_names() {
+        let bp = Breakpoints::terminal();
+        let names = bp.names();
+        assert_eq!(names, vec!["xs", "sm", "md", "lg", "xl"]);
+    }
+
+    #[test]
+    fn test_responsive_value_new() {
+        let rv = ResponsiveValue::new(10);
+        assert_eq!(*rv.default_value(), 10);
+    }
+
+    #[test]
+    fn test_responsive_value_at() {
+        let rv = ResponsiveValue::new(1).at("sm", 2).at("md", 3);
+        let bp = Breakpoints::terminal();
+        assert_eq!(rv.resolve(&bp, 40), 2);
+        assert_eq!(rv.resolve(&bp, 80), 3);
+        assert_eq!(rv.resolve(&bp, 10), 1); // Falls back to default
+    }
+
+    #[test]
+    fn test_responsive_value_default() {
+        let rv = ResponsiveValue::new(100);
+        let bp = Breakpoints::terminal();
+        assert_eq!(rv.resolve(&bp, 50), 100);
+        assert_eq!(rv.resolve(&bp, 100), 100);
+    }
+
+    #[test]
+    fn test_responsive_layout_new() {
+        let layout = ResponsiveLayout::new(80, 24);
+        assert_eq!(layout.width(), 80);
+        assert_eq!(layout.height(), 24);
+        assert!(layout.is_landscape());
+        assert!(!layout.is_portrait());
+    }
+
+    #[test]
+    fn test_responsive_layout_default() {
+        let layout = ResponsiveLayout::default();
+        assert_eq!(layout.width(), 80);
+        assert_eq!(layout.height(), 24);
+    }
+
+    #[test]
+    fn test_responsive_layout_portrait() {
+        let layout = ResponsiveLayout::new(40, 80);
+        assert!(layout.is_portrait());
+        assert!(!layout.is_landscape());
+    }
+
+    #[test]
+    fn test_responsive_layout_resize() {
+        let mut layout = ResponsiveLayout::new(80, 24);
+        layout.resize(100, 30);
+        assert_eq!(layout.width(), 100);
+        assert_eq!(layout.height(), 30);
+    }
+
+    #[test]
+    fn test_responsive_layout_breakpoint_name() {
+        let layout = ResponsiveLayout::new(80, 24);
+        assert_eq!(layout.breakpoint_name(), "md");
+    }
+
+    #[test]
+    fn test_responsive_layout_at_least() {
+        let layout = ResponsiveLayout::new(80, 24);
+        assert!(layout.at_least("sm"));
+        assert!(layout.at_least("md"));
+        assert!(!layout.at_least("lg"));
+    }
+
+    #[test]
+    fn test_responsive_layout_below() {
+        let layout = ResponsiveLayout::new(80, 24);
+        assert!(layout.below("lg"));
+        assert!(!layout.below("md"));
+        assert!(!layout.below("sm"));
+    }
+
+    #[test]
+    fn test_responsive_layout_resolve() {
+        let layout = ResponsiveLayout::new(80, 24);
+        let rv = ResponsiveValue::new(1).at("md", 3);
+        assert_eq!(layout.resolve(&rv), 3);
+    }
+
+    #[test]
+    fn test_media_query_min_width() {
+        let layout = ResponsiveLayout::new(80, 24);
+        assert!(MediaQuery::MinWidth(50).matches(&layout));
+        assert!(MediaQuery::MinWidth(80).matches(&layout));
+        assert!(!MediaQuery::MinWidth(100).matches(&layout));
+    }
+
+    #[test]
+    fn test_media_query_max_width() {
+        let layout = ResponsiveLayout::new(80, 24);
+        assert!(MediaQuery::MaxWidth(100).matches(&layout));
+        assert!(MediaQuery::MaxWidth(80).matches(&layout));
+        assert!(!MediaQuery::MaxWidth(50).matches(&layout));
+    }
+
+    #[test]
+    fn test_media_query_width_range() {
+        let layout = ResponsiveLayout::new(80, 24);
+        assert!(MediaQuery::WidthRange(60, 100).matches(&layout));
+        assert!(MediaQuery::WidthRange(80, 80).matches(&layout));
+        assert!(!MediaQuery::WidthRange(90, 100).matches(&layout));
+        assert!(!MediaQuery::WidthRange(60, 70).matches(&layout));
+    }
+
+    #[test]
+    fn test_media_query_min_height() {
+        let layout = ResponsiveLayout::new(80, 24);
+        assert!(MediaQuery::MinHeight(20).matches(&layout));
+        assert!(!MediaQuery::MinHeight(30).matches(&layout));
+    }
+
+    #[test]
+    fn test_media_query_max_height() {
+        let layout = ResponsiveLayout::new(80, 24);
+        assert!(MediaQuery::MaxHeight(30).matches(&layout));
+        assert!(!MediaQuery::MaxHeight(20).matches(&layout));
+    }
+
+    #[test]
+    fn test_media_query_breakpoint() {
+        let layout = ResponsiveLayout::new(80, 24);
+        assert!(MediaQuery::Breakpoint("md").matches(&layout));
+        assert!(!MediaQuery::Breakpoint("sm").matches(&layout));
+        assert!(!MediaQuery::Breakpoint("lg").matches(&layout));
+    }
+
+    #[test]
+    fn test_media_query_portrait() {
+        let layout = ResponsiveLayout::new(40, 80);
+        assert!(MediaQuery::Portrait.matches(&layout));
+        assert!(!MediaQuery::Landscape.matches(&layout));
+    }
+
+    #[test]
+    fn test_media_query_landscape() {
+        let layout = ResponsiveLayout::new(80, 40);
+        assert!(MediaQuery::Landscape.matches(&layout));
+        assert!(!MediaQuery::Portrait.matches(&layout));
+    }
+
+    #[test]
+    fn test_media_query_and() {
+        let layout = ResponsiveLayout::new(80, 24);
+        let query = MediaQuery::MinWidth(60).and(MediaQuery::MaxWidth(100));
+        assert!(query.matches(&layout));
+
+        let layout2 = ResponsiveLayout::new(120, 24);
+        assert!(!query.matches(&layout2));
+    }
+
+    #[test]
+    fn test_media_query_or() {
+        let layout = ResponsiveLayout::new(80, 24);
+        let query = MediaQuery::MinWidth(100).or(MediaQuery::MaxWidth(90));
+        assert!(query.matches(&layout));
+    }
+
+    #[test]
+    fn test_media_query_not() {
+        let layout = ResponsiveLayout::new(80, 24);
+        let query = MediaQuery::MinWidth(100).not();
+        assert!(query.matches(&layout));
+
+        let query2 = MediaQuery::MinWidth(50).not();
+        assert!(!query2.matches(&layout));
+    }
+
+    #[test]
+    fn test_responsive_function() {
+        let rv = responsive::<u16>(42);
+        assert_eq!(*rv.default_value(), 42);
+    }
+
+    #[test]
+    fn test_breakpoints_function() {
+        let bp = breakpoints();
+        assert_eq!(bp.current(80).name, "md");
+    }
+
+    #[test]
+    fn test_responsive_layout_function() {
+        let layout = responsive_layout(100, 30);
+        assert_eq!(layout.width(), 100);
+        assert_eq!(layout.height(), 30);
+    }
+
+    #[test]
+    fn test_min_width_function() {
+        let query = min_width(50);
+        assert!(matches!(query, MediaQuery::MinWidth(50)));
+    }
+
+    #[test]
+    fn test_max_width_function() {
+        let query = max_width(50);
+        assert!(matches!(query, MediaQuery::MaxWidth(50)));
+    }
+
+    #[test]
+    fn test_responsive_columns() {
+        let layout = ResponsiveLayout::new(30, 24);
+        assert_eq!(responsive::columns(&layout), 1);
+
+        let layout = ResponsiveLayout::new(50, 24);
+        assert_eq!(responsive::columns(&layout), 2);
+
+        let layout = ResponsiveLayout::new(100, 24);
+        assert_eq!(responsive::columns(&layout), 3);
+
+        let layout = ResponsiveLayout::new(150, 24);
+        assert_eq!(responsive::columns(&layout), 4);
+    }
+
+    #[test]
+    fn test_responsive_gap() {
+        let layout = ResponsiveLayout::new(30, 24);
+        assert_eq!(responsive::gap(&layout), 0);
+
+        let layout = ResponsiveLayout::new(50, 24);
+        assert_eq!(responsive::gap(&layout), 1);
+
+        let layout = ResponsiveLayout::new(100, 24);
+        assert_eq!(responsive::gap(&layout), 2);
+    }
+
+    #[test]
+    fn test_responsive_padding() {
+        let layout = ResponsiveLayout::new(30, 24);
+        assert_eq!(responsive::padding(&layout), 0);
+
+        let layout = ResponsiveLayout::new(50, 24);
+        assert_eq!(responsive::padding(&layout), 1);
+
+        let layout = ResponsiveLayout::new(100, 24);
+        assert_eq!(responsive::padding(&layout), 2);
+
+        let layout = ResponsiveLayout::new(150, 24);
+        assert_eq!(responsive::padding(&layout), 3);
+    }
+
+    #[test]
+    fn test_responsive_show_sidebar() {
+        let layout = ResponsiveLayout::new(30, 24);
+        assert!(!responsive::show_sidebar(&layout));
+
+        let layout = ResponsiveLayout::new(80, 24);
+        assert!(responsive::show_sidebar(&layout));
+    }
+
+    #[test]
+    fn test_responsive_compact_mode() {
+        let layout = ResponsiveLayout::new(30, 24);
+        assert!(responsive::compact_mode(&layout));
+
+        let layout = ResponsiveLayout::new(80, 24);
+        assert!(!responsive::compact_mode(&layout));
+    }
+
+    #[test]
+    fn test_responsive_max_content_width() {
+        let layout = ResponsiveLayout::new(180, 24);
+        assert_eq!(responsive::max_content_width(&layout), 120);
+
+        let layout = ResponsiveLayout::new(130, 24);
+        assert_eq!(responsive::max_content_width(&layout), 100);
+
+        let layout = ResponsiveLayout::new(100, 24);
+        assert_eq!(responsive::max_content_width(&layout), 100);
+    }
+}

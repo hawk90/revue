@@ -265,6 +265,171 @@ mod tests {
 
         bc.render(&mut render_ctx);
     }
+
+    // Integration and edge case tests
+
+    #[test]
+    fn test_canvas_multiple_draw_operations() {
+        use crate::style::Color;
+
+        let c = canvas(|ctx| {
+            ctx.hline(0, 0, 10, '-', Some(Color::WHITE));
+            ctx.vline(0, 0, 5, '|', Some(Color::WHITE));
+            ctx.rect(5, 2, 8, 4, Some(Color::CYAN));
+            ctx.fill_rect(Rect::new(6, 3, 6, 2), '#', Some(Color::RED), None);
+            ctx.text(0, 8, "Test", Some(Color::YELLOW));
+        });
+
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut render_ctx = RenderContext::new(&mut buffer, area);
+
+        c.render(&mut render_ctx);
+    }
+
+    #[test]
+    fn test_canvas_clear_and_redraw() {
+        use crate::style::Color;
+
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+
+        // First draw
+        let c1 = canvas(|ctx| {
+            ctx.text(0, 0, "First", Some(Color::WHITE));
+        });
+        let mut render_ctx = RenderContext::new(&mut buffer, area);
+        c1.render(&mut render_ctx);
+
+        // Clear and redraw
+        let c2 = canvas(|ctx| {
+            ctx.clear();
+            ctx.text(0, 0, "Second", Some(Color::WHITE));
+        });
+        let mut render_ctx2 = RenderContext::new(&mut buffer, area);
+        c2.render(&mut render_ctx2);
+    }
+
+    #[test]
+    fn test_canvas_edge_clipping() {
+        use crate::style::Color;
+
+        let c = canvas(|ctx| {
+            // Draw at the edge of the canvas
+            ctx.hline(0, 0, 20, '-', Some(Color::WHITE));
+            ctx.vline(19, 0, 10, '|', Some(Color::WHITE));
+            ctx.rect(0, 0, 20, 10, Some(Color::CYAN));
+        });
+
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut render_ctx = RenderContext::new(&mut buffer, area);
+
+        c.render(&mut render_ctx);
+    }
+
+    #[test]
+    fn test_braille_canvas_complex_scene() {
+        use crate::style::Color;
+
+        let bc = braille_canvas(|ctx| {
+            // Draw a complex scene with multiple shapes
+            ctx.rect(5.0, 5.0, 30.0, 20.0, Color::WHITE);
+            ctx.circle(20.0, 15.0, 8.0, Color::CYAN);
+            ctx.filled_circle(40.0, 15.0, 5.0, Color::BLUE);
+            ctx.line(0.0, 30.0, 50.0, 30.0, Color::YELLOW);
+            ctx.filled_rect(10.0, 35.0, 20.0, 5.0, Color::GREEN);
+        });
+
+        let mut buffer = Buffer::new(30, 15);
+        let area = Rect::new(0, 0, 30, 15);
+        let mut render_ctx = RenderContext::new(&mut buffer, area);
+
+        bc.render(&mut render_ctx);
+    }
+
+    #[test]
+    fn test_braille_canvas_precision() {
+        use crate::style::Color;
+
+        let bc = braille_canvas(|ctx| {
+            // Test high-resolution drawing
+            for i in 0..10 {
+                ctx.set(i * 2, i, Color::WHITE);
+            }
+        });
+
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut render_ctx = RenderContext::new(&mut buffer, area);
+
+        bc.render(&mut render_ctx);
+    }
+
+    #[test]
+    fn test_canvas_with_all_colors() {
+        use crate::style::Color;
+
+        let colors = vec![
+            Color::WHITE,
+            Color::BLACK,
+            Color::RED,
+            Color::GREEN,
+            Color::BLUE,
+            Color::YELLOW,
+            Color::CYAN,
+            Color::MAGENTA,
+        ];
+
+        let c = canvas(|ctx| {
+            for (i, _color) in colors.iter().enumerate() {
+                ctx.set(i as u16, 0, '█');
+            }
+        });
+
+        let mut buffer = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let mut render_ctx = RenderContext::new(&mut buffer, area);
+
+        c.render(&mut render_ctx);
+    }
+
+    #[test]
+    fn test_canvas_line_diagonal_all_quadrants() {
+        use crate::style::Color;
+
+        let c = canvas(|ctx| {
+            // Draw lines in all directions
+            ctx.line(0, 0, 10, 10, '*', Some(Color::WHITE)); // bottom-right
+            ctx.line(19, 0, 9, 10, '*', Some(Color::WHITE)); // bottom-left
+            ctx.line(0, 9, 10, 0, '*', Some(Color::WHITE)); // top-right
+            ctx.line(19, 9, 9, 0, '*', Some(Color::WHITE)); // top-left
+        });
+
+        let mut buffer = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut render_ctx = RenderContext::new(&mut buffer, area);
+
+        c.render(&mut render_ctx);
+    }
+
+    #[test]
+    fn test_braille_canvas_overlap_shapes() {
+        use crate::style::Color;
+
+        let bc = braille_canvas(|ctx| {
+            // Test overlapping shapes
+            ctx.circle(20.0, 20.0, 15.0, Color::RED);
+            ctx.circle(25.0, 20.0, 15.0, Color::BLUE);
+            ctx.circle(22.5, 15.0, 15.0, Color::GREEN);
+        });
+
+        let mut buffer = Buffer::new(30, 15);
+        let area = Rect::new(0, 0, 30, 15);
+        let mut render_ctx = RenderContext::new(&mut buffer, area);
+
+        bc.render(&mut render_ctx);
+    }
 }
 mod transform;
 mod widget;

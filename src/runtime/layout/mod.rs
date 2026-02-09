@@ -190,4 +190,170 @@ pub fn merge_rects(rects: &[Rect]) -> Vec<Rect> {
     merged
 }
 
-// Tests moved to tests/layout_tests.rs
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rect_new() {
+        let rect = Rect::new(10, 20, 30, 40);
+        assert_eq!(rect.x, 10);
+        assert_eq!(rect.y, 20);
+        assert_eq!(rect.width, 30);
+        assert_eq!(rect.height, 40);
+    }
+
+    #[test]
+    fn test_rect_default() {
+        let rect = Rect::default();
+        assert_eq!(rect.x, 0);
+        assert_eq!(rect.y, 0);
+        assert_eq!(rect.width, 0);
+        assert_eq!(rect.height, 0);
+    }
+
+    #[test]
+    fn test_rect_contains_inside() {
+        let rect = Rect::new(10, 10, 50, 50);
+        assert!(rect.contains(20, 20));
+        assert!(rect.contains(10, 10));
+    }
+
+    #[test]
+    fn test_rect_contains_outside() {
+        let rect = Rect::new(10, 10, 50, 50);
+        assert!(!rect.contains(5, 20));
+        assert!(!rect.contains(20, 5));
+        assert!(!rect.contains(70, 20));
+        assert!(!rect.contains(20, 70));
+    }
+
+    #[test]
+    fn test_rect_contains_on_edges() {
+        let rect = Rect::new(10, 10, 50, 50);
+        // Right edge (60) and bottom edge (60) are NOT contained
+        assert!(!rect.contains(60, 30));
+        assert!(!rect.contains(30, 60));
+    }
+
+    #[test]
+    fn test_rect_right() {
+        let rect = Rect::new(10, 20, 30, 40);
+        assert_eq!(rect.right(), 40);
+    }
+
+    #[test]
+    fn test_rect_bottom() {
+        let rect = Rect::new(10, 20, 30, 40);
+        assert_eq!(rect.bottom(), 60);
+    }
+
+    #[test]
+    fn test_rect_intersects_true() {
+        let rect1 = Rect::new(0, 0, 50, 50);
+        let rect2 = Rect::new(25, 25, 50, 50);
+        assert!(rect1.intersects(&rect2));
+        assert!(rect2.intersects(&rect1));
+    }
+
+    #[test]
+    fn test_rect_intersects_false() {
+        let rect1 = Rect::new(0, 0, 50, 50);
+        let rect2 = Rect::new(60, 60, 50, 50);
+        assert!(!rect1.intersects(&rect2));
+        assert!(!rect2.intersects(&rect1));
+    }
+
+    #[test]
+    fn test_rect_intersects_adjacent() {
+        let rect1 = Rect::new(0, 0, 50, 50);
+        let rect2 = Rect::new(50, 0, 50, 50);
+        // Adjacent edges don't count as intersecting
+        assert!(!rect1.intersects(&rect2));
+    }
+
+    #[test]
+    fn test_rect_intersection_some() {
+        let rect1 = Rect::new(0, 0, 50, 50);
+        let rect2 = Rect::new(25, 25, 50, 50);
+        let result = rect1.intersection(&rect2);
+        assert!(result.is_some());
+        let intersection = result.unwrap();
+        assert_eq!(intersection.x, 25);
+        assert_eq!(intersection.y, 25);
+        assert_eq!(intersection.width, 25);
+        assert_eq!(intersection.height, 25);
+    }
+
+    #[test]
+    fn test_rect_intersection_none() {
+        let rect1 = Rect::new(0, 0, 50, 50);
+        let rect2 = Rect::new(60, 60, 50, 50);
+        let result = rect1.intersection(&rect2);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_rect_union() {
+        let rect1 = Rect::new(0, 0, 50, 50);
+        let rect2 = Rect::new(25, 25, 50, 50);
+        let result = rect1.union(&rect2);
+        assert_eq!(result.x, 0);
+        assert_eq!(result.y, 0);
+        assert_eq!(result.width, 75);
+        assert_eq!(result.height, 75);
+    }
+
+    #[test]
+    fn test_rect_union_non_overlapping() {
+        let rect1 = Rect::new(0, 0, 10, 10);
+        let rect2 = Rect::new(100, 100, 10, 10);
+        let result = rect1.union(&rect2);
+        assert_eq!(result.x, 0);
+        assert_eq!(result.y, 0);
+        assert_eq!(result.width, 110);
+        assert_eq!(result.height, 110);
+    }
+
+    #[test]
+    fn test_merge_rects_empty() {
+        let result = merge_rects(&[]);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_merge_rects_single() {
+        let rects = vec![Rect::new(0, 0, 10, 10)];
+        let result = merge_rects(&rects);
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn test_merge_rects_overlapping() {
+        let rects = vec![Rect::new(0, 0, 50, 50), Rect::new(25, 25, 50, 50)];
+        let result = merge_rects(&rects);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].width, 75);
+        assert_eq!(result[0].height, 75);
+    }
+
+    #[test]
+    fn test_merge_rects_non_overlapping() {
+        let rects = vec![Rect::new(0, 0, 10, 10), Rect::new(100, 100, 10, 10)];
+        let result = merge_rects(&rects);
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_merge_rects_chain() {
+        let rects = vec![
+            Rect::new(0, 0, 20, 20),
+            Rect::new(15, 0, 20, 20),
+            Rect::new(30, 0, 20, 20),
+        ];
+        let result = merge_rects(&rects);
+        // All three should merge into one
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].width, 50);
+    }
+}

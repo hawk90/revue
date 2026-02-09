@@ -595,6 +595,90 @@ pub fn volume_slider() -> Slider {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::event::Key;
+
+    // =================================================================
+    // SliderOrientation Enum Tests
+    // =================================================================
+
+    #[test]
+    fn test_slider_orientation_default() {
+        let orientation = SliderOrientation::default();
+        assert_eq!(orientation, SliderOrientation::Horizontal);
+    }
+
+    #[test]
+    fn test_slider_orientation_clone() {
+        let orientation = SliderOrientation::Vertical;
+        let cloned = orientation.clone();
+        assert_eq!(orientation, cloned);
+    }
+
+    #[test]
+    fn test_slider_orientation_copy() {
+        let orientation = SliderOrientation::Horizontal;
+        let copied = orientation;
+        assert_eq!(orientation, SliderOrientation::Horizontal);
+        assert_eq!(copied, SliderOrientation::Horizontal);
+    }
+
+    #[test]
+    fn test_slider_orientation_partial_eq() {
+        assert_eq!(SliderOrientation::Horizontal, SliderOrientation::Horizontal);
+        assert_eq!(SliderOrientation::Vertical, SliderOrientation::Vertical);
+        assert_ne!(SliderOrientation::Horizontal, SliderOrientation::Vertical);
+    }
+
+    // =================================================================
+    // SliderStyle Enum Tests
+    // =================================================================
+
+    #[test]
+    fn test_slider_style_default() {
+        let style = SliderStyle::default();
+        assert_eq!(style, SliderStyle::Block);
+    }
+
+    #[test]
+    fn test_slider_style_clone() {
+        let style = SliderStyle::Line;
+        let cloned = style.clone();
+        assert_eq!(style, cloned);
+    }
+
+    #[test]
+    fn test_slider_style_copy() {
+        let style = SliderStyle::Gradient;
+        let copied = style;
+        assert_eq!(style, SliderStyle::Gradient);
+        assert_eq!(copied, SliderStyle::Gradient);
+    }
+
+    #[test]
+    fn test_slider_style_partial_eq() {
+        assert_eq!(SliderStyle::Block, SliderStyle::Block);
+        assert_eq!(SliderStyle::Line, SliderStyle::Line);
+        assert_eq!(SliderStyle::Thin, SliderStyle::Thin);
+        assert_eq!(SliderStyle::Gradient, SliderStyle::Gradient);
+        assert_eq!(SliderStyle::Dots, SliderStyle::Dots);
+        assert_ne!(SliderStyle::Block, SliderStyle::Line);
+    }
+
+    #[test]
+    fn test_slider_style_all_variants() {
+        let styles = [
+            SliderStyle::Block,
+            SliderStyle::Line,
+            SliderStyle::Thin,
+            SliderStyle::Gradient,
+            SliderStyle::Dots,
+        ];
+        assert_eq!(styles.len(), 5);
+    }
+
+    // =================================================================
+    // Slider Constructor Tests
+    // =================================================================
 
     #[test]
     fn test_slider_new() {
@@ -602,12 +686,47 @@ mod tests {
         assert_eq!(s.value, 0.0);
         assert_eq!(s.min, 0.0);
         assert_eq!(s.max, 100.0);
+        assert_eq!(s.step, 0.0);
+        assert_eq!(s.orientation, SliderOrientation::Horizontal);
+        assert_eq!(s.style, SliderStyle::Block);
+        assert_eq!(s.length, 20);
+        assert!(s.show_value);
+        assert!(s.value_format.is_none());
+        assert!(!s.focused);
+        assert!(!s.disabled);
+        assert!(s.label.is_none());
+        assert!(!s.show_ticks);
+        assert_eq!(s.tick_count, 5);
     }
+
+    #[test]
+    fn test_slider_default() {
+        let s = Slider::default();
+        assert_eq!(s.value, 0.0);
+        assert_eq!(s.min, 0.0);
+        assert_eq!(s.max, 100.0);
+    }
+
+    // =================================================================
+    // Builder Method Tests
+    // =================================================================
 
     #[test]
     fn test_slider_value() {
         let s = Slider::new().value(50.0);
         assert_eq!(s.value, 50.0);
+    }
+
+    #[test]
+    fn test_slider_value_clamps_to_max() {
+        let s = Slider::new().value(150.0);
+        assert_eq!(s.value, 100.0);
+    }
+
+    #[test]
+    fn test_slider_value_clamps_to_min() {
+        let s = Slider::new().value(-50.0);
+        assert_eq!(s.value, 0.0);
     }
 
     #[test]
@@ -619,61 +738,162 @@ mod tests {
     }
 
     #[test]
-    fn test_slider_clamp() {
-        let s = Slider::new().range(0.0, 100.0).value(150.0);
-        assert_eq!(s.value, 100.0);
-
-        let s = Slider::new().range(0.0, 100.0).value(-50.0);
-        assert_eq!(s.value, 0.0);
+    fn test_slider_range_clamps_existing_value() {
+        let s = Slider::new().value(50.0).range(0.0, 10.0);
+        assert_eq!(s.value, 10.0);
     }
 
     #[test]
     fn test_slider_step() {
+        let s = Slider::new().step(5.0);
+        assert_eq!(s.step, 5.0);
+    }
+
+    #[test]
+    fn test_slider_step_abs_negative() {
+        let s = Slider::new().step(-10.0);
+        assert_eq!(s.step, 10.0);
+    }
+
+    #[test]
+    fn test_slider_step_with_value_snaps() {
         let s = Slider::new().range(0.0, 100.0).step(10.0).value(25.0);
-        // Should snap to nearest step (30.0)
         assert!((s.value - 30.0).abs() < 0.001);
     }
 
     #[test]
-    fn test_slider_normalized() {
-        let s = Slider::new().range(0.0, 100.0).value(50.0);
-        assert!((s.normalized() - 0.5).abs() < 0.001);
+    fn test_slider_orientation_builder() {
+        let s = Slider::new().orientation(SliderOrientation::Vertical);
+        assert_eq!(s.orientation, SliderOrientation::Vertical);
     }
 
     #[test]
-    fn test_slider_orientation() {
+    fn test_slider_horizontal() {
         let h = Slider::new().horizontal();
         assert!(matches!(h.orientation, SliderOrientation::Horizontal));
+    }
 
+    #[test]
+    fn test_slider_vertical() {
         let v = Slider::new().vertical();
         assert!(matches!(v.orientation, SliderOrientation::Vertical));
     }
 
     #[test]
-    fn test_slider_helpers() {
-        let s = slider().value(50.0);
-        assert_eq!(s.value, 50.0);
-
-        let s = slider_range(0.0, 10.0);
-        assert_eq!(s.max, 10.0);
-
-        let s = percentage_slider().value(75.0);
-        assert!(s.value_format.is_some());
-
-        let s = volume_slider();
-        assert!(s.label.is_some());
+    fn test_slider_style_builder() {
+        let s = Slider::new().style(SliderStyle::Line);
+        assert_eq!(s.style, SliderStyle::Line);
     }
 
     #[test]
-    fn test_slider_format_value() {
-        let s = Slider::new().value(50.0);
-        assert_eq!(s.format_value(), "50");
+    fn test_slider_style_builder_all_variants() {
+        let s1 = Slider::new().style(SliderStyle::Block);
+        assert_eq!(s1.style, SliderStyle::Block);
 
-        let s = Slider::new().value(50.5).step(0.1);
-        assert_eq!(s.format_value(), "50.5");
+        let s2 = Slider::new().style(SliderStyle::Line);
+        assert_eq!(s2.style, SliderStyle::Line);
 
-        let s = Slider::new().value(50.0).value_format("{}%");
-        assert_eq!(s.format_value(), "50.0%");
+        let s3 = Slider::new().style(SliderStyle::Thin);
+        assert_eq!(s3.style, SliderStyle::Thin);
+
+        let s4 = Slider::new().style(SliderStyle::Gradient);
+        assert_eq!(s4.style, SliderStyle::Gradient);
+
+        let s5 = Slider::new().style(SliderStyle::Dots);
+        assert_eq!(s5.style, SliderStyle::Dots);
+    }
+
+    #[test]
+    fn test_slider_length() {
+        let s = Slider::new().length(30);
+        assert_eq!(s.length, 30);
+    }
+
+    #[test]
+    fn test_slider_length_minimum() {
+        let s = Slider::new().length(1);
+        assert_eq!(s.length, 3);
+    }
+
+    #[test]
+    fn test_slider_show_value_true() {
+        let s = Slider::new().show_value(true);
+        assert!(s.show_value);
+    }
+
+    #[test]
+    fn test_slider_show_value_false() {
+        let s = Slider::new().show_value(false);
+        assert!(!s.show_value);
+    }
+
+    #[test]
+    fn test_slider_value_format() {
+        let s = Slider::new().value_format("{}%");
+        assert_eq!(s.value_format, Some("{}%".to_string()));
+    }
+
+    #[test]
+    fn test_slider_value_format_string() {
+        let s = Slider::new().value_format("Value: {}");
+        assert_eq!(s.value_format, Some("Value: {}".to_string()));
+    }
+
+    #[test]
+    fn test_slider_track_color() {
+        let color = Color::RED;
+        let s = Slider::new().track_color(color);
+        assert_eq!(s.track_color, color);
+    }
+
+    #[test]
+    fn test_slider_fill_color() {
+        let color = Color::BLUE;
+        let s = Slider::new().fill_color(color);
+        assert_eq!(s.fill_color, color);
+    }
+
+    #[test]
+    fn test_slider_knob_color() {
+        let color = Color::GREEN;
+        let s = Slider::new().knob_color(color);
+        assert_eq!(s.knob_color, color);
+    }
+
+    #[test]
+    fn test_slider_focused_true() {
+        let s = Slider::new().focused(true);
+        assert!(s.focused);
+    }
+
+    #[test]
+    fn test_slider_focused_false() {
+        let s = Slider::new().focused(false);
+        assert!(!s.focused);
+    }
+
+    #[test]
+    fn test_slider_disabled_true() {
+        let s = Slider::new().disabled(true);
+        assert!(s.disabled);
+    }
+
+    #[test]
+    fn test_slider_disabled_false() {
+        let s = Slider::new().disabled(false);
+        assert!(!s.disabled);
+    }
+
+    #[test]
+    fn test_slider_label() {
+        let s = Slider::new().label("Volume");
+        assert_eq!(s.label, Some("Volume".to_string()));
+    }
+
+    #[test]
+    fn test_slider_label_string() {
+        let s = Slider::new().label(String::from("Test"));
+        assert_eq!(s.label, Some("Test".to_string()));
     }
 
     #[test]
@@ -681,5 +901,428 @@ mod tests {
         let s = Slider::new().ticks(5);
         assert!(s.show_ticks);
         assert_eq!(s.tick_count, 5);
+    }
+
+    #[test]
+    fn test_slider_ticks_minimum() {
+        let s = Slider::new().ticks(1);
+        assert_eq!(s.tick_count, 2);
+    }
+
+    // =================================================================
+    // State Mutation Method Tests
+    // =================================================================
+
+    #[test]
+    fn test_slider_set_value() {
+        let mut s = Slider::new();
+        s.set_value(50.0);
+        assert_eq!(s.value, 50.0);
+    }
+
+    #[test]
+    fn test_slider_set_value_clamps() {
+        let mut s = Slider::new();
+        s.set_value(150.0);
+        assert_eq!(s.value, 100.0);
+    }
+
+    #[test]
+    fn test_slider_get_value() {
+        let s = Slider::new().value(75.0);
+        assert_eq!(s.get_value(), 75.0);
+    }
+
+    #[test]
+    fn test_slider_increment() {
+        let mut s = Slider::new().value(50.0);
+        s.increment();
+        assert_eq!(s.value, 51.0);
+    }
+
+    #[test]
+    fn test_slider_increment_with_step() {
+        let mut s = Slider::new().value(50.0).step(10.0);
+        s.increment();
+        assert_eq!(s.value, 60.0);
+    }
+
+    #[test]
+    fn test_slider_increment_clamps_at_max() {
+        let mut s = Slider::new().value(99.0);
+        s.increment();
+        assert_eq!(s.value, 100.0);
+    }
+
+    #[test]
+    fn test_slider_decrement() {
+        let mut s = Slider::new().value(50.0);
+        s.decrement();
+        assert_eq!(s.value, 49.0);
+    }
+
+    #[test]
+    fn test_slider_decrement_with_step() {
+        let mut s = Slider::new().value(50.0).step(10.0);
+        s.decrement();
+        assert_eq!(s.value, 40.0);
+    }
+
+    #[test]
+    fn test_slider_decrement_clamps_at_min() {
+        let mut s = Slider::new().value(1.0);
+        s.decrement();
+        assert_eq!(s.value, 0.0);
+    }
+
+    #[test]
+    fn test_slider_set_min() {
+        let mut s = Slider::new().value(50.0);
+        s.set_min();
+        assert_eq!(s.value, 0.0);
+    }
+
+    #[test]
+    fn test_slider_set_max() {
+        let mut s = Slider::new().value(50.0);
+        s.set_max();
+        assert_eq!(s.value, 100.0);
+    }
+
+    // =================================================================
+    // Key Handling Tests
+    // =================================================================
+
+    #[test]
+    fn test_slider_handle_key_horizontal_right() {
+        let mut s = Slider::new().value(50.0).focused(true);
+        let handled = s.handle_key(&Key::Right);
+        assert!(handled);
+        assert_eq!(s.value, 51.0);
+    }
+
+    #[test]
+    fn test_slider_handle_key_horizontal_char_l() {
+        let mut s = Slider::new().value(50.0).focused(true);
+        let handled = s.handle_key(&Key::Char('l'));
+        assert!(handled);
+        assert_eq!(s.value, 51.0);
+    }
+
+    #[test]
+    fn test_slider_handle_key_horizontal_left() {
+        let mut s = Slider::new().value(50.0).focused(true);
+        let handled = s.handle_key(&Key::Left);
+        assert!(handled);
+        assert_eq!(s.value, 49.0);
+    }
+
+    #[test]
+    fn test_slider_handle_key_horizontal_char_h() {
+        let mut s = Slider::new().value(50.0).focused(true);
+        let handled = s.handle_key(&Key::Char('h'));
+        assert!(handled);
+        assert_eq!(s.value, 49.0);
+    }
+
+    #[test]
+    fn test_slider_handle_key_vertical_up() {
+        let mut s = Slider::new().value(50.0).vertical().focused(true);
+        let handled = s.handle_key(&Key::Up);
+        assert!(handled);
+        assert_eq!(s.value, 51.0);
+    }
+
+    #[test]
+    fn test_slider_handle_key_vertical_char_k() {
+        let mut s = Slider::new().value(50.0).vertical().focused(true);
+        let handled = s.handle_key(&Key::Char('k'));
+        assert!(handled);
+        assert_eq!(s.value, 51.0);
+    }
+
+    #[test]
+    fn test_slider_handle_key_vertical_down() {
+        let mut s = Slider::new().value(50.0).vertical().focused(true);
+        let handled = s.handle_key(&Key::Down);
+        assert!(handled);
+        assert_eq!(s.value, 49.0);
+    }
+
+    #[test]
+    fn test_slider_handle_key_vertical_char_j() {
+        let mut s = Slider::new().value(50.0).vertical().focused(true);
+        let handled = s.handle_key(&Key::Char('j'));
+        assert!(handled);
+        assert_eq!(s.value, 49.0);
+    }
+
+    #[test]
+    fn test_slider_handle_key_home() {
+        let mut s = Slider::new().value(50.0).focused(true);
+        let handled = s.handle_key(&Key::Home);
+        assert!(handled);
+        assert_eq!(s.value, 0.0);
+    }
+
+    #[test]
+    fn test_slider_handle_key_end() {
+        let mut s = Slider::new().value(50.0).focused(true);
+        let handled = s.handle_key(&Key::End);
+        assert!(handled);
+        assert_eq!(s.value, 100.0);
+    }
+
+    #[test]
+    fn test_slider_handle_key_disabled_returns_false() {
+        let mut s = Slider::new().value(50.0).focused(true).disabled(true);
+        let handled = s.handle_key(&Key::Right);
+        assert!(!handled);
+        assert_eq!(s.value, 50.0);
+    }
+
+    #[test]
+    fn test_slider_handle_key_not_focused_returns_false() {
+        let mut s = Slider::new().value(50.0).focused(false);
+        let handled = s.handle_key(&Key::Right);
+        assert!(!handled);
+        assert_eq!(s.value, 50.0);
+    }
+
+    #[test]
+    fn test_slider_handle_key_unhandled_key_returns_false() {
+        let mut s = Slider::new().value(50.0).focused(true);
+        let handled = s.handle_key(&Key::Char('x'));
+        assert!(!handled);
+        assert_eq!(s.value, 50.0);
+    }
+
+    // =================================================================
+    // Value Formatting Tests
+    // =================================================================
+
+    #[test]
+    fn test_slider_format_value_integer() {
+        let s = Slider::new().value(50.0);
+        assert_eq!(s.format_value(), "50");
+    }
+
+    #[test]
+    fn test_slider_format_value_decimal() {
+        let s = Slider::new().value(50.5).step(0.1);
+        assert_eq!(s.format_value(), "50.5");
+    }
+
+    #[test]
+    fn test_slider_format_value_with_custom_format() {
+        let s = Slider::new().value(50.0).value_format("{}%");
+        assert_eq!(s.format_value(), "50.0%");
+    }
+
+    #[test]
+    fn test_slider_format_value_with_prefix() {
+        let s = Slider::new().value(75.0).value_format("Level: {}");
+        assert_eq!(s.format_value(), "Level: 75.0");
+    }
+
+    // =================================================================
+    // Normalization Tests
+    // =================================================================
+
+    #[test]
+    fn test_slider_normalized_midpoint() {
+        let s = Slider::new().range(0.0, 100.0).value(50.0);
+        assert!((s.normalized() - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_slider_normalized_zero() {
+        let s = Slider::new().range(0.0, 100.0).value(0.0);
+        assert!((s.normalized() - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_slider_normalized_one() {
+        let s = Slider::new().range(0.0, 100.0).value(100.0);
+        assert!((s.normalized() - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_slider_normalized_zero_range() {
+        let s = Slider::new().range(50.0, 50.0).value(50.0);
+        assert_eq!(s.normalized(), 0.0);
+    }
+
+    #[test]
+    fn test_slider_clamp_value_within_range() {
+        let s = Slider::new().range(0.0, 100.0).value(50.0);
+        assert_eq!(s.value, 50.0);
+    }
+
+    #[test]
+    fn test_slider_clamp_value_above_max() {
+        let s = Slider::new().range(0.0, 100.0).value(150.0);
+        assert_eq!(s.value, 100.0);
+    }
+
+    #[test]
+    fn test_slider_clamp_value_below_min() {
+        let s = Slider::new().range(0.0, 100.0).value(-50.0);
+        assert_eq!(s.value, 0.0);
+    }
+
+    #[test]
+    fn test_slider_clamp_value_with_step() {
+        let s = Slider::new().range(0.0, 100.0).step(10.0).value(25.0);
+        assert!((s.value - 30.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_slider_clamp_value_with_step_rounds_down() {
+        let s = Slider::new().range(0.0, 100.0).step(10.0).value(24.0);
+        assert!((s.value - 20.0).abs() < 0.001);
+    }
+
+    // =================================================================
+    // Helper Function Tests
+    // =================================================================
+
+    #[test]
+    fn test_slider_helper() {
+        let s = slider().value(50.0);
+        assert_eq!(s.value, 50.0);
+    }
+
+    #[test]
+    fn test_slider_range_helper() {
+        let s = slider_range(0.0, 10.0);
+        assert_eq!(s.min, 0.0);
+        assert_eq!(s.max, 10.0);
+    }
+
+    #[test]
+    fn test_slider_range_helper_with_custom_range() {
+        let s = slider_range(-50.0, 50.0);
+        assert_eq!(s.min, -50.0);
+        assert_eq!(s.max, 50.0);
+    }
+
+    #[test]
+    fn test_percentage_slider_helper() {
+        let s = percentage_slider().value(75.0);
+        assert_eq!(s.min, 0.0);
+        assert_eq!(s.max, 100.0);
+        assert!(s.value_format.is_some());
+    }
+
+    #[test]
+    fn test_percentage_slider_helper_format() {
+        let s = percentage_slider();
+        // percentage_slider uses value_format("{}%")
+        assert_eq!(s.value_format, Some("{}%".to_string()));
+    }
+
+    #[test]
+    fn test_volume_slider_helper() {
+        let s = volume_slider();
+        assert_eq!(s.min, 0.0);
+        assert_eq!(s.max, 100.0);
+        assert_eq!(s.style, SliderStyle::Block);
+    }
+
+    #[test]
+    fn test_volume_slider_helper_label() {
+        let s = volume_slider();
+        assert_eq!(s.label, Some("Vol".to_string()));
+    }
+
+    // =================================================================
+    // Chained Builder Tests
+    // =================================================================
+
+    #[test]
+    fn test_slider_chained_builders() {
+        let s = Slider::new()
+            .value(50.0)
+            .range(0.0, 200.0)
+            .step(5.0)
+            .vertical()
+            .style(SliderStyle::Line)
+            .length(30)
+            .show_value(false)
+            .value_format("{} units")
+            .track_color(Color::RED)
+            .fill_color(Color::BLUE)
+            .knob_color(Color::GREEN)
+            .focused(true)
+            .disabled(false)
+            .label("Test")
+            .ticks(10);
+
+        assert_eq!(s.value, 50.0);
+        assert_eq!(s.min, 0.0);
+        assert_eq!(s.max, 200.0);
+        assert_eq!(s.step, 5.0);
+        assert!(matches!(s.orientation, SliderOrientation::Vertical));
+        assert_eq!(s.style, SliderStyle::Line);
+        assert_eq!(s.length, 30);
+        assert!(!s.show_value);
+        assert_eq!(s.value_format, Some("{} units".to_string()));
+        assert_eq!(s.track_color, Color::RED);
+        assert_eq!(s.fill_color, Color::BLUE);
+        assert_eq!(s.knob_color, Color::GREEN);
+        assert!(s.focused);
+        assert!(!s.disabled);
+        assert_eq!(s.label, Some("Test".to_string()));
+        assert!(s.show_ticks);
+        assert_eq!(s.tick_count, 10);
+    }
+
+    // =================================================================
+    // Edge Case Tests
+    // =================================================================
+
+    #[test]
+    fn test_slider_negative_range() {
+        let s = Slider::new().range(-100.0, 0.0).value(-50.0);
+        assert_eq!(s.min, -100.0);
+        assert_eq!(s.max, 0.0);
+        assert_eq!(s.value, -50.0);
+    }
+
+    #[test]
+    fn test_slider_negative_and_positive_range() {
+        let s = Slider::new().range(-50.0, 50.0).value(0.0);
+        assert_eq!(s.min, -50.0);
+        assert_eq!(s.max, 50.0);
+        assert_eq!(s.value, 0.0);
+    }
+
+    #[test]
+    fn test_slider_very_small_range() {
+        let s = Slider::new().range(0.0, 0.1).value(0.05);
+        assert_eq!(s.min, 0.0);
+        assert_eq!(s.max, 0.1);
+        assert!((s.value - 0.05).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_slider_very_large_range() {
+        let s = Slider::new().range(0.0, 1000000.0).value(500000.0);
+        assert_eq!(s.min, 0.0);
+        assert_eq!(s.max, 1000000.0);
+        assert_eq!(s.value, 500000.0);
+    }
+
+    #[test]
+    fn test_slider_zero_step() {
+        let s = Slider::new().step(0.0);
+        assert_eq!(s.step, 0.0);
+    }
+
+    #[test]
+    fn test_slider_very_small_step() {
+        let s = Slider::new().range(0.0, 1.0).step(0.01).value(0.505);
+        assert!((s.value - 0.51).abs() < 0.001);
     }
 }

@@ -195,3 +195,184 @@ impl Drop for Effect {
         dispose_subscriber(self.id);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicI32, Ordering};
+
+    // Effect::new tests
+    #[test]
+    fn test_effect_new_runs_immediately() {
+        let count = Arc::new(AtomicI32::new(0));
+        let count_clone = count.clone();
+
+        Effect::new(move || {
+            count_clone.fetch_add(1, Ordering::SeqCst);
+        });
+
+        // Effect should have run once on creation
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn test_effect_new_with_closure() {
+        let executed = Arc::new(AtomicBool::new(false));
+        let executed_clone = executed.clone();
+
+        Effect::new(move || {
+            executed_clone.store(true, Ordering::SeqCst);
+        });
+
+        assert!(executed.load(Ordering::SeqCst));
+    }
+
+    // Effect::lazy tests
+    #[test]
+    fn test_effect_lazy_does_not_run_immediately() {
+        let count = Arc::new(AtomicI32::new(0));
+        let count_clone = count.clone();
+
+        Effect::lazy(move || {
+            count_clone.fetch_add(1, Ordering::SeqCst);
+        });
+
+        // Lazy effect should NOT have run on creation
+        assert_eq!(count.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn test_effect_lazy_run_manually() {
+        let count = Arc::new(AtomicI32::new(0));
+        let count_clone = count.clone();
+
+        let effect = Effect::lazy(move || {
+            count_clone.fetch_add(1, Ordering::SeqCst);
+        });
+
+        assert_eq!(count.load(Ordering::SeqCst), 0);
+
+        effect.run();
+
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+    }
+
+    // Effect::run tests
+    #[test]
+    fn test_effect_run_multiple_times() {
+        let count = Arc::new(AtomicI32::new(0));
+        let count_clone = count.clone();
+
+        let effect = Effect::lazy(move || {
+            count_clone.fetch_add(1, Ordering::SeqCst);
+        });
+
+        effect.run();
+        effect.run();
+        effect.run();
+
+        assert_eq!(count.load(Ordering::SeqCst), 3);
+    }
+
+    // Effect::stop tests
+    #[test]
+    fn test_effect_stop_prevents_running() {
+        let count = Arc::new(AtomicI32::new(0));
+        let count_clone = count.clone();
+
+        let effect = Effect::lazy(move || {
+            count_clone.fetch_add(1, Ordering::SeqCst);
+        });
+
+        effect.run();
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+
+        effect.stop();
+        effect.run(); // Should not increment since stopped
+
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+    }
+
+    // Effect::resume tests
+    #[test]
+    fn test_effect_resume_allows_running() {
+        let count = Arc::new(AtomicI32::new(0));
+        let count_clone = count.clone();
+
+        let effect = Effect::lazy(move || {
+            count_clone.fetch_add(1, Ordering::SeqCst);
+        });
+
+        effect.stop();
+        effect.run();
+        assert_eq!(count.load(Ordering::SeqCst), 0);
+
+        effect.resume();
+        effect.run();
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+    }
+
+    // Effect::is_active tests
+    #[test]
+    fn test_effect_is_active_initially() {
+        let effect = Effect::new(|| {});
+        assert!(effect.is_active());
+    }
+
+    #[test]
+    fn test_effect_is_active_after_stop() {
+        let effect = Effect::new(|| {});
+        effect.stop();
+        assert!(!effect.is_active());
+    }
+
+    #[test]
+    fn test_effect_is_active_after_resume() {
+        let effect = Effect::new(|| {});
+        effect.stop();
+        assert!(!effect.is_active());
+
+        effect.resume();
+        assert!(effect.is_active());
+    }
+
+    // Effect::id tests
+    #[test]
+    fn test_effect_id_returns_value() {
+        let effect = Effect::new(|| {});
+        let _id = effect.id();
+        // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_effect_id_is_unique() {
+        let effect1 = Effect::new(|| {});
+        let effect2 = Effect::new(|| {});
+
+        // IDs should be different
+        assert_ne!(effect1.id(), effect2.id());
+    }
+
+    // Effect::lazy is_active tests
+    #[test]
+    fn test_effect_lazy_is_active_initially() {
+        let effect = Effect::lazy(|| {});
+        assert!(effect.is_active());
+    }
+
+    // Effect drop tests
+    #[test]
+    fn test_effect_drop_cleanup() {
+        let executed = Arc::new(AtomicBool::new(false));
+        let executed_clone = executed.clone();
+
+        {
+            let _effect = Effect::lazy(move || {
+                executed_clone.store(true, Ordering::SeqCst);
+            });
+        } // Effect dropped here
+
+        // Just verify that dropping doesn't panic
+        assert!(!executed.load(Ordering::SeqCst));
+    }
+}

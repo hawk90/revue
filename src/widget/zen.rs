@@ -289,4 +289,156 @@ mod tests {
         let z = zen_light(Text::new("Hello"));
         assert_eq!(z.bg_color, Color::rgb(250, 250, 250));
     }
+
+    // =========================================================================
+    // ZenMode::new tests
+    // =========================================================================
+
+    #[test]
+    fn test_zen_mode_new_defaults() {
+        let z = ZenMode::new(Text::new("Test"));
+        assert!(!z.enabled);
+        assert_eq!(z.padding_x, 4);
+        assert_eq!(z.padding_y, 2);
+        assert_eq!(z.bg_color, Color::rgb(15, 15, 25));
+        assert_eq!(z.dim_opacity, 0.0);
+        assert!(!z.center_vertical);
+    }
+
+    // =========================================================================
+    // ZenMode builder tests
+    // =========================================================================
+
+    #[test]
+    fn test_zen_bg() {
+        let z = ZenMode::new(Text::new("Test")).bg(Color::RED);
+        assert_eq!(z.bg_color, Color::RED);
+    }
+
+    #[test]
+    fn test_zen_dim_clamps_low() {
+        let z = ZenMode::new(Text::new("Test")).dim(-0.5);
+        assert_eq!(z.dim_opacity, 0.0);
+    }
+
+    #[test]
+    fn test_zen_dim_clamps_high() {
+        let z = ZenMode::new(Text::new("Test")).dim(1.5);
+        assert_eq!(z.dim_opacity, 1.0);
+    }
+
+    #[test]
+    fn test_zen_dim() {
+        let z = ZenMode::new(Text::new("Test")).dim(0.5);
+        assert_eq!(z.dim_opacity, 0.5);
+    }
+
+    #[test]
+    fn test_zen_center() {
+        let z = ZenMode::new(Text::new("Test")).center();
+        assert!(z.center_vertical);
+    }
+
+    #[test]
+    fn test_zen_builder_chain() {
+        let z = ZenMode::new(Text::new("Test"))
+            .padding(6)
+            .bg(Color::CYAN)
+            .dim(0.3)
+            .center();
+
+        assert_eq!(z.padding_x, 6);
+        assert_eq!(z.padding_y, 6);
+        assert_eq!(z.bg_color, Color::CYAN);
+        assert_eq!(z.dim_opacity, 0.3);
+        assert!(z.center_vertical);
+    }
+
+    // =========================================================================
+    // ZenMode::set_enabled tests
+    // =========================================================================
+
+    #[test]
+    fn test_set_enabled_true() {
+        let mut z = ZenMode::new(Text::new("Test"));
+        z.set_enabled(true);
+        assert!(z.is_enabled());
+    }
+
+    #[test]
+    fn test_set_enabled_false() {
+        let mut z = zen(Text::new("Test"));
+        z.enable();
+        z.set_enabled(false);
+        assert!(!z.is_enabled());
+    }
+
+    // =========================================================================
+    // ZenMode Default tests
+    // =========================================================================
+
+    #[test]
+    fn test_zen_mode_default() {
+        let z = ZenMode::default();
+        assert!(!z.is_enabled());
+    }
+
+    // =========================================================================
+    // Helper function tests
+    // =========================================================================
+
+    #[test]
+    fn test_zen_helper() {
+        let z = zen(Text::new("Test"));
+        assert!(!z.is_enabled());
+    }
+
+    #[test]
+    fn test_zen_helper_content() {
+        let z = zen(Text::new("Content"));
+        assert_eq!(z.padding_x, 4);
+        assert_eq!(z.padding_y, 2);
+    }
+
+    // =========================================================================
+    // ZenMode::content tests
+    // =========================================================================
+
+    #[test]
+    fn test_content_returns_view() {
+        let z = zen(Text::new("Test"));
+        let _content = z.content(); // Just verify it doesn't panic
+    }
+
+    #[test]
+    fn test_content_mut_returns_view() {
+        let mut z = zen(Text::new("Test"));
+        let _content = z.content_mut(); // Just verify it doesn't panic
+    }
+
+    // =========================================================================
+    // ZenMode render edge cases
+    // =========================================================================
+
+    #[test]
+    fn test_zen_render_zero_padding() {
+        let mut buffer = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut z = zen(Text::new("Test")).padding(0);
+        z.enable();
+        z.render(&mut ctx); // Should not panic
+    }
+
+    #[test]
+    fn test_zen_render_large_padding() {
+        let mut buffer = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let mut z = zen(Text::new("Test")).padding(100);
+        z.enable();
+        z.render(&mut ctx); // Should saturate and not panic
+    }
 }

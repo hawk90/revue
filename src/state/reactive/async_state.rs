@@ -356,3 +356,339 @@ where
         use_async(self.fetch)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicI32, Ordering};
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    // AsyncState tests
+    #[test]
+    fn test_async_state_default() {
+        let state: AsyncState<i32> = AsyncState::default();
+        assert!(state.is_idle());
+    }
+
+    #[test]
+    fn test_async_state_idle() {
+        let state = AsyncState::<i32>::Idle;
+        assert!(state.is_idle());
+        assert!(!state.is_loading());
+        assert!(!state.is_ready());
+        assert!(!state.is_error());
+    }
+
+    #[test]
+    fn test_async_state_loading() {
+        let state = AsyncState::<i32>::Loading;
+        assert!(!state.is_idle());
+        assert!(state.is_loading());
+        assert!(!state.is_ready());
+        assert!(!state.is_error());
+    }
+
+    #[test]
+    fn test_async_state_ready() {
+        let state = AsyncState::Ready(42);
+        assert!(!state.is_idle());
+        assert!(!state.is_loading());
+        assert!(state.is_ready());
+        assert!(!state.is_error());
+    }
+
+    #[test]
+    fn test_async_state_error() {
+        let state = AsyncState::<i32>::Error("test error".to_string());
+        assert!(!state.is_idle());
+        assert!(!state.is_loading());
+        assert!(!state.is_ready());
+        assert!(state.is_error());
+    }
+
+    #[test]
+    fn test_async_state_value() {
+        let state = AsyncState::Ready(42);
+        assert_eq!(state.value(), Some(&42));
+
+        let state = AsyncState::<i32>::Loading;
+        assert_eq!(state.value(), None);
+    }
+
+    #[test]
+    fn test_async_state_error_message() {
+        let state = AsyncState::<i32>::Error("test error".to_string());
+        assert_eq!(state.error(), Some("test error"));
+
+        let state = AsyncState::<i32>::Loading;
+        assert_eq!(state.error(), None);
+    }
+
+    #[test]
+    fn test_async_state_map() {
+        let state = AsyncState::Ready(42);
+        let mapped = state.map(|v| v * 2);
+        assert_eq!(mapped, AsyncState::Ready(84));
+    }
+
+    #[test]
+    fn test_async_state_map_idle() {
+        let state = AsyncState::<i32>::Idle;
+        let mapped = state.map(|v| v * 2);
+        assert_eq!(mapped, AsyncState::<i32>::Idle);
+    }
+
+    #[test]
+    fn test_async_state_map_loading() {
+        let state = AsyncState::<i32>::Loading;
+        let mapped = state.map(|v| v * 2);
+        assert_eq!(mapped, AsyncState::<i32>::Loading);
+    }
+
+    #[test]
+    fn test_async_state_map_error() {
+        let state = AsyncState::<i32>::Error("error".to_string());
+        let mapped = state.map(|v| v * 2);
+        assert_eq!(mapped, AsyncState::Error("error".to_string()));
+    }
+
+    #[test]
+    fn test_async_state_unwrap_or() {
+        let state = AsyncState::Ready(42);
+        assert_eq!(state.unwrap_or(0), 42);
+
+        let state = AsyncState::<i32>::Idle;
+        assert_eq!(state.unwrap_or(0), 0);
+    }
+
+    #[test]
+    fn test_async_state_unwrap_or_else() {
+        let state = AsyncState::Ready(42);
+        assert_eq!(state.unwrap_or_else(|| 0), 42);
+
+        let state = AsyncState::<i32>::Idle;
+        assert_eq!(state.unwrap_or_else(|| 99), 99);
+    }
+
+    // Display tests
+    #[test]
+    fn test_async_state_display_idle() {
+        let state = AsyncState::<i32>::Idle;
+        assert_eq!(format!("{}", state), "Idle");
+    }
+
+    #[test]
+    fn test_async_state_display_loading() {
+        let state = AsyncState::<i32>::Loading;
+        assert_eq!(format!("{}", state), "Loading");
+    }
+
+    #[test]
+    fn test_async_state_display_ready() {
+        let state = AsyncState::Ready(42);
+        assert_eq!(format!("{}", state), "Ready(42)");
+    }
+
+    #[test]
+    fn test_async_state_display_error() {
+        let state = AsyncState::<i32>::Error("error".to_string());
+        assert_eq!(format!("{}", state), "Error(error)");
+    }
+
+    // Clone tests
+    #[test]
+    fn test_async_state_clone_ready() {
+        let state1 = AsyncState::Ready(42);
+        let state2 = state1.clone();
+        assert_eq!(state2, AsyncState::Ready(42));
+    }
+
+    #[test]
+    fn test_async_state_clone_error() {
+        let state1: AsyncState<i32> = AsyncState::Error("error".to_string());
+        let state2 = state1.clone();
+        assert_eq!(state2, AsyncState::Error("error".to_string()));
+    }
+
+    // PartialEq tests
+    #[test]
+    fn test_async_state_partial_eq() {
+        let state1 = AsyncState::Ready(42);
+        let state2 = AsyncState::Ready(42);
+        assert_eq!(state1, state2);
+    }
+
+    // use_async tests
+    #[test]
+    fn test_use_async() {
+        let (state, trigger) = use_async(|| {
+            std::thread::sleep(Duration::from_millis(50));
+            Ok::<i32, String>(42)
+        });
+
+        // Initially idle
+        assert!(state.get().is_idle());
+
+        // Trigger the async operation
+        trigger();
+
+        // Wait for completion
+        std::thread::sleep(Duration::from_millis(200));
+        assert!(state.get().is_ready());
+        assert_eq!(state.get().value(), Some(&42));
+    }
+
+    #[test]
+    fn test_use_async_with_error() {
+        let (state, trigger) = use_async(|| Err::<i32, String>("error".to_string()));
+
+        trigger();
+        std::thread::sleep(Duration::from_millis(100));
+
+        assert!(state.get().is_error());
+    }
+
+    #[test]
+    fn test_use_async_trigger_multiple() {
+        let (state, trigger) = use_async(|| Ok::<i32, String>(42));
+
+        trigger();
+        trigger(); // Should trigger again
+
+        // Wait for at least one to complete
+        std::thread::sleep(Duration::from_millis(100));
+        assert!(state.get().is_ready() || state.get().is_loading());
+    }
+
+    // use_async_poll tests
+    #[test]
+    fn test_use_async_poll() {
+        let (state, start, poll) = use_async_poll(|| Ok::<i32, String>(42));
+
+        assert!(state.get().is_idle());
+
+        start();
+        assert!(state.get().is_loading());
+
+        // Poll until done
+        for _ in 0..10 {
+            if poll() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+
+        assert!(state.get().is_ready());
+    }
+
+    #[test]
+    fn test_use_async_poll_returns_false_when_not_done() {
+        let (_state, start, poll) = use_async_poll(|| {
+            std::thread::sleep(Duration::from_millis(100));
+            Ok::<i32, String>(42)
+        });
+
+        start();
+        // First poll should return false (not done yet)
+        assert!(!poll());
+    }
+
+    #[test]
+    fn test_use_async_poll_with_error() {
+        let (state, start, poll) = use_async_poll(|| Err::<i32, String>("error".to_string()));
+
+        start();
+
+        for _ in 0..10 {
+            if poll() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+
+        assert!(state.get().is_error());
+    }
+
+    // use_async_immediate tests
+    #[test]
+    fn test_use_async_immediate() {
+        let state = use_async_immediate(|| Ok::<i32, String>(42));
+
+        // Wait for completion
+        std::thread::sleep(Duration::from_millis(100));
+
+        assert!(state.get().is_ready());
+        assert_eq!(state.get().value(), Some(&42));
+    }
+
+    #[test]
+    fn test_use_async_immediate_with_error() {
+        let state = use_async_immediate(|| Err::<i32, String>("error".to_string()));
+
+        std::thread::sleep(Duration::from_millis(100));
+
+        assert!(state.get().is_error());
+    }
+
+    // AsyncResource tests
+    #[test]
+    fn test_async_resource_new() {
+        let _resource = AsyncResource::new(|| Ok::<i32, String>(42));
+        // Just verify it compiles
+    }
+
+    #[test]
+    fn test_async_resource_build() {
+        let resource = AsyncResource::new(|| Ok::<i32, String>(42));
+        let (state, trigger) = resource.build();
+
+        assert!(state.get().is_idle());
+        trigger();
+        std::thread::sleep(Duration::from_millis(100));
+        assert!(state.get().is_ready());
+    }
+
+    // Different type tests
+    #[test]
+    fn test_async_state_with_string() {
+        let state = AsyncState::Ready("hello".to_string());
+        assert!(state.is_ready());
+        assert_eq!(state.value(), Some(&"hello".to_string()));
+    }
+
+    #[test]
+    fn test_async_state_with_vec() {
+        let state = AsyncState::Ready(vec![1, 2, 3]);
+        assert!(state.is_ready());
+        assert_eq!(state.value(), Some(&vec![1, 2, 3]));
+    }
+
+    #[test]
+    fn test_async_state_map_string() {
+        let state = AsyncState::Ready("hello".to_string());
+        let mapped = state.map(|s| s.len());
+        assert_eq!(mapped, AsyncState::Ready(5));
+    }
+
+    // Integration tests
+    #[test]
+    fn test_use_async_with_closure() {
+        let value = Arc::new(AtomicI32::new(10));
+        let value_clone = value.clone();
+
+        let (state, trigger) = use_async(move || {
+            std::thread::sleep(Duration::from_millis(50));
+            // Return the current value after incrementing
+            value_clone.fetch_add(1, Ordering::SeqCst);
+            Ok::<i32, String>(value_clone.load(Ordering::SeqCst))
+        });
+
+        trigger();
+        std::thread::sleep(Duration::from_millis(200));
+
+        assert!(state.get().is_ready());
+        // The atomic was incremented from 10 to 11
+        assert_eq!(state.get().value(), Some(&11));
+    }
+}

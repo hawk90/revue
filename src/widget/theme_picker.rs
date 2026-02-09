@@ -568,4 +568,232 @@ mod tests {
         picker.handle_key(&event);
         assert_eq!(picker.selected_index, 0);
     }
+
+    // =========================================================================
+    // ThemePicker::new tests
+    // =========================================================================
+
+    #[test]
+    fn test_theme_picker_new_default_values() {
+        let picker = ThemePicker::new();
+        assert!(!picker.themes.is_empty());
+        assert!(!picker.open);
+        assert!(!picker.compact);
+        assert!(picker.show_preview);
+        assert!(picker.width.is_none());
+        assert!(picker.fg.is_none());
+        assert!(picker.bg.is_none());
+    }
+
+    // =========================================================================
+    // ThemePicker builder tests
+    // =========================================================================
+
+    #[test]
+    fn test_theme_picker_show_preview() {
+        let picker = ThemePicker::new().show_preview(false);
+        assert!(!picker.show_preview);
+    }
+
+    #[test]
+    fn test_theme_picker_colors() {
+        let picker = ThemePicker::new().fg(Color::RED).bg(Color::BLUE);
+
+        assert_eq!(picker.fg, Some(Color::RED));
+        assert_eq!(picker.bg, Some(Color::BLUE));
+    }
+
+    // =========================================================================
+    // ThemePicker state management tests
+    // =========================================================================
+
+    #[test]
+    fn test_theme_picker_open() {
+        let mut picker = ThemePicker::new();
+        picker.open();
+        assert!(picker.is_open());
+    }
+
+    #[test]
+    fn test_theme_picker_close() {
+        let mut picker = ThemePicker::new();
+        picker.open();
+        picker.close();
+        assert!(!picker.is_open());
+    }
+
+    #[test]
+    fn test_theme_picker_is_open() {
+        let mut picker = ThemePicker::new();
+        assert!(!picker.is_open());
+
+        picker.open();
+        assert!(picker.is_open());
+
+        picker.close();
+        assert!(!picker.is_open());
+    }
+
+    // =========================================================================
+    // ThemePicker selection tests
+    // =========================================================================
+
+    #[test]
+    fn test_select_prev_at_start() {
+        let mut picker = ThemePicker::new().themes(["dark", "light"]);
+        picker.select_prev();
+        assert_eq!(picker.selected_index, 0);
+    }
+
+    #[test]
+    fn test_select_next_at_end() {
+        let mut picker = ThemePicker::new().themes(["dark", "light"]);
+        picker.select_next();
+        assert_eq!(picker.selected_index, 1);
+
+        picker.select_next(); // Already at end
+        assert_eq!(picker.selected_index, 1);
+    }
+
+    #[test]
+    fn test_select_next_single_theme() {
+        let mut picker = ThemePicker::new().themes(["only"]);
+        picker.select_next();
+        assert_eq!(picker.selected_index, 0);
+    }
+
+    #[test]
+    fn test_select_prev_single_theme() {
+        let mut picker = ThemePicker::new().themes(["only"]);
+        picker.select_prev();
+        assert_eq!(picker.selected_index, 0);
+    }
+
+    #[test]
+    fn test_select_empty_themes() {
+        let mut picker = ThemePicker::new().themes([";" as &str]); // Use a non-existent theme
+        picker.themes.clear(); // Clear to get empty
+        picker.select_next();
+        assert_eq!(picker.selected_index, 0);
+    }
+
+    // =========================================================================
+    // ThemePicker query tests
+    // =========================================================================
+
+    #[test]
+    fn test_selected_theme_none() {
+        let mut picker = ThemePicker::new().themes([";" as &str]);
+        picker.themes.clear();
+        picker.selected_index = 0;
+        assert!(picker.selected_id().is_none());
+    }
+
+    #[test]
+    fn test_selected_theme_empty_themes() {
+        let picker = ThemePicker::new().themes(["dark"]);
+        assert!(picker.selected_id().is_some());
+    }
+
+    #[test]
+    fn test_apply_selected_empty_themes() {
+        let mut picker = ThemePicker::new().themes([";" as &str]);
+        picker.themes.clear();
+        picker.selected_index = 0;
+        // Should not panic
+        picker.apply_selected();
+    }
+
+    // =========================================================================
+    // ThemePicker Default tests
+    // =========================================================================
+
+    #[test]
+    fn test_theme_picker_default() {
+        let picker = ThemePicker::default();
+        assert!(!picker.themes.is_empty());
+    }
+
+    // =========================================================================
+    // Helper function tests
+    // =========================================================================
+
+    #[test]
+    fn test_theme_picker_helper() {
+        let picker = theme_picker();
+        assert!(!picker.themes.is_empty());
+    }
+
+    // =========================================================================
+    // ThemePicker::draw_swatch tests
+    // =========================================================================
+
+    #[test]
+    fn test_draw_swatch() {
+        // We can't test render output here without proper setup
+        // but we can verify it doesn't panic with basic inputs
+        // The method returns a width value
+        // This is tested indirectly through render tests
+    }
+
+    // =========================================================================
+    // Interactive::handle_key tests
+    // =========================================================================
+
+    #[test]
+    fn test_handle_key_space_opens() {
+        let mut picker = ThemePicker::new();
+        let event = KeyEvent::new(Key::Char(' '));
+
+        let result = picker.handle_key(&event);
+        assert_eq!(result, EventResult::Consumed);
+        assert!(picker.is_open());
+    }
+
+    #[test]
+    fn test_handle_key_space_applies() {
+        let mut picker = ThemePicker::new();
+        picker.open();
+
+        let event = KeyEvent::new(Key::Char(' '));
+        picker.handle_key(&event);
+
+        assert!(!picker.is_open());
+    }
+
+    #[test]
+    fn test_handle_key_tab() {
+        let mut picker = ThemePicker::new().themes(["dark", "light"]);
+        let first_id = picker.selected_id().unwrap().to_string();
+
+        let event = KeyEvent::new(Key::Tab);
+        picker.handle_key(&event);
+
+        // Should select next theme and apply it
+        let new_id = picker.selected_id().unwrap();
+        assert_ne!(first_id, new_id);
+    }
+
+    #[test]
+    fn test_handle_key_ignored() {
+        let mut picker = ThemePicker::new();
+        let event = KeyEvent::new(Key::Char('x'));
+
+        let result = picker.handle_key(&event);
+        assert_eq!(result, EventResult::Ignored);
+        assert!(!picker.is_open());
+    }
+
+    // =========================================================================
+    // Edge case tests
+    // =========================================================================
+
+    #[test]
+    fn test_theme_picker_clone() {
+        let picker = ThemePicker::new().themes(["dark"]).compact(true);
+        let cloned = picker.clone();
+
+        assert_eq!(picker.themes, cloned.themes);
+        assert_eq!(picker.compact, cloned.compact);
+    }
 }

@@ -385,6 +385,1139 @@ mod tests {
         input.render(&mut ctx);
         // Input should use CSS colors for non-cursor/non-selected text
     }
+
+    // =========================================================================
+    // Input constructor tests (mod.rs - editing.rs related)
+    // =========================================================================
+
+    #[test]
+    fn test_input_new_creates_empty_input() {
+        let input = Input::new();
+        assert_eq!(input.text(), "");
+        assert_eq!(input.cursor(), 0);
+        assert!(!input.has_selection());
+    }
+
+    #[test]
+    fn test_input_default_creates_empty_input() {
+        let input = Input::default();
+        assert_eq!(input.text(), "");
+        assert_eq!(input.cursor(), 0);
+        assert!(!input.has_selection());
+    }
+
+    #[test]
+    fn test_input_value_builder_sets_text_and_cursor() {
+        let input = Input::new().value("hello");
+        assert_eq!(input.text(), "hello");
+        assert_eq!(input.cursor(), 5);
+    }
+
+    #[test]
+    fn test_input_value_builder_with_empty_string() {
+        let input = Input::new().value("");
+        assert_eq!(input.text(), "");
+        assert_eq!(input.cursor(), 0);
+    }
+
+    #[test]
+    fn test_input_value_builder_with_unicode() {
+        let input = Input::new().value("안녕🎉");
+        assert_eq!(input.text(), "안녕🎉");
+        assert_eq!(input.cursor(), 3); // 3 characters
+    }
+
+    #[test]
+    fn test_input_placeholder_builder() {
+        let input = Input::new().placeholder("Enter text");
+        assert_eq!(input.placeholder, "Enter text");
+    }
+
+    #[test]
+    fn test_input_fg_builder() {
+        let input = Input::new().fg(Color::RED);
+        assert_eq!(input.fg, Some(Color::RED));
+    }
+
+    #[test]
+    fn test_input_bg_builder() {
+        let input = Input::new().bg(Color::BLUE);
+        assert_eq!(input.bg, Some(Color::BLUE));
+    }
+
+    #[test]
+    fn test_input_cursor_style_builder() {
+        let input = Input::new().cursor_style(Color::YELLOW, Color::BLACK);
+        assert_eq!(input.cursor_fg, Some(Color::YELLOW));
+        assert_eq!(input.cursor_bg, Some(Color::BLACK));
+    }
+
+    #[test]
+    fn test_input_selection_bg_builder() {
+        let input = Input::new().selection_bg(Color::GREEN);
+        assert_eq!(input.selection_bg, Some(Color::GREEN));
+    }
+
+    #[test]
+    fn test_input_focused_builder_true() {
+        let input = Input::new().focused(true);
+        assert!(input.focused);
+    }
+
+    #[test]
+    fn test_input_focused_builder_false() {
+        let input = Input::new().focused(false);
+        assert!(!input.focused);
+    }
+
+    #[test]
+    fn test_input_clone() {
+        let input1 = Input::new()
+            .value("test")
+            .placeholder("placeholder")
+            .fg(Color::RED)
+            .bg(Color::BLUE)
+            .focused(true);
+
+        let input2 = input1.clone();
+
+        assert_eq!(input2.text(), "test");
+        assert_eq!(input2.placeholder, "placeholder");
+        assert_eq!(input2.fg, Some(Color::RED));
+        assert_eq!(input2.bg, Some(Color::BLUE));
+        assert!(input2.focused);
+    }
+
+    // =========================================================================
+    // editing.rs public API tests: clear(), set_value()
+    // =========================================================================
+
+    #[test]
+    fn test_input_clear_clears_value() {
+        let mut input = Input::new().value("hello world");
+        input.clear();
+        assert_eq!(input.text(), "");
+    }
+
+    #[test]
+    fn test_input_clear_resets_cursor() {
+        let mut input = Input::new().value("hello");
+        input.cursor = 3;
+        input.clear();
+        assert_eq!(input.cursor(), 0);
+    }
+
+    #[test]
+    fn test_input_clear_clears_selection() {
+        let mut input = Input::new().value("hello");
+        input.selection_anchor = Some(0);
+        input.cursor = 5;
+        input.clear();
+        assert!(!input.has_selection());
+    }
+
+    #[test]
+    fn test_input_clear_clears_undo_history() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.handle_key(&Key::Char('b'));
+        assert!(input.can_undo());
+
+        input.clear();
+        assert!(!input.can_undo());
+        assert!(!input.can_redo());
+    }
+
+    #[test]
+    fn test_input_clear_clears_redo_history() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.undo();
+        assert!(input.can_redo());
+
+        input.clear();
+        assert!(!input.can_redo());
+    }
+
+    #[test]
+    fn test_input_set_value_with_string() {
+        let mut input = Input::new();
+        input.set_value("hello");
+        assert_eq!(input.text(), "hello");
+        assert_eq!(input.cursor(), 5);
+    }
+
+    #[test]
+    fn test_input_set_value_with_str() {
+        let mut input = Input::new();
+        input.set_value("world");
+        assert_eq!(input.text(), "world");
+    }
+
+    #[test]
+    fn test_input_set_value_with_empty_string() {
+        let mut input = Input::new().value("existing");
+        input.set_value("");
+        assert_eq!(input.text(), "");
+        assert_eq!(input.cursor(), 0);
+    }
+
+    #[test]
+    fn test_input_set_value_with_unicode() {
+        let mut input = Input::new();
+        input.set_value("🎉안녕");
+        assert_eq!(input.text(), "🎉안녕");
+        assert_eq!(input.cursor(), 3);
+    }
+
+    #[test]
+    fn test_input_set_value_clears_selection() {
+        let mut input = Input::new().value("test");
+        input.selection_anchor = Some(0);
+        input.cursor = 4;
+        input.set_value("new");
+        assert!(!input.has_selection());
+    }
+
+    #[test]
+    fn test_input_set_value_clears_undo_history() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        assert!(input.can_undo());
+
+        input.set_value("new");
+        assert!(!input.can_undo());
+        assert!(!input.can_redo());
+    }
+
+    #[test]
+    fn test_input_set_value_overwrites_existing() {
+        let mut input = Input::new().value("old text");
+        input.set_value("new text");
+        assert_eq!(input.text(), "new text");
+    }
+
+    // =========================================================================
+    // handler.rs public API tests: handle_key_event(), handle_key()
+    // =========================================================================
+
+    #[test]
+    fn test_input_handle_key_char_inserts() {
+        let mut input = Input::new();
+        let result = input.handle_key(&Key::Char('a'));
+        assert!(result);
+        assert_eq!(input.text(), "a");
+    }
+
+    #[test]
+    fn test_input_handle_key_backspace_deletes() {
+        let mut input = Input::new().value("ab");
+        input.cursor = 1;
+        let result = input.handle_key(&Key::Backspace);
+        assert!(result);
+        assert_eq!(input.text(), "b");
+    }
+
+    #[test]
+    fn test_input_handle_key_backspace_at_start_does_nothing() {
+        let mut input = Input::new().value("ab");
+        input.cursor = 0;
+        let result = input.handle_key(&Key::Backspace);
+        assert!(!result);
+        assert_eq!(input.text(), "ab");
+    }
+
+    #[test]
+    fn test_input_handle_key_delete_deletes() {
+        let mut input = Input::new().value("ab");
+        input.cursor = 1;
+        let result = input.handle_key(&Key::Delete);
+        assert!(result);
+        assert_eq!(input.text(), "a");
+    }
+
+    #[test]
+    fn test_input_handle_key_delete_at_end_does_nothing() {
+        let mut input = Input::new().value("ab");
+        input.cursor = 2;
+        let result = input.handle_key(&Key::Delete);
+        assert!(!result);
+        assert_eq!(input.text(), "ab");
+    }
+
+    #[test]
+    fn test_input_handle_key_left_moves_cursor() {
+        let mut input = Input::new().value("ab");
+        input.cursor = 2;
+        let result = input.handle_key(&Key::Left);
+        assert!(result);
+        assert_eq!(input.cursor(), 1);
+    }
+
+    #[test]
+    fn test_input_handle_key_left_at_start_stays() {
+        let mut input = Input::new().value("ab");
+        input.cursor = 0;
+        let result = input.handle_key(&Key::Left);
+        assert!(result);
+        assert_eq!(input.cursor(), 0);
+    }
+
+    #[test]
+    fn test_input_handle_key_right_moves_cursor() {
+        let mut input = Input::new().value("ab");
+        input.cursor = 0;
+        let result = input.handle_key(&Key::Right);
+        assert!(result);
+        assert_eq!(input.cursor(), 1);
+    }
+
+    #[test]
+    fn test_input_handle_key_right_at_end_stays() {
+        let mut input = Input::new().value("ab");
+        input.cursor = 2;
+        let result = input.handle_key(&Key::Right);
+        assert!(result);
+        assert_eq!(input.cursor(), 2);
+    }
+
+    #[test]
+    fn test_input_handle_key_home_moves_to_start() {
+        let mut input = Input::new().value("hello");
+        input.cursor = 3;
+        let result = input.handle_key(&Key::Home);
+        assert!(result);
+        assert_eq!(input.cursor(), 0);
+    }
+
+    #[test]
+    fn test_input_handle_key_end_moves_to_end() {
+        let mut input = Input::new().value("hello");
+        input.cursor = 0;
+        let result = input.handle_key(&Key::End);
+        assert!(result);
+        assert_eq!(input.cursor(), 5);
+    }
+
+    #[test]
+    fn test_input_handle_key_unknown_key_returns_false() {
+        let mut input = Input::new();
+        let result = input.handle_key(&Key::Escape);
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_input_handle_key_clears_selection() {
+        let mut input = Input::new().value("hello");
+        input.selection_anchor = Some(0);
+        input.cursor = 3;
+        input.handle_key(&Key::Left);
+        assert!(!input.has_selection());
+    }
+
+    #[test]
+    fn test_input_handle_key_event_with_ctrl_key() {
+        let mut input = Input::new().value("test");
+        let event = KeyEvent {
+            key: Key::Char('a'),
+            ctrl: true,
+            alt: false,
+            shift: false,
+        };
+        let result = input.handle_key_event(&event);
+        assert!(result);
+        assert!(input.has_selection());
+    }
+
+    #[test]
+    fn test_input_handle_key_event_with_shift_key() {
+        let mut input = Input::new().value("hello");
+        input.cursor = 0;
+        let event = KeyEvent {
+            key: Key::Right,
+            ctrl: false,
+            alt: false,
+            shift: true,
+        };
+        input.handle_key_event(&event);
+        assert!(input.has_selection());
+    }
+
+    #[test]
+    fn test_input_handle_key_event_regular_key() {
+        let mut input = Input::new();
+        let event = KeyEvent {
+            key: Key::Char('x'),
+            ctrl: false,
+            alt: false,
+            shift: false,
+        };
+        let result = input.handle_key_event(&event);
+        assert!(result);
+        assert_eq!(input.text(), "x");
+    }
+
+    #[test]
+    fn test_input_handle_key_event_ctrl_left_moves_word_left() {
+        let mut input = Input::new().value("hello world");
+        input.cursor = 10;
+        let event = KeyEvent {
+            key: Key::Left,
+            ctrl: true,
+            alt: false,
+            shift: false,
+        };
+        input.handle_key_event(&event);
+        assert_eq!(input.cursor(), 6); // At 'w' (start of "world")
+    }
+
+    #[test]
+    fn test_input_handle_key_event_ctrl_right_moves_word_right() {
+        let mut input = Input::new().value("hello world");
+        input.cursor = 0;
+        let event = KeyEvent {
+            key: Key::Right,
+            ctrl: true,
+            alt: false,
+            shift: false,
+        };
+        input.handle_key_event(&event);
+        assert_eq!(input.cursor(), 6); // After "hello "
+    }
+
+    #[test]
+    fn test_input_handle_key_event_ctrl_backspace_deletes_word_left() {
+        let mut input = Input::new().value("hello world");
+        input.cursor = 6;
+        let event = KeyEvent {
+            key: Key::Backspace,
+            ctrl: true,
+            alt: false,
+            shift: false,
+        };
+        input.handle_key_event(&event);
+        assert_eq!(input.text(), "world");
+    }
+
+    #[test]
+    fn test_input_handle_key_event_ctrl_shift_selects_word_left() {
+        let mut input = Input::new().value("hello world test");
+        input.cursor = 12;
+        let event = KeyEvent {
+            key: Key::Left,
+            ctrl: true,
+            alt: false,
+            shift: true,
+        };
+        input.handle_key_event(&event);
+        assert!(input.has_selection());
+    }
+
+    #[test]
+    fn test_input_handle_key_event_ctrl_shift_selects_word_right() {
+        let mut input = Input::new().value("hello world test");
+        input.cursor = 6;
+        let event = KeyEvent {
+            key: Key::Right,
+            ctrl: true,
+            alt: false,
+            shift: true,
+        };
+        input.handle_key_event(&event);
+        assert!(input.has_selection());
+    }
+
+    #[test]
+    fn test_input_handle_key_event_ctrl_c_copy() {
+        let mut input = Input::new().value("hello");
+        input.select_all();
+        let event = KeyEvent {
+            key: Key::Char('c'),
+            ctrl: true,
+            alt: false,
+            shift: false,
+        };
+        let result = input.handle_key_event(&event);
+        assert!(result);
+        assert_eq!(input.clipboard, Some("hello".to_string()));
+    }
+
+    #[test]
+    fn test_input_handle_key_event_ctrl_x_cut() {
+        let mut input = Input::new().value("hello");
+        input.select_all();
+        let event = KeyEvent {
+            key: Key::Char('x'),
+            ctrl: true,
+            alt: false,
+            shift: false,
+        };
+        let result = input.handle_key_event(&event);
+        assert!(result);
+        assert_eq!(input.text(), "");
+    }
+
+    #[cfg(not(feature = "clipboard"))]
+    #[test]
+    fn test_input_handle_key_event_ctrl_v_paste() {
+        let mut input = Input::new().value("ac");
+        input.cursor = 1;
+        input.clipboard = Some("b".to_string());
+        let event = KeyEvent {
+            key: Key::Char('v'),
+            ctrl: true,
+            alt: false,
+            shift: false,
+        };
+        let result = input.handle_key_event(&event);
+        assert!(result);
+        assert_eq!(input.text(), "abc");
+    }
+
+    #[test]
+    fn test_input_handle_key_event_ctrl_z_undo() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        let event = KeyEvent {
+            key: Key::Char('z'),
+            ctrl: true,
+            alt: false,
+            shift: false,
+        };
+        let result = input.handle_key_event(&event);
+        assert!(result);
+        assert_eq!(input.text(), "");
+    }
+
+    #[test]
+    fn test_input_handle_key_event_ctrl_y_redo() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.undo();
+        let event = KeyEvent {
+            key: Key::Char('y'),
+            ctrl: true,
+            alt: false,
+            shift: false,
+        };
+        let result = input.handle_key_event(&event);
+        assert!(result);
+        assert_eq!(input.text(), "a");
+    }
+
+    // =========================================================================
+    // selection.rs public API tests
+    // =========================================================================
+
+    #[test]
+    fn test_input_selection_returns_none_when_no_selection() {
+        let input = Input::new().value("hello");
+        assert_eq!(input.selection(), None);
+    }
+
+    #[test]
+    fn test_input_selection_returns_ordered_range() {
+        let mut input = Input::new().value("hello");
+        input.selection_anchor = Some(3);
+        input.cursor = 1;
+        assert_eq!(input.selection(), Some((1, 3)));
+    }
+
+    #[test]
+    fn test_input_selection_returns_correct_range_forward() {
+        let mut input = Input::new().value("hello");
+        input.selection_anchor = Some(0);
+        input.cursor = 3;
+        assert_eq!(input.selection(), Some((0, 3)));
+    }
+
+    #[test]
+    fn test_input_selection_returns_correct_range_backward() {
+        let mut input = Input::new().value("hello");
+        input.selection_anchor = Some(3);
+        input.cursor = 0;
+        assert_eq!(input.selection(), Some((0, 3)));
+    }
+
+    #[test]
+    fn test_input_selected_text_returns_none_when_no_selection() {
+        let input = Input::new().value("hello");
+        assert_eq!(input.selected_text(), None);
+    }
+
+    #[test]
+    fn test_input_selected_text_returns_selected_string() {
+        let mut input = Input::new().value("hello world");
+        input.selection_anchor = Some(0);
+        input.cursor = 5;
+        assert_eq!(input.selected_text(), Some("hello"));
+    }
+
+    #[test]
+    fn test_input_selected_text_with_unicode() {
+        let mut input = Input::new().value("안녕하세요");
+        input.selection_anchor = Some(1);
+        input.cursor = 4;
+        assert_eq!(input.selected_text(), Some("녕하세"));
+    }
+
+    #[test]
+    fn test_input_selected_text_with_emoji() {
+        let mut input = Input::new().value("A🎉B");
+        input.selection_anchor = Some(0);
+        input.cursor = 2;
+        assert_eq!(input.selected_text(), Some("A🎉"));
+    }
+
+    #[test]
+    fn test_input_has_selection_returns_false_when_no_anchor() {
+        let input = Input::new().value("hello");
+        assert!(!input.has_selection());
+    }
+
+    #[test]
+    fn test_input_has_selection_returns_false_when_anchor_equals_cursor() {
+        let mut input = Input::new().value("hello");
+        input.selection_anchor = Some(3);
+        input.cursor = 3;
+        assert!(!input.has_selection());
+    }
+
+    #[test]
+    fn test_input_has_selection_returns_true_when_different() {
+        let mut input = Input::new().value("hello");
+        input.selection_anchor = Some(0);
+        input.cursor = 3;
+        assert!(input.has_selection());
+    }
+
+    #[test]
+    fn test_input_start_selection_sets_anchor() {
+        let mut input = Input::new().value("hello");
+        input.cursor = 2;
+        input.start_selection();
+        assert_eq!(input.selection_anchor, Some(2));
+    }
+
+    #[test]
+    fn test_input_start_selection_does_not_overwrite_existing_anchor() {
+        let mut input = Input::new().value("hello");
+        input.selection_anchor = Some(1);
+        input.cursor = 3;
+        input.start_selection();
+        assert_eq!(input.selection_anchor, Some(1));
+    }
+
+    #[test]
+    fn test_input_clear_selection_removes_anchor() {
+        let mut input = Input::new().value("hello");
+        input.selection_anchor = Some(0);
+        input.cursor = 3;
+        input.clear_selection();
+        assert_eq!(input.selection_anchor, None);
+    }
+
+    #[test]
+    fn test_input_clear_selection_can_be_called_multiple_times() {
+        let mut input = Input::new().value("hello");
+        input.selection_anchor = Some(0);
+        input.clear_selection();
+        input.clear_selection();
+        assert_eq!(input.selection_anchor, None);
+    }
+
+    #[test]
+    fn test_input_select_all_selects_entire_text() {
+        let mut input = Input::new().value("hello");
+        input.select_all();
+        assert_eq!(input.selection(), Some((0, 5)));
+        assert_eq!(input.selected_text(), Some("hello"));
+    }
+
+    #[test]
+    fn test_input_select_all_with_unicode() {
+        let mut input = Input::new().value("안녕🎉");
+        input.select_all();
+        assert_eq!(input.selection(), Some((0, 3)));
+        assert_eq!(input.selected_text(), Some("안녕🎉"));
+    }
+
+    #[test]
+    fn test_input_select_all_on_empty_input() {
+        let mut input = Input::new();
+        input.select_all();
+        assert_eq!(input.selection(), Some((0, 0)));
+    }
+
+    #[test]
+    fn test_input_select_all_moves_cursor_to_end() {
+        let mut input = Input::new().value("hello");
+        input.cursor = 0;
+        input.select_all();
+        assert_eq!(input.cursor(), 5);
+    }
+
+    #[test]
+    fn test_input_copy_with_selection_sets_clipboard() {
+        let mut input = Input::new().value("hello world");
+        input.selection_anchor = Some(0);
+        input.cursor = 5;
+        input.copy();
+        assert_eq!(input.clipboard, Some("hello".to_string()));
+    }
+
+    #[test]
+    fn test_input_copy_without_selection_does_not_change_clipboard() {
+        let mut input = Input::new().value("hello");
+        input.clipboard = Some("existing".to_string());
+        input.copy();
+        assert_eq!(input.clipboard, Some("existing".to_string()));
+    }
+
+    #[test]
+    fn test_input_copy_with_unicode() {
+        let mut input = Input::new().value("안녕하세요");
+        input.selection_anchor = Some(1);
+        input.cursor = 4;
+        input.copy();
+        assert_eq!(input.clipboard, Some("녕하세".to_string()));
+    }
+
+    #[test]
+    fn test_input_cut_returns_true_with_selection() {
+        let mut input = Input::new().value("hello world");
+        input.selection_anchor = Some(0);
+        input.cursor = 6;
+        let result = input.cut();
+        assert!(result);
+        assert_eq!(input.text(), "world");
+    }
+
+    #[test]
+    fn test_input_cut_returns_false_without_selection() {
+        let mut input = Input::new().value("hello");
+        let result = input.cut();
+        assert!(!result);
+        assert_eq!(input.text(), "hello");
+    }
+
+    #[test]
+    fn test_input_cut_sets_clipboard() {
+        let mut input = Input::new().value("hello");
+        input.select_all();
+        input.cut();
+        assert_eq!(input.clipboard, Some("hello".to_string()));
+    }
+
+    #[test]
+    fn test_input_cut_clears_selection() {
+        let mut input = Input::new().value("hello");
+        input.select_all();
+        input.cut();
+        assert!(!input.has_selection());
+    }
+
+    #[cfg(not(feature = "clipboard"))]
+    #[test]
+    fn test_input_paste_with_internal_clipboard() {
+        let mut input = Input::new().value("ac");
+        input.cursor = 1;
+        input.clipboard = Some("b".to_string());
+        let result = input.paste();
+        assert!(result);
+        assert_eq!(input.text(), "abc");
+    }
+
+    #[cfg(not(feature = "clipboard"))]
+    #[test]
+    fn test_input_paste_returns_false_without_clipboard() {
+        let mut input = Input::new();
+        let result = input.paste();
+        assert!(!result);
+    }
+
+    #[cfg(not(feature = "clipboard"))]
+    #[test]
+    fn test_input_paste_with_selection_replaces_selection() {
+        let mut input = Input::new().value("hello world");
+        input.selection_anchor = Some(0);
+        input.cursor = 5;
+        input.clipboard = Some("TEST".to_string());
+        input.paste();
+        assert_eq!(input.text(), "TEST world");
+    }
+
+    #[cfg(not(feature = "clipboard"))]
+    #[test]
+    fn test_input_paste_with_unicode() {
+        let mut input = Input::new().value("AB");
+        input.cursor = 1;
+        input.clipboard = Some("🎉한글".to_string());
+        input.paste();
+        assert_eq!(input.text(), "A🎉한글B");
+    }
+
+    #[cfg(not(feature = "clipboard"))]
+    #[test]
+    fn test_input_paste_clears_selection() {
+        let mut input = Input::new().value("hello");
+        input.selection_anchor = Some(0);
+        input.cursor = 3;
+        input.clipboard = Some("x".to_string());
+        input.paste();
+        assert!(!input.has_selection());
+    }
+
+    #[cfg(not(feature = "clipboard"))]
+    #[test]
+    fn test_input_paste_moves_cursor_correctly() {
+        let mut input = Input::new().value("ac");
+        input.cursor = 1;
+        input.clipboard = Some("b".to_string());
+        input.paste();
+        assert_eq!(input.cursor(), 2);
+    }
+
+    #[cfg(not(feature = "clipboard"))]
+    #[test]
+    fn test_input_paste_at_beginning() {
+        let mut input = Input::new().value("world");
+        input.cursor = 0;
+        input.clipboard = Some("hello ".to_string());
+        input.paste();
+        assert_eq!(input.text(), "hello world");
+    }
+
+    #[cfg(not(feature = "clipboard"))]
+    #[test]
+    fn test_input_paste_at_end() {
+        let mut input = Input::new().value("hello");
+        input.cursor = 5;
+        input.clipboard = Some(" world".to_string());
+        input.paste();
+        assert_eq!(input.text(), "hello world");
+    }
+
+    // =========================================================================
+    // undo.rs public API tests: undo(), redo(), can_undo(), can_redo(), clear_history()
+    // =========================================================================
+
+    #[test]
+    fn test_input_undo_returns_true_when_history_exists() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        let result = input.undo();
+        assert!(result);
+        assert_eq!(input.text(), "");
+    }
+
+    #[test]
+    fn test_input_undo_returns_false_when_empty() {
+        let mut input = Input::new();
+        let result = input.undo();
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_input_undo_multiple_times() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.handle_key(&Key::Char('b'));
+        input.handle_key(&Key::Char('c'));
+        input.undo();
+        input.undo();
+        assert_eq!(input.text(), "a");
+    }
+
+    #[test]
+    fn test_input_undo_until_empty() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.handle_key(&Key::Char('b'));
+        input.undo();
+        input.undo();
+        let result = input.undo();
+        assert!(!result);
+        assert_eq!(input.text(), "");
+    }
+
+    #[test]
+    fn test_input_undo_moves_cursor_to_insert_position() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.handle_key(&Key::Char('b'));
+        input.cursor = 0;
+        input.handle_key(&Key::Char('x'));
+        assert_eq!(input.text(), "xab");
+        assert_eq!(input.cursor(), 1);
+
+        input.undo();
+        assert_eq!(input.cursor(), 0);
+    }
+
+    #[test]
+    fn test_input_undo_clears_selection() {
+        let mut input = Input::new().value("ab");
+        input.selection_anchor = Some(0);
+        input.cursor = 1;
+        input.handle_key(&Key::Char('x'));
+        input.undo();
+        assert!(!input.has_selection());
+    }
+
+    #[test]
+    fn test_input_redo_returns_true_when_redo_exists() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.undo();
+        let result = input.redo();
+        assert!(result);
+        assert_eq!(input.text(), "a");
+    }
+
+    #[test]
+    fn test_input_redo_returns_false_when_no_redo() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        let result = input.redo();
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_input_redo_multiple_times() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.handle_key(&Key::Char('b'));
+        input.undo();
+        input.undo();
+        input.redo();
+        input.redo();
+        assert_eq!(input.text(), "ab");
+    }
+
+    #[test]
+    fn test_input_redo_until_exhausted() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.undo();
+        input.redo();
+        let result = input.redo();
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_input_redo_after_new_action_clears_redo_stack() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.undo();
+        input.handle_key(&Key::Char('b'));
+        let result = input.redo();
+        assert!(!result);
+        assert_eq!(input.text(), "b");
+    }
+
+    #[test]
+    fn test_input_redo_clears_selection() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.undo();
+        input.selection_anchor = Some(0);
+        input.redo();
+        assert!(!input.has_selection());
+    }
+
+    #[test]
+    fn test_input_can_undo_returns_true_after_insert() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        assert!(input.can_undo());
+    }
+
+    #[test]
+    fn test_input_can_undo_returns_false_on_new_input() {
+        let input = Input::new();
+        assert!(!input.can_undo());
+    }
+
+    #[test]
+    fn test_input_can_undo_returns_false_after_clear() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.clear_history();
+        assert!(!input.can_undo());
+    }
+
+    #[test]
+    fn test_input_can_redo_returns_true_after_undo() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.undo();
+        assert!(input.can_redo());
+    }
+
+    #[test]
+    fn test_input_can_redo_returns_false_on_new_input() {
+        let input = Input::new();
+        assert!(!input.can_redo());
+    }
+
+    #[test]
+    fn test_input_can_redo_returns_false_after_new_action() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.undo();
+        input.handle_key(&Key::Char('b'));
+        assert!(!input.can_redo());
+    }
+
+    #[test]
+    fn test_input_can_redo_returns_false_after_clear() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.undo();
+        input.clear_history();
+        assert!(!input.can_redo());
+    }
+
+    #[test]
+    fn test_input_clear_history_clears_undo_stack() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.handle_key(&Key::Char('b'));
+        input.clear_history();
+        assert!(!input.can_undo());
+    }
+
+    #[test]
+    fn test_input_clear_history_clears_redo_stack() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.undo();
+        input.clear_history();
+        assert!(!input.can_redo());
+    }
+
+    #[test]
+    fn test_input_clear_history_can_be_called_on_empty() {
+        let mut input = Input::new();
+        input.clear_history();
+        assert!(!input.can_undo());
+        assert!(!input.can_redo());
+    }
+
+    #[test]
+    fn test_input_clear_history_can_be_called_multiple_times() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.clear_history();
+        input.clear_history();
+        assert!(!input.can_undo());
+    }
+
+    // =========================================================================
+    // Combined/integration tests
+    // =========================================================================
+
+    #[test]
+    fn test_input_undo_redo_cycle() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.handle_key(&Key::Char('b'));
+        input.handle_key(&Key::Char('c'));
+        assert_eq!(input.text(), "abc");
+
+        input.undo();
+        assert_eq!(input.text(), "ab");
+        input.undo();
+        assert_eq!(input.text(), "a");
+        input.undo();
+        assert_eq!(input.text(), "");
+
+        input.redo();
+        assert_eq!(input.text(), "a");
+        input.redo();
+        assert_eq!(input.text(), "ab");
+        input.redo();
+        assert_eq!(input.text(), "abc");
+    }
+
+    #[test]
+    fn test_input_selection_deletion_undo_redo() {
+        let mut input = Input::new().value("hello world");
+        input.clear_history();
+        input.select_all();
+        input.handle_key(&Key::Backspace);
+        assert_eq!(input.text(), "");
+
+        input.undo();
+        assert_eq!(input.text(), "hello world");
+
+        input.redo();
+        assert_eq!(input.text(), "");
+    }
+
+    #[cfg(not(feature = "clipboard"))]
+    #[test]
+    fn test_input_copy_cut_paste_workflow() {
+        let mut input1 = Input::new().value("hello");
+        input1.select_all();
+        input1.cut();
+
+        let mut input2 = Input::new().value("world");
+        input2.cursor = 0;
+        input2.clipboard = input1.clipboard.clone();
+        input2.paste();
+        assert_eq!(input2.text(), "helloworld");
+    }
+
+    #[test]
+    fn test_input_word_deletion_undo_redo() {
+        let mut input = Input::new().value("hello world test");
+        input.clear_history();
+        input.cursor = 12;
+        // delete_word_left() already calls move_word_left() internally
+        input.delete_word_left();
+        // delete_word_left from cursor 12 deletes the previous word ("world ")
+        assert_eq!(input.text(), "hello test");
+
+        input.undo();
+        assert_eq!(input.text(), "hello world test");
+
+        input.redo();
+        assert_eq!(input.text(), "hello test");
+    }
+
+    #[test]
+    fn test_input_set_value_clears_redo_stack() {
+        let mut input = Input::new();
+        input.handle_key(&Key::Char('a'));
+        input.undo();
+        assert!(input.can_redo());
+
+        input.set_value("new");
+        assert!(!input.can_redo());
+    }
+
+    #[test]
+    fn test_input_chained_builder_methods() {
+        let input = Input::new()
+            .value("test")
+            .placeholder("enter text")
+            .fg(Color::RED)
+            .bg(Color::BLUE)
+            .cursor_style(Color::YELLOW, Color::BLACK)
+            .selection_bg(Color::GREEN)
+            .focused(false);
+
+        assert_eq!(input.text(), "test");
+        assert_eq!(input.placeholder, "enter text");
+        assert_eq!(input.fg, Some(Color::RED));
+        assert_eq!(input.bg, Some(Color::BLUE));
+        assert_eq!(input.cursor_fg, Some(Color::YELLOW));
+        assert_eq!(input.cursor_bg, Some(Color::BLACK));
+        assert_eq!(input.selection_bg, Some(Color::GREEN));
+        assert!(!input.focused);
+    }
 }
 mod types;
 mod undo;

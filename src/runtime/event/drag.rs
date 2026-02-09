@@ -578,3 +578,395 @@ pub fn is_dragging() -> bool {
 }
 
 // Tests moved to tests/event_tests.rs
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // DragId tests
+    // =========================================================================
+
+    #[test]
+    fn test_drag_id_type() {
+        let id1: DragId = 1;
+        let id2: DragId = 2;
+        assert_ne!(id1, id2);
+    }
+
+    // =========================================================================
+    // DragData tests
+    // =========================================================================
+
+    #[test]
+    fn test_drag_data_new() {
+        let data = DragData::new("custom", (42i32,));
+        assert_eq!(data.type_id, "custom");
+        assert!(data.label.is_none());
+    }
+
+    #[test]
+    fn test_drag_data_text() {
+        let data = DragData::text("Hello");
+        assert_eq!(data.type_id, "text");
+        assert_eq!(data.as_text(), Some("Hello"));
+        assert_eq!(data.display_label(), "Hello");
+    }
+
+    #[test]
+    fn test_drag_data_file() {
+        let data = DragData::file("/path/to/file.txt");
+        assert_eq!(data.type_id, "file");
+        assert_eq!(data.as_text(), Some("/path/to/file.txt"));
+    }
+
+    #[test]
+    fn test_drag_data_list_item() {
+        let data = DragData::list_item(5, "Item 5");
+        assert_eq!(data.type_id, "list_item");
+        assert_eq!(data.as_list_index(), Some(5));
+    }
+
+    #[test]
+    fn test_drag_data_tree_node() {
+        let data = DragData::tree_node("node123", "Label");
+        assert_eq!(data.type_id, "tree_node");
+        assert_eq!(data.as_text(), Some("node123"));
+    }
+
+    #[test]
+    fn test_drag_data_with_label() {
+        let data = DragData::new("custom", 123).with_label("Custom Label");
+        assert_eq!(data.display_label(), "Custom Label");
+    }
+
+    #[test]
+    fn test_drag_data_is_type() {
+        let data = DragData::text("test");
+        assert!(data.is_type("text"));
+        assert!(!data.is_type("file"));
+    }
+
+    #[test]
+    fn test_drag_data_get() {
+        let data = DragData::new("custom", 42i32);
+        assert!(data.get::<i32>().is_some());
+        assert!(data.get::<String>().is_none());
+    }
+
+    // =========================================================================
+    // DragState tests
+    // =========================================================================
+
+    #[test]
+    fn test_drag_state_default() {
+        assert_eq!(DragState::default(), DragState::Idle);
+    }
+
+    #[test]
+    fn test_drag_state_is_active() {
+        assert!(!DragState::Idle.is_active());
+        assert!(DragState::Pending.is_active());
+        assert!(DragState::Dragging.is_active());
+        assert!(DragState::OverTarget.is_active());
+        assert!(!DragState::Dropped.is_active());
+        assert!(!DragState::Cancelled.is_active());
+    }
+
+    #[test]
+    fn test_drag_state_is_over_target() {
+        assert!(!DragState::Idle.is_over_target());
+        assert!(!DragState::Dragging.is_over_target());
+        assert!(DragState::OverTarget.is_over_target());
+    }
+
+    #[test]
+    fn test_drag_state_copy() {
+        let state = DragState::Dragging;
+        let copied = state;
+        assert_eq!(state, copied);
+    }
+
+    // =========================================================================
+    // DropResult tests
+    // =========================================================================
+
+    #[test]
+    fn test_drop_result_variants() {
+        let _ = DropResult::Accepted;
+        let _ = DropResult::Rejected;
+        let _ = DropResult::Cancelled;
+    }
+
+    #[test]
+    fn test_drop_result_equality() {
+        assert_eq!(DropResult::Accepted, DropResult::Accepted);
+        assert_ne!(DropResult::Accepted, DropResult::Rejected);
+    }
+
+    // =========================================================================
+    // DropTarget tests
+    // =========================================================================
+
+    #[test]
+    fn test_drop_target_new() {
+        let rect = Rect::new(0, 0, 100, 100);
+        let target = DropTarget::new(1, rect);
+        assert_eq!(target.id, 1);
+        assert!(target.accepts.is_empty());
+        assert!(!target.hovered);
+    }
+
+    #[test]
+    fn test_drop_target_accepts() {
+        let rect = Rect::new(0, 0, 100, 100);
+        let target = DropTarget::new(1, rect).accepts(&["text", "file"]);
+        assert_eq!(target.accepts.len(), 2);
+    }
+
+    #[test]
+    fn test_drop_target_accepts_all() {
+        let rect = Rect::new(0, 0, 100, 100);
+        let target = DropTarget::new(1, rect).accepts_all();
+        assert!(target.accepts.is_empty());
+    }
+
+    #[test]
+    fn test_drop_target_can_accept() {
+        let rect = Rect::new(0, 0, 100, 100);
+        let target = DropTarget::new(1, rect).accepts(&["text"]);
+        let text_data = DragData::text("test");
+        assert!(target.can_accept(&text_data));
+
+        let other_data = DragData::new("other", 42);
+        assert!(!target.can_accept(&other_data));
+    }
+
+    #[test]
+    fn test_drop_target_contains() {
+        let rect = Rect::new(10, 10, 50, 50);
+        let target = DropTarget::new(1, rect);
+        assert!(target.contains(15, 25)); // Inside
+        assert!(!target.contains(5, 5)); // Outside
+    }
+
+    // =========================================================================
+    // DragContext tests
+    // =========================================================================
+
+    #[test]
+    fn test_drag_context_new() {
+        let ctx = DragContext::new();
+        assert_eq!(ctx.state(), DragState::Idle);
+        assert!(!ctx.is_dragging());
+        assert_eq!(ctx.threshold, 3);
+        assert!(ctx.show_preview);
+    }
+
+    #[test]
+    fn test_drag_context_default() {
+        let ctx = DragContext::default();
+        assert_eq!(ctx.state(), DragState::Idle);
+        assert!(!ctx.is_dragging());
+    }
+
+    #[test]
+    fn test_drag_context_threshold() {
+        let ctx = DragContext::new().threshold(5);
+        assert_eq!(ctx.threshold, 5);
+    }
+
+    #[test]
+    fn test_drag_context_preview() {
+        let ctx = DragContext::new().preview(false);
+        assert!(!ctx.should_show_preview());
+    }
+
+    #[test]
+    fn test_drag_context_start_drag() {
+        let mut ctx = DragContext::new();
+        let data = DragData::text("test");
+        ctx.start_drag(data, 10, 20);
+        assert_eq!(ctx.state(), DragState::Pending);
+        assert!(ctx.is_dragging());
+        assert_eq!(ctx.start_pos, (10, 20));
+        assert_eq!(ctx.current_pos, (10, 20));
+    }
+
+    #[test]
+    fn test_drag_context_start_drag_from() {
+        let mut ctx = DragContext::new();
+        let data = DragData::text("test");
+        ctx.start_drag_from(data, 10, 20, Some(123));
+        assert_eq!(ctx.source(), Some(123));
+    }
+
+    #[test]
+    fn test_drag_context_update_position_threshold() {
+        let mut ctx = DragContext::new().threshold(5);
+        ctx.start_drag(DragData::text("test"), 10, 10);
+
+        // Below threshold - should stay pending
+        ctx.update_position(12, 10);
+        assert_eq!(ctx.state(), DragState::Pending);
+
+        // Above threshold - should start dragging
+        ctx.update_position(16, 10);
+        assert_eq!(ctx.state(), DragState::Dragging);
+    }
+
+    #[test]
+    fn test_drag_context_update_position() {
+        let mut ctx = DragContext::new();
+        let data = DragData::text("test");
+        ctx.start_drag(data, 10, 10);
+        ctx.update_position(15, 20);
+        assert_eq!(ctx.current_pos, (15, 20));
+        assert_eq!(ctx.position(), (15, 20));
+    }
+
+    #[test]
+    fn test_drag_context_offset() {
+        let mut ctx = DragContext::new();
+        ctx.start_drag(DragData::text("test"), 10, 10);
+        ctx.update_position(15, 20);
+        assert_eq!(ctx.offset(), (5, 10));
+    }
+
+    #[test]
+    fn test_drag_context_end_drag() {
+        let mut ctx = DragContext::new();
+        let data = DragData::text("test");
+        ctx.start_drag(data, 10, 10);
+        ctx.update_position(15, 10); // Exceeds threshold
+
+        let result = ctx.end_drag();
+        assert!(result.is_some());
+        let (returned_data, target) = result.unwrap();
+        assert_eq!(returned_data.type_id, "text");
+        assert!(target.is_none());
+    }
+
+    #[test]
+    fn test_drag_context_end_drag_idle() {
+        let mut ctx = DragContext::new();
+        assert!(ctx.end_drag().is_none());
+    }
+
+    #[test]
+    fn test_drag_context_cancel() {
+        let mut ctx = DragContext::new();
+        ctx.start_drag(DragData::text("test"), 10, 10);
+        ctx.cancel();
+        assert_eq!(ctx.state(), DragState::Cancelled);
+    }
+
+    #[test]
+    fn test_drag_context_data() {
+        let mut ctx = DragContext::new();
+        assert!(ctx.data().is_none());
+
+        ctx.start_drag(DragData::text("test"), 10, 10);
+        assert!(ctx.data().is_some());
+        assert_eq!(ctx.data().unwrap().type_id, "text");
+    }
+
+    #[test]
+    fn test_drag_context_register_target() {
+        let mut ctx = DragContext::new();
+        let rect = Rect::new(0, 0, 100, 100);
+        let target = DropTarget::new(1, rect);
+        ctx.register_target(target);
+        assert!(ctx.get_target(1).is_some());
+    }
+
+    #[test]
+    fn test_drag_context_unregister_target() {
+        let mut ctx = DragContext::new();
+        let rect = Rect::new(0, 0, 100, 100);
+        let target = DropTarget::new(1, rect);
+        ctx.register_target(target);
+        ctx.unregister_target(1);
+        assert!(ctx.get_target(1).is_none());
+    }
+
+    #[test]
+    fn test_drag_context_clear_targets() {
+        let mut ctx = DragContext::new();
+        let rect = Rect::new(0, 0, 100, 100);
+        ctx.register_target(DropTarget::new(1, rect));
+        ctx.clear_targets();
+        assert!(ctx.get_target(1).is_none());
+    }
+
+    #[test]
+    fn test_drag_context_should_show_preview() {
+        let mut ctx = DragContext::new();
+        assert!(!ctx.should_show_preview());
+
+        ctx.start_drag(DragData::text("test"), 10, 10);
+        assert!(!ctx.should_show_preview());
+
+        ctx.update_position(15, 10); // Exceeds threshold
+        assert!(ctx.should_show_preview());
+
+        ctx = ctx.preview(false);
+        assert!(!ctx.should_show_preview());
+    }
+
+    #[test]
+    fn test_drag_context_clone_debug() {
+        let ctx = DragContext::new();
+        let debug_str = format!("{:?}", ctx);
+        assert!(debug_str.contains("DragContext"));
+    }
+
+    // =========================================================================
+    // Global drag context functions tests
+    // =========================================================================
+
+    #[test]
+    fn test_global_drag_context_singleton() {
+        let ctx1 = drag_context();
+        let ctx2 = drag_context();
+        // Should return the same instance
+        assert!(std::sync::Arc::ptr_eq(&ctx1, &ctx2));
+    }
+
+    #[test]
+    fn test_start_drag_function() {
+        // Just verify it doesn't panic - actual behavior depends on global state
+        let data = DragData::text("test");
+        let result = start_drag(data, 10, 20);
+        // Result depends on whether lock was acquired
+        let _ = result;
+    }
+
+    #[test]
+    fn test_update_drag_position_function() {
+        let result = update_drag_position(15, 20);
+        // Result depends on whether lock was acquired
+        let _ = result;
+    }
+
+    #[test]
+    fn test_end_drag_function() {
+        let result = end_drag();
+        // Result depends on whether there was an active drag
+        let _ = result;
+    }
+
+    #[test]
+    fn test_cancel_drag_function() {
+        let result = cancel_drag();
+        // Result depends on whether lock was acquired
+        let _ = result;
+    }
+
+    #[test]
+    fn test_is_dragging_function() {
+        let result = is_dragging();
+        // Should not panic, returns false if not dragging
+        let _ = result;
+    }
+}

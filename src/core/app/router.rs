@@ -741,4 +741,344 @@ mod tests {
         assert_eq!(route.meta.get("auth"), Some(&"required".to_string()));
         assert_eq!(route.meta.get("role"), Some(&"admin".to_string()));
     }
+
+    // =========================================================================
+    // Additional router tests
+    // =========================================================================
+
+    #[test]
+    fn test_route_new_with_string() {
+        let pattern = String::from("/test");
+        let name = String::from("test_route");
+        let route = Route::new(pattern.clone(), name.clone());
+        assert_eq!(route.pattern, pattern);
+        assert_eq!(route.name, name);
+    }
+
+    #[test]
+    fn test_route_clone() {
+        let route = Route::new("/test", "test").meta("key", "value");
+        let cloned = route.clone();
+        assert_eq!(route.pattern, cloned.pattern);
+        assert_eq!(route.name, cloned.name);
+    }
+
+    #[test]
+    fn test_route_matches_wildcard() {
+        let route = Route::new("/files/*", "files");
+        // Wildcard only matches a single segment
+        let params = route.matches("/files/document.pdf").unwrap();
+        assert_eq!(params.get("wildcard"), Some(&"document.pdf".to_string()));
+    }
+
+    #[test]
+    fn test_route_matches_named_wildcard() {
+        let route = Route::new("/files/*path", "files");
+        // Named wildcard only matches a single segment
+        let params = route.matches("/files/readme.txt").unwrap();
+        assert_eq!(params.get("path"), Some(&"readme.txt".to_string()));
+    }
+
+    #[test]
+    fn test_route_matches_root() {
+        let route = Route::new("/", "root");
+        assert!(route.matches("/").is_some());
+    }
+
+    #[test]
+    fn test_route_matches_empty_path() {
+        let route = Route::new("/", "root");
+        // Empty path should match root
+        assert!(route.matches("").is_some());
+    }
+
+    #[test]
+    fn test_route_matches_trailing_slash() {
+        let route = Route::new("/users", "users");
+        // Trailing slash adds an empty segment, so it doesn't match
+        let result = route.matches("/users/");
+        // Empty path part causes mismatch
+        assert!(result.is_none() || result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_router_helper_default() {
+        let router = router();
+        assert_eq!(router.current_path(), "/");
+    }
+
+    #[test]
+    fn test_router_add_route() {
+        let mut router = Router::new();
+        let route = Route::new("/custom", "custom");
+        router.add_route(route);
+        assert!(router.push("/custom"));
+    }
+
+    #[test]
+    fn test_router_push_with_query() {
+        let mut router = Router::new().route("/search", "search");
+        router.push("/search?q=test");
+        assert_eq!(router.current_path(), "/search");
+        assert_eq!(router.query_param("q"), Some("test"));
+    }
+
+    #[test]
+    fn test_router_push_unregistered() {
+        let mut router = Router::new().route("/", "home");
+        let result = router.push("/unregistered");
+        assert!(!result);
+        assert_eq!(router.current_path(), "/");
+    }
+
+    #[test]
+    fn test_router_push_no_match() {
+        let mut router = Router::new().route("/home", "home");
+        assert!(!router.push("/other"));
+    }
+
+    #[test]
+    fn test_router_back_at_start() {
+        let mut router = Router::new();
+        assert!(!router.back());
+        assert_eq!(router.current_path(), "/");
+    }
+
+    #[test]
+    fn test_router_forward_at_end() {
+        let mut router = Router::new();
+        assert!(!router.forward());
+    }
+
+    #[test]
+    fn test_router_go_positive() {
+        let mut router = Router::new()
+            .route("/", "home")
+            .route("/a", "a")
+            .route("/b", "b");
+
+        router.push("/a");
+        router.push("/b");
+
+        router.go(-2);
+        assert_eq!(router.current_path(), "/");
+    }
+
+    #[test]
+    fn test_router_go_negative() {
+        let mut router = Router::new()
+            .route("/", "home")
+            .route("/a", "a")
+            .route("/b", "b");
+
+        router.push("/a");
+        router.go(1);
+        assert_eq!(router.current_path(), "/a");
+    }
+
+    #[test]
+    fn test_router_go_out_of_bounds() {
+        let mut router = Router::new().route("/", "home");
+        router.push("/home");
+        assert!(!router.go(100));
+    }
+
+    #[test]
+    fn test_router_history_entry() {
+        let router = Router::new()
+            .route("/", "home")
+            .route("/settings", "settings");
+
+        let entry = router.current_entry();
+        assert!(entry.is_some());
+        assert_eq!(entry.unwrap().path, "/");
+    }
+
+    #[test]
+    fn test_router_on_navigate() {
+        let mut router = Router::new().route("/", "home").route("/next", "next");
+
+        router.on_navigate(|event| {
+            // Just verify the event can be received
+            let _ = event;
+        });
+
+        router.push("/next");
+        // Test passes if closure is called without panic
+    }
+
+    #[test]
+    fn test_router_params_empty() {
+        let router = Router::new().route("/", "home");
+        assert_eq!(router.param("id"), None);
+    }
+
+    #[test]
+    fn test_router_query_params_empty() {
+        let router = Router::new().route("/", "home");
+        assert_eq!(router.query_param("q"), None);
+    }
+
+    #[test]
+    fn test_parse_path_and_query() {
+        let (path, query) = parse_path_and_query("/search?q=hello&page=2");
+        assert_eq!(path, "/search");
+        assert_eq!(query.get("q"), Some(&"hello".to_string()));
+        assert_eq!(query.get("page"), Some(&"2".to_string()));
+    }
+
+    #[test]
+    fn test_parse_path_and_query_no_query() {
+        let (path, query) = parse_path_and_query("/users");
+        assert_eq!(path, "/users");
+        assert!(query.is_empty());
+    }
+
+    #[test]
+    fn test_parse_query_string_empty() {
+        let query = parse_query_string("");
+        assert!(query.is_empty());
+    }
+
+    #[test]
+    fn test_parse_query_string_no_value() {
+        let query = parse_query_string("key");
+        assert_eq!(query.get("key"), Some(&String::new()));
+    }
+
+    #[test]
+    fn test_history_entry_new() {
+        let entry = HistoryEntry::new("/test");
+        assert_eq!(entry.path, "/test");
+        assert!(entry.params.is_empty());
+        assert!(entry.query.is_empty());
+    }
+
+    #[test]
+    fn test_history_entry_clone() {
+        let entry = HistoryEntry::new("/test");
+        let cloned = entry.clone();
+        assert_eq!(entry.path, cloned.path);
+    }
+
+    #[test]
+    fn test_history_entry_with_state() {
+        let mut state = HashMap::new();
+        state.insert("key".to_string(), "value".to_string());
+        let entry = HistoryEntry::new("/test").with_state(state);
+        assert_eq!(entry.state.get("key"), Some(&"value".to_string()));
+    }
+
+    #[test]
+    fn test_navigation_event_push() {
+        let event = NavigationEvent::Push {
+            from: "/".to_string(),
+            to: "/next".to_string(),
+        };
+        assert_eq!(
+            event,
+            NavigationEvent::Push {
+                from: "/".to_string(),
+                to: "/next".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_navigation_events_distinct() {
+        let events = [
+            NavigationEvent::Push {
+                from: "a".to_string(),
+                to: "b".to_string(),
+            },
+            NavigationEvent::Replace {
+                from: "a".to_string(),
+                to: "b".to_string(),
+            },
+            NavigationEvent::Back {
+                from: "a".to_string(),
+                to: "b".to_string(),
+            },
+            NavigationEvent::Forward {
+                from: "a".to_string(),
+                to: "b".to_string(),
+            },
+        ];
+        for (i, e1) in events.iter().enumerate() {
+            for (j, e2) in events.iter().enumerate() {
+                if i == j {
+                    assert_eq!(e1, e2);
+                } else {
+                    assert_ne!(e1, e2);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_router_builder_default() {
+        let builder = RouteBuilder::default();
+        assert!(builder.routes.is_empty());
+    }
+
+    #[test]
+    fn test_route_builder_with_meta() {
+        let mut meta = HashMap::new();
+        meta.insert("auth".to_string(), "true".to_string());
+        let routes = routes()
+            .route_with_meta("/admin", "admin", meta.clone())
+            .build();
+        assert_eq!(routes[0].meta, meta);
+    }
+
+    #[test]
+    fn test_router_history_position() {
+        let mut router = Router::new()
+            .route("/", "home")
+            .route("/a", "a")
+            .route("/b", "b");
+
+        router.push("/a");
+        router.push("/b");
+        assert_eq!(router.history_position(), 2);
+
+        router.back();
+        assert_eq!(router.history_position(), 1);
+    }
+
+    #[test]
+    fn test_router_history_slice() {
+        let mut router = Router::new().route("/", "home").route("/a", "a");
+
+        router.push("/a");
+        let history = router.history();
+        assert_eq!(history.len(), 2);
+    }
+
+    #[test]
+    fn test_router_multiple_guards() {
+        let mut router = Router::new()
+            .route("/", "home")
+            .route("/admin", "admin")
+            .guard(|path, _| path != "/forbidden")
+            .guard(|path, _| !path.starts_with("/private"));
+
+        assert!(!router.push("/forbidden"));
+        assert!(!router.push("/private/data"));
+        assert!(router.push("/admin"));
+    }
+
+    #[test]
+    fn test_route_matches_unicode() {
+        let route = Route::new("/search/:query", "search");
+        let params = route.matches("/search/你好").unwrap();
+        assert_eq!(params.get("query"), Some(&"你好".to_string()));
+    }
+
+    #[test]
+    fn test_router_with_slashes() {
+        let route = Route::new("/a/b/c", "abc");
+        assert!(route.matches("/a/b/c").is_some());
+        assert!(route.matches("/a/b").is_none());
+    }
 }
