@@ -8,6 +8,8 @@ mod avatar;
 mod badge;
 pub mod display;
 pub mod feedback;
+pub mod traits;
+pub mod canvas;
 mod breadcrumb;
 mod button;
 mod calendar;
