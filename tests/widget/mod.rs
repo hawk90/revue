@@ -7,6 +7,7 @@ mod autocomplete;
 mod avatar;
 mod badge;
 pub mod display;
+pub mod feedback;
 mod breadcrumb;
 mod button;
 mod calendar;
