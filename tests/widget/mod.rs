@@ -50,6 +50,13 @@ mod masked_input;
 mod form_tests;
 mod masked_input_tests;
 mod option_list;
+mod pagination;
+mod presentation;
+mod markdown;
+mod masked_input;
+mod form_tests;
+mod masked_input_tests;
+mod option_list;
 mod presentation;
 mod progress;
 #[cfg(feature = "qrcode")]
@@ -90,3 +97,4 @@ mod transition;
 mod validation;
 mod vim;
 mod waveline;
+mod zen;
