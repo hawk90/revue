@@ -2,6 +2,16 @@
 //!
 //! HTTPClient 위젯의 통합 테스트 모음입니다.
 
+// Test files extracted from source modules
+pub mod backend;
+pub mod builder;
+pub mod client;
+pub mod helpers;
+pub mod request;
+pub mod response;
+pub mod types;
+
+// Existing test files
 pub mod base64;
 pub mod builder_request;
 pub mod common;

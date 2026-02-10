@@ -266,6 +266,16 @@ impl CodeEditor {
         self.fg = Some(color);
         self
     }
+
+    // =========================================================================
+    // Getter methods (for tests)
+    // =========================================================================
+
+    /// Get line at index
+    #[doc(hidden)]
+    pub fn get_line(&self, index: usize) -> Option<String> {
+        self.lines.get(index).cloned()
+    }
 }
 
 impl Default for CodeEditor {
