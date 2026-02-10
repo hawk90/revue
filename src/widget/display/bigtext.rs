@@ -151,6 +151,50 @@ impl BigText {
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Test helper getters (doc(hidden))
+    // ─────────────────────────────────────────────────────────────────────────
+
+    #[doc(hidden)]
+    pub fn get_text(&self) -> &str {
+        &self.text
+    }
+
+    #[doc(hidden)]
+    pub fn get_tier(&self) -> u8 {
+        self.tier
+    }
+
+    #[doc(hidden)]
+    pub fn get_fg(&self) -> Option<Color> {
+        self.fg
+    }
+
+    #[doc(hidden)]
+    pub fn get_bg(&self) -> Option<Color> {
+        self.bg
+    }
+
+    #[doc(hidden)]
+    pub fn get_figlet_font(&self) -> FigletFont {
+        self.figlet_font
+    }
+
+    #[doc(hidden)]
+    pub fn get_force_figlet(&self) -> bool {
+        self.force_figlet
+    }
+
+    #[doc(hidden)]
+    pub fn get_font_for_tier(&self) -> FigletFont {
+        self.font_for_tier()
+    }
+
+    #[doc(hidden)]
+    pub fn test_render_text_sizing(&self, ctx: &mut RenderContext) {
+        self.render_text_sizing(ctx)
+    }
+
     /// Render using Figlet ASCII art
     fn render_figlet(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
@@ -293,100 +337,5 @@ mod tests {
         assert_eq!(bt.bg, Some(Color::BLACK));
         assert_eq!(bt.figlet_font, FigletFont::Slant);
         assert!(bt.force_figlet);
-    }
-
-    #[test]
-    fn test_render_figlet() {
-        let mut buffer = Buffer::new(80, 10);
-        let area = Rect::new(0, 0, 80, 10);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let bt = BigText::h1("Hi").force_figlet(true);
-        bt.render(&mut ctx);
-
-        // Should have rendered something (Figlet art)
-        // Check that at least some non-space cells exist
-        let mut found_content = false;
-        for y in 0..10 {
-            for x in 0..80 {
-                if let Some(cell) = buffer.get(x, y) {
-                    if cell.symbol != ' ' {
-                        found_content = true;
-                        break;
-                    }
-                }
-            }
-        }
-        assert!(found_content, "Figlet should render some content");
-    }
-
-    #[test]
-    fn test_font_for_tier() {
-        let bt = BigText::h1("Test").figlet_font(FigletFont::Block);
-        assert_eq!(bt.font_for_tier(), FigletFont::Block);
-
-        let bt = BigText::h2("Test");
-        assert_eq!(bt.font_for_tier(), FigletFont::Slant);
-
-        let bt = BigText::h3("Test");
-        assert_eq!(bt.font_for_tier(), FigletFont::Small);
-
-        let bt = BigText::h6("Test");
-        assert_eq!(bt.font_for_tier(), FigletFont::Mini);
-    }
-
-    #[test]
-    fn test_empty_text() {
-        let mut buffer = Buffer::new(80, 10);
-        let area = Rect::new(0, 0, 80, 10);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let bt = BigText::h1("");
-        bt.render(&mut ctx);
-
-        // Should not crash, and should not render anything
-    }
-
-    #[test]
-    fn test_text_sizing_rendering() {
-        let mut buffer = Buffer::new(80, 10);
-        let area = Rect::new(0, 0, 80, 10);
-
-        // Simulate text sizing support for testing
-        // render_text_sizing writes an escape sequence to the buffer
-        let bt = BigText::h1("Test");
-
-        // Call render_text_sizing directly (bypasses the is_supported check)
-        bt.render_text_sizing(&mut RenderContext::new(&mut buffer, area));
-
-        // Verify that a sequence was registered
-        assert_eq!(buffer.sequences().len(), 1);
-
-        // Verify the sequence contains OSC 66 marker
-        let seq = &buffer.sequences()[0];
-        assert!(seq.contains("\x1b]66;"), "Should contain OSC 66 marker");
-        assert!(seq.contains("Test"), "Should contain the text");
-
-        // Verify the first cell has a sequence_id
-        let first_cell = buffer.get(0, 0).unwrap();
-        assert!(
-            first_cell.sequence_id.is_some(),
-            "First cell should have sequence_id"
-        );
-
-        // Verify continuation cells
-        let cont_cell = buffer.get(1, 0).unwrap();
-        assert!(
-            cont_cell.is_continuation(),
-            "Adjacent cells should be continuations"
-        );
-    }
-
-    #[test]
-    fn test_text_sizing_height() {
-        let bt = BigText::h1("Test");
-        // When text sizing is not supported, height is figlet height
-        // When supported, height is TextSizing::height() = 2
-        assert!(bt.height() > 0);
     }
 }
