@@ -1,12 +1,15 @@
 //! Tests for Time Series widget
+//!
+//! Extracted from src/widget/data/chart/timeseries/
 
-use super::helpers::{cpu_chart, memory_chart, network_chart, time_series, time_series_with_data};
-use super::types::*;
-use super::TimeSeries;
-use crate::layout::Rect;
-use crate::render::Buffer;
-use crate::style::Color;
-use crate::widget::traits::{RenderContext, View};
+use revue::layout::Rect;
+use revue::render::Buffer;
+use revue::style::Color;
+use revue::widget::traits::{RenderContext, View};
+use revue::widget::data::chart::timeseries::{
+    cpu_chart, memory_chart, network_chart, time_series, time_series_with_data, TimeSeries,
+};
+use revue::widget::data::chart::timeseries::types::*;
 
 // ========================================================================
 // TimePoint tests

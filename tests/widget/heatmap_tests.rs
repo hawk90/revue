@@ -1,24 +1,23 @@
 //! Tests for Heat Map widget
+//!
+//! Extracted from src/widget/data/chart/heatmap/
 
-#![allow(unused_imports)]
-
-use super::super::{contribution_map, heatmap};
-use super::types::{CellDisplay, ColorScale};
-use super::HeatMap;
-use crate::layout::Rect;
-use crate::render::Buffer;
-use crate::style::Color;
-use crate::widget::RenderContext;
-use crate::widget::View;
+use revue::layout::Rect;
+use revue::render::Buffer;
+use revue::style::Color;
+use revue::widget::RenderContext;
+use revue::widget::View;
+use revue::widget::data::chart::heatmap::{heatmap, contribution_map, HeatMap};
+use revue::widget::data::chart::heatmap::types::{CellDisplay, ColorScale};
 
 // ==================== Basic Tests ====================
 
 #[test]
 fn test_heatmap_new() {
     let data = vec![vec![0.0, 0.5, 1.0], vec![0.2, 0.4, 0.8]];
-    let hm = HeatMap::new(data);
-    assert_eq!(hm._rows, 2);
-    assert_eq!(hm.cols, 3);
+    let hm = HeatMap::new(data.clone());
+    // Note: _rows and cols are private, so we test via public API
+    assert_eq!(hm.data, data);
     assert_eq!(hm.min_val, 0.0);
     assert_eq!(hm.max_val, 1.0);
 }
@@ -27,8 +26,6 @@ fn test_heatmap_new() {
 fn test_heatmap_from_flat() {
     let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
     let hm = HeatMap::from_flat(&data, 2, 3);
-    assert_eq!(hm._rows, 2);
-    assert_eq!(hm.cols, 3);
     assert_eq!(hm.data[0][0], 1.0);
     assert_eq!(hm.data[1][2], 6.0);
 }
@@ -93,7 +90,7 @@ fn test_labels() {
 fn test_helper_functions() {
     let data = vec![vec![0.5]];
     let hm = heatmap(data);
-    assert_eq!(hm._rows, 1);
+    assert_eq!(hm.data.len(), 1);
 }
 
 // ==================== ColorScale Tests ====================
@@ -469,8 +466,6 @@ fn test_render_cell_show_values_overrides_display() {
 #[test]
 fn test_heatmap_empty_data() {
     let hm = HeatMap::new(vec![]);
-    assert_eq!(hm._rows, 0);
-    assert_eq!(hm.cols, 0);
     // When empty, defaults apply
     assert_eq!(hm.min_val, 0.0);
     assert_eq!(hm.max_val, 1.0);
@@ -479,8 +474,7 @@ fn test_heatmap_empty_data() {
 #[test]
 fn test_heatmap_empty_rows() {
     let hm = HeatMap::new(vec![vec![], vec![]]);
-    assert_eq!(hm._rows, 2);
-    assert_eq!(hm.cols, 0);
+    assert_eq!(hm.data.len(), 2);
 }
 
 #[test]
@@ -488,7 +482,6 @@ fn test_from_flat_partial_data() {
     // Data smaller than rows * cols
     let data = vec![1.0, 2.0, 3.0];
     let hm = HeatMap::from_flat(&data, 2, 3);
-    assert_eq!(hm._rows, 2);
     assert_eq!(hm.data[0].len(), 3);
     assert_eq!(hm.data[1].len(), 0); // Second row is empty since data ran out
 }

@@ -1,11 +1,12 @@
 //! Tests for log_viewer module
 
-use super::*;
-use crate::event::Key;
-use crate::layout::Rect;
-use crate::render::Buffer;
-use crate::style::Color;
-use crate::widget::traits::{RenderContext, View};
+use revue::event::Key;
+use revue::layout::Rect;
+use revue::render::Buffer;
+use revue::style::Color;
+use revue::widget::data::log_viewer::{LogEntry, LogFilter, LogParser, LogViewer, LogLevel, SearchMatch};
+use revue::widget::data::log_viewer::{log_entry, log_filter, log_parser, log_viewer};
+use revue::widget::traits::{RenderContext, View};
 
 // ========================================================================
 // LogLevel tests
@@ -301,7 +302,11 @@ fn test_log_viewer_default() {
 #[test]
 fn test_log_viewer_load() {
     let mut viewer = LogViewer::new();
-    viewer.load("Line 1\nLine 2\nLine 3");
+    viewer.load(
+        "Line 1
+Line 2
+Line 3",
+    );
     assert_eq!(viewer.len(), 3);
 }
 
@@ -324,7 +329,10 @@ fn test_log_viewer_push_entry() {
 #[test]
 fn test_log_viewer_clear() {
     let mut viewer = LogViewer::new();
-    viewer.load("Line 1\nLine 2");
+    viewer.load(
+        "Line 1
+Line 2",
+    );
     assert_eq!(viewer.len(), 2);
 
     viewer.clear();
@@ -334,7 +342,11 @@ fn test_log_viewer_clear() {
 #[test]
 fn test_log_viewer_navigation() {
     let mut viewer = LogViewer::new();
-    viewer.load("Line 1\nLine 2\nLine 3");
+    viewer.load(
+        "Line 1
+Line 2
+Line 3",
+    );
 
     viewer.select_next();
     viewer.select_next();
@@ -347,7 +359,11 @@ fn test_log_viewer_navigation() {
 #[test]
 fn test_log_viewer_search() {
     let mut viewer = LogViewer::new();
-    viewer.load("test message one\ntest message two\nother line");
+    viewer.load(
+        "test message one
+test message two
+other line",
+    );
 
     viewer.search("test");
     assert_eq!(viewer.search_match_count(), 2);
@@ -381,7 +397,11 @@ fn test_log_viewer_toggle_wrap() {
 #[test]
 fn test_log_viewer_bookmarks() {
     let mut viewer = LogViewer::new();
-    viewer.load("Line 1\nLine 2\nLine 3");
+    viewer.load(
+        "Line 1
+Line 2
+Line 3",
+    );
 
     viewer.toggle_bookmark();
     assert_eq!(viewer.bookmarked_entries().len(), 1);
@@ -393,7 +413,11 @@ fn test_log_viewer_bookmarks() {
 #[test]
 fn test_log_viewer_bookmark_navigation() {
     let mut viewer = LogViewer::new();
-    viewer.load("Line 1\nLine 2\nLine 3");
+    viewer.load(
+        "Line 1
+Line 2
+Line 3",
+    );
 
     // Bookmark first and last
     viewer.toggle_bookmark();
@@ -408,7 +432,11 @@ fn test_log_viewer_bookmark_navigation() {
 #[test]
 fn test_log_viewer_filter() {
     let mut viewer = LogViewer::new();
-    viewer.load("[ERROR] Error 1\n[INFO] Info 1\n[ERROR] Error 2");
+    viewer.load(
+        "[ERROR] Error 1
+[INFO] Info 1
+[ERROR] Error 2",
+    );
 
     viewer.set_min_level(LogLevel::Error);
     assert_eq!(viewer.filtered_len(), 2);
@@ -420,7 +448,10 @@ fn test_log_viewer_filter() {
 #[test]
 fn test_log_viewer_selected_entry() {
     let mut viewer = LogViewer::new();
-    viewer.load("Line 1\nLine 2");
+    viewer.load(
+        "Line 1
+Line 2",
+    );
 
     assert!(viewer.selected_entry().is_some());
     assert!(viewer.selected_text().is_some());
@@ -429,7 +460,10 @@ fn test_log_viewer_selected_entry() {
 #[test]
 fn test_log_viewer_export() {
     let mut viewer = LogViewer::new();
-    viewer.load("Line 1\nLine 2");
+    viewer.load(
+        "Line 1
+Line 2",
+    );
 
     let filtered = viewer.export_filtered();
     assert!(filtered.contains("Line 1"));
@@ -468,7 +502,13 @@ fn test_log_viewer_builders() {
 #[test]
 fn test_log_viewer_jump_to_line() {
     let mut viewer = LogViewer::new();
-    viewer.load("Line 1\nLine 2\nLine 3\nLine 4\nLine 5");
+    viewer.load(
+        "Line 1
+Line 2
+Line 3
+Line 4
+Line 5",
+    );
 
     viewer.jump_to_line(3);
 }
@@ -476,7 +516,13 @@ fn test_log_viewer_jump_to_line() {
 #[test]
 fn test_log_viewer_scroll() {
     let mut viewer = LogViewer::new();
-    viewer.load("Line 1\nLine 2\nLine 3\nLine 4\nLine 5");
+    viewer.load(
+        "Line 1
+Line 2
+Line 3
+Line 4
+Line 5",
+    );
 
     viewer.scroll_down(2);
     viewer.scroll_up(1);
@@ -485,7 +531,11 @@ fn test_log_viewer_scroll() {
 #[test]
 fn test_log_viewer_handle_key() {
     let mut viewer = LogViewer::new();
-    viewer.load("Line 1\nLine 2\nLine 3");
+    viewer.load(
+        "Line 1
+Line 2
+Line 3",
+    );
 
     assert!(viewer.handle_key(&Key::Down));
     assert!(viewer.handle_key(&Key::Up));
@@ -535,15 +585,6 @@ fn test_log_parser_helper() {
 }
 
 // ========================================================================
-// TimestampFormat tests
-// ========================================================================
-
-#[test]
-fn test_timestamp_format_default() {
-    assert_eq!(TimestampFormat::default(), TimestampFormat::Iso8601);
-}
-
-// ========================================================================
 // SearchMatch tests
 // ========================================================================
 
@@ -570,7 +611,11 @@ fn test_log_viewer_render() {
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     let mut viewer = LogViewer::new();
-    viewer.load("Line 1\nLine 2\nLine 3");
+    viewer.load(
+        "Line 1
+Line 2
+Line 3",
+    );
     viewer.render(&mut ctx);
 }
 

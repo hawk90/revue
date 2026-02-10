@@ -1,16 +1,16 @@
 //! Tests for Chart helper module
+//!
+//! Extracted from src/widget/data/chart/
 
-#![allow(unused_imports)]
-
-use super::helper::{chart as chart_fn, line_chart, Chart};
-use super::scatterchart::{scatter_chart, ScatterSeries};
-use super::types::{ChartType, LineStyle, Series};
-use crate::layout::Rect;
-use crate::render::Buffer;
-use crate::style::Color;
-use crate::widget::data::chart::chart_common::{Axis, AxisFormat, LegendPosition, Marker};
-use crate::widget::RenderContext;
-use crate::widget::View;
+use revue::layout::Rect;
+use revue::render::Buffer;
+use revue::style::Color;
+use revue::widget::data::chart::{chart, line_chart, Chart};
+use revue::widget::data::chart::scatter_chart::{scatter_chart, ScatterSeries};
+use revue::widget::data::chart::types::{ChartType, LineStyle, Series};
+use revue::widget::data::chart::chart_common::{Axis, AxisFormat, LegendPosition, Marker};
+use revue::widget::RenderContext;
+use revue::widget::View;
 
 // ==================== Builder Pattern Tests ====================
 
@@ -255,7 +255,7 @@ fn test_chart_builder_chain() {
 
 #[test]
 fn test_chart_helper() {
-    let my_chart = chart_fn();
+    let my_chart = chart();
     let mut buffer = Buffer::new(40, 20);
     let area = Rect::new(0, 0, 40, 20);
     let mut ctx = RenderContext::new(&mut buffer, area);

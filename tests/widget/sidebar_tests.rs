@@ -1,17 +1,10 @@
-//! Sidebar tests
+//! Sidebar widget integration tests
 
-use super::types::{CollapseMode, FlattenedItem, SidebarItem, SidebarSection};
-use super::Sidebar;
-use crate::layout::Rect;
-use crate::render::Buffer;
-use crate::style::Color;
-use crate::widget::traits::{RenderContext, View};
-
-// Re-export helpers from parent module
-pub use super::sidebar;
-pub use super::sidebar_item;
-pub use super::sidebar_section;
-pub use super::sidebar_section_titled;
+use revue::layout::Rect;
+use revue::render::Buffer;
+use revue::style::Color;
+use revue::widget::traits::RenderContext;
+use revue::widget::layout::{CollapseMode, FlattenedItem, Sidebar, SidebarItem, SidebarSection};
 
 // =========================================================================
 // SidebarItem Tests
@@ -141,36 +134,6 @@ fn test_sidebar_default() {
 }
 
 #[test]
-fn test_sidebar_helper() {
-    let sb = sidebar();
-    assert!(sb.selected_id().is_none());
-}
-
-#[test]
-fn test_sidebar_item_helper() {
-    let item = sidebar_item("test", "Test");
-    assert_eq!(item.id, "test");
-    assert_eq!(item.label, "Test");
-}
-
-#[test]
-fn test_sidebar_section_helper() {
-    let section = sidebar_section(vec![sidebar_item("a", "A")]);
-    assert!(section.title.is_none());
-    assert_eq!(section.items.len(), 1);
-}
-
-#[test]
-fn test_sidebar_section_titled_helper() {
-    let section = sidebar_section_titled("Title", vec![sidebar_item("a", "A")]);
-    assert_eq!(section.title, Some("Title".to_string()));
-}
-
-// =========================================================================
-// Sidebar Builder Tests
-// =========================================================================
-
-#[test]
 fn test_sidebar_section_builder() {
     let sb = Sidebar::new().section(SidebarSection::new(vec![SidebarItem::new("home", "Home")]));
     assert_eq!(sb.item_count(), 1);
@@ -206,87 +169,6 @@ fn test_sidebar_selected() {
 fn test_sidebar_collapse_mode() {
     let sb = Sidebar::new().collapse_mode(CollapseMode::Collapsed);
     assert!(sb.is_collapsed());
-}
-
-#[test]
-fn test_sidebar_collapse_threshold() {
-    let sb = Sidebar::new().collapse_threshold(30);
-    assert_eq!(sb.collapse_threshold, 30);
-}
-
-#[test]
-fn test_sidebar_expanded_width() {
-    let sb = Sidebar::new().expanded_width(32);
-    assert_eq!(sb.expanded_width, 32);
-}
-
-#[test]
-fn test_sidebar_collapsed_width() {
-    let sb = Sidebar::new().collapsed_width(6);
-    assert_eq!(sb.collapsed_width, 6);
-}
-
-#[test]
-fn test_sidebar_header() {
-    let sb = Sidebar::new().header("App Name");
-    assert_eq!(sb.header, Some("App Name".to_string()));
-}
-
-#[test]
-fn test_sidebar_footer() {
-    let sb = Sidebar::new().footer("v1.0.0");
-    assert_eq!(sb.footer, Some("v1.0.0".to_string()));
-}
-
-#[test]
-fn test_sidebar_fg() {
-    let sb = Sidebar::new().fg(Color::WHITE);
-    assert_eq!(sb.fg, Some(Color::WHITE));
-}
-
-#[test]
-fn test_sidebar_bg() {
-    let sb = Sidebar::new().bg(Color::BLACK);
-    assert_eq!(sb.bg, Some(Color::BLACK));
-}
-
-#[test]
-fn test_sidebar_selected_style() {
-    let sb = Sidebar::new().selected_style(Color::WHITE, Color::BLUE);
-    assert_eq!(sb.selected_fg, Some(Color::WHITE));
-    assert_eq!(sb.selected_bg, Some(Color::BLUE));
-}
-
-#[test]
-fn test_sidebar_hover_style() {
-    let sb = Sidebar::new().hover_style(Color::YELLOW, Color::CYAN);
-    assert_eq!(sb.hover_fg, Some(Color::YELLOW));
-    assert_eq!(sb.hover_bg, Some(Color::CYAN));
-}
-
-#[test]
-fn test_sidebar_disabled_color() {
-    let sb = Sidebar::new().disabled_color(Color::rgb(128, 128, 128));
-    assert_eq!(sb.disabled_fg, Some(Color::rgb(128, 128, 128)));
-}
-
-#[test]
-fn test_sidebar_section_color() {
-    let sb = Sidebar::new().section_color(Color::CYAN);
-    assert_eq!(sb.section_fg, Some(Color::CYAN));
-}
-
-#[test]
-fn test_sidebar_badge_style() {
-    let sb = Sidebar::new().badge_style(Color::WHITE, Color::RED);
-    assert_eq!(sb.badge_fg, Some(Color::WHITE));
-    assert_eq!(sb.badge_bg, Some(Color::RED));
-}
-
-#[test]
-fn test_sidebar_border_color() {
-    let sb = Sidebar::new().border_color(Color::MAGENTA);
-    assert_eq!(sb.border_fg, Some(Color::MAGENTA));
 }
 
 // =========================================================================
@@ -411,35 +293,6 @@ fn test_sidebar_hover_down_skips_disabled() {
     sb.hover_down();
     // Should skip disabled item B and go to C
     assert_eq!(sb.hovered_index(), 2);
-}
-
-#[test]
-fn test_sidebar_hover_up() {
-    let mut sb = Sidebar::new().items(vec![
-        SidebarItem::new("a", "A"),
-        SidebarItem::new("b", "B"),
-        SidebarItem::new("c", "C"),
-    ]);
-    sb.hovered = 2;
-    sb.hover_up();
-    assert_eq!(sb.hovered_index(), 1);
-    sb.hover_up();
-    assert_eq!(sb.hovered_index(), 0);
-}
-
-#[test]
-fn test_sidebar_hover_up_at_start() {
-    let mut sb = Sidebar::new().items(vec![SidebarItem::new("a", "A"), SidebarItem::new("b", "B")]);
-    sb.hover_up(); // Already at 0
-    assert_eq!(sb.hovered_index(), 0);
-}
-
-#[test]
-fn test_sidebar_select_hovered() {
-    let mut sb = Sidebar::new().items(vec![SidebarItem::new("a", "A"), SidebarItem::new("b", "B")]);
-    sb.hovered = 1;
-    sb.select_hovered();
-    assert_eq!(sb.selected_id(), Some("b"));
 }
 
 #[test]

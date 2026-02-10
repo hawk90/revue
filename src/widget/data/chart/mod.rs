@@ -122,7 +122,6 @@ pub mod histogram;
 pub mod piechart;
 pub mod scatterchart;
 pub mod sparkline;
-pub mod tests;
 pub mod timeseries;
 pub mod types;
 pub mod waveline;
