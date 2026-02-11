@@ -43,6 +43,7 @@ mod httpclient;
 mod image;
 mod input;
 mod link;
+mod layout;
 mod list;
 mod log_viewer_tests;
 #[cfg(feature = "markdown")]
@@ -51,9 +52,13 @@ mod masked_input;
 mod masked_input_tests;
 mod option_list;
 mod pagination;
+mod pipeline;
+mod placeholder;
+mod points;
 mod presentation;
 mod progress;
-#[cfg(feature = "qrcode")]
+#[cfg(feature = "sysinfo")]
+mod procmon;
 mod qrcode;
 mod radio;
 mod range_picker;
@@ -80,6 +85,10 @@ mod switch;
 mod syntax;
 mod tabs;
 mod terminal;
+#[cfg(feature = "syntax-highlighting")]
+mod tree_sitter_highlight;
+mod terminal_ansi;
+mod terminal_types;
 mod text;
 mod textarea;
 mod theme_picker;

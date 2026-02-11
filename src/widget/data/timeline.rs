@@ -1151,3 +1151,5 @@ mod tests {
         assert!(debug_str.contains("Custom"));
     }
 }
+
+// Test module requires private field access - keeping inline

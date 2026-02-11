@@ -1008,3 +1008,5 @@ mod tests {
         assert_eq!(t.header_bg, None);
     }
 }
+
+// Test module requires private field access - keeping inline

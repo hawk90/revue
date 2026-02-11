@@ -936,3 +936,5 @@ mod tests {
         assert_eq!(grid.frozen_right, 2);
     }
 }
+
+// Test module requires private field access - keeping inline

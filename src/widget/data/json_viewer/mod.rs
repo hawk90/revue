@@ -388,3 +388,5 @@ world"}"#,
         // Should handle small area gracefully
     }
 }
+
+// Test module requires private field access - keeping inline

@@ -1576,3 +1576,5 @@ mod tests {
         assert_eq!(tree.root[0].children.len(), 100);
     }
 }
+
+// Test module requires private field access - keeping inline

@@ -1434,3 +1434,5 @@ mod tests {
         assert_eq!(list.len(), 2);
     }
 }
+
+// Test module requires private field access - keeping inline
