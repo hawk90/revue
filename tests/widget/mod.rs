@@ -40,7 +40,8 @@ pub mod form; // New: rich_text_editor tests
 mod form_tests;
 mod gauge;
 pub mod heatmap_tests;
-mod httpclient;
+pub mod httpclient;
+pub mod multi_select;
 #[cfg(feature = "image")]
 mod image;
 mod input;
@@ -52,6 +53,7 @@ mod log_viewer_tests;
 mod markdown;
 mod masked_input;
 mod masked_input_tests;
+mod mermaid;
 mod option_list;
 mod pagination;
 mod pipeline;
@@ -69,7 +71,9 @@ mod resizable;
 mod richlog;
 mod richtext;
 mod search_bar;
-mod screen;
+pub mod screen;
+pub mod sortable;
+mod scroll;
 mod scroll;
 mod select;
 mod selection_list;
