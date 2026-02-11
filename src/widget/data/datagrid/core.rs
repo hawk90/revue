@@ -156,6 +156,33 @@ pub struct DataGrid {
     pub props: crate::widget::traits::WidgetProps,
 }
 
+// Test helpers
+impl DataGrid {
+    /// Get column width for testing
+    #[doc(hidden)]
+    pub fn get_column_widths(&self) -> &Vec<u16> {
+        &self.column_widths
+    }
+
+    /// Set column width for testing
+    #[doc(hidden)]
+    pub fn set_column_widths(&mut self, widths: Vec<u16>) {
+        self.column_widths = widths;
+    }
+
+    /// Get options for testing
+    #[doc(hidden)]
+    pub fn get_options(&self) -> &GridOptions {
+        &self.options
+    }
+
+    /// Set show_row_numbers for testing
+    #[doc(hidden)]
+    pub fn set_row_numbers(&mut self, show: bool) {
+        self.options.show_row_numbers = show;
+    }
+}
+
 impl DataGrid {
     /// Create a new data grid
     pub fn new() -> Self {
