@@ -1,105 +1,11 @@
-//! Breadcrumb widget tests
+//! Breadcrumb core tests
 
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::{RenderContext, StyledView, View};
-use revue::widget::{breadcrumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
-
-// =============================================================================
-// BreadcrumbItem Constructor Tests
-// =============================================================================
-
-#[test]
-fn test_breadcrumb_item_new() {
-    let item = BreadcrumbItem::new("Home");
-    assert_eq!(item.label, "Home");
-    assert_eq!(item.icon, None);
-    assert!(item.clickable);
-}
-
-#[test]
-fn test_breadcrumb_item_from_string() {
-    let item = BreadcrumbItem::new(String::from("Documents"));
-    assert_eq!(item.label, "Documents");
-}
-
-// =============================================================================
-// BreadcrumbItem Builder Methods Tests
-// =============================================================================
-
-#[test]
-fn test_breadcrumb_item_icon() {
-    let item = BreadcrumbItem::new("Home").icon('🏠');
-    assert_eq!(item.icon, Some('🏠'));
-    assert_eq!(item.label, "Home");
-}
-
-#[test]
-fn test_breadcrumb_item_clickable() {
-    let item = BreadcrumbItem::new("Disabled").clickable(false);
-    assert!(!item.clickable);
-}
-
-#[test]
-fn test_breadcrumb_item_builder_chain() {
-    let item = BreadcrumbItem::new("Work").icon('💼').clickable(true);
-
-    assert_eq!(item.label, "Work");
-    assert_eq!(item.icon, Some('💼'));
-    assert!(item.clickable);
-}
-
-// =============================================================================
-// SeparatorStyle Tests
-// =============================================================================
-
-#[test]
-fn test_separator_style_default() {
-    let style = SeparatorStyle::default();
-    assert_eq!(style, SeparatorStyle::Slash);
-}
-
-#[test]
-fn test_separator_style_equality() {
-    assert_eq!(SeparatorStyle::Slash, SeparatorStyle::Slash);
-    assert_ne!(SeparatorStyle::Slash, SeparatorStyle::Arrow);
-    assert_ne!(SeparatorStyle::Chevron, SeparatorStyle::DoubleArrow);
-}
-
-#[test]
-fn test_separator_style_clone() {
-    let style1 = SeparatorStyle::Chevron;
-    let style2 = style1.clone();
-    assert_eq!(style1, style2);
-}
-
-#[test]
-fn test_separator_style_debug() {
-    let style = SeparatorStyle::Chevron;
-    let debug_str = format!("{:?}", style);
-    assert!(debug_str.contains("Chevron"));
-}
-
-#[test]
-fn test_separator_style_all_variants() {
-    let styles = [
-        SeparatorStyle::Slash,
-        SeparatorStyle::Arrow,
-        SeparatorStyle::Chevron,
-        SeparatorStyle::DoubleArrow,
-        SeparatorStyle::Dot,
-        SeparatorStyle::Pipe,
-        SeparatorStyle::Custom('→'),
-    ];
-
-    // Test that all styles can be created and used
-    for style in styles {
-        let bc = Breadcrumb::new().separator(style).push("Test");
-        assert_eq!(bc.len(), 1);
-    }
-}
+use revue::widget::breadcrumb::{breadcrumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
 
 // =============================================================================
 // Breadcrumb Constructor Tests
@@ -111,17 +17,13 @@ fn test_breadcrumb_new() {
     assert!(bc.is_empty());
     assert_eq!(bc.len(), 0);
     assert_eq!(bc.selected(), 0);
+    assert!(bc.show_home);
+    assert!(bc.collapse);
 }
 
 #[test]
 fn test_breadcrumb_default() {
     let bc = Breadcrumb::default();
-    assert!(bc.is_empty());
-}
-
-#[test]
-fn test_breadcrumb_helper() {
-    let bc = breadcrumb();
     assert!(bc.is_empty());
 }
 
@@ -145,6 +47,18 @@ fn test_breadcrumb_item_multiple() {
 
     assert_eq!(bc.len(), 3);
     assert_eq!(bc.selected(), 2);
+}
+
+#[test]
+fn test_breadcrumb_item_with_icon() {
+    let bc = Breadcrumb::new().item(BreadcrumbItem::new("Home").icon('🏠'));
+    assert_eq!(bc.items()[0].icon, Some('🏠'));
+}
+
+#[test]
+fn test_breadcrumb_item_not_clickable() {
+    let bc = Breadcrumb::new().item(BreadcrumbItem::new("Locked").clickable(false));
+    assert!(!bc.items()[0].clickable);
 }
 
 #[test]
@@ -658,6 +572,39 @@ fn test_breadcrumb_navigate_to_empty() {
 }
 
 // =============================================================================
+// Breadcrumb::total_width() tests
+// =============================================================================
+
+#[test]
+fn test_breadcrumb_total_width_empty() {
+    let bc = Breadcrumb::new();
+    // Home icon
+    assert_eq!(bc.total_width(), 2);
+}
+
+#[test]
+fn test_breadcrumb_total_width_no_home() {
+    let bc = Breadcrumb::new().home(false).push("Home");
+    assert_eq!(bc.total_width(), 4); // "Home" = 4 chars
+}
+
+#[test]
+fn test_breadcrumb_total_width_with_separator() {
+    let bc = Breadcrumb::new().home(false).push("Home").push("Folder");
+    // Home(4) + sep(3) + Folder(6) = 13
+    assert_eq!(bc.total_width(), 13);
+}
+
+#[test]
+fn test_breadcrumb_total_width_with_icon() {
+    let bc = Breadcrumb::new()
+        .home(false)
+        .item(BreadcrumbItem::new("Home").icon('🏠'));
+    // icon(2) + Home(4) = 6
+    assert_eq!(bc.total_width(), 6);
+}
+
+// =============================================================================
 // Render Tests
 // =============================================================================
 
@@ -859,39 +806,6 @@ fn test_breadcrumb_render_selected_item() {
 }
 
 // =============================================================================
-// Helper Functions Tests
-// =============================================================================
-
-#[test]
-fn test_breadcrumb_helper_function() {
-    let bc = breadcrumb();
-    assert!(bc.is_empty());
-}
-
-#[test]
-fn test_crumb_helper() {
-    let item = revue::widget::crumb("Test");
-    assert_eq!(item.label, "Test");
-}
-
-#[test]
-fn test_crumb_helper_with_icon() {
-    let item = revue::widget::crumb("Home").icon('🏠');
-    assert_eq!(item.label, "Home");
-    assert_eq!(item.icon, Some('🏠'));
-}
-
-#[test]
-fn test_helper_combination() {
-    let bc = breadcrumb()
-        .item(revue::widget::crumb("Home"))
-        .item(revue::widget::crumb("Docs"))
-        .push("Work");
-
-    assert_eq!(bc.len(), 3);
-}
-
-// =============================================================================
 // CSS/Styling Tests
 // =============================================================================
 
@@ -928,28 +842,6 @@ fn test_breadcrumb_meta() {
     assert_eq!(meta.widget_type, "Breadcrumb");
     assert_eq!(meta.id, Some("test-breadcrumb".to_string()));
     assert!(meta.classes.contains("nav"));
-}
-
-// =============================================================================
-// Clone and Debug Tests
-// =============================================================================
-
-#[test]
-fn test_breadcrumb_item_clone() {
-    let item1 = BreadcrumbItem::new("Test").icon('📁').clickable(true);
-
-    let item2 = item1.clone();
-
-    assert_eq!(item1.label, item2.label);
-    assert_eq!(item1.icon, item2.icon);
-    assert_eq!(item1.clickable, item2.clickable);
-}
-
-#[test]
-fn test_breadcrumb_item_debug() {
-    let item = BreadcrumbItem::new("Test").icon('📁');
-    let debug_str = format!("{:?}", item);
-    assert!(debug_str.contains("Test"));
 }
 
 // =============================================================================
