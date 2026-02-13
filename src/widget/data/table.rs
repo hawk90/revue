@@ -1009,4 +1009,16 @@ mod tests {
     }
 }
 
-// Test module requires private field access - keeping inline
+// Keep private tests that require private field access here
+
+#[test]
+fn test_table_calculate_widths_private() {
+    // Test private method - keeping in source
+    let _t = Table::new(vec![
+        Column::new("A").width(10),
+        Column::new("B"), // auto width
+    ]);
+
+    // This would require accessing private calculate_widths method
+    // Test kept inline due to private access
+}

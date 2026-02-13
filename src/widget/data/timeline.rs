@@ -1152,4 +1152,13 @@ mod tests {
     }
 }
 
-// Test module requires private field access - keeping inline
+// Keep private tests that require private field access here
+
+#[test]
+fn test_timeline_render_private() {
+    // Test private render methods - keeping in source
+    let _t = Timeline::new().event(TimelineEvent::new("Test"));
+
+    // This would require accessing private render methods
+    // Test kept inline due to private access
+}

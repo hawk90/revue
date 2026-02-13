@@ -143,6 +143,14 @@ harness = false
 name = "css"
 harness = false
 
+[[test]]
+name = "tree_view"
+path = "tests/widget/data/tree_view.rs"
+
+[[test]]
+name = "tree_search"
+path = "tests/widget/data/tree_search.rs"
+
 [[bench]]
 name = "dom"
 harness = false

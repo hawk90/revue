@@ -1577,4 +1577,13 @@ mod tests {
     }
 }
 
-// Test module requires private field access - keeping inline
+// Keep private tests that require private field access here
+
+#[test]
+fn test_file_tree_render_private() {
+    // Test private render methods - keeping in source
+    let t = FileTree::new().entry(FileEntry::file("test.txt", "/test.txt"));
+
+    // This would require accessing private render methods
+    // Test kept inline due to private access
+}

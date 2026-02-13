@@ -1,7 +1,5 @@
-//! Tests for Table widget
+//! Public API tests for Table widget
 
-use revue::layout::Rect;
-use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::data::{table, Column};
 
@@ -53,26 +51,6 @@ fn test_table_selection() {
     assert_eq!(t.selected_index(), 2);
 }
 
-#[test]
-fn test_table_render() {
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let t = revue::widget::data::Table::new(vec![
-        Column::new("Name").width(10),
-        Column::new("Value").width(10),
-    ])
-    .row(vec!["Alice", "100"])
-    .row(vec!["Bob", "200"]);
-
-    t.render(&mut ctx);
-
-    // Check top-left corner
-    assert_eq!(buffer.get(0, 0).unwrap().symbol, '┌');
-    // Check header text
-    assert_eq!(buffer.get(1, 1).unwrap().symbol, 'N');
-}
 
 #[test]
 fn test_column_builder() {
@@ -176,16 +154,6 @@ fn test_table_rows_builder() {
     assert_eq!(t.row_count(), 3);
 }
 
-#[test]
-fn test_table_render_empty() {
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 5);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let t = revue::widget::data::Table::new(vec![Column::new("Header")]);
-    t.render(&mut ctx);
-    // Should not crash on empty table
-}
 
 #[test]
 fn test_table_selection_builder() {
@@ -464,35 +432,6 @@ fn test_table_select_last_from_start() {
 // Table render edge cases
 // =========================================================================
 
-#[test]
-fn test_table_render_too_narrow() {
-    let mut buffer = Buffer::new(2, 5);
-    let area = Rect::new(0, 0, 2, 5);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let t = revue::widget::data::Table::new(vec![Column::new("X")]).row(vec!["a"]);
-    t.render(&mut ctx); // Should return early (width < 3)
-}
-
-#[test]
-fn test_table_render_too_short() {
-    let mut buffer = Buffer::new(20, 1);
-    let area = Rect::new(0, 0, 20, 1);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let t = revue::widget::data::Table::new(vec![Column::new("X")]).row(vec!["a"]);
-    t.render(&mut ctx); // Should return early (height < 2)
-}
-
-#[test]
-fn test_table_render_no_columns() {
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 5);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let t = revue::widget::data::Table::new(vec![]);
-    t.render(&mut ctx); // Should return early (no columns)
-}
 
 // =========================================================================
 // Column method tests

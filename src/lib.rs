@@ -1060,3 +1060,9 @@ mod tests {
         // Verify widget module is accessible
     }
 }
+
+// =========================================================================
+// Display widget tests
+// =========================================================================
+
+// Display widget tests are in separate files in tests/widget/display/

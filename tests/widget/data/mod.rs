@@ -5,6 +5,7 @@ mod calendar_mod;
 mod calendar_render;
 mod calendar_types;
 mod calendar_utils;
+mod chart_helper;
 mod chart_render;
 mod chart_stats;
 mod chart_types;

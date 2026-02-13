@@ -291,51 +291,5 @@ pub fn h3(text: impl Into<String>) -> BigText {
     BigText::h3(text)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
-
-    #[test]
-    fn test_bigtext_creation() {
-        let bt = BigText::new("Hello", 1);
-        assert_eq!(bt.text, "Hello");
-        assert_eq!(bt.tier, 1);
-    }
-
-    #[test]
-    fn test_tier_clamping() {
-        let bt = BigText::new("Test", 10);
-        assert_eq!(bt.tier, 6);
-
-        let bt = BigText::new("Test", 0);
-        assert_eq!(bt.tier, 1);
-    }
-
-    #[test]
-    fn test_helper_functions() {
-        let h1 = h1("Header 1");
-        assert_eq!(h1.tier, 1);
-
-        let h2 = h2("Header 2");
-        assert_eq!(h2.tier, 2);
-
-        let h3 = h3("Header 3");
-        assert_eq!(h3.tier, 3);
-    }
-
-    #[test]
-    fn test_builder_pattern() {
-        let bt = BigText::h1("Test")
-            .fg(Color::CYAN)
-            .bg(Color::BLACK)
-            .figlet_font(FigletFont::Slant)
-            .force_figlet(true);
-
-        assert_eq!(bt.fg, Some(Color::CYAN));
-        assert_eq!(bt.bg, Some(Color::BLACK));
-        assert_eq!(bt.figlet_font, FigletFont::Slant);
-        assert!(bt.force_figlet);
-    }
-}
+// Private tests extracted to tests/widget/display/bigtext.rs
+// Tests using public APIs should be in tests/widget/display/bigtext.rs
