@@ -625,6 +625,8 @@ pub fn ohlc_chart(data: Vec<Candle>) -> CandleChart {
     CandleChart::new(data).style(ChartStyle::Ohlc)
 }
 
+// KEEP HERE - Private implementation tests (all tests access private fields: open, high, low, close, data, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;

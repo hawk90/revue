@@ -408,6 +408,8 @@ pub fn bubble_chart() -> ScatterChart {
     ScatterChart::new()
 }
 
+// KEEP HERE - Private implementation tests (all tests access private fields: series, data, color, marker, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;

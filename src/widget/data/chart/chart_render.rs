@@ -390,6 +390,8 @@ pub fn calculate_chart_area(
 // Tests
 // ============================================================================
 
+// KEEP HERE - Private rendering tests (tests internal render_title, render_grid functions and buffer access)
+
 #[cfg(test)]
 mod tests {
     use super::*;
