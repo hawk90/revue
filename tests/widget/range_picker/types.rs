@@ -1,8 +1,7 @@
-//! Date/time range picker type tests
-//! Extracted from src/widget/range_picker/types.rs
+//! Date/time range picker types tests
 
 use revue::widget::data::calendar::{Date, days_in_month};
-use revue::widget::range_picker::PresetRange;
+use revue::widget::range_picker::{PresetRange, RangeFocus};
 
 // =========================================================================
 // PresetRange::name() tests
