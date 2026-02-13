@@ -971,6 +971,8 @@ pub fn dir_picker() -> FilePicker {
     FilePicker::directory()
 }
 
+// KEEP HERE - Private implementation tests (all tests access private fields: current_dir, mode, PickerEntry fields, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;
