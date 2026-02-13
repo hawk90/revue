@@ -6,6 +6,25 @@ use revue::widget::data::calendar::{Date, FirstDayOfWeek};
 use revue::widget::datetime_picker::{DateTime, Time};
 use revue::widget::range_picker::{PresetRange, RangePicker};
 
+// Helper function for testing
+pub(crate) fn month_name(month: u32) -> &'static str {
+    match month {
+        1 => "Jan",
+        2 => "Feb",
+        3 => "Mar",
+        4 => "Apr",
+        5 => "May",
+        6 => "Jun",
+        7 => "Jul",
+        8 => "Aug",
+        9 => "Sep",
+        10 => "Oct",
+        11 => "Nov",
+        12 => "Dec",
+        _ => "???",
+    }
+}
+
 // =========================================================================
 // Builder method tests - start_date
 // =========================================================================
@@ -13,7 +32,7 @@ use revue::widget::range_picker::{PresetRange, RangePicker};
 #[test]
 fn test_start_date_sets_date() {
     let picker = RangePicker::new().start_date(Date::new(2024, 6, 15));
-    assert_eq!(picker.start.date, Date::new(2024, 6, 15));
+    assert_eq!(picker.get_start(), Date::new(2024, 6, 15));
 }
 
 #[test]
@@ -37,7 +56,7 @@ fn test_end_date_sets_date() {
     let picker = RangePicker::new()
         .start_date(Date::new(2024, 6, 1))
         .end_date(Date::new(2024, 6, 30));
-    assert_eq!(picker.end.date, Date::new(2024, 6, 30));
+    assert_eq!(picker.get_end(), Date::new(2024, 6, 30));
 }
 
 #[test]
@@ -70,19 +89,19 @@ fn test_end_date_swaps_if_needed() {
 #[test]
 fn test_start_time_sets_hour() {
     let picker = RangePicker::new().start_time(Time::new(10, 0, 0));
-    assert_eq!(picker.start.time.hour, 10);
+    assert_eq!(picker.get_datetime_range().0.time.hour, 10);
 }
 
 #[test]
 fn test_start_time_sets_minute() {
     let picker = RangePicker::new().start_time(Time::new(10, 30, 0));
-    assert_eq!(picker.start.time.minute, 30);
+    assert_eq!(picker.get_datetime_range().0.time.minute, 30);
 }
 
 #[test]
 fn test_start_time_sets_second() {
     let picker = RangePicker::new().start_time(Time::new(10, 0, 45));
-    assert_eq!(picker.start.time.second, 45);
+    assert_eq!(picker.get_datetime_range().0.time.second, 45);
 }
 
 // =========================================================================
@@ -92,19 +111,19 @@ fn test_start_time_sets_second() {
 #[test]
 fn test_end_time_sets_hour() {
     let picker = RangePicker::new().end_time(Time::new(23, 0, 0));
-    assert_eq!(picker.end.time.hour, 23);
+    assert_eq!(picker.get_datetime_range().1.time.hour, 23);
 }
 
 #[test]
 fn test_end_time_sets_minute() {
     let picker = RangePicker::new().end_time(Time::new(23, 30, 0));
-    assert_eq!(picker.end.time.minute, 30);
+    assert_eq!(picker.get_datetime_range().1.time.minute, 30);
 }
 
 #[test]
 fn test_end_time_sets_second() {
     let picker = RangePicker::new().end_time(Time::new(23, 0, 59));
-    assert_eq!(picker.end.time.second, 59);
+    assert_eq!(picker.get_datetime_range().1.time.second, 59);
 }
 
 // =========================================================================
@@ -398,7 +417,7 @@ fn test_set_end_updates_date() {
     let mut picker = RangePicker::new();
     picker.set_start(Date::new(2024, 6, 1));
     picker.set_end(Date::new(2024, 6, 30));
-    assert_eq!(picker.end.date, Date::new(2024, 6, 30));
+    assert_eq!(picker.get_end(), Date::new(2024, 6, 30));
 }
 
 #[test]
@@ -493,7 +512,7 @@ fn test_swap_if_needed_same_day() {
         .end_date(Date::new(2024, 6, 15));
     picker.swap_if_needed();
     // Should not swap equal dates
-    assert_eq!(picker.start.date, Date::new(2024, 6, 15));
+    assert_eq!(picker.get_start(), Date::new(2024, 6, 15));
     assert_eq!(picker.end.date, Date::new(2024, 6, 15));
 }
 
@@ -606,7 +625,7 @@ fn test_builder_chain_times() {
         .start_time(Time::new(0, 0, 0))
         .end_time(Time::new(23, 59, 59));
     assert_eq!(picker.start.time.hour, 0);
-    assert_eq!(picker.end.time.hour, 23);
+    assert_eq!(picker.get_datetime_range().1.time.hour, 23);
 }
 
 #[test]
@@ -686,7 +705,7 @@ fn test_builder_all_options() {
     assert_eq!(picker.start.date, Date::new(2024, 1, 1));
     assert_eq!(picker.end.date, Date::new(2024, 12, 31));
     assert_eq!(picker.start.time.hour, 0);
-    assert_eq!(picker.end.time.hour, 23);
+    assert_eq!(picker.get_datetime_range().1.time.hour, 23);
     assert_eq!(picker.first_day, FirstDayOfWeek::Monday);
     assert!(picker.show_time);
     assert!(picker.show_presets);
