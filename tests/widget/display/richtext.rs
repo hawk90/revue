@@ -82,7 +82,10 @@ fn test_rich_text_markup_combined() {
 fn test_rich_text_markup_link() {
     let rt = RichText::markup("[link=https://example.com]Click here[/]");
     assert!(rt.spans()[0].link().is_some());
-    assert_eq!(rt.spans()[0].link().as_ref().unwrap(), "https://example.com");
+    assert_eq!(
+        rt.spans()[0].link().as_ref().unwrap(),
+        "https://example.com"
+    );
 }
 
 #[test]

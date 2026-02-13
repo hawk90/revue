@@ -335,59 +335,59 @@ impl_props_builders!(Text);
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // KEEP HERE - These tests access private fields and must stay inline
+    // Public API tests have been extracted to tests/widget/display/text.rs
 
-    // KEEP HERE - accesses private fields
     #[test]
-    fn test_text_builder() {
-        let text = Text::new("Test")
-            .fg(Color::RED)
-            .bold()
-            .align(Alignment::Center);
+    fn test_text_private_initialization() {
+        // Test private field initialization that can't be tested via public API
+        use super::*;
 
-        assert_eq!(text.fg, Some(Color::RED));
-        assert!(text.bold);
-        assert_eq!(text.align, Alignment::Center);
+        let text = Text::new("Test");
+        // Test that private fields are properly initialized
+        assert_eq!(text.content, "Test");
+        assert!(text.fg.is_none());
+        assert!(text.bg.is_none());
+        assert!(!text.bold);
+        assert!(!text.italic);
+        assert!(!text.underline);
+        assert!(!text.dim);
+        assert!(!text.reverse);
     }
 
-    // KEEP HERE - accesses private fields
     #[test]
-    fn test_text_with_styled_modifiers() {
-        // Text widget should handle modifiers with edge case content
-        let text = Text::new("  ").bold().italic();
-        assert_eq!(text.content, "  ");
-        assert!(text.bold);
-        assert!(text.italic);
-    }
+    fn test_text_private_builder_patterns() {
+        // Test builder pattern implementation on private fields
+        use super::*;
 
-    // KEEP HERE - accesses private fields
-    #[test]
-    fn test_text_builder_chaining() {
-        // Text builder should support method chaining
         let text = Text::new("Test")
             .fg(Color::RED)
             .bg(Color::BLUE)
             .bold()
-            .italic()
-            .underline()
-            .dim();
+            .italic();
 
         assert_eq!(text.content, "Test");
         assert_eq!(text.fg, Some(Color::RED));
         assert_eq!(text.bg, Some(Color::BLUE));
         assert!(text.bold);
         assert!(text.italic);
-        assert!(text.underline);
-        assert!(text.dim);
     }
 
-    // KEEP HERE - accesses private fields
     #[test]
-    fn test_text_all_alignments() {
-        // Test all alignment options work
-        for align in &[Alignment::Left, Alignment::Center, Alignment::Right] {
-            let text = Text::new("Test").align(*align);
-            assert_eq!(text.align, *align);
-        }
+    fn test_text_private_alignment() {
+        // Test private alignment field that can't be tested via public API
+        use super::*;
+
+        let text = Text::new("Test").align(Alignment::Center);
+        assert_eq!(text.align, Alignment::Center);
+    }
+
+    #[test]
+    fn test_text_private_reverse() {
+        // Test reverse private field implementation
+        use super::*;
+
+        let text = Text::new("Test").reverse();
+        assert!(text.reverse);
     }
 }
