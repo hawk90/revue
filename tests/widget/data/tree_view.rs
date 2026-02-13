@@ -1,6 +1,7 @@
 //! Tree widget public API tests
 
 use revue::widget::data::tree::Tree;
+use revue::widget::data::tree::TreeNode;
 
 // =========================================================================
 // Render method tests

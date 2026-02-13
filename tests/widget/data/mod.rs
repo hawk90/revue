@@ -1,7 +1,7 @@
 //! Data widget tests extracted from source files
 
+mod calendar;
 mod calendar_date;
-mod calendar_mod;
 mod calendar_render;
 mod calendar_types;
 mod calendar_utils;
@@ -14,6 +14,7 @@ mod datagrid_core;
 mod datagrid_mod;
 mod datagrid_width;
 mod filetree;
+mod json_viewer;
 mod json_viewer_helpers;
 mod json_viewer_mod;
 mod list;
@@ -22,6 +23,7 @@ mod scatterchart;
 mod sparkline;
 mod table;
 mod timeline;
+mod timer;
 mod tree_mod;
 mod tree_search;
 mod tree_types;
