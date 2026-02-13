@@ -646,6 +646,7 @@ pub fn tooltip(text: impl Into<String>) -> Tooltip {
     Tooltip::new(text)
 }
 
+// KEEP HERE - accesses private fields
 // Tests for private methods that cannot be extracted
 
 #[cfg(test)]
