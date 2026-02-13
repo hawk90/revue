@@ -3,6 +3,10 @@
 use revue::widget::data::{file_tree, file_entry, dir_entry, FileTree, FileEntry, FileType};
 use std::path::PathBuf;
 
+// =========================================================================
+// FileType tests
+// =========================================================================
+
 #[test]
 fn test_file_type_icon() {
     assert_eq!(FileType::Directory.icon(), '📁');
@@ -31,6 +35,10 @@ fn test_file_type_color() {
     let hidden_color = FileType::Hidden.color();
     assert!(hidden_color == revue::Color::rgb(100, 100, 100));
 }
+
+// =========================================================================
+// FileEntry constructor tests
+// =========================================================================
 
 #[test]
 fn test_file_entry_new() {
@@ -126,6 +134,10 @@ fn test_file_entry_is_dir() {
     assert!(!file.is_dir());
 }
 
+// =========================================================================
+// FileEntry toggle tests
+// =========================================================================
+
 #[test]
 fn test_file_entry_toggle_directory() {
     let mut dir = dir_entry("src", "/src");
@@ -146,6 +158,10 @@ fn test_file_entry_toggle_file() {
     file.toggle();
     assert!(!file.expanded); // Files don't toggle
 }
+
+// =========================================================================
+// FileEntry visible_entries tests
+// =========================================================================
 
 #[test]
 fn test_file_entry_visible_entries_leaf() {
@@ -186,6 +202,10 @@ fn test_file_entry_visible_entries_nested() {
     assert_eq!(visible.len(), 3); // root, level1, deep.txt
 }
 
+// =========================================================================
+// FileEntry format_size tests
+// =========================================================================
+
 #[test]
 fn test_format_size_bytes() {
     let entry = file_entry("test", "/test").size(512);
@@ -221,6 +241,10 @@ fn test_format_size_no_size() {
     let entry = file_entry("test", "/test");
     assert_eq!(entry.format_size(), "");
 }
+
+// =========================================================================
+// FileTree constructor tests
+// =========================================================================
 
 #[test]
 fn test_file_tree_new() {
@@ -308,138 +332,9 @@ fn test_file_tree_dirs_first() {
     assert!(!tree.dirs_first);
 }
 
-#[test]
-fn test_file_tree_visible_entries_empty() {
-    let tree = file_tree();
-    assert!(tree.visible_entries().is_empty());
-}
-
-#[test]
-fn test_file_tree_visible_entries_single() {
-    let tree = file_tree().entry(file_entry("test.txt", "/test.txt"));
-    assert_eq!(tree.visible_entries().len(), 1);
-}
-
-#[test]
-fn test_file_tree_visible_entries_multiple_roots() {
-    let tree = file_tree()
-        .entry(file_entry("a.txt", "/a.txt"))
-        .entry(file_entry("b.txt", "/b.txt"))
-        .entry(file_entry("c.txt", "/c.txt"));
-    assert_eq!(tree.visible_entries().len(), 3);
-}
-
-#[test]
-fn test_file_tree_visible_entries_with_expanded() {
-    let tree = file_tree().entry(
-        dir_entry("src", "/src")
-            .expanded(true)
-            .child(file_entry("main.rs", "/src/main.rs")),
-    );
-    assert_eq!(tree.visible_entries().len(), 2);
-}
-
-#[test]
-fn test_file_tree_visible_entries_hides_hidden() {
-    let tree = file_tree()
-        .entry(file_entry("visible.txt", "/visible.txt"))
-        .entry(file_entry(".hidden", "/.hidden", FileType::Hidden));
-    let entries = tree.visible_entries();
-    assert_eq!(entries.len(), 1); // Only visible
-    assert_eq!(entries[0].name, "visible.txt");
-}
-
-#[test]
-fn test_file_tree_visible_entries_shows_hidden_when_enabled() {
-    let tree = file_tree()
-        .hidden(true)
-        .entry(file_entry("visible.txt", "/visible.txt"))
-        .entry(file_entry(".hidden", "/.hidden", FileType::Hidden));
-    let entries = tree.visible_entries();
-    assert_eq!(entries.len(), 2);
-}
-
-#[test]
-fn test_file_tree_visible_entries_filters_dot_files() {
-    let tree = file_tree()
-        .entry(file_entry("test.txt", "/test.txt"))
-        .entry(file_entry(".gitignore", "/.gitignore"));
-    let entries = tree.visible_entries();
-    assert_eq!(entries.len(), 1); // .gitignore filtered out
-}
-
-#[test]
-fn test_natural_sort() {
-    let tree = file_tree()
-        .sorted(true)
-        .dirs_first(false)
-        .entry(file_entry("file10.txt", "/file10.txt"))
-        .entry(file_entry("file2.txt", "/file2.txt"))
-        .entry(file_entry("file1.txt", "/file1.txt"));
-
-    let entries = tree.visible_entries();
-    let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
-    assert_eq!(names, vec!["file1.txt", "file2.txt", "file10.txt"]);
-}
-
-#[test]
-fn test_natural_sort_disabled() {
-    let tree = file_tree()
-        .sorted(false)
-        .entry(file_entry("file10.txt", "/file10.txt"))
-        .entry(file_entry("file2.txt", "/file2.txt"))
-        .entry(file_entry("file1.txt", "/file1.txt"));
-
-    let entries = tree.visible_entries();
-    let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
-    // Without natural sort, ASCII order: file1, file10, file2
-    assert_eq!(names, vec!["file1.txt", "file10.txt", "file2.txt"]);
-}
-
-#[test]
-fn test_dirs_first() {
-    let tree = file_tree()
-        .sorted(true)
-        .dirs_first(true)
-        .entry(file_entry("zebra.txt", "/zebra.txt"))
-        .entry(dir_entry("alpha", "/alpha"))
-        .entry(file_entry("apple.txt", "/apple.txt"));
-
-    let entries = tree.visible_entries();
-    let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
-    assert_eq!(names, vec!["alpha", "apple.txt", "zebra.txt"]);
-}
-
-#[test]
-fn test_dirs_first_disabled() {
-    let tree = file_tree()
-        .sorted(true)
-        .dirs_first(false)
-        .entry(file_entry("apple.txt", "/apple.txt"))
-        .entry(dir_entry("src", "/src"))
-        .entry(file_entry("zebra.txt", "/zebra.txt"));
-
-    let entries = tree.visible_entries();
-    let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
-    // Alphabetical: apple, src, zebra
-    assert_eq!(names, vec!["apple.txt", "src", "zebra.txt"]);
-}
-
-#[test]
-fn test_natural_sort_with_dirs_first() {
-    let tree = file_tree()
-        .sorted(true)
-        .dirs_first(true)
-        .entry(file_entry("file10.txt", "/file10.txt"))
-        .entry(dir_entry("src", "/src"))
-        .entry(file_entry("file2.txt", "/file2.txt"))
-        .entry(dir_entry("target", "/target"));
-
-    let entries = tree.visible_entries();
-    let names: Vec<_> = entries.iter().map(|e| e.name.as_str()).collect();
-    // Dirs first (natural sorted), then files (natural sorted)
-    assert_eq!(names, vec!["src", "target", "file2.txt", "file10.txt"]);
-}
+// =========================================================================
+// FileTree selection tests
+// =========================================================================
 
 #[test]
 fn test_file_tree_selected_entry() {
@@ -467,6 +362,10 @@ fn test_file_tree_selected_path_empty() {
     let tree = file_tree();
     assert!(tree.selected_path().is_none());
 }
+
+// =========================================================================
+// FileTree navigation tests
+// =========================================================================
 
 #[test]
 fn test_navigation() {
@@ -523,226 +422,9 @@ fn test_select_prev_empty() {
     assert_eq!(tree.selected, 0);
 }
 
-#[test]
-fn test_toggle_selected_directory() {
-    let mut tree = file_tree().entry(
-        dir_entry("src", "/src")
-            .child(file_entry("main.rs", "/src/main.rs")),
-    );
-
-    // Initially collapsed
-    assert_eq!(tree.visible_entries().len(), 1);
-
-    tree.toggle_selected();
-    assert_eq!(tree.visible_entries().len(), 2);
-
-    tree.toggle_selected();
-    assert_eq!(tree.visible_entries().len(), 1);
-}
-
-#[test]
-fn test_toggle_selected_file() {
-    let mut tree = file_tree().entry(file_entry("test.txt", "/test.txt"));
-
-    let count_before = tree.visible_entries().len();
-    tree.toggle_selected();
-    // Toggle on file should do nothing
-    assert_eq!(tree.visible_entries().len(), count_before);
-}
-
-#[test]
-fn test_expand_all() {
-    let mut tree = file_tree()
-        .entry(dir_entry("a", "/a").child(file_entry("a1", "/a/a1")))
-        .entry(dir_entry("b", "/b").child(file_entry("b1", "/b/b1")));
-
-    // Initially collapsed
-    assert_eq!(tree.visible_entries().len(), 2);
-
-    tree.expand_all();
-    // All directories expanded
-    assert_eq!(tree.visible_entries().len(), 4);
-}
-
-#[test]
-fn test_collapse_all() {
-    let mut tree = file_tree().entry(
-        dir_entry("src", "/src")
-            .expanded(true)
-            .child(file_entry("main.rs", "/src/main.rs")),
-    );
-
-    // Initially expanded
-    assert_eq!(tree.visible_entries().len(), 2);
-
-    tree.collapse_all();
-    assert_eq!(tree.visible_entries().len(), 1);
-}
-
-#[test]
-fn test_collapse_all_nested() {
-    let mut tree = file_tree().entry(
-        dir_entry("root", "/root")
-            .expanded(true)
-            .child(
-                dir_entry("level1", "/root/level1")
-                    .expanded(true)
-                    .child(file_entry("deep.txt", "/root/level1/deep.txt")),
-            ),
-    );
-
-    assert_eq!(tree.visible_entries().len(), 3);
-
-    tree.collapse_all();
-    assert_eq!(tree.visible_entries().len(), 1);
-}
-
-#[test]
-fn test_expand_all_nested() {
-    let mut tree = file_tree().entry(
-        dir_entry("root", "/root").child(
-            dir_entry("level1", "/root/level1")
-                .child(file_entry("deep.txt", "/root/level1/deep.txt")),
-        ),
-    );
-
-    assert_eq!(tree.visible_entries().len(), 1);
-
-    tree.expand_all();
-    assert_eq!(tree.visible_entries().len(), 3);
-}
-
-#[test]
-fn test_handle_key_up() {
-    let mut tree = file_tree()
-        .entry(file_entry("a", "/a"))
-        .entry(file_entry("b", "/b"));
-
-    tree.select_next();
-    assert_eq!(tree.selected, 1);
-
-    assert!(tree.handle_key(&revue::event::Key::Up));
-    assert_eq!(tree.selected, 0);
-}
-
-#[test]
-fn test_handle_key_down() {
-    let mut tree = file_tree()
-        .entry(file_entry("a", "/a"))
-        .entry(file_entry("b", "/b"));
-
-    assert!(tree.handle_key(&revue::event::Key::Down));
-    assert_eq!(tree.selected, 1);
-}
-
-#[test]
-fn test_handle_key_vim_j_k() {
-    let mut tree = file_tree()
-        .entry(file_entry("a", "/a"))
-        .entry(file_entry("b", "/b"));
-
-    assert!(tree.handle_key(&revue::event::Key::Char('j')));
-    assert_eq!(tree.selected, 1);
-
-    assert!(tree.handle_key(&revue::event::Key::Char('k')));
-    assert_eq!(tree.selected, 0);
-}
-
-#[test]
-fn test_handle_key_enter_toggles() {
-    let mut tree = file_tree().entry(
-        dir_entry("src", "/src")
-            .child(file_entry("main.rs", "/src/main.rs")),
-    );
-
-    assert_eq!(tree.visible_entries().len(), 1);
-    assert!(tree.handle_key(&revue::event::Key::Enter));
-    assert_eq!(tree.visible_entries().len(), 2);
-}
-
-#[test]
-fn test_handle_key_right_expands() {
-    let mut tree = file_tree().entry(
-        dir_entry("src", "/src")
-            .child(file_entry("main.rs", "/src/main.rs")),
-    );
-
-    assert!(tree.handle_key(&revue::event::Key::Right));
-    assert_eq!(tree.visible_entries().len(), 2);
-}
-
-#[test]
-fn test_handle_key_left_collapses() {
-    let mut tree = file_tree().entry(
-        dir_entry("src", "/src")
-            .expanded(true)
-            .child(file_entry("main.rs", "/src/main.rs")),
-    );
-
-    assert!(tree.handle_key(&revue::event::Key::Left));
-    assert_eq!(tree.visible_entries().len(), 1);
-}
-
-#[test]
-fn test_handle_key_vim_h_l() {
-    let mut tree = file_tree().entry(
-        dir_entry("src", "/src")
-            .child(file_entry("main.rs", "/src/main.rs")),
-    );
-
-    assert!(tree.handle_key(&revue::event::Key::Char('l')));
-    assert_eq!(tree.visible_entries().len(), 2);
-
-    assert!(tree.handle_key(&revue::event::Key::Char('h')));
-    assert_eq!(tree.visible_entries().len(), 1);
-}
-
-#[test]
-fn test_handle_key_h_toggles_hidden() {
-    let mut tree = file_tree()
-        .entry(file_entry("visible.txt", "/visible.txt"))
-        .entry(file_entry(".hidden", "/.hidden", FileType::Hidden));
-
-    assert!(!tree.show_hidden);
-    assert_eq!(tree.visible_entries().len(), 1);
-
-    tree.handle_key(&revue::event::Key::Char('H'));
-    assert!(tree.show_hidden);
-    assert_eq!(tree.visible_entries().len(), 2);
-}
-
-#[test]
-fn test_handle_key_e_expand_all() {
-    let mut tree = file_tree().entry(
-        dir_entry("src", "/src")
-            .child(file_entry("main.rs", "/src/main.rs")),
-    );
-
-    assert_eq!(tree.visible_entries().len(), 1);
-    assert!(tree.handle_key(&revue::event::Key::Char('e')));
-    assert_eq!(tree.visible_entries().len(), 2);
-}
-
-#[test]
-fn test_handle_key_c_collapse_all() {
-    let mut tree = file_tree().entry(
-        dir_entry("src", "/src")
-            .expanded(true)
-            .child(file_entry("main.rs", "/src/main.rs")),
-    );
-
-    assert_eq!(tree.visible_entries().len(), 2);
-    assert!(tree.handle_key(&revue::event::Key::Char('c')));
-    assert_eq!(tree.visible_entries().len(), 1);
-}
-
-#[test]
-fn test_handle_key_unhandled() {
-    let mut tree = file_tree().entry(file_entry("test", "/test"));
-
-    assert!(!tree.handle_key(&revue::event::Key::Tab));
-    assert!(!tree.handle_key(&revue::event::Key::Char('x')));
-}
+// =========================================================================
+// Helper function tests
+// =========================================================================
 
 #[test]
 fn test_file_tree_helper() {
@@ -761,6 +443,10 @@ fn test_dir_entry_helper() {
     let dir = dir_entry("src", "/src");
     assert!(dir.is_dir());
 }
+
+// =========================================================================
+// Edge case tests (FileEntry only)
+// =========================================================================
 
 #[test]
 fn test_file_entry_with_symlink() {
@@ -783,33 +469,4 @@ fn test_file_entry_with_hidden() {
     assert_eq!(entry.icon(), '👁');
 }
 
-#[test]
-fn test_deeply_nested_structure() {
-    let tree = file_tree().entry(
-        dir_entry("l0", "/l0").child(
-            dir_entry("l1", "/l0/l1").child(
-                dir_entry("l2", "/l0/l1/l2").child(
-                    dir_entry("l3", "/l0/l1/l2/l3")
-                        .child(file_entry("deep.txt", "/l0/l1/l2/l3/deep.txt")),
-                ),
-            ),
-        ),
-    );
-
-    let visible = tree.visible_entries();
-    assert_eq!(visible.len(), 1); // Only root (collapsed)
-}
-
-#[test]
-fn test_many_children() {
-    let children: Vec<_> = (0..100)
-        .map(|i| file_entry(format!("file{}.txt", i), format!("/file{}.txt", i)))
-        .collect();
-
-    let tree = file_tree().entry(
-        dir_entry("parent", "/parent")
-            .children(children),
-    );
-
-    assert_eq!(tree.root[0].children.len(), 100);
-}
+// Tests that access tree.visible_entries() stay in source as it's private

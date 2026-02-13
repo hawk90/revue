@@ -152,6 +152,10 @@ name = "tree_search"
 path = "tests/widget/data/tree_search.rs"
 
 [[test]]
+name = "timeline"
+path = "tests/widget/data/timeline.rs"
+
+[[test]]
 name = "display"
 path = "tests/widget/display/mod.rs"
 

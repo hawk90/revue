@@ -27,5 +27,6 @@ mod tree_search;
 mod tree_types;
 mod tree_view;
 mod virtuallist;
+mod virtuallist_core;
 mod virtuallist_types;
 mod waveline;

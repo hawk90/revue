@@ -924,6 +924,7 @@ mod tests {
     // =========================================================================
     // FileTree visibility tests
     // =========================================================================
+    // KEEP HERE: accesses private fields (tree.visible_entries())
 
     #[test]
     fn test_file_tree_visible_entries_empty() {
@@ -988,6 +989,7 @@ mod tests {
     // =========================================================================
     // FileTree sorting tests
     // =========================================================================
+    // KEEP HERE: accesses private fields (tree.visible_entries())
 
     #[test]
     fn test_natural_sort() {
@@ -1155,6 +1157,7 @@ mod tests {
     // =========================================================================
     // FileTree expand/collapse tests
     // =========================================================================
+    // KEEP HERE: accesses private fields (tree.visible_entries())
 
     #[test]
     fn test_toggle_selected_directory() {
@@ -1245,6 +1248,7 @@ mod tests {
     // =========================================================================
     // FileTree key handling tests
     // =========================================================================
+    // KEEP HERE: accesses private fields (tree.visible_entries())
 
     #[test]
     fn test_handle_key_up() {
@@ -1525,6 +1529,7 @@ mod tests {
     // =========================================================================
     // Edge case tests
     // =========================================================================
+    // KEEP HERE: accesses private fields (tree.visible_entries())
 
     #[test]
     fn test_file_entry_with_symlink() {
@@ -1581,8 +1586,8 @@ mod tests {
 
 #[test]
 fn test_file_tree_render_private() {
-    // Test private render methods - keeping in source
-    let t = FileTree::new().entry(FileEntry::file("test.txt", "/test.txt"));
+    // KEEP HERE: accesses private fields - Test private render methods
+    let _t = FileTree::new().entry(FileEntry::file("test.txt", "/test.txt"));
 
     // This would require accessing private render methods
     // Test kept inline due to private access
