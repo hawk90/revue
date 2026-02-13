@@ -27,6 +27,7 @@ mod datagrid;
 mod datetime_picker;
 pub mod dropzone;
 mod debug_overlay;
+pub mod developer;
 #[cfg(feature = "diff")]
 mod diff;
 mod digits;

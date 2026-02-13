@@ -38,6 +38,7 @@ mod helpers;
 mod render;
 mod request;
 mod response;
+mod tests;
 mod types;
 
 // Public exports
