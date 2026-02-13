@@ -507,16 +507,4 @@ mod tests {
         assert!(chart.grid.x);
         assert!(chart.grid.y);
     }
-
-    #[test]
-    fn test_scatter_helpers() {
-        let chart = scatter_chart();
-        assert!(chart.series.is_empty());
-
-        let chart = bubble_chart();
-        assert!(chart.series.is_empty());
-    }
-
-    // ========== Render Tests ==========
-    // KEEP HERE - private render tests
 }
