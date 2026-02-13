@@ -236,6 +236,32 @@ impl Grid {
 
         placements
     }
+
+    // Test accessor methods
+    #[doc(hidden)]
+    pub fn test_calculate_tracks(
+        &self,
+        available: u16,
+        tracks: &[TrackSize],
+        auto_size: TrackSize,
+        gap: u16,
+    ) -> Vec<u16> {
+        self.calculate_tracks(available, tracks, auto_size, gap)
+    }
+
+    #[doc(hidden)]
+    pub fn test_track_positions(&self, sizes: &[u16], gap: u16) -> Vec<u16> {
+        self.track_positions(sizes, gap)
+    }
+
+    #[doc(hidden)]
+    pub fn test_auto_place_items(
+        &self,
+        col_count: usize,
+        row_count: usize,
+    ) -> Vec<(usize, GridPlacement)> {
+        self.auto_place_items(col_count, row_count)
+    }
 }
 
 #[cfg(test)]

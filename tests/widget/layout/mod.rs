@@ -3,6 +3,7 @@
 mod border;
 mod collapsible;
 mod dock;
+mod grid;
 mod layer;
 mod positioned;
 mod screen;
