@@ -34,10 +34,13 @@ mod tests {
     #[test]
     fn test_newline_private() {
         // Test private newline method
+        // Terminal pre-allocates all lines, so lines.len() equals height
         let mut terminal = Terminal::new(80, 24);
         terminal.writeln("line1");
         terminal.writeln("line2");
-        assert_eq!(terminal.lines.len(), 2);
+        assert_eq!(terminal.lines.len(), 24); // Terminal height
+        assert_eq!(terminal.lines[0].cells.len(), 5); // "line1"
+        assert_eq!(terminal.lines[1].cells.len(), 5); // "line2"
     }
 
     #[test]
