@@ -6,6 +6,7 @@ mod autocomplete_core;
 mod autocomplete_helper;
 mod autocomplete_mod;
 mod autocomplete_types;
+mod autocomplete_helper_public;
 mod color_picker_helper;
 mod color_picker_mod;
 mod color_picker_types;
