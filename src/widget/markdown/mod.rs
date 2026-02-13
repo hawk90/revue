@@ -705,6 +705,8 @@ impl View for Markdown {
 impl_styled_view!(Markdown);
 impl_props_builders!(Markdown);
 
+// KEEP HERE - Public API tests (uses public methods: source, line_count, render)
+// and rendering tests (accesses buffer internals)
 #[cfg(test)]
 mod tests {
     //! Markdown widget tests

@@ -14,6 +14,7 @@ pub use helper::{grid, grid_item, grid_template};
 pub use types::{GridAlign, GridItem, GridPlacement, TrackSize};
 
 // Include tests from tests.rs
+// KEEP HERE - Private implementation tests (all tests access private fields: items, columns, col_gap, row_gap, placement fields, justify_items, align_items, auto_flow_row)
 #[cfg(test)]
 mod tests {
     use super::*;

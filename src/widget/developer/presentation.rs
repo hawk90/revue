@@ -548,6 +548,8 @@ pub fn slide(title: impl Into<String>) -> Slide {
 
 // KEEP HERE: Private tests for Presentation
 // Private implementation tests
+// KEEP HERE - Private rendering tests (tests smoke tests for private render methods)
+
 #[cfg(test)]
 mod tests {
     use super::*;

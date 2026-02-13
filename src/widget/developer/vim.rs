@@ -643,6 +643,8 @@ pub fn vim_state() -> VimState {
     VimState::new()
 }
 
+// KEEP HERE - Private field access tests (tests note operator field is private)
+
 #[cfg(test)]
 mod tests {
     use super::*;
