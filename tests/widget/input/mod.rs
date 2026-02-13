@@ -1,6 +1,7 @@
 pub mod basic;
 pub mod validation;
 pub mod rendering;
+pub mod input_tests;
 
 mod autocomplete_core;
 mod autocomplete_helper;

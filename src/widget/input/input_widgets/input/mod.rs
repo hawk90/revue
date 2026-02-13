@@ -6,9 +6,14 @@
 mod editing;
 mod handler;
 mod selection;
+// Public API tests extracted to tests/widget/input/input_tests.rs
+// KEEP HERE - Private implementation tests (accesses private fields: cursor, selection_anchor, clipboard, etc.)
+
 #[cfg(test)]
 mod tests {
-    //! Unit tests for the Input widget
+    //! Private implementation tests for the Input widget
+    //!
+    //! These tests access private fields directly for testing internal behavior.
 
     #![allow(unused_imports)]
 
@@ -387,45 +392,8 @@ mod tests {
     }
 
     // =========================================================================
-    // Input constructor tests (mod.rs - editing.rs related)
+    // Input constructor tests (private field access)
     // =========================================================================
-
-    #[test]
-    fn test_input_new_creates_empty_input() {
-        let input = Input::new();
-        assert_eq!(input.text(), "");
-        assert_eq!(input.cursor(), 0);
-        assert!(!input.has_selection());
-    }
-
-    #[test]
-    fn test_input_default_creates_empty_input() {
-        let input = Input::default();
-        assert_eq!(input.text(), "");
-        assert_eq!(input.cursor(), 0);
-        assert!(!input.has_selection());
-    }
-
-    #[test]
-    fn test_input_value_builder_sets_text_and_cursor() {
-        let input = Input::new().value("hello");
-        assert_eq!(input.text(), "hello");
-        assert_eq!(input.cursor(), 5);
-    }
-
-    #[test]
-    fn test_input_value_builder_with_empty_string() {
-        let input = Input::new().value("");
-        assert_eq!(input.text(), "");
-        assert_eq!(input.cursor(), 0);
-    }
-
-    #[test]
-    fn test_input_value_builder_with_unicode() {
-        let input = Input::new().value("안녕🎉");
-        assert_eq!(input.text(), "안녕🎉");
-        assert_eq!(input.cursor(), 3); // 3 characters
-    }
 
     #[test]
     fn test_input_placeholder_builder() {
@@ -489,15 +457,8 @@ mod tests {
     }
 
     // =========================================================================
-    // editing.rs public API tests: clear(), set_value()
+    // editing.rs tests (private field access)
     // =========================================================================
-
-    #[test]
-    fn test_input_clear_clears_value() {
-        let mut input = Input::new().value("hello world");
-        input.clear();
-        assert_eq!(input.text(), "");
-    }
 
     #[test]
     fn test_input_clear_resets_cursor() {
@@ -516,89 +477,8 @@ mod tests {
         assert!(!input.has_selection());
     }
 
-    #[test]
-    fn test_input_clear_clears_undo_history() {
-        let mut input = Input::new();
-        input.handle_key(&Key::Char('a'));
-        input.handle_key(&Key::Char('b'));
-        assert!(input.can_undo());
-
-        input.clear();
-        assert!(!input.can_undo());
-        assert!(!input.can_redo());
-    }
-
-    #[test]
-    fn test_input_clear_clears_redo_history() {
-        let mut input = Input::new();
-        input.handle_key(&Key::Char('a'));
-        input.undo();
-        assert!(input.can_redo());
-
-        input.clear();
-        assert!(!input.can_redo());
-    }
-
-    #[test]
-    fn test_input_set_value_with_string() {
-        let mut input = Input::new();
-        input.set_value("hello");
-        assert_eq!(input.text(), "hello");
-        assert_eq!(input.cursor(), 5);
-    }
-
-    #[test]
-    fn test_input_set_value_with_str() {
-        let mut input = Input::new();
-        input.set_value("world");
-        assert_eq!(input.text(), "world");
-    }
-
-    #[test]
-    fn test_input_set_value_with_empty_string() {
-        let mut input = Input::new().value("existing");
-        input.set_value("");
-        assert_eq!(input.text(), "");
-        assert_eq!(input.cursor(), 0);
-    }
-
-    #[test]
-    fn test_input_set_value_with_unicode() {
-        let mut input = Input::new();
-        input.set_value("🎉안녕");
-        assert_eq!(input.text(), "🎉안녕");
-        assert_eq!(input.cursor(), 3);
-    }
-
-    #[test]
-    fn test_input_set_value_clears_selection() {
-        let mut input = Input::new().value("test");
-        input.selection_anchor = Some(0);
-        input.cursor = 4;
-        input.set_value("new");
-        assert!(!input.has_selection());
-    }
-
-    #[test]
-    fn test_input_set_value_clears_undo_history() {
-        let mut input = Input::new();
-        input.handle_key(&Key::Char('a'));
-        assert!(input.can_undo());
-
-        input.set_value("new");
-        assert!(!input.can_undo());
-        assert!(!input.can_redo());
-    }
-
-    #[test]
-    fn test_input_set_value_overwrites_existing() {
-        let mut input = Input::new().value("old text");
-        input.set_value("new text");
-        assert_eq!(input.text(), "new text");
-    }
-
     // =========================================================================
-    // handler.rs public API tests: handle_key_event(), handle_key()
+    // handler.rs tests (private field access)
     // =========================================================================
 
     #[test]
