@@ -14,6 +14,9 @@ pub use core::Breadcrumb;
 // Re-export helper functions
 pub use helper::{breadcrumb, crumb};
 
+// Public API tests extracted to tests/widget/breadcrumb/
+// KEEP HERE - Tests that access private fields (BreadcrumbItem: label, icon, clickable)
+
 #[cfg(test)]
 mod tests {
     use crate::layout::Rect;

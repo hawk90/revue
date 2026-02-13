@@ -699,6 +699,8 @@ pub fn toggle_debug() -> bool {
 // Tests
 // =============================================================================
 
+// KEEP HERE - Private implementation tests (all tests access private fields: visible, config, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;

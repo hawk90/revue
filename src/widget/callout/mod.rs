@@ -4,6 +4,8 @@ mod callout_type;
 mod core;
 mod helpers;
 mod impls;
+// KEEP HERE - Private implementation tests (all tests access private fields: content, callout_type, title, collapsible, expanded, variant, show_icon, etc.)
+
 #[cfg(test)]
 mod tests {
     use crate::event::Key;
