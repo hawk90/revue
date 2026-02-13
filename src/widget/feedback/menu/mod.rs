@@ -14,6 +14,8 @@ pub use helpers::{context_menu, menu, menu_bar, menu_item};
 pub use menu_bar::MenuBar;
 pub use types::{Menu, MenuItem};
 
+// KEEP HERE - Private implementation tests (all tests access private fields: label, shortcut, disabled, title, items, menus, selected_menu, etc.)
+
 #[cfg(test)]
 mod tests {
     //! Tests for Menu widgets

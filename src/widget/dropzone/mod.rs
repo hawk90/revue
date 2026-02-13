@@ -19,6 +19,9 @@ mod core;
 mod helper;
 mod types;
 
+// Public API tests extracted to tests/widget/dropzone/mod_tests.rs
+// KEEP HERE - Tests for integration workflows (uses public APIs)
+
 #[cfg(test)]
 mod tests {
     use super::*;

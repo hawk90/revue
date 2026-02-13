@@ -542,6 +542,8 @@ pub fn modal() -> Modal {
 impl_styled_view!(Modal);
 impl_props_builders!(Modal);
 
+// KEEP HERE - Private implementation tests (all tests access private fields: title, content, buttons, is_visible, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;
