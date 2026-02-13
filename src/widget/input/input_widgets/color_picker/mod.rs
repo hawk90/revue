@@ -13,6 +13,8 @@ pub use helper::color_picker;
 pub use types::{ColorPalette, ColorPickerMode};
 
 // Include tests from tests.rs
+// KEEP HERE - Private implementation tests (most tests access private fields: mode, palette, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;
