@@ -1,4 +1,7 @@
 //! JSON Viewer widget tests
+//!
+//! Public API tests - these use only public methods (has_data, visible_count, selected_index, root_type, parse, etc.)
+//! Could be extracted to tests/widget/data/json_viewer.rs for integration testing
 
 use super::search::Search;
 use super::*;

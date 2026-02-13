@@ -588,6 +588,8 @@ pub fn dir_entry(name: impl Into<String>, path: impl Into<PathBuf>) -> FileEntry
     FileEntry::directory(name, path)
 }
 
+// KEEP HERE - Private implementation tests (all tests access private fields: name, path, file_type, size, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;
