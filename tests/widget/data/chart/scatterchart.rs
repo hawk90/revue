@@ -6,7 +6,8 @@ use crate::style::Color;
 use crate::widget::traits::RenderContext;
 
 pub use crate::widget::data::chart::scatterchart::{ScatterChart, ScatterSeries, Marker};
-pub use crate::widget::data::chart::chart_common::{Axis, LegendPosition};
+pub use revue::widget::data::chart::chart_common::{Axis, LegendPosition};
+pub use revue::widget::data::chart::chart_common::ChartGrid;
 
 #[test]
 fn test_scatter_chart_new() {
