@@ -555,6 +555,7 @@ pub mod prelude {
         Line,
         List,
         LogEntry,
+        LogFormat,
         LogLevel,
         Modal,
         ModalButton,
@@ -681,7 +682,7 @@ pub mod prelude {
         text,
         textarea,
         theme_picker,
-        timer_widget,
+        timer_widget as timer,
         // UX constructors
         toast,
         tree,
@@ -698,6 +699,9 @@ pub mod prelude {
 
     // DOM system
     pub use crate::dom::{DomId, DomNode, DomRenderer, DomTree, NodeState, Query, WidgetMeta};
+
+    // Render system
+    pub use crate::runtime::render::{Buffer, Modifier};
 
     // Worker system
     pub use crate::worker::{
@@ -785,6 +789,9 @@ pub mod prelude {
         set_reduced_motion,
         take_announcements,
     };
+
+    // Figlet fonts (for BigText widget)
+    pub use crate::utils::figlet::FigletFont;
 
     // Testing (Pilot)
     pub use crate::testing::{Pilot, TestApp, TestConfig};
