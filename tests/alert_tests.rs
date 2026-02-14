@@ -102,7 +102,7 @@ fn test_alert_helper_functions() {
     // Test the public helper functions
     let a = alert("Helper message");
     assert!(a.is_dismissed() == false);
-    assert_eq!(a.height(), 1); // Default is minimal with no title
+    assert_eq!(a.height(), 3); // Default is Filled variant with no title
 
     let i = Alert::info("Info");
     assert!(i.is_dismissed() == false);
@@ -121,7 +121,7 @@ fn test_alert_helper_functions() {
 fn test_alert_default() {
     let a = Alert::default();
     assert!(!a.is_dismissed());
-    assert_eq!(a.height(), 1); // "Alert" message with no title
+    assert_eq!(a.height(), 3); // "Alert" message with Filled variant, no title
 }
 
 #[test]
@@ -158,5 +158,5 @@ fn test_alert_custom_icon() {
     let a = Alert::new("Test").custom_icon('★');
     // The custom icon is used in rendering, but we can verify it doesn't break anything
     assert!(!a.is_dismissed());
-    assert_eq!(a.height(), 1);
+    assert_eq!(a.height(), 3); // Filled variant with no title
 }
