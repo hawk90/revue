@@ -60,7 +60,7 @@ fn test_avatar_status_methods() {
 #[test]
 fn test_helper_functions() {
     let a = avatar("Test");
-    let a2 = avatar_icon("X");
+    let a2 = avatar_icon('X');
     // Just verify constructors compile
 }
 

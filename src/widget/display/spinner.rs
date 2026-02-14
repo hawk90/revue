@@ -24,7 +24,8 @@ pub enum SpinnerStyle {
 }
 
 impl SpinnerStyle {
-    fn frames(&self) -> &'static [&'static str] {
+    /// Get the animation frames for this spinner style
+    pub fn frames(&self) -> &'static [&'static str] {
         match self {
             SpinnerStyle::Dots => &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
             SpinnerStyle::Line => &["|", "/", "-", "\\"],
