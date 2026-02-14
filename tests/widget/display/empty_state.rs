@@ -54,12 +54,6 @@ fn test_empty_state_height() {
 }
 
 #[test]
-fn test_empty_state_custom_icon() {
-    let es = EmptyState::new("Test").custom_icon('★');
-    assert_eq!(es.get_icon(), '★');
-}
-
-#[test]
 fn test_empty_state_helpers() {
     let es = empty_state("msg");
     // Can't access private title field

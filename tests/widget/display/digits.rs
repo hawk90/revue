@@ -96,7 +96,7 @@ fn test_helper_functions() {
     let c = clock(12, 0);
     assert_eq!(c.format_value(), "12:00");
 
-    let t = timer(90);
+    let t = Digits::timer(90);
     assert_eq!(t.format_value(), "01:30");
 }
 
