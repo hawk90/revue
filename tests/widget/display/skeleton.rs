@@ -1,12 +1,6 @@
 //! Skeleton widget tests extracted from src/widget/display/skeleton.rs
 
-use revue::layout::Rect;
-use revue::render::Buffer;
-use revue::style::Color;
-use revue::widget::display::skeleton::{
-    skeleton, skeleton_avatar, skeleton_paragraph, skeleton_text, Skeleton, SkeletonShape,
-};
-use revue::widget::traits::{RenderContext, View};
+use revue::prelude::*;
 
 // =========================================================================
 // Basic tests

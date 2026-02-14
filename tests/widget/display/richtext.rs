@@ -1,10 +1,6 @@
 //! RichText widget tests extracted from src/widget/display/richtext.rs
 
-use revue::layout::Rect;
-use revue::render::{Buffer, Modifier};
-use revue::style::Color;
-use revue::widget::display::richtext::{markup, rich_text, span, style, RichText, Span, Style};
-use revue::widget::traits::{RenderContext, View};
+use revue::prelude::*;
 
 // =========================================================================
 // Style tests

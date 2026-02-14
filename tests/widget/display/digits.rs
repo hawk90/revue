@@ -1,7 +1,6 @@
 //! Digits widget tests extracted from src/widget/display/digits.rs
 
-use revue::style::Color;
-use revue::widget::display::digits::{clock, digits, timer, DigitStyle, Digits};
+use revue::prelude::*;
 
 // =========================================================================
 // Digits creation tests

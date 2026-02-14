@@ -1,8 +1,6 @@
 //! Text widget tests extracted from src/widget/display/text.rs
 
-use revue::style::Color;
-use revue::widget::display::Alignment;
-use revue::widget::display::Text;
+use revue::prelude::*;
 
 // Note: Most tests for Text access private fields, so only a subset of
 // tests that use public APIs are extracted here.

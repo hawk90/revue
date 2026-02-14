@@ -1,12 +1,6 @@
 //! RichLog widget tests extracted from src/widget/display/richlog.rs
 
-use revue::event::Key;
-use revue::layout::Rect;
-use revue::render::Buffer;
-use revue::style::Color;
-use revue::widget::display::richlog::{log_entry, richlog};
-use revue::widget::display::richlog::{LogEntry, LogFormat, LogLevel, RichLog};
-use revue::widget::traits::{RenderContext, View};
+use revue::prelude::*;
 
 // =========================================================================
 // Basic tests

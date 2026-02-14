@@ -1,11 +1,6 @@
 //! BigText widget tests extracted from src/widget/display/bigtext.rs
 
-use revue::layout::Rect;
-use revue::render::Buffer;
-use revue::style::Color;
-use revue::utils::figlet::FigletFont;
-use revue::widget::display::bigtext::{bigtext, h1, h2, h3, BigText};
-use revue::widget::traits::{RenderContext, View};
+use revue::prelude::*;
 
 // =========================================================================
 // BigText creation tests
