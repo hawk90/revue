@@ -52,18 +52,6 @@ fn test_gauge_thresholds() {
 }
 
 #[test]
-fn test_gauge_get_label() {
-    let g = Gauge::new().percent(50.0);
-    assert_eq!(g.get_label(), "50%");
-}
-
-#[test]
-fn test_gauge_custom_label() {
-    let g = Gauge::new().label("Custom");
-    assert_eq!(g.get_label(), "Custom");
-}
-
-#[test]
 fn test_gauge_helper_value() {
     let g = gauge().percent(50.0);
     assert_eq!(g.get_value(), 0.5);

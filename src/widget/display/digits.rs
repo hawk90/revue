@@ -346,7 +346,7 @@ impl Digits {
     }
 
     /// Build the display string with formatting
-    fn format_value(&self) -> String {
+    pub fn format_value(&self) -> String {
         let mut result = self.value.clone();
 
         // Apply minimum width with leading zeros
