@@ -2,7 +2,7 @@
 //!
 //! Extracted from src/utils/easing/helpers.rs
 
-use revue::utils::easing::{lerp, lerp_fn, Easing, EasingFn, Interpolator};
+use revue::utils::easing::{lerp, lerp_fn, Easing, Interpolator};
 
 // =========================================================================
 // lerp() tests
