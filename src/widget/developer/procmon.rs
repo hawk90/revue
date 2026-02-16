@@ -635,7 +635,7 @@ mod tests {
         // Actual functionality depends on sysinfo being available
         if cfg!(feature = "sysinfo") {
             monitor.refresh();
-            assert!(monitor.process_count() >= 0);
+            let _count = monitor.process_count(); // Just verify the method works
         }
     }
 }
