@@ -313,6 +313,8 @@ pub fn textarea() -> TextArea {
     TextArea::new()
 }
 
+// KEEP HERE - Private implementation tests (all tests access private fields: lines, scroll, show_line_numbers, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;

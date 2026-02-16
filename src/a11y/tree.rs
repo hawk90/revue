@@ -518,6 +518,8 @@ impl Default for AccessibilityTreeBuilder {
     }
 }
 
+// KEEP HERE - Tests access private fields (TreeNode.id, role, name, state, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;

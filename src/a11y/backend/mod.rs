@@ -19,6 +19,8 @@ pub use platform::LoggingBackend;
 // Re-export global functions
 pub use global::{announce_to_screen_reader, get_backend, init_backend, set_backend};
 
+// KEEP HERE - Tests import non-public types from platform module (LinuxBackend, MacOSBackend, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;

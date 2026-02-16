@@ -309,7 +309,8 @@ impl Modal {
     }
 
     /// Calculate required height
-    fn required_height(&self) -> u16 {
+    #[doc(hidden)]
+    pub fn required_height(&self) -> u16 {
         // If height is explicitly set, use it
         if let Some(h) = self.height {
             return h;
@@ -325,6 +326,42 @@ impl Modal {
         let button_line = if self.buttons.is_empty() { 0 } else { 1 };
         // top border + title + title separator + content + padding + buttons + bottom border
         3 + content_lines + 1 + button_line + 1
+    }
+
+    // Getters for testing
+    #[doc(hidden)]
+    pub fn get_title(&self) -> &str {
+        &self.title
+    }
+
+    #[doc(hidden)]
+    pub fn get_content(&self) -> &[String] {
+        &self.content
+    }
+
+    #[doc(hidden)]
+    pub fn get_buttons(&self) -> &[ModalButton] {
+        &self.buttons
+    }
+
+    #[doc(hidden)]
+    pub fn get_body(&self) -> bool {
+        self.body.is_some()
+    }
+
+    #[doc(hidden)]
+    pub fn get_height(&self) -> Option<u16> {
+        self.height
+    }
+
+    #[doc(hidden)]
+    pub fn get_title_fg(&self) -> Option<Color> {
+        self.title_fg
+    }
+
+    #[doc(hidden)]
+    pub fn get_border_fg(&self) -> Option<Color> {
+        self.border_fg
     }
 }
 
@@ -504,6 +541,8 @@ pub fn modal() -> Modal {
 
 impl_styled_view!(Modal);
 impl_props_builders!(Modal);
+
+// KEEP HERE - Private implementation tests (all tests access private fields: title, content, buttons, is_visible, etc.)
 
 #[cfg(test)]
 mod tests {

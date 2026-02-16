@@ -1,4 +1,7 @@
 //! HTTP client tests
+//!
+//! Public API tests extracted to tests/widget/developer/httpclient.rs
+//! KEEP HERE - Private implementation tests (accesses private fields: state, request, etc.)
 
 #[cfg(test)]
 mod tests {

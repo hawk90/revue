@@ -442,6 +442,8 @@ pub fn section(title: impl Into<String>) -> AccordionSection {
     AccordionSection::new(title)
 }
 
+// KEEP HERE - Private implementation tests (all tests access private fields: title, expanded, content, height, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;

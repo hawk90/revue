@@ -3,21 +3,22 @@
 //! A WYSIWYG-style text editor with formatting toolbar, markdown shortcuts,
 //! live preview, and export capabilities.
 
-mod block;
-mod core;
-mod cursor;
-mod dialog;
-mod editing;
+// Public modules for testing
+pub mod block;
+pub mod core;
+pub mod cursor;
+pub mod dialog;
+pub mod editing;
 mod editor_view;
-mod format;
-mod link;
+pub mod format;
+pub mod link;
 mod preview;
-mod selection;
-mod text_edit;
-mod text_format;
+pub mod selection;
+pub mod text_edit;
+pub mod text_format;
 mod toolbar;
-mod types;
-mod undo;
+pub mod types;
+pub mod undo;
 
 use crate::render::Cell;
 use crate::widget::traits::{RenderContext, View};
@@ -151,6 +152,3 @@ impl View for RichTextEditor {
 pub fn rich_text_editor() -> RichTextEditor {
     RichTextEditor::new()
 }
-
-#[cfg(test)]
-mod tests;

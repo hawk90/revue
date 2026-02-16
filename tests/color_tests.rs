@@ -261,3 +261,205 @@ fn test_color_saturating_add() {
     let c = Color::rgb(200, 200, 200).lighten(100);
     assert_eq!(c.r, 255); // Saturates at 255
 }
+
+// =============================================================================
+// Tests for revue::utils::color module
+// =============================================================================
+
+use revue::utils::color::semantic;
+use revue::utils::color::{
+    adjust_hue, blend, blend_alpha, contrast_color, darken, fade, gradient, gradient_at, grayscale,
+    hsl_to_rgb, invert, lighten, rgb_to_hsl,
+};
+
+#[test]
+fn test_utils_blend() {
+    let white = Color::WHITE;
+    let black = Color::BLACK;
+
+    let mid = blend(white, black, 0.5);
+    assert!(mid.r > 100 && mid.r < 150);
+
+    let all_white = blend(white, black, 1.0);
+    assert_eq!(all_white.r, 255);
+
+    let all_black = blend(white, black, 0.0);
+    assert_eq!(all_black.r, 0);
+}
+
+#[test]
+fn test_utils_darken() {
+    let white = Color::WHITE;
+    let darkened = darken(white, 0.5);
+    assert!(darkened.r < 150);
+
+    let full_dark = darken(white, 1.0);
+    assert_eq!(full_dark.r, 0);
+
+    let no_change = darken(white, 0.0);
+    assert_eq!(no_change.r, 255);
+}
+
+#[test]
+fn test_utils_lighten() {
+    let black = Color::BLACK;
+    let lightened = lighten(black, 0.5);
+    assert!(lightened.r > 100);
+
+    let full_light = lighten(black, 1.0);
+    assert_eq!(full_light.r, 255);
+}
+
+#[test]
+fn test_contrast_color() {
+    assert_eq!(contrast_color(Color::WHITE), Color::BLACK);
+    assert_eq!(contrast_color(Color::BLACK), Color::WHITE);
+}
+
+#[test]
+fn test_rgb_to_hsl() {
+    let (h, s, l) = rgb_to_hsl(Color::RED);
+    assert_eq!(h, 0);
+    assert!(s > 90);
+    assert!(l > 40 && l < 60);
+
+    let (h, _, _) = rgb_to_hsl(Color::GREEN);
+    assert!(h > 110 && h < 130);
+}
+
+#[test]
+fn test_hsl_to_rgb() {
+    let red = hsl_to_rgb(0, 100, 50);
+    assert_eq!(red.r, 255);
+    assert_eq!(red.g, 0);
+    assert_eq!(red.b, 0);
+
+    let green = hsl_to_rgb(120, 100, 50);
+    assert_eq!(green.r, 0);
+    assert_eq!(green.g, 255);
+    assert_eq!(green.b, 0);
+}
+
+#[test]
+fn test_grayscale() {
+    let gray = grayscale(Color::RED);
+    assert_eq!(gray.r, gray.g);
+    assert_eq!(gray.g, gray.b);
+}
+
+#[test]
+fn test_invert() {
+    let inverted = invert(Color::BLACK);
+    assert_eq!(inverted, Color::WHITE);
+
+    let inverted = invert(Color::WHITE);
+    assert_eq!(inverted, Color::BLACK);
+}
+
+#[test]
+fn test_gradient() {
+    let colors = gradient(Color::BLACK, Color::WHITE, 5);
+    assert_eq!(colors.len(), 5);
+    assert_eq!(colors[0], Color::BLACK);
+    assert_eq!(colors[4], Color::WHITE);
+}
+
+#[test]
+fn test_adjust_hue() {
+    let red = Color::RED;
+    let shifted = adjust_hue(red, 120);
+    // Should be greenish
+    let (h, _, _) = rgb_to_hsl(shifted);
+    assert!(h > 100 && h < 140);
+}
+
+#[test]
+fn test_semantic_colors() {
+    assert_eq!(semantic::SUCCESS.g, 175);
+    assert_eq!(semantic::ERROR.r, 244);
+}
+
+// Alpha channel tests
+
+#[test]
+fn test_alpha_preserved_darken() {
+    let color = Color::rgba(255, 128, 64, 128);
+    let darkened = darken(color, 0.5);
+    assert_eq!(darkened.a, 128); // Alpha preserved
+}
+
+#[test]
+fn test_alpha_preserved_lighten() {
+    let color = Color::rgba(0, 0, 0, 200);
+    let lightened = lighten(color, 0.5);
+    assert_eq!(lightened.a, 200); // Alpha preserved
+}
+
+#[test]
+fn test_alpha_preserved_grayscale() {
+    let color = Color::rgba(255, 0, 0, 100);
+    let gray = grayscale(color);
+    assert_eq!(gray.a, 100); // Alpha preserved
+}
+
+#[test]
+fn test_alpha_preserved_invert() {
+    let color = Color::rgba(100, 100, 100, 50);
+    let inverted = invert(color);
+    assert_eq!(inverted.a, 50); // Alpha preserved
+}
+
+#[test]
+fn test_blend_alpha() {
+    // Semi-transparent red over opaque blue
+    let fg = Color::rgba(255, 0, 0, 128); // 50% alpha red
+    let bg = Color::rgba(0, 0, 255, 255); // opaque blue
+    let result = blend_alpha(fg, bg);
+
+    // Result should be purplish
+    assert!(result.r > 100);
+    assert!(result.b > 100);
+    assert_eq!(result.a, 255); // Fully opaque result
+}
+
+#[test]
+fn test_blend_alpha_transparent() {
+    let fg = Color::TRANSPARENT;
+    let bg = Color::RED;
+    let result = blend_alpha(fg, bg);
+    assert_eq!(result, Color::RED); // Background shows through
+}
+
+#[test]
+fn test_fade() {
+    let color = Color::rgba(255, 255, 255, 200);
+    let faded = fade(color, 0.5);
+    assert_eq!(faded.a, 100); // Alpha halved
+    assert_eq!(faded.r, 255); // RGB unchanged
+}
+
+#[test]
+fn test_gradient_alpha() {
+    let from = Color::rgba(255, 0, 0, 255); // opaque red
+    let to = Color::rgba(0, 0, 255, 0); // transparent blue
+    let colors = gradient(from, to, 3);
+
+    assert_eq!(colors[0].a, 255); // Start opaque
+    assert!(colors[1].a > 100 && colors[1].a < 150); // Middle ~128
+    assert_eq!(colors[2].a, 0); // End transparent
+}
+
+#[test]
+fn test_gradient_at() {
+    let from = Color::BLACK;
+    let to = Color::WHITE;
+
+    let mid = gradient_at(from, to, 0.5);
+    assert!(mid.r > 100 && mid.r < 150);
+
+    let start = gradient_at(from, to, 0.0);
+    assert_eq!(start, from);
+
+    let end = gradient_at(from, to, 1.0);
+    assert_eq!(end, to);
+}

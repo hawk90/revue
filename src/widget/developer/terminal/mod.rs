@@ -7,6 +7,9 @@ pub use types::{CursorStyle, TermCell, TermLine, TerminalAction};
 
 mod ansi;
 mod core;
+// KEEP HERE - These tests require public API getters for terminal state
+// Tests are placeholder as private fields cannot be tested directly
+
 #[cfg(test)]
 mod tests {
     //! Tests for terminal widget

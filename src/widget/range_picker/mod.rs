@@ -19,6 +19,7 @@ pub use impls::analytics_range_picker;
 pub use impls::date_range_picker;
 pub use impls::range_picker;
 
+// KEEP HERE - Private implementation tests (accesses private fields: show_presets, start_cursor_day, end_cursor_day, start.date, start.time, end.date, end.time)
 #[cfg(test)]
 mod tests {
     use super::*;

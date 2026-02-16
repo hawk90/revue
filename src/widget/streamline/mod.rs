@@ -34,6 +34,7 @@ pub use helpers::{
 };
 pub use types::{StreamBaseline, StreamLayer, StreamOrder};
 
+// KEEP HERE - Private implementation tests (all tests access private fields: layers, baseline, order, show_legend, title, palette, x_labels, bg_color, height, highlighted, and private methods: get_layer_color, compute_stacks)
 #[cfg(test)]
 mod tests {
     use super::*;
