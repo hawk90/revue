@@ -268,9 +268,8 @@ fn test_color_saturating_add() {
 
 use revue::utils::color::semantic;
 use revue::utils::color::{
-    adjust_hue, blend, blend_alpha, contrast_color, darken, desaturate, fade, gradient,
-    gradient_at, grayscale, hsl_to_rgb, hsl_to_rgba, invert, lighten, relative_luminance,
-    rgb_to_hsl, saturate,
+    adjust_hue, blend, blend_alpha, contrast_color, darken, fade, gradient, gradient_at, grayscale,
+    hsl_to_rgb, invert, lighten, rgb_to_hsl,
 };
 
 #[test]
