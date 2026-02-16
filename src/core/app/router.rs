@@ -553,6 +553,7 @@ pub fn router() -> Router {
 pub fn routes() -> RouteBuilder {
     RouteBuilder::new()
 }
+// KEEP HERE - Private implementation tests (accesses private fields)
 
 #[cfg(test)]
 mod tests {

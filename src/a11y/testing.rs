@@ -423,6 +423,8 @@ macro_rules! a11y_assert {
     };
 }
 
+// KEEP HERE - Tests access private fields (A11yTestRunner.widgets, announcements, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;

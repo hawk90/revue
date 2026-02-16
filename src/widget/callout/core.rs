@@ -34,3 +34,11 @@ pub struct Callout {
     /// Widget properties
     pub props: crate::widget::traits::WidgetProps,
 }
+
+// Hidden getters for testing
+#[doc(hidden)]
+impl Callout {
+    pub fn as_core_callout(&self) -> &Callout {
+        self
+    }
+}

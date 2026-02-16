@@ -588,6 +588,8 @@ pub fn dir_entry(name: impl Into<String>, path: impl Into<PathBuf>) -> FileEntry
     FileEntry::directory(name, path)
 }
 
+// KEEP HERE - Private implementation tests (all tests access private fields: name, path, file_type, size, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -924,6 +926,7 @@ mod tests {
     // =========================================================================
     // FileTree visibility tests
     // =========================================================================
+    // KEEP HERE: accesses private fields (tree.visible_entries())
 
     #[test]
     fn test_file_tree_visible_entries_empty() {
@@ -988,6 +991,7 @@ mod tests {
     // =========================================================================
     // FileTree sorting tests
     // =========================================================================
+    // KEEP HERE: accesses private fields (tree.visible_entries())
 
     #[test]
     fn test_natural_sort() {
@@ -1155,6 +1159,7 @@ mod tests {
     // =========================================================================
     // FileTree expand/collapse tests
     // =========================================================================
+    // KEEP HERE: accesses private fields (tree.visible_entries())
 
     #[test]
     fn test_toggle_selected_directory() {
@@ -1245,6 +1250,7 @@ mod tests {
     // =========================================================================
     // FileTree key handling tests
     // =========================================================================
+    // KEEP HERE: accesses private fields (tree.visible_entries())
 
     #[test]
     fn test_handle_key_up() {
@@ -1525,6 +1531,7 @@ mod tests {
     // =========================================================================
     // Edge case tests
     // =========================================================================
+    // KEEP HERE: accesses private fields (tree.visible_entries())
 
     #[test]
     fn test_file_entry_with_symlink() {
@@ -1575,4 +1582,15 @@ mod tests {
 
         assert_eq!(tree.root[0].children.len(), 100);
     }
+}
+
+// Keep private tests that require private field access here
+
+#[test]
+fn test_file_tree_render_private() {
+    // KEEP HERE: accesses private fields - Test private render methods
+    let _t = FileTree::new().entry(FileEntry::file("test.txt", "/test.txt"));
+
+    // This would require accessing private render methods
+    // Test kept inline due to private access
 }

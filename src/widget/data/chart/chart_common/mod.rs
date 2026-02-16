@@ -11,6 +11,7 @@ mod marker;
 mod orientation;
 mod tooltip;
 
+// KEEP HERE - Private implementation tests (accesses private fields: title, min, max, ticks, grid, color, format, position)
 #[cfg(test)]
 mod tests {
     use super::*;

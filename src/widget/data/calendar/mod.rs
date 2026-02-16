@@ -67,15 +67,14 @@ mod utils;
 
 #[cfg(test)]
 mod tests {
-    //! Tests for calendar module
+    //! Tests for calendar module that access private fields
 
-    use super::types::{DateMarker, FirstDayOfWeek};
+    use super::types::FirstDayOfWeek;
     use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
 
     #[test]
     fn test_calendar_new() {
+        // KEEP HERE: accesses private fields (year, month)
         let cal = Calendar::new(2025, 1);
         assert_eq!(cal.year, 2025);
         assert_eq!(cal.month, 1);
@@ -83,6 +82,7 @@ mod tests {
 
     #[test]
     fn test_calendar_month_clamp() {
+        // KEEP HERE: accesses private fields (month)
         let cal = Calendar::new(2025, 13);
         assert_eq!(cal.month, 12);
 
@@ -91,41 +91,8 @@ mod tests {
     }
 
     #[test]
-    fn test_date_new() {
-        let date = Date::new(2025, 6, 15);
-        assert_eq!(date.year, 2025);
-        assert_eq!(date.month, 6);
-        assert_eq!(date.day, 15);
-    }
-
-    #[test]
-    fn test_date_valid() {
-        assert!(Date::new(2025, 1, 1).is_valid());
-        assert!(Date::new(2025, 2, 28).is_valid());
-        assert!(Date::new(2024, 2, 29).is_valid()); // Leap year
-        assert!(!Date::new(2025, 2, 29).is_valid()); // Not leap year
-        assert!(!Date::new(2025, 13, 1).is_valid());
-        assert!(!Date::new(2025, 1, 32).is_valid());
-    }
-
-    #[test]
-    fn test_days_in_month() {
-        assert_eq!(days_in_month(2025, 1), 31);
-        assert_eq!(days_in_month(2025, 2), 28);
-        assert_eq!(days_in_month(2024, 2), 29);
-        assert_eq!(days_in_month(2025, 4), 30);
-    }
-
-    #[test]
-    fn test_leap_year() {
-        assert!(is_leap_year(2024));
-        assert!(!is_leap_year(2025));
-        assert!(is_leap_year(2000));
-        assert!(!is_leap_year(1900));
-    }
-
-    #[test]
     fn test_calendar_navigation() {
+        // KEEP HERE: accesses private fields (year, month)
         let mut cal = Calendar::new(2025, 1);
 
         cal.next_month();
@@ -145,6 +112,7 @@ mod tests {
 
     #[test]
     fn test_calendar_year_navigation() {
+        // KEEP HERE: accesses private fields (year)
         let mut cal = Calendar::new(2025, 6);
 
         cal.next_year();
@@ -155,18 +123,8 @@ mod tests {
     }
 
     #[test]
-    fn test_calendar_selection() {
-        let mut cal = Calendar::new(2025, 1);
-
-        cal.select(Date::new(2025, 1, 15));
-        assert_eq!(cal.get_selected(), Some(Date::new(2025, 1, 15)));
-
-        cal.clear_selection();
-        assert_eq!(cal.get_selected(), None);
-    }
-
-    #[test]
     fn test_calendar_select_next_day() {
+        // KEEP HERE: accesses private fields (month)
         let mut cal = Calendar::new(2025, 1).selected(Date::new(2025, 1, 31));
 
         cal.select_next_day();
@@ -176,6 +134,7 @@ mod tests {
 
     #[test]
     fn test_calendar_select_prev_day() {
+        // KEEP HERE: accesses private fields (month)
         let mut cal = Calendar::new(2025, 2).selected(Date::new(2025, 2, 1));
 
         cal.select_prev_day();
@@ -184,16 +143,8 @@ mod tests {
     }
 
     #[test]
-    fn test_date_marker() {
-        let marker = DateMarker::new(Date::new(2025, 1, 1), Color::RED).symbol('★');
-
-        assert_eq!(marker.date, Date::new(2025, 1, 1));
-        assert_eq!(marker.color, Color::RED);
-        assert_eq!(marker.symbol, Some('★'));
-    }
-
-    #[test]
     fn test_calendar_range() {
+        // KEEP HERE: accesses render module internal (CalendarRender struct)
         let _cal = Calendar::new(2025, 1).range(Date::new(2025, 1, 10), Date::new(2025, 1, 20));
 
         let render_state = render::CalendarRender {
@@ -222,33 +173,8 @@ mod tests {
     }
 
     #[test]
-    fn test_calendar_render() {
-        let mut buffer = Buffer::new(30, 12);
-        let area = Rect::new(0, 0, 30, 12);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let cal = Calendar::new(2025, 1)
-            .selected(Date::new(2025, 1, 15))
-            .today(Date::new(2025, 1, 10));
-
-        cal.render(&mut ctx);
-        // Smoke test - renders without panic
-    }
-
-    #[test]
-    fn test_calendar_with_border() {
-        let mut buffer = Buffer::new(30, 12);
-        let area = Rect::new(0, 0, 30, 12);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        let cal = Calendar::new(2025, 1).border(Color::WHITE);
-        cal.render(&mut ctx);
-
-        assert_eq!(buffer.get(0, 0).unwrap().symbol, '┌');
-    }
-
-    #[test]
     fn test_calendar_first_day() {
+        // KEEP HERE: accesses render module internal (CalendarRender struct)
         let _cal_sun = Calendar::new(2025, 1).first_day(FirstDayOfWeek::Sunday);
         let _cal_mon = Calendar::new(2025, 1).first_day(FirstDayOfWeek::Monday);
 
@@ -284,12 +210,14 @@ mod tests {
 
     #[test]
     fn test_first_day_of_month() {
+        // KEEP HERE: tests private utility function (first_day_of_month)
         // January 1, 2025 is Wednesday
         assert_eq!(first_day_of_month(2025, 1), 3);
     }
 
     #[test]
     fn test_calendar_helper() {
+        // KEEP HERE: accesses private fields (year, month)
         let cal = calendar(2025, 6);
         assert_eq!(cal.year, 2025);
         assert_eq!(cal.month, 6);
@@ -297,6 +225,7 @@ mod tests {
 
     #[test]
     fn test_iso_week_number() {
+        // KEEP HERE: accesses render module internal (CalendarRender struct)
         let _cal = Calendar::new(2025, 1);
 
         let render_state = render::CalendarRender {
@@ -335,6 +264,7 @@ mod tests {
 
     #[test]
     fn test_iso_week_number_edge_cases() {
+        // KEEP HERE: accesses render module internal (CalendarRender struct)
         let _cal = Calendar::new(2020, 1);
 
         let render_state = render::CalendarRender {

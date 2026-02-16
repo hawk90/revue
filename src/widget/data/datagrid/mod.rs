@@ -17,6 +17,7 @@ mod tree;
 mod types;
 mod width;
 
+// KEEP HERE - Private implementation tests in tests/ directory (accesses private fields of DataGrid)
 #[cfg(test)]
 mod tests;
 

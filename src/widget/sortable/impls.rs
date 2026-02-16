@@ -3,17 +3,20 @@
 use super::core::SortableList;
 
 impl SortableList {
-    /// Get items
+    /// Get a reference to the items
+    #[doc(hidden)]
     pub fn items(&self) -> &[super::types::SortableItem] {
         &self.items
     }
 
-    /// Get mutable items
+    /// Get a mutable reference to the items
+    #[doc(hidden)]
     pub fn items_mut(&mut self) -> &mut Vec<super::types::SortableItem> {
         &mut self.items
     }
 
-    /// Get selected index
+    /// Get the selected item index
+    #[doc(hidden)]
     pub fn selected(&self) -> Option<usize> {
         self.selected
     }
@@ -23,7 +26,8 @@ impl SortableList {
         self.selected = index;
     }
 
-    /// Select next item
+    /// Select the next item
+    #[doc(hidden)]
     pub fn select_next(&mut self) {
         if self.items.is_empty() {
             return;
@@ -34,7 +38,8 @@ impl SortableList {
         });
     }
 
-    /// Select previous item
+    /// Select the previous item
+    #[doc(hidden)]
     pub fn select_prev(&mut self) {
         if self.items.is_empty() {
             return;
@@ -125,9 +130,10 @@ impl SortableList {
         }
     }
 
-    /// Check if currently dragging
+    /// Check if any item is being dragged
+    #[doc(hidden)]
     pub fn is_dragging(&self) -> bool {
-        self.dragging.is_some()
+        self.dragging.is_some() || self.items.iter().any(|item| item.dragging)
     }
 
     /// Add an item
@@ -155,7 +161,8 @@ impl SortableList {
         }
     }
 
-    /// Get current order as indices
+    /// Get the current item order as original indices
+    #[doc(hidden)]
     pub fn order(&self) -> Vec<usize> {
         self.items.iter().map(|i| i.original_index).collect()
     }

@@ -131,7 +131,7 @@ pub use empty_state::{
 };
 pub use gauge::{battery, gauge, percentage, Gauge, GaugeStyle, LabelPosition};
 pub use progress::{progress, Progress, ProgressStyle};
-pub use richlog::{log_entry, richlog, LogEntry, LogLevel, RichLog};
+pub use richlog::{log_entry, richlog, LogEntry, LogFormat, LogLevel, RichLog};
 pub use richtext::{markup, rich_text, span, style, RichText, Span, Style};
 pub use skeleton::{
     skeleton, skeleton_avatar, skeleton_paragraph, skeleton_text, Skeleton, SkeletonShape,

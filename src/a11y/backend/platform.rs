@@ -304,6 +304,8 @@ impl ScreenReader for NullBackend {
     }
 }
 
+// KEEP HERE - Tests access private fields (MacOSBackend.available, WindowsBackend.available, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;

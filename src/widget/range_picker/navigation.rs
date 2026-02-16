@@ -276,6 +276,7 @@ impl RangePicker {
     }
 }
 
+// KEEP HERE - Private implementation tests (accesses private fields: focus, show_presets)
 #[cfg(test)]
 mod tests {
     use super::super::types::PresetRange;

@@ -24,6 +24,7 @@ mod highlighter;
 
 pub use highlighter::SyntaxHighlighter;
 
+// KEEP HERE - Tests access internal spans data structure (spans vector and its fields like italic)
 #[cfg(test)]
 mod tests {
     //! Tests for syntax highlighting

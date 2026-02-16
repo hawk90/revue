@@ -692,40 +692,7 @@ pub fn pomodoro() -> Timer {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_timer_new() {
-        let timer = Timer::countdown(60);
-        assert_eq!(timer.remaining_seconds(), 60);
-        assert_eq!(timer.state(), TimerState::Stopped);
-    }
-
-    #[test]
-    fn test_timer_format() {
-        let timer = Timer::countdown(3661); // 1h 1m 1s
-        assert_eq!(timer.format_remaining(), "01:01:01");
-
-        let timer2 = Timer::countdown(65).format(TimerFormat::Short);
-        assert_eq!(timer2.format_remaining(), "01:05");
-
-        let timer3 = Timer::countdown(90).format(TimerFormat::Compact);
-        assert_eq!(timer3.format_remaining(), "1m 30s");
-    }
-
-    #[test]
-    fn test_timer_start_pause() {
-        let mut timer = Timer::countdown(60);
-        assert_eq!(timer.state(), TimerState::Stopped);
-
-        timer.start();
-        assert_eq!(timer.state(), TimerState::Running);
-
-        timer.pause();
-        assert_eq!(timer.state(), TimerState::Paused);
-
-        timer.start();
-        assert_eq!(timer.state(), TimerState::Running);
-    }
-
+    // KEEP HERE: accesses private field remaining_ms
     #[test]
     fn test_timer_progress() {
         let mut timer = Timer::countdown(100);
@@ -735,6 +702,7 @@ mod tests {
         assert!((timer.progress() - 0.5).abs() < 0.01);
     }
 
+    // KEEP HERE: accesses private field state
     #[test]
     fn test_stopwatch_new() {
         let sw = Stopwatch::new();
@@ -742,6 +710,7 @@ mod tests {
         assert_eq!(sw.state, TimerState::Stopped);
     }
 
+    // KEEP HERE: accesses private field laps
     #[test]
     fn test_stopwatch_lap() {
         let mut sw = Stopwatch::new();
@@ -754,6 +723,7 @@ mod tests {
         assert_eq!(sw.laps()[1], 2500);
     }
 
+    // KEEP HERE: calls private function format_ms
     #[test]
     fn test_format_ms() {
         assert_eq!(format_ms(3661000, TimerFormat::Full), "01:01:01");
@@ -762,6 +732,7 @@ mod tests {
         assert_eq!(format_ms(90000, TimerFormat::Compact), "1m 30s");
     }
 
+    // KEEP HERE: accesses private field title
     #[test]
     fn test_pomodoro() {
         let timer = Timer::pomodoro();
@@ -769,33 +740,7 @@ mod tests {
         assert_eq!(timer.title, Some("Pomodoro".to_string()));
     }
 
-    #[test]
-    fn test_helper_functions() {
-        let t = timer(120);
-        assert_eq!(t.remaining_seconds(), 120);
-
-        let sw = stopwatch();
-        assert_eq!(sw.elapsed_millis(), 0);
-
-        let p = pomodoro();
-        assert_eq!(p.remaining_seconds(), 25 * 60);
-    }
-
-    #[test]
-    fn test_timer_toggle() {
-        let mut timer = Timer::countdown(60);
-        assert_eq!(timer.state(), TimerState::Stopped);
-
-        timer.toggle();
-        assert_eq!(timer.state(), TimerState::Running);
-
-        timer.toggle();
-        assert_eq!(timer.state(), TimerState::Paused);
-
-        timer.toggle();
-        assert_eq!(timer.state(), TimerState::Running);
-    }
-
+    // KEEP HERE: accesses private field started_at
     #[test]
     fn test_timer_stop() {
         let mut timer = Timer::countdown(60);
@@ -808,6 +753,7 @@ mod tests {
         assert!(timer.started_at.is_none());
     }
 
+    // KEEP HERE: accesses private field remaining_ms
     #[test]
     fn test_timer_reset() {
         let mut timer = Timer::countdown(60);
@@ -819,6 +765,7 @@ mod tests {
         assert!(timer.started_at.is_some()); // Still running
     }
 
+    // KEEP HERE: accesses private field remaining_ms
     #[test]
     fn test_timer_reset_when_stopped() {
         let mut timer = Timer::countdown(60);
@@ -829,6 +776,7 @@ mod tests {
         assert!(timer.started_at.is_none()); // Not running
     }
 
+    // KEEP HERE: accesses private field state
     #[test]
     fn test_timer_is_completed() {
         let mut timer = Timer::countdown(60);
@@ -838,30 +786,7 @@ mod tests {
         assert!(timer.is_completed());
     }
 
-    #[test]
-    fn test_timer_is_running() {
-        let mut timer = Timer::countdown(60);
-        assert!(!timer.is_running());
-
-        timer.start();
-        assert!(timer.is_running());
-
-        timer.pause();
-        assert!(!timer.is_running());
-    }
-
-    #[test]
-    fn test_timer_format_precise() {
-        let timer = Timer::countdown(65).format(TimerFormat::Precise);
-        assert_eq!(timer.format_remaining(), "05.000");
-    }
-
-    #[test]
-    fn test_timer_progress_zero_total() {
-        let timer = Timer::countdown(0);
-        assert_eq!(timer.progress(), 1.0);
-    }
-
+    // KEEP HERE: accesses private field title
     #[test]
     fn test_timer_short_break() {
         let timer = Timer::short_break();
@@ -869,6 +794,7 @@ mod tests {
         assert_eq!(timer.title, Some("Short Break".to_string()));
     }
 
+    // KEEP HERE: accesses private field title
     #[test]
     fn test_timer_long_break() {
         let timer = Timer::long_break();
@@ -876,30 +802,35 @@ mod tests {
         assert_eq!(timer.title, Some("Long Break".to_string()));
     }
 
+    // KEEP HERE: accesses private field show_progress
     #[test]
     fn test_timer_show_progress() {
         let timer = Timer::countdown(60).show_progress(false);
         assert!(!timer.show_progress);
     }
 
+    // KEEP HERE: accesses private field progress_width
     #[test]
     fn test_timer_progress_width() {
         let timer = Timer::countdown(60).progress_width(50);
         assert_eq!(timer.progress_width, 50);
     }
 
+    // KEEP HERE: accesses private field large_digits
     #[test]
     fn test_timer_large_digits() {
         let timer = Timer::countdown(60).large_digits(true);
         assert!(timer.large_digits);
     }
 
+    // KEEP HERE: accesses private field auto_restart
     #[test]
     fn test_timer_auto_restart() {
         let timer = Timer::countdown(60).auto_restart(true);
         assert!(timer.auto_restart);
     }
 
+    // KEEP HERE: accesses private field state
     #[test]
     fn test_stopwatch_toggle() {
         let mut sw = Stopwatch::new();
@@ -915,6 +846,7 @@ mod tests {
         assert_eq!(sw.state, TimerState::Running);
     }
 
+    // KEEP HERE: accesses private fields state, elapsed_ms, started_at, laps
     #[test]
     fn test_stopwatch_stop() {
         let mut sw = Stopwatch::new();
@@ -928,6 +860,7 @@ mod tests {
         assert!(sw.laps.is_empty());
     }
 
+    // KEEP HERE: accesses private fields elapsed_ms, laps
     #[test]
     fn test_stopwatch_reset() {
         let mut sw = Stopwatch::new();
@@ -941,6 +874,7 @@ mod tests {
         assert!(sw.laps.is_empty());
     }
 
+    // KEEP HERE: accesses private fields elapsed_ms, laps
     #[test]
     fn test_stopwatch_reset_when_stopped() {
         let mut sw = Stopwatch::new();
@@ -953,6 +887,7 @@ mod tests {
         assert!(sw.laps.is_empty());
     }
 
+    // KEEP HERE: accesses private field elapsed_ms
     #[test]
     fn test_stopwatch_format_elapsed() {
         let mut sw = Stopwatch::new();
@@ -963,6 +898,7 @@ mod tests {
         assert_eq!(sw.format_elapsed(), "01:05");
     }
 
+    // KEEP HERE: accesses private field elapsed_ms
     #[test]
     fn test_stopwatch_elapsed_seconds() {
         let mut sw = Stopwatch::new();
@@ -972,52 +908,47 @@ mod tests {
         assert_eq!(sw.elapsed_seconds(), 5.5);
     }
 
-    #[test]
-    fn test_stopwatch_is_running() {
-        let mut sw = Stopwatch::new();
-        assert!(!sw.is_running());
-
-        sw.start();
-        assert!(sw.is_running());
-
-        sw.pause();
-        assert!(!sw.is_running());
-    }
-
+    // KEEP HERE: accesses private field show_laps
     #[test]
     fn test_stopwatch_show_laps() {
         let sw = Stopwatch::new().show_laps(false);
         assert!(!sw.show_laps);
     }
 
+    // KEEP HERE: accesses private field max_laps
     #[test]
     fn test_stopwatch_max_laps() {
         let sw = Stopwatch::new().max_laps(10);
         assert_eq!(sw.max_laps, 10);
     }
 
+    // KEEP HERE: accesses private field title
     #[test]
     fn test_stopwatch_title() {
         let sw = Stopwatch::new().title("My Stopwatch");
         assert_eq!(sw.title, Some("My Stopwatch".to_string()));
     }
 
+    // KEEP HERE: accesses private field large_digits
     #[test]
     fn test_stopwatch_large_digits() {
         let sw = Stopwatch::new().large_digits(true);
         assert!(sw.large_digits);
     }
 
+    // KEEP HERE: calls private function format_ms
     #[test]
     fn test_format_ms_compact_seconds_only() {
         assert_eq!(format_ms(500, TimerFormat::Compact), "0.5s");
     }
 
+    // KEEP HERE: calls private function format_ms
     #[test]
     fn test_format_ms_compact_hours() {
         assert_eq!(format_ms(3665000, TimerFormat::Compact), "1h 1m 5s");
     }
 
+    // KEEP HERE: calls private function render_large_time
     #[test]
     fn test_render_large_time() {
         let result = render_large_time("12:34");
@@ -1027,6 +958,7 @@ mod tests {
         assert!(result[2].contains('▀'));
     }
 
+    // KEEP HERE: calls private function render_large_time
     #[test]
     fn test_render_large_time_with_colon() {
         let result = render_large_time("1:23");
@@ -1038,6 +970,7 @@ mod tests {
         assert!(!result[2].is_empty());
     }
 
+    // KEEP HERE: calls private function render_large_time
     #[test]
     fn test_render_large_time_empty() {
         let result = render_large_time("");
@@ -1047,6 +980,7 @@ mod tests {
         assert!(result[2].is_empty());
     }
 
+    // KEEP HERE: calls private function render_large_time
     #[test]
     fn test_render_large_time_invalid_chars() {
         let result = render_large_time("ab:cd");
@@ -1054,21 +988,11 @@ mod tests {
         assert_eq!(result.len(), 3);
     }
 
+    // KEEP HERE: accesses private fields elapsed_ms, state
     #[test]
     fn test_stopwatch_default() {
         let sw = Stopwatch::default();
         assert_eq!(sw.elapsed_ms, 0);
         assert_eq!(sw.state, TimerState::Stopped);
-    }
-
-    #[test]
-    fn test_timer_state_equality() {
-        assert_eq!(TimerState::Stopped, TimerState::Stopped);
-        assert_ne!(TimerState::Running, TimerState::Stopped);
-    }
-
-    #[test]
-    fn test_timer_format_default() {
-        assert_eq!(TimerFormat::default(), TimerFormat::Full);
     }
 }

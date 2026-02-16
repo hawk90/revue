@@ -275,9 +275,10 @@ pub use display::{
     skeleton_avatar, skeleton_paragraph, skeleton_text, span, spinner, status_indicator, style,
     tag, text, vdivider, Alignment, Avatar, AvatarShape, AvatarSize, Badge, BadgeShape,
     BadgeVariant, BigText, DigitStyle, Digits, Divider, DividerStyle, EmptyState, EmptyStateType,
-    EmptyStateVariant, Gauge, GaugeStyle, LabelPosition, LogEntry, LogLevel, Orientation, Progress,
-    ProgressStyle, RichLog, RichText, Skeleton, SkeletonShape, Span, Spinner, SpinnerStyle, Status,
-    StatusIndicator, StatusSize, StatusStyle, Style, Tag, TagStyle, Text,
+    EmptyStateVariant, Gauge, GaugeStyle, LabelPosition, LogEntry, LogFormat, LogLevel,
+    Orientation, Progress, ProgressStyle, RichLog, RichText, Skeleton, SkeletonShape, Span,
+    Spinner, SpinnerStyle, Status, StatusIndicator, StatusSize, StatusStyle, Style, Tag, TagStyle,
+    Text,
 };
 // Layout widgets (re-exported from layout module)
 pub use layout::{

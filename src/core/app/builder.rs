@@ -192,6 +192,8 @@ impl Default for AppBuilder {
     }
 }
 
+// KEEP HERE - Private implementation tests (accesses private fields: style_paths, hot_reload, etc.)
+
 #[cfg(test)]
 mod tests {
     use super::*;

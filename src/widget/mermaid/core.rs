@@ -148,6 +148,18 @@ impl Diagram {
         self
     }
 
+    /// Getter for nodes (for testing)
+    #[doc(hidden)]
+    pub fn get_nodes(&self) -> &Vec<DiagramNode> {
+        &self.nodes
+    }
+
+    /// Getter for edges (for testing)
+    #[doc(hidden)]
+    pub fn get_edges(&self) -> &Vec<DiagramEdge> {
+        &self.edges
+    }
+
     /// Parse node definition like `A[Label]` or `B{Decision}`
     fn parse_node_def(s: &str) -> (String, Option<String>) {
         let s = s.trim();

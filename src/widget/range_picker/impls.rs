@@ -218,6 +218,7 @@ pub fn analytics_range_picker() -> RangePicker {
     ])
 }
 
+// KEEP HERE - Private implementation tests (accesses private fields: start.date, end.date, start_cursor_day, end_cursor_day, active_preset, start.time, end.time)
 #[cfg(test)]
 mod tests {
     use super::*;
