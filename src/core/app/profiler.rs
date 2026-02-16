@@ -450,7 +450,10 @@ impl Profiler {
             }
         }
 
-        lines.join("\n")
+        lines.join(
+            "
+",
+        )
     }
 
     /// Generate a summary (shorter report)
@@ -576,6 +579,7 @@ pub struct MetricDiff {
     /// Sample count change
     pub count_change: i64,
 }
+// KEEP HERE - Private implementation tests (accesses private fields)
 
 #[cfg(test)]
 mod tests {

@@ -455,6 +455,7 @@ impl View for Inspector {
 pub fn inspector() -> Inspector {
     Inspector::new()
 }
+// KEEP HERE - Private implementation tests (accesses private fields)
 
 #[cfg(test)]
 mod tests {

@@ -133,26 +133,26 @@ impl Snapshot {
                 if let Some(cell) = buffer.get(x, y) {
                     if self.config.include_colors {
                         if let Some(fg) = cell.fg {
-                            line.push_str(&format!("\x1b[38;2;{};{};{}m", fg.r, fg.g, fg.b));
+                            line.push_str(&format!("[38;2;{};{};{}m", fg.r, fg.g, fg.b));
                         }
                         if let Some(bg) = cell.bg {
-                            line.push_str(&format!("\x1b[48;2;{};{};{}m", bg.r, bg.g, bg.b));
+                            line.push_str(&format!("[48;2;{};{};{}m", bg.r, bg.g, bg.b));
                         }
                     }
                     if self.config.include_modifiers {
                         if cell.modifier.contains(crate::render::Modifier::BOLD) {
-                            line.push_str("\x1b[1m");
+                            line.push_str("[1m");
                         }
                         if cell.modifier.contains(crate::render::Modifier::ITALIC) {
-                            line.push_str("\x1b[3m");
+                            line.push_str("[3m");
                         }
                         if cell.modifier.contains(crate::render::Modifier::UNDERLINE) {
-                            line.push_str("\x1b[4m");
+                            line.push_str("[4m");
                         }
                     }
                     line.push(cell.symbol);
                     if self.config.include_colors || self.config.include_modifiers {
-                        line.push_str("\x1b[0m");
+                        line.push_str("[0m");
                     }
                 } else {
                     line.push(' ');
@@ -168,7 +168,10 @@ impl Snapshot {
             lines.pop();
         }
 
-        lines.join("\n")
+        lines.join(
+            "
+",
+        )
     }
 
     /// Get snapshot file path
@@ -266,10 +269,16 @@ impl Snapshot {
             SnapshotResult::Created => "Snapshot created!".to_string(),
             SnapshotResult::NotFound => "Snapshot not found!".to_string(),
             SnapshotResult::Mismatch { diff, .. } => {
-                let mut output = String::from("Snapshot mismatch:\n");
+                let mut output = String::from(
+                    "Snapshot mismatch:
+",
+                );
                 for (line, expected, actual) in diff {
                     output.push_str(&format!(
-                        "Line {}:\n  - {}\n  + {}\n",
+                        "Line {}:
+  - {}
+  + {}
+",
                         line, expected, actual
                     ));
                 }
@@ -304,13 +313,15 @@ macro_rules! assert_snapshot {
         let result = snap.assert_snapshot($name, $view, $width, $height);
         if result.is_mismatch() {
             panic!(
-                "Snapshot '{}' mismatch!\n{}",
+                "Snapshot '{}' mismatch!
+{}",
                 $name,
                 $crate::app::snapshot::Snapshot::format_diff(&result)
             );
         }
     }};
 }
+// KEEP HERE - Private implementation tests (accesses private fields)
 
 #[cfg(test)]
 mod tests {
