@@ -2,8 +2,8 @@
 
 use revue::style::Color;
 use revue::utils::highlight::{
-    highlight_matches, highlight_range, highlight_ranges, highlight_substring,
-    highlight_substring_case, HighlightSpan, Highlighter,
+    highlight_matches, highlight_range, highlight_ranges, highlight_substring, HighlightSpan,
+    Highlighter,
 };
 
 #[test]
