@@ -491,9 +491,8 @@ mod tests {
 
     use super::helpers::month_name;
     use super::render::Rendering;
-    use super::types::{Time, TimeField};
+    use super::types::Time;
     use super::{date_picker, datetime_picker, time_picker};
-    use crate::event::Key;
     use crate::layout::Rect;
     use crate::render::Buffer;
     use crate::widget::data::calendar::{Date, FirstDayOfWeek};
