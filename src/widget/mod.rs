@@ -51,6 +51,7 @@
 //! | [`Badge`] | Status badge | [`badge()`] |
 //! | [`Tag`] | Label tag | [`tag()`] |
 //! | [`Avatar`] | User avatar | [`avatar()`] |
+//! | [`GradientBox`] | Gradient background | [`gradient_box()`] |
 //! | [`Skeleton`] | Loading placeholder | [`skeleton()`] |
 //! | [`Divider`] | Visual separator | [`divider()`] |
 //! | [`Tooltip`] | Hover tooltip | [`tooltip()`] |
@@ -270,15 +271,15 @@ pub use crate::utils::border::BorderChars;
 // Display widgets (re-exported from display module)
 pub use display::{
     avatar, avatar_icon, away_indicator, badge, battery, bigtext, busy_indicator, chip, clock,
-    digits, divider, dot_badge, empty_error, empty_state, first_use, gauge, h1, h2, h3, log_entry,
-    markup, no_results, offline, online, percentage, progress, rich_text, richlog, skeleton,
-    skeleton_avatar, skeleton_paragraph, skeleton_text, span, spinner, status_indicator, style,
-    tag, text, vdivider, Alignment, Avatar, AvatarShape, AvatarSize, Badge, BadgeShape,
+    digits, divider, dot_badge, empty_error, empty_state, first_use, gauge, gradient_box, h1, h2,
+    h3, log_entry, markup, no_results, offline, online, percentage, progress, rich_text, richlog,
+    skeleton, skeleton_avatar, skeleton_paragraph, skeleton_text, span, spinner, status_indicator,
+    style, tag, text, vdivider, Alignment, Avatar, AvatarShape, AvatarSize, Badge, BadgeShape,
     BadgeVariant, BigText, DigitStyle, Digits, Divider, DividerStyle, EmptyState, EmptyStateType,
-    EmptyStateVariant, Gauge, GaugeStyle, LabelPosition, LogEntry, LogFormat, LogLevel,
-    Orientation, Progress, ProgressStyle, RichLog, RichText, Skeleton, SkeletonShape, Span,
-    Spinner, SpinnerStyle, Status, StatusIndicator, StatusSize, StatusStyle, Style, Tag, TagStyle,
-    Text,
+    EmptyStateVariant, Gauge, GaugeStyle, GradientBox, LabelPosition, LogEntry, LogFormat,
+    LogLevel, Orientation, Progress, ProgressStyle, RichLog, RichText, Skeleton, SkeletonShape,
+    Span, Spinner, SpinnerStyle, Status, StatusIndicator, StatusSize, StatusStyle, Style, Tag,
+    TagStyle, Text,
 };
 // Layout widgets (re-exported from layout module)
 pub use layout::{

@@ -214,6 +214,28 @@ impl Buffer {
         }
     }
 
+    /// Set foreground color at position
+    pub fn set_fg(&mut self, x: u16, y: u16, fg: Color) {
+        if let Some(idx) = self.index(x, y) {
+            self.cells[idx].fg = Some(fg);
+        }
+    }
+
+    /// Set background color at position
+    pub fn set_bg(&mut self, x: u16, y: u16, bg: Color) {
+        if let Some(idx) = self.index(x, y) {
+            self.cells[idx].bg = Some(bg);
+        }
+    }
+
+    /// Set both foreground and background colors at position
+    pub fn set_colors(&mut self, x: u16, y: u16, fg: Color, bg: Color) {
+        if let Some(idx) = self.index(x, y) {
+            self.cells[idx].fg = Some(fg);
+            self.cells[idx].bg = Some(bg);
+        }
+    }
+
     /// Put a string at position, handling wide characters correctly
     pub fn put_str(&mut self, x: u16, y: u16, s: &str) -> u16 {
         self.put_str_styled(x, y, s, None, None)
