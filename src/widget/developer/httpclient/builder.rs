@@ -24,38 +24,53 @@ pub struct RequestBuilder {
 
 impl RequestBuilder {
     /// Create a new GET request builder
-    pub fn get(url: impl Into<String>) -> Self {
-        Self {
-            request: HttpRequest::new(url).method(HttpMethod::GET),
-        }
+    ///
+    /// Returns `None` if URL is invalid or too long.
+    pub fn get(url: impl Into<String>) -> Option<Self> {
+        HttpRequest::new(url).map(|mut req| {
+            req.method = HttpMethod::GET;
+            Self { request: req }
+        })
     }
 
     /// Create a new POST request builder
-    pub fn post(url: impl Into<String>) -> Self {
-        Self {
-            request: HttpRequest::new(url).method(HttpMethod::POST),
-        }
+    ///
+    /// Returns `None` if URL is invalid or too long.
+    pub fn post(url: impl Into<String>) -> Option<Self> {
+        HttpRequest::new(url).map(|mut req| {
+            req.method = HttpMethod::POST;
+            Self { request: req }
+        })
     }
 
     /// Create a new PUT request builder
-    pub fn put(url: impl Into<String>) -> Self {
-        Self {
-            request: HttpRequest::new(url).method(HttpMethod::PUT),
-        }
+    ///
+    /// Returns `None` if URL is invalid or too long.
+    pub fn put(url: impl Into<String>) -> Option<Self> {
+        HttpRequest::new(url).map(|mut req| {
+            req.method = HttpMethod::PUT;
+            Self { request: req }
+        })
     }
 
     /// Create a new DELETE request builder
-    pub fn delete(url: impl Into<String>) -> Self {
-        Self {
-            request: HttpRequest::new(url).method(HttpMethod::DELETE),
-        }
+    ///
+    /// Returns `None` if URL is invalid or too long.
+    pub fn delete(url: impl Into<String>) -> Option<Self> {
+        HttpRequest::new(url).map(|mut req| {
+            req.method = HttpMethod::DELETE;
+            Self { request: req }
+        })
     }
 
     /// Create a new PATCH request builder
-    pub fn patch(url: impl Into<String>) -> Self {
-        Self {
-            request: HttpRequest::new(url).method(HttpMethod::PATCH),
-        }
+    ///
+    /// Returns `None` if URL is invalid or too long.
+    pub fn patch(url: impl Into<String>) -> Option<Self> {
+        HttpRequest::new(url).map(|mut req| {
+            req.method = HttpMethod::PATCH;
+            Self { request: req }
+        })
     }
 
     /// Add a header

@@ -74,9 +74,18 @@ impl HttpClient {
         }
     }
 
-    /// Set URL
+    /// Set URL with validation
+    ///
+    /// Invalid URLs (wrong scheme or too long) will set an error state
+    /// instead of panicking. Use `error()` to check for validation errors.
     pub fn url(mut self, url: impl Into<String>) -> Self {
-        self.request.url = url.into();
+        let url_str = url.into();
+        if let Some(valid_req) = HttpRequest::new(&url_str) {
+            self.request.url = valid_req.url;
+        } else {
+            self.error = Some("Invalid URL: only http:// and https:// schemes are allowed, and URL must not exceed 8192 characters".to_string());
+            self.state = RequestState::Error;
+        }
         self.url_cursor = self.request.url.len();
         self
     }
@@ -140,10 +149,18 @@ impl HttpClient {
         self.show_headers = !self.show_headers;
     }
 
-    /// Update URL
+    /// Update URL with validation
+    ///
+    /// Invalid URLs will set an error state instead of panicking.
     pub fn set_url(&mut self, url: impl Into<String>) {
-        self.request.url = url.into();
-        self.url_cursor = self.request.url.len();
+        let url_str = url.into();
+        if let Some(valid_req) = HttpRequest::new(&url_str) {
+            self.request.url = valid_req.url;
+            self.url_cursor = self.request.url.len();
+        } else {
+            self.error = Some("Invalid URL: only http:// and https:// schemes are allowed, and URL must not exceed 8192 characters".to_string());
+            self.state = RequestState::Error;
+        }
     }
 
     /// Cycle method

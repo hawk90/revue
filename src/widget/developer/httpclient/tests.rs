@@ -35,6 +35,7 @@ mod tests {
     #[test]
     fn test_http_request_url() {
         let req = HttpRequest::new("https://api.example.com")
+            .unwrap()
             .param("page", "1")
             .param("limit", "10");
 
@@ -270,38 +271,49 @@ mod tests {
 
     #[test]
     fn test_request_builder_get() {
-        let request = RequestBuilder::get("https://api.example.com").build();
+        let request = RequestBuilder::get("https://api.example.com")
+            .unwrap()
+            .build();
         assert_eq!(request.method, HttpMethod::GET);
-        assert_eq!(request.url, "https://api.example.com");
+        assert_eq!(request.url(), "https://api.example.com");
     }
 
     #[test]
     fn test_request_builder_post() {
-        let request = RequestBuilder::post("https://api.example.com").build();
+        let request = RequestBuilder::post("https://api.example.com")
+            .unwrap()
+            .build();
         assert_eq!(request.method, HttpMethod::POST);
     }
 
     #[test]
     fn test_request_builder_put() {
-        let request = RequestBuilder::put("https://api.example.com").build();
+        let request = RequestBuilder::put("https://api.example.com")
+            .unwrap()
+            .build();
         assert_eq!(request.method, HttpMethod::PUT);
     }
 
     #[test]
     fn test_request_builder_delete() {
-        let request = RequestBuilder::delete("https://api.example.com").build();
+        let request = RequestBuilder::delete("https://api.example.com")
+            .unwrap()
+            .build();
         assert_eq!(request.method, HttpMethod::DELETE);
     }
 
     #[test]
     fn test_request_builder_patch() {
-        let request = RequestBuilder::patch("https://api.example.com").build();
+        let request = RequestBuilder::patch("https://api.example.com")
+            .unwrap()
+            .build();
         assert_eq!(request.method, HttpMethod::PATCH);
     }
 
     #[test]
     fn test_request_builder_with_header() {
         let request = RequestBuilder::get("https://api.example.com")
+            .unwrap()
             .header("X-Custom", "value")
             .build();
 
@@ -311,6 +323,7 @@ mod tests {
     #[test]
     fn test_request_builder_with_params() {
         let request = RequestBuilder::get("https://api.example.com")
+            .unwrap()
             .param("page", "1")
             .param("limit", "10")
             .build();
@@ -323,6 +336,7 @@ mod tests {
     #[test]
     fn test_request_builder_with_body() {
         let request = RequestBuilder::post("https://api.example.com")
+            .unwrap()
             .body("test body")
             .build();
 
@@ -332,6 +346,7 @@ mod tests {
     #[test]
     fn test_request_builder_json() {
         let request = RequestBuilder::post("https://api.example.com")
+            .unwrap()
             .json(r#"{"key": "value"}"#)
             .build();
 
@@ -345,6 +360,7 @@ mod tests {
     #[test]
     fn test_request_builder_form() {
         let request = RequestBuilder::post("https://api.example.com")
+            .unwrap()
             .form("key=value&other=data")
             .build();
 
@@ -357,6 +373,7 @@ mod tests {
     #[test]
     fn test_request_builder_bearer_auth() {
         let request = RequestBuilder::get("https://api.example.com")
+            .unwrap()
             .bearer_auth("my_token")
             .build();
 
@@ -369,6 +386,7 @@ mod tests {
     #[test]
     fn test_request_builder_basic_auth() {
         let request = RequestBuilder::get("https://api.example.com")
+            .unwrap()
             .basic_auth("user", "pass")
             .build();
 
@@ -401,7 +419,7 @@ mod tests {
     #[test]
     fn test_mock_backend_default_response() {
         let backend = MockHttpBackend::new();
-        let request = HttpRequest::new("https://api.example.com");
+        let request = HttpRequest::new("https://api.example.com").unwrap();
 
         let response = backend.send(&request).unwrap();
         assert_eq!(response.status, 200);
@@ -423,7 +441,7 @@ mod tests {
 
         backend.mock_response("api.example.com", custom_response);
 
-        let request = HttpRequest::new("https://api.example.com/users");
+        let request = HttpRequest::new("https://api.example.com/users").unwrap();
         let response = backend.send(&request).unwrap();
 
         assert_eq!(response.status, 201);
@@ -435,7 +453,7 @@ mod tests {
         let backend = MockHttpBackend::new();
         backend.mock_json("users", 200, r#"{"id": 1, "name": "Test"}"#);
 
-        let request = HttpRequest::new("https://api.example.com/users");
+        let request = HttpRequest::new("https://api.example.com/users").unwrap();
         let response = backend.send(&request).unwrap();
 
         assert_eq!(response.status, 200);
@@ -448,7 +466,7 @@ mod tests {
         let backend = MockHttpBackend::new();
         backend.mock_error("users", 404, "User not found");
 
-        let request = HttpRequest::new("https://api.example.com/users/999");
+        let request = HttpRequest::new("https://api.example.com/users/999").unwrap();
         let response = backend.send(&request).unwrap();
 
         assert_eq!(response.status, 404);
@@ -470,7 +488,7 @@ mod tests {
 
         backend.mock_response("*", wildcard_response);
 
-        let request = HttpRequest::new("https://any.url.com/anything");
+        let request = HttpRequest::new("https://any.url.com/anything").unwrap();
         let response = backend.send(&request).unwrap();
 
         assert_eq!(response.status, 503);
@@ -483,7 +501,7 @@ mod tests {
         backend.mock_json("api", 200, r#"{"first": true}"#);
         backend.mock_json("api", 201, r#"{"second": true}"#);
 
-        let request = HttpRequest::new("https://api.example.com");
+        let request = HttpRequest::new("https://api.example.com").unwrap();
         let response = backend.send(&request).unwrap();
 
         // Most recent match should win

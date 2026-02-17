@@ -30,7 +30,7 @@ impl View for HttpClient {
 
         // URL
         let url_start = method_name.len() as u16 + 1;
-        for (i, ch) in self.request.url.chars().enumerate() {
+        for (i, ch) in self.request.url().chars().enumerate() {
             if url_start + i as u16 >= area.width - 1 {
                 break;
             }
