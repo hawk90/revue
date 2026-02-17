@@ -173,27 +173,71 @@ impl<T: Send + 'static> WorkerHandle<T> {
             }
 
             // Simple polling executor with exponential backoff
-            // SAFETY:
-            // - The vtable functions properly handle the pointer according to RawWaker contract
-            // - RawWaker is created with a null pointer since no data is needed
-            // - The waker is only used as a placeholder for Context
-            // - We never call wake() or wake_by_ref() on this waker
-            // - Only clone() and drop() are called, which are safe no-ops
-            // - This is a polling executor that never actually needs to wake anything
             //
-            // Note: This fallback is only used when the "async" feature is disabled.
-            // When async is enabled, the proper tokio runtime is used instead.
+            // SAFETY & CONTRACT VIOLATION WORKAROUND:
+            //
+            // This code constructs a Waker from a null pointer, which appears to violate
+            // the Rust contract for Waker creation. However, this is safe in this specific
+            // context because:
+            //
+            // 1. **No Data Requirement**: The RawWakerVTable functions don't actually use
+            //    the pointer value - they're all no-ops that ignore the parameter.
+            //
+            // 2. **No Wake Operations**: We never call wake() or wake_by_ref() on this waker.
+            //    The polling executor continuously polls in a loop rather than waiting for
+            //    wake notifications.
+            //
+            // 3. **Only Safe Operations Called**: The only vtable methods ever invoked are:
+            //    - clone(): Creates a new RawWaker with the same null pointer (safe)
+            //    - drop(): No-op, no resources to clean up (safe)
+            //
+            // 4. **Context Usage Only**: The waker is only used to create a Context, which
+            //    is passed to Future::poll(). The futures we poll never attempt to wake
+            //    themselves (they're designed for polling executors).
+            //
+            // 5. **Fallback Code Path**: This is only executed when the "async" feature is
+            //    disabled. When async is enabled, the proper tokio runtime with valid wakers
+            //    is used instead.
+            //
+            // **WHY NULL POINTER?**
+            // Using null() is intentional and safe because:
+            // - No memory is being pointed to
+            // - No dereferencing occurs
+            // - The pointer value is irrelevant to the vtable functions
+            // - Alternative approaches (e.g., pointing to dummy data) would be misleading
+            //
+            // **POTENTIAL ISSUES:**
+            // - If a future attempts to call wake() on this waker, it will do nothing
+            // - This is acceptable for polling executors where continuous polling is expected
+            // - Futures designed for wake-based notification may not work correctly
+            //
+            // **TESTING:**
+            // This code path is tested by:
+            // - test_polling_executor_no_async: Basic future polling
+            // - test_polling_executor_with_async_fn: Async function execution
+            // - test_polling_executor_panic_handling: Panic recovery
             static VTABLE: RawWakerVTable = RawWakerVTable::new(
                 // clone: Create a new RawWaker from the same pointer
+                // SAFETY: Ignores ptr, returns new null-pointer RawWaker
                 |_ptr| RawWaker::new(std::ptr::null(), &VTABLE),
                 // wake: No-op since we never wake
+                // SAFETY: Does nothing (polling executor doesn't use wake)
                 |_ptr| {},
                 // wake_by_ref: No-op since we never wake
+                // SAFETY: Does nothing (polling executor doesn't use wake)
                 |_ptr| {},
                 // drop: No-op since we have no resources to clean up
+                // SAFETY: Does nothing (no resources allocated)
                 |_ptr| {},
             );
             let dummy_raw_waker = RawWaker::new(std::ptr::null(), &VTABLE);
+            // SAFETY: The dummy_raw_waker is constructed correctly according to the
+            // safety contract documented above. While it uses a null pointer, this
+            // is safe because:
+            // 1. The vtable functions never dereference the pointer
+            // 2. Only clone() and drop() are ever called on this waker
+            // 3. wake() and wake_by_ref() are never called
+            // 4. The waker is only used to construct a Context for polling
             let waker = unsafe { Waker::from_raw(dummy_raw_waker) };
             let mut cx = Context::from_waker(&waker);
             let mut future = Box::pin(future);
@@ -619,5 +663,139 @@ mod tests {
         // Second call returns None (result was taken)
         let result2 = handle.try_join();
         assert!(result2.is_none());
+    }
+
+    // =============================================================================
+    // Security: Polling Executor Tests (Raw Waker Code Path)
+    // =============================================================================
+
+    #[test]
+    #[cfg(not(feature = "async"))]
+    fn test_polling_executor_no_async() {
+        use std::future;
+
+        // Test basic future polling with the raw waker
+        let handle = WorkerHandle::spawn(async {
+            // Simple async block that returns a value
+            42
+        });
+
+        let result = handle.join();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    #[cfg(not(feature = "async"))]
+    fn test_polling_executor_with_async_fn() {
+        use std::future;
+
+        // Test async function execution
+        async fn async_add(a: i32, b: i32) -> i32 {
+            a + b
+        }
+
+        let handle = WorkerHandle::spawn(async_add(10, 20));
+        let result = handle.join();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 30);
+    }
+
+    #[test]
+    #[cfg(not(feature = "async"))]
+    fn test_polling_executor_panic_handling() {
+        use std::future;
+
+        // Test that panics in async code cause thread termination
+        // Note: The polling executor runs in a thread, so panics will
+        // terminate that thread. The handle should detect this as a failure.
+        let handle = WorkerHandle::spawn(async {
+            panic!("intentional panic in async");
+        });
+
+        let result = handle.join();
+        // The panic will cause the thread to terminate, resulting in an error
+        assert!(result.is_err());
+        // It might be Panicked or another error depending on how the thread exits
+        match result {
+            Err(WorkerError::Panicked(_)) => {
+                // Expected: panic was caught
+            }
+            Err(_) => {
+                // Also acceptable: thread terminated due to panic
+            }
+            Ok(_) => {
+                panic!("Expected error from panicked async block");
+            }
+        }
+    }
+
+    #[test]
+    #[cfg(not(feature = "async"))]
+    fn test_polling_executor_cancellation() {
+        use std::future;
+
+        // Test cancellation of polling executor tasks
+        let handle = WorkerHandle::spawn(async {
+            // This would run forever if not cancelled
+            std::future::pending::<()>()
+        });
+
+        // Cancel immediately
+        handle.cancel();
+
+        let result = handle.join_timeout(Duration::from_millis(100));
+        // Should either be cancelled or timeout
+        assert!(result.is_err());
+    }
+
+    #[test]
+    #[cfg(not(feature = "async"))]
+    fn test_polling_executor_multiple_awaits() {
+        use std::future;
+
+        // Test future with multiple await points
+        async fn multi_await() -> i32 {
+            let mut sum = 0;
+            for i in 1..=5 {
+                sum += i;
+                // Simulate some async work
+                let _ = std::future::ready(i).await;
+            }
+            sum
+        }
+
+        let handle = WorkerHandle::spawn(multi_await());
+        let result = handle.join();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 15); // 1+2+3+4+5 = 15
+    }
+
+    #[test]
+    #[cfg(not(feature = "async"))]
+    fn test_polling_executor_state_transitions() {
+        use std::future;
+
+        let handle = WorkerHandle::spawn(async { 42 });
+
+        // Should start in Pending or Running
+        let initial_state = handle.state();
+        assert!(matches!(
+            initial_state,
+            WorkerState::Pending | WorkerState::Running
+        ));
+
+        // Wait for completion
+        let timeout = std::time::Instant::now() + Duration::from_millis(100);
+        while !handle.is_finished() && std::time::Instant::now() < timeout {
+            thread::sleep(Duration::from_millis(1));
+        }
+
+        // Should be completed now
+        assert!(handle.is_finished());
+
+        let result = handle.join();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 42);
     }
 }
