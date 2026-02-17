@@ -191,11 +191,13 @@ impl TextWrapper {
                 if self.width <= 3 {
                     "...".chars().take(self.width).collect()
                 } else {
-                    let half = (self.width - 3) / 2;
+                    // Use saturating arithmetic to prevent overflow
+                    let width_minus_3 = self.width.saturating_sub(3);
+                    let half = width_minus_3 / 2;
                     // Get first half
                     let first = truncate_to_width(text, half);
-                    // Get second half from the end
-                    let from_end = self.width - 3 - half;
+                    // Get second half from the end (also using saturating_sub)
+                    let from_end = width_minus_3.saturating_sub(half);
                     let second = if from_end > 0 {
                         // Need to get last 'from_end' display columns
                         let mut total = 0;
@@ -533,5 +535,82 @@ mod tests {
         assert_eq!(wrapper.width, 80);
         assert_eq!(wrapper.mode, WrapMode::Word);
         assert_eq!(wrapper.overflow, Overflow::Clip);
+    }
+
+    // =============================================================================
+    // Security: Edge Case Tests for Overflow Protection
+    // =============================================================================
+
+    #[test]
+    fn test_ellipsis_middle_width_0() {
+        // Width 0 should return empty string (no overflow)
+        let result = truncate_middle("Hello World", 0);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_ellipsis_middle_width_1() {
+        // Width 1 should return "." (no overflow)
+        let result = truncate_middle("Hello World", 1);
+        assert_eq!(result, ".");
+    }
+
+    #[test]
+    fn test_ellipsis_middle_width_2() {
+        // Width 2 should return ".." (no overflow)
+        let result = truncate_middle("Hello World", 2);
+        assert_eq!(result, "..");
+    }
+
+    #[test]
+    fn test_ellipsis_middle_width_3() {
+        // Width 3 should return "..." (no overflow)
+        let result = truncate_middle("Hello World", 3);
+        assert_eq!(result, "...");
+    }
+
+    #[test]
+    fn test_ellipsis_middle_width_4() {
+        // Width 4: (4-3)/2 = 0, from_end = 4-3-0 = 1
+        // Should show "..." + 1 char from end
+        let result = truncate_middle("Hello", 4);
+        assert!(result.contains("..."));
+        assert_eq!(result.len(), 4);
+    }
+
+    #[test]
+    fn test_ellipsis_middle_width_5() {
+        // Width 5: (5-3)/2 = 1, from_end = 5-3-1 = 1
+        // With longer text, first 1 char + "..." + last 1 char
+        let result = truncate_middle("Hello World", 5);
+        assert!(result.contains("..."));
+        assert_eq!(result, "H...d");
+    }
+
+    #[test]
+    fn test_ellipsis_middle_unicode_edge_case() {
+        // Test with wide characters (CJK) at minimum widths
+        let text = "你好世界"; // 4 CJK chars, 8 display columns
+        let result = truncate_middle(text, 4);
+        // Should handle gracefully without overflow
+        // Result will be "...界" or similar depending on truncation
+        assert!(result.len() <= 4);
+    }
+
+    #[test]
+    fn test_ellipsis_middle_empty_text() {
+        // Empty text returns empty string (no truncation needed)
+        for width in [0, 1, 2, 3, 4, 5, 10] {
+            let result = truncate_middle("", width);
+            assert_eq!(result, "");
+        }
+    }
+
+    #[test]
+    fn test_ellipsis_middle_short_text() {
+        // Text shorter than width
+        let result = truncate_middle("Hi", 10);
+        // Should return original text (no truncation needed)
+        assert_eq!(result, "Hi");
     }
 }
