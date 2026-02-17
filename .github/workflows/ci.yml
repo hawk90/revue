@@ -107,10 +107,10 @@ jobs:
           echo "changed<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGED" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-      # PR: Quick coverage check without report (lib only for speed)
+      # PR: Quick coverage check without report (run tests for coverage)
       - name: Coverage (PR)
         if: github.event_name == 'pull_request'
-        run: cargo llvm-cov --lib --no-report --ignore-run-fail
+        run: cargo llvm-cov --no-report --ignore-run-fail
       # Main: Full coverage with lcov for badge
       - name: Coverage (Main)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
