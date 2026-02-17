@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.46.9](https://github.com/hawk90/revue/compare/v2.46.8...v2.46.9) (2026-02-17)
+
+
+### Bug Fixes
+
+* **image:** add limits to prevent DoS ([7bf9bb1](https://github.com/hawk90/revue/commit/7bf9bb139c89433c1b548d8b192c741ba00f4a36))
+
 ## [2.46.8](https://github.com/hawk90/revue/compare/v2.46.7...v2.46.8) (2026-02-17)
 
 
