@@ -119,7 +119,7 @@ thiserror = "2.0"
 # Internal Macros
 # ═══════════════════════════════════════════
 # Internal Macros
-revue-macros = { path = "revue-macros", version = "2.46.1" }
+revue-macros = { path = "revue-macros", version = "2.46.2" }
 anyhow = "1.0.100"
 
 [dev-dependencies]
