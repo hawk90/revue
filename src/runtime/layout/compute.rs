@@ -13,6 +13,10 @@ use super::tree::LayoutTree;
 use super::{block, flex, grid, position};
 use crate::style::Display;
 
+/// Maximum layout depth to prevent stack overflow
+/// Prevents stack overflow from malicious or malformed deeply nested layouts
+const MAX_LAYOUT_DEPTH: usize = 100;
+
 /// Compute layout for the entire tree starting from root
 ///
 /// # Arguments
@@ -32,8 +36,8 @@ pub fn compute_layout(tree: &mut LayoutTree, root_id: u64, width: u16, height: u
         root.dirty = true; // Root is always dirty on full layout
     }
 
-    // Recursively compute layout
-    compute_node(tree, root_id, width, height, (width, height));
+    // Recursively compute layout with depth tracking
+    compute_node(tree, root_id, width, height, (width, height), 0);
 }
 
 /// Compute layout for a single node and its descendants
@@ -43,7 +47,17 @@ fn compute_node(
     available_width: u16,
     available_height: u16,
     viewport: (u16, u16),
+    depth: usize,
 ) {
+    // Prevent stack overflow from deeply nested layouts
+    if depth > MAX_LAYOUT_DEPTH {
+        // Mark node as clean to prevent infinite retry
+        if let Some(node_mut) = tree.get_mut(node_id) {
+            node_mut.computed = ComputedLayout::default();
+            node_mut.dirty = false;
+        }
+        return;
+    }
     let node = match tree.get(node_id) {
         Some(n) => n,
         None => return,
@@ -71,7 +85,14 @@ fn compute_node(
         // Collect children IDs first to release the borrow on node
         let children: Vec<u64> = node.children.to_vec();
         for child_id in children {
-            compute_node(tree, child_id, available_width, available_height, viewport);
+            compute_node(
+                tree,
+                child_id,
+                available_width,
+                available_height,
+                viewport,
+                depth + 1,
+            );
         }
         return;
     }
@@ -111,6 +132,7 @@ fn compute_node(
             child_layout.width,
             child_layout.height,
             viewport,
+            depth + 1,
         );
 
         // Apply position offsets after children are laid out

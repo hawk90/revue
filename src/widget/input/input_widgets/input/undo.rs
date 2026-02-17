@@ -16,6 +16,14 @@ impl Input {
         self.redo_stack.clear();
     }
 
+    /// Push an operation to the undo stack without clearing redo (internal use)
+    fn push_undo_internal(&mut self, op: EditOperation) {
+        self.undo_stack.push(op);
+        if self.undo_stack.len() >= super::types::MAX_UNDO_HISTORY {
+            self.undo_stack.remove(0);
+        }
+    }
+
     /// Undo the last operation
     pub fn undo(&mut self) -> bool {
         if let Some(op) = self.undo_stack.pop() {
@@ -65,14 +73,14 @@ impl Input {
                     // Redo insert
                     self.insert_at_char(pos, text);
                     self.cursor = pos + text.chars().count();
-                    self.undo_stack.push(op);
+                    self.push_undo_internal(op);
                 }
                 EditOperation::Delete { pos, ref text } => {
                     // Redo delete
                     let end = pos + text.chars().count();
                     self.remove_char_range(pos, end);
                     self.cursor = pos;
-                    self.undo_stack.push(op);
+                    self.push_undo_internal(op);
                 }
                 EditOperation::Replace {
                     ref old_value,
@@ -83,7 +91,7 @@ impl Input {
                     // Redo replace
                     self.value = new_value.clone();
                     self.cursor = new_cursor;
-                    self.undo_stack.push(EditOperation::Replace {
+                    self.push_undo_internal(EditOperation::Replace {
                         old_value: old_value.clone(),
                         old_cursor,
                         new_value: new_value.clone(),

@@ -98,7 +98,15 @@ impl TextArea {
                     self.set_primary_cursor(*line, *col);
                 }
             }
-            self.undo_stack.push(op);
+            self.push_undo_internal(op);
+        }
+    }
+
+    /// Push an operation to the undo stack without clearing redo (internal use)
+    fn push_undo_internal(&mut self, op: EditOperation) {
+        self.undo_stack.push(op);
+        if self.undo_stack.len() > super::MAX_UNDO_HISTORY {
+            self.undo_stack.remove(0);
         }
     }
 }
