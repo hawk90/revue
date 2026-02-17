@@ -37,6 +37,7 @@
 //! |--------|-------------|-------------|
 //! | [`EmptyState`] | No-data placeholder | [`empty_state()`], [`no_results()`] |
 //! | [`Divider`] | Horizontal/vertical divider | [`divider()`], [`vdivider()`] |
+//! | [`GradientBox`] | Animated gradient background | [`gradient_box()`] |
 //! | [`RichLog`] | Rich log viewer | [`richlog()`] |
 //! | [`Digits`] | Digital clock/timer display | [`digits()`], [`clock()`], [`timer()`] |
 //!
@@ -108,6 +109,7 @@ pub mod digits;
 pub mod divider;
 pub mod empty_state;
 pub mod gauge;
+pub mod gradient_box;
 pub mod progress;
 pub mod richlog;
 pub mod richtext;
@@ -130,6 +132,7 @@ pub use empty_state::{
     empty_error, empty_state, first_use, no_results, EmptyState, EmptyStateType, EmptyStateVariant,
 };
 pub use gauge::{battery, gauge, percentage, Gauge, GaugeStyle, LabelPosition};
+pub use gradient_box::{gradient_box, GradientBox};
 pub use progress::{progress, Progress, ProgressStyle};
 pub use richlog::{log_entry, richlog, LogEntry, LogFormat, LogLevel, RichLog};
 pub use richtext::{markup, rich_text, span, style, RichText, Span, Style};
