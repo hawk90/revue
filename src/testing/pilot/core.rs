@@ -396,8 +396,10 @@ impl<'a, V: crate::widget::View> Pilot<'a, V> {
     {
         #[cfg(feature = "async")]
         {
-            let rt = tokio::runtime::Runtime::new().expect("Failed to create async runtime");
-            rt.block_on(f(self));
+            match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt.block_on(f(self)),
+                Err(e) => panic!("Failed to create async runtime: {}", e),
+            }
         }
         #[cfg(not(feature = "async"))]
         {

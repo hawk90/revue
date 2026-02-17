@@ -21,6 +21,7 @@ use super::lock::lock_or_recover;
 use crate::constants::MAX_CLIPBOARD_SIZE;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 
 /// Sanitize clipboard content by removing dangerous characters
 fn sanitize_clipboard_content(content: &str) -> String {
@@ -88,6 +89,12 @@ pub trait ClipboardBackend {
     fn clear(&self) -> ClipboardResult<()>;
 }
 
+/// Cached clipboard command detection to avoid repeated subprocess spawning
+static COPY_COMMAND_CACHE: OnceLock<Option<(&'static str, &'static [&'static str])>> =
+    OnceLock::new();
+static PASTE_COMMAND_CACHE: OnceLock<Option<(&'static str, &'static [&'static str])>> =
+    OnceLock::new();
+
 /// Platform-specific clipboard implementation
 #[derive(Clone, Debug, Default)]
 pub struct SystemClipboard;
@@ -98,69 +105,96 @@ impl SystemClipboard {
         Self
     }
 
-    /// Get the appropriate copy command for the platform
+    /// Get the appropriate copy command for the platform (cached)
     fn copy_command() -> Option<(&'static str, &'static [&'static str])> {
-        #[cfg(target_os = "macos")]
-        {
-            Some(("pbcopy", &[]))
-        }
+        *COPY_COMMAND_CACHE.get_or_init(|| {
+            #[cfg(target_os = "macos")]
+            {
+                Some(("pbcopy", &[]))
+            }
 
-        #[cfg(target_os = "linux")]
-        {
-            // Try xclip first, then xsel
-            if Command::new("xclip").arg("--version").output().is_ok() {
-                Some(("xclip", &["-selection", "clipboard"]))
-            } else if Command::new("xsel").arg("--version").output().is_ok() {
-                Some(("xsel", &["--clipboard", "--input"]))
-            } else if Command::new("wl-copy").arg("--version").output().is_ok() {
-                Some(("wl-copy", &[]))
-            } else {
+            #[cfg(target_os = "linux")]
+            {
+                // Try xclip first, then xsel, then wl-copy
+                // Use which/where to check availability without spawning the actual tool
+                let check_cmd = |cmd: &str| -> bool {
+                    Command::new("sh")
+                        .arg("-c")
+                        .arg(format!("command -v {}", cmd))
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null())
+                        .status()
+                        .map(|s| s.success())
+                        .unwrap_or(false)
+                };
+
+                if check_cmd("xclip") {
+                    Some(("xclip", &["-selection", "clipboard"]))
+                } else if check_cmd("xsel") {
+                    Some(("xsel", &["--clipboard", "--input"]))
+                } else if check_cmd("wl-copy") {
+                    Some(("wl-copy", &[]))
+                } else {
+                    None
+                }
+            }
+
+            #[cfg(target_os = "windows")]
+            {
+                Some(("clip", &[]))
+            }
+
+            #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+            {
                 None
             }
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            Some(("clip", &[]))
-        }
-
-        #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-        {
-            None
-        }
+        })
     }
 
-    /// Get the appropriate paste command for the platform
+    /// Get the appropriate paste command for the platform (cached)
     fn paste_command() -> Option<(&'static str, &'static [&'static str])> {
-        #[cfg(target_os = "macos")]
-        {
-            Some(("pbpaste", &[]))
-        }
+        *PASTE_COMMAND_CACHE.get_or_init(|| {
+            #[cfg(target_os = "macos")]
+            {
+                Some(("pbpaste", &[]))
+            }
 
-        #[cfg(target_os = "linux")]
-        {
-            // Try xclip first, then xsel
-            if Command::new("xclip").arg("--version").output().is_ok() {
-                Some(("xclip", &["-selection", "clipboard", "-o"]))
-            } else if Command::new("xsel").arg("--version").output().is_ok() {
-                Some(("xsel", &["--clipboard", "--output"]))
-            } else if Command::new("wl-paste").arg("--version").output().is_ok() {
-                Some(("wl-paste", &[]))
-            } else {
+            #[cfg(target_os = "linux")]
+            {
+                // Try xclip first, then xsel, then wl-paste
+                let check_cmd = |cmd: &str| -> bool {
+                    Command::new("sh")
+                        .arg("-c")
+                        .arg(format!("command -v {}", cmd))
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null())
+                        .status()
+                        .map(|s| s.success())
+                        .unwrap_or(false)
+                };
+
+                if check_cmd("xclip") {
+                    Some(("xclip", &["-selection", "clipboard", "-o"]))
+                } else if check_cmd("xsel") {
+                    Some(("xsel", &["--clipboard", "--output"]))
+                } else if check_cmd("wl-paste") {
+                    Some(("wl-paste", &[]))
+                } else {
+                    None
+                }
+            }
+
+            #[cfg(target_os = "windows")]
+            {
+                // Windows paste is more complex, use PowerShell
+                Some(("powershell", &["-Command", "Get-Clipboard"]))
+            }
+
+            #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+            {
                 None
             }
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            // Windows paste is more complex, use PowerShell
-            Some(("powershell", &["-Command", "Get-Clipboard"]))
-        }
-
-        #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-        {
-            None
-        }
+        })
     }
 }
 
