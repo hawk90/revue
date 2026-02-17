@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.47.0](https://github.com/hawk90/revue/compare/v2.46.10...v2.47.0) (2026-02-17)
+
+
+### Features
+
+* **widget:** add animated GradientBox widget ([#430](https://github.com/hawk90/revue/issues/430)) ([c8fd7b3](https://github.com/hawk90/revue/commit/c8fd7b3de2ee63ddca3f6c674991d47e44ce4d28))
+
 ## [2.46.10](https://github.com/hawk90/revue/compare/v2.46.9...v2.46.10) (2026-02-17)
 
 
