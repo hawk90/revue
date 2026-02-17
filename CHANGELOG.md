@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.46.7](https://github.com/hawk90/revue/compare/v2.46.6...v2.46.7) (2026-02-17)
+
+
+### Bug Fixes
+
+* add limits to JSON, CSV, diff, and CSS parsers ([03512a1](https://github.com/hawk90/revue/commit/03512a18c8c494cb29366c081398a26ff5cf42a1))
+
 ## [2.46.6](https://github.com/hawk90/revue/compare/v2.46.5...v2.46.6) (2026-02-17)
 
 
