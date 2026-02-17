@@ -18,7 +18,7 @@ categories = ["command-line-interface", "gui"]
 include = [
     "build.rs",
     "src/**/*.rs",
-    "src/style/themes/*.css",
+    "src/runtime/style/themes/*.css",
     "Cargo.toml",
     "LICENSE*",
     "README.md",
