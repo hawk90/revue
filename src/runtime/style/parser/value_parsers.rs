@@ -141,6 +141,8 @@ pub fn parse_grid_template(value: &str) -> GridTemplate {
 /// Parse repeat(count, track) function
 /// Returns (expanded tracks, bytes consumed)
 fn parse_repeat_function(value: &str) -> Option<(Vec<GridTrack>, usize)> {
+    const MAX_REPEAT_COUNT: usize = 10_000;
+
     let bytes = value.as_bytes();
     if !bytes.starts_with(b"repeat(") {
         return None;
@@ -174,7 +176,11 @@ fn parse_repeat_function(value: &str) -> Option<(Vec<GridTrack>, usize)> {
         return None;
     }
 
-    let count: usize = parts[0].trim().parse().ok()?;
+    let count: usize = parts[0]
+        .trim()
+        .parse()
+        .ok()
+        .filter(|&c| c > 0 && c <= MAX_REPEAT_COUNT)?;
     let track_def = parts[1].trim();
 
     // Parse the track definition (could be a single track or minmax)

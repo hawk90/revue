@@ -2,6 +2,9 @@
 
 use super::types::{JsonNode, JsonType};
 
+/// Maximum JSON nesting depth to prevent stack overflow
+const MAX_JSON_DEPTH: usize = 256;
+
 /// Simple JSON parser (handles basic JSON)
 pub fn parse_json(json: &str) -> Option<JsonNode> {
     let json = json.trim();
@@ -13,6 +16,11 @@ pub fn parse_json(json: &str) -> Option<JsonNode> {
 }
 
 fn parse_value(json: &str, path: &str, depth: usize) -> Option<(JsonNode, usize)> {
+    // Prevent stack overflow from deeply nested JSON
+    if depth > MAX_JSON_DEPTH {
+        return None;
+    }
+
     let json = json.trim_start();
     if json.is_empty() {
         return None;

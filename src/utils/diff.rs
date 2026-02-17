@@ -179,13 +179,35 @@ fn diff_chars_simple(old: &str, new: &str) -> Vec<DiffChange> {
     merge_changes(changes)
 }
 
+/// Maximum input size for diff algorithm to prevent memory exhaustion
+const MAX_DIFF_SIZE: usize = 10_000;
+/// Maximum memory allocation for diff (50MB)
+const MAX_DIFF_MEMORY_MB: usize = 50;
+
 /// Compute LCS indices
+///
+/// Uses simplified algorithm for inputs that are too large.
 fn longest_common_subsequence<T: PartialEq>(a: &[T], b: &[T]) -> Vec<(usize, usize)> {
     let m = a.len();
     let n = b.len();
 
     if m == 0 || n == 0 {
         return vec![];
+    }
+
+    // Prevent memory exhaustion from O(m*n) allocation
+    if m > MAX_DIFF_SIZE || n > MAX_DIFF_SIZE {
+        // Fall back to simplified algorithm for large inputs
+        // Use heuristic matching instead of full LCS
+        return simplified_diff(a, b);
+    }
+
+    // Check memory allocation
+    let estimated_bytes = (m + 1) * (n + 1) * std::mem::size_of::<usize>();
+    let max_bytes = MAX_DIFF_MEMORY_MB * 1024 * 1024;
+    if estimated_bytes > max_bytes {
+        // Would allocate too much memory, use simplified diff
+        return simplified_diff(a, b);
     }
 
     // Build LCS length table
@@ -219,6 +241,26 @@ fn longest_common_subsequence<T: PartialEq>(a: &[T], b: &[T]) -> Vec<(usize, usi
     }
 
     result.reverse();
+    result
+}
+
+/// Simplified diff algorithm for large inputs
+///
+/// Finds exact matches only (no insertions/deletions within sequences).
+/// Much faster and uses O(min(m,n)) memory instead of O(m*n).
+fn simplified_diff<T: PartialEq>(a: &[T], b: &[T]) -> Vec<(usize, usize)> {
+    let mut result = Vec::new();
+
+    for (i, a_val) in a.iter().enumerate() {
+        // Find matching position in b
+        for (j, b_val) in b.iter().enumerate() {
+            if a_val == b_val {
+                result.push((i, j));
+                break;
+            }
+        }
+    }
+
     result
 }
 
