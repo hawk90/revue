@@ -342,12 +342,18 @@ impl ImeState {
         }
 
         // Reject overly long compositions to prevent memory exhaustion
-        if text.len() > MAX_COMPOSITION_LENGTH {
+        // Check both byte length and char count for proper Unicode handling
+        // Validation must happen BEFORE any string allocation
+        let byte_len = text.len();
+        let char_count = text.chars().count();
+
+        if byte_len > MAX_COMPOSITION_LENGTH || char_count > MAX_COMPOSITION_LENGTH {
             return;
         }
 
+        // Only allocate after validation passes
         self.composing_text = text.to_string();
-        self.cursor = cursor.min(text.chars().count());
+        self.cursor = cursor.min(char_count);
 
         self.emit(CompositionEvent::Update {
             text: self.composing_text.clone(),
@@ -640,6 +646,146 @@ impl PreeditString {
 impl Default for PreeditString {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// =============================================================================
+// Security: IME Validation Tests
+// =============================================================================
+
+#[cfg(test)]
+mod validation_tests {
+    use super::*;
+
+    #[test]
+    fn test_update_composition_rejects_excessive_byte_length() {
+        let mut ime = ImeState::new();
+        ime.start_composition();
+
+        // Create a string that exceeds MAX_COMPOSITION_LENGTH in bytes
+        // but not necessarily in chars (e.g., multi-byte UTF-8)
+        let long_text = "あ".repeat(MAX_COMPOSITION_LENGTH + 1); // Each 'あ' is 3 bytes
+
+        ime.update_composition(&long_text, 0);
+
+        // Should not update - text should remain empty
+        assert_eq!(ime.composing_text(), "");
+        assert!(!ime.is_composing() || ime.composing_text().is_empty());
+    }
+
+    #[test]
+    fn test_update_composition_rejects_excessive_char_count() {
+        let mut ime = ImeState::new();
+        ime.start_composition();
+
+        // Create a string with exactly MAX_COMPOSITION_LENGTH + 1 ASCII chars
+        // (ASCII is 1 byte per char, so both byte and char counts exceed limit)
+        let long_text = "a".repeat(MAX_COMPOSITION_LENGTH + 1);
+
+        ime.update_composition(&long_text, 0);
+
+        // Should not update - text should remain empty
+        assert_eq!(ime.composing_text(), "");
+    }
+
+    #[test]
+    fn test_update_composition_accepts_at_max_length() {
+        let mut ime = ImeState::new();
+        ime.start_composition();
+
+        // Create a string exactly at the limit
+        let text = "a".repeat(MAX_COMPOSITION_LENGTH);
+
+        ime.update_composition(&text, MAX_COMPOSITION_LENGTH);
+
+        // Should update successfully
+        assert_eq!(ime.composing_text().len(), MAX_COMPOSITION_LENGTH);
+        assert_eq!(ime.cursor(), MAX_COMPOSITION_LENGTH);
+    }
+
+    #[test]
+    fn test_update_composition_validates_before_allocation() {
+        let mut ime = ImeState::new();
+        ime.start_composition();
+
+        // This test verifies that validation happens BEFORE allocation
+        // by checking that attempting to set an excessively long string
+        // doesn't result in that string being stored
+
+        let original_text = "test";
+        ime.composing_text = original_text.to_string();
+
+        // Try to update with excessively long text
+        let long_text = "x".repeat(MAX_COMPOSITION_LENGTH * 2);
+        ime.update_composition(&long_text, 0);
+
+        // Text should remain unchanged (no allocation happened for the long text)
+        assert_eq!(ime.composing_text(), original_text);
+    }
+
+    #[test]
+    fn test_update_composition_unicode_char_count() {
+        let mut ime = ImeState::new();
+        ime.start_composition();
+
+        // Test with emoji and other multi-byte Unicode characters
+        // Each emoji can be multiple chars (grapheme clusters)
+        let emoji_text = "😀".repeat(MAX_COMPOSITION_LENGTH + 1);
+
+        ime.update_composition(&emoji_text, 0);
+
+        // Should reject even though byte length might vary
+        assert_eq!(ime.composing_text(), "");
+    }
+
+    #[test]
+    fn test_update_composition_mixed_width_unicode() {
+        let mut ime = ImeState::new();
+        ime.start_composition();
+
+        // Mix of ASCII (1 byte/char) and CJK (3 bytes/char)
+        let mixed_text = "aあ".repeat(MAX_COMPOSITION_LENGTH / 2 + 1);
+
+        ime.update_composition(&mixed_text, 0);
+
+        // Should reject - exceeds limit in both bytes and chars
+        assert_eq!(ime.composing_text(), "");
+    }
+
+    #[test]
+    fn test_update_composition_empty_text_always_accepted() {
+        let mut ime = ImeState::new();
+        ime.start_composition();
+
+        // Empty text should always be accepted
+        ime.update_composition("", 0);
+
+        assert_eq!(ime.composing_text(), "");
+        assert_eq!(ime.cursor(), 0);
+    }
+
+    #[test]
+    fn test_update_composition_short_text_accepted() {
+        let mut ime = ImeState::new();
+        ime.start_composition();
+
+        // Normal short text should be accepted
+        ime.update_composition("こんにちは", 5);
+
+        assert_eq!(ime.composing_text(), "こんにちは");
+        assert_eq!(ime.cursor(), 5);
+    }
+
+    #[test]
+    fn test_update_composition_cursor_clamped_to_char_count() {
+        let mut ime = ImeState::new();
+        ime.start_composition();
+
+        // Cursor position beyond char count should be clamped
+        ime.update_composition("Hello", 100);
+
+        assert_eq!(ime.composing_text(), "Hello");
+        assert_eq!(ime.cursor(), 5); // Clamped to actual char count
     }
 }
 
