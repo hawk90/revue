@@ -116,11 +116,12 @@ impl SystemClipboard {
             #[cfg(target_os = "linux")]
             {
                 // Try xclip first, then xsel, then wl-copy
-                // Use which/where to check availability without spawning the actual tool
+                // Use direct command execution instead of shell to avoid injection risk
                 let check_cmd = |cmd: &str| -> bool {
-                    Command::new("sh")
-                        .arg("-c")
-                        .arg(format!("command -v {}", cmd))
+                    // Most clipboard tools support --version or --help for availability check
+                    // Try to execute the command directly without shell
+                    Command::new(cmd)
+                        .arg("--version")
                         .stdout(Stdio::null())
                         .stderr(Stdio::null())
                         .status()
@@ -162,10 +163,12 @@ impl SystemClipboard {
             #[cfg(target_os = "linux")]
             {
                 // Try xclip first, then xsel, then wl-paste
+                // Use direct command execution instead of shell to avoid injection risk
                 let check_cmd = |cmd: &str| -> bool {
-                    Command::new("sh")
-                        .arg("-c")
-                        .arg(format!("command -v {}", cmd))
+                    // Most clipboard tools support --version or --help for availability check
+                    // Try to execute the command directly without shell
+                    Command::new(cmd)
+                        .arg("--version")
                         .stdout(Stdio::null())
                         .stderr(Stdio::null())
                         .status()
@@ -247,6 +250,14 @@ impl ClipboardBackend for SystemClipboard {
             .output()?;
 
         if output.status.success() {
+            // Validate size to prevent DoS through large clipboard content
+            if output.stdout.len() > MAX_CLIPBOARD_SIZE {
+                return Err(ClipboardError::InvalidInput(format!(
+                    "Clipboard content too large: {} bytes (max: {})",
+                    output.stdout.len(),
+                    MAX_CLIPBOARD_SIZE
+                )));
+            }
             String::from_utf8(output.stdout).map_err(|_| ClipboardError::InvalidUtf8)
         } else {
             Err(ClipboardError::CommandFailed(format!(
