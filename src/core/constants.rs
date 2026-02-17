@@ -52,6 +52,19 @@ pub const MAX_SNAPSHOT_FILE_SIZE: u64 = 10 * MB;
 /// Used to prevent DoS attacks when reading from the system clipboard.
 pub const MAX_CLIPBOARD_SIZE: usize = 10 * MB as usize;
 
+/// Maximum paste event size (100KB)
+///
+/// Used to prevent DoS attacks through terminal paste events.
+/// Terminal paste can be triggered by bracketed paste mode, which
+/// could potentially allow injection of very large content.
+pub const MAX_PASTE_SIZE: usize = 100 * KB as usize;
+
+/// Maximum task queue size for pooled task runner
+///
+/// Maximum number of pending tasks in the thread pool queue.
+/// Prevents unbounded memory growth when spawning many tasks.
+pub const MAX_TASK_QUEUE_SIZE: usize = 1000;
+
 /// Maximum comment length in CSS (100KB)
 ///
 /// Used to prevent unreasonably long comments in CSS parsing.

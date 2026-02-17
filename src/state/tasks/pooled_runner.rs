@@ -3,6 +3,7 @@
 //! Prevents thread explosion by using a fixed number of worker threads
 //! to process a queue of tasks.
 
+use crate::constants::MAX_TASK_QUEUE_SIZE;
 use crate::utils::lock::lock_or_recover;
 use std::collections::{HashMap, VecDeque};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -112,7 +113,7 @@ impl Worker {
 /// ```
 pub struct PooledTaskRunner<T: Send + 'static> {
     /// Channel for submitting work to the pool
-    work_tx: Sender<WorkItem<T>>,
+    work_tx: mpsc::SyncSender<WorkItem<T>>,
     /// Shared receiver for workers to get work (kept alive for workers)
     _work_rx: Arc<Mutex<Receiver<WorkItem<T>>>>,
     /// Channel for receiving results
@@ -140,7 +141,8 @@ impl<T: Send + 'static> PooledTaskRunner<T> {
     pub fn new(num_workers: usize) -> Self {
         assert!(num_workers > 0, "Must have at least 1 worker");
 
-        let (work_tx, work_rx) = mpsc::channel();
+        // Use bounded channel to prevent unbounded queue growth
+        let (work_tx, work_rx) = mpsc::sync_channel(MAX_TASK_QUEUE_SIZE);
         let (result_tx, result_rx) = mpsc::channel();
         let work_rx = Arc::new(Mutex::new(work_rx));
 
@@ -165,6 +167,8 @@ impl<T: Send + 'static> PooledTaskRunner<T> {
     /// The task will be queued and executed by an available worker thread.
     /// If a task with the same ID is already pending, this is a no-op.
     ///
+    /// If the task queue is full, the task will be rejected (not spawned).
+    ///
     /// # Arguments
     ///
     /// * `id` - Unique task identifier
@@ -187,7 +191,8 @@ impl<T: Send + 'static> PooledTaskRunner<T> {
         };
 
         // Submit to pool (non-blocking)
-        let _ = self.work_tx.send(work_item);
+        // If queue is full, silently reject the task to prevent blocking
+        let _ = self.work_tx.try_send(work_item);
     }
 
     /// Spawn a task that returns Result

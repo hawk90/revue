@@ -8,7 +8,7 @@ use crossterm::event::{
 use std::time::Duration;
 
 use super::{Event, Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
-use crate::constants::{POLL_IMMEDIATE, TICK_RATE_DEFAULT};
+use crate::constants::{MAX_PASTE_SIZE, POLL_IMMEDIATE, TICK_RATE_DEFAULT};
 use crate::Result;
 
 /// Event reader for terminal input
@@ -46,7 +46,13 @@ impl EventReader {
                 CrosstermEvent::Resize(width, height) => Event::Resize(width, height),
                 CrosstermEvent::FocusGained => Event::FocusGained,
                 CrosstermEvent::FocusLost => Event::FocusLost,
-                CrosstermEvent::Paste(text) => Event::Paste(text),
+                CrosstermEvent::Paste(mut text) => {
+                    // Truncate paste to prevent DoS through large paste events
+                    if text.len() > MAX_PASTE_SIZE {
+                        text.truncate(MAX_PASTE_SIZE);
+                    }
+                    Event::Paste(text)
+                }
             };
             Ok(event)
         } else {
@@ -70,7 +76,13 @@ impl EventReader {
                 CrosstermEvent::Resize(width, height) => Ok(Some(Event::Resize(width, height))),
                 CrosstermEvent::FocusGained => Ok(Some(Event::FocusGained)),
                 CrosstermEvent::FocusLost => Ok(Some(Event::FocusLost)),
-                CrosstermEvent::Paste(text) => Ok(Some(Event::Paste(text))),
+                CrosstermEvent::Paste(mut text) => {
+                    // Truncate paste to prevent DoS through large paste events
+                    if text.len() > MAX_PASTE_SIZE {
+                        text.truncate(MAX_PASTE_SIZE);
+                    }
+                    Ok(Some(Event::Paste(text)))
+                }
             }
         } else {
             Ok(None)
