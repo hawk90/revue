@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.46.5](https://github.com/hawk90/revue/compare/v2.46.4...v2.46.5) (2026-02-17)
+
+
+### Bug Fixes
+
+* add DoS protection for paste events and task queues ([f4778d0](https://github.com/hawk90/revue/commit/f4778d0d95ca2eafa6426b66e32742930bc58440))
+
 ## [2.46.4](https://github.com/hawk90/revue/compare/v2.46.3...v2.46.4) (2026-02-17)
 
 
