@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.46.2](https://github.com/hawk90/revue/compare/v2.46.1...v2.46.2) (2026-02-17)
+
+
+### Bug Fixes
+
+* include CSS themes in package ([7fc1155](https://github.com/hawk90/revue/commit/7fc1155ae124b16a30f1de69c85bd04868ed1150))
+
 ## [2.46.1](https://github.com/hawk90/revue/compare/v2.46.0...v2.46.1) (2026-02-17)
 
 
