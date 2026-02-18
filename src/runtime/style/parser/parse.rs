@@ -24,6 +24,10 @@ const MAX_CSS_SIZE: usize = MAX_CSS_FILE_SIZE as usize;
 const MAX_RULES: usize = 10_000;
 /// Maximum number of total declarations across all rules
 const MAX_DECLARATIONS: usize = 10_000; // Lowered for testing
+/// Maximum number of @keyframes definitions
+const MAX_KEYFRAMES: usize = 100;
+/// Maximum number of keyframe blocks per @keyframes
+const MAX_KEYFRAME_BLOCKS: usize = 50;
 
 pub fn parse(css: &str) -> Result<StyleSheet, ParseError> {
     // Check CSS size limit before parsing
@@ -68,6 +72,24 @@ pub fn parse(css: &str) -> Result<StyleSheet, ParseError> {
         // Check for CSS variable definition (in :root)
         if bytes[pos..].starts_with(b":root") {
             pos = parse_root_variables_str(css, pos, &mut sheet)?;
+            continue;
+        }
+
+        // Check for @keyframes definition
+        if bytes[pos..].starts_with(b"@keyframes") {
+            if sheet.keyframes.len() >= MAX_KEYFRAMES {
+                return Err(make_error(
+                    css,
+                    pos,
+                    &format!(
+                        "Too many @keyframes definitions: {} (max: {})",
+                        sheet.keyframes.len(),
+                        MAX_KEYFRAMES
+                    ),
+                    ErrorCode::InvalidValue,
+                ));
+            }
+            pos = parse_keyframes_block(css, pos, &mut sheet)?;
             continue;
         }
 
@@ -331,6 +353,167 @@ fn parse_declarations_str(
     Ok((declarations, pos))
 }
 
+/// Parse a @keyframes block
+fn parse_keyframes_block(
+    css: &str,
+    mut pos: usize,
+    sheet: &mut StyleSheet,
+) -> Result<usize, ParseError> {
+    let bytes = css.as_bytes();
+
+    // Skip "@keyframes"
+    pos += 10;
+    pos = skip_whitespace_bytes(bytes, pos);
+
+    // Parse animation name
+    let name_start = pos;
+    while pos < bytes.len() && !bytes[pos].is_ascii_whitespace() && bytes[pos] != b'{' {
+        pos += 1;
+    }
+
+    let name = css[name_start..pos].trim().to_string();
+    if name.is_empty() {
+        return Err(make_error(
+            css,
+            name_start,
+            "expected name after @keyframes",
+            ErrorCode::InvalidSyntax,
+        ));
+    }
+
+    pos = skip_whitespace_bytes(bytes, pos);
+
+    // Expect outer '{'
+    if pos >= bytes.len() || bytes[pos] != b'{' {
+        return Err(make_error(
+            css,
+            pos,
+            "expected '{' after @keyframes name",
+            ErrorCode::MissingBrace,
+        ));
+    }
+    pos += 1;
+
+    let mut keyframe_blocks = Vec::new();
+
+    // Parse keyframe blocks
+    loop {
+        pos = skip_whitespace_and_comments_bytes(bytes, pos);
+
+        if pos >= bytes.len() {
+            return Err(missing_brace_error(css, pos, '}'));
+        }
+
+        if bytes[pos] == b'}' {
+            pos += 1;
+            break;
+        }
+
+        if keyframe_blocks.len() >= MAX_KEYFRAME_BLOCKS {
+            return Err(make_error(
+                css,
+                pos,
+                &format!(
+                    "Too many keyframe blocks in @keyframes '{}': {} (max: {})",
+                    name,
+                    keyframe_blocks.len(),
+                    MAX_KEYFRAME_BLOCKS
+                ),
+                ErrorCode::InvalidValue,
+            ));
+        }
+
+        // Parse keyframe selector (from, to, N%)
+        let (percent, new_pos) = parse_keyframe_selector(css, pos)?;
+        pos = new_pos;
+
+        pos = skip_whitespace_bytes(bytes, pos);
+
+        // Expect '{'
+        if pos >= bytes.len() || bytes[pos] != b'{' {
+            return Err(make_error(
+                css,
+                pos,
+                "expected '{' after keyframe selector",
+                ErrorCode::MissingBrace,
+            ));
+        }
+        pos += 1;
+
+        // Parse declarations
+        let (declarations, new_pos) = parse_declarations_str(css, pos)?;
+        pos = new_pos;
+
+        // Expect '}'
+        if pos >= bytes.len() || bytes[pos] != b'}' {
+            return Err(missing_brace_error(css, pos, '}'));
+        }
+        pos += 1;
+
+        keyframe_blocks.push(crate::style::KeyframeBlock {
+            percent,
+            declarations,
+        });
+    }
+
+    sheet.keyframes.insert(
+        name.clone(),
+        crate::style::KeyframesDefinition {
+            name,
+            keyframes: keyframe_blocks,
+        },
+    );
+
+    Ok(pos)
+}
+
+/// Parse a keyframe selector: `from` → 0, `to` → 100, `50%` → 50
+fn parse_keyframe_selector(css: &str, mut pos: usize) -> Result<(u8, usize), ParseError> {
+    let bytes = css.as_bytes();
+    let start = pos;
+
+    while pos < bytes.len()
+        && !bytes[pos].is_ascii_whitespace()
+        && bytes[pos] != b'{'
+        && bytes[pos] != b','
+    {
+        pos += 1;
+    }
+
+    let selector = css[start..pos].trim();
+    let percent = match selector {
+        "from" => 0,
+        "to" => 100,
+        s if s.ends_with('%') => {
+            let num_str = &s[..s.len() - 1];
+            num_str
+                .parse::<u8>()
+                .map_err(|_| {
+                    make_error(
+                        css,
+                        start,
+                        &format!("invalid keyframe percentage: '{}'", s),
+                        ErrorCode::InvalidValue,
+                    )
+                })?
+                .min(100)
+        }
+        _ => {
+            return Err(make_error(
+                css,
+                start,
+                &format!(
+                    "invalid keyframe selector '{}': expected 'from', 'to', or 'N%'",
+                    selector
+                ),
+                ErrorCode::InvalidSyntax,
+            ));
+        }
+    };
+
+    Ok((percent, pos))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -465,5 +648,77 @@ mod tests {
         // Empty comment should work
         let css = "/**/ .box { width: 100; }";
         assert!(parse(&css).is_ok());
+    }
+
+    // @keyframes parsing tests
+    #[test]
+    fn test_keyframes_from_to() {
+        let css = r#"
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+        "#;
+        let sheet = parse(css).unwrap();
+        assert!(sheet.keyframes.contains_key("fadeIn"));
+        let def = &sheet.keyframes["fadeIn"];
+        assert_eq!(def.keyframes.len(), 2);
+        assert_eq!(def.keyframes[0].percent, 0);
+        assert_eq!(def.keyframes[1].percent, 100);
+    }
+
+    #[test]
+    fn test_keyframes_percentages() {
+        let css = r#"
+            @keyframes slide {
+                0% { x: 0; }
+                50% { x: 50; }
+                100% { x: 100; }
+            }
+        "#;
+        let sheet = parse(css).unwrap();
+        let def = &sheet.keyframes["slide"];
+        assert_eq!(def.keyframes.len(), 3);
+        assert_eq!(def.keyframes[0].percent, 0);
+        assert_eq!(def.keyframes[1].percent, 50);
+        assert_eq!(def.keyframes[2].percent, 100);
+    }
+
+    #[test]
+    fn test_keyframes_empty_body() {
+        let css = "@keyframes empty {}";
+        let sheet = parse(css).unwrap();
+        assert_eq!(sheet.keyframes["empty"].keyframes.len(), 0);
+    }
+
+    #[test]
+    fn test_keyframes_missing_name_error() {
+        let css = "@keyframes { from { opacity: 0; } }";
+        assert!(parse(css).is_err());
+    }
+
+    #[test]
+    fn test_keyframes_with_regular_rules() {
+        let css = r#"
+            .btn { color: red; }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            .text { color: blue; }
+        "#;
+        let sheet = parse(css).unwrap();
+        assert_eq!(sheet.rules.len(), 2);
+        assert!(sheet.keyframes.contains_key("fadeIn"));
+    }
+
+    #[test]
+    fn test_keyframes_invalid_selector() {
+        let css = r#"
+            @keyframes test {
+                invalid { opacity: 0; }
+            }
+        "#;
+        assert!(parse(css).is_err());
     }
 }

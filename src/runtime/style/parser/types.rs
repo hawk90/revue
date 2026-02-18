@@ -2,6 +2,24 @@
 
 use std::collections::HashMap;
 
+/// A parsed @keyframes definition
+#[derive(Debug, Clone)]
+pub struct KeyframesDefinition {
+    /// Name of the keyframes animation
+    pub name: String,
+    /// Keyframe blocks (percent + declarations)
+    pub keyframes: Vec<KeyframeBlock>,
+}
+
+/// A single keyframe block within @keyframes
+#[derive(Debug, Clone)]
+pub struct KeyframeBlock {
+    /// Percentage (0-100)
+    pub percent: u8,
+    /// CSS declarations at this keyframe
+    pub declarations: Vec<Declaration>,
+}
+
 /// A parsed stylesheet
 #[derive(Debug, Default, Clone)]
 pub struct StyleSheet {
@@ -9,6 +27,8 @@ pub struct StyleSheet {
     pub rules: Vec<Rule>,
     /// CSS variables
     pub variables: HashMap<String, String>,
+    /// @keyframes definitions
+    pub keyframes: HashMap<String, KeyframesDefinition>,
 }
 
 /// A CSS rule (selector + declarations)
@@ -39,6 +59,7 @@ impl StyleSheet {
     pub fn merge(&mut self, other: StyleSheet) {
         self.rules.extend(other.rules);
         self.variables.extend(other.variables);
+        self.keyframes.extend(other.keyframes);
     }
 
     /// Get a CSS variable value
@@ -65,5 +86,18 @@ impl StyleSheet {
         }
 
         style
+    }
+
+    /// Get a @keyframes definition by name
+    pub fn keyframes_definition(&self, name: &str) -> Option<&KeyframesDefinition> {
+        self.keyframes.get(name)
+    }
+
+    /// Resolve animation for a selector into a KeyframeAnimation
+    ///
+    /// Looks for `animation` or `animation-*` properties in the selector's rules,
+    /// then resolves the referenced @keyframes definition into a `KeyframeAnimation`.
+    pub fn animation(&self, selector: &str) -> Option<crate::style::animation::KeyframeAnimation> {
+        super::apply::resolve_animation(self, selector)
     }
 }

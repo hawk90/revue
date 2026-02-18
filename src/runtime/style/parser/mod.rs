@@ -7,7 +7,7 @@ mod value_parsers;
 
 pub use apply::apply_declaration;
 pub use parse::parse;
-pub use types::{Declaration, Rule, StyleSheet};
+pub use types::{Declaration, KeyframeBlock, KeyframesDefinition, Rule, StyleSheet};
 #[allow(unused_imports)]
 pub use value_parsers::{
     parse_color, parse_grid_placement, parse_grid_template, parse_signed_length, parse_size,

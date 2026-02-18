@@ -525,10 +525,8 @@ mod tests {
     #[test]
     fn test_try_join_not_finished() {
         let mut handle = WorkerHandle::spawn_blocking(|| {
-            // Spin to simulate work
-            for _ in 0..10000 {
-                std::hint::spin_loop();
-            }
+            // Sleep long enough that try_join() below runs before this completes
+            std::thread::sleep(Duration::from_millis(200));
             42
         });
 

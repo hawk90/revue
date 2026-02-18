@@ -31,6 +31,7 @@ fn create_test_stylesheet() -> StyleSheet {
             },
         ],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     }
 }
 
@@ -174,6 +175,7 @@ fn test_resolver_invalid_selector() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let resolver = StyleResolver::new(&stylesheet);
 
@@ -192,6 +194,7 @@ fn test_universal_selector() {
             }],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -213,6 +216,7 @@ fn test_compute_style_with_inline() {
             }],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -237,6 +241,7 @@ fn test_compute_style_with_parent() {
     let stylesheet = StyleSheet {
         rules: vec![],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -258,6 +263,7 @@ fn test_compute_style_with_parent_none() {
     let stylesheet = StyleSheet {
         rules: vec![],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 

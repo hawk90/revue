@@ -13,6 +13,7 @@ fn test_match_descendant_combinator() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -46,6 +47,7 @@ fn test_match_child_combinator() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -76,6 +78,7 @@ fn test_match_adjacent_sibling_combinator() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -112,6 +115,7 @@ fn test_match_no_parent() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 

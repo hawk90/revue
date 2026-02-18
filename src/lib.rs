@@ -496,6 +496,9 @@ pub mod prelude {
         GroupMode,
         // CSS @keyframes style
         KeyframeAnimation,
+        // CSS @keyframes parser types
+        KeyframeBlock,
+        KeyframesDefinition,
         // Choreography
         Stagger,
         Tween,

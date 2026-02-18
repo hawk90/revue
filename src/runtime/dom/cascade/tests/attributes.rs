@@ -13,6 +13,7 @@ fn test_attribute_class_exists() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -37,6 +38,7 @@ fn test_attribute_class_contains_word() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -59,6 +61,7 @@ fn test_attribute_id_exists() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -78,6 +81,7 @@ fn test_attribute_id_equals() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -97,6 +101,7 @@ fn test_attribute_id_starts_with() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -116,6 +121,7 @@ fn test_attribute_id_ends_with() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -135,6 +141,7 @@ fn test_attribute_id_contains() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -154,6 +161,7 @@ fn test_attribute_type_exists() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -173,6 +181,7 @@ fn test_attribute_type_equals() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -192,6 +201,7 @@ fn test_attribute_type_contains() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -211,6 +221,7 @@ fn test_attribute_disabled_exists() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -231,6 +242,7 @@ fn test_attribute_disabled_equals() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -251,6 +263,7 @@ fn test_attribute_checked_exists() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -271,6 +284,7 @@ fn test_attribute_selected_exists() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -291,6 +305,7 @@ fn test_attribute_focused_exists() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -311,6 +326,7 @@ fn test_attribute_hovered_exists() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -331,6 +347,7 @@ fn test_attribute_unknown() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
