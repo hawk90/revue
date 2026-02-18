@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.48.0](https://github.com/hawk90/revue/compare/v2.47.0...v2.48.0) (2026-02-18)
+
+
+### Features
+
+* **style:** add CSS [@keyframes](https://github.com/keyframes) and animation property parsing ([#432](https://github.com/hawk90/revue/issues/432)) ([233cbf1](https://github.com/hawk90/revue/commit/233cbf131415e4317fd86bb6a771225a8083fbc4))
+
 ## [2.47.0](https://github.com/hawk90/revue/compare/v2.46.10...v2.47.0) (2026-02-17)
 
 
