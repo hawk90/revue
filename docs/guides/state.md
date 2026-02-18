@@ -207,6 +207,10 @@ effect(move || {
 });
 ```
 
+## Stores
+
+For application-wide state management with actions and getters, see the [Store Guide](store.md). Stores build on Signals to provide a Pinia-inspired pattern for organizing related state into singleton containers with devtools integration.
+
 ## Example: Todo App State
 
 ```rust

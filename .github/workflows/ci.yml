@@ -110,11 +110,11 @@ jobs:
       # PR: Quick coverage check without report (run tests for coverage)
       - name: Coverage (PR)
         if: github.event_name == 'pull_request'
-        run: cargo llvm-cov --no-report --ignore-run-fail
+        run: cargo llvm-cov --all-features --tests --no-report --ignore-run-fail
       # Main: Full coverage with lcov for badge
       - name: Coverage (Main)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: cargo llvm-cov --all-features --lcov --output-path lcov.info --ignore-run-fail
+        run: cargo llvm-cov --all-features --tests --lcov --output-path lcov.info --ignore-run-fail
       - uses: codecov/codecov-action@v5
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
