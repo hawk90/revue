@@ -90,6 +90,7 @@
 //! - Invalid CSS logs warnings but doesn't crash the app
 
 mod builder;
+pub mod declarative_router;
 #[cfg(feature = "hot-reload")]
 mod hot_reload;
 mod inspector;
@@ -99,6 +100,10 @@ pub mod screen;
 pub mod snapshot;
 
 pub use builder::AppBuilder;
+pub use declarative_router::{
+    declarative_router, is_active, link, use_param, use_params, use_path, use_route,
+    DeclarativeRouter, Link, ReactiveRouteState, RouteContext, RouteRenderer,
+};
 #[cfg(feature = "hot-reload")]
 pub use hot_reload::{hot_reload, HotReload, HotReloadBuilder, HotReloadConfig, HotReloadEvent};
 pub use inspector::{inspector, Inspector, WidgetInfo};
