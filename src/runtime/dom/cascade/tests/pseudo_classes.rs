@@ -16,6 +16,7 @@ fn test_match_pseudo_hover() {
             }],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -42,6 +43,7 @@ fn test_match_pseudo_focus() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -67,6 +69,7 @@ fn test_match_pseudo_disabled() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -87,6 +90,7 @@ fn test_match_pseudo_first_child() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -112,6 +116,7 @@ fn test_match_pseudo_last_child() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -132,6 +137,7 @@ fn test_match_pseudo_checked() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -157,6 +163,7 @@ fn test_match_pseudo_selected() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 
@@ -177,6 +184,7 @@ fn test_match_pseudo_only_child() {
             declarations: vec![],
         }],
         variables: std::collections::HashMap::new(),
+        keyframes: std::collections::HashMap::new(),
     };
     let mut resolver = StyleResolver::new(&stylesheet);
 

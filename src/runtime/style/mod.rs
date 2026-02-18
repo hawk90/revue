@@ -161,7 +161,9 @@ pub use error::{
     suggest_property, ErrorCode, ParseErrors, RichParseError, Severity, SourceLocation, Suggestion,
     KNOWN_PROPERTIES,
 };
-pub use parser::{apply_declaration, Declaration, Rule, StyleSheet};
+pub use parser::{
+    apply_declaration, Declaration, KeyframeBlock, KeyframesDefinition, Rule, StyleSheet,
+};
 pub use properties::*;
 pub use theme::{
     shared_theme, theme_manager, Palette, SharedTheme, Theme, ThemeBuilder, ThemeChangeListener,

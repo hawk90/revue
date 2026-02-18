@@ -476,7 +476,7 @@ pub fn effective_duration(duration: Duration) -> Duration {
 }
 
 /// Parse duration from CSS string like "0.3s" or "300ms"
-fn parse_duration(s: &str) -> Option<Duration> {
+pub(crate) fn parse_duration(s: &str) -> Option<Duration> {
     let s = s.trim();
 
     if let Some(ms) = s.strip_suffix("ms") {
