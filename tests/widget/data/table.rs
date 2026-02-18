@@ -579,3 +579,139 @@ fn test_table_header_style_no_bg() {
     assert_eq!(t.header_fg, Some(Color::CYAN));
     assert_eq!(t.header_bg, None);
 }
+
+// =========================================================================
+// Virtual scroll tests
+// =========================================================================
+
+#[test]
+fn test_table_virtual_scroll_default_off() {
+    let t = revue::widget::data::Table::new(vec![Column::new("X")]);
+    assert!(!t.virtual_scroll);
+}
+
+#[test]
+fn test_table_virtual_scroll_builder() {
+    let t = revue::widget::data::Table::new(vec![Column::new("X")]).virtual_scroll(true);
+    assert!(t.virtual_scroll);
+}
+
+#[test]
+fn test_table_overscan_builder() {
+    let t = revue::widget::data::Table::new(vec![Column::new("X")]).overscan(10);
+    assert_eq!(t.overscan, 10);
+}
+
+#[test]
+fn test_table_show_scrollbar_builder() {
+    let t = revue::widget::data::Table::new(vec![Column::new("X")]).show_scrollbar(false);
+    assert!(!t.show_scrollbar);
+}
+
+#[test]
+fn test_table_page_down() {
+    let mut t = revue::widget::data::Table::new(vec![Column::new("X")])
+        .rows((0..20).map(|i| vec![format!("{}", i)]).collect());
+
+    assert_eq!(t.selected_index(), 0);
+    t.page_down(5);
+    assert_eq!(t.selected_index(), 5);
+    t.page_down(5);
+    assert_eq!(t.selected_index(), 10);
+}
+
+#[test]
+fn test_table_page_up() {
+    let mut t = revue::widget::data::Table::new(vec![Column::new("X")])
+        .rows((0..20).map(|i| vec![format!("{}", i)]).collect())
+        .selected(15);
+
+    t.page_up(5);
+    assert_eq!(t.selected_index(), 10);
+    t.page_up(5);
+    assert_eq!(t.selected_index(), 5);
+}
+
+#[test]
+fn test_table_page_down_clamps() {
+    let mut t = revue::widget::data::Table::new(vec![Column::new("X")])
+        .rows((0..10).map(|i| vec![format!("{}", i)]).collect())
+        .selected(8);
+
+    t.page_down(5);
+    assert_eq!(t.selected_index(), 9); // Clamped to last
+}
+
+#[test]
+fn test_table_page_up_clamps() {
+    let mut t = revue::widget::data::Table::new(vec![Column::new("X")])
+        .rows((0..10).map(|i| vec![format!("{}", i)]).collect())
+        .selected(2);
+
+    t.page_up(5);
+    assert_eq!(t.selected_index(), 0); // Clamped to first
+}
+
+#[test]
+fn test_table_jump_to() {
+    let mut t = revue::widget::data::Table::new(vec![Column::new("X")])
+        .rows((0..20).map(|i| vec![format!("{}", i)]).collect());
+
+    t.jump_to(10);
+    assert_eq!(t.selected_index(), 10);
+
+    t.jump_to(0);
+    assert_eq!(t.selected_index(), 0);
+
+    t.jump_to(100); // Out of range
+    assert_eq!(t.selected_index(), 19); // Clamped
+}
+
+#[test]
+fn test_table_10k_rows_smoke() {
+    let rows: Vec<Vec<String>> = (0..10_000).map(|i| vec![format!("Row {}", i)]).collect();
+
+    let t = revue::widget::data::Table::new(vec![Column::new("X")])
+        .rows(rows)
+        .virtual_scroll(true);
+
+    assert_eq!(t.row_count(), 10_000);
+    // Virtual scroll should be active
+    assert!(t.virtual_scroll);
+}
+
+#[test]
+fn test_table_auto_threshold() {
+    // Below threshold: not virtual
+    let t_small = revue::widget::data::Table::new(vec![Column::new("X")])
+        .rows((0..50).map(|i| vec![format!("{}", i)]).collect());
+    assert!(!t_small.virtual_scroll);
+
+    // Above threshold: auto-activates (internal, but page_down still works)
+    let mut t_large = revue::widget::data::Table::new(vec![Column::new("X")])
+        .rows((0..200).map(|i| vec![format!("{}", i)]).collect());
+    t_large.page_down(10);
+    assert_eq!(t_large.selected_index(), 10);
+}
+
+#[test]
+fn test_table_scrollbar_default_on() {
+    let t = revue::widget::data::Table::new(vec![Column::new("X")]);
+    assert!(t.show_scrollbar);
+}
+
+#[test]
+fn test_table_virtual_scroll_full_builder_chain() {
+    let t = revue::widget::data::Table::new(vec![Column::new("Data")])
+        .rows((0..500).map(|i| vec![format!("Item {}", i)]).collect())
+        .virtual_scroll(true)
+        .overscan(3)
+        .show_scrollbar(true)
+        .selected(50);
+
+    assert_eq!(t.row_count(), 500);
+    assert!(t.virtual_scroll);
+    assert_eq!(t.overscan, 3);
+    assert!(t.show_scrollbar);
+    assert_eq!(t.selected_index(), 50);
+}

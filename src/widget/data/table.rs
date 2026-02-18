@@ -1,5 +1,7 @@
 //! Table widget for displaying tabular data
 
+use std::cell::Cell as StdCell;
+
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::Selection;
@@ -57,6 +59,16 @@ pub struct Table {
     selected_bg: Option<Color>,
     border: bool,
     props: WidgetProps,
+    /// Explicitly enable virtual scroll
+    virtual_scroll: bool,
+    /// Auto-enable virtual scroll when row count exceeds this threshold
+    virtual_threshold: usize,
+    /// Extra rows to render above/below the visible viewport
+    overscan: usize,
+    /// Current scroll row offset (Cell: updated during render)
+    scroll_row: StdCell<usize>,
+    /// Show scrollbar when virtual scrolling is active
+    show_scrollbar: bool,
 }
 
 impl Table {
@@ -72,6 +84,11 @@ impl Table {
             selected_bg: Some(Color::BLUE),
             border: true,
             props: WidgetProps::new(),
+            virtual_scroll: false,
+            virtual_threshold: 100,
+            overscan: 5,
+            scroll_row: StdCell::new(0),
+            show_scrollbar: true,
         }
     }
 
@@ -116,6 +133,24 @@ impl Table {
         self
     }
 
+    /// Enable virtual scrolling for large datasets
+    pub fn virtual_scroll(mut self, enabled: bool) -> Self {
+        self.virtual_scroll = enabled;
+        self
+    }
+
+    /// Set overscan rows (extra rows rendered above/below viewport)
+    pub fn overscan(mut self, rows: usize) -> Self {
+        self.overscan = rows;
+        self
+    }
+
+    /// Show/hide scrollbar when virtual scrolling
+    pub fn show_scrollbar(mut self, show: bool) -> Self {
+        self.show_scrollbar = show;
+        self
+    }
+
     /// Get selected index
     pub fn selected_index(&self) -> usize {
         self.selection.index
@@ -146,12 +181,64 @@ impl Table {
         self.selection.last();
     }
 
+    /// Page down (move by viewport rows)
+    pub fn page_down(&mut self, viewport_rows: usize) {
+        let target = (self.selection.index + viewport_rows).min(self.rows.len().saturating_sub(1));
+        self.selection.set(target);
+    }
+
+    /// Page up (move by viewport rows)
+    pub fn page_up(&mut self, viewport_rows: usize) {
+        let target = self.selection.index.saturating_sub(viewport_rows);
+        self.selection.set(target);
+    }
+
+    /// Jump to a specific row index
+    pub fn jump_to(&mut self, index: usize) {
+        let clamped = index.min(self.rows.len().saturating_sub(1));
+        self.selection.set(clamped);
+    }
+
+    /// Check if virtual scrolling is currently active
+    fn is_virtual_active(&self) -> bool {
+        self.virtual_scroll || self.rows.len() >= self.virtual_threshold
+    }
+
+    /// Calculate the visible row range for virtual scrolling
+    fn visible_row_range(&self, viewport_rows: usize) -> (usize, usize) {
+        let scroll = self.scroll_row.get();
+        let start = scroll.saturating_sub(self.overscan);
+        let end = (scroll + viewport_rows + self.overscan).min(self.rows.len());
+        (start, end)
+    }
+
+    /// Ensure the selected row is visible, adjusting scroll offset
+    fn ensure_selected_visible(&self, viewport_rows: usize) {
+        let selected = self.selection.index;
+        let mut scroll = self.scroll_row.get();
+
+        if selected < scroll {
+            scroll = selected;
+        } else if selected >= scroll + viewport_rows {
+            scroll = selected.saturating_sub(viewport_rows.saturating_sub(1));
+        }
+
+        self.scroll_row.set(scroll);
+    }
+
     /// Calculate column widths
     fn calculate_widths(&self, available_width: u16) -> Vec<u16> {
         let col_count = self.columns.len();
         if col_count == 0 {
             return Vec::new();
         }
+
+        // Reserve space for scrollbar if virtual scrolling is active
+        let scrollbar_width = if self.is_virtual_active() && self.show_scrollbar {
+            1u16
+        } else {
+            0
+        };
 
         // Calculate fixed and auto columns
         let mut widths: Vec<u16> = self.columns.iter().map(|c| c.width).collect();
@@ -162,7 +249,8 @@ impl Table {
         let border_space = if self.border { col_count as u16 + 1 } else { 0 };
         let remaining = available_width
             .saturating_sub(fixed_total)
-            .saturating_sub(border_space);
+            .saturating_sub(border_space)
+            .saturating_sub(scrollbar_width);
 
         if auto_count > 0 {
             let auto_width = remaining / auto_count;
@@ -241,25 +329,83 @@ impl View for Table {
         }
 
         // Data rows
-        for (i, row) in self.rows.iter().enumerate() {
-            if y >= area.y + area.height - if self.border { 1 } else { 0 } {
-                break;
+        let max_data_y = area.y + area.height - if self.border { 1 } else { 0 };
+        let viewport_rows = max_data_y.saturating_sub(y) as usize;
+
+        if self.is_virtual_active() && !self.rows.is_empty() {
+            // Virtual scroll mode
+            self.ensure_selected_visible(viewport_rows);
+            let (render_start, render_end) = self.visible_row_range(viewport_rows);
+
+            for i in render_start..render_end {
+                let viewport_y = y + (i - render_start) as u16;
+                if viewport_y >= max_data_y {
+                    break;
+                }
+
+                let is_selected = self.selection.is_selected(i);
+                let (fg, bg) = if is_selected {
+                    (self.selected_fg, self.selected_bg)
+                } else {
+                    (None, None)
+                };
+
+                let row_style = RowStyle {
+                    fg,
+                    bg,
+                    bold: false,
+                };
+                self.render_row(ctx, area.x, viewport_y, &widths, &self.rows[i], &row_style);
             }
 
-            let is_selected = self.selection.is_selected(i);
-            let (fg, bg) = if is_selected {
-                (self.selected_fg, self.selected_bg)
-            } else {
-                (None, None)
-            };
+            // Render scrollbar
+            if self.show_scrollbar && self.rows.len() > viewport_rows {
+                let scrollbar_x = area.x + area.width - 1;
+                let track_height = viewport_rows as f32;
+                let total = self.rows.len() as f32;
+                let thumb_size = ((track_height / total) * track_height).max(1.0) as u16;
+                let scroll = self.scroll_row.get();
+                let max_scroll = self.rows.len().saturating_sub(viewport_rows);
+                let scroll_ratio = if max_scroll > 0 {
+                    scroll as f32 / max_scroll as f32
+                } else {
+                    0.0
+                };
+                let thumb_pos = (scroll_ratio
+                    * (viewport_rows as u16).saturating_sub(thumb_size) as f32)
+                    as u16;
 
-            let row_style = RowStyle {
-                fg,
-                bg,
-                bold: false,
-            };
-            self.render_row(ctx, area.x, y, &widths, row, &row_style);
-            y += 1;
+                for vy in 0..viewport_rows as u16 {
+                    let abs_y = y + vy;
+                    if abs_y < max_data_y {
+                        let in_thumb = vy >= thumb_pos && vy < thumb_pos + thumb_size;
+                        let ch = if in_thumb { '█' } else { '░' };
+                        ctx.buffer.set(scrollbar_x, abs_y, Cell::new(ch));
+                    }
+                }
+            }
+        } else {
+            // Normal rendering (non-virtual)
+            for (i, row) in self.rows.iter().enumerate() {
+                if y >= max_data_y {
+                    break;
+                }
+
+                let is_selected = self.selection.is_selected(i);
+                let (fg, bg) = if is_selected {
+                    (self.selected_fg, self.selected_bg)
+                } else {
+                    (None, None)
+                };
+
+                let row_style = RowStyle {
+                    fg,
+                    bg,
+                    bold: false,
+                };
+                self.render_row(ctx, area.x, y, &widths, row, &row_style);
+                y += 1;
+            }
         }
 
         if self.border {
