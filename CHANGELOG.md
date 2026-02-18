@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.50.0](https://github.com/hawk90/revue/compare/v2.49.0...v2.50.0) (2026-02-18)
+
+
+### Features
+
+* **app:** add declarative router with reactive state and Link widget ([#436](https://github.com/hawk90/revue/issues/436)) ([7a04e3e](https://github.com/hawk90/revue/commit/7a04e3e464b680cf7658cf3aad915181737e3fdc))
+
 ## [2.49.0](https://github.com/hawk90/revue/compare/v2.48.0...v2.49.0) (2026-02-18)
 
 
