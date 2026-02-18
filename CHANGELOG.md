@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.49.0](https://github.com/hawk90/revue/compare/v2.48.0...v2.49.0) (2026-02-18)
+
+
+### Features
+
+* **widget:** add virtual scrolling to Table widget ([#434](https://github.com/hawk90/revue/issues/434)) ([f1e256a](https://github.com/hawk90/revue/commit/f1e256a35dd442c4c0cadd821c03c257df121bd4))
+
 ## [2.48.0](https://github.com/hawk90/revue/compare/v2.47.0...v2.48.0) (2026-02-18)
 
 
