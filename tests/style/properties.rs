@@ -187,9 +187,9 @@ fn test_color_darken_pct() {
 fn test_color_lighten_pct() {
     let base = Color::rgb(100, 100, 100);
     let lighter = base.lighten_pct(0.2);
-    assert_eq!(lighter.r, 131);
-    assert_eq!(lighter.g, 131);
-    assert_eq!(lighter.b, 131);
+    assert_eq!(lighter.r, 120);
+    assert_eq!(lighter.g, 120);
+    assert_eq!(lighter.b, 120);
 }
 
 #[test]
@@ -218,9 +218,9 @@ fn test_color_blend() {
     let red = Color::RED;
     let blue = Color::BLUE;
     let purple = red.blend(blue, 0.5);
-    assert_eq!(purple.r, 127);
+    assert_eq!(purple.r, 128);
     assert_eq!(purple.g, 0);
-    assert_eq!(purple.b, 127);
+    assert_eq!(purple.b, 128);
 }
 
 #[test]

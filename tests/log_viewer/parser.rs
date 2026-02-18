@@ -252,3 +252,221 @@ fn test_log_parser_line_number() {
     let entry2 = parser.parse("ERROR Error", 100);
     assert_eq!(entry2.line_number, 100);
 }
+
+// =============================================================================
+// JSON edge cases
+// =============================================================================
+
+#[test]
+fn test_log_parser_json_non_object_input() {
+    let parser = log_parser();
+
+    // Array input should not parse as JSON log
+    let entry = parser.parse(r#"["not", "an", "object"]"#, 1);
+    assert!(entry.json_fields.is_none());
+}
+
+#[test]
+fn test_log_parser_json_with_array_value() {
+    let parser = log_parser();
+
+    let entry = parser.parse(r#"{"level":"INFO","msg":"Test","tags":["a","b"]}"#, 1);
+    assert_eq!(entry.level, AdvLogLevel::Info);
+    assert_eq!(entry.message, "Test");
+    assert!(entry.json_fields.is_some());
+}
+
+#[test]
+fn test_log_parser_json_whitespace() {
+    let parser = log_parser();
+
+    let entry = parser.parse(r#"  { "level" : "ERROR" , "msg" : "spaced" }  "#, 1);
+    assert_eq!(entry.level, AdvLogLevel::Error);
+    assert_eq!(entry.message, "spaced");
+}
+
+#[test]
+fn test_log_parser_json_malformed_no_closing_brace() {
+    let parser = log_parser();
+
+    let entry = parser.parse(r#"{"level":"INFO","msg":"test""#, 1);
+    // Should not parse as valid JSON
+    assert!(entry.json_fields.is_none());
+}
+
+#[test]
+fn test_log_parser_json_numeric_value() {
+    let parser = log_parser();
+
+    let entry = parser.parse(r#"{"level":"INFO","msg":"Test","count":42}"#, 1);
+    assert_eq!(entry.level, AdvLogLevel::Info);
+    assert!(entry.json_fields.is_some());
+    let fields = entry.json_fields.unwrap();
+    assert!(fields.iter().any(|(k, v)| k == "count" && v == "42"));
+}
+
+#[test]
+fn test_log_parser_json_boolean_value() {
+    let parser = log_parser();
+
+    let entry = parser.parse(r#"{"level":"WARN","msg":"flag","ok":true}"#, 1);
+    assert_eq!(entry.level, AdvLogLevel::Warning);
+    assert!(entry.json_fields.is_some());
+    let fields = entry.json_fields.unwrap();
+    assert!(fields.iter().any(|(k, v)| k == "ok" && v == "true"));
+}
+
+// =============================================================================
+// Standard format edge cases
+// =============================================================================
+
+#[test]
+fn test_log_parser_no_timestamp_line() {
+    let parser = log_parser();
+
+    let entry = parser.parse("Just a plain message", 1);
+    assert_eq!(entry.timestamp, None);
+    // Message should contain the text
+    assert!(entry.message.contains("plain message"));
+}
+
+#[test]
+fn test_log_parser_slash_date_in_brackets() {
+    let parser = log_parser();
+
+    let entry = parser.parse("[2024/01/15 10:30:00] INFO Message", 1);
+    // The bracket parser should find it since it contains ':' or '/'
+    assert!(entry.timestamp.is_some());
+}
+
+#[test]
+fn test_log_parser_iso_timestamp_with_long_ms() {
+    let parser = log_parser();
+
+    let entry = parser.parse("2024-01-15T10:30:00.123456 ERROR Detailed", 1);
+    assert!(entry.timestamp.is_some());
+    let ts = entry.timestamp.unwrap();
+    assert!(ts.contains("123456"));
+}
+
+#[test]
+fn test_log_parser_long_source_rejected() {
+    let parser = log_parser();
+
+    // Source names > 50 chars should be rejected by find_source
+    let long_source = "a".repeat(51);
+    let line = format!("[{}] INFO Message", long_source);
+    let entry = parser.parse(&line, 1);
+    // The long bracketed content should not be parsed as source
+    // (it contains no space, but is > 50 chars)
+    assert!(entry.source.is_none() || entry.source.as_deref().unwrap().len() < 51);
+}
+
+// =============================================================================
+// Level parsing edge cases
+// =============================================================================
+
+#[test]
+fn test_log_parser_warn_abbreviation() {
+    let parser = log_parser();
+
+    let entry = parser.parse("WARN Something happened", 1);
+    assert_eq!(entry.level, AdvLogLevel::Warning);
+}
+
+#[test]
+fn test_log_parser_mixed_case_level() {
+    let parser = log_parser();
+
+    // The parser uppercases before comparison
+    let entry = parser.parse("Error: lower case level", 1);
+    assert_eq!(entry.level, AdvLogLevel::Error);
+}
+
+#[test]
+fn test_log_parser_level_at_string_end() {
+    let parser = log_parser();
+
+    // Level at end with following space (parser requires a delimiter after the level keyword)
+    let entry = parser.parse("[2024-01-15 10:00:00] ERROR ", 1);
+    assert_eq!(entry.level, AdvLogLevel::Error);
+}
+
+// =============================================================================
+// JSON field mapping edge cases
+// =============================================================================
+
+#[test]
+fn test_log_parser_custom_source_field() {
+    let parser = log_parser();
+
+    let entry = parser.parse(r#"{"level":"INFO","source":"my-service"}"#, 1);
+    assert_eq!(entry.source, Some("my-service".to_string()));
+}
+
+#[test]
+fn test_log_parser_numeric_timestamp_value() {
+    let parser = log_parser();
+
+    let entry = parser.parse(r#"{"level":"INFO","time":"1705311000"}"#, 1);
+    assert_eq!(entry.timestamp, Some("1705311000".to_string()));
+    assert_eq!(entry.timestamp_value, Some(1705311000_i64));
+}
+
+#[test]
+fn test_log_parser_non_numeric_timestamp_no_value() {
+    let parser = log_parser();
+
+    let entry = parser.parse(r#"{"level":"INFO","time":"2024-01-15"}"#, 1);
+    assert_eq!(entry.timestamp, Some("2024-01-15".to_string()));
+    assert_eq!(entry.timestamp_value, None); // Not a number
+}
+
+#[test]
+fn test_log_parser_unknown_json_field_ignored() {
+    let parser = log_parser();
+
+    let entry = parser.parse(
+        r#"{"level":"INFO","msg":"Test","unknown_field":"value"}"#,
+        1,
+    );
+    assert_eq!(entry.level, AdvLogLevel::Info);
+    assert_eq!(entry.message, "Test");
+    // Unknown field should be in json_fields but not in entry.source/timestamp
+    assert!(entry.json_fields.is_some());
+}
+
+#[test]
+fn test_log_parser_json_line_number_set_from_parse() {
+    let parser = log_parser();
+
+    let entry = parser.parse(r#"{"level":"INFO","msg":"Test"}"#, 99);
+    assert_eq!(entry.line_number, 99);
+}
+
+#[test]
+fn test_log_parser_level_parse_shortcodes() {
+    // Test the LogLevel::parse directly through parser
+    let parser = log_parser();
+
+    let entry_trc = parser.parse(r#"{"level":"TRC","msg":"t"}"#, 1);
+    assert_eq!(entry_trc.level, AdvLogLevel::Trace);
+
+    let entry_dbg = parser.parse(r#"{"level":"DBG","msg":"d"}"#, 1);
+    assert_eq!(entry_dbg.level, AdvLogLevel::Debug);
+
+    let entry_inf = parser.parse(r#"{"level":"INF","msg":"i"}"#, 1);
+    assert_eq!(entry_inf.level, AdvLogLevel::Info);
+
+    let entry_wrn = parser.parse(r#"{"level":"WRN","msg":"w"}"#, 1);
+    assert_eq!(entry_wrn.level, AdvLogLevel::Warning);
+
+    let entry_err = parser.parse(r#"{"level":"ERR","msg":"e"}"#, 1);
+    assert_eq!(entry_err.level, AdvLogLevel::Error);
+
+    let entry_ftl = parser.parse(r#"{"level":"FTL","msg":"f"}"#, 1);
+    assert_eq!(entry_ftl.level, AdvLogLevel::Fatal);
+
+    let entry_crit = parser.parse(r#"{"level":"CRIT","msg":"c"}"#, 1);
+    assert_eq!(entry_crit.level, AdvLogLevel::Fatal);
+}
