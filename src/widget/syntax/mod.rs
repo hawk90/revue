@@ -8,7 +8,7 @@ mod go;
 mod html;
 mod javascript;
 mod json;
-mod keywords;
+pub mod keywords;
 mod markdown;
 mod python;
 mod rust;
