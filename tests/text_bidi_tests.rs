@@ -2,7 +2,7 @@
 
 use revue::text::{
     contains_rtl, detect_direction, is_rtl_char, mirror_char, reverse_graphemes, BidiClass,
-    BidiInfo, BidiRun, ResolvedDirection, RtlLayout, TextAlign, TextDirection,
+    BidiConfig, BidiInfo, BidiRun, ResolvedDirection, RtlLayout, TextAlign, TextDirection,
 };
 
 // ============================================================
@@ -47,6 +47,18 @@ fn detect_direction_digits_only_returns_ltr() {
 #[test]
 fn detect_direction_spaces_only_returns_ltr() {
     assert_eq!(detect_direction("   "), ResolvedDirection::Ltr);
+}
+
+#[test]
+fn detect_direction_digits_then_latin_returns_ltr() {
+    // Digits are weak (EN), skipped; first strong char 'a' is L
+    assert_eq!(detect_direction("123 abc"), ResolvedDirection::Ltr);
+}
+
+#[test]
+fn detect_direction_digits_then_hebrew_returns_rtl() {
+    // Digits are weak (EN), skipped; first strong char is R
+    assert_eq!(detect_direction("123 שלום"), ResolvedDirection::Rtl);
 }
 
 // ============================================================
@@ -149,6 +161,12 @@ fn mirror_char_math_angle_brackets() {
 fn mirror_char_square_lenticular() {
     assert_eq!(mirror_char('⁅'), '⁆');
     assert_eq!(mirror_char('⁆'), '⁅');
+}
+
+#[test]
+fn mirror_char_quotes_map_to_self() {
+    assert_eq!(mirror_char('"'), '"');
+    assert_eq!(mirror_char('\''), '\'');
 }
 
 #[test]
@@ -288,6 +306,22 @@ fn bidi_class_of_digit_is_en() {
 }
 
 #[test]
+fn bidi_class_of_arabic_extended_a_is_al() {
+    assert_eq!(BidiClass::of('\u{08A0}'), BidiClass::AL); // Arabic Extended-A
+}
+
+#[test]
+fn bidi_class_of_arabic_presentation_forms_is_al() {
+    assert_eq!(BidiClass::of('\u{FB50}'), BidiClass::AL); // Presentation Forms-A
+    assert_eq!(BidiClass::of('\u{FE70}'), BidiClass::AL); // Presentation Forms-B
+}
+
+#[test]
+fn bidi_class_of_nko_is_r() {
+    assert_eq!(BidiClass::of('\u{07C0}'), BidiClass::R); // NKo digit zero
+}
+
+#[test]
 fn bidi_class_of_arabic_number_is_an() {
     assert_eq!(BidiClass::of('٠'), BidiClass::AN); // U+0660
     assert_eq!(BidiClass::of('٩'), BidiClass::AN); // U+0669
@@ -397,6 +431,27 @@ fn bidi_class_is_neutral() {
 }
 
 // ============================================================
+// types.rs — TextAlign
+// ============================================================
+
+#[test]
+fn text_align_default_is_start() {
+    assert_eq!(TextAlign::default(), TextAlign::Start);
+}
+
+// ============================================================
+// types.rs — BidiConfig
+// ============================================================
+
+#[test]
+fn bidi_config_default() {
+    let config = BidiConfig::default();
+    assert_eq!(config.default_direction, TextDirection::Auto);
+    assert!(config.enable_overrides);
+    assert!(config.enable_mirroring);
+}
+
+// ============================================================
 // types.rs — BidiRun
 // ============================================================
 
@@ -431,6 +486,21 @@ fn bidi_run_char_count_ascii() {
 fn bidi_run_char_count_multibyte() {
     let run = BidiRun::new("가나다".to_string(), 0..9, 0);
     assert_eq!(run.char_count(), 3);
+}
+
+#[test]
+fn bidi_run_clone_and_eq() {
+    let run = BidiRun::new("hello".to_string(), 0..5, 0);
+    let cloned = run.clone();
+    assert_eq!(run, cloned);
+}
+
+#[test]
+fn bidi_run_debug_format() {
+    let run = BidiRun::new("hi".to_string(), 0..2, 0);
+    let debug = format!("{:?}", run);
+    assert!(debug.contains("BidiRun"));
+    assert!(debug.contains("hi"));
 }
 
 // ============================================================

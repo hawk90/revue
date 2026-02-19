@@ -1,6 +1,6 @@
 //! Tests for widget validation (ValidationError and validators module)
 
-use revue::widget::{validators, ValidationError};
+use revue::widget::{validators, Validatable, ValidationError, ValidationResult};
 
 // ============================================================
 // ValidationError — new()
@@ -289,6 +289,89 @@ fn custom_with_string_validation() {
         || ValidationError::new("invalid email", "EMAIL"),
     );
     assert!(result.is_ok());
+}
+
+// ============================================================
+// Validatable trait
+// ============================================================
+
+/// Marker type to satisfy `Validatable::Error` bound (requires std::error::Error).
+/// The trait signature uses `ValidationResult<Self::Error>` = `Result<Self::Error, ValidationError>`,
+/// so the associated type is the *success* payload.
+#[derive(Debug)]
+struct ValidOk;
+impl std::fmt::Display for ValidOk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "valid")
+    }
+}
+impl std::error::Error for ValidOk {}
+
+struct EmailInput {
+    value: String,
+}
+
+impl Validatable for EmailInput {
+    type Error = ValidOk;
+
+    fn validate(&self) -> ValidationResult<Self::Error> {
+        if self.value.is_empty() {
+            return Err(ValidationError::required("Email"));
+        }
+        if !self.value.contains('@') {
+            return Err(ValidationError::email(&self.value));
+        }
+        Ok(ValidOk)
+    }
+}
+
+#[test]
+fn validatable_validate_valid_input() {
+    let input = EmailInput {
+        value: "user@example.com".to_string(),
+    };
+    assert!(input.validate().is_ok());
+}
+
+#[test]
+fn validatable_validate_empty_returns_required_error() {
+    let input = EmailInput {
+        value: String::new(),
+    };
+    let err = input.validate().unwrap_err();
+    assert_eq!(err.code, "REQUIRED");
+}
+
+#[test]
+fn validatable_validate_missing_at_returns_email_error() {
+    let input = EmailInput {
+        value: "nope".to_string(),
+    };
+    let err = input.validate().unwrap_err();
+    assert_eq!(err.code, "EMAIL");
+}
+
+#[test]
+fn validatable_is_valid_delegates_to_validate() {
+    let valid = EmailInput {
+        value: "a@b.c".to_string(),
+    };
+    let invalid = EmailInput {
+        value: String::new(),
+    };
+    assert!(valid.is_valid());
+    assert!(!invalid.is_valid());
+}
+
+// ============================================================
+// ValidationError — clone
+// ============================================================
+
+#[test]
+fn validation_error_clone() {
+    let err = ValidationError::new("test message", "TEST");
+    let cloned = err.clone();
+    assert_eq!(err, cloned);
 }
 
 // ============================================================

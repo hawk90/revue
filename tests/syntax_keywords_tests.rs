@@ -41,6 +41,13 @@ fn rust_keyword_self_variants() {
 }
 
 #[test]
+fn rust_keyword_is_case_sensitive() {
+    assert!(!is_rust_keyword("FN"));
+    assert!(!is_rust_keyword("Let"));
+    assert!(!is_rust_keyword("STRUCT"));
+}
+
+#[test]
 fn rust_not_keyword() {
     assert!(!is_rust_keyword("println"));
     assert!(!is_rust_keyword("String"));
@@ -74,6 +81,12 @@ fn python_keyword_async_await() {
 }
 
 #[test]
+fn python_keyword_is_case_sensitive() {
+    assert!(!is_python_keyword("DEF"));
+    assert!(!is_python_keyword("Class"));
+}
+
+#[test]
 fn python_not_keyword() {
     assert!(!is_python_keyword("print"));
     assert!(!is_python_keyword("len"));
@@ -104,6 +117,12 @@ fn javascript_keyword_class_async_await() {
 fn javascript_keyword_this_typeof() {
     assert!(is_javascript_keyword("this"));
     assert!(is_javascript_keyword("typeof"));
+}
+
+#[test]
+fn javascript_keyword_is_case_sensitive() {
+    assert!(!is_javascript_keyword("CONST"));
+    assert!(!is_javascript_keyword("Function"));
 }
 
 #[test]
@@ -144,6 +163,12 @@ fn shell_keyword_echo_cd_export() {
     assert!(is_shell_keyword("echo"));
     assert!(is_shell_keyword("cd"));
     assert!(is_shell_keyword("export"));
+}
+
+#[test]
+fn shell_keyword_is_case_sensitive() {
+    assert!(!is_shell_keyword("IF"));
+    assert!(!is_shell_keyword("Echo"));
 }
 
 #[test]
@@ -225,6 +250,12 @@ fn go_keyword_select_range_map() {
     assert!(is_go_keyword("select"));
     assert!(is_go_keyword("range"));
     assert!(is_go_keyword("map"));
+}
+
+#[test]
+fn go_keyword_is_case_sensitive() {
+    assert!(!is_go_keyword("FUNC"));
+    assert!(!is_go_keyword("Package"));
 }
 
 #[test]
