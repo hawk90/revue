@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.52.2](https://github.com/hawk90/revue/compare/v2.52.1...v2.52.2) (2026-02-20)
+
+
+### Bug Fixes
+
+* complete RichTextEditor formatting display and undo/redo ([#450](https://github.com/hawk90/revue/issues/450)) ([8b6c9ba](https://github.com/hawk90/revue/commit/8b6c9bac5a6527781ad04cec1670facf73a88e34))
+
 ## [2.52.1](https://github.com/hawk90/revue/compare/v2.52.0...v2.52.1) (2026-02-20)
 
 
