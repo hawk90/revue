@@ -10,6 +10,7 @@ pub struct FormFieldBuilder {
     field_type: FieldType,
     label: String,
     placeholder: String,
+    helper_text: String,
     initial_value: String,
     validators: Vec<ValidatorFn>,
     disabled: bool,
@@ -30,6 +31,7 @@ impl FormFieldBuilder {
             field_type: FieldType::Text,
             label: String::new(),
             placeholder: String::new(),
+            helper_text: String::new(),
             initial_value: String::new(),
             validators: Vec::new(),
             disabled: false,
@@ -85,6 +87,12 @@ impl FormFieldBuilder {
     /// Set placeholder text
     pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
         self.placeholder = placeholder.into();
+        self
+    }
+
+    /// Set helper text displayed below the field
+    pub fn helper_text(mut self, text: impl Into<String>) -> Self {
+        self.helper_text = text.into();
         self
     }
 
@@ -182,6 +190,7 @@ impl FormFieldBuilder {
             field_type: self.field_type,
             label: self.label,
             placeholder: self.placeholder,
+            helper_text: self.helper_text,
             value,
             errors,
             touched,
@@ -208,6 +217,8 @@ pub struct FormField {
     pub label: String,
     /// Placeholder text
     pub placeholder: String,
+    /// Helper text displayed below the field
+    pub helper_text: String,
     /// Reactive current value
     value: Signal<String>,
     /// Computed validation errors (auto-recalculates when value changes)
@@ -256,6 +267,11 @@ impl FormField {
     /// Create a textarea field builder
     pub fn textarea() -> FormFieldBuilder {
         FormFieldBuilder::new().textarea()
+    }
+
+    /// Get the helper text
+    pub fn helper_text(&self) -> &str {
+        &self.helper_text
     }
 
     /// Get the current value (clones the value)

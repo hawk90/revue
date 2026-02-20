@@ -70,8 +70,9 @@ mod tree;
 
 pub use engine::{LayoutEngine, LayoutError, LayoutResult};
 pub use responsive::{
-    breakpoints, max_width, min_width, responsive as responsive_value, responsive_layout,
-    Breakpoint, Breakpoints, MediaQuery, ResponsiveLayout, ResponsiveValue,
+    breakpoints, container_max_width, container_min_width, max_width, min_width,
+    responsive as responsive_value, responsive_layout, Breakpoint, Breakpoints, ContainerQuery,
+    MediaQuery, ResponsiveContainer, ResponsiveLayout, ResponsiveValue,
 };
 
 /// A rectangle representing a widget's position and size

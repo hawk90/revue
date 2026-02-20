@@ -11,6 +11,9 @@ mod view;
 
 pub use types::TreeNode;
 
+/// Callback type for node selection events
+type SelectCallback = Box<dyn Fn(&TreeNode)>;
+
 /// A tree widget for displaying hierarchical data
 pub struct Tree {
     root: Vec<TreeNode>,
@@ -31,6 +34,12 @@ pub struct Tree {
     current_match: usize,
     /// CSS styling properties (id, classes)
     props: WidgetProps,
+    /// Enable multi-select mode
+    multi_select: bool,
+    /// Indices of selected nodes in multi-select mode
+    selected_indices: Vec<usize>,
+    /// Callback invoked when a node is selected
+    on_select: Option<SelectCallback>,
 }
 
 impl Tree {
@@ -50,6 +59,9 @@ impl Tree {
             matches: Vec::new(),
             current_match: 0,
             props: WidgetProps::new(),
+            multi_select: false,
+            selected_indices: Vec::new(),
+            on_select: None,
         }
     }
 
@@ -107,6 +119,18 @@ impl Tree {
     /// Set indent width
     pub fn indent(mut self, indent: u16) -> Self {
         self.indent = indent;
+        self
+    }
+
+    /// Enable multi-select mode
+    pub fn multi_select(mut self, enable: bool) -> Self {
+        self.multi_select = enable;
+        self
+    }
+
+    /// Set selection callback invoked when a node is selected
+    pub fn on_select(mut self, callback: impl Fn(&TreeNode) + 'static) -> Self {
+        self.on_select = Some(Box::new(callback));
         self
     }
 
@@ -229,6 +253,70 @@ impl Tree {
         }
     }
 
+    /// Toggle selection of current node in multi-select mode
+    pub fn toggle_select(&mut self) {
+        let idx = self.selection.index;
+        if let Some(pos) = self.selected_indices.iter().position(|&i| i == idx) {
+            self.selected_indices.remove(pos);
+        } else {
+            self.selected_indices.push(idx);
+        }
+        if let Some(callback) = &self.on_select {
+            if let Some((node, _)) = self.get_node_at(idx) {
+                callback(node);
+            }
+        }
+    }
+
+    /// Get all selected nodes in multi-select mode
+    pub fn selected_nodes(&self) -> Vec<&TreeNode> {
+        self.selected_indices
+            .iter()
+            .filter_map(|&idx| self.get_node_at(idx).map(|(node, _)| node))
+            .collect()
+    }
+
+    /// Get IDs of all selected nodes in multi-select mode
+    pub fn selected_ids(&self) -> Vec<&str> {
+        self.selected_nodes()
+            .into_iter()
+            .filter_map(|node| node.id.as_deref())
+            .collect()
+    }
+
+    /// Check if a visible index is selected in multi-select mode
+    pub fn is_multi_selected(&self, index: usize) -> bool {
+        self.selected_indices.contains(&index)
+    }
+
+    /// Find the parent index of the node at the given visible index
+    fn find_parent_index(&self, index: usize) -> Option<usize> {
+        fn find_parent(
+            nodes: &[TreeNode],
+            target: usize,
+            current: &mut usize,
+            parent_index: Option<usize>,
+        ) -> Option<usize> {
+            for node in nodes {
+                if *current == target {
+                    return parent_index;
+                }
+                let my_index = *current;
+                *current += 1;
+                if node.expanded && !node.children.is_empty() {
+                    if let Some(result) =
+                        find_parent(&node.children, target, current, Some(my_index))
+                    {
+                        return Some(result);
+                    }
+                }
+            }
+            None
+        }
+        let mut current = 0;
+        find_parent(&self.root, index, &mut current, None)
+    }
+
     /// Handle key input, returns true if selection or expansion changed
     pub fn handle_key(&mut self, key: &crate::event::Key) -> bool {
         use crate::event::Key;
@@ -284,6 +372,10 @@ impl Tree {
                 self.select_next();
                 old != self.selection.index
             }
+            Key::Char(' ') if self.multi_select && !self.searchable => {
+                self.toggle_select();
+                true
+            }
             Key::Enter | Key::Char(' ') if !self.searchable => {
                 let old_count = self.selection.len;
                 self.toggle_expand();
@@ -305,14 +397,40 @@ impl Tree {
                 old_count != self.selection.len
             }
             Key::Left | Key::Char('h') if !self.searchable => {
-                let old_count = self.selection.len;
-                self.collapse();
-                old_count != self.selection.len
+                // If node is expanded, collapse it; otherwise navigate to parent
+                let is_expanded = self
+                    .get_node_at(self.selection.index)
+                    .map(|(n, _)| n.expanded && n.has_children())
+                    .unwrap_or(false);
+                if is_expanded {
+                    let old_count = self.selection.len;
+                    self.collapse();
+                    old_count != self.selection.len
+                } else if let Some(parent_idx) = self.find_parent_index(self.selection.index) {
+                    let old = self.selection.index;
+                    self.selection.set(parent_idx);
+                    old != self.selection.index
+                } else {
+                    false
+                }
             }
             Key::Left if self.searchable => {
-                let old_count = self.selection.len;
-                self.collapse();
-                old_count != self.selection.len
+                // If node is expanded, collapse it; otherwise navigate to parent
+                let is_expanded = self
+                    .get_node_at(self.selection.index)
+                    .map(|(n, _)| n.expanded && n.has_children())
+                    .unwrap_or(false);
+                if is_expanded {
+                    let old_count = self.selection.len;
+                    self.collapse();
+                    old_count != self.selection.len
+                } else if let Some(parent_idx) = self.find_parent_index(self.selection.index) {
+                    let old = self.selection.index;
+                    self.selection.set(parent_idx);
+                    old != self.selection.index
+                } else {
+                    false
+                }
             }
             Key::Home => {
                 let old = self.selection.index;

@@ -83,6 +83,23 @@ impl RenderContext<'_> {
     pub fn draw_focus_reverse(&mut self, x: u16, y: u16, w: u16, h: u16) {
         self.invert_colors(x, y, w, h);
     }
+
+    /// Apply a focus indicator around the full area, opt-in per widget
+    ///
+    /// Widgets call this at render start: `ctx.apply_focus_indicator(self.focused, style, color)`
+    pub fn apply_focus_indicator(&mut self, focused: bool, style: FocusStyle, color: Color) {
+        if focused {
+            let area = self.area;
+            self.draw_focus_ring(area.x, area.y, area.width, area.height, color, style);
+        }
+    }
+
+    /// Apply a default focus indicator (Rounded + Cyan)
+    ///
+    /// Convenience method for the most common case.
+    pub fn apply_default_focus(&mut self, focused: bool) {
+        self.apply_focus_indicator(focused, FocusStyle::Rounded, Color::CYAN);
+    }
 }
 
 use crate::widget::traits::render_context::RenderContext;

@@ -104,6 +104,15 @@ impl Tree {
                 ctx.buffer.set(x, *y, cell);
                 x += 1;
 
+                // Draw icon if present
+                if let Some(icon_ch) = node.icon {
+                    let mut icon_cell = Cell::new(icon_ch);
+                    icon_cell.fg = fg;
+                    icon_cell.bg = bg;
+                    ctx.buffer.set(x, *y, icon_cell);
+                    x += 1;
+                }
+
                 // Draw label with optional highlighting
                 let available_width = (area.x + area.width).saturating_sub(x) as usize;
                 let truncated: String = node.label.chars().take(available_width).collect();

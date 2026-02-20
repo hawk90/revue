@@ -204,7 +204,15 @@ impl DataGrid {
 
             // Draw title with sort indicator
             let mut title = col.title.clone();
-            if is_sort_col {
+            if !self.sort_columns.is_empty() {
+                // Multi-column sort: show priority number
+                if let Some(pos) = self.sort_columns.iter().position(|(c, _)| *c == *orig_idx) {
+                    let (_, dir) = self.sort_columns[pos];
+                    title.push(' ');
+                    title.push(dir.icon());
+                    title.push_str(&(pos + 1).to_string());
+                }
+            } else if is_sort_col {
                 title.push(' ');
                 title.push(self.sort_direction.icon());
             }

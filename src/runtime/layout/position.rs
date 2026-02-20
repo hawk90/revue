@@ -35,6 +35,10 @@ pub fn apply_position_offsets(
         Position::Fixed => {
             apply_fixed_offset(node, viewport);
         }
+        Position::Sticky => {
+            // Sticky behaves like relative until scroll threshold is reached
+            apply_relative_offset(node);
+        }
     }
 }
 

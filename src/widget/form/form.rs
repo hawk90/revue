@@ -243,28 +243,132 @@ impl View for Form {
         // Render title
         self.render_title(ctx);
 
-        // Render validation status at bottom
+        // Render form fields inside the border
+        // Each field takes 3 rows: label (row 0), value (row 1), helper/error (row 2)
+        // Plus 1 row gap between fields
+        let content_x = area.x + 2;
+        if area.width <= 4 {
+            return;
+        }
+        let content_width = area.width - 4;
+        let max_x = content_x + content_width;
+        let mut current_y = area.y + 1;
+        if area.height <= 2 {
+            return;
+        }
+        let max_y = area.y + area.height - 2;
+        let show_inline = self.error_style == ErrorDisplayStyle::Inline
+            || self.error_style == ErrorDisplayStyle::Both;
+
+        for (_name, field) in self.form_state.iter() {
+            if current_y >= max_y {
+                break;
+            }
+
+            // Row 0: Label
+            let label = &field.label;
+            if !label.is_empty() {
+                for (i, ch) in label.chars().enumerate() {
+                    let x = content_x + i as u16;
+                    if x < max_x {
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(Color::rgb(200, 200, 200));
+                        ctx.buffer.set(x, current_y, cell);
+                    }
+                }
+            }
+            current_y += 1;
+            if current_y >= max_y {
+                break;
+            }
+
+            // Row 1: Value or placeholder
+            let value = field.value();
+            let (display_text, text_color) = if value.is_empty() {
+                (field.placeholder.clone(), Color::rgb(120, 120, 120))
+            } else {
+                (value, Color::WHITE)
+            };
+
+            for (i, ch) in display_text.chars().enumerate() {
+                let x = content_x + i as u16;
+                if x < max_x {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(text_color);
+                    ctx.buffer.set(x, current_y, cell);
+                }
+            }
+            current_y += 1;
+            if current_y >= max_y {
+                break;
+            }
+
+            // Row 2: Error text (red, dim) if touched+errors, otherwise helper text (gray, dim)
+            if show_inline && self.show_errors {
+                let show_error = field.is_touched() && field.has_errors();
+                if show_error {
+                    if let Some(error_msg) = field.first_error() {
+                        let error_color = Color::rgb(200, 80, 80);
+                        for (i, ch) in error_msg.chars().enumerate() {
+                            let x = content_x + i as u16;
+                            if x < max_x {
+                                let mut cell = Cell::new(ch);
+                                cell.fg = Some(error_color);
+                                cell.modifier |= Modifier::DIM;
+                                ctx.buffer.set(x, current_y, cell);
+                            }
+                        }
+                    }
+                } else {
+                    let helper = field.helper_text();
+                    if !helper.is_empty() {
+                        let helper_color = Color::rgb(140, 140, 140);
+                        for (i, ch) in helper.chars().enumerate() {
+                            let x = content_x + i as u16;
+                            if x < max_x {
+                                let mut cell = Cell::new(ch);
+                                cell.fg = Some(helper_color);
+                                cell.modifier |= Modifier::DIM;
+                                ctx.buffer.set(x, current_y, cell);
+                            }
+                        }
+                    }
+                }
+            }
+            current_y += 1;
+
+            // 1 row gap between fields
+            current_y += 1;
+        }
+
+        // Render validation summary at bottom if Summary or Both style
+        let show_summary = self.error_style == ErrorDisplayStyle::Summary
+            || self.error_style == ErrorDisplayStyle::Both;
+
         let status_y = area.y + area.height - 2;
         if status_y > area.y && area.width > 4 {
-            let status_text = if self.is_valid() {
-                "✓ Valid".to_string()
-            } else {
+            if self.is_valid() {
+                let status_text = "Valid";
+                let status_color = Color::rgb(80, 200, 80);
+                for (i, ch) in status_text.chars().enumerate() {
+                    let x = area.x + 2 + i as u16;
+                    if x < area.x + area.width - 2 {
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(status_color);
+                        ctx.buffer.set(x, status_y, cell);
+                    }
+                }
+            } else if show_summary {
                 let error_count = self.error_count();
-                format!("✗ {} error(s)", error_count)
-            };
-
-            let status_color = if self.is_valid() {
-                Color::rgb(80, 200, 80)
-            } else {
-                Color::rgb(200, 80, 80)
-            };
-
-            for (i, ch) in status_text.chars().enumerate() {
-                let x = area.x + 2 + i as u16;
-                if x < area.x + area.width - 2 {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(status_color);
-                    ctx.buffer.set(x, status_y, cell);
+                let status_text = format!("{} error(s)", error_count);
+                let status_color = Color::rgb(200, 80, 80);
+                for (i, ch) in status_text.chars().enumerate() {
+                    let x = area.x + 2 + i as u16;
+                    if x < area.x + area.width - 2 {
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(status_color);
+                        ctx.buffer.set(x, status_y, cell);
+                    }
                 }
             }
         }
@@ -279,6 +383,8 @@ pub struct FormFieldWidget {
     name: String,
     /// Placeholder text
     placeholder: String,
+    /// Helper text displayed below the field
+    helper_text: String,
     /// Input type
     input_type: InputType,
     /// Widget properties
@@ -295,6 +401,7 @@ impl FormFieldWidget {
         Self {
             name: name.into(),
             placeholder: String::new(),
+            helper_text: String::new(),
             input_type: InputType::Text,
             props: WidgetProps::default(),
             show_label: true,
@@ -305,6 +412,12 @@ impl FormFieldWidget {
     /// Set placeholder text
     pub fn placeholder(mut self, text: impl Into<String>) -> Self {
         self.placeholder = text.into();
+        self
+    }
+
+    /// Set helper text displayed below the field
+    pub fn helper_text(mut self, text: impl Into<String>) -> Self {
+        self.helper_text = text.into();
         self
     }
 
@@ -355,7 +468,7 @@ impl FormFieldWidget {
         self.show_errors
     }
 
-    /// Render the field label
+    /// Render the field label at the current area position
     #[allow(dead_code)]
     fn render_label(&self, form_state: &FormState, ctx: &mut RenderContext) {
         let area = ctx.area;
@@ -372,7 +485,7 @@ impl FormFieldWidget {
         }
     }
 
-    /// Render the field value
+    /// Render the field value at the current area position
     #[allow(dead_code)]
     fn render_value(&self, form_state: &FormState, ctx: &mut RenderContext) {
         let area = ctx.area;
@@ -404,7 +517,28 @@ impl FormFieldWidget {
         }
     }
 
-    /// Render validation errors
+    /// Render helper text below the field (gray, dim)
+    #[allow(dead_code)]
+    fn render_helper_text(&self, ctx: &mut RenderContext) {
+        let area = ctx.area;
+        if self.helper_text.is_empty() {
+            return;
+        }
+
+        let helper_color = Color::rgb(140, 140, 140);
+
+        for (i, ch) in self.helper_text.chars().enumerate() {
+            let x = area.x + i as u16;
+            if x < area.x + area.width {
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(helper_color);
+                cell.modifier |= Modifier::DIM;
+                ctx.buffer.set(x, area.y, cell);
+            }
+        }
+    }
+
+    /// Render validation errors at the current area position
     #[allow(dead_code)]
     fn render_errors(&self, form_state: &FormState, ctx: &mut RenderContext) {
         if !self.show_errors {
@@ -446,15 +580,50 @@ impl View for FormFieldWidget {
     crate::impl_view_meta!("FormField");
 
     fn render(&self, ctx: &mut RenderContext) {
-        // Note: Actual rendering happens through Form which has access to FormState
-        // This is a placeholder render - in practice, Form renders its children
         let area = ctx.area;
 
-        if area.width > self.name.len() as u16 {
+        // Row 0: Label (field name)
+        if self.show_label && area.height >= 1 && area.width > 0 {
             for (i, ch) in self.name.chars().enumerate() {
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::rgb(150, 150, 150));
-                ctx.buffer.set(area.x + i as u16, area.y, cell);
+                let x = area.x + i as u16;
+                if x < area.x + area.width {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(Color::rgb(200, 200, 200));
+                    ctx.buffer.set(x, area.y, cell);
+                }
+            }
+        }
+
+        // Row 1: Value/placeholder
+        if area.height >= 2 {
+            let display_text = if self.placeholder.is_empty() {
+                &self.name
+            } else {
+                &self.placeholder
+            };
+
+            let text_color = Color::rgb(120, 120, 120);
+            for (i, ch) in display_text.chars().enumerate() {
+                let x = area.x + i as u16;
+                if x < area.x + area.width {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(text_color);
+                    ctx.buffer.set(x, area.y + 1, cell);
+                }
+            }
+        }
+
+        // Row 2: Helper text (gray, dim)
+        if area.height >= 3 && !self.helper_text.is_empty() {
+            let helper_color = Color::rgb(140, 140, 140);
+            for (i, ch) in self.helper_text.chars().enumerate() {
+                let x = area.x + i as u16;
+                if x < area.x + area.width {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(helper_color);
+                    cell.modifier |= Modifier::DIM;
+                    ctx.buffer.set(x, area.y + 2, cell);
+                }
             }
         }
     }
