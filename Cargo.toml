@@ -219,6 +219,10 @@ http = ["dep:reqwest"]
 
 # Examples with required features
 [[example]]
+name = "showcase"
+required-features = ["full"]
+
+[[example]]
 name = "slideshow"
 required-features = ["markdown"]
 
