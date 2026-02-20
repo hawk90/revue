@@ -233,6 +233,8 @@ impl Default for Animation {
 /// Transition state
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TransitionPhase {
+    /// Hidden (not visible, no animation)
+    Hidden,
     /// Entering (appearing)
     Entering,
     /// Visible (animation complete or no animation)

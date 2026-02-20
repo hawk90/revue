@@ -1,7 +1,7 @@
 //! Transition widget for single element animations
 
 use super::types::{Animation, TransitionPhase};
-use crate::render::Cell;
+use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -106,6 +106,28 @@ impl Transition {
     pub fn phase(&self) -> TransitionPhase {
         self.phase
     }
+
+    /// Update animation state (call each frame/tick)
+    pub fn update(&mut self) {
+        if let Some(ref mut tween) = self.tween {
+            // Call value() to advance the tween's internal state
+            let _ = tween.value();
+            if tween.is_completed() {
+                match self.phase {
+                    TransitionPhase::Entering => {
+                        self.phase = TransitionPhase::Visible;
+                        self.tween = None;
+                    }
+                    TransitionPhase::Leaving => {
+                        self.phase = TransitionPhase::Hidden;
+                        self.visible = false;
+                        self.tween = None;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
 }
 
 impl Default for Transition {
@@ -118,22 +140,65 @@ impl View for Transition {
     crate::impl_view_meta!("Transition");
 
     fn render(&self, ctx: &mut RenderContext) {
+        // Hidden phase: don't render anything
+        if self.phase == TransitionPhase::Hidden {
+            return;
+        }
+
+        // Not visible and not animating: don't render
         if !self.visible && self.phase == TransitionPhase::Visible {
             return;
         }
 
-        // Render content directly
+        // Determine animation progress for fade effect
+        let progress = if let Some(ref tween) = self.tween {
+            // Use progress() (immutable) to get 0.0-1.0 without needing &mut self
+            tween.progress()
+        } else {
+            match self.phase {
+                TransitionPhase::Visible => 1.0,
+                TransitionPhase::Hidden => 0.0,
+                // No tween but in transition phase: fully visible
+                _ => 1.0,
+            }
+        };
+
+        // Calculate effective progress based on phase
+        let effective_progress = match self.phase {
+            TransitionPhase::Entering => progress,
+            TransitionPhase::Leaving => 1.0 - progress,
+            TransitionPhase::Visible => 1.0,
+            TransitionPhase::Hidden => 0.0,
+        };
+
+        // Render content with animation applied
         let area = ctx.area;
         let default_bg = Color::BLACK;
         let default_fg = Color::WHITE;
+        let content_len = self.child_content.chars().count();
+        let chars_to_show = (effective_progress * content_len as f32).round() as usize;
+
+        // Determine if we should dim (partial opacity)
+        let should_dim = effective_progress > 0.0 && effective_progress < 1.0;
 
         for (j, ch) in self.child_content.chars().enumerate() {
             let x = area.x + j as u16;
             let y = area.y;
             if x < area.x + area.width && y < area.y + area.height {
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(default_fg);
-                cell.bg = Some(default_bg);
+                let cell = if j < chars_to_show {
+                    let mut c = Cell::new(ch);
+                    c.fg = Some(default_fg);
+                    c.bg = Some(default_bg);
+                    if should_dim {
+                        c.modifier |= Modifier::DIM;
+                    }
+                    c
+                } else {
+                    // Character not yet revealed: render as space
+                    let mut c = Cell::new(' ');
+                    c.bg = Some(default_bg);
+                    c
+                };
                 ctx.buffer.set(x, y, cell);
             }
         }

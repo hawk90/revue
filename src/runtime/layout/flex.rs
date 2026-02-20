@@ -47,16 +47,23 @@ pub fn compute_flex(
     let total_gaps = gap.saturating_mul(children.len().saturating_sub(1) as u16);
     let available_main = main_size.saturating_sub(total_gaps);
 
-    // First pass: calculate fixed sizes and collect auto items
+    // First pass: calculate fixed sizes and collect auto items and flex_grow values
     let mut child_main_sizes: Vec<u16> = vec![0; children.len()];
+    let mut child_flex_grows: Vec<f32> = vec![0.0; children.len()];
     let mut total_fixed: u16 = 0;
     let mut auto_count: usize = 0;
+    let mut total_grow: f32 = 0.0;
 
     for (i, &child_id) in children.iter().enumerate() {
         let child = match tree.get(child_id) {
             Some(c) => c,
             None => continue,
         };
+
+        // Collect flex_grow from child's flex props
+        let grow = child.flex.flex_grow;
+        child_flex_grows[i] = grow;
+        total_grow += grow;
 
         let size_prop = match direction {
             FlexDirection::Row => child.sizing.width,
@@ -82,9 +89,40 @@ pub fn compute_flex(
         }
     }
 
-    // Second pass: distribute remaining space to auto-sized children
+    // Second pass: distribute remaining space
     let remaining = available_main.saturating_sub(total_fixed);
-    if auto_count > 0 && remaining > 0 {
+
+    if total_grow > 0.0 && remaining > 0 {
+        // Distribute remaining space proportionally by flex_grow
+        let mut grow_distributed: u16 = 0;
+        let grow_children: Vec<usize> = (0..children.len())
+            .filter(|&i| child_flex_grows[i] > 0.0)
+            .collect();
+
+        for (gi, &i) in grow_children.iter().enumerate() {
+            let child_id = children[i];
+            let child = match tree.get(child_id) {
+                Some(c) => c,
+                None => continue,
+            };
+
+            let share = if gi == grow_children.len() - 1 {
+                // Last grow child gets the remainder to avoid rounding errors
+                remaining.saturating_sub(grow_distributed)
+            } else {
+                ((remaining as f32) * child_flex_grows[i] / total_grow).clamp(0.0, u16::MAX as f32)
+                    as u16
+            };
+
+            let size = child_main_sizes[i].saturating_add(share);
+            let size = apply_main_constraints(child, direction, size, available_main);
+            child_main_sizes[i] = size;
+            grow_distributed = grow_distributed.saturating_add(share);
+        }
+
+        // Auto children without flex_grow get 0 extra space when flex_grow is active
+    } else if auto_count > 0 && remaining > 0 {
+        // No flex_grow: distribute remaining space equally to auto-sized children
         let per_auto = remaining / auto_count as u16;
         let extra = remaining % auto_count as u16;
         let mut extra_given = 0u16;

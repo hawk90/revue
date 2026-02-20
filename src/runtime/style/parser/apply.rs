@@ -93,6 +93,13 @@ fn apply_display_layout(style: &mut Style, property: &str, value: &str) -> bool 
             };
             true
         }
+        "flex-grow" => {
+            if let Ok(v) = value.parse::<f32>() {
+                style.layout.flex_grow = v.max(0.0);
+                return true;
+            }
+            false
+        }
         _ => false,
     }
 }

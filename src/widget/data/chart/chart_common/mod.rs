@@ -326,6 +326,4 @@ pub use grid::{ChartGrid, GridStyle};
 pub use legend::{Legend, LegendOrientation, LegendPosition};
 pub use marker::Marker;
 pub use orientation::ChartOrientation;
-// Tooltip types are exported for public API but not currently used internally
-#[allow(unused_imports)]
 pub use tooltip::{ChartTooltip, ChartTooltipFormat, ChartTooltipPosition};
