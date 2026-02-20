@@ -2,9 +2,11 @@
 //!
 //! A toggle switch for boolean values with customizable styles.
 
+use crate::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::traits::{RenderContext, View, WidgetProps};
+use crate::widget::traits::{EventResult, Interactive, RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Switch style
@@ -428,9 +430,88 @@ impl View for Switch {
                 }
             }
         }
+
+        // Render focus indicator
+        if self.focused && !self.disabled {
+            // Find switch start position
+            let switch_x = if self.label_left {
+                area.x + self.label.as_ref().map(|l| l.len() as u16 + 1).unwrap_or(0)
+            } else {
+                area.x
+            };
+
+            // Draw focus bracket on left
+            if switch_x > 0 {
+                let mut left = Cell::new('[');
+                left.fg = Some(Color::CYAN);
+                ctx.buffer.set(switch_x.saturating_sub(1), y, left);
+            }
+
+            // Draw focus bracket on right
+            let switch_width = match self.style {
+                SwitchStyle::Text => {
+                    let text = if self.on {
+                        self.on_text.as_deref().unwrap_or("ON")
+                    } else {
+                        self.off_text.as_deref().unwrap_or("OFF")
+                    };
+                    text.len() as u16 + 2
+                }
+                SwitchStyle::Emoji => 2,
+                _ => self.width,
+            };
+            let right_x = switch_x + switch_width;
+            if right_x < area.x + area.width {
+                let mut right = Cell::new(']');
+                right.fg = Some(Color::CYAN);
+                ctx.buffer.set(right_x, y, right);
+            }
+        }
     }
 
     crate::impl_view_meta!("Switch");
+}
+
+impl Interactive for Switch {
+    fn handle_key(&mut self, event: &KeyEvent) -> EventResult {
+        if self.disabled {
+            return EventResult::Ignored;
+        }
+
+        match event.key {
+            Key::Enter | Key::Char(' ') => {
+                self.toggle();
+                EventResult::ConsumedAndRender
+            }
+            _ => EventResult::Ignored,
+        }
+    }
+
+    fn handle_mouse(&mut self, event: &MouseEvent, _area: Rect) -> EventResult {
+        if self.disabled {
+            return EventResult::Ignored;
+        }
+
+        match event.kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                self.toggle();
+                EventResult::ConsumedAndRender
+            }
+            _ => EventResult::Ignored,
+        }
+    }
+
+    fn focusable(&self) -> bool {
+        !self.disabled
+    }
+
+    fn on_focus(&mut self) {
+        self.focused = true;
+    }
+
+    fn on_blur(&mut self) {
+        self.focused = false;
+    }
 }
 
 /// Helper to create a switch
