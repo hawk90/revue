@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.52.0](https://github.com/hawk90/revue/compare/v2.51.0...v2.52.0) (2026-02-20)
+
+
+### Features
+
+* add z-index, error boundary, form errors, tree enhancements, undo stack, multi-sort, focus indicators, container queries, and calc() ([#446](https://github.com/hawk90/revue/issues/446)) ([98ee910](https://github.com/hawk90/revue/commit/98ee910d93d05842b4b889b11143badfb28edf01))
+
 ## [2.51.0](https://github.com/hawk90/revue/compare/v2.50.0...v2.51.0) (2026-02-20)
 
 
