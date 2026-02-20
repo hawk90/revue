@@ -17,6 +17,6 @@ pub use sizing::SizingStyle;
 pub use spacing::SpacingStyle;
 pub use style::Style;
 pub use types::*;
-pub use visual::VisualStyle;
+pub use visual::{apply_opacity, VisualStyle};
 
 // Tests moved to tests/style_tests.rs

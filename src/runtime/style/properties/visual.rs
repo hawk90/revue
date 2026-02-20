@@ -23,6 +23,33 @@ pub struct VisualStyle {
     pub z_index: i16,
 }
 
+impl VisualStyle {
+    /// Check if opacity is effectively full (1.0)
+    pub fn is_fully_opaque(&self) -> bool {
+        self.opacity >= 1.0
+    }
+
+    /// Check if opacity is effectively invisible (0.0)
+    pub fn is_invisible(&self) -> bool {
+        self.opacity <= 0.0
+    }
+}
+
+/// Apply opacity to a cell modifier. Returns true if the cell should be visible.
+/// - opacity <= 0.0: invisible
+/// - opacity < 0.5: invisible
+/// - opacity < 1.0: add DIM modifier
+/// - opacity >= 1.0: no change
+pub fn apply_opacity(opacity: f32, modifier: &mut crate::render::Modifier) -> bool {
+    if opacity <= 0.0 || opacity < 0.5 {
+        return false;
+    }
+    if opacity < 1.0 {
+        *modifier |= crate::render::Modifier::DIM;
+    }
+    true
+}
+
 impl Default for VisualStyle {
     fn default() -> Self {
         Self {

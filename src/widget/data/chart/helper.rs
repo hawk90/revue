@@ -37,6 +37,8 @@ pub struct Chart {
     border_color: Option<Color>,
     /// Use Braille for higher resolution
     braille_mode: bool,
+    /// Tooltip configuration
+    tooltip: Option<super::chart_common::ChartTooltip>,
     /// Widget properties
     props: WidgetProps,
 }
@@ -53,6 +55,7 @@ impl Chart {
             bg_color: None,
             border_color: None,
             braille_mode: false,
+            tooltip: None,
             props: WidgetProps::new(),
         }
     }
@@ -114,6 +117,18 @@ impl Chart {
     /// Enable Braille mode for higher resolution
     pub fn braille(mut self) -> Self {
         self.braille_mode = true;
+        self
+    }
+
+    /// Set tooltip configuration
+    pub fn tooltip(mut self, tooltip: super::chart_common::ChartTooltip) -> Self {
+        self.tooltip = Some(tooltip);
+        self
+    }
+
+    /// Enable tooltips with default settings
+    pub fn with_tooltip(mut self) -> Self {
+        self.tooltip = Some(super::chart_common::ChartTooltip::enabled());
         self
     }
 

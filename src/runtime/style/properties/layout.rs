@@ -19,6 +19,8 @@ pub struct LayoutStyle {
     pub justify_content: JustifyContent,
     /// Cross axis alignment
     pub align_items: AlignItems,
+    /// Flex grow factor (distributes remaining space proportionally)
+    pub flex_grow: f32,
     /// Gap between flex/grid items
     pub gap: u16,
     /// Column gap for grid

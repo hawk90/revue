@@ -98,6 +98,22 @@ impl ScrollView {
         self.scroll_up(viewport_height.saturating_sub(1));
     }
 
+    /// Handle mouse events, returns true if scroll changed
+    pub fn handle_mouse(&mut self, event: &crate::event::MouseEvent, viewport_height: u16) -> bool {
+        use crate::event::MouseEventKind;
+        let old_offset = self.scroll_offset;
+        match event.kind {
+            MouseEventKind::ScrollUp => {
+                self.scroll_up(3);
+            }
+            MouseEventKind::ScrollDown => {
+                self.scroll_down(3, viewport_height);
+            }
+            _ => {}
+        }
+        old_offset != self.scroll_offset
+    }
+
     /// Handle key input, returns true if scroll changed
     pub fn handle_key(&mut self, key: &crate::event::Key, viewport_height: u16) -> bool {
         use crate::event::Key;

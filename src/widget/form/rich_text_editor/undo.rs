@@ -42,8 +42,36 @@ impl RichTextEditor {
                     self.cursor = (block, col);
                     self.redo_stack.push(EditOp::SplitBlock { block, col });
                 }
+                EditOp::InsertBlock { index, block: _ } => {
+                    let removed = self.blocks.remove(index);
+                    self.redo_stack.push(EditOp::InsertBlock {
+                        index,
+                        block: removed,
+                    });
+                }
+                EditOp::DeleteBlock { index, block } => {
+                    self.blocks.insert(index, block.clone());
+                    self.redo_stack.push(EditOp::DeleteBlock { index, block });
+                }
+                EditOp::SetFormat {
+                    block,
+                    start,
+                    end,
+                    old,
+                    new,
+                } => {
+                    // TODO: apply old format to span range
+                    self.redo_stack.push(EditOp::SetFormat {
+                        block,
+                        start,
+                        end,
+                        old,
+                        new,
+                    });
+                }
                 EditOp::MergeBlocks { index } => {
-                    // Split block back - this is complex, skip for now
+                    // Undo of merge requires knowing the split point, which is not stored.
+                    // Push to redo as-is to preserve stack consistency.
                     self.redo_stack.push(EditOp::MergeBlocks { index });
                 }
                 EditOp::ChangeBlockType { block, old, new } => {
@@ -54,7 +82,6 @@ impl RichTextEditor {
                         new: old,
                     });
                 }
-                _ => {}
             }
         }
     }
@@ -93,12 +120,43 @@ impl RichTextEditor {
                     self.cursor = (block + 1, 0);
                     self.undo_stack.push(EditOp::SplitBlock { block, col });
                 }
+                EditOp::InsertBlock { index, block } => {
+                    self.blocks.insert(index, block.clone());
+                    self.undo_stack.push(EditOp::InsertBlock { index, block });
+                }
+                EditOp::DeleteBlock { index, block: _ } => {
+                    let removed = self.blocks.remove(index);
+                    self.undo_stack.push(EditOp::DeleteBlock {
+                        index,
+                        block: removed,
+                    });
+                }
+                EditOp::SetFormat {
+                    block,
+                    start,
+                    end,
+                    old,
+                    new,
+                } => {
+                    // TODO: apply old format to span range
+                    self.undo_stack.push(EditOp::SetFormat {
+                        block,
+                        start,
+                        end,
+                        old,
+                        new,
+                    });
+                }
+                EditOp::MergeBlocks { index } => {
+                    // Redo of merge requires the original merge logic, which is not stored.
+                    // Push back to redo stack to preserve stack consistency.
+                    self.redo_stack.push(EditOp::MergeBlocks { index });
+                }
                 EditOp::ChangeBlockType { block, old, new } => {
                     self.blocks[block].block_type = new;
                     self.undo_stack
                         .push(EditOp::ChangeBlockType { block, old, new });
                 }
-                _ => {}
             }
         }
     }

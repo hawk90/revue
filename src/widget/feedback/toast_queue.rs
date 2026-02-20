@@ -143,9 +143,10 @@ pub struct ToastQueue {
     toast_width: u16,
     /// Enable deduplication
     deduplicate: bool,
-    /// Pause on hover (not yet implemented, placeholder)
-    #[allow(dead_code)]
+    /// Pause on hover
     pause_on_hover: bool,
+    /// Whether toast timers are currently paused
+    paused: bool,
     /// Widget properties
     props: WidgetProps,
 }
@@ -164,6 +165,7 @@ impl ToastQueue {
             toast_width: 40,
             deduplicate: true,
             pause_on_hover: false,
+            paused: false,
             props: WidgetProps::new(),
         }
     }
@@ -208,6 +210,50 @@ impl ToastQueue {
     pub fn deduplicate(mut self, deduplicate: bool) -> Self {
         self.deduplicate = deduplicate;
         self
+    }
+
+    /// Enable/disable pause on hover
+    pub fn pause_on_hover(mut self, pause: bool) -> Self {
+        self.pause_on_hover = pause;
+        self
+    }
+
+    /// Pause toast timers (call when mouse enters toast area)
+    pub fn pause(&mut self) {
+        if self.pause_on_hover {
+            self.paused = true;
+        }
+    }
+
+    /// Resume toast timers (call when mouse leaves toast area)
+    pub fn resume(&mut self) {
+        self.paused = false;
+    }
+
+    /// Check if paused
+    pub fn is_paused(&self) -> bool {
+        self.paused
+    }
+
+    /// Handle mouse events for pause-on-hover
+    pub fn handle_mouse(
+        &mut self,
+        event: &crate::event::MouseEvent,
+        area: crate::layout::Rect,
+    ) -> bool {
+        if !self.pause_on_hover {
+            return false;
+        }
+        let in_area = event.x >= area.x
+            && event.x < area.x + area.width
+            && event.y >= area.y
+            && event.y < area.y + area.height;
+        if in_area {
+            self.pause();
+        } else {
+            self.resume();
+        }
+        in_area
     }
 
     /// Push a simple toast
@@ -270,9 +316,11 @@ impl ToastQueue {
 
     /// Update the queue (call on each tick)
     pub fn tick(&mut self) {
-        // Remove expired toasts
-        self.visible
-            .retain(|t| !t.is_expired(self.default_duration));
+        // Remove expired toasts (unless paused)
+        if !self.paused {
+            self.visible
+                .retain(|t| !t.is_expired(self.default_duration));
+        }
 
         // Move toasts from queue to visible
         while self.visible.len() < self.max_visible && !self.queue.is_empty() {

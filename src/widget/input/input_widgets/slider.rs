@@ -296,10 +296,17 @@ impl Slider {
     }
 
     /// Format value for display
+    ///
+    /// Supports the following placeholders in `value_format`:
+    /// - `{value}` - the current value (1 decimal place)
+    /// - `{pct}` - the value as a percentage of the range (0 decimal places)
+    /// - `{}` - the current value (1 decimal place, legacy placeholder)
     fn format_value(&self) -> String {
         if let Some(ref fmt) = self.value_format {
-            fmt.replace("{}", &format!("{:.1}", self.value))
-        } else if self.step >= 1.0 || self.step == 0.0 && self.max - self.min >= 10.0 {
+            fmt.replace("{value}", &format!("{:.1}", self.value))
+                .replace("{pct}", &format!("{:.0}", self.normalized() * 100.0))
+                .replace("{}", &format!("{:.1}", self.value))
+        } else if self.step >= 1.0 || (self.step == 0.0 && self.max - self.min >= 10.0) {
             format!("{:.0}", self.value)
         } else {
             format!("{:.1}", self.value)

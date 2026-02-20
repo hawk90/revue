@@ -75,6 +75,42 @@ impl<T> List<T> {
     pub fn select_prev(&mut self) {
         self.selection.prev();
     }
+
+    /// Select the first item
+    pub fn select_first(&mut self) {
+        self.selection.set(0);
+    }
+
+    /// Select the last item
+    pub fn select_last(&mut self) {
+        if !self.items.is_empty() {
+            self.selection.set(self.items.len() - 1);
+        }
+    }
+
+    /// Handle key input for navigation
+    pub fn handle_key(&mut self, key: &crate::event::Key) -> bool {
+        use crate::event::Key;
+        match key {
+            Key::Up | Key::Char('k') => {
+                self.select_prev();
+                true
+            }
+            Key::Down | Key::Char('j') => {
+                self.select_next();
+                true
+            }
+            Key::Home => {
+                self.select_first();
+                true
+            }
+            Key::End => {
+                self.select_last();
+                true
+            }
+            _ => false,
+        }
+    }
 }
 
 impl<T: Display> View for List<T> {
