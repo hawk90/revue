@@ -48,6 +48,8 @@ fn main() -> Result<()> {
     let mut app = App::builder().build();
     let counter = Counter::new();
 
+    // run_with_handler provides a simplified keyboard-only handler (key_event, view).
+    // For full event access (mouse, resize, etc.), use app.run(view, |event, view, app| { ... }).
     app.run_with_handler(counter, |event, counter| {
         match event.key {
             Key::Char('q') | Key::Escape => false,
