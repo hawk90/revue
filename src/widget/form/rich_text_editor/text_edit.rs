@@ -135,6 +135,7 @@ impl RichTextEditor {
         // Record for undo
         self.undo_stack.push(EditOp::MergeBlocks {
             index: self.cursor.0 - 1,
+            split_col: prev_len,
         });
         self.redo_stack.clear();
 

@@ -58,21 +58,46 @@ impl RichTextEditor {
                     start,
                     end,
                     old,
-                    new,
+                    new: new_fmt,
                 } => {
-                    // TODO: apply old format to span range
+                    // Apply old format to the affected span range
+                    let block_ref = &mut self.blocks[block];
+                    let mut char_idx = 0;
+                    for span in &mut block_ref.spans {
+                        let span_start = char_idx;
+                        let span_end = char_idx + span.text.len();
+                        // Check if this span overlaps with the format range
+                        if span_end > start && span_start < end {
+                            span.format = old;
+                        }
+                        char_idx = span_end;
+                    }
                     self.redo_stack.push(EditOp::SetFormat {
                         block,
                         start,
                         end,
-                        old,
-                        new,
+                        old: new_fmt,
+                        new: old,
                     });
                 }
-                EditOp::MergeBlocks { index } => {
-                    // Undo of merge requires knowing the split point, which is not stored.
-                    // Push to redo as-is to preserve stack consistency.
-                    self.redo_stack.push(EditOp::MergeBlocks { index });
+                EditOp::MergeBlocks { index, split_col } => {
+                    // Undo merge: split the block at the stored column
+                    let text = self.blocks[index].text();
+                    let chars: Vec<char> = text.chars().collect();
+                    let first_text: String = chars[..split_col].iter().collect();
+                    let second_text: String = chars[split_col..].iter().collect();
+
+                    // Create new blocks preserving the block type
+                    let original_type = self.blocks[index].block_type;
+
+                    self.blocks[index].set_text(first_text);
+                    let mut new_block = Block::new(original_type);
+                    new_block.set_text(second_text);
+                    self.blocks.insert(index + 1, new_block);
+
+                    self.cursor = (index, split_col);
+                    self.redo_stack
+                        .push(EditOp::MergeBlocks { index, split_col });
                 }
                 EditOp::ChangeBlockType { block, old, new } => {
                     self.blocks[block].block_type = old;
@@ -135,22 +160,39 @@ impl RichTextEditor {
                     block,
                     start,
                     end,
-                    old,
+                    old: old_fmt,
                     new,
                 } => {
-                    // TODO: apply old format to span range
+                    // Apply new format to the affected span range
+                    let block_ref = &mut self.blocks[block];
+                    let mut char_idx = 0;
+                    for span in &mut block_ref.spans {
+                        let span_start = char_idx;
+                        let span_end = char_idx + span.text.len();
+                        // Check if this span overlaps with the format range
+                        if span_end > start && span_start < end {
+                            span.format = new;
+                        }
+                        char_idx = span_end;
+                    }
                     self.undo_stack.push(EditOp::SetFormat {
                         block,
                         start,
                         end,
-                        old,
+                        old: old_fmt,
                         new,
                     });
                 }
-                EditOp::MergeBlocks { index } => {
-                    // Redo of merge requires the original merge logic, which is not stored.
-                    // Push back to redo stack to preserve stack consistency.
-                    self.redo_stack.push(EditOp::MergeBlocks { index });
+                EditOp::MergeBlocks { index, split_col } => {
+                    // Redo merge: merge the block with the next one
+                    let next_text = self.blocks[index + 1].text();
+                    let current_text = self.blocks[index].text();
+                    self.blocks[index].set_text(format!("{}{}", current_text, next_text));
+                    self.blocks.remove(index + 1);
+
+                    self.cursor = (index, split_col);
+                    self.undo_stack
+                        .push(EditOp::MergeBlocks { index, split_col });
                 }
                 EditOp::ChangeBlockType { block, old, new } => {
                     self.blocks[block].block_type = new;
