@@ -20,6 +20,10 @@ mod toolbar;
 pub mod types;
 pub mod undo;
 
+// KEEP HERE - Private implementation tests in tests/ directory (accesses private fields of RichTextEditor)
+#[cfg(test)]
+mod tests;
+
 use crate::render::Cell;
 use crate::widget::traits::{RenderContext, View};
 

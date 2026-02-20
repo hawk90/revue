@@ -1,6 +1,47 @@
 //! Tests for rendering
 
 use super::*;
+use crate::widget::form::rich_text_editor::{FormattedSpan, TextFormat};
+
+/// Helper to create a bold text format
+fn bold() -> TextFormat {
+    TextFormat {
+        bold: true,
+        ..Default::default()
+    }
+}
+
+/// Helper to create an italic text format
+fn italic() -> TextFormat {
+    TextFormat {
+        italic: true,
+        ..Default::default()
+    }
+}
+
+/// Helper to create an underline text format
+fn underline() -> TextFormat {
+    TextFormat {
+        underline: true,
+        ..Default::default()
+    }
+}
+
+/// Helper to create a strikethrough text format
+fn strikethrough() -> TextFormat {
+    TextFormat {
+        strikethrough: true,
+        ..Default::default()
+    }
+}
+
+/// Helper to create a code text format
+fn code() -> TextFormat {
+    TextFormat {
+        code: true,
+        ..Default::default()
+    }
+}
 
 #[test]
 fn test_render_basic() {
@@ -520,4 +561,179 @@ fn test_render_with_unicode() {
     let content = "Unicode: 你好 🌍 🎉";
     let editor = RichTextEditor::new().content(content);
     editor.render(&mut ctx);
+}
+
+// =========================================================================
+// Formatted text rendering tests
+// =========================================================================
+
+#[test]
+fn test_render_bold_text() {
+    use crate::render::Modifier;
+
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let mut editor = RichTextEditor::new();
+    editor.blocks[0].spans = vec![FormattedSpan::new("Bold").with_format(bold())];
+
+    editor.render(&mut ctx);
+
+    let cell = buffer.get(0, 1); // Skip toolbar row
+    assert!(cell.is_some());
+    assert!(cell.unwrap().modifier.contains(Modifier::BOLD));
+}
+
+#[test]
+fn test_render_italic_text() {
+    use crate::render::Modifier;
+
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let mut editor = RichTextEditor::new();
+    editor.blocks[0].spans = vec![FormattedSpan::new("Italic").with_format(italic())];
+
+    editor.render(&mut ctx);
+
+    let cell = buffer.get(0, 1);
+    assert!(cell.is_some());
+    assert!(cell.unwrap().modifier.contains(Modifier::ITALIC));
+}
+
+#[test]
+fn test_render_underline_text() {
+    use crate::render::Modifier;
+
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let mut editor = RichTextEditor::new();
+    editor.blocks[0].spans = vec![FormattedSpan::new("Underline").with_format(underline())];
+
+    editor.render(&mut ctx);
+
+    let cell = buffer.get(0, 1);
+    assert!(cell.is_some());
+    assert!(cell.unwrap().modifier.contains(Modifier::UNDERLINE));
+}
+
+#[test]
+fn test_render_strikethrough_text() {
+    use crate::render::Modifier;
+
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let mut editor = RichTextEditor::new();
+    editor.blocks[0].spans = vec![FormattedSpan::new("Strike").with_format(strikethrough())];
+
+    editor.render(&mut ctx);
+
+    let cell = buffer.get(0, 1);
+    assert!(cell.is_some());
+    assert!(cell.unwrap().modifier.contains(Modifier::CROSSED_OUT));
+}
+
+#[test]
+fn test_render_code_text() {
+    use crate::render::Modifier;
+
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let mut editor = RichTextEditor::new();
+    editor.blocks[0].spans = vec![FormattedSpan::new("code").with_format(code())];
+
+    editor.render(&mut ctx);
+
+    let cell = buffer.get(0, 1);
+    assert!(cell.is_some());
+    assert!(cell.unwrap().modifier.contains(Modifier::DIM));
+}
+
+#[test]
+fn test_render_combined_modifiers() {
+    use crate::render::Modifier;
+
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let mut editor = RichTextEditor::new();
+    editor.blocks[0].spans = vec![FormattedSpan::new("BiU").with_format(TextFormat {
+        bold: true,
+        italic: true,
+        underline: true,
+        ..Default::default()
+    })];
+
+    editor.render(&mut ctx);
+
+    let cell = buffer.get(0, 1);
+    assert!(cell.is_some());
+    let modifier = cell.unwrap().modifier;
+    assert!(modifier.contains(Modifier::BOLD));
+    assert!(modifier.contains(Modifier::ITALIC));
+    assert!(modifier.contains(Modifier::UNDERLINE));
+}
+
+#[test]
+fn test_render_multiple_formatted_spans() {
+    use crate::render::Modifier;
+
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let mut editor = RichTextEditor::new();
+    editor.blocks[0].spans = vec![
+        FormattedSpan::new("Red").with_format(bold()),
+        FormattedSpan::new(" "),
+        FormattedSpan::new("Blue").with_format(italic()),
+    ];
+
+    editor.render(&mut ctx);
+
+    assert!(buffer.get(0, 1).unwrap().modifier.contains(Modifier::BOLD));
+    assert!(buffer
+        .get(4, 1)
+        .unwrap()
+        .modifier
+        .contains(Modifier::ITALIC));
+}
+
+#[test]
+fn test_render_all_modifiers() {
+    use crate::render::Modifier;
+
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let mut editor = RichTextEditor::new();
+    editor.blocks[0].spans = vec![FormattedSpan::new("All").with_format(TextFormat {
+        bold: true,
+        italic: true,
+        underline: true,
+        strikethrough: true,
+        code: true,
+        ..Default::default()
+    })];
+
+    editor.render(&mut ctx);
+
+    let cell = buffer.get(0, 1);
+    assert!(cell.is_some());
+    let modifier = cell.unwrap().modifier;
+    assert!(modifier.contains(Modifier::BOLD));
+    assert!(modifier.contains(Modifier::ITALIC));
+    assert!(modifier.contains(Modifier::UNDERLINE));
+    assert!(modifier.contains(Modifier::CROSSED_OUT));
+    assert!(modifier.contains(Modifier::DIM));
 }
