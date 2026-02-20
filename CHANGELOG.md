@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.51.0](https://github.com/hawk90/revue/compare/v2.50.0...v2.51.0) (2026-02-20)
+
+
+### Features
+
+* add showcase demo app with 25+ widgets across 4 tabs ([#444](https://github.com/hawk90/revue/issues/444)) ([039cc4e](https://github.com/hawk90/revue/commit/039cc4ec4b76556f14d9e321a2fca962fc71f8c5))
+
 ## [2.50.0](https://github.com/hawk90/revue/compare/v2.49.0...v2.50.0) (2026-02-18)
 
 
