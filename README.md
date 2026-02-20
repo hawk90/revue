@@ -262,13 +262,13 @@ cargo run --example todo          # Full-featured todo app
 cargo run --example hello_world   # Minimal "Hello World"
 
 # UI Components
-cargo run --example form          # Form validation demo
+cargo run --example form_validation  # Form validation demo
 cargo run --example dashboard     # Charts and data widgets
 cargo run --example gallery       # Widget showcase
 
 # Advanced
 cargo run --example animations    # Animation system
-cargo run --example worker        # Background tasks
+cargo run --example worker_basic  # Background tasks
 cargo run --example slideshow     # Terminal presentations
 cargo run --example ide           # Rich text editor
 

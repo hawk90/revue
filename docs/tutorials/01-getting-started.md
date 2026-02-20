@@ -78,7 +78,7 @@ See the [App Builder Guide](../guides/app-builder.md) for complete documentation
 
 ### Views and Widgets
 
-Views are the building blocks of your UI. Revue provides 86+ built-in widgets:
+Views are the building blocks of your UI. Revue provides 92+ built-in widgets:
 
 ```rust
 // Text display
