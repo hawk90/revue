@@ -155,11 +155,11 @@ let mut app = App::builder()
 
 ## App Instance Methods
 
-After calling `.build()`, you get an `App` instance with these methods:
+After calling `.build()`, you get an `App` instance with two run methods. Use `run()` when you need full event access (mouse, resize, etc.), or `run_with_handler()` for keyboard-only apps.
 
 ### run<V, H>(view, handler)
 
-Starts the event loop with full event handling.
+Starts the event loop with full event handling. The handler receives all events (key, mouse, resize) and has access to the app instance.
 
 ```rust
 app.run(MyView, |event, view, app| {
@@ -188,7 +188,7 @@ app.run(MyView, |event, view, app| {
 
 ### run_with_handler<V, H>(view, handler)
 
-Simplified version for keyboard-only event handling.
+Simplified version for keyboard-only apps. The handler receives only key events and the view — no app instance or mouse/resize events.
 
 ```rust
 app.run_with_handler(MyView, |key, view| {
