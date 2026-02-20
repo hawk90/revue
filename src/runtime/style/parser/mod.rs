@@ -10,8 +10,8 @@ pub use parse::parse;
 pub use types::{Declaration, KeyframeBlock, KeyframesDefinition, Rule, StyleSheet};
 #[allow(unused_imports)]
 pub use value_parsers::{
-    parse_color, parse_grid_placement, parse_grid_template, parse_signed_length, parse_size,
-    parse_spacing,
+    parse_calc, parse_color, parse_grid_placement, parse_grid_template, parse_signed_length,
+    parse_size, parse_spacing,
 };
 
 #[cfg(test)]

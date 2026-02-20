@@ -45,6 +45,7 @@
 //! | [`KeyHandler`] | Layered key handling | Modal UI, context-sensitive keys |
 //! | [`FormState`] | Form field management | Multi-field input forms |
 //! | [`NavigationState`] | Navigation stack | Breadcrumbs, route history |
+//! | [`UndoStack`] | Generic undo/redo stack | Text editing, state history |
 //!
 //! ## UI Patterns
 //!
@@ -149,6 +150,7 @@ pub mod lazy;
 pub mod message;
 pub mod navigation;
 pub mod search;
+pub mod undo;
 
 // Re-export commonly used items
 pub use async_ops::{spinner_char, AsyncTask, SPINNER_FRAMES};
@@ -164,3 +166,4 @@ pub use lazy::{
 pub use message::MessageState;
 pub use navigation::{build_breadcrumbs, BreadcrumbItem, NavigationEvent, NavigationState, Route};
 pub use search::{SearchMode, SearchState};
+pub use undo::UndoStack;

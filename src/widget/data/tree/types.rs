@@ -9,6 +9,12 @@ pub struct TreeNode {
     pub children: Vec<TreeNode>,
     /// Whether node is expanded
     pub expanded: bool,
+    /// Optional unique identifier
+    pub id: Option<String>,
+    /// Optional icon character displayed before the label
+    pub icon: Option<char>,
+    /// Whether this node can be selected (default: true)
+    pub selectable: bool,
 }
 
 impl TreeNode {
@@ -18,6 +24,9 @@ impl TreeNode {
             label: label.into(),
             children: Vec::new(),
             expanded: false,
+            id: None,
+            icon: None,
+            selectable: true,
         }
     }
 
@@ -36,6 +45,24 @@ impl TreeNode {
     /// Set expanded state
     pub fn expanded(mut self, expanded: bool) -> Self {
         self.expanded = expanded;
+        self
+    }
+
+    /// Set node ID
+    pub fn id(mut self, id: impl Into<String>) -> Self {
+        self.id = Some(id.into());
+        self
+    }
+
+    /// Set icon character displayed before the label
+    pub fn icon(mut self, icon: char) -> Self {
+        self.icon = Some(icon);
+        self
+    }
+
+    /// Set whether this node can be selected
+    pub fn selectable(mut self, selectable: bool) -> Self {
+        self.selectable = selectable;
         self
     }
 

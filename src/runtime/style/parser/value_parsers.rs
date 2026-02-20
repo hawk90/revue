@@ -1,6 +1,6 @@
 //! Value parsing functions for CSS property values
 
-use crate::style::{Color, GridPlacement, GridTemplate, GridTrack, Size, Spacing};
+use crate::style::{CalcExpr, Color, GridPlacement, GridTemplate, GridTrack, Size, Spacing};
 
 /// Parse a length value (e.g., "100", "100px")
 pub fn parse_length(value: &str) -> Option<u16> {
@@ -387,5 +387,75 @@ pub fn parse_spacing(value: &str) -> Option<Spacing> {
             })
         }
         _ => None,
+    }
+}
+
+/// Parse a CSS calc() expression
+///
+/// Supports simplified two-operand expressions:
+/// - `calc(100% - 20)` or `calc(100% - 20px)`
+/// - `calc(50% + 10)`
+/// - `calc(80 - 20)`
+/// - `calc(100% * 0.5)`
+/// - `calc(200 / 2)`
+///
+/// Returns `None` if parsing fails.
+pub fn parse_calc(value: &str) -> Option<CalcExpr> {
+    let value = value.trim();
+    let inner = value.strip_prefix("calc(")?.strip_suffix(')')?.trim();
+
+    // Find the operator by scanning for ` + `, ` - `, ` * `, ` / ` (with spaces)
+    let (left_str, op, right_str) = find_operator(inner)?;
+
+    let left = parse_calc_operand(left_str.trim())?;
+    let right_trimmed = right_str.trim();
+
+    match op {
+        '+' => {
+            let right = parse_calc_operand(right_trimmed)?;
+            Some(CalcExpr::Add(Box::new(left), Box::new(right)))
+        }
+        '-' => {
+            let right = parse_calc_operand(right_trimmed)?;
+            Some(CalcExpr::Sub(Box::new(left), Box::new(right)))
+        }
+        '*' => {
+            let scalar: f32 = right_trimmed.parse().ok()?;
+            Some(CalcExpr::Mul(Box::new(left), scalar))
+        }
+        '/' => {
+            let scalar: f32 = right_trimmed.parse().ok()?;
+            Some(CalcExpr::Div(Box::new(left), scalar))
+        }
+        _ => None,
+    }
+}
+
+/// Find the binary operator in a calc expression, returning (left, op, right)
+fn find_operator(expr: &str) -> Option<(&str, char, &str)> {
+    for op in ['+', '-', '*', '/'] {
+        let pattern = format!(" {} ", op);
+        if let Some(pos) = expr.find(&pattern) {
+            let left = &expr[..pos];
+            let right = &expr[pos + pattern.len()..];
+            return Some((left, op, right));
+        }
+    }
+    None
+}
+
+/// Parse a single operand in a calc expression (percentage or fixed value)
+fn parse_calc_operand(value: &str) -> Option<CalcExpr> {
+    let value = value.trim();
+    if let Some(pct) = value.strip_suffix('%') {
+        let v: f32 = pct.trim().parse().ok()?;
+        Some(CalcExpr::Percent(v))
+    } else if let Some(px) = value.strip_suffix("px") {
+        let v: u16 = px.trim().parse().ok()?;
+        Some(CalcExpr::Fixed(v))
+    } else if let Ok(v) = value.parse::<u16>() {
+        Some(CalcExpr::Fixed(v))
+    } else {
+        None
     }
 }

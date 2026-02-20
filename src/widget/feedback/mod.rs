@@ -98,6 +98,7 @@
 //! ```
 
 pub mod alert;
+pub mod error_boundary;
 pub mod menu;
 pub mod modal;
 pub mod notification;
@@ -111,6 +112,7 @@ pub mod tooltip;
 pub use alert::{
     alert, error_alert, info_alert, success_alert, warning_alert, Alert, AlertLevel, AlertVariant,
 };
+pub use error_boundary::{error_boundary, ErrorBoundary};
 pub use menu::{context_menu, menu, menu_bar, menu_item, ContextMenu, Menu, MenuBar, MenuItem};
 pub use modal::{modal, Modal, ModalButton, ModalButtonStyle};
 pub use notification::{

@@ -63,6 +63,8 @@ pub struct DataGrid {
     pub sort_column: Option<usize>,
     /// Sort direction
     pub sort_direction: SortDirection,
+    /// Multi-column sort stack: (column_index, direction) in priority order
+    pub sort_columns: Vec<(usize, SortDirection)>,
     /// Filter text
     pub filter: String,
     /// Filter column (None = all columns)
@@ -191,6 +193,7 @@ impl DataGrid {
             rows: Vec::new(),
             sort_column: None,
             sort_direction: SortDirection::Ascending,
+            sort_columns: Vec::new(),
             filter: String::new(),
             filter_column: None,
             filtered_cache: Vec::new(),

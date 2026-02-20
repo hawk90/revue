@@ -408,14 +408,14 @@ pub use data::{
 
 // Feedback widgets (re-exported from feedback module)
 pub use feedback::{
-    alert, context_menu, error_alert, footer, header, info_alert, key_hint, menu, menu_bar,
-    menu_item, modal, notification_center, popover, status_section, statusbar, success_alert,
-    toast, toast_queue, tooltip, warning_alert, Alert, AlertLevel, AlertVariant, ContextMenu,
-    KeyHint, Menu, MenuBar, MenuItem, Modal, ModalButton, ModalButtonStyle, Notification,
-    NotificationCenter, NotificationLevel, NotificationPosition, Popover, PopoverArrow,
-    PopoverPosition, PopoverStyle, PopoverTrigger, SectionAlign, StackDirection, StatusBar,
-    StatusSection, Toast, ToastEntry, ToastLevel, ToastPosition, ToastPriority, ToastQueue,
-    Tooltip, TooltipArrow, TooltipPosition, TooltipStyle,
+    alert, context_menu, error_alert, error_boundary, footer, header, info_alert, key_hint, menu,
+    menu_bar, menu_item, modal, notification_center, popover, status_section, statusbar,
+    success_alert, toast, toast_queue, tooltip, warning_alert, Alert, AlertLevel, AlertVariant,
+    ContextMenu, ErrorBoundary, KeyHint, Menu, MenuBar, MenuItem, Modal, ModalButton,
+    ModalButtonStyle, Notification, NotificationCenter, NotificationLevel, NotificationPosition,
+    Popover, PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger, SectionAlign,
+    StackDirection, StatusBar, StatusSection, Toast, ToastEntry, ToastLevel, ToastPosition,
+    ToastPriority, ToastQueue, Tooltip, TooltipArrow, TooltipPosition, TooltipStyle,
 };
 
 // Developer widgets (re-exported from developer module)

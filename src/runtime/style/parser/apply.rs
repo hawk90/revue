@@ -2,7 +2,8 @@
 
 use crate::style::parser::parse_spacing;
 use crate::style::parser::value_parsers::{
-    parse_color, parse_grid_placement, parse_grid_template, parse_signed_length, parse_size,
+    parse_calc, parse_color, parse_grid_placement, parse_grid_template, parse_signed_length,
+    parse_size,
 };
 use crate::style::Style;
 use crate::style::{AlignItems, BorderStyle, Display, FlexDirection, JustifyContent, Position};
@@ -58,6 +59,7 @@ fn apply_display_layout(style: &mut Style, property: &str, value: &str) -> bool 
                 "relative" => Position::Relative,
                 "absolute" => Position::Absolute,
                 "fixed" => Position::Fixed,
+                "sticky" => Position::Sticky,
                 _ => return false,
             };
             true
@@ -160,6 +162,21 @@ fn apply_position_offsets(style: &mut Style, property: &str, value: &str) -> boo
     }
 }
 
+/// Parse a size value, resolving calc() expressions immediately to a fixed value.
+///
+/// If the value starts with "calc(", it is parsed as a calc expression and
+/// resolved against a default parent size of 80 (standard terminal width).
+/// Otherwise, it falls back to the normal `parse_size` behavior.
+fn parse_size_or_calc(value: &str) -> crate::style::Size {
+    if value.trim().starts_with("calc(") {
+        if let Some(expr) = parse_calc(value) {
+            // Resolve immediately with a default parent size of 80 columns
+            return expr.to_size(80);
+        }
+    }
+    parse_size(value)
+}
+
 /// Apply sizing properties (width, height, padding, margin)
 fn apply_sizing(style: &mut Style, property: &str, value: &str) -> bool {
     match property {
@@ -178,27 +195,27 @@ fn apply_sizing(style: &mut Style, property: &str, value: &str) -> bool {
             false
         }
         "width" => {
-            style.sizing.width = parse_size(value);
+            style.sizing.width = parse_size_or_calc(value);
             true
         }
         "height" => {
-            style.sizing.height = parse_size(value);
+            style.sizing.height = parse_size_or_calc(value);
             true
         }
         "min-width" => {
-            style.sizing.min_width = parse_size(value);
+            style.sizing.min_width = parse_size_or_calc(value);
             true
         }
         "max-width" => {
-            style.sizing.max_width = parse_size(value);
+            style.sizing.max_width = parse_size_or_calc(value);
             true
         }
         "min-height" => {
-            style.sizing.min_height = parse_size(value);
+            style.sizing.min_height = parse_size_or_calc(value);
             true
         }
         "max-height" => {
-            style.sizing.max_height = parse_size(value);
+            style.sizing.max_height = parse_size_or_calc(value);
             true
         }
         _ => false,

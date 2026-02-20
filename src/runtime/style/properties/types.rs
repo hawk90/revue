@@ -28,6 +28,8 @@ pub enum Position {
     Absolute,
     /// Positioned relative to viewport
     Fixed,
+    /// Sticky: acts like relative until a scroll threshold, then acts like fixed
+    Sticky,
 }
 
 /// Grid track sizing
@@ -213,6 +215,68 @@ impl Spacing {
     }
 }
 
+/// CSS calc() expression for computed sizes
+///
+/// Represents a CSS `calc()` expression that can mix fixed and percentage values.
+/// Use `resolve(parent_size)` to compute the final value.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use revue::style::CalcExpr;
+///
+/// let expr = CalcExpr::Sub(
+///     Box::new(CalcExpr::Percent(100.0)),
+///     Box::new(CalcExpr::Fixed(20)),
+/// );
+/// assert_eq!(expr.resolve(80), 60); // 100% of 80 - 20 = 60
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub enum CalcExpr {
+    /// Fixed value in cells
+    Fixed(u16),
+    /// Percentage of parent
+    Percent(f32),
+    /// Addition
+    Add(Box<CalcExpr>, Box<CalcExpr>),
+    /// Subtraction
+    Sub(Box<CalcExpr>, Box<CalcExpr>),
+    /// Multiplication by scalar
+    Mul(Box<CalcExpr>, f32),
+    /// Division by scalar
+    Div(Box<CalcExpr>, f32),
+}
+
+impl CalcExpr {
+    /// Resolve the calc expression against a parent size to get a concrete value
+    pub fn resolve(&self, parent_size: u16) -> u16 {
+        let result = self.resolve_f32(parent_size);
+        result.round().max(0.0) as u16
+    }
+
+    /// Resolve to a `Size` value given a parent size
+    pub fn to_size(&self, parent_size: u16) -> Size {
+        Size::Fixed(self.resolve(parent_size))
+    }
+
+    fn resolve_f32(&self, parent_size: u16) -> f32 {
+        match self {
+            CalcExpr::Fixed(v) => *v as f32,
+            CalcExpr::Percent(p) => (*p / 100.0) * parent_size as f32,
+            CalcExpr::Add(a, b) => a.resolve_f32(parent_size) + b.resolve_f32(parent_size),
+            CalcExpr::Sub(a, b) => a.resolve_f32(parent_size) - b.resolve_f32(parent_size),
+            CalcExpr::Mul(a, f) => a.resolve_f32(parent_size) * f,
+            CalcExpr::Div(a, f) => {
+                if *f == 0.0 {
+                    0.0
+                } else {
+                    a.resolve_f32(parent_size) / f
+                }
+            }
+        }
+    }
+}
+
 /// Size constraint for width/height
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum Size {
@@ -320,6 +384,7 @@ mod tests {
         assert_eq!(Position::Relative, Position::Relative);
         assert_eq!(Position::Absolute, Position::Absolute);
         assert_eq!(Position::Fixed, Position::Fixed);
+        assert_eq!(Position::Sticky, Position::Sticky);
     }
 
     // GridTrack tests
