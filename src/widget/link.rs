@@ -20,8 +20,10 @@
 //! let home = link("https://example.com", "Home Page");
 //! ```
 
+use crate::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+use crate::layout::Rect;
 use crate::style::Color;
-use crate::widget::{RenderContext, View, WidgetProps};
+use crate::widget::traits::{EventResult, Interactive, RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -275,6 +277,55 @@ impl View for Link {
         }
 
         text.render(ctx);
+    }
+}
+
+impl Interactive for Link {
+    fn handle_key(&mut self, event: &KeyEvent) -> EventResult {
+        if self.disabled {
+            return EventResult::Ignored;
+        }
+
+        match event.key {
+            Key::Enter | Key::Char(' ') => {
+                // Open the link - return Consumed to let the app handle opening
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let _ = self.open();
+                }
+                EventResult::ConsumedAndRender
+            }
+            _ => EventResult::Ignored,
+        }
+    }
+
+    fn handle_mouse(&mut self, event: &MouseEvent, _area: Rect) -> EventResult {
+        if self.disabled {
+            return EventResult::Ignored;
+        }
+
+        match event.kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let _ = self.open();
+                }
+                EventResult::ConsumedAndRender
+            }
+            _ => EventResult::Ignored,
+        }
+    }
+
+    fn focusable(&self) -> bool {
+        !self.disabled
+    }
+
+    fn on_focus(&mut self) {
+        self.focused = true;
+    }
+
+    fn on_blur(&mut self) {
+        self.focused = false;
     }
 }
 

@@ -1,9 +1,11 @@
 //! Select/Dropdown widget for choosing from a list of options
 
+use crate::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::{fuzzy_match, FuzzyMatch, Selection};
-use crate::widget::traits::{RenderContext, View, WidgetProps};
+use crate::widget::traits::{EventResult, Interactive, RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// A select/dropdown widget with optional fuzzy search
@@ -28,6 +30,10 @@ pub struct Select {
     filtered: Vec<usize>,
     /// Selection state for filtered results (uses Selection utility)
     filtered_selection: Selection,
+    /// Focused state
+    focused: bool,
+    /// Disabled state
+    disabled: bool,
     /// CSS styling properties (id, classes)
     props: WidgetProps,
 }
@@ -50,6 +56,8 @@ impl Select {
             searchable: false,
             filtered: Vec::new(),
             filtered_selection: Selection::new(0),
+            focused: false,
+            disabled: false,
             props: WidgetProps::new(),
         }
     }
@@ -116,6 +124,18 @@ impl Select {
     /// Set fixed width
     pub fn width(mut self, width: u16) -> Self {
         self.width = Some(width);
+        self
+    }
+
+    /// Set focused state
+    pub fn focused(mut self, focused: bool) -> Self {
+        self.focused = focused;
+        self
+    }
+
+    /// Set disabled state
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = disabled;
         self
     }
 
@@ -388,6 +408,16 @@ impl View for Select {
         let width = self.display_width(area.width);
         let text_width = (width - 2) as usize;
 
+        // Determine colors based on state
+        let fg = if self.disabled {
+            Some(Color::rgb(128, 128, 128))
+        } else if self.focused {
+            self.fg.or(Some(Color::CYAN))
+        } else {
+            self.fg
+        };
+        let bg = self.bg;
+
         // Render the closed/header row
         let display_text = if self.open && self.searchable && !self.query.is_empty() {
             // Show search query when searching
@@ -400,9 +430,26 @@ impl View for Select {
         // Draw background for header
         for x in 0..width {
             let mut cell = Cell::new(' ');
-            cell.fg = self.fg;
-            cell.bg = self.bg;
+            cell.fg = fg;
+            cell.bg = bg;
             ctx.buffer.set(area.x + x, area.y, cell);
+        }
+
+        // Draw focus indicator
+        if self.focused && !self.disabled {
+            // Add brackets around select when focused
+            if area.x > 0 {
+                let mut left = Cell::new('[');
+                left.fg = Some(Color::CYAN);
+                ctx.buffer.set(area.x.saturating_sub(1), area.y, left);
+            }
+
+            let right_x = area.x + width;
+            if right_x < area.x + area.width {
+                let mut right = Cell::new(']');
+                right.fg = Some(Color::CYAN);
+                ctx.buffer.set(right_x, area.y, right);
+            }
         }
 
         // Draw arrow (or search icon when searching)
@@ -412,16 +459,16 @@ impl View for Select {
             arrow.chars().next().unwrap_or('▼')
         };
         let mut cell = Cell::new(icon);
-        cell.fg = self.fg;
-        cell.bg = self.bg;
+        cell.fg = fg;
+        cell.bg = bg;
         ctx.buffer.set(area.x, area.y, cell);
 
         // Draw text
         let truncated: String = display_text.chars().take(text_width).collect();
         for (i, ch) in truncated.chars().enumerate() {
             let mut cell = Cell::new(ch);
-            cell.fg = self.fg;
-            cell.bg = self.bg;
+            cell.fg = fg;
+            cell.bg = bg;
             ctx.buffer.set(area.x + 2 + i as u16, area.y, cell);
         }
 
@@ -491,6 +538,116 @@ impl View for Select {
     }
 
     crate::impl_view_meta!("Select");
+}
+
+impl Interactive for Select {
+    fn handle_key(&mut self, event: &KeyEvent) -> EventResult {
+        if self.disabled {
+            return EventResult::Ignored;
+        }
+
+        let needs_render = match event.key {
+            Key::Enter => {
+                if self.open {
+                    self.close();
+                    self.clear_query();
+                } else {
+                    self.open();
+                }
+                true
+            }
+            Key::Char(' ') if !self.searchable => {
+                self.toggle();
+                true
+            }
+            Key::Up | Key::Char('k') if self.open && !self.searchable => {
+                self.select_prev();
+                true
+            }
+            Key::Down | Key::Char('j') if self.open && !self.searchable => {
+                self.select_next();
+                true
+            }
+            Key::Up if self.open && self.searchable => {
+                if self.query.is_empty() {
+                    self.select_prev();
+                } else {
+                    self.select_prev_filtered();
+                }
+                true
+            }
+            Key::Down if self.open && self.searchable => {
+                if self.query.is_empty() {
+                    self.select_next();
+                } else {
+                    self.select_next_filtered();
+                }
+                true
+            }
+            Key::Escape if self.open => {
+                self.close();
+                self.clear_query();
+                true
+            }
+            Key::Backspace if self.open && self.searchable => {
+                self.query.pop();
+                self.update_filter();
+                true
+            }
+            Key::Char(c) if self.open && self.searchable => {
+                self.query.push(c);
+                self.update_filter();
+                true
+            }
+            Key::Home if self.open => {
+                self.select_first();
+                true
+            }
+            Key::End if self.open => {
+                self.select_last();
+                true
+            }
+            _ => false,
+        };
+
+        if needs_render {
+            EventResult::ConsumedAndRender
+        } else {
+            EventResult::Ignored
+        }
+    }
+
+    fn handle_mouse(&mut self, event: &MouseEvent, area: Rect) -> EventResult {
+        if self.disabled {
+            return EventResult::Ignored;
+        }
+
+        let inside = area.contains(event.x, event.y);
+
+        match event.kind {
+            MouseEventKind::Down(MouseButton::Left) if inside => {
+                self.toggle();
+                EventResult::ConsumedAndRender
+            }
+            _ => EventResult::Ignored,
+        }
+    }
+
+    fn focusable(&self) -> bool {
+        !self.disabled
+    }
+
+    fn on_focus(&mut self) {
+        self.focused = true;
+    }
+
+    fn on_blur(&mut self) {
+        self.focused = false;
+        if self.open {
+            self.close();
+            self.clear_query();
+        }
+    }
 }
 
 impl_styled_view!(Select);
