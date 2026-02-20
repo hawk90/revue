@@ -29,12 +29,21 @@ package.json
 package-lock.json
 
 # Coverage
+coverage/
 coverage.lcov
 lcov.info
 *.profraw
 *.profdata
+test-artifacts/
 
 # Rust compiled artifacts (in addition to /target/)
 *.rlib
 *.rmeta
+
+# Example build outputs
+badge
+spinner
 tabs
+types
+test_path
+test_selection
