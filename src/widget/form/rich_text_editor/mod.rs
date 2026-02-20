@@ -20,6 +20,10 @@ mod toolbar;
 pub mod types;
 pub mod undo;
 
+// KEEP HERE - Private implementation tests in tests/ directory (accesses private fields of RichTextEditor)
+#[cfg(test)]
+mod tests;
+
 use crate::render::Cell;
 use crate::widget::traits::{RenderContext, View};
 
@@ -32,7 +36,7 @@ pub use types::{EditorViewMode, ToolbarAction};
 
 /// Edit operation for undo/redo
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
+#[allow(dead_code)] // Used in undo.rs module
 pub(super) enum EditOp {
     InsertChar {
         block: usize,
@@ -54,6 +58,7 @@ pub(super) enum EditOp {
     },
     MergeBlocks {
         index: usize,
+        split_col: usize,
     },
     SplitBlock {
         block: usize,

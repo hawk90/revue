@@ -1,7 +1,7 @@
 //! Editor view rendering for RichTextEditor
 
 use super::{BlockType, RichTextEditor};
-use crate::render::Cell;
+use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::widget::traits::RenderContext;
 
@@ -72,44 +72,68 @@ impl RichTextEditor {
                 }
             }
 
-            // Render block content
-            let text = block.text();
-            for (char_idx, ch) in text.chars().enumerate() {
-                if col >= x + width {
-                    break;
-                }
+            // Render block content with per-span formatting
+            let mut char_idx = 0;
+            for span in &block.spans {
+                for ch in span.text.chars() {
+                    if col >= x + width {
+                        break;
+                    }
 
-                let is_cursor =
-                    self.focused && block_idx == self.cursor.0 && char_idx == self.cursor.1;
+                    let is_cursor =
+                        self.focused && block_idx == self.cursor.0 && char_idx == self.cursor.1;
 
-                let is_selected = self.anchor.is_some_and(|anchor| {
-                    let (start, end) = if anchor < self.cursor {
-                        (anchor, self.cursor)
+                    let is_selected = self.anchor.is_some_and(|anchor| {
+                        let (start, end) = if anchor < self.cursor {
+                            (anchor, self.cursor)
+                        } else {
+                            (self.cursor, anchor)
+                        };
+                        block_idx >= start.0
+                            && block_idx <= end.0
+                            && (block_idx > start.0 || char_idx >= start.1)
+                            && (block_idx < end.0 || char_idx < end.1)
+                    });
+
+                    let cell_bg = if is_cursor {
+                        self.cursor_bg
+                    } else if is_selected {
+                        self.selection_bg
                     } else {
-                        (self.cursor, anchor)
+                        bg
                     };
-                    block_idx >= start.0
-                        && block_idx <= end.0
-                        && (block_idx > start.0 || char_idx >= start.1)
-                        && (block_idx < end.0 || char_idx < end.1)
-                });
 
-                let cell_bg = if is_cursor {
-                    self.cursor_bg
-                } else if is_selected {
-                    self.selection_bg
-                } else {
-                    bg
-                };
+                    // Build cell with span formatting
+                    let mut cell = Cell::new(ch).fg(fg).bg(cell_bg);
 
-                ctx.buffer.set(col, row_y, Cell::new(ch).fg(fg).bg(cell_bg));
-                col += 1;
+                    // Apply text formatting modifiers
+                    if span.format.bold {
+                        cell.modifier |= Modifier::BOLD;
+                    }
+                    if span.format.italic {
+                        cell.modifier |= Modifier::ITALIC;
+                    }
+                    if span.format.underline {
+                        cell.modifier |= Modifier::UNDERLINE;
+                    }
+                    if span.format.strikethrough {
+                        cell.modifier |= Modifier::CROSSED_OUT;
+                    }
+                    if span.format.code {
+                        cell.modifier |= Modifier::DIM;
+                    }
+
+                    ctx.buffer.set(col, row_y, cell);
+                    col += 1;
+                    char_idx += 1;
+                }
             }
 
             // Render cursor at end of line
+            let text_len = block.len();
             if self.focused
                 && block_idx == self.cursor.0
-                && self.cursor.1 >= text.len()
+                && self.cursor.1 >= text_len
                 && col < x + width
             {
                 ctx.buffer

@@ -44,7 +44,6 @@ pub struct RichTextEditor {
     pub(super) heading_fg: Color,
     pub(super) code_bg: Color,
     pub(super) quote_fg: Color,
-    #[allow(dead_code)]
     pub(super) link_fg: Color,
     /// Widget props
     pub(super) props: crate::widget::traits::WidgetProps,
@@ -280,6 +279,12 @@ impl RichTextEditor {
     /// Set foreground color
     pub fn fg(mut self, color: Color) -> Self {
         self.fg = Some(color);
+        self
+    }
+
+    /// Set link color
+    pub fn link_fg(mut self, color: Color) -> Self {
+        self.link_fg = color;
         self
     }
 
