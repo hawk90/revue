@@ -7,7 +7,7 @@ impl View for Grid {
     crate::impl_view_meta!("Grid");
 
     fn render(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
+        let area = self.apply_constraints(ctx.area);
         if area.width == 0 || area.height == 0 || self.items.is_empty() {
             return;
         }
