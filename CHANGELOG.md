@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.54.0](https://github.com/hawk90/revue/compare/v2.53.0...v2.54.0) (2026-02-28)
+
+
+### Features
+
+* add Interactive trait, focus indicators, and gauge background colors ([#454](https://github.com/hawk90/revue/issues/454)) ([06929ab](https://github.com/hawk90/revue/commit/06929ab7d779cad142a6d13157dd90cc6194f9ab))
+
 ## [2.53.0](https://github.com/hawk90/revue/compare/v2.52.2...v2.53.0) (2026-02-20)
 
 
