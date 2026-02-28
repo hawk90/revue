@@ -348,7 +348,7 @@ fn test_splitter_pane_areas_korean_ratio() {
     // Left: 99 * 0.3 ≈ 29-30
     // Right: remaining
     let left_width = areas[0].1.width;
-    let right_width = areas[1].1.width;
+    let _right_width = areas[1].1.width;
 
     // Verify they don't overlap and splitter is between them
     assert!(
