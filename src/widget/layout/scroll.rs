@@ -13,6 +13,14 @@ pub struct ScrollView {
     show_scrollbar: bool,
     scrollbar_fg: Option<Color>,
     scrollbar_bg: Option<Color>,
+    /// Minimum width constraint (0 = no constraint)
+    min_width: u16,
+    /// Minimum height constraint (0 = no constraint)
+    min_height: u16,
+    /// Maximum width constraint (0 = no constraint)
+    max_width: u16,
+    /// Maximum height constraint (0 = no constraint)
+    max_height: u16,
     /// CSS styling properties (id, classes)
     props: WidgetProps,
 }
@@ -26,6 +34,10 @@ impl ScrollView {
             show_scrollbar: true,
             scrollbar_fg: Some(Color::WHITE),
             scrollbar_bg: Some(Color::rgb(64, 64, 64)),
+            min_width: 0,
+            min_height: 0,
+            max_width: 0,
+            max_height: 0,
             props: WidgetProps::new(),
         }
     }
@@ -53,6 +65,69 @@ impl ScrollView {
         self.scrollbar_fg = Some(fg);
         self.scrollbar_bg = Some(bg);
         self
+    }
+
+    /// Set minimum width constraint
+    pub fn min_width(mut self, width: u16) -> Self {
+        self.min_width = width;
+        self
+    }
+
+    /// Set minimum height constraint
+    pub fn min_height(mut self, height: u16) -> Self {
+        self.min_height = height;
+        self
+    }
+
+    /// Set maximum width constraint (0 = no limit)
+    pub fn max_width(mut self, width: u16) -> Self {
+        self.max_width = width;
+        self
+    }
+
+    /// Set maximum height constraint (0 = no limit)
+    pub fn max_height(mut self, height: u16) -> Self {
+        self.max_height = height;
+        self
+    }
+
+    /// Set both min width and height
+    pub fn min_size(self, width: u16, height: u16) -> Self {
+        self.min_width(width).min_height(height)
+    }
+
+    /// Set both max width and height (0 = no limit)
+    pub fn max_size(self, width: u16, height: u16) -> Self {
+        self.max_width(width).max_height(height)
+    }
+
+    /// Set all size constraints at once
+    pub fn constrain(self, min_w: u16, min_h: u16, max_w: u16, max_h: u16) -> Self {
+        self.min_width(min_w)
+            .min_height(min_h)
+            .max_width(max_w)
+            .max_height(max_h)
+    }
+
+    /// Apply size constraints to the available area
+    fn apply_constraints(&self, area: Rect) -> Rect {
+        let width = if self.min_width > 0 && area.width < self.min_width {
+            self.min_width
+        } else if self.max_width > 0 && area.width > self.max_width {
+            self.max_width
+        } else {
+            area.width
+        };
+
+        let height = if self.min_height > 0 && area.height < self.min_height {
+            self.min_height
+        } else if self.max_height > 0 && area.height > self.max_height {
+            self.max_height
+        } else {
+            area.height
+        };
+
+        Rect::new(area.x, area.y, width, height)
     }
 
     /// Get current scroll offset
@@ -166,7 +241,7 @@ impl ScrollView {
             return;
         }
 
-        let area = ctx.area;
+        let area = self.apply_constraints(ctx.area);
         if area.width < 1 || area.height < 1 {
             return;
         }
@@ -261,6 +336,7 @@ impl View for ScrollView {
     crate::impl_view_meta!("ScrollView");
 
     fn render(&self, ctx: &mut RenderContext) {
+        let _area = self.apply_constraints(ctx.area);
         // ScrollView alone just renders the scrollbar
         // Content should be rendered via render_content method
         self.render_scrollbar(ctx);

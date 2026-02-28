@@ -5,6 +5,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::color::contrast_color;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -70,8 +71,12 @@ pub struct Gauge {
     show_percent: bool,
     /// Filled color
     fill_color: Color,
+    /// Filled background color
+    fill_bg: Option<Color>,
     /// Empty/track color
     empty_color: Color,
+    /// Empty background color
+    empty_bg: Option<Color>,
     /// Border color
     border_color: Option<Color>,
     /// Warning threshold (0.0-1.0)
@@ -104,7 +109,9 @@ impl Gauge {
             label_position: LabelPosition::Inside,
             show_percent: true,
             fill_color: Color::GREEN,
+            fill_bg: None,
             empty_color: Color::rgb(60, 60, 60),
+            empty_bg: None,
             border_color: None,
             warning_threshold: None,
             critical_threshold: None,
@@ -191,9 +198,21 @@ impl Gauge {
         self
     }
 
+    /// Set fill background color
+    pub fn fill_background(mut self, color: Color) -> Self {
+        self.fill_bg = Some(color);
+        self
+    }
+
     /// Set empty color
     pub fn empty_color(mut self, color: Color) -> Self {
         self.empty_color = color;
+        self
+    }
+
+    /// Set empty background color
+    pub fn empty_background(mut self, color: Color) -> Self {
+        self.empty_bg = Some(color);
         self
     }
 
@@ -291,11 +310,18 @@ impl Gauge {
 
         // Draw bar
         for x in 0..width {
-            let ch = if x < filled { '█' } else { '░' };
-            let fg = if x < filled { color } else { self.empty_color };
+            let is_filled = x < filled;
+            let ch = if is_filled { '█' } else { '░' };
+            let fg = if is_filled { color } else { self.empty_color };
+            let bg = if is_filled {
+                self.fill_bg.unwrap_or(color)
+            } else {
+                self.empty_bg.unwrap_or(self.empty_color)
+            };
 
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
+            cell.bg = Some(bg);
             ctx.buffer.set(area.x + x, area.y, cell);
         }
 
@@ -306,8 +332,15 @@ impl Gauge {
             for (i, ch) in label.chars().enumerate() {
                 let x = label_x + i as u16;
                 if x < area.x + width {
+                    let is_filled = x - area.x < filled;
+                    let bg = if is_filled {
+                        self.fill_bg.unwrap_or(color)
+                    } else {
+                        self.empty_bg.unwrap_or(self.empty_color)
+                    };
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::WHITE);
+                    cell.fg = Some(contrast_color(bg));
+                    cell.bg = Some(bg);
                     cell.modifier |= Modifier::BOLD;
                     ctx.buffer.set(x, area.y, cell);
                 }
