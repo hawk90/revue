@@ -110,6 +110,14 @@ pub struct Accordion {
     border_color: Option<Color>,
     /// Show dividers between sections
     show_dividers: bool,
+    /// Minimum width constraint (0 = no constraint)
+    min_width: u16,
+    /// Minimum height constraint (0 = no constraint)
+    min_height: u16,
+    /// Maximum width constraint (0 = no constraint)
+    max_width: u16,
+    /// Maximum height constraint (0 = no constraint)
+    max_height: u16,
     /// Widget properties
     props: WidgetProps,
 }
@@ -128,6 +136,10 @@ impl Accordion {
             content_fg: Color::rgb(200, 200, 200),
             border_color: None,
             show_dividers: true,
+            min_width: 0,
+            min_height: 0,
+            max_width: 0,
+            max_height: 0,
             props: WidgetProps::new(),
         }
     }
@@ -263,6 +275,48 @@ impl Accordion {
     /// Check if empty
     pub fn is_empty(&self) -> bool {
         self.sections.is_empty()
+    }
+
+    /// Set minimum width constraint
+    pub fn min_width(mut self, width: u16) -> Self {
+        self.min_width = width;
+        self
+    }
+
+    /// Set minimum height constraint
+    pub fn min_height(mut self, height: u16) -> Self {
+        self.min_height = height;
+        self
+    }
+
+    /// Set maximum width constraint (0 = no limit)
+    pub fn max_width(mut self, width: u16) -> Self {
+        self.max_width = width;
+        self
+    }
+
+    /// Set maximum height constraint (0 = no limit)
+    pub fn max_height(mut self, height: u16) -> Self {
+        self.max_height = height;
+        self
+    }
+
+    /// Set both min width and height
+    pub fn min_size(self, width: u16, height: u16) -> Self {
+        self.min_width(width).min_height(height)
+    }
+
+    /// Set both max width and height (0 = no limit)
+    pub fn max_size(self, width: u16, height: u16) -> Self {
+        self.max_width(width).max_height(height)
+    }
+
+    /// Set all size constraints at once
+    pub fn constrain(self, min_w: u16, min_h: u16, max_w: u16, max_h: u16) -> Self {
+        self.min_width(min_w)
+            .min_height(min_h)
+            .max_width(max_w)
+            .max_height(max_h)
     }
 
     /// Handle key input

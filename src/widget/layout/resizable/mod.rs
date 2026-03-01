@@ -110,11 +110,43 @@ where
         self
     }
 
+    /// Set minimum width
+    pub fn min_width(mut self, width: u16) -> Self {
+        self.min_width = width.max(1);
+        self
+    }
+
+    /// Set minimum height
+    pub fn min_height(mut self, height: u16) -> Self {
+        self.min_height = height.max(1);
+        self
+    }
+
     /// Set maximum size
     pub fn max_size(mut self, width: u16, height: u16) -> Self {
         self.max_width = width;
         self.max_height = height;
         self
+    }
+
+    /// Set maximum width (0 = no limit)
+    pub fn max_width(mut self, width: u16) -> Self {
+        self.max_width = width;
+        self
+    }
+
+    /// Set maximum height (0 = no limit)
+    pub fn max_height(mut self, height: u16) -> Self {
+        self.max_height = height;
+        self
+    }
+
+    /// Set all size constraints at once
+    pub fn constrain(self, min_w: u16, min_h: u16, max_w: u16, max_h: u16) -> Self {
+        self.min_width(min_w)
+            .min_height(min_h)
+            .max_width(max_w)
+            .max_height(max_h)
     }
 
     /// Set allowed handles

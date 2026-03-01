@@ -58,6 +58,14 @@ pub struct Sidebar {
     pub(crate) badge_fg: Option<Color>,
     pub(crate) badge_bg: Option<Color>,
     pub(crate) border_fg: Option<Color>,
+    /// Minimum width constraint (0 = no constraint)
+    pub(crate) min_width: u16,
+    /// Minimum height constraint (0 = no constraint)
+    pub(crate) min_height: u16,
+    /// Maximum width constraint (0 = no constraint)
+    pub(crate) max_width: u16,
+    /// Maximum height constraint (0 = no constraint)
+    pub(crate) max_height: u16,
     /// Widget props
     pub props: WidgetProps,
 }
@@ -87,6 +95,10 @@ impl Sidebar {
             badge_fg: Some(Color::WHITE),
             badge_bg: Some(Color::RED),
             border_fg: Some(Color::rgb(60, 60, 80)),
+            min_width: 0,
+            min_height: 0,
+            max_width: 0,
+            max_height: 0,
             props: WidgetProps::new(),
         }
     }
@@ -209,6 +221,48 @@ impl Sidebar {
             CollapseMode::Collapsed => CollapseMode::Expanded,
             CollapseMode::Auto => CollapseMode::Collapsed,
         };
+    }
+
+    /// Set minimum width constraint
+    pub fn min_width(mut self, width: u16) -> Self {
+        self.min_width = width;
+        self
+    }
+
+    /// Set minimum height constraint
+    pub fn min_height(mut self, height: u16) -> Self {
+        self.min_height = height;
+        self
+    }
+
+    /// Set maximum width constraint (0 = no limit)
+    pub fn max_width(mut self, width: u16) -> Self {
+        self.max_width = width;
+        self
+    }
+
+    /// Set maximum height constraint (0 = no limit)
+    pub fn max_height(mut self, height: u16) -> Self {
+        self.max_height = height;
+        self
+    }
+
+    /// Set both min width and height
+    pub fn min_size(self, width: u16, height: u16) -> Self {
+        self.min_width(width).min_height(height)
+    }
+
+    /// Set both max width and height (0 = no limit)
+    pub fn max_size(self, width: u16, height: u16) -> Self {
+        self.max_width(width).max_height(height)
+    }
+
+    /// Set all size constraints at once
+    pub fn constrain(self, min_w: u16, min_h: u16, max_w: u16, max_h: u16) -> Self {
+        self.min_width(min_w)
+            .min_height(min_h)
+            .max_width(max_w)
+            .max_height(max_h)
     }
 }
 
