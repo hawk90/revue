@@ -272,8 +272,8 @@ impl View for DateTimePicker {
             return;
         }
 
-        let x = area.x + 1;
-        let y = area.y;
+        let x: u16 = 1;
+        let y: u16 = 0;
 
         match self.format {
             DateTimeFormat::DateOnly => {

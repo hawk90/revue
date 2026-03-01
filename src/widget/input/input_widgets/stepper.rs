@@ -384,10 +384,10 @@ impl Stepper {
         // Calculate spacing
         let step_width = available_width / step_count.max(1);
 
-        let y = area.y;
+        let y: u16 = 0;
 
         for (i, step) in self.steps.iter().enumerate() {
-            let x = area.x + (i * step_width) as u16;
+            let x = (i * step_width) as u16;
             let color = self.step_color(step);
 
             // Step indicator
@@ -400,7 +400,7 @@ impl Stepper {
                         if step.status == StepStatus::Active {
                             cell.modifier |= Modifier::BOLD;
                         }
-                        ctx.buffer.set(x + j as u16, y, cell);
+                        ctx.set(x + j as u16, y, cell);
                     }
                 }
                 _ => {
@@ -409,7 +409,7 @@ impl Stepper {
                     if step.status == StepStatus::Active {
                         cell.modifier |= Modifier::BOLD;
                     }
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
 
@@ -418,7 +418,7 @@ impl Stepper {
                 && i < step_count - 1
             {
                 let connector_start = x + 2;
-                let connector_end = area.x + ((i + 1) * step_width) as u16;
+                let connector_end = ((i + 1) * step_width) as u16;
 
                 for cx in connector_start..connector_end {
                     let ch = if matches!(self.style, StepperStyle::Progress)
@@ -434,12 +434,12 @@ impl Stepper {
                     } else {
                         self.connector_color
                     });
-                    ctx.buffer.set(cx, y, cell);
+                    ctx.set(cx, y, cell);
                 }
             }
 
             // Title (below indicator)
-            if y + 1 < area.y + area.height {
+            if y + 1 < area.height {
                 let max_title_len = step_width.saturating_sub(1);
                 let title = if step.title.len() > max_title_len {
                     format!("{}…", &step.title[..max_title_len.saturating_sub(1)])
@@ -448,7 +448,7 @@ impl Stepper {
                 };
 
                 for (j, ch) in title.chars().enumerate() {
-                    if x + j as u16 >= area.x + area.width {
+                    if x + j as u16 >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
@@ -456,12 +456,12 @@ impl Stepper {
                     if step.status == StepStatus::Active {
                         cell.modifier |= Modifier::BOLD;
                     }
-                    ctx.buffer.set(x + j as u16, y + 1, cell);
+                    ctx.set(x + j as u16, y + 1, cell);
                 }
             }
 
             // Description (if enabled and space available)
-            if self.show_descriptions && y + 2 < area.y + area.height {
+            if self.show_descriptions && y + 2 < area.height {
                 if let Some(ref desc) = step.description {
                     let max_desc_len = step_width.saturating_sub(1);
                     let desc_str = if desc.len() > max_desc_len {
@@ -471,12 +471,12 @@ impl Stepper {
                     };
 
                     for (j, ch) in desc_str.chars().enumerate() {
-                        if x + j as u16 >= area.x + area.width {
+                        if x + j as u16 >= area.width {
                             break;
                         }
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(Color::rgb(120, 120, 120));
-                        ctx.buffer.set(x + j as u16, y + 2, cell);
+                        ctx.set(x + j as u16, y + 2, cell);
                     }
                 }
             }
@@ -485,15 +485,15 @@ impl Stepper {
 
     fn render_vertical(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let mut y = area.y;
+        let mut y: u16 = 0;
 
         for (i, step) in self.steps.iter().enumerate() {
-            if y >= area.y + area.height {
+            if y >= area.height {
                 break;
             }
 
             let color = self.step_color(step);
-            let x = area.x;
+            let x: u16 = 0;
 
             // Step indicator
             let indicator = if self.show_numbers {
@@ -508,13 +508,13 @@ impl Stepper {
                 if step.status == StepStatus::Active {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.buffer.set(x + j as u16, y, cell);
+                ctx.set(x + j as u16, y, cell);
             }
 
             // Title
             let title_x = x + 3;
             for (j, ch) in step.title.chars().enumerate() {
-                if title_x + j as u16 >= area.x + area.width {
+                if title_x + j as u16 >= area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -522,7 +522,7 @@ impl Stepper {
                 if step.status == StepStatus::Active {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.buffer.set(title_x + j as u16, y, cell);
+                ctx.set(title_x + j as u16, y, cell);
             }
 
             y += 1;
@@ -530,15 +530,15 @@ impl Stepper {
             // Description
             if self.show_descriptions {
                 if let Some(ref desc) = step.description {
-                    if y < area.y + area.height {
+                    if y < area.height {
                         let desc_x = x + 3;
                         for (j, ch) in desc.chars().enumerate() {
-                            if desc_x + j as u16 >= area.x + area.width {
+                            if desc_x + j as u16 >= area.width {
                                 break;
                             }
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(Color::rgb(120, 120, 120));
-                            ctx.buffer.set(desc_x + j as u16, y, cell);
+                            ctx.set(desc_x + j as u16, y, cell);
                         }
                         y += 1;
                     }
@@ -548,7 +548,7 @@ impl Stepper {
             // Connector (except last)
             if matches!(self.style, StepperStyle::Connected)
                 && i < self.steps.len() - 1
-                && y < area.y + area.height
+                && y < area.height
             {
                 let mut cell = Cell::new('│');
                 cell.fg = Some(if step.status == StepStatus::Completed {
@@ -556,7 +556,7 @@ impl Stepper {
                 } else {
                     self.connector_color
                 });
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
                 y += 1;
             }
         }

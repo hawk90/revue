@@ -104,26 +104,22 @@ impl View for TransitionGroup {
         let default_bg = Color::BLACK;
         let default_fg = Color::WHITE;
 
-        let mut y = area.y;
-
         // Render each item
-        for item in self.items.iter() {
-            if y >= area.y + area.height {
+        for (y, item) in (0_u16..).zip(self.items.iter()) {
+            if y >= area.height {
                 break;
             }
 
             // Render item
             for (j, ch) in item.chars().enumerate() {
-                let x = area.x + j as u16;
-                if x < area.x + area.width {
+                let x = j as u16;
+                if x < area.width {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(default_fg);
                     cell.bg = Some(default_bg);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
-
-            y += 1;
         }
     }
 }

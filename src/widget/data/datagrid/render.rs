@@ -39,11 +39,11 @@ impl View for DataGrid {
         let row_num_width: u16 = if self.options.show_row_numbers { 5 } else { 0 };
         let header_height: u16 = if self.options.show_header { 1 } else { 0 };
 
-        let mut y = area.y;
+        let mut y = 0u16;
 
         // Draw header
         if self.options.show_header {
-            self.render_header(ctx, &visible_cols, &widths, area.x + row_num_width, y);
+            self.render_header(ctx, &visible_cols, &widths, row_num_width, y);
             y += 1;
         }
 
@@ -65,7 +65,7 @@ impl View for DataGrid {
         let params = RowRenderParams {
             visible_cols: &visible_cols,
             widths: &widths,
-            area_x: area.x,
+            area_x: 0,
             start_y: y,
             row_num_width,
             visible_height,
@@ -155,7 +155,7 @@ impl DataGrid {
                 let mut sep = Cell::new('│');
                 sep.fg = Some(self.colors.border_color);
                 sep.bg = Some(row_bg);
-                ctx.buffer.set(x + w, row_y, sep);
+                ctx.set(x + w, row_y, sep);
 
                 x += w + 1;
             }
@@ -187,7 +187,7 @@ impl DataGrid {
                 let mut cell = Cell::new('│');
                 cell.fg = Some(Color::CYAN);
                 cell.modifier |= Modifier::BOLD;
-                ctx.buffer.set(x.saturating_sub(1), y, cell);
+                ctx.set(x.saturating_sub(1), y, cell);
             }
 
             // Draw header cell background
@@ -199,7 +199,7 @@ impl DataGrid {
             for dx in 0..w {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg);
-                ctx.buffer.set(x + dx, y, cell);
+                ctx.set(x + dx, y, cell);
             }
 
             // Draw title with sort indicator
@@ -233,7 +233,7 @@ impl DataGrid {
                 } else {
                     cell.modifier |= Modifier::DIM;
                 }
-                ctx.buffer.set(x + j as u16, y, cell);
+                ctx.set(x + j as u16, y, cell);
             }
 
             // Draw separator with resize indicator
@@ -255,7 +255,7 @@ impl DataGrid {
             let mut sep = Cell::new(sep_char);
             sep.fg = Some(sep_color);
             sep.bg = Some(bg);
-            ctx.buffer.set(x + w, y, sep);
+            ctx.set(x + w, y, sep);
 
             x += w + 1;
         }
@@ -266,7 +266,7 @@ impl DataGrid {
                 let mut cell = Cell::new('│');
                 cell.fg = Some(Color::CYAN);
                 cell.modifier |= Modifier::BOLD;
-                ctx.buffer.set(x.saturating_sub(1), y, cell);
+                ctx.set(x.saturating_sub(1), y, cell);
             }
         }
     }
@@ -278,7 +278,7 @@ impl DataGrid {
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::rgb(100, 100, 100));
             cell.bg = Some(bg);
-            ctx.buffer.set(x + j as u16, y, cell);
+            ctx.set(x + j as u16, y, cell);
         }
     }
 
@@ -301,7 +301,7 @@ impl DataGrid {
         for dx in 0..pos.width {
             let mut cell = Cell::new(' ');
             cell.bg = Some(cell_bg);
-            ctx.buffer.set(pos.x + dx, pos.y, cell);
+            ctx.set(pos.x + dx, pos.y, cell);
         }
 
         // Draw value or edit buffer
@@ -329,7 +329,7 @@ impl DataGrid {
                 Color::WHITE
             });
             cell.bg = Some(if is_cursor { Color::WHITE } else { bg });
-            ctx.buffer.set(x + j as u16, y, cell);
+            ctx.set(x + j as u16, y, cell);
         }
         // Draw cursor at end if needed
         if self.edit_state.cursor >= display.chars().count()
@@ -337,8 +337,7 @@ impl DataGrid {
         {
             let mut cursor_cell = Cell::new(' ');
             cursor_cell.bg = Some(Color::WHITE);
-            ctx.buffer
-                .set(x + self.edit_state.cursor as u16, y, cursor_cell);
+            ctx.set(x + self.edit_state.cursor as u16, y, cursor_cell);
         }
     }
 
@@ -371,7 +370,7 @@ impl DataGrid {
                 Color::WHITE
             });
             cell.bg = Some(row_bg);
-            ctx.buffer.set(start_x + j as u16, pos.y, cell);
+            ctx.set(start_x + j as u16, pos.y, cell);
         }
     }
 
@@ -388,7 +387,7 @@ impl DataGrid {
             return;
         }
 
-        let scrollbar_x = area.x + area.width - 1;
+        let scrollbar_x = area.width - 1;
         let scrollbar_height = visible_height as f64;
         let thumb_height =
             (scrollbar_height * visible_height as f64 / total_rows as f64).max(1.0) as u16;
@@ -406,21 +405,21 @@ impl DataGrid {
                 Cell::new('░')
             };
             cell.fg = Some(Color::rgb(100, 100, 120));
-            ctx.buffer.set(scrollbar_x, scrollbar_y, cell);
+            ctx.set(scrollbar_x, scrollbar_y, cell);
         }
 
         // Draw row indicator
         let indicator = format!(" {}/{} ", self.selected_row + 1, total_rows);
-        let indicator_x = area.x + area.width.saturating_sub(indicator.len() as u16 + 1);
-        let indicator_y = area.y + area.height - 1;
+        let indicator_x = area.width.saturating_sub(indicator.len() as u16 + 1);
+        let indicator_y = area.height - 1;
 
         for (j, ch) in indicator.chars().enumerate() {
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::rgb(150, 150, 150));
             cell.bg = Some(Color::rgb(40, 40, 50));
             let cell_x = indicator_x + (j as u16);
-            if cell_x < area.x + area.width {
-                ctx.buffer.set(cell_x, indicator_y, cell);
+            if cell_x < area.width {
+                ctx.set(cell_x, indicator_y, cell);
             }
         }
     }

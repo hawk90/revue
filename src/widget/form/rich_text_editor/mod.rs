@@ -109,16 +109,16 @@ impl View for RichTextEditor {
                 for x in 0..area.width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg);
-                    ctx.buffer.set(area.x + x, area.y + y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
 
-        let mut y = area.y;
+        let mut y: u16 = 0;
 
         // Render toolbar if enabled
         if self.show_toolbar {
-            self.render_toolbar(ctx, area.x, y, area.width);
+            self.render_toolbar(ctx, 0, y, area.width);
             y += 1;
         }
 
@@ -128,27 +128,21 @@ impl View for RichTextEditor {
 
         match self.view_mode {
             EditorViewMode::Editor => {
-                self.render_editor(ctx, area.x, y, area.width, content_height);
+                self.render_editor(ctx, 0, y, area.width, content_height);
             }
             EditorViewMode::Preview => {
-                self.render_preview(ctx, area.x, y, area.width, content_height);
+                self.render_preview(ctx, 0, y, area.width, content_height);
             }
             EditorViewMode::Split => {
                 let half_width = area.width / 2;
-                self.render_editor(ctx, area.x, y, half_width, content_height);
-                self.render_preview(
-                    ctx,
-                    area.x + half_width,
-                    y,
-                    area.width - half_width,
-                    content_height,
-                );
+                self.render_editor(ctx, 0, y, half_width, content_height);
+                self.render_preview(ctx, half_width, y, area.width - half_width, content_height);
             }
         }
 
         // Render dialog if open
         if self.is_dialog_open() {
-            self.render_dialog(ctx, area.x, area.y, area.width, area.height);
+            self.render_dialog(ctx, 0, 0, area.width, area.height);
         }
     }
 }

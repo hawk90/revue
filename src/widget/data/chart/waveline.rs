@@ -252,24 +252,28 @@ impl View for Waveline {
             return;
         }
 
-        let mut chart_y = area.y;
+        let mut chart_y = 0u16;
         let mut chart_height = height.min(area.height);
 
         // Background
         if let Some(bg) = self.bg_color {
-            for y in area.y..area.y + chart_height {
-                for x in area.x..area.x + area.width {
+            for y in 0..chart_height {
+                for x in 0..area.width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
 
         // Label
         if let Some(ref label) = self.label {
-            ctx.buffer
-                .put_str_styled(area.x, chart_y, label, Some(Color::WHITE), self.bg_color);
+            for (i, ch) in label.chars().enumerate() {
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(Color::WHITE);
+                cell.bg = self.bg_color;
+                ctx.set(i as u16, chart_y, cell);
+            }
             chart_y += 1;
             chart_height = chart_height.saturating_sub(1);
         }
@@ -295,10 +299,10 @@ impl View for Waveline {
         if self.show_baseline {
             let baseline_row = ((1.0 - self.baseline) * (chart_height - 1) as f64) as u16;
             let y = chart_y + baseline_row;
-            for x in area.x..area.x + area.width {
+            for x in 0..area.width {
                 let mut cell = Cell::new('─');
                 cell.fg = Some(self.baseline_color);
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
         }
 
@@ -311,10 +315,10 @@ impl View for Waveline {
                     let y = chart_y + ((1.0 - y_ratio) * (chart_height - 1) as f64) as u16;
 
                     if y >= chart_y && y < chart_y + chart_height {
-                        let screen_x = area.x + x as u16;
+                        let screen_x = x as u16;
                         let mut cell = Cell::new('●');
                         cell.fg = Some(self.get_color(y_ratio));
-                        ctx.buffer.set(screen_x, y, cell);
+                        ctx.set(screen_x, y, cell);
                     }
                 }
             }
@@ -327,7 +331,7 @@ impl View for Waveline {
                     let y_ratio = self.baseline + val * (1.0 - self.baseline);
                     let y = ((1.0 - y_ratio) * (chart_height - 1) as f64) as u16;
 
-                    let screen_x = area.x + x as u16;
+                    let screen_x = x as u16;
 
                     let (start_y, end_y) = if y <= baseline_row {
                         (y, baseline_row)
@@ -342,7 +346,7 @@ impl View for Waveline {
                             let ratio = 1.0 - dy as f64 / (chart_height - 1) as f64;
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(self.get_color(ratio));
-                            ctx.buffer.set(screen_x, screen_y, cell);
+                            ctx.set(screen_x, screen_y, cell);
                         }
                     }
                 }
@@ -355,7 +359,7 @@ impl View for Waveline {
                         .clamp(0.0, 1.0);
                     let half_height = (val * center_y as f64) as u16;
 
-                    let screen_x = area.x + x as u16;
+                    let screen_x = x as u16;
 
                     // Draw upper half
                     for dy in 0..=half_height {
@@ -365,7 +369,7 @@ impl View for Waveline {
                             let ch = if dy == half_height { '▀' } else { '█' };
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(self.get_color(0.5 + intensity * 0.5));
-                            ctx.buffer.set(screen_x, screen_y, cell);
+                            ctx.set(screen_x, screen_y, cell);
                         }
                     }
 
@@ -377,7 +381,7 @@ impl View for Waveline {
                             let ch = if dy == half_height { '▄' } else { '█' };
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(self.get_color(0.5 + intensity * 0.5));
-                            ctx.buffer.set(screen_x, screen_y, cell);
+                            ctx.set(screen_x, screen_y, cell);
                         }
                     }
                 }
@@ -392,7 +396,7 @@ impl View for Waveline {
                     let y_ratio = self.baseline + val * (1.0 - self.baseline);
                     let target_y = ((1.0 - y_ratio) * (chart_height - 1) as f64) as u16;
 
-                    let screen_x = area.x + x as u16;
+                    let screen_x = x as u16;
 
                     if val >= 0.0 {
                         for dy in target_y..=baseline_row {
@@ -406,7 +410,7 @@ impl View for Waveline {
                                 };
                                 let mut cell = Cell::new(ch);
                                 cell.fg = Some(self.get_color(y_ratio));
-                                ctx.buffer.set(screen_x, screen_y, cell);
+                                ctx.set(screen_x, screen_y, cell);
                             }
                         }
                     } else {
@@ -421,7 +425,7 @@ impl View for Waveline {
                                 };
                                 let mut cell = Cell::new(ch);
                                 cell.fg = Some(self.get_color(y_ratio));
-                                ctx.buffer.set(screen_x, screen_y, cell);
+                                ctx.set(screen_x, screen_y, cell);
                             }
                         }
                     }
@@ -435,10 +439,10 @@ impl View for Waveline {
                     let y = chart_y + ((1.0 - y_ratio) * (chart_height - 1) as f64) as u16;
 
                     if y >= chart_y && y < chart_y + chart_height {
-                        let screen_x = area.x + x as u16;
+                        let screen_x = x as u16;
                         let mut cell = Cell::new('⣿');
                         cell.fg = Some(self.get_color(y_ratio));
-                        ctx.buffer.set(screen_x, y, cell);
+                        ctx.set(screen_x, y, cell);
                     }
                 }
             }

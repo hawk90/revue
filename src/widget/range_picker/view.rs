@@ -16,8 +16,8 @@ impl View for RangePicker {
             return;
         }
 
-        let x = area.x;
-        let y = area.y;
+        let x: u16 = 0;
+        let y: u16 = 0;
 
         // Render start calendar
         let start_focused = self.focus == RangeFocus::Start;
@@ -186,7 +186,7 @@ impl RangePicker {
                 for i in 0..2 {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg_color);
-                    ctx.buffer.set(day_x + i, day_y, cell);
+                    ctx.set(day_x + i, day_y, cell);
                 }
             }
             self.draw_text(ctx, day_x, day_y, &day_str, fg, bold);
@@ -228,7 +228,7 @@ impl RangePicker {
                 for dx in 0..16 {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg_color);
-                    ctx.buffer.set(x + dx, preset_y, cell);
+                    ctx.set(x + dx, preset_y, cell);
                 }
             }
             self.draw_text(ctx, x, preset_y, &text, fg, is_cursor);
@@ -256,9 +256,9 @@ impl RangePicker {
             if bold {
                 cell.modifier |= Modifier::BOLD;
             }
-            ctx.buffer.set(x + offset, y, cell);
+            ctx.set(x + offset, y, cell);
             for i in 1..ch_width {
-                ctx.buffer.set(x + offset + i, y, Cell::continuation());
+                ctx.set(x + offset + i, y, Cell::continuation());
             }
             offset += ch_width;
         }

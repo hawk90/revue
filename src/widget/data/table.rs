@@ -281,7 +281,7 @@ impl View for Table {
         }
 
         let widths = self.calculate_widths(area.width);
-        let mut y = area.y;
+        let mut y = 0u16;
 
         // Render header
         if self.border {
@@ -292,7 +292,7 @@ impl View for Table {
                 right: '┐',
                 horiz: '─',
             };
-            self.render_border_line(ctx, area.x, y, &widths, &top_border);
+            self.render_border_line(ctx, 0, y, &widths, &top_border);
             y += 1;
         }
 
@@ -304,7 +304,7 @@ impl View for Table {
         };
         self.render_row(
             ctx,
-            area.x,
+            0,
             y,
             &widths,
             &self
@@ -324,12 +324,12 @@ impl View for Table {
                 right: '┤',
                 horiz: '─',
             };
-            self.render_border_line(ctx, area.x, y, &widths, &sep_border);
+            self.render_border_line(ctx, 0, y, &widths, &sep_border);
             y += 1;
         }
 
         // Data rows
-        let max_data_y = area.y + area.height - if self.border { 1 } else { 0 };
+        let max_data_y = area.height - if self.border { 1 } else { 0 };
         let viewport_rows = max_data_y.saturating_sub(y) as usize;
 
         if self.is_virtual_active() && !self.rows.is_empty() {
@@ -355,12 +355,12 @@ impl View for Table {
                     bg,
                     bold: false,
                 };
-                self.render_row(ctx, area.x, viewport_y, &widths, &self.rows[i], &row_style);
+                self.render_row(ctx, 0, viewport_y, &widths, &self.rows[i], &row_style);
             }
 
             // Render scrollbar
             if self.show_scrollbar && self.rows.len() > viewport_rows {
-                let scrollbar_x = area.x + area.width - 1;
+                let scrollbar_x = area.width - 1;
                 let track_height = viewport_rows as f32;
                 let total = self.rows.len() as f32;
                 let thumb_size = ((track_height / total) * track_height).max(1.0) as u16;
@@ -380,7 +380,7 @@ impl View for Table {
                     if abs_y < max_data_y {
                         let in_thumb = vy >= thumb_pos && vy < thumb_pos + thumb_size;
                         let ch = if in_thumb { '█' } else { '░' };
-                        ctx.buffer.set(scrollbar_x, abs_y, Cell::new(ch));
+                        ctx.set(scrollbar_x, abs_y, Cell::new(ch));
                     }
                 }
             }
@@ -403,7 +403,7 @@ impl View for Table {
                     bg,
                     bold: false,
                 };
-                self.render_row(ctx, area.x, y, &widths, row, &row_style);
+                self.render_row(ctx, 0, y, &widths, row, &row_style);
                 y += 1;
             }
         }
@@ -416,7 +416,7 @@ impl View for Table {
                 right: '┘',
                 horiz: '─',
             };
-            self.render_border_line(ctx, area.x, y, &widths, &bottom_border);
+            self.render_border_line(ctx, 0, y, &widths, &bottom_border);
         }
     }
 }
@@ -437,7 +437,7 @@ impl Table {
             let mut cell = Cell::new('│');
             cell.fg = style.fg;
             cell.bg = style.bg;
-            ctx.buffer.set(cx, y, cell);
+            ctx.set(cx, y, cell);
             cx += 1;
         }
 
@@ -452,7 +452,7 @@ impl Table {
                 if style.bold {
                     cell.modifier |= crate::render::Modifier::BOLD;
                 }
-                ctx.buffer.set(cx + j as u16, y, cell);
+                ctx.set(cx + j as u16, y, cell);
             }
 
             // Fill remaining space
@@ -460,7 +460,7 @@ impl Table {
                 let mut cell = Cell::new(' ');
                 cell.fg = style.fg;
                 cell.bg = style.bg;
-                ctx.buffer.set(cx + j as u16, y, cell);
+                ctx.set(cx + j as u16, y, cell);
             }
 
             cx += width;
@@ -469,7 +469,7 @@ impl Table {
                 let mut cell = Cell::new('│');
                 cell.fg = style.fg;
                 cell.bg = style.bg;
-                ctx.buffer.set(cx, y, cell);
+                ctx.set(cx, y, cell);
                 cx += 1;
             }
         }
@@ -485,21 +485,21 @@ impl Table {
     ) {
         let mut cx = x;
 
-        ctx.buffer.set(cx, y, Cell::new(chars.left));
+        ctx.set(cx, y, Cell::new(chars.left));
         cx += 1;
 
         for (i, width) in widths.iter().enumerate() {
             for _ in 0..*width {
-                ctx.buffer.set(cx, y, Cell::new(chars.horiz));
+                ctx.set(cx, y, Cell::new(chars.horiz));
                 cx += 1;
             }
             if i < widths.len() - 1 {
-                ctx.buffer.set(cx, y, Cell::new(chars.mid));
+                ctx.set(cx, y, Cell::new(chars.mid));
                 cx += 1;
             }
         }
 
-        ctx.buffer.set(cx, y, Cell::new(chars.right));
+        ctx.set(cx, y, Cell::new(chars.right));
     }
 }
 

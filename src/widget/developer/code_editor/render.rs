@@ -97,7 +97,7 @@ impl View for CodeEditor {
                 for x in 0..area.width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg);
-                    ctx.buffer.set(area.x + x, area.y + y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -107,7 +107,7 @@ impl View for CodeEditor {
         let end_line = (start_line + visible_lines).min(self.lines.len());
 
         for (view_row, line_idx) in (start_line..end_line).enumerate() {
-            let y = area.y + view_row as u16;
+            let y = view_row as u16;
             let line = &self.lines[line_idx];
             let is_current_line = line_idx == self.cursor.0;
 
@@ -116,7 +116,7 @@ impl View for CodeEditor {
                 for x in line_num_width..line_num_width + text_width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(self.current_line_bg);
-                    ctx.buffer.set(area.x + x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
 
@@ -136,7 +136,7 @@ impl View for CodeEditor {
                             self.line_number_fg
                         });
                         cell.bg = self.bg;
-                        ctx.buffer.set(area.x + i as u16, y, cell);
+                        ctx.set(i as u16, y, cell);
                     }
                 }
             }
@@ -149,8 +149,8 @@ impl View for CodeEditor {
             let scroll_col = self.scroll.1;
 
             for (view_col, char_idx) in (scroll_col..scroll_col + text_width as usize).enumerate() {
-                let x = area.x + line_num_width + view_col as u16;
-                if x >= area.x + area.width - minimap_width {
+                let x = line_num_width + view_col as u16;
+                if x >= area.width - minimap_width {
                     break;
                 }
 
@@ -216,30 +216,30 @@ impl View for CodeEditor {
                     }
                 }
 
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
 
             // Draw cursor at end of line if needed
             if self.focused && line_idx == self.cursor.0 && self.cursor.1 >= chars.len() {
-                let cursor_x = area.x + line_num_width + (self.cursor.1 - scroll_col) as u16;
-                if cursor_x < area.x + area.width - minimap_width {
+                let cursor_x = line_num_width + (self.cursor.1 - scroll_col) as u16;
+                if cursor_x < area.width - minimap_width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(self.cursor_bg);
-                    ctx.buffer.set(cursor_x, y, cell);
+                    ctx.set(cursor_x, y, cell);
                 }
             }
         }
 
         // Draw minimap if enabled
         if self.config.show_minimap && minimap_width > 0 {
-            let minimap_x = area.x + area.width - minimap_width;
+            let minimap_x = area.width - minimap_width;
 
             // Minimap background
             for y in 0..area.height {
                 for x in 0..minimap_width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(self.minimap_bg);
-                    ctx.buffer.set(minimap_x + x, area.y + y, cell);
+                    ctx.set(minimap_x + x, y, cell);
                 }
             }
 
@@ -251,14 +251,14 @@ impl View for CodeEditor {
             // Draw minimap content
             for row in 0..minimap_height {
                 let start_line = (row as f32 * lines_per_row) as usize;
-                let y = area.y + row as u16;
+                let y = row as u16;
 
                 // Highlight visible area
                 if start_line >= self.scroll.0 && start_line < self.scroll.0 + visible_lines {
                     for x in 0..minimap_width {
                         let mut cell = Cell::new(' ');
                         cell.bg = Some(self.minimap_visible_bg);
-                        ctx.buffer.set(minimap_x + x, y, cell);
+                        ctx.set(minimap_x + x, y, cell);
                     }
                 }
 
@@ -269,7 +269,7 @@ impl View for CodeEditor {
                         if !ch.is_whitespace() {
                             let mut cell = Cell::new('▪');
                             cell.fg = Some(Color::rgb(128, 128, 128));
-                            ctx.buffer.set(minimap_x + i as u16, y, cell);
+                            ctx.set(minimap_x + i as u16, y, cell);
                         }
                     }
                 }
@@ -279,14 +279,13 @@ impl View for CodeEditor {
         // Draw go-to-line dialog
         if self.goto_line_mode {
             let dialog_width = 20u16;
-            let dialog_x = area.x + (area.width.saturating_sub(dialog_width)) / 2;
-            let dialog_y = area.y;
+            let dialog_x = (area.width.saturating_sub(dialog_width)) / 2;
 
             // Background
             for x in 0..dialog_width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(Color::rgb(49, 50, 68));
-                ctx.buffer.set(dialog_x + x, dialog_y, cell);
+                ctx.set(dialog_x + x, 0, cell);
             }
 
             // Label
@@ -295,7 +294,7 @@ impl View for CodeEditor {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.bg = Some(Color::rgb(49, 50, 68));
-                ctx.buffer.set(dialog_x + i as u16, dialog_y, cell);
+                ctx.set(dialog_x + i as u16, 0, cell);
             }
 
             // Input
@@ -303,22 +302,20 @@ impl View for CodeEditor {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::rgb(166, 227, 161));
                 cell.bg = Some(Color::rgb(49, 50, 68));
-                ctx.buffer
-                    .set(dialog_x + label.len() as u16 + i as u16, dialog_y, cell);
+                ctx.set(dialog_x + label.len() as u16 + i as u16, 0, cell);
             }
         }
 
         // Draw find dialog
         if self.find_mode {
             let dialog_width = 30u16;
-            let dialog_x = area.x + (area.width.saturating_sub(dialog_width)) / 2;
-            let dialog_y = area.y;
+            let dialog_x = (area.width.saturating_sub(dialog_width)) / 2;
 
             // Background
             for x in 0..dialog_width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(Color::rgb(49, 50, 68));
-                ctx.buffer.set(dialog_x + x, dialog_y, cell);
+                ctx.set(dialog_x + x, 0, cell);
             }
 
             // Label
@@ -327,7 +324,7 @@ impl View for CodeEditor {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.bg = Some(Color::rgb(49, 50, 68));
-                ctx.buffer.set(dialog_x + i as u16, dialog_y, cell);
+                ctx.set(dialog_x + i as u16, 0, cell);
             }
 
             // Query
@@ -336,8 +333,7 @@ impl View for CodeEditor {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(166, 227, 161));
                     cell.bg = Some(Color::rgb(49, 50, 68));
-                    ctx.buffer
-                        .set(dialog_x + label.len() as u16 + i as u16, dialog_y, cell);
+                    ctx.set(dialog_x + label.len() as u16 + i as u16, 0, cell);
                 }
             }
 
@@ -348,7 +344,7 @@ impl View for CodeEditor {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::rgb(180, 190, 254));
                 cell.bg = Some(Color::rgb(49, 50, 68));
-                ctx.buffer.set(count_x + i as u16, dialog_y, cell);
+                ctx.set(count_x + i as u16, 0, cell);
             }
         }
     }

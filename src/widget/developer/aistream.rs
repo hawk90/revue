@@ -364,14 +364,14 @@ impl AiStream {
 
         let mut cell = Cell::new(ch);
         cell.fg = Some(self.cursor_color);
-        ctx.buffer.set(ctx.area.x, ctx.area.y, cell);
+        ctx.set(0, 0, cell);
 
         let text = " Thinking...";
         for (i, c) in text.chars().enumerate() {
             let mut cell = Cell::new(c);
             cell.fg = Some(Color::rgb(150, 150, 150));
             cell.modifier = Modifier::ITALIC;
-            ctx.buffer.set(ctx.area.x + 1 + i as u16, ctx.area.y, cell);
+            ctx.set(1 + i as u16, 0, cell);
         }
     }
 }
@@ -423,7 +423,7 @@ impl View for AiStream {
             let mut cell = Cell::new(ch);
             cell.fg = Some(self.fg);
             cell.bg = self.bg;
-            ctx.buffer.set(area.x + x, area.y + y, cell);
+            ctx.set(x, y, cell);
 
             x += 1;
         }
@@ -444,7 +444,7 @@ impl View for AiStream {
             cell.fg = Some(self.cursor_color);
             // Blink effect
             if self.thinking_frame.is_multiple_of(2) {
-                ctx.buffer.set(area.x + x, area.y + y, cell);
+                ctx.set(x, y, cell);
             }
         }
     }

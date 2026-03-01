@@ -410,7 +410,7 @@ where
         }
     }
 
-    fn draw_border(&self, ctx: &mut RenderContext, area: Rect) {
+    fn draw_border(&self, ctx: &mut RenderContext, _area: Rect) {
         let color = if self.resizing {
             self.active_color
         } else if self.hovered_handle.is_some() {
@@ -419,12 +419,14 @@ where
             self.handle_color
         };
 
+        let draw_width = self.width.min(ctx.area.width);
+
         // Top border
-        for x in area.x..area.x + self.width.min(area.width) {
-            if let Some(cell) = ctx.buffer.get_mut(x, area.y) {
-                let ch = if x == area.x {
+        for x in 0..draw_width {
+            if let Some(cell) = ctx.get_mut(x, 0) {
+                let ch = if x == 0 {
                     '┌'
-                } else if x == area.x + self.width - 1 {
+                } else if x == self.width - 1 {
                     '┐'
                 } else {
                     '─'
@@ -435,12 +437,12 @@ where
         }
 
         // Bottom border
-        let bottom_y = area.y + self.height.saturating_sub(1);
-        for x in area.x..area.x + self.width.min(area.width) {
-            if let Some(cell) = ctx.buffer.get_mut(x, bottom_y) {
-                let ch = if x == area.x {
+        let bottom_y = self.height.saturating_sub(1);
+        for x in 0..draw_width {
+            if let Some(cell) = ctx.get_mut(x, bottom_y) {
+                let ch = if x == 0 {
                     '└'
-                } else if x == area.x + self.width - 1 {
+                } else if x == self.width - 1 {
                     '┘'
                 } else {
                     '─'
@@ -451,12 +453,12 @@ where
         }
 
         // Side borders
-        for y in (area.y + 1)..bottom_y {
-            if let Some(cell) = ctx.buffer.get_mut(area.x, y) {
+        for y in 1..bottom_y {
+            if let Some(cell) = ctx.get_mut(0, y) {
                 cell.symbol = '│';
                 cell.fg = Some(color);
             }
-            if let Some(cell) = ctx.buffer.get_mut(area.x + self.width - 1, y) {
+            if let Some(cell) = ctx.get_mut(self.width - 1, y) {
                 cell.symbol = '│';
                 cell.fg = Some(color);
             }
@@ -467,22 +469,22 @@ where
             let active_color = self.active_color;
             match handle {
                 ResizeHandle::TopLeft => {
-                    if let Some(cell) = ctx.buffer.get_mut(area.x, area.y) {
+                    if let Some(cell) = ctx.get_mut(0, 0) {
                         cell.fg = Some(active_color);
                     }
                 }
                 ResizeHandle::TopRight => {
-                    if let Some(cell) = ctx.buffer.get_mut(area.x + self.width - 1, area.y) {
+                    if let Some(cell) = ctx.get_mut(self.width - 1, 0) {
                         cell.fg = Some(active_color);
                     }
                 }
                 ResizeHandle::BottomLeft => {
-                    if let Some(cell) = ctx.buffer.get_mut(area.x, bottom_y) {
+                    if let Some(cell) = ctx.get_mut(0, bottom_y) {
                         cell.fg = Some(active_color);
                     }
                 }
                 ResizeHandle::BottomRight => {
-                    if let Some(cell) = ctx.buffer.get_mut(area.x + self.width - 1, bottom_y) {
+                    if let Some(cell) = ctx.get_mut(self.width - 1, bottom_y) {
                         cell.fg = Some(active_color);
                     }
                 }
@@ -491,7 +493,7 @@ where
         }
     }
 
-    fn draw_corner_dots(&self, ctx: &mut RenderContext, area: Rect) {
+    fn draw_corner_dots(&self, ctx: &mut RenderContext, _area: Rect) {
         let color = if self.resizing {
             self.active_color
         } else {
@@ -499,14 +501,14 @@ where
         };
 
         let corners = [
-            (area.x, area.y),
-            (area.x + self.width - 1, area.y),
-            (area.x, area.y + self.height - 1),
-            (area.x + self.width - 1, area.y + self.height - 1),
+            (0u16, 0u16),
+            (self.width - 1, 0),
+            (0, self.height - 1),
+            (self.width - 1, self.height - 1),
         ];
 
         for (x, y) in corners {
-            if let Some(cell) = ctx.buffer.get_mut(x, y) {
+            if let Some(cell) = ctx.get_mut(x, y) {
                 cell.symbol = '●';
                 cell.fg = Some(color);
             }

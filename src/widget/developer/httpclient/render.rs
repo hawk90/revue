@@ -25,7 +25,7 @@ impl View for HttpClient {
             let mut cell = Cell::new(ch);
             cell.fg = Some(method.color());
             cell.modifier = Modifier::BOLD;
-            ctx.buffer.set(area.x + i as u16, area.y, cell);
+            ctx.set(i as u16, 0, cell);
         }
 
         // URL
@@ -36,7 +36,7 @@ impl View for HttpClient {
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::WHITE);
-            ctx.buffer.set(area.x + url_start + i as u16, area.y, cell);
+            ctx.set(url_start + i as u16, 0, cell);
         }
 
         // Send button hint
@@ -45,14 +45,14 @@ impl View for HttpClient {
         for (i, ch) in hint.chars().enumerate() {
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::rgb(100, 100, 100));
-            ctx.buffer.set(area.x + hint_start + i as u16, area.y, cell);
+            ctx.set(hint_start + i as u16, 0, cell);
         }
 
         // Separator
         for x in 0..area.width {
             let mut cell = Cell::new('─');
             cell.fg = Some(Color::rgb(60, 60, 60));
-            ctx.buffer.set(area.x + x, area.y + 1, cell);
+            ctx.set(x, 1, cell);
         }
 
         // Response area (row 2+)
@@ -66,7 +66,7 @@ impl View for HttpClient {
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::YELLOW);
-                ctx.buffer.set(area.x + i as u16, area.y + response_y, cell);
+                ctx.set(i as u16, response_y, cell);
             }
         } else if let Some(error) = &self.error {
             let err_msg = format!("✗ Error: {}", error);
@@ -76,7 +76,7 @@ impl View for HttpClient {
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::RED);
-                ctx.buffer.set(area.x + i as u16, area.y + response_y, cell);
+                ctx.set(i as u16, response_y, cell);
             }
         } else if let Some(response) = &self.response {
             // Status line
@@ -95,7 +95,7 @@ impl View for HttpClient {
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(response.status_color());
-                ctx.buffer.set(area.x + x, area.y + response_y, cell);
+                ctx.set(x, response_y, cell);
             }
 
             // Tabs
@@ -123,14 +123,14 @@ impl View for HttpClient {
                     } else {
                         self.colors.tab_bg
                     });
-                    ctx.buffer.set(area.x + tab_x, area.y + tab_y, cell);
+                    ctx.set(tab_x, tab_y, cell);
                     tab_x += 1;
                 }
 
                 // Space between tabs
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(self.colors.tab_bg);
-                ctx.buffer.set(area.x + tab_x, area.y + tab_y, cell);
+                ctx.set(tab_x, tab_y, cell);
                 tab_x += 1;
             }
 
@@ -138,7 +138,7 @@ impl View for HttpClient {
             for x in tab_x..area.width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(self.colors.tab_bg);
-                ctx.buffer.set(area.x + x, area.y + tab_y, cell);
+                ctx.set(x, tab_y, cell);
             }
 
             // Content
@@ -160,8 +160,7 @@ impl View for HttpClient {
                             }
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(Color::rgb(200, 200, 200));
-                            ctx.buffer
-                                .set(area.x + j as u16, area.y + content_y + i as u16, cell);
+                            ctx.set(j as u16, content_y + i as u16, cell);
                         }
                     }
                 }
@@ -173,7 +172,7 @@ impl View for HttpClient {
                         .take(content_height as usize)
                         .enumerate()
                     {
-                        let y = area.y + content_y + i as u16;
+                        let y = content_y + i as u16;
 
                         // Key
                         for (j, ch) in key.chars().enumerate() {
@@ -182,7 +181,7 @@ impl View for HttpClient {
                             }
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(self.colors.header_key);
-                            ctx.buffer.set(area.x + j as u16, y, cell);
+                            ctx.set(j as u16, y, cell);
                         }
 
                         // Colon
@@ -190,7 +189,7 @@ impl View for HttpClient {
                         if colon_x + 2 < area.width {
                             let mut cell = Cell::new(':');
                             cell.fg = Some(Color::rgb(100, 100, 100));
-                            ctx.buffer.set(area.x + colon_x, y, cell);
+                            ctx.set(colon_x, y, cell);
 
                             // Value
                             for (j, ch) in value.chars().enumerate() {
@@ -199,7 +198,7 @@ impl View for HttpClient {
                                 }
                                 let mut cell = Cell::new(ch);
                                 cell.fg = Some(self.colors.header_value);
-                                ctx.buffer.set(area.x + colon_x + 2 + j as u16, y, cell);
+                                ctx.set(colon_x + 2 + j as u16, y, cell);
                             }
                         }
                     }
@@ -214,7 +213,7 @@ impl View for HttpClient {
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::rgb(100, 100, 100));
-                ctx.buffer.set(area.x + i as u16, area.y + response_y, cell);
+                ctx.set(i as u16, response_y, cell);
             }
         }
     }

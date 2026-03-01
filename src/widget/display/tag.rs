@@ -212,7 +212,7 @@ impl View for Tag {
         };
 
         // Render
-        let mut x = area.x;
+        let mut x: u16 = 0;
 
         // Left padding/border
         let mut left = Cell::new(left_char);
@@ -220,12 +220,12 @@ impl View for Tag {
             left.bg = Some(bg_color);
         }
         left.fg = Some(fg);
-        ctx.buffer.set(x, area.y, left);
+        ctx.set(x, 0, left);
         x += 1;
 
         // Content
         for ch in content.chars() {
-            if x >= area.x + area.width - 1 {
+            if x >= area.width - 1 {
                 break;
             }
             let mut cell = Cell::new(ch);
@@ -239,18 +239,18 @@ impl View for Tag {
             if self.disabled {
                 cell.modifier |= Modifier::DIM;
             }
-            ctx.buffer.set(x, area.y, cell);
+            ctx.set(x, 0, cell);
             x += 1;
         }
 
         // Right padding/border
-        if x < area.x + area.width {
+        if x < area.width {
             let mut right = Cell::new(right_char);
             if let Some(bg_color) = bg {
                 right.bg = Some(bg_color);
             }
             right.fg = Some(fg);
-            ctx.buffer.set(x, area.y, right);
+            ctx.set(x, 0, right);
         }
     }
 }

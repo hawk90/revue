@@ -483,11 +483,11 @@ impl View for NumberInput {
             self.state
                 .resolve_colors_interactive(ctx.style, Color::WHITE, Color::rgb(60, 60, 60));
 
-        let mut x = area.x;
+        let mut x: u16 = 0;
 
         // Draw prefix
         if let Some(ref prefix) = self.prefix {
-            ctx.draw_text(x, area.y, prefix, Color::rgb(150, 150, 150));
+            ctx.draw_text(x, 0, prefix, Color::rgb(150, 150, 150));
             x += prefix.chars().count() as u16;
         }
 
@@ -499,7 +499,7 @@ impl View for NumberInput {
         };
 
         for (i, ch) in value_str.chars().enumerate() {
-            if x >= area.x + area.width {
+            if x >= area.width {
                 break;
             }
 
@@ -514,7 +514,7 @@ impl View for NumberInput {
                 cell.bg = Some(bg);
             }
 
-            ctx.buffer.set(x, area.y, cell);
+            ctx.set(x, 0, cell);
             x += 1;
         }
 
@@ -522,30 +522,30 @@ impl View for NumberInput {
         if self.editing
             && self.state.focused
             && self.cursor >= value_str.chars().count()
-            && x < area.x + area.width
+            && x < area.width
         {
             let mut cursor_cell = Cell::new(' ');
             cursor_cell.fg = Some(Color::BLACK);
             cursor_cell.bg = Some(Color::WHITE);
-            ctx.buffer.set(x, area.y, cursor_cell);
+            ctx.set(x, 0, cursor_cell);
             x += 1;
         }
 
         // Draw suffix
         if let Some(ref suffix) = self.suffix {
-            ctx.draw_text(x, area.y, suffix, Color::rgb(150, 150, 150));
+            ctx.draw_text(x, 0, suffix, Color::rgb(150, 150, 150));
             x += suffix.chars().count() as u16;
         }
 
         // Draw buttons if enabled and space available
-        if self.show_buttons && x + 4 <= area.x + area.width {
-            let button_x = area.x + area.width - 4;
+        if self.show_buttons && x + 4 <= area.width {
+            let button_x = area.width - 4;
             let button_fg = if self.state.disabled {
                 Color::rgb(80, 80, 80)
             } else {
                 Color::rgb(150, 150, 150)
             };
-            ctx.draw_text(button_x, area.y, " -+", button_fg);
+            ctx.draw_text(button_x, 0, " -+", button_fg);
         }
     }
 

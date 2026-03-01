@@ -45,32 +45,31 @@ impl Callout {
         let area = ctx.area;
 
         // Fill background
-        for y in area.y..area.y + area.height {
-            for x in area.x..area.x + area.width {
+        for y in 0..area.height {
+            for x in 0..area.width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg_color);
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
         }
 
         // Draw left accent border
-        for y in area.y..area.y + area.height {
+        for y in 0..area.height {
             let mut cell = Cell::new('┃');
             cell.fg = Some(accent_color);
             cell.bg = Some(bg_color);
-            ctx.buffer.set(area.x, y, cell);
+            ctx.set(0, y, cell);
         }
 
         // Header line
-        let mut x = area.x + 2;
-        let y = area.y;
+        let mut x: u16 = 2;
 
         // Collapse icon (if collapsible)
         if self.collapsible {
             let mut icon_cell = Cell::new(self.collapse_icon());
             icon_cell.fg = Some(title_color);
             icon_cell.bg = Some(bg_color);
-            ctx.buffer.set(x, y, icon_cell);
+            ctx.set(x, 0, icon_cell);
             x += 2;
         }
 
@@ -80,13 +79,13 @@ impl Callout {
             let mut icon_cell = Cell::new(icon);
             icon_cell.fg = Some(accent_color);
             icon_cell.bg = Some(bg_color);
-            ctx.buffer.set(x, y, icon_cell);
+            ctx.set(x, 0, icon_cell);
             x += 2;
         }
 
         // Title
         let title = self.get_title();
-        let max_title_x = area.x + area.width - 1;
+        let max_title_x = area.width - 1;
         for ch in title.chars() {
             let char_width = ch.width().unwrap_or(0) as u16;
             if char_width == 0 {
@@ -99,22 +98,22 @@ impl Callout {
             cell.fg = Some(title_color);
             cell.bg = Some(bg_color);
             cell.modifier |= Modifier::BOLD;
-            ctx.buffer.set(x, y, cell);
+            ctx.set(x, 0, cell);
             // Set continuation cells for wide characters
             for i in 1..char_width {
-                ctx.buffer.set(x + i, y, Cell::continuation());
+                ctx.set(x + i, 0, Cell::continuation());
             }
             x += char_width;
         }
 
         // Content (if expanded or not collapsible)
         if !self.collapsible || self.expanded {
-            let content_x = area.x + 2;
+            let content_x: u16 = 2;
             let content_width = area.width.saturating_sub(3);
 
             for (i, line) in self.content.lines().enumerate() {
-                let line_y = area.y + 1 + i as u16;
-                if line_y >= area.y + area.height {
+                let line_y = 1 + i as u16;
+                if line_y >= area.height {
                     break;
                 }
 
@@ -130,10 +129,9 @@ impl Callout {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(200, 200, 200));
                     cell.bg = Some(bg_color);
-                    ctx.buffer.set(content_x + offset, line_y, cell);
+                    ctx.set(content_x + offset, line_y, cell);
                     for i in 1..char_width {
-                        ctx.buffer
-                            .set(content_x + offset + i, line_y, Cell::continuation());
+                        ctx.set(content_x + offset + i, line_y, Cell::continuation());
                     }
                     offset += char_width;
                 }
@@ -145,21 +143,20 @@ impl Callout {
         let area = ctx.area;
 
         // Draw left accent border
-        for y in area.y..area.y + area.height {
+        for y in 0..area.height {
             let mut cell = Cell::new('┃');
             cell.fg = Some(accent_color);
-            ctx.buffer.set(area.x, y, cell);
+            ctx.set(0, y, cell);
         }
 
         // Header line
-        let mut x = area.x + 2;
-        let y = area.y;
+        let mut x: u16 = 2;
 
         // Collapse icon (if collapsible)
         if self.collapsible {
             let mut icon_cell = Cell::new(self.collapse_icon());
             icon_cell.fg = Some(title_color);
-            ctx.buffer.set(x, y, icon_cell);
+            ctx.set(x, 0, icon_cell);
             x += 2;
         }
 
@@ -168,13 +165,13 @@ impl Callout {
             let icon = self.get_icon();
             let mut icon_cell = Cell::new(icon);
             icon_cell.fg = Some(accent_color);
-            ctx.buffer.set(x, y, icon_cell);
+            ctx.set(x, 0, icon_cell);
             x += 2;
         }
 
         // Title
         let title = self.get_title();
-        let max_title_x = area.x + area.width;
+        let max_title_x = area.width;
         for ch in title.chars() {
             let char_width = ch.width().unwrap_or(0) as u16;
             if char_width == 0 {
@@ -186,21 +183,21 @@ impl Callout {
             let mut cell = Cell::new(ch);
             cell.fg = Some(title_color);
             cell.modifier |= Modifier::BOLD;
-            ctx.buffer.set(x, y, cell);
+            ctx.set(x, 0, cell);
             for i in 1..char_width {
-                ctx.buffer.set(x + i, y, Cell::continuation());
+                ctx.set(x + i, 0, Cell::continuation());
             }
             x += char_width;
         }
 
         // Content (if expanded or not collapsible)
         if !self.collapsible || self.expanded {
-            let content_x = area.x + 2;
+            let content_x: u16 = 2;
             let content_width = area.width.saturating_sub(3);
 
             for (i, line) in self.content.lines().enumerate() {
-                let line_y = area.y + 1 + i as u16;
-                if line_y >= area.y + area.height {
+                let line_y = 1 + i as u16;
+                if line_y >= area.height {
                     break;
                 }
 
@@ -215,10 +212,9 @@ impl Callout {
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(180, 180, 180));
-                    ctx.buffer.set(content_x + offset, line_y, cell);
+                    ctx.set(content_x + offset, line_y, cell);
                     for i in 1..char_width {
-                        ctx.buffer
-                            .set(content_x + offset + i, line_y, Cell::continuation());
+                        ctx.set(content_x + offset + i, line_y, Cell::continuation());
                     }
                     offset += char_width;
                 }
@@ -230,14 +226,13 @@ impl Callout {
         let area = ctx.area;
 
         // Header line
-        let mut x = area.x;
-        let y = area.y;
+        let mut x: u16 = 0;
 
         // Collapse icon (if collapsible)
         if self.collapsible {
             let mut icon_cell = Cell::new(self.collapse_icon());
             icon_cell.fg = Some(title_color);
-            ctx.buffer.set(x, y, icon_cell);
+            ctx.set(x, 0, icon_cell);
             x += 2;
         }
 
@@ -246,13 +241,13 @@ impl Callout {
             let icon = self.get_icon();
             let mut icon_cell = Cell::new(icon);
             icon_cell.fg = Some(accent_color);
-            ctx.buffer.set(x, y, icon_cell);
+            ctx.set(x, 0, icon_cell);
             x += 2;
         }
 
         // Title
         let title = self.get_title();
-        let max_title_x = area.x + area.width;
+        let max_title_x = area.width;
         for ch in title.chars() {
             let char_width = ch.width().unwrap_or(0) as u16;
             if char_width == 0 {
@@ -264,23 +259,23 @@ impl Callout {
             let mut cell = Cell::new(ch);
             cell.fg = Some(title_color);
             cell.modifier |= Modifier::BOLD;
-            ctx.buffer.set(x, y, cell);
+            ctx.set(x, 0, cell);
             for i in 1..char_width {
-                ctx.buffer.set(x + i, y, Cell::continuation());
+                ctx.set(x + i, 0, Cell::continuation());
             }
             x += char_width;
         }
 
         // Content (if expanded or not collapsible)
         if !self.collapsible || self.expanded {
-            let content_x = if self.show_icon { area.x + 2 } else { area.x };
+            let content_x: u16 = if self.show_icon { 2 } else { 0 };
             let content_width = area
                 .width
                 .saturating_sub(if self.show_icon { 2 } else { 0 });
 
             for (i, line) in self.content.lines().enumerate() {
-                let line_y = area.y + 1 + i as u16;
-                if line_y >= area.y + area.height {
+                let line_y = 1 + i as u16;
+                if line_y >= area.height {
                     break;
                 }
 
@@ -295,10 +290,9 @@ impl Callout {
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(180, 180, 180));
-                    ctx.buffer.set(content_x + offset, line_y, cell);
+                    ctx.set(content_x + offset, line_y, cell);
                     for i in 1..char_width {
-                        ctx.buffer
-                            .set(content_x + offset + i, line_y, Cell::continuation());
+                        ctx.set(content_x + offset + i, line_y, Cell::continuation());
                     }
                     offset += char_width;
                 }

@@ -20,8 +20,7 @@ impl RichTextEditor {
         // Fill preview background
         for row in 0..height {
             for col in 0..width {
-                ctx.buffer
-                    .set(x + col, y + row, Cell::new(' ').bg(self.preview_bg));
+                ctx.set(x + col, y + row, Cell::new(' ').bg(self.preview_bg));
             }
         }
 
@@ -46,7 +45,7 @@ impl RichTextEditor {
                 }
                 BlockType::Quote => {
                     let mut col = x;
-                    ctx.buffer.set(
+                    ctx.set(
                         col,
                         row_y,
                         Cell::new('│').fg(self.quote_fg).bg(self.preview_bg),
@@ -56,7 +55,7 @@ impl RichTextEditor {
                         if col >= x + width {
                             break;
                         }
-                        ctx.buffer.set(
+                        ctx.set(
                             col,
                             row_y,
                             Cell::new(ch).fg(self.quote_fg).bg(self.preview_bg),
@@ -66,15 +65,13 @@ impl RichTextEditor {
                 }
                 BlockType::BulletList => {
                     let mut col = x;
-                    ctx.buffer
-                        .set(col, row_y, Cell::new('•').fg(fg).bg(self.preview_bg));
+                    ctx.set(col, row_y, Cell::new('•').fg(fg).bg(self.preview_bg));
                     col += 2;
                     for ch in block.text().chars() {
                         if col >= x + width {
                             break;
                         }
-                        ctx.buffer
-                            .set(col, row_y, Cell::new(ch).fg(fg).bg(self.preview_bg));
+                        ctx.set(col, row_y, Cell::new(ch).fg(fg).bg(self.preview_bg));
                         col += 1;
                     }
                 }
@@ -83,41 +80,36 @@ impl RichTextEditor {
                     let mut col = x;
                     for ch in num.chars() {
                         if col < x + width {
-                            ctx.buffer
-                                .set(col, row_y, Cell::new(ch).fg(fg).bg(self.preview_bg));
+                            ctx.set(col, row_y, Cell::new(ch).fg(fg).bg(self.preview_bg));
                             col += 1;
                         }
                     }
-                    ctx.buffer
-                        .set(col, row_y, Cell::new('.').fg(fg).bg(self.preview_bg));
+                    ctx.set(col, row_y, Cell::new('.').fg(fg).bg(self.preview_bg));
                     col += 2;
                     for ch in block.text().chars() {
                         if col >= x + width {
                             break;
                         }
-                        ctx.buffer
-                            .set(col, row_y, Cell::new(ch).fg(fg).bg(self.preview_bg));
+                        ctx.set(col, row_y, Cell::new(ch).fg(fg).bg(self.preview_bg));
                         col += 1;
                     }
                 }
                 BlockType::CodeBlock => {
                     for col in 0..width {
-                        ctx.buffer
-                            .set(x + col, row_y, Cell::new(' ').bg(self.code_bg));
+                        ctx.set(x + col, row_y, Cell::new(' ').bg(self.code_bg));
                     }
                     let mut col = x + 1;
                     for ch in block.text().chars() {
                         if col >= x + width - 1 {
                             break;
                         }
-                        ctx.buffer
-                            .set(col, row_y, Cell::new(ch).fg(fg).bg(self.code_bg));
+                        ctx.set(col, row_y, Cell::new(ch).fg(fg).bg(self.code_bg));
                         col += 1;
                     }
                 }
                 BlockType::HorizontalRule => {
                     for col in 0..width {
-                        ctx.buffer.set(
+                        ctx.set(
                             x + col,
                             row_y,
                             Cell::new('─').fg(self.quote_fg).bg(self.preview_bg),
@@ -130,8 +122,7 @@ impl RichTextEditor {
                         if col >= x + width {
                             break;
                         }
-                        ctx.buffer
-                            .set(col, row_y, Cell::new(ch).fg(fg).bg(self.preview_bg));
+                        ctx.set(col, row_y, Cell::new(ch).fg(fg).bg(self.preview_bg));
                         col += 1;
                     }
                 }
@@ -162,7 +153,7 @@ impl RichTextEditor {
             }
             let mut cell = Cell::new(ch).fg(self.heading_fg).bg(self.preview_bg);
             cell.modifier = modifier;
-            ctx.buffer.set(col, y, cell);
+            ctx.set(col, y, cell);
             col += 1;
         }
     }

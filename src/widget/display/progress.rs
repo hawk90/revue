@@ -128,7 +128,7 @@ impl View for Progress {
             let mut cell = Cell::new(filled_char);
             cell.fg = self.filled_fg;
             cell.bg = self.filled_bg;
-            ctx.buffer.set(area.x + x, area.y, cell);
+            ctx.set(x, 0, cell);
         }
 
         // Draw empty portion
@@ -136,15 +136,15 @@ impl View for Progress {
             let mut cell = Cell::new(empty_char);
             cell.fg = self.empty_fg;
             cell.bg = self.empty_bg;
-            ctx.buffer.set(area.x + x, area.y, cell);
+            ctx.set(x, 0, cell);
         }
 
         // Draw percentage if enabled
         if self.show_percentage {
             let pct = format!("{:3.0}%", self.progress * 100.0);
-            let start_x = area.x + bar_width + 1;
-            let max_width = (area.x + area.width).saturating_sub(start_x);
-            ctx.draw_text_clipped(start_x, area.y, &pct, Color::WHITE, max_width);
+            let start_x = bar_width + 1;
+            let max_width = area.width.saturating_sub(start_x);
+            ctx.draw_text_clipped(start_x, 0, &pct, Color::WHITE, max_width);
         }
     }
 

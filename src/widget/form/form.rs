@@ -168,39 +168,39 @@ impl Form {
         };
 
         // Draw horizontal borders
-        for x in area.x..area.x + area.width {
+        for x in 0..area.width {
             let mut top_cell = Cell::new('─');
             top_cell.fg = Some(border_color);
-            ctx.buffer.set(x, area.y, top_cell);
+            ctx.set(x, 0, top_cell);
 
             let mut bottom_cell = Cell::new('─');
             bottom_cell.fg = Some(border_color);
-            ctx.buffer.set(x, area.y + area.height - 1, bottom_cell);
+            ctx.set(x, area.height - 1, bottom_cell);
         }
 
         // Draw vertical borders
-        for y in area.y..area.y + area.height {
+        for y in 0..area.height {
             let mut left_cell = Cell::new('│');
             left_cell.fg = Some(border_color);
-            ctx.buffer.set(area.x, y, left_cell);
+            ctx.set(0, y, left_cell);
 
             let mut right_cell = Cell::new('│');
             right_cell.fg = Some(border_color);
-            ctx.buffer.set(area.x + area.width - 1, y, right_cell);
+            ctx.set(area.width - 1, y, right_cell);
         }
 
         // Draw corners
         let corners = [
-            ('┌', area.x, area.y),
-            ('┐', area.x + area.width - 1, area.y),
-            ('└', area.x, area.y + area.height - 1),
-            ('┘', area.x + area.width - 1, area.y + area.height - 1),
+            ('┌', 0u16, 0u16),
+            ('┐', area.width - 1, 0u16),
+            ('└', 0u16, area.height - 1),
+            ('┘', area.width - 1, area.height - 1),
         ];
 
         for &(ch, x, y) in &corners {
             let mut cell = Cell::new(ch);
             cell.fg = Some(border_color);
-            ctx.buffer.set(x, y, cell);
+            ctx.set(x, y, cell);
         }
     }
 
@@ -212,14 +212,14 @@ impl Form {
         }
 
         let title = "Form";
-        let title_x = area.x + 2;
+        let title_x: u16 = 2;
 
         for (i, ch) in title.chars().enumerate() {
-            if title_x + (i as u16) < area.x + area.width - 1 {
+            if title_x + (i as u16) < area.width - 1 {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.bg = Some(Color::BLACK);
-                ctx.buffer.set(title_x + i as u16, area.y, cell);
+                ctx.set(title_x + i as u16, 0, cell);
             }
         }
     }
@@ -246,17 +246,17 @@ impl View for Form {
         // Render form fields inside the border
         // Each field takes 3 rows: label (row 0), value (row 1), helper/error (row 2)
         // Plus 1 row gap between fields
-        let content_x = area.x + 2;
+        let content_x: u16 = 2;
         if area.width <= 4 {
             return;
         }
         let content_width = area.width - 4;
         let max_x = content_x + content_width;
-        let mut current_y = area.y + 1;
+        let mut current_y: u16 = 1;
         if area.height <= 2 {
             return;
         }
-        let max_y = area.y + area.height - 2;
+        let max_y = area.height - 2;
         let show_inline = self.error_style == ErrorDisplayStyle::Inline
             || self.error_style == ErrorDisplayStyle::Both;
 
@@ -273,7 +273,7 @@ impl View for Form {
                     if x < max_x {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(Color::rgb(200, 200, 200));
-                        ctx.buffer.set(x, current_y, cell);
+                        ctx.set(x, current_y, cell);
                     }
                 }
             }
@@ -295,7 +295,7 @@ impl View for Form {
                 if x < max_x {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(text_color);
-                    ctx.buffer.set(x, current_y, cell);
+                    ctx.set(x, current_y, cell);
                 }
             }
             current_y += 1;
@@ -315,7 +315,7 @@ impl View for Form {
                                 let mut cell = Cell::new(ch);
                                 cell.fg = Some(error_color);
                                 cell.modifier |= Modifier::DIM;
-                                ctx.buffer.set(x, current_y, cell);
+                                ctx.set(x, current_y, cell);
                             }
                         }
                     }
@@ -329,7 +329,7 @@ impl View for Form {
                                 let mut cell = Cell::new(ch);
                                 cell.fg = Some(helper_color);
                                 cell.modifier |= Modifier::DIM;
-                                ctx.buffer.set(x, current_y, cell);
+                                ctx.set(x, current_y, cell);
                             }
                         }
                     }
@@ -345,17 +345,17 @@ impl View for Form {
         let show_summary = self.error_style == ErrorDisplayStyle::Summary
             || self.error_style == ErrorDisplayStyle::Both;
 
-        let status_y = area.y + area.height - 2;
-        if status_y > area.y && area.width > 4 {
+        let status_y = area.height - 2;
+        if status_y > 0 && area.width > 4 {
             if self.is_valid() {
                 let status_text = "Valid";
                 let status_color = Color::rgb(80, 200, 80);
                 for (i, ch) in status_text.chars().enumerate() {
-                    let x = area.x + 2 + i as u16;
-                    if x < area.x + area.width - 2 {
+                    let x = 2 + i as u16;
+                    if x < area.width - 2 {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(status_color);
-                        ctx.buffer.set(x, status_y, cell);
+                        ctx.set(x, status_y, cell);
                     }
                 }
             } else if show_summary {
@@ -363,11 +363,11 @@ impl View for Form {
                 let status_text = format!("{} error(s)", error_count);
                 let status_color = Color::rgb(200, 80, 80);
                 for (i, ch) in status_text.chars().enumerate() {
-                    let x = area.x + 2 + i as u16;
-                    if x < area.x + area.width - 2 {
+                    let x = 2 + i as u16;
+                    if x < area.width - 2 {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(status_color);
-                        ctx.buffer.set(x, status_y, cell);
+                        ctx.set(x, status_y, cell);
                     }
                 }
             }
@@ -476,10 +476,10 @@ impl FormFieldWidget {
             let label = &field.label;
 
             for (i, ch) in label.chars().enumerate() {
-                if area.x + (i as u16) < area.x + area.width {
+                if (i as u16) < area.width {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(200, 200, 200));
-                    ctx.buffer.set(area.x + i as u16, area.y, cell);
+                    ctx.set(i as u16, 0, cell);
                 }
             }
         }
@@ -508,11 +508,11 @@ impl FormFieldWidget {
         };
 
         for (i, ch) in display_text.chars().enumerate() {
-            let x = area.x + i as u16;
-            if x < area.x + area.width {
+            let x = i as u16;
+            if x < area.width {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(text_color);
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
             }
         }
     }
@@ -528,12 +528,12 @@ impl FormFieldWidget {
         let helper_color = Color::rgb(140, 140, 140);
 
         for (i, ch) in self.helper_text.chars().enumerate() {
-            let x = area.x + i as u16;
-            if x < area.x + area.width {
+            let x = i as u16;
+            if x < area.width {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(helper_color);
                 cell.modifier |= Modifier::DIM;
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
             }
         }
     }
@@ -559,12 +559,12 @@ impl FormFieldWidget {
         let error_color = Color::rgb(200, 80, 80);
 
         for (i, ch) in error_msg.chars().enumerate() {
-            let x = area.x + i as u16;
-            if x < area.x + area.width {
+            let x = i as u16;
+            if x < area.width {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(error_color);
                 cell.modifier |= Modifier::DIM;
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
             }
         }
     }
@@ -585,11 +585,11 @@ impl View for FormFieldWidget {
         // Row 0: Label (field name)
         if self.show_label && area.height >= 1 && area.width > 0 {
             for (i, ch) in self.name.chars().enumerate() {
-                let x = area.x + i as u16;
-                if x < area.x + area.width {
+                let x = i as u16;
+                if x < area.width {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(200, 200, 200));
-                    ctx.buffer.set(x, area.y, cell);
+                    ctx.set(x, 0, cell);
                 }
             }
         }
@@ -604,11 +604,11 @@ impl View for FormFieldWidget {
 
             let text_color = Color::rgb(120, 120, 120);
             for (i, ch) in display_text.chars().enumerate() {
-                let x = area.x + i as u16;
-                if x < area.x + area.width {
+                let x = i as u16;
+                if x < area.width {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(text_color);
-                    ctx.buffer.set(x, area.y + 1, cell);
+                    ctx.set(x, 1, cell);
                 }
             }
         }
@@ -617,12 +617,12 @@ impl View for FormFieldWidget {
         if area.height >= 3 && !self.helper_text.is_empty() {
             let helper_color = Color::rgb(140, 140, 140);
             for (i, ch) in self.helper_text.chars().enumerate() {
-                let x = area.x + i as u16;
-                if x < area.x + area.width {
+                let x = i as u16;
+                if x < area.width {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(helper_color);
                     cell.modifier |= Modifier::DIM;
-                    ctx.buffer.set(x, area.y + 2, cell);
+                    ctx.set(x, 2, cell);
                 }
             }
         }

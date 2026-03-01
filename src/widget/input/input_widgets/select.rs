@@ -432,7 +432,7 @@ impl View for Select {
             let mut cell = Cell::new(' ');
             cell.fg = fg;
             cell.bg = bg;
-            ctx.buffer.set(area.x + x, area.y, cell);
+            ctx.set(x, 0, cell);
         }
 
         // Draw focus indicator
@@ -444,11 +444,10 @@ impl View for Select {
                 ctx.buffer.set(area.x.saturating_sub(1), area.y, left);
             }
 
-            let right_x = area.x + width;
-            if right_x < area.x + area.width {
+            if width < area.width {
                 let mut right = Cell::new(']');
                 right.fg = Some(Color::CYAN);
-                ctx.buffer.set(right_x, area.y, right);
+                ctx.set(width, 0, right);
             }
         }
 
@@ -461,7 +460,7 @@ impl View for Select {
         let mut cell = Cell::new(icon);
         cell.fg = fg;
         cell.bg = bg;
-        ctx.buffer.set(area.x, area.y, cell);
+        ctx.set(0, 0, cell);
 
         // Draw text
         let truncated: String = display_text.chars().take(text_width).collect();
@@ -469,7 +468,7 @@ impl View for Select {
             let mut cell = Cell::new(ch);
             cell.fg = fg;
             cell.bg = bg;
-            ctx.buffer.set(area.x + 2 + i as u16, area.y, cell);
+            ctx.set(2 + i as u16, 0, cell);
         }
 
         // If open, render dropdown options
@@ -488,7 +487,7 @@ impl View for Select {
 
             for (row, (option_idx, option)) in visible_options.iter().enumerate().take(max_visible)
             {
-                let y = area.y + 1 + row as u16;
+                let y = 1 + row as u16;
                 let is_selected = self.selection.is_selected(*option_idx);
 
                 let (fg, bg) = if is_selected {
@@ -502,7 +501,7 @@ impl View for Select {
                     let mut cell = Cell::new(' ');
                     cell.fg = fg;
                     cell.bg = bg;
-                    ctx.buffer.set(area.x + x, y, cell);
+                    ctx.set(x, y, cell);
                 }
 
                 // Draw selection indicator
@@ -510,7 +509,7 @@ impl View for Select {
                 let mut cell = Cell::new(indicator);
                 cell.fg = fg;
                 cell.bg = bg;
-                ctx.buffer.set(area.x, y, cell);
+                ctx.set(0, y, cell);
 
                 // Get fuzzy match indices for highlighting
                 let match_indices: Vec<usize> = self
@@ -531,7 +530,7 @@ impl View for Select {
                         cell.fg = fg;
                     }
 
-                    ctx.buffer.set(area.x + 2 + j as u16, y, cell);
+                    ctx.set(2 + j as u16, y, cell);
                 }
             }
         }

@@ -297,7 +297,7 @@ impl Chart {
                     let ch = self.get_line_char(x1 as i32 - x0 as i32, y1 as i32 - y0 as i32);
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(color);
-                    ctx.buffer.set(x as u16, y as u16, cell);
+                    ctx.set(x as u16, y as u16, cell);
                 }
             }
 
@@ -363,7 +363,7 @@ impl Chart {
                         };
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(fill_color);
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                     }
                 }
             }
@@ -388,11 +388,11 @@ impl View for Chart {
 
         // Fill background
         if let Some(bg) = self.bg_color {
-            for y in area.y..area.y + area.height {
-                for x in area.x..area.x + area.width {
+            for y in 0..area.height {
+                for x in 0..area.width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -400,47 +400,47 @@ impl View for Chart {
         // Draw border
         if let Some(border_color) = self.border_color {
             // Top and bottom
-            for x in area.x..area.x + area.width {
+            for x in 0..area.width {
                 let mut top = Cell::new('─');
                 top.fg = Some(border_color);
-                ctx.buffer.set(x, area.y, top);
+                ctx.set(x, 0, top);
 
                 let mut bottom = Cell::new('─');
                 bottom.fg = Some(border_color);
-                ctx.buffer.set(x, area.y + area.height - 1, bottom);
+                ctx.set(x, area.height - 1, bottom);
             }
             // Left and right
-            for y in area.y..area.y + area.height {
+            for y in 0..area.height {
                 let mut left = Cell::new('│');
                 left.fg = Some(border_color);
-                ctx.buffer.set(area.x, y, left);
+                ctx.set(0, y, left);
 
                 let mut right = Cell::new('│');
                 right.fg = Some(border_color);
-                ctx.buffer.set(area.x + area.width - 1, y, right);
+                ctx.set(area.width - 1, y, right);
             }
             // Corners
             let corners = [
-                (area.x, area.y, '┌'),
-                (area.x + area.width - 1, area.y, '┐'),
-                (area.x, area.y + area.height - 1, '└'),
-                (area.x + area.width - 1, area.y + area.height - 1, '┘'),
+                (0u16, 0u16, '┌'),
+                (area.width - 1, 0, '┐'),
+                (0, area.height - 1, '└'),
+                (area.width - 1, area.height - 1, '┘'),
             ];
             for (x, y, ch) in corners {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(border_color);
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
         }
 
-        // Calculate layout
+        // Calculate layout (relative coordinates)
         let has_border = self.border_color.is_some();
         let has_title = self.title.is_some();
         let y_label_width = 8u16; // Space for Y axis labels
         let x_label_height = 2u16; // Space for X axis labels
 
-        let inner_x = area.x + if has_border { 1 } else { 0 } + y_label_width;
-        let inner_y = area.y + if has_border { 1 } else { 0 } + if has_title { 1 } else { 0 };
+        let inner_x = if has_border { 1 } else { 0 } + y_label_width;
+        let inner_y = if has_border { 1 } else { 0 } + if has_title { 1u16 } else { 0 };
         let inner_w = area
             .width
             .saturating_sub(y_label_width + if has_border { 2 } else { 0 });
@@ -456,13 +456,13 @@ impl View for Chart {
 
         // Draw title
         if let Some(ref title) = self.title {
-            let title_x = area.x + (area.width.saturating_sub(title.len() as u16)) / 2;
-            let title_y = area.y + if has_border { 1 } else { 0 };
+            let title_x = (area.width.saturating_sub(title.len() as u16)) / 2;
+            let title_y = if has_border { 1u16 } else { 0 };
             for (i, ch) in title.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.modifier |= crate::render::Modifier::BOLD;
-                ctx.buffer.set(title_x + i as u16, title_y, cell);
+                ctx.set(title_x + i as u16, title_y, cell);
             }
         }
 
@@ -471,7 +471,7 @@ impl View for Chart {
         let (x_min, x_max, y_min, y_max) = bounds;
 
         // Draw Y axis labels
-        let y_label_x = area.x + if has_border { 1 } else { 0 };
+        let y_label_x = if has_border { 1u16 } else { 0 };
         for i in 0..=self.y_axis.ticks {
             let t = i as f64 / self.y_axis.ticks as f64;
             let value = y_min + t * (y_max - y_min);
@@ -483,7 +483,7 @@ impl View for Chart {
             for (j, ch) in label.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.y_axis.color);
-                ctx.buffer.set(label_start + j as u16, y, cell);
+                ctx.set(label_start + j as u16, y, cell);
             }
 
             // Draw grid line
@@ -491,7 +491,7 @@ impl View for Chart {
                 for x in inner_x..inner_x + inner_w {
                     let mut cell = Cell::new('┄');
                     cell.fg = Some(Color::rgb(50, 50, 50));
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -508,10 +508,10 @@ impl View for Chart {
             let label_start = x.saturating_sub(label.len() as u16 / 2);
             for (j, ch) in label.chars().enumerate() {
                 let px = label_start + j as u16;
-                if px >= area.x && px < area.x + area.width {
+                if px < area.width {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.x_axis.color);
-                    ctx.buffer.set(px, x_label_y, cell);
+                    ctx.set(px, x_label_y, cell);
                 }
             }
 
@@ -520,7 +520,7 @@ impl View for Chart {
                 for y in inner_y..inner_y + inner_h {
                     let mut cell = Cell::new('┊');
                     cell.fg = Some(Color::rgb(50, 50, 50));
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -532,18 +532,18 @@ impl View for Chart {
             for (i, ch) in title.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.y_axis.color);
-                ctx.buffer.set(y_label_x, y_start + i as u16, cell);
+                ctx.set(y_label_x, y_start + i as u16, cell);
             }
         }
 
         if let Some(ref title) = self.x_axis.title {
             let x_start = inner_x + (inner_w.saturating_sub(title.len() as u16)) / 2;
             let y = x_label_y + 1;
-            if y < area.y + area.height {
+            if y < area.height {
                 for (i, ch) in title.chars().enumerate() {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.x_axis.color);
-                    ctx.buffer.set(x_start + i as u16, y, cell);
+                    ctx.set(x_start + i as u16, y, cell);
                 }
             }
         }
@@ -659,7 +659,7 @@ impl View for Chart {
                     {
                         let mut cell = Cell::new(marker_char);
                         cell.fg = Some(series.color);
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                     }
                 }
             }
@@ -721,7 +721,7 @@ impl View for Chart {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(Color::rgb(80, 80, 80));
                         cell.bg = self.bg_color.or(Some(Color::rgb(20, 20, 20)));
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                     }
                 }
             }
@@ -736,7 +736,7 @@ impl View for Chart {
                 // Color indicator
                 let mut indicator = Cell::new('■');
                 indicator.fg = Some(series.color);
-                ctx.buffer.set(legend_x + 1, y, indicator);
+                ctx.set(legend_x + 1, y, indicator);
 
                 // Series name
                 for (j, ch) in series.name.chars().enumerate() {
@@ -745,7 +745,7 @@ impl View for Chart {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(Color::WHITE);
                         cell.bg = self.bg_color.or(Some(Color::rgb(20, 20, 20)));
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                     }
                 }
             }

@@ -119,18 +119,18 @@ impl View for Spinner {
         if let Some(ch) = current_frame.chars().next() {
             let mut cell = Cell::new(ch);
             cell.fg = self.fg;
-            ctx.buffer.set(area.x, area.y, cell);
+            ctx.set(0, 0, cell);
         }
 
         // Render label if present
         if let Some(ref label) = self.label {
-            let mut x = area.x + 2; // Space after spinner
+            let mut x: u16 = 2; // Space after spinner
             for ch in label.chars() {
-                if x >= area.x + area.width {
+                if x >= area.width {
                     break;
                 }
                 let cell = Cell::new(ch);
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
                 x += 1;
             }
         }

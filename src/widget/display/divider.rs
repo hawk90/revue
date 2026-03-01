@@ -182,12 +182,11 @@ impl View for Divider {
 
         match self.orientation {
             Orientation::Horizontal => {
-                let y = area.y;
-                let start_x = area.x + self.margin;
+                let start_x = self.margin;
                 let end_x = if self.length > 0 {
-                    (start_x + self.length).min(area.x + area.width)
+                    (start_x + self.length).min(area.width)
                 } else {
-                    area.x + area.width.saturating_sub(self.margin)
+                    area.width.saturating_sub(self.margin)
                 };
 
                 // Draw the line
@@ -201,40 +200,39 @@ impl View for Divider {
                         let label_end = label_start + label_len + 2;
 
                         // Left part
-                        ctx.draw_hline(start_x, y, label_start - start_x, line_char, self.color);
+                        ctx.draw_hline(start_x, 0, label_start - start_x, line_char, self.color);
 
                         // Space before label
-                        ctx.draw_char(label_start, y, ' ', self.color);
+                        ctx.draw_char(label_start, 0, ' ', self.color);
 
                         // Label
                         let label_color = self.label_color.unwrap_or(self.color);
-                        ctx.draw_text(label_start + 1, y, label, label_color);
+                        ctx.draw_text(label_start + 1, 0, label, label_color);
 
                         // Space after label
-                        ctx.draw_char(label_end - 1, y, ' ', self.color);
+                        ctx.draw_char(label_end - 1, 0, ' ', self.color);
 
                         // Right part
-                        ctx.draw_hline(label_end, y, end_x - label_end, line_char, self.color);
+                        ctx.draw_hline(label_end, 0, end_x - label_end, line_char, self.color);
                     } else {
                         // Not enough space, just draw label (clipped)
                         let label_color = self.label_color.unwrap_or(self.color);
-                        ctx.draw_text_clipped(start_x, y, label, label_color, end_x - start_x);
+                        ctx.draw_text_clipped(start_x, 0, label, label_color, end_x - start_x);
                     }
                 } else {
                     // Simple line without label
-                    ctx.draw_hline(start_x, y, end_x - start_x, line_char, self.color);
+                    ctx.draw_hline(start_x, 0, end_x - start_x, line_char, self.color);
                 }
             }
             Orientation::Vertical => {
-                let x = area.x;
-                let start_y = area.y + self.margin;
+                let start_y = self.margin;
                 let end_y = if self.length > 0 {
-                    (start_y + self.length).min(area.y + area.height)
+                    (start_y + self.length).min(area.height)
                 } else {
-                    area.y + area.height.saturating_sub(self.margin)
+                    area.height.saturating_sub(self.margin)
                 };
 
-                ctx.draw_vline(x, start_y, end_y - start_y, line_char, self.color);
+                ctx.draw_vline(0, start_y, end_y - start_y, line_char, self.color);
             }
         }
     }

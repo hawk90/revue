@@ -262,7 +262,7 @@ impl View for Pagination {
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let mut x = area.x;
+        let mut x: u16 = 0;
 
         match self.style {
             PaginationStyle::Full => {
@@ -276,7 +276,7 @@ impl View for Pagination {
                     };
                     let mut cell = Cell::new('«');
                     cell.fg = Some(color);
-                    ctx.buffer.set(x, area.y, cell);
+                    ctx.set(x, 0, cell);
                     x += 2;
                 }
 
@@ -289,7 +289,7 @@ impl View for Pagination {
                     };
                     let mut cell = Cell::new('‹');
                     cell.fg = Some(color);
-                    ctx.buffer.set(x, area.y, cell);
+                    ctx.set(x, 0, cell);
                     x += 2;
                 }
 
@@ -300,13 +300,13 @@ impl View for Pagination {
                 if start > 1 {
                     let mut one = Cell::new('1');
                     one.fg = Some(self.inactive_color);
-                    ctx.buffer.set(x, area.y, one);
+                    ctx.set(x, 0, one);
                     x += 2;
 
                     if start > 2 {
                         let mut dots = Cell::new('…');
                         dots.fg = Some(self.inactive_color);
-                        ctx.buffer.set(x, area.y, dots);
+                        ctx.set(x, 0, dots);
                         x += 2;
                     }
                 }
@@ -318,7 +318,7 @@ impl View for Pagination {
                     if is_current {
                         let mut lb = Cell::new('[');
                         lb.fg = Some(self.active_color);
-                        ctx.buffer.set(x, area.y, lb);
+                        ctx.set(x, 0, lb);
                         x += 1;
                     }
 
@@ -331,14 +331,14 @@ impl View for Pagination {
                         } else {
                             cell.fg = Some(self.inactive_color);
                         }
-                        ctx.buffer.set(x, area.y, cell);
+                        ctx.set(x, 0, cell);
                         x += 1;
                     }
 
                     if is_current {
                         let mut rb = Cell::new(']');
                         rb.fg = Some(self.active_color);
-                        ctx.buffer.set(x, area.y, rb);
+                        ctx.set(x, 0, rb);
                         x += 1;
                     }
 
@@ -350,7 +350,7 @@ impl View for Pagination {
                     if end < self.total - 1 {
                         let mut dots = Cell::new('…');
                         dots.fg = Some(self.inactive_color);
-                        ctx.buffer.set(x, area.y, dots);
+                        ctx.set(x, 0, dots);
                         x += 2;
                     }
 
@@ -358,7 +358,7 @@ impl View for Pagination {
                     for ch in total_str.chars() {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.inactive_color);
-                        ctx.buffer.set(x, area.y, cell);
+                        ctx.set(x, 0, cell);
                         x += 1;
                     }
                     x += 1;
@@ -373,7 +373,7 @@ impl View for Pagination {
                     };
                     let mut cell = Cell::new('›');
                     cell.fg = Some(color);
-                    ctx.buffer.set(x, area.y, cell);
+                    ctx.set(x, 0, cell);
                     x += 2;
                 }
 
@@ -386,7 +386,7 @@ impl View for Pagination {
                     };
                     let mut cell = Cell::new('»');
                     cell.fg = Some(color);
-                    ctx.buffer.set(x, area.y, cell);
+                    ctx.set(x, 0, cell);
                 }
             }
             PaginationStyle::Simple => {
@@ -398,14 +398,14 @@ impl View for Pagination {
                 };
                 let mut prev = Cell::new('←');
                 prev.fg = Some(prev_color);
-                ctx.buffer.set(x, area.y, prev);
+                ctx.set(x, 0, prev);
                 x += 2;
 
                 let text = format!("Page {} of {}", self.current, self.total);
                 for ch in text.chars() {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.inactive_color);
-                    ctx.buffer.set(x, area.y, cell);
+                    ctx.set(x, 0, cell);
                     x += 1;
                 }
                 x += 1;
@@ -417,7 +417,7 @@ impl View for Pagination {
                 };
                 let mut next = Cell::new('→');
                 next.fg = Some(next_color);
-                ctx.buffer.set(x, area.y, next);
+                ctx.set(x, 0, next);
             }
             PaginationStyle::Compact => {
                 // 3/10
@@ -426,14 +426,14 @@ impl View for Pagination {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.active_color);
                     cell.modifier |= Modifier::BOLD;
-                    ctx.buffer.set(x, area.y, cell);
+                    ctx.set(x, 0, cell);
                     x += 1;
                 }
             }
             PaginationStyle::Dots => {
                 // ○ ○ ● ○ ○
                 for page in 1..=self.total {
-                    if x >= area.x + area.width {
+                    if x >= area.width {
                         break;
                     }
 
@@ -445,7 +445,7 @@ impl View for Pagination {
                     } else {
                         self.inactive_color
                     });
-                    ctx.buffer.set(x, area.y, cell);
+                    ctx.set(x, 0, cell);
                     x += 2;
                 }
             }

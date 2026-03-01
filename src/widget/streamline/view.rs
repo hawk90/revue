@@ -15,51 +15,47 @@ impl View for Streamline {
 
         // Background
         if let Some(bg) = self.bg_color {
-            for y in area.y..area.y + height.min(area.height) {
-                for x in area.x..area.x + area.width {
+            for y in 0..height.min(area.height) {
+                for x in 0..area.width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
 
-        let mut chart_y = area.y;
+        let mut chart_y: u16 = 0;
         let mut chart_height = height.min(area.height);
 
         // Title
         if let Some(ref title) = self.title {
-            let title_x = area.x + (area.width.saturating_sub(title.len() as u16)) / 2;
-            ctx.buffer.put_str_styled(
-                title_x,
-                chart_y,
-                title,
-                Some(crate::style::Color::WHITE),
-                self.bg_color,
-            );
+            let title_x = (area.width.saturating_sub(title.len() as u16)) / 2;
+            ctx.draw_text(title_x, chart_y, title, crate::style::Color::WHITE);
             chart_y += 1;
             chart_height = chart_height.saturating_sub(1);
         }
 
         // Legend
         if self.show_legend && !self.layers.is_empty() {
-            let mut x = area.x + 1;
+            let mut x: u16 = 1;
             for (i, layer) in self.layers.iter().enumerate() {
                 let color = self.get_layer_color(i);
                 let mut cell = Cell::new('█');
                 cell.fg = Some(color);
-                ctx.buffer.set(x, chart_y, cell);
+                ctx.set(x, chart_y, cell);
                 x += 2;
-                ctx.buffer.put_str_styled(
-                    x,
-                    chart_y,
-                    &layer.name,
-                    Some(crate::style::Color::WHITE),
-                    self.bg_color,
-                );
+                for (j, ch) in layer.name.chars().enumerate() {
+                    if x + j as u16 >= area.width {
+                        break;
+                    }
+                    let mut c = Cell::new(ch);
+                    c.fg = Some(crate::style::Color::WHITE);
+                    c.bg = self.bg_color;
+                    ctx.set(x + j as u16, chart_y, c);
+                }
                 x += layer.name.len() as u16 + 2;
 
-                if x > area.x + area.width - 10 {
+                if x > area.width - 10 {
                     break;
                 }
             }
@@ -119,9 +115,8 @@ impl View for Streamline {
             for x_idx in 0..num_points {
                 let (y0, y1) = layer_stack[x_idx];
 
-                let screen_x = area.x
-                    + (x_idx as f64 / (num_points - 1).max(1) as f64 * (area.width - 1) as f64)
-                        as u16;
+                let screen_x = (x_idx as f64 / (num_points - 1).max(1) as f64
+                    * (area.width - 1) as f64) as u16;
 
                 let screen_y0 = chart_y + plot_height
                     - 1
@@ -140,7 +135,7 @@ impl View for Streamline {
                     if y >= chart_y && y < chart_y + plot_height {
                         let mut cell = Cell::new('█');
                         cell.fg = Some(display_color);
-                        ctx.buffer.set(screen_x, y, cell);
+                        ctx.set(screen_x, y, cell);
                     }
                 }
             }
@@ -160,9 +155,8 @@ impl View for Streamline {
 
                 let (y0, y1) = layer_stack[max_width_x];
                 let mid_y = (y0 + y1) / 2.0;
-                let screen_x = area.x
-                    + (max_width_x as f64 / (num_points - 1).max(1) as f64
-                        * (area.width - 1) as f64) as u16;
+                let screen_x = (max_width_x as f64 / (num_points - 1).max(1) as f64
+                    * (area.width - 1) as f64) as u16;
                 let screen_y = chart_y + plot_height
                     - 1
                     - ((mid_y - min_y) / y_range * (plot_height - 1) as f64) as u16;
@@ -171,13 +165,15 @@ impl View for Streamline {
                 let label_x = screen_x.saturating_sub(label.len() as u16 / 2);
 
                 if screen_y >= chart_y && screen_y < chart_y + plot_height {
-                    ctx.buffer.put_str_styled(
-                        label_x,
-                        screen_y,
-                        label,
-                        Some(crate::style::Color::WHITE),
-                        Some(display_color),
-                    );
+                    for (j, ch) in label.chars().enumerate() {
+                        if label_x + j as u16 >= area.width {
+                            break;
+                        }
+                        let mut c = Cell::new(ch);
+                        c.fg = Some(crate::style::Color::WHITE);
+                        c.bg = Some(display_color);
+                        ctx.set(label_x + j as u16, screen_y, c);
+                    }
                 }
             }
         }
@@ -188,16 +184,18 @@ impl View for Streamline {
             let num_labels = self.x_labels.len().min(area.width as usize / 8);
 
             for (i, label) in self.x_labels.iter().take(num_labels).enumerate() {
-                let x = area.x
-                    + (i as f64 / (num_labels - 1).max(1) as f64 * (area.width - 1) as f64) as u16;
+                let x =
+                    (i as f64 / (num_labels - 1).max(1) as f64 * (area.width - 1) as f64) as u16;
                 let label_x = x.saturating_sub(label.len() as u16 / 2);
-                ctx.buffer.put_str_styled(
-                    label_x,
-                    label_y,
-                    label,
-                    Some(crate::style::Color::WHITE),
-                    self.bg_color,
-                );
+                for (j, ch) in label.chars().enumerate() {
+                    if label_x + j as u16 >= area.width {
+                        break;
+                    }
+                    let mut c = Cell::new(ch);
+                    c.fg = Some(crate::style::Color::WHITE);
+                    c.bg = self.bg_color;
+                    ctx.set(label_x + j as u16, label_y, c);
+                }
             }
         }
     }

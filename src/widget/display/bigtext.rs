@@ -221,8 +221,7 @@ impl BigText {
                 }
                 cell.modifier = modifier;
 
-                ctx.buffer
-                    .set(area.x + col as u16, area.y + row as u16, cell);
+                ctx.set(col as u16, row as u16, cell);
             }
         }
     }

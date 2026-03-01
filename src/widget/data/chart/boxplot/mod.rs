@@ -492,21 +492,24 @@ impl View for BoxPlot {
             return;
         }
 
+        // Use relative area (0,0 origin) for shared functions that use ctx.set()
+        let rel_area = Rect::new(0, 0, area.width, area.height);
+
         // Fill background using shared function
         if let Some(bg) = self.bg_color {
-            fill_background(ctx, area, bg);
+            fill_background(ctx, rel_area, bg);
         }
 
         // Draw title using shared function
-        let title_offset = render_title(ctx, area, self.title.as_deref(), Color::WHITE);
+        let title_offset = render_title(ctx, rel_area, self.title.as_deref(), Color::WHITE);
 
-        // Calculate chart area
+        // Calculate chart area (relative coordinates)
         let y_label_width = 6u16;
         let x_label_height = 1u16;
 
         let chart_area = Rect {
-            x: area.x + y_label_width,
-            y: area.y + title_offset,
+            x: y_label_width,
+            y: title_offset,
             width: area.width.saturating_sub(y_label_width + 1),
             height: area
                 .height
@@ -530,7 +533,7 @@ impl View for BoxPlot {
         );
 
         render_state.render_boxes(ctx, &self.colors);
-        render_state.render_axes(ctx, area, &self.value_axis, &self.category_axis);
+        render_state.render_axes(ctx, rel_area, &self.value_axis, &self.category_axis);
     }
 }
 

@@ -320,8 +320,7 @@ impl View for Autocomplete {
         // Render input box
         let input_width = area.width;
         for x in 0..input_width {
-            ctx.buffer
-                .set(area.x + x, area.y, Cell::new(' ').bg(self.input_bg));
+            ctx.set(x, 0, Cell::new(' ').bg(self.input_bg));
         }
 
         // Render input text or placeholder
@@ -337,23 +336,22 @@ impl View for Autocomplete {
         };
 
         for (i, ch) in display_text.chars().enumerate() {
-            let x = area.x + i as u16;
-            if x >= area.x + input_width {
+            let x = i as u16;
+            if x >= input_width {
                 break;
             }
-            ctx.buffer
-                .set(x, area.y, Cell::new(ch).fg(text_fg).bg(self.input_bg));
+            ctx.set(x, 0, Cell::new(ch).fg(text_fg).bg(self.input_bg));
         }
 
         // Render cursor if focused
         if self.focused {
-            let cursor_x = area.x + self.cursor as u16;
-            if cursor_x < area.x + input_width {
+            let cursor_x = self.cursor as u16;
+            if cursor_x < input_width {
                 // Use skip().next() for O(n) instead of O(n²) with .chars().nth()
                 let cursor_char = self.value.chars().skip(self.cursor).next().unwrap_or(' ');
-                ctx.buffer.set(
+                ctx.set(
                     cursor_x,
-                    area.y,
+                    0,
                     Cell::new(cursor_char).fg(self.input_bg).bg(self.input_fg),
                 );
             }
@@ -362,7 +360,7 @@ impl View for Autocomplete {
         // Render dropdown if visible and there's room
         if self.dropdown_visible && area.height > 1 && !self.filtered.is_empty() {
             let dropdown_height = (self.filtered.len() as u16).min(area.height - 1);
-            let dropdown_y = area.y + 1;
+            let dropdown_y: u16 = 1;
 
             for (i, &suggestion_idx) in self
                 .filtered
@@ -382,21 +380,21 @@ impl View for Autocomplete {
 
                 // Fill background
                 for x in 0..input_width {
-                    ctx.buffer.set(area.x + x, y, Cell::new(' ').bg(bg));
+                    ctx.set(x, y, Cell::new(' ').bg(bg));
                 }
 
-                let mut x = area.x;
+                let mut x: u16 = 0;
 
                 // Icon
                 if let Some(icon) = suggestion.icon {
-                    ctx.buffer.set(x, y, Cell::new(icon).fg(fg).bg(bg));
+                    ctx.set(x, y, Cell::new(icon).fg(fg).bg(bg));
                     x += 2;
                 }
 
                 // Label with highlight
                 if let Some(fm) = fuzzy_match(&self.value, &suggestion.label) {
                     for (j, ch) in suggestion.label.chars().enumerate() {
-                        if x >= area.x + input_width {
+                        if x >= input_width {
                             break;
                         }
                         let char_fg = if fm.indices.contains(&j) {
@@ -404,15 +402,15 @@ impl View for Autocomplete {
                         } else {
                             fg
                         };
-                        ctx.buffer.set(x, y, Cell::new(ch).fg(char_fg).bg(bg));
+                        ctx.set(x, y, Cell::new(ch).fg(char_fg).bg(bg));
                         x += 1;
                     }
                 } else {
                     for ch in suggestion.label.chars() {
-                        if x >= area.x + input_width {
+                        if x >= input_width {
                             break;
                         }
-                        ctx.buffer.set(x, y, Cell::new(ch).fg(fg).bg(bg));
+                        ctx.set(x, y, Cell::new(ch).fg(fg).bg(bg));
                         x += 1;
                     }
                 }
@@ -421,11 +419,10 @@ impl View for Autocomplete {
                 if let Some(ref desc) = suggestion.description {
                     x += 1;
                     for ch in desc.chars() {
-                        if x >= area.x + input_width {
+                        if x >= input_width {
                             break;
                         }
-                        ctx.buffer
-                            .set(x, y, Cell::new(ch).fg(self.description_fg).bg(bg));
+                        ctx.set(x, y, Cell::new(ch).fg(self.description_fg).bg(bg));
                         x += 1;
                     }
                 }

@@ -485,8 +485,8 @@ impl View for RichLog {
         let start = self.scroll;
 
         for (i, entry) in entries.iter().enumerate().skip(start).take(visible_height) {
-            let y = area.y + (i - start) as u16;
-            if y >= area.y + area.height {
+            let y = (i - start) as u16;
+            if y >= area.height {
                 break;
             }
 
@@ -495,14 +495,14 @@ impl View for RichLog {
 
             // Fill background
             if let Some(bg) = self.bg {
-                for x in area.x..area.x + area.width {
+                for x in 0..area.width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
 
-            let mut x = area.x;
+            let mut x: u16 = 0;
 
             // Draw timestamp
             if self.show_timestamps {
@@ -511,11 +511,11 @@ impl View for RichLog {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.timestamp_fg);
                         cell.bg = self.bg;
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                         x += 1;
                     }
                 }
-                x = area.x + timestamp_width;
+                x = timestamp_width;
             }
 
             // Draw icon
@@ -524,7 +524,7 @@ impl View for RichLog {
                 let mut cell = Cell::new(icon);
                 cell.fg = Some(level_color);
                 cell.bg = self.bg;
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
                 x += icon_width;
             }
 
@@ -536,10 +536,10 @@ impl View for RichLog {
                     cell.fg = Some(level_color);
                     cell.bg = self.bg;
                     cell.modifier |= Modifier::BOLD;
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                     x += 1;
                 }
-                x = area.x + timestamp_width + icon_width + label_width;
+                x = timestamp_width + icon_width + label_width;
             }
 
             // Draw source
@@ -550,11 +550,11 @@ impl View for RichLog {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.source_fg);
                         cell.bg = self.bg;
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                         x += 1;
                     }
                 }
-                x = area.x + prefix_width;
+                x = prefix_width;
             }
 
             // Draw message
@@ -573,7 +573,7 @@ impl View for RichLog {
                 if entry.level >= LogLevel::Error {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
                 x += 1;
             }
         }
@@ -586,11 +586,11 @@ impl View for RichLog {
                 (self.scroll * (area.height as usize - 1)) / (entries.len() - visible_height)
             };
 
-            let indicator_y = area.y + scroll_pos as u16;
-            if indicator_y < area.y + area.height {
+            let indicator_y = scroll_pos as u16;
+            if indicator_y < area.height {
                 let mut cell = Cell::new('█');
                 cell.fg = Some(Color::rgb(100, 100, 100));
-                ctx.buffer.set(area.x + area.width - 1, indicator_y, cell);
+                ctx.set(area.width - 1, indicator_y, cell);
             }
         }
     }

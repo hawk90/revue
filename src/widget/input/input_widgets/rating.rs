@@ -263,16 +263,16 @@ impl View for Rating {
             return;
         }
 
-        let mut x = area.x;
-        let y = area.y;
+        let mut x: u16 = 0;
+        let y: u16 = 0;
 
         // Render label if present
         if let Some(ref label) = self.label {
             for ch in label.chars() {
-                if x >= area.x + area.width {
+                if x >= area.width {
                     break;
                 }
-                ctx.buffer.set(x, y, Cell::new(ch).fg(Color::WHITE));
+                ctx.set(x, y, Cell::new(ch).fg(Color::WHITE));
                 x += 1;
             }
             x += 1; // Space after label
@@ -284,7 +284,7 @@ impl View for Rating {
 
         // Render stars
         for i in 0..self.max_value {
-            if x >= area.x + area.width {
+            if x >= area.width {
                 break;
             }
 
@@ -310,7 +310,7 @@ impl View for Rating {
                 (empty_char, self.empty_color)
             };
 
-            ctx.buffer.set(x, y, Cell::new(ch).fg(color));
+            ctx.set(x, y, Cell::new(ch).fg(color));
             x += self.size.spacing() as u16;
         }
 
@@ -319,11 +319,10 @@ impl View for Rating {
             x += 1;
             let value_str = format!("{:.1}/{}", display_value, self.max_value);
             for ch in value_str.chars() {
-                if x >= area.x + area.width {
+                if x >= area.width {
                     break;
                 }
-                ctx.buffer
-                    .set(x, y, Cell::new(ch).fg(Color::rgb(150, 150, 150)));
+                ctx.set(x, y, Cell::new(ch).fg(Color::rgb(150, 150, 150)));
                 x += 1;
             }
         }

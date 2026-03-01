@@ -23,7 +23,7 @@ impl View for Diagram {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.colors.title);
                 cell.modifier = Modifier::BOLD;
-                ctx.buffer.set(area.x + i as u16, area.y, cell);
+                ctx.set(i as u16, 0, cell);
             }
             2u16
         } else {
@@ -88,23 +88,23 @@ impl Diagram {
                 // Top border
                 let mut cell = Cell::new(tl);
                 cell.fg = Some(fg);
-                ctx.buffer.set(area.x + x, area.y + y, cell);
+                ctx.set(x, y, cell);
 
                 for i in 1..width - 1 {
                     let mut cell = Cell::new(h);
                     cell.fg = Some(fg);
-                    ctx.buffer.set(area.x + x + i, area.y + y, cell);
+                    ctx.set(x + i, y, cell);
                 }
 
                 let mut cell = Cell::new(tr);
                 cell.fg = Some(fg);
-                ctx.buffer.set(area.x + x + width - 1, area.y + y, cell);
+                ctx.set(x + width - 1, y, cell);
 
                 // Middle (with label)
                 let mut cell = Cell::new(v);
                 cell.fg = Some(fg);
-                ctx.buffer.set(area.x + x, area.y + y + 1, cell);
-                ctx.buffer.set(area.x + x + width - 1, area.y + y + 1, cell);
+                ctx.set(x, y + 1, cell);
+                ctx.set(x + width - 1, y + 1, cell);
 
                 // Label
                 let label_start = (width as usize - node.label.chars().count()) / 2;
@@ -112,27 +112,23 @@ impl Diagram {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(fg);
                     cell.bg = bg;
-                    ctx.buffer.set(
-                        area.x + x + label_start as u16 + i as u16,
-                        area.y + y + 1,
-                        cell,
-                    );
+                    ctx.set(x + label_start as u16 + i as u16, y + 1, cell);
                 }
 
                 // Bottom border
                 let mut cell = Cell::new(bl);
                 cell.fg = Some(fg);
-                ctx.buffer.set(area.x + x, area.y + y + 2, cell);
+                ctx.set(x, y + 2, cell);
 
                 for i in 1..width - 1 {
                     let mut cell = Cell::new(h);
                     cell.fg = Some(fg);
-                    ctx.buffer.set(area.x + x + i, area.y + y + 2, cell);
+                    ctx.set(x + i, y + 2, cell);
                 }
 
                 let mut cell = Cell::new(br);
                 cell.fg = Some(fg);
-                ctx.buffer.set(area.x + x + width - 1, area.y + y + 2, cell);
+                ctx.set(x + width - 1, y + 2, cell);
             }
             NodeShape::Diamond => {
                 // Simplified diamond as <>
@@ -140,18 +136,17 @@ impl Diagram {
 
                 let mut cell = Cell::new('<');
                 cell.fg = Some(fg);
-                ctx.buffer.set(area.x + x, area.y + y + 1, cell);
+                ctx.set(x, y + 1, cell);
 
                 for (i, ch) in node.label.chars().enumerate() {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(fg);
-                    ctx.buffer
-                        .set(area.x + x + 1 + i as u16, area.y + y + 1, cell);
+                    ctx.set(x + 1 + i as u16, y + 1, cell);
                 }
 
                 let mut cell = Cell::new('>');
                 cell.fg = Some(fg);
-                ctx.buffer.set(area.x + x + width - 1, area.y + y + 1, cell);
+                ctx.set(x + width - 1, y + 1, cell);
             }
             _ => {
                 // Default: just render label
@@ -161,7 +156,7 @@ impl Diagram {
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(fg);
-                    ctx.buffer.set(area.x + x + i as u16, area.y + y, cell);
+                    ctx.set(x + i as u16, y, cell);
                 }
             }
         }
@@ -200,18 +195,18 @@ impl Diagram {
         // Vertical line
         if start_y < end_y {
             for y in start_y..end_y {
-                if area.y + y < area.y + area.height {
+                if y < area.height {
                     let mut cell = Cell::new(arrow_char);
                     cell.fg = Some(self.colors.arrow);
-                    ctx.buffer.set(area.x + start_x, area.y + y, cell);
+                    ctx.set(start_x, y, cell);
                 }
             }
 
             // Arrow head
-            if area.y + end_y - 1 < area.y + area.height {
+            if end_y - 1 < area.height {
                 let mut cell = Cell::new('▼');
                 cell.fg = Some(self.colors.arrow);
-                ctx.buffer.set(area.x + end_x, area.y + end_y - 1, cell);
+                ctx.set(end_x, end_y - 1, cell);
             }
         }
 
@@ -221,14 +216,13 @@ impl Diagram {
             let label_str = label.as_str();
             let label_x = start_x.saturating_sub(label_str.chars().count() as u16 / 2);
             for (i, ch) in label_str.chars().enumerate() {
-                if area.x + label_x + i as u16 >= area.x + area.width {
+                if label_x + i as u16 >= area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.colors.label);
                 cell.modifier = Modifier::ITALIC;
-                ctx.buffer
-                    .set(area.x + label_x + i as u16, area.y + label_y, cell);
+                ctx.set(label_x + i as u16, label_y, cell);
             }
         }
     }

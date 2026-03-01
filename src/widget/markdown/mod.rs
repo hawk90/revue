@@ -684,17 +684,17 @@ impl View for Markdown {
                 break;
             }
 
-            let mut x = area.x;
+            let mut x: u16 = 0;
             for segment in &line.segments {
                 for ch in segment.text.chars() {
-                    if x >= area.x + area.width {
+                    if x >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = segment.fg;
                     cell.bg = segment.bg;
                     cell.modifier = segment.modifier;
-                    ctx.buffer.set(x, area.y + y as u16, cell);
+                    ctx.set(x, y as u16, cell);
                     x += 1;
                 }
             }

@@ -232,7 +232,7 @@ impl ScatterChart {
         )
     }
 
-    /// Map data coordinates to screen coordinates
+    /// Map data coordinates to screen coordinates (relative)
     fn map_to_screen(
         &self,
         x: f64,
@@ -291,7 +291,7 @@ impl ScatterChart {
                                 {
                                     let mut cell = Cell::new('●');
                                     cell.fg = Some(color);
-                                    ctx.buffer.set(bx, by, cell);
+                                    ctx.set(bx, by, cell);
                                 }
                             }
                         }
@@ -307,7 +307,7 @@ impl ScatterChart {
                 {
                     let mut cell = Cell::new(marker_char);
                     cell.fg = Some(color);
-                    ctx.buffer.set(screen_x, screen_y, cell);
+                    ctx.set(screen_x, screen_y, cell);
                 }
             }
         }
@@ -324,21 +324,24 @@ impl View for ScatterChart {
             return;
         }
 
+        // Use relative area (0,0 origin) for shared functions that use ctx.set()
+        let rel_area = Rect::new(0, 0, area.width, area.height);
+
         // Fill background if set
         if let Some(bg) = self.bg_color {
-            fill_background(ctx, area, bg);
+            fill_background(ctx, rel_area, bg);
         }
 
         // Draw title using shared function
-        let title_offset = render_title(ctx, area, self.title.as_deref(), Color::WHITE);
+        let title_offset = render_title(ctx, rel_area, self.title.as_deref(), Color::WHITE);
 
-        // Calculate chart area (leave room for axes)
+        // Calculate chart area (relative coordinates)
         let y_label_width = 8u16;
         let x_label_height = 1u16;
 
         let chart_area = Rect {
-            x: area.x + y_label_width,
-            y: area.y + title_offset,
+            x: y_label_width,
+            y: title_offset,
             width: area.width.saturating_sub(y_label_width + 1),
             height: area
                 .height
@@ -363,10 +366,10 @@ impl View for ScatterChart {
         self.render_points(ctx, chart_area, bounds);
 
         // Render axes
-        render_y_axis_labels(ctx, area, &self.y_axis, y_min, y_max, y_label_width);
+        render_y_axis_labels(ctx, rel_area, &self.y_axis, y_min, y_max, y_label_width);
         render_x_axis_labels(
             ctx,
-            area,
+            rel_area,
             &self.x_axis,
             x_min,
             x_max,
@@ -375,7 +378,7 @@ impl View for ScatterChart {
         );
         render_axis_title(
             ctx,
-            area,
+            rel_area,
             self.x_axis.title.as_deref(),
             self.x_axis.color,
             true,
@@ -391,7 +394,7 @@ impl View for ScatterChart {
                 color: self.series_color(i),
             })
             .collect();
-        render_legend(ctx, area, &self.legend, &legend_items);
+        render_legend(ctx, rel_area, &self.legend, &legend_items);
     }
 }
 

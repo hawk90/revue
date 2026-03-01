@@ -21,7 +21,7 @@ impl RichTextEditor {
         // Fill editor background
         for row in 0..height {
             for col in 0..width {
-                ctx.buffer.set(x + col, y + row, Cell::new(' ').bg(bg));
+                ctx.set(x + col, y + row, Cell::new(' ').bg(bg));
             }
         }
 
@@ -66,8 +66,7 @@ impl RichTextEditor {
             let mut col = x;
             for ch in prefix.chars() {
                 if col < x + width {
-                    ctx.buffer
-                        .set(col, row_y, Cell::new(ch).fg(prefix_fg).bg(bg));
+                    ctx.set(col, row_y, Cell::new(ch).fg(prefix_fg).bg(bg));
                     col += 1;
                 }
             }
@@ -123,7 +122,7 @@ impl RichTextEditor {
                         cell.modifier |= Modifier::DIM;
                     }
 
-                    ctx.buffer.set(col, row_y, cell);
+                    ctx.set(col, row_y, cell);
                     col += 1;
                     char_idx += 1;
                 }
@@ -136,8 +135,7 @@ impl RichTextEditor {
                 && self.cursor.1 >= text_len
                 && col < x + width
             {
-                ctx.buffer
-                    .set(col, row_y, Cell::new(' ').bg(self.cursor_bg));
+                ctx.set(col, row_y, Cell::new(' ').bg(self.cursor_bg));
             }
         }
     }

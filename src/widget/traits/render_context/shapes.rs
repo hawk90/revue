@@ -111,22 +111,22 @@ impl RenderContext<'_> {
         }
     }
 
-    /// Fill with background color
+    /// Fill with background color (relative coordinates)
     pub fn fill_bg(&mut self, x: u16, y: u16, w: u16, h: u16, bg: Color) {
         for dy in 0..h {
             for dx in 0..w {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg);
-                self.buffer.set(x + dx, y + dy, cell);
+                self.set(x + dx, y + dy, cell);
             }
         }
     }
 
-    /// Clear area (fill with spaces)
+    /// Clear area (fill with spaces, relative coordinates)
     pub fn clear(&mut self, x: u16, y: u16, w: u16, h: u16) {
         for dy in 0..h {
             for dx in 0..w {
-                self.buffer.set(x + dx, y + dy, Cell::empty());
+                self.set(x + dx, y + dy, Cell::empty());
             }
         }
     }
@@ -196,7 +196,7 @@ impl RenderContext<'_> {
         self.draw_vline(x + w - 1, y + 1, h - 2, '║', fg);
     }
 
-    /// Helper: Draw top border with embedded title using O(n) iterator
+    /// Helper: Draw top border with embedded title using O(n) iterator (relative coordinates)
     fn draw_top_border_with_title(
         &mut self,
         x: u16,
@@ -223,7 +223,7 @@ impl RenderContext<'_> {
                     }
                     self.draw_char(x + pos, y, ch, fg);
                     for i in 1..ch_width {
-                        self.buffer.set(x + pos + i, y, Cell::continuation());
+                        self.set(x + pos + i, y, Cell::continuation());
                     }
                     pos += ch_width;
                     continue;

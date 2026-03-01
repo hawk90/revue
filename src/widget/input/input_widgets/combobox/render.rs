@@ -24,7 +24,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
         let mut cell = crate::render::Cell::new(' ');
         cell.fg = input_fg;
         cell.bg = input_bg;
-        ctx.buffer.set(area.x + x, area.y, cell);
+        ctx.set(x, 0, cell);
     }
 
     // Draw dropdown indicator
@@ -38,7 +38,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
     let mut cell = crate::render::Cell::new(icon);
     cell.fg = input_fg;
     cell.bg = input_bg;
-    ctx.buffer.set(area.x + width - 2, area.y, cell);
+    ctx.set(width - 2, 0, cell);
 
     // Draw text or placeholder
     let display_text = if combobox.input.is_empty() {
@@ -58,14 +58,14 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             input_fg
         };
         cell.bg = input_bg;
-        ctx.buffer.set(area.x + 1 + i as u16, area.y, cell);
+        ctx.set(1 + i as u16, 0, cell);
     }
 
     // Draw cursor (if not placeholder)
     if !is_placeholder && combobox.cursor <= truncated.chars().count() {
-        let cursor_x = area.x + 1 + combobox.cursor as u16;
-        if cursor_x < area.x + width - 2 {
-            if let Some(cell) = ctx.buffer.get_mut(cursor_x, area.y) {
+        let cursor_x = 1 + combobox.cursor as u16;
+        if cursor_x < width - 2 {
+            if let Some(cell) = ctx.get_mut(cursor_x, 0) {
                 cell.bg = Some(crate::style::Color::WHITE);
                 cell.fg = Some(crate::style::Color::BLACK);
             }
@@ -85,36 +85,36 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
 
     // Loading state
     if combobox.loading {
-        let y = area.y + 1;
+        let y: u16 = 1;
         for x in 0..width {
             let mut cell = crate::render::Cell::new(' ');
             cell.fg = combobox.fg;
             cell.bg = combobox.bg;
-            ctx.buffer.set(area.x + x, y, cell);
+            ctx.set(x, y, cell);
         }
         for (i, ch) in combobox.loading_text.chars().take(text_width).enumerate() {
             let mut cell = crate::render::Cell::new(ch);
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;
-            ctx.buffer.set(area.x + 1 + i as u16, y, cell);
+            ctx.set(1 + i as u16, y, cell);
         }
         return;
     }
 
     // Empty state
     if combobox.filtered.is_empty() {
-        let y = area.y + 1;
+        let y: u16 = 1;
         for x in 0..width {
             let mut cell = crate::render::Cell::new(' ');
             cell.fg = combobox.fg;
             cell.bg = combobox.bg;
-            ctx.buffer.set(area.x + x, y, cell);
+            ctx.set(x, y, cell);
         }
         for (i, ch) in combobox.empty_text.chars().take(text_width).enumerate() {
             let mut cell = crate::render::Cell::new(ch);
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;
-            ctx.buffer.set(area.x + 1 + i as u16, y, cell);
+            ctx.set(1 + i as u16, y, cell);
         }
         return;
     }
@@ -127,7 +127,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
         .take(visible_count)
         .enumerate()
     {
-        let y = area.y + 1 + row as u16;
+        let y = 1 + row as u16;
         let option = &combobox.options[option_idx];
         let is_highlighted = row + combobox.scroll_offset == combobox.selected_idx;
         let is_multi_selected = combobox.multi_select && combobox.is_selected(option.get_value());
@@ -149,7 +149,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             let mut cell = crate::render::Cell::new(' ');
             cell.fg = fg;
             cell.bg = bg;
-            ctx.buffer.set(area.x + x, y, cell);
+            ctx.set(x, y, cell);
         }
 
         // Draw selection indicator (for multi-select)
@@ -158,13 +158,13 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             let mut cell = crate::render::Cell::new(indicator);
             cell.fg = fg;
             cell.bg = bg;
-            ctx.buffer.set(area.x, y, cell);
+            ctx.set(0, y, cell);
         } else {
             let indicator = if is_highlighted { '›' } else { ' ' };
             let mut cell = crate::render::Cell::new(indicator);
             cell.fg = fg;
             cell.bg = bg;
-            ctx.buffer.set(area.x, y, cell);
+            ctx.set(0, y, cell);
         }
 
         // Get match indices for highlighting
@@ -187,7 +187,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
                 cell.fg = fg;
             }
 
-            ctx.buffer.set(area.x + 2 + j as u16, y, cell);
+            ctx.set(2 + j as u16, y, cell);
         }
     }
 
@@ -200,15 +200,15 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             let mut cell = crate::render::Cell::new('↑');
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;
-            ctx.buffer.set(area.x + width - 1, area.y + 1, cell);
+            ctx.set(width - 1, 1, cell);
         }
 
         if has_more_below {
-            let y = area.y + visible_count as u16;
+            let y = visible_count as u16;
             let mut cell = crate::render::Cell::new('↓');
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;
-            ctx.buffer.set(area.x + width - 1, y, cell);
+            ctx.set(width - 1, y, cell);
         }
     }
 }

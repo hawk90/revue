@@ -100,43 +100,32 @@ impl ErrorBoundary {
         let dim_color = Color::rgb(140, 60, 60);
 
         // Draw top and bottom borders
-        for x in area.x..area.x + area.width {
-            ctx.buffer.set(x, area.y, Cell::new('─').fg(border_color));
-            ctx.buffer
-                .set(x, area.y + area.height - 1, Cell::new('─').fg(border_color));
+        for x in 0..area.width {
+            ctx.set(x, 0, Cell::new('─').fg(border_color));
+            ctx.set(x, area.height - 1, Cell::new('─').fg(border_color));
         }
         // Draw left and right borders
-        for y in area.y..area.y + area.height {
-            ctx.buffer.set(area.x, y, Cell::new('│').fg(border_color));
-            ctx.buffer
-                .set(area.x + area.width - 1, y, Cell::new('│').fg(border_color));
+        for y in 0..area.height {
+            ctx.set(0, y, Cell::new('│').fg(border_color));
+            ctx.set(area.width - 1, y, Cell::new('│').fg(border_color));
         }
         // Corners
-        ctx.buffer
-            .set(area.x, area.y, Cell::new('┌').fg(border_color));
-        ctx.buffer.set(
-            area.x + area.width - 1,
-            area.y,
-            Cell::new('┐').fg(border_color),
-        );
-        ctx.buffer.set(
-            area.x,
-            area.y + area.height - 1,
-            Cell::new('└').fg(border_color),
-        );
-        ctx.buffer.set(
-            area.x + area.width - 1,
-            area.y + area.height - 1,
+        ctx.set(0, 0, Cell::new('┌').fg(border_color));
+        ctx.set(area.width - 1, 0, Cell::new('┐').fg(border_color));
+        ctx.set(0, area.height - 1, Cell::new('└').fg(border_color));
+        ctx.set(
+            area.width - 1,
+            area.height - 1,
             Cell::new('┘').fg(border_color),
         );
 
         // Title
         let title = " Error ";
-        let title_x = area.x + 2;
+        let title_x: u16 = 2;
         for (i, ch) in title.chars().enumerate() {
             let x = title_x + i as u16;
-            if x < area.x + area.width - 1 {
-                ctx.buffer.set(x, area.y, Cell::new(ch).fg(text_color));
+            if x < area.width - 1 {
+                ctx.set(x, 0, Cell::new(ch).fg(text_color));
             }
         }
 
@@ -145,11 +134,11 @@ impl ErrorBoundary {
         let display_msg = msg.as_deref().unwrap_or("A rendering error occurred");
         let inner_width = (area.width.saturating_sub(4)) as usize;
         let truncated: String = display_msg.chars().take(inner_width).collect();
-        let msg_y = area.y + 1;
+        let msg_y: u16 = 1;
         for (i, ch) in truncated.chars().enumerate() {
-            let x = area.x + 2 + i as u16;
-            if x < area.x + area.width - 1 {
-                ctx.buffer.set(x, msg_y, Cell::new(ch).fg(dim_color).dim());
+            let x = 2 + i as u16;
+            if x < area.width - 1 {
+                ctx.set(x, msg_y, Cell::new(ch).fg(dim_color).dim());
             }
         }
     }

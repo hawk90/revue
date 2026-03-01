@@ -301,10 +301,10 @@ impl View for SearchBar {
         }
 
         // Draw background
-        for x in area.x..area.x + width {
+        for x in 0..width {
             let mut cell = Cell::new(' ');
             cell.bg = Some(self.bg_color);
-            ctx.buffer.set(x, area.y, cell);
+            ctx.set(x, 0, cell);
         }
 
         // Draw border (left and right)
@@ -314,7 +314,7 @@ impl View for SearchBar {
         } else {
             self.border_color
         });
-        ctx.buffer.set(area.x, area.y, left_border);
+        ctx.set(0, 0, left_border);
 
         let mut right_border = Cell::new('│');
         right_border.fg = Some(if self.focused {
@@ -322,15 +322,15 @@ impl View for SearchBar {
         } else {
             self.border_color
         });
-        ctx.buffer.set(area.x + width - 1, area.y, right_border);
+        ctx.set(width - 1, 0, right_border);
 
         // Draw search icon
         let mut icon_cell = Cell::new(self.icon);
         icon_cell.bg = Some(self.bg_color);
-        ctx.buffer.set(area.x + 2, area.y, icon_cell);
+        ctx.set(2, 0, icon_cell);
 
         // Draw input or placeholder
-        let input_x = area.x + 4;
+        let input_x: u16 = 4;
         let input_width = width.saturating_sub(6);
 
         if self.input.is_empty() {
@@ -342,7 +342,7 @@ impl View for SearchBar {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.placeholder_color);
                 cell.bg = Some(self.bg_color);
-                ctx.buffer.set(input_x + i as u16, area.y, cell);
+                ctx.set(input_x + i as u16, 0, cell);
             }
         } else {
             // Draw input text
@@ -363,20 +363,20 @@ impl View for SearchBar {
                     self.text_color
                 });
                 cell.bg = Some(self.bg_color);
-                ctx.buffer.set(input_x + i as u16, area.y, cell);
+                ctx.set(input_x + i as u16, 0, cell);
             }
         }
 
         // Draw cursor
         if self.focused {
             let cursor_x = input_x + (self.cursor.saturating_sub(0)) as u16;
-            if cursor_x < area.x + width - 1 {
+            if cursor_x < width - 1 {
                 // Use skip().next() for O(n) instead of O(n²) with .chars().nth()
                 let cursor_char = self.input.chars().skip(self.cursor).next().unwrap_or(' ');
                 let mut cursor_cell = Cell::new(cursor_char);
                 cursor_cell.fg = Some(self.bg_color);
                 cursor_cell.bg = Some(self.text_color);
-                ctx.buffer.set(cursor_x, area.y, cursor_cell);
+                ctx.set(cursor_x, 0, cursor_cell);
             }
         }
 
@@ -386,7 +386,7 @@ impl View for SearchBar {
             error_cell.fg = Some(self.error_color);
             error_cell.bg = Some(self.bg_color);
             error_cell.modifier |= Modifier::BOLD;
-            ctx.buffer.set(area.x + width - 3, area.y, error_cell);
+            ctx.set(width - 3, 0, error_cell);
         }
 
         // Draw hints (on second line if available)
@@ -410,7 +410,7 @@ impl View for SearchBar {
                     } else {
                         self.placeholder_color
                     });
-                    ctx.buffer.set(area.x + i as u16, area.y + 1, cell);
+                    ctx.set(i as u16, 1, cell);
                 }
             }
         }

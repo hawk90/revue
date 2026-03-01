@@ -27,42 +27,38 @@ impl RichTextEditor {
         // Draw dialog background
         for row in 0..dialog_height {
             for col in 0..dialog_width {
-                ctx.buffer
-                    .set(dialog_x + col, dialog_y + row, Cell::new(' ').bg(bg));
+                ctx.set(dialog_x + col, dialog_y + row, Cell::new(' ').bg(bg));
             }
         }
 
         // Draw border
-        ctx.buffer
-            .set(dialog_x, dialog_y, Cell::new('┌').fg(fg).bg(bg));
-        ctx.buffer.set(
+        ctx.set(dialog_x, dialog_y, Cell::new('┌').fg(fg).bg(bg));
+        ctx.set(
             dialog_x + dialog_width - 1,
             dialog_y,
             Cell::new('┐').fg(fg).bg(bg),
         );
-        ctx.buffer.set(
+        ctx.set(
             dialog_x,
             dialog_y + dialog_height - 1,
             Cell::new('└').fg(fg).bg(bg),
         );
-        ctx.buffer.set(
+        ctx.set(
             dialog_x + dialog_width - 1,
             dialog_y + dialog_height - 1,
             Cell::new('┘').fg(fg).bg(bg),
         );
         for col in 1..dialog_width - 1 {
-            ctx.buffer
-                .set(dialog_x + col, dialog_y, Cell::new('─').fg(fg).bg(bg));
-            ctx.buffer.set(
+            ctx.set(dialog_x + col, dialog_y, Cell::new('─').fg(fg).bg(bg));
+            ctx.set(
                 dialog_x + col,
                 dialog_y + dialog_height - 1,
                 Cell::new('─').fg(fg).bg(bg),
             );
         }
         for row in 1..dialog_height - 1 {
-            ctx.buffer
-                .set(dialog_x, dialog_y + row, Cell::new('│').fg(fg).bg(bg));
-            ctx.buffer.set(
+            ctx.set(dialog_x, dialog_y + row, Cell::new('│').fg(fg).bg(bg));
+            ctx.set(
                 dialog_x + dialog_width - 1,
                 dialog_y + row,
                 Cell::new('│').fg(fg).bg(bg),
@@ -75,7 +71,7 @@ impl RichTextEditor {
                 let title = "Insert Link";
                 let title_x = dialog_x + (dialog_width - title.len() as u16) / 2;
                 for (i, ch) in title.chars().enumerate() {
-                    ctx.buffer.set(
+                    ctx.set(
                         title_x + i as u16,
                         dialog_y + 1,
                         Cell::new(ch).fg(fg).bg(bg),
@@ -86,7 +82,7 @@ impl RichTextEditor {
                 let label = "Text: ";
                 let input_bg = if *field == 0 { self.selection_bg } else { bg };
                 for (i, ch) in label.chars().enumerate() {
-                    ctx.buffer.set(
+                    ctx.set(
                         dialog_x + 2 + i as u16,
                         dialog_y + 3,
                         Cell::new(ch).fg(fg).bg(bg),
@@ -94,7 +90,7 @@ impl RichTextEditor {
                 }
                 for (i, ch) in text.chars().enumerate() {
                     if dialog_x + 8 + (i as u16) < dialog_x + dialog_width - 2 {
-                        ctx.buffer.set(
+                        ctx.set(
                             dialog_x + 8 + i as u16,
                             dialog_y + 3,
                             Cell::new(ch).fg(fg).bg(input_bg),
@@ -106,7 +102,7 @@ impl RichTextEditor {
                 let label = "URL:  ";
                 let input_bg = if *field == 1 { self.selection_bg } else { bg };
                 for (i, ch) in label.chars().enumerate() {
-                    ctx.buffer.set(
+                    ctx.set(
                         dialog_x + 2 + i as u16,
                         dialog_y + 4,
                         Cell::new(ch).fg(fg).bg(bg),
@@ -114,7 +110,7 @@ impl RichTextEditor {
                 }
                 for (i, ch) in url.chars().enumerate() {
                     if dialog_x + 8 + (i as u16) < dialog_x + dialog_width - 2 {
-                        ctx.buffer.set(
+                        ctx.set(
                             dialog_x + 8 + i as u16,
                             dialog_y + 4,
                             Cell::new(ch).fg(fg).bg(input_bg),
@@ -127,7 +123,7 @@ impl RichTextEditor {
                 let title = "Insert Image";
                 let title_x = dialog_x + (dialog_width - title.len() as u16) / 2;
                 for (i, ch) in title.chars().enumerate() {
-                    ctx.buffer.set(
+                    ctx.set(
                         title_x + i as u16,
                         dialog_y + 1,
                         Cell::new(ch).fg(fg).bg(bg),
@@ -138,7 +134,7 @@ impl RichTextEditor {
                 let label = "Alt:  ";
                 let input_bg = if *field == 0 { self.selection_bg } else { bg };
                 for (i, ch) in label.chars().enumerate() {
-                    ctx.buffer.set(
+                    ctx.set(
                         dialog_x + 2 + i as u16,
                         dialog_y + 3,
                         Cell::new(ch).fg(fg).bg(bg),
@@ -146,7 +142,7 @@ impl RichTextEditor {
                 }
                 for (i, ch) in alt.chars().enumerate() {
                     if dialog_x + 8 + (i as u16) < dialog_x + dialog_width - 2 {
-                        ctx.buffer.set(
+                        ctx.set(
                             dialog_x + 8 + i as u16,
                             dialog_y + 3,
                             Cell::new(ch).fg(fg).bg(input_bg),
@@ -158,7 +154,7 @@ impl RichTextEditor {
                 let label = "Src:  ";
                 let input_bg = if *field == 1 { self.selection_bg } else { bg };
                 for (i, ch) in label.chars().enumerate() {
-                    ctx.buffer.set(
+                    ctx.set(
                         dialog_x + 2 + i as u16,
                         dialog_y + 4,
                         Cell::new(ch).fg(fg).bg(bg),
@@ -166,7 +162,7 @@ impl RichTextEditor {
                 }
                 for (i, ch) in src.chars().enumerate() {
                     if dialog_x + 8 + (i as u16) < dialog_x + dialog_width - 2 {
-                        ctx.buffer.set(
+                        ctx.set(
                             dialog_x + 8 + i as u16,
                             dialog_y + 4,
                             Cell::new(ch).fg(fg).bg(input_bg),

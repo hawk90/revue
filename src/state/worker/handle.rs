@@ -498,17 +498,22 @@ mod tests {
 
     #[test]
     fn test_is_running() {
-        let handle = WorkerHandle::spawn_blocking(|| {
-            // Longer spin to keep it running
-            for _ in 0..10000 {
-                std::hint::spin_loop();
-            }
+        use std::sync::{Arc, Barrier};
+
+        let barrier = Arc::new(Barrier::new(2));
+        let b = Arc::clone(&barrier);
+        let handle = WorkerHandle::spawn_blocking(move || {
+            // Block until the test has checked the state
+            b.wait();
             42
         });
 
-        // Should be running or pending immediately after spawn
+        // Should be running or pending while blocked on barrier
         let state = handle.state();
         assert!(matches!(state, WorkerState::Pending | WorkerState::Running));
+
+        // Release the worker
+        barrier.wait();
 
         // Spin until finished
         let timeout = std::time::Instant::now() + Duration::from_millis(100);

@@ -365,9 +365,9 @@ impl MarkdownPresentation {
                 let title_height = bt.height();
 
                 // Create sub-area for title
-                let title_area = crate::layout::Rect::new(
-                    area.x,
-                    area.y + 1,
+                let title_area = ctx.sub_area(
+                    0,
+                    1,
                     area.width,
                     title_height.min(area.height.saturating_sub(1)),
                 );
@@ -378,15 +378,13 @@ impl MarkdownPresentation {
                 content_start_y = title_height + 2;
 
                 // Separator line
-                let sep_y = area.y + content_start_y;
-                if sep_y < area.y + area.height {
+                if content_start_y < area.height {
                     let sep_len = (area.width as usize).min(title.len() * 2).max(20);
                     let sep_start = (area.width as usize - sep_len) / 2;
                     for i in 0..sep_len {
                         let mut cell = Cell::new('─');
                         cell.fg = Some(self.accent);
-                        ctx.buffer
-                            .set(area.x + sep_start as u16 + i as u16, sep_y, cell);
+                        ctx.set(sep_start as u16 + i as u16, content_start_y, cell);
                     }
                     content_start_y += 2;
                 }
@@ -395,9 +393,9 @@ impl MarkdownPresentation {
             // Render content (markdown without the title)
             let content = self.strip_title(slide.markdown());
             if !content.trim().is_empty() {
-                let content_area = crate::layout::Rect::new(
-                    area.x + 2,
-                    area.y + content_start_y,
+                let content_area = ctx.sub_area(
+                    2,
+                    content_start_y,
                     area.width.saturating_sub(4),
                     area.height.saturating_sub(content_start_y + 2),
                 );
@@ -448,7 +446,7 @@ impl MarkdownPresentation {
             for x in 0..area.width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(self.bg);
-                ctx.buffer.set(area.x + x, area.y + y, cell);
+                ctx.set(x, y, cell);
             }
         }
     }
@@ -457,31 +455,31 @@ impl MarkdownPresentation {
     fn render_mode_indicator(&self, ctx: &mut RenderContext, mode_text: &str) {
         let area = ctx.area;
         let text = format!(" {} ", mode_text);
-        let start_x = area.x + area.width - text.len() as u16 - 1;
-        let y = area.y + 1;
+        let start_x = area.width - text.len() as u16 - 1;
+        let y: u16 = 1;
 
         for (i, ch) in text.chars().enumerate() {
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::BLACK);
             cell.bg = Some(self.accent);
             cell.modifier = Modifier::BOLD;
-            ctx.buffer.set(start_x + i as u16, y, cell);
+            ctx.set(start_x + i as u16, y, cell);
         }
     }
 
     /// Render footer with slide numbers and progress
     fn render_footer(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let footer_y = area.y + area.height - 1;
+        let footer_y = area.height - 1;
 
         // Slide numbers
         if self.show_numbers && self.nav.slide_count() > 0 {
             let num_str = self.nav.indicator();
-            let start_x = area.x + area.width - num_str.len() as u16 - 1;
+            let start_x = area.width - num_str.len() as u16 - 1;
             for (i, ch) in num_str.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::rgb(100, 100, 100));
-                ctx.buffer.set(start_x + i as u16, footer_y, cell);
+                ctx.set(start_x + i as u16, footer_y, cell);
             }
         }
 
@@ -499,7 +497,7 @@ impl MarkdownPresentation {
                 } else {
                     Color::rgb(60, 60, 60)
                 });
-                ctx.buffer.set(area.x + 1 + i, footer_y, cell);
+                ctx.set(1 + i, footer_y, cell);
             }
         }
 
@@ -508,11 +506,11 @@ impl MarkdownPresentation {
             ViewMode::Preview => "[P]",
             ViewMode::Slides => "[S]",
         };
-        let mode_x = area.x + area.width / 2 - 1;
+        let mode_x = area.width / 2 - 1;
         for (i, ch) in mode_str.chars().enumerate() {
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::rgb(80, 80, 80));
-            ctx.buffer.set(mode_x + i as u16, footer_y, cell);
+            ctx.set(mode_x + i as u16, footer_y, cell);
         }
     }
 }

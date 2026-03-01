@@ -182,9 +182,8 @@ impl View for Transition {
         let should_dim = effective_progress > 0.0 && effective_progress < 1.0;
 
         for (j, ch) in self.child_content.chars().enumerate() {
-            let x = area.x + j as u16;
-            let y = area.y;
-            if x < area.x + area.width && y < area.y + area.height {
+            let x = j as u16;
+            if x < area.width && area.height > 0 {
                 let cell = if j < chars_to_show {
                     let mut c = Cell::new(ch);
                     c.fg = Some(default_fg);
@@ -199,7 +198,7 @@ impl View for Transition {
                     c.bg = Some(default_bg);
                     c
                 };
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, 0, cell);
             }
         }
     }

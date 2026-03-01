@@ -238,8 +238,7 @@ impl QrCodeWidget {
                 let mut cell = Cell::new(ch);
                 cell.fg = cell_fg;
                 cell.bg = cell_bg;
-                ctx.buffer
-                    .set(area.x + col as u16, area.y + row as u16, cell);
+                ctx.set(col as u16, row as u16, cell);
             }
         }
     }
@@ -274,10 +273,8 @@ impl QrCodeWidget {
                 cell.bg = Some(bg);
 
                 // Two columns per module for aspect ratio
-                ctx.buffer
-                    .set(area.x + col as u16 * 2, area.y + row as u16, cell);
-                ctx.buffer
-                    .set(area.x + col as u16 * 2 + 1, area.y + row as u16, cell);
+                ctx.set(col as u16 * 2, row as u16, cell);
+                ctx.set(col as u16 * 2 + 1, row as u16, cell);
             }
         }
     }
@@ -305,10 +302,8 @@ impl QrCodeWidget {
                 cell.fg = Some(self.fg);
                 cell.bg = Some(self.bg);
 
-                ctx.buffer
-                    .set(area.x + col as u16 * 2, area.y + row as u16, cell);
-                ctx.buffer
-                    .set(area.x + col as u16 * 2 + 1, area.y + row as u16, cell);
+                ctx.set(col as u16 * 2, row as u16, cell);
+                ctx.set(col as u16 * 2 + 1, row as u16, cell);
             }
         }
     }
@@ -382,8 +377,7 @@ impl QrCodeWidget {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.fg);
                 cell.bg = Some(self.bg);
-                ctx.buffer
-                    .set(area.x + col as u16, area.y + row as u16, cell);
+                ctx.set(col as u16, row as u16, cell);
             }
         }
     }
@@ -413,7 +407,7 @@ impl View for QrCodeWidget {
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::RED);
-                ctx.buffer.set(ctx.area.x + i as u16, ctx.area.y, cell);
+                ctx.set(i as u16, 0, cell);
             }
             return;
         };

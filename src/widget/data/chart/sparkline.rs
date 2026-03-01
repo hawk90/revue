@@ -205,27 +205,27 @@ impl View for Sparkline {
         };
 
         // Render sparkline
-        let mut x = area.x;
+        let mut x = 0u16;
 
         // Show max bound
         if self.show_bounds {
             let max_str = format!("{:.0}", max);
             for ch in max_str.chars() {
-                if x < area.x + area.width {
+                if x < area.width {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(100, 100, 100));
-                    ctx.buffer.set(x, area.y, cell);
+                    ctx.set(x, 0, cell);
                     x += 1;
                 }
             }
             // Space
-            ctx.buffer.set(x, area.y, Cell::new(' '));
+            ctx.set(x, 0, Cell::new(' '));
             x += 1;
         }
 
         // Render data points
         for &value in data_slice {
-            if x >= area.x + area.width {
+            if x >= area.width {
                 break;
             }
 
@@ -237,14 +237,14 @@ impl View for Sparkline {
             if let Some(bg) = self.bg {
                 cell.bg = Some(bg);
             }
-            ctx.buffer.set(x, area.y, cell);
+            ctx.set(x, 0, cell);
             x += 1;
         }
 
         // Fill remaining space if data is shorter
         let remaining_data = available_width.saturating_sub(data_slice.len());
         for _ in 0..remaining_data {
-            if x >= area.x + area.width {
+            if x >= area.width {
                 break;
             }
             let mut cell = Cell::new(chars[0]); // Lowest bar
@@ -252,7 +252,7 @@ impl View for Sparkline {
             if let Some(bg) = self.bg {
                 cell.bg = Some(bg);
             }
-            ctx.buffer.set(x, area.y, cell);
+            ctx.set(x, 0, cell);
             x += 1;
         }
     }

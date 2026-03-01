@@ -277,7 +277,7 @@ impl View for Border {
         let mut cell = Cell::new(chars.top_left);
         cell.fg = self.fg;
         cell.bg = self.bg;
-        ctx.buffer.set(area.x, area.y, cell);
+        ctx.set(0, 0, cell);
 
         // Top horizontal line with optional title
         let title_start = if let Some(ref title) = self.title {
@@ -290,7 +290,7 @@ impl View for Border {
                 let mut c = Cell::new(chars.horizontal);
                 c.fg = self.fg;
                 c.bg = self.bg;
-                ctx.buffer.set(area.x + x, area.y, c);
+                ctx.set(x, 0, c);
             }
 
             // Draw title
@@ -298,7 +298,7 @@ impl View for Border {
                 let mut c = Cell::new(ch);
                 c.fg = self.fg;
                 c.bg = self.bg;
-                ctx.buffer.set(area.x + 2 + i as u16, area.y, c);
+                ctx.set(2 + i as u16, 0, c);
             }
 
             2 + title_len as u16
@@ -311,52 +311,51 @@ impl View for Border {
             let mut c = Cell::new(chars.horizontal);
             c.fg = self.fg;
             c.bg = self.bg;
-            ctx.buffer.set(area.x + x, area.y, c);
+            ctx.set(x, 0, c);
         }
 
         // Top right corner
         let mut cell = Cell::new(chars.top_right);
         cell.fg = self.fg;
         cell.bg = self.bg;
-        ctx.buffer.set(area.x + area.width - 1, area.y, cell);
+        ctx.set(area.width - 1, 0, cell);
 
         // Left and right borders
         for y in 1..(area.height - 1) {
             let mut left = Cell::new(chars.vertical);
             left.fg = self.fg;
             left.bg = self.bg;
-            ctx.buffer.set(area.x, area.y + y, left);
+            ctx.set(0, y, left);
 
             let mut right = Cell::new(chars.vertical);
             right.fg = self.fg;
             right.bg = self.bg;
-            ctx.buffer.set(area.x + area.width - 1, area.y + y, right);
+            ctx.set(area.width - 1, y, right);
         }
 
         // Bottom border
         let mut cell = Cell::new(chars.bottom_left);
         cell.fg = self.fg;
         cell.bg = self.bg;
-        ctx.buffer.set(area.x, area.y + area.height - 1, cell);
+        ctx.set(0, area.height - 1, cell);
 
         for x in 1..(area.width - 1) {
             let mut c = Cell::new(chars.horizontal);
             c.fg = self.fg;
             c.bg = self.bg;
-            ctx.buffer.set(area.x + x, area.y + area.height - 1, c);
+            ctx.set(x, area.height - 1, c);
         }
 
         let mut cell = Cell::new(chars.bottom_right);
         cell.fg = self.fg;
         cell.bg = self.bg;
-        ctx.buffer
-            .set(area.x + area.width - 1, area.y + area.height - 1, cell);
+        ctx.set(area.width - 1, area.height - 1, cell);
 
         // Render child in inner area
         if let Some(ref child) = self.child {
-            let inner = Rect::new(
-                area.x + 1,
-                area.y + 1,
+            let inner = ctx.sub_area(
+                1,
+                1,
                 area.width.saturating_sub(2),
                 area.height.saturating_sub(2),
             );

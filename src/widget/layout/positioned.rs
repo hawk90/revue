@@ -218,37 +218,41 @@ impl Positioned {
         Rect::new(area.x, area.y, width, height)
     }
 
-    /// Calculate final position based on settings and parent area
-    fn calculate_position(&self, parent: &Rect, child_width: u16, child_height: u16) -> (u16, u16) {
-        // Calculate base position
+    /// Calculate final position in relative coordinates based on settings and parent dimensions
+    fn calculate_position_relative(
+        &self,
+        parent_width: u16,
+        parent_height: u16,
+        child_width: u16,
+        child_height: u16,
+    ) -> (u16, u16) {
+        // Calculate base position (relative to parent top-left)
         let base_x = if let Some(x) = self.x {
             if x >= 0 {
-                parent.x.saturating_add(x as u16)
+                x as u16
             } else {
-                parent.x.saturating_sub((-x) as u16)
+                0u16 // Can't go negative in relative coords
             }
         } else if let Some(percent) = self.percent_x {
-            let offset = (parent.width as f32 * percent / 100.0)
+            (parent_width as f32 * percent / 100.0)
                 .max(0.0)
-                .min(parent.width as f32) as u16;
-            parent.x.saturating_add(offset)
+                .min(parent_width as f32) as u16
         } else {
-            parent.x
+            0
         };
 
         let base_y = if let Some(y) = self.y {
             if y >= 0 {
-                parent.y.saturating_add(y as u16)
+                y as u16
             } else {
-                parent.y.saturating_sub((-y) as u16)
+                0u16
             }
         } else if let Some(percent) = self.percent_y {
-            let offset = (parent.height as f32 * percent / 100.0)
+            (parent_height as f32 * percent / 100.0)
                 .max(0.0)
-                .min(parent.height as f32) as u16;
-            parent.y.saturating_add(offset)
+                .min(parent_height as f32) as u16
         } else {
-            parent.y
+            0
         };
 
         // Adjust for anchor point
@@ -293,16 +297,21 @@ impl View for Positioned {
         let child_width = self.width.unwrap_or(parent.width);
         let child_height = self.height.unwrap_or(parent.height);
 
-        // Calculate position
-        let (x, y) = self.calculate_position(&parent, child_width, child_height);
-
-        // Create bounded child area
-        let child_area = Rect::new(
-            x.max(parent.x).min(parent.x + parent.width),
-            y.max(parent.y).min(parent.y + parent.height),
-            child_width.min(parent.x + parent.width - x.min(parent.x + parent.width)),
-            child_height.min(parent.y + parent.height - y.min(parent.y + parent.height)),
+        // Calculate position in relative coordinates
+        let (rel_x, rel_y) = self.calculate_position_relative(
+            parent.width,
+            parent.height,
+            child_width,
+            child_height,
         );
+
+        // Create bounded child area (clamp to parent bounds)
+        let clamped_x = rel_x.min(parent.width);
+        let clamped_y = rel_y.min(parent.height);
+        let bounded_w = child_width.min(parent.width.saturating_sub(clamped_x));
+        let bounded_h = child_height.min(parent.height.saturating_sub(clamped_y));
+
+        let child_area = ctx.sub_area(clamped_x, clamped_y, bounded_w, bounded_h);
 
         // Render child in calculated area
         let mut child_ctx = RenderContext::new(ctx.buffer, child_area);

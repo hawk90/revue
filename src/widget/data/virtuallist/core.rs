@@ -492,7 +492,7 @@ impl<T: ToString + Clone> VirtualList<T> {
     /// Render scrollbar
     pub fn render_scrollbar(&self, ctx: &mut RenderContext, viewport_height: u16) {
         let area = ctx.area;
-        let scrollbar_x = area.x + area.width - 1;
+        let scrollbar_x = area.width - 1;
 
         // Calculate thumb position and size
         let total = self.items.len() as f32;
@@ -510,8 +510,7 @@ impl<T: ToString + Clone> VirtualList<T> {
 
         // Draw scrollbar track
         for y in 0..viewport_height {
-            let abs_y = area.y + y;
-            if abs_y < area.y + area.height {
+            if y < area.height {
                 let in_thumb = y >= thumb_pos && y < thumb_pos + thumb_size;
                 let ch = if in_thumb { '█' } else { '░' };
                 let color = if in_thumb {
@@ -519,7 +518,7 @@ impl<T: ToString + Clone> VirtualList<T> {
                 } else {
                     self.scrollbar_bg
                 };
-                ctx.buffer.set(scrollbar_x, abs_y, Cell::new(ch).fg(color));
+                ctx.set(scrollbar_x, y, Cell::new(ch).fg(color));
             }
         }
     }

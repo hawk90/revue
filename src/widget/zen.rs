@@ -178,23 +178,25 @@ impl View for ZenMode {
 
         if self.enabled {
             // Zen mode: fill background and render content with padding
-            for y in area.y..area.y + area.height {
-                for x in area.x..area.x + area.width {
+            for y in 0..area.height {
+                for x in 0..area.width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(self.bg_color);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
 
             // Calculate padded area
-            let content_x = area.x + self.padding_x;
-            let content_y = area.y + self.padding_y;
             let content_width = area.width.saturating_sub(self.padding_x * 2);
             let content_height = area.height.saturating_sub(self.padding_y * 2);
 
             if content_width > 0 && content_height > 0 {
-                let content_area =
-                    crate::layout::Rect::new(content_x, content_y, content_width, content_height);
+                let content_area = ctx.sub_area(
+                    self.padding_x,
+                    self.padding_y,
+                    content_width,
+                    content_height,
+                );
 
                 let mut sub_ctx = RenderContext::new(ctx.buffer, content_area);
                 self.content.render(&mut sub_ctx);

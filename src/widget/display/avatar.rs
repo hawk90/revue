@@ -291,13 +291,13 @@ impl View for Avatar {
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);
                 cell.modifier |= Modifier::BOLD;
-                ctx.buffer.set(area.x, area.y, cell);
+                ctx.set(0, 0, cell);
 
                 // Status dot
                 if let Some(status_color) = self.status {
                     let mut dot = Cell::new('●');
                     dot.fg = Some(status_color);
-                    ctx.buffer.set(area.x + 1, area.y, dot);
+                    ctx.set(1, 0, dot);
                 }
             }
             AvatarSize::Medium => {
@@ -307,25 +307,25 @@ impl View for Avatar {
                         // Use half-blocks for pseudo-circle: ◖XY◗
                         let mut left = Cell::new('◖');
                         left.fg = Some(bg);
-                        ctx.buffer.set(area.x, area.y, left);
+                        ctx.set(0, 0, left);
 
                         for (i, ch) in initials.chars().take(2).enumerate() {
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(fg);
                             cell.bg = Some(bg);
                             cell.modifier |= Modifier::BOLD;
-                            ctx.buffer.set(area.x + 1 + i as u16, area.y, cell);
+                            ctx.set(1 + i as u16, 0, cell);
                         }
 
                         let mut right = Cell::new('◗');
                         right.fg = Some(bg);
-                        ctx.buffer.set(area.x + 3, area.y, right);
+                        ctx.set(3, 0, right);
 
                         // Status dot
                         if let Some(status_color) = self.status {
                             let mut dot = Cell::new('●');
                             dot.fg = Some(status_color);
-                            ctx.buffer.set(area.x + 4, area.y, dot);
+                            ctx.set(4, 0, dot);
                         }
                     }
                     AvatarShape::Square | AvatarShape::Rounded => {
@@ -343,25 +343,25 @@ impl View for Avatar {
 
                         let mut lc = Cell::new(left);
                         lc.fg = Some(bg);
-                        ctx.buffer.set(area.x, area.y, lc);
+                        ctx.set(0, 0, lc);
 
                         for (i, ch) in initials.chars().take(2).enumerate() {
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(fg);
                             cell.bg = Some(bg);
                             cell.modifier |= Modifier::BOLD;
-                            ctx.buffer.set(area.x + 1 + i as u16, area.y, cell);
+                            ctx.set(1 + i as u16, 0, cell);
                         }
 
                         let mut rc = Cell::new(right);
                         rc.fg = Some(bg);
-                        ctx.buffer.set(area.x + 3, area.y, rc);
+                        ctx.set(3, 0, rc);
 
                         // Status dot
                         if let Some(status_color) = self.status {
                             let mut dot = Cell::new('●');
                             dot.fg = Some(status_color);
-                            ctx.buffer.set(area.x + 4, area.y, dot);
+                            ctx.set(4, 0, dot);
                         }
                     }
                 }
@@ -373,7 +373,7 @@ impl View for Avatar {
                     let mut cell = Cell::new(initials.chars().next().unwrap_or('?'));
                     cell.fg = Some(fg);
                     cell.bg = Some(bg);
-                    ctx.buffer.set(area.x, area.y, cell);
+                    ctx.set(0, 0, cell);
                     return;
                 }
 
@@ -388,13 +388,13 @@ impl View for Avatar {
                         for (i, ch) in chars_top.iter().enumerate() {
                             let mut cell = Cell::new(*ch);
                             cell.fg = Some(bg);
-                            ctx.buffer.set(area.x + i as u16, area.y, cell);
+                            ctx.set(i as u16, 0, cell);
                         }
 
                         // Middle row
                         let mut left = Cell::new('│');
                         left.fg = Some(bg);
-                        ctx.buffer.set(area.x, area.y + 1, left);
+                        ctx.set(0, 1, left);
 
                         // Pre-collect initials chars for O(1) access
                         let initials_chars: Vec<char> = initials.chars().collect();
@@ -408,24 +408,24 @@ impl View for Avatar {
                             cell.fg = Some(fg);
                             cell.bg = Some(bg);
                             cell.modifier |= Modifier::BOLD;
-                            ctx.buffer.set(area.x + i as u16, area.y + 1, cell);
+                            ctx.set(i as u16, 1, cell);
                         }
 
                         let mut right = Cell::new('│');
                         right.fg = Some(bg);
-                        ctx.buffer.set(area.x + 4, area.y + 1, right);
+                        ctx.set(4, 1, right);
 
                         for (i, ch) in chars_bot.iter().enumerate() {
                             let mut cell = Cell::new(*ch);
                             cell.fg = Some(bg);
-                            ctx.buffer.set(area.x + i as u16, area.y + 2, cell);
+                            ctx.set(i as u16, 2, cell);
                         }
 
                         // Status dot
                         if let Some(status_color) = self.status {
                             let mut dot = Cell::new('●');
                             dot.fg = Some(status_color);
-                            ctx.buffer.set(area.x + 5, area.y + 2, dot);
+                            ctx.set(5, 2, dot);
                         }
                     }
                     AvatarShape::Square => {
@@ -436,12 +436,12 @@ impl View for Avatar {
                         for (i, ch) in chars_top.iter().enumerate() {
                             let mut cell = Cell::new(*ch);
                             cell.fg = Some(bg);
-                            ctx.buffer.set(area.x + i as u16, area.y, cell);
+                            ctx.set(i as u16, 0, cell);
                         }
 
                         let mut left = Cell::new('│');
                         left.fg = Some(bg);
-                        ctx.buffer.set(area.x, area.y + 1, left);
+                        ctx.set(0, 1, left);
 
                         // Pre-collect initials chars for O(1) access
                         let initials_chars: Vec<char> = initials.chars().collect();
@@ -455,23 +455,23 @@ impl View for Avatar {
                             cell.fg = Some(fg);
                             cell.bg = Some(bg);
                             cell.modifier |= Modifier::BOLD;
-                            ctx.buffer.set(area.x + i as u16, area.y + 1, cell);
+                            ctx.set(i as u16, 1, cell);
                         }
 
                         let mut right = Cell::new('│');
                         right.fg = Some(bg);
-                        ctx.buffer.set(area.x + 4, area.y + 1, right);
+                        ctx.set(4, 1, right);
 
                         for (i, ch) in chars_bot.iter().enumerate() {
                             let mut cell = Cell::new(*ch);
                             cell.fg = Some(bg);
-                            ctx.buffer.set(area.x + i as u16, area.y + 2, cell);
+                            ctx.set(i as u16, 2, cell);
                         }
 
                         if let Some(status_color) = self.status {
                             let mut dot = Cell::new('●');
                             dot.fg = Some(status_color);
-                            ctx.buffer.set(area.x + 5, area.y + 2, dot);
+                            ctx.set(5, 2, dot);
                         }
                     }
                     AvatarShape::Rounded => {
@@ -482,12 +482,12 @@ impl View for Avatar {
                         for (i, ch) in chars_top.iter().enumerate() {
                             let mut cell = Cell::new(*ch);
                             cell.fg = Some(bg);
-                            ctx.buffer.set(area.x + i as u16, area.y, cell);
+                            ctx.set(i as u16, 0, cell);
                         }
 
                         let mut left = Cell::new('│');
                         left.fg = Some(bg);
-                        ctx.buffer.set(area.x, area.y + 1, left);
+                        ctx.set(0, 1, left);
 
                         // Pre-collect initials chars for O(1) access
                         let initials_chars: Vec<char> = initials.chars().collect();
@@ -501,23 +501,23 @@ impl View for Avatar {
                             cell.fg = Some(fg);
                             cell.bg = Some(bg);
                             cell.modifier |= Modifier::BOLD;
-                            ctx.buffer.set(area.x + i as u16, area.y + 1, cell);
+                            ctx.set(i as u16, 1, cell);
                         }
 
                         let mut right = Cell::new('│');
                         right.fg = Some(bg);
-                        ctx.buffer.set(area.x + 4, area.y + 1, right);
+                        ctx.set(4, 1, right);
 
                         for (i, ch) in chars_bot.iter().enumerate() {
                             let mut cell = Cell::new(*ch);
                             cell.fg = Some(bg);
-                            ctx.buffer.set(area.x + i as u16, area.y + 2, cell);
+                            ctx.set(i as u16, 2, cell);
                         }
 
                         if let Some(status_color) = self.status {
                             let mut dot = Cell::new('●');
                             dot.fg = Some(status_color);
-                            ctx.buffer.set(area.x + 5, area.y + 2, dot);
+                            ctx.set(5, 2, dot);
                         }
                     }
                 }

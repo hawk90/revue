@@ -2,7 +2,6 @@
 //!
 //! A vertically stacked list of collapsible content panels.
 
-use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::border::render_border;
@@ -381,24 +380,25 @@ impl View for Accordion {
             return;
         }
 
-        let content_area = if self.border_color.is_some() {
-            Rect::new(
-                area.x + 1,
-                area.y + 1,
-                area.width.saturating_sub(2),
-                area.height.saturating_sub(2),
-            )
-        } else {
-            area
-        };
+        let (content_x_off, content_y_off, content_width, content_height) =
+            if self.border_color.is_some() {
+                (
+                    1u16,
+                    1u16,
+                    area.width.saturating_sub(2),
+                    area.height.saturating_sub(2),
+                )
+            } else {
+                (0u16, 0u16, area.width, area.height)
+            };
 
         // Draw border if set
         if let Some(border_color) = self.border_color {
             render_border(ctx, area, border_color);
         }
 
-        let mut y = content_area.y;
-        let max_y = content_area.y + content_area.height;
+        let mut y = content_y_off;
+        let max_y = content_y_off + content_height;
 
         for (section_idx, section) in self.sections.iter().enumerate() {
             if y >= max_y {
@@ -415,21 +415,21 @@ impl View for Accordion {
             };
 
             // Fill header background
-            for x in content_area.x..content_area.x + content_area.width {
+            for x in content_x_off..content_x_off + content_width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(header_bg);
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
 
             // Icon
             let mut icon_cell = Cell::new(section.icon());
             icon_cell.fg = Some(self.header_fg);
             icon_cell.bg = Some(header_bg);
-            ctx.buffer.set(content_area.x + 1, y, icon_cell);
+            ctx.set(content_x_off + 1, y, icon_cell);
 
             // Title
-            let title_x = content_area.x + 3;
-            let max_title_width = (content_area.width.saturating_sub(4)) as usize;
+            let title_x = content_x_off + 3;
+            let max_title_width = (content_width.saturating_sub(4)) as usize;
             for (i, ch) in section.title.chars().take(max_title_width).enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.header_fg);
@@ -437,7 +437,7 @@ impl View for Accordion {
                 if is_selected {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.buffer.set(title_x + i as u16, y, cell);
+                ctx.set(title_x + i as u16, y, cell);
             }
 
             y += 1;
@@ -450,20 +450,20 @@ impl View for Accordion {
                     }
 
                     // Fill content background
-                    for x in content_area.x..content_area.x + content_area.width {
+                    for x in content_x_off..content_x_off + content_width {
                         let mut cell = Cell::new(' ');
                         cell.bg = Some(self.content_bg);
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                     }
 
                     // Content with indent
-                    let content_x = content_area.x + 3;
-                    let max_content_width = (content_area.width.saturating_sub(4)) as usize;
+                    let content_x = content_x_off + 3;
+                    let max_content_width = (content_width.saturating_sub(4)) as usize;
                     for (i, ch) in line.chars().take(max_content_width).enumerate() {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.content_fg);
                         cell.bg = Some(self.content_bg);
-                        ctx.buffer.set(content_x + i as u16, y, cell);
+                        ctx.set(content_x + i as u16, y, cell);
                     }
 
                     y += 1;
@@ -472,10 +472,10 @@ impl View for Accordion {
 
             // Divider
             if self.show_dividers && section_idx < self.sections.len() - 1 && y < max_y {
-                for x in content_area.x..content_area.x + content_area.width {
+                for x in content_x_off..content_x_off + content_width {
                     let mut cell = Cell::new('─');
                     cell.fg = Some(Color::rgb(60, 60, 60));
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
                 y += 1;
             }
@@ -501,6 +501,7 @@ pub fn section(title: impl Into<String>) -> AccordionSection {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::layout::Rect;
     use crate::render::Buffer;
 
     #[test]

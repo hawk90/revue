@@ -253,7 +253,7 @@ impl View for GradientBox {
 
         // Render with animation offset if enabled
         if self.animated && self.offset > 0.0 {
-            self.render_animated(ctx, area.x, area.y, width, height);
+            self.render_animated(ctx, width, height);
         } else {
             match self.direction {
                 GradientDirection::ToRight | GradientDirection::ToLeft => {
@@ -280,7 +280,7 @@ impl View for GradientBox {
                 | GradientDirection::ToTopRight
                 | GradientDirection::Angle(_) => {
                     // For diagonal gradients, fill with interpolated colors
-                    self.fill_diagonal(ctx, area.x, area.y, width, height);
+                    self.fill_diagonal(ctx, width, height);
                 }
             }
         }
@@ -289,11 +289,9 @@ impl View for GradientBox {
         if self.fill_char != ' ' {
             for y in 0..height {
                 for x in 0..width {
-                    let px = area.x + x;
-                    let py = area.y + y;
                     let mut cell = Cell::new(self.fill_char);
                     cell.fg = Some(self.get_contrast_color_at(x, y, width, height));
-                    ctx.buffer.set(px, py, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -336,7 +334,7 @@ impl GradientBox {
         }
     }
 
-    fn fill_diagonal(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16, height: u16) {
+    fn fill_diagonal(&self, ctx: &mut RenderContext, width: u16, height: u16) {
         // For diagonal gradients, interpolate along both axes
         for py in 0..height {
             for px in 0..width {
@@ -344,19 +342,19 @@ impl GradientBox {
                 let t = (px as f32 / width.max(1) as f32 + py as f32 / height.max(1) as f32) / 2.0;
 
                 let color = self.gradient.at(t);
-                ctx.buffer.set_bg(x + px, y + py, color);
+                ctx.set_bg(px, py, color);
 
                 // Apply fill character
                 if self.fill_char != ' ' {
                     let mut cell = Cell::new(self.fill_char);
                     cell.fg = Some(self.get_contrast_color_at(px, py, width, height));
-                    ctx.buffer.set(x + px, y + py, cell);
+                    ctx.set(px, py, cell);
                 }
             }
         }
     }
 
-    fn render_animated(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16, height: u16) {
+    fn render_animated(&self, ctx: &mut RenderContext, width: u16, height: u16) {
         // Render with animation offset applied
         let offset = self.offset;
 
@@ -369,7 +367,7 @@ impl GradientBox {
                         let t = ((px as f32 / width.max(1) as f32) + offset) % 1.0;
 
                         let color = self.gradient.at(t);
-                        ctx.buffer.set_bg(x + px, y + py, color);
+                        ctx.set_bg(px, py, color);
                     }
                 }
             }
@@ -381,7 +379,7 @@ impl GradientBox {
                         let t = ((py as f32 / height.max(1) as f32) + offset) % 1.0;
 
                         let color = self.gradient.at(t);
-                        ctx.buffer.set_bg(x + px, y + py, color);
+                        ctx.set_bg(px, py, color);
                     }
                 }
             }
@@ -399,7 +397,7 @@ impl GradientBox {
                             % 1.0;
 
                         let color = self.gradient.at(t);
-                        ctx.buffer.set_bg(x + px, y + py, color);
+                        ctx.set_bg(px, py, color);
                     }
                 }
             }

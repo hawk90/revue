@@ -425,8 +425,7 @@ impl View for RichText {
             return;
         }
 
-        let mut x = area.x;
-        let y = area.y;
+        let mut x: u16 = 0;
 
         for span in &self.spans {
             // Register hyperlink if present
@@ -438,7 +437,7 @@ impl View for RichText {
             let modifier = span.style.to_modifier();
 
             for ch in span.text.chars() {
-                if x >= area.x + area.width {
+                if x >= area.width {
                     break;
                 }
 
@@ -450,14 +449,14 @@ impl View for RichText {
                 cell.modifier = modifier;
                 cell.hyperlink_id = hyperlink_id;
 
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, 0, cell);
 
                 // Handle wide characters
-                if char_width == 2 && x + 1 < area.x + area.width {
+                if char_width == 2 && x + 1 < area.width {
                     let mut cont = Cell::continuation();
                     cont.bg = span.style.bg;
                     cont.hyperlink_id = hyperlink_id;
-                    ctx.buffer.set(x + 1, y, cont);
+                    ctx.set(x + 1, 0, cont);
                 }
 
                 x += char_width;

@@ -672,13 +672,13 @@ impl View for LogViewer {
         if filtered.is_empty() {
             // Show empty message
             let msg = "No log entries";
-            let x = area.x + (area.width.saturating_sub(msg.len() as u16)) / 2;
-            let y = area.y + area.height / 2;
+            let x = (area.width.saturating_sub(msg.len() as u16)) / 2;
+            let y = area.height / 2;
             for (i, ch) in msg.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::rgb(100, 100, 100));
                 cell.bg = self.bg;
-                ctx.buffer.set(x + i as u16, y, cell);
+                ctx.set(x + i as u16, y, cell);
             }
             return;
         }
@@ -703,9 +703,9 @@ impl View for LogViewer {
             filtered.iter().enumerate().skip(start).take(end - start)
         {
             let row = (view_idx - start) as u16;
-            let y = area.y + row;
+            let y = row;
 
-            if y >= area.y + area.height {
+            if y >= area.height {
                 break;
             }
 
@@ -719,13 +719,13 @@ impl View for LogViewer {
                 self.bg
             };
 
-            for x in area.x..area.x + area.width {
+            for x in 0..area.width {
                 let mut cell = Cell::new(' ');
                 cell.bg = row_bg;
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
 
-            let mut x = area.x;
+            let mut x = 0u16;
 
             // Draw line number
             if self.show_line_numbers {
@@ -734,7 +734,7 @@ impl View for LogViewer {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.line_number_fg);
                     cell.bg = row_bg;
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                     x += 1;
                 }
                 x += 1; // Space after line number
@@ -745,7 +745,7 @@ impl View for LogViewer {
             let mut cell = Cell::new(bookmark_char);
             cell.fg = Some(self.bookmark_fg);
             cell.bg = row_bg;
-            ctx.buffer.set(x, y, cell);
+            ctx.set(x, y, cell);
             x += bookmark_width;
 
             // Draw timestamp
@@ -757,11 +757,11 @@ impl View for LogViewer {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.timestamp_fg);
                         cell.bg = row_bg;
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                         x += 1;
                     }
                 }
-                x = area.x + line_num_width + bookmark_width + timestamp_width;
+                x = line_num_width + bookmark_width + timestamp_width;
             }
 
             // Draw level
@@ -770,7 +770,7 @@ impl View for LogViewer {
                 let mut cell = Cell::new(icon);
                 cell.fg = Some(level_color);
                 cell.bg = row_bg;
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
                 x += 1;
 
                 let label = entry.level.label();
@@ -779,10 +779,10 @@ impl View for LogViewer {
                     cell.fg = Some(level_color);
                     cell.bg = row_bg;
                     cell.modifier |= Modifier::BOLD;
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                     x += 1;
                 }
-                x = area.x + line_num_width + bookmark_width + timestamp_width + level_width;
+                x = line_num_width + bookmark_width + timestamp_width + level_width;
             }
 
             // Draw source
@@ -793,11 +793,11 @@ impl View for LogViewer {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.source_fg);
                         cell.bg = row_bg;
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                         x += 1;
                     }
                 }
-                x = area.x + prefix_width;
+                x = prefix_width;
             }
 
             // Find search matches for this entry
@@ -831,7 +831,7 @@ impl View for LogViewer {
                 if is_selected {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
                 x += 1;
             }
         }
@@ -840,23 +840,23 @@ impl View for LogViewer {
         if filtered.len() > visible_height {
             let scroll_ratio = self.scroll as f32 / (filtered.len() - visible_height) as f32;
             let indicator_pos = (scroll_ratio * (area.height as f32 - 1.0)) as u16;
-            let indicator_y = area.y + indicator_pos.min(area.height - 1);
+            let indicator_y = indicator_pos.min(area.height - 1);
 
             let mut cell = Cell::new('█');
             cell.fg = Some(Color::rgb(80, 80, 80));
-            ctx.buffer.set(area.x + area.width - 1, indicator_y, cell);
+            ctx.set(area.width - 1, indicator_y, cell);
         }
 
         // Draw tail mode indicator
         if self.tail_mode {
             let indicator = "◉ TAIL";
-            let x = area.x + area.width - indicator.len() as u16 - 2;
-            let y = area.y;
+            let x = area.width - indicator.len() as u16 - 2;
+            let y = 0u16;
             for (i, ch) in indicator.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::GREEN);
                 cell.bg = self.bg;
-                ctx.buffer.set(x + i as u16, y, cell);
+                ctx.set(x + i as u16, y, cell);
             }
         }
     }

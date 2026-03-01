@@ -119,8 +119,8 @@ impl<'a> CalendarRender<'a> {
         }
 
         let has_border = self.border_color.is_some();
-        let start_x = area.x + if has_border { 1 } else { 0 };
-        let start_y = area.y + if has_border { 1 } else { 0 };
+        let start_x = if has_border { 1u16 } else { 0u16 };
+        let start_y = if has_border { 1u16 } else { 0u16 };
         let week_num_offset: u16 = if self.show_week_numbers { 4 } else { 0 };
 
         // Draw border if specified
@@ -151,19 +151,18 @@ impl<'a> CalendarRender<'a> {
             cell.fg = Some(self.header_fg);
             cell.bg = self.header_bg;
             cell.modifier |= Modifier::BOLD;
-            ctx.buffer.set(header_x + i as u16, start_y, cell);
+            ctx.set(header_x + i as u16, start_y, cell);
         }
 
         // Navigation arrows
         if self.focused {
             let mut left = Cell::new('◀');
             left.fg = Some(self.header_fg);
-            ctx.buffer.set(start_x + week_num_offset, start_y, left);
+            ctx.set(start_x + week_num_offset, start_y, left);
 
             let mut right = Cell::new('▶');
             right.fg = Some(self.header_fg);
-            ctx.buffer
-                .set(start_x + week_num_offset + 21, start_y, right);
+            ctx.set(start_x + week_num_offset + 21, start_y, right);
         }
 
         // Week header
@@ -173,7 +172,7 @@ impl<'a> CalendarRender<'a> {
         if self.show_week_numbers {
             let mut wk = Cell::new('W');
             wk.fg = Some(self.header_fg);
-            ctx.buffer.set(start_x, y, wk);
+            ctx.set(start_x, y, wk);
         }
 
         for (i, name) in day_names.iter().enumerate() {
@@ -187,7 +186,7 @@ impl<'a> CalendarRender<'a> {
                 } else {
                     self.header_fg
                 });
-                ctx.buffer.set(x + j as u16, y, cell);
+                ctx.set(x + j as u16, y, cell);
             }
         }
 
@@ -212,7 +211,7 @@ impl<'a> CalendarRender<'a> {
                 for (i, ch) in week_str.chars().enumerate() {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.outside_fg);
-                    ctx.buffer.set(start_x + i as u16, y, cell);
+                    ctx.set(start_x + i as u16, y, cell);
                 }
             }
 
@@ -265,7 +264,7 @@ impl<'a> CalendarRender<'a> {
                     cell.fg = Some(fg);
                     cell.bg = bg;
                     cell.modifier = modifier;
-                    ctx.buffer.set(x + i as u16, y, cell);
+                    ctx.set(x + i as u16, y, cell);
                 }
 
                 // Draw marker symbol
@@ -273,7 +272,7 @@ impl<'a> CalendarRender<'a> {
                     if let Some(sym) = m.symbol {
                         let mut cell = Cell::new(sym);
                         cell.fg = Some(m.color);
-                        ctx.buffer.set(x + 2, y, cell);
+                        ctx.set(x + 2, y, cell);
                     }
                 }
             }

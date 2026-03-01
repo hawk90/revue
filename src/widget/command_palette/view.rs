@@ -15,15 +15,15 @@ impl View for CommandPalette {
 
         let area = ctx.area;
         let width = self.width.min(area.width);
-        let x = area.x + (area.width.saturating_sub(width)) / 2;
+        let x = (area.width.saturating_sub(width)) / 2;
         let has_title = self.title.is_some();
 
         // Calculate height
         let visible_count = self.filtered.len().min(self.max_visible as usize);
         let height = 3 + visible_count as u16 + if has_title { 1 } else { 0 }; // border + input + items
-        let y = area.y + 2; // Offset from top
+        let y: u16 = 2; // Offset from top
 
-        if y + height > area.y + area.height {
+        if y + height > area.height {
             return;
         }
 
@@ -32,7 +32,7 @@ impl View for CommandPalette {
             for dx in 0..width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(self.bg_color);
-                ctx.buffer.set(x + dx, y + dy, cell);
+                ctx.set(x + dx, y + dy, cell);
             }
         }
 
@@ -43,17 +43,17 @@ impl View for CommandPalette {
         // Top border
         let mut tl = Cell::new(border_chars[0]);
         tl.fg = Some(self.border_color);
-        ctx.buffer.set(x, current_y, tl);
+        ctx.set(x, current_y, tl);
 
         for dx in 1..width - 1 {
             let mut h = Cell::new(border_chars[4]);
             h.fg = Some(self.border_color);
-            ctx.buffer.set(x + dx, current_y, h);
+            ctx.set(x + dx, current_y, h);
         }
 
         let mut tr = Cell::new(border_chars[1]);
         tr.fg = Some(self.border_color);
-        ctx.buffer.set(x + width - 1, current_y, tr);
+        ctx.set(x + width - 1, current_y, tr);
 
         current_y += 1;
 
@@ -61,7 +61,7 @@ impl View for CommandPalette {
         if let Some(ref title) = self.title {
             let mut left = Cell::new(border_chars[5]);
             left.fg = Some(self.border_color);
-            ctx.buffer.set(x, current_y, left);
+            ctx.set(x, current_y, left);
 
             let title_x = x + 2;
             for (i, ch) in title.chars().enumerate() {
@@ -72,12 +72,12 @@ impl View for CommandPalette {
                 cell.fg = Some(Color::CYAN);
                 cell.bg = Some(self.bg_color);
                 cell.modifier |= Modifier::BOLD;
-                ctx.buffer.set(title_x + i as u16, current_y, cell);
+                ctx.set(title_x + i as u16, current_y, cell);
             }
 
             let mut right = Cell::new(border_chars[5]);
             right.fg = Some(self.border_color);
-            ctx.buffer.set(x + width - 1, current_y, right);
+            ctx.set(x + width - 1, current_y, right);
 
             current_y += 1;
         }
@@ -85,11 +85,11 @@ impl View for CommandPalette {
         // Search input line
         let mut left = Cell::new(border_chars[5]);
         left.fg = Some(self.border_color);
-        ctx.buffer.set(x, current_y, left);
+        ctx.set(x, current_y, left);
 
         // Search icon
         let search_icon = Cell::new('🔍');
-        ctx.buffer.set(x + 2, current_y, search_icon);
+        ctx.set(x + 2, current_y, search_icon);
 
         // Query or placeholder
         let input_x = x + 4;
@@ -111,7 +111,7 @@ impl View for CommandPalette {
             let mut cell = Cell::new(ch);
             cell.fg = Some(text_color);
             cell.bg = Some(self.bg_color);
-            ctx.buffer.set(input_x + i as u16, current_y, cell);
+            ctx.set(input_x + i as u16, current_y, cell);
         }
 
         // Cursor
@@ -121,30 +121,30 @@ impl View for CommandPalette {
                 let mut cursor = Cell::new('▏');
                 cursor.fg = Some(Color::WHITE);
                 cursor.bg = Some(self.bg_color);
-                ctx.buffer.set(cursor_x, current_y, cursor);
+                ctx.set(cursor_x, current_y, cursor);
             }
         }
 
         let mut right = Cell::new(border_chars[5]);
         right.fg = Some(self.border_color);
-        ctx.buffer.set(x + width - 1, current_y, right);
+        ctx.set(x + width - 1, current_y, right);
 
         current_y += 1;
 
         // Separator
         let mut sl = Cell::new('├');
         sl.fg = Some(self.border_color);
-        ctx.buffer.set(x, current_y, sl);
+        ctx.set(x, current_y, sl);
 
         for dx in 1..width - 1 {
             let mut h = Cell::new('─');
             h.fg = Some(self.border_color);
-            ctx.buffer.set(x + dx, current_y, h);
+            ctx.set(x + dx, current_y, h);
         }
 
         let mut sr = Cell::new('┤');
         sr.fg = Some(self.border_color);
-        ctx.buffer.set(x + width - 1, current_y, sr);
+        ctx.set(x + width - 1, current_y, sr);
 
         current_y += 1;
 
@@ -165,7 +165,7 @@ impl View for CommandPalette {
             // Left border
             let mut left = Cell::new(border_chars[5]);
             left.fg = Some(self.border_color);
-            ctx.buffer.set(x, item_y, left);
+            ctx.set(x, item_y, left);
 
             // Background for selected
             let row_bg = if is_selected {
@@ -176,7 +176,7 @@ impl View for CommandPalette {
             for dx in 1..width - 1 {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(row_bg);
-                ctx.buffer.set(x + dx, item_y, cell);
+                ctx.set(x + dx, item_y, cell);
             }
 
             let mut content_x = x + 2;
@@ -187,7 +187,7 @@ impl View for CommandPalette {
                     let mut cell = Cell::new(icon);
                     cell.fg = Some(Color::CYAN);
                     cell.bg = Some(row_bg);
-                    ctx.buffer.set(content_x, item_y, cell);
+                    ctx.set(content_x, item_y, cell);
                 }
                 content_x += 2;
             }
@@ -208,7 +208,7 @@ impl View for CommandPalette {
                 if is_match {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.buffer.set(content_x, item_y, cell);
+                ctx.set(content_x, item_y, cell);
                 content_x += 1;
             }
 
@@ -220,7 +220,7 @@ impl View for CommandPalette {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(Color::rgb(120, 120, 120));
                         cell.bg = Some(row_bg);
-                        ctx.buffer.set(shortcut_x + i as u16, item_y, cell);
+                        ctx.set(shortcut_x + i as u16, item_y, cell);
                     }
                 }
             }
@@ -228,7 +228,7 @@ impl View for CommandPalette {
             // Right border
             let mut right = Cell::new(border_chars[5]);
             right.fg = Some(self.border_color);
-            ctx.buffer.set(x + width - 1, item_y, right);
+            ctx.set(x + width - 1, item_y, right);
         }
 
         // Fill remaining space if fewer items than max_visible
@@ -240,28 +240,28 @@ impl View for CommandPalette {
 
             let mut left = Cell::new(border_chars[5]);
             left.fg = Some(self.border_color);
-            ctx.buffer.set(x, item_y, left);
+            ctx.set(x, item_y, left);
 
             let mut right = Cell::new(border_chars[5]);
             right.fg = Some(self.border_color);
-            ctx.buffer.set(x + width - 1, item_y, right);
+            ctx.set(x + width - 1, item_y, right);
         }
 
         // Bottom border
         let bottom_y = y + height - 1;
         let mut bl = Cell::new(border_chars[2]);
         bl.fg = Some(self.border_color);
-        ctx.buffer.set(x, bottom_y, bl);
+        ctx.set(x, bottom_y, bl);
 
         for dx in 1..width - 1 {
             let mut h = Cell::new(border_chars[4]);
             h.fg = Some(self.border_color);
-            ctx.buffer.set(x + dx, bottom_y, h);
+            ctx.set(x + dx, bottom_y, h);
         }
 
         let mut br = Cell::new(border_chars[3]);
         br.fg = Some(self.border_color);
-        ctx.buffer.set(x + width - 1, bottom_y, br);
+        ctx.set(x + width - 1, bottom_y, br);
 
         // Results count
         let count_str = format!("{}/{}", self.filtered.len(), self.commands.len());
@@ -270,7 +270,7 @@ impl View for CommandPalette {
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::rgb(80, 80, 80));
             cell.bg = Some(self.bg_color);
-            ctx.buffer.set(count_x + i as u16, bottom_y, cell);
+            ctx.set(count_x + i as u16, bottom_y, cell);
         }
     }
 }

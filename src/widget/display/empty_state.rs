@@ -247,51 +247,51 @@ impl EmptyState {
         // Calculate vertical centering
         let content_height = self.height();
         let start_y = if area.height > content_height {
-            area.y + (area.height - content_height) / 2
+            (area.height - content_height) / 2
         } else {
-            area.y
+            0u16
         };
 
         let mut y = start_y;
 
         // Icon (centered, large)
-        if self.show_icon && y < area.y + area.height {
+        if self.show_icon && y < area.height {
             let icon = self.get_icon();
-            let icon_x = area.x + area.width / 2;
+            let icon_x = area.width / 2;
             let mut cell = Cell::new(icon);
             cell.fg = Some(accent);
-            ctx.buffer.set(icon_x, y, cell);
+            ctx.set(icon_x, y, cell);
             y += 2;
         }
 
         // Title (centered, bold)
-        if y < area.y + area.height {
+        if y < area.height {
             let title_len = self.title.chars().count() as u16;
-            let title_x = area.x + area.width.saturating_sub(title_len) / 2;
+            let title_x = area.width.saturating_sub(title_len) / 2;
             for (i, ch) in self.title.chars().enumerate() {
-                if title_x + i as u16 >= area.x + area.width {
+                if title_x + i as u16 >= area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.modifier |= Modifier::BOLD;
-                ctx.buffer.set(title_x + i as u16, y, cell);
+                ctx.set(title_x + i as u16, y, cell);
             }
             y += 1;
         }
 
         // Description (centered, dimmed)
         if let Some(ref desc) = self.description {
-            if y < area.y + area.height {
+            if y < area.height {
                 let desc_len = desc.chars().count() as u16;
-                let desc_x = area.x + area.width.saturating_sub(desc_len) / 2;
+                let desc_x = area.width.saturating_sub(desc_len) / 2;
                 for (i, ch) in desc.chars().enumerate() {
-                    if desc_x + i as u16 >= area.x + area.width {
+                    if desc_x + i as u16 >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(150, 150, 150));
-                    ctx.buffer.set(desc_x + i as u16, y, cell);
+                    ctx.set(desc_x + i as u16, y, cell);
                 }
                 y += 2;
             }
@@ -299,17 +299,17 @@ impl EmptyState {
 
         // Action button (centered)
         if let Some(ref action_text) = self.action {
-            if y < area.y + area.height {
+            if y < area.height {
                 let btn_text = format!("[ {} ]", action_text);
                 let btn_len = btn_text.chars().count() as u16;
-                let btn_x = area.x + area.width.saturating_sub(btn_len) / 2;
+                let btn_x = area.width.saturating_sub(btn_len) / 2;
                 for (i, ch) in btn_text.chars().enumerate() {
-                    if btn_x + i as u16 >= area.x + area.width {
+                    if btn_x + i as u16 >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(accent);
-                    ctx.buffer.set(btn_x + i as u16, y, cell);
+                    ctx.set(btn_x + i as u16, y, cell);
                 }
             }
         }
@@ -318,40 +318,40 @@ impl EmptyState {
     fn render_compact(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let accent = self.state_type.color();
-        let mut y = area.y;
+        let mut y: u16 = 0;
 
         // Icon + Title on same line
-        let mut x = area.x;
+        let mut x: u16 = 0;
         if self.show_icon {
             let icon = self.get_icon();
             let mut cell = Cell::new(icon);
             cell.fg = Some(accent);
-            ctx.buffer.set(x, y, cell);
+            ctx.set(x, y, cell);
             x += 2;
         }
 
         for (i, ch) in self.title.chars().enumerate() {
-            if x + i as u16 >= area.x + area.width {
+            if x + i as u16 >= area.width {
                 break;
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::WHITE);
             cell.modifier |= Modifier::BOLD;
-            ctx.buffer.set(x + i as u16, y, cell);
+            ctx.set(x + i as u16, y, cell);
         }
         y += 1;
 
         // Description
         if let Some(ref desc) = self.description {
-            if y < area.y + area.height {
-                let desc_x = if self.show_icon { area.x + 2 } else { area.x };
+            if y < area.height {
+                let desc_x: u16 = if self.show_icon { 2 } else { 0 };
                 for (i, ch) in desc.chars().enumerate() {
-                    if desc_x + i as u16 >= area.x + area.width {
+                    if desc_x + i as u16 >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(150, 150, 150));
-                    ctx.buffer.set(desc_x + i as u16, y, cell);
+                    ctx.set(desc_x + i as u16, y, cell);
                 }
                 y += 1;
             }
@@ -359,16 +359,16 @@ impl EmptyState {
 
         // Action
         if let Some(ref action_text) = self.action {
-            if y < area.y + area.height {
-                let action_x = if self.show_icon { area.x + 2 } else { area.x };
+            if y < area.height {
+                let action_x: u16 = if self.show_icon { 2 } else { 0 };
                 let btn_text = format!("[{}]", action_text);
                 for (i, ch) in btn_text.chars().enumerate() {
-                    if action_x + i as u16 >= area.x + area.width {
+                    if action_x + i as u16 >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(accent);
-                    ctx.buffer.set(action_x + i as u16, y, cell);
+                    ctx.set(action_x + i as u16, y, cell);
                 }
             }
         }
@@ -377,25 +377,25 @@ impl EmptyState {
     fn render_minimal(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let accent = self.state_type.color();
-        let mut x = area.x;
+        let mut x: u16 = 0;
 
         // Icon
         if self.show_icon {
             let icon = self.get_icon();
             let mut cell = Cell::new(icon);
             cell.fg = Some(accent);
-            ctx.buffer.set(x, area.y, cell);
+            ctx.set(x, 0, cell);
             x += 2;
         }
 
         // Title
         for (i, ch) in self.title.chars().enumerate() {
-            if x + i as u16 >= area.x + area.width {
+            if x + i as u16 >= area.width {
                 break;
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::rgb(150, 150, 150));
-            ctx.buffer.set(x + i as u16, area.y, cell);
+            ctx.set(x + i as u16, 0, cell);
         }
     }
 }
