@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.55.0](https://github.com/hawk90/revue/compare/v2.54.0...v2.55.0) (2026-03-01)
+
+
+### Features
+
+* **layout:** add min/max size constraints to remaining layout widgets ([#456](https://github.com/hawk90/revue/issues/456)) ([fec03c8](https://github.com/hawk90/revue/commit/fec03c818842de39360b7d730f93eed11014f67d))
+
 ## [2.54.0](https://github.com/hawk90/revue/compare/v2.53.0...v2.54.0) (2026-02-28)
 
 
