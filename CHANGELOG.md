@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.57.0](https://github.com/hawk90/revue/compare/v2.56.0...v2.57.0) (2026-03-01)
+
+
+### Features
+
+* relative coordinates API + showcase per-example navigation ([#460](https://github.com/hawk90/revue/issues/460)) ([fe4b869](https://github.com/hawk90/revue/commit/fe4b869d5f835bd630dd850c604c74df12eab0e4))
+
 ## [2.56.0](https://github.com/hawk90/revue/compare/v2.55.0...v2.56.0) (2026-03-01)
 
 
