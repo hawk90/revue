@@ -127,14 +127,14 @@ impl<T: Display> View for List<T> {
                 break;
             }
 
-            let y = area.y + i as u16;
+            let y = i as u16;
             let is_selected = self.selection.is_selected(i);
 
             let text = item.to_string();
-            let mut x = area.x;
+            let mut x = 0u16;
 
             for ch in text.chars() {
-                if x >= area.x + area.width {
+                if x >= area.width {
                     break;
                 }
 
@@ -144,25 +144,25 @@ impl<T: Display> View for List<T> {
                     cell.bg = self.highlight_bg;
                 }
 
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
 
                 let char_width = crate::utils::unicode::char_width(ch).max(1) as u16;
-                if char_width == 2 && x + 1 < area.x + area.width {
+                if char_width == 2 && x + 1 < area.width {
                     let mut cont = Cell::continuation();
                     if is_selected {
                         cont.bg = self.highlight_bg;
                     }
-                    ctx.buffer.set(x + 1, y, cont);
+                    ctx.set(x + 1, y, cont);
                 }
                 x += char_width;
             }
 
             // Fill rest of line for selected item
             if is_selected {
-                while x < area.x + area.width {
+                while x < area.width {
                     let mut cell = Cell::new(' ');
                     cell.bg = self.highlight_bg;
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                     x += 1;
                 }
             }

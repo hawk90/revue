@@ -10,8 +10,7 @@ impl RichTextEditor {
     pub(crate) fn render_toolbar(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16) {
         // Fill toolbar background
         for col in 0..width {
-            ctx.buffer
-                .set(x + col, y, Cell::new(' ').bg(self.toolbar_bg));
+            ctx.set(x + col, y, Cell::new(' ').bg(self.toolbar_bg));
         }
 
         let toolbar_items = [
@@ -36,7 +35,7 @@ impl RichTextEditor {
         let mut col = x + 1;
         for (label, active) in toolbar_items {
             if label == "|" {
-                ctx.buffer.set(
+                ctx.set(
                     col,
                     y,
                     Cell::new('│').fg(self.toolbar_fg).bg(self.toolbar_bg),
@@ -51,7 +50,7 @@ impl RichTextEditor {
 
                 for ch in label.chars() {
                     if col < x + width {
-                        ctx.buffer.set(col, y, Cell::new(ch).fg(fg).bg(bg));
+                        ctx.set(col, y, Cell::new(ch).fg(fg).bg(bg));
                         col += 1;
                     }
                 }

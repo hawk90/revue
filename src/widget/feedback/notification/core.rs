@@ -270,28 +270,18 @@ impl View for NotificationCenter {
             .take(self.max_visible)
             .collect::<Vec<_>>();
 
-        // Calculate starting position based on notification position
+        // Calculate starting position based on notification position (relative coordinates)
         let (start_x, mut current_y, direction): (u16, u16, i16) = match self.position {
-            NotificationPosition::TopRight => {
-                (area.x + area.width.saturating_sub(self.width), area.y, 1)
+            NotificationPosition::TopRight => (area.width.saturating_sub(self.width), 0, 1),
+            NotificationPosition::TopLeft => (0, 0, 1),
+            NotificationPosition::TopCenter => ((area.width.saturating_sub(self.width)) / 2, 0, 1),
+            NotificationPosition::BottomRight => {
+                (area.width.saturating_sub(self.width), area.height, -1)
             }
-            NotificationPosition::TopLeft => (area.x, area.y, 1),
-            NotificationPosition::TopCenter => (
-                area.x + (area.width.saturating_sub(self.width)) / 2,
-                area.y,
-                1,
-            ),
-            NotificationPosition::BottomRight => (
-                area.x + area.width.saturating_sub(self.width),
-                area.y + area.height,
-                -1,
-            ),
-            NotificationPosition::BottomLeft => (area.x, area.y + area.height, -1),
-            NotificationPosition::BottomCenter => (
-                area.x + (area.width.saturating_sub(self.width)) / 2,
-                area.y + area.height,
-                -1,
-            ),
+            NotificationPosition::BottomLeft => (0, area.height, -1),
+            NotificationPosition::BottomCenter => {
+                ((area.width.saturating_sub(self.width)) / 2, area.height, -1)
+            }
         };
 
         // Render each notification
@@ -306,7 +296,7 @@ impl View for NotificationCenter {
                 current_y
             };
 
-            if y >= area.y + area.height || y + height > area.y + area.height {
+            if y >= area.height || y + height > area.height {
                 continue;
             }
 
@@ -338,17 +328,17 @@ impl NotificationCenter {
         // Top border
         let mut tl = Cell::new('╭');
         tl.fg = Some(border_color);
-        ctx.buffer.set(x, y, tl);
+        ctx.set(x, y, tl);
 
         for dx in 1..width - 1 {
             let mut h = Cell::new('─');
             h.fg = Some(border_color);
-            ctx.buffer.set(x + dx, y, h);
+            ctx.set(x + dx, y, h);
         }
 
         let mut tr = Cell::new('╮');
         tr.fg = Some(border_color);
-        ctx.buffer.set(x + width - 1, y, tr);
+        ctx.set(x + width - 1, y, tr);
 
         let mut current_y = y + 1;
 
@@ -356,13 +346,13 @@ impl NotificationCenter {
         if let Some(ref title) = notification.title {
             let mut left = Cell::new('│');
             left.fg = Some(border_color);
-            ctx.buffer.set(x, current_y, left);
+            ctx.set(x, current_y, left);
 
             // Fill background
             for dx in 1..width - 1 {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg);
-                ctx.buffer.set(x + dx, current_y, cell);
+                ctx.set(x + dx, current_y, cell);
             }
 
             // Icon
@@ -371,7 +361,7 @@ impl NotificationCenter {
                 let mut icon = Cell::new(notification.level.icon());
                 icon.fg = Some(color);
                 icon.bg = Some(bg);
-                ctx.buffer.set(content_x, current_y, icon);
+                ctx.set(content_x, current_y, icon);
                 content_x += 2;
             }
 
@@ -384,12 +374,12 @@ impl NotificationCenter {
                 cell.fg = Some(Color::WHITE);
                 cell.bg = Some(bg);
                 cell.modifier |= Modifier::BOLD;
-                ctx.buffer.set(content_x + i as u16, current_y, cell);
+                ctx.set(content_x + i as u16, current_y, cell);
             }
 
             let mut right = Cell::new('│');
             right.fg = Some(border_color);
-            ctx.buffer.set(x + width - 1, current_y, right);
+            ctx.set(x + width - 1, current_y, right);
 
             current_y += 1;
         }
@@ -398,13 +388,13 @@ impl NotificationCenter {
         {
             let mut left = Cell::new('│');
             left.fg = Some(border_color);
-            ctx.buffer.set(x, current_y, left);
+            ctx.set(x, current_y, left);
 
             // Fill background
             for dx in 1..width - 1 {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg);
-                ctx.buffer.set(x + dx, current_y, cell);
+                ctx.set(x + dx, current_y, cell);
             }
 
             // Icon (if no title)
@@ -413,7 +403,7 @@ impl NotificationCenter {
                 let mut icon = Cell::new(notification.level.icon());
                 icon.fg = Some(color);
                 icon.bg = Some(bg);
-                ctx.buffer.set(content_x, current_y, icon);
+                ctx.set(content_x, current_y, icon);
                 content_x += 2;
             }
 
@@ -425,12 +415,12 @@ impl NotificationCenter {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.bg = Some(bg);
-                ctx.buffer.set(content_x + i as u16, current_y, cell);
+                ctx.set(content_x + i as u16, current_y, cell);
             }
 
             let mut right = Cell::new('│');
             right.fg = Some(border_color);
-            ctx.buffer.set(x + width - 1, current_y, right);
+            ctx.set(x + width - 1, current_y, right);
 
             current_y += 1;
         }
@@ -439,13 +429,13 @@ impl NotificationCenter {
         if let Some(progress) = notification.progress {
             let mut left = Cell::new('│');
             left.fg = Some(border_color);
-            ctx.buffer.set(x, current_y, left);
+            ctx.set(x, current_y, left);
 
             // Fill background
             for dx in 1..width - 1 {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg);
-                ctx.buffer.set(x + dx, current_y, cell);
+                ctx.set(x + dx, current_y, cell);
             }
 
             // Progress bar
@@ -461,12 +451,12 @@ impl NotificationCenter {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);
-                ctx.buffer.set(x + 2 + dx, current_y, cell);
+                ctx.set(x + 2 + dx, current_y, cell);
             }
 
             let mut right = Cell::new('│');
             right.fg = Some(border_color);
-            ctx.buffer.set(x + width - 1, current_y, right);
+            ctx.set(x + width - 1, current_y, right);
 
             current_y += 1;
         }
@@ -474,7 +464,7 @@ impl NotificationCenter {
         // Bottom border with timer
         let mut bl = Cell::new('╰');
         bl.fg = Some(border_color);
-        ctx.buffer.set(x, current_y, bl);
+        ctx.set(x, current_y, bl);
 
         // Timer indicator
         if self.show_timer && notification.duration > 0 {
@@ -491,19 +481,19 @@ impl NotificationCenter {
                 };
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
-                ctx.buffer.set(x + dx, current_y, cell);
+                ctx.set(x + dx, current_y, cell);
             }
         } else {
             for dx in 1..width - 1 {
                 let mut h = Cell::new('─');
                 h.fg = Some(border_color);
-                ctx.buffer.set(x + dx, current_y, h);
+                ctx.set(x + dx, current_y, h);
             }
         }
 
         let mut br = Cell::new('╯');
         br.fg = Some(border_color);
-        ctx.buffer.set(x + width - 1, current_y, br);
+        ctx.set(x + width - 1, current_y, br);
     }
 }
 

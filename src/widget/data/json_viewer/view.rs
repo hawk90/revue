@@ -436,7 +436,7 @@ impl View for JsonViewer {
         let nodes = self.get_visible_nodes();
         let total_lines = nodes.len();
         let line_num_width = line_number_width(self.show_line_numbers, total_lines);
-        let content_start_x = area.x + line_num_width;
+        let content_start_x = line_num_width;
         let content_width = area.width.saturating_sub(line_num_width);
 
         // Adjust scroll to keep selection visible
@@ -449,8 +449,8 @@ impl View for JsonViewer {
         }
 
         for (visible_idx, node) in nodes.iter().skip(scroll).take(visible_rows).enumerate() {
-            let y = area.y + visible_idx as u16;
-            if y >= area.y + area.height {
+            let y = visible_idx as u16;
+            if y >= area.height {
                 break;
             }
 
@@ -473,7 +473,7 @@ impl View for JsonViewer {
                     } else {
                         self.bg
                     };
-                    ctx.buffer.set(area.x + i as u16, y, cell);
+                    ctx.set(i as u16, y, cell);
                 }
             }
 
@@ -489,7 +489,7 @@ impl View for JsonViewer {
                     "▼ "
                 };
                 for ch in indicator.chars() {
-                    if x < area.x + area.width {
+                    if x < area.width {
                         let mut cell = Cell::new(ch);
                         cell.fg = self.bracket_fg;
                         cell.bg = if is_selected {
@@ -497,7 +497,7 @@ impl View for JsonViewer {
                         } else {
                             self.bg
                         };
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                         x += 1;
                     }
                 }
@@ -516,11 +516,11 @@ impl View for JsonViewer {
             if !node.key.is_empty() {
                 let key_display = format!("\"{}\"", node.key);
                 for ch in key_display.chars() {
-                    if x < area.x + area.width {
+                    if x < area.width {
                         let mut cell = Cell::new(ch);
                         cell.fg = if is_selected { fg } else { self.key_fg };
                         cell.bg = bg;
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                         x += 1;
                     }
                 }
@@ -528,11 +528,11 @@ impl View for JsonViewer {
                 // Colon separator
                 let sep = ": ";
                 for ch in sep.chars() {
-                    if x < area.x + area.width {
+                    if x < area.width {
                         let mut cell = Cell::new(ch);
                         cell.fg = fg.or(self.fg);
                         cell.bg = bg;
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                         x += 1;
                     }
                 }
@@ -549,11 +549,11 @@ impl View for JsonViewer {
                         "{".to_string()
                     };
                     for ch in text.chars() {
-                        if x < area.x + area.width {
+                        if x < area.width {
                             let mut cell = Cell::new(ch);
                             cell.fg = if is_selected { fg } else { self.bracket_fg };
                             cell.bg = bg;
-                            ctx.buffer.set(x, y, cell);
+                            ctx.set(x, y, cell);
                             x += 1;
                         }
                     }
@@ -567,11 +567,11 @@ impl View for JsonViewer {
                         "[".to_string()
                     };
                     for ch in text.chars() {
-                        if x < area.x + area.width {
+                        if x < area.width {
                             let mut cell = Cell::new(ch);
                             cell.fg = if is_selected { fg } else { self.bracket_fg };
                             cell.bg = bg;
-                            ctx.buffer.set(x, y, cell);
+                            ctx.set(x, y, cell);
                             x += 1;
                         }
                     }
@@ -584,11 +584,11 @@ impl View for JsonViewer {
                             .take((content_width.saturating_sub(indent + 2)) as usize)
                             .collect();
                         for ch in truncated.chars() {
-                            if x < area.x + area.width {
+                            if x < area.width {
                                 let mut cell = Cell::new(ch);
                                 cell.fg = if is_selected { fg } else { self.string_fg };
                                 cell.bg = bg;
-                                ctx.buffer.set(x, y, cell);
+                                ctx.set(x, y, cell);
                                 x += 1;
                             }
                         }
@@ -597,11 +597,11 @@ impl View for JsonViewer {
                 JsonType::Number => {
                     if let Some(value) = &node.value {
                         for ch in value.chars() {
-                            if x < area.x + area.width {
+                            if x < area.width {
                                 let mut cell = Cell::new(ch);
                                 cell.fg = if is_selected { fg } else { self.number_fg };
                                 cell.bg = bg;
-                                ctx.buffer.set(x, y, cell);
+                                ctx.set(x, y, cell);
                                 x += 1;
                             }
                         }
@@ -610,11 +610,11 @@ impl View for JsonViewer {
                 JsonType::Boolean => {
                     if let Some(value) = &node.value {
                         for ch in value.chars() {
-                            if x < area.x + area.width {
+                            if x < area.width {
                                 let mut cell = Cell::new(ch);
                                 cell.fg = if is_selected { fg } else { self.bool_fg };
                                 cell.bg = bg;
-                                ctx.buffer.set(x, y, cell);
+                                ctx.set(x, y, cell);
                                 x += 1;
                             }
                         }
@@ -622,11 +622,11 @@ impl View for JsonViewer {
                 }
                 JsonType::Null => {
                     for ch in "null".chars() {
-                        if x < area.x + area.width {
+                        if x < area.width {
                             let mut cell = Cell::new(ch);
                             cell.fg = if is_selected { fg } else { self.null_fg };
                             cell.bg = bg;
-                            ctx.buffer.set(x, y, cell);
+                            ctx.set(x, y, cell);
                             x += 1;
                         }
                     }
@@ -634,10 +634,10 @@ impl View for JsonViewer {
             }
 
             // Fill rest of line with background
-            while x < area.x + area.width {
+            while x < area.width {
                 let mut cell = Cell::new(' ');
                 cell.bg = bg;
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
                 x += 1;
             }
         }

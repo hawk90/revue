@@ -14,35 +14,37 @@ impl View for TimeSeries {
             return;
         }
 
-        let mut current_y = area.y;
+        let mut current_y = 0u16;
 
         // Background
         if let Some(bg) = self.bg_color {
-            for y in area.y..area.y + height.min(area.height) {
-                for x in area.x..area.x + area.width {
+            for y in 0..height.min(area.height) {
+                for x in 0..area.width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
 
         // Title
         if let Some(ref title) = self.title {
-            let title_x = area.x + (area.width.saturating_sub(title.len() as u16)) / 2;
-            ctx.buffer.put_str_styled(
-                title_x,
-                current_y,
-                title,
-                Some(crate::style::Color::WHITE),
-                self.bg_color,
-            );
+            let title_x = (area.width.saturating_sub(title.len() as u16)) / 2;
+            for (i, ch) in title.chars().enumerate() {
+                let x = title_x + i as u16;
+                if x < area.width {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(crate::style::Color::WHITE);
+                    cell.bg = self.bg_color;
+                    ctx.set(x, current_y, cell);
+                }
+            }
             current_y += 1;
         }
 
         // Legend
         if self.show_legend && !self.series.is_empty() {
-            let mut x = area.x + 2;
+            let mut x = 2u16;
             for series in &self.series {
                 let marker = match series.line_style {
                     TimeLineStyle::Solid => "─",
@@ -50,26 +52,35 @@ impl View for TimeSeries {
                     TimeLineStyle::Dotted => "·",
                     TimeLineStyle::Step => "┐",
                 };
-                ctx.buffer
-                    .put_str_styled(x, current_y, marker, Some(series.color), self.bg_color);
-                x += 2;
-                ctx.buffer.put_str_styled(
-                    x,
-                    current_y,
-                    &series.name,
-                    Some(crate::style::Color::WHITE),
-                    self.bg_color,
-                );
-                x += series.name.len() as u16 + 3;
+                for ch in marker.chars() {
+                    if x < area.width {
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(series.color);
+                        cell.bg = self.bg_color;
+                        ctx.set(x, current_y, cell);
+                    }
+                    x += 1;
+                }
+                x += 1;
+                for ch in series.name.chars() {
+                    if x < area.width {
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(crate::style::Color::WHITE);
+                        cell.bg = self.bg_color;
+                        ctx.set(x, current_y, cell);
+                    }
+                    x += 1;
+                }
+                x += 3;
             }
             current_y += 1;
         }
 
         let y_label_width = 8u16;
-        let plot_x = area.x + y_label_width;
+        let plot_x = y_label_width;
         let plot_width = area.width.saturating_sub(y_label_width + 1);
         let plot_y = current_y;
-        let plot_height = height.saturating_sub(current_y - area.y + 2);
+        let plot_height = height.saturating_sub(current_y + 2);
 
         if plot_width < 5 || plot_height < 3 {
             return;
@@ -89,7 +100,7 @@ impl View for TimeSeries {
                     let ch = if i == grid_rows { '─' } else { '┄' };
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.grid_color);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
 
                 // Y-axis labels
@@ -101,14 +112,16 @@ impl View for TimeSeries {
                 } else {
                     format!("{:.2}", val)
                 };
-                let label_x = area.x + y_label_width.saturating_sub(label.len() as u16 + 1);
-                ctx.buffer.put_str_styled(
-                    label_x,
-                    y,
-                    &label,
-                    Some(crate::style::Color::WHITE),
-                    self.bg_color,
-                );
+                let label_x = y_label_width.saturating_sub(label.len() as u16 + 1);
+                for (j, ch) in label.chars().enumerate() {
+                    let x = label_x + j as u16;
+                    if x < area.width {
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(crate::style::Color::WHITE);
+                        cell.bg = self.bg_color;
+                        ctx.set(x, y, cell);
+                    }
+                }
             }
         }
 
@@ -124,25 +137,27 @@ impl View for TimeSeries {
                         for y in plot_y..plot_y + plot_height {
                             let mut cell = Cell::new('│');
                             cell.fg = Some(marker.color);
-                            ctx.buffer.set(x, y, cell);
+                            ctx.set(x, y, cell);
                         }
                     }
                     super::types::MarkerStyle::Point | super::types::MarkerStyle::Region => {
                         let mut cell = Cell::new('▼');
                         cell.fg = Some(marker.color);
-                        ctx.buffer.set(x, plot_y, cell);
+                        ctx.set(x, plot_y, cell);
                     }
                 }
 
                 if !marker.label.is_empty() {
                     let label_x = x.saturating_sub(marker.label.len() as u16 / 2);
-                    ctx.buffer.put_str_styled(
-                        label_x,
-                        plot_y + plot_height + 1,
-                        &marker.label,
-                        Some(marker.color),
-                        self.bg_color,
-                    );
+                    for (j, ch) in marker.label.chars().enumerate() {
+                        let lx = label_x + j as u16;
+                        if lx < area.width {
+                            let mut cell = Cell::new(ch);
+                            cell.fg = Some(marker.color);
+                            cell.bg = self.bg_color;
+                            ctx.set(lx, plot_y + plot_height + 1, cell);
+                        }
+                    }
                 }
             }
         }
@@ -163,7 +178,7 @@ impl View for TimeSeries {
 
         // X-axis time labels
         let x_label_y = plot_y + plot_height + 1;
-        if x_label_y < area.y + height {
+        if x_label_y < height {
             let num_labels = (plot_width / 12).max(2) as usize;
             for i in 0..num_labels {
                 let ratio = i as f64 / (num_labels - 1) as f64;
@@ -171,13 +186,15 @@ impl View for TimeSeries {
                 let label = self.format_time(ts, time_range);
                 let x = plot_x + (ratio * (plot_width - 1) as f64) as u16;
                 let label_x = x.saturating_sub(label.len() as u16 / 2);
-                ctx.buffer.put_str_styled(
-                    label_x,
-                    x_label_y,
-                    &label,
-                    Some(crate::style::Color::WHITE),
-                    self.bg_color,
-                );
+                for (j, ch) in label.chars().enumerate() {
+                    let lx = label_x + j as u16;
+                    if lx < area.width {
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(crate::style::Color::WHITE);
+                        cell.bg = self.bg_color;
+                        ctx.set(lx, x_label_y, cell);
+                    }
+                }
             }
         }
     }
@@ -257,7 +274,7 @@ impl TimeSeries {
             for &(x, y) in &screen_points {
                 let mut cell = Cell::new('●');
                 cell.fg = Some(series.color);
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
         }
     }
@@ -275,13 +292,13 @@ impl TimeSeries {
         for x in x1..=x2 {
             let mut cell = Cell::new('─');
             cell.fg = Some(color);
-            ctx.buffer.set(x, y1, cell);
+            ctx.set(x, y1, cell);
         }
         let (start_y, end_y) = if y1 <= y2 { (y1, y2) } else { (y2, y1) };
         for y in start_y..=end_y {
             let mut cell = Cell::new('│');
             cell.fg = Some(color);
-            ctx.buffer.set(x2, y, cell);
+            ctx.set(x2, y, cell);
         }
     }
 
@@ -337,7 +354,7 @@ impl TimeSeries {
             if ch != ' ' {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(series.color);
-                ctx.buffer.set(x as u16, y as u16, cell);
+                ctx.set(x as u16, y as u16, cell);
             }
 
             if x == x2 as i32 && y == y2 as i32 {
@@ -386,7 +403,7 @@ impl TimeSeries {
                 );
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(fill_color);
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
         }
     }

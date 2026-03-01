@@ -257,20 +257,19 @@ impl View for Breadcrumb {
         let total = self.total_width();
         let need_collapse = self.collapse && total > max_width;
 
-        let mut x = area.x;
-        let y = area.y;
+        let mut x: u16 = 0;
 
         // Home icon
         if self.show_home {
             let mut home = Cell::new(self.home_icon);
             home.fg = Some(self.item_color);
-            ctx.buffer.set(x, y, home);
+            ctx.set(x, 0, home);
             x += 2;
 
             if !self.items.is_empty() {
                 let mut sep = Cell::new(self.separator.char());
                 sep.fg = Some(self.separator_color);
-                ctx.buffer.set(x, y, sep);
+                ctx.set(x, 0, sep);
                 x += 2;
             }
         }
@@ -295,7 +294,7 @@ impl View for Breadcrumb {
                 } else {
                     self.item_color
                 });
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, 0, cell);
                 x += 2;
             }
 
@@ -305,7 +304,7 @@ impl View for Breadcrumb {
                 self.item_color
             };
             for ch in item.label.chars() {
-                if x >= area.x + max_width - 10 {
+                if x >= max_width - 10 {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -313,7 +312,7 @@ impl View for Breadcrumb {
                 if is_selected {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, 0, cell);
                 x += 1;
             }
 
@@ -321,14 +320,14 @@ impl View for Breadcrumb {
             x += 1;
             let mut sep = Cell::new(self.separator.char());
             sep.fg = Some(self.separator_color);
-            ctx.buffer.set(x, y, sep);
+            ctx.set(x, 0, sep);
             x += 2;
 
             // Ellipsis
             for ch in "...".chars() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.separator_color);
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, 0, cell);
                 x += 1;
             }
 
@@ -336,7 +335,7 @@ impl View for Breadcrumb {
             x += 1;
             let mut sep = Cell::new(self.separator.char());
             sep.fg = Some(self.separator_color);
-            ctx.buffer.set(x, y, sep);
+            ctx.set(x, 0, sep);
             x += 2;
         }
 
@@ -352,7 +351,7 @@ impl View for Breadcrumb {
             let is_selected = self.selection.is_selected(actual_idx);
             let is_last = actual_idx == self.items.len() - 1;
 
-            if x >= area.x + max_width {
+            if x >= max_width {
                 break;
             }
 
@@ -364,7 +363,7 @@ impl View for Breadcrumb {
                 } else {
                     self.item_color
                 });
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, 0, cell);
                 x += 2;
             }
 
@@ -375,7 +374,7 @@ impl View for Breadcrumb {
                 self.item_color
             };
             for ch in item.label.chars() {
-                if x >= area.x + max_width {
+                if x >= max_width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -383,16 +382,16 @@ impl View for Breadcrumb {
                 if is_selected {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, 0, cell);
                 x += 1;
             }
 
             // Separator (except for last item)
-            if !is_last && x + 2 < area.x + max_width {
+            if !is_last && x + 2 < max_width {
                 x += 1;
                 let mut sep = Cell::new(self.separator.char());
                 sep.fg = Some(self.separator_color);
-                ctx.buffer.set(x, y, sep);
+                ctx.set(x, 0, sep);
                 x += 2;
             }
         }

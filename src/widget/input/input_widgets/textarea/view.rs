@@ -37,7 +37,7 @@ impl View for TextArea {
                 for x in 0..area.width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg);
-                    ctx.buffer.set(area.x + x, area.y + y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -50,8 +50,7 @@ impl View for TextArea {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(Color::rgb(128, 128, 128));
                         cell.modifier = Modifier::ITALIC;
-                        ctx.buffer
-                            .set(area.x + text_start_x + i as u16, area.y, cell);
+                        ctx.set(text_start_x + i as u16, 0, cell);
                     }
                 }
             }
@@ -63,7 +62,7 @@ impl View for TextArea {
                 break;
             }
 
-            let y = area.y + view_row as u16;
+            let y = view_row as u16;
 
             // Draw line numbers
             if self.show_line_numbers {
@@ -76,7 +75,7 @@ impl View for TextArea {
                     if (i as u16) < line_num_width {
                         let mut cell = Cell::new(ch);
                         cell.fg = self.line_number_fg;
-                        ctx.buffer.set(area.x + i as u16, y, cell);
+                        ctx.set(i as u16, y, cell);
                     }
                 }
             }
@@ -90,8 +89,8 @@ impl View for TextArea {
             let highlights = self.highlighter.as_ref().map(|h| h.highlight_line(line));
 
             for (view_col, char_idx) in (scroll_col..scroll_col + text_width as usize).enumerate() {
-                let x = area.x + text_start_x + view_col as u16;
-                if x >= area.x + area.width {
+                let x = text_start_x + view_col as u16;
+                if x >= area.width {
                     break;
                 }
 
@@ -170,18 +169,18 @@ impl View for TextArea {
                     cell.bg = self.bg;
                 }
 
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
 
             // Draw cursors at end of line if needed
             if self.focused {
                 for cursor in self.cursors.iter() {
                     if cursor.pos.line == line_idx && cursor.pos.col >= chars.len() {
-                        let cursor_x = area.x + text_start_x + (cursor.pos.col - scroll_col) as u16;
-                        if cursor_x < area.x + area.width {
+                        let cursor_x = text_start_x + (cursor.pos.col - scroll_col) as u16;
+                        if cursor_x < area.width {
                             let mut cell = Cell::new(' ');
                             cell.bg = Some(Color::WHITE);
-                            ctx.buffer.set(cursor_x, y, cell);
+                            ctx.set(cursor_x, y, cell);
                         }
                     }
                 }

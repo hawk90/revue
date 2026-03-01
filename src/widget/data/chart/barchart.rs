@@ -232,7 +232,7 @@ impl BarChart {
 
                     for (i, ch) in label.chars().enumerate() {
                         if (i as u16) < area.width {
-                            ctx.buffer.set(area.x + i as u16, area.y + y, Cell::new(ch));
+                            ctx.set(i as u16, y, Cell::new(ch));
                         }
                     }
                 }
@@ -243,8 +243,7 @@ impl BarChart {
                     if bar_start + i < area.width {
                         let mut cell = Cell::new('█');
                         cell.fg = Some(color);
-                        ctx.buffer
-                            .set(area.x + bar_start + i, area.y + y + row, cell);
+                        ctx.set(bar_start + i, y + row, cell);
                     }
                 }
 
@@ -254,11 +253,7 @@ impl BarChart {
                     let value_x = bar_start + bar_length;
                     for (i, ch) in value_str.chars().enumerate() {
                         if value_x + (i as u16) < area.width {
-                            ctx.buffer.set(
-                                area.x + value_x + (i as u16),
-                                area.y + y,
-                                Cell::new(ch),
-                            );
+                            ctx.set(value_x + (i as u16), y, Cell::new(ch));
                         }
                     }
                 }
@@ -301,12 +296,12 @@ impl BarChart {
 
             // Draw bar (from bottom up)
             for row in 0..bar_height {
-                let y = area.y + bar_area_height - 1 - row;
+                let y = bar_area_height - 1 - row;
                 for col in 0..self.bar_width {
                     if x + col < area.width {
                         let mut cell = Cell::new('█');
                         cell.fg = Some(color);
-                        ctx.buffer.set(area.x + x + col, y, cell);
+                        ctx.set(x + col, y, cell);
                     }
                 }
             }
@@ -314,24 +309,21 @@ impl BarChart {
             // Draw value above bar
             if self.show_values && bar_area_height > 0 {
                 let value_str = format!("{:.0}", bar.value);
-                let value_y =
-                    area.y + bar_area_height - bar_height.saturating_sub(1).min(bar_area_height);
+                let value_y = bar_area_height - bar_height.saturating_sub(1).min(bar_area_height);
                 for (i, ch) in value_str.chars().enumerate() {
-                    if x + (i as u16) < area.width && value_y > area.y {
-                        ctx.buffer
-                            .set(area.x + x + (i as u16), value_y - 1, Cell::new(ch));
+                    if x + (i as u16) < area.width && value_y > 0 {
+                        ctx.set(x + (i as u16), value_y - 1, Cell::new(ch));
                     }
                 }
             }
 
             // Draw label below
             if label_height > 0 {
-                let label_y = area.y + area.height - 1;
+                let label_y = area.height - 1;
                 let label: String = bar.label.chars().take(self.bar_width as usize).collect();
                 for (i, ch) in label.chars().enumerate() {
                     if x + (i as u16) < area.width {
-                        ctx.buffer
-                            .set(area.x + x + (i as u16), label_y, Cell::new(ch));
+                        ctx.set(x + (i as u16), label_y, Cell::new(ch));
                     }
                 }
             }

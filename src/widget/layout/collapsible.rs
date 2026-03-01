@@ -314,14 +314,14 @@ impl View for Collapsible {
         };
 
         // Render header line
-        let mut x = area.x;
+        let mut x: u16 = 0;
 
         // Background for header (if set)
         if let Some(bg) = self.header_bg {
             for dx in 0..area.width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg);
-                ctx.buffer.set(area.x + dx, area.y, cell);
+                ctx.set(dx, 0, cell);
             }
         }
 
@@ -334,7 +334,7 @@ impl View for Collapsible {
         if is_focused {
             icon_cell.modifier |= Modifier::BOLD;
         }
-        ctx.buffer.set(x, area.y, icon_cell);
+        ctx.set(x, 0, icon_cell);
         x += 2; // icon + space
 
         // Title
@@ -348,13 +348,13 @@ impl View for Collapsible {
             if is_focused {
                 cell.modifier |= Modifier::BOLD;
             }
-            ctx.buffer.set(x, area.y, cell);
+            ctx.set(x, 0, cell);
             x += 1;
         }
 
         // Render content if expanded
         if self.expanded && area.height > 1 {
-            let content_start_y = area.y + 1;
+            let content_start_y: u16 = 1;
             let available_height = area.height.saturating_sub(1);
             let content_width = area.width.saturating_sub(2);
 
@@ -368,7 +368,7 @@ impl View for Collapsible {
             // Draw content lines with left border
             for (i, line) in self.content.iter().take(lines_to_show).enumerate() {
                 let y = content_start_y + i as u16;
-                if y >= area.y + area.height {
+                if y >= area.height {
                     break;
                 }
 
@@ -377,7 +377,7 @@ impl View for Collapsible {
                     for dx in 0..area.width {
                         let mut cell = Cell::new(' ');
                         cell.bg = Some(bg);
-                        ctx.buffer.set(area.x + dx, y, cell);
+                        ctx.set(dx, y, cell);
                     }
                 }
 
@@ -385,15 +385,11 @@ impl View for Collapsible {
                 if self.show_border {
                     let mut border_cell = Cell::new('│');
                     border_cell.fg = Some(self.border_color);
-                    ctx.buffer.set(area.x, y, border_cell);
+                    ctx.set(0, y, border_cell);
                 }
 
                 // Content text
-                let text_x = if self.show_border {
-                    area.x + 2
-                } else {
-                    area.x + 1
-                };
+                let text_x: u16 = if self.show_border { 2 } else { 1 };
                 let max_content_width = content_width.saturating_sub(1) as usize;
 
                 for (ci, ch) in line.chars().enumerate() {
@@ -405,25 +401,25 @@ impl View for Collapsible {
                     if let Some(bg) = self.content_bg {
                         cell.bg = Some(bg);
                     }
-                    ctx.buffer.set(text_x + ci as u16, y, cell);
+                    ctx.set(text_x + ci as u16, y, cell);
                 }
             }
 
             // Draw bottom border
             if self.show_border {
                 let bottom_y = content_start_y + lines_to_show.min(self.content.len()) as u16;
-                if bottom_y < area.y + area.height {
+                if bottom_y < area.height {
                     // Corner
                     let mut corner = Cell::new('└');
                     corner.fg = Some(self.border_color);
-                    ctx.buffer.set(area.x, bottom_y, corner);
+                    ctx.set(0, bottom_y, corner);
 
                     // Horizontal line
                     let line_width = area.width.saturating_sub(1);
                     for dx in 1..line_width {
                         let mut line_cell = Cell::new('─');
                         line_cell.fg = Some(self.border_color);
-                        ctx.buffer.set(area.x + dx, bottom_y, line_cell);
+                        ctx.set(dx, bottom_y, line_cell);
                     }
                 }
             }

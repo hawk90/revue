@@ -28,7 +28,6 @@
 
 use super::super::border::BorderType;
 use crate::event::Key;
-use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::unicode::char_width;
@@ -385,11 +384,11 @@ impl View for Card {
 
         // Fill background for filled/elevated variants
         if let Some(bg) = bg_color {
-            for y in area.y..area.y + area.height {
-                for x in area.x..area.x + area.width {
+            for y in 0..area.height {
+                for x in 0..area.width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -398,75 +397,72 @@ impl View for Card {
         if self.variant == CardVariant::Elevated && area.width > 2 && area.height > 1 {
             let shadow_color = Color::rgb(20, 20, 20);
             // Right shadow
-            for y in area.y + 1..area.y + area.height {
+            for y in 1..area.height {
                 let mut cell = Cell::new('▌');
                 cell.fg = Some(shadow_color);
-                ctx.buffer.set(area.x + area.width, y, cell);
+                ctx.set(area.width, y, cell);
             }
             // Bottom shadow
-            for x in area.x + 1..=area.x + area.width {
+            for x in 1..=area.width {
                 let mut cell = Cell::new('▀');
                 cell.fg = Some(shadow_color);
-                ctx.buffer.set(x, area.y + area.height, cell);
+                ctx.set(x, area.height, cell);
             }
         }
 
         // Draw border
         if has_border {
             // Corners
-            ctx.buffer
-                .set(area.x, area.y, Cell::new(chars.top_left).fg(border_color));
-            ctx.buffer.set(
-                area.x + area.width - 1,
-                area.y,
+            ctx.set(0, 0, Cell::new(chars.top_left).fg(border_color));
+            ctx.set(
+                area.width - 1,
+                0,
                 Cell::new(chars.top_right).fg(border_color),
             );
-            ctx.buffer.set(
-                area.x,
-                area.y + area.height - 1,
+            ctx.set(
+                0,
+                area.height - 1,
                 Cell::new(chars.bottom_left).fg(border_color),
             );
-            ctx.buffer.set(
-                area.x + area.width - 1,
-                area.y + area.height - 1,
+            ctx.set(
+                area.width - 1,
+                area.height - 1,
                 Cell::new(chars.bottom_right).fg(border_color),
             );
 
             // Top and bottom borders
-            for x in area.x + 1..area.x + area.width - 1 {
-                ctx.buffer
-                    .set(x, area.y, Cell::new(chars.horizontal).fg(border_color));
-                ctx.buffer.set(
+            for x in 1..area.width - 1 {
+                ctx.set(x, 0, Cell::new(chars.horizontal).fg(border_color));
+                ctx.set(
                     x,
-                    area.y + area.height - 1,
+                    area.height - 1,
                     Cell::new(chars.horizontal).fg(border_color),
                 );
             }
 
             // Side borders
-            for y in area.y + 1..area.y + area.height - 1 {
-                ctx.buffer
-                    .set(area.x, y, Cell::new(chars.vertical).fg(border_color));
-                ctx.buffer.set(
-                    area.x + area.width - 1,
+            for y in 1..area.height - 1 {
+                ctx.set(0, y, Cell::new(chars.vertical).fg(border_color));
+                ctx.set(
+                    area.width - 1,
                     y,
                     Cell::new(chars.vertical).fg(border_color),
                 );
             }
         }
 
-        // Content area
+        // Content area (relative offsets within this widget)
         let content_x = if has_border {
-            area.x + 1 + self.padding
+            1 + self.padding
         } else {
-            area.x + self.padding
+            self.padding
         };
         let content_width = if has_border {
             area.width.saturating_sub(2 + self.padding * 2)
         } else {
             area.width.saturating_sub(self.padding * 2)
         };
-        let mut current_y = if has_border { area.y + 1 } else { area.y };
+        let mut current_y: u16 = if has_border { 1 } else { 0 };
 
         // Draw title
         if let Some(ref title) = self.title {
@@ -476,7 +472,7 @@ impl View for Card {
             if self.collapsible {
                 let mut icon_cell = Cell::new(self.collapse_icon());
                 icon_cell.fg = Some(title_color);
-                ctx.buffer.set(title_x, current_y, icon_cell);
+                ctx.set(title_x, current_y, icon_cell);
 
                 TextDraw {
                     text: title,
@@ -518,7 +514,7 @@ impl View for Card {
         // Draw custom header
         if let Some(ref header) = self.header {
             if self.expanded || !self.collapsible {
-                let header_area = Rect::new(content_x, current_y, content_width, 1);
+                let header_area = ctx.sub_area(content_x, current_y, content_width, 1);
                 let mut header_ctx = RenderContext::new(ctx.buffer, header_area);
                 header.render(&mut header_ctx);
                 current_y += 1;
@@ -531,20 +527,14 @@ impl View for Card {
             // Separator line
             let sep_y = current_y;
             if has_border {
-                ctx.buffer
-                    .set(area.x, sep_y, Cell::new('├').fg(border_color));
-                ctx.buffer.set(
-                    area.x + area.width - 1,
-                    sep_y,
-                    Cell::new('┤').fg(border_color),
-                );
-                for x in area.x + 1..area.x + area.width - 1 {
-                    ctx.buffer.set(x, sep_y, Cell::new('─').fg(border_color));
+                ctx.set(0, sep_y, Cell::new('├').fg(border_color));
+                ctx.set(area.width - 1, sep_y, Cell::new('┤').fg(border_color));
+                for x in 1..area.width - 1 {
+                    ctx.set(x, sep_y, Cell::new('─').fg(border_color));
                 }
             } else {
-                for x in area.x..area.x + area.width {
-                    ctx.buffer
-                        .set(x, sep_y, Cell::new('─').fg(Color::rgb(50, 50, 50)));
+                for x in 0..area.width {
+                    ctx.set(x, sep_y, Cell::new('─').fg(Color::rgb(50, 50, 50)));
                 }
             }
             current_y += 1;
@@ -555,14 +545,14 @@ impl View for Card {
             if self.expanded || !self.collapsible {
                 let footer_height = self.footer_height();
                 let body_end = if has_border {
-                    area.y + area.height - 1 - footer_height
+                    area.height - 1 - footer_height
                 } else {
-                    area.y + area.height - footer_height
+                    area.height - footer_height
                 };
                 let body_height = body_end.saturating_sub(current_y);
 
                 if body_height > 0 {
-                    let body_area = Rect::new(content_x, current_y, content_width, body_height);
+                    let body_area = ctx.sub_area(content_x, current_y, content_width, body_height);
                     let mut body_ctx = RenderContext::new(ctx.buffer, body_area);
                     body.render(&mut body_ctx);
                     current_y += body_height;
@@ -574,29 +564,24 @@ impl View for Card {
         if let Some(ref footer) = self.footer {
             if self.expanded || !self.collapsible {
                 let footer_y = if has_border {
-                    area.y + area.height - 2
+                    area.height - 2
                 } else {
-                    area.y + area.height - 1
+                    area.height - 1
                 };
 
                 // Footer separator
                 let sep_y = footer_y - 1;
                 if sep_y > current_y {
                     if has_border {
-                        ctx.buffer
-                            .set(area.x, sep_y, Cell::new('├').fg(border_color));
-                        ctx.buffer.set(
-                            area.x + area.width - 1,
-                            sep_y,
-                            Cell::new('┤').fg(border_color),
-                        );
-                        for x in area.x + 1..area.x + area.width - 1 {
-                            ctx.buffer.set(x, sep_y, Cell::new('─').fg(border_color));
+                        ctx.set(0, sep_y, Cell::new('├').fg(border_color));
+                        ctx.set(area.width - 1, sep_y, Cell::new('┤').fg(border_color));
+                        for x in 1..area.width - 1 {
+                            ctx.set(x, sep_y, Cell::new('─').fg(border_color));
                         }
                     }
 
                     // Footer content
-                    let footer_area = Rect::new(content_x, footer_y, content_width, 1);
+                    let footer_area = ctx.sub_area(content_x, footer_y, content_width, 1);
                     let mut footer_ctx = RenderContext::new(ctx.buffer, footer_area);
                     footer.render(&mut footer_ctx);
                 }
@@ -632,10 +617,9 @@ impl TextDraw<'_> {
             if self.bold {
                 cell.modifier |= Modifier::BOLD;
             }
-            ctx.buffer.set(self.x + offset, self.y, cell);
+            ctx.set(self.x + offset, self.y, cell);
             for i in 1..ch_width {
-                ctx.buffer
-                    .set(self.x + offset + i, self.y, Cell::continuation());
+                ctx.set(self.x + offset + i, self.y, Cell::continuation());
             }
             offset += ch_width;
         }

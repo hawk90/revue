@@ -202,50 +202,50 @@ where
                 let (tl, tr, bl, br, h, v) = self.border_chars();
 
                 // Top border
-                if let Some(cell) = ctx.buffer.get_mut(area.x, area.y) {
+                if let Some(cell) = ctx.get_mut(0, 0) {
                     cell.symbol = tl;
                     cell.fg = Some(color);
                 }
-                for x in (area.x + 1)..(area.x + area.width.saturating_sub(1)) {
-                    if let Some(cell) = ctx.buffer.get_mut(x, area.y) {
+                for x in 1..area.width.saturating_sub(1) {
+                    if let Some(cell) = ctx.get_mut(x, 0) {
                         cell.symbol = h;
                         cell.fg = Some(color);
                     }
                 }
                 if area.width > 1 {
-                    if let Some(cell) = ctx.buffer.get_mut(area.x + area.width - 1, area.y) {
+                    if let Some(cell) = ctx.get_mut(area.width - 1, 0) {
                         cell.symbol = tr;
                         cell.fg = Some(color);
                     }
                 }
 
                 // Bottom border
-                let bottom_y = area.y + height.saturating_sub(1);
-                if let Some(cell) = ctx.buffer.get_mut(area.x, bottom_y) {
+                let bottom_y = height.saturating_sub(1);
+                if let Some(cell) = ctx.get_mut(0, bottom_y) {
                     cell.symbol = bl;
                     cell.fg = Some(color);
                 }
-                for x in (area.x + 1)..(area.x + area.width.saturating_sub(1)) {
-                    if let Some(cell) = ctx.buffer.get_mut(x, bottom_y) {
+                for x in 1..area.width.saturating_sub(1) {
+                    if let Some(cell) = ctx.get_mut(x, bottom_y) {
                         cell.symbol = h;
                         cell.fg = Some(color);
                     }
                 }
                 if area.width > 1 {
-                    if let Some(cell) = ctx.buffer.get_mut(area.x + area.width - 1, bottom_y) {
+                    if let Some(cell) = ctx.get_mut(area.width - 1, bottom_y) {
                         cell.symbol = br;
                         cell.fg = Some(color);
                     }
                 }
 
                 // Side borders
-                for y in (area.y + 1)..bottom_y {
-                    if let Some(cell) = ctx.buffer.get_mut(area.x, y) {
+                for y in 1..bottom_y {
+                    if let Some(cell) = ctx.get_mut(0, y) {
                         cell.symbol = v;
                         cell.fg = Some(color);
                     }
                     if area.width > 1 {
-                        if let Some(cell) = ctx.buffer.get_mut(area.x + area.width - 1, y) {
+                        if let Some(cell) = ctx.get_mut(area.width - 1, y) {
                             cell.symbol = v;
                             cell.fg = Some(color);
                         }
@@ -260,9 +260,9 @@ where
                     } else {
                         Color::rgb(60, 30, 30)
                     };
-                    for y in area.y..(area.y + height) {
-                        for x in area.x..(area.x + area.width) {
-                            if let Some(cell) = ctx.buffer.get_mut(x, y) {
+                    for y in 0..height {
+                        for x in 0..area.width {
+                            if let Some(cell) = ctx.get_mut(x, y) {
                                 cell.bg = Some(bg);
                             }
                         }
@@ -280,8 +280,8 @@ where
                 } else {
                     '│'
                 };
-                for y in area.y..(area.y + height) {
-                    if let Some(cell) = ctx.buffer.get_mut(area.x, y) {
+                for y in 0..height {
+                    if let Some(cell) = ctx.get_mut(0, y) {
                         cell.symbol = indicator;
                         cell.fg = Some(color);
                     }
@@ -290,8 +290,8 @@ where
         }
 
         // Placeholder text
-        let text_y = area.y + height / 2;
-        let text_x = area.x + 2;
+        let text_y = height / 2;
+        let text_x: u16 = 2;
         let max_len = area.width.saturating_sub(4) as usize;
 
         let display_text = if self.hovered {
@@ -311,7 +311,7 @@ where
         };
 
         for (i, ch) in display_text.chars().take(max_len).enumerate() {
-            if let Some(cell) = ctx.buffer.get_mut(text_x + i as u16, text_y) {
+            if let Some(cell) = ctx.get_mut(text_x + i as u16, text_y) {
                 cell.symbol = ch;
                 cell.fg = Some(text_color);
             }

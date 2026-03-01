@@ -382,19 +382,19 @@ impl View for Splitter {
 
             match self.orientation {
                 SplitOrientation::Horizontal => {
-                    let x = pane_area.x + pane_area.width;
-                    for y in area.y..area.y + area.height {
+                    let x = pane_area.x + pane_area.width - area.x;
+                    for y in 0..area.height {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(color);
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                     }
                 }
                 SplitOrientation::Vertical => {
-                    let y = pane_area.y + pane_area.height;
-                    for x in area.x..area.x + area.width {
+                    let y = pane_area.y + pane_area.height - area.y;
+                    for x in 0..area.width {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(color);
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                     }
                 }
             }
@@ -475,12 +475,12 @@ impl View for HSplit {
         }
 
         let (left, _) = self.areas(ctx.area);
-        let x = left.x + left.width;
+        let x = left.x + left.width - ctx.area.x;
 
-        for y in ctx.area.y..ctx.area.y + ctx.area.height {
+        for y in 0..ctx.area.height {
             let mut cell = Cell::new('│');
             cell.fg = Some(self.color);
-            ctx.buffer.set(x, y, cell);
+            ctx.set(x, y, cell);
         }
     }
 }
@@ -542,12 +542,12 @@ impl View for VSplit {
         }
 
         let (top, _) = self.areas(ctx.area);
-        let y = top.y + top.height;
+        let y = top.y + top.height - ctx.area.y;
 
-        for x in ctx.area.x..ctx.area.x + ctx.area.width {
+        for x in 0..ctx.area.width {
             let mut cell = Cell::new('─');
             cell.fg = Some(self.color);
-            ctx.buffer.set(x, y, cell);
+            ctx.set(x, y, cell);
         }
     }
 }

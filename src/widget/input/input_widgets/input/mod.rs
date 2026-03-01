@@ -1524,9 +1524,9 @@ impl View for Input {
             })
         });
 
-        let mut x = area.x;
+        let mut x: u16 = 0;
         for (i, ch) in display_text.chars().enumerate() {
-            if x >= area.x + area.width {
+            if x >= area.width {
                 break;
             }
 
@@ -1547,18 +1547,18 @@ impl View for Input {
                 cell.bg = css_bg;
             }
 
-            ctx.buffer.set(x, area.y, cell);
+            ctx.set(x, 0, cell);
 
             let char_width = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as u16;
             x += char_width;
         }
 
         // Draw cursor at end if cursor is at the end of text
-        if self.focused && self.cursor >= display_text.len() && x < area.x + area.width {
+        if self.focused && self.cursor >= display_text.len() && x < area.width {
             let mut cursor_cell = Cell::new(' ');
             cursor_cell.fg = self.cursor_fg;
             cursor_cell.bg = self.cursor_bg;
-            ctx.buffer.set(x, area.y, cursor_cell);
+            ctx.set(x, 0, cursor_cell);
         }
     }
 

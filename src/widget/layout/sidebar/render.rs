@@ -27,15 +27,15 @@ impl Sidebar {
         };
 
         // Fill background
-        for y in area.y..area.y + area.height {
-            for x in area.x..area.x + content_width {
+        for y in 0..area.height {
+            for x in 0..content_width {
                 let mut cell = Cell::new(' ');
                 cell.bg = self.bg;
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
         }
 
-        let mut y = area.y;
+        let mut y: u16 = 0;
 
         // Render header if present
         if let Some(header) = &self.header {
@@ -46,31 +46,31 @@ impl Sidebar {
                     let mut cell = Cell::new(ch).bold();
                     cell.fg = self.fg;
                     cell.bg = self.bg;
-                    ctx.buffer.set(area.x + x_offset as u16 + i as u16, y, cell);
+                    ctx.set(x_offset as u16 + i as u16, y, cell);
                 }
             }
             y += 1;
 
             // Separator line after header
-            for x in area.x..area.x + content_width {
+            for x in 0..content_width {
                 let mut cell = Cell::new('─');
                 cell.fg = self.border_fg;
                 cell.bg = self.bg;
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
             y += 1;
         }
 
         // Calculate available height for items
         let footer_height = if self.footer.is_some() { 2 } else { 0 };
-        let _available_height = area.height.saturating_sub(y - area.y + footer_height);
+        let _available_height = area.height.saturating_sub(y + footer_height);
 
         // Get visible items
         let items = self.visible_items();
 
         // Render items
         for (idx, flat_item) in items.iter().skip(self.scroll).enumerate() {
-            if y >= area.y + area.height - footer_height {
+            if y >= area.height - footer_height {
                 break;
             }
 
@@ -87,15 +87,15 @@ impl Sidebar {
                                 let mut cell = Cell::new(ch);
                                 cell.fg = self.section_fg;
                                 cell.bg = self.bg;
-                                ctx.buffer.set(area.x + 1 + i as u16, y, cell);
+                                ctx.set(1 + i as u16, y, cell);
                             }
                         } else {
                             // Separator line
-                            for x in area.x + 1..area.x + content_width - 1 {
+                            for x in 1..content_width - 1 {
                                 let mut cell = Cell::new('─');
                                 cell.fg = self.border_fg;
                                 cell.bg = self.bg;
-                                ctx.buffer.set(x, y, cell);
+                                ctx.set(x, y, cell);
                             }
                         }
                     }
@@ -118,14 +118,14 @@ impl Sidebar {
                     };
 
                     // Fill row background
-                    for x in area.x..area.x + content_width {
+                    for x in 0..content_width {
                         let mut cell = Cell::new(' ');
                         cell.bg = bg;
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                     }
 
                     let indent = if is_collapsed { 0 } else { (*depth as u16) * 2 };
-                    let mut x = area.x + 1 + indent;
+                    let mut x: u16 = 1 + indent;
 
                     // Expand/collapse indicator for items with children
                     if item.has_children() && !is_collapsed {
@@ -133,7 +133,7 @@ impl Sidebar {
                         let mut cell = Cell::new(indicator);
                         cell.fg = fg;
                         cell.bg = bg;
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                         x += 2;
                     } else if !is_collapsed {
                         x += 2; // Align with items that have children
@@ -144,35 +144,35 @@ impl Sidebar {
                         let mut cell = Cell::new(icon);
                         cell.fg = fg;
                         cell.bg = bg;
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                         x += 2;
                     }
 
                     // Label (only if not collapsed)
                     if !is_collapsed {
-                        let max_label_width = content_width.saturating_sub(x - area.x + 1);
+                        let max_label_width = content_width.saturating_sub(x + 1);
                         let badge_space = item.badge.as_ref().map(|b| b.len() + 2).unwrap_or(0);
                         let label_width = (max_label_width as usize).saturating_sub(badge_space);
                         let display: String = item.label.chars().take(label_width).collect();
 
                         for ch in display.chars() {
-                            if x < area.x + content_width - badge_space as u16 {
+                            if x < content_width - badge_space as u16 {
                                 let mut cell = Cell::new(ch);
                                 cell.fg = fg;
                                 cell.bg = bg;
-                                ctx.buffer.set(x, y, cell);
+                                ctx.set(x, y, cell);
                                 x += 1;
                             }
                         }
 
                         // Badge
                         if let Some(badge) = &item.badge {
-                            let badge_x = area.x + content_width - badge.len() as u16 - 2;
+                            let badge_x = content_width - badge.len() as u16 - 2;
                             for (i, ch) in badge.chars().enumerate() {
                                 let mut cell = Cell::new(ch);
                                 cell.fg = self.badge_fg;
                                 cell.bg = self.badge_bg;
-                                ctx.buffer.set(badge_x + i as u16, y, cell);
+                                ctx.set(badge_x + i as u16, y, cell);
                             }
                         }
                     }
@@ -185,12 +185,12 @@ impl Sidebar {
         // Render footer if present
         if let Some(footer) = &self.footer {
             // Separator line before footer
-            let footer_y = area.y + area.height - 2;
-            for x in area.x..area.x + content_width {
+            let footer_y = area.height - 2;
+            for x in 0..content_width {
                 let mut cell = Cell::new('─');
                 cell.fg = self.border_fg;
                 cell.bg = self.bg;
-                ctx.buffer.set(x, footer_y, cell);
+                ctx.set(x, footer_y, cell);
             }
 
             if !is_collapsed {
@@ -200,20 +200,19 @@ impl Sidebar {
                     let mut cell = Cell::new(ch);
                     cell.fg = self.section_fg;
                     cell.bg = self.bg;
-                    ctx.buffer
-                        .set(area.x + x_offset as u16 + i as u16, footer_y + 1, cell);
+                    ctx.set(x_offset as u16 + i as u16, footer_y + 1, cell);
                 }
             }
         }
 
         // Right border
-        for y in area.y..area.y + area.height {
-            let border_x = area.x + content_width - 1;
-            if border_x < area.x + area.width {
+        for y in 0..area.height {
+            let border_x = content_width - 1;
+            if border_x < area.width {
                 let mut cell = Cell::new('│');
                 cell.fg = self.border_fg;
                 cell.bg = self.bg;
-                ctx.buffer.set(border_x, y, cell);
+                ctx.set(border_x, y, cell);
             }
         }
     }

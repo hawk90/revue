@@ -18,7 +18,7 @@ impl View for SortableList {
             .skip(self.scroll)
             .take(visible_count)
         {
-            let y = area.y + ((i - self.scroll) as u16 * self.item_height);
+            let y = (i - self.scroll) as u16 * self.item_height;
 
             // Determine colors
             let is_selected = self.selected == Some(i);
@@ -35,16 +35,16 @@ impl View for SortableList {
 
             // Draw drop indicator
             if is_drop_target && self.dragging.is_some() {
-                ctx.draw_hline(area.x, y, area.width, '─', self.drag_color);
+                ctx.draw_hline(0, y, area.width, '─', self.drag_color);
                 continue;
             }
 
             // Draw handle if enabled
-            let mut x = area.x;
+            let mut x: u16 = 0;
             if self.show_handles {
                 let handle = if is_dragging { "↕ " } else { "≡ " };
                 for ch in handle.chars() {
-                    if let Some(cell) = ctx.buffer.get_mut(x, y) {
+                    if let Some(cell) = ctx.get_mut(x, y) {
                         cell.symbol = ch;
                         cell.fg = Some(crate::style::Color::rgb(100, 100, 100));
                     }
@@ -55,7 +55,7 @@ impl View for SortableList {
             // Selection indicator
             let prefix = if is_selected { "▶ " } else { "  " };
             for ch in prefix.chars() {
-                if let Some(cell) = ctx.buffer.get_mut(x, y) {
+                if let Some(cell) = ctx.get_mut(x, y) {
                     cell.symbol = ch;
                     cell.fg = Some(fg);
                 }
@@ -63,9 +63,9 @@ impl View for SortableList {
             }
 
             // Item label
-            let max_len = (area.x + area.width).saturating_sub(x) as usize;
+            let max_len = area.width.saturating_sub(x) as usize;
             for (j, ch) in item.label.chars().take(max_len).enumerate() {
-                if let Some(cell) = ctx.buffer.get_mut(x + j as u16, y) {
+                if let Some(cell) = ctx.get_mut(x + j as u16, y) {
                     cell.symbol = ch;
                     cell.fg = Some(fg);
                     if is_selected {
@@ -81,10 +81,9 @@ impl View for SortableList {
         // Draw final drop indicator at end if needed
         if let Some(target) = self.drop_target {
             if target == self.items.len() && self.dragging.is_some() {
-                let y = area.y
-                    + (visible_count.min(self.items.len() - self.scroll) as u16 * self.item_height);
-                if y < area.y + area.height {
-                    ctx.draw_hline(area.x, y, area.width, '─', self.drag_color);
+                let y = visible_count.min(self.items.len() - self.scroll) as u16 * self.item_height;
+                if y < area.height {
+                    ctx.draw_hline(0, y, area.width, '─', self.drag_color);
                 }
             }
         }

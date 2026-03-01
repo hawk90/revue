@@ -361,13 +361,12 @@ impl ProcessMonitor {
     /// Render header
     fn render_header(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let y = area.y;
 
         // Header background
         for x in 0..area.width {
             let mut cell = Cell::new(' ');
             cell.bg = Some(self.colors.header_bg);
-            ctx.buffer.set(area.x + x, y, cell);
+            ctx.set(x, 0, cell);
         }
 
         // Column headers
@@ -401,7 +400,7 @@ impl ProcessMonitor {
                 cell.fg = Some(self.colors.header_fg);
                 cell.bg = Some(self.colors.header_bg);
                 cell.modifier = Modifier::BOLD;
-                ctx.buffer.set(area.x + x_offset + i as u16, y, cell);
+                ctx.set(x_offset + i as u16, 0, cell);
             }
             x_offset += width as u16;
         }
@@ -428,7 +427,7 @@ impl ProcessMonitor {
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::rgb(150, 150, 150));
-            ctx.buffer.set(area.x + i as u16, area.y + y, cell);
+            ctx.set(i as u16, y, cell);
         }
     }
 }
@@ -450,15 +449,7 @@ impl View for ProcessMonitor {
         self.render_stats(ctx, 0);
 
         // Header (row 1)
-        let _header_ctx = RenderContext::new(
-            ctx.buffer,
-            crate::layout::Rect {
-                x: area.x,
-                y: area.y + 1,
-                width: area.width,
-                height: 1,
-            },
-        );
+        let _header_ctx = RenderContext::new(ctx.buffer, ctx.sub_area(0, 1, area.width, 1));
         // We need to create a new RenderContext properly
         self.render_header(ctx);
 
@@ -482,7 +473,7 @@ impl View for ProcessMonitor {
             .take(visible_rows)
             .enumerate()
         {
-            let y = area.y + list_start + i as u16;
+            let y = list_start + i as u16;
             let is_selected = scroll + i == self.selected;
 
             // Background
@@ -490,7 +481,7 @@ impl View for ProcessMonitor {
                 for x in 0..area.width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(self.colors.selected_bg);
-                    ctx.buffer.set(area.x + x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
 
@@ -506,7 +497,7 @@ impl View for ProcessMonitor {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.colors.pid);
                 cell.bg = bg;
-                ctx.buffer.set(area.x + j as u16, y, cell);
+                ctx.set(j as u16, y, cell);
             }
 
             // Name (truncated)
@@ -515,7 +506,7 @@ impl View for ProcessMonitor {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.colors.name);
                 cell.bg = bg;
-                ctx.buffer.set(area.x + 7 + j as u16, y, cell);
+                ctx.set(7 + j as u16, y, cell);
             }
 
             // CPU%
@@ -531,7 +522,7 @@ impl View for ProcessMonitor {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(cpu_color);
                 cell.bg = bg;
-                ctx.buffer.set(area.x + 27 + j as u16, y, cell);
+                ctx.set(27 + j as u16, y, cell);
             }
 
             // MEM%
@@ -545,7 +536,7 @@ impl View for ProcessMonitor {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(mem_color);
                 cell.bg = bg;
-                ctx.buffer.set(area.x + 34 + j as u16, y, cell);
+                ctx.set(34 + j as u16, y, cell);
             }
 
             // MEM (bytes)
@@ -554,7 +545,7 @@ impl View for ProcessMonitor {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.bg = bg;
-                ctx.buffer.set(area.x + 41 + j as u16, y, cell);
+                ctx.set(41 + j as u16, y, cell);
             }
 
             // Status
@@ -564,7 +555,7 @@ impl View for ProcessMonitor {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(150, 150, 150));
                     cell.bg = bg;
-                    ctx.buffer.set(area.x + 49 + j as u16, y, cell);
+                    ctx.set(49 + j as u16, y, cell);
                 }
             }
         }

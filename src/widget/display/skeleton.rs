@@ -169,7 +169,7 @@ impl View for Skeleton {
                     for x in 0..width {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.color);
-                        ctx.buffer.set(area.x + x, area.y + y, cell);
+                        ctx.set(x, y, cell);
                     }
                 }
             }
@@ -181,7 +181,7 @@ impl View for Skeleton {
                 if size == 1 {
                     let mut cell = Cell::new('●');
                     cell.fg = Some(self.color);
-                    ctx.buffer.set(area.x, area.y, cell);
+                    ctx.set(0, 0, cell);
                 } else if size == 2 {
                     // 2x2 circle
                     let chars = ['╭', '╮', '╰', '╯'];
@@ -190,56 +190,56 @@ impl View for Skeleton {
                         let y = (i / 2) as u16;
                         let mut cell = Cell::new(*c);
                         cell.fg = Some(self.color);
-                        ctx.buffer.set(area.x + x, area.y + y, cell);
+                        ctx.set(x, y, cell);
                     }
                 } else {
                     // Larger circle approximation
                     // Top row
                     let mut tl = Cell::new('╭');
                     tl.fg = Some(self.color);
-                    ctx.buffer.set(area.x, area.y, tl);
+                    ctx.set(0, 0, tl);
 
                     for x in 1..size - 1 {
                         let mut cell = Cell::new('─');
                         cell.fg = Some(self.color);
-                        ctx.buffer.set(area.x + x, area.y, cell);
+                        ctx.set(x, 0, cell);
                     }
 
                     let mut tr = Cell::new('╮');
                     tr.fg = Some(self.color);
-                    ctx.buffer.set(area.x + size - 1, area.y, tr);
+                    ctx.set(size - 1, 0, tr);
 
                     // Middle rows
                     for y in 1..size - 1 {
                         let mut left = Cell::new('│');
                         left.fg = Some(self.color);
-                        ctx.buffer.set(area.x, area.y + y, left);
+                        ctx.set(0, y, left);
 
                         for x in 1..size - 1 {
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(self.color);
-                            ctx.buffer.set(area.x + x, area.y + y, cell);
+                            ctx.set(x, y, cell);
                         }
 
                         let mut right = Cell::new('│');
                         right.fg = Some(self.color);
-                        ctx.buffer.set(area.x + size - 1, area.y + y, right);
+                        ctx.set(size - 1, y, right);
                     }
 
                     // Bottom row
                     let mut bl = Cell::new('╰');
                     bl.fg = Some(self.color);
-                    ctx.buffer.set(area.x, area.y + size - 1, bl);
+                    ctx.set(0, size - 1, bl);
 
                     for x in 1..size - 1 {
                         let mut cell = Cell::new('─');
                         cell.fg = Some(self.color);
-                        ctx.buffer.set(area.x + x, area.y + size - 1, cell);
+                        ctx.set(x, size - 1, cell);
                     }
 
                     let mut br = Cell::new('╯');
                     br.fg = Some(self.color);
-                    ctx.buffer.set(area.x + size - 1, area.y + size - 1, br);
+                    ctx.set(size - 1, size - 1, br);
                 }
             }
             SkeletonShape::Paragraph => {
@@ -263,7 +263,7 @@ impl View for Skeleton {
                     for x in 0..line_width {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.color);
-                        ctx.buffer.set(area.x + x, area.y + line, cell);
+                        ctx.set(x, line, cell);
                     }
                 }
             }

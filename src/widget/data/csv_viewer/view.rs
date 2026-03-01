@@ -13,7 +13,7 @@ impl View for CsvViewer {
         }
 
         let row_num_width = self.row_number_width();
-        let content_start_x = area.x + row_num_width;
+        let content_start_x = row_num_width;
         let _content_width = area.width.saturating_sub(row_num_width);
 
         // Calculate visible rows
@@ -28,18 +28,18 @@ impl View for CsvViewer {
             scroll_row = self.selected_row.saturating_sub(visible_data_rows - 1);
         }
 
-        let mut y = area.y;
+        let mut y = 0u16;
 
         // Render header if present
         if self.has_header {
             if let Some(header_row) = self.data.first() {
                 // Row number column header
                 if self.show_row_numbers {
-                    for x in area.x..content_start_x {
+                    for x in 0..content_start_x {
                         let mut cell = Cell::new(' ');
                         cell.fg = self.header_fg;
                         cell.bg = self.header_bg;
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                     }
                 }
 
@@ -65,34 +65,34 @@ impl View for CsvViewer {
                         .collect();
 
                     for (i, ch) in display.chars().enumerate() {
-                        if x + i as u16 >= area.x + area.width {
+                        if x + i as u16 >= area.width {
                             break;
                         }
                         let mut cell = Cell::new(ch).bold();
                         cell.fg = self.header_fg;
                         cell.bg = self.header_bg;
-                        ctx.buffer.set(x + i as u16, y, cell);
+                        ctx.set(x + i as u16, y, cell);
                     }
 
                     // Fill remaining width
                     for i in display.chars().count()..width {
-                        if x + i as u16 >= area.x + area.width {
+                        if x + i as u16 >= area.width {
                             break;
                         }
                         let mut cell = Cell::new(' ');
                         cell.fg = self.header_fg;
                         cell.bg = self.header_bg;
-                        ctx.buffer.set(x + i as u16, y, cell);
+                        ctx.set(x + i as u16, y, cell);
                     }
 
                     x += width as u16;
 
                     // Separator
-                    if self.show_separators && x < area.x + area.width {
+                    if self.show_separators && x < area.width {
                         let mut cell = Cell::new('│');
                         cell.fg = self.separator_fg;
                         cell.bg = self.header_bg;
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                         x += 1;
                     }
                 }
@@ -108,7 +108,7 @@ impl View for CsvViewer {
             .skip(scroll_row)
             .take(visible_data_rows)
         {
-            if y >= area.y + area.height {
+            if y >= area.height {
                 break;
             }
 
@@ -130,7 +130,7 @@ impl View for CsvViewer {
                     } else {
                         self.bg
                     };
-                    ctx.buffer.set(area.x + i as u16, y, cell);
+                    ctx.set(i as u16, y, cell);
                 }
             }
 
@@ -153,30 +153,30 @@ impl View for CsvViewer {
                     let display: String = cell_value.chars().take(width).collect();
 
                     for (i, ch) in display.chars().enumerate() {
-                        if x + i as u16 >= area.x + area.width {
+                        if x + i as u16 >= area.width {
                             break;
                         }
                         let mut cell = Cell::new(ch);
                         cell.fg = fg;
                         cell.bg = bg;
-                        ctx.buffer.set(x + i as u16, y, cell);
+                        ctx.set(x + i as u16, y, cell);
                     }
 
                     // Fill remaining width
                     for i in display.chars().count()..width {
-                        if x + i as u16 >= area.x + area.width {
+                        if x + i as u16 >= area.width {
                             break;
                         }
                         let mut cell = Cell::new(' ');
                         cell.fg = fg;
                         cell.bg = bg;
-                        ctx.buffer.set(x + i as u16, y, cell);
+                        ctx.set(x + i as u16, y, cell);
                     }
 
                     x += width as u16;
 
                     // Separator
-                    if self.show_separators && x < area.x + area.width {
+                    if self.show_separators && x < area.width {
                         let mut cell = Cell::new('│');
                         cell.fg = self.separator_fg;
                         cell.bg = if is_selected_row {
@@ -184,7 +184,7 @@ impl View for CsvViewer {
                         } else {
                             self.bg
                         };
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                         x += 1;
                     }
                 }

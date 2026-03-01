@@ -427,55 +427,54 @@ impl ToastQueue {
         let mut top_left = Cell::new('╭');
         top_left.fg = Some(color);
         top_left.bg = Some(bg);
-        ctx.buffer.set(x, y, top_left);
+        ctx.set(x, y, top_left);
 
         for i in 1..toast_w.saturating_sub(1) {
             let mut cell = Cell::new('─');
             cell.fg = Some(color);
             cell.bg = Some(bg);
-            ctx.buffer.set(x + i, y, cell);
+            ctx.set(x + i, y, cell);
         }
 
         let mut top_right = Cell::new('╮');
         top_right.fg = Some(color);
         top_right.bg = Some(bg);
-        ctx.buffer.set(x + toast_w - 1, y, top_right);
+        ctx.set(x + toast_w - 1, y, top_right);
 
         // Bottom
         let mut bottom_left = Cell::new('╰');
         bottom_left.fg = Some(color);
         bottom_left.bg = Some(bg);
-        ctx.buffer.set(x, y + toast_h - 1, bottom_left);
+        ctx.set(x, y + toast_h - 1, bottom_left);
 
         for i in 1..toast_w.saturating_sub(1) {
             let mut cell = Cell::new('─');
             cell.fg = Some(color);
             cell.bg = Some(bg);
-            ctx.buffer.set(x + i, y + toast_h - 1, cell);
+            ctx.set(x + i, y + toast_h - 1, cell);
         }
 
         let mut bottom_right = Cell::new('╯');
         bottom_right.fg = Some(color);
         bottom_right.bg = Some(bg);
-        ctx.buffer
-            .set(x + toast_w - 1, y + toast_h - 1, bottom_right);
+        ctx.set(x + toast_w - 1, y + toast_h - 1, bottom_right);
 
         // Sides and fill
         for row in 1..toast_h.saturating_sub(1) {
             let mut left = Cell::new('│');
             left.fg = Some(color);
             left.bg = Some(bg);
-            ctx.buffer.set(x, y + row, left);
+            ctx.set(x, y + row, left);
 
             let mut right = Cell::new('│');
             right.fg = Some(color);
             right.bg = Some(bg);
-            ctx.buffer.set(x + toast_w - 1, y + row, right);
+            ctx.set(x + toast_w - 1, y + row, right);
 
             for col in 1..toast_w.saturating_sub(1) {
                 let mut fill = Cell::new(' ');
                 fill.bg = Some(bg);
-                ctx.buffer.set(x + col, y + row, fill);
+                ctx.set(x + col, y + row, fill);
             }
         }
 
@@ -487,7 +486,7 @@ impl ToastQueue {
         let mut icon_cell = Cell::new(entry.level.icon());
         icon_cell.fg = Some(color);
         icon_cell.bg = Some(bg);
-        ctx.buffer.set(content_x, content_y, icon_cell);
+        ctx.set(content_x, content_y, icon_cell);
 
         // Message
         let msg_x = content_x + 2;
@@ -496,7 +495,7 @@ impl ToastQueue {
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::WHITE);
             cell.bg = Some(bg);
-            ctx.buffer.set(msg_x + i as u16, content_y, cell);
+            ctx.set(msg_x + i as u16, content_y, cell);
         }
 
         // Dismiss hint for dismissible toasts
@@ -505,7 +504,7 @@ impl ToastQueue {
             let mut dismiss = Cell::new('×');
             dismiss.fg = Some(Color::rgb(100, 100, 100));
             dismiss.bg = Some(bg);
-            ctx.buffer.set(dismiss_x, content_y, dismiss);
+            ctx.set(dismiss_x, content_y, dismiss);
         }
     }
 }

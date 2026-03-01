@@ -381,9 +381,9 @@ impl View for Modal {
         let modal_width = self.width.min(area.width.saturating_sub(4));
         let modal_height = self.required_height().min(area.height.saturating_sub(2));
 
-        // Center the modal
-        let x = area.x + (area.width.saturating_sub(modal_width)) / 2;
-        let y = area.y + (area.height.saturating_sub(modal_height)) / 2;
+        // Center the modal (relative coordinates)
+        let x = (area.width.saturating_sub(modal_width)) / 2;
+        let y = (area.height.saturating_sub(modal_height)) / 2;
 
         // Draw border
         self.render_border(ctx, x, y, modal_width, modal_height);
@@ -398,16 +398,15 @@ impl View for Modal {
                 let mut cell = Cell::new(ch);
                 cell.fg = self.title_fg;
                 cell.modifier |= crate::render::Modifier::BOLD;
-                ctx.buffer.set(title_x + i as u16, y + 1, cell);
+                ctx.set(title_x + i as u16, y + 1, cell);
             }
 
             // Title separator
             for dx in 1..modal_width.saturating_sub(1) {
-                ctx.buffer.set(x + dx, y + 2, Cell::new('─'));
+                ctx.set(x + dx, y + 2, Cell::new('─'));
             }
-            ctx.buffer.set(x, y + 2, Cell::new('├'));
-            ctx.buffer
-                .set(x + modal_width.saturating_sub(1), y + 2, Cell::new('┤'));
+            ctx.set(x, y + 2, Cell::new('├'));
+            ctx.set(x + modal_width.saturating_sub(1), y + 2, Cell::new('┤'));
         }
 
         // Draw content
@@ -417,8 +416,7 @@ impl View for Modal {
 
         if let Some(ref body_widget) = self.body {
             // Render child widget
-            let content_area =
-                crate::layout::Rect::new(x + 2, content_y, content_width, content_height);
+            let content_area = ctx.sub_area(x + 2, content_y, content_width, content_height);
             let mut body_ctx = RenderContext::new(ctx.buffer, content_area);
             body_widget.render(&mut body_ctx);
         } else {
@@ -430,7 +428,7 @@ impl View for Modal {
                 }
                 let truncated: String = line.chars().take(content_width as usize).collect();
                 for (j, ch) in truncated.chars().enumerate() {
-                    ctx.buffer.set(x + 2 + j as u16, cy, Cell::new(ch));
+                    ctx.set(x + 2 + j as u16, cy, Cell::new(ch));
                 }
             }
         }
@@ -470,7 +468,7 @@ impl View for Modal {
                     let mut cell = Cell::new(ch);
                     cell.fg = fg;
                     cell.bg = bg;
-                    ctx.buffer.set(bx + j as u16, button_y, cell);
+                    ctx.set(bx + j as u16, button_y, cell);
                 }
 
                 bx += button_text.len() as u16 + 2;
@@ -486,47 +484,47 @@ impl Modal {
         // Clear interior with spaces
         for dy in 1..height.saturating_sub(1) {
             for dx in 1..width.saturating_sub(1) {
-                ctx.buffer.set(x + dx, y + dy, Cell::new(' '));
+                ctx.set(x + dx, y + dy, Cell::new(' '));
             }
         }
 
         // Top border
         let mut corner = Cell::new('┌');
         corner.fg = self.border_fg;
-        ctx.buffer.set(x, y, corner);
+        ctx.set(x, y, corner);
 
         for dx in 1..width.saturating_sub(1) {
             let mut cell = Cell::new('─');
             cell.fg = self.border_fg;
-            ctx.buffer.set(x + dx, y, cell);
+            ctx.set(x + dx, y, cell);
         }
 
         let mut corner = Cell::new('┐');
         corner.fg = self.border_fg;
-        ctx.buffer.set(x + width.saturating_sub(1), y, corner);
+        ctx.set(x + width.saturating_sub(1), y, corner);
 
         // Sides
         for dy in 1..height.saturating_sub(1) {
             let mut cell = Cell::new('│');
             cell.fg = self.border_fg;
-            ctx.buffer.set(x, y + dy, cell);
-            ctx.buffer.set(x + width.saturating_sub(1), y + dy, cell);
+            ctx.set(x, y + dy, cell);
+            ctx.set(x + width.saturating_sub(1), y + dy, cell);
         }
 
         // Bottom border
         let mut corner = Cell::new('└');
         corner.fg = self.border_fg;
-        ctx.buffer.set(x, y + height.saturating_sub(1), corner);
+        ctx.set(x, y + height.saturating_sub(1), corner);
 
         for dx in 1..width.saturating_sub(1) {
             let mut cell = Cell::new('─');
             cell.fg = self.border_fg;
-            ctx.buffer.set(x + dx, y + height.saturating_sub(1), cell);
+            ctx.set(x + dx, y + height.saturating_sub(1), cell);
         }
 
         let mut corner = Cell::new('┘');
         corner.fg = self.border_fg;
-        ctx.buffer.set(
+        ctx.set(
             x + width.saturating_sub(1),
             y + height.saturating_sub(1),
             corner,

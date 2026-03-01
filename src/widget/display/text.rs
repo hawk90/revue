@@ -257,18 +257,18 @@ impl Text {
         }
 
         // Render words with distributed spacing
-        let mut x = area.x;
+        let mut x: u16 = 0;
         for (i, word) in words.iter().enumerate() {
             // Render word
             for ch in word.chars() {
-                if x >= area.x + area.width {
+                if x >= area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = self.fg;
                 cell.bg = self.bg;
                 cell.modifier = modifier;
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
                 x += UnicodeWidthChar::width(ch).unwrap_or(0) as u16;
             }
 
@@ -306,9 +306,9 @@ impl View for Text {
         };
 
         // Create adjusted context with alignment offset
-        let adjusted_area = crate::layout::Rect::new(
-            area.x + x_offset,
-            area.y,
+        let adjusted_area = ctx.sub_area(
+            x_offset,
+            0,
             area.width.saturating_sub(x_offset),
             area.height,
         );

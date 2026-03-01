@@ -17,6 +17,7 @@ use crate::widget::traits::RenderContext;
 
 /// Render a centered title at the top of the area
 ///
+/// The `area` parameter uses **relative** coordinates (0,0 = widget top-left).
 /// Returns the number of rows used (0 if no title, 1 if title rendered)
 pub fn render_title(ctx: &mut RenderContext, area: Rect, title: Option<&str>, color: Color) -> u16 {
     let Some(title) = title else {
@@ -29,7 +30,7 @@ pub fn render_title(ctx: &mut RenderContext, area: Rect, title: Option<&str>, co
         if x < area.x + area.width {
             let mut cell = Cell::new(ch);
             cell.fg = Some(color);
-            ctx.buffer.set(x, area.y, cell);
+            ctx.set(x, area.y, cell);
         }
     }
     1
@@ -40,6 +41,8 @@ pub fn render_title(ctx: &mut RenderContext, area: Rect, title: Option<&str>, co
 // ============================================================================
 
 /// Render grid lines in the chart area
+///
+/// The `chart_area` parameter uses **relative** coordinates.
 pub fn render_grid(
     ctx: &mut RenderContext,
     chart_area: Rect,
@@ -62,7 +65,7 @@ pub fn render_grid(
                     };
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(grid_color);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -77,7 +80,7 @@ pub fn render_grid(
                     let ch = if x == chart_area.x { '├' } else { '─' };
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(grid_color);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -89,6 +92,8 @@ pub fn render_grid(
 // ============================================================================
 
 /// Render Y axis labels on the left side
+///
+/// The `area` parameter uses **relative** coordinates.
 pub fn render_y_axis_labels(
     ctx: &mut RenderContext,
     area: Rect,
@@ -107,13 +112,15 @@ pub fn render_y_axis_labels(
             if x < area.x + label_width && y < area.y + area.height {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(axis.color);
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
         }
     }
 }
 
 /// Render X axis labels at the bottom
+///
+/// The `area` parameter uses **relative** coordinates.
 pub fn render_x_axis_labels(
     ctx: &mut RenderContext,
     area: Rect,
@@ -134,13 +141,15 @@ pub fn render_x_axis_labels(
             if label_x < area.x + area.width && label_y >= y_offset {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(axis.color);
-                ctx.buffer.set(label_x, label_y, cell);
+                ctx.set(label_x, label_y, cell);
             }
         }
     }
 }
 
 /// Render axis title
+///
+/// The `area` parameter uses **relative** coordinates.
 pub fn render_axis_title(
     ctx: &mut RenderContext,
     area: Rect,
@@ -160,7 +169,7 @@ pub fn render_axis_title(
             if x < area.x + area.width {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(color);
-                ctx.buffer.set(x, title_y, cell);
+                ctx.set(x, title_y, cell);
             }
         }
     }
@@ -180,6 +189,8 @@ pub struct LegendItem<'a> {
 }
 
 /// Calculate legend position based on LegendPosition
+///
+/// The `area` parameter and returned coordinates use **relative** coordinates.
 pub fn calculate_legend_position(
     position: LegendPosition,
     area: Rect,
@@ -261,7 +272,7 @@ pub fn render_legend(
                 };
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::rgb(100, 100, 100));
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
         }
     }
@@ -278,7 +289,7 @@ pub fn render_legend(
         if marker_x < area.x + area.width {
             let mut cell = Cell::new('■');
             cell.fg = Some(item.color);
-            ctx.buffer.set(marker_x, y, cell);
+            ctx.set(marker_x, y, cell);
         }
 
         // Label
@@ -287,7 +298,7 @@ pub fn render_legend(
             if x < area.x + area.width - 1 && x < legend_x + legend_width - 1 {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
         }
     }
@@ -327,7 +338,7 @@ pub fn render_horizontal_legend(
         // Color marker
         let mut cell = Cell::new('●');
         cell.fg = Some(item.color);
-        ctx.buffer.set(x, legend_y, cell);
+        ctx.set(x, legend_y, cell);
         x += 1;
 
         // Space
@@ -340,7 +351,7 @@ pub fn render_horizontal_legend(
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::WHITE);
-            ctx.buffer.set(x, legend_y, cell);
+            ctx.set(x, legend_y, cell);
             x += 1;
         }
 
@@ -354,12 +365,14 @@ pub fn render_horizontal_legend(
 // ============================================================================
 
 /// Fill area with background color
+///
+/// The `area` parameter uses **relative** coordinates.
 pub fn fill_background(ctx: &mut RenderContext, area: Rect, color: Color) {
     for y in area.y..area.y + area.height {
         for x in area.x..area.x + area.width {
             let mut cell = Cell::new(' ');
             cell.bg = Some(color);
-            ctx.buffer.set(x, y, cell);
+            ctx.set(x, y, cell);
         }
     }
 }
@@ -369,6 +382,8 @@ pub fn fill_background(ctx: &mut RenderContext, area: Rect, color: Color) {
 // ============================================================================
 
 /// Calculate the chart area (excluding title, axes, legend)
+///
+/// The `area` parameter and returned Rect use **relative** coordinates.
 pub fn calculate_chart_area(
     area: Rect,
     has_title: bool,

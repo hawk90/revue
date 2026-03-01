@@ -43,11 +43,11 @@ impl RenderContext<'_> {
         self.draw_focus_ring(x, y, w, h, color, FocusStyle::Rounded);
     }
 
-    /// Draw a focus underline (for inline elements)
+    /// Draw a focus underline (for inline elements, relative coordinates)
     pub fn draw_focus_underline(&mut self, x: u16, y: u16, w: u16, color: Color) {
         for i in 0..w {
             let cell = Cell::new('▔').fg(color);
-            self.buffer.set(x + i, y, cell);
+            self.set(x + i, y, cell);
         }
     }
 
@@ -57,19 +57,25 @@ impl RenderContext<'_> {
     }
 
     /// Draw a focus indicator on the left side of an item
+    ///
+    /// Special case: draws in the column just before the area (absolute position).
+    /// Falls back to first column of area if area starts at x=0.
     pub fn draw_focus_marker_left(&mut self, y: u16, color: Color) {
         if self.area.x > 0 {
-            self.draw_char(self.area.x - 1, y, '▶', color);
+            // Draw outside the area — use absolute buffer access
+            let abs_y = self.area.y.saturating_add(y);
+            self.buffer
+                .set(self.area.x - 1, abs_y, Cell::new('▶').fg(color));
         } else {
-            self.draw_char(self.area.x, y, '▶', color);
+            self.draw_char(0, y, '▶', color);
         }
     }
 
-    /// Invert colors in a region (for high contrast focus indication)
+    /// Invert colors in a region (relative coordinates)
     pub fn invert_colors(&mut self, x: u16, y: u16, w: u16, h: u16) {
         for dy in 0..h {
             for dx in 0..w {
-                if let Some(cell) = self.buffer.get_mut(x + dx, y + dy) {
+                if let Some(cell) = self.get_mut(x + dx, y + dy) {
                     let old_fg = cell.fg;
                     let old_bg = cell.bg;
                     cell.fg = old_bg;
@@ -89,8 +95,7 @@ impl RenderContext<'_> {
     /// Widgets call this at render start: `ctx.apply_focus_indicator(self.focused, style, color)`
     pub fn apply_focus_indicator(&mut self, focused: bool, style: FocusStyle, color: Color) {
         if focused {
-            let area = self.area;
-            self.draw_focus_ring(area.x, area.y, area.width, area.height, color, style);
+            self.draw_focus_ring(0, 0, self.area.width, self.area.height, color, style);
         }
     }
 

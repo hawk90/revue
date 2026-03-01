@@ -286,7 +286,7 @@ impl Histogram {
                         } else {
                             cell.fg = Some(self.fill_color);
                         }
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                     }
                 }
             }
@@ -310,13 +310,13 @@ impl Histogram {
                 for y in chart_area.y..chart_area.y + chart_area.height {
                     let mut cell = Cell::new('│');
                     cell.fg = Some(Color::rgb(224, 108, 117)); // Red
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
                 // Label
                 if x + 1 < chart_area.x + chart_area.width {
                     let mut cell = Cell::new('μ');
                     cell.fg = Some(Color::rgb(224, 108, 117));
-                    ctx.buffer.set(x + 1, chart_area.y, cell);
+                    ctx.set(x + 1, chart_area.y, cell);
                 }
             }
         }
@@ -329,13 +329,13 @@ impl Histogram {
                 for y in chart_area.y..chart_area.y + chart_area.height {
                     let mut cell = Cell::new('┊');
                     cell.fg = Some(Color::rgb(152, 195, 121)); // Green
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
                 // Label
                 if x + 1 < chart_area.x + chart_area.width {
                     let mut cell = Cell::new('M');
                     cell.fg = Some(Color::rgb(152, 195, 121));
-                    ctx.buffer.set(x + 1, chart_area.y, cell);
+                    ctx.set(x + 1, chart_area.y, cell);
                 }
             }
         }
@@ -367,7 +367,7 @@ impl Histogram {
                 if x < area.x + y_label_width && y < area.y + area.height {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.y_axis.color);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -385,7 +385,7 @@ impl Histogram {
                 if label_x < area.x + area.width {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.x_axis.color);
-                    ctx.buffer.set(label_x, y, cell);
+                    ctx.set(label_x, y, cell);
                 }
             }
         }
@@ -402,21 +402,24 @@ impl View for Histogram {
             return;
         }
 
+        // Use relative area (0,0 origin) for shared functions that use ctx.set()
+        let rel_area = Rect::new(0, 0, area.width, area.height);
+
         // Fill background using shared function
         if let Some(bg) = self.bg_color {
-            fill_background(ctx, area, bg);
+            fill_background(ctx, rel_area, bg);
         }
 
         // Draw title using shared function
-        let title_offset = render_title(ctx, area, self.title.as_deref(), Color::WHITE);
+        let title_offset = render_title(ctx, rel_area, self.title.as_deref(), Color::WHITE);
 
-        // Calculate chart area
+        // Calculate chart area (relative coordinates)
         let y_label_width = 6u16;
         let x_label_height = 1u16;
 
         let chart_area = Rect {
-            x: area.x + y_label_width,
-            y: area.y + title_offset,
+            x: y_label_width,
+            y: title_offset,
             width: area.width.saturating_sub(y_label_width + 1),
             height: area
                 .height
@@ -430,7 +433,7 @@ impl View for Histogram {
         // Render components
         self.render_bars(ctx, chart_area);
         self.render_stats(ctx, chart_area);
-        self.render_axes(ctx, area);
+        self.render_axes(ctx, rel_area);
     }
 }
 

@@ -251,7 +251,7 @@ impl ScrollView {
             return; // No scrollbar needed
         }
 
-        let scrollbar_x = area.x + area.width - 1;
+        let scrollbar_x = area.width - 1;
 
         // Calculate scrollbar thumb position and size
         let thumb_height = ((viewport_height as f32 / self.content_height as f32)
@@ -274,14 +274,14 @@ impl ScrollView {
         for y in 0..viewport_height {
             let mut cell = Cell::new('│');
             cell.fg = self.scrollbar_bg;
-            ctx.buffer.set(scrollbar_x, area.y + y, cell);
+            ctx.set(scrollbar_x, y, cell);
         }
 
         // Draw scrollbar thumb
         for y in thumb_position..(thumb_position + thumb_height).min(viewport_height) {
             let mut cell = Cell::new('█');
             cell.fg = self.scrollbar_fg;
-            ctx.buffer.set(scrollbar_x, area.y + y, cell);
+            ctx.set(scrollbar_x, y, cell);
         }
     }
 
@@ -317,7 +317,7 @@ impl ScrollView {
 
             for x in 0..area.width {
                 if let Some(cell) = content_buffer.get(x, content_y) {
-                    ctx.buffer.set(area.x + x, area.y + y, *cell);
+                    ctx.set(x, y, *cell);
                 }
             }
         }

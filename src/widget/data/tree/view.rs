@@ -13,7 +13,7 @@ impl Tree {
             return;
         }
 
-        let mut y = area.y;
+        let mut y = 0u16;
         let mut visible_index = 0;
 
         fn render_nodes(
@@ -28,7 +28,7 @@ impl Tree {
             let area = ctx.area;
 
             for (i, node) in nodes.iter().enumerate() {
-                if *y >= area.y + area.height {
+                if *y >= area.height {
                     return;
                 }
 
@@ -43,14 +43,14 @@ impl Tree {
 
                 // Draw background if selected
                 if is_selected {
-                    for x in area.x..area.x + area.width {
+                    for x in 0..area.width {
                         let mut cell = Cell::new(' ');
                         cell.bg = bg;
-                        ctx.buffer.set(x, *y, cell);
+                        ctx.set(x, *y, cell);
                     }
                 }
 
-                let mut x = area.x;
+                let mut x = 0u16;
 
                 // Draw tree lines for depth
                 for (d, &parent_is_last) in is_last_stack.iter().enumerate() {
@@ -59,13 +59,13 @@ impl Tree {
                         let mut cell = Cell::new(ch);
                         cell.fg = fg;
                         cell.bg = bg;
-                        ctx.buffer.set(x, *y, cell);
+                        ctx.set(x, *y, cell);
                         x += 1;
                         // Add spacing
                         for _ in 1..tree.indent {
                             let mut cell = Cell::new(' ');
                             cell.bg = bg;
-                            ctx.buffer.set(x, *y, cell);
+                            ctx.set(x, *y, cell);
                             x += 1;
                         }
                     }
@@ -77,14 +77,14 @@ impl Tree {
                     let mut cell = Cell::new(connector);
                     cell.fg = fg;
                     cell.bg = bg;
-                    ctx.buffer.set(x, *y, cell);
+                    ctx.set(x, *y, cell);
                     x += 1;
 
                     // Draw horizontal line
                     let mut cell = Cell::new('─');
                     cell.fg = fg;
                     cell.bg = bg;
-                    ctx.buffer.set(x, *y, cell);
+                    ctx.set(x, *y, cell);
                     x += 1;
                 }
 
@@ -101,7 +101,7 @@ impl Tree {
                 let mut cell = Cell::new(indicator);
                 cell.fg = fg;
                 cell.bg = bg;
-                ctx.buffer.set(x, *y, cell);
+                ctx.set(x, *y, cell);
                 x += 1;
 
                 // Draw icon if present
@@ -109,12 +109,12 @@ impl Tree {
                     let mut icon_cell = Cell::new(icon_ch);
                     icon_cell.fg = fg;
                     icon_cell.bg = bg;
-                    ctx.buffer.set(x, *y, icon_cell);
+                    ctx.set(x, *y, icon_cell);
                     x += 1;
                 }
 
                 // Draw label with optional highlighting
-                let available_width = (area.x + area.width).saturating_sub(x) as usize;
+                let available_width = area.width.saturating_sub(x) as usize;
                 let truncated: String = node.label.chars().take(available_width).collect();
 
                 // Get match indices for highlighting
@@ -134,7 +134,7 @@ impl Tree {
                         cell.fg = fg;
                     }
 
-                    ctx.buffer.set(x, *y, cell);
+                    ctx.set(x, *y, cell);
                     x += 1;
                 }
 

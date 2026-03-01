@@ -388,7 +388,7 @@ impl View for Popover {
                     if x < area.width && y < area.height {
                         let mut cell = Cell::new(' ');
                         cell.bg = Some(Color::rgb(15, 15, 15));
-                        ctx.buffer.set(x, y, cell);
+                        ctx.set(x, y, cell);
                     }
                 }
             }
@@ -402,7 +402,7 @@ impl View for Popover {
                 if x < area.width && y < area.height {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -420,19 +420,19 @@ impl View for Popover {
                 let mut tl = Cell::new(border.top_left);
                 tl.fg = Some(border_fg);
                 tl.bg = Some(bg);
-                ctx.buffer.set(popup_x, popup_y, tl);
+                ctx.set(popup_x, popup_y, tl);
 
                 for dx in 1..popup_w - 1 {
                     let mut h = Cell::new(border.horizontal);
                     h.fg = Some(border_fg);
                     h.bg = Some(bg);
-                    ctx.buffer.set(popup_x + dx, popup_y, h);
+                    ctx.set(popup_x + dx, popup_y, h);
                 }
 
                 let mut tr = Cell::new(border.top_right);
                 tr.fg = Some(border_fg);
                 tr.bg = Some(bg);
-                ctx.buffer.set(popup_x + popup_w - 1, popup_y, tr);
+                ctx.set(popup_x + popup_w - 1, popup_y, tr);
             }
 
             // Title if present
@@ -446,7 +446,7 @@ impl View for Popover {
                         cell.fg = Some(fg);
                         cell.bg = Some(bg);
                         cell.modifier |= Modifier::BOLD;
-                        ctx.buffer.set(x, title_y, cell);
+                        ctx.set(x, title_y, cell);
                     }
                 }
             }
@@ -458,12 +458,12 @@ impl View for Popover {
                     let mut left = Cell::new(border.vertical);
                     left.fg = Some(border_fg);
                     left.bg = Some(bg);
-                    ctx.buffer.set(popup_x, y, left);
+                    ctx.set(popup_x, y, left);
 
                     let mut right = Cell::new(border.vertical);
                     right.fg = Some(border_fg);
                     right.bg = Some(bg);
-                    ctx.buffer.set(popup_x + popup_w - 1, y, right);
+                    ctx.set(popup_x + popup_w - 1, y, right);
                 }
             }
 
@@ -473,19 +473,19 @@ impl View for Popover {
                 let mut bl = Cell::new(border.bottom_left);
                 bl.fg = Some(border_fg);
                 bl.bg = Some(bg);
-                ctx.buffer.set(popup_x, bottom_y, bl);
+                ctx.set(popup_x, bottom_y, bl);
 
                 for dx in 1..popup_w - 1 {
                     let mut h = Cell::new(border.horizontal);
                     h.fg = Some(border_fg);
                     h.bg = Some(bg);
-                    ctx.buffer.set(popup_x + dx, bottom_y, h);
+                    ctx.set(popup_x + dx, bottom_y, h);
                 }
 
                 let mut br = Cell::new(border.bottom_right);
                 br.fg = Some(border_fg);
                 br.bg = Some(bg);
-                ctx.buffer.set(popup_x + popup_w - 1, bottom_y, br);
+                ctx.set(popup_x + popup_w - 1, bottom_y, br);
             }
         } else {
             content_start_x = popup_x + 1;
@@ -512,7 +512,7 @@ impl View for Popover {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(fg);
                     cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -533,7 +533,7 @@ impl View for Popover {
             if arrow_x < area.width && arrow_y < area.height {
                 let mut cell = Cell::new(arrow_char);
                 cell.fg = Some(border_fg);
-                ctx.buffer.set(arrow_x, arrow_y, cell);
+                ctx.set(arrow_x, arrow_y, cell);
             }
         }
     }

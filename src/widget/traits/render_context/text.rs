@@ -6,26 +6,39 @@ use crate::utils::unicode::{char_width, display_width};
 
 impl RenderContext<'_> {
     /// Helper: Draw text with custom cell styling, handling wide characters correctly.
+    ///
+    /// Coordinates are relative to the area (0,0 = top-left of area).
     pub(super) fn draw_text_with_style<F>(&mut self, x: u16, y: u16, text: &str, mut make_cell: F)
     where
         F: FnMut(char) -> Cell,
     {
+        if y >= self.area.height {
+            return;
+        }
+        let abs_x = self.area.x.saturating_add(x);
+        let abs_y = self.area.y.saturating_add(y);
+        let max_x = self.area.x.saturating_add(self.area.width);
         let mut offset = 0u16;
         for ch in text.chars() {
             let width = char_width(ch) as u16;
             if width == 0 {
                 continue;
             }
-            self.buffer.set(x.saturating_add(offset), y, make_cell(ch));
+            let cx = abs_x.saturating_add(offset);
+            if cx.saturating_add(width) > max_x {
+                break;
+            }
+            self.buffer.set(cx, abs_y, make_cell(ch));
             for i in 1..width {
-                self.buffer
-                    .set(x.saturating_add(offset + i), y, Cell::continuation());
+                self.buffer.set(cx + i, abs_y, Cell::continuation());
             }
             offset = offset.saturating_add(width);
         }
     }
 
     /// Helper: Draw text clipped to max_width, handling wide characters correctly.
+    ///
+    /// Coordinates are relative to the area (0,0 = top-left of area).
     pub(super) fn draw_text_clipped_with_style<F>(
         &mut self,
         x: u16,
@@ -36,6 +49,12 @@ impl RenderContext<'_> {
     ) where
         F: FnMut(char) -> Cell,
     {
+        if y >= self.area.height {
+            return;
+        }
+        let abs_x = self.area.x.saturating_add(x);
+        let abs_y = self.area.y.saturating_add(y);
+        let max_x = self.area.x.saturating_add(self.area.width);
         let mut offset = 0u16;
         for ch in text.chars() {
             let width = char_width(ch) as u16;
@@ -45,34 +64,55 @@ impl RenderContext<'_> {
             if offset.saturating_add(width) > max_width {
                 break;
             }
-            self.buffer.set(x.saturating_add(offset), y, make_cell(ch));
+            let cx = abs_x.saturating_add(offset);
+            if cx.saturating_add(width) > max_x {
+                break;
+            }
+            self.buffer.set(cx, abs_y, make_cell(ch));
             for i in 1..width {
-                self.buffer
-                    .set(x.saturating_add(offset + i), y, Cell::continuation());
+                self.buffer.set(cx + i, abs_y, Cell::continuation());
             }
             offset = offset.saturating_add(width);
         }
     }
 
-    /// Draw a single character at position
+    /// Draw a single character at relative position (0,0 = area top-left)
     #[inline]
     pub fn draw_char(&mut self, x: u16, y: u16, ch: char, fg: Color) {
-        let cell = Cell::new(ch).fg(fg);
-        self.buffer.set(x, y, cell);
+        if x < self.area.width && y < self.area.height {
+            let cell = Cell::new(ch).fg(fg);
+            self.buffer.set(
+                self.area.x.saturating_add(x),
+                self.area.y.saturating_add(y),
+                cell,
+            );
+        }
     }
 
-    /// Draw a character with background color
+    /// Draw a character with background color at relative position
     #[inline]
     pub fn draw_char_bg(&mut self, x: u16, y: u16, ch: char, fg: Color, bg: Color) {
-        let cell = Cell::new(ch).fg(fg).bg(bg);
-        self.buffer.set(x, y, cell);
+        if x < self.area.width && y < self.area.height {
+            let cell = Cell::new(ch).fg(fg).bg(bg);
+            self.buffer.set(
+                self.area.x.saturating_add(x),
+                self.area.y.saturating_add(y),
+                cell,
+            );
+        }
     }
 
-    /// Draw a bold character
+    /// Draw a bold character at relative position
     #[inline]
     pub fn draw_char_bold(&mut self, x: u16, y: u16, ch: char, fg: Color) {
-        let cell = Cell::new(ch).fg(fg).bold();
-        self.buffer.set(x, y, cell);
+        if x < self.area.width && y < self.area.height {
+            let cell = Cell::new(ch).fg(fg).bold();
+            self.buffer.set(
+                self.area.x.saturating_add(x),
+                self.area.y.saturating_add(y),
+                cell,
+            );
+        }
     }
 
     /// Draw text at position

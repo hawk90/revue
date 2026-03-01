@@ -25,20 +25,20 @@ impl View for MultiSelect {
             let mut cell = Cell::new(' ');
             cell.fg = Some(fg);
             cell.bg = Some(bg);
-            ctx.buffer.set(area.x + x, area.y, cell);
+            ctx.set(x, 0, cell);
         }
 
         // Draw arrow
         let arrow = if self.open { '▲' } else { '▼' };
-        ctx.draw_char(area.x + width - 1, area.y, arrow, fg);
+        ctx.draw_char(width - 1, 0, arrow, fg);
 
         // Draw tags or placeholder
-        let mut x = area.x;
-        let max_x = area.x + width - 2; // Leave room for arrow
+        let mut x: u16 = 0;
+        let max_x = width - 2; // Leave room for arrow
 
         if self.selected.is_empty() && !self.open {
             // Draw placeholder
-            ctx.draw_text(x, area.y, &self.placeholder, Color::rgb(128, 128, 128));
+            ctx.draw_text(x, 0, &self.placeholder, Color::rgb(128, 128, 128));
         } else {
             // Draw tags
             for (i, &opt_idx) in self.selected.iter().enumerate() {
@@ -52,7 +52,7 @@ impl View for MultiSelect {
 
                     if x + tag_len > max_x {
                         // Draw overflow indicator
-                        ctx.draw_text(x, area.y, "...", Color::rgb(150, 150, 150));
+                        ctx.draw_text(x, 0, "...", Color::rgb(150, 150, 150));
                         break;
                     }
 
@@ -69,18 +69,18 @@ impl View for MultiSelect {
                     };
 
                     // Draw tag with brackets
-                    ctx.draw_char_bg(x, area.y, '[', tag_fg, tag_bg_color);
+                    ctx.draw_char_bg(x, 0, '[', tag_fg, tag_bg_color);
                     x += 1;
 
                     for ch in label.chars() {
                         if x >= max_x - 1 {
                             break;
                         }
-                        ctx.draw_char_bg(x, area.y, ch, tag_fg, tag_bg_color);
+                        ctx.draw_char_bg(x, 0, ch, tag_fg, tag_bg_color);
                         x += 1;
                     }
 
-                    ctx.draw_char_bg(x, area.y, ']', tag_fg, tag_bg_color);
+                    ctx.draw_char_bg(x, 0, ']', tag_fg, tag_bg_color);
                     x += 1;
 
                     // Space between tags
@@ -93,7 +93,7 @@ impl View for MultiSelect {
             // Draw search query if open
             if self.open && self.searchable && !self.query.is_empty() {
                 let query_display = format!(" {}", self.query);
-                ctx.draw_text(x.min(max_x), area.y, &query_display, Color::CYAN);
+                ctx.draw_text(x.min(max_x), 0, &query_display, Color::CYAN);
             }
         }
 
@@ -102,7 +102,7 @@ impl View for MultiSelect {
             let max_visible = (area.height - 1) as usize;
 
             for (row, &opt_idx) in self.filtered.iter().enumerate().take(max_visible) {
-                let y = area.y + 1 + row as u16;
+                let y = 1 + row as u16;
                 let is_cursor = row == self.dropdown_cursor;
                 let is_selected = self.is_selected(opt_idx);
 
@@ -118,12 +118,12 @@ impl View for MultiSelect {
                         let mut cell = Cell::new(' ');
                         cell.fg = Some(row_fg);
                         cell.bg = Some(row_bg);
-                        ctx.buffer.set(area.x + dx, y, cell);
+                        ctx.set(dx, y, cell);
                     }
 
                     // Draw checkbox
                     let checkbox_str = if is_selected { "[x]" } else { "[ ]" };
-                    ctx.draw_text_bg(area.x, y, checkbox_str, row_fg, row_bg);
+                    ctx.draw_text_bg(0, y, checkbox_str, row_fg, row_bg);
 
                     // Draw label with highlight
                     let match_indices: Vec<usize> = self
@@ -131,9 +131,9 @@ impl View for MultiSelect {
                         .map(|m| m.indices)
                         .unwrap_or_default();
 
-                    let label_x = area.x + 4;
+                    let label_x: u16 = 4;
                     for (j, ch) in opt.label.chars().enumerate() {
-                        if label_x + j as u16 >= area.x + width {
+                        if label_x + j as u16 >= width {
                             break;
                         }
 

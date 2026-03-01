@@ -373,7 +373,7 @@ impl Presentation {
             for x in 0..area.width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg);
-                ctx.buffer.set(area.x + x, area.y + y, cell);
+                ctx.set(x, y, cell);
             }
         }
 
@@ -394,15 +394,14 @@ impl Presentation {
         for i in 0..sep_len {
             let mut cell = Cell::new('─');
             cell.fg = Some(self.accent);
-            ctx.buffer
-                .set(area.x + sep_start as u16 + i as u16, area.y + sep_y, cell);
+            ctx.set(sep_start as u16 + i as u16, sep_y, cell);
         }
 
         // Content
         let content_start_y = 6;
         for (i, line) in slide.content.iter().enumerate() {
-            let y = area.y + content_start_y + i as u16;
-            if y >= area.y + area.height - 3 {
+            let y = content_start_y + i as u16;
+            if y >= area.height - 3 {
                 break;
             }
 
@@ -414,17 +413,11 @@ impl Presentation {
                         }
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(slide.content_color);
-                        ctx.buffer.set(area.x + 2 + j as u16, y, cell);
+                        ctx.set(2 + j as u16, y, cell);
                     }
                 }
                 SlideAlign::Center => {
-                    self.render_centered_text(
-                        ctx,
-                        line,
-                        y - area.y,
-                        slide.content_color,
-                        Modifier::empty(),
-                    );
+                    self.render_centered_text(ctx, line, y, slide.content_color, Modifier::empty());
                 }
                 SlideAlign::Right => {
                     let line_len = line.chars().count();
@@ -432,7 +425,7 @@ impl Presentation {
                     for (j, ch) in line.chars().enumerate() {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(slide.content_color);
-                        ctx.buffer.set(area.x + start_x + j as u16, y, cell);
+                        ctx.set(start_x + j as u16, y, cell);
                     }
                 }
             }
@@ -453,30 +446,30 @@ impl Presentation {
         let start_x = (area.width as usize).saturating_sub(text_len) / 2;
 
         for (i, ch) in text.chars().enumerate() {
-            let x = area.x + start_x as u16 + i as u16;
-            if x >= area.x + area.width {
+            let x = start_x as u16 + i as u16;
+            if x >= area.width {
                 break;
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
             cell.modifier = modifier;
-            ctx.buffer.set(x, area.y + y, cell);
+            ctx.set(x, y, cell);
         }
     }
 
     /// Render footer (slide numbers, progress)
     fn render_footer(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let footer_y = area.y + area.height - 1;
+        let footer_y = area.height - 1;
 
         // Slide numbers
         if self.show_numbers && !self.slides.is_empty() {
             let num_str = format!("{}/{}", self.current + 1, self.slides.len());
-            let start_x = area.x + area.width - num_str.len() as u16 - 1;
+            let start_x = area.width - num_str.len() as u16 - 1;
             for (i, ch) in num_str.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::rgb(100, 100, 100));
-                ctx.buffer.set(start_x + i as u16, footer_y, cell);
+                ctx.set(start_x + i as u16, footer_y, cell);
             }
         }
 
@@ -494,7 +487,7 @@ impl Presentation {
                 } else {
                     Color::rgb(60, 60, 60)
                 });
-                ctx.buffer.set(area.x + 1 + i, footer_y, cell);
+                ctx.set(1 + i, footer_y, cell);
             }
         }
     }
@@ -517,7 +510,7 @@ impl View for Presentation {
             for x in 0..area.width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(self.bg);
-                ctx.buffer.set(area.x + x, area.y + y, cell);
+                ctx.set(x, y, cell);
             }
         }
 

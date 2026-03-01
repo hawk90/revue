@@ -218,20 +218,20 @@ impl View for MenuBar {
         }
 
         // Draw menu bar background
-        for x in area.x..area.x + area.width {
+        for x in 0..area.width {
             let mut cell = Cell::new(' ');
             cell.bg = Some(self.bg);
-            ctx.buffer.set(x, area.y, cell);
+            ctx.set(x, 0, cell);
         }
 
         // Draw menu titles
-        let mut x = area.x;
+        let mut x: u16 = 0;
         for (i, menu) in self.menus.iter().enumerate() {
             let is_selected = i == self.selected_menu;
             let title = format!(" {} ", menu.title);
 
             for ch in title.chars() {
-                if x >= area.x + area.width {
+                if x >= area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -242,7 +242,7 @@ impl View for MenuBar {
                     cell.bg = Some(self.bg);
                     cell.fg = Some(self.fg);
                 }
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
                 x += 1;
             }
         }
@@ -250,7 +250,7 @@ impl View for MenuBar {
         // Draw dropdown if open
         if self.open {
             if let Some(menu) = self.menus.get(self.selected_menu) {
-                self.render_dropdown(ctx, menu, area.y + 1);
+                self.render_dropdown(ctx, menu, 1);
             }
         }
     }
@@ -258,12 +258,12 @@ impl View for MenuBar {
 
 impl MenuBar {
     fn render_dropdown(&self, ctx: &mut RenderContext, menu: &Menu, y: u16) {
-        if menu.items.is_empty() || y >= ctx.area.y + ctx.area.height {
+        if menu.items.is_empty() || y >= ctx.area.height {
             return;
         }
 
-        // Calculate dropdown position
-        let mut menu_x = ctx.area.x;
+        // Calculate dropdown position (relative)
+        let mut menu_x: u16 = 0;
         for (i, m) in self.menus.iter().enumerate() {
             if i == self.selected_menu {
                 break;
@@ -291,7 +291,7 @@ impl MenuBar {
             for dx in 0..dropdown_width {
                 let px = menu_x + dx;
                 let py = y + dy;
-                if px >= ctx.area.x + ctx.area.width || py >= ctx.area.y + ctx.area.height {
+                if px >= ctx.area.width || py >= ctx.area.height {
                     continue;
                 }
 
@@ -314,7 +314,7 @@ impl MenuBar {
                 let mut cell = Cell::new(ch);
                 cell.bg = Some(self.bg);
                 cell.fg = Some(self.fg);
-                ctx.buffer.set(px, py, cell);
+                ctx.set(px, py, cell);
             }
         }
 
@@ -333,18 +333,18 @@ impl MenuBar {
                     let mut cell = Cell::new('─');
                     cell.fg = Some(self.disabled_fg);
                     cell.bg = Some(self.bg);
-                    ctx.buffer.set(menu_x + dx, item_y, cell);
+                    ctx.set(menu_x + dx, item_y, cell);
                 }
                 // Fix corners
                 let mut left = Cell::new('├');
                 left.fg = Some(self.fg);
                 left.bg = Some(self.bg);
-                ctx.buffer.set(menu_x, item_y, left);
+                ctx.set(menu_x, item_y, left);
 
                 let mut right = Cell::new('┤');
                 right.fg = Some(self.fg);
                 right.bg = Some(self.bg);
-                ctx.buffer.set(menu_x + dropdown_width - 1, item_y, right);
+                ctx.set(menu_x + dropdown_width - 1, item_y, right);
             } else {
                 // Draw item
                 let bg = if is_selected {
@@ -364,7 +364,7 @@ impl MenuBar {
                 for dx in 1..dropdown_width - 1 {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg);
-                    ctx.buffer.set(menu_x + dx, item_y, cell);
+                    ctx.set(menu_x + dx, item_y, cell);
                 }
 
                 // Draw checkbox if present
@@ -374,7 +374,7 @@ impl MenuBar {
                     let mut cell = Cell::new(check_ch);
                     cell.fg = Some(fg);
                     cell.bg = Some(bg);
-                    ctx.buffer.set(text_x, item_y, cell);
+                    ctx.set(text_x, item_y, cell);
                     text_x += 2;
                 }
 
@@ -386,7 +386,7 @@ impl MenuBar {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(fg);
                     cell.bg = Some(bg);
-                    ctx.buffer.set(text_x, item_y, cell);
+                    ctx.set(text_x, item_y, cell);
                     text_x += 1;
                 }
 
@@ -397,7 +397,7 @@ impl MenuBar {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.shortcut_fg);
                         cell.bg = Some(bg);
-                        ctx.buffer.set(shortcut_x + j as u16, item_y, cell);
+                        ctx.set(shortcut_x + j as u16, item_y, cell);
                     }
                 }
 
@@ -406,7 +406,7 @@ impl MenuBar {
                     let mut cell = Cell::new('▶');
                     cell.fg = Some(fg);
                     cell.bg = Some(bg);
-                    ctx.buffer.set(menu_x + dropdown_width - 2, item_y, cell);
+                    ctx.set(menu_x + dropdown_width - 2, item_y, cell);
                 }
             }
         }

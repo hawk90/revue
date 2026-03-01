@@ -4,6 +4,7 @@
 
 use super::chart_common::{ColorScheme, Legend, LegendPosition};
 use super::chart_render::{fill_background, render_legend, render_title, LegendItem};
+use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
@@ -243,6 +244,8 @@ impl PieChart {
             return;
         }
 
+        let area = ctx.area;
+
         // Aspect ratio correction for terminal characters (typically 2:1)
         let aspect_ratio = 2.0;
 
@@ -304,10 +307,10 @@ impl PieChart {
                         let screen_y =
                             (center_y as i16 + offset_y + (y as i16 - radius as i16) / 2) as u16;
 
-                        if screen_x < ctx.buffer.width() && screen_y < ctx.buffer.height() {
+                        if screen_x < area.width && screen_y < area.height {
                             let mut cell = Cell::new('█');
                             cell.fg = Some(color);
-                            ctx.buffer.set(screen_x, screen_y, cell);
+                            ctx.set(screen_x, screen_y, cell);
                         }
                     }
                 }
@@ -323,6 +326,7 @@ impl PieChart {
             return;
         }
 
+        let area = ctx.area;
         let total = self.total();
         if total == 0.0 {
             return;
@@ -362,10 +366,10 @@ impl PieChart {
             for (i, ch) in label_text.chars().enumerate() {
                 let x = start_x + i as u16;
                 let y = label_y as u16;
-                if x < ctx.buffer.width() && y < ctx.buffer.height() {
+                if x < area.width && y < area.height {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::WHITE);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
 
@@ -384,21 +388,24 @@ impl View for PieChart {
             return;
         }
 
+        // Use relative area (0,0 origin) for shared functions that use ctx.set()
+        let rel_area = Rect::new(0, 0, area.width, area.height);
+
         // Fill background if set
         if let Some(bg) = self.bg_color {
-            fill_background(ctx, area, bg);
+            fill_background(ctx, rel_area, bg);
         }
 
         // Draw title using shared function
-        let title_offset = render_title(ctx, area, self.title.as_deref(), Color::WHITE);
+        let title_offset = render_title(ctx, rel_area, self.title.as_deref(), Color::WHITE);
 
-        // Calculate pie center and radius
+        // Calculate pie center and radius (relative coordinates)
         let chart_area_height = area.height.saturating_sub(title_offset);
         let radius = (chart_area_height.min(area.width / 2))
             .saturating_sub(2)
             .max(1);
-        let center_x = area.x + area.width / 2;
-        let center_y = area.y + title_offset + chart_area_height / 2;
+        let center_x = area.width / 2;
+        let center_y = title_offset + chart_area_height / 2;
 
         // Render pie
         self.render_pie(ctx, center_x, center_y, radius);
@@ -416,7 +423,7 @@ impl View for PieChart {
                 color: self.slice_color(i),
             })
             .collect();
-        render_legend(ctx, area, &self.legend, &legend_items);
+        render_legend(ctx, rel_area, &self.legend, &legend_items);
     }
 }
 

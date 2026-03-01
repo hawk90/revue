@@ -201,7 +201,7 @@ impl Switch {
         // Opening bracket
         let mut open = Cell::new('[');
         open.fg = Some(if self.focused { Color::CYAN } else { color });
-        ctx.buffer.set(x, y, open);
+        ctx.set(x, y, open);
 
         // Track
         for i in 0..track_len {
@@ -210,13 +210,13 @@ impl Switch {
             let ch = if is_knob { '●' } else { '━' };
             let mut cell = Cell::new(ch);
             cell.fg = Some(if is_knob { color } else { self.track_color });
-            ctx.buffer.set(x + 1 + i, y, cell);
+            ctx.set(x + 1 + i, y, cell);
         }
 
         // Closing bracket
         let mut close = Cell::new(']');
         close.fg = Some(if self.focused { Color::CYAN } else { color });
-        ctx.buffer.set(x + self.width - 1, y, close);
+        ctx.set(x + self.width - 1, y, close);
     }
 
     /// Render iOS style
@@ -236,7 +236,7 @@ impl Switch {
         // Opening paren
         let mut open = Cell::new('(');
         open.fg = Some(color);
-        ctx.buffer.set(x, y, open);
+        ctx.set(x, y, open);
 
         // Track with knob
         for i in 0..track_len {
@@ -246,13 +246,13 @@ impl Switch {
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::WHITE);
             cell.bg = Some(bg);
-            ctx.buffer.set(x + 1 + i, y, cell);
+            ctx.set(x + 1 + i, y, cell);
         }
 
         // Closing paren
         let mut close = Cell::new(')');
         close.fg = Some(color);
-        ctx.buffer.set(x + self.width - 1, y, close);
+        ctx.set(x + self.width - 1, y, close);
     }
 
     /// Render Material style
@@ -286,7 +286,7 @@ impl Switch {
 
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
-            ctx.buffer.set(x + i, y, cell);
+            ctx.set(x + i, y, cell);
         }
     }
 
@@ -304,7 +304,7 @@ impl Switch {
         } else {
             Color::WHITE
         });
-        ctx.buffer.set(x, y, open);
+        ctx.set(x, y, open);
 
         for (i, ch) in text.chars().enumerate() {
             let mut cell = Cell::new(ch);
@@ -312,7 +312,7 @@ impl Switch {
             if self.on {
                 cell.modifier |= Modifier::BOLD;
             }
-            ctx.buffer.set(x + 1 + i as u16, y, cell);
+            ctx.set(x + 1 + i as u16, y, cell);
         }
 
         let mut close = Cell::new(']');
@@ -321,14 +321,14 @@ impl Switch {
         } else {
             Color::WHITE
         });
-        ctx.buffer.set(x + 1 + text.len() as u16, y, close);
+        ctx.set(x + 1 + text.len() as u16, y, close);
     }
 
     /// Render emoji style
     fn render_emoji(&self, ctx: &mut RenderContext, x: u16, y: u16) {
         let ch = if self.on { '✅' } else { '❌' };
         let cell = Cell::new(ch);
-        ctx.buffer.set(x, y, cell);
+        ctx.set(x, y, cell);
     }
 
     /// Render block style
@@ -347,7 +347,7 @@ impl Switch {
 
             let mut cell = Cell::new(ch);
             cell.fg = Some(color);
-            ctx.buffer.set(x + i, y, cell);
+            ctx.set(x + i, y, cell);
         }
     }
 }
@@ -365,14 +365,14 @@ impl View for Switch {
             return;
         }
 
-        let mut x = area.x;
-        let y = area.y;
+        let mut x: u16 = 0;
+        let y: u16 = 0;
 
         // Render label if on left
         if self.label_left {
             if let Some(ref label) = self.label {
                 for (i, ch) in label.chars().enumerate() {
-                    if x + i as u16 >= area.x + area.width {
+                    if x + i as u16 >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
@@ -381,14 +381,14 @@ impl View for Switch {
                     } else {
                         Color::WHITE
                     });
-                    ctx.buffer.set(x + i as u16, y, cell);
+                    ctx.set(x + i as u16, y, cell);
                 }
                 x += label.len() as u16 + 1;
             }
         }
 
         // Render switch
-        if x < area.x + area.width {
+        if x < area.width {
             match self.style {
                 SwitchStyle::Default => self.render_default(ctx, x, y),
                 SwitchStyle::IOS => self.render_ios(ctx, x, y),
@@ -417,7 +417,7 @@ impl View for Switch {
             if let Some(ref label) = self.label {
                 x += 1;
                 for (i, ch) in label.chars().enumerate() {
-                    if x + i as u16 >= area.x + area.width {
+                    if x + i as u16 >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
@@ -426,25 +426,29 @@ impl View for Switch {
                     } else {
                         Color::WHITE
                     });
-                    ctx.buffer.set(x + i as u16, y, cell);
+                    ctx.set(x + i as u16, y, cell);
                 }
             }
         }
 
         // Render focus indicator
         if self.focused && !self.disabled {
-            // Find switch start position
+            // Find switch start position (relative)
             let switch_x = if self.label_left {
-                area.x + self.label.as_ref().map(|l| l.len() as u16 + 1).unwrap_or(0)
+                self.label.as_ref().map(|l| l.len() as u16 + 1).unwrap_or(0)
             } else {
-                area.x
+                0u16
             };
 
             // Draw focus bracket on left
             if switch_x > 0 {
                 let mut left = Cell::new('[');
                 left.fg = Some(Color::CYAN);
-                ctx.buffer.set(switch_x.saturating_sub(1), y, left);
+                ctx.set(switch_x.saturating_sub(1), y, left);
+            } else if area.x > 0 {
+                let mut left = Cell::new('[');
+                left.fg = Some(Color::CYAN);
+                ctx.buffer.set(area.x.saturating_sub(1), area.y, left);
             }
 
             // Draw focus bracket on right
@@ -461,10 +465,10 @@ impl View for Switch {
                 _ => self.width,
             };
             let right_x = switch_x + switch_width;
-            if right_x < area.x + area.width {
+            if right_x < area.width {
                 let mut right = Cell::new(']');
                 right.fg = Some(Color::CYAN);
-                ctx.buffer.set(right_x, y, right);
+                ctx.set(right_x, y, right);
             }
         }
     }

@@ -262,63 +262,55 @@ impl View for Toast {
             let mut top_left = Cell::new('╭');
             top_left.fg = Some(color);
             top_left.bg = Some(bg);
-            ctx.buffer.set(area.x + x, area.y + y, top_left);
+            ctx.set(x, y, top_left);
 
             for i in 1..toast_width.saturating_sub(1) {
                 let mut cell = Cell::new('─');
                 cell.fg = Some(color);
                 cell.bg = Some(bg);
-                ctx.buffer.set(area.x + x + i, area.y + y, cell);
+                ctx.set(x + i, y, cell);
             }
 
             let mut top_right = Cell::new('╮');
             top_right.fg = Some(color);
             top_right.bg = Some(bg);
-            ctx.buffer
-                .set(area.x + x + toast_width - 1, area.y + y, top_right);
+            ctx.set(x + toast_width - 1, y, top_right);
 
             // Bottom border
             let mut bottom_left = Cell::new('╰');
             bottom_left.fg = Some(color);
             bottom_left.bg = Some(bg);
-            ctx.buffer
-                .set(area.x + x, area.y + y + toast_height - 1, bottom_left);
+            ctx.set(x, y + toast_height - 1, bottom_left);
 
             for i in 1..toast_width.saturating_sub(1) {
                 let mut cell = Cell::new('─');
                 cell.fg = Some(color);
                 cell.bg = Some(bg);
-                ctx.buffer
-                    .set(area.x + x + i, area.y + y + toast_height - 1, cell);
+                ctx.set(x + i, y + toast_height - 1, cell);
             }
 
             let mut bottom_right = Cell::new('╯');
             bottom_right.fg = Some(color);
             bottom_right.bg = Some(bg);
-            ctx.buffer.set(
-                area.x + x + toast_width - 1,
-                area.y + y + toast_height - 1,
-                bottom_right,
-            );
+            ctx.set(x + toast_width - 1, y + toast_height - 1, bottom_right);
 
             // Side borders
             for row in 1..toast_height.saturating_sub(1) {
                 let mut left = Cell::new('│');
                 left.fg = Some(color);
                 left.bg = Some(bg);
-                ctx.buffer.set(area.x + x, area.y + y + row, left);
+                ctx.set(x, y + row, left);
 
                 let mut right = Cell::new('│');
                 right.fg = Some(color);
                 right.bg = Some(bg);
-                ctx.buffer
-                    .set(area.x + x + toast_width - 1, area.y + y + row, right);
+                ctx.set(x + toast_width - 1, y + row, right);
 
                 // Fill background
                 for col in 1..toast_width.saturating_sub(1) {
                     let mut fill = Cell::new(' ');
                     fill.bg = Some(bg);
-                    ctx.buffer.set(area.x + x + col, area.y + y + row, fill);
+                    ctx.set(x + col, y + row, fill);
                 }
             }
         }
@@ -332,8 +324,7 @@ impl View for Toast {
             let mut icon_cell = Cell::new(self.level.icon());
             icon_cell.fg = Some(color);
             icon_cell.bg = Some(bg);
-            ctx.buffer
-                .set(area.x + content_x, area.y + content_y, icon_cell);
+            ctx.set(content_x, content_y, icon_cell);
         }
 
         // Draw message (clipped to available width, wide-char safe)
@@ -342,8 +333,8 @@ impl View for Toast {
             .saturating_sub(if self.show_border { 1 } else { 0 })
             .saturating_sub(msg_x - x);
         ctx.draw_text_clipped(
-            area.x + msg_x,
-            area.y + content_y,
+            msg_x,
+            content_y,
             &self.message,
             Color::WHITE,
             max_text_width,

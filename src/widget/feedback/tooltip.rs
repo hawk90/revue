@@ -496,7 +496,7 @@ impl View for Tooltip {
                 if x < area.width && y < area.height {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -514,19 +514,19 @@ impl View for Tooltip {
                 let mut tl = Cell::new(border.top_left);
                 tl.fg = Some(fg);
                 tl.bg = Some(bg);
-                ctx.buffer.set(tooltip_x, tooltip_y, tl);
+                ctx.set(tooltip_x, tooltip_y, tl);
 
                 for dx in 1..tooltip_w - 1 {
                     let mut h = Cell::new(border.horizontal);
                     h.fg = Some(fg);
                     h.bg = Some(bg);
-                    ctx.buffer.set(tooltip_x + dx, tooltip_y, h);
+                    ctx.set(tooltip_x + dx, tooltip_y, h);
                 }
 
                 let mut tr = Cell::new(border.top_right);
                 tr.fg = Some(fg);
                 tr.bg = Some(bg);
-                ctx.buffer.set(tooltip_x + tooltip_w - 1, tooltip_y, tr);
+                ctx.set(tooltip_x + tooltip_w - 1, tooltip_y, tr);
             }
 
             // Title if present
@@ -540,7 +540,7 @@ impl View for Tooltip {
                         cell.fg = Some(fg);
                         cell.bg = Some(bg);
                         cell.modifier |= Modifier::BOLD;
-                        ctx.buffer.set(x, title_y, cell);
+                        ctx.set(x, title_y, cell);
                     }
                 }
             }
@@ -557,12 +557,12 @@ impl View for Tooltip {
                     let mut left = Cell::new(border.vertical);
                     left.fg = Some(fg);
                     left.bg = Some(bg);
-                    ctx.buffer.set(tooltip_x, y, left);
+                    ctx.set(tooltip_x, y, left);
 
                     let mut right = Cell::new(border.vertical);
                     right.fg = Some(fg);
                     right.bg = Some(bg);
-                    ctx.buffer.set(tooltip_x + tooltip_w - 1, y, right);
+                    ctx.set(tooltip_x + tooltip_w - 1, y, right);
                 }
             }
 
@@ -572,19 +572,19 @@ impl View for Tooltip {
                 let mut bl = Cell::new(border.bottom_left);
                 bl.fg = Some(fg);
                 bl.bg = Some(bg);
-                ctx.buffer.set(tooltip_x, bottom_y, bl);
+                ctx.set(tooltip_x, bottom_y, bl);
 
                 for dx in 1..tooltip_w - 1 {
                     let mut h = Cell::new(border.horizontal);
                     h.fg = Some(fg);
                     h.bg = Some(bg);
-                    ctx.buffer.set(tooltip_x + dx, bottom_y, h);
+                    ctx.set(tooltip_x + dx, bottom_y, h);
                 }
 
                 let mut br = Cell::new(border.bottom_right);
                 br.fg = Some(fg);
                 br.bg = Some(bg);
-                ctx.buffer.set(tooltip_x + tooltip_w - 1, bottom_y, br);
+                ctx.set(tooltip_x + tooltip_w - 1, bottom_y, br);
             }
         } else {
             content_start_x = tooltip_x + 1;
@@ -611,7 +611,7 @@ impl View for Tooltip {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(fg);
                     cell.bg = Some(bg);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -632,7 +632,7 @@ impl View for Tooltip {
             if arrow_x < area.width && arrow_y < area.height {
                 let mut cell = Cell::new(arrow_char);
                 cell.fg = Some(fg);
-                ctx.buffer.set(arrow_x, arrow_y, cell);
+                ctx.set(arrow_x, arrow_y, cell);
             }
         }
     }

@@ -135,7 +135,7 @@ impl View for Checkbox {
         let (checked_char, unchecked_char) = self.style.chars();
         let brackets = self.style.brackets();
 
-        let mut x = area.x;
+        let mut x: u16 = 0;
 
         // Resolve colors with CSS cascade: disabled > widget override > CSS > default
         let label_fg = self.state.resolve_fg(ctx.style, Color::WHITE);
@@ -152,11 +152,11 @@ impl View for Checkbox {
         if self.state.focused && !self.state.disabled {
             let mut cell = Cell::new('>');
             cell.fg = Some(Color::CYAN);
-            ctx.buffer.set(x, area.y, cell);
+            ctx.set(x, 0, cell);
             x += 1;
 
             let space = Cell::new(' ');
-            ctx.buffer.set(x, area.y, space);
+            ctx.set(x, 0, space);
             x += 1;
         }
 
@@ -165,7 +165,7 @@ impl View for Checkbox {
             // Square style: [x] or [ ]
             let mut left_cell = Cell::new(left);
             left_cell.fg = Some(label_fg);
-            ctx.buffer.set(x, area.y, left_cell);
+            ctx.set(x, 0, left_cell);
             x += 1;
 
             let check_char = if self.checked {
@@ -175,12 +175,12 @@ impl View for Checkbox {
             };
             let mut check_cell = Cell::new(check_char);
             check_cell.fg = Some(check_fg);
-            ctx.buffer.set(x, area.y, check_cell);
+            ctx.set(x, 0, check_cell);
             x += 1;
 
             let mut right_cell = Cell::new(right);
             right_cell.fg = Some(label_fg);
-            ctx.buffer.set(x, area.y, right_cell);
+            ctx.set(x, 0, right_cell);
             x += 1;
         } else {
             // Unicode style: ☑ or ☐
@@ -191,17 +191,17 @@ impl View for Checkbox {
             };
             let mut check_cell = Cell::new(check_char);
             check_cell.fg = Some(check_fg);
-            ctx.buffer.set(x, area.y, check_cell);
+            ctx.set(x, 0, check_cell);
             x += 1;
         }
 
         // Space before label
-        ctx.buffer.set(x, area.y, Cell::new(' '));
+        ctx.set(x, 0, Cell::new(' '));
         x += 1;
 
         // Render label
         for ch in self.label.chars() {
-            if x >= area.x + area.width {
+            if x >= area.width {
                 break;
             }
             let mut cell = Cell::new(ch);
@@ -209,7 +209,7 @@ impl View for Checkbox {
             if self.state.focused && !self.state.disabled {
                 cell.modifier = crate::render::Modifier::BOLD;
             }
-            ctx.buffer.set(x, area.y, cell);
+            ctx.set(x, 0, cell);
             x += 1;
         }
     }

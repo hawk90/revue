@@ -46,7 +46,7 @@ pub fn render_csv_viewer(
     }
 
     let row_num_width = row_number_width(show_row_numbers, sorted_indices.len());
-    let content_start_x = area.x + row_num_width;
+    let content_start_x = row_num_width;
     let _content_width = area.width.saturating_sub(row_num_width);
 
     // Calculate visible rows
@@ -61,18 +61,18 @@ pub fn render_csv_viewer(
         scroll_row = selected_row.saturating_sub(visible_data_rows - 1);
     }
 
-    let mut y = area.y;
+    let mut y = 0u16;
 
     // Render header if present
     if has_header {
         if let Some(header_row) = data.first() {
             // Row number column header
             if show_row_numbers {
-                for x in area.x..content_start_x {
+                for x in 0..content_start_x {
                     let mut cell = Cell::new(' ');
                     cell.fg = header_fg;
                     cell.bg = header_bg;
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
 
@@ -98,34 +98,34 @@ pub fn render_csv_viewer(
                     .collect();
 
                 for (i, ch) in display.chars().enumerate() {
-                    if x + i as u16 >= area.x + area.width {
+                    if x + i as u16 >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch).bold();
                     cell.fg = header_fg;
                     cell.bg = header_bg;
-                    ctx.buffer.set(x + i as u16, y, cell);
+                    ctx.set(x + i as u16, y, cell);
                 }
 
                 // Fill remaining width
                 for i in display.chars().count()..width {
-                    if x + i as u16 >= area.x + area.width {
+                    if x + i as u16 >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(' ');
                     cell.fg = header_fg;
                     cell.bg = header_bg;
-                    ctx.buffer.set(x + i as u16, y, cell);
+                    ctx.set(x + i as u16, y, cell);
                 }
 
                 x += width as u16;
 
                 // Separator
-                if show_separators && x < area.x + area.width {
+                if show_separators && x < area.width {
                     let mut cell = Cell::new('│');
                     cell.fg = separator_fg;
                     cell.bg = header_bg;
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                     x += 1;
                 }
             }
@@ -140,7 +140,7 @@ pub fn render_csv_viewer(
         .skip(scroll_row)
         .take(visible_data_rows)
     {
-        if y >= area.y + area.height {
+        if y >= area.height {
             break;
         }
 
@@ -158,7 +158,7 @@ pub fn render_csv_viewer(
                 let mut cell = Cell::new(ch);
                 cell.fg = row_number_fg;
                 cell.bg = if is_selected_row { selected_bg } else { bg };
-                ctx.buffer.set(area.x + i as u16, y, cell);
+                ctx.set(i as u16, y, cell);
             }
         }
 
@@ -181,34 +181,34 @@ pub fn render_csv_viewer(
                 let display: String = cell_value.chars().take(width).collect();
 
                 for (i, ch) in display.chars().enumerate() {
-                    if x + i as u16 >= area.x + area.width {
+                    if x + i as u16 >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = fg;
                     cell.bg = bg;
-                    ctx.buffer.set(x + i as u16, y, cell);
+                    ctx.set(x + i as u16, y, cell);
                 }
 
                 // Fill remaining width
                 for i in display.chars().count()..width {
-                    if x + i as u16 >= area.x + area.width {
+                    if x + i as u16 >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(' ');
                     cell.fg = fg;
                     cell.bg = bg;
-                    ctx.buffer.set(x + i as u16, y, cell);
+                    ctx.set(x + i as u16, y, cell);
                 }
 
                 x += width as u16;
 
                 // Separator
-                if show_separators && x < area.x + area.width {
+                if show_separators && x < area.width {
                     let mut cell = Cell::new('│');
                     cell.fg = separator_fg;
                     cell.bg = if is_selected_row { selected_bg } else { bg };
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                     x += 1;
                 }
             }

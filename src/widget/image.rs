@@ -438,8 +438,7 @@ impl View for Image {
         // Fill area with placeholder
         for y in 0..scaled_h.min(area.height) {
             for x in 0..scaled_w.min(area.width) {
-                ctx.buffer
-                    .set(area.x + x, area.y + y, Cell::new(self.placeholder));
+                ctx.set(x, y, Cell::new(self.placeholder));
             }
         }
 

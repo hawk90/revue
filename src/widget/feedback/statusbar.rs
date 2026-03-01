@@ -349,21 +349,21 @@ impl View for StatusBar {
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let y = area.y + self.render_y(area.height);
+        let y = self.render_y(area.height);
 
-        if y >= area.y + area.height {
+        if y >= area.height {
             return;
         }
 
         // Fill background
         for row in 0..self.height {
-            if y + row >= area.y + area.height {
+            if y + row >= area.height {
                 break;
             }
-            for x in area.x..area.x + area.width {
+            for x in 0..area.width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(self.bg);
-                ctx.buffer.set(x, y + row, cell);
+                ctx.set(x, y + row, cell);
             }
         }
 
@@ -373,40 +373,40 @@ impl View for StatusBar {
         let right_width: u16 = self.right.iter().map(|s| s.width() + 1).sum();
 
         // Render left sections
-        let mut x = area.x;
+        let mut x: u16 = 0;
         for section in &self.left {
             x = self.render_section(ctx, section, x, y);
-            if self.separator.is_some() && x < area.x + area.width {
+            if self.separator.is_some() && x < area.width {
                 x += 1;
             }
         }
 
         // Render center sections
-        let center_start = area.x + (area.width.saturating_sub(center_width)) / 2;
+        let center_start = (area.width.saturating_sub(center_width)) / 2;
         let mut x = center_start.max(x + 1);
         for section in &self.center {
             x = self.render_section(ctx, section, x, y);
-            if self.separator.is_some() && x < area.x + area.width {
+            if self.separator.is_some() && x < area.width {
                 x += 1;
             }
         }
 
         // Render right sections
-        let mut x = area.x + area.width - right_width;
+        let mut x = area.width - right_width;
         for section in &self.right {
             x = self.render_section(ctx, section, x, y);
-            if self.separator.is_some() && x < area.x + area.width {
+            if self.separator.is_some() && x < area.width {
                 x += 1;
             }
         }
 
         // Render key hints on second row if height > 1
         if self.height > 1 && !self.key_hints.is_empty() {
-            self.render_key_hints(ctx, area.x, y + 1, area.width);
+            self.render_key_hints(ctx, 0, y + 1, area.width);
         } else if self.height == 1 && !self.key_hints.is_empty() {
             // Render key hints in remaining space
-            let hints_start = area.x + left_width + 2;
-            let hints_end = area.x + area.width - right_width - 2;
+            let hints_start = left_width + 2;
+            let hints_end = area.width - right_width - 2;
             if hints_start < hints_end {
                 self.render_key_hints_inline(ctx, hints_start, y, hints_end - hints_start);
             }
@@ -430,7 +430,7 @@ impl StatusBar {
 
         let mut current_x = x;
         for ch in section.content.chars() {
-            if current_x >= ctx.area.x + ctx.area.width {
+            if current_x >= ctx.area.width {
                 break;
             }
             let mut cell = Cell::new(ch);
@@ -439,15 +439,15 @@ impl StatusBar {
             if section.bold {
                 cell.modifier |= Modifier::BOLD;
             }
-            ctx.buffer.set(current_x, y, cell);
+            ctx.set(current_x, y, cell);
             current_x += 1;
         }
 
         // Pad to min_width
-        while current_x < x + section.min_width && current_x < ctx.area.x + ctx.area.width {
+        while current_x < x + section.min_width && current_x < ctx.area.width {
             let mut cell = Cell::new(' ');
             cell.bg = Some(bg);
-            ctx.buffer.set(current_x, y, cell);
+            ctx.set(current_x, y, cell);
             current_x += 1;
         }
 
@@ -471,7 +471,7 @@ impl StatusBar {
                 cell.fg = Some(self.key_fg);
                 cell.bg = Some(self.key_bg);
                 cell.modifier |= Modifier::BOLD;
-                ctx.buffer.set(current_x, y, cell);
+                ctx.set(current_x, y, cell);
                 current_x += 1;
             }
 
@@ -484,7 +484,7 @@ impl StatusBar {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.fg);
                 cell.bg = Some(self.bg);
-                ctx.buffer.set(current_x, y, cell);
+                ctx.set(current_x, y, cell);
                 current_x += 1;
             }
         }
@@ -504,7 +504,7 @@ impl StatusBar {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.key_fg);
                 cell.bg = Some(self.key_bg);
-                ctx.buffer.set(current_x, y, cell);
+                ctx.set(current_x, y, cell);
                 current_x += 1;
             }
 
@@ -516,7 +516,7 @@ impl StatusBar {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.fg);
                 cell.bg = Some(self.bg);
-                ctx.buffer.set(current_x, y, cell);
+                ctx.set(current_x, y, cell);
                 current_x += 1;
             }
 

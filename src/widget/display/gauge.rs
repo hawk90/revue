@@ -322,17 +322,17 @@ impl Gauge {
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
             cell.bg = Some(bg);
-            ctx.buffer.set(area.x + x, area.y, cell);
+            ctx.set(x, 0, cell);
         }
 
         // Draw label inside
         if matches!(self.label_position, LabelPosition::Inside) {
             let label = self.get_label();
-            let label_x = area.x + (width.saturating_sub(label.len() as u16)) / 2;
+            let label_x = (width.saturating_sub(label.len() as u16)) / 2;
             for (i, ch) in label.chars().enumerate() {
                 let x = label_x + i as u16;
-                if x < area.x + width {
-                    let is_filled = x - area.x < filled;
+                if x < width {
+                    let is_filled = x < filled;
                     let bg = if is_filled {
                         self.fill_bg.unwrap_or(color)
                     } else {
@@ -342,7 +342,7 @@ impl Gauge {
                     cell.fg = Some(contrast_color(bg));
                     cell.bg = Some(bg);
                     cell.modifier |= Modifier::BOLD;
-                    ctx.buffer.set(x, area.y, cell);
+                    ctx.set(x, 0, cell);
                 }
             }
         }
@@ -359,24 +359,24 @@ impl Gauge {
         // Battery body
         let mut left = Cell::new('[');
         left.fg = Some(Color::WHITE);
-        ctx.buffer.set(area.x, area.y, left);
+        ctx.set(0, 0, left);
 
         for x in 0..inner_width {
             let ch = if x < filled { '█' } else { ' ' };
             let fg = if x < filled { color } else { self.empty_color };
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
-            ctx.buffer.set(area.x + 1 + x, area.y, cell);
+            ctx.set(1 + x, 0, cell);
         }
 
         let mut right = Cell::new(']');
         right.fg = Some(Color::WHITE);
-        ctx.buffer.set(area.x + 1 + inner_width, area.y, right);
+        ctx.set(1 + inner_width, 0, right);
 
         // Battery cap
         let mut cap = Cell::new('▌');
         cap.fg = Some(Color::WHITE);
-        ctx.buffer.set(area.x + 2 + inner_width, area.y, cap);
+        ctx.set(2 + inner_width, 0, cap);
     }
 
     /// Render thermometer style
@@ -389,7 +389,7 @@ impl Gauge {
         // Bulb at bottom
         let mut bulb = Cell::new('●');
         bulb.fg = Some(color);
-        ctx.buffer.set(area.x, area.y + height - 1, bulb);
+        ctx.set(0, height - 1, bulb);
 
         // Tube
         for y in 0..height - 1 {
@@ -402,7 +402,7 @@ impl Gauge {
             };
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
-            ctx.buffer.set(area.x, area.y + y, cell);
+            ctx.set(0, y, cell);
         }
     }
 
@@ -419,7 +419,7 @@ impl Gauge {
         // Top arc
         let mut tl = Cell::new('╭');
         tl.fg = Some(color);
-        ctx.buffer.set(area.x, area.y, tl);
+        ctx.set(0, 0, tl);
 
         for x in 1..width - 1 {
             let progress = (x - 1) as f64 / (width - 3) as f64;
@@ -431,55 +431,54 @@ impl Gauge {
             };
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
-            ctx.buffer.set(area.x + x, area.y, cell);
+            ctx.set(x, 0, cell);
         }
 
         let mut tr = Cell::new('╮');
         tr.fg = Some(color);
-        ctx.buffer.set(area.x + width - 1, area.y, tr);
+        ctx.set(width - 1, 0, tr);
 
         // Middle with label
         if area.height > 1 {
             let label = self.get_label();
-            let label_x = area.x + (width.saturating_sub(label.len() as u16)) / 2;
+            let label_x = (width.saturating_sub(label.len() as u16)) / 2;
 
             let mut left = Cell::new('│');
             left.fg = Some(color);
-            ctx.buffer.set(area.x, area.y + 1, left);
+            ctx.set(0, 1, left);
 
             for (i, ch) in label.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.modifier |= Modifier::BOLD;
-                ctx.buffer.set(label_x + i as u16, area.y + 1, cell);
+                ctx.set(label_x + i as u16, 1, cell);
             }
 
             let mut right = Cell::new('│');
             right.fg = Some(color);
-            ctx.buffer.set(area.x + width - 1, area.y + 1, right);
+            ctx.set(width - 1, 1, right);
         }
 
         // Bottom arc
         if area.height > 2 {
             let mut bl = Cell::new('╰');
             bl.fg = Some(color);
-            ctx.buffer.set(area.x, area.y + 2, bl);
+            ctx.set(0, 2, bl);
 
             for x in 1..width - 1 {
                 let mut cell = Cell::new('─');
                 cell.fg = Some(self.empty_color);
-                ctx.buffer.set(area.x + x, area.y + 2, cell);
+                ctx.set(x, 2, cell);
             }
 
             let mut br = Cell::new('╯');
             br.fg = Some(color);
-            ctx.buffer.set(area.x + width - 1, area.y + 2, br);
+            ctx.set(width - 1, 2, br);
         }
     }
 
     /// Render circle style (text-based)
     fn render_circle(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
         let color = self.current_color();
 
         // Braille-based circle approximation
@@ -495,26 +494,26 @@ impl Gauge {
 
         let mut open = Cell::new('(');
         open.fg = Some(Color::WHITE);
-        ctx.buffer.set(area.x, area.y, open);
+        ctx.set(0, 0, open);
 
         for i in 0..segments {
             let ch = if i < filled { '●' } else { '○' };
             let fg = if i < filled { color } else { self.empty_color };
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
-            ctx.buffer.set(area.x + 1 + i, area.y, cell);
+            ctx.set(1 + i, 0, cell);
         }
 
         let mut close = Cell::new(')');
         close.fg = Some(Color::WHITE);
-        ctx.buffer.set(area.x + 1 + segments, area.y, close);
+        ctx.set(1 + segments, 0, close);
 
         // Label
-        let label_x = area.x + 3 + segments;
+        let label_x = 3 + segments;
         for (i, ch) in label.chars().enumerate() {
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::WHITE);
-            ctx.buffer.set(label_x + i as u16, area.y, cell);
+            ctx.set(label_x + i as u16, 0, cell);
         }
     }
 
@@ -535,7 +534,7 @@ impl Gauge {
             };
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
-            ctx.buffer.set(area.x, area.y + y, cell);
+            ctx.set(0, y, cell);
         }
     }
 
@@ -551,7 +550,7 @@ impl Gauge {
             let fg = if i < filled { color } else { self.empty_color };
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
-            ctx.buffer.set(area.x + i * 2, area.y, cell);
+            ctx.set(i * 2, 0, cell);
         }
     }
 
@@ -567,7 +566,7 @@ impl Gauge {
             let fg = if i < filled { color } else { self.empty_color };
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
-            ctx.buffer.set(area.x + i, area.y, cell);
+            ctx.set(i, 0, cell);
         }
     }
 }
@@ -597,14 +596,14 @@ impl View for Gauge {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.modifier |= Modifier::BOLD;
-                ctx.buffer.set(area.x + i as u16, area.y, cell);
+                ctx.set(i as u16, 0, cell);
             }
             y_offset = 1;
         }
 
-        let adjusted_area = crate::layout::Rect::new(
-            area.x,
-            area.y + y_offset,
+        let adjusted_area = ctx.sub_area(
+            0,
+            y_offset,
             area.width,
             area.height.saturating_sub(y_offset),
         );

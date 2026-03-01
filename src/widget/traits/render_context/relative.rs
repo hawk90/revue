@@ -61,6 +61,16 @@ impl super::RenderContext<'_> {
         }
     }
 
+    /// Get a mutable cell at relative position
+    pub fn get_mut(&mut self, x: u16, y: u16) -> Option<&mut Cell> {
+        if x < self.area.width && y < self.area.height {
+            self.buffer
+                .get_mut(self.area.x.saturating_add(x), self.area.y.saturating_add(y))
+        } else {
+            None
+        }
+    }
+
     /// Put a string at relative position, handling wide characters.
     /// Returns the number of columns written.
     pub fn put_str(&mut self, x: u16, y: u16, s: &str) -> u16 {

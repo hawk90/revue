@@ -78,20 +78,20 @@ impl View for Grid {
                 continue;
             }
 
-            let x = area.x + col_positions.get(col_start).copied().unwrap_or(0);
-            let y = area.y + row_positions.get(row_start).copied().unwrap_or(0);
+            let rel_x = col_positions.get(col_start).copied().unwrap_or(0);
+            let rel_y = row_positions.get(row_start).copied().unwrap_or(0);
 
             let end_x = col_positions.get(col_end).copied().unwrap_or(area.width);
             let end_y = row_positions.get(row_end).copied().unwrap_or(area.height);
 
-            let width = end_x.saturating_sub(col_positions.get(col_start).copied().unwrap_or(0));
-            let height = end_y.saturating_sub(row_positions.get(row_start).copied().unwrap_or(0));
+            let width = end_x.saturating_sub(rel_x);
+            let height = end_y.saturating_sub(rel_y);
 
             if width == 0 || height == 0 {
                 continue;
             }
 
-            let cell_rect = crate::layout::Rect::new(x, y, width, height);
+            let cell_rect = ctx.sub_area(rel_x, rel_y, width, height);
 
             let mut child_ctx = RenderContext::new(ctx.buffer, cell_rect);
 

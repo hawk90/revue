@@ -334,14 +334,14 @@ impl Timeline {
         }
 
         let timestamp_width = if self.show_timestamps { 12 } else { 0 };
-        let icon_x = area.x + timestamp_width;
+        let icon_x = timestamp_width;
         let content_x = icon_x + 3;
         let content_width = area.width.saturating_sub(timestamp_width + 3);
 
-        let mut y = area.y;
+        let mut y = 0u16;
 
         for (i, event) in self.events.iter().enumerate().skip(self.scroll) {
-            if y >= area.y + area.height {
+            if y >= area.height {
                 break;
             }
 
@@ -354,7 +354,7 @@ impl Timeline {
                     for (j, ch) in ts.chars().take(timestamp_width as usize - 1).enumerate() {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.timestamp_color);
-                        ctx.buffer.set(area.x + j as u16, y, cell);
+                        ctx.set(j as u16, y, cell);
                     }
                 }
             }
@@ -366,7 +366,7 @@ impl Timeline {
             if is_selected {
                 icon_cell.modifier |= Modifier::BOLD;
             }
-            ctx.buffer.set(icon_x, y, icon_cell);
+            ctx.set(icon_x, y, icon_cell);
 
             // Draw line (except for last item)
             if i < self.events.len() - 1 && self.style != TimelineStyle::Minimal {
@@ -377,10 +377,10 @@ impl Timeline {
                     TimelineStyle::Minimal => ' ',
                 };
                 let line_y = y + 1;
-                if line_y < area.y + area.height {
+                if line_y < area.height {
                     let mut line_cell = Cell::new(line_char);
                     line_cell.fg = Some(self.line_color);
-                    ctx.buffer.set(icon_x, line_y, line_cell);
+                    ctx.set(icon_x, line_y, line_cell);
                 }
             }
 
@@ -393,7 +393,7 @@ impl Timeline {
             if self.style != TimelineStyle::Minimal {
                 let mut conn_cell = Cell::new(connector);
                 conn_cell.fg = Some(self.line_color);
-                ctx.buffer.set(icon_x + 1, y, conn_cell);
+                ctx.set(icon_x + 1, y, conn_cell);
             }
 
             // Draw title
@@ -404,7 +404,7 @@ impl Timeline {
                 if is_selected {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.buffer.set(content_x + j as u16, y, cell);
+                ctx.set(content_x + j as u16, y, cell);
             }
 
             y += 1;
@@ -412,19 +412,19 @@ impl Timeline {
             // Draw description
             if self.show_descriptions {
                 if let Some(ref desc) = event.description {
-                    if y < area.y + area.height {
+                    if y < area.height {
                         // Draw line continuation
                         if i < self.events.len() - 1 && self.style != TimelineStyle::Minimal {
                             let mut line_cell = Cell::new('│');
                             line_cell.fg = Some(self.line_color);
-                            ctx.buffer.set(icon_x, y, line_cell);
+                            ctx.set(icon_x, y, line_cell);
                         }
 
                         // Draw description text
                         for (j, ch) in desc.chars().take(content_width as usize).enumerate() {
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(self.desc_color);
-                            ctx.buffer.set(content_x + j as u16, y, cell);
+                            ctx.set(content_x + j as u16, y, cell);
                         }
 
                         y += 1;
@@ -433,11 +433,11 @@ impl Timeline {
             }
 
             // Add spacing between events
-            if y < area.y + area.height && i < self.events.len() - 1 {
+            if y < area.height && i < self.events.len() - 1 {
                 if self.style != TimelineStyle::Minimal {
                     let mut line_cell = Cell::new('│');
                     line_cell.fg = Some(self.line_color);
-                    ctx.buffer.set(icon_x, y, line_cell);
+                    ctx.set(icon_x, y, line_cell);
                 }
                 y += 1;
             }
@@ -451,19 +451,19 @@ impl Timeline {
         }
 
         let event_width = 15u16;
-        let line_y = area.y + 1;
+        let line_y = 1u16;
 
         // Draw horizontal line
-        for x in area.x..area.x + area.width {
+        for x in 0..area.width {
             let mut cell = Cell::new('─');
             cell.fg = Some(self.line_color);
-            ctx.buffer.set(x, line_y, cell);
+            ctx.set(x, line_y, cell);
         }
 
         // Draw events
-        let mut x = area.x;
+        let mut x = 0u16;
         for (i, event) in self.events.iter().enumerate() {
-            if x >= area.x + area.width {
+            if x >= area.width {
                 break;
             }
 
@@ -477,7 +477,7 @@ impl Timeline {
             if is_selected {
                 icon_cell.modifier |= Modifier::BOLD;
             }
-            ctx.buffer.set(x + event_width / 2, line_y, icon_cell);
+            ctx.set(x + event_width / 2, line_y, icon_cell);
 
             // Draw title above
             let title: String = event.title.chars().take(event_width as usize - 1).collect();
@@ -485,7 +485,7 @@ impl Timeline {
             for (j, ch) in title.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(if is_selected { color } else { self.title_color });
-                ctx.buffer.set(title_x + j as u16, area.y, cell);
+                ctx.set(title_x + j as u16, 0, cell);
             }
 
             // Draw timestamp below
@@ -496,7 +496,7 @@ impl Timeline {
                     for (j, ch) in ts_str.chars().enumerate() {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.timestamp_color);
-                        ctx.buffer.set(ts_x + j as u16, line_y + 1, cell);
+                        ctx.set(ts_x + j as u16, line_y + 1, cell);
                     }
                 }
             }

@@ -106,7 +106,7 @@ impl<'a> BoxPlotRender<'a> {
                 if y >= self.chart_area.y && y < self.chart_area.y + self.chart_area.height {
                     let mut cell = Cell::new('│');
                     cell.fg = Some(color);
-                    ctx.buffer.set(group_center, y, cell);
+                    ctx.set(group_center, y, cell);
                 }
             }
 
@@ -119,7 +119,7 @@ impl<'a> BoxPlotRender<'a> {
                     {
                         let mut cell = Cell::new('─');
                         cell.fg = Some(color);
-                        ctx.buffer.set(x, y_whisker_low, cell);
+                        ctx.set(x, y_whisker_low, cell);
                     }
                     // Upper whisker cap
                     if y_whisker_high >= self.chart_area.y
@@ -127,7 +127,7 @@ impl<'a> BoxPlotRender<'a> {
                     {
                         let mut cell = Cell::new('─');
                         cell.fg = Some(color);
-                        ctx.buffer.set(x, y_whisker_high, cell);
+                        ctx.set(x, y_whisker_high, cell);
                     }
                 }
             }
@@ -166,7 +166,7 @@ impl<'a> BoxPlotRender<'a> {
 
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(color);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
 
@@ -186,7 +186,7 @@ impl<'a> BoxPlotRender<'a> {
                     };
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::WHITE);
-                    ctx.buffer.set(x, y_median, cell);
+                    ctx.set(x, y_median, cell);
                 }
             }
 
@@ -203,7 +203,7 @@ impl<'a> BoxPlotRender<'a> {
                     {
                         let mut cell = Cell::new('○');
                         cell.fg = Some(color);
-                        ctx.buffer.set(group_center, y, cell);
+                        ctx.set(group_center, y, cell);
                     }
                 }
             }
@@ -236,7 +236,7 @@ impl<'a> BoxPlotRender<'a> {
                 if x < area.x + y_label_width && y < area.y + area.height {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(value_axis.color);
-                    ctx.buffer.set(x, y, cell);
+                    ctx.set(x, y, cell);
                 }
             }
         }
@@ -256,7 +256,7 @@ impl<'a> BoxPlotRender<'a> {
                 if label_x >= area.x + y_label_width && label_x < area.x + area.width {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(category_axis.color);
-                    ctx.buffer.set(label_x, y, cell);
+                    ctx.set(label_x, y, cell);
                 }
             }
         }

@@ -270,7 +270,7 @@ impl View for Tabs {
             return;
         }
 
-        let mut x = area.x;
+        let mut x: u16 = 0;
 
         for (i, tab) in self.tabs.iter().enumerate() {
             let is_active = i == self.selection.index;
@@ -284,14 +284,14 @@ impl View for Tabs {
             let mut cell = Cell::new(' ');
             cell.fg = fg;
             cell.bg = bg;
-            if x < area.x + area.width {
-                ctx.buffer.set(x, area.y, cell);
+            if x < area.width {
+                ctx.set(x, 0, cell);
                 x += 1;
             }
 
             // Draw label
             for ch in tab.label.chars() {
-                if x >= area.x + area.width {
+                if x >= area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -300,24 +300,24 @@ impl View for Tabs {
                 if is_active {
                     cell.modifier |= crate::render::Modifier::BOLD;
                 }
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
                 x += 1;
             }
 
             // Draw padding
-            if x < area.x + area.width {
+            if x < area.width {
                 let mut cell = Cell::new(' ');
                 cell.fg = fg;
                 cell.bg = bg;
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
                 x += 1;
             }
 
             // Draw divider (unless last tab)
-            if i < self.tabs.len() - 1 && x < area.x + area.width {
+            if i < self.tabs.len() - 1 && x < area.width {
                 let mut cell = Cell::new(self.divider);
                 cell.fg = self.fg;
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
                 x += 1;
             }
         }

@@ -318,11 +318,11 @@ impl DiffViewer {
             .take(visible_lines)
             .enumerate()
         {
-            let y = area.y + 1 + i as u16;
+            let y = 1 + i as u16;
 
             // Left side
             let left_layout = LineLayout {
-                x: area.x,
+                x: 0,
                 y,
                 line_num_width,
                 content_width,
@@ -332,11 +332,11 @@ impl DiffViewer {
             // Separator
             let mut sep = Cell::new('│');
             sep.fg = Some(self.colors.separator);
-            ctx.buffer.set(area.x + half_width, y, sep);
+            ctx.set(half_width, y, sep);
 
             // Right side
             let right_layout = LineLayout {
-                x: area.x + half_width + 1,
+                x: half_width + 1,
                 y,
                 line_num_width,
                 content_width,
@@ -393,7 +393,7 @@ impl DiffViewer {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.colors.line_number);
                 cell.bg = bg;
-                ctx.buffer.set(x + i as u16, y, cell);
+                ctx.set(x + i as u16, y, cell);
             }
         }
 
@@ -408,21 +408,19 @@ impl DiffViewer {
             let mut cell = Cell::new(ch);
             cell.fg = fg;
             cell.bg = bg;
-            ctx.buffer.set(x + line_num_width + i as u16, y, cell);
+            ctx.set(x + line_num_width + i as u16, y, cell);
         }
 
         // Fill remaining with background
         for i in content.chars().count()..content_width {
             let mut cell = Cell::new(' ');
             cell.bg = bg;
-            ctx.buffer.set(x + line_num_width + i as u16, y, cell);
+            ctx.set(x + line_num_width + i as u16, y, cell);
         }
     }
 
     /// Render header
     fn render_header(&self, ctx: &mut RenderContext, half_width: u16) {
-        let area = ctx.area;
-
         // Left header
         for (i, ch) in self.left_name.chars().enumerate() {
             if i as u16 >= half_width {
@@ -431,21 +429,21 @@ impl DiffViewer {
             let mut cell = Cell::new(ch);
             cell.bg = Some(self.colors.header_bg);
             cell.modifier = Modifier::BOLD;
-            ctx.buffer.set(area.x + i as u16, area.y, cell);
+            ctx.set(i as u16, 0, cell);
         }
 
         // Fill left header
         for i in self.left_name.len()..half_width as usize {
             let mut cell = Cell::new(' ');
             cell.bg = Some(self.colors.header_bg);
-            ctx.buffer.set(area.x + i as u16, area.y, cell);
+            ctx.set(i as u16, 0, cell);
         }
 
         // Separator
         let mut sep = Cell::new('│');
         sep.fg = Some(self.colors.separator);
         sep.bg = Some(self.colors.header_bg);
-        ctx.buffer.set(area.x + half_width, area.y, sep);
+        ctx.set(half_width, 0, sep);
 
         // Right header
         for (i, ch) in self.right_name.chars().enumerate() {
@@ -455,16 +453,14 @@ impl DiffViewer {
             let mut cell = Cell::new(ch);
             cell.bg = Some(self.colors.header_bg);
             cell.modifier = Modifier::BOLD;
-            ctx.buffer
-                .set(area.x + half_width + 1 + i as u16, area.y, cell);
+            ctx.set(half_width + 1 + i as u16, 0, cell);
         }
 
         // Fill right header
         for i in self.right_name.len()..half_width as usize {
             let mut cell = Cell::new(' ');
             cell.bg = Some(self.colors.header_bg);
-            ctx.buffer
-                .set(area.x + half_width + 1 + i as u16, area.y, cell);
+            ctx.set(half_width + 1 + i as u16, 0, cell);
         }
     }
 
@@ -482,7 +478,7 @@ impl DiffViewer {
             .take(visible_lines)
             .enumerate()
         {
-            let y = area.y + i as u16;
+            let y = i as u16;
 
             // Line numbers (left:right)
             if self.show_line_numbers {
@@ -497,7 +493,7 @@ impl DiffViewer {
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.colors.line_number);
-                    ctx.buffer.set(area.x + j as u16, y, cell);
+                    ctx.set(j as u16, y, cell);
                 }
             }
 
@@ -512,7 +508,7 @@ impl DiffViewer {
             let mut ind_cell = Cell::new(indicator);
             ind_cell.fg = Some(fg);
             ind_cell.bg = Some(bg);
-            ctx.buffer.set(area.x + line_num_width, y, ind_cell);
+            ctx.set(line_num_width, y, ind_cell);
 
             // Content
             let content = if !line.right.is_empty() {
@@ -524,8 +520,7 @@ impl DiffViewer {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);
-                ctx.buffer
-                    .set(area.x + line_num_width + 1 + j as u16, y, cell);
+                ctx.set(line_num_width + 1 + j as u16, y, cell);
             }
         }
     }

@@ -74,9 +74,9 @@ pub trait Rendering {
             if bold {
                 cell.modifier |= Modifier::BOLD;
             }
-            ctx.buffer.set(x + offset, y, cell);
+            ctx.set(x + offset, y, cell);
             for i in 1..char_width {
-                ctx.buffer.set(x + offset + i, y, Cell::continuation());
+                ctx.set(x + offset + i, y, Cell::continuation());
             }
             offset += char_width;
         }
@@ -135,7 +135,7 @@ pub trait Rendering {
                 for i in 0..2 {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg_color);
-                    ctx.buffer.set(day_x + i, day_y, cell);
+                    ctx.set(day_x + i, day_y, cell);
                 }
             }
             self.draw_text(ctx, day_x, day_y, &day_str, fg, bold);
@@ -170,7 +170,7 @@ pub trait Rendering {
             for i in 0..2 {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg);
-                ctx.buffer.set(field_x + i, field_y, cell);
+                ctx.set(field_x + i, field_y, cell);
             }
         }
         self.draw_text(ctx, field_x, field_y, &hour_str, hour_fg, hour_bg.is_some());
@@ -193,7 +193,7 @@ pub trait Rendering {
             for i in 0..2 {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg);
-                ctx.buffer.set(field_x + i, field_y, cell);
+                ctx.set(field_x + i, field_y, cell);
             }
         }
         self.draw_text(
@@ -223,7 +223,7 @@ pub trait Rendering {
                 for i in 0..2 {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(bg);
-                    ctx.buffer.set(field_x + i, field_y, cell);
+                    ctx.set(field_x + i, field_y, cell);
                 }
             }
             self.draw_text(

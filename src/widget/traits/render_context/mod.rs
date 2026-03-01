@@ -102,4 +102,20 @@ impl<'a> RenderContext<'a> {
     pub fn is_disabled(&self) -> bool {
         self.state.map(|s| s.disabled).unwrap_or(false)
     }
+
+    /// Create a sub-area in absolute coordinates from relative position and size.
+    ///
+    /// Use this when creating child `Rect` for sub-contexts:
+    /// ```ignore
+    /// let inner = ctx.sub_area(1, 1, w - 2, h - 2);
+    /// let mut child_ctx = RenderContext::new(ctx.buffer, inner);
+    /// ```
+    pub fn sub_area(&self, x: u16, y: u16, w: u16, h: u16) -> Rect {
+        Rect::new(
+            self.area.x.saturating_add(x),
+            self.area.y.saturating_add(y),
+            w,
+            h,
+        )
+    }
 }

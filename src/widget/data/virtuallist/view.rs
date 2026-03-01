@@ -43,8 +43,8 @@ impl<T: ToString + Clone> View for VirtualList<T> {
 
             // Render item rows
             for row in 0..this.item_height {
-                let y = area.y + y_offset + row;
-                if y >= area.y + viewport_height {
+                let y = y_offset + row;
+                if y >= viewport_height {
                     break;
                 }
 
@@ -68,7 +68,7 @@ impl<T: ToString + Clone> View for VirtualList<T> {
                         cell.fg = Some(this.item_fg);
                     }
 
-                    ctx.buffer.set(area.x + x as u16, y, cell);
+                    ctx.set(x as u16, y, cell);
                 }
             }
         }

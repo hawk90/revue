@@ -473,8 +473,8 @@ impl View for FileTree {
         };
 
         for (i, entry) in entries.iter().skip(scroll).take(visible_height).enumerate() {
-            let y = area.y + i as u16;
-            if y >= area.y + area.height {
+            let y = i as u16;
+            if y >= area.height {
                 break;
             }
 
@@ -482,15 +482,15 @@ impl View for FileTree {
             let indent = entry.depth as u16 * self.indent;
 
             // Clear line
-            for x in area.x..area.x + area.width {
+            for x in 0..area.width {
                 let mut cell = Cell::new(' ');
                 if is_selected {
                     cell.bg = Some(self.selected_bg);
                 }
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
 
-            let mut x = area.x + indent;
+            let mut x = indent;
 
             // Draw expand/collapse indicator for directories
             if entry.is_dir() {
@@ -500,7 +500,7 @@ impl View for FileTree {
                 if is_selected {
                     cell.bg = Some(self.selected_bg);
                 }
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
                 x += 2;
             } else {
                 x += 2;
@@ -518,7 +518,7 @@ impl View for FileTree {
                 if is_selected {
                     cell.bg = Some(self.selected_bg);
                 }
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
                 x += 2;
             }
 
@@ -530,7 +530,7 @@ impl View for FileTree {
             };
 
             for ch in entry.name.chars() {
-                if x >= area.x + area.width {
+                if x >= area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -541,14 +541,14 @@ impl View for FileTree {
                 if entry.is_dir() {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
                 x += 1;
             }
 
             // Draw size
             if self.show_sizes && !entry.is_dir() {
                 let size_str = entry.format_size();
-                let size_x = area.x + area.width - size_str.len() as u16 - 1;
+                let size_x = area.width - size_str.len() as u16 - 1;
                 if size_x > x {
                     for (j, ch) in size_str.chars().enumerate() {
                         let mut cell = Cell::new(ch);
@@ -556,7 +556,7 @@ impl View for FileTree {
                         if is_selected {
                             cell.bg = Some(self.selected_bg);
                         }
-                        ctx.buffer.set(size_x + j as u16, y, cell);
+                        ctx.set(size_x + j as u16, y, cell);
                     }
                 }
             }

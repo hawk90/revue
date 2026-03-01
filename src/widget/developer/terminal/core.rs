@@ -487,8 +487,7 @@ impl View for Terminal {
         // Fill background
         for y in 0..area.height {
             for x in 0..area.width {
-                ctx.buffer
-                    .set(area.x + x, area.y + y, Cell::new(' ').bg(self.default_bg));
+                ctx.set(x, y, Cell::new(' ').bg(self.default_bg));
             }
         }
 
@@ -509,8 +508,7 @@ impl View for Terminal {
 
                     let mut render_cell = Cell::new(cell.ch).fg(cell.fg).bg(cell.bg);
                     render_cell.modifier = cell.modifiers;
-                    ctx.buffer
-                        .set(area.x + col as u16, area.y + render_y, render_cell);
+                    ctx.set(col as u16, render_y, render_cell);
                 }
             }
 
@@ -524,8 +522,8 @@ impl View for Terminal {
                 .saturating_sub(self.lines.len().saturating_sub(self.height as usize));
 
             if cursor_screen_row < area.height as usize && self.cursor_col < area.width as usize {
-                let cursor_x = area.x + self.cursor_col as u16;
-                let cursor_y = area.y + cursor_screen_row as u16;
+                let cursor_x = self.cursor_col as u16;
+                let cursor_y = cursor_screen_row as u16;
 
                 let cursor_char = match self.cursor_style {
                     CursorStyle::Block => '█',
@@ -533,7 +531,7 @@ impl View for Terminal {
                     CursorStyle::Bar => '│',
                 };
 
-                ctx.buffer.set(
+                ctx.set(
                     cursor_x,
                     cursor_y,
                     Cell::new(cursor_char).fg(self.default_fg),
@@ -543,16 +541,12 @@ impl View for Terminal {
 
         // Render input line if there's input
         if !self.input_buffer.is_empty() && self.focused {
-            let input_y = area.y + area.height - 1;
+            let input_y = area.height - 1;
             let prompt = "> ";
 
             // Clear input line
             for x in 0..area.width {
-                ctx.buffer.set(
-                    area.x + x,
-                    input_y,
-                    Cell::new(' ').bg(Color::rgb(40, 40, 40)),
-                );
+                ctx.set(x, input_y, Cell::new(' ').bg(Color::rgb(40, 40, 40)));
             }
 
             // Render prompt
@@ -560,8 +554,8 @@ impl View for Terminal {
                 if i >= area.width as usize {
                     break;
                 }
-                ctx.buffer.set(
-                    area.x + i as u16,
+                ctx.set(
+                    i as u16,
                     input_y,
                     Cell::new(ch).fg(Color::CYAN).bg(Color::rgb(40, 40, 40)),
                 );
@@ -573,8 +567,8 @@ impl View for Terminal {
                 if x >= area.width as usize {
                     break;
                 }
-                ctx.buffer.set(
-                    area.x + x as u16,
+                ctx.set(
+                    x as u16,
                     input_y,
                     Cell::new(ch).fg(Color::WHITE).bg(Color::rgb(40, 40, 40)),
                 );
@@ -584,12 +578,12 @@ impl View for Terminal {
         // Render scroll indicator if scrolled
         if self.scroll_offset > 0 {
             let indicator = format!("↑{}", self.scroll_offset);
-            let start_x = area.x + area.width - indicator.len() as u16 - 1;
+            let start_x = area.width - indicator.len() as u16 - 1;
 
             for (i, ch) in indicator.chars().enumerate() {
-                ctx.buffer.set(
+                ctx.set(
                     start_x + i as u16,
-                    area.y,
+                    0,
                     Cell::new(ch).fg(Color::YELLOW).bg(Color::rgb(60, 60, 60)),
                 );
             }

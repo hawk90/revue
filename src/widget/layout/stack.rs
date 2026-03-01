@@ -176,11 +176,11 @@ impl View for Stack {
                 // Calculate widths based on sizes
                 let widths = self.calculate_sizes(available_width, n);
 
-                let mut x = area.x;
+                let mut x: u16 = 0;
                 for (i, child) in self.children.iter().enumerate() {
                     let w = widths[i];
 
-                    let child_area = Rect::new(x, area.y, w, area.height);
+                    let child_area = ctx.sub_area(x, 0, w, area.height);
                     let mut child_ctx = RenderContext::new(ctx.buffer, child_area);
                     child.render(&mut child_ctx);
 
@@ -193,11 +193,11 @@ impl View for Stack {
                 // Calculate heights based on sizes
                 let heights = self.calculate_sizes(available_height, n);
 
-                let mut y = area.y;
+                let mut y: u16 = 0;
                 for (i, child) in self.children.iter().enumerate() {
                     let h = heights[i];
 
-                    let child_area = Rect::new(area.x, y, area.width, h);
+                    let child_area = ctx.sub_area(0, y, area.width, h);
                     let mut child_ctx = RenderContext::new(ctx.buffer, child_area);
                     child.render(&mut child_ctx);
 

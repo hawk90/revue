@@ -226,30 +226,30 @@ impl View for Button {
         for x in 0..button_width {
             let mut cell = Cell::new(' ');
             cell.bg = Some(bg);
-            ctx.buffer.set(area.x + x, area.y, cell);
+            ctx.set(x, 0, cell);
         }
 
         // Calculate content start position for centering
         let content_start = (button_width.saturating_sub(content_width)) / 2;
-        let mut x = area.x + content_start;
+        let mut x = content_start;
 
         // Render icon if present
         if let Some(icon) = self.icon {
-            if x < area.x + button_width {
+            if x < button_width {
                 let mut cell = Cell::new(icon);
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);
                 if self.state.focused && !self.state.disabled {
                     cell.modifier = crate::render::Modifier::BOLD;
                 }
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
                 x += 1;
 
                 // Space after icon
-                if x < area.x + button_width {
+                if x < button_width {
                     let mut space = Cell::new(' ');
                     space.bg = Some(bg);
-                    ctx.buffer.set(x, area.y, space);
+                    ctx.set(x, 0, space);
                     x += 1;
                 }
             }
@@ -257,9 +257,9 @@ impl View for Button {
 
         // Render label
         if self.state.focused && !self.state.disabled {
-            ctx.draw_text_bg_bold(x, area.y, &self.label, fg, bg);
+            ctx.draw_text_bg_bold(x, 0, &self.label, fg, bg);
         } else {
-            ctx.draw_text_bg(x, area.y, &self.label, fg, bg);
+            ctx.draw_text_bg(x, 0, &self.label, fg, bg);
         }
 
         // Render focus indicator
@@ -271,11 +271,10 @@ impl View for Button {
                 ctx.buffer.set(area.x.saturating_sub(1), area.y, left);
             }
 
-            let right_x = area.x + button_width;
-            if right_x < area.x + area.width {
+            if button_width < area.width {
                 let mut right = Cell::new(']');
                 right.fg = Some(Color::CYAN);
-                ctx.buffer.set(right_x, area.y, right);
+                ctx.set(button_width, 0, right);
             }
         }
     }

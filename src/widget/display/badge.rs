@@ -220,7 +220,7 @@ impl View for Badge {
                 // Just a colored dot
                 let mut cell = Cell::new('●');
                 cell.fg = Some(bg); // Use bg color as the dot color
-                ctx.buffer.set(area.x, area.y, cell);
+                ctx.set(0, 0, cell);
             }
             BadgeShape::Rounded | BadgeShape::Square | BadgeShape::Pill => {
                 let text_len = self.text.chars().count() as u16;
@@ -242,7 +242,6 @@ impl View for Badge {
                 // Pre-collect chars to avoid O(n²) with .chars().nth() in loop
                 let text_chars: Vec<char> = self.text.chars().collect();
                 for i in 0..width {
-                    let x = area.x + i;
                     let ch = if i < padding || i >= width - padding {
                         ' '
                     } else {
@@ -256,7 +255,7 @@ impl View for Badge {
                     if self.bold {
                         cell.modifier |= Modifier::BOLD;
                     }
-                    ctx.buffer.set(x, area.y, cell);
+                    ctx.set(i, 0, cell);
                 }
             }
         }

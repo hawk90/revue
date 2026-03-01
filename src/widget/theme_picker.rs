@@ -182,7 +182,7 @@ impl ThemePicker {
         for (i, color) in swatch_colors.iter().enumerate() {
             let mut cell = Cell::new(' ');
             cell.bg = Some(*color);
-            ctx.buffer.set(x + i as u16, y, cell);
+            ctx.set(x + i as u16, y, cell);
         }
 
         swatch_colors.len() as u16
@@ -210,12 +210,12 @@ impl View for ThemePicker {
 
         if self.compact {
             // Compact mode: just show current theme swatch
-            self.draw_swatch(ctx, area.x, area.y, &current_theme);
+            self.draw_swatch(ctx, 0, 0, &current_theme);
 
             if self.open && !self.themes.is_empty() {
-                let mut y = area.y + 1;
+                let mut y: u16 = 1;
                 for (i, theme_id) in self.themes.iter().enumerate() {
-                    if y >= area.y + area.height {
+                    if y >= area.height {
                         break;
                     }
                     if let Some(theme) = get_theme(theme_id) {
@@ -225,17 +225,17 @@ impl View for ThemePicker {
                         let indicator = if selected { '>' } else { ' ' };
                         let mut cell = Cell::new(indicator);
                         cell.fg = Some(theme.palette.primary);
-                        ctx.buffer.set(area.x, y, cell);
+                        ctx.set(0, y, cell);
 
                         // Swatch
-                        self.draw_swatch(ctx, area.x + 1, y, &theme);
+                        self.draw_swatch(ctx, 1, y, &theme);
                         y += 1;
                     }
                 }
             }
         } else {
             // Full mode: show current theme with name
-            let mut x = area.x;
+            let mut x: u16 = 0;
 
             // "Theme: " label
             let label = "Theme: ";
@@ -243,30 +243,30 @@ impl View for ThemePicker {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
                 x += 1;
             }
 
             // Theme name
             for ch in current_theme.name.chars() {
-                if x >= area.x + width - 6 {
+                if x >= width - 6 {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
                 x += 1;
             }
 
             // Space
             let mut cell = Cell::new(' ');
             cell.bg = Some(bg);
-            ctx.buffer.set(x, area.y, cell);
+            ctx.set(x, 0, cell);
             x += 1;
 
             // Swatch
-            x += self.draw_swatch(ctx, x, area.y, &current_theme);
+            x += self.draw_swatch(ctx, x, 0, &current_theme);
 
             // Dropdown indicator
             let indicator = if self.open { " ▲" } else { " ▼" };
@@ -274,44 +274,44 @@ impl View for ThemePicker {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
                 x += 1;
             }
 
             // Fill remaining header
-            while x < area.x + width {
+            while x < width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg);
-                ctx.buffer.set(x, area.y, cell);
+                ctx.set(x, 0, cell);
                 x += 1;
             }
 
             // Dropdown content
             if self.open && !self.themes.is_empty() {
                 let border_color = current_theme.colors.border;
-                let mut y = area.y + 1;
+                let mut y: u16 = 1;
 
                 // Border top
-                if y < area.y + area.height {
+                if y < area.height {
                     let mut cell = Cell::new('┌');
                     cell.fg = Some(border_color);
-                    ctx.buffer.set(area.x, y, cell);
+                    ctx.set(0, y, cell);
 
                     for i in 1..width.saturating_sub(1) {
                         let mut cell = Cell::new('─');
                         cell.fg = Some(border_color);
-                        ctx.buffer.set(area.x + i, y, cell);
+                        ctx.set(i, y, cell);
                     }
 
                     let mut cell = Cell::new('┐');
                     cell.fg = Some(border_color);
-                    ctx.buffer.set(area.x + width - 1, y, cell);
+                    ctx.set(width - 1, y, cell);
                     y += 1;
                 }
 
                 // Theme list
                 for (i, theme_id) in self.themes.iter().enumerate() {
-                    if y >= area.y + area.height - 1 {
+                    if y >= area.height - 1 {
                         break;
                     }
                     if let Some(theme) = get_theme(theme_id) {
@@ -330,16 +330,16 @@ impl View for ThemePicker {
                         // Left border
                         let mut cell = Cell::new('│');
                         cell.fg = Some(border_color);
-                        ctx.buffer.set(area.x, y, cell);
+                        ctx.set(0, y, cell);
 
-                        let mut cx = area.x + 1;
+                        let mut cx: u16 = 1;
 
                         // Selection indicator
                         let indicator = if selected { '▶' } else { ' ' };
                         let mut cell = Cell::new(indicator);
                         cell.fg = Some(theme.palette.primary);
                         cell.bg = Some(item_bg);
-                        ctx.buffer.set(cx, y, cell);
+                        ctx.set(cx, y, cell);
                         cx += 1;
 
                         // Swatch
@@ -348,7 +348,7 @@ impl View for ThemePicker {
                         // Space
                         let mut cell = Cell::new(' ');
                         cell.bg = Some(item_bg);
-                        ctx.buffer.set(cx, y, cell);
+                        ctx.set(cx, y, cell);
                         cx += 1;
 
                         // Name
@@ -360,42 +360,42 @@ impl View for ThemePicker {
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(item_fg);
                             cell.bg = Some(item_bg);
-                            ctx.buffer.set(cx, y, cell);
+                            ctx.set(cx, y, cell);
                             cx += 1;
                         }
 
                         // Padding
-                        while cx < area.x + width - 1 {
+                        while cx < width - 1 {
                             let mut cell = Cell::new(' ');
                             cell.bg = Some(item_bg);
-                            ctx.buffer.set(cx, y, cell);
+                            ctx.set(cx, y, cell);
                             cx += 1;
                         }
 
                         // Right border
                         let mut cell = Cell::new('│');
                         cell.fg = Some(border_color);
-                        ctx.buffer.set(area.x + width - 1, y, cell);
+                        ctx.set(width - 1, y, cell);
 
                         y += 1;
                     }
                 }
 
                 // Border bottom
-                if y < area.y + area.height {
+                if y < area.height {
                     let mut cell = Cell::new('└');
                     cell.fg = Some(border_color);
-                    ctx.buffer.set(area.x, y, cell);
+                    ctx.set(0, y, cell);
 
                     for i in 1..width.saturating_sub(1) {
                         let mut cell = Cell::new('─');
                         cell.fg = Some(border_color);
-                        ctx.buffer.set(area.x + i, y, cell);
+                        ctx.set(i, y, cell);
                     }
 
                     let mut cell = Cell::new('┘');
                     cell.fg = Some(border_color);
-                    ctx.buffer.set(area.x + width - 1, y, cell);
+                    ctx.set(width - 1, y, cell);
                 }
             }
         }

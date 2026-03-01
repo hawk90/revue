@@ -308,11 +308,11 @@ impl Alert {
         let area = ctx.area;
 
         // Fill background
-        for y in area.y..area.y + area.height {
-            for x in area.x..area.x + area.width {
+        for y in 0..area.height {
+            for x in 0..area.width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg_color);
-                ctx.buffer.set(x, y, cell);
+                ctx.set(x, y, cell);
             }
         }
 
@@ -320,9 +320,9 @@ impl Alert {
         self.draw_alert_border(ctx, border_color, bg_color);
 
         // Content area
-        let content_x = area.x + 2;
+        let content_x: u16 = 2;
         let content_width = area.width.saturating_sub(4);
-        let mut y = area.y + 1;
+        let mut y: u16 = 1;
 
         // Icon and title/message
         let icon_offset = if self.show_icon {
@@ -330,7 +330,7 @@ impl Alert {
             let mut icon_cell = Cell::new(icon);
             icon_cell.fg = Some(accent_color);
             icon_cell.bg = Some(bg_color);
-            ctx.buffer.set(content_x, y, icon_cell);
+            ctx.set(content_x, y, icon_cell);
             2
         } else {
             0
@@ -347,7 +347,7 @@ impl Alert {
                 cell.fg = Some(Color::WHITE);
                 cell.bg = Some(bg_color);
                 cell.modifier |= Modifier::BOLD;
-                ctx.buffer.set(title_x + i as u16, y, cell);
+                ctx.set(title_x + i as u16, y, cell);
             }
             y += 1;
 
@@ -360,7 +360,7 @@ impl Alert {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::rgb(200, 200, 200));
                 cell.bg = Some(bg_color);
-                ctx.buffer.set(msg_x + i as u16, y, cell);
+                ctx.set(msg_x + i as u16, y, cell);
             }
         } else {
             // Message only (same line as icon)
@@ -372,17 +372,17 @@ impl Alert {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.bg = Some(bg_color);
-                ctx.buffer.set(msg_x + i as u16, y, cell);
+                ctx.set(msg_x + i as u16, y, cell);
             }
         }
 
         // Dismiss button
         if self.dismissible {
-            let dismiss_x = area.x + area.width - 3;
+            let dismiss_x = area.width - 3;
             let mut x_cell = Cell::new('×');
             x_cell.fg = Some(Color::rgb(150, 150, 150));
             x_cell.bg = Some(bg_color);
-            ctx.buffer.set(dismiss_x, area.y + 1, x_cell);
+            ctx.set(dismiss_x, 1, x_cell);
         }
     }
 
@@ -390,23 +390,23 @@ impl Alert {
         let area = ctx.area;
 
         // Draw left accent border
-        for y in area.y..area.y + area.height {
+        for y in 0..area.height {
             let mut cell = Cell::new('┃');
             cell.fg = Some(accent_color);
-            ctx.buffer.set(area.x, y, cell);
+            ctx.set(0, y, cell);
         }
 
         // Content
-        let content_x = area.x + 2;
+        let content_x: u16 = 2;
         let content_width = area.width.saturating_sub(3);
-        let mut y = area.y;
+        let mut y: u16 = 0;
 
         // Icon
         let icon_offset = if self.show_icon {
             let icon = self.get_icon();
             let mut icon_cell = Cell::new(icon);
             icon_cell.fg = Some(accent_color);
-            ctx.buffer.set(content_x, y, icon_cell);
+            ctx.set(content_x, y, icon_cell);
             2
         } else {
             0
@@ -422,7 +422,7 @@ impl Alert {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.modifier |= Modifier::BOLD;
-                ctx.buffer.set(title_x + i as u16, y, cell);
+                ctx.set(title_x + i as u16, y, cell);
             }
             y += 1;
 
@@ -434,7 +434,7 @@ impl Alert {
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::rgb(180, 180, 180));
-                ctx.buffer.set(msg_x + i as u16, y, cell);
+                ctx.set(msg_x + i as u16, y, cell);
             }
         } else {
             let msg_x = content_x + icon_offset;
@@ -444,30 +444,30 @@ impl Alert {
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
-                ctx.buffer.set(msg_x + i as u16, y, cell);
+                ctx.set(msg_x + i as u16, y, cell);
             }
         }
 
         // Dismiss button
         if self.dismissible {
-            let dismiss_x = area.x + area.width - 2;
+            let dismiss_x = area.width - 2;
             let mut x_cell = Cell::new('×');
             x_cell.fg = Some(Color::rgb(150, 150, 150));
-            ctx.buffer.set(dismiss_x, area.y, x_cell);
+            ctx.set(dismiss_x, 0, x_cell);
         }
     }
 
     fn render_minimal(&self, ctx: &mut RenderContext, accent_color: Color) {
         let area = ctx.area;
-        let mut x = area.x;
-        let y = area.y;
+        let mut x: u16 = 0;
+        let y: u16 = 0;
 
         // Icon
         if self.show_icon {
             let icon = self.get_icon();
             let mut icon_cell = Cell::new(icon);
             icon_cell.fg = Some(accent_color);
-            ctx.buffer.set(x, y, icon_cell);
+            ctx.set(x, y, icon_cell);
             x += 2;
         }
 
@@ -475,45 +475,45 @@ impl Alert {
         if let Some(ref title) = self.title {
             // Title on first line
             for (i, ch) in title.chars().enumerate() {
-                if x + i as u16 >= area.x + area.width {
+                if x + i as u16 >= area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(accent_color);
                 cell.modifier |= Modifier::BOLD;
-                ctx.buffer.set(x + i as u16, y, cell);
+                ctx.set(x + i as u16, y, cell);
             }
 
             // Message on second line
             if area.height > 1 {
-                let msg_x = if self.show_icon { area.x + 2 } else { area.x };
+                let msg_x: u16 = if self.show_icon { 2 } else { 0 };
                 for (i, ch) in self.message.chars().enumerate() {
-                    if msg_x + i as u16 >= area.x + area.width {
+                    if msg_x + i as u16 >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(180, 180, 180));
-                    ctx.buffer.set(msg_x + i as u16, y + 1, cell);
+                    ctx.set(msg_x + i as u16, y + 1, cell);
                 }
             }
         } else {
             // Just message
             for (i, ch) in self.message.chars().enumerate() {
-                if x + i as u16 >= area.x + area.width {
+                if x + i as u16 >= area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
-                ctx.buffer.set(x + i as u16, y, cell);
+                ctx.set(x + i as u16, y, cell);
             }
         }
 
         // Dismiss button
         if self.dismissible {
-            let dismiss_x = area.x + area.width - 1;
+            let dismiss_x = area.width - 1;
             let mut x_cell = Cell::new('×');
             x_cell.fg = Some(Color::rgb(100, 100, 100));
-            ctx.buffer.set(dismiss_x, y, x_cell);
+            ctx.set(dismiss_x, y, x_cell);
         }
     }
 

@@ -325,13 +325,13 @@ impl StatusIndicator {
 
         let mut cell = Cell::new(dot);
         cell.fg = Some(color);
-        ctx.buffer.set(area.x, area.y, cell);
+        ctx.set(0, 0, cell);
 
         // For large size, add extra visual
         if self.size == StatusSize::Large && area.width > 1 {
             let mut cell2 = Cell::new(' ');
             cell2.bg = Some(color);
-            ctx.buffer.set(area.x + 1, area.y, cell2);
+            ctx.set(1, 0, cell2);
         }
     }
 
@@ -342,11 +342,11 @@ impl StatusIndicator {
         let dot = if visible { self.size.dot() } else { ' ' };
         let mut dot_cell = Cell::new(dot);
         dot_cell.fg = Some(color);
-        ctx.buffer.set(area.x, area.y, dot_cell);
+        ctx.set(0, 0, dot_cell);
 
         // Render label
         let label = self.get_label();
-        let label_start = area.x + self.size.width() + 1;
+        let label_start = self.size.width() + 1;
         let max_label_width = area.width.saturating_sub(self.size.width() + 1);
 
         let mut offset = 0u16;
@@ -360,10 +360,9 @@ impl StatusIndicator {
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::rgb(200, 200, 200));
-            ctx.buffer.set(label_start + offset, area.y, cell);
+            ctx.set(label_start + offset, 0, cell);
             for i in 1..char_width {
-                ctx.buffer
-                    .set(label_start + offset + i, area.y, Cell::continuation());
+                ctx.set(label_start + offset + i, 0, Cell::continuation());
             }
             offset += char_width;
         }
@@ -384,10 +383,9 @@ impl StatusIndicator {
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(color);
-            ctx.buffer.set(area.x + offset, area.y, cell);
+            ctx.set(offset, 0, cell);
             for i in 1..char_width {
-                ctx.buffer
-                    .set(area.x + offset + i, area.y, Cell::continuation());
+                ctx.set(offset + i, 0, Cell::continuation());
             }
             offset += char_width;
         }
@@ -404,7 +402,7 @@ impl StatusIndicator {
         for i in 0..total_width {
             let mut cell = Cell::new(' ');
             cell.bg = Some(bg_color);
-            ctx.buffer.set(area.x + i, area.y, cell);
+            ctx.set(i, 0, cell);
         }
 
         // Dot
@@ -412,10 +410,10 @@ impl StatusIndicator {
         let mut dot_cell = Cell::new(dot);
         dot_cell.fg = Some(color);
         dot_cell.bg = Some(bg_color);
-        ctx.buffer.set(area.x + 1, area.y, dot_cell);
+        ctx.set(1, 0, dot_cell);
 
         // Label
-        let label_start = area.x + 3;
+        let label_start: u16 = 3;
         let max_label_width = total_width.saturating_sub(4);
         let mut offset = 0u16;
         for ch in label.chars() {
@@ -429,11 +427,11 @@ impl StatusIndicator {
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::WHITE);
             cell.bg = Some(bg_color);
-            ctx.buffer.set(label_start + offset, area.y, cell);
+            ctx.set(label_start + offset, 0, cell);
             for i in 1..char_width {
                 let mut cont = Cell::continuation();
                 cont.bg = Some(bg_color);
-                ctx.buffer.set(label_start + offset + i, area.y, cont);
+                ctx.set(label_start + offset + i, 0, cont);
             }
             offset += char_width;
         }

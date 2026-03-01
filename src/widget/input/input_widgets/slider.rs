@@ -316,13 +316,13 @@ impl Slider {
     /// Render horizontal slider
     fn render_horizontal(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let mut x = area.x;
-        let y = area.y;
+        let mut x: u16 = 0;
+        let y: u16 = 0;
 
         // Label
         if let Some(ref label) = self.label {
             for (i, ch) in label.chars().enumerate() {
-                if x + i as u16 >= area.x + area.width {
+                if x + i as u16 >= area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -331,12 +331,12 @@ impl Slider {
                 } else {
                     Color::WHITE
                 });
-                ctx.buffer.set(x + i as u16, y, cell);
+                ctx.set(x + i as u16, y, cell);
             }
             x += label.len() as u16 + 1;
         }
 
-        let track_len = self.length.min(area.width.saturating_sub(x - area.x));
+        let track_len = self.length.min(area.width.saturating_sub(x));
         let filled = (self.normalized() * (track_len - 1) as f64).round() as u16;
 
         // Render based on style
@@ -355,7 +355,7 @@ impl Slider {
                     } else {
                         fg
                     });
-                    ctx.buffer.set(x + i, y, cell);
+                    ctx.set(x + i, y, cell);
                 }
             }
             SliderStyle::Line => {
@@ -375,7 +375,7 @@ impl Slider {
                     } else {
                         fg
                     });
-                    ctx.buffer.set(x + i, y, cell);
+                    ctx.set(x + i, y, cell);
                 }
             }
             SliderStyle::Thin => {
@@ -393,7 +393,7 @@ impl Slider {
                     } else {
                         fg
                     });
-                    ctx.buffer.set(x + i, y, cell);
+                    ctx.set(x + i, y, cell);
                 }
             }
             SliderStyle::Gradient => {
@@ -421,7 +421,7 @@ impl Slider {
                     } else {
                         fg
                     });
-                    ctx.buffer.set(x + i, y, cell);
+                    ctx.set(x + i, y, cell);
                 }
             }
             SliderStyle::Dots => {
@@ -438,7 +438,7 @@ impl Slider {
                     } else {
                         fg
                     });
-                    ctx.buffer.set(x + i, y, cell);
+                    ctx.set(x + i, y, cell);
                 }
             }
         }
@@ -450,7 +450,7 @@ impl Slider {
             let value_str = self.format_value();
             x += 1;
             for (i, ch) in value_str.chars().enumerate() {
-                if x + i as u16 >= area.x + area.width {
+                if x + i as u16 >= area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -462,7 +462,7 @@ impl Slider {
                 if self.focused {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.buffer.set(x + i as u16, y, cell);
+                ctx.set(x + i as u16, y, cell);
             }
         }
 
@@ -470,13 +470,12 @@ impl Slider {
         if self.show_ticks && area.height > 1 {
             let tick_y = y + 1;
             for i in 0..self.tick_count {
-                let tick_x = area.x
-                    + (self.label.as_ref().map(|l| l.len() + 1).unwrap_or(0) as u16)
+                let tick_x = (self.label.as_ref().map(|l| l.len() + 1).unwrap_or(0) as u16)
                     + (i as f64 / (self.tick_count - 1) as f64 * (track_len - 1) as f64) as u16;
-                if tick_x < area.x + area.width {
+                if tick_x < area.width {
                     let mut cell = Cell::new('┴');
                     cell.fg = Some(self.track_color);
-                    ctx.buffer.set(tick_x, tick_y, cell);
+                    ctx.set(tick_x, tick_y, cell);
                 }
             }
         }
@@ -485,13 +484,13 @@ impl Slider {
     /// Render vertical slider
     fn render_vertical(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let x = area.x;
+        let x: u16 = 0;
         let track_len = self.length.min(area.height);
         let filled = (self.normalized() * (track_len - 1) as f64).round() as u16;
 
         for i in 0..track_len {
             let from_bottom = track_len - 1 - i;
-            let y = area.y + i;
+            let y = i;
 
             let (ch, fg) = match self.style {
                 SliderStyle::Block => {
@@ -530,15 +529,15 @@ impl Slider {
             } else {
                 fg
             });
-            ctx.buffer.set(x, y, cell);
+            ctx.set(x, y, cell);
         }
 
         // Value display
         if self.show_value && area.width > 2 {
             let value_str = self.format_value();
-            let value_y = area.y + track_len / 2;
+            let value_y = track_len / 2;
             for (i, ch) in value_str.chars().enumerate() {
-                if x + 2 + i as u16 >= area.x + area.width {
+                if x + 2 + i as u16 >= area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -547,7 +546,7 @@ impl Slider {
                 } else {
                     Color::WHITE
                 });
-                ctx.buffer.set(x + 2 + i as u16, value_y, cell);
+                ctx.set(x + 2 + i as u16, value_y, cell);
             }
         }
     }

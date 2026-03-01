@@ -126,7 +126,7 @@ impl View for ContextMenu {
         let width = self.items.iter().map(|i| i.label.len()).max().unwrap_or(10) as u16 + 4;
         let height = self.items.len() as u16 + 2;
 
-        // Adjust position to fit in area
+        // Adjust position to fit in area (relative coordinates)
         let x = self.x.min(ctx.area.width.saturating_sub(width));
         let y = self.y.min(ctx.area.height.saturating_sub(height));
 
@@ -152,7 +152,7 @@ impl View for ContextMenu {
                 let mut cell = Cell::new(ch);
                 cell.bg = Some(self.bg);
                 cell.fg = Some(self.fg);
-                ctx.buffer.set(x + dx, y + dy, cell);
+                ctx.set(x + dx, y + dy, cell);
             }
         }
 
@@ -176,7 +176,7 @@ impl View for ContextMenu {
             for dx in 1..width - 1 {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(bg);
-                ctx.buffer.set(x + dx, item_y, cell);
+                ctx.set(x + dx, item_y, cell);
             }
 
             // Draw label
@@ -187,7 +187,7 @@ impl View for ContextMenu {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);
-                ctx.buffer.set(x + 2 + j as u16, item_y, cell);
+                ctx.set(x + 2 + j as u16, item_y, cell);
             }
         }
     }

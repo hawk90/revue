@@ -224,10 +224,10 @@ impl RadioGroup {
         }
     }
 
-    /// Render a single radio option
+    /// Render a single radio option (x, y are relative coordinates)
     fn render_option(&self, ctx: &mut RenderContext, index: usize, x: u16, y: u16) -> u16 {
         let area = ctx.area;
-        if x >= area.x + area.width || y >= area.y + area.height {
+        if x >= area.width || y >= area.height {
             return 0;
         }
 
@@ -256,7 +256,7 @@ impl RadioGroup {
         if has_brackets {
             let mut left_cell = Cell::new(left_bracket);
             left_cell.fg = Some(label_fg);
-            ctx.buffer.set(current_x, y, left_cell);
+            ctx.set(current_x, y, left_cell);
             current_x += 1;
 
             let indicator = if is_selected {
@@ -266,12 +266,12 @@ impl RadioGroup {
             };
             let mut ind_cell = Cell::new(indicator);
             ind_cell.fg = Some(indicator_fg);
-            ctx.buffer.set(current_x, y, ind_cell);
+            ctx.set(current_x, y, ind_cell);
             current_x += 1;
 
             let mut right_cell = Cell::new(right_bracket);
             right_cell.fg = Some(label_fg);
-            ctx.buffer.set(current_x, y, right_cell);
+            ctx.set(current_x, y, right_cell);
             current_x += 1;
         } else {
             let indicator = if is_selected {
@@ -281,18 +281,18 @@ impl RadioGroup {
             };
             let mut ind_cell = Cell::new(indicator);
             ind_cell.fg = Some(indicator_fg);
-            ctx.buffer.set(current_x, y, ind_cell);
+            ctx.set(current_x, y, ind_cell);
             current_x += 1;
         }
 
         // Space before label
-        ctx.buffer.set(current_x, y, Cell::new(' '));
+        ctx.set(current_x, y, Cell::new(' '));
         current_x += 1;
 
         // Render label
         if let Some(option) = self.options.get(index) {
             for ch in option.chars() {
-                if current_x >= area.x + area.width {
+                if current_x >= area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -300,7 +300,7 @@ impl RadioGroup {
                 if is_selected && self.focused && !self.disabled {
                     cell.modifier = crate::render::Modifier::BOLD;
                 }
-                ctx.buffer.set(current_x, y, cell);
+                ctx.set(current_x, y, cell);
                 current_x += 1;
             }
         }
@@ -325,20 +325,20 @@ impl View for RadioGroup {
         }
 
         // Render focus indicator for the group
-        let start_x = if self.focused && !self.disabled {
+        let start_x: u16 = if self.focused && !self.disabled {
             let mut arrow = Cell::new('>');
             arrow.fg = Some(Color::CYAN);
-            ctx.buffer.set(area.x, area.y, arrow);
-            area.x + 2
+            ctx.set(0, 0, arrow);
+            2
         } else {
-            area.x
+            0
         };
 
         match self.layout {
             RadioLayout::Vertical => {
-                let mut y = area.y;
+                let mut y: u16 = 0;
                 for (i, _) in self.options.iter().enumerate() {
-                    if y >= area.y + area.height {
+                    if y >= area.height {
                         break;
                     }
                     self.render_option(ctx, i, start_x, y);
@@ -348,10 +348,10 @@ impl View for RadioGroup {
             RadioLayout::Horizontal => {
                 let mut x = start_x;
                 for (i, _option) in self.options.iter().enumerate() {
-                    if x >= area.x + area.width {
+                    if x >= area.width {
                         break;
                     }
-                    let width = self.render_option(ctx, i, x, area.y);
+                    let width = self.render_option(ctx, i, x, 0);
                     x += width + 2 + self.gap; // 2 for spacing between options
                 }
             }
