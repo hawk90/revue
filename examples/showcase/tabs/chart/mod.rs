@@ -7,9 +7,9 @@ mod spark;
 mod special;
 mod time;
 
-pub use bar::render as render_bar;
-pub use line::render as render_line;
-pub use pie::render as render_pie;
-pub use spark::render as render_spark;
-pub use special::render as render_special;
-pub use time::render as render_time;
+pub use bar::examples as bar_examples;
+pub use line::examples as line_examples;
+pub use pie::examples as pie_examples;
+pub use spark::examples as spark_examples;
+pub use special::examples as special_examples;
+pub use time::examples as time_examples;

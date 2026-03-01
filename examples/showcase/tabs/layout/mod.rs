@@ -7,9 +7,9 @@ mod nav;
 mod split;
 mod stack;
 
-pub use border::render as render_borders;
-pub use container::render as render_containers;
-pub use grid::render as render_grids;
-pub use nav::render as render_nav;
-pub use split::render as render_splits;
-pub use stack::render as render_stacks;
+pub use border::examples as border_examples;
+pub use container::examples as container_examples;
+pub use grid::examples as grid_examples;
+pub use nav::examples as nav_examples;
+pub use split::examples as split_examples;
+pub use stack::examples as stack_examples;

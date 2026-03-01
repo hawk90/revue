@@ -7,9 +7,9 @@ mod timeline;
 mod tree;
 mod viewer;
 
-pub use calendar::render as render_calendar;
-pub use list::render as render_list;
-pub use table::render as render_table;
-pub use timeline::render as render_timeline;
-pub use tree::render as render_tree;
-pub use viewer::render as render_viewer;
+pub use calendar::examples as calendar_examples;
+pub use list::examples as list_examples;
+pub use table::examples as table_examples;
+pub use timeline::examples as timeline_examples;
+pub use tree::examples as tree_examples;
+pub use viewer::examples as viewer_examples;
