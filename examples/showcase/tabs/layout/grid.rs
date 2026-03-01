@@ -179,4 +179,78 @@ pub fn render() -> impl View {
                     ),
                 ),
         )
+        .child(
+            hstack()
+                .gap(3)
+                .child(
+                    Border::rounded().title(" Constrained Grid ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Size-limited grid:").fg(primary))
+                            .child(
+                                Grid::new()
+                                    .cols(3)
+                                    .gap(1)
+                                    .min_width(25)
+                                    .max_width(45)
+                                    .child(Badge::new("A"))
+                                    .child(Badge::new("B"))
+                                    .child(Badge::new("C"))
+                                    .child(Badge::new("D"))
+                                    .child(Badge::new("E"))
+                                    .child(Badge::new("F")),
+                            )
+                            .child(Text::new(""))
+                            .child(Text::new("• min_width() / max_width()").fg(muted))
+                            .child(Text::new("• min_height() / max_height()").fg(muted))
+                            .child(Text::new("• Responsive grid sizing").fg(muted)),
+                    ),
+                )
+                .child(
+                    Border::rounded().title(" Constrained Cards ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Sized cards in grid:").fg(primary))
+                            .child(
+                                Grid::new()
+                                    .cols(2)
+                                    .gap(1)
+                                    .child(
+                                        Card::new()
+                                            .title("Min 12w")
+                                            .body(Text::new("Fixed min"))
+                                            .min_width(12),
+                                    )
+                                    .child(
+                                        Card::new()
+                                            .title("Max 15w")
+                                            .body(Text::new("Fixed max"))
+                                            .max_width(15),
+                                    ),
+                            )
+                            .child(Text::new(""))
+                            .child(Text::new("• Card sizing").fg(muted))
+                            .child(Text::new("• Dashboard tiles").fg(muted))
+                            .child(Text::new("• Consistent layout").fg(muted)),
+                    ),
+                )
+                .child(
+                    Border::rounded().title(" Positioned ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Constrained position:").fg(primary))
+                            .child(
+                                positioned(Text::new("Min 8w, Max 15w").fg(text))
+                                    .x(2)
+                                    .y(1)
+                                    .min_width(8)
+                                    .max_width(15),
+                            )
+                            .child(Text::new(""))
+                            .child(Text::new("• Positioned constraints").fg(muted))
+                            .child(Text::new("• Size limits").fg(muted))
+                            .child(Text::new("• Overflow control").fg(muted)),
+                    ),
+                ),
+        )
 }

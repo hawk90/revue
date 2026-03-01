@@ -181,4 +181,79 @@ pub fn render() -> impl View {
                     ),
                 ),
         )
+        .child(
+            hstack()
+                .gap(3)
+                .child(
+                    Border::rounded().title(" Constrained Split ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Size limits on splits:").fg(primary))
+                            .child(
+                                hstack()
+                                    .gap(1)
+                                    .min_width(30)
+                                    .max_width(50)
+                                    .child(
+                                        Border::rounded()
+                                            .title("30-50w")
+                                            .child(Text::new("Min/Max").fg(text)),
+                                    )
+                                    .child(
+                                        Border::rounded()
+                                            .child(Text::new("Width limited").fg(text)),
+                                    ),
+                            )
+                            .child(Text::new(""))
+                            .child(Text::new("• min_width() on container").fg(muted))
+                            .child(Text::new("• max_width() on container").fg(muted))
+                            .child(Text::new("• Responsive layouts").fg(muted)),
+                    ),
+                )
+                .child(
+                    Border::rounded().title(" Min Size Split ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Minimum dimensions:").fg(primary))
+                            .child(
+                                vstack()
+                                    .gap(1)
+                                    .min_size(20, 3)
+                                    .child(
+                                        Border::rounded()
+                                            .child(Text::new("At least 20x3").fg(text)),
+                                    )
+                                    .child(
+                                        Border::rounded()
+                                            .child(Text::new("Guaranteed space").fg(text)),
+                                    ),
+                            )
+                            .child(Text::new(""))
+                            .child(Text::new("• .min_size(w, h)").fg(muted))
+                            .child(Text::new("• Ensures minimum area").fg(muted))
+                            .child(Text::new("• Good for small terms").fg(muted)),
+                    ),
+                )
+                .child(
+                    Border::rounded().title(" Max Size Split ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Maximum dimensions:").fg(primary))
+                            .child(
+                                hstack()
+                                    .gap(1)
+                                    .max_size(40, 4)
+                                    .child(Border::rounded().child(Text::new("Max 40x4").fg(text)))
+                                    .child(
+                                        Border::rounded()
+                                            .child(Text::new("Prevents overflow").fg(text)),
+                                    ),
+                            )
+                            .child(Text::new(""))
+                            .child(Text::new("• .max_size(w, h)").fg(muted))
+                            .child(Text::new("• Caps maximum size").fg(muted))
+                            .child(Text::new("• Good for large terms").fg(muted)),
+                    ),
+                ),
+        )
 }

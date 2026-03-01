@@ -210,4 +210,80 @@ pub fn render() -> impl View {
                     ),
                 ),
         )
+        .child(
+            hstack()
+                .gap(3)
+                .child(
+                    Border::rounded().title(" Constrained Border ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Size-limited borders:").fg(primary))
+                            .child(
+                                Border::rounded()
+                                    .title("Min 20w")
+                                    .min_width(20)
+                                    .child(Text::new("Minimum width 20").fg(text)),
+                            )
+                            .child(
+                                Border::rounded()
+                                    .title("Max 30w")
+                                    .max_width(30)
+                                    .child(Text::new("Maximum width 30").fg(text)),
+                            )
+                            .child(
+                                Border::rounded()
+                                    .title("15-25w")
+                                    .min_width(15)
+                                    .max_width(25)
+                                    .child(Text::new("Width range").fg(text)),
+                            )
+                            .child(Text::new(""))
+                            .child(Text::new("• min_width() / max_width()").fg(muted))
+                            .child(Text::new("• min_height() / max_height()").fg(muted))
+                            .child(Text::new("• Responsive sizing").fg(muted)),
+                    ),
+                )
+                .child(
+                    Border::rounded().title(" Height Constraints ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Height limits:").fg(primary))
+                            .child(
+                                Border::rounded()
+                                    .title("Min 3h")
+                                    .min_height(3)
+                                    .child(Text::new("Line 1").fg(text))
+                                    .child(Text::new("Line 2").fg(text)),
+                            )
+                            .child(
+                                Border::rounded()
+                                    .title("Max 4h")
+                                    .max_height(4)
+                                    .child(Text::new("Limited height").fg(text)),
+                            )
+                            .child(Text::new(""))
+                            .child(Text::new("• Vertical constraints").fg(muted))
+                            .child(Text::new("• Prevent overflow").fg(muted))
+                            .child(Text::new("• Fixed height areas").fg(muted)),
+                    ),
+                )
+                .child(
+                    Border::rounded().title(" constrain() ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("All limits at once:").fg(primary))
+                            .child(
+                                Border::rounded()
+                                    .title("20-35w, 2-5h")
+                                    .constrain(20, 2, 35, 5)
+                                    .child(Text::new("Constrained border").fg(text))
+                                    .child(Text::new("Multiple lines").fg(muted)),
+                            )
+                            .child(Text::new(""))
+                            .child(Text::new("• .constrain(min_w, min_h, max_w, max_h)").fg(muted))
+                            .child(Text::new("• One call, all constraints").fg(muted))
+                            .child(Text::new("• Cleaner API").fg(muted)),
+                    ),
+                ),
+        )
 }
