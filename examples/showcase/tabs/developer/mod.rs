@@ -7,9 +7,9 @@ mod http;
 mod monitor;
 mod terminal;
 
-pub use ai::render as render_ai;
-pub use code::render as render_code;
-pub use diff::render as render_diff;
-pub use http::render as render_http;
-pub use monitor::render as render_monitor;
-pub use terminal::render as render_terminal;
+pub use ai::examples as ai_examples;
+pub use code::examples as code_examples;
+pub use diff::examples as diff_examples;
+pub use http::examples as http_examples;
+pub use monitor::examples as monitor_examples;
+pub use terminal::examples as terminal_examples;

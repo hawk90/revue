@@ -7,9 +7,11 @@
 //! Key Bindings:
 //! - [1-7] Switch main tabs
 //! - [←/→] Cycle sub-tabs
+//! - [↑/↓] Cycle examples within sub-tab
 //! - [t] Cycle themes
 //! - [q/Esc] Quit
 
+mod example;
 mod footer;
 mod header;
 mod tab;
@@ -21,7 +23,7 @@ use revue::utils::Ticker;
 use std::cell::RefCell;
 
 use footer::render_footer;
-use header::{render_header, render_main_tabs, render_sub_tabs};
+use header::{render_example_header, render_header, render_main_tabs, render_sub_tabs};
 use tab::{MainTab, SubTab};
 use theme::{theme_colors, themed_gauge, threshold_gauge};
 
@@ -30,6 +32,7 @@ use theme::{theme_colors, themed_gauge, threshold_gauge};
 struct Showcase {
     main_tab: MainTab,
     sub_tab_index: usize,
+    example_index: usize,
     frame: u64,
     ticker: RefCell<Ticker>,
 
@@ -53,6 +56,7 @@ impl Showcase {
         Self {
             main_tab: MainTab::Input,
             sub_tab_index: 0,
+            example_index: 0,
             frame: 0,
             ticker: RefCell::new(Ticker::new()),
 
@@ -85,30 +89,37 @@ impl Showcase {
             Key::Char('1') => {
                 self.main_tab = MainTab::Input;
                 self.sub_tab_index = 0;
+                self.example_index = 0;
             }
             Key::Char('2') => {
                 self.main_tab = MainTab::Display;
                 self.sub_tab_index = 0;
+                self.example_index = 0;
             }
             Key::Char('3') => {
                 self.main_tab = MainTab::Chart;
                 self.sub_tab_index = 0;
+                self.example_index = 0;
             }
             Key::Char('4') => {
                 self.main_tab = MainTab::Data;
                 self.sub_tab_index = 0;
+                self.example_index = 0;
             }
             Key::Char('5') => {
                 self.main_tab = MainTab::Layout;
                 self.sub_tab_index = 0;
+                self.example_index = 0;
             }
             Key::Char('6') => {
                 self.main_tab = MainTab::Feedback;
                 self.sub_tab_index = 0;
+                self.example_index = 0;
             }
             Key::Char('7') => {
                 self.main_tab = MainTab::Developer;
                 self.sub_tab_index = 0;
+                self.example_index = 0;
             }
             // Input tab controls - slider controls (must come before general navigation)
             Key::Left if self.main_tab == MainTab::Input && self.sub_tab_index == 4 => {
@@ -120,19 +131,35 @@ impl Showcase {
             // General sub-tab navigation
             Key::Left => {
                 let sub_tabs = self.main_tab.sub_tabs();
-                if sub_tabs.len() > 0 {
+                if !sub_tabs.is_empty() {
                     self.sub_tab_index = if self.sub_tab_index == 0 {
                         sub_tabs.len() - 1
                     } else {
                         self.sub_tab_index - 1
                     };
+                    self.example_index = 0;
                 }
             }
             Key::Right => {
                 let sub_tabs = self.main_tab.sub_tabs();
-                if sub_tabs.len() > 0 {
+                if !sub_tabs.is_empty() {
                     self.sub_tab_index = (self.sub_tab_index + 1) % sub_tabs.len();
+                    self.example_index = 0;
                 }
+            }
+            // Example navigation (↑/↓) — Input/Select radio gets special handling
+            Key::Up if self.main_tab == MainTab::Input && self.sub_tab_index == 3 => {
+                self.radio_selected = self.radio_selected.saturating_sub(1);
+            }
+            Key::Down if self.main_tab == MainTab::Input && self.sub_tab_index == 3 => {
+                self.radio_selected = (self.radio_selected + 1).min(2);
+            }
+            Key::Up => {
+                self.example_index = self.example_index.saturating_sub(1);
+            }
+            Key::Down => {
+                // Clamped in render based on actual example count
+                self.example_index += 1;
             }
             // Input tab controls
             Key::Char('c') if self.main_tab == MainTab::Input => {
@@ -148,12 +175,6 @@ impl Showcase {
                 if self.main_tab == MainTab::Input && self.sub_tab_index == 4 =>
             {
                 self.rating_val = (self.rating_val + 1).min(5);
-            }
-            Key::Up if self.main_tab == MainTab::Input && self.sub_tab_index == 3 => {
-                self.radio_selected = self.radio_selected.saturating_sub(1);
-            }
-            Key::Down if self.main_tab == MainTab::Input && self.sub_tab_index == 3 => {
-                self.radio_selected = (self.radio_selected + 1).min(2);
             }
             _ => {}
         }
@@ -204,7 +225,7 @@ impl View for Showcase {
             .copied()
             .unwrap_or(SubTab::Button);
 
-        let main_content = tabs::render_content(
+        let examples = tabs::get_examples(
             current_sub_tab,
             self.frame,
             self.cpu,
@@ -219,17 +240,28 @@ impl View for Showcase {
             self.radio_selected,
         );
 
+        let total = examples.len();
+        let index = self.example_index.min(total.saturating_sub(1));
+        let current = examples.into_iter().nth(index);
+
+        let (title, description, widget): (&str, &str, Box<dyn View>) = match current {
+            Some(ex) => (ex.title, ex.description, ex.widget),
+            None => ("Empty", "No examples available", Box::new(Text::new(""))),
+        };
+
         vstack()
             .gap(0)
-            .child(render_header(self.frame, self.main_tab))
-            .child(Text::new(""))
-            .child(render_main_tabs(self.main_tab))
-            .child(Text::new(""))
-            .child(render_sub_tabs(sub_tabs, self.sub_tab_index))
-            .child(Text::new(""))
-            .child(main_content)
-            .child(Text::new(""))
-            .child(render_footer(sub_tabs, self.sub_tab_index))
+            .child_sized(render_header(self.frame, self.main_tab), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(render_main_tabs(self.main_tab), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(render_sub_tabs(sub_tabs, self.sub_tab_index), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(render_example_header(title, description, index, total), 1)
+            .child_sized(Text::new(""), 1)
+            .child(widget)
+            .child_sized(Text::new(""), 1)
+            .child_sized(render_footer(index, total), 1)
             .render(ctx);
     }
 }

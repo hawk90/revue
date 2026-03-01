@@ -19,7 +19,7 @@ pub fn render_header(frame: u64, _active_main_tab: MainTab) -> impl View {
         .child(Text::new(" REVUE SHOWCASE ").bold().fg(primary))
         .child(Text::new(format!("│ Theme: {}", theme.name)).fg(muted))
         .child(Text::new(format!("│ {}", time)).fg(muted))
-        .child(Text::new(format!("│ [1-7] Tabs")).fg(muted))
+        .child(Text::new("│ [1-7] Tabs").fg(muted))
 }
 
 pub fn render_main_tabs(active_main_tab: MainTab) -> impl View {
@@ -59,4 +59,22 @@ pub fn render_sub_tabs(sub_tabs: &[crate::SubTab], active_sub_tab: usize) -> imp
         }
     }
     tabs
+}
+
+pub fn render_example_header(
+    title: &str,
+    description: &str,
+    index: usize,
+    total: usize,
+) -> impl View {
+    let (primary, _, _, _, _, muted, _, _) = theme_colors();
+
+    hstack()
+        .gap(2)
+        .child(
+            Text::new(format!("▸ Example {}/{}: {}", index + 1, total, title))
+                .bold()
+                .fg(primary),
+        )
+        .child(Text::new(format!("— {}", description)).fg(muted))
 }

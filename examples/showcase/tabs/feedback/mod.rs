@@ -6,8 +6,8 @@ mod overlay;
 mod toast;
 mod tooltip;
 
-pub use menu::render as render_menus;
-pub use modal::render as render_modals;
-pub use overlay::render as render_overlays;
-pub use toast::render as render_toasts;
-pub use tooltip::render as render_tooltips;
+pub use menu::examples as menu_examples;
+pub use modal::examples as modal_examples;
+pub use overlay::examples as overlay_examples;
+pub use toast::examples as toast_examples;
+pub use tooltip::examples as tooltip_examples;
