@@ -122,4 +122,65 @@ pub fn render() -> impl View {
                     ),
                 ),
         )
+        .child(
+            hstack()
+                .gap(3)
+                .child(
+                    Border::rounded().title(" Size Constraints ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Min/Max sizing:").fg(primary))
+                            .child(Card::new()
+                                .title("Min 20x3")
+                                .body(Text::new("Fixed minimum"))
+                                .min_width(20)
+                                .min_height(3))
+                            .child(Collapsible::new("Constrained")
+                                .content("Min 15 width, max 40 width")
+                                .min_width(15)
+                                .max_width(40))
+                            .child(Text::new(""))
+                            .child(Text::new("• min_width() / min_height()").fg(muted))
+                            .child(Text::new("• max_width() / max_height()").fg(muted))
+                            .child(Text::new("• constrain() for all at once").fg(muted)),
+                    ),
+                )
+                .child(
+                    Border::rounded().title(" Constrained Accordion ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Size-limited accordion:").fg(primary))
+                            .child(Accordion::new()
+                                .min_width(25)
+                                .max_height(10)
+                                .section(
+                                    AccordionSection::new("Section A")
+                                        .content("Content for section A with size constraints.")
+                                )
+                                .section(
+                                    AccordionSection::new("Section B")
+                                        .content("Content for section B.")
+                                ))
+                            .child(Text::new(""))
+                            .child(Text::new("• Minimum dimensions").fg(muted))
+                            .child(Text::new("• Maximum dimensions").fg(muted))
+                            .child(Text::new("• Overflow handling").fg(muted)),
+                    ),
+                )
+                .child(
+                    Border::rounded().title(" Responsive Card ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Responsive sizing:").fg(primary))
+                            .child(Card::new()
+                                .title("Flexible Card")
+                                .body(Text::new("Constrained: min 15w, max 30w, min 2h, max 6h"))
+                                .constrain(15, 2, 30, 6))
+                            .child(Text::new(""))
+                            .child(Text::new("• Constrain all at once").fg(muted))
+                            .child(Text::new("• Responsive to terminal").fg(muted))
+                            .child(Text::new("• Prevent overflow").fg(muted)),
+                    ),
+                ),
+        )
 }

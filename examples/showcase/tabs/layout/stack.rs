@@ -172,4 +172,73 @@ pub fn render() -> impl View {
                     ),
                 ),
         )
+        .child(
+            hstack()
+                .gap(3)
+                .child(
+                    Border::rounded().title(" Constrained Stack ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Size-limited stack:").fg(primary))
+                            .child(
+                                vstack()
+                                    .gap(1)
+                                    .min_width(15)
+                                    .max_width(25)
+                                    .child(Text::new("Min 15w, Max 25w").fg(text))
+                                    .child(Text::new("Constrained width").fg(muted)),
+                            )
+                            .child(Text::new(""))
+                            .child(
+                                hstack()
+                                    .gap(1)
+                                    .min_height(2)
+                                    .max_height(3)
+                                    .child(Text::new("A").fg(text))
+                                    .child(Text::new("B").fg(text))
+                                    .child(Text::new("Min 2h, Max 3h").fg(muted)),
+                            )
+                            .child(Text::new(""))
+                            .child(Text::new("• min_width() / min_height()").fg(muted))
+                            .child(Text::new("• max_width() / max_height()").fg(muted))
+                            .child(Text::new("• Responsive sizing").fg(muted)),
+                    ),
+                )
+                .child(
+                    Border::rounded().title(" Constrained Layers ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Size-limited layers:").fg(primary))
+                            .child(
+                                Layers::new()
+                                    .min_size(20, 3)
+                                    .max_size(35, 5)
+                                    .child(Border::rounded().child(Text::new("Layer 1")))
+                                    .child(Border::rounded().child(Text::new("Layer 2"))),
+                            )
+                            .child(Text::new(""))
+                            .child(Text::new("• Min/max dimensions").fg(muted))
+                            .child(Text::new("• Overlay constraints").fg(muted))
+                            .child(Text::new("• Prevent overflow").fg(muted)),
+                    ),
+                )
+                .child(
+                    Border::rounded().title(" constrain() Helper ").child(
+                        vstack()
+                            .gap(1)
+                            .child(Text::new("Set all at once:").fg(primary))
+                            .child(
+                                vstack()
+                                    .gap(0)
+                                    .constrain(10, 2, 30, 5)
+                                    .child(Text::new("10-30w, 2-5h").fg(text))
+                                    .child(Text::new("Constrained stack").fg(muted)),
+                            )
+                            .child(Text::new(""))
+                            .child(Text::new("• .constrain(min_w, min_h, max_w, max_h)").fg(muted))
+                            .child(Text::new("• One call for all limits").fg(muted))
+                            .child(Text::new("• Cleaner code").fg(muted)),
+                    ),
+                ),
+        )
 }
