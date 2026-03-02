@@ -51,15 +51,17 @@ impl ColorPicker {
         let colors = self.palette.colors();
         let (cols, _rows) = self.palette.grid_size();
 
-        let mut x = area.x;
-        let mut y = area.y;
+        let ox = area.x;
+        let oy = area.y;
+        let mut x: u16 = 0;
+        let mut y: u16 = 0;
 
         for (i, color) in colors.iter().enumerate() {
-            if x + 2 > area.x + area.width {
-                x = area.x;
+            if x + 2 > area.width {
+                x = 0;
                 y += 1;
             }
-            if y >= area.y + area.height.saturating_sub(2) {
+            if y >= area.height.saturating_sub(2) {
                 break;
             }
 
@@ -72,15 +74,15 @@ impl ColorPicker {
             if is_selected {
                 cell.modifier |= Modifier::BOLD;
             }
-            ctx.set(x, y, cell);
+            ctx.set(ox + x, oy + y, cell);
 
             let mut cell2 = Cell::new(if is_selected { '█' } else { '▄' });
             cell2.fg = Some(*color);
-            ctx.set(x + 1, y, cell2);
+            ctx.set(ox + x + 1, oy + y, cell2);
 
             x += 2;
             if (i + 1) % cols == 0 {
-                x = area.x;
+                x = 0;
                 y += 1;
             }
         }
@@ -107,11 +109,13 @@ impl ColorPicker {
     }
 
     fn render_sliders(&self, ctx: &mut RenderContext, area: Rect, sliders: &[(&str, f32, Color)]) {
+        let ox = area.x;
+        let oy = area.y;
         let slider_width = (area.width.saturating_sub(6)) as usize;
 
         for (i, (label, value, color)) in sliders.iter().enumerate() {
-            let y = area.y + i as u16;
-            if y >= area.y + area.height {
+            let y = i as u16;
+            if y >= area.height {
                 break;
             }
 
@@ -123,7 +127,7 @@ impl ColorPicker {
             if is_active {
                 label_cell.modifier |= Modifier::BOLD;
             }
-            ctx.set(area.x, y, label_cell);
+            ctx.set(ox, oy + y, label_cell);
 
             // Slider track
             let filled = (value * slider_width as f32) as usize;
@@ -135,7 +139,7 @@ impl ColorPicker {
                 } else {
                     Color::rgb(60, 60, 60)
                 });
-                ctx.set(area.x + 2 + j as u16, y, cell);
+                ctx.set(ox + 2 + j as u16, oy + y, cell);
             }
 
             // Value
@@ -148,26 +152,29 @@ impl ColorPicker {
                 _ => format!("{:3}", self.b),
             };
 
-            let val_x = area.x + 2 + slider_width as u16 + 1;
+            let val_x = ox + 2 + slider_width as u16 + 1;
             for (j, ch) in val_str.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
-                ctx.set(val_x + j as u16, y, cell);
+                ctx.set(val_x + j as u16, oy + y, cell);
             }
         }
     }
 
     fn render_hex_mode(&self, ctx: &mut RenderContext, area: Rect) {
+        let ox = area.x;
+        let oy = area.y;
+
         // Label
         let label = "Hex: #";
         for (i, ch) in label.chars().enumerate() {
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::WHITE);
-            ctx.set(area.x + i as u16, area.y, cell);
+            ctx.set(ox + i as u16, oy, cell);
         }
 
         // Input field
-        let input_x = area.x + label.len() as u16;
+        let input_x = ox + label.len() as u16;
         let input_len = self.hex_input.chars().count();
         // Iterate directly over chars for O(n) instead of O(n²) with .chars().nth(i) in loop
         for (i, ch) in self
@@ -183,7 +190,7 @@ impl ColorPicker {
             } else {
                 Color::rgb(60, 60, 60)
             });
-            ctx.set(input_x + i as u16, area.y, cell);
+            ctx.set(input_x + i as u16, oy, cell);
         }
 
         // Current hex value
@@ -191,12 +198,14 @@ impl ColorPicker {
         for (i, ch) in current.chars().enumerate() {
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::rgb(150, 150, 150));
-            ctx.set(area.x + i as u16, area.y + 2, cell);
+            ctx.set(ox + i as u16, oy + 2, cell);
         }
     }
 
     fn render_preview(&self, ctx: &mut RenderContext, area: Rect) {
-        let preview_y = area.y + area.height.saturating_sub(2);
+        let ox = area.x;
+        let oy = area.y;
+        let preview_y = oy + area.height.saturating_sub(2);
         let preview_width = 6u16;
 
         // Preview block
@@ -204,7 +213,7 @@ impl ColorPicker {
             for dx in 0..preview_width {
                 let mut cell = Cell::new('█');
                 cell.fg = Some(self.color);
-                ctx.set(area.x + dx, preview_y + dy, cell);
+                ctx.set(ox + dx, preview_y + dy, cell);
             }
         }
 
@@ -214,7 +223,7 @@ impl ColorPicker {
             for (i, ch) in hex.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
-                ctx.set(area.x + preview_width + 1 + i as u16, preview_y, cell);
+                ctx.set(ox + preview_width + 1 + i as u16, preview_y, cell);
             }
         }
     }

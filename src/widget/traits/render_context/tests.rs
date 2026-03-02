@@ -5,7 +5,7 @@
 use super::super::event::FocusStyle;
 use super::*;
 use crate::render::Modifier;
-use crate::style::{Color, Style};
+use crate::style::{BorderStyle, Color, Size, Style};
 use std::collections::HashMap;
 
 #[allow(dead_code)]
@@ -614,7 +614,7 @@ fn test_css_width_no_style() {
     let ctx = RenderContext::new(&mut buffer, test_area());
 
     let width = ctx.css_width();
-    assert_eq!(width.value, 0);
+    assert_eq!(width, Size::Auto);
 }
 
 #[test]
@@ -623,7 +623,7 @@ fn test_css_height_no_style() {
     let ctx = RenderContext::new(&mut buffer, test_area());
 
     let height = ctx.css_height();
-    assert_eq!(height.value, 0);
+    assert_eq!(height, Size::Auto);
 }
 
 #[test]
@@ -632,7 +632,7 @@ fn test_css_border_style_no_style() {
     let ctx = RenderContext::new(&mut buffer, test_area());
 
     let border_style = ctx.css_border_style();
-    assert_eq!(border_style, BorderStyle::default());
+    assert_eq!(border_style, BorderStyle::None);
 }
 
 #[test]
@@ -752,36 +752,30 @@ fn test_css_margin_with_style() {
 
 #[test]
 fn test_css_width_with_style() {
-    use crate::style::{Size, Style};
-
     let mut buffer = test_buffer();
     let mut style = Style::default();
-    style.sizing.width = Size::px(100);
+    style.sizing.width = Size::Fixed(100);
 
     let ctx = RenderContext::with_style(&mut buffer, test_area(), &style);
 
     let width = ctx.css_width();
-    assert_eq!(width.value, 100);
+    assert_eq!(width, Size::Fixed(100));
 }
 
 #[test]
 fn test_css_height_with_style() {
-    use crate::style::{Size, Style};
-
     let mut buffer = test_buffer();
     let mut style = Style::default();
-    style.sizing.height = Size::px(50);
+    style.sizing.height = Size::Fixed(50);
 
     let ctx = RenderContext::with_style(&mut buffer, test_area(), &style);
 
     let height = ctx.css_height();
-    assert_eq!(height.value, 50);
+    assert_eq!(height, Size::Fixed(50));
 }
 
 #[test]
 fn test_css_border_style_with_style() {
-    use crate::style::{BorderStyle, Style};
-
     let mut buffer = test_buffer();
     let mut style = Style::default();
     style.visual.border_style = BorderStyle::Dashed;
@@ -1125,4 +1119,134 @@ fn test_draw_box_titled_double() {
     // Should have double-line corners
     assert_eq!(buffer.get(0, 0).unwrap().symbol, '╔');
     assert_eq!(buffer.get(9, 0).unwrap().symbol, '╗');
+}
+
+// =========================================================================
+// Offset area tests — verify relative coords translate correctly
+// =========================================================================
+
+fn offset_buffer() -> Buffer {
+    Buffer::new(20, 10)
+}
+
+fn offset_area() -> Rect {
+    Rect::new(5, 3, 10, 5)
+}
+
+#[test]
+fn test_draw_char_with_offset() {
+    let mut buffer = offset_buffer();
+    let mut ctx = RenderContext::new(&mut buffer, offset_area());
+    let color = Color::rgb(255, 255, 255);
+
+    ctx.draw_char(0, 0, 'A', color);
+    ctx.draw_char(2, 1, 'B', color);
+
+    // (0,0) relative → (5,3) absolute
+    assert_eq!(buffer.get(5, 3).unwrap().symbol, 'A');
+    // (2,1) relative → (7,4) absolute
+    assert_eq!(buffer.get(7, 4).unwrap().symbol, 'B');
+    // Original (0,0) should be untouched
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
+}
+
+#[test]
+fn test_draw_text_with_offset() {
+    let mut buffer = offset_buffer();
+    let mut ctx = RenderContext::new(&mut buffer, offset_area());
+    let color = Color::rgb(255, 255, 255);
+
+    ctx.draw_text(1, 0, "Hi", color);
+
+    // (1,0) relative → (6,3) absolute
+    assert_eq!(buffer.get(6, 3).unwrap().symbol, 'H');
+    assert_eq!(buffer.get(7, 3).unwrap().symbol, 'i');
+}
+
+#[test]
+fn test_sub_area_with_offset() {
+    let mut buffer = offset_buffer();
+    let ctx = RenderContext::new(&mut buffer, offset_area());
+
+    let sub = ctx.sub_area(1, 1, 8, 3);
+
+    assert_eq!(sub.x, 6); // 5 + 1
+    assert_eq!(sub.y, 4); // 3 + 1
+    assert_eq!(sub.width, 8);
+    assert_eq!(sub.height, 3);
+}
+
+#[test]
+fn test_set_get_with_offset() {
+    let mut buffer = offset_buffer();
+    let mut ctx = RenderContext::new(&mut buffer, offset_area());
+
+    use crate::render::Cell;
+    ctx.set(2, 1, Cell::new('Z'));
+
+    // get() should translate relative → absolute internally
+    let cell = ctx.get(2, 1).unwrap();
+    assert_eq!(cell.symbol, 'Z');
+
+    // Verify via buffer directly (drop ctx first)
+    drop(ctx);
+    assert_eq!(buffer.get(7, 4).unwrap().symbol, 'Z');
+}
+
+#[test]
+fn test_get_mut_with_offset() {
+    let mut buffer = offset_buffer();
+    let mut ctx = RenderContext::new(&mut buffer, offset_area());
+
+    use crate::render::Cell;
+    ctx.set(0, 0, Cell::new('M'));
+
+    let cell = ctx.get_mut(0, 0).unwrap();
+    cell.symbol = 'N';
+
+    assert_eq!(buffer.get(5, 3).unwrap().symbol, 'N');
+}
+
+#[test]
+fn test_draw_char_clipped_x() {
+    let mut buffer = offset_buffer();
+    let mut ctx = RenderContext::new(&mut buffer, offset_area());
+    let color = Color::rgb(255, 255, 255);
+
+    // area width is 10, so x=10 should be clipped
+    ctx.draw_char(10, 0, 'X', color);
+
+    // Should not appear at (15,3) — out of bounds for area
+    assert_eq!(buffer.get(15, 3).unwrap().symbol, ' ');
+}
+
+#[test]
+fn test_draw_char_clipped_y() {
+    let mut buffer = offset_buffer();
+    let mut ctx = RenderContext::new(&mut buffer, offset_area());
+    let color = Color::rgb(255, 255, 255);
+
+    // area height is 5, so y=5 should be clipped
+    ctx.draw_char(0, 5, 'X', color);
+
+    // Should not appear at (5,8) — out of bounds for area
+    assert_eq!(buffer.get(5, 8).unwrap().symbol, ' ');
+}
+
+#[test]
+fn test_fill_bg_with_offset() {
+    let mut buffer = offset_buffer();
+    let mut ctx = RenderContext::new(&mut buffer, offset_area());
+    let bg = Color::rgb(100, 100, 100);
+
+    ctx.fill_bg(0, 0, 3, 2, bg);
+
+    // Check absolute positions
+    for dy in 0..2u16 {
+        for dx in 0..3u16 {
+            assert_eq!(buffer.get(5 + dx, 3 + dy).unwrap().bg, Some(bg));
+        }
+    }
+    // Outside the fill area should be untouched
+    assert_eq!(buffer.get(8, 3).unwrap().bg, None);
 }
