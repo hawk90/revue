@@ -106,9 +106,10 @@ impl<'a> RenderContext<'a> {
         self.state.map(|s| s.disabled).unwrap_or(false)
     }
 
-    /// Create a sub-area in absolute coordinates from relative position and size.
+    /// Create a child `Rect` from relative position and size.
     ///
-    /// Use this when creating child `Rect` for sub-contexts:
+    /// Input `x`/`y` are relative to this area; the returned `Rect` contains
+    /// absolute buffer coordinates suitable for constructing a child context:
     /// ```ignore
     /// let inner = ctx.sub_area(1, 1, w - 2, h - 2);
     /// let mut child_ctx = RenderContext::new(ctx.buffer, inner);

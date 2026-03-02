@@ -58,8 +58,9 @@ impl RenderContext<'_> {
 
     /// Draw a focus indicator on the left side of an item
     ///
-    /// Special case: draws in the column just before the area (absolute position).
-    /// Falls back to first column of area if area starts at x=0.
+    /// `y` is relative to the area. The marker is drawn one column before
+    /// the area using absolute buffer access. Falls back to column 0 of the
+    /// area if it starts at x=0.
     pub fn draw_focus_marker_left(&mut self, y: u16, color: Color) {
         if self.area.x > 0 {
             // Draw outside the area — use absolute buffer access
