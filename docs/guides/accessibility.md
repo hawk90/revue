@@ -76,11 +76,13 @@ Input::new().focus_style(FocusStyle::Bold)
 ### Drawing Focus Rings
 
 ```rust
-use revue::utils::{draw_focus_ring, draw_focus_underline};
-
 fn render(&self, ctx: &mut RenderContext) {
+    // Apply a default focus ring (Rounded + Cyan) around the full area
+    ctx.apply_default_focus(self.is_focused);
+
+    // Or use a specific style — coordinates are relative (0,0 = area top-left)
     if self.is_focused {
-        draw_focus_ring(ctx.buffer, rect, Color::CYAN);
+        ctx.draw_focus_ring(0, 0, ctx.width(), ctx.height(), Color::CYAN, FocusStyle::Rounded);
     }
 }
 ```

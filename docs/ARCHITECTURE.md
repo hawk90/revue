@@ -178,13 +178,7 @@ src/widget/
 ```rust
 /// Core trait for all renderable components
 pub trait View {
-    fn render(&self, ctx: &mut RenderContext) -> Element;
-}
-
-/// Stateful widget with internal state
-pub trait StatefulWidget {
-    type State: Default;
-    fn render(&self, state: &mut Self::State, ctx: &mut RenderContext) -> Element;
+    fn render(&self, ctx: &mut RenderContext);
 }
 ```
 
@@ -580,8 +574,10 @@ pub struct MyWidget {
 }
 
 impl View for MyWidget {
-    fn render(&self, ctx: &mut RenderContext) -> Element {
-        // Custom rendering logic
+    fn render(&self, ctx: &mut RenderContext) {
+        // Custom rendering logic — all draw_* coordinates are relative
+        // (0,0) = top-left of the widget's area
+        ctx.draw_text(0, 0, "Hello", Color::WHITE);
     }
 }
 ```
