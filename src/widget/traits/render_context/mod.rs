@@ -9,6 +9,9 @@ mod shapes;
 mod text;
 mod types;
 
+#[cfg(test)]
+mod tests;
+
 pub use types::ProgressBarConfig;
 
 use crate::dom::NodeState;
