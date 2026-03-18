@@ -430,14 +430,21 @@ impl View for Accordion {
             // Title
             let title_x = content_x_off + 3;
             let max_title_width = (content_width.saturating_sub(4)) as usize;
-            for (i, ch) in section.title.chars().take(max_title_width).enumerate() {
+            let title_truncated = crate::utils::truncate_to_width(&section.title, max_title_width);
+            let mut cx = title_x;
+            for ch in title_truncated.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if cx + cw > title_x + max_title_width as u16 {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.header_fg);
                 cell.bg = Some(header_bg);
                 if is_selected {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.set(title_x + i as u16, y, cell);
+                ctx.set(cx, y, cell);
+                cx += cw;
             }
 
             y += 1;
@@ -459,11 +466,19 @@ impl View for Accordion {
                     // Content with indent
                     let content_x = content_x_off + 3;
                     let max_content_width = (content_width.saturating_sub(4)) as usize;
-                    for (i, ch) in line.chars().take(max_content_width).enumerate() {
+                    let content_truncated =
+                        crate::utils::truncate_to_width(line, max_content_width);
+                    let mut cx = content_x;
+                    for ch in content_truncated.chars() {
+                        let cw = crate::utils::char_width(ch) as u16;
+                        if cx + cw > content_x + max_content_width as u16 {
+                            break;
+                        }
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.content_fg);
                         cell.bg = Some(self.content_bg);
-                        ctx.set(content_x + i as u16, y, cell);
+                        ctx.set(cx, y, cell);
+                        cx += cw;
                     }
 
                     y += 1;

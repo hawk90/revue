@@ -271,12 +271,12 @@ impl StatusIndicator {
         match self.style {
             StatusStyle::Dot => self.size.width(),
             StatusStyle::DotWithLabel => {
-                let label_len = self.get_label().chars().count() as u16;
+                let label_len = crate::utils::display_width(self.get_label()) as u16;
                 self.size.width() + 1 + label_len // dot + space + label
             }
-            StatusStyle::LabelOnly => self.get_label().chars().count() as u16,
+            StatusStyle::LabelOnly => crate::utils::display_width(self.get_label()) as u16,
             StatusStyle::Badge => {
-                let label_len = self.get_label().chars().count() as u16;
+                let label_len = crate::utils::display_width(self.get_label()) as u16;
                 label_len + 4 // padding + dot + space + label + padding
             }
         }

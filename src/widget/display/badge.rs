@@ -223,7 +223,7 @@ impl View for Badge {
                 ctx.set(0, 0, cell);
             }
             BadgeShape::Rounded | BadgeShape::Square | BadgeShape::Pill => {
-                let text_len = self.text.chars().count() as u16;
+                let text_len = crate::utils::display_width(&self.text) as u16;
                 let padding = match self.shape {
                     BadgeShape::Pill => 2,
                     BadgeShape::Rounded => 1,

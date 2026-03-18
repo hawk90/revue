@@ -291,7 +291,8 @@ impl View for Tabs {
 
             // Draw label
             for ch in tab.label.chars() {
-                if x >= area.width {
+                let cw = crate::utils::char_width(ch) as u16;
+                if x + cw > area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -301,7 +302,7 @@ impl View for Tabs {
                     cell.modifier |= crate::render::Modifier::BOLD;
                 }
                 ctx.set(x, 0, cell);
-                x += 1;
+                x += cw;
             }
 
             // Draw padding

@@ -339,40 +339,51 @@ impl Alert {
         // Title (if present)
         if let Some(ref title) = self.title {
             let title_x = content_x + icon_offset;
-            for (i, ch) in title.chars().enumerate() {
-                if i as u16 >= content_width - icon_offset {
+            let max_w = content_width.saturating_sub(icon_offset);
+            let mut cx = title_x;
+            for ch in title.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if cx + cw > title_x + max_w {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.bg = Some(bg_color);
                 cell.modifier |= Modifier::BOLD;
-                ctx.set(title_x + i as u16, y, cell);
+                ctx.set(cx, y, cell);
+                cx += cw;
             }
             y += 1;
 
             // Message on next line (indented to align with title)
             let msg_x = content_x + icon_offset;
-            for (i, ch) in self.message.chars().enumerate() {
-                if i as u16 >= content_width - icon_offset {
+            let mut cx = msg_x;
+            for ch in self.message.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if cx + cw > msg_x + max_w {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::rgb(200, 200, 200));
                 cell.bg = Some(bg_color);
-                ctx.set(msg_x + i as u16, y, cell);
+                ctx.set(cx, y, cell);
+                cx += cw;
             }
         } else {
             // Message only (same line as icon)
             let msg_x = content_x + icon_offset;
-            for (i, ch) in self.message.chars().enumerate() {
-                if i as u16 >= content_width - icon_offset {
+            let max_w = content_width.saturating_sub(icon_offset);
+            let mut cx = msg_x;
+            for ch in self.message.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if cx + cw > msg_x + max_w {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.bg = Some(bg_color);
-                ctx.set(msg_x + i as u16, y, cell);
+                ctx.set(cx, y, cell);
+                cx += cw;
             }
         }
 
