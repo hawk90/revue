@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.58.3](https://github.com/hawk90/revue/compare/v2.58.2...v2.58.3) (2026-03-18)
+
+
+### Bug Fixes
+
+* **textarea:** use char indices instead of byte indices for cursor ([#471](https://github.com/hawk90/revue/issues/471)) ([5f3806f](https://github.com/hawk90/revue/commit/5f3806f8ab7ba5380573aa0958a7e17cdd94db55))
+
 ## [2.58.2](https://github.com/hawk90/revue/compare/v2.58.1...v2.58.2) (2026-03-18)
 
 
