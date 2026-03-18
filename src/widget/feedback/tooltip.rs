@@ -616,7 +616,7 @@ impl View for Tooltip {
             }
         }
 
-        // Draw arrow
+        // Draw arrow (only if it doesn't overlap the tooltip body)
         if !matches!(self.arrow, TooltipArrow::None) {
             let (arrow_char, _) = self.arrow.chars(actual_position);
             let (arrow_x, arrow_y) = match actual_position {
@@ -624,12 +624,16 @@ impl View for Tooltip {
                 TooltipPosition::Bottom => (self.anchor.0, tooltip_y.saturating_sub(1)),
                 TooltipPosition::Left => (tooltip_x + tooltip_w, self.anchor.1),
                 TooltipPosition::Right => (tooltip_x.saturating_sub(1), self.anchor.1),
-                // Auto is already resolved to a concrete position in calculate_position
-                // This case should never be reached, but use Top as fallback
                 TooltipPosition::Auto => (self.anchor.0, tooltip_y + tooltip_h),
             };
 
-            if arrow_x < area.width && arrow_y < area.height {
+            // Only draw if within bounds AND not overlapping the tooltip body
+            let inside_tooltip = arrow_x >= tooltip_x
+                && arrow_x < tooltip_x + tooltip_w
+                && arrow_y >= tooltip_y
+                && arrow_y < tooltip_y + tooltip_h;
+
+            if arrow_x < area.width && arrow_y < area.height && !inside_tooltip {
                 let mut cell = Cell::new(arrow_char);
                 cell.fg = Some(fg);
                 ctx.set(arrow_x, arrow_y, cell);

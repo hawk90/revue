@@ -1526,7 +1526,8 @@ impl View for Input {
 
         let mut x: u16 = 0;
         for (i, ch) in display_text.chars().enumerate() {
-            if x >= area.width {
+            let char_width = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as u16;
+            if x + char_width > area.width {
                 break;
             }
 
@@ -1548,8 +1549,6 @@ impl View for Input {
             }
 
             ctx.set(x, 0, cell);
-
-            let char_width = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as u16;
             x += char_width;
         }
 

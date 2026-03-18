@@ -392,13 +392,19 @@ impl View for Modal {
         if !self.title.is_empty() && modal_width > 4 {
             let title_x = x + 2;
             let title_width = modal_width.saturating_sub(4) as usize;
-            let title: String = self.title.chars().take(title_width).collect();
+            let title = crate::utils::truncate_to_width(&self.title, title_width);
 
-            for (i, ch) in title.chars().enumerate() {
+            let mut tx: u16 = 0;
+            for ch in title.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if tx + cw > title_width as u16 {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = self.title_fg;
                 cell.modifier |= crate::render::Modifier::BOLD;
-                ctx.set(title_x + i as u16, y + 1, cell);
+                ctx.set(title_x + tx, y + 1, cell);
+                tx += cw;
             }
 
             // Title separator
@@ -409,10 +415,16 @@ impl View for Modal {
             ctx.set(x + modal_width.saturating_sub(1), y + 2, Cell::new('┤'));
         }
 
-        // Draw content
-        let content_y = y + 3;
+        // Draw content — adjust for title presence
+        let has_title = !self.title.is_empty() && modal_width > 4;
+        let content_y = if has_title { y + 3 } else { y + 1 };
         let content_width = modal_width.saturating_sub(4);
-        let content_height = modal_height.saturating_sub(6); // title + separator + padding + buttons + borders
+        // borders(2) + buttons(1) + padding(1) + title+separator(2 if present)
+        let content_height = if has_title {
+            modal_height.saturating_sub(6)
+        } else {
+            modal_height.saturating_sub(4)
+        };
 
         if let Some(ref body_widget) = self.body {
             // Render child widget
@@ -426,9 +438,15 @@ impl View for Modal {
                 if cy >= y + modal_height - 2 {
                     break;
                 }
-                let truncated: String = line.chars().take(content_width as usize).collect();
-                for (j, ch) in truncated.chars().enumerate() {
-                    ctx.set(x + 2 + j as u16, cy, Cell::new(ch));
+                let truncated = crate::utils::truncate_to_width(line, content_width as usize);
+                let mut cx: u16 = 0;
+                for ch in truncated.chars() {
+                    let cw = crate::utils::char_width(ch) as u16;
+                    if cx + cw > content_width {
+                        break;
+                    }
+                    ctx.set(x + 2 + cx, cy, Cell::new(ch));
+                    cx += cw;
                 }
             }
         }
