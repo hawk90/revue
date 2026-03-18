@@ -449,7 +449,7 @@ impl Gauge {
 
             for (i, ch) in label.chars().enumerate() {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
+                cell.fg = Some(contrast_color(self.empty_bg.unwrap_or(Color::rgb(0, 0, 0))));
                 cell.modifier |= Modifier::BOLD;
                 ctx.set(label_x + i as u16, 1, cell);
             }
@@ -512,7 +512,7 @@ impl Gauge {
         let label_x = 3 + segments;
         for (i, ch) in label.chars().enumerate() {
             let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::WHITE);
+            cell.fg = Some(contrast_color(self.empty_bg.unwrap_or(Color::rgb(0, 0, 0))));
             ctx.set(label_x + i as u16, 0, cell);
         }
     }

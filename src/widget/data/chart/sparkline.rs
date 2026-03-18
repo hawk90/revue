@@ -8,9 +8,6 @@ use crate::{impl_props_builders, impl_styled_view};
 /// Block characters for sparkline (8 levels)
 const SPARK_CHARS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 
-/// Width allocated for showing max/min bounds (e.g., "max:100")
-const SPARKLINE_BOUNDS_WIDTH: usize = 8;
-
 /// Sparkline style variants
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum SparklineStyle {
@@ -191,7 +188,9 @@ impl View for Sparkline {
 
         // Calculate how many data points we can show
         let bounds_width = if self.show_bounds {
-            SPARKLINE_BOUNDS_WIDTH
+            // Dynamic width: format max value + 1 for space separator
+            let max_str = format!("{:.0}", max);
+            max_str.len() + 1
         } else {
             0
         };

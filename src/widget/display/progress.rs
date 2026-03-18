@@ -144,7 +144,8 @@ impl View for Progress {
             let pct = format!("{:3.0}%", self.progress * 100.0);
             let start_x = bar_width + 1;
             let max_width = area.width.saturating_sub(start_x);
-            ctx.draw_text_clipped(start_x, 0, &pct, Color::WHITE, max_width);
+            let pct_fg = self.filled_fg.unwrap_or(Color::WHITE);
+            ctx.draw_text_clipped(start_x, 0, &pct, pct_fg, max_width);
         }
     }
 

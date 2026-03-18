@@ -53,6 +53,7 @@ impl Tree {
                 let mut x = 0u16;
 
                 // Draw tree lines for depth
+                let effective_indent = tree.indent.max(1);
                 for (d, &parent_is_last) in is_last_stack.iter().enumerate() {
                     if d < depth {
                         let ch = if parent_is_last { ' ' } else { '│' };
@@ -62,7 +63,7 @@ impl Tree {
                         ctx.set(x, *y, cell);
                         x += 1;
                         // Add spacing
-                        for _ in 1..tree.indent {
+                        for _ in 1..effective_indent {
                             let mut cell = Cell::new(' ');
                             cell.bg = bg;
                             ctx.set(x, *y, cell);
@@ -115,7 +116,7 @@ impl Tree {
 
                 // Draw label with optional highlighting
                 let available_width = area.width.saturating_sub(x) as usize;
-                let truncated: String = node.label.chars().take(available_width).collect();
+                let truncated = crate::utils::truncate_to_width(&node.label, available_width);
 
                 // Get match indices for highlighting
                 let match_indices: Vec<usize> = tree
@@ -124,6 +125,10 @@ impl Tree {
                     .unwrap_or_default();
 
                 for (idx, ch) in truncated.chars().enumerate() {
+                    let cw = crate::utils::char_width(ch) as u16;
+                    if x + cw > area.width {
+                        break;
+                    }
                     let mut cell = Cell::new(ch);
                     cell.bg = bg;
 
@@ -135,7 +140,7 @@ impl Tree {
                     }
 
                     ctx.set(x, *y, cell);
-                    x += 1;
+                    x += cw;
                 }
 
                 *y += 1;
