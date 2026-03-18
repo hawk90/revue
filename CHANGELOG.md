@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.58.4](https://github.com/hawk90/revue/compare/v2.58.3...v2.58.4) (2026-03-18)
+
+
+### Bug Fixes
+
+* **render:** switch emoji width, modal border guard, popover shadow bounds ([#473](https://github.com/hawk90/revue/issues/473)) ([acd44d4](https://github.com/hawk90/revue/commit/acd44d4ba89a61d15b06d6c1c1dbe3ee0fb4b876))
+
 ## [2.58.3](https://github.com/hawk90/revue/compare/v2.58.2...v2.58.3) (2026-03-18)
 
 
