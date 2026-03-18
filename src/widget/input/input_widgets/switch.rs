@@ -327,8 +327,15 @@ impl Switch {
     /// Render emoji style
     fn render_emoji(&self, ctx: &mut RenderContext, x: u16, y: u16) {
         let ch = if self.on { '✅' } else { '❌' };
-        let cell = Cell::new(ch);
+        let mut cell = Cell::new(ch);
+        cell.fg = Some(if self.on {
+            self.on_color
+        } else {
+            self.off_color
+        });
         ctx.set(x, y, cell);
+        // Wide emoji occupies 2 columns — clear the second cell to prevent artifacts
+        ctx.set(x + 1, y, Cell::new(' '));
     }
 
     /// Render block style
@@ -371,8 +378,10 @@ impl View for Switch {
         // Render label if on left
         if self.label_left {
             if let Some(ref label) = self.label {
-                for (i, ch) in label.chars().enumerate() {
-                    if x + i as u16 >= area.width {
+                let mut lx = x;
+                for ch in label.chars() {
+                    let cw = crate::utils::char_width(ch) as u16;
+                    if lx + cw > area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
@@ -381,9 +390,10 @@ impl View for Switch {
                     } else {
                         Color::WHITE
                     });
-                    ctx.set(x + i as u16, y, cell);
+                    ctx.set(lx, y, cell);
+                    lx += cw;
                 }
-                x += label.len() as u16 + 1;
+                x = lx + 1;
             }
         }
 
@@ -416,8 +426,10 @@ impl View for Switch {
         if !self.label_left {
             if let Some(ref label) = self.label {
                 x += 1;
-                for (i, ch) in label.chars().enumerate() {
-                    if x + i as u16 >= area.width {
+                let mut lx = x;
+                for ch in label.chars() {
+                    let cw = crate::utils::char_width(ch) as u16;
+                    if lx + cw > area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
@@ -426,7 +438,8 @@ impl View for Switch {
                     } else {
                         Color::WHITE
                     });
-                    ctx.set(x + i as u16, y, cell);
+                    ctx.set(lx, y, cell);
+                    lx += cw;
                 }
             }
         }
@@ -435,7 +448,10 @@ impl View for Switch {
         if self.focused && !self.disabled {
             // Find switch start position (relative)
             let switch_x = if self.label_left {
-                self.label.as_ref().map(|l| l.len() as u16 + 1).unwrap_or(0)
+                self.label
+                    .as_ref()
+                    .map(|l| crate::utils::display_width(l) as u16 + 1)
+                    .unwrap_or(0)
             } else {
                 0u16
             };
