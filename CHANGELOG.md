@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.58.9](https://github.com/hawk90/revue/compare/v2.58.8...v2.58.9) (2026-03-18)
+
+
+### Bug Fixes
+
+* **render:** wide char rendering in developer and utility widgets ([#482](https://github.com/hawk90/revue/issues/482)) ([102947c](https://github.com/hawk90/revue/commit/102947c2186cf21b4f4e909914d82144f8d54d79))
+
 ## [2.58.8](https://github.com/hawk90/revue/compare/v2.58.7...v2.58.8) (2026-03-18)
 
 
