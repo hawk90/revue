@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.58.5](https://github.com/hawk90/revue/compare/v2.58.4...v2.58.5) (2026-03-18)
+
+
+### Bug Fixes
+
+* **render:** barchart negative values, heatmap contrast, checkbox disabled state ([#475](https://github.com/hawk90/revue/issues/475)) ([1bc0170](https://github.com/hawk90/revue/commit/1bc0170d8a9ad90ca49d7e742277216d6a6b85f0))
+
 ## [2.58.4](https://github.com/hawk90/revue/compare/v2.58.3...v2.58.4) (2026-03-18)
 
 
