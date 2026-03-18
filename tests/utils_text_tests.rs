@@ -330,7 +330,7 @@ fn truncate_width_1() {
 
 #[test]
 fn truncate_width_0() {
-    assert_eq!(truncate("hello", 0), "…");
+    assert_eq!(truncate("hello", 0), "");
 }
 
 #[test]

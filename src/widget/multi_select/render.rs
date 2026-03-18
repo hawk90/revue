@@ -48,7 +48,7 @@ impl View for MultiSelect {
 
                 if let Some(opt) = self.options.get(opt_idx) {
                     let label = &opt.label;
-                    let tag_len = (label.chars().count() + 3) as u16; // "[label] "
+                    let tag_len = (crate::utils::display_width(label) + 3) as u16; // "[label] "
 
                     if x + tag_len > max_x {
                         // Draw overflow indicator
@@ -73,11 +73,12 @@ impl View for MultiSelect {
                     x += 1;
 
                     for ch in label.chars() {
-                        if x >= max_x - 1 {
+                        let cw = crate::utils::char_width(ch) as u16;
+                        if x + cw > max_x - 1 {
                             break;
                         }
                         ctx.draw_char_bg(x, 0, ch, tag_fg, tag_bg_color);
-                        x += 1;
+                        x += cw;
                     }
 
                     ctx.draw_char_bg(x, 0, ']', tag_fg, tag_bg_color);
@@ -131,9 +132,10 @@ impl View for MultiSelect {
                         .map(|m| m.indices)
                         .unwrap_or_default();
 
-                    let label_x: u16 = 4;
+                    let mut cx: u16 = 4;
                     for (j, ch) in opt.label.chars().enumerate() {
-                        if label_x + j as u16 >= width {
+                        let cw = crate::utils::char_width(ch) as u16;
+                        if cx + cw > width {
                             break;
                         }
 
@@ -145,7 +147,8 @@ impl View for MultiSelect {
                             row_fg
                         };
 
-                        ctx.draw_char_bg(label_x + j as u16, y, ch, char_fg, row_bg);
+                        ctx.draw_char_bg(cx, y, ch, char_fg, row_bg);
+                        cx += cw;
                     }
                 }
             }

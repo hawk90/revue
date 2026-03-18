@@ -4,7 +4,7 @@ use crate::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::{fuzzy_match, FuzzyMatch, Selection};
+use crate::utils::{display_width, fuzzy_match, truncate_to_width, FuzzyMatch, Selection};
 use crate::widget::traits::{EventResult, Interactive, RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -383,9 +383,9 @@ impl Select {
         let max_option_len = self
             .options
             .iter()
-            .map(|o| o.len())
+            .map(|o| display_width(o))
             .max()
-            .unwrap_or(self.placeholder.len());
+            .unwrap_or(display_width(&self.placeholder));
 
         // +4 for "▼ " prefix and " " suffix and border
         ((max_option_len + 4) as u16).min(max_width)
@@ -463,12 +463,14 @@ impl View for Select {
         ctx.set(0, 0, cell);
 
         // Draw text
-        let truncated: String = display_text.chars().take(text_width).collect();
-        for (i, ch) in truncated.chars().enumerate() {
+        let truncated = truncate_to_width(display_text, text_width);
+        let mut cx: u16 = 2;
+        for ch in truncated.chars() {
             let mut cell = Cell::new(ch);
             cell.fg = fg;
             cell.bg = bg;
-            ctx.set(2 + i as u16, 0, cell);
+            ctx.set(cx, 0, cell);
+            cx += crate::utils::char_width(ch) as u16;
         }
 
         // If open, render dropdown options
@@ -518,7 +520,8 @@ impl View for Select {
                     .unwrap_or_default();
 
                 // Draw option text with highlighting
-                let truncated: String = option.chars().take(text_width).collect();
+                let truncated = truncate_to_width(option, text_width);
+                let mut cx: u16 = 2;
                 for (j, ch) in truncated.chars().enumerate() {
                     let mut cell = Cell::new(ch);
                     cell.bg = bg;
@@ -530,7 +533,8 @@ impl View for Select {
                         cell.fg = fg;
                     }
 
-                    ctx.set(2 + j as u16, y, cell);
+                    ctx.set(cx, y, cell);
+                    cx += crate::utils::char_width(ch) as u16;
                 }
             }
         }

@@ -159,9 +159,9 @@ impl Combobox {
         let max_option_len = self
             .options
             .iter()
-            .map(|o| o.label.len())
+            .map(|o| crate::utils::display_width(&o.label))
             .max()
-            .unwrap_or(self.placeholder.len());
+            .unwrap_or(crate::utils::display_width(&self.placeholder));
 
         // +4 for padding and borders
         ((max_option_len.max(20) + 4) as u16).min(max_width)

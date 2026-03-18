@@ -48,9 +48,10 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
     };
 
     let is_placeholder = combobox.input.is_empty();
-    let truncated: String = display_text.chars().take(text_width).collect();
+    let truncated = crate::utils::truncate_to_width(display_text, text_width);
 
-    for (i, ch) in truncated.chars().enumerate() {
+    let mut cx: u16 = 1;
+    for ch in truncated.chars() {
         let mut cell = crate::render::Cell::new(ch);
         cell.fg = if is_placeholder {
             combobox.disabled_fg
@@ -58,12 +59,19 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             input_fg
         };
         cell.bg = input_bg;
-        ctx.set(1 + i as u16, 0, cell);
+        ctx.set(cx, 0, cell);
+        cx += crate::utils::char_width(ch) as u16;
     }
 
     // Draw cursor (if not placeholder)
     if !is_placeholder && combobox.cursor <= truncated.chars().count() {
-        let cursor_x = 1 + combobox.cursor as u16;
+        // Calculate cursor x from display widths of characters before cursor
+        let cursor_display_width: usize = truncated
+            .chars()
+            .take(combobox.cursor)
+            .map(crate::utils::char_width)
+            .sum();
+        let cursor_x = 1 + cursor_display_width as u16;
         if cursor_x < width - 2 {
             if let Some(cell) = ctx.get_mut(cursor_x, 0) {
                 cell.bg = Some(crate::style::Color::WHITE);
@@ -92,11 +100,14 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             cell.bg = combobox.bg;
             ctx.set(x, y, cell);
         }
-        for (i, ch) in combobox.loading_text.chars().take(text_width).enumerate() {
+        let loading_truncated = crate::utils::truncate_to_width(&combobox.loading_text, text_width);
+        let mut cx: u16 = 1;
+        for ch in loading_truncated.chars() {
             let mut cell = crate::render::Cell::new(ch);
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;
-            ctx.set(1 + i as u16, y, cell);
+            ctx.set(cx, y, cell);
+            cx += crate::utils::char_width(ch) as u16;
         }
         return;
     }
@@ -110,11 +121,14 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             cell.bg = combobox.bg;
             ctx.set(x, y, cell);
         }
-        for (i, ch) in combobox.empty_text.chars().take(text_width).enumerate() {
+        let empty_truncated = crate::utils::truncate_to_width(&combobox.empty_text, text_width);
+        let mut cx: u16 = 1;
+        for ch in empty_truncated.chars() {
             let mut cell = crate::render::Cell::new(ch);
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;
-            ctx.set(1 + i as u16, y, cell);
+            ctx.set(cx, y, cell);
+            cx += crate::utils::char_width(ch) as u16;
         }
         return;
     }
@@ -174,7 +188,9 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             .unwrap_or_default();
 
         // Draw option text with highlighting
-        let truncated: String = option.label.chars().take(text_width - 1).collect();
+        let truncated =
+            crate::utils::truncate_to_width(&option.label, text_width.saturating_sub(1));
+        let mut cx: u16 = 2;
         for (j, ch) in truncated.chars().enumerate() {
             let mut cell = crate::render::Cell::new(ch);
             cell.bg = bg;
@@ -187,7 +203,8 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
                 cell.fg = fg;
             }
 
-            ctx.set(2 + j as u16, y, cell);
+            ctx.set(cx, y, cell);
+            cx += crate::utils::char_width(ch) as u16;
         }
     }
 
