@@ -71,9 +71,9 @@ impl TextArea {
         self.cursors = CursorSet::new(CursorPos::new(line, col));
     }
 
-    /// Get length of a specific line
+    /// Get length of a specific line (in characters, not bytes)
     pub(super) fn line_len(&self, line: usize) -> usize {
-        self.lines.get(line).map(|l| l.len()).unwrap_or(0)
+        self.lines.get(line).map(|l| l.chars().count()).unwrap_or(0)
     }
 
     /// Get selected text (from primary cursor)
@@ -91,6 +91,7 @@ impl TextArea {
                 break;
             }
             let line = &self.lines[line_idx];
+            let char_count = line.chars().count();
             let start_col = if line_idx == sel.start.0 {
                 sel.start.1
             } else {
@@ -99,11 +100,14 @@ impl TextArea {
             let end_col = if line_idx == sel.end.0 {
                 sel.end.1
             } else {
-                line.len()
+                char_count
             };
 
-            if start_col < line.len() {
-                result.push_str(&line[start_col..end_col.min(line.len())]);
+            if start_col < char_count {
+                let start_byte = crate::utils::text::char_to_byte_index(line, start_col);
+                let end_byte =
+                    crate::utils::text::char_to_byte_index(line, end_col.min(char_count));
+                result.push_str(&line[start_byte..end_byte]);
             }
             if line_idx < sel.end.0 {
                 result.push('\n');
@@ -123,7 +127,11 @@ impl TextArea {
         if sel.start.0 == sel.end.0 {
             // Single line selection
             if let Some(line) = self.lines.get_mut(sel.start.0) {
-                let deleted: String = line.drain(sel.start.1..sel.end.1.min(line.len())).collect();
+                let char_count = line.chars().count();
+                let start_byte = crate::utils::text::char_to_byte_index(line, sel.start.1);
+                let end_byte =
+                    crate::utils::text::char_to_byte_index(line, sel.end.1.min(char_count));
+                let deleted: String = line.drain(start_byte..end_byte).collect();
                 self.push_undo(EditOperation::Delete {
                     line: sel.start.0,
                     col: sel.start.1,

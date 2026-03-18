@@ -161,7 +161,7 @@ impl TextArea {
         use super::cursor::CursorSet;
 
         let last_line = self.lines.len().saturating_sub(1);
-        let last_col = self.lines.last().map(|l| l.len()).unwrap_or(0);
+        let last_col = self.lines.last().map(|l| l.chars().count()).unwrap_or(0);
         // Create cursor at end with anchor at start
         self.cursors = CursorSet::new(CursorPos::new(last_line, last_col));
         self.cursors.primary_mut().anchor = Some(CursorPos::new(0, 0));
