@@ -3,8 +3,6 @@
   "packages": {
     ".": {
       "release-type": "rust",
-      "bump-minor-pre-major": true,
-      "bump-patch-for-minor-pre-major": true,
       "changelog-path": "CHANGELOG.md",
       "versioning": "default",
       "extra-files": [
@@ -12,6 +10,7 @@
       ]
     }
   },
+  "last-release-sha": "c91f162",
   "changelog-sections": [
     { "type": "feat", "section": "Features" },
     { "type": "fix", "section": "Bug Fixes" },
@@ -21,8 +20,8 @@
     { "type": "test", "section": "Tests", "release-type": "none" },
     { "type": "chore", "section": "Miscellaneous", "hidden": true, "release-type": "none" }
   ],
-  "pull-request-title-pattern": "chore: release ${version}",
-  "pull-request-header": ":robot: This PR was created by release-please.",
+  "pull-request-title-pattern": "chore(main): release ${version}",
+  "pull-request-header": ":robot: I have created a release *beep* *boop*",
   "include-component-in-tag": false,
   "include-v-in-tag": true
 }
