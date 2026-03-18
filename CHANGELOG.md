@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.58.6](https://github.com/hawk90/revue/compare/v2.58.5...v2.58.6) (2026-03-18)
+
+
+### Bug Fixes
+
+* **render:** tooltip arrow overlap, input CJK clipping, modal content layout ([#477](https://github.com/hawk90/revue/issues/477)) ([233b4b7](https://github.com/hawk90/revue/commit/233b4b771e17909c1a37c698e483d07544b87f4b))
+
 ## [2.58.5](https://github.com/hawk90/revue/compare/v2.58.4...v2.58.5) (2026-03-18)
 
 
