@@ -36,7 +36,14 @@ impl View for DataGrid {
                 .collect()
         };
 
-        let row_num_width: u16 = if self.options.show_row_numbers { 5 } else { 0 };
+        let row_num_width: u16 = if self.options.show_row_numbers {
+            // Dynamic width: digits for total rows + 1 for separator
+            let total = self.filtered_count().max(1);
+            let digits = format!("{}", total).len() as u16;
+            digits + 2 // digits + space + separator
+        } else {
+            0
+        };
         let header_height: u16 = if self.options.show_header { 1 } else { 0 };
 
         let mut y = 0u16;
