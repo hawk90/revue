@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.58.8](https://github.com/hawk90/revue/compare/v2.58.7...v2.58.8) (2026-03-18)
+
+
+### Bug Fixes
+
+* **render:** wide char rendering in alert, tabs, breadcrumb, badge, accordion, status ([#481](https://github.com/hawk90/revue/issues/481)) ([639bfad](https://github.com/hawk90/revue/commit/639bfad453fddedcb311d179de045129687c892e))
+
 ## [2.58.7](https://github.com/hawk90/revue/compare/v2.58.6...v2.58.7) (2026-03-18)
 
 
