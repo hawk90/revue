@@ -379,13 +379,23 @@ impl View for Popover {
         let bg = self.state.bg.unwrap_or(default_bg);
         let border_fg = self.border_color.unwrap_or(default_border);
 
-        // Draw shadow for elevated style
+        // Draw shadow for elevated style (offset by 1 pixel right and down)
         if matches!(self.popover_style, PopoverStyle::Elevated) {
-            for dy in 1..=popup_h {
-                for dx in 1..=popup_w {
-                    let x = popup_x + dx;
-                    let y = popup_y + dy;
-                    if x < area.width && y < area.height {
+            // Shadow only renders in the area below and to the right of the popover,
+            // not overlapping the popover itself. Clamp to area bounds.
+            let shadow_x_start = popup_x + 1;
+            let shadow_y_start = popup_y + 1;
+            let shadow_x_end = (popup_x + popup_w + 1).min(area.width);
+            let shadow_y_end = (popup_y + popup_h + 1).min(area.height);
+
+            for y in shadow_y_start..shadow_y_end {
+                for x in shadow_x_start..shadow_x_end {
+                    // Only draw shadow outside the popover body
+                    let inside_popup = x >= popup_x
+                        && x < popup_x + popup_w
+                        && y >= popup_y
+                        && y < popup_y + popup_h;
+                    if !inside_popup {
                         let mut cell = Cell::new(' ');
                         cell.bg = Some(Color::rgb(15, 15, 15));
                         ctx.set(x, y, cell);

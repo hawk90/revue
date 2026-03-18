@@ -464,14 +464,17 @@ impl View for Modal {
                     (None, None)
                 };
 
-                for (j, ch) in button_text.chars().enumerate() {
+                let mut btn_x = bx;
+                for ch in button_text.chars() {
+                    let cw = crate::utils::char_width(ch) as u16;
                     let mut cell = Cell::new(ch);
                     cell.fg = fg;
                     cell.bg = bg;
-                    ctx.set(bx + j as u16, button_y, cell);
+                    ctx.set(btn_x, button_y, cell);
+                    btn_x += cw;
                 }
 
-                bx += button_text.len() as u16 + 2;
+                bx = btn_x + 2;
             }
         }
     }
@@ -481,6 +484,10 @@ impl View for Modal {
 
 impl Modal {
     fn render_border(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16, height: u16) {
+        if width < 2 || height < 2 {
+            return;
+        }
+
         // Clear interior with spaces
         for dy in 1..height.saturating_sub(1) {
             for dx in 1..width.saturating_sub(1) {
