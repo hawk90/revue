@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.58.7](https://github.com/hawk90/revue/compare/v2.58.6...v2.58.7) (2026-03-18)
+
+
+### Bug Fixes
+
+* **render:** sparkline bounds width, datagrid row numbers, tree indent ([#479](https://github.com/hawk90/revue/issues/479)) ([cdca2fd](https://github.com/hawk90/revue/commit/cdca2fd5e0c7a177bef6e62dcc5401adf9877641))
+
 ## [2.58.6](https://github.com/hawk90/revue/compare/v2.58.5...v2.58.6) (2026-03-18)
 
 
