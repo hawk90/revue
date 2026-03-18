@@ -148,13 +148,16 @@ impl View for CodeEditor {
             let chars: Vec<char> = line.chars().collect();
             let scroll_col = self.scroll.1;
 
-            for (view_col, char_idx) in (scroll_col..scroll_col + text_width as usize).enumerate() {
-                let x = line_num_width + view_col as u16;
+            let mut display_x: u16 = 0;
+            for (char_idx, &ch) in chars.iter().enumerate().skip(scroll_col) {
+                let cw = crate::utils::char_width(ch) as u16;
+                if display_x + cw > text_width {
+                    break;
+                }
+                let x = line_num_width + display_x;
                 if x >= area.width - minimap_width {
                     break;
                 }
-
-                let ch = chars.get(char_idx).copied().unwrap_or(' ');
                 let mut cell = Cell::new(ch);
 
                 // Check cursor position
@@ -217,11 +220,12 @@ impl View for CodeEditor {
                 }
 
                 ctx.set(x, y, cell);
+                display_x += cw;
             }
 
             // Draw cursor at end of line if needed
             if self.focused && line_idx == self.cursor.0 && self.cursor.1 >= chars.len() {
-                let cursor_x = line_num_width + (self.cursor.1 - scroll_col) as u16;
+                let cursor_x = line_num_width + display_x;
                 if cursor_x < area.width - minimap_width {
                     let mut cell = Cell::new(' ');
                     cell.bg = Some(self.cursor_bg);
