@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.58.2](https://github.com/hawk90/revue/compare/v2.58.1...v2.58.2) (2026-03-18)
+
+
+### Bug Fixes
+
+* **render:** use unicode display width for CJK/emoji in widgets ([#469](https://github.com/hawk90/revue/issues/469)) ([22fc9ef](https://github.com/hawk90/revue/commit/22fc9ef2c6e657587abaf3c3f39246f7248fd549))
+
 ## [2.58.1](https://github.com/hawk90/revue/compare/v2.58.0...v2.58.1) (2026-03-02)
 
 
