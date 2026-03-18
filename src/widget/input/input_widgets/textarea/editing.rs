@@ -28,8 +28,9 @@ impl TextArea {
 
         let cursor_pos = self.cursors.primary().pos;
         if let Some(line) = self.lines.get_mut(cursor_pos.line) {
-            let col = cursor_pos.col.min(line.len());
-            line.insert(col, ch);
+            let col = cursor_pos.col.min(line.chars().count());
+            let byte_col = crate::utils::text::char_to_byte_index(line, col);
+            line.insert(byte_col, ch);
             self.push_undo(EditOperation::Insert {
                 line: cursor_pos.line,
                 col,
@@ -55,14 +56,15 @@ impl TextArea {
             // Single line insert
             let cursor_pos = self.cursors.primary().pos;
             if let Some(line) = self.lines.get_mut(cursor_pos.line) {
-                let col = cursor_pos.col.min(line.len());
-                line.insert_str(col, s);
+                let col = cursor_pos.col.min(line.chars().count());
+                let byte_col = crate::utils::text::char_to_byte_index(line, col);
+                line.insert_str(byte_col, s);
                 self.push_undo(EditOperation::Insert {
                     line: cursor_pos.line,
                     col,
                     text: s.to_string(),
                 });
-                self.set_primary_cursor(cursor_pos.line, col + s.len());
+                self.set_primary_cursor(cursor_pos.line, col + s.chars().count());
             }
         } else {
             // Multi-line insert
@@ -70,16 +72,17 @@ impl TextArea {
                 let cursor_pos = self.cursors.primary().pos;
                 if i == 0 {
                     if let Some(line) = self.lines.get_mut(cursor_pos.line) {
-                        line.insert_str(cursor_pos.col, part);
+                        let byte_col = crate::utils::text::char_to_byte_index(line, cursor_pos.col);
+                        line.insert_str(byte_col, part);
                     }
-                    self.set_primary_cursor(cursor_pos.line, cursor_pos.col + part.len());
+                    self.set_primary_cursor(cursor_pos.line, cursor_pos.col + part.chars().count());
                 } else {
                     self.insert_newline();
                     let cursor_pos = self.cursors.primary().pos;
                     if let Some(line) = self.lines.get_mut(cursor_pos.line) {
                         line.insert_str(0, part);
                     }
-                    self.set_primary_cursor(cursor_pos.line, part.len());
+                    self.set_primary_cursor(cursor_pos.line, part.chars().count());
                 }
             }
         }
@@ -98,7 +101,9 @@ impl TextArea {
         let cursor_pos = self.cursors.primary().pos;
         let (line, col) = (cursor_pos.line, cursor_pos.col);
         if let Some(current) = self.lines.get_mut(line) {
-            let rest: String = current.drain(col.min(current.len())..).collect();
+            let byte_col =
+                crate::utils::text::char_to_byte_index(current, col.min(current.chars().count()));
+            let rest: String = current.drain(byte_col..).collect();
             self.lines.insert(line + 1, rest);
             self.push_undo(EditOperation::SplitLine { line, col });
             self.set_primary_cursor(line + 1, 0);
@@ -121,8 +126,9 @@ impl TextArea {
         if col > 0 {
             // Delete character in current line
             if let Some(l) = self.lines.get_mut(line) {
-                if col <= l.len() {
-                    let deleted = l.remove(col - 1);
+                if col <= l.chars().count() {
+                    let byte_col = crate::utils::text::char_to_byte_index(l, col - 1);
+                    let deleted = l.remove(byte_col);
                     self.push_undo(EditOperation::Delete {
                         line,
                         col: col - 1,
@@ -135,7 +141,7 @@ impl TextArea {
             // Merge with previous line
             let current = self.lines.remove(line);
             if let Some(prev_line) = self.lines.get_mut(line - 1) {
-                let prev_len = prev_line.len();
+                let prev_len = prev_line.chars().count();
                 prev_line.push_str(&current);
                 self.push_undo(EditOperation::MergeLines {
                     line: line - 1,
@@ -161,11 +167,16 @@ impl TextArea {
         let (line, col) = (cursor_pos.line, cursor_pos.col);
 
         // Check if we can delete within the current line
-        let can_delete_in_line = self.lines.get(line).map(|l| col < l.len()).unwrap_or(false);
+        let can_delete_in_line = self
+            .lines
+            .get(line)
+            .map(|l| col < l.chars().count())
+            .unwrap_or(false);
 
         if can_delete_in_line {
             if let Some(l) = self.lines.get_mut(line) {
-                let deleted = l.remove(col);
+                let byte_col = crate::utils::text::char_to_byte_index(l, col);
+                let deleted = l.remove(byte_col);
                 self.push_undo(EditOperation::Delete {
                     line,
                     col,

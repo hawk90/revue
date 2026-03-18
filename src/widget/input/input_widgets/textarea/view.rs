@@ -45,13 +45,17 @@ impl View for TextArea {
         // Show placeholder if empty
         if self.lines.len() == 1 && self.lines[0].is_empty() {
             if let Some(ref placeholder) = self.placeholder {
-                for (i, ch) in placeholder.chars().enumerate() {
-                    if (i as u16) < text_width {
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(Color::rgb(128, 128, 128));
-                        cell.modifier = Modifier::ITALIC;
-                        ctx.set(text_start_x + i as u16, 0, cell);
+                let mut px: u16 = 0;
+                for ch in placeholder.chars() {
+                    let cw = crate::utils::char_width(ch) as u16;
+                    if px + cw > text_width {
+                        break;
                     }
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(Color::rgb(128, 128, 128));
+                    cell.modifier = Modifier::ITALIC;
+                    ctx.set(text_start_x + px, 0, cell);
+                    px += cw;
                 }
             }
         }
@@ -88,13 +92,16 @@ impl View for TextArea {
             // Get syntax highlighting spans for this line
             let highlights = self.highlighter.as_ref().map(|h| h.highlight_line(line));
 
-            for (view_col, char_idx) in (scroll_col..scroll_col + text_width as usize).enumerate() {
-                let x = text_start_x + view_col as u16;
-                if x >= area.width {
+            // Render characters with display-width awareness
+            let mut display_x: u16 = 0;
+            for (char_idx, &ch) in chars.iter().enumerate().skip(scroll_col) {
+                let cw = crate::utils::char_width(ch) as u16;
+                if display_x + cw > text_width {
                     break;
                 }
 
-                let ch = chars.get(char_idx).copied().unwrap_or(' ');
+                let x = text_start_x + display_x;
+
                 let mut cell = Cell::new(ch);
 
                 // Check if this position is selected (from any cursor)
@@ -170,13 +177,20 @@ impl View for TextArea {
                 }
 
                 ctx.set(x, y, cell);
+                display_x += cw;
             }
 
             // Draw cursors at end of line if needed
             if self.focused {
                 for cursor in self.cursors.iter() {
                     if cursor.pos.line == line_idx && cursor.pos.col >= chars.len() {
-                        let cursor_x = text_start_x + (cursor.pos.col - scroll_col) as u16;
+                        // Calculate display position from character widths
+                        let cursor_display_x: u16 = chars
+                            .iter()
+                            .skip(scroll_col)
+                            .map(|&ch| crate::utils::char_width(ch) as u16)
+                            .sum();
+                        let cursor_x = text_start_x + cursor_display_x;
                         if cursor_x < area.width {
                             let mut cell = Cell::new(' ');
                             cell.bg = Some(Color::WHITE);
