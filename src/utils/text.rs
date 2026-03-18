@@ -180,32 +180,7 @@ pub fn remove_char_range(s: &mut String, start: usize, end: usize) {
 /// assert_eq!(short, "Hello…");
 /// ```
 pub fn truncate(text: &str, max_width: usize) -> String {
-    let char_count = text.chars().count();
-
-    if char_count <= max_width {
-        // Fast path: no truncation needed
-        // Pre-allocate exact capacity to avoid reallocation
-        let mut result = String::with_capacity(text.len());
-        result.push_str(text);
-        result
-    } else if max_width <= 1 {
-        // Edge case: just the ellipsis
-        String::from("…")
-    } else {
-        // Pre-allocate capacity for truncated text + ellipsis
-        // Estimate: (max_width - 1) chars * 3 bytes/char (UTF-8 worst case) + 3 bytes for ellipsis
-        let capacity = (max_width.saturating_sub(1)) * 3 + 3;
-        let mut result = String::with_capacity(capacity);
-
-        for (i, c) in text.chars().enumerate() {
-            if i >= max_width.saturating_sub(1) {
-                break;
-            }
-            result.push(c);
-        }
-        result.push('…');
-        result
-    }
+    crate::utils::unicode::truncate_with_ellipsis(text, max_width)
 }
 
 /// Truncate text from the start, adding ellipsis at beginning
@@ -216,33 +191,33 @@ pub fn truncate(text: &str, max_width: usize) -> String {
 /// assert_eq!(short, "…ments/file.txt");
 /// ```
 pub fn truncate_start(text: &str, max_width: usize) -> String {
-    let char_count = text.chars().count();
-
-    if char_count <= max_width {
-        // Fast path: no truncation needed
-        let mut result = String::with_capacity(text.len());
-        result.push_str(text);
-        result
-    } else if max_width <= 1 {
-        // Edge case: just the ellipsis
-        String::from("…")
-    } else {
-        // Pre-allocate capacity
-        let keep = max_width.saturating_sub(1);
-        let capacity = keep * 3 + 3; // Estimate for UTF-8 + ellipsis
-        let mut result = String::with_capacity(capacity);
-
-        result.push('…');
-
-        let skip = char_count - keep;
-        for (i, c) in text.chars().enumerate() {
-            if i >= skip {
-                result.push(c);
-            }
-        }
-
-        result
+    use crate::utils::unicode::display_width as dw;
+    let width = dw(text);
+    if width <= max_width {
+        return text.to_string();
     }
+    if max_width <= 1 {
+        return String::from("…");
+    }
+    // Walk from the end, accumulating display width
+    let keep_width = max_width.saturating_sub(1); // reserve 1 for "…"
+    let mut kept = Vec::new();
+    let mut acc_width = 0;
+    for c in text.chars().rev() {
+        let cw = crate::utils::unicode::char_width(c);
+        if acc_width + cw > keep_width {
+            break;
+        }
+        acc_width += cw;
+        kept.push(c);
+    }
+    kept.reverse();
+    let mut result = String::with_capacity(acc_width * 3 + 3);
+    result.push('…');
+    for c in kept {
+        result.push(c);
+    }
+    result
 }
 
 /// Center text within given width
@@ -254,73 +229,17 @@ pub fn truncate_start(text: &str, max_width: usize) -> String {
 /// # Returns
 /// Centered string padded with spaces
 pub fn center(text: &str, width: usize) -> String {
-    let text_len = text.chars().count();
-    if text_len >= width {
-        // Fast path: no padding needed
-        let mut result = String::with_capacity(text.len());
-        result.push_str(text);
-        result
-    } else {
-        // Pre-allocate exact capacity
-        let padding = width - text_len;
-        let left_pad = padding / 2;
-        let right_pad = padding - left_pad;
-        let capacity = text.len() + left_pad + right_pad;
-
-        let mut result = String::with_capacity(capacity);
-        for _ in 0..left_pad {
-            result.push(' ');
-        }
-        result.push_str(text);
-        for _ in 0..right_pad {
-            result.push(' ');
-        }
-        result
-    }
+    crate::utils::unicode::center_to_width(text, width)
 }
 
 /// Pad text on the left to reach target width
 pub fn pad_left(text: &str, width: usize) -> String {
-    let text_len = text.chars().count();
-    if text_len >= width {
-        // Fast path: no padding needed
-        let mut result = String::with_capacity(text.len());
-        result.push_str(text);
-        result
-    } else {
-        // Pre-allocate exact capacity
-        let padding = width - text_len;
-        let capacity = text.len() + padding;
-
-        let mut result = String::with_capacity(capacity);
-        for _ in 0..padding {
-            result.push(' ');
-        }
-        result.push_str(text);
-        result
-    }
+    crate::utils::unicode::right_align_to_width(text, width)
 }
 
 /// Pad text on the right to reach target width
 pub fn pad_right(text: &str, width: usize) -> String {
-    let text_len = text.chars().count();
-    if text_len >= width {
-        // Fast path: no padding needed
-        let mut result = String::with_capacity(text.len());
-        result.push_str(text);
-        result
-    } else {
-        // Pre-allocate exact capacity
-        let padding = width - text_len;
-        let capacity = text.len() + padding;
-
-        let mut result = String::with_capacity(capacity);
-        result.push_str(text);
-        for _ in 0..padding {
-            result.push(' ');
-        }
-        result
-    }
+    crate::utils::unicode::pad_to_width(text, width)
 }
 
 /// Wrap text to fit within max_width
@@ -335,63 +254,18 @@ pub fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
     if max_width == 0 || text.is_empty() {
         return vec![];
     }
-
+    // Handle multiple paragraphs (newlines)
     let mut lines = Vec::new();
-
     for paragraph in text.lines() {
         if paragraph.is_empty() {
             lines.push(String::new());
             continue;
         }
-
-        let words: Vec<&str> = paragraph.split_whitespace().collect();
-        if words.is_empty() {
-            lines.push(String::new());
-            continue;
-        }
-
-        let mut current_line = String::new();
-
-        for word in words {
-            let word_len = word.chars().count();
-
-            // If word is longer than max_width, split it
-            if word_len > max_width {
-                // Flush current line if not empty
-                if !current_line.is_empty() {
-                    lines.push(current_line);
-                    current_line = String::new();
-                }
-
-                // Split long word
-                let mut chars = word.chars().peekable();
-                while chars.peek().is_some() {
-                    let chunk: String = chars.by_ref().take(max_width).collect();
-                    if chars.peek().is_some() {
-                        lines.push(chunk);
-                    } else {
-                        current_line = chunk;
-                    }
-                }
-                continue;
-            }
-
-            if current_line.is_empty() {
-                current_line = word.to_string();
-            } else if current_line.chars().count() + 1 + word_len <= max_width {
-                current_line.push(' ');
-                current_line.push_str(word);
-            } else {
-                lines.push(current_line);
-                current_line = word.to_string();
-            }
-        }
-
-        if !current_line.is_empty() {
-            lines.push(current_line);
-        }
+        lines.extend(crate::utils::unicode::wrap_to_width(paragraph, max_width));
     }
-
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
     lines
 }
 
@@ -402,11 +276,16 @@ pub fn split_fixed_width(text: &str, width: usize) -> Vec<String> {
     }
 
     let mut chunks = Vec::new();
-    let mut chars = text.chars().peekable();
+    let mut remaining = text;
 
-    while chars.peek().is_some() {
-        let chunk: String = chars.by_ref().take(width).collect();
-        chunks.push(chunk);
+    while !remaining.is_empty() {
+        let (chunk, rest) = crate::utils::unicode::split_at_width(remaining, width);
+        if chunk.is_empty() {
+            // Can't fit even a single character (e.g., wide char in narrow width)
+            break;
+        }
+        chunks.push(chunk.to_string());
+        remaining = rest;
     }
 
     if chunks.is_empty() {
@@ -418,10 +297,9 @@ pub fn split_fixed_width(text: &str, width: usize) -> Vec<String> {
 
 /// Get display width of a string (accounting for wide characters)
 ///
-/// Note: This is a simplified version that counts chars.
-/// For proper Unicode width handling, consider using unicode-width crate.
+/// Delegates to [`crate::utils::unicode::display_width`] for proper Unicode handling.
 pub fn display_width(text: &str) -> usize {
-    text.chars().count()
+    crate::utils::unicode::display_width(text)
 }
 
 /// Repeat a character to create a string
