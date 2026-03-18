@@ -391,21 +391,9 @@ impl View for Modal {
         // Draw title
         if !self.title.is_empty() && modal_width > 4 {
             let title_x = x + 2;
-            let title_width = modal_width.saturating_sub(4) as usize;
-            let title = crate::utils::truncate_to_width(&self.title, title_width);
-
-            let mut tx: u16 = 0;
-            for ch in title.chars() {
-                let cw = crate::utils::char_width(ch) as u16;
-                if tx + cw > title_width as u16 {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = self.title_fg;
-                cell.modifier |= crate::render::Modifier::BOLD;
-                ctx.set(title_x + tx, y + 1, cell);
-                tx += cw;
-            }
+            let title_width = modal_width.saturating_sub(4);
+            let title_fg = self.title_fg.unwrap_or(Color::WHITE);
+            ctx.draw_text_clipped_bold(title_x, y + 1, &self.title, title_fg, title_width);
 
             // Title separator
             for dx in 1..modal_width.saturating_sub(1) {
@@ -438,16 +426,7 @@ impl View for Modal {
                 if cy >= y + modal_height - 2 {
                     break;
                 }
-                let truncated = crate::utils::truncate_to_width(line, content_width as usize);
-                let mut cx: u16 = 0;
-                for ch in truncated.chars() {
-                    let cw = crate::utils::char_width(ch) as u16;
-                    if cx + cw > content_width {
-                        break;
-                    }
-                    ctx.set(x + 2 + cx, cy, Cell::new(ch));
-                    cx += cw;
-                }
+                ctx.draw_text_clipped(x + 2, cy, line, Color::WHITE, content_width);
             }
         }
 

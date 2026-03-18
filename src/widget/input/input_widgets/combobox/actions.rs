@@ -53,7 +53,9 @@ impl Combobox {
         }
 
         if let Some(&option_idx) = self.filtered.get(self.selected_idx) {
-            let option = &self.options[option_idx];
+            let Some(option) = self.options.get(option_idx) else {
+                return false;
+            };
             if option.disabled {
                 return false;
             }
