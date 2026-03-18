@@ -222,7 +222,7 @@ impl Breadcrumb {
             if item.icon.is_some() {
                 width += 2; // icon + space
             }
-            width += item.label.len() as u16;
+            width += crate::utils::display_width(&item.label) as u16;
 
             if i < self.items.len() - 1 {
                 width += 3; // space + separator + space
@@ -304,7 +304,8 @@ impl View for Breadcrumb {
                 self.item_color
             };
             for ch in item.label.chars() {
-                if x >= max_width - 10 {
+                let cw = crate::utils::char_width(ch) as u16;
+                if x + cw > max_width.saturating_sub(10) {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -313,7 +314,7 @@ impl View for Breadcrumb {
                     cell.modifier |= Modifier::BOLD;
                 }
                 ctx.set(x, 0, cell);
-                x += 1;
+                x += cw;
             }
 
             // Separator
@@ -374,7 +375,8 @@ impl View for Breadcrumb {
                 self.item_color
             };
             for ch in item.label.chars() {
-                if x >= max_width {
+                let cw = crate::utils::char_width(ch) as u16;
+                if x + cw > max_width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -383,7 +385,7 @@ impl View for Breadcrumb {
                     cell.modifier |= Modifier::BOLD;
                 }
                 ctx.set(x, 0, cell);
-                x += 1;
+                x += cw;
             }
 
             // Separator (except for last item)
