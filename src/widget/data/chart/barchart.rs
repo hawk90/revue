@@ -167,13 +167,13 @@ impl BarChart {
         self
     }
 
-    /// Calculate the maximum value in the data
+    /// Calculate the maximum absolute value in the data for scaling
     fn calculate_max(&self) -> f64 {
         self.max.unwrap_or_else(|| {
             self.bars
                 .iter()
-                .map(|b| b.value)
-                .fold(0.0, f64::max)
+                .map(|b| b.value.abs())
+                .fold(f64::NEG_INFINITY, f64::max)
                 .max(1.0)
         })
     }
@@ -191,7 +191,7 @@ impl BarChart {
         let label_width = self.label_width.unwrap_or_else(|| {
             self.bars
                 .iter()
-                .map(|b| b.label.len() as u16)
+                .map(|b| crate::utils::display_width(&b.label) as u16)
                 .max()
                 .unwrap_or(0)
                 .min(area.width / 3)
@@ -207,9 +207,9 @@ impl BarChart {
                 break;
             }
 
-            // Calculate bar length
+            // Calculate bar length (use absolute value for rendering)
             let bar_length = if max_value > 0.0 {
-                ((bar.value / max_value) * bar_area_width as f64) as u16
+                ((bar.value.abs() / max_value) * bar_area_width as f64) as u16
             } else {
                 0
             };
@@ -224,10 +224,15 @@ impl BarChart {
 
                 // Draw label (only on first row)
                 if row == 0 {
-                    let label: String = if bar.label.len() > label_width as usize {
-                        bar.label.chars().take(label_width as usize).collect()
+                    let label_dw = crate::utils::display_width(&bar.label);
+                    let label: String = if label_dw > label_width as usize {
+                        crate::utils::truncate_to_width(&bar.label, label_width as usize)
+                            .to_string()
                     } else {
-                        format!("{:>width$}", bar.label, width = label_width as usize)
+                        crate::utils::unicode::right_align_to_width(
+                            &bar.label,
+                            label_width as usize,
+                        )
                     };
 
                     for (i, ch) in label.chars().enumerate() {

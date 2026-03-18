@@ -24,11 +24,7 @@ impl View for HeatMap {
             col_header = col_header.child(Text::new(" ".repeat(label_offset)));
 
             for label in labels.iter().take(self.cols) {
-                let truncated = if label.len() > self.cell_width {
-                    &label[..self.cell_width]
-                } else {
-                    label
-                };
+                let truncated = crate::utils::truncate_to_width(label, self.cell_width);
                 col_header = col_header.child(
                     Text::new(format!("{:^width$}", truncated, width = self.cell_width))
                         .fg(Color::rgb(150, 150, 150)),
@@ -45,7 +41,7 @@ impl View for HeatMap {
                 // Row label
                 if let Some(labels) = &self.row_labels {
                     if let Some(label) = labels.get(row_idx) {
-                        let truncated = if label.len() > 6 { &label[..6] } else { label };
+                        let truncated = crate::utils::truncate_to_width(label, 6);
                         row_view = row_view.child(
                             Text::new(format!("{:>6} ", truncated)).fg(Color::rgb(150, 150, 150)),
                         );
@@ -64,9 +60,11 @@ impl View for HeatMap {
                     if self.show_values {
                         // Show value with colored background
                         cell_text = cell_text.bg(color);
-                        // Contrast text color
-                        let brightness = (color.r as u32 + color.g as u32 + color.b as u32) / 3;
-                        if brightness > 128 {
+                        // Contrast text color using perceptual luminance (ITU-R BT.601)
+                        let luminance =
+                            (299 * color.r as u32 + 587 * color.g as u32 + 114 * color.b as u32)
+                                / 1000;
+                        if luminance > 128 {
                             cell_text = cell_text.fg(Color::BLACK);
                         } else {
                             cell_text = cell_text.fg(Color::WHITE);

@@ -141,7 +141,11 @@ impl View for Checkbox {
         let label_fg = self.state.resolve_fg(ctx.style, Color::WHITE);
 
         let check_fg = if self.state.disabled {
-            Color::rgb(100, 100, 100)
+            if self.checked {
+                Color::rgb(120, 120, 120) // Brighter gray for disabled+checked
+            } else {
+                Color::rgb(70, 70, 70) // Darker gray for disabled+unchecked
+            }
         } else if self.checked {
             self.check_fg.unwrap_or(Color::GREEN)
         } else {
