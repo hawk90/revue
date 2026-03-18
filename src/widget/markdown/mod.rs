@@ -687,7 +687,8 @@ impl View for Markdown {
             let mut x: u16 = 0;
             for segment in &line.segments {
                 for ch in segment.text.chars() {
-                    if x >= area.width {
+                    let cw = crate::utils::char_width(ch) as u16;
+                    if x + cw > area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
@@ -695,7 +696,7 @@ impl View for Markdown {
                     cell.bg = segment.bg;
                     cell.modifier = segment.modifier;
                     ctx.set(x, y as u16, cell);
-                    x += 1;
+                    x += cw;
                 }
             }
         }

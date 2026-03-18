@@ -65,10 +65,12 @@ impl RichTextEditor {
             // Render prefix
             let mut col = x;
             for ch in prefix.chars() {
-                if col < x + width {
-                    ctx.set(col, row_y, Cell::new(ch).fg(prefix_fg).bg(bg));
-                    col += 1;
+                let cw = crate::utils::char_width(ch) as u16;
+                if col + cw > x + width {
+                    break;
                 }
+                ctx.set(col, row_y, Cell::new(ch).fg(prefix_fg).bg(bg));
+                col += cw;
             }
 
             // Render block content with per-span formatting
@@ -122,8 +124,9 @@ impl RichTextEditor {
                         cell.modifier |= Modifier::DIM;
                     }
 
+                    let cw = crate::utils::char_width(ch) as u16;
                     ctx.set(col, row_y, cell);
-                    col += 1;
+                    col += cw;
                     char_idx += 1;
                 }
             }

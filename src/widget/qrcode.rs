@@ -401,13 +401,16 @@ impl View for QrCodeWidget {
         let Some(matrix) = self.get_matrix() else {
             // Render error message if QR generation fails
             let msg = "QR Error";
-            for (i, ch) in msg.chars().enumerate() {
-                if i as u16 >= ctx.area.width {
+            let mut x: u16 = 0;
+            for ch in msg.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if x + cw > ctx.area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::RED);
-                ctx.set(i as u16, 0, cell);
+                ctx.set(x, 0, cell);
+                x += cw;
             }
             return;
         };

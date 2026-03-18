@@ -550,28 +550,33 @@ impl View for Terminal {
             }
 
             // Render prompt
-            for (i, ch) in prompt.chars().enumerate() {
-                if i >= area.width as usize {
+            let mut px: u16 = 0;
+            for ch in prompt.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if px + cw > area.width {
                     break;
                 }
                 ctx.set(
-                    i as u16,
+                    px,
                     input_y,
                     Cell::new(ch).fg(Color::CYAN).bg(Color::rgb(40, 40, 40)),
                 );
+                px += cw;
             }
 
             // Render input
-            for (i, ch) in self.input_buffer.chars().enumerate() {
-                let x = prompt.len() + i;
-                if x >= area.width as usize {
+            let mut ix = px;
+            for ch in self.input_buffer.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if ix + cw > area.width {
                     break;
                 }
                 ctx.set(
-                    x as u16,
+                    ix,
                     input_y,
                     Cell::new(ch).fg(Color::WHITE).bg(Color::rgb(40, 40, 40)),
                 );
+                ix += cw;
             }
         }
 

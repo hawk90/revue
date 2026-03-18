@@ -310,11 +310,18 @@ where
             Color::rgb(150, 150, 150)
         };
 
-        for (i, ch) in display_text.chars().take(max_len).enumerate() {
-            if let Some(cell) = ctx.get_mut(text_x + i as u16, text_y) {
+        let truncated = crate::utils::truncate_to_width(display_text, max_len);
+        let mut cx = text_x;
+        for ch in truncated.chars() {
+            let cw = crate::utils::char_width(ch) as u16;
+            if cx + cw > text_x + max_len as u16 {
+                break;
+            }
+            if let Some(cell) = ctx.get_mut(cx, text_y) {
                 cell.symbol = ch;
                 cell.fg = Some(text_color);
             }
+            cx += cw;
         }
     }
 

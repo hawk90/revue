@@ -8,6 +8,20 @@ use crate::widget::traits::{RenderContext, View};
 use super::types::RequestState;
 use super::types::ResponseView;
 
+/// Helper: render a string at position with fg color, advancing by char_width
+fn draw_text(ctx: &mut RenderContext, x: &mut u16, y: u16, text: &str, fg: Color, max_x: u16) {
+    for ch in text.chars() {
+        let cw = crate::utils::char_width(ch) as u16;
+        if *x + cw > max_x {
+            break;
+        }
+        let mut cell = Cell::new(ch);
+        cell.fg = Some(fg);
+        ctx.set(*x, y, cell);
+        *x += cw;
+    }
+}
+
 impl View for HttpClient {
     crate::impl_view_meta!("HttpClient");
 
@@ -21,38 +35,42 @@ impl View for HttpClient {
         // Method badge
         let method = self.request.method;
         let method_name = method.name();
-        for (i, ch) in method_name.chars().enumerate() {
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(method.color());
-            cell.modifier = Modifier::BOLD;
-            ctx.set(i as u16, 0, cell);
-        }
-
-        // URL
-        let url_start = method_name.len() as u16 + 1;
-        for (i, ch) in self.request.url().chars().enumerate() {
-            if url_start + i as u16 >= area.width - 1 {
+        let mut x = 0u16;
+        for ch in method_name.chars() {
+            let cw = crate::utils::char_width(ch) as u16;
+            if x + cw > area.width {
                 break;
             }
             let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::WHITE);
-            ctx.set(url_start + i as u16, 0, cell);
+            cell.fg = Some(method.color());
+            cell.modifier = Modifier::BOLD;
+            ctx.set(x, 0, cell);
+            x += cw;
         }
+
+        // URL
+        let url_start = x + 1;
+        let mut ux = url_start;
+        draw_text(
+            ctx,
+            &mut ux,
+            0,
+            self.request.url(),
+            Color::WHITE,
+            area.width - 1,
+        );
 
         // Send button hint
         let hint = "[Enter: Send]";
         let hint_start = area.width.saturating_sub(hint.len() as u16);
-        for (i, ch) in hint.chars().enumerate() {
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::rgb(100, 100, 100));
-            ctx.set(hint_start + i as u16, 0, cell);
-        }
+        let mut hx = hint_start;
+        draw_text(ctx, &mut hx, 0, hint, Color::rgb(100, 100, 100), area.width);
 
         // Separator
-        for x in 0..area.width {
+        for sx in 0..area.width {
             let mut cell = Cell::new('─');
             cell.fg = Some(Color::rgb(60, 60, 60));
-            ctx.set(x, 1, cell);
+            ctx.set(sx, 1, cell);
         }
 
         // Response area (row 2+)
@@ -60,24 +78,12 @@ impl View for HttpClient {
 
         if self.state == RequestState::Sending {
             let loading = "⠋ Sending request...";
-            for (i, ch) in loading.chars().enumerate() {
-                if i as u16 >= area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::YELLOW);
-                ctx.set(i as u16, response_y, cell);
-            }
+            let mut lx = 0u16;
+            draw_text(ctx, &mut lx, response_y, loading, Color::YELLOW, area.width);
         } else if let Some(error) = &self.error {
             let err_msg = format!("✗ Error: {}", error);
-            for (i, ch) in err_msg.chars().enumerate() {
-                if i as u16 >= area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::RED);
-                ctx.set(i as u16, response_y, cell);
-            }
+            let mut ex = 0u16;
+            draw_text(ctx, &mut ex, response_y, &err_msg, Color::RED, area.width);
         } else if let Some(response) = &self.response {
             // Status line
             let status_line = format!(
@@ -88,15 +94,15 @@ impl View for HttpClient {
                 Self::format_size(response.size)
             );
 
-            for (x, ch) in status_line.chars().enumerate() {
-                let x = x as u16;
-                if x >= area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(response.status_color());
-                ctx.set(x, response_y, cell);
-            }
+            let mut sx = 0u16;
+            draw_text(
+                ctx,
+                &mut sx,
+                response_y,
+                &status_line,
+                response.status_color(),
+                area.width,
+            );
 
             // Tabs
             let tabs = ["Body", "Headers", "Raw"];
@@ -135,10 +141,10 @@ impl View for HttpClient {
             }
 
             // Fill rest of tab bar
-            for x in tab_x..area.width {
+            for fx in tab_x..area.width {
                 let mut cell = Cell::new(' ');
                 cell.bg = Some(self.colors.tab_bg);
-                ctx.set(x, tab_y, cell);
+                ctx.set(fx, tab_y, cell);
             }
 
             // Content
@@ -154,14 +160,15 @@ impl View for HttpClient {
                         .take(content_height as usize)
                         .enumerate()
                     {
-                        for (j, ch) in line.chars().enumerate() {
-                            if j as u16 >= area.width {
-                                break;
-                            }
-                            let mut cell = Cell::new(ch);
-                            cell.fg = Some(Color::rgb(200, 200, 200));
-                            ctx.set(j as u16, content_y + i as u16, cell);
-                        }
+                        let mut cx = 0u16;
+                        draw_text(
+                            ctx,
+                            &mut cx,
+                            content_y + i as u16,
+                            line,
+                            Color::rgb(200, 200, 200),
+                            area.width,
+                        );
                     }
                 }
                 ResponseView::Headers => {
@@ -175,31 +182,18 @@ impl View for HttpClient {
                         let y = content_y + i as u16;
 
                         // Key
-                        for (j, ch) in key.chars().enumerate() {
-                            if j as u16 >= area.width / 2 {
-                                break;
-                            }
-                            let mut cell = Cell::new(ch);
-                            cell.fg = Some(self.colors.header_key);
-                            ctx.set(j as u16, y, cell);
-                        }
+                        let mut kx = 0u16;
+                        draw_text(ctx, &mut kx, y, key, self.colors.header_key, area.width / 2);
 
                         // Colon
-                        let colon_x = key.len() as u16;
-                        if colon_x + 2 < area.width {
+                        if kx + 2 < area.width {
                             let mut cell = Cell::new(':');
                             cell.fg = Some(Color::rgb(100, 100, 100));
-                            ctx.set(colon_x, y, cell);
+                            ctx.set(kx, y, cell);
 
                             // Value
-                            for (j, ch) in value.chars().enumerate() {
-                                if colon_x + 2 + j as u16 >= area.width {
-                                    break;
-                                }
-                                let mut cell = Cell::new(ch);
-                                cell.fg = Some(self.colors.header_value);
-                                ctx.set(colon_x + 2 + j as u16, y, cell);
-                            }
+                            let mut vx = kx + 2;
+                            draw_text(ctx, &mut vx, y, value, self.colors.header_value, area.width);
                         }
                     }
                 }
@@ -207,14 +201,15 @@ impl View for HttpClient {
         } else {
             // No response yet
             let msg = "Enter a URL and press Enter to send request";
-            for (i, ch) in msg.chars().enumerate() {
-                if i as u16 >= area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::rgb(100, 100, 100));
-                ctx.set(i as u16, response_y, cell);
-            }
+            let mut mx = 0u16;
+            draw_text(
+                ctx,
+                &mut mx,
+                response_y,
+                msg,
+                Color::rgb(100, 100, 100),
+                area.width,
+            );
         }
     }
 }

@@ -181,9 +181,10 @@ impl View for Transition {
         // Determine if we should dim (partial opacity)
         let should_dim = effective_progress > 0.0 && effective_progress < 1.0;
 
+        let mut x: u16 = 0;
         for (j, ch) in self.child_content.chars().enumerate() {
-            let x = j as u16;
-            if x < area.width && area.height > 0 {
+            let cw = crate::utils::char_width(ch) as u16;
+            if x + cw <= area.width && area.height > 0 {
                 let cell = if j < chars_to_show {
                     let mut c = Cell::new(ch);
                     c.fg = Some(default_fg);
@@ -200,6 +201,7 @@ impl View for Transition {
                 };
                 ctx.set(x, 0, cell);
             }
+            x += cw;
         }
     }
 
