@@ -111,14 +111,17 @@ impl View for TransitionGroup {
             }
 
             // Render item
-            for (j, ch) in item.chars().enumerate() {
-                let x = j as u16;
-                if x < area.width {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(default_fg);
-                    cell.bg = Some(default_bg);
-                    ctx.set(x, y, cell);
+            let mut x: u16 = 0;
+            for ch in item.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if x + cw > area.width {
+                    break;
                 }
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(default_fg);
+                cell.bg = Some(default_bg);
+                ctx.set(x, y, cell);
+                x += cw;
             }
         }
     }

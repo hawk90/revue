@@ -392,15 +392,18 @@ impl ProcessMonitor {
             };
 
             let text = format!("{}{}", name, indicator);
-            for (i, ch) in text.chars().enumerate() {
-                if x_offset + i as u16 >= area.width {
+            let mut hx = x_offset;
+            for ch in text.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if hx + cw > area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.colors.header_fg);
                 cell.bg = Some(self.colors.header_bg);
                 cell.modifier = Modifier::BOLD;
-                ctx.set(x_offset + i as u16, 0, cell);
+                ctx.set(hx, 0, cell);
+                hx += cw;
             }
             x_offset += width as u16;
         }
@@ -421,13 +424,16 @@ impl ProcessMonitor {
             self.process_count()
         );
 
-        for (i, ch) in stats.chars().enumerate() {
-            if i as u16 >= area.width {
+        let mut sx: u16 = 0;
+        for ch in stats.chars() {
+            let cw = crate::utils::char_width(ch) as u16;
+            if sx + cw > area.width {
                 break;
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::rgb(150, 150, 150));
-            ctx.set(i as u16, y, cell);
+            ctx.set(sx, y, cell);
+            sx += cw;
         }
     }
 }
@@ -501,12 +507,18 @@ impl View for ProcessMonitor {
             }
 
             // Name (truncated)
-            let name: String = proc.name.chars().take(19).collect();
-            for (j, ch) in name.chars().enumerate() {
+            let name = crate::utils::truncate_to_width(&proc.name, 19);
+            let mut nx: u16 = 7;
+            for ch in name.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if nx + cw > 26 {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.colors.name);
                 cell.bg = bg;
-                ctx.set(7 + j as u16, y, cell);
+                ctx.set(nx, y, cell);
+                nx += cw;
             }
 
             // CPU%
@@ -550,12 +562,18 @@ impl View for ProcessMonitor {
 
             // Status
             if area.width > 55 {
-                let status: String = proc.status.chars().take(8).collect();
-                for (j, ch) in status.chars().enumerate() {
+                let status = crate::utils::truncate_to_width(&proc.status, 8);
+                let mut stx: u16 = 49;
+                for ch in status.chars() {
+                    let cw = crate::utils::char_width(ch) as u16;
+                    if stx + cw > 57 {
+                        break;
+                    }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(150, 150, 150));
                     cell.bg = bg;
-                    ctx.set(49 + j as u16, y, cell);
+                    ctx.set(stx, y, cell);
+                    stx += cw;
                 }
             }
         }
