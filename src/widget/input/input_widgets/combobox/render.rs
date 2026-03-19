@@ -210,10 +210,10 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             entry.push(0, y, cell);
         }
 
-        // Get match indices for highlighting
-        let match_indices: Vec<usize> = combobox
+        // Get match indices for highlighting (HashSet for O(1) lookup)
+        let match_indices: std::collections::HashSet<usize> = combobox
             .get_match(&option.label)
-            .map(|m| m.indices)
+            .map(|m| m.indices.into_iter().collect())
             .unwrap_or_default();
 
         // Draw option text with highlighting

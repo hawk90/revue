@@ -133,6 +133,9 @@ pub struct Terminal {
 impl Terminal {
     /// Create a new terminal
     pub fn new(width: u16, height: u16) -> Self {
+        // Clamp to reasonable terminal dimensions to prevent excessive allocation
+        let width = width.min(1000);
+        let height = height.min(1000);
         let mut lines = Vec::with_capacity(height as usize);
         for _ in 0..height {
             lines.push(TermLine::with_capacity(width as usize));

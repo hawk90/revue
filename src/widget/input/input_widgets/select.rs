@@ -544,10 +544,10 @@ impl View for Select {
                 cell.bg = bg;
                 entry.push(0, y, cell);
 
-                // Get fuzzy match indices for highlighting
-                let match_indices: Vec<usize> = self
+                // Get fuzzy match indices for highlighting (HashSet for O(1) lookup)
+                let match_indices: std::collections::HashSet<usize> = self
                     .get_match(option)
-                    .map(|m| m.indices)
+                    .map(|m| m.indices.into_iter().collect())
                     .unwrap_or_default();
 
                 // Draw option text with highlighting
