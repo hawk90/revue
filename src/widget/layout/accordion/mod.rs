@@ -2,7 +2,7 @@
 //!
 //! A vertically stacked list of collapsible content panels.
 
-use crate::render::{Cell, Modifier};
+use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::border::render_border;
 use crate::utils::Selection;
@@ -429,22 +429,25 @@ impl View for Accordion {
 
             // Title
             let title_x = content_x_off + 3;
-            let max_title_width = (content_width.saturating_sub(4)) as usize;
-            let title_truncated = crate::utils::truncate_to_width(&section.title, max_title_width);
-            let mut cx = title_x;
-            for ch in title_truncated.chars() {
-                let cw = crate::utils::char_width(ch) as u16;
-                if cx + cw > title_x + max_title_width as u16 {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(self.header_fg);
-                cell.bg = Some(header_bg);
-                if is_selected {
-                    cell.modifier |= Modifier::BOLD;
-                }
-                ctx.set(cx, y, cell);
-                cx += cw;
+            let max_title_width = content_width.saturating_sub(4);
+            if is_selected {
+                ctx.draw_text_clipped_bg_bold(
+                    title_x,
+                    y,
+                    &section.title,
+                    self.header_fg,
+                    header_bg,
+                    max_title_width,
+                );
+            } else {
+                ctx.draw_text_clipped_bg(
+                    title_x,
+                    y,
+                    &section.title,
+                    self.header_fg,
+                    header_bg,
+                    max_title_width,
+                );
             }
 
             y += 1;
@@ -465,21 +468,15 @@ impl View for Accordion {
 
                     // Content with indent
                     let content_x = content_x_off + 3;
-                    let max_content_width = (content_width.saturating_sub(4)) as usize;
-                    let content_truncated =
-                        crate::utils::truncate_to_width(line, max_content_width);
-                    let mut cx = content_x;
-                    for ch in content_truncated.chars() {
-                        let cw = crate::utils::char_width(ch) as u16;
-                        if cx + cw > content_x + max_content_width as u16 {
-                            break;
-                        }
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(self.content_fg);
-                        cell.bg = Some(self.content_bg);
-                        ctx.set(cx, y, cell);
-                        cx += cw;
-                    }
+                    let max_content_width = content_width.saturating_sub(4);
+                    ctx.draw_text_clipped_bg(
+                        content_x,
+                        y,
+                        line,
+                        self.content_fg,
+                        self.content_bg,
+                        max_content_width,
+                    );
 
                     y += 1;
                 }

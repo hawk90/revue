@@ -338,53 +338,22 @@ impl Alert {
 
         // Title (if present)
         if let Some(ref title) = self.title {
-            let title_x = content_x + icon_offset;
+            let text_x = content_x + icon_offset;
             let max_w = content_width.saturating_sub(icon_offset);
-            let mut cx = title_x;
-            for ch in title.chars() {
-                let cw = crate::utils::char_width(ch) as u16;
-                if cx + cw > title_x + max_w {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
-                cell.bg = Some(bg_color);
-                cell.modifier |= Modifier::BOLD;
-                ctx.set(cx, y, cell);
-                cx += cw;
-            }
+            ctx.draw_text_clipped_bg_bold(text_x, y, title, Color::WHITE, bg_color, max_w);
             y += 1;
-
-            // Message on next line (indented to align with title)
-            let msg_x = content_x + icon_offset;
-            let mut cx = msg_x;
-            for ch in self.message.chars() {
-                let cw = crate::utils::char_width(ch) as u16;
-                if cx + cw > msg_x + max_w {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::rgb(200, 200, 200));
-                cell.bg = Some(bg_color);
-                ctx.set(cx, y, cell);
-                cx += cw;
-            }
+            ctx.draw_text_clipped_bg(
+                text_x,
+                y,
+                &self.message,
+                Color::rgb(200, 200, 200),
+                bg_color,
+                max_w,
+            );
         } else {
-            // Message only (same line as icon)
-            let msg_x = content_x + icon_offset;
+            let text_x = content_x + icon_offset;
             let max_w = content_width.saturating_sub(icon_offset);
-            let mut cx = msg_x;
-            for ch in self.message.chars() {
-                let cw = crate::utils::char_width(ch) as u16;
-                if cx + cw > msg_x + max_w {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
-                cell.bg = Some(bg_color);
-                ctx.set(cx, y, cell);
-                cx += cw;
-            }
+            ctx.draw_text_clipped_bg(text_x, y, &self.message, Color::WHITE, bg_color, max_w);
         }
 
         // Dismiss button

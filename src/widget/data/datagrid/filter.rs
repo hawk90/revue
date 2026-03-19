@@ -173,5 +173,8 @@ impl DataGrid {
         }
         self.filter = filter.into().to_lowercase();
         self.recompute_cache();
+        // Reset selection to avoid pointing past filtered results
+        self.selected_row = 0;
+        self.scroll_row = 0;
     }
 }

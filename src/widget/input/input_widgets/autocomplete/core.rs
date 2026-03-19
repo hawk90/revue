@@ -97,7 +97,7 @@ impl Autocomplete {
     /// Set initial value
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.value = value.into();
-        self.cursor = self.value.len();
+        self.cursor = self.value.chars().count();
         self
     }
 
@@ -245,7 +245,8 @@ impl Autocomplete {
     pub fn handle_key(&mut self, key: KeyEvent) -> bool {
         match key.key {
             Key::Char(c) => {
-                self.value.insert(self.cursor, c);
+                let byte_idx = crate::utils::text::char_to_byte_index(&self.value, self.cursor);
+                self.value.insert(byte_idx, c);
                 self.cursor += 1;
                 self.update_filter();
                 true
@@ -253,14 +254,16 @@ impl Autocomplete {
             Key::Backspace => {
                 if self.cursor > 0 {
                     self.cursor -= 1;
-                    self.value.remove(self.cursor);
+                    let byte_idx = crate::utils::text::char_to_byte_index(&self.value, self.cursor);
+                    self.value.remove(byte_idx);
                     self.update_filter();
                 }
                 true
             }
             Key::Delete => {
-                if self.cursor < self.value.len() {
-                    self.value.remove(self.cursor);
+                if self.cursor < self.value.chars().count() {
+                    let byte_idx = crate::utils::text::char_to_byte_index(&self.value, self.cursor);
+                    self.value.remove(byte_idx);
                     self.update_filter();
                 }
                 true
@@ -270,7 +273,7 @@ impl Autocomplete {
                 true
             }
             Key::Right => {
-                self.cursor = (self.cursor + 1).min(self.value.len());
+                self.cursor = (self.cursor + 1).min(self.value.chars().count());
                 true
             }
             Key::Home => {
@@ -278,7 +281,7 @@ impl Autocomplete {
                 true
             }
             Key::End => {
-                self.cursor = self.value.len();
+                self.cursor = self.value.chars().count();
                 true
             }
             Key::Up if self.dropdown_visible => {

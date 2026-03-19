@@ -140,6 +140,34 @@ impl RenderContext<'_> {
         self.draw_text_clipped_with_style(x, y, text, max_width, |ch| Cell::new(ch).fg(fg));
     }
 
+    /// Draw text with background color clipped to max_width
+    pub fn draw_text_clipped_bg(
+        &mut self,
+        x: u16,
+        y: u16,
+        text: &str,
+        fg: Color,
+        bg: Color,
+        max_width: u16,
+    ) {
+        self.draw_text_clipped_with_style(x, y, text, max_width, |ch| Cell::new(ch).fg(fg).bg(bg));
+    }
+
+    /// Draw bold text with background color clipped to max_width
+    pub fn draw_text_clipped_bg_bold(
+        &mut self,
+        x: u16,
+        y: u16,
+        text: &str,
+        fg: Color,
+        bg: Color,
+        max_width: u16,
+    ) {
+        self.draw_text_clipped_with_style(x, y, text, max_width, |ch| {
+            Cell::new(ch).fg(fg).bg(bg).bold()
+        });
+    }
+
     /// Draw bold text clipped to max_width
     pub fn draw_text_clipped_bold(
         &mut self,
