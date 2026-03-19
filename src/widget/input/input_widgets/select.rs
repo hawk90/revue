@@ -487,6 +487,10 @@ impl View for Select {
                     .collect()
             };
 
+            if visible_options.is_empty() && !self.query.is_empty() {
+                ctx.draw_text(2, 1, "No results", Color::rgb(128, 128, 128));
+            }
+
             for (row, (option_idx, option)) in visible_options.iter().enumerate().take(max_visible)
             {
                 let y = 1 + row as u16;
