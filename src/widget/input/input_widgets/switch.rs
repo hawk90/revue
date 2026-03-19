@@ -378,22 +378,13 @@ impl View for Switch {
         // Render label if on left
         if self.label_left {
             if let Some(ref label) = self.label {
-                let mut lx = x;
-                for ch in label.chars() {
-                    let cw = crate::utils::char_width(ch) as u16;
-                    if lx + cw > area.width {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled {
-                        Color::rgb(100, 100, 100)
-                    } else {
-                        Color::WHITE
-                    });
-                    ctx.set(lx, y, cell);
-                    lx += cw;
-                }
-                x = lx + 1;
+                let label_color = if self.disabled {
+                    Color::rgb(100, 100, 100)
+                } else {
+                    Color::WHITE
+                };
+                ctx.draw_text_clipped(x, y, label, label_color, area.width.saturating_sub(x));
+                x += crate::utils::display_width(label) as u16 + 1;
             }
         }
 
@@ -426,21 +417,12 @@ impl View for Switch {
         if !self.label_left {
             if let Some(ref label) = self.label {
                 x += 1;
-                let mut lx = x;
-                for ch in label.chars() {
-                    let cw = crate::utils::char_width(ch) as u16;
-                    if lx + cw > area.width {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled {
-                        Color::rgb(100, 100, 100)
-                    } else {
-                        Color::WHITE
-                    });
-                    ctx.set(lx, y, cell);
-                    lx += cw;
-                }
+                let label_color = if self.disabled {
+                    Color::rgb(100, 100, 100)
+                } else {
+                    Color::WHITE
+                };
+                ctx.draw_text_clipped(x, y, label, label_color, area.width.saturating_sub(x));
             }
         }
 

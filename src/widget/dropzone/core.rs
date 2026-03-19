@@ -310,19 +310,7 @@ where
             Color::rgb(150, 150, 150)
         };
 
-        let truncated = crate::utils::truncate_to_width(display_text, max_len);
-        let mut cx = text_x;
-        for ch in truncated.chars() {
-            let cw = crate::utils::char_width(ch) as u16;
-            if cx + cw > text_x + max_len as u16 {
-                break;
-            }
-            if let Some(cell) = ctx.get_mut(cx, text_y) {
-                cell.symbol = ch;
-                cell.fg = Some(text_color);
-            }
-            cx += cw;
-        }
+        ctx.draw_text_clipped(text_x, text_y, display_text, text_color, max_len as u16);
     }
 
     impl_view_meta!("DropZone");
