@@ -420,13 +420,16 @@ impl View for Modal {
             let mut body_ctx = RenderContext::new(ctx.buffer, content_area);
             body_widget.render(&mut body_ctx);
         } else {
-            // Render text content
+            // Render text content — use a neutral light gray rather than pure white
+            // so text remains readable on dark terminals while being less harsh,
+            // and avoids invisibility on light terminal backgrounds.
+            let content_fg = Color::rgb(220, 220, 220);
             for (i, line) in self.content.iter().enumerate() {
                 let cy = content_y + i as u16;
                 if cy >= y + modal_height - 2 {
                     break;
                 }
-                ctx.draw_text_clipped(x + 2, cy, line, Color::WHITE, content_width);
+                ctx.draw_text_clipped(x + 2, cy, line, content_fg, content_width);
             }
         }
 

@@ -392,6 +392,9 @@ impl Alert {
             0
         };
 
+        // Resolve fg via CSS cascade so text adapts to the terminal theme
+        let text_fg = self.state.resolve_fg(ctx.style, Color::WHITE);
+
         // Title
         if let Some(ref title) = self.title {
             let title_x = content_x + icon_offset;
@@ -400,13 +403,13 @@ impl Alert {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
+                cell.fg = Some(text_fg);
                 cell.modifier |= Modifier::BOLD;
                 ctx.set(title_x + i as u16, y, cell);
             }
             y += 1;
 
-            // Message
+            // Message — slightly dimmed relative to title
             let msg_x = content_x + icon_offset;
             for (i, ch) in self.message.chars().enumerate() {
                 if i as u16 >= content_width - icon_offset {
@@ -423,7 +426,7 @@ impl Alert {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
+                cell.fg = Some(text_fg);
                 ctx.set(msg_x + i as u16, y, cell);
             }
         }
@@ -450,6 +453,9 @@ impl Alert {
             ctx.set(x, y, icon_cell);
             x += 2;
         }
+
+        // Resolve fg via CSS cascade so text adapts to the terminal theme
+        let text_fg = self.state.resolve_fg(ctx.style, Color::WHITE);
 
         // Title or message
         if let Some(ref title) = self.title {
@@ -483,7 +489,7 @@ impl Alert {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
+                cell.fg = Some(text_fg);
                 ctx.set(x + i as u16, y, cell);
             }
         }
