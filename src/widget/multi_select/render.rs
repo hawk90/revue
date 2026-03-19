@@ -104,7 +104,14 @@ impl View for MultiSelect {
             let dropdown_h = max_visible.max(1) as u16;
 
             let (abs_x, abs_y) = ctx.absolute_position();
-            let overlay_area = crate::layout::Rect::new(abs_x, abs_y + 1, width, dropdown_h);
+            let buf_height = ctx.buffer.height();
+            let space_below = buf_height.saturating_sub(abs_y + 1);
+            let overlay_y = if space_below >= dropdown_h {
+                abs_y + 1
+            } else {
+                abs_y.saturating_sub(dropdown_h)
+            };
+            let overlay_area = crate::layout::Rect::new(abs_x, overlay_y, width, dropdown_h);
             let mut entry = crate::widget::traits::OverlayEntry::new(100, overlay_area);
 
             for (row, &opt_idx) in self.filtered.iter().enumerate().take(max_visible) {

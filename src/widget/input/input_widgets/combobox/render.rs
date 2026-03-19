@@ -90,7 +90,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
 
     let visible_count = combobox.max_visible.min(10);
 
-    // Calculate overlay position
+    // Calculate overlay position, flip above if near bottom
     let (abs_x, abs_y) = ctx.absolute_position();
     let dropdown_h = if combobox.loading || combobox.filtered.is_empty() {
         1u16
@@ -102,7 +102,14 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             .min(visible_count) as u16)
             .max(1)
     };
-    let overlay_area = crate::layout::Rect::new(abs_x, abs_y + 1, width, dropdown_h);
+    let buf_height = ctx.buffer.height();
+    let space_below = buf_height.saturating_sub(abs_y + 1);
+    let overlay_y = if space_below >= dropdown_h {
+        abs_y + 1
+    } else {
+        abs_y.saturating_sub(dropdown_h)
+    };
+    let overlay_area = crate::layout::Rect::new(abs_x, overlay_y, width, dropdown_h);
     let mut entry = crate::widget::traits::OverlayEntry::new(100, overlay_area);
 
     // Loading state

@@ -583,7 +583,7 @@ impl View for Tooltip {
             }
         }
 
-        // Arrow (rendered outside tooltip area, so use absolute coords trick)
+        // Arrow — queue as separate 1-cell overlay at higher z-index
         if !matches!(self.arrow, TooltipArrow::None) {
             let (arrow_char, _) = self.arrow.chars(actual_position);
             let (arrow_abs_x, arrow_abs_y) = match actual_position {
@@ -599,15 +599,19 @@ impl View for Tooltip {
                 && arrow_abs_y >= tooltip_y
                 && arrow_abs_y < tooltip_y + tooltip_h;
 
-            if !inside && arrow_abs_x < area.width && arrow_abs_y < area.height {
-                // Arrow is outside overlay area — write directly to buffer
+            let buf_w = ctx.buffer.width();
+            let buf_h = ctx.buffer.height();
+            if !inside && arrow_abs_x < buf_w && arrow_abs_y < buf_h {
+                let arrow_area = crate::layout::Rect::new(arrow_abs_x, arrow_abs_y, 1, 1);
+                let mut arrow_entry = crate::widget::traits::OverlayEntry::new(151, arrow_area);
                 let mut cell = Cell::new(arrow_char);
                 cell.fg = Some(fg);
-                ctx.buffer.set(arrow_abs_x, arrow_abs_y, cell);
+                arrow_entry.push(0, 0, cell);
+                ctx.queue_overlay(arrow_entry);
             }
         }
 
-        // Queue as overlay; fallback to inline
+        // Queue tooltip as overlay; fallback to inline
         if !ctx.queue_overlay(entry.clone()) {
             for oc in &entry.cells {
                 ctx.set(tooltip_x + oc.x, tooltip_y + oc.y, oc.cell);

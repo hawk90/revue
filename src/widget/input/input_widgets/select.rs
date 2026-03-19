@@ -492,9 +492,15 @@ impl View for Select {
                 (visible_options.len() as u16).min(10)
             };
 
-            // Calculate absolute position for overlay
+            // Calculate absolute position for overlay, flip above if near bottom
             let (abs_x, abs_y) = ctx.absolute_position();
-            let overlay_y = abs_y + 1; // Below the header row
+            let buf_height = ctx.buffer.height();
+            let space_below = buf_height.saturating_sub(abs_y + 1);
+            let overlay_y = if space_below >= dropdown_height {
+                abs_y + 1 // Render below
+            } else {
+                abs_y.saturating_sub(dropdown_height) // Render above
+            };
             let overlay_area = crate::layout::Rect::new(abs_x, overlay_y, width, dropdown_height);
 
             let mut entry = crate::widget::traits::OverlayEntry::new(100, overlay_area);

@@ -250,9 +250,11 @@ impl View for Toast {
             return;
         }
 
-        let (toast_width, toast_height) = self.calculate_size(area.width);
-        let (abs_x, abs_y) =
-            self.calculate_position(area.width, area.height, toast_width, toast_height);
+        // Use buffer (screen) dimensions for positioning, not parent area
+        let screen_w = ctx.buffer.width();
+        let screen_h = ctx.buffer.height();
+        let (toast_width, toast_height) = self.calculate_size(screen_w);
+        let (abs_x, abs_y) = self.calculate_position(screen_w, screen_h, toast_width, toast_height);
 
         let color = self.level.color();
         let bg = self.level.bg_color();
