@@ -98,12 +98,17 @@ impl View for MultiSelect {
             }
         }
 
-        // Draw dropdown if open
-        if self.open && area.height > 1 {
-            let max_visible = (area.height - 1) as usize;
+        // Draw dropdown if open (as overlay to escape parent clipping)
+        if self.open {
+            let max_visible = self.filtered.len().min(10);
+            let dropdown_h = max_visible.max(1) as u16;
+
+            let (abs_x, abs_y) = ctx.absolute_position();
+            let overlay_area = crate::layout::Rect::new(abs_x, abs_y + 1, width, dropdown_h);
+            let mut entry = crate::widget::traits::OverlayEntry::new(100, overlay_area);
 
             for (row, &opt_idx) in self.filtered.iter().enumerate().take(max_visible) {
-                let y = 1 + row as u16;
+                let y = row as u16;
                 let is_cursor = row == self.dropdown_cursor;
                 let is_selected = self.is_selected(opt_idx);
 
@@ -114,19 +119,24 @@ impl View for MultiSelect {
                         (fg, bg)
                     };
 
-                    // Draw row background
+                    // Row background
                     for dx in 0..width {
                         let mut cell = Cell::new(' ');
                         cell.fg = Some(row_fg);
                         cell.bg = Some(row_bg);
-                        ctx.set(dx, y, cell);
+                        entry.push(dx, y, cell);
                     }
 
-                    // Draw checkbox
+                    // Checkbox
                     let checkbox_str = if is_selected { "[x]" } else { "[ ]" };
-                    ctx.draw_text_bg(0, y, checkbox_str, row_fg, row_bg);
+                    for (i, ch) in checkbox_str.chars().enumerate() {
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(row_fg);
+                        cell.bg = Some(row_bg);
+                        entry.push(i as u16, y, cell);
+                    }
 
-                    // Draw label with highlight
+                    // Label with highlight
                     let match_indices: Vec<usize> = self
                         .get_match(&opt.label)
                         .map(|m| m.indices)
@@ -147,9 +157,19 @@ impl View for MultiSelect {
                             row_fg
                         };
 
-                        ctx.draw_char_bg(cx, y, ch, char_fg, row_bg);
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(char_fg);
+                        cell.bg = Some(row_bg);
+                        entry.push(cx, y, cell);
                         cx += cw;
                     }
+                }
+            }
+
+            // Queue as overlay; fallback to inline
+            if !ctx.queue_overlay(entry.clone()) {
+                for oc in &entry.cells {
+                    ctx.set(oc.x, oc.y + 1, oc.cell);
                 }
             }
         }
