@@ -7,7 +7,8 @@
       "versioning": "default",
       "extra-files": [
         "Cargo.toml"
-      ]
+      ],
+      "bootstrap-sha": "ff8d5ff933c5477cbcd3cadec0d676d446413900"
     }
   },
   "changelog-sections": [
