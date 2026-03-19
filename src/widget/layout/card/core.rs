@@ -393,20 +393,20 @@ impl View for Card {
             }
         }
 
-        // Draw shadow for elevated variant
-        if self.variant == CardVariant::Elevated && area.width > 2 && area.height > 1 {
+        // Draw shadow for elevated variant (inside area bounds)
+        if self.variant == CardVariant::Elevated && area.width > 3 && area.height > 2 {
             let shadow_color = Color::rgb(20, 20, 20);
-            // Right shadow
+            // Right shadow (last column, below top-right corner)
             for y in 1..area.height {
                 let mut cell = Cell::new('▌');
                 cell.fg = Some(shadow_color);
-                ctx.set(area.width, y, cell);
+                ctx.set(area.width - 1, y, cell);
             }
-            // Bottom shadow
-            for x in 1..=area.width {
+            // Bottom shadow (last row, right of bottom-left corner)
+            for x in 1..area.width {
                 let mut cell = Cell::new('▀');
                 cell.fg = Some(shadow_color);
-                ctx.set(x, area.height, cell);
+                ctx.set(x, area.height - 1, cell);
             }
         }
 

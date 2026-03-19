@@ -583,14 +583,16 @@ impl View for Terminal {
         // Render scroll indicator if scrolled
         if self.scroll_offset > 0 {
             let indicator = format!("↑{}", self.scroll_offset);
-            let start_x = area.width - indicator.len() as u16 - 1;
-
-            for (i, ch) in indicator.chars().enumerate() {
-                ctx.set(
-                    start_x + i as u16,
-                    0,
-                    Cell::new(ch).fg(Color::YELLOW).bg(Color::rgb(60, 60, 60)),
-                );
+            let indicator_len = indicator.len() as u16;
+            if area.width > indicator_len + 1 {
+                let start_x = area.width - indicator_len - 1;
+                for (i, ch) in indicator.chars().enumerate() {
+                    ctx.set(
+                        start_x + i as u16,
+                        0,
+                        Cell::new(ch).fg(Color::YELLOW).bg(Color::rgb(60, 60, 60)),
+                    );
+                }
             }
         }
     }
