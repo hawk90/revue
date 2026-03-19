@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.58.12](https://github.com/hawk90/revue/compare/v2.58.11...v2.58.12) (2026-03-19)
+
+
+### Bug Fixes
+
+* **render:** card shadow bounds, terminal indicator underflow, form border guard ([#495](https://github.com/hawk90/revue/issues/495)) ([1c7a996](https://github.com/hawk90/revue/commit/1c7a9968914c99a3355ad287895b856a2951b6a3))
+* **ux:** add modal button focus indicator and select empty state message ([#494](https://github.com/hawk90/revue/issues/494)) ([52b4c84](https://github.com/hawk90/revue/commit/52b4c8493d090f38ac35f508e612cdd516213a44))
+
 ## [2.58.11](https://github.com/hawk90/revue/compare/v2.58.10...v2.58.11) (2026-03-19)
 
 
