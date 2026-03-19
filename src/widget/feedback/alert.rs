@@ -367,6 +367,7 @@ impl Alert {
     }
 
     fn render_outlined(&self, ctx: &mut RenderContext, accent_color: Color, _border_color: Color) {
+        let text_fg = self.state.resolve_fg(ctx.style, Color::WHITE);
         let area = ctx.area;
 
         // Draw left accent border
@@ -400,7 +401,7 @@ impl Alert {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
+                cell.fg = Some(text_fg);
                 cell.modifier |= Modifier::BOLD;
                 ctx.set(title_x + i as u16, y, cell);
             }
@@ -423,7 +424,7 @@ impl Alert {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
+                cell.fg = Some(text_fg);
                 ctx.set(msg_x + i as u16, y, cell);
             }
         }
@@ -438,6 +439,7 @@ impl Alert {
     }
 
     fn render_minimal(&self, ctx: &mut RenderContext, accent_color: Color) {
+        let text_fg = self.state.resolve_fg(ctx.style, Color::WHITE);
         let area = ctx.area;
         let mut x: u16 = 0;
         let y: u16 = 0;
@@ -483,7 +485,7 @@ impl Alert {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
+                cell.fg = Some(text_fg);
                 ctx.set(x + i as u16, y, cell);
             }
         }
