@@ -22,7 +22,9 @@ impl DomRenderer {
             (None, None)
         };
 
-        // Create context with style and state
+        // Phase 1: Main widget tree render with overlay queue
+        let mut overlay_queue = crate::widget::OverlayQueue::new();
+
         let mut ctx = if let (Some(style), Some(state)) = (style, state) {
             RenderContext::full(buffer, area, style, state)
         } else if let Some(style) = style {
@@ -30,8 +32,14 @@ impl DomRenderer {
         } else {
             RenderContext::new(buffer, area)
         };
+        ctx = ctx.with_overlay_queue(&mut overlay_queue);
 
         root.render(&mut ctx);
+
+        // Phase 2: Render overlays on top (sorted by z-index)
+        // ctx must go out of scope so buffer borrow is released
+        let _ = ctx;
+        overlay_queue.render_to(buffer);
     }
 
     /// Query nodes by selector

@@ -371,8 +371,8 @@ pub use streamline::{
 pub use syntax::{HighlightSpan, Language, SyntaxHighlighter, SyntaxTheme};
 pub use theme_picker::{theme_picker, ThemePicker};
 pub use traits::{
-    Draggable, Element, EventResult, FocusStyle, Interactive, RenderContext, StyledView, Timeout,
-    View, WidgetProps, WidgetState, DISABLED_BG, DISABLED_FG,
+    Draggable, Element, EventResult, FocusStyle, Interactive, OverlayEntry, OverlayQueue,
+    RenderContext, StyledView, Timeout, View, WidgetProps, WidgetState, DISABLED_BG, DISABLED_FG,
 };
 pub use transition::{
     transition, transition_group, Animation, AnimationPreset, Transition as AnimationTransition,
