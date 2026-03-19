@@ -467,6 +467,9 @@ impl View for Modal {
                     let mut cell = Cell::new(ch);
                     cell.fg = fg;
                     cell.bg = bg;
+                    if is_selected {
+                        cell.modifier |= crate::render::Modifier::BOLD;
+                    }
                     ctx.set(btn_x, button_y, cell);
                     btn_x += cw;
                 }
