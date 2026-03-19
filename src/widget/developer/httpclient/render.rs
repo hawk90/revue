@@ -8,20 +8,6 @@ use crate::widget::traits::{RenderContext, View};
 use super::types::RequestState;
 use super::types::ResponseView;
 
-/// Helper: render a string at position with fg color, advancing by char_width
-fn draw_text(ctx: &mut RenderContext, x: &mut u16, y: u16, text: &str, fg: Color, max_x: u16) {
-    for ch in text.chars() {
-        let cw = crate::utils::char_width(ch) as u16;
-        if *x + cw > max_x {
-            break;
-        }
-        let mut cell = Cell::new(ch);
-        cell.fg = Some(fg);
-        ctx.set(*x, y, cell);
-        *x += cw;
-    }
-}
-
 impl View for HttpClient {
     crate::impl_view_meta!("HttpClient");
 
@@ -50,21 +36,24 @@ impl View for HttpClient {
 
         // URL
         let url_start = x + 1;
-        let mut ux = url_start;
-        draw_text(
-            ctx,
-            &mut ux,
+        ctx.draw_text_clipped(
+            url_start,
             0,
             self.request.url(),
             Color::WHITE,
-            area.width - 1,
+            area.width.saturating_sub(url_start),
         );
 
         // Send button hint
         let hint = "[Enter: Send]";
         let hint_start = area.width.saturating_sub(hint.len() as u16);
-        let mut hx = hint_start;
-        draw_text(ctx, &mut hx, 0, hint, Color::rgb(100, 100, 100), area.width);
+        ctx.draw_text_clipped(
+            hint_start,
+            0,
+            hint,
+            Color::rgb(100, 100, 100),
+            area.width.saturating_sub(hint_start),
+        );
 
         // Separator
         for sx in 0..area.width {
@@ -78,12 +67,10 @@ impl View for HttpClient {
 
         if self.state == RequestState::Sending {
             let loading = "⠋ Sending request...";
-            let mut lx = 0u16;
-            draw_text(ctx, &mut lx, response_y, loading, Color::YELLOW, area.width);
+            ctx.draw_text_clipped(0, response_y, loading, Color::YELLOW, area.width);
         } else if let Some(error) = &self.error {
             let err_msg = format!("✗ Error: {}", error);
-            let mut ex = 0u16;
-            draw_text(ctx, &mut ex, response_y, &err_msg, Color::RED, area.width);
+            ctx.draw_text_clipped(0, response_y, &err_msg, Color::RED, area.width);
         } else if let Some(response) = &self.response {
             // Status line
             let status_line = format!(
@@ -94,10 +81,8 @@ impl View for HttpClient {
                 Self::format_size(response.size)
             );
 
-            let mut sx = 0u16;
-            draw_text(
-                ctx,
-                &mut sx,
+            ctx.draw_text_clipped(
+                0,
                 response_y,
                 &status_line,
                 response.status_color(),
@@ -160,10 +145,8 @@ impl View for HttpClient {
                         .take(content_height as usize)
                         .enumerate()
                     {
-                        let mut cx = 0u16;
-                        draw_text(
-                            ctx,
-                            &mut cx,
+                        ctx.draw_text_clipped(
+                            0,
                             content_y + i as u16,
                             line,
                             Color::rgb(200, 200, 200),
@@ -180,10 +163,11 @@ impl View for HttpClient {
                         .enumerate()
                     {
                         let y = content_y + i as u16;
+                        let half = area.width / 2;
 
                         // Key
-                        let mut kx = 0u16;
-                        draw_text(ctx, &mut kx, y, key, self.colors.header_key, area.width / 2);
+                        ctx.draw_text_clipped(0, y, key, self.colors.header_key, half);
+                        let kx = (crate::utils::display_width(key) as u16).min(half);
 
                         // Colon
                         if kx + 2 < area.width {
@@ -192,8 +176,14 @@ impl View for HttpClient {
                             ctx.set(kx, y, cell);
 
                             // Value
-                            let mut vx = kx + 2;
-                            draw_text(ctx, &mut vx, y, value, self.colors.header_value, area.width);
+                            let vx = kx + 2;
+                            ctx.draw_text_clipped(
+                                vx,
+                                y,
+                                value,
+                                self.colors.header_value,
+                                area.width.saturating_sub(vx),
+                            );
                         }
                     }
                 }
@@ -201,15 +191,7 @@ impl View for HttpClient {
         } else {
             // No response yet
             let msg = "Enter a URL and press Enter to send request";
-            let mut mx = 0u16;
-            draw_text(
-                ctx,
-                &mut mx,
-                response_y,
-                msg,
-                Color::rgb(100, 100, 100),
-                area.width,
-            );
+            ctx.draw_text_clipped(0, response_y, msg, Color::rgb(100, 100, 100), area.width);
         }
     }
 }

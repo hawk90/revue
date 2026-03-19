@@ -290,19 +290,36 @@ impl View for Tabs {
             }
 
             // Draw label
-            for ch in tab.label.chars() {
-                let cw = crate::utils::char_width(ch) as u16;
-                if x + cw > area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = fg;
-                cell.bg = bg;
+            let clip = area.width.saturating_sub(x);
+            if let Some(f) = fg {
                 if is_active {
-                    cell.modifier |= crate::render::Modifier::BOLD;
+                    if let Some(b) = bg {
+                        ctx.draw_text_clipped_bg_bold(x, 0, &tab.label, f, b, clip);
+                    } else {
+                        ctx.draw_text_clipped_bold(x, 0, &tab.label, f, clip);
+                    }
+                } else if let Some(b) = bg {
+                    ctx.draw_text_clipped_bg(x, 0, &tab.label, f, b, clip);
+                } else {
+                    ctx.draw_text_clipped(x, 0, &tab.label, f, clip);
                 }
-                ctx.set(x, 0, cell);
-                x += cw;
+                x += (crate::utils::display_width(&tab.label) as u16).min(clip);
+            } else {
+                // fg is None: preserve terminal default color
+                for ch in tab.label.chars() {
+                    let cw = crate::utils::char_width(ch) as u16;
+                    if x + cw > area.width {
+                        break;
+                    }
+                    let mut cell = Cell::new(ch);
+                    cell.fg = fg;
+                    cell.bg = bg;
+                    if is_active {
+                        cell.modifier |= crate::render::Modifier::BOLD;
+                    }
+                    ctx.set(x, 0, cell);
+                    x += cw;
+                }
             }
 
             // Draw padding

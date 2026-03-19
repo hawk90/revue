@@ -45,18 +45,13 @@ impl View for TextArea {
         // Show placeholder if empty
         if self.lines.len() == 1 && self.lines[0].is_empty() {
             if let Some(ref placeholder) = self.placeholder {
-                let mut px: u16 = 0;
-                for ch in placeholder.chars() {
-                    let cw = crate::utils::char_width(ch) as u16;
-                    if px + cw > text_width {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(128, 128, 128));
-                    cell.modifier = Modifier::ITALIC;
-                    ctx.set(text_start_x + px, 0, cell);
-                    px += cw;
-                }
+                ctx.draw_text_clipped(
+                    text_start_x,
+                    0,
+                    placeholder,
+                    Color::rgb(128, 128, 128),
+                    text_width,
+                );
             }
         }
 

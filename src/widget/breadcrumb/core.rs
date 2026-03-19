@@ -1,7 +1,7 @@
 //! Breadcrumb navigation widget - core implementation
 
 use super::types::{BreadcrumbItem, SeparatorStyle};
-use crate::render::{Cell, Modifier};
+use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::Selection;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
@@ -298,24 +298,13 @@ impl View for Breadcrumb {
                 x += 2;
             }
 
-            let color = if is_selected {
-                self.selected_color
+            let clip_width = max_width.saturating_sub(10).saturating_sub(x);
+            if is_selected {
+                ctx.draw_text_clipped_bold(x, 0, &item.label, self.selected_color, clip_width);
             } else {
-                self.item_color
-            };
-            for ch in item.label.chars() {
-                let cw = crate::utils::char_width(ch) as u16;
-                if x + cw > max_width.saturating_sub(10) {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(color);
-                if is_selected {
-                    cell.modifier |= Modifier::BOLD;
-                }
-                ctx.set(x, 0, cell);
-                x += cw;
+                ctx.draw_text_clipped(x, 0, &item.label, self.item_color, clip_width);
             }
+            x += (crate::utils::display_width(&item.label) as u16).min(clip_width);
 
             // Separator
             x += 1;
@@ -369,24 +358,13 @@ impl View for Breadcrumb {
             }
 
             // Label
-            let color = if is_selected {
-                self.selected_color
+            let clip_width = max_width.saturating_sub(x);
+            if is_selected {
+                ctx.draw_text_clipped_bold(x, 0, &item.label, self.selected_color, clip_width);
             } else {
-                self.item_color
-            };
-            for ch in item.label.chars() {
-                let cw = crate::utils::char_width(ch) as u16;
-                if x + cw > max_width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(color);
-                if is_selected {
-                    cell.modifier |= Modifier::BOLD;
-                }
-                ctx.set(x, 0, cell);
-                x += cw;
+                ctx.draw_text_clipped(x, 0, &item.label, self.item_color, clip_width);
             }
+            x += (crate::utils::display_width(&item.label) as u16).min(clip_width);
 
             // Separator (except for last item)
             if !is_last && x + 2 < max_width {

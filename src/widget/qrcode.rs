@@ -400,18 +400,7 @@ impl View for QrCodeWidget {
     fn render(&self, ctx: &mut RenderContext) {
         let Some(matrix) = self.get_matrix() else {
             // Render error message if QR generation fails
-            let msg = "QR Error";
-            let mut x: u16 = 0;
-            for ch in msg.chars() {
-                let cw = crate::utils::char_width(ch) as u16;
-                if x + cw > ctx.area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::RED);
-                ctx.set(x, 0, cell);
-                x += cw;
-            }
+            ctx.draw_text(0, 0, "QR Error", Color::RED);
             return;
         };
 
