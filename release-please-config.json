@@ -10,7 +10,6 @@
       ]
     }
   },
-  "last-release-sha": "c91f162",
   "changelog-sections": [
     { "type": "feat", "section": "Features" },
     { "type": "fix", "section": "Bug Fixes" },

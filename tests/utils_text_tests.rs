@@ -540,6 +540,57 @@ fn display_width_empty() {
     assert_eq!(display_width(""), 0);
 }
 
+#[test]
+fn display_width_cjk() {
+    // text.rs display_width should now delegate to unicode.rs
+    assert_eq!(display_width("한글"), 4); // 2 chars × 2 width
+    assert_eq!(display_width("Hello한글"), 9); // 5 + 4
+}
+
+#[test]
+fn display_width_emoji() {
+    assert_eq!(display_width("🎉"), 2);
+}
+
+#[test]
+fn truncate_cjk() {
+    // truncate should respect display width, not char count
+    let result = truncate("안녕하세요", 5);
+    // "안녕" = 4 width, "하" would make 6 > 5, so truncate with ellipsis
+    assert_eq!(display_width(&result), 5); // "안녕…" = 4 + 1
+}
+
+#[test]
+fn center_cjk() {
+    let result = center("한", 6); // "한" is width 2, center in 6
+    assert_eq!(display_width(&result), 6);
+    assert!(result.contains("한"));
+}
+
+#[test]
+fn pad_right_cjk() {
+    let result = pad_right("한글", 8); // width 4, pad to 8
+    assert_eq!(display_width(&result), 8);
+    assert!(result.starts_with("한글"));
+}
+
+#[test]
+fn pad_left_cjk() {
+    let result = pad_left("한글", 8); // width 4, pad to 8
+    assert_eq!(display_width(&result), 8);
+    assert!(result.ends_with("한글"));
+}
+
+#[test]
+fn wrap_text_cjk() {
+    let result = wrap_text("가나다라마바사", 5);
+    // Each char is width 2, so max 2 chars per line (width 4), "마" starts new line
+    assert!(result.len() >= 2);
+    for line in &result {
+        assert!(display_width(line) <= 5);
+    }
+}
+
 // =============================================================================
 // repeat_char
 // =============================================================================
