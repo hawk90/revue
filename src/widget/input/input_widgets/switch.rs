@@ -380,6 +380,12 @@ impl View for Switch {
             if let Some(ref label) = self.label {
                 let label_color = if self.disabled {
                     Color::rgb(100, 100, 100)
+                } else if let Some(css_fg) = ctx
+                    .style
+                    .map(|s| s.visual.color)
+                    .filter(|c| *c != Color::default())
+                {
+                    css_fg
                 } else {
                     Color::WHITE
                 };
@@ -419,6 +425,12 @@ impl View for Switch {
                 x += 1;
                 let label_color = if self.disabled {
                     Color::rgb(100, 100, 100)
+                } else if let Some(css_fg) = ctx
+                    .style
+                    .map(|s| s.visual.color)
+                    .filter(|c| *c != Color::default())
+                {
+                    css_fg
                 } else {
                     Color::WHITE
                 };

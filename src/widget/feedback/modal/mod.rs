@@ -426,7 +426,7 @@ impl View for Modal {
                 if cy >= y + modal_height - 2 {
                     break;
                 }
-                ctx.draw_text_clipped(x + 2, cy, line, Color::WHITE, content_width);
+                ctx.draw_text_clipped(x + 2, cy, line, Color::rgb(220, 220, 220), content_width);
             }
         }
 
