@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.58.11](https://github.com/hawk90/revue/compare/v2.58.10...v2.58.11) (2026-03-19)
+
+
+### Bug Fixes
+
+* **ci:** add bootstrap-sha to release-please config ([34b033e](https://github.com/hawk90/revue/commit/34b033e6a900b9152b4cd6c730335e3d66497566))
+
 ## [2.58.10](https://github.com/hawk90/revue/compare/v2.58.9...v2.58.10) (2026-03-19)
 
 
