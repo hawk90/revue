@@ -76,7 +76,7 @@ impl Input {
         let char_len = self.char_count();
 
         match key {
-            Key::Char(c) => {
+            Key::Char(c) if !c.is_control() => {
                 self.delete_selection_with_undo();
                 // Create a string from the character and insert at cursor
                 let s = c.to_string();

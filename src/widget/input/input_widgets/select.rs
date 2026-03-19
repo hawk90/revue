@@ -22,6 +22,8 @@ pub struct Select {
     selected_bg: Option<Color>,
     highlight_fg: Option<Color>,
     width: Option<u16>,
+    /// Cached auto-calculated width (invalidated on options change)
+    cached_auto_width: Option<u16>,
     /// Search query for filtering options
     query: String,
     /// Enable fuzzy search when typing
@@ -52,6 +54,7 @@ impl Select {
             selected_bg: Some(Color::BLUE),
             highlight_fg: Some(Color::YELLOW),
             width: None,
+            cached_auto_width: None,
             query: String::new(),
             searchable: false,
             filtered: Vec::new(),
@@ -67,6 +70,7 @@ impl Select {
         self.options = options.into_iter().map(|o| o.into()).collect();
         self.selection.set_len(self.options.len());
         self.reset_filter();
+        self.update_cached_width();
         self
     }
 
@@ -75,6 +79,7 @@ impl Select {
         self.options.push(option.into());
         self.selection.set_len(self.options.len());
         self.reset_filter();
+        self.update_cached_width();
         self
     }
 
@@ -374,10 +379,14 @@ impl Select {
         self.options.is_empty()
     }
 
-    /// Calculate display width
+    /// Calculate display width (uses cache when available)
     fn display_width(&self, max_width: u16) -> u16 {
         if let Some(w) = self.width {
             return w.min(max_width);
+        }
+
+        if let Some(cached) = self.cached_auto_width {
+            return cached.min(max_width);
         }
 
         let max_option_len = self
@@ -389,6 +398,20 @@ impl Select {
 
         // +4 for "▼ " prefix and " " suffix and border
         ((max_option_len + 4) as u16).min(max_width)
+    }
+
+    /// Pre-compute and cache auto width (call after options change)
+    fn update_cached_width(&mut self) {
+        if self.width.is_some() {
+            return;
+        }
+        let max_option_len = self
+            .options
+            .iter()
+            .map(|o| display_width(o))
+            .max()
+            .unwrap_or(display_width(&self.placeholder));
+        self.cached_auto_width = Some((max_option_len + 4) as u16);
     }
 }
 
