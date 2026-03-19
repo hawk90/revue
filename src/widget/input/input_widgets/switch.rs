@@ -375,6 +375,20 @@ impl View for Switch {
         let mut x: u16 = 0;
         let y: u16 = 0;
 
+        // Resolve label fg: disabled state overrides, then CSS cascade, then default
+        let label_fg = if self.disabled {
+            Color::rgb(100, 100, 100)
+        } else if let Some(style) = ctx.style {
+            let c = style.visual.color;
+            if c != Color::default() {
+                c
+            } else {
+                Color::WHITE
+            }
+        } else {
+            Color::WHITE
+        };
+
         // Render label if on left
         if self.label_left {
             if let Some(ref label) = self.label {
@@ -385,11 +399,7 @@ impl View for Switch {
                         break;
                     }
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled {
-                        Color::rgb(100, 100, 100)
-                    } else {
-                        Color::WHITE
-                    });
+                    cell.fg = Some(label_fg);
                     ctx.set(lx, y, cell);
                     lx += cw;
                 }
@@ -433,11 +443,7 @@ impl View for Switch {
                         break;
                     }
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled {
-                        Color::rgb(100, 100, 100)
-                    } else {
-                        Color::WHITE
-                    });
+                    cell.fg = Some(label_fg);
                     ctx.set(lx, y, cell);
                     lx += cw;
                 }

@@ -51,7 +51,7 @@ impl Tabs {
             selection: Selection::new(0),
             fg: None,
             bg: None,
-            active_fg: Some(Color::WHITE),
+            active_fg: Some(Color::rgb(220, 220, 220)),
             active_bg: Some(Color::BLUE),
             divider: '│',
             min_width: 0,
