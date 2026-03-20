@@ -45,12 +45,11 @@ pub fn skip_whitespace_and_comments_bytes(bytes: &[u8], mut pos: usize) -> usize
                 pos += 1;
             }
 
-            // If we reached the end without finding a closing */, that's an error
-            // But we don't panic - we return the position and let the parser handle it
+            // If we reached the end without finding closing */, skip to end
             if pos >= bytes.len() || pos + 1 >= bytes.len() {
-                // Unterminated comment - return current position
-                // The parser will detect this as unexpected end of input
-                return pos;
+                #[cfg(debug_assertions)]
+                eprintln!("[revue css] warning: unterminated comment in CSS");
+                return bytes.len();
             }
         } else {
             break;

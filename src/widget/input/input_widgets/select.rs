@@ -78,8 +78,8 @@ impl Select {
     pub fn option(mut self, option: impl Into<String>) -> Self {
         self.options.push(option.into());
         self.selection.set_len(self.options.len());
+        self.cached_auto_width = None; // Lazy: recalculated on next display_width()
         self.reset_filter();
-        self.update_cached_width();
         self
     }
 

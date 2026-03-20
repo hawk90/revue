@@ -200,8 +200,10 @@ impl TextArea {
         self.redo_stack.clear();
     }
 
-    /// Set primary cursor position (internal helper)
+    /// Set primary cursor position (internal helper, clamped to valid range)
     pub(super) fn set_primary_cursor(&mut self, line: usize, col: usize) {
+        let line = line.min(self.lines.len().saturating_sub(1));
+        let col = col.min(self.line_len(line));
         self.cursors.set_primary(CursorPos::new(line, col));
     }
 }
