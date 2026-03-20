@@ -270,6 +270,9 @@ impl TextArea {
 
     /// Handle key event
     pub fn handle_key(&mut self, key: &Key) -> bool {
+        if !self.focused {
+            return false;
+        }
         match key {
             Key::Char(ch) => {
                 self.insert_char(*ch);
@@ -558,105 +561,105 @@ mod tests {
 
     #[test]
     fn test_textarea_handle_key_char() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::Char('a'));
         assert!(handled);
     }
 
     #[test]
     fn test_textarea_handle_key_enter() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::Enter);
         assert!(handled);
     }
 
     #[test]
     fn test_textarea_handle_key_tab() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::Tab);
         assert!(handled);
     }
 
     #[test]
     fn test_textarea_handle_key_backspace() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::Backspace);
         assert!(handled);
     }
 
     #[test]
     fn test_textarea_handle_key_delete() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::Delete);
         assert!(handled);
     }
 
     #[test]
     fn test_textarea_handle_key_left() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::Left);
         assert!(handled);
     }
 
     #[test]
     fn test_textarea_handle_key_right() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::Right);
         assert!(handled);
     }
 
     #[test]
     fn test_textarea_handle_key_up() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::Up);
         assert!(handled);
     }
 
     #[test]
     fn test_textarea_handle_key_down() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::Down);
         assert!(handled);
     }
 
     #[test]
     fn test_textarea_handle_key_home() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::Home);
         assert!(handled);
     }
 
     #[test]
     fn test_textarea_handle_key_end() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::End);
         assert!(handled);
     }
 
     #[test]
     fn test_textarea_handle_key_page_up() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::PageUp);
         assert!(handled);
     }
 
     #[test]
     fn test_textarea_handle_key_page_down() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::PageDown);
         assert!(handled);
     }
 
     #[test]
     fn test_textarea_handle_key_unknown() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::Escape);
         assert!(!handled);
     }
 
     #[test]
     fn test_textarea_handle_key_f1() {
-        let mut textarea = TextArea::new();
+        let mut textarea = TextArea::new().focused(true);
         let handled = textarea.handle_key(&Key::F(1));
         assert!(!handled);
     }
