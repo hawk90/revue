@@ -21,7 +21,15 @@ impl View for TextArea {
     crate::impl_view_meta!("TextArea");
 
     fn render(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
+        let mut area = ctx.area;
+
+        // Enforce minimum height: expand the render area if the layout gave us
+        // less than min_height rows. This ensures TextArea is visible even when
+        // used as an auto-sized child in a vstack.
+        if self.min_height > 0 && area.height < self.min_height {
+            area.height = self.min_height;
+        }
+
         if area.width == 0 || area.height == 0 {
             return;
         }
