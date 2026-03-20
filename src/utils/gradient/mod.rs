@@ -153,7 +153,7 @@ pub fn progress_gradient(base_color: crate::style::Color) -> Gradient {
 /// Returns a grayscale gradient for disabled elements.
 pub fn disabled_gradient() -> Gradient {
     Gradient::new(vec![
-        ColorStop::new(0.0, crate::style::Color::rgb(80, 80, 80)),
-        ColorStop::new(1.0, crate::style::Color::rgb(120, 120, 120)),
+        ColorStop::new(0.0, crate::widget::theme::DARK_GRAY),
+        ColorStop::new(1.0, crate::widget::theme::SUBTLE_GRAY),
     ])
 }

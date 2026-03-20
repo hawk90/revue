@@ -23,7 +23,7 @@
 
 use crate::style::Color;
 use crate::utils::format_size;
-use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
+use crate::widget::theme::{DARK_GRAY, DISABLED_FG, LIGHT_GRAY, PLACEHOLDER_FG};
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 use std::fs;
@@ -860,10 +860,10 @@ impl View for FilePicker {
 
         // Separator
         content =
-            content.child(Text::new("─".repeat(self.width as usize)).fg(Color::rgb(80, 80, 80)));
+            content.child(Text::new("─".repeat(self.width as usize)).fg(DARK_GRAY));
 
         // Parent directory option
-        content = content.child(Text::new("  📁 ..").fg(Color::rgb(150, 150, 150)));
+        content = content.child(Text::new("  📁 ..").fg(LIGHT_GRAY));
 
         // File list
         let start = self.scroll_offset;
@@ -918,7 +918,7 @@ impl View for FilePicker {
 
         // Separator
         content =
-            content.child(Text::new("─".repeat(self.width as usize)).fg(Color::rgb(80, 80, 80)));
+            content.child(Text::new("─".repeat(self.width as usize)).fg(DARK_GRAY));
 
         // Filename input (for save mode)
         if self.mode == PickerMode::Save {
@@ -948,7 +948,7 @@ impl View for FilePicker {
                 "↑↓: Navigate | Space: Toggle | Enter: Confirm | a: All | n: None | q: Cancel"
             }
         };
-        content = content.child(Text::new(help).fg(Color::rgb(80, 80, 80)));
+        content = content.child(Text::new(help).fg(DARK_GRAY));
 
         content.render(ctx);
     }

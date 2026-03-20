@@ -10,6 +10,7 @@
 use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::{DARK_GRAY, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_view_meta, impl_widget_builders};
 /// A number input widget with increment/decrement controls
@@ -487,7 +488,7 @@ impl View for NumberInput {
 
         // Draw prefix
         if let Some(ref prefix) = self.prefix {
-            ctx.draw_text(x, 0, prefix, Color::rgb(150, 150, 150));
+            ctx.draw_text(x, 0, prefix, LIGHT_GRAY);
             x += prefix.chars().count() as u16;
         }
 
@@ -533,7 +534,7 @@ impl View for NumberInput {
 
         // Draw suffix
         if let Some(ref suffix) = self.suffix {
-            ctx.draw_text(x, 0, suffix, Color::rgb(150, 150, 150));
+            ctx.draw_text(x, 0, suffix, LIGHT_GRAY);
             x += suffix.chars().count() as u16;
         }
 
@@ -541,9 +542,9 @@ impl View for NumberInput {
         if self.show_buttons && x + 4 <= area.width {
             let button_x = area.width - 4;
             let button_fg = if self.state.disabled {
-                Color::rgb(80, 80, 80)
+                DARK_GRAY
             } else {
-                Color::rgb(150, 150, 150)
+                LIGHT_GRAY
             };
             ctx.draw_text(button_x, 0, " -+", button_fg);
         }

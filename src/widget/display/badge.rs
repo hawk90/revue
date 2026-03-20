@@ -2,6 +2,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::DARK_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -27,7 +28,7 @@ impl BadgeVariant {
     /// Get colors for this variant (bg, fg)
     pub fn colors(&self) -> (Color, Color) {
         match self {
-            BadgeVariant::Default => (Color::rgb(80, 80, 80), Color::WHITE),
+            BadgeVariant::Default => (DARK_GRAY, Color::WHITE),
             BadgeVariant::Primary => (Color::rgb(50, 100, 200), Color::WHITE),
             BadgeVariant::Success => (Color::rgb(40, 160, 80), Color::WHITE),
             BadgeVariant::Warning => (Color::rgb(200, 150, 40), Color::BLACK),

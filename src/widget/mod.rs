@@ -370,7 +370,7 @@ pub use streamline::{
     StreamBaseline, StreamLayer, StreamOrder, Streamline,
 };
 pub use syntax::{HighlightSpan, Language, SyntaxHighlighter, SyntaxTheme};
-pub use theme::{FOCUS_COLOR, MAX_DROPDOWN_VISIBLE, PLACEHOLDER_FG};
+pub use theme::{DARK_GRAY, FOCUS_COLOR, LIGHT_GRAY, MAX_DROPDOWN_VISIBLE, PLACEHOLDER_FG, SUBTLE_GRAY};
 pub use theme_picker::{theme_picker, ThemePicker};
 pub use traits::{
     Draggable, Element, EventResult, FocusStyle, Interactive, OverlayEntry, OverlayQueue,

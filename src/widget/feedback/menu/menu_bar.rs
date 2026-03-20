@@ -4,6 +4,7 @@ use super::types::Menu;
 use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps, DISABLED_FG};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -47,7 +48,7 @@ impl MenuBar {
             selected_bg: Color::rgb(60, 100, 180),
             selected_fg: Color::WHITE,
             disabled_fg: DISABLED_FG,
-            shortcut_fg: Color::rgb(150, 150, 150),
+            shortcut_fg: LIGHT_GRAY,
             props: WidgetProps::new(),
         }
     }

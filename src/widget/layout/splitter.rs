@@ -6,6 +6,7 @@ use crate::event::Key;
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::DARK_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -137,7 +138,7 @@ impl Splitter {
             panes: Vec::new(),
             orientation: SplitOrientation::Horizontal,
             style: SplitterStyle::Line,
-            color: Color::rgb(80, 80, 80),
+            color: DARK_GRAY,
             active_color: Color::CYAN,
             active_divider: None,
             focused_pane: 0,
@@ -427,7 +428,7 @@ impl HSplit {
             min_left: 5,
             min_right: 5,
             show_splitter: true,
-            color: Color::rgb(80, 80, 80),
+            color: DARK_GRAY,
         }
     }
 
@@ -507,7 +508,7 @@ impl VSplit {
             min_top: 3,
             min_bottom: 3,
             show_splitter: true,
-            color: Color::rgb(80, 80, 80),
+            color: DARK_GRAY,
         }
     }
 

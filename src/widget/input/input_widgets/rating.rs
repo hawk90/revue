@@ -4,7 +4,7 @@
 
 use crate::render::Cell;
 use crate::style::Color;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -323,7 +323,7 @@ impl View for Rating {
                 if x >= area.width {
                     break;
                 }
-                ctx.set(x, y, Cell::new(ch).fg(Color::rgb(150, 150, 150)));
+                ctx.set(x, y, Cell::new(ch).fg(LIGHT_GRAY));
                 x += 1;
             }
         }

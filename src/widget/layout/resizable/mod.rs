@@ -21,7 +21,7 @@ pub use types::{ResizeDirection, ResizeHandle, ResizeStyle};
 use crate::event::Key;
 use crate::layout::Rect;
 use crate::style::Color;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_view_meta, impl_widget_builders};
 
@@ -415,7 +415,7 @@ where
         let color = if self.resizing {
             self.active_color
         } else if self.hovered_handle.is_some() {
-            Color::rgb(150, 150, 150)
+            LIGHT_GRAY
         } else {
             self.handle_color
         };

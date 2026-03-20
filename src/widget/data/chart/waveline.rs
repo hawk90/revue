@@ -24,6 +24,7 @@
 
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::DARK_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -110,7 +111,7 @@ impl Waveline {
             baseline: 0.5,
             amplitude: 1.0,
             show_baseline: false,
-            baseline_color: Color::rgb(80, 80, 80),
+            baseline_color: DARK_GRAY,
             bg_color: None,
             height: None,
             max_points: None,

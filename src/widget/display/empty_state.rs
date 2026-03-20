@@ -25,7 +25,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::PLACEHOLDER_FG;
+use crate::widget::theme::{LIGHT_GRAY, PLACEHOLDER_FG};
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -291,7 +291,7 @@ impl EmptyState {
                         break;
                     }
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(150, 150, 150));
+                    cell.fg = Some(LIGHT_GRAY);
                     ctx.set(desc_x + i as u16, y, cell);
                 }
                 y += 2;
@@ -351,7 +351,7 @@ impl EmptyState {
                         break;
                     }
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(150, 150, 150));
+                    cell.fg = Some(LIGHT_GRAY);
                     ctx.set(desc_x + i as u16, y, cell);
                 }
                 y += 1;
@@ -395,7 +395,7 @@ impl EmptyState {
                 break;
             }
             let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::rgb(150, 150, 150));
+            cell.fg = Some(LIGHT_GRAY);
             ctx.set(x + i as u16, 0, cell);
         }
     }

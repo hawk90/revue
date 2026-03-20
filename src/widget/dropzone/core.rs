@@ -21,7 +21,7 @@ use crate::event::drag::{DragData, DragId, DropTarget};
 use crate::impl_view_meta;
 use crate::layout::Rect;
 use crate::style::Color;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{Draggable, RenderContext, View, WidgetProps, WidgetState};
 
 use super::types::DropZoneStyle;
@@ -308,7 +308,7 @@ where
         let text_color = if self.hovered {
             color
         } else {
-            Color::rgb(150, 150, 150)
+            LIGHT_GRAY
         };
 
         ctx.draw_text_clipped(text_x, text_y, display_text, text_color, max_len as u16);

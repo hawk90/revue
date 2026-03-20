@@ -6,7 +6,7 @@ use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::unicode::char_width;
 use crate::widget::data::calendar::{days_in_month, Date};
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -144,7 +144,7 @@ impl RangePicker {
             crate::widget::data::calendar::FirstDayOfWeek::Sunday => "Su Mo Tu We Th Fr Sa",
             crate::widget::data::calendar::FirstDayOfWeek::Monday => "Mo Tu We Th Fr Sa Su",
         };
-        self.draw_text(ctx, x, y + 1, day_headers, Color::rgb(150, 150, 150), false);
+        self.draw_text(ctx, x, y + 1, day_headers, LIGHT_GRAY, false);
 
         // Days
         let mut row = 0u16;

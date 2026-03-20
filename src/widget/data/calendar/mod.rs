@@ -57,6 +57,7 @@
 //! ```
 
 use crate::style::Color;
+use crate::widget::theme::{DARK_GRAY, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -159,11 +160,11 @@ mod tests {
             header_fg: Color::CYAN,
             header_bg: None,
             day_fg: Color::WHITE,
-            weekend_fg: Color::rgb(150, 150, 150),
+            weekend_fg: LIGHT_GRAY,
             selected_fg: Color::BLACK,
             selected_bg: Color::CYAN,
             today_fg: Color::YELLOW,
-            outside_fg: Color::rgb(80, 80, 80),
+            outside_fg: DARK_GRAY,
             border_color: None,
             focused: false,
         };
@@ -190,11 +191,11 @@ mod tests {
             header_fg: Color::CYAN,
             header_bg: None,
             day_fg: Color::WHITE,
-            weekend_fg: Color::rgb(150, 150, 150),
+            weekend_fg: LIGHT_GRAY,
             selected_fg: Color::BLACK,
             selected_bg: Color::CYAN,
             today_fg: Color::YELLOW,
-            outside_fg: Color::rgb(80, 80, 80),
+            outside_fg: DARK_GRAY,
             border_color: None,
             focused: false,
         };
@@ -240,11 +241,11 @@ mod tests {
             header_fg: Color::CYAN,
             header_bg: None,
             day_fg: Color::WHITE,
-            weekend_fg: Color::rgb(150, 150, 150),
+            weekend_fg: LIGHT_GRAY,
             selected_fg: Color::BLACK,
             selected_bg: Color::CYAN,
             today_fg: Color::YELLOW,
-            outside_fg: Color::rgb(80, 80, 80),
+            outside_fg: DARK_GRAY,
             border_color: None,
             focused: false,
         };
@@ -279,11 +280,11 @@ mod tests {
             header_fg: Color::CYAN,
             header_bg: None,
             day_fg: Color::WHITE,
-            weekend_fg: Color::rgb(150, 150, 150),
+            weekend_fg: LIGHT_GRAY,
             selected_fg: Color::BLACK,
             selected_bg: Color::CYAN,
             today_fg: Color::YELLOW,
-            outside_fg: Color::rgb(80, 80, 80),
+            outside_fg: DARK_GRAY,
             border_color: None,
             focused: false,
         };
@@ -355,11 +356,11 @@ impl Calendar {
             header_fg: Color::CYAN,
             header_bg: None,
             day_fg: Color::WHITE,
-            weekend_fg: Color::rgb(150, 150, 150),
+            weekend_fg: LIGHT_GRAY,
             selected_fg: Color::BLACK,
             selected_bg: Color::CYAN,
             today_fg: Color::YELLOW,
-            outside_fg: Color::rgb(80, 80, 80),
+            outside_fg: DARK_GRAY,
             border_color: None,
             focused: false,
             props: WidgetProps::new(),

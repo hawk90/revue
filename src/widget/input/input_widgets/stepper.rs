@@ -4,7 +4,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, SUBTLE_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -476,7 +476,7 @@ impl Stepper {
                             break;
                         }
                         let mut cell = Cell::new(ch);
-                        cell.fg = Some(Color::rgb(120, 120, 120));
+                        cell.fg = Some(SUBTLE_GRAY);
                         ctx.set(x + j as u16, y + 2, cell);
                     }
                 }
@@ -538,7 +538,7 @@ impl Stepper {
                                 break;
                             }
                             let mut cell = Cell::new(ch);
-                            cell.fg = Some(Color::rgb(120, 120, 120));
+                            cell.fg = Some(SUBTLE_GRAY);
                             ctx.set(desc_x + j as u16, y, cell);
                         }
                         y += 1;

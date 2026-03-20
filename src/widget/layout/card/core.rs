@@ -31,6 +31,7 @@ use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::unicode::char_width;
+use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -503,7 +504,7 @@ impl View for Card {
                 text: subtitle,
                 x: content_x,
                 y: current_y,
-                color: Color::rgb(150, 150, 150),
+                color: LIGHT_GRAY,
                 max_width: content_width,
                 bold: false,
             }

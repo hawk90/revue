@@ -2,6 +2,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::{DARK_GRAY, SUBTLE_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -55,7 +56,7 @@ impl Tag {
     pub fn new(text: impl Into<String>) -> Self {
         Self {
             text: text.into(),
-            color: Color::rgb(80, 80, 80),
+            color: DARK_GRAY,
             text_color: None,
             style: TagStyle::Filled,
             closable: false,
@@ -155,7 +156,7 @@ impl Tag {
         let text_color = self.text_color.unwrap_or(Color::WHITE);
 
         if self.disabled {
-            return (Some(Color::rgb(60, 60, 60)), Color::rgb(120, 120, 120));
+            return (Some(Color::rgb(60, 60, 60)), SUBTLE_GRAY);
         }
 
         match self.style {

@@ -6,7 +6,7 @@ use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::{format_size_compact, natural_cmp};
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 use std::path::{Path, PathBuf};
@@ -553,7 +553,7 @@ impl View for FileTree {
                 if size_x > x {
                     for (j, ch) in size_str.chars().enumerate() {
                         let mut cell = Cell::new(ch);
-                        cell.fg = Some(Color::rgb(150, 150, 150));
+                        cell.fg = Some(LIGHT_GRAY);
                         if is_selected {
                             cell.bg = Some(self.selected_bg);
                         }
