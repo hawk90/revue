@@ -9,6 +9,22 @@ use crate::widget::traits::{EventResult, Interactive, RenderContext, View, Widge
 use crate::{impl_props_builders, impl_styled_view};
 
 /// A select/dropdown widget with optional fuzzy search
+///
+/// # Keyboard Shortcuts
+///
+/// | Key | Action |
+/// |-----|--------|
+/// | `Enter` | Open dropdown (when closed) / Confirm selection (when open) |
+/// | `Space` | Toggle dropdown open/close (non-searchable mode only) |
+/// | `Up` / `k` | Move to previous option (when open, non-searchable mode) |
+/// | `Down` / `j` | Move to next option (when open, non-searchable mode) |
+/// | `Up` | Move to previous option (when open, searchable mode) |
+/// | `Down` | Move to next option (when open, searchable mode) |
+/// | `Home` | Jump to first option (when open) |
+/// | `End` | Jump to last option (when open) |
+/// | `Escape` | Close dropdown and clear search query (when open) |
+/// | `Backspace` | Delete last character from search query (when open, searchable mode) |
+/// | `Char` | Append character to search query (when open, searchable mode) |
 #[derive(Clone, Debug)]
 pub struct Select {
     options: Vec<String>,
@@ -95,8 +111,9 @@ impl Select {
         self
     }
 
-    /// Set selected index
+    /// Set selected index, clamped to the valid range
     pub fn selected(mut self, index: usize) -> Self {
+        let index = index.min(self.options.len().saturating_sub(1));
         self.selection.set(index);
         self
     }
@@ -156,6 +173,11 @@ impl Select {
     /// Get selected value
     pub fn value(&self) -> Option<&str> {
         self.options.get(self.selection.index).map(|s| s.as_str())
+    }
+
+    /// Get selected value (alias for [`value`](Self::value))
+    pub fn get_value(&self) -> Option<&str> {
+        self.value()
     }
 
     /// Check if dropdown is open

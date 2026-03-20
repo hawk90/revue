@@ -51,6 +51,24 @@ pub(super) const MAX_UNDO_HISTORY: usize = 100;
 /// // Handle key events
 /// editor.handle_key(&Key::Char('a'));
 /// ```
+///
+/// # Keyboard Shortcuts
+///
+/// | Key | Action |
+/// |-----|--------|
+/// | `Char` | Insert character at cursor |
+/// | `Enter` | Insert newline |
+/// | `Tab` | Insert tab (rendered as spaces based on `tab_width`) |
+/// | `Backspace` | Delete character before cursor (or merge with previous line) |
+/// | `Delete` | Delete character at cursor (or merge with next line) |
+/// | `Left` | Move cursor left (clears selection) |
+/// | `Right` | Move cursor right (clears selection) |
+/// | `Up` | Move cursor up one line (clears selection) |
+/// | `Down` | Move cursor down one line (clears selection) |
+/// | `Home` | Move cursor to start of line (clears selection) |
+/// | `End` | Move cursor to end of line (clears selection) |
+/// | `PageUp` | Move cursor up 10 lines |
+/// | `PageDown` | Move cursor down 10 lines |
 pub struct TextArea {
     /// Lines of text
     pub(super) lines: Vec<String>,
@@ -76,6 +94,8 @@ pub struct TextArea {
     pub(super) placeholder: Option<String>,
     /// Maximum lines (0 = unlimited)
     pub(super) max_lines: usize,
+    /// Minimum height in rows (0 = no constraint). Defaults to 3.
+    pub(super) min_height: u16,
     /// Text color
     pub(super) fg: Option<Color>,
     /// Background color
@@ -108,12 +128,13 @@ impl TextArea {
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             show_line_numbers: false,
-            wrap: false,
+            wrap: true,
             read_only: false,
             focused: false,
             tab_width: 4,
             placeholder: None,
             max_lines: 0,
+            min_height: 3,
             fg: None,
             bg: None,
             cursor_fg: None,
@@ -125,6 +146,11 @@ impl TextArea {
             current_match_bg: None,
             props: WidgetProps::new(),
         }
+    }
+
+    /// Create a TextArea pre-configured as a code editor with line numbers
+    pub fn editor() -> Self {
+        Self::new().line_numbers(true).wrap(true)
     }
 
     /// Set initial content
@@ -172,6 +198,15 @@ impl TextArea {
     /// Set maximum lines (0 = unlimited)
     pub fn max_lines(mut self, max: usize) -> Self {
         self.max_lines = max;
+        self
+    }
+
+    /// Set minimum height in rows (0 = no constraint)
+    ///
+    /// Defaults to 3. This prevents the TextArea from collapsing to zero height
+    /// when used as an auto-sized child in a flex/stack layout.
+    pub fn min_height(mut self, height: u16) -> Self {
+        self.min_height = height;
         self
     }
 
@@ -327,12 +362,13 @@ mod tests {
         assert_eq!(textarea.lines[0], "");
         assert_eq!(textarea.scroll, (0, 0));
         assert!(!textarea.show_line_numbers);
-        assert!(!textarea.wrap);
+        assert!(textarea.wrap); // wrap defaults to true for intuitive multi-line editing
         assert!(!textarea.read_only);
         assert!(!textarea.focused);
         assert_eq!(textarea.tab_width, 4);
         assert!(textarea.placeholder.is_none());
         assert_eq!(textarea.max_lines, 0);
+        assert_eq!(textarea.min_height, 3); // min_height defaults to 3 to stay visible in layouts
     }
 
     #[test]
@@ -415,6 +451,29 @@ mod tests {
 
         let textarea = TextArea::new().max_lines(0);
         assert_eq!(textarea.max_lines, 0);
+    }
+
+    #[test]
+    fn test_textarea_min_height_builder() {
+        let textarea = TextArea::new().min_height(10);
+        assert_eq!(textarea.min_height, 10);
+
+        let textarea = TextArea::new().min_height(0);
+        assert_eq!(textarea.min_height, 0);
+    }
+
+    #[test]
+    fn test_textarea_min_height_default() {
+        let textarea = TextArea::new();
+        assert_eq!(textarea.min_height, 3);
+    }
+
+    #[test]
+    fn test_textarea_editor_constructor() {
+        let editor = TextArea::editor();
+        assert!(editor.show_line_numbers);
+        assert!(editor.wrap);
+        assert_eq!(editor.min_height, 3);
     }
 
     #[test]
