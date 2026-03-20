@@ -455,10 +455,10 @@ impl View for Switch {
                 let mut left = Cell::new('[');
                 left.fg = Some(Color::CYAN);
                 ctx.set(switch_x.saturating_sub(1), y, left);
-            } else if area.x > 0 {
+            } else {
                 let mut left = Cell::new('[');
                 left.fg = Some(Color::CYAN);
-                ctx.buffer.set(area.x.saturating_sub(1), area.y, left);
+                ctx.set(0, y, left);
             }
 
             // Draw focus bracket on right
