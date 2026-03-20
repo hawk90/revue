@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.59.0](https://github.com/hawk90/revue/compare/v2.58.12...v2.59.0) (2026-03-20)
+
+
+### Features
+
+* **render:** add overlay rendering system for floating UI elements ([#501](https://github.com/hawk90/revue/issues/501)) ([9c8e553](https://github.com/hawk90/revue/commit/9c8e55392f22ff87586af1a84bb4e7f9a080c278))
+
+
+### Bug Fixes
+
+* **render:** use resolved colors instead of hardcoded white for theme adaptability ([#499](https://github.com/hawk90/revue/issues/499)) ([ac02327](https://github.com/hawk90/revue/commit/ac023275b0c175f866dc52b4e405ee626c94ef9b))
+* **security,perf:** clipboard ANSI injection, terminal bounds, O(n²) fuzzy match ([#502](https://github.com/hawk90/revue/issues/502)) ([45d2f5a](https://github.com/hawk90/revue/commit/45d2f5a716c6989f12723faab0e20ee0be2e7246))
+
 ## [2.58.12](https://github.com/hawk90/revue/compare/v2.58.11...v2.58.12) (2026-03-19)
 
 
