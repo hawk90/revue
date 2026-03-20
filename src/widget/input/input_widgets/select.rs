@@ -322,6 +322,9 @@ impl Select {
 
     /// Handle key input, returns true if selection changed
     pub fn handle_key(&mut self, key: &crate::event::Key) -> bool {
+        if !self.focused {
+            return false;
+        }
         use crate::event::Key;
 
         match key {
@@ -484,20 +487,9 @@ impl View for Select {
             ctx.set(x, 0, cell);
         }
 
-        // Draw focus indicator
+        // Draw focus indicator (inside area bounds)
         if self.focused && !self.disabled {
-            // Add brackets around select when focused
-            if area.x > 0 {
-                let mut left = Cell::new('[');
-                left.fg = Some(Color::CYAN);
-                ctx.buffer.set(area.x.saturating_sub(1), area.y, left);
-            }
-
-            if width < area.width {
-                let mut right = Cell::new(']');
-                right.fg = Some(Color::CYAN);
-                ctx.set(width, 0, right);
-            }
+            ctx.draw_focus_brackets(0, width, Color::CYAN);
         }
 
         // Draw arrow (or search icon when searching)

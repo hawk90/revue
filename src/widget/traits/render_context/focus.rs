@@ -106,6 +106,26 @@ impl RenderContext<'_> {
     pub fn apply_default_focus(&mut self, focused: bool) {
         self.apply_focus_indicator(focused, FocusStyle::Rounded, Color::CYAN);
     }
+
+    /// Draw inline bracket focus indicators `[` and `]` at the edges
+    /// of a widget region. Renders INSIDE area bounds (no buffer.set).
+    ///
+    /// # Arguments
+    /// * `y` - Row to draw brackets on (relative to area)
+    /// * `width` - Widget content width (bracket goes at 0 and width-1)
+    /// * `color` - Bracket color (typically Color::CYAN)
+    pub fn draw_focus_brackets(&mut self, y: u16, width: u16, color: Color) {
+        if width < 2 {
+            return;
+        }
+        let mut left = Cell::new('[');
+        left.fg = Some(color);
+        self.set(0, y, left);
+
+        let mut right = Cell::new(']');
+        right.fg = Some(color);
+        self.set(width.saturating_sub(1), y, right);
+    }
 }
 
 use crate::widget::traits::render_context::RenderContext;

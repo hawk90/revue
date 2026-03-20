@@ -262,20 +262,9 @@ impl View for Button {
             ctx.draw_text_bg(x, 0, &self.label, fg, bg);
         }
 
-        // Render focus indicator
+        // Render focus indicator (inside area bounds)
         if self.state.focused && !self.state.disabled {
-            // Add brackets around button when focused
-            if area.x > 0 {
-                let mut left = Cell::new('[');
-                left.fg = Some(Color::CYAN);
-                ctx.buffer.set(area.x.saturating_sub(1), area.y, left);
-            }
-
-            if button_width < area.width {
-                let mut right = Cell::new(']');
-                right.fg = Some(Color::CYAN);
-                ctx.set(button_width, 0, right);
-            }
+            ctx.draw_focus_brackets(0, button_width, Color::CYAN);
         }
     }
 
