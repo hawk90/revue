@@ -3,7 +3,7 @@
 use crate::impl_view_meta;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY, MAX_DROPDOWN_VISIBLE, PLACEHOLDER_FG};
 use crate::widget::traits::{RenderContext, View};
 
 use super::types::MultiSelect;
@@ -48,7 +48,7 @@ impl View for MultiSelect {
 
                     if x + tag_len > max_x {
                         // Draw overflow indicator
-                        ctx.draw_text(x, 0, "...", Color::rgb(150, 150, 150));
+                        ctx.draw_text(x, 0, "...", LIGHT_GRAY);
                         break;
                     }
 
@@ -96,7 +96,7 @@ impl View for MultiSelect {
 
         // Draw dropdown if open (as overlay to escape parent clipping)
         if self.open {
-            let max_visible = self.filtered.len().min(10);
+            let max_visible = self.filtered.len().min(MAX_DROPDOWN_VISIBLE as usize);
             let dropdown_h = max_visible.max(1) as u16;
 
             let (abs_x, abs_y) = ctx.absolute_position();

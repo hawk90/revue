@@ -2,7 +2,7 @@
 
 use super::HeatMap;
 use crate::style::Color;
-use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY, PLACEHOLDER_FG};
 use crate::widget::RenderContext;
 use crate::widget::View;
 use crate::widget::{hstack, vstack, Text};
@@ -28,7 +28,7 @@ impl View for HeatMap {
                 let truncated = crate::utils::truncate_to_width(label, self.cell_width);
                 col_header = col_header.child(
                     Text::new(format!("{:^width$}", truncated, width = self.cell_width))
-                        .fg(Color::rgb(150, 150, 150)),
+                        .fg(LIGHT_GRAY),
                 );
             }
             content = content.child(col_header);
@@ -43,9 +43,8 @@ impl View for HeatMap {
                 if let Some(labels) = &self.row_labels {
                     if let Some(label) = labels.get(row_idx) {
                         let truncated = crate::utils::truncate_to_width(label, 6);
-                        row_view = row_view.child(
-                            Text::new(format!("{:>6} ", truncated)).fg(Color::rgb(150, 150, 150)),
-                        );
+                        row_view =
+                            row_view.child(Text::new(format!("{:>6} ", truncated)).fg(LIGHT_GRAY));
                     }
                 }
 

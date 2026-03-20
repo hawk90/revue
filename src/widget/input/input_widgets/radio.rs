@@ -4,7 +4,7 @@ use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::Selection;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -248,7 +248,7 @@ impl RadioGroup {
         } else if is_selected {
             self.selected_fg.unwrap_or(Color::CYAN)
         } else {
-            self.fg.unwrap_or(Color::rgb(150, 150, 150))
+            self.fg.unwrap_or(LIGHT_GRAY)
         };
 
         let mut current_x = x;

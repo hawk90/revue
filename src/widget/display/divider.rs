@@ -1,6 +1,7 @@
 //! Divider widget for visual separation
 
 use crate::style::Color;
+use crate::widget::theme::DARK_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -67,7 +68,7 @@ impl Divider {
         Self {
             orientation: Orientation::Horizontal,
             style: DividerStyle::Solid,
-            color: Color::rgb(80, 80, 80),
+            color: DARK_GRAY,
             label: None,
             label_color: None,
             margin: 0,

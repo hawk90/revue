@@ -3,6 +3,7 @@
 use crate::event::{Key, KeyEvent};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::{LIGHT_GRAY, SUBTLE_GRAY};
 use crate::widget::traits::{
     EventResult, Interactive, RenderContext, View, WidgetProps, WidgetState,
 };
@@ -142,14 +143,14 @@ impl View for Checkbox {
 
         let check_fg = if self.state.disabled {
             if self.checked {
-                Color::rgb(120, 120, 120) // Brighter gray for disabled+checked
+                SUBTLE_GRAY // Brighter gray for disabled+checked
             } else {
                 Color::rgb(70, 70, 70) // Darker gray for disabled+unchecked
             }
         } else if self.checked {
             self.check_fg.unwrap_or(Color::GREEN)
         } else {
-            self.state.fg.unwrap_or(Color::rgb(150, 150, 150))
+            self.state.fg.unwrap_or(LIGHT_GRAY)
         };
 
         // Render focus indicator

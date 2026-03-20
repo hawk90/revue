@@ -5,7 +5,7 @@
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -32,7 +32,7 @@ impl LogLevel {
     pub fn color(&self) -> Color {
         match self {
             LogLevel::Trace => DISABLED_FG,
-            LogLevel::Debug => Color::rgb(150, 150, 150),
+            LogLevel::Debug => LIGHT_GRAY,
             LogLevel::Info => Color::CYAN,
             LogLevel::Warning => Color::YELLOW,
             LogLevel::Error => Color::RED,
@@ -233,7 +233,7 @@ impl RichLog {
             wrap: false,
             bg: None,
             timestamp_fg: DISABLED_FG,
-            source_fg: Color::rgb(150, 150, 150),
+            source_fg: LIGHT_GRAY,
             props: WidgetProps::new(),
         }
     }

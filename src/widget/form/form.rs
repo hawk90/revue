@@ -28,7 +28,7 @@ use crate::impl_props_builders;
 use crate::patterns::form::FormState;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, SUBTLE_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -252,7 +252,7 @@ impl View for Form {
             // Row 1: Value or placeholder
             let value = field.value();
             let (display_text, text_color) = if value.is_empty() {
-                (field.placeholder.clone(), Color::rgb(120, 120, 120))
+                (field.placeholder.clone(), SUBTLE_GRAY)
             } else {
                 (value, Color::WHITE)
             };
@@ -469,7 +469,7 @@ impl FormFieldWidget {
         };
 
         let text_color = if value.is_empty() {
-            Color::rgb(120, 120, 120) // Gray for placeholder
+            SUBTLE_GRAY // Gray for placeholder
         } else {
             Color::WHITE
         };
@@ -569,7 +569,7 @@ impl View for FormFieldWidget {
                 &self.placeholder
             };
 
-            let text_color = Color::rgb(120, 120, 120);
+            let text_color = SUBTLE_GRAY;
             for (i, ch) in display_text.chars().enumerate() {
                 let x = i as u16;
                 if x < area.width {

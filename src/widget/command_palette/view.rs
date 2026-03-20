@@ -1,6 +1,6 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DARK_GRAY, DISABLED_FG, SUBTLE_GRAY};
 use crate::widget::traits::RenderContext;
 use crate::widget::View;
 
@@ -219,7 +219,7 @@ impl View for CommandPalette {
                     let shortcut_x = x + width - 2 - shortcut.len() as u16;
                     for (i, ch) in shortcut.chars().enumerate() {
                         let mut cell = Cell::new(ch);
-                        cell.fg = Some(Color::rgb(120, 120, 120));
+                        cell.fg = Some(SUBTLE_GRAY);
                         cell.bg = Some(row_bg);
                         ctx.set(shortcut_x + i as u16, item_y, cell);
                     }
@@ -269,7 +269,7 @@ impl View for CommandPalette {
         let count_x = x + width - 2 - count_str.len() as u16;
         for (i, ch) in count_str.chars().enumerate() {
             let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::rgb(80, 80, 80));
+            cell.fg = Some(DARK_GRAY);
             cell.bg = Some(self.bg_color);
             ctx.set(count_x + i as u16, bottom_y, cell);
         }

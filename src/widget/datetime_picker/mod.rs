@@ -33,6 +33,7 @@ use crate::event::Key;
 use crate::style::Color;
 use crate::widget::data::calendar::{Date, FirstDayOfWeek};
 use crate::widget::datetime_picker::render::Rendering;
+use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -106,7 +107,7 @@ impl DateTimePicker {
             header_fg: Color::CYAN,
             selected_fg: Color::BLACK,
             selected_bg: Color::CYAN,
-            weekend_fg: Color::rgb(150, 150, 150),
+            weekend_fg: LIGHT_GRAY,
             cursor_fg: Color::BLACK,
             cursor_bg: Color::WHITE,
             field_fg: Color::WHITE,

@@ -5,6 +5,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 use std::time::{Duration, Instant};
@@ -369,7 +370,7 @@ impl AiStream {
         let text = " Thinking...";
         for (i, c) in text.chars().enumerate() {
             let mut cell = Cell::new(c);
-            cell.fg = Some(Color::rgb(150, 150, 150));
+            cell.fg = Some(LIGHT_GRAY);
             cell.modifier = Modifier::ITALIC;
             ctx.set(1 + i as u16, 0, cell);
         }

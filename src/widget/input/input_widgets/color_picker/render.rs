@@ -5,6 +5,7 @@ use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::border::render_border;
+use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::traits::{RenderContext, View};
 
 impl View for ColorPicker {
@@ -197,7 +198,7 @@ impl ColorPicker {
         let current = format!("Current: {}", self.hex_string());
         for (i, ch) in current.chars().enumerate() {
             let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::rgb(150, 150, 150));
+            cell.fg = Some(LIGHT_GRAY);
             ctx.set(ox + i as u16, oy + 2, cell);
         }
     }

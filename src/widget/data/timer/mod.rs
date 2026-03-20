@@ -19,7 +19,7 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::theme::PLACEHOLDER_FG;
+use crate::widget::theme::{LIGHT_GRAY, PLACEHOLDER_FG};
 use crate::widget::traits::WidgetProps;
 use crate::widget::{RenderContext, View};
 use crate::{impl_props_builders, impl_styled_view};
@@ -597,7 +597,7 @@ impl View for Stopwatch {
             for (i, &lap_ms) in self.laps.iter().skip(start).enumerate() {
                 let lap_num = start + i + 1;
                 let lap_str = format!("  #{}: {}", lap_num, format_ms(lap_ms, self.format));
-                content = content.child(Text::new(lap_str).fg(Color::rgb(150, 150, 150)));
+                content = content.child(Text::new(lap_str).fg(LIGHT_GRAY));
             }
         }
 

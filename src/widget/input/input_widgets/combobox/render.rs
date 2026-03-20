@@ -1,6 +1,7 @@
 //! View implementation for Combobox
 
 use super::super::Combobox;
+use crate::widget::theme::MAX_DROPDOWN_VISIBLE;
 
 /// Render the combobox widget
 pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::RenderContext) {
@@ -83,7 +84,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
         return;
     }
 
-    let visible_count = combobox.max_visible.min(10);
+    let visible_count = combobox.max_visible.min(MAX_DROPDOWN_VISIBLE as usize);
 
     // Calculate overlay position, flip above if near bottom
     let (abs_x, abs_y) = ctx.absolute_position();

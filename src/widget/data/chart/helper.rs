@@ -5,6 +5,7 @@ use super::types::{ChartType, LineStyle, Series};
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::DARK_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -719,7 +720,7 @@ impl View for Chart {
                             ' '
                         };
                         let mut cell = Cell::new(ch);
-                        cell.fg = Some(Color::rgb(80, 80, 80));
+                        cell.fg = Some(DARK_GRAY);
                         cell.bg = self.bg_color.or(Some(Color::rgb(20, 20, 20)));
                         ctx.set(x, y, cell);
                     }

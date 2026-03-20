@@ -3,6 +3,7 @@
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::DARK_GRAY;
 use crate::widget::{RenderContext, View};
 
 /// Tree rendering state
@@ -354,7 +355,7 @@ impl Inspector {
         // Draw separator
         for dx in 0..max_width {
             let mut cell = Cell::new('─');
-            cell.fg = Some(Color::rgb(80, 80, 80));
+            cell.fg = Some(DARK_GRAY);
             cell.bg = Some(self.bg_color);
             ctx.buffer.set(x + dx, y, cell);
         }

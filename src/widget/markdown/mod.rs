@@ -57,7 +57,7 @@ use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::figlet::FigletFont;
 use crate::utils::syntax::{Language, SyntaxTheme};
-use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
+use crate::widget::theme::{DARK_GRAY, DISABLED_FG, PLACEHOLDER_FG};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -245,8 +245,7 @@ impl Markdown {
             // Separator
             let mut sep_line = Line::new();
             sep_line.push(
-                StyledText::new("────────────────────────────────────────")
-                    .with_fg(Color::rgb(80, 80, 80)),
+                StyledText::new("────────────────────────────────────────").with_fg(DARK_GRAY),
             );
             ctx.lines.push(sep_line);
             ctx.new_line();

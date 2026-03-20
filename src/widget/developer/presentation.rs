@@ -5,7 +5,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -343,13 +343,7 @@ impl Presentation {
         // Author
         if !self.author.is_empty() {
             let author_y = center_y + 1;
-            self.render_centered_text(
-                ctx,
-                &self.author,
-                author_y,
-                Color::rgb(150, 150, 150),
-                Modifier::ITALIC,
-            );
+            self.render_centered_text(ctx, &self.author, author_y, LIGHT_GRAY, Modifier::ITALIC);
         }
 
         // Press key hint

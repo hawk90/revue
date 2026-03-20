@@ -4,7 +4,7 @@ use super::core::{CellPos, CellState, DataGrid, RowRenderParams};
 use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for DataGrid {
@@ -423,7 +423,7 @@ impl DataGrid {
 
         for (j, ch) in indicator.chars().enumerate() {
             let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::rgb(150, 150, 150));
+            cell.fg = Some(LIGHT_GRAY);
             cell.bg = Some(Color::rgb(40, 40, 50));
             let cell_x = indicator_x + (j as u16);
             if cell_x < area.width {

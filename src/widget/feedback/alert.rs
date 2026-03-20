@@ -26,7 +26,7 @@ use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::widget::layout::border::{draw_border, BorderType};
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -361,7 +361,7 @@ impl Alert {
         if self.dismissible {
             let dismiss_x = area.width - 3;
             let mut x_cell = Cell::new('×');
-            x_cell.fg = Some(Color::rgb(150, 150, 150));
+            x_cell.fg = Some(LIGHT_GRAY);
             x_cell.bg = Some(bg_color);
             ctx.set(dismiss_x, 1, x_cell);
         }
@@ -434,7 +434,7 @@ impl Alert {
         if self.dismissible {
             let dismiss_x = area.width - 2;
             let mut x_cell = Cell::new('×');
-            x_cell.fg = Some(Color::rgb(150, 150, 150));
+            x_cell.fg = Some(LIGHT_GRAY);
             ctx.set(dismiss_x, 0, x_cell);
         }
     }

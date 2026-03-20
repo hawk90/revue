@@ -3,7 +3,7 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::widget::data::calendar::{days_in_month, FirstDayOfWeek};
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::RenderContext;
 use unicode_width::UnicodeWidthChar;
 
@@ -102,7 +102,7 @@ pub trait Rendering {
             FirstDayOfWeek::Sunday => "Su Mo Tu We Th Fr Sa",
             FirstDayOfWeek::Monday => "Mo Tu We Th Fr Sa Su",
         };
-        self.draw_text(ctx, x, y + 1, day_headers, Color::rgb(150, 150, 150), false);
+        self.draw_text(ctx, x, y + 1, day_headers, LIGHT_GRAY, false);
 
         // Days grid
         let mut row = 0u16;
@@ -152,7 +152,7 @@ pub trait Rendering {
     /// Render time picker portion
     fn render_time(&self, ctx: &mut RenderContext, x: u16, y: u16) {
         // Draw time label
-        self.draw_text(ctx, x, y, "Time:", Color::rgb(150, 150, 150), false);
+        self.draw_text(ctx, x, y, "Time:", LIGHT_GRAY, false);
 
         // Draw time fields with highlighting
         let field_y = y + 1;

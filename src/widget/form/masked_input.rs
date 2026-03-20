@@ -29,7 +29,7 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
+use crate::widget::theme::{DARK_GRAY, DISABLED_FG, PLACEHOLDER_FG};
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -560,7 +560,7 @@ impl View for MaskedInput {
 
         // Wrap in border
         let border_color = if self.disabled {
-            Color::rgb(80, 80, 80)
+            DARK_GRAY
         } else if matches!(self.validation, ValidationState::Invalid(_)) {
             Color::RED
         } else if matches!(self.validation, ValidationState::Valid) {
@@ -588,7 +588,7 @@ impl View for MaskedInput {
 
             let strength_display = hstack()
                 .child(Text::new(&bar).fg(color))
-                .child(Text::new(&empty).fg(Color::rgb(80, 80, 80)))
+                .child(Text::new(&empty).fg(DARK_GRAY))
                 .child(Text::new(format!(" {}", self.strength_label())).fg(color));
 
             content = content.child(strength_display);

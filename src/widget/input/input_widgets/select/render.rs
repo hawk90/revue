@@ -3,7 +3,7 @@
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::truncate_to_width;
-use crate::widget::theme::PLACEHOLDER_FG;
+use crate::widget::theme::{MAX_DROPDOWN_VISIBLE, PLACEHOLDER_FG};
 use crate::widget::traits::{RenderContext, View};
 
 use super::Select;
@@ -83,7 +83,7 @@ impl View for Select {
             let dropdown_height = if visible_options.is_empty() {
                 1u16 // "No results" row
             } else {
-                (visible_options.len() as u16).min(10)
+                (visible_options.len() as u16).min(MAX_DROPDOWN_VISIBLE)
             };
 
             // Calculate absolute position for overlay, flip above if near bottom

@@ -20,7 +20,7 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY, PLACEHOLDER_FG};
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -163,7 +163,7 @@ impl CandleChart {
             width: 40,
             bullish_color: Color::GREEN,
             bearish_color: Color::RED,
-            wick_color: Color::rgb(150, 150, 150),
+            wick_color: LIGHT_GRAY,
             show_volume: false,
             volume_height: 4,
             show_axis: true,

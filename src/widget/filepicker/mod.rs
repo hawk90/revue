@@ -21,415 +21,70 @@
 //! let dir = FilePicker::directory();
 //! ```
 
+mod render;
+mod types;
+pub(crate) mod validation;
+
+pub use types::{FileFilter, PickerEntry, PickerMode, PickerResult};
+pub use validation::FilePickerError;
+
 use crate::style::Color;
-use crate::utils::format_size;
-use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
-use crate::widget::{RenderContext, View, WidgetProps};
+use crate::widget::theme::PLACEHOLDER_FG;
+use crate::widget::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
-
-/// Truncate a string safely at UTF-8 character boundaries
-///
-/// Returns a string truncated to at most `max_len` bytes,
-/// ensuring we don't cut in the middle of a multi-byte UTF-8 character.
-fn truncate_string_safe(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        return s.to_string();
-    }
-
-    // Find the last valid UTF-8 boundary before max_len
-    let mut end = max_len;
-    while !s.is_char_boundary(end) {
-        end -= 1;
-        if end == 0 {
-            // Character is too long, return first character only
-            return format!("{}...", s.chars().next().unwrap_or('�'));
-        }
-    }
-
-    format!("{}...", &s[..end])
-}
-
-/// Error type for file picker operations
-#[derive(Debug, thiserror::Error)]
-pub enum FilePickerError {
-    /// Path traversal detected
-    #[error("Path traversal detected: {0}")]
-    PathTraversal(String),
-
-    /// Path is outside allowed directory
-    #[error("Path is outside allowed directory")]
-    OutsideAllowedDirectory,
-
-    /// Invalid path
-    #[error("Invalid path: {0}")]
-    InvalidPath(String),
-
-    /// Path contains invalid characters (null bytes, etc.)
-    #[error("Path contains invalid characters")]
-    InvalidCharacters,
-
-    /// Path contains Windows reserved device name
-    #[error("Path contains Windows reserved device name: {0}")]
-    ReservedDeviceName(String),
-
-    /// Symlink detected and not allowed
-    #[error("Symbolic links are not allowed")]
-    SymlinkNotAllowed,
-
-    /// IO error
-    #[error("IO error: {0}")]
-    IoError(#[from] io::Error),
-}
-
-/// Validate that path doesn't contain invalid characters
-///
-/// Returns error if the path contains null bytes or other invalid sequences.
-fn validate_path_characters(path: &Path) -> Result<(), FilePickerError> {
-    // Check for null bytes in path
-    let path_str = path.to_string_lossy();
-    if path_str.contains('\0') {
-        return Err(FilePickerError::InvalidCharacters);
-    }
-
-    // Check each component for null bytes
-    for component in path.components() {
-        if let std::path::Component::Normal(os_str) = component {
-            if os_str.as_encoded_bytes().contains(&b'\0') {
-                return Err(FilePickerError::InvalidCharacters);
-            }
-        }
-    }
-
-    Ok(())
-}
-
-/// Check for Windows reserved device names
-///
-/// Returns error if path contains Windows reserved names like CON, PRN, AUX, etc.
-#[cfg(windows)]
-fn validate_windows_device_names(path: &Path) -> Result<(), FilePickerError> {
-    use std::path::Component;
-
-    let reserved = [
-        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
-        "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
-    ];
-
-    for component in path.components() {
-        if let Component::Normal(name) = component {
-            if let Some(name_str) = name.to_str() {
-                let name_upper = name_str.to_uppercase();
-                // Check exact match (CON) or match with extension (CON.txt)
-                let base_name = name_upper.split('.').next().unwrap_or(&name_upper);
-                if reserved.contains(&base_name) {
-                    return Err(FilePickerError::ReservedDeviceName(base_name.to_string()));
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
-#[cfg(not(windows))]
-fn validate_windows_device_names(_path: &Path) -> Result<(), FilePickerError> {
-    Ok(())
-}
-
-/// Validate that path doesn't contain traversal patterns
-///
-/// Returns error if the path contains `../` or other traversal sequences.
-fn validate_path_no_traversal(path: &Path) -> Result<(), FilePickerError> {
-    // Check components using the Path API (more reliable than string checks)
-    for component in path.components() {
-        match component {
-            std::path::Component::ParentDir => {
-                return Err(FilePickerError::PathTraversal(
-                    "path contains parent directory component".to_string(),
-                ));
-            }
-            std::path::Component::Normal(_) => {
-                // Normal component, continue
-            }
-            std::path::Component::Prefix(prefix) => {
-                // Validate Windows prefix paths
-                // Device namespace paths like \\.\COM1 are potentially dangerous
-                // We check the string representation for device namespace indicators
-                let prefix_str = prefix.as_os_str().to_string_lossy();
-                if prefix_str.starts_with("\\\\?\\") || prefix_str.starts_with("\\\\.") {
-                    // These are potentially dangerous device namespace paths
-                    // Allow only for normal disk access, reject suspicious patterns
-                    if prefix_str.contains('\\') && prefix_str.len() < 10 {
-                        // Short device paths like \\.\C: are suspicious
-                        return Err(FilePickerError::InvalidPath(
-                            "suspicious device namespace path".to_string(),
-                        ));
-                    }
-                }
-            }
-            std::path::Component::RootDir => {
-                // Root is always valid
-            }
-            std::path::Component::CurDir => {
-                // Current directory reference (.) is fine
-            }
-        }
-    }
-
-    Ok(())
-}
-
-/// Validate a path for security issues only (doesn't check existence or bounds)
-///
-/// This is used for `start_dir()` to allow setting paths that don't exist yet.
-fn validate_security_only(path: &Path) -> Result<PathBuf, FilePickerError> {
-    // Check for invalid characters first
-    validate_path_characters(path)?;
-
-    // Check for traversal patterns
-    validate_path_no_traversal(path)?;
-
-    // Check Windows device names
-    validate_windows_device_names(path)?;
-
-    Ok(path.to_path_buf())
-}
-
-/// Validate and canonicalize a path
-///
-/// Returns the canonical form of the path, or an error if validation fails.
-/// This requires the path to exist and be within the allowed directory.
-///
-/// Security considerations:
-/// - Checks for path traversal before filesystem access
-/// - Validates symlinks don't escape the allowed directory
-/// - Uses canonicalization to resolve all path components
-fn validate_and_canonicalize(path: &Path, base_dir: &Path) -> Result<PathBuf, FilePickerError> {
-    // Validate characters before any filesystem access
-    validate_path_characters(path)?;
-
-    // Check for traversal patterns before canonicalization
-    validate_path_no_traversal(path)?;
-
-    // Check Windows device names
-    validate_windows_device_names(path)?;
-
-    // Canonicalize the base directory once (if it exists)
-    let base_canonical = if base_dir.exists() {
-        Some(
-            base_dir
-                .canonicalize()
-                .map_err(|_| FilePickerError::InvalidPath("invalid base directory".to_string()))?,
-        )
-    } else {
-        None
-    };
-
-    // Try to canonicalize the target path
-    let canonical = path.canonicalize().map_err(|_| {
-        FilePickerError::InvalidPath("path does not exist or cannot be accessed".to_string())
-    })?;
-
-    // Check if the canonical path is within base directory bounds
-    if let Some(ref base) = base_canonical {
-        // Verify the canonical path starts with the base canonical path
-        // This prevents symlink escapes and other boundary violations
-        if !canonical.starts_with(base) {
-            return Err(FilePickerError::OutsideAllowedDirectory);
-        }
-
-        // Additional check: verify we're not escaping via ".." components
-        // by ensuring the canonical path length is >= base length
-        if canonical.as_os_str().len() < base.as_os_str().len() {
-            return Err(FilePickerError::OutsideAllowedDirectory);
-        }
-    }
-
-    Ok(canonical)
-}
-
-/// File filter
-#[derive(Clone, Debug, Default)]
-pub enum FileFilter {
-    /// No filter (show all)
-    #[default]
-    All,
-    /// Filter by extensions
-    Extensions(Vec<String>),
-    /// Filter by pattern (glob-like)
-    Pattern(String),
-    /// Custom filter function name
-    Custom(String),
-    /// Directories only
-    DirectoriesOnly,
-}
-
-impl FileFilter {
-    /// Create extension filter
-    pub fn extensions(exts: &[&str]) -> Self {
-        Self::Extensions(exts.iter().map(|s| s.to_string()).collect())
-    }
-
-    /// Create pattern filter
-    pub fn pattern(pattern: impl Into<String>) -> Self {
-        Self::Pattern(pattern.into())
-    }
-
-    /// Check if file matches filter
-    pub fn matches(&self, path: &Path) -> bool {
-        match self {
-            FileFilter::All => true,
-            FileFilter::Extensions(exts) => path
-                .extension()
-                .and_then(|e| e.to_str())
-                .map(|e| exts.iter().any(|ext| ext.eq_ignore_ascii_case(e)))
-                .unwrap_or(false),
-            FileFilter::Pattern(pattern) => {
-                path.file_name()
-                    .and_then(|n| n.to_str())
-                    .map(|name| {
-                        // Simple glob matching
-                        if let Some(suffix) = pattern.strip_prefix('*') {
-                            name.ends_with(suffix)
-                        } else if let Some(prefix) = pattern.strip_suffix('*') {
-                            name.starts_with(prefix)
-                        } else {
-                            name == pattern
-                        }
-                    })
-                    .unwrap_or(false)
-            }
-            FileFilter::Custom(_) => true, // Custom filters need external handling
-            FileFilter::DirectoriesOnly => path.is_dir(),
-        }
-    }
-}
-
-/// Picker mode
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum PickerMode {
-    /// Open existing file
-    #[default]
-    Open,
-    /// Save new file
-    Save,
-    /// Select directory
-    Directory,
-    /// Multi-select files
-    MultiSelect,
-}
-
-/// File entry in picker
-#[derive(Clone, Debug)]
-pub struct PickerEntry {
-    /// File path
-    pub path: PathBuf,
-    /// File name
-    pub name: String,
-    /// Is directory
-    pub is_dir: bool,
-    /// Is hidden
-    pub is_hidden: bool,
-    /// File size (bytes)
-    pub size: u64,
-    /// Is selected (for multi-select)
-    pub selected: bool,
-}
-
-impl PickerEntry {
-    /// Create from path
-    pub fn from_path(path: &Path) -> Option<Self> {
-        let name = path.file_name()?.to_str()?.to_string();
-        let is_hidden = name.starts_with('.');
-        let metadata = path.metadata().ok();
-        let is_dir = metadata.as_ref().map(|m| m.is_dir()).unwrap_or(false);
-        let size = metadata.as_ref().map(|m| m.len()).unwrap_or(0);
-
-        Some(Self {
-            path: path.to_path_buf(),
-            name,
-            is_dir,
-            is_hidden,
-            size,
-            selected: false,
-        })
-    }
-
-    /// Format size as human-readable
-    pub fn format_size(&self) -> String {
-        if self.is_dir {
-            return "<DIR>".to_string();
-        }
-
-        format_size(self.size)
-    }
-}
-
-/// File picker result
-#[derive(Clone, Debug)]
-pub enum PickerResult {
-    /// No selection made
-    None,
-    /// Single file/directory selected
-    Selected(PathBuf),
-    /// Multiple files selected
-    Multiple(Vec<PathBuf>),
-    /// Cancelled
-    Cancelled,
-}
+use validation::{validate_and_canonicalize, validate_path_no_traversal, validate_security_only};
 
 /// File picker widget
 #[derive(Clone, Debug)]
 pub struct FilePicker {
     /// Current directory
-    current_dir: PathBuf,
+    pub(crate) current_dir: PathBuf,
     /// Entries in current directory
-    entries: Vec<PickerEntry>,
+    pub(crate) entries: Vec<PickerEntry>,
     /// Highlighted index
-    highlighted: usize,
+    pub(crate) highlighted: usize,
     /// Scroll offset
-    scroll_offset: usize,
+    pub(crate) scroll_offset: usize,
     /// Max visible items
-    max_visible: usize,
+    pub(crate) max_visible: usize,
     /// Picker mode
-    mode: PickerMode,
+    pub(crate) mode: PickerMode,
     /// File filter
-    filter: FileFilter,
+    pub(crate) filter: FileFilter,
     /// Show hidden files
-    show_hidden: bool,
+    pub(crate) show_hidden: bool,
     /// Sort by name
-    sort_by_name: bool,
+    pub(crate) sort_by_name: bool,
     /// Directories first
-    dirs_first: bool,
+    pub(crate) dirs_first: bool,
     /// Title
-    title: Option<String>,
+    pub(crate) title: Option<String>,
     /// Default filename (for save mode)
-    default_name: Option<String>,
+    pub(crate) default_name: Option<String>,
     /// Input filename (for save mode)
-    input_name: String,
+    pub(crate) input_name: String,
     /// Is inputting filename (for future save mode UI)
-    _input_mode: bool,
+    pub(crate) _input_mode: bool,
     /// Confirm selection needed (for future save mode UI)
-    _confirm_overwrite: bool,
+    pub(crate) _confirm_overwrite: bool,
     /// Width
-    width: u16,
+    pub(crate) width: u16,
     /// History (visited directories)
-    history: Vec<PathBuf>,
+    pub(crate) history: Vec<PathBuf>,
     /// History index
-    history_idx: usize,
+    pub(crate) history_idx: usize,
     /// Selected items (for multi-select)
-    selected: Vec<PathBuf>,
+    pub(crate) selected: Vec<PathBuf>,
     /// Foreground color
-    fg: Option<Color>,
+    pub(crate) fg: Option<Color>,
     /// Directory color
-    dir_fg: Option<Color>,
+    pub(crate) dir_fg: Option<Color>,
     /// Hidden file color
-    hidden_fg: Option<Color>,
+    pub(crate) hidden_fg: Option<Color>,
     /// Widget properties
-    props: WidgetProps,
+    pub(crate) props: WidgetProps,
 }
 
 impl FilePicker {
@@ -832,128 +487,6 @@ impl Default for FilePicker {
     }
 }
 
-impl View for FilePicker {
-    crate::impl_view_meta!("FilePicker");
-
-    fn render(&self, ctx: &mut RenderContext) {
-        use crate::widget::stack::vstack;
-        use crate::widget::Text;
-
-        let mut content = vstack();
-
-        // Title
-        if let Some(title) = &self.title {
-            content = content.child(Text::new(title).bold());
-        }
-
-        // Current path
-        let path_str = self.current_dir.display().to_string();
-        let truncated_path = if path_str.len() > self.width as usize - 4 {
-            format!(
-                "...{}",
-                &path_str[path_str.len() - self.width as usize + 7..]
-            )
-        } else {
-            path_str
-        };
-        content = content.child(Text::new(format!(" {}", truncated_path)).fg(Color::CYAN));
-
-        // Separator
-        content =
-            content.child(Text::new("─".repeat(self.width as usize)).fg(Color::rgb(80, 80, 80)));
-
-        // Parent directory option
-        content = content.child(Text::new("  📁 ..").fg(Color::rgb(150, 150, 150)));
-
-        // File list
-        let start = self.scroll_offset;
-        let end = (start + self.max_visible).min(self.entries.len());
-
-        if start > 0 {
-            content = content.child(Text::new("  ↑ more...").fg(DISABLED_FG));
-        }
-
-        for i in start..end {
-            let entry = &self.entries[i];
-            let is_highlighted = i == self.highlighted;
-
-            let icon = if entry.is_dir { "📁" } else { "📄" };
-            let selected_mark = if entry.selected { "✓ " } else { "  " };
-            // Truncate name safely at UTF-8 character boundaries
-            let name = if entry.name.len() > 30 {
-                truncate_string_safe(&entry.name, 27)
-            } else {
-                entry.name.clone()
-            };
-
-            let size = if entry.is_dir {
-                String::new()
-            } else {
-                entry.format_size()
-            };
-
-            let line = format!("{}{} {:<32} {:>10}", selected_mark, icon, name, size);
-
-            let fg = if is_highlighted {
-                Color::CYAN
-            } else if entry.is_dir {
-                self.dir_fg.unwrap_or(Color::BLUE)
-            } else if entry.is_hidden {
-                self.hidden_fg.unwrap_or(PLACEHOLDER_FG)
-            } else {
-                self.fg.unwrap_or(Color::WHITE)
-            };
-
-            let mut text = Text::new(&line).fg(fg);
-            if is_highlighted {
-                text = text.bold();
-            }
-
-            content = content.child(text);
-        }
-
-        if end < self.entries.len() {
-            content = content.child(Text::new("  ↓ more...").fg(DISABLED_FG));
-        }
-
-        // Separator
-        content =
-            content.child(Text::new("─".repeat(self.width as usize)).fg(Color::rgb(80, 80, 80)));
-
-        // Filename input (for save mode)
-        if self.mode == PickerMode::Save {
-            let input_display = format!("Filename: {}_", self.input_name);
-            content = content.child(Text::new(input_display).fg(Color::YELLOW));
-        }
-
-        // Selection count (for multi-select)
-        if self.mode == PickerMode::MultiSelect && !self.selected.is_empty() {
-            content = content.child(
-                Text::new(format!("Selected: {} files", self.selected.len())).fg(Color::GREEN),
-            );
-        }
-
-        // Help
-        let help = match self.mode {
-            PickerMode::Open => {
-                "↑↓: Navigate | Enter: Select/Open | Backspace: Parent | h: Hidden | q: Cancel"
-            }
-            PickerMode::Save => {
-                "↑↓: Navigate | Enter: Save | Type: Filename | Backspace: Delete | q: Cancel"
-            }
-            PickerMode::Directory => {
-                "↑↓: Navigate | Enter: Open | Space: Select | Backspace: Parent | q: Cancel"
-            }
-            PickerMode::MultiSelect => {
-                "↑↓: Navigate | Space: Toggle | Enter: Confirm | a: All | n: None | q: Cancel"
-            }
-        };
-        content = content.child(Text::new(help).fg(Color::rgb(80, 80, 80)));
-
-        content.render(ctx);
-    }
-}
-
 impl_styled_view!(FilePicker);
 impl_props_builders!(FilePicker);
 
@@ -1241,6 +774,8 @@ mod tests {
 
     #[test]
     fn test_truncate_string_safe_utf8() {
+        use validation::truncate_string_safe;
+
         // Test UTF-8 safe truncation
         let ascii = "hello_world_test.txt";
         let truncated = truncate_string_safe(ascii, 10);
@@ -1251,6 +786,8 @@ mod tests {
 
     #[test]
     fn test_truncate_string_single_emoji() {
+        use validation::truncate_string_safe;
+
         // Emoji is 4 bytes in UTF-8
         let emoji = "😀😀😀😀😀";
         let truncated = truncate_string_safe(emoji, 10);

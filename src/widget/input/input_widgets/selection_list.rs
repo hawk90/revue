@@ -24,7 +24,7 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
+use crate::widget::theme::{DARK_GRAY, DISABLED_FG, PLACEHOLDER_FG};
 use crate::widget::traits::WidgetProps;
 use crate::widget::{RenderContext, View};
 use crate::{impl_props_builders, impl_styled_view};
@@ -526,10 +526,8 @@ impl View for SelectionList {
 
         // Help text
         if self.focused {
-            content = content.child(
-                Text::new("↑↓: Navigate | Space: Toggle | a: All | n: None")
-                    .fg(Color::rgb(80, 80, 80)),
-            );
+            content = content
+                .child(Text::new("↑↓: Navigate | Space: Toggle | a: All | n: None").fg(DARK_GRAY));
         }
 
         content.render(ctx);

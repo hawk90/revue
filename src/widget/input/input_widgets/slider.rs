@@ -5,7 +5,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DARK_GRAY, DISABLED_FG};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -351,11 +351,7 @@ impl Slider {
                         self.track_color
                     };
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled {
-                        Color::rgb(80, 80, 80)
-                    } else {
-                        fg
-                    });
+                    cell.fg = Some(if self.disabled { DARK_GRAY } else { fg });
                     ctx.set(x + i, y, cell);
                 }
             }
@@ -371,11 +367,7 @@ impl Slider {
                         self.track_color
                     };
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled {
-                        Color::rgb(80, 80, 80)
-                    } else {
-                        fg
-                    });
+                    cell.fg = Some(if self.disabled { DARK_GRAY } else { fg });
                     ctx.set(x + i, y, cell);
                 }
             }
@@ -389,11 +381,7 @@ impl Slider {
                         self.track_color
                     };
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled {
-                        Color::rgb(80, 80, 80)
-                    } else {
-                        fg
-                    });
+                    cell.fg = Some(if self.disabled { DARK_GRAY } else { fg });
                     ctx.set(x + i, y, cell);
                 }
             }
@@ -417,11 +405,7 @@ impl Slider {
                         self.track_color
                     };
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled {
-                        Color::rgb(80, 80, 80)
-                    } else {
-                        fg
-                    });
+                    cell.fg = Some(if self.disabled { DARK_GRAY } else { fg });
                     ctx.set(x + i, y, cell);
                 }
             }
@@ -434,11 +418,7 @@ impl Slider {
                         self.track_color
                     };
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if self.disabled {
-                        Color::rgb(80, 80, 80)
-                    } else {
-                        fg
-                    });
+                    cell.fg = Some(if self.disabled { DARK_GRAY } else { fg });
                     ctx.set(x + i, y, cell);
                 }
             }
@@ -525,11 +505,7 @@ impl Slider {
             };
 
             let mut cell = Cell::new(ch);
-            cell.fg = Some(if self.disabled {
-                Color::rgb(80, 80, 80)
-            } else {
-                fg
-            });
+            cell.fg = Some(if self.disabled { DARK_GRAY } else { fg });
             ctx.set(x, y, cell);
         }
 

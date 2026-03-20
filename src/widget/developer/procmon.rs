@@ -9,6 +9,7 @@ use sysinfo::System;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::format_size_compact;
+use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -431,7 +432,7 @@ impl ProcessMonitor {
                 break;
             }
             let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::rgb(150, 150, 150));
+            cell.fg = Some(LIGHT_GRAY);
             ctx.set(sx, y, cell);
             sx += cw;
         }
@@ -570,7 +571,7 @@ impl View for ProcessMonitor {
                         break;
                     }
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(150, 150, 150));
+                    cell.fg = Some(LIGHT_GRAY);
                     cell.bg = bg;
                     ctx.set(stx, y, cell);
                     stx += cw;

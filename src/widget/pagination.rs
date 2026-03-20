@@ -2,6 +2,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::SUBTLE_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -64,7 +65,7 @@ impl Pagination {
             show_arrows: true,
             show_edges: true,
             active_color: Color::rgb(60, 120, 200),
-            inactive_color: Color::rgb(120, 120, 120),
+            inactive_color: SUBTLE_GRAY,
             focused: false,
             props: WidgetProps::new(),
         }

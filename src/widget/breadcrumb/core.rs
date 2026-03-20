@@ -4,6 +4,7 @@ use super::types::{BreadcrumbItem, SeparatorStyle};
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::Selection;
+use crate::widget::theme::{DARK_GRAY, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -40,9 +41,9 @@ impl Breadcrumb {
             items: Vec::new(),
             selection: Selection::new(0),
             separator: SeparatorStyle::Chevron,
-            item_color: Color::rgb(150, 150, 150),
+            item_color: LIGHT_GRAY,
             selected_color: Color::CYAN,
-            separator_color: Color::rgb(80, 80, 80),
+            separator_color: DARK_GRAY,
             show_home: true,
             home_icon: '🏠',
             max_width: 0,
