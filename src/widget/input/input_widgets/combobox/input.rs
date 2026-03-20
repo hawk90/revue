@@ -123,12 +123,13 @@ impl Combobox {
                 true
             }
             Key::Tab if self.open && !self.filtered.is_empty() => {
-                // Tab completion: fill with highlighted option
+                // Tab completion: fill with highlighted option and close dropdown
                 if let Some(&option_idx) = self.filtered.get(self.selected_idx) {
                     self.input = self.options[option_idx].label.clone();
                     self.cursor = self.input.chars().count();
                     self.update_filter();
                 }
+                self.close_dropdown();
                 true
             }
             _ => false,
