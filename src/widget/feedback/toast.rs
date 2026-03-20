@@ -250,95 +250,81 @@ impl View for Toast {
             return;
         }
 
-        let (toast_width, toast_height) = self.calculate_size(area.width);
-        let (x, y) = self.calculate_position(area.width, area.height, toast_width, toast_height);
+        // Use buffer (screen) dimensions for positioning, not parent area
+        let screen_w = ctx.buffer.width();
+        let screen_h = ctx.buffer.height();
+        let (toast_width, toast_height) = self.calculate_size(screen_w);
+        let (abs_x, abs_y) = self.calculate_position(screen_w, screen_h, toast_width, toast_height);
 
         let color = self.level.color();
         let bg = self.level.bg_color();
 
-        // Draw border
+        // Build overlay entry for toast (renders on top of everything)
+        let overlay_area = crate::layout::Rect::new(abs_x, abs_y, toast_width, toast_height);
+        let mut entry = crate::widget::traits::OverlayEntry::new(200, overlay_area); // z=200: above dropdowns
+
+        // Helper to push cell
+        let mut push = |rx: u16, ry: u16, ch: char, fg: Color, bg_c: Color| {
+            let mut cell = Cell::new(ch);
+            cell.fg = Some(fg);
+            cell.bg = Some(bg_c);
+            entry.push(rx, ry, cell);
+        };
+
+        // Draw border (relative to overlay area)
         if self.show_border {
-            // Top border
-            let mut top_left = Cell::new('╭');
-            top_left.fg = Some(color);
-            top_left.bg = Some(bg);
-            ctx.set(x, y, top_left);
-
+            push(0, 0, '╭', color, bg);
             for i in 1..toast_width.saturating_sub(1) {
-                let mut cell = Cell::new('─');
-                cell.fg = Some(color);
-                cell.bg = Some(bg);
-                ctx.set(x + i, y, cell);
+                push(i, 0, '─', color, bg);
             }
+            push(toast_width - 1, 0, '╮', color, bg);
 
-            let mut top_right = Cell::new('╮');
-            top_right.fg = Some(color);
-            top_right.bg = Some(bg);
-            ctx.set(x + toast_width - 1, y, top_right);
-
-            // Bottom border
-            let mut bottom_left = Cell::new('╰');
-            bottom_left.fg = Some(color);
-            bottom_left.bg = Some(bg);
-            ctx.set(x, y + toast_height - 1, bottom_left);
-
+            push(0, toast_height - 1, '╰', color, bg);
             for i in 1..toast_width.saturating_sub(1) {
-                let mut cell = Cell::new('─');
-                cell.fg = Some(color);
-                cell.bg = Some(bg);
-                ctx.set(x + i, y + toast_height - 1, cell);
+                push(i, toast_height - 1, '─', color, bg);
             }
+            push(toast_width - 1, toast_height - 1, '╯', color, bg);
 
-            let mut bottom_right = Cell::new('╯');
-            bottom_right.fg = Some(color);
-            bottom_right.bg = Some(bg);
-            ctx.set(x + toast_width - 1, y + toast_height - 1, bottom_right);
-
-            // Side borders
             for row in 1..toast_height.saturating_sub(1) {
-                let mut left = Cell::new('│');
-                left.fg = Some(color);
-                left.bg = Some(bg);
-                ctx.set(x, y + row, left);
-
-                let mut right = Cell::new('│');
-                right.fg = Some(color);
-                right.bg = Some(bg);
-                ctx.set(x + toast_width - 1, y + row, right);
-
-                // Fill background
+                push(0, row, '│', color, bg);
+                push(toast_width - 1, row, '│', color, bg);
                 for col in 1..toast_width.saturating_sub(1) {
-                    let mut fill = Cell::new(' ');
-                    fill.bg = Some(bg);
-                    ctx.set(x + col, y + row, fill);
+                    push(col, row, ' ', color, bg);
                 }
             }
         }
 
-        // Draw content
-        let content_x = x + if self.show_border { 2 } else { 0 };
-        let content_y = y + if self.show_border { 1 } else { 0 };
+        // Content position (relative)
+        let cx = if self.show_border { 2 } else { 0 };
+        let cy = if self.show_border { 1 } else { 0 };
 
-        // Draw icon
         if self.show_icon {
-            let mut icon_cell = Cell::new(self.level.icon());
-            icon_cell.fg = Some(color);
-            icon_cell.bg = Some(bg);
-            ctx.set(content_x, content_y, icon_cell);
+            push(cx, cy, self.level.icon(), color, bg);
         }
 
-        // Draw message (clipped to available width, wide-char safe)
-        let msg_x = content_x + if self.show_icon { 2 } else { 0 };
-        let max_text_width = toast_width
-            .saturating_sub(if self.show_border { 1 } else { 0 })
-            .saturating_sub(msg_x - x);
-        ctx.draw_text_clipped(
-            msg_x,
-            content_y,
-            &self.message,
-            Color::WHITE,
-            max_text_width,
-        );
+        // Message text
+        let msg_x = cx + if self.show_icon { 2 } else { 0 };
+        let max_text = toast_width.saturating_sub(msg_x + if self.show_border { 1 } else { 0 });
+        let truncated = crate::utils::truncate_to_width(&self.message, max_text as usize);
+        let mut tx = msg_x;
+        for ch in truncated.chars() {
+            let cw = crate::utils::char_width(ch) as u16;
+            if tx + cw > msg_x + max_text {
+                break;
+            }
+            let mut cell = Cell::new(ch);
+            cell.fg = Some(Color::WHITE);
+            cell.bg = Some(bg);
+            entry.push(tx, cy, cell);
+            tx += cw;
+        }
+
+        // Queue as overlay; fallback to inline
+        if !ctx.queue_overlay(entry.clone()) {
+            for oc in &entry.cells {
+                ctx.set(oc.x, oc.y, oc.cell);
+            }
+        }
     }
 }
 

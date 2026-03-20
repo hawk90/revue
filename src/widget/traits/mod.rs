@@ -101,7 +101,7 @@ mod widget_state;
 // Re-export all public types
 pub use element::Element;
 pub use event::{EventResult, FocusStyle};
-pub use render_context::{ProgressBarConfig, RenderContext};
+pub use render_context::{OverlayEntry, OverlayQueue, ProgressBarConfig, RenderContext};
 pub use symbols::Symbols;
 pub use timeout::Timeout;
 pub use view::{Draggable, Interactive, StyledView, View};

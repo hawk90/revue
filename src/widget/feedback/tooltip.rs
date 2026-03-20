@@ -483,143 +483,110 @@ impl View for Tooltip {
         let (tooltip_x, tooltip_y, actual_position) =
             self.calculate_position(area.width, area.height);
 
-        // Get colors
         let (default_fg, default_bg) = self.style.colors();
         let fg = self.fg.unwrap_or(default_fg);
         let bg = self.bg.unwrap_or(default_bg);
 
-        // Draw background
+        // Build overlay entry (all coordinates relative to tooltip area)
+        let overlay_area = crate::layout::Rect::new(tooltip_x, tooltip_y, tooltip_w, tooltip_h);
+        let mut entry = crate::widget::traits::OverlayEntry::new(150, overlay_area);
+
+        // Helper to create styled cell
+        let cell_with = |ch: char, cell_fg: Color, cell_bg: Color| -> Cell {
+            let mut c = Cell::new(ch);
+            c.fg = Some(cell_fg);
+            c.bg = Some(cell_bg);
+            c
+        };
+
+        // Background
         for dy in 0..tooltip_h {
             for dx in 0..tooltip_w {
-                let x = tooltip_x + dx;
-                let y = tooltip_y + dy;
-                if x < area.width && y < area.height {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(bg);
-                    ctx.set(x, y, cell);
-                }
+                entry.push(dx, dy, cell_with(' ', fg, bg));
             }
         }
 
-        // Draw border if applicable
-        let content_start_x;
-        let content_start_y;
+        // Border
+        let content_rx;
+        let content_ry;
 
         if let Some(border) = self.style.border_chars() {
-            content_start_x = tooltip_x + 2;
-            content_start_y = tooltip_y + 1;
+            content_rx = 2u16;
+            content_ry = 1u16;
 
-            // Top border
-            if tooltip_y < area.height {
-                let mut tl = Cell::new(border.top_left);
-                tl.fg = Some(fg);
-                tl.bg = Some(bg);
-                ctx.set(tooltip_x, tooltip_y, tl);
-
-                for dx in 1..tooltip_w - 1 {
-                    let mut h = Cell::new(border.horizontal);
-                    h.fg = Some(fg);
-                    h.bg = Some(bg);
-                    ctx.set(tooltip_x + dx, tooltip_y, h);
-                }
-
-                let mut tr = Cell::new(border.top_right);
-                tr.fg = Some(fg);
-                tr.bg = Some(bg);
-                ctx.set(tooltip_x + tooltip_w - 1, tooltip_y, tr);
+            entry.push(0, 0, cell_with(border.top_left, fg, bg));
+            for dx in 1..tooltip_w.saturating_sub(1) {
+                entry.push(dx, 0, cell_with(border.horizontal, fg, bg));
             }
+            entry.push(
+                tooltip_w.saturating_sub(1),
+                0,
+                cell_with(border.top_right, fg, bg),
+            );
 
-            // Title if present
+            // Title (bold)
             if let Some(ref title) = self.title {
-                let title_x = tooltip_x + 2;
-                let title_y = tooltip_y + 1;
                 for (i, ch) in title.chars().enumerate() {
-                    let x = title_x + i as u16;
-                    if x < tooltip_x + tooltip_w - 2 {
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(fg);
-                        cell.bg = Some(bg);
-                        cell.modifier |= Modifier::BOLD;
-                        ctx.set(x, title_y, cell);
+                    let rx = 2 + i as u16;
+                    if rx < tooltip_w.saturating_sub(2) {
+                        let mut c = cell_with(ch, fg, bg);
+                        c.modifier |= Modifier::BOLD;
+                        entry.push(rx, 1, c);
                     }
                 }
             }
 
-            // Left and right borders
-            let _text_start_y = if self.title.is_some() {
-                tooltip_y + 2
-            } else {
-                tooltip_y + 1
-            };
-            for dy in 1..tooltip_h - 1 {
-                let y = tooltip_y + dy;
-                if y < area.height {
-                    let mut left = Cell::new(border.vertical);
-                    left.fg = Some(fg);
-                    left.bg = Some(bg);
-                    ctx.set(tooltip_x, y, left);
-
-                    let mut right = Cell::new(border.vertical);
-                    right.fg = Some(fg);
-                    right.bg = Some(bg);
-                    ctx.set(tooltip_x + tooltip_w - 1, y, right);
-                }
+            // Side borders
+            for dy in 1..tooltip_h.saturating_sub(1) {
+                entry.push(0, dy, cell_with(border.vertical, fg, bg));
+                entry.push(
+                    tooltip_w.saturating_sub(1),
+                    dy,
+                    cell_with(border.vertical, fg, bg),
+                );
             }
 
             // Bottom border
-            let bottom_y = tooltip_y + tooltip_h - 1;
-            if bottom_y < area.height {
-                let mut bl = Cell::new(border.bottom_left);
-                bl.fg = Some(fg);
-                bl.bg = Some(bg);
-                ctx.set(tooltip_x, bottom_y, bl);
-
-                for dx in 1..tooltip_w - 1 {
-                    let mut h = Cell::new(border.horizontal);
-                    h.fg = Some(fg);
-                    h.bg = Some(bg);
-                    ctx.set(tooltip_x + dx, bottom_y, h);
-                }
-
-                let mut br = Cell::new(border.bottom_right);
-                br.fg = Some(fg);
-                br.bg = Some(bg);
-                ctx.set(tooltip_x + tooltip_w - 1, bottom_y, br);
+            let by = tooltip_h.saturating_sub(1);
+            entry.push(0, by, cell_with(border.bottom_left, fg, bg));
+            for dx in 1..tooltip_w.saturating_sub(1) {
+                entry.push(dx, by, cell_with(border.horizontal, fg, bg));
             }
+            entry.push(
+                tooltip_w.saturating_sub(1),
+                by,
+                cell_with(border.bottom_right, fg, bg),
+            );
         } else {
-            content_start_x = tooltip_x + 1;
-            content_start_y = tooltip_y;
+            content_rx = 1;
+            content_ry = 0;
         }
 
-        // Draw text content
+        // Text content
         let lines = self.wrap_text();
-        let text_y_offset = if self.title.is_some() && self.style.border_chars().is_some() {
-            1
+        let text_y_off = if self.title.is_some() && self.style.border_chars().is_some() {
+            1u16
         } else {
             0
         };
 
         for (i, line) in lines.iter().enumerate() {
-            let y = content_start_y + text_y_offset + i as u16;
-            if y >= area.height || y >= tooltip_y + tooltip_h - 1 {
+            let ry = content_ry + text_y_off + i as u16;
+            if ry >= tooltip_h.saturating_sub(1) {
                 break;
             }
-
             for (j, ch) in line.chars().enumerate() {
-                let x = content_start_x + j as u16;
-                if x < tooltip_x + tooltip_w - 1 {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(fg);
-                    cell.bg = Some(bg);
-                    ctx.set(x, y, cell);
+                let rx = content_rx + j as u16;
+                if rx < tooltip_w.saturating_sub(1) {
+                    entry.push(rx, ry, cell_with(ch, fg, bg));
                 }
             }
         }
 
-        // Draw arrow (only if it doesn't overlap the tooltip body)
+        // Arrow — queue as separate 1-cell overlay at higher z-index
         if !matches!(self.arrow, TooltipArrow::None) {
             let (arrow_char, _) = self.arrow.chars(actual_position);
-            let (arrow_x, arrow_y) = match actual_position {
+            let (arrow_abs_x, arrow_abs_y) = match actual_position {
                 TooltipPosition::Top => (self.anchor.0, tooltip_y + tooltip_h),
                 TooltipPosition::Bottom => (self.anchor.0, tooltip_y.saturating_sub(1)),
                 TooltipPosition::Left => (tooltip_x + tooltip_w, self.anchor.1),
@@ -627,16 +594,27 @@ impl View for Tooltip {
                 TooltipPosition::Auto => (self.anchor.0, tooltip_y + tooltip_h),
             };
 
-            // Only draw if within bounds AND not overlapping the tooltip body
-            let inside_tooltip = arrow_x >= tooltip_x
-                && arrow_x < tooltip_x + tooltip_w
-                && arrow_y >= tooltip_y
-                && arrow_y < tooltip_y + tooltip_h;
+            let inside = arrow_abs_x >= tooltip_x
+                && arrow_abs_x < tooltip_x + tooltip_w
+                && arrow_abs_y >= tooltip_y
+                && arrow_abs_y < tooltip_y + tooltip_h;
 
-            if arrow_x < area.width && arrow_y < area.height && !inside_tooltip {
+            let buf_w = ctx.buffer.width();
+            let buf_h = ctx.buffer.height();
+            if !inside && arrow_abs_x < buf_w && arrow_abs_y < buf_h {
+                let arrow_area = crate::layout::Rect::new(arrow_abs_x, arrow_abs_y, 1, 1);
+                let mut arrow_entry = crate::widget::traits::OverlayEntry::new(151, arrow_area);
                 let mut cell = Cell::new(arrow_char);
                 cell.fg = Some(fg);
-                ctx.set(arrow_x, arrow_y, cell);
+                arrow_entry.push(0, 0, cell);
+                ctx.queue_overlay(arrow_entry);
+            }
+        }
+
+        // Queue tooltip as overlay; fallback to inline
+        if !ctx.queue_overlay(entry.clone()) {
+            for oc in &entry.cells {
+                ctx.set(tooltip_x + oc.x, tooltip_y + oc.y, oc.cell);
             }
         }
     }

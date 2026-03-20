@@ -84,21 +84,41 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
     // Render dropdown (if open)
     // ─────────────────────────────────────────────────────────────────────
 
-    if !combobox.open || area.height <= 1 {
+    if !combobox.open {
         return;
     }
 
-    let dropdown_height = (area.height - 1) as usize;
-    let visible_count = dropdown_height.min(combobox.max_visible);
+    let visible_count = combobox.max_visible.min(10);
+
+    // Calculate overlay position, flip above if near bottom
+    let (abs_x, abs_y) = ctx.absolute_position();
+    let dropdown_h = if combobox.loading || combobox.filtered.is_empty() {
+        1u16
+    } else {
+        (combobox
+            .filtered
+            .len()
+            .saturating_sub(combobox.scroll_offset)
+            .min(visible_count) as u16)
+            .max(1)
+    };
+    let buf_height = ctx.buffer.height();
+    let space_below = buf_height.saturating_sub(abs_y + 1);
+    let overlay_y = if space_below >= dropdown_h {
+        abs_y + 1
+    } else {
+        abs_y.saturating_sub(dropdown_h)
+    };
+    let overlay_area = crate::layout::Rect::new(abs_x, overlay_y, width, dropdown_h);
+    let mut entry = crate::widget::traits::OverlayEntry::new(100, overlay_area);
 
     // Loading state
     if combobox.loading {
-        let y: u16 = 1;
         for x in 0..width {
             let mut cell = crate::render::Cell::new(' ');
             cell.fg = combobox.fg;
             cell.bg = combobox.bg;
-            ctx.set(x, y, cell);
+            entry.push(x, 0, cell);
         }
         let loading_truncated = crate::utils::truncate_to_width(&combobox.loading_text, text_width);
         let mut cx: u16 = 1;
@@ -106,20 +126,24 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             let mut cell = crate::render::Cell::new(ch);
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;
-            ctx.set(cx, y, cell);
+            entry.push(cx, 0, cell);
             cx += crate::utils::char_width(ch) as u16;
+        }
+        if !ctx.queue_overlay(entry.clone()) {
+            for oc in &entry.cells {
+                ctx.set(oc.x, oc.y + 1, oc.cell);
+            }
         }
         return;
     }
 
     // Empty state
     if combobox.filtered.is_empty() {
-        let y: u16 = 1;
         for x in 0..width {
             let mut cell = crate::render::Cell::new(' ');
             cell.fg = combobox.fg;
             cell.bg = combobox.bg;
-            ctx.set(x, y, cell);
+            entry.push(x, 0, cell);
         }
         let empty_truncated = crate::utils::truncate_to_width(&combobox.empty_text, text_width);
         let mut cx: u16 = 1;
@@ -127,8 +151,13 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             let mut cell = crate::render::Cell::new(ch);
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;
-            ctx.set(cx, y, cell);
+            entry.push(cx, 0, cell);
             cx += crate::utils::char_width(ch) as u16;
+        }
+        if !ctx.queue_overlay(entry.clone()) {
+            for oc in &entry.cells {
+                ctx.set(oc.x, oc.y + 1, oc.cell);
+            }
         }
         return;
     }
@@ -141,7 +170,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
         .take(visible_count)
         .enumerate()
     {
-        let y = 1 + row as u16;
+        let y = row as u16;
         let option = &combobox.options[option_idx];
         let is_highlighted = row + combobox.scroll_offset == combobox.selected_idx;
         let is_multi_selected = combobox.multi_select && combobox.is_selected(option.get_value());
@@ -163,22 +192,22 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             let mut cell = crate::render::Cell::new(' ');
             cell.fg = fg;
             cell.bg = bg;
-            ctx.set(x, y, cell);
+            entry.push(x, y, cell);
         }
 
-        // Draw selection indicator (for multi-select)
+        // Draw selection indicator
         if combobox.multi_select {
             let indicator = if is_multi_selected { '☑' } else { '☐' };
             let mut cell = crate::render::Cell::new(indicator);
             cell.fg = fg;
             cell.bg = bg;
-            ctx.set(0, y, cell);
+            entry.push(0, y, cell);
         } else {
             let indicator = if is_highlighted { '›' } else { ' ' };
             let mut cell = crate::render::Cell::new(indicator);
             cell.fg = fg;
             cell.bg = bg;
-            ctx.set(0, y, cell);
+            entry.push(0, y, cell);
         }
 
         // Get match indices for highlighting
@@ -203,29 +232,32 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
                 cell.fg = fg;
             }
 
-            ctx.set(cx, y, cell);
+            entry.push(cx, y, cell);
             cx += crate::utils::char_width(ch) as u16;
         }
     }
 
-    // Draw scroll indicator if needed
-    if combobox.filtered.len() > visible_count {
-        let has_more_above = combobox.scroll_offset > 0;
-        let has_more_below = combobox.scroll_offset + visible_count < combobox.filtered.len();
-
-        if has_more_above {
+    // Draw scroll indicators
+    let total_filtered = combobox.filtered.len();
+    if total_filtered > visible_count {
+        if combobox.scroll_offset > 0 {
             let mut cell = crate::render::Cell::new('↑');
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;
-            ctx.set(width - 1, 1, cell);
+            entry.push(width - 1, 0, cell);
         }
-
-        if has_more_below {
-            let y = visible_count as u16;
+        if combobox.scroll_offset + visible_count < total_filtered {
             let mut cell = crate::render::Cell::new('↓');
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;
-            ctx.set(width - 1, y, cell);
+            entry.push(width - 1, dropdown_h.saturating_sub(1), cell);
+        }
+    }
+
+    // Queue as overlay; fallback to inline
+    if !ctx.queue_overlay(entry.clone()) {
+        for oc in &entry.cells {
+            ctx.set(oc.x, oc.y + 1, oc.cell);
         }
     }
 }

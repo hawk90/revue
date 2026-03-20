@@ -473,10 +473,8 @@ impl View for Select {
             cx += crate::utils::char_width(ch) as u16;
         }
 
-        // If open, render dropdown options
-        if self.open && area.height > 1 {
-            let max_visible = (area.height - 1) as usize;
-
+        // If open, render dropdown options as overlay (escapes parent clipping)
+        if self.open {
             // Determine which options to show
             let visible_options: Vec<(usize, &String)> = if self.query.is_empty() {
                 self.options.iter().enumerate().collect()
@@ -487,13 +485,42 @@ impl View for Select {
                     .collect()
             };
 
+            // Calculate dropdown height (limited to 10 or option count)
+            let dropdown_height = if visible_options.is_empty() {
+                1u16 // "No results" row
+            } else {
+                (visible_options.len() as u16).min(10)
+            };
+
+            // Calculate absolute position for overlay, flip above if near bottom
+            let (abs_x, abs_y) = ctx.absolute_position();
+            let buf_height = ctx.buffer.height();
+            let space_below = buf_height.saturating_sub(abs_y + 1);
+            let overlay_y = if space_below >= dropdown_height {
+                abs_y + 1 // Render below
+            } else {
+                abs_y.saturating_sub(dropdown_height) // Render above
+            };
+            let overlay_area = crate::layout::Rect::new(abs_x, overlay_y, width, dropdown_height);
+
+            let mut entry = crate::widget::traits::OverlayEntry::new(100, overlay_area);
+
             if visible_options.is_empty() && !self.query.is_empty() {
-                ctx.draw_text(2, 1, "No results", Color::rgb(128, 128, 128));
+                // "No results" message
+                let msg = "No results";
+                for (i, ch) in msg.chars().enumerate() {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(Color::rgb(128, 128, 128));
+                    entry.push(2 + i as u16, 0, cell);
+                }
             }
 
-            for (row, (option_idx, option)) in visible_options.iter().enumerate().take(max_visible)
+            for (row, (option_idx, option)) in visible_options
+                .iter()
+                .enumerate()
+                .take(dropdown_height as usize)
             {
-                let y = 1 + row as u16;
+                let y = row as u16;
                 let is_selected = self.selection.is_selected(*option_idx);
 
                 let (fg, bg) = if is_selected {
@@ -507,7 +534,7 @@ impl View for Select {
                     let mut cell = Cell::new(' ');
                     cell.fg = fg;
                     cell.bg = bg;
-                    ctx.set(x, y, cell);
+                    entry.push(x, y, cell);
                 }
 
                 // Draw selection indicator
@@ -515,7 +542,7 @@ impl View for Select {
                 let mut cell = Cell::new(indicator);
                 cell.fg = fg;
                 cell.bg = bg;
-                ctx.set(0, y, cell);
+                entry.push(0, y, cell);
 
                 // Get fuzzy match indices for highlighting
                 let match_indices: Vec<usize> = self
@@ -530,15 +557,22 @@ impl View for Select {
                     let mut cell = Cell::new(ch);
                     cell.bg = bg;
 
-                    // Highlight matched characters
                     if match_indices.contains(&j) {
                         cell.fg = self.highlight_fg;
                     } else {
                         cell.fg = fg;
                     }
 
-                    ctx.set(cx, y, cell);
+                    entry.push(cx, y, cell);
                     cx += crate::utils::char_width(ch) as u16;
+                }
+            }
+
+            // Queue as overlay; falls back to inline if no overlay support
+            if !ctx.queue_overlay(entry.clone()) {
+                // Fallback: render inline (clipped by parent)
+                for oc in &entry.cells {
+                    ctx.set(oc.x, oc.y + 1, oc.cell);
                 }
             }
         }

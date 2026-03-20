@@ -2,6 +2,7 @@
 
 mod css;
 mod focus;
+pub mod overlay;
 mod progress;
 mod relative;
 mod segments;
@@ -12,6 +13,7 @@ mod types;
 #[cfg(test)]
 mod tests;
 
+pub use overlay::{OverlayEntry, OverlayQueue};
 pub use types::ProgressBarConfig;
 
 use crate::dom::NodeState;
@@ -31,6 +33,8 @@ pub struct RenderContext<'a> {
     pub state: Option<&'a NodeState>,
     /// Transition values for animations (property name -> current value)
     transitions: Option<&'a std::collections::HashMap<String, f32>>,
+    /// Overlay queue for floating content (dropdowns, tooltips, toasts)
+    overlays: Option<&'a mut OverlayQueue>,
 }
 
 impl<'a> RenderContext<'a> {
@@ -42,6 +46,7 @@ impl<'a> RenderContext<'a> {
             style: None,
             state: None,
             transitions: None,
+            overlays: None,
         }
     }
 
@@ -53,6 +58,7 @@ impl<'a> RenderContext<'a> {
             style: Some(style),
             state: None,
             transitions: None,
+            overlays: None,
         }
     }
 
@@ -69,7 +75,14 @@ impl<'a> RenderContext<'a> {
             style: Some(style),
             state: Some(state),
             transitions: None,
+            overlays: None,
         }
+    }
+
+    /// Attach an overlay queue to this context
+    pub fn with_overlay_queue(mut self, queue: &'a mut OverlayQueue) -> Self {
+        self.overlays = Some(queue);
+        self
     }
 
     /// Set transition values for this render context
@@ -89,6 +102,32 @@ impl<'a> RenderContext<'a> {
     /// Get transition value with a default fallback
     pub fn transition_or(&self, property: &str, default: f32) -> f32 {
         self.transition(property).unwrap_or(default)
+    }
+
+    /// Queue an overlay to render after the main pass.
+    ///
+    /// Overlays render at absolute screen coordinates, bypassing parent
+    /// clipping. Use this for dropdowns, tooltips, and toasts.
+    ///
+    /// Returns true if the overlay was queued, false if no overlay queue
+    /// is available (e.g., in test contexts).
+    pub fn queue_overlay(&mut self, entry: OverlayEntry) -> bool {
+        if let Some(ref mut queue) = self.overlays {
+            queue.push(entry);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Get absolute screen position of this context's area
+    pub fn absolute_position(&self) -> (u16, u16) {
+        (self.area.x, self.area.y)
+    }
+
+    /// Check if overlay queue is available
+    pub fn has_overlay_support(&self) -> bool {
+        self.overlays.is_some()
     }
 
     /// Check if focused
