@@ -250,6 +250,28 @@ impl crate::widget::traits::View for Combobox {
     crate::impl_view_meta!("Combobox");
 }
 
+impl crate::widget::traits::Interactive for Combobox {
+    fn handle_key(&mut self, event: &crate::event::KeyEvent) -> crate::widget::traits::EventResult {
+        // When closed and Tab pressed, let the focus manager handle navigation
+        if event.key == crate::event::Key::Tab && !self.open {
+            return crate::widget::traits::EventResult::Ignored;
+        }
+
+        let changed = self.handle_key(&event.key);
+        if changed {
+            crate::widget::traits::EventResult::ConsumedAndRender
+        } else {
+            crate::widget::traits::EventResult::Ignored
+        }
+    }
+
+    fn on_blur(&mut self) {
+        if self.open {
+            self.close_dropdown();
+        }
+    }
+}
+
 impl_styled_view!(Combobox);
 impl_props_builders!(Combobox);
 

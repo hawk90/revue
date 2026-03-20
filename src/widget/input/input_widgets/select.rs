@@ -135,6 +135,10 @@ impl Select {
     /// Set focused state
     pub fn focused(mut self, focused: bool) -> Self {
         self.focused = focused;
+        if !focused {
+            self.open = false;
+            self.clear_query();
+        }
         self
     }
 
@@ -669,6 +673,11 @@ impl Interactive for Select {
             }
             Key::End if self.open => {
                 self.select_last();
+                true
+            }
+            Key::Tab if self.open => {
+                self.close();
+                self.clear_query();
                 true
             }
             _ => false,

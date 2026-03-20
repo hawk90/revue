@@ -1,8 +1,40 @@
 //! Key handling for the multi-select widget
 
 use crate::event::Key;
+use crate::widget::traits::{EventResult, Interactive};
 
 use super::types::MultiSelect;
+
+impl Interactive for MultiSelect {
+    fn handle_key(&mut self, event: &crate::event::KeyEvent) -> EventResult {
+        // When closed and Tab pressed, let the focus manager handle navigation
+        if event.key == Key::Tab && !self.open {
+            return EventResult::Ignored;
+        }
+
+        let changed = self.handle_key(&event.key);
+        if changed {
+            EventResult::ConsumedAndRender
+        } else {
+            EventResult::Ignored
+        }
+    }
+
+    fn focusable(&self) -> bool {
+        !self.state.disabled
+    }
+
+    fn on_focus(&mut self) {
+        self.state.focused = true;
+    }
+
+    fn on_blur(&mut self) {
+        self.state.focused = false;
+        if self.open {
+            self.close();
+        }
+    }
+}
 
 impl MultiSelect {
     /// Handle key input, returns true if needs redraw
@@ -102,6 +134,12 @@ impl MultiSelect {
             // Clear selection
             Key::Char('c') if !self.open => {
                 self.clear_selection();
+                true
+            }
+
+            // Close dropdown on Tab when open
+            Key::Tab if self.open => {
+                self.close();
                 true
             }
 
