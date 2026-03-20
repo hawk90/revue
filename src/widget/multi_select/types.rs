@@ -63,6 +63,31 @@ impl MultiSelectOption {
 /// let fruits = vec!["Apple", "Banana", "Cherry", "Date"];
 /// let select = multi_select_from(fruits);
 /// ```
+///
+/// # Keyboard Shortcuts
+///
+/// ## Dropdown navigation
+///
+/// | Key | Action |
+/// |-----|--------|
+/// | `Enter` | Toggle selection of highlighted option (when open) / Open dropdown (when closed) |
+/// | `Escape` | Close dropdown (when open) / Deselect tag cursor (when closed) |
+/// | `Space` | Toggle selection of highlighted option (when open, non-searchable mode) |
+/// | `Down` / `j` | Move highlight down in dropdown (when open) |
+/// | `Up` / `k` | Move highlight up in dropdown (when open) |
+/// | `Char` | Append character to search query (when open, searchable mode) |
+/// | `Backspace` | Delete last character from search query (when open, searchable mode) |
+///
+/// ## Tag management (when dropdown is closed)
+///
+/// | Key | Action |
+/// |-----|--------|
+/// | `Left` | Move tag cursor left |
+/// | `Right` | Move tag cursor right |
+/// | `Backspace` | Remove tag at cursor (if cursor active) / Remove last tag |
+/// | `Delete` | Remove tag at cursor (if cursor active) |
+/// | `a` | Select all options |
+/// | `c` | Clear all selections |
 #[derive(Debug, Clone)]
 pub struct MultiSelect {
     /// Available options

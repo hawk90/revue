@@ -23,6 +23,23 @@ use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// A combobox widget with text input and searchable dropdown
+///
+/// # Keyboard Shortcuts
+///
+/// | Key | Action |
+/// |-----|--------|
+/// | `Char` | Insert character at cursor and open dropdown |
+/// | `Backspace` | Delete character before cursor |
+/// | `Delete` | Delete character at cursor |
+/// | `Left` | Move cursor left |
+/// | `Right` | Move cursor right |
+/// | `Home` | Move cursor to start of input |
+/// | `End` | Move cursor to end of input |
+/// | `Down` | Move to next option (when dropdown open) / Open dropdown (when closed) |
+/// | `Up` | Move to previous option (when dropdown open) |
+/// | `Enter` | Confirm highlighted option (when open) / Accept custom value (when closed, allow_custom mode) |
+/// | `Escape` | Close dropdown |
+/// | `Tab` | Complete input with highlighted option text (when dropdown open) |
 #[derive(Clone, Debug)]
 pub struct Combobox {
     /// Available options
