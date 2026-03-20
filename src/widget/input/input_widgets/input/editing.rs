@@ -103,6 +103,11 @@ impl Input {
     // Value management
     // ─────────────────────────────────────────────────────────────────────────
 
+    /// Get the current value
+    pub fn get_value(&self) -> &str {
+        &self.value
+    }
+
     /// Clear the input (also clears undo history)
     pub fn clear(&mut self) {
         self.value.clear();

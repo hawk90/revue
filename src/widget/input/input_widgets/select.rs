@@ -322,6 +322,9 @@ impl Select {
 
     /// Handle key input, returns true if selection changed
     pub fn handle_key(&mut self, key: &crate::event::Key) -> bool {
+        if !self.focused {
+            return false;
+        }
         use crate::event::Key;
 
         match key {
