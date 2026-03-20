@@ -632,7 +632,7 @@ impl View for Select {
 
 impl Interactive for Select {
     fn handle_key(&mut self, event: &KeyEvent) -> EventResult {
-        if self.disabled {
+        if self.disabled || !self.focused {
             return EventResult::Ignored;
         }
 

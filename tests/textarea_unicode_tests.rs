@@ -8,7 +8,7 @@ use revue::widget::textarea;
 
 #[test]
 fn test_textarea_insert_cjk_and_get_content() {
-    let mut t = textarea();
+    let mut t = textarea().focused(true);
     t.insert_char('한');
     t.insert_char('글');
     assert_eq!(t.get_content(), "한글");
@@ -16,7 +16,7 @@ fn test_textarea_insert_cjk_and_get_content() {
 
 #[test]
 fn test_textarea_insert_emoji_cursor_position() {
-    let mut t = textarea();
+    let mut t = textarea().focused(true);
     t.insert_char('😀');
     t.insert_char('!');
     assert_eq!(t.get_content(), "😀!");
@@ -26,7 +26,7 @@ fn test_textarea_insert_emoji_cursor_position() {
 
 #[test]
 fn test_textarea_backspace_cjk() {
-    let mut t = textarea();
+    let mut t = textarea().focused(true);
     t.insert_char('가');
     t.insert_char('나');
     t.insert_char('다');
@@ -41,7 +41,7 @@ fn test_textarea_backspace_cjk() {
 
 #[test]
 fn test_textarea_backspace_emoji() {
-    let mut t = textarea();
+    let mut t = textarea().focused(true);
     t.insert_char('🎉');
     t.insert_char('🔥');
     assert_eq!(t.get_content(), "🎉🔥");
@@ -52,7 +52,7 @@ fn test_textarea_backspace_emoji() {
 
 #[test]
 fn test_textarea_delete_at_cjk() {
-    let mut t = textarea().content("한글테스트");
+    let mut t = textarea().focused(true).content("한글테스트");
     t.set_cursor(0, 0);
 
     t.delete_char_at();
@@ -64,7 +64,7 @@ fn test_textarea_delete_at_cjk() {
 
 #[test]
 fn test_textarea_insert_str_cjk_cursor() {
-    let mut t = textarea();
+    let mut t = textarea().focused(true);
     t.insert_str("안녕하세요");
     assert_eq!(t.get_content(), "안녕하세요");
     let (_, col) = t.cursor_position();
@@ -73,7 +73,7 @@ fn test_textarea_insert_str_cjk_cursor() {
 
 #[test]
 fn test_textarea_mixed_ascii_cjk() {
-    let mut t = textarea();
+    let mut t = textarea().focused(true);
     t.insert_str("Hello");
     t.insert_char('世');
     t.insert_char('界');
@@ -84,7 +84,7 @@ fn test_textarea_mixed_ascii_cjk() {
 
 #[test]
 fn test_textarea_cursor_navigation_cjk() {
-    let mut t = textarea().content("가나다라");
+    let mut t = textarea().focused(true).content("가나다라");
     t.set_cursor(0, 4);
 
     t.handle_key(&Key::Left);
@@ -102,7 +102,7 @@ fn test_textarea_cursor_navigation_cjk() {
 
 #[test]
 fn test_textarea_insert_in_middle_cjk() {
-    let mut t = textarea().content("가다");
+    let mut t = textarea().focused(true).content("가다");
     t.set_cursor(0, 1);
 
     t.insert_char('나');
@@ -111,7 +111,7 @@ fn test_textarea_insert_in_middle_cjk() {
 
 #[test]
 fn test_textarea_newline_with_cjk() {
-    let mut t = textarea().content("안녕하세요");
+    let mut t = textarea().focused(true).content("안녕하세요");
     t.set_cursor(0, 2);
 
     t.insert_char('\n');
@@ -121,7 +121,7 @@ fn test_textarea_newline_with_cjk() {
 
 #[test]
 fn test_textarea_multiline_insert_cjk() {
-    let mut t = textarea();
+    let mut t = textarea().focused(true);
     t.insert_str("첫째줄\n둘째줄");
     assert_eq!(t.get_content(), "첫째줄\n둘째줄");
     assert_eq!(t.line_count(), 2);

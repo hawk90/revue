@@ -51,8 +51,12 @@ impl Input {
         }
     }
 
-    /// Handle key event with modifiers, returns true if needs redraw
+    /// Handle key event with modifiers, returns true if needs redraw.
+    /// Returns false immediately if the widget is not focused.
     pub fn handle_key_event(&mut self, event: &KeyEvent) -> bool {
+        if !self.focused {
+            return false;
+        }
         // Try Ctrl combinations first
         if event.ctrl {
             if let Some(handled) = self.handle_ctrl_key(event) {
