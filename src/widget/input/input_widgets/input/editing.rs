@@ -111,9 +111,15 @@ impl Input {
         self.clear_history();
     }
 
-    /// Set value programmatically (also clears undo history)
+    /// Set value programmatically (also clears undo history).
+    /// Control characters (newlines, tabs, null bytes) are stripped
+    /// since Input is a single-line widget.
     pub fn set_value(&mut self, value: impl Into<String>) {
-        self.value = value.into();
+        self.value = value
+            .into()
+            .chars()
+            .filter(|c| !c.is_control() || *c == ' ')
+            .collect();
         self.cursor = self.char_count();
         self.clear_selection();
         self.clear_history();

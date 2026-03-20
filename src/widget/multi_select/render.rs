@@ -143,10 +143,10 @@ impl View for MultiSelect {
                         entry.push(i as u16, y, cell);
                     }
 
-                    // Label with highlight
-                    let match_indices: Vec<usize> = self
+                    // Draw label with highlight (HashSet for O(1) lookup)
+                    let match_indices: std::collections::HashSet<usize> = self
                         .get_match(&opt.label)
-                        .map(|m| m.indices)
+                        .map(|m| m.indices.into_iter().collect())
                         .unwrap_or_default();
 
                     let mut cx: u16 = 4;

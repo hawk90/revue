@@ -189,9 +189,11 @@ fn skip_whitespace_and_comments_bytes(bytes: &[u8], mut pos: usize) -> usize {
                 pos += 1;
             }
 
-            // If we reached the end without finding a closing */, signal an error
+            // If we reached the end without finding closing */, skip to end
             if pos >= bytes.len() || pos + 1 >= bytes.len() {
-                return pos;
+                #[cfg(debug_assertions)]
+                eprintln!("[revue css] warning: unterminated comment in CSS");
+                return bytes.len();
             }
         } else {
             break;

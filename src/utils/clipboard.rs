@@ -23,15 +23,17 @@ use std::io::{self, Write};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
-/// Sanitize clipboard content by removing dangerous characters
+/// Sanitize clipboard content by removing dangerous characters and ANSI escapes
 fn sanitize_clipboard_content(content: &str) -> String {
-    content
+    // First strip ANSI escape sequences to prevent terminal injection
+    let stripped = crate::utils::ansi::strip_ansi(content);
+    stripped
         .chars()
         .filter(|&c| {
             // Keep printable characters and common whitespace
-            // Filter out null bytes and other control characters except:
+            // Filter out null bytes, ESC (0x1B), and other control characters except:
             // - \t (tab), \n (newline), \r (carriage return)
-            c >= ' ' || c == '\t' || c == '\n' || c == '\r'
+            (c >= ' ' && c != '\x1b') || c == '\t' || c == '\n' || c == '\r'
         })
         .collect()
 }
