@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.59.1](https://github.com/hawk90/revue/compare/v2.59.0...v2.59.1) (2026-03-20)
+
+
+### Bug Fixes
+
+* **api:** add Combobox get_value getter, clamp Select selected index ([#503](https://github.com/hawk90/revue/issues/503)) ([7510630](https://github.com/hawk90/revue/commit/7510630240d1b24587e6b10ee7cc4f8f5b98790f))
+* **ci:** add fetch-depth 2 for paths-filter in CI changes detection ([5b9aa19](https://github.com/hawk90/revue/commit/5b9aa19ca2e2a6f32aca7094c70105e9443a0eb5))
+* **input:** skip key events when widget is not focused ([#506](https://github.com/hawk90/revue/issues/506)) ([c4c3dd9](https://github.com/hawk90/revue/commit/c4c3dd97515b46e7a8645dff6a7878253e6eb6e1))
+* **ux:** auto-close dropdown on focus loss, improve Tab handling ([#507](https://github.com/hawk90/revue/issues/507)) ([a77aeb8](https://github.com/hawk90/revue/commit/a77aeb87bbdfb0b7be5f270e6ec181f5230695a4))
+* **ux:** improve TextArea defaults with editor preset and wrap-by-default ([#504](https://github.com/hawk90/revue/issues/504)) ([e2b34c1](https://github.com/hawk90/revue/commit/e2b34c1d92374e97c40b5629a29d9b12655f7a44))
+
 ## [2.59.0](https://github.com/hawk90/revue/compare/v2.58.12...v2.59.0) (2026-03-20)
 
 
