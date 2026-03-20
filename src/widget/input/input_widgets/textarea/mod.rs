@@ -51,6 +51,24 @@ pub(super) const MAX_UNDO_HISTORY: usize = 100;
 /// // Handle key events
 /// editor.handle_key(&Key::Char('a'));
 /// ```
+///
+/// # Keyboard Shortcuts
+///
+/// | Key | Action |
+/// |-----|--------|
+/// | `Char` | Insert character at cursor |
+/// | `Enter` | Insert newline |
+/// | `Tab` | Insert tab (rendered as spaces based on `tab_width`) |
+/// | `Backspace` | Delete character before cursor (or merge with previous line) |
+/// | `Delete` | Delete character at cursor (or merge with next line) |
+/// | `Left` | Move cursor left (clears selection) |
+/// | `Right` | Move cursor right (clears selection) |
+/// | `Up` | Move cursor up one line (clears selection) |
+/// | `Down` | Move cursor down one line (clears selection) |
+/// | `Home` | Move cursor to start of line (clears selection) |
+/// | `End` | Move cursor to end of line (clears selection) |
+/// | `PageUp` | Move cursor up 10 lines |
+/// | `PageDown` | Move cursor down 10 lines |
 pub struct TextArea {
     /// Lines of text
     pub(super) lines: Vec<String>,

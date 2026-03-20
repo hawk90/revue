@@ -32,6 +32,43 @@ impl Default for Input {
 ///
 /// All cursor positions are character-based (not byte-based) to properly
 /// handle UTF-8 multi-byte characters like emoji and CJK characters.
+///
+/// # Keyboard Shortcuts
+///
+/// ## Basic editing
+///
+/// | Key | Action |
+/// |-----|--------|
+/// | `Char` | Insert character at cursor (or replace selection) |
+/// | `Backspace` | Delete character before cursor (or delete selection) |
+/// | `Delete` | Delete character at cursor (or delete selection) |
+/// | `Left` | Move cursor left (clears selection) |
+/// | `Right` | Move cursor right (clears selection) |
+/// | `Home` | Move cursor to start of input (clears selection) |
+/// | `End` | Move cursor to end of input (clears selection) |
+///
+/// ## Ctrl combinations (via `handle_key_event`)
+///
+/// | Key | Action |
+/// |-----|--------|
+/// | `Ctrl+A` | Select all text |
+/// | `Ctrl+C` | Copy selection to clipboard |
+/// | `Ctrl+X` | Cut selection to clipboard |
+/// | `Ctrl+V` | Paste from clipboard |
+/// | `Ctrl+Z` | Undo last edit |
+/// | `Ctrl+Y` | Redo last undone edit |
+/// | `Ctrl+Left` | Move cursor to previous word |
+/// | `Ctrl+Right` | Move cursor to next word |
+/// | `Ctrl+Backspace` | Delete word to the left of cursor |
+///
+/// ## Shift combinations (via `handle_key_event`)
+///
+/// | Key | Action |
+/// |-----|--------|
+/// | `Shift+Left` | Extend selection one character to the left |
+/// | `Shift+Right` | Extend selection one character to the right |
+/// | `Shift+Home` | Extend selection to start of input |
+/// | `Shift+End` | Extend selection to end of input |
 #[derive(Clone, Debug)]
 pub struct Input {
     pub(super) value: String,
