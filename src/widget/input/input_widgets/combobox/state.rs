@@ -12,6 +12,11 @@ impl Combobox {
         &self.input
     }
 
+    /// Get the current input value (what the user typed or selected)
+    pub fn get_value(&self) -> &str {
+        &self.input
+    }
+
     /// Get the selected value (for single-select mode)
     pub fn selected_value(&self) -> Option<&str> {
         if self.multi_select {

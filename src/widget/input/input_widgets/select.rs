@@ -95,8 +95,9 @@ impl Select {
         self
     }
 
-    /// Set selected index
+    /// Set selected index, clamped to the valid range
     pub fn selected(mut self, index: usize) -> Self {
+        let index = index.min(self.options.len().saturating_sub(1));
         self.selection.set(index);
         self
     }
@@ -152,6 +153,11 @@ impl Select {
     /// Get selected value
     pub fn value(&self) -> Option<&str> {
         self.options.get(self.selection.index).map(|s| s.as_str())
+    }
+
+    /// Get selected value (alias for [`value`](Self::value))
+    pub fn get_value(&self) -> Option<&str> {
+        self.value()
     }
 
     /// Check if dropdown is open
