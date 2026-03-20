@@ -27,6 +27,7 @@
 //! ```
 
 use crate::style::Color;
+use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::DISABLED_FG;
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -675,9 +676,8 @@ impl View for OptionList {
                     // Show description
                     if self.show_descriptions {
                         if let Some(desc) = &item.description {
-                            content = content.child(
-                                Text::new(format!("    {}", desc)).fg(Color::rgb(128, 128, 128)),
-                            );
+                            content = content
+                                .child(Text::new(format!("    {}", desc)).fg(PLACEHOLDER_FG));
                         }
                     }
 
@@ -697,13 +697,13 @@ impl View for OptionList {
         // Scroll indicators
         if skipped > 0 {
             content = vstack()
-                .child(Text::new("↑").fg(Color::rgb(100, 100, 100)))
+                .child(Text::new("↑").fg(DISABLED_FG))
                 .child(content);
         }
 
         let remaining = self.option_count() - (self.scroll_offset + visible_count);
         if remaining > 0 {
-            content = content.child(Text::new("↓").fg(Color::rgb(100, 100, 100)));
+            content = content.child(Text::new("↓").fg(DISABLED_FG));
         }
 
         content.render(ctx);

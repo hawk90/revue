@@ -1,6 +1,7 @@
 //! Log types and enums for advanced log viewer
 
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 
 /// Log level for filtering and display
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -24,7 +25,7 @@ impl LogLevel {
     /// Get display color for this log level
     pub fn color(&self) -> Color {
         match self {
-            LogLevel::Trace => Color::rgb(100, 100, 100),
+            LogLevel::Trace => DISABLED_FG,
             LogLevel::Debug => Color::rgb(150, 150, 150),
             LogLevel::Info => Color::CYAN,
             LogLevel::Warning => Color::YELLOW,

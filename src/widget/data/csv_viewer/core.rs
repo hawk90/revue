@@ -4,6 +4,7 @@ use super::types::Delimiter;
 use super::types::SortOrder;
 use crate::style::Color;
 use crate::utils::natural_cmp;
+use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::WidgetProps;
 
 /// CSV Viewer widget
@@ -100,7 +101,7 @@ impl CsvViewer {
             match_fg: Some(Color::BLACK),
             match_bg: Some(Color::YELLOW),
             separator_fg: Some(Color::rgb(80, 80, 80)),
-            row_number_fg: Some(Color::rgb(128, 128, 128)),
+            row_number_fg: Some(PLACEHOLDER_FG),
             fg: None,
             bg: None,
             props: WidgetProps::new(),

@@ -2,6 +2,7 @@
 
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -212,7 +213,7 @@ impl View for Sparkline {
             for ch in max_str.chars() {
                 if x < area.width {
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(100, 100, 100));
+                    cell.fg = Some(DISABLED_FG);
                     ctx.set(x, 0, cell);
                     x += 1;
                 }

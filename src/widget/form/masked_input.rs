@@ -29,6 +29,7 @@
 //! ```
 
 use crate::style::Color;
+use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -538,9 +539,9 @@ impl View for MaskedInput {
         } else {
             let mut text = Text::new(&padded);
             if is_placeholder {
-                text = text.fg(Color::rgb(128, 128, 128));
+                text = text.fg(PLACEHOLDER_FG);
             } else if self.disabled {
-                text = text.fg(Color::rgb(100, 100, 100));
+                text = text.fg(DISABLED_FG);
             } else if let Some(fg) = self.fg {
                 text = text.fg(fg);
             }
@@ -567,7 +568,7 @@ impl View for MaskedInput {
         } else if self.focused {
             Color::CYAN
         } else {
-            Color::rgb(128, 128, 128)
+            PLACEHOLDER_FG
         };
 
         let bordered = hstack()

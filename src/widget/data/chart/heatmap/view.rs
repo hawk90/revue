@@ -2,6 +2,7 @@
 
 use super::HeatMap;
 use crate::style::Color;
+use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
 use crate::widget::RenderContext;
 use crate::widget::View;
 use crate::widget::{hstack, vstack, Text};
@@ -87,7 +88,7 @@ impl View for HeatMap {
         // Legend
         if self.show_legend {
             let mut legend = hstack();
-            legend = legend.child(Text::new("Low ").fg(Color::rgb(128, 128, 128)));
+            legend = legend.child(Text::new("Low ").fg(PLACEHOLDER_FG));
 
             for i in 0..10 {
                 let v = i as f64 / 9.0;
@@ -95,10 +96,9 @@ impl View for HeatMap {
                 legend = legend.child(Text::new("█").fg(color));
             }
 
-            legend = legend.child(Text::new(" High").fg(Color::rgb(128, 128, 128)));
+            legend = legend.child(Text::new(" High").fg(PLACEHOLDER_FG));
             legend = legend.child(
-                Text::new(format!("  ({:.1} - {:.1})", self.min_val, self.max_val))
-                    .fg(Color::rgb(100, 100, 100)),
+                Text::new(format!("  ({:.1} - {:.1})", self.min_val, self.max_val)).fg(DISABLED_FG),
             );
 
             content = content.child(legend);

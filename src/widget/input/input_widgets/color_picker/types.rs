@@ -1,5 +1,7 @@
 //! Color picker widget types
 
+use crate::widget::theme::PLACEHOLDER_FG;
+
 /// Color picker mode
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum ColorPickerMode {
@@ -43,7 +45,7 @@ impl ColorPalette {
                 crate::style::Color::rgb(128, 0, 128),
                 crate::style::Color::rgb(0, 128, 128),
                 crate::style::Color::rgb(192, 192, 192),
-                crate::style::Color::rgb(128, 128, 128),
+                PLACEHOLDER_FG,
                 crate::style::Color::RED,
                 crate::style::Color::GREEN,
                 crate::style::Color::YELLOW,

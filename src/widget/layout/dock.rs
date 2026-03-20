@@ -32,6 +32,7 @@
 
 use crate::widget::layout::splitter::Pane;
 use crate::widget::layout::tabs::Tabs;
+use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -275,7 +276,7 @@ impl View for DockArea {
             let tabs_labels: Vec<String> = self.tabs.iter().map(|t| t.label.clone()).collect();
             let tabs = Tabs::new()
                 .tabs(tabs_labels)
-                .fg(crate::style::Color::rgb(128, 128, 128))
+                .fg(PLACEHOLDER_FG)
                 .bg(crate::style::Color::rgb(0, 0, 0));
 
             // Reserve 1 row for tabs

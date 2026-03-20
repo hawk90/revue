@@ -1,5 +1,6 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::RenderContext;
 use crate::widget::View;
 
@@ -99,7 +100,7 @@ impl View for CommandPalette {
             &self.query
         };
         let text_color = if self.query.is_empty() {
-            Color::rgb(100, 100, 100)
+            DISABLED_FG
         } else {
             Color::WHITE
         };

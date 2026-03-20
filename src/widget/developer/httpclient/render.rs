@@ -3,6 +3,7 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::widget::developer::httpclient::HttpClient;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View};
 
 use super::types::RequestState;
@@ -51,7 +52,7 @@ impl View for HttpClient {
             hint_start,
             0,
             hint,
-            Color::rgb(100, 100, 100),
+            DISABLED_FG,
             area.width.saturating_sub(hint_start),
         );
 
@@ -104,11 +105,7 @@ impl View for HttpClient {
                         break;
                     }
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(if is_active {
-                        Color::WHITE
-                    } else {
-                        Color::rgb(100, 100, 100)
-                    });
+                    cell.fg = Some(if is_active { Color::WHITE } else { DISABLED_FG });
                     cell.bg = Some(if is_active {
                         self.colors.tab_active
                     } else {
@@ -172,7 +169,7 @@ impl View for HttpClient {
                         // Colon
                         if kx + 2 < area.width {
                             let mut cell = Cell::new(':');
-                            cell.fg = Some(Color::rgb(100, 100, 100));
+                            cell.fg = Some(DISABLED_FG);
                             ctx.set(kx, y, cell);
 
                             // Value
@@ -191,7 +188,7 @@ impl View for HttpClient {
         } else {
             // No response yet
             let msg = "Enter a URL and press Enter to send request";
-            ctx.draw_text_clipped(0, response_y, msg, Color::rgb(100, 100, 100), area.width);
+            ctx.draw_text_clipped(0, response_y, msg, DISABLED_FG, area.width);
         }
     }
 }

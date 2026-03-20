@@ -4,6 +4,7 @@ use super::core::{CellPos, CellState, DataGrid, RowRenderParams};
 use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View};
 
 impl View for DataGrid {
@@ -226,7 +227,7 @@ impl DataGrid {
 
             // Dim text if this column is being dragged
             let fg = if is_dragging {
-                Color::rgb(100, 100, 100)
+                DISABLED_FG
             } else {
                 self.colors.header_fg
             };
@@ -283,7 +284,7 @@ impl DataGrid {
         let num_str = format!("{:>4}", num);
         for (j, ch) in num_str.chars().enumerate() {
             let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::rgb(100, 100, 100));
+            cell.fg = Some(DISABLED_FG);
             cell.bg = Some(bg);
             ctx.set(x + j as u16, y, cell);
         }

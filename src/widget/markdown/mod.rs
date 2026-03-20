@@ -39,7 +39,7 @@
 //!     link_fg: Color::CYAN,
 //!     code_fg: Color::YELLOW,
 //!     heading_fg: Color::WHITE,
-//!     quote_fg: Color::rgb(128, 128, 128),
+//!     quote_fg: PLACEHOLDER_FG,
 //!     show_toc: true,
 //!     syntax_highlight: true,
 //!     code_line_numbers: true,
@@ -57,6 +57,7 @@ use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::figlet::FigletFont;
 use crate::utils::syntax::{Language, SyntaxTheme};
+use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -93,7 +94,7 @@ impl Default for MarkdownConfig {
             link_fg: Color::CYAN,
             code_fg: Color::YELLOW,
             heading_fg: Color::WHITE,
-            quote_fg: Color::rgb(128, 128, 128),
+            quote_fg: PLACEHOLDER_FG,
             toc_fg: Color::CYAN,
             figlet_font: None,
             figlet_max_level: 1,
@@ -528,11 +529,11 @@ impl Markdown {
         // Code border
         if ctx.code_border {
             let mut border_line = Line::new();
-            border_line.push(StyledText::new("┌").with_fg(Color::rgb(100, 100, 100)));
+            border_line.push(StyledText::new("┌").with_fg(DISABLED_FG));
             for _ in 0..30 {
-                border_line.push(StyledText::new("─").with_fg(Color::rgb(100, 100, 100)));
+                border_line.push(StyledText::new("─").with_fg(DISABLED_FG));
             }
-            border_line.push(StyledText::new("┐").with_fg(Color::rgb(100, 100, 100)));
+            border_line.push(StyledText::new("┐").with_fg(DISABLED_FG));
             ctx.lines.push(border_line);
         }
 
@@ -540,12 +541,10 @@ impl Markdown {
             let mut code_line = Line::new();
 
             if ctx.code_line_numbers {
-                code_line.push(
-                    StyledText::new(format!("{:3} │ ", line_num + 1))
-                        .with_fg(Color::rgb(100, 100, 100)),
-                );
+                code_line
+                    .push(StyledText::new(format!("{:3} │ ", line_num + 1)).with_fg(DISABLED_FG));
             } else if ctx.code_border {
-                code_line.push(StyledText::new("│ ").with_fg(Color::rgb(100, 100, 100)));
+                code_line.push(StyledText::new("│ ").with_fg(DISABLED_FG));
             }
 
             // Apply syntax highlighting if enabled
@@ -571,11 +570,11 @@ impl Markdown {
 
         if ctx.code_border {
             let mut border_line = Line::new();
-            border_line.push(StyledText::new("└").with_fg(Color::rgb(100, 100, 100)));
+            border_line.push(StyledText::new("└").with_fg(DISABLED_FG));
             for _ in 0..30 {
-                border_line.push(StyledText::new("─").with_fg(Color::rgb(100, 100, 100)));
+                border_line.push(StyledText::new("─").with_fg(DISABLED_FG));
             }
-            border_line.push(StyledText::new("┘").with_fg(Color::rgb(100, 100, 100)));
+            border_line.push(StyledText::new("┘").with_fg(DISABLED_FG));
             ctx.lines.push(border_line);
         }
 

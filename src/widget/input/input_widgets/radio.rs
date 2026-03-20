@@ -4,6 +4,7 @@ use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::Selection;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -237,13 +238,13 @@ impl RadioGroup {
         let has_brackets = self.style.has_brackets();
 
         let label_fg = if self.disabled {
-            Color::rgb(100, 100, 100)
+            DISABLED_FG
         } else {
             self.fg.unwrap_or(Color::WHITE)
         };
 
         let indicator_fg = if self.disabled {
-            Color::rgb(100, 100, 100)
+            DISABLED_FG
         } else if is_selected {
             self.selected_fg.unwrap_or(Color::CYAN)
         } else {

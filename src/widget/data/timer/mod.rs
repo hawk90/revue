@@ -19,6 +19,7 @@
 //! ```
 
 use crate::style::Color;
+use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::WidgetProps;
 use crate::widget::{RenderContext, View};
 use crate::{impl_props_builders, impl_styled_view};
@@ -367,7 +368,7 @@ impl View for Timer {
             TimerState::Paused => "Paused",
             TimerState::Completed => "Completed!",
         };
-        content = content.child(Text::new(state_text).fg(Color::rgb(128, 128, 128)));
+        content = content.child(Text::new(state_text).fg(PLACEHOLDER_FG));
 
         content.render(ctx);
     }
@@ -586,7 +587,7 @@ impl View for Stopwatch {
             TimerState::Paused => "Paused",
             TimerState::Completed => "Completed",
         };
-        content = content.child(Text::new(state_text).fg(Color::rgb(128, 128, 128)));
+        content = content.child(Text::new(state_text).fg(PLACEHOLDER_FG));
 
         // Lap times
         if self.show_laps && !self.laps.is_empty() {

@@ -6,7 +6,7 @@ use super::types::StyleCategory;
 use crate::devtools::DevToolsConfig;
 use crate::layout::Rect;
 use crate::render::Buffer;
-use crate::style::Color;
+use crate::widget::theme::PLACEHOLDER_FG;
 use std::collections::HashMap;
 
 impl StyleInspector {
@@ -105,7 +105,7 @@ impl StyleInspector {
         let fg = if selected {
             ctx.config.bg_color
         } else if prop.overridden {
-            Color::rgb(128, 128, 128)
+            PLACEHOLDER_FG
         } else {
             ctx.config.fg_color
         };

@@ -6,6 +6,7 @@ use super::search::{Search, SearchState};
 use super::types::{JsonNode, JsonType};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 use std::collections::HashSet;
@@ -66,13 +67,13 @@ impl JsonViewer {
             string_fg: Some(Color::GREEN),
             number_fg: Some(Color::YELLOW),
             bool_fg: Some(Color::MAGENTA),
-            null_fg: Some(Color::rgb(128, 128, 128)),
+            null_fg: Some(PLACEHOLDER_FG),
             bracket_fg: Some(Color::WHITE),
             selected_fg: Some(Color::WHITE),
             selected_bg: Some(Color::BLUE),
             match_fg: Some(Color::BLACK),
             match_bg: Some(Color::YELLOW),
-            line_number_fg: Some(Color::rgb(100, 100, 100)),
+            line_number_fg: Some(DISABLED_FG),
             fg: None,
             bg: None,
             props: WidgetProps::new(),

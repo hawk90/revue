@@ -28,6 +28,7 @@ use crate::impl_props_builders;
 use crate::patterns::form::FormState;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -162,46 +163,12 @@ impl Form {
         }
 
         let border_color = if self.is_valid() {
-            Color::rgb(100, 100, 100)
+            DISABLED_FG
         } else {
             Color::rgb(200, 80, 80) // Red for invalid
         };
 
-        // Draw horizontal borders
-        for x in 0..area.width {
-            let mut top_cell = Cell::new('─');
-            top_cell.fg = Some(border_color);
-            ctx.set(x, 0, top_cell);
-
-            let mut bottom_cell = Cell::new('─');
-            bottom_cell.fg = Some(border_color);
-            ctx.set(x, area.height - 1, bottom_cell);
-        }
-
-        // Draw vertical borders
-        for y in 0..area.height {
-            let mut left_cell = Cell::new('│');
-            left_cell.fg = Some(border_color);
-            ctx.set(0, y, left_cell);
-
-            let mut right_cell = Cell::new('│');
-            right_cell.fg = Some(border_color);
-            ctx.set(area.width - 1, y, right_cell);
-        }
-
-        // Draw corners
-        let corners = [
-            ('┌', 0u16, 0u16),
-            ('┐', area.width - 1, 0u16),
-            ('└', 0u16, area.height - 1),
-            ('┘', area.width - 1, area.height - 1),
-        ];
-
-        for &(ch, x, y) in &corners {
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(border_color);
-            ctx.set(x, y, cell);
-        }
+        ctx.draw_box_single(0, 0, area.width, area.height, border_color);
     }
 
     /// Render form title

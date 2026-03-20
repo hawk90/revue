@@ -6,6 +6,7 @@ use crate::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{EventResult, Interactive, RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -68,7 +69,7 @@ impl Switch {
             focused: false,
             disabled: false,
             on_color: Color::GREEN,
-            off_color: Color::rgb(100, 100, 100),
+            off_color: DISABLED_FG,
             track_color: Color::rgb(60, 60, 60),
             on_text: None,
             off_text: None,
@@ -379,7 +380,7 @@ impl View for Switch {
         if self.label_left {
             if let Some(ref label) = self.label {
                 let label_color = if self.disabled {
-                    Color::rgb(100, 100, 100)
+                    DISABLED_FG
                 } else if let Some(css_fg) = ctx
                     .style
                     .map(|s| s.visual.color)
@@ -424,7 +425,7 @@ impl View for Switch {
             if let Some(ref label) = self.label {
                 x += 1;
                 let label_color = if self.disabled {
-                    Color::rgb(100, 100, 100)
+                    DISABLED_FG
                 } else if let Some(css_fg) = ctx
                     .style
                     .map(|s| s.visual.color)

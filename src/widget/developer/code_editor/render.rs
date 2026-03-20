@@ -3,6 +3,7 @@
 use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::code_editor::CodeEditor;
+use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{RenderContext, View};
 
 impl CodeEditor {
@@ -272,7 +273,7 @@ impl View for CodeEditor {
                     for (i, &ch) in chars.iter().take(minimap_width as usize).enumerate() {
                         if !ch.is_whitespace() {
                             let mut cell = Cell::new('▪');
-                            cell.fg = Some(Color::rgb(128, 128, 128));
+                            cell.fg = Some(PLACEHOLDER_FG);
                             ctx.set(minimap_x + i as u16, y, cell);
                         }
                     }

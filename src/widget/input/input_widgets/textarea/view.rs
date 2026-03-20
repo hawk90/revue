@@ -2,6 +2,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{RenderContext, View};
 
 impl TextArea {
@@ -53,13 +54,7 @@ impl View for TextArea {
         // Show placeholder if empty
         if self.lines.len() == 1 && self.lines[0].is_empty() {
             if let Some(ref placeholder) = self.placeholder {
-                ctx.draw_text_clipped(
-                    text_start_x,
-                    0,
-                    placeholder,
-                    Color::rgb(128, 128, 128),
-                    text_width,
-                );
+                ctx.draw_text_clipped(text_start_x, 0, placeholder, PLACEHOLDER_FG, text_width);
             }
         }
 

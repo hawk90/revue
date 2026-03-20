@@ -24,6 +24,7 @@
 //! ```
 
 use crate::style::Color;
+use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
 use crate::widget::traits::WidgetProps;
 use crate::widget::{RenderContext, View};
 use crate::{impl_props_builders, impl_styled_view};
@@ -461,7 +462,7 @@ impl View for SelectionList {
             } else {
                 format!("Selected: {}", self.selected.len())
             };
-            content = content.child(Text::new(count_text).fg(Color::rgb(128, 128, 128)));
+            content = content.child(Text::new(count_text).fg(PLACEHOLDER_FG));
         }
 
         // Calculate visible range
@@ -476,7 +477,7 @@ impl View for SelectionList {
 
         // Show scroll indicator at top
         if start > 0 {
-            content = content.child(Text::new("  ↑ more...").fg(Color::rgb(100, 100, 100)));
+            content = content.child(Text::new("  ↑ more...").fg(DISABLED_FG));
         }
 
         // Render items
@@ -492,7 +493,7 @@ impl View for SelectionList {
             let is_selected = self.is_selected(i);
 
             let fg = if item.disabled {
-                Color::rgb(100, 100, 100)
+                DISABLED_FG
             } else if is_highlighted {
                 self.highlighted_fg.unwrap_or(Color::CYAN)
             } else if is_selected {
@@ -513,14 +514,14 @@ impl View for SelectionList {
             if self.show_descriptions {
                 if let Some(desc) = &item.description {
                     let desc_text = format!("    {}", desc);
-                    content = content.child(Text::new(desc_text).fg(Color::rgb(128, 128, 128)));
+                    content = content.child(Text::new(desc_text).fg(PLACEHOLDER_FG));
                 }
             }
         }
 
         // Show scroll indicator at bottom
         if end < self.items.len() {
-            content = content.child(Text::new("  ↓ more...").fg(Color::rgb(100, 100, 100)));
+            content = content.child(Text::new("  ↓ more...").fg(DISABLED_FG));
         }
 
         // Help text

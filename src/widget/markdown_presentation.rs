@@ -46,6 +46,7 @@ use crate::style::Color;
 use crate::utils::figlet::FigletFont;
 use crate::utils::text_sizing::is_supported as text_sizing_supported;
 use crate::widget::slides::{SlideContent, SlideNav};
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -478,7 +479,7 @@ impl MarkdownPresentation {
             let start_x = area.width - num_str.len() as u16 - 1;
             for (i, ch) in num_str.chars().enumerate() {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::rgb(100, 100, 100));
+                cell.fg = Some(DISABLED_FG);
                 ctx.set(start_x + i as u16, footer_y, cell);
             }
         }

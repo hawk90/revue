@@ -9,6 +9,7 @@ use super::chart_common::{Axis, ChartGrid, Legend, LegendPosition};
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::RenderContext;
 
 // ============================================================================
@@ -271,7 +272,7 @@ pub fn render_legend(
                     ' '
                 };
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::rgb(100, 100, 100));
+                cell.fg = Some(DISABLED_FG);
                 ctx.set(x, y, cell);
             }
         }

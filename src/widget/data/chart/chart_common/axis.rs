@@ -1,4 +1,5 @@
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 
 /// Axis configuration for charts
 #[derive(Clone, Debug)]
@@ -43,7 +44,7 @@ impl Default for Axis {
             max: None,
             ticks: 5,
             grid: true,
-            color: Color::rgb(100, 100, 100),
+            color: DISABLED_FG,
             format: AxisFormat::Auto,
         }
     }

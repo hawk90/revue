@@ -23,6 +23,7 @@ use crate::event::Key;
 use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -308,7 +309,7 @@ impl View for Collapsible {
 
         let is_focused = self.state.focused || ctx.is_focused();
         let header_fg = if self.state.disabled {
-            Color::rgb(100, 100, 100)
+            DISABLED_FG
         } else {
             self.header_fg
         };

@@ -6,6 +6,7 @@ use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::{format_size_compact, natural_cmp};
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 use std::path::{Path, PathBuf};
@@ -54,7 +55,7 @@ impl FileType {
             FileType::Directory => Color::CYAN,
             FileType::File => Color::WHITE,
             FileType::Symlink => Color::MAGENTA,
-            FileType::Hidden => Color::rgb(100, 100, 100),
+            FileType::Hidden => DISABLED_FG,
             FileType::Executable => Color::GREEN,
         }
     }
@@ -626,7 +627,7 @@ mod tests {
         assert_eq!(FileType::Executable.color(), Color::GREEN);
         // Hidden has a custom rgb color
         let hidden_color = FileType::Hidden.color();
-        assert!(hidden_color == Color::rgb(100, 100, 100));
+        assert!(hidden_color == DISABLED_FG);
     }
 
     // =========================================================================

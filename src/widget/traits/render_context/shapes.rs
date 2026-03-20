@@ -122,6 +122,16 @@ impl RenderContext<'_> {
         }
     }
 
+    /// Fill a row with spaces, setting optional fg and bg colors
+    pub fn fill_row(&mut self, y: u16, width: u16, fg: Option<Color>, bg: Option<Color>) {
+        for x in 0..width {
+            let mut cell = Cell::new(' ');
+            cell.fg = fg;
+            cell.bg = bg;
+            self.set(x, y, cell);
+        }
+    }
+
     /// Clear area (fill with spaces, relative coordinates)
     pub fn clear(&mut self, x: u16, y: u16, w: u16, h: u16) {
         for dy in 0..h {

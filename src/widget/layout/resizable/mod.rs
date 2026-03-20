@@ -21,6 +21,7 @@ pub use types::{ResizeDirection, ResizeHandle, ResizeStyle};
 use crate::event::Key;
 use crate::layout::Rect;
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_view_meta, impl_widget_builders};
 
@@ -84,7 +85,7 @@ impl Resizable<fn(u16, u16)> {
             handles: ResizeHandle::ALL.to_vec(),
             handle_size: 1,
             style: ResizeStyle::default(),
-            handle_color: Color::rgb(100, 100, 100),
+            handle_color: DISABLED_FG,
             active_color: Color::CYAN,
             resizing: false,
             resize_direction: ResizeDirection::NONE,

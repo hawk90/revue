@@ -24,6 +24,7 @@
 use super::toast::{ToastLevel, ToastPosition};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 use std::time::{Duration, Instant};
@@ -502,7 +503,7 @@ impl ToastQueue {
         if entry.dismissible && toast_w > 10 {
             let dismiss_x = x + toast_w - 3;
             let mut dismiss = Cell::new('×');
-            dismiss.fg = Some(Color::rgb(100, 100, 100));
+            dismiss.fg = Some(DISABLED_FG);
             dismiss.bg = Some(bg);
             ctx.set(dismiss_x, content_y, dismiss);
         }

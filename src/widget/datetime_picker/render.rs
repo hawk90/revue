@@ -3,6 +3,7 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::widget::data::calendar::{days_in_month, FirstDayOfWeek};
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::RenderContext;
 use unicode_width::UnicodeWidthChar;
 
@@ -242,6 +243,6 @@ pub trait Rendering {
         } else {
             "Tab: switch to time"
         };
-        self.draw_text(ctx, x, y + 3, help, Color::rgb(100, 100, 100), false);
+        self.draw_text(ctx, x, y + 3, help, DISABLED_FG, false);
     }
 }

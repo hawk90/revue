@@ -1,6 +1,7 @@
 //! View trait implementation for SortableList
 
 use crate::layout::Rect;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{Interactive, RenderContext, View};
 use crate::{impl_styled_view, impl_view_meta, impl_widget_builders};
 
@@ -46,7 +47,7 @@ impl View for SortableList {
                 for ch in handle.chars() {
                     if let Some(cell) = ctx.get_mut(x, y) {
                         cell.symbol = ch;
-                        cell.fg = Some(crate::style::Color::rgb(100, 100, 100));
+                        cell.fg = Some(DISABLED_FG);
                     }
                     x += 1;
                 }

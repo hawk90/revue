@@ -19,6 +19,7 @@ pub use option::ComboOption;
 
 use crate::style::Color;
 use crate::utils::FilterMode;
+use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -116,7 +117,7 @@ impl Combobox {
             selected_fg: Some(Color::WHITE),
             selected_bg: Some(Color::BLUE),
             highlight_fg: Some(Color::YELLOW),
-            disabled_fg: Some(Color::rgb(128, 128, 128)),
+            disabled_fg: Some(PLACEHOLDER_FG),
             width: None,
             props: WidgetProps::new(),
         }
