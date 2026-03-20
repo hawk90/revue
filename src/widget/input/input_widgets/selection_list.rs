@@ -526,10 +526,8 @@ impl View for SelectionList {
 
         // Help text
         if self.focused {
-            content = content.child(
-                Text::new("↑↓: Navigate | Space: Toggle | a: All | n: None")
-                    .fg(DARK_GRAY),
-            );
+            content = content
+                .child(Text::new("↑↓: Navigate | Space: Toggle | a: All | n: None").fg(DARK_GRAY));
         }
 
         content.render(ctx);

@@ -29,13 +29,28 @@ pub const PLACEHOLDER_FG: Color = Color {
 };
 
 /// Dark gray for borders, separators, and subtle UI elements — `rgb(80, 80, 80)`
-pub const DARK_GRAY: Color = Color { r: 80, g: 80, b: 80, a: 255 };
+pub const DARK_GRAY: Color = Color {
+    r: 80,
+    g: 80,
+    b: 80,
+    a: 255,
+};
 
 /// Light gray for secondary text, labels, and muted content — `rgb(150, 150, 150)`
-pub const LIGHT_GRAY: Color = Color { r: 150, g: 150, b: 150, a: 255 };
+pub const LIGHT_GRAY: Color = Color {
+    r: 150,
+    g: 150,
+    b: 150,
+    a: 255,
+};
 
 /// Subtle gray for descriptions, timestamps, and tertiary text — `rgb(120, 120, 120)`
-pub const SUBTLE_GRAY: Color = Color { r: 120, g: 120, b: 120, a: 255 };
+pub const SUBTLE_GRAY: Color = Color {
+    r: 120,
+    g: 120,
+    b: 120,
+    a: 255,
+};
 
 /// Accent color for focused widgets
 pub const FOCUS_COLOR: Color = Color::CYAN;

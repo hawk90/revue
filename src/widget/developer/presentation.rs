@@ -343,13 +343,7 @@ impl Presentation {
         // Author
         if !self.author.is_empty() {
             let author_y = center_y + 1;
-            self.render_centered_text(
-                ctx,
-                &self.author,
-                author_y,
-                LIGHT_GRAY,
-                Modifier::ITALIC,
-            );
+            self.render_centered_text(ctx, &self.author, author_y, LIGHT_GRAY, Modifier::ITALIC);
         }
 
         // Press key hint

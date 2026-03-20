@@ -245,8 +245,7 @@ impl Markdown {
             // Separator
             let mut sep_line = Line::new();
             sep_line.push(
-                StyledText::new("────────────────────────────────────────")
-                    .with_fg(DARK_GRAY),
+                StyledText::new("────────────────────────────────────────").with_fg(DARK_GRAY),
             );
             ctx.lines.push(sep_line);
             ctx.new_line();

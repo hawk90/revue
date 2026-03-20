@@ -43,9 +43,8 @@ impl View for HeatMap {
                 if let Some(labels) = &self.row_labels {
                     if let Some(label) = labels.get(row_idx) {
                         let truncated = crate::utils::truncate_to_width(label, 6);
-                        row_view = row_view.child(
-                            Text::new(format!("{:>6} ", truncated)).fg(LIGHT_GRAY),
-                        );
+                        row_view =
+                            row_view.child(Text::new(format!("{:>6} ", truncated)).fg(LIGHT_GRAY));
                     }
                 }
 

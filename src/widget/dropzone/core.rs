@@ -305,11 +305,7 @@ where
             &self.placeholder
         };
 
-        let text_color = if self.hovered {
-            color
-        } else {
-            LIGHT_GRAY
-        };
+        let text_color = if self.hovered { color } else { LIGHT_GRAY };
 
         ctx.draw_text_clipped(text_x, text_y, display_text, text_color, max_len as u16);
     }

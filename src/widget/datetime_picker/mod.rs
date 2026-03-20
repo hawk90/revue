@@ -32,8 +32,8 @@ pub mod types;
 use crate::event::Key;
 use crate::style::Color;
 use crate::widget::data::calendar::{Date, FirstDayOfWeek};
-use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::datetime_picker::render::Rendering;
+use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
 
