@@ -2,219 +2,49 @@
 //!
 //! Provides a tree view for browsing directories and files.
 
+mod render;
+mod types;
+
+pub use types::{FileEntry, FileType};
+
 use crate::event::Key;
-use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::utils::{format_size_compact, natural_cmp};
-use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
-use crate::widget::traits::{RenderContext, View, WidgetProps};
+use crate::utils::natural_cmp;
+use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 use std::path::{Path, PathBuf};
-
-/// File type for display
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FileType {
-    /// Directory/folder
-    Directory,
-    /// Regular file
-    File,
-    /// Symbolic link
-    Symlink,
-    /// Hidden file (starts with .)
-    Hidden,
-    /// Executable file
-    Executable,
-}
-
-impl FileType {
-    /// Get icon for file type
-    pub fn icon(&self) -> char {
-        match self {
-            FileType::Directory => '📁',
-            FileType::File => '📄',
-            FileType::Symlink => '🔗',
-            FileType::Hidden => '👁',
-            FileType::Executable => '⚙',
-        }
-    }
-
-    /// Get simple icon (ASCII-friendly)
-    pub fn simple_icon(&self) -> char {
-        match self {
-            FileType::Directory => '▸',
-            FileType::File => ' ',
-            FileType::Symlink => '→',
-            FileType::Hidden => '.',
-            FileType::Executable => '*',
-        }
-    }
-
-    /// Get color for file type
-    pub fn color(&self) -> Color {
-        match self {
-            FileType::Directory => Color::CYAN,
-            FileType::File => Color::WHITE,
-            FileType::Symlink => Color::MAGENTA,
-            FileType::Hidden => DISABLED_FG,
-            FileType::Executable => Color::GREEN,
-        }
-    }
-}
-
-/// A file entry in the tree
-#[derive(Clone, Debug)]
-pub struct FileEntry {
-    /// File name
-    pub name: String,
-    /// Full path
-    pub path: PathBuf,
-    /// File type
-    pub file_type: FileType,
-    /// File size (if file)
-    pub size: Option<u64>,
-    /// Is expanded (for directories)
-    pub expanded: bool,
-    /// Children (for directories)
-    pub children: Vec<FileEntry>,
-    /// Depth in tree
-    pub depth: usize,
-}
-
-impl FileEntry {
-    /// Create a new file entry
-    pub fn new(name: impl Into<String>, path: impl Into<PathBuf>, file_type: FileType) -> Self {
-        Self {
-            name: name.into(),
-            path: path.into(),
-            file_type,
-            size: None,
-            expanded: false,
-            children: Vec::new(),
-            depth: 0,
-        }
-    }
-
-    /// Create a directory entry
-    pub fn directory(name: impl Into<String>, path: impl Into<PathBuf>) -> Self {
-        Self::new(name, path, FileType::Directory)
-    }
-
-    /// Create a file entry
-    pub fn file(name: impl Into<String>, path: impl Into<PathBuf>) -> Self {
-        Self::new(name, path, FileType::File)
-    }
-
-    /// Set file size
-    pub fn size(mut self, size: u64) -> Self {
-        self.size = Some(size);
-        self
-    }
-
-    /// Add child entry
-    pub fn child(mut self, child: FileEntry) -> Self {
-        let mut child = child;
-        child.update_depth(self.depth + 1);
-        self.children.push(child);
-        self
-    }
-
-    /// Update depth for this entry and all descendants
-    fn update_depth(&mut self, new_depth: usize) {
-        self.depth = new_depth;
-        for child in &mut self.children {
-            child.update_depth(new_depth + 1);
-        }
-    }
-
-    /// Add children
-    pub fn children(mut self, children: Vec<FileEntry>) -> Self {
-        for child in children {
-            self = self.child(child);
-        }
-        self
-    }
-
-    /// Set expanded state
-    pub fn expanded(mut self, expanded: bool) -> Self {
-        self.expanded = expanded;
-        self
-    }
-
-    /// Is directory
-    pub fn is_dir(&self) -> bool {
-        self.file_type == FileType::Directory
-    }
-
-    /// Get icon character
-    pub fn icon(&self) -> char {
-        self.file_type.icon()
-    }
-
-    /// Toggle expanded state
-    pub fn toggle(&mut self) {
-        if self.is_dir() {
-            self.expanded = !self.expanded;
-        }
-    }
-
-    /// Get all visible entries (flattened)
-    pub fn visible_entries(&self) -> Vec<&FileEntry> {
-        let mut entries = vec![self];
-        if self.expanded {
-            for child in &self.children {
-                entries.extend(child.visible_entries());
-            }
-        }
-        entries
-    }
-
-    /// Get all visible entries mutably
-    pub fn visible_entries_mut(&mut self) -> Vec<&mut FileEntry> {
-        // We need to handle this carefully to avoid borrow issues
-        // For now, just return a simple implementation
-        vec![self]
-    }
-
-    /// Format size for display
-    pub fn format_size(&self) -> String {
-        match self.size {
-            Some(size) => format_size_compact(size),
-            None => String::new(),
-        }
-    }
-}
 
 /// File tree widget
 pub struct FileTree {
     /// Root entries
-    root: Vec<FileEntry>,
+    pub(crate) root: Vec<FileEntry>,
     /// Selected index
-    selected: usize,
+    pub(crate) selected: usize,
     /// Scroll offset
-    scroll: usize,
+    pub(crate) scroll: usize,
     /// Show hidden files
-    show_hidden: bool,
+    pub(crate) show_hidden: bool,
     /// Show file sizes
-    show_sizes: bool,
+    pub(crate) show_sizes: bool,
     /// Show icons
-    show_icons: bool,
+    pub(crate) show_icons: bool,
     /// Use simple (ASCII) icons
-    simple_icons: bool,
+    pub(crate) simple_icons: bool,
     /// Use natural sorting (e.g., file2 < file10)
-    natural_sort: bool,
+    pub(crate) natural_sort: bool,
     /// Sort directories first
-    dirs_first: bool,
+    pub(crate) dirs_first: bool,
     /// Colors
-    selected_bg: Color,
-    selected_fg: Color,
-    dir_fg: Color,
-    _file_fg: Color,
+    pub(crate) selected_bg: Color,
+    pub(crate) selected_fg: Color,
+    pub(crate) dir_fg: Color,
+    pub(crate) _file_fg: Color,
     /// Indent size
-    indent: u16,
+    pub(crate) indent: u16,
     /// Height limit (0 = unlimited)
-    height: u16,
+    pub(crate) height: u16,
     /// Widget props for CSS integration
-    props: WidgetProps,
+    pub(crate) props: WidgetProps,
 }
 
 impl FileTree {
@@ -301,7 +131,7 @@ impl FileTree {
     }
 
     /// Get all visible entries
-    fn visible_entries(&self) -> Vec<&FileEntry> {
+    pub(crate) fn visible_entries(&self) -> Vec<&FileEntry> {
         let mut entries = Vec::new();
         for root in &self.root {
             entries.extend(root.visible_entries());
@@ -452,119 +282,6 @@ impl Default for FileTree {
     }
 }
 
-impl View for FileTree {
-    crate::impl_view_meta!("FileTree");
-
-    fn render(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
-        let entries = self.visible_entries();
-        let visible_height = if self.height > 0 {
-            self.height
-        } else {
-            area.height
-        } as usize;
-
-        // Adjust scroll
-        let scroll = if self.selected >= self.scroll + visible_height {
-            self.selected - visible_height + 1
-        } else if self.selected < self.scroll {
-            self.selected
-        } else {
-            self.scroll
-        };
-
-        for (i, entry) in entries.iter().skip(scroll).take(visible_height).enumerate() {
-            let y = i as u16;
-            if y >= area.height {
-                break;
-            }
-
-            let is_selected = scroll + i == self.selected;
-            let indent = entry.depth as u16 * self.indent;
-
-            // Clear line
-            for x in 0..area.width {
-                let mut cell = Cell::new(' ');
-                if is_selected {
-                    cell.bg = Some(self.selected_bg);
-                }
-                ctx.set(x, y, cell);
-            }
-
-            let mut x = indent;
-
-            // Draw expand/collapse indicator for directories
-            if entry.is_dir() {
-                let indicator = if entry.expanded { '▼' } else { '▶' };
-                let mut cell = Cell::new(indicator);
-                cell.fg = Some(self.dir_fg);
-                if is_selected {
-                    cell.bg = Some(self.selected_bg);
-                }
-                ctx.set(x, y, cell);
-                x += 2;
-            } else {
-                x += 2;
-            }
-
-            // Draw icon
-            if self.show_icons {
-                let icon = if self.simple_icons {
-                    entry.file_type.simple_icon()
-                } else {
-                    entry.file_type.icon()
-                };
-                let mut cell = Cell::new(icon);
-                cell.fg = Some(entry.file_type.color());
-                if is_selected {
-                    cell.bg = Some(self.selected_bg);
-                }
-                ctx.set(x, y, cell);
-                x += 2;
-            }
-
-            // Draw name
-            let fg = if is_selected {
-                self.selected_fg
-            } else {
-                entry.file_type.color()
-            };
-
-            for ch in entry.name.chars() {
-                if x >= area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(fg);
-                if is_selected {
-                    cell.bg = Some(self.selected_bg);
-                }
-                if entry.is_dir() {
-                    cell.modifier |= Modifier::BOLD;
-                }
-                ctx.set(x, y, cell);
-                x += 1;
-            }
-
-            // Draw size
-            if self.show_sizes && !entry.is_dir() {
-                let size_str = entry.format_size();
-                let size_x = area.width - size_str.len() as u16 - 1;
-                if size_x > x {
-                    for (j, ch) in size_str.chars().enumerate() {
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(LIGHT_GRAY);
-                        if is_selected {
-                            cell.bg = Some(self.selected_bg);
-                        }
-                        ctx.set(size_x + j as u16, y, cell);
-                    }
-                }
-            }
-        }
-    }
-}
-
 impl_styled_view!(FileTree);
 impl_props_builders!(FileTree);
 
@@ -596,6 +313,8 @@ mod tests {
     use super::*;
     use crate::layout::Rect;
     use crate::render::Buffer;
+    use crate::widget::theme::DISABLED_FG;
+    use crate::widget::traits::{RenderContext, View};
 
     // =========================================================================
     // FileType tests
@@ -1585,13 +1304,8 @@ mod tests {
     }
 }
 
-// Keep private tests that require private field access here
-
 #[test]
 fn test_file_tree_render_private() {
     // KEEP HERE: accesses private fields - Test private render methods
     let _t = FileTree::new().entry(FileEntry::file("test.txt", "/test.txt"));
-
-    // This would require accessing private render methods
-    // Test kept inline due to private access
 }
