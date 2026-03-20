@@ -7,6 +7,7 @@ use crate::event::{Key, KeyEvent};
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::{fuzzy_match, FilterMode, Selection};
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -73,7 +74,7 @@ impl Autocomplete {
             placeholder: String::new(),
             input_fg: Color::WHITE,
             input_bg: Color::rgb(30, 30, 30),
-            placeholder_fg: Color::rgb(100, 100, 100),
+            placeholder_fg: DISABLED_FG,
             dropdown_bg: Color::rgb(40, 40, 40),
             selected_bg: Color::rgb(60, 100, 180),
             selected_fg: Color::WHITE,

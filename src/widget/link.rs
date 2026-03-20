@@ -23,6 +23,7 @@
 use crate::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use crate::layout::Rect;
 use crate::style::Color;
+use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{EventResult, Interactive, RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -256,7 +257,7 @@ impl View for Link {
 
         // Apply colors
         let fg = if self.disabled {
-            Some(Color::rgb(128, 128, 128))
+            Some(PLACEHOLDER_FG)
         } else if self.focused {
             Some(Color::rgb(100, 200, 255))
         } else {

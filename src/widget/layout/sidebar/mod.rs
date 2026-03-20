@@ -20,6 +20,7 @@ pub mod types;
 pub use types::{CollapseMode, FlattenedItem, SidebarItem, SidebarSection};
 
 use crate::style::Color;
+use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{WidgetProps, DISABLED_FG};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -91,7 +92,7 @@ impl Sidebar {
             hover_fg: Some(Color::WHITE),
             hover_bg: Some(Color::rgb(50, 50, 70)),
             disabled_fg: Some(DISABLED_FG),
-            section_fg: Some(Color::rgb(128, 128, 128)),
+            section_fg: Some(PLACEHOLDER_FG),
             badge_fg: Some(Color::WHITE),
             badge_bg: Some(Color::RED),
             border_fg: Some(Color::rgb(60, 60, 80)),

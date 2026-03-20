@@ -25,6 +25,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -62,11 +63,11 @@ impl EmptyStateType {
     /// Get the accent color for this state type
     pub fn color(&self) -> Color {
         match self {
-            EmptyStateType::Empty => Color::rgb(128, 128, 128),
+            EmptyStateType::Empty => PLACEHOLDER_FG,
             EmptyStateType::NoResults => Color::rgb(100, 149, 237),
             EmptyStateType::Error => Color::rgb(220, 80, 80),
             EmptyStateType::NoPermission => Color::rgb(255, 165, 0),
-            EmptyStateType::Offline => Color::rgb(128, 128, 128),
+            EmptyStateType::Offline => PLACEHOLDER_FG,
             EmptyStateType::FirstUse => Color::rgb(100, 200, 100),
         }
     }

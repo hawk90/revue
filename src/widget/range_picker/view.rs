@@ -6,6 +6,7 @@ use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::unicode::char_width;
 use crate::widget::data::calendar::{days_in_month, Date};
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -73,14 +74,7 @@ impl View for RangePicker {
 
         // Help text
         let help = "Tab: switch | ←→↑↓: navigate | [/]: month | Enter: select";
-        self.draw_text(
-            ctx,
-            x,
-            summary_y + 1,
-            help,
-            Color::rgb(100, 100, 100),
-            false,
-        );
+        self.draw_text(ctx, x, summary_y + 1, help, DISABLED_FG, false);
     }
 }
 
@@ -141,7 +135,7 @@ impl RangePicker {
         let header_color = if is_focused {
             self.header_fg
         } else {
-            Color::rgb(100, 100, 100)
+            DISABLED_FG
         };
         self.draw_text(ctx, x, y, &header, header_color, true);
 
@@ -204,7 +198,7 @@ impl RangePicker {
         let title_color = if is_focused {
             self.header_fg
         } else {
-            Color::rgb(100, 100, 100)
+            DISABLED_FG
         };
         self.draw_text(ctx, x, y, "Presets", title_color, true);
 

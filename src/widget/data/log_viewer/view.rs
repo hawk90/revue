@@ -7,6 +7,7 @@ use super::types::LogLevel;
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -80,7 +81,7 @@ impl LogViewer {
             parser: LogParser::new(),
             max_entries: 10000,
             bg: None,
-            line_number_fg: Color::rgb(100, 100, 100),
+            line_number_fg: DISABLED_FG,
             timestamp_fg: Color::rgb(120, 120, 120),
             source_fg: Color::rgb(150, 120, 200),
             search_highlight_bg: Color::YELLOW,
@@ -676,7 +677,7 @@ impl View for LogViewer {
             let y = area.height / 2;
             for (i, ch) in msg.chars().enumerate() {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::rgb(100, 100, 100));
+                cell.fg = Some(DISABLED_FG);
                 cell.bg = self.bg;
                 ctx.set(x + i as u16, y, cell);
             }

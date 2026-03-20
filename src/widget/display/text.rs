@@ -5,6 +5,7 @@
 
 use super::richtext::{RichText, Style};
 use crate::style::Color;
+use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -66,7 +67,7 @@ impl Text {
 
     /// Create muted/secondary text (dimmed gray)
     pub fn muted(content: impl Into<String>) -> Self {
-        Self::new(content).fg(Color::rgb(128, 128, 128))
+        Self::new(content).fg(PLACEHOLDER_FG)
     }
 
     /// Create error text (red)

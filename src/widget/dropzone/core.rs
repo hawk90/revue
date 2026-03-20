@@ -21,6 +21,7 @@ use crate::event::drag::{DragData, DragId, DropTarget};
 use crate::impl_view_meta;
 use crate::layout::Rect;
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{Draggable, RenderContext, View, WidgetProps, WidgetState};
 
 use super::types::DropZoneStyle;
@@ -75,7 +76,7 @@ impl DropZone<fn(DragData) -> bool> {
             on_drop: None,
             hovered: false,
             can_accept_current: false,
-            border_color: Color::rgb(100, 100, 100),
+            border_color: DISABLED_FG,
             hover_color: Color::rgb(100, 150, 255),
             accept_color: Color::rgb(100, 200, 100),
             reject_color: Color::rgb(200, 100, 100),

@@ -2,113 +2,38 @@
 //!
 //! A vertically stacked list of collapsible content panels.
 
-use crate::render::Cell;
+mod render;
+mod types;
+
+pub use types::AccordionSection;
+
 use crate::style::Color;
-use crate::utils::border::render_border;
 use crate::utils::Selection;
-use crate::widget::traits::{RenderContext, View, WidgetProps};
+use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
-
-/// Accordion section
-#[derive(Clone)]
-pub struct AccordionSection {
-    /// Section title
-    pub title: String,
-    /// Section content lines
-    pub content: Vec<String>,
-    /// Is section expanded
-    pub expanded: bool,
-    /// Custom icon when collapsed
-    pub collapsed_icon: char,
-    /// Custom icon when expanded
-    pub expanded_icon: char,
-}
-
-impl AccordionSection {
-    /// Create a new section
-    pub fn new(title: impl Into<String>) -> Self {
-        Self {
-            title: title.into(),
-            content: Vec::new(),
-            expanded: false,
-            collapsed_icon: '▶',
-            expanded_icon: '▼',
-        }
-    }
-
-    /// Add content line
-    pub fn line(mut self, line: impl Into<String>) -> Self {
-        self.content.push(line.into());
-        self
-    }
-
-    /// Add multiple content lines
-    pub fn lines(mut self, lines: &[&str]) -> Self {
-        self.content.extend(lines.iter().map(|s| s.to_string()));
-        self
-    }
-
-    /// Set content text (splits by newline)
-    pub fn content(mut self, text: impl Into<String>) -> Self {
-        self.content = text.into().lines().map(|s| s.to_string()).collect();
-        self
-    }
-
-    /// Set expanded state
-    pub fn expanded(mut self, expanded: bool) -> Self {
-        self.expanded = expanded;
-        self
-    }
-
-    /// Set custom icons
-    pub fn icons(mut self, collapsed: char, expanded: char) -> Self {
-        self.collapsed_icon = collapsed;
-        self.expanded_icon = expanded;
-        self
-    }
-
-    /// Get current icon
-    fn icon(&self) -> char {
-        if self.expanded {
-            self.expanded_icon
-        } else {
-            self.collapsed_icon
-        }
-    }
-
-    /// Get total height (header + content if expanded)
-    #[cfg(test)]
-    fn height(&self) -> u16 {
-        if self.expanded {
-            1 + self.content.len() as u16
-        } else {
-            1
-        }
-    }
-}
 
 /// Accordion widget
 pub struct Accordion {
     /// Sections
-    sections: Vec<AccordionSection>,
+    pub(crate) sections: Vec<AccordionSection>,
     /// Selection state
-    selection: Selection,
+    pub(crate) selection: Selection,
     /// Allow multiple expanded sections
-    multi_expand: bool,
+    pub(crate) multi_expand: bool,
     /// Header background color
-    header_bg: Color,
+    pub(crate) header_bg: Color,
     /// Header foreground color
-    header_fg: Color,
+    pub(crate) header_fg: Color,
     /// Selected header background
-    selected_bg: Color,
+    pub(crate) selected_bg: Color,
     /// Content background color
-    content_bg: Color,
+    pub(crate) content_bg: Color,
     /// Content foreground color
-    content_fg: Color,
+    pub(crate) content_fg: Color,
     /// Border color
-    border_color: Option<Color>,
+    pub(crate) border_color: Option<Color>,
     /// Show dividers between sections
-    show_dividers: bool,
+    pub(crate) show_dividers: bool,
     /// Minimum width constraint (0 = no constraint)
     min_width: u16,
     /// Minimum height constraint (0 = no constraint)
@@ -371,130 +296,6 @@ impl Default for Accordion {
     }
 }
 
-impl View for Accordion {
-    crate::impl_view_meta!("Accordion");
-
-    fn render(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
-        if area.width < 3 || area.height < 1 {
-            return;
-        }
-
-        let (content_x_off, content_y_off, content_width, content_height) =
-            if self.border_color.is_some() {
-                (
-                    1u16,
-                    1u16,
-                    area.width.saturating_sub(2),
-                    area.height.saturating_sub(2),
-                )
-            } else {
-                (0u16, 0u16, area.width, area.height)
-            };
-
-        // Draw border if set
-        if let Some(border_color) = self.border_color {
-            render_border(ctx, area, border_color);
-        }
-
-        let mut y = content_y_off;
-        let max_y = content_y_off + content_height;
-
-        for (section_idx, section) in self.sections.iter().enumerate() {
-            if y >= max_y {
-                break;
-            }
-
-            let is_selected = self.selection.is_selected(section_idx);
-
-            // Render header
-            let header_bg = if is_selected {
-                self.selected_bg
-            } else {
-                self.header_bg
-            };
-
-            // Fill header background
-            for x in content_x_off..content_x_off + content_width {
-                let mut cell = Cell::new(' ');
-                cell.bg = Some(header_bg);
-                ctx.set(x, y, cell);
-            }
-
-            // Icon
-            let mut icon_cell = Cell::new(section.icon());
-            icon_cell.fg = Some(self.header_fg);
-            icon_cell.bg = Some(header_bg);
-            ctx.set(content_x_off + 1, y, icon_cell);
-
-            // Title
-            let title_x = content_x_off + 3;
-            let max_title_width = content_width.saturating_sub(4);
-            if is_selected {
-                ctx.draw_text_clipped_bg_bold(
-                    title_x,
-                    y,
-                    &section.title,
-                    self.header_fg,
-                    header_bg,
-                    max_title_width,
-                );
-            } else {
-                ctx.draw_text_clipped_bg(
-                    title_x,
-                    y,
-                    &section.title,
-                    self.header_fg,
-                    header_bg,
-                    max_title_width,
-                );
-            }
-
-            y += 1;
-
-            // Render content if expanded
-            if section.expanded {
-                for line in &section.content {
-                    if y >= max_y {
-                        break;
-                    }
-
-                    // Fill content background
-                    for x in content_x_off..content_x_off + content_width {
-                        let mut cell = Cell::new(' ');
-                        cell.bg = Some(self.content_bg);
-                        ctx.set(x, y, cell);
-                    }
-
-                    // Content with indent
-                    let content_x = content_x_off + 3;
-                    let max_content_width = content_width.saturating_sub(4);
-                    ctx.draw_text_clipped_bg(
-                        content_x,
-                        y,
-                        line,
-                        self.content_fg,
-                        self.content_bg,
-                        max_content_width,
-                    );
-
-                    y += 1;
-                }
-            }
-
-            // Divider
-            if self.show_dividers && section_idx < self.sections.len() - 1 && y < max_y {
-                for x in content_x_off..content_x_off + content_width {
-                    let mut cell = Cell::new('─');
-                    cell.fg = Some(Color::rgb(60, 60, 60));
-                    ctx.set(x, y, cell);
-                }
-                y += 1;
-            }
-        }
-    }
-}
-
 impl_styled_view!(Accordion);
 impl_props_builders!(Accordion);
 
@@ -515,6 +316,7 @@ mod tests {
     use super::*;
     use crate::layout::Rect;
     use crate::render::Buffer;
+    use crate::widget::traits::{RenderContext, View};
 
     #[test]
     fn test_section_new() {
@@ -833,6 +635,3 @@ Line 3",
         assert_eq!(cloned.content.len(), 1);
     }
 }
-
-// Most tests moved to tests/widget_tests.rs
-// Tests below access private fields and must stay inline

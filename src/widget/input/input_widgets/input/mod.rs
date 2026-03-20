@@ -1407,6 +1407,7 @@ pub use types::Input;
 
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -1542,7 +1543,7 @@ impl View for Input {
                 cell.fg = Some(Color::WHITE);
                 cell.bg = self.selection_bg;
             } else if is_placeholder {
-                cell.fg = Some(Color::rgb(128, 128, 128)); // Gray for placeholder
+                cell.fg = Some(PLACEHOLDER_FG); // Gray for placeholder
             } else {
                 cell.fg = css_fg;
                 cell.bg = css_bg;

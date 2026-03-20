@@ -258,6 +258,7 @@ pub mod slides;
 mod sortable;
 mod streamline;
 pub mod syntax; // Syntax highlighting module
+pub mod theme;
 mod theme_picker;
 // Note: timer moved to data/timer
 pub mod traits;
@@ -369,6 +370,7 @@ pub use streamline::{
     StreamBaseline, StreamLayer, StreamOrder, Streamline,
 };
 pub use syntax::{HighlightSpan, Language, SyntaxHighlighter, SyntaxTheme};
+pub use theme::{FOCUS_COLOR, MAX_DROPDOWN_VISIBLE, PLACEHOLDER_FG};
 pub use theme_picker::{theme_picker, ThemePicker};
 pub use traits::{
     Draggable, Element, EventResult, FocusStyle, Interactive, OverlayEntry, OverlayQueue,

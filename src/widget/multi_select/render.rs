@@ -3,6 +3,7 @@
 use crate::impl_view_meta;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
 use crate::widget::traits::{RenderContext, View};
 
 use super::types::MultiSelect;
@@ -21,12 +22,7 @@ impl View for MultiSelect {
         let width = self.display_width(area.width);
 
         // Draw background for header row
-        for x in 0..width {
-            let mut cell = Cell::new(' ');
-            cell.fg = Some(fg);
-            cell.bg = Some(bg);
-            ctx.set(x, 0, cell);
-        }
+        ctx.fill_row(0, width, Some(fg), Some(bg));
 
         // Draw arrow
         let arrow = if self.open { '▲' } else { '▼' };
@@ -38,7 +34,7 @@ impl View for MultiSelect {
 
         if self.selected.is_empty() && !self.open {
             // Draw placeholder
-            ctx.draw_text(x, 0, &self.placeholder, Color::rgb(128, 128, 128));
+            ctx.draw_text(x, 0, &self.placeholder, PLACEHOLDER_FG);
         } else {
             // Draw tags
             for (i, &opt_idx) in self.selected.iter().enumerate() {
@@ -159,7 +155,7 @@ impl View for MultiSelect {
                         let char_fg = if match_indices.contains(&j) {
                             self.highlight_fg.unwrap_or(Color::YELLOW)
                         } else if opt.disabled {
-                            Color::rgb(100, 100, 100)
+                            DISABLED_FG
                         } else {
                             row_fg
                         };

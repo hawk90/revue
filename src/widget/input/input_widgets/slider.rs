@@ -5,6 +5,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -327,7 +328,7 @@ impl Slider {
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(if self.disabled {
-                    Color::rgb(100, 100, 100)
+                    DISABLED_FG
                 } else {
                     Color::WHITE
                 });

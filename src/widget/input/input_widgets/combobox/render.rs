@@ -20,12 +20,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
     let input_bg = combobox.input_bg.or(combobox.bg);
 
     // Draw background
-    for x in 0..width {
-        let mut cell = crate::render::Cell::new(' ');
-        cell.fg = input_fg;
-        cell.bg = input_bg;
-        ctx.set(x, 0, cell);
-    }
+    ctx.fill_row(0, width, input_fg, input_bg);
 
     // Draw dropdown indicator
     let icon = if combobox.loading {

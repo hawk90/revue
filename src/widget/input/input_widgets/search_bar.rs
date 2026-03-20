@@ -301,11 +301,7 @@ impl View for SearchBar {
         }
 
         // Draw background
-        for x in 0..width {
-            let mut cell = Cell::new(' ');
-            cell.bg = Some(self.bg_color);
-            ctx.set(x, 0, cell);
-        }
+        ctx.fill_row(0, width, None, Some(self.bg_color));
 
         // Draw border (left and right)
         let mut left_border = Cell::new('│');

@@ -4,6 +4,7 @@
 
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -114,7 +115,7 @@ impl Rating {
             half_stars: true,
             readonly: false,
             filled_color: Color::rgb(255, 200, 0), // Gold
-            empty_color: Color::rgb(100, 100, 100),
+            empty_color: DISABLED_FG,
             hover_color: Color::rgb(255, 220, 100),
             hover_value: None,
             show_value: false,

@@ -23,6 +23,7 @@
 
 use crate::style::Color;
 use crate::utils::format_size;
+use crate::widget::theme::{DISABLED_FG, PLACEHOLDER_FG};
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 use std::fs;
@@ -458,7 +459,7 @@ impl FilePicker {
             selected: Vec::new(),
             fg: None,
             dir_fg: Some(Color::BLUE),
-            hidden_fg: Some(Color::rgb(128, 128, 128)),
+            hidden_fg: Some(PLACEHOLDER_FG),
             props: WidgetProps::new(),
         };
 
@@ -869,7 +870,7 @@ impl View for FilePicker {
         let end = (start + self.max_visible).min(self.entries.len());
 
         if start > 0 {
-            content = content.child(Text::new("  ↑ more...").fg(Color::rgb(100, 100, 100)));
+            content = content.child(Text::new("  ↑ more...").fg(DISABLED_FG));
         }
 
         for i in start..end {
@@ -898,7 +899,7 @@ impl View for FilePicker {
             } else if entry.is_dir {
                 self.dir_fg.unwrap_or(Color::BLUE)
             } else if entry.is_hidden {
-                self.hidden_fg.unwrap_or(Color::rgb(128, 128, 128))
+                self.hidden_fg.unwrap_or(PLACEHOLDER_FG)
             } else {
                 self.fg.unwrap_or(Color::WHITE)
             };
@@ -912,7 +913,7 @@ impl View for FilePicker {
         }
 
         if end < self.entries.len() {
-            content = content.child(Text::new("  ↓ more...").fg(Color::rgb(100, 100, 100)));
+            content = content.child(Text::new("  ↓ more...").fg(DISABLED_FG));
         }
 
         // Separator

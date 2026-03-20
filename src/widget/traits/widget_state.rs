@@ -2,21 +2,8 @@
 
 use crate::style::{Color, Style};
 
-/// Default disabled foreground color
-pub const DISABLED_FG: Color = Color {
-    r: 100,
-    g: 100,
-    b: 100,
-    a: 255,
-};
-
-/// Default disabled background color
-pub const DISABLED_BG: Color = Color {
-    r: 50,
-    g: 50,
-    b: 50,
-    a: 255,
-};
+// Re-export from theme module for backwards compatibility
+pub use crate::widget::theme::{DISABLED_BG, DISABLED_FG};
 
 /// Common widget properties for styling
 #[derive(Debug, Clone, Default)]

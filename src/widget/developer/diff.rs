@@ -5,6 +5,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 use similar::{ChangeTag, TextDiff};
@@ -86,7 +87,7 @@ impl Default for DiffColors {
             removed_bg: Color::rgb(60, 30, 30),
             removed_fg: Color::rgb(255, 150, 150),
             modified_bg: Color::rgb(60, 60, 30),
-            line_number: Color::rgb(100, 100, 100),
+            line_number: DISABLED_FG,
             separator: Color::rgb(60, 60, 60),
             header_bg: Color::rgb(40, 40, 60),
         }

@@ -5,6 +5,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -354,13 +355,7 @@ impl Presentation {
         // Press key hint
         let hint = "Press → or Space to start";
         let hint_y = area.height - 2;
-        self.render_centered_text(
-            ctx,
-            hint,
-            hint_y,
-            Color::rgb(100, 100, 100),
-            Modifier::empty(),
-        );
+        self.render_centered_text(ctx, hint, hint_y, DISABLED_FG, Modifier::empty());
     }
 
     /// Render a content slide
@@ -468,7 +463,7 @@ impl Presentation {
             let start_x = area.width - num_str.len() as u16 - 1;
             for (i, ch) in num_str.chars().enumerate() {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::rgb(100, 100, 100));
+                cell.fg = Some(DISABLED_FG);
                 ctx.set(start_x + i as u16, footer_y, cell);
             }
         }
