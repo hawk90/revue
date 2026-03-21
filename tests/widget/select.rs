@@ -187,7 +187,7 @@ fn test_select_toggle() {
 
 #[test]
 fn test_select_handle_key() {
-    let mut s = Select::new().options(vec!["X", "Y", "Z"]);
+    let mut s = Select::new().options(vec!["X", "Y", "Z"]).focused(true);
 
     // Toggle open
     s.handle_key(&Key::Enter);
@@ -210,7 +210,7 @@ fn test_select_handle_key() {
 
 #[test]
 fn test_select_handle_key_closed() {
-    let mut s = Select::new().options(vec!["A", "B"]);
+    let mut s = Select::new().options(vec!["A", "B"]).focused(true);
 
     // Enter should open when closed (returns false but state changes)
     s.handle_key(&Key::Enter);
@@ -219,7 +219,7 @@ fn test_select_handle_key_closed() {
 
 #[test]
 fn test_select_handle_key_space_toggle() {
-    let mut s = Select::new().options(vec!["A", "B"]);
+    let mut s = Select::new().options(vec!["A", "B"]).focused(true);
 
     // Space should toggle when not searchable
     s.handle_key(&Key::Char(' '));
@@ -231,7 +231,7 @@ fn test_select_handle_key_space_toggle() {
 
 #[test]
 fn test_select_key_navigation_with_jk() {
-    let mut s = Select::new().options(vec!["One", "Two", "Three"]);
+    let mut s = Select::new().options(vec!["One", "Two", "Three"]).focused(true);
     s.open();
 
     // Test j key (down)
@@ -245,7 +245,7 @@ fn test_select_key_navigation_with_jk() {
 
 #[test]
 fn test_select_home_end_keys() {
-    let mut s = Select::new().options(vec!["A", "B", "C", "D", "E"]);
+    let mut s = Select::new().options(vec!["A", "B", "C", "D", "E"]).focused(true);
     s.open();
 
     // Test End key
@@ -442,7 +442,8 @@ fn test_select_get_match() {
 fn test_select_searchable_keys() {
     let mut s = Select::new()
         .options(vec!["Apple", "Banana", "Cherry"])
-        .searchable(true);
+        .searchable(true)
+        .focused(true);
 
     // Open
     s.handle_key(&Key::Enter);
@@ -472,7 +473,8 @@ fn test_select_searchable_keys() {
 fn test_select_filtered_navigation() {
     let mut s = Select::new()
         .options(vec!["Apple", "Apricot", "Banana", "Berry", "Cherry"])
-        .searchable(true);
+        .searchable(true)
+        .focused(true);
 
     s.open();
     s.set_query("b"); // Matches Banana and Berry
@@ -803,7 +805,7 @@ fn test_select_toggle_multiple_times() {
 
 #[test]
 fn test_select_open_close_with_keys() {
-    let mut s = Select::new().options(vec!["A", "B"]);
+    let mut s = Select::new().options(vec!["A", "B"]).focused(true);
 
     s.handle_key(&Key::Enter);
     assert!(s.is_open());
@@ -841,7 +843,7 @@ fn test_select_navigation_preserves_selection() {
 
 #[test]
 fn test_select_handle_key_all_arrow_keys() {
-    let mut s = Select::new().options(vec!["A", "B", "C"]).selected(1);
+    let mut s = Select::new().options(vec!["A", "B", "C"]).selected(1).focused(true);
     s.open();
 
     s.handle_key(&Key::Up);
@@ -859,7 +861,9 @@ fn test_select_handle_key_all_arrow_keys() {
 
 #[test]
 fn test_select_handle_key_page_up_down() {
-    let mut s = Select::new().options((0..20).map(|i| format!("Option {}", i)).collect());
+    let mut s = Select::new()
+        .options((0..20).map(|i| format!("Option {}", i)).collect())
+        .focused(true);
     s.open();
 
     let _initial = s.selected_index();
@@ -872,7 +876,7 @@ fn test_select_handle_key_page_up_down() {
 
 #[test]
 fn test_select_handle_key_tab() {
-    let mut s = Select::new().options(vec!["A", "B"]);
+    let mut s = Select::new().options(vec!["A", "B"]).focused(true);
     s.open();
 
     s.handle_key(&Key::Tab);
@@ -881,7 +885,7 @@ fn test_select_handle_key_tab() {
 
 #[test]
 fn test_select_handle_key_unknown_chars() {
-    let mut s = Select::new().options(vec!["A", "B"]);
+    let mut s = Select::new().options(vec!["A", "B"]).focused(true);
     s.open();
 
     // Unknown characters should be ignored when not searchable
