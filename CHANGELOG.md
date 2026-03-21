@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.59.2](https://github.com/hawk90/revue/compare/v2.59.1...v2.59.2) (2026-03-20)
+
+
+### Bug Fixes
+
+* **render:** focus brackets render inside area, add overlap tests ([883a208](https://github.com/hawk90/revue/commit/883a2087817e2155da5105c499d9b62bd2ca58cf))
+
 ## [2.59.1](https://github.com/hawk90/revue/compare/v2.59.0...v2.59.1) (2026-03-20)
 
 
