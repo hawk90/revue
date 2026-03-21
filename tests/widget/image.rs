@@ -4,8 +4,8 @@
 
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::widget::traits::RenderContext;
-use revue::widget::{image_from_file, try_image_from_file, Image, ImageError, ImageFormat, ScaleMode};
+use revue::widget::traits::{RenderContext, View};
+use revue::widget::{image_from_file, try_image_from_file, Image, ImageError, ScaleMode};
 
 #[test]
 fn test_image_from_rgb() {
@@ -152,16 +152,18 @@ fn test_scale_mode_copy() {
 
 #[test]
 fn test_image_format_clone() {
-    let fmt = ImageFormat::Rgb;
-    assert_eq!(fmt, fmt.clone());
+    let img = Image::from_rgb(vec![0; 3], 1, 1);
+    let fmt = img.get_format();
+    let cloned = fmt.clone();
+    assert_eq!(fmt, cloned);
 }
 
 #[test]
 fn test_image_format_copy() {
-    let f1 = ImageFormat::Rgba;
-    let f2 = f1;
-    assert_eq!(f1, ImageFormat::Rgba);
-    assert_eq!(f2, ImageFormat::Rgba);
+    let img = Image::from_rgba(vec![0; 4], 1, 1);
+    let f1 = img.get_format();
+    let f2 = f1; // ImageFormat implements Copy
+    assert_eq!(f1, f2);
 }
 
 #[test]

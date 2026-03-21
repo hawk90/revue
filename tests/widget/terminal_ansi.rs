@@ -3,7 +3,6 @@
 //! Tests ANSI sequence handling via the public Terminal API.
 
 use revue::widget::{terminal, Terminal};
-use revue::style::Color;
 
 // =========================================================================
 // AnsiParser construction tests (via Terminal)

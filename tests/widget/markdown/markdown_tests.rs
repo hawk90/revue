@@ -10,7 +10,7 @@
 
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::widget::markdown::{Markdown, AdmonitionType};
+use revue::widget::markdown::{markdown as markdown_fn, Markdown, AdmonitionType};
 use revue::widget::traits::{RenderContext, View};
 
 // =========================================================================
@@ -25,7 +25,7 @@ fn test_markdown_new_creates_widget() {
 
 #[test]
 fn test_markdown_helper_function() {
-    let md = revue::widget::markdown("Test content");
+    let md = markdown_fn("Test content");
     assert_eq!(md.source(), "Test content");
 }
 

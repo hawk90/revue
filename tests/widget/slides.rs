@@ -1,6 +1,7 @@
 //! Slides parsing tests
 
-use revue::widget::{is_slide_delimiter, parse_slides, SlideContent, SlideNav};
+use revue::widget::slides::is_slide_delimiter;
+use revue::widget::{parse_slides, SlideContent, SlideNav};
 
 // ==================== SlideContent Tests ====================
 

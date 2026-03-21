@@ -4,7 +4,7 @@
 
 use revue::style::Color;
 use revue::widget::{masked_input, password_input, pin_input, credit_card_input};
-use revue::widget::{MaskStyle, MaskedInput, ValidationState, View};
+use revue::widget::{MaskStyle, MaskedInput, StyledView, ValidationState, View};
 
 // =========================================================================
 // MaskStyle enum tests
