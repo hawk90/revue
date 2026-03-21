@@ -4,8 +4,10 @@ use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
-use revue::widget::data::log_viewer::{LogEntry, LogFilter, LogParser, LogViewer, LogLevel, SearchMatch};
 use revue::widget::data::log_viewer::{log_entry, log_filter, log_parser, log_viewer};
+use revue::widget::data::log_viewer::{
+    LogEntry, LogFilter, LogLevel, LogParser, LogViewer, SearchMatch,
+};
 use revue::widget::traits::{RenderContext, View};
 
 // ========================================================================

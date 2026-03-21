@@ -3,7 +3,7 @@
 //! Extracted from src/widget/form/masked_input.rs
 
 use revue::style::Color;
-use revue::widget::{masked_input, password_input, pin_input, credit_card_input};
+use revue::widget::{credit_card_input, masked_input, password_input, pin_input};
 use revue::widget::{MaskStyle, MaskedInput, StyledView, ValidationState, View};
 
 // =========================================================================
@@ -686,7 +686,10 @@ fn test_validation() {
     let mut input = MaskedInput::new().min_length(8).value("short");
 
     assert!(!input.validate());
-    assert!(matches!(input.get_validation(), ValidationState::Invalid(_)));
+    assert!(matches!(
+        input.get_validation(),
+        ValidationState::Invalid(_)
+    ));
 
     input.set_value("longenough");
     assert!(input.validate());

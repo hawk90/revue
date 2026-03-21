@@ -5,11 +5,11 @@
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
-use revue::widget::traits::{RenderContext, View};
 use revue::widget::data::chart::timeseries::{
     cpu_chart, memory_chart, network_chart, time_series, time_series_with_data, MarkerStyle,
-    TimeFormat, TimeLineStyle, TimeMarker, TimePoint, TimeRange, TimeSeriesData, TimeSeries,
+    TimeFormat, TimeLineStyle, TimeMarker, TimePoint, TimeRange, TimeSeries, TimeSeriesData,
 };
+use revue::widget::traits::{RenderContext, View};
 
 // ========================================================================
 // TimePoint tests

@@ -1,8 +1,8 @@
 //! Terminal widget types tests
 
-use revue::widget::{TermCell, TermLine, CursorStyle, TerminalAction};
 use revue::render::Modifier;
 use revue::style::Color;
+use revue::widget::{CursorStyle, TermCell, TermLine, TerminalAction};
 
 // =========================================================================
 // TermCell tests

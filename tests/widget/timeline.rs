@@ -1318,8 +1318,7 @@ fn test_timeline_multiple_emoji_in_title() {
 
 #[test]
 fn test_timeline_custom_event_with_emoji() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Party").event_type(EventType::Custom('🎉')));
+    let tl = Timeline::new().event(TimelineEvent::new("Party").event_type(EventType::Custom('🎉')));
 
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -1455,12 +1454,18 @@ fn test_timeline_orientation_vertical_equality() {
 
 #[test]
 fn test_timeline_orientation_horizontal_equality() {
-    assert_eq!(TimelineOrientation::Horizontal, TimelineOrientation::Horizontal);
+    assert_eq!(
+        TimelineOrientation::Horizontal,
+        TimelineOrientation::Horizontal
+    );
 }
 
 #[test]
 fn test_timeline_orientation_different_not_equal() {
-    assert_ne!(TimelineOrientation::Vertical, TimelineOrientation::Horizontal);
+    assert_ne!(
+        TimelineOrientation::Vertical,
+        TimelineOrientation::Horizontal
+    );
 }
 
 // =============================================================================
@@ -1469,8 +1474,11 @@ fn test_timeline_orientation_different_not_equal() {
 
 #[test]
 fn test_timeline_default_colors() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event").timestamp("10:00").description("Desc"));
+    let tl = Timeline::new().event(
+        TimelineEvent::new("Event")
+            .timestamp("10:00")
+            .description("Desc"),
+    );
     // Verify default colors are applied by rendering without panic
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -1534,7 +1542,10 @@ fn test_timeline_render_vertical_line_connects_events() {
             }
         }
     }
-    assert!(line_count >= 2, "Should have connecting lines between events");
+    assert!(
+        line_count >= 2,
+        "Should have connecting lines between events"
+    );
 }
 
 #[test]
@@ -1607,7 +1618,11 @@ fn test_timeline_select_first_index_boundary() {
 
     tl.select(Some(0));
     tl.select_prev();
-    assert_eq!(tl.selected_event().unwrap().title, "Event 1", "Should stay at first index");
+    assert_eq!(
+        tl.selected_event().unwrap().title,
+        "Event 1",
+        "Should stay at first index"
+    );
 }
 
 #[test]
@@ -1618,7 +1633,11 @@ fn test_timeline_select_last_index_boundary() {
 
     tl.select(Some(1));
     tl.select_next();
-    assert_eq!(tl.selected_event().unwrap().title, "Event 2", "Should stay at last index");
+    assert_eq!(
+        tl.selected_event().unwrap().title,
+        "Event 2",
+        "Should stay at last index"
+    );
 }
 
 #[test]
@@ -1639,7 +1658,10 @@ fn test_timeline_selection_with_invalid_index() {
         .event(TimelineEvent::new("Event 2"));
 
     tl.select(Some(100));
-    assert!(tl.selected_event().is_none(), "Invalid index should return None");
+    assert!(
+        tl.selected_event().is_none(),
+        "Invalid index should return None"
+    );
 }
 
 // =============================================================================
@@ -1870,9 +1892,12 @@ fn test_timeline_boxed_style_has_connectors() {
 
 #[test]
 fn test_timeline_multiline_description_rendered() {
-    let long_desc = "This is a long description that spans multiple lines when rendered in the timeline widget";
+    let long_desc =
+        "This is a long description that spans multiple lines when rendered in the timeline widget";
     let tl = Timeline::new().event(
-        TimelineEvent::new("Event").description(long_desc).timestamp("10:00"),
+        TimelineEvent::new("Event")
+            .description(long_desc)
+            .timestamp("10:00"),
     );
 
     let mut buffer = Buffer::new(40, 10);
@@ -1885,9 +1910,7 @@ fn test_timeline_multiline_description_rendered() {
 #[test]
 fn test_timeline_description_with_newlines() {
     let desc_with_newlines = "Line 1\nLine 2\nLine 3";
-    let tl = Timeline::new().event(
-        TimelineEvent::new("Event").description(desc_with_newlines),
-    );
+    let tl = Timeline::new().event(TimelineEvent::new("Event").description(desc_with_newlines));
 
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -1902,8 +1925,7 @@ fn test_timeline_description_with_newlines() {
 
 #[test]
 fn test_timeline_iso_timestamp() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event").timestamp("2024-01-15T10:30:00Z"));
+    let tl = Timeline::new().event(TimelineEvent::new("Event").timestamp("2024-01-15T10:30:00Z"));
 
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -1913,8 +1935,7 @@ fn test_timeline_iso_timestamp() {
 
 #[test]
 fn test_timeline_time_only_timestamp() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event").timestamp("10:30:45"));
+    let tl = Timeline::new().event(TimelineEvent::new("Event").timestamp("10:30:45"));
 
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -1924,8 +1945,7 @@ fn test_timeline_time_only_timestamp() {
 
 #[test]
 fn test_timeline_relative_timestamp() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event").timestamp("2 hours ago"));
+    let tl = Timeline::new().event(TimelineEvent::new("Event").timestamp("2 hours ago"));
 
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -1950,10 +1970,7 @@ fn test_timeline_many_events() {
 fn test_timeline_render_many_events_small_area() {
     let mut tl = Timeline::new();
     for i in 0..20 {
-        tl = tl.event(TimelineEvent::new(format!("Event {}", i)).timestamp(format!(
-            "{}:00",
-            i
-        )));
+        tl = tl.event(TimelineEvent::new(format!("Event {}", i)).timestamp(format!("{}:00", i)));
     }
 
     let mut buffer = Buffer::new(40, 5); // Small height
@@ -2111,14 +2128,12 @@ fn test_timeline_title_with_tabs() {
 
 #[test]
 fn test_timeline_description_with_tabs() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event").description("Desc\twith\ttabs"));
+    let tl = Timeline::new().event(TimelineEvent::new("Event").description("Desc\twith\ttabs"));
 }
 
 #[test]
 fn test_timeline_timestamp_with_tabs() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event").timestamp("10:\t00"));
+    let tl = Timeline::new().event(TimelineEvent::new("Event").timestamp("10:\t00"));
 }
 
 #[test]
@@ -2131,14 +2146,12 @@ fn test_timeline_title_with_special_symbols() {
 
 #[test]
 fn test_timeline_mathematical_symbols() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("∑ ∫ ∞ √ ≠ ≈ ≤ ≥"));
+    let tl = Timeline::new().event(TimelineEvent::new("∑ ∫ ∞ √ ≠ ≈ ≤ ≥"));
 }
 
 #[test]
 fn test_timeline_arrows_and_directions() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("← ↑ → ↓ ↔ ↕ ↖ ↗ ↘ ↙"));
+    let tl = Timeline::new().event(TimelineEvent::new("← ↑ → ↓ ↔ ↕ ↖ ↗ ↘ ↙"));
 }
 
 // =============================================================================
@@ -2210,7 +2223,11 @@ fn test_timeline_multiple_descriptions_calls() {
         .descriptions(true)
         .descriptions(false)
         .descriptions(true)
-        .event(TimelineEvent::new("Event").description("Visible desc").timestamp("10:00"));
+        .event(
+            TimelineEvent::new("Event")
+                .description("Visible desc")
+                .timestamp("10:00"),
+        );
 
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -2245,8 +2262,7 @@ fn test_timeline_multiple_color_calls() {
 
 #[test]
 fn test_timeline_custom_event_ascii() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event").event_type(EventType::Custom('#')));
+    let tl = Timeline::new().event(TimelineEvent::new("Event").event_type(EventType::Custom('#')));
 
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -2258,8 +2274,7 @@ fn test_timeline_custom_event_ascii() {
 
 #[test]
 fn test_timeline_custom_event_number() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event").event_type(EventType::Custom('1')));
+    let tl = Timeline::new().event(TimelineEvent::new("Event").event_type(EventType::Custom('1')));
     assert_eq!(EventType::Custom('1').icon(), '1');
 }
 
@@ -2267,8 +2282,8 @@ fn test_timeline_custom_event_number() {
 fn test_timeline_custom_event_punctuation() {
     let chars = ['!', '@', '#', '$', '%', '&', '*', '?'];
     for ch in chars {
-        let tl = Timeline::new()
-            .event(TimelineEvent::new("Event").event_type(EventType::Custom(ch)));
+        let tl =
+            Timeline::new().event(TimelineEvent::new("Event").event_type(EventType::Custom(ch)));
 
         let mut buffer = Buffer::new(40, 10);
         let area = Rect::new(0, 0, 40, 10);
@@ -2344,8 +2359,7 @@ fn test_timeline_selected_title_uses_event_color() {
 
 #[test]
 fn test_timeline_very_narrow_width() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("Event"));
+    let tl = Timeline::new().event(TimelineEvent::new("Event"));
 
     let mut buffer = Buffer::new(5, 10); // Very narrow
     let area = Rect::new(0, 0, 5, 10);
@@ -2367,8 +2381,7 @@ fn test_timeline_very_short_height() {
 
 #[test]
 fn test_timeline_single_cell_area() {
-    let tl = Timeline::new()
-        .event(TimelineEvent::new("E"));
+    let tl = Timeline::new().event(TimelineEvent::new("E"));
 
     let mut buffer = Buffer::new(1, 1);
     let area = Rect::new(0, 0, 1, 1);

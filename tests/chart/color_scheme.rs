@@ -1,7 +1,7 @@
 //! Color scheme public API tests
 mod tests {
-    use revue::widget::data::chart::ColorScheme;
     use revue::style::Color;
+    use revue::widget::data::chart::ColorScheme;
 
     #[test]
     fn test_default_palette_colors() {
@@ -64,10 +64,7 @@ mod tests {
 
     #[test]
     fn test_color_scheme_index_beyond_length() {
-        let scheme = ColorScheme::new(vec![
-            Color::rgb(10, 20, 30),
-            Color::rgb(40, 50, 60),
-        ]);
+        let scheme = ColorScheme::new(vec![Color::rgb(10, 20, 30), Color::rgb(40, 50, 60)]);
         // Should cycle back to 0
         let color2 = scheme.get(2);
         assert_eq!(color2.r, 10);

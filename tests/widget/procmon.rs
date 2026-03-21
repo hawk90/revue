@@ -4,11 +4,10 @@
 mod tests {
     use revue::layout::Rect;
     use revue::render::Buffer;
-    use revue::widget::{
-        ProcessMonitor, ProcessSort, ProcessView, ProcColors, ProcessInfo,
-        process_monitor, htop,
-    };
     use revue::widget::traits::{RenderContext, View};
+    use revue::widget::{
+        htop, process_monitor, ProcColors, ProcessInfo, ProcessMonitor, ProcessSort, ProcessView,
+    };
 
     // =========================================================================
     // ProcessSort enum tests

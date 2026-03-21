@@ -10,7 +10,7 @@
 
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::widget::markdown::{markdown as markdown_fn, Markdown, AdmonitionType};
+use revue::widget::markdown::{markdown as markdown_fn, AdmonitionType, Markdown};
 use revue::widget::traits::{RenderContext, View};
 
 // =========================================================================

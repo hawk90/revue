@@ -170,16 +170,16 @@ fn test_command_palette_clear_query() {
 
 #[test]
 fn test_command_palette_select_next() {
-    let mut palette = CommandPalette::new()
-        .commands(vec![Command::new("cmd1", "A"), Command::new("cmd2", "B")]);
+    let mut palette =
+        CommandPalette::new().commands(vec![Command::new("cmd1", "A"), Command::new("cmd2", "B")]);
     palette.select_next();
     // Just verify it doesn't panic
 }
 
 #[test]
 fn test_command_palette_select_prev() {
-    let mut palette = CommandPalette::new()
-        .commands(vec![Command::new("cmd1", "A"), Command::new("cmd2", "B")]);
+    let mut palette =
+        CommandPalette::new().commands(vec![Command::new("cmd1", "A"), Command::new("cmd2", "B")]);
     palette.select_prev();
     // Just verify it doesn't panic
 }
@@ -287,8 +287,8 @@ fn test_handle_key_enter_executes() {
 
 #[test]
 fn test_handle_key_up() {
-    let mut palette = CommandPalette::new()
-        .commands(vec![Command::new("cmd1", "A"), Command::new("cmd2", "B")]);
+    let mut palette =
+        CommandPalette::new().commands(vec![Command::new("cmd1", "A"), Command::new("cmd2", "B")]);
     palette.show();
     let handled = palette.handle_key(&Key::Up);
     assert!(handled);
@@ -296,8 +296,8 @@ fn test_handle_key_up() {
 
 #[test]
 fn test_handle_key_down() {
-    let mut palette = CommandPalette::new()
-        .commands(vec![Command::new("cmd1", "A"), Command::new("cmd2", "B")]);
+    let mut palette =
+        CommandPalette::new().commands(vec![Command::new("cmd1", "A"), Command::new("cmd2", "B")]);
     palette.show();
     let handled = palette.handle_key(&Key::Down);
     assert!(handled);

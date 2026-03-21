@@ -4,7 +4,9 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
-use revue::widget::{step, stepper, Step, StepStatus, Stepper, StepperOrientation, StepperStyle, View};
+use revue::widget::{
+    step, stepper, Step, StepStatus, Stepper, StepperOrientation, StepperStyle, View,
+};
 
 // =============================================================================
 // StepStatus Tests
@@ -209,7 +211,10 @@ fn test_stepper_orientation_copy() {
 
 #[test]
 fn test_stepper_orientation_partial_eq() {
-    assert_eq!(StepperOrientation::Horizontal, StepperOrientation::Horizontal);
+    assert_eq!(
+        StepperOrientation::Horizontal,
+        StepperOrientation::Horizontal
+    );
     assert_ne!(StepperOrientation::Horizontal, StepperOrientation::Vertical);
 }
 

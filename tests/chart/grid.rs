@@ -1,7 +1,7 @@
 //! Grid public API tests
 mod tests {
-    use revue::widget::data::chart::{ChartGrid, GridStyle};
     use revue::style::Color;
+    use revue::widget::data::chart::{ChartGrid, GridStyle};
 
     #[test]
     fn test_grid_new() {

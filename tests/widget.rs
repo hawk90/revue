@@ -51,10 +51,10 @@ mod color_picker;
 // TODO(test-coverage): combobox_tests has API mismatches
 // #[path = "widget/combobox_tests.rs"]
 // pub mod combobox_tests;
-#[path = "widget/command_palette_unit/mod.rs"]
-pub mod command_palette_unit;
 #[path = "widget/command_palette.rs"]
 mod command_palette;
+#[path = "widget/command_palette_unit/mod.rs"]
+pub mod command_palette_unit;
 // TODO(test-coverage): data has API mismatches
 // #[path = "widget/data/mod.rs"]
 // pub mod data;
@@ -149,11 +149,11 @@ mod pagination;
 // TODO(test-coverage): presentation has API mismatches
 // #[path = "widget/presentation/mod.rs"]
 // mod presentation;
-#[path = "widget/progress.rs"]
-mod progress;
 #[cfg(feature = "sysinfo")]
 #[path = "widget/procmon.rs"]
 mod procmon;
+#[path = "widget/progress.rs"]
+mod progress;
 #[cfg(feature = "qrcode")]
 #[path = "widget/qrcode.rs"]
 mod qrcode;
@@ -170,10 +170,10 @@ mod resizable;
 mod richlog;
 #[path = "widget/richtext.rs"]
 mod richtext;
-#[path = "widget/search_bar.rs"]
-mod search_bar;
 #[path = "widget/screen.rs"]
 pub mod screen;
+#[path = "widget/search_bar.rs"]
+mod search_bar;
 // TODO(test-coverage): sortable has API mismatches
 // #[path = "widget/sortable/mod.rs"]
 // pub mod sortable;
@@ -213,13 +213,13 @@ mod syntax;
 mod tabs;
 #[path = "widget/terminal.rs"]
 mod terminal;
-#[cfg(feature = "syntax-highlighting")]
-#[path = "widget/tree_sitter_highlight.rs"]
-mod tree_sitter_highlight;
 #[path = "widget/terminal_ansi.rs"]
 mod terminal_ansi;
 #[path = "widget/terminal_types.rs"]
 mod terminal_types;
+#[cfg(feature = "syntax-highlighting")]
+#[path = "widget/tree_sitter_highlight.rs"]
+mod tree_sitter_highlight;
 // TODO(test-coverage): text has API mismatches
 // #[path = "widget/text/mod.rs"]
 // mod text;

@@ -101,8 +101,8 @@ mod tests {
 
     #[test]
     fn test_tree_sitter_builder_chain() {
-        use revue::widget::syntax::SyntaxTheme;
         use revue::style::Color;
+        use revue::widget::syntax::SyntaxTheme;
 
         let mut theme = SyntaxTheme::default();
         theme.keyword = Color::MAGENTA;
