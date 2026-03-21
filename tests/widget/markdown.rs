@@ -856,7 +856,7 @@ fn test_markdown_empty_source() {
 #[test]
 fn test_markdown_whitespace_only() {
     let md = Markdown::new("   \n\n   ");
-    assert!(md.line_count() >= 0);
+    let _ = md.line_count(); // usize is always valid; just verify it doesn't panic
 }
 
 #[test]

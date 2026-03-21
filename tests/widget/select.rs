@@ -862,7 +862,7 @@ fn test_select_handle_key_page_up_down() {
     let mut s = Select::new().options((0..20).map(|i| format!("Option {}", i)).collect());
     s.open();
 
-    let initial = s.selected_index();
+    let _initial = s.selected_index();
     s.handle_key(&Key::PageDown);
     // PageDown should move selection
 
@@ -1085,19 +1085,19 @@ fn test_select_render_closed_after_open() {
 
 #[test]
 fn test_select_very_narrow_width() {
-    let s = Select::new().width(1);
+    let _s = Select::new().width(1);
     // Width should be clamped to minimum
 }
 
 #[test]
 fn test_select_very_wide_width() {
-    let s = Select::new().width(1000);
+    let _s = Select::new().width(1000);
     // Very wide width should be handled
 }
 
 #[test]
 fn test_select_zero_width() {
-    let s = Select::new().width(0);
+    let _s = Select::new().width(0);
     // Zero width should be handled
 }
 

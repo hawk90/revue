@@ -558,13 +558,13 @@ fn test_switch_very_small_width() {
 
 #[test]
 fn test_switch_very_large_width() {
-    let s = Switch::new().width(1000);
+    let _s = Switch::new().width(1000);
     // Large width should be handled
 }
 
 #[test]
 fn test_switch_zero_width() {
-    let s = Switch::new().width(0);
+    let _s = Switch::new().width(0);
     // Zero width should be handled
 }
 

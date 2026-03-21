@@ -2,7 +2,7 @@
 //!
 //! Tests ANSI sequence handling via the public Terminal API.
 
-use revue::widget::{terminal, Terminal};
+use revue::widget::Terminal;
 
 // =========================================================================
 // AnsiParser construction tests (via Terminal)

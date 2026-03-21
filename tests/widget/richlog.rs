@@ -574,7 +574,7 @@ fn test_richlog_handle_key_end() {
 }
 
 #[test]
-fn test_richlog_handle_key_G() {
+fn test_richlog_handle_key_shift_g() {
     let mut log = RichLog::new();
     log.info("Message");
 

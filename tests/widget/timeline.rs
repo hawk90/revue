@@ -729,19 +729,19 @@ fn test_timeline_render_vertical_event_types() {
     // Implementation renders timeline - verify it doesn't crash
     // Icons may be rendered differently depending on style
     // Just verify events are present in the output
-    let mut found_info = false;
-    let mut found_success = false;
-    let mut found_warning = false;
-    let mut found_error = false;
+    let mut _found_info = false;
+    let mut _found_success = false;
+    let mut _found_warning = false;
+    let mut _found_error = false;
 
     for y in 0..10 {
         for x in 0..40 {
             if let Some(cell) = buffer.get(x, y) {
                 match cell.symbol {
-                    '●' => found_info = true,
-                    '✓' => found_success = true,
-                    '⚠' => found_warning = true,
-                    '✗' => found_error = true,
+                    '●' => _found_info = true,
+                    '✓' => _found_success = true,
+                    '⚠' => _found_warning = true,
+                    '✗' => _found_error = true,
                     _ => {}
                 }
             }
@@ -2128,12 +2128,12 @@ fn test_timeline_title_with_tabs() {
 
 #[test]
 fn test_timeline_description_with_tabs() {
-    let tl = Timeline::new().event(TimelineEvent::new("Event").description("Desc\twith\ttabs"));
+    let _tl = Timeline::new().event(TimelineEvent::new("Event").description("Desc\twith\ttabs"));
 }
 
 #[test]
 fn test_timeline_timestamp_with_tabs() {
-    let tl = Timeline::new().event(TimelineEvent::new("Event").timestamp("10:\t00"));
+    let _tl = Timeline::new().event(TimelineEvent::new("Event").timestamp("10:\t00"));
 }
 
 #[test]
@@ -2146,12 +2146,12 @@ fn test_timeline_title_with_special_symbols() {
 
 #[test]
 fn test_timeline_mathematical_symbols() {
-    let tl = Timeline::new().event(TimelineEvent::new("∑ ∫ ∞ √ ≠ ≈ ≤ ≥"));
+    let _tl = Timeline::new().event(TimelineEvent::new("∑ ∫ ∞ √ ≠ ≈ ≤ ≥"));
 }
 
 #[test]
 fn test_timeline_arrows_and_directions() {
-    let tl = Timeline::new().event(TimelineEvent::new("← ↑ → ↓ ↔ ↕ ↖ ↗ ↘ ↙"));
+    let _tl = Timeline::new().event(TimelineEvent::new("← ↑ → ↓ ↔ ↕ ↖ ↗ ↘ ↙"));
 }
 
 // =============================================================================
@@ -2274,7 +2274,7 @@ fn test_timeline_custom_event_ascii() {
 
 #[test]
 fn test_timeline_custom_event_number() {
-    let tl = Timeline::new().event(TimelineEvent::new("Event").event_type(EventType::Custom('1')));
+    let _tl = Timeline::new().event(TimelineEvent::new("Event").event_type(EventType::Custom('1')));
     assert_eq!(EventType::Custom('1').icon(), '1');
 }
 
