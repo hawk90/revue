@@ -254,6 +254,106 @@ impl MaskedInput {
         &self.value
     }
 
+    /// Get mask character
+    pub fn get_mask_char(&self) -> char {
+        self.mask_char
+    }
+
+    /// Get mask style
+    pub fn get_mask_style(&self) -> MaskStyle {
+        self.mask_style
+    }
+
+    /// Get placeholder text
+    pub fn get_placeholder(&self) -> Option<&String> {
+        self.placeholder.as_ref()
+    }
+
+    /// Get label text
+    pub fn get_label(&self) -> Option<&String> {
+        self.label.as_ref()
+    }
+
+    /// Get maximum length
+    pub fn get_max_length(&self) -> usize {
+        self.max_length
+    }
+
+    /// Get minimum length
+    pub fn get_min_length(&self) -> usize {
+        self.min_length
+    }
+
+    /// Get cursor position
+    pub fn get_cursor(&self) -> usize {
+        self.cursor
+    }
+
+    /// Set cursor position
+    pub fn set_cursor(&mut self, pos: usize) {
+        self.cursor = pos.min(self.value.len());
+    }
+
+    /// Get focused state
+    pub fn get_focused(&self) -> bool {
+        self.focused
+    }
+
+    /// Get disabled state
+    pub fn get_disabled(&self) -> bool {
+        self.disabled
+    }
+
+    /// Get foreground color
+    pub fn get_fg(&self) -> Option<Color> {
+        self.fg
+    }
+
+    /// Get background color
+    pub fn get_bg(&self) -> Option<Color> {
+        self.bg
+    }
+
+    /// Get width
+    pub fn get_width(&self) -> Option<u16> {
+        self.width
+    }
+
+    /// Get show strength indicator state
+    pub fn get_show_strength(&self) -> bool {
+        self.show_strength
+    }
+
+    /// Get allow reveal state
+    pub fn get_allow_reveal(&self) -> bool {
+        self.allow_reveal
+    }
+
+    /// Get revealing state
+    pub fn get_revealing(&self) -> bool {
+        self.revealing
+    }
+
+    /// Set revealing state
+    pub fn set_revealing(&mut self, revealing: bool) {
+        self.revealing = revealing;
+    }
+
+    /// Get peek countdown
+    pub fn get_peek_countdown(&self) -> usize {
+        self.peek_countdown
+    }
+
+    /// Set peek countdown
+    pub fn set_peek_countdown(&mut self, countdown: usize) {
+        self.peek_countdown = countdown;
+    }
+
+    /// Get validation state
+    pub fn get_validation(&self) -> &ValidationState {
+        &self.validation
+    }
+
     /// Set value programmatically
     pub fn set_value(&mut self, value: impl Into<String>) {
         self.value = value.into();
@@ -414,7 +514,7 @@ impl MaskedInput {
     /// - Pre-allocating strings with known capacity
     /// - Avoiding repeated `.to_string().repeat()` calls
     /// - Using `extend` with char iterators instead of format!
-    fn masked_display(&self) -> String {
+    pub fn masked_display(&self) -> String {
         if self.revealing {
             return self.value.clone();
         }

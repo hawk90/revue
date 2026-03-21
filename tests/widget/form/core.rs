@@ -97,3 +97,5 @@ use revue::widget::form::rich_text_editor::RichTextEditor;
     #[test]
     fn test_markdown_code_block() {
         let editor = RichTextEditor::new().from_markdown("```\ncode here\n```");
+        assert!(editor.blocks.len() >= 1);
+    }

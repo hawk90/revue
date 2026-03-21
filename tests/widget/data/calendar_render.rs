@@ -269,7 +269,7 @@ fn test_get_week_number_consistency() {
 }
 
 // Helper function to leak Vec for static lifetime in tests
-traitLeak {
+trait Leak {
     fn leak(self) -> &'static [Self::Item] where Self: Sized;
 }
 

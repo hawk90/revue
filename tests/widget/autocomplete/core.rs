@@ -500,7 +500,7 @@ fn test_autocomplete_handle_key_navigation_sequence() {
     a.handle_key(KeyEvent::new(Key::Left));
     a.handle_key(KeyEvent::new(Key::Right));
     a.handle_key(KeyEvent::new(Key::Home));
-    a.handle_key(KeyEvent::new(Key::End)));
+    a.handle_key(KeyEvent::new(Key::End));
     assert_eq!(a.get_value(), "tes");
 }
 

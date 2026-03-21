@@ -331,4 +331,3 @@ use revue::widget::form::rich_text_editor::RichTextEditor;
         // Movement clears selection
         assert!(!editor.has_selection());
     }
-}

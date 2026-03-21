@@ -189,4 +189,3 @@ use revue::widget::form::rich_text_editor::RichTextEditor;
         editor.move_home();
         assert_eq!(editor.cursor_position(), (0, 0));
     }
-}

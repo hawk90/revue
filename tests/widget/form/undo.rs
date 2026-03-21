@@ -223,4 +223,3 @@ use revue::widget::form::rich_text_editor::undo::MAX_UNDO_HISTORY;
         let pos = editor.cursor_position();
         assert_eq!(pos, (0, 2));
     }
-}
