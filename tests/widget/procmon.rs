@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_process_monitor_default() {
-        let monitor = ProcessMonitor::default();
+        let _monitor = ProcessMonitor::default();
         // Default sort is Cpu (descending) — verify via toggle behavior
         let mut m = ProcessMonitor::default();
         // toggle_sort on the default sort (Cpu) should flip direction
