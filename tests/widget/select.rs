@@ -231,7 +231,9 @@ fn test_select_handle_key_space_toggle() {
 
 #[test]
 fn test_select_key_navigation_with_jk() {
-    let mut s = Select::new().options(vec!["One", "Two", "Three"]).focused(true);
+    let mut s = Select::new()
+        .options(vec!["One", "Two", "Three"])
+        .focused(true);
     s.open();
 
     // Test j key (down)
@@ -245,7 +247,9 @@ fn test_select_key_navigation_with_jk() {
 
 #[test]
 fn test_select_home_end_keys() {
-    let mut s = Select::new().options(vec!["A", "B", "C", "D", "E"]).focused(true);
+    let mut s = Select::new()
+        .options(vec!["A", "B", "C", "D", "E"])
+        .focused(true);
     s.open();
 
     // Test End key
@@ -843,7 +847,10 @@ fn test_select_navigation_preserves_selection() {
 
 #[test]
 fn test_select_handle_key_all_arrow_keys() {
-    let mut s = Select::new().options(vec!["A", "B", "C"]).selected(1).focused(true);
+    let mut s = Select::new()
+        .options(vec!["A", "B", "C"])
+        .selected(1)
+        .focused(true);
     s.open();
 
     s.handle_key(&Key::Up);
