@@ -151,32 +151,32 @@ fn test_form_builder() {
         .show_errors(true)
         .error_style(ErrorDisplayStyle::Summary);
 
-    assert_eq!(form\.get_submit_text(), Some(&"Send".to_string()));
-    assert!(form\.get_show_errors());
-    assert_eq!(form\.get_error_style(), ErrorDisplayStyle::Summary);
+    assert_eq!(form.get_submit_text(), Some(&"Send".to_string()));
+    assert!(form.get_show_errors());
+    assert_eq!(form.get_error_style(), ErrorDisplayStyle::Summary);
 }
 
 #[test]
 fn test_form_new_default_values() {
     let form_state = FormState::new().build();
     let form = Form::new(form_state);
-    assert!(form\.get_submit_text().is_none());
-    assert!(form\.get_show_errors());
-    assert_eq!(form\.get_error_style(), ErrorDisplayStyle::Inline);
+    assert!(form.get_submit_text().is_none());
+    assert!(form.get_show_errors());
+    assert_eq!(form.get_error_style(), ErrorDisplayStyle::Inline);
 }
 
 #[test]
 fn test_form_show_errors_false() {
     let form_state = FormState::new().build();
     let form = Form::new(form_state).show_errors(false);
-    assert!(!form\.get_show_errors());
+    assert!(!form.get_show_errors());
 }
 
 #[test]
 fn test_form_error_style_both() {
     let form_state = FormState::new().build();
     let form = Form::new(form_state).error_style(ErrorDisplayStyle::Both);
-    assert_eq!(form\.get_error_style(), ErrorDisplayStyle::Both);
+    assert_eq!(form.get_error_style(), ErrorDisplayStyle::Both);
 }
 
 #[test]
@@ -186,9 +186,9 @@ fn test_form_builder_chain() {
         .submit_text("Submit Form")
         .show_errors(true)
         .error_style(ErrorDisplayStyle::Both);
-    assert_eq!(form\.get_submit_text(), Some(&"Submit Form".to_string()));
-    assert!(form\.get_show_errors());
-    assert_eq!(form\.get_error_style(), ErrorDisplayStyle::Both);
+    assert_eq!(form.get_submit_text(), Some(&"Submit Form".to_string()));
+    assert!(form.get_show_errors());
+    assert_eq!(form.get_error_style(), ErrorDisplayStyle::Both);
 }
 
 // =========================================================================
@@ -275,16 +275,16 @@ fn test_form_submit_not_called_when_invalid() {
 fn test_form_default() {
     let form = Form::default();
     assert!(form.is_valid());
-    assert!(form\.get_submit_text().is_none());
+    assert!(form.get_submit_text().is_none());
 }
 
 #[test]
 fn test_form_default_complete_state() {
     let form = Form::default();
     assert!(form.is_valid());
-    assert!(form\.get_submit_text().is_none());
-    assert!(form\.get_show_errors());
-    assert_eq!(form\.get_error_style(), ErrorDisplayStyle::Inline);
+    assert!(form.get_submit_text().is_none());
+    assert!(form.get_show_errors());
+    assert_eq!(form.get_error_style(), ErrorDisplayStyle::Inline);
     assert_eq!(form.error_count(), 0);
 }
 
@@ -295,8 +295,8 @@ fn test_form_default_complete_state() {
 #[test]
 fn test_form_field_new() {
     let field = FormFieldWidget::new("username");
-    assert_eq!(field\.name(), "username");
-    assert_eq!(field\.get_input_type(), InputType::Text);
+    assert_eq!(field.name(), "username");
+    assert_eq!(field.get_input_type(), InputType::Text);
 }
 
 #[test]
@@ -307,44 +307,44 @@ fn test_form_field_builder() {
         .show_label(false)
         .show_errors(false);
 
-    assert_eq!(field\.get_placeholder(), Some(&"Enter email".to_string()));
-    assert_eq!(field\.get_input_type(), InputType::Email);
-    assert!(!field\.get_show_label());
-    assert!(!field\.get_show_errors());
+    assert_eq!(field.get_placeholder(), Some(&"Enter email".to_string()));
+    assert_eq!(field.get_input_type(), InputType::Email);
+    assert!(!field.get_show_label());
+    assert!(!field.get_show_errors());
 }
 
 #[test]
 fn test_form_field_new_default_values() {
     let field = FormFieldWidget::new("test");
-    assert_eq!(field\.name(), "test");
-    assert_eq!(field\.get_placeholder(), None);
-    assert_eq!(field\.get_input_type(), InputType::Text);
-    assert!(field\.get_show_label());
-    assert!(field\.get_show_errors());
+    assert_eq!(field.name(), "test");
+    assert_eq!(field.get_placeholder(), None);
+    assert_eq!(field.get_input_type(), InputType::Text);
+    assert!(field.get_show_label());
+    assert!(field.get_show_errors());
 }
 
 #[test]
 fn test_form_field_password_input_type() {
     let field = FormFieldWidget::new("pass").input_type(InputType::Password);
-    assert_eq!(field\.get_input_type(), InputType::Password);
+    assert_eq!(field.get_input_type(), InputType::Password);
 }
 
 #[test]
 fn test_form_field_number_input_type() {
     let field = FormFieldWidget::new("age").input_type(InputType::Number);
-    assert_eq!(field\.get_input_type(), InputType::Number);
+    assert_eq!(field.get_input_type(), InputType::Number);
 }
 
 #[test]
 fn test_form_field_show_label_true() {
     let field = FormFieldWidget::new("test").show_label(true);
-    assert!(field\.get_show_label());
+    assert!(field.get_show_label());
 }
 
 #[test]
 fn test_form_field_show_errors_true() {
     let field = FormFieldWidget::new("test").show_errors(true);
-    assert!(field\.get_show_errors());
+    assert!(field.get_show_errors());
 }
 
 #[test]
@@ -354,10 +354,10 @@ fn test_form_field_builder_chain() {
         .input_type(InputType::Email)
         .show_label(false)
         .show_errors(true);
-    assert_eq!(field\.get_placeholder(), Some(&"user@example.com".to_string()));
-    assert_eq!(field\.get_input_type(), InputType::Email);
-    assert!(!field\.get_show_label());
-    assert!(field\.get_show_errors());
+    assert_eq!(field.get_placeholder(), Some(&"user@example.com".to_string()));
+    assert_eq!(field.get_input_type(), InputType::Email);
+    assert!(!field.get_show_label());
+    assert!(field.get_show_errors());
 }
 
 // =========================================================================
@@ -367,7 +367,7 @@ fn test_form_field_builder_chain() {
 #[test]
 fn test_form_field_name() {
     let field = FormFieldWidget::new("username");
-    assert_eq!(field\.name(), "username");
+    assert_eq!(field.name(), "username");
 }
 
 // =========================================================================
@@ -377,18 +377,18 @@ fn test_form_field_name() {
 #[test]
 fn test_form_field_default() {
     let field = FormFieldWidget::default();
-    assert_eq!(field\.name(), "");
-    assert_eq!(field\.get_input_type(), InputType::Text);
+    assert_eq!(field.name(), "");
+    assert_eq!(field.get_input_type(), InputType::Text);
 }
 
 #[test]
 fn test_form_field_default_complete_state() {
     let field = FormFieldWidget::default();
-    assert_eq!(field\.name(), "");
-    assert_eq!(field\.get_placeholder(), None);
-    assert_eq!(field\.get_input_type(), InputType::Text);
-    assert!(field\.get_show_label());
-    assert!(field\.get_show_errors());
+    assert_eq!(field.name(), "");
+    assert_eq!(field.get_placeholder(), None);
+    assert_eq!(field.get_input_type(), InputType::Text);
+    assert!(field.get_show_label());
+    assert!(field.get_show_errors());
 }
 
 // =========================================================================
@@ -399,10 +399,10 @@ fn test_form_field_default_complete_state() {
 fn test_convenience_functions() {
     let form_state = FormState::new().build();
     let form = form(form_state);
-    assert!(form\.get_submit_text().is_none());
+    assert!(form.get_submit_text().is_none());
 
     let field = form_field("password");
-    assert_eq!(field\.name(), "password");
+    assert_eq!(field.name(), "password");
 }
 
 #[test]
@@ -415,7 +415,7 @@ fn test_form_helper_fn() {
 #[test]
 fn test_form_field_helper_fn() {
     let field = form_field("test_field");
-    assert_eq!(field\.name(), "test_field");
+    assert_eq!(field.name(), "test_field");
 }
 
 #[test]
@@ -428,7 +428,7 @@ fn test_form_helper_with_builder() {
 
     assert_eq!(form.element_id(), Some(&"test-form".to_string()));
     assert_eq!(form.classes(), &["container".to_string()]);
-    assert_eq!(form\.get_submit_text(), Some(&"Submit".to_string()));
+    assert_eq!(form.get_submit_text(), Some(&"Submit".to_string()));
 }
 
 #[test]
@@ -438,10 +438,10 @@ fn test_form_field_helper_with_builder() {
         .class("required")
         .placeholder("Enter username");
 
-    assert_eq!(field\.name(), "username");
+    assert_eq!(field.name(), "username");
     assert_eq!(field.element_id(), Some(&"user-input".to_string()));
     assert_eq!(field.classes(), &["required".to_string()]);
-    assert_eq!(field\.get_placeholder(), Some(&"Enter username".to_string()));
+    assert_eq!(field.get_placeholder(), Some(&"Enter username".to_string()));
 }
 
 // =========================================================================
@@ -664,9 +664,9 @@ fn test_form_full_builder_chain_with_props() {
             "animated".to_string()
         ]
     );
-    assert_eq!(form\.get_submit_text(), Some(&"Login".to_string()));
-    assert!(form\.get_show_errors());
-    assert_eq!(form\.get_error_style(), ErrorDisplayStyle::Both);
+    assert_eq!(form.get_submit_text(), Some(&"Login".to_string()));
+    assert!(form.get_show_errors());
+    assert_eq!(form.get_error_style(), ErrorDisplayStyle::Both);
 }
 
 #[test]
@@ -689,10 +689,10 @@ fn test_form_field_full_builder_chain_with_props() {
             "email-field".to_string()
         ]
     );
-    assert_eq!(field\.get_placeholder(), Some(&"user@example.com".to_string()));
-    assert_eq!(field\.get_input_type(), InputType::Email);
-    assert!(field\.get_show_label());
-    assert!(field\.get_show_errors());
+    assert_eq!(field.get_placeholder(), Some(&"user@example.com".to_string()));
+    assert_eq!(field.get_input_type(), InputType::Email);
+    assert!(field.get_show_label());
+    assert!(field.get_show_errors());
 }
 
 // =========================================================================
@@ -735,7 +735,7 @@ fn test_form_classes_empty_array() {
 #[test]
 fn test_form_field_empty_name() {
     let field = FormFieldWidget::new("");
-    assert_eq!(field\.name(), "");
+    assert_eq!(field.name(), "");
 }
 
 #[test]
@@ -759,13 +759,13 @@ fn test_form_field_classes_empty_iterator() {
 #[test]
 fn test_form_field_name_with_special_chars() {
     let field = FormFieldWidget::new("user-email-field");
-    assert_eq!(field\.name(), "user-email-field");
+    assert_eq!(field.name(), "user-email-field");
 }
 
 #[test]
 fn test_form_field_name_with_unicode() {
     let field = FormFieldWidget::new("用户邮箱");
-    assert_eq!(field\.name(), "用户邮箱");
+    assert_eq!(field.name(), "用户邮箱");
 }
 
 // =========================================================================
@@ -788,7 +788,7 @@ fn test_form_long_builder_chain() {
         .error_style(ErrorDisplayStyle::Both);
 
     assert_eq!(form.classes().len(), 9);
-    assert_eq!(form\.get_submit_text(), Some(&"Submit".to_string()));
+    assert_eq!(form.get_submit_text(), Some(&"Submit".to_string()));
 }
 
 #[test]
@@ -805,8 +805,8 @@ fn test_form_field_long_builder_chain() {
         .show_errors(false);
 
     assert_eq!(field.classes().len(), 5);
-    assert_eq!(field\.get_placeholder(), Some(&"placeholder".to_string()));
-    assert_eq!(field\.get_input_type(), InputType::Email);
-    assert!(!field\.get_show_label());
-    assert!(!field\.get_show_errors());
+    assert_eq!(field.get_placeholder(), Some(&"placeholder".to_string()));
+    assert_eq!(field.get_input_type(), InputType::Email);
+    assert!(!field.get_show_label());
+    assert!(!field.get_show_errors());
 }

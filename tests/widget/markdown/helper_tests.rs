@@ -1,6 +1,6 @@
 //! Tests for markdown widget helper functions
 
-use revue::widget::markdown::helpers::*;
+use revue::widget::markdown::markdown;
 
 #[test]
 fn test_markdown_function() {

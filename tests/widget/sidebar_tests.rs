@@ -2,9 +2,10 @@
 
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::style::Color;
+
 use revue::widget::traits::RenderContext;
-use revue::widget::layout::{CollapseMode, FlattenedItem, Sidebar, SidebarItem, SidebarSection};
+use revue::widget::View;
+use revue::widget::{CollapseMode, FlattenedItem, Sidebar, SidebarItem, SidebarSection};
 
 // =========================================================================
 // SidebarItem Tests

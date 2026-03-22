@@ -97,3 +97,6 @@ use revue::widget::form::rich_text_editor::RichTextEditor;
     fn test_toggle_code_twice() {
         let mut editor = RichTextEditor::new();
         editor.toggle_code();
+        editor.toggle_code();
+        assert!(!editor.current_format().code);
+    }

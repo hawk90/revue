@@ -1,6 +1,7 @@
 //! Slides parsing tests
 
-use revue::widget::{is_slide_delimiter, parse_slides, SlideContent, SlideNav};
+use revue::widget::slides::is_slide_delimiter;
+use revue::widget::{parse_slides, SlideContent, SlideNav};
 
 // ==================== SlideContent Tests ====================
 
@@ -519,7 +520,7 @@ fn test_parse_slides_delimiter_at_end() {
 fn test_parse_slides_only_delimiters() {
     let slides = parse_slides("---\n\n---\n\n---");
     // Should handle gracefully
-    assert!(slides.len() >= 0);
+    let _ = slides.len(); // usize is always valid; just verify it doesn't panic
 }
 
 #[test]

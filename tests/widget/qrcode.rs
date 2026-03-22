@@ -6,7 +6,7 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
-use revue::widget::{qrcode, qrcode_url, ErrorCorrection, QrCodeWidget, QrStyle};
+use revue::widget::{qrcode, qrcode_url, ErrorCorrection, QrCodeWidget, QrStyle, View};
 
 #[test]
 fn test_qr_style_default() {
@@ -256,23 +256,23 @@ fn test_qrcode_builder_chain() {
 #[test]
 fn test_qrcode_matrix() {
     let qr = QrCodeWidget::new("Test");
-    let matrix = qr.get_matrix();
-    assert!(matrix.is_some());
+    let size = qr.required_size();
+    assert!(size.is_some());
 }
 
 #[test]
 fn test_qrcode_matrix_empty() {
     let qr = QrCodeWidget::new("");
-    let matrix = qr.get_matrix();
+    let size = qr.required_size();
     // Empty string should still generate QR code
-    assert!(matrix.is_some());
+    assert!(size.is_some());
 }
 
 #[test]
 fn test_qrcode_matrix_long_data() {
     let qr = QrCodeWidget::new("https://example.com/very/long/path/that/goes/on/and/on");
-    let matrix = qr.get_matrix();
-    assert!(matrix.is_some());
+    let size = qr.required_size();
+    assert!(size.is_some());
 }
 
 #[test]
@@ -408,7 +408,7 @@ fn test_qrcode_error_levels() {
         ErrorCorrection::High,
     ] {
         let qr = QrCodeWidget::new("Test").error_correction(level);
-        assert!(qr.get_matrix().is_some());
+        assert!(qr.required_size().is_some());
     }
 }
 

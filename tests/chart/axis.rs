@@ -1,7 +1,7 @@
 //! Axis public API tests
 mod tests {
-    use revue::widget::data::chart::{Axis, AxisFormat};
     use revue::style::Color;
+    use revue::widget::data::chart::{Axis, AxisFormat};
 
     #[test]
     fn test_axis_new() {

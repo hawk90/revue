@@ -6,7 +6,7 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
-use revue::widget::{zen, zen_dark, zen_light, Text, ZenMode};
+use revue::widget::{zen, zen_dark, zen_light, Text, View, ZenMode};
 
 #[test]
 fn test_zen_new() {

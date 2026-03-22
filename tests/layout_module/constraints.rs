@@ -3,7 +3,7 @@
 use revue::layout::{max_width, min_width, MediaQuery, Rect};
 
 // Convenience wrapper function for responsive tests
-fn layout_with_width(width: u16) -> revue::layout::ResponsiveLayout {
+fn _layout_with_width(width: u16) -> revue::layout::ResponsiveLayout {
     revue::layout::ResponsiveLayout::new(width, 24)
 }
 

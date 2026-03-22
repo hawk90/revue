@@ -7,7 +7,7 @@
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
-use revue::widget::traits::{RenderContext, StyledView, View};
+use revue::widget::traits::{RenderContext, View};
 use revue::widget::{masked_input, MaskStyle, MaskedInput};
 
 // =============================================================================
