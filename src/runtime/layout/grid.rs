@@ -175,7 +175,10 @@ fn calculate_track_sizes(
             .filter(|(_, t)| {
                 matches!(
                     t,
-                    GridTrack::Fr(_) | GridTrack::Auto | GridTrack::MinContent | GridTrack::MaxContent
+                    GridTrack::Fr(_)
+                        | GridTrack::Auto
+                        | GridTrack::MinContent
+                        | GridTrack::MaxContent
                 )
             })
             .map(|(i, _)| i)
