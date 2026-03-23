@@ -70,12 +70,12 @@ fn test_spawn_blocking_large_result() {
 #[test]
 fn test_spawn_blocking_immediate() {
     let handle = WorkerHandle::spawn_blocking(|| 42);
-    assert!(!handle.is_finished());
 
-    // Wait for task to finish
+    // Wait for task to finish (may already be finished on fast machines)
     poll_until(|| handle.is_finished(), 500);
 
     assert!(handle.is_finished());
+    assert_eq!(handle.join().unwrap(), 42);
 }
 
 // =============================================================================
