@@ -540,7 +540,7 @@ impl CsvViewer {
     /// Get row number width
     pub fn row_number_width(&self) -> u16 {
         if self.show_row_numbers {
-            let digits = (self.row_count() as f64).log10().floor() as u16 + 1;
+            let digits = (self.row_count().max(1) as f64).log10().floor() as u16 + 1;
             digits.max(2) + 1 // +1 for padding
         } else {
             0

@@ -7,7 +7,7 @@ use crate::widget::traits::RenderContext;
 /// Row number width calculation
 pub fn row_number_width(show_row_numbers: bool, row_count: usize) -> u16 {
     if show_row_numbers {
-        let digits = (row_count as f64).log10().floor() as u16 + 1;
+        let digits = (row_count.max(1) as f64).log10().floor() as u16 + 1;
         digits.max(2) + 1 // +1 for padding
     } else {
         0

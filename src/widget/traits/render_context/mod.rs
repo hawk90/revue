@@ -157,8 +157,8 @@ impl<'a> RenderContext<'a> {
         Rect::new(
             self.area.x.saturating_add(x),
             self.area.y.saturating_add(y),
-            w,
-            h,
+            w.min(self.area.width.saturating_sub(x)),
+            h.min(self.area.height.saturating_sub(y)),
         )
     }
 }

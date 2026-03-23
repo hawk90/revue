@@ -36,7 +36,7 @@ fn flatten_node(
 /// Get line number width
 pub fn line_number_width(show_line_numbers: bool, total_lines: usize) -> u16 {
     if show_line_numbers {
-        let digits = (total_lines as f64).log10().floor() as u16 + 1;
+        let digits = (total_lines.max(1) as f64).log10().floor() as u16 + 1;
         digits.max(2) + 1
     } else {
         0

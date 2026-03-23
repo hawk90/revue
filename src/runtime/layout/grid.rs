@@ -167,17 +167,32 @@ fn calculate_track_sizes(
     // Second pass: distribute remaining space to fr units
     if total_fr > 0.0 {
         let per_fr = (remaining as f32) / total_fr;
-        for (i, track) in tracks.iter().enumerate() {
-            match track {
-                GridTrack::Fr(fr) => {
-                    // Use round() to avoid precision loss from truncation
-                    sizes[i] = (per_fr * fr).round() as u16;
+        let mut distributed: u16 = 0;
+        // Collect indices of fr/auto tracks for last-child remainder correction
+        let fr_indices: Vec<usize> = tracks
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| {
+                matches!(
+                    t,
+                    GridTrack::Fr(_) | GridTrack::Auto | GridTrack::MinContent | GridTrack::MaxContent
+                )
+            })
+            .map(|(i, _)| i)
+            .collect();
+
+        for (fi, &i) in fr_indices.iter().enumerate() {
+            let size = if fi == fr_indices.len() - 1 {
+                // Last fr track gets remainder to avoid rounding overshoot
+                remaining.saturating_sub(distributed)
+            } else {
+                match tracks[i] {
+                    GridTrack::Fr(fr) => (per_fr * fr).round() as u16,
+                    _ => per_fr.round() as u16,
                 }
-                GridTrack::Auto | GridTrack::MinContent | GridTrack::MaxContent => {
-                    sizes[i] = per_fr.round() as u16;
-                }
-                _ => {}
-            }
+            };
+            sizes[i] = size;
+            distributed = distributed.saturating_add(size);
         }
     }
 
