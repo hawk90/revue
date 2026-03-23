@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.59.3](https://github.com/hawk90/revue/compare/v2.59.2...v2.59.3) (2026-03-23)
+
+
+### Bug Fixes
+
+* resolve layout bugs, edge cases, and add Stack flex-grow support ([#514](https://github.com/hawk90/revue/issues/514)) ([e9f72fc](https://github.com/hawk90/revue/commit/e9f72fc4a68216ecd9b9e6c53c536692d1a20a37))
+
 ## [2.59.2](https://github.com/hawk90/revue/compare/v2.59.1...v2.59.2) (2026-03-20)
 
 
