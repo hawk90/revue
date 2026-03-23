@@ -151,21 +151,18 @@ impl Tabs {
 
     /// Apply size constraints to the available area
     fn apply_constraints(&self, area: Rect) -> Rect {
-        let width = if self.min_width > 0 && area.width < self.min_width {
-            self.min_width
-        } else if self.max_width > 0 && area.width > self.max_width {
-            self.max_width
+        let eff_max_w = if self.max_width > 0 {
+            self.max_width.max(self.min_width)
         } else {
-            area.width
+            u16::MAX
         };
-
-        let height = if self.min_height > 0 && area.height < self.min_height {
-            self.min_height
-        } else if self.max_height > 0 && area.height > self.max_height {
-            self.max_height
+        let eff_max_h = if self.max_height > 0 {
+            self.max_height.max(self.min_height)
         } else {
-            area.height
+            u16::MAX
         };
+        let width = area.width.clamp(self.min_width, eff_max_w);
+        let height = area.height.clamp(self.min_height, eff_max_h);
 
         Rect::new(area.x, area.y, width, height)
     }

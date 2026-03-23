@@ -168,13 +168,29 @@ impl<T: 'static> Signal<T> {
         f(&*guard)
     }
 
-    /// Modify the value with a closure (zero-copy)
+    /// Modify the value with a closure (zero-copy), WITHOUT notifying subscribers
     ///
     /// Like `with` but for mutations. Does NOT notify subscribers.
+    /// Use `update()` or `update_with()` if you want subscribers to be notified.
     #[inline]
     pub fn with_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
         let mut guard = write_or_recover(&self.value);
         f(&mut *guard)
+    }
+
+    /// Modify the value with a closure and return a result, notifying subscribers
+    ///
+    /// Like `with_mut` but also notifies subscribers after the mutation.
+    /// Prefer this over `with_mut()` + `notify_change()`.
+    #[inline]
+    pub fn update_with<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
+        let result = {
+            let mut guard = write_or_recover(&self.value);
+            f(&mut *guard)
+        };
+        self.notify();
+        notify_dependents(self.id);
+        result
     }
 
     /// Set a new value and notify subscribers

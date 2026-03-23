@@ -140,10 +140,10 @@ use std::path::PathBuf;
 /// Tick handler callback type
 pub type TickHandler<V> = Box<dyn FnMut(&mut V, Duration) -> bool>;
 
-/// Check if key is a quit key (Ctrl+C or 'q')
+/// Check if key is a quit key (Ctrl+C only)
 #[inline]
 fn is_quit_key(key: &KeyEvent) -> bool {
-    key.is_ctrl_c() || key.key == crate::event::Key::Char('q')
+    key.is_ctrl_c()
 }
 
 /// Main application struct
@@ -928,7 +928,7 @@ mod tests {
         let q_key = KeyEvent::new(Key::Char('q'));
         let ctrl_c = KeyEvent::ctrl(Key::Char('c'));
         let other_key = KeyEvent::new(Key::Char('a'));
-        assert!(is_quit_key(&q_key));
+        assert!(!is_quit_key(&q_key)); // 'q' alone is not a quit key
         assert!(is_quit_key(&ctrl_c));
         assert!(!is_quit_key(&other_key));
     }
@@ -1067,6 +1067,7 @@ mod tests {
 
     #[test]
     fn test_handle_event_quit_q() {
+        // 'q' alone should NOT quit (only Ctrl+C quits)
         let mut app = create_test_app();
         app.running = true;
         let mut view = TestView;
@@ -1074,7 +1075,7 @@ mod tests {
 
         let event = Event::Key(KeyEvent::new(Key::Char('q')));
         let _ = app.handle_event(event, &mut view, &mut handler);
-        assert!(!app.is_running());
+        assert!(app.is_running());
     }
 
     #[test]
