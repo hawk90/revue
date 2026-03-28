@@ -8,6 +8,7 @@ use super::chart_stats::{self, mean, median};
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::{char_width, truncate_to_width};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -362,13 +363,16 @@ impl Histogram {
             };
             let y = area.y + 1 + (i as u16 * (area.height - 3) / 4);
 
-            for (j, ch) in label.chars().take(y_label_width as usize - 1).enumerate() {
-                let x = area.x + j as u16;
+            let label_truncated = truncate_to_width(&label, y_label_width as usize - 1);
+            let mut dx: u16 = 0;
+            for ch in label_truncated.chars() {
+                let x = area.x + dx;
                 if x < area.x + y_label_width && y < area.y + area.height {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.y_axis.color);
                     ctx.set(x, y, cell);
                 }
+                dx += char_width(ch) as u16;
             }
         }
 
@@ -380,13 +384,16 @@ impl Histogram {
             let x = area.x + y_label_width + (i as u16 * chart_width / 4);
             let y = area.y + area.height - 1;
 
-            for (j, ch) in label.chars().take(6).enumerate() {
-                let label_x = x + j as u16;
+            let label_truncated = truncate_to_width(&label, 6);
+            let mut dx: u16 = 0;
+            for ch in label_truncated.chars() {
+                let label_x = x + dx;
                 if label_x < area.x + area.width {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.x_axis.color);
                     ctx.set(label_x, y, cell);
                 }
+                dx += char_width(ch) as u16;
             }
         }
     }

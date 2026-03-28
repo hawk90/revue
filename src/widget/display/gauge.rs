@@ -6,6 +6,7 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::color::contrast_color;
+use crate::utils::{char_width, display_width};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -328,10 +329,13 @@ impl Gauge {
         // Draw label inside
         if matches!(self.label_position, LabelPosition::Inside) {
             let label = self.get_label();
-            let label_x = (width.saturating_sub(label.len() as u16)) / 2;
-            for (i, ch) in label.chars().enumerate() {
-                let x = label_x + i as u16;
-                if x < width {
+            let lw = display_width(&label) as u16;
+            let label_x = (width.saturating_sub(lw)) / 2;
+            let mut dx: u16 = 0;
+            for ch in label.chars() {
+                let cw = char_width(ch) as u16;
+                let x = label_x + dx;
+                if x + cw <= width {
                     let is_filled = x < filled;
                     let bg = if is_filled {
                         self.fill_bg.unwrap_or(color)
@@ -344,6 +348,7 @@ impl Gauge {
                     cell.modifier |= Modifier::BOLD;
                     ctx.set(x, 0, cell);
                 }
+                dx += cw;
             }
         }
     }
@@ -441,17 +446,21 @@ impl Gauge {
         // Middle with label
         if area.height > 1 {
             let label = self.get_label();
-            let label_x = (width.saturating_sub(label.len() as u16)) / 2;
+            let lw = display_width(&label) as u16;
+            let label_x = (width.saturating_sub(lw)) / 2;
 
             let mut left = Cell::new('│');
             left.fg = Some(color);
             ctx.set(0, 1, left);
 
-            for (i, ch) in label.chars().enumerate() {
+            let mut dx: u16 = 0;
+            for ch in label.chars() {
+                let cw = char_width(ch) as u16;
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(contrast_color(self.empty_bg.unwrap_or(Color::rgb(0, 0, 0))));
                 cell.modifier |= Modifier::BOLD;
-                ctx.set(label_x + i as u16, 1, cell);
+                ctx.set(label_x + dx, 1, cell);
+                dx += cw;
             }
 
             let mut right = Cell::new('│');
@@ -510,10 +519,13 @@ impl Gauge {
 
         // Label
         let label_x = 3 + segments;
-        for (i, ch) in label.chars().enumerate() {
+        let mut dx: u16 = 0;
+        for ch in label.chars() {
+            let cw = char_width(ch) as u16;
             let mut cell = Cell::new(ch);
             cell.fg = Some(contrast_color(self.empty_bg.unwrap_or(Color::rgb(0, 0, 0))));
-            ctx.set(label_x + i as u16, 0, cell);
+            ctx.set(label_x + dx, 0, cell);
+            dx += cw;
         }
     }
 

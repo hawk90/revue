@@ -9,6 +9,7 @@ use super::chart_common::{Axis, ChartGrid, Legend, LegendPosition};
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::{char_width, display_width, truncate_to_width};
 use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::RenderContext;
 
@@ -25,14 +26,16 @@ pub fn render_title(ctx: &mut RenderContext, area: Rect, title: Option<&str>, co
         return 0;
     };
 
-    let title_x = area.x + (area.width.saturating_sub(title.len() as u16)) / 2;
-    for (i, ch) in title.chars().enumerate() {
-        let x = title_x + i as u16;
+    let title_x = area.x + (area.width.saturating_sub(display_width(title) as u16)) / 2;
+    let mut dx: u16 = 0;
+    for ch in title.chars() {
+        let x = title_x + dx;
         if x < area.x + area.width {
             let mut cell = Cell::new(ch);
             cell.fg = Some(color);
             ctx.set(x, area.y, cell);
         }
+        dx += char_width(ch) as u16;
     }
     1
 }
@@ -108,13 +111,16 @@ pub fn render_y_axis_labels(
         let label = axis.format_value(value);
         let y = area.y + 1 + (i as u16 * (area.height - 2) / axis.ticks as u16);
 
-        for (j, ch) in label.chars().take(label_width as usize).enumerate() {
-            let x = area.x + j as u16;
+        let label_truncated = truncate_to_width(&label, label_width as usize);
+        let mut dx: u16 = 0;
+        for ch in label_truncated.chars() {
+            let x = area.x + dx;
             if x < area.x + label_width && y < area.y + area.height {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(axis.color);
                 ctx.set(x, y, cell);
             }
+            dx += char_width(ch) as u16;
         }
     }
 }
@@ -137,13 +143,16 @@ pub fn render_x_axis_labels(
         let label = axis.format_value(value);
         let x = area.x + x_offset + (i as u16 * (area.width - x_offset) / axis.ticks as u16);
 
-        for (j, ch) in label.chars().take(6).enumerate() {
-            let label_x = x + j as u16;
+        let label_truncated = truncate_to_width(&label, 6);
+        let mut dx: u16 = 0;
+        for ch in label_truncated.chars() {
+            let label_x = x + dx;
             if label_x < area.x + area.width && label_y >= y_offset {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(axis.color);
                 ctx.set(label_x, label_y, cell);
             }
+            dx += char_width(ch) as u16;
         }
     }
 }
@@ -163,15 +172,17 @@ pub fn render_axis_title(
     };
 
     if is_x_axis {
-        let title_x = area.x + (area.width - title.len() as u16) / 2;
+        let title_x = area.x + (area.width.saturating_sub(display_width(title) as u16)) / 2;
         let title_y = area.y + area.height - 1;
-        for (i, ch) in title.chars().enumerate() {
-            let x = title_x + i as u16;
+        let mut dx: u16 = 0;
+        for ch in title.chars() {
+            let x = title_x + dx;
             if x < area.x + area.width {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(color);
                 ctx.set(x, title_y, cell);
             }
+            dx += char_width(ch) as u16;
         }
     }
     // Y axis title rendering would go here (rotated text, not commonly needed)
@@ -294,13 +305,15 @@ pub fn render_legend(
         }
 
         // Label
-        for (j, ch) in item.label.chars().enumerate() {
-            let x = legend_x + 3 + j as u16;
+        let mut dx: u16 = 0;
+        for ch in item.label.chars() {
+            let x = legend_x + 3 + dx;
             if x < area.x + area.width - 1 && x < legend_x + legend_width - 1 {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 ctx.set(x, y, cell);
             }
+            dx += char_width(ch) as u16;
         }
     }
 }

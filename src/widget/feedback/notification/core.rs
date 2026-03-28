@@ -3,6 +3,7 @@
 use super::types::{Notification, NotificationPosition};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::char_width;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -366,15 +367,18 @@ impl NotificationCenter {
             }
 
             // Title text
-            for (i, ch) in title.chars().enumerate() {
-                if content_x + i as u16 >= x + width - 2 {
+            let mut dx: u16 = 0;
+            for ch in title.chars() {
+                let cw = char_width(ch) as u16;
+                if content_x + dx >= x + width - 2 {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.bg = Some(bg);
                 cell.modifier |= Modifier::BOLD;
-                ctx.set(content_x + i as u16, current_y, cell);
+                ctx.set(content_x + dx, current_y, cell);
+                dx += cw;
             }
 
             let mut right = Cell::new('│');
@@ -408,14 +412,17 @@ impl NotificationCenter {
             }
 
             // Message text
-            for (i, ch) in notification.message.chars().enumerate() {
-                if content_x + i as u16 >= x + width - 2 {
+            let mut dx: u16 = 0;
+            for ch in notification.message.chars() {
+                let cw = char_width(ch) as u16;
+                if content_x + dx >= x + width - 2 {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.bg = Some(bg);
-                ctx.set(content_x + i as u16, current_y, cell);
+                ctx.set(content_x + dx, current_y, cell);
+                dx += cw;
             }
 
             let mut right = Cell::new('│');

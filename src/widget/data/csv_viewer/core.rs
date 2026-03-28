@@ -525,7 +525,7 @@ impl CsvViewer {
         for row in &self.data {
             for (col, cell) in row.iter().enumerate() {
                 if col < self.column_widths.len() {
-                    let width = cell.chars().count() as u16;
+                    let width = crate::utils::display_width(cell) as u16;
                     self.column_widths[col] = self.column_widths[col].max(width);
                 }
             }

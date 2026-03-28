@@ -4,6 +4,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::{char_width, display_width, truncate_to_width};
 use crate::widget::theme::{DARK_GRAY, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -352,10 +353,15 @@ impl Timeline {
             // Draw timestamp
             if self.show_timestamps {
                 if let Some(ref ts) = event.timestamp {
-                    for (j, ch) in ts.chars().take(timestamp_width as usize - 1).enumerate() {
+                    let truncated = truncate_to_width(ts, timestamp_width as usize - 1);
+                    let mut dx: u16 = 0;
+                    for ch in truncated.chars() {
+                        let cw = char_width(ch) as u16;
+                        if dx + cw > timestamp_width - 1 { break; }
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.timestamp_color);
-                        ctx.set(j as u16, y, cell);
+                        ctx.set(dx, y, cell);
+                        dx += cw;
                     }
                 }
             }
@@ -399,13 +405,18 @@ impl Timeline {
 
             // Draw title
             let title_fg = if is_selected { color } else { self.title_color };
-            for (j, ch) in event.title.chars().take(content_width as usize).enumerate() {
+            let title_truncated = truncate_to_width(&event.title, content_width as usize);
+            let mut dx: u16 = 0;
+            for ch in title_truncated.chars() {
+                let cw = char_width(ch) as u16;
+                if dx + cw > content_width { break; }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(title_fg);
                 if is_selected {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.set(content_x + j as u16, y, cell);
+                ctx.set(content_x + dx, y, cell);
+                dx += cw;
             }
 
             y += 1;
@@ -422,10 +433,15 @@ impl Timeline {
                         }
 
                         // Draw description text
-                        for (j, ch) in desc.chars().take(content_width as usize).enumerate() {
+                        let desc_truncated = truncate_to_width(desc, content_width as usize);
+                        let mut dx: u16 = 0;
+                        for ch in desc_truncated.chars() {
+                            let cw = char_width(ch) as u16;
+                            if dx + cw > content_width { break; }
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(self.desc_color);
-                            ctx.set(content_x + j as u16, y, cell);
+                            ctx.set(content_x + dx, y, cell);
+                            dx += cw;
                         }
 
                         y += 1;
@@ -481,23 +497,31 @@ impl Timeline {
             ctx.set(x + event_width / 2, line_y, icon_cell);
 
             // Draw title above
-            let title: String = event.title.chars().take(event_width as usize - 1).collect();
-            let title_x = x + (event_width - title.len() as u16) / 2;
-            for (j, ch) in title.chars().enumerate() {
+            let title = truncate_to_width(&event.title, event_width as usize - 1);
+            let title_x = x + (event_width.saturating_sub(display_width(title) as u16)) / 2;
+            let mut dx: u16 = 0;
+            for ch in title.chars() {
+                let cw = char_width(ch) as u16;
+                if dx + cw > event_width - 1 { break; }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(if is_selected { color } else { self.title_color });
-                ctx.set(title_x + j as u16, 0, cell);
+                ctx.set(title_x + dx, 0, cell);
+                dx += cw;
             }
 
             // Draw timestamp below
             if self.show_timestamps {
                 if let Some(ref ts) = event.timestamp {
-                    let ts_str: String = ts.chars().take(event_width as usize - 1).collect();
-                    let ts_x = x + (event_width - ts_str.len() as u16) / 2;
-                    for (j, ch) in ts_str.chars().enumerate() {
+                    let ts_str = truncate_to_width(ts, event_width as usize - 1);
+                    let ts_x = x + (event_width.saturating_sub(display_width(ts_str) as u16)) / 2;
+                    let mut dx: u16 = 0;
+                    for ch in ts_str.chars() {
+                        let cw = char_width(ch) as u16;
+                        if dx + cw > event_width - 1 { break; }
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.timestamp_color);
-                        ctx.set(ts_x + j as u16, line_y + 1, cell);
+                        ctx.set(ts_x + dx, line_y + 1, cell);
+                        dx += cw;
                     }
                 }
             }

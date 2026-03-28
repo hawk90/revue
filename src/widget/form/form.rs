@@ -28,6 +28,7 @@ use crate::impl_props_builders;
 use crate::patterns::form::FormState;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::char_width;
 use crate::widget::theme::{DISABLED_FG, SUBTLE_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use std::collections::HashMap;
@@ -181,13 +182,16 @@ impl Form {
         let title = "Form";
         let title_x: u16 = 2;
 
-        for (i, ch) in title.chars().enumerate() {
-            if title_x + (i as u16) < area.width - 1 {
+        let mut dx: u16 = 0;
+        for ch in title.chars() {
+            let cw = char_width(ch) as u16;
+            if title_x + dx < area.width - 1 {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.bg = Some(Color::BLACK);
-                ctx.set(title_x + i as u16, 0, cell);
+                ctx.set(title_x + dx, 0, cell);
             }
+            dx += cw;
         }
     }
 }

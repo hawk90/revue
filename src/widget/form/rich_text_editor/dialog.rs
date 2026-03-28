@@ -3,6 +3,7 @@
 use super::{DialogType, RichTextEditor};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::{char_width, display_width};
 use crate::widget::traits::RenderContext;
 
 impl RichTextEditor {
@@ -69,13 +70,16 @@ impl RichTextEditor {
             DialogType::InsertLink { text, url, field } => {
                 // Title
                 let title = "Insert Link";
-                let title_x = dialog_x + (dialog_width - title.len() as u16) / 2;
-                for (i, ch) in title.chars().enumerate() {
+                let title_x = dialog_x + (dialog_width.saturating_sub(display_width(title) as u16)) / 2;
+                let mut dx: u16 = 0;
+                for ch in title.chars() {
+                    let cw = char_width(ch) as u16;
                     ctx.set(
-                        title_x + i as u16,
+                        title_x + dx,
                         dialog_y + 1,
                         Cell::new(ch).fg(fg).bg(bg),
                     );
+                    dx += cw;
                 }
 
                 // Text field
@@ -121,13 +125,16 @@ impl RichTextEditor {
             DialogType::InsertImage { alt, src, field } => {
                 // Title
                 let title = "Insert Image";
-                let title_x = dialog_x + (dialog_width - title.len() as u16) / 2;
-                for (i, ch) in title.chars().enumerate() {
+                let title_x = dialog_x + (dialog_width.saturating_sub(display_width(title) as u16)) / 2;
+                let mut dx: u16 = 0;
+                for ch in title.chars() {
+                    let cw = char_width(ch) as u16;
                     ctx.set(
-                        title_x + i as u16,
+                        title_x + dx,
                         dialog_y + 1,
                         Cell::new(ch).fg(fg).bg(bg),
                     );
+                    dx += cw;
                 }
 
                 // Alt field

@@ -3,6 +3,7 @@
 use super::types::{CollapseMode, FlattenedItem};
 use super::Sidebar;
 use crate::render::Cell;
+use crate::utils::{char_width, display_width, truncate_to_width};
 use crate::widget::traits::RenderContext;
 
 impl Sidebar {
@@ -40,13 +41,19 @@ impl Sidebar {
         // Render header if present
         if let Some(header) = &self.header {
             if !is_collapsed {
-                let display: String = header.chars().take(content_width as usize - 2).collect();
-                let x_offset = (content_width as usize - display.chars().count()) / 2;
-                for (i, ch) in display.chars().enumerate() {
+                let display = truncate_to_width(header, content_width as usize - 2);
+                let x_offset = (content_width as usize).saturating_sub(display_width(display)) / 2;
+                let mut dx: u16 = 0;
+                for ch in display.chars() {
+                    let cw = char_width(ch) as u16;
+                    if x_offset as u16 + dx + cw > content_width {
+                        break;
+                    }
                     let mut cell = Cell::new(ch).bold();
                     cell.fg = self.fg;
                     cell.bg = self.bg;
-                    ctx.set(x_offset as u16 + i as u16, y, cell);
+                    ctx.set(x_offset as u16 + dx, y, cell);
+                    dx += cw;
                 }
             }
             y += 1;
@@ -79,15 +86,18 @@ impl Sidebar {
                     if !is_collapsed {
                         if let Some(title_text) = title {
                             // Section title
-                            let display: String = title_text
-                                .chars()
-                                .take(content_width as usize - 2)
-                                .collect();
-                            for (i, ch) in display.chars().enumerate() {
+                            let display = truncate_to_width(title_text, content_width as usize - 2);
+                            let mut dx: u16 = 0;
+                            for ch in display.chars() {
+                                let cw = char_width(ch) as u16;
+                                if 1 + dx + cw > content_width {
+                                    break;
+                                }
                                 let mut cell = Cell::new(ch);
                                 cell.fg = self.section_fg;
                                 cell.bg = self.bg;
-                                ctx.set(1 + i as u16, y, cell);
+                                ctx.set(1 + dx, y, cell);
+                                dx += cw;
                             }
                         } else {
                             // Separator line
@@ -151,28 +161,41 @@ impl Sidebar {
                     // Label (only if not collapsed)
                     if !is_collapsed {
                         let max_label_width = content_width.saturating_sub(x + 1);
-                        let badge_space = item.badge.as_ref().map(|b| b.len() + 2).unwrap_or(0);
+                        let badge_space = item
+                            .badge
+                            .as_ref()
+                            .map(|b| display_width(b) + 2)
+                            .unwrap_or(0);
                         let label_width = (max_label_width as usize).saturating_sub(badge_space);
-                        let display: String = item.label.chars().take(label_width).collect();
+                        let display = truncate_to_width(&item.label, label_width);
 
                         for ch in display.chars() {
-                            if x < content_width - badge_space as u16 {
-                                let mut cell = Cell::new(ch);
-                                cell.fg = fg;
-                                cell.bg = bg;
-                                ctx.set(x, y, cell);
-                                x += 1;
+                            let cw = char_width(ch) as u16;
+                            if x + cw > content_width.saturating_sub(badge_space as u16) {
+                                break;
                             }
+                            let mut cell = Cell::new(ch);
+                            cell.fg = fg;
+                            cell.bg = bg;
+                            ctx.set(x, y, cell);
+                            x += cw;
                         }
 
                         // Badge
                         if let Some(badge) = &item.badge {
-                            let badge_x = content_width - badge.len() as u16 - 2;
-                            for (i, ch) in badge.chars().enumerate() {
+                            let badge_x =
+                                content_width.saturating_sub(display_width(badge) as u16 + 2);
+                            let mut dx: u16 = 0;
+                            for ch in badge.chars() {
+                                let cw = char_width(ch) as u16;
+                                if badge_x + dx + cw > content_width {
+                                    break;
+                                }
                                 let mut cell = Cell::new(ch);
                                 cell.fg = self.badge_fg;
                                 cell.bg = self.badge_bg;
-                                ctx.set(badge_x + i as u16, y, cell);
+                                ctx.set(badge_x + dx, y, cell);
+                                dx += cw;
                             }
                         }
                     }
@@ -194,13 +217,19 @@ impl Sidebar {
             }
 
             if !is_collapsed {
-                let display: String = footer.chars().take(content_width as usize - 2).collect();
-                let x_offset = (content_width as usize - display.chars().count()) / 2;
-                for (i, ch) in display.chars().enumerate() {
+                let display = truncate_to_width(footer, content_width as usize - 2);
+                let x_offset = (content_width as usize).saturating_sub(display_width(display)) / 2;
+                let mut dx: u16 = 0;
+                for ch in display.chars() {
+                    let cw = char_width(ch) as u16;
+                    if x_offset as u16 + dx + cw > content_width {
+                        break;
+                    }
                     let mut cell = Cell::new(ch);
                     cell.fg = self.section_fg;
                     cell.bg = self.bg;
-                    ctx.set(x_offset as u16 + i as u16, footer_y + 1, cell);
+                    ctx.set(x_offset as u16 + dx, footer_y + 1, cell);
+                    dx += cw;
                 }
             }
         }
