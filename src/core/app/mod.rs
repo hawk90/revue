@@ -605,7 +605,9 @@ impl App {
         }
 
         // Compute layout for the given dimensions
-        let _ = self.layout.compute(root_dom_id, width, height);
+        if let Err(e) = self.layout.compute(root_dom_id, width, height) {
+            crate::log_warn!("Layout compute failed for {:?}: {}", root_dom_id, e);
+        }
     }
 
     /// Collect dirty regions that need to be redrawn
@@ -734,9 +736,12 @@ impl App {
                 crate::style::Style::default()
             }
         };
-        let _ = self
+        if let Err(e) = self
             .layout
-            .create_node_with_children(dom_id, &style, &children);
+            .create_node_with_children(dom_id, &style, &children)
+        {
+            crate::log_warn!("Layout node creation failed for {:?}: {}", dom_id, e);
+        }
 
         for child_dom_id in children {
             self.build_layout_tree(child_dom_id);
@@ -767,7 +772,9 @@ impl App {
         // Only update style if node is dirty
         if is_dirty {
             if let Some(style) = self.dom.style_for_with_inheritance(dom_id) {
-                let _ = self.layout.update_style(dom_id, &style);
+                if let Err(e) = self.layout.update_style(dom_id, &style) {
+                    crate::log_warn!("Layout style update failed for {:?}: {}", dom_id, e);
+                }
             }
         }
 
