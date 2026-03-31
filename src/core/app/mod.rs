@@ -555,7 +555,7 @@ impl App {
         let dirty_rects = self.collect_dirty_regions(width, height, force_redraw);
 
         let new_buffer_idx = self.swap_buffers();
-        self.render_to_buffer(view, new_buffer_idx);
+        self.render_to_buffer(view, new_buffer_idx, &dirty_rects);
         self.draw_to_terminal(terminal, new_buffer_idx, force_redraw, &dirty_rects)?;
 
         // Clear dirty flags after rendering
@@ -682,11 +682,50 @@ impl App {
     }
 
     /// Render the view to the given buffer
-    fn render_to_buffer<V: View>(&mut self, view: &V, buffer_idx: usize) {
-        let new_buffer = &mut self.buffers[buffer_idx];
+    ///
+    /// When dirty_rects is non-empty, uses partial rendering:
+    /// copies the previous buffer content first, then clears only the dirty
+    /// regions before re-rendering. This preserves unchanged pixels and
+    /// reduces the amount of work the diff algorithm needs to do.
+    fn render_to_buffer<V: View>(
+        &mut self,
+        view: &V,
+        buffer_idx: usize,
+        dirty_rects: &[crate::layout::Rect],
+    ) {
+        // Use split_at_mut to borrow both buffers simultaneously without cloning
+        let (buf_0, buf_1) = self.buffers.split_at_mut(1);
+        let (new_buffer, old_buffer) = if buffer_idx == 0 {
+            (&mut buf_0[0], &buf_1[0])
+        } else {
+            (&mut buf_1[0], &buf_0[0])
+        };
+
+        // Skip rendering entirely when nothing changed
+        if dirty_rects.is_empty() {
+            new_buffer.copy_from(old_buffer);
+            return;
+        }
+
         let area = crate::layout::Rect::new(0, 0, new_buffer.width(), new_buffer.height());
 
-        new_buffer.clear();
+        // Check if the dirty region covers the full screen
+        let full_screen = dirty_rects.len() == 1
+            && dirty_rects[0].x == 0
+            && dirty_rects[0].y == 0
+            && dirty_rects[0].width == new_buffer.width()
+            && dirty_rects[0].height == new_buffer.height();
+
+        if full_screen {
+            // Full screen dirty: clear everything (original behavior)
+            new_buffer.clear();
+        } else {
+            // Partial dirty: copy old buffer, then clear only dirty regions
+            // This preserves unchanged content and reduces diff size
+            new_buffer.copy_from(old_buffer);
+            new_buffer.clear_regions(dirty_rects);
+        }
+
         self.dom.render(view, new_buffer, area);
     }
 
