@@ -136,7 +136,7 @@ pub use pool::{
 pub use query::{DomTree, Query, QueryResult};
 pub use renderer::{styled_context, DomRenderer};
 pub use selector::{
-    parse_selector, parse_selectors, Combinator, PseudoClass, Selector, SelectorPart,
+    parse_selector, parse_selectors, Combinator, NthExpr, PseudoClass, Selector, SelectorPart,
 };
 
 /// Unique identifier for DOM nodes

@@ -19,7 +19,9 @@ mod types;
 pub use parser::{parse_selector, parse_selectors};
 #[cfg(test)]
 pub use types::SelectorParseError;
-pub use types::{AttributeOp, AttributeSelector, Combinator, PseudoClass, Selector, SelectorPart};
+pub use types::{
+    AttributeOp, AttributeSelector, Combinator, NthExpr, PseudoClass, Selector, SelectorPart,
+};
 
 #[cfg(test)]
 mod tests {
@@ -85,13 +87,16 @@ mod tests {
 
     #[test]
     fn test_pseudo_class_display_nth_child() {
-        assert_eq!(PseudoClass::NthChild(5).to_string(), ":nth-child(5)");
+        assert_eq!(
+            PseudoClass::NthChild(NthExpr::new(0, 5)).to_string(),
+            ":nth-child(5)"
+        );
     }
 
     #[test]
     fn test_pseudo_class_display_nth_last_child() {
         assert_eq!(
-            PseudoClass::NthLastChild(2).to_string(),
+            PseudoClass::NthLastChild(NthExpr::new(0, 2)).to_string(),
             ":nth-last-child(2)"
         );
     }
@@ -395,7 +400,7 @@ mod tests {
         let sel = parse_selector(":nth-child(3)").unwrap();
         assert_eq!(
             sel.parts[0].0.pseudo_classes,
-            vec![PseudoClass::NthChild(3)]
+            vec![PseudoClass::NthChild(NthExpr::new(0, 3))]
         );
     }
 
@@ -404,7 +409,7 @@ mod tests {
         let sel = parse_selector(":nth-last-child(2)").unwrap();
         assert_eq!(
             sel.parts[0].0.pseudo_classes,
-            vec![PseudoClass::NthLastChild(2)]
+            vec![PseudoClass::NthLastChild(NthExpr::new(0, 2))]
         );
     }
 
@@ -633,5 +638,158 @@ mod tests {
         let long_attr = "d".repeat(257);
         let result = parse_selector(&format!("[{}]", long_attr));
         assert!(result.is_err());
+    }
+
+    // NthExpr An+B tests
+    #[test]
+    fn test_nth_expr_matches_specific_index() {
+        let expr = NthExpr::new(0, 3);
+        assert!(!expr.matches(1));
+        assert!(!expr.matches(2));
+        assert!(expr.matches(3));
+        assert!(!expr.matches(4));
+    }
+
+    #[test]
+    fn test_nth_expr_matches_odd() {
+        let expr = NthExpr::new(2, 1); // odd
+        assert!(expr.matches(1));
+        assert!(!expr.matches(2));
+        assert!(expr.matches(3));
+        assert!(!expr.matches(4));
+        assert!(expr.matches(5));
+    }
+
+    #[test]
+    fn test_nth_expr_matches_even() {
+        let expr = NthExpr::new(2, 0); // even
+        assert!(!expr.matches(1));
+        assert!(expr.matches(2));
+        assert!(!expr.matches(3));
+        assert!(expr.matches(4));
+        assert!(!expr.matches(5));
+    }
+
+    #[test]
+    fn test_nth_expr_matches_3n() {
+        let expr = NthExpr::new(3, 0); // 3n: 3, 6, 9...
+        assert!(!expr.matches(1));
+        assert!(!expr.matches(2));
+        assert!(expr.matches(3));
+        assert!(!expr.matches(4));
+        assert!(expr.matches(6));
+        assert!(expr.matches(9));
+    }
+
+    #[test]
+    fn test_nth_expr_matches_3n_plus_1() {
+        let expr = NthExpr::new(3, 1); // 3n+1: 1, 4, 7, 10...
+        assert!(expr.matches(1));
+        assert!(!expr.matches(2));
+        assert!(!expr.matches(3));
+        assert!(expr.matches(4));
+        assert!(expr.matches(7));
+    }
+
+    #[test]
+    fn test_nth_expr_matches_negative_n_plus_3() {
+        let expr = NthExpr::new(-1, 3); // -n+3: 1, 2, 3
+        assert!(expr.matches(1));
+        assert!(expr.matches(2));
+        assert!(expr.matches(3));
+        assert!(!expr.matches(4));
+        assert!(!expr.matches(5));
+    }
+
+    #[test]
+    fn test_nth_expr_display() {
+        assert_eq!(NthExpr::new(0, 5).to_string(), "5");
+        assert_eq!(NthExpr::new(2, 1).to_string(), "odd");
+        assert_eq!(NthExpr::new(2, 0).to_string(), "even");
+        assert_eq!(NthExpr::new(3, 0).to_string(), "3n");
+        assert_eq!(NthExpr::new(3, 1).to_string(), "3n+1");
+        assert_eq!(NthExpr::new(-1, 3).to_string(), "-n+3");
+        assert_eq!(NthExpr::new(1, 0).to_string(), "n");
+    }
+
+    #[test]
+    fn test_parse_nth_child_odd() {
+        let sel = parse_selector(":nth-child(odd)").unwrap();
+        assert_eq!(
+            sel.parts[0].0.pseudo_classes,
+            vec![PseudoClass::NthChild(NthExpr::new(2, 1))]
+        );
+    }
+
+    #[test]
+    fn test_parse_nth_child_even() {
+        let sel = parse_selector(":nth-child(even)").unwrap();
+        assert_eq!(
+            sel.parts[0].0.pseudo_classes,
+            vec![PseudoClass::NthChild(NthExpr::new(2, 0))]
+        );
+    }
+
+    #[test]
+    fn test_parse_nth_child_2n_plus_1() {
+        let sel = parse_selector(":nth-child(2n+1)").unwrap();
+        assert_eq!(
+            sel.parts[0].0.pseudo_classes,
+            vec![PseudoClass::NthChild(NthExpr::new(2, 1))]
+        );
+    }
+
+    #[test]
+    fn test_parse_nth_child_3n() {
+        let sel = parse_selector(":nth-child(3n)").unwrap();
+        assert_eq!(
+            sel.parts[0].0.pseudo_classes,
+            vec![PseudoClass::NthChild(NthExpr::new(3, 0))]
+        );
+    }
+
+    #[test]
+    fn test_parse_nth_child_negative_n_plus_3() {
+        let sel = parse_selector(":nth-child(-n+3)").unwrap();
+        assert_eq!(
+            sel.parts[0].0.pseudo_classes,
+            vec![PseudoClass::NthChild(NthExpr::new(-1, 3))]
+        );
+    }
+
+    #[test]
+    fn test_parse_nth_child_n() {
+        let sel = parse_selector(":nth-child(n)").unwrap();
+        assert_eq!(
+            sel.parts[0].0.pseudo_classes,
+            vec![PseudoClass::NthChild(NthExpr::new(1, 0))]
+        );
+    }
+
+    #[test]
+    fn test_parse_nth_child_n_plus_2() {
+        let sel = parse_selector(":nth-child(n+2)").unwrap();
+        assert_eq!(
+            sel.parts[0].0.pseudo_classes,
+            vec![PseudoClass::NthChild(NthExpr::new(1, 2))]
+        );
+    }
+
+    #[test]
+    fn test_parse_nth_last_child_odd() {
+        let sel = parse_selector(":nth-last-child(odd)").unwrap();
+        assert_eq!(
+            sel.parts[0].0.pseudo_classes,
+            vec![PseudoClass::NthLastChild(NthExpr::new(2, 1))]
+        );
+    }
+
+    #[test]
+    fn test_parse_nth_child_2n() {
+        let sel = parse_selector(":nth-child(2n)").unwrap();
+        assert_eq!(
+            sel.parts[0].0.pseudo_classes,
+            vec![PseudoClass::NthChild(NthExpr::new(2, 0))]
+        );
     }
 }

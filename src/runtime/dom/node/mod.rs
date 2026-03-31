@@ -210,10 +210,10 @@ impl DomNode {
             FirstChild => self.state.first_child,
             LastChild => self.state.last_child,
             OnlyChild => self.state.only_child,
-            NthChild(n) => self.state.child_index + 1 == *n,
-            NthLastChild(n) => {
+            NthChild(expr) => expr.matches(self.state.child_index + 1),
+            NthLastChild(expr) => {
                 let from_end = self.state.sibling_count - self.state.child_index;
-                from_end == *n
+                expr.matches(from_end)
             }
             Not(inner) => !self.matches_pseudo(inner),
         }
@@ -712,25 +712,25 @@ mod tests {
 
     #[test]
     fn test_dom_node_matches_pseudo_nth_child() {
-        use crate::dom::PseudoClass;
+        use crate::dom::{NthExpr, PseudoClass};
 
         let meta = WidgetMeta::new("ListItem");
         let mut node = DomNode::new(DomId::new(1), meta);
         node.state.update_position(2, 5); // 3rd child (0-indexed: 2)
 
-        assert!(node.matches_pseudo(&PseudoClass::NthChild(3))); // 1-indexed
-        assert!(!node.matches_pseudo(&PseudoClass::NthChild(2)));
+        assert!(node.matches_pseudo(&PseudoClass::NthChild(NthExpr::new(0, 3)))); // 1-indexed
+        assert!(!node.matches_pseudo(&PseudoClass::NthChild(NthExpr::new(0, 2))));
     }
 
     #[test]
     fn test_dom_node_matches_pseudo_nth_last_child() {
-        use crate::dom::PseudoClass;
+        use crate::dom::{NthExpr, PseudoClass};
 
         let meta = WidgetMeta::new("ListItem");
         let mut node = DomNode::new(DomId::new(1), meta);
         node.state.update_position(3, 5); // 4th child, 2nd from last
 
-        assert!(node.matches_pseudo(&PseudoClass::NthLastChild(2)));
+        assert!(node.matches_pseudo(&PseudoClass::NthLastChild(NthExpr::new(0, 2))));
     }
 
     #[test]
