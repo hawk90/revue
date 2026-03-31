@@ -5,6 +5,7 @@ use super::types::{ChartType, LineStyle, Series};
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::{char_width, display_width};
 use crate::widget::theme::DARK_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -457,13 +458,15 @@ impl View for Chart {
 
         // Draw title
         if let Some(ref title) = self.title {
-            let title_x = (area.width.saturating_sub(title.len() as u16)) / 2;
+            let title_x = (area.width.saturating_sub(display_width(title) as u16)) / 2;
             let title_y = if has_border { 1u16 } else { 0 };
-            for (i, ch) in title.chars().enumerate() {
+            let mut dx: u16 = 0;
+            for ch in title.chars() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.modifier |= crate::render::Modifier::BOLD;
-                ctx.set(title_x + i as u16, title_y, cell);
+                ctx.set(title_x + dx, title_y, cell);
+                dx += char_width(ch) as u16;
             }
         }
 
@@ -480,11 +483,14 @@ impl View for Chart {
             let y = inner_y + inner_h - 1 - ((t * (inner_h as f64 - 1.0)) as u16);
 
             // Right-align label
-            let label_start = y_label_x + y_label_width.saturating_sub(label.len() as u16 + 1);
-            for (j, ch) in label.chars().enumerate() {
+            let label_start =
+                y_label_x + y_label_width.saturating_sub(display_width(&label) as u16 + 1);
+            let mut dx: u16 = 0;
+            for ch in label.chars() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.y_axis.color);
-                ctx.set(label_start + j as u16, y, cell);
+                ctx.set(label_start + dx, y, cell);
+                dx += char_width(ch) as u16;
             }
 
             // Draw grid line
@@ -506,14 +512,16 @@ impl View for Chart {
             let x = inner_x + (t * (inner_w as f64 - 1.0)) as u16;
 
             // Center label
-            let label_start = x.saturating_sub(label.len() as u16 / 2);
-            for (j, ch) in label.chars().enumerate() {
-                let px = label_start + j as u16;
+            let label_start = x.saturating_sub(display_width(&label) as u16 / 2);
+            let mut dx: u16 = 0;
+            for ch in label.chars() {
+                let px = label_start + dx;
                 if px < area.width {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.x_axis.color);
                     ctx.set(px, x_label_y, cell);
                 }
+                dx += char_width(ch) as u16;
             }
 
             // Draw grid line
@@ -528,8 +536,9 @@ impl View for Chart {
 
         // Draw axis titles
         if let Some(ref title) = self.y_axis.title {
-            // Draw vertically on the left
-            let y_start = inner_y + (inner_h.saturating_sub(title.len() as u16)) / 2;
+            // Draw vertically on the left (one char per row, so char count governs height)
+            let char_count = title.chars().count() as u16;
+            let y_start = inner_y + (inner_h.saturating_sub(char_count)) / 2;
             for (i, ch) in title.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.y_axis.color);
@@ -538,13 +547,15 @@ impl View for Chart {
         }
 
         if let Some(ref title) = self.x_axis.title {
-            let x_start = inner_x + (inner_w.saturating_sub(title.len() as u16)) / 2;
+            let x_start = inner_x + (inner_w.saturating_sub(display_width(title) as u16)) / 2;
             let y = x_label_y + 1;
             if y < area.height {
-                for (i, ch) in title.chars().enumerate() {
+                let mut dx: u16 = 0;
+                for ch in title.chars() {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(self.x_axis.color);
-                    ctx.set(x_start + i as u16, y, cell);
+                    ctx.set(x_start + dx, y, cell);
+                    dx += char_width(ch) as u16;
                 }
             }
         }
@@ -740,14 +751,16 @@ impl View for Chart {
                 ctx.set(legend_x + 1, y, indicator);
 
                 // Series name
-                for (j, ch) in series.name.chars().enumerate() {
-                    let x = legend_x + 3 + j as u16;
+                let mut dx: u16 = 0;
+                for ch in series.name.chars() {
+                    let x = legend_x + 3 + dx;
                     if x < legend_x + legend_width - 1 {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(Color::WHITE);
                         cell.bg = self.bg_color.or(Some(Color::rgb(20, 20, 20)));
                         ctx.set(x, y, cell);
                     }
+                    dx += char_width(ch) as u16;
                 }
             }
         }

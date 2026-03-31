@@ -25,6 +25,7 @@
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::char_width;
 use crate::widget::layout::border::{draw_border, BorderType};
 use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
@@ -397,36 +398,47 @@ impl Alert {
         // Title
         if let Some(ref title) = self.title {
             let title_x = content_x + icon_offset;
-            for (i, ch) in title.chars().enumerate() {
-                if i as u16 >= content_width - icon_offset {
+            let max_w = content_width - icon_offset;
+            let mut dx: u16 = 0;
+            for ch in title.chars() {
+                let cw = char_width(ch) as u16;
+                if dx + cw > max_w {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(text_fg);
                 cell.modifier |= Modifier::BOLD;
-                ctx.set(title_x + i as u16, y, cell);
+                ctx.set(title_x + dx, y, cell);
+                dx += cw;
             }
             y += 1;
 
             // Message
             let msg_x = content_x + icon_offset;
-            for (i, ch) in self.message.chars().enumerate() {
-                if i as u16 >= content_width - icon_offset {
+            let mut dx: u16 = 0;
+            for ch in self.message.chars() {
+                let cw = char_width(ch) as u16;
+                if dx + cw > max_w {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::rgb(180, 180, 180));
-                ctx.set(msg_x + i as u16, y, cell);
+                ctx.set(msg_x + dx, y, cell);
+                dx += cw;
             }
         } else {
             let msg_x = content_x + icon_offset;
-            for (i, ch) in self.message.chars().enumerate() {
-                if i as u16 >= content_width - icon_offset {
+            let max_w = content_width - icon_offset;
+            let mut dx: u16 = 0;
+            for ch in self.message.chars() {
+                let cw = char_width(ch) as u16;
+                if dx + cw > max_w {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(text_fg);
-                ctx.set(msg_x + i as u16, y, cell);
+                ctx.set(msg_x + dx, y, cell);
+                dx += cw;
             }
         }
 
@@ -457,37 +469,46 @@ impl Alert {
         // Title or message
         if let Some(ref title) = self.title {
             // Title on first line
-            for (i, ch) in title.chars().enumerate() {
-                if x + i as u16 >= area.width {
+            let mut dx: u16 = 0;
+            for ch in title.chars() {
+                let cw = char_width(ch) as u16;
+                if x + dx + cw > area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(accent_color);
                 cell.modifier |= Modifier::BOLD;
-                ctx.set(x + i as u16, y, cell);
+                ctx.set(x + dx, y, cell);
+                dx += cw;
             }
 
             // Message on second line
             if area.height > 1 {
                 let msg_x: u16 = if self.show_icon { 2 } else { 0 };
-                for (i, ch) in self.message.chars().enumerate() {
-                    if msg_x + i as u16 >= area.width {
+                let mut dx: u16 = 0;
+                for ch in self.message.chars() {
+                    let cw = char_width(ch) as u16;
+                    if msg_x + dx + cw > area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(180, 180, 180));
-                    ctx.set(msg_x + i as u16, y + 1, cell);
+                    ctx.set(msg_x + dx, y + 1, cell);
+                    dx += cw;
                 }
             }
         } else {
             // Just message
-            for (i, ch) in self.message.chars().enumerate() {
-                if x + i as u16 >= area.width {
+            let mut dx: u16 = 0;
+            for ch in self.message.chars() {
+                let cw = char_width(ch) as u16;
+                if x + dx + cw > area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(text_fg);
-                ctx.set(x + i as u16, y, cell);
+                ctx.set(x + dx, y, cell);
+                dx += cw;
             }
         }
 

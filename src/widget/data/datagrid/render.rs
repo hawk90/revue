@@ -4,6 +4,7 @@ use super::core::{CellPos, CellState, DataGrid, RowRenderParams};
 use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::{char_width, display_width, truncate_to_width};
 use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View};
 
@@ -59,6 +60,7 @@ impl View for DataGrid {
         let total_rows = self.filtered_count();
         let visible_height =
             (area.height - header_height) as usize / self.options.row_height.max(1) as usize;
+        self.last_viewport_height.set(visible_height);
 
         // Virtual scroll: calculate render range with overscan
         let (render_start, render_end) = if self.options.virtual_scroll {
@@ -232,7 +234,13 @@ impl DataGrid {
                 self.colors.header_fg
             };
 
-            for (j, ch) in title.chars().take(w as usize - 1).enumerate() {
+            let truncated = truncate_to_width(&title, w as usize - 1);
+            let mut dx: u16 = 0;
+            for ch in truncated.chars() {
+                let cw = char_width(ch) as u16;
+                if dx + cw > w - 1 {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);
@@ -241,7 +249,8 @@ impl DataGrid {
                 } else {
                     cell.modifier |= Modifier::DIM;
                 }
-                ctx.set(x + j as u16, y, cell);
+                ctx.set(x + dx, y, cell);
+                dx += cw;
             }
 
             // Draw separator with resize indicator
@@ -322,14 +331,15 @@ impl DataGrid {
 
     /// Render cell in edit mode with cursor
     fn render_edit_cell(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16, bg: Color) {
-        let display: String = self
-            .edit_state
-            .buffer
-            .chars()
-            .take(width as usize - 1)
-            .collect();
-        for (j, ch) in display.chars().enumerate() {
-            let is_cursor = j == self.edit_state.cursor;
+        let truncated = truncate_to_width(&self.edit_state.buffer, width as usize - 1);
+        let mut dx: u16 = 0;
+        let mut char_idx = 0;
+        for ch in truncated.chars() {
+            let cw = char_width(ch) as u16;
+            if dx + cw > width - 1 {
+                break;
+            }
+            let is_cursor = char_idx == self.edit_state.cursor;
             let mut cell = Cell::new(ch);
             cell.fg = Some(if is_cursor {
                 Color::BLACK
@@ -337,15 +347,15 @@ impl DataGrid {
                 Color::WHITE
             });
             cell.bg = Some(if is_cursor { Color::WHITE } else { bg });
-            ctx.set(x + j as u16, y, cell);
+            ctx.set(x + dx, y, cell);
+            dx += cw;
+            char_idx += 1;
         }
         // Draw cursor at end if needed
-        if self.edit_state.cursor >= display.chars().count()
-            && self.edit_state.cursor < width as usize
-        {
+        if self.edit_state.cursor >= char_idx && (dx as usize) < width as usize {
             let mut cursor_cell = Cell::new(' ');
             cursor_cell.bg = Some(Color::WHITE);
-            ctx.set(x + self.edit_state.cursor as u16, y, cursor_cell);
+            ctx.set(x + dx, y, cursor_cell);
         }
     }
 
@@ -359,18 +369,20 @@ impl DataGrid {
         row_bg: Color,
         is_selected: bool,
     ) {
-        let display: String = value.chars().take(pos.width as usize - 1).collect();
+        let truncated = truncate_to_width(value, pos.width as usize - 1);
+        let dw = display_width(truncated) as u16;
         let start_x = match col.align {
             super::types::Alignment::Left => pos.x,
-            super::types::Alignment::Center => {
-                pos.x + (pos.width.saturating_sub(display.len() as u16)) / 2
-            }
-            super::types::Alignment::Right => {
-                pos.x + pos.width.saturating_sub(display.len() as u16 + 1)
-            }
+            super::types::Alignment::Center => pos.x + (pos.width.saturating_sub(dw)) / 2,
+            super::types::Alignment::Right => pos.x + pos.width.saturating_sub(dw + 1),
         };
 
-        for (j, ch) in display.chars().enumerate() {
+        let mut dx: u16 = 0;
+        for ch in truncated.chars() {
+            let cw = char_width(ch) as u16;
+            if dx + cw > pos.width {
+                break;
+            }
             let mut cell = Cell::new(ch);
             cell.fg = Some(if is_selected {
                 self.colors.selected_fg
@@ -378,7 +390,8 @@ impl DataGrid {
                 Color::WHITE
             });
             cell.bg = Some(row_bg);
-            ctx.set(start_x + j as u16, pos.y, cell);
+            ctx.set(start_x + dx, pos.y, cell);
+            dx += cw;
         }
     }
 

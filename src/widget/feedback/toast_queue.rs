@@ -24,6 +24,7 @@
 use super::toast::{ToastLevel, ToastPosition};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::{char_width, truncate_to_width};
 use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -491,12 +492,19 @@ impl ToastQueue {
 
         // Message
         let msg_x = content_x + 2;
-        let max_msg_len = (toast_w.saturating_sub(5)) as usize;
-        for (i, ch) in entry.message.chars().take(max_msg_len).enumerate() {
+        let max_msg_width = toast_w.saturating_sub(5) as usize;
+        let truncated_msg = truncate_to_width(&entry.message, max_msg_width);
+        let mut dx: u16 = 0;
+        for ch in truncated_msg.chars() {
+            let cw = char_width(ch) as u16;
+            if dx + cw > max_msg_width as u16 {
+                break;
+            }
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::WHITE);
             cell.bg = Some(bg);
-            ctx.set(msg_x + i as u16, content_y, cell);
+            ctx.set(msg_x + dx, content_y, cell);
+            dx += cw;
         }
 
         // Dismiss hint for dismissible toasts

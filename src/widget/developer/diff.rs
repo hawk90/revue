@@ -5,6 +5,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::{char_width, truncate_to_width};
 use crate::widget::theme::DISABLED_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -405,18 +406,25 @@ impl DiffViewer {
             _ => None,
         };
 
-        for (i, ch) in content.chars().take(content_width).enumerate() {
+        let truncated = truncate_to_width(content, content_width);
+        let mut dx: u16 = 0;
+        for ch in truncated.chars() {
+            let cw = char_width(ch) as u16;
+            if dx + cw > content_width as u16 {
+                break;
+            }
             let mut cell = Cell::new(ch);
             cell.fg = fg;
             cell.bg = bg;
-            ctx.set(x + line_num_width + i as u16, y, cell);
+            ctx.set(x + line_num_width + dx, y, cell);
+            dx += cw;
         }
 
         // Fill remaining with background
-        for i in content.chars().count()..content_width {
+        for i in dx..(content_width as u16) {
             let mut cell = Cell::new(' ');
             cell.bg = bg;
-            ctx.set(x + line_num_width + i as u16, y, cell);
+            ctx.set(x + line_num_width + i, y, cell);
         }
     }
 
@@ -517,11 +525,18 @@ impl DiffViewer {
             } else {
                 &line.left
             };
-            for (j, ch) in content.chars().take(content_width).enumerate() {
+            let truncated = truncate_to_width(content, content_width);
+            let mut dx: u16 = 0;
+            for ch in truncated.chars() {
+                let cw = char_width(ch) as u16;
+                if dx + cw > content_width as u16 {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);
-                ctx.set(line_num_width + 1 + j as u16, y, cell);
+                ctx.set(line_num_width + 1 + dx, y, cell);
+                dx += cw;
             }
         }
     }

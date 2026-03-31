@@ -226,11 +226,13 @@ impl DataGrid {
                 true
             }
             Key::PageDown => {
-                self.page_down(10);
+                let page = self.last_viewport_height.get().max(1);
+                self.page_down(page);
                 true
             }
             Key::PageUp => {
-                self.page_up(10);
+                let page = self.last_viewport_height.get().max(1);
+                self.page_up(page);
                 true
             }
             Key::Home | Key::Char('g') => {

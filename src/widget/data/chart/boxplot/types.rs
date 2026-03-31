@@ -43,7 +43,7 @@ impl BoxStats {
             return None;
         }
 
-        valid.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        valid.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let n = valid.len();
         let min = valid[0];

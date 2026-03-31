@@ -4,6 +4,7 @@
 
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::{char_width, truncate_to_width};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -235,10 +236,12 @@ impl BarChart {
                         )
                     };
 
-                    for (i, ch) in label.chars().enumerate() {
-                        if (i as u16) < area.width {
-                            ctx.set(i as u16, y, Cell::new(ch));
+                    let mut dx: u16 = 0;
+                    for ch in label.chars() {
+                        if dx < area.width {
+                            ctx.set(dx, y, Cell::new(ch));
                         }
+                        dx += char_width(ch) as u16;
                     }
                 }
 
@@ -256,10 +259,12 @@ impl BarChart {
                 if row == 0 && self.show_values {
                     let value_str = format!(" {:.1}", bar.value);
                     let value_x = bar_start + bar_length;
-                    for (i, ch) in value_str.chars().enumerate() {
-                        if value_x + (i as u16) < area.width {
-                            ctx.set(value_x + (i as u16), y, Cell::new(ch));
+                    let mut dx: u16 = 0;
+                    for ch in value_str.chars() {
+                        if value_x + dx < area.width {
+                            ctx.set(value_x + dx, y, Cell::new(ch));
                         }
+                        dx += char_width(ch) as u16;
                     }
                 }
             }
@@ -315,21 +320,25 @@ impl BarChart {
             if self.show_values && bar_area_height > 0 {
                 let value_str = format!("{:.0}", bar.value);
                 let value_y = bar_area_height - bar_height.saturating_sub(1).min(bar_area_height);
-                for (i, ch) in value_str.chars().enumerate() {
-                    if x + (i as u16) < area.width && value_y > 0 {
-                        ctx.set(x + (i as u16), value_y - 1, Cell::new(ch));
+                let mut dx: u16 = 0;
+                for ch in value_str.chars() {
+                    if x + dx < area.width && value_y > 0 {
+                        ctx.set(x + dx, value_y - 1, Cell::new(ch));
                     }
+                    dx += char_width(ch) as u16;
                 }
             }
 
             // Draw label below
             if label_height > 0 {
                 let label_y = area.height - 1;
-                let label: String = bar.label.chars().take(self.bar_width as usize).collect();
-                for (i, ch) in label.chars().enumerate() {
-                    if x + (i as u16) < area.width {
-                        ctx.set(x + (i as u16), label_y, Cell::new(ch));
+                let label = truncate_to_width(&bar.label, self.bar_width as usize);
+                let mut dx: u16 = 0;
+                for ch in label.chars() {
+                    if x + dx < area.width {
+                        ctx.set(x + dx, label_y, Cell::new(ch));
                     }
+                    dx += char_width(ch) as u16;
                 }
             }
 

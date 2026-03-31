@@ -5,6 +5,7 @@
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::{char_width, truncate_to_width};
 use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -508,12 +509,14 @@ impl View for RichLog {
             // Draw timestamp
             if self.show_timestamps {
                 if let Some(ref ts) = entry.timestamp {
-                    for ch in ts.chars().take(timestamp_width as usize - 1) {
+                    let ts_display = truncate_to_width(ts, timestamp_width as usize - 1);
+                    for ch in ts_display.chars() {
+                        let cw = char_width(ch) as u16;
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.timestamp_fg);
                         cell.bg = self.bg;
                         ctx.set(x, y, cell);
-                        x += 1;
+                        x += cw;
                     }
                 }
                 x = timestamp_width;
@@ -546,13 +549,14 @@ impl View for RichLog {
             // Draw source
             if self.show_sources {
                 if let Some(ref src) = entry.source {
-                    let src_display: String = src.chars().take(source_width as usize - 1).collect();
+                    let src_display = truncate_to_width(src, source_width as usize - 1);
                     for ch in src_display.chars() {
+                        let cw = char_width(ch) as u16;
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.source_fg);
                         cell.bg = self.bg;
                         ctx.set(x, y, cell);
-                        x += 1;
+                        x += cw;
                     }
                 }
                 x = prefix_width;
@@ -564,7 +568,12 @@ impl View for RichLog {
             } else {
                 level_color
             };
-            for ch in entry.message.chars().take(message_width as usize) {
+            let msg_truncated = truncate_to_width(&entry.message, message_width as usize);
+            for ch in msg_truncated.chars() {
+                let cw = char_width(ch) as u16;
+                if x + cw > prefix_width + message_width {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(msg_fg);
                 cell.bg = self.bg;
@@ -575,7 +584,7 @@ impl View for RichLog {
                     cell.modifier |= Modifier::BOLD;
                 }
                 ctx.set(x, y, cell);
-                x += 1;
+                x += cw;
             }
         }
 

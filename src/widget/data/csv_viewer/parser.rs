@@ -115,8 +115,8 @@ pub fn calculate_column_widths(data: &[Vec<String>]) -> Vec<u16> {
     for row in data {
         for (col, cell) in row.iter().enumerate() {
             if col < column_widths.len() {
-                // Clamp to u16::MAX to prevent truncation
-                let width = cell.chars().count().min(u16::MAX as usize) as u16;
+                // Use display width for proper CJK/emoji column sizing
+                let width = crate::utils::display_width(cell).min(u16::MAX as usize) as u16;
                 column_widths[col] = column_widths[col].max(width);
             }
         }

@@ -3,6 +3,7 @@
 use super::types::{TimeLineStyle, TimeSeriesData};
 use super::TimeSeries;
 use crate::render::Cell;
+use crate::utils::{char_width, display_width};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for TimeSeries {
@@ -29,15 +30,17 @@ impl View for TimeSeries {
 
         // Title
         if let Some(ref title) = self.title {
-            let title_x = (area.width.saturating_sub(title.len() as u16)) / 2;
-            for (i, ch) in title.chars().enumerate() {
-                let x = title_x + i as u16;
+            let title_x = (area.width.saturating_sub(display_width(title) as u16)) / 2;
+            let mut dx: u16 = 0;
+            for ch in title.chars() {
+                let x = title_x + dx;
                 if x < area.width {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(crate::style::Color::WHITE);
                     cell.bg = self.bg_color;
                     ctx.set(x, current_y, cell);
                 }
+                dx += char_width(ch) as u16;
             }
             current_y += 1;
         }
@@ -112,15 +115,17 @@ impl View for TimeSeries {
                 } else {
                     format!("{:.2}", val)
                 };
-                let label_x = y_label_width.saturating_sub(label.len() as u16 + 1);
-                for (j, ch) in label.chars().enumerate() {
-                    let x = label_x + j as u16;
+                let label_x = y_label_width.saturating_sub(display_width(&label) as u16 + 1);
+                let mut dx: u16 = 0;
+                for ch in label.chars() {
+                    let x = label_x + dx;
                     if x < area.width {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(crate::style::Color::WHITE);
                         cell.bg = self.bg_color;
                         ctx.set(x, y, cell);
                     }
+                    dx += char_width(ch) as u16;
                 }
             }
         }
@@ -148,15 +153,17 @@ impl View for TimeSeries {
                 }
 
                 if !marker.label.is_empty() {
-                    let label_x = x.saturating_sub(marker.label.len() as u16 / 2);
-                    for (j, ch) in marker.label.chars().enumerate() {
-                        let lx = label_x + j as u16;
+                    let label_x = x.saturating_sub(display_width(&marker.label) as u16 / 2);
+                    let mut dx: u16 = 0;
+                    for ch in marker.label.chars() {
+                        let lx = label_x + dx;
                         if lx < area.width {
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(marker.color);
                             cell.bg = self.bg_color;
                             ctx.set(lx, plot_y + plot_height + 1, cell);
                         }
+                        dx += char_width(ch) as u16;
                     }
                 }
             }
@@ -185,15 +192,17 @@ impl View for TimeSeries {
                 let ts = time_min + (ratio * time_range as f64) as u64;
                 let label = self.format_time(ts, time_range);
                 let x = plot_x + (ratio * (plot_width - 1) as f64) as u16;
-                let label_x = x.saturating_sub(label.len() as u16 / 2);
-                for (j, ch) in label.chars().enumerate() {
-                    let lx = label_x + j as u16;
+                let label_x = x.saturating_sub(display_width(&label) as u16 / 2);
+                let mut dx: u16 = 0;
+                for ch in label.chars() {
+                    let lx = label_x + dx;
                     if lx < area.width {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(crate::style::Color::WHITE);
                         cell.bg = self.bg_color;
                         ctx.set(lx, x_label_y, cell);
                     }
+                    dx += char_width(ch) as u16;
                 }
             }
         }

@@ -21,13 +21,25 @@ impl View for FilePicker {
             content = content.child(Text::new(title).bold());
         }
 
-        // Current path
+        // Current path - truncate from the left to show the end of the path
         let path_str = self.current_dir.display().to_string();
-        let truncated_path = if path_str.len() > self.width as usize - 4 {
-            format!(
-                "...{}",
-                &path_str[path_str.len() - self.width as usize + 7..]
-            )
+        let max_path_width = self.width as usize - 4;
+        let truncated_path = if crate::utils::display_width(&path_str) > max_path_width {
+            let suffix_width = max_path_width.saturating_sub(3); // "..." prefix
+                                                                 // Find suffix that fits by iterating from the end
+            let chars: Vec<char> = path_str.chars().collect();
+            let mut w = 0;
+            let mut start = chars.len();
+            for i in (0..chars.len()).rev() {
+                let cw = crate::utils::char_width(chars[i]);
+                if w + cw > suffix_width {
+                    break;
+                }
+                w += cw;
+                start = i;
+            }
+            let suffix: String = chars[start..].iter().collect();
+            format!("...{}", suffix)
         } else {
             path_str
         };

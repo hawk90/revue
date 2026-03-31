@@ -180,14 +180,17 @@ impl View for ContextMenu {
             }
 
             // Draw label
-            for (j, ch) in item.label.chars().enumerate() {
-                if j as u16 + 2 >= width - 1 {
+            let mut dx: u16 = 0;
+            for ch in item.label.chars() {
+                let cw = crate::utils::char_width(ch) as u16;
+                if dx + cw + 2 >= width - 1 {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);
-                ctx.set(x + 2 + j as u16, item_y, cell);
+                ctx.set(x + 2 + dx, item_y, cell);
+                dx += cw;
             }
         }
     }

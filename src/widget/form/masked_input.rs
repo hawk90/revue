@@ -29,6 +29,7 @@
 //! ```
 
 use crate::style::Color;
+use crate::utils::display_width;
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG, PLACEHOLDER_FG};
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -605,13 +606,14 @@ impl View for MaskedInput {
 
         // Build input display with pre-allocated padding
         let width = self.width.unwrap_or(20) as usize;
-        let padded = if display.len() < width {
+        let display_w = display_width(&display);
+        let padded = if display_w < width {
             let mut result = String::with_capacity(width);
             result.push_str(&display);
-            result.extend(std::iter::repeat_n(' ', width - display.len()));
+            result.extend(std::iter::repeat_n(' ', width - display_w));
             result
         } else {
-            display.chars().take(width).collect()
+            crate::utils::truncate_to_width(&display, width).to_owned()
         };
 
         // Insert cursor if focused
