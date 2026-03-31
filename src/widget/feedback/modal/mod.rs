@@ -1,5 +1,6 @@
 //! Modal/Dialog widget for displaying overlays
 
+use crate::event::{FocusManager, FocusTrap};
 use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
@@ -77,6 +78,8 @@ pub struct Modal {
     title_fg: Option<Color>,
     border_fg: Option<Color>,
     props: WidgetProps,
+    /// Focus trap for keyboard focus management
+    focus_trap: Option<FocusTrap>,
 }
 
 impl Modal {
@@ -94,6 +97,7 @@ impl Modal {
             title_fg: Some(Color::WHITE),
             border_fg: Some(Color::WHITE),
             props: WidgetProps::new(),
+            focus_trap: None,
         }
     }
 
@@ -209,9 +213,45 @@ impl Modal {
         self.visible = true;
     }
 
+    /// Show the modal and activate focus trapping
+    ///
+    /// Traps keyboard focus within the modal's buttons so Tab/Shift+Tab
+    /// only cycles between modal buttons and doesn't escape to background widgets.
+    ///
+    /// # Arguments
+    /// * `fm` - The focus manager to trap focus in
+    /// * `container_id` - Unique ID for this modal's focus trap container
+    /// * `button_ids` - Widget IDs for each button (must match button count)
+    pub fn show_with_focus_trap(
+        &mut self,
+        fm: &mut FocusManager,
+        container_id: u64,
+        button_ids: &[u64],
+    ) {
+        self.visible = true;
+        let mut trap = FocusTrap::new(container_id).with_children(button_ids);
+        trap.activate(fm);
+        self.focus_trap = Some(trap);
+    }
+
     /// Hide the modal
     pub fn hide(&mut self) {
         self.visible = false;
+    }
+
+    /// Hide the modal and release focus trapping
+    ///
+    /// Releases the focus trap and restores focus to the previously focused widget.
+    pub fn hide_with_focus_restore(&mut self, fm: &mut FocusManager) {
+        self.visible = false;
+        if let Some(mut trap) = self.focus_trap.take() {
+            trap.deactivate(fm);
+        }
+    }
+
+    /// Check if this modal has an active focus trap
+    pub fn has_focus_trap(&self) -> bool {
+        self.focus_trap.as_ref().is_some_and(|t| t.is_active())
     }
 
     /// Toggle visibility
@@ -276,6 +316,37 @@ impl Modal {
             }
             _ => None,
         }
+    }
+
+    /// Handle key input with focus manager integration
+    ///
+    /// Like `handle_key`, but also releases the focus trap on Escape
+    /// or when a button is confirmed.
+    pub fn handle_key_with_focus(
+        &mut self,
+        key: &crate::event::Key,
+        fm: &mut FocusManager,
+    ) -> Option<usize> {
+        let result = self.handle_key(key);
+
+        // Release focus trap on escape or button confirm
+        match key {
+            crate::event::Key::Escape => {
+                if let Some(mut trap) = self.focus_trap.take() {
+                    trap.deactivate(fm);
+                }
+            }
+            crate::event::Key::Enter | crate::event::Key::Char(' ') => {
+                if result.is_some() {
+                    if let Some(mut trap) = self.focus_trap.take() {
+                        trap.deactivate(fm);
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        result
     }
 
     /// Create alert dialog
@@ -1078,5 +1149,113 @@ World",
         assert_eq!(m.buttons[0].label, "One");
         assert_eq!(m.buttons[1].label, "Two");
         assert_eq!(m.buttons[2].label, "Three");
+    }
+
+    // =========================================================================
+    // Focus trap integration tests
+    // =========================================================================
+
+    #[test]
+    fn test_modal_show_with_focus_trap() {
+        let mut fm = FocusManager::new();
+        fm.register(1); // background widget
+        fm.register(2); // background widget
+        fm.register(10); // modal button 1
+        fm.register(11); // modal button 2
+        fm.focus(1);
+
+        let mut m = Modal::new().ok_cancel();
+        m.show_with_focus_trap(&mut fm, 100, &[10, 11]);
+
+        assert!(m.is_visible());
+        assert!(m.has_focus_trap());
+        assert!(fm.is_trapped());
+        // Focus should be on first trapped child
+        assert_eq!(fm.current(), Some(10));
+    }
+
+    #[test]
+    fn test_modal_hide_with_focus_restore() {
+        let mut fm = FocusManager::new();
+        fm.register(1);
+        fm.register(2);
+        fm.register(10);
+        fm.register(11);
+        fm.focus(1);
+
+        let mut m = Modal::new().ok_cancel();
+        m.show_with_focus_trap(&mut fm, 100, &[10, 11]);
+        assert_eq!(fm.current(), Some(10));
+
+        m.hide_with_focus_restore(&mut fm);
+        assert!(!m.is_visible());
+        assert!(!m.has_focus_trap());
+        assert!(!fm.is_trapped());
+        // Focus should be restored to widget 1
+        assert_eq!(fm.current(), Some(1));
+    }
+
+    #[test]
+    fn test_modal_handle_key_with_focus_escape() {
+        use crate::event::Key;
+
+        let mut fm = FocusManager::new();
+        fm.register(1);
+        fm.register(10);
+        fm.register(11);
+        fm.focus(1);
+
+        let mut m = Modal::new().ok_cancel();
+        m.show_with_focus_trap(&mut fm, 100, &[10, 11]);
+
+        // Escape should hide modal and release trap
+        m.handle_key_with_focus(&Key::Escape, &mut fm);
+        assert!(!m.is_visible());
+        assert!(!fm.is_trapped());
+        assert_eq!(fm.current(), Some(1));
+    }
+
+    #[test]
+    fn test_modal_handle_key_with_focus_confirm() {
+        use crate::event::Key;
+
+        let mut fm = FocusManager::new();
+        fm.register(1);
+        fm.register(10);
+        fm.register(11);
+        fm.focus(1);
+
+        let mut m = Modal::new().ok_cancel();
+        m.show_with_focus_trap(&mut fm, 100, &[10, 11]);
+
+        // Enter confirms and releases trap
+        let result = m.handle_key_with_focus(&Key::Enter, &mut fm);
+        assert_eq!(result, Some(0));
+        assert!(!fm.is_trapped());
+    }
+
+    #[test]
+    fn test_modal_focus_trap_tab_does_not_release() {
+        use crate::event::Key;
+
+        let mut fm = FocusManager::new();
+        fm.register(1);
+        fm.register(10);
+        fm.register(11);
+        fm.focus(1);
+
+        let mut m = Modal::new().ok_cancel();
+        m.show_with_focus_trap(&mut fm, 100, &[10, 11]);
+
+        // Tab should navigate buttons but keep trap active
+        m.handle_key_with_focus(&Key::Tab, &mut fm);
+        assert!(m.has_focus_trap());
+        assert!(fm.is_trapped());
+    }
+
+    #[test]
+    fn test_modal_no_focus_trap_by_default() {
+        let m = Modal::new().ok();
+        assert!(!m.has_focus_trap());
     }
 }
