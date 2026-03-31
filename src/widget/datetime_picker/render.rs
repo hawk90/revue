@@ -2,6 +2,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::display_width;
 use crate::widget::data::calendar::{days_in_month, FirstDayOfWeek};
 use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
 use crate::widget::traits::RenderContext;
@@ -94,7 +95,7 @@ pub trait Rendering {
             super::helpers::month_name(self.date().month),
             self.date().year
         );
-        let header_x = x + (width.saturating_sub(header.len() as u16)) / 2;
+        let header_x = x + (width.saturating_sub(display_width(&header) as u16)) / 2;
         self.draw_text(ctx, header_x, y, &header, self.header_fg(), true);
 
         // Day headers

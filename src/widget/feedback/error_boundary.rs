@@ -122,24 +122,30 @@ impl ErrorBoundary {
         // Title
         let title = " Error ";
         let title_x: u16 = 2;
-        for (i, ch) in title.chars().enumerate() {
-            let x = title_x + i as u16;
+        let mut dx: u16 = 0;
+        for ch in title.chars() {
+            let cw = crate::utils::char_width(ch) as u16;
+            let x = title_x + dx;
             if x < area.width - 1 {
                 ctx.set(x, 0, Cell::new(ch).fg(text_color));
             }
+            dx += cw;
         }
 
         // Error message
         let msg = self.error_message.borrow();
         let display_msg = msg.as_deref().unwrap_or("A rendering error occurred");
         let inner_width = (area.width.saturating_sub(4)) as usize;
-        let truncated: String = display_msg.chars().take(inner_width).collect();
+        let truncated = crate::utils::truncate_to_width(display_msg, inner_width);
         let msg_y: u16 = 1;
-        for (i, ch) in truncated.chars().enumerate() {
-            let x = 2 + i as u16;
+        let mut dx: u16 = 0;
+        for ch in truncated.chars() {
+            let cw = crate::utils::char_width(ch) as u16;
+            let x = 2 + dx;
             if x < area.width - 1 {
                 ctx.set(x, msg_y, Cell::new(ch).fg(dim_color).dim());
             }
+            dx += cw;
         }
     }
 }

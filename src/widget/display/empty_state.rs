@@ -25,6 +25,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::{char_width, display_width};
 use crate::widget::theme::{LIGHT_GRAY, PLACEHOLDER_FG};
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
@@ -267,16 +268,19 @@ impl EmptyState {
 
         // Title (centered, bold)
         if y < area.height {
-            let title_len = self.title.chars().count() as u16;
+            let title_len = display_width(&self.title) as u16;
             let title_x = area.width.saturating_sub(title_len) / 2;
-            for (i, ch) in self.title.chars().enumerate() {
-                if title_x + i as u16 >= area.width {
+            let mut dx: u16 = 0;
+            for ch in self.title.chars() {
+                let cw = char_width(ch) as u16;
+                if title_x + dx + cw > area.width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::WHITE);
                 cell.modifier |= Modifier::BOLD;
-                ctx.set(title_x + i as u16, y, cell);
+                ctx.set(title_x + dx, y, cell);
+                dx += cw;
             }
             y += 1;
         }
@@ -284,15 +288,18 @@ impl EmptyState {
         // Description (centered, dimmed)
         if let Some(ref desc) = self.description {
             if y < area.height {
-                let desc_len = desc.chars().count() as u16;
+                let desc_len = display_width(desc) as u16;
                 let desc_x = area.width.saturating_sub(desc_len) / 2;
-                for (i, ch) in desc.chars().enumerate() {
-                    if desc_x + i as u16 >= area.width {
+                let mut dx: u16 = 0;
+                for ch in desc.chars() {
+                    let cw = char_width(ch) as u16;
+                    if desc_x + dx + cw > area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(LIGHT_GRAY);
-                    ctx.set(desc_x + i as u16, y, cell);
+                    ctx.set(desc_x + dx, y, cell);
+                    dx += cw;
                 }
                 y += 2;
             }
@@ -302,15 +309,18 @@ impl EmptyState {
         if let Some(ref action_text) = self.action {
             if y < area.height {
                 let btn_text = format!("[ {} ]", action_text);
-                let btn_len = btn_text.chars().count() as u16;
+                let btn_len = display_width(&btn_text) as u16;
                 let btn_x = area.width.saturating_sub(btn_len) / 2;
-                for (i, ch) in btn_text.chars().enumerate() {
-                    if btn_x + i as u16 >= area.width {
+                let mut dx: u16 = 0;
+                for ch in btn_text.chars() {
+                    let cw = char_width(ch) as u16;
+                    if btn_x + dx + cw > area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(accent);
-                    ctx.set(btn_x + i as u16, y, cell);
+                    ctx.set(btn_x + dx, y, cell);
+                    dx += cw;
                 }
             }
         }
@@ -331,14 +341,17 @@ impl EmptyState {
             x += 2;
         }
 
-        for (i, ch) in self.title.chars().enumerate() {
-            if x + i as u16 >= area.width {
+        let mut dx: u16 = 0;
+        for ch in self.title.chars() {
+            let cw = char_width(ch) as u16;
+            if x + dx + cw > area.width {
                 break;
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(Color::WHITE);
             cell.modifier |= Modifier::BOLD;
-            ctx.set(x + i as u16, y, cell);
+            ctx.set(x + dx, y, cell);
+            dx += cw;
         }
         y += 1;
 
@@ -346,13 +359,16 @@ impl EmptyState {
         if let Some(ref desc) = self.description {
             if y < area.height {
                 let desc_x: u16 = if self.show_icon { 2 } else { 0 };
-                for (i, ch) in desc.chars().enumerate() {
-                    if desc_x + i as u16 >= area.width {
+                let mut dx: u16 = 0;
+                for ch in desc.chars() {
+                    let cw = char_width(ch) as u16;
+                    if desc_x + dx + cw > area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(LIGHT_GRAY);
-                    ctx.set(desc_x + i as u16, y, cell);
+                    ctx.set(desc_x + dx, y, cell);
+                    dx += cw;
                 }
                 y += 1;
             }
@@ -363,13 +379,16 @@ impl EmptyState {
             if y < area.height {
                 let action_x: u16 = if self.show_icon { 2 } else { 0 };
                 let btn_text = format!("[{}]", action_text);
-                for (i, ch) in btn_text.chars().enumerate() {
-                    if action_x + i as u16 >= area.width {
+                let mut dx: u16 = 0;
+                for ch in btn_text.chars() {
+                    let cw = char_width(ch) as u16;
+                    if action_x + dx + cw > area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(accent);
-                    ctx.set(action_x + i as u16, y, cell);
+                    ctx.set(action_x + dx, y, cell);
+                    dx += cw;
                 }
             }
         }
@@ -390,13 +409,16 @@ impl EmptyState {
         }
 
         // Title
-        for (i, ch) in self.title.chars().enumerate() {
-            if x + i as u16 >= area.width {
+        let mut dx: u16 = 0;
+        for ch in self.title.chars() {
+            let cw = char_width(ch) as u16;
+            if x + dx + cw > area.width {
                 break;
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(LIGHT_GRAY);
-            ctx.set(x + i as u16, 0, cell);
+            ctx.set(x + dx, 0, cell);
+            dx += cw;
         }
     }
 }

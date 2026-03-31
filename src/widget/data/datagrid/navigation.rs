@@ -123,8 +123,12 @@ impl DataGrid {
 
     /// Toggle row selection
     pub fn toggle_selection(&mut self) {
-        if self.options.multi_select && self.selected_row < self.rows.len() {
-            self.rows[self.selected_row].selected = !self.rows[self.selected_row].selected;
+        if self.options.multi_select {
+            if let Some(&actual_idx) = self.filtered_cache.get(self.selected_row) {
+                if actual_idx < self.rows.len() {
+                    self.rows[actual_idx].selected = !self.rows[actual_idx].selected;
+                }
+            }
         }
     }
 

@@ -39,6 +39,7 @@ impl View for TextArea {
         let text_start_x = line_num_width;
         let text_width = area.width.saturating_sub(line_num_width);
         let visible_lines = area.height as usize;
+        self.last_viewport_height.set(visible_lines);
 
         // Draw background
         if let Some(bg) = self.bg {

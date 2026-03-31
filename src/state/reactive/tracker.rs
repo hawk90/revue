@@ -259,9 +259,16 @@ pub fn notify_dependents(signal_id: SignalId) {
         new_depth
     });
 
+    // Guard ensures depth is decremented even if a callback panics
+    struct DepthGuard;
+    impl Drop for DepthGuard {
+        fn drop(&mut self) {
+            NOTIFY_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
+        }
+    }
+    let _guard = DepthGuard;
+
     if depth > MAX_NOTIFY_DEPTH {
-        // Decrement before panicking to keep state consistent for any recovery
-        NOTIFY_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
         panic!(
             "Maximum reactive update depth ({}) exceeded. \
              This usually indicates a circular dependency in your reactive graph.",
@@ -286,9 +293,6 @@ pub fn notify_dependents(signal_id: SignalId) {
     for callback in callbacks {
         callback();
     }
-
-    // Decrement depth after all callbacks complete
-    NOTIFY_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
 }
 
 /// Dispose a subscriber (called when effect is dropped)

@@ -361,8 +361,16 @@ impl Tooltip {
         let has_border = self.style.border_chars().is_some();
         let has_title = self.title.is_some();
 
-        let content_width = lines.iter().map(|l| l.len()).max().unwrap_or(0) as u16;
-        let title_width = self.title.as_ref().map(|t| t.len() as u16 + 2).unwrap_or(0);
+        let content_width = lines
+            .iter()
+            .map(|l| crate::utils::display_width(l))
+            .max()
+            .unwrap_or(0) as u16;
+        let title_width = self
+            .title
+            .as_ref()
+            .map(|t| crate::utils::display_width(t) as u16 + 2)
+            .unwrap_or(0);
         let text_width = content_width.max(title_width);
 
         let width = text_width + if has_border { 4 } else { 2 }; // padding + border

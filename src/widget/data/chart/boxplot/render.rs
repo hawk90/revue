@@ -5,6 +5,7 @@ use super::types::WhiskerStyle;
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::{char_width, display_width, truncate_to_width};
 use crate::widget::traits::RenderContext;
 
 /// Box plot rendering state
@@ -231,13 +232,16 @@ impl<'a> BoxPlotRender<'a> {
             let label = value_axis.format_value(value);
             let y = area.y + 1 + (i as u16 * (area.height - 3) / 4);
 
-            for (j, ch) in label.chars().take(y_label_width as usize - 1).enumerate() {
-                let x = area.x + j as u16;
+            let label_truncated = truncate_to_width(&label, y_label_width as usize - 1);
+            let mut dx: u16 = 0;
+            for ch in label_truncated.chars() {
+                let x = area.x + dx;
                 if x < area.x + y_label_width && y < area.y + area.height {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(value_axis.color);
                     ctx.set(x, y, cell);
                 }
+                dx += char_width(ch) as u16;
             }
         }
 
@@ -249,15 +253,17 @@ impl<'a> BoxPlotRender<'a> {
         for (i, group) in self.groups.iter().enumerate() {
             let x = area.x + y_label_width + (i as u16 * group_width) + group_width / 2;
             let y = area.y + area.height - 1;
-            let label_start = x.saturating_sub(group.label.len() as u16 / 2);
+            let label_start = x.saturating_sub(display_width(&group.label) as u16 / 2);
 
-            for (j, ch) in group.label.chars().enumerate() {
-                let label_x = label_start + j as u16;
+            let mut dx: u16 = 0;
+            for ch in group.label.chars() {
+                let label_x = label_start + dx;
                 if label_x >= area.x + y_label_width && label_x < area.x + area.width {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(category_axis.color);
                     ctx.set(label_x, y, cell);
                 }
+                dx += char_width(ch) as u16;
             }
         }
     }

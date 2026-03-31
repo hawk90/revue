@@ -8,6 +8,7 @@
 use crate::query::{ParseError, Query};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::{char_width, truncate_to_width};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -331,25 +332,48 @@ impl View for SearchBar {
 
         if self.input.is_empty() {
             // Draw placeholder
-            for (i, ch) in self.placeholder.chars().enumerate() {
-                if i as u16 >= input_width {
+            let ph = truncate_to_width(&self.placeholder, input_width as usize);
+            let mut dx: u16 = 0;
+            for ch in ph.chars() {
+                let cw = char_width(ch) as u16;
+                if dx + cw > input_width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.placeholder_color);
                 cell.bg = Some(self.bg_color);
-                ctx.set(input_x + i as u16, 0, cell);
+                ctx.set(input_x + dx, 0, cell);
+                dx += cw;
             }
         } else {
-            // Draw input text
-            let display_start = if self.cursor as u16 >= input_width {
-                self.cursor - input_width as usize + 1
+            // Calculate display_start based on display width up to cursor
+            let chars: Vec<char> = self.input.chars().collect();
+            let mut cursor_display_width: u16 = 0;
+            for &ch in &chars[..self.cursor.min(chars.len())] {
+                cursor_display_width += char_width(ch) as u16;
+            }
+            let display_start = if cursor_display_width >= input_width {
+                // Find the character offset where display should start
+                let target_width = cursor_display_width - input_width + 1;
+                let mut w: u16 = 0;
+                let mut start = 0;
+                for (i, &ch) in chars.iter().enumerate() {
+                    if w >= target_width {
+                        start = i;
+                        break;
+                    }
+                    w += char_width(ch) as u16;
+                    start = i + 1;
+                }
+                start
             } else {
                 0
             };
 
-            for (i, ch) in self.input.chars().skip(display_start).enumerate() {
-                if i as u16 >= input_width {
+            let mut dx: u16 = 0;
+            for &ch in &chars[display_start..] {
+                let cw = char_width(ch) as u16;
+                if dx + cw > input_width {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -359,13 +383,25 @@ impl View for SearchBar {
                     self.text_color
                 });
                 cell.bg = Some(self.bg_color);
-                ctx.set(input_x + i as u16, 0, cell);
+                ctx.set(input_x + dx, 0, cell);
+                dx += cw;
             }
         }
 
         // Draw cursor
         if self.focused {
-            let cursor_x = input_x + (self.cursor.saturating_sub(0)) as u16;
+            let cursor_display_x: u16 = self
+                .input
+                .chars()
+                .take(self.cursor)
+                .map(|ch| char_width(ch) as u16)
+                .sum();
+            let visible_start: u16 = if cursor_display_x >= input_width {
+                cursor_display_x - input_width + 1
+            } else {
+                0
+            };
+            let cursor_x = input_x + cursor_display_x.saturating_sub(visible_start);
             if cursor_x < width - 1 {
                 // Use skip().next() for O(n) instead of O(n²) with .chars().nth()
                 let cursor_char = self.input.chars().skip(self.cursor).next().unwrap_or(' ');

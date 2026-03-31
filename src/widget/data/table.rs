@@ -4,7 +4,7 @@ use std::cell::Cell as StdCell;
 
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::Selection;
+use crate::utils::{char_width, truncate_to_width, Selection};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -443,24 +443,30 @@ impl Table {
 
         for (i, width) in widths.iter().enumerate() {
             let content = cells.get(i).map(|s| s.as_str()).unwrap_or("");
-            let truncated: String = content.chars().take(*width as usize).collect();
+            let truncated = truncate_to_width(content, *width as usize);
 
-            for (j, ch) in truncated.chars().enumerate() {
+            let mut dx: u16 = 0;
+            for ch in truncated.chars() {
+                let cw = char_width(ch) as u16;
+                if dx + cw > *width {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = style.fg;
                 cell.bg = style.bg;
                 if style.bold {
                     cell.modifier |= crate::render::Modifier::BOLD;
                 }
-                ctx.set(cx + j as u16, y, cell);
+                ctx.set(cx + dx, y, cell);
+                dx += cw;
             }
 
             // Fill remaining space
-            for j in truncated.len()..(*width as usize) {
+            for j in dx..*width {
                 let mut cell = Cell::new(' ');
                 cell.fg = style.fg;
                 cell.bg = style.bg;
-                ctx.set(cx + j as u16, y, cell);
+                ctx.set(cx + j, y, cell);
             }
 
             cx += width;

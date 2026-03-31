@@ -1,5 +1,6 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::{char_width, display_width};
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG, SUBTLE_GRAY};
 use crate::widget::traits::RenderContext;
 use crate::widget::View;
@@ -65,15 +66,18 @@ impl View for CommandPalette {
             ctx.set(x, current_y, left);
 
             let title_x = x + 2;
-            for (i, ch) in title.chars().enumerate() {
-                if title_x + i as u16 >= x + width - 2 {
+            let mut dx: u16 = 0;
+            for ch in title.chars() {
+                let cw = char_width(ch) as u16;
+                if title_x + dx >= x + width - 2 {
                     break;
                 }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::CYAN);
                 cell.bg = Some(self.bg_color);
                 cell.modifier |= Modifier::BOLD;
-                ctx.set(title_x + i as u16, current_y, cell);
+                ctx.set(title_x + dx, current_y, cell);
+                dx += cw;
             }
 
             let mut right = Cell::new(border_chars[5]);
@@ -105,19 +109,22 @@ impl View for CommandPalette {
             Color::WHITE
         };
 
-        for (i, ch) in display_text.chars().enumerate() {
-            if input_x + i as u16 >= x + width - 2 {
+        let mut dx: u16 = 0;
+        for ch in display_text.chars() {
+            let cw = char_width(ch) as u16;
+            if input_x + dx >= x + width - 2 {
                 break;
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(text_color);
             cell.bg = Some(self.bg_color);
-            ctx.set(input_x + i as u16, current_y, cell);
+            ctx.set(input_x + dx, current_y, cell);
+            dx += cw;
         }
 
         // Cursor
         if !self.query.is_empty() || display_text == &self.placeholder {
-            let cursor_x = input_x + self.query.len() as u16;
+            let cursor_x = input_x + display_width(&self.query) as u16;
             if cursor_x < x + width - 2 {
                 let mut cursor = Cell::new('▏');
                 cursor.fg = Some(Color::WHITE);
@@ -216,12 +223,15 @@ impl View for CommandPalette {
             // Shortcut (right-aligned)
             if self.show_shortcuts {
                 if let Some(ref shortcut) = cmd.shortcut {
-                    let shortcut_x = x + width - 2 - shortcut.len() as u16;
-                    for (i, ch) in shortcut.chars().enumerate() {
+                    let shortcut_x = x + width - 2 - display_width(shortcut) as u16;
+                    let mut dx: u16 = 0;
+                    for ch in shortcut.chars() {
+                        let cw = char_width(ch) as u16;
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(SUBTLE_GRAY);
                         cell.bg = Some(row_bg);
-                        ctx.set(shortcut_x + i as u16, item_y, cell);
+                        ctx.set(shortcut_x + dx, item_y, cell);
+                        dx += cw;
                     }
                 }
             }
@@ -266,12 +276,15 @@ impl View for CommandPalette {
 
         // Results count
         let count_str = format!("{}/{}", self.filtered.len(), self.commands.len());
-        let count_x = x + width - 2 - count_str.len() as u16;
-        for (i, ch) in count_str.chars().enumerate() {
+        let count_x = x + width - 2 - display_width(&count_str) as u16;
+        let mut dx: u16 = 0;
+        for ch in count_str.chars() {
+            let cw = char_width(ch) as u16;
             let mut cell = Cell::new(ch);
             cell.fg = Some(DARK_GRAY);
             cell.bg = Some(self.bg_color);
-            ctx.set(count_x + i as u16, bottom_y, cell);
+            ctx.set(count_x + dx, bottom_y, cell);
+            dx += cw;
         }
     }
 }
