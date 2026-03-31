@@ -145,7 +145,8 @@ impl<'a> CalendarRender<'a> {
             "December",
         ];
         let header = format!("{} {}", month_names[(self.month - 1) as usize], self.year);
-        let header_x = start_x + week_num_offset + (20u16.saturating_sub(display_width(&header) as u16)) / 2;
+        let header_x =
+            start_x + week_num_offset + (20u16.saturating_sub(display_width(&header) as u16)) / 2;
 
         let mut dx: u16 = 0;
         for ch in header.chars() {

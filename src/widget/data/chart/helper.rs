@@ -483,7 +483,8 @@ impl View for Chart {
             let y = inner_y + inner_h - 1 - ((t * (inner_h as f64 - 1.0)) as u16);
 
             // Right-align label
-            let label_start = y_label_x + y_label_width.saturating_sub(display_width(&label) as u16 + 1);
+            let label_start =
+                y_label_x + y_label_width.saturating_sub(display_width(&label) as u16 + 1);
             let mut dx: u16 = 0;
             for ch in label.chars() {
                 let mut cell = Cell::new(ch);

@@ -70,15 +70,12 @@ impl RichTextEditor {
             DialogType::InsertLink { text, url, field } => {
                 // Title
                 let title = "Insert Link";
-                let title_x = dialog_x + (dialog_width.saturating_sub(display_width(title) as u16)) / 2;
+                let title_x =
+                    dialog_x + (dialog_width.saturating_sub(display_width(title) as u16)) / 2;
                 let mut dx: u16 = 0;
                 for ch in title.chars() {
                     let cw = char_width(ch) as u16;
-                    ctx.set(
-                        title_x + dx,
-                        dialog_y + 1,
-                        Cell::new(ch).fg(fg).bg(bg),
-                    );
+                    ctx.set(title_x + dx, dialog_y + 1, Cell::new(ch).fg(fg).bg(bg));
                     dx += cw;
                 }
 
@@ -125,15 +122,12 @@ impl RichTextEditor {
             DialogType::InsertImage { alt, src, field } => {
                 // Title
                 let title = "Insert Image";
-                let title_x = dialog_x + (dialog_width.saturating_sub(display_width(title) as u16)) / 2;
+                let title_x =
+                    dialog_x + (dialog_width.saturating_sub(display_width(title) as u16)) / 2;
                 let mut dx: u16 = 0;
                 for ch in title.chars() {
                     let cw = char_width(ch) as u16;
-                    ctx.set(
-                        title_x + dx,
-                        dialog_y + 1,
-                        Cell::new(ch).fg(fg).bg(bg),
-                    );
+                    ctx.set(title_x + dx, dialog_y + 1, Cell::new(ch).fg(fg).bg(bg));
                     dx += cw;
                 }
 

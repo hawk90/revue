@@ -357,7 +357,9 @@ impl Timeline {
                     let mut dx: u16 = 0;
                     for ch in truncated.chars() {
                         let cw = char_width(ch) as u16;
-                        if dx + cw > timestamp_width - 1 { break; }
+                        if dx + cw > timestamp_width - 1 {
+                            break;
+                        }
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.timestamp_color);
                         ctx.set(dx, y, cell);
@@ -409,7 +411,9 @@ impl Timeline {
             let mut dx: u16 = 0;
             for ch in title_truncated.chars() {
                 let cw = char_width(ch) as u16;
-                if dx + cw > content_width { break; }
+                if dx + cw > content_width {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(title_fg);
                 if is_selected {
@@ -437,7 +441,9 @@ impl Timeline {
                         let mut dx: u16 = 0;
                         for ch in desc_truncated.chars() {
                             let cw = char_width(ch) as u16;
-                            if dx + cw > content_width { break; }
+                            if dx + cw > content_width {
+                                break;
+                            }
                             let mut cell = Cell::new(ch);
                             cell.fg = Some(self.desc_color);
                             ctx.set(content_x + dx, y, cell);
@@ -502,7 +508,9 @@ impl Timeline {
             let mut dx: u16 = 0;
             for ch in title.chars() {
                 let cw = char_width(ch) as u16;
-                if dx + cw > event_width - 1 { break; }
+                if dx + cw > event_width - 1 {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(if is_selected { color } else { self.title_color });
                 ctx.set(title_x + dx, 0, cell);
@@ -517,7 +525,9 @@ impl Timeline {
                     let mut dx: u16 = 0;
                     for ch in ts_str.chars() {
                         let cw = char_width(ch) as u16;
-                        if dx + cw > event_width - 1 { break; }
+                        if dx + cw > event_width - 1 {
+                            break;
+                        }
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.timestamp_color);
                         ctx.set(ts_x + dx, line_y + 1, cell);

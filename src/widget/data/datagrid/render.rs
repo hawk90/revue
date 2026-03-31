@@ -373,12 +373,8 @@ impl DataGrid {
         let dw = display_width(truncated) as u16;
         let start_x = match col.align {
             super::types::Alignment::Left => pos.x,
-            super::types::Alignment::Center => {
-                pos.x + (pos.width.saturating_sub(dw)) / 2
-            }
-            super::types::Alignment::Right => {
-                pos.x + pos.width.saturating_sub(dw + 1)
-            }
+            super::types::Alignment::Center => pos.x + (pos.width.saturating_sub(dw)) / 2,
+            super::types::Alignment::Right => pos.x + pos.width.saturating_sub(dw + 1),
         };
 
         let mut dx: u16 = 0;

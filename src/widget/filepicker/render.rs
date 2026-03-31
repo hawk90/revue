@@ -26,7 +26,7 @@ impl View for FilePicker {
         let max_path_width = self.width as usize - 4;
         let truncated_path = if crate::utils::display_width(&path_str) > max_path_width {
             let suffix_width = max_path_width.saturating_sub(3); // "..." prefix
-            // Find suffix that fits by iterating from the end
+                                                                 // Find suffix that fits by iterating from the end
             let chars: Vec<char> = path_str.chars().collect();
             let mut w = 0;
             let mut start = chars.len();

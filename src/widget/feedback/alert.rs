@@ -402,7 +402,9 @@ impl Alert {
             let mut dx: u16 = 0;
             for ch in title.chars() {
                 let cw = char_width(ch) as u16;
-                if dx + cw > max_w { break; }
+                if dx + cw > max_w {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(text_fg);
                 cell.modifier |= Modifier::BOLD;
@@ -416,7 +418,9 @@ impl Alert {
             let mut dx: u16 = 0;
             for ch in self.message.chars() {
                 let cw = char_width(ch) as u16;
-                if dx + cw > max_w { break; }
+                if dx + cw > max_w {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::rgb(180, 180, 180));
                 ctx.set(msg_x + dx, y, cell);
@@ -428,7 +432,9 @@ impl Alert {
             let mut dx: u16 = 0;
             for ch in self.message.chars() {
                 let cw = char_width(ch) as u16;
-                if dx + cw > max_w { break; }
+                if dx + cw > max_w {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(text_fg);
                 ctx.set(msg_x + dx, y, cell);
@@ -466,7 +472,9 @@ impl Alert {
             let mut dx: u16 = 0;
             for ch in title.chars() {
                 let cw = char_width(ch) as u16;
-                if x + dx + cw > area.width { break; }
+                if x + dx + cw > area.width {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(accent_color);
                 cell.modifier |= Modifier::BOLD;
@@ -480,7 +488,9 @@ impl Alert {
                 let mut dx: u16 = 0;
                 for ch in self.message.chars() {
                     let cw = char_width(ch) as u16;
-                    if msg_x + dx + cw > area.width { break; }
+                    if msg_x + dx + cw > area.width {
+                        break;
+                    }
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(Color::rgb(180, 180, 180));
                     ctx.set(msg_x + dx, y + 1, cell);
@@ -492,7 +502,9 @@ impl Alert {
             let mut dx: u16 = 0;
             for ch in self.message.chars() {
                 let cw = char_width(ch) as u16;
-                if x + dx + cw > area.width { break; }
+                if x + dx + cw > area.width {
+                    break;
+                }
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(text_fg);
                 ctx.set(x + dx, y, cell);

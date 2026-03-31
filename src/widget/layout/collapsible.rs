@@ -340,7 +340,9 @@ impl View for Collapsible {
         let title_display = crate::utils::truncate_to_width(&self.title, max_title_width);
         for ch in title_display.chars() {
             let cw = crate::utils::char_width(ch) as u16;
-            if x + cw > area.width { break; }
+            if x + cw > area.width {
+                break;
+            }
             let mut cell = Cell::new(ch);
             cell.fg = Some(header_fg);
             if let Some(bg) = self.header_bg {
