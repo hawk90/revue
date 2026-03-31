@@ -2,6 +2,7 @@
 
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::{char_width, truncate_to_width};
 use crate::widget::traits::RenderContext;
 
 /// Row number width calculation
@@ -92,30 +93,31 @@ pub fn render_csv_viewer(
                     ""
                 };
 
-                let display: String = format!("{}{}", cell_value, sort_indicator)
-                    .chars()
-                    .take(width)
-                    .collect();
+                let combined = format!("{}{}", cell_value, sort_indicator);
+                let display = truncate_to_width(&combined, width);
 
-                for (i, ch) in display.chars().enumerate() {
-                    if x + i as u16 >= area.width {
+                let mut dx: u16 = 0;
+                for ch in display.chars() {
+                    let cw = char_width(ch) as u16;
+                    if x + dx + cw > area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch).bold();
                     cell.fg = header_fg;
                     cell.bg = header_bg;
-                    ctx.set(x + i as u16, y, cell);
+                    ctx.set(x + dx, y, cell);
+                    dx += cw;
                 }
 
                 // Fill remaining width
-                for i in display.chars().count()..width {
-                    if x + i as u16 >= area.width {
+                for i in dx..(width as u16) {
+                    if x + i >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(' ');
                     cell.fg = header_fg;
                     cell.bg = header_bg;
-                    ctx.set(x + i as u16, y, cell);
+                    ctx.set(x + i, y, cell);
                 }
 
                 x += width as u16;
@@ -178,27 +180,30 @@ pub fn render_csv_viewer(
                     (fg, bg)
                 };
 
-                let display: String = cell_value.chars().take(width).collect();
+                let display = truncate_to_width(cell_value, width);
 
-                for (i, ch) in display.chars().enumerate() {
-                    if x + i as u16 >= area.width {
+                let mut dx: u16 = 0;
+                for ch in display.chars() {
+                    let cw = char_width(ch) as u16;
+                    if x + dx + cw > area.width {
                         break;
                     }
                     let mut cell = Cell::new(ch);
                     cell.fg = fg;
                     cell.bg = bg;
-                    ctx.set(x + i as u16, y, cell);
+                    ctx.set(x + dx, y, cell);
+                    dx += cw;
                 }
 
                 // Fill remaining width
-                for i in display.chars().count()..width {
-                    if x + i as u16 >= area.width {
+                for i in dx..(width as u16) {
+                    if x + i >= area.width {
                         break;
                     }
                     let mut cell = Cell::new(' ');
                     cell.fg = fg;
                     cell.bg = bg;
-                    ctx.set(x + i as u16, y, cell);
+                    ctx.set(x + i, y, cell);
                 }
 
                 x += width as u16;

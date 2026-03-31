@@ -130,6 +130,9 @@ impl TextBuffer {
 
     /// Get substring by character range
     pub fn substring(&self, start: usize, end: usize) -> &str {
+        if start >= end {
+            return "";
+        }
         let start_byte = self.char_to_byte(start);
         let end_byte = self.char_to_byte(end);
         &self.content[start_byte..end_byte]

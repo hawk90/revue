@@ -73,7 +73,7 @@ impl View for Input {
         }
 
         // Draw cursor at end if cursor is at the end of text
-        if self.focused && self.cursor >= display_text.len() && x < area.width {
+        if self.focused && self.cursor >= display_text.chars().count() && x < area.width {
             let mut cursor_cell = Cell::new(' ');
             cursor_cell.fg = self.cursor_fg;
             cursor_cell.bg = self.cursor_bg;

@@ -116,6 +116,8 @@ pub struct TextArea {
     pub(super) current_match_bg: Option<Color>,
     /// CSS styling properties (id, classes)
     pub(super) props: WidgetProps,
+    /// Last known viewport height (lines visible), updated during render
+    pub(super) last_viewport_height: std::cell::Cell<usize>,
 }
 
 impl TextArea {
@@ -145,6 +147,7 @@ impl TextArea {
             match_highlight_bg: None,
             current_match_bg: None,
             props: WidgetProps::new(),
+            last_viewport_height: std::cell::Cell::new(10),
         }
     }
 
@@ -325,11 +328,13 @@ impl TextArea {
                 true
             }
             Key::PageUp => {
-                self.page_up(10);
+                let page = self.last_viewport_height.get().max(1);
+                self.page_up(page);
                 true
             }
             Key::PageDown => {
-                self.page_down(10);
+                let page = self.last_viewport_height.get().max(1);
+                self.page_down(page);
                 true
             }
             _ => false,

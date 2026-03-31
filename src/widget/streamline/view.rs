@@ -2,6 +2,7 @@
 
 use super::core::Streamline;
 use crate::render::Cell;
+use crate::utils::{char_width, display_width};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Streamline {
@@ -29,7 +30,7 @@ impl View for Streamline {
 
         // Title
         if let Some(ref title) = self.title {
-            let title_x = (area.width.saturating_sub(title.len() as u16)) / 2;
+            let title_x = (area.width.saturating_sub(display_width(title) as u16)) / 2;
             ctx.draw_text(title_x, chart_y, title, crate::style::Color::WHITE);
             chart_y += 1;
             chart_height = chart_height.saturating_sub(1);
@@ -44,16 +45,19 @@ impl View for Streamline {
                 cell.fg = Some(color);
                 ctx.set(x, chart_y, cell);
                 x += 2;
-                for (j, ch) in layer.name.chars().enumerate() {
-                    if x + j as u16 >= area.width {
+                let mut dx: u16 = 0;
+                for ch in layer.name.chars() {
+                    let cw = char_width(ch) as u16;
+                    if x + dx >= area.width {
                         break;
                     }
                     let mut c = Cell::new(ch);
                     c.fg = Some(crate::style::Color::WHITE);
                     c.bg = self.bg_color;
-                    ctx.set(x + j as u16, chart_y, c);
+                    ctx.set(x + dx, chart_y, c);
+                    dx += cw;
                 }
-                x += layer.name.len() as u16 + 2;
+                x += display_width(&layer.name) as u16 + 2;
 
                 if x > area.width - 10 {
                     break;
@@ -162,17 +166,20 @@ impl View for Streamline {
                     - ((mid_y - min_y) / y_range * (plot_height - 1) as f64) as u16;
 
                 let label = &self.layers[layer_idx].name;
-                let label_x = screen_x.saturating_sub(label.len() as u16 / 2);
+                let label_x = screen_x.saturating_sub(display_width(label) as u16 / 2);
 
                 if screen_y >= chart_y && screen_y < chart_y + plot_height {
-                    for (j, ch) in label.chars().enumerate() {
-                        if label_x + j as u16 >= area.width {
+                    let mut dx: u16 = 0;
+                    for ch in label.chars() {
+                        let cw = char_width(ch) as u16;
+                        if label_x + dx >= area.width {
                             break;
                         }
                         let mut c = Cell::new(ch);
                         c.fg = Some(crate::style::Color::WHITE);
                         c.bg = Some(display_color);
-                        ctx.set(label_x + j as u16, screen_y, c);
+                        ctx.set(label_x + dx, screen_y, c);
+                        dx += cw;
                     }
                 }
             }
@@ -186,15 +193,18 @@ impl View for Streamline {
             for (i, label) in self.x_labels.iter().take(num_labels).enumerate() {
                 let x =
                     (i as f64 / (num_labels - 1).max(1) as f64 * (area.width - 1) as f64) as u16;
-                let label_x = x.saturating_sub(label.len() as u16 / 2);
-                for (j, ch) in label.chars().enumerate() {
-                    if label_x + j as u16 >= area.width {
+                let label_x = x.saturating_sub(display_width(label) as u16 / 2);
+                let mut dx: u16 = 0;
+                for ch in label.chars() {
+                    let cw = char_width(ch) as u16;
+                    if label_x + dx >= area.width {
                         break;
                     }
                     let mut c = Cell::new(ch);
                     c.fg = Some(crate::style::Color::WHITE);
                     c.bg = self.bg_color;
-                    ctx.set(label_x + j as u16, label_y, c);
+                    ctx.set(label_x + dx, label_y, c);
+                    dx += cw;
                 }
             }
         }

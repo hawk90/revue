@@ -154,6 +154,9 @@ pub struct DataGrid {
     /// Show aggregation footer
     pub show_footer: bool,
 
+    /// Last known viewport height (rows visible), updated during render
+    pub(crate) last_viewport_height: std::cell::Cell<usize>,
+
     /// Widget props for CSS integration
     pub props: crate::widget::traits::WidgetProps,
 }
@@ -227,6 +230,7 @@ impl DataGrid {
             // Footer state
             footer_rows: Vec::new(),
             show_footer: false,
+            last_viewport_height: std::cell::Cell::new(10),
             props: crate::widget::traits::WidgetProps::new(),
         }
     }

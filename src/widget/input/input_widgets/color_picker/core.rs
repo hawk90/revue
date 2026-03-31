@@ -198,6 +198,9 @@ impl ColorPicker {
 
     fn handle_palette_key(&mut self, key: &Key) -> bool {
         let colors = self.palette.colors();
+        if colors.is_empty() {
+            return false;
+        }
         let (cols, _rows) = self.palette.grid_size();
 
         match key {
@@ -209,7 +212,7 @@ impl ColorPicker {
                 true
             }
             Key::Right | Key::Char('l') => {
-                if self.palette_index < colors.len() - 1 {
+                if self.palette_index + 1 < colors.len() {
                     self.palette_index += 1;
                     self.set_color(colors[self.palette_index]);
                 }

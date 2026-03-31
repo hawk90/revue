@@ -7,6 +7,7 @@ use super::types::LogLevel;
 use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::{char_width, display_width, truncate_to_width};
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG, SUBTLE_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -673,13 +674,16 @@ impl View for LogViewer {
         if filtered.is_empty() {
             // Show empty message
             let msg = "No log entries";
-            let x = (area.width.saturating_sub(msg.len() as u16)) / 2;
+            let x = (area.width.saturating_sub(display_width(msg) as u16)) / 2;
             let y = area.height / 2;
-            for (i, ch) in msg.chars().enumerate() {
+            let mut dx: u16 = 0;
+            for ch in msg.chars() {
+                let cw = char_width(ch) as u16;
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(DISABLED_FG);
                 cell.bg = self.bg;
-                ctx.set(x + i as u16, y, cell);
+                ctx.set(x + dx, y, cell);
+                dx += cw;
             }
             return;
         }
@@ -752,14 +756,14 @@ impl View for LogViewer {
             // Draw timestamp
             if self.show_timestamps {
                 if let Some(ref ts) = entry.timestamp {
-                    let ts_display: String =
-                        ts.chars().take(timestamp_width as usize - 1).collect();
+                    let ts_display = truncate_to_width(ts, timestamp_width as usize - 1);
                     for ch in ts_display.chars() {
+                        let cw = char_width(ch) as u16;
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.timestamp_fg);
                         cell.bg = row_bg;
                         ctx.set(x, y, cell);
-                        x += 1;
+                        x += cw;
                     }
                 }
                 x = line_num_width + bookmark_width + timestamp_width;
@@ -789,13 +793,14 @@ impl View for LogViewer {
             // Draw source
             if self.show_source {
                 if let Some(ref src) = entry.source {
-                    let src_display: String = src.chars().take(source_width as usize - 1).collect();
+                    let src_display = truncate_to_width(src, source_width as usize - 1);
                     for ch in src_display.chars() {
+                        let cw = char_width(ch) as u16;
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(self.source_fg);
                         cell.bg = row_bg;
                         ctx.set(x, y, cell);
-                        x += 1;
+                        x += cw;
                     }
                 }
                 x = prefix_width;
@@ -809,12 +814,21 @@ impl View for LogViewer {
                 .collect();
 
             // Draw message with search highlighting
-            let msg_chars: Vec<char> = entry.message.chars().collect();
-            for (i, ch) in msg_chars.iter().enumerate().take(message_width as usize) {
-                // Check if this character is in a search match
-                let in_match = matches_for_entry.iter().any(|m| i >= m.start && i < m.end);
+            // Search match indices are byte offsets from the find() call in update_search
+            let mut col_dx: u16 = 0;
+            let mut byte_pos: usize = 0;
+            for ch in entry.message.chars() {
+                let cw = char_width(ch) as u16;
+                if col_dx + cw > message_width {
+                    break;
+                }
+                // Check if this character's byte range overlaps a search match
+                let ch_byte_len = ch.len_utf8();
+                let in_match = matches_for_entry
+                    .iter()
+                    .any(|m| byte_pos >= m.start && byte_pos < m.end);
 
-                let mut cell = Cell::new(*ch);
+                let mut cell = Cell::new(ch);
                 cell.fg = Some(if is_selected {
                     Color::WHITE
                 } else {
@@ -832,9 +846,11 @@ impl View for LogViewer {
                 if is_selected {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.set(x, y, cell);
-                x += 1;
+                ctx.set(x + col_dx, y, cell);
+                col_dx += cw;
+                byte_pos += ch_byte_len;
             }
+            let _ = col_dx; // message column is always last
         }
 
         // Draw scroll indicator
@@ -851,13 +867,17 @@ impl View for LogViewer {
         // Draw tail mode indicator
         if self.tail_mode {
             let indicator = "◉ TAIL";
-            let x = area.width - indicator.len() as u16 - 2;
+            let indicator_w = display_width(indicator) as u16;
+            let x = area.width.saturating_sub(indicator_w + 2);
             let y = 0u16;
-            for (i, ch) in indicator.chars().enumerate() {
+            let mut dx: u16 = 0;
+            for ch in indicator.chars() {
+                let cw = char_width(ch) as u16;
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(Color::GREEN);
                 cell.bg = self.bg;
-                ctx.set(x + i as u16, y, cell);
+                ctx.set(x + dx, y, cell);
+                dx += cw;
             }
         }
     }

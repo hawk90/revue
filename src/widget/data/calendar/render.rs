@@ -3,6 +3,7 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::border::render_border;
+use crate::utils::{char_width, display_width};
 use crate::widget::traits::RenderContext;
 
 use super::types::{DateMarker, FirstDayOfWeek};
@@ -144,14 +145,18 @@ impl<'a> CalendarRender<'a> {
             "December",
         ];
         let header = format!("{} {}", month_names[(self.month - 1) as usize], self.year);
-        let header_x = start_x + week_num_offset + (20 - header.len() as u16) / 2;
+        let header_x =
+            start_x + week_num_offset + (20u16.saturating_sub(display_width(&header) as u16)) / 2;
 
-        for (i, ch) in header.chars().enumerate() {
+        let mut dx: u16 = 0;
+        for ch in header.chars() {
+            let cw = char_width(ch) as u16;
             let mut cell = Cell::new(ch);
             cell.fg = Some(self.header_fg);
             cell.bg = self.header_bg;
             cell.modifier |= Modifier::BOLD;
-            ctx.set(header_x + i as u16, start_y, cell);
+            ctx.set(header_x + dx, start_y, cell);
+            dx += cw;
         }
 
         // Navigation arrows

@@ -3,6 +3,7 @@
 use super::core::CsvViewer;
 use super::types::SortOrder;
 use crate::render::Cell;
+use crate::utils::{char_width, truncate_to_width};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for CsvViewer {
@@ -59,30 +60,31 @@ impl View for CsvViewer {
                         ""
                     };
 
-                    let display: String = format!("{}{}", cell_value, sort_indicator)
-                        .chars()
-                        .take(width)
-                        .collect();
+                    let combined = format!("{}{}", cell_value, sort_indicator);
+                    let display = truncate_to_width(&combined, width);
 
-                    for (i, ch) in display.chars().enumerate() {
-                        if x + i as u16 >= area.width {
+                    let mut dx: u16 = 0;
+                    for ch in display.chars() {
+                        let cw = char_width(ch) as u16;
+                        if x + dx + cw > area.width {
                             break;
                         }
                         let mut cell = Cell::new(ch).bold();
                         cell.fg = self.header_fg;
                         cell.bg = self.header_bg;
-                        ctx.set(x + i as u16, y, cell);
+                        ctx.set(x + dx, y, cell);
+                        dx += cw;
                     }
 
                     // Fill remaining width
-                    for i in display.chars().count()..width {
-                        if x + i as u16 >= area.width {
+                    for i in dx..(width as u16) {
+                        if x + i >= area.width {
                             break;
                         }
                         let mut cell = Cell::new(' ');
                         cell.fg = self.header_fg;
                         cell.bg = self.header_bg;
-                        ctx.set(x + i as u16, y, cell);
+                        ctx.set(x + i, y, cell);
                     }
 
                     x += width as u16;
@@ -122,7 +124,9 @@ impl View for CsvViewer {
                     row_idx + 1,
                     width = (row_num_width - 1) as usize
                 );
-                for (i, ch) in num_str.chars().enumerate() {
+                let mut dx: u16 = 0;
+                for ch in num_str.chars() {
+                    let cw = char_width(ch) as u16;
                     let mut cell = Cell::new(ch);
                     cell.fg = self.row_number_fg;
                     cell.bg = if is_selected_row {
@@ -130,7 +134,8 @@ impl View for CsvViewer {
                     } else {
                         self.bg
                     };
-                    ctx.set(i as u16, y, cell);
+                    ctx.set(dx, y, cell);
+                    dx += cw;
                 }
             }
 
@@ -150,27 +155,30 @@ impl View for CsvViewer {
                         (self.fg, self.bg)
                     };
 
-                    let display: String = cell_value.chars().take(width).collect();
+                    let display = truncate_to_width(cell_value, width);
 
-                    for (i, ch) in display.chars().enumerate() {
-                        if x + i as u16 >= area.width {
+                    let mut dx: u16 = 0;
+                    for ch in display.chars() {
+                        let cw = char_width(ch) as u16;
+                        if x + dx + cw > area.width {
                             break;
                         }
                         let mut cell = Cell::new(ch);
                         cell.fg = fg;
                         cell.bg = bg;
-                        ctx.set(x + i as u16, y, cell);
+                        ctx.set(x + dx, y, cell);
+                        dx += cw;
                     }
 
                     // Fill remaining width
-                    for i in display.chars().count()..width {
-                        if x + i as u16 >= area.width {
+                    for i in dx..(width as u16) {
+                        if x + i >= area.width {
                             break;
                         }
                         let mut cell = Cell::new(' ');
                         cell.fg = fg;
                         cell.bg = bg;
-                        ctx.set(x + i as u16, y, cell);
+                        ctx.set(x + i, y, cell);
                     }
 
                     x += width as u16;
