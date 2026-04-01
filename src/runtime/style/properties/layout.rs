@@ -1,7 +1,8 @@
 //! Layout-related style property structures
 
 use super::types::{
-    AlignItems, Display, FlexDirection, GridPlacement, GridTemplate, JustifyContent, Position,
+    AlignItems, AlignSelf, Display, FlexDirection, FlexWrap, GridPlacement, GridTemplate,
+    JustifyContent, Position,
 };
 
 /// Layout-related style properties
@@ -21,6 +22,12 @@ pub struct LayoutStyle {
     pub align_items: AlignItems,
     /// Flex grow factor (distributes remaining space proportionally)
     pub flex_grow: f32,
+    /// Flex wrap behavior
+    pub flex_wrap: FlexWrap,
+    /// Individual item cross-axis alignment
+    pub align_self: AlignSelf,
+    /// Item order (lower values rendered first)
+    pub order: i16,
     /// Gap between flex/grid items
     pub gap: u16,
     /// Column gap for grid

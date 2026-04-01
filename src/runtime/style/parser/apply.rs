@@ -6,7 +6,9 @@ use crate::style::parser::value_parsers::{
     parse_size,
 };
 use crate::style::Style;
-use crate::style::{AlignItems, BorderStyle, Display, FlexDirection, JustifyContent, Position};
+use crate::style::{
+    AlignItems, AlignSelf, BorderStyle, Display, FlexDirection, FlexWrap, JustifyContent, Position,
+};
 use std::collections::HashMap;
 
 /// Apply a declaration to a style
@@ -96,6 +98,64 @@ fn apply_display_layout(style: &mut Style, property: &str, value: &str) -> bool 
         "flex-grow" => {
             if let Ok(v) = value.parse::<f32>() {
                 style.layout.flex_grow = v.max(0.0);
+                return true;
+            }
+            false
+        }
+        "flex" => {
+            // Shorthand: flex: <grow> or flex: <grow> <shrink> <basis>
+            // We only support flex-grow for now
+            let first = value.split_whitespace().next().unwrap_or("0");
+            if let Ok(v) = first.parse::<f32>() {
+                style.layout.flex_grow = v.max(0.0);
+                return true;
+            }
+            false
+        }
+        "flex-wrap" => {
+            style.layout.flex_wrap = match value {
+                "nowrap" => FlexWrap::NoWrap,
+                "wrap" => FlexWrap::Wrap,
+                "wrap-reverse" => FlexWrap::WrapReverse,
+                _ => return false,
+            };
+            true
+        }
+        "align-self" => {
+            style.layout.align_self = match value {
+                "auto" => AlignSelf::Auto,
+                "start" | "flex-start" => AlignSelf::Start,
+                "center" => AlignSelf::Center,
+                "end" | "flex-end" => AlignSelf::End,
+                "stretch" => AlignSelf::Stretch,
+                _ => return false,
+            };
+            true
+        }
+        "order" => {
+            if let Ok(v) = value.parse::<i16>() {
+                style.layout.order = v;
+                return true;
+            }
+            false
+        }
+        "gap" => {
+            if let Ok(v) = value.trim().parse::<u16>() {
+                style.layout.gap = v;
+                return true;
+            }
+            false
+        }
+        "column-gap" => {
+            if let Ok(v) = value.trim().parse::<u16>() {
+                style.layout.column_gap = Some(v);
+                return true;
+            }
+            false
+        }
+        "row-gap" => {
+            if let Ok(v) = value.trim().parse::<u16>() {
+                style.layout.row_gap = Some(v);
                 return true;
             }
             false
@@ -466,7 +526,7 @@ pub(super) fn resolve_animation(
 /// Apply visual properties (colors, border, opacity, visibility)
 fn apply_visual(style: &mut Style, property: &str, value: &str) {
     match property {
-        "border-style" | "border" => {
+        "border-style" => {
             style.visual.border_style = match value {
                 "none" => BorderStyle::None,
                 "solid" => BorderStyle::Solid,
@@ -475,6 +535,24 @@ fn apply_visual(style: &mut Style, property: &str, value: &str) {
                 "rounded" => BorderStyle::Rounded,
                 _ => return,
             };
+        }
+        "border" => {
+            // Shorthand: border: <style> [color] or border: <style>
+            let parts: Vec<&str> = value.split_whitespace().collect();
+            for part in &parts {
+                match *part {
+                    "none" => style.visual.border_style = BorderStyle::None,
+                    "solid" => style.visual.border_style = BorderStyle::Solid,
+                    "dashed" => style.visual.border_style = BorderStyle::Dashed,
+                    "double" => style.visual.border_style = BorderStyle::Double,
+                    "rounded" => style.visual.border_style = BorderStyle::Rounded,
+                    _ => {
+                        if let Some(c) = parse_color(part) {
+                            style.visual.border_color = c;
+                        }
+                    }
+                }
+            }
         }
         "border-color" => {
             if let Some(c) = parse_color(value) {
