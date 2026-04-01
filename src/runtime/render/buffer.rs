@@ -331,6 +331,45 @@ impl Buffer {
         self.cells.fill(Cell::default());
     }
 
+    /// Clear only specific rectangular regions of the buffer
+    ///
+    /// More efficient than full clear when only parts of the screen changed.
+    pub fn clear_regions(&mut self, regions: &[crate::layout::Rect]) {
+        let default = Cell::default();
+        let row_width = self.width as usize;
+
+        for rect in regions {
+            let x_start = (rect.x as usize).min(self.width as usize);
+            let x_end = (rect.x.saturating_add(rect.width) as usize).min(self.width as usize);
+            let y_end = rect.y.saturating_add(rect.height).min(self.height);
+            let fill_width = x_end.saturating_sub(x_start);
+
+            if fill_width == 0 {
+                continue;
+            }
+
+            for y in rect.y..y_end {
+                let start = (y as usize)
+                    .saturating_mul(row_width)
+                    .saturating_add(x_start);
+                let end = start.saturating_add(fill_width);
+                if end <= self.cells.len() {
+                    self.cells[start..end].fill(default);
+                }
+            }
+        }
+    }
+
+    /// Copy all cells from another buffer
+    ///
+    /// Copies the cell data from `other` into this buffer. Both buffers must have
+    /// the same dimensions.
+    pub fn copy_from(&mut self, other: &Buffer) {
+        if self.width == other.width && self.height == other.height {
+            self.cells.copy_from_slice(&other.cells);
+        }
+    }
+
     /// Resize the buffer, keeping content where possible
     ///
     /// Optimized using slice copy operations for better performance.
@@ -765,5 +804,59 @@ mod tests {
         let buffer = Buffer::new(10, 5);
         let cells = buffer.cells();
         assert_eq!(cells.len(), 50);
+    }
+
+    #[test]
+    fn test_buffer_copy_from() {
+        let mut src = Buffer::new(10, 5);
+        src.set(3, 2, Cell::new('X'));
+
+        let mut dst = Buffer::new(10, 5);
+        dst.copy_from(&src);
+
+        assert_eq!(dst.get(3, 2).unwrap().symbol, 'X');
+        assert_eq!(dst.get(0, 0).unwrap().symbol, ' ');
+    }
+
+    #[test]
+    fn test_buffer_copy_from_mismatched_dimensions() {
+        let src = Buffer::new(10, 5);
+        let mut dst = Buffer::new(20, 10);
+        let original_cell = *dst.get(0, 0).unwrap();
+        dst.copy_from(&src); // Should be no-op
+        assert_eq!(*dst.get(0, 0).unwrap(), original_cell);
+    }
+
+    #[test]
+    fn test_buffer_clear_regions() {
+        let mut buffer = Buffer::new(20, 10);
+        // Fill entire buffer with 'A'
+        buffer.fill(0, 0, 20, 10, Cell::new('A'));
+        assert_eq!(buffer.get(5, 5).unwrap().symbol, 'A');
+
+        // Clear only a small region
+        let rect = crate::layout::Rect::new(4, 4, 3, 3);
+        buffer.clear_regions(&[rect]);
+
+        // Inside the cleared region should be default
+        assert_eq!(buffer.get(5, 5).unwrap().symbol, ' ');
+        // Outside should still be 'A'
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'A');
+        assert_eq!(buffer.get(10, 8).unwrap().symbol, 'A');
+    }
+
+    #[test]
+    fn test_buffer_clear_regions_clamped() {
+        let mut buffer = Buffer::new(10, 5);
+        buffer.fill(0, 0, 10, 5, Cell::new('B'));
+
+        // Region extends beyond buffer bounds
+        let rect = crate::layout::Rect::new(8, 3, 10, 10);
+        buffer.clear_regions(&[rect]);
+
+        // Cells within buffer bounds inside region should be cleared
+        assert_eq!(buffer.get(9, 4).unwrap().symbol, ' ');
+        // Cells outside the region should be unchanged
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'B');
     }
 }
