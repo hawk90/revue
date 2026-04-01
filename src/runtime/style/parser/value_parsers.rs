@@ -38,21 +38,18 @@ pub fn parse_size(value: &str) -> Size {
     }
 }
 
-/// Parse a color value (hex, rgb(), or named color)
+/// Parse a color value (hex, rgb(), hsl(), or named color)
 pub fn parse_color(value: &str) -> Option<Color> {
     let value = value.trim();
 
-    // Named colors
-    match value.to_lowercase().as_str() {
-        "white" => return Some(Color::WHITE),
-        "black" => return Some(Color::BLACK),
-        "red" => return Some(Color::RED),
-        "green" => return Some(Color::GREEN),
-        "blue" => return Some(Color::BLUE),
-        "cyan" => return Some(Color::CYAN),
-        "yellow" => return Some(Color::YELLOW),
-        "magenta" => return Some(Color::MAGENTA),
-        _ => {}
+    // transparent keyword
+    if value.eq_ignore_ascii_case("transparent") {
+        return Some(Color::rgb(0, 0, 0));
+    }
+
+    // Named colors (CSS Color Level 4 subset - most commonly used)
+    if let Some(c) = parse_named_color(value) {
+        return Some(c);
     }
 
     // Hex color
@@ -83,7 +80,133 @@ pub fn parse_color(value: &str) -> Option<Color> {
         }
     }
 
+    // hsl(h, s%, l%) and hsla(h, s%, l%, a)
+    if (value.starts_with("hsl(") || value.starts_with("hsla(")) && value.ends_with(')') {
+        let start = if value.starts_with("hsla(") { 5 } else { 4 };
+        let inner = &value[start..value.len() - 1];
+        let parts: Vec<&str> = inner.split(',').collect();
+        if parts.len() >= 3 {
+            let h: f32 = parts[0].trim().parse().ok()?;
+            let s: f32 = parts[1].trim().trim_end_matches('%').parse().ok()?;
+            let l: f32 = parts[2].trim().trim_end_matches('%').parse().ok()?;
+            let (r, g, b) = hsl_to_rgb(h, s / 100.0, l / 100.0);
+            return Some(Color::rgb(r, g, b));
+        }
+    }
+
     None
+}
+
+/// Convert HSL to RGB
+fn hsl_to_rgb(h: f32, s: f32, l: f32) -> (u8, u8, u8) {
+    if s == 0.0 {
+        let v = (l * 255.0).round() as u8;
+        return (v, v, v);
+    }
+
+    let q = if l < 0.5 {
+        l * (1.0 + s)
+    } else {
+        l + s - l * s
+    };
+    let p = 2.0 * l - q;
+    let h = h / 360.0;
+
+    let r = hue_to_rgb(p, q, h + 1.0 / 3.0);
+    let g = hue_to_rgb(p, q, h);
+    let b = hue_to_rgb(p, q, h - 1.0 / 3.0);
+
+    (
+        (r * 255.0).round() as u8,
+        (g * 255.0).round() as u8,
+        (b * 255.0).round() as u8,
+    )
+}
+
+fn hue_to_rgb(p: f32, q: f32, mut t: f32) -> f32 {
+    if t < 0.0 {
+        t += 1.0;
+    }
+    if t > 1.0 {
+        t -= 1.0;
+    }
+    if t < 1.0 / 6.0 {
+        return p + (q - p) * 6.0 * t;
+    }
+    if t < 1.0 / 2.0 {
+        return q;
+    }
+    if t < 2.0 / 3.0 {
+        return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
+    }
+    p
+}
+
+/// Parse CSS named colors
+fn parse_named_color(value: &str) -> Option<Color> {
+    match value.to_lowercase().as_str() {
+        // Basic colors
+        "white" => Some(Color::WHITE),
+        "black" => Some(Color::BLACK),
+        "red" => Some(Color::RED),
+        "green" => Some(Color::GREEN),
+        "blue" => Some(Color::BLUE),
+        "cyan" | "aqua" => Some(Color::CYAN),
+        "yellow" => Some(Color::YELLOW),
+        "magenta" | "fuchsia" => Some(Color::MAGENTA),
+        // Extended CSS named colors
+        "orange" => Some(Color::rgb(255, 165, 0)),
+        "orangered" => Some(Color::rgb(255, 69, 0)),
+        "tomato" => Some(Color::rgb(255, 99, 71)),
+        "coral" => Some(Color::rgb(255, 127, 80)),
+        "salmon" => Some(Color::rgb(250, 128, 114)),
+        "pink" => Some(Color::rgb(255, 192, 203)),
+        "hotpink" => Some(Color::rgb(255, 105, 180)),
+        "deeppink" => Some(Color::rgb(255, 20, 147)),
+        "purple" => Some(Color::rgb(128, 0, 128)),
+        "rebeccapurple" => Some(Color::rgb(102, 51, 153)),
+        "indigo" => Some(Color::rgb(75, 0, 130)),
+        "violet" => Some(Color::rgb(238, 130, 238)),
+        "orchid" => Some(Color::rgb(218, 112, 214)),
+        "plum" => Some(Color::rgb(221, 160, 221)),
+        "gold" => Some(Color::rgb(255, 215, 0)),
+        "khaki" => Some(Color::rgb(240, 230, 140)),
+        "lime" => Some(Color::rgb(0, 255, 0)),
+        "limegreen" => Some(Color::rgb(50, 205, 50)),
+        "forestgreen" => Some(Color::rgb(34, 139, 34)),
+        "darkgreen" => Some(Color::rgb(0, 100, 0)),
+        "olive" => Some(Color::rgb(128, 128, 0)),
+        "teal" => Some(Color::rgb(0, 128, 128)),
+        "navy" => Some(Color::rgb(0, 0, 128)),
+        "royalblue" => Some(Color::rgb(65, 105, 225)),
+        "dodgerblue" => Some(Color::rgb(30, 144, 255)),
+        "skyblue" => Some(Color::rgb(135, 206, 235)),
+        "steelblue" => Some(Color::rgb(70, 130, 180)),
+        "slateblue" => Some(Color::rgb(106, 90, 205)),
+        "darkblue" => Some(Color::rgb(0, 0, 139)),
+        "brown" => Some(Color::rgb(165, 42, 42)),
+        "maroon" => Some(Color::rgb(128, 0, 0)),
+        "sienna" => Some(Color::rgb(160, 82, 45)),
+        "chocolate" => Some(Color::rgb(210, 105, 30)),
+        "tan" => Some(Color::rgb(210, 180, 140)),
+        "beige" => Some(Color::rgb(245, 245, 220)),
+        "ivory" => Some(Color::rgb(255, 255, 240)),
+        "linen" => Some(Color::rgb(250, 240, 230)),
+        "gray" | "grey" => Some(Color::rgb(128, 128, 128)),
+        "darkgray" | "darkgrey" => Some(Color::rgb(169, 169, 169)),
+        "lightgray" | "lightgrey" => Some(Color::rgb(211, 211, 211)),
+        "dimgray" | "dimgrey" => Some(Color::rgb(105, 105, 105)),
+        "silver" => Some(Color::rgb(192, 192, 192)),
+        "whitesmoke" => Some(Color::rgb(245, 245, 245)),
+        "snow" => Some(Color::rgb(255, 250, 250)),
+        "crimson" => Some(Color::rgb(220, 20, 60)),
+        "firebrick" => Some(Color::rgb(178, 34, 34)),
+        "darkred" => Some(Color::rgb(139, 0, 0)),
+        "springgreen" => Some(Color::rgb(0, 255, 127)),
+        "turquoise" => Some(Color::rgb(64, 224, 208)),
+        "slategray" | "slategrey" => Some(Color::rgb(112, 128, 144)),
+        _ => None,
+    }
 }
 
 /// Parse a grid template like "1fr 2fr 1fr", "repeat(3, 1fr)", or "minmax(100px, 1fr)"
