@@ -107,6 +107,100 @@ pub fn parse_csv(content: &str, delimiter: char) -> Vec<Vec<String>> {
     result
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_detect_delimiter_comma() {
+        let csv = "a,b,c\n1,2,3";
+        assert_eq!(detect_delimiter(csv, Delimiter::Auto), ',');
+    }
+
+    #[test]
+    fn test_detect_delimiter_tab() {
+        let csv = "a\tb\tc\n1\t2\t3";
+        assert_eq!(detect_delimiter(csv, Delimiter::Auto), '\t');
+    }
+
+    #[test]
+    fn test_detect_delimiter_explicit() {
+        let csv = "a,b,c";
+        assert_eq!(detect_delimiter(csv, Delimiter::Semicolon), ';');
+        assert_eq!(detect_delimiter(csv, Delimiter::Pipe), '|');
+    }
+
+    #[test]
+    fn test_parse_csv_simple() {
+        let csv = "a,b,c\n1,2,3\n4,5,6";
+        let result = parse_csv(csv, ',');
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0], vec!["a", "b", "c"]);
+        assert_eq!(result[1], vec!["1", "2", "3"]);
+        assert_eq!(result[2], vec!["4", "5", "6"]);
+    }
+
+    #[test]
+    fn test_parse_csv_quoted_fields() {
+        let csv = r#""hello","world""#;
+        let result = parse_csv(csv, ',');
+        assert_eq!(result[0], vec!["hello", "world"]);
+    }
+
+    #[test]
+    fn test_parse_csv_escaped_quotes() {
+        let csv = r#""he said ""hi""",b"#;
+        let result = parse_csv(csv, ',');
+        assert_eq!(result[0][0], r#"he said "hi""#);
+    }
+
+    #[test]
+    fn test_parse_csv_quoted_delimiter() {
+        let csv = r#""a,b",c"#;
+        let result = parse_csv(csv, ',');
+        assert_eq!(result[0], vec!["a,b", "c"]);
+    }
+
+    #[test]
+    fn test_parse_csv_empty() {
+        let result = parse_csv("", ',');
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_csv_whitespace_trimmed() {
+        let csv = " a , b , c ";
+        let result = parse_csv(csv, ',');
+        assert_eq!(result[0], vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn test_parse_csv_crlf() {
+        let csv = "a,b\r\n1,2\r\n";
+        let result = parse_csv(csv, ',');
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_calculate_column_widths() {
+        let data = vec![
+            vec!["Name".to_string(), "Age".to_string()],
+            vec!["Alice".to_string(), "30".to_string()],
+            vec!["Bob".to_string(), "25".to_string()],
+        ];
+        let widths = calculate_column_widths(&data);
+        assert_eq!(widths.len(), 2);
+        assert!(widths[0] >= 5); // "Alice" = 5 chars
+        assert!(widths[1] >= 3); // "Age" = 3 chars
+    }
+
+    #[test]
+    fn test_calculate_column_widths_empty() {
+        let widths = calculate_column_widths(&[]);
+        assert!(widths.is_empty());
+    }
+}
+
 /// Calculate optimal column widths
 pub fn calculate_column_widths(data: &[Vec<String>]) -> Vec<u16> {
     let col_count = data.first().map(|r| r.len()).unwrap_or(0);
