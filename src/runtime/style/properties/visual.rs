@@ -1,6 +1,6 @@
 //! Visual-related style property structures
 
-use super::types::{BorderStyle, Color};
+use super::types::{BorderStyle, Color, FontWeight, TextAlign, TextDecoration};
 
 /// Visual style properties
 ///
@@ -21,6 +21,12 @@ pub struct VisualStyle {
     pub visible: bool,
     /// Z-index for stacking order
     pub z_index: i16,
+    /// Text alignment (INHERITED)
+    pub text_align: TextAlign,
+    /// Font weight (INHERITED)
+    pub font_weight: FontWeight,
+    /// Text decoration (not inherited)
+    pub text_decoration: TextDecoration,
 }
 
 impl VisualStyle {
@@ -60,6 +66,9 @@ impl Default for VisualStyle {
             opacity: 1.0,
             visible: true,
             z_index: 0,
+            text_align: TextAlign::default(),
+            font_weight: FontWeight::default(),
+            text_decoration: TextDecoration::default(),
         }
     }
 }

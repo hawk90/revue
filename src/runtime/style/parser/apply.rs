@@ -7,7 +7,8 @@ use crate::style::parser::value_parsers::{
 };
 use crate::style::Style;
 use crate::style::{
-    AlignItems, AlignSelf, BorderStyle, Display, FlexDirection, FlexWrap, JustifyContent, Position,
+    AlignItems, AlignSelf, BorderStyle, Display, FlexDirection, FlexWrap, FontWeight,
+    JustifyContent, Position, TextAlign, TextDecoration,
 };
 use std::collections::HashMap;
 
@@ -576,6 +577,36 @@ fn apply_visual(style: &mut Style, property: &str, value: &str) {
         }
         "visible" | "visibility" => {
             style.visual.visible = value != "hidden" && value != "false";
+        }
+        "text-align" => {
+            style.visual.text_align = match value {
+                "left" | "start" => TextAlign::Left,
+                "center" => TextAlign::Center,
+                "right" | "end" => TextAlign::Right,
+                _ => return,
+            };
+        }
+        "font-weight" => {
+            style.visual.font_weight = match value {
+                "bold" | "700" | "800" | "900" => FontWeight::Bold,
+                "normal" | "400" => FontWeight::Normal,
+                _ => return,
+            };
+        }
+        "text-decoration" | "text-decoration-line" => {
+            let mut decoration = TextDecoration::default();
+            for part in value.split_whitespace() {
+                match part {
+                    "underline" => decoration.underline = true,
+                    "line-through" => decoration.line_through = true,
+                    "none" => {
+                        decoration = TextDecoration::default();
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+            style.visual.text_decoration = decoration;
         }
         _ => {} // Unknown property, ignore
     }

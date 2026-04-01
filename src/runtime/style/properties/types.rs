@@ -188,6 +188,36 @@ pub enum AlignSelf {
     Stretch,
 }
 
+/// Text alignment
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum TextAlign {
+    /// Left-aligned (default)
+    #[default]
+    Left,
+    /// Centered
+    Center,
+    /// Right-aligned
+    Right,
+}
+
+/// Text decoration flags
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TextDecoration {
+    /// Underline text
+    pub underline: bool,
+    /// Strikethrough text
+    pub line_through: bool,
+}
+
+/// Font weight
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum FontWeight {
+    /// Normal weight (default)
+    #[default]
+    Normal,
+    /// Bold weight
+    Bold,
+}
 /// Spacing values for padding and margin
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Spacing {

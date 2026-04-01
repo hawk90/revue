@@ -18,7 +18,8 @@ pub use value_parsers::{
 mod tests {
     use super::*;
     use crate::style::{
-        AlignSelf, Color, Display, FlexDirection, FlexWrap, Position, Size, Spacing, Style,
+        AlignSelf, Color, Display, FlexDirection, FlexWrap, FontWeight, Position, Size, Spacing,
+        Style, TextAlign, VisualStyle,
     };
 
     #[test]
@@ -265,5 +266,99 @@ mod tests {
         let sheet = parse(css).unwrap();
         let style = sheet.apply(".container", &Style::default());
         assert_eq!(style.layout.gap, 8);
+    }
+
+    #[test]
+    fn test_apply_text_align() {
+        let css = ".centered { text-align: center; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".centered", &Style::default());
+        assert_eq!(style.visual.text_align, TextAlign::Center);
+    }
+
+    #[test]
+    fn test_apply_text_align_right() {
+        let css = ".right { text-align: right; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".right", &Style::default());
+        assert_eq!(style.visual.text_align, TextAlign::Right);
+    }
+
+    #[test]
+    fn test_apply_font_weight_bold() {
+        let css = ".bold { font-weight: bold; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".bold", &Style::default());
+        assert_eq!(style.visual.font_weight, FontWeight::Bold);
+    }
+
+    #[test]
+    fn test_apply_font_weight_700() {
+        let css = ".bold { font-weight: 700; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".bold", &Style::default());
+        assert_eq!(style.visual.font_weight, FontWeight::Bold);
+    }
+
+    #[test]
+    fn test_apply_text_decoration_underline() {
+        let css = ".underlined { text-decoration: underline; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".underlined", &Style::default());
+        assert!(style.visual.text_decoration.underline);
+        assert!(!style.visual.text_decoration.line_through);
+    }
+
+    #[test]
+    fn test_apply_text_decoration_line_through() {
+        let css = ".struck { text-decoration: line-through; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".struck", &Style::default());
+        assert!(!style.visual.text_decoration.underline);
+        assert!(style.visual.text_decoration.line_through);
+    }
+
+    #[test]
+    fn test_apply_text_decoration_combined() {
+        let css = ".both { text-decoration: underline line-through; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".both", &Style::default());
+        assert!(style.visual.text_decoration.underline);
+        assert!(style.visual.text_decoration.line_through);
+    }
+
+    #[test]
+    fn test_apply_text_decoration_none() {
+        let css = ".plain { text-decoration: none; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".plain", &Style::default());
+        assert!(!style.visual.text_decoration.underline);
+        assert!(!style.visual.text_decoration.line_through);
+    }
+
+    #[test]
+    fn test_text_align_inherited() {
+        let parent = Style {
+            visual: VisualStyle {
+                text_align: TextAlign::Center,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let child = Style::inherit(&parent);
+        assert_eq!(child.visual.text_align, TextAlign::Center);
+    }
+
+    #[test]
+    fn test_font_weight_inherited() {
+        let parent = Style {
+            visual: VisualStyle {
+                font_weight: FontWeight::Bold,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let child = Style::inherit(&parent);
+        assert_eq!(child.visual.font_weight, FontWeight::Bold);
     }
 }
