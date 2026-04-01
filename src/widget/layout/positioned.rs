@@ -323,3 +323,98 @@ impl_props_builders!(Positioned);
 pub fn positioned<V: View + 'static>(child: V) -> Positioned {
     Positioned::new(child)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::Buffer;
+    use crate::widget::Text;
+
+    #[test]
+    fn test_positioned_new() {
+        let p = Positioned::new(Text::new("Hi"));
+        assert_eq!(p.anchor, Anchor::TopLeft);
+        assert!(p.x.is_none());
+        assert!(p.y.is_none());
+    }
+
+    #[test]
+    fn test_positioned_absolute() {
+        let p = Positioned::new(Text::new("Hi")).at(5, 10);
+        assert_eq!(p.x, Some(5));
+        assert_eq!(p.y, Some(10));
+    }
+
+    #[test]
+    fn test_positioned_percent() {
+        let p = Positioned::new(Text::new("Hi")).percent(50.0, 50.0);
+        assert_eq!(p.percent_x, Some(50.0));
+        assert_eq!(p.percent_y, Some(50.0));
+        assert!(p.x.is_none()); // percent clears absolute
+    }
+
+    #[test]
+    fn test_positioned_anchor() {
+        let p = Positioned::new(Text::new("Hi")).anchor(Anchor::Center);
+        assert_eq!(p.anchor, Anchor::Center);
+    }
+
+    #[test]
+    fn test_positioned_calculate_position_top_left() {
+        let p = Positioned::new(Text::new("Hi")).at(10, 5);
+        let (x, y) = p.calculate_position_relative(80, 24, 10, 3);
+        assert_eq!(x, 10);
+        assert_eq!(y, 5);
+    }
+
+    #[test]
+    fn test_positioned_calculate_position_center() {
+        let p = Positioned::new(Text::new("Hi"))
+            .percent(50.0, 50.0)
+            .anchor(Anchor::Center)
+            .size(10, 4);
+        let (x, y) = p.calculate_position_relative(80, 24, 10, 4);
+        // 50% of 80 = 40, - 10/2 = 35
+        assert_eq!(x, 35);
+        // 50% of 24 = 12, - 4/2 = 10
+        assert_eq!(y, 10);
+    }
+
+    #[test]
+    fn test_positioned_render_absolute() {
+        let mut buf = Buffer::new(20, 10);
+        let area = Rect::new(0, 0, 20, 10);
+        let mut ctx = RenderContext::new(&mut buf, area);
+        let p = Positioned::new(Text::new("XY")).at(5, 3);
+        p.render(&mut ctx);
+        assert_eq!(buf.get(5, 3).unwrap().symbol, 'X');
+        assert_eq!(buf.get(6, 3).unwrap().symbol, 'Y');
+    }
+
+    #[test]
+    fn test_positioned_render_zero_area_no_panic() {
+        let mut buf = Buffer::new(10, 10);
+        let area = Rect::new(0, 0, 0, 0);
+        let mut ctx = RenderContext::new(&mut buf, area);
+        let p = Positioned::new(Text::new("X"));
+        p.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_positioned_size() {
+        let p = Positioned::new(Text::new("Hi")).size(20, 10);
+        assert_eq!(p.width, Some(20));
+        assert_eq!(p.height, Some(10));
+    }
+
+    #[test]
+    fn test_positioned_helper_fn() {
+        let p = positioned(Text::new("X"));
+        assert_eq!(p.anchor, Anchor::TopLeft);
+    }
+
+    #[test]
+    fn test_anchor_default() {
+        assert_eq!(Anchor::default(), Anchor::TopLeft);
+    }
+}

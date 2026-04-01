@@ -373,3 +373,173 @@ pub fn screen(id: ScreenId) -> Screen {
 pub fn screen_stack() -> ScreenStack {
     ScreenStack::new()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_screen_new() {
+        let s = Screen::new("home");
+        assert_eq!(s.id, "home");
+        assert_eq!(s.title, "home");
+        assert!(!s.modal);
+    }
+
+    #[test]
+    fn test_screen_builder() {
+        let s = Screen::new("settings")
+            .title("Settings Page")
+            .modal()
+            .data("theme", "dark");
+        assert_eq!(s.title, "Settings Page");
+        assert!(s.modal);
+        assert_eq!(s.get_data("theme"), Some(&"dark".to_string()));
+        assert_eq!(s.get_data("missing"), None);
+    }
+
+    #[test]
+    fn test_screen_stack_push_pop() {
+        let mut stack = ScreenStack::new();
+        assert_eq!(stack.depth(), 0);
+        assert!(!stack.can_go_back());
+
+        stack.push(Screen::new("home"));
+        assert_eq!(stack.depth(), 1);
+        assert!(!stack.can_go_back());
+
+        stack.push(Screen::new("detail"));
+        assert_eq!(stack.depth(), 2);
+        assert!(stack.can_go_back());
+        assert_eq!(stack.current().unwrap().id, "detail");
+
+        let popped = stack.pop();
+        assert_eq!(popped.unwrap().id, "detail");
+        assert_eq!(stack.depth(), 1);
+        assert_eq!(stack.current().unwrap().id, "home");
+    }
+
+    #[test]
+    fn test_screen_stack_pop_single_screen() {
+        let mut stack = ScreenStack::new();
+        stack.push(Screen::new("home"));
+        assert!(stack.pop().is_none()); // Can't pop last screen
+        assert_eq!(stack.depth(), 1);
+    }
+
+    #[test]
+    fn test_screen_stack_pop_to_root() {
+        let mut stack = ScreenStack::new();
+        stack.push(Screen::new("home"));
+        stack.push(Screen::new("a"));
+        stack.push(Screen::new("b"));
+        stack.push(Screen::new("c"));
+        assert_eq!(stack.depth(), 4);
+
+        let popped = stack.pop_to_root();
+        assert_eq!(popped.len(), 3);
+        assert_eq!(stack.depth(), 1);
+        assert_eq!(stack.current().unwrap().id, "home");
+    }
+
+    #[test]
+    fn test_screen_stack_pop_to() {
+        let mut stack = ScreenStack::new();
+        stack.push(Screen::new("home"));
+        stack.push(Screen::new("list"));
+        stack.push(Screen::new("detail"));
+        stack.push(Screen::new("edit"));
+
+        let popped = stack.pop_to("list");
+        assert_eq!(popped.len(), 2);
+        assert_eq!(stack.current().unwrap().id, "list");
+    }
+
+    #[test]
+    fn test_screen_stack_replace() {
+        let mut stack = ScreenStack::new();
+        stack.push(Screen::new("home"));
+        stack.push(Screen::new("old"));
+        stack.replace(Screen::new("new"));
+        assert_eq!(stack.depth(), 2);
+        assert_eq!(stack.current().unwrap().id, "new");
+    }
+
+    #[test]
+    fn test_screen_stack_contains() {
+        let mut stack = ScreenStack::new();
+        stack.push(Screen::new("home"));
+        stack.push(Screen::new("detail"));
+        assert!(stack.contains("home"));
+        assert!(stack.contains("detail"));
+        assert!(!stack.contains("missing"));
+    }
+
+    #[test]
+    fn test_screen_stack_get() {
+        let mut stack = ScreenStack::new();
+        stack.push(Screen::new("home"));
+        stack.push(Screen::new("detail"));
+        assert_eq!(stack.get("home").unwrap().id, "home");
+        assert!(stack.get("missing").is_none());
+    }
+
+    #[test]
+    fn test_screen_stack_go_back() {
+        let mut stack = ScreenStack::new();
+        stack.push(Screen::new("home"));
+        assert!(!stack.go_back());
+
+        stack.push(Screen::new("detail"));
+        assert!(stack.go_back());
+        assert_eq!(stack.current().unwrap().id, "home");
+    }
+
+    #[test]
+    fn test_screen_stack_handle_key() {
+        let mut stack = ScreenStack::new();
+        stack.push(Screen::new("home"));
+        stack.push(Screen::new("detail"));
+
+        assert!(stack.handle_key(&Key::Escape));
+        assert_eq!(stack.current().unwrap().id, "home");
+        assert!(!stack.handle_key(&Key::Escape)); // Can't go back further
+    }
+
+    #[test]
+    fn test_screen_stack_transition() {
+        let mut stack = ScreenStack::new().transition(ScreenTransition::SlideRight);
+        stack.push(Screen::new("home"));
+        // Push always starts a transition
+        // Complete it before next push
+        stack.transitioning = false;
+        stack.transition_progress = 1.0;
+
+        stack.push(Screen::new("detail"));
+        // Now transition should be active
+        assert!(stack.transitioning);
+        assert_eq!(stack.transition_progress, 0.0);
+
+        stack.update_transition(0.5);
+        assert!(stack.transition_progress > 0.0);
+
+        stack.update_transition(10.0);
+        assert_eq!(stack.transition_progress, 1.0);
+        assert!(!stack.transitioning);
+    }
+
+    #[test]
+    fn test_screen_stack_default() {
+        let s = ScreenStack::default();
+        assert_eq!(s.depth(), 0);
+    }
+
+    #[test]
+    fn test_screen_helpers() {
+        let s = screen("test");
+        assert_eq!(s.id, "test");
+
+        let ss = screen_stack();
+        assert_eq!(ss.depth(), 0);
+    }
+}

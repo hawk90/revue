@@ -347,3 +347,132 @@ impl_props_builders!(ScrollView);
 pub fn scroll_view() -> ScrollView {
     ScrollView::new()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scroll_view_new() {
+        let s = ScrollView::new();
+        assert_eq!(s.offset(), 0);
+        assert_eq!(s.content_height, 0);
+        assert!(s.show_scrollbar);
+    }
+
+    #[test]
+    fn test_scroll_view_scroll_down_up() {
+        let mut s = ScrollView::new().content_height(100);
+        s.scroll_down(10, 20);
+        assert_eq!(s.offset(), 10);
+        s.scroll_up(5);
+        assert_eq!(s.offset(), 5);
+    }
+
+    #[test]
+    fn test_scroll_view_scroll_bounds() {
+        let mut s = ScrollView::new().content_height(50);
+        s.scroll_down(100, 20); // Can't scroll past max
+        assert_eq!(s.offset(), 30); // 50 - 20
+        s.scroll_up(100); // Can't scroll before 0
+        assert_eq!(s.offset(), 0);
+    }
+
+    #[test]
+    fn test_scroll_view_page_down_up() {
+        let mut s = ScrollView::new().content_height(100);
+        s.page_down(20);
+        assert_eq!(s.offset(), 19); // viewport - 1
+        s.page_up(20);
+        assert_eq!(s.offset(), 0);
+    }
+
+    #[test]
+    fn test_scroll_view_scroll_to_top_bottom() {
+        let mut s = ScrollView::new().content_height(100);
+        s.scroll_to_bottom(20);
+        assert_eq!(s.offset(), 80);
+        s.scroll_to_top();
+        assert_eq!(s.offset(), 0);
+    }
+
+    #[test]
+    fn test_scroll_view_set_offset() {
+        let mut s = ScrollView::new().content_height(50);
+        s.set_offset(25, 20);
+        assert_eq!(s.offset(), 25);
+        s.set_offset(100, 20); // Clamped to max
+        assert_eq!(s.offset(), 30);
+    }
+
+    #[test]
+    fn test_scroll_view_is_scrollable() {
+        let s = ScrollView::new().content_height(50);
+        assert!(s.is_scrollable(20));
+        assert!(!s.is_scrollable(50));
+        assert!(!s.is_scrollable(60));
+    }
+
+    #[test]
+    fn test_scroll_view_percentage() {
+        let mut s = ScrollView::new().content_height(100);
+        assert_eq!(s.scroll_percentage(20), 0.0);
+        s.scroll_to_bottom(20);
+        assert_eq!(s.scroll_percentage(20), 1.0);
+    }
+
+    #[test]
+    fn test_scroll_view_handle_key() {
+        use crate::event::Key;
+        let mut s = ScrollView::new().content_height(100);
+
+        assert!(s.handle_key(&Key::Down, 20));
+        assert_eq!(s.offset(), 1);
+
+        assert!(s.handle_key(&Key::PageDown, 20));
+        assert!(s.offset() > 1);
+
+        assert!(s.handle_key(&Key::Home, 20));
+        assert_eq!(s.offset(), 0);
+
+        assert!(!s.handle_key(&Key::Char('x'), 20));
+    }
+
+    #[test]
+    fn test_scroll_view_content_area() {
+        let s = ScrollView::new().content_height(50);
+        let area = Rect::new(0, 0, 40, 20);
+        let content = s.content_area(area);
+        // Scrollbar takes 1 column
+        assert_eq!(content.width, 39);
+    }
+
+    #[test]
+    fn test_scroll_view_content_area_no_scrollbar_needed() {
+        let s = ScrollView::new().content_height(10);
+        let area = Rect::new(0, 0, 40, 20);
+        let content = s.content_area(area);
+        assert_eq!(content.width, 40); // No scrollbar needed
+    }
+
+    #[test]
+    fn test_scroll_view_render_no_panic() {
+        let mut buf = Buffer::new(40, 20);
+        let area = Rect::new(0, 0, 40, 20);
+        let mut ctx = RenderContext::new(&mut buf, area);
+        let s = ScrollView::new().content_height(50);
+        s.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_scroll_view_default() {
+        let s = ScrollView::default();
+        assert_eq!(s.offset(), 0);
+    }
+
+    #[test]
+    fn test_scroll_view_helper_fn() {
+        let s = scroll_view();
+        assert_eq!(s.offset(), 0);
+    }
+}
