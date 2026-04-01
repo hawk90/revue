@@ -8,12 +8,10 @@ use crate::render::Modifier;
 use crate::style::{BorderStyle, Color, Size, Style};
 use std::collections::HashMap;
 
-#[allow(dead_code)]
 fn test_buffer() -> Buffer {
     Buffer::new(20, 10)
 }
 
-#[allow(dead_code)]
 fn test_area() -> Rect {
     Rect::new(0, 0, 20, 10)
 }

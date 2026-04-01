@@ -18,34 +18,6 @@ mod tests {
     use crate::widget::RenderContext;
     use std::time::Duration;
 
-    #[allow(dead_code)]
-    struct TestScreen {
-        id: ScreenId,
-        events: Vec<ScreenEvent>,
-    }
-
-    impl TestScreen {
-        #[allow(dead_code)]
-        fn new(id: impl Into<ScreenId>) -> Self {
-            Self {
-                id: id.into(),
-                events: Vec::new(),
-            }
-        }
-    }
-
-    impl Screen for TestScreen {
-        fn id(&self) -> ScreenId {
-            self.id.clone()
-        }
-
-        fn on_event(&mut self, event: ScreenEvent) {
-            self.events.push(event);
-        }
-
-        fn render(&self, _ctx: &mut RenderContext) {}
-    }
-
     // ScreenId tests
     #[test]
     fn test_screen_id_new() {

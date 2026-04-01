@@ -415,11 +415,6 @@ impl Inspector {
 mod tests {
     use super::*;
 
-    #[allow(dead_code)]
-    fn create_test_inspector() -> Inspector {
-        Inspector::new()
-    }
-
     #[test]
     fn test_inspector_new() {
         let inspector = Inspector::new();

@@ -6,6 +6,7 @@ use crate::dom::DomId;
 use crate::dom::WidgetMeta;
 use crate::widget::View;
 
+#[allow(dead_code)]
 impl DomRenderer {
     /// Build DOM from a View hierarchy
     ///
@@ -44,13 +45,11 @@ impl DomRenderer {
     }
 
     /// Update node metadata if changed, returns true if node can be reused
-    #[allow(dead_code)]
     pub(crate) fn update_node_meta(&mut self, node_id: DomId, new_meta: &WidgetMeta) -> bool {
         update_node_meta_internal(self, node_id, new_meta)
     }
 
     /// Recursively update children, reusing nodes when possible
-    #[allow(dead_code)]
     pub(crate) fn update_children(&mut self, parent_id: DomId, new_children: &[Box<dyn View>]) {
         update_children_internal(self, parent_id, new_children);
     }
@@ -71,7 +70,6 @@ impl DomRenderer {
     }
 
     /// Collect all descendant node IDs
-    #[allow(dead_code)]
     pub(crate) fn collect_descendants(&self, node_id: DomId) -> Vec<DomId> {
         collect_descendants_internal(&self.tree, node_id)
     }

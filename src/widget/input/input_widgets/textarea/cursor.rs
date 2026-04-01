@@ -117,13 +117,11 @@ impl CursorSet {
     }
 
     /// Get all cursors
-    #[allow(dead_code)]
     pub fn all(&self) -> &[Cursor] {
         &self.cursors
     }
 
     /// Get all cursors (mutable)
-    #[allow(dead_code)]
     pub fn all_mut(&mut self) -> &mut [Cursor] {
         &mut self.cursors
     }
@@ -134,13 +132,11 @@ impl CursorSet {
     }
 
     /// Check if empty (always false - always has at least one cursor)
-    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         false
     }
 
     /// Check if there's only one cursor
-    #[allow(dead_code)]
     pub fn is_single(&self) -> bool {
         self.cursors.len() == 1
     }
@@ -193,7 +189,6 @@ impl CursorSet {
     }
 
     /// Get positions of all cursors sorted in reverse order (for editing)
-    #[allow(dead_code)]
     pub fn positions_reversed(&self) -> Vec<CursorPos> {
         let mut positions: Vec<CursorPos> = self.cursors.iter().map(|c| c.pos).collect();
         positions.sort_by(|a, b| b.cmp(a)); // Reverse order
