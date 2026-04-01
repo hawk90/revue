@@ -146,6 +146,20 @@ pub enum JustifyContent {
     SpaceAround,
 }
 
+/// Overflow behavior
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Overflow {
+    /// Content is visible outside the box (default)
+    #[default]
+    Visible,
+    /// Content is clipped to the box
+    Hidden,
+    /// Content is scrollable if it overflows
+    Scroll,
+    /// Browser decides (scroll if needed)
+    Auto,
+}
+
 /// Cross axis alignment for flexbox
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum AlignItems {

@@ -18,8 +18,8 @@ pub use value_parsers::{
 mod tests {
     use super::*;
     use crate::style::{
-        AlignSelf, Color, Display, FlexDirection, FlexWrap, FontWeight, Position, Size, Spacing,
-        Style, TextAlign, VisualStyle,
+        AlignSelf, Color, Display, FlexDirection, FlexWrap, FontWeight, Overflow, Position, Size,
+        Spacing, Style, TextAlign, VisualStyle,
     };
 
     #[test]
@@ -462,5 +462,43 @@ mod tests {
         let sheet = parse(css).unwrap();
         let style = sheet.apply(".text", &Style::default());
         assert_eq!(style.visual.color, Color::CYAN);
+    }
+
+    #[test]
+    fn test_overflow_hidden() {
+        let css = ".box { overflow: hidden; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".box", &Style::default());
+        assert_eq!(style.visual.overflow, Overflow::Hidden);
+    }
+
+    #[test]
+    fn test_overflow_scroll() {
+        let css = ".box { overflow: scroll; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".box", &Style::default());
+        assert_eq!(style.visual.overflow, Overflow::Scroll);
+    }
+
+    #[test]
+    fn test_overflow_auto() {
+        let css = ".box { overflow: auto; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".box", &Style::default());
+        assert_eq!(style.visual.overflow, Overflow::Auto);
+    }
+
+    #[test]
+    fn test_overflow_visible() {
+        let css = ".box { overflow: visible; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".box", &Style::default());
+        assert_eq!(style.visual.overflow, Overflow::Visible);
+    }
+
+    #[test]
+    fn test_overflow_default() {
+        let style = Style::default();
+        assert_eq!(style.visual.overflow, Overflow::Visible);
     }
 }
