@@ -342,3 +342,153 @@ pub fn vstack() -> Stack {
 pub fn hstack() -> Stack {
     Stack::new().direction(Direction::Row)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::Buffer;
+    use crate::widget::Text;
+
+    #[test]
+    fn test_stack_new_is_empty() {
+        let s = Stack::new();
+        assert!(s.is_empty());
+        assert_eq!(s.len(), 0);
+    }
+
+    #[test]
+    fn test_stack_add_children() {
+        let s = Stack::new().child(Text::new("A")).child(Text::new("B"));
+        assert_eq!(s.len(), 2);
+        assert!(!s.is_empty());
+    }
+
+    #[test]
+    fn test_stack_direction() {
+        let row = Stack::new().direction(Direction::Row);
+        assert_eq!(row.direction, Direction::Row);
+
+        let col = Stack::new().direction(Direction::Column);
+        assert_eq!(col.direction, Direction::Column);
+    }
+
+    #[test]
+    fn test_vstack_hstack_constructors() {
+        let v = vstack();
+        assert_eq!(v.direction, Direction::Column);
+
+        let h = hstack();
+        assert_eq!(h.direction, Direction::Row);
+    }
+
+    #[test]
+    fn test_stack_render_empty_no_panic() {
+        let mut buf = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buf, area);
+        let s = Stack::new();
+        s.render(&mut ctx); // Should not panic
+    }
+
+    #[test]
+    fn test_stack_render_zero_area_no_panic() {
+        let mut buf = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 0, 0);
+        let mut ctx = RenderContext::new(&mut buf, area);
+        let s = Stack::new().child(Text::new("A"));
+        s.render(&mut ctx); // Should not panic
+    }
+
+    #[test]
+    fn test_stack_calculate_sizes_auto() {
+        let s = Stack::new()
+            .child(Text::new("A"))
+            .child(Text::new("B"))
+            .child(Text::new("C"));
+        let sizes = s.calculate_sizes(30, 3);
+        assert_eq!(sizes.len(), 3);
+        assert_eq!(sizes.iter().sum::<u16>(), 30);
+    }
+
+    #[test]
+    fn test_stack_calculate_sizes_fixed() {
+        let s = Stack::new()
+            .child_sized(Text::new("A"), 10)
+            .child_sized(Text::new("B"), 20);
+        let sizes = s.calculate_sizes(50, 2);
+        assert_eq!(sizes, vec![10, 20]);
+    }
+
+    #[test]
+    fn test_stack_calculate_sizes_flex() {
+        let s = Stack::new()
+            .child_flex(Text::new("A"), 1.0)
+            .child_flex(Text::new("B"), 2.0);
+        let sizes = s.calculate_sizes(30, 2);
+        assert_eq!(sizes[0], 10);
+        assert_eq!(sizes[1], 20);
+    }
+
+    #[test]
+    fn test_stack_calculate_sizes_mixed() {
+        let s = Stack::new()
+            .child_sized(Text::new("Fixed"), 10)
+            .child_flex(Text::new("Flex"), 1.0);
+        let sizes = s.calculate_sizes(30, 2);
+        assert_eq!(sizes[0], 10);
+        assert_eq!(sizes[1], 20); // 30 - 10 = 20 (no auto children)
+    }
+
+    #[test]
+    fn test_stack_calculate_sizes_empty() {
+        let s = Stack::new();
+        let sizes = s.calculate_sizes(100, 0);
+        assert!(sizes.is_empty());
+    }
+
+    #[test]
+    fn test_stack_constraints() {
+        let s = Stack::new()
+            .min_width(20)
+            .max_width(60)
+            .min_height(5)
+            .max_height(30);
+        let area = Rect::new(0, 0, 100, 100);
+        let constrained = s.apply_constraints(area);
+        assert_eq!(constrained.width, 60);
+        assert_eq!(constrained.height, 30);
+    }
+
+    #[test]
+    fn test_stack_constraints_below_min() {
+        let s = Stack::new().min_width(20).min_height(10);
+        let area = Rect::new(0, 0, 5, 3);
+        let constrained = s.apply_constraints(area);
+        assert_eq!(constrained.width, 20);
+        assert_eq!(constrained.height, 10);
+    }
+
+    #[test]
+    fn test_stack_default() {
+        let s = Stack::default();
+        assert!(s.is_empty());
+        assert_eq!(s.direction, Direction::Row);
+    }
+
+    #[test]
+    fn test_stack_gap() {
+        let s = Stack::new().gap(2);
+        assert_eq!(s.gap, 2);
+    }
+
+    #[test]
+    fn test_stack_render_row_children() {
+        let mut buf = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let mut ctx = RenderContext::new(&mut buf, area);
+        let s = hstack().child(Text::new("AB")).child(Text::new("CD"));
+        s.render(&mut ctx);
+        assert_eq!(buf.get(0, 0).unwrap().symbol, 'A');
+        assert_eq!(buf.get(1, 0).unwrap().symbol, 'B');
+    }
+}
