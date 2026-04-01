@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.60.0](https://github.com/hawk90/revue/compare/v2.59.4...v2.60.0) (2026-03-31)
+
+
+### Features
+
+* **css:** support An+B formula in :nth-child() and :nth-last-child() ([#521](https://github.com/hawk90/revue/issues/521)) ([45ddb7e](https://github.com/hawk90/revue/commit/45ddb7e3f3907f2bef02005059b4c122fe918030))
+
 ## [2.59.4](https://github.com/hawk90/revue/compare/v2.59.3...v2.59.4) (2026-03-31)
 
 
