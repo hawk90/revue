@@ -107,12 +107,10 @@ impl super::CodeEditor {
 
             // Check if we should add extra indent (after opening bracket)
             let trimmed = current_line.trim_end();
-            let extra_indent = if !trimmed.is_empty() {
-                let last_char = trimmed.chars().last().unwrap();
-                matches!(last_char, '{' | '[' | '(' | ':')
-            } else {
-                false
-            };
+            let extra_indent = trimmed
+                .chars()
+                .last()
+                .is_some_and(|c| matches!(c, '{' | '[' | '(' | ':'));
 
             let base = leading_ws;
             if extra_indent {
