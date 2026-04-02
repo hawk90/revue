@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.61.0](https://github.com/hawk90/revue/compare/v2.60.1...v2.61.0) (2026-04-02)
+
+
+### Features
+
+* **modal:** integrate FocusTrap for keyboard focus management ([#523](https://github.com/hawk90/revue/issues/523)) ([5e6e895](https://github.com/hawk90/revue/commit/5e6e89539a757b33274ddf9b0383360493c4c6f5))
+
 ## [2.60.1](https://github.com/hawk90/revue/compare/v2.60.0...v2.60.1) (2026-04-02)
 
 
