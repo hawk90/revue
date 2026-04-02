@@ -574,3 +574,177 @@ pub fn hsplit(ratio: f32) -> HSplit {
 pub fn vsplit(ratio: f32) -> VSplit {
     VSplit::new(ratio)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::Buffer;
+
+    #[test]
+    fn test_pane_new() {
+        let p = Pane::new("left");
+        assert_eq!(p.id, "left");
+        assert_eq!(p.ratio, 0.5);
+        assert_eq!(p.min_size, 5);
+        assert!(!p.collapsible);
+        assert!(!p.collapsed);
+    }
+
+    #[test]
+    fn test_pane_builder() {
+        let p = Pane::new("main")
+            .ratio(0.7)
+            .min_size(10)
+            .max_size(50)
+            .collapsible();
+        assert_eq!(p.ratio, 0.7);
+        assert_eq!(p.min_size, 10);
+        assert_eq!(p.max_size, 50);
+        assert!(p.collapsible);
+    }
+
+    #[test]
+    fn test_pane_ratio_clamped() {
+        let p = Pane::new("x").ratio(1.5);
+        assert_eq!(p.ratio, 1.0);
+
+        let p = Pane::new("x").ratio(-0.5);
+        assert_eq!(p.ratio, 0.0);
+    }
+
+    #[test]
+    fn test_pane_toggle_collapse() {
+        let mut p = Pane::new("x").collapsible();
+        assert!(!p.collapsed);
+        p.toggle_collapse();
+        assert!(p.collapsed);
+        p.toggle_collapse();
+        assert!(!p.collapsed);
+    }
+
+    #[test]
+    fn test_pane_toggle_collapse_not_collapsible() {
+        let mut p = Pane::new("x");
+        p.toggle_collapse(); // Should be no-op
+        assert!(!p.collapsed);
+    }
+
+    #[test]
+    fn test_splitter_new() {
+        let s = Splitter::new();
+        assert_eq!(s.orientation, SplitOrientation::Horizontal);
+        assert!(s.panes.is_empty());
+    }
+
+    #[test]
+    fn test_splitter_orientation() {
+        let s = Splitter::new().vertical();
+        assert_eq!(s.orientation, SplitOrientation::Vertical);
+
+        let s = Splitter::new().horizontal();
+        assert_eq!(s.orientation, SplitOrientation::Horizontal);
+    }
+
+    #[test]
+    fn test_splitter_pane_areas_horizontal() {
+        let s = Splitter::new()
+            .pane(Pane::new("left").ratio(0.5))
+            .pane(Pane::new("right").ratio(0.5));
+        let area = Rect::new(0, 0, 81, 24); // 81 = 40 + 1(splitter) + 40
+        let areas = s.pane_areas(area);
+        assert_eq!(areas.len(), 2);
+        assert_eq!(areas[0].0, "left");
+        assert_eq!(areas[1].0, "right");
+        // Both should have roughly equal width
+        assert!(areas[0].1.width > 0);
+        assert!(areas[1].1.width > 0);
+    }
+
+    #[test]
+    fn test_splitter_pane_areas_empty() {
+        let s = Splitter::new();
+        let area = Rect::new(0, 0, 80, 24);
+        let areas = s.pane_areas(area);
+        assert!(areas.is_empty());
+    }
+
+    #[test]
+    fn test_splitter_focus_navigation() {
+        let mut s = Splitter::new()
+            .pane(Pane::new("a"))
+            .pane(Pane::new("b"))
+            .pane(Pane::new("c"));
+        assert_eq!(s.focused(), Some("a"));
+
+        s.focus_next();
+        assert_eq!(s.focused(), Some("b"));
+
+        s.focus_next();
+        assert_eq!(s.focused(), Some("c"));
+
+        s.focus_next(); // wraps
+        assert_eq!(s.focused(), Some("a"));
+
+        s.focus_prev(); // wraps back
+        assert_eq!(s.focused(), Some("c"));
+    }
+
+    #[test]
+    fn test_splitter_style_char() {
+        assert_eq!(SplitterStyle::Line.char(SplitOrientation::Horizontal), '│');
+        assert_eq!(SplitterStyle::Line.char(SplitOrientation::Vertical), '─');
+        assert_eq!(
+            SplitterStyle::Double.char(SplitOrientation::Horizontal),
+            '║'
+        );
+        assert_eq!(
+            SplitterStyle::Hidden.char(SplitOrientation::Horizontal),
+            ' '
+        );
+    }
+
+    #[test]
+    fn test_hsplit_new() {
+        let h = hsplit(0.3);
+        assert_eq!(h.ratio, 0.3);
+    }
+
+    #[test]
+    fn test_vsplit_new() {
+        let v = vsplit(0.6);
+        assert_eq!(v.ratio, 0.6);
+    }
+
+    #[test]
+    fn test_hsplit_areas() {
+        let h = HSplit::new(0.5);
+        let area = Rect::new(0, 0, 81, 24);
+        let (left, right) = h.areas(area);
+        assert!(left.width > 0);
+        assert!(right.width > 0);
+        assert_eq!(left.height, 24);
+        assert_eq!(right.height, 24);
+    }
+
+    #[test]
+    fn test_vsplit_areas() {
+        let v = VSplit::new(0.5);
+        let area = Rect::new(0, 0, 80, 25);
+        let (top, bottom) = v.areas(area);
+        assert!(top.height > 0);
+        assert!(bottom.height > 0);
+        assert_eq!(top.width, 80);
+        assert_eq!(bottom.width, 80);
+    }
+
+    #[test]
+    fn test_splitter_render_no_panic() {
+        let mut buf = Buffer::new(80, 24);
+        let area = Rect::new(0, 0, 80, 24);
+        let mut ctx = RenderContext::new(&mut buf, area);
+        let s = Splitter::new()
+            .pane(Pane::new("a").ratio(0.5))
+            .pane(Pane::new("b").ratio(0.5));
+        s.render(&mut ctx);
+    }
+}
