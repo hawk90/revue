@@ -207,3 +207,77 @@ impl_props_builders!(Layers);
 pub fn layers() -> Layers {
     Layers::new()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::Buffer;
+    use crate::widget::Text;
+
+    #[test]
+    fn test_layers_new_empty() {
+        let l = Layers::new();
+        assert!(l.is_empty());
+        assert_eq!(l.len(), 0);
+    }
+
+    #[test]
+    fn test_layers_add_children() {
+        let l = Layers::new()
+            .child(Text::new("Bottom"))
+            .child(Text::new("Top"));
+        assert_eq!(l.len(), 2);
+    }
+
+    #[test]
+    fn test_layers_add_with_z_index() {
+        let l = Layers::new()
+            .child_z(Text::new("Low"), -1)
+            .child(Text::new("Default"))
+            .child_z(Text::new("High"), 10);
+        assert_eq!(l.len(), 3);
+        assert_eq!(l.children[0].z_index, -1);
+        assert_eq!(l.children[1].z_index, 0);
+        assert_eq!(l.children[2].z_index, 10);
+    }
+
+    #[test]
+    fn test_layers_render_order() {
+        // Later z-index should overwrite earlier content
+        let mut buf = Buffer::new(10, 3);
+        let area = Rect::new(0, 0, 10, 3);
+        let mut ctx = RenderContext::new(&mut buf, area);
+
+        let l = Layers::new()
+            .child_z(Text::new("AAAA"), 0)
+            .child_z(Text::new("BB"), 1); // Higher z, renders last, overwrites
+        l.render(&mut ctx);
+
+        // "BB" should overwrite first 2 chars of "AAAA"
+        assert_eq!(buf.get(0, 0).unwrap().symbol, 'B');
+        assert_eq!(buf.get(1, 0).unwrap().symbol, 'B');
+        assert_eq!(buf.get(2, 0).unwrap().symbol, 'A');
+        assert_eq!(buf.get(3, 0).unwrap().symbol, 'A');
+    }
+
+    #[test]
+    fn test_layers_render_empty_no_panic() {
+        let mut buf = Buffer::new(10, 5);
+        let area = Rect::new(0, 0, 10, 5);
+        let mut ctx = RenderContext::new(&mut buf, area);
+        let l = Layers::new();
+        l.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_layers_default() {
+        let l = Layers::default();
+        assert!(l.is_empty());
+    }
+
+    #[test]
+    fn test_layers_helper_fn() {
+        let l = layers().child(Text::new("X"));
+        assert_eq!(l.len(), 1);
+    }
+}

@@ -1,7 +1,7 @@
 //! CSS selector parser
 
 use super::types::{
-    AttributeOp, AttributeSelector, Combinator, PseudoClass, Selector, SelectorParseError,
+    AttributeOp, AttributeSelector, Combinator, NthExpr, PseudoClass, Selector, SelectorParseError,
     SelectorPart,
 };
 
@@ -279,7 +279,7 @@ impl<'a> SelectorParser<'a> {
         Ok(pseudo)
     }
 
-    fn parse_nth_argument(&mut self) -> Result<usize, SelectorParseError> {
+    fn parse_nth_argument(&mut self) -> Result<NthExpr, SelectorParseError> {
         if self.peek() != Some('(') {
             return Err(SelectorParseError {
                 message: "Expected ( for nth argument".to_string(),
@@ -289,25 +289,77 @@ impl<'a> SelectorParser<'a> {
         self.advance();
         self.skip_whitespace();
 
-        let mut num = String::new();
+        // Collect the content between parentheses
+        let start = self.pos;
+        let mut depth = 1;
         while let Some(ch) = self.peek() {
-            if ch.is_numeric() {
-                num.push(ch);
-                self.advance();
-            } else {
-                break;
+            if ch == ')' {
+                depth -= 1;
+                if depth == 0 {
+                    break;
+                }
+            } else if ch == '(' {
+                depth += 1;
             }
+            self.advance();
         }
+        let content: String = self.chars[start..self.pos].iter().collect();
+        let content = content.trim();
 
-        self.skip_whitespace();
+        // Consume closing paren
         if self.peek() == Some(')') {
             self.advance();
         }
 
-        num.parse().map_err(|_| SelectorParseError {
-            message: "Invalid nth argument".to_string(),
-            position: self.pos,
+        Self::parse_nth_expr(content).map_err(|msg| SelectorParseError {
+            message: msg,
+            position: start,
         })
+    }
+
+    /// Parse An+B expression from a string
+    fn parse_nth_expr(input: &str) -> Result<NthExpr, String> {
+        let s = input.trim().to_lowercase();
+
+        // Keywords
+        if s == "odd" {
+            return Ok(NthExpr::new(2, 1));
+        }
+        if s == "even" {
+            return Ok(NthExpr::new(2, 0));
+        }
+
+        // Find 'n' to split A and B
+        if let Some(n_pos) = s.find('n') {
+            // Parse A (before 'n')
+            let a_str = &s[..n_pos];
+            let a = match a_str {
+                "" | "+" => 1,
+                "-" => -1,
+                _ => a_str
+                    .parse::<i32>()
+                    .map_err(|_| format!("Invalid An+B expression: {}", input))?,
+            };
+
+            // Parse B (after 'n')
+            let b_str = s[n_pos + 1..].trim();
+            let b = if b_str.is_empty() {
+                0
+            } else {
+                b_str
+                    .replace(' ', "")
+                    .parse::<i32>()
+                    .map_err(|_| format!("Invalid An+B expression: {}", input))?
+            };
+
+            Ok(NthExpr::new(a, b))
+        } else {
+            // Plain number: 0n+B
+            let b = s
+                .parse::<i32>()
+                .map_err(|_| format!("Invalid nth argument: {}", input))?;
+            Ok(NthExpr::new(0, b))
+        }
     }
 
     fn parse_attribute_selector(&mut self) -> Result<AttributeSelector, SelectorParseError> {

@@ -2,6 +2,67 @@
 
 use std::fmt;
 
+/// An+B expression for :nth-child() and :nth-last-child()
+///
+/// Represents the CSS An+B microsyntax:
+/// - `odd` = 2n+1
+/// - `even` = 2n
+/// - `3` = 0n+3 (specific index)
+/// - `2n+1` = every odd element
+/// - `-n+3` = first 3 elements
+/// - `3n` = every 3rd element
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NthExpr {
+    /// The `A` coefficient (step size)
+    pub a: i32,
+    /// The `B` offset
+    pub b: i32,
+}
+
+impl NthExpr {
+    /// Create a new An+B expression
+    pub fn new(a: i32, b: i32) -> Self {
+        Self { a, b }
+    }
+
+    /// Check if a 1-based index matches this expression
+    pub fn matches(&self, index: usize) -> bool {
+        let index = index as i32;
+        if self.a == 0 {
+            return index == self.b;
+        }
+        // Solve: An + B = index => n = (index - B) / A
+        let diff = index - self.b;
+        // n must be a non-negative integer
+        if diff == 0 {
+            return true;
+        }
+        if (diff > 0) != (self.a > 0) {
+            return false;
+        }
+        diff % self.a == 0
+    }
+}
+
+impl fmt::Display for NthExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (self.a, self.b) {
+            (0, b) => write!(f, "{}", b),
+            (2, 1) => write!(f, "odd"),
+            (2, 0) => write!(f, "even"),
+            (1, 0) => write!(f, "n"),
+            (-1, 0) => write!(f, "-n"),
+            (a, 0) => write!(f, "{}n", a),
+            (1, b) if b > 0 => write!(f, "n+{}", b),
+            (1, b) => write!(f, "n{}", b),
+            (-1, b) if b > 0 => write!(f, "-n+{}", b),
+            (-1, b) => write!(f, "-n{}", b),
+            (a, b) if b > 0 => write!(f, "{}n+{}", a, b),
+            (a, b) => write!(f, "{}n{}", a, b),
+        }
+    }
+}
+
 /// Pseudo-class types
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PseudoClass {
@@ -27,10 +88,10 @@ pub enum PseudoClass {
     LastChild,
     /// :only-child
     OnlyChild,
-    /// :nth-child(n)
-    NthChild(usize),
-    /// :nth-last-child(n)
-    NthLastChild(usize),
+    /// :nth-child(An+B)
+    NthChild(NthExpr),
+    /// :nth-last-child(An+B)
+    NthLastChild(NthExpr),
     /// :not(selector)
     Not(Box<PseudoClass>),
 }
@@ -49,8 +110,8 @@ impl fmt::Display for PseudoClass {
             PseudoClass::FirstChild => write!(f, ":first-child"),
             PseudoClass::LastChild => write!(f, ":last-child"),
             PseudoClass::OnlyChild => write!(f, ":only-child"),
-            PseudoClass::NthChild(n) => write!(f, ":nth-child({})", n),
-            PseudoClass::NthLastChild(n) => write!(f, ":nth-last-child({})", n),
+            PseudoClass::NthChild(expr) => write!(f, ":nth-child({})", expr),
+            PseudoClass::NthLastChild(expr) => write!(f, ":nth-last-child({})", expr),
             PseudoClass::Not(inner) => write!(f, ":not({})", inner),
         }
     }
