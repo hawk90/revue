@@ -220,7 +220,9 @@ impl Snapshot {
         match expected {
             Some(expected) if expected == *actual => SnapshotResult::Match,
             Some(_) if self.config.update_snapshots => {
-                fs::write(&path, actual).ok();
+                if let Err(e) = fs::write(&path, actual) {
+                    crate::log_warn!("Snapshot write failed for {:?}: {}", path, e);
+                }
                 SnapshotResult::Created
             }
             Some(expected) => {
@@ -231,12 +233,10 @@ impl Snapshot {
                     diff,
                 }
             }
-            None if self.config.update_snapshots => {
-                fs::write(&path, actual).ok();
-                SnapshotResult::Created
-            }
             None => {
-                fs::write(&path, actual).ok();
+                if let Err(e) = fs::write(&path, actual) {
+                    crate::log_warn!("Snapshot write failed for {:?}: {}", path, e);
+                }
                 SnapshotResult::Created
             }
         }
