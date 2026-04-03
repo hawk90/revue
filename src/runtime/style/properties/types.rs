@@ -160,6 +160,34 @@ pub enum AlignItems {
     Stretch,
 }
 
+/// Flex wrap behavior
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum FlexWrap {
+    /// No wrapping (default)
+    #[default]
+    NoWrap,
+    /// Wrap to next line
+    Wrap,
+    /// Wrap in reverse direction
+    WrapReverse,
+}
+
+/// Individual item cross-axis alignment (overrides parent's align-items)
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum AlignSelf {
+    /// Use parent's align-items (default)
+    #[default]
+    Auto,
+    /// Align to start
+    Start,
+    /// Center alignment
+    Center,
+    /// Align to end
+    End,
+    /// Stretch to fill
+    Stretch,
+}
+
 /// Spacing values for padding and margin
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Spacing {

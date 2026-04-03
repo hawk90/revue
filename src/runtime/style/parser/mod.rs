@@ -17,7 +17,9 @@ pub use value_parsers::{
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::style::{Color, Display, FlexDirection, Position, Size, Spacing, Style};
+    use crate::style::{
+        AlignSelf, Color, Display, FlexDirection, FlexWrap, Position, Size, Spacing, Style,
+    };
 
     #[test]
     fn test_parse_empty() {
@@ -179,5 +181,89 @@ mod tests {
         assert_eq!(style.spacing.top, Some(10));
         assert_eq!(style.spacing.left, Some(20));
         assert_eq!(style.visual.z_index, 100);
+    }
+
+    // Border shorthand tests
+    #[test]
+    fn test_border_shorthand_style_only() {
+        let css = ".box { border: solid; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".box", &Style::default());
+        assert_eq!(style.visual.border_style, crate::style::BorderStyle::Solid);
+    }
+
+    #[test]
+    fn test_border_shorthand_style_and_color() {
+        let css = ".box { border: dashed red; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".box", &Style::default());
+        assert_eq!(style.visual.border_style, crate::style::BorderStyle::Dashed);
+        assert_eq!(style.visual.border_color, Color::RED);
+    }
+
+    #[test]
+    fn test_border_shorthand_color_and_style() {
+        let css = ".box { border: #00ff00 solid; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".box", &Style::default());
+        assert_eq!(style.visual.border_style, crate::style::BorderStyle::Solid);
+        assert_eq!(style.visual.border_color, Color::GREEN);
+    }
+
+    // Flex shorthand tests
+    #[test]
+    fn test_flex_shorthand() {
+        let css = ".item { flex: 2; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".item", &Style::default());
+        assert_eq!(style.layout.flex_grow, 2.0);
+    }
+
+    #[test]
+    fn test_flex_wrap() {
+        let css = ".container { flex-wrap: wrap; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".container", &Style::default());
+        assert_eq!(style.layout.flex_wrap, FlexWrap::Wrap);
+    }
+
+    #[test]
+    fn test_flex_wrap_reverse() {
+        let css = ".container { flex-wrap: wrap-reverse; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".container", &Style::default());
+        assert_eq!(style.layout.flex_wrap, FlexWrap::WrapReverse);
+    }
+
+    #[test]
+    fn test_align_self() {
+        let css = ".item { align-self: center; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".item", &Style::default());
+        assert_eq!(style.layout.align_self, AlignSelf::Center);
+    }
+
+    #[test]
+    fn test_align_self_stretch() {
+        let css = ".item { align-self: stretch; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".item", &Style::default());
+        assert_eq!(style.layout.align_self, AlignSelf::Stretch);
+    }
+
+    #[test]
+    fn test_order() {
+        let css = ".item { order: -1; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".item", &Style::default());
+        assert_eq!(style.layout.order, -1);
+    }
+
+    #[test]
+    fn test_gap_property() {
+        let css = ".container { gap: 8; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".container", &Style::default());
+        assert_eq!(style.layout.gap, 8);
     }
 }

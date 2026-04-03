@@ -78,6 +78,18 @@ impl Style {
     pub fn grid_row(&self) -> GridPlacement {
         self.layout.grid_row
     }
+    /// Flex wrap behavior - non-inherited
+    pub fn flex_wrap(&self) -> FlexWrap {
+        self.layout.flex_wrap
+    }
+    /// Individual cross-axis alignment - non-inherited
+    pub fn align_self(&self) -> AlignSelf {
+        self.layout.align_self
+    }
+    /// Item order - non-inherited
+    pub fn order(&self) -> i16 {
+        self.layout.order
+    }
 
     // Spacing accessors
     /// Inner padding - non-inherited
