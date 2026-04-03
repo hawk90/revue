@@ -134,8 +134,9 @@
 | Feature | Revue | Textual | Ratatui | Cursive |
 |---------|-------|---------|---------|---------|
 | CSS Files | ✅ | ✅ TCSS | ❌ | ❌ |
-| CSS Variables | ✅ | ✅ | ❌ | ❌ |
-| CSS Selectors | ✅ (partial) | ✅ (full) | ❌ | ❌ |
+| CSS Variables | ✅ (with fallback) | ✅ | ❌ | ❌ |
+| CSS Selectors | ✅ (pseudo-classes, An+B, combinators) | ✅ (full) | ❌ | ❌ |
+| Color Formats | ✅ hex, rgb, hsl, 50+ named | ✅ | ❌ | ❌ |
 | Theme System | ✅ | ✅ | ❌ | ✅ TOML |
 | Inline Styles | ✅ | ✅ | ✅ | ✅ |
 | Hot Reload | ✅ | ✅ | ❌ | ❌ |
