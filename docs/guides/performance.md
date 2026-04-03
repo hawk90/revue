@@ -158,7 +158,15 @@ renderer.build_incremental(&widget);
 
 ### Dirty Rect Optimization
 
-Only re-render changed regions:
+Revue automatically tracks dirty regions and only re-renders what changed. When a widget's state changes, only the affected screen area is updated — unchanged pixels are preserved from the previous frame.
+
+This happens transparently without requiring user code changes:
+
+- **No dirty regions**: Previous buffer is reused (zero rendering work)
+- **Partial dirty**: Old buffer copied, only dirty regions cleared and re-rendered
+- **Full screen dirty**: Falls back to full clear (e.g., on resize)
+
+The selector cache is also optimized — parsed selectors are cached once and referenced without copying, eliminating per-node Vec allocations during style computation.
 
 ```rust
 // Transitions track affected nodes

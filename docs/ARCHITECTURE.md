@@ -210,13 +210,15 @@ cssparser           selectors      specificity  inheritance
 
 | Category | Properties |
 |----------|------------|
-| Layout | `display`, `flex-direction`, `flex-wrap`, `justify-content`, `align-items`, `gap` |
-| Spacing | `padding`, `margin`, `width`, `height`, `min-*`, `max-*` |
-| Border | `border`, `border-style`, `border-color` |
-| Colors | `color`, `background`, `background-color` |
-| Text | `text-align`, `text-wrap`, `font-weight` |
-| Visual | `opacity`, `visibility` |
-| Animation | `transition`, `transition-duration`, `transition-property` |
+| Layout | `display`, `position`, `flex-direction`, `flex-wrap`, `flex-grow`, `flex`, `justify-content`, `align-items`, `align-self`, `order`, `gap`, `column-gap`, `row-gap` |
+| Spacing | `padding`, `margin`, `width`, `height`, `min-*`, `max-*`, `top`, `right`, `bottom`, `left` |
+| Border | `border` (shorthand), `border-style`, `border-color` |
+| Colors | `color`, `background` — formats: hex, rgb, hsl/hsla, 50+ named colors, `transparent` |
+| Text | `text-align`, `font-weight`, `text-decoration` |
+| Visual | `opacity`, `visibility`, `overflow`, `z-index` |
+| Variables | `:root { --name: value; }`, `var(--name)`, `var(--name, fallback)` |
+| Selectors | `:nth-child(odd/even/An+B)`, `:focus`, `:hover`, `:disabled`, `:not()` |
+| Animation | `transition`, `@keyframes`, animation shorthand |
 
 ### 3. Reactive Layer (`src/reactive/`)
 

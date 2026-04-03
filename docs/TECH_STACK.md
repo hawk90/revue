@@ -49,7 +49,7 @@
 
 | Crate | Version | Purpose | Used By |
 |-------|---------|---------|---------|
-| **crossterm** | 0.28 | Terminal I/O, events | Render, Event |
+| **crossterm** | 0.29 | Terminal I/O, events | Render, Event |
 | **tokio** | 1.x | Async runtime | Runtime |
 
 ### CSS & Layout
