@@ -308,6 +308,7 @@ mod tests {
         in_modal: bool,
         has_confirm: bool,
         has_popup: bool,
+        #[allow(dead_code)]
         quit: bool,
         last_key: Option<KeyCode>,
         layer_handled: String,

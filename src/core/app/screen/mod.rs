@@ -15,7 +15,6 @@ pub use types::{
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::widget::RenderContext;
     use std::time::Duration;
 
     // ScreenId tests
