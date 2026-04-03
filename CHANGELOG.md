@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.61.2](https://github.com/hawk90/revue/compare/v2.61.1...v2.61.2) (2026-04-03)
+
+
+### Performance Improvements
+
+* **render:** replace format!() allocations with write!() in image protocols ([#535](https://github.com/hawk90/revue/issues/535)) ([6cca4de](https://github.com/hawk90/revue/commit/6cca4de43e02aad3a1fd6547b1c1fb30f52ef8ab))
+
 ## [2.61.1](https://github.com/hawk90/revue/compare/v2.61.0...v2.61.1) (2026-04-02)
 
 
