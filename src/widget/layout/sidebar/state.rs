@@ -141,8 +141,8 @@ impl SidebarState for super::Sidebar {
             if current_pos > 0 {
                 self.hovered = item_indices[current_pos - 1];
             }
-        } else if !item_indices.is_empty() {
-            self.hovered = *item_indices.last().unwrap();
+        } else if let Some(&last) = item_indices.last() {
+            self.hovered = last;
         }
     }
 

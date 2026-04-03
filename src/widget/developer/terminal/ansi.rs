@@ -112,7 +112,7 @@ impl AnsiParser {
             },
             ParserState::Csi => {
                 if ch.is_ascii_digit() {
-                    let digit = ch.to_digit(10).unwrap() as u16;
+                    let digit = ch.to_digit(10).unwrap_or(0) as u16;
                     self.current_param = Some(
                         self.current_param
                             .unwrap_or(0)
