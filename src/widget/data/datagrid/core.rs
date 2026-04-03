@@ -436,7 +436,7 @@ impl DataGrid {
     }
 
     /// Get computed footer values for rendering
-    #[allow(dead_code)] // Used for footer rendering
+    #[allow(dead_code)]
     pub(super) fn get_footer_values(&self, footer: &FooterRow) -> Vec<(String, String)> {
         let mut values = Vec::new();
 
@@ -504,7 +504,6 @@ impl DataGrid {
 
     /// Get filtered rows (uses cached indices)
     /// Note: For large datasets, prefer using filtered_indices() with index-based access
-    #[allow(dead_code)]
     pub fn filtered_rows(&self) -> Vec<&GridRow> {
         self.filtered_indices()
             .iter()

@@ -2,6 +2,7 @@
 
 use super::core::{DataGrid, TreeNodeInfo};
 
+#[allow(dead_code)]
 impl DataGrid {
     /// Enable tree grid mode for hierarchical data display
     pub fn tree_mode(mut self, enabled: bool) -> Self {
@@ -56,7 +57,6 @@ impl DataGrid {
     }
 
     /// Get row by path through tree
-    #[allow(dead_code)] // Used for tree rendering
     pub fn get_row_by_path(&self, path: &[usize]) -> Option<&super::types::GridRow> {
         if path.is_empty() {
             return None;
@@ -184,7 +184,6 @@ impl DataGrid {
     }
 
     /// Get tree indent string for rendering
-    #[allow(dead_code)] // Used for tree rendering
     pub fn get_tree_indent(&self, node: &TreeNodeInfo) -> String {
         if node.depth == 0 {
             return String::new();
@@ -208,7 +207,6 @@ impl DataGrid {
     }
 
     /// Get expand/collapse indicator for tree node
-    #[allow(dead_code)] // Used for tree rendering
     pub fn get_tree_indicator(&self, node: &TreeNodeInfo) -> &'static str {
         if !node.has_children {
             "  "

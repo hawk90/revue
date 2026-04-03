@@ -61,7 +61,6 @@ impl JsonNode {
         self
     }
 
-    #[allow(dead_code)]
     pub fn with_children(mut self, children: Vec<JsonNode>) -> Self {
         self.children = children;
         self

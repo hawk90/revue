@@ -318,8 +318,8 @@ mod tests {
     }
 
     #[derive(Deserialize, Default)]
-    #[allow(dead_code)]
     struct MinimalConfig {
+        #[allow(dead_code)]
         data: String,
     }
 

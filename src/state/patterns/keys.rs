@@ -304,11 +304,11 @@ pub mod common {
 mod tests {
     use super::*;
 
-    #[allow(dead_code)]
     struct TestApp {
         in_modal: bool,
         has_confirm: bool,
         has_popup: bool,
+        #[allow(dead_code)]
         quit: bool,
         last_key: Option<KeyCode>,
         layer_handled: String,

@@ -182,7 +182,6 @@ impl Assertion for CellEquals {
 
 /// Assert screen matches exact text
 #[cfg(test)]
-#[allow(dead_code)]
 pub struct ScreenEquals {
     expected: String,
 }
@@ -190,7 +189,6 @@ pub struct ScreenEquals {
 #[cfg(test)]
 impl ScreenEquals {
     /// Create new assertion
-    #[allow(dead_code)]
     pub fn new(expected: impl Into<String>) -> Self {
         Self {
             expected: expected.into(),

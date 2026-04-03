@@ -5,6 +5,7 @@ use crate::dom::DomId;
 use crate::dom::WidgetMeta;
 use crate::widget::View;
 
+#[allow(dead_code)]
 impl DomRenderer {
     /// Build DOM from scratch (first frame or full rebuild)
     pub(crate) fn build_fresh<V: View>(&mut self, root: &V) {
@@ -37,7 +38,6 @@ impl DomRenderer {
     }
 
     /// Recursively build child nodes
-    #[allow(dead_code)]
     pub(crate) fn build_children_recursive(
         &mut self,
         parent_id: DomId,

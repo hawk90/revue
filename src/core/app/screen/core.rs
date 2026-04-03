@@ -370,12 +370,6 @@ mod tests {
             self.config.dismissable = dismissible;
             self
         }
-
-        #[allow(dead_code)]
-        fn with_config(mut self, config: ScreenConfig) -> Self {
-            self.config = config;
-            self
-        }
     }
 
     impl Screen for MockScreen {

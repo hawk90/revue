@@ -82,6 +82,7 @@ pub struct FlexProps {
     pub row_gap: Option<u16>,
 }
 
+#[allow(dead_code)]
 impl FlexProps {
     /// Get effective gap for main axis
     pub fn main_gap(&self) -> u16 {
@@ -92,7 +93,6 @@ impl FlexProps {
     }
 
     /// Get effective gap for cross axis
-    #[allow(dead_code)]
     pub fn cross_gap(&self) -> u16 {
         match self.direction {
             FlexDirection::Row => self.row_gap.unwrap_or(self.gap),
@@ -134,6 +134,7 @@ pub struct Edges {
     pub left: u16,
 }
 
+#[allow(dead_code)]
 impl Edges {
     /// Total horizontal spacing
     pub fn horizontal(&self) -> u16 {
@@ -141,7 +142,6 @@ impl Edges {
     }
 
     /// Total vertical spacing
-    #[allow(dead_code)]
     pub fn vertical(&self) -> u16 {
         self.top.saturating_add(self.bottom)
     }
@@ -187,6 +187,7 @@ pub struct ComputedLayout {
     pub height: u16,
 }
 
+#[allow(dead_code)]
 impl ComputedLayout {
     /// Create a new computed layout
     pub fn new(x: u16, y: u16, width: u16, height: u16) -> Self {
@@ -199,7 +200,6 @@ impl ComputedLayout {
     }
 
     /// Content width (inner area excluding padding)
-    #[allow(dead_code)]
     pub fn content_width(&self, padding: &Edges) -> u16 {
         self.width
             .saturating_sub(padding.left)
@@ -207,7 +207,6 @@ impl ComputedLayout {
     }
 
     /// Content height (inner area excluding padding)
-    #[allow(dead_code)]
     pub fn content_height(&self, padding: &Edges) -> u16 {
         self.height
             .saturating_sub(padding.top)

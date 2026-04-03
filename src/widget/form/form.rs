@@ -366,6 +366,7 @@ pub struct FormFieldWidget {
     show_errors: bool,
 }
 
+#[allow(dead_code)]
 impl FormFieldWidget {
     /// Create a new FormField widget
     pub fn new(name: impl Into<String>) -> Self {
@@ -440,7 +441,6 @@ impl FormFieldWidget {
     }
 
     /// Render the field label at the current area position
-    #[allow(dead_code)]
     fn render_label(&self, form_state: &FormState, ctx: &mut RenderContext) {
         let area = ctx.area;
         if let Some(field) = form_state.get(&self.name) {
@@ -457,7 +457,6 @@ impl FormFieldWidget {
     }
 
     /// Render the field value at the current area position
-    #[allow(dead_code)]
     fn render_value(&self, form_state: &FormState, ctx: &mut RenderContext) {
         let area = ctx.area;
         let value = form_state.value(&self.name).unwrap_or_default();
@@ -489,7 +488,6 @@ impl FormFieldWidget {
     }
 
     /// Render helper text below the field (gray, dim)
-    #[allow(dead_code)]
     fn render_helper_text(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if self.helper_text.is_empty() {
@@ -510,7 +508,6 @@ impl FormFieldWidget {
     }
 
     /// Render validation errors at the current area position
-    #[allow(dead_code)]
     fn render_errors(&self, form_state: &FormState, ctx: &mut RenderContext) {
         if !self.show_errors {
             return;

@@ -14,6 +14,7 @@ pub struct LayoutTree {
     root: Option<u64>,
 }
 
+#[allow(dead_code)]
 impl LayoutTree {
     /// Create a new empty layout tree
     pub fn new() -> Self {
@@ -64,13 +65,11 @@ impl LayoutTree {
     }
 
     /// Set the root node ID
-    #[allow(dead_code)]
     pub fn set_root(&mut self, id: u64) {
         self.root = Some(id);
     }
 
     /// Get the root node ID
-    #[allow(dead_code)]
     pub fn root(&self) -> Option<u64> {
         self.root
     }
@@ -78,7 +77,6 @@ impl LayoutTree {
     /// Mark a node as dirty, triggering recalculation on next compute
     ///
     /// This also marks all descendants as dirty to ensure correct layout propagation.
-    #[allow(dead_code)]
     pub fn mark_dirty(&mut self, id: u64) {
         // Mark this node and all descendants as dirty
         let mut stack = vec![id];
@@ -96,7 +94,6 @@ impl LayoutTree {
     }
 
     /// Get children IDs for a node
-    #[allow(dead_code)]
     pub fn children(&self, id: u64) -> &[u64] {
         self.nodes
             .get(&id)
@@ -111,13 +108,11 @@ impl LayoutTree {
     }
 
     /// Get the number of nodes
-    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.nodes.len()
     }
 
     /// Check if the tree is empty
-    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.nodes.is_empty()
     }
@@ -138,7 +133,6 @@ impl LayoutTree {
     }
 
     /// Set children for a node (replaces existing children)
-    #[allow(dead_code)]
     pub fn set_children(&mut self, parent_id: u64, children: Vec<u64>) {
         // Update parent references for all children
         for &child_id in &children {

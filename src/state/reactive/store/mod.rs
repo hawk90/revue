@@ -46,11 +46,17 @@ use std::sync::Arc;
 pub struct StoreId(pub u64);
 
 impl StoreId {
-    #[allow(dead_code)]
-    fn new() -> Self {
+    /// Create a new unique store ID
+    pub fn new() -> Self {
         use std::sync::atomic::{AtomicU64, Ordering};
         static COUNTER: AtomicU64 = AtomicU64::new(1);
         Self(COUNTER.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
+impl Default for StoreId {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

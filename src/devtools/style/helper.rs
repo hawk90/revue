@@ -5,12 +5,11 @@ use crate::render::Buffer;
 use crate::style::Color;
 
 /// Helper context for rendering devtools panels
+#[allow(dead_code)]
 pub struct RenderCtx<'a> {
     pub buffer: &'a mut Buffer,
     pub x: u16,
-    #[allow(dead_code)]
     pub width: u16,
-    #[allow(dead_code)]
     pub config: &'a DevToolsConfig,
 }
 
