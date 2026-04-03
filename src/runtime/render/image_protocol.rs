@@ -224,13 +224,16 @@ impl ImageEncoder {
 
             if is_first {
                 // First chunk includes all parameters
-                output.push_str(&format!(
+                use std::fmt::Write;
+                let _ = write!(
+                    output,
                     "\x1b_Ga=T,f={},i={},c={},r={},m={};{}\x1b\\",
                     format_code, image_id, cols, rows, more, chunk
-                ));
+                );
             } else {
                 // Continuation chunks
-                output.push_str(&format!("\x1b_Gm={};{}\x1b\\", more, chunk));
+                use std::fmt::Write;
+                let _ = write!(output, "\x1b_Gm={};{}\x1b\\", more, chunk);
             }
         }
 
@@ -369,7 +372,10 @@ impl<'a> SixelEncoder<'a> {
         output.push_str("\x1bPq");
 
         // Set raster attributes: width x height
-        output.push_str(&format!("\"1;1;{};{}", self.width, self.height));
+        {
+            use std::fmt::Write;
+            let _ = write!(output, "\"1;1;{};{}", self.width, self.height);
+        }
 
         // Define color palette
         for (idx, (r, g, b)) in palette.iter().enumerate() {
@@ -377,7 +383,10 @@ impl<'a> SixelEncoder<'a> {
             let r_pct = (*r as u32 * 100) / 255;
             let g_pct = (*g as u32 * 100) / 255;
             let b_pct = (*b as u32 * 100) / 255;
-            output.push_str(&format!("#{};2;{};{};{}", idx, r_pct, g_pct, b_pct));
+            {
+                use std::fmt::Write;
+                let _ = write!(output, "#{};2;{};{};{}", idx, r_pct, g_pct, b_pct);
+            }
         }
 
         // Encode pixel data
@@ -392,8 +401,10 @@ impl<'a> SixelEncoder<'a> {
                 let mut run_length = 0;
 
                 // Select color
-                output.push('#');
-                output.push_str(&color_idx.to_string());
+                {
+                    use std::fmt::Write;
+                    let _ = write!(output, "#{}", color_idx);
+                }
 
                 for x in 0..self.width {
                     // Build sixel byte for this column
@@ -428,7 +439,7 @@ impl<'a> SixelEncoder<'a> {
                     } else {
                         // Flush previous run
                         if let Some(prev_sixel) = last_sixel {
-                            output.push_str(&Self::encode_run(prev_sixel, run_length));
+                            Self::encode_run_into(&mut output, prev_sixel, run_length);
                         }
                         last_sixel = Some(sixel_byte);
                         _run_start = x;
@@ -438,7 +449,7 @@ impl<'a> SixelEncoder<'a> {
 
                 // Flush final run
                 if let Some(prev_sixel) = last_sixel {
-                    output.push_str(&Self::encode_run(prev_sixel, run_length));
+                    Self::encode_run_into(&mut output, prev_sixel, run_length);
                 }
 
                 // Carriage return (same line, different color)
@@ -491,16 +502,27 @@ impl<'a> SixelEncoder<'a> {
         dr < 32 && dg < 32 && db < 32
     }
 
-    /// Encode a run of sixel bytes
-    fn encode_run(sixel: u8, length: u32) -> String {
+    /// Encode a run of sixel bytes directly into the output buffer
+    fn encode_run_into(output: &mut String, sixel: u8, length: u32) {
         let sixel_char = (sixel + 63) as char;
         if length == 1 {
-            sixel_char.to_string()
+            output.push(sixel_char);
         } else if length <= 3 {
-            std::iter::repeat_n(sixel_char, length as usize).collect()
+            for _ in 0..length {
+                output.push(sixel_char);
+            }
         } else {
-            format!("!{}{}", length, sixel_char)
+            use std::fmt::Write;
+            let _ = write!(output, "!{}{}", length, sixel_char);
         }
+    }
+
+    /// Encode a run of sixel bytes (allocating variant for tests)
+    #[cfg(test)]
+    fn encode_run(sixel: u8, length: u32) -> String {
+        let mut s = String::new();
+        Self::encode_run_into(&mut s, sixel, length);
+        s
     }
 }
 
@@ -601,13 +623,17 @@ impl KittyImage {
             let is_last = i == chunks.len() - 1;
             let more = if is_last { 0 } else { 1 };
 
-            if is_first {
-                output.push_str(&format!(
-                    "\x1b_Ga=T,f=100,i={},p={},c={},r={},m={};{}\x1b\\",
-                    image_id, placement_id, cols, rows, more, chunk
-                ));
-            } else {
-                output.push_str(&format!("\x1b_Gm={};{}\x1b\\", more, chunk));
+            {
+                use std::fmt::Write;
+                if is_first {
+                    let _ = write!(
+                        output,
+                        "\x1b_Ga=T,f=100,i={},p={},c={},r={},m={};{}\x1b\\",
+                        image_id, placement_id, cols, rows, more, chunk
+                    );
+                } else {
+                    let _ = write!(output, "\x1b_Gm={};{}\x1b\\", more, chunk);
+                }
             }
         }
 
