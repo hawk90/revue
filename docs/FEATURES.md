@@ -101,13 +101,65 @@ text {
 | `height` | same as width | `height: 10;` |
 | `min-width` | same as width | `min-width: 20;` |
 | `max-width` | same as width | `max-width: 100;` |
-| `border` | `<style> <color>` | `border: solid cyan;` |
+| `flex-grow` | `<number>` | `flex-grow: 1;` |
+| `flex` | `<grow>` | `flex: 2;` |
+| `flex-wrap` | `nowrap`, `wrap`, `wrap-reverse` | `flex-wrap: wrap;` |
+| `align-self` | `auto`, `start`, `center`, `end`, `stretch` | `align-self: center;` |
+| `order` | `<integer>` | `order: -1;` |
+| `column-gap` | `<number>` | `column-gap: 2;` |
+| `row-gap` | `<number>` | `row-gap: 1;` |
+| `border` | `<style> [color]` | `border: solid cyan;` |
 | `border-style` | `none`, `solid`, `dashed`, `double`, `rounded` | `border-style: rounded;` |
+| `border-color` | `<color>` | `border-color: red;` |
 | `color` | `<color>` | `color: #ff0000;` |
 | `background` | `<color>` | `background: blue;` |
 | `opacity` | `0.0` - `1.0` | `opacity: 0.5;` |
 | `visibility` | `visible`, `hidden` | `visibility: hidden;` |
+| `overflow` | `visible`, `hidden`, `scroll`, `auto` | `overflow: hidden;` |
 | `text-align` | `left`, `center`, `right` | `text-align: center;` |
+| `font-weight` | `normal`, `bold`, `700`-`900` | `font-weight: bold;` |
+| `text-decoration` | `none`, `underline`, `line-through` | `text-decoration: underline;` |
+| `z-index` | `<integer>` | `z-index: 10;` |
+| `position` | `static`, `relative`, `absolute`, `fixed` | `position: absolute;` |
+| `top`, `right`, `bottom`, `left` | `<number>` | `top: 5;` |
+
+### Color Formats
+
+| Format | Example |
+|--------|---------|
+| Hex (6-digit) | `color: #ff0000;` |
+| Hex (3-digit) | `color: #f00;` |
+| RGB | `color: rgb(255, 0, 0);` |
+| HSL | `color: hsl(0, 100%, 50%);` |
+| HSLA | `color: hsla(120, 100%, 50%, 0.5);` |
+| Named (basic) | `color: red;` `blue;` `cyan;` `magenta;` |
+| Named (extended) | `color: orange;` `rebeccapurple;` `teal;` `coral;` |
+| Transparent | `color: transparent;` |
+
+50+ CSS named colors supported including: orange, coral, salmon, pink, hotpink, deeppink, purple, rebeccapurple, indigo, violet, gold, lime, olive, teal, navy, royalblue, dodgerblue, skyblue, brown, maroon, crimson, gray/grey, silver, and more.
+
+### CSS Variables with Fallback
+
+```css
+:root {
+    --primary: #3b82f6;
+}
+.button {
+    color: var(--primary);
+    background: var(--accent, orange);  /* fallback if undefined */
+}
+```
+
+### Selectors
+
+Supports `:nth-child()` with full An+B formula syntax:
+
+```css
+tr:nth-child(odd) { background: #333; }
+tr:nth-child(even) { background: #222; }
+li:nth-child(3n+1) { color: cyan; }
+li:nth-child(-n+3) { font-weight: bold; }  /* first 3 items */
+```
 
 ### Transitions
 

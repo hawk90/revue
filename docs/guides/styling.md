@@ -57,14 +57,18 @@ Button::new("Submit")
 
 ```css
 .widget {
-    color: cyan;              /* Named color */
-    color: #7aa2f7;           /* Hex color */
-    color: rgb(122, 162, 247); /* RGB */
+    color: cyan;                    /* Named color */
+    color: #7aa2f7;                 /* Hex color */
+    color: #f00;                    /* Short hex */
+    color: rgb(122, 162, 247);      /* RGB */
+    color: hsl(220, 90%, 72%);      /* HSL */
+    color: hsla(120, 100%, 50%, 1); /* HSLA */
+    color: transparent;             /* Transparent */
     background: #1a1b26;
 }
 ```
 
-Built-in colors: `red`, `green`, `blue`, `cyan`, `magenta`, `yellow`, `white`, `black`
+50+ CSS named colors: `red`, `green`, `blue`, `cyan`, `magenta`, `yellow`, `white`, `black`, `orange`, `coral`, `salmon`, `pink`, `hotpink`, `deeppink`, `purple`, `rebeccapurple`, `indigo`, `violet`, `gold`, `lime`, `olive`, `teal`, `navy`, `royalblue`, `dodgerblue`, `skyblue`, `brown`, `maroon`, `crimson`, `gray`/`grey`, `silver`, and more.
 
 ### Text Styling
 
@@ -109,6 +113,17 @@ Built-in colors: `red`, `green`, `blue`, `cyan`, `magenta`, `yellow`, `white`, `
     flex-direction: column;  /* column, row */
     align-items: center;     /* start, center, end, stretch */
     justify-content: center; /* start, center, end, space-between */
+    flex-wrap: wrap;         /* nowrap, wrap, wrap-reverse */
+    gap: 1;                  /* space between children */
+    column-gap: 2;           /* grid column gap */
+    row-gap: 1;              /* grid row gap */
+}
+
+.item {
+    flex: 1;                 /* shorthand for flex-grow */
+    align-self: center;      /* override parent align-items */
+    order: -1;               /* render order (lower = first) */
+    overflow: hidden;        /* visible, hidden, scroll, auto */
 }
 ```
 
@@ -131,8 +146,10 @@ Define reusable values:
     color: var(--fg-primary);
 }
 
-Button.primary {
-    background: var(--accent);
+/* Fallback values for undefined variables */
+.button {
+    background: var(--accent, orange);  /* uses orange if --accent undefined */
+    color: var(--text, white);
 }
 ```
 
@@ -157,6 +174,12 @@ List-item:selected {
     background: var(--accent);
     color: var(--bg-primary);
 }
+
+/* Structural pseudo-classes with An+B formula */
+tr:nth-child(odd) { background: #2a2a3a; }
+tr:nth-child(even) { background: #1e1e2e; }
+li:nth-child(3n+1) { color: cyan; }
+li:nth-child(-n+3) { font-weight: bold; }  /* first 3 items */
 ```
 
 ## Transitions
