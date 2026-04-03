@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.62.0](https://github.com/hawk90/revue/compare/v2.61.2...v2.62.0) (2026-04-03)
+
+
+### Features
+
+* **css:** add border shorthand, flex-wrap, align-self, order, gap ([#531](https://github.com/hawk90/revue/issues/531)) ([8f2eadb](https://github.com/hawk90/revue/commit/8f2eadb8709803b6da0a15d9248e9c04fb204d18))
+
+
+### Bug Fixes
+
+* replace production unwrap() calls with safe alternatives ([#534](https://github.com/hawk90/revue/issues/534)) ([54d60de](https://github.com/hawk90/revue/commit/54d60de2e37190f09830e5902d8f0132cda4a69d))
+
+
+### Performance Improvements
+
+* **style:** eliminate Vec clone in selector cache hot path ([#533](https://github.com/hawk90/revue/issues/533)) ([0e8dac8](https://github.com/hawk90/revue/commit/0e8dac8941168732a864bcf4cf6b3368287c7224))
+
 ## [2.61.2](https://github.com/hawk90/revue/compare/v2.61.1...v2.61.2) (2026-04-03)
 
 
