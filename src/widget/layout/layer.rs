@@ -193,9 +193,11 @@ impl View for Layers {
         let mut order: Vec<usize> = (0..self.children.len()).collect();
         order.sort_by_key(|&i| self.children[i].z_index);
 
-        // Render each child in z-index order, preserving overlay queue
+        // Render each child in z-index order, skipping unchanged children
         for &idx in &order {
-            self.children[idx].child.render(ctx);
+            if self.children[idx].child.needs_render() {
+                self.children[idx].child.render(ctx);
+            }
         }
     }
 }

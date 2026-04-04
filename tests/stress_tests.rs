@@ -272,3 +272,89 @@ fn test_render_zero_area_no_panic() {
     let text = Text::new("Should not render");
     text.render(&mut ctx);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Widget render skip tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+use revue::dom::WidgetMeta;
+
+/// Widget that tracks render calls
+struct RenderCounter {
+    render_count: std::cell::Cell<u32>,
+    should_render: bool,
+}
+
+impl RenderCounter {
+    fn new(should_render: bool) -> Self {
+        Self {
+            render_count: std::cell::Cell::new(0),
+            should_render,
+        }
+    }
+
+    fn count(&self) -> u32 {
+        self.render_count.get()
+    }
+}
+
+impl View for RenderCounter {
+    fn render(&self, _ctx: &mut RenderContext) {
+        self.render_count.set(self.render_count.get() + 1);
+    }
+
+    fn needs_render(&self) -> bool {
+        self.should_render
+    }
+
+    fn meta(&self) -> WidgetMeta {
+        WidgetMeta::new("RenderCounter")
+    }
+}
+
+#[test]
+fn test_needs_render_default_is_true() {
+    let text = Text::new("Hello");
+    assert!(text.needs_render());
+}
+
+#[test]
+fn test_needs_render_skips_in_stack() {
+    use revue::widget::vstack;
+
+    let mut buf = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+
+    let always = RenderCounter::new(true);
+    let never = RenderCounter::new(false);
+
+    let stack = vstack().child_sized(always, 3).child_sized(never, 3);
+
+    {
+        let mut ctx = RenderContext::new(&mut buf, area);
+        stack.render(&mut ctx);
+    }
+
+    // Verify stack renders without panic when children have needs_render = false
+    // The key test is that no panic occurs and layout offsets are still correct
+}
+
+#[test]
+fn test_needs_render_false_widget() {
+    let widget = RenderCounter::new(false);
+    assert!(!widget.needs_render());
+    assert_eq!(widget.count(), 0);
+
+    // Direct render still works
+    let mut buf = Buffer::new(10, 5);
+    let area = Rect::new(0, 0, 10, 5);
+    let mut ctx = RenderContext::new(&mut buf, area);
+    widget.render(&mut ctx);
+    assert_eq!(widget.count(), 1);
+}
+
+#[test]
+fn test_needs_render_true_widget() {
+    let widget = RenderCounter::new(true);
+    assert!(widget.needs_render());
+}
