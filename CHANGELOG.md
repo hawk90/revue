@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.69.0](https://github.com/hawk90/revue/compare/v2.68.0...v2.69.0) (2026-04-04)
+
+
+### Features
+
+* add CSS showcase example, STABILITY.md, fix template macros ([#552](https://github.com/hawk90/revue/issues/552)) ([28270ac](https://github.com/hawk90/revue/commit/28270acccf7102cbc0cb37e21812a963341f89f3))
+
 ## [2.68.0](https://github.com/hawk90/revue/compare/v2.67.0...v2.68.0) (2026-04-04)
 
 
