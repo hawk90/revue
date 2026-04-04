@@ -1,0 +1,30 @@
+:root {
+    --bg: #1e1e2e;
+    --fg: #cdd6f4;
+    --accent: #89b4fa;
+    --success: #a6e3a1;
+    --warning: #f9e2af;
+    --error: #f38ba8;
+}
+
+Border {
+    border: rounded;
+    border-color: var(--accent);
+}
+
+.panel-title {
+    font-weight: bold;
+    color: var(--accent);
+}
+
+.status-ok {
+    color: var(--success);
+}
+
+.status-warn {
+    color: var(--warning);
+}
+
+.status-error {
+    color: var(--error);
+}
