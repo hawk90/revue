@@ -184,6 +184,36 @@ pub trait View {
         &[]
     }
 
+    /// Check if this widget needs re-rendering
+    ///
+    /// Returns `true` by default (always re-render). Widgets can override
+    /// this to skip rendering when their state hasn't changed, improving
+    /// performance for complex UIs.
+    ///
+    /// Container widgets use this to skip rendering unchanged children.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// struct CachedWidget {
+    ///     dirty: bool,
+    ///     content: String,
+    /// }
+    ///
+    /// impl View for CachedWidget {
+    ///     fn needs_render(&self) -> bool {
+    ///         self.dirty
+    ///     }
+    ///     fn render(&self, ctx: &mut RenderContext) {
+    ///         // Only called when needs_render() returns true
+    ///         ctx.draw_text(0, 0, &self.content, Color::WHITE);
+    ///     }
+    /// }
+    /// ```
+    fn needs_render(&self) -> bool {
+        true
+    }
+
     /// Get widget metadata for DOM
     ///
     /// This method combines `widget_type()`, `id()`, and `classes()` into
@@ -221,6 +251,10 @@ impl View for Box<dyn View> {
 
     fn children(&self) -> &[Box<dyn View>] {
         (**self).children()
+    }
+
+    fn needs_render(&self) -> bool {
+        (**self).needs_render()
     }
 
     fn meta(&self) -> WidgetMeta {
