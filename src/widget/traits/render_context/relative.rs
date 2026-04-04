@@ -19,35 +19,37 @@ impl super::RenderContext<'_> {
     }
 
     /// Set a cell at relative position (0,0 = area top-left)
+    ///
+    /// Respects the clipping region set by `overflow: hidden`.
     pub fn set(&mut self, x: u16, y: u16, cell: Cell) {
         if x < self.area.width && y < self.area.height {
-            self.buffer.set(
-                self.area.x.saturating_add(x),
-                self.area.y.saturating_add(y),
-                cell,
-            );
+            let abs_x = self.area.x.saturating_add(x);
+            let abs_y = self.area.y.saturating_add(y);
+            if !self.is_clipped(abs_x, abs_y) {
+                self.buffer.set(abs_x, abs_y, cell);
+            }
         }
     }
 
     /// Set foreground color at relative position
     pub fn set_fg(&mut self, x: u16, y: u16, fg: Color) {
         if x < self.area.width && y < self.area.height {
-            self.buffer.set_fg(
-                self.area.x.saturating_add(x),
-                self.area.y.saturating_add(y),
-                fg,
-            );
+            let abs_x = self.area.x.saturating_add(x);
+            let abs_y = self.area.y.saturating_add(y);
+            if !self.is_clipped(abs_x, abs_y) {
+                self.buffer.set_fg(abs_x, abs_y, fg);
+            }
         }
     }
 
     /// Set background color at relative position
     pub fn set_bg(&mut self, x: u16, y: u16, bg: Color) {
         if x < self.area.width && y < self.area.height {
-            self.buffer.set_bg(
-                self.area.x.saturating_add(x),
-                self.area.y.saturating_add(y),
-                bg,
-            );
+            let abs_x = self.area.x.saturating_add(x);
+            let abs_y = self.area.y.saturating_add(y);
+            if !self.is_clipped(abs_x, abs_y) {
+                self.buffer.set_bg(abs_x, abs_y, bg);
+            }
         }
     }
 
@@ -73,6 +75,8 @@ impl super::RenderContext<'_> {
 
     /// Put a string at relative position, handling wide characters.
     /// Returns the number of columns written.
+    ///
+    /// Respects the clipping region set by `overflow: hidden`.
     pub fn put_str(&mut self, x: u16, y: u16, s: &str) -> u16 {
         if y >= self.area.height {
             return 0;
@@ -91,9 +95,13 @@ impl super::RenderContext<'_> {
             if cx.saturating_add(w) > max_x {
                 break;
             }
-            self.buffer.set(cx, abs_y, Cell::new(ch));
-            for i in 1..w {
-                self.buffer.set(cx + i, abs_y, Cell::continuation());
+            if !self.is_clipped(cx, abs_y) {
+                self.buffer.set(cx, abs_y, Cell::new(ch));
+                for i in 1..w {
+                    if !self.is_clipped(cx + i, abs_y) {
+                        self.buffer.set(cx + i, abs_y, Cell::continuation());
+                    }
+                }
             }
             offset = offset.saturating_add(w);
         }
