@@ -348,15 +348,22 @@ impl View for Border {
         cell.bg = self.bg;
         ctx.set(area.width - 1, area.height - 1, cell);
 
-        // Render child in inner area
+        // Render child in inner area, respecting overflow style
         if let Some(ref child) = self.child {
+            let overflow_hidden = ctx.css_overflow_hidden();
+            let parent_clip = ctx.clip();
             let inner = ctx.sub_area(
                 1,
                 1,
                 area.width.saturating_sub(2),
                 area.height.saturating_sub(2),
             );
-            let mut child_ctx = RenderContext::new(ctx.buffer, inner);
+            let mut child_ctx = RenderContext::child_ctx_with_overflow(
+                ctx.buffer,
+                inner,
+                overflow_hidden,
+                parent_clip,
+            );
             child.render(&mut child_ctx);
         }
     }
