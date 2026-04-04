@@ -172,6 +172,18 @@ impl Style {
     pub fn z_index(&self) -> i16 {
         self.visual.z_index
     }
+    /// Text alignment - INHERITED
+    pub fn text_align(&self) -> TextAlign {
+        self.visual.text_align
+    }
+    /// Font weight - INHERITED
+    pub fn font_weight(&self) -> FontWeight {
+        self.visual.font_weight
+    }
+    /// Text decoration - non-inherited
+    pub fn text_decoration(&self) -> TextDecoration {
+        self.visual.text_decoration
+    }
 }
 
 impl Style {
@@ -181,6 +193,8 @@ impl Style {
     /// - `color` - text color
     /// - `opacity` - visual opacity
     /// - `visible` - visibility
+    /// - `text-align` - text alignment
+    /// - `font-weight` - font weight
     ///
     /// Non-inherited properties are reset to their defaults.
     pub fn inherit(parent: &Style) -> Self {
@@ -193,6 +207,8 @@ impl Style {
                 color: parent.visual.color,
                 opacity: parent.visual.opacity,
                 visible: parent.visual.visible,
+                text_align: parent.visual.text_align,
+                font_weight: parent.visual.font_weight,
                 // Non-inherited - use defaults
                 ..VisualStyle::default()
             },
