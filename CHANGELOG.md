@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.64.0](https://github.com/hawk90/revue/compare/v2.63.0...v2.64.0) (2026-04-04)
+
+
+### Features
+
+* **css:** add var() fallback, HSL colors, and 50+ named colors ([#530](https://github.com/hawk90/revue/issues/530)) ([dff18ae](https://github.com/hawk90/revue/commit/dff18aecdc806b606652875472485d3b6611ed2c))
+
 ## [2.63.0](https://github.com/hawk90/revue/compare/v2.62.0...v2.63.0) (2026-04-04)
 
 
