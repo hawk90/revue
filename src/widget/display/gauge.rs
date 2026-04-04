@@ -657,3 +657,61 @@ pub fn battery(level: f64) -> Gauge {
 }
 
 // Most tests moved to tests/widget_tests.rs
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    #[test]
+    fn test_gauge_new() {
+        let g = Gauge::new();
+        assert_eq!(g.value, 0.0);
+    }
+
+    #[test]
+    fn test_gauge_value() {
+        let g = Gauge::new().value(0.75);
+        assert_eq!(g.value, 0.75);
+    }
+
+    #[test]
+    fn test_gauge_value_clamped() {
+        let g = Gauge::new().value(1.5);
+        assert_eq!(g.value, 1.0);
+        let g = Gauge::new().value(-0.5);
+        assert_eq!(g.value, 0.0);
+    }
+
+    #[test]
+    fn test_gauge_percent() {
+        let g = Gauge::new().percent(50.0);
+        assert!((g.value - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_gauge_styles() {
+        let _ = Gauge::new().style(GaugeStyle::Bar);
+        let _ = Gauge::new().style(GaugeStyle::Battery);
+        let _ = Gauge::new().style(GaugeStyle::Arc);
+        let _ = Gauge::new().style(GaugeStyle::Vertical);
+    }
+
+    #[test]
+    fn test_gauge_render_no_panic() {
+        let mut buf = Buffer::new(20, 3);
+        let area = Rect::new(0, 0, 20, 3);
+        let mut ctx = RenderContext::new(&mut buf, area);
+        let g = Gauge::new().value(0.5).style(GaugeStyle::Bar);
+        g.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_gauge_helpers() {
+        let g = gauge().value(0.7);
+        assert_eq!(g.value, 0.7);
+        let b = battery(80.0);
+        assert!((b.value - 0.8).abs() < 0.01);
+    }
+}

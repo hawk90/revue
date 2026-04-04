@@ -146,3 +146,56 @@ impl_props_builders!(Spinner);
 pub fn spinner() -> Spinner {
     Spinner::new()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    #[test]
+    fn test_spinner_new() {
+        let s = Spinner::new();
+        assert_eq!(s.frame(), 0);
+    }
+
+    #[test]
+    fn test_spinner_tick() {
+        let mut s = Spinner::new();
+        s.tick();
+        assert_eq!(s.frame(), 1);
+        s.tick();
+        assert_eq!(s.frame(), 2);
+    }
+
+    #[test]
+    fn test_spinner_reset() {
+        let mut s = Spinner::new();
+        s.tick();
+        s.tick();
+        s.reset();
+        assert_eq!(s.frame(), 0);
+    }
+
+    #[test]
+    fn test_spinner_styles() {
+        let _ = Spinner::new().style(SpinnerStyle::Dots);
+        let _ = Spinner::new().style(SpinnerStyle::Line);
+        let _ = Spinner::new().style(SpinnerStyle::Bounce);
+    }
+
+    #[test]
+    fn test_spinner_render_no_panic() {
+        let mut buf = Buffer::new(10, 1);
+        let area = Rect::new(0, 0, 10, 1);
+        let mut ctx = RenderContext::new(&mut buf, area);
+        let s = Spinner::new().label("Loading...");
+        s.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_spinner_helper() {
+        let s = spinner();
+        assert_eq!(s.frame(), 0);
+    }
+}

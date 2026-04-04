@@ -277,3 +277,61 @@ pub fn dot_badge() -> Badge {
 
 impl_styled_view!(Badge);
 impl_props_builders!(Badge);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    #[test]
+    fn test_badge_new() {
+        let b = Badge::new("v1.0");
+        assert_eq!(b.text, "v1.0");
+    }
+
+    #[test]
+    fn test_badge_dot() {
+        let b = Badge::dot();
+        assert_eq!(b.shape, BadgeShape::Dot);
+    }
+
+    #[test]
+    fn test_badge_variants() {
+        let b = Badge::new("OK").primary();
+        assert_eq!(b.variant, BadgeVariant::Primary);
+
+        let b = Badge::new("OK").success();
+        assert_eq!(b.variant, BadgeVariant::Success);
+
+        let b = Badge::new("ERR").error();
+        assert_eq!(b.variant, BadgeVariant::Error);
+
+        let b = Badge::new("!").warning();
+        assert_eq!(b.variant, BadgeVariant::Warning);
+    }
+
+    #[test]
+    fn test_badge_shapes() {
+        let _ = Badge::new("X").shape(BadgeShape::Rounded);
+        let _ = Badge::new("X").shape(BadgeShape::Square);
+        let _ = Badge::new("X").shape(BadgeShape::Pill);
+    }
+
+    #[test]
+    fn test_badge_render_no_panic() {
+        let mut buf = Buffer::new(15, 1);
+        let area = Rect::new(0, 0, 15, 1);
+        let mut ctx = RenderContext::new(&mut buf, area);
+        let b = Badge::new("Status").success();
+        b.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_badge_helpers() {
+        let b = badge("test");
+        assert_eq!(b.text, "test");
+        let d = dot_badge();
+        assert_eq!(d.shape, BadgeShape::Dot);
+    }
+}
