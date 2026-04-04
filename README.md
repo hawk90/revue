@@ -253,11 +253,31 @@ app.run(view, handler)?;
 
 <br>
 
+## Starter Templates
+
+Get started quickly with ready-to-use project templates:
+
+| Template | Description |
+|----------|-------------|
+| [basic](templates/basic/) | Minimal hello world (~15 lines) |
+| [counter](templates/counter/) | Reactive counter with Signal/Computed |
+| [form-app](templates/form-app/) | Form with inputs, validation, feedback |
+| [dashboard](templates/dashboard/) | Multi-panel dashboard with CSS styling |
+
+```bash
+cp -r templates/counter my-app && cd my-app && cargo run
+```
+
+See [templates/README.md](templates/README.md) for details.
+
+<br>
+
 ## Examples
 
 ```bash
 # Basics
 cargo run --example counter       # Reactive counter with Signal
+cargo run --example css_features  # CSS features showcase
 cargo run --example todo          # Full-featured todo app
 cargo run --example hello_world   # Minimal "Hello World"
 
