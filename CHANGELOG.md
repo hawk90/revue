@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.66.1](https://github.com/hawk90/revue/compare/v2.66.0...v2.66.1) (2026-04-04)
+
+
+### Bug Fixes
+
+* resolve broken rustdoc intra-doc link ([#548](https://github.com/hawk90/revue/issues/548)) ([ba3b6cd](https://github.com/hawk90/revue/commit/ba3b6cd402e1a645903be969adf2dd9b188bcde6))
+
 ## [2.66.0](https://github.com/hawk90/revue/compare/v2.65.0...v2.66.0) (2026-04-04)
 
 
