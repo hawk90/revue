@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.68.0](https://github.com/hawk90/revue/compare/v2.67.0...v2.68.0) (2026-04-04)
+
+
+### Features
+
+* **render:** auto-apply overflow clipping in Stack and Border ([#550](https://github.com/hawk90/revue/issues/550)) ([0ba58df](https://github.com/hawk90/revue/commit/0ba58dfd7d30b62ddf48da4fed8e540b75bd01d2))
+
 ## [2.67.0](https://github.com/hawk90/revue/compare/v2.66.1...v2.67.0) (2026-04-04)
 
 
