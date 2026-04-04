@@ -184,41 +184,47 @@ impl View for Stack {
             return;
         }
 
+        // Check if overflow: hidden is set via CSS
+        let overflow_hidden = ctx.css_overflow_hidden();
+        let parent_clip = ctx.clip();
+
         let n = self.children.len();
         let total_gap = self.gap * (n.saturating_sub(1) as u16);
 
         match self.direction {
             Direction::Row => {
                 let available_width = area.width.saturating_sub(total_gap);
-
-                // Calculate widths based on sizes
                 let widths = self.calculate_sizes(available_width, n);
 
                 let mut x: u16 = 0;
                 for (i, child) in self.children.iter().enumerate() {
                     let w = widths[i];
-
                     let child_area = ctx.sub_area(x, 0, w, area.height);
-                    let mut child_ctx = RenderContext::new(ctx.buffer, child_area);
+                    let mut child_ctx = RenderContext::child_ctx_with_overflow(
+                        ctx.buffer,
+                        child_area,
+                        overflow_hidden,
+                        parent_clip,
+                    );
                     child.render(&mut child_ctx);
-
                     x = x.saturating_add(w).saturating_add(self.gap);
                 }
             }
             Direction::Column => {
                 let available_height = area.height.saturating_sub(total_gap);
-
-                // Calculate heights based on sizes
                 let heights = self.calculate_sizes(available_height, n);
 
                 let mut y: u16 = 0;
                 for (i, child) in self.children.iter().enumerate() {
                     let h = heights[i];
-
                     let child_area = ctx.sub_area(0, y, area.width, h);
-                    let mut child_ctx = RenderContext::new(ctx.buffer, child_area);
+                    let mut child_ctx = RenderContext::child_ctx_with_overflow(
+                        ctx.buffer,
+                        child_area,
+                        overflow_hidden,
+                        parent_clip,
+                    );
                     child.render(&mut child_ctx);
-
                     y = y.saturating_add(h).saturating_add(self.gap);
                 }
             }
