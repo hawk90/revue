@@ -99,7 +99,7 @@ impl View for FormApp {
             .render(ctx);
     }
 
-    impl_view_meta!("FormApp");
+    fn meta(&self) -> WidgetMeta { WidgetMeta::new("FormApp") }
 }
 
 fn main() -> Result<()> {
