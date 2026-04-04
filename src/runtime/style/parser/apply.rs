@@ -19,10 +19,28 @@ pub fn apply_declaration(
     value: &str,
     vars: &HashMap<String, String>,
 ) {
-    // Resolve CSS variable if needed
+    // Resolve CSS variable with fallback support: var(--name, fallback)
+    let resolved;
     let value = if value.starts_with("var(") && value.ends_with(')') {
-        let var_name = &value[4..value.len() - 1];
-        vars.get(var_name).map(|s| s.as_str()).unwrap_or(value)
+        let inner = &value[4..value.len() - 1];
+        if let Some(comma_pos) = inner.find(',') {
+            let var_name = inner[..comma_pos].trim();
+            let fallback = inner[comma_pos + 1..].trim();
+            resolved = vars
+                .get(var_name)
+                .map(|s| s.as_str())
+                .unwrap_or(fallback)
+                .to_string();
+            &resolved
+        } else {
+            let var_name = inner.trim();
+            resolved = vars
+                .get(var_name)
+                .map(|s| s.as_str())
+                .unwrap_or(value)
+                .to_string();
+            &resolved
+        }
     } else {
         value
     };

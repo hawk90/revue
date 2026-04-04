@@ -361,4 +361,106 @@ mod tests {
         let child = Style::inherit(&parent);
         assert_eq!(child.visual.font_weight, FontWeight::Bold);
     }
+
+    // var() fallback tests
+    #[test]
+    fn test_var_with_fallback() {
+        let css = ".text { color: var(--missing, #00ff00); }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::GREEN);
+    }
+
+    #[test]
+    fn test_var_with_fallback_uses_defined() {
+        let css = r#"
+        :root { --primary: #ff0000; }
+        .text { color: var(--primary, blue); }
+        "#;
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::RED);
+    }
+
+    #[test]
+    fn test_var_fallback_named_color() {
+        let css = ".text { color: var(--undefined, orange); }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::rgb(255, 165, 0));
+    }
+
+    // HSL color tests
+    #[test]
+    fn test_parse_hsl_red() {
+        let css = ".text { color: hsl(0, 100%, 50%); }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::rgb(255, 0, 0));
+    }
+
+    #[test]
+    fn test_parse_hsl_green() {
+        let css = ".text { color: hsl(120, 100%, 50%); }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::rgb(0, 255, 0));
+    }
+
+    #[test]
+    fn test_parse_hsl_blue() {
+        let css = ".text { color: hsl(240, 100%, 50%); }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::rgb(0, 0, 255));
+    }
+
+    #[test]
+    fn test_parse_hsl_gray() {
+        let css = ".text { color: hsl(0, 0%, 50%); }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::rgb(128, 128, 128));
+    }
+
+    // Named color tests
+    #[test]
+    fn test_named_color_orange() {
+        let css = ".text { color: orange; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::rgb(255, 165, 0));
+    }
+
+    #[test]
+    fn test_named_color_rebeccapurple() {
+        let css = ".text { color: rebeccapurple; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::rgb(102, 51, 153));
+    }
+
+    #[test]
+    fn test_named_color_teal() {
+        let css = ".text { color: teal; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::rgb(0, 128, 128));
+    }
+
+    #[test]
+    fn test_named_color_transparent() {
+        let css = ".text { color: transparent; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::rgb(0, 0, 0));
+    }
+
+    #[test]
+    fn test_named_color_aqua_is_cyan() {
+        let css = ".text { color: aqua; }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::CYAN);
+    }
 }
