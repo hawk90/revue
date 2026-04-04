@@ -1,6 +1,6 @@
 //! Visual-related style property structures
 
-use super::types::{BorderStyle, Color, FontWeight, TextAlign, TextDecoration};
+use super::types::{BorderStyle, Color, FontWeight, Overflow, TextAlign, TextDecoration};
 
 /// Visual style properties
 ///
@@ -27,6 +27,8 @@ pub struct VisualStyle {
     pub font_weight: FontWeight,
     /// Text decoration (not inherited)
     pub text_decoration: TextDecoration,
+    /// Overflow behavior
+    pub overflow: Overflow,
 }
 
 impl VisualStyle {
@@ -42,10 +44,6 @@ impl VisualStyle {
 }
 
 /// Apply opacity to a cell modifier. Returns true if the cell should be visible.
-/// - opacity <= 0.0: invisible
-/// - opacity < 0.5: invisible
-/// - opacity < 1.0: add DIM modifier
-/// - opacity >= 1.0: no change
 pub fn apply_opacity(opacity: f32, modifier: &mut crate::render::Modifier) -> bool {
     if opacity <= 0.0 || opacity < 0.5 {
         return false;
@@ -69,6 +67,7 @@ impl Default for VisualStyle {
             text_align: TextAlign::default(),
             font_weight: FontWeight::default(),
             text_decoration: TextDecoration::default(),
+            overflow: Overflow::default(),
         }
     }
 }
@@ -132,10 +131,8 @@ mod tests {
     #[test]
     fn test_visual_style_default_values() {
         let style = VisualStyle::default();
-        // Check inherited property defaults
         assert_eq!(style.opacity, 1.0);
         assert_eq!(style.visible, true);
-        // Check non-inherited property defaults
         assert_eq!(style.z_index, 0);
     }
 }

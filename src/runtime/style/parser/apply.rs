@@ -626,6 +626,15 @@ fn apply_visual(style: &mut Style, property: &str, value: &str) {
             }
             style.visual.text_decoration = decoration;
         }
+        "overflow" | "overflow-x" | "overflow-y" => {
+            style.visual.overflow = match value {
+                "visible" => crate::style::Overflow::Visible,
+                "hidden" => crate::style::Overflow::Hidden,
+                "scroll" => crate::style::Overflow::Scroll,
+                "auto" => crate::style::Overflow::Auto,
+                _ => return,
+            };
+        }
         _ => {} // Unknown property, ignore
     }
 }

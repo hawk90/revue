@@ -184,6 +184,10 @@ impl Style {
     pub fn text_decoration(&self) -> TextDecoration {
         self.visual.text_decoration
     }
+    /// Overflow behavior - non-inherited
+    pub fn overflow(&self) -> Overflow {
+        self.visual.overflow
+    }
 }
 
 impl Style {
