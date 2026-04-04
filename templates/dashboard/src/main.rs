@@ -85,7 +85,7 @@ impl View for Dashboard {
             .render(ctx);
     }
 
-    impl_view_meta!("Dashboard");
+    fn meta(&self) -> WidgetMeta { WidgetMeta::new("Dashboard") }
 }
 
 fn main() -> Result<()> {
