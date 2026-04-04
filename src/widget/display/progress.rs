@@ -159,3 +159,55 @@ pub fn progress(value: f32) -> Progress {
 
 impl_styled_view!(Progress);
 impl_props_builders!(Progress);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    #[test]
+    fn test_progress_new() {
+        let p = Progress::new(0.5);
+        assert_eq!(p.value(), 0.5);
+    }
+
+    #[test]
+    fn test_progress_clamped() {
+        let p = Progress::new(1.5);
+        assert_eq!(p.value(), 1.0);
+        let p = Progress::new(-0.5);
+        assert_eq!(p.value(), 0.0);
+    }
+
+    #[test]
+    fn test_progress_set() {
+        let mut p = Progress::new(0.0);
+        p.set_progress(0.75);
+        assert_eq!(p.value(), 0.75);
+    }
+
+    #[test]
+    fn test_progress_builder() {
+        let p = Progress::new(0.5)
+            .filled_color(Color::GREEN)
+            .empty_color(Color::rgb(50, 50, 50))
+            .show_percentage(true);
+        assert_eq!(p.value(), 0.5);
+    }
+
+    #[test]
+    fn test_progress_render_no_panic() {
+        let mut buf = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buf, area);
+        let p = Progress::new(0.5);
+        p.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_progress_helper() {
+        let p = progress(0.3);
+        assert_eq!(p.value(), 0.3);
+    }
+}
