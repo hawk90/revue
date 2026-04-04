@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.65.0](https://github.com/hawk90/revue/compare/v2.64.0...v2.65.0) (2026-04-04)
+
+
+### Features
+
+* **css:** add overflow property ([#532](https://github.com/hawk90/revue/issues/532)) ([fcb2803](https://github.com/hawk90/revue/commit/fcb2803f1a0a086e273ed77988564a077f75ebc3))
+
 ## [2.64.0](https://github.com/hawk90/revue/compare/v2.63.0...v2.64.0) (2026-04-04)
 
 
