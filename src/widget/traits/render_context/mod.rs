@@ -35,6 +35,11 @@ pub struct RenderContext<'a> {
     transitions: Option<&'a std::collections::HashMap<String, f32>>,
     /// Overlay queue for floating content (dropdowns, tooltips, toasts)
     overlays: Option<&'a mut OverlayQueue>,
+    /// Clipping region for overflow: hidden (absolute coordinates)
+    ///
+    /// When set, all drawing operations are clipped to this rectangle.
+    /// Content outside this area is not rendered.
+    clip: Option<Rect>,
 }
 
 impl<'a> RenderContext<'a> {
@@ -47,6 +52,7 @@ impl<'a> RenderContext<'a> {
             state: None,
             transitions: None,
             overlays: None,
+            clip: None,
         }
     }
 
@@ -59,6 +65,7 @@ impl<'a> RenderContext<'a> {
             state: None,
             transitions: None,
             overlays: None,
+            clip: None,
         }
     }
 
@@ -76,6 +83,7 @@ impl<'a> RenderContext<'a> {
             state: Some(state),
             transitions: None,
             overlays: None,
+            clip: None,
         }
     }
 
@@ -143,6 +151,34 @@ impl<'a> RenderContext<'a> {
     /// Check if disabled
     pub fn is_disabled(&self) -> bool {
         self.state.map(|s| s.disabled).unwrap_or(false)
+    }
+
+    /// Set a clipping region (absolute coordinates)
+    ///
+    /// When a clipping region is set, all drawing operations (`set`, `put_str`, etc.)
+    /// will be restricted to this rectangle. Content outside is silently discarded.
+    /// Used by containers with `overflow: hidden`.
+    pub fn with_clip(mut self, clip: Rect) -> Self {
+        self.clip = Some(clip);
+        self
+    }
+
+    /// Get the current clipping region
+    pub fn clip(&self) -> Option<Rect> {
+        self.clip
+    }
+
+    /// Check if an absolute coordinate is within the clipping region
+    #[inline]
+    pub fn is_clipped(&self, abs_x: u16, abs_y: u16) -> bool {
+        if let Some(clip) = &self.clip {
+            abs_x < clip.x
+                || abs_y < clip.y
+                || abs_x >= clip.x.saturating_add(clip.width)
+                || abs_y >= clip.y.saturating_add(clip.height)
+        } else {
+            false
+        }
     }
 
     /// Create a child `Rect` from relative position and size.

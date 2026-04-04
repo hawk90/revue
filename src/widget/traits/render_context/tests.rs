@@ -1248,3 +1248,92 @@ fn test_fill_bg_with_offset() {
     // Outside the fill area should be untouched
     assert_eq!(buffer.get(8, 3).unwrap().bg, None);
 }
+
+// =========================================================================
+// Clipping (overflow: hidden) tests
+// =========================================================================
+
+#[test]
+fn test_clip_none_allows_all() {
+    let mut buffer = test_buffer();
+    let area = Rect::new(2, 2, 10, 5);
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        assert!(ctx.clip().is_none());
+        ctx.set(0, 0, crate::render::Cell::new('A'));
+    }
+    assert_eq!(buffer.get(2, 2).unwrap().symbol, 'A');
+}
+
+#[test]
+fn test_clip_blocks_outside() {
+    let mut buffer = test_buffer();
+    let area = Rect::new(0, 0, 20, 10);
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area).with_clip(Rect::new(2, 2, 5, 3));
+        ctx.set(3, 3, crate::render::Cell::new('Y'));
+        ctx.set(0, 0, crate::render::Cell::new('N'));
+    }
+    assert_eq!(buffer.get(3, 3).unwrap().symbol, 'Y');
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
+}
+
+#[test]
+fn test_clip_boundary() {
+    let mut buffer = test_buffer();
+    let area = Rect::new(0, 0, 20, 10);
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area).with_clip(Rect::new(5, 5, 3, 2));
+        ctx.set(5, 5, crate::render::Cell::new('S'));
+        ctx.set(8, 5, crate::render::Cell::new('E'));
+        ctx.set(7, 6, crate::render::Cell::new('I'));
+    }
+    assert_eq!(buffer.get(5, 5).unwrap().symbol, 'S');
+    assert_eq!(buffer.get(8, 5).unwrap().symbol, ' ');
+    assert_eq!(buffer.get(7, 6).unwrap().symbol, 'I');
+}
+
+#[test]
+fn test_clip_put_str() {
+    let mut buffer = test_buffer();
+    let area = Rect::new(0, 0, 20, 10);
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area).with_clip(Rect::new(2, 0, 5, 10));
+        ctx.put_str(0, 0, "ABCDEFGH");
+    }
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, ' ');
+    assert_eq!(buffer.get(1, 0).unwrap().symbol, ' ');
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, 'C');
+    assert_eq!(buffer.get(6, 0).unwrap().symbol, 'G');
+    assert_eq!(buffer.get(7, 0).unwrap().symbol, ' ');
+}
+
+#[test]
+fn test_clip_set_fg_bg() {
+    let mut buffer = test_buffer();
+    let area = Rect::new(0, 0, 20, 10);
+    {
+        let mut ctx = RenderContext::new(&mut buffer, area).with_clip(Rect::new(5, 5, 3, 3));
+        ctx.set_fg(5, 5, Color::RED);
+        ctx.set_fg(0, 0, Color::BLUE);
+        ctx.set_bg(6, 6, Color::GREEN);
+        ctx.set_bg(0, 0, Color::YELLOW);
+    }
+    assert_eq!(buffer.get(5, 5).unwrap().fg, Some(Color::RED));
+    assert_eq!(buffer.get(0, 0).unwrap().fg, None);
+    assert_eq!(buffer.get(6, 6).unwrap().bg, Some(Color::GREEN));
+    assert_eq!(buffer.get(0, 0).unwrap().bg, None);
+}
+
+#[test]
+fn test_is_clipped() {
+    let mut buffer = test_buffer();
+    let area = Rect::new(0, 0, 20, 10);
+    let ctx = RenderContext::new(&mut buffer, area).with_clip(Rect::new(5, 5, 3, 3));
+    assert!(ctx.is_clipped(0, 0));
+    assert!(ctx.is_clipped(4, 5));
+    assert!(!ctx.is_clipped(5, 5));
+    assert!(!ctx.is_clipped(7, 7));
+    assert!(ctx.is_clipped(8, 5));
+    assert!(ctx.is_clipped(5, 8));
+}
