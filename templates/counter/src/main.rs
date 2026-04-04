@@ -45,7 +45,7 @@ impl View for CounterApp {
             .render(ctx);
     }
 
-    impl_view_meta!("CounterApp");
+    fn meta(&self) -> WidgetMeta { WidgetMeta::new("CounterApp") }
 }
 
 fn main() -> Result<()> {

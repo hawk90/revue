@@ -87,6 +87,36 @@ impl RenderContext<'_> {
         self.style.map(|s| s.layout.gap).unwrap_or(0)
     }
 
+    /// Check if CSS overflow is hidden
+    ///
+    /// Returns true if the computed style has `overflow: hidden`.
+    /// Containers should use this to decide whether to clip children.
+    pub fn css_overflow_hidden(&self) -> bool {
+        self.style
+            .map(|s| s.visual.overflow == crate::style::Overflow::Hidden)
+            .unwrap_or(false)
+    }
+
+    /// Create a child RenderContext that inherits clipping from overflow style
+    ///
+    /// If this context's CSS style has `overflow: hidden`, the child context
+    /// will have a clip region set to the given area. Otherwise no clip is set.
+    /// This is the recommended way to create child contexts in container widgets.
+    pub fn child_ctx_with_overflow<'b>(
+        buffer: &'b mut crate::render::Buffer,
+        area: crate::layout::Rect,
+        overflow_hidden: bool,
+        parent_clip: Option<crate::layout::Rect>,
+    ) -> RenderContext<'b> {
+        let mut ctx = RenderContext::new(buffer, area);
+        if overflow_hidden {
+            ctx = ctx.with_clip(area);
+        } else if let Some(clip) = parent_clip {
+            ctx = ctx.with_clip(clip);
+        }
+        ctx
+    }
+
     // NOTE: Color resolution is handled by WidgetState::resolve_fg/resolve_bg/resolve_colors_interactive
     // Use self.state.resolve_colors_interactive(ctx.style, default_fg, default_bg) for widget color resolution
 }
