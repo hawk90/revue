@@ -4,7 +4,7 @@
 //! on top of all other content. Examples: dropdown menus, tooltips, toasts.
 //!
 //! During the main render pass, widgets queue overlay entries via
-//! [`RenderContext::queue_overlay`]. After the main pass completes,
+//! [`super::RenderContext::queue_overlay`]. After the main pass completes,
 //! overlays are sorted by z-index and rendered directly to the buffer
 //! at absolute screen coordinates — bypassing parent clipping.
 
