@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.66.0](https://github.com/hawk90/revue/compare/v2.65.0...v2.66.0) (2026-04-04)
+
+
+### Features
+
+* **render:** implement overflow clipping in RenderContext ([#546](https://github.com/hawk90/revue/issues/546)) ([4f024c4](https://github.com/hawk90/revue/commit/4f024c4ec3b09b7632d27e403143db7336bd2464))
+
 ## [2.65.0](https://github.com/hawk90/revue/compare/v2.64.0...v2.65.0) (2026-04-04)
 
 
