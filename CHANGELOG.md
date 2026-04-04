@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.70.0](https://github.com/hawk90/revue/compare/v2.69.0...v2.70.0) (2026-04-04)
+
+
+### Features
+
+* **view:** add needs_render() for widget-level render skipping ([#553](https://github.com/hawk90/revue/issues/553)) ([cf8d4e2](https://github.com/hawk90/revue/commit/cf8d4e237c52ab0343e2be7fcca6fb96656dfb40))
+
 ## [2.69.0](https://github.com/hawk90/revue/compare/v2.68.0...v2.69.0) (2026-04-04)
 
 
