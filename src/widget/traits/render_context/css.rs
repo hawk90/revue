@@ -87,6 +87,16 @@ impl RenderContext<'_> {
         self.style.map(|s| s.layout.gap).unwrap_or(0)
     }
 
+    /// Check if CSS flex-wrap is enabled
+    pub fn css_flex_wrap(&self) -> bool {
+        self.style
+            .map(|s| {
+                s.layout.flex_wrap == crate::style::FlexWrap::Wrap
+                    || s.layout.flex_wrap == crate::style::FlexWrap::WrapReverse
+            })
+            .unwrap_or(false)
+    }
+
     /// Check if CSS overflow is hidden
     ///
     /// Returns true if the computed style has `overflow: hidden`.
