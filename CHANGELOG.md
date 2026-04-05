@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.71.0](https://github.com/hawk90/revue/compare/v2.70.0...v2.71.0) (2026-04-05)
+
+
+### Features
+
+* **layout:** implement flex-wrap in Stack and add Dock tests ([#559](https://github.com/hawk90/revue/issues/559)) ([7b1a914](https://github.com/hawk90/revue/commit/7b1a9146a6d88ba5a7dd64a68d09706d938a1ac9))
+
 ## [2.70.0](https://github.com/hawk90/revue/compare/v2.69.0...v2.70.0) (2026-04-04)
 
 
