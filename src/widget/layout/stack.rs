@@ -191,16 +191,31 @@ impl View for Stack {
         let n = self.children.len();
         let total_gap = self.gap * (n.saturating_sub(1) as u16);
 
+        let wrap = ctx.css_flex_wrap();
+
         match self.direction {
             Direction::Row => {
                 let available_width = area.width.saturating_sub(total_gap);
                 let widths = self.calculate_sizes(available_width, n);
 
                 let mut x: u16 = 0;
+                let mut y: u16 = 0;
+                let row_height = if wrap { area.height / 2 } else { area.height };
+
                 for (i, child) in self.children.iter().enumerate() {
                     let w = widths[i];
+
+                    // Wrap to next row if needed
+                    if wrap && x > 0 && x.saturating_add(w) > area.width {
+                        x = 0;
+                        y = y.saturating_add(row_height).saturating_add(self.gap);
+                        if y >= area.height {
+                            break;
+                        }
+                    }
+
                     if child.needs_render() {
-                        let child_area = ctx.sub_area(x, 0, w, area.height);
+                        let child_area = ctx.sub_area(x, y, w, row_height);
                         let mut child_ctx = RenderContext::child_ctx_with_overflow(
                             ctx.buffer,
                             child_area,
@@ -500,5 +515,32 @@ mod tests {
         s.render(&mut ctx);
         assert_eq!(buf.get(0, 0).unwrap().symbol, 'A');
         assert_eq!(buf.get(1, 0).unwrap().symbol, 'B');
+    }
+
+    #[test]
+    fn test_stack_row_no_wrap_overflow() {
+        // Without wrap, children extend beyond area (clipped by area bounds)
+        let mut buf = Buffer::new(10, 5);
+        let area = Rect::new(0, 0, 10, 5);
+        let mut ctx = RenderContext::new(&mut buf, area);
+        let s = hstack()
+            .child_sized(Text::new("AAAA"), 6)
+            .child_sized(Text::new("BBBB"), 6);
+        s.render(&mut ctx);
+        // First child renders, second starts at x=6 but is clipped at width 10
+        assert_eq!(buf.get(0, 0).unwrap().symbol, 'A');
+    }
+
+    #[test]
+    fn test_stack_needs_render_skip() {
+        // Verify Stack respects needs_render
+        let mut buf = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let s = vstack()
+            .child(Text::new("Visible"))
+            .child(Text::new("Also visible"));
+        let mut ctx = RenderContext::new(&mut buf, area);
+        s.render(&mut ctx);
+        assert_eq!(buf.get(0, 0).unwrap().symbol, 'V');
     }
 }

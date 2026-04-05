@@ -540,3 +540,54 @@ pub fn dock() -> DockManager {
 pub fn dock_area(id: impl Into<String>) -> DockArea {
     DockArea::new(id)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::widget::Text;
+
+    #[test]
+    fn test_dock_area_new() {
+        let area = DockArea::new("test");
+        assert_eq!(area.id, "test");
+        assert!(area.tabs.is_empty());
+        assert_eq!(area.position, DockPosition::Left);
+        assert!(!area.collapsible);
+        assert!(!area.collapsed);
+    }
+
+    #[test]
+    fn test_dock_area_builder() {
+        let area = DockArea::new("sidebar")
+            .position(DockPosition::Right)
+            .min_size(50)
+            .ratio(0.3)
+            .collapsible()
+            .tab("Files")
+            .tab("Search");
+        assert_eq!(area.position, DockPosition::Right);
+        assert_eq!(area.min_size, 50);
+        assert_eq!(area.ratio, 0.3);
+        assert!(area.collapsible);
+        assert_eq!(area.tabs.len(), 2);
+    }
+
+    #[test]
+    fn test_dock_area_tab_with_widget() {
+        let area = DockArea::new("editor").tab_with("main.rs", Text::new("code"));
+        assert_eq!(area.tabs.len(), 1);
+        assert!(area.tabs[0].widget.is_some());
+    }
+
+    #[test]
+    fn test_dock_position_variants() {
+        assert_eq!(DockPosition::Left, DockPosition::Left);
+        assert_ne!(DockPosition::Left, DockPosition::Right);
+    }
+
+    #[test]
+    fn test_dock_area_helper() {
+        let a = dock_area("test");
+        assert_eq!(a.id, "test");
+    }
+}
