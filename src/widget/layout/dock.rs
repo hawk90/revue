@@ -544,8 +544,6 @@ pub fn dock_area(id: impl Into<String>) -> DockArea {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::Rect;
-    use crate::render::Buffer;
     use crate::widget::Text;
 
     #[test]
