@@ -279,16 +279,17 @@ fn color_256(code: u16) -> Color {
         15 => Color::rgb(255, 255, 255),
         // 216 colors (16-231)
         16..=231 => {
+            let dim = crate::constants::XTERM_CUBE_DIM as u16;
             let n = code - 16;
-            let r = (n / 36) as u8;
-            let g = ((n % 36) / 6) as u8;
-            let b = (n % 6) as u8;
-            let to_val = |v: u8| if v == 0 { 0 } else { 55 + 40 * v };
+            let r = (n / (dim * dim)) as u8;
+            let g = ((n % (dim * dim)) / dim) as u8;
+            let b = (n % dim) as u8;
+            let to_val = |v: u8| if v == 0 { 0 } else { crate::constants::XTERM_CUBE_BASE + crate::constants::XTERM_CUBE_STEP * v };
             Color::rgb(to_val(r), to_val(g), to_val(b))
         }
         // Grayscale (232-255)
         232..=255 => {
-            let gray = ((code - 232) * 10 + 8) as u8;
+            let gray = ((code - 232) * crate::constants::XTERM_GRAY_STEP as u16 + crate::constants::XTERM_GRAY_BASE as u16) as u8;
             Color::rgb(gray, gray, gray)
         }
         _ => Color::WHITE,

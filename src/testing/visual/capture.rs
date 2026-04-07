@@ -46,7 +46,7 @@ impl VisualCapture {
     /// Get cell at position
     pub fn get(&self, x: u16, y: u16) -> Option<&CapturedCell> {
         if x < self.width && y < self.height {
-            let idx = (y * self.width + x) as usize;
+            let idx = y as usize * self.width as usize + x as usize;
             self.cells.get(idx)
         } else {
             None

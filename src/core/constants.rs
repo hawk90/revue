@@ -212,5 +212,30 @@ pub const PROFILER_REPORT_INTERVAL: Duration = Duration::from_secs(5);
 /// Time window for calculating average FPS.
 pub const FPS_COUNTER_WINDOW: Duration = Duration::from_secs(1);
 
+// =============================================================================
+// ANSI / Xterm 256-Color Constants
+// =============================================================================
+
+/// Xterm 256-color cube dimension (6x6x6 = 216 colors)
+pub const XTERM_CUBE_DIM: u8 = 6;
+
+/// Base value for non-zero Xterm color cube channels
+pub const XTERM_CUBE_BASE: u8 = 55;
+
+/// Step between Xterm color cube levels
+pub const XTERM_CUBE_STEP: u8 = 40;
+
+/// Base gray value for Xterm grayscale ramp (codes 232-255)
+pub const XTERM_GRAY_BASE: u8 = 8;
+
+/// Step between Xterm grayscale levels
+pub const XTERM_GRAY_STEP: u8 = 10;
+
+/// Number of grayscale shades in Xterm 256 palette
+pub const XTERM_GRAY_COUNT: u8 = 24;
+
+/// Step between web-safe color levels (0, 51, 102, 153, 204, 255)
+pub const WEBSAFE_STEP: u8 = 51;
+
 // Tests extracted to tests/core_constants_tests.rs
 // All constant value tests use only public constants

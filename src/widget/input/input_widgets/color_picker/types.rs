@@ -59,28 +59,28 @@ impl ColorPalette {
                 // Standard 16 colors
                 colors.extend(ColorPalette::Basic.colors());
                 // 216 color cube (6x6x6)
-                for r in 0..6 {
-                    for g in 0..6 {
-                        for b in 0..6 {
-                            let r = if r > 0 { 55 + r * 40 } else { 0 };
-                            let g = if g > 0 { 55 + g * 40 } else { 0 };
-                            let b = if b > 0 { 55 + b * 40 } else { 0 };
+                use crate::constants::{XTERM_CUBE_BASE, XTERM_CUBE_DIM, XTERM_CUBE_STEP, XTERM_GRAY_BASE, XTERM_GRAY_COUNT, XTERM_GRAY_STEP};
+                for r in 0..XTERM_CUBE_DIM {
+                    for g in 0..XTERM_CUBE_DIM {
+                        for b in 0..XTERM_CUBE_DIM {
+                            let r = if r > 0 { XTERM_CUBE_BASE + r * XTERM_CUBE_STEP } else { 0 };
+                            let g = if g > 0 { XTERM_CUBE_BASE + g * XTERM_CUBE_STEP } else { 0 };
+                            let b = if b > 0 { XTERM_CUBE_BASE + b * XTERM_CUBE_STEP } else { 0 };
                             colors.push(crate::style::Color::rgb(r, g, b));
                         }
                     }
                 }
-                // 24 grayscale
-                for i in 0..24 {
-                    let v = 8 + i * 10;
+                for i in 0..XTERM_GRAY_COUNT {
+                    let v = XTERM_GRAY_BASE + i * XTERM_GRAY_STEP;
                     colors.push(crate::style::Color::rgb(v, v, v));
                 }
                 colors
             }
             ColorPalette::WebSafe => {
                 let mut colors = Vec::with_capacity(216);
-                for r in (0..=255).step_by(51) {
-                    for g in (0..=255).step_by(51) {
-                        for b in (0..=255).step_by(51) {
+                for r in (0..=255).step_by(crate::constants::WEBSAFE_STEP as usize) {
+                    for g in (0..=255).step_by(crate::constants::WEBSAFE_STEP as usize) {
+                        for b in (0..=255).step_by(crate::constants::WEBSAFE_STEP as usize) {
                             colors.push(crate::style::Color::rgb(r as u8, g as u8, b as u8));
                         }
                     }

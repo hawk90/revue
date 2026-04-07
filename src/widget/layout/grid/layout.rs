@@ -34,7 +34,7 @@ impl Grid {
                     remaining = remaining.saturating_sub(*size);
                 }
                 TrackSize::Percent(pct) => {
-                    let size = ((available as f32) * pct / 100.0) as u16;
+                    let size = ((available as f32) * pct / 100.0).min(u16::MAX as f32) as u16;
                     sizes[i] = size;
                     remaining = remaining.saturating_sub(size);
                 }
