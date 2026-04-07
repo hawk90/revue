@@ -20,9 +20,9 @@ pub enum DebugEvent {
 #[derive(Debug, Clone, Default)]
 pub struct EventLog {
     /// Logged events
-    pub(crate) events: VecDeque<(Instant, DebugEvent)>,
+    pub(super) events: VecDeque<(Instant, DebugEvent)>,
     /// Max events to keep
-    pub(crate) max_events: usize,
+    pub(super) max_events: usize,
 }
 
 impl EventLog {

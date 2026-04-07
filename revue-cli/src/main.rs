@@ -1,10 +1,8 @@
 //! Revue CLI - Development tools for Revue TUI framework
 
-mod commands;
-mod templates;
-
 use clap::{Parser, Subcommand};
 use colored::Colorize;
+use revue_cli::commands;
 
 #[derive(Parser)]
 #[command(name = "revue")]
