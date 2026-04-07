@@ -101,7 +101,7 @@ impl ColorPicker {
 
     fn render_hsl(&self, ctx: &mut RenderContext, area: Rect) {
         let sliders = [
-            ("H", self.h as f32 / 360.0, Color::MAGENTA),
+            ("H", self.h as f32 / crate::constants::HUE_MAX, Color::MAGENTA),
             ("S", self.s as f32 / 100.0, Color::CYAN),
             ("L", self.l as f32 / 100.0, Color::YELLOW),
         ];

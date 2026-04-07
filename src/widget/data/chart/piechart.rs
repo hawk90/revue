@@ -233,7 +233,7 @@ impl PieChart {
         if total == 0.0 {
             0.0
         } else {
-            (value / total) * 360.0
+            (value / total) * crate::constants::HUE_MAX as f64
         }
     }
 
@@ -289,16 +289,16 @@ impl PieChart {
 
                     // Calculate angle of this point
                     let point_angle = dy.atan2(dx).to_degrees();
-                    let point_angle = ((point_angle - self.start_angle) % 360.0 + 360.0) % 360.0;
+                    let point_angle = ((point_angle - self.start_angle) % crate::constants::HUE_MAX as f64 + crate::constants::HUE_MAX as f64) % crate::constants::HUE_MAX as f64;
 
                     // Check if within slice
-                    let slice_start = ((current_angle - self.start_angle) % 360.0 + 360.0) % 360.0;
+                    let slice_start = ((current_angle - self.start_angle) % crate::constants::HUE_MAX as f64 + crate::constants::HUE_MAX as f64) % crate::constants::HUE_MAX as f64;
                     let slice_end = slice_start + slice_angle;
 
-                    let in_slice = if slice_end <= 360.0 {
+                    let in_slice = if slice_end <= crate::constants::HUE_MAX as f64 {
                         point_angle >= slice_start && point_angle < slice_end
                     } else {
-                        point_angle >= slice_start || point_angle < (slice_end - 360.0)
+                        point_angle >= slice_start || point_angle < (slice_end - crate::constants::HUE_MAX as f64)
                     };
 
                     if in_slice {

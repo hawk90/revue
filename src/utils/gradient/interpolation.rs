@@ -32,13 +32,13 @@ pub fn lerp_hsl(from: Color, to: Color, t: f32, short: bool) -> Color {
         // Take the shorter path around the hue circle
         let diff = h2 - h1;
         if diff > 180.0 {
-            h1 += 360.0;
+            h1 += crate::constants::HUE_MAX;
         } else if diff < -180.0 {
-            h2 += 360.0;
+            h2 += crate::constants::HUE_MAX;
         }
     }
 
-    let h = (h1 * inv + h2 * t).rem_euclid(360.0) as u16;
+    let h = (h1 * inv + h2 * t).rem_euclid(crate::constants::HUE_MAX) as u16;
     let s = (s1 as f32 * inv + s2 as f32 * t).round() as u8;
     let l = (l1 as f32 * inv + l2 as f32 * t).round() as u8;
     let a = (from.a as f32 * inv + to.a as f32 * t).round() as u8;
@@ -60,13 +60,13 @@ pub fn lerp_hsl_long(from: Color, to: Color, t: f32) -> Color {
     let diff = h2 - h1;
     if diff.abs() < 180.0 {
         if diff > 0.0 {
-            h1 += 360.0;
+            h1 += crate::constants::HUE_MAX;
         } else {
-            h2 += 360.0;
+            h2 += crate::constants::HUE_MAX;
         }
     }
 
-    let h = (h1 * inv + h2 * t).rem_euclid(360.0) as u16;
+    let h = (h1 * inv + h2 * t).rem_euclid(crate::constants::HUE_MAX) as u16;
     let s = (s1 as f32 * inv + s2 as f32 * t).round() as u8;
     let l = (l1 as f32 * inv + l2 as f32 * t).round() as u8;
     let a = (from.a as f32 * inv + to.a as f32 * t).round() as u8;

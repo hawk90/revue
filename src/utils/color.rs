@@ -3,7 +3,7 @@
 //! Common color processing functions used across widgets.
 //! All functions preserve the alpha channel unless otherwise noted.
 
-use crate::constants::RGB_MAX;
+use crate::constants::{HUE_MAX, PERCENT_MAX, RGB_MAX};
 
 use crate::style::Color;
 
@@ -147,7 +147,7 @@ pub fn rgb_to_hsl(color: Color) -> (u16, u8, u8) {
     let l = (max + min) / 2.0;
 
     if (max - min).abs() < f32::EPSILON {
-        return (0, 0, (l * 100.0) as u8);
+        return (0, 0, (l * PERCENT_MAX) as u8);
     }
 
     let d = max - min;
@@ -165,7 +165,7 @@ pub fn rgb_to_hsl(color: Color) -> (u16, u8, u8) {
         ((r - g) / d + 4.0) / 6.0
     };
 
-    ((h * 360.0) as u16, (s * 100.0) as u8, (l * 100.0) as u8)
+    ((h * HUE_MAX) as u16, (s * PERCENT_MAX) as u8, (l * PERCENT_MAX) as u8)
 }
 
 /// Convert HSL to RGB (fully opaque)
@@ -286,7 +286,7 @@ pub fn adjust_hue(color: Color, degrees: i16) -> Color {
 /// Saturate a color (preserves alpha)
 pub fn saturate(color: Color, amount: f32) -> Color {
     let (h, s, l) = rgb_to_hsl(color);
-    let new_s = ((s as f32 + amount * 100.0).clamp(0.0, 100.0)) as u8;
+    let new_s = ((s as f32 + amount * PERCENT_MAX).clamp(0.0, PERCENT_MAX)) as u8;
     hsl_to_rgba(h, new_s, l, color.a)
 }
 
