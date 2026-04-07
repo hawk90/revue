@@ -122,6 +122,11 @@ impl View for Counter {
 | [Plugins](guides/plugins.md) | Create and use plugins |
 | [CLI](guides/cli.md) | Command-line interface patterns |
 | [Error Handling](guides/error-handling.md) | Error management strategies |
+| [Routing](guides/routing.md) | Navigation and routing |
+| [Store](guides/store.md) | Centralized state management |
+| [Query](guides/query.md) | DOM querying and selectors |
+| [Constructor Patterns](guides/constructor-patterns.md) | Widget construction patterns |
+| [Feature Flags](guides/feature-flags.md) | Cargo feature configuration |
 
 ---
 

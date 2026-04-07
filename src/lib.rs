@@ -10,7 +10,7 @@
 //! | **CSS Styling** | External CSS files with variables, selectors, transitions, and hot reload |
 //! | **Flexbox Layout** | Custom TUI-optimized layout engine for flexible layouts |
 //! | **Reactive State** | Vue-inspired Signal/Computed/Effect pattern |
-//! | **80+ Widgets** | Text, Button, Input, Table, Tree, Modal, Toast, Charts, and more |
+//! | **100+ Widgets** | Text, Button, Input, Table, Tree, Modal, Toast, Charts, and more |
 //! | **Markdown & Images** | Built-in markdown rendering with Kitty image protocol support |
 //! | **Developer Tools** | Hot reload, widget inspector, snapshot testing (Pilot) |
 //! | **Theming** | Built-in themes: Dracula, Nord, Monokai, Gruvbox, Catppuccin |
@@ -178,7 +178,7 @@
 //! | CSS Styling | ✅ | ❌ | ✅ | ❌ |
 //! | Reactive State | ✅ | ❌ | ✅ | ❌ |
 //! | Hot Reload | ✅ | ❌ | ✅ | ❌ |
-//! | Widget Count | 80+ | 13 | 35+ | 40+ |
+//! | Widget Count | 100+ | 13 | 35+ | 40+ |
 //! | Snapshot Testing | ✅ | ❌ | ❌ | ❌ |
 
 #![warn(missing_docs)]
