@@ -1,12 +1,12 @@
 //! Tests for text manipulation utilities (src/utils/text.rs)
 
-use revue::utils::{
-    byte_to_char_index, char_count, char_slice, char_to_byte_index,
-    char_to_byte_index_with_char, insert_at_char, pad_left, pad_right, remove_char_at,
-    remove_char_range, truncate, truncate_start, wrap_text,
-};
 use revue::utils::text::{
     display_width, progress_bar, progress_bar_precise, repeat_char, split_fixed_width,
+};
+use revue::utils::{
+    byte_to_char_index, char_count, char_slice, char_to_byte_index, char_to_byte_index_with_char,
+    insert_at_char, pad_left, pad_right, remove_char_at, remove_char_range, truncate,
+    truncate_start, wrap_text,
 };
 
 // =============================================================================

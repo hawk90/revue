@@ -33,7 +33,7 @@ jobs:
         run: cargo install critcmp --locked
 
       - name: Run benchmarks on PR branch
-        run: cargo bench --all-features -- --save-baseline pr
+        run: cargo bench --all-features --bench render --bench layout --bench css --bench dom --bench widget --bench patterns --bench utils -- --save-baseline pr
 
       - name: Checkout base branch
         uses: actions/checkout@v6
@@ -42,7 +42,7 @@ jobs:
           clean: false
 
       - name: Run benchmarks on base branch
-        run: cargo bench --all-features -- --save-baseline base
+        run: cargo bench --all-features --bench render --bench layout --bench css --bench dom --bench widget --bench patterns --bench utils -- --save-baseline base
 
       - name: Compare benchmarks
         id: compare

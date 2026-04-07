@@ -1,9 +1,9 @@
 //! DataGrid core structure and builders
 
 use super::editing::EditState;
-use super::types::{FooterRow, GridColors, GridColumn, GridOptions, GridRow, SortDirection};
 #[cfg(test)]
 use super::types::AggregationType;
+use super::types::{FooterRow, GridColors, GridColumn, GridOptions, GridRow, SortDirection};
 use crate::style::Color;
 use crate::{impl_props_builders, impl_styled_view};
 
