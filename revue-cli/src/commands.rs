@@ -344,8 +344,7 @@ pub fn generate_docs(output: &str) -> Result<()> {
         .status()?;
 
     if status.success() {
-        // Copy to output directory
-        let doc_path = "target/doc";
+        let doc_path = if output.is_empty() { "target/doc" } else { output };
         if Path::new(doc_path).exists() {
             println!("{}", "✅ Documentation generated!".green().bold());
             println!();
