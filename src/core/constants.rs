@@ -237,5 +237,47 @@ pub const XTERM_GRAY_COUNT: u8 = 24;
 /// Step between web-safe color levels (0, 51, 102, 153, 204, 255)
 pub const WEBSAFE_STEP: u8 = 51;
 
+// =============================================================================
+// Layout Constants
+// =============================================================================
+
+/// Border width on each side (1 char × 2 sides)
+pub const BORDER_SIZE: u16 = 2;
+
+/// Space consumed by border + single padding (border:2 + padding:1)
+pub const BORDER_AND_PADDING: u16 = 3;
+
+/// Space consumed by border + double padding (border:2 + padding:2)
+pub const BORDER_AND_DOUBLE_PADDING: u16 = 4;
+
+// =============================================================================
+// Color Calculation Constants
+// =============================================================================
+
+/// ITU-R BT.601 red luminance coefficient
+pub const LUMINANCE_R: f32 = 0.299;
+
+/// ITU-R BT.601 green luminance coefficient
+pub const LUMINANCE_G: f32 = 0.587;
+
+/// ITU-R BT.601 blue luminance coefficient
+pub const LUMINANCE_B: f32 = 0.114;
+
+// =============================================================================
+// Widget Default Constants
+// =============================================================================
+
+/// Color picker keyboard step size
+pub const COLOR_PICKER_STEP: u8 = 5;
+
+/// Chart axis padding ratio (5% of range)
+pub const CHART_AXIS_PADDING: f32 = 0.05;
+
+/// Diff context lines shown around changes
+pub const DIFF_CONTEXT_LINES: usize = 3;
+
+/// Profiler frame history capacity (~2s at 60 FPS)
+pub const PROFILER_FRAME_HISTORY: usize = 120;
+
 // Tests extracted to tests/core_constants_tests.rs
 // All constant value tests use only public constants

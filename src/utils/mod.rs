@@ -161,7 +161,7 @@ pub use text::{
 };
 
 // Color utilities
-pub use color::{blend, contrast_color, darken, hsl_to_rgb, lighten, rgb_to_hsl};
+pub use color::{blend, contrast_color, darken, hsl_to_rgb, lighten, luminance, rgb_to_hsl};
 
 // Natural sorting
 pub use sort::{

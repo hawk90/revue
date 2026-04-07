@@ -253,19 +253,20 @@ impl ColorPicker {
                 true
             }
             Key::Left | Key::Char('h') => {
+                let step = crate::constants::COLOR_PICKER_STEP;
                 if is_hsl {
                     match self.active_slider {
-                        0 => self.h = self.h.saturating_sub(5),
-                        1 => self.s = self.s.saturating_sub(5),
-                        2 => self.l = self.l.saturating_sub(5),
+                        0 => self.h = self.h.saturating_sub(step as u16),
+                        1 => self.s = self.s.saturating_sub(step),
+                        2 => self.l = self.l.saturating_sub(step),
                         _ => {}
                     }
                     self.update_from_hsl();
                 } else {
                     match self.active_slider {
-                        0 => self.r = self.r.saturating_sub(5),
-                        1 => self.g = self.g.saturating_sub(5),
-                        2 => self.b = self.b.saturating_sub(5),
+                        0 => self.r = self.r.saturating_sub(step),
+                        1 => self.g = self.g.saturating_sub(step),
+                        2 => self.b = self.b.saturating_sub(step),
                         _ => {}
                     }
                     self.update_from_rgb();
@@ -273,19 +274,20 @@ impl ColorPicker {
                 true
             }
             Key::Right | Key::Char('l') => {
+                let step = crate::constants::COLOR_PICKER_STEP;
                 if is_hsl {
                     match self.active_slider {
-                        0 => self.h = (self.h + 5).min(360),
-                        1 => self.s = (self.s + 5).min(100),
-                        2 => self.l = (self.l + 5).min(100),
+                        0 => self.h = (self.h + step as u16).min(360),
+                        1 => self.s = (self.s + step).min(100),
+                        2 => self.l = (self.l + step).min(100),
                         _ => {}
                     }
                     self.update_from_hsl();
                 } else {
                     match self.active_slider {
-                        0 => self.r = self.r.saturating_add(5),
-                        1 => self.g = self.g.saturating_add(5),
-                        2 => self.b = self.b.saturating_add(5),
+                        0 => self.r = self.r.saturating_add(step),
+                        1 => self.g = self.g.saturating_add(step),
+                        2 => self.b = self.b.saturating_add(step),
                         _ => {}
                     }
                     self.update_from_rgb();

@@ -122,8 +122,8 @@ impl PerformancePlugin {
     /// Create a new performance plugin
     pub fn new() -> Self {
         Self {
-            frame_times: Vec::with_capacity(120),
-            max_samples: 120,
+            frame_times: Vec::with_capacity(crate::constants::PROFILER_FRAME_HISTORY),
+            max_samples: crate::constants::PROFILER_FRAME_HISTORY,
             last_report: Instant::now(),
             report_interval: Duration::from_secs(5),
         }

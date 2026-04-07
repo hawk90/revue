@@ -322,10 +322,7 @@ impl GradientBox {
 
         let bg_color = self.gradient.at(t);
 
-        // Calculate luminance
-        let luminance =
-            (bg_color.r as f32 * 0.299 + bg_color.g as f32 * 0.587 + bg_color.b as f32 * 0.114)
-                / 255.0;
+        let luminance = crate::utils::luminance(bg_color.r, bg_color.g, bg_color.b);
 
         if luminance > 0.5 {
             Color::BLACK

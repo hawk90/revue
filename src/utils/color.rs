@@ -245,9 +245,15 @@ pub fn desaturate(color: Color, amount: f32) -> Color {
     saturate(color, -amount)
 }
 
+/// Calculate perceived luminance (ITU-R BT.601) in range 0.0–1.0
+pub fn luminance(r: u8, g: u8, b: u8) -> f32 {
+    use crate::constants::{LUMINANCE_B, LUMINANCE_G, LUMINANCE_R};
+    (r as f32 * LUMINANCE_R + g as f32 * LUMINANCE_G + b as f32 * LUMINANCE_B) / 255.0
+}
+
 /// Convert color to grayscale (preserves alpha)
 pub fn grayscale(color: Color) -> Color {
-    let gray = (0.299 * color.r as f32 + 0.587 * color.g as f32 + 0.114 * color.b as f32) as u8;
+    let gray = (luminance(color.r, color.g, color.b) * 255.0) as u8;
     Color::rgba(gray, gray, gray, color.a)
 }
 
