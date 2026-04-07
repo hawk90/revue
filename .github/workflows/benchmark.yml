@@ -14,14 +14,17 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  BENCH_TARGETS: --bench render --bench layout --bench css --bench dom --bench widget --bench patterns --bench utils
 
 jobs:
   benchmark:
     name: Benchmark Regression Check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR branch
+      - name: Checkout base branch first
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.base_ref }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -32,17 +35,30 @@ jobs:
       - name: Install critcmp
         run: cargo install critcmp --locked
 
-      - name: Run benchmarks on PR branch
-        run: cargo bench --all-features --bench render --bench layout --bench css --bench dom --bench widget --bench patterns --bench utils -- --save-baseline pr
+      - name: Run benchmarks on base branch
+        run: cargo bench --all-features $BENCH_TARGETS -- --save-baseline base
 
-      - name: Checkout base branch
+      - name: Backup base benchmark data
+        run: cp -r target/criterion /tmp/criterion-base
+
+      - name: Checkout PR branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.base_ref }}
           clean: false
 
-      - name: Run benchmarks on base branch
-        run: cargo bench --all-features --bench render --bench layout --bench css --bench dom --bench widget --bench patterns --bench utils -- --save-baseline base
+      - name: Run benchmarks on PR branch
+        run: cargo bench --all-features $BENCH_TARGETS -- --save-baseline pr
+
+      - name: Restore base benchmark data
+        run: |
+          # Merge base baselines back into criterion directory
+          for dir in /tmp/criterion-base/*/; do
+            bench_name=$(basename "$dir")
+            if [ -d "$dir/base" ]; then
+              mkdir -p "target/criterion/$bench_name"
+              cp -r "$dir/base" "target/criterion/$bench_name/base"
+            fi
+          done
 
       - name: Compare benchmarks
         id: compare
@@ -53,7 +69,6 @@ jobs:
           critcmp base pr >> $GITHUB_STEP_SUMMARY 2>&1 || true
           echo '```' >> $GITHUB_STEP_SUMMARY
 
-          # Also output for PR comment
           {
             echo 'BENCH_RESULT<<EOF'
             critcmp base pr 2>&1 || true
@@ -73,7 +88,6 @@ jobs:
 
             <sub>Compared against \`${{ github.base_ref }}\` using [critcmp](https://github.com/BurntSushi/critcmp)</sub>`;
 
-            // Find existing comment
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
