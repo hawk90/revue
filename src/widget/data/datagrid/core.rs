@@ -1,9 +1,9 @@
 //! DataGrid core structure and builders
 
 use super::editing::EditState;
-use super::types::{
-    AggregationType, FooterRow, GridColors, GridColumn, GridOptions, GridRow, SortDirection,
-};
+use super::types::{FooterRow, GridColors, GridColumn, GridOptions, GridRow, SortDirection};
+#[cfg(test)]
+use super::types::AggregationType;
 use crate::style::Color;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -406,6 +406,7 @@ impl DataGrid {
     }
 
     /// Compute aggregation value for a column
+    #[cfg(test)]
     pub(super) fn compute_aggregation(
         &self,
         column_key: &str,
@@ -436,7 +437,7 @@ impl DataGrid {
     }
 
     /// Get computed footer values for rendering
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub(super) fn get_footer_values(&self, footer: &FooterRow) -> Vec<(String, String)> {
         let mut values = Vec::new();
 

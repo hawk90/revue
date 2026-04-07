@@ -23,7 +23,6 @@ pub struct CsvViewer {
     /// Scroll offset (row)
     pub scroll_row: usize,
     /// Scroll offset (column)
-    #[allow(dead_code)]
     pub scroll_col: usize,
     /// Sort column index
     pub sort_column: Option<usize>,

@@ -1,0 +1,101 @@
+name: Benchmark
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "benches/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+
+concurrency:
+  group: bench-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  benchmark:
+    name: Benchmark Regression Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install critcmp
+        run: cargo install critcmp --locked
+
+      - name: Run benchmarks on PR branch
+        run: cargo bench --all-features -- --save-baseline pr
+
+      - name: Checkout base branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.base_ref }}
+          clean: false
+
+      - name: Run benchmarks on base branch
+        run: cargo bench --all-features -- --save-baseline base
+
+      - name: Compare benchmarks
+        id: compare
+        run: |
+          echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          critcmp base pr >> $GITHUB_STEP_SUMMARY 2>&1 || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          # Also output for PR comment
+          {
+            echo 'BENCH_RESULT<<EOF'
+            critcmp base pr 2>&1 || true
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `## Benchmark Comparison
+
+            \`\`\`
+            ${{ steps.compare.outputs.BENCH_RESULT }}
+            \`\`\`
+
+            <sub>Compared against \`${{ github.base_ref }}\` using [critcmp](https://github.com/BurntSushi/critcmp)</sub>`;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c =>
+              c.user.login === 'github-actions[bot]' &&
+              c.body.includes('Benchmark Comparison')
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
