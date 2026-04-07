@@ -450,7 +450,7 @@ impl View for Modal {
 
         let area = ctx.area;
         let modal_width = self.width.min(area.width.saturating_sub(4));
-        let modal_height = self.required_height().min(area.height.saturating_sub(2));
+        let modal_height = self.required_height().min(area.height.saturating_sub(crate::constants::BORDER_SIZE));
 
         // Center the modal (relative coordinates)
         let x = (area.width.saturating_sub(modal_width)) / 2;
@@ -477,12 +477,12 @@ impl View for Modal {
         // Draw content — adjust for title presence
         let has_title = !self.title.is_empty() && modal_width > 4;
         let content_y = if has_title { y + 3 } else { y + 1 };
-        let content_width = modal_width.saturating_sub(4);
-        // borders(2) + buttons(1) + padding(1) + title+separator(2 if present)
+        let content_width = modal_width.saturating_sub(crate::constants::BORDER_AND_DOUBLE_PADDING);
+        // borders(2) + buttons(1) + padding(1) = 4, + title+separator(2) = 6
         let content_height = if has_title {
-            modal_height.saturating_sub(6)
+            modal_height.saturating_sub(crate::constants::BORDER_AND_DOUBLE_PADDING + crate::constants::BORDER_SIZE)
         } else {
-            modal_height.saturating_sub(4)
+            modal_height.saturating_sub(crate::constants::BORDER_AND_DOUBLE_PADDING)
         };
 
         if let Some(ref body_widget) = self.body {
@@ -503,7 +503,7 @@ impl View for Modal {
 
         // Draw buttons
         if !self.buttons.is_empty() && modal_height > 2 {
-            let button_y = y + modal_height.saturating_sub(2);
+            let button_y = y + modal_height.saturating_sub(crate::constants::BORDER_SIZE);
             let total_button_width: usize = self
                 .buttons
                 .iter()

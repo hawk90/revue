@@ -89,7 +89,7 @@ pub fn parse_color(value: &str) -> Option<Color> {
             let h: f32 = parts[0].trim().parse().ok()?;
             let s: f32 = parts[1].trim().trim_end_matches('%').parse().ok()?;
             let l: f32 = parts[2].trim().trim_end_matches('%').parse().ok()?;
-            let (r, g, b) = hsl_to_rgb(h, s / 100.0, l / 100.0);
+            let (r, g, b) = crate::utils::color::hsl_to_rgb_normalized(h, s / 100.0, l / 100.0);
             return Some(Color::rgb(r, g, b));
         }
     }
@@ -97,50 +97,6 @@ pub fn parse_color(value: &str) -> Option<Color> {
     None
 }
 
-/// Convert HSL to RGB
-fn hsl_to_rgb(h: f32, s: f32, l: f32) -> (u8, u8, u8) {
-    if s == 0.0 {
-        let v = (l * 255.0).round() as u8;
-        return (v, v, v);
-    }
-
-    let q = if l < 0.5 {
-        l * (1.0 + s)
-    } else {
-        l + s - l * s
-    };
-    let p = 2.0 * l - q;
-    let h = h / 360.0;
-
-    let r = hue_to_rgb(p, q, h + 1.0 / 3.0);
-    let g = hue_to_rgb(p, q, h);
-    let b = hue_to_rgb(p, q, h - 1.0 / 3.0);
-
-    (
-        (r * 255.0).round() as u8,
-        (g * 255.0).round() as u8,
-        (b * 255.0).round() as u8,
-    )
-}
-
-fn hue_to_rgb(p: f32, q: f32, mut t: f32) -> f32 {
-    if t < 0.0 {
-        t += 1.0;
-    }
-    if t > 1.0 {
-        t -= 1.0;
-    }
-    if t < 1.0 / 6.0 {
-        return p + (q - p) * 6.0 * t;
-    }
-    if t < 1.0 / 2.0 {
-        return q;
-    }
-    if t < 2.0 / 3.0 {
-        return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
-    }
-    p
-}
 
 /// Parse CSS named colors
 fn parse_named_color(value: &str) -> Option<Color> {

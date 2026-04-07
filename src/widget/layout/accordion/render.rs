@@ -21,8 +21,8 @@ impl View for Accordion {
                 (
                     1u16,
                     1u16,
-                    area.width.saturating_sub(2),
-                    area.height.saturating_sub(2),
+                    area.width.saturating_sub(crate::constants::BORDER_SIZE),
+                    area.height.saturating_sub(crate::constants::BORDER_SIZE),
                 )
             } else {
                 (0u16, 0u16, area.width, area.height)

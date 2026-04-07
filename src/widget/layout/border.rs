@@ -355,8 +355,8 @@ impl View for Border {
             let inner = ctx.sub_area(
                 1,
                 1,
-                area.width.saturating_sub(2),
-                area.height.saturating_sub(2),
+                area.width.saturating_sub(crate::constants::BORDER_SIZE),
+                area.height.saturating_sub(crate::constants::BORDER_SIZE),
             );
             let mut child_ctx = RenderContext::child_ctx_with_overflow(
                 ctx.buffer,

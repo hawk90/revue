@@ -184,12 +184,13 @@ pub fn hsl_to_rgb(h: u16, s: u8, l: u8) -> Color {
 /// * `l` - Lightness (0-100)
 /// * `a` - Alpha (0-255)
 pub fn hsl_to_rgba(h: u16, s: u8, l: u8, a: u8) -> Color {
-    let h = h as f32 / 360.0;
-    let s = s as f32 / 100.0;
-    let l = l as f32 / 100.0;
+    use crate::constants::{HUE_MAX, PERCENT_MAX, RGB_MAX};
+    let h = h as f32 / HUE_MAX;
+    let s = s as f32 / PERCENT_MAX;
+    let l = l as f32 / PERCENT_MAX;
 
     if s.abs() < f32::EPSILON {
-        let v = (l * 255.0) as u8;
+        let v = (l * RGB_MAX) as u8;
         return Color::rgba(v, v, v, a);
     }
 
@@ -223,7 +224,54 @@ pub fn hsl_to_rgba(h: u16, s: u8, l: u8, a: u8) -> Color {
     let g = hue_to_rgb(p, q, h);
     let b = hue_to_rgb(p, q, h - 1.0 / 3.0);
 
-    Color::rgba((r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8, a)
+    Color::rgba((r * RGB_MAX) as u8, (g * RGB_MAX) as u8, (b * RGB_MAX) as u8, a)
+}
+
+/// Convert HSL (normalized floats) to RGB tuple
+///
+/// # Arguments
+/// * `h` - Hue in degrees (0.0-360.0)
+/// * `s` - Saturation (0.0-1.0)
+/// * `l` - Lightness (0.0-1.0)
+pub fn hsl_to_rgb_normalized(h: f32, s: f32, l: f32) -> (u8, u8, u8) {
+    use crate::constants::{HUE_MAX, RGB_MAX};
+    if s.abs() < f32::EPSILON {
+        let v = (l * RGB_MAX).round() as u8;
+        return (v, v, v);
+    }
+
+    let q = if l < 0.5 {
+        l * (1.0 + s)
+    } else {
+        l + s - l * s
+    };
+    let p = 2.0 * l - q;
+    let h = h / HUE_MAX;
+
+    let hue_to_rgb = |p: f32, q: f32, mut t: f32| -> f32 {
+        if t < 0.0 {
+            t += 1.0;
+        }
+        if t > 1.0 {
+            t -= 1.0;
+        }
+        if t < 1.0 / 6.0 {
+            return p + (q - p) * 6.0 * t;
+        }
+        if t < 1.0 / 2.0 {
+            return q;
+        }
+        if t < 2.0 / 3.0 {
+            return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
+        }
+        p
+    };
+
+    (
+        (hue_to_rgb(p, q, h + 1.0 / 3.0) * RGB_MAX).round() as u8,
+        (hue_to_rgb(p, q, h) * RGB_MAX).round() as u8,
+        (hue_to_rgb(p, q, h - 1.0 / 3.0) * RGB_MAX).round() as u8,
+    )
 }
 
 /// Adjust hue of a color (preserves alpha)
@@ -247,8 +295,8 @@ pub fn desaturate(color: Color, amount: f32) -> Color {
 
 /// Calculate perceived luminance (ITU-R BT.601) in range 0.0–1.0
 pub fn luminance(r: u8, g: u8, b: u8) -> f32 {
-    use crate::constants::{LUMINANCE_B, LUMINANCE_G, LUMINANCE_R};
-    (r as f32 * LUMINANCE_R + g as f32 * LUMINANCE_G + b as f32 * LUMINANCE_B) / 255.0
+    use crate::constants::{LUMINANCE_B, LUMINANCE_G, LUMINANCE_R, RGB_MAX};
+    (r as f32 * LUMINANCE_R + g as f32 * LUMINANCE_G + b as f32 * LUMINANCE_B) / RGB_MAX
 }
 
 /// Convert color to grayscale (preserves alpha)

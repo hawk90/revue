@@ -254,6 +254,15 @@ pub const BORDER_AND_DOUBLE_PADDING: u16 = 4;
 // Color Calculation Constants
 // =============================================================================
 
+/// Maximum RGB channel value
+pub const RGB_MAX: f32 = 255.0;
+
+/// Maximum hue value in degrees
+pub const HUE_MAX: f32 = 360.0;
+
+/// Maximum percentage value (saturation, lightness)
+pub const PERCENT_MAX: f32 = 100.0;
+
 /// ITU-R BT.601 red luminance coefficient
 pub const LUMINANCE_R: f32 = 0.299;
 
