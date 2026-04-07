@@ -123,51 +123,6 @@ jobs:
           echo "## ⚡ Benchmarks" >> $GITHUB_STEP_SUMMARY
           cargo bench --all-features -- --noplot 2>&1 | grep -E "time:" | head -20 >> $GITHUB_STEP_SUMMARY || echo "No results" >> $GITHUB_STEP_SUMMARY
 
-  framework-comparison:
-    name: Framework Version Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Check framework versions
-        id: check
-        run: |
-          echo "## 🔍 Framework Comparison Check" >> $GITHUB_STEP_SUMMARY
-          bash scripts/check-framework-versions.sh >> $GITHUB_STEP_SUMMARY 2>&1 || true
-
-          # Check if comparison is stale (>90 days)
-          LAST_VERIFIED=$(grep -o 'Last verified: [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}' | grep -o '[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}' README.md 2>/dev/null || echo "")
-          if [ -n "$LAST_VERIFIED" ]; then
-            LAST_EPOCH=$(date -d "$LAST_VERIFIED" +%s 2>/dev/null || echo 0)
-            NOW_EPOCH=$(date +%s)
-            if [ "$LAST_EPOCH" -gt 0 ]; then
-              DAYS_AGO=$(( (NOW_EPOCH - LAST_EPOCH) / 86400 ))
-              if [ "$DAYS_AGO" -gt 90 ]; then
-                echo "is_stale=true" >> $GITHUB_OUTPUT
-              else
-                echo "is_stale=false" >> $GITHUB_OUTPUT
-              fi
-            fi
-          fi
-
-  notify-stale-comparison:
-    name: Create Comparison Issue
-    needs: framework-comparison
-    if: needs.framework-comparison.outputs.is_stale == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Create issue
-        run: |
-          EXISTING=$(gh issue list --label "documentation" --state open --search "Framework comparison" --json number --jq '.[0].number // empty')
-          if [ -z "$EXISTING" ]; then
-            gh issue create \
-              --title "📊 Framework comparison table needs review" \
-              --label "documentation,maintenance" \
-              --body "The framework comparison table in README.md has not been verified in over 90 days. Please run \`bash scripts/check-framework-versions.sh\` and update the comparison table."
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   notify-outdated:
     name: Create Outdated Issue
     needs: outdated
