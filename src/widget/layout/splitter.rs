@@ -305,9 +305,9 @@ impl Splitter {
                 let current_ratio = self.panes[divider].ratio;
                 let next_ratio = self.panes[divider + 1].ratio;
 
-                let change = delta as f32 * 0.01;
-                let new_current = (current_ratio + change).clamp(0.1, 0.9);
-                let new_next = (next_ratio - change).clamp(0.1, 0.9);
+                let change = delta as f32 * crate::constants::SPLITTER_DRAG_SENSITIVITY;
+                let new_current = (current_ratio + change).clamp(crate::constants::SPLITTER_MIN_RATIO, crate::constants::SPLITTER_MAX_RATIO);
+                let new_next = (next_ratio - change).clamp(crate::constants::SPLITTER_MIN_RATIO, crate::constants::SPLITTER_MAX_RATIO);
 
                 self.panes[divider].ratio = new_current;
                 self.panes[divider + 1].ratio = new_next;
@@ -424,7 +424,7 @@ impl HSplit {
     /// Create new horizontal split
     pub fn new(ratio: f32) -> Self {
         Self {
-            ratio: ratio.clamp(0.1, 0.9),
+            ratio: ratio.clamp(crate::constants::SPLITTER_MIN_RATIO, crate::constants::SPLITTER_MAX_RATIO),
             min_left: 5,
             min_right: 5,
             show_splitter: true,
@@ -504,7 +504,7 @@ impl VSplit {
     /// Create new vertical split
     pub fn new(ratio: f32) -> Self {
         Self {
-            ratio: ratio.clamp(0.1, 0.9),
+            ratio: ratio.clamp(crate::constants::SPLITTER_MIN_RATIO, crate::constants::SPLITTER_MAX_RATIO),
             min_top: 3,
             min_bottom: 3,
             show_splitter: true,

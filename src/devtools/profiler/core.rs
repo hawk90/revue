@@ -218,7 +218,7 @@ impl Profiler {
 
         if let Some(frame) = frame {
             let content_y = area.y + 2;
-            let content_height = area.height.saturating_sub(3);
+            let content_height = area.height.saturating_sub(crate::constants::BORDER_AND_PADDING);
 
             // Group events by depth for flamegraph rows
             let max_depth = frame.events.iter().map(|e| e.depth).max().unwrap_or(0);
@@ -274,7 +274,7 @@ impl Profiler {
         self.render_text(buffer, area.x, area.y, &header, config.fg_color);
 
         let content_y = area.y + 2;
-        let content_height = area.height.saturating_sub(3) as usize;
+        let content_height = area.height.saturating_sub(crate::constants::BORDER_AND_PADDING) as usize;
 
         // Find max frame time for scaling
         let max_time = self
@@ -363,7 +363,7 @@ impl Profiler {
         self.render_text(buffer, area.x, area.y, header, config.fg_color);
 
         let content_y = area.y + 2;
-        let content_height = area.height.saturating_sub(3) as usize;
+        let content_height = area.height.saturating_sub(crate::constants::BORDER_AND_PADDING) as usize;
 
         let stats = self.stats_by_time();
 
@@ -411,7 +411,7 @@ impl Profiler {
         self.render_text(buffer, area.x, area.y, header, config.fg_color);
 
         let content_y = area.y + 2;
-        let content_height = area.height.saturating_sub(3) as usize;
+        let content_height = area.height.saturating_sub(crate::constants::BORDER_AND_PADDING) as usize;
 
         let stats = self.stats_by_count();
         let max_count = stats.first().map(|s| s.render_count).unwrap_or(1);

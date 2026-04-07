@@ -362,7 +362,7 @@ pub fn format_unified_diff(old: &str, new: &str, old_name: &str, new_name: &str)
         }
 
         // Found a change, start a hunk
-        let hunk_start = i.saturating_sub(3); // 3 lines of context before
+        let hunk_start = i.saturating_sub(crate::constants::DIFF_CONTEXT_LINES);
         let mut hunk_end = i;
 
         // Find end of hunk

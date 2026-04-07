@@ -381,7 +381,7 @@ impl Alert {
 
         // Content
         let content_x: u16 = 2;
-        let content_width = area.width.saturating_sub(3);
+        let content_width = area.width.saturating_sub(crate::constants::BORDER_AND_PADDING);
         let mut y: u16 = 0;
 
         // Icon

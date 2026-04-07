@@ -109,7 +109,7 @@ impl Callout {
         // Content (if expanded or not collapsible)
         if !self.collapsible || self.expanded {
             let content_x: u16 = 2;
-            let content_width = area.width.saturating_sub(3);
+            let content_width = area.width.saturating_sub(crate::constants::BORDER_AND_PADDING);
 
             for (i, line) in self.content.lines().enumerate() {
                 let line_y = 1 + i as u16;
@@ -193,7 +193,7 @@ impl Callout {
         // Content (if expanded or not collapsible)
         if !self.collapsible || self.expanded {
             let content_x: u16 = 2;
-            let content_width = area.width.saturating_sub(3);
+            let content_width = area.width.saturating_sub(crate::constants::BORDER_AND_PADDING);
 
             for (i, line) in self.content.lines().enumerate() {
                 let line_y = 1 + i as u16;

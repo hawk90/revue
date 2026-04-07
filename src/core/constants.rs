@@ -282,8 +282,20 @@ pub const COLOR_PICKER_STEP: u8 = 5;
 /// Chart axis padding ratio (5% of range)
 pub const CHART_AXIS_PADDING: f32 = 0.05;
 
+/// Splitter minimum pane ratio
+pub const SPLITTER_MIN_RATIO: f32 = 0.1;
+
+/// Splitter maximum pane ratio
+pub const SPLITTER_MAX_RATIO: f32 = 0.9;
+
+/// Splitter mouse drag sensitivity (ratio change per pixel)
+pub const SPLITTER_DRAG_SENSITIVITY: f32 = 0.01;
+
 /// Diff context lines shown around changes
 pub const DIFF_CONTEXT_LINES: usize = 3;
+
+/// Ellipsis string length ("...")
+pub const ELLIPSIS_LEN: usize = 3;
 
 /// Profiler frame history capacity (~2s at 60 FPS)
 pub const PROFILER_FRAME_HISTORY: usize = 120;
