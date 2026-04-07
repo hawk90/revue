@@ -1,0 +1,130 @@
+name: Benchmark
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to comment results on (optional)"
+        required: false
+
+concurrency:
+  group: bench-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  BENCH_TARGETS: --bench render --bench layout --bench css --bench dom --bench widget --bench patterns --bench utils
+
+jobs:
+  benchmark:
+    name: Benchmark Regression Check
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'benchmark')
+    steps:
+      - name: Checkout base branch first
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.ref || 'main' }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install critcmp
+        run: cargo install critcmp --locked
+
+      - name: Run benchmarks on base branch
+        run: cargo bench --all-features $BENCH_TARGETS -- --save-baseline base
+
+      - name: Backup base benchmark data
+        run: cp -r target/criterion /tmp/criterion-base
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          clean: false
+
+      - name: Run benchmarks on PR branch
+        run: cargo bench --all-features $BENCH_TARGETS -- --save-baseline pr
+
+      - name: Restore base benchmark data
+        run: |
+          for dir in /tmp/criterion-base/*/; do
+            bench_name=$(basename "$dir")
+            if [ -d "$dir/base" ]; then
+              mkdir -p "target/criterion/$bench_name"
+              cp -r "$dir/base" "target/criterion/$bench_name/base"
+            fi
+          done
+
+      - name: Compare benchmarks
+        id: compare
+        run: |
+          echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          critcmp base pr >> $GITHUB_STEP_SUMMARY 2>&1 || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          {
+            echo 'BENCH_RESULT<<EOF'
+            critcmp base pr 2>&1 || true
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR
+        if: github.event.pull_request.number
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `## Benchmark Comparison
+
+            \`\`\`
+            ${{ steps.compare.outputs.BENCH_RESULT }}
+            \`\`\`
+
+            <sub>Compared against \`${{ github.event.pull_request.base.ref }}\` using [critcmp](https://github.com/BurntSushi/critcmp)</sub>`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c =>
+              c.user.login === 'github-actions[bot]' &&
+              c.body.includes('Benchmark Comparison')
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Remove benchmark label
+        if: github.event.label.name == 'benchmark'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              name: 'benchmark',
+            });

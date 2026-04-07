@@ -27,5 +27,7 @@ handlebars = "5.1"
 ureq = { version = "2.9", features = ["json"] }
 urlencoding = "2.1"
 
+[workspace]
+
 [dev-dependencies]
 tempfile = "3.10"
