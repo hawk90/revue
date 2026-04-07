@@ -178,7 +178,7 @@
 //! | CSS Styling | ✅ | ❌ | ✅ | ❌ |
 //! | Reactive State | ✅ | ❌ | ✅ | ❌ |
 //! | Hot Reload | ✅ | ❌ | ✅ | ❌ |
-//! | Widget Count | 100+ | 13 | 35+ | 40+ |
+//! | Widget Count | 100+ | ~14 | ~37 | ~40 |
 //! | Snapshot Testing | ✅ | ❌ | ❌ | ❌ |
 
 #![warn(missing_docs)]
