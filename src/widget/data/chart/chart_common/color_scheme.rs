@@ -45,9 +45,9 @@ impl ColorScheme {
                 .map(|i| {
                     let factor = 0.5 + (i as f32 * 0.1);
                     Color::rgb(
-                        (r as f32 * factor).min(255.0) as u8,
-                        (g as f32 * factor).min(255.0) as u8,
-                        (b as f32 * factor).min(255.0) as u8,
+                        (r as f32 * factor).min(crate::constants::RGB_MAX) as u8,
+                        (g as f32 * factor).min(crate::constants::RGB_MAX) as u8,
+                        (b as f32 * factor).min(crate::constants::RGB_MAX) as u8,
                     )
                 })
                 .collect(),

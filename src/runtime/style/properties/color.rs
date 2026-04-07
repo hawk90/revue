@@ -60,12 +60,12 @@ impl ColorType {
 
     /// Get alpha as float (0.0 = transparent, 1.0 = opaque)
     pub fn alpha_f32(&self) -> f32 {
-        self.a as f32 / 255.0
+        self.a as f32 / crate::constants::RGB_MAX
     }
 
     /// Create color with alpha from float (0.0 = transparent, 1.0 = opaque)
     pub fn with_alpha_f32(self, alpha: f32) -> Self {
-        self.with_alpha((alpha.clamp(0.0, 1.0) * 255.0).round() as u8)
+        self.with_alpha((alpha.clamp(0.0, 1.0) * crate::constants::RGB_MAX).round() as u8)
     }
 
     /// White color (#FFFFFF)

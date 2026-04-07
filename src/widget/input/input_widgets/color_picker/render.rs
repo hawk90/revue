@@ -91,9 +91,9 @@ impl ColorPicker {
 
     fn render_rgb(&self, ctx: &mut RenderContext, area: Rect) {
         let sliders = [
-            ("R", self.r as f32 / 255.0, Color::RED),
-            ("G", self.g as f32 / 255.0, Color::GREEN),
-            ("B", self.b as f32 / 255.0, Color::BLUE),
+            ("R", self.r as f32 / crate::constants::RGB_MAX, Color::RED),
+            ("G", self.g as f32 / crate::constants::RGB_MAX, Color::GREEN),
+            ("B", self.b as f32 / crate::constants::RGB_MAX, Color::BLUE),
         ];
 
         self.render_sliders(ctx, area, &sliders);

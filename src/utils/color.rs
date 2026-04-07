@@ -3,6 +3,8 @@
 //! Common color processing functions used across widgets.
 //! All functions preserve the alpha channel unless otherwise noted.
 
+use crate::constants::RGB_MAX;
+
 use crate::style::Color;
 
 /// Blend two colors together (ignores alpha channels, uses explicit factor)
@@ -36,8 +38,8 @@ pub fn blend(fg: Color, bg: Color, alpha: f32) -> Color {
 /// # Returns
 /// Composited color
 pub fn blend_alpha(fg: Color, bg: Color) -> Color {
-    let fg_alpha = fg.a as f32 / 255.0;
-    let bg_alpha = bg.a as f32 / 255.0;
+    let fg_alpha = fg.a as f32 / RGB_MAX;
+    let bg_alpha = bg.a as f32 / RGB_MAX;
 
     // Porter-Duff "over" compositing
     let out_alpha = fg_alpha + bg_alpha * (1.0 - fg_alpha);
@@ -54,7 +56,7 @@ pub fn blend_alpha(fg: Color, bg: Color) -> Color {
         r.round() as u8,
         g.round() as u8,
         b.round() as u8,
-        (out_alpha * 255.0).round() as u8,
+        (out_alpha * RGB_MAX).round() as u8,
     )
 }
 
@@ -82,9 +84,9 @@ pub fn darken(color: Color, amount: f32) -> Color {
 pub fn lighten(color: Color, amount: f32) -> Color {
     let amount = amount.clamp(0.0, 1.0);
 
-    let r = color.r as f32 + (255.0 - color.r as f32) * amount;
-    let g = color.g as f32 + (255.0 - color.g as f32) * amount;
-    let b = color.b as f32 + (255.0 - color.b as f32) * amount;
+    let r = color.r as f32 + (RGB_MAX - color.r as f32) * amount;
+    let g = color.g as f32 + (RGB_MAX - color.g as f32) * amount;
+    let b = color.b as f32 + (RGB_MAX - color.b as f32) * amount;
 
     Color::rgba(r.round() as u8, g.round() as u8, b.round() as u8, color.a)
 }
@@ -115,9 +117,9 @@ pub fn contrast_color(color: Color) -> Color {
 ///
 /// Based on WCAG 2.0 formula.
 pub fn relative_luminance(color: Color) -> f32 {
-    let r = srgb_to_linear(color.r as f32 / 255.0);
-    let g = srgb_to_linear(color.g as f32 / 255.0);
-    let b = srgb_to_linear(color.b as f32 / 255.0);
+    let r = srgb_to_linear(color.r as f32 / RGB_MAX);
+    let g = srgb_to_linear(color.g as f32 / RGB_MAX);
+    let b = srgb_to_linear(color.b as f32 / RGB_MAX);
 
     0.2126 * r + 0.7152 * g + 0.0722 * b
 }
@@ -136,9 +138,9 @@ fn srgb_to_linear(value: f32) -> f32 {
 /// # Returns
 /// (hue 0-360, saturation 0-100, lightness 0-100)
 pub fn rgb_to_hsl(color: Color) -> (u16, u8, u8) {
-    let r = color.r as f32 / 255.0;
-    let g = color.g as f32 / 255.0;
-    let b = color.b as f32 / 255.0;
+    let r = color.r as f32 / RGB_MAX;
+    let g = color.g as f32 / RGB_MAX;
+    let b = color.b as f32 / RGB_MAX;
 
     let max = r.max(g).max(b);
     let min = r.min(g).min(b);
@@ -184,7 +186,7 @@ pub fn hsl_to_rgb(h: u16, s: u8, l: u8) -> Color {
 /// * `l` - Lightness (0-100)
 /// * `a` - Alpha (0-255)
 pub fn hsl_to_rgba(h: u16, s: u8, l: u8, a: u8) -> Color {
-    use crate::constants::{HUE_MAX, PERCENT_MAX, RGB_MAX};
+    use crate::constants::{HUE_MAX, PERCENT_MAX};
     let h = h as f32 / HUE_MAX;
     let s = s as f32 / PERCENT_MAX;
     let l = l as f32 / PERCENT_MAX;
@@ -234,7 +236,7 @@ pub fn hsl_to_rgba(h: u16, s: u8, l: u8, a: u8) -> Color {
 /// * `s` - Saturation (0.0-1.0)
 /// * `l` - Lightness (0.0-1.0)
 pub fn hsl_to_rgb_normalized(h: f32, s: f32, l: f32) -> (u8, u8, u8) {
-    use crate::constants::{HUE_MAX, RGB_MAX};
+    use crate::constants::HUE_MAX;
     if s.abs() < f32::EPSILON {
         let v = (l * RGB_MAX).round() as u8;
         return (v, v, v);
@@ -295,13 +297,13 @@ pub fn desaturate(color: Color, amount: f32) -> Color {
 
 /// Calculate perceived luminance (ITU-R BT.601) in range 0.0–1.0
 pub fn luminance(r: u8, g: u8, b: u8) -> f32 {
-    use crate::constants::{LUMINANCE_B, LUMINANCE_G, LUMINANCE_R, RGB_MAX};
+    use crate::constants::{LUMINANCE_B, LUMINANCE_G, LUMINANCE_R};
     (r as f32 * LUMINANCE_R + g as f32 * LUMINANCE_G + b as f32 * LUMINANCE_B) / RGB_MAX
 }
 
 /// Convert color to grayscale (preserves alpha)
 pub fn grayscale(color: Color) -> Color {
-    let gray = (luminance(color.r, color.g, color.b) * 255.0) as u8;
+    let gray = (luminance(color.r, color.g, color.b) * RGB_MAX) as u8;
     Color::rgba(gray, gray, gray, color.a)
 }
 

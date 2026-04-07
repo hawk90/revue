@@ -32,10 +32,10 @@ impl ColorScale {
                 // Blue -> White -> Red
                 if v < 0.5 {
                     let t = v * 2.0;
-                    Color::rgb((t * 255.0) as u8, (t * 255.0) as u8, 255)
+                    Color::rgb((t * crate::constants::RGB_MAX as f64) as u8, (t * crate::constants::RGB_MAX as f64) as u8, 255)
                 } else {
                     let t = (v - 0.5) * 2.0;
-                    Color::rgb(255, ((1.0 - t) * 255.0) as u8, ((1.0 - t) * 255.0) as u8)
+                    Color::rgb(255, ((1.0 - t) * crate::constants::RGB_MAX as f64) as u8, ((1.0 - t) * crate::constants::RGB_MAX as f64) as u8)
                 }
             }
             ColorScale::Green => {
@@ -67,17 +67,17 @@ impl ColorScale {
                 Color::rgb(r, g, b)
             }
             ColorScale::Gray => {
-                let c = (v * 255.0) as u8;
+                let c = (v * crate::constants::RGB_MAX as f64) as u8;
                 Color::rgb(c, c, c)
             }
             ColorScale::RedYellowGreen => {
                 // Traffic light: Red -> Yellow -> Green
                 if v < 0.5 {
                     let t = v * 2.0;
-                    Color::rgb(255, (t * 255.0) as u8, 0)
+                    Color::rgb(255, (t * crate::constants::RGB_MAX as f64) as u8, 0)
                 } else {
                     let t = (v - 0.5) * 2.0;
-                    Color::rgb(((1.0 - t) * 255.0) as u8, 255, 0)
+                    Color::rgb(((1.0 - t) * crate::constants::RGB_MAX as f64) as u8, 255, 0)
                 }
             }
             ColorScale::Custom => Color::WHITE, // Override with custom_colors

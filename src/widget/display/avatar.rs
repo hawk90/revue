@@ -262,9 +262,9 @@ impl Avatar {
         };
 
         Color::rgb(
-            ((r1 + m) * 255.0) as u8,
-            ((g1 + m) * 255.0) as u8,
-            ((b1 + m) * 255.0) as u8,
+            ((r1 + m) * crate::constants::RGB_MAX) as u8,
+            ((g1 + m) * crate::constants::RGB_MAX) as u8,
+            ((b1 + m) * crate::constants::RGB_MAX) as u8,
         )
     }
 }
