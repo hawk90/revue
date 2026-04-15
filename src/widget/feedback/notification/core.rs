@@ -451,11 +451,7 @@ impl NotificationCenter {
             let filled = (progress * bar_width as f64).round() as u16;
             for dx in 0..bar_width {
                 let ch = if dx < filled { '█' } else { '░' };
-                let fg = if dx < filled {
-                    color
-                } else {
-                    SEPARATOR_COLOR
-                };
+                let fg = if dx < filled { color } else { SEPARATOR_COLOR };
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);
                 cell.bg = Some(bg);

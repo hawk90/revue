@@ -20,7 +20,9 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::theme::{DARK_BG, DISABLED_FG, EDITOR_BG, LIGHT_GRAY, MUTED_TEXT, PLACEHOLDER_FG, SEPARATOR_COLOR};
+use crate::widget::theme::{
+    DARK_BG, DISABLED_FG, EDITOR_BG, LIGHT_GRAY, MUTED_TEXT, PLACEHOLDER_FG, SEPARATOR_COLOR,
+};
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -556,8 +558,7 @@ impl View for CandleChart {
                 .fold(0.0f64, f64::max);
 
             if max_vol > 0.0 {
-                content =
-                    content.child(Text::new("─".repeat(candles.len())).fg(SEPARATOR_COLOR));
+                content = content.child(Text::new("─".repeat(candles.len())).fg(SEPARATOR_COLOR));
 
                 for row in 0..self.volume_height {
                     let mut vol_line = hstack();

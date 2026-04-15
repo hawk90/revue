@@ -137,7 +137,7 @@ impl RenderReason {
             Self::StateChange => Color::rgb(100, 150, 220),   // Blue
             Self::PropsChange => Color::rgb(220, 180, 100),   // Yellow
             Self::ContextChange => Color::rgb(180, 100, 220), // Purple
-            Self::ParentRender => MUTED_TEXT,  // Gray
+            Self::ParentRender => MUTED_TEXT,                 // Gray
             Self::ForceUpdate => Color::rgb(220, 100, 100),   // Red
         }
     }

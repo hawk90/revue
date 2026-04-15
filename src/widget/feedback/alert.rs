@@ -344,14 +344,7 @@ impl Alert {
             let max_w = content_width.saturating_sub(icon_offset);
             ctx.draw_text_clipped_bg_bold(text_x, y, title, Color::WHITE, bg_color, max_w);
             y += 1;
-            ctx.draw_text_clipped_bg(
-                text_x,
-                y,
-                &self.message,
-                SECONDARY_TEXT,
-                bg_color,
-                max_w,
-            );
+            ctx.draw_text_clipped_bg(text_x, y, &self.message, SECONDARY_TEXT, bg_color, max_w);
         } else {
             let text_x = content_x + icon_offset;
             let max_w = content_width.saturating_sub(icon_offset);

@@ -560,11 +560,7 @@ impl View for Terminal {
                 if px + cw > area.width {
                     break;
                 }
-                ctx.set(
-                    px,
-                    input_y,
-                    Cell::new(ch).fg(Color::CYAN).bg(DARK_BG),
-                );
+                ctx.set(px, input_y, Cell::new(ch).fg(Color::CYAN).bg(DARK_BG));
                 px += cw;
             }
 
@@ -575,11 +571,7 @@ impl View for Terminal {
                 if ix + cw > area.width {
                     break;
                 }
-                ctx.set(
-                    ix,
-                    input_y,
-                    Cell::new(ch).fg(Color::WHITE).bg(DARK_BG),
-                );
+                ctx.set(ix, input_y, Cell::new(ch).fg(Color::WHITE).bg(DARK_BG));
                 ix += cw;
             }
         }

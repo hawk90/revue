@@ -6,8 +6,8 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::color::contrast_color;
-use crate::widget::theme::SEPARATOR_COLOR;
 use crate::utils::{char_width, display_width};
+use crate::widget::theme::SEPARATOR_COLOR;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 

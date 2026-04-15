@@ -135,11 +135,7 @@ impl ColorPicker {
             for j in 0..slider_width {
                 let ch = if j < filled { '█' } else { '░' };
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(if j < filled {
-                    *color
-                } else {
-                    SEPARATOR_COLOR
-                });
+                cell.fg = Some(if j < filled { *color } else { SEPARATOR_COLOR });
                 ctx.set(ox + 2 + j as u16, oy + y, cell);
             }
 

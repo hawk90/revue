@@ -63,14 +63,7 @@ impl View for RangePicker {
             self.end.date.month,
             self.end.date.day,
         );
-        self.draw_text(
-            ctx,
-            x,
-            summary_y,
-            &range_str,
-            SECONDARY_TEXT,
-            false,
-        );
+        self.draw_text(ctx, x, summary_y, &range_str, SECONDARY_TEXT, false);
 
         // Help text
         let help = "Tab: switch | ←→↑↓: navigate | [/]: month | Enter: select";

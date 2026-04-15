@@ -3,7 +3,9 @@
 use crate::impl_view_meta;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY, MAX_DROPDOWN_VISIBLE, PLACEHOLDER_FG, SECONDARY_TEXT};
+use crate::widget::theme::{
+    DISABLED_FG, LIGHT_GRAY, MAX_DROPDOWN_VISIBLE, PLACEHOLDER_FG, SECONDARY_TEXT,
+};
 use crate::widget::traits::{RenderContext, View};
 
 use super::types::MultiSelect;
