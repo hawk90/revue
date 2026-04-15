@@ -84,7 +84,7 @@ pub fn render_status_row(
     bg: Option<Color>,
     text_fg: Option<Color>,
 ) {
-    let text_width = (width - 2) as usize;
+    let text_width = width.saturating_sub(2) as usize;
     // Background
     for x in 0..width {
         let mut cell = Cell::new(' ');
@@ -114,7 +114,7 @@ pub fn render_options(
     width: u16,
     colors: &DropdownColors,
 ) {
-    let text_width = (width - 2) as usize;
+    let text_width = width.saturating_sub(2) as usize;
 
     for (row, opt) in options.iter().enumerate() {
         let y = row as u16;
@@ -169,9 +169,11 @@ pub fn render_options(
 /// Queue an overlay entry, falling back to inline rendering if the
 /// overlay system is unavailable.
 pub fn queue_or_inline_overlay(ctx: &mut RenderContext, entry: OverlayEntry) {
-    if !ctx.queue_overlay(entry.clone()) {
+    if ctx.has_overlay_support() {
+        ctx.queue_overlay(entry);
+    } else {
         for oc in &entry.cells {
-            ctx.set(oc.x, oc.y + 1, oc.cell);
+            ctx.set(oc.x, oc.y.saturating_add(1), oc.cell);
         }
     }
 }

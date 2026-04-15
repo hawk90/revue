@@ -52,7 +52,7 @@ pub const SUBTLE_GRAY: Color = Color {
     a: 255,
 };
 
-/// Border and separator color — `rgb(60, 60, 60)`
+/// Mid-dark gray for borders, separators, tracks, and subtle backgrounds — `rgb(60, 60, 60)`
 pub const SEPARATOR_COLOR: Color = Color {
     r: 60,
     g: 60,

@@ -156,7 +156,7 @@ impl Switch {
         }
     }
 
-    /// Set state
+    /// Set state (respects disabled state)
     pub fn set(&mut self, on: bool) {
         if !self.disabled {
             self.on = on;
