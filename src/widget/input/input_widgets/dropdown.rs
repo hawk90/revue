@@ -76,6 +76,8 @@ pub struct DropdownColors {
 }
 
 /// Render a status row (loading / empty) into the overlay entry.
+///
+/// Text starts at column 2 (after indicator column + gap), matching option layout.
 pub fn render_status_row(
     entry: &mut OverlayEntry,
     text: &str,
@@ -84,7 +86,7 @@ pub fn render_status_row(
     bg: Option<Color>,
     text_fg: Option<Color>,
 ) {
-    let text_width = width.saturating_sub(2) as usize;
+    let text_width = width.saturating_sub(3) as usize;
     // Background
     for x in 0..width {
         let mut cell = Cell::new(' ');
@@ -92,9 +94,9 @@ pub fn render_status_row(
         cell.bg = bg;
         entry.push(x, 0, cell);
     }
-    // Text
+    // Text (starts at column 2 to align with option labels)
     let truncated = crate::utils::truncate_to_width(text, text_width);
-    let mut cx: u16 = 1;
+    let mut cx: u16 = 2;
     for ch in truncated.chars() {
         let mut cell = Cell::new(ch);
         cell.fg = text_fg;
@@ -107,14 +109,16 @@ pub fn render_status_row(
 /// Render a list of options into an overlay entry.
 ///
 /// Each option gets: background fill, indicator character, label with
-/// fuzzy-match highlighting.
+/// fuzzy-match highlighting. Set `reserve_right` to 1 when the caller
+/// draws scroll indicators in the rightmost column.
 pub fn render_options(
     entry: &mut OverlayEntry,
     options: &[DropdownOption<'_>],
     width: u16,
     colors: &DropdownColors,
+    reserve_right: u16,
 ) {
-    let text_width = width.saturating_sub(2) as usize;
+    let text_width = width.saturating_sub(2 + reserve_right) as usize;
 
     for (row, opt) in options.iter().enumerate() {
         let y = row as u16;

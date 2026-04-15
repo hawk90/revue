@@ -113,7 +113,7 @@ fn test_render_options_empty() {
         disabled_fg: None,
     };
 
-    render_options(&mut entry, &[], 20, &colors);
+    render_options(&mut entry, &[], 20, &colors, 0);
     assert!(entry.cells.is_empty());
 }
 
@@ -138,7 +138,7 @@ fn test_render_options_single_option() {
         indicator: ' ',
     }];
 
-    render_options(&mut entry, &options, 20, &colors);
+    render_options(&mut entry, &options, 20, &colors, 0);
     assert!(!entry.cells.is_empty());
 }
 
@@ -165,7 +165,7 @@ fn test_render_options_highlighted() {
         indicator: '›',
     }];
 
-    render_options(&mut entry, &options, 20, &colors);
+    render_options(&mut entry, &options, 20, &colors, 0);
 
     // Check indicator cell exists at (0, 0)
     let indicator_cell = entry.cells.iter().find(|c| c.x == 0 && c.y == 0);
@@ -199,7 +199,7 @@ fn test_render_options_with_match_indices() {
         indicator: ' ',
     }];
 
-    render_options(&mut entry, &options, 20, &colors);
+    render_options(&mut entry, &options, 20, &colors, 0);
 
     // Characters at index 0 ('a') and 2 ('c') should have highlight_fg
     let text_cells: Vec<_> = entry.cells.iter().filter(|c| c.x >= 2).collect();

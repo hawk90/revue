@@ -138,7 +138,7 @@ impl View for Select {
             })
             .collect();
 
-        render_options(&mut entry, &dropdown_options, width, &colors);
+        render_options(&mut entry, &dropdown_options, width, &colors, 0);
         queue_or_inline_overlay(ctx, entry);
     }
 
