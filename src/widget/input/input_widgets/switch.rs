@@ -516,17 +516,7 @@ impl Interactive for Switch {
         }
     }
 
-    fn focusable(&self) -> bool {
-        !self.disabled
-    }
-
-    fn on_focus(&mut self) {
-        self.focused = true;
-    }
-
-    fn on_blur(&mut self) {
-        self.focused = false;
-    }
+    crate::impl_focus_handlers!(direct);
 }
 
 /// Helper to create a switch

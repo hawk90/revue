@@ -360,3 +360,74 @@ macro_rules! impl_styled_view {
         }
     };
 }
+
+/// Generate standard `Interactive` focus management methods for widgets.
+///
+/// Use inside an `impl Interactive` block. Generates `focusable()`,
+/// `on_focus()`, and `on_blur()` methods.
+///
+/// # Variants
+///
+/// - `impl_focus_handlers!(state)` — for widgets with `state: WidgetState`
+/// - `impl_focus_handlers!(direct)` — for widgets with direct `disabled`/`focused` fields
+/// - `impl_focus_handlers!(state, no_blur)` / `impl_focus_handlers!(direct, no_blur)` —
+///   same but omits `on_blur()` so you can provide a custom implementation
+///
+/// # Example
+/// ```rust,ignore
+/// impl Interactive for MyWidget {
+///     fn handle_key(&mut self, event: &KeyEvent) -> EventResult { /* ... */ }
+///     crate::impl_focus_handlers!(state);
+/// }
+///
+/// // With custom on_blur:
+/// impl Interactive for MyDropdown {
+///     fn handle_key(&mut self, event: &KeyEvent) -> EventResult { /* ... */ }
+///     crate::impl_focus_handlers!(direct, no_blur);
+///     fn on_blur(&mut self) {
+///         self.focused = false;
+///         self.close_dropdown();
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! impl_focus_handlers {
+    (state) => {
+        fn focusable(&self) -> bool {
+            !self.state.disabled
+        }
+        fn on_focus(&mut self) {
+            self.state.focused = true;
+        }
+        fn on_blur(&mut self) {
+            self.state.focused = false;
+        }
+    };
+    (direct) => {
+        fn focusable(&self) -> bool {
+            !self.disabled
+        }
+        fn on_focus(&mut self) {
+            self.focused = true;
+        }
+        fn on_blur(&mut self) {
+            self.focused = false;
+        }
+    };
+    (state, no_blur) => {
+        fn focusable(&self) -> bool {
+            !self.state.disabled
+        }
+        fn on_focus(&mut self) {
+            self.state.focused = true;
+        }
+    };
+    (direct, no_blur) => {
+        fn focusable(&self) -> bool {
+            !self.disabled
+        }
+        fn on_focus(&mut self) {
+            self.focused = true;
+        }
+    };
+}
