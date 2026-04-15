@@ -3,9 +3,13 @@
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::truncate_to_width;
-use crate::widget::theme::{MAX_DROPDOWN_VISIBLE, PLACEHOLDER_FG};
+use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{RenderContext, View};
 
+use super::super::dropdown::{
+    calculate_dropdown_layout, dropdown_height, queue_or_inline_overlay, render_options,
+    render_status_row, DropdownColors, DropdownOption,
+};
 use super::Select;
 
 impl View for Select {
@@ -30,7 +34,6 @@ impl View for Select {
 
         // Render the closed/header row
         let display_text = if self.open && self.searchable && !self.query.is_empty() {
-            // Show search query when searching
             &self.query
         } else {
             self.value().unwrap_or(&self.placeholder)
@@ -67,109 +70,76 @@ impl View for Select {
             cx += crate::utils::char_width(ch) as u16;
         }
 
-        // If open, render dropdown options as overlay (escapes parent clipping)
-        if self.open {
-            // Determine which options to show
-            let visible_options: Vec<(usize, &String)> = if self.query.is_empty() {
-                self.options.iter().enumerate().collect()
-            } else {
-                self.filtered
-                    .iter()
-                    .filter_map(|&i| self.options.get(i).map(|opt| (i, opt)))
-                    .collect()
-            };
+        // If open, render dropdown options as overlay
+        if !self.open {
+            return;
+        }
 
-            // Calculate dropdown height (limited to 10 or option count)
-            let dropdown_height = if visible_options.is_empty() {
-                1u16 // "No results" row
-            } else {
-                (visible_options.len() as u16).min(MAX_DROPDOWN_VISIBLE)
-            };
-
-            // Calculate absolute position for overlay, flip above if near bottom
-            let (abs_x, abs_y) = ctx.absolute_position();
-            let buf_height = ctx.buffer.height();
-            let space_below = buf_height.saturating_sub(abs_y + 1);
-            let overlay_y = if space_below >= dropdown_height {
-                abs_y + 1 // Render below
-            } else {
-                abs_y.saturating_sub(dropdown_height) // Render above
-            };
-            let overlay_area = crate::layout::Rect::new(abs_x, overlay_y, width, dropdown_height);
-
-            let mut entry = crate::widget::traits::OverlayEntry::new(100, overlay_area);
-
-            if visible_options.is_empty() && !self.query.is_empty() {
-                // "No results" message
-                let msg = "No results";
-                for (i, ch) in msg.chars().enumerate() {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(PLACEHOLDER_FG);
-                    entry.push(2 + i as u16, 0, cell);
-                }
-            }
-
-            for (row, (option_idx, option)) in visible_options
+        // Determine which options to show
+        let visible_options: Vec<(usize, &String)> = if self.query.is_empty() {
+            self.options.iter().enumerate().collect()
+        } else {
+            self.filtered
                 .iter()
-                .enumerate()
-                .take(dropdown_height as usize)
-            {
-                let y = row as u16;
+                .filter_map(|&i| self.options.get(i).map(|opt| (i, opt)))
+                .collect()
+        };
+
+        let dropdown_h = dropdown_height(visible_options.len(), None);
+
+        let layout = calculate_dropdown_layout(ctx, dropdown_h);
+        let (abs_x, _) = ctx.absolute_position();
+        let overlay_area = crate::layout::Rect::new(abs_x, layout.overlay_y, width, dropdown_h);
+        let mut entry = crate::widget::traits::OverlayEntry::new(100, overlay_area);
+
+        // Empty state
+        if visible_options.is_empty() && !self.query.is_empty() {
+            render_status_row(
+                &mut entry,
+                "No results",
+                width,
+                self.fg,
+                self.bg,
+                Some(PLACEHOLDER_FG),
+            );
+            queue_or_inline_overlay(ctx, entry);
+            return;
+        }
+
+        let colors = DropdownColors {
+            fg: self.fg,
+            bg: self.bg,
+            selected_fg: self.selected_fg,
+            selected_bg: self.selected_bg,
+            highlight_fg: self.highlight_fg,
+            disabled_fg: None,
+        };
+
+        // Build option descriptors
+        let dropdown_options: Vec<DropdownOption<'_>> = visible_options
+            .iter()
+            .take(dropdown_h as usize)
+            .map(|(option_idx, option)| {
                 let is_selected = self.selection.is_selected(*option_idx);
-
-                let (fg, bg) = if is_selected {
-                    (self.selected_fg, self.selected_bg)
-                } else {
-                    (self.fg, self.bg)
-                };
-
-                // Draw background
-                for x in 0..width {
-                    let mut cell = Cell::new(' ');
-                    cell.fg = fg;
-                    cell.bg = bg;
-                    entry.push(x, y, cell);
-                }
-
-                // Draw selection indicator
                 let indicator = if is_selected { '›' } else { ' ' };
-                let mut cell = Cell::new(indicator);
-                cell.fg = fg;
-                cell.bg = bg;
-                entry.push(0, y, cell);
 
-                // Get fuzzy match indices for highlighting (HashSet for O(1) lookup)
                 let match_indices: std::collections::HashSet<usize> = self
                     .get_match(option)
                     .map(|m| m.indices.into_iter().collect())
                     .unwrap_or_default();
 
-                // Draw option text with highlighting
-                let truncated = truncate_to_width(option, text_width);
-                let mut cx: u16 = 2;
-                for (j, ch) in truncated.chars().enumerate() {
-                    let mut cell = Cell::new(ch);
-                    cell.bg = bg;
-
-                    if match_indices.contains(&j) {
-                        cell.fg = self.highlight_fg;
-                    } else {
-                        cell.fg = fg;
-                    }
-
-                    entry.push(cx, y, cell);
-                    cx += crate::utils::char_width(ch) as u16;
+                DropdownOption {
+                    label: option.as_str(),
+                    is_highlighted: is_selected,
+                    is_disabled: false,
+                    match_indices,
+                    indicator,
                 }
-            }
+            })
+            .collect();
 
-            // Queue as overlay; falls back to inline if no overlay support
-            if !ctx.queue_overlay(entry.clone()) {
-                // Fallback: render inline (clipped by parent)
-                for oc in &entry.cells {
-                    ctx.set(oc.x, oc.y + 1, oc.cell);
-                }
-            }
-        }
+        render_options(&mut entry, &dropdown_options, width, &colors);
+        queue_or_inline_overlay(ctx, entry);
     }
 
     crate::impl_view_meta!("Select");
