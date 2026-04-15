@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.71.1](https://github.com/hawk90/revue/compare/v2.71.0...v2.71.1) (2026-04-15)
+
+
+### Bug Fixes
+
+* **widget:** address audit findings from refactoring PRs ([67faad9](https://github.com/hawk90/revue/commit/67faad939e193b874deaff13f32bb3dd206268ba))
+
 ## [2.71.0](https://github.com/hawk90/revue/compare/v2.70.0...v2.71.0) (2026-04-05)
 
 
