@@ -30,6 +30,7 @@ use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
 use crate::utils::draw_text_overlay;
+use crate::widget::theme::{EDITOR_BG, SECONDARY_TEXT};
 use crate::widget::{RenderContext, View};
 
 // =============================================================================
@@ -88,8 +89,8 @@ impl Default for DebugConfig {
             width: 40,
             max_height: 20,
             opacity: 220,
-            bg_color: Color::rgb(30, 30, 30),
-            fg_color: Color::rgb(200, 200, 200),
+            bg_color: EDITOR_BG,
+            fg_color: SECONDARY_TEXT,
             accent_color: Color::rgb(100, 200, 255),
         }
     }

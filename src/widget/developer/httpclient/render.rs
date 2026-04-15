@@ -3,7 +3,7 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::widget::developer::httpclient::HttpClient;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, SECONDARY_TEXT, SEPARATOR_COLOR};
 use crate::widget::traits::{RenderContext, View};
 
 use super::types::RequestState;
@@ -59,7 +59,7 @@ impl View for HttpClient {
         // Separator
         for sx in 0..area.width {
             let mut cell = Cell::new('─');
-            cell.fg = Some(Color::rgb(60, 60, 60));
+            cell.fg = Some(SEPARATOR_COLOR);
             ctx.set(sx, 1, cell);
         }
 
@@ -146,7 +146,7 @@ impl View for HttpClient {
                             0,
                             content_y + i as u16,
                             line,
-                            Color::rgb(200, 200, 200),
+                            SECONDARY_TEXT,
                             area.width,
                         );
                     }

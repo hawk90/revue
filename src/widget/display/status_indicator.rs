@@ -21,6 +21,7 @@
 
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::{DARK_BG, SECONDARY_TEXT};
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
 use unicode_width::UnicodeWidthChar;
@@ -359,7 +360,7 @@ impl StatusIndicator {
                 break;
             }
             let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::rgb(200, 200, 200));
+            cell.fg = Some(SECONDARY_TEXT);
             ctx.set(label_start + offset, 0, cell);
             for i in 1..char_width {
                 ctx.set(label_start + offset + i, 0, Cell::continuation());
@@ -396,7 +397,7 @@ impl StatusIndicator {
         let label = self.get_label();
 
         // Background
-        let bg_color = Color::rgb(40, 40, 40);
+        let bg_color = DARK_BG;
         let total_width = self.width().min(area.width);
 
         for i in 0..total_width {

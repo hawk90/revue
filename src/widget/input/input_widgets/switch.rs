@@ -6,7 +6,7 @@ use crate::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::DISABLED_FG;
+use crate::widget::theme::{DISABLED_FG, SEPARATOR_COLOR};
 use crate::widget::traits::{EventResult, Interactive, RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -70,7 +70,7 @@ impl Switch {
             disabled: false,
             on_color: Color::GREEN,
             off_color: DISABLED_FG,
-            track_color: Color::rgb(60, 60, 60),
+            track_color: SEPARATOR_COLOR,
             on_text: None,
             off_text: None,
             props: WidgetProps::new(),

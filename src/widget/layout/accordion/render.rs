@@ -1,8 +1,8 @@
 //! View implementation for Accordion
 
 use crate::render::Cell;
-use crate::style::Color;
 use crate::utils::border::render_border;
+use crate::widget::theme::SEPARATOR_COLOR;
 use crate::widget::traits::{RenderContext, View};
 
 use super::Accordion;
@@ -122,7 +122,7 @@ impl View for Accordion {
             if self.show_dividers && section_idx < self.sections.len() - 1 && y < max_y {
                 for x in content_x_off..content_x_off + content_width {
                     let mut cell = Cell::new('─');
-                    cell.fg = Some(Color::rgb(60, 60, 60));
+                    cell.fg = Some(SEPARATOR_COLOR);
                     ctx.set(x, y, cell);
                 }
                 y += 1;

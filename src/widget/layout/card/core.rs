@@ -31,7 +31,7 @@ use crate::event::Key;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::unicode::char_width;
-use crate::widget::theme::LIGHT_GRAY;
+use crate::widget::theme::{DARK_BG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -346,7 +346,7 @@ impl Card {
             CardVariant::Outlined => Color::rgb(60, 60, 70),
             CardVariant::Filled => Color::rgb(50, 50, 60),
             CardVariant::Elevated => Color::rgb(70, 70, 80),
-            CardVariant::Flat => Color::rgb(40, 40, 40),
+            CardVariant::Flat => DARK_BG,
         };
 
         let default_title = Color::WHITE;

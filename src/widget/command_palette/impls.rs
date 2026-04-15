@@ -1,7 +1,7 @@
 use super::{command::Command, core::CommandPalette};
 use crate::style::Color;
 use crate::utils::{fuzzy_match, Selection};
-use crate::widget::theme::DARK_GRAY;
+use crate::widget::theme::{DARK_GRAY, EDITOR_BG};
 use crate::widget::traits::WidgetProps;
 
 impl CommandPalette {
@@ -22,7 +22,7 @@ impl CommandPalette {
             show_descriptions: true,
             show_shortcuts: true,
             show_icons: true,
-            bg_color: Color::rgb(30, 30, 30),
+            bg_color: EDITOR_BG,
             border_color: DARK_GRAY,
             selected_bg: Color::rgb(50, 80, 120),
             match_color: Color::YELLOW,

@@ -2,6 +2,7 @@
 
 use crate::event::drag::DragId;
 use crate::style::Color;
+use crate::widget::theme::SECONDARY_TEXT;
 use crate::widget::traits::{WidgetProps, WidgetState};
 
 use super::types::{generate_id, ReorderCallback, SortableItem};
@@ -62,7 +63,7 @@ impl SortableList {
             on_reorder: None,
             item_height: 1,
             show_handles: true,
-            item_color: Color::rgb(200, 200, 200),
+            item_color: SECONDARY_TEXT,
             selected_color: Color::rgb(100, 150, 255),
             drag_color: Color::rgb(255, 200, 100),
             state: WidgetState::new(),

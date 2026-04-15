@@ -6,7 +6,7 @@ use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::unicode::char_width;
 use crate::widget::data::calendar::{days_in_month, Date};
-use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY, SECONDARY_TEXT};
 use crate::widget::traits::{RenderContext, View};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -63,14 +63,7 @@ impl View for RangePicker {
             self.end.date.month,
             self.end.date.day,
         );
-        self.draw_text(
-            ctx,
-            x,
-            summary_y,
-            &range_str,
-            Color::rgb(200, 200, 200),
-            false,
-        );
+        self.draw_text(ctx, x, summary_y, &range_str, SECONDARY_TEXT, false);
 
         // Help text
         let help = "Tab: switch | ←→↑↓: navigate | [/]: month | Enter: select";

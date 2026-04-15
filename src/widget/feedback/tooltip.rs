@@ -5,6 +5,7 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::border::BorderChars;
+use crate::widget::theme::{DARK_BG, EDITOR_BG};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -77,9 +78,9 @@ pub enum TooltipStyle {
 impl TooltipStyle {
     fn colors(&self) -> (Color, Color) {
         match self {
-            TooltipStyle::Plain => (Color::WHITE, Color::rgb(40, 40, 40)),
-            TooltipStyle::Bordered => (Color::WHITE, Color::rgb(30, 30, 30)),
-            TooltipStyle::Rounded => (Color::WHITE, Color::rgb(30, 30, 30)),
+            TooltipStyle::Plain => (Color::WHITE, DARK_BG),
+            TooltipStyle::Bordered => (Color::WHITE, EDITOR_BG),
+            TooltipStyle::Rounded => (Color::WHITE, EDITOR_BG),
             TooltipStyle::Info => (Color::WHITE, Color::rgb(30, 80, 100)),
             TooltipStyle::Warning => (Color::BLACK, Color::rgb(180, 150, 0)),
             TooltipStyle::Error => (Color::WHITE, Color::rgb(150, 30, 30)),

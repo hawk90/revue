@@ -13,6 +13,7 @@ pub use types::{
 };
 
 use crate::style::Color;
+use crate::widget::theme::SEPARATOR_COLOR;
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -72,7 +73,7 @@ impl TimeSeries {
             y_max: None,
             markers: Vec::new(),
             bg_color: None,
-            grid_color: Color::rgb(60, 60, 60),
+            grid_color: SEPARATOR_COLOR,
             height: None,
             props: WidgetProps::new(),
         }

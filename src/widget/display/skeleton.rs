@@ -2,6 +2,7 @@
 
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::SEPARATOR_COLOR;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -61,7 +62,7 @@ impl Skeleton {
             lines: 3,
             frame: 0,
             animate: true,
-            color: Color::rgb(60, 60, 60),
+            color: SEPARATOR_COLOR,
             wave_char: '░',
             props: WidgetProps::new(),
         }

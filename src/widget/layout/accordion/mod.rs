@@ -9,6 +9,7 @@ pub use types::AccordionSection;
 
 use crate::style::Color;
 use crate::utils::Selection;
+use crate::widget::theme::{EDITOR_BG, SECONDARY_TEXT};
 use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -56,8 +57,8 @@ impl Accordion {
             header_bg: Color::rgb(50, 50, 50),
             header_fg: Color::WHITE,
             selected_bg: Color::rgb(60, 90, 140),
-            content_bg: Color::rgb(30, 30, 30),
-            content_fg: Color::rgb(200, 200, 200),
+            content_bg: EDITOR_BG,
+            content_fg: SECONDARY_TEXT,
             border_color: None,
             show_dividers: true,
             min_width: 0,

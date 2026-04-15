@@ -20,7 +20,9 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY, PLACEHOLDER_FG};
+use crate::widget::theme::{
+    DARK_BG, DISABLED_FG, EDITOR_BG, LIGHT_GRAY, MUTED_TEXT, PLACEHOLDER_FG, SEPARATOR_COLOR,
+};
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -309,7 +311,7 @@ impl CandleChart {
 
     /// Render a single candle column
     fn render_candle(&self, candle: &Candle, min: f64, max: f64) -> Vec<(char, Color)> {
-        let mut column = vec![(' ', Color::rgb(40, 40, 40)); self.height as usize];
+        let mut column = vec![(' ', DARK_BG); self.height as usize];
 
         let high_row = self.price_to_row(candle.high, min, max);
         let low_row = self.price_to_row(candle.low, min, max);
@@ -556,8 +558,7 @@ impl View for CandleChart {
                 .fold(0.0f64, f64::max);
 
             if max_vol > 0.0 {
-                content =
-                    content.child(Text::new("─".repeat(candles.len())).fg(Color::rgb(60, 60, 60)));
+                content = content.child(Text::new("─".repeat(candles.len())).fg(SEPARATOR_COLOR));
 
                 for row in 0..self.volume_height {
                     let mut vol_line = hstack();
@@ -579,7 +580,7 @@ impl View for CandleChart {
                             };
                             ('█', color)
                         } else {
-                            (' ', Color::rgb(30, 30, 30))
+                            (' ', EDITOR_BG)
                         };
 
                         vol_line = vol_line.child(Text::new(ch.to_string()).fg(color));
@@ -605,7 +606,7 @@ impl View for CandleChart {
                         .unwrap_or_default(),
                     prec = self.precision
                 );
-                content = content.child(Text::new(info).fg(Color::rgb(180, 180, 180)));
+                content = content.child(Text::new(info).fg(MUTED_TEXT));
             }
         }
 

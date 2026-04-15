@@ -29,7 +29,7 @@ use crate::patterns::form::FormState;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::char_width;
-use crate::widget::theme::{DISABLED_FG, SUBTLE_GRAY};
+use crate::widget::theme::{DISABLED_FG, SECONDARY_TEXT, SUBTLE_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -243,7 +243,7 @@ impl View for Form {
                     let x = content_x + i as u16;
                     if x < max_x {
                         let mut cell = Cell::new(ch);
-                        cell.fg = Some(Color::rgb(200, 200, 200));
+                        cell.fg = Some(SECONDARY_TEXT);
                         ctx.set(x, current_y, cell);
                     }
                 }
@@ -449,7 +449,7 @@ impl FormFieldWidget {
             for (i, ch) in label.chars().enumerate() {
                 if (i as u16) < area.width {
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(200, 200, 200));
+                    cell.fg = Some(SECONDARY_TEXT);
                     ctx.set(i as u16, 0, cell);
                 }
             }
@@ -556,7 +556,7 @@ impl View for FormFieldWidget {
                 let x = i as u16;
                 if x < area.width {
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(200, 200, 200));
+                    cell.fg = Some(SECONDARY_TEXT);
                     ctx.set(x, 0, cell);
                 }
             }

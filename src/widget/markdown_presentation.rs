@@ -46,7 +46,7 @@ use crate::style::Color;
 use crate::utils::figlet::FigletFont;
 use crate::utils::text_sizing::is_supported as text_sizing_supported;
 use crate::widget::slides::{SlideContent, SlideNav};
-use crate::widget::theme::{DARK_GRAY, DISABLED_FG};
+use crate::widget::theme::{DARK_GRAY, DISABLED_FG, SEPARATOR_COLOR};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -496,7 +496,7 @@ impl MarkdownPresentation {
                 cell.fg = Some(if i < filled {
                     self.accent
                 } else {
-                    Color::rgb(60, 60, 60)
+                    SEPARATOR_COLOR
                 });
                 ctx.set(1 + i, footer_y, cell);
             }

@@ -27,7 +27,7 @@ use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::char_width;
 use crate::widget::layout::border::{draw_border, BorderType};
-use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY, MUTED_TEXT, SECONDARY_TEXT};
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -344,14 +344,7 @@ impl Alert {
             let max_w = content_width.saturating_sub(icon_offset);
             ctx.draw_text_clipped_bg_bold(text_x, y, title, Color::WHITE, bg_color, max_w);
             y += 1;
-            ctx.draw_text_clipped_bg(
-                text_x,
-                y,
-                &self.message,
-                Color::rgb(200, 200, 200),
-                bg_color,
-                max_w,
-            );
+            ctx.draw_text_clipped_bg(text_x, y, &self.message, SECONDARY_TEXT, bg_color, max_w);
         } else {
             let text_x = content_x + icon_offset;
             let max_w = content_width.saturating_sub(icon_offset);
@@ -422,7 +415,7 @@ impl Alert {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::rgb(180, 180, 180));
+                cell.fg = Some(MUTED_TEXT);
                 ctx.set(msg_x + dx, y, cell);
                 dx += cw;
             }
@@ -492,7 +485,7 @@ impl Alert {
                         break;
                     }
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(180, 180, 180));
+                    cell.fg = Some(MUTED_TEXT);
                     ctx.set(msg_x + dx, y + 1, cell);
                     dx += cw;
                 }

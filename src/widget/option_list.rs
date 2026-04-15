@@ -27,7 +27,7 @@
 //! ```
 
 use crate::style::Color;
-use crate::widget::theme::{DARK_GRAY, PLACEHOLDER_FG};
+use crate::widget::theme::{DARK_GRAY, MUTED_TEXT, PLACEHOLDER_FG};
 use crate::widget::traits::DISABLED_FG;
 use crate::widget::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -689,7 +689,7 @@ impl View for OptionList {
                     content = content.child(Text::new(line).fg(DARK_GRAY));
                 }
                 OptionEntry::Group(name) => {
-                    content = content.child(Text::new(name).fg(Color::rgb(180, 180, 180)).bold());
+                    content = content.child(Text::new(name).fg(MUTED_TEXT).bold());
                 }
             }
         }

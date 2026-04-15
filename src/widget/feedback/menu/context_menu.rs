@@ -4,6 +4,7 @@ use super::types::MenuItem;
 use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::DARK_BG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -42,7 +43,7 @@ impl ContextMenu {
             y: 0,
             selected: 0,
             visible: false,
-            bg: Color::rgb(40, 40, 40),
+            bg: DARK_BG,
             fg: Color::WHITE,
             selected_bg: Color::rgb(60, 100, 180),
             selected_fg: Color::WHITE,

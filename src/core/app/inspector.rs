@@ -3,7 +3,7 @@
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::widget::theme::DARK_GRAY;
+use crate::widget::theme::{DARK_GRAY, EDITOR_BG, MUTED_TEXT};
 use crate::widget::{RenderContext, View};
 
 /// Tree rendering state
@@ -103,7 +103,7 @@ impl Inspector {
             panel_width: 40,
             show_bounds: true,
             highlight_color: Color::CYAN,
-            bg_color: Color::rgb(30, 30, 30),
+            bg_color: EDITOR_BG,
         }
     }
 
@@ -379,7 +379,7 @@ impl Inspector {
         );
         for (i, ch) in bounds_text.chars().take(max_width as usize).enumerate() {
             let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::rgb(180, 180, 180));
+            cell.fg = Some(MUTED_TEXT);
             cell.bg = Some(self.bg_color);
             ctx.buffer.set(x + i as u16, y, cell);
         }
@@ -394,7 +394,7 @@ impl Inspector {
             let prop_text = format!("{}: {}", key, value);
             for (i, ch) in prop_text.chars().take(max_width as usize).enumerate() {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::rgb(180, 180, 180));
+                cell.fg = Some(MUTED_TEXT);
                 cell.bg = Some(self.bg_color);
                 ctx.buffer.set(x + i as u16, y, cell);
             }

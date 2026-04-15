@@ -2,7 +2,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::{DARK_GRAY, SUBTLE_GRAY};
+use crate::widget::theme::{DARK_GRAY, SEPARATOR_COLOR, SUBTLE_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -156,7 +156,7 @@ impl Tag {
         let text_color = self.text_color.unwrap_or(Color::WHITE);
 
         if self.disabled {
-            return (Some(Color::rgb(60, 60, 60)), SUBTLE_GRAY);
+            return (Some(SEPARATOR_COLOR), SUBTLE_GRAY);
         }
 
         match self.style {

@@ -5,7 +5,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::{DARK_GRAY, DISABLED_FG};
+use crate::widget::theme::{DARK_GRAY, DISABLED_FG, SEPARATOR_COLOR};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -88,7 +88,7 @@ impl Slider {
             length: 20,
             show_value: true,
             value_format: None,
-            track_color: Color::rgb(60, 60, 60),
+            track_color: SEPARATOR_COLOR,
             fill_color: Color::CYAN,
             knob_color: Color::WHITE,
             focused: false,
