@@ -87,9 +87,9 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
         return;
     }
 
-    let visible_count = combobox.max_visible.min(
-        crate::widget::theme::MAX_DROPDOWN_VISIBLE as usize,
-    );
+    let visible_count = combobox
+        .max_visible
+        .min(crate::widget::theme::MAX_DROPDOWN_VISIBLE as usize);
 
     let colors = DropdownColors {
         fg: combobox.fg,

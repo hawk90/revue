@@ -106,11 +106,11 @@
 //! ```
 
 pub mod autocomplete;
-pub mod dropdown;
 pub mod button;
 pub mod checkbox;
 pub mod color_picker;
 pub mod combobox;
+pub mod dropdown;
 pub mod input;
 pub mod number_input;
 pub mod radio;
