@@ -333,6 +333,7 @@ impl Interactive for Button {
 
     fn on_blur(&mut self) {
         self.state.focused = false;
+        // Button has extra cleanup on blur
         self.state.reset_transient();
     }
 }

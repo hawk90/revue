@@ -237,17 +237,7 @@ impl Interactive for Checkbox {
         }
     }
 
-    fn focusable(&self) -> bool {
-        !self.state.disabled
-    }
-
-    fn on_focus(&mut self) {
-        self.state.focused = true;
-    }
-
-    fn on_blur(&mut self) {
-        self.state.focused = false;
-    }
+    crate::impl_focus_handlers!(state);
 }
 
 /// Create a checkbox

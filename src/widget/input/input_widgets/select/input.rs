@@ -104,13 +104,7 @@ impl Interactive for Select {
         }
     }
 
-    fn focusable(&self) -> bool {
-        !self.disabled
-    }
-
-    fn on_focus(&mut self) {
-        self.focused = true;
-    }
+    crate::impl_focus_handlers!(direct, no_blur);
 
     fn on_blur(&mut self) {
         self.focused = false;
