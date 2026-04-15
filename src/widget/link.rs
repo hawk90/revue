@@ -317,17 +317,7 @@ impl Interactive for Link {
         }
     }
 
-    fn focusable(&self) -> bool {
-        !self.disabled
-    }
-
-    fn on_focus(&mut self) {
-        self.focused = true;
-    }
-
-    fn on_blur(&mut self) {
-        self.focused = false;
-    }
+    crate::impl_focus_handlers!(direct);
 }
 
 impl_styled_view!(Link);
