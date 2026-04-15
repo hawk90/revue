@@ -248,3 +248,11 @@ mod vim;
 // mod waveline;
 #[path = "widget/zen.rs"]
 mod zen;
+
+// Shared infrastructure tests
+#[path = "widget/traits/dropdown.rs"]
+mod dropdown_tests;
+#[path = "widget/traits/focus_handlers.rs"]
+mod focus_handlers_tests;
+#[path = "widget/traits/theme.rs"]
+mod theme_constants_tests;
