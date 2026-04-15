@@ -1,4 +1,5 @@
 use crate::style::Color;
+use crate::widget::theme::SEPARATOR_COLOR;
 
 /// Grid configuration
 #[derive(Clone, Debug, Default)]
@@ -81,7 +82,7 @@ impl ChartGrid {
 
     /// Get the effective color (default if not set)
     pub fn effective_color(&self) -> Color {
-        self.color.unwrap_or(Color::rgb(60, 60, 60))
+        self.color.unwrap_or(SEPARATOR_COLOR)
     }
 }
 

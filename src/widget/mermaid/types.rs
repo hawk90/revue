@@ -1,6 +1,7 @@
 //! Types for the Mermaid diagram widget
 
 use crate::style::Color;
+use crate::widget::theme::MUTED_TEXT;
 
 /// Diagram type
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -166,7 +167,7 @@ impl Default for DiagramColors {
             node_fg: Color::WHITE,
             node_bg: Color::rgb(40, 60, 80),
             arrow: Color::rgb(100, 150, 200),
-            label: Color::rgb(180, 180, 180),
+            label: MUTED_TEXT,
             title: Color::CYAN,
         }
     }

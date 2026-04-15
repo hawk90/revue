@@ -4,6 +4,7 @@ use super::types::{Notification, NotificationPosition};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::char_width;
+use crate::widget::theme::SEPARATOR_COLOR;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -453,7 +454,7 @@ impl NotificationCenter {
                 let fg = if dx < filled {
                     color
                 } else {
-                    Color::rgb(60, 60, 60)
+                    SEPARATOR_COLOR
                 };
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(fg);

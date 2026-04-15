@@ -4,6 +4,7 @@ use super::core::Callout;
 use super::types::CalloutVariant;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::{MUTED_TEXT, SECONDARY_TEXT};
 use crate::widget::traits::{RenderContext, View};
 use unicode_width::UnicodeWidthChar;
 
@@ -127,7 +128,7 @@ impl Callout {
                         break;
                     }
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(200, 200, 200));
+                    cell.fg = Some(SECONDARY_TEXT);
                     cell.bg = Some(bg_color);
                     ctx.set(content_x + offset, line_y, cell);
                     for i in 1..char_width {
@@ -211,7 +212,7 @@ impl Callout {
                         break;
                     }
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(180, 180, 180));
+                    cell.fg = Some(MUTED_TEXT);
                     ctx.set(content_x + offset, line_y, cell);
                     for i in 1..char_width {
                         ctx.set(content_x + offset + i, line_y, Cell::continuation());
@@ -289,7 +290,7 @@ impl Callout {
                         break;
                     }
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(180, 180, 180));
+                    cell.fg = Some(MUTED_TEXT);
                     ctx.set(content_x + offset, line_y, cell);
                     for i in 1..char_width {
                         ctx.set(content_x + offset + i, line_y, Cell::continuation());

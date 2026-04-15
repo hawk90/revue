@@ -3,7 +3,7 @@
 use crate::impl_view_meta;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY, MAX_DROPDOWN_VISIBLE, PLACEHOLDER_FG};
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY, MAX_DROPDOWN_VISIBLE, PLACEHOLDER_FG, SECONDARY_TEXT};
 use crate::widget::traits::{RenderContext, View};
 
 use super::types::MultiSelect;
@@ -56,7 +56,7 @@ impl View for MultiSelect {
                     let tag_fg = if is_tag_selected {
                         Color::WHITE
                     } else {
-                        Color::rgb(200, 200, 200)
+                        SECONDARY_TEXT
                     };
                     let tag_bg_color = if is_tag_selected {
                         Color::rgb(100, 100, 200)

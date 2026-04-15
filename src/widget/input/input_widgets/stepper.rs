@@ -4,7 +4,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::{DISABLED_FG, SUBTLE_GRAY};
+use crate::widget::theme::{DISABLED_FG, SEPARATOR_COLOR, SUBTLE_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -162,7 +162,7 @@ impl Stepper {
             completed_color: Color::GREEN,
             pending_color: DISABLED_FG,
             error_color: Color::RED,
-            connector_color: Color::rgb(60, 60, 60),
+            connector_color: SEPARATOR_COLOR,
             show_numbers: true,
             props: WidgetProps::new(),
         }

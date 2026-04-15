@@ -6,6 +6,7 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::color::contrast_color;
+use crate::widget::theme::SEPARATOR_COLOR;
 use crate::utils::{char_width, display_width};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -111,7 +112,7 @@ impl Gauge {
             show_percent: true,
             fill_color: Color::GREEN,
             fill_bg: None,
-            empty_color: Color::rgb(60, 60, 60),
+            empty_color: SEPARATOR_COLOR,
             empty_bg: None,
             border_color: None,
             warning_threshold: None,

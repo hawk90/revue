@@ -4,6 +4,7 @@ use crate::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::{EDITOR_BG, SECONDARY_TEXT, SEPARATOR_COLOR};
 use crate::widget::traits::{
     EventResult, Interactive, RenderContext, View, WidgetProps, WidgetState,
 };
@@ -175,10 +176,10 @@ impl Button {
     /// Get base colors for the variant (without state effects)
     fn get_variant_base_colors(&self) -> (Color, Color) {
         match self.variant {
-            ButtonVariant::Default => (Color::WHITE, Color::rgb(60, 60, 60)),
+            ButtonVariant::Default => (Color::WHITE, SEPARATOR_COLOR),
             ButtonVariant::Primary => (Color::WHITE, Color::rgb(37, 99, 235)),
             ButtonVariant::Danger => (Color::WHITE, Color::rgb(220, 38, 38)),
-            ButtonVariant::Ghost => (Color::rgb(200, 200, 200), Color::rgb(30, 30, 30)),
+            ButtonVariant::Ghost => (SECONDARY_TEXT, EDITOR_BG),
             ButtonVariant::Success => (Color::WHITE, Color::rgb(22, 163, 74)),
         }
     }

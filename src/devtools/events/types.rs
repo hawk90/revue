@@ -1,6 +1,7 @@
 //! Event types
 
 use crate::style::Color;
+use crate::widget::theme::MUTED_TEXT;
 use std::time::{Duration, Instant};
 
 /// Event type for logging
@@ -62,7 +63,7 @@ impl EventType {
         match self {
             Self::KeyPress | Self::KeyRelease => Color::rgb(130, 180, 255),
             Self::MouseClick => Color::rgb(255, 180, 130),
-            Self::MouseMove => Color::rgb(180, 180, 180),
+            Self::MouseMove => MUTED_TEXT,
             Self::MouseScroll => Color::rgb(180, 255, 180),
             Self::FocusIn | Self::FocusOut => Color::rgb(255, 220, 130),
             Self::Resize => Color::rgb(200, 130, 255),

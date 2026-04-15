@@ -87,6 +87,7 @@ use super::types::{CursorStyle, TermCell, TermLine, TerminalAction};
 use crate::event::{Key, KeyEvent};
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::{DARK_BG, EDITOR_BG, MUTED_TEXT, SECONDARY_TEXT, SEPARATOR_COLOR};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -457,15 +458,15 @@ impl Terminal {
     /// Create a shell-style terminal
     pub fn shell(width: u16, height: u16) -> Self {
         Self::new(width, height)
-            .default_fg(Color::rgb(200, 200, 200))
-            .default_bg(Color::rgb(30, 30, 30))
+            .default_fg(SECONDARY_TEXT)
+            .default_bg(EDITOR_BG)
             .cursor_style(CursorStyle::Block)
     }
 
     /// Create a log viewer terminal
     pub fn log_viewer(width: u16, height: u16) -> Self {
         Self::new(width, height)
-            .default_fg(Color::rgb(180, 180, 180))
+            .default_fg(MUTED_TEXT)
             .default_bg(Color::rgb(20, 20, 20))
             .show_cursor(false)
             .max_scrollback(50000)
@@ -549,7 +550,7 @@ impl View for Terminal {
 
             // Clear input line
             for x in 0..area.width {
-                ctx.set(x, input_y, Cell::new(' ').bg(Color::rgb(40, 40, 40)));
+                ctx.set(x, input_y, Cell::new(' ').bg(DARK_BG));
             }
 
             // Render prompt
@@ -562,7 +563,7 @@ impl View for Terminal {
                 ctx.set(
                     px,
                     input_y,
-                    Cell::new(ch).fg(Color::CYAN).bg(Color::rgb(40, 40, 40)),
+                    Cell::new(ch).fg(Color::CYAN).bg(DARK_BG),
                 );
                 px += cw;
             }
@@ -577,7 +578,7 @@ impl View for Terminal {
                 ctx.set(
                     ix,
                     input_y,
-                    Cell::new(ch).fg(Color::WHITE).bg(Color::rgb(40, 40, 40)),
+                    Cell::new(ch).fg(Color::WHITE).bg(DARK_BG),
                 );
                 ix += cw;
             }
@@ -593,7 +594,7 @@ impl View for Terminal {
                     ctx.set(
                         start_x + i as u16,
                         0,
-                        Cell::new(ch).fg(Color::YELLOW).bg(Color::rgb(60, 60, 60)),
+                        Cell::new(ch).fg(Color::YELLOW).bg(SEPARATOR_COLOR),
                     );
                 }
             }

@@ -5,7 +5,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY, SEPARATOR_COLOR};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -474,7 +474,7 @@ impl Presentation {
                 cell.fg = Some(if i < filled {
                     self.accent
                 } else {
-                    Color::rgb(60, 60, 60)
+                    SEPARATOR_COLOR
                 });
                 ctx.set(1 + i, footer_y, cell);
             }

@@ -1,6 +1,7 @@
 use super::types::*;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::widget::theme::DARK_BG;
 use crate::widget::traits::{RenderContext, WidgetProps};
 use std::ops::Range;
 
@@ -64,7 +65,7 @@ impl<T: ToString + Clone> VirtualList<T> {
             item_fg: Color::WHITE,
             show_scrollbar: true,
             scrollbar_fg: Color::WHITE,
-            scrollbar_bg: Color::rgb(40, 40, 40),
+            scrollbar_bg: DARK_BG,
             renderer: None,
             overscan: 2,
             wrap_navigation: false,

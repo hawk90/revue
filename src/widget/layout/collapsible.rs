@@ -23,7 +23,7 @@ use crate::event::Key;
 use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::widget::theme::{DARK_GRAY, DISABLED_FG};
+use crate::widget::theme::{DARK_GRAY, DISABLED_FG, SECONDARY_TEXT};
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -79,7 +79,7 @@ impl Collapsible {
             expanded_icon: '▼',
             header_fg: Color::WHITE,
             header_bg: None,
-            content_fg: Color::rgb(200, 200, 200),
+            content_fg: SECONDARY_TEXT,
             content_bg: None,
             show_border: true,
             border_color: DARK_GRAY,

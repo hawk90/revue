@@ -5,7 +5,7 @@ use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::border::render_border;
-use crate::widget::theme::LIGHT_GRAY;
+use crate::widget::theme::{LIGHT_GRAY, SEPARATOR_COLOR};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for ColorPicker {
@@ -138,7 +138,7 @@ impl ColorPicker {
                 cell.fg = Some(if j < filled {
                     *color
                 } else {
-                    Color::rgb(60, 60, 60)
+                    SEPARATOR_COLOR
                 });
                 ctx.set(ox + 2 + j as u16, oy + y, cell);
             }
@@ -189,7 +189,7 @@ impl ColorPicker {
             cell.fg = Some(if i < input_len {
                 Color::CYAN
             } else {
-                Color::rgb(60, 60, 60)
+                SEPARATOR_COLOR
             });
             ctx.set(input_x + i as u16, oy, cell);
         }

@@ -4,7 +4,7 @@ use super::types::Menu;
 use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::widget::theme::LIGHT_GRAY;
+use crate::widget::theme::{DARK_BG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps, DISABLED_FG};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -43,7 +43,7 @@ impl MenuBar {
             selected_menu: 0,
             selected_item: None,
             open: false,
-            bg: Color::rgb(40, 40, 40),
+            bg: DARK_BG,
             fg: Color::WHITE,
             selected_bg: Color::rgb(60, 100, 180),
             selected_fg: Color::WHITE,

@@ -5,6 +5,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::widget::theme::{DARK_BG, SECONDARY_TEXT};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -151,11 +152,11 @@ impl StatusBar {
             center: Vec::new(),
             right: Vec::new(),
             position: StatusBarPosition::Bottom,
-            bg: Color::rgb(40, 40, 40),
+            bg: DARK_BG,
             fg: Color::WHITE,
             key_hints: Vec::new(),
             key_fg: Color::BLACK,
-            key_bg: Color::rgb(200, 200, 200),
+            key_bg: SECONDARY_TEXT,
             separator: None,
             height: 1,
             props: WidgetProps::new(),

@@ -25,6 +25,7 @@
 
 use super::properties::Color;
 use crate::utils::lock::{read_or_recover, write_or_recover};
+use crate::widget::theme::{EDITOR_BG, SECONDARY_TEXT};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -135,7 +136,7 @@ impl ThemeColors {
     pub fn dark() -> Self {
         Self {
             background: Color::rgb(18, 18, 18),
-            surface: Color::rgb(30, 30, 30),
+            surface: EDITOR_BG,
             text: Color::rgb(255, 255, 255),
             text_muted: Color::rgb(158, 158, 158),
             border: Color::rgb(66, 66, 66),
@@ -167,7 +168,7 @@ impl ThemeColors {
             background: Color::BLACK,
             surface: Color::BLACK,
             text: Color::WHITE,
-            text_muted: Color::rgb(200, 200, 200),
+            text_muted: SECONDARY_TEXT,
             border: Color::WHITE,
             divider: Color::WHITE,
             selection: Color::YELLOW,

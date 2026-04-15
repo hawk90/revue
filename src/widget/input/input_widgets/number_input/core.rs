@@ -10,7 +10,7 @@
 use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
-use crate::widget::theme::{DARK_GRAY, LIGHT_GRAY};
+use crate::widget::theme::{DARK_GRAY, LIGHT_GRAY, SEPARATOR_COLOR};
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_view_meta, impl_widget_builders};
 /// A number input widget with increment/decrement controls
@@ -482,7 +482,7 @@ impl View for NumberInput {
 
         let (fg, bg) =
             self.state
-                .resolve_colors_interactive(ctx.style, Color::WHITE, Color::rgb(60, 60, 60));
+                .resolve_colors_interactive(ctx.style, Color::WHITE, SEPARATOR_COLOR);
 
         let mut x: u16 = 0;
 

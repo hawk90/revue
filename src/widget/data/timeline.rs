@@ -5,7 +5,7 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::{char_width, display_width, truncate_to_width};
-use crate::widget::theme::{DARK_GRAY, LIGHT_GRAY};
+use crate::widget::theme::{DARK_GRAY, LIGHT_GRAY, MUTED_TEXT};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -199,7 +199,7 @@ impl Timeline {
             line_color: DARK_GRAY,
             timestamp_color: LIGHT_GRAY,
             title_color: Color::WHITE,
-            desc_color: Color::rgb(180, 180, 180),
+            desc_color: MUTED_TEXT,
             props: WidgetProps::new(),
         }
     }

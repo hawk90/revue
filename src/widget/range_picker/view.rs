@@ -6,7 +6,7 @@ use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::unicode::char_width;
 use crate::widget::data::calendar::{days_in_month, Date};
-use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY};
+use crate::widget::theme::{DISABLED_FG, LIGHT_GRAY, SECONDARY_TEXT};
 use crate::widget::traits::{RenderContext, View};
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -68,7 +68,7 @@ impl View for RangePicker {
             x,
             summary_y,
             &range_str,
-            Color::rgb(200, 200, 200),
+            SECONDARY_TEXT,
             false,
         );
 
