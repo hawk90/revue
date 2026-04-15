@@ -20,13 +20,7 @@ impl Interactive for MultiSelect {
         }
     }
 
-    fn focusable(&self) -> bool {
-        !self.state.disabled
-    }
-
-    fn on_focus(&mut self) {
-        self.state.focused = true;
-    }
+    crate::impl_focus_handlers!(state, no_blur);
 
     fn on_blur(&mut self) {
         self.state.focused = false;
