@@ -5,7 +5,7 @@ use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::theme::{LIGHT_GRAY, SUBTLE_GRAY};
 use crate::widget::traits::{
-    EventResult, Interactive, RenderContext, View, WidgetProps, WidgetState,
+    EventResult, Interactive, RenderContext, ToggleWidget, View, WidgetProps, WidgetState,
 };
 use crate::{impl_styled_view, impl_widget_builders};
 
@@ -98,13 +98,6 @@ impl Checkbox {
         self.checked = checked;
     }
 
-    /// Toggle checked state
-    pub fn toggle(&mut self) {
-        if !self.state.disabled {
-            self.checked = !self.checked;
-        }
-    }
-
     /// Handle key input, returns true if state changed
     pub fn handle_key(&mut self, key: &Key) -> bool {
         if self.state.disabled {
@@ -112,11 +105,29 @@ impl Checkbox {
         }
 
         if matches!(key, Key::Enter | Key::Char(' ')) {
-            self.toggle();
+            ToggleWidget::toggle(self);
             true
         } else {
             false
         }
+    }
+}
+
+impl ToggleWidget for Checkbox {
+    fn is_on(&self) -> bool {
+        self.checked
+    }
+    fn set_on(&mut self, on: bool) {
+        self.checked = on;
+    }
+    fn is_toggle_disabled(&self) -> bool {
+        self.state.disabled
+    }
+    fn is_toggle_focused(&self) -> bool {
+        self.state.focused
+    }
+    fn set_toggle_focused(&mut self, focused: bool) {
+        self.state.focused = focused;
     }
 }
 
@@ -224,20 +235,20 @@ impl View for Checkbox {
 
 impl Interactive for Checkbox {
     fn handle_key(&mut self, event: &KeyEvent) -> EventResult {
-        if self.state.disabled {
-            return EventResult::Ignored;
-        }
-
-        match event.key {
-            Key::Enter | Key::Char(' ') => {
-                self.checked = !self.checked;
-                EventResult::ConsumedAndRender
-            }
-            _ => EventResult::Ignored,
-        }
+        self.handle_toggle_key(event)
     }
 
-    crate::impl_focus_handlers!(state);
+    fn focusable(&self) -> bool {
+        self.toggle_focusable()
+    }
+
+    fn on_focus(&mut self) {
+        self.set_toggle_focused(true);
+    }
+
+    fn on_blur(&mut self) {
+        self.set_toggle_focused(false);
+    }
 }
 
 /// Create a checkbox

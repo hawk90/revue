@@ -5,7 +5,7 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::{RenderContext, StyledView};
-use revue::widget::{switch, toggle, Switch, SwitchStyle, View};
+use revue::widget::{switch, toggle, Switch, SwitchStyle, ToggleWidget, View};
 
 // ==================== Constructor Tests ====================
 

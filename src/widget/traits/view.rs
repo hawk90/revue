@@ -376,6 +376,62 @@ pub trait Interactive: View {
     fn on_blur(&mut self) {}
 }
 
+/// Trait for boolean toggle widgets (checkbox, switch, etc.)
+///
+/// Provides default implementations for toggling, key handling, and focus
+/// management. Implementors supply accessors for their `on`/`checked` and
+/// `disabled`/`focused` fields; the trait supplies the shared behavior.
+///
+/// # Example
+///
+/// ```ignore
+/// impl ToggleWidget for MyToggle {
+///     fn is_on(&self) -> bool { self.checked }
+///     fn set_on(&mut self, on: bool) { self.checked = on; }
+///     fn is_toggle_disabled(&self) -> bool { self.disabled }
+///     fn is_toggle_focused(&self) -> bool { self.focused }
+///     fn set_toggle_focused(&mut self, focused: bool) { self.focused = focused; }
+/// }
+/// ```
+pub trait ToggleWidget {
+    /// Whether the toggle is currently on/checked
+    fn is_on(&self) -> bool;
+    /// Set the on/checked state directly
+    fn set_on(&mut self, on: bool);
+    /// Whether the widget is disabled (cannot be toggled)
+    fn is_toggle_disabled(&self) -> bool;
+    /// Whether the widget currently has focus
+    fn is_toggle_focused(&self) -> bool;
+    /// Set focus state
+    fn set_toggle_focused(&mut self, focused: bool);
+
+    /// Flip the toggle if not disabled
+    fn toggle(&mut self) {
+        if !self.is_toggle_disabled() {
+            self.set_on(!self.is_on());
+        }
+    }
+
+    /// Handle Enter/Space key to toggle. Returns `EventResult`.
+    fn handle_toggle_key(&mut self, event: &KeyEvent) -> EventResult {
+        if self.is_toggle_disabled() {
+            return EventResult::Ignored;
+        }
+        match event.key {
+            crate::event::Key::Enter | crate::event::Key::Char(' ') => {
+                self.toggle();
+                EventResult::ConsumedAndRender
+            }
+            _ => EventResult::Ignored,
+        }
+    }
+
+    /// Whether this toggle can receive focus (true unless disabled)
+    fn toggle_focusable(&self) -> bool {
+        !self.is_toggle_disabled()
+    }
+}
+
 /// Trait for widgets that support drag-and-drop
 ///
 /// This trait enables widgets to participate in drag-and-drop operations.
