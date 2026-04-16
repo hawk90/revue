@@ -11,7 +11,7 @@
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::traits::{RenderContext, View};
-use revue::widget::{Badge, Button, Checkbox, Divider, RadioGroup, Switch};
+use revue::widget::{Badge, Button, Checkbox, Divider, RadioGroup, Switch, ToggleWidget};
 
 /// Test Button edge cases
 mod button_edge_cases {

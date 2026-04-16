@@ -2,12 +2,14 @@
 //!
 //! A toggle switch for boolean values with customizable styles.
 
-use crate::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+use crate::event::{KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::widget::theme::{DISABLED_FG, SEPARATOR_COLOR};
-use crate::widget::traits::{EventResult, Interactive, RenderContext, View, WidgetProps};
+use crate::widget::traits::{
+    EventResult, Interactive, RenderContext, ToggleWidget, View, WidgetProps,
+};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Switch style
@@ -149,23 +151,11 @@ impl Switch {
         self
     }
 
-    /// Toggle state
-    pub fn toggle(&mut self) {
-        if !self.disabled {
-            self.on = !self.on;
-        }
-    }
-
     /// Set state (respects disabled state)
     pub fn set(&mut self, on: bool) {
         if !self.disabled {
             self.on = on;
         }
-    }
-
-    /// Get current state
-    pub fn is_on(&self) -> bool {
-        self.on
     }
 
     /// Get current state (alias for `is_on()` to match Checkbox API)
@@ -183,7 +173,7 @@ impl Switch {
 
         match key {
             Key::Enter | Key::Char(' ') => {
-                self.toggle();
+                ToggleWidget::toggle(self);
                 true
             }
             _ => false,
@@ -360,6 +350,24 @@ impl Switch {
     }
 }
 
+impl ToggleWidget for Switch {
+    fn is_on(&self) -> bool {
+        self.on
+    }
+    fn set_on(&mut self, on: bool) {
+        self.on = on;
+    }
+    fn is_toggle_disabled(&self) -> bool {
+        self.disabled
+    }
+    fn is_toggle_focused(&self) -> bool {
+        self.focused
+    }
+    fn set_toggle_focused(&mut self, focused: bool) {
+        self.focused = focused;
+    }
+}
+
 impl Default for Switch {
     fn default() -> Self {
         Self::new()
@@ -489,17 +497,7 @@ impl View for Switch {
 
 impl Interactive for Switch {
     fn handle_key(&mut self, event: &KeyEvent) -> EventResult {
-        if self.disabled {
-            return EventResult::Ignored;
-        }
-
-        match event.key {
-            Key::Enter | Key::Char(' ') => {
-                self.toggle();
-                EventResult::ConsumedAndRender
-            }
-            _ => EventResult::Ignored,
-        }
+        self.handle_toggle_key(event)
     }
 
     fn handle_mouse(&mut self, event: &MouseEvent, _area: Rect) -> EventResult {
@@ -509,14 +507,24 @@ impl Interactive for Switch {
 
         match event.kind {
             MouseEventKind::Down(MouseButton::Left) => {
-                self.toggle();
+                ToggleWidget::toggle(self);
                 EventResult::ConsumedAndRender
             }
             _ => EventResult::Ignored,
         }
     }
 
-    crate::impl_focus_handlers!(direct);
+    fn focusable(&self) -> bool {
+        self.toggle_focusable()
+    }
+
+    fn on_focus(&mut self) {
+        self.set_toggle_focused(true);
+    }
+
+    fn on_blur(&mut self) {
+        self.set_toggle_focused(false);
+    }
 }
 
 /// Helper to create a switch
