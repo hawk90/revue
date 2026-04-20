@@ -185,7 +185,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
         })
         .collect();
 
-    render_options(&mut entry, &dropdown_options, width, &colors);
+    render_options(&mut entry, &dropdown_options, width, &colors, 1);
 
     // Draw scroll indicators
     let total_filtered = combobox.filtered.len();
