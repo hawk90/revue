@@ -104,7 +104,7 @@ pub use event::{EventResult, FocusStyle};
 pub use render_context::{OverlayEntry, OverlayQueue, ProgressBarConfig, RenderContext};
 pub use symbols::Symbols;
 pub use timeout::Timeout;
-pub use view::{Draggable, Interactive, StyledView, View};
+pub use view::{Draggable, Interactive, StyledView, ToggleWidget, View};
 pub use widget_state::{WidgetProps, WidgetState, DISABLED_BG, DISABLED_FG};
 
 // =============================================================================
