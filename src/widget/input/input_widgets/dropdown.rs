@@ -2,11 +2,40 @@
 //!
 //! Extracts common overlay positioning, option rendering, and overlay queuing
 //! logic to eliminate duplication between dropdown-style widgets.
+//!
+//! ## Dropdown row layout
+//!
+//! ```text
+//! col:  0            1      2 ................. width-1
+//!       [indicator]  [gap]  [label text]        [scroll?]
+//! ```
 
 use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::theme::MAX_DROPDOWN_VISIBLE;
 use crate::widget::traits::{OverlayEntry, RenderContext};
+
+// ── Layout constants ─────────────────────────────────────────────────
+
+/// Column where the indicator character (›, ☑, ☐) is placed.
+pub const INDICATOR_COL: u16 = 0;
+
+/// Column where label / status text begins (indicator + gap).
+pub const LABEL_COL: u16 = 2;
+
+/// Minimum width required for dropdown-style widgets.
+pub const MIN_DROPDOWN_WIDTH: u16 = 3;
+
+/// Calculate available character width for label text.
+///
+/// `reserve_right` — extra columns kept free on the right (e.g. 1 for
+/// scroll indicators in Combobox, 0 for Select).
+#[inline]
+pub fn label_width(total_width: u16, reserve_right: u16) -> usize {
+    total_width.saturating_sub(LABEL_COL + reserve_right) as usize
+}
+
+// ── Overlay positioning ──────────────────────────────────────────────
 
 /// Calculated overlay position and dimensions for a dropdown
 pub struct DropdownLayout {
@@ -45,6 +74,8 @@ pub fn dropdown_height(item_count: usize, max_visible: Option<usize>) -> u16 {
     (item_count.min(cap) as u16).max(1)
 }
 
+// ── Data types ───────────────────────────────────────────────────────
+
 /// A single option to be rendered in the dropdown.
 pub struct DropdownOption<'a> {
     /// Display text for this option
@@ -75,9 +106,11 @@ pub struct DropdownColors {
     pub disabled_fg: Option<Color>,
 }
 
+// ── Rendering ────────────────────────────────────────────────────────
+
 /// Render a status row (loading / empty) into the overlay entry.
 ///
-/// Text starts at column 2 (after indicator column + gap), matching option layout.
+/// Text starts at [`LABEL_COL`], aligned with option labels.
 pub fn render_status_row(
     entry: &mut OverlayEntry,
     text: &str,
@@ -86,7 +119,7 @@ pub fn render_status_row(
     bg: Option<Color>,
     text_fg: Option<Color>,
 ) {
-    let text_width = width.saturating_sub(3) as usize;
+    let text_width = label_width(width, 0);
     // Background
     for x in 0..width {
         let mut cell = Cell::new(' ');
@@ -94,9 +127,9 @@ pub fn render_status_row(
         cell.bg = bg;
         entry.push(x, 0, cell);
     }
-    // Text (starts at column 2 to align with option labels)
+    // Text
     let truncated = crate::utils::truncate_to_width(text, text_width);
-    let mut cx: u16 = 2;
+    let mut cx = LABEL_COL;
     for ch in truncated.chars() {
         let mut cell = Cell::new(ch);
         cell.fg = text_fg;
@@ -108,9 +141,8 @@ pub fn render_status_row(
 
 /// Render a list of options into an overlay entry.
 ///
-/// Each option gets: background fill, indicator character, label with
-/// fuzzy-match highlighting. Set `reserve_right` to 1 when the caller
-/// draws scroll indicators in the rightmost column.
+/// Each row: indicator at [`INDICATOR_COL`], label from [`LABEL_COL`],
+/// with `reserve_right` columns kept free for scroll indicators.
 pub fn render_options(
     entry: &mut OverlayEntry,
     options: &[DropdownOption<'_>],
@@ -118,7 +150,7 @@ pub fn render_options(
     colors: &DropdownColors,
     reserve_right: u16,
 ) {
-    let text_width = width.saturating_sub(2 + reserve_right) as usize;
+    let text_width = label_width(width, reserve_right);
 
     for (row, opt) in options.iter().enumerate() {
         let y = row as u16;
@@ -147,11 +179,11 @@ pub fn render_options(
         let mut cell = Cell::new(opt.indicator);
         cell.fg = fg;
         cell.bg = bg;
-        entry.push(0, y, cell);
+        entry.push(INDICATOR_COL, y, cell);
 
         // Label with match highlighting
-        let truncated = crate::utils::truncate_to_width(opt.label, text_width.saturating_sub(1));
-        let mut cx: u16 = 2;
+        let truncated = crate::utils::truncate_to_width(opt.label, text_width);
+        let mut cx = LABEL_COL;
         for (j, ch) in truncated.chars().enumerate() {
             let mut cell = Cell::new(ch);
             cell.bg = bg;
