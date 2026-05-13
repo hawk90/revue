@@ -63,7 +63,7 @@ impl EventDispatcher {
             let type_handlers = handlers.entry(type_id).or_default();
             type_handlers.push(entry);
             // Sort by priority (higher priority first)
-            type_handlers.sort_by(|a, b| b.options.priority.cmp(&a.options.priority));
+            type_handlers.sort_by_key(|b| std::cmp::Reverse(b.options.priority));
         }
 
         id

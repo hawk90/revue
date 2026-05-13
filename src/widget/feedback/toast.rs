@@ -200,11 +200,10 @@ impl Toast {
         // Calculate height based on message wrapping
         let inner_width = width.saturating_sub(border_width + padding + icon_width);
         let msg_cols = crate::utils::unicode::display_width(&self.message) as u16;
-        let lines = if inner_width > 0 {
-            msg_cols.saturating_add(inner_width - 1) / inner_width
-        } else {
-            1
-        };
+        let lines = msg_cols
+            .saturating_add(inner_width.saturating_sub(1))
+            .checked_div(inner_width)
+            .unwrap_or(1);
         let height = lines + if self.show_border { 2 } else { 0 };
 
         (width, height.max(if self.show_border { 3 } else { 1 }))

@@ -336,11 +336,9 @@ impl Modal {
                     trap.deactivate(fm);
                 }
             }
-            crate::event::Key::Enter | crate::event::Key::Char(' ') => {
-                if result.is_some() {
-                    if let Some(mut trap) = self.focus_trap.take() {
-                        trap.deactivate(fm);
-                    }
+            crate::event::Key::Enter | crate::event::Key::Char(' ') if result.is_some() => {
+                if let Some(mut trap) = self.focus_trap.take() {
+                    trap.deactivate(fm);
                 }
             }
             _ => {}

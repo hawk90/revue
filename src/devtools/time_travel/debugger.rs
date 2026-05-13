@@ -531,7 +531,7 @@ impl TimeTravelDebugger {
     }
 
     fn render_actions(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig) {
-        let mut y = area.y;
+        let y_start = area.y;
         let max_y = area.y + area.height;
 
         let actions: Vec<_> = self
@@ -541,11 +541,17 @@ impl TimeTravelDebugger {
             .collect();
 
         if actions.is_empty() {
-            Self::draw_text(buffer, area.x, y, "No actions recorded", config.fg_color);
+            Self::draw_text(
+                buffer,
+                area.x,
+                y_start,
+                "No actions recorded",
+                config.fg_color,
+            );
             return;
         }
 
-        for (id, action) in actions.iter().skip(self.scroll) {
+        for (y, (id, action)) in (y_start..).zip(actions.iter().skip(self.scroll)) {
             if y >= max_y {
                 break;
             }
@@ -558,38 +564,42 @@ impl TimeTravelDebugger {
             };
 
             Self::draw_text(buffer, area.x, y, &line, config.fg_color);
-            y += 1;
         }
     }
 
     fn render_state(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig) {
-        let mut y = area.y;
+        let y_start = area.y;
         let max_y = area.y + area.height;
 
         let snapshot = match self.current() {
             Some(s) => s,
             None => {
-                Self::draw_text(buffer, area.x, y, "No snapshot selected", config.fg_color);
+                Self::draw_text(
+                    buffer,
+                    area.x,
+                    y_start,
+                    "No snapshot selected",
+                    config.fg_color,
+                );
                 return;
             }
         };
 
         if snapshot.state.is_empty() {
-            Self::draw_text(buffer, area.x, y, "Empty state", config.fg_color);
+            Self::draw_text(buffer, area.x, y_start, "Empty state", config.fg_color);
             return;
         }
 
         let mut entries: Vec<_> = snapshot.state.iter().collect();
-        entries.sort_by(|a, b| a.0.cmp(b.0));
+        entries.sort_by_key(|a| a.0);
 
-        for (key, value) in entries.iter().skip(self.scroll) {
+        for (y, (key, value)) in (y_start..).zip(entries.iter().skip(self.scroll)) {
             if y >= max_y {
                 break;
             }
 
             let line = format!("{}: {} ({})", key, value.display(), value.type_name());
             Self::draw_text(buffer, area.x, y, &line, config.fg_color);
-            y += 1;
         }
     }
 

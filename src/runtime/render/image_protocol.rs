@@ -485,7 +485,7 @@ impl<'a> SixelEncoder<'a> {
 
         // Sort by frequency and take top 256
         let mut colors: Vec<_> = color_counts.into_iter().collect();
-        colors.sort_by(|a, b| b.1.cmp(&a.1));
+        colors.sort_by_key(|b| std::cmp::Reverse(b.1));
 
         colors
             .into_iter()

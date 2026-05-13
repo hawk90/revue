@@ -124,14 +124,13 @@ impl View for Spinner {
 
         // Render label if present
         if let Some(ref label) = self.label {
-            let mut x: u16 = 2; // Space after spinner
-            for ch in label.chars() {
+            // Space after spinner
+            for (x, ch) in (2_u16..).zip(label.chars()) {
                 if x >= area.width {
                     break;
                 }
                 let cell = Cell::new(ch);
                 ctx.set(x, 0, cell);
-                x += 1;
             }
         }
     }

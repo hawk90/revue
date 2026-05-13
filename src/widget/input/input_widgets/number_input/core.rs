@@ -394,13 +394,9 @@ impl NumberInput {
             }
 
             // Cancel editing
-            Key::Escape => {
-                if self.editing {
-                    self.cancel_edit();
-                    true
-                } else {
-                    false
-                }
+            Key::Escape if self.editing => {
+                self.cancel_edit();
+                true
             }
 
             // Direct numeric input
@@ -425,41 +421,25 @@ impl NumberInput {
             }
 
             // Backspace in editing mode
-            Key::Backspace => {
-                if self.editing {
-                    self.delete_char_before_cursor();
-                    true
-                } else {
-                    false
-                }
+            Key::Backspace if self.editing => {
+                self.delete_char_before_cursor();
+                true
             }
 
             // Delete in editing mode
-            Key::Delete => {
-                if self.editing {
-                    self.delete_char_at_cursor();
-                    true
-                } else {
-                    false
-                }
+            Key::Delete if self.editing => {
+                self.delete_char_at_cursor();
+                true
             }
 
             // Cursor movement in editing mode
-            Key::Left => {
-                if self.editing && self.cursor > 0 {
-                    self.cursor -= 1;
-                    true
-                } else {
-                    false
-                }
+            Key::Left if self.editing && self.cursor > 0 => {
+                self.cursor -= 1;
+                true
             }
-            Key::Right => {
-                if self.editing && self.cursor < self.buffer_char_count() {
-                    self.cursor += 1;
-                    true
-                } else {
-                    false
-                }
+            Key::Right if self.editing && self.cursor < self.buffer_char_count() => {
+                self.cursor += 1;
+                true
             }
 
             _ => false,
