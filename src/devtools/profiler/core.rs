@@ -133,14 +133,14 @@ impl Profiler {
     /// Get stats sorted by total time
     pub fn stats_by_time(&self) -> Vec<&ComponentStats> {
         let mut stats: Vec<_> = self.stats.values().collect();
-        stats.sort_by(|a, b| b.total_time.cmp(&a.total_time));
+        stats.sort_by_key(|b| std::cmp::Reverse(b.total_time));
         stats
     }
 
     /// Get stats sorted by render count
     pub fn stats_by_count(&self) -> Vec<&ComponentStats> {
         let mut stats: Vec<_> = self.stats.values().collect();
-        stats.sort_by(|a, b| b.render_count.cmp(&a.render_count));
+        stats.sort_by_key(|b| std::cmp::Reverse(b.render_count));
         stats
     }
 

@@ -177,7 +177,7 @@ impl CursorSet {
     /// Sort cursors by position and merge overlapping ones
     fn normalize(&mut self) {
         // Sort by position (line, then column)
-        self.cursors.sort_by(|a, b| a.pos.cmp(&b.pos));
+        self.cursors.sort_by_key(|a| a.pos);
 
         // Remove duplicates (cursors at same position)
         self.cursors.dedup_by(|a, b| a.pos == b.pos);

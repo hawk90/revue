@@ -149,7 +149,7 @@ pub fn fuzzy_filter<'a, T: AsRef<str>>(pattern: &str, items: &'a [T]) -> Vec<(&'
         .filter_map(|item| fuzzy_match(pattern, item.as_ref()).map(|m| (item, m)))
         .collect();
 
-    matches.sort_by(|a, b| b.1.score.cmp(&a.1.score));
+    matches.sort_by_key(|b| std::cmp::Reverse(b.1.score));
     matches
 }
 
@@ -257,7 +257,7 @@ impl FuzzyMatcher {
             .filter_map(|item| self.match_str(item.as_ref()).map(|m| (item, m)))
             .collect();
 
-        matches.sort_by(|a, b| b.1.score.cmp(&a.1.score));
+        matches.sort_by_key(|b| std::cmp::Reverse(b.1.score));
         matches
     }
 }

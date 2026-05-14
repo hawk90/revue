@@ -8,19 +8,33 @@ use crate::widget::traits::{RenderContext, View};
 
 use super::super::dropdown::{
     calculate_dropdown_layout, dropdown_height, queue_or_inline_overlay, render_options,
-    render_status_row, DropdownColors, DropdownOption,
+    render_status_row, DropdownColors, DropdownOption, MIN_DROPDOWN_WIDTH,
 };
 use super::Select;
+
+// ── Select header layout ─────────────────────────────────────────────
+//
+//  col:  0       1      2 ................... width-1
+//        [icon]  [gap]  [display text]
+
+/// Column where the dropdown/search icon sits.
+const ICON_COL: u16 = 0;
+
+/// Column where header display text starts.
+const HEADER_TEXT_COL: u16 = 2;
+
+/// Columns reserved for icon + gap in header width calculation.
+const HEADER_RESERVE: u16 = 2;
 
 impl View for Select {
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        if area.width < 3 || area.height < 1 {
+        if area.width < MIN_DROPDOWN_WIDTH || area.height < 1 {
             return;
         }
 
         let width = self.display_width(area.width);
-        let text_width = (width - 2) as usize;
+        let text_width = (width - HEADER_RESERVE) as usize;
 
         // Determine colors based on state
         let fg = if self.disabled {
@@ -57,11 +71,11 @@ impl View for Select {
         let mut cell = Cell::new(icon);
         cell.fg = fg;
         cell.bg = bg;
-        ctx.set(0, 0, cell);
+        ctx.set(ICON_COL, 0, cell);
 
         // Draw text
         let truncated = truncate_to_width(display_text, text_width);
-        let mut cx: u16 = 2;
+        let mut cx = HEADER_TEXT_COL;
         for ch in truncated.chars() {
             let mut cell = Cell::new(ch);
             cell.fg = fg;
@@ -138,7 +152,7 @@ impl View for Select {
             })
             .collect();
 
-        render_options(&mut entry, &dropdown_options, width, &colors);
+        render_options(&mut entry, &dropdown_options, width, &colors, 0);
         queue_or_inline_overlay(ctx, entry);
     }
 

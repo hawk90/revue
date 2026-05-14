@@ -102,8 +102,8 @@ impl<'a> CalendarRender<'a> {
             return self.get_week_number(year - 1, 12, 31);
         }
 
-        let days_in_year = if super::is_leap_year(year) { 366 } else { 365 };
-        if thursday_day_of_year > days_in_year as i32 {
+        let days_in_year: i32 = if super::is_leap_year(year) { 366 } else { 365 };
+        if thursday_day_of_year > days_in_year {
             // This day belongs to week 1 of the next year
             return 1;
         }

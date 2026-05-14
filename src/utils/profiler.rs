@@ -321,7 +321,7 @@ impl Profiler {
 
         // Sort by total time descending
         let mut entries: Vec<_> = stats.into_iter().collect();
-        entries.sort_by(|a, b| b.1.total.cmp(&a.1.total));
+        entries.sort_by_key(|b| std::cmp::Reverse(b.1.total));
 
         output.push_str(&format!(
             "{:<30} {:>8} {:>10} {:>10} {:>10} {:>10}\n",

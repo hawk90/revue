@@ -59,7 +59,7 @@ impl Combobox {
         }
 
         // Sort by score descending
-        matches.sort_by(|a, b| b.1.cmp(&a.1));
+        matches.sort_by_key(|b| std::cmp::Reverse(b.1));
 
         self.filtered = matches.into_iter().map(|(i, _)| i).collect();
         self.selected_idx = 0;

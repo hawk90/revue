@@ -98,13 +98,11 @@ impl RichTextEditor {
                     for col in 0..width {
                         ctx.set(x + col, row_y, Cell::new(' ').bg(self.code_bg));
                     }
-                    let mut col = x + 1;
-                    for ch in block.text().chars() {
+                    for (col, ch) in (x + 1..).zip(block.text().chars()) {
                         if col >= x + width - 1 {
                             break;
                         }
                         ctx.set(col, row_y, Cell::new(ch).fg(fg).bg(self.code_bg));
-                        col += 1;
                     }
                 }
                 BlockType::HorizontalRule => {
@@ -117,13 +115,11 @@ impl RichTextEditor {
                     }
                 }
                 _ => {
-                    let mut col = x;
-                    for ch in block.text().chars() {
+                    for (col, ch) in (x..).zip(block.text().chars()) {
                         if col >= x + width {
                             break;
                         }
                         ctx.set(col, row_y, Cell::new(ch).fg(fg).bg(self.preview_bg));
-                        col += 1;
                     }
                 }
             }
@@ -146,15 +142,13 @@ impl RichTextEditor {
             Modifier::BOLD
         };
 
-        let mut col = x;
-        for ch in text.chars() {
+        for (col, ch) in (x..).zip(text.chars()) {
             if col >= x + width {
                 break;
             }
             let mut cell = Cell::new(ch).fg(self.heading_fg).bg(self.preview_bg);
             cell.modifier = modifier;
             ctx.set(col, y, cell);
-            col += 1;
         }
     }
 }

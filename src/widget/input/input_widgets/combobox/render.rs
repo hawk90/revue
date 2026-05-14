@@ -2,19 +2,34 @@
 
 use super::super::dropdown::{
     calculate_dropdown_layout, queue_or_inline_overlay, render_options, render_status_row,
-    DropdownColors, DropdownOption,
+    DropdownColors, DropdownOption, MIN_DROPDOWN_WIDTH,
 };
 use super::super::Combobox;
+
+// ── Combobox header layout ───────────────────────────────────────────
+//
+//  col:  0     1 ................. width-2     width-1
+//        [pad]  [input text]       [arrow ▼]   [pad]
+
+/// Column where input text starts in the combobox header.
+const INPUT_TEXT_COL: u16 = 1;
+
+/// Offset from right edge for the dropdown arrow icon.
+/// Arrow sits at `width - ARROW_RIGHT_OFFSET`.
+const ARROW_RIGHT_OFFSET: u16 = 2;
+
+/// Columns reserved on the right for scroll indicators in the dropdown overlay.
+const SCROLL_RESERVE: u16 = 1;
 
 /// Render the combobox widget
 pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::RenderContext) {
     let area = ctx.area;
-    if area.width < 3 || area.height < 1 {
+    if area.width < MIN_DROPDOWN_WIDTH || area.height < 1 {
         return;
     }
 
     let width = combobox.display_width(area.width);
-    let text_width = (width - 2) as usize;
+    let text_width = (width - ARROW_RIGHT_OFFSET) as usize;
 
     // ─────────────────────────────────────────────────────────────────────
     // Render input field
@@ -37,7 +52,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
     let mut cell = crate::render::Cell::new(icon);
     cell.fg = input_fg;
     cell.bg = input_bg;
-    ctx.set(width - 2, 0, cell);
+    ctx.set(width - ARROW_RIGHT_OFFSET, 0, cell);
 
     // Draw text or placeholder
     let display_text = if combobox.input.is_empty() {
@@ -49,7 +64,7 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
     let is_placeholder = combobox.input.is_empty();
     let truncated = crate::utils::truncate_to_width(display_text, text_width);
 
-    let mut cx: u16 = 1;
+    let mut cx = INPUT_TEXT_COL;
     for ch in truncated.chars() {
         let mut cell = crate::render::Cell::new(ch);
         cell.fg = if is_placeholder {
@@ -70,8 +85,8 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
             .take(combobox.cursor)
             .map(crate::utils::char_width)
             .sum();
-        let cursor_x = 1 + cursor_display_width as u16;
-        if cursor_x < width - 2 {
+        let cursor_x = INPUT_TEXT_COL + cursor_display_width as u16;
+        if cursor_x < width - ARROW_RIGHT_OFFSET {
             if let Some(cell) = ctx.get_mut(cursor_x, 0) {
                 cell.bg = Some(crate::style::Color::WHITE);
                 cell.fg = Some(crate::style::Color::BLACK);
@@ -185,22 +200,29 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
         })
         .collect();
 
-    render_options(&mut entry, &dropdown_options, width, &colors);
+    render_options(
+        &mut entry,
+        &dropdown_options,
+        width,
+        &colors,
+        SCROLL_RESERVE,
+    );
 
     // Draw scroll indicators
     let total_filtered = combobox.filtered.len();
+    let scroll_col = width - SCROLL_RESERVE;
     if total_filtered > visible_count {
         if combobox.scroll_offset > 0 {
             let mut cell = crate::render::Cell::new('↑');
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;
-            entry.push(width - 1, 0, cell);
+            entry.push(scroll_col, 0, cell);
         }
         if combobox.scroll_offset + visible_count < total_filtered {
             let mut cell = crate::render::Cell::new('↓');
             cell.fg = combobox.disabled_fg;
             cell.bg = combobox.bg;
-            entry.push(width - 1, dropdown_h.saturating_sub(1), cell);
+            entry.push(scroll_col, dropdown_h.saturating_sub(1), cell);
         }
     }
 

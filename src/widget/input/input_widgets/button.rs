@@ -135,19 +135,15 @@ impl Button {
         let mut was_clicked = false;
 
         match event.kind {
-            MouseEventKind::Down(MouseButton::Left) if inside => {
-                if !self.state.pressed {
-                    self.state.pressed = true;
-                    needs_render = true;
-                }
+            MouseEventKind::Down(MouseButton::Left) if inside && !self.state.pressed => {
+                self.state.pressed = true;
+                needs_render = true;
             }
-            MouseEventKind::Up(MouseButton::Left) => {
-                if self.state.pressed {
-                    self.state.pressed = false;
-                    needs_render = true;
-                    if inside {
-                        was_clicked = true;
-                    }
+            MouseEventKind::Up(MouseButton::Left) if self.state.pressed => {
+                self.state.pressed = false;
+                needs_render = true;
+                if inside {
+                    was_clicked = true;
                 }
             }
             MouseEventKind::Move => {

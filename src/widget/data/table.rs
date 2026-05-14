@@ -252,8 +252,7 @@ impl Table {
             .saturating_sub(border_space)
             .saturating_sub(scrollbar_width);
 
-        if auto_count > 0 {
-            let auto_width = remaining / auto_count;
+        if let Some(auto_width) = remaining.checked_div(auto_count) {
             for w in &mut widths {
                 if *w == 0 {
                     *w = auto_width.max(1);
