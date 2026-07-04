@@ -27,7 +27,7 @@ pub use cursor::{Cursor, CursorPos, CursorSet};
 pub use find_replace::{FindMatch, FindOptions, FindReplaceMode, FindReplaceState};
 pub use selection::Selection;
 
-use crate::event::Key;
+use crate::event::{Key, KeyEvent};
 use crate::style::Color;
 use crate::widget::syntax::{Language, SyntaxHighlighter, SyntaxTheme};
 use crate::widget::traits::WidgetProps;
@@ -339,6 +339,87 @@ impl TextArea {
             }
             _ => false,
         }
+    }
+
+    /// Handle a key event, including modifier combinations.
+    ///
+    /// This is the modifier-aware entry point. It wires the find/replace and
+    /// multi-cursor shortcuts (whose logic already exists), then delegates
+    /// unmodified keys to [`handle_key`](Self::handle_key).
+    ///
+    /// Bindings:
+    /// - `Ctrl+F` — open the find panel
+    /// - `Ctrl+H` — open the find/replace panel
+    /// - `Ctrl+D` — select the next occurrence of the word/selection
+    /// - `F3` / `Shift+F3` — jump to the next / previous match
+    /// - `Ctrl+Alt+Up` / `Ctrl+Alt+Down` — add a cursor above / below
+    /// - `Esc` — close the find panel, or collapse to a single cursor
+    ///
+    /// Returns `true` if the event was handled (a redraw may be needed).
+    pub fn handle_key_event(&mut self, event: &KeyEvent) -> bool {
+        if !self.focused {
+            return false;
+        }
+
+        // Ctrl+Alt cursor stacking (multi-cursor).
+        if event.ctrl && event.alt {
+            match event.key {
+                Key::Up => {
+                    self.add_cursor_above();
+                    return true;
+                }
+                Key::Down => {
+                    self.add_cursor_below();
+                    return true;
+                }
+                _ => {}
+            }
+        }
+
+        // Ctrl combinations for find/replace and multi-cursor selection.
+        if event.ctrl && !event.alt {
+            match event.key {
+                Key::Char('f') => {
+                    self.open_find();
+                    return true;
+                }
+                Key::Char('h') => {
+                    self.open_replace();
+                    return true;
+                }
+                Key::Char('d') => {
+                    self.select_next_occurrence();
+                    return true;
+                }
+                _ => {}
+            }
+        }
+
+        // Find navigation (works whether or not the panel is focused).
+        if event.key == Key::F(3) {
+            if event.shift {
+                self.find_previous();
+            } else {
+                self.find_next();
+            }
+            return true;
+        }
+
+        // Escape: close the find panel first, then collapse to a single cursor.
+        if event.key == Key::Escape {
+            if self.is_find_open() {
+                self.close_find();
+                return true;
+            }
+            if !self.cursors.is_single() {
+                self.clear_secondary_cursors();
+                return true;
+            }
+            return false;
+        }
+
+        // Fall back to unmodified key handling.
+        self.handle_key(&event.key)
     }
 }
 
@@ -697,5 +778,109 @@ mod tests {
     fn test_textarea_no_highlighter_by_default() {
         let textarea = TextArea::new();
         assert!(textarea.highlighter.is_none());
+    }
+
+    // --- handle_key_event: modifier-aware bindings ---
+
+    use crate::event::KeyEvent;
+
+    #[test]
+    fn test_handle_key_event_not_focused_is_ignored() {
+        let mut textarea = TextArea::new().content("hello");
+        assert!(!textarea.handle_key_event(&KeyEvent::ctrl(Key::Char('f'))));
+        assert!(!textarea.is_find_open());
+    }
+
+    #[test]
+    fn test_handle_key_event_ctrl_f_opens_find() {
+        let mut textarea = TextArea::new().content("hello").focused(true);
+        assert!(textarea.handle_key_event(&KeyEvent::ctrl(Key::Char('f'))));
+        assert!(textarea.is_find_open());
+        assert_eq!(
+            textarea.find_state().map(|s| s.mode),
+            Some(FindReplaceMode::Find)
+        );
+    }
+
+    #[test]
+    fn test_handle_key_event_ctrl_h_opens_replace() {
+        let mut textarea = TextArea::new().content("hello").focused(true);
+        assert!(textarea.handle_key_event(&KeyEvent::ctrl(Key::Char('h'))));
+        assert_eq!(
+            textarea.find_state().map(|s| s.mode),
+            Some(FindReplaceMode::Replace)
+        );
+    }
+
+    #[test]
+    fn test_handle_key_event_escape_closes_find() {
+        let mut textarea = TextArea::new().content("hello").focused(true);
+        textarea.open_find();
+        assert!(textarea.is_find_open());
+        assert!(textarea.handle_key_event(&KeyEvent::new(Key::Escape)));
+        assert!(!textarea.is_find_open());
+    }
+
+    #[test]
+    fn test_handle_key_event_escape_collapses_cursors() {
+        let mut textarea = TextArea::new().content("aa\naa").focused(true);
+        textarea.add_cursor_below();
+        assert!(!textarea.cursors.is_single());
+        // No find panel open, so Escape collapses secondary cursors.
+        assert!(textarea.handle_key_event(&KeyEvent::new(Key::Escape)));
+        assert!(textarea.cursors.is_single());
+    }
+
+    #[test]
+    fn test_handle_key_event_escape_without_state_is_ignored() {
+        let mut textarea = TextArea::new().content("hello").focused(true);
+        // No find panel, single cursor: nothing to do.
+        assert!(!textarea.handle_key_event(&KeyEvent::new(Key::Escape)));
+    }
+
+    #[test]
+    fn test_handle_key_event_ctrl_d_adds_cursor_on_next_occurrence() {
+        let mut textarea = TextArea::new().content("foo foo").focused(true);
+        // Cursor starts on the first "foo".
+        assert!(textarea.handle_key_event(&KeyEvent::ctrl(Key::Char('d'))));
+        assert_eq!(textarea.cursors.len(), 2);
+    }
+
+    #[test]
+    fn test_handle_key_event_f3_advances_current_match() {
+        let mut textarea = TextArea::new().content("ab ab ab").focused(true);
+        textarea.open_find();
+        textarea.set_find_query("ab");
+        assert_eq!(textarea.find_state().unwrap().current_match, Some(0));
+        assert!(textarea.handle_key_event(&KeyEvent::new(Key::F(3))));
+        assert_eq!(textarea.find_state().unwrap().current_match, Some(1));
+    }
+
+    #[test]
+    fn test_handle_key_event_shift_f3_goes_backwards() {
+        let mut textarea = TextArea::new().content("ab ab ab").focused(true);
+        textarea.open_find();
+        textarea.set_find_query("ab");
+        // Shift+F3 from match 0 wraps to the last match.
+        let mut event = KeyEvent::new(Key::F(3));
+        event.shift = true;
+        assert!(textarea.handle_key_event(&event));
+        assert_eq!(textarea.find_state().unwrap().current_match, Some(2));
+    }
+
+    #[test]
+    fn test_handle_key_event_ctrl_alt_down_adds_cursor_below() {
+        let mut textarea = TextArea::new().content("aa\nbb").focused(true);
+        let mut event = KeyEvent::ctrl(Key::Down);
+        event.alt = true;
+        assert!(textarea.handle_key_event(&event));
+        assert_eq!(textarea.cursors.len(), 2);
+    }
+
+    #[test]
+    fn test_handle_key_event_plain_char_delegates_to_insert() {
+        let mut textarea = TextArea::new().focused(true);
+        assert!(textarea.handle_key_event(&KeyEvent::new(Key::Char('x'))));
+        assert_eq!(textarea.lines[0], "x");
     }
 }

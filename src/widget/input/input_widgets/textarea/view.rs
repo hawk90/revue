@@ -1,9 +1,10 @@
 //! View implementation for TextArea
 
+use crate::event::KeyEvent;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::widget::theme::PLACEHOLDER_FG;
-use crate::widget::traits::{RenderContext, View};
+use crate::widget::traits::{EventResult, Interactive, RenderContext, View};
 
 /// Split a logical line into visual segments `[start, end)` (character indices) that each
 /// fit within `width` display columns. Prefers breaking at word boundaries (after a space)
@@ -284,6 +285,20 @@ impl View for TextArea {
                 }
             }
         }
+    }
+}
+
+impl Interactive for TextArea {
+    fn handle_key(&mut self, event: &KeyEvent) -> EventResult {
+        EventResult::from(self.handle_key_event(event))
+    }
+
+    fn on_focus(&mut self) {
+        self.focused = true;
+    }
+
+    fn on_blur(&mut self) {
+        self.focused = false;
     }
 }
 
