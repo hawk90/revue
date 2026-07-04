@@ -288,8 +288,10 @@ impl Interactive for Link {
         }
 
         match event.key {
-            Key::Enter | Key::Char(' ') => {
-                // Open the link - return Consumed to let the app handle opening
+            // Activate on Enter only. Space is deliberately excluded: it is a
+            // common navigation/scroll key, so binding it to "open the browser"
+            // causes accidental launches. Links open on Enter or a mouse click.
+            Key::Enter => {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
                     let _ = self.open();
@@ -331,4 +333,39 @@ pub fn link(url: impl Into<String>, text: impl Into<String>) -> Link {
 /// Create a link with just URL
 pub fn url_link(url: impl Into<String>) -> Link {
     Link::new(url)
+}
+
+#[cfg(test)]
+mod activation_tests {
+    use super::*;
+    use serial_test::serial;
+
+    // Links activate on Enter (and mouse click), but NOT on Space. Space is a
+    // common navigation key, so binding it to "open the browser" caused
+    // accidental launches. The positive Enter case uses REVUE_NO_BROWSER so it
+    // never spawns a real browser.
+
+    #[test]
+    fn space_does_not_activate() {
+        let mut link = Link::new("https://example.com").focused(true);
+        let result = link.handle_key(&KeyEvent::new(Key::Char(' ')));
+        assert_eq!(result, EventResult::Ignored);
+    }
+
+    #[test]
+    #[serial]
+    fn enter_activates() {
+        std::env::set_var(crate::utils::browser::NO_LAUNCH_ENV, "1");
+        let mut link = Link::new("https://example.com").focused(true);
+        let result = link.handle_key(&KeyEvent::new(Key::Enter));
+        assert_eq!(result, EventResult::ConsumedAndRender);
+        std::env::remove_var(crate::utils::browser::NO_LAUNCH_ENV);
+    }
+
+    #[test]
+    fn disabled_ignores_enter() {
+        let mut link = Link::new("https://example.com").disabled(true);
+        let result = link.handle_key(&KeyEvent::new(Key::Enter));
+        assert_eq!(result, EventResult::Ignored);
+    }
 }

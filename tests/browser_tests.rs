@@ -1,6 +1,10 @@
 //! System browser and URL utilities tests
 
-use revue::utils::browser::{open_browser, open_file, open_folder, open_url, reveal_in_finder};
+use revue::utils::browser::{
+    launch_suppressed, open_browser, open_file, open_folder, open_url, reveal_in_finder,
+    NO_LAUNCH_ENV,
+};
+use serial_test::serial;
 
 #[test]
 fn test_functions_exist() {
@@ -126,4 +130,42 @@ fn test_reject_remote_file_urls() {
 fn test_error_messages() {
     let err = open_url("https://example.com & malware").unwrap_err();
     assert!(err.to_string().contains("dangerous") || err.to_string().contains("character"));
+}
+
+// Launch suppression (REVUE_NO_BROWSER) — lets demos/tests/CI run without
+// real browser windows popping up. These tests set a global env var, so they
+// must run serially. They also deliberately pass *valid* URLs, which would
+// otherwise spawn a real browser — the guard is what keeps that from happening.
+
+#[test]
+#[serial]
+fn test_no_browser_env_suppresses_launch() {
+    std::env::set_var(NO_LAUNCH_ENV, "1");
+    assert!(launch_suppressed());
+    // Valid inputs: normally spawn, but must be no-ops here (still report success).
+    assert!(open_browser("https://example.com"));
+    assert!(open_url("https://example.com").is_ok());
+    assert!(open_file("/tmp"));
+    assert!(open_folder("/tmp"));
+    assert!(reveal_in_finder("/tmp"));
+    std::env::remove_var(NO_LAUNCH_ENV);
+    assert!(!launch_suppressed());
+}
+
+#[test]
+#[serial]
+fn test_no_browser_env_empty_does_not_suppress() {
+    std::env::set_var(NO_LAUNCH_ENV, "");
+    assert!(!launch_suppressed());
+    std::env::remove_var(NO_LAUNCH_ENV);
+}
+
+#[test]
+#[serial]
+fn test_suppressed_still_rejects_dangerous_input() {
+    std::env::set_var(NO_LAUNCH_ENV, "1");
+    // Validation happens before the suppression check: dangerous input still fails.
+    assert!(!open_browser("https://example.com; rm -rf /"));
+    assert!(open_url("url | malicious").is_err());
+    std::env::remove_var(NO_LAUNCH_ENV);
 }

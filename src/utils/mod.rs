@@ -339,7 +339,10 @@ pub use selection::{wrap_next, wrap_prev, SectionedSelection, Selection};
 pub use layout::BoxLayout;
 
 // Browser utilities
-pub use browser::{open_browser, open_file, open_folder, open_url, reveal_in_finder};
+pub use browser::{
+    launch_suppressed, open_browser, open_file, open_folder, open_url, reveal_in_finder,
+    NO_LAUNCH_ENV,
+};
 
 // Profiler
 pub use profiler::{
