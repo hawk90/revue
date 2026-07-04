@@ -150,3 +150,41 @@ jobs:
         with:
           config: .typos.toml
 
+  # Aggregate gate: single required status check for branch protection.
+  # Code jobs are path-filtered (skipped on docs-only PRs); rulesets treat a
+  # skipped required check as *not satisfied*, which would block docs-only PRs
+  # forever. This gate always runs and passes when every upstream job either
+  # succeeded or was skipped, so the ruleset should require ONLY "CI Gate".
+  ci-gate:
+    name: CI Gate
+    if: always()
+    needs: [changes, fmt, clippy, test, coverage, msrv, typos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required jobs succeeded or were skipped
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          FMT: ${{ needs.fmt.result }}
+          CLIPPY: ${{ needs.clippy.result }}
+          TEST: ${{ needs.test.result }}
+          COVERAGE: ${{ needs.coverage.result }}
+          MSRV: ${{ needs.msrv.result }}
+          TYPOS: ${{ needs.typos.result }}
+        run: |
+          fail=0
+          for pair in "changes:$CHANGES" "fmt:$FMT" "clippy:$CLIPPY" "test:$TEST" "coverage:$COVERAGE" "msrv:$MSRV" "typos:$TYPOS"; do
+            job="${pair%%:*}"
+            res="${pair#*:}"
+            if [ "$res" = "success" ] || [ "$res" = "skipped" ]; then
+              echo "OK   $job = $res"
+            else
+              echo "FAIL $job = $res"
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::One or more required CI jobs did not succeed."
+            exit 1
+          fi
+          echo "All required CI jobs passed or were skipped."
+
