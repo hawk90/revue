@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.73.0](https://github.com/hawk90/revue/compare/v2.72.0...v2.73.0) (2026-07-04)
+
+
+### Features
+
+* **textarea:** wire find/replace and multi-cursor key bindings ([#581](https://github.com/hawk90/revue/issues/581)) ([835ddee](https://github.com/hawk90/revue/commit/835ddeeedfdc63e12a0df98eec3b01d3820fe72e))
+
+
+### Bug Fixes
+
+* **link:** stop accidental browser launches ([#583](https://github.com/hawk90/revue/issues/583)) ([5581c47](https://github.com/hawk90/revue/commit/5581c470966cff2c3d3dae6349f3705cf3eb2bce))
+
 ## [2.72.0](https://github.com/hawk90/revue/compare/v2.71.1...v2.72.0) (2026-07-04)
 
 
