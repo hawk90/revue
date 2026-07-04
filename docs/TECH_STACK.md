@@ -9,17 +9,17 @@
 │                                                                  │
 │   ┌─────────────────────────────────────────────────────────┐   │
 │   │                     Widget Layer                         │   │
-│   │  pulldown-cmark │ syntect │ image │ base64              │   │
+│   │  pulldown-cmark │ tree-sitter │ image │ base64          │   │
 │   └─────────────────────────────────────────────────────────┘   │
 │                              │                                   │
 │   ┌─────────────────────────────────────────────────────────┐   │
 │   │                     Style Layer                          │   │
-│   │            cssparser │ selectors │ (custom)              │   │
+│   │              custom CSS parser (in-tree)                 │   │
 │   └─────────────────────────────────────────────────────────┘   │
 │                              │                                   │
 │   ┌─────────────────────────────────────────────────────────┐   │
 │   │                    Layout Layer                          │   │
-│   │                        taffy                             │   │
+│   │            custom layout engine (in-tree)               │   │
 │   └─────────────────────────────────────────────────────────┘   │
 │                              │                                   │
 │   ┌─────────────────────────────────────────────────────────┐   │
@@ -54,11 +54,9 @@
 
 ### CSS & Layout
 
-| Crate | Version | Purpose | Notes |
-|-------|---------|---------|-------|
-| **cssparser** | 0.34 | CSS parsing | Mozilla/Firefox |
-| **selectors** | 0.25 | CSS selector matching | Mozilla/Firefox |
-| **taffy** | 0.5 | Flexbox layout | Dioxus/Bevy |
+CSS parsing, selector matching, and layout are **custom, in-tree
+implementations** — Revue has no third-party CSS or layout engine dependency.
+See [Custom Implementations](#custom-implementations) below.
 
 ### Text & Unicode
 
@@ -73,8 +71,8 @@
 
 | Crate | Version | Purpose | Notes |
 |-------|---------|---------|-------|
-| **pulldown-cmark** | 0.12 | Markdown parsing | CommonMark |
-| **syntect** | 5.2 | Syntax highlighting | Sublime syntax |
+| **pulldown-cmark** | 0.13 | Markdown parsing | CommonMark (optional, `markdown` feature) |
+| **tree-sitter-highlight** | 0.26 | Syntax highlighting | Incremental parsing; per-language grammars (`tree-sitter-rust`, `-python`, `-javascript`, `-json`, `-go`, `-bash`, `-html`, `-css`, `-toml-ng`, `-yaml`, `-sequel`, `-md`) via `syntax-highlighting` feature |
 
 ### Image
 
@@ -87,20 +85,26 @@
 
 | Crate | Version | Purpose | Notes |
 |-------|---------|---------|-------|
-| **serde** | 1.0 | Serialization | Config, themes |
-| **toml** | 0.8 | TOML parsing | Config files |
-| **arboard** | 3.4 | Clipboard | Copy/paste |
-| **fuzzy-matcher** | 0.3 | Fuzzy search | Command palette |
-| **notify** | 6.1 | File watching | Hot reload |
-| **tracing** | 0.1 | Logging | Debug |
-| **tracing-subscriber** | 0.3 | Log output | Debug |
+| **bitflags** | 2.6 | Bit flags | Modifiers, state flags |
+| **serde** | 1.0 | Serialization | Config, themes (`config` feature) |
+| **toml** | 1.0 | TOML parsing | Config files (`config` feature) |
+| **dirs** | 6.0 | Standard directories | Config paths (`config` feature) |
+| **arboard** | 3.4 | Clipboard | Copy/paste (`clipboard` feature) |
+| **notify** | 8.2 | File watching | Hot reload (`hot-reload` feature) |
+| **sysinfo** | 0.39 | System/process info | Process monitor (`sysinfo` feature) |
+| **reqwest** | 0.13 | HTTP client | HTTP client widget (`http` feature) |
+| **similar** | 3.0 | Text diffing | Diff viewer (`diff` feature) |
+| **qrcode** | 0.14 | QR code generation | QR widget (`qrcode` feature) |
+| **tracing** | 0.1 | Logging | Debug (`tracing` feature) |
+| **tracing-subscriber** | 0.3 | Log output | Debug (`tracing` feature) |
 
 ### Error Handling
 
 | Crate | Version | Purpose |
 |-------|---------|---------|
-| **thiserror** | 1.0 | Error derive |
+| **thiserror** | 2.0 | Error derive |
 | **anyhow** | 1.0 | Error context |
+| **revue-macros** | (workspace) | Internal proc macros |
 
 ### Dev Dependencies
 
@@ -114,78 +118,51 @@
 
 ## Crate Details
 
-### cssparser (Mozilla)
+### Custom CSS Parser (in-tree)
 
-CSS tokenizer and parser used by Firefox's Servo engine.
-
-```rust
-use cssparser::{Parser, ParserInput};
-
-let mut input = ParserInput::new(css_text);
-let mut parser = Parser::new(&mut input);
-
-// Parse declarations
-while let Ok(decl) = parser.parse_declaration() {
-    // Process property: value
-}
-```
-
-**Why this crate?**
-- Battle-tested in Firefox
-- Full CSS3 support
-- Fast and correct
-- Active maintenance
-
-### selectors (Mozilla)
-
-CSS selector matching, also from Servo.
+Revue ships its own CSS tokenizer, parser, and selector matcher under
+`src/runtime/style/parser/` (scanner → parse → apply) with selector matching in
+`src/runtime/dom/`. There is **no** dependency on `cssparser` or the `selectors`
+crate.
 
 ```rust
-use selectors::parser::Selector;
-use selectors::matching::matches_selector;
+use revue::style::StyleSheet;
 
-let selector = Selector::parse(".btn:focus")?;
-let matches = matches_selector(&selector, &element);
+// Parse a CSS string into a StyleSheet
+let sheet = StyleSheet::parse(css_text)?;
+
+// Selectors are matched against the widget DOM during the cascade
 ```
+
+**Why in-tree?**
+- Terminal-focused subset of CSS — no need for a full browser engine
+- Zero third-party CSS dependencies (smaller tree, full control)
+- Tailored diagnostics via `style::ParseError`
 
 **Supported selectors:**
-- Element: `text`, `box`
+- Element: `text`, `button`
 - Class: `.container`
 - ID: `#header`
-- Pseudo-class: `:focus`, `:disabled`, `:first-child`
+- Pseudo-class: `:focus`, `:hover`, `:disabled`, `:not()`, `:nth-child(An+B)`
 - Combinators: ` ` (descendant), `>` (child)
 
-### taffy (Flexbox)
+### Custom Layout Engine (in-tree)
 
-Layout engine used by Dioxus and Bevy.
+Flexbox, grid, and block layout are implemented directly under
+`src/runtime/layout/` (`flex.rs`, `grid.rs`, `block.rs`, `node.rs`,
+`compute.rs`). There is **no** dependency on `taffy`.
 
 ```rust
-use taffy::prelude::*;
-
-let mut taffy = Taffy::new();
-
-let child = taffy.new_leaf(Style {
-    size: Size { width: Dimension::Points(100.0), height: auto() },
-    ..Default::default()
-})?;
-
-let root = taffy.new_with_children(
-    Style {
-        display: Display::Flex,
-        flex_direction: FlexDirection::Column,
-        ..Default::default()
-    },
-    &[child],
-)?;
-
-taffy.compute_layout(root, available_space)?;
+// Styles resolved from CSS drive the layout node tree, then compute() runs
+// the flex/grid/block algorithms to produce a position map.
+layout::compute(&node_tree, available_space);
 ```
 
 **Features:**
-- Full Flexbox support
-- Grid support (optional)
-- Percentage sizing
-- Min/max constraints
+- Flexbox layout (`flex.rs`)
+- Grid layout (`grid.rs`)
+- Block layout (`block.rs`)
+- Percentage sizing, min/max constraints, responsive breakpoints
 
 ### crossterm
 
@@ -420,8 +397,8 @@ impl CharWidthTable {
 
 ```toml
 [features]
-default = ["devtools"]
-devtools = []           # Enable devtools (adds ~100KB)
+default = ["async", "config"]  # tokio runtime + config (serde/toml/dirs)
+devtools = []                   # Opt-in devtools (widget inspector, profiler)
 ```
 
 ### Profile
@@ -453,23 +430,28 @@ opt-level = 1           # Faster dev builds
 
 | Aspect | Textual | Revue |
 |--------|---------|-------|
-| CSS Parser | Custom | cssparser (Mozilla) |
-| Layout | Custom | taffy (Dioxus/Bevy) |
+| CSS Parser | Custom | Custom (in-tree) |
+| Layout | Custom | Custom (in-tree) |
 | Markdown | Custom | pulldown-cmark |
-| Syntax | Pygments | syntect (Sublime) |
+| Syntax | Pygments | tree-sitter |
 | Runtime | asyncio | tokio |
 
 ### vs ratatui (Rust)
 
-| Aspect | ratatui | reratui | Revue |
-|--------|---------|---------|-------|
-| Type | Library | Framework | Framework |
-| Styling | Code only | Inline-style | CSS files |
-| Layout | Constraint (Cassowary) | Flex-like | taffy Flexbox |
-| Reactivity | Manual | Hooks (useState) | Signal/Computed |
-| Level | Low | High | High |
+| Aspect | ratatui | Revue |
+|--------|---------|-------|
+| Type | Library | Framework |
+| Styling | Code only | CSS files |
+| Layout | Constraint (Cassowary) | Custom flex/grid engine |
+| Reactivity | Manual | Signal/Computed |
+| Level | Low | High |
 
-> **Note**: ratatui is a low-level library (like React's DOM), while reratui is a React-like framework built on ratatui. |
+> **Note**: ratatui is a low-level immediate-mode library (like React's DOM),
+> whereas Revue is a retained-mode framework. Among Rust framework peers, the
+> credible modern comparisons are r3bl_tui, tui-realm, and iocraft — see
+> [FRAMEWORK_COMPARISON.md](FRAMEWORK_COMPARISON.md). (`reratui`, an
+> immediate-mode wrapper over ratatui with negligible adoption, is not a
+> meaningful peer.)
 
 ### vs Cursive (Rust)
 
@@ -484,10 +466,8 @@ opt-level = 1           # Faster dev builds
 
 ## References
 
-- [cssparser docs](https://docs.rs/cssparser)
-- [selectors docs](https://docs.rs/selectors)
-- [taffy docs](https://docs.rs/taffy)
 - [crossterm docs](https://docs.rs/crossterm)
 - [pulldown-cmark docs](https://docs.rs/pulldown-cmark)
-- [syntect docs](https://docs.rs/syntect)
+- [tree-sitter-highlight docs](https://docs.rs/tree-sitter-highlight)
+- [tokio docs](https://docs.rs/tokio)
 - [Kitty Graphics Protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/)

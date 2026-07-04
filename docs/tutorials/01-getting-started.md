@@ -26,8 +26,13 @@ use revue::prelude::*;
 fn main() -> Result<()> {
     let mut app = App::builder().build();
 
-    app.run(HelloWorld, |event, _view, _app| {
-        matches!(event, Event::Key(k) if !matches!(k.key, Key::Char('q') | Key::Escape))
+    app.run(HelloWorld, |event, _view, app| {
+        if let Event::Key(k) = event {
+            if matches!(k.key, Key::Char('q') | Key::Escape) {
+                app.quit();
+            }
+        }
+        true
     })
 }
 
@@ -105,10 +110,13 @@ Checkbox::new("Enable feature").checked(true)
 Use `app.run()` to respond to events:
 
 ```rust
-app.run(view, |event, view, _app| {
+app.run(view, |event, view, app| {
     match event {
         Event::Key(key_event) => match key_event.key {
-            Key::Char('q') => false,  // Return false to quit
+            Key::Char('q') | Key::Escape => {
+                app.quit();           // Request the app to exit
+                true
+            }
             Key::Up => {
                 view.move_up();
                 true                  // Return true to redraw
@@ -134,7 +142,7 @@ app.run(view, |event, view, _app| {
 | Widget | Description | Example |
 |--------|-------------|---------|
 | `Text` | Display text | `Text::new("Hello").bold()` |
-| `Button` | Clickable button | `Button::new("Submit").primary()` |
+| `Button` | Clickable button | `Button::primary("Submit")` |
 | `Input` | Text input | `Input::new().placeholder("...")` |
 | `Progress` | Progress bar | `Progress::new(0.5)` |
 | `Spinner` | Loading indicator | `Spinner::new()` |
@@ -159,7 +167,7 @@ match event.key {
     Key::Enter => { /* enter pressed */ }
     Key::Up | Key::Char('k') => { /* up navigation */ }
     Key::Down | Key::Char('j') => { /* down navigation */ }
-    Key::Esc => { /* escape pressed */ }
+    Key::Escape => { /* escape pressed */ }
     _ => {}
 }
 ```

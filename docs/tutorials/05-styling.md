@@ -59,7 +59,7 @@ Text::new("Subtitle").class("muted")
 Apply in Rust:
 
 ```rust
-Border::new().id("main-panel")
+Border::new().element_id("main-panel")
 ```
 
 ### Combined Selectors
@@ -214,8 +214,8 @@ use revue::style::Themes;
 
 set_theme(Themes::dracula());
 set_theme(Themes::nord());
-set_theme(Themes::gruvbox());
-set_theme(Themes::catppuccin());
+set_theme(Themes::monokai());
+set_theme(Themes::solarized_dark());
 ```
 
 ### Theme Switching
@@ -234,10 +234,10 @@ let theme = use_theme();
 ### Custom Themes
 
 ```rust
-let my_theme = ThemeBuilder::new("my-theme")
-    .bg_primary(Color::rgb(26, 27, 38))
-    .fg_primary(Color::rgb(192, 202, 245))
-    .accent(Color::rgb(122, 162, 247))
+let my_theme = Themes::custom("my-theme")
+    .primary(Color::rgb(122, 162, 247))
+    .background(Color::rgb(26, 27, 38))
+    .text(Color::rgb(192, 202, 245))
     .build();
 
 register_theme(my_theme);
@@ -295,8 +295,13 @@ fn main() -> Result<()> {
         .hot_reload(true)
         .build();
 
-    app.run(MyApp, |event, _view, _app| {
-        !matches!(event, Event::Key(k) if k.key == Key::Char('q'))
+    app.run(MyApp, |event, _view, app| {
+        if let Event::Key(k) = event {
+            if k.key == Key::Char('q') {
+                app.quit();  // Only app.quit() exits; returning a bool controls redraw
+            }
+        }
+        true
     })
 }
 

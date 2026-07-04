@@ -75,7 +75,7 @@ Let's make the counter look better with borders and colors:
 impl View for Counter {
     fn render(&self, ctx: &mut RenderContext) {
         let count_display = Text::new(format!("{}", self.count))
-            .style("font-size: 3; color: cyan;");
+            .fg(Color::CYAN);
 
         let content = vstack()
             .gap(1)
@@ -83,8 +83,8 @@ impl View for Counter {
             .child(count_display)
             .child(
                 hstack().gap(2)
-                    .child(Button::new("-").on_click(|| {}))
-                    .child(Button::new("+").on_click(|| {}))
+                    .child(Button::new("-"))
+                    .child(Button::new("+"))
             );
 
         Border::rounded()
@@ -102,10 +102,22 @@ For more complex apps, use reactive signals for automatic UI updates:
 ```rust
 use revue::prelude::*;
 
+// A Signal by itself is not a View, so wrap it in a view type that can render it.
+struct ReactiveCounter {
+    count: Signal<i32>,
+}
+
+impl View for ReactiveCounter {
+    fn render(&self, ctx: &mut RenderContext) {
+        vstack()
+            .child(Text::new(format!("Count: {}", self.count.get())).bold())
+            .child(Text::muted("[+/-] Change  [r] Reset  [q] Quit"))
+            .render(ctx);
+    }
+}
+
 fn main() -> Result<()> {
-    let app = App::builder()
-        .title("Reactive Counter")
-        .build();
+    let mut app = App::builder().build();
 
     // Create a reactive signal
     let count = signal(0i32);
@@ -127,22 +139,24 @@ fn main() -> Result<()> {
         }
     });
 
-    app.run_with_handler(count, |event, count| {
+    // Wrap the signal in a view so it can be passed to the runtime.
+    let view = ReactiveCounter { count: count.clone() };
+
+    app.run_with_handler(view, |event, view| {
         match event.key {
-            Key::Char('q') => false,
             Key::Char('+') | Key::Char('=') | Key::Up => {
-                count.set(count.get() + 1);
+                view.count.set(view.count.get() + 1);
                 true
             }
             Key::Char('-') | Key::Down => {
-                count.set((count.get() - 1).max(0));
+                view.count.set((view.count.get() - 1).max(0));
                 true
             }
             Key::Char('r') => {
-                count.set(0);  // Reset
+                view.count.set(0);  // Reset
                 true
             }
-            _ => true,
+            _ => false,
         }
     })
 }
@@ -196,11 +210,9 @@ impl View for MultiCounter {
                 .child(Text::new(format!("{}", count)).bold());
 
             let bordered = if is_selected {
-                Border::new(counter_view)
-                    .style("border-color: cyan;")
-                    .rounded()
+                Border::rounded().child(counter_view).fg(Color::CYAN)
             } else {
-                Border::new(counter_view).rounded()
+                Border::rounded().child(counter_view)
             };
 
             row = row.child(bordered);
@@ -209,7 +221,7 @@ impl View for MultiCounter {
         vstack()
             .child(Text::new("Multi-Counter").bold())
             .child(row)
-            .child(Text::new("[←/→] Select  [+/-] Change  [q] Quit").muted())
+            .child(Text::muted("[←/→] Select  [+/-] Change  [q] Quit"))
             .render(ctx);
     }
 }
@@ -224,31 +236,32 @@ use revue::prelude::*;
 
 struct AnimatedCounter {
     count: i32,
-    animation: Tween<f64>,
+    animation: Tween,
 }
 
 impl AnimatedCounter {
     fn new() -> Self {
         Self {
             count: 0,
-            animation: Tween::new(0.0, 300), // 300ms animation
+            // Tween::new(from, to, duration) — Tween is not generic.
+            animation: Tween::new(0.0, 1.0, std::time::Duration::from_millis(300)),
         }
     }
 
     fn increment(&mut self) {
         self.count += 1;
-        self.animation.animate_to(self.count as f64);
+        // Tween has no `animate_to`; restart the tween to replay the animation.
+        self.animation = Tween::new(0.0, 1.0, std::time::Duration::from_millis(300));
     }
 }
 
 impl View for AnimatedCounter {
     fn render(&self, ctx: &mut RenderContext) {
-        let animated_value = self.animation.value();
-        let scale = 1.0 + (animated_value.fract() * 0.2); // Bounce effect
-
+        // Note: `Tween::value(&mut self)` advances the animation and requires `&mut self`,
+        // so sample it in your update/event handler and store the result rather than
+        // calling it here inside `render(&self)`.
         vstack()
-            .child(Text::new(format!("{}", self.count))
-                .style(&format!("transform: scale({:.2});", scale)))
+            .child(Text::new(format!("{}", self.count)).fg(Color::CYAN))
             .render(ctx);
     }
 }

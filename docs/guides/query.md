@@ -278,7 +278,9 @@ let filtered: Vec<_> = query.filter_items(&data);
 
 let grid = DataGrid::new()
     .rows(filtered.iter().map(|item| {
-        vec![item.name.clone(), item.age.to_string()]
+        GridRow::new()
+            .cell("name", item.name.clone())
+            .cell("age", item.age.to_string())
     }).collect());
 ```
 
@@ -294,9 +296,8 @@ let items: Vec<_> = query.filter_items(&all_items)
     .cloned()
     .collect();
 
-let list = VirtualList::new(items, |item, ctx| {
-    // render each item
-});
+// Rendering is configured separately from construction
+let list = VirtualList::new(items);
 ```
 
 ## Error Handling

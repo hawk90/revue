@@ -477,7 +477,7 @@ impl Plugin for MyFeaturePlugin {
     }
 
     fn on_init(&mut self, ctx: &mut PluginContext) -> Result<()> {
-        ctx.info("Plugin initialized");
+        ctx.log("Plugin initialized");
         Ok(())
     }
 

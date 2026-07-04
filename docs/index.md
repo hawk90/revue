@@ -149,7 +149,7 @@ impl View for Counter {
 
 - [**System Architecture**](ARCHITECTURE.md) - Design overview and components
 - [**Features**](FEATURES.md) - Complete widget catalog
-- [**Framework Comparison**](FRAMEWORK_COMPARISON.md) - vs ratatui, reratui, Cursive, Textual
+- [**Framework Comparison**](FRAMEWORK_COMPARISON.md) - vs Textual, ratatui, r3bl_tui, tui-realm, iocraft
 - [**Tech Stack**](TECH_STACK.md) - Dependencies and tools
 
 ---

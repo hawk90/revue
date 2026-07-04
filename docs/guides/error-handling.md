@@ -36,23 +36,25 @@ use thiserror::Error;
 /// Core revue error type
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("IO error: {0}")]
+    /// CSS parsing error.
+    #[error("CSS error: {0}")]
+    Css(#[from] style::ParseError),
+
+    /// I/O error (file loading, etc.).
+    #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("Parse error: {0}")]
-    Parse(String),
+    /// Layout computation error.
+    #[error("Layout error: {0}")]
+    Layout(#[from] layout::LayoutError),
 
-    #[error("Invalid configuration: {0}")]
-    Config(String),
+    /// Rendering / buffer error.
+    #[error("Render error: {0}")]
+    Render(String),
 
-    #[error("Style error: {0}")]
-    Style(#[from] crate::style::StyleError),
-
-    #[error("Widget not found: {0}")]
-    WidgetNotFound(String),
-
-    #[error("Invalid input: {0}")]
-    InvalidInput(String),
+    /// Generic error with a custom message (catch-all).
+    #[error("Unexpected error: {0}")]
+    Other(#[from] anyhow::Error),
 }
 
 /// Result type alias for revue operations
@@ -69,7 +71,7 @@ Always return `Result<T>` for public APIs:
 /// Parse CSS text into a StyleSheet
 pub fn parse_css(input: &str) -> Result<StyleSheet> {
     if input.is_empty() {
-        return Err(Error::Parse("CSS input is empty".to_string()));
+        return Err(Error::Other(anyhow::anyhow!("CSS input is empty")));
     }
     // ...
     Ok(stylesheet)
@@ -78,7 +80,7 @@ pub fn parse_css(input: &str) -> Result<StyleSheet> {
 /// Render a widget to a buffer
 pub fn render(widget: &dyn View, buffer: &mut Buffer) -> Result<()> {
     if buffer.is_empty() {
-        return Err(Error::InvalidInput("Buffer cannot be empty".to_string()));
+        return Err(Error::Render("Buffer cannot be empty".to_string()));
     }
     // ...
     Ok(())
@@ -94,10 +96,10 @@ For internal functions, use the most appropriate type:
 fn parse_color(value: &str) -> Result<Color> {
     if value.starts_with('#') {
         Color::from_hex(value)
-            .map_err(|_| Error::Parse(format!("Invalid hex color: {}", value)))
+            .map_err(|_| Error::Other(anyhow::anyhow!("Invalid hex color: {}", value)))
     } else {
         Color::from_name(value)
-            .ok_or_else(|| Error::Parse(format!("Unknown color name: {}", value)))
+            .ok_or_else(|| Error::Other(anyhow::anyhow!("Unknown color name: {}", value)))
     }
 }
 
@@ -123,7 +125,7 @@ pub fn load_config(path: &Path) -> Result<Config> {
     let content = std::fs::read_to_string(path)
         .map_err(|e| Error::Io(e))?
         .parse::<Config>()
-        .map_err(|e| Error::Parse(format!("Failed to parse config from {}: {}", path.display(), e)))?;
+        .map_err(|e| Error::Other(anyhow::anyhow!("Failed to parse config from {}: {}", path.display(), e)))?;
     Ok(content)
 }
 ```
@@ -221,13 +223,13 @@ Always test error conditions:
 #[test]
 fn test_parse_css_empty_input() {
     let result = parse_css("");
-    assert!(matches!(result, Err(Error::Parse(_))));
+    assert!(matches!(result, Err(Error::Other(_))));
 }
 
 #[test]
 fn test_parse_css_invalid_syntax() {
     let result = parse_css("invalid css content");
-    assert!(matches!(result, Err(Error::Parse(_))));
+    assert!(matches!(result, Err(Error::Css(_))));
 }
 
 #[test]
@@ -271,7 +273,7 @@ pub fn validate_form(data: &FormData) -> Result<Form> {
     }
 
     if !errors.is_empty() {
-        return Err(Error::InvalidInput(errors.join("; ")));
+        return Err(Error::Other(anyhow::anyhow!(errors.join("; "))));
     }
 
     Ok(Form::from(data))
