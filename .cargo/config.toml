@@ -1,0 +1,17 @@
+# Local development environment for this workspace.
+#
+# `[env]` here seeds environment variables for every `cargo` invocation in this
+# repo (build / test / run / examples). It does NOT override a variable already
+# set in your shell, and it does not affect downstream users of the published
+# crate — only local development in this checkout.
+[env]
+# Never launch the system browser during local dev/test.
+#
+# The Link widget and utils::browser honor REVUE_NO_BROWSER: when it is set to a
+# non-empty value, open_browser/open_url/... validate and report success but do
+# not spawn a process. This stops example.com (and friends) from popping open a
+# real browser window while running `cargo test`, `cargo run`, or the examples.
+#
+# To force a real browser open for a single run, unset it for that command:
+#   REVUE_NO_BROWSER= cargo run --example new_widgets
+REVUE_NO_BROWSER = "1"
