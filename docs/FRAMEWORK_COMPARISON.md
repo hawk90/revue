@@ -1,411 +1,277 @@
 # Revue vs Reference TUI Frameworks
 
+> **Last updated:** 2026-07 — verified against the revue source tree and the
+> current (mid-2026) releases of competing frameworks. Prior revisions of this
+> doc were written ~late 2025 and had drifted badly out of date on **both**
+> sides (revue had shipped features still marked "TODO", and the competitor
+> landscape had reshuffled). See §12 for the verification method.
+
 ## Overview
 
-| Framework | Language | Rendering | Widgets | Styling | Maturity |
-|-----------|----------|-----------|---------|---------|----------|
-| **Revue** | Rust | Retained | 100+ | CSS | New |
-| **Textual** | Python | Retained | 35+ | TCSS | Mature |
-| **ratatui** | Rust | Immediate | 15+ | Inline | Mature |
-| **reratui** | Rust | Immediate (on ratatui) | Components (on ratatui) | Inline-style | New |
-| **Cursive** | Rust | Retained | 40+ | TOML | Mature |
-| **Bubbletea** | Go | Immediate | 15+ | Inline | Mature |
+| Framework | Language | Rendering | Model | Widgets | Styling | Maturity (mid-2026) |
+|-----------|----------|-----------|-------|---------|---------|---------------------|
+| **Revue** | Rust | Retained | Vue-style signals | 100+ | CSS | Young, feature-rich |
+| **Textual** | Python | Retained | Message/reactive | 35+ | TCSS | Mature (v8.x) |
+| **ratatui** | Rust | Immediate | Widget traits | 15+ (core) | Inline | Dominant (v0.30, ~36M dl) |
+| **r3bl_tui** | Rust | Retained | React/Elm + CSS | Medium | CSS-like | Mature (~367K dl) |
+| **tui-realm** | Rust | Retained (on ratatui) | React/Elm | Components | Inline | Mature (~204K dl) |
+| **iocraft** | Rust | Retained | React (Ink-like) | Small | Flexbox (taffy) | Growing (~129K dl) |
+| **Cursive** | Rust | Retained | Callback/view-tree | 40+ | TOML | **Inactive** (last rel. 2024-08) |
+| **reratui** | Rust | Immediate (on ratatui) | React hooks/fiber | wrappers | Inline | **Negligible** (~145 dl) |
+| **reactive_tui** | Rust | — | CSS | — | CSS | **Dead** (all versions yanked) |
 
-**Note:** reratui (framework) builds on ratatui (library), similar to React (framework) on DOM (library)
+**Primary benchmark:** Textual remains the closest feature-and-philosophy peer
+(retained-mode + CSS + reactive + large widget set) and is the yardstick used
+throughout this doc. Among **Rust** peers, the credible modern competitors are
+now **r3bl_tui**, **tui-realm**, and **iocraft** — not reratui (a namesake-
+adjacent experiment with almost no adoption) and not reactive_tui (yanked).
 
 ---
 
-## 1. Widget Comparison
+## 1. Positioning at a glance
 
-### 1.1 Form Widgets
+Revue's differentiators hold up in mid-2026:
 
-| Widget | Revue | Textual | Ratatui | Notes |
+- **Vue-flavored reactivity** (signals/computed/effect). Every other reactive
+  Rust peer clusters around React or Elm; the Vue idiom is genuinely unique.
+- **Real CSS** (files, variables, selectors incl. pseudo-classes/An+B/combinators,
+  themes, hot reload). Only Textual (TCSS) and r3bl_tui (CSS-like) come close.
+- **Widget breadth** — 100+ widgets, more than any competitor. Textual has ~35
+  and **added no new widget types in the last 12 months**; the Rust reactive
+  peers ship far fewer.
+- **Visualization depth** — charts (line/bar/pie/scatter/histogram/boxplot/
+  candle/timeseries/heatmap/waveline/streamline), canvas, sparkline. No peer
+  is close here.
+
+The honest weaknesses are narrower than they look (see §9): a handful of
+half-wired features, and the genuine absence of browser deployment.
+
+---
+
+## 2. Widget Comparison (vs Textual)
+
+Roster unchanged from Textual's side — the tables below are still broadly
+accurate. Corrections from source-tree verification are called out.
+
+### 2.1 Form Widgets
+
+| Widget | Revue | Textual | ratatui | Notes |
 |--------|-------|---------|---------|-------|
 | Text/Label | ✅ | ✅ | ✅ Paragraph | All have |
-| Button | ✅ (329L) | ✅ | ❌ | Revue has |
-| Input | ✅ (298L) | ✅ (800L) | ❌ | Textual richer |
-| MaskedInput | ✅ | ✅ | ❌ | Revue has |
-| TextArea | ✅ (1249L) | ✅ (3000L) | ❌ | Both have undo/redo |
-| Checkbox | ✅ (360L) | ✅ | ❌ | Revue has |
-| RadioButton | ✅ | ✅ | ❌ | Revue has |
-| Switch | ✅ | ✅ | ❌ | Revue has |
-| Select/Dropdown | ✅ (732L) | ✅ | ❌ | Both have |
-| Slider | ✅ | ✅ | ❌ | Revue has |
-| ColorPicker | ✅ | ✅ | ❌ | Revue has |
+| Button | ✅ | ✅ | ❌ | — |
+| Input | ✅ | ✅ | ❌ | Copy/paste + shift-selection now done in revue |
+| MaskedInput | ✅ | ✅ | ❌ | — |
+| TextArea | ✅ | ✅ | ❌ | See §7.1 for depth |
+| Checkbox / Radio / Switch | ✅ | ✅ | ❌ | — |
+| Select/Dropdown/ComboBox | ✅ | ✅ | ❌ | — |
+| Slider / Stepper / NumberInput | ✅ | partial | ❌ | Revue richer |
+| ColorPicker | ✅ | ✅ | ❌ | — |
 | FilePicker | ✅ | ❌ | ❌ | Revue unique |
+| Rating | ✅ | ❌ | ❌ | Revue unique |
+| Autocomplete | ✅ | (Input suggestion) | ❌ | Textual added Input/TextArea `suggestion` (v6) |
 
-### 1.2 Data Widgets
+### 2.2 Data Widgets
 
-| Widget | Revue | Textual | Ratatui | Notes |
+| Widget | Revue | Textual | ratatui | Notes |
 |--------|-------|---------|---------|-------|
-| Table (basic) | ✅ (414L) | ✅ | ✅ (1500L) | Ratatui richer |
-| DataGrid | ✅ (820L) | ✅ (3000L) | ❌ | Sort/filter/multi |
-| List | ✅ | ✅ | ✅ | All have |
-| VirtualList | ✅ (583L) | ✅ | ❌ | Large datasets |
-| Tree | ✅ (939L) | ✅ | ❌ | Both have |
-| FileTree | ✅ (670L) | ❌ | ❌ | Revue unique |
-| OptionList | ✅ | ✅ | ❌ | Both have |
-| SelectionList | ✅ | ✅ | ❌ | Both have |
+| Table (basic) | ✅ | ✅ | ✅ | — |
+| **DataGrid** | ✅ | DataTable | ❌ | **See §7.2 — revue now leads on resize/reorder** |
+| List / OptionList / SelectionList | ✅ | ✅ | partial | — |
+| VirtualList | ✅ | (implicit) | ❌ | — |
+| Tree / FileTree | ✅ | ✅ / ❌ | ❌ | FileTree revue-unique |
+| CSV / JSON / Log viewers | ✅ | ❌ | ❌ | Revue unique |
 
-### 1.3 Visualization Widgets
+### 2.3 Visualization — revue's strongest lead
 
-| Widget | Revue | Textual | Ratatui | Notes |
-|--------|-------|---------|---------|-------|
-| Chart (line) | ✅ (1160L) | ❌ | ✅ (600L) | Revue richer |
-| BarChart | ✅ (505L) | ❌ | ✅ (500L) | Equal |
-| PieChart | ✅ | ❌ | ❌ | Revue unique (pie/donut) |
-| ScatterChart | ✅ | ❌ | ❌ | Revue unique (bubble) |
-| Histogram | ✅ | ❌ | ❌ | Revue unique (binning) |
-| BoxPlot | ✅ | ❌ | ❌ | Revue unique (quartiles) |
-| Sparkline | ✅ (395L) | ✅ | ✅ (260L) | All have |
-| CandleChart | ✅ | ❌ | ❌ | Revue unique |
-| TimeSeries | ✅ | ❌ | ❌ | Revue unique |
-| Waveline | ✅ | ❌ | ❌ | Revue unique |
-| Streamline | ✅ | ❌ | ❌ | Revue unique |
-| Heatmap | ✅ | ❌ | ❌ | Revue unique |
-| Gauge | ✅ | ❌ | ✅ | Both have |
-| Progress | ✅ | ✅ | ✅ | All have |
-| Canvas | ✅ (1071L) | ❌ | ✅ (400L) | Revue richer |
+Line/Bar/Sparkline/Gauge/Progress/Canvas: parity or better vs ratatui;
+**Pie, Scatter, Histogram, BoxPlot, CandleChart, TimeSeries, Waveline,
+Streamline, Heatmap are revue-unique** (neither Textual nor ratatui has them).
 
-### 1.4 Layout Widgets
+### 2.4 Layout / Feedback / Navigation / Rich content
 
-| Widget | Revue | Textual | Ratatui | Notes |
-|--------|-------|---------|---------|-------|
-| HStack/VStack | ✅ | ✅ | ❌ | Both have |
-| Grid | ✅ | ✅ | ❌ | Both have |
-| Scroll | ✅ | ✅ | ✅ | All have |
-| Splitter | ✅ | ❌ | ❌ | Revue unique |
-| Layer | ✅ | ✅ | ❌ | Overlap support |
-| Positioned | ✅ | ❌ | ❌ | Absolute positioning |
-| Tabs | ✅ | ✅ | ✅ | All have |
-| Accordion | ✅ | ✅ | ❌ | Both have |
-
-### 1.5 Feedback Widgets
-
-| Widget | Revue | Textual | Ratatui | Notes |
-|--------|-------|---------|---------|-------|
-| Modal/Dialog | ✅ (572L) | ✅ Screen | ❌ | Both have |
-| Toast | ✅ (419L) | ✅ | ❌ | Both have |
-| Notification | ✅ | ✅ | ❌ | Both have |
-| Tooltip | ✅ | ✅ | ❌ | Both have |
-| Spinner | ✅ | ✅ | ❌ | Both have |
-| Skeleton | ✅ | ✅ | ❌ | Both have |
-
-### 1.6 Navigation Widgets
-
-| Widget | Revue | Textual | Ratatui | Notes |
-|--------|-------|---------|---------|-------|
-| Menu | ✅ | ✅ | ❌ | Both have |
-| ContextMenu | ✅ | ❌ | ❌ | Revue unique |
-| CommandPalette | ✅ (931L) | ✅ | ❌ | Like VS Code Ctrl+P |
-| Breadcrumb | ✅ | ✅ | ❌ | Both have |
-| Pagination | ✅ | ❌ | ❌ | Revue unique |
-| Stepper | ✅ | ❌ | ❌ | Revue unique |
-
-### 1.7 Rich Content Widgets
-
-| Widget | Revue | Textual | Ratatui | Notes |
-|--------|-------|---------|---------|-------|
-| Markdown | ✅ | ✅ | ❌ | Both have |
-| RichText | ✅ | ✅ | ❌ | Both have |
-| RichLog | ✅ | ✅ | ❌ | Both have |
-| Image | ✅ | ❌ | ❌ | Revue unique (sixel) |
-| Link | ✅ | ✅ | ❌ | OSC-8 hyperlinks |
-| Digits | ✅ | ✅ | ❌ | Big text |
-
-### 1.8 Specialized Widgets
-
-| Widget | Revue | Textual | Ratatui | Notes |
-|--------|-------|---------|---------|-------|
-| Terminal | ✅ (1029L) | ❌ | ❌ | PTY emulator |
-| Calendar | ✅ | ❌ | ✅ | Both have |
-| Timeline | ✅ | ❌ | ❌ | Revue unique |
-| Timer | ✅ | ❌ | ❌ | Revue unique |
-| Rating | ✅ | ❌ | ❌ | ★★★★☆ |
-| Avatar | ✅ | ❌ | ❌ | Revue unique |
-| Badge | ✅ | ✅ | ❌ | Both have |
-| Tag | ✅ | ✅ | ❌ | Both have |
-| StatusBar | ✅ | ✅ | ❌ | Both have |
+Broadly at parity with Textual, with revue extras: Splitter, Positioned,
+ContextMenu, Pagination, Stepper, Timeline, Timer, Avatar, Sixel Image,
+full PTY Terminal widget. (Textual has no equivalents.)
 
 ---
 
-## 2. Styling System Comparison
+## 3. Styling System
 
-| Feature | Revue | Textual | Ratatui | Cursive |
-|---------|-------|---------|---------|---------|
-| CSS Files | ✅ | ✅ TCSS | ❌ | ❌ |
-| CSS Variables | ✅ (with fallback) | ✅ | ❌ | ❌ |
-| CSS Selectors | ✅ (pseudo-classes, An+B, combinators) | ✅ (full) | ❌ | ❌ |
-| Color Formats | ✅ hex, rgb, hsl, 50+ named | ✅ | ❌ | ❌ |
-| Theme System | ✅ | ✅ | ❌ | ✅ TOML |
-| Inline Styles | ✅ | ✅ | ✅ | ✅ |
-| Hot Reload | ✅ | ✅ | ❌ | ❌ |
+| Feature | Revue | Textual | r3bl_tui | ratatui |
+|---------|-------|---------|----------|---------|
+| CSS files | ✅ | ✅ TCSS | ✅ CSS-like | ❌ |
+| CSS variables | ✅ (with fallback) | ✅ | partial | ❌ |
+| Selectors (pseudo/An+B/combinators) | ✅ | ✅ | partial | ❌ |
+| Color: hex/rgb/hsl/named | ✅ (50+ named) | ✅ | ✅ | ❌ |
+| Themes | ✅ | ✅ (many added 2025-26) | ✅ | ❌ |
+| Hot reload | ✅ | ✅ | ❌ | ❌ |
 | Transitions | ✅ (partial) | ✅ | ❌ | ❌ |
+| **Content markup / Visual system** | ❌ | ✅ (new; replaced Rich) | ❌ | ❌ |
 
-### Revue CSS Example
-```css
-.button {
-    background: #89b4fa;
-    color: #1e1e2e;
-    padding: 1 2;
-}
-
-.button:hover {
-    background: #b4befe;
-}
-```
+> **New Textual capability worth tracking:** the **Content markup / Visual
+> rendering** system (rolled out v2–v3, 2025) replaced Rich markup as the
+> rendering primitive. Revue has no direct analog — not a functional gap for
+> app authors today, but it's the substrate behind several Textual features
+> below.
 
 ---
 
-## 3. Layout System Comparison
+## 4. Layout System
 
-| Feature | Revue | Textual | Ratatui |
+| Feature | Revue | Textual | ratatui |
 |---------|-------|---------|---------|
-| Flexbox | ✅ (Taffy) | ✅ | ❌ |
+| Flexbox | ✅ | ✅ | ❌ |
 | Grid | ✅ | ✅ | ❌ |
-| Constraint | ❌ | ❌ | ✅ (Cassowary) |
-| Linear | ✅ | ✅ | ❌ |
+| Constraint (Cassowary) | ❌ | ❌ | ✅ |
 | Dock | ❌ | ✅ | ❌ |
-| Percent | ✅ | ✅ | ✅ |
-| Auto | ✅ | ✅ | ❌ |
+| Percent / Auto | ✅ | ✅ | partial |
 
 ---
 
-## 4. State Management
+## 5. State Management
 
-| Feature | Revue | Textual | Ratatui | Bubbletea |
+| Feature | Revue | Textual | ratatui | tui-realm |
 |---------|-------|---------|---------|-----------|
-| Reactive Signals | ✅ | ✅ Descriptor | ❌ | ❌ |
-| Computed Values | ✅ | ✅ | ❌ | ❌ |
-| Effects/Watch | ✅ | ✅ | ❌ | ❌ |
-| Elm Update | ❌ | ❌ | ❌ | ✅ |
-| Message Bus | ❌ | ✅ | ❌ | ✅ Cmd |
+| Reactive signals | ✅ | ✅ (reactive attrs) | ❌ | ❌ |
+| Computed / Effects | ✅ | ✅ | ❌ | ❌ |
+| Message bus | ✅ (two impls — see §8) | ✅ | ❌ | ✅ (Elm update) |
+| Worker system | ✅ (thread-based) | ✅ (async/thread) | ❌ | ❌ |
 
 ---
 
-## 5. Developer Experience
+## 6. Developer Experience & Testing
 
-| Feature | Revue | Textual | Ratatui |
+| Feature | Revue | Textual | Notes |
+|---------|-------|---------|-------|
+| DevTools / Inspector | ✅ | ✅ textual-dev 1.8.0 | Both live |
+| Snapshot testing | ✅ | ✅ pytest-textual-snapshot | — |
+| **Pilot-style test driver** | ✅ | ✅ | **Revue HAS this** (doc previously wrong) — `testing/pilot`, ~35 tests |
+| Hot reload | ✅ | ✅ | — |
+| Screen stack / modes | ✅ (manager; app-driven) | ✅ (+ modes/signals v8) | Revue has it; not auto-wired into run loop |
+| **Web deployment** | ❌ | textual-serve v1.1.3 (live) | **Genuine gap** — see §9 |
+
+---
+
+## 7. Feature-Depth Analysis (corrected)
+
+### 7.1 TextArea
+
+| Feature | Revue | Textual | Verdict |
 |---------|-------|---------|---------|
-| DevTools/Inspector | ✅ | ✅ textual-dev | ❌ |
-| Snapshot Testing | ✅ | ❌ | ❌ |
-| Hot Reload | ✅ | ✅ | ❌ |
-| Pilot Testing | ❌ | ✅ | ❌ |
-| Web Deployment | ❌ | ✅ textual-serve | ❌ |
+| Basic editing / undo / selection | ✅ | ✅ | parity |
+| Line numbers | ✅ | ✅ | parity |
+| Syntax highlight (tree-sitter) | ✅ | ✅ | parity |
+| **Soft wrap** | ⚠️ **STUB** | ✅ | **Textual leads** — revue's `wrap` flag only toggles h-scroll; `view.rs` renders 1 visual row per logical line |
+| **Find / Replace** | ✅ (regex = stub; API-only) | ❌ core (3rd-party pkg) | **Revue leads** — engine done in `find_impl.rs` (~346L); regex falls back to literal; not bound in `handle_key` |
+| **Multiple cursors** | ⚠️ PARTIAL | ❌ | Data + render exist; editing applies to primary cursor only; not key-wired |
+| Suggestion / placeholder | ? (verify) | ✅ (v6) | Textual added; confirm revue status |
+| Bracket matching | (CodeEditor widget) | ✅ | Textual in TextArea; revue's is in separate CodeEditor |
+
+### 7.2 DataGrid vs Textual DataTable
+
+| Feature | Revue | Textual | Verdict |
+|---------|-------|---------|---------|
+| Sort (multi-col) / filter / multi-select | ✅ | ✅ | parity |
+| Zebra / row numbers / cell nav / cell edit | ✅ | ✅ | parity |
+| **Virtual scroll** | ✅ (`render_rows_virtual`, overscan) | (implicit) | parity+ |
+| **Column resize** | ✅ (mouse + render cursor, tested) | ❌ | **Revue leads** |
+| **Column reorder** | ✅ (drag + keyboard, tested) | ❌ | **Revue leads** |
+| **Column freeze (pin)** | ⚠️ PARTIAL | ✅ (fixed rows/cols) | **Textual leads** — revue has state/API + tests but `render.rs` ignores `frozen_*`/`scroll_col`, so columns don't actually pin |
 
 ---
 
-## 6. Code Size Comparison (lines)
+## 8. Message / Event systems in Revue
 
-| Widget | Revue | Textual* | Ratatui |
-|--------|-------|---------|---------|
-| TextArea | 1,249 | ~3,000 | N/A |
-| DataGrid | 820 | ~3,000 | N/A |
-| Table | 414 | ~500 | 1,500 |
-| Chart | 1,160 | N/A | 600 |
-| Canvas | 1,071 | N/A | 400 |
-| Tree | 939 | ~1,000 | N/A |
-| Input | 298 | ~800 | N/A |
-| **Total (widgets)** | **42,418** | N/A | ~8,900 |
+Two real, wired-up implementations (both were previously mislabeled "missing"):
 
-*Textual Python lines (different language comparison)
+1. **`runtime/event/custom/`** — `CustomEventBus` + `EventDispatcher`: TypeId-keyed
+   callback dispatch with capture/target phases, propagation-stop, cancellation,
+   `once` handlers, history ring buffer. This is a genuine callback message system.
+2. **`state/tasks/event_bus.rs`** — a polling pub/sub queue (type-erased payloads,
+   `emit`/`poll`/`subscribe`). Simpler, queue-based.
 
 ---
 
-## 7. Feature Depth Analysis
+## 9. Gap Analysis (verified, mid-2026)
 
-### 7.1 TextArea Features
+### 9.1 Real remaining gaps vs Textual — prioritized
 
-| Feature | Revue | Textual |
-|---------|-------|---------|
-| Basic editing | ✅ | ✅ |
-| Undo/Redo | ✅ | ✅ |
-| Selection | ✅ | ✅ |
-| Word navigation | ✅ | ✅ |
-| Line numbers | ✅ | ✅ |
-| Soft wrap | ✅ | ✅ |
-| Syntax highlight | ✅ | ✅ |
-| Multiple cursors | ❌ | ❌ |
-| Find/Replace | ❌ | ❌ |
+| # | Gap | Current state | Impact | Effort |
+|---|-----|---------------|--------|--------|
+| 1 | **TextArea soft wrap** | STUB (flag toggles h-scroll only) | High — docs claim it works | Medium |
+| 2 | **DataGrid column freeze render** | PARTIAL (state/API/tests done; render not wired) | Medium | Small–Medium |
+| 3 | **Key bindings for find/replace & multi-cursor** | API-only; not in `handle_key` | Medium (UX) | Small |
+| 4 | **Multi-cursor editing** | Editing applies to primary cursor only | Low–Medium | Medium–Hard |
+| 5 | **Regex search** in find/replace | Stub (literal fallback) | Low | Small |
+| 6 | **Web deployment** (textual-serve analog) | Missing entirely | Strategic | Very Hard |
+| 7 | **Streaming content** (LLM output into Markdown/RichLog) | Verify — Textual added `Markdown.append`/`get_stream` | Medium (modern use case) | Medium |
+| 8 | **Screen stack auto-wiring** | Manager exists but app author must drive it | Low | Medium |
 
-### 7.2 DataGrid Features
+### 9.2 Already done — remove from any "TODO" list
 
-| Feature | Revue | Textual |
-|---------|-------|---------|
-| Sort by column | ✅ | ✅ |
-| Filter | ✅ | ✅ |
-| Multi-select | ✅ | ✅ |
-| Zebra striping | ✅ | ✅ |
-| Row numbers | ✅ | ✅ |
-| Cell navigation | ✅ | ✅ |
-| Cell editing | ✅ | ✅ |
-| Column resize | ❌ | ✅ |
-| Column reorder | ❌ | ✅ |
-| Column freeze | ❌ | ✅ |
-| Virtual scroll | ❌ | ✅ |
+DataGrid virtual scroll / column resize / column reorder; TextArea find-replace
+engine; Pilot testing; Worker system; message/event bus; CSS Grid; Input
+copy-paste & shift-selection. **These are shipped and tested** — the old doc's
+"❌ TODO" markers were wrong.
 
 ---
 
-## 8. Revue Unique Features
+## 10. Rust ecosystem shift (2025–2026)
 
-Features that Revue has but competitors don't:
+The Rust TUI space moved toward reactive-component + CSS/flexbox models:
 
-1. **Terminal Widget** - Full PTY emulator (1029L)
-2. **CandleChart** - Financial charts
-3. **TimeSeries** - Real-time data
-4. **Waveline** - Audio-style visualization
-5. **Streamline** - Streaming data
-6. **Heatmap** - Heat map visualization
-7. **FilePicker** - File selection dialog
-8. **FileTree** - Directory browser
-9. **Timeline** - Event timeline
-10. **ContextMenu** - Right-click menus
-11. **Splitter** - Resizable panes
-12. **Positioned** - Absolute positioning
-13. **Image** - Sixel image support
-14. **Avatar** - User avatars
-15. **Rating** - Star ratings
+- **ratatui 0.30** (Dec 2025, now 0.30.2 Jun 2026) modularized into a workspace
+  (`ratatui-core` / `ratatui-widgets` / per-backend crates), added `no_std` and
+  a `ratatui::run()` entry point. Still immediate-mode and still dominant
+  (~36M downloads); explicitly stays low-level and leaves higher-level
+  abstractions to downstream crates.
+- **New credible reactive peers** (all absent from the old doc):
+  - **r3bl_tui** (~367K dl) — "React + Elm + Flexbox + CSS", editor component, ~82K LOC.
+  - **tui-realm** (~204K dl, v4.1.0) — React/Elm component framework on ratatui.
+  - **iocraft** (~129K dl, v0.8.3) — Ink-like React model, `element!`/`#[component]`,
+    taffy flexbox; independent renderer (not on ratatui).
+- **De-emphasize / drop:** **reratui** (~145 dl — negligible, treat as experiment),
+  **reactive_tui** (all versions yanked — dead), **Cursive** (no release since
+  2024-08 — inactive incumbent), **Dioxus TUI/rink** (stalled/experimental).
 
----
-
-## 9. Gap Analysis
-
-### 9.1 Critical Gaps (vs Textual)
-
-| Gap | Impact | Difficulty | Status |
-|-----|--------|------------|--------|
-| ~~Input: Ctrl+C/V copy-paste~~ | ~~High~~ | ~~Easy~~ | ✅ Done |
-| ~~Input: Selection with Shift~~ | ~~High~~ | ~~Medium~~ | ✅ Done |
-| DataGrid: Virtual scroll | High | Hard | ❌ TODO |
-| DataGrid: Column resize | Medium | Medium | ❌ TODO |
-| DataGrid: Column reorder | Medium | Medium | ❌ TODO |
-| DataGrid: Column freeze | Medium | Medium | ❌ TODO |
-| ~~Syntax highlighting~~ | ~~Medium~~ | ~~Hard~~ | ✅ Done |
-| TextArea: Multiple cursors | Low | Hard | ❌ TODO |
-| TextArea: Find/Replace | Medium | Medium | ❌ TODO |
-
-### 9.2 Nice to Have (vs Textual)
-
-| Feature | Impact | Difficulty | Status |
-|---------|--------|------------|--------|
-| ~~CSS Grid layout~~ | ~~Medium~~ | ~~Medium~~ | ✅ Done |
-| Worker system | Medium | Hard | ✅ Done |
-| Web deployment | Low | Very Hard | ❌ TODO |
-| Screen stack | Low | Medium | ❌ TODO |
+**Takeaway for revue:** the field validates revue's thesis (reactive + CSS is
+where TUI is heading), but it's now a crowded upper layer. Revue's edge is
+**widget breadth + visualization + Vue idiom + true CSS**; the battleground is
+adoption, ergonomics, and docs — not raw feature count.
 
 ---
 
-## 10. Conclusion
+## 11. Conclusion
 
-### Revue Strengths
-- **70+ widgets** (more than any competitor)
-- **CSS styling** (only Textual has this)
-- **Visualization** (best chart/canvas support)
-- **Developer tools** (inspector, hot reload, snapshot testing)
-- **Unique widgets** (Terminal, FilePicker, Timeline, etc.)
+### Overall assessment (mid-2026)
 
-### Revue Weaknesses
-- **DataGrid** needs virtual scrolling, column resize/reorder/freeze
-- **TextArea** needs multiple cursors, find/replace
-- **No web deployment** (Textual has textual-serve)
+| vs Framework | Revue standing | Notes |
+|--------------|----------------|-------|
+| vs **Textual** | **~parity, ahead on breadth** | Leads on widgets, viz, DataGrid resize/reorder, TextArea find/replace. Trails on soft-wrap, column-freeze render, web serve, streaming content. |
+| vs **ratatui** | Different tier | Higher-level; ratatui wins adoption & is the substrate, not a like-for-like rival. |
+| vs **r3bl_tui / tui-realm / iocraft** | Feature-ahead, adoption-behind | Revue ships far more widgets + CSS; peers have more users/momentum. |
+| vs **reratui / reactive_tui / Cursive** | Not live competition | Negligible / dead / inactive. |
 
-### Overall Assessment
-
-| vs Framework | Revue Score | Notes |
-|--------------|-------------|-------|
-| vs Textual | **90%** | Missing: DataGrid advanced features, TextArea find/replace |
-| vs ratatui | **110%** | More widgets, CSS styling, reactive state system |
-| vs reratui | **95%** | More widgets, CSS styling, but reratui has React-like ergonomics |
-| vs Cursive | **110%** | Modern API, CSS styling |
-| vs Bubbletea | **130%** | More widgets, better styling |
-
-**Revue is already competitive with mature frameworks and has unique strengths in visualization and styling.**
+**Bottom line:** Revue is **not "far behind" Textual** — that impression came
+from a stale comparison. On breadth and several depth features it already leads.
+The real, verified work is a short list: finish soft-wrap, wire up column-freeze
+rendering, bind keys for find/replace & multi-cursor, and decide whether to
+pursue streaming-content and web-serve as strategic bets.
 
 ---
 
-## 11. ratatui vs reratui: Which One to Choose?
+## 12. Verification method & caveats
 
-### Key Differences
-
-| Aspect | ratatui | reratui |
-|--------|---------|---------|
-| **Type** | TUI library (low-level) | TUI framework (high-level) |
-| **Architecture** | Widget traits | Component-based (React-like) |
-| | `Widget`, `StatefulWidget` | `Component`, `useReducer`, `useEffect` |
-| **State Management** | Manual (within StatefulWidget) | Hooks-based (useReducer, useEffect, useState) |
-| **Rendering** | Immediate-mode | Immediate-mode (on ratatui) |
-| **Styling** | Inline (Style API) | Inline-style API |
-| **Layout** | Constraint-based (Cassowary) | Flex-like (built on ratatui) |
-| **Reactivity** | Manual re-renders | Automatic with hooks |
-| **Maturity** | Mature (2023+) | New (Oct 2025) |
-
-### When to Use ratatui
-
-✅ Choose **ratatui** if you:
-- Want low-level control over every render
-- Prefer explicit state management
-- Are building a custom framework on top
-- Need maximum performance
-- Want minimal dependencies
-
-**Example:**
-```rust
-impl Widget for MyApp {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        // Direct buffer manipulation
-        buf.set_string(area.x, area.y, "Hello", Style::default());
-    }
-}
-```
-
-### When to Use reratui
-
-✅ Choose **reratui** if you:
-- Like React's component model
-- Want hooks-based state management
-- Prefer declarative UI patterns
-- Are building complex interactive apps
-- Want automatic re-renders on state change
-
-**Example:**
-```rust
-#[component]
-fn Counter(cx: Scope) -> Element {
-    let mut count = use cx.use_state(|| 0);
-
-    let on_increment = |_| {
-        count.set(*count + 1);
-    };
-
-    vstack!([
-        Button::new(format!("Count: {}", count)).on_click(on_increment),
-        Button::new("Increment").on_click(on_increment),
-    ])
-}
-```
-
-### Feature Comparison
-
-| Feature | ratatui | reratui | Revue |
-|---------|---------|---------|-------|
-| Widgets | 15 built-in | Component wrappers | 100+ |
-| Layout | Constraint-based | Flex-like (on ratatui) | CSS (Flex + Grid) |
-| Styling | Inline `Style` API | Inline-style | CSS files |
-| State | Manual (StatefulWidget) | Hooks (useReducer, useState) | Reactive signals |
-| Hot Reload | ❌ | ❌ | ✅ |
-| CSS Support | ❌ | ❌ | ✅ |
-| Async | ❌ | ❌ | ✅ (worker system) |
-
-### Summary
-
-- **ratatui** = React's DOM - low-level, full control
-- **reratui** = React - high-level, developer-friendly
-- **Revue** = React + CSS + Signals = Modern web-like TUI
-
-**Sources:**
-- [ratatui on crates.io](https://crates.io/crates/ratatui) - 2000+ crates depend on it
-- [reratui on crates.io](https://crates.io/crates/reratui) - React-like for TUI
-- [Ratatui official docs](https://ratatui.rs/) - "Cook up delicious terminal UIs"
-- [reratui GitHub](https://github.com/sabry-awad97/reratui) - Component framework
-
-
+- **Revue side:** claims in §7–§9 were verified by reading the actual source
+  (`widget/data/datagrid/`, `widget/input/input_widgets/textarea/`,
+  `testing/pilot/`, `core/app/screen/`, `state/worker/`, `runtime/event/custom/`)
+  and confirming wiring into render/event/key paths and tests — not from prior
+  docs. DataGrid: 203 tests pass. "PARTIAL" = real API/state but a missing
+  render/edit/key link, documented inline above.
+- **Competitor side:** versions/dates/features from PyPI, crates.io, GitHub
+  release notes, and official docs (mid-2026). Download counts are cumulative
+  crates.io figures (skewed by CI/transitive pulls) — relative, not user counts.
+- **Unverified leads:** Textual's DataTable column resize/reorder in any
+  unreleased branch (docs show none); Textualize's corporate status; whether
+  revue's TextArea has a `suggestion`/`placeholder` analog; exact revue widget
+  count vs the "100+" claim. Treat these as follow-ups, not settled facts.
