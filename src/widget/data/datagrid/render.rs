@@ -1,6 +1,7 @@
 //! DataGrid rendering
 
-use super::core::{CellPos, CellState, DataGrid, RowRenderParams};
+use super::core::{CellPos, CellState, ColumnSlot, DataGrid, RowRenderParams};
+use super::types::GridColumn;
 use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
@@ -48,11 +49,17 @@ impl View for DataGrid {
         };
         let header_height: u16 = if self.options.show_header { 1 } else { 0 };
 
+        // Position columns for this viewport, applying column freeze and
+        // horizontal scroll. Both the header and the rows draw from this plan so
+        // they stay aligned.
+        let content_end = area.width;
+        let slots = self.compute_column_slots(&visible_cols, &widths, 0, area.width, row_num_width);
+
         let mut y = 0u16;
 
         // Draw header
         if self.options.show_header {
-            self.render_header(ctx, &visible_cols, &widths, row_num_width, y);
+            self.render_header(ctx, &slots, content_end, row_num_width, y);
             y += 1;
         }
 
@@ -73,9 +80,9 @@ impl View for DataGrid {
         };
 
         let params = RowRenderParams {
-            visible_cols: &visible_cols,
-            widths: &widths,
+            slots: &slots,
             area_x: 0,
+            content_end,
             start_y: y,
             row_num_width,
             visible_height,
@@ -90,13 +97,100 @@ impl View for DataGrid {
 }
 
 impl DataGrid {
+    /// Position the visible columns for the current viewport.
+    ///
+    /// Applies column freeze and horizontal scroll: the first `frozen_left`
+    /// display columns are pinned to the left, the last `frozen_right` are
+    /// pinned flush to the right, and the columns in between scroll horizontally
+    /// by `scroll_col`. Middle columns that would collide with the right-frozen
+    /// region are dropped.
+    ///
+    /// `widths` is parallel to `visible_cols` (display order). Returned slots
+    /// carry absolute x positions including the `row_num_width` gutter.
+    pub(super) fn compute_column_slots<'a>(
+        &self,
+        visible_cols: &[(usize, &'a GridColumn)],
+        widths: &[u16],
+        area_x: u16,
+        area_width: u16,
+        row_num_width: u16,
+    ) -> Vec<ColumnSlot<'a>> {
+        let n = visible_cols.len();
+        let content_start = area_x + row_num_width;
+        let content_end = area_x + area_width;
+        if n == 0 || content_end <= content_start {
+            return Vec::new();
+        }
+
+        let frozen_left = self.frozen_left.min(n);
+        let frozen_right = self.frozen_right.min(n - frozen_left);
+        let width_at = |i: usize| widths.get(i).copied().unwrap_or(0);
+        // Column width plus its trailing separator.
+        let span_at = |i: usize| width_at(i).saturating_add(1);
+
+        let mut slots: Vec<ColumnSlot<'a>> = Vec::with_capacity(n);
+
+        // 1) Left-frozen columns, pinned to the left in order.
+        let mut x = content_start;
+        for (i, &(orig, col)) in visible_cols.iter().enumerate().take(frozen_left) {
+            slots.push(ColumnSlot {
+                orig_idx: orig,
+                col,
+                display_idx: i,
+                x,
+                width: width_at(i),
+            });
+            x = x.saturating_add(span_at(i));
+        }
+        let left_end = x;
+
+        // 2) Right-frozen columns, pinned flush to the right in order (never
+        //    overlapping the left-frozen region).
+        let right_total: u16 = (n - frozen_right..n).map(span_at).sum();
+        let right_start = content_end.saturating_sub(right_total).max(left_end);
+        let mut rx = right_start;
+        for (i, &(orig, col)) in visible_cols.iter().enumerate().skip(n - frozen_right) {
+            slots.push(ColumnSlot {
+                orig_idx: orig,
+                col,
+                display_idx: i,
+                x: rx,
+                width: width_at(i),
+            });
+            rx = rx.saturating_add(span_at(i));
+        }
+
+        // 3) Scrollable middle columns, offset by scroll_col, stopping before
+        //    the right-frozen region.
+        let mid_lo = frozen_left;
+        let mid_hi = n - frozen_right;
+        let first = mid_lo + self.scroll_col.min(mid_hi.saturating_sub(mid_lo));
+        let mut mx = left_end;
+        for (i, &(orig, col)) in visible_cols.iter().enumerate().take(mid_hi).skip(first) {
+            let w = width_at(i);
+            if mx.saturating_add(w) > right_start {
+                break;
+            }
+            slots.push(ColumnSlot {
+                orig_idx: orig,
+                col,
+                display_idx: i,
+                x: mx,
+                width: w,
+            });
+            mx = mx.saturating_add(span_at(i));
+        }
+
+        slots
+    }
+
     /// Render rows using virtual scrolling (index-based, no allocation)
     pub(super) fn render_rows_virtual(
         &self,
         ctx: &mut RenderContext,
         render_start: usize,
         render_end: usize,
-        params: &RowRenderParams<'_>,
+        params: &RowRenderParams<'_, '_>,
     ) {
         let filtered_indices = self.filtered_indices();
 
@@ -138,36 +232,37 @@ impl DataGrid {
                 self.render_row_number(ctx, params.area_x, row_y, render_idx + 1, row_bg);
             }
 
-            // Draw cells
-            let mut x = params.area_x + params.row_num_width;
-            for (col_idx, (orig_col_idx, col)) in params.visible_cols.iter().enumerate() {
-                if col_idx >= params.widths.len() {
-                    break;
-                }
-                let w = params.widths[col_idx];
+            // Fill the content background first so any gap between the scrolled
+            // middle and the right-frozen columns is covered.
+            for gx in (params.area_x + params.row_num_width)..params.content_end {
+                let mut cell = Cell::new(' ');
+                cell.bg = Some(row_bg);
+                ctx.set(gx, row_y, cell);
+            }
+
+            // Draw cells from the positioned column slots.
+            for slot in params.slots {
                 let is_editing = self.edit_state.active
                     && render_idx == self.selected_row
-                    && *orig_col_idx == self.edit_state.col;
+                    && slot.orig_idx == self.edit_state.col;
 
                 let pos = CellPos {
-                    x,
+                    x: slot.x,
                     y: row_y,
-                    width: w,
+                    width: slot.width,
                 };
                 let state = CellState {
                     row_bg,
                     is_selected,
                     is_editing,
                 };
-                self.render_cell(ctx, row, col, &pos, &state);
+                self.render_cell(ctx, row, slot.col, &pos, &state);
 
                 // Draw separator
                 let mut sep = Cell::new('│');
                 sep.fg = Some(self.colors.border_color);
                 sep.bg = Some(row_bg);
-                ctx.set(x + w, row_y, sep);
-
-                x += w + 1;
+                ctx.set(slot.x + slot.width, row_y, sep);
             }
         }
     }
@@ -176,21 +271,27 @@ impl DataGrid {
     pub(super) fn render_header(
         &self,
         ctx: &mut RenderContext,
-        visible_cols: &[(usize, &super::types::GridColumn)],
-        widths: &[u16],
-        start_x: u16,
+        slots: &[ColumnSlot<'_>],
+        content_end: u16,
+        row_num_width: u16,
         y: u16,
     ) {
-        let mut x = start_x;
+        // Fill the header background first so gaps (from horizontal scroll with
+        // frozen-right columns) are covered.
+        for gx in row_num_width..content_end {
+            let mut cell = Cell::new(' ');
+            cell.bg = Some(self.colors.header_bg);
+            ctx.set(gx, y, cell);
+        }
 
-        for (col_idx, (orig_idx, col)) in visible_cols.iter().enumerate() {
-            if col_idx >= widths.len() {
-                break;
-            }
-            let w = widths[col_idx];
-            let is_sort_col = self.sort_column == Some(*orig_idx);
-            let is_selected = *orig_idx == self.selected_col;
-            let is_dragging = self.dragging_col == Some(*orig_idx);
+        for slot in slots {
+            let (orig_idx, col) = (slot.orig_idx, slot.col);
+            let x = slot.x;
+            let w = slot.width;
+            let col_idx = slot.display_idx;
+            let is_sort_col = self.sort_column == Some(orig_idx);
+            let is_selected = orig_idx == self.selected_col;
+            let is_dragging = self.dragging_col == Some(orig_idx);
 
             // Draw drop indicator before this column
             if self.drop_target_col == Some(col_idx) && self.dragging_col.is_some() {
@@ -216,7 +317,7 @@ impl DataGrid {
             let mut title = col.title.clone();
             if !self.sort_columns.is_empty() {
                 // Multi-column sort: show priority number
-                if let Some(pos) = self.sort_columns.iter().position(|(c, _)| *c == *orig_idx) {
+                if let Some(pos) = self.sort_columns.iter().position(|(c, _)| *c == orig_idx) {
                     let (_, dir) = self.sort_columns[pos];
                     title.push(' ');
                     title.push(dir.icon());
@@ -254,8 +355,8 @@ impl DataGrid {
             }
 
             // Draw separator with resize indicator
-            let is_resize_hover = self.hovered_resize == Some(*orig_idx);
-            let is_resizing = self.resizing_col == Some(*orig_idx);
+            let is_resize_hover = self.hovered_resize == Some(orig_idx);
+            let is_resizing = self.resizing_col == Some(orig_idx);
             let sep_char = if is_resize_hover || is_resizing {
                 '⇔'
             } else {
@@ -273,17 +374,21 @@ impl DataGrid {
             sep.fg = Some(sep_color);
             sep.bg = Some(bg);
             ctx.set(x + w, y, sep);
-
-            x += w + 1;
         }
 
-        // Draw drop indicator at the end if dropping after last column
+        // Draw drop indicator at the end if dropping after the last slot.
         if let Some(target) = self.drop_target_col {
-            if target >= visible_cols.len() && self.dragging_col.is_some() {
+            let past_last = slots.last().map(|s| s.display_idx + 1).unwrap_or(0);
+            if target >= past_last && self.dragging_col.is_some() {
+                let end_x = slots
+                    .iter()
+                    .map(|s| s.x + s.width + 1)
+                    .max()
+                    .unwrap_or(row_num_width);
                 let mut cell = Cell::new('│');
                 cell.fg = Some(Color::CYAN);
                 cell.modifier |= Modifier::BOLD;
-                ctx.set(x.saturating_sub(1), y, cell);
+                ctx.set(end_x.saturating_sub(1), y, cell);
             }
         }
     }
