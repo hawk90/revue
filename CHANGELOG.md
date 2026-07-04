@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.72.0](https://github.com/hawk90/revue/compare/v2.71.1...v2.72.0) (2026-07-04)
+
+
+### Features
+
+* **textarea:** implement soft wrap rendering ([#578](https://github.com/hawk90/revue/issues/578)) ([285ea4c](https://github.com/hawk90/revue/commit/285ea4c8f71e13d565ff2706efc0c50b7668fb3c))
+
+
+### Bug Fixes
+
+* **ci:** repair framework-check.yml + refresh framework comparison ([#575](https://github.com/hawk90/revue/issues/575)) ([5125ef6](https://github.com/hawk90/revue/commit/5125ef67e9fd7ad61450f0d2caef7bc6f70e0d41))
+
 ## [2.71.1](https://github.com/hawk90/revue/compare/v2.71.0...v2.71.1) (2026-04-15)
 
 
