@@ -347,7 +347,7 @@ Browse all examples in the [examples/](examples/) directory.
 | **Devtools** | ✅ | ❌ | ❌ | ❌ | ✅ |
 | **Single Binary** | ✅ | ✅ | ✅ | ✅ | ❌ |
 <!-- comparison-table-end -->
-<!-- Last verified: 2026-04-07 -->
+<!-- Last verified: 2026-07-04 -->
 
 > **Note**: [ratatui](https://crates.io/crates/ratatui) is a low-level TUI library (like React's DOM), while [reratui](https://crates.io/crates/reratui) is a React-like framework built on top of ratatui. See [Framework Comparison](docs/FRAMEWORK_COMPARISON.md#11-ratatui-vs-reratui-which-one-to-choose) for detailed analysis.
 
