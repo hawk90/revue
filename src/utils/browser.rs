@@ -212,6 +212,22 @@ fn validate_input(input: &str) -> Result<(), BrowserError> {
     Ok(())
 }
 
+/// Environment variable that suppresses actually launching an external
+/// application (browser, file manager, opener).
+///
+/// When set to any non-empty value, the `open_*` / `reveal_*` functions still
+/// validate their input and report success, but do not spawn a process. This is
+/// useful for running examples, demos, tests, and CI without real browser
+/// windows popping up.
+pub const NO_LAUNCH_ENV: &str = "REVUE_NO_BROWSER";
+
+/// Whether launching external applications is currently suppressed.
+///
+/// See [`NO_LAUNCH_ENV`].
+pub fn launch_suppressed() -> bool {
+    std::env::var_os(NO_LAUNCH_ENV).is_some_and(|v| !v.is_empty())
+}
+
 /// Open a URL or file in the system's default browser/application
 ///
 /// Platform support:
@@ -231,6 +247,11 @@ fn validate_input(input: &str) -> Result<(), BrowserError> {
 pub fn open_browser(url: &str) -> bool {
     if validate_input(url).is_err() {
         return false;
+    }
+
+    // Suppressed (e.g. demos/tests/CI): validated successfully, but don't launch.
+    if launch_suppressed() {
+        return true;
     }
 
     #[cfg(target_os = "macos")]
@@ -264,6 +285,11 @@ pub fn open_browser(url: &str) -> bool {
 /// - The browser command cannot be spawned
 pub fn open_url(url: &str) -> Result<(), BrowserError> {
     validate_input(url)?;
+
+    // Suppressed (e.g. demos/tests/CI): validated successfully, but don't launch.
+    if launch_suppressed() {
+        return Ok(());
+    }
 
     #[cfg(target_os = "macos")]
     let child = Command::new("open")
@@ -311,6 +337,11 @@ pub fn open_folder(path: &str) -> bool {
         return false;
     }
 
+    // Suppressed (e.g. demos/tests/CI): validated successfully, but don't launch.
+    if launch_suppressed() {
+        return true;
+    }
+
     #[cfg(target_os = "macos")]
     let result = Command::new("open").arg(path).spawn();
 
@@ -339,6 +370,11 @@ pub fn open_folder(path: &str) -> bool {
 pub fn reveal_in_finder(path: &str) -> bool {
     if validate_input(path).is_err() {
         return false;
+    }
+
+    // Suppressed (e.g. demos/tests/CI): validated successfully, but don't launch.
+    if launch_suppressed() {
+        return true;
     }
 
     #[cfg(target_os = "macos")]

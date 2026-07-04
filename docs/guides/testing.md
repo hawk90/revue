@@ -539,6 +539,7 @@ DevTools panels:
 |----------|---------|
 | `REVUE_UPDATE_SNAPSHOTS=1` | Update snapshot files instead of comparing |
 | `REVUE_UPDATE_VISUALS=1` | Update visual golden files instead of comparing |
+| `REVUE_NO_BROWSER=1` | Suppress launching the system browser/opener (e.g. from the `Link` widget). Input is still validated and success is still reported, but no process is spawned — useful for demos, tests, and CI. |
 
 ## Best Practices
 
