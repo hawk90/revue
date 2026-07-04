@@ -58,16 +58,16 @@ jobs:
               --title "📊 Framework comparison table needs review" \
               --label "documentation,maintenance" \
               --body "$(cat <<'BODY'
-The framework comparison table in README.md has not been verified in over 90 days.
+          The framework comparison table in README.md has not been verified in over 90 days.
 
-**To update:**
-1. Run `bash scripts/check-framework-versions.sh` to see latest versions
-2. Review and update the comparison table in README.md
-3. Update the `<!-- Last verified: YYYY-MM-DD -->` comment
+          **To update:**
+          1. Run `bash scripts/check-framework-versions.sh` to see latest versions
+          2. Review and update the comparison table in README.md
+          3. Update the `<!-- Last verified: YYYY-MM-DD -->` comment
 
-**Current versions from crates.io/pypi will be shown in the workflow summary.**
-BODY
-)"
+          **Current versions from crates.io/pypi will be shown in the workflow summary.**
+          BODY
+          )"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
