@@ -46,6 +46,7 @@ revue = { version = "2.71", features = ["gui"] }
 | Feature | Dependencies | Purpose |
 |---------|-------------|---------|
 | `diff` | `similar` | Diff visualization between text versions |
+| `regex` | `regex` | Real regex engine for TextArea find/replace (falls back to literal search when off) |
 | `sysinfo` | `sysinfo` | System information widget (CPU, memory, processes) |
 | `clipboard` | `arboard` | System clipboard copy/paste support |
 | `hot-reload` | `notify` | Watch CSS/layout files and reload on change during development |

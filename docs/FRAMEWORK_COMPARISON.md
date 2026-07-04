@@ -162,7 +162,7 @@ full PTY Terminal widget. (Textual has no equivalents.)
 | Line numbers | ✅ | ✅ | parity |
 | Syntax highlight (tree-sitter) | ✅ | ✅ | parity |
 | **Soft wrap** | ✅ | ✅ | parity — word-boundary soft wrap in `view.rs` (was a stub; now flows long lines onto multiple visual rows) |
-| **Find / Replace** | ✅ (regex = stub) | ❌ core (3rd-party pkg) | **Revue leads** — engine in `find_impl.rs` (~346L), key-wired via `handle_key_event` (Ctrl+F/H, F3/Shift+F3); regex still falls back to literal |
+| **Find / Replace** | ✅ (regex via `regex` feature) | ❌ core (3rd-party pkg) | **Revue leads** — engine in `find_impl.rs`, key-wired via `handle_key_event` (Ctrl+F/H, F3/Shift+F3); real regex behind the optional `regex` feature, literal fallback when off |
 | **Multiple cursors** | ⚠️ PARTIAL | ❌ | Data + render + key wiring exist (Ctrl+D, Ctrl+Alt+↑/↓); editing still applies to primary cursor only |
 | Suggestion / placeholder | ? (verify) | ✅ (v6) | Textual added; confirm revue status |
 | Bracket matching | (CodeEditor widget) | ✅ | Textual in TextArea; revue's is in separate CodeEditor |
@@ -201,7 +201,7 @@ Two real, wired-up implementations (both were previously mislabeled "missing"):
 | 1 | ~~**DataGrid column freeze render**~~ | ✅ DONE — render reads `frozen_*`/`scroll_col` (pin left/right + horizontal scroll), tested | — | — |
 | 2 | ~~**Key bindings for find/replace & multi-cursor**~~ | ✅ DONE — wired via `handle_key_event` (Ctrl+F/H, F3/Shift+F3, Ctrl+D, Ctrl+Alt+↑/↓, Esc) | — | — |
 | 3 | **Multi-cursor editing** | Editing applies to primary cursor only | Low–Medium | Medium–Hard |
-| 4 | **Regex search** in find/replace | Stub (literal fallback) | Low | Small |
+| 4 | ~~**Regex search** in find/replace~~ | ✅ DONE — real regex behind the optional `regex` feature (literal fallback when off) | — | — |
 | 5 | **Web deployment** (textual-serve analog) | Missing entirely | Strategic | Very Hard |
 | 6 | **Streaming content** (LLM output into Markdown/RichLog) | Verify — Textual added `Markdown.append`/`get_stream` | Medium (modern use case) | Medium |
 | 7 | **Screen stack auto-wiring** | Manager exists but app author must drive it | Low | Medium |
