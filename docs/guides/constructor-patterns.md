@@ -385,6 +385,6 @@ mod tests {
 
 ## Related Documentation
 
-- [Widget Development Guide](../tutorials/04-custom-widget.md)
+- [Reactive Guide](../tutorials/04-reactive.md)
 - [Testing Guide](testing.md)
 - [Architecture](../ARCHITECTURE.md)

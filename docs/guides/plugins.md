@@ -62,11 +62,16 @@ impl Plugin for MyPlugin {
 use revue::prelude::*;
 
 fn main() -> Result<()> {
-    App::builder()
+    let mut app = App::builder()
         .plugin(MyPlugin::new())
         .plugin(AnotherPlugin::new())
-        .build()
-        .run(MyApp::new())
+        .build();
+
+    // run() takes the root view and an event handler
+    app.run(MyApp::new(), |_event, _view, _app| {
+        // handle events...
+        false
+    })
 }
 ```
 
@@ -316,7 +321,7 @@ description = "A Revue plugin for my feature"
 keywords = ["tui", "revue", "plugin"]
 
 [dependencies]
-revue = "0.6"
+revue = "2.71"
 ```
 
 ### lib.rs
@@ -543,4 +548,4 @@ pub struct GitStatusPlugin { /* ... */ }
 ## See Also
 
 - [CLI Guide - Plugin Commands](cli.md#plugin-commands)
-- [Built-in Plugins API](../api/plugins.md)
+- [Built-in Plugins](#built-in-plugins)

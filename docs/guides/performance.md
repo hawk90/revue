@@ -12,21 +12,20 @@ For large lists, use `VirtualList` to only render visible items:
 use revue::widget::VirtualList;
 
 // Only renders visible rows
-VirtualList::new(10_000)  // Total items
-    .row_height(1)
-    .render_row(|idx| {
-        Text::new(format!("Item {}", idx))
-    })
+let items: Vec<String> = (0..10_000).map(|i| format!("Item {i}")).collect();
+VirtualList::new(items)  // Owns the item data
+    .item_height(1)
+    .renderer(|item, _idx, _selected| item.clone())
 ```
 
 Variable height support:
 
 ```rust
-VirtualList::new(items.len())
-    .height_calculator(|idx| {
-        if items[idx].is_header { 2 } else { 1 }
+VirtualList::new(items)
+    .variable_height(|item, _idx| {
+        if item.is_header { 2 } else { 1 }
     })
-    .render_row(|idx| render_item(&items[idx]))
+    .renderer(|item, _idx, _selected| render_item(item))
 ```
 
 ### Lazy Loading
@@ -52,11 +51,13 @@ Progressive loading:
 ```rust
 use revue::patterns::ProgressiveLoader;
 
-let loader = ProgressiveLoader::new(total_items)
-    .chunk_size(100)
-    .on_chunk(|chunk| {
-        process_chunk(chunk);
-    });
+let loader = ProgressiveLoader::new(items, 100);
+
+// Load chunks on demand until every item is loaded
+while !loader.is_complete() {
+    let chunk = loader.load_next();
+    process_chunk(chunk);
+}
 ```
 
 ### Render Batching
@@ -69,10 +70,10 @@ use revue::render::RenderBatch;
 let mut batch = RenderBatch::new();
 
 for item in items {
-    batch.text(x, y, &item.text, style);
+    batch.text(x, y, &item.text, Some(Color::WHITE), None);
 }
 
-batch.flush(buffer);
+batch.apply_to_buffer(&mut buffer);
 ```
 
 ## Memory Optimization
@@ -86,9 +87,9 @@ use revue::dom::{ObjectPool, BufferPool, StringPool};
 
 // Reuse buffers
 let pool = BufferPool::new();
-let buffer = pool.get(80, 24);
+let buffer = pool.acquire(80, 24);
 // ... use buffer
-pool.put(buffer);  // Returns to pool
+pool.release(buffer);  // Returns to pool
 
 // String interning
 let strings = StringPool::new();
@@ -145,15 +146,14 @@ for item in items {
 
 Revue uses incremental DOM updates by default:
 
-```rust
-// DOM diff tracks which nodes changed
-let renderer = DomRenderer::new();
-
-// First render builds full tree
-renderer.build(&widget);
-
-// Subsequent renders only update changes
-renderer.build_incremental(&widget);
+```text
+// DOM diffing happens automatically inside the render loop:
+//
+//   - The first render builds the full node tree.
+//   - Subsequent renders diff against the previous tree and only
+//     update the nodes that actually changed.
+//
+// This is handled internally by the renderer — no user code is required.
 ```
 
 ### Dirty Rect Optimization
@@ -207,7 +207,7 @@ use revue::style::easing;
 
 // Pre-computed curves
 easing::ease_in_out(t)
-easing::cubic_bezier(0.4, 0.0, 0.2, 1.0, t)
+easing::ease_out_cubic(t)
 ```
 
 ## Benchmarking

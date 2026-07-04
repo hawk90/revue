@@ -6,7 +6,7 @@ Revue uses Cargo feature flags to keep compile times fast and binary sizes small
 
 ```toml
 [dependencies]
-revue = "2.70"  # enables: async, config
+revue = "2.71"  # enables: async, config
 ```
 
 | Feature | Dependencies | Purpose |
@@ -23,11 +23,11 @@ For convenience, Revue provides preset feature groups:
 | `std` | `async`, `config`, `tracing` | Standard apps with structured logging |
 | `gui` | `async`, `config`, `markdown`, `image` | Rich content TUI apps |
 | `all-gui` | `std` + `syntax-highlighting`, `qrcode`, `sysinfo`, `diff`, `clipboard`, `hot-reload` | Full-featured GUI apps |
-| `full` | All features | Development, examples, and testing |
+| `full` | All features except `http` | Development, examples, and testing |
 
 ```toml
 # Example: use the gui preset
-revue = { version = "2.70", features = ["gui"] }
+revue = { version = "2.71", features = ["gui"] }
 ```
 
 ## Individual Features
@@ -37,7 +37,7 @@ revue = { version = "2.70", features = ["gui"] }
 | Feature | Dependencies | Purpose |
 |---------|-------------|---------|
 | `markdown` | `pulldown-cmark` | Markdown widget for rendering rich text |
-| `syntax-highlighting` | `tree-sitter-highlight` + 13 language parsers | Code syntax highlighting (Rust, Python, JS, Go, Bash, HTML, CSS, TOML, YAML, SQL, JSON, Markdown) |
+| `syntax-highlighting` | `tree-sitter-highlight` + 12 language parsers | Code syntax highlighting (Rust, Python, JS, Go, Bash, HTML, CSS, TOML, YAML, SQL, JSON, Markdown) |
 | `image` | `image`, `base64` | Terminal image display via Kitty protocol |
 | `qrcode` | `qrcode` | QR code generation widget |
 
@@ -64,43 +64,43 @@ revue = { version = "2.70", features = ["gui"] }
 
 ```toml
 # Just the defaults
-revue = "2.70"
+revue = "2.71"
 ```
 
 ### Dashboard App
 
 ```toml
-revue = { version = "2.70", features = ["std"] }
+revue = { version = "2.71", features = ["std"] }
 ```
 
 ### Text Editor
 
 ```toml
-revue = { version = "2.70", features = ["std", "syntax-highlighting", "clipboard"] }
+revue = { version = "2.71", features = ["std", "syntax-highlighting", "clipboard"] }
 ```
 
 ### Content Viewer
 
 ```toml
-revue = { version = "2.70", features = ["gui", "syntax-highlighting"] }
+revue = { version = "2.71", features = ["gui", "syntax-highlighting"] }
 ```
 
 ### Full-Featured Application
 
 ```toml
-revue = { version = "2.70", features = ["all-gui"] }
+revue = { version = "2.71", features = ["all-gui"] }
 ```
 
 ### Development with Hot Reload
 
 ```toml
 # In your development profile
-revue = { version = "2.70", features = ["full"] }
+revue = { version = "2.71", features = ["full"] }
 ```
 
 ## Build Impact
 
-The `syntax-highlighting` feature is the heaviest, pulling in 13 tree-sitter language parsers. If you only need a few languages, consider using the base framework and adding tree-sitter parsers manually.
+The `syntax-highlighting` feature is the heaviest, pulling in 12 tree-sitter language parsers. If you only need a few languages, consider using the base framework and adding tree-sitter parsers manually.
 
 | Configuration | Approximate Dependencies |
 |--------------|------------------------|
@@ -115,5 +115,5 @@ The `syntax-highlighting` feature is the heaviest, pulling in 13 tree-sitter lan
 To start with no features and add only what you need:
 
 ```toml
-revue = { version = "2.70", default-features = false, features = ["async"] }
+revue = { version = "2.71", default-features = false, features = ["async"] }
 ```

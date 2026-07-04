@@ -48,7 +48,7 @@ Each field is configured using a builder pattern:
     .required()                  // Required validator
     .min_length(3)               // Minimum length
     .max_length(20)              // Maximum length
-    .alphanumeric())             // Letters and numbers only
+    .validator(Validators::alphanumeric()))  // Letters and numbers only
 ```
 
 ### Field Types
@@ -64,18 +64,18 @@ Each field is configured using a builder pattern:
 ### Available Validators
 
 ```rust
-.required()              // Field cannot be empty
-.email()                 // Must be valid email
-.min_length(n)           // Minimum character count
-.max_length(n)           // Maximum character count
-.min(n)                  // Minimum numeric value
-.max(n)                  // Maximum numeric value
-.numeric()               // Must contain only digits
-.integer()               // Must be a valid integer
-.alphanumeric()          // Letters and numbers only
-.no_whitespace()         // No spaces allowed
-.matches("password")     // Must match another field
-.custom(|v| ...)         // Custom validator function
+.required()                             // Field cannot be empty
+.email()                                // Must be valid email
+.min_length(n)                          // Minimum character count
+.max_length(n)                          // Maximum character count
+.min(n)                                 // Minimum numeric value
+.max(n)                                 // Maximum numeric value
+.integer()                              // Must be a valid integer
+.matches("password")                    // Must match another field
+.validator(Validators::numeric())       // Must contain only digits
+.validator(Validators::alphanumeric())  // Letters and numbers only
+.validator(Validators::no_whitespace()) // No spaces allowed
+.validator(Validators::custom(|v| ...)) // Custom validator function
 ```
 
 ## Password Confirmation
@@ -167,10 +167,8 @@ impl MyForm {
             self.form.reset();
         } else {
             // Show validation errors
-            for (field, errors) in self.form.errors() {
-                for error in errors {
-                    println!("{}: {}", field, error.message);
-                }
+            for (field, message) in self.form.errors() {
+                println!("{}: {}", field, message);
             }
         }
     }
@@ -199,7 +197,7 @@ impl View for MyForm {
                 };
 
                 let status = if value.is_empty() {
-                    Text::new("○").fg(Color::GRAY)
+                    Text::new("○").fg(Color::rgb(128, 128, 128))
                 } else if is_valid {
                     Text::new("✓").fg(Color::GREEN)
                 } else {
@@ -246,18 +244,18 @@ impl View for MyForm {
 ## Custom Validators
 
 ```rust
-use revue::patterns::form::ValidationError;
+use revue::patterns::form::{Validators, ValidationError};
 
 let form = FormState::new()
     .field("username", |f| f
         .required()
-        .custom(|value| {
+        .validator(Validators::custom(|value| {
             if value.starts_with("admin") {
                 Err(ValidationError::new("Username cannot start with 'admin'"))
             } else {
                 Ok(())
             }
-        }))
+        })))
     .build();
 ```
 
@@ -265,7 +263,7 @@ let form = FormState::new()
 
 ```rust
 use revue::prelude::*;
-use revue::patterns::form::FormState;
+use revue::patterns::form::{FormState, Validators};
 
 struct RegistrationForm {
     form: FormState,
@@ -279,7 +277,7 @@ impl RegistrationForm {
                 .required()
                 .min_length(3)
                 .max_length(20)
-                .alphanumeric())
+                .validator(Validators::alphanumeric()))
             .field("email", |f| f
                 .email()
                 .label("Email")
@@ -495,7 +493,7 @@ let form = FormState::new()
     .field("has_shipping", |f| f.label("Require shipping?"))
     .field("address", |f| f
         .label("Shipping Address")
-        .custom(|value| {
+        .validator(Validators::custom(|value| {
             // Only validate if has_shipping is "true"
             if let Ok(shipping) = std::env::var("has_shipping") {
                 if shipping == "true" && value.is_empty() {
@@ -503,7 +501,7 @@ let form = FormState::new()
                 }
             }
             Ok(())
-        }))
+        })))
     .build();
 
 // In your handler, set the environment variable or use shared state
@@ -578,7 +576,7 @@ impl SectionedForm {
                 .build(),
             contact: FormState::new()
                 .field("email", |f| f.email().label("Email").required())
-                .field("phone", |f| f.label("Phone").numeric())
+                .field("phone", |f| f.label("Phone").validator(Validators::numeric()))
                 .build(),
             preferences: FormState::new()
                 .field("newsletter", |f| f.label("Subscribe to newsletter"))
@@ -638,13 +636,12 @@ impl LargeForm {
 // 3. Use iterators for rendering many fields
 impl View for LargeForm {
     fn render(&self, ctx: &mut RenderContext) {
-        let form_view = vstack()
-            .gap(1)
-            .extend(self.form.field_names().iter().map(|name| {
-                // Render each field
-                self.render_field(name)
-            }))
-            .render(ctx);
+        let mut form_view = vstack().gap(1);
+        for name in self.form.field_names() {
+            // Render each field
+            form_view = form_view.child(self.render_field(name));
+        }
+        form_view.render(ctx);
     }
 }
 ```
@@ -659,12 +656,12 @@ use revue::prelude::*;
 impl MyForm {
     fn handle_key(&mut self, key: &Key) -> bool {
         match key {
-            Key::F12 => {
+            Key::F(12) => {
                 // Toggle devtools to inspect form state
                 // Requires devtools to be enabled
                 true
             }
-            Key::Char('d') if KeyModifiers::CONTROL.matches(key.modifiers) => {
+            Key::Char('d') if key.ctrl => {
                 // Press Ctrl+D to open devtools
                 true
             }
@@ -693,7 +690,7 @@ impl MyForm {
 .field("phone", |f| f
     .label("Phone Number")
     .placeholder("(555) 123-4567")
-    .numeric())
+    .validator(Validators::numeric()))
 ```
 
 ### 3. Use matches() for confirmation fields

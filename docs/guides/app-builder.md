@@ -192,7 +192,7 @@ Simplified version for keyboard-only apps. The handler receives only key events 
 
 ```rust
 app.run_with_handler(MyView, |key, view| {
-    matches!(key, Key::Char('q') | Key::Escape)
+    matches!(key.key, Key::Char('q') | Key::Escape)
 });
 ```
 

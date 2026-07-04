@@ -378,7 +378,7 @@ impl View for FileDropZone {
         };
 
         let content = if self.files.is_empty() {
-            Text::new("Drop files here").muted()
+            Text::muted("Drop files here")
         } else {
             let list: String = self.files.iter()
                 .map(|f| format!("  - {}", f))
@@ -388,7 +388,7 @@ impl View for FileDropZone {
         };
 
         Border::single()
-            .border_color(border_color)
+            .fg(border_color)
             .title("Drop Zone")
             .child(content)
             .render(ctx);
@@ -441,7 +441,7 @@ if ctx.should_show_preview() {
 
 ```rust
 // ESC key to cancel
-if key == Key::Esc && ctx.is_dragging() {
+if key == Key::Escape && ctx.is_dragging() {
     ctx.cancel();
 }
 ```
@@ -458,5 +458,5 @@ let ctx = DragContext::new().threshold(5);
 
 ## See Also
 
-- [Event Handling Guide](events.md)
-- [Mouse Events](events.md#mouse-events)
+- [Testing Guide](testing.md) — simulating mouse and keyboard input in tests
+- [App Builder Guide](app-builder.md) — wiring up event handling in your app

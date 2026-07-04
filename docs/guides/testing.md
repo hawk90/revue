@@ -200,10 +200,9 @@ fn test_visual_regression() {
         .group("dashboard");
 
     let mut app = TestApp::new(Dashboard::new());
-    let pilot = Pilot::new(&mut app);
 
-    // Compare against golden file
-    test.assert_matches(pilot.buffer());
+    // Compare the current buffer against the golden file
+    test.assert_matches(app.buffer());
 }
 ```
 

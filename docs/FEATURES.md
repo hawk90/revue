@@ -202,7 +202,7 @@ color: ansi(196);
 
 ## 2. Flexbox Layout
 
-Powered by [taffy](https://github.com/DioxusLabs/taffy), the same engine used by Dioxus and Bevy.
+Powered by Revue's custom, in-tree layout engine (`src/runtime/layout/`) — a hand-written flexbox and grid solver with no third-party layout dependency.
 
 ### Direction
 
@@ -281,7 +281,7 @@ let current = count.get();  // 0
 count.set(5);
 
 // Update based on current value
-count.update(|n| n + 1);
+count.update(|n| *n += 1);
 ```
 
 ### Computed
@@ -325,10 +325,10 @@ for item in items.get().iter() {
 
 ### Basic Widgets
 
-#### Box
+#### Container (VStack)
 
 ```rust
-box_view()
+vstack()
     .class("container")
     .child(/* ... */)
 ```
@@ -1085,7 +1085,7 @@ let mut app = App::builder()
 ### Testing
 
 ```rust
-use revue::testing::{TestApp, TestPilot};
+use revue::testing::{TestApp, Pilot};
 
 #[test]
 fn test_counter() {
@@ -1346,27 +1346,23 @@ if let Some(errors) = form.state().errors() {
 Rich animation support with easing functions:
 
 ```rust
-use revue::animation::{Animation, Easing, presets};
+use revue::utils::animation::{fade_in, slide_in_left, Sequence};
+use revue::utils::easing::Easing;
+use std::time::Duration;
 
-// Fade in animation
-let fade_in = Animation::fade_in()
-    .duration(Duration::from_millis(300))
-    .easing(Easing::EaseOutCubic);
+// Preset animations return a Sequence of keyframes
+let fade = fade_in(300);           // fade in over 300ms
+let slide = slide_in_left(400);    // slide in from the left over 400ms
 
-// Slide animation
-let slide = Animation::slide_in_left()
-    .duration(Duration::from_millis(400))
-    .delay(Duration::from_millis(100));
+// Build a custom sequence with per-step easing
+let mut bounce = Sequence::new()
+    .then_eased(Duration::from_millis(150), 1.2, Easing::OutCubic)
+    .then_eased(Duration::from_millis(150), 1.0, Easing::InOutCubic)
+    .repeat(true);
 
-// CSS-like keyframes
-Animation::keyframes("bounce")
-    .step(0%, |anim| anim.scale(1.0))
-    .step(50%, |anim| anim.scale(1.2))
-    .step(100%, |anim| anim.scale(1.0));
-
-// Apply to widget
-text("Animated!")
-    .animation(fade_in)
+// Drive it: start, then poll the interpolated value each frame
+bounce.start();
+let scale = bounce.value();
 ```
 
 ### Worker Pool
@@ -1468,8 +1464,7 @@ heatmap()
     .color_scale(HeatmapColor::Viridis)
 
 // Candle chart (financial)
-candlestick()
-    .data(ohlc_data)
+candle_chart(ohlc_data)
     .title("Stock Price")
 
 // Histogram
@@ -1483,9 +1478,9 @@ histogram()
 htop-style process viewer:
 
 ```rust
-procmon()
-    .refresh_rate(Duration::from_secs(1))
-    .sort_by(ProcessSort::CPU)
+process_monitor()
+    .update_interval(1000)
+    .sort_by(ProcessSort::Cpu)
 ```
 
 ### HTTP Client
@@ -1638,19 +1633,24 @@ zen()
 
 ## Feature Comparison
 
-| Feature | Revue | Textual | ratatui | reratui | Cursive |
-|---------|-------|---------|---------|---------|---------|
-| CSS Styling | ✅ | ✅ | ❌ | ❌ | ❌ |
-| CSS Variables | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Flexbox | ✅ | ✅ | ❌ | △ | △ |
-| Signal/Reactivity | ✅ | ✅ | ❌ | ✅ Hooks | ❌ |
-| Hot Reload | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Devtools | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Form Validation | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Animation System | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Worker Pool | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Command Palette | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Markdown | ✅ | ✅ | △ | △ | ❌ |
-| Image | ✅ Kitty | △ | △ | △ | ❌ |
-| Single Binary | ✅ | ❌ | ✅ | ✅ | ✅ |
-| Performance | ⚡⚡⚡ | ⚡ | ⚡⚡⚡ | ⚡⚡⚡ | ⚡⚡⚡ |
+The credible modern peers are Textual (closest by philosophy) and, among Rust
+frameworks, r3bl_tui, tui-realm, and iocraft. (`reratui` — an immediate-mode
+wrapper over ratatui with negligible adoption — is not a meaningful peer and is
+omitted.)
+
+| Feature | Revue | Textual | ratatui | r3bl_tui | tui-realm | iocraft |
+|---------|-------|---------|---------|----------|-----------|---------|
+| CSS Styling | ✅ | ✅ TCSS | ❌ | △ CSS-like | ❌ | ❌ |
+| CSS Variables | ✅ | ✅ | ❌ | △ | ❌ | ❌ |
+| Flexbox | ✅ | ✅ | ❌ | △ | ❌ | ✅ (taffy) |
+| Signal/Reactivity | ✅ Vue | ✅ | ❌ | ✅ React/Elm | ✅ React/Elm | ✅ React |
+| Hot Reload | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Devtools | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Form Validation | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Animation System | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Worker Pool | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Command Palette | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Markdown | ✅ | ✅ | △ | △ | ❌ | ❌ |
+| Image | ✅ Kitty | △ | △ | △ | △ | ❌ |
+| Single Binary | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Performance | ⚡⚡⚡ | ⚡ | ⚡⚡⚡ | ⚡⚡⚡ | ⚡⚡⚡ | ⚡⚡⚡ |

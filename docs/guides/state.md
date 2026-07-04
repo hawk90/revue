@@ -71,16 +71,17 @@ count.set(2); // Prints: "Count changed to: 2"
 For asynchronous operations:
 
 ```rust
-// Load data asynchronously
-let data = use_async(async {
-    fetch_data().await
+// Load data asynchronously (pass a closure returning AsyncResult<T>)
+let (data, reload) = use_async(|| {
+    fetch_data()
 });
 
 // Check state
 match data.get() {
-    AsyncResult::Loading => show_spinner(),
-    AsyncResult::Ok(value) => show_data(value),
-    AsyncResult::Err(e) => show_error(e),
+    AsyncState::Idle => {},
+    AsyncState::Loading => show_spinner(),
+    AsyncState::Ready(value) => show_data(value),
+    AsyncState::Error(e) => show_error(e),
 }
 ```
 
@@ -89,8 +90,8 @@ match data.get() {
 For periodic updates:
 
 ```rust
-let stats = use_async_poll(Duration::from_secs(1), async {
-    fetch_system_stats().await
+let stats = use_async_poll(Duration::from_secs(1), || {
+    fetch_system_stats()
 });
 ```
 
@@ -99,8 +100,8 @@ let stats = use_async_poll(Duration::from_secs(1), async {
 Start loading immediately:
 
 ```rust
-let data = use_async_immediate(async {
-    fetch_important_data().await
+let data = use_async_immediate(|| {
+    fetch_important_data()
 });
 ```
 
@@ -129,11 +130,11 @@ if form.submit() {
 ```rust
 use revue::patterns::SearchState;
 
-let search = SearchState::new(items)
+let search = SearchState::new()
     .mode(SearchMode::Fuzzy);
 
 search.set_query("hello");
-let results = search.filtered();
+let results = search.filter(&items, |i| i.name.clone());
 ```
 
 ### Navigation State
@@ -141,7 +142,7 @@ let results = search.filtered();
 ```rust
 use revue::patterns::NavigationState;
 
-let nav = NavigationState::new();
+let nav = NavigationState::new("/home");
 
 nav.push("/home");
 nav.push("/settings");

@@ -126,9 +126,9 @@ impl View for TodoApp {
             .child(self.render_list())
             .child(self.render_footer());
 
-        Border::new(content)
+        Border::rounded()
+            .child(content)
             .title(" Todo App ")
-            .rounded()
             .render(ctx);
     }
 }
@@ -141,7 +141,7 @@ impl TodoApp {
 
         hstack()
             .child(Text::new("Todo List").bold())
-            .child(Text::new(format!("{} active, {} completed", active, completed)).muted())
+            .child(Text::muted(format!("{} active, {} completed", active, completed)))
     }
 
     fn render_input(&self) -> impl View {
@@ -152,7 +152,7 @@ impl TodoApp {
                     Input::new()
                         .value(&self.input)
                         .placeholder("What needs to be done?")
-                        .focused()
+                        .focused(true)
                 } else {
                     Input::new()
                         .value(&self.input)
@@ -167,11 +167,11 @@ impl TodoApp {
 
         if filtered.is_empty() {
             return vstack().child(
-                Text::new(match self.filter {
+                Text::muted(match self.filter {
                     Filter::All => "No todos yet. Press 'a' to add one!",
                     Filter::Active => "No active todos!",
                     Filter::Completed => "No completed todos!",
-                }).muted()
+                })
             );
         }
 
@@ -186,7 +186,7 @@ impl TodoApp {
             let text = if is_selected {
                 Text::new(line).bold()
             } else if todo.completed {
-                Text::new(line).style("text-decoration: line-through; color: gray;")
+                Text::new(line).dim()
             } else {
                 Text::new(line)
             };
@@ -206,7 +206,7 @@ impl TodoApp {
 
         vstack()
             .child(filters)
-            .child(Text::new("[a]dd [Enter]toggle [d]elete [c]lear completed [q]uit").muted())
+            .child(Text::muted("[a]dd [Enter]toggle [d]elete [c]lear completed [q]uit"))
     }
 
     fn filter_button(&self, label: &str, filter: Filter) -> impl View {
@@ -223,9 +223,7 @@ impl TodoApp {
 
 ```rust
 fn main() -> Result<()> {
-    let app = App::builder()
-        .title("Todo App")
-        .build();
+    let mut app = App::builder().build();
 
     let todo_app = TodoApp::new();
 
@@ -233,7 +231,7 @@ fn main() -> Result<()> {
         if state.editing {
             // Input mode
             match event.key {
-                Key::Esc => {
+                Key::Escape => {
                     state.editing = false;
                     true
                 }
@@ -255,7 +253,7 @@ fn main() -> Result<()> {
         } else {
             // Navigation mode
             match event.key {
-                Key::Char('q') | Key::Esc => false,
+                Key::Char('q') | Key::Escape => false,
                 Key::Char('a') => {
                     state.editing = true;
                     true
@@ -348,8 +346,7 @@ fn main() -> Result<()> {
     enable_devtools();
 
     let app = App::builder()
-        .title("Todo App")
-        .with_devtools(true)  // F12 to toggle
+        .devtools(true)  // F12 to toggle
         .build();
 
     // ...

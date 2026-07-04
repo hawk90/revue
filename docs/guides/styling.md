@@ -211,8 +211,8 @@ use revue::style::Themes;
 // Apply a theme
 set_theme(Themes::dracula());
 set_theme(Themes::nord());
-set_theme(Themes::gruvbox());
-set_theme(Themes::catppuccin());
+set_theme(Themes::monokai());
+set_theme(Themes::solarized_dark());
 ```
 
 ### Reactive Themes
@@ -233,13 +233,13 @@ cycle_theme();
 ```rust
 use revue::style::{Theme, ThemeBuilder};
 
-let my_theme = ThemeBuilder::new("my-theme")
-    .bg_primary(Color::rgb(26, 27, 38))
-    .fg_primary(Color::rgb(192, 202, 245))
-    .accent(Color::rgb(122, 162, 247))
+let my_theme = Themes::custom("my-theme")
+    .background(Color::rgb(26, 27, 38))
+    .text(Color::rgb(192, 202, 245))
+    .primary(Color::rgb(122, 162, 247))
     .build();
 
-register_theme(my_theme);
+register_theme("my-theme", my_theme);
 set_theme_by_id("my-theme");
 ```
 

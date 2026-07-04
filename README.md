@@ -150,29 +150,19 @@ See [Forms Tutorial](docs/tutorials/06-forms.md) for complete guide.
 Rich animations with easing functions and keyframes:
 
 ```rust
-use revue::animation::{Animation, Easing};
+use revue::prelude::*;
+use std::time::Duration;
 
-// Fade in with custom easing
-text("Hello!")
-    .animation(Animation::fade_in()
-        .duration(300)
-        .easing(Easing::EaseInOutCubic))
+// Interpolate a value over time with an easing function
+let tween = Tween::new(0.0, 100.0, Duration::from_millis(300))
+    .easing(easing::ease_out_cubic);
 
-// Slide in from left
-text("Welcome!")
-    .animation(Animation::slide_in_left()
-        .duration(500)
-        .delay(100))
-
-// Keyframe animation
-text("Pulsing!")
-    .animation(Animation::keyframe(|keyframes| {
-        keyframes
-            .at(0, |kf| kf.scale(1.0).opacity(1.0))
-            .at(50, |kf| kf.scale(1.2).opacity(0.8))
-            .at(100, |kf| kf.scale(1.0).opacity(1.0))
-    }))
+// Built-in presets
+let fade = Tween::fade_in(Duration::from_millis(300));
+let slide = Tween::slide_in_left(20.0, Duration::from_millis(500));
 ```
+
+Keyframe and spring animations are also available — see the [`animations` example](examples/animations.rs).
 
 ### Worker Pool
 
@@ -192,8 +182,8 @@ pool.submit(|| {
     fetch_data_from_api()
 });
 
-// Get result when ready
-if let Some(result) = handle.try_recv() {
+// Get result when ready (non-blocking)
+if let Some(result) = handle.try_join() {
     // Update UI with result
 }
 ```
@@ -335,10 +325,10 @@ Browse all examples in the [examples/](examples/) directory.
 |:--|:--:|:--:|:--:|:--:|:--:|
 | **Type** | Framework | Library | Framework | Framework | Framework |
 | **Language** | Rust | Rust | Rust | Rust | Python |
-| **Architecture** | Retained | Immediate | Retained (Fiber) | Retained | Retained |
+| **Architecture** | Retained | Immediate | Immediate (on ratatui) | Retained | Retained |
 | **Styling** | CSS Files | Inline | Inline-style | Theme | CSS (.tcss) |
 | **State** | Signals | Manual | Hooks | Callback | Reactive |
-| **Widgets** | 100+ | ~14 built-in | ~14 (wraps ratatui) | ~40 | ~37 |
+| **Widgets** | 100+ | ~15 built-in | wraps ratatui | ~40 | ~35 |
 | **Layout** | Flex+Grid | Constraint | Constraint | Linear/Fixed | Flex+Grid |
 | **Forms** | ✅ Built-in | ❌ | ❌ | Partial | ✅ |
 | **Animation** | ✅ Tween+Keyframes | ❌ | ❌ | ❌ | ✅ |
@@ -349,7 +339,7 @@ Browse all examples in the [examples/](examples/) directory.
 <!-- comparison-table-end -->
 <!-- Last verified: 2026-07-04 -->
 
-> **Note**: [ratatui](https://crates.io/crates/ratatui) is a low-level TUI library (like React's DOM), while [reratui](https://crates.io/crates/reratui) is a React-like framework built on top of ratatui. See [Framework Comparison](docs/FRAMEWORK_COMPARISON.md#11-ratatui-vs-reratui-which-one-to-choose) for detailed analysis.
+> **Note**: [ratatui](https://crates.io/crates/ratatui) is a low-level TUI *library* (like React's DOM), not a framework — the higher-level layer is fragmented across several Rust projects, of which [r3bl_tui](https://crates.io/crates/r3bl_tui), [tui-realm](https://crates.io/crates/tuirealm), and [iocraft](https://crates.io/crates/iocraft) are the most active today. See the [Framework Comparison](docs/FRAMEWORK_COMPARISON.md) for a detailed, verified breakdown.
 
 <br>
 

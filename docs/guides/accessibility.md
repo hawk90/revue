@@ -7,11 +7,17 @@ Build inclusive terminal applications with Revue's accessibility features.
 ### High Contrast Themes
 
 ```rust
-use revue::style::Themes;
+use revue::style::{themes, BuiltinTheme};
 
-// WCAG AAA compliant themes
-set_theme(Themes::high_contrast_dark());
-set_theme(Themes::high_contrast_light());
+// High contrast styling is provided as CSS modules
+let dark_css = themes::high_contrast_dark::css();
+let light_css = themes::high_contrast_light::css();
+
+// The same CSS is also reachable through the BuiltinTheme enum
+let dark_css = BuiltinTheme::HighContrastDark.css();
+
+// Apply it to your app
+App::builder().css(dark_css).build();
 ```
 
 ### Checking Theme Mode
@@ -66,11 +72,11 @@ let duration = effective_duration(Duration::from_millis(300));
 ```rust
 use revue::widget::FocusStyle;
 
-// Built-in focus styles
-Input::new().focus_style(FocusStyle::Solid)
-Input::new().focus_style(FocusStyle::Double)
-Input::new().focus_style(FocusStyle::Dotted)
-Input::new().focus_style(FocusStyle::Bold)
+// Focus ring appearance is described by the FocusStyle enum
+// (Solid, Double, Dotted, Bold, Rounded). These variants are applied
+// when drawing a focus ring (see "Drawing Focus Rings" below), not
+// through a per-widget builder method.
+let style = FocusStyle::Double;
 ```
 
 ### Drawing Focus Rings
@@ -124,7 +130,7 @@ announce_error("Failed to connect");
 
 // Dialogs
 announce_dialog_opened("Confirm deletion");
-announce_dialog_closed("Confirm deletion");
+announce_dialog_closed();
 ```
 
 ### Retrieving Announcements
@@ -147,12 +153,17 @@ if has_announcements() {
 Keep focus within a modal or dialog:
 
 ```rust
-use revue::widget::FocusTrap;
+use revue::event::{FocusTrap, FocusManager};
 
-// Trap focus within modal
-let _trap = FocusTrap::new();
+let mut fm = FocusManager::new();
+
+// Trap focus within a modal identified by its widget id
+let mut trap = FocusTrap::new(modal_id)
+    .with_children(&[input_id, ok_button_id, cancel_button_id]);
+
+trap.activate(&mut fm);   // Focus is now confined to the modal
 render_modal();
-// Focus released when _trap drops
+trap.deactivate(&mut fm); // Release the trap
 ```
 
 ### Nested Traps
@@ -160,12 +171,12 @@ render_modal();
 ```rust
 use revue::event::FocusManager;
 
-let fm = FocusManager::new();
+let mut fm = FocusManager::new();
 
 // First modal
-fm.push_trap();
+fm.push_trap(first_modal_id, &first_modal_children);
 // Second modal (nested)
-fm.push_trap();
+fm.push_trap(second_modal_id, &second_modal_children);
 
 // Close second modal
 fm.pop_trap();
@@ -177,12 +188,12 @@ fm.pop_trap();
 ### Focus Restoration
 
 ```rust
-// Save current focus
-fm.push_trap();
+// Save current focus and trap within the modal
+fm.push_trap(modal_id, &modal_children);
 
 // ... modal interaction
 
-// Restore focus to previous element
+// Restore focus to the previously focused element
 fm.release_trap_and_restore();
 ```
 
@@ -237,45 +248,20 @@ fn handle_key(&mut self, key: &Key) -> bool {
 }
 ```
 
-## ARIA-like Properties
-
-### Roles and Labels
-
-```rust
-// Semantic widget types
-Button::new("Submit")
-    .role("button")
-    .label("Submit form")
-
-// Status regions
-Text::new(status)
-    .role("status")
-    .live("polite")  // Announce changes
-```
-
-### Live Regions
-
-```rust
-// Polite: Wait for pause in speech
-.live("polite")
-
-// Assertive: Interrupt immediately
-.live("assertive")
-```
-
 ## Color Accessibility
 
 ### Contrast Checking
 
-Ensure sufficient contrast ratios:
+Pick a readable foreground color for a given background:
 
 ```rust
-use revue::utils::contrast_ratio;
+use revue::utils::contrast_color;
 
-let ratio = contrast_ratio(fg_color, bg_color);
-// WCAG AA: 4.5:1 for normal text, 3:1 for large text
-// WCAG AAA: 7:1 for normal text, 4.5:1 for large text
-assert!(ratio >= 4.5);
+// Returns black or white — whichever contrasts better with the input
+let fg = contrast_color(bg_color);
+text.fg(fg).bg(bg_color)
+// Aim for WCAG AA (4.5:1 normal text, 3:1 large text) or
+// AAA (7:1 normal text, 4.5:1 large text) contrast.
 ```
 
 ### Color Independence
@@ -308,16 +294,12 @@ fn test_focus_management() {
     let mut app = TestApp::new(MyApp::new());
     let mut pilot = Pilot::new(&mut app);
 
-    // Tab cycles through focusable elements
-    pilot.press(Key::Tab);
-    pilot.assert_focused("#input1");
+    // Tab cycles forward through focusable elements
+    pilot.press_tab();
+    pilot.press_tab();
 
-    pilot.press(Key::Tab);
-    pilot.assert_focused("#input2");
-
-    // Shift+Tab goes back
-    pilot.press_shift(Key::Tab);
-    pilot.assert_focused("#input1");
+    // Shift+Tab (backtab) cycles backward
+    pilot.press_backtab();
 }
 
 #[test]
@@ -325,7 +307,7 @@ fn test_announcements() {
     let mut app = TestApp::new(MyApp::new());
     let mut pilot = Pilot::new(&mut app);
 
-    pilot.press(Key::Enter);
+    pilot.press_key(Key::Enter);
 
     let announcements = take_announcements();
     assert!(announcements.contains(&"Button clicked".to_string()));
@@ -355,21 +337,23 @@ impl Interactive for MyWidget {
 ### 2. Provide Text Alternatives
 
 ```rust
-// Icon buttons need labels
-Button::icon("🔍")
-    .label("Search")
-    .tooltip("Search items")
+// Button::icon() takes a single char
+Button::icon('🔍')
+
+// Announce the button's purpose to screen readers
+announce_button_clicked("Search");
 ```
 
 ### 3. Maintain Focus Context
 
 ```rust
-// When showing a dialog, trap focus
-let _trap = FocusTrap::new();
+// When showing a dialog, trap focus within it
+let mut trap = FocusTrap::new(dialog_id).with_children(&dialog_children);
+trap.activate(&mut fm);
 show_dialog();
 
-// When hiding, restore focus
-// (automatic when _trap drops)
+// When hiding, release the trap to restore focus
+trap.deactivate(&mut fm);
 ```
 
 ### 4. Test with Screen Readers
@@ -386,10 +370,4 @@ Show available shortcuts:
 ```rust
 // Help text
 Text::muted("[↑↓] Navigate  [Enter] Select  [Esc] Cancel")
-
-// Full keyboard help
-KeyboardHelp::new()
-    .shortcut("↑/↓", "Navigate items")
-    .shortcut("Enter", "Select item")
-    .shortcut("Esc", "Close")
 ```

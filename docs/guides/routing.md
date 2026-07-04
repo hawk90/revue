@@ -14,7 +14,7 @@ The `DeclarativeRouter` wraps Revue's core `Router` (pattern matching, history, 
 ## Quick Start
 
 ```rust
-use revue::app::declarative_router::*;
+use revue::core::app::declarative_router::*;
 
 let mut router = DeclarativeRouter::new()
     .route("/", "home", |ctx, render_ctx| {
@@ -168,7 +168,7 @@ This integrates with Revue's reactive system - components that read the signal w
 Convenient functions for accessing route state:
 
 ```rust
-use revue::app::declarative_router::*;
+use revue::core::app::declarative_router::*;
 
 // Get the reactive signal
 let signal = use_route(&router);
@@ -193,7 +193,7 @@ if is_active(&router, "/about") {
 The `Link` widget renders styled navigation text with active state support:
 
 ```rust
-use revue::app::declarative_router::{Link, link};
+use revue::core::app::declarative_router::{Link, link};
 
 // Using constructor
 let nav = Link::new("/home", "Home")
@@ -252,7 +252,7 @@ The router automatically calls the matched route's renderer function, or the fal
 ## Complete Example
 
 ```rust
-use revue::app::declarative_router::*;
+use revue::core::app::declarative_router::*;
 use revue::style::Color;
 
 // Build router
