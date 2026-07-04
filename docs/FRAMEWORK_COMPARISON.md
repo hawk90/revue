@@ -75,7 +75,7 @@ accurate. Corrections from source-tree verification are called out.
 | Widget | Revue | Textual | ratatui | Notes |
 |--------|-------|---------|---------|-------|
 | Table (basic) | ✅ | ✅ | ✅ | — |
-| **DataGrid** | ✅ | DataTable | ❌ | **See §7.2 — revue now leads on resize/reorder** |
+| **DataGrid** | ✅ | DataTable | ❌ | **See §7.2 — revue leads on resize/reorder, parity on column freeze** |
 | List / OptionList / SelectionList | ✅ | ✅ | partial | — |
 | VirtualList | ✅ | (implicit) | ❌ | — |
 | Tree / FileTree | ✅ | ✅ / ❌ | ❌ | FileTree revue-unique |
@@ -176,7 +176,7 @@ full PTY Terminal widget. (Textual has no equivalents.)
 | **Virtual scroll** | ✅ (`render_rows_virtual`, overscan) | (implicit) | parity+ |
 | **Column resize** | ✅ (mouse + render cursor, tested) | ❌ | **Revue leads** |
 | **Column reorder** | ✅ (drag + keyboard, tested) | ❌ | **Revue leads** |
-| **Column freeze (pin)** | ⚠️ PARTIAL | ✅ (fixed rows/cols) | **Textual leads** — revue has state/API + tests but `render.rs` ignores `frozen_*`/`scroll_col`, so columns don't actually pin |
+| **Column freeze (pin)** | ✅ (pin left/right + horizontal scroll, render + tests) | ✅ (fixed rows/cols) | parity — `render.rs` positions columns from `frozen_left`/`frozen_right`/`scroll_col`; scroll via `scroll_col_left/right` + mouse |
 
 ---
 
@@ -198,7 +198,7 @@ Two real, wired-up implementations (both were previously mislabeled "missing"):
 
 | # | Gap | Current state | Impact | Effort |
 |---|-----|---------------|--------|--------|
-| 1 | **DataGrid column freeze render** | PARTIAL (state/API/tests done; render not wired) | Medium | Small–Medium |
+| 1 | ~~**DataGrid column freeze render**~~ | ✅ DONE — render reads `frozen_*`/`scroll_col` (pin left/right + horizontal scroll), tested | — | — |
 | 2 | **Key bindings for find/replace & multi-cursor** | API-only; not in `handle_key` | Medium (UX) | Small |
 | 3 | **Multi-cursor editing** | Editing applies to primary cursor only | Low–Medium | Medium–Hard |
 | 4 | **Regex search** in find/replace | Stub (literal fallback) | Low | Small |
@@ -208,7 +208,8 @@ Two real, wired-up implementations (both were previously mislabeled "missing"):
 
 ### 9.2 Already done — remove from any "TODO" list
 
-DataGrid virtual scroll / column resize / column reorder; TextArea find-replace
+DataGrid virtual scroll / column resize / column reorder / column freeze render
+(pin left/right + horizontal scroll); TextArea find-replace
 engine; TextArea soft wrap (word-boundary); Pilot testing; Worker system;
 message/event bus; CSS Grid; Input copy-paste & shift-selection. **These are
 shipped and tested** — the old doc's "❌ TODO" markers were wrong.
@@ -246,7 +247,7 @@ adoption, ergonomics, and docs — not raw feature count.
 
 | vs Framework | Revue standing | Notes |
 |--------------|----------------|-------|
-| vs **Textual** | **~parity, ahead on breadth** | Leads on widgets, viz, DataGrid resize/reorder, TextArea find/replace + soft wrap. Trails on column-freeze render, web serve, streaming content. |
+| vs **Textual** | **~parity, ahead on breadth** | Leads on widgets, viz, DataGrid resize/reorder, TextArea find/replace + soft wrap; parity on DataGrid column freeze. Trails on web serve, streaming content. |
 | vs **ratatui** | Different tier | Higher-level; ratatui wins adoption & is the substrate, not a like-for-like rival. |
 | vs **r3bl_tui / tui-realm / iocraft** | Feature-ahead, adoption-behind | Revue ships far more widgets + CSS; peers have more users/momentum. |
 | vs **reratui / reactive_tui / Cursive** | Not live competition | Negligible / dead / inactive. |
@@ -266,7 +267,7 @@ stub — is now implemented.)
   (`widget/data/datagrid/`, `widget/input/input_widgets/textarea/`,
   `testing/pilot/`, `core/app/screen/`, `state/worker/`, `runtime/event/custom/`)
   and confirming wiring into render/event/key paths and tests — not from prior
-  docs. DataGrid: 203 tests pass. "PARTIAL" = real API/state but a missing
+  docs. DataGrid: 207 tests pass. "PARTIAL" = real API/state but a missing
   render/edit/key link, documented inline above.
 - **Competitor side:** versions/dates/features from PyPI, crates.io, GitHub
   release notes, and official docs (mid-2026). Download counts are cumulative

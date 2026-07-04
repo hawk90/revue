@@ -36,11 +36,30 @@ pub(super) struct CellState {
     pub is_editing: bool,
 }
 
+/// A column positioned in the rendered viewport, after applying column freeze
+/// and horizontal scroll.
+///
+/// `x` is absolute and already accounts for the row-number gutter. Columns are
+/// laid out as: left-frozen (pinned left) · scrollable middle (offset by
+/// `scroll_col`) · right-frozen (pinned right).
+pub(super) struct ColumnSlot<'a> {
+    /// Index into `self.columns`.
+    pub orig_idx: usize,
+    /// The column.
+    pub col: &'a GridColumn,
+    /// Position in display order (index into the full `visible_cols` list).
+    pub display_idx: usize,
+    /// Absolute x of the column's first cell.
+    pub x: u16,
+    /// Column width (excluding the trailing separator).
+    pub width: u16,
+}
+
 /// Row rendering parameters
-pub(super) struct RowRenderParams<'a> {
-    pub visible_cols: &'a [(usize, &'a GridColumn)],
-    pub widths: &'a [u16],
+pub(super) struct RowRenderParams<'a, 'b> {
+    pub slots: &'b [ColumnSlot<'a>],
     pub area_x: u16,
+    pub content_end: u16,
     pub start_y: u16,
     pub row_num_width: u16,
     pub visible_height: usize,
