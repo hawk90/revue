@@ -161,7 +161,7 @@ full PTY Terminal widget. (Textual has no equivalents.)
 | Basic editing / undo / selection | ✅ | ✅ | parity |
 | Line numbers | ✅ | ✅ | parity |
 | Syntax highlight (tree-sitter) | ✅ | ✅ | parity |
-| **Soft wrap** | ⚠️ **STUB** | ✅ | **Textual leads** — revue's `wrap` flag only toggles h-scroll; `view.rs` renders 1 visual row per logical line |
+| **Soft wrap** | ✅ | ✅ | parity — word-boundary soft wrap in `view.rs` (was a stub; now flows long lines onto multiple visual rows) |
 | **Find / Replace** | ✅ (regex = stub; API-only) | ❌ core (3rd-party pkg) | **Revue leads** — engine done in `find_impl.rs` (~346L); regex falls back to literal; not bound in `handle_key` |
 | **Multiple cursors** | ⚠️ PARTIAL | ❌ | Data + render exist; editing applies to primary cursor only; not key-wired |
 | Suggestion / placeholder | ? (verify) | ✅ (v6) | Textual added; confirm revue status |
@@ -198,21 +198,20 @@ Two real, wired-up implementations (both were previously mislabeled "missing"):
 
 | # | Gap | Current state | Impact | Effort |
 |---|-----|---------------|--------|--------|
-| 1 | **TextArea soft wrap** | STUB (flag toggles h-scroll only) | High — docs claim it works | Medium |
-| 2 | **DataGrid column freeze render** | PARTIAL (state/API/tests done; render not wired) | Medium | Small–Medium |
-| 3 | **Key bindings for find/replace & multi-cursor** | API-only; not in `handle_key` | Medium (UX) | Small |
-| 4 | **Multi-cursor editing** | Editing applies to primary cursor only | Low–Medium | Medium–Hard |
-| 5 | **Regex search** in find/replace | Stub (literal fallback) | Low | Small |
-| 6 | **Web deployment** (textual-serve analog) | Missing entirely | Strategic | Very Hard |
-| 7 | **Streaming content** (LLM output into Markdown/RichLog) | Verify — Textual added `Markdown.append`/`get_stream` | Medium (modern use case) | Medium |
-| 8 | **Screen stack auto-wiring** | Manager exists but app author must drive it | Low | Medium |
+| 1 | **DataGrid column freeze render** | PARTIAL (state/API/tests done; render not wired) | Medium | Small–Medium |
+| 2 | **Key bindings for find/replace & multi-cursor** | API-only; not in `handle_key` | Medium (UX) | Small |
+| 3 | **Multi-cursor editing** | Editing applies to primary cursor only | Low–Medium | Medium–Hard |
+| 4 | **Regex search** in find/replace | Stub (literal fallback) | Low | Small |
+| 5 | **Web deployment** (textual-serve analog) | Missing entirely | Strategic | Very Hard |
+| 6 | **Streaming content** (LLM output into Markdown/RichLog) | Verify — Textual added `Markdown.append`/`get_stream` | Medium (modern use case) | Medium |
+| 7 | **Screen stack auto-wiring** | Manager exists but app author must drive it | Low | Medium |
 
 ### 9.2 Already done — remove from any "TODO" list
 
 DataGrid virtual scroll / column resize / column reorder; TextArea find-replace
-engine; Pilot testing; Worker system; message/event bus; CSS Grid; Input
-copy-paste & shift-selection. **These are shipped and tested** — the old doc's
-"❌ TODO" markers were wrong.
+engine; TextArea soft wrap (word-boundary); Pilot testing; Worker system;
+message/event bus; CSS Grid; Input copy-paste & shift-selection. **These are
+shipped and tested** — the old doc's "❌ TODO" markers were wrong.
 
 ---
 
@@ -247,16 +246,17 @@ adoption, ergonomics, and docs — not raw feature count.
 
 | vs Framework | Revue standing | Notes |
 |--------------|----------------|-------|
-| vs **Textual** | **~parity, ahead on breadth** | Leads on widgets, viz, DataGrid resize/reorder, TextArea find/replace. Trails on soft-wrap, column-freeze render, web serve, streaming content. |
+| vs **Textual** | **~parity, ahead on breadth** | Leads on widgets, viz, DataGrid resize/reorder, TextArea find/replace + soft wrap. Trails on column-freeze render, web serve, streaming content. |
 | vs **ratatui** | Different tier | Higher-level; ratatui wins adoption & is the substrate, not a like-for-like rival. |
 | vs **r3bl_tui / tui-realm / iocraft** | Feature-ahead, adoption-behind | Revue ships far more widgets + CSS; peers have more users/momentum. |
 | vs **reratui / reactive_tui / Cursive** | Not live competition | Negligible / dead / inactive. |
 
 **Bottom line:** Revue is **not "far behind" Textual** — that impression came
 from a stale comparison. On breadth and several depth features it already leads.
-The real, verified work is a short list: finish soft-wrap, wire up column-freeze
-rendering, bind keys for find/replace & multi-cursor, and decide whether to
-pursue streaming-content and web-serve as strategic bets.
+The real, verified work is a short list: wire up column-freeze rendering, bind
+keys for find/replace & multi-cursor, and decide whether to pursue
+streaming-content and web-serve as strategic bets. (Soft wrap — previously a
+stub — is now implemented.)
 
 ---
 
