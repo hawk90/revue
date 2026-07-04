@@ -109,6 +109,7 @@ qrcode = { version = "0.14", optional = true }
 sysinfo = { version = "0.39", optional = true }
 reqwest = { version = "0.13", features = ["json", "blocking"], optional = true }
 similar = { version = "3.0", optional = true }
+regex = { version = "1", optional = true }
 
 # ═══════════════════════════════════════════
 # Error Handling
@@ -179,6 +180,7 @@ full = [
     "diff",
     "clipboard",
     "hot-reload",
+    "regex",
 ]
 devtools = []
 
@@ -213,6 +215,8 @@ image = ["dep:image", "dep:base64"]
 qrcode = ["dep:qrcode"]
 sysinfo = ["dep:sysinfo"]
 diff = ["dep:similar"]
+# Real regex engine for TextArea find/replace (falls back to literal search when off)
+regex = ["dep:regex"]
 clipboard = ["dep:arboard"]
 hot-reload = ["dep:notify"]
 http = ["dep:reqwest"]

@@ -195,9 +195,12 @@ impl TextArea {
             return;
         }
 
-        // Search each line
-        for (line_idx, line) in self.lines.iter().enumerate() {
-            self.find_matches_in_line(line_idx, line, &query, &options, &mut matches);
+        if options.use_regex {
+            self.collect_regex_matches(&query, &options, &mut matches);
+        } else {
+            for (line_idx, line) in self.lines.iter().enumerate() {
+                self.find_literal_matches(line_idx, line, &query, &options, &mut matches);
+            }
         }
 
         if let Some(ref mut state) = self.find_replace {
@@ -206,20 +209,48 @@ impl TextArea {
         }
     }
 
-    /// Find matches in a single line
-    fn find_matches_in_line(
+    /// Collect regex matches across all lines.
+    ///
+    /// With the `regex` feature enabled this uses the real regex engine; an
+    /// invalid pattern yields no matches. Without the feature it falls back to a
+    /// literal search so the `use_regex` toggle degrades gracefully.
+    #[cfg(feature = "regex")]
+    fn collect_regex_matches(
         &self,
-        line_idx: usize,
-        line: &str,
         query: &str,
         options: &FindOptions,
         matches: &mut Vec<FindMatch>,
     ) {
-        if options.use_regex {
-            // Regex search (simple implementation without regex crate)
-            // For now, fall back to literal search
-            self.find_literal_matches(line_idx, line, query, options, matches);
-        } else {
+        let Some(re) = build_regex(query, options) else {
+            return;
+        };
+        for (line_idx, line) in self.lines.iter().enumerate() {
+            for m in re.find_iter(line) {
+                // Skip zero-width matches (e.g. `a*` matching the empty string):
+                // they can't be highlighted or replaced meaningfully.
+                if m.start() == m.end() {
+                    continue;
+                }
+                // CursorPos columns are character indices; regex offsets are bytes.
+                let start_col = line[..m.start()].chars().count();
+                let end_col = line[..m.end()].chars().count();
+                matches.push(FindMatch::new(
+                    CursorPos::new(line_idx, start_col),
+                    CursorPos::new(line_idx, end_col),
+                ));
+            }
+        }
+    }
+
+    /// Fallback when the `regex` feature is disabled: treat the query literally.
+    #[cfg(not(feature = "regex"))]
+    fn collect_regex_matches(
+        &self,
+        query: &str,
+        options: &FindOptions,
+        matches: &mut Vec<FindMatch>,
+    ) {
+        for (line_idx, line) in self.lines.iter().enumerate() {
             self.find_literal_matches(line_idx, line, query, options, matches);
         }
     }
@@ -344,3 +375,105 @@ impl TextArea {
 }
 
 use super::TextArea;
+
+/// Build a compiled regex from the query, honoring the case-sensitivity and
+/// whole-word options. Returns `None` when the pattern fails to compile.
+#[cfg(feature = "regex")]
+fn build_regex(query: &str, options: &FindOptions) -> Option<regex::Regex> {
+    let pattern = if options.whole_word {
+        // Best-effort word-boundary wrapping, mirroring the literal path's
+        // whole-word behavior.
+        format!(r"\b(?:{query})\b")
+    } else {
+        query.to_string()
+    };
+    regex::RegexBuilder::new(&pattern)
+        .case_insensitive(!options.case_sensitive)
+        .build()
+        .ok()
+}
+
+#[cfg(test)]
+mod regex_search_tests {
+    use super::TextArea;
+
+    /// Open a find panel in regex mode with the given query and return the grid
+    /// of match (start_col, end_col) pairs per line, flattened.
+    fn regex_matches(content: &str, query: &str) -> Vec<(usize, usize, usize)> {
+        let mut ta = TextArea::new().content(content);
+        ta.open_find();
+        ta.toggle_regex();
+        ta.set_find_query(query);
+        ta.find_state()
+            .unwrap()
+            .matches
+            .iter()
+            .map(|m| (m.start.line, m.start.col, m.end.col))
+            .collect()
+    }
+
+    #[cfg(feature = "regex")]
+    #[test]
+    fn digit_class_matches_each_digit() {
+        let m = regex_matches("a1 b2 c3", r"\d");
+        assert_eq!(m, vec![(0, 1, 2), (0, 4, 5), (0, 7, 8)]);
+    }
+
+    #[cfg(feature = "regex")]
+    #[test]
+    fn quantifier_matches_digit_runs() {
+        let m = regex_matches("x=42, y=7", r"\d+");
+        assert_eq!(m, vec![(0, 2, 4), (0, 8, 9)]);
+    }
+
+    #[cfg(feature = "regex")]
+    #[test]
+    fn anchors_match_line_start_and_end() {
+        let m = regex_matches("foo\nbar", r"^\w+");
+        assert_eq!(m, vec![(0, 0, 3), (1, 0, 3)]);
+    }
+
+    #[cfg(feature = "regex")]
+    #[test]
+    fn case_insensitive_by_default() {
+        // case_sensitive defaults to false, so the pattern is case-insensitive.
+        let m = regex_matches("Foo foo FOO", "foo");
+        assert_eq!(m.len(), 3);
+    }
+
+    #[cfg(feature = "regex")]
+    #[test]
+    fn invalid_pattern_yields_no_matches_and_no_panic() {
+        let m = regex_matches("anything", "[unclosed");
+        assert!(m.is_empty());
+    }
+
+    #[cfg(feature = "regex")]
+    #[test]
+    fn zero_width_matches_are_skipped() {
+        // `x*` can match empty strings; those must not be emitted.
+        let m = regex_matches("abc", "x*");
+        assert!(m.is_empty());
+    }
+
+    #[cfg(feature = "regex")]
+    #[test]
+    fn regex_replace_current_replaces_a_match() {
+        let mut ta = TextArea::new().content("id=123");
+        ta.open_replace();
+        ta.toggle_regex();
+        ta.set_find_query(r"\d+");
+        ta.set_replace_text("N");
+        ta.replace_current();
+        assert_eq!(ta.get_content(), "id=N");
+    }
+
+    #[cfg(not(feature = "regex"))]
+    #[test]
+    fn without_feature_regex_query_falls_back_to_literal() {
+        // With the feature off, `\d` is treated literally and matches nothing here.
+        assert!(regex_matches("a1 b2", r"\d").is_empty());
+        // ...but a literal substring still matches.
+        assert_eq!(regex_matches("a.b a.b", "a.b").len(), 2);
+    }
+}
