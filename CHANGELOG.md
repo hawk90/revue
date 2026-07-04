@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.74.0](https://github.com/hawk90/revue/compare/v2.73.0...v2.74.0) (2026-07-04)
+
+
+### Features
+
+* **datagrid:** render frozen columns and horizontal scroll ([#584](https://github.com/hawk90/revue/issues/584)) ([9667413](https://github.com/hawk90/revue/commit/96674138f4d03776b480643d350fa4da2134a570))
+* **textarea:** real regex search in find/replace behind `regex` feature ([#587](https://github.com/hawk90/revue/issues/587)) ([9c0c4c1](https://github.com/hawk90/revue/commit/9c0c4c1d8187f32cc2f0ff593d94d8827035c4ac))
+
 ## [2.73.0](https://github.com/hawk90/revue/compare/v2.72.0...v2.73.0) (2026-07-04)
 
 
