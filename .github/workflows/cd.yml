@@ -5,6 +5,14 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Serialize Pages deployments: GitHub Pages allows only one active
+# deployment per environment, so overlapping runs (e.g. several merges to
+# main in quick succession) collide with "Deployment failed, try again
+# later". Queue them instead, and let an in-progress deploy finish.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 permissions:
   pages: write
   id-token: write
