@@ -22,12 +22,22 @@ impl<W: Write> Terminal<W> {
     /// Create a new terminal with the given writer
     pub fn new(writer: W) -> Result<Self> {
         let (width, height) = terminal::size()?;
-        Ok(Self {
+        Ok(Self::with_size(writer, width, height))
+    }
+
+    /// Create a terminal with an explicit size, without querying the OS.
+    ///
+    /// Unlike [`new`](Self::new) this never touches the controlling terminal,
+    /// so it works in headless environments (tests, CI, snapshot rendering).
+    /// The returned terminal is *not* initialized - [`init`](Self::init) is
+    /// what enables raw mode and the alternate screen.
+    pub fn with_size(writer: W, width: u16, height: u16) -> Self {
+        Self {
             writer,
             current: Buffer::new(width, height),
             raw_mode: false,
             mouse_capture: false,
-        })
+        }
     }
 
     /// Initialize the terminal for TUI mode with mouse capture
@@ -80,6 +90,14 @@ impl<W: Write> Terminal<W> {
             self.raw_mode = false;
         }
         Ok(())
+    }
+
+    /// Borrow the underlying writer.
+    ///
+    /// Mainly useful with an in-memory writer (`Vec<u8>`) to assert on exactly
+    /// what was emitted - e.g. that an unchanged frame writes nothing.
+    pub fn writer(&self) -> &W {
+        &self.writer
     }
 
     /// Get terminal size

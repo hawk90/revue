@@ -189,6 +189,7 @@ mod assertions;
 pub mod ci;
 pub mod mock;
 mod pilot;
+mod pipeline;
 mod snapshot;
 mod test_app;
 pub mod visual;
@@ -201,6 +202,7 @@ pub use mock::{
     SimulatedEvent,
 };
 pub use pilot::{AsyncPilot, Pilot};
+pub use pipeline::PipelineHarness;
 pub use snapshot::SnapshotManager;
 pub use test_app::TestApp;
 
