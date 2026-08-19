@@ -29,7 +29,7 @@ fn bench_layout_engine(c: &mut Criterion) {
     group.bench_function("create_single_node", |b| {
         b.iter(|| {
             let mut engine = LayoutEngine::new();
-            engine.create_node(next_dom_id(), &Style::default());
+            let _ = engine.create_node(next_dom_id(), &Style::default());
             std::hint::black_box(engine);
         });
     });
@@ -54,18 +54,22 @@ fn bench_layout_children(c: &mut Criterion) {
                         // Create children
                         for _ in 0..count {
                             let id = next_dom_id();
-                            engine.create_node(id, &Style::default());
+                            let _ = engine.create_node(id, &Style::default());
                             children.push(id);
                         }
 
                         // Create parent
                         let parent_id = next_dom_id();
-                        engine.create_node_with_children(parent_id, &Style::default(), &children);
+                        let _ = engine.create_node_with_children(
+                            parent_id,
+                            &Style::default(),
+                            &children,
+                        );
 
                         (engine, parent_id)
                     },
                     |(mut engine, parent_id)| {
-                        engine.compute(parent_id, 80, 24);
+                        let _ = engine.compute(parent_id, 80, 24);
                         std::hint::black_box(engine);
                     },
                     criterion::BatchSize::SmallInput,
@@ -87,20 +91,20 @@ fn bench_nested_layout(c: &mut Criterion) {
                 || {
                     let mut engine = LayoutEngine::new();
                     let mut current_id = next_dom_id();
-                    engine.create_node(current_id, &Style::default());
+                    let _ = engine.create_node(current_id, &Style::default());
                     let root_id = current_id;
 
                     for _ in 0..depth {
                         let child_id = next_dom_id();
-                        engine.create_node(child_id, &Style::default());
-                        engine.add_child(current_id, child_id);
+                        let _ = engine.create_node(child_id, &Style::default());
+                        let _ = engine.add_child(current_id, child_id);
                         current_id = child_id;
                     }
 
                     (engine, root_id)
                 },
                 |(mut engine, root_id)| {
-                    engine.compute(root_id, 80, 24);
+                    let _ = engine.compute(root_id, 80, 24);
                     std::hint::black_box(engine);
                 },
                 criterion::BatchSize::SmallInput,
