@@ -230,6 +230,14 @@ required-features = ["full"]
 name = "slideshow"
 required-features = ["markdown"]
 
+[[example]]
+name = "qrcode_generator"
+required-features = ["qrcode"]
+
+[[example]]
+name = "qrcode_showcase"
+required-features = ["qrcode"]
+
 [dependencies.tokio]
 version = "1"
 features = ["rt-multi-thread", "macros", "time", "sync"]
