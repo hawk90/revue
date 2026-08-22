@@ -13,8 +13,8 @@
 //!
 //! ```text
 //! update_dom_and_get_root -> compute_styles_with_inheritance
-//!   -> update_layout_tree -> collect_dirty_regions
-//!   -> render_to_buffer   -> diff -> terminal
+//!   -> update_layout_tree -> render_to_buffer
+//!   -> diff -> terminal
 //! ```
 //!
 //! Use this for any test that must not drift from production behavior:

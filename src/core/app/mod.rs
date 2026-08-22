@@ -567,11 +567,10 @@ impl App {
         let root_dom_id = self.update_dom_and_get_root(view)?;
         let (width, height) = self.get_buffer_size();
         self.update_layout_tree(root_dom_id, width, height);
-        let dirty_rects = self.collect_dirty_regions(width, height, force_redraw);
 
         let new_buffer_idx = self.swap_buffers();
-        self.render_to_buffer(view, new_buffer_idx, &dirty_rects);
-        self.draw_to_terminal(terminal, new_buffer_idx, force_redraw, &dirty_rects)?;
+        self.render_to_buffer(view, new_buffer_idx);
+        self.draw_to_terminal(terminal, new_buffer_idx, force_redraw)?;
 
         // Clear dirty flags after rendering
         self.dom.tree_mut().clear_dirty_flags();
@@ -634,124 +633,27 @@ impl App {
         }
     }
 
-    /// Collect dirty regions that need to be redrawn
-    fn collect_dirty_regions(
-        &mut self,
-        width: u16,
-        height: u16,
-        force_redraw: bool,
-    ) -> Vec<crate::layout::Rect> {
-        let dirty_dom_ids = self.dom.tree_mut().get_dirty_nodes();
-        let mut dirty_rects = Vec::new();
-        for dom_id in &dirty_dom_ids {
-            if let Ok(rect) = self.layout.layout(*dom_id) {
-                dirty_rects.push(rect);
-            }
-        }
-
-        // Merge overlapping dirty rects to minimize update regions
-        if !dirty_rects.is_empty() {
-            dirty_rects = crate::layout::merge_rects(&dirty_rects);
-        }
-
-        // Collect transition rects if no dirty rects
-        if dirty_rects.is_empty() {
-            dirty_rects = self.collect_transition_rects(width, height);
-        }
-
-        // Force full redraw if explicitly requested
-        if dirty_rects.is_empty() && (self.needs_force_redraw || force_redraw) {
-            let full_screen_rect = crate::layout::Rect::new(0, 0, width, height);
-            dirty_rects.push(full_screen_rect);
-            self.needs_force_redraw = false;
-        }
-
-        dirty_rects
-    }
-
-    /// Collect rects for nodes with active transitions
-    fn collect_transition_rects(&mut self, width: u16, height: u16) -> Vec<crate::layout::Rect> {
-        let mut dirty_rects = Vec::new();
-
-        if self.transitions.has_active() {
-            // Active transitions need redraws - only redraw affected nodes
-            let transition_rects: Vec<crate::layout::Rect> = self
-                .transitions
-                .active_node_ids()
-                .filter_map(|element_id| {
-                    // Look up DOM node by element ID and get its layout rect
-                    self.dom
-                        .get_by_id(element_id)
-                        .map(|node| node.id)
-                        .and_then(|dom_id| self.layout.layout(dom_id).ok())
-                })
-                .collect();
-
-            if transition_rects.is_empty() {
-                // Fallback: if no node-aware transitions, use legacy behavior
-                // This handles global transitions that aren't tied to specific nodes
-                if self.transitions.active_properties().next().is_some() {
-                    let full_screen_rect = crate::layout::Rect::new(0, 0, width, height);
-                    dirty_rects.push(full_screen_rect);
-                }
-            } else {
-                dirty_rects.extend(transition_rects);
-            }
-        }
-
-        dirty_rects
-    }
-
     /// Swap buffers and return the new buffer index
     fn swap_buffers(&mut self) -> usize {
         1 - self.current_buffer
     }
 
-    /// Render the view to the given buffer
+    /// Render the view into the back buffer.
     ///
-    /// When dirty_rects is non-empty, uses partial rendering:
-    /// copies the previous buffer content first, then clears only the dirty
-    /// regions before re-rendering. This preserves unchanged pixels and
-    /// reduces the amount of work the diff algorithm needs to do.
-    fn render_to_buffer<V: View>(
-        &mut self,
-        view: &V,
-        buffer_idx: usize,
-        dirty_rects: &[crate::layout::Rect],
-    ) {
-        // Use split_at_mut to borrow both buffers simultaneously without cloning
-        let (buf_0, buf_1) = self.buffers.split_at_mut(1);
-        let (new_buffer, old_buffer) = if buffer_idx == 0 {
-            (&mut buf_0[0], &buf_1[0])
-        } else {
-            (&mut buf_1[0], &buf_0[0])
-        };
-
-        // Skip rendering entirely when nothing changed
-        if dirty_rects.is_empty() {
-            new_buffer.copy_from(old_buffer);
-            return;
-        }
-
+    /// Always clears and renders the whole view. Painting into a buffer is
+    /// memory traffic; the expensive part of a frame is what goes down the wire
+    /// to the terminal, and the buffer diff in [`draw_to_terminal`] already
+    /// reduces that to exactly the cells that changed.
+    ///
+    /// This used to skip rendering when the DOM reported no dirty nodes, and to
+    /// clear only the dirty regions otherwise. Both were unsound: a widget's
+    /// content is not part of `WidgetMeta`, so an ordinary state change marks
+    /// nothing dirty - and the app simply stopped repainting.
+    fn render_to_buffer<V: View>(&mut self, view: &V, buffer_idx: usize) {
+        let new_buffer = &mut self.buffers[buffer_idx];
         let area = crate::layout::Rect::new(0, 0, new_buffer.width(), new_buffer.height());
 
-        // Check if the dirty region covers the full screen
-        let full_screen = dirty_rects.len() == 1
-            && dirty_rects[0].x == 0
-            && dirty_rects[0].y == 0
-            && dirty_rects[0].width == new_buffer.width()
-            && dirty_rects[0].height == new_buffer.height();
-
-        if full_screen {
-            // Full screen dirty: clear everything (original behavior)
-            new_buffer.clear();
-        } else {
-            // Partial dirty: copy old buffer, then clear only dirty regions
-            // This preserves unchanged content and reduces diff size
-            new_buffer.copy_from(old_buffer);
-            new_buffer.clear_regions(dirty_rects);
-        }
-
+        new_buffer.clear();
         self.dom.render(view, new_buffer, area);
     }
 
@@ -761,7 +663,6 @@ impl App {
         terminal: &mut Terminal<W>,
         buffer_idx: usize,
         force_redraw: bool,
-        dirty_rects: &[crate::layout::Rect],
     ) -> crate::Result<()> {
         let old_buffer = &self.buffers[self.current_buffer];
         let new_buffer = &self.buffers[buffer_idx];
@@ -770,7 +671,13 @@ impl App {
             terminal.force_redraw(new_buffer)?;
             self.needs_force_redraw = false;
         } else {
-            let changes = crate::render::diff(old_buffer, new_buffer, dirty_rects);
+            // Compare the whole buffer. Masking this to a region is only safe
+            // when the region provably covers everything that was painted, and
+            // nothing in the pipeline establishes that today - a change outside
+            // the mask lands in the buffer and never reaches the terminal, after
+            // which the two buffers agree with each other and no later diff can
+            // repair it.
+            let changes = crate::render::diff(old_buffer, new_buffer, &[]);
             terminal.draw_changes(changes, new_buffer)?;
         }
 
