@@ -128,7 +128,7 @@ mod renderer;
 mod selector;
 
 pub use cascade::{MatchedRule, Specificity, StyleResolver};
-pub use node::{DomId, DomNode, NodeState, WidgetMeta};
+pub use node::{DomId, DomNode, NodeState, WidgetKey, WidgetMeta};
 pub use pool::{
     buffer_pool, object_pool, string_pool, vec_pool, BufferPool, ObjectPool, PoolStats, Pooled,
     StringPool, SyncObjectPool, SyncStringPool, VecPool,

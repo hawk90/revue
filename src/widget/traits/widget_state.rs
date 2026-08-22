@@ -14,6 +14,8 @@ pub struct WidgetProps {
     pub classes: Vec<String>,
     /// Inline style override
     pub inline_style: Option<Style>,
+    /// Reconciliation key - see [`WidgetKey`](crate::dom::WidgetKey)
+    pub key: Option<crate::dom::WidgetKey>,
 }
 
 impl WidgetProps {
@@ -25,6 +27,12 @@ impl WidgetProps {
     /// Set element ID
     pub fn id(mut self, id: impl Into<String>) -> Self {
         self.id = Some(id.into());
+        self
+    }
+
+    /// Set the reconciliation key
+    pub fn key(mut self, key: impl Into<crate::dom::WidgetKey>) -> Self {
+        self.key = Some(key.into());
         self
     }
 
