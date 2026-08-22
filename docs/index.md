@@ -136,6 +136,8 @@ impl View for Counter {
 |:---------|:------------|
 | [Anti-Pattern Catalog](anti-patterns/README.md) | 150 structural failure modes across 24 subsystems, with a machine-readable [`catalog.yaml`](anti-patterns/catalog.yaml) |
 | [Architecture Review](anti-patterns/architecture-review.md) | External review of the current stack and alternative directions |
+| [Phase 0 Baseline](refactor/phase0-baseline.md) | Committed benchmark numbers the 3.0 refactor is measured against |
+| [Phase 0 Invariants](refactor/phase0-invariants.md) | Which design invariants are pinned by tests, and why the rest are not |
 
 ---
 

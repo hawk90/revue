@@ -360,3 +360,249 @@ fn keyless_children_are_identified_by_position_today() {
         "the trailing node should be newly created"
     );
 }
+
+// ---------------------------------------------------------------------------
+// INV-05: paint는 layout bounds와 clipping bounds를 벗어나지 않는다
+// ---------------------------------------------------------------------------
+
+/// A widget that deliberately paints outside its own area in every direction.
+struct Overflowing;
+
+impl View for Overflowing {
+    fn render(&self, ctx: &mut RenderContext) {
+        // Far past the right edge, far past the bottom, and at coordinates that
+        // only make sense if clipping is absent.
+        ctx.draw_text(0, 0, &"X".repeat(400), Color::WHITE);
+        for y in 0..40u16 {
+            ctx.draw_text(0, y, "X", Color::WHITE);
+        }
+    }
+    fn widget_type(&self) -> &'static str {
+        "Overflowing"
+    }
+    fn id(&self) -> Option<&str> {
+        Some("overflow")
+    }
+}
+
+#[test]
+fn inv05_paint_stays_inside_the_buffer() {
+    let mut h = PipelineHarness::new(20, 6);
+    h.draw(&Overflowing);
+
+    // Nothing escaped the buffer: the harness still reports the size it was
+    // built with, and every row is exactly that wide.
+    assert_eq!(h.size(), (20, 6));
+    assert_eq!(h.buffer().width(), 20);
+    assert_eq!(h.buffer().height(), 6);
+
+    for line in h.screen_text().lines() {
+        assert!(
+            line.chars().count() <= 20,
+            "row wider than the buffer: {line:?}"
+        );
+    }
+    assert!(
+        h.screen_text().lines().count() <= 6,
+        "more rows than the buffer height"
+    );
+}
+
+#[test]
+fn inv05_out_of_bounds_paint_does_not_wrap_onto_the_next_row() {
+    // If an over-long string were written without clipping, cell N would spill
+    // into row 1 - the classic symptom. Row 1 must stay empty.
+    struct LongLine;
+    impl View for LongLine {
+        fn render(&self, ctx: &mut RenderContext) {
+            ctx.draw_text(0, 0, &"A".repeat(200), Color::WHITE);
+        }
+        fn widget_type(&self) -> &'static str {
+            "LongLine"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("longline")
+        }
+    }
+
+    let mut h = PipelineHarness::new(10, 4);
+    h.draw(&LongLine);
+
+    let rows: Vec<String> = h.screen_text().lines().map(|l| l.to_string()).collect();
+    for (i, row) in rows.iter().enumerate().skip(1) {
+        assert!(
+            !row.contains('A'),
+            "row {i} received spill-over from row 0: {row:?}"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// INV-07: 외부 입력은 terminal control sequence로 직접 출력되지 않는다
+// ---------------------------------------------------------------------------
+
+/// A widget whose text content is attacker-controlled.
+struct Untrusted(&'static str);
+
+impl View for Untrusted {
+    fn render(&self, ctx: &mut RenderContext) {
+        ctx.draw_text(0, 0, self.0, Color::WHITE);
+    }
+    fn widget_type(&self) -> &'static str {
+        "Untrusted"
+    }
+    fn id(&self) -> Option<&str> {
+        Some("untrusted")
+    }
+}
+
+#[test]
+fn inv07_escape_sequences_in_content_are_not_emitted() {
+    // A colour change, a window-title OSC, and a device-status query. The last
+    // one is the dangerous case: a terminal answers it on stdin, so echoing it
+    // turns display content into synthetic keystrokes.
+    let payload = "hi\x1b[31mred\x1b]0;pwned\x07\x1b[6n!";
+
+    let mut h = PipelineHarness::new(40, 3);
+    h.draw(&Untrusted(payload));
+
+    let out = h.terminal_output();
+
+    // Guard against a vacuous pass: the harmless part of the payload must
+    // actually have been rendered, otherwise "no escape sequence" is trivial.
+    assert!(
+        contains_subslice(out, b"hi"),
+        "nothing was emitted - the assertions below would pass vacuously"
+    );
+
+    assert!(
+        !contains_subslice(out, b"\x1b]0;pwned"),
+        "OSC window-title sequence from content reached the terminal"
+    );
+    assert!(
+        !contains_subslice(out, b"\x1b[6n"),
+        "cursor-position query from content reached the terminal - \
+         the reply would arrive as fake user input"
+    );
+    assert!(
+        !contains_subslice(out, b"\x07"),
+        "BEL from content reached the terminal"
+    );
+}
+
+#[test]
+fn inv07_control_characters_do_not_reach_the_buffer_verbatim() {
+    let mut h = PipelineHarness::new(40, 3);
+    h.draw(&Untrusted("a\x1b[31mb\x07c"));
+
+    let screen = h.screen_text();
+    assert!(
+        screen.contains('a') && screen.contains('c'),
+        "nothing rendered: {screen:?}"
+    );
+    assert!(
+        !screen.contains('\x1b'),
+        "ESC survived into the cell buffer: {screen:?}"
+    );
+    assert!(
+        !screen.contains('\x07'),
+        "BEL survived into the cell buffer: {screen:?}"
+    );
+}
+
+fn contains_subslice(haystack: &[u8], needle: &[u8]) -> bool {
+    haystack.windows(needle.len()).any(|w| w == needle)
+}
+
+// ---------------------------------------------------------------------------
+// INV-09: panic 또는 정상 종료 후 terminal state는 복구된다
+// ---------------------------------------------------------------------------
+
+/// End-to-end: a process that entered TUI mode and then panics must still emit
+/// the sequence that leaves the alternate screen and shows the cursor.
+///
+/// This re-executes the test binary rather than panicking in-process, because
+/// the thing under test is what the *process* writes on its way out. The child
+/// arms revue's hook and panics; the parent inspects the child's stdout.
+///
+/// Note on `panic = "abort"` (`Cargo.toml` release profile): `Drop` does not run
+/// on abort, which is exactly why this is a panic hook and not a `Drop` impl.
+/// The test profile unwinds, so this exercises the unwind path; the abort path
+/// is covered by the language guarantee that hooks run before the abort.
+#[test]
+fn inv09_terminal_is_restored_when_the_process_panics() {
+    const CHILD_ENV: &str = "REVUE_INV09_CHILD";
+
+    if std::env::var_os(CHILD_ENV).is_some() {
+        // Child: pretend we entered TUI mode, then die.
+        revue::render::install_panic_hook();
+        panic!("inv09 deliberate panic");
+    }
+
+    let exe = std::env::current_exe().expect("test binary path");
+    let out = std::process::Command::new(exe)
+        .args([
+            "inv09_terminal_is_restored_when_the_process_panics",
+            "--exact",
+            "--nocapture",
+        ])
+        .env(CHILD_ENV, "1")
+        .output()
+        .expect("re-exec the test binary");
+
+    assert!(
+        !out.status.success(),
+        "child was supposed to fail with a panic"
+    );
+
+    assert!(
+        contains_subslice(&out.stdout, b"\x1b[?1049l"),
+        "panicking process never left the alternate screen; \
+         stdout was {:?}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    assert!(
+        contains_subslice(&out.stdout, b"\x1b[?25h"),
+        "panicking process left the cursor hidden"
+    );
+    assert!(
+        contains_subslice(&out.stdout, b"\x1b[?1000l"),
+        "panicking process left mouse capture enabled"
+    );
+
+    // The panic message must survive the restore - a hook that swallows it
+    // trades a broken terminal for an unexplained exit.
+    assert!(
+        contains_subslice(&out.stderr, b"inv09 deliberate panic"),
+        "the chained hook lost the panic message; stderr was {:?}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+/// A process that never entered TUI mode must not spray escape sequences when
+/// it panics. The hook is armed by entering TUI mode, not by linking revue.
+#[test]
+fn inv09_hook_is_silent_for_a_process_that_never_entered_tui_mode() {
+    const CHILD_ENV: &str = "REVUE_INV09_SILENT_CHILD";
+
+    if std::env::var_os(CHILD_ENV).is_some() {
+        panic!("inv09 unrelated panic");
+    }
+
+    let exe = std::env::current_exe().expect("test binary path");
+    let out = std::process::Command::new(exe)
+        .args([
+            "inv09_hook_is_silent_for_a_process_that_never_entered_tui_mode",
+            "--exact",
+            "--nocapture",
+        ])
+        .env(CHILD_ENV, "1")
+        .output()
+        .expect("re-exec the test binary");
+
+    assert!(!out.status.success(), "child was supposed to panic");
+    assert!(
+        !contains_subslice(&out.stdout, b"\x1b[?1049l"),
+        "restore sequence emitted by a process that never entered TUI mode"
+    );
+}
