@@ -142,19 +142,60 @@ for item in items {
 // Guards auto-complete timing on drop
 ```
 
-## Incremental Rendering
+## Incremental DOM (Reconciliation)
 
-Revue uses incremental DOM updates by default:
+**Opt-in.** By default the DOM is built once, on the first frame, and then stops
+following the view — so a widget added later is invisible to CSS matching, to
+layout, and to devtools until something forces a rebuild.
+
+Turn on per-frame reconciliation with:
+
+```rust
+let mut app = App::builder()
+    .incremental_dom(true)
+    .build();
+```
+
+With it on, every frame reconciles the view against the existing tree. A node
+that still matches keeps its `DomId`, its state (focus, hover, selection) and
+its cached style; only what actually changed is marked dirty, and layout is
+rebuilt only when the *shape* of the tree changed.
+
+> This is opt-in while its performance is measured against the committed
+> baseline in [`docs/refactor/phase0-baseline.md`](../refactor/phase0-baseline.md).
+> It will become the default.
+
+### Give collection items a key
+
+Matching priority is:
 
 ```text
-// DOM diffing happens automatically inside the render loop:
-//
-//   - The first render builds the full node tree.
-//   - Subsequent renders diff against the previous tree and only
-//     update the nodes that actually changed.
-//
-// This is handled internally by the renderer — no user code is required.
+key  >  element id  >  position + widget type  >  build a new node
 ```
+
+Without a key a widget's identity is its **position** among its siblings. That
+is fine for a fixed layout and wrong for a dynamic collection: prepend a row and
+every row below it reconciles against its neighbor's node, so focus, selection
+and scroll offset all shift by one.
+
+```rust
+use revue::dom::WidgetKey;
+
+impl View for TodoRow {
+    fn key(&self) -> Option<WidgetKey> {
+        Some(WidgetKey::from(self.todo.id))
+    }
+}
+```
+
+Use the identity of the **data**, never the loop index — an index is positional
+identity spelled differently, and it changes the moment the list reorders.
+
+`WidgetKey` is `Int(u64)` or `Str(String)`, with `From` impls for the usual
+integer types, `&str` and `String`.
+
+Two siblings claiming the same key is a bug in your code: the first one wins the
+existing node and the second gets a fresh one.
 
 ### Dirty Rect Optimization
 

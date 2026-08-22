@@ -269,8 +269,9 @@ fn focus_survives_sibling_insertion() {
 // REV-TREE-003: identity by position
 //
 // Children with no element id fall back to positional matching, so inserting
-// at the front shifts every widget onto its neighbour's node. This is the gap
-// Phase 1 closes by introducing `WidgetMeta::key`.
+// at the front shifts every widget onto its neighbor's node. Phase 1 closes
+// this gap for widgets that opt in via `View::key`; the fallback below is what
+// everything else still gets.
 // ---------------------------------------------------------------------------
 
 /// Leaf with no element id - the common case inside a dynamic list.
@@ -327,13 +328,14 @@ impl View for AnonContainer {
     }
 }
 
-/// Documents current behaviour: keyless children are matched by position, so
-/// prepending re-identifies every existing widget.
+/// Keyless children are matched by position, so prepending re-identifies every
+/// existing widget.
 ///
-/// Phase 1 introduces `WidgetMeta::key`; once a key is supplied this must
-/// become identity-preserving. The assertion is written against today's
-/// behaviour on purpose - when Phase 1 changes it, this test fails loudly and
-/// must be rewritten as the positive contract.
+/// This stays true after Phase 1: `View::key` is opt-in, and a widget that
+/// claims no identity gets the positional one. The point of pinning it is that
+/// the fallback must keep working unchanged - the positive contract lives in
+/// `tests/reconciliation.rs::keyed_children_survive_a_prepend`, which is this
+/// same scenario with a key attached.
 #[test]
 fn keyless_children_are_identified_by_position_today() {
     let mut h = PipelineHarness::new(30, 6);
