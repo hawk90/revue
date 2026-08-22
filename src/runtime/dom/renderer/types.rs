@@ -21,6 +21,13 @@ pub struct DomRenderer {
     pub(crate) focused: Option<DomId>,
     /// Hovered node
     pub(crate) hovered: Option<DomId>,
+    /// Did the last `build` add, remove or reorder any node?
+    ///
+    /// Reconciliation runs every frame once enabled, but the layout tree only
+    /// has to be rebuilt when the *shape* of the DOM changed. Rebuilding it
+    /// unconditionally would make per-frame reconciliation cost more than the
+    /// full rebuild it replaces.
+    pub(crate) structure_dirty: bool,
 }
 
 impl DomRenderer {
@@ -33,6 +40,7 @@ impl DomRenderer {
             cached_selectors: None,
             focused: None,
             hovered: None,
+            structure_dirty: false,
         }
     }
 
@@ -44,6 +52,14 @@ impl DomRenderer {
     /// Get mutable DOM tree
     pub fn tree_mut(&mut self) -> &mut DomTree {
         &mut self.tree
+    }
+
+    /// Consume the "structure changed" flag set by the last [`build`](Self::build).
+    ///
+    /// Returns `true` if any node was added, removed or reordered, which is
+    /// exactly when the layout tree has to be rebuilt.
+    pub(crate) fn take_structure_dirty(&mut self) -> bool {
+        std::mem::take(&mut self.structure_dirty)
     }
 }
 
