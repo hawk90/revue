@@ -92,7 +92,7 @@
 
 mod element;
 mod event;
-mod render_context;
+pub(crate) mod render_context;
 mod symbols;
 mod timeout;
 mod view;

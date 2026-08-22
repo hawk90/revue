@@ -75,6 +75,15 @@ impl PipelineHarness {
         self
     }
 
+    /// Build the DOM from the render traversal for this harness.
+    ///
+    /// Mirrors [`AppBuilder::dom_from_render`](crate::app::AppBuilder::dom_from_render),
+    /// which is off by default.
+    pub fn dom_from_render(mut self, enabled: bool) -> Self {
+        self.app.set_dom_from_render(enabled);
+        self
+    }
+
     fn build(app: App, width: u16, height: u16) -> Self {
         Self {
             app,

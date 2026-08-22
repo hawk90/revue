@@ -1,7 +1,12 @@
 # 렌더 파이프라인 조사 결과
 
-> **상태:** F-1·F-2·F-3은 `fix(render): always repaint from the view`로 해결됐다.
-> F-4·F-5는 남아 있고, `tests/render_pipeline.rs`가 계속 고정하고 있다.
+> **상태**
+> - F-1·F-2·F-3 — `fix(render): always repaint from the view`로 해결
+> - F-4·F-5 — `App::builder().dom_from_render(true)`로 해결. **기본 off**이므로
+>   `tests/render_pipeline.rs`가 계속 기본 동작을 고정한다. 새 경로의 계약은
+>   `tests/dom_from_render.rs`
+> - F-6 — 미해결
+>
 > 아래 조사 기록은 그대로 둔다 — 무엇이 왜 틀렸는지가 다음 단계의 근거다.
 
 Phase 1을 기본 on으로 뒤집기 전에 `examples/`를 손으로 확인하려다 발견한 것들.
@@ -192,7 +197,46 @@ README의 대표 기능이 실제로 어디까지 작동하는지:
 F-5의 메커니즘 자체는 배선된 곳에서 작동한다 (`Text`가 `ctx.style`을 읽는 9개 파일 중
 하나다). 전달이 루트에서 멈출 뿐이다.
 
-## 남은 것 — F-4·F-5·F-6
+## 해결 — F-4·F-5
+
+**DOM을 렌더 순회에서 짓는다.** `App::builder().dom_from_render(true)`, 기본 off.
+
+```
+collect 패스  →  DOM reconcile  →  스타일 계산  →  paint 패스
+```
+
+한 프레임에 뷰를 두 번 렌더한다. collect 패스는 각 위젯이 무엇을 렌더하는지 순서대로
+기록하고, paint 패스는 같은 순회를 돌며 모든 위젯에 자기 노드의 계산된 스타일과 상태를
+넘긴다. 두 순회는 카운터로 정렬한다 — `View::render`가 같은 `&self`에 대해 결정적이라는
+가정인데, 이는 `render`가 `&self`를 받는 것으로 이미 하고 있는 가정이다.
+
+한 패스가 아니라 두 패스인 이유는 노드의 스타일이 트리 전체에 의존하기 때문이다 —
+`:last-child`나 `:nth-child`는 형제를 다 알기 전에는 풀 수 없다.
+
+Phase 1의 매칭기(key > id > position)를 그대로 재사용한다. 입력이 `View::children`에서
+렌더 순회로 바뀌었을 뿐이다.
+
+컨테이너는 `RenderContext::render_child`를 통해 자식을 그려야 노드가 등록된다.
+`Stack`·`Border`·`Positioned`·`Grid`를 옮겼다. 옮기지 않은 컨테이너는 이전과 똑같이 동작한다.
+
+**알려진 한계:** 뷰가 본문 전체를 다른 위젯에 위임하면(`vstack()...render(ctx)`) 그 위젯은
+자식이 아니라 뷰 자신의 렌더링이므로 노드를 얻지 못한다. id는 뷰 쪽에 붙여야 한다.
+`tests/dom_from_render.rs`가 이 한계를 고정하고 있다.
+
+### 비용
+
+`cargo bench --bench frame`, 120×40:
+
+| rows | 1패스 | 2패스 |
+|---:|---:|---:|
+| 10 | 20.7 µs | 31.7 µs |
+| 50 | 32.2 µs | 65.6 µs |
+| 200 | 56.5 µs | 159.5 µs |
+
+위젯 10개에서 1.5배, 200개에서 2.8배. 두 번째 순회는 그중 일부이고, 나머지는 **DOM이 이제
+실제로 존재해서** reconcile과 cascade를 해야 하기 때문이다. 60fps 예산에서 최악이 1% 미만.
+
+## 남은 것 — F-6
 
 
 

@@ -14,6 +14,7 @@ impl DomRenderer {
             focused: None,
             hovered: None,
             structure_dirty: false,
+            dom_from_render: false,
         }
     }
 

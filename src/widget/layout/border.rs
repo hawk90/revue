@@ -358,13 +358,7 @@ impl View for Border {
                 area.width.saturating_sub(2),
                 area.height.saturating_sub(2),
             );
-            let mut child_ctx = RenderContext::child_ctx_with_overflow(
-                ctx.buffer,
-                inner,
-                overflow_hidden,
-                parent_clip,
-            );
-            child.render(&mut child_ctx);
+            ctx.render_child_with_overflow(child.as_ref(), inner, overflow_hidden, parent_clip);
         }
     }
 

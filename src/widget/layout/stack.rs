@@ -216,13 +216,12 @@ impl View for Stack {
 
                     if child.needs_render() {
                         let child_area = ctx.sub_area(x, y, w, row_height);
-                        let mut child_ctx = RenderContext::child_ctx_with_overflow(
-                            ctx.buffer,
+                        ctx.render_child_with_overflow(
+                            child.as_ref(),
                             child_area,
                             overflow_hidden,
                             parent_clip,
                         );
-                        child.render(&mut child_ctx);
                     }
                     x = x.saturating_add(w).saturating_add(self.gap);
                 }
@@ -236,13 +235,12 @@ impl View for Stack {
                     let h = heights[i];
                     if child.needs_render() {
                         let child_area = ctx.sub_area(0, y, area.width, h);
-                        let mut child_ctx = RenderContext::child_ctx_with_overflow(
-                            ctx.buffer,
+                        ctx.render_child_with_overflow(
+                            child.as_ref(),
                             child_area,
                             overflow_hidden,
                             parent_clip,
                         );
-                        child.render(&mut child_ctx);
                     }
                     y = y.saturating_add(h).saturating_add(self.gap);
                 }

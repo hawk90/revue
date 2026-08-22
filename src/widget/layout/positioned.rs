@@ -311,8 +311,7 @@ impl View for Positioned {
         let child_area = ctx.sub_area(clamped_x, clamped_y, bounded_w, bounded_h);
 
         // Render child in calculated area
-        let mut child_ctx = RenderContext::new(ctx.buffer, child_area);
-        self.child.render(&mut child_ctx);
+        ctx.render_child(self.child.as_ref(), child_area);
     }
 }
 

@@ -16,10 +16,44 @@ mod tests;
 pub use overlay::{OverlayEntry, OverlayQueue};
 pub use types::ProgressBarConfig;
 
-use crate::dom::NodeState;
+use super::View;
+use crate::dom::{CollectSink, DomId, NodeState};
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Style;
+
+/// One node as the paint pass sees it.
+pub struct PaintNode<'a> {
+    pub id: DomId,
+    pub style: Option<&'a Style>,
+    pub(crate) state: Option<&'a NodeState>,
+}
+
+/// Which half of the frame this context belongs to.
+///
+/// A frame renders the view twice: once to discover the tree, once to paint it
+/// with the styles that tree produced. See
+/// [`dom::renderer::collect`](crate::dom::CollectSink).
+///
+/// `None` means neither - a context built directly rather than through
+/// [`RenderContext::render_child`]. Those still render; they just do not
+/// register a node, which is the pre-existing behavior.
+pub enum RenderPass<'a> {
+    /// Recording what each widget renders, in traversal order.
+    Collect {
+        sink: &'a mut CollectSink,
+        /// Index of this widget in the sink; `None` at the root's parent.
+        parent: Option<usize>,
+    },
+    /// Painting, with the nodes the collect pass produced.
+    ///
+    /// `next` is a shared cursor: the two traversals are identical, so a
+    /// counter is enough to align them.
+    Paint {
+        nodes: &'a [PaintNode<'a>],
+        next: &'a mut usize,
+    },
+}
 
 /// Render context passed to widgets
 pub struct RenderContext<'a> {
@@ -40,6 +74,8 @@ pub struct RenderContext<'a> {
     /// When set, all drawing operations are clipped to this rectangle.
     /// Content outside this area is not rendered.
     clip: Option<Rect>,
+    /// Which half of the frame this context belongs to, if either.
+    pub pass: Option<RenderPass<'a>>,
 }
 
 impl<'a> RenderContext<'a> {
@@ -53,6 +89,7 @@ impl<'a> RenderContext<'a> {
             transitions: None,
             overlays: None,
             clip: None,
+            pass: None,
         }
     }
 
@@ -66,6 +103,7 @@ impl<'a> RenderContext<'a> {
             transitions: None,
             overlays: None,
             clip: None,
+            pass: None,
         }
     }
 
@@ -84,6 +122,80 @@ impl<'a> RenderContext<'a> {
             transitions: None,
             overlays: None,
             clip: None,
+            pass: None,
+        }
+    }
+
+    /// Render a child widget into `area`, registering it in the DOM.
+    ///
+    /// Container widgets should route child rendering through this rather than
+    /// building a [`RenderContext`] by hand. It is what makes the DOM describe
+    /// the application: the render traversal is the real widget tree, and a
+    /// child constructed inside `render` is invisible to `View::children`.
+    ///
+    /// In exchange the child is handed the computed style and state of its own
+    /// node, so CSS reaches it. A context built directly still renders - it just
+    /// registers nothing and receives no style, which is what every container
+    /// did before.
+    pub fn render_child(&mut self, child: &dyn View, area: Rect) {
+        let clip = self.clip;
+        self.render_child_with_overflow(child, area, false, clip);
+    }
+
+    /// [`render_child`](Self::render_child), with the overflow and clip handling
+    /// that [`child_ctx_with_overflow`](Self::child_ctx_with_overflow) applies.
+    pub fn render_child_with_overflow(
+        &mut self,
+        child: &dyn View,
+        area: Rect,
+        overflow_hidden: bool,
+        parent_clip: Option<Rect>,
+    ) {
+        // Destructured so the buffer and the pass can be borrowed at once.
+        let RenderContext { buffer, pass, .. } = self;
+
+        match pass {
+            None => {
+                let mut ctx = RenderContext::child_ctx_with_overflow(
+                    buffer,
+                    area,
+                    overflow_hidden,
+                    parent_clip,
+                );
+                child.render(&mut ctx);
+            }
+            Some(RenderPass::Collect { sink, parent }) => {
+                let me = sink.push(child.meta(), *parent);
+                let mut ctx = RenderContext::child_ctx_with_overflow(
+                    buffer,
+                    area,
+                    overflow_hidden,
+                    parent_clip,
+                );
+                ctx.pass = Some(RenderPass::Collect {
+                    sink,
+                    parent: Some(me),
+                });
+                child.render(&mut ctx);
+            }
+            Some(RenderPass::Paint { nodes, next }) => {
+                // Pre-order, exactly as the collect pass pushed.
+                let idx = **next;
+                **next += 1;
+
+                let mut ctx = RenderContext::child_ctx_with_overflow(
+                    buffer,
+                    area,
+                    overflow_hidden,
+                    parent_clip,
+                );
+                if let Some(node) = nodes.get(idx) {
+                    ctx.style = node.style;
+                    ctx.state = node.state;
+                }
+                ctx.pass = Some(RenderPass::Paint { nodes, next });
+                child.render(&mut ctx);
+            }
         }
     }
 

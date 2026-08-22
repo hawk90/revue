@@ -165,6 +165,79 @@ rebuilt only when the *shape* of the tree changed.
 > baseline in [`docs/refactor/phase0-baseline.md`](../refactor/phase0-baseline.md).
 > It will become the default.
 
+### DOM from the render traversal
+
+**Opt-in, and the reason CSS reaches anything below the root.**
+
+```rust
+let mut app = App::builder()
+    .dom_from_render(true)
+    .build();
+```
+
+Off, the DOM only contains widgets exposed through `View::children`, which
+almost nothing implements — the idiomatic widget assembles its tree inside
+`render`. A real application therefore has a DOM of one node, and CSS matching,
+`:focus`/`:hover` and devtools all work against a tree that does not describe
+it.
+
+On, the frame renders twice: once to discover the tree, once to paint it.
+
+```text
+collect pass  ->  reconcile DOM  ->  compute styles  ->  paint pass
+```
+
+Every widget rendered through `RenderContext::render_child` gets a DOM node and
+its own computed style. Two passes rather than one because a node's style
+depends on the whole tree — `:last-child` and `:nth-child` cannot be resolved
+before the siblings are known.
+
+Implies per-frame reconciliation, so `incremental_dom` adds nothing on top.
+
+**Cost**, 120x40 with `cargo bench --bench frame`:
+
+| rows | one pass | two passes |
+|---:|---:|---:|
+| 10 | 20.7 µs | 31.7 µs |
+| 50 | 32.2 µs | 65.6 µs |
+| 200 | 56.5 µs | 159.5 µs |
+
+1.5x at ten widgets, 2.8x at two hundred — the second traversal is only part of
+it, the rest is that the DOM now actually exists and has to be reconciled and
+cascaded. At 60fps the worst of these is under 1% of a frame.
+
+**Writing a container.** Route child rendering through the context rather than
+building one by hand, or the child gets no node and no style:
+
+```rust
+// Registers a node, delivers the child's computed style
+ctx.render_child(child.as_ref(), child_area);
+
+// Does neither
+let mut child_ctx = RenderContext::new(ctx.buffer, child_area);
+child.render(&mut child_ctx);
+```
+
+`Stack`, `Border`, `Positioned` and `Grid` are migrated. A container that is not
+keeps working exactly as before.
+
+**Known limit.** A view that delegates its whole body to another widget merges
+with it rather than nesting under it:
+
+```rust
+fn render(&self, ctx: &mut RenderContext) {
+    vstack().element_id("list").child(...).render(ctx);  // "list" gets no node
+}
+```
+
+`render_child` registers a *child*; a widget rendered into the caller's own
+context is the caller's own rendering. Put the id on the view itself.
+
+**Layout properties still do nothing.** `width`, `padding`, `gap` and
+`display: none` have no effect, with or without this flag — the layout engine
+computes geometry that widgets do not read. See
+[`findings-render-pipeline.md`](../refactor/findings-render-pipeline.md).
+
 ### Give collection items a key
 
 Matching priority is:

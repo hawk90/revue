@@ -28,6 +28,8 @@ pub struct DomRenderer {
     /// unconditionally would make per-frame reconciliation cost more than the
     /// full rebuild it replaces.
     pub(crate) structure_dirty: bool,
+    /// Build the DOM from the render traversal instead of `View::children`.
+    pub(crate) dom_from_render: bool,
 }
 
 impl DomRenderer {
@@ -41,6 +43,7 @@ impl DomRenderer {
             focused: None,
             hovered: None,
             structure_dirty: false,
+            dom_from_render: false,
         }
     }
 
@@ -58,6 +61,16 @@ impl DomRenderer {
     ///
     /// Returns `true` if any node was added, removed or reordered, which is
     /// exactly when the layout tree has to be rebuilt.
+    /// Build the DOM from the render traversal instead of `View::children`.
+    pub(crate) fn set_dom_from_render(&mut self, enabled: bool) {
+        self.dom_from_render = enabled;
+    }
+
+    /// Is the DOM built from the render traversal?
+    pub fn dom_from_render(&self) -> bool {
+        self.dom_from_render
+    }
+
     pub(crate) fn take_structure_dirty(&mut self) -> bool {
         std::mem::take(&mut self.structure_dirty)
     }

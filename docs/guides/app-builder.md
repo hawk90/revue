@@ -156,6 +156,26 @@ so they are matched by identity rather than by position — see
 
 Opt-in while its performance is measured; it will become the default.
 
+### dom_from_render(enabled)
+
+Builds the DOM from the render traversal instead of `View::children`.
+
+```rust
+App::builder()
+    .dom_from_render(true)
+```
+
+**Default:** `false`. With it off the DOM only contains widgets exposed through
+`View::children`, which almost nothing implements — so a real application has a
+DOM of one node and CSS never reaches a widget below the root.
+
+With it on the frame renders twice, every widget rendered through
+`RenderContext::render_child` gets a node and its own computed style, and CSS
+paint properties work throughout the tree. Implies per-frame reconciliation.
+
+Costs 1.5–2.8x per frame. See
+[Performance › DOM from the render traversal](performance.md#dom-from-the-render-traversal).
+
 ### build()
 
 Constructs the `App` instance with all configured settings.
