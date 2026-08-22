@@ -52,6 +52,9 @@ impl<W: Write> Terminal<W> {
     pub fn init_with_mouse(&mut self, mouse_capture: bool) -> Result<()> {
         enable_raw_mode()?;
         self.raw_mode = true;
+        // `Drop` does not run on abort, and the release profile aborts on panic.
+        // The hook is what actually restores the terminal - see `panic_hook`.
+        super::install_panic_hook();
         self.mouse_capture = mouse_capture;
         if mouse_capture {
             execute!(
@@ -88,6 +91,7 @@ impl<W: Write> Terminal<W> {
             }
             disable_raw_mode()?;
             self.raw_mode = false;
+            super::panic_hook::disarm();
         }
         Ok(())
     }

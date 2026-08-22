@@ -2,10 +2,12 @@
 
 mod core;
 mod helper;
+pub(crate) mod panic_hook;
 mod render;
 mod types;
 
 pub use helper::stdout_terminal;
+pub use panic_hook::{install_panic_hook, restore_terminal};
 pub use types::Terminal;
 
 #[cfg(test)]
