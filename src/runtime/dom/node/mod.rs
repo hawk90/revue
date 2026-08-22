@@ -23,12 +23,17 @@ use std::collections::HashSet;
 /// let good = WidgetKey::from(row.id);   // stable across reorders
 /// let also_good = WidgetKey::from("inbox");
 /// ```
+/// The string form is `Arc<str>` rather than `String` on purpose. `View::meta`
+/// clones the key on every frame for every keyed widget; with `String` that is
+/// a heap allocation per widget per frame, and with `Arc<str>` it is a refcount
+/// bump. Prefer [`WidgetKey::Int`] where the data has a numeric id - it does not
+/// allocate at all.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum WidgetKey {
     /// Numeric key - a database id, a stable hash, an entity id.
     Int(u64),
     /// String key - a name, a uuid, a path.
-    Str(String),
+    Str(std::sync::Arc<str>),
 }
 
 impl From<u64> for WidgetKey {
@@ -51,12 +56,18 @@ impl From<usize> for WidgetKey {
 
 impl From<&str> for WidgetKey {
     fn from(v: &str) -> Self {
-        WidgetKey::Str(v.to_string())
+        WidgetKey::Str(std::sync::Arc::from(v))
     }
 }
 
 impl From<String> for WidgetKey {
     fn from(v: String) -> Self {
+        WidgetKey::Str(std::sync::Arc::from(v.as_str()))
+    }
+}
+
+impl From<std::sync::Arc<str>> for WidgetKey {
+    fn from(v: std::sync::Arc<str>) -> Self {
         WidgetKey::Str(v)
     }
 }
