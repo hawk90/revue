@@ -32,7 +32,7 @@
 //! ```
 
 use crate::core::app::App;
-use crate::dom::{DomId, NodeState};
+use crate::dom::{DomId, NodeState, Query};
 use crate::render::{Buffer, Terminal};
 use crate::style::parse_css;
 use crate::widget::View;
@@ -62,6 +62,17 @@ impl PipelineHarness {
         let mut app = App::builder().size(width, height).build();
         app.dom_renderer().set_stylesheet(stylesheet);
         Self::build(app, width, height)
+    }
+
+    /// Turn per-frame DOM reconciliation on or off for this harness.
+    ///
+    /// Mirrors [`AppBuilder::incremental_dom`](crate::app::AppBuilder::incremental_dom),
+    /// which is off by default. A test that exercises reconciliation must turn
+    /// it on explicitly - otherwise the DOM is built once and never follows the
+    /// view again, and the test silently passes against a frozen tree.
+    pub fn incremental_dom(mut self, enabled: bool) -> Self {
+        self.app.set_incremental_dom(enabled);
+        self
     }
 
     fn build(app: App, width: u16, height: u16) -> Self {
@@ -225,6 +236,66 @@ impl PipelineHarness {
             .get_by_id(parent_element_id)
             .map(|node| node.children.clone())
             .unwrap_or_default()
+    }
+
+    /// Element ids of the nodes matching a CSS selector, in tree order.
+    ///
+    /// Reads through the DOM's id/class/type indices, so it also catches an
+    /// index left stale by reconciliation - a node whose class changed but
+    /// whose entry in `class_index` still points at the old value.
+    pub fn query_ids(&self, selector: &str) -> Vec<String> {
+        let mut ids: Vec<String> = self
+            .app
+            .dom()
+            .tree()
+            .query_all(selector)
+            .iter()
+            .filter_map(|n| n.meta.id.clone())
+            .collect();
+        ids.sort();
+        ids
+    }
+
+    /// How many nodes match a CSS selector.
+    pub fn query_count(&self, selector: &str) -> usize {
+        self.app.dom().tree().query_all(selector).len()
+    }
+
+    /// Element ids of the nodes the DOM's *class index* lists under `class`.
+    ///
+    /// [`query_ids`](Self::query_ids) walks every node and re-reads its
+    /// metadata, so it is always right. This goes through `class_index`, the
+    /// cache reconciliation has to maintain. When the two disagree, the index
+    /// is stale - and `get_by_class` is what CSS matching and `Query` users
+    /// actually call.
+    pub fn indexed_class_ids(&self, class: &str) -> Vec<String> {
+        let mut ids: Vec<String> = self
+            .app
+            .dom()
+            .tree()
+            .get_by_class(class)
+            .iter()
+            .filter_map(|n| n.meta.id.clone())
+            .collect();
+        ids.sort();
+        ids
+    }
+
+    /// Structural state of the node with the given element id, as
+    /// `(child_index, sibling_count, first_child, last_child)`.
+    ///
+    /// This is what `:first-child` and `:nth-child` read. Reconciliation
+    /// reorders siblings, so it has to be recomputed - a test that only checks
+    /// `DomId` stability will not notice when it is not.
+    pub fn structural_state(&self, element_id: &str) -> Option<(usize, usize, bool, bool)> {
+        self.app.dom().get_by_id(element_id).map(|n| {
+            (
+                n.state.child_index,
+                n.state.sibling_count,
+                n.state.first_child,
+                n.state.last_child,
+            )
+        })
     }
 
     /// Force the next draw to rebuild the DOM from scratch.
