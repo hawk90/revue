@@ -75,7 +75,7 @@ impl OverlayQueue {
 
     /// Drain all entries sorted by z-index (ascending, so highest renders last = on top)
     pub fn drain_sorted(&mut self) -> Vec<OverlayEntry> {
-        let mut entries: Vec<OverlayEntry> = self.entries.drain(..).collect();
+        let mut entries: Vec<OverlayEntry> = std::mem::take(&mut self.entries);
         entries.sort_by_key(|e| e.z_index);
         entries
     }
