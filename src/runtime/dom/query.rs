@@ -197,6 +197,102 @@ impl DomTree {
         id
     }
 
+    /// Apply a new element id and class set to an existing node, keeping the
+    /// id and class indices consistent.
+    ///
+    /// Reconciliation reuses nodes across frames, so a node's classes and even
+    /// its element id can change while its [`DomId`] stays the same. Writing
+    /// `node.meta` directly leaves `id_map` and `class_index` pointing at the
+    /// old values, and every `query(".foo")` after that is wrong.
+    ///
+    /// Returns `true` if anything changed.
+    pub(crate) fn apply_meta(&mut self, id: DomId, new_meta: &super::node::WidgetMeta) -> bool {
+        let Some(node) = self.nodes.get(&id) else {
+            return false;
+        };
+
+        let id_changed = node.meta.id != new_meta.id;
+        let classes_changed = node.meta.classes != new_meta.classes;
+        let key_changed = node.meta.key != new_meta.key;
+        if !id_changed && !classes_changed && !key_changed {
+            return false;
+        }
+
+        let old_element_id = node.meta.id.clone();
+        let old_classes: Vec<Arc<str>> = node
+            .meta
+            .classes
+            .iter()
+            .map(|c| Arc::from(c.as_str()))
+            .collect();
+
+        if id_changed {
+            if let Some(old) = old_element_id {
+                self.id_map.remove(&Arc::from(old.as_str()));
+            }
+            if let Some(ref new) = new_meta.id {
+                self.id_map.insert(Arc::from(new.as_str()), id);
+            }
+        }
+
+        if classes_changed {
+            for class in &old_classes {
+                if let Some(ids) = self.class_index.get_mut(class) {
+                    ids.retain(|&x| x != id);
+                    if ids.is_empty() {
+                        self.class_index.remove(class);
+                    }
+                }
+            }
+            for class in &new_meta.classes {
+                self.class_index
+                    .entry(Arc::from(class.as_str()))
+                    .or_default()
+                    .push(id);
+            }
+        }
+
+        if let Some(node) = self.nodes.get_mut(&id) {
+            node.meta.id = new_meta.id.clone();
+            node.meta.classes = new_meta.classes.clone();
+            node.meta.key = new_meta.key.clone();
+        }
+
+        true
+    }
+
+    /// Replace a parent's child list and refresh every child's structural
+    /// state (`first_child`, `last_child`, `only_child`, `child_index`,
+    /// `sibling_count`).
+    ///
+    /// Reconciliation reorders and removes children, and `:first-child` /
+    /// `:nth-child` selectors read that state. Assigning `parent.children`
+    /// without this leaves the CSS matching one frame behind - or permanently
+    /// wrong, since nothing else recomputes it.
+    pub(crate) fn set_children(&mut self, parent_id: DomId, children: Vec<DomId>) {
+        if !self.nodes.contains_key(&parent_id) {
+            return;
+        }
+
+        let total = children.len();
+        for (idx, &child_id) in children.iter().enumerate() {
+            if let Some(child) = self.nodes.get_mut(&child_id) {
+                // `first_child`, `last_child` and `only_child` are all derived
+                // from these two, so they are the whole comparison.
+                if (child.state.child_index, child.state.sibling_count) != (idx, total) {
+                    child.state.update_position(idx, total);
+                    // The node moved, so it may now match a different
+                    // structural pseudo-class and its computed style is stale.
+                    child.state.dirty = true;
+                }
+            }
+        }
+
+        if let Some(parent) = self.nodes.get_mut(&parent_id) {
+            parent.children = children;
+        }
+    }
+
     /// Remove a node and its children
     pub fn remove(&mut self, id: DomId) {
         // Collect info we need before modifying (convert to Arc<str> for lookup)

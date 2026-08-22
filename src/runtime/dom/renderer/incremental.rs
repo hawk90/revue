@@ -3,17 +3,17 @@
 use crate::dom::renderer::build::build_children_internal;
 use crate::dom::renderer::types::DomRenderer;
 use crate::dom::DomId;
-use crate::dom::WidgetMeta;
+use crate::dom::{DomTree, WidgetKey, WidgetMeta};
 use crate::widget::View;
 
-#[allow(dead_code)]
 impl DomRenderer {
     /// Build DOM from a View hierarchy
     ///
-    /// This method now performs incremental updates when possible:
-    /// - Reuses existing nodes that match by element ID or position
-    /// - Only marks changed nodes as dirty
-    /// - Preserves style cache for unchanged nodes
+    /// Builds from scratch on the first call and reconciles against the
+    /// existing tree afterwards, reusing nodes that match by [`WidgetKey`],
+    /// element id, or position + widget type - in that order. Reused nodes keep
+    /// their [`DomId`], their state (focus, hover, selection) and their cached
+    /// style.
     pub fn build<V: View>(&mut self, root: &V) {
         if self.tree.is_empty() {
             // First build - create from scratch
@@ -34,7 +34,7 @@ impl DomRenderer {
 
         // Update root node
         let new_meta = root.meta();
-        if !update_node_meta_internal(self, root_id, &new_meta) {
+        if !update_node_meta_matched(self, root_id, &new_meta, MatchKind::Positional) {
             // Root changed - full rebuild needed
             self.build_fresh(root);
             return;
@@ -42,16 +42,6 @@ impl DomRenderer {
 
         // Recursively update children
         update_children_internal(self, root_id, root.children());
-    }
-
-    /// Update node metadata if changed, returns true if node can be reused
-    pub(crate) fn update_node_meta(&mut self, node_id: DomId, new_meta: &WidgetMeta) -> bool {
-        update_node_meta_internal(self, node_id, new_meta)
-    }
-
-    /// Recursively update children, reusing nodes when possible
-    pub(crate) fn update_children(&mut self, parent_id: DomId, new_children: &[Box<dyn View>]) {
-        update_children_internal(self, parent_id, new_children);
     }
 
     /// Remove a node and its entire subtree
@@ -68,45 +58,147 @@ impl DomRenderer {
         // Remove from tree
         self.tree.remove(node_id);
     }
-
-    /// Collect all descendant node IDs
-    pub(crate) fn collect_descendants(&self, node_id: DomId) -> Vec<DomId> {
-        collect_descendants_internal(&self.tree, node_id)
-    }
 }
 
-/// Standalone function to update node metadata
-fn update_node_meta_internal(
+/// How an existing node was matched to a new child view.
+///
+/// The match kind decides how much of the node's metadata may change while the
+/// node is still considered "the same widget".
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MatchKind {
+    /// Matched by [`WidgetKey`]. The key *is* the identity, so the element id
+    /// may change freely.
+    Keyed,
+    /// Matched by element id. The ids are equal by construction.
+    ById,
+    /// Matched by position and widget type. This is a guess, so an element id
+    /// mismatch means it guessed wrong.
+    Positional,
+}
+
+/// Update a matched node's metadata, or reject the match.
+///
+/// Returns `false` when the node cannot represent `new_meta`; the caller then
+/// removes it and builds a fresh one.
+fn update_node_meta_matched(
     renderer: &mut DomRenderer,
     node_id: DomId,
     new_meta: &WidgetMeta,
+    how: MatchKind,
 ) -> bool {
     let Some(node) = renderer.tree.get(node_id) else {
         return false;
     };
 
-    // Check if widget type matches (required for reuse)
+    // Widget type must match under every match kind - a Button cannot become a
+    // Table and keep its state.
     if node.meta.widget_type != new_meta.widget_type {
         return false;
     }
 
-    // Check if element ID matches (if present)
-    if node.meta.id != new_meta.id {
+    // A positional match is a guess based on index alone. If the ids disagree,
+    // the guess was wrong. A keyed match carries its own identity, so the id is
+    // free to change; an id match already agrees by construction.
+    if how == MatchKind::Positional && node.meta.id != new_meta.id {
         return false;
     }
 
-    // Check if classes changed
-    if node.meta.classes != new_meta.classes {
-        // Classes changed - update and mark dirty
+    // `apply_meta` keeps `id_map` and `class_index` in step - writing
+    // `node.meta` directly here would leave both stale.
+    if renderer.tree.apply_meta(node_id, new_meta) {
         if let Some(node) = renderer.tree.get_mut(node_id) {
-            node.meta.classes = new_meta.classes.clone();
             node.state.dirty = true;
         }
-        // Invalidate cached style
         renderer.styles.remove(&node_id);
     }
 
     true
+}
+
+/// Decide, for each new child, which existing child *slot* it should reuse.
+///
+/// Runs against an immutably borrowed tree and mutates nothing. That is what
+/// lets the lookup tables borrow element ids and keys straight out of the
+/// existing nodes: reconciliation runs on every frame once enabled, and cloning
+/// every sibling's id and widget type per frame was the single largest cost in
+/// the first version of this code.
+///
+/// Results are indices into `old_children`, not [`DomId`]s, so the caller can
+/// track what has been claimed with a `Vec<bool>` instead of a hash set.
+fn plan_matches(
+    tree: &DomTree,
+    old_children: &[DomId],
+    new_children: &[Box<dyn View>],
+    claimed: &mut [bool],
+) -> Vec<Option<(usize, MatchKind)>> {
+    // Only build a lookup table that something will actually read. A subtree
+    // whose children carry no keys should not pay for a key map.
+    let want_keys = new_children.iter().any(|c| c.key().is_some());
+    let want_ids = new_children.iter().any(|c| c.id().is_some());
+
+    let mut by_key: std::collections::HashMap<&WidgetKey, usize> = std::collections::HashMap::new();
+    let mut by_id: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+
+    if want_keys || want_ids {
+        for (idx, &child_id) in old_children.iter().enumerate() {
+            let Some(node) = tree.get(child_id) else {
+                continue;
+            };
+            if want_keys {
+                if let Some(ref key) = node.meta.key {
+                    by_key.entry(key).or_insert(idx);
+                }
+            }
+            if want_ids {
+                if let Some(ref id) = node.meta.id {
+                    by_id.insert(id.as_str(), idx);
+                }
+            }
+        }
+    }
+
+    let mut plan = Vec::with_capacity(new_children.len());
+
+    for (pos, child) in new_children.iter().enumerate() {
+        // Matching priority: key > element id > position + widget type.
+        //
+        // A key is an explicit identity claim, so it outranks everything. An
+        // element id is unique per document and therefore nearly as good. A
+        // position match is the fallback, and the reason unkeyed collections
+        // reconcile badly.
+        let matched = if let Some(key) = child.key() {
+            by_key.get(&key).copied().map(|i| (i, MatchKind::Keyed))
+        } else if let Some(id) = child.id() {
+            by_id.get(id).copied().map(|i| (i, MatchKind::ById))
+        } else {
+            old_children
+                .get(pos)
+                .and_then(|&old_id| {
+                    let node = tree.get(old_id)?;
+                    // A node that carries a key must not be silently reused by
+                    // a keyless sibling that happens to land on its index -
+                    // that is the shift-by-one bug keys exist to prevent.
+                    (node.meta.key.is_none() && node.meta.widget_type == child.widget_type())
+                        .then_some(pos)
+                })
+                .map(|i| (i, MatchKind::Positional))
+        };
+
+        // A slot already claimed by an earlier sibling (a duplicate key) is not
+        // available; that child gets a fresh node instead.
+        let matched = matched.filter(|&(i, _)| {
+            if claimed[i] {
+                false
+            } else {
+                claimed[i] = true;
+                true
+            }
+        });
+
+        plan.push(matched);
+    }
+
+    plan
 }
 
 /// Standalone function to recursively update children
@@ -122,93 +214,60 @@ fn update_children_internal(
         .map(|n| n.children.clone())
         .unwrap_or_default();
 
-    // Build ID lookup map for efficient matching
-    let mut old_by_id: std::collections::HashMap<String, DomId> = std::collections::HashMap::new();
+    let mut claimed = vec![false; old_children.len()];
+    let plan = plan_matches(&renderer.tree, &old_children, new_children, &mut claimed);
 
-    for &child_id in &old_children {
-        if let Some(node) = renderer.tree.get(child_id) {
-            if let Some(ref id) = node.meta.id {
-                old_by_id.insert(id.clone(), child_id);
-            }
-        }
-    }
+    let mut new_child_ids: Vec<DomId> = Vec::with_capacity(new_children.len());
 
-    // Collect widget types for positional matching (need owned strings)
-    let old_types: Vec<String> = old_children
-        .iter()
-        .filter_map(|&id| renderer.tree.get(id).map(|n| n.meta.widget_type.clone()))
-        .collect();
-
-    let mut matched_old: std::collections::HashSet<DomId> = std::collections::HashSet::new();
-    let mut new_child_ids: Vec<DomId> = Vec::new();
-
-    for (pos, child_view) in new_children.iter().enumerate() {
+    for (child_view, matched) in new_children.iter().zip(plan) {
         let child_meta = child_view.meta();
 
-        // Try to find matching existing node
-        let matched_id = if let Some(ref id) = child_meta.id {
-            // Match by element ID (highest priority)
-            old_by_id.get(id).copied()
-        } else {
-            // Match by position and type
-            old_children.get(pos).and_then(|&old_id| {
-                if !matched_old.contains(&old_id) {
-                    let old_type = old_types.get(pos)?;
-                    if old_type == &child_meta.widget_type {
-                        Some(old_id)
-                    } else {
-                        None
-                    }
+        let child_id = match matched {
+            Some((slot, how)) => {
+                let existing_id = old_children[slot];
+                if update_node_meta_matched(renderer, existing_id, &child_meta, how) {
+                    update_children_internal(renderer, existing_id, child_view.children());
+                    existing_id
                 } else {
-                    None
-                }
-            })
-        };
-
-        let child_id = if let Some(existing_id) = matched_id {
-            if !matched_old.contains(&existing_id) {
-                // Reuse existing node
-                matched_old.insert(existing_id);
-
-                // Update meta if needed
-                if !update_node_meta_internal(renderer, existing_id, &child_meta) {
-                    // Type mismatch - remove old and create new
+                    // Type mismatch - remove old and create new. The slot stays
+                    // claimed: the node is gone, so the sweep below must not
+                    // try to remove it a second time.
                     renderer.remove_subtree(existing_id);
+                    renderer.structure_dirty = true;
                     let new_id = renderer.tree.add_child(parent_id, child_meta);
                     build_children_internal(renderer, new_id, child_view.children());
                     new_id
-                } else {
-                    // Recursively update grandchildren
-                    update_children_internal(renderer, existing_id, child_view.children());
-                    existing_id
                 }
-            } else {
-                // Already matched - create new
+            }
+            None => {
+                renderer.structure_dirty = true;
                 let new_id = renderer.tree.add_child(parent_id, child_meta);
                 build_children_internal(renderer, new_id, child_view.children());
                 new_id
             }
-        } else {
-            // No match - create new node
-            let new_id = renderer.tree.add_child(parent_id, child_meta);
-            build_children_internal(renderer, new_id, child_view.children());
-            new_id
         };
 
         new_child_ids.push(child_id);
     }
 
-    // Remove unmatched old children
-    for old_id in old_children {
-        if !matched_old.contains(&old_id) && !new_child_ids.contains(&old_id) {
+    // Remove the old children nothing claimed.
+    for (slot, &old_id) in old_children.iter().enumerate() {
+        if !claimed[slot] {
             renderer.remove_subtree(old_id);
+            renderer.structure_dirty = true;
         }
     }
 
-    // Update parent's children list
-    if let Some(parent) = renderer.tree.get_mut(parent_id) {
-        parent.children = new_child_ids;
+    // A reorder changes nothing about which nodes exist, but layout reads the
+    // child order, so it counts as a structural change too.
+    if new_child_ids != old_children {
+        renderer.structure_dirty = true;
     }
+
+    // `set_children` refreshes each child's structural state, which
+    // `:first-child` and friends read. Assigning `parent.children` directly
+    // would leave that state describing the previous frame's order.
+    renderer.tree.set_children(parent_id, new_child_ids);
 }
 
 /// Standalone function to collect all descendant node IDs

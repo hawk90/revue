@@ -13,6 +13,7 @@ impl DomRenderer {
             cached_selectors: None,
             focused: None,
             hovered: None,
+            structure_dirty: false,
         }
     }
 
