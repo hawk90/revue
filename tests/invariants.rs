@@ -529,6 +529,12 @@ fn contains_subslice(haystack: &[u8], needle: &[u8]) -> bool {
 /// on abort, which is exactly why this is a panic hook and not a `Drop` impl.
 /// The test profile unwinds, so this exercises the unwind path; the abort path
 /// is covered by the language guarantee that hooks run before the abort.
+///
+/// The escape-sequence assertions are Unix-only. On Windows crossterm may
+/// dispatch these commands to WinAPI, which changes console state without
+/// writing anything to stdout - there would be no bytes to inspect. The
+/// platform-independent half (the hook runs, and the panic message survives it)
+/// is asserted everywhere.
 #[test]
 fn inv09_terminal_is_restored_when_the_process_panics() {
     const CHILD_ENV: &str = "REVUE_INV09_CHILD";
@@ -555,20 +561,23 @@ fn inv09_terminal_is_restored_when_the_process_panics() {
         "child was supposed to fail with a panic"
     );
 
-    assert!(
-        contains_subslice(&out.stdout, b"\x1b[?1049l"),
-        "panicking process never left the alternate screen; \
-         stdout was {:?}",
-        String::from_utf8_lossy(&out.stdout)
-    );
-    assert!(
-        contains_subslice(&out.stdout, b"\x1b[?25h"),
-        "panicking process left the cursor hidden"
-    );
-    assert!(
-        contains_subslice(&out.stdout, b"\x1b[?1000l"),
-        "panicking process left mouse capture enabled"
-    );
+    #[cfg(unix)]
+    {
+        assert!(
+            contains_subslice(&out.stdout, b"\x1b[?1049l"),
+            "panicking process never left the alternate screen; \
+             stdout was {:?}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+        assert!(
+            contains_subslice(&out.stdout, b"\x1b[?25h"),
+            "panicking process left the cursor hidden"
+        );
+        assert!(
+            contains_subslice(&out.stdout, b"\x1b[?1000l"),
+            "panicking process left mouse capture enabled"
+        );
+    }
 
     // The panic message must survive the restore - a hook that swallows it
     // trades a broken terminal for an unexplained exit.
@@ -601,6 +610,7 @@ fn inv09_hook_is_silent_for_a_process_that_never_entered_tui_mode() {
         .expect("re-exec the test binary");
 
     assert!(!out.status.success(), "child was supposed to panic");
+    #[cfg(unix)]
     assert!(
         !contains_subslice(&out.stdout, b"\x1b[?1049l"),
         "restore sequence emitted by a process that never entered TUI mode"

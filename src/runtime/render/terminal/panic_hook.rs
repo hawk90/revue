@@ -102,25 +102,41 @@ pub(crate) fn is_armed() -> bool {
 /// nothing useful to do if the terminal will not take the bytes.
 pub fn restore_terminal() {
     let mut out = std::io::stdout();
-    let _ = write_restore_sequence(&mut out);
+
+    // Each command is issued on its own and its error dropped. Chaining them
+    // through one `execute!` would abort the rest of the restore at the first
+    // failure - and on a Windows console without VT processing, crossterm
+    // dispatches to WinAPI, where `DisableBracketedPaste` has no counterpart
+    // and errors. Leaving the cursor hidden because an unrelated command was
+    // unsupported is exactly the outcome this function exists to prevent.
+    let _ = execute!(out, DisableMouseCapture);
+    let _ = execute!(out, DisableBracketedPaste);
+    let _ = execute!(out, DisableFocusChange);
+    let _ = execute!(out, ResetColor);
+    let _ = execute!(out, Show);
+    let _ = execute!(out, LeaveAlternateScreen);
+
     let _ = out.flush();
     let _ = disable_raw_mode();
 }
 
-/// Emit the restore sequence to `w`.
+/// The restore sequence in its ANSI form.
 ///
-/// Split out from [`restore_terminal`] so the exact byte sequence can be
-/// asserted in a test without a real terminal.
-fn write_restore_sequence<W: Write>(w: &mut W) -> std::io::Result<()> {
-    execute!(
-        w,
-        DisableMouseCapture,
-        DisableBracketedPaste,
-        DisableFocusChange,
-        ResetColor,
-        Show,
-        LeaveAlternateScreen
-    )
+/// [`restore_terminal`] goes through `execute!`, which on Windows may dispatch
+/// to WinAPI instead of writing bytes. This renders the same commands as ANSI
+/// unconditionally, so a test can assert on the exact sequence on any platform.
+#[cfg(test)]
+fn ansi_restore_sequence() -> String {
+    use crossterm::Command;
+
+    let mut s = String::new();
+    let _ = DisableMouseCapture.write_ansi(&mut s);
+    let _ = DisableBracketedPaste.write_ansi(&mut s);
+    let _ = DisableFocusChange.write_ansi(&mut s);
+    let _ = ResetColor.write_ansi(&mut s);
+    let _ = Show.write_ansi(&mut s);
+    let _ = LeaveAlternateScreen.write_ansi(&mut s);
+    s
 }
 
 #[cfg(test)]
@@ -132,9 +148,7 @@ mod tests {
     /// two things whose absence makes a terminal look broken after a crash.
     #[test]
     fn restore_sequence_leaves_alternate_screen_and_shows_cursor() {
-        let mut out: Vec<u8> = Vec::new();
-        write_restore_sequence(&mut out).unwrap();
-        let s = String::from_utf8(out).unwrap();
+        let s = ansi_restore_sequence();
 
         assert!(
             s.contains("\x1b[?1049l"),
@@ -147,9 +161,7 @@ mod tests {
     /// garbage input if they survive the crash.
     #[test]
     fn restore_sequence_disables_input_modes() {
-        let mut out: Vec<u8> = Vec::new();
-        write_restore_sequence(&mut out).unwrap();
-        let s = String::from_utf8(out).unwrap();
+        let s = ansi_restore_sequence();
 
         assert!(
             s.contains("\x1b[?1000l"),
@@ -170,9 +182,7 @@ mod tests {
     /// state rather than the restored one.
     #[test]
     fn restore_sequence_leaves_the_screen_last() {
-        let mut out: Vec<u8> = Vec::new();
-        write_restore_sequence(&mut out).unwrap();
-        let s = String::from_utf8(out).unwrap();
+        let s = ansi_restore_sequence();
 
         let leave = s.find("\x1b[?1049l").unwrap();
         assert!(s.find("\x1b[?1000l").unwrap() < leave);
