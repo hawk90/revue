@@ -139,6 +139,7 @@ impl View for Counter {
 | [Phase 0 Baseline](refactor/phase0-baseline.md) | Committed benchmark numbers the 3.0 refactor is measured against |
 | [Phase 0 Invariants](refactor/phase0-invariants.md) | Which design invariants are pinned by tests, and why the rest are not |
 | [Phase 1 Reconciliation](refactor/phase1-reconciliation.md) | Keyed reconciliation, per-frame DOM updates, and what the benchmarks say |
+| [Render Pipeline Findings](refactor/findings-render-pipeline.md) | Verified defects in how repaints are decided, and what they mean for 3.0 |
 
 ---
 

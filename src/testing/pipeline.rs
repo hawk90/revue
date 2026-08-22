@@ -298,6 +298,16 @@ impl PipelineHarness {
         })
     }
 
+    /// Force the next draw to repaint the whole screen.
+    ///
+    /// Mirrors [`App::request_redraw`]. Useful as a control: if a change only
+    /// reaches the terminal after this, the fault is in dirty-rect computation
+    /// rather than in rendering or diffing.
+    pub fn request_redraw(&mut self) -> &mut Self {
+        self.app.request_redraw();
+        self
+    }
+
     /// Force the next draw to rebuild the DOM from scratch.
     pub fn request_dom_rebuild(&mut self) -> &mut Self {
         self.app.request_dom_rebuild();
