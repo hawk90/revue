@@ -21,6 +21,8 @@ pub struct AppBuilder {
     plugins: PluginRegistry,
     /// Explicit initial size; when None the size is queried from the terminal
     size: Option<(u16, u16)>,
+    /// Reconcile the DOM against the view on every frame
+    incremental_dom: bool,
 }
 
 impl AppBuilder {
@@ -34,7 +36,36 @@ impl AppBuilder {
             mouse_capture: true,
             plugins: PluginRegistry::new(),
             size: None,
+            incremental_dom: false,
         }
+    }
+
+    /// Reconcile the DOM against the view on every frame.
+    ///
+    /// **Off by default.** Without it the DOM is built once and then stops
+    /// following the view, so a widget added after the first frame is invisible
+    /// to CSS matching, to layout and to devtools. With it on, every frame
+    /// reconciles: nodes that still match keep their `DomId`, their state
+    /// (focus, hover, selection) and their cached style, and only the parts
+    /// that actually changed are marked dirty.
+    ///
+    /// Widgets in a dynamic collection should implement
+    /// [`View::key`](crate::widget::View::key) so they are matched by identity
+    /// rather than by position.
+    ///
+    /// This is opt-in while the performance characteristics are being measured
+    /// against the Phase 0 benchmark baseline; it will become the default.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let app = App::builder()
+    ///     .incremental_dom(true)
+    ///     .build();
+    /// ```
+    pub fn incremental_dom(mut self, enabled: bool) -> Self {
+        self.incremental_dom = enabled;
+        self
     }
 
     /// Set an explicit initial size instead of querying the terminal.
@@ -179,8 +210,10 @@ impl AppBuilder {
             None
         };
 
+        let incremental_dom = self.incremental_dom;
+
         #[cfg(feature = "hot-reload")]
-        return App::new_with_hot_reload(
+        let mut app = App::new_with_hot_reload(
             initial_size,
             self.stylesheet,
             self.mouse_capture,
@@ -191,13 +224,16 @@ impl AppBuilder {
         );
 
         #[cfg(not(feature = "hot-reload"))]
-        App::new_with_plugins(
+        let mut app = App::new_with_plugins(
             initial_size,
             self.stylesheet,
             self.mouse_capture,
             self.plugins,
             self.devtools,
-        )
+        );
+
+        app.set_incremental_dom(incremental_dom);
+        app
     }
 }
 
