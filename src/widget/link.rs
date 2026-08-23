@@ -261,7 +261,7 @@ impl View for Link {
         } else if self.focused {
             Some(Color::rgb(100, 200, 255))
         } else {
-            self.fg.or(Some(Color::CYAN))
+            Some(self.fg.unwrap_or_else(|| ctx.css_color(Color::CYAN)))
         };
 
         if let Some(fg) = fg {
