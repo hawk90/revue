@@ -118,6 +118,25 @@ impl RenderContext<'_> {
         builder_flag || css_flag
     }
 
+    /// A color for a widget whose field is a plain [`Color`] with a default
+    /// rather than an `Option`.
+    ///
+    /// For those, "the builder said nothing" and "the builder set the initial
+    /// value" are the same state, so the builder can only outrank the
+    /// stylesheet by moving the color off its initial value - the reading
+    /// `gap: 0` already gets, written down as a rule in `docs/FEATURES.md`.
+    ///
+    /// Widgets whose field is an `Option` should prefer
+    /// `self.field.unwrap_or_else(|| ctx.css_color(default))`, which has no
+    /// such ambiguity.
+    pub fn color_or(&self, builder: Color, initial: Color) -> Color {
+        if builder != initial {
+            builder
+        } else {
+            self.css_color(initial)
+        }
+    }
+
     /// The border color a widget should draw with: `border-color` if the
     /// stylesheet set one, else `color`, else `None`.
     ///

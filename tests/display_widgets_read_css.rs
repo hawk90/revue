@@ -1,0 +1,135 @@
+//! Continues the paint sweep into `src/widget/display/`.
+//!
+//! Of the fifty widgets across `display`, `data` and `feedback` that carry a
+//! DOM node, two read a computed style. Everything else paints from its own
+//! fields and hardcoded variant colors, so `color` and `background` reach
+//! almost nothing - the `F-5` half of
+//! `docs/refactor/findings-render-pipeline.md`, still open at scale.
+//!
+//! Same rule as the rest of the sweep: assert against the painted buffer.
+
+use revue::prelude::*;
+use revue::style::Color;
+use revue::testing::PipelineHarness;
+
+const RED: Color = Color {
+    r: 255,
+    g: 0,
+    b: 0,
+    a: 255,
+};
+
+fn draw<V: View>(css: &str, view: &V) -> PipelineHarness {
+    let mut h = PipelineHarness::with_css(css, 30, 6).dom_from_render(true);
+    h.draw(view);
+    h
+}
+
+/// Finds the first cell painted with a foreground colour, so a test does not
+/// depend on a widget's internal padding.
+fn first_fg(h: &PipelineHarness) -> Option<Color> {
+    let buffer = h.buffer();
+    for y in 0..buffer.height() {
+        for x in 0..buffer.width() {
+            if let Some(fg) = buffer.get(x, y).and_then(|c| c.fg) {
+                return Some(fg);
+            }
+        }
+    }
+    None
+}
+
+fn first_bg(h: &PipelineHarness) -> Option<Color> {
+    let buffer = h.buffer();
+    for y in 0..buffer.height() {
+        for x in 0..buffer.width() {
+            if let Some(bg) = buffer.get(x, y).and_then(|c| c.bg) {
+                return Some(bg);
+            }
+        }
+    }
+    None
+}
+
+macro_rules! wrap {
+    ($name:ident, $build:expr) => {
+        struct $name;
+        impl View for $name {
+            fn render(&self, ctx: &mut RenderContext) {
+                vstack().child($build).render(ctx);
+            }
+            fn widget_type(&self) -> &'static str {
+                stringify!($name)
+            }
+            fn id(&self) -> Option<&str> {
+                Some("root")
+            }
+        }
+    };
+}
+
+wrap!(BadgeView, Badge::new("hi").element_id("w"));
+wrap!(TagView, Tag::new("hi").element_id("w"));
+wrap!(SpinnerView, Spinner::new().element_id("w"));
+wrap!(DividerView, Divider::new().element_id("w"));
+
+#[test]
+fn color_reaches_a_badge() {
+    let h = draw("#w { color: #ff0000; }", &BadgeView);
+    assert_eq!(first_fg(&h), Some(RED), "`color` did not reach Badge");
+}
+
+#[test]
+fn background_reaches_a_badge() {
+    let h = draw("#w { background: #ff0000; }", &BadgeView);
+    assert_eq!(first_bg(&h), Some(RED), "`background` did not reach Badge");
+}
+
+#[test]
+fn color_reaches_a_tag() {
+    let h = draw("#w { color: #ff0000; }", &TagView);
+    assert_eq!(first_fg(&h), Some(RED), "`color` did not reach Tag");
+}
+
+#[test]
+fn color_reaches_a_spinner() {
+    let h = draw("#w { color: #ff0000; }", &SpinnerView);
+    assert_eq!(first_fg(&h), Some(RED), "`color` did not reach Spinner");
+}
+
+#[test]
+fn color_reaches_a_divider() {
+    let h = draw("#w { color: #ff0000; }", &DividerView);
+    assert_eq!(first_fg(&h), Some(RED), "`color` did not reach Divider");
+}
+
+/// The builder is the inline style and outranks the stylesheet, everywhere.
+#[test]
+fn a_builders_color_still_wins() {
+    struct Explicit;
+    impl View for Explicit {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .child(
+                    Spinner::new()
+                        .fg(Color {
+                            r: 0,
+                            g: 0,
+                            b: 255,
+                            a: 255,
+                        })
+                        .element_id("w"),
+                )
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "Explicit"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("root")
+        }
+    }
+
+    let h = draw("#w { color: #ff0000; }", &Explicit);
+    assert_ne!(first_fg(&h), Some(RED));
+}
