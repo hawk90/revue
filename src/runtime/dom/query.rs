@@ -12,7 +12,7 @@
 //! let cards = dom.query_all(".card");
 //! ```
 
-use super::selector::{parse_selector, Combinator, Selector, SelectorPart};
+use super::selector::{parse_selector, Selector};
 use super::{DomId, DomNode};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -553,143 +553,13 @@ impl DomTree {
         chain
     }
 
-    /// Internal matcher for selectors with full combinator support
+    /// Internal matcher for selectors with full combinator support.
     ///
-    /// Matches selectors from right to left, following CSS combinator rules:
-    /// - Descendant (` `): Matches any ancestor
-    /// - Child (`>`): Matches direct parent only
-    /// - AdjacentSibling (`+`): Matches immediately preceding sibling
-    /// - GeneralSibling (`~`): Matches any preceding sibling
+    /// Delegates to the shared matcher - see
+    /// [`selector::matching`](crate::dom::selector::matching) for why this and
+    /// the cascade must not have one each.
     fn matches_selector(&self, node: &DomNode, selector: &Selector) -> bool {
-        if selector.parts.is_empty() {
-            return false;
-        }
-
-        // Match from right to left (target first, then ancestors/siblings)
-        self.matches_selector_from(node, selector, selector.parts.len() - 1)
-    }
-
-    /// Recursively match selector parts from right to left
-    fn matches_selector_from(&self, node: &DomNode, selector: &Selector, part_idx: usize) -> bool {
-        let (part, _) = &selector.parts[part_idx];
-
-        // Check if current part matches node
-        if !self.matches_part(part, node) {
-            return false;
-        }
-
-        // If this is the first part (leftmost), we're done
-        if part_idx == 0 {
-            return true;
-        }
-
-        // Get the combinator from the previous part
-        let prev_combinator = selector.parts[part_idx - 1].1;
-
-        match prev_combinator {
-            Some(Combinator::Descendant) => {
-                // Any ancestor must match
-                let mut current = node.parent;
-                while let Some(parent_id) = current {
-                    if let Some(parent) = self.nodes.get(&parent_id) {
-                        if self.matches_selector_from(parent, selector, part_idx - 1) {
-                            return true;
-                        }
-                        current = parent.parent;
-                    } else {
-                        break;
-                    }
-                }
-                false
-            }
-            Some(Combinator::Child) => {
-                // Direct parent must match
-                if let Some(parent_id) = node.parent {
-                    if let Some(parent) = self.nodes.get(&parent_id) {
-                        return self.matches_selector_from(parent, selector, part_idx - 1);
-                    }
-                }
-                false
-            }
-            Some(Combinator::AdjacentSibling) => {
-                // Immediately preceding sibling must match
-                if let Some(prev_sibling) = self.get_previous_sibling(node) {
-                    return self.matches_selector_from(prev_sibling, selector, part_idx - 1);
-                }
-                false
-            }
-            Some(Combinator::GeneralSibling) => {
-                // Any preceding sibling must match
-                let mut current = self.get_previous_sibling(node);
-                while let Some(sibling) = current {
-                    if self.matches_selector_from(sibling, selector, part_idx - 1) {
-                        return true;
-                    }
-                    current = self.get_previous_sibling(sibling);
-                }
-                false
-            }
-            None => {
-                // No combinator means simple selector - already matched above
-                true
-            }
-        }
-    }
-
-    /// Check if a selector part matches a node
-    fn matches_part(&self, part: &SelectorPart, node: &DomNode) -> bool {
-        // Universal selector matches everything
-        if part.universal
-            && part.id.is_none()
-            && part.classes.is_empty()
-            && part.pseudo_classes.is_empty()
-            && part.element.is_none()
-        {
-            return true;
-        }
-
-        // Check element type
-        if let Some(ref elem) = part.element {
-            if node.widget_type() != elem {
-                return false;
-            }
-        }
-
-        // Check ID
-        if let Some(id) = &part.id {
-            if node.element_id() != Some(id.as_str()) {
-                return false;
-            }
-        }
-
-        // Check classes
-        for class in &part.classes {
-            if !node.has_class(class) {
-                return false;
-            }
-        }
-
-        // Check pseudo-classes
-        for pseudo in &part.pseudo_classes {
-            if !node.matches_pseudo(pseudo) {
-                return false;
-            }
-        }
-
-        true
-    }
-
-    /// Get previous sibling of a node
-    fn get_previous_sibling(&self, node: &DomNode) -> Option<&DomNode> {
-        let parent_id = node.parent?;
-        let parent = self.nodes.get(&parent_id)?;
-
-        let idx = parent.children.iter().position(|&id| id == node.id)?;
-        if idx > 0 {
-            self.nodes.get(&parent.children[idx - 1])
-        } else {
-            None
-        }
+        crate::dom::selector::matching::matches(node, selector, &|id| self.nodes.get(&id))
     }
 
     /// Get a parsed selector from cache, or parse and cache it
