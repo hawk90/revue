@@ -259,6 +259,9 @@ impl View for Rating {
     crate::impl_view_meta!("Rating", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {
+        // A single `color` cannot describe every part of this widget, so it
+        // sets the primary one and the rest keep their defaults - a filled star is the rating's primary element.
+        let filled_color = ctx.color_or(self.filled_color, Color::rgb(255, 200, 0));
         let area = ctx.area;
         if area.width < 1 || area.height < 1 {
             return;
@@ -295,7 +298,7 @@ impl View for Rating {
                 let color = if self.hover_value.is_some() {
                     self.hover_color
                 } else {
-                    self.filled_color
+                    filled_color
                 };
                 (filled_char, color)
             } else if self.half_stars && display_value >= star_value - 0.5 {
@@ -303,7 +306,7 @@ impl View for Rating {
                 let color = if self.hover_value.is_some() {
                     self.hover_color
                 } else {
-                    self.filled_color
+                    filled_color
                 };
                 (self.style.half_char(), color)
             } else {

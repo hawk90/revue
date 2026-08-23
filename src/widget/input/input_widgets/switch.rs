@@ -182,11 +182,10 @@ impl Switch {
 
     /// Render default style
     fn render_default(&self, ctx: &mut RenderContext, x: u16, y: u16) {
-        let color = if self.on {
-            self.on_color
-        } else {
-            self.off_color
-        };
+        // A single `color` cannot describe every part of this widget, so it
+        // sets the primary one and the rest keep their defaults - the on state is the switch's primary element.
+        let on_color = ctx.color_or(self.on_color, Color::GREEN);
+        let color = if self.on { on_color } else { self.off_color };
         let track_len = self.width.saturating_sub(2);
 
         // Opening bracket
@@ -212,16 +211,11 @@ impl Switch {
 
     /// Render iOS style
     fn render_ios(&self, ctx: &mut RenderContext, x: u16, y: u16) {
-        let color = if self.on {
-            self.on_color
-        } else {
-            self.off_color
-        };
-        let bg = if self.on {
-            self.on_color
-        } else {
-            self.track_color
-        };
+        // A single `color` cannot describe every part of this widget, so it
+        // sets the primary one and the rest keep their defaults - the on state is the switch's primary element.
+        let on_color = ctx.color_or(self.on_color, Color::GREEN);
+        let color = if self.on { on_color } else { self.off_color };
+        let bg = if self.on { on_color } else { self.track_color };
         let track_len = self.width.saturating_sub(2);
 
         // Opening paren
@@ -248,11 +242,10 @@ impl Switch {
 
     /// Render Material style
     fn render_material(&self, ctx: &mut RenderContext, x: u16, y: u16) {
-        let color = if self.on {
-            self.on_color
-        } else {
-            self.off_color
-        };
+        // A single `color` cannot describe every part of this widget, so it
+        // sets the primary one and the rest keep their defaults - the on state is the switch's primary element.
+        let on_color = ctx.color_or(self.on_color, Color::GREEN);
+        let color = if self.on { on_color } else { self.off_color };
         let track_len = self.width;
 
         for i in 0..track_len {
@@ -283,8 +276,11 @@ impl Switch {
 
     /// Render text style
     fn render_text(&self, ctx: &mut RenderContext, x: u16, y: u16) {
+        // A single `color` cannot describe every part of this widget, so it
+        // sets the primary one and the rest keep their defaults - the on state is the switch's primary element.
+        let on_color = ctx.color_or(self.on_color, Color::GREEN);
         let (text, color) = if self.on {
-            (self.on_text.as_deref().unwrap_or("ON"), self.on_color)
+            (self.on_text.as_deref().unwrap_or("ON"), on_color)
         } else {
             (self.off_text.as_deref().unwrap_or("OFF"), self.off_color)
         };
@@ -317,13 +313,12 @@ impl Switch {
 
     /// Render emoji style
     fn render_emoji(&self, ctx: &mut RenderContext, x: u16, y: u16) {
+        // A single `color` cannot describe every part of this widget, so it
+        // sets the primary one and the rest keep their defaults - the on state is the switch's primary element.
+        let on_color = ctx.color_or(self.on_color, Color::GREEN);
         let ch = if self.on { '✅' } else { '❌' };
         let mut cell = Cell::new(ch);
-        cell.fg = Some(if self.on {
-            self.on_color
-        } else {
-            self.off_color
-        });
+        cell.fg = Some(if self.on { on_color } else { self.off_color });
         ctx.set(x, y, cell);
         // Wide emoji occupies 2 columns — clear the second cell to prevent artifacts
         ctx.set(x + 1, y, Cell::new(' '));

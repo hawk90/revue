@@ -13,6 +13,12 @@
 //! the case this ratchet exists for, which is a *new* widget shipped with no
 //! CSS support at all.
 //!
+//! **This test passing is not evidence a widget is styled.** That is not a
+//! hypothetical: `Slider` was once wired by resolving its colour in the `render`
+//! that only dispatches to `render_horizontal` / `render_vertical`, so the value
+//! was computed and dropped. This test was happy; `color_reaches_a_sliders_fill`
+//! was not. Wire a widget *and* assert against the buffer.
+//!
 //! # Working on this
 //!
 //! Wire a widget, then delete its name from `NOT_YET_READING_CSS`. The test
@@ -69,7 +75,6 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "Image",
     "JsonViewer",
     "Layers",
-    "Link",
     "LogViewer",
     "Markdown",
     "MarkdownPresentation",
@@ -77,7 +82,6 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "MenuBar",
     "Modal",
     "NotificationCenter",
-    "OptionList",
     "Pagination",
     "PieChart",
     "Popover",
@@ -85,8 +89,6 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "Presentation",
     "ProcessMonitor",
     "QrCodeWidget",
-    "RadioGroup",
-    "Rating",
     "Resizable",
     "RichText",
     "RichTextEditor",
@@ -95,15 +97,12 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "ScrollView",
     "SearchBar",
     "Select",
-    "SelectionList",
     "Sidebar",
-    "Slider",
     "SortableList",
     "Splitter",
     "StatusBar",
     "Stepper",
     "Streamline",
-    "Switch",
     "Tabs",
     "Terminal",
     "TextArea",
