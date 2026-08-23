@@ -282,7 +282,8 @@ impl View for Avatar {
         let area = ctx.area;
         let initials = self.get_initials();
         let bg = self.get_bg_color();
-        let fg = self.fg_color.unwrap_or(Color::WHITE);
+        // Builder, then the stylesheet, then the widget's own default.
+        let fg = self.fg_color.unwrap_or_else(|| ctx.css_color(Color::WHITE));
 
         match self.size {
             AvatarSize::Small => {
