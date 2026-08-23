@@ -114,7 +114,15 @@ impl DomRenderer {
                     .get(id)
                     .is_some_and(|n| n.meta.widget_type == root_meta.widget_type) =>
             {
-                self.tree.apply_meta(id, root_meta);
+                if self.tree.apply_meta(id, root_meta) {
+                    // The walk starts here, so there is no ancestor to mark -
+                    // but the cache still answers before the dirty flag, so the
+                    // entry has to go.
+                    self.styles.remove(&id);
+                    if let Some(node) = self.tree.get_mut(id) {
+                        node.state.dirty = true;
+                    }
+                }
                 id
             }
             _ => {

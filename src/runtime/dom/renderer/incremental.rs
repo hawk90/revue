@@ -110,6 +110,10 @@ fn update_node_meta_matched(
             node.state.dirty = true;
         }
         renderer.styles.remove(&node_id);
+        // The style walk turns back at settled nodes, so an unchanged ancestor
+        // would hide this one - which is how a class added after the first
+        // frame used to change nothing at all.
+        renderer.tree.mark_subtree_dirty(node_id);
     }
 
     true
