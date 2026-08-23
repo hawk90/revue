@@ -75,27 +75,26 @@ impl DomRenderer {
         self.hovered
     }
 
-    /// Drop the cached styles that a state change on `id` can affect.
+    /// Drop the cached style a state change on `id` invalidates.
     ///
-    /// The whole subtree, not just the node: `compute_subtree_styles` stops
-    /// descending at any node that is clean and cached, so leaving a descendant
-    /// cached would keep both a `:hover .child` rule and an inherited property
-    /// frozen at their previous values. Marking dirty alone is not enough
-    /// either - `style_for_with_inheritance` answers from the cache before it
-    /// ever looks at the flag, which is why hover used to stick to the node the
-    /// pointer had left.
+    /// Marking the node dirty is not enough on its own:
+    /// `style_for_with_inheritance` answers from the cache before it looks at
+    /// the flag, which is why hover used to stick to the node the pointer had
+    /// left. And the walk down turns back at settled ancestors, so it has to be
+    /// pointed at this node.
+    ///
+    /// Descendants are not touched here. Once this node is recomputed the walk
+    /// carries "what you inherit changed" to its subtree by itself, which
+    /// covers both `:hover .child` rules and inherited properties.
     ///
     /// Sibling combinators (`.a:hover + .b`) are outside this scope and still
     /// go stale.
     fn invalidate_state_styles(&mut self, id: Option<DomId>) {
         let Some(id) = id else { return };
-        let mut stack = vec![id];
-        while let Some(current) = stack.pop() {
-            self.styles.remove(&current);
-            if let Some(node) = self.tree.get_mut(current) {
-                node.state.dirty = true;
-                stack.extend(node.children.iter().copied());
-            }
+        self.styles.remove(&id);
+        self.tree.mark_subtree_dirty(id);
+        if let Some(node) = self.tree.get_mut(id) {
+            node.state.dirty = true;
         }
     }
 }

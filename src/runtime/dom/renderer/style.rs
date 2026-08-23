@@ -71,6 +71,14 @@ impl DomRenderer {
         Some(style)
     }
 
+    /// The style the cascade computed for a node on the last pass, if any.
+    ///
+    /// Read-only and non-computing, unlike [`style_for`](Self::style_for) - for
+    /// asking what the cascade produced without changing it.
+    pub fn computed_style(&self, node_id: DomId) -> Option<&Style> {
+        self.styles.get(&node_id)
+    }
+
     /// Compute all styles (without inheritance)
     pub fn compute_styles(&mut self) {
         // Collect all node IDs first
@@ -97,20 +105,41 @@ impl DomRenderer {
 
     /// Recursively compute styles for a subtree
     pub(crate) fn compute_subtree_styles(&mut self, node_id: DomId) {
-        if let Some(node) = self.tree.get(node_id) {
-            // Optimization: if node is not dirty and its style is already cached,
-            // we can assume its children are also up-to-date.
-            if !node.state.dirty && self.styles.contains_key(&node_id) {
-                return;
-            }
+        self.compute_subtree_styles_inner(node_id, false);
+    }
+
+    /// `inherited_changed` says the parent's computed style was rebuilt, so
+    /// whatever this node inherits from it is stale even if the node itself did
+    /// not change. Without it a `color` set on a container would never reach the
+    /// children that inherit it, because they are clean and cached.
+    fn compute_subtree_styles_inner(&mut self, node_id: DomId, inherited_changed: bool) {
+        let (dirty, subtree_dirty) = match self.tree.get(node_id) {
+            Some(node) => (node.state.dirty, node.state.subtree_dirty),
+            None => return,
+        };
+        let cached = self.styles.contains_key(&node_id);
+
+        // Settled, with nothing stale above or below: the whole subtree can be
+        // skipped. This early-out is what keeps an unchanged frame from
+        // recomputing the entire cascade.
+        if !dirty && !subtree_dirty && !inherited_changed && cached {
+            return;
         }
 
-        // Compute this node's style first
-        let _ = self.style_for_with_inheritance(node_id);
+        // `subtree_dirty` alone means this node is only on the way to something
+        // below it - pass through without recomputing, and without telling the
+        // children anything changed.
+        let recomputed = dirty || inherited_changed || !cached;
+        if recomputed {
+            // The cache answers before the dirty flag is ever consulted, so
+            // dropping the entry is what actually forces the recomputation.
+            self.styles.remove(&node_id);
+            let _ = self.style_for_with_inheritance(node_id);
+        }
 
-        // Mark the node as clean after computing its style
         if let Some(node) = self.tree.get_mut(node_id) {
             node.state.dirty = false;
+            node.state.subtree_dirty = false;
         }
 
         // Get children (need to collect to avoid borrow issues)
@@ -120,9 +149,8 @@ impl DomRenderer {
             .map(|n| n.children.clone())
             .unwrap_or_default();
 
-        // Recursively compute children
         for child_id in children {
-            self.compute_subtree_styles(child_id);
+            self.compute_subtree_styles_inner(child_id, recomputed);
         }
     }
 }

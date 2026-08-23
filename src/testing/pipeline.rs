@@ -268,6 +268,17 @@ impl PipelineHarness {
             .and_then(|id| self.app.dom().painted_rect(id))
     }
 
+    /// The `color` the cascade computed for a node, if it set one.
+    ///
+    /// What the *stylesheet* decided, as distinct from what reached the screen -
+    /// a widget can still paint something else, and several do.
+    pub fn computed_color(&self, element_id: &str) -> Option<crate::style::Color> {
+        let id = self.node_id(element_id)?;
+        let style = self.app.dom().computed_style(id)?;
+        let color = style.visual.color;
+        (color != crate::style::Color::default()).then_some(color)
+    }
+
     /// Element ids of every node currently marked focused.
     ///
     /// More than one entry is an `INV-02` violation.

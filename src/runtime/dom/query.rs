@@ -194,6 +194,9 @@ impl DomTree {
             }
         }
 
+        // A brand new node has no computed style, so the walk has to reach it.
+        self.mark_subtree_dirty(id);
+
         id
     }
 
@@ -280,6 +283,7 @@ impl DomTree {
         }
 
         let total = children.len();
+        let mut moved = Vec::new();
         for (idx, &child_id) in children.iter().enumerate() {
             if let Some(child) = self.nodes.get_mut(&child_id) {
                 // `first_child`, `last_child` and `only_child` are all derived
@@ -289,8 +293,13 @@ impl DomTree {
                     // The node moved, so it may now match a different
                     // structural pseudo-class and its computed style is stale.
                     child.state.dirty = true;
+                    moved.push(child_id);
                 }
             }
+        }
+
+        for child_id in moved {
+            self.mark_subtree_dirty(child_id);
         }
 
         if let Some(parent) = self.nodes.get_mut(&parent_id) {
@@ -474,6 +483,28 @@ impl DomTree {
             current = node.parent;
         }
         None
+    }
+
+    /// Tell every ancestor of `id` that something below it needs recomputing.
+    ///
+    /// Call this whenever a node's computed style is invalidated. The style walk
+    /// descends from the root and turns back at settled nodes, so an invalidated
+    /// node that no ancestor points at is simply never visited.
+    ///
+    /// Stops early if an ancestor is already marked - the rest of the chain to
+    /// the root was marked by whoever set it.
+    pub fn mark_subtree_dirty(&mut self, id: DomId) {
+        let mut current = self.nodes.get(&id).and_then(|node| node.parent);
+        while let Some(node_id) = current {
+            let Some(node) = self.nodes.get_mut(&node_id) else {
+                break;
+            };
+            if node.state.subtree_dirty {
+                break;
+            }
+            node.state.subtree_dirty = true;
+            current = node.parent;
+        }
     }
 
     /// The node and its ancestors, deepest first.

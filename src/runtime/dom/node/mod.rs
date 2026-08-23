@@ -180,6 +180,17 @@ pub struct NodeState {
     pub empty: bool,
     /// Node's content, style or layout is dirty and needs repaint
     pub dirty: bool,
+    /// Something below this node is dirty, even if this node is not.
+    ///
+    /// The style walk stops descending at any node it considers settled, which
+    /// is what keeps an unchanged frame from recomputing the whole cascade. Without
+    /// this bit "settled" would mean "this node is clean", and a clean root would
+    /// hide every stale descendant beneath it - so a class added on frame two
+    /// would never restyle anything.
+    ///
+    /// Set on the ancestors of an invalidated node and cleared as the walk
+    /// passes through.
+    pub subtree_dirty: bool,
     /// Node is first child of parent
     pub first_child: bool,
     /// Node is last child of parent
