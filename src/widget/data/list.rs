@@ -129,6 +129,10 @@ impl<T: Display> View for List<T> {
 
             let y = i as u16;
             let is_selected = self.selection.is_selected(i);
+            // An unselected row had no color at all, so a rule matching the
+            // list never reached its items. Selection colors still win.
+            let base_fg = ctx.css_color_if_set();
+            let base_bg = ctx.css_background_if_set();
 
             let text = item.to_string();
             let mut x = 0u16;
@@ -140,8 +144,11 @@ impl<T: Display> View for List<T> {
 
                 let mut cell = Cell::new(ch);
                 if is_selected {
-                    cell.fg = self.highlight_fg;
-                    cell.bg = self.highlight_bg;
+                    cell.fg = self.highlight_fg.or(base_fg);
+                    cell.bg = self.highlight_bg.or(base_bg);
+                } else {
+                    cell.fg = base_fg;
+                    cell.bg = base_bg;
                 }
 
                 ctx.set(x, y, cell);
