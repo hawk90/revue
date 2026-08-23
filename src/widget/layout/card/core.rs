@@ -334,6 +334,45 @@ impl Card {
     }
 
     /// Get effective colors based on variant and state
+    /// [`effective_colors`](Self::effective_colors), with the stylesheet
+    /// filling in whatever the builder left unset.
+    ///
+    /// The builder is the inline style and wins; a variant's defaults are the
+    /// bottom row, below the stylesheet. Same precedence as every other paint
+    /// property in the crate.
+    fn effective_colors_with_css(&self, ctx: &RenderContext) -> (Option<Color>, Color, Color) {
+        let (bg, border, title) = self.effective_colors();
+
+        let css_bg = ctx
+            .style
+            .map(|s| s.visual.background)
+            .filter(|c| *c != Color::default());
+        let bg = self.bg_color.or(css_bg).or(bg);
+
+        let border = match (self.border_color, ctx.css_border_or_text_color()) {
+            (Some(explicit), _) => explicit,
+            (None, Some(css)) => css,
+            (None, None) => border,
+        };
+
+        (bg, border, title)
+    }
+
+    /// The border to draw: the stylesheet's if it named one, else the builder's.
+    ///
+    /// See `Border::border_type_with_css` - `none` is the initial value, so a
+    /// stylesheet that said nothing leaves the builder's choice alone.
+    fn border_type_with_css(&self, ctx: &RenderContext) -> BorderType {
+        match ctx.css_border_style() {
+            crate::style::BorderStyle::None => self.border,
+            crate::style::BorderStyle::Solid | crate::style::BorderStyle::Dashed => {
+                BorderType::Single
+            }
+            crate::style::BorderStyle::Double => BorderType::Double,
+            crate::style::BorderStyle::Rounded => BorderType::Rounded,
+        }
+    }
+
     fn effective_colors(&self) -> (Option<Color>, Color, Color) {
         let default_bg: Option<Color> = match self.variant {
             CardVariant::Outlined => None,
@@ -379,9 +418,10 @@ impl View for Card {
             return;
         }
 
-        let (bg_color, border_color, title_color) = self.effective_colors();
-        let chars = self.border.chars();
-        let has_border = self.border != BorderType::None;
+        let (bg_color, border_color, title_color) = self.effective_colors_with_css(ctx);
+        let border_type = self.border_type_with_css(ctx);
+        let chars = border_type.chars();
+        let has_border = border_type != BorderType::None;
 
         // Fill background for filled/elevated variants
         if let Some(bg) = bg_color {
