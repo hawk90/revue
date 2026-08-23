@@ -30,6 +30,8 @@ pub struct DomRenderer {
     pub(crate) structure_dirty: bool,
     /// Build the DOM from the render traversal instead of `View::children`.
     pub(crate) dom_from_render: bool,
+    /// Apply each node's specified CSS box properties during the paint pass.
+    pub(crate) css_layout: bool,
 }
 
 impl DomRenderer {
@@ -44,6 +46,7 @@ impl DomRenderer {
             hovered: None,
             structure_dirty: false,
             dom_from_render: false,
+            css_layout: false,
         }
     }
 
@@ -69,6 +72,20 @@ impl DomRenderer {
     /// Is the DOM built from the render traversal?
     pub fn dom_from_render(&self) -> bool {
         self.dom_from_render
+    }
+
+    /// Apply each node's specified CSS box properties during the paint pass.
+    ///
+    /// Inert without [`dom_from_render`](Self::dom_from_render): the box
+    /// properties are read from the node the paint pass is holding, and
+    /// without the render traversal there is no such node below the root.
+    pub(crate) fn set_css_layout(&mut self, enabled: bool) {
+        self.css_layout = enabled;
+    }
+
+    /// Are CSS box properties applied during the paint pass?
+    pub fn css_layout(&self) -> bool {
+        self.css_layout
     }
 
     pub(crate) fn take_structure_dirty(&mut self) -> bool {

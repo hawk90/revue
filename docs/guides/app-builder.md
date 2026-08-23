@@ -176,6 +176,31 @@ paint properties work throughout the tree. Implies per-frame reconciliation.
 Costs 1.5–2.8x per frame. See
 [Performance › DOM from the render traversal](performance.md#dom-from-the-render-traversal).
 
+### css_layout(enabled)
+
+Lets CSS box properties override the geometry a container computed.
+
+```rust
+App::builder()
+    .dom_from_render(true)
+    .css_layout(true)
+```
+
+**Default:** `false`, and inert without `dom_from_render` — the properties are
+read from the node the paint pass is holding, and without the render traversal
+there is no such node below the root.
+
+Container widgets keep deciding the *flow*: `vstack()` still stacks, and its
+`gap` and per-child sizes still apply. On top of that, a node's own specified
+`display`, `width`, `height`, `margin` and `min-*`/`max-*` adjust the box the
+container handed it — which is what makes `#sidebar { width: 20; }` and
+`.hidden { display: none; }` do something.
+
+Not applied: `padding`, which insets a widget's content and would move the
+border of a widget that draws one; and `gap` / `flex-*` / `grid-*`, which
+describe flow and belong to the container. Background:
+[Layout Findings](../refactor/findings-layout.md).
+
 ### build()
 
 Constructs the `App` instance with all configured settings.

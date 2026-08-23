@@ -306,6 +306,16 @@ impl App {
         self.dom.dom_from_render()
     }
 
+    /// Let CSS box properties override the geometry a container computed.
+    pub(crate) fn set_css_layout(&mut self, enabled: bool) {
+        self.dom.set_css_layout(enabled);
+    }
+
+    /// Do CSS box properties override container-computed geometry?
+    pub fn css_layout(&self) -> bool {
+        self.dom.css_layout()
+    }
+
     /// Is per-frame DOM reconciliation enabled?
     pub fn incremental_dom(&self) -> bool {
         self.incremental_dom
@@ -705,7 +715,13 @@ impl App {
         Ok(())
     }
 
-    /// Recursively build the layout tree from the DOM tree
+    /// Recursively build the layout tree from the DOM tree.
+    ///
+    /// **Post-order.** [`LayoutEngine::create_node_with_children`] links only
+    /// the children that already exist, so a parent built first ends up with no
+    /// children at all - and a layout tree with no edges computes a rect for
+    /// the root and leaves every other node at 0x0. That is what this used to
+    /// do, which is why nothing could read the engine's output.
     fn build_layout_tree(&mut self, dom_id: crate::dom::DomId) {
         // Clone children to own the Vec - necessary because we need mutable access to self
         // during recursion, and holding a slice reference would prevent that.
@@ -716,6 +732,10 @@ impl App {
             .get(dom_id)
             .map(|node| node.children.clone())
             .unwrap_or_default();
+
+        for child_dom_id in &children {
+            self.build_layout_tree(*child_dom_id);
+        }
 
         // Use default style if computation fails (defensive programming)
         let style = match self.dom.style_for_with_inheritance(dom_id) {
@@ -730,10 +750,6 @@ impl App {
             .create_node_with_children(dom_id, &style, &children)
         {
             crate::log_warn!("Layout node creation failed for {:?}: {}", dom_id, e);
-        }
-
-        for child_dom_id in children {
-            self.build_layout_tree(child_dom_id);
         }
     }
 
@@ -798,6 +814,19 @@ impl App {
     /// Read-only access to the DOM built by the last draw.
     pub(crate) fn dom(&self) -> &DomRenderer {
         &self.dom
+    }
+
+    /// Computed layout rect for a node, as `LayoutEngine` produced it.
+    ///
+    /// Crate-internal: used by `testing::PipelineHarness`. Nothing in the
+    /// render path reads this yet - see `docs/refactor/findings-layout.md`.
+    pub(crate) fn layout_rect(&self, dom_id: crate::dom::DomId) -> Option<crate::layout::Rect> {
+        self.layout.try_layout(dom_id)
+    }
+
+    /// Children of a node in the layout tree, which must mirror the DOM tree.
+    pub(crate) fn layout_children(&self, dom_id: crate::dom::DomId) -> Vec<crate::dom::DomId> {
+        self.layout.children(dom_id)
     }
 
     /// Request a full screen redraw on the next frame

@@ -25,6 +25,7 @@ pub struct AppBuilder {
     incremental_dom: bool,
     /// Build the DOM from the render traversal instead of `View::children`
     dom_from_render: bool,
+    css_layout: bool,
 }
 
 impl AppBuilder {
@@ -40,6 +41,7 @@ impl AppBuilder {
             size: None,
             incremental_dom: false,
             dom_from_render: false,
+            css_layout: false,
         }
     }
 
@@ -70,6 +72,36 @@ impl AppBuilder {
     /// ```
     pub fn dom_from_render(mut self, enabled: bool) -> Self {
         self.dom_from_render = enabled;
+        self
+    }
+
+    /// Let CSS box properties override the geometry a container computed.
+    ///
+    /// **Off by default**, and inert unless
+    /// [`dom_from_render`](Self::dom_from_render) is also on - the properties
+    /// are read from the node the paint pass is holding, and without the render
+    /// traversal there is no such node below the root.
+    ///
+    /// Container widgets keep deciding the *flow*: `vstack()` still stacks, and
+    /// its `gap` and per-child sizes still apply. On top of that, a node's own
+    /// specified `display`, `width`, `height`, `margin` and the `min`/`max`
+    /// constraints adjust the box the container handed it. That is what makes
+    /// `#sidebar { width: 20; }` and `.hidden { display: none; }` do something.
+    ///
+    /// Not applied: `padding`, which insets a widget's content and would move
+    /// the border of a widget that draws one, and `gap` / `flex-*` / `grid-*`,
+    /// which describe flow and belong to the container.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let app = App::builder()
+    ///     .dom_from_render(true)
+    ///     .css_layout(true)
+    ///     .build();
+    /// ```
+    pub fn css_layout(mut self, enabled: bool) -> Self {
+        self.css_layout = enabled;
         self
     }
 
@@ -245,6 +277,7 @@ impl AppBuilder {
 
         let incremental_dom = self.incremental_dom;
         let dom_from_render = self.dom_from_render;
+        let css_layout = self.css_layout;
 
         #[cfg(feature = "hot-reload")]
         let mut app = App::new_with_hot_reload(
@@ -268,6 +301,7 @@ impl AppBuilder {
 
         app.set_incremental_dom(incremental_dom);
         app.set_dom_from_render(dom_from_render);
+        app.set_css_layout(css_layout);
         app
     }
 }

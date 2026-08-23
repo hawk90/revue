@@ -313,6 +313,11 @@ fn the_root_render_context_does_carry_a_computed_style() {
 ///
 /// The consequence is that `width`, `padding`, `gap` and even `display: none`
 /// do nothing.
+///
+/// Still true on the default path. `App::builder().dom_from_render(true)
+/// .css_layout(true)` makes the box properties work by letting them override
+/// container-computed geometry - see `tests/css_layout.rs` and
+/// `docs/refactor/findings-layout.md`. `gap` remains the container's own.
 #[test]
 fn css_layout_properties_have_no_effect_today() {
     fn view() -> Stack {

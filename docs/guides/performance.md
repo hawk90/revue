@@ -233,10 +233,49 @@ fn render(&self, ctx: &mut RenderContext) {
 `render_child` registers a *child*; a widget rendered into the caller's own
 context is the caller's own rendering. Put the id on the view itself.
 
-**Layout properties still do nothing.** `width`, `padding`, `gap` and
-`display: none` have no effect, with or without this flag — the layout engine
-computes geometry that widgets do not read. See
-[`findings-render-pipeline.md`](../refactor/findings-render-pipeline.md).
+**Layout properties need one more flag.** `display`, `width`, `height`,
+`margin` and `min-*`/`max-*` take effect with
+[`css_layout`](#css-box-properties) on top of this one. `gap`, `flex-*` and
+`grid-*` still do nothing — they describe flow, and the container owns that.
+See [`findings-layout.md`](../refactor/findings-layout.md).
+
+### CSS box properties
+
+**Opt-in, and needs `dom_from_render`.**
+
+```rust
+let mut app = App::builder()
+    .dom_from_render(true)
+    .css_layout(true)
+    .build();
+```
+
+The container keeps deciding the flow — `vstack()` stacks, its `gap` and
+per-child sizes still apply. On top of that, a node's own specified `display`,
+`width`, `height`, `margin` and `min-*`/`max-*` adjust the area it was handed.
+That is what makes `#sidebar { width: 20; }` and `.hidden { display: none; }` do
+something.
+
+**Cost.** Nothing measurable. Within one benchmark run, 120x40:
+
+| rows | `dom_from_render` | `+ css_layout` |
+|---:|---:|---:|
+| 10 | 32.0 µs | 32.2 µs |
+| 50 | 70.2 µs | 69.4 µs |
+| 200 | 179.7 µs | 174.5 µs |
+
+A node that specifies no box property — almost all of them — costs a handful of
+comparisons and keeps the area it was given.
+
+`padding` is not applied: it insets a widget's *content*, and a widget that
+draws its own border would have the border move instead. `gap`, `flex-*` and
+`grid-*` are flow properties and stay with the container.
+
+**Why not the layout engine.** Making its computed rects authoritative would
+first need every widget's layout intent — `vstack()`'s direction, its gap, its
+per-child sizes — to reach the DOM as inline style, and then an intrinsic-size
+measurement the engine does not have. The comparison is written up in
+[`findings-layout.md`](../refactor/findings-layout.md).
 
 ### Give collection items a key
 

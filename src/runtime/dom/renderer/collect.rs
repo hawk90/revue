@@ -65,6 +65,21 @@ impl CollectSink {
     pub(crate) fn is_empty(&self) -> bool {
         self.nodes.is_empty()
     }
+
+    /// Size of each node's subtree, itself included, in collection order.
+    ///
+    /// The sink is pre-order, so a parent always precedes its descendants and
+    /// a subtree occupies a contiguous run. Accumulating from the back
+    /// therefore fills every child before its parent in a single pass.
+    pub(crate) fn subtree_lens(&self) -> Vec<usize> {
+        let mut lens = vec![1usize; self.nodes.len()];
+        for idx in (1..self.nodes.len()).rev() {
+            if let Some(parent) = self.nodes[idx].parent {
+                lens[parent] += lens[idx];
+            }
+        }
+        lens
+    }
 }
 
 impl DomRenderer {
