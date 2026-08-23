@@ -1,5 +1,6 @@
 //! Render context for widget rendering
 
+mod box_model;
 mod css;
 mod focus;
 pub mod overlay;
@@ -20,13 +21,19 @@ use super::View;
 use crate::dom::{CollectSink, DomId, NodeState};
 use crate::layout::Rect;
 use crate::render::Buffer;
-use crate::style::Style;
+use crate::style::{Display, Style};
 
 /// One node as the paint pass sees it.
 pub struct PaintNode<'a> {
     pub id: DomId,
     pub style: Option<&'a Style>,
     pub(crate) state: Option<&'a NodeState>,
+    /// Nodes in this node's subtree, itself included.
+    ///
+    /// The collect pass records pre-order, so a subtree is contiguous. That
+    /// makes this both the distance to the next sibling and the amount to skip
+    /// for a `display: none` node.
+    pub(crate) subtree_len: usize,
 }
 
 /// Which half of the frame this context belongs to.
@@ -47,11 +54,17 @@ pub enum RenderPass<'a> {
     },
     /// Painting, with the nodes the collect pass produced.
     ///
-    /// `next` is a shared cursor: the two traversals are identical, so a
-    /// counter is enough to align them.
+    /// `next` is a shared cursor into `nodes`. The two traversals are the same
+    /// walk, so a counter is enough to align them - and after each child it is
+    /// reset to that child's subtree end, so a child that renders a different
+    /// number of nodes than it did during collect cannot drag its siblings out
+    /// of alignment.
     Paint {
         nodes: &'a [PaintNode<'a>],
         next: &'a mut usize,
+        /// Apply each node's specified CSS box properties to the area its
+        /// parent gave it. See [`AppBuilder::css_layout`](crate::app::AppBuilder::css_layout).
+        css_layout: bool,
     },
 }
 
@@ -147,7 +160,7 @@ impl<'a> RenderContext<'a> {
     pub fn render_child_with_overflow(
         &mut self,
         child: &dyn View,
-        area: Rect,
+        mut area: Rect,
         overflow_hidden: bool,
         parent_clip: Option<Rect>,
     ) {
@@ -178,10 +191,30 @@ impl<'a> RenderContext<'a> {
                 });
                 child.render(&mut ctx);
             }
-            Some(RenderPass::Paint { nodes, next }) => {
+            Some(RenderPass::Paint {
+                nodes,
+                next,
+                css_layout,
+            }) => {
                 // Pre-order, exactly as the collect pass pushed.
                 let idx = **next;
                 **next += 1;
+                let node = nodes.get(idx);
+
+                if *css_layout {
+                    if let Some(style) = node.and_then(|n| n.style) {
+                        if style.layout.display == Display::None {
+                            // The subtree is not painted, but it still exists -
+                            // the collect pass walked it, so the cursor has to
+                            // step over all of it.
+                            **next = idx + node.map_or(1, |n| n.subtree_len);
+                            return;
+                        }
+                        if box_model::specifies_anything(style) {
+                            area = box_model::apply(style, area);
+                        }
+                    }
+                }
 
                 let mut ctx = RenderContext::child_ctx_with_overflow(
                     buffer,
@@ -189,12 +222,25 @@ impl<'a> RenderContext<'a> {
                     overflow_hidden,
                     parent_clip,
                 );
-                if let Some(node) = nodes.get(idx) {
+                if let Some(node) = node {
                     ctx.style = node.style;
                     ctx.state = node.state;
                 }
-                ctx.pass = Some(RenderPass::Paint { nodes, next });
+                let css_layout = *css_layout;
+                ctx.pass = Some(RenderPass::Paint {
+                    nodes,
+                    next,
+                    css_layout,
+                });
                 child.render(&mut ctx);
+
+                // Resynchronize. The child rendered with an area the collect
+                // pass never saw, so it may have produced a different number of
+                // nodes; without this, every later sibling would be handed the
+                // wrong node's style.
+                if let Some(node) = nodes.get(idx) {
+                    **next = idx + node.subtree_len;
+                }
             }
         }
     }

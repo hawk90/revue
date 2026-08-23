@@ -2,8 +2,8 @@
 
 use crate::style::parser::parse_spacing;
 use crate::style::parser::value_parsers::{
-    parse_calc, parse_color, parse_grid_placement, parse_grid_template, parse_signed_length,
-    parse_size,
+    parse_calc, parse_color, parse_grid_placement, parse_grid_template, parse_length,
+    parse_signed_length, parse_size,
 };
 use crate::style::Style;
 use crate::style::{
@@ -279,6 +279,24 @@ fn apply_sizing(style: &mut Style, property: &str, value: &str) -> bool {
                 return true;
             }
             false
+        }
+        "padding-top" | "padding-right" | "padding-bottom" | "padding-left" | "margin-top"
+        | "margin-right" | "margin-bottom" | "margin-left" => {
+            let Some(v) = parse_length(value) else {
+                return false;
+            };
+            let (side, spacing) = match property.split_once('-') {
+                Some(("padding", side)) => (side, &mut style.spacing.padding),
+                Some((_, side)) => (side, &mut style.spacing.margin),
+                None => return false,
+            };
+            match side {
+                "top" => spacing.top = v,
+                "right" => spacing.right = v,
+                "bottom" => spacing.bottom = v,
+                _ => spacing.left = v,
+            }
+            true
         }
         "width" => {
             style.sizing.width = parse_size_or_calc(value);

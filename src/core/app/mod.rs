@@ -306,6 +306,16 @@ impl App {
         self.dom.dom_from_render()
     }
 
+    /// Let CSS box properties override the geometry a container computed.
+    pub(crate) fn set_css_layout(&mut self, enabled: bool) {
+        self.dom.set_css_layout(enabled);
+    }
+
+    /// Do CSS box properties override container-computed geometry?
+    pub fn css_layout(&self) -> bool {
+        self.dom.css_layout()
+    }
+
     /// Is per-frame DOM reconciliation enabled?
     pub fn incremental_dom(&self) -> bool {
         self.incremental_dom

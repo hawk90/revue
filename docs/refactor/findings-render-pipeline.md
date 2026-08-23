@@ -5,7 +5,9 @@
 > - F-4·F-5 — `App::builder().dom_from_render(true)`로 해결. **기본 off**이므로
 >   `tests/render_pipeline.rs`가 계속 기본 동작을 고정한다. 새 경로의 계약은
 >   `tests/dom_from_render.rs`
-> - F-6 — 미해결
+> - F-6 — 박스 속성은 `.css_layout(true)`로 해결, 흐름 속성(`gap`, `flex-*`,
+>   `grid-*`)은 남았다. 조사 결과와 설계 선택은
+>   [`findings-layout.md`](findings-layout.md)
 >
 > 아래 조사 기록은 그대로 둔다 — 무엇이 왜 틀렸는지가 다음 단계의 근거다.
 
@@ -192,7 +194,8 @@ README의 대표 기능이 실제로 어디까지 작동하는지:
 |---|---|
 | paint 속성 (`color` 등) — **루트 위젯** | ✅ 작동 |
 | paint 속성 — 그 외 모든 위젯 | ❌ F-5 |
-| layout 속성 (`width`, `padding`, `gap`, `display`) — 어디든 | ❌ F-6 |
+| layout 박스 속성 (`width`, `height`, `margin`, `display`) — 어디든 | ❌ F-6 |
+| layout 흐름 속성 (`gap`, `flex-*`, `grid-*`) — 어디든 | ❌ F-6 |
 
 F-5의 메커니즘 자체는 배선된 곳에서 작동한다 (`Text`가 `ctx.style`을 읽는 9개 파일 중
 하나다). 전달이 루트에서 멈출 뿐이다.

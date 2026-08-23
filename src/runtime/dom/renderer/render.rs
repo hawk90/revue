@@ -45,12 +45,22 @@ impl DomRenderer {
         let order = self.reconcile_collected(&sink);
         self.compute_styles_with_inheritance();
 
+        // Only the CSS box path can make the two traversals diverge, and only
+        // it needs to skip a subtree. With it off, every node's "subtree" is
+        // itself, which is what the plain cursor already does.
+        let subtree_lens = if self.css_layout {
+            sink.subtree_lens()
+        } else {
+            Vec::new()
+        };
         let painted: Vec<PaintNode<'_>> = order
             .iter()
-            .map(|&id| PaintNode {
+            .enumerate()
+            .map(|(i, &id)| PaintNode {
                 id,
                 style: self.styles.get(&id),
                 state: self.tree.get(id).map(|n| &n.state),
+                subtree_len: subtree_lens.get(i).copied().unwrap_or(1),
             })
             .collect();
 
@@ -67,6 +77,7 @@ impl DomRenderer {
             ctx.pass = Some(RenderPass::Paint {
                 nodes: &painted,
                 next: &mut next,
+                css_layout: self.css_layout,
             });
             ctx = ctx.with_overlay_queue(&mut overlay_queue);
             root.render(&mut ctx);

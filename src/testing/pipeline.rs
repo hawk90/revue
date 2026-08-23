@@ -85,6 +85,15 @@ impl PipelineHarness {
         self
     }
 
+    /// Let CSS box properties override container-computed geometry.
+    ///
+    /// Mirrors [`AppBuilder::css_layout`](crate::app::AppBuilder::css_layout),
+    /// which is off by default and inert without `dom_from_render`.
+    pub fn css_layout(mut self, enabled: bool) -> Self {
+        self.app.set_css_layout(enabled);
+        self
+    }
+
     fn build(app: App, width: u16, height: u16) -> Self {
         Self {
             app,

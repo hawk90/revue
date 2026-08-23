@@ -88,6 +88,14 @@ text {
 
 ### Supported Properties
 
+> **Layout properties need `css_layout`.** Paint properties - colors, border,
+> text - apply as soon as the widget has a DOM node. Box properties (`display`,
+> `width`, `height`, `margin`, `min-*`/`max-*`) override geometry a container
+> already computed, so they only take effect with
+> `App::builder().dom_from_render(true).css_layout(true)`. Flow properties
+> (`gap`, `flex-*`, `grid-*`) are the container's own and are not applied from
+> CSS yet - see `docs/refactor/findings-layout.md`.
+
 | Property | Values | Example |
 |----------|--------|---------|
 | `display` | `flex`, `block`, `none` | `display: flex;` |
@@ -97,6 +105,8 @@ text {
 | `gap` | `<number>` | `gap: 1;` |
 | `padding` | `<number>` or `<top> <right> <bottom> <left>` | `padding: 1 2;` |
 | `margin` | same as padding | `margin: 1;` |
+| `padding-top` / `-right` / `-bottom` / `-left` | `<number>` | `padding-left: 2;` |
+| `margin-top` / `-right` / `-bottom` / `-left` | `<number>` | `margin-left: 3;` |
 | `width` | `<number>`, `<percent>`, `auto` | `width: 50%;` |
 | `height` | same as width | `height: 10;` |
 | `min-width` | same as width | `min-width: 20;` |

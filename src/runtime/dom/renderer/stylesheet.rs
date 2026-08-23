@@ -15,6 +15,7 @@ impl DomRenderer {
             hovered: None,
             structure_dirty: false,
             dom_from_render: false,
+            css_layout: false,
         }
     }
 
