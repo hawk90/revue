@@ -170,6 +170,48 @@ impl<T: Display> View for List<T> {
     }
 }
 
+// `impl_props_builders!` cannot name a generic type, so the chainable builders
+// it would have generated are written out here. Without them `List` reports a
+// `WidgetMeta` it has no way to fill in - it takes part in the DOM and no rule
+// can select it.
+impl<T: Display> List<T> {
+    /// Set element ID for CSS selector (#id)
+    pub fn element_id(mut self, id: impl Into<String>) -> Self {
+        self.props.id = Some(id.into());
+        self
+    }
+
+    /// Set the reconciliation key - this widget's identity across frames.
+    pub fn keyed(mut self, key: impl Into<crate::dom::WidgetKey>) -> Self {
+        self.props.key = Some(key.into());
+        self
+    }
+
+    /// Add a CSS class
+    pub fn class(mut self, class: impl Into<String>) -> Self {
+        let class_str = class.into();
+        if !self.props.classes.contains(&class_str) {
+            self.props.classes.push(class_str);
+        }
+        self
+    }
+
+    /// Add multiple CSS classes
+    pub fn classes<I, S>(mut self, classes: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        for class in classes {
+            let class_str = class.into();
+            if !self.props.classes.contains(&class_str) {
+                self.props.classes.push(class_str);
+            }
+        }
+        self
+    }
+}
+
 // Note: Cannot use impl_styled_view! macro with generic types
 // Implement StyledView manually for List<T>
 impl<T: Display> crate::widget::StyledView for List<T> {
