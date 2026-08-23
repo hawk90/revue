@@ -245,6 +245,21 @@ impl<'a> RenderContext<'a> {
         }
     }
 
+    /// Are CSS box and gap properties being applied this frame?
+    ///
+    /// See [`AppBuilder::css_layout`](crate::app::AppBuilder::css_layout). A
+    /// container should gate any CSS-derived geometry on this, so that turning
+    /// the flag off really does restore the previous behavior.
+    pub fn css_layout(&self) -> bool {
+        matches!(
+            self.pass,
+            Some(RenderPass::Paint {
+                css_layout: true,
+                ..
+            })
+        )
+    }
+
     /// Attach an overlay queue to this context
     pub fn with_overlay_queue(mut self, queue: &'a mut OverlayQueue) -> Self {
         self.overlays = Some(queue);

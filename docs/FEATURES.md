@@ -93,8 +93,10 @@ text {
 > `width`, `height`, `margin`, `min-*`/`max-*`) override geometry a container
 > already computed, so they only take effect with
 > `App::builder().dom_from_render(true).css_layout(true)`. Flow properties
-> (`gap`, `flex-*`, `grid-*`) are the container's own and are not applied from
-> CSS yet - see `docs/refactor/findings-layout.md`.
+> `gap` (and `column-gap` / `row-gap`) reaches `vstack`, `hstack` and `grid`
+> under the same flag. The remaining flow properties (`flex-*`, `grid-template-*`)
+> are the container's own and are not applied from CSS - see
+> `docs/refactor/findings-layout.md`.
 
 | Property | Values | Example |
 |----------|--------|---------|

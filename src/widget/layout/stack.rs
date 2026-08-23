@@ -189,7 +189,10 @@ impl View for Stack {
         let parent_clip = ctx.clip();
 
         let n = self.children.len();
-        let total_gap = self.gap * (n.saturating_sub(1) as u16);
+        // CSS wins when it specified one; `gap: 0` is the initial value and so
+        // reads as "not specified".
+        let gap = ctx.gap_or(self.gap);
+        let total_gap = gap.saturating_mul(n.saturating_sub(1) as u16);
 
         let wrap = ctx.css_flex_wrap();
 
@@ -208,7 +211,7 @@ impl View for Stack {
                     // Wrap to next row if needed
                     if wrap && x > 0 && x.saturating_add(w) > area.width {
                         x = 0;
-                        y = y.saturating_add(row_height).saturating_add(self.gap);
+                        y = y.saturating_add(row_height).saturating_add(gap);
                         if y >= area.height {
                             break;
                         }
@@ -223,7 +226,7 @@ impl View for Stack {
                             parent_clip,
                         );
                     }
-                    x = x.saturating_add(w).saturating_add(self.gap);
+                    x = x.saturating_add(w).saturating_add(gap);
                 }
             }
             Direction::Column => {
@@ -242,7 +245,7 @@ impl View for Stack {
                             parent_clip,
                         );
                     }
-                    y = y.saturating_add(h).saturating_add(self.gap);
+                    y = y.saturating_add(h).saturating_add(gap);
                 }
             }
         }

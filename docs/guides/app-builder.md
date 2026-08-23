@@ -196,9 +196,14 @@ Container widgets keep deciding the *flow*: `vstack()` still stacks, and its
 container handed it — which is what makes `#sidebar { width: 20; }` and
 `.hidden { display: none; }` do something.
 
+`gap` — and `column-gap` / `row-gap` — reaches `vstack`, `hstack` and `grid`
+too. It describes flow, so the container reads it rather than having it applied
+from outside; `gap: 0` is the initial value and so leaves the builder's own gap
+alone.
+
 Not applied: `padding`, which insets a widget's content and would move the
-border of a widget that draws one; and `gap` / `flex-*` / `grid-*`, which
-describe flow and belong to the container. Background:
+border of a widget that draws one; and `flex-*` / `grid-template-*`, which the
+container computes itself. Background:
 [Layout Findings](../refactor/findings-layout.md).
 
 ### build()
