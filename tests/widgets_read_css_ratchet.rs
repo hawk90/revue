@@ -41,13 +41,15 @@ const NOT_YET_READING_CSS: &[&str] = &[
     // intentional: per-line level colors (Info/Warning/Error) are the content,
     // and a line is not a node, so a rule on the log cannot restore them.
     "RichLog",
+    // intentional: each event carries its own type color and an event is not a
+    // node, so a rule on the timeline would flatten them with no way back.
+    "Timeline",
     "Accordion",
     "AiStream",
     "Autocomplete",
     "BarChart",
     "BoxPlot",
     "Calendar",
-    "Callout",
     "CandleChart",
     "Chart",
     "CodeEditor",
@@ -78,7 +80,6 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "Markdown",
     "MarkdownPresentation",
     "MaskedInput",
-    "MenuBar",
     "Modal",
     "NotificationCenter",
     "PieChart",
@@ -104,7 +105,6 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "Terminal",
     "TextArea",
     "TimeSeries",
-    "Timeline",
     "Timer",
     "ToastQueue",
     "Transition",

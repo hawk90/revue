@@ -213,6 +213,9 @@ impl View for MenuBar {
     crate::impl_view_meta!("MenuBar");
 
     fn render(&self, ctx: &mut RenderContext) {
+        // Unselected entries take the stylesheet; the selected one keeps its
+        // highlight, which a rule cannot address separately.
+        let fg = ctx.color_or(self.fg, Color::WHITE);
         let area = ctx.area;
         if area.height < 1 {
             return;
@@ -241,7 +244,7 @@ impl View for MenuBar {
                     cell.fg = Some(self.selected_fg);
                 } else {
                     cell.bg = Some(self.bg);
-                    cell.fg = Some(self.fg);
+                    cell.fg = Some(fg);
                 }
                 ctx.set(x, 0, cell);
                 x += 1;
