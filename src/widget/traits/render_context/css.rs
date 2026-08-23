@@ -118,6 +118,18 @@ impl RenderContext<'_> {
         builder_flag || css_flag
     }
 
+    /// The border color a widget should draw with: `border-color` if the
+    /// stylesheet set one, else `color`, else `None`.
+    ///
+    /// Falling back to `color` mirrors CSS, where `border-color`'s initial
+    /// value is `currentColor`.
+    pub fn css_border_or_text_color(&self) -> Option<crate::style::Color> {
+        let style = self.style?;
+        [style.visual.border_color, style.visual.color]
+            .into_iter()
+            .find(|&candidate| candidate != crate::style::Color::default())
+    }
+
     /// Get gap from CSS style (for flex/grid layouts)
     pub fn css_gap(&self) -> u16 {
         self.style.map(|s| s.layout.gap).unwrap_or(0)

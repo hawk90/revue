@@ -2,7 +2,7 @@
 
 use crate::layout::Rect;
 use crate::render::Cell;
-use crate::style::Color;
+use crate::style::{BorderStyle, Color};
 use crate::utils::border::BorderChars;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -268,12 +268,20 @@ impl View for Border {
             return;
         }
 
-        let chars = self.border_type.chars();
+        let border_type = self.border_type_with_css(ctx);
+        let chars = border_type.chars();
+        // The builder is the inline style and wins; the stylesheet fills in
+        // what it did not set. Same precedence as every other paint property.
+        let fg = self.fg.or_else(|| ctx.css_border_or_text_color());
+        let bg = self.bg.or_else(|| {
+            let c = ctx.style?.visual.background;
+            (c != crate::style::Color::default()).then_some(c)
+        });
 
         // Top border
         let mut cell = Cell::new(chars.top_left);
-        cell.fg = self.fg;
-        cell.bg = self.bg;
+        cell.fg = fg;
+        cell.bg = bg;
         ctx.set(0, 0, cell);
 
         // Top horizontal line with optional title
@@ -285,16 +293,16 @@ impl View for Border {
             // Draw horizontal before title
             for x in 1..2 {
                 let mut c = Cell::new(chars.horizontal);
-                c.fg = self.fg;
-                c.bg = self.bg;
+                c.fg = fg;
+                c.bg = bg;
                 ctx.set(x, 0, c);
             }
 
             // Draw title
             for (i, ch) in display_title.chars().enumerate() {
                 let mut c = Cell::new(ch);
-                c.fg = self.fg;
-                c.bg = self.bg;
+                c.fg = fg;
+                c.bg = bg;
                 ctx.set(2 + i as u16, 0, c);
             }
 
@@ -306,46 +314,46 @@ impl View for Border {
         // Rest of top horizontal
         for x in title_start..(area.width - 1) {
             let mut c = Cell::new(chars.horizontal);
-            c.fg = self.fg;
-            c.bg = self.bg;
+            c.fg = fg;
+            c.bg = bg;
             ctx.set(x, 0, c);
         }
 
         // Top right corner
         let mut cell = Cell::new(chars.top_right);
-        cell.fg = self.fg;
-        cell.bg = self.bg;
+        cell.fg = fg;
+        cell.bg = bg;
         ctx.set(area.width - 1, 0, cell);
 
         // Left and right borders
         for y in 1..(area.height - 1) {
             let mut left = Cell::new(chars.vertical);
-            left.fg = self.fg;
-            left.bg = self.bg;
+            left.fg = fg;
+            left.bg = bg;
             ctx.set(0, y, left);
 
             let mut right = Cell::new(chars.vertical);
-            right.fg = self.fg;
-            right.bg = self.bg;
+            right.fg = fg;
+            right.bg = bg;
             ctx.set(area.width - 1, y, right);
         }
 
         // Bottom border
         let mut cell = Cell::new(chars.bottom_left);
-        cell.fg = self.fg;
-        cell.bg = self.bg;
+        cell.fg = fg;
+        cell.bg = bg;
         ctx.set(0, area.height - 1, cell);
 
         for x in 1..(area.width - 1) {
             let mut c = Cell::new(chars.horizontal);
-            c.fg = self.fg;
-            c.bg = self.bg;
+            c.fg = fg;
+            c.bg = bg;
             ctx.set(x, area.height - 1, c);
         }
 
         let mut cell = Cell::new(chars.bottom_right);
-        cell.fg = self.fg;
-        cell.bg = self.bg;
+        cell.fg = fg;
+        cell.bg = bg;
         ctx.set(area.width - 1, area.height - 1, cell);
 
         // Render child in inner area, respecting overflow style
@@ -363,6 +371,26 @@ impl View for Border {
     }
 
     crate::impl_view_meta!("Border");
+}
+
+impl Border {
+    /// The border to draw: the stylesheet's if it named one, else the builder's.
+    ///
+    /// `border-style`'s initial value is `none`, so a stylesheet that did not
+    /// mention it reads as "not specified" - the same test the cascade uses -
+    /// and the builder's `Single` default survives.
+    ///
+    /// `dashed` has no box-drawing set in a terminal, so it renders as a single
+    /// line. Documented in `docs/FEATURES.md` rather than silently mapped to
+    /// something that looks unrelated.
+    fn border_type_with_css(&self, ctx: &RenderContext) -> BorderType {
+        match ctx.css_border_style() {
+            BorderStyle::None => self.border_type,
+            BorderStyle::Solid | BorderStyle::Dashed => BorderType::Single,
+            BorderStyle::Double => BorderType::Double,
+            BorderStyle::Rounded => BorderType::Rounded,
+        }
+    }
 }
 
 /// Helper function to create a border
