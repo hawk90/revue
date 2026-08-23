@@ -47,15 +47,18 @@ impl View for Grid {
             self.rows.clone()
         };
 
+        // CSS wins when it specified a gap; `column-gap`/`row-gap` fall back to
+        // `gap`, which falls back to the builder's own value.
+        let col_gap = ctx.column_gap_or(self.col_gap);
+        let row_gap = ctx.row_gap_or(self.row_gap);
+
         // Calculate track sizes
-        let col_sizes =
-            self.calculate_tracks(area.width, &col_tracks, self.auto_cols, self.col_gap);
-        let row_sizes =
-            self.calculate_tracks(area.height, &row_tracks, self.auto_rows, self.row_gap);
+        let col_sizes = self.calculate_tracks(area.width, &col_tracks, self.auto_cols, col_gap);
+        let row_sizes = self.calculate_tracks(area.height, &row_tracks, self.auto_rows, row_gap);
 
         // Get track positions
-        let col_positions = self.track_positions(&col_sizes, self.col_gap);
-        let row_positions = self.track_positions(&row_sizes, self.row_gap);
+        let col_positions = self.track_positions(&col_sizes, col_gap);
+        let row_positions = self.track_positions(&row_sizes, row_gap);
 
         // Auto-place items
         let placements = self.auto_place_items(col_count, row_count);

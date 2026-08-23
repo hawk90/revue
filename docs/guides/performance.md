@@ -234,9 +234,9 @@ fn render(&self, ctx: &mut RenderContext) {
 context is the caller's own rendering. Put the id on the view itself.
 
 **Layout properties need one more flag.** `display`, `width`, `height`,
-`margin` and `min-*`/`max-*` take effect with
-[`css_layout`](#css-box-properties) on top of this one. `gap`, `flex-*` and
-`grid-*` still do nothing — they describe flow, and the container owns that.
+`margin`, `min-*`/`max-*` and `gap` take effect with
+[`css_layout`](#css-box-properties) on top of this one. `flex-*` and
+`grid-template-*` still do nothing — the container computes those itself.
 See [`findings-layout.md`](../refactor/findings-layout.md).
 
 ### CSS box properties
@@ -267,9 +267,14 @@ something.
 A node that specifies no box property — almost all of them — costs a handful of
 comparisons and keeps the area it was given.
 
+`gap`, `column-gap` and `row-gap` reach `vstack`, `hstack` and `grid`. They
+describe flow, so the container reads them rather than having them applied from
+outside — `ctx.gap_or(self.gap)` is the whole of it, and `gap: 0` leaves the
+builder's own value alone.
+
 `padding` is not applied: it insets a widget's *content*, and a widget that
-draws its own border would have the border move instead. `gap`, `flex-*` and
-`grid-*` are flow properties and stay with the container.
+draws its own border would have the border move instead. `flex-*` and
+`grid-template-*` stay with the container.
 
 **Why not the layout engine.** Making its computed rects authoritative would
 first need every widget's layout intent — `vstack()`'s direction, its gap, its

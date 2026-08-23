@@ -282,3 +282,80 @@ fn a_child_that_renders_differently_under_css_does_not_desync_its_siblings() {
          desynchronized"
     );
 }
+
+// ---------------------------------------------------------------------------
+// gap: the one flow property a container can honor
+// ---------------------------------------------------------------------------
+
+/// `gap` describes flow, so it stays with the container - but the container can
+/// read it, and `Stack` now does. `gap: 0` is the initial value and reads as
+/// "not specified", so a stylesheet that says nothing leaves the builder's own
+/// gap alone.
+#[test]
+fn a_css_gap_overrides_the_builders_gap() {
+    struct Two;
+    impl View for Two {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .gap(0)
+                .child(Text::new("A").element_id("a"))
+                .child(Text::new("B").element_id("b"))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "Two"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("app")
+        }
+    }
+
+    let mut plain = harness("");
+    plain.draw(&Two);
+
+    let mut spaced = harness("#app { gap: 2; }");
+    spaced.draw(&Two);
+
+    let gap_of = |t: &str| {
+        let lines: Vec<&str> = t.lines().collect();
+        let a = lines.iter().position(|l| l.contains('A')).expect("A");
+        let b = lines.iter().position(|l| l.contains('B')).expect("B");
+        b - a
+    };
+
+    assert!(
+        gap_of(&spaced.screen_text()) > gap_of(&plain.screen_text()),
+        "`gap` did not reach the container"
+    );
+}
+
+#[test]
+fn a_css_gap_is_ignored_without_the_flag() {
+    struct Two;
+    impl View for Two {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .gap(0)
+                .child(Text::new("A").element_id("a"))
+                .child(Text::new("B").element_id("b"))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "Two"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("app")
+        }
+    }
+
+    let mut off = PipelineHarness::with_css("#app { gap: 2; }", 20, 6).dom_from_render(true);
+    off.draw(&Two);
+    let mut plain = PipelineHarness::with_css("", 20, 6).dom_from_render(true);
+    plain.draw(&Two);
+
+    assert_eq!(
+        off.screen_text(),
+        plain.screen_text(),
+        "`gap` took effect without css_layout"
+    );
+}

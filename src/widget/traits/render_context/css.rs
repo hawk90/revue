@@ -87,6 +87,46 @@ impl RenderContext<'_> {
         self.style.map(|s| s.layout.gap).unwrap_or(0)
     }
 
+    /// The gap a container should use: CSS if it specified one, else the
+    /// builder's own value.
+    ///
+    /// `gap: 0` is the initial value, so it reads as "not specified" - the same
+    /// test the cascade uses. Only consulted when
+    /// [`css_layout`](Self::css_layout) is on, so the flag's promise holds:
+    /// with it off, nothing about the layout changes.
+    pub fn gap_or(&self, builder_gap: u16) -> u16 {
+        if !self.css_layout() {
+            return builder_gap;
+        }
+        match self.css_gap() {
+            0 => builder_gap,
+            css => css,
+        }
+    }
+
+    /// [`gap_or`](Self::gap_or) for a grid's column gap, which falls back to
+    /// `gap` before falling back to the builder.
+    pub fn column_gap_or(&self, builder_gap: u16) -> u16 {
+        if !self.css_layout() {
+            return builder_gap;
+        }
+        match self.style.and_then(|s| s.layout.column_gap) {
+            Some(css) => css,
+            None => self.gap_or(builder_gap),
+        }
+    }
+
+    /// [`gap_or`](Self::gap_or) for a grid's row gap.
+    pub fn row_gap_or(&self, builder_gap: u16) -> u16 {
+        if !self.css_layout() {
+            return builder_gap;
+        }
+        match self.style.and_then(|s| s.layout.row_gap) {
+            Some(css) => css,
+            None => self.gap_or(builder_gap),
+        }
+    }
+
     /// Check if CSS flex-wrap is enabled
     pub fn css_flex_wrap(&self) -> bool {
         self.style
