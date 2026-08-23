@@ -52,6 +52,12 @@ Phase 1이 reconciliation을 매 프레임 구동하므로 `dom_incremental`이 
 | `buffer_ops` | `resize` | 8.81 µs |
 | `dom_build` | `nested_5_levels` | 1.71 µs |
 | `dom_build` | `simple` | 272.7 ns |
+| `dom_children` | `fresh/10` | 5.01 µs |
+| `dom_children` | `fresh/50` | 34.0 µs |
+| `dom_children` | `fresh/100` | 95.6 µs |
+| `dom_children` | `incremental/10` | 4.14 µs |
+| `dom_children` | `incremental/50` | 20.0 µs |
+| `dom_children` | `incremental/100` | 38.0 µs |
 | `dom_incremental` | `fresh_build` | 1.27 µs |
 | `dom_incremental` | `incremental_same` | 845.1 ns |
 | `dom_incremental` | `incremental_text_change` | 834.9 ns |
@@ -85,3 +91,11 @@ Phase 1에서 `incremental_dom`을 기본 on으로 전환하기 전에 확인한
   비교할 것. `dom_build/*`는 트리 구성이 달라 비교 대상이 아니다
 - 그 외 그룹은 기준선 대비 회귀가 없어야 한다
 - **수치 판단은 사람이 한다.** 자동화된 루프는 회귀를 보고만 하고 임의로 수용하지 않는다
+
+## 이 표의 한계
+
+criterion은 **같은 머신·같은 세션**에서 뜬 baseline과 비교할 때만 신뢰할 수 있다. 위 수치는
+기록용이고, 실제 판정은 매번 Phase 0 리비전에서 `--save-baseline`을 다시 떠서 대조해야 한다.
+Phase 1이 그렇게 했다 — `phase1-reconciliation.md` 참고.
+
+`dom_children` 그룹은 처음 이 표를 쓸 때 빠져 있었다. Phase 1 대조에서 발견해 채웠다.

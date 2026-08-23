@@ -211,6 +211,9 @@ pub struct App {
     needs_layout_rebuild: bool,
     /// Track if DOM tree needs rebuild (root node creation)
     needs_dom_rebuild: bool,
+    /// Reconcile the DOM against the view on every frame (opt-in, see
+    /// [`AppBuilder::incremental_dom`](crate::app::AppBuilder::incremental_dom))
+    incremental_dom: bool,
     /// Plugin registry
     plugins: crate::plugin::PluginRegistry,
     /// Whether devtools are enabled for this app instance
@@ -246,6 +249,7 @@ impl App {
             needs_force_redraw: true, // Initial render should be a full draw
             needs_layout_rebuild: true, // Initial render needs full layout build
             needs_dom_rebuild: true,  // Initial render needs DOM root creation
+            incremental_dom: false,   // Opt-in until the benches say otherwise
             plugins,
             devtools_enabled,
             #[cfg(feature = "hot-reload")]
@@ -279,11 +283,22 @@ impl App {
             needs_force_redraw: true,
             needs_layout_rebuild: true,
             needs_dom_rebuild: true,
+            incremental_dom: false,
             plugins,
             devtools_enabled,
             hot_reload,
             style_paths,
         }
+    }
+
+    /// Enable per-frame DOM reconciliation.
+    pub(crate) fn set_incremental_dom(&mut self, enabled: bool) {
+        self.incremental_dom = enabled;
+    }
+
+    /// Is per-frame DOM reconciliation enabled?
+    pub fn incremental_dom(&self) -> bool {
+        self.incremental_dom
     }
 
     /// Create a new application builder
@@ -566,12 +581,21 @@ impl App {
 
     /// Update DOM and return the root DOM ID
     fn update_dom_and_get_root<V: View>(&mut self, view: &V) -> crate::Result<crate::dom::DomId> {
-        // Only rebuild DOM root if needed (first frame or explicit request)
-        if self.needs_dom_rebuild {
+        // With reconciliation off, the DOM is built once and then never follows
+        // the view again - so a widget added after the first frame is invisible
+        // to CSS, to layout and to devtools until something forces a rebuild.
+        //
+        // With it on, `build` reconciles every frame: nodes that still match
+        // keep their DomId, their state and their cached style.
+        if self.needs_dom_rebuild || self.incremental_dom {
             self.dom.build(view);
             self.needs_dom_rebuild = false;
-            // DOM rebuild requires layout rebuild
-            self.needs_layout_rebuild = true;
+            // Only a change in the *shape* of the DOM invalidates layout.
+            // Rebuilding it on every reconciled frame would cost more than the
+            // full rebuild reconciliation replaces.
+            if self.dom.take_structure_dirty() {
+                self.needs_layout_rebuild = true;
+            }
         }
 
         // Always compute styles (has internal dirty checking optimization)

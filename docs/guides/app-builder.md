@@ -135,6 +135,27 @@ App::builder()
 
 **Default:** `true`
 
+### incremental_dom(enabled)
+
+Reconciles the DOM against the view on every frame.
+
+```rust
+App::builder()
+    .incremental_dom(true)
+```
+
+**Default:** `false`. With it off the DOM is built once, on the first frame, and
+then stops following the view — a widget added later is invisible to CSS
+matching, layout and devtools until something forces a rebuild.
+
+With it on, nodes that still match keep their `DomId`, their state (focus,
+hover, selection) and their cached style. Widgets in a dynamic collection should
+implement [`View::key`](https://docs.rs/revue/latest/revue/widget/trait.View.html#method.key)
+so they are matched by identity rather than by position — see
+[Performance › Incremental DOM](performance.md#incremental-dom-reconciliation).
+
+Opt-in while its performance is measured; it will become the default.
+
 ### build()
 
 Constructs the `App` instance with all configured settings.

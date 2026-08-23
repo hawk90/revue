@@ -138,6 +138,7 @@ impl View for Counter {
 | [Architecture Review](anti-patterns/architecture-review.md) | External review of the current stack and alternative directions |
 | [Phase 0 Baseline](refactor/phase0-baseline.md) | Committed benchmark numbers the 3.0 refactor is measured against |
 | [Phase 0 Invariants](refactor/phase0-invariants.md) | Which design invariants are pinned by tests, and why the rest are not |
+| [Phase 1 Reconciliation](refactor/phase1-reconciliation.md) | Keyed reconciliation, per-frame DOM updates, and what the benchmarks say |
 
 ---
 

@@ -4,6 +4,83 @@ use super::NodeId;
 use crate::style::Style;
 use std::collections::HashSet;
 
+/// Reconciliation key - the identity a widget claims across frames.
+///
+/// Without a key, a widget's identity is its position among its siblings. That
+/// is fine for a fixed layout and wrong for a dynamic collection: insert a row
+/// at the top of a list and every row below it is reconciled against the wrong
+/// node, so focus, selection and scroll offset all shift by one.
+///
+/// A key says "this is the same widget as last frame" regardless of where it
+/// moved to. Use the identity of the *data*, never the loop index - an index is
+/// just positional identity spelled differently.
+///
+/// ```
+/// use revue::dom::WidgetKey;
+///
+/// # struct Row { id: u64 }
+/// # let row = Row { id: 7 };
+/// let good = WidgetKey::from(row.id);   // stable across reorders
+/// let also_good = WidgetKey::from("inbox");
+/// ```
+/// The string form is `Arc<str>` rather than `String` on purpose. `View::meta`
+/// clones the key on every frame for every keyed widget; with `String` that is
+/// a heap allocation per widget per frame, and with `Arc<str>` it is a refcount
+/// bump. Prefer [`WidgetKey::Int`] where the data has a numeric id - it does not
+/// allocate at all.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum WidgetKey {
+    /// Numeric key - a database id, a stable hash, an entity id.
+    Int(u64),
+    /// String key - a name, a uuid, a path.
+    Str(std::sync::Arc<str>),
+}
+
+impl From<u64> for WidgetKey {
+    fn from(v: u64) -> Self {
+        WidgetKey::Int(v)
+    }
+}
+
+impl From<u32> for WidgetKey {
+    fn from(v: u32) -> Self {
+        WidgetKey::Int(v as u64)
+    }
+}
+
+impl From<usize> for WidgetKey {
+    fn from(v: usize) -> Self {
+        WidgetKey::Int(v as u64)
+    }
+}
+
+impl From<&str> for WidgetKey {
+    fn from(v: &str) -> Self {
+        WidgetKey::Str(std::sync::Arc::from(v))
+    }
+}
+
+impl From<String> for WidgetKey {
+    fn from(v: String) -> Self {
+        WidgetKey::Str(std::sync::Arc::from(v.as_str()))
+    }
+}
+
+impl From<std::sync::Arc<str>> for WidgetKey {
+    fn from(v: std::sync::Arc<str>) -> Self {
+        WidgetKey::Str(v)
+    }
+}
+
+impl std::fmt::Display for WidgetKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WidgetKey::Int(v) => write!(f, "{v}"),
+            WidgetKey::Str(v) => write!(f, "{v}"),
+        }
+    }
+}
+
 /// Widget metadata for CSS matching
 #[derive(Debug, Clone, Default)]
 pub struct WidgetMeta {
@@ -13,6 +90,11 @@ pub struct WidgetMeta {
     pub id: Option<String>,
     /// CSS classes (e.g., ["primary", "large"])
     pub classes: HashSet<String>,
+    /// Reconciliation key - see [`WidgetKey`].
+    ///
+    /// `None` means the widget's identity is positional, which is the
+    /// pre-existing behavior.
+    pub key: Option<WidgetKey>,
 }
 
 impl WidgetMeta {
@@ -22,7 +104,14 @@ impl WidgetMeta {
             widget_type: widget_type.into(),
             id: None,
             classes: HashSet::new(),
+            key: None,
         }
+    }
+
+    /// Set the reconciliation key.
+    pub fn key(mut self, key: impl Into<WidgetKey>) -> Self {
+        self.key = Some(key.into());
+        self
     }
 
     /// Set element ID
