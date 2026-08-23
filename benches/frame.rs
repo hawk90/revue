@@ -52,6 +52,18 @@ fn bench_frame(c: &mut Criterion) {
                 });
             },
         );
+        group.bench_with_input(BenchmarkId::new("css_layout", rows), &rows, |b, &rows| {
+            let mut h = PipelineHarness::new(120, 40)
+                .dom_from_render(true)
+                .css_layout(true);
+            h.draw(&Rows { n: rows, tick: 0 });
+            let mut tick = 0usize;
+            b.iter(|| {
+                tick += 1;
+                h.draw(&Rows { n: rows, tick });
+                std::hint::black_box(h.frame_count());
+            });
+        });
         group.bench_with_input(BenchmarkId::new("unchanged", rows), &rows, |b, &rows| {
             let mut h = PipelineHarness::new(120, 40).incremental_dom(true);
             h.draw(&Rows { n: rows, tick: 0 });
