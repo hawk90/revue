@@ -118,6 +118,25 @@ impl RenderContext<'_> {
         builder_flag || css_flag
     }
 
+    /// The `color` the stylesheet set, if it set one.
+    ///
+    /// The primitive for an `Option<Color>` field:
+    /// `self.fg.or_else(|| ctx.css_color_if_set())` keeps the builder on top
+    /// and leaves the widget's own default underneath, with no ambiguity about
+    /// what "unset" means.
+    pub fn css_color_if_set(&self) -> Option<Color> {
+        self.style
+            .map(|s| s.visual.color)
+            .filter(|c| *c != Color::default())
+    }
+
+    /// The `background` the stylesheet set, if it set one.
+    pub fn css_background_if_set(&self) -> Option<Color> {
+        self.style
+            .map(|s| s.visual.background)
+            .filter(|c| *c != Color::default())
+    }
+
     /// A color for a widget whose field is a plain [`Color`] with a default
     /// rather than an `Option`.
     ///
