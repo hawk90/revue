@@ -1,21 +1,12 @@
-//! Characterization tests for the render pipeline.
+//! Contracts for the render pipeline.
 //!
-//! **These pin behavior that is wrong.** Each one asserts what the pipeline does
-//! today so that the day it is fixed, the test fails loudly and gets rewritten
-//! as the positive contract. Same pattern as
+//! Two groups. The first states what the pipeline must do - the repaint
+//! guarantees, which `fix(render): always repaint from the view` established.
+//! The second still **pins behavior that is wrong**, asserting what happens
+//! today so it fails loudly when fixed. Same pattern as
 //! `invariants.rs::keyless_children_are_identified_by_position_today`.
 //!
-//! What they document, verified end to end against two shipped examples driven
-//! through a real PTY (see `docs/refactor/findings-render-pipeline.md`):
-//!
-//! 1. A change that only alters widget *content* produces no repaint. Dirty
-//!    tracking is driven entirely by DOM node metadata, and content is not in
-//!    the DOM.
-//! 2. Children composed inside `render()` - the idiomatic pattern - never
-//!    become DOM nodes, because the DOM is built from `View::children()` and
-//!    almost nothing implements it.
-//! 3. A child's `RenderContext` carries no computed style, so the CSS cascade
-//!    is computed and then dropped for every widget except the root.
+//! Background and evidence: `docs/refactor/findings-render-pipeline.md`.
 
 use revue::prelude::*;
 use revue::testing::PipelineHarness;
@@ -129,23 +120,18 @@ impl View for Parent {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Content-only changes do not repaint
+// 1. Repaint guarantees
 // ---------------------------------------------------------------------------
 
-/// **Pins a bug.** The screen does not follow the view when only content
-/// changed.
+/// The screen follows the view, whatever changed.
 ///
-/// After the first frame, `collect_dirty_regions` reads DOM node dirty flags.
-/// Those are set by metadata changes - id, classes, structure - and a widget's
-/// text is not part of `WidgetMeta`. With no dirty rect, `render_to_buffer`
-/// copies the previous buffer and returns without rendering at all.
-///
-/// Confirmed outside the harness: the shipped `counter` and `todo` examples,
-/// driven through a real PTY, write **zero bytes** in response to a keypress
-/// their own handlers accept, while a terminal resize on the same run writes
-/// thousands.
+/// This is the guarantee the pipeline used to break: dirty tracking was driven
+/// by DOM node metadata, a widget's text is not part of `WidgetMeta`, so an
+/// ordinary state change marked nothing dirty and `render_to_buffer` returned
+/// without rendering. Two shipped examples wrote zero bytes in response to a
+/// keypress their own handlers accepted.
 #[test]
-fn a_content_only_change_does_not_repaint_today() {
+fn a_content_only_change_repaints() {
     for incremental in [false, true] {
         let mut h = PipelineHarness::new(30, 4).incremental_dom(incremental);
 
@@ -153,20 +139,20 @@ fn a_content_only_change_does_not_repaint_today() {
         assert_eq!(h.screen_text(), "Count: 0");
 
         h.draw(&Counter { n: 1 });
-        h.draw(&Counter { n: 2 });
-
         assert_eq!(
             h.screen_text(),
-            "Count: 0",
-            "the screen followed a content-only change (incremental_dom={incremental}) - \
-             the bug is fixed, rewrite this test as the positive contract"
+            "Count: 1",
+            "the screen did not follow a content-only change (incremental_dom={incremental})"
         );
+
+        h.draw(&Counter { n: 2 });
+        assert_eq!(h.screen_text(), "Count: 2");
     }
 }
 
-/// The same fact seen at the terminal: not one byte is emitted.
+/// And it reaches the terminal, not just the buffer.
 #[test]
-fn a_content_only_change_emits_no_terminal_output_today() {
+fn a_content_only_change_reaches_the_terminal() {
     let mut h = PipelineHarness::new(30, 4).incremental_dom(true);
     h.draw(&Counter { n: 0 });
     let after_first_frame = h.terminal_output().len();
@@ -174,25 +160,21 @@ fn a_content_only_change_emits_no_terminal_output_today() {
 
     h.draw(&Counter { n: 1 });
 
-    assert_eq!(
-        h.terminal_output().len(),
-        after_first_frame,
-        "output was written for a content-only change - the bug is fixed"
+    assert!(
+        h.terminal_output().len() > after_first_frame,
+        "the repaint stopped at the back buffer"
     );
 }
 
-/// **Pins a bug**, and explains why the previous one is permanent.
+/// A structural change repaints too, and the terminal keeps up.
 ///
-/// A structural change *does* produce a dirty rect, so `render_to_buffer` runs
-/// and paints the new content into the back buffer. But the buffer is painted
-/// by walking the whole view, while the diff that follows is masked to the
-/// dirty rects - which come from the layout engine and need not cover where the
-/// widget actually painted. The change lands in the buffer and never leaves it.
-///
-/// From then on the two buffers agree with each other and disagree with the
-/// terminal, so no later diff can ever repair it.
+/// This was the worse half of the old bug: the back buffer *was* repainted, but
+/// the diff was masked to layout-derived rects that need not cover where the
+/// widget actually painted. The change stayed in the buffer, and from then on
+/// the two buffers agreed with each other and disagreed with the terminal
+/// permanently.
 #[test]
-fn a_structural_change_reaches_the_buffer_but_not_the_terminal_today() {
+fn a_structural_change_reaches_the_terminal() {
     let mut h = PipelineHarness::new(30, 6).incremental_dom(true);
 
     h.draw(&Parent {
@@ -205,49 +187,30 @@ fn a_structural_change_reaches_the_buffer_but_not_the_terminal_today() {
         children: vec![Box::new(Row::new("a", 0)), Box::new(Row::new("b", 9))],
     });
 
-    assert_eq!(
-        h.screen_text(),
-        "N0\nN9",
-        "the back buffer should have been repainted from the view"
-    );
-    assert_eq!(
-        h.terminal_output().len(),
-        after_first_frame,
-        "the repaint reached the terminal - the bug is fixed, rewrite this as \
-         the positive contract"
+    assert_eq!(h.screen_text(), "N0\nN9");
+    assert!(
+        h.terminal_output().len() > after_first_frame,
+        "the new row reached the buffer but not the terminal"
     );
 }
 
-/// **Pins a bug.** `App::request_redraw` cannot repair the desync above.
-///
-/// `collect_dirty_regions` consumes `needs_force_redraw` to synthesise a
-/// full-screen dirty rect, clearing the flag before `draw_to_terminal` reads
-/// it. So the frame takes the diff path, and by then both buffers already hold
-/// the content the terminal never received - the diff finds nothing.
-///
-/// A resize escapes this only because it resizes the buffers, which changes
-/// their contents and gives the diff something to find.
+/// Nothing changed means nothing is written. The diff is what makes repainting
+/// from scratch affordable, so it has to actually stay silent.
 #[test]
-fn request_redraw_cannot_resync_a_stale_terminal_today() {
+fn an_unchanged_view_writes_nothing() {
     let mut h = PipelineHarness::new(30, 6).incremental_dom(true);
 
-    h.draw(&Parent {
-        children: vec![Box::new(Row::new("a", 0))],
-    });
-    h.draw(&Parent {
-        children: vec![Box::new(Row::new("a", 0)), Box::new(Row::new("b", 9))],
-    });
-    let before_request = h.terminal_output().len();
+    h.draw(&Counter { n: 7 });
+    let after_first_frame = h.terminal_output().len();
 
-    h.request_redraw();
-    h.draw(&Parent {
-        children: vec![Box::new(Row::new("a", 0)), Box::new(Row::new("b", 9))],
-    });
+    for _ in 0..5 {
+        h.draw(&Counter { n: 7 });
+    }
 
     assert_eq!(
         h.terminal_output().len(),
-        before_request,
-        "request_redraw resynced the terminal - the bug is fixed"
+        after_first_frame,
+        "an unchanged frame wrote to the terminal"
     );
 }
 

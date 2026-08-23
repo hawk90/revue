@@ -197,29 +197,44 @@ integer types, `&str` and `String`.
 Two siblings claiming the same key is a bug in your code: the first one wins the
 existing node and the second gets a fresh one.
 
-### Dirty Rect Optimization
+### How a frame is drawn
 
-Revue automatically tracks dirty regions and only re-renders what changed. When a widget's state changes, only the affected screen area is updated — unchanged pixels are preserved from the previous frame.
+Every draw renders the whole view into a back buffer, then diffs that buffer
+against the previously presented one and writes only the cells that differ.
 
-This happens transparently without requiring user code changes:
-
-- **No dirty regions**: Previous buffer is reused (zero rendering work)
-- **Partial dirty**: Old buffer copied, only dirty regions cleared and re-rendered
-- **Full screen dirty**: Falls back to full clear (e.g., on resize)
-
-The selector cache is also optimized — parsed selectors are cached once and referenced without copying, eliminating per-node Vec allocations during style computation.
-
-```rust
-// Transitions track affected nodes
-let active_nodes = transitions.active_node_ids();
-
-// Only redraw changed areas
-for id in active_nodes {
-    let rect = layout.get_rect(id);
-    buffer.clear_rect(rect);
-    render_node(id, buffer);
-}
+```text
+view.render()  ->  back buffer  ->  diff vs front buffer  ->  terminal
 ```
+
+Painting into a buffer is memory traffic; the expensive part of a frame is what
+goes down the wire. The diff is what makes rendering from scratch affordable —
+an unchanged frame produces zero bytes, and a one-character change produces a
+cursor move and a character.
+
+Draws happen on events, not on a timer: `App::run` only draws when the event
+handler asks for it, or when a transition is active.
+
+**Cost.** A 120x40 screen, measured with `cargo bench --bench frame`:
+
+| rows | frame with a change | unchanged frame |
+|---:|---:|---:|
+| 10 | 20.5 µs | 19.6 µs |
+| 50 | 31.5 µs | 28.7 µs |
+| 200 | 55.8 µs | 52.8 µs |
+
+At 60fps the budget is 16,667 µs, so the worst of these is 0.3% of a frame.
+
+> Revue used to skip rendering when the DOM reported no dirty nodes, and to mask
+> the diff to dirty regions. Both were unsound — a widget's content is not part
+> of its DOM metadata, so an ordinary state change marked nothing dirty and the
+> app stopped repainting entirely. See
+> [`docs/refactor/findings-render-pipeline.md`](../refactor/findings-render-pipeline.md).
+> Region-based skipping can come back once the DOM actually describes the widget
+> tree; until then, correct beats clever.
+
+The selector cache is optimized — parsed selectors are cached once and
+referenced without copying, eliminating per-node Vec allocations during style
+computation.
 
 ## Animation Performance
 

@@ -145,6 +145,10 @@ name = "css"
 harness = false
 
 [[bench]]
+name = "frame"
+harness = false
+
+[[bench]]
 name = "dom"
 harness = false
 
