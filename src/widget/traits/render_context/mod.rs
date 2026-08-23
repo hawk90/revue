@@ -399,7 +399,7 @@ impl<'a> RenderContext<'a> {
     /// absolute buffer coordinates suitable for constructing a child context:
     /// ```ignore
     /// let inner = ctx.sub_area(1, 1, w - 2, h - 2);
-    /// let mut child_ctx = RenderContext::new(ctx.buffer, inner);
+    /// let mut child_ctx = ctx.sub_ctx(inner);
     /// ```
     pub fn sub_area(&self, x: u16, y: u16, w: u16, h: u16) -> Rect {
         Rect::new(

@@ -456,8 +456,6 @@ impl View for ProcessMonitor {
         self.render_stats(ctx, 0);
 
         // Header (row 1)
-        let _header_ctx = RenderContext::new(ctx.buffer, ctx.sub_area(0, 1, area.width, 1));
-        // We need to create a new RenderContext properly
         self.render_header(ctx);
 
         // Process list

@@ -373,7 +373,7 @@ impl MarkdownPresentation {
                     title_height.min(area.height.saturating_sub(1)),
                 );
 
-                let mut title_ctx = RenderContext::new(ctx.buffer, title_area);
+                let mut title_ctx = ctx.sub_ctx(title_area);
                 bt.render(&mut title_ctx);
 
                 content_start_y = title_height + 2;
@@ -406,7 +406,7 @@ impl MarkdownPresentation {
                     .code_fg(self.code_fg)
                     .heading_fg(self.heading_fg);
 
-                let mut content_ctx = RenderContext::new(ctx.buffer, content_area);
+                let mut content_ctx = ctx.sub_ctx(content_area);
                 md.render(&mut content_ctx);
             }
         }
