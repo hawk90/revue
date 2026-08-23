@@ -424,19 +424,44 @@ impl DomTree {
         }
     }
 
-    /// Set hovered node
+    /// Set the hovered node and its ancestors.
+    ///
+    /// `:hover` matches the element under the pointer *and every element that
+    /// contains it* - that is what makes `.button:hover` work when the pointer
+    /// is really over the button's inner label. Marking only the deepest node
+    /// would leave every container rule dead.
+    ///
+    /// `:focus` is not like this: exactly one element has focus, and the
+    /// ancestor form is a separate selector (`:focus-within`). See
+    /// [`set_focused`](Self::set_focused).
     pub fn set_hovered(&mut self, id: Option<DomId>) {
         // Clear previous hover
         for node in self.nodes.values_mut() {
             node.state.hovered = false;
         }
 
-        // Set new hover
-        if let Some(hover_id) = id {
-            if let Some(node) = self.nodes.get_mut(&hover_id) {
-                node.state.hovered = true;
-            }
+        let mut current = id;
+        while let Some(node_id) = current {
+            let Some(node) = self.nodes.get_mut(&node_id) else {
+                break;
+            };
+            node.state.hovered = true;
+            current = node.parent;
         }
+    }
+
+    /// The node and its ancestors, deepest first.
+    pub fn ancestors_of(&self, id: DomId) -> Vec<DomId> {
+        let mut chain = Vec::new();
+        let mut current = Some(id);
+        while let Some(node_id) = current {
+            let Some(node) = self.nodes.get(&node_id) else {
+                break;
+            };
+            chain.push(node_id);
+            current = node.parent;
+        }
+        chain
     }
 
     /// Internal matcher for selectors with full combinator support

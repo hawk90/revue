@@ -141,6 +141,7 @@ impl View for Counter {
 | [Phase 1 Reconciliation](refactor/phase1-reconciliation.md) | Keyed reconciliation, per-frame DOM updates, and what the benchmarks say |
 | [Render Pipeline Findings](refactor/findings-render-pipeline.md) | Verified defects in how repaints are decided, and what they mean for 3.0 |
 | [Layout Findings](refactor/findings-layout.md) | Why CSS layout properties did nothing, and what `css_layout` does about it |
+| [Phase 2 Hit Test](refactor/phase2-hit-test.md) | Why `:hover` never matched in a running app, and what now drives it |
 
 ---
 

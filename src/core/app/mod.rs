@@ -484,6 +484,11 @@ impl App {
                 self.needs_layout_rebuild = true; // Resize requires full layout rebuild
                 should_draw = true;
             }
+            Event::Mouse(ref mouse) => {
+                if self.track_hover(mouse.x, mouse.y) {
+                    should_draw = true;
+                }
+            }
             Event::Tick => {
                 let now = Instant::now();
                 let delta = now.duration_since(self.last_tick);
@@ -605,6 +610,41 @@ impl App {
         self.dom.tree_mut().clear_dirty_flags();
 
         Ok(())
+    }
+
+    /// Move `:hover` to whatever the pointer is over.
+    ///
+    /// Returns `true` if it moved, which is when the frame has to be redrawn.
+    ///
+    /// The map it queries is filled by the paint pass, so this is inert unless
+    /// [`dom_from_render`](crate::dom::DomRenderer::dom_from_render) is on -
+    /// without it no node below the root is ever associated with an area, and
+    /// `:hover` never matched anything anyway.
+    fn track_hover(&mut self, x: u16, y: u16) -> bool {
+        if !self.dom.dom_from_render() {
+            return false;
+        }
+        let target = self.dom.node_at(x, y);
+        self.dom.set_hover_node(target)
+    }
+
+    /// Drive [`handle_event`](Self::handle_event) with a no-op user handler.
+    ///
+    /// The harness needs the real dispatch, not a reimplementation of it -
+    /// otherwise a test can agree with itself while the event loop ignores the
+    /// event entirely.
+    pub(crate) fn dispatch_for_test<V: View>(&mut self, event: Event, view: &mut V) -> bool {
+        let mut handler = |_: &Event, _: &mut V, _: &mut Self| false;
+        self.handle_event(event, view, &mut handler)
+    }
+
+    /// [`track_hover`](Self::track_hover), for the pipeline harness.
+    ///
+    /// The harness drives the same code the event loop does; without this it
+    /// would have to reimplement the hit test and could then agree with itself
+    /// while disagreeing with production.
+    pub(crate) fn track_hover_for_test(&mut self, x: u16, y: u16) -> bool {
+        self.track_hover(x, y)
     }
 
     /// Update DOM and return the root DOM ID
