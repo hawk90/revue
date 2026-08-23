@@ -533,7 +533,7 @@ impl View for SelectionList {
         content.render(ctx);
     }
 
-    crate::impl_view_meta!("SelectionList");
+    crate::impl_view_meta!("SelectionList", focusable);
 }
 
 impl_styled_view!(SelectionList);

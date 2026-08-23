@@ -173,6 +173,13 @@ With it on the frame renders twice, every widget rendered through
 `RenderContext::render_child` gets a node and its own computed style, and CSS
 paint properties work throughout the tree. Implies per-frame reconciliation.
 
+It is also what makes the mouse able to find anything: the paint pass records
+where each node landed, the event loop asks that record what is under the
+pointer, `:hover` moves there, and a left click focuses the nearest enclosing
+focusable widget. Without it neither `:hover` nor `:focus` matches anything,
+which is what a running application used to do — see
+[Phase 2 Hit Test](../refactor/phase2-hit-test.md).
+
 Costs 1.5–2.8x per frame. See
 [Performance › DOM from the render traversal](performance.md#dom-from-the-render-traversal).
 

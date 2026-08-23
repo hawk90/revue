@@ -6,6 +6,7 @@ mod build;
 pub(crate) mod collect;
 mod focus;
 mod helpers;
+mod hit;
 pub(crate) mod incremental;
 mod render;
 mod style;

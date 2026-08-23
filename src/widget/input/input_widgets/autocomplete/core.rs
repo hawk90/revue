@@ -313,7 +313,7 @@ impl Default for Autocomplete {
 }
 
 impl View for Autocomplete {
-    crate::impl_view_meta!("Autocomplete");
+    crate::impl_view_meta!("Autocomplete", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;

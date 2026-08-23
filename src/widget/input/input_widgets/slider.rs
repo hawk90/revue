@@ -536,7 +536,7 @@ impl Default for Slider {
 }
 
 impl View for Slider {
-    crate::impl_view_meta!("Slider");
+    crate::impl_view_meta!("Slider", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {
         match self.orientation {

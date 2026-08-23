@@ -208,6 +208,66 @@ impl PipelineHarness {
         self
     }
 
+    /// Move the pointer to `(x, y)`, exactly as the event loop does.
+    ///
+    /// Returns `true` if `:hover` moved. Unlike [`hover`](Self::hover), which
+    /// names a node directly, this goes through the hit test - so it observes
+    /// where the last frame actually painted things. Draw first.
+    pub fn mouse_at(&mut self, x: u16, y: u16) -> bool {
+        self.app.track_hover_for_test(x, y)
+    }
+
+    /// Push an event through the real `App::handle_event`, with a user handler
+    /// that does nothing.
+    ///
+    /// Returns whether the app asked for a redraw. Use this rather than
+    /// [`mouse_at`](Self::mouse_at) when the point of the test is that the
+    /// event loop *reacts* to the event at all.
+    pub fn send<V: View>(&mut self, event: crate::event::Event, view: &mut V) -> bool {
+        self.app.dispatch_for_test(event, view)
+    }
+
+    /// Element id of the node under `(x, y)` in the last painted frame.
+    pub fn element_at(&self, x: u16, y: u16) -> Option<String> {
+        self.app.dom().element_at(x, y).map(str::to_owned)
+    }
+
+    /// Element id of the node a click at `(x, y)` would focus.
+    pub fn focus_target_at(&self, x: u16, y: u16) -> Option<String> {
+        self.app
+            .dom()
+            .focus_target_at(x, y)
+            .and_then(|id| self.app.dom().tree().get(id))
+            .and_then(|node| node.meta.id.clone())
+    }
+
+    /// Whether the node with this element id is a focusable *kind* of widget.
+    pub fn is_focusable(&self, element_id: &str) -> bool {
+        self.app
+            .dom()
+            .get_by_id(element_id)
+            .is_some_and(|node| node.meta.focusable)
+    }
+
+    /// Element id of the node currently hovered, if it has one.
+    pub fn hovered_element(&self) -> Option<String> {
+        self.app
+            .dom()
+            .hovered_node()
+            .and_then(|id| self.app.dom().tree().get(id))
+            .and_then(|node| node.meta.id.clone())
+    }
+
+    /// Where the last frame painted the node with this element id.
+    ///
+    /// This is what the user saw, which is not what
+    /// [`layout_rect`](Self::layout_rect) reports - see
+    /// `docs/refactor/findings-layout.md`.
+    pub fn painted_rect(&self, element_id: &str) -> Option<Rect> {
+        self.node_id(element_id)
+            .and_then(|id| self.app.dom().painted_rect(id))
+    }
+
     /// Element ids of every node currently marked focused.
     ///
     /// More than one entry is an `INV-02` violation.

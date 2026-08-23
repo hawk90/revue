@@ -65,6 +65,13 @@ pub enum RenderPass<'a> {
         /// Apply each node's specified CSS box properties to the area its
         /// parent gave it. See [`AppBuilder::css_layout`](crate::app::AppBuilder::css_layout).
         css_layout: bool,
+        /// Where each node ends up on screen, in paint order.
+        ///
+        /// Filled here because this is the only point that holds both a node's
+        /// identity and the area it was actually painted into. A node that is
+        /// entirely clipped away contributes nothing - it is not on screen, so
+        /// it cannot be under the pointer.
+        hits: &'a mut Vec<(DomId, Rect)>,
     },
 }
 
@@ -195,6 +202,7 @@ impl<'a> RenderContext<'a> {
                 nodes,
                 next,
                 css_layout,
+                hits,
             }) => {
                 // Pre-order, exactly as the collect pass pushed.
                 let idx = **next;
@@ -216,6 +224,22 @@ impl<'a> RenderContext<'a> {
                     }
                 }
 
+                if let Some(node) = node {
+                    // The clip the child will draw under, which is also the
+                    // only part of it the pointer can reach.
+                    let visible = if overflow_hidden {
+                        Some(area)
+                    } else {
+                        match parent_clip {
+                            Some(clip) => area.intersection(&clip),
+                            None => Some(area),
+                        }
+                    };
+                    if let Some(visible) = visible {
+                        hits.push((node.id, visible));
+                    }
+                }
+
                 let mut ctx = RenderContext::child_ctx_with_overflow(
                     buffer,
                     area,
@@ -231,6 +255,7 @@ impl<'a> RenderContext<'a> {
                     nodes,
                     next,
                     css_layout,
+                    hits,
                 });
                 child.render(&mut ctx);
 

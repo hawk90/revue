@@ -9,7 +9,7 @@ use crate::widget::theme::{LIGHT_GRAY, SEPARATOR_COLOR};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for ColorPicker {
-    crate::impl_view_meta!("ColorPicker");
+    crate::impl_view_meta!("ColorPicker", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;

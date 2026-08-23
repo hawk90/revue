@@ -301,7 +301,15 @@ macro_rules! impl_widget_builders {
 /// ```
 #[macro_export]
 macro_rules! impl_view_meta {
+    // Same, but the widget type can hold keyboard focus - see
+    // [`WidgetMeta::focusable`](crate::dom::WidgetMeta::focusable).
+    ($name:expr, focusable) => {
+        $crate::impl_view_meta!(@body $name, true);
+    };
     ($name:expr) => {
+        $crate::impl_view_meta!(@body $name, false);
+    };
+    (@body $name:expr, $focusable:expr) => {
         fn id(&self) -> Option<&str> {
             self.props.id.as_deref()
         }
@@ -326,6 +334,7 @@ macro_rules! impl_view_meta {
             // replaces it wholesale, so anything dropped here is dropped for
             // every widget that uses it.
             meta.key = self.props.key.clone();
+            meta.focusable = $focusable;
             meta
         }
     };

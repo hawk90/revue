@@ -256,7 +256,7 @@ impl Default for Rating {
 }
 
 impl View for Rating {
-    crate::impl_view_meta!("Rating");
+    crate::impl_view_meta!("Rating", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;

@@ -95,6 +95,16 @@ pub struct WidgetMeta {
     /// `None` means the widget's identity is positional, which is the
     /// pre-existing behavior.
     pub key: Option<WidgetKey>,
+    /// Can this kind of widget hold keyboard focus?
+    ///
+    /// A property of the widget *type*, not of the moment - `Button` is
+    /// focusable, `Text` is not, and that does not change frame to frame.
+    /// Whether a particular node can be focused *right now* additionally
+    /// depends on its [`NodeState::disabled`], the same split HTML makes
+    /// between a `<button>` and a `<button disabled>`.
+    ///
+    /// Defaults to `false`, so a widget that says nothing stays unfocusable.
+    pub focusable: bool,
 }
 
 impl WidgetMeta {
@@ -105,7 +115,14 @@ impl WidgetMeta {
             id: None,
             classes: HashSet::new(),
             key: None,
+            focusable: false,
         }
+    }
+
+    /// Mark this widget type as able to hold keyboard focus.
+    pub fn focusable(mut self) -> Self {
+        self.focusable = true;
+        self
     }
 
     /// Set the reconciliation key.
