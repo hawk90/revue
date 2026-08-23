@@ -192,3 +192,7 @@ impl View for HttpClient {
         }
     }
 }
+
+// Without these, a widget reports a `WidgetMeta` it has no way to fill in:
+// it takes part in the DOM and no rule can select it.
+crate::impl_props_builders!(HttpClient);
