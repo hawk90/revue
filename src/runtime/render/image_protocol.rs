@@ -540,7 +540,7 @@ impl Iterm2Image {
         let encoded = BASE64.encode(data);
         let filename = BASE64.encode("image.png");
 
-        let mut args = vec![format!("name={}", filename), format!("inline=1")];
+        let mut args = vec![format!("name={}", filename), "inline=1".to_string()];
 
         if let Some(w) = width {
             args.push(format!("width={}", w));

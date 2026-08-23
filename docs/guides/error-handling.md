@@ -254,6 +254,47 @@ pub fn load_or_default_theme(path: &Path) -> Theme {
 }
 ```
 
+### Terminal Restoration on Panic
+
+A TUI process that dies in raw mode with the alternate screen active leaves the
+user with a terminal that echoes nothing and shows no cursor. Revue installs a
+panic hook the moment a terminal enters TUI mode, so this is handled for you:
+
+```rust
+// Called automatically by Terminal::init / init_with_mouse.
+// Call it yourself only if you drive the terminal through your own backend.
+use revue::render::install_panic_hook;
+
+crossterm::terminal::enable_raw_mode()?;
+install_panic_hook();
+```
+
+The hook chains to the previously installed hook, so the panic message still
+prints - and it prints *after* the alternate screen is torn down, where the user
+can actually read it.
+
+**Do not rely on `Drop` for this.** `Terminal` and `CrosstermBackend` do
+implement `Drop`, and that covers a normal exit, but the release profile sets
+`panic = "abort"`:
+
+```toml
+[profile.release]
+panic = "abort"
+```
+
+On abort the process dies without unwinding, so **no destructor runs**. A panic
+hook runs in both unwind and abort mode; that is why the hook, not `Drop`, is
+what upholds the guarantee.
+
+For other paths out of TUI mode - a signal handler, or shelling out to
+`$EDITOR` - call the restore directly:
+
+```rust
+use revue::render::restore_terminal;
+
+restore_terminal(); // idempotent, and a no-op if no mode was enabled
+```
+
 ### Validation Errors
 
 For user input validation, collect multiple errors:

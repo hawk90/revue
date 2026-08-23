@@ -19,6 +19,8 @@ pub struct AppBuilder {
     devtools: bool,
     mouse_capture: bool,
     plugins: PluginRegistry,
+    /// Explicit initial size; when None the size is queried from the terminal
+    size: Option<(u16, u16)>,
 }
 
 impl AppBuilder {
@@ -31,7 +33,17 @@ impl AppBuilder {
             devtools: cfg!(feature = "devtools"),
             mouse_capture: true,
             plugins: PluginRegistry::new(),
+            size: None,
         }
+    }
+
+    /// Set an explicit initial size instead of querying the terminal.
+    ///
+    /// Required for headless use (tests, snapshots, CI) where
+    /// `crossterm::terminal::size()` is unavailable or non-deterministic.
+    pub fn size(mut self, width: u16, height: u16) -> Self {
+        self.size = Some((width.max(1), height.max(1)));
+        self
     }
 
     /// Register a plugin
@@ -124,10 +136,13 @@ impl AppBuilder {
 
     /// Build the application
     pub fn build(mut self) -> App {
-        let initial_size = {
-            let (w, h) = crossterm::terminal::size().unwrap_or((80, 24));
-            // Clamp to a sane minimum to avoid 0x0 buffers on some environments
-            (w.max(1), h.max(1))
+        let initial_size = match self.size {
+            Some(size) => size,
+            None => {
+                let (w, h) = crossterm::terminal::size().unwrap_or((80, 24));
+                // Clamp to a sane minimum to avoid 0x0 buffers on some environments
+                (w.max(1), h.max(1))
+            }
         };
 
         // Collect and merge plugin styles

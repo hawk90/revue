@@ -543,7 +543,7 @@ impl App {
     }
 
     /// Draw the UI to the terminal
-    fn draw<V: View, W: std::io::Write>(
+    pub(crate) fn draw<V: View, W: std::io::Write>(
         &mut self,
         view: &V,
         terminal: &mut Terminal<W>,
@@ -835,6 +835,19 @@ impl App {
     /// Stop the application event loop
     pub fn quit(&mut self) {
         self.running = false;
+    }
+
+    /// Buffer that was most recently presented to the terminal.
+    ///
+    /// Crate-internal: used by `testing::PipelineHarness` to assert on the
+    /// output of the real draw pipeline.
+    pub(crate) fn presented_buffer(&self) -> &Buffer {
+        &self.buffers[self.current_buffer]
+    }
+
+    /// Read-only access to the DOM built by the last draw.
+    pub(crate) fn dom(&self) -> &DomRenderer {
+        &self.dom
     }
 
     /// Request a full screen redraw on the next frame

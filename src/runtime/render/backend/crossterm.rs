@@ -78,6 +78,9 @@ impl<W: Write> Backend for CrosstermBackend<W> {
     fn init_with_mouse(&mut self, enable_mouse: bool) -> Result<()> {
         enable_raw_mode()?;
         self.raw_mode = true;
+        // `Drop` does not run on abort, and the release profile aborts on panic.
+        // The hook is what actually restores the terminal - see `panic_hook`.
+        crate::render::install_panic_hook();
 
         if enable_mouse {
             execute!(
@@ -132,6 +135,7 @@ impl<W: Write> Backend for CrosstermBackend<W> {
             self.mouse_enabled = false;
             self.bracketed_paste_enabled = false;
             self.focus_events_enabled = false;
+            crate::runtime::render::terminal::panic_hook::disarm();
         }
         Ok(())
     }

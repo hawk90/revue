@@ -57,41 +57,45 @@ fn bench_dom_incremental(c: &mut Criterion) {
             .child(Text::new(format!("Item 3 {}", suffix)).element_id("item3"))
     };
 
+    // The view is built once and reused by every arm below. Constructing it
+    // inside `iter` would charge view-construction cost to whichever arm did
+    // it, making the fresh/incremental comparison meaningless - which is
+    // exactly the gate Phase 1 has to pass.
+    let stable_view = create_view("");
+
     // Benchmark: rebuild from scratch each time
     group.bench_function("fresh_build", |b| {
-        let view = create_view("");
         b.iter(|| {
             let mut renderer = DomRenderer::new();
-            renderer.build(&view);
+            renderer.build(&stable_view);
             std::hint::black_box(&renderer);
         });
     });
 
-    // Benchmark: incremental update (same structure)
+    // Benchmark: incremental update, structure and content unchanged.
+    // This is the cost of an idle frame once reconciliation runs every frame.
     group.bench_function("incremental_same", |b| {
         let mut renderer = DomRenderer::new();
-        let view = create_view("");
-        renderer.build(&view);
+        renderer.build(&stable_view);
 
         b.iter(|| {
-            let view = create_view("");
-            renderer.build(&view);
+            renderer.build(&stable_view);
             std::hint::black_box(&renderer);
         });
     });
 
     // Benchmark: incremental update with minor changes
+    let view_a = create_view("A");
+    let view_b = create_view("B");
     group.bench_function("incremental_text_change", |b| {
         let mut renderer = DomRenderer::new();
-        let view = create_view("A");
-        renderer.build(&view);
+        renderer.build(&view_a);
         let mut counter = 0;
 
         b.iter(|| {
             counter += 1;
-            let suffix = if counter % 2 == 0 { "A" } else { "B" };
-            let view = create_view(suffix);
-            renderer.build(&view);
+            let view = if counter % 2 == 0 { &view_a } else { &view_b };
+            renderer.build(view);
             std::hint::black_box(&renderer);
         });
     });
