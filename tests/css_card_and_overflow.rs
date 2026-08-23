@@ -117,37 +117,121 @@ fn the_builders_border_color_still_wins_on_a_card() {
 // overflow
 // ---------------------------------------------------------------------------
 
-/// `overflow: hidden` is documented and read by three containers. Does it clip?
+/// A child only escapes its container when it is *given* an area larger than
+/// the container - `set` already refuses to paint outside the area a widget was
+/// handed. `css_layout`'s `width` is what can produce that, so it is what makes
+/// `overflow` observable at all.
+struct Escaping;
+
+impl View for Escaping {
+    fn render(&self, ctx: &mut RenderContext) {
+        vstack()
+            .child(
+                vstack()
+                    .child(Text::new("ABCDEFGHIJKLMNOPQRSTUVWXYZ").element_id("t"))
+                    .element_id("box"),
+            )
+            .render(ctx);
+    }
+    fn widget_type(&self) -> &'static str {
+        "Escaping"
+    }
+    fn id(&self) -> Option<&str> {
+        Some("root")
+    }
+}
+
+fn escaping(css: &str) -> String {
+    let mut h = PipelineHarness::with_css(css, 30, 4)
+        .dom_from_render(true)
+        .css_layout(true);
+    h.draw(&Escaping);
+    h.screen_text()
+}
+
+/// The setup itself: without `overflow`, a child given 25 columns inside a
+/// 10-column box paints all 25. If this ever stops being true the tests below
+/// pass for the wrong reason.
 #[test]
-fn overflow_hidden_clips_a_child() {
-    struct Wide;
-    impl View for Wide {
+fn a_child_can_paint_outside_its_container() {
+    assert_eq!(
+        escaping("#box { width: 10; } #t { width: 25; }"),
+        "ABCDEFGHIJKLMNOPQRSTUVWXY"
+    );
+}
+
+#[test]
+fn overflow_hidden_clips_a_child_to_its_container() {
+    assert_eq!(
+        escaping("#box { width: 10; overflow: hidden; } #t { width: 25; }"),
+        "ABCDEFGHIJ",
+        "`overflow: hidden` did not clip the child to the container"
+    );
+}
+
+/// The clip is the *container's* box, not the area the container happened to
+/// hand this child. With two children the box splits, so a child that overflows
+/// must still be allowed the container's full width - clipping it to its own
+/// slot would cut it at half.
+#[test]
+fn the_clip_is_the_containers_box_not_the_childs_slot() {
+    struct TwoUp;
+    impl View for TwoUp {
         fn render(&self, ctx: &mut RenderContext) {
             vstack()
                 .child(
-                    vstack()
-                        .child(Text::new("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+                    hstack()
+                        .child(Text::new("ABCDEFGHIJKLMNOPQRSTUVWXYZ").element_id("t"))
+                        .child(Text::new("...."))
                         .element_id("box"),
                 )
                 .render(ctx);
         }
         fn widget_type(&self) -> &'static str {
-            "Wide"
+            "TwoUp"
         }
         fn id(&self) -> Option<&str> {
             Some("root")
         }
     }
 
-    let mut plain = PipelineHarness::with_css("", 10, 4).dom_from_render(true);
-    plain.draw(&Wide);
+    let mut h = PipelineHarness::with_css(
+        "#box { width: 10; overflow: hidden; } #t { width: 25; }",
+        30,
+        4,
+    )
+    .dom_from_render(true)
+    .css_layout(true);
+    h.draw(&TwoUp);
 
-    let mut clipped =
-        PipelineHarness::with_css("#box { overflow: hidden; }", 10, 4).dom_from_render(true);
-    clipped.draw(&Wide);
+    // The second child paints over columns 5-8, so the telling cell is 9: only
+    // the overflowing child reaches it, and only if it was allowed the
+    // container's full width rather than its own five-column slot.
+    let painted = h.screen_text();
+    assert_eq!(
+        h.buffer().get(9, 0).map(|c| c.symbol),
+        Some('J'),
+        "the child was clipped to its own slot rather than the container; got {painted:?}"
+    );
+    assert_eq!(
+        h.buffer().get(10, 0).map(|c| c.symbol),
+        Some(' '),
+        "the child was not clipped at the container's edge; got {painted:?}"
+    );
+}
 
-    // Both are bounded by the 10-cell terminal, so this asserts the flag is at
-    // least reachable and does not corrupt the frame.
-    assert!(plain.contains("ABCDEFGHIJ"));
-    assert!(clipped.contains("ABCDEFGHIJ"));
+/// A container that says nothing about overflow must not start clipping.
+#[test]
+fn a_container_without_overflow_does_not_clip() {
+    assert_eq!(
+        escaping("#box { width: 10; } #t { width: 25; }"),
+        escaping("#t { width: 25; } #box { width: 10; }"),
+    );
+}
+
+/// The container's own box bounds its children even when they fit, so a box
+/// narrower than its content still truncates.
+#[test]
+fn a_narrow_container_truncates_without_overflow() {
+    assert_eq!(escaping("#box { width: 10; }"), "ABCDEFGHIJ");
 }

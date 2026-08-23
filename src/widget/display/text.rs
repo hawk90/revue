@@ -348,7 +348,9 @@ impl View for Text {
             area.width.saturating_sub(x_offset),
             area.height,
         );
-        let mut adjusted_ctx = RenderContext::new(ctx.buffer, adjusted_area);
+        // `sub_ctx` rather than `RenderContext::new`, which would drop the clip
+        // and let this text escape an enclosing `overflow: hidden`.
+        let mut adjusted_ctx = ctx.sub_ctx(adjusted_area);
 
         // Delegate to RichText for actual rendering
         rich_text.render(&mut adjusted_ctx);
