@@ -201,7 +201,8 @@ impl BigText {
         let font = self.font_for_tier();
         let figlet_text = figlet_with_font(&self.text, font);
 
-        let fg = self.fg.unwrap_or(Color::WHITE);
+        // Builder, then the stylesheet, then the widget's own default.
+        let fg = self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
         let modifier = Modifier::BOLD;
 
         for (row, line) in figlet_text.lines().enumerate() {

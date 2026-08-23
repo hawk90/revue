@@ -431,7 +431,8 @@ impl View for Digits {
 
         for line in lines {
             let mut text = Text::new(line);
-            if let Some(fg) = self.fg {
+            // Builder first; a rule can colour digits that named none.
+            if let Some(fg) = self.fg.or_else(|| ctx.css_color_if_set()) {
                 text = text.fg(fg);
             }
             if let Some(bg) = self.bg {

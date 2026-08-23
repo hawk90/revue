@@ -39,6 +39,17 @@ fn first_fg(h: &PipelineHarness) -> Option<Color> {
     None
 }
 
+/// Does `want` appear anywhere on screen?
+///
+/// For widgets that paint decoration before their text - `Avatar` draws its
+/// shape glyphs in a name-derived colour first - where "the first coloured
+/// cell" is not the cell under test.
+fn any_fg(h: &PipelineHarness, want: Color) -> bool {
+    let buffer = h.buffer();
+    (0..buffer.height())
+        .any(|y| (0..buffer.width()).any(|x| buffer.get(x, y).and_then(|c| c.fg) == Some(want)))
+}
+
 fn first_bg(h: &PipelineHarness) -> Option<Color> {
     let buffer = h.buffer();
     for y in 0..buffer.height() {
@@ -72,6 +83,9 @@ wrap!(BadgeView, Badge::new("hi").element_id("w"));
 wrap!(TagView, Tag::new("hi").element_id("w"));
 wrap!(SpinnerView, Spinner::new().element_id("w"));
 wrap!(DividerView, Divider::new().element_id("w"));
+wrap!(AvatarView, Avatar::new("AB").element_id("w"));
+wrap!(BigTextView, BigText::new("7", 1).element_id("w"));
+wrap!(ProgressView, Progress::new(0.5).element_id("w"));
 
 #[test]
 fn color_reaches_a_badge() {
@@ -132,4 +146,22 @@ fn a_builders_color_still_wins() {
 
     let h = draw("#w { color: #ff0000; }", &Explicit);
     assert_ne!(first_fg(&h), Some(RED));
+}
+
+#[test]
+fn color_reaches_an_avatar() {
+    let h = draw("#w { color: #ff0000; }", &AvatarView);
+    assert!(any_fg(&h, RED), "`color` did not reach Avatar's initials");
+}
+
+#[test]
+fn color_reaches_big_text() {
+    let h = draw("#w { color: #ff0000; }", &BigTextView);
+    assert_eq!(first_fg(&h), Some(RED), "`color` did not reach BigText");
+}
+
+#[test]
+fn color_reaches_a_progress_bar() {
+    let h = draw("#w { color: #ff0000; }", &ProgressView);
+    assert_eq!(first_fg(&h), Some(RED), "`color` did not reach Progress");
 }
