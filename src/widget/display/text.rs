@@ -188,14 +188,20 @@ impl Text {
             style = style.bg(bg);
         }
 
-        if self.bold {
+        // These are booleans whose `false` means both "off" and "not
+        // specified", so the builder can only turn them on and a stylesheet
+        // fills in what it did not mention. Same reading `gap: 0` gets.
+        if self.bold || ctx.css_bold() {
             style = style.bold();
         }
         if self.italic {
             style = style.italic();
         }
-        if self.underline {
+        if self.underline || ctx.css_underline() {
             style = style.underline();
+        }
+        if ctx.css_line_through() {
+            style = style.strikethrough();
         }
         if self.dim {
             style = style.dim();
@@ -205,6 +211,23 @@ impl Text {
         }
 
         RichText::new().push(&self.content, style)
+    }
+
+    /// The alignment to paint with: the builder's if it set one, else CSS.
+    ///
+    /// `Left` is the initial value, so it reads as "not specified" - the same
+    /// test the cascade uses to decide whether a rule said anything. A widget
+    /// that wants to override `text-align: center` back to left has to say so
+    /// in CSS.
+    fn align_with_css(&self, ctx: &RenderContext) -> Alignment {
+        if self.align != Alignment::default() {
+            return self.align;
+        }
+        match ctx.css_text_align() {
+            crate::style::TextAlign::Left => self.align,
+            crate::style::TextAlign::Center => Alignment::Center,
+            crate::style::TextAlign::Right => Alignment::Right,
+        }
     }
 
     /// Render text with justify alignment (distribute space between words)
@@ -239,16 +262,21 @@ impl Text {
         let base_space = total_space / gap_count;
         let extra_spaces = total_space % gap_count;
 
-        // Build modifier from style
+        // Build modifier from style. Same CSS reading as
+        // `to_rich_text_with_ctx` - this path assembles its own cells, so a
+        // rule that reaches justified text has to be honored twice.
         let mut modifier = Modifier::empty();
-        if self.bold {
+        if self.bold || ctx.css_bold() {
             modifier |= Modifier::BOLD;
         }
         if self.italic {
             modifier |= Modifier::ITALIC;
         }
-        if self.underline {
+        if self.underline || ctx.css_underline() {
             modifier |= Modifier::UNDERLINE;
+        }
+        if ctx.css_line_through() {
+            modifier |= Modifier::CROSSED_OUT;
         }
         if self.dim {
             modifier |= Modifier::DIM;
@@ -289,8 +317,15 @@ impl View for Text {
             return;
         }
 
+        // `visibility: hidden` still occupies its box - it just paints nothing.
+        if !ctx.css_visible() {
+            return;
+        }
+
+        let align = self.align_with_css(ctx);
+
         // Handle Justify alignment specially
-        if self.align == Alignment::Justify {
+        if align == Alignment::Justify {
             self.render_justified(ctx);
             return;
         }
@@ -300,7 +335,7 @@ impl View for Text {
 
         // Calculate start position based on alignment
         let text_width = unicode_width::UnicodeWidthStr::width(self.content.as_str()) as u16;
-        let x_offset = match self.align {
+        let x_offset = match align {
             Alignment::Left | Alignment::Justify => 0,
             Alignment::Center => area.width.saturating_sub(text_width) / 2,
             Alignment::Right => area.width.saturating_sub(text_width),
