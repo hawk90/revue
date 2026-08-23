@@ -221,7 +221,16 @@ impl DomTree {
         // is being replaced rather than updated - but leaving it out of both
         // the test and the copy below would make that the one case it is wrong.
         let focusable_changed = node.meta.focusable != new_meta.focusable;
-        if !id_changed && !classes_changed && !key_changed && !focusable_changed {
+        // Unlike the rest of the meta, this one really does change frame to
+        // frame - a form disables its submit button while it validates. It also
+        // has to reach `NodeState`, since that is what `:disabled` matches.
+        let disabled_changed = node.meta.disabled != new_meta.disabled;
+        if !id_changed
+            && !classes_changed
+            && !key_changed
+            && !focusable_changed
+            && !disabled_changed
+        {
             return false;
         }
 
@@ -264,6 +273,12 @@ impl DomTree {
             node.meta.classes = new_meta.classes.clone();
             node.meta.key = new_meta.key.clone();
             node.meta.focusable = new_meta.focusable;
+            node.meta.disabled = new_meta.disabled;
+            if disabled_changed {
+                node.state.disabled = new_meta.disabled;
+                // `:disabled` may now match or stop matching.
+                node.state.dirty = true;
+            }
         }
 
         true

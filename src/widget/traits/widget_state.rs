@@ -24,6 +24,36 @@ impl WidgetProps {
         Self::default()
     }
 
+    /// Build the [`WidgetMeta`] a widget reports to the DOM.
+    ///
+    /// This lives here rather than inside
+    /// [`impl_view_meta!`](crate::impl_view_meta) so that the macro's arms
+    /// differ by one argument instead of repeating the whole body. `disabled`
+    /// is passed in because the macro cannot read it: widgets keep it either on
+    /// a `WidgetState` or as a field of their own, and a `self.…` path cannot
+    /// cross a macro fragment.
+    ///
+    /// Must stay in step with [`View::meta`](crate::widget::View::meta)'s
+    /// default body - widgets using the macro never run that one.
+    pub fn build_meta(
+        &self,
+        widget_type: &str,
+        focusable: bool,
+        disabled: bool,
+    ) -> crate::dom::WidgetMeta {
+        let mut meta = crate::dom::WidgetMeta::new(widget_type);
+        if let Some(ref id) = self.id {
+            meta.id = Some(id.clone());
+        }
+        for class in &self.classes {
+            meta.classes.insert(class.clone());
+        }
+        meta.key = self.key.clone();
+        meta.focusable = focusable;
+        meta.disabled = disabled;
+        meta
+    }
+
     /// Set element ID
     pub fn id(mut self, id: impl Into<String>) -> Self {
         self.id = Some(id.into());

@@ -317,7 +317,7 @@ impl Default for RadioGroup {
 }
 
 impl View for RadioGroup {
-    crate::impl_view_meta!("RadioGroup", focusable);
+    crate::impl_view_meta!("RadioGroup", focusable, disabled: direct);
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;

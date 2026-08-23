@@ -166,16 +166,11 @@ fn focus_climbs_out_of_an_inner_node_to_its_focusable_container() {
     assert_eq!(h.focused_ids(), vec!["panel".to_string()]);
 }
 
-/// **Pins a defect.** `focus_target` skips nodes whose `NodeState.disabled` is
-/// set - but nothing in production ever sets it. `Button::disabled(true)` writes
-/// the widget's own `state.disabled`, which the DOM cannot see. It is the same
-/// split this whole refactor is closing, one field further along.
-///
-/// This test asserts what happens *today*, so it fails loudly when the widget's
-/// disabled state starts reaching its node. At that point delete the assertion
-/// and assert `focused_count() == 0` instead.
+/// A disabled control does not take focus. This works because the widget's
+/// declared `disabled` now travels in its `WidgetMeta` and lands on the node -
+/// see `docs/refactor/phase2-declared-state.md`.
 #[test]
-fn a_disabled_control_still_takes_focus_today() {
+fn a_disabled_control_does_not_take_focus() {
     struct Disabled;
     impl View for Disabled {
         fn render(&self, ctx: &mut RenderContext) {
@@ -195,13 +190,13 @@ fn a_disabled_control_still_takes_focus_today() {
     let mut view = Disabled;
     h.draw(&view);
 
-    h.send(click(0, 0), &mut view);
-
     assert!(
-        !h.node_state("save").is_some_and(|s| s.disabled),
-        "the widget's disabled state now reaches its node - see this test's note"
+        h.node_state("save").is_some_and(|s| s.disabled),
+        "the widget's declared disabled state did not reach its node"
     );
-    assert_eq!(h.focused_count(), 1);
+
+    h.send(click(0, 0), &mut view);
+    assert_eq!(h.focused_count(), 0);
 }
 
 // ---------------------------------------------------------------------------

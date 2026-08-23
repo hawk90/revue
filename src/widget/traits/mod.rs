@@ -301,15 +301,38 @@ macro_rules! impl_widget_builders {
 /// ```
 #[macro_export]
 macro_rules! impl_view_meta {
-    // Same, but the widget type can hold keyboard focus - see
-    // [`WidgetMeta::focusable`](crate::dom::WidgetMeta::focusable).
+    // The widget can hold keyboard focus, and its declared `disabled` lives on
+    // its `state: WidgetState` field.
+    ($name:expr, focusable, disabled: state) => {
+        $crate::impl_view_meta!(@common);
+        fn meta(&self) -> $crate::dom::WidgetMeta {
+            self.props.build_meta($name, true, self.state.disabled)
+        }
+    };
+    // Focusable, with `disabled` as a field on the widget itself.
+    ($name:expr, focusable, disabled: direct) => {
+        $crate::impl_view_meta!(@common);
+        fn meta(&self) -> $crate::dom::WidgetMeta {
+            self.props.build_meta($name, true, self.disabled)
+        }
+    };
+    // Focusable, with no notion of being disabled.
     ($name:expr, focusable) => {
-        $crate::impl_view_meta!(@body $name, true);
+        $crate::impl_view_meta!(@common);
+        fn meta(&self) -> $crate::dom::WidgetMeta {
+            self.props.build_meta($name, true, false)
+        }
     };
     ($name:expr) => {
-        $crate::impl_view_meta!(@body $name, false);
+        $crate::impl_view_meta!(@common);
+        fn meta(&self) -> $crate::dom::WidgetMeta {
+            self.props.build_meta($name, false, false)
+        }
     };
-    (@body $name:expr, $focusable:expr) => {
+    // Each arm writes its own `meta` rather than delegating, because a `self.…`
+    // path cannot be captured as a fragment and passed to another arm - `self`
+    // resolves against the arm that wrote it, not the impl it lands in.
+    (@common) => {
         fn id(&self) -> Option<&str> {
             self.props.id.as_deref()
         }
@@ -320,22 +343,6 @@ macro_rules! impl_view_meta {
 
         fn key(&self) -> Option<$crate::dom::WidgetKey> {
             self.props.key.clone()
-        }
-
-        fn meta(&self) -> $crate::dom::WidgetMeta {
-            let mut meta = $crate::dom::WidgetMeta::new($name);
-            if let Some(ref id) = self.props.id {
-                meta.id = Some(id.clone());
-            }
-            for class in &self.props.classes {
-                meta.classes.insert(class.clone());
-            }
-            // Must stay in step with `View::meta`'s default body: this macro
-            // replaces it wholesale, so anything dropped here is dropped for
-            // every widget that uses it.
-            meta.key = self.props.key.clone();
-            meta.focusable = $focusable;
-            meta
         }
     };
 }
