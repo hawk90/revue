@@ -282,7 +282,7 @@ impl View for DockArea {
             // Reserve 1 row for tabs
             if rect.height > 1 {
                 let tab_rect = crate::layout::Rect::new(rect.x, rect.y, rect.width, 1);
-                let mut tab_ctx = RenderContext::new(ctx.buffer, tab_rect);
+                let mut tab_ctx = ctx.sub_ctx(tab_rect);
                 tabs.render(&mut tab_ctx);
 
                 // Render active tab content below
@@ -294,7 +294,7 @@ impl View for DockArea {
                             rect.width,
                             rect.height.saturating_sub(1),
                         );
-                        let mut content_ctx = RenderContext::new(ctx.buffer, content_rect);
+                        let mut content_ctx = ctx.sub_ctx(content_rect);
                         widget.render(&mut content_ctx);
                     }
                 }
@@ -522,7 +522,7 @@ impl View for DockManager {
         let layout = self.calculate_layout(rect);
 
         for (area, area_rect) in layout {
-            let mut area_ctx = RenderContext::new(ctx.buffer, area_rect);
+            let mut area_ctx = ctx.sub_ctx(area_rect);
             area.render(&mut area_ctx);
         }
     }

@@ -621,7 +621,7 @@ impl View for Gauge {
             area.height.saturating_sub(y_offset),
         );
 
-        let mut adjusted_ctx = RenderContext::new(ctx.buffer, adjusted_area);
+        let mut adjusted_ctx = ctx.sub_ctx(adjusted_area);
 
         match self.style {
             GaugeStyle::Bar => self.render_bar(&mut adjusted_ctx),

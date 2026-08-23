@@ -198,8 +198,7 @@ impl View for ZenMode {
                     content_height,
                 );
 
-                let mut sub_ctx = RenderContext::new(ctx.buffer, content_area);
-                self.content.render(&mut sub_ctx);
+                ctx.render_child(self.content.as_ref(), content_area);
             }
         } else {
             // Normal mode: just render content in full area
