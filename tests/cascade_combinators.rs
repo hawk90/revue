@@ -173,6 +173,90 @@ fn an_adjacent_sibling_rule_still_means_the_next_one_only() {
 }
 
 // ---------------------------------------------------------------------------
+// Backtracking
+// ---------------------------------------------------------------------------
+
+/// `root(.outer)` > `m1(.mid)` > `m2(.mid)` > `leaf`.
+///
+/// `.outer > .mid .leaf` is true by way of `m1`, but only if the match retries
+/// after the *nearest* `.mid` - `m2` - fails the `>` test. A matcher that
+/// commits to the first candidate that satisfies its own part answers no.
+struct Ambiguous;
+
+impl View for Ambiguous {
+    fn render(&self, ctx: &mut RenderContext) {
+        vstack()
+            .child(
+                vstack().class("mid").element_id("m1").child(
+                    vstack()
+                        .class("mid")
+                        .element_id("m2")
+                        .child(Text::new("leaf").class("leaf").element_id("leaf")),
+                ),
+            )
+            .render(ctx);
+    }
+    fn widget_type(&self) -> &'static str {
+        "Ambiguous"
+    }
+    fn id(&self) -> Option<&str> {
+        Some("root")
+    }
+    fn classes(&self) -> &[String] {
+        static OUTER: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+        OUTER.get_or_init(|| vec!["outer".to_string()])
+    }
+}
+
+#[test]
+fn matching_retries_when_the_nearest_candidate_fails_further_left() {
+    let mut h = harness(".outer > .mid .leaf { color: #ff0000; }");
+    h.draw(&Ambiguous);
+
+    assert_eq!(
+        h.computed_color("leaf"),
+        Some(RED),
+        "the match gave up at the nearest `.mid` instead of retrying"
+    );
+}
+
+/// The same shape must still answer no when no candidate works.
+#[test]
+fn matching_still_fails_when_no_candidate_works() {
+    let mut h = harness(".nowhere > .mid .leaf { color: #ff0000; }");
+    h.draw(&Ambiguous);
+
+    assert_eq!(h.computed_color("leaf"), None);
+}
+
+// ---------------------------------------------------------------------------
+// Attribute selectors
+// ---------------------------------------------------------------------------
+
+/// `query()` used to ignore attribute selectors entirely, so it reported
+/// matches the cascade rejected. Both go through one matcher now.
+#[test]
+fn query_honours_attribute_selectors() {
+    let mut h = harness("");
+    h.draw(&Rows);
+
+    assert_eq!(h.query_ids("[id=b]"), vec!["b".to_string()]);
+    assert!(
+        h.query_ids("[id=nothing]").is_empty(),
+        "an attribute selector matched a node it should not have"
+    );
+}
+
+#[test]
+fn the_cascade_honours_them_too() {
+    let mut h = harness("[id=b] { color: #ff0000; }");
+    h.draw(&Rows);
+
+    assert_eq!(h.computed_color("b"), Some(RED));
+    assert_eq!(h.computed_color("c"), None);
+}
+
+// ---------------------------------------------------------------------------
 // The two matchers now agree
 // ---------------------------------------------------------------------------
 

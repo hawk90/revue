@@ -12,6 +12,7 @@
 
 #![allow(dead_code)]
 
+pub(crate) mod matching;
 mod parser;
 mod types;
 
