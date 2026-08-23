@@ -86,6 +86,11 @@ wrap!(DividerView, Divider::new().element_id("w"));
 wrap!(AvatarView, Avatar::new("AB").element_id("w"));
 wrap!(BigTextView, BigText::new("7", 1).element_id("w"));
 wrap!(ProgressView, Progress::new(0.5).element_id("w"));
+wrap!(SkeletonView, Skeleton::new().element_id("w"));
+wrap!(
+    StatusView,
+    StatusIndicator::new(Status::Online).element_id("w")
+);
 
 #[test]
 fn color_reaches_a_badge() {
@@ -164,4 +169,27 @@ fn color_reaches_big_text() {
 fn color_reaches_a_progress_bar() {
     let h = draw("#w { color: #ff0000; }", &ProgressView);
     assert_eq!(first_fg(&h), Some(RED), "`color` did not reach Progress");
+}
+
+#[test]
+fn color_reaches_a_skeleton() {
+    let h = draw("#w { color: #ff0000; }", &SkeletonView);
+    assert!(any_fg(&h, RED), "`color` did not reach Skeleton");
+}
+
+/// The status palette is the widget's own default, and a rule naming this
+/// indicator targets the whole node - so the author outranks it. Contrast
+/// `RichLog`, whose per-line level colours a rule cannot address separately and
+/// therefore must not flatten.
+#[test]
+fn color_reaches_a_status_indicator() {
+    let h = draw("#w { color: #ff0000; }", &StatusView);
+    assert!(any_fg(&h, RED), "`color` did not reach StatusIndicator");
+}
+
+/// Without a rule it still shows its status colour.
+#[test]
+fn a_status_indicator_keeps_its_palette_by_default() {
+    let h = draw("", &StatusView);
+    assert!(!any_fg(&h, RED));
 }

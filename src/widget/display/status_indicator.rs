@@ -299,7 +299,9 @@ impl View for StatusIndicator {
             return;
         }
 
-        let color = self.status.color();
+        // The status palette is this widget's own default. A rule naming this
+        // indicator targets the whole node, so the author outranks it.
+        let color = ctx.css_color(self.status.color());
         let visible = self.is_visible();
 
         match self.style {
