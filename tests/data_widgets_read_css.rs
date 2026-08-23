@@ -65,7 +65,7 @@ fn color_reaches_a_tables_unselected_rows() {
 #[test]
 fn a_selected_row_keeps_its_highlight() {
     let h = draw("#tbl { color: #ff0000; }", &TableView);
-    // Row 0 is selected by default and painted in the highlight colour.
+    // Row 0 is selected by default and painted in the highlight color.
     let first_row_fg = h.buffer().get(1, 3).and_then(|c| c.fg);
     assert_ne!(
         first_row_fg,
