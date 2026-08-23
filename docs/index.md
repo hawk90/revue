@@ -143,6 +143,7 @@ impl View for Counter {
 | [Layout Findings](refactor/findings-layout.md) | Why CSS layout properties did nothing, and what `css_layout` does about it |
 | [Phase 2 Hit Test](refactor/phase2-hit-test.md) | Why `:hover` never matched in a running app, and what now drives it |
 | [Style Invalidation Findings](refactor/findings-style-invalidation.md) | Why CSS stopped updating after the first frame, and what makes the cascade re-run |
+| [Phase 2 Cascade Precedence](refactor/phase2-cascade-precedence.md) | Where a widget's own colors rank against the stylesheet, and why disabled was in the wrong row |
 
 ---
 
