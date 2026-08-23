@@ -500,10 +500,17 @@ impl<'a> StyleResolver<'a> {
 
             // Check if this part matches current node
             if !self.matches_part(part, node) {
-                // For descendant combinator, try ancestors
+                // Descendant and general-sibling are "any", so a miss is not a
+                // failure - keep walking that direction until it runs out.
+                //
+                // The combinator describing this part's relationship to the one
+                // on its right is stored on *this* part. Reading it from the
+                // part to the right instead gave `None` for every two-part
+                // selector, so `.a .b` only ever checked the immediate parent
+                // and `.a ~ .b` only the immediate sibling.
                 if part_idx < selector.parts.len() - 1 {
-                    match selector.parts.get(part_idx + 1) {
-                        Some((_, Some(Combinator::Descendant))) => {
+                    match selector.parts.get(part_idx).map(|(_, c)| c) {
+                        Some(Some(Combinator::Descendant)) => {
                             // Try parent
                             if let Some(parent_id) = node.parent {
                                 if let Some(parent) = get_node(parent_id) {
@@ -513,7 +520,7 @@ impl<'a> StyleResolver<'a> {
                                 }
                             }
                         }
-                        Some((_, Some(Combinator::GeneralSibling))) => {
+                        Some(Some(Combinator::GeneralSibling)) => {
                             // Try previous sibling (general sibling matches any previous)
                             if let Some(sibling) = self.get_previous_sibling(node, get_node) {
                                 current_node = Some(sibling);
