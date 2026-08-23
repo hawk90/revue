@@ -171,27 +171,31 @@ impl<'a> RenderContext<'a> {
         overflow_hidden: bool,
         parent_clip: Option<Rect>,
     ) {
+        // The clip is *this* widget's box, never the child's. `set` already
+        // refuses to paint outside the area a widget was handed, so clipping a
+        // child to its own area clips nothing; a child escapes only when it is
+        // given an area larger than its container. Nested clips intersect, so an
+        // inner `overflow: hidden` cannot widen an outer one.
+        let clip = if overflow_hidden {
+            match parent_clip {
+                Some(outer) => self.area.intersection(&outer),
+                None => Some(self.area),
+            }
+        } else {
+            parent_clip
+        };
+
         // Destructured so the buffer and the pass can be borrowed at once.
         let RenderContext { buffer, pass, .. } = self;
 
         match pass {
             None => {
-                let mut ctx = RenderContext::child_ctx_with_overflow(
-                    buffer,
-                    area,
-                    overflow_hidden,
-                    parent_clip,
-                );
+                let mut ctx = RenderContext::child_ctx_clipped(buffer, area, clip);
                 child.render(&mut ctx);
             }
             Some(RenderPass::Collect { sink, parent }) => {
                 let me = sink.push(child.meta(), *parent);
-                let mut ctx = RenderContext::child_ctx_with_overflow(
-                    buffer,
-                    area,
-                    overflow_hidden,
-                    parent_clip,
-                );
+                let mut ctx = RenderContext::child_ctx_clipped(buffer, area, clip);
                 ctx.pass = Some(RenderPass::Collect {
                     sink,
                     parent: Some(me),
@@ -227,25 +231,16 @@ impl<'a> RenderContext<'a> {
                 if let Some(node) = node {
                     // The clip the child will draw under, which is also the
                     // only part of it the pointer can reach.
-                    let visible = if overflow_hidden {
-                        Some(area)
-                    } else {
-                        match parent_clip {
-                            Some(clip) => area.intersection(&clip),
-                            None => Some(area),
-                        }
+                    let visible = match clip {
+                        Some(clip) => area.intersection(&clip),
+                        None => Some(area),
                     };
                     if let Some(visible) = visible {
                         hits.push((node.id, visible));
                     }
                 }
 
-                let mut ctx = RenderContext::child_ctx_with_overflow(
-                    buffer,
-                    area,
-                    overflow_hidden,
-                    parent_clip,
-                );
+                let mut ctx = RenderContext::child_ctx_clipped(buffer, area, clip);
                 if let Some(node) = node {
                     ctx.style = node.style;
                     ctx.state = node.state;
@@ -268,6 +263,25 @@ impl<'a> RenderContext<'a> {
                 }
             }
         }
+    }
+
+    /// A context over the same buffer for a sub-area of this widget's own box.
+    ///
+    /// For a widget that paints part of itself somewhere else - shifting text
+    /// for alignment, laying out its own internals - rather than for rendering
+    /// a *child widget*, which is [`render_child`](Self::render_child)'s job
+    /// and registers a DOM node.
+    ///
+    /// Carries the clip across. Building one with [`RenderContext::new`]
+    /// instead silently drops it, and a dropped clip means an enclosing
+    /// `overflow: hidden` stops containing anything painted through it.
+    pub fn sub_ctx<'b>(&'b mut self, area: Rect) -> RenderContext<'b> {
+        let clip = self.clip;
+        let mut ctx = RenderContext::new(self.buffer, area);
+        if let Some(clip) = clip {
+            ctx = ctx.with_clip(clip);
+        }
+        ctx
     }
 
     /// Are CSS box and gap properties being applied this frame?
