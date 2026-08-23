@@ -150,28 +150,19 @@ fn a_disabled_rule_stops_matching_when_the_widget_is_enabled() {
     );
 }
 
-/// **Pins a defect.** The cascade now produces the right answer, but `Button`
-/// never asks: `WidgetState::resolve_fg` returns a fixed grey the moment
-/// `disabled` is set, before it looks at `css_style` at all. So a stylesheet
-/// cannot restyle a disabled widget, and `#save:disabled { color: ... }` is
-/// computed and discarded.
-///
-/// This is the widget-side half of the same split - a widget deciding from its
-/// own field instead of from its node - and belongs to Phase 2-2, which changes
-/// paint precedence for every widget and every state at once rather than
-/// smuggling it in here.
-///
-/// Delete this and assert `Some(RED)` when that lands.
+/// And it reaches the screen, not just the cascade. A disabled widget's grey is
+/// the *default* it falls back to, not an override that silences the
+/// stylesheet - see `docs/refactor/phase2-cascade-precedence.md`.
 #[test]
-fn the_widget_paints_over_the_cascade_today() {
+fn a_disabled_rule_reaches_the_screen() {
     let mut h = harness("#save:disabled { color: #ff0000; }");
     h.draw(&Form { disabled: true });
 
     assert_eq!(h.computed_color("save"), Some(RED));
     // The button pads its label, so the first glyph of "Save" is at x=2.
-    assert_ne!(
+    assert_eq!(
         h.buffer().get(2, 0).and_then(|c| c.fg),
         Some(RED),
-        "the widget now defers to the cascade - see this test's note"
+        "the widget painted over the cascade"
     );
 }

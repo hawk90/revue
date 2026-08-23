@@ -210,7 +210,12 @@ impl WidgetState {
     /// Get colors for current state with hover highlighting
     pub fn state_colors(&self, base_fg: Color, base_bg: Color, hover_bg: Color) -> (Color, Color) {
         if self.disabled {
-            (DISABLED_FG, DISABLED_BG)
+            // No `css_style` reaches here, so the inline override is the only
+            // thing that can outrank the disabled default.
+            (
+                self.fg.unwrap_or(DISABLED_FG),
+                self.bg.unwrap_or(DISABLED_BG),
+            )
         } else if self.hovered || self.pressed {
             (base_fg, hover_bg)
         } else {
@@ -287,14 +292,15 @@ impl WidgetState {
     /// Resolve foreground color with CSS cascade priority
     ///
     /// Priority order:
-    /// 1. Disabled state (DISABLED_FG)
-    /// 2. Widget inline override (via .fg())
-    /// 3. CSS computed style from context
-    /// 4. Default color
+    /// 1. Widget inline override (via .fg()) - the widget's own "inline style"
+    /// 2. CSS computed style from context
+    /// 3. Default color, which is `DISABLED_FG` when the widget is disabled
     pub fn resolve_fg(&self, css_style: Option<&Style>, default: Color) -> Color {
-        if self.disabled {
-            return DISABLED_FG;
-        }
+        // Being disabled changes what the widget looks like when nothing else
+        // says otherwise - it does not silence the stylesheet. Returning the
+        // grey here instead would make `:disabled { color: ... }` computable but
+        // unpaintable, which is what it used to be.
+        let default = if self.disabled { DISABLED_FG } else { default };
 
         if let Some(fg) = self.fg {
             return fg;
@@ -313,14 +319,12 @@ impl WidgetState {
     /// Resolve background color with CSS cascade priority
     ///
     /// Priority order:
-    /// 1. Disabled state (DISABLED_BG)
-    /// 2. Widget inline override (via .bg())
-    /// 3. CSS computed style from context
-    /// 4. Default color
+    /// 1. Widget inline override (via .bg()) - the widget's own "inline style"
+    /// 2. CSS computed style from context
+    /// 3. Default color, which is `DISABLED_BG` when the widget is disabled
     pub fn resolve_bg(&self, css_style: Option<&Style>, default: Color) -> Color {
-        if self.disabled {
-            return DISABLED_BG;
-        }
+        // See [`resolve_fg`](Self::resolve_fg): a default, not an override.
+        let default = if self.disabled { DISABLED_BG } else { default };
 
         if let Some(bg) = self.bg {
             return bg;
@@ -359,14 +363,16 @@ impl WidgetState {
         default_fg: Color,
         default_bg: Color,
     ) -> (Color, Color) {
-        if self.disabled {
-            return (DISABLED_FG, DISABLED_BG);
-        }
-
         let fg = self.resolve_fg(css_style, default_fg);
         let bg = self.resolve_bg(css_style, default_bg);
 
-        // Apply interaction effects
+        // A disabled widget does not react to the pointer, so it gets no
+        // interaction tint - but it still takes whatever colors the cascade
+        // resolved above.
+        if self.disabled {
+            return (fg, bg);
+        }
+
         let bg = bg.with_interaction(self.pressed, self.hovered, self.focused);
 
         (fg, bg)
