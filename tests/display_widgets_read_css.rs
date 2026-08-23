@@ -25,7 +25,7 @@ fn draw<V: View>(css: &str, view: &V) -> PipelineHarness {
     h
 }
 
-/// Finds the first cell painted with a foreground colour, so a test does not
+/// Finds the first cell painted with a foreground color, so a test does not
 /// depend on a widget's internal padding.
 fn first_fg(h: &PipelineHarness) -> Option<Color> {
     let buffer = h.buffer();
@@ -42,7 +42,7 @@ fn first_fg(h: &PipelineHarness) -> Option<Color> {
 /// Does `want` appear anywhere on screen?
 ///
 /// For widgets that paint decoration before their text - `Avatar` draws its
-/// shape glyphs in a name-derived colour first - where "the first coloured
+/// shape glyphs in a name-derived color first - where "the first colored
 /// cell" is not the cell under test.
 fn any_fg(h: &PipelineHarness, want: Color) -> bool {
     let buffer = h.buffer();
@@ -179,7 +179,7 @@ fn color_reaches_a_skeleton() {
 
 /// The status palette is the widget's own default, and a rule naming this
 /// indicator targets the whole node - so the author outranks it. Contrast
-/// `RichLog`, whose per-line level colours a rule cannot address separately and
+/// `RichLog`, whose per-line level colors a rule cannot address separately and
 /// therefore must not flatten.
 #[test]
 fn color_reaches_a_status_indicator() {
@@ -187,7 +187,7 @@ fn color_reaches_a_status_indicator() {
     assert!(any_fg(&h, RED), "`color` did not reach StatusIndicator");
 }
 
-/// Without a rule it still shows its status colour.
+/// Without a rule it still shows its status color.
 #[test]
 fn a_status_indicator_keeps_its_palette_by_default() {
     let h = draw("", &StatusView);

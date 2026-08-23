@@ -2,7 +2,7 @@
 //! style.
 //!
 //! Half the widget library paints from its own fields and hardcoded palettes,
-//! so a rule that names a colour reaches nothing - `F-5` from
+//! so a rule that names a color reaches nothing - `F-5` from
 //! `docs/refactor/findings-render-pipeline.md`. Wiring them is mechanical and
 //! proceeds by category; this keeps the work visible and stops it going
 //! backwards.
@@ -14,7 +14,7 @@
 //! CSS support at all.
 //!
 //! **This test passing is not evidence a widget is styled.** That is not a
-//! hypothetical: `Slider` was once wired by resolving its colour in the `render`
+//! hypothetical: `Slider` was once wired by resolving its color in the `render`
 //! that only dispatches to `render_horizontal` / `render_vertical`, so the value
 //! was computed and dropped. This test was happy; `color_reaches_a_sliders_fill`
 //! was not. Wire a widget *and* assert against the buffer.
@@ -32,13 +32,13 @@ use std::path::{Path, PathBuf};
 ///
 /// Shrinks. Never grows: a new widget belongs on the wired side.
 ///
-/// A few entries are here *deliberately*, marked `intentional:`. They colour
+/// A few entries are here *deliberately*, marked `intentional:`. They color
 /// sub-parts a stylesheet cannot address on their own - a `RichLog` line is
-/// coloured by its level, and lines are not nodes - so a blanket `color` rule
+/// colored by its level, and lines are not nodes - so a blanket `color` rule
 /// would flatten a distinction with no way to restore it. Same reasoning as a
 /// selected table row keeping its highlight.
 const NOT_YET_READING_CSS: &[&str] = &[
-    // intentional: per-line level colours (Info/Warning/Error) are the content,
+    // intentional: per-line level colors (Info/Warning/Error) are the content,
     // and a line is not a node, so a rule on the log cannot restore them.
     "RichLog",
     "Accordion",
@@ -46,7 +46,6 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "Autocomplete",
     "BarChart",
     "BoxPlot",
-    "Breadcrumb",
     "Calendar",
     "Callout",
     "CandleChart",
@@ -82,7 +81,6 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "MenuBar",
     "Modal",
     "NotificationCenter",
-    "Pagination",
     "PieChart",
     "Popover",
     "Positioned",
@@ -103,13 +101,11 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "StatusBar",
     "Stepper",
     "Streamline",
-    "Tabs",
     "Terminal",
     "TextArea",
     "TimeSeries",
     "Timeline",
     "Timer",
-    "Toast",
     "ToastQueue",
     "Transition",
     "TransitionGroup",

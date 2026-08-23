@@ -1,6 +1,6 @@
 //! Paint-level checks for the input widgets wired to CSS.
 //!
-//! Several of these have more than one meaningful colour - a slider's track,
+//! Several of these have more than one meaningful color - a slider's track,
 //! fill and knob; a switch's on and off. A single `color` property cannot
 //! describe all of them, so it sets the widget's *primary* element and the rest
 //! keep their own defaults. Flattening them all would erase a distinction a
@@ -76,10 +76,10 @@ fn color_reaches_a_ratings_filled_stars() {
     assert!(any_fg(&h, RED), "`color` did not reach Rating");
 }
 
-/// The secondary parts keep their own colours - a rule cannot address them
+/// The secondary parts keep their own colors - a rule cannot address them
 /// separately, so flattening everything would lose the distinction for good.
 #[test]
-fn a_sliders_other_parts_keep_their_colours() {
+fn a_sliders_other_parts_keep_their_colors() {
     let h = draw("#w { color: #ff0000; }", &SliderView);
     let buffer = h.buffer();
     let distinct: std::collections::BTreeSet<_> = (0..buffer.height())
@@ -90,6 +90,6 @@ fn a_sliders_other_parts_keep_their_colours() {
 
     assert!(
         distinct.len() > 1,
-        "every part of the slider became the same colour: {distinct:?}"
+        "every part of the slider became the same color: {distinct:?}"
     );
 }

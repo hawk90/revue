@@ -244,6 +244,8 @@ impl View for Breadcrumb {
     crate::impl_view_meta!("Breadcrumb");
 
     fn render(&self, ctx: &mut RenderContext) {
+        // The trail's own items take `color`; the selected one and the separator keep theirs.
+        let item_color = ctx.color_or(self.item_color, LIGHT_GRAY);
         let area = ctx.area;
         if area.width < 3 || area.height < 1 {
             return;
@@ -263,7 +265,7 @@ impl View for Breadcrumb {
         // Home icon
         if self.show_home {
             let mut home = Cell::new(self.home_icon);
-            home.fg = Some(self.item_color);
+            home.fg = Some(item_color);
             ctx.set(x, 0, home);
             x += 2;
 
@@ -293,7 +295,7 @@ impl View for Breadcrumb {
                 cell.fg = Some(if is_selected {
                     self.selected_color
                 } else {
-                    self.item_color
+                    item_color
                 });
                 ctx.set(x, 0, cell);
                 x += 2;
@@ -303,7 +305,7 @@ impl View for Breadcrumb {
             if is_selected {
                 ctx.draw_text_clipped_bold(x, 0, &item.label, self.selected_color, clip_width);
             } else {
-                ctx.draw_text_clipped(x, 0, &item.label, self.item_color, clip_width);
+                ctx.draw_text_clipped(x, 0, &item.label, item_color, clip_width);
             }
             x += (crate::utils::display_width(&item.label) as u16).min(clip_width);
 
@@ -352,7 +354,7 @@ impl View for Breadcrumb {
                 cell.fg = Some(if is_selected {
                     self.selected_color
                 } else {
-                    self.item_color
+                    item_color
                 });
                 ctx.set(x, 0, cell);
                 x += 2;
@@ -363,7 +365,7 @@ impl View for Breadcrumb {
             if is_selected {
                 ctx.draw_text_clipped_bold(x, 0, &item.label, self.selected_color, clip_width);
             } else {
-                ctx.draw_text_clipped(x, 0, &item.label, self.item_color, clip_width);
+                ctx.draw_text_clipped(x, 0, &item.label, item_color, clip_width);
             }
             x += (crate::utils::display_width(&item.label) as u16).min(clip_width);
 
