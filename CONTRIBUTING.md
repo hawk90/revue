@@ -16,6 +16,12 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo install typos-cli
 ```
 
+**What 1.87 covers.** It is the floor for building `revue` with **default
+features**, which is what the `MSRV (1.87)` CI job checks. Optional features
+pull dependencies with their own, higher floors — `sysinfo` currently needs
+1.95 — so `--all-features` needs a newer toolchain. Contributors should use
+stable; the MSRV job exists to keep the default build honest for consumers.
+
 ### Project Setup
 
 ```bash
