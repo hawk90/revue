@@ -105,6 +105,14 @@ pub struct WidgetMeta {
     ///
     /// Defaults to `false`, so a widget that says nothing stays unfocusable.
     pub focusable: bool,
+    /// Has the application declared this widget disabled?
+    ///
+    /// Unlike [`NodeState::focused`] and [`NodeState::hovered`], which the
+    /// runtime *discovers*, this is *declared* by the view - the same split
+    /// HTML makes between the `disabled` attribute and the `:focus`
+    /// pseudo-class. So it travels with the widget's description of itself and
+    /// is copied onto the node, rather than being written by an event.
+    pub disabled: bool,
 }
 
 impl WidgetMeta {
@@ -116,12 +124,19 @@ impl WidgetMeta {
             classes: HashSet::new(),
             key: None,
             focusable: false,
+            disabled: false,
         }
     }
 
     /// Mark this widget type as able to hold keyboard focus.
     pub fn focusable(mut self) -> Self {
         self.focusable = true;
+        self
+    }
+
+    /// Declare this widget disabled.
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = disabled;
         self
     }
 
@@ -283,8 +298,13 @@ impl DomNode {
     pub fn new(id: DomId, meta: WidgetMeta) -> Self {
         Self {
             id,
+            // Declared state arrives with the meta; discovered state
+            // (`focused`, `hovered`) starts empty and is written by events.
+            state: NodeState {
+                disabled: meta.disabled,
+                ..NodeState::default()
+            },
             meta,
-            state: NodeState::default(),
             parent: None,
             children: Vec::new(),
             computed_style: Style::default(),

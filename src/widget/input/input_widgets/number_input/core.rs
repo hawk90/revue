@@ -530,7 +530,7 @@ impl View for NumberInput {
         }
     }
 
-    impl_view_meta!("NumberInput", focusable);
+    impl_view_meta!("NumberInput", focusable, disabled: state);
 }
 
 impl_styled_view!(NumberInput);
