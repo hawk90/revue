@@ -173,6 +173,13 @@ With it on the frame renders twice, every widget rendered through
 `RenderContext::render_child` gets a node and its own computed style, and CSS
 paint properties work throughout the tree. Implies per-frame reconciliation.
 
+Only children routed through `RenderContext::render_child` get a node. A widget
+a view paints straight into its own `ctx` — `Text::new("hi").render(ctx)` rather
+than `vstack().child(Text::new("hi"))` — *is* that view's own node rather than a
+child of it, so it carries the parent's id and classes and no rule written for
+it can select it. This catches people out; if a selector matches nothing, check
+that the widget is a `render_child` away from its parent.
+
 It is also what makes the mouse able to find anything: the paint pass records
 where each node landed, the event loop asks that record what is under the
 pointer, `:hover` moves there, and a left click focuses the nearest enclosing

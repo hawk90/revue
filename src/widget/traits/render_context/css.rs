@@ -82,6 +82,42 @@ impl RenderContext<'_> {
             .unwrap_or_default()
     }
 
+    /// Is the text bold per CSS?
+    pub fn css_bold(&self) -> bool {
+        self.style
+            .map(|s| s.visual.font_weight == crate::style::FontWeight::Bold)
+            .unwrap_or(false)
+    }
+
+    /// Is the text underlined per CSS?
+    pub fn css_underline(&self) -> bool {
+        self.style
+            .map(|s| s.visual.text_decoration.underline)
+            .unwrap_or(false)
+    }
+
+    /// Is the text struck through per CSS?
+    pub fn css_line_through(&self) -> bool {
+        self.style
+            .map(|s| s.visual.text_decoration.line_through)
+            .unwrap_or(false)
+    }
+
+    /// Get text alignment from CSS style.
+    pub fn css_text_align(&self) -> crate::style::TextAlign {
+        self.style.map(|s| s.visual.text_align).unwrap_or_default()
+    }
+
+    /// A boolean text flag the widget can only turn *on*.
+    ///
+    /// `false` is both "off" and "not specified", so a builder that said
+    /// nothing cannot switch a CSS rule back off - the same reading `gap: 0`
+    /// gets in [`gap_or`](Self::gap_or). To turn something off, do not select
+    /// it.
+    pub fn text_flag_or(builder_flag: bool, css_flag: bool) -> bool {
+        builder_flag || css_flag
+    }
+
     /// Get gap from CSS style (for flex/grid layouts)
     pub fn css_gap(&self) -> u16 {
         self.style.map(|s| s.layout.gap).unwrap_or(0)
