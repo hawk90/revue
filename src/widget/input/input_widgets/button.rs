@@ -265,7 +265,7 @@ impl View for Button {
         }
     }
 
-    crate::impl_view_meta!("Button");
+    crate::impl_view_meta!("Button", focusable);
 }
 
 impl Interactive for Button {

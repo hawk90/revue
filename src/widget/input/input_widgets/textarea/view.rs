@@ -109,7 +109,7 @@ impl TextArea {
 }
 
 impl View for TextArea {
-    crate::impl_view_meta!("TextArea");
+    crate::impl_view_meta!("TextArea", focusable);
 
     fn render(&self, ctx: &mut RenderContext) {
         let mut area = ctx.area;

@@ -230,7 +230,7 @@ impl View for Checkbox {
         }
     }
 
-    crate::impl_view_meta!("Checkbox");
+    crate::impl_view_meta!("Checkbox", focusable);
 }
 
 impl Interactive for Checkbox {

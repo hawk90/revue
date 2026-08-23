@@ -39,6 +39,16 @@ impl DomRenderer {
         self.tree.get(id)?.meta.id.as_deref()
     }
 
+    /// The node that should take focus for a click at `(x, y)`.
+    ///
+    /// [`node_at`](Self::node_at) resolved to the nearest enclosing focusable
+    /// node. `None` when the click landed on nothing focusable, which is the
+    /// common case - clicking a label must not steal focus from a text field.
+    pub fn focus_target_at(&self, x: u16, y: u16) -> Option<DomId> {
+        let hit = self.node_at(x, y)?;
+        self.tree.focus_target(hit)
+    }
+
     /// Where a node was painted this frame.
     pub fn painted_rect(&self, id: DomId) -> Option<Rect> {
         self.hit_map

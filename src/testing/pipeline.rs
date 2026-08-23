@@ -232,6 +232,23 @@ impl PipelineHarness {
         self.app.dom().element_at(x, y).map(str::to_owned)
     }
 
+    /// Element id of the node a click at `(x, y)` would focus.
+    pub fn focus_target_at(&self, x: u16, y: u16) -> Option<String> {
+        self.app
+            .dom()
+            .focus_target_at(x, y)
+            .and_then(|id| self.app.dom().tree().get(id))
+            .and_then(|node| node.meta.id.clone())
+    }
+
+    /// Whether the node with this element id is a focusable *kind* of widget.
+    pub fn is_focusable(&self, element_id: &str) -> bool {
+        self.app
+            .dom()
+            .get_by_id(element_id)
+            .is_some_and(|node| node.meta.focusable)
+    }
+
     /// Element id of the node currently hovered, if it has one.
     pub fn hovered_element(&self) -> Option<String> {
         self.app

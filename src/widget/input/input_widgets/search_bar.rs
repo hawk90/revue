@@ -448,7 +448,7 @@ impl View for SearchBar {
         }
     }
 
-    crate::impl_view_meta!("SearchBar");
+    crate::impl_view_meta!("SearchBar", focusable);
 }
 
 impl_styled_view!(SearchBar);

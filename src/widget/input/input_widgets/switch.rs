@@ -492,7 +492,7 @@ impl View for Switch {
         }
     }
 
-    crate::impl_view_meta!("Switch");
+    crate::impl_view_meta!("Switch", focusable);
 }
 
 impl Interactive for Switch {

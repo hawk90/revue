@@ -81,5 +81,5 @@ impl View for Input {
         }
     }
 
-    crate::impl_view_meta!("Input");
+    crate::impl_view_meta!("Input", focusable);
 }

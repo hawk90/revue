@@ -214,7 +214,11 @@ impl DomTree {
         let id_changed = node.meta.id != new_meta.id;
         let classes_changed = node.meta.classes != new_meta.classes;
         let key_changed = node.meta.key != new_meta.key;
-        if !id_changed && !classes_changed && !key_changed {
+        // Static per widget type, so in practice it only differs when the node
+        // is being replaced rather than updated - but leaving it out of both
+        // the test and the copy below would make that the one case it is wrong.
+        let focusable_changed = node.meta.focusable != new_meta.focusable;
+        if !id_changed && !classes_changed && !key_changed && !focusable_changed {
             return false;
         }
 
@@ -256,6 +260,7 @@ impl DomTree {
             node.meta.id = new_meta.id.clone();
             node.meta.classes = new_meta.classes.clone();
             node.meta.key = new_meta.key.clone();
+            node.meta.focusable = new_meta.focusable;
         }
 
         true
@@ -448,6 +453,27 @@ impl DomTree {
             node.state.hovered = true;
             current = node.parent;
         }
+    }
+
+    /// The nearest node at or above `id` that can take focus right now.
+    ///
+    /// A click lands on the deepest node under the pointer, which for a button
+    /// is its inner label - a node that holds no focus and reacts to no key.
+    /// Focus belongs to the nearest enclosing thing that does, exactly as a
+    /// click on a `<button>`'s text focuses the button.
+    ///
+    /// `disabled` nodes are skipped rather than blocking: a disabled control
+    /// does not swallow focus, it just is not the one that gets it.
+    pub fn focus_target(&self, id: DomId) -> Option<DomId> {
+        let mut current = Some(id);
+        while let Some(node_id) = current {
+            let node = self.nodes.get(&node_id)?;
+            if node.meta.focusable && !node.state.disabled {
+                return Some(node_id);
+            }
+            current = node.parent;
+        }
+        None
     }
 
     /// The node and its ancestors, deepest first.

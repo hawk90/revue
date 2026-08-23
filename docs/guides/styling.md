@@ -155,12 +155,14 @@ Define reusable values:
 
 ## Pseudo-Classes
 
-> `:hover` follows the mouse only when the app is built with
+> `:hover` and `:focus` follow the mouse only when the app is built with
 > [`dom_from_render(true)`](app-builder.md). Without it no widget below
 > the root is associated with a screen area, so nothing can be found under the
-> pointer and the rule never matches. Keyboard focus (`:focus`) is the primary
-> modality in a terminal - treat hover as an enhancement, and never put
-> information only there.
+> pointer and the rule never matches. The same flag makes a left click focus the
+> nearest enclosing input widget, which is what makes `:focus` match.
+>
+> Keyboard is the primary modality in a terminal - treat hover as an
+> enhancement, and never put information only there.
 
 ```css
 /* Interactive states */

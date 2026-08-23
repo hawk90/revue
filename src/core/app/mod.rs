@@ -122,7 +122,7 @@ pub use snapshot::{snapshot, Snapshot, SnapshotConfig, SnapshotResult};
 
 use crate::constants::FRAME_DURATION_60FPS;
 use crate::dom::DomRenderer;
-use crate::event::{Event, KeyEvent};
+use crate::event::{Event, KeyEvent, MouseButton, MouseEventKind};
 use crate::layout::LayoutEngine;
 use crate::render::{Buffer, Terminal};
 use crate::style::{StyleSheet, TransitionManager};
@@ -488,6 +488,11 @@ impl App {
                 if self.track_hover(mouse.x, mouse.y) {
                     should_draw = true;
                 }
+                if matches!(mouse.kind, MouseEventKind::Down(MouseButton::Left))
+                    && self.track_click_focus(mouse.x, mouse.y)
+                {
+                    should_draw = true;
+                }
             }
             Event::Tick => {
                 let now = Instant::now();
@@ -636,6 +641,26 @@ impl App {
     pub(crate) fn dispatch_for_test<V: View>(&mut self, event: Event, view: &mut V) -> bool {
         let mut handler = |_: &Event, _: &mut V, _: &mut Self| false;
         self.handle_event(event, view, &mut handler)
+    }
+
+    /// Move focus to whatever focusable thing was clicked.
+    ///
+    /// Returns `true` if focus moved. A click on nothing focusable - a label,
+    /// a plain container - leaves focus where it was, rather than clearing it;
+    /// that is what every other toolkit does and what users expect.
+    ///
+    /// This sets `NodeState.focused` and nothing else. Widgets still read their
+    /// own `focused` field, so no widget *behavior* changes yet - what changes
+    /// is that `:focus` rules finally match. Handing widgets the node's state
+    /// is Phase 2-2.
+    fn track_click_focus(&mut self, x: u16, y: u16) -> bool {
+        if !self.dom.dom_from_render() {
+            return false;
+        }
+        match self.dom.focus_target_at(x, y) {
+            Some(target) => self.dom.set_focus_node(Some(target)),
+            None => false,
+        }
     }
 
     /// [`track_hover`](Self::track_hover), for the pipeline harness.

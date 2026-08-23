@@ -156,5 +156,5 @@ impl View for Select {
         queue_or_inline_overlay(ctx, entry);
     }
 
-    crate::impl_view_meta!("Select");
+    crate::impl_view_meta!("Select", focusable);
 }
