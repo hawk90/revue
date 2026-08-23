@@ -132,15 +132,30 @@ text {
 | `border-color` | `<color>` | `border-color: red;` |
 | `color` | `<color>` | `color: #ff0000;` |
 | `background` | `<color>` | `background: blue;` |
-| `opacity` | `0.0` - `1.0` | `opacity: 0.5;` |
+| `opacity` | `0.0` - `1.0` | parsed, **not applied** — see below |
 | `visibility` | `visible`, `hidden` | `visibility: hidden;` |
 | `overflow` | `visible`, `hidden`, `scroll`, `auto` | `overflow: hidden;` |
 | `text-align` | `left`, `center`, `right` | `text-align: center;` |
 | `font-weight` | `normal`, `bold`, `700`-`900` | `font-weight: bold;` |
 | `text-decoration` | `none`, `underline`, `line-through` | `text-decoration: underline;` |
-| `z-index` | `<integer>` | `z-index: 10;` |
-| `position` | `static`, `relative`, `absolute`, `fixed` | `position: absolute;` |
-| `top`, `right`, `bottom`, `left` | `<number>` | `top: 5;` |
+| `z-index` | `<integer>` | parsed, **not applied** — see below |
+| `position` | `static`, `relative`, `absolute`, `fixed` | parsed, **not applied** — see below |
+| `top`, `right`, `bottom`, `left` | `<number>` | parsed, **not applied** — see below |
+
+### Parsed but not applied
+
+These four are accepted by the parser and reach the computed style, and nothing
+reads them at paint time. They are listed so the gap is findable, not because
+they work.
+
+| | Why it is not a one-line fix |
+|---|---|
+| `opacity` | A terminal cell has no alpha. Applying it means deciding what to blend against, and cells do not carry a reliable backdrop. `Text::dim()` is the terminal-native approximation. |
+| `z-index` | Needs paint ordering. Widgets paint in traversal order today, and overlays are a separate queue. |
+| `position` | Read by the layout engine, whose rects nothing paints from — see [Layout Findings](refactor/findings-layout.md). |
+| `top` / `right` / `bottom` / `left` | Only meaningful once `position` is. |
+
+`Positioned` and `Layers` cover absolute placement and stacking as builders.
 
 ### Color Formats
 

@@ -527,6 +527,9 @@ pub mod prelude {
         Button,
         ButtonVariant,
         Canvas,
+        // Layout containers that `widget::` exported but the prelude did not
+        Card,
+        CardVariant,
         Checkbox,
         CheckboxStyle,
         Circle,
