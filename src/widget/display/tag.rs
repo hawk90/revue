@@ -152,24 +152,29 @@ impl Tag {
     }
 
     /// Get effective colors
-    fn effective_colors(&self) -> (Option<Color>, Color) {
-        let text_color = self.text_color.unwrap_or(Color::WHITE);
+    /// The builder's color if it moved off the initial value, else the
+    /// stylesheet's, else the initial - see [`RenderContext::color_or`].
+    fn effective_colors(&self, ctx: &RenderContext) -> (Option<Color>, Color) {
+        let color = ctx.color_or(self.color, DARK_GRAY);
+        let text_color = self
+            .text_color
+            .unwrap_or_else(|| ctx.css_color(Color::WHITE));
 
         if self.disabled {
             return (Some(SEPARATOR_COLOR), SUBTLE_GRAY);
         }
 
         match self.style {
-            TagStyle::Filled => (Some(self.color), text_color),
-            TagStyle::Outlined => (None, self.color),
+            TagStyle::Filled => (Some(color), text_color),
+            TagStyle::Outlined => (None, color),
             TagStyle::Subtle => {
                 // Lighten the color for background
                 let light_bg = Color::rgb(
-                    self.color.r.saturating_add(180),
-                    self.color.g.saturating_add(180),
-                    self.color.b.saturating_add(180),
+                    color.r.saturating_add(180),
+                    color.g.saturating_add(180),
+                    color.b.saturating_add(180),
                 );
-                (Some(light_bg), self.color)
+                (Some(light_bg), color)
             }
         }
     }
@@ -186,7 +191,7 @@ impl View for Tag {
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let (bg, fg) = self.effective_colors();
+        let (bg, fg) = self.effective_colors(ctx);
 
         let mut content = String::new();
 
