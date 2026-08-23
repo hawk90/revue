@@ -1,7 +1,12 @@
 # 렌더 파이프라인 조사 결과
 
-> **상태:** F-1·F-2·F-3은 `fix(render): always repaint from the view`로 해결됐다.
-> F-4·F-5는 남아 있고, `tests/render_pipeline.rs`가 계속 고정하고 있다.
+> **상태**
+> - F-1·F-2·F-3 — `fix(render): always repaint from the view`로 해결
+> - F-4·F-5 — `App::builder().dom_from_render(true)`로 해결. **기본 off**이므로
+>   `tests/render_pipeline.rs`가 계속 기본 동작을 고정한다. 새 경로의 계약은
+>   `tests/dom_from_render.rs`
+> - F-6 — 미해결
+>
 > 아래 조사 기록은 그대로 둔다 — 무엇이 왜 틀렸는지가 다음 단계의 근거다.
 
 Phase 1을 기본 on으로 뒤집기 전에 `examples/`를 손으로 확인하려다 발견한 것들.
@@ -158,7 +163,80 @@ todo:     frame 1 = 5540 bytes,  ↓ → +100,  ↓ → +115,  ↑ → +115,  sp
 
 캡처된 바이트에 `Count` 0→1→2→3, `Doubled` 0→2→4→6이 보이고, diff가 바뀐 글자만 쓴다.
 
-## 남은 것 — F-4·F-5
+## F-6. CSS 레이아웃 속성은 아무 효과가 없다
+
+F-4·F-5를 고치려고 설계에 들어갔다가 발견했다. **레이아웃 엔진은 매 프레임 돌고 그 결과를
+아무도 읽지 않는다.**
+
+`App::update_layout_tree`가 `LayoutEngine::compute`를 호출하지만, 계산된 rect를 되읽는
+유일한 곳은 `update_layout_tree_incremental` 안의 존재 확인이고, 그건 레이아웃 트리를 다시
+지을지 판단하려고 있는 자기참조적 코드다. (dirty rect가 유일한 소비자였는데, F-2를 고치면서
+사라졌다.)
+
+위젯은 자기 기하를 `render()` 안에서 스스로 계산한다 — `Stack::calculate_sizes`,
+`RenderContext::sub_area`. 그래서 flex/grid 엔진이 만든 기하는 버려진다.
+
+```
+no css     : "AAAAAAAAAA\n\n\nBBBBBBBBBB"
+layout css : "AAAAAAAAAA\n\n\nBBBBBBBBBB"   <-- 동일
+```
+
+CSS는 `#a { width: 3; padding: 2; } #root { gap: 3; } #b { display: none; }`. **`display: none`도
+요소를 숨기지 못한다.**
+
+## "CSS 스타일링"의 실제 상태
+
+README의 대표 기능이 실제로 어디까지 작동하는지:
+
+| | 상태 |
+|---|---|
+| paint 속성 (`color` 등) — **루트 위젯** | ✅ 작동 |
+| paint 속성 — 그 외 모든 위젯 | ❌ F-5 |
+| layout 속성 (`width`, `padding`, `gap`, `display`) — 어디든 | ❌ F-6 |
+
+F-5의 메커니즘 자체는 배선된 곳에서 작동한다 (`Text`가 `ctx.style`을 읽는 9개 파일 중
+하나다). 전달이 루트에서 멈출 뿐이다.
+
+## 해결 — F-4·F-5
+
+**DOM을 렌더 순회에서 짓는다.** `App::builder().dom_from_render(true)`, 기본 off.
+
+```
+collect 패스  →  DOM reconcile  →  스타일 계산  →  paint 패스
+```
+
+한 프레임에 뷰를 두 번 렌더한다. collect 패스는 각 위젯이 무엇을 렌더하는지 순서대로
+기록하고, paint 패스는 같은 순회를 돌며 모든 위젯에 자기 노드의 계산된 스타일과 상태를
+넘긴다. 두 순회는 카운터로 정렬한다 — `View::render`가 같은 `&self`에 대해 결정적이라는
+가정인데, 이는 `render`가 `&self`를 받는 것으로 이미 하고 있는 가정이다.
+
+한 패스가 아니라 두 패스인 이유는 노드의 스타일이 트리 전체에 의존하기 때문이다 —
+`:last-child`나 `:nth-child`는 형제를 다 알기 전에는 풀 수 없다.
+
+Phase 1의 매칭기(key > id > position)를 그대로 재사용한다. 입력이 `View::children`에서
+렌더 순회로 바뀌었을 뿐이다.
+
+컨테이너는 `RenderContext::render_child`를 통해 자식을 그려야 노드가 등록된다.
+`Stack`·`Border`·`Positioned`·`Grid`를 옮겼다. 옮기지 않은 컨테이너는 이전과 똑같이 동작한다.
+
+**알려진 한계:** 뷰가 본문 전체를 다른 위젯에 위임하면(`vstack()...render(ctx)`) 그 위젯은
+자식이 아니라 뷰 자신의 렌더링이므로 노드를 얻지 못한다. id는 뷰 쪽에 붙여야 한다.
+`tests/dom_from_render.rs`가 이 한계를 고정하고 있다.
+
+### 비용
+
+`cargo bench --bench frame`, 120×40:
+
+| rows | 1패스 | 2패스 |
+|---:|---:|---:|
+| 10 | 20.7 µs | 31.7 µs |
+| 50 | 32.2 µs | 65.6 µs |
+| 200 | 56.5 µs | 159.5 µs |
+
+위젯 10개에서 1.5배, 200개에서 2.8배. 두 번째 순회는 그중 일부이고, 나머지는 **DOM이 이제
+실제로 존재해서** reconcile과 cascade를 해야 하기 때문이다. 60fps 예산에서 최악이 1% 미만.
+
+## 남은 것 — F-6
 
 
 
@@ -172,7 +250,20 @@ F-4가 뿌리다. 그것이 풀리면 F-5는 따라오고, 영역 기반 렌더 
    diff 마스킹은 "칠해진 곳"의 상위집합이어야 한다 — 아니면 F-2가 남는다.
 3. **내용 변화를 감지할 수단.** 노드가 생기면 reconcile이 감지할 수 있지만, `WidgetMeta`에
    내용 해시를 넣을지 `needs_render()`를 실제로 활용할지는 설계 판단이 필요하다.
-**이 순서는 사람이 결정해야 한다.** 1번은 렌더/DOM 관계의 재설계이고, 되돌리기 어렵다.
+4. **레이아웃 엔진을 위젯 기하의 권위로 만든다** (F-6). 이건 1~3과 급이 다르다 —
+   컨테이너 위젯이 자기 자식 배치를 스스로 계산하는 것을 그만두고 노드의 계산된 레이아웃을
+   읽어야 한다. 사실상 모든 컨테이너의 재작성이다.
+
+**이 순서는 사람이 결정해야 한다.** 1번은 렌더/DOM 관계의 재설계이고, 4번은 그보다 크다.
+둘 다 되돌리기 어렵다.
+
+### 범위에 대한 솔직한 평가
+
+1~3(F-4·F-5)을 하면 `color` 같은 **paint 속성이 모든 위젯에서 작동하게 된다.** 그것만으로도
+실질적인 개선이다.
+
+하지만 `width`/`padding`/`flex` 같은 **layout 속성은 4번 없이는 여전히 작동하지 않는다.**
+"CSS로 TUI를 만든다"를 온전히 뜻하게 하려면 4번이 필요하고, 그건 별도의 대형 작업이다.
 
 ## 재현
 

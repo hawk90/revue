@@ -7,6 +7,10 @@
 //! `invariants.rs::keyless_children_are_identified_by_position_today`.
 //!
 //! Background and evidence: `docs/refactor/findings-render-pipeline.md`.
+//!
+//! The still-wrong group is what "CSS styling" currently amounts to: paint
+//! properties reach the root widget and stop there, and layout properties reach
+//! nothing at all.
 
 use revue::prelude::*;
 use revue::testing::PipelineHarness;
@@ -291,5 +295,66 @@ fn the_root_render_context_does_carry_a_computed_style() {
         seen.get(),
         "not even the root gets a computed style - the cascade is not reaching \
          render at all"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 4. CSS layout properties have no effect
+// ---------------------------------------------------------------------------
+
+/// **Pins a bug.** The layout engine runs every frame and nothing reads it.
+///
+/// `App::update_layout_tree` calls `LayoutEngine::compute`, but the only place
+/// that reads a computed rect back is the existence check inside
+/// `update_layout_tree_incremental`, which exists to decide whether to rebuild
+/// the layout tree. Widgets compute their own geometry inside `render` -
+/// `Stack::calculate_sizes`, `RenderContext::sub_area` - so the flex/grid
+/// geometry the engine produces is discarded.
+///
+/// The consequence is that `width`, `padding`, `gap` and even `display: none`
+/// do nothing.
+#[test]
+fn css_layout_properties_have_no_effect_today() {
+    fn view() -> Stack {
+        vstack()
+            .element_id("root")
+            .child(Text::new("AAAAAAAAAA").element_id("a"))
+            .child(Text::new("BBBBBBBBBB").element_id("b"))
+    }
+
+    let mut plain = PipelineHarness::with_css("", 20, 6);
+    plain.draw(&view());
+
+    let css = "#a { width: 3; padding: 2; } #root { gap: 3; } #b { display: none; }";
+    let mut styled = PipelineHarness::with_css(css, 20, 6);
+    styled.draw(&view());
+
+    assert_eq!(
+        plain.screen_text(),
+        styled.screen_text(),
+        "a layout property changed the output - the bug is fixed, rewrite this \
+         as the positive contract"
+    );
+    assert!(
+        styled.screen_text().contains('B'),
+        "`display: none` hid the element - the bug is fixed"
+    );
+}
+
+/// The control, and the shape of what a fix has to generalise: a paint property
+/// *does* work, on the one widget that is handed a computed style.
+#[test]
+fn a_css_paint_property_works_on_the_root_widget() {
+    let mut plain = PipelineHarness::with_css("", 20, 4);
+    plain.draw(&Text::new("HELLO").element_id("t"));
+
+    let mut red = PipelineHarness::with_css("#t { color: rgb(255, 0, 0); }", 20, 4);
+    red.draw(&Text::new("HELLO").element_id("t"));
+
+    assert_eq!(plain.buffer().get(0, 0).and_then(|c| c.fg), None);
+    assert_eq!(
+        red.buffer().get(0, 0).and_then(|c| c.fg),
+        Some(Color::rgb(255, 0, 0)),
+        "the cascade no longer reaches even the root widget"
     );
 }

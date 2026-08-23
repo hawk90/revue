@@ -7,8 +7,76 @@ use crate::render::Buffer;
 use crate::widget::{RenderContext, View};
 
 impl DomRenderer {
-    /// Render with DOM context (with CSS inheritance)
+    /// Render the view into `buffer`.
+    ///
+    /// With [`dom_from_render`](Self::dom_from_render) enabled the frame runs
+    /// two traversals - collect, then paint - so the DOM describes what was
+    /// actually rendered and every widget receives its own computed style. See
+    /// [`CollectSink`](crate::dom::CollectSink).
     pub fn render<V: View>(&mut self, root: &V, buffer: &mut Buffer, area: Rect) {
+        if self.dom_from_render {
+            self.render_two_pass(root, buffer, area);
+        } else {
+            self.render_from_children(root, buffer, area);
+        }
+    }
+
+    /// Collect the tree from the render traversal, reconcile, then paint it.
+    fn render_two_pass<V: View>(&mut self, root: &V, buffer: &mut Buffer, area: Rect) {
+        use crate::widget::traits::render_context::{PaintNode, RenderPass};
+
+        // Pass 1: discover the tree. Whatever this paints is discarded by the
+        // clear below - the buffer is reused rather than allocating a scratch
+        // one, and widgets must see a real area or they would take different
+        // branches than the paint pass.
+        let mut sink = crate::dom::CollectSink::new();
+        sink.push_root(root.meta());
+        {
+            let mut discard = crate::widget::OverlayQueue::new();
+            let mut ctx = RenderContext::new(buffer, area);
+            ctx.pass = Some(RenderPass::Collect {
+                sink: &mut sink,
+                parent: Some(0),
+            });
+            ctx = ctx.with_overlay_queue(&mut discard);
+            root.render(&mut ctx);
+        }
+
+        let order = self.reconcile_collected(&sink);
+        self.compute_styles_with_inheritance();
+
+        let painted: Vec<PaintNode<'_>> = order
+            .iter()
+            .map(|&id| PaintNode {
+                id,
+                style: self.styles.get(&id),
+                state: self.tree.get(id).map(|n| &n.state),
+            })
+            .collect();
+
+        // Pass 2: paint, with each widget's own style and state.
+        buffer.clear();
+        let mut overlay_queue = crate::widget::OverlayQueue::new();
+        let mut next = 1; // index 0 is the root, consumed here
+        {
+            let mut ctx = RenderContext::new(buffer, area);
+            if let Some(root_node) = painted.first() {
+                ctx.style = root_node.style;
+                ctx.state = root_node.state;
+            }
+            ctx.pass = Some(RenderPass::Paint {
+                nodes: &painted,
+                next: &mut next,
+            });
+            ctx = ctx.with_overlay_queue(&mut overlay_queue);
+            root.render(&mut ctx);
+        }
+        overlay_queue.render_to(buffer);
+    }
+
+    /// The original path: the DOM comes from `View::children`, and only the root
+    /// widget is handed a computed style.
+    fn render_from_children<V: View>(&mut self, root: &V, buffer: &mut Buffer, area: Rect) {
         // Compute styles with inheritance
         self.compute_styles_with_inheritance();
 

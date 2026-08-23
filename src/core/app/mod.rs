@@ -296,6 +296,16 @@ impl App {
         self.incremental_dom = enabled;
     }
 
+    /// Build the DOM from the render traversal instead of `View::children`.
+    pub(crate) fn set_dom_from_render(&mut self, enabled: bool) {
+        self.dom.set_dom_from_render(enabled);
+    }
+
+    /// Is the DOM built from the render traversal?
+    pub fn dom_from_render(&self) -> bool {
+        self.dom.dom_from_render()
+    }
+
     /// Is per-frame DOM reconciliation enabled?
     pub fn incremental_dom(&self) -> bool {
         self.incremental_dom
@@ -564,9 +574,18 @@ impl App {
         terminal: &mut Terminal<W>,
         force_redraw: bool,
     ) -> crate::Result<()> {
-        let root_dom_id = self.update_dom_and_get_root(view)?;
         let (width, height) = self.get_buffer_size();
-        self.update_layout_tree(root_dom_id, width, height);
+
+        if self.dom.dom_from_render() {
+            // The render pass builds the DOM. Lay out whatever the previous
+            // frame produced; on the first frame there is nothing yet.
+            if let Some(root_dom_id) = self.dom.tree().root_id() {
+                self.update_layout_tree(root_dom_id, width, height);
+            }
+        } else {
+            let root_dom_id = self.update_dom_and_get_root(view)?;
+            self.update_layout_tree(root_dom_id, width, height);
+        }
 
         let new_buffer_idx = self.swap_buffers();
         self.render_to_buffer(view, new_buffer_idx);

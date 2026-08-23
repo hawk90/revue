@@ -23,6 +23,8 @@ pub struct AppBuilder {
     size: Option<(u16, u16)>,
     /// Reconcile the DOM against the view on every frame
     incremental_dom: bool,
+    /// Build the DOM from the render traversal instead of `View::children`
+    dom_from_render: bool,
 }
 
 impl AppBuilder {
@@ -37,7 +39,38 @@ impl AppBuilder {
             plugins: PluginRegistry::new(),
             size: None,
             incremental_dom: false,
+            dom_from_render: false,
         }
+    }
+
+    /// Build the DOM from the render traversal instead of `View::children`.
+    ///
+    /// **Off by default.** With it off the DOM only contains widgets exposed
+    /// through [`View::children`](crate::widget::View::children), which almost
+    /// nothing implements - a widget assembled inside `render` is invisible to
+    /// it. A real application therefore has a DOM of one node, and CSS matching,
+    /// `:focus`/`:hover` and devtools all work against a tree that does not
+    /// describe it.
+    ///
+    /// With it on, the frame renders twice - once to discover the tree, once to
+    /// paint it - and every widget rendered through
+    /// [`RenderContext::render_child`](crate::widget::RenderContext::render_child)
+    /// gets a DOM node and its own computed style. That is what makes CSS reach
+    /// widgets below the root.
+    ///
+    /// Implies per-frame reconciliation, so `incremental_dom` has no additional
+    /// effect when this is on.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let app = App::builder()
+    ///     .dom_from_render(true)
+    ///     .build();
+    /// ```
+    pub fn dom_from_render(mut self, enabled: bool) -> Self {
+        self.dom_from_render = enabled;
+        self
     }
 
     /// Reconcile the DOM against the view on every frame.
@@ -211,6 +244,7 @@ impl AppBuilder {
         };
 
         let incremental_dom = self.incremental_dom;
+        let dom_from_render = self.dom_from_render;
 
         #[cfg(feature = "hot-reload")]
         let mut app = App::new_with_hot_reload(
@@ -233,6 +267,7 @@ impl AppBuilder {
         );
 
         app.set_incremental_dom(incremental_dom);
+        app.set_dom_from_render(dom_from_render);
         app
     }
 }

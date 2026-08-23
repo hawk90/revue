@@ -93,9 +93,7 @@ impl View for Grid {
 
             let cell_rect = ctx.sub_area(rel_x, rel_y, width, height);
 
-            let mut child_ctx = RenderContext::new(ctx.buffer, cell_rect);
-
-            item.widget.render(&mut child_ctx);
+            ctx.render_child(item.widget.as_ref(), cell_rect);
         }
     }
 }

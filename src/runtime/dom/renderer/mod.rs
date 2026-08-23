@@ -3,9 +3,10 @@
 //! Integrates the DOM tree with style resolution and rendering.
 
 mod build;
+pub(crate) mod collect;
 mod focus;
 mod helpers;
-mod incremental;
+pub(crate) mod incremental;
 mod render;
 mod style;
 mod stylesheet;
@@ -454,6 +455,7 @@ mod tests {
 }
 
 // Re-export the main type and helpers
+pub use collect::CollectSink;
 pub use helpers::styled_context;
 pub use types::DomRenderer;
 

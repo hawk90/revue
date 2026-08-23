@@ -128,13 +128,13 @@ fn update_node_meta_matched(
 fn plan_matches(
     tree: &DomTree,
     old_children: &[DomId],
-    new_children: &[Box<dyn View>],
+    new_children: &[&WidgetMeta],
     claimed: &mut [bool],
 ) -> Vec<Option<(usize, MatchKind)>> {
     // Only build a lookup table that something will actually read. A subtree
     // whose children carry no keys should not pay for a key map.
-    let want_keys = new_children.iter().any(|c| c.key().is_some());
-    let want_ids = new_children.iter().any(|c| c.id().is_some());
+    let want_keys = new_children.iter().any(|m| m.key.is_some());
+    let want_ids = new_children.iter().any(|m| m.id.is_some());
 
     let mut by_key: std::collections::HashMap<&WidgetKey, usize> = std::collections::HashMap::new();
     let mut by_id: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
@@ -166,9 +166,9 @@ fn plan_matches(
         // element id is unique per document and therefore nearly as good. A
         // position match is the fallback, and the reason unkeyed collections
         // reconcile badly.
-        let matched = if let Some(key) = child.key() {
-            by_key.get(&key).copied().map(|i| (i, MatchKind::Keyed))
-        } else if let Some(id) = child.id() {
+        let matched = if let Some(key) = child.key.as_ref() {
+            by_key.get(key).copied().map(|i| (i, MatchKind::Keyed))
+        } else if let Some(id) = child.id.as_deref() {
             by_id.get(id).copied().map(|i| (i, MatchKind::ById))
         } else {
             old_children
@@ -178,7 +178,7 @@ fn plan_matches(
                     // A node that carries a key must not be silently reused by
                     // a keyless sibling that happens to land on its index -
                     // that is the shift-by-one bug keys exist to prevent.
-                    (node.meta.key.is_none() && node.meta.widget_type == child.widget_type())
+                    (node.meta.key.is_none() && node.meta.widget_type == child.widget_type)
                         .then_some(pos)
                 })
                 .map(|i| (i, MatchKind::Positional))
@@ -214,14 +214,15 @@ fn update_children_internal(
         .map(|n| n.children.clone())
         .unwrap_or_default();
 
+    let metas: Vec<WidgetMeta> = new_children.iter().map(|c| c.meta()).collect();
+    let meta_refs: Vec<&WidgetMeta> = metas.iter().collect();
+
     let mut claimed = vec![false; old_children.len()];
-    let plan = plan_matches(&renderer.tree, &old_children, new_children, &mut claimed);
+    let plan = plan_matches(&renderer.tree, &old_children, &meta_refs, &mut claimed);
 
     let mut new_child_ids: Vec<DomId> = Vec::with_capacity(new_children.len());
 
-    for (child_view, matched) in new_children.iter().zip(plan) {
-        let child_meta = child_view.meta();
-
+    for ((child_view, child_meta), matched) in new_children.iter().zip(metas).zip(plan) {
         let child_id = match matched {
             Some((slot, how)) => {
                 let existing_id = old_children[slot];
@@ -285,4 +286,61 @@ fn collect_descendants_internal(tree: &crate::dom::DomTree, node_id: DomId) -> V
     }
 
     result
+}
+
+/// Reconcile one level of children described by metadata rather than by views.
+///
+/// Used by the collect pass, which has already flattened the render traversal
+/// and walks it breadth-first - so unlike [`update_children_internal`] this
+/// neither recurses nor builds grandchildren. Returns the node assigned to each
+/// child, in order.
+pub(crate) fn reconcile_children_from_metas(
+    renderer: &mut DomRenderer,
+    parent_id: DomId,
+    new_children: &[&WidgetMeta],
+) -> Vec<DomId> {
+    let old_children: Vec<DomId> = renderer
+        .tree
+        .get(parent_id)
+        .map(|n| n.children.clone())
+        .unwrap_or_default();
+
+    let mut claimed = vec![false; old_children.len()];
+    let plan = plan_matches(&renderer.tree, &old_children, new_children, &mut claimed);
+
+    let mut new_child_ids: Vec<DomId> = Vec::with_capacity(new_children.len());
+
+    for (meta, matched) in new_children.iter().zip(plan) {
+        let child_id = match matched {
+            Some((slot, how)) => {
+                let existing_id = old_children[slot];
+                if update_node_meta_matched(renderer, existing_id, meta, how) {
+                    existing_id
+                } else {
+                    renderer.remove_subtree(existing_id);
+                    renderer.structure_dirty = true;
+                    renderer.tree.add_child(parent_id, (*meta).clone())
+                }
+            }
+            None => {
+                renderer.structure_dirty = true;
+                renderer.tree.add_child(parent_id, (*meta).clone())
+            }
+        };
+        new_child_ids.push(child_id);
+    }
+
+    for (slot, &old_id) in old_children.iter().enumerate() {
+        if !claimed[slot] {
+            renderer.remove_subtree(old_id);
+            renderer.structure_dirty = true;
+        }
+    }
+
+    if new_child_ids != old_children {
+        renderer.structure_dirty = true;
+    }
+
+    renderer.tree.set_children(parent_id, new_child_ids.clone());
+    new_child_ids
 }
