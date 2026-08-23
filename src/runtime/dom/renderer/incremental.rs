@@ -114,6 +114,9 @@ fn update_node_meta_matched(
         // would hide this one - which is how a class added after the first
         // frame used to change nothing at all.
         renderer.tree.mark_subtree_dirty(node_id);
+        // A `+` or `~` rule keyed on this node's class matches its siblings,
+        // not itself.
+        renderer.invalidate_following_siblings(node_id);
     }
 
     true

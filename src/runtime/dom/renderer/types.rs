@@ -33,6 +33,14 @@ pub struct DomRenderer {
     pub(crate) dom_from_render: bool,
     /// Apply each node's specified CSS box properties during the paint pass.
     pub(crate) css_layout: bool,
+    /// Does the stylesheet use `+` or `~` anywhere?
+    ///
+    /// Invalidation walks up and down; a sibling combinator matches *sideways*,
+    /// so a change on one node can restyle the ones after it. Chasing that on
+    /// every change would cost every application, so it is only done for the
+    /// ones whose stylesheet can actually match that way. Computed with
+    /// `cached_selectors` and cleared with it.
+    pub(crate) has_sibling_combinators: bool,
     /// Where each node was painted, in paint order.
     ///
     /// Recorded by the paint pass, which is the only place that knows both a
@@ -59,6 +67,7 @@ impl DomRenderer {
             structure_dirty: false,
             dom_from_render: false,
             css_layout: false,
+            has_sibling_combinators: false,
             hit_map: Vec::new(),
         }
     }

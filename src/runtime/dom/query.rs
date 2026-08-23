@@ -522,6 +522,23 @@ impl DomTree {
         }
     }
 
+    /// The siblings that come after `id`, in order.
+    ///
+    /// `+` and `~` only ever look backwards, so a change on a node can affect
+    /// the ones after it and never the ones before.
+    pub fn following_siblings_of(&self, id: DomId) -> Vec<DomId> {
+        let Some(parent_id) = self.nodes.get(&id).and_then(|node| node.parent) else {
+            return Vec::new();
+        };
+        let Some(parent) = self.nodes.get(&parent_id) else {
+            return Vec::new();
+        };
+        match parent.children.iter().position(|&child| child == id) {
+            Some(pos) => parent.children[pos + 1..].to_vec(),
+            None => Vec::new(),
+        }
+    }
+
     /// The node and its ancestors, deepest first.
     pub fn ancestors_of(&self, id: DomId) -> Vec<DomId> {
         let mut chain = Vec::new();

@@ -91,10 +91,32 @@ impl DomRenderer {
     /// go stale.
     fn invalidate_state_styles(&mut self, id: Option<DomId>) {
         let Some(id) = id else { return };
+        self.invalidate_node_style(id);
+        self.invalidate_following_siblings(id);
+    }
+
+    /// Drop one node's cached style and point the walk at it.
+    pub(crate) fn invalidate_node_style(&mut self, id: DomId) {
         self.styles.remove(&id);
         self.tree.mark_subtree_dirty(id);
         if let Some(node) = self.tree.get_mut(id) {
             node.state.dirty = true;
+        }
+    }
+
+    /// Invalidate the siblings a `+` or `~` rule could now match differently.
+    ///
+    /// Only when the stylesheet contains such a rule at all - otherwise this is
+    /// a per-change cost that can never change an outcome. Their descendants
+    /// come along for free: the style walk carries "what you inherit changed"
+    /// down from any node it recomputes.
+    pub(crate) fn invalidate_following_siblings(&mut self, id: DomId) {
+        self.ensure_selectors_cached();
+        if !self.has_sibling_combinators {
+            return;
+        }
+        for sibling in self.tree.following_siblings_of(id) {
+            self.invalidate_node_style(sibling);
         }
     }
 }

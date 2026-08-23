@@ -6,7 +6,7 @@ use crate::style::Style;
 
 impl DomRenderer {
     /// Ensure selector cache is populated (parse once, reuse everywhere)
-    fn ensure_selectors_cached(&mut self) {
+    pub(crate) fn ensure_selectors_cached(&mut self) {
         if self.cached_selectors.is_none() {
             let mut selectors = Vec::new();
             for (idx, rule) in self.stylesheet.rules.iter().enumerate() {
@@ -14,6 +14,15 @@ impl DomRenderer {
                     selectors.push((selector, idx));
                 }
             }
+            self.has_sibling_combinators = selectors.iter().any(|(selector, _)| {
+                selector.parts.iter().any(|(_, combinator)| {
+                    matches!(
+                        combinator,
+                        Some(crate::dom::Combinator::AdjacentSibling)
+                            | Some(crate::dom::Combinator::GeneralSibling)
+                    )
+                })
+            });
             self.cached_selectors = Some(selectors);
         }
     }
