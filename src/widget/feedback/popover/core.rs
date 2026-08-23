@@ -375,9 +375,16 @@ impl View for Popover {
 
         // Get colors
         let (default_fg, default_bg, default_border) = self.popover_style.colors();
-        let fg = self.state.fg.unwrap_or(default_fg);
-        let bg = self.state.bg.unwrap_or(default_bg);
-        let border_fg = self.border_color.unwrap_or(default_border);
+        // Builder, then the stylesheet, then the popover style's own palette.
+        let fg = self.state.fg.unwrap_or_else(|| ctx.css_color(default_fg));
+        let bg = self
+            .state
+            .bg
+            .unwrap_or_else(|| ctx.css_background(default_bg));
+        let border_fg = self
+            .border_color
+            .or_else(|| ctx.css_border_or_text_color())
+            .unwrap_or(default_border);
 
         // Draw shadow for elevated style (offset by 1 pixel right and down)
         if matches!(self.popover_style, PopoverStyle::Elevated) {

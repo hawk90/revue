@@ -6,7 +6,7 @@
 use revue::prelude::*;
 use revue::style::Color;
 use revue::testing::PipelineHarness;
-use revue::widget::{crumb, Breadcrumb, Callout, Pagination, Toast};
+use revue::widget::{crumb, Breadcrumb, Callout, Collapsible, Pagination, Toast};
 
 const RED: Color = Color {
     r: 255,
@@ -54,6 +54,10 @@ wrap!(
 wrap!(PaginationView, Pagination::new(10).element_id("w"));
 wrap!(ToastView, Toast::info("saved").element_id("w"));
 wrap!(CalloutView, Callout::note("heads up").element_id("w"));
+wrap!(
+    CollapsibleView,
+    Collapsible::new("Section").expanded(true).element_id("w")
+);
 
 #[test]
 fn color_reaches_a_breadcrumbs_items() {
@@ -93,4 +97,15 @@ fn color_reaches_a_callout() {
 #[test]
 fn a_callout_keeps_its_palette_by_default() {
     assert!(!any_fg(&draw("", &CalloutView), RED));
+}
+
+#[test]
+fn color_reaches_a_collapsibles_header() {
+    let h = draw("#w { color: #ff0000; }", &CollapsibleView);
+    assert!(any_fg(&h, RED), "`color` did not reach Collapsible");
+}
+
+#[test]
+fn a_collapsible_keeps_its_header_color_by_default() {
+    assert!(!any_fg(&draw("", &CollapsibleView), RED));
 }

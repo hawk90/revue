@@ -299,6 +299,8 @@ impl View for Collapsible {
     crate::impl_view_meta!("Collapsible");
 
     fn render(&self, ctx: &mut RenderContext) {
+        // The header takes `color`; the content and border keep their own.
+        let header_fg = ctx.color_or(self.header_fg, Color::WHITE);
         let area = self.apply_constraints(ctx.area);
         if area.width < 4 || area.height < 1 {
             return;
@@ -308,7 +310,7 @@ impl View for Collapsible {
         let header_fg = if self.state.disabled {
             DISABLED_FG
         } else {
-            self.header_fg
+            header_fg
         };
 
         // Render header line

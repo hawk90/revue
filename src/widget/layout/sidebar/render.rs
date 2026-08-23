@@ -124,7 +124,12 @@ impl Sidebar {
                     } else if is_hovered {
                         (self.hover_fg, self.hover_bg)
                     } else {
-                        (self.fg, self.bg)
+                        // Unselected items take the stylesheet; the selected
+                        // and hovered ones keep their own.
+                        (
+                            self.fg.or_else(|| ctx.css_color_if_set()),
+                            self.bg.or_else(|| ctx.css_background_if_set()),
+                        )
                     };
 
                     // Fill row background
