@@ -26,7 +26,7 @@ jobs:
       (github.event_name == 'pull_request' && github.event.label.name == 'benchmark')
     steps:
       - name: Checkout base branch first
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.ref || 'main' }}
 
@@ -46,7 +46,7 @@ jobs:
         run: cp -r target/criterion /tmp/criterion-base
 
       - name: Checkout PR branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           clean: false
 
