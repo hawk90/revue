@@ -29,8 +29,10 @@ jobs:
           filters: |
             code:
               - 'src/**'
+              - 'revue-macros/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
+              - 'rust-toolchain.toml'
               - 'tests/**'
               - 'benches/**'
               - 'examples/**'
