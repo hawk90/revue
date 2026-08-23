@@ -25,7 +25,16 @@ use std::path::{Path, PathBuf};
 /// Widgets that carry a DOM node and do not read a computed style yet.
 ///
 /// Shrinks. Never grows: a new widget belongs on the wired side.
+///
+/// A few entries are here *deliberately*, marked `intentional:`. They colour
+/// sub-parts a stylesheet cannot address on their own - a `RichLog` line is
+/// coloured by its level, and lines are not nodes - so a blanket `color` rule
+/// would flatten a distinction with no way to restore it. Same reasoning as a
+/// selected table row keeping its highlight.
 const NOT_YET_READING_CSS: &[&str] = &[
+    // intentional: per-line level colours (Info/Warning/Error) are the content,
+    // and a line is not a node, so a rule on the log cannot restore them.
+    "RichLog",
     "Accordion",
     "AiStream",
     "Autocomplete",
@@ -48,7 +57,6 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "Diagram",
     "DiffViewer",
     "DropZone",
-    "EmptyState",
     "ErrorBoundary",
     "FilePicker",
     "FileTree",
@@ -80,7 +88,6 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "RadioGroup",
     "Rating",
     "Resizable",
-    "RichLog",
     "RichText",
     "RichTextEditor",
     "ScatterChart",
@@ -90,12 +97,10 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "Select",
     "SelectionList",
     "Sidebar",
-    "Skeleton",
     "Slider",
     "SortableList",
     "Splitter",
     "StatusBar",
-    "StatusIndicator",
     "Stepper",
     "Streamline",
     "Switch",
