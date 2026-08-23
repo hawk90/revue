@@ -33,6 +33,7 @@
 
 use crate::core::app::App;
 use crate::dom::{DomId, NodeState, Query};
+use crate::layout::Rect;
 use crate::render::{Buffer, Terminal};
 use crate::style::parse_css;
 use crate::widget::View;
@@ -321,6 +322,39 @@ impl PipelineHarness {
     pub fn request_dom_rebuild(&mut self) -> &mut Self {
         self.app.request_dom_rebuild();
         self
+    }
+
+    /// Computed layout rect of the node with the given element id.
+    ///
+    /// Coordinates are **relative to the parent's content box**, not to the
+    /// screen - that is what `LayoutEngine` produces.
+    ///
+    /// Nothing in the render path reads these yet; widgets still compute their
+    /// own geometry. See `docs/refactor/findings-layout.md`.
+    pub fn layout_rect(&self, element_id: &str) -> Option<Rect> {
+        self.node_id(element_id)
+            .and_then(|id| self.app.layout_rect(id))
+    }
+
+    /// Element ids of a node's children **in the layout tree**.
+    ///
+    /// The layout tree must mirror the DOM tree. It did not: every node was
+    /// created before its children existed, so it was linked to none of them.
+    pub fn layout_child_ids(&self, element_id: &str) -> Vec<String> {
+        let Some(id) = self.node_id(element_id) else {
+            return Vec::new();
+        };
+        self.app
+            .layout_children(id)
+            .into_iter()
+            .filter_map(|child| {
+                self.app
+                    .dom()
+                    .tree()
+                    .get(child)
+                    .and_then(|n| n.meta.id.clone())
+            })
+            .collect()
     }
 
     /// Escape hatch for assertions this harness does not cover yet.
