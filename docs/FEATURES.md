@@ -93,6 +93,12 @@ text {
 > `width`, `height`, `margin`, `min-*`/`max-*`) override geometry a container
 > already computed, so they only take effect with
 > `App::builder().dom_from_render(true).css_layout(true)`. Flow properties
+> A property whose *initial* value is also its "off" value cannot be set back to
+> that value from CSS: `gap: 0`, `text-align: left` and `border-style: none` are
+> indistinguishable from a stylesheet that never mentioned them, and a stylesheet
+> that never mentioned them must leave the builder's value alone. Say it on the
+> builder instead.
+>
 > `gap` (and `column-gap` / `row-gap`) reaches `vstack`, `hstack` and `grid`
 > under the same flag. The remaining flow properties (`flex-*`, `grid-template-*`)
 > are the container's own and are not applied from CSS - see
@@ -122,6 +128,7 @@ text {
 | `row-gap` | `<number>` | `row-gap: 1;` |
 | `border` | `<style> [color]` | `border: solid cyan;` |
 | `border-style` | `none`, `solid`, `dashed`, `double`, `rounded` | `border-style: rounded;` |
+| | `dashed` draws a single line — terminals have no dashed box-drawing set | |
 | `border-color` | `<color>` | `border-color: red;` |
 | `color` | `<color>` | `color: #ff0000;` |
 | `background` | `<color>` | `background: blue;` |
