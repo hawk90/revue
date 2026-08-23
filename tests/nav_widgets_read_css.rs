@@ -109,3 +109,40 @@ fn color_reaches_a_collapsibles_header() {
 fn a_collapsible_keeps_its_header_color_by_default() {
     assert!(!any_fg(&draw("", &CollapsibleView), RED));
 }
+
+// ---------------------------------------------------------------------------
+// Form
+// ---------------------------------------------------------------------------
+
+/// `Form` has eight render functions, none of which take colors as arguments -
+/// each reads `self` and paints directly, so each needed its own resolution.
+/// That is the `Slider` shape, not the `Callout` one.
+struct FormView;
+
+impl View for FormView {
+    fn render(&self, ctx: &mut RenderContext) {
+        let state = revue::patterns::form::FormState::new()
+            .field("email", |f| f.label("Email"))
+            .build();
+        vstack()
+            .child(revue::widget::Form::new(state).element_id("w"))
+            .render(ctx);
+    }
+    fn widget_type(&self) -> &'static str {
+        "FormView"
+    }
+    fn id(&self) -> Option<&str> {
+        Some("root")
+    }
+}
+
+#[test]
+fn color_reaches_a_form() {
+    let h = draw("#w { color: #ff0000; }", &FormView);
+    assert!(any_fg(&h, RED), "`color` did not reach Form");
+}
+
+#[test]
+fn a_form_keeps_its_colors_by_default() {
+    assert!(!any_fg(&draw("", &FormView), RED));
+}

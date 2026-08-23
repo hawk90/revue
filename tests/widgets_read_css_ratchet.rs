@@ -65,7 +65,6 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "ErrorBoundary",
     "FilePicker",
     "FileTree",
-    "Form",
     "Gauge",
     "GradientBox",
     "HeatMap",
