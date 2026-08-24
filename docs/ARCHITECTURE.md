@@ -598,13 +598,19 @@ impl View for MyWidget {
 
 ### Custom CSS Properties
 
-```rust
-// Register custom property
-style_registry.register_property(
-    "--my-custom-prop",
-    PropertyType::Color,
-    default_value,
-);
+Custom properties are declared in the stylesheet, not registered from Rust.
+Declare them on `:root` and read them back with `var()`:
+
+```css
+:root {
+    --primary: #bd93f9;
+    --bg: #282a36;
+}
+
+.button {
+    color: var(--primary);
+    background: var(--bg, #000000);  /* second argument is the fallback */
+}
 ```
 
 ### Plugins
