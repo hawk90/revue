@@ -1510,7 +1510,7 @@ boxplot()
 // Heatmap
 heatmap()
     .data(matrix)
-    .color_scale(HeatmapColor::Viridis)
+    .color_scale(ColorScale::Viridis)
 
 // Candle chart (financial)
 candle_chart(ohlc_data)
@@ -1538,10 +1538,9 @@ REST API client widget:
 
 ```rust
 http_client()
-    .base_url("https://api.example.com")
-    .endpoint("/users")
-    .method(Method::GET)
-    .on_response(|data| handle_response(data))
+    .url("https://api.example.com/users")
+    .method(HttpMethod::GET)
+    .header("Accept", "application/json")
 ```
 
 ### QR Code
@@ -1549,10 +1548,8 @@ http_client()
 QR code generation:
 
 ```rust
-qrcode()
-    .data("https://example.com")
-    .size(QrSize::Medium)
-    .error_correction(QrLevel::M)
+qrcode("https://example.com")
+    .error_correction(ErrorCorrection::Medium)
 ```
 
 ### Rating
@@ -1614,12 +1611,12 @@ status_indicator()
 Large text with size presets:
 
 ```rust
-h1().child("Heading 1")  // Largest
-h2().child("Heading 2")
-h3().child("Heading 3")
+h1("Heading 1")  // Largest
+h2("Heading 2")
+h3("Heading 3")
 
-// Or use generic bigtext
-bigtext().size(BigTextSize::XL).child("XL Text")
+// Or name the tier directly - 1 is largest
+bigtext("Custom", 2)
 ```
 
 ### Skeleton
@@ -1638,7 +1635,7 @@ Label tags:
 
 ```rust
 tag("Rust").color(Color::ORANGE)
-chip("v1.0").variant(ChipVariant::Outlined)
+chip("v1.0").outlined()
 ```
 
 ### Number Input
