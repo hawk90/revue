@@ -623,17 +623,20 @@ card()
 #### Modal
 
 ```rust
-if show_modal.get() {
-    modal()
-        .title("Confirm")
-        .content(text("Are you sure?"))
-        .actions([
-            button("Cancel").on_click(|| show_modal.set(false)),
-            button("OK").on_click(|| {
-                do_action();
-                show_modal.set(false);
-            }),
-        ])
+let mut dialog = Modal::new()
+    .title("Confirm")
+    .content("Are you sure?")
+    .ok_cancel();
+
+dialog.show();
+
+// The modal owns its selection; `handle_key` returns the index of the button
+// the user activated, and `None` while they are still moving between them.
+if let Some(index) = dialog.handle_key(&key) {
+    if index == 0 {
+        do_action();
+    }
+    dialog.hide();
 }
 ```
 
@@ -1070,9 +1073,9 @@ let table = CharWidthTable::detect();
 
 // Manual configuration
 let table = CharWidthTable::new()
-    .cjk(2)
-    .emoji(2)
-    .nerd_font(1);  // Depends on your font
+    .with_cjk(2)
+    .with_emoji(2)
+    .with_nerd_font(1);  // Depends on your font
 ```
 
 ### Configuration
@@ -1134,25 +1137,27 @@ let mut app = App::builder()
 ### Testing
 
 ```rust
-use revue::testing::{TestApp, Pilot};
+use revue::event::{Key, KeyEvent};
+use revue::testing::TestApp;
 
 #[test]
 fn test_counter() {
     let mut app = TestApp::new(Counter::new());
 
     // Simulate key presses
-    app.press_key(Key::Up);
-    app.press_key(Key::Up);
+    app.send_key(KeyEvent::new(Key::Up));
+    app.send_key(KeyEvent::new(Key::Up));
 
     // Render and check output
-    let output = app.render_to_string();
-    assert!(output.contains("Count: 2"));
+    app.render();
+    assert!(app.contains("Count: 2"));
 }
 
 #[test]
 fn test_snapshot() {
     let mut app = TestApp::new(Counter::new());
-    insta::assert_snapshot!(app.render_to_string());
+    app.render();
+    insta::assert_snapshot!(app.screen_text());
 }
 ```
 
@@ -1670,9 +1675,10 @@ range_picker()
 Distraction-free mode:
 
 ```rust
-zen()
-    .content(main_view())
-    .exit_key(Key::Escape)
+let mut focus = zen(main_view()).padding(4);
+
+// The wrapper does not take the key itself - toggle it from your handler
+focus.toggle();
 ```
 
 ---

@@ -154,8 +154,8 @@
 //!     let mut pilot = Pilot::new(&mut app);
 //!
 //!     pilot
-//!         .press(Key::Up)
-//!         .press(Key::Up)
+//!         .press_key(Key::Up)
+//!         .press_key(Key::Up)
 //!         .assert_contains("2");
 //! }
 //! ```
