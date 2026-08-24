@@ -3,7 +3,7 @@
 //! Implements the StyleMerge trait for combining styles.
 
 use crate::style::{
-    AlignItems, BorderStyle, Color, Display, FlexDirection, JustifyContent, Size, Spacing, Style,
+    AlignItems, Color, Display, FlexDirection, JustifyContent, Size, Spacing, Style,
 };
 
 /// Trait for styles that can be merged
@@ -72,7 +72,7 @@ impl StyleMerge for Style {
         }
 
         // Merge border
-        if other.visual.border_style != BorderStyle::default() {
+        if other.visual.border_style.is_some() {
             result.visual.border_style = other.visual.border_style;
         }
         if other.visual.border_color != Color::default() {

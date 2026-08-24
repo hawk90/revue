@@ -103,8 +103,8 @@ fn test_css_border_style_without_style() {
     let area = Rect::new(0, 0, 10, 5);
     let ctx = RenderContext::new(&mut buffer, area);
 
-    let style = ctx.css_border_style();
-    assert_eq!(style, BorderStyle::None);
+    // No style at all is "the stylesheet said nothing", not "no border".
+    assert_eq!(ctx.css_border_style(), None);
 }
 
 #[test]

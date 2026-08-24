@@ -151,10 +151,10 @@ fn test_style_merge_border() {
 
     let style1 = Style::default();
     let mut style2 = Style::default();
-    style2.visual.border_style = BorderStyle::Solid;
+    style2.visual.border_style = Some(BorderStyle::Solid);
     style2.visual.border_color = Color::hex(0xffffff);
 
     let merged = style1.merge(&style2);
-    assert_eq!(merged.visual.border_style, BorderStyle::Solid);
+    assert_eq!(merged.visual.border_style, Some(BorderStyle::Solid));
     assert_eq!(merged.visual.border_color, Color::hex(0xffffff));
 }

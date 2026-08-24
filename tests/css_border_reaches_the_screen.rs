@@ -66,22 +66,28 @@ fn border_style_rounded_reaches_the_screen() {
     assert_eq!(corner(&drawn("#b { border-style: rounded; }")), '╭');
 }
 
-/// **Pins a limitation.** `none` is `border-style`'s *initial* value, so a
-/// computed style cannot tell `border-style: none` from a stylesheet that never
-/// mentioned borders - and the second must leave the builder's border alone.
-/// So the first cannot remove it either.
+/// `border-style: none` removes a border the builder drew.
 ///
-/// The same tension as `gap: 0` and `text-align: left`. The general fix is to
-/// track whether a property was specified rather than inferring it from the
-/// value, which `Style::layout.column_gap` already does as an `Option`; doing
-/// it for one property and not the others would only move the surprise.
+/// This used to pin the opposite. `none` is `BorderStyle`'s *initial* value, so
+/// while the property was a plain enum a computed style could not tell
+/// `border-style: none` from a stylesheet that never mentioned borders - and
+/// the second has to leave the builder alone, so the first could not remove it
+/// either. Tracking specified-ness with an `Option` separates them, the same
+/// fix `gap` got.
 #[test]
-fn border_style_none_cannot_remove_a_builders_border() {
-    assert_eq!(
+fn border_style_none_removes_a_builders_border() {
+    assert_ne!(
         corner(&drawn("#b { border-style: none; }")),
         '┌',
-        "specified-ness is now tracked - make this assert the border is gone"
+        "`border-style: none` did not remove the border"
     );
+}
+
+/// The other direction still has to hold: saying nothing leaves the builder's
+/// border alone. Without this the fix above could be "always drop the border".
+#[test]
+fn a_silent_stylesheet_leaves_the_builders_border() {
+    assert_eq!(corner(&drawn("")), '┌');
 }
 
 /// The `border` shorthand carries a style and an optional color.

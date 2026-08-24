@@ -377,18 +377,20 @@ impl Border {
     /// The border to draw: the stylesheet's if it named one, else the builder's.
     ///
     /// `border-style`'s initial value is `none`, so a stylesheet that did not
-    /// mention it reads as "not specified" - the same test the cascade uses -
-    /// and the builder's `Single` default survives.
+    /// mention it leaves the builder's own choice alone. `border-style: none`
+    /// is a different thing and removes the border, which it could not express
+    /// while the property was a plain enum whose initial value *was* `None`.
     ///
     /// `dashed` has no box-drawing set in a terminal, so it renders as a single
     /// line. Documented in `docs/FEATURES.md` rather than silently mapped to
     /// something that looks unrelated.
     fn border_type_with_css(&self, ctx: &RenderContext) -> BorderType {
         match ctx.css_border_style() {
-            BorderStyle::None => self.border_type,
-            BorderStyle::Solid | BorderStyle::Dashed => BorderType::Single,
-            BorderStyle::Double => BorderType::Double,
-            BorderStyle::Rounded => BorderType::Rounded,
+            None => self.border_type,
+            Some(BorderStyle::None) => BorderType::None,
+            Some(BorderStyle::Solid) | Some(BorderStyle::Dashed) => BorderType::Single,
+            Some(BorderStyle::Double) => BorderType::Double,
+            Some(BorderStyle::Rounded) => BorderType::Rounded,
         }
     }
 }

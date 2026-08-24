@@ -360,16 +360,18 @@ impl Card {
 
     /// The border to draw: the stylesheet's if it named one, else the builder's.
     ///
-    /// See `Border::border_type_with_css` - `none` is the initial value, so a
-    /// stylesheet that said nothing leaves the builder's choice alone.
+    /// See `Border::border_type_with_css` - a stylesheet that said nothing
+    /// leaves the builder's choice alone, and `border-style: none` removes the
+    /// border.
     fn border_type_with_css(&self, ctx: &RenderContext) -> BorderType {
         match ctx.css_border_style() {
-            crate::style::BorderStyle::None => self.border,
-            crate::style::BorderStyle::Solid | crate::style::BorderStyle::Dashed => {
+            None => self.border,
+            Some(crate::style::BorderStyle::None) => BorderType::None,
+            Some(crate::style::BorderStyle::Solid) | Some(crate::style::BorderStyle::Dashed) => {
                 BorderType::Single
             }
-            crate::style::BorderStyle::Double => BorderType::Double,
-            crate::style::BorderStyle::Rounded => BorderType::Rounded,
+            Some(crate::style::BorderStyle::Double) => BorderType::Double,
+            Some(crate::style::BorderStyle::Rounded) => BorderType::Rounded,
         }
     }
 

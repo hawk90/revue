@@ -190,7 +190,10 @@ mod tests {
         let css = ".box { border: solid; }";
         let sheet = parse(css).unwrap();
         let style = sheet.apply(".box", &Style::default());
-        assert_eq!(style.visual.border_style, crate::style::BorderStyle::Solid);
+        assert_eq!(
+            style.visual.border_style,
+            Some(crate::style::BorderStyle::Solid)
+        );
     }
 
     #[test]
@@ -198,7 +201,10 @@ mod tests {
         let css = ".box { border: dashed red; }";
         let sheet = parse(css).unwrap();
         let style = sheet.apply(".box", &Style::default());
-        assert_eq!(style.visual.border_style, crate::style::BorderStyle::Dashed);
+        assert_eq!(
+            style.visual.border_style,
+            Some(crate::style::BorderStyle::Dashed)
+        );
         assert_eq!(style.visual.border_color, Color::RED);
     }
 
@@ -207,7 +213,10 @@ mod tests {
         let css = ".box { border: #00ff00 solid; }";
         let sheet = parse(css).unwrap();
         let style = sheet.apply(".box", &Style::default());
-        assert_eq!(style.visual.border_style, crate::style::BorderStyle::Solid);
+        assert_eq!(
+            style.visual.border_style,
+            Some(crate::style::BorderStyle::Solid)
+        );
         assert_eq!(style.visual.border_color, Color::GREEN);
     }
 

@@ -8,7 +8,12 @@ use super::types::{BorderStyle, Color, FontWeight, Overflow, TextAlign, TextDeco
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VisualStyle {
     /// Border style
-    pub border_style: BorderStyle,
+    ///
+    /// `None` is "the stylesheet said nothing"; `Some(BorderStyle::None)` is a
+    /// stylesheet asking for no border. A plain enum could not tell those
+    /// apart, so `border-style: none` could not remove a border the builder
+    /// drew. Same shape `gap` had before it became an `Option`.
+    pub border_style: Option<BorderStyle>,
     /// Border color
     pub border_color: Color,
     /// Text/foreground color (INHERITED)
@@ -57,7 +62,7 @@ pub fn apply_opacity(opacity: f32, modifier: &mut crate::render::Modifier) -> bo
 impl Default for VisualStyle {
     fn default() -> Self {
         Self {
-            border_style: BorderStyle::default(),
+            border_style: None,
             border_color: Color::default(),
             color: Color::default(),
             background: Color::default(),
@@ -79,7 +84,7 @@ mod tests {
     #[test]
     fn test_visual_style_default() {
         let style = VisualStyle::default();
-        assert_eq!(style.border_style, BorderStyle::default());
+        assert_eq!(style.border_style, None);
         assert_eq!(style.border_color, Color::default());
         assert_eq!(style.color, Color::default());
         assert_eq!(style.background, Color::default());
