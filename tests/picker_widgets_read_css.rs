@@ -15,10 +15,15 @@ use revue::widget::{
     ColorPicker, ColorPickerMode, DropZone, FileEntry, FileFilter, FilePicker, FileTree, FileType,
 };
 
-const RED: Color = Color {
-    r: 255,
-    g: 0,
-    b: 0,
+/// A color no widget here paints on its own.
+///
+/// `Color::RED` was the obvious sentinel and it was the wrong one: a color
+/// picker's R channel slider *is* red, so the assertion passed with the wiring
+/// reverted. A test color has to be one nothing in the widget can produce.
+const INK: Color = Color {
+    r: 17,
+    g: 34,
+    b: 51,
     a: 255,
 };
 
@@ -87,30 +92,30 @@ wrap!(
 
 #[test]
 fn color_reaches_a_drop_zones_resting_border() {
-    let h = draw("#w { color: #ff0000; }", &DropZoneView);
-    assert!(any_fg(&h, RED), "`color` did not reach DropZone's border");
+    let h = draw("#w { color: #112233; }", &DropZoneView);
+    assert!(any_fg(&h, INK), "`color` did not reach DropZone's border");
 }
 
 #[test]
 fn color_reaches_a_file_trees_plain_file() {
-    let h = draw("#w { color: #ff0000; }", &FileTreeView);
-    assert!(any_fg(&h, RED), "`color` did not reach FileTree's file row");
+    let h = draw("#w { color: #112233; }", &FileTreeView);
+    assert!(any_fg(&h, INK), "`color` did not reach FileTree's file row");
 }
 
 #[test]
 fn color_reaches_a_file_pickers_plain_file() {
-    let h = draw("#w { color: #ff0000; }", &FilePickerView);
+    let h = draw("#w { color: #112233; }", &FilePickerView);
     assert!(
-        any_fg(&h, RED),
+        any_fg(&h, INK),
         "`color` did not reach FilePicker's file row"
     );
 }
 
 #[test]
 fn color_reaches_a_color_pickers_chrome() {
-    let h = draw("#w { color: #ff0000; }", &ColorPickerView);
+    let h = draw("#w { color: #112233; }", &ColorPickerView);
     assert!(
-        any_fg(&h, RED),
+        any_fg(&h, INK),
         "`color` did not reach ColorPicker's chrome"
     );
 }
@@ -141,13 +146,13 @@ fn a_directory_keeps_its_type_color() {
         }
         V
     };
-    let h = draw("#w { color: #ff0000; }", &view);
+    let h = draw("#w { color: #112233; }", &view);
     assert!(
         any_fg(&h, Color::CYAN),
         "a directory lost its type color to a `color` rule"
     );
     assert!(
-        !any_fg(&h, RED),
+        !any_fg(&h, INK),
         "`color` flattened a directory row it should not address"
     );
 }
