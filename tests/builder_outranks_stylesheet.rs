@@ -17,6 +17,8 @@ use revue::testing::PipelineHarness;
 use revue::widget::theme::DARK_GRAY as HANDLE_GRAY;
 use revue::widget::theme::{DARK_GRAY, LIGHT_GRAY, SEPARATOR_COLOR};
 use revue::widget::theme::{DISABLED_FG, SECONDARY_TEXT, SUBTLE_GRAY};
+#[cfg(feature = "markdown")]
+use revue::widget::MarkdownPresentation;
 #[cfg(feature = "qrcode")]
 use revue::widget::QrCodeWidget;
 use revue::widget::{
@@ -24,6 +26,7 @@ use revue::widget::{
     MenuBar, Pagination, Rating, Resizable, SearchBar, Skeleton, Slider, SortableList, Splitter,
     StatusBar, Switch, Tag, Terminal, VirtualList, ZenMode,
 };
+use revue::widget::{Presentation, Slide};
 
 const RED: Color = Color {
     r: 255,
@@ -561,3 +564,57 @@ both_directions!(
     TerminalSilent,
     Color::WHITE
 );
+
+// ---------------------------------------------------------------------------
+// Batch 6b
+// ---------------------------------------------------------------------------
+
+case!(
+    DeckNamed,
+    DeckSilent,
+    Presentation::new()
+        .slide(Slide::new("Deck").line("body"))
+        .bg(Color::rgb(20, 20, 30))
+        .element_id("w"),
+    Presentation::new()
+        .slide(Slide::new("Deck").line("body"))
+        .element_id("w")
+);
+
+#[cfg(feature = "markdown")]
+case!(
+    MdDeckNamed,
+    MdDeckSilent,
+    MarkdownPresentation::new("# Title\n\nbody\n")
+        .bg(Color::rgb(20, 20, 30))
+        .element_id("w"),
+    MarkdownPresentation::new("# Title\n\nbody\n").element_id("w")
+);
+
+#[test]
+fn a_named_presentation_background_beats_css() {
+    let h = draw("#w { background: #ff0000; }", &DeckNamed);
+    assert!(!any_bg(&h, RED));
+    assert!(any_bg(&h, Color::rgb(20, 20, 30)));
+}
+
+#[test]
+fn a_silent_presentation_defers_to_css() {
+    let h = draw("#w { background: #ff0000; }", &DeckSilent);
+    assert!(any_bg(&h, RED));
+}
+
+#[cfg(feature = "markdown")]
+#[test]
+fn a_named_markdown_deck_background_beats_css() {
+    let h = draw("#w { background: #ff0000; }", &MdDeckNamed);
+    assert!(!any_bg(&h, RED));
+    assert!(any_bg(&h, Color::rgb(20, 20, 30)));
+}
+
+#[cfg(feature = "markdown")]
+#[test]
+fn a_silent_markdown_deck_defers_to_css() {
+    let h = draw("#w { background: #ff0000; }", &MdDeckSilent);
+    assert!(any_bg(&h, RED));
+}
