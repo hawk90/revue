@@ -143,3 +143,60 @@ fn a_modals_body_gets_a_node() {
 
     assert!(h.node_id("mbody").is_some(), "the modal's body has no node");
 }
+
+// ---------------------------------------------------------------------------
+// Layers
+// ---------------------------------------------------------------------------
+
+/// `Layers` stacks its children by z-index and painted them with
+/// `child.render(ctx)`, which leaves every one of them out of the DOM.
+#[test]
+fn layers_children_get_nodes() {
+    struct V;
+    impl View for V {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .child(
+                    layers()
+                        .child(Text::new("under").element_id("under"))
+                        .child(Text::new("over").element_id("over")),
+                )
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "V"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("root")
+        }
+    }
+
+    let mut h = harness("");
+    h.draw(&V);
+
+    assert!(h.node_id("under").is_some(), "the lower layer has no node");
+    assert!(h.node_id("over").is_some(), "the upper layer has no node");
+}
+
+#[test]
+fn a_rule_can_select_a_layer() {
+    struct V;
+    impl View for V {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .child(layers().child(Text::new("hi").element_id("l")))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "V"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("root")
+        }
+    }
+
+    let mut h = harness("#l { color: #ff0000; }");
+    h.draw(&V);
+
+    assert_eq!(h.computed_color("l"), Some(RED));
+}

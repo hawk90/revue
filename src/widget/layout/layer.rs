@@ -193,10 +193,16 @@ impl View for Layers {
         let mut order: Vec<usize> = (0..self.children.len()).collect();
         order.sort_by_key(|&i| self.children[i].z_index);
 
-        // Render each child in z-index order, skipping unchanged children
+        // Render each child in z-index order, skipping unchanged children.
+        //
+        // Through `render_child`, not `child.render(ctx)`: the latter paints
+        // correctly and leaves the child out of the DOM, so no rule can select
+        // it and the hit test cannot find it. Both passes apply the same
+        // `needs_render` predicate, so they agree on which children exist.
+        let area = ctx.area;
         for &idx in &order {
             if self.children[idx].child.needs_render() {
-                self.children[idx].child.render(ctx);
+                ctx.render_child(self.children[idx].child.as_ref(), area);
             }
         }
     }

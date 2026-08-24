@@ -29,7 +29,9 @@ impl View for Accordion {
             };
 
         // Draw border if set
-        if let Some(border_color) = self.border_color {
+        // Builder first, then the stylesheet's `border-color` (falling back to
+        // `color`, as CSS does). No border is drawn when neither names one.
+        if let Some(border_color) = self.border_color.or_else(|| ctx.css_border_or_text_color()) {
             render_border(ctx, area, border_color);
         }
 
