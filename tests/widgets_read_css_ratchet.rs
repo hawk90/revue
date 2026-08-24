@@ -44,6 +44,14 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "Layers",
     "Positioned",
     "ScreenStack",
+    // intentional: per-token or per-role colors. A JSON key against its string
+    // value, a log's timestamp against its source, a diff's additions against
+    // its deletions, a syntax highlighter's keywords - the colors are how the
+    // content is read, and one `color` cannot say all of them at once.
+    "CodeEditor",
+    "DiffViewer",
+    "LogViewer",
+    "Markdown",
     // intentional: a palette or a scale, which one `color` cannot express. A
     // pie's slices, a scatter's series and a heat map's gradient carry the
     // data; flattening them to one color leaves a chart that shows nothing.
@@ -62,22 +70,16 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "Timeline",
     "AiStream",
     "Chart",
-    "CodeEditor",
     "ColorPicker",
-    "CsvViewer",
     "DataGrid",
     "DateTimePicker",
     "Diagram",
-    "DiffViewer",
     "DropZone",
     "FilePicker",
     "FileTree",
     "GradientBox",
     "HttpClient",
     "Image",
-    "JsonViewer",
-    "LogViewer",
-    "Markdown",
     "MarkdownPresentation",
     "Presentation",
     "ProcessMonitor",

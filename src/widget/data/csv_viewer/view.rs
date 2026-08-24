@@ -152,7 +152,12 @@ impl View for CsvViewer {
                     } else if is_match {
                         (self.match_fg, self.match_bg)
                     } else {
-                        (self.fg, self.bg)
+                        // The base row takes the stylesheet; selection, matches and the
+                        // per-token colors keep theirs.
+                        (
+                            self.fg.or_else(|| ctx.css_color_if_set()),
+                            self.bg.or_else(|| ctx.css_background_if_set()),
+                        )
                     };
 
                     let display = truncate_to_width(cell_value, width);

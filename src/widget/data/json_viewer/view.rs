@@ -510,7 +510,12 @@ impl View for JsonViewer {
             } else if is_match {
                 (self.match_fg, self.match_bg)
             } else {
-                (self.fg, self.bg)
+                // The base row takes the stylesheet; selection, matches and the
+                // per-token colors keep theirs.
+                (
+                    self.fg.or_else(|| ctx.css_color_if_set()),
+                    self.bg.or_else(|| ctx.css_background_if_set()),
+                )
             };
 
             // Draw key if present
