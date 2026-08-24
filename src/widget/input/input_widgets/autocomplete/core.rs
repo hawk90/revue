@@ -37,7 +37,8 @@ pub struct Autocomplete {
     /// Placeholder text
     placeholder: String,
     /// Input foreground
-    input_fg: Color,
+    /// The color the builder named, if it named one - see #656.
+    input_fg: Option<Color>,
     /// Input background
     input_bg: Color,
     /// Placeholder color
@@ -72,7 +73,7 @@ impl Autocomplete {
             min_chars: 1,
             max_suggestions: 10,
             placeholder: String::new(),
-            input_fg: Color::WHITE,
+            input_fg: None,
             input_bg: EDITOR_BG,
             placeholder_fg: DISABLED_FG,
             dropdown_bg: DARK_BG,
@@ -128,7 +129,7 @@ impl Autocomplete {
 
     /// Set input colors
     pub fn input_style(mut self, fg: Color, bg: Color) -> Self {
-        self.input_fg = fg;
+        self.input_fg = Some(fg);
         self.input_bg = bg;
         self
     }
@@ -333,11 +334,15 @@ impl View for Autocomplete {
         } else {
             &self.value
         };
+        // Resolved once: the builder's color if it named one, else the
+        // stylesheet's, else white.
+        let input_fg = self.input_fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
+
         // The typed value takes `color`; the placeholder keeps its own.
         let text_fg = if self.value.is_empty() {
             self.placeholder_fg
         } else {
-            ctx.color_or(self.input_fg, Color::WHITE)
+            input_fg
         };
 
         for (i, ch) in display_text.chars().enumerate() {
@@ -357,7 +362,7 @@ impl View for Autocomplete {
                 ctx.set(
                     cursor_x,
                     0,
-                    Cell::new(cursor_char).fg(self.input_bg).bg(self.input_fg),
+                    Cell::new(cursor_char).fg(self.input_bg).bg(input_fg),
                 );
             }
         }
@@ -380,7 +385,7 @@ impl View for Autocomplete {
                 let (fg, bg) = if is_selected {
                     (self.selected_fg, self.selected_bg)
                 } else {
-                    (self.input_fg, self.dropdown_bg)
+                    (input_fg, self.dropdown_bg)
                 };
 
                 // Fill background

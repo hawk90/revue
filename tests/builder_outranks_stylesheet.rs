@@ -14,10 +14,11 @@
 use revue::prelude::*;
 use revue::style::Color;
 use revue::testing::PipelineHarness;
+use revue::widget::theme::DARK_GRAY as HANDLE_GRAY;
 use revue::widget::theme::{DARK_GRAY, LIGHT_GRAY, SEPARATOR_COLOR};
 use revue::widget::{
-    crumb, Breadcrumb, Divider, Gauge, Menu, MenuBar, Rating, Skeleton, Slider, StatusBar, Switch,
-    Tag,
+    crumb, pane, Autocomplete, Breadcrumb, Collapsible, Divider, Gauge, Menu, MenuBar, Rating,
+    SearchBar, Skeleton, Slider, Splitter, StatusBar, Switch, Tag,
 };
 
 const RED: Color = Color {
@@ -301,4 +302,96 @@ both_directions!(
     SliderNamed,
     SliderSilent,
     Color::CYAN
+);
+
+// ---------------------------------------------------------------------------
+// Batch 4
+// ---------------------------------------------------------------------------
+
+/// `text_color` paints the *typed* query; an empty bar shows the placeholder in
+/// its own color, so the fixture has to type something.
+fn typed_search_bar(named: bool) -> SearchBar {
+    let mut bar = if named {
+        SearchBar::new().colors(Color::BLACK, DARK_GRAY, Color::WHITE)
+    } else {
+        SearchBar::new()
+    };
+    bar.set_query("term");
+    bar.element_id("w")
+}
+
+case!(
+    SearchBarNamed,
+    SearchBarSilent,
+    typed_search_bar(true),
+    typed_search_bar(false)
+);
+
+case!(
+    AutocompleteNamed,
+    AutocompleteSilent,
+    Autocomplete::new()
+        .suggestions(["alpha", "beta"])
+        .value("al")
+        .input_style(Color::WHITE, Color::BLACK)
+        .element_id("w"),
+    Autocomplete::new()
+        .suggestions(["alpha", "beta"])
+        .value("al")
+        .element_id("w")
+);
+
+case!(
+    CollapsibleNamed,
+    CollapsibleSilent,
+    Collapsible::new("Details")
+        .header_colors(Color::WHITE, None)
+        .element_id("w"),
+    Collapsible::new("Details").element_id("w")
+);
+
+case!(
+    SplitterNamed,
+    SplitterSilent,
+    Splitter::new()
+        .pane(pane("a"))
+        .pane(pane("b"))
+        .color(HANDLE_GRAY)
+        .element_id("w"),
+    Splitter::new()
+        .pane(pane("a"))
+        .pane(pane("b"))
+        .element_id("w")
+);
+
+both_directions!(
+    a_named_search_bar_text_beats_css,
+    a_silent_search_bar_defers_to_css,
+    SearchBarNamed,
+    SearchBarSilent,
+    Color::WHITE
+);
+
+both_directions!(
+    a_named_autocomplete_input_beats_css,
+    a_silent_autocomplete_defers_to_css,
+    AutocompleteNamed,
+    AutocompleteSilent,
+    Color::WHITE
+);
+
+both_directions!(
+    a_named_collapsible_header_beats_css,
+    a_silent_collapsible_defers_to_css,
+    CollapsibleNamed,
+    CollapsibleSilent,
+    Color::WHITE
+);
+
+both_directions!(
+    a_named_splitter_color_beats_css,
+    a_silent_splitter_defers_to_css,
+    SplitterNamed,
+    SplitterSilent,
+    HANDLE_GRAY
 );

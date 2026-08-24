@@ -118,7 +118,8 @@ pub struct Splitter {
     /// Style
     style: SplitterStyle,
     /// Splitter color
-    color: Color,
+    /// The color the builder named, if it named one - see #656.
+    color: Option<Color>,
     /// Active splitter color
     active_color: Color,
     /// Currently active divider (for resizing)
@@ -138,7 +139,7 @@ impl Splitter {
             panes: Vec::new(),
             orientation: SplitOrientation::Horizontal,
             style: SplitterStyle::Line,
-            color: DARK_GRAY,
+            color: None,
             active_color: Color::CYAN,
             active_divider: None,
             focused_pane: 0,
@@ -185,7 +186,7 @@ impl Splitter {
 
     /// Set splitter color
     pub fn color(mut self, color: Color) -> Self {
-        self.color = color;
+        self.color = Some(color);
         self
     }
 
@@ -369,7 +370,7 @@ impl View for Splitter {
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let idle_color = ctx.color_or(self.color, DARK_GRAY);
+        let idle_color = self.color.unwrap_or_else(|| ctx.css_color(DARK_GRAY));
         let areas = self.pane_areas(area);
 
         // Draw splitters between panes

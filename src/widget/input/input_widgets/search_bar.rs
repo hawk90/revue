@@ -54,7 +54,8 @@ pub struct SearchBar {
     /// Colors
     bg_color: Color,
     border_color: Color,
-    text_color: Color,
+    /// The color the builder named, if it named one - see #656.
+    text_color: Option<Color>,
     placeholder_color: Color,
     error_color: Color,
     /// Widget properties
@@ -76,7 +77,7 @@ impl SearchBar {
             icon: '🔍',
             bg_color: Color::rgb(30, 30, 40),
             border_color: Color::rgb(80, 80, 100),
-            text_color: Color::WHITE,
+            text_color: None,
             placeholder_color: Color::rgb(100, 100, 120),
             error_color: Color::RED,
             props: WidgetProps::new(),
@@ -111,7 +112,7 @@ impl SearchBar {
     pub fn colors(mut self, bg: Color, border: Color, text: Color) -> Self {
         self.bg_color = bg;
         self.border_color = border;
-        self.text_color = text;
+        self.text_color = Some(text);
         self
     }
 
@@ -295,7 +296,9 @@ impl Default for SearchBar {
 impl View for SearchBar {
     fn render(&self, ctx: &mut RenderContext) {
         // The query text takes `color`; the placeholder and border keep theirs.
-        let text_color = ctx.color_or(self.text_color, Color::WHITE);
+        let text_color = self
+            .text_color
+            .unwrap_or_else(|| ctx.css_color(Color::WHITE));
         let area = ctx.area;
         let width = self.width.min(area.width);
 
