@@ -35,7 +35,12 @@ pub fn render_combobox(combobox: &Combobox, ctx: &mut crate::widget::traits::Ren
     // Render input field
     // ─────────────────────────────────────────────────────────────────────
 
-    let input_fg = combobox.input_fg.or(combobox.fg);
+    // Builder, then the stylesheet. The placeholder and the selected option
+    // keep their own colors.
+    let input_fg = combobox
+        .input_fg
+        .or(combobox.fg)
+        .or_else(|| ctx.css_color_if_set());
     let input_bg = combobox.input_bg.or(combobox.bg);
 
     // Draw background

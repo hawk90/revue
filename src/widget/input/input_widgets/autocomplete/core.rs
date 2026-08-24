@@ -333,10 +333,11 @@ impl View for Autocomplete {
         } else {
             &self.value
         };
+        // The typed value takes `color`; the placeholder keeps its own.
         let text_fg = if self.value.is_empty() {
             self.placeholder_fg
         } else {
-            self.input_fg
+            ctx.color_or(self.input_fg, Color::WHITE)
         };
 
         for (i, ch) in display_text.chars().enumerate() {

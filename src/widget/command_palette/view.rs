@@ -103,10 +103,11 @@ impl View for CommandPalette {
         } else {
             &self.query
         };
+        // The typed query takes `color`; the empty-state grey keeps its own.
         let text_color = if self.query.is_empty() {
             DISABLED_FG
         } else {
-            Color::WHITE
+            ctx.css_color(Color::WHITE)
         };
 
         let mut dx: u16 = 0;
