@@ -156,6 +156,20 @@ impl RenderContext<'_> {
         }
     }
 
+    /// [`color_or`](Self::color_or) for a background.
+    ///
+    /// A widget that fills its own area - a presentation, a zen-mode wrapper -
+    /// keeps that fill in a plain [`Color`] field, so the same rule applies:
+    /// the builder outranks the stylesheet only by moving the color off the
+    /// widget's initial value.
+    pub fn background_or(&self, builder: Color, initial: Color) -> Color {
+        if builder != initial {
+            builder
+        } else {
+            self.css_background(initial)
+        }
+    }
+
     /// The border color a widget should draw with: `border-color` if the
     /// stylesheet set one, else `color`, else `None`.
     ///

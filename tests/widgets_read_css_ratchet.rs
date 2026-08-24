@@ -79,16 +79,12 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "DateTimePicker",
     "Diagram",
     "HttpClient",
-    "MarkdownPresentation",
-    "Presentation",
     "ProcessMonitor",
-    "RichText",
     "RichTextEditor",
     "Streamline",
     "Terminal",
     "TimeSeries",
     "Waveline",
-    "ZenMode",
 ];
 
 /// Every way a widget can reach its computed style.
@@ -111,6 +107,7 @@ const CSS_READERS: &[&str] = &[
     "css_width",
     "css_height",
     "color_or",
+    "background_or",
     "gap_or",
     "resolve_fg",
     "resolve_bg",

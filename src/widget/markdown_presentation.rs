@@ -96,6 +96,12 @@ pub struct MarkdownPresentation {
     props: WidgetProps,
 }
 
+/// The slide fill and heading color a presentation uses when nothing says
+/// otherwise. Named so `background_or` / `color_or` can tell "the builder set
+/// this" from "the builder said nothing".
+const SLIDE_BG: Color = Color::rgb(20, 20, 30);
+const HEADING_FG: Color = Color::WHITE;
+
 impl MarkdownPresentation {
     /// Create a new markdown presentation
     pub fn new(source: impl Into<String>) -> Self {
@@ -109,11 +115,11 @@ impl MarkdownPresentation {
             scroll_offset: 0,
             use_text_sizing: text_sizing_supported(),
             figlet_font: FigletFont::Block,
-            bg: Color::rgb(20, 20, 30),
+            bg: SLIDE_BG,
             accent: Color::CYAN,
             show_numbers: true,
             show_progress: true,
-            heading_fg: Color::WHITE,
+            heading_fg: HEADING_FG,
             link_fg: Color::CYAN,
             code_fg: Color::YELLOW,
             props: WidgetProps::new(),
@@ -136,11 +142,11 @@ impl MarkdownPresentation {
             scroll_offset: 0,
             use_text_sizing: text_sizing_supported(),
             figlet_font: FigletFont::Block,
-            bg: Color::rgb(20, 20, 30),
+            bg: SLIDE_BG,
             accent: Color::CYAN,
             show_numbers: true,
             show_progress: true,
-            heading_fg: Color::WHITE,
+            heading_fg: HEADING_FG,
             link_fg: Color::CYAN,
             code_fg: Color::YELLOW,
             props: WidgetProps::new(),
@@ -338,7 +344,7 @@ impl MarkdownPresentation {
         let md = Markdown::new(&self.source)
             .link_fg(self.link_fg)
             .code_fg(self.code_fg)
-            .heading_fg(self.heading_fg);
+            .heading_fg(ctx.color_or(self.heading_fg, HEADING_FG));
 
         md.render(ctx);
 
@@ -359,7 +365,7 @@ impl MarkdownPresentation {
 
             if let Some(title) = slide.title() {
                 let bt = BigText::new(title, 1)
-                    .fg(self.heading_fg)
+                    .fg(ctx.color_or(self.heading_fg, HEADING_FG))
                     .figlet_font(self.figlet_font)
                     .force_figlet(!self.use_text_sizing);
 
@@ -443,10 +449,13 @@ impl MarkdownPresentation {
     /// Fill the background with the background color
     fn fill_background(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
+        // The accent, the link color and the code color each say something one
+        // rule cannot; the slide fill and its heading are the base.
+        let bg = ctx.background_or(self.bg, SLIDE_BG);
         for y in 0..area.height {
             for x in 0..area.width {
                 let mut cell = Cell::new(' ');
-                cell.bg = Some(self.bg);
+                cell.bg = Some(bg);
                 ctx.set(x, y, cell);
             }
         }

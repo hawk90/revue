@@ -52,6 +52,12 @@ pub struct ZenMode {
     props: WidgetProps,
 }
 
+/// The fill a zen-mode wrapper uses when nothing says otherwise.
+///
+/// Named so `background_or` can tell "the builder set this" from "the builder
+/// said nothing" - the two are the same value in a plain `Color` field.
+const ZEN_BG: Color = Color::rgb(15, 15, 25);
+
 impl ZenMode {
     /// Create a new zen mode wrapper
     pub fn new(content: impl View + 'static) -> Self {
@@ -60,7 +66,7 @@ impl ZenMode {
             enabled: false,
             padding_x: 4,
             padding_y: 2,
-            bg_color: Color::rgb(15, 15, 25),
+            bg_color: ZEN_BG,
             dim_opacity: 0.0,
             center_vertical: false,
             props: WidgetProps::new(),
@@ -178,10 +184,11 @@ impl View for ZenMode {
 
         if self.enabled {
             // Zen mode: fill background and render content with padding
+            let bg = ctx.background_or(self.bg_color, ZEN_BG);
             for y in 0..area.height {
                 for x in 0..area.width {
                     let mut cell = Cell::new(' ');
-                    cell.bg = Some(self.bg_color);
+                    cell.bg = Some(bg);
                     ctx.set(x, y, cell);
                 }
             }

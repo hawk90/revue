@@ -425,6 +425,12 @@ impl View for RichText {
             return;
         }
 
+        // A span that names its own color keeps it - that is the whole point of
+        // a rich text run. Spans that name none had no color at all until now,
+        // which is exactly the base a `color` rule should reach.
+        let base_fg = ctx.css_color_if_set();
+        let base_bg = ctx.css_background_if_set();
+
         let mut x: u16 = 0;
 
         for span in &self.spans {
@@ -444,8 +450,8 @@ impl View for RichText {
                 let char_width = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as u16;
 
                 let mut cell = Cell::new(ch);
-                cell.fg = span.style.fg;
-                cell.bg = span.style.bg;
+                cell.fg = span.style.fg.or(base_fg);
+                cell.bg = span.style.bg.or(base_bg);
                 cell.modifier = modifier;
                 cell.hyperlink_id = hyperlink_id;
 
@@ -454,7 +460,7 @@ impl View for RichText {
                 // Handle wide characters
                 if char_width == 2 && x + 1 < area.width {
                     let mut cont = Cell::continuation();
-                    cont.bg = span.style.bg;
+                    cont.bg = span.style.bg.or(base_bg);
                     cont.hyperlink_id = hyperlink_id;
                     ctx.set(x + 1, 0, cont);
                 }
