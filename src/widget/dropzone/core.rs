@@ -167,15 +167,22 @@ where
     }
 
     /// Get current border color based on state
-    fn current_border_color(&self) -> Color {
+    ///
+    /// While a drag is over the zone the border says whether the drag would be
+    /// accepted, which no single `border-color` can express - the same reading
+    /// an invalid form field gets. At rest the stylesheet is in charge, with
+    /// the builder on top of it.
+    fn current_border_color(&self, ctx: &RenderContext) -> Color {
         if self.hovered {
             if self.can_accept_current {
                 self.accept_color
             } else {
                 self.reject_color
             }
-        } else {
+        } else if self.border_color != DISABLED_FG {
             self.border_color
+        } else {
+            ctx.css_border_or_text_color().unwrap_or(DISABLED_FG)
         }
     }
 
@@ -196,7 +203,8 @@ where
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let height = area.height.max(self.min_height);
-        let color = self.current_border_color();
+        let color = self.current_border_color(ctx);
+        let resting_text = ctx.css_color(LIGHT_GRAY);
 
         match self.style {
             DropZoneStyle::Solid | DropZoneStyle::Dashed => {
@@ -305,7 +313,7 @@ where
             &self.placeholder
         };
 
-        let text_color = if self.hovered { color } else { LIGHT_GRAY };
+        let text_color = if self.hovered { color } else { resting_text };
 
         ctx.draw_text_clipped(text_x, text_y, display_text, text_color, max_len as u16);
     }

@@ -113,6 +113,10 @@ impl ColorPicker {
         let ox = area.x;
         let oy = area.y;
         let slider_width = (area.width.saturating_sub(6)) as usize;
+        // The channel colors and the preview block *are* the value being
+        // picked, so a rule cannot have them. The chrome around them - labels,
+        // digits - is ordinary text.
+        let chrome = ctx.css_color(Color::WHITE);
 
         for (i, (label, value, color)) in sliders.iter().enumerate() {
             let y = i as u16;
@@ -124,7 +128,7 @@ impl ColorPicker {
 
             // Label
             let mut label_cell = Cell::new(label.chars().next().unwrap_or(' '));
-            label_cell.fg = Some(if is_active { *color } else { Color::WHITE });
+            label_cell.fg = Some(if is_active { *color } else { chrome });
             if is_active {
                 label_cell.modifier |= Modifier::BOLD;
             }
@@ -152,7 +156,7 @@ impl ColorPicker {
             let val_x = ox + 2 + slider_width as u16 + 1;
             for (j, ch) in val_str.chars().enumerate() {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
+                cell.fg = Some(chrome);
                 ctx.set(val_x + j as u16, oy + y, cell);
             }
         }
@@ -161,12 +165,13 @@ impl ColorPicker {
     fn render_hex_mode(&self, ctx: &mut RenderContext, area: Rect) {
         let ox = area.x;
         let oy = area.y;
+        let chrome = ctx.css_color(Color::WHITE);
 
         // Label
         let label = "Hex: #";
         for (i, ch) in label.chars().enumerate() {
             let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::WHITE);
+            cell.fg = Some(chrome);
             ctx.set(ox + i as u16, oy, cell);
         }
 
@@ -204,6 +209,7 @@ impl ColorPicker {
         let oy = area.y;
         let preview_y = oy + area.height.saturating_sub(2);
         let preview_width = 6u16;
+        let chrome = ctx.css_color(Color::WHITE);
 
         // Preview block
         for dy in 0..2 {
@@ -219,7 +225,7 @@ impl ColorPicker {
             let hex = self.hex_string();
             for (i, ch) in hex.chars().enumerate() {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
+                cell.fg = Some(chrome);
                 ctx.set(ox + preview_width + 1 + i as u16, preview_y, cell);
             }
         }
