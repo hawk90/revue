@@ -113,3 +113,26 @@ fn a_list_without_a_highlight_color_falls_back_to_css() {
 
     assert_eq!(h.buffer().get(0, 0).and_then(|c| c.fg), Some(RED));
 }
+
+/// An ordinary day takes `color`; today, weekends and the selection keep their
+/// own, being state a rule cannot address separately.
+#[test]
+fn color_reaches_a_calendars_ordinary_days() {
+    struct CalendarView;
+    impl View for CalendarView {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .child(revue::widget::Calendar::new(2026, 8).element_id("cal"))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "CalendarView"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("root")
+        }
+    }
+
+    let h = draw("#cal { color: #ff0000; }", &CalendarView);
+    assert!(any_fg(&h, RED), "`color` did not reach Calendar");
+}

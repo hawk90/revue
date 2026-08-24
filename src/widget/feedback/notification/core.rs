@@ -323,7 +323,9 @@ impl NotificationCenter {
         is_selected: bool,
     ) {
         let width = self.width;
-        let color = notification.level.color();
+        // The level palette is this widget's own default and a rule naming the
+        // center targets the whole node, so the author outranks it.
+        let color = ctx.css_color(notification.level.color());
         let bg = notification.level.bg_color();
         let border_color = if is_selected { Color::WHITE } else { color };
 

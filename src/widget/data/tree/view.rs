@@ -35,10 +35,15 @@ impl Tree {
                 let is_selected = *visible_index == tree.selection.index;
                 let is_last = i == nodes.len() - 1;
 
+                // Unselected rows take the stylesheet; the selected one keeps
+                // its highlight, which a rule cannot address separately.
                 let (fg, bg) = if is_selected {
                     (tree.selected_fg, tree.selected_bg)
                 } else {
-                    (tree.fg, tree.bg)
+                    (
+                        tree.fg.or_else(|| ctx.css_color_if_set()),
+                        tree.bg.or_else(|| ctx.css_background_if_set()),
+                    )
                 };
 
                 // Draw background if selected
