@@ -49,6 +49,15 @@ pub struct RichTextEditor {
     pub(super) props: crate::widget::traits::WidgetProps,
 }
 
+/// The editor's own fill and text color when nothing says otherwise.
+///
+/// These live here rather than in `new()` because an `Option` filled in at
+/// construction cannot express "the builder said nothing" - the state a
+/// stylesheet needs to reach. The default is applied where the color is
+/// painted instead.
+pub(super) const EDITOR_BG: Color = Color::rgb(30, 30, 46);
+pub(super) const EDITOR_FG: Color = Color::rgb(205, 214, 244);
+
 impl RichTextEditor {
     /// Create a new rich text editor
     pub fn new() -> Self {
@@ -64,8 +73,8 @@ impl RichTextEditor {
             show_toolbar: true,
             focused: true,
             dialog: DialogType::None,
-            bg: Some(Color::rgb(30, 30, 46)),
-            fg: Some(Color::rgb(205, 214, 244)),
+            bg: None,
+            fg: None,
             toolbar_bg: Color::rgb(49, 50, 68),
             toolbar_fg: Color::rgb(166, 173, 200),
             toolbar_active_bg: Color::rgb(137, 180, 250),
