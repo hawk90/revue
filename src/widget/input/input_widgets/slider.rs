@@ -58,7 +58,8 @@ pub struct Slider {
     /// Track color
     track_color: Color,
     /// Fill color
-    fill_color: Color,
+    /// The color the builder named, if it named one - see #656.
+    fill_color: Option<Color>,
     /// Knob color
     knob_color: Color,
     /// Focused state
@@ -89,7 +90,7 @@ impl Slider {
             show_value: true,
             value_format: None,
             track_color: SEPARATOR_COLOR,
-            fill_color: Color::CYAN,
+            fill_color: None,
             knob_color: Color::WHITE,
             focused: false,
             disabled: false,
@@ -170,7 +171,7 @@ impl Slider {
 
     /// Set fill color
     pub fn fill_color(mut self, color: Color) -> Self {
-        self.fill_color = color;
+        self.fill_color = Some(color);
         self
     }
 
@@ -318,7 +319,9 @@ impl Slider {
     fn render_horizontal(&self, ctx: &mut RenderContext) {
         // A single `color` cannot describe every part of this widget, so it
         // sets the primary one and the rest keep their defaults - the filled part of the track is the slider's primary element.
-        let fill_color = ctx.color_or(self.fill_color, Color::CYAN);
+        let fill_color = self
+            .fill_color
+            .unwrap_or_else(|| ctx.css_color(Color::CYAN));
         let area = ctx.area;
         let mut x: u16 = 0;
         let y: u16 = 0;
@@ -469,7 +472,9 @@ impl Slider {
     fn render_vertical(&self, ctx: &mut RenderContext) {
         // A single `color` cannot describe every part of this widget, so it
         // sets the primary one and the rest keep their defaults - the filled part of the track is the slider's primary element.
-        let fill_color = ctx.color_or(self.fill_color, Color::CYAN);
+        let fill_color = self
+            .fill_color
+            .unwrap_or_else(|| ctx.css_color(Color::CYAN));
         let area = ctx.area;
         let x: u16 = 0;
         let track_len = self.length.min(area.height);

@@ -89,7 +89,8 @@ pub struct Rating {
     /// Read-only mode
     readonly: bool,
     /// Filled star color
-    filled_color: Color,
+    /// The color the builder named, if it named one - see #656.
+    filled_color: Option<Color>,
     /// Empty star color
     empty_color: Color,
     /// Hover color
@@ -114,7 +115,7 @@ impl Rating {
             size: RatingSize::Medium,
             half_stars: true,
             readonly: false,
-            filled_color: Color::rgb(255, 200, 0), // Gold
+            filled_color: None,
             empty_color: DISABLED_FG,
             hover_color: Color::rgb(255, 220, 100),
             hover_value: None,
@@ -163,7 +164,7 @@ impl Rating {
 
     /// Set filled star color
     pub fn filled_color(mut self, color: Color) -> Self {
-        self.filled_color = color;
+        self.filled_color = Some(color);
         self
     }
 
@@ -261,7 +262,9 @@ impl View for Rating {
     fn render(&self, ctx: &mut RenderContext) {
         // A single `color` cannot describe every part of this widget, so it
         // sets the primary one and the rest keep their defaults - a filled star is the rating's primary element.
-        let filled_color = ctx.color_or(self.filled_color, Color::rgb(255, 200, 0));
+        let filled_color = self
+            .filled_color
+            .unwrap_or_else(|| ctx.css_color(Color::rgb(255, 200, 0)));
         let area = ctx.area;
         if area.width < 1 || area.height < 1 {
             return;

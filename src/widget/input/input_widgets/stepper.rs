@@ -138,7 +138,8 @@ pub struct Stepper {
     /// Completed color
     completed_color: Color,
     /// Pending color
-    pending_color: Color,
+    /// The color the builder named, if it named one - see #656.
+    pending_color: Option<Color>,
     /// Error color
     error_color: Color,
     /// Connector color
@@ -160,7 +161,7 @@ impl Stepper {
             show_descriptions: true,
             active_color: Color::CYAN,
             completed_color: Color::GREEN,
-            pending_color: DISABLED_FG,
+            pending_color: None,
             error_color: Color::RED,
             connector_color: SEPARATOR_COLOR,
             show_numbers: true,
@@ -352,9 +353,9 @@ impl Stepper {
             StepStatus::Active => self.active_color,
             StepStatus::Completed => self.completed_color,
             StepStatus::Error => self.error_color,
-            StepStatus::Pending | StepStatus::Skipped => {
-                ctx.color_or(self.pending_color, DISABLED_FG)
-            }
+            StepStatus::Pending | StepStatus::Skipped => self
+                .pending_color
+                .unwrap_or_else(|| ctx.css_color(DISABLED_FG)),
         }
     }
 }

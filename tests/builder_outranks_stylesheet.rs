@@ -15,7 +15,10 @@ use revue::prelude::*;
 use revue::style::Color;
 use revue::testing::PipelineHarness;
 use revue::widget::theme::{DARK_GRAY, LIGHT_GRAY, SEPARATOR_COLOR};
-use revue::widget::{crumb, Breadcrumb, Divider, Gauge, Menu, MenuBar, Skeleton, StatusBar, Tag};
+use revue::widget::{
+    crumb, Breadcrumb, Divider, Gauge, Menu, MenuBar, Rating, Skeleton, Slider, StatusBar, Switch,
+    Tag,
+};
 
 const RED: Color = Color {
     r: 255,
@@ -238,4 +241,64 @@ both_directions!(
     MenuBarNamed,
     MenuBarSilent,
     Color::WHITE
+);
+
+// ---------------------------------------------------------------------------
+// Batch 3
+// ---------------------------------------------------------------------------
+
+case!(
+    SwitchNamed,
+    SwitchSilent,
+    Switch::new()
+        .checked(true)
+        .on_color(Color::GREEN)
+        .element_id("w"),
+    Switch::new().checked(true).element_id("w")
+);
+
+case!(
+    RatingNamed,
+    RatingSilent,
+    Rating::new()
+        .max_value(5)
+        .value(3.0)
+        .filled_color(Color::rgb(255, 200, 0))
+        .element_id("w"),
+    Rating::new().max_value(5).value(3.0).element_id("w")
+);
+
+case!(
+    SliderNamed,
+    SliderSilent,
+    Slider::new()
+        .range(0.0, 100.0)
+        .value(50.0)
+        .fill_color(Color::CYAN)
+        .element_id("w"),
+    Slider::new().range(0.0, 100.0).value(50.0).element_id("w")
+);
+
+both_directions!(
+    a_named_switch_on_color_beats_css,
+    a_silent_switch_defers_to_css,
+    SwitchNamed,
+    SwitchSilent,
+    Color::GREEN
+);
+
+both_directions!(
+    a_named_rating_fill_beats_css,
+    a_silent_rating_defers_to_css,
+    RatingNamed,
+    RatingSilent,
+    Color::rgb(255, 200, 0)
+);
+
+both_directions!(
+    a_named_slider_fill_beats_css,
+    a_silent_slider_defers_to_css,
+    SliderNamed,
+    SliderSilent,
+    Color::CYAN
 );
