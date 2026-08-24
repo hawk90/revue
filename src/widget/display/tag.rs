@@ -34,7 +34,12 @@ pub struct Tag {
     /// Label text
     text: String,
     /// Color
-    color: Color,
+    /// The color the builder named, if it named one.
+    ///
+    /// `None` is not the same as `Some(DARK_GRAY)`. While this was a plain
+    /// `Color`, naming the default explicitly was indistinguishable from
+    /// saying nothing, so a stylesheet outranked a builder that had spoken.
+    color: Option<Color>,
     /// Text color (auto-calculated if not set)
     text_color: Option<Color>,
     /// Style
@@ -56,7 +61,7 @@ impl Tag {
     pub fn new(text: impl Into<String>) -> Self {
         Self {
             text: text.into(),
-            color: DARK_GRAY,
+            color: None,
             text_color: None,
             style: TagStyle::Filled,
             closable: false,
@@ -69,7 +74,7 @@ impl Tag {
 
     /// Set color
     pub fn color(mut self, color: Color) -> Self {
-        self.color = color;
+        self.color = Some(color);
         self
     }
 
@@ -123,31 +128,31 @@ impl Tag {
 
     /// Blue color preset
     pub fn blue(mut self) -> Self {
-        self.color = Color::rgb(60, 120, 200);
+        self.color = Some(Color::rgb(60, 120, 200));
         self
     }
 
     /// Green color preset
     pub fn green(mut self) -> Self {
-        self.color = Color::rgb(40, 160, 80);
+        self.color = Some(Color::rgb(40, 160, 80));
         self
     }
 
     /// Red color preset
     pub fn red(mut self) -> Self {
-        self.color = Color::rgb(200, 60, 60);
+        self.color = Some(Color::rgb(200, 60, 60));
         self
     }
 
     /// Yellow color preset
     pub fn yellow(mut self) -> Self {
-        self.color = Color::rgb(200, 180, 40);
+        self.color = Some(Color::rgb(200, 180, 40));
         self
     }
 
     /// Purple color preset
     pub fn purple(mut self) -> Self {
-        self.color = Color::rgb(140, 80, 180);
+        self.color = Some(Color::rgb(140, 80, 180));
         self
     }
 
@@ -155,7 +160,7 @@ impl Tag {
     /// The builder's color if it moved off the initial value, else the
     /// stylesheet's, else the initial - see [`RenderContext::color_or`].
     fn effective_colors(&self, ctx: &RenderContext) -> (Option<Color>, Color) {
-        let color = ctx.color_or(self.color, DARK_GRAY);
+        let color = self.color.unwrap_or_else(|| ctx.css_color(DARK_GRAY));
         let text_color = self
             .text_color
             .unwrap_or_else(|| ctx.css_color(Color::WHITE));
