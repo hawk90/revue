@@ -2,7 +2,6 @@
 
 use super::{BlockType, RichTextEditor};
 use crate::render::{Cell, Modifier};
-use crate::style::Color;
 use crate::widget::traits::RenderContext;
 
 impl RichTextEditor {
@@ -15,8 +14,14 @@ impl RichTextEditor {
         width: u16,
         height: u16,
     ) {
-        let bg = self.bg.unwrap_or(Color::rgb(30, 30, 46));
-        let fg = self.fg.unwrap_or(Color::rgb(205, 214, 244));
+        // The heading, quote and link colors mark up the *content*, so a
+        // `color` rule cannot have them. The body text is the base.
+        let bg = self
+            .bg
+            .unwrap_or_else(|| ctx.css_background(super::core::EDITOR_BG));
+        let fg = self
+            .fg
+            .unwrap_or_else(|| ctx.css_color(super::core::EDITOR_FG));
 
         // Fill editor background
         for row in 0..height {

@@ -388,6 +388,11 @@ impl View for Chart {
             return;
         }
 
+        // The series palette carries the data and each axis has its own color
+        // field; the chrome around them - title and legend labels - is
+        // ordinary text.
+        let chrome = ctx.css_color(Color::WHITE);
+
         // Fill background
         if let Some(bg) = self.bg_color {
             for y in 0..area.height {
@@ -463,7 +468,7 @@ impl View for Chart {
             let mut dx: u16 = 0;
             for ch in title.chars() {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
+                cell.fg = Some(chrome);
                 cell.modifier |= crate::render::Modifier::BOLD;
                 ctx.set(title_x + dx, title_y, cell);
                 dx += char_width(ch) as u16;
@@ -756,7 +761,7 @@ impl View for Chart {
                     let x = legend_x + 3 + dx;
                     if x < legend_x + legend_width - 1 {
                         let mut cell = Cell::new(ch);
-                        cell.fg = Some(Color::WHITE);
+                        cell.fg = Some(chrome);
                         cell.bg = self.bg_color.or(Some(Color::rgb(20, 20, 20)));
                         ctx.set(x, y, cell);
                     }
