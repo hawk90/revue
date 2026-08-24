@@ -64,6 +64,12 @@ pub struct ProcessInfo {
     pub user: String,
 }
 
+/// The process-row text color a monitor uses when nothing says otherwise.
+///
+/// Named so `color_or` can tell "the builder set this" from "the builder said
+/// nothing" - the two are the same value in a plain `Color` field.
+const PROC_FG: Color = Color::WHITE;
+
 /// Color scheme for process monitor
 #[derive(Clone, Debug)]
 pub struct ProcColors {
@@ -97,7 +103,7 @@ impl Default for ProcColors {
             medium_cpu: Color::YELLOW,
             low_cpu: Color::GREEN,
             high_mem: Color::MAGENTA,
-            name: Color::WHITE,
+            name: PROC_FG,
             pid: Color::CYAN,
         }
     }
@@ -452,6 +458,10 @@ impl View for ProcessMonitor {
             return;
         }
 
+        // The CPU and memory thresholds carry the reading - red is why you are
+        // looking - so they stay. The process rows are the base.
+        let row_fg = ctx.color_or(self.colors.name, PROC_FG);
+
         // Stats bar
         self.render_stats(ctx, 0);
 
@@ -514,7 +524,7 @@ impl View for ProcessMonitor {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(self.colors.name);
+                cell.fg = Some(row_fg);
                 cell.bg = bg;
                 ctx.set(nx, y, cell);
                 nx += cw;
@@ -541,7 +551,7 @@ impl View for ProcessMonitor {
             let mem_color = if proc.memory_percent > 10.0 {
                 self.colors.high_mem
             } else {
-                Color::WHITE
+                row_fg
             };
             for (j, ch) in mem_pct_str.chars().enumerate() {
                 let mut cell = Cell::new(ch);
@@ -554,7 +564,7 @@ impl View for ProcessMonitor {
             let mem_str = format!("{:>7}", Self::format_bytes(proc.memory));
             for (j, ch) in mem_str.chars().enumerate() {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
+                cell.fg = Some(row_fg);
                 cell.bg = bg;
                 ctx.set(41 + j as u16, y, cell);
             }
