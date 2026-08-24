@@ -17,7 +17,12 @@ pub struct Breadcrumb {
     /// Separator style
     separator: SeparatorStyle,
     /// Item color
-    item_color: Color,
+    /// The color the builder named, if it named one.
+    ///
+    /// `None` is not the same as `Some(LIGHT_GRAY)`. While this was a plain
+    /// `Color`, naming the default explicitly was indistinguishable from
+    /// saying nothing, so a stylesheet outranked a builder that had spoken.
+    item_color: Option<Color>,
     /// Selected item color
     selected_color: Color,
     /// Separator color
@@ -41,7 +46,7 @@ impl Breadcrumb {
             items: Vec::new(),
             selection: Selection::new(0),
             separator: SeparatorStyle::Chevron,
-            item_color: LIGHT_GRAY,
+            item_color: None,
             selected_color: Color::CYAN,
             separator_color: DARK_GRAY,
             show_home: true,
@@ -88,7 +93,7 @@ impl Breadcrumb {
 
     /// Set item color
     pub fn item_color(mut self, color: Color) -> Self {
-        self.item_color = color;
+        self.item_color = Some(color);
         self
     }
 
@@ -245,7 +250,7 @@ impl View for Breadcrumb {
 
     fn render(&self, ctx: &mut RenderContext) {
         // The trail's own items take `color`; the selected one and the separator keep theirs.
-        let item_color = ctx.color_or(self.item_color, LIGHT_GRAY);
+        let item_color = self.item_color.unwrap_or_else(|| ctx.css_color(LIGHT_GRAY));
         let area = ctx.area;
         if area.width < 3 || area.height < 1 {
             return;

@@ -45,7 +45,12 @@ pub struct Skeleton {
     /// Animate
     animate: bool,
     /// Color
-    color: Color,
+    /// The color the builder named, if it named one.
+    ///
+    /// `None` is not the same as `Some(SEPARATOR_COLOR)`. While this was a plain
+    /// `Color`, naming the default explicitly was indistinguishable from
+    /// saying nothing, so a stylesheet outranked a builder that had spoken.
+    color: Option<Color>,
     /// Wave character
     wave_char: char,
     /// CSS styling properties (id, classes)
@@ -62,7 +67,7 @@ impl Skeleton {
             lines: 3,
             frame: 0,
             animate: true,
-            color: SEPARATOR_COLOR,
+            color: None,
             wave_char: '░',
             props: WidgetProps::new(),
         }
@@ -118,7 +123,7 @@ impl Skeleton {
 
     /// Set color
     pub fn color(mut self, color: Color) -> Self {
-        self.color = color;
+        self.color = Some(color);
         self
     }
 
@@ -156,7 +161,7 @@ impl View for Skeleton {
     fn render(&self, ctx: &mut RenderContext) {
         // The builder can only outrank the stylesheet by moving off the
         // initial value - see `RenderContext::color_or`.
-        let color = ctx.color_or(self.color, SEPARATOR_COLOR);
+        let color = self.color.unwrap_or_else(|| ctx.css_color(SEPARATOR_COLOR));
         let area = ctx.area;
         let ch = self.skeleton_char();
 

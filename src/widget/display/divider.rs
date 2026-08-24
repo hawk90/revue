@@ -49,7 +49,12 @@ pub struct Divider {
     /// Style
     style: DividerStyle,
     /// Color
-    color: Color,
+    /// The color the builder named, if it named one.
+    ///
+    /// `None` is not the same as `Some(DARK_GRAY)`. While this was a plain
+    /// `Color`, naming the default explicitly was indistinguishable from
+    /// saying nothing, so a stylesheet outranked a builder that had spoken.
+    color: Option<Color>,
     /// Label (centered in the divider)
     label: Option<String>,
     /// Label color
@@ -68,7 +73,7 @@ impl Divider {
         Self {
             orientation: Orientation::Horizontal,
             style: DividerStyle::Solid,
-            color: DARK_GRAY,
+            color: None,
             label: None,
             label_color: None,
             margin: 0,
@@ -99,7 +104,7 @@ impl Divider {
 
     /// Set color
     pub fn color(mut self, color: Color) -> Self {
-        self.color = color;
+        self.color = Some(color);
         self
     }
 
@@ -182,7 +187,7 @@ impl View for Divider {
         let line_char = self.line_char();
         // The builder can only outrank the stylesheet by moving off the initial
         // value - see [`RenderContext::color_or`].
-        let color = ctx.color_or(self.color, DARK_GRAY);
+        let color = self.color.unwrap_or_else(|| ctx.css_color(DARK_GRAY));
 
         match self.orientation {
             Orientation::Horizontal => {
