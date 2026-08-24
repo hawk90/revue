@@ -10,7 +10,7 @@
 use revue::prelude::*;
 use revue::style::Color;
 use revue::testing::PipelineHarness;
-use revue::widget::{Rating, Slider, Switch};
+use revue::widget::{Rating, SearchBar, Slider, Step, Stepper, Switch};
 
 const RED: Color = Color {
     r: 255,
@@ -91,5 +91,48 @@ fn a_sliders_other_parts_keep_their_colors() {
     assert!(
         distinct.len() > 1,
         "every part of the slider became the same color: {distinct:?}"
+    );
+}
+
+/// `text_color` paints the *typed query*, not the placeholder - the
+/// placeholder keeps its own grey. `set_query` is a mutable setter rather than
+/// a builder, so the widget is built in `render`.
+struct SearchBarView;
+impl View for SearchBarView {
+    fn render(&self, ctx: &mut RenderContext) {
+        let mut bar = SearchBar::new().element_id("w");
+        bar.set_query("hello");
+        vstack().child(bar).render(ctx);
+    }
+    fn widget_type(&self) -> &'static str {
+        "SearchBarView"
+    }
+    fn id(&self) -> Option<&str> {
+        Some("root")
+    }
+}
+wrap!(
+    StepperView,
+    Stepper::new()
+        .step(Step::new("one"))
+        .step(Step::new("two"))
+        .element_id("w")
+);
+
+#[test]
+fn color_reaches_a_search_bars_text() {
+    let h = draw("#w { color: #ff0000; }", &SearchBarView);
+    assert!(any_fg(&h, RED), "`color` did not reach SearchBar");
+}
+
+/// `Stepper` picks its color in a helper with no `ctx`, so the resolution had to
+/// be threaded into `step_color` rather than dropped into a render function
+/// that never uses it.
+#[test]
+fn color_reaches_a_steppers_pending_steps() {
+    let h = draw("#w { color: #ff0000; }", &StepperView);
+    assert!(
+        any_fg(&h, RED),
+        "`color` did not reach Stepper's pending steps"
     );
 }
