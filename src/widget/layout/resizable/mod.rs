@@ -417,7 +417,9 @@ where
         } else if self.hovered_handle.is_some() {
             LIGHT_GRAY
         } else {
-            self.handle_color
+            // The idle handle takes `color`; being dragged or hovered are
+            // states a rule cannot address separately, so those keep theirs.
+            ctx.color_or(self.handle_color, DISABLED_FG)
         };
 
         let draw_width = self.width.min(ctx.area.width);
@@ -498,7 +500,9 @@ where
         let color = if self.resizing {
             self.active_color
         } else {
-            self.handle_color
+            // The idle handle takes `color`; being dragged or hovered are
+            // states a rule cannot address separately, so those keep theirs.
+            ctx.color_or(self.handle_color, DISABLED_FG)
         };
 
         let corners = [
