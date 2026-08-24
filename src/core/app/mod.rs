@@ -122,7 +122,7 @@ pub use snapshot::{snapshot, Snapshot, SnapshotConfig, SnapshotResult};
 
 use crate::constants::FRAME_DURATION_60FPS;
 use crate::dom::DomRenderer;
-use crate::event::{Event, KeyEvent, MouseButton, MouseEventKind};
+use crate::event::{Event, Key, KeyEvent, MouseButton, MouseEventKind};
 use crate::layout::LayoutEngine;
 use crate::render::{Buffer, Terminal};
 use crate::style::{StyleSheet, TransitionManager};
@@ -144,6 +144,15 @@ pub type TickHandler<V> = Box<dyn FnMut(&mut V, Duration) -> bool>;
 #[inline]
 fn is_quit_key(key: &KeyEvent) -> bool {
     key.is_ctrl_c()
+}
+
+/// Is this the key that moves focus?
+///
+/// Terminals disagree about Shift+Tab: most send `BackTab` as its own key,
+/// some send `Tab` with the shift flag. Both count.
+#[inline]
+fn is_tab_key(key: &KeyEvent) -> bool {
+    !key.ctrl && !key.alt && matches!(key.key, Key::Tab | Key::BackTab)
 }
 
 /// Main application struct
@@ -214,6 +223,9 @@ pub struct App {
     /// Reconcile the DOM against the view on every frame (opt-in, see
     /// [`AppBuilder::incremental_dom`](crate::app::AppBuilder::incremental_dom))
     incremental_dom: bool,
+    /// Tab moves `:focus` between focusable nodes (see
+    /// [`AppBuilder::tab_navigation`](crate::app::AppBuilder::tab_navigation))
+    tab_navigation: bool,
     /// Plugin registry
     plugins: crate::plugin::PluginRegistry,
     /// Whether devtools are enabled for this app instance
@@ -250,6 +262,7 @@ impl App {
             needs_layout_rebuild: true, // Initial render needs full layout build
             needs_dom_rebuild: true,  // Initial render needs DOM root creation
             incremental_dom: false,   // Opt-in until the benches say otherwise
+            tab_navigation: false,    // Opt-in: Tab may already be the app's key
             plugins,
             devtools_enabled,
             #[cfg(feature = "hot-reload")]
@@ -284,6 +297,7 @@ impl App {
             needs_layout_rebuild: true,
             needs_dom_rebuild: true,
             incremental_dom: false,
+            tab_navigation: false,
             plugins,
             devtools_enabled,
             hot_reload,
@@ -294,6 +308,11 @@ impl App {
     /// Enable per-frame DOM reconciliation.
     pub(crate) fn set_incremental_dom(&mut self, enabled: bool) {
         self.incremental_dom = enabled;
+    }
+
+    /// Let Tab and Shift+Tab move focus.
+    pub(crate) fn set_tab_navigation(&mut self, enabled: bool) {
+        self.tab_navigation = enabled;
     }
 
     /// Build the DOM from the render traversal instead of `View::children`.
@@ -484,6 +503,11 @@ impl App {
                 self.needs_layout_rebuild = true; // Resize requires full layout rebuild
                 should_draw = true;
             }
+            Event::Key(key) if self.tab_navigation && is_tab_key(&key) => {
+                if self.track_tab_focus(&key) {
+                    should_draw = true;
+                }
+            }
             Event::Mouse(ref mouse) => {
                 if self.track_hover(mouse.x, mouse.y) {
                     should_draw = true;
@@ -660,6 +684,20 @@ impl App {
         match self.dom.focus_target_at(x, y) {
             Some(target) => self.dom.set_focus_node(Some(target)),
             None => false,
+        }
+    }
+
+    /// Move focus to the next or previous focusable node.
+    ///
+    /// Returns `true` if focus moved. Terminals send Shift+Tab as its own key
+    /// (`BackTab`) rather than Tab with a shift flag, but some send the flag
+    /// instead, so both are read as backwards.
+    fn track_tab_focus(&mut self, key: &KeyEvent) -> bool {
+        let backwards = key.key == Key::BackTab || key.shift;
+        if backwards {
+            self.dom.focus_prev()
+        } else {
+            self.dom.focus_next()
         }
     }
 

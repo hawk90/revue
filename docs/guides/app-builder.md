@@ -190,6 +190,34 @@ which is what a running application used to do — see
 Costs 1.5–2.8x per frame. See
 [Performance › DOM from the render traversal](performance.md#dom-from-the-render-traversal).
 
+### tab_navigation(enabled)
+
+Lets Tab and Shift+Tab move `:focus` between focusable widgets.
+
+```rust
+App::builder()
+    .dom_from_render(true)
+    .tab_navigation(true)
+```
+
+**Default:** `false`. Until this existed the only thing that produced focus in a
+running application was a click, so an application driven from the keyboard had
+no `:focus` at all and every rule naming it was dead.
+
+Tab walks the DOM in **document order** — the order the reader meets things,
+not the order widgets were registered — skipping `disabled` nodes and wrapping
+at both ends. A widget that moves in the view moves in the tab ring with it.
+Shift+Tab goes backwards; both the `BackTab` key most terminals send and `Tab`
+with a shift flag are read that way.
+
+It is off by default because Tab is a key an existing application may already
+handle itself, and the runtime taking it would be a silent behavior change. The
+application's own handler runs first either way.
+
+This sets `NodeState.focused` and nothing else. Widgets still read their own
+`focused` field, so no widget *behavior* changes — what changes is that
+`:focus` rules match without a mouse.
+
 ### css_layout(enabled)
 
 Lets CSS box properties override the geometry a container computed.

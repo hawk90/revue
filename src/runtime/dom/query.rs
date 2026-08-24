@@ -500,6 +500,37 @@ impl DomTree {
         None
     }
 
+    /// Every node that can take focus, in document order.
+    ///
+    /// Document order is what Tab follows - the order the reader meets things,
+    /// not the order they were registered - so this is a pre-order walk, the
+    /// same walk the paint pass makes. A widget that moves in the view moves in
+    /// the tab ring with it, for free.
+    ///
+    /// `disabled` nodes are left out, matching
+    /// [`focus_target`](Self::focus_target) and every browser: a disabled
+    /// control is not in the ring at all, rather than being a stop that does
+    /// nothing.
+    pub fn focusable_in_order(&self) -> Vec<DomId> {
+        let mut out = Vec::new();
+        if let Some(root) = self.root_id() {
+            self.collect_focusable(root, &mut out);
+        }
+        out
+    }
+
+    fn collect_focusable(&self, id: DomId, out: &mut Vec<DomId>) {
+        let Some(node) = self.nodes.get(&id) else {
+            return;
+        };
+        if node.meta.focusable && !node.state.disabled {
+            out.push(id);
+        }
+        for &child in &node.children {
+            self.collect_focusable(child, out);
+        }
+    }
+
     /// Tell every ancestor of `id` that something below it needs recomputing.
     ///
     /// Call this whenever a node's computed style is invalidated. The style walk

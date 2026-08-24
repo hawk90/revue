@@ -1018,17 +1018,32 @@ match screen.get() {
 
 ### Focus Management
 
-```rust
-// Auto focus order (Tab / Shift+Tab)
-vbox().children([
-    input().focus_order(1),
-    input().focus_order(2),
-    button("Submit").focus_order(3),
-])
+Tab order is **document order** — the order the reader meets things. There is no
+`focus_order` to assign; move the widget and it moves in the ring.
 
-// Manual focus
-focus_manager.focus("input-1");
+```rust
+// Opt in: Tab and Shift+Tab move `:focus`
+App::builder()
+    .dom_from_render(true)
+    .tab_navigation(true)
 ```
+
+```rust
+vstack()
+    .child(Input::new().element_id("name"))
+    .child(Input::new().element_id("email"))
+    .child(Button::new("Submit").element_id("submit"))
+```
+
+```css
+#name:focus { border-color: cyan; }
+```
+
+`disabled` widgets are left out of the ring entirely, and a left click focuses
+the nearest enclosing focusable widget. Both need `dom_from_render` — without it
+no node below the root is associated with an area and neither `:focus` nor
+`:hover` matches anything. See
+[App builder › tab_navigation](guides/app-builder.md#tab_navigationenabled).
 
 ### Layers (z-index)
 

@@ -94,6 +94,16 @@ impl PipelineHarness {
         self
     }
 
+    /// Mirrors [`AppBuilder::tab_navigation`](crate::app::AppBuilder::tab_navigation),
+    /// which is off by default.
+    ///
+    /// With it on, sending a `Tab` key through [`send`](Self::send) moves
+    /// `:focus` exactly as the event loop does.
+    pub fn tab_navigation(mut self, enabled: bool) -> Self {
+        self.app.set_tab_navigation(enabled);
+        self
+    }
+
     fn build(app: App, width: u16, height: u16) -> Self {
         Self {
             app,
@@ -194,9 +204,9 @@ impl PipelineHarness {
 
     /// Set the focused node by element id (`None` clears focus).
     ///
-    /// Mirrors what the runtime will do once `set_focus` is wired into the
-    /// event path in Phase 2. Until then this is the only way to observe
-    /// `:focus` behavior in a test.
+    /// Names a node directly. To exercise the paths the runtime actually uses,
+    /// click through [`send`](Self::send) with a mouse event, or send a `Tab`
+    /// key with [`tab_navigation`](Self::tab_navigation) on.
     pub fn focus(&mut self, element_id: Option<&str>) -> &mut Self {
         self.app.dom_renderer().set_focus(element_id);
         self

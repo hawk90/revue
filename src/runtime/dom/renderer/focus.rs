@@ -27,6 +27,48 @@ impl DomRenderer {
         true
     }
 
+    /// Move focus to the next focusable node in document order.
+    ///
+    /// Wraps at the end, and starts at the first node when nothing is focused -
+    /// the behavior Tab has everywhere. Returns `true` if focus moved, which
+    /// is when the frame has to be redrawn.
+    pub fn focus_next(&mut self) -> bool {
+        self.step_focus(1)
+    }
+
+    /// [`focus_next`](Self::focus_next) backwards, for Shift+Tab.
+    pub fn focus_prev(&mut self) -> bool {
+        self.step_focus(-1)
+    }
+
+    /// The shared body of [`focus_next`] and [`focus_prev`].
+    ///
+    /// The ring is recomputed on each step rather than cached. It has to be:
+    /// reconciliation can add, remove or reorder nodes between two key presses,
+    /// and a cached ring would then step to a node that is no longer there.
+    ///
+    /// If the focused node has left the ring - it was removed, or it became
+    /// disabled - the step restarts from the end it came from, since there is
+    /// no "next" relative to a node that is not in the list.
+    fn step_focus(&mut self, delta: isize) -> bool {
+        let ring = self.tree.focusable_in_order();
+        if ring.is_empty() {
+            return false;
+        }
+        let next = match self
+            .focused
+            .and_then(|id| ring.iter().position(|&n| n == id))
+        {
+            Some(current) => {
+                let len = ring.len() as isize;
+                ring[(((current as isize + delta) % len + len) % len) as usize]
+            }
+            None if delta >= 0 => ring[0],
+            None => ring[ring.len() - 1],
+        };
+        self.set_focus_node(Some(next))
+    }
+
     /// Set hovered node by element ID
     pub fn set_hover(&mut self, element_id: Option<&str>) {
         let id = element_id.and_then(|id| self.tree.get_by_id(id).map(|node| node.id));
