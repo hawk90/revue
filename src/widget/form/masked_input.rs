@@ -644,7 +644,10 @@ impl View for MaskedInput {
                 text = text.fg(PLACEHOLDER_FG);
             } else if self.disabled {
                 text = text.fg(DISABLED_FG);
-            } else if let Some(fg) = self.fg {
+            } else if let Some(fg) = self.fg.or_else(|| ctx.css_color_if_set()) {
+                // The typed value takes `color`. The placeholder, the disabled
+                // grey and the strength scale keep theirs - the scale in
+                // particular runs red to green, and one `color` cannot say that.
                 text = text.fg(fg);
             }
             hstack().child(text)
