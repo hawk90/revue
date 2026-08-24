@@ -74,13 +74,9 @@ const NOT_YET_READING_CSS: &[&str] = &[
     // node, so a rule on the timeline would flatten them with no way back.
     "Timeline",
     "Chart",
-    "DataGrid",
     "DateTimePicker",
     "Diagram",
-    "ProcessMonitor",
     "RichTextEditor",
-    "TimeSeries",
-    "Waveline",
 ];
 
 /// Every way a widget can reach its computed style.

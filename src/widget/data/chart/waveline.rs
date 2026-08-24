@@ -267,11 +267,16 @@ impl View for Waveline {
             }
         }
 
+        // The waveform's own colors are computed per sample from the amplitude,
+        // so there is no single color for a rule to set - the same reason
+        // `GradientBox` is left alone. The label is ordinary text.
+        let chrome = ctx.css_color(Color::WHITE);
+
         // Label
         if let Some(ref label) = self.label {
             for (i, ch) in label.chars().enumerate() {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
+                cell.fg = Some(chrome);
                 cell.bg = self.bg_color;
                 ctx.set(i as u16, chart_y, cell);
             }

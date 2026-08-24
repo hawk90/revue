@@ -482,6 +482,10 @@ impl DataGrid {
             super::types::Alignment::Right => pos.x + pos.width.saturating_sub(dw + 1),
         };
 
+        // A selected row keeps its highlight - the same reading a selected
+        // table row gets - so `color` reaches the ordinary cell.
+        let value_fg = ctx.css_color(Color::WHITE);
+
         let mut dx: u16 = 0;
         for ch in truncated.chars() {
             let cw = char_width(ch) as u16;
@@ -492,7 +496,7 @@ impl DataGrid {
             cell.fg = Some(if is_selected {
                 self.colors.selected_fg
             } else {
-                Color::WHITE
+                value_fg
             });
             cell.bg = Some(row_bg);
             ctx.set(start_x + dx, pos.y, cell);
