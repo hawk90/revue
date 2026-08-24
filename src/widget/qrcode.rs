@@ -200,10 +200,14 @@ impl QrCodeWidget {
         let height = matrix.len();
         let width = if height > 0 { matrix[0].len() } else { 0 };
 
+        // The modules take `color` and `background`. A QR code needs contrast to
+        // scan, so a rule that changes these is the caller's to get right.
+        let module = ctx.color_or(self.fg, Color::BLACK);
+        let quiet = ctx.css_background(self.bg);
         let (fg, bg) = if self.inverted {
-            (self.bg, self.fg)
+            (quiet, module)
         } else {
-            (self.fg, self.bg)
+            (module, quiet)
         };
 
         // Two rows of QR = one terminal row
