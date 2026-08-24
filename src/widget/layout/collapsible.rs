@@ -43,7 +43,8 @@ pub struct Collapsible {
     /// Icon when expanded
     expanded_icon: char,
     /// Header foreground color
-    header_fg: Color,
+    /// The color the builder named, if it named one - see #656.
+    header_fg: Option<Color>,
     /// Header background color (optional)
     header_bg: Option<Color>,
     /// Content foreground color
@@ -77,7 +78,7 @@ impl Collapsible {
             expanded: false,
             collapsed_icon: '▶',
             expanded_icon: '▼',
-            header_fg: Color::WHITE,
+            header_fg: None,
             header_bg: None,
             content_fg: SECONDARY_TEXT,
             content_bg: None,
@@ -125,7 +126,7 @@ impl Collapsible {
 
     /// Set header colors
     pub fn header_colors(mut self, fg: Color, bg: Option<Color>) -> Self {
-        self.header_fg = fg;
+        self.header_fg = Some(fg);
         self.header_bg = bg;
         self
     }
@@ -300,7 +301,9 @@ impl View for Collapsible {
 
     fn render(&self, ctx: &mut RenderContext) {
         // The header takes `color`; the content and border keep their own.
-        let header_fg = ctx.color_or(self.header_fg, Color::WHITE);
+        let header_fg = self
+            .header_fg
+            .unwrap_or_else(|| ctx.css_color(Color::WHITE));
         let area = self.apply_constraints(ctx.area);
         if area.width < 4 || area.height < 1 {
             return;
