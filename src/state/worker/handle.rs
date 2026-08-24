@@ -675,8 +675,6 @@ mod tests {
     #[test]
     #[cfg(not(feature = "async"))]
     fn test_polling_executor_no_async() {
-        use std::future;
-
         // Test basic future polling with the raw waker
         let handle = WorkerHandle::spawn(async {
             // Simple async block that returns a value
@@ -691,8 +689,6 @@ mod tests {
     #[test]
     #[cfg(not(feature = "async"))]
     fn test_polling_executor_with_async_fn() {
-        use std::future;
-
         // Test async function execution
         async fn async_add(a: i32, b: i32) -> i32 {
             a + b
@@ -707,8 +703,6 @@ mod tests {
     #[test]
     #[cfg(not(feature = "async"))]
     fn test_polling_executor_panic_handling() {
-        use std::future;
-
         // Test that panics in async code cause thread termination
         // Note: The polling executor runs in a thread, so panics will
         // terminate that thread. The handle should detect this as a failure.
@@ -736,8 +730,6 @@ mod tests {
     #[test]
     #[cfg(not(feature = "async"))]
     fn test_polling_executor_cancellation() {
-        use std::future;
-
         // Test cancellation of polling executor tasks
         let handle = WorkerHandle::spawn(async {
             // This would run forever if not cancelled
@@ -755,8 +747,6 @@ mod tests {
     #[test]
     #[cfg(not(feature = "async"))]
     fn test_polling_executor_multiple_awaits() {
-        use std::future;
-
         // Test future with multiple await points
         async fn multi_await() -> i32 {
             let mut sum = 0;
@@ -777,8 +767,6 @@ mod tests {
     #[test]
     #[cfg(not(feature = "async"))]
     fn test_polling_executor_state_transitions() {
-        use std::future;
-
         let handle = WorkerHandle::spawn(async { 42 });
 
         // Should start in Pending or Running

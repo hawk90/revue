@@ -1,3 +1,7 @@
+// Only the `async` runner below names `Pilot`, and that runner is gated. The
+// import has to carry the same gate or a `--no-default-features` build warns -
+// which `-D warnings` makes an error, and CI never built that combination.
+#[cfg(feature = "async")]
 use super::core::Pilot;
 
 /// Async test runner for Pilot
