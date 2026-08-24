@@ -267,7 +267,7 @@ impl Gauge {
     }
 
     /// Get current display color based on thresholds
-    fn current_color(&self) -> Color {
+    fn current_color(&self, ctx: &RenderContext) -> Color {
         if let Some(critical) = self.critical_threshold {
             if self.value >= critical {
                 return self.critical_color;
@@ -278,7 +278,10 @@ impl Gauge {
                 return self.warning_color;
             }
         }
-        self.fill_color
+        // The normal fill takes `color`; the warning and critical thresholds
+        // keep theirs - they are the reading, and a rule cannot address them
+        // separately.
+        ctx.color_or(self.fill_color, Color::GREEN)
     }
 
     /// Get label text
@@ -308,7 +311,7 @@ impl Gauge {
         let area = ctx.area;
         let width = self.width.min(area.width);
         let filled = (self.value * width as f64).round() as u16;
-        let color = self.current_color();
+        let color = self.current_color(ctx);
 
         // Draw bar
         for x in 0..width {
@@ -360,7 +363,7 @@ impl Gauge {
         let width = self.width.min(area.width).max(6);
         let inner_width = width - 3; // Account for borders and cap
         let filled = (self.value * inner_width as f64).round() as u16;
-        let color = self.current_color();
+        let color = self.current_color(ctx);
 
         // Battery body
         let mut left = Cell::new('[');
@@ -390,7 +393,7 @@ impl Gauge {
         let area = ctx.area;
         let height = self.height.min(area.height).max(3);
         let filled = (self.value * (height - 1) as f64).round() as u16;
-        let color = self.current_color();
+        let color = self.current_color(ctx);
 
         // Bulb at bottom
         let mut bulb = Cell::new('●');
@@ -415,7 +418,7 @@ impl Gauge {
     /// Render arc style
     fn render_arc(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let color = self.current_color();
+        let color = self.current_color(ctx);
 
         // Simple text-based arc: ╭───────╮
         //                        │ 75%   │
@@ -489,7 +492,7 @@ impl Gauge {
 
     /// Render circle style (text-based)
     fn render_circle(&self, ctx: &mut RenderContext) {
-        let color = self.current_color();
+        let color = self.current_color(ctx);
 
         // Braille-based circle approximation
         // ⠀⢀⣴⣾⣿⣷⣦⡀⠀
@@ -535,7 +538,7 @@ impl Gauge {
         let area = ctx.area;
         let height = self.height.min(area.height);
         let filled = (self.value * height as f64).round() as u16;
-        let color = self.current_color();
+        let color = self.current_color(ctx);
 
         for y in 0..height {
             let from_bottom = height - 1 - y;
@@ -556,7 +559,7 @@ impl Gauge {
         let area = ctx.area;
         let segments = self.segments.min(area.width / 2);
         let filled = (self.value * segments as f64).round() as u16;
-        let color = self.current_color();
+        let color = self.current_color(ctx);
 
         for i in 0..segments {
             let ch = if i < filled { '▰' } else { '▱' };
@@ -572,7 +575,7 @@ impl Gauge {
         let area = ctx.area;
         let dots = self.segments.min(area.width);
         let filled = (self.value * dots as f64).round() as u16;
-        let color = self.current_color();
+        let color = self.current_color(ctx);
 
         for i in 0..dots {
             let ch = if i < filled { '●' } else { '○' };

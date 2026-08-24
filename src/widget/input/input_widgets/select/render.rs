@@ -42,9 +42,11 @@ impl View for Select {
         } else if self.focused {
             self.fg.or(Some(Color::CYAN))
         } else {
-            self.fg
+            // Unfocused and enabled is the base; disabled and focused keep
+            // their own.
+            self.fg.or_else(|| ctx.css_color_if_set())
         };
-        let bg = self.bg;
+        let bg = self.bg.or_else(|| ctx.css_background_if_set());
 
         // Render the closed/header row
         let display_text = if self.open && self.searchable && !self.query.is_empty() {
