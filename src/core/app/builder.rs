@@ -23,6 +23,7 @@ pub struct AppBuilder {
     size: Option<(u16, u16)>,
     /// Reconcile the DOM against the view on every frame
     incremental_dom: bool,
+    tab_navigation: bool,
     /// Build the DOM from the render traversal instead of `View::children`
     dom_from_render: bool,
     css_layout: bool,
@@ -40,6 +41,7 @@ impl AppBuilder {
             plugins: PluginRegistry::new(),
             size: None,
             incremental_dom: false,
+            tab_navigation: false,
             dom_from_render: false,
             css_layout: false,
         }
@@ -130,6 +132,35 @@ impl AppBuilder {
     /// ```
     pub fn incremental_dom(mut self, enabled: bool) -> Self {
         self.incremental_dom = enabled;
+        self
+    }
+
+    /// Let Tab and Shift+Tab move `:focus` between focusable widgets.
+    ///
+    /// **Off by default.** Until now the only thing that produced focus was a
+    /// click, so an app with no mouse had no `:focus` at all and every rule
+    /// naming it was dead. This walks the DOM in document order - the order the
+    /// reader meets things - skipping `disabled` nodes and wrapping at both
+    /// ends.
+    ///
+    /// It is off by default because Tab is a key an existing app may already
+    /// handle itself; the runtime taking it would be a silent behaviour change.
+    /// The app's own handler runs first either way.
+    ///
+    /// This sets `NodeState.focused` and nothing else. Widgets still read their
+    /// own `focused` field, so no widget *behaviour* changes - what changes is
+    /// that `:focus` rules finally match without a mouse.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let app = App::builder()
+    ///     .dom_from_render(true)
+    ///     .tab_navigation(true)
+    ///     .build();
+    /// ```
+    pub fn tab_navigation(mut self, enabled: bool) -> Self {
+        self.tab_navigation = enabled;
         self
     }
 
@@ -276,6 +307,7 @@ impl AppBuilder {
         };
 
         let incremental_dom = self.incremental_dom;
+        let tab_navigation = self.tab_navigation;
         let dom_from_render = self.dom_from_render;
         let css_layout = self.css_layout;
 
@@ -300,6 +332,7 @@ impl AppBuilder {
         );
 
         app.set_incremental_dom(incremental_dom);
+        app.set_tab_navigation(tab_navigation);
         app.set_dom_from_render(dom_from_render);
         app.set_css_layout(css_layout);
         app
