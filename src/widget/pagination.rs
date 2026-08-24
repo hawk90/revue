@@ -47,7 +47,8 @@ pub struct Pagination {
     /// Active color
     active_color: Color,
     /// Inactive color
-    inactive_color: Color,
+    /// The color the builder named, if it named one - see #656.
+    inactive_color: Option<Color>,
     /// Is focused
     focused: bool,
     /// CSS styling properties (id, classes)
@@ -65,7 +66,7 @@ impl Pagination {
             show_arrows: true,
             show_edges: true,
             active_color: Color::rgb(60, 120, 200),
-            inactive_color: SUBTLE_GRAY,
+            inactive_color: None,
             focused: false,
             props: WidgetProps::new(),
         }
@@ -127,7 +128,7 @@ impl Pagination {
 
     /// Set inactive color
     pub fn inactive_color(mut self, color: Color) -> Self {
-        self.inactive_color = color;
+        self.inactive_color = Some(color);
         self
     }
 
@@ -227,7 +228,7 @@ impl Pagination {
     }
 
     #[doc(hidden)]
-    pub fn get_inactive_color(&self) -> Color {
+    pub fn get_inactive_color(&self) -> Option<Color> {
         self.inactive_color
     }
 
@@ -263,7 +264,9 @@ impl View for Pagination {
 
     fn render(&self, ctx: &mut RenderContext) {
         // Inactive page numbers take `color`; the active one keeps its highlight.
-        let inactive_color = ctx.color_or(self.inactive_color, SUBTLE_GRAY);
+        let inactive_color = self
+            .inactive_color
+            .unwrap_or_else(|| ctx.css_color(SUBTLE_GRAY));
         let area = ctx.area;
         let mut x: u16 = 0;
 

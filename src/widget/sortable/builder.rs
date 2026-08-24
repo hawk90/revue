@@ -22,7 +22,7 @@ impl SortableList {
 
     /// Set item color
     pub fn item_color(mut self, color: Color) -> Self {
-        self.item_color = color;
+        self.item_color = Some(color);
         self
     }
 
