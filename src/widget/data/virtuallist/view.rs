@@ -67,7 +67,10 @@ impl<T: ToString + Clone> View for VirtualList<T> {
                     } else {
                         // An ordinary item takes `color`; the selected one
                         // keeps its highlight.
-                        cell.fg = Some(ctx.color_or(this.item_fg, crate::style::Color::WHITE));
+                        cell.fg = Some(
+                            this.item_fg
+                                .unwrap_or_else(|| ctx.css_color(crate::style::Color::WHITE)),
+                        );
                     }
 
                     ctx.set(x as u16, y, cell);

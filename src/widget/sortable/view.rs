@@ -33,7 +33,8 @@ impl View for SortableList {
             } else {
                 // An ordinary item takes `color`; dragging and selection keep
                 // their own.
-                ctx.color_or(self.item_color, crate::widget::theme::SECONDARY_TEXT)
+                self.item_color
+                    .unwrap_or_else(|| ctx.css_color(crate::widget::theme::SECONDARY_TEXT))
             };
 
             // Draw drop indicator

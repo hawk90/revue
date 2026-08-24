@@ -16,9 +16,11 @@ use revue::style::Color;
 use revue::testing::PipelineHarness;
 use revue::widget::theme::DARK_GRAY as HANDLE_GRAY;
 use revue::widget::theme::{DARK_GRAY, LIGHT_GRAY, SEPARATOR_COLOR};
+use revue::widget::theme::{DISABLED_FG, SECONDARY_TEXT, SUBTLE_GRAY};
 use revue::widget::{
-    crumb, pane, Autocomplete, Breadcrumb, Collapsible, Divider, Gauge, Menu, MenuBar, Rating,
-    SearchBar, Skeleton, Slider, Splitter, StatusBar, Switch, Tag,
+    crumb, pane, Autocomplete, Breadcrumb, Collapsible, Divider, Gauge, Menu, MenuBar, Pagination,
+    Rating, Resizable, SearchBar, Skeleton, Slider, SortableList, Splitter, StatusBar, Switch, Tag,
+    VirtualList,
 };
 
 const RED: Color = Color {
@@ -394,4 +396,76 @@ both_directions!(
     SplitterNamed,
     SplitterSilent,
     HANDLE_GRAY
+);
+
+// ---------------------------------------------------------------------------
+// Batch 5
+// ---------------------------------------------------------------------------
+
+case!(
+    ResizableNamed,
+    ResizableSilent,
+    Resizable::new(20, 4)
+        .handle_color(DISABLED_FG)
+        .element_id("w"),
+    Resizable::new(20, 4).element_id("w")
+);
+
+case!(
+    VirtualListNamed,
+    VirtualListSilent,
+    VirtualList::new(vec!["a".to_string(), "b".to_string()])
+        .item_fg(Color::WHITE)
+        .element_id("w"),
+    VirtualList::new(vec!["a".to_string(), "b".to_string()]).element_id("w")
+);
+
+case!(
+    SortableNamed,
+    SortableSilent,
+    SortableList::new(["a", "b"])
+        .item_color(SECONDARY_TEXT)
+        .element_id("w"),
+    SortableList::new(["a", "b"]).element_id("w")
+);
+
+case!(
+    PaginationNamed,
+    PaginationSilent,
+    Pagination::new(5)
+        .inactive_color(SUBTLE_GRAY)
+        .element_id("w"),
+    Pagination::new(5).element_id("w")
+);
+
+both_directions!(
+    a_named_resizable_handle_beats_css,
+    a_silent_resizable_defers_to_css,
+    ResizableNamed,
+    ResizableSilent,
+    DISABLED_FG
+);
+
+both_directions!(
+    a_named_virtual_list_item_beats_css,
+    a_silent_virtual_list_defers_to_css,
+    VirtualListNamed,
+    VirtualListSilent,
+    Color::WHITE
+);
+
+both_directions!(
+    a_named_sortable_item_beats_css,
+    a_silent_sortable_defers_to_css,
+    SortableNamed,
+    SortableSilent,
+    SECONDARY_TEXT
+);
+
+both_directions!(
+    a_named_pagination_inactive_beats_css,
+    a_silent_pagination_defers_to_css,
+    PaginationNamed,
+    PaginationSilent,
+    SUBTLE_GRAY
 );

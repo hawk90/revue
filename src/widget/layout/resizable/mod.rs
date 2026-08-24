@@ -49,7 +49,8 @@ where
     /// Visual style
     style: ResizeStyle,
     /// Handle color
-    handle_color: Color,
+    /// The color the builder named, if it named one - see #656.
+    handle_color: Option<Color>,
     /// Active handle color
     active_color: Color,
     /// Currently resizing
@@ -85,7 +86,7 @@ impl Resizable<fn(u16, u16)> {
             handles: ResizeHandle::ALL.to_vec(),
             handle_size: 1,
             style: ResizeStyle::default(),
-            handle_color: DISABLED_FG,
+            handle_color: None,
             active_color: Color::CYAN,
             resizing: false,
             resize_direction: ResizeDirection::NONE,
@@ -164,7 +165,7 @@ where
 
     /// Set handle color
     pub fn handle_color(mut self, color: Color) -> Self {
-        self.handle_color = color;
+        self.handle_color = Some(color);
         self
     }
 
@@ -419,7 +420,8 @@ where
         } else {
             // The idle handle takes `color`; being dragged or hovered are
             // states a rule cannot address separately, so those keep theirs.
-            ctx.color_or(self.handle_color, DISABLED_FG)
+            self.handle_color
+                .unwrap_or_else(|| ctx.css_color(DISABLED_FG))
         };
 
         let draw_width = self.width.min(ctx.area.width);
@@ -502,7 +504,8 @@ where
         } else {
             // The idle handle takes `color`; being dragged or hovered are
             // states a rule cannot address separately, so those keep theirs.
-            ctx.color_or(self.handle_color, DISABLED_FG)
+            self.handle_color
+                .unwrap_or_else(|| ctx.css_color(DISABLED_FG))
         };
 
         let corners = [
