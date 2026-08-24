@@ -257,7 +257,9 @@ impl View for TextArea {
                         }
                     }
                     if !highlight_applied {
-                        cell.fg = self.fg;
+                        // The body text takes the stylesheet; the cursor,
+                        // line numbers and selection keep their own.
+                        cell.fg = self.fg.or_else(|| ctx.css_color_if_set());
                     }
                     cell.bg = self.bg;
                 }
