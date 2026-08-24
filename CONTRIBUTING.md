@@ -94,6 +94,12 @@ chore(deps): update crossterm to 0.28
 feat!(api): change View trait signature
 ```
 
+**The description must not start with a capital letter.** CI enforces this on
+the PR title with `subjectPattern: ^(?![A-Z]).+$`, and a squash merge takes the
+PR title as the commit message — so `feat(event): Tab moves focus` fails and
+`feat(event): move focus with Tab` passes. Rewrite the sentence rather than
+lowercasing a proper noun.
+
 **Types:**
 
 | Type | Description |
