@@ -15,7 +15,7 @@ use revue::prelude::*;
 use revue::style::Color;
 use revue::testing::PipelineHarness;
 use revue::widget::theme::{DARK_GRAY, LIGHT_GRAY, SEPARATOR_COLOR};
-use revue::widget::{crumb, Breadcrumb, Divider, Skeleton, Tag};
+use revue::widget::{crumb, Breadcrumb, Divider, Gauge, Menu, MenuBar, Skeleton, StatusBar, Tag};
 
 const RED: Color = Color {
     r: 255,
@@ -172,4 +172,70 @@ both_directions!(
     CrumbNamed,
     CrumbSilent,
     LIGHT_GRAY
+);
+
+// ---------------------------------------------------------------------------
+// Batch 2
+// ---------------------------------------------------------------------------
+
+case!(
+    GaugeNamed,
+    GaugeSilent,
+    // `value` is normalised 0..1, and the warning/critical thresholds are unset
+    // by default, so this paints the ordinary fill.
+    Gauge::new()
+        .value(0.5)
+        .fill_color(Color::GREEN)
+        .element_id("w"),
+    Gauge::new().value(0.5).element_id("w")
+);
+
+case!(
+    StatusBarNamed,
+    StatusBarSilent,
+    StatusBar::new()
+        .key("q", "quit")
+        .fg(Color::WHITE)
+        .element_id("w"),
+    StatusBar::new().key("q", "quit").element_id("w")
+);
+
+case!(
+    MenuBarNamed,
+    MenuBarSilent,
+    // Two menus: the first is selected and keeps its highlight, so the second
+    // is the one `fg` paints.
+    MenuBar::new()
+        .menu(Menu::new("File"))
+        .menu(Menu::new("Edit"))
+        .fg(Color::WHITE)
+        .element_id("w"),
+    MenuBar::new()
+        .menu(Menu::new("File"))
+        .menu(Menu::new("Edit"))
+        .element_id("w")
+);
+
+both_directions!(
+    a_named_gauge_fill_beats_css,
+    a_silent_gauge_defers_to_css,
+    GaugeNamed,
+    GaugeSilent,
+    Color::GREEN
+);
+
+both_directions!(
+    a_named_status_bar_fg_beats_css,
+    a_silent_status_bar_defers_to_css,
+    StatusBarNamed,
+    StatusBarSilent,
+    Color::WHITE
+);
+
+both_directions!(
+    a_named_menu_bar_fg_beats_css,
+    a_silent_menu_bar_defers_to_css,
+    MenuBarNamed,
+    MenuBarSilent,
+    Color::WHITE
 );

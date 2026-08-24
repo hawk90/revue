@@ -21,7 +21,7 @@ pub struct ContextMenu {
     visible: bool,
     /// Colors
     pub(crate) bg: Color,
-    pub(crate) fg: Color,
+    pub(crate) fg: Option<Color>,
     selected_bg: Color,
     selected_fg: Color,
     /// Widget properties
@@ -44,7 +44,7 @@ impl ContextMenu {
             selected: 0,
             visible: false,
             bg: DARK_BG,
-            fg: Color::WHITE,
+            fg: None,
             selected_bg: Color::rgb(60, 100, 180),
             selected_fg: Color::WHITE,
             props: WidgetProps::new(),
@@ -121,7 +121,7 @@ impl View for ContextMenu {
 
     fn render(&self, ctx: &mut RenderContext) {
         // Unselected entries take `color`; the selected one keeps its highlight.
-        let fg = ctx.color_or(self.fg, Color::WHITE);
+        let fg = self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
         if !self.visible || self.items.is_empty() {
             return;
         }

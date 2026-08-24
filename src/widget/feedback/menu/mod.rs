@@ -177,7 +177,7 @@ mod tests {
     fn test_menu_bar_colors() {
         let bar = MenuBar::new().bg(Color::BLACK).fg(Color::WHITE);
         assert_eq!(bar.bg, Color::BLACK);
-        assert_eq!(bar.fg, Color::WHITE);
+        assert_eq!(bar.fg, Some(Color::WHITE));
     }
 
     #[test]
@@ -465,7 +465,9 @@ mod tests {
         let menu = ContextMenu::new();
         // Default colors are set
         assert_eq!(menu.bg, Color::rgb(40, 40, 40));
-        assert_eq!(menu.fg, Color::WHITE);
+        // The foreground defaults to "the builder said nothing", so a
+        // stylesheet can reach it; white is applied at paint time.
+        assert_eq!(menu.fg, None);
     }
 
     #[test]
