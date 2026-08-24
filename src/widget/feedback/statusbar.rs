@@ -426,7 +426,10 @@ impl StatusBar {
         x: u16,
         y: u16,
     ) -> u16 {
-        let fg = section.fg.unwrap_or(self.fg);
+        // A section's own color wins; otherwise the stylesheet, then the bar's.
+        let fg = section
+            .fg
+            .unwrap_or_else(|| ctx.color_or(self.fg, Color::WHITE));
         let bg = section.bg.unwrap_or(self.bg);
 
         let mut current_x = x;
@@ -483,7 +486,7 @@ impl StatusBar {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(self.fg);
+                cell.fg = Some(ctx.color_or(self.fg, Color::WHITE));
                 cell.bg = Some(self.bg);
                 ctx.set(current_x, y, cell);
                 current_x += 1;

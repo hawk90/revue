@@ -461,7 +461,7 @@ impl View for Modal {
         if !self.title.is_empty() && modal_width > 4 {
             let title_x = x + 2;
             let title_width = modal_width.saturating_sub(4);
-            let title_fg = self.title_fg.unwrap_or(Color::WHITE);
+            let title_fg = self.title_fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
             ctx.draw_text_clipped_bold(title_x, y + 1, &self.title, title_fg, title_width);
 
             // Title separator

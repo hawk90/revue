@@ -215,7 +215,8 @@ impl BarChart {
                 0
             };
 
-            let color = bar.color.unwrap_or(self.fg);
+            // A bar's own color wins; otherwise the stylesheet, then the chart's.
+            let color = bar.color.unwrap_or_else(|| ctx.css_color(self.fg));
 
             // Render for each row of bar_width
             for row in 0..self.bar_width {
@@ -302,7 +303,8 @@ impl BarChart {
                 0
             };
 
-            let color = bar.color.unwrap_or(self.fg);
+            // A bar's own color wins; otherwise the stylesheet, then the chart's.
+            let color = bar.color.unwrap_or_else(|| ctx.css_color(self.fg));
 
             // Draw bar (from bottom up)
             for row in 0..bar_height {
