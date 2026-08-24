@@ -77,10 +77,10 @@ fn test_style_merge_display() {
 fn test_style_merge_gap() {
     let style1 = Style::default();
     let mut style2 = Style::default();
-    style2.layout.gap = 10;
+    style2.layout.gap = Some(10);
 
     let merged = style1.merge(&style2);
-    assert_eq!(merged.layout.gap, 10);
+    assert_eq!(merged.layout.gap, Some(10));
 }
 
 #[test]

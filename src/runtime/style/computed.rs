@@ -45,7 +45,7 @@ mod tests {
     fn test_computed_style_new() {
         let computed = ComputedStyle::new();
         // Verify it creates a style
-        assert_eq!(computed.style.layout.gap, 0);
+        assert_eq!(computed.style.layout.gap, None);
         assert_eq!(computed.style.spacing.padding.top, 0);
     }
 
@@ -76,19 +76,19 @@ mod tests {
     fn test_computed_style_default() {
         let computed = ComputedStyle::default();
         // Default should have default values
-        assert_eq!(computed.style.layout.gap, 0);
+        assert_eq!(computed.style.layout.gap, None);
     }
 
     #[test]
     fn test_computed_style_preserves_values() {
         let mut style = Style::default();
-        style.layout.gap = 10;
+        style.layout.gap = Some(10);
         style.spacing.padding.top = 5;
 
         let computed = ComputedStyle::compute(style, None);
 
         // Should preserve the values
-        assert_eq!(computed.style.layout.gap, 10);
+        assert_eq!(computed.style.layout.gap, Some(10));
         assert_eq!(computed.style.spacing.padding.top, 5);
     }
 

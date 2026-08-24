@@ -113,8 +113,8 @@ fn test_css_gap_without_style() {
     let area = Rect::new(0, 0, 10, 5);
     let ctx = RenderContext::new(&mut buffer, area);
 
-    let gap = ctx.css_gap();
-    assert_eq!(gap, 0);
+    // No style at all is "the stylesheet said nothing", not "zero".
+    assert_eq!(ctx.css_gap(), None);
 }
 
 #[test]

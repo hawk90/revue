@@ -638,7 +638,7 @@ fn test_css_gap_no_style() {
     let mut buffer = test_buffer();
     let ctx = RenderContext::new(&mut buffer, test_area());
 
-    assert_eq!(ctx.css_gap(), 0);
+    assert_eq!(ctx.css_gap(), None);
 }
 
 #[test]
@@ -789,11 +789,11 @@ fn test_css_gap_with_style() {
 
     let mut buffer = test_buffer();
     let mut style = Style::default();
-    style.layout.gap = 10;
+    style.layout.gap = Some(10);
 
     let ctx = RenderContext::with_style(&mut buffer, test_area(), &style);
 
-    assert_eq!(ctx.css_gap(), 10);
+    assert_eq!(ctx.css_gap(), Some(10));
 }
 
 // =========================================================================

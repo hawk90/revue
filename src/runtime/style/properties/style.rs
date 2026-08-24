@@ -51,7 +51,9 @@ impl Style {
         self.layout.align_items
     }
     /// Gap between flex/grid items - non-inherited
-    pub fn gap(&self) -> u16 {
+    ///
+    /// `None` is "not specified"; `Some(0)` is a stylesheet asking for no gap.
+    pub fn gap(&self) -> Option<u16> {
         self.layout.gap
     }
     /// Column gap for grid - non-inherited
@@ -244,7 +246,7 @@ impl Style {
         if self.layout.align_items != AlignItems::default() {
             result.layout.align_items = self.layout.align_items;
         }
-        if self.layout.gap != 0 {
+        if self.layout.gap.is_some() {
             result.layout.gap = self.layout.gap;
         }
         if self.layout.column_gap.is_some() {
@@ -385,8 +387,8 @@ mod tests {
     #[test]
     fn test_style_gap_accessor() {
         let mut style = Style::default();
-        style.layout.gap = 10;
-        assert_eq!(style.gap(), 10);
+        style.layout.gap = Some(10);
+        assert_eq!(style.gap(), Some(10));
     }
 
     #[test]
@@ -595,12 +597,12 @@ mod tests {
     #[test]
     fn test_style_inherit_resets_non_inherited() {
         let mut parent = Style::default();
-        parent.layout.gap = 10;
+        parent.layout.gap = Some(10);
         parent.layout.display = Display::Grid;
         parent.spacing.padding = Spacing::all(5);
 
         let child = Style::inherit(&parent);
-        assert_eq!(child.layout.gap, 0);
+        assert_eq!(child.layout.gap, None);
         assert_eq!(child.layout.display, Display::default());
         assert_eq!(child.spacing.padding, Spacing::default());
     }
@@ -611,11 +613,11 @@ mod tests {
         parent.visual.color = Color::RED;
 
         let mut child = Style::default();
-        child.layout.gap = 10;
+        child.layout.gap = Some(10);
 
         let result = child.with_inheritance(&parent);
         assert_eq!(result.visual.color, Color::RED);
-        assert_eq!(result.layout.gap, 10);
+        assert_eq!(result.layout.gap, Some(10));
     }
 
     #[test]
@@ -644,25 +646,25 @@ mod tests {
     #[test]
     fn test_style_with_inheritance_layout_not_inherited() {
         let mut parent = Style::default();
-        parent.layout.gap = 10;
+        parent.layout.gap = Some(10);
         parent.layout.display = Display::Grid;
 
         let child = Style::default();
         let result = child.with_inheritance(&parent);
-        assert_eq!(result.layout.gap, 0);
+        assert_eq!(result.layout.gap, None);
         assert_eq!(result.layout.display, Display::default());
     }
 
     #[test]
     fn test_style_with_inheritance_explicit_layout_preserved() {
         let mut parent = Style::default();
-        parent.layout.gap = 10;
+        parent.layout.gap = Some(10);
 
         let mut child = Style::default();
-        child.layout.gap = 20;
+        child.layout.gap = Some(20);
 
         let result = child.with_inheritance(&parent);
-        assert_eq!(result.layout.gap, 20);
+        assert_eq!(result.layout.gap, Some(20));
     }
 
     #[test]
@@ -767,11 +769,11 @@ mod tests {
     #[test]
     fn test_style_clone() {
         let mut style = Style::default();
-        style.layout.gap = 10;
+        style.layout.gap = Some(10);
         style.visual.color = Color::RED;
 
         let cloned = style.clone();
-        assert_eq!(cloned.layout.gap, 10);
+        assert_eq!(cloned.layout.gap, Some(10));
         assert_eq!(cloned.visual.color, Color::RED);
     }
 

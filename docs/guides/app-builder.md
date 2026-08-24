@@ -240,8 +240,8 @@ container handed it — which is what makes `#sidebar { width: 20; }` and
 
 `gap` — and `column-gap` / `row-gap` — reaches `vstack`, `hstack` and `grid`
 too. It describes flow, so the container reads it rather than having it applied
-from outside; `gap: 0` is the initial value and so leaves the builder's own gap
-alone.
+from outside. All three track whether the stylesheet specified them, so
+`gap: 0` closes a gap the builder opened rather than reading as "said nothing".
 
 Not applied: `padding`, which insets a widget's content and would move the
 border of a widget that draws one; and `flex-*` / `grid-template-*`, which the
