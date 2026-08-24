@@ -110,9 +110,11 @@ pub struct Terminal {
     /// ANSI parser
     parser: AnsiParser,
     /// Default foreground color
-    default_fg: Color,
+    /// The color the builder named, if it named one - see #656.
+    default_fg: Option<Color>,
     /// Default background color
-    default_bg: Color,
+    /// The color the builder named, if it named one - see #656.
+    default_bg: Option<Color>,
     /// Show cursor
     show_cursor: bool,
     /// Cursor style
@@ -151,8 +153,8 @@ impl Terminal {
             width,
             height,
             parser: AnsiParser::new(),
-            default_fg: Color::WHITE,
-            default_bg: Color::BLACK,
+            default_fg: None,
+            default_bg: None,
             show_cursor: true,
             cursor_style: CursorStyle::Block,
             title: None,
@@ -172,14 +174,14 @@ impl Terminal {
 
     /// Set default foreground color
     pub fn default_fg(mut self, color: Color) -> Self {
-        self.default_fg = color;
+        self.default_fg = Some(color);
         self.parser.reset_fg(color);
         self
     }
 
     /// Set default background color
     pub fn default_bg(mut self, color: Color) -> Self {
-        self.default_bg = color;
+        self.default_bg = Some(color);
         self.parser.reset_bg(color);
         self
     }
@@ -491,8 +493,12 @@ impl View for Terminal {
         // The cell colors come from the *content* - the ANSI codes the program
         // wrote - so a rule cannot have them, the same reading a syntax
         // highlighter gets. The terminal's own defaults are the base.
-        let default_fg = ctx.color_or(self.default_fg, Color::WHITE);
-        let default_bg = ctx.background_or(self.default_bg, Color::BLACK);
+        let default_fg = self
+            .default_fg
+            .unwrap_or_else(|| ctx.css_color(Color::WHITE));
+        let default_bg = self
+            .default_bg
+            .unwrap_or_else(|| ctx.css_background(Color::BLACK));
 
         // Fill background
         for y in 0..area.height {

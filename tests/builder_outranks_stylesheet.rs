@@ -17,10 +17,12 @@ use revue::testing::PipelineHarness;
 use revue::widget::theme::DARK_GRAY as HANDLE_GRAY;
 use revue::widget::theme::{DARK_GRAY, LIGHT_GRAY, SEPARATOR_COLOR};
 use revue::widget::theme::{DISABLED_FG, SECONDARY_TEXT, SUBTLE_GRAY};
+#[cfg(feature = "qrcode")]
+use revue::widget::QrCodeWidget;
 use revue::widget::{
-    crumb, pane, Autocomplete, Breadcrumb, Collapsible, Divider, Gauge, Menu, MenuBar, Pagination,
-    Rating, Resizable, SearchBar, Skeleton, Slider, SortableList, Splitter, StatusBar, Switch, Tag,
-    VirtualList,
+    crumb, pane, text, AiStream, Autocomplete, Breadcrumb, Collapsible, Divider, Gauge, Menu,
+    MenuBar, Pagination, Rating, Resizable, SearchBar, Skeleton, Slider, SortableList, Splitter,
+    StatusBar, Switch, Tag, Terminal, VirtualList, ZenMode,
 };
 
 const RED: Color = Color {
@@ -468,4 +470,94 @@ both_directions!(
     PaginationNamed,
     PaginationSilent,
     SUBTLE_GRAY
+);
+
+// ---------------------------------------------------------------------------
+// Batch 6
+// ---------------------------------------------------------------------------
+
+fn zen(named: bool) -> ZenMode {
+    let mut z = if named {
+        ZenMode::new(text("focus")).bg(Color::rgb(15, 15, 25))
+    } else {
+        ZenMode::new(text("focus"))
+    }
+    .element_id("w");
+    z.enable();
+    z
+}
+
+case!(ZenNamed, ZenSilent, zen(true), zen(false));
+
+#[cfg(feature = "qrcode")]
+case!(
+    QrNamed,
+    QrSilent,
+    QrCodeWidget::new("hi").fg(Color::BLACK).element_id("w"),
+    QrCodeWidget::new("hi").element_id("w")
+);
+
+fn stream(named: bool) -> AiStream {
+    let mut s = if named {
+        AiStream::new().fg(Color::WHITE)
+    } else {
+        AiStream::new()
+    }
+    .content("streamed")
+    .element_id("w");
+    s.complete();
+    s
+}
+
+case!(StreamNamed, StreamSilent, stream(true), stream(false));
+
+fn term(named: bool) -> Terminal {
+    let mut t = if named {
+        Terminal::new(30, 4).default_fg(Color::WHITE)
+    } else {
+        Terminal::new(30, 4)
+    }
+    .element_id("w");
+    t.writeln("boot");
+    t
+}
+
+case!(TerminalNamed, TerminalSilent, term(true), term(false));
+
+#[test]
+fn a_named_zen_background_beats_css() {
+    let h = draw("#w { background: #ff0000; }", &ZenNamed);
+    assert!(!any_bg(&h, RED));
+    assert!(any_bg(&h, Color::rgb(15, 15, 25)));
+}
+
+#[test]
+fn a_silent_zen_defers_to_css() {
+    let h = draw("#w { background: #ff0000; }", &ZenSilent);
+    assert!(any_bg(&h, RED));
+}
+
+#[cfg(feature = "qrcode")]
+both_directions!(
+    a_named_qr_fg_beats_css,
+    a_silent_qr_defers_to_css,
+    QrNamed,
+    QrSilent,
+    Color::BLACK
+);
+
+both_directions!(
+    a_named_stream_fg_beats_css,
+    a_silent_stream_defers_to_css,
+    StreamNamed,
+    StreamSilent,
+    Color::WHITE
+);
+
+both_directions!(
+    a_named_terminal_fg_beats_css,
+    a_silent_terminal_defers_to_css,
+    TerminalNamed,
+    TerminalSilent,
+    Color::WHITE
 );
