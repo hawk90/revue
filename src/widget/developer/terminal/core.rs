@@ -488,10 +488,16 @@ impl View for Terminal {
             return;
         }
 
+        // The cell colors come from the *content* - the ANSI codes the program
+        // wrote - so a rule cannot have them, the same reading a syntax
+        // highlighter gets. The terminal's own defaults are the base.
+        let default_fg = ctx.color_or(self.default_fg, Color::WHITE);
+        let default_bg = ctx.background_or(self.default_bg, Color::BLACK);
+
         // Fill background
         for y in 0..area.height {
             for x in 0..area.width {
-                ctx.set(x, y, Cell::new(' ').bg(self.default_bg));
+                ctx.set(x, y, Cell::new(' ').bg(default_bg));
             }
         }
 
@@ -510,7 +516,20 @@ impl View for Terminal {
                         break;
                     }
 
-                    let mut render_cell = Cell::new(cell.ch).fg(cell.fg).bg(cell.bg);
+                    // Two cells read as "no ANSI code spoke for this": one
+                    // the parser never touched, which is `Color::default()` -
+                    // the same sentinel the cascade uses for unspecified - and
+                    // one reset by code 39, which asks for the *default*
+                    // foreground by name. Both are what `default_fg` is for,
+                    // so both go through it. A cell the content actually
+                    // colored keeps that color, the reading a syntax
+                    // highlighter's tokens get.
+                    let fg = if cell.fg.is_default() || cell.fg == Color::WHITE {
+                        default_fg
+                    } else {
+                        cell.fg
+                    };
+                    let mut render_cell = Cell::new(cell.ch).fg(fg).bg(cell.bg);
                     render_cell.modifier = cell.modifiers;
                     ctx.set(col as u16, render_y, render_cell);
                 }
@@ -535,11 +554,7 @@ impl View for Terminal {
                     CursorStyle::Bar => '│',
                 };
 
-                ctx.set(
-                    cursor_x,
-                    cursor_y,
-                    Cell::new(cursor_char).fg(self.default_fg),
-                );
+                ctx.set(cursor_x, cursor_y, Cell::new(cursor_char).fg(default_fg));
             }
         }
 
@@ -571,7 +586,7 @@ impl View for Terminal {
                 if ix + cw > area.width {
                     break;
                 }
-                ctx.set(ix, input_y, Cell::new(ch).fg(Color::WHITE).bg(DARK_BG));
+                ctx.set(ix, input_y, Cell::new(ch).fg(default_fg).bg(DARK_BG));
                 ix += cw;
             }
         }
