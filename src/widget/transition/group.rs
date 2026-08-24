@@ -101,8 +101,10 @@ impl View for TransitionGroup {
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let default_bg = Color::BLACK;
-        let default_fg = Color::WHITE;
+        // The transitioning content takes the stylesheet; the dimming applied
+        // mid-animation is progress, not a color choice.
+        let default_bg = ctx.css_background(Color::BLACK);
+        let default_fg = ctx.css_color(Color::WHITE);
 
         // Render each item
         for (y, item) in (0_u16..).zip(self.items.iter()) {

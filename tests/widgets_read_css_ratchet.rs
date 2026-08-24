@@ -52,6 +52,11 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "DiffViewer",
     "LogViewer",
     "Markdown",
+    // intentional: a computed gradient. `GradientBox` derives every cell's color
+    // from its position, and `Image` from the source pixels - there is no single
+    // color for a rule to set.
+    "GradientBox",
+    "Image",
     // intentional: a palette or a scale, which one `color` cannot express. A
     // pie's slices, a scatter's series and a heat map's gradient carry the
     // data; flattening them to one color leaves a chart that shows nothing.
@@ -77,21 +82,15 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "DropZone",
     "FilePicker",
     "FileTree",
-    "GradientBox",
     "HttpClient",
-    "Image",
     "MarkdownPresentation",
     "Presentation",
     "ProcessMonitor",
-    "QrCodeWidget",
     "RichText",
     "RichTextEditor",
     "Streamline",
     "Terminal",
     "TimeSeries",
-    "ToastQueue",
-    "Transition",
-    "TransitionGroup",
     "Waveline",
     "ZenMode",
 ];

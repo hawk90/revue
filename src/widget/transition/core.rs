@@ -173,8 +173,10 @@ impl View for Transition {
 
         // Render content with animation applied
         let area = ctx.area;
-        let default_bg = Color::BLACK;
-        let default_fg = Color::WHITE;
+        // The transitioning content takes the stylesheet; the dimming applied
+        // mid-animation is progress, not a color choice.
+        let default_bg = ctx.css_background(Color::BLACK);
+        let default_fg = ctx.css_color(Color::WHITE);
         let content_len = self.child_content.chars().count();
         let chars_to_show = (effective_progress * content_len as f32).round() as usize;
 
