@@ -87,7 +87,11 @@ impl View for FilePicker {
             } else if entry.is_hidden {
                 self.hidden_fg.unwrap_or(PLACEHOLDER_FG)
             } else {
-                self.fg.unwrap_or(Color::WHITE)
+                // The highlighted row, directories and hidden files each say
+                // something one `color` cannot; the plain file is the base.
+                self.fg
+                    .or_else(|| ctx.css_color_if_set())
+                    .unwrap_or(Color::WHITE)
             };
 
             let mut text = Text::new(&line).fg(fg);
