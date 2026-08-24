@@ -178,7 +178,8 @@ pub struct Presentation {
     /// Timer (seconds)
     timer: Option<u64>,
     /// Background color
-    bg: Color,
+    /// The color the builder named, if it named one - see #656.
+    bg: Option<Color>,
     /// Accent color
     accent: Color,
     /// Widget properties
@@ -204,7 +205,7 @@ impl Presentation {
             show_numbers: true,
             show_progress: true,
             timer: None,
-            bg: SLIDE_BG,
+            bg: None,
             accent: Color::CYAN,
             props: WidgetProps::new(),
         }
@@ -254,7 +255,7 @@ impl Presentation {
 
     /// Set background color
     pub fn bg(mut self, color: Color) -> Self {
-        self.bg = color;
+        self.bg = Some(color);
         self
     }
 
@@ -366,7 +367,7 @@ impl Presentation {
         // top; otherwise the stylesheet gets the fill.
         let bg = slide
             .bg
-            .unwrap_or_else(|| ctx.background_or(self.bg, SLIDE_BG));
+            .unwrap_or_else(|| self.bg.unwrap_or_else(|| ctx.css_background(SLIDE_BG)));
         for y in 0..area.height {
             for x in 0..area.width {
                 let mut cell = Cell::new(' ');
@@ -506,7 +507,7 @@ impl View for Presentation {
         let area = ctx.area;
 
         // Background
-        let bg = ctx.background_or(self.bg, SLIDE_BG);
+        let bg = self.bg.unwrap_or_else(|| ctx.css_background(SLIDE_BG));
         for y in 0..area.height {
             for x in 0..area.width {
                 let mut cell = Cell::new(' ');
