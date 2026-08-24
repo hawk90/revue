@@ -369,15 +369,18 @@ impl View for Splitter {
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
+        let idle_color = ctx.color_or(self.color, DARK_GRAY);
         let areas = self.pane_areas(area);
 
         // Draw splitters between panes
         for (i, (_, pane_area)) in areas.iter().enumerate().take(areas.len().saturating_sub(1)) {
             let is_active = self.active_divider == Some(i);
+            // The idle divider takes `color`; the one being dragged keeps its
+            // highlight, which a rule cannot address separately.
             let color = if is_active {
                 self.active_color
             } else {
-                self.color
+                idle_color
             };
             let ch = self.style.char(self.orientation);
 
