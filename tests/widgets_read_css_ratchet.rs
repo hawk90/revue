@@ -38,13 +38,18 @@ use std::path::{Path, PathBuf};
 /// would flatten a distinction with no way to restore it. Same reasoning as a
 /// selected table row keeping its highlight.
 const NOT_YET_READING_CSS: &[&str] = &[
+    // intentional: pure layout. These place children and paint no cell of their
+    // own, so there is no color for a rule to reach. Their *children* are
+    // selectable, which is what matters.
+    "Layers",
+    "Positioned",
+    "ScreenStack",
     // intentional: per-line level colors (Info/Warning/Error) are the content,
     // and a line is not a node, so a rule on the log cannot restore them.
     "RichLog",
     // intentional: each event carries its own type color and an event is not a
     // node, so a rule on the timeline would flatten them with no way back.
     "Timeline",
-    "Accordion",
     "AiStream",
     "Autocomplete",
     "BarChart",
@@ -72,7 +77,6 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "HttpClient",
     "Image",
     "JsonViewer",
-    "Layers",
     "LogViewer",
     "Markdown",
     "MarkdownPresentation",
@@ -80,7 +84,6 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "Modal",
     "NotificationCenter",
     "PieChart",
-    "Positioned",
     "Presentation",
     "ProcessMonitor",
     "QrCodeWidget",
@@ -88,7 +91,6 @@ const NOT_YET_READING_CSS: &[&str] = &[
     "RichText",
     "RichTextEditor",
     "ScatterChart",
-    "ScreenStack",
     "ScrollView",
     "SearchBar",
     "Select",
