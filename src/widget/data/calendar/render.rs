@@ -259,7 +259,14 @@ impl<'a> CalendarRender<'a> {
                 } else if is_weekend {
                     (self.weekend_fg, None, Modifier::empty())
                 } else {
-                    (self.day_fg, None, Modifier::empty())
+                    // An ordinary day takes `color`; today, weekends, markers
+                    // and the selection keep theirs - a rule cannot address
+                    // those separately.
+                    (
+                        ctx.color_or(self.day_fg, Color::WHITE),
+                        None,
+                        Modifier::empty(),
+                    )
                 };
 
                 // Draw day number
