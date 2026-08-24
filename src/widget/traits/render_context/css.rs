@@ -76,10 +76,13 @@ impl RenderContext<'_> {
     }
 
     /// Get border style from CSS
-    pub fn css_border_style(&self) -> BorderStyle {
-        self.style
-            .map(|s| s.visual.border_style)
-            .unwrap_or_default()
+    /// The `border-style` the stylesheet set, if it set one.
+    ///
+    /// `None` means the stylesheet said nothing. `Some(BorderStyle::None)`
+    /// means it asked for no border, which is a different thing and now
+    /// expressible.
+    pub fn css_border_style(&self) -> Option<BorderStyle> {
+        self.style.and_then(|s| s.visual.border_style)
     }
 
     /// Is the text bold per CSS?

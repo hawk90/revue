@@ -630,7 +630,10 @@ fn test_css_border_style_no_style() {
     let ctx = RenderContext::new(&mut buffer, test_area());
 
     let border_style = ctx.css_border_style();
-    assert_eq!(border_style, BorderStyle::None);
+    assert_eq!(
+        border_style, None,
+        "no style at all is \"said nothing\", not \"no border\""
+    );
 }
 
 #[test]
@@ -776,11 +779,11 @@ fn test_css_height_with_style() {
 fn test_css_border_style_with_style() {
     let mut buffer = test_buffer();
     let mut style = Style::default();
-    style.visual.border_style = BorderStyle::Dashed;
+    style.visual.border_style = Some(BorderStyle::Dashed);
 
     let ctx = RenderContext::with_style(&mut buffer, test_area(), &style);
 
-    assert_eq!(ctx.css_border_style(), BorderStyle::Dashed);
+    assert_eq!(ctx.css_border_style(), Some(BorderStyle::Dashed));
 }
 
 #[test]

@@ -93,13 +93,12 @@ text {
 > `width`, `height`, `margin`, `min-*`/`max-*`) override geometry a container
 > already computed, so they only take effect with
 > `App::builder().dom_from_render(true).css_layout(true)`. Flow properties
-> A property whose *initial* value is also its "off" value cannot be set back to
-> that value from CSS unless the property tracks whether it was specified at all.
-> `gap` does — it is `Option<u16>`, so `gap: 0` closes a gap the builder opened.
-> `text-align: left` and `border-style: none` do not yet: they are
-> indistinguishable from a stylesheet that never mentioned them, and a stylesheet
-> that never mentioned them must leave the builder's value alone. Say those on
-> the builder instead.
+> A property whose *initial* value is also its "off" value has to track whether
+> it was specified at all, or a stylesheet cannot set it back to that value.
+> `gap`, `border-style` and the two grid gaps all do, so `gap: 0` closes a gap
+> the builder opened and `border-style: none` removes a border it drew. A
+> stylesheet that says nothing still leaves the builder's value alone — that is
+> the point of the distinction.
 >
 > `gap` (and `column-gap` / `row-gap`) reaches `vstack`, `hstack` and `grid`
 > under the same flag. The remaining flow properties (`flex-*`, `grid-template-*`)

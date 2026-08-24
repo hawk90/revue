@@ -147,7 +147,7 @@ impl Style {
 
     // Visual accessors
     /// Border style - non-inherited
-    pub fn border_style(&self) -> BorderStyle {
+    pub fn border_style(&self) -> Option<BorderStyle> {
         self.visual.border_style
     }
     /// Border color - non-inherited
@@ -313,7 +313,7 @@ impl Style {
         }
 
         // Border
-        if self.visual.border_style != BorderStyle::default() {
+        if self.visual.border_style.is_some() {
             result.visual.border_style = self.visual.border_style;
         }
         if self.visual.border_color != Color::default() {
@@ -525,8 +525,8 @@ mod tests {
     #[test]
     fn test_style_border_style_accessor() {
         let mut style = Style::default();
-        style.visual.border_style = BorderStyle::Solid;
-        assert_eq!(style.border_style(), BorderStyle::Solid);
+        style.visual.border_style = Some(BorderStyle::Solid);
+        assert_eq!(style.border_style(), Some(BorderStyle::Solid));
     }
 
     #[test]
@@ -763,7 +763,7 @@ mod tests {
         assert_eq!(style.layout.display, Display::default());
         assert_eq!(style.spacing.padding, Spacing::default());
         assert_eq!(style.sizing.width, Size::default());
-        assert_eq!(style.visual.border_style, BorderStyle::default());
+        assert_eq!(style.visual.border_style, None);
     }
 
     #[test]
