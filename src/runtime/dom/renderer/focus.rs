@@ -30,7 +30,7 @@ impl DomRenderer {
     /// Move focus to the next focusable node in document order.
     ///
     /// Wraps at the end, and starts at the first node when nothing is focused -
-    /// the behaviour Tab has everywhere. Returns `true` if focus moved, which
+    /// the behavior Tab has everywhere. Returns `true` if focus moved, which
     /// is when the frame has to be redrawn.
     pub fn focus_next(&mut self) -> bool {
         self.step_focus(1)

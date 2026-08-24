@@ -153,11 +153,26 @@ if let Some(id) = new_hover_id {
 
 | | |
 |---|---|
-| **Tab 이동** | 클릭은 됐지만 키보드 포커스 순서는 아직 없다. `FocusManager`가 이미 있지만 `App`이 모르고, Tab은 지금 사용자 핸들러가 처리한다 — 프레임워크가 가로채면 충돌한다. 계획서상 3.x |
+| ~~**Tab 이동**~~ | **완료.** `App::builder().tab_navigation(true)`, 기본 off. `FocusManager`를 `App`에 연결하는 대신 DOM을 문서 순서로 걷는다 — ring이 뷰와 자동으로 같아지고, 등록/해제라는 별도의 생애주기가 없다. Tab 충돌은 플래그로 피한다. `tests/tab_navigation.rs` |
 | **`focusable` 나머지 카테고리** | `input/` 16개만 표시했다 |
 | **`disabled`가 DOM에 닿지 않는다** | 위 참조 |
 | **클릭 라우팅** | 포커스만 옮긴다. 이벤트를 위젯에 전달하는 것은 계획서상 3.x |
 | **오버레이 히트 테스트** | 오버레이가 자기 area를 기록하지 않는다 |
 | **형제 결합자 무효화** | `.a:hover + .b`가 낡는다 |
 
-`tests/hit_test.rs`와 `tests/click_focus.rs`가 위 전부를 고정한다.
+`tests/hit_test.rs`, `tests/click_focus.rs`, `tests/tab_navigation.rs`가 위 전부를 고정한다.
+
+## Tab — 왜 `FocusManager`를 쓰지 않았나
+
+`FocusManager`(`src/runtime/event/focus.rs`)는 이미 있고 2D 이동과 focus trap까지
+갖췄지만, **위젯이 자기를 등록해야** 동작한다. 그 등록이 뷰와 어긋나는 순간
+— 위젯이 사라졌는데 등록이 남거나, 재정렬됐는데 순서가 안 따라오거나 —
+ring이 화면과 다른 것을 말하게 된다. 카탈로그의 `REV-TREE-004`(zombie state)가
+정확히 그 모양이다.
+
+DOM은 이미 매 프레임 뷰를 따라간다. 문서 순서로 걷으면 등록이라는 단계 자체가
+없어지고, ring은 정의상 화면과 같다. `FocusManager`는 focus trap(모달)에서
+계속 쓰이며, 그쪽은 3.x에서 정리한다.
+
+ring은 스텝마다 다시 계산한다. 캐시하면 두 키 입력 사이의 reconciliation이
+노드를 바꿨을 때 없는 노드로 이동한다.

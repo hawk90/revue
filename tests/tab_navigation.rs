@@ -11,7 +11,7 @@
 //! the view moves in the tab ring with it.
 //!
 //! This sets `NodeState.focused` and nothing else. Widgets still read their own
-//! `focused` field, so no widget *behaviour* changes here.
+//! `focused` field, so no widget *behavior* changes here.
 
 use revue::event::Key;
 use revue::prelude::*;
@@ -221,7 +221,7 @@ fn shift_tab_is_read_as_backwards_too() {
 // ---------------------------------------------------------------------------
 
 /// Tab is a key an existing app may already handle. The runtime taking it would
-/// be a silent behaviour change, so it is opt-in.
+/// be a silent behavior change, so it is opt-in.
 #[test]
 fn tab_does_nothing_when_the_flag_is_off() {
     let mut h = PipelineHarness::with_css("", 20, 6).dom_from_render(true);
