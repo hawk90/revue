@@ -294,6 +294,8 @@ impl Default for SearchBar {
 
 impl View for SearchBar {
     fn render(&self, ctx: &mut RenderContext) {
+        // The query text takes `color`; the placeholder and border keep theirs.
+        let text_color = ctx.color_or(self.text_color, Color::WHITE);
         let area = ctx.area;
         let width = self.width.min(area.width);
 
@@ -380,7 +382,7 @@ impl View for SearchBar {
                 cell.fg = Some(if self.parse_error.is_some() {
                     self.error_color
                 } else {
-                    self.text_color
+                    text_color
                 });
                 cell.bg = Some(self.bg_color);
                 ctx.set(input_x + dx, 0, cell);
@@ -407,7 +409,7 @@ impl View for SearchBar {
                 let cursor_char = self.input.chars().skip(self.cursor).next().unwrap_or(' ');
                 let mut cursor_cell = Cell::new(cursor_char);
                 cursor_cell.fg = Some(self.bg_color);
-                cursor_cell.bg = Some(self.text_color);
+                cursor_cell.bg = Some(text_color);
                 ctx.set(cursor_x, 0, cursor_cell);
             }
         }

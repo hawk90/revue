@@ -343,13 +343,18 @@ impl Stepper {
         completed as f64 / self.steps.len() as f64
     }
 
-    /// Get color for step
-    fn step_color(&self, step: &Step) -> Color {
+    /// Get color for step.
+    ///
+    /// Steps not yet reached take `color`; active, completed and error keep
+    /// theirs - those are status, and a rule cannot address them separately.
+    fn step_color(&self, ctx: &RenderContext, step: &Step) -> Color {
         match step.status {
             StepStatus::Active => self.active_color,
             StepStatus::Completed => self.completed_color,
             StepStatus::Error => self.error_color,
-            StepStatus::Pending | StepStatus::Skipped => self.pending_color,
+            StepStatus::Pending | StepStatus::Skipped => {
+                ctx.color_or(self.pending_color, DISABLED_FG)
+            }
         }
     }
 }
@@ -389,7 +394,7 @@ impl Stepper {
 
         for (i, step) in self.steps.iter().enumerate() {
             let x = (i * step_width) as u16;
-            let color = self.step_color(step);
+            let color = self.step_color(ctx, step);
 
             // Step indicator
             match self.style {
@@ -493,7 +498,7 @@ impl Stepper {
                 break;
             }
 
-            let color = self.step_color(step);
+            let color = self.step_color(ctx, step);
             let x: u16 = 0;
 
             // Step indicator
