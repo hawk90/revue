@@ -145,6 +145,74 @@ fn text_align_right_moves_the_text() {
     assert_ne!(left.screen_text(), right.screen_text());
 }
 
+/// A builder that named an alignment outranks the stylesheet, including when
+/// the stylesheet's value arrived by inheritance.
+///
+/// `Text.align` was a plain `Alignment` whose default is `Left`, so
+/// `.align(Alignment::Left)` and saying nothing were the same state - and the
+/// widget treated that state as "ask CSS". An explicit left builder therefore
+/// rendered centered under an inherited `text-align: center`, which inverts
+/// the precedence `docs/guides/styling.md` records.
+///
+/// Note this is the *widget's* field, not the style property. `TextAlign`
+/// itself has the same initial-value-is-the-off-value shape as `gap` had, but
+/// it is not observable through `Text`: the two paths agree because the
+/// builder's default is `Left` too.
+#[test]
+fn an_explicit_left_builder_outranks_an_inherited_center() {
+    struct ExplicitLeft;
+    impl View for ExplicitLeft {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .child(Text::new("Hello").align(Alignment::Left).element_id("t"))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "ExplicitLeft"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("root")
+        }
+    }
+
+    let mut h =
+        PipelineHarness::with_css("#root { text-align: center; }", 30, 3).dom_from_render(true);
+    h.draw(&ExplicitLeft);
+
+    assert!(
+        h.screen_text().starts_with("Hello"),
+        "an explicit `.align(Left)` lost to an inherited `text-align: center`"
+    );
+}
+
+/// The other direction: a builder that said nothing still inherits.
+#[test]
+fn a_silent_builder_still_inherits_text_align() {
+    struct Silent;
+    impl View for Silent {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .child(Text::new("Hello").element_id("t"))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "Silent"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("root")
+        }
+    }
+
+    let mut h =
+        PipelineHarness::with_css("#root { text-align: center; }", 30, 3).dom_from_render(true);
+    h.draw(&Silent);
+
+    assert!(
+        !h.screen_text().starts_with("Hello"),
+        "a silent builder stopped inheriting `text-align`"
+    );
+}
+
 #[test]
 fn text_decoration_line_through_reaches_the_cell() {
     let h = drawn("#t { text-decoration: line-through; }");

@@ -34,7 +34,14 @@ pub struct Text {
     underline: bool,
     dim: bool,
     reverse: bool,
-    align: Alignment,
+    /// The alignment the builder named, if it named one.
+    ///
+    /// `None` is not the same as `Some(Alignment::Left)`. While this was a
+    /// plain `Alignment` whose default is `Left`, an explicit `.align(Left)`
+    /// was indistinguishable from saying nothing - so it fell through to CSS
+    /// and an inherited `text-align: center` won, inverting the precedence
+    /// the builder is supposed to have.
+    align: Option<Alignment>,
     /// CSS styling properties (id, classes)
     props: WidgetProps,
 }
@@ -51,7 +58,7 @@ impl Text {
             underline: false,
             dim: false,
             reverse: false,
-            align: Alignment::Left,
+            align: None,
             props: WidgetProps::new(),
         }
     }
@@ -143,7 +150,7 @@ impl Text {
 
     /// Set text alignment
     pub fn align(mut self, align: Alignment) -> Self {
-        self.align = align;
+        self.align = Some(align);
         self
     }
 
@@ -213,18 +220,19 @@ impl Text {
         RichText::new().push(&self.content, style)
     }
 
-    /// The alignment to paint with: the builder's if it set one, else CSS.
+    /// The alignment to paint with: the builder's if it named one, else the
+    /// stylesheet's, else left.
     ///
-    /// `Left` is the initial value, so it reads as "not specified" - the same
-    /// test the cascade uses to decide whether a rule said anything. A widget
-    /// that wants to override `text-align: center` back to left has to say so
-    /// in CSS.
+    /// This is the precedence `docs/guides/styling.md` records - builder,
+    /// then author stylesheet, then the widget's own default - and it needs
+    /// the builder's "said nothing" to be a distinct state, which is why the
+    /// field is an `Option`.
     fn align_with_css(&self, ctx: &RenderContext) -> Alignment {
-        if self.align != Alignment::default() {
-            return self.align;
+        if let Some(builder) = self.align {
+            return builder;
         }
         match ctx.css_text_align() {
-            crate::style::TextAlign::Left => self.align,
+            crate::style::TextAlign::Left => Alignment::Left,
             crate::style::TextAlign::Center => Alignment::Center,
             crate::style::TextAlign::Right => Alignment::Right,
         }
@@ -417,7 +425,7 @@ mod tests {
         use super::*;
 
         let text = Text::new("Test").align(Alignment::Center);
-        assert_eq!(text.align, Alignment::Center);
+        assert_eq!(text.align, Some(Alignment::Center));
     }
 
     #[test]
