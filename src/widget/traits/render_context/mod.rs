@@ -272,12 +272,31 @@ impl<'a> RenderContext<'a> {
     /// a *child widget*, which is [`render_child`](Self::render_child)'s job
     /// and registers a DOM node.
     ///
-    /// Carries the clip across. Building one with [`RenderContext::new`]
-    /// instead silently drops it, and a dropped clip means an enclosing
-    /// `overflow: hidden` stops containing anything painted through it.
+    /// Carries across everything that describes *this node*: its computed
+    /// style, its state, its transitions and the clip. The sub-area is a
+    /// smaller rectangle of the same widget, not a different one, so dropping
+    /// any of those makes the widget stop being styled halfway through
+    /// painting itself.
+    ///
+    /// That is not hypothetical. This used to carry the clip alone, and
+    /// `Gauge` - which carves out a sub-area for its bar - painted its fill
+    /// with the built-in green no matter what `color` the stylesheet resolved
+    /// for it. The ratchet was happy because the source mentioned
+    /// `ctx.css_color`; the value just never reached a cell.
+    ///
+    /// `pass` is deliberately *not* carried: this is the same node, so
+    /// registering it again would put a duplicate in the tree. Overlays are
+    /// left behind for the same borrow reason `render_child` has.
     pub fn sub_ctx<'b>(&'b mut self, area: Rect) -> RenderContext<'b> {
         let clip = self.clip;
+        let style = self.style;
+        let state = self.state;
+        let transitions = self.transitions;
+
         let mut ctx = RenderContext::new(self.buffer, area);
+        ctx.style = style;
+        ctx.state = state;
+        ctx.transitions = transitions;
         if let Some(clip) = clip {
             ctx = ctx.with_clip(clip);
         }
