@@ -31,7 +31,7 @@ impl StyleMerge for Style {
         if other.layout.align_items != AlignItems::default() {
             result.layout.align_items = other.layout.align_items;
         }
-        if other.layout.gap != 0 {
+        if other.layout.gap.is_some() {
             result.layout.gap = other.layout.gap;
         }
 

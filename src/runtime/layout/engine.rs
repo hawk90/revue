@@ -245,7 +245,7 @@ fn style_to_layout_node(id: u64, style: &Style) -> LayoutNode {
             justify_content: style.layout.justify_content,
             align_items: style.layout.align_items,
             flex_grow: style.layout.flex_grow,
-            gap: style.layout.gap,
+            gap: style.layout.gap.unwrap_or(0),
             column_gap: style.layout.column_gap,
             row_gap: style.layout.row_gap,
         },
@@ -289,7 +289,7 @@ fn update_node_from_style(node: &mut LayoutNode, style: &Style) {
         justify_content: style.layout.justify_content,
         align_items: style.layout.align_items,
         flex_grow: style.layout.flex_grow,
-        gap: style.layout.gap,
+        gap: style.layout.gap.unwrap_or(0),
         column_gap: style.layout.column_gap,
         row_gap: style.layout.row_gap,
     };

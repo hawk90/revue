@@ -329,6 +329,52 @@ fn a_css_gap_overrides_the_builders_gap() {
     );
 }
 
+/// The other direction, which is the one that was broken: a stylesheet has to
+/// be able to say `gap: 0` and mean it.
+///
+/// `gap` was a plain `u16`, so "the stylesheet said zero" and "the stylesheet
+/// said nothing" were the same value and the builder's gap won either way -
+/// the limitation `docs/FEATURES.md` recorded. `column-gap` and `row-gap` were
+/// already `Option<u16>` and did not have it, which is what made the
+/// inconsistency visible.
+#[test]
+fn a_css_gap_of_zero_overrides_the_builders_gap() {
+    struct Spaced;
+    impl View for Spaced {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .gap(2)
+                .child(Text::new("A").element_id("a"))
+                .child(Text::new("B").element_id("b"))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "Spaced"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("app")
+        }
+    }
+
+    let gap_of = |t: &str| {
+        let lines: Vec<&str> = t.lines().collect();
+        let a = lines.iter().position(|l| l.contains('A')).expect("A");
+        let b = lines.iter().position(|l| l.contains('B')).expect("B");
+        b - a
+    };
+
+    let mut builder_only = harness("");
+    builder_only.draw(&Spaced);
+
+    let mut closed = harness("#app { gap: 0; }");
+    closed.draw(&Spaced);
+
+    assert!(
+        gap_of(&closed.screen_text()) < gap_of(&builder_only.screen_text()),
+        "`gap: 0` did not close the builder's gap"
+    );
+}
+
 #[test]
 fn a_css_gap_is_ignored_without_the_flag() {
     struct Two;

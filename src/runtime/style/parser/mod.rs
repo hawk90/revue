@@ -265,7 +265,7 @@ mod tests {
         let css = ".container { gap: 8; }";
         let sheet = parse(css).unwrap();
         let style = sheet.apply(".container", &Style::default());
-        assert_eq!(style.layout.gap, 8);
+        assert_eq!(style.layout.gap, Some(8));
     }
 
     #[test]

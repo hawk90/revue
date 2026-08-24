@@ -160,7 +160,7 @@ fn apply_display_layout(style: &mut Style, property: &str, value: &str) -> bool 
         }
         "gap" => {
             if let Ok(v) = value.trim().parse::<u16>() {
-                style.layout.gap = v;
+                style.layout.gap = Some(v);
                 return true;
             }
             false
