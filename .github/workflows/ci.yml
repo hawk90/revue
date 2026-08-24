@@ -63,6 +63,38 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-features -- -D warnings
 
+  # Feature combinations
+  #
+  # Everything above runs `--all-features`, so a `#[cfg(feature = ...)]` that is
+  # wrong for a *smaller* set was never built. That is not hypothetical: the job
+  # was added because `--no-default-features` had an ungated import that
+  # `-D warnings` turns into an error, and nothing had ever compiled it.
+  #
+  # `--no-default-features` is the floor and `--all-features` is the ceiling;
+  # the default set is what `test` uses via the crate's own defaults. Checking
+  # the floor is what the other two cannot do.
+  features:
+    name: Feature Combinations
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      # Library only, matching the `clippy` job above. `--all-targets` is not
+      # used: the test code carries ~200 pre-existing lints that no CI
+      # configuration checks today, and they have nothing to do with feature
+      # gating. The `test` step below still *compiles* the tests, so a `cfg`
+      # mistake in one of them fails here anyway.
+      - name: clippy (no default features)
+        run: cargo clippy --no-default-features -- -D warnings
+      - name: test (no default features)
+        run: cargo test --no-default-features
+
   test:
     name: Test (${{ matrix.os }})
     needs: [changes, fmt, clippy]
