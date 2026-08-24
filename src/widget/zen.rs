@@ -43,7 +43,8 @@ pub struct ZenMode {
     /// Vertical padding in zen mode
     padding_y: u16,
     /// Background color in zen mode
-    bg_color: Color,
+    /// The color the builder named, if it named one - see #656.
+    bg_color: Option<Color>,
     /// Optional overlay opacity (0.0-1.0) for dimming
     dim_opacity: f32,
     /// Whether to center content vertically
@@ -66,7 +67,7 @@ impl ZenMode {
             enabled: false,
             padding_x: 4,
             padding_y: 2,
-            bg_color: ZEN_BG,
+            bg_color: None,
             dim_opacity: 0.0,
             center_vertical: false,
             props: WidgetProps::new(),
@@ -94,7 +95,7 @@ impl ZenMode {
 
     /// Set background color
     pub fn bg(mut self, color: Color) -> Self {
-        self.bg_color = color;
+        self.bg_color = Some(color);
         self
     }
 
@@ -157,7 +158,7 @@ impl ZenMode {
     }
 
     #[doc(hidden)]
-    pub fn get_bg_color(&self) -> Color {
+    pub fn get_bg_color(&self) -> Option<Color> {
         self.bg_color
     }
 
@@ -184,7 +185,7 @@ impl View for ZenMode {
 
         if self.enabled {
             // Zen mode: fill background and render content with padding
-            let bg = ctx.background_or(self.bg_color, ZEN_BG);
+            let bg = self.bg_color.unwrap_or_else(|| ctx.css_background(ZEN_BG));
             for y in 0..area.height {
                 for x in 0..area.width {
                     let mut cell = Cell::new(' ');

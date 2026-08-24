@@ -87,7 +87,8 @@ pub struct AiStream {
     /// Stream status
     status: StreamStatus,
     /// Text color
-    fg: Color,
+    /// The color the builder named, if it named one - see #656.
+    fg: Option<Color>,
     /// Background color
     bg: Option<Color>,
     /// Cursor color
@@ -117,7 +118,7 @@ impl AiStream {
             typing_speed: 30,
             last_update: None,
             status: StreamStatus::Idle,
-            fg: Color::WHITE,
+            fg: None,
             bg: None,
             cursor_color: Color::rgb(100, 200, 255),
             show_thinking: true,
@@ -149,7 +150,7 @@ impl AiStream {
 
     /// Set text color
     pub fn fg(mut self, color: Color) -> Self {
-        self.fg = color;
+        self.fg = Some(color);
         self
     }
 
@@ -395,7 +396,7 @@ impl View for AiStream {
         // The caret color marks where the stream is writing, which a `color`
         // rule cannot say separately from the text - so it stays put and the
         // text is what the stylesheet reaches.
-        let text_fg = ctx.color_or(self.fg, Color::WHITE);
+        let text_fg = self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
         let text_bg = self.bg.or_else(|| ctx.css_background_if_set());
 
         // Show thinking indicator if no content yet
