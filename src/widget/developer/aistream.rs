@@ -392,6 +392,12 @@ impl View for AiStream {
             return;
         }
 
+        // The caret color marks where the stream is writing, which a `color`
+        // rule cannot say separately from the text - so it stays put and the
+        // text is what the stylesheet reaches.
+        let text_fg = ctx.color_or(self.fg, Color::WHITE);
+        let text_bg = self.bg.or_else(|| ctx.css_background_if_set());
+
         // Show thinking indicator if no content yet
         if self.content.is_empty() && self.show_thinking && self.status == StreamStatus::Streaming {
             self.render_thinking(ctx);
@@ -422,8 +428,8 @@ impl View for AiStream {
             }
 
             let mut cell = Cell::new(ch);
-            cell.fg = Some(self.fg);
-            cell.bg = self.bg;
+            cell.fg = Some(text_fg);
+            cell.bg = text_bg;
             ctx.set(x, y, cell);
 
             x += 1;

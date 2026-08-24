@@ -73,16 +73,12 @@ const NOT_YET_READING_CSS: &[&str] = &[
     // intentional: each event carries its own type color and an event is not a
     // node, so a rule on the timeline would flatten them with no way back.
     "Timeline",
-    "AiStream",
     "Chart",
     "DataGrid",
     "DateTimePicker",
     "Diagram",
-    "HttpClient",
     "ProcessMonitor",
     "RichTextEditor",
-    "Streamline",
-    "Terminal",
     "TimeSeries",
     "Waveline",
 ];

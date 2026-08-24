@@ -18,6 +18,11 @@ impl View for HttpClient {
             return;
         }
 
+        // The method badge and the status class each carry their own color -
+        // blue GET against red DELETE, green 2xx against red 4xx - and that is
+        // how a request is read. The URL is the base a `color` rule reaches.
+        let url_fg = ctx.css_color(Color::WHITE);
+
         // URL bar (row 0-1)
         // Method badge
         let method = self.request.method;
@@ -41,7 +46,7 @@ impl View for HttpClient {
             url_start,
             0,
             self.request.url(),
-            Color::WHITE,
+            url_fg,
             area.width.saturating_sub(url_start),
         );
 
