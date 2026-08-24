@@ -15,7 +15,10 @@ use revue::prelude::*;
 use revue::style::Color;
 use revue::testing::PipelineHarness;
 use revue::widget::theme::{DARK_GRAY, LIGHT_GRAY, SEPARATOR_COLOR};
-use revue::widget::{crumb, Breadcrumb, Divider, Skeleton, Tag};
+use revue::widget::{
+    crumb, Breadcrumb, Divider, Gauge, Menu, MenuBar, Rating, Skeleton, Slider, StatusBar, Switch,
+    Tag,
+};
 
 const RED: Color = Color {
     r: 255,
@@ -172,4 +175,130 @@ both_directions!(
     CrumbNamed,
     CrumbSilent,
     LIGHT_GRAY
+);
+
+// ---------------------------------------------------------------------------
+// Batch 2
+// ---------------------------------------------------------------------------
+
+case!(
+    GaugeNamed,
+    GaugeSilent,
+    // `value` is normalised 0..1, and the warning/critical thresholds are unset
+    // by default, so this paints the ordinary fill.
+    Gauge::new()
+        .value(0.5)
+        .fill_color(Color::GREEN)
+        .element_id("w"),
+    Gauge::new().value(0.5).element_id("w")
+);
+
+case!(
+    StatusBarNamed,
+    StatusBarSilent,
+    StatusBar::new()
+        .key("q", "quit")
+        .fg(Color::WHITE)
+        .element_id("w"),
+    StatusBar::new().key("q", "quit").element_id("w")
+);
+
+case!(
+    MenuBarNamed,
+    MenuBarSilent,
+    // Two menus: the first is selected and keeps its highlight, so the second
+    // is the one `fg` paints.
+    MenuBar::new()
+        .menu(Menu::new("File"))
+        .menu(Menu::new("Edit"))
+        .fg(Color::WHITE)
+        .element_id("w"),
+    MenuBar::new()
+        .menu(Menu::new("File"))
+        .menu(Menu::new("Edit"))
+        .element_id("w")
+);
+
+both_directions!(
+    a_named_gauge_fill_beats_css,
+    a_silent_gauge_defers_to_css,
+    GaugeNamed,
+    GaugeSilent,
+    Color::GREEN
+);
+
+both_directions!(
+    a_named_status_bar_fg_beats_css,
+    a_silent_status_bar_defers_to_css,
+    StatusBarNamed,
+    StatusBarSilent,
+    Color::WHITE
+);
+
+both_directions!(
+    a_named_menu_bar_fg_beats_css,
+    a_silent_menu_bar_defers_to_css,
+    MenuBarNamed,
+    MenuBarSilent,
+    Color::WHITE
+);
+
+// ---------------------------------------------------------------------------
+// Batch 3
+// ---------------------------------------------------------------------------
+
+case!(
+    SwitchNamed,
+    SwitchSilent,
+    Switch::new()
+        .checked(true)
+        .on_color(Color::GREEN)
+        .element_id("w"),
+    Switch::new().checked(true).element_id("w")
+);
+
+case!(
+    RatingNamed,
+    RatingSilent,
+    Rating::new()
+        .max_value(5)
+        .value(3.0)
+        .filled_color(Color::rgb(255, 200, 0))
+        .element_id("w"),
+    Rating::new().max_value(5).value(3.0).element_id("w")
+);
+
+case!(
+    SliderNamed,
+    SliderSilent,
+    Slider::new()
+        .range(0.0, 100.0)
+        .value(50.0)
+        .fill_color(Color::CYAN)
+        .element_id("w"),
+    Slider::new().range(0.0, 100.0).value(50.0).element_id("w")
+);
+
+both_directions!(
+    a_named_switch_on_color_beats_css,
+    a_silent_switch_defers_to_css,
+    SwitchNamed,
+    SwitchSilent,
+    Color::GREEN
+);
+
+both_directions!(
+    a_named_rating_fill_beats_css,
+    a_silent_rating_defers_to_css,
+    RatingNamed,
+    RatingSilent,
+    Color::rgb(255, 200, 0)
+);
+
+both_directions!(
+    a_named_slider_fill_beats_css,
+    a_silent_slider_defers_to_css,
+    SliderNamed,
+    SliderSilent,
+    Color::CYAN
 );

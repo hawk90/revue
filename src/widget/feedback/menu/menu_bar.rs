@@ -20,7 +20,7 @@ pub struct MenuBar {
     pub(crate) open: bool,
     /// Colors
     pub(crate) bg: Color,
-    pub(crate) fg: Color,
+    pub(crate) fg: Option<Color>,
     selected_bg: Color,
     selected_fg: Color,
     disabled_fg: Color,
@@ -44,7 +44,7 @@ impl MenuBar {
             selected_item: None,
             open: false,
             bg: DARK_BG,
-            fg: Color::WHITE,
+            fg: None,
             selected_bg: Color::rgb(60, 100, 180),
             selected_fg: Color::WHITE,
             disabled_fg: DISABLED_FG,
@@ -67,7 +67,7 @@ impl MenuBar {
 
     /// Set foreground color
     pub fn fg(mut self, color: Color) -> Self {
-        self.fg = color;
+        self.fg = Some(color);
         self
     }
 
@@ -215,7 +215,7 @@ impl View for MenuBar {
     fn render(&self, ctx: &mut RenderContext) {
         // Unselected entries take the stylesheet; the selected one keeps its
         // highlight, which a rule cannot address separately.
-        let fg = ctx.color_or(self.fg, Color::WHITE);
+        let fg = self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
         let area = ctx.area;
         if area.height < 1 {
             return;
@@ -262,6 +262,9 @@ impl View for MenuBar {
 
 impl MenuBar {
     fn render_dropdown(&self, ctx: &mut RenderContext, menu: &Menu, y: u16) {
+        // Resolved once: the builder's color if it named one, else the
+        // stylesheet's, else white.
+        let fg = self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
         if menu.items.is_empty() || y >= ctx.area.height {
             return;
         }
@@ -317,7 +320,7 @@ impl MenuBar {
 
                 let mut cell = Cell::new(ch);
                 cell.bg = Some(self.bg);
-                cell.fg = Some(self.fg);
+                cell.fg = Some(fg);
                 ctx.set(px, py, cell);
             }
         }
@@ -341,12 +344,12 @@ impl MenuBar {
                 }
                 // Fix corners
                 let mut left = Cell::new('├');
-                left.fg = Some(self.fg);
+                left.fg = Some(fg);
                 left.bg = Some(self.bg);
                 ctx.set(menu_x, item_y, left);
 
                 let mut right = Cell::new('┤');
-                right.fg = Some(self.fg);
+                right.fg = Some(fg);
                 right.bg = Some(self.bg);
                 ctx.set(menu_x + dropdown_width - 1, item_y, right);
             } else {
@@ -361,7 +364,7 @@ impl MenuBar {
                 } else if is_selected {
                     self.selected_fg
                 } else {
-                    self.fg
+                    fg
                 };
 
                 // Fill background

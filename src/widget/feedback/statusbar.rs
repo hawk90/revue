@@ -129,7 +129,7 @@ pub struct StatusBar {
     /// Background color
     bg: Color,
     /// Default foreground color
-    fg: Color,
+    fg: Option<Color>,
     /// Key hints
     key_hints: Vec<KeyHint>,
     /// Key hint foreground
@@ -153,7 +153,7 @@ impl StatusBar {
             right: Vec::new(),
             position: StatusBarPosition::Bottom,
             bg: DARK_BG,
-            fg: Color::WHITE,
+            fg: None,
             key_hints: Vec::new(),
             key_fg: Color::BLACK,
             key_bg: SECONDARY_TEXT,
@@ -222,7 +222,7 @@ impl StatusBar {
 
     /// Set foreground color
     pub fn fg(mut self, color: Color) -> Self {
-        self.fg = color;
+        self.fg = Some(color);
         self
     }
 
@@ -314,7 +314,7 @@ impl StatusBar {
     }
 
     #[doc(hidden)]
-    pub fn get_fg(&self) -> Color {
+    pub fn get_fg(&self) -> Option<Color> {
         self.fg
     }
 
@@ -429,7 +429,7 @@ impl StatusBar {
         // A section's own color wins; otherwise the stylesheet, then the bar's.
         let fg = section
             .fg
-            .unwrap_or_else(|| ctx.color_or(self.fg, Color::WHITE));
+            .unwrap_or_else(|| self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE)));
         let bg = section.bg.unwrap_or(self.bg);
 
         let mut current_x = x;
@@ -486,7 +486,7 @@ impl StatusBar {
                     break;
                 }
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(ctx.color_or(self.fg, Color::WHITE));
+                cell.fg = Some(self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE)));
                 cell.bg = Some(self.bg);
                 ctx.set(current_x, y, cell);
                 current_x += 1;
@@ -495,6 +495,9 @@ impl StatusBar {
     }
 
     fn render_key_hints_inline(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16) {
+        // Resolved once: the builder's color if it named one, else the
+        // stylesheet's, else white.
+        let fg = self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
         let mut current_x = x;
 
         for hint in &self.key_hints {
@@ -518,7 +521,7 @@ impl StatusBar {
             // Render description
             for ch in hint.description.chars() {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(self.fg);
+                cell.fg = Some(fg);
                 cell.bg = Some(self.bg);
                 ctx.set(current_x, y, cell);
                 current_x += 1;

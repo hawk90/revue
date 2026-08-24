@@ -72,7 +72,7 @@ pub struct Gauge {
     /// Show percentage
     show_percent: bool,
     /// Filled color
-    fill_color: Color,
+    fill_color: Option<Color>,
     /// Filled background color
     fill_bg: Option<Color>,
     /// Empty/track color
@@ -110,7 +110,7 @@ impl Gauge {
             label: None,
             label_position: LabelPosition::Inside,
             show_percent: true,
-            fill_color: Color::GREEN,
+            fill_color: None,
             fill_bg: None,
             empty_color: SEPARATOR_COLOR,
             empty_bg: None,
@@ -196,7 +196,7 @@ impl Gauge {
 
     /// Set fill color
     pub fn fill_color(mut self, color: Color) -> Self {
-        self.fill_color = color;
+        self.fill_color = Some(color);
         self
     }
 
@@ -281,7 +281,8 @@ impl Gauge {
         // The normal fill takes `color`; the warning and critical thresholds
         // keep theirs - they are the reading, and a rule cannot address them
         // separately.
-        ctx.color_or(self.fill_color, Color::GREEN)
+        self.fill_color
+            .unwrap_or_else(|| ctx.css_color(Color::GREEN))
     }
 
     /// Get label text
