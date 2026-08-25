@@ -73,7 +73,7 @@ mod tests {
     #[test]
     fn test_figlet_font_clone() {
         let font = FigletFont::Slant;
-        let cloned = font.clone();
+        let cloned = font;
         assert_eq!(font, cloned);
     }
 
@@ -206,7 +206,7 @@ mod tests {
     fn test_figlet_lines_conversion() {
         let lines = figlet_lines("TEST", FigletFont::Block);
         assert_eq!(lines.len(), 6);
-        assert!(lines.iter().all(|l| l.is_ascii() == false)); // Unicode chars
+        assert!(lines.iter().all(|l| !l.is_ascii())); // Unicode chars
     }
 
     #[test]

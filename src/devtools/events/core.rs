@@ -410,7 +410,9 @@ mod tests {
         let id = logger.log_key("Enter", "Ctrl");
 
         assert_eq!(logger.count(), 1);
-        assert!(id > 0 || id == 0); // First ID is 0
+        // `id >= 0` was the old assertion; the id is unsigned so it could not
+        // fail. The comment already said what was meant.
+        assert_eq!(id, 0, "the first logged event should get id 0");
     }
 
     #[test]
@@ -587,7 +589,7 @@ mod tests {
     fn test_event_logger_log_click() {
         let mut logger = EventLogger::new();
         let id = logger.log_click(10, 20, "left");
-        assert!(id == 0 || id > 0);
+        assert_eq!(id, 0, "the first logged event should get id 0");
         assert_eq!(logger.count(), 1);
     }
 

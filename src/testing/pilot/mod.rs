@@ -3,6 +3,10 @@
 mod async_pilot;
 mod core;
 
+// Re-exports
+pub use async_pilot::AsyncPilot;
+pub use core::Pilot;
+
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
@@ -480,7 +484,3 @@ mod tests {
         assert_eq!(pilot.history().len(), 4);
     }
 }
-
-// Re-exports
-pub use async_pilot::AsyncPilot;
-pub use core::Pilot;

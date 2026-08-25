@@ -1195,8 +1195,9 @@ fn test_set_get_with_offset() {
     let cell = ctx.get(2, 1).unwrap();
     assert_eq!(cell.symbol, 'Z');
 
-    // Verify via buffer directly (drop ctx first)
-    drop(ctx);
+    // Verify via the buffer directly. `drop(ctx)` used to stand here to end
+    // the borrow, but `RenderContext` has no `Drop` - the borrow already ends
+    // at its last use above, which is what actually frees `buffer`.
     assert_eq!(buffer.get(7, 4).unwrap().symbol, 'Z');
 }
 

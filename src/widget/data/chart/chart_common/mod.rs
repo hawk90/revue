@@ -12,6 +12,16 @@ mod orientation;
 mod tooltip;
 
 // KEEP HERE - Private implementation tests (accesses private fields: title, min, max, ticks, grid, color, format, position)
+
+// Re-exports
+pub use axis::{Axis, AxisFormat};
+pub use color_scheme::ColorScheme;
+pub use grid::{ChartGrid, GridStyle};
+pub use legend::{Legend, LegendOrientation, LegendPosition};
+pub use marker::Marker;
+pub use orientation::ChartOrientation;
+pub use tooltip::{ChartTooltip, ChartTooltipFormat, ChartTooltipPosition};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -318,12 +328,3 @@ mod tests {
         assert_eq!(orientation, ChartOrientation::Vertical);
     }
 }
-
-// Re-exports
-pub use axis::{Axis, AxisFormat};
-pub use color_scheme::ColorScheme;
-pub use grid::{ChartGrid, GridStyle};
-pub use legend::{Legend, LegendOrientation, LegendPosition};
-pub use marker::Marker;
-pub use orientation::ChartOrientation;
-pub use tooltip::{ChartTooltip, ChartTooltipFormat, ChartTooltipPosition};

@@ -26,12 +26,12 @@ fn test_match_pseudo_hover() {
     let get_node = |_: DomId| -> Option<&DomNode> { None };
 
     // Not hovered - should not match
-    let matches = resolver.match_node(&node, &get_node);
+    let matches = resolver.match_node(&node, get_node);
     assert_eq!(matches.len(), 0);
 
     // Hovered - should match
     node.state.hovered = true;
-    let matches = resolver.match_node(&node, &get_node);
+    let matches = resolver.match_node(&node, get_node);
     assert_eq!(matches.len(), 1);
 }
 
@@ -52,12 +52,12 @@ fn test_match_pseudo_focus() {
     let get_node = |_: DomId| -> Option<&DomNode> { None };
 
     // Not focused
-    let matches = resolver.match_node(&node, &get_node);
+    let matches = resolver.match_node(&node, get_node);
     assert_eq!(matches.len(), 0);
 
     // Focused
     node.state.focused = true;
-    let matches = resolver.match_node(&node, &get_node);
+    let matches = resolver.match_node(&node, get_node);
     assert_eq!(matches.len(), 1);
 }
 
@@ -78,7 +78,7 @@ fn test_match_pseudo_disabled() {
     let get_node = |_: DomId| -> Option<&DomNode> { None };
 
     node.state.disabled = true;
-    let matches = resolver.match_node(&node, &get_node);
+    let matches = resolver.match_node(&node, get_node);
     assert_eq!(matches.len(), 1);
 }
 
@@ -99,12 +99,12 @@ fn test_match_pseudo_first_child() {
     node.state.update_position(0, 3); // First of 3
     let get_node = |_: DomId| -> Option<&DomNode> { None };
 
-    let matches = resolver.match_node(&node, &get_node);
+    let matches = resolver.match_node(&node, get_node);
     assert_eq!(matches.len(), 1);
 
     // Not first child
     node.state.update_position(1, 3); // Second of 3
-    let matches = resolver.match_node(&node, &get_node);
+    let matches = resolver.match_node(&node, get_node);
     assert_eq!(matches.len(), 0);
 }
 
@@ -125,7 +125,7 @@ fn test_match_pseudo_last_child() {
     node.state.update_position(2, 3); // Last of 3
     let get_node = |_: DomId| -> Option<&DomNode> { None };
 
-    let matches = resolver.match_node(&node, &get_node);
+    let matches = resolver.match_node(&node, get_node);
     assert_eq!(matches.len(), 1);
 }
 
@@ -146,12 +146,12 @@ fn test_match_pseudo_checked() {
     let get_node = |_: DomId| -> Option<&DomNode> { None };
 
     // Not checked
-    let matches = resolver.match_node(&node, &get_node);
+    let matches = resolver.match_node(&node, get_node);
     assert_eq!(matches.len(), 0);
 
     // Checked
     node.state.checked = true;
-    let matches = resolver.match_node(&node, &get_node);
+    let matches = resolver.match_node(&node, get_node);
     assert_eq!(matches.len(), 1);
 }
 
@@ -172,7 +172,7 @@ fn test_match_pseudo_selected() {
     let get_node = |_: DomId| -> Option<&DomNode> { None };
 
     node.state.selected = true;
-    let matches = resolver.match_node(&node, &get_node);
+    let matches = resolver.match_node(&node, get_node);
     assert_eq!(matches.len(), 1);
 }
 
@@ -193,6 +193,6 @@ fn test_match_pseudo_only_child() {
     node.state.update_position(0, 1); // Only child
     let get_node = |_: DomId| -> Option<&DomNode> { None };
 
-    let matches = resolver.match_node(&node, &get_node);
+    let matches = resolver.match_node(&node, get_node);
     assert_eq!(matches.len(), 1);
 }

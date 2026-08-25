@@ -309,6 +309,7 @@ mod tests {
         use super::usage::use_store;
 
         // Create a simple store that implements Store manually
+        #[derive(Default)]
         struct SingletonTestStore {
             _value: i32,
         }
@@ -328,12 +329,6 @@ mod tests {
 
             fn get_getters(&self) -> HashMap<String, String> {
                 HashMap::new()
-            }
-        }
-
-        impl Default for SingletonTestStore {
-            fn default() -> Self {
-                Self { _value: 0 }
             }
         }
 

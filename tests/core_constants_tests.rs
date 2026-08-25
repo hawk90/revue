@@ -292,8 +292,8 @@ fn test_gb_value() {
 
 #[test]
 fn test_size_units_relationship() {
-    assert!(KB < MB);
-    assert!(MB < GB);
+    const { assert!(KB < MB) };
+    const { assert!(MB < GB) };
 }
 
 #[test]
@@ -323,12 +323,12 @@ fn test_max_comment_length() {
 
 #[test]
 fn test_file_sizes_are_positive() {
-    assert!(KB > 0);
-    assert!(MB > 0);
-    assert!(GB > 0);
-    assert!(MAX_CSS_FILE_SIZE > 0);
-    assert!(MAX_CONFIG_FILE_SIZE > 0);
-    assert!(MAX_SNAPSHOT_FILE_SIZE > 0);
-    assert!(MAX_CLIPBOARD_SIZE > 0);
-    assert!(MAX_COMMENT_LENGTH > 0);
+    const { assert!(KB > 0) };
+    const { assert!(MB > 0) };
+    const { assert!(GB > 0) };
+    const { assert!(MAX_CSS_FILE_SIZE > 0) };
+    const { assert!(MAX_CONFIG_FILE_SIZE > 0) };
+    const { assert!(MAX_SNAPSHOT_FILE_SIZE > 0) };
+    const { assert!(MAX_CLIPBOARD_SIZE > 0) };
+    const { assert!(MAX_COMMENT_LENGTH > 0) };
 }

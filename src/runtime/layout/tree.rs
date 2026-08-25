@@ -153,11 +153,10 @@ mod tests {
     use super::*;
 
     fn make_node(id: u64) -> LayoutNode {
-        let node = LayoutNode {
-            id: id,
+        LayoutNode {
+            id,
             ..Default::default()
-        };
-        node
+        }
     }
 
     #[test]

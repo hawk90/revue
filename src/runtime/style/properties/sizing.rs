@@ -42,7 +42,7 @@ mod tests {
             width: Size::Fixed(100),
             ..Default::default()
         };
-        let cloned = style.clone();
+        let cloned = style;
         assert_eq!(cloned.width, Size::Fixed(100));
     }
 

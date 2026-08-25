@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn test_load_state_clone() {
         let state = LoadState::Loaded;
-        let cloned = state.clone();
+        let cloned = state;
         assert_eq!(state, cloned);
     }
 }

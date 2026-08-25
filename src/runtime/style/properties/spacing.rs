@@ -42,7 +42,7 @@ mod tests {
             top: Some(10),
             ..Default::default()
         };
-        let cloned = style.clone();
+        let cloned = style;
         assert_eq!(cloned.top, Some(10));
     }
 

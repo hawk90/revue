@@ -651,7 +651,7 @@ mod tests {
             .route("/admin", "admin")
             .guard(|path, _| path != "/admin");
 
-        assert!(router.push("/admin") == false);
+        assert!(!router.push("/admin"));
         assert_eq!(router.current_path(), "/");
     }
 

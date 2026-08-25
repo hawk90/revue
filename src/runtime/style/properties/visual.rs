@@ -89,7 +89,7 @@ mod tests {
         assert_eq!(style.color, Color::default());
         assert_eq!(style.background, Color::default());
         assert_eq!(style.opacity, 1.0);
-        assert_eq!(style.visible, true);
+        assert!(style.visible);
         assert_eq!(style.z_index, 0);
     }
 
@@ -99,7 +99,7 @@ mod tests {
             opacity: 0.5,
             ..Default::default()
         };
-        let cloned = style.clone();
+        let cloned = style;
         assert_eq!(cloned.opacity, 0.5);
     }
 
@@ -141,7 +141,7 @@ mod tests {
     fn test_visual_style_default_values() {
         let style = VisualStyle::default();
         assert_eq!(style.opacity, 1.0);
-        assert_eq!(style.visible, true);
+        assert!(style.visible);
         assert_eq!(style.z_index, 0);
     }
 }
