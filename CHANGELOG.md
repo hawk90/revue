@@ -5,6 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.76.0](https://github.com/hawk90/revue/compare/v2.75.0...v2.76.0) (2026-08-25)
+
+
+### Features
+
+* **border:** read border-style and border-color from CSS ([#617](https://github.com/hawk90/revue/issues/617)) ([3df2174](https://github.com/hawk90/revue/commit/3df2174c7b65f240ab2b6ddce95cff59ed0b91c7))
+* **card:** read border and background from CSS ([#618](https://github.com/hawk90/revue/issues/618)) ([19c6bcc](https://github.com/hawk90/revue/commit/19c6bcc6ba52f2437be357530843e3d96fdee5fe))
+* **data:** let List and Table rows read color from CSS ([#623](https://github.com/hawk90/revue/issues/623)) ([60a52f6](https://github.com/hawk90/revue/commit/60a52f665d04409a69f3a1f7c1af3afbfca4b116))
+* **data:** wire the viewers' base rows, mark the syntax-colored ones deliberate ([#640](https://github.com/hawk90/revue/issues/640)) ([8941dde](https://github.com/hawk90/revue/commit/8941dde5c44830ded5785f22fe6b232ac793559f))
+* **display:** wire Avatar, BigText, Progress and Digits to CSS ([#626](https://github.com/hawk90/revue/issues/626)) ([22926b7](https://github.com/hawk90/revue/commit/22926b790c7aa486d7ac310aeb4f9aae0ba74321))
+* **display:** wire Skeleton, StatusIndicator and EmptyState ([#627](https://github.com/hawk90/revue/issues/627)) ([bb86ab1](https://github.com/hawk90/revue/commit/bb86ab177dd099bdd80e9b555723ce6d7baacdf7))
+* **dom:** carry a widget's declared disabled state onto its node ([#612](https://github.com/hawk90/revue/issues/612)) ([00142dd](https://github.com/hawk90/revue/commit/00142dd9c4758b9926e0b5c997a04b8c1073885a))
+* **dom:** hit-test the painted frame, and drive :hover and :focus from the mouse ([#609](https://github.com/hawk90/revue/issues/609)) ([a9465ca](https://github.com/hawk90/revue/commit/a9465ca03f3af285a4e574cd46074fe8395964b1))
+* **event:** move `:focus` with Tab and Shift+Tab ([#648](https://github.com/hawk90/revue/issues/648)) ([41a313b](https://github.com/hawk90/revue/commit/41a313b90a7f8e713243023087d502beed1147a9))
+* **feedback:** let Alert and Tooltip read color from CSS ([#624](https://github.com/hawk90/revue/issues/624)) ([604ecc6](https://github.com/hawk90/revue/commit/604ecc656f342c76826bed4984d8cbfa94826726))
+* **form:** let Form read color from CSS ([#632](https://github.com/hawk90/revue/issues/632)) ([3cb1ad4](https://github.com/hawk90/revue/commit/3cb1ad46e38ba6709728d30b546e8c9c6ec94048))
+* **input:** wire Autocomplete, Combobox and CommandPalette to CSS ([#638](https://github.com/hawk90/revue/issues/638)) ([5184f79](https://github.com/hawk90/revue/commit/5184f79db11539775d666050b504b44d06bdb28e))
+* **input:** wire SearchBar and Stepper to CSS ([#635](https://github.com/hawk90/revue/issues/635)) ([3aa8c1e](https://github.com/hawk90/revue/commit/3aa8c1eb5a4484a980ac77e057e6b21e47cbb8ae))
+* **layout:** wire ScrollView and Splitter to CSS ([#634](https://github.com/hawk90/revue/issues/634)) ([beb4c57](https://github.com/hawk90/revue/commit/beb4c571de0da3babe74b21ff06a4a60d982b17f))
+* **text:** read the text properties the cascade already computed ([#616](https://github.com/hawk90/revue/issues/616)) ([2816a3d](https://github.com/hawk90/revue/commit/2816a3d6b27cc4c5ee67059bdb368a2a7431ffef))
+* **widget:** give every widget that reports meta a way to fill it in ([#622](https://github.com/hawk90/revue/issues/622)) ([f5c9e5c](https://github.com/hawk90/revue/commit/f5c9e5c9e74935a6d94084d7294532c64397e740))
+* **widget:** let the stylesheet outrank a widget's disabled colors ([#613](https://github.com/hawk90/revue/issues/613)) ([d6381c0](https://github.com/hawk90/revue/commit/d6381c0fd597b715a55939c6006b818ba771c4d7))
+* **widget:** wire Breadcrumb, Pagination, Tabs and Toast to CSS ([#629](https://github.com/hawk90/revue/issues/629)) ([3a64a42](https://github.com/hawk90/revue/commit/3a64a42f2190da0b4ecce10aed9f503c29c8aab8))
+* **widget:** wire Callout and MenuBar, mark Timeline deliberate ([#630](https://github.com/hawk90/revue/issues/630)) ([28e1ffc](https://github.com/hawk90/revue/commit/28e1ffcd74f9d0ab442dd47c9e3fc804e8190f94))
+* **widget:** wire Collapsible, ContextMenu, Popover and Sidebar to CSS ([#631](https://github.com/hawk90/revue/issues/631)) ([723ab0f](https://github.com/hawk90/revue/commit/723ab0fc2675619fdc4cd151be8ed6166ee6da05))
+* **widget:** wire QrCode, ToastQueue and the transitions; exclude computed gradients ([#642](https://github.com/hawk90/revue/issues/642)) ([479b0a5](https://github.com/hawk90/revue/commit/479b0a53b05bbf7ff183c13537f9eac8182751ba))
+* **widget:** wire Resizable, MaskedInput and ErrorBoundary to CSS ([#637](https://github.com/hawk90/revue/issues/637)) ([12667e8](https://github.com/hawk90/revue/commit/12667e8d19b245e816e3d73c0e3e480d35d32f26))
+* **widget:** wire seven input and navigation widgets to CSS ([#628](https://github.com/hawk90/revue/issues/628)) ([ffbc85a](https://github.com/hawk90/revue/commit/ffbc85a7895b0f34e3af85b883b6bc3037f37ea5))
+* **widget:** wire TextArea, Timer, VirtualList and SortableList to CSS ([#641](https://github.com/hawk90/revue/issues/641)) ([ad4bc66](https://github.com/hawk90/revue/commit/ad4bc66bd9acdeb48ede72db6d93ffeb611b4904))
+* **widget:** wire the developer tools' chrome to CSS ([#645](https://github.com/hawk90/revue/issues/645)) ([5f17f0f](https://github.com/hawk90/revue/commit/5f17f0ff8622a41bbe78bf08360a1b878c23153a))
+* **widget:** wire the full-screen widgets and RichText to CSS ([#644](https://github.com/hawk90/revue/issues/644)) ([0048004](https://github.com/hawk90/revue/commit/0048004e017b2b98e2e41f71f7f5912fb84d22b4))
+* **widget:** wire the last data widgets and charts to CSS ([#646](https://github.com/hawk90/revue/issues/646)) ([6a52cc2](https://github.com/hawk90/revue/commit/6a52cc2952bf5d6f0e69e0f8ff089414737e52ad))
+* **widget:** wire the last four widgets to CSS ([#647](https://github.com/hawk90/revue/issues/647)) ([81c7ef3](https://github.com/hawk90/revue/commit/81c7ef32c4c4637601ce752b67d56e3eb07ed6c3))
+* **widget:** wire the pickers and the file browsers to CSS ([#643](https://github.com/hawk90/revue/issues/643)) ([d14d444](https://github.com/hawk90/revue/commit/d14d444f80394ab37b7e30b73fb69f293e4b741e))
+* **widget:** wire the single-color charts, Gauge, Modal, Select and StatusBar ([#639](https://github.com/hawk90/revue/issues/639)) ([c85a8a7](https://github.com/hawk90/revue/commit/c85a8a7c931650793e885919691a41726ec2b9ce))
+* **widget:** wire Tree, Calendar and NotificationCenter to CSS ([#636](https://github.com/hawk90/revue/issues/636)) ([2b9ada5](https://github.com/hawk90/revue/commit/2b9ada5e72bd5d52f8eb2bdb6733855a2d71b056))
+
+
+### Bug Fixes
+
+* **ci:** unbreak the feature-combinations job on main ([#665](https://github.com/hawk90/revue/issues/665)) ([3f1b982](https://github.com/hawk90/revue/commit/3f1b9820e53ae4381ecc84bb5f44947b595bb610))
+* **css:** let descendant and general-sibling selectors match past one step ([#614](https://github.com/hawk90/revue/issues/614)) ([6296d7c](https://github.com/hawk90/revue/commit/6296d7c19498fd7e6cdf53930dd9526707f4fa66))
+* **dom:** re-run the cascade when something below a clean node changes ([#611](https://github.com/hawk90/revue/issues/611)) ([ea6c026](https://github.com/hawk90/revue/commit/ea6c026342e4b282b8c4233af8d1321a3cdfbae2))
+* **layout:** give Layers' children DOM nodes, wire Accordion to CSS ([#633](https://github.com/hawk90/revue/issues/633)) ([b60d5fb](https://github.com/hawk90/revue/commit/b60d5fb1355d5a27faf403bba62bbf77cda1882e))
+* **render:** `sub_ctx` keeps the node's style, not just its clip ([#657](https://github.com/hawk90/revue/issues/657)) ([3fe38f4](https://github.com/hawk90/revue/commit/3fe38f4130c0e0b7cfa7f0fcca35068d55a79089))
+* **render:** clip children to the container's box, not their own ([#619](https://github.com/hawk90/revue/issues/619)) ([8d8f058](https://github.com/hawk90/revue/commit/8d8f0587fef1e0eff56a9732227ac0783f862c8c))
+* **style:** let a stylesheet say `border-style: none` and mean it ([#654](https://github.com/hawk90/revue/issues/654)) ([a09f59d](https://github.com/hawk90/revue/commit/a09f59d25f80d67b6b1ae7ead85a678fd38265a0))
+* **style:** let a stylesheet say `gap: 0` and mean it ([#653](https://github.com/hawk90/revue/issues/653)) ([324b3c7](https://github.com/hawk90/revue/commit/324b3c7246b8fd8f522e8d8368e8c0a01d71bf4c))
+* **widget:** a named color outranks the stylesheet (batches 2 and 3) ([#658](https://github.com/hawk90/revue/issues/658)) ([0c71724](https://github.com/hawk90/revue/commit/0c717247af20f8451b110edccb5cf0d0fcd2c8d2))
+* **widget:** a named color outranks the stylesheet in Divider, Skeleton, Tag, Breadcrumb ([#656](https://github.com/hawk90/revue/issues/656)) ([1ad50a3](https://github.com/hawk90/revue/commit/1ad50a36c5e7afc33bde2d06c93579d9809531f5))
+* **widget:** a named color outranks the stylesheet in Presentation and MarkdownPresentation ([#663](https://github.com/hawk90/revue/issues/663)) ([1599fc7](https://github.com/hawk90/revue/commit/1599fc7d3afc904b31da4e93e203add5f092aee1))
+* **widget:** a named color outranks the stylesheet in Resizable, VirtualList, SortableList, Pagination ([#661](https://github.com/hawk90/revue/issues/661)) ([facef90](https://github.com/hawk90/revue/commit/facef9060dcb3f78f53a718bb549fe2bd0dc4a49))
+* **widget:** a named color outranks the stylesheet in SearchBar, Autocomplete, Collapsible, Splitter ([#660](https://github.com/hawk90/revue/issues/660)) ([7014245](https://github.com/hawk90/revue/commit/7014245c0f9b96774f84d2ea3372b83b77f514b1))
+* **widget:** a named color outranks the stylesheet in ZenMode, QrCode, AiStream, Terminal ([#662](https://github.com/hawk90/revue/issues/662)) ([64d5d28](https://github.com/hawk90/revue/commit/64d5d28bbc1a7d9206feae91c25045867cee0739))
+* **widget:** an explicit `.align(Left)` outranks an inherited `text-align` ([#655](https://github.com/hawk90/revue/issues/655)) ([2ab8a1c](https://github.com/hawk90/revue/commit/2ab8a1ce2c0d1f57c0a4cbccd93a208465eb9df8))
+* **widget:** route container children through render_child so they reach the DOM ([#620](https://github.com/hawk90/revue/issues/620)) ([75a56d6](https://github.com/hawk90/revue/commit/75a56d69425e0357cdb034403df2b5834033b930))
+
 ## [2.75.0](https://github.com/hawk90/revue/compare/v2.74.0...v2.75.0) (2026-08-23)
 
 
