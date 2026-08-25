@@ -934,7 +934,7 @@ impl View for TextEditor {
                 // Highlight cursor position
                 let before = Self::substr_before(line, self.cursor_col.min(line_char_len));
                 // Use skip().next() for O(n) instead of O(n²) with .chars().nth()
-                let cursor_char = line.chars().skip(self.cursor_col).next().unwrap_or(' ');
+                let cursor_char = line.chars().nth(self.cursor_col).unwrap_or(' ');
                 let after = if self.cursor_col < line_char_len {
                     Self::substr_from(line, self.cursor_col + 1)
                 } else {

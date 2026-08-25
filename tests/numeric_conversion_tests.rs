@@ -370,7 +370,7 @@ fn test_scroll_view_max_values() {
 
     let percentage = sv.scroll_percentage(20);
     // Should not panic
-    assert!(percentage >= 0.0 && percentage <= 1.0);
+    assert!((0.0..=1.0).contains(&percentage));
 }
 
 #[test]
@@ -514,5 +514,5 @@ fn test_percent_calculation_edge_cases() {
     // Negative case - -5000 wraps
     let negative = (width as f32 * -0.5) as u16;
     // Just verify it doesn't crash
-    assert!(negative < u16::MAX / 2 || negative > u16::MAX / 2); // Either wraps or not
+    assert!(negative != u16::MAX / 2); // Either wraps or not
 }

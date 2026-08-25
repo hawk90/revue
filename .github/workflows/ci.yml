@@ -62,6 +62,10 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-features -- -D warnings
+      # `--all-targets` adds the tests, the examples and the benches. Those
+      # carried ~200 lints that no CI configuration looked at until the backlog
+      # was cleared; checking them here is what stops it coming back.
+      - run: cargo clippy --all-features --all-targets -- -D warnings
 
   # Feature combinations
   #
@@ -85,11 +89,6 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      # Library only, matching the `clippy` job above. `--all-targets` is not
-      # used: the test code carries ~200 pre-existing lints that no CI
-      # configuration checks today, and they have nothing to do with feature
-      # gating. The `test` step below still *compiles* the tests, so a `cfg`
-      # mistake in one of them fails here anyway.
       - name: clippy (no default features)
         run: cargo clippy --no-default-features -- -D warnings
       - name: test (no default features)

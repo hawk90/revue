@@ -126,12 +126,10 @@ impl TasksDemo {
                     self.message = None;
                     updated = true;
                 }
-                "auto_refresh" => {
-                    if self.data.is_some() && !self.tasks.is_running("fetch_data") {
-                        self.status = "Auto-refreshing...".to_string();
-                        self.start_fetch();
-                        updated = true;
-                    }
+                "auto_refresh" if self.data.is_some() && !self.tasks.is_running("fetch_data") => {
+                    self.status = "Auto-refreshing...".to_string();
+                    self.start_fetch();
+                    updated = true;
                 }
                 _ => {}
             }

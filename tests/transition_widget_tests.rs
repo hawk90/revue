@@ -9,32 +9,32 @@ use revue::widget::{transition, Animation, AnimationTransition, TransitionPhase}
 #[test]
 fn test_transition_new() {
     let t = AnimationTransition::new("Test content");
-    assert_eq!(t.is_visible(), true);
+    assert!(t.is_visible());
 }
 
 #[test]
 fn test_transition_new_empty() {
     let t = AnimationTransition::new("");
-    assert_eq!(t.is_visible(), true);
+    assert!(t.is_visible());
 }
 
 #[test]
 fn test_transition_default() {
     let t = AnimationTransition::default();
-    assert_eq!(t.is_visible(), true);
+    assert!(t.is_visible());
     assert_eq!(t.phase(), TransitionPhase::Visible);
 }
 
 #[test]
 fn test_transition_enter() {
     let t = AnimationTransition::new("Content").enter(Animation::fade());
-    assert_eq!(t.is_visible(), true);
+    assert!(t.is_visible());
 }
 
 #[test]
 fn test_transition_leave() {
     let t = AnimationTransition::new("Content").leave(Animation::fade());
-    assert_eq!(t.is_visible(), true);
+    assert!(t.is_visible());
 }
 
 #[test]
@@ -42,47 +42,47 @@ fn test_transition_animations() {
     let enter = Animation::fade_in();
     let leave = Animation::fade_out();
     let t = AnimationTransition::new("Content").animations(enter, leave);
-    assert_eq!(t.is_visible(), true);
+    assert!(t.is_visible());
 }
 
 #[test]
 fn test_transition_show() {
     let mut t = AnimationTransition::new("Content");
     t.show();
-    assert_eq!(t.is_visible(), true);
+    assert!(t.is_visible());
 }
 
 #[test]
 fn test_transition_hide() {
     let mut t = AnimationTransition::new("Content");
     t.hide();
-    assert_eq!(t.is_visible(), false);
+    assert!(!t.is_visible());
 }
 
 #[test]
 fn test_transition_hide_then_show() {
     let mut t = AnimationTransition::new("Content");
     t.hide();
-    assert_eq!(t.is_visible(), false);
+    assert!(!t.is_visible());
     t.show();
-    assert_eq!(t.is_visible(), true);
+    assert!(t.is_visible());
 }
 
 #[test]
 fn test_transition_toggle_from_visible() {
     let mut t = AnimationTransition::new("Content");
-    assert_eq!(t.is_visible(), true);
+    assert!(t.is_visible());
     t.toggle();
-    assert_eq!(t.is_visible(), false);
+    assert!(!t.is_visible());
 }
 
 #[test]
 fn test_transition_toggle_from_hidden() {
     let mut t = AnimationTransition::new("Content");
     t.hide();
-    assert_eq!(t.is_visible(), false);
+    assert!(!t.is_visible());
     t.toggle();
-    assert_eq!(t.is_visible(), true);
+    assert!(t.is_visible());
 }
 
 #[test]

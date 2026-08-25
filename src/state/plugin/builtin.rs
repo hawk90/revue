@@ -280,7 +280,7 @@ mod tests {
     #[test]
     fn test_logger_plugin_new() {
         let plugin = LoggerPlugin::new();
-        assert_eq!(plugin.verbose, false);
+        assert!(!plugin.verbose);
         assert_eq!(plugin.tick_count, 0);
         assert_eq!(plugin.log_interval, 60);
     }
@@ -303,7 +303,7 @@ mod tests {
     #[test]
     fn test_logger_plugin_default() {
         let plugin = LoggerPlugin::default();
-        assert_eq!(plugin.verbose, false);
+        assert!(!plugin.verbose);
         assert_eq!(plugin.tick_count, 0);
         assert_eq!(plugin.log_interval, 60);
     }

@@ -142,7 +142,7 @@ mod tests {
     #[test]
     fn test_legend_position_clone() {
         let pos1 = LegendPosition::BottomCenter;
-        let pos2 = pos1.clone();
+        let pos2 = pos1;
         assert_eq!(pos1, pos2);
     }
 
@@ -177,7 +177,7 @@ mod tests {
     #[test]
     fn test_legend_orientation_clone() {
         let ori1 = LegendOrientation::Vertical;
-        let ori2 = ori1.clone();
+        let ori2 = ori1;
         assert_eq!(ori1, ori2);
     }
 

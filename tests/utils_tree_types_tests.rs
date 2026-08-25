@@ -194,7 +194,7 @@ fn test_indent_copy() {
 #[test]
 fn test_indent_clone() {
     let indent = Indent::new(3);
-    let cloned = indent.clone();
+    let cloned = indent;
     assert_eq!(cloned.unit, 3);
 }
 

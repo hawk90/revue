@@ -561,7 +561,7 @@ mod tests {
     fn test_style_visible_accessor() {
         let mut style = Style::default();
         style.visual.visible = false;
-        assert_eq!(style.visible(), false);
+        assert!(!style.visible());
     }
 
     #[test]
@@ -591,7 +591,7 @@ mod tests {
         let child = Style::inherit(&parent);
         assert_eq!(child.visual.color, Color::RED);
         assert_eq!(child.visual.opacity, 0.5);
-        assert_eq!(child.visual.visible, false);
+        assert!(!child.visual.visible);
     }
 
     #[test]
@@ -696,7 +696,7 @@ mod tests {
 
         let child = Style::default();
         let result = child.with_inheritance(&parent);
-        assert_eq!(result.visual.visible, false);
+        assert!(!result.visual.visible);
     }
 
     #[test]
@@ -708,7 +708,7 @@ mod tests {
         child.visual.visible = false; // Child explicitly sets to hidden (not default)
 
         let result = child.with_inheritance(&parent);
-        assert_eq!(result.visual.visible, false); // Child's non-default value should override
+        assert!(!result.visual.visible); // Child's non-default value should override
     }
 
     #[test]

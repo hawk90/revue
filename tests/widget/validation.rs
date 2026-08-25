@@ -237,7 +237,7 @@ fn test_validator_require_valid_string() {
 fn test_validator_require_numeric_types() {
     assert!(validators::require(&42, "Count").is_ok());
     assert!(validators::require(&0, "Zero").is_ok());
-    assert!(validators::require(&3.14, "Pi").is_ok());
+    assert!(validators::require(&1.25, "a float").is_ok());
 }
 
 #[test]
@@ -671,12 +671,12 @@ fn test_validator_chain_scenario() {
 
     // Chain should pass all validators
     assert!(validators::require(&password, "Password").is_ok());
-    assert!(validators::min_length(&password, 8, "Password").is_ok());
+    assert!(validators::min_length(password, 8, "Password").is_ok());
 }
 
 #[test]
 fn test_validation_error_display_for_user_messages() {
-    let errors = vec![
+    let errors = [
         ValidationError::required("Email"),
         ValidationError::min_length("Password", 8),
         ValidationError::email("invalid"),

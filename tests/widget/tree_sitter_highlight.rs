@@ -104,8 +104,10 @@ mod tests {
         use revue::style::Color;
         use revue::widget::syntax::SyntaxTheme;
 
-        let mut theme = SyntaxTheme::default();
-        theme.keyword = Color::MAGENTA;
+        let theme = SyntaxTheme {
+            keyword: Color::MAGENTA,
+            ..Default::default()
+        };
 
         let hl = SyntaxHighlighter::new(Language::Rust)
             .language(Language::Python)

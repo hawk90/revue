@@ -17,8 +17,8 @@ fn test_layout_constants_coherent() {
     // Indicator at col 0, label at col 2 → col 1 is the gap
     assert_eq!(INDICATOR_COL, 0);
     assert_eq!(LABEL_COL, 2);
-    assert!(LABEL_COL > INDICATOR_COL);
-    assert!(MIN_DROPDOWN_WIDTH >= LABEL_COL + 1);
+    const { assert!(LABEL_COL > INDICATOR_COL) };
+    const { assert!(MIN_DROPDOWN_WIDTH > LABEL_COL) };
 }
 
 #[test]

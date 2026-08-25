@@ -582,7 +582,7 @@ mod tests {
         picker.highlight_next();
         picker.highlight_previous();
 
-        assert!(picker.history.len() >= 1);
+        assert!(!picker.history.is_empty());
     }
 
     #[test]

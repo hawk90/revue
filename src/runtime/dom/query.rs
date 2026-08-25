@@ -847,7 +847,7 @@ mod tests {
 
         // Test len() and is_empty()
         assert!(!tree.is_empty());
-        assert!(tree.len() > 0);
+        assert!(!tree.is_empty());
 
         // Test nodes() iterator
         let count = tree.nodes().count();

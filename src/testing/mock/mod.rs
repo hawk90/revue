@@ -27,6 +27,18 @@ mod terminal;
 mod time;
 mod types;
 
+// Re-export public API
+pub use capture::RenderCapture;
+pub use helpers::{
+    capture_render, mock_alt_key, mock_click, mock_ctrl_key, mock_key, mock_mouse, mock_terminal,
+    mock_time, simulate_user,
+};
+pub use simulator::EventSimulator;
+pub use state::MockState;
+pub use terminal::MockTerminal;
+pub use time::MockTime;
+pub use types::SimulatedEvent;
+
 #[cfg(test)]
 mod tests {
     //! Tests for mocking utilities
@@ -626,15 +638,3 @@ mod tests {
         assert_eq!(capture.size(), (80, 24));
     }
 }
-
-// Re-export public API
-pub use capture::RenderCapture;
-pub use helpers::{
-    capture_render, mock_alt_key, mock_click, mock_ctrl_key, mock_key, mock_mouse, mock_terminal,
-    mock_time, simulate_user,
-};
-pub use simulator::EventSimulator;
-pub use state::MockState;
-pub use terminal::MockTerminal;
-pub use time::MockTime;
-pub use types::SimulatedEvent;

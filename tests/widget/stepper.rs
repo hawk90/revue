@@ -21,7 +21,7 @@ fn test_step_status_default() {
 #[test]
 fn test_step_status_clone() {
     let status = StepStatus::Active;
-    let cloned = status.clone();
+    let cloned = status;
     assert_eq!(status, cloned);
 }
 
@@ -197,7 +197,7 @@ fn test_stepper_orientation_default() {
 #[test]
 fn test_stepper_orientation_clone() {
     let orientation = StepperOrientation::Vertical;
-    let cloned = orientation.clone();
+    let cloned = orientation;
     assert_eq!(orientation, cloned);
 }
 
@@ -237,7 +237,7 @@ fn test_stepper_style_default() {
 #[test]
 fn test_stepper_style_clone() {
     let style = StepperStyle::Numbered;
-    let cloned = style.clone();
+    let cloned = style;
     assert_eq!(style, cloned);
 }
 

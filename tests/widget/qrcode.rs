@@ -37,7 +37,7 @@ fn test_qr_style_copy() {
 #[test]
 fn test_qr_style_clone() {
     let style = QrStyle::HalfBlock;
-    let cloned = style.clone();
+    let cloned = style;
     assert_eq!(style, cloned);
 }
 
@@ -86,7 +86,7 @@ fn test_error_correction_copy() {
 #[test]
 fn test_error_correction_clone() {
     let level = ErrorCorrection::Low;
-    let cloned = level.clone();
+    let cloned = level;
     assert_eq!(level, cloned);
 }
 

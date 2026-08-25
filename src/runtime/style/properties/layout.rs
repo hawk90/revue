@@ -68,8 +68,10 @@ mod tests {
 
     #[test]
     fn test_layout_style_clone() {
-        let mut layout = LayoutStyle::default();
-        layout.gap = Some(10);
+        let layout = LayoutStyle {
+            gap: Some(10),
+            ..Default::default()
+        };
         let cloned = layout.clone();
         assert_eq!(cloned.gap, Some(10));
     }
@@ -83,24 +85,30 @@ mod tests {
 
     #[test]
     fn test_layout_style_not_equal() {
-        let mut layout1 = LayoutStyle::default();
-        layout1.gap = Some(10);
+        let layout1 = LayoutStyle {
+            gap: Some(10),
+            ..Default::default()
+        };
         let layout2 = LayoutStyle::default();
         assert_ne!(layout1, layout2);
     }
 
     #[test]
     fn test_layout_style_grid_template() {
-        let mut layout = LayoutStyle::default();
-        layout.grid_template_columns = GridTemplate::fr(&[1.0, 2.0]);
+        let layout = LayoutStyle {
+            grid_template_columns: GridTemplate::fr(&[1.0, 2.0]),
+            ..Default::default()
+        };
         assert_eq!(layout.grid_template_columns.tracks.len(), 2);
     }
 
     #[test]
     fn test_layout_style_grid_placement() {
-        let mut layout = LayoutStyle::default();
-        layout.grid_column = GridPlacement::span(2);
-        layout.grid_row = GridPlacement::from_to(1, 3);
+        let layout = LayoutStyle {
+            grid_column: GridPlacement::span(2),
+            grid_row: GridPlacement::from_to(1, 3),
+            ..Default::default()
+        };
         assert_eq!(layout.grid_column, GridPlacement::span(2));
         assert_eq!(layout.grid_row, GridPlacement::from_to(1, 3));
     }

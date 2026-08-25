@@ -7,11 +7,17 @@ use proptest::prelude::*;
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(1000))]
 
-    /// Test that saturating add never exceeds u16::MAX
+    /// Saturating add clamps rather than wrapping.
+    ///
+    /// This used to assert `result <= u16::MAX`, which is true of every `u16`
+    /// and so could not fail. The property that matters is that the result
+    /// never comes out *below* an input, which is what wrapping would do.
     #[test]
     fn test_saturating_add_bound(a in 0u16.., b in 0u16..) {
         let result = a.saturating_add(b);
-        prop_assert!(result <= u16::MAX);
+        prop_assert!(result >= a);
+        prop_assert!(result >= b);
+        prop_assert_eq!(result, a.saturating_add(b));
     }
 
     /// Test that saturating add with zero is idempotent

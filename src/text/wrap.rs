@@ -384,7 +384,7 @@ mod tests {
         // Each emoji is 1 char but may be multiple bytes
         let text = "Hello 👋 World 🌍";
         let wrapped = wrap_chars(text, 10);
-        assert!(wrapped.len() >= 1);
+        assert!(!wrapped.is_empty());
         // Ensure emojis are not broken
         for line in &wrapped {
             assert!(line.is_char_boundary(line.len()));

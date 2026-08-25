@@ -12,6 +12,16 @@ mod orientation;
 mod tooltip;
 
 // KEEP HERE - Private implementation tests (accesses private fields: title, min, max, ticks, grid, color, format, position)
+
+// Re-exports
+pub use axis::{Axis, AxisFormat};
+pub use color_scheme::ColorScheme;
+pub use grid::{ChartGrid, GridStyle};
+pub use legend::{Legend, LegendOrientation, LegendPosition};
+pub use marker::Marker;
+pub use orientation::ChartOrientation;
+pub use tooltip::{ChartTooltip, ChartTooltipFormat, ChartTooltipPosition};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -55,7 +65,7 @@ mod tests {
     #[test]
     fn test_axis_format_value() {
         let axis = Axis::new().format(AxisFormat::Fixed(2));
-        assert_eq!(axis.format_value(3.14159), "3.14");
+        assert_eq!(axis.format_value(1.23456), "1.23");
 
         let axis = Axis::new().format(AxisFormat::Percent);
         assert_eq!(axis.format_value(0.5), "50%");
@@ -318,12 +328,3 @@ mod tests {
         assert_eq!(orientation, ChartOrientation::Vertical);
     }
 }
-
-// Re-exports
-pub use axis::{Axis, AxisFormat};
-pub use color_scheme::ColorScheme;
-pub use grid::{ChartGrid, GridStyle};
-pub use legend::{Legend, LegendOrientation, LegendPosition};
-pub use marker::Marker;
-pub use orientation::ChartOrientation;
-pub use tooltip::{ChartTooltip, ChartTooltipFormat, ChartTooltipPosition};

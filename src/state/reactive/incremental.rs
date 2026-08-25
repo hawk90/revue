@@ -282,16 +282,39 @@ impl<T: Clone + Send + Sync + 'static, R: Clone + Send + Sync + 'static> Clone
 mod tests {
     use super::*;
 
+    /// The defaults are three no-ops and a `replace` that refuses.
+    ///
+    /// This used to be `assert!(true)` under a "just verify it compiles"
+    /// comment. The handlers are public fields holding `Arc<dyn Fn>`, so what
+    /// they *do* is observable - calling them is the test.
     #[test]
     fn test_incremental_handlers_new() {
-        let _handlers: IncrementalHandlers<i32, Vec<i32>> = IncrementalHandlers::new();
-        // Just verify it compiles
-        assert!(true);
+        let handlers: IncrementalHandlers<i32, Vec<i32>> = IncrementalHandlers::new();
+
+        let mut result = vec![1, 2, 3];
+        (handlers.on_insert)(&mut result, 0, 9);
+        (handlers.on_update)(&mut result, 0, 1, 9);
+        (handlers.on_remove)(&mut result, 0, 1);
+        assert_eq!(
+            result,
+            vec![1, 2, 3],
+            "a default handler changed the result"
+        );
+    }
+
+    /// `on_replace` has no sensible default, so it panics rather than
+    /// silently producing a wrong value.
+    #[test]
+    #[should_panic(expected = "Replace handler not implemented")]
+    fn test_incremental_handlers_new_replace_refuses() {
+        let handlers: IncrementalHandlers<i32, Vec<i32>> = IncrementalHandlers::new();
+        let source = crate::reactive::signal_vec(vec![1, 2, 3]);
+        let _ = (handlers.on_replace)(&source);
     }
 
     #[test]
     fn test_incremental_handlers_builder() {
-        let _handlers = IncrementalHandlers::<i32, Vec<i32>>::new()
+        let handlers = IncrementalHandlers::<i32, Vec<i32>>::new()
             .insert(|result, index, value| {
                 result.insert(index, value);
             })
@@ -303,8 +326,11 @@ mod tests {
             })
             .replace(|_source: &SignalVec<i32>| vec![]);
 
-        // Verify handlers are set
-        assert!(true);
+        // "Verify handlers are set" used to be `assert!(true)`, which verified
+        // nothing. Call the one that was given a body and check it ran.
+        let mut result = vec![1, 3];
+        (handlers.on_insert)(&mut result, 1, 2);
+        assert_eq!(result, vec![1, 2, 3], "the insert handler did not run");
     }
 
     #[test]
@@ -323,11 +349,14 @@ mod tests {
         assert_eq!(result, vec![2, 4]);
     }
 
+    /// `Default` and `new` have to agree, or one of them is a trap.
     #[test]
     fn test_incremental_handlers_default() {
-        let _handlers: IncrementalHandlers<i32, Vec<i32>> = IncrementalHandlers::default();
-        // Just verify it works
-        assert!(true);
+        let handlers: IncrementalHandlers<i32, Vec<i32>> = IncrementalHandlers::default();
+
+        let mut result = vec![1, 2, 3];
+        (handlers.on_insert)(&mut result, 0, 9);
+        assert_eq!(result, vec![1, 2, 3], "`default` is not the no-op `new` is");
     }
 
     #[test]
@@ -430,9 +459,9 @@ mod tests {
     fn test_incremental_handlers_with_string() {
         use crate::reactive::signal_vec;
 
-        let _items = signal_vec(vec!["a", "b", "c"]);
+        let items = signal_vec(vec!["a", "b", "c"]);
 
-        let _handlers = IncrementalHandlers::<&str, String>::new()
+        let handlers = IncrementalHandlers::<&str, String>::new()
             .insert(|result, _, value| {
                 result.push_str(value);
             })
@@ -444,8 +473,19 @@ mod tests {
             })
             .replace(|source| source.get().join(","));
 
-        // Just verify it compiles and works
-        assert!(true);
+        // All four handlers have real bodies; "just verify it compiles" used to
+        // be the whole test. Run each one.
+        let mut result = String::from("ab");
+        (handlers.on_insert)(&mut result, 2, "c");
+        assert_eq!(result, "abc", "insert did not append");
+
+        (handlers.on_update)(&mut result, 1, "b", "B");
+        assert_eq!(result, "aBc", "update did not substitute");
+
+        (handlers.on_remove)(&mut result, 1, "B");
+        assert_eq!(result, "ac", "remove did not delete");
+
+        assert_eq!((handlers.on_replace)(&items), "a,b,c");
     }
 
     #[test]

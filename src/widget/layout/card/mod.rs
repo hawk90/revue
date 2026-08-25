@@ -33,6 +33,11 @@ mod types;
 // KEEP HERE - These tests require public API getters for card state
 // Tests are placeholder as private fields cannot be tested directly
 
+// Re-exports
+pub use core::Card;
+pub use helper::card;
+pub use types::CardVariant;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -196,8 +201,3 @@ mod tests {
         // Private field - can't test directly
     }
 }
-
-// Re-exports
-pub use core::Card;
-pub use helper::card;
-pub use types::CardVariant;

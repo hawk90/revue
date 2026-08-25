@@ -138,7 +138,7 @@ fn test_align_default() {
 #[test]
 fn test_align_clone() {
     let align1 = Align::Center;
-    let align2 = align1.clone();
+    let align2 = align1;
     assert_eq!(align1, align2);
 }
 
@@ -575,7 +575,7 @@ fn test_align_center_unicode() {
 #[test]
 fn test_table_row_owned_basic() {
     let table = Table::new().col_left("A", 5).col_right("B", 5);
-    let result = table.row_owned(&vec![String::from("x"), String::from("y")]);
+    let result = table.row_owned(&[String::from("x"), String::from("y")]);
     // Column A (width 5, left): "x    " (x + 4 spaces)
     // Spacing (1): " " (1 space)
     // Column B (width 5, right): "    y" (4 spaces + y)
@@ -586,18 +586,14 @@ fn test_table_row_owned_basic() {
 #[test]
 fn test_table_row_owned_empty() {
     let table = Table::new().col_left("A", 5);
-    let result = table.row_owned(&vec![]);
+    let result = table.row_owned(&[]);
     assert_eq!(result, "     ");
 }
 
 #[test]
 fn test_table_row_owned_extra_values() {
     let table = Table::new().col_left("A", 5);
-    let result = table.row_owned(&vec![
-        String::from("x"),
-        String::from("y"),
-        String::from("z"),
-    ]);
+    let result = table.row_owned(&[String::from("x"), String::from("y"), String::from("z")]);
     // Extra values should be ignored
     // Column A (width 5, left): "x    " (x + 4 spaces = 5 chars)
     assert_eq!(result, "x    ");
