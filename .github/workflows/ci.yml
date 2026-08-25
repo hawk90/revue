@@ -170,7 +170,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # Pinned, not `stable`. On `stable` this job checked nothing about 1.87.
-      - uses: dtolnay/rust-toolchain@1.87
+      - uses: dtolnay/rust-toolchain@1.100
       - uses: Swatinem/rust-cache@v2
       # Default features only. The MSRV covers what a consumer gets by default;
       # optional features pull dependencies with their own, higher floors -
