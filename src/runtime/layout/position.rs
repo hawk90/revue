@@ -123,9 +123,11 @@ mod tests {
     use crate::layout::node::Inset;
 
     fn make_node_at(x: u16, y: u16, w: u16, h: u16, position: Position) -> LayoutNode {
-        let mut node = LayoutNode::default();
-        node.position = position;
-        node.computed = ComputedLayout::new(x, y, w, h);
+        let node = LayoutNode {
+            position: position,
+            computed: ComputedLayout::new(x, y, w, h),
+            ..Default::default()
+        };
         node
     }
 

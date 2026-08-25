@@ -367,7 +367,7 @@ fn test_role_partial_eq() {
 #[test]
 fn test_role_clone() {
     let role = Role::Button;
-    let cloned = role.clone();
+    let cloned = role;
     assert_eq!(role, cloned);
 }
 

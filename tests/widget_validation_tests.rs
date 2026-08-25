@@ -229,7 +229,7 @@ fn range_at_max_boundary_returns_ok() {
 
 #[test]
 fn range_with_floats() {
-    let result = validators::range(3.14, 0.0, 10.0, "Value");
+    let result = validators::range(1.25, 0.0, 10.0, "Value");
     assert!(result.is_ok());
 }
 

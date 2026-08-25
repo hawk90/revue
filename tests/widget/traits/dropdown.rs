@@ -18,7 +18,7 @@ fn test_layout_constants_coherent() {
     assert_eq!(INDICATOR_COL, 0);
     assert_eq!(LABEL_COL, 2);
     assert!(LABEL_COL > INDICATOR_COL);
-    assert!(MIN_DROPDOWN_WIDTH >= LABEL_COL + 1);
+    assert!(MIN_DROPDOWN_WIDTH > LABEL_COL);
 }
 
 #[test]

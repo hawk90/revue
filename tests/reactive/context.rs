@@ -224,7 +224,7 @@ fn test_provider_struct() {
     provider.set("updated".to_string());
     assert_eq!(provider.get(), "updated");
 
-    provider.update(|s| s.push_str("!"));
+    provider.update(|s| s.push('!'));
     assert_eq!(provider.get(), "updated!");
 }
 

@@ -111,7 +111,7 @@ fn test_signal_with_string() {
     name.set(String::from("world"));
     assert_eq!(name.get(), "world");
 
-    name.update(|s| s.push_str("!"));
+    name.update(|s| s.push('!'));
     assert_eq!(name.get(), "world!");
 }
 

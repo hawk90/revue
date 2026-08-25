@@ -9,7 +9,7 @@ use std::sync::Arc;
 #[test]
 fn test_many_signals() {
     // Create many signals and ensure they all work independently
-    let signals: Vec<_> = (0..100).map(|i| signal(i as i32)).collect();
+    let signals: Vec<_> = (0..100).map(signal).collect();
 
     // Verify initial values
     for (i, sig) in signals.iter().enumerate() {
@@ -68,7 +68,7 @@ fn test_many_effects_on_one_signal() {
 #[test]
 fn test_signal_id_uniqueness() {
     // Ensure all signals get unique IDs
-    let signals: Vec<_> = (0..1000).map(|i| signal(i)).collect();
+    let signals: Vec<_> = (0..1000).map(signal).collect();
 
     let mut ids = std::collections::HashSet::new();
     for sig in &signals {

@@ -95,8 +95,10 @@ fn test_is_focused_no_state() {
 fn test_is_focused_with_state() {
     let mut buffer = test_buffer();
     let style = Style::default();
-    let mut state = NodeState::default();
-    state.focused = true;
+    let state = NodeState {
+        focused: true,
+        ..Default::default()
+    };
     let ctx = RenderContext::full(&mut buffer, test_area(), &style, &state);
     assert!(ctx.is_focused());
 }
@@ -105,8 +107,10 @@ fn test_is_focused_with_state() {
 fn test_is_hovered() {
     let mut buffer = test_buffer();
     let style = Style::default();
-    let mut state = NodeState::default();
-    state.hovered = true;
+    let state = NodeState {
+        hovered: true,
+        ..Default::default()
+    };
     let ctx = RenderContext::full(&mut buffer, test_area(), &style, &state);
     assert!(ctx.is_hovered());
 }
@@ -115,8 +119,10 @@ fn test_is_hovered() {
 fn test_is_disabled() {
     let mut buffer = test_buffer();
     let style = Style::default();
-    let mut state = NodeState::default();
-    state.disabled = true;
+    let state = NodeState {
+        disabled: true,
+        ..Default::default()
+    };
     let ctx = RenderContext::full(&mut buffer, test_area(), &style, &state);
     assert!(ctx.is_disabled());
 }

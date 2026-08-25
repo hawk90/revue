@@ -156,17 +156,23 @@ mod tests {
     fn setup_simple_tree() -> (LayoutTree, u64) {
         let mut tree = LayoutTree::new();
 
-        let mut root = LayoutNode::default();
-        root.id = 1;
-        root.display = Display::Flex;
+        let mut root = LayoutNode {
+            id: 1,
+            display: Display::Flex,
+            ..Default::default()
+        };
 
-        let mut child1 = LayoutNode::default();
-        child1.id = 2;
+        let mut child1 = LayoutNode {
+            id: 2,
+            ..Default::default()
+        };
         child1.sizing.width = Size::Fixed(50);
         child1.sizing.height = Size::Fixed(30);
 
-        let mut child2 = LayoutNode::default();
-        child2.id = 3;
+        let mut child2 = LayoutNode {
+            id: 3,
+            ..Default::default()
+        };
         child2.sizing.width = Size::Fixed(50);
         child2.sizing.height = Size::Fixed(30);
 
@@ -204,34 +210,44 @@ mod tests {
         let mut tree = LayoutTree::new();
 
         // Root (flex row)
-        let mut root = LayoutNode::default();
-        root.id = 1;
-        root.display = Display::Flex;
+        let mut root = LayoutNode {
+            id: 1,
+            display: Display::Flex,
+            ..Default::default()
+        };
         root.flex.direction = FlexDirection::Row;
         root.children = vec![2, 3];
 
         // Child 1 (flex column container)
-        let mut child1 = LayoutNode::default();
-        child1.id = 2;
-        child1.display = Display::Flex;
+        let mut child1 = LayoutNode {
+            id: 2,
+            display: Display::Flex,
+            ..Default::default()
+        };
         child1.flex.direction = FlexDirection::Column;
         child1.sizing.width = Size::Fixed(50);
         child1.sizing.height = Size::Auto;
         child1.children = vec![4, 5];
 
         // Child 2 (leaf)
-        let mut child2 = LayoutNode::default();
-        child2.id = 3;
+        let mut child2 = LayoutNode {
+            id: 3,
+            ..Default::default()
+        };
         child2.sizing.width = Size::Auto;
         child2.sizing.height = Size::Auto;
 
         // Grandchildren
-        let mut grandchild1 = LayoutNode::default();
-        grandchild1.id = 4;
+        let mut grandchild1 = LayoutNode {
+            id: 4,
+            ..Default::default()
+        };
         grandchild1.sizing.height = Size::Fixed(20);
 
-        let mut grandchild2 = LayoutNode::default();
-        grandchild2.id = 5;
+        let mut grandchild2 = LayoutNode {
+            id: 5,
+            ..Default::default()
+        };
         grandchild2.sizing.height = Size::Fixed(20);
 
         tree.insert(root);
@@ -257,14 +273,18 @@ mod tests {
     fn test_display_none_hidden() {
         let mut tree = LayoutTree::new();
 
-        let mut root = LayoutNode::default();
-        root.id = 1;
-        root.display = Display::Flex;
-        root.children = vec![2];
+        let root = LayoutNode {
+            id: 1,
+            display: Display::Flex,
+            children: vec![2],
+            ..Default::default()
+        };
 
-        let mut child = LayoutNode::default();
-        child.id = 2;
-        child.display = Display::None;
+        let mut child = LayoutNode {
+            id: 2,
+            display: Display::None,
+            ..Default::default()
+        };
         child.sizing.width = Size::Fixed(100);
         child.sizing.height = Size::Fixed(100);
 
@@ -284,26 +304,34 @@ mod tests {
         let mut tree = LayoutTree::new();
 
         // Root (flex)
-        let mut root = LayoutNode::default();
-        root.id = 1;
-        root.display = Display::Flex;
-        root.children = vec![2];
+        let root = LayoutNode {
+            id: 1,
+            display: Display::Flex,
+            children: vec![2],
+            ..Default::default()
+        };
 
         // Child (block container)
-        let mut block_container = LayoutNode::default();
-        block_container.id = 2;
-        block_container.display = Display::Block;
+        let mut block_container = LayoutNode {
+            id: 2,
+            display: Display::Block,
+            ..Default::default()
+        };
         block_container.sizing.width = Size::Auto;
         block_container.sizing.height = Size::Auto;
         block_container.children = vec![3, 4];
 
         // Block children
-        let mut block_child1 = LayoutNode::default();
-        block_child1.id = 3;
+        let mut block_child1 = LayoutNode {
+            id: 3,
+            ..Default::default()
+        };
         block_child1.sizing.height = Size::Fixed(20);
 
-        let mut block_child2 = LayoutNode::default();
-        block_child2.id = 4;
+        let mut block_child2 = LayoutNode {
+            id: 4,
+            ..Default::default()
+        };
         block_child2.sizing.height = Size::Fixed(30);
 
         tree.insert(root);
@@ -329,9 +357,11 @@ mod tests {
         // Create 10 levels of nested flex containers
         let depth = 10;
         for i in 1..=depth {
-            let mut node = LayoutNode::default();
-            node.id = i as u64;
-            node.display = Display::Flex;
+            let mut node = LayoutNode {
+                id: i as u64,
+                display: Display::Flex,
+                ..Default::default()
+            };
             node.flex.direction = if i % 2 == 0 {
                 FlexDirection::Row
             } else {
@@ -359,25 +389,33 @@ mod tests {
         let mut tree = LayoutTree::new();
 
         // Root (flex)
-        let mut root = LayoutNode::default();
-        root.id = 1;
-        root.display = Display::Flex;
-        root.children = vec![2];
+        let root = LayoutNode {
+            id: 1,
+            display: Display::Flex,
+            children: vec![2],
+            ..Default::default()
+        };
 
         // Grid container
-        let mut grid = LayoutNode::default();
-        grid.id = 2;
-        grid.display = Display::Grid;
+        let mut grid = LayoutNode {
+            id: 2,
+            display: Display::Grid,
+            ..Default::default()
+        };
         grid.sizing.width = Size::Fixed(80);
         grid.sizing.height = Size::Fixed(40);
         grid.children = vec![3, 4];
 
         // Grid items
-        let mut item1 = LayoutNode::default();
-        item1.id = 3;
+        let item1 = LayoutNode {
+            id: 3,
+            ..Default::default()
+        };
 
-        let mut item2 = LayoutNode::default();
-        item2.id = 4;
+        let item2 = LayoutNode {
+            id: 4,
+            ..Default::default()
+        };
 
         tree.insert(root);
         tree.insert(grid);
@@ -402,14 +440,18 @@ mod tests {
     fn test_missing_node_graceful() {
         let mut tree = LayoutTree::new();
 
-        let mut root = LayoutNode::default();
-        root.id = 1;
-        root.display = Display::Flex;
+        let mut root = LayoutNode {
+            id: 1,
+            display: Display::Flex,
+            ..Default::default()
+        };
         root.children = vec![2, 999]; // 999 doesn't exist
         tree.insert(root);
 
-        let mut child = LayoutNode::default();
-        child.id = 2;
+        let mut child = LayoutNode {
+            id: 2,
+            ..Default::default()
+        };
         child.sizing.width = Size::Fixed(50);
         tree.insert(child);
 

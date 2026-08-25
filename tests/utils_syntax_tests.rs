@@ -152,7 +152,7 @@ let x = 1;";
 #[test]
 fn test_token_type_clone() {
     let tt = TokenType::Keyword;
-    let cloned = tt.clone();
+    let cloned = tt;
     assert_eq!(tt, cloned);
 }
 
@@ -275,7 +275,7 @@ fn test_language_from_fence_case_insensitive() {
 #[test]
 fn test_language_clone() {
     let lang = Language::Rust;
-    let cloned = lang.clone();
+    let cloned = lang;
     assert_eq!(lang, cloned);
 }
 

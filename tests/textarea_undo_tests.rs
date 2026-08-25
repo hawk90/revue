@@ -48,7 +48,7 @@ fn test_undo_newline_insert() {
     let after = textarea.get_content();
 
     // Content should change after undo
-    assert!(before != after || after == "");
+    assert!(before != after || after.is_empty());
 }
 
 #[test]

@@ -95,8 +95,10 @@ mod tests {
 
     #[test]
     fn test_visual_style_clone() {
-        let mut style = VisualStyle::default();
-        style.opacity = 0.5;
+        let style = VisualStyle {
+            opacity: 0.5,
+            ..Default::default()
+        };
         let cloned = style.clone();
         assert_eq!(cloned.opacity, 0.5);
     }
@@ -110,8 +112,10 @@ mod tests {
 
     #[test]
     fn test_visual_style_not_equal() {
-        let mut style1 = VisualStyle::default();
-        style1.opacity = 0.5;
+        let style1 = VisualStyle {
+            opacity: 0.5,
+            ..Default::default()
+        };
         let style2 = VisualStyle::default();
         assert_ne!(style1, style2);
     }

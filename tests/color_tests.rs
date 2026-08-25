@@ -202,7 +202,7 @@ fn test_color_blend() {
     let purple = red.blend(blue, 0.5);
     // Check values are approximately equal (within 2 due to float precision)
     assert!((purple.r as i32 - 127).abs() <= 1);
-    assert!((purple.g as i32 - 0).abs() <= 1);
+    assert!((purple.g as i32).abs() <= 1);
     assert!((purple.b as i32 - 128).abs() <= 1);
 }
 
@@ -246,7 +246,7 @@ fn test_color_copy() {
 #[test]
 fn test_color_clone() {
     let c1 = Color::rgb(100, 150, 200);
-    let c2 = c1.clone();
+    let c2 = c1;
     assert_eq!(c1.r, c2.r);
 }
 

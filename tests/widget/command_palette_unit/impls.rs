@@ -431,7 +431,7 @@ fn test_filter_with_query() {
         Command::new("cmd3", "Exit"),
     ]);
     palette.set_query("save");
-    assert!(palette.filtered.len() > 0);
+    assert!(!palette.filtered.is_empty());
 }
 
 #[test]

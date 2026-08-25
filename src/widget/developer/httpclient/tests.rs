@@ -134,8 +134,10 @@ mod tests {
 
     #[test]
     fn test_response_is_success() {
-        let mut response = HttpResponse::default();
-        response.status = 200;
+        let mut response = HttpResponse {
+            status: 200,
+            ..Default::default()
+        };
         assert!(response.is_success());
 
         response.status = 201;
@@ -182,8 +184,10 @@ mod tests {
 
     #[test]
     fn test_response_pretty_json() {
-        let mut response = HttpResponse::default();
-        response.body = r#"{"name":"test","value":123}"#.to_string();
+        let response = HttpResponse {
+            body: r#"{"name":"test","value":123}"#.to_string(),
+            ..Default::default()
+        };
 
         let pretty = response.pretty_json().unwrap();
         assert!(pretty.contains('\n'));

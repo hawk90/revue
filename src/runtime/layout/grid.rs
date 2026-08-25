@@ -274,16 +274,20 @@ mod tests {
     ) -> (LayoutTree, u64, Vec<u64>) {
         let mut tree = LayoutTree::new();
 
-        let mut parent = LayoutNode::default();
-        parent.id = 1;
-        parent.display = Display::Grid;
+        let mut parent = LayoutNode {
+            id: 1,
+            display: Display::Grid,
+            ..Default::default()
+        };
         parent.grid.template_columns = cols;
         parent.grid.template_rows = rows;
 
         let mut child_ids = Vec::new();
         for i in 0..child_count {
-            let mut child = LayoutNode::default();
-            child.id = (i + 2) as u64;
+            let child = LayoutNode {
+                id: (i + 2) as u64,
+                ..Default::default()
+            };
             child_ids.push(child.id);
             tree.insert(child);
         }
@@ -558,10 +562,12 @@ mod tests {
     #[test]
     fn test_grid_empty_children() {
         let mut tree = LayoutTree::new();
-        let mut parent = LayoutNode::default();
-        parent.id = 1;
-        parent.display = Display::Grid;
-        parent.children = vec![];
+        let parent = LayoutNode {
+            id: 1,
+            display: Display::Grid,
+            children: vec![],
+            ..Default::default()
+        };
         tree.insert(parent);
         tree.set_root(1);
 

@@ -154,7 +154,7 @@ fn test_scale_mode_copy() {
 fn test_image_format_clone() {
     let img = Image::from_rgb(vec![0; 3], 1, 1);
     let fmt = img.get_format();
-    let cloned = fmt.clone();
+    let cloned = fmt;
     assert_eq!(fmt, cloned);
 }
 

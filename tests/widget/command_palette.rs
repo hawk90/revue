@@ -992,7 +992,7 @@ fn test_command_palette_render_many_commands() {
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     let commands: Vec<_> = (0..20)
-        .map(|i| Command::new(&format!("cmd{}", i), &format!("Command {}", i)))
+        .map(|i| Command::new(format!("cmd{}", i), format!("Command {}", i)))
         .collect();
 
     let mut palette = CommandPalette::new().commands(commands).max_visible(10);

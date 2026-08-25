@@ -96,7 +96,7 @@ fn test_timer_progress() {
     let mut timer = Timer::from_millis(100);
     timer.start();
     let progress = timer.progress();
-    assert!(progress >= 0.0 && progress <= 1.0);
+    assert!((0.0..=1.0).contains(&progress));
 }
 
 #[test]
@@ -157,7 +157,7 @@ fn test_timer_progress_eased() {
     timer.start();
     use revue::utils::easing::Easing;
     let progress = timer.progress_eased(Easing::Linear);
-    assert!(progress >= 0.0 && progress <= 1.0);
+    assert!((0.0..=1.0).contains(&progress));
 }
 
 // Removed test_timer_default_fields - it accessed private fields (elapsed_on_pause, paused)

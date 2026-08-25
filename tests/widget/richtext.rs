@@ -17,7 +17,7 @@ fn test_markup_unclosed_tag() {
     let rt = RichText::markup("[bold]Unclosed text");
 
     // Should treat unclosed tag as applying to rest
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
     assert_eq!(rt.width(), 13); // "Unclosed text" = 13 chars
 }
 
@@ -26,7 +26,7 @@ fn test_markup_mismatched_tags() {
     let rt = RichText::markup("[bold][/italic]Text");
 
     // Should handle mismatched closing tag
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
@@ -34,7 +34,7 @@ fn test_markup_empty_tag() {
     let rt = RichText::markup("[]Text");
 
     // Should handle empty tag gracefully
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
     assert_eq!(rt.width(), 4);
 }
 
@@ -43,7 +43,7 @@ fn test_markup_nested_tags() {
     let rt = RichText::markup("[b][i]Nested[/i][/b]");
 
     // Should apply both styles
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
     assert_eq!(rt.width(), 6);
 }
 
@@ -54,7 +54,7 @@ fn test_markup_deep_nesting() {
     let rt = RichText::markup(&format!("{}Text{}", tags, closing));
 
     // Should handle deep nesting
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
     assert_eq!(rt.width(), 4);
 }
 
@@ -88,7 +88,7 @@ fn test_markup_whitespace_in_tags() {
     let rt = RichText::markup("[bold ]Text[/ ]");
 
     // Should handle whitespace in tags
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
@@ -163,7 +163,7 @@ fn test_markup_combined_colors() {
 fn test_markup_link_with_formatting() {
     let rt = RichText::markup("[link=https://example.com][b]Click[/b][/]");
 
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
@@ -171,14 +171,14 @@ fn test_markup_link_empty_url() {
     let rt = RichText::markup("[link=]Text[/]");
 
     // Should handle empty URL
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
 fn test_markup_link_special_chars() {
     let rt = RichText::markup("[link=https://example.com?param=value&other=test]Link[/]");
 
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 // =============================================================================
@@ -491,7 +491,7 @@ fn test_rich_text_helper() {
 fn test_markup_helper() {
     let rt = markup("[bold]Test[/]");
 
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
@@ -535,28 +535,28 @@ fn test_markup_short_tags() {
 fn test_markup_multiple_attributes() {
     let rt = RichText::markup("[bold red underline]Text[/]");
 
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
 fn test_markup_dim_modifier() {
     let rt = RichText::markup("[dim]Text[/]");
 
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
 fn test_markup_strike_modifier() {
     let rt = RichText::markup("[s]Text[/]");
 
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
 fn test_markup_reverse_modifier() {
     let rt = RichText::markup("[rev]Text[/]");
 
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
@@ -1121,26 +1121,26 @@ fn test_rich_text_all_builder_methods() {
 #[test]
 fn test_markup_emoji_in_text() {
     let rt = RichText::markup("[b]😀[/b]");
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
 fn test_markup_cjk_in_text() {
     let rt = RichText::markup("[red]日本語[/]");
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
 fn test_markup_rtl_text() {
     let rt = RichText::markup("[i]مرحبا[/i]");
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
 fn test_markup_very_long_text() {
     let long_text = "A".repeat(1000);
     let rt = RichText::markup(&format!("[b]{}[/]", long_text));
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
@@ -1149,20 +1149,20 @@ fn test_markup_many_nested_tags() {
     let text = "T";
     let closes = "[/]".repeat(20);
     let rt = RichText::markup(&format!("{}{}{}", tags, text, closes));
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
 fn test_markup_tag_uppercase() {
     let rt = RichText::markup("[B]Bold[/B]");
     // Tags should work regardless of case
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 #[test]
 fn test_markup_numeric_colors() {
     let rt = RichText::markup("[#ff0000]Hex Color[/]");
-    assert!(rt.len() >= 1);
+    assert!(!rt.is_empty());
 }
 
 // =============================================================================

@@ -38,8 +38,10 @@ mod tests {
 
     #[test]
     fn test_spacing_style_clone() {
-        let mut style = SpacingStyle::default();
-        style.top = Some(10);
+        let style = SpacingStyle {
+            top: Some(10),
+            ..Default::default()
+        };
         let cloned = style.clone();
         assert_eq!(cloned.top, Some(10));
     }
@@ -53,8 +55,10 @@ mod tests {
 
     #[test]
     fn test_spacing_style_not_equal() {
-        let mut style1 = SpacingStyle::default();
-        style1.top = Some(10);
+        let style1 = SpacingStyle {
+            top: Some(10),
+            ..Default::default()
+        };
         let style2 = SpacingStyle::default();
         assert_ne!(style1, style2);
     }

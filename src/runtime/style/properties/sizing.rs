@@ -38,8 +38,10 @@ mod tests {
 
     #[test]
     fn test_sizing_style_clone() {
-        let mut style = SizingStyle::default();
-        style.width = Size::Fixed(100);
+        let style = SizingStyle {
+            width: Size::Fixed(100),
+            ..Default::default()
+        };
         let cloned = style.clone();
         assert_eq!(cloned.width, Size::Fixed(100));
     }
@@ -53,8 +55,10 @@ mod tests {
 
     #[test]
     fn test_sizing_style_not_equal() {
-        let mut style1 = SizingStyle::default();
-        style1.width = Size::Fixed(100);
+        let style1 = SizingStyle {
+            width: Size::Fixed(100),
+            ..Default::default()
+        };
         let style2 = SizingStyle::default();
         assert_ne!(style1, style2);
     }

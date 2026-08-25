@@ -423,10 +423,12 @@ mod tests {
 
     #[test]
     fn test_event_filter_public_fields() {
-        let mut filter = EventFilter::default();
-        filter.show_keys = true;
-        filter.show_mouse = true;
-        filter.only_handled = true;
+        let filter = EventFilter {
+            show_keys: true,
+            show_mouse: true,
+            only_handled: true,
+            ..Default::default()
+        };
 
         assert!(filter.show_keys);
         assert!(filter.show_mouse);
