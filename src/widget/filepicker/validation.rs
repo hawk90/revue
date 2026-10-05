@@ -128,15 +128,19 @@ pub(crate) fn validate_path_no_traversal(path: &Path) -> Result<(), FilePickerEr
                 // Normal component, continue
             }
             std::path::Component::Prefix(prefix) => {
-                // Validate Windows prefix paths
-                // Device namespace paths like \\.\COM1 are potentially dangerous
-                // We check the string representation for device namespace indicators
-                let prefix_str = prefix.as_os_str().to_string_lossy();
-                if prefix_str.starts_with("\\\\?\\") || prefix_str.starts_with("\\\\.") {
-                    // These are potentially dangerous device namespace paths
-                    // Allow only for normal disk access, reject suspicious patterns
-                    if prefix_str.contains('\\') && prefix_str.len() < 10 {
-                        // Short device paths like \\.\C: are suspicious
+                // Decide by the kind of prefix, not by its spelling. A disk or
+                // a UNC share is ordinary file access, whether written plainly
+                // or verbatim: `canonicalize()` on Windows always returns the
+                // verbatim form `\\?\C:\...`, and rejecting it made every
+                // canonicalized directory unusable. Only the device namespace
+                // (`\\.\COM1`) and verbatim non-disk paths reach devices.
+                use std::path::Prefix;
+                match prefix.kind() {
+                    Prefix::Disk(_)
+                    | Prefix::VerbatimDisk(_)
+                    | Prefix::UNC(..)
+                    | Prefix::VerbatimUNC(..) => {}
+                    Prefix::DeviceNS(_) | Prefix::Verbatim(_) => {
                         return Err(FilePickerError::InvalidPath(
                             "suspicious device namespace path".to_string(),
                         ));
