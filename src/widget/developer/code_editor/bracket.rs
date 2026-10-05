@@ -116,7 +116,7 @@ impl super::CodeEditor {
                 break;
             }
             line_idx -= 1;
-            col_idx = self.lines[line_idx].len();
+            col_idx = self.lines[line_idx].chars().count();
         }
 
         None

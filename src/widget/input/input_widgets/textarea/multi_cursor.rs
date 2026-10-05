@@ -143,5 +143,5 @@ impl TextArea {
     }
 }
 
-use super::find_impl::find_chars;
 use super::TextArea;
+use crate::utils::text::find_chars;

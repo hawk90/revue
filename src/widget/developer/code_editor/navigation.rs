@@ -2,6 +2,8 @@
 //!
 //! Public API tests extracted to tests/widget/code_editor/navigation.rs
 
+use crate::widget::traits::render_context::edit_line::{char_at_col, col_of};
+
 impl super::CodeEditor {
     // =========================================================================
     // Cursor and Navigation
@@ -25,9 +27,9 @@ impl super::CodeEditor {
         self.lines.len()
     }
 
-    /// Get line length
+    /// Get line length (in chars: cursor columns are char indices)
     pub(super) fn line_len(&self, line: usize) -> usize {
-        self.lines.get(line).map(|l| l.len()).unwrap_or(0)
+        self.lines.get(line).map(|l| l.chars().count()).unwrap_or(0)
     }
 
     /// Move cursor left
@@ -64,8 +66,7 @@ impl super::CodeEditor {
     /// Move cursor up
     pub fn move_up(&mut self) {
         if self.cursor.0 > 0 {
-            self.cursor.0 -= 1;
-            self.cursor.1 = self.cursor.1.min(self.line_len(self.cursor.0));
+            self.move_to_line(self.cursor.0 - 1);
         }
         // Only clear selection if not in selection mode
         if self.anchor.is_none() {
@@ -77,8 +78,7 @@ impl super::CodeEditor {
     /// Move cursor down
     pub fn move_down(&mut self) {
         if self.cursor.0 + 1 < self.lines.len() {
-            self.cursor.0 += 1;
-            self.cursor.1 = self.cursor.1.min(self.line_len(self.cursor.0));
+            self.move_to_line(self.cursor.0 + 1);
         }
         // Only clear selection if not in selection mode
         if self.anchor.is_none() {
@@ -210,8 +210,7 @@ impl super::CodeEditor {
 
     /// Page up
     pub fn page_up(&mut self, page_size: usize) {
-        self.cursor.0 = self.cursor.0.saturating_sub(page_size);
-        self.cursor.1 = self.cursor.1.min(self.line_len(self.cursor.0));
+        self.move_to_line(self.cursor.0.saturating_sub(page_size));
         // Only clear selection if not in selection mode
         if self.anchor.is_none() {
             self.clear_selection();
@@ -221,8 +220,7 @@ impl super::CodeEditor {
 
     /// Page down
     pub fn page_down(&mut self, page_size: usize) {
-        self.cursor.0 = (self.cursor.0 + page_size).min(self.lines.len().saturating_sub(1));
-        self.cursor.1 = self.cursor.1.min(self.line_len(self.cursor.0));
+        self.move_to_line((self.cursor.0 + page_size).min(self.lines.len().saturating_sub(1)));
         // Only clear selection if not in selection mode
         if self.anchor.is_none() {
             self.clear_selection();
@@ -230,11 +228,20 @@ impl super::CodeEditor {
         self.ensure_cursor_visible();
     }
 
+    /// Move the cursor to `line`, keeping its screen column: a char index
+    /// alone drifts one column per wide glyph before it.
+    fn move_to_line(&mut self, line: usize) {
+        let from = self.lines.get(self.cursor.0).map_or("", String::as_str);
+        let col = col_of(from, self.cursor.1);
+        let to = self.lines.get(line).map_or("", String::as_str);
+        self.cursor = (line, char_at_col(to, col));
+    }
+
     /// Ensure cursor is visible
     pub(super) fn ensure_cursor_visible(&mut self) {
         // Adjust vertical scroll
-        if self.cursor.0 < self.scroll.0 {
-            self.scroll.0 = self.cursor.0;
+        if self.cursor.0 < self.scroll {
+            self.scroll = self.cursor.0;
         }
         // Horizontal scroll adjustment would need view width
     }
