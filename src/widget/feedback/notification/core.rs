@@ -467,6 +467,44 @@ impl NotificationCenter {
             current_y += 1;
         }
 
+        // Action line (if present): the label, bracketed and right-aligned
+        if let Some(ref action) = notification.action {
+            let mut left = Cell::new('│');
+            left.fg = Some(border_color);
+            ctx.set(x, current_y, left);
+
+            for dx in 1..width - 1 {
+                let mut cell = Cell::new(' ');
+                cell.bg = Some(bg);
+                ctx.set(x + dx, current_y, cell);
+            }
+
+            // Inner columns, keeping one blank on each side of the label
+            let inner = width.saturating_sub(4);
+            let label = format!("[{}]", action);
+            let label_width = (crate::utils::display_width(&label) as u16).min(inner);
+            let mut dx: u16 = 0;
+            let start = x + 2 + inner - label_width;
+            for ch in label.chars() {
+                let cw = char_width(ch) as u16;
+                if dx + cw > label_width {
+                    break;
+                }
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(color);
+                cell.bg = Some(bg);
+                cell.modifier |= Modifier::BOLD;
+                ctx.set(start + dx, current_y, cell);
+                dx += cw;
+            }
+
+            let mut right = Cell::new('│');
+            right.fg = Some(border_color);
+            ctx.set(x + width - 1, current_y, right);
+
+            current_y += 1;
+        }
+
         // Bottom border with timer
         let mut bl = Cell::new('╰');
         bl.fg = Some(border_color);

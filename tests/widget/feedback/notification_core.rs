@@ -400,11 +400,44 @@ fn test_center_timer_bar_drains() {
 }
 
 #[test]
-#[ignore = "BUG: NotificationCenter reserves a row for Notification::action but never draws it"]
 fn test_center_action_line() {
-    let mut c = notification_center().position(NotificationPosition::TopLeft);
+    let mut c = notification_center()
+        .position(NotificationPosition::TopLeft)
+        .show_timer(false);
     c.push(Notification::info("Failed").action("Retry"));
     let buffer = render(&c, 50, 10);
     let text: Vec<String> = (0..10).map(|y| row(&buffer, y)).collect();
-    assert!(text.iter().any(|r| r.contains("Retry")), "{text:#?}");
+    // Border, message, action, border: the action sits in its reserved row
+    assert!(text[1].contains("Failed"), "{text:#?}");
+    assert!(text[2].contains("[Retry]"), "{text:#?}");
+    assert!(text[2].starts_with('│'), "{text:#?}");
+    assert!(text[3].starts_with('╰'), "{text:#?}");
+    assert!(!text[3].contains("Retry"), "{text:#?}");
+    // Right-aligned with one blank before the border
+    let width = box_width(&buffer, (0, 0)) as usize;
+    let line: Vec<char> = text[2].chars().take(width).collect();
+    assert_eq!(line[width - 1], '│');
+    assert_eq!(line[width - 2], ' ');
+    assert_eq!(line[width - 3], ']');
+    // Drawn in the level color
+    let r = (0..50)
+        .find(|&x| buffer.get(x, 2).unwrap().symbol == 'R')
+        .unwrap();
+    assert_eq!(buffer.get(r, 2).unwrap().fg, Some(Color::CYAN));
+}
+
+#[test]
+fn test_center_action_line_clips_long_labels() {
+    let mut c = notification_center()
+        .position(NotificationPosition::TopLeft)
+        .width(20);
+    c.push(Notification::info("x").action("A very long action label"));
+    let buffer = render(&c, 30, 10);
+    let line = row(&buffer, 2);
+    let chars: Vec<char> = line.chars().collect();
+    // The label is cut short of the right border, which survives
+    assert_eq!(chars[19], '│', "{line:?}");
+    assert_eq!(chars[18], ' ', "{line:?}");
+    assert!(line.contains("[A very long"), "{line:?}");
+    assert_eq!(chars[0], '│', "{line:?}");
 }
