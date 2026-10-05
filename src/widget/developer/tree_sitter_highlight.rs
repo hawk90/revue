@@ -296,7 +296,7 @@ impl TreeSitterHighlighter {
         };
 
         let source = line.as_bytes();
-        let highlights = match self.highlighter.highlight(config, source, None, |_| None) {
+        let highlights = match self.highlighter.highlight(config, source, None, None, |_| None) {
             Ok(h) => h,
             Err(_) => return Vec::new(),
         };
@@ -357,7 +357,7 @@ impl TreeSitterHighlighter {
         };
 
         let source = code.as_bytes();
-        let highlights = match self.highlighter.highlight(config, source, None, |_| None) {
+        let highlights = match self.highlighter.highlight(config, source, None, None, |_| None) {
             Ok(h) => h,
             Err(_) => return code.lines().map(|_| Vec::new()).collect(),
         };
