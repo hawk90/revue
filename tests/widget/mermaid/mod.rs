@@ -56,6 +56,20 @@ fn test_diagram_render_title() {
     assert_eq!(row(&buffer, 4), "       │ Hi │       ");
 }
 
+/// The title pushes the nodes down two rows; the arrows have to come with
+/// them. They used to stay where the nodes would have been without a title,
+/// hidden under the first box.
+#[test]
+fn test_diagram_render_title_moves_the_arrows_with_the_nodes() {
+    let d = flowchart("A[Start] --> B[End]").title("Flow");
+    let buffer = render(&d, 20, 12);
+    assert_eq!(row(&buffer, 3), "     ┌───────┐      ");
+    assert_eq!(row(&buffer, 5), "     └───────┘      ");
+    assert_eq!(buffer.get(9, 6).unwrap().symbol, '│');
+    assert_eq!(buffer.get(9, 7).unwrap().symbol, '▼');
+    assert_eq!(row(&buffer, 8), "      ┌─────┐       ");
+}
+
 #[test]
 fn test_diagram_render_edge_label() {
     let d = flowchart("A -->|go| B");

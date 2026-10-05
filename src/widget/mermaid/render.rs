@@ -41,6 +41,12 @@ impl View for Diagram {
         };
 
         diagram.compute_layout(area.width, area.height - title_height);
+        // The layout is relative to the space under the title. Shift it once
+        // here so nodes and edges agree: offsetting only the nodes left every
+        // arrow two rows up, under the first box.
+        for pos in diagram.positions.values_mut() {
+            pos.1 += title_height;
+        }
 
         // Render edges first (behind nodes)
         for edge in &diagram.edges {
@@ -52,7 +58,7 @@ impl View for Diagram {
             if let (Some(&(x, y)), Some(&(w, h))) =
                 (diagram.positions.get(&node.id), diagram.sizes.get(&node.id))
             {
-                diagram.render_node(ctx, node, x, y + title_height, w, h);
+                diagram.render_node(ctx, node, x, y, w, h);
             }
         }
     }
