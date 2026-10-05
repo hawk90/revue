@@ -69,3 +69,4 @@ not missing features — the item can still be `done`.
 6. Bump `updated:` at the top of the file.
 
 Snapshot on 2026-10-05 (after deep verification): 103 items — 82 done, 17 partial, 4 todo, 0 dropped.
+Snapshot on 2026-10-06 (2.76.0): 105 items — 83 done, 18 partial, 4 todo, 0 dropped.

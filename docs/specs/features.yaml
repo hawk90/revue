@@ -3,7 +3,7 @@
 # Verified against the code on 2026-10-05 (code wins over docs). `source` § refers to the
 # pre-2026-10-05 docs/FEATURES.md layout (see git history / docs narrative).
 schema: 1
-updated: '2026-10-05'
+updated: '2026-10-06'
 sources:
   - 'docs/FEATURES.md (pre-2026-10-05 layout: §1–§11, Advanced Widgets, Feature Comparison)'
 statuses:
@@ -181,13 +181,18 @@ items:
       - text-align left/center/right
       - 'visibility: hidden stops the paint'
       - color inherits to children
+      - background fills the node's whole box, under what the widget painted; a widget's own fill
+        (fill_box_background) outranks it
     evidence:
       - src/widget/traits/render_context/css.rs::css_color
+      - tests/css_background.rs::background_fills_the_cells_the_widget_left_empty
+      - tests/css_background.rs::a_widgets_own_fill_beats_the_stylesheet
       - tests/css_reaches_the_screen.rs::font_weight_bold_reaches_the_cell
       - tests/css_reaches_the_screen.rs::visibility_hidden_stops_the_paint
       - tests/css_reaches_the_screen.rs::text_align_center_moves_the_text
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
+      - PR #676
     notes: Requires dom_from_render(true) so widgets have DOM nodes.
   - id: CSS-012
     title: Border properties (border, border-style, border-color)
@@ -351,7 +356,8 @@ items:
       - tests/sibling_invalidation.rs
     source:
       - FEATURES.md §2 Flexbox Layout / Direction
-    notes: Direction is a builder property; flex-direction in CSS is not applied (CSS-016).
+    notes: Direction is a builder property; flex-direction in CSS is not applied (CSS-016). Unsized children share the
+      space equally unless the stack is content-sized (LAY-006).
   - id: LAY-002
     title: justify-content / align-items alignment
     area: layout
@@ -422,6 +428,26 @@ items:
     notes: 'Engine exists and is tested, and the tree-linking bug (L-1) is fixed, but widgets still lay out their own children;
       engine rects only feed css_layout overrides. Open: L-2 (widget intent not in node style), L-3 (auto cross size collapses),
       L-4 (one-frame lag) in docs/refactor/findings-layout.md.'
+  - id: LAY-006
+    title: Content-sized stack children (View::measure, Stack::content_sized)
+    area: layout
+    priority: P1
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - a view can report the size it wants (View::measure); None keeps "fill what I am given"
+      - with content_sized(true) an unsized child that measures gets that size; children that fill share the rest
+      - child_sized / child_flex still win
+      - Text, Border and Stack measure themselves
+    evidence:
+      - src/widget/traits/view.rs::measure
+      - src/widget/layout/stack.rs::content_sized
+      - tests/content_sized_stack.rs::a_column_stacks_text_line_after_line
+      - tests/content_sized_stack.rs::a_child_that_fills_gets_what_the_measured_ones_leave
+    source:
+      - PR #687
+    notes: Opt-in in 2.x (off by default); 3.0 turns it on (docs/migration/v3.0.0.md). Partial because only Text, Border
+      and Stack measure; every other widget still fills. Design in docs/refactor/design-content-sized-stack.md.
   - id: RX-001
     title: 'signal(): get / set / update'
     area: reactive
@@ -549,11 +575,13 @@ items:
     priority_inferred: true
     status: done
     acceptance:
-      - placeholder, value
+      - placeholder, value; the placeholder shows while the input is empty, focused or not
       - selection, undo/redo, copy/cut/paste
+      - wide characters (CJK, emoji) laid out in columns; scrolls to keep the cursor in view
     evidence:
       - src/widget/input/input_widgets/input/mod.rs::input
       - tests/widget_validation_tests.rs
+      - tests/input_wide_chars.rs
     source:
       - FEATURES.md §4 Widgets / Input Widgets / Input
     notes: Doc .on_change(closure) does not exist; read get_value() in the handler.
@@ -845,16 +873,21 @@ items:
     priority_inferred: true
     status: done
     acceptance:
-      - headings, emphasis, lists, code blocks
+      - headings, emphasis, lists (bullet before the text), code blocks kept line by line
+      - tables (header, separator, rows; columns sized to content)
       - syntax highlighting of fenced code
     evidence:
       - src/widget/markdown/helpers.rs::markdown
       - src/widget/markdown/mod.rs::syntax_highlight
       - tests/widget/markdown.rs
+      - tests/widget/markdown/markdown_tests.rs::test_markdown_table_cells_render
+      - tests/widget/markdown/markdown_tests.rs::test_markdown_fenced_code_block_is_highlighted
     source:
       - FEATURES.md §4 Widgets / Content Widgets / Markdown
       - FEATURES.md §Overview
-    notes: 'Needs `markdown` feature (highlighting: `syntax-highlighting`).'
+    notes: Needs the `markdown` feature. Code highlighting uses the built-in keyword highlighter (utils::syntax), not the
+      tree-sitter `syntax-highlighting` feature; switch it with Markdown::syntax_highlight(bool). Tables do not shrink
+      their columns to a narrow area (rows are clipped), and cells keep plain text only (PR #686, #694).
   - id: WID-024
     title: Markdown presentation (slides)
     area: widget
@@ -1404,6 +1437,32 @@ items:
     source:
       - FEATURES.md §6 Unicode & Font Support / Configuration
     notes: No code reads revue.toml or a [font] table.
+  - id: TEXT-004
+    title: Wide-character text placement and editing in widgets
+    area: unicode
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - widgets place text by terminal columns, with a continuation cell after a wide glyph
+      - titles, labels and fields truncate by columns, never inside a char
+      - text inputs keep their cursor as a char index, draw it at its column and scroll in columns
+      - typing, Backspace/Delete, undo and search over Hangul or CJK do not panic
+    evidence:
+      - src/widget/traits/render_context/edit_line.rs
+      - tests/wide_char_placement.rs
+      - tests/border_title_width.rs
+      - tests/input_wide_chars.rs
+      - tests/code_editor_wide_chars.rs
+      - tests/text_fields_wide_chars.rs
+    source:
+      - PR #684
+      - PR #690
+      - PR #695
+      - PR #710
+      - PR #711
+    notes: Remaining gaps listed in those PRs - Presentation/MarkdownPresentation/AiStream/Transition/Collapsible/Canvas text
+      and StatusBar key hints still place by char index; no grapheme clustering (TEXT-001).
   - id: DX-001
     title: Stylesheet hot reload
     area: dx
