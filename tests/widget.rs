@@ -111,9 +111,8 @@ mod image;
 mod layout;
 #[path = "widget/link.rs"]
 mod link;
-// TODO(test-coverage): list has API mismatches
-// #[path = "widget/list.rs"]
-// mod list;
+#[path = "widget/list.rs"]
+mod list;
 #[path = "widget/log_viewer_tests.rs"]
 mod log_viewer_tests;
 #[cfg(feature = "markdown")]

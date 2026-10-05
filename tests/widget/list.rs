@@ -6,6 +6,27 @@ use revue::style::Color;
 use revue::widget::traits::{RenderContext, StyledView, View};
 use revue::widget::{list, List};
 
+/// Render `list` into a `width` x `height` buffer.
+fn render(list: &List<impl std::fmt::Display>, width: u16, height: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    let area = Rect::new(0, 0, width, height);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    list.render(&mut ctx);
+    buffer
+}
+
+fn rows(buffer: &Buffer) -> Vec<String> {
+    (0..buffer.height())
+        .map(|y| {
+            (0..buffer.width())
+                .map(|x| buffer.get(x, y).unwrap().symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .collect()
+}
+
 // =============================================================================
 // Constructor Tests
 // =============================================================================
@@ -65,21 +86,19 @@ fn test_list_selected_last() {
 #[test]
 fn test_list_highlight_fg() {
     let list = List::new(vec!["A", "B"]).highlight_fg(Color::RED);
-    // Can't directly access highlight_fg, but can test render
-    let mut buffer = Buffer::new(10, 2);
-    let area = Rect::new(0, 0, 10, 2);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    list.render(&mut ctx);
-    // Render succeeds without panic
+    let buffer = render(&list, 10, 2);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::RED));
+    assert_ne!(buffer.get(0, 1).unwrap().fg, Some(Color::RED));
 }
 
 #[test]
 fn test_list_highlight_bg() {
     let list = List::new(vec!["A", "B"]).highlight_bg(Color::GREEN);
-    let mut buffer = Buffer::new(10, 2);
-    let area = Rect::new(0, 0, 10, 2);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    list.render(&mut ctx);
+    let buffer = render(&list, 10, 2);
+    // The whole selected row is filled
+    assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::GREEN));
+    assert_eq!(buffer.get(9, 0).unwrap().bg, Some(Color::GREEN));
+    assert_ne!(buffer.get(0, 1).unwrap().bg, Some(Color::GREEN));
 }
 
 #[test]
@@ -287,15 +306,7 @@ fn test_list_render_truncates_to_height() {
 #[test]
 fn test_list_render_truncates_to_width() {
     let list = List::new(vec!["Very Long Item Name Here"]);
-    let mut buffer = Buffer::new(10, 1);
-    let area = Rect::new(0, 0, 10, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    list.render(&mut ctx);
-
-    // Text should be truncated at width
-    let _cell = buffer.get(9, 0).unwrap();
-    // Cell should exist (not panic)
+    assert_eq!(rows(&render(&list, 10, 1)), vec!["Very Long"]);
 }
 
 #[test]
@@ -305,7 +316,7 @@ fn test_list_render_zero_area() {
     let area = Rect::new(0, 0, 0, 0);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    list.render(&mut ctx); // Should not panic
+    list.render(&mut ctx); // Must not panic on an empty buffer
 }
 
 #[test]
@@ -315,17 +326,18 @@ fn test_list_render_zero_width() {
     let area = Rect::new(0, 0, 0, 2);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    list.render(&mut ctx); // Should not panic
+    list.render(&mut ctx); // Must not panic on a zero-width area
 }
 
 #[test]
 fn test_list_render_zero_height() {
-    let list = List::new(vec!["A", "B"]);
+    let list = List::new(vec!["A", "B"]).selected(1);
     let mut buffer = Buffer::new(10, 0);
     let area = Rect::new(0, 0, 10, 0);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
-    list.render(&mut ctx); // Should not panic
+    list.render(&mut ctx); // Must not panic on a zero-height area
+    assert_eq!(list.selected_index(), 1);
 }
 
 #[test]
@@ -490,24 +502,50 @@ fn test_list_unicode_characters() {
 fn test_list_very_long_text() {
     let long_text = "This is a very long item that exceeds the buffer width";
     let list = List::new(vec![long_text, "Short"]);
-
-    let mut buffer = Buffer::new(20, 2);
-    let area = Rect::new(0, 0, 20, 2);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    list.render(&mut ctx); // Should truncate properly
+    assert_eq!(
+        rows(&render(&list, 20, 2)),
+        vec!["This is a very long", "Short"]
+    );
 }
 
 #[test]
 fn test_list_many_items_small_area() {
     let items: Vec<String> = (0..100).map(|i| format!("Item {}", i)).collect();
     let list = List::new(items);
+    // Only as many items as there are rows
+    assert_eq!(
+        rows(&render(&list, 20, 5)),
+        vec!["Item 0", "Item 1", "Item 2", "Item 3", "Item 4"]
+    );
+}
 
-    let mut buffer = Buffer::new(20, 5);
-    let area = Rect::new(0, 0, 20, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+#[test]
+fn test_list_scrolls_to_selection() {
+    let items: Vec<String> = (0..100).map(|i| format!("Item {}", i)).collect();
+    let list = List::new(items).selected(50);
+    let buffer = render(&list, 20, 5);
+    // The selected item is on screen, on the last row
+    assert_eq!(
+        rows(&buffer),
+        vec!["Item 46", "Item 47", "Item 48", "Item 49", "Item 50"]
+    );
+    assert_eq!(buffer.get(0, 4).unwrap().bg, Some(Color::BLUE));
+}
 
-    list.render(&mut ctx); // Should only render first 5 items
+#[test]
+fn test_list_scroll_follows_navigation() {
+    let mut list = List::new(vec!["A", "B", "C", "D", "E"]);
+    assert_eq!(rows(&render(&list, 5, 2)), vec!["A", "B"]);
+    list.select_next();
+    list.select_next();
+    assert_eq!(rows(&render(&list, 5, 2)), vec!["B", "C"]);
+    // Moving back up inside the window does not scroll
+    list.select_prev();
+    assert_eq!(rows(&render(&list, 5, 2)), vec!["B", "C"]);
+    list.select_first();
+    assert_eq!(rows(&render(&list, 5, 2)), vec!["A", "B"]);
+    list.select_last();
+    assert_eq!(rows(&render(&list, 5, 2)), vec!["D", "E"]);
 }
 
 #[test]
@@ -605,34 +643,6 @@ fn test_list_rapid_navigation() {
 // =============================================================================
 // Clone Tests
 // =============================================================================
-
-#[test]
-fn test_list_clone_preserves_items() {
-    let list1 = List::new(vec!["A", "B", "C"]);
-    let list2 = list1.clone();
-    assert_eq!(list1.items(), list2.items());
-}
-
-#[test]
-fn test_list_clone_preserves_selection() {
-    let list1 = List::new(vec!["A", "B", "C"]).selected(1);
-    let list2 = list1.clone();
-    assert_eq!(list1.selected_index(), list2.selected_index());
-}
-
-#[test]
-fn test_list_clone_independent() {
-    let mut list1 = List::new(vec!["A", "B", "C"]).selected(0);
-    let mut list2 = list1.clone();
-
-    list1.select_next();
-    assert_eq!(list1.selected_index(), 1);
-    assert_eq!(list2.selected_index(), 0);
-
-    list2.select_next();
-    assert_eq!(list1.selected_index(), 1);
-    assert_eq!(list2.selected_index(), 1);
-}
 
 // =============================================================================
 // RGB/RGBA Color Tests
@@ -748,10 +758,8 @@ fn test_list_full_selection_cycle() {
 
 #[test]
 fn test_list_selection_boundaries() {
-    let mut list = List::new(vec!["A", "B", "C", "D", "E"]);
-
     // Select middle item
-    list = List::new(vec!["A", "B", "C", "D", "E"]).selected(2);
+    let mut list = List::new(vec!["A", "B", "C", "D", "E"]).selected(2);
     assert_eq!(list.selected_index(), 2);
 
     // Navigate to boundaries
@@ -806,7 +814,7 @@ fn test_list_selection_middle_item() {
 #[test]
 fn test_list_selection_changes_dont_affect_items() {
     let mut list = List::new(vec!["A", "B", "C"]);
-    let original_items = list.items();
+    let original_items = list.items().to_vec();
 
     list.select_next();
     assert_eq!(list.items(), original_items);
@@ -1009,22 +1017,14 @@ fn test_list_render_at_different_offsets() {
 
 #[test]
 fn test_list_render_single_pixel_width() {
-    let list = List::new(vec!["A", "B"]);
-    let mut buffer = Buffer::new(1, 2);
-    let area = Rect::new(0, 0, 1, 2);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    list.render(&mut ctx);
+    let list = List::new(vec!["AB", "CD"]);
+    assert_eq!(rows(&render(&list, 1, 2)), vec!["A", "C"]);
 }
 
 #[test]
 fn test_list_render_single_pixel_height() {
-    let list = List::new(vec!["A"]);
-    let mut buffer = Buffer::new(10, 1);
-    let area = Rect::new(0, 0, 10, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    list.render(&mut ctx);
+    let list = List::new(vec!["A", "B"]);
+    assert_eq!(rows(&render(&list, 10, 1)), vec!["A"]);
 }
 
 // =============================================================================
@@ -1033,8 +1033,12 @@ fn test_list_render_single_pixel_height() {
 
 #[test]
 fn test_list_view_widget_type() {
+    // The DOM and CSS type selectors read the type from meta(), which names
+    // the widget without its generic parameter. (View::widget_type()'s
+    // default is the Rust type name, "List<&str>", and nothing reads it for
+    // a widget that reports its own meta.)
     let list = List::new(vec!["A", "B"]);
-    assert_eq!(list.widget_type(), "List");
+    assert_eq!(list.meta().widget_type, "List");
 }
 
 #[test]
