@@ -79,6 +79,13 @@ impl<W: Write> Terminal<W> {
         // Only emit MoveTo if cursor isn't already at the expected position
         // This reduces escape sequences for contiguous same-row cells
         if state.cursor != Some((x, y)) {
+            // An OSC 8 link stays open until it is closed, so a cursor jump
+            // inside one is part of the link to the terminal. Close it first;
+            // the next linked cell reopens it.
+            if state.hyperlink_id.is_some() {
+                self.write_hyperlink_end()?;
+                state.hyperlink_id = None;
+            }
             queue!(self.writer, MoveTo(x, y))?;
         }
 
