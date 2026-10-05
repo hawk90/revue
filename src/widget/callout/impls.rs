@@ -167,8 +167,9 @@ impl Callout {
 
         match self.variant {
             CalloutVariant::Filled => {
-                // top border + title + content + bottom border
-                2 + content_lines + 1
+                // title + content; the accent border is drawn down the left
+                // column, not above or below
+                1 + content_lines
             }
             CalloutVariant::LeftBorder => {
                 // title + content

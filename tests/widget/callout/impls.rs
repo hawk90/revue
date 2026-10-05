@@ -295,8 +295,33 @@ fn test_get_title_custom() {
 #[test]
 fn test_height_filled_variant() {
     let callout = Callout::new("Line 1\nLine 2").variant(CalloutVariant::Filled);
-    // 2 (top and title) + content_lines (2) + 1 (bottom) = 5
-    assert_eq!(callout.height(), 5);
+    // title + content (2 lines) = 1 + 2 = 3
+    assert_eq!(callout.height(), 3);
+}
+
+#[test]
+fn test_height_matches_rendered_rows() {
+    // Every variant draws exactly height() rows of text: rendering into
+    // that many rows shows all of it, and nothing is drawn past it.
+    for variant in [
+        CalloutVariant::Filled,
+        CalloutVariant::LeftBorder,
+        CalloutVariant::Minimal,
+    ] {
+        let callout = Callout::new("Line 1\nLine 2").variant(variant).icon(false);
+        let h = callout.height();
+        let rows = render_rows(&callout, 20, h + 2);
+        assert!(
+            rows[h as usize - 1].ends_with("Line 2"),
+            "{variant:?}: {rows:?}"
+        );
+        for row in &rows[h as usize..] {
+            assert!(
+                row.trim_start_matches('┃').trim().is_empty(),
+                "{variant:?}: {rows:?}"
+            );
+        }
+    }
 }
 
 #[test]
@@ -325,8 +350,8 @@ fn test_height_collapsed() {
 #[test]
 fn test_height_empty_content() {
     let callout = Callout::new("").variant(CalloutVariant::Filled);
-    // top border + title + content (1 line minimum) + bottom border = 2 + 1 + 1 + 1 = 5
-    assert!(callout.height() >= 1);
+    // title + one (empty) content line minimum
+    assert_eq!(callout.height(), 2);
 }
 
 // =========================================================================

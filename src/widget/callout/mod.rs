@@ -98,7 +98,7 @@ mod tests {
 
         // Filled with single line content
         let filled = Callout::new("Single line").variant(CalloutVariant::Filled);
-        assert_eq!(filled.height(), 4); // border + title + content + border
+        assert_eq!(filled.height(), 2); // title + content
 
         // Filled with multi-line content
         let multi = Callout::new(
@@ -107,7 +107,7 @@ Line 2
 Line 3",
         )
         .variant(CalloutVariant::Filled);
-        assert_eq!(multi.height(), 6); // border + title + 3 content lines + border
+        assert_eq!(multi.height(), 4); // title + 3 content lines
 
         // Left border variant
         let left = Callout::new("Content").variant(CalloutVariant::LeftBorder);
