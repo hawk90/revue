@@ -302,9 +302,24 @@ impl RichText {
         self.spans.push(Span::link(text, url));
     }
 
-    /// Get total width
+    /// Get the display width: the width of the widest line
+    ///
+    /// A `\n` inside any span starts a new line, so this is the widest run of
+    /// text between newlines, not the sum of every span.
     pub fn width(&self) -> usize {
-        self.spans.iter().map(|s| s.width()).sum()
+        let mut widest = 0;
+        let mut current = 0;
+        for span in &self.spans {
+            let mut lines = span.text.split('\n');
+            if let Some(first) = lines.next() {
+                current += unicode_width::UnicodeWidthStr::width(first);
+            }
+            for line in lines {
+                widest = widest.max(current);
+                current = unicode_width::UnicodeWidthStr::width(line);
+            }
+        }
+        widest.max(current)
     }
 
     /// Get span count
@@ -431,7 +446,12 @@ impl View for RichText {
         let base_fg = ctx.css_color_if_set();
         let base_bg = ctx.css_background_if_set();
 
+        // A `\n` in any span starts a new row at the left edge of the area;
+        // the text after it keeps its span's style. Rows past the area's
+        // height are clipped, and a row wider than the area is truncated
+        // without swallowing the rows after it.
         let mut x: u16 = 0;
+        let mut y: u16 = 0;
 
         for span in &self.spans {
             // Register hyperlink if present
@@ -443,8 +463,16 @@ impl View for RichText {
             let modifier = span.style.to_modifier();
 
             for ch in span.text.chars() {
+                if ch == '\n' {
+                    x = 0;
+                    y += 1;
+                    if y >= area.height {
+                        return;
+                    }
+                    continue;
+                }
                 if x >= area.width {
-                    break;
+                    continue;
                 }
 
                 let char_width = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as u16;
@@ -455,14 +483,14 @@ impl View for RichText {
                 cell.modifier = modifier;
                 cell.hyperlink_id = hyperlink_id;
 
-                ctx.set(x, 0, cell);
+                ctx.set(x, y, cell);
 
                 // Handle wide characters
                 if char_width == 2 && x + 1 < area.width {
                     let mut cont = Cell::continuation();
                     cont.bg = span.style.bg.or(base_bg);
                     cont.hyperlink_id = hyperlink_id;
-                    ctx.set(x + 1, 0, cont);
+                    ctx.set(x + 1, y, cont);
                 }
 
                 x += char_width;
