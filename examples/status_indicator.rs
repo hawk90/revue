@@ -4,8 +4,8 @@
 
 use revue::prelude::*;
 use revue::widget::{
-    away_indicator, busy_indicator, offline, online, status_indicator, Status, StatusSize,
-    StatusStyle, Text,
+    away_indicator, busy_indicator, offline, online, status_indicator, Status, StatusIndicator,
+    StatusSize, StatusStyle, Text,
 };
 
 /// Current view mode
@@ -79,16 +79,22 @@ impl StatusIndicatorDemo {
     }
 
     fn render_tabs(&self) -> impl View {
+        // A stack shares its space equally among the children added with
+        // `child`; it does not size them to their content. So everything in
+        // this file that should take only its own rows or columns says so with
+        // `child_sized`, and only the piece that should take the rest is left
+        // as a plain `child`.
         let mut tabs = hstack().gap(2);
 
         for (i, tab) in ViewTab::all().iter().enumerate() {
             let label = format!("[{}] {}", i + 1, tab.name());
+            let width = cols(&label);
             let text = if *tab == self.tab {
                 Text::new(label).fg(Color::CYAN).bold()
             } else {
                 Text::new(label).fg(Color::rgb(128, 128, 128))
             };
-            tabs = tabs.child(text);
+            tabs = tabs.child_sized(text, width);
         }
 
         tabs
@@ -96,178 +102,200 @@ impl StatusIndicatorDemo {
 
     fn render_states_demo(&self) -> impl View {
         vstack()
-            .gap(1)
-            .child(Text::new("Status States:").bold())
-            .child(Text::new(""))
-            .child(
-                hstack()
-                    .gap(2)
-                    .child(online().pulsing(self.pulsing))
+            .child_sized(Text::new("Status States:").bold(), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                indicators(2, [online().pulsing(self.pulsing)])
                     .child(Text::new("Online - User is available")),
+                1,
             )
-            .child(Text::new(""))
-            .child(
-                hstack()
-                    .gap(2)
-                    .child(offline())
-                    .child(Text::new("Offline - User is disconnected")),
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                indicators(2, [offline()]).child(Text::new("Offline - User is disconnected")),
+                1,
             )
-            .child(Text::new(""))
-            .child(
-                hstack()
-                    .gap(2)
-                    .child(busy_indicator().pulsing(self.pulsing))
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                indicators(2, [busy_indicator().pulsing(self.pulsing)])
                     .child(Text::new("Busy - Do not disturb")),
+                1,
             )
-            .child(Text::new(""))
-            .child(
-                hstack()
-                    .gap(2)
-                    .child(away_indicator())
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                indicators(2, [away_indicator()])
                     .child(Text::new("Away - Temporarily unavailable")),
+                1,
             )
-            .child(Text::new(""))
-            .child(
-                hstack()
-                    .gap(2)
-                    .child(status_indicator(Status::Unknown))
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                indicators(2, [status_indicator(Status::Unknown)])
                     .child(Text::new("Unknown - Status not determined")),
+                1,
             )
-            .child(Text::new(""))
-            .child(
-                hstack()
-                    .gap(2)
-                    .child(status_indicator(Status::Error).pulsing(self.pulsing))
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                indicators(2, [status_indicator(Status::Error).pulsing(self.pulsing)])
                     .child(Text::new("Error - Connection issue")),
+                1,
             )
-            .child(Text::new(""))
-            .child(
+            .child_sized(Text::new(""), 1)
+            .child_sized(
                 Text::new(format!(
                     "Press 'p' to toggle pulsing (currently: {})",
                     if self.pulsing { "ON" } else { "OFF" }
                 ))
                 .fg(Color::rgb(100, 100, 100)),
+                1,
             )
     }
 
     fn render_styles_demo(&self) -> impl View {
         vstack()
-            .gap(1)
-            .child(Text::new("Display Styles:").bold())
-            .child(Text::new(""))
-            .child(Text::new("Dot (default):").fg(Color::rgb(150, 150, 150)))
-            .child(
-                hstack()
-                    .gap(4)
-                    .child(online().indicator_style(StatusStyle::Dot))
-                    .child(busy_indicator().indicator_style(StatusStyle::Dot))
-                    .child(away_indicator().indicator_style(StatusStyle::Dot))
-                    .child(offline().indicator_style(StatusStyle::Dot)),
+            .child_sized(Text::new("Display Styles:").bold(), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(Text::new("Dot (default):").fg(Color::rgb(150, 150, 150)), 1)
+            .child_sized(
+                indicators(
+                    4,
+                    [
+                        online().indicator_style(StatusStyle::Dot),
+                        busy_indicator().indicator_style(StatusStyle::Dot),
+                        away_indicator().indicator_style(StatusStyle::Dot),
+                        offline().indicator_style(StatusStyle::Dot),
+                    ],
+                ),
+                1,
             )
-            .child(Text::new(""))
-            .child(Text::new("Dot with Label:").fg(Color::rgb(150, 150, 150)))
-            .child(
-                hstack()
-                    .gap(2)
-                    .child(online().indicator_style(StatusStyle::DotWithLabel))
-                    .child(busy_indicator().indicator_style(StatusStyle::DotWithLabel))
-                    .child(away_indicator().indicator_style(StatusStyle::DotWithLabel)),
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Text::new("Dot with Label:").fg(Color::rgb(150, 150, 150)),
+                1,
             )
-            .child(Text::new(""))
-            .child(Text::new("Label Only:").fg(Color::rgb(150, 150, 150)))
-            .child(
-                hstack()
-                    .gap(2)
-                    .child(online().indicator_style(StatusStyle::LabelOnly))
-                    .child(busy_indicator().indicator_style(StatusStyle::LabelOnly))
-                    .child(offline().indicator_style(StatusStyle::LabelOnly)),
+            .child_sized(
+                indicators(
+                    2,
+                    [
+                        online().indicator_style(StatusStyle::DotWithLabel),
+                        busy_indicator().indicator_style(StatusStyle::DotWithLabel),
+                        away_indicator().indicator_style(StatusStyle::DotWithLabel),
+                    ],
+                ),
+                1,
             )
-            .child(Text::new(""))
-            .child(Text::new("Badge:").fg(Color::rgb(150, 150, 150)))
-            .child(
-                hstack()
-                    .gap(2)
-                    .child(online().indicator_style(StatusStyle::Badge))
-                    .child(busy_indicator().indicator_style(StatusStyle::Badge))
-                    .child(away_indicator().indicator_style(StatusStyle::Badge)),
+            .child_sized(Text::new(""), 1)
+            .child_sized(Text::new("Label Only:").fg(Color::rgb(150, 150, 150)), 1)
+            .child_sized(
+                indicators(
+                    2,
+                    [
+                        online().indicator_style(StatusStyle::LabelOnly),
+                        busy_indicator().indicator_style(StatusStyle::LabelOnly),
+                        offline().indicator_style(StatusStyle::LabelOnly),
+                    ],
+                ),
+                1,
             )
-            .child(Text::new(""))
-            .child(Text::new("Custom Label:").fg(Color::rgb(150, 150, 150)))
-            .child(
-                hstack()
-                    .gap(2)
-                    .child(
+            .child_sized(Text::new(""), 1)
+            .child_sized(Text::new("Badge:").fg(Color::rgb(150, 150, 150)), 1)
+            .child_sized(
+                indicators(
+                    2,
+                    [
+                        online().indicator_style(StatusStyle::Badge),
+                        busy_indicator().indicator_style(StatusStyle::Badge),
+                        away_indicator().indicator_style(StatusStyle::Badge),
+                    ],
+                ),
+                1,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(Text::new("Custom Label:").fg(Color::rgb(150, 150, 150)), 1)
+            .child_sized(
+                indicators(
+                    2,
+                    [
                         online()
                             .indicator_style(StatusStyle::DotWithLabel)
                             .label("Available"),
-                    )
-                    .child(
                         busy_indicator()
                             .indicator_style(StatusStyle::DotWithLabel)
                             .label("In Meeting"),
-                    ),
+                    ],
+                ),
+                1,
             )
     }
 
     fn render_sizes_demo(&self) -> impl View {
         vstack()
-            .gap(1)
-            .child(Text::new("Size Variants:").bold())
-            .child(Text::new(""))
-            .child(Text::new("Small:").fg(Color::rgb(150, 150, 150)))
-            .child(
-                hstack()
-                    .gap(2)
-                    .child(
+            .child_sized(Text::new("Size Variants:").bold(), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(Text::new("Small:").fg(Color::rgb(150, 150, 150)), 1)
+            .child_sized(
+                indicators(
+                    2,
+                    [
                         online()
                             .size(StatusSize::Small)
                             .indicator_style(StatusStyle::DotWithLabel),
-                    )
-                    .child(
                         busy_indicator()
                             .size(StatusSize::Small)
                             .indicator_style(StatusStyle::Badge),
-                    ),
+                    ],
+                ),
+                1,
             )
-            .child(Text::new(""))
-            .child(Text::new("Medium (default):").fg(Color::rgb(150, 150, 150)))
-            .child(
-                hstack()
-                    .gap(2)
-                    .child(
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Text::new("Medium (default):").fg(Color::rgb(150, 150, 150)),
+                1,
+            )
+            .child_sized(
+                indicators(
+                    2,
+                    [
                         online()
                             .size(StatusSize::Medium)
                             .indicator_style(StatusStyle::DotWithLabel),
-                    )
-                    .child(
                         busy_indicator()
                             .size(StatusSize::Medium)
                             .indicator_style(StatusStyle::Badge),
-                    ),
+                    ],
+                ),
+                1,
             )
-            .child(Text::new(""))
-            .child(Text::new("Large:").fg(Color::rgb(150, 150, 150)))
-            .child(
-                hstack()
-                    .gap(2)
-                    .child(
+            .child_sized(Text::new(""), 1)
+            .child_sized(Text::new("Large:").fg(Color::rgb(150, 150, 150)), 1)
+            .child_sized(
+                indicators(
+                    2,
+                    [
                         online()
                             .size(StatusSize::Large)
                             .indicator_style(StatusStyle::DotWithLabel),
-                    )
-                    .child(
                         busy_indicator()
                             .size(StatusSize::Large)
                             .indicator_style(StatusStyle::Badge),
-                    ),
+                    ],
+                ),
+                1,
             )
     }
 }
 
+/// A row of indicators, each as wide as it draws.
+fn indicators(gap: u16, items: impl IntoIterator<Item = StatusIndicator>) -> Stack {
+    items.into_iter().fold(hstack().gap(gap), |row, indicator| {
+        let width = indicator.width();
+        row.child_sized(indicator, width)
+    })
+}
+
 impl View for StatusIndicatorDemo {
     fn render(&self, ctx: &mut RenderContext) {
+        let title = " StatusIndicator Demo ";
         let header = hstack()
-            .child(Text::new(" StatusIndicator Demo ").fg(Color::CYAN).bold())
+            .child_sized(Text::new(title).fg(Color::CYAN).bold(), cols(title))
             .child(Text::new(" | Tab/1-3 to switch").fg(Color::rgb(100, 100, 100)));
 
         let tabs = self.render_tabs();
@@ -288,14 +316,19 @@ impl View for StatusIndicatorDemo {
             .fg(Color::rgb(80, 80, 80));
 
         vstack()
-            .child(header)
-            .child(tabs)
-            .child(Text::new(""))
+            .child_sized(header, 1)
+            .child_sized(tabs, 1)
+            .child_sized(Text::new(""), 1)
             .child(content)
-            .child(Text::new(""))
-            .child(help)
+            .child_sized(Text::new(""), 1)
+            .child_sized(help, 1)
             .render(ctx);
     }
+}
+
+/// Columns `s` takes on screen.
+fn cols(s: &str) -> u16 {
+    revue::utils::unicode::display_width(s) as u16
 }
 
 fn main() -> Result<()> {
