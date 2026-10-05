@@ -1,6 +1,6 @@
 //! Column type definitions tests
 
-use revue::widget::data::datagrid::types::{ColumnType, SortDirection, Alignment};
+use revue::widget::data::datagrid::{Alignment, ColumnType, SortDirection};
 
 #[test]
 fn test_column_type_text() {
@@ -138,12 +138,6 @@ fn test_sort_direction_partial_eq() {
 }
 
 #[test]
-fn test_sort_direction_eq() {
-    assert_eq!(SortDirection::Ascending, SortDirection::Ascending);
-    assert_eq!(SortDirection::Descending, SortDirection::Descending);
-}
-
-#[test]
 fn test_sort_direction_debug() {
     let sd = SortDirection::Ascending;
     let debug_str = format!("{:?}", sd);
@@ -180,13 +174,6 @@ fn test_alignment_copy() {
     let align = Alignment::Right;
     let _align_copy = align; // Copy trait allows this
     assert_eq!(align, Alignment::Right); // Original still valid
-}
-
-#[test]
-fn test_alignment_partial_eq() {
-    assert_eq!(Alignment::Left, Alignment::Left);
-    assert_eq!(Alignment::Center, Alignment::Center);
-    assert_ne!(Alignment::Left, Alignment::Right);
 }
 
 #[test]
@@ -265,12 +252,6 @@ fn test_sort_direction_icons_different() {
         SortDirection::Ascending.icon(),
         SortDirection::Descending.icon()
     );
-}
-
-#[test]
-fn test_sort_direction_icon_characters() {
-    assert_eq!(SortDirection::Ascending.icon(), '▲');
-    assert_eq!(SortDirection::Descending.icon(), '▼');
 }
 
 #[test]

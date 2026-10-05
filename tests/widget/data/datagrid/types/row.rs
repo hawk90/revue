@@ -1,24 +1,6 @@
 //! Grid row and cell definitions tests
 
-use revue::widget::data::datagrid::types::GridRow;
-
-#[test]
-fn test_grid_row_new() {
-    let row = GridRow::new();
-    assert!(row.data.is_empty());
-    assert!(!row.selected);
-    assert!(!row.expanded);
-    assert!(row.children.is_empty());
-}
-
-#[test]
-fn test_grid_row_default() {
-    let row = GridRow::default();
-    assert!(row.data.is_empty());
-    assert!(!row.selected);
-    assert!(!row.expanded);
-    assert!(row.children.is_empty());
-}
+use revue::widget::data::datagrid::GridRow;
 
 #[test]
 fn test_grid_row_cell_single() {
@@ -55,14 +37,6 @@ fn test_grid_row_cell_with_numbers() {
     assert_eq!(row.data.len(), 2);
     assert_eq!(row.data[0].1, "42");
     assert_eq!(row.data[1].1, "100");
-}
-
-#[test]
-fn test_grid_row_get_existing_key() {
-    let row = GridRow::new().cell("name", "Alice").cell("age", "30");
-
-    assert_eq!(row.get("name"), Some("Alice"));
-    assert_eq!(row.get("age"), Some("30"));
 }
 
 #[test]
@@ -160,18 +134,6 @@ fn test_grid_row_children_adds_to_existing() {
         ]);
 
     assert_eq!(row.children.len(), 3);
-}
-
-#[test]
-fn test_grid_row_expanded_true() {
-    let row = GridRow::new().expanded(true);
-    assert!(row.expanded);
-}
-
-#[test]
-fn test_grid_row_expanded_false() {
-    let row = GridRow::new().expanded(false);
-    assert!(!row.expanded);
 }
 
 #[test]

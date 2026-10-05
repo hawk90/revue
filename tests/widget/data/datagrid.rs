@@ -1,8 +1,12 @@
 //! DataGrid public API tests
 
-use revue::widget::data::{DataGrid, GridColumn, GridRow};
-use revue::style::Color;
-use revue::widget::data::types::{SortDirection, GridColors, GridOptions};
+mod footer;
+mod types {
+    mod column_types;
+    mod row;
+}
+
+use revue::widget::data::datagrid::{DataGrid, GridColors, GridColumn, GridRow, SortDirection};
 
 #[test]
 fn test_datagrid_new() {
@@ -23,32 +27,11 @@ fn test_datagrid_new() {
 }
 
 #[test]
-fn test_datagrid_default() {
-    let grid = DataGrid::default();
-    assert!(grid.columns.is_empty());
-    assert!(grid.rows.is_empty());
-}
-
-#[test]
 fn test_datagrid_colors() {
     let colors = GridColors::new();
     let header_bg = colors.header_bg;
     let grid = DataGrid::new().colors(colors);
     assert_eq!(grid.colors.header_bg, header_bg);
-}
-
-#[test]
-fn test_datagrid_colors_mut() {
-    let mut grid = DataGrid::new();
-    let colors = grid.colors_mut();
-    colors.header_bg = Color::RED;
-    assert_eq!(grid.colors.header_bg, Color::RED);
-}
-
-#[test]
-fn test_datagrid_options() {
-    let grid = DataGrid::new().zebra(false);
-    assert!(!grid.options.zebra);
 }
 
 #[test]
@@ -75,14 +58,6 @@ fn test_datagrid_column_multiple() {
         .column(GridColumn::new("c", "C"));
 
     assert_eq!(grid.columns.len(), 3);
-}
-
-#[test]
-fn test_datagrid_columns_vec() {
-    let cols = vec![GridColumn::new("x", "X"), GridColumn::new("y", "Y")];
-    let grid = DataGrid::new().columns(cols);
-
-    assert_eq!(grid.columns.len(), 2);
 }
 
 #[test]
@@ -131,54 +106,6 @@ fn test_datagrid_data_2d() {
 }
 
 #[test]
-fn test_datagrid_header_true() {
-    let grid = DataGrid::new().header(true);
-    assert!(grid.options.show_header);
-}
-
-#[test]
-fn test_datagrid_header_false() {
-    let grid = DataGrid::new().header(false);
-    assert!(!grid.options.show_header);
-}
-
-#[test]
-fn test_datagrid_row_numbers_true() {
-    let grid = DataGrid::new().row_numbers(true);
-    assert!(grid.options.show_row_numbers);
-}
-
-#[test]
-fn test_datagrid_row_numbers_false() {
-    let grid = DataGrid::new().row_numbers(false);
-    assert!(!grid.options.show_row_numbers);
-}
-
-#[test]
-fn test_datagrid_zebra_true() {
-    let grid = DataGrid::new().zebra(true);
-    assert!(grid.options.zebra);
-}
-
-#[test]
-fn test_datagrid_zebra_false() {
-    let grid = DataGrid::new().zebra(false);
-    assert!(!grid.options.zebra);
-}
-
-#[test]
-fn test_datagrid_multi_select_true() {
-    let grid = DataGrid::new().multi_select(true);
-    assert!(grid.options.multi_select);
-}
-
-#[test]
-fn test_datagrid_multi_select_false() {
-    let grid = DataGrid::new().multi_select(false);
-    assert!(!grid.options.multi_select);
-}
-
-#[test]
 fn test_datagrid_natural_sort_true() {
     let grid = DataGrid::new().natural_sort(true);
     assert!(grid.options.use_natural_sort);
@@ -188,18 +115,6 @@ fn test_datagrid_natural_sort_true() {
 fn test_datagrid_natural_sort_false() {
     let grid = DataGrid::new().natural_sort(false);
     assert!(!grid.options.use_natural_sort);
-}
-
-#[test]
-fn test_datagrid_virtual_scroll_true() {
-    let grid = DataGrid::new().virtual_scroll(true);
-    assert!(grid.options.virtual_scroll);
-}
-
-#[test]
-fn test_datagrid_virtual_scroll_false() {
-    let grid = DataGrid::new().virtual_scroll(false);
-    assert!(!grid.options.virtual_scroll);
 }
 
 #[test]

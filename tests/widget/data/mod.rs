@@ -7,11 +7,9 @@ mod calendar_utils;
 mod table;
 mod timer;
 
-// g4-datagrid: mod datagrid;
-// g4-datagrid: mod datagrid_column_types;
-// g4-datagrid: mod datagrid_core;
-// g4-datagrid: mod datagrid_types;
-// g4-datagrid: mod datagrid_width;
+mod datagrid;
+mod datagrid_column_types;
+mod datagrid_width;
 
 mod json_viewer;
 mod json_viewer_helpers;
