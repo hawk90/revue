@@ -2,7 +2,35 @@
 //!
 //! Extracted from src/widget/display/tag.rs
 
-use revue::prelude::*;
+use revue::layout::Rect;
+use revue::render::{Buffer, Modifier};
+use revue::style::Color;
+use revue::widget::traits::{RenderContext, View};
+use revue::widget::{chip, tag, Tag, TagStyle, DARK_GRAY, SEPARATOR_COLOR, SUBTLE_GRAY};
+
+fn render_in(t: &Tag, width: u16) -> Buffer {
+    let mut buffer = Buffer::new(20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, 1));
+    t.render(&mut ctx);
+    buffer
+}
+
+fn render(t: &Tag) -> Buffer {
+    render_in(t, 20)
+}
+
+fn text(buffer: &Buffer) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, 0).unwrap().symbol)
+        .collect::<String>()
+        .trim_end()
+        .to_string()
+}
+
+/// Background of the first text cell.
+fn bg(buffer: &Buffer) -> Option<Color> {
+    buffer.get(1, 0).unwrap().bg
+}
 
 // =========================================================================
 // TagStyle enum tests
@@ -10,126 +38,113 @@ use revue::prelude::*;
 
 #[test]
 fn test_tag_style_default() {
-    let style = TagStyle::default();
-    assert_eq!(style, TagStyle::Filled);
-}
-
-#[test]
-fn test_tag_style_clone() {
-    let style = TagStyle::Outlined;
-    let cloned = style.clone();
-    assert_eq!(style, cloned);
-}
-
-#[test]
-fn test_tag_style_copy() {
-    let style1 = TagStyle::Subtle;
-    let style2 = style1;
-    assert_eq!(style1, TagStyle::Subtle);
-    assert_eq!(style2, TagStyle::Subtle);
-}
-
-#[test]
-fn test_tag_style_partial_eq() {
-    assert_eq!(TagStyle::Filled, TagStyle::Filled);
-    assert_ne!(TagStyle::Filled, TagStyle::Outlined);
+    assert_eq!(TagStyle::default(), TagStyle::Filled);
 }
 
 #[test]
 fn test_tag_style_debug() {
-    let style = TagStyle::Subtle;
-    assert!(format!("{:?}", style).contains("Subtle"));
+    assert_eq!(format!("{:?}", TagStyle::Subtle), "Subtle");
 }
 
 // =========================================================================
-// Tag builder tests
+// Rendering of the builders
 // =========================================================================
 
 #[test]
-fn test_tag_styles() {
-    let t = tag("Test").outlined();
-    // Can't access private style field
-    // Just verify builder compiles
-
-    let t = tag("Test").subtle();
+fn test_tag_filled_default() {
+    let buffer = render(&tag("Test"));
+    assert_eq!(text(&buffer), " Test");
+    assert_eq!(bg(&buffer), Some(DARK_GRAY));
+    assert_eq!(buffer.get(1, 0).unwrap().fg, Some(Color::WHITE));
 }
 
 #[test]
-fn test_tag_colors() {
-    let t = tag("Test").blue();
-    // Can't access private color field
-    // Just verify builder compiles
+fn test_tag_outlined() {
+    let buffer = render(&tag("Test").outlined().blue());
+    assert_eq!(text(&buffer), "⟨Test⟩");
+    assert_eq!(bg(&buffer), None);
+    assert_eq!(buffer.get(1, 0).unwrap().fg, Some(Color::rgb(60, 120, 200)));
+}
 
-    let t = tag("Test").red();
+#[test]
+fn test_tag_subtle() {
+    let buffer = render(&tag("Test").subtle().red());
+    // Text in the tag color on a lightened background
+    assert_eq!(buffer.get(1, 0).unwrap().fg, Some(Color::rgb(200, 60, 60)));
+    assert_eq!(bg(&buffer), Some(Color::rgb(255, 240, 240)));
+}
+
+#[test]
+fn test_tag_color_presets() {
+    let cases = [
+        (tag("Test").blue(), Color::rgb(60, 120, 200)),
+        (tag("Test").green(), Color::rgb(40, 160, 80)),
+        (tag("Test").red(), Color::rgb(200, 60, 60)),
+        (tag("Test").yellow(), Color::rgb(200, 180, 40)),
+        (tag("Test").purple(), Color::rgb(140, 80, 180)),
+    ];
+    for (t, expected) in cases {
+        assert_eq!(bg(&render(&t)), Some(expected));
+    }
+}
+
+#[test]
+fn test_tag_custom_colors() {
+    let t = Tag::new("Test")
+        .style(TagStyle::Filled)
+        .color(Color::RED)
+        .text_color(Color::BLACK);
+    let buffer = render(&t);
+    assert_eq!(bg(&buffer), Some(Color::RED));
+    assert_eq!(buffer.get(1, 0).unwrap().fg, Some(Color::BLACK));
 }
 
 #[test]
 fn test_tag_closable() {
-    let t = tag("Test").closable();
-    // Can't access private closable field
-    // Just verify builder compiles
+    assert_eq!(text(&render(&tag("Test").closable())), " Test ×");
 }
 
 #[test]
 fn test_tag_icon() {
-    let t = tag("Rust").icon('🦀');
-    // Can't access private icon field
-    // Just verify builder compiles
+    assert_eq!(text(&render(&tag("Rust").icon('R'))), " R Rust");
 }
 
 #[test]
-fn test_tag_selected_disabled() {
-    let t = tag("Test").selected().disabled();
-    // Can't access private fields
-    // Just verify builder compiles
+fn test_tag_selected() {
+    let buffer = render(&tag("Test").selected());
+    assert!(buffer.get(1, 0).unwrap().modifier.contains(Modifier::BOLD));
+    assert!(!render(&tag("Test"))
+        .get(1, 0)
+        .unwrap()
+        .modifier
+        .contains(Modifier::BOLD));
+}
+
+#[test]
+fn test_tag_disabled() {
+    let buffer = render(&tag("Test").blue().disabled());
+    let cell = buffer.get(1, 0).unwrap();
+    assert!(cell.modifier.contains(Modifier::DIM));
+    // Disabled overrides the tag colors
+    assert_eq!(cell.bg, Some(SEPARATOR_COLOR));
+    assert_eq!(cell.fg, Some(SUBTLE_GRAY));
 }
 
 #[test]
 fn test_helper_functions() {
-    let t = tag("A");
-    // Can't access private text field
-    // Just verify helper works
-
-    let c = chip("B");
-    // Can't access private text field
-    // Just verify helper works
+    assert_eq!(text(&render(&tag("A"))), text(&render(&Tag::new("A"))));
+    assert_eq!(text(&render(&chip("B"))), text(&render(&Tag::new("B"))));
 }
-
-#[test]
-fn test_tag_green() {
-    let t = tag("Test").green();
-    // Can't access private color field
-    // Just verify builder compiles
-}
-
-#[test]
-fn test_tag_yellow() {
-    let t = tag("Test").yellow();
-    // Can't access private color field
-    // Just verify builder compiles
-}
-
-#[test]
-fn test_tag_purple() {
-    let t = tag("Test").purple();
-    // Can't access private color field
-    // Just verify builder compiles
-}
-
-// =========================================================================
-// Tag Default trait tests
-// =========================================================================
 
 #[test]
 fn test_tag_default() {
-    let t = Tag::default();
-    // Can't access private text field
-    // Just verify Default implementation works
+    let buffer = render(&Tag::default());
+    // Empty text: just the two padding cells
+    assert_eq!(text(&buffer), "");
+    assert_eq!(buffer.get(0, 0).unwrap().bg, Some(DARK_GRAY));
+    assert_eq!(buffer.get(1, 0).unwrap().bg, Some(DARK_GRAY));
+    assert_eq!(buffer.get(2, 0).unwrap().bg, None);
 }
-
-// =========================================================================
-// Tag builder chain tests
-// =========================================================================
 
 #[test]
 fn test_tag_builder_chain() {
@@ -139,16 +154,13 @@ fn test_tag_builder_chain() {
         .closable()
         .icon('T')
         .selected();
-    // Can't access private fields
-    // Just verify builder chain compiles
+    let buffer = render(&t);
+    assert_eq!(text(&buffer), "⟨T Chained ×⟩");
+    assert!(buffer.get(1, 0).unwrap().modifier.contains(Modifier::BOLD));
 }
 
 #[test]
-fn test_tag_style_chain() {
-    let t = Tag::new("Test")
-        .style(TagStyle::Subtle)
-        .color(Color::RED)
-        .text_color(Color::WHITE);
-    // Can't access private fields
-    // Just verify builder chain compiles
+fn test_tag_truncated_to_area() {
+    let buffer = render_in(&tag("A long tag text"), 6);
+    assert_eq!(text(&buffer), " A lo");
 }

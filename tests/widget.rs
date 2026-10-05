@@ -63,11 +63,10 @@ mod dropzone;
 mod diff;
 #[path = "widget/digits.rs"]
 mod digits;
+#[path = "widget/display/mod.rs"]
+mod display;
 #[path = "widget/divider.rs"]
 mod divider;
-// TODO(test-coverage): display has API mismatches
-// #[path = "widget/display/mod.rs"]
-// mod display;
 #[path = "widget/edge_cases/mod.rs"]
 mod edge_cases;
 #[path = "widget/empty_state.rs"]
