@@ -260,7 +260,7 @@ fn test_selection_nonequal_after_normalize() {
 #[test]
 fn test_selection_clone_struct() {
     let original = Selection::new((1, 2), (3, 4));
-    let cloned = original.clone();
+    let cloned = original;
 
     // Should be equal
     assert_eq!(original, cloned);

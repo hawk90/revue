@@ -97,12 +97,14 @@ fn test_find_replace_state_match_count_empty() {
 
 #[test]
 fn test_find_replace_state_match_count() {
-    let mut state = FindReplaceState::default();
-    state.matches = vec![
-        FindMatch::new(CursorPos { line: 0, col: 0 }, CursorPos { line: 0, col: 5 }),
-        FindMatch::new(CursorPos { line: 1, col: 0 }, CursorPos { line: 1, col: 5 }),
-        FindMatch::new(CursorPos { line: 2, col: 0 }, CursorPos { line: 2, col: 5 }),
-    ];
+    let state = FindReplaceState {
+        matches: vec![
+            FindMatch::new(CursorPos { line: 0, col: 0 }, CursorPos { line: 0, col: 5 }),
+            FindMatch::new(CursorPos { line: 1, col: 0 }, CursorPos { line: 1, col: 5 }),
+            FindMatch::new(CursorPos { line: 2, col: 0 }, CursorPos { line: 2, col: 5 }),
+        ],
+        ..Default::default()
+    };
     assert_eq!(state.match_count(), 3);
 }
 
@@ -114,12 +116,14 @@ fn test_find_replace_state_current_match_display_none() {
 
 #[test]
 fn test_find_replace_state_current_match_display() {
-    let mut state = FindReplaceState::default();
-    state.matches = vec![
-        FindMatch::new(CursorPos { line: 0, col: 0 }, CursorPos { line: 0, col: 5 }),
-        FindMatch::new(CursorPos { line: 1, col: 0 }, CursorPos { line: 1, col: 5 }),
-    ];
-    state.current_match = Some(0);
+    let mut state = FindReplaceState {
+        matches: vec![
+            FindMatch::new(CursorPos { line: 0, col: 0 }, CursorPos { line: 0, col: 5 }),
+            FindMatch::new(CursorPos { line: 1, col: 0 }, CursorPos { line: 1, col: 5 }),
+        ],
+        current_match: Some(0),
+        ..Default::default()
+    };
     assert_eq!(state.current_match_display(), 1);
 
     state.current_match = Some(1);
@@ -185,11 +189,13 @@ fn test_find_replace_mode_debug() {
 
 #[test]
 fn test_find_replace_state_current_match_index() {
-    let mut state = FindReplaceState::default();
-    state.matches = vec![
-        FindMatch::new(CursorPos { line: 0, col: 0 }, CursorPos { line: 0, col: 1 }),
-        FindMatch::new(CursorPos { line: 1, col: 0 }, CursorPos { line: 1, col: 1 }),
-    ];
+    let mut state = FindReplaceState {
+        matches: vec![
+            FindMatch::new(CursorPos { line: 0, col: 0 }, CursorPos { line: 0, col: 1 }),
+            FindMatch::new(CursorPos { line: 1, col: 0 }, CursorPos { line: 1, col: 1 }),
+        ],
+        ..Default::default()
+    };
 
     // Test boundary conditions
     assert_eq!(state.current_match_display(), 0); // No current match

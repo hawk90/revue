@@ -199,7 +199,7 @@ fn test_cursor_set_clear_secondary_with_many() {
 #[test]
 fn test_cursor_clone() {
     let cursor1 = Cursor::with_selection(CursorPos::new(1, 5), CursorPos::new(1, 0));
-    let cursor2 = cursor1.clone();
+    let cursor2 = cursor1;
     assert_eq!(cursor1.pos, cursor2.pos);
     assert_eq!(cursor1.anchor, cursor2.anchor);
 }
