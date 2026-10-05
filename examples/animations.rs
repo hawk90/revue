@@ -276,18 +276,27 @@ impl AnimationShowcase {
             "Running"
         };
 
+        // Unsized stack children share space equally, so every one-line row
+        // (here and in the other demos) uses `child_sized`; only the demo
+        // panel in `render` takes the leftover rows.
         vstack()
             .gap(1)
-            .child(Text::new("Tween Animation").bold().fg(Color::CYAN))
-            .child(Text::new(format!(
-                "Easing: {} (↑/↓ to change)",
-                EASING_NAMES[self.tween_easing_idx]
-            )))
-            .child(Text::new(format!("Value: {:.1}", value)))
-            .child(Text::new(format!("Progress: {:.0}%", progress * 100.0)))
-            .child(Text::new(format!("State: {}", anim_state)).fg(Color::YELLOW))
-            .child(self.render_progress_bar(value, 40, Color::GREEN))
-            .child(Text::muted("Press SPACE to restart"))
+            .child_sized(Text::new("Tween Animation").bold().fg(Color::CYAN), 1)
+            .child_sized(
+                Text::new(format!(
+                    "Easing: {} (↑/↓ to change)",
+                    EASING_NAMES[self.tween_easing_idx]
+                )),
+                1,
+            )
+            .child_sized(Text::new(format!("Value: {:.1}", value)), 1)
+            .child_sized(Text::new(format!("Progress: {:.0}%", progress * 100.0)), 1)
+            .child_sized(
+                Text::new(format!("State: {}", anim_state)).fg(Color::YELLOW),
+                1,
+            )
+            .child_sized(self.render_progress_bar(value, 40, Color::GREEN), 1)
+            .child_sized(Text::muted("Press SPACE to restart"), 1)
     }
 
     fn render_keyframes_demo(&self) -> impl View {
@@ -305,12 +314,18 @@ impl AnimationShowcase {
 
         vstack()
             .gap(1)
-            .child(Text::new("CSS @keyframes Animation").bold().fg(Color::CYAN))
-            .child(Text::new("Keyframes: 0% → 30% → 70% → 100%"))
-            .child(Text::new(format!("X: {:.1}, Opacity: {:.2}", x, opacity)))
-            .child(Text::new(format!("Progress: {:.0}%", progress * 100.0)))
-            .child(Text::new(indicator).fg(color))
-            .child(Text::muted("Press SPACE to restart"))
+            .child_sized(
+                Text::new("CSS @keyframes Animation").bold().fg(Color::CYAN),
+                1,
+            )
+            .child_sized(Text::new("Keyframes: 0% → 30% → 70% → 100%"), 1)
+            .child_sized(
+                Text::new(format!("X: {:.1}, Opacity: {:.2}", x, opacity)),
+                1,
+            )
+            .child_sized(Text::new(format!("Progress: {:.0}%", progress * 100.0)), 1)
+            .child_sized(Text::new(indicator).fg(color), 1)
+            .child_sized(Text::muted("Press SPACE to restart"), 1)
     }
 
     fn render_spring_demo(&self) -> impl View {
@@ -328,19 +343,20 @@ impl AnimationShowcase {
 
         vstack()
             .gap(1)
-            .child(Text::new("Spring Physics").bold().fg(Color::CYAN))
-            .child(Text::new(format!("Target: {:.0}", self.spring_target)))
-            .child(Text::new(format!("Value: {:.2}", value)))
-            .child(Text::new(format!("Velocity: {:.2}", velocity)))
-            .child(
+            .child_sized(Text::new("Spring Physics").bold().fg(Color::CYAN), 1)
+            .child_sized(Text::new(format!("Target: {:.0}", self.spring_target)), 1)
+            .child_sized(Text::new(format!("Value: {:.2}", value)), 1)
+            .child_sized(Text::new(format!("Velocity: {:.2}", velocity)), 1)
+            .child_sized(
                 Text::new(format!(
                     "Status: {}",
                     if settled { "Settled" } else { "Moving" }
                 ))
                 .fg(if settled { Color::GREEN } else { Color::YELLOW }),
+                1,
             )
-            .child(Text::new(indicator).fg(Color::MAGENTA))
-            .child(Text::muted("Press SPACE to toggle target"))
+            .child_sized(Text::new(indicator).fg(Color::MAGENTA), 1)
+            .child_sized(Text::muted("Press SPACE to toggle target"), 1)
     }
 
     fn render_stagger_demo(&self) -> impl View {
@@ -358,15 +374,15 @@ impl AnimationShowcase {
             let text = format!("{}Item {}", prefix, i + 1);
             let color = Color::rgb(100, 200, 100 + alpha);
 
-            items = items.child(Text::new(text).fg(color));
+            items = items.child_sized(Text::new(text).fg(color), 1);
         }
 
         vstack()
             .gap(1)
-            .child(Text::new("Staggered Animation").bold().fg(Color::CYAN))
-            .child(Text::new("5 items with 100ms delay each"))
-            .child(items)
-            .child(Text::muted("Press SPACE to restart"))
+            .child_sized(Text::new("Staggered Animation").bold().fg(Color::CYAN), 1)
+            .child_sized(Text::new("5 items with 100ms delay each"), 1)
+            .child_sized(items, state.stagger_anims.len() as u16)
+            .child_sized(Text::muted("Press SPACE to restart"), 1)
     }
 
     fn render_widget_presets_demo(&self) -> impl View {
@@ -389,20 +405,24 @@ impl AnimationShowcase {
 
         vstack()
             .gap(1)
-            .child(Text::new("Widget Animation Presets").bold().fg(Color::CYAN))
-            .child(Text::new(format!(
-                "Preset: {} (↑/↓ to change)",
-                preset_name
-            )))
-            .child(
+            .child_sized(
+                Text::new("Widget Animation Presets").bold().fg(Color::CYAN),
+                1,
+            )
+            .child_sized(
+                Text::new(format!("Preset: {} (↑/↓ to change)", preset_name)),
+                1,
+            )
+            .child_sized(
                 Text::new(format!(
                     "opacity: {:.2}, x: {:.1}, y: {:.1}, scale: {:.2}",
                     opacity, x, y, scale
                 ))
                 .fg(Color::rgb(128, 128, 128)),
+                1,
             )
-            .child(Text::new(demo_text).fg(color))
-            .child(Text::muted("Press SPACE to restart"))
+            .child_sized(Text::new(demo_text).fg(color), 1)
+            .child_sized(Text::muted("Press SPACE to restart"), 1)
     }
 
     fn render_mode_tabs(&self) -> impl View {
@@ -446,16 +466,20 @@ impl View for AnimationShowcase {
                 Border::panel().title("Animation Showcase").child(
                     vstack()
                         .gap(2)
-                        .child(self.render_mode_tabs())
+                        .child_sized(self.render_mode_tabs(), 1)
                         .child(demo_content),
                 ),
             )
-            .child(
+            .child_sized(
                 Border::single()
                     .title("Controls")
-                    .child(vstack().child(Text::new(
-                        "[←/→] Switch demo  [↑/↓] Change option  [Space] Restart  [q] Quit",
-                    ))),
+                    .child(vstack().child_sized(
+                        Text::new(
+                            "[←/→] Switch demo  [↑/↓] Change option  [Space] Restart  [q] Quit",
+                        ),
+                        1,
+                    )),
+                3,
             );
 
         view.render(ctx);
@@ -475,6 +499,8 @@ fn main() -> Result<()> {
 
     app.run(showcase, |event, showcase, _app| match event {
         Event::Key(key_event) => showcase.handle_key(&key_event.key),
+        // The animations read the clock when they render, so redraw on every tick
+        Event::Tick => true,
         _ => false,
     })
 }

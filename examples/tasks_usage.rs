@@ -6,7 +6,16 @@
 
 use revue::prelude::*;
 use revue::tasks::{EventBus, TaskRunner, Timer};
+use revue::utils::unicode::display_width;
 use std::time::Duration;
+
+/// Width of the key column in the Controls list.
+const KEY_COLS: u16 = 3;
+
+/// Columns `text` occupies, for sizing single-line text in an `hstack`.
+fn cols(text: &str) -> u16 {
+    display_width(text) as u16
+}
 
 #[derive(Clone)]
 struct FetchResult {
@@ -159,95 +168,117 @@ impl View for TasksDemo {
         let is_running = self.tasks.is_running("fetch_data");
         let _has_timer = self.timer.has_pending();
 
+        // Unsized stack children share the remaining space equally, so every
+        // fixed-height row/box is `child_sized`; only the Data box absorbs the rest.
         let view = vstack()
             .gap(1)
-            .child(
+            .child_sized(
                 Border::panel().title("📋 Tasks Module Demo").child(
                     vstack()
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::new("Status:").bold())
+                                .child_sized(Text::new("Status:").bold(), cols("Status:"))
                                 .child(Text::new(&self.status).fg(Color::CYAN)),
+                            1,
                         )
-                        .child(hstack().gap(2).child(Text::new("Task running:")).child(
-                            if is_running {
-                                Text::new("Yes").fg(Color::YELLOW)
-                            } else {
-                                Text::new("No").fg(Color::rgb(100, 100, 100))
-                            },
-                        ))
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::new("Timers active:"))
+                                .child_sized(Text::new("Task running:"), cols("Task running:"))
+                                .child(if is_running {
+                                    Text::new("Yes").fg(Color::YELLOW)
+                                } else {
+                                    Text::new("No").fg(Color::rgb(100, 100, 100))
+                                }),
+                            1,
+                        )
+                        .child_sized(
+                            hstack()
+                                .gap(2)
+                                .child_sized(Text::new("Timers active:"), cols("Timers active:"))
                                 .child(Text::new(format!("{}", self.timer.count()))),
+                            1,
                         ),
                 ),
+                5,
             )
             .child(
                 Border::single()
                     .title("Data")
                     .child(if let Some(data) = &self.data {
                         vstack()
-                            .child(Text::success(format!("✓ {}", data.data)))
-                            .child(Text::muted(format!("  Fetch #{}", data.count)))
+                            .child_sized(Text::success(format!("✓ {}", data.data)), 1)
+                            .child_sized(Text::muted(format!("  Fetch #{}", data.count)), 1)
                     } else {
                         vstack()
-                            .child(Text::muted("No data yet"))
-                            .child(Text::muted("Press 'f' to fetch"))
+                            .child_sized(Text::muted("No data yet"), 1)
+                            .child_sized(Text::muted("Press 'f' to fetch"), 1)
                     }),
             )
-            .child(if let Some(msg) = &self.message {
-                Border::rounded()
-                    .title("Message")
-                    .child(Text::new(msg).fg(Color::YELLOW))
-            } else {
-                Border::rounded()
-                    .title("Message")
-                    .child(Text::muted("(no message)"))
-            })
-            .child(
+            .child_sized(
+                if let Some(msg) = &self.message {
+                    Border::rounded()
+                        .title("Message")
+                        .child(Text::new(msg).fg(Color::YELLOW))
+                } else {
+                    Border::rounded()
+                        .title("Message")
+                        .child(Text::muted("(no message)"))
+                },
+                3,
+            )
+            .child_sized(
                 Border::success_box()
                     .title("✨ Features Demonstrated")
                     .child(
                         vstack()
-                            .child(Text::success(
-                                "✓ TaskRunner: Background fetch with result polling",
-                            ))
-                            .child(Text::success("✓ Timer: Message auto-clear after 2 seconds"))
-                            .child(Text::success("✓ Timer: Auto-refresh every 5 seconds"))
-                            .child(Text::success("✓ EventBus: Task lifecycle events")),
+                            .child_sized(
+                                Text::success("✓ TaskRunner: Background fetch with result polling"),
+                                1,
+                            )
+                            .child_sized(
+                                Text::success("✓ Timer: Message auto-clear after 2 seconds"),
+                                1,
+                            )
+                            .child_sized(Text::success("✓ Timer: Auto-refresh every 5 seconds"), 1)
+                            .child_sized(Text::success("✓ EventBus: Task lifecycle events"), 1),
                     ),
+                6,
             )
-            .child(
+            .child_sized(
                 Border::rounded().title("Controls").child(
                     vstack()
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[f]"))
+                                .child_sized(Text::muted("[f]"), KEY_COLS)
                                 .child(Text::new("Fetch data")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[c]"))
+                                .child_sized(Text::muted("[c]"), KEY_COLS)
                                 .child(Text::new("Clear data")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[s]"))
+                                .child_sized(Text::muted("[s]"), KEY_COLS)
                                 .child(Text::new("Show test message")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[q]"))
+                                .child_sized(Text::muted("[q]"), KEY_COLS)
                                 .child(Text::new("Quit")),
+                            1,
                         ),
                 ),
+                6,
             );
 
         view.render(ctx);

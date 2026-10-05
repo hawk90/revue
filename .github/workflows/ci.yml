@@ -49,6 +49,8 @@ jobs:
         with:
           components: rustfmt
           cache: false
+      - name: Verify Cargo.lock is current
+        run: cargo fetch --locked
       - run: cargo fmt --all -- --check
 
   clippy:

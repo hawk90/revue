@@ -4,6 +4,7 @@ use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::{BorderStyle, Color};
 use crate::utils::border::BorderChars;
+use crate::utils::unicode::{char_width, truncate_to_width};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -262,6 +263,36 @@ impl Default for Border {
 }
 
 impl View for Border {
+    /// The child's size plus the frame, and at least wide enough for the title.
+    /// A child that fills (`None`) makes the border fill too.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let (w, h) = match &self.child {
+            Some(child) => {
+                let (w, h) =
+                    child.measure(max_width.saturating_sub(2), max_height.saturating_sub(2))?;
+                (w.saturating_add(2), h.saturating_add(2))
+            }
+            None => (2, 2),
+        };
+        // `─ title ─`: a corner, a dash and a space each side.
+        let title = self.title.as_deref().map_or(0, |t| {
+            crate::utils::unicode::display_width(t).min(u16::MAX as usize) as u16 + 4
+        });
+        let w = w.max(title).max(self.min_width);
+        let h = h.max(self.min_height);
+        let w = if self.max_width > 0 {
+            w.min(self.max_width)
+        } else {
+            w
+        };
+        let h = if self.max_height > 0 {
+            h.min(self.max_height)
+        } else {
+            h
+        };
+        Some((w.min(max_width), h.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = self.apply_constraints(ctx.area);
         if area.width < 2 || area.height < 2 {
@@ -286,27 +317,38 @@ impl View for Border {
 
         // Top horizontal line with optional title
         let title_start = if let Some(ref title) = self.title {
-            let max_title_len = (area.width as usize).saturating_sub(4);
-            let display_title: String = title.chars().take(max_title_len).collect();
-            let title_len = display_title.len();
+            // Everything here is in terminal columns: a wide glyph takes two
+            // cells and a zero-width one (e.g. the VS16 in "⚙️") takes none.
+            let max_title_width = (area.width as usize).saturating_sub(4);
+            let display_title = truncate_to_width(title, max_title_width);
 
             // Draw horizontal before title
-            for x in 1..2 {
-                let mut c = Cell::new(chars.horizontal);
-                c.fg = fg;
-                c.bg = bg;
-                ctx.set(x, 0, c);
-            }
+            let mut c = Cell::new(chars.horizontal);
+            c.fg = fg;
+            c.bg = bg;
+            ctx.set(1, 0, c);
 
-            // Draw title
-            for (i, ch) in display_title.chars().enumerate() {
+            // Draw title, the way `Buffer::put_str_styled` lays text out
+            let mut x = 2u16;
+            for ch in display_title.chars() {
+                let w = char_width(ch) as u16;
+                if w == 0 {
+                    continue;
+                }
                 let mut c = Cell::new(ch);
                 c.fg = fg;
                 c.bg = bg;
-                ctx.set(2 + i as u16, 0, c);
+                ctx.set(x, 0, c);
+                for dx in 1..w {
+                    let mut cont = Cell::continuation();
+                    cont.fg = fg;
+                    cont.bg = bg;
+                    ctx.set(x + dx, 0, cont);
+                }
+                x += w;
             }
 
-            2 + title_len as u16
+            x
         } else {
             1
         };

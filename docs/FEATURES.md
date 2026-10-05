@@ -716,8 +716,13 @@ status_indicator(Status::Online)
     .indicator_style(StatusStyle::Badge)        // Colored badge
     .size(StatusSize::Small)                    // sm/md/lg
     .label("Available")                         // Custom label
-    .pulsing(true)                              // Animated pulse
+    .pulsing(true)                              // Blinks as the frame advances
+    .frame(pulse_frame)                         // Frame kept by the app
 ```
+
+The pulse has no clock of its own. Keep `pulse_frame` in app state, advance it
+on `Event::Tick`, and return `true` from the `App::run` handler so the app
+redraws (`run_with_handler` only sees keys, so it never redraws on a tick).
 
 #### EmptyState
 

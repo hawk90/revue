@@ -1,4 +1,7 @@
 //! What a frame costs now that every draw renders and diffs in full.
+//!
+//! `layout_engine(false)` everywhere: the harness keeps `LayoutEngine` on so
+//! its layout queries answer, but a real app skips it.
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use revue::prelude::*;
 use revue::testing::PipelineHarness;
@@ -29,7 +32,9 @@ fn bench_frame(c: &mut Criterion) {
     let mut group = c.benchmark_group("frame");
     for rows in [10usize, 50, 200] {
         group.bench_with_input(BenchmarkId::new("changed", rows), &rows, |b, &rows| {
-            let mut h = PipelineHarness::new(120, 40).incremental_dom(true);
+            let mut h = PipelineHarness::new(120, 40)
+                .layout_engine(false)
+                .incremental_dom(true);
             h.draw(&Rows { n: rows, tick: 0 });
             let mut tick = 0usize;
             b.iter(|| {
@@ -42,7 +47,9 @@ fn bench_frame(c: &mut Criterion) {
             BenchmarkId::new("dom_from_render", rows),
             &rows,
             |b, &rows| {
-                let mut h = PipelineHarness::new(120, 40).dom_from_render(true);
+                let mut h = PipelineHarness::new(120, 40)
+                    .layout_engine(false)
+                    .dom_from_render(true);
                 h.draw(&Rows { n: rows, tick: 0 });
                 let mut tick = 0usize;
                 b.iter(|| {
@@ -54,6 +61,7 @@ fn bench_frame(c: &mut Criterion) {
         );
         group.bench_with_input(BenchmarkId::new("css_layout", rows), &rows, |b, &rows| {
             let mut h = PipelineHarness::new(120, 40)
+                .layout_engine(false)
                 .dom_from_render(true)
                 .css_layout(true);
             h.draw(&Rows { n: rows, tick: 0 });
@@ -65,7 +73,9 @@ fn bench_frame(c: &mut Criterion) {
             });
         });
         group.bench_with_input(BenchmarkId::new("unchanged", rows), &rows, |b, &rows| {
-            let mut h = PipelineHarness::new(120, 40).incremental_dom(true);
+            let mut h = PipelineHarness::new(120, 40)
+                .layout_engine(false)
+                .incremental_dom(true);
             h.draw(&Rows { n: rows, tick: 0 });
             b.iter(|| {
                 h.draw(&Rows { n: rows, tick: 0 });

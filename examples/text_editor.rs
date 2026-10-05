@@ -854,12 +854,15 @@ impl Default for Config {
         }
     }
 
-    fn render_line_number(&self, line_num: usize) -> impl View {
+    /// The gutter text for a line, and how many columns it takes.
+    fn render_line_number(&self, line_num: usize) -> (Text, u16) {
         if self.show_line_numbers {
             let width = self.lines.len().to_string().len();
-            Text::new(format!("{:>width$} ", line_num, width = width)).fg(Color::rgb(100, 100, 100))
+            let label = format!("{:>width$} ", line_num, width = width);
+            let cols = cols(&label);
+            (Text::new(label).fg(Color::rgb(100, 100, 100)), cols)
         } else {
-            Text::new("")
+            (Text::new(""), 0)
         }
     }
 
@@ -896,17 +899,27 @@ impl Default for Config {
 
 impl View for TextEditor {
     fn render(&self, ctx: &mut RenderContext) {
-        let visible_lines = 20; // Approximate visible lines
+        // Header, status and help take a row each; the border takes two.
+        let visible_lines = ctx.area.height.saturating_sub(5) as usize;
+
+        // A stack splits its space *equally* among children it was not told
+        // the size of, so every piece that should hug its text gets
+        // `child_sized`. Only the last piece of a row takes the rest.
 
         // Header
         let modified_indicator = if self.modified { " [+]" } else { "" };
+        let title = format!(" {} ", self.filename);
         let header = hstack()
-            .child(
-                Text::new(format!(" {} ", self.filename))
+            .child_sized(
+                Text::new(&title)
                     .fg(Color::WHITE)
                     .bg(Color::rgb(50, 50, 50)),
+                cols(&title),
             )
-            .child(Text::new(modified_indicator).fg(Color::YELLOW))
+            .child_sized(
+                Text::new(modified_indicator).fg(Color::YELLOW),
+                cols(modified_indicator),
+            )
             .child(
                 Text::new(format!("  {} lines  ", self.lines.len())).fg(Color::rgb(100, 100, 100)),
             );
@@ -918,7 +931,7 @@ impl View for TextEditor {
 
         for row in start..end {
             let line = &self.lines[row];
-            let line_num = self.render_line_number(row + 1);
+            let (line_num, gutter) = self.render_line_number(row + 1);
 
             // Build line with cursor and selection highlighting
             let mut line_content = String::new();
@@ -942,12 +955,13 @@ impl View for TextEditor {
                 };
 
                 hstack()
-                    .child(line_num)
-                    .child(Text::new(before))
-                    .child(
+                    .child_sized(line_num, gutter)
+                    .child_sized(Text::new(before), cols(before))
+                    .child_sized(
                         Text::new(cursor_char.to_string())
                             .fg(Color::BLACK)
                             .bg(Color::WHITE),
+                        cols(&cursor_char.to_string()),
                     )
                     .child(Text::new(after))
             } else if is_cursor_row && self.mode == Mode::Insert {
@@ -956,26 +970,34 @@ impl View for TextEditor {
                 let after = Self::substr_from(line, self.cursor_col.min(line_char_len));
 
                 hstack()
-                    .child(line_num)
-                    .child(Text::new(before))
-                    .child(Text::new("|").fg(Color::CYAN))
+                    .child_sized(line_num, gutter)
+                    .child_sized(Text::new(before), cols(before))
+                    .child_sized(Text::new("|").fg(Color::CYAN), 1)
                     .child(Text::new(after))
             } else {
-                hstack().child(line_num).child(Text::new(line))
+                hstack()
+                    .child_sized(line_num, gutter)
+                    .child(Text::new(line))
             };
 
-            content = content.child(text);
+            content = content.child_sized(text, 1);
         }
 
         // Status line
-        let mode_indicator = Text::new(format!(" {} ", self.mode.name()))
+        let mode_label = format!(" {} ", self.mode.name());
+        let mode_cols = cols(&mode_label);
+        let mode_indicator = Text::new(mode_label)
             .fg(Color::BLACK)
             .bg(self.mode.color())
             .bold();
 
-        let file_info = Text::new(format!(" {} ", self.filename));
+        let file_label = format!(" {} ", self.filename);
+        let file_cols = cols(&file_label);
+        let file_info = Text::new(file_label);
 
-        let position = Text::new(format!(" {}:{} ", self.cursor_row + 1, self.cursor_col + 1));
+        let position_label = format!(" {}:{} ", self.cursor_row + 1, self.cursor_col + 1);
+        let position_cols = cols(&position_label);
+        let position = Text::new(position_label);
 
         let percent = if self.lines.is_empty() {
             "Top".to_string()
@@ -990,12 +1012,17 @@ impl View for TextEditor {
             }
         };
 
+        let percent_label = format!(" {} ", percent);
+        let percent_cols = cols(&percent_label);
         let status_line = hstack()
-            .child(mode_indicator)
-            .child(file_info)
+            .child_sized(mode_indicator, mode_cols)
+            .child_sized(file_info, file_cols)
             .child(Text::new(&self.status_message).fg(Color::rgb(180, 180, 180)))
-            .child(Text::new(format!(" {} ", percent)).fg(Color::rgb(100, 100, 100)))
-            .child(position);
+            .child_sized(
+                Text::new(percent_label).fg(Color::rgb(100, 100, 100)),
+                percent_cols,
+            )
+            .child_sized(position, position_cols);
 
         // Help line
         let help = if self.mode == Mode::Normal {
@@ -1012,12 +1039,17 @@ impl View for TextEditor {
 
         // Main layout
         vstack()
-            .child(header)
+            .child_sized(header, 1)
             .child(Border::single().child(content))
-            .child(status_line)
-            .child(help_line)
+            .child_sized(status_line, 1)
+            .child_sized(help_line, 1)
             .render(ctx);
     }
+}
+
+/// Terminal columns `s` takes up.
+fn cols(s: &str) -> u16 {
+    revue::utils::unicode::display_width(s) as u16
 }
 
 fn main() -> Result<()> {
