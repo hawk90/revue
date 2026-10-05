@@ -873,7 +873,8 @@ items:
     priority_inferred: true
     status: done
     acceptance:
-      - headings, emphasis, lists (bullet before the text), code blocks kept line by line
+      - headings (with their `#` marker), emphasis, lists (bullet before the text), code blocks kept line by line
+      - inline code drawn in code_fg
       - tables (header, separator, rows; columns sized to content)
       - syntax highlighting of fenced code
     evidence:
@@ -882,6 +883,8 @@ items:
       - tests/widget/markdown.rs
       - tests/widget/markdown/markdown_tests.rs::test_markdown_table_cells_render
       - tests/widget/markdown/markdown_tests.rs::test_markdown_fenced_code_block_is_highlighted
+      - tests/widget/markdown.rs::test_markdown_render_basic
+      - tests/widget/markdown_presentation.rs::test_code_fg
     source:
       - FEATURES.md §4 Widgets / Content Widgets / Markdown
       - FEATURES.md §Overview
