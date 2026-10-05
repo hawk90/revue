@@ -77,9 +77,8 @@ mod empty_state;
 mod filepicker;
 #[path = "widget/form/mod.rs"]
 mod form;
-// TODO(test-coverage): form_tests has API mismatches
-// #[path = "widget/form_tests.rs"]
-// mod form_tests;
+#[path = "widget/form_tests.rs"]
+mod form_tests;
 #[path = "widget/gauge.rs"]
 mod gauge;
 // TODO(test-coverage): httpclient has API mismatches
