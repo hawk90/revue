@@ -117,6 +117,11 @@ impl Histogram {
     }
 
     /// Set horizontal orientation
+    ///
+    /// Bins run top to bottom (lowest first) and bars grow to the right.
+    /// The axes keep their meaning: [`x_axis`](Self::x_axis) still describes
+    /// the binned values (now labeled down the left side) and
+    /// [`y_axis`](Self::y_axis) the counts (now labeled along the bottom).
     pub fn horizontal(mut self) -> Self {
         self.orientation = ChartOrientation::Horizontal;
         self
@@ -294,6 +299,62 @@ impl Histogram {
         }
     }
 
+    /// Render histogram bars horizontally: bins top to bottom, bars growing
+    /// to the right
+    fn render_bars_horizontal(&self, ctx: &mut RenderContext, chart_area: Rect) {
+        if self.bins.is_empty() {
+            return;
+        }
+
+        let x_min = self.bins.first().map(|b| b.start).unwrap_or(0.0);
+        let x_max = self.bins.last().map(|b| b.end).unwrap_or(1.0);
+        let x_range = (x_max - x_min).max(1.0);
+        let y_max = self.max_value();
+
+        let mut cumulative_sum = 0.0;
+
+        for bin in &self.bins {
+            cumulative_sum += bin.frequency;
+            let value = self.bin_value(bin, cumulative_sum);
+
+            // Calculate bar position
+            let bar_y_start = ((bin.start - x_min) / x_range * chart_area.height as f64) as u16;
+            let bar_y_end = ((bin.end - x_min) / x_range * chart_area.height as f64) as u16;
+            let bar_thickness = bar_y_end.saturating_sub(bar_y_start).max(1);
+
+            let bar_length = ((value / y_max) * chart_area.width as f64) as u16;
+            let bar_length = bar_length.min(chart_area.width);
+
+            // Draw bar
+            for dy in 0..bar_thickness {
+                for dx in 0..bar_length {
+                    let x = chart_area.x + dx;
+                    let y = chart_area.y + bar_y_start + dy;
+
+                    if y < chart_area.y + chart_area.height {
+                        let is_border =
+                            self.bar_border.is_some() && (dy == 0 || dy == bar_thickness - 1);
+                        let ch = if dx == bar_length - 1 {
+                            '▌'
+                        } else if is_border {
+                            '─'
+                        } else {
+                            '█'
+                        };
+
+                        let mut cell = Cell::new(ch);
+                        if is_border {
+                            cell.fg = self.bar_border;
+                        } else {
+                            cell.fg = Some(ctx.css_color(self.fill_color));
+                        }
+                        ctx.set(x, y, cell);
+                    }
+                }
+            }
+        }
+    }
+
     /// Render statistics lines
     fn render_stats(&self, ctx: &mut RenderContext, chart_area: Rect) {
         if !self.show_stats || self.bins.is_empty() {
@@ -339,6 +400,106 @@ impl Histogram {
                     ctx.set(x + 1, chart_area.y, cell);
                 }
             }
+        }
+    }
+
+    /// Render statistics lines for a horizontal histogram: a row across
+    /// the plot at the mean and median, labeled at the right end
+    fn render_stats_horizontal(&self, ctx: &mut RenderContext, chart_area: Rect) {
+        if !self.show_stats || self.bins.is_empty() {
+            return;
+        }
+
+        let x_min = self.bins.first().map(|b| b.start).unwrap_or(0.0);
+        let x_max = self.bins.last().map(|b| b.end).unwrap_or(1.0);
+        let x_range = (x_max - x_min).max(1.0);
+
+        let lines = [
+            (mean(&self.data), '─', 'μ', Color::rgb(224, 108, 117)), // Red
+            (median(&self.data), '┄', 'M', Color::rgb(152, 195, 121)), // Green
+        ];
+        for (value, line, label, color) in lines {
+            let Some(value) = value else {
+                continue;
+            };
+            let offset = (value - x_min) / x_range * chart_area.height as f64;
+            if !(0.0..chart_area.height as f64).contains(&offset) {
+                continue;
+            }
+            let y = chart_area.y + offset as u16;
+            for x in chart_area.x..chart_area.x + chart_area.width {
+                let mut cell = Cell::new(line);
+                cell.fg = Some(color);
+                ctx.set(x, y, cell);
+            }
+            // Label just below the right end of the line
+            if y + 1 < chart_area.y + chart_area.height {
+                let mut cell = Cell::new(label);
+                cell.fg = Some(color);
+                ctx.set(chart_area.x + chart_area.width - 1, y + 1, cell);
+            }
+        }
+    }
+
+    /// Render axis labels for a horizontal histogram: bin values down the
+    /// left side, counts along the bottom
+    fn render_axes_horizontal(&self, ctx: &mut RenderContext, area: Rect, chart_area: Rect) {
+        if self.bins.is_empty() {
+            return;
+        }
+
+        let x_min = self.bins.first().map(|b| b.start).unwrap_or(0.0);
+        let x_max = self.bins.last().map(|b| b.end).unwrap_or(1.0);
+        let y_max = self.max_value();
+
+        let mut put_str = |text: &str, x: u16, y: u16, max_x: u16, fg: Color| {
+            let mut dx: u16 = 0;
+            for ch in text.chars() {
+                let cx = x + dx;
+                if cx < max_x && y < area.y + area.height {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(fg);
+                    ctx.set(cx, y, cell);
+                }
+                dx += char_width(ch) as u16;
+            }
+        };
+
+        // Bin value labels down the left side, lowest at the top
+        let label_width = chart_area.x.saturating_sub(area.x);
+        let span = chart_area.height.saturating_sub(1);
+        for i in 0..=4u16 {
+            let value = x_min + (x_max - x_min) * i as f64 / 4.0;
+            let label = self.x_axis.format_value(value);
+            let label = truncate_to_width(&label, label_width.saturating_sub(1) as usize);
+            let y = chart_area.y + i * span / 4;
+            put_str(label, area.x, y, area.x + label_width, self.x_axis.color);
+        }
+
+        // Count labels along the bottom, from 0 on the left to the maximum on
+        // the right; a label that would touch the previous one is skipped
+        let y = area.y + area.height - 1;
+        let right_edge = chart_area.x + chart_area.width;
+        let span = chart_area.width.saturating_sub(1);
+        let mut next_free = chart_area.x;
+        for i in 0..=4u16 {
+            let value = y_max * i as f64 / 4.0;
+            let label = if self.density || self.cumulative {
+                format!("{:.2}", value)
+            } else {
+                format!("{:.0}", value)
+            };
+            let width = crate::utils::display_width(&label) as u16;
+            let tick = chart_area.x + i * span / 4;
+            let start = tick
+                .saturating_sub(width / 2)
+                .max(chart_area.x)
+                .min(right_edge.saturating_sub(width));
+            if start < next_free {
+                continue;
+            }
+            put_str(&label, start, y, right_edge, self.y_axis.color);
+            next_free = start + width + 1;
         }
     }
 
@@ -438,9 +599,15 @@ impl View for Histogram {
         }
 
         // Render components
-        self.render_bars(ctx, chart_area);
-        self.render_stats(ctx, chart_area);
-        self.render_axes(ctx, rel_area);
+        if self.orientation == ChartOrientation::Horizontal {
+            self.render_bars_horizontal(ctx, chart_area);
+            self.render_stats_horizontal(ctx, chart_area);
+            self.render_axes_horizontal(ctx, rel_area, chart_area);
+        } else {
+            self.render_bars(ctx, chart_area);
+            self.render_stats(ctx, chart_area);
+            self.render_axes(ctx, rel_area);
+        }
     }
 }
 

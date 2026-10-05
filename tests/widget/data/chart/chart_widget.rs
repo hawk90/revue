@@ -199,7 +199,6 @@ fn test_chart_infinite_points_are_skipped() {
 }
 
 #[test]
-#[ignore = "BUG: Chart overflows u16 (panics in debug) mapping points outside fixed axis bounds"]
 fn test_chart_points_outside_axis_bounds_are_clipped() {
     // Fixed bounds 0..10 with data reaching past both ends
     let s = Series::new("Data")
@@ -210,8 +209,51 @@ fn test_chart_points_outside_axis_bounds_are_clipped() {
         .x_axis(Axis::new().bounds(0.0, 10.0).grid(false))
         .y_axis(Axis::new().bounds(0.0, 10.0).grid(false));
     let buffer = render(&chart, 40, 20);
-    // Only (5, 5) is inside the plot
+    // Only (5, 5) is inside the plot: x = 8 + 5/10*31, y = 17 - 5/10*17
     assert_eq!(count_char(&buffer, '★'), 1);
+    assert_eq!(sym(&buffer, 23, 9), '★');
+    // The line through it is cut off at the plot edges, not dropped: it
+    // runs from the bottom-left corner to the top-right corner
+    assert_eq!(sym(&buffer, 8, 17), '╱');
+    assert_eq!(sym(&buffer, 39, 0), '╱');
+}
+
+#[test]
+fn test_chart_segment_crossing_the_plot_is_clipped() {
+    // Both ends outside the bounds; the segment still crosses the plot
+    let s = Series::new("Data").data(vec![(-10.0, 5.0), (20.0, 5.0)]);
+    let chart = plain()
+        .series(s)
+        .x_axis(Axis::new().bounds(0.0, 10.0).grid(false))
+        .y_axis(Axis::new().bounds(0.0, 10.0).grid(false));
+    let buffer = render(&chart, 40, 20);
+    let row: String = rows(&buffer)[9].chars().skip(8).collect();
+    assert_eq!(row, "─".repeat(32));
+}
+
+#[test]
+fn test_chart_segment_missing_the_plot_draws_nothing() {
+    // Entirely above the plot, with an area fill and step series too
+    let chart = plain()
+        .series(Series::new("L").data(vec![(0.0, 50.0), (10.0, 60.0)]))
+        .series(
+            Series::new("A")
+                .data(vec![(0.0, 50.0), (10.0, 60.0)])
+                .area(Color::BLUE),
+        )
+        .series(
+            Series::new("S")
+                .data(vec![(0.0, 50.0), (10.0, 60.0)])
+                .step(),
+        )
+        .x_axis(Axis::new().bounds(0.0, 10.0).grid(false))
+        .y_axis(Axis::new().bounds(0.0, 10.0).grid(false));
+    let buffer = render(&chart, 40, 20);
+    for y in 0..18 {
+        for x in 8..40 {
+            assert_eq!(sym(&buffer, x, y), ' ', "({x}, {y})");
+        }
+    }
 }
 
 // =========================================================================
@@ -528,11 +570,58 @@ fn test_chart_border() {
 }
 
 #[test]
-#[ignore = "BUG: Chart::braille() is stored but never used when rendering"]
 fn test_chart_braille_changes_rendering() {
     let normal = render_rows(&plain().series(diagonal()), 40, 20);
     let braille = render_rows(&plain().braille().series(diagonal()), 40, 20);
     assert_ne!(normal, braille);
+}
+
+fn is_braille(c: char) -> bool {
+    ('\u{2801}'..='\u{28FF}').contains(&c)
+}
+
+#[test]
+fn test_chart_braille_draws_lines_with_dots() {
+    let buffer = render(
+        &plain().braille().series(diagonal().color(Color::CYAN)),
+        40,
+        20,
+    );
+    // No box-drawing line cells; the line is made of Braille dots instead
+    assert_eq!(plot_line_cells(&buffer), 0);
+    // On a 64x72 dot grid the line starts at the bottom-left dot of the plot
+    // (column 8, row 17) and climbs to the top-right cell, touching every row
+    // on the way up (row 0 is the top padding)
+    assert_eq!(sym(&buffer, 8, 17), '\u{2801}');
+    assert!(is_braille(sym(&buffer, 39, 1)));
+    for y in 1..18 {
+        assert!(
+            (8..40).any(|x| is_braille(sym(&buffer, x, y))),
+            "row {y}: {:?}",
+            rows(&buffer)[y as usize]
+        );
+    }
+    assert_eq!(buffer.get(8, 17).unwrap().fg, Some(Color::CYAN));
+}
+
+#[test]
+fn test_chart_braille_keeps_markers_and_clips() {
+    // Markers stay whole-cell characters, and data past fixed bounds is
+    // clipped at the plot edge as in cell mode
+    let s = Series::new("Data")
+        .data(vec![(-5.0, -5.0), (5.0, 5.0), (20.0, 20.0)])
+        .marker(Marker::Star);
+    let chart = plain()
+        .braille()
+        .series(s)
+        .x_axis(Axis::new().bounds(0.0, 10.0).grid(false))
+        .y_axis(Axis::new().bounds(0.0, 10.0).grid(false));
+    let buffer = render(&chart, 40, 20);
+    assert_eq!(count_char(&buffer, '★'), 1);
+    assert_eq!(sym(&buffer, 23, 9), '★');
+    assert!(is_braille(sym(&buffer, 8, 17)));
+    assert!(is_braille(sym(&buffer, 39, 0)));
+    assert_eq!(plot_line_cells(&buffer), 0);
 }
 
 // =========================================================================

@@ -337,7 +337,6 @@ fn test_figlet_font() {
 // =========================================================================
 
 #[test]
-#[ignore = "BUG: Markdown styles the first plain paragraph as a blockquote, overriding link_fg"]
 fn test_link_fg() {
     let pres = MarkdownPresentation::new("[site](https://example.com)").link_fg(Color::RED);
     let buffer = render(&pres, 40, 6);
@@ -346,7 +345,6 @@ fn test_link_fg() {
 }
 
 #[test]
-#[ignore = "BUG: Markdown styles the first plain paragraph as a blockquote, overriding code_fg"]
 fn test_code_fg() {
     let pres = MarkdownPresentation::new("run `make` now").code_fg(Color::GREEN);
     let buffer = render(&pres, 40, 6);

@@ -234,7 +234,6 @@ fn test_range_picker_manual_range_selection() {
 // =============================================================================
 
 #[test]
-#[ignore = "BUG: RangePicker stores min_date but never enforces it"]
 fn test_range_picker_min_date_limits_the_start() {
     let min = Date::new(2025, 3, 10);
     let mut picker = march_2025()
@@ -248,10 +247,68 @@ fn test_range_picker_min_date_limits_the_start() {
 
     picker.handle_key(&Key::Char('['));
     assert!(picker.get_start() >= min, "{:?}", picker.get_start());
+    picker.handle_key(&Key::Char('{'));
+    picker.handle_key(&Key::Up);
+    picker.handle_key(&Key::Enter);
+    assert_eq!(picker.get_start(), min);
+    // The end calendar is limited too: it cannot run back before min
+    picker.handle_key(&Key::Tab);
+    for _ in 0..20 {
+        picker.handle_key(&Key::Left);
+    }
+    picker.handle_key(&Key::Enter);
+    assert_eq!(picker.get_range(), (min, min));
+
+    // Days after min still select normally
+    picker.handle_key(&Key::Right);
+    picker.handle_key(&Key::Enter);
+    assert_eq!(picker.get_end(), Date::new(2025, 3, 11));
 }
 
 #[test]
-#[ignore = "BUG: RangePicker stores max_date but never enforces it"]
+fn test_range_picker_limits_clamp_set_dates() {
+    let (min, max) = (Date::new(2025, 3, 10), Date::new(2025, 3, 20));
+    // Limits clamp a range set before them...
+    let picker = march_2025().min_date(min).max_date(max);
+    assert_eq!(picker.get_range(), (min, max));
+    // ...and one set after them
+    let mut picker = range_picker().min_date(min).max_date(max);
+    picker.set_start(Date::new(2025, 1, 1));
+    picker.set_end(Date::new(2025, 12, 31));
+    assert_eq!(picker.get_range(), (min, max));
+    // A range inside the limits is left alone
+    let picker = range_picker()
+        .min_date(min)
+        .max_date(max)
+        .range(Date::new(2025, 3, 12), Date::new(2025, 3, 15));
+    assert_eq!(
+        picker.get_range(),
+        (Date::new(2025, 3, 12), Date::new(2025, 3, 15))
+    );
+}
+
+#[test]
+fn test_range_picker_dims_days_outside_the_limits() {
+    use revue::widget::DISABLED_FG;
+
+    let picker = march_2025()
+        .range(Date::new(2025, 3, 12), Date::new(2025, 3, 14))
+        .min_date(Date::new(2025, 3, 10))
+        .max_date(Date::new(2025, 3, 20));
+    let buffer = render(&picker, 80, 12);
+    // Third row of the start calendar: 9..15; the 9th is before min
+    assert_eq!(text(&buffer, 0, 4, 2), " 9");
+    assert_eq!(buffer.get(1, 4).unwrap().fg, Some(DISABLED_FG));
+    assert_eq!(text(&buffer, 3, 4, 2), "10");
+    assert_eq!(buffer.get(3, 4).unwrap().fg, Some(Color::WHITE));
+    // Fourth row: 16..22; the 21st is after max, the 20th is not
+    assert_eq!(text(&buffer, 12, 5, 2), "20");
+    assert_eq!(buffer.get(12, 5).unwrap().fg, Some(Color::WHITE));
+    assert_eq!(text(&buffer, 15, 5, 2), "21");
+    assert_eq!(buffer.get(15, 5).unwrap().fg, Some(DISABLED_FG));
+}
+
+#[test]
 fn test_range_picker_max_date_limits_the_end() {
     let max = Date::new(2025, 3, 20);
     let mut picker = march_2025()
@@ -266,10 +323,13 @@ fn test_range_picker_max_date_limits_the_end() {
 
     picker.handle_key(&Key::Char(']'));
     assert!(picker.get_end() <= max, "{:?}", picker.get_end());
+    picker.handle_key(&Key::Char('}'));
+    picker.handle_key(&Key::Down);
+    picker.handle_key(&Key::Enter);
+    assert_eq!(picker.get_end(), max);
 }
 
 #[test]
-#[ignore = "BUG: RangePicker::show_time(true) draws no times"]
 fn test_range_picker_show_time_draws_the_times() {
     let picker = march_2025()
         .show_time(true)
@@ -279,4 +339,18 @@ fn test_range_picker_show_time_draws_the_times() {
     let all: String = (0..14).map(|y| text(&buffer, 0, y, 80)).collect();
     assert!(all.contains("09:30"), "{all}");
     assert!(all.contains("17:45"), "{all}");
+    // Each time sits next to its own date in the summary
+    assert_eq!(
+        text(&buffer, 0, 9, 43),
+        "Range: 2025-03-01 09:30 to 2025-03-31 17:45"
+    );
+
+    // Without show_time the times stay hidden
+    let picker = march_2025()
+        .show_time(false)
+        .start_time(Time::new(9, 30, 0))
+        .end_time(Time::new(17, 45, 0));
+    let buffer = render(&picker, 80, 14);
+    let all: String = (0..14).map(|y| text(&buffer, 0, y, 80)).collect();
+    assert!(!all.contains("09:30"), "{all}");
 }

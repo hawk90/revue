@@ -6,6 +6,7 @@ use super::chart_common::{Axis, ChartGrid, ChartOrientation, ColorScheme, Legend
 use super::chart_render::{fill_background, render_title};
 use crate::layout::Rect;
 use crate::style::Color;
+use crate::utils::display_width;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -425,6 +426,15 @@ impl BoxPlot {
     }
 
     /// Enable notched box plot
+    ///
+    /// A notched box pinches in around the median over its approximate 95%
+    /// confidence interval (`median ± 1.57 * IQR / sqrt(n)`); boxes whose
+    /// notches don't overlap have medians that differ significantly.
+    ///
+    /// The interval needs the sample size, so only groups added from raw
+    /// data ([`group`](Self::group), [`BoxGroup::new`]) are notched; groups
+    /// built from precomputed [`BoxStats`] are drawn plain. A notch that does
+    /// not fit inside the box at the rendered size is also left out.
     pub fn notched(mut self, enabled: bool) -> Self {
         self.notched = enabled;
         self
@@ -503,17 +513,37 @@ impl View for BoxPlot {
         // Draw title using shared function
         let title_offset = render_title(ctx, rel_area, self.title.as_deref(), Color::WHITE);
 
-        // Calculate chart area (relative coordinates)
-        let y_label_width = 6u16;
-        let x_label_height = 1u16;
+        let horizontal = self.orientation == ChartOrientation::Horizontal;
 
-        let chart_area = Rect {
-            x: y_label_width,
-            y: title_offset,
-            width: area.width.saturating_sub(y_label_width + 1),
-            height: area
-                .height
-                .saturating_sub(title_offset + x_label_height + 1),
+        // Calculate chart area (relative coordinates)
+        let chart_area = if horizontal {
+            // Group labels on the left (as wide as the longest label, up to a
+            // third of the width), value labels on the bottom row
+            let label_width = self
+                .groups
+                .iter()
+                .map(|g| display_width(&g.label) as u16)
+                .max()
+                .unwrap_or(0)
+                .clamp(1, area.width / 3);
+            let x = label_width + 1;
+            Rect {
+                x,
+                y: title_offset,
+                width: area.width.saturating_sub(x + 1),
+                height: area.height.saturating_sub(title_offset + 1),
+            }
+        } else {
+            let y_label_width = 6u16;
+            let x_label_height = 1u16;
+            Rect {
+                x: y_label_width,
+                y: title_offset,
+                width: area.width.saturating_sub(y_label_width + 1),
+                height: area
+                    .height
+                    .saturating_sub(title_offset + x_label_height + 1),
+            }
         };
 
         if chart_area.width < 5 || chart_area.height < 5 {
@@ -530,10 +560,21 @@ impl View for BoxPlot {
             self.box_width,
             self.whisker_style,
             self.show_outliers,
+            self.notched,
         );
 
-        render_state.render_boxes(ctx, &self.colors);
-        render_state.render_axes(ctx, rel_area, &self.value_axis, &self.category_axis);
+        if horizontal {
+            render_state.render_boxes_horizontal(ctx, &self.colors);
+            render_state.render_axes_horizontal(
+                ctx,
+                rel_area,
+                &self.value_axis,
+                &self.category_axis,
+            );
+        } else {
+            render_state.render_boxes(ctx, &self.colors);
+            render_state.render_axes(ctx, rel_area, &self.value_axis, &self.category_axis);
+        }
     }
 }
 

@@ -375,7 +375,6 @@ fn test_labels() {
 }
 
 #[test]
-#[ignore = "BUG: HeatMap cells and labels drift apart: equal-share stacks spread the cells, and the column header indents 8 columns while row labels take 7"]
 fn test_labels_align_with_cells() {
     let hm = HeatMap::new(vec![vec![0.5, 0.8], vec![0.2, 0.9]])
         .row_labels(vec!["R1".into(), "R2".into()])
@@ -409,15 +408,40 @@ fn test_show_legend() {
     assert!(!hidden.contains("Low"));
 
     let hm = HeatMap::new(vec![vec![0.0, 1.0]]).show_legend(true);
-    // 13 legend pieces share the width equally; give each room for the
-    // longest one ("  (0.0 - 1.0)")
-    let buffer = render(&hm, 13 * 13, 2);
+    // The legend pieces sit side by side at their own widths, so it fits
+    // in exactly 4 + 10 + 5 + 13 columns
+    let buffer = render(&hm, 32, 2);
     let legend = &rows(&buffer)[1];
-    assert!(legend.contains("Low"), "{legend:?}");
-    assert!(legend.contains("High"), "{legend:?}");
-    assert!(legend.contains("(0.0 - 1.0)"), "{legend:?}");
+    assert_eq!(legend, "Low ██████████ High  (0.0 - 1.0)");
     // Ten color swatches from the low to the high end of the scale
-    assert_eq!(legend.matches('█').count(), 10);
+    assert_eq!(fg(&buffer, 4, 1), Some(ColorScale::BlueRed.color_at(0.0)));
+    assert_eq!(fg(&buffer, 13, 1), Some(ColorScale::BlueRed.color_at(1.0)));
+}
+
+#[test]
+fn test_lines_pack_from_the_top() {
+    // A tall area does not spread the title, header and rows apart
+    let hm = HeatMap::new(vec![vec![0.5], vec![0.6]])
+        .title("T")
+        .col_labels(vec!["C".into()]);
+    let rows = render_rows(&hm, 10, 10);
+    assert_eq!(rows[0].trim_end(), "T");
+    assert_eq!(rows[1].trim_end(), "C");
+    assert_eq!(rows[2].trim_end(), "██");
+    assert_eq!(rows[3].trim_end(), "██");
+    assert!(rows[4..].iter().all(|r| r.trim().is_empty()), "{rows:?}");
+}
+
+#[test]
+fn test_rows_without_a_label_stay_aligned() {
+    // Fewer row labels than rows: unlabeled rows keep the label column
+    let hm = HeatMap::new(vec![vec![0.5], vec![0.6]])
+        .row_labels(vec!["R1".into()])
+        .col_labels(vec!["C".into()]);
+    let rows = render_rows(&hm, 20, 3);
+    assert_eq!(rows[0].trim_end(), "       C");
+    assert_eq!(rows[1].trim_end(), "    R1 ██");
+    assert_eq!(rows[2].trim_end(), "       ██");
 }
 
 #[test]

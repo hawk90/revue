@@ -175,8 +175,10 @@ pub struct Digits {
     separator: Option<char>,
     /// Minimum width (pad with zeros)
     min_width: Option<usize>,
-    /// Show leading zeros
-    leading_zeros: bool,
+    /// Show leading zeros when padding to `min_width`.
+    ///
+    /// `None` keeps the default zero padding; `Some(false)` pads with blanks.
+    leading_zeros: Option<bool>,
     /// CSS styling properties (id, classes)
     props: WidgetProps,
 }
@@ -193,7 +195,7 @@ impl Digits {
             suffix: None,
             separator: None,
             min_width: None,
-            leading_zeros: false,
+            leading_zeros: None,
             props: WidgetProps::new(),
         }
     }
@@ -273,9 +275,12 @@ impl Digits {
         self
     }
 
-    /// Show leading zeros
+    /// Show leading zeros when padding to [`min_width`](Self::min_width)
+    ///
+    /// Padding uses zeros by default. Pass `false` to pad with blank
+    /// columns instead, so the number is right-aligned without zeros.
     pub fn leading_zeros(mut self, show: bool) -> Self {
-        self.leading_zeros = show;
+        self.leading_zeros = Some(show);
         self
     }
 
@@ -348,6 +353,20 @@ impl Digits {
     /// Build the display string with formatting
     pub fn format_value(&self) -> String {
         let mut result = self.value.clone();
+
+        if self.leading_zeros == Some(false) {
+            // Pad with blanks in front of the formatted number
+            if let Some(sep) = self.separator {
+                result = self.add_thousands_separator(&result, sep);
+            }
+            if let Some(width) = self.min_width {
+                let len = result.chars().count();
+                if len < width {
+                    result = format!("{}{}", " ".repeat(width - len), result);
+                }
+            }
+            return result;
+        }
 
         // Apply minimum width with leading zeros, after any sign
         if let Some(width) = self.min_width {
