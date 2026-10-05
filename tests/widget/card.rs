@@ -684,7 +684,6 @@ fn test_card_render_filled_variant() {
 }
 
 #[test]
-#[ignore = "BUG: Card's elevated shadow is drawn in the last column/row and then overwritten by the border, so it never shows"]
 fn test_card_render_elevated_variant() {
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -695,7 +694,37 @@ fn test_card_render_elevated_variant() {
 
     // Shadow on the right and bottom edges, inside the area (#495)
     assert_eq!(buffer.get(39, 5).unwrap().symbol, '▌');
+    assert_eq!(buffer.get(39, 5).unwrap().fg, Some(Color::rgb(20, 20, 20)));
     assert_eq!(buffer.get(5, 9).unwrap().symbol, '▀');
+    // The card's border sits just inside the shadow
+    assert_eq!(buffer.get(38, 0).unwrap().symbol, '┐');
+    assert_eq!(buffer.get(38, 5).unwrap().symbol, '│');
+    assert_eq!(buffer.get(0, 8).unwrap().symbol, '└');
+    assert_eq!(buffer.get(38, 8).unwrap().symbol, '┘');
+    // Nothing beside the top row or under the left edge
+    assert_ne!(buffer.get(39, 0).unwrap().symbol, '▌');
+    assert_ne!(buffer.get(0, 9).unwrap().symbol, '▀');
+}
+
+#[test]
+fn test_card_render_elevated_footer_stays_inside_shadow() {
+    let mut buffer = Buffer::new(30, 10);
+    let area = Rect::new(0, 0, 30, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let c = Card::new()
+        .elevated()
+        .title("T")
+        .body(Text::new("Body"))
+        .footer(Text::new("Foot"));
+    c.render(&mut ctx);
+
+    // Footer on the row above the card's bottom border, which is above the shadow
+    let footer_row: String = (0..30).map(|x| buffer.get(x, 7).unwrap().symbol).collect();
+    assert!(footer_row.contains("Foot"), "{footer_row:?}");
+    assert_eq!(buffer.get(0, 8).unwrap().symbol, '└');
+    assert_eq!(buffer.get(5, 9).unwrap().symbol, '▀');
+    assert_eq!(buffer.get(29, 7).unwrap().symbol, '▌');
 }
 
 #[test]
