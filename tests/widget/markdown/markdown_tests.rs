@@ -575,7 +575,7 @@ fn test_markdown_blockquote_style_does_not_leak() {
 }
 
 /// Render `md` into a `width` x 24 buffer and return the fg of the cell where
-/// `needle` starts, plus the fg of the cell at `needle`'s offset `other`.
+/// the first occurrence of `needle` starts.
 fn fg_at(md: Markdown, width: u16, needle: &str) -> Option<revue::style::Color> {
     let mut buffer = Buffer::new(width, 24);
     let area = Rect::new(0, 0, width, 24);
