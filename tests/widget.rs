@@ -116,9 +116,8 @@ mod markdown;
 mod masked_input;
 #[path = "widget/masked_input_tests.rs"]
 mod masked_input_tests;
-// TODO(test-coverage): mermaid has API mismatches
-// #[path = "widget/mermaid/mod.rs"]
-// mod mermaid;
+#[path = "widget/mermaid/mod.rs"]
+mod mermaid;
 #[path = "widget/option_list.rs"]
 mod option_list;
 #[path = "widget/pagination.rs"]

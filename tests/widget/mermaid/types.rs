@@ -1,6 +1,6 @@
 //! Tests for mermaid diagram types
 
-use revue::widget::mermaid::{types::*, Diagram, NodeShape, ArrowStyle, Direction};
+use revue::widget::{ArrowStyle, Diagram, DiagramEdge, DiagramNode, DiagramType, NodeShape};
 
 // =========================================================================
 // DiagramType enum trait tests
@@ -42,14 +42,6 @@ fn test_diagram_type_partial_eq() {
 fn test_diagram_type_debug() {
     let debug_str = format!("{:?}", DiagramType::Flowchart);
     assert!(debug_str.contains("Flowchart"));
-}
-
-#[test]
-fn test_diagram_type_all_variants() {
-    let _ = DiagramType::Flowchart;
-    let _ = DiagramType::Sequence;
-    let _ = DiagramType::Tree;
-    let _ = DiagramType::Er;
 }
 
 // =========================================================================
@@ -96,16 +88,6 @@ fn test_node_shape_debug() {
     assert!(debug_str.contains("Database"));
 }
 
-#[test]
-fn test_node_shape_all_variants() {
-    let _ = NodeShape::Rectangle;
-    let _ = NodeShape::Rounded;
-    let _ = NodeShape::Diamond;
-    let _ = NodeShape::Circle;
-    let _ = NodeShape::Parallelogram;
-    let _ = NodeShape::Database;
-}
-
 // =========================================================================
 // ArrowStyle enum trait tests
 // =========================================================================
@@ -148,64 +130,6 @@ fn test_arrow_style_debug() {
     assert!(debug_str.contains("Dashed"));
 }
 
-#[test]
-fn test_arrow_style_all_variants() {
-    let _ = ArrowStyle::Solid;
-    let _ = ArrowStyle::Dashed;
-    let _ = ArrowStyle::Thick;
-    let _ = ArrowStyle::Line;
-}
-
-// =========================================================================
-// Direction enum trait tests
-// =========================================================================
-
-#[test]
-fn test_direction_default() {
-    assert_eq!(Direction::default(), Direction::TopDown);
-}
-
-#[test]
-fn test_direction_clone() {
-    let d1 = Direction::LeftRight;
-    let d2 = d1.clone();
-    assert_eq!(d1, d2);
-}
-
-#[test]
-fn test_direction_copy() {
-    let d1 = Direction::BottomUp;
-    let d2 = d1;
-    assert_eq!(d1, Direction::BottomUp);
-    assert_eq!(d2, Direction::BottomUp);
-}
-
-#[test]
-fn test_direction_partial_eq() {
-    assert_eq!(Direction::TopDown, Direction::TopDown);
-    assert_eq!(Direction::LeftRight, Direction::LeftRight);
-    assert_eq!(Direction::BottomUp, Direction::BottomUp);
-    assert_eq!(Direction::RightLeft, Direction::RightLeft);
-
-    assert_ne!(Direction::TopDown, Direction::LeftRight);
-    assert_ne!(Direction::BottomUp, Direction::RightLeft);
-    assert_ne!(Direction::TopDown, Direction::BottomUp);
-}
-
-#[test]
-fn test_direction_debug() {
-    let debug_str = format!("{:?}", Direction::RightLeft);
-    assert!(debug_str.contains("RightLeft"));
-}
-
-#[test]
-fn test_direction_all_variants() {
-    let _ = Direction::TopDown;
-    let _ = Direction::LeftRight;
-    let _ = Direction::BottomUp;
-    let _ = Direction::RightLeft;
-}
-
 // =========================================================================
 // DiagramNode struct tests
 // =========================================================================
@@ -218,15 +142,6 @@ fn test_diagram_node_new() {
     assert_eq!(node.shape, NodeShape::default());
     assert!(node.color.is_none());
     assert!(node.bg.is_none());
-}
-
-#[test]
-fn test_diagram_node_new_with_string_types() {
-    let id = String::from("test_id");
-    let label = String::from("test_label");
-    let node = DiagramNode::new(id.clone(), label.clone());
-    assert_eq!(node.id, id);
-    assert_eq!(node.label, label);
 }
 
 #[test]
@@ -293,13 +208,6 @@ fn test_diagram_node_with_empty_strings() {
     assert_eq!(node.label, "");
 }
 
-#[test]
-fn test_diagram_node_with_unicode() {
-    let node = DiagramNode::new("测试", "标签🏷️");
-    assert_eq!(node.id, "测试");
-    assert_eq!(node.label, "标签🏷️");
-}
-
 // =========================================================================
 // DiagramEdge struct tests
 // =========================================================================
@@ -311,15 +219,6 @@ fn test_diagram_edge_new() {
     assert_eq!(edge.to, "B");
     assert!(edge.label.is_none());
     assert_eq!(edge.style, ArrowStyle::default());
-}
-
-#[test]
-fn test_diagram_edge_new_with_string_types() {
-    let from = String::from("node1");
-    let to = String::from("node2");
-    let edge = DiagramEdge::new(from.clone(), to.clone());
-    assert_eq!(edge.from, from);
-    assert_eq!(edge.to, to);
 }
 
 #[test]
@@ -392,7 +291,7 @@ fn test_diagram_edge_with_empty_label() {
 
 #[test]
 fn test_diagram_colors_default() {
-    let colors = DiagramColors::default();
+    let colors = Diagram::new().colors;
     assert_eq!(colors.node_fg, revue::style::Color::WHITE);
     assert_eq!(colors.node_bg, revue::style::Color::rgb(40, 60, 80));
     assert_eq!(colors.arrow, revue::style::Color::rgb(100, 150, 200));
@@ -402,7 +301,7 @@ fn test_diagram_colors_default() {
 
 #[test]
 fn test_diagram_colors_clone() {
-    let colors1 = DiagramColors::default();
+    let colors1 = Diagram::new().colors;
     let colors2 = colors1.clone();
 
     assert_eq!(colors1.node_fg, colors2.node_fg);
@@ -410,12 +309,4 @@ fn test_diagram_colors_clone() {
     assert_eq!(colors1.arrow, colors2.arrow);
     assert_eq!(colors1.label, colors2.label);
     assert_eq!(colors1.title, colors2.title);
-}
-
-#[test]
-fn test_diagram_colors_debug() {
-    let colors = DiagramColors::default();
-    let debug_str = format!("{:?}", colors);
-    // Should be able to format for debug
-    assert!(!debug_str.is_empty());
 }

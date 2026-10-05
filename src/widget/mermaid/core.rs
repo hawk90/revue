@@ -214,11 +214,15 @@ impl Diagram {
             let row = i as u16 / cols;
             let col = i as u16 % cols;
 
-            let node_width = (node.label.chars().count() as u16 + 4).min(cell_width - 2);
+            // A crowded area can leave a grid cell narrower or shorter than a
+            // node; shrink the node or let it overhang instead of
+            // underflowing.
+            let node_width =
+                (node.label.chars().count() as u16 + 4).min(cell_width.saturating_sub(2));
             let node_height = 3u16;
 
-            let x = col * cell_width + (cell_width - node_width) / 2;
-            let y = row * cell_height + (cell_height - node_height) / 2;
+            let x = col * cell_width + cell_width.saturating_sub(node_width) / 2;
+            let y = row * cell_height + cell_height.saturating_sub(node_height) / 2;
 
             self.positions.insert(node.id.clone(), (x, y));
             self.sizes
