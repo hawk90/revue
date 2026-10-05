@@ -41,12 +41,8 @@ mod code_editor_tests;
 pub mod collapsible;
 #[path = "widget/color_picker.rs"]
 mod color_picker;
-// TODO(test-coverage): combobox has API mismatches
-// #[path = "widget/combobox/mod.rs"]
-// mod combobox;
-// TODO(test-coverage): combobox_tests has API mismatches
-// #[path = "widget/combobox_tests.rs"]
-// pub mod combobox_tests;
+#[path = "widget/combobox_tests.rs"]
+mod combobox_tests;
 #[path = "widget/command_palette.rs"]
 mod command_palette;
 #[path = "widget/command_palette_unit/mod.rs"]
