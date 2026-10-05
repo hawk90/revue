@@ -80,6 +80,31 @@ fn test_calculate_legend_position() {
 }
 
 #[test]
+fn test_calculate_legend_position_larger_than_area() {
+    // A legend bigger than the area is pinned to the top/left edge
+    let area = Rect::new(0, 0, 10, 4);
+    let pos = |p| calculate_legend_position(p, area, 20, 8);
+    assert_eq!(pos(LegendPosition::TopCenter), Some((0, 1)));
+    assert_eq!(pos(LegendPosition::BottomCenter), Some((0, 0)));
+    assert_eq!(pos(LegendPosition::Left), Some((1, 0)));
+    assert_eq!(pos(LegendPosition::Right), Some((0, 0)));
+}
+
+#[test]
+fn test_render_legend_larger_than_area() {
+    let items = [LegendItem {
+        label: "A label much wider than the area",
+        color: Color::RED,
+    }];
+    for legend in [Legend::top_center(), Legend::left(), Legend::right()] {
+        let buffer = draw(12, 3, |ctx, area| {
+            render_legend(ctx, area, &legend, &items);
+        });
+        assert!(rows(&buffer).join("").contains('┌'));
+    }
+}
+
+#[test]
 fn test_render_legend() {
     let items = [
         LegendItem {
