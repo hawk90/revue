@@ -2,7 +2,7 @@
 //!
 //! Recreating a Textual-like dashboard layout with Revue
 //!
-//! Run with: cargo run --example textual_dashboard
+//! Run with: cargo run --example dashboard
 
 use revue::prelude::*;
 
@@ -41,14 +41,10 @@ impl Dashboard {
     }
 
     fn render_header(&self) -> impl View {
-        vstack()
-            .child(
-                Text::new(" Posting data to httpbin.org ")
-                    .fg(BG_BASE)
-                    .bg(BLUE)
-                    .bold(),
-            )
-            .child(Text::new(""))
+        Text::new(" Posting data to httpbin.org ")
+            .fg(BG_BASE)
+            .bg(BLUE)
+            .bold()
     }
 
     fn render_json_panel(&self) -> impl View {
@@ -117,28 +113,29 @@ impl Dashboard {
     fn render_markdown_panel(&self) -> impl View {
         Border::rounded().title(" Markdown ").fg(BG_OVERLAY).child(
             vstack()
-                .child(RichText::markup(
-                    "[bold]Revue[/] is a [cyan]Vue-style[/] TUI framework",
-                ))
-                .child(Text::new(""))
-                .child(RichText::markup("Features:"))
-                .child(RichText::markup("  [green]•[/] CSS styling"))
-                .child(RichText::markup("  [green]•[/] Reactive state"))
-                .child(RichText::markup("  [green]•[/] 70+ widgets"))
-                .child(Text::new(""))
-                .child(RichText::markup("[dim]Built with Rust[/]")),
+                .child_sized(
+                    RichText::markup("[bold]Revue[/] is a [cyan]Vue-style[/] TUI framework"),
+                    1,
+                )
+                .child_sized(Text::new(""), 1)
+                .child_sized(RichText::markup("Features:"), 1)
+                .child_sized(RichText::markup("  [green]•[/] CSS styling"), 1)
+                .child_sized(RichText::markup("  [green]•[/] Reactive state"), 1)
+                .child_sized(RichText::markup("  [green]•[/] 70+ widgets"), 1)
+                .child_sized(Text::new(""), 1)
+                .child_sized(RichText::markup("[dim]Built with Rust[/]"), 1),
         )
     }
 
     fn render_csv_panel(&self) -> impl View {
         Border::rounded().title(" CSV Data ").fg(BG_OVERLAY).child(
             vstack()
-                .child(Text::new(" Name       │ Value │ Status").fg(SUBTEXT))
-                .child(Text::new("────────────┼───────┼────────").fg(BG_OVERLAY))
-                .child(self.csv_row("Alpha", "100", "OK", 0))
-                .child(self.csv_row("Beta", "250", "OK", 1))
-                .child(self.csv_row("Gamma", "75", "WARN", 2))
-                .child(self.csv_row("Delta", "320", "OK", 3)),
+                .child_sized(Text::new(" Name       │ Value │ Status").fg(SUBTEXT), 1)
+                .child_sized(Text::new("────────────┼───────┼────────").fg(BG_OVERLAY), 1)
+                .child_sized(self.csv_row("Alpha", "100", "OK", 0), 1)
+                .child_sized(self.csv_row("Beta", "250", "OK", 1), 1)
+                .child_sized(self.csv_row("Gamma", "75", "WARN", 2), 1)
+                .child_sized(self.csv_row("Delta", "320", "OK", 3), 1),
         )
     }
 
@@ -156,11 +153,11 @@ impl Dashboard {
         Border::rounded().title(" Progress ").fg(BG_OVERLAY).child(
             vstack()
                 .gap(1)
-                .child(Text::new(" Downloading...").fg(SUBTEXT))
-                .child(self.render_progress_bar(self.progress1, BLUE))
-                .child(Text::new(""))
-                .child(Text::new(" Processing...").fg(SUBTEXT))
-                .child(self.render_progress_bar(self.progress2, GREEN)),
+                .child_sized(Text::new(" Downloading...").fg(SUBTEXT), 1)
+                .child_sized(self.render_progress_bar(self.progress1, BLUE), 1)
+                .child_sized(Text::new(""), 1)
+                .child_sized(Text::new(" Processing...").fg(SUBTEXT), 1)
+                .child_sized(self.render_progress_bar(self.progress2, GREEN), 1),
         )
     }
 
@@ -181,21 +178,26 @@ impl Dashboard {
     fn render_log_panel(&self) -> impl View {
         Border::rounded().title(" Log ").fg(BG_OVERLAY).child(
             vstack()
-                .child(RichText::markup(
-                    "[dim]12:00:01[/] [green]INFO[/]  Application started",
-                ))
-                .child(RichText::markup(
-                    "[dim]12:00:02[/] [green]INFO[/]  Loading config...",
-                ))
-                .child(RichText::markup(
-                    "[dim]12:00:03[/] [yellow]WARN[/]  Cache miss",
-                ))
-                .child(RichText::markup(
-                    "[dim]12:00:04[/] [green]INFO[/]  Connected to server",
-                ))
-                .child(RichText::markup(
-                    "[dim]12:00:05[/] [red]ERROR[/] Request timeout",
-                )),
+                .child_sized(
+                    RichText::markup("[dim]12:00:01[/] [green]INFO[/]  Application started"),
+                    1,
+                )
+                .child_sized(
+                    RichText::markup("[dim]12:00:02[/] [green]INFO[/]  Loading config..."),
+                    1,
+                )
+                .child_sized(
+                    RichText::markup("[dim]12:00:03[/] [yellow]WARN[/]  Cache miss"),
+                    1,
+                )
+                .child_sized(
+                    RichText::markup("[dim]12:00:04[/] [green]INFO[/]  Connected to server"),
+                    1,
+                )
+                .child_sized(
+                    RichText::markup("[dim]12:00:05[/] [red]ERROR[/] Request timeout"),
+                    1,
+                ),
         )
     }
 
@@ -210,28 +212,29 @@ impl Dashboard {
 
 impl View for Dashboard {
     fn render(&self, ctx: &mut RenderContext) {
+        // Unsized stack children share space equally, so each panel is given
+        // its content height + 2 with `child_sized`; only the middle row and
+        // the bottom panel of each column take what is left. That needs all
+        // 30 rows, so the blank spacer rows and column gaps are gone.
         vstack()
             .gap(0)
-            .child(self.render_header())
+            .child_sized(self.render_header(), 1)
             .child(
                 hstack()
                     .gap(1)
                     .child(
                         vstack()
-                            .gap(1)
-                            .child(self.render_json_panel())
+                            .child_sized(self.render_json_panel(), 11)
                             .child(self.render_markdown_panel()),
                     )
                     .child(
                         vstack()
-                            .gap(1)
-                            .child(self.render_csv_panel())
+                            .child_sized(self.render_csv_panel(), 8)
                             .child(self.render_progress_panel()),
                     ),
             )
-            .child(self.render_log_panel())
-            .child(Text::new(""))
-            .child(self.render_footer())
+            .child_sized(self.render_log_panel(), 7)
+            .child_sized(self.render_footer(), 1)
             .render(ctx);
     }
 }

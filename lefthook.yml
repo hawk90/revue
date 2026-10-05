@@ -92,3 +92,17 @@ pre-push:
         fi
       fail_text: "Coverage check failed. Tests did not pass successfully."
       skip: [ -n "$CI" ]  # Skip in CI, only run locally
+
+# --- keep local deps in sync with the lockfiles after pull / checkout / rebase ---
+post-merge:
+  commands:
+    sync-deps:
+      run: scripts/sync-deps.sh
+post-checkout:
+  commands:
+    sync-deps:
+      run: scripts/sync-deps.sh --since {1}
+post-rewrite:
+  commands:
+    sync-deps:
+      run: scripts/sync-deps.sh
