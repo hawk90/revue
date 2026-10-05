@@ -170,3 +170,19 @@ fn test_empty_user_widths_fall_back_to_computed() {
     grid.set_column_widths(vec![]);
     assert_eq!(rendered_widths(grid, 50, 0), vec![48]);
 }
+
+#[test]
+fn test_user_widths_shorter_than_columns() {
+    // Widths are used as given; a column without one gets width 0
+    let mut grid = DataGrid::new().column(col("a")).column(col("b"));
+    grid.set_column_widths(vec![20]);
+    assert_eq!(rendered_widths(grid, 100, 0), vec![20, 0]);
+}
+
+#[test]
+fn test_zero_width_column_with_a_value() {
+    // The data row has a value in column "a"; a zero-width cell draws nothing
+    let mut grid = DataGrid::new().column(col("a")).column(col("b"));
+    grid.set_column_widths(vec![0, 10]);
+    assert_eq!(rendered_widths(grid, 100, 0), vec![0, 10]);
+}
