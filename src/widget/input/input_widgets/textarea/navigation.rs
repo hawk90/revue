@@ -31,7 +31,7 @@ impl TextArea {
         let pos = self.cursors.primary().pos;
         if pos.line > 0 {
             let new_line = pos.line - 1;
-            let new_col = pos.col.min(self.line_len(new_line));
+            let new_col = self.same_column_on(pos, new_line);
             self.set_primary_cursor(new_line, new_col);
         }
         self.update_selection();
@@ -42,7 +42,7 @@ impl TextArea {
         let pos = self.cursors.primary().pos;
         if pos.line + 1 < self.lines.len() {
             let new_line = pos.line + 1;
-            let new_col = pos.col.min(self.line_len(new_line));
+            let new_col = self.same_column_on(pos, new_line);
             self.set_primary_cursor(new_line, new_col);
         }
         self.update_selection();
@@ -141,7 +141,7 @@ impl TextArea {
     pub fn page_up(&mut self, page_size: usize) {
         let pos = self.cursors.primary().pos;
         let new_line = pos.line.saturating_sub(page_size);
-        let new_col = pos.col.min(self.line_len(new_line));
+        let new_col = self.same_column_on(pos, new_line);
         self.set_primary_cursor(new_line, new_col);
         self.update_selection();
     }
@@ -150,9 +150,18 @@ impl TextArea {
     pub fn page_down(&mut self, page_size: usize) {
         let pos = self.cursors.primary().pos;
         let new_line = (pos.line + page_size).min(self.lines.len().saturating_sub(1));
-        let new_col = pos.col.min(self.line_len(new_line));
+        let new_col = self.same_column_on(pos, new_line);
         self.set_primary_cursor(new_line, new_col);
         self.update_selection();
+    }
+
+    /// The char index on `line` under the screen column of `pos`, so moving
+    /// between lines keeps the cursor in place across wide glyphs (a char
+    /// index alone drifts one column per wide glyph before it).
+    fn same_column_on(&self, pos: super::cursor::CursorPos, line: usize) -> usize {
+        let from = self.lines.get(pos.line).map_or("", String::as_str);
+        let to = self.lines.get(line).map_or("", String::as_str);
+        char_at_col(to, col_of(from, pos.col))
     }
 
     /// Select all text
@@ -169,3 +178,4 @@ impl TextArea {
 }
 
 use super::TextArea;
+use crate::widget::traits::render_context::edit_line::{char_at_col, col_of};

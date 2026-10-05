@@ -256,6 +256,10 @@ impl TextArea {
     }
 
     /// Find literal string matches
+    ///
+    /// Works on chars, as `CursorPos` columns do: a byte offset from
+    /// `str::find` is not a column, and restarting the search one byte
+    /// later slices into a multibyte char.
     fn find_literal_matches(
         &self,
         line_idx: usize,
@@ -264,15 +268,11 @@ impl TextArea {
         options: &FindOptions,
         matches: &mut Vec<FindMatch>,
     ) {
-        let (search_line, search_query) = if options.case_sensitive {
-            (line.to_string(), query.to_string())
-        } else {
-            (line.to_lowercase(), query.to_lowercase())
-        };
+        let chars: Vec<char> = line.chars().collect();
+        let query: Vec<char> = query.chars().collect();
 
         let mut start = 0;
-        while let Some(pos) = search_line[start..].find(&search_query) {
-            let match_start = start + pos;
+        while let Some(match_start) = find_chars(&chars, &query, start, options.case_sensitive) {
             let match_end = match_start + query.len();
 
             // Check whole word if needed
@@ -329,8 +329,8 @@ impl TextArea {
         // This would need the visible area size, which we don't have here
         // For now, just update scroll.0 to show the cursor line
         let cursor_line = self.cursors.primary().pos.line;
-        if cursor_line < self.scroll.0 {
-            self.scroll.0 = cursor_line;
+        if cursor_line < self.scroll {
+            self.scroll = cursor_line;
         }
         // Note: Full implementation would need view height
     }
@@ -375,6 +375,27 @@ impl TextArea {
 }
 
 use super::TextArea;
+
+/// Char index of the first match of `query` in `line` at or after char index
+/// `from`, comparing chars case-insensitively unless `case_sensitive`.
+pub(super) fn find_chars(
+    line: &[char],
+    query: &[char],
+    from: usize,
+    case_sensitive: bool,
+) -> Option<usize> {
+    if query.is_empty() || query.len() > line.len() {
+        return None;
+    }
+    let same =
+        |a: char, b: char| a == b || (!case_sensitive && a.to_lowercase().eq(b.to_lowercase()));
+    (from..=line.len() - query.len()).find(|&i| {
+        line[i..i + query.len()]
+            .iter()
+            .zip(query)
+            .all(|(&a, &b)| same(a, b))
+    })
+}
 
 /// Build a compiled regex from the query, honoring the case-sensitivity and
 /// whole-word options. Returns `None` when the pattern fails to compile.

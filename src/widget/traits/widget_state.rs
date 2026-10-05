@@ -24,7 +24,7 @@ impl WidgetProps {
         Self::default()
     }
 
-    /// Build the [`WidgetMeta`] a widget reports to the DOM.
+    /// Build the [`WidgetMeta`](crate::dom::WidgetMeta) a widget reports to the DOM.
     ///
     /// This lives here rather than inside
     /// [`impl_view_meta!`](crate::impl_view_meta) so that the macro's arms

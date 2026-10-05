@@ -1,6 +1,6 @@
 //! Tests for sidebar layout widget helper functions
 
-use crate::widget::layout::sidebar::{sidebar, sidebar_item, sidebar_section, sidebar_section_titled};
+use revue::widget::{sidebar, sidebar_item, sidebar_section, sidebar_section_titled};
 
 // =========================================================================
 // sidebar helper tests
