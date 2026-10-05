@@ -12,7 +12,7 @@ on:
 jobs:
   publish-macros:
     name: Publish revue-macros to crates.io
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -38,7 +38,7 @@ jobs:
 
   publish:
     name: Publish revue to crates.io
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: publish-macros
     steps:
       - uses: actions/checkout@v7

@@ -15,7 +15,7 @@ env:
 jobs:
   outdated:
     name: Check Outdated Deps
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       has_outdated: ${{ steps.check.outputs.has_outdated }}
     steps:
@@ -40,7 +40,7 @@ jobs:
 
   semver:
     name: API Stability
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
@@ -66,7 +66,7 @@ jobs:
 
   dep-stats:
     name: Dependency Stats
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -80,7 +80,7 @@ jobs:
 
   binary-size:
     name: Binary Size
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -96,7 +96,7 @@ jobs:
 
   docs-coverage:
     name: Doc Coverage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@nightly
@@ -113,7 +113,7 @@ jobs:
 
   benchmark:
     name: Benchmark
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -127,7 +127,7 @@ jobs:
     name: Create Outdated Issue
     needs: outdated
     if: needs.outdated.outputs.has_outdated == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: Create issue
