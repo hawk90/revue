@@ -166,7 +166,6 @@ fn test_drop_zone_border_color() {
 }
 
 #[test]
-#[ignore = "BUG: DropZone::hover_color() is stored but never used when rendering"]
 fn test_drop_zone_hover_color() {
     let render_states = |zone: &mut DropZone| {
         let mut out = Vec::new();
@@ -178,8 +177,23 @@ fn test_drop_zone_hover_color() {
         out
     };
     let mut plain = DropZone::new("Test");
-    let mut custom = DropZone::new("Test").hover_color(Color::rgb(0, 255, 0));
-    assert_ne!(render_states(&mut plain), render_states(&mut custom));
+    let green = Color::rgb(0, 255, 0);
+    let mut custom = DropZone::new("Test").hover_color(green);
+    let plain_states = render_states(&mut plain);
+    let custom_states = render_states(&mut custom);
+    assert_ne!(plain_states, custom_states);
+    // At rest and on a rejected drag nothing changes
+    assert_eq!(plain_states[0], custom_states[0]);
+    assert_eq!(plain_states[2], custom_states[2]);
+    // An acceptable drag draws the whole border in the hover color
+    assert!(custom_states[1].iter().all(|c| *c == Some(green)));
+
+    // The minimal style's indicator follows it too
+    let mut minimal = DropZone::new("Test")
+        .style(DropZoneStyle::Minimal)
+        .hover_color(green);
+    minimal.set_hovered(true, true);
+    assert_eq!(fg(&render(&minimal, 10, 3), 0, 0), Some(green));
 }
 
 #[test]
