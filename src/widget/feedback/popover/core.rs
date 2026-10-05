@@ -517,9 +517,15 @@ impl View for Popover {
             0
         };
 
+        // The last row is the bottom border, if there is one.
+        let content_end_y = if self.popover_style.border_chars().is_some() {
+            popup_y + popup_h - 1
+        } else {
+            popup_y + popup_h
+        };
         for (i, line) in lines.iter().enumerate() {
             let y = content_start_y + text_y_offset + i as u16;
-            if y >= area.height || y >= popup_y + popup_h - 1 {
+            if y >= area.height || y >= content_end_y {
                 break;
             }
 

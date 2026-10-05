@@ -4,6 +4,12 @@
 
 use super::types::{EditOp, IndentStyle};
 
+/// Byte offset of char index `col` in `line` (its end when `col` is past
+/// it). Cursor columns are char indices; `String` edits take bytes.
+pub(super) fn byte_at(line: &str, col: usize) -> usize {
+    crate::utils::text::char_to_byte_index(line, col)
+}
+
 impl super::CodeEditor {
     // =========================================================================
     // Editing
@@ -39,8 +45,8 @@ impl super::CodeEditor {
         }
 
         if let Some(line) = self.lines.get_mut(self.cursor.0) {
-            let col = self.cursor.1.min(line.len());
-            line.insert(col, ch);
+            let col = self.cursor.1.min(line.chars().count());
+            line.insert(byte_at(line, col), ch);
             self.push_undo(EditOp::Insert {
                 line: self.cursor.0,
                 col,
@@ -61,8 +67,8 @@ impl super::CodeEditor {
             };
             if let Some(close_ch) = close {
                 if let Some(line) = self.lines.get_mut(self.cursor.0) {
-                    let col = self.cursor.1.min(line.len());
-                    line.insert(col, close_ch);
+                    let at = byte_at(line, self.cursor.1);
+                    line.insert(at, close_ch);
                 }
             }
         }
@@ -82,8 +88,8 @@ impl super::CodeEditor {
             if ch == '\n' {
                 self.insert_newline();
             } else if let Some(line) = self.lines.get_mut(self.cursor.0) {
-                let col = self.cursor.1.min(line.len());
-                line.insert(col, ch);
+                let col = self.cursor.1.min(line.chars().count());
+                line.insert(byte_at(line, col), ch);
                 self.cursor.1 = col + 1;
             }
         }
@@ -128,14 +134,14 @@ impl super::CodeEditor {
 
         // Split line
         if let Some(current) = self.lines.get_mut(line_idx) {
-            let rest: String = current.drain(col.min(current.len())..).collect();
+            let rest: String = current.drain(byte_at(current, col)..).collect();
             let new_line = format!("{}{}", indent, rest);
             self.lines.insert(line_idx + 1, new_line);
             self.push_undo(EditOp::SplitLine {
                 line: line_idx,
                 col,
             });
-            self.cursor = (line_idx + 1, indent.len());
+            self.cursor = (line_idx + 1, indent.chars().count());
         }
 
         self.ensure_cursor_visible();
@@ -153,14 +159,14 @@ impl super::CodeEditor {
         };
 
         if let Some(line) = self.lines.get_mut(self.cursor.0) {
-            let col = self.cursor.1.min(line.len());
-            line.insert_str(col, &indent);
+            let col = self.cursor.1.min(line.chars().count());
+            line.insert_str(byte_at(line, col), &indent);
             self.push_undo(EditOp::Insert {
                 line: self.cursor.0,
                 col,
                 text: indent.clone(),
             });
-            self.cursor.1 = col + indent.len();
+            self.cursor.1 = col + indent.chars().count();
         }
     }
 
@@ -178,8 +184,8 @@ impl super::CodeEditor {
         let (line_idx, col) = self.cursor;
         if col > 0 {
             if let Some(line) = self.lines.get_mut(line_idx) {
-                if col <= line.len() {
-                    let deleted = line.remove(col - 1);
+                if col <= line.chars().count() {
+                    let deleted = line.remove(byte_at(line, col - 1));
                     self.push_undo(EditOp::Delete {
                         line: line_idx,
                         col: col - 1,
@@ -191,7 +197,7 @@ impl super::CodeEditor {
         } else if line_idx > 0 {
             // Merge with previous line
             let current = self.lines.remove(line_idx);
-            let prev_len = self.lines[line_idx - 1].len();
+            let prev_len = self.lines[line_idx - 1].chars().count();
             self.lines[line_idx - 1].push_str(&current);
             self.push_undo(EditOp::MergeLine {
                 line: line_idx - 1,
@@ -216,8 +222,8 @@ impl super::CodeEditor {
 
         let (line_idx, col) = self.cursor;
         if let Some(line) = self.lines.get_mut(line_idx) {
-            if col < line.len() {
-                let deleted = line.remove(col);
+            if col < line.chars().count() {
+                let deleted = line.remove(byte_at(line, col));
                 self.push_undo(EditOp::Delete {
                     line: line_idx,
                     col,
@@ -267,16 +273,17 @@ impl super::CodeEditor {
             match &op {
                 EditOp::Insert { line, col, text } => {
                     if let Some(l) = self.lines.get_mut(*line) {
-                        let end = (*col + text.len()).min(l.len());
-                        l.drain(*col..end);
+                        let range = byte_at(l, *col)..byte_at(l, *col + text.chars().count());
+                        l.drain(range);
                     }
                     self.cursor = (*line, *col);
                 }
                 EditOp::Delete { line, col, text } => {
                     if let Some(l) = self.lines.get_mut(*line) {
-                        l.insert_str(*col, text);
+                        let at = byte_at(l, *col);
+                        l.insert_str(at, text);
                     }
-                    self.cursor = (*line, *col + text.len());
+                    self.cursor = (*line, *col + text.chars().count());
                 }
                 EditOp::SplitLine { line, col } => {
                     if *line + 1 < self.lines.len() {
@@ -289,7 +296,8 @@ impl super::CodeEditor {
                 }
                 EditOp::MergeLine { line, col } => {
                     if let Some(l) = self.lines.get_mut(*line) {
-                        let rest: String = l.drain(*col..).collect();
+                        let at = byte_at(l, *col);
+                        let rest: String = l.drain(at..).collect();
                         self.lines.insert(*line + 1, rest);
                     }
                     self.cursor = (*line + 1, 0);
@@ -306,20 +314,22 @@ impl super::CodeEditor {
             match &op {
                 EditOp::Insert { line, col, text } => {
                     if let Some(l) = self.lines.get_mut(*line) {
-                        l.insert_str(*col, text);
+                        let at = byte_at(l, *col);
+                        l.insert_str(at, text);
                     }
-                    self.cursor = (*line, *col + text.len());
+                    self.cursor = (*line, *col + text.chars().count());
                 }
                 EditOp::Delete { line, col, text } => {
                     if let Some(l) = self.lines.get_mut(*line) {
-                        let end = (*col + text.len()).min(l.len());
-                        l.drain(*col..end);
+                        let range = byte_at(l, *col)..byte_at(l, *col + text.chars().count());
+                        l.drain(range);
                     }
                     self.cursor = (*line, *col);
                 }
                 EditOp::SplitLine { line, col } => {
                     if let Some(l) = self.lines.get_mut(*line) {
-                        let rest: String = l.drain(*col..).collect();
+                        let at = byte_at(l, *col);
+                        let rest: String = l.drain(at..).collect();
                         self.lines.insert(*line + 1, rest);
                     }
                     self.cursor = (*line + 1, 0);

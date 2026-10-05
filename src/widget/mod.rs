@@ -420,8 +420,8 @@ pub use feedback::{
     ContextMenu, ErrorBoundary, KeyHint, Menu, MenuBar, MenuItem, Modal, ModalButton,
     ModalButtonStyle, Notification, NotificationCenter, NotificationLevel, NotificationPosition,
     Popover, PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger, SectionAlign,
-    StackDirection, StatusBar, StatusSection, Toast, ToastEntry, ToastLevel, ToastPosition,
-    ToastPriority, ToastQueue, Tooltip, TooltipArrow, TooltipPosition, TooltipStyle,
+    StackDirection, StatusBar, StatusBarPosition, StatusSection, Toast, ToastEntry, ToastLevel,
+    ToastPosition, ToastPriority, ToastQueue, Tooltip, TooltipArrow, TooltipPosition, TooltipStyle,
 };
 
 // Developer widgets (re-exported from developer module)
@@ -430,11 +430,11 @@ pub use developer::TreeSitterHighlighter;
 pub use developer::{
     ai_response, ai_stream, code_editor, http_client, http_delete, http_get, http_patch, http_post,
     http_put, presentation, slide, terminal, vim_state, AiStream, BracketMatch, BracketPair,
-    CodeEditor, ContentType, CursorStyle, EditorConfig, HttpBackend, HttpClient, HttpMethod,
-    HttpRequest, HttpResponse, IndentStyle, MockHttpBackend, Presentation, RequestBuilder,
-    RequestState, ResponseView, Slide, SlideAlign, StreamCursor, StreamStatus, TermCell, TermLine,
-    Terminal, TerminalAction, Transition, TypingStyle, VimAction, VimCommandResult, VimMode,
-    VimMotion, VimState,
+    CodeEditor, ContentType, CursorStyle, EditorConfig, HttpBackend, HttpClient, HttpColors,
+    HttpMethod, HttpRequest, HttpResponse, IndentStyle, MockHttpBackend, Presentation,
+    RequestBuilder, RequestState, ResponseView, Slide, SlideAlign, StreamCursor, StreamStatus,
+    TermCell, TermLine, Terminal, TerminalAction, Transition, TypingStyle, VimAction,
+    VimCommandResult, VimMode, VimMotion, VimState,
 };
 #[cfg(feature = "diff")]
 pub use developer::{diff, diff_viewer, ChangeType, DiffColors, DiffLine, DiffMode, DiffViewer};

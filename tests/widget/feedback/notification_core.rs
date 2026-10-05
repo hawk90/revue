@@ -1,75 +1,83 @@
 //! NotificationCenter tests
 //!
-//! Tests for NotificationCenter extracted from source files.
+//! The center's fields are private, so its state is read through count(),
+//! handle_key() and what it renders. A selected notification draws its
+//! border in white instead of its level color.
 
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::widget::notification_center;
-use revue::widget::{Notification, NotificationLevel, NotificationPosition};
+use revue::style::Color;
+use revue::widget::{
+    notification_center, Notification, NotificationCenter, NotificationPosition, RenderContext,
+    View,
+};
+
+fn render(center: &NotificationCenter, width: u16, height: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, height));
+    center.render(&mut ctx);
+    buffer
+}
+
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).map(|c| c.symbol).unwrap_or(' '))
+        .filter(|&c| c != '\0')
+        .collect()
+}
+
+/// (x, y) of every notification's top-left corner, top to bottom.
+fn corners(buffer: &Buffer) -> Vec<(u16, u16)> {
+    let mut found = Vec::new();
+    for y in 0..buffer.height() {
+        for x in 0..buffer.width() {
+            if buffer.get(x, y).map(|c| c.symbol) == Some('╭') {
+                found.push((x, y));
+            }
+        }
+    }
+    found
+}
+
+/// Width of the notification whose corner is at (x, y).
+fn box_width(buffer: &Buffer, (x, y): (u16, u16)) -> u16 {
+    (x..buffer.width())
+        .find(|&cx| buffer.get(cx, y).map(|c| c.symbol) == Some('╮'))
+        .map(|right| right - x + 1)
+        .unwrap()
+}
+
+/// Messages of the notifications drawn with a white (selected) border.
+/// Expects a top-left center without icons or titles.
+fn selected_messages(center: &NotificationCenter) -> Vec<String> {
+    let buffer = render(center, 50, 30);
+    corners(&buffer)
+        .into_iter()
+        .filter(|&(x, y)| buffer.get(x, y).unwrap().fg == Some(Color::WHITE))
+        .map(|(_, y)| message_of(&row(&buffer, y + 1)))
+        .collect()
+}
+
+/// A focused top-left center holding info notifications "1", "2", ...
+fn center_with(n: usize) -> NotificationCenter {
+    let mut c = notification_center()
+        .position(NotificationPosition::TopLeft)
+        .show_icons(false)
+        .focused(true);
+    for i in 1..=n {
+        c.info(i.to_string());
+    }
+    c
+}
+
+/// The message text as drawn: everything between the side borders.
+fn message_of(text: &str) -> String {
+    text.trim_matches(|c| c == '│' || c == ' ').to_string()
+}
 
 // =========================================================================
-// Notification basic tests
-// =========================================================================
-
-#[test]
-fn test_notification_new() {
-    let n = Notification::new("Test message");
-    assert_eq!(n.message, "Test message");
-    assert!(matches!(n.level, NotificationLevel::Info));
-}
-
-#[test]
-fn test_notification_levels() {
-    let info = Notification::info("Info");
-    let success = Notification::success("Success");
-    let warning = Notification::warning("Warning");
-    let error = Notification::error("Error");
-
-    assert!(matches!(info.level, NotificationLevel::Info));
-    assert!(matches!(success.level, NotificationLevel::Success));
-    assert!(matches!(warning.level, NotificationLevel::Warning));
-    assert!(matches!(error.level, NotificationLevel::Error));
-}
-
-#[test]
-fn test_notification_builder() {
-    let n = Notification::new("Test")
-        .title("Title")
-        .level(NotificationLevel::Warning)
-        .duration(50)
-        .dismissible(false)
-        .progress(0.5)
-        .action("Retry");
-
-    assert_eq!(n.title, Some("Title".to_string()));
-    assert!(matches!(n.level, NotificationLevel::Warning));
-    assert_eq!(n.duration, 50);
-    assert!(!n.dismissible);
-    assert_eq!(n.progress, Some(0.5));
-    assert_eq!(n.action, Some("Retry".to_string()));
-}
-
-#[test]
-fn test_notification_expired() {
-    let mut n = Notification::new("Test").duration(10);
-    assert!(!n.is_expired());
-
-    n.tick = 10;
-    assert!(n.is_expired());
-}
-
-#[test]
-fn test_notification_remaining() {
-    let mut n = Notification::new("Test").duration(100);
-    assert_eq!(n.remaining(), 1.0);
-
-    n.tick = 50;
-    assert_eq!(n.remaining(), 0.5);
-}
-
-// =========================================================================
-// NotificationCenter basic tests
+// Contents
 // =========================================================================
 
 #[test]
@@ -77,552 +85,326 @@ fn test_center_new() {
     let c = notification_center();
     assert!(c.is_empty());
     assert_eq!(c.count(), 0);
+    assert!(corners(&render(&c, 50, 20)).is_empty());
+
+    let d = NotificationCenter::default();
+    assert!(d.is_empty());
 }
 
 #[test]
-fn test_center_push() {
+fn test_center_push_and_shortcuts() {
     let mut c = notification_center();
-    c.push(Notification::info("Test"));
-    assert_eq!(c.count(), 1);
-}
-
-#[test]
-fn test_center_shortcuts() {
-    let mut c = notification_center();
+    c.push(Notification::info("Pushed"));
     c.info("Info");
     c.success("Success");
     c.warning("Warning");
     c.error("Error");
-    assert_eq!(c.count(), 4);
+    assert_eq!(c.count(), 5);
+    assert!(!c.is_empty());
 }
 
 #[test]
-fn test_center_dismiss() {
+fn test_center_dismiss_by_id() {
     let mut c = notification_center();
-    c.info("Test");
-    let id = c.notifications[0].id;
-    c.dismiss(id);
-    assert!(c.is_empty());
+    let keep = Notification::info("keep");
+    let drop = Notification::info("drop");
+    let drop_id = drop.id;
+    c.push(keep);
+    c.push(drop);
+
+    c.dismiss(drop_id);
+    assert_eq!(c.count(), 1);
+    c.dismiss(drop_id);
+    assert_eq!(c.count(), 1);
 }
 
 #[test]
 fn test_center_clear() {
-    let mut c = notification_center();
-    c.info("1");
-    c.info("2");
-    c.info("3");
+    let mut c = center_with(3);
+    c.select_next();
     c.clear();
     assert!(c.is_empty());
+    // Nothing is left to select.
+    c.info("new");
+    assert!(selected_messages(&c).is_empty());
 }
 
 #[test]
-fn test_center_tick() {
+fn test_center_tick_expires_notifications() {
     let mut c = notification_center();
-    c.push(Notification::info("Test").duration(2));
-
-    c.tick();
-    assert_eq!(c.count(), 1);
-
     c.tick();
     assert!(c.is_empty());
+
+    c.push(Notification::info("short").duration(2));
+    c.push(Notification::info("forever").duration(0));
+    c.tick();
+    assert_eq!(c.count(), 2);
+    c.tick();
+    assert_eq!(c.count(), 1);
+    for _ in 0..100 {
+        c.tick();
+    }
+    assert_eq!(c.count(), 1);
 }
+
+// =========================================================================
+// Selection
+// =========================================================================
 
 #[test]
 fn test_center_selection() {
-    let mut c = notification_center();
-    c.info("1");
-    c.info("2");
-    c.info("3");
-
+    let mut c = center_with(3);
+    assert!(selected_messages(&c).is_empty());
     c.select_next();
-    assert_eq!(c.selected, Some(0));
-
+    assert_eq!(selected_messages(&c), ["1"]);
     c.select_next();
-    assert_eq!(c.selected, Some(1));
-
+    assert_eq!(selected_messages(&c), ["2"]);
     c.select_prev();
-    assert_eq!(c.selected, Some(0));
+    assert_eq!(selected_messages(&c), ["1"]);
 }
 
 #[test]
-fn test_center_render() {
-    let mut buffer = Buffer::new(50, 20);
-    let area = Rect::new(0, 0, 50, 20);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let mut c = notification_center();
-    c.info("Test notification");
-    c.render(&mut ctx);
-    // Smoke test
-}
-
-#[test]
-fn test_level_icon() {
-    assert_eq!(NotificationLevel::Info.icon(), 'ℹ');
-    assert_eq!(NotificationLevel::Success.icon(), '✓');
-    assert_eq!(NotificationLevel::Warning.icon(), '⚠');
-    assert_eq!(NotificationLevel::Error.icon(), '✗');
-}
-
-#[test]
-fn test_center_positions() {
-    let positions = [
-        NotificationPosition::TopRight,
-        NotificationPosition::TopLeft,
-        NotificationPosition::TopCenter,
-        NotificationPosition::BottomRight,
-        NotificationPosition::BottomLeft,
-        NotificationPosition::BottomCenter,
-    ];
-
-    for pos in positions {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-        let mut c = notification_center().position(pos);
-        c.info("Test");
-        c.render(&mut ctx);
-    }
-}
-
-#[test]
-fn test_helper() {
-    let c = notification_center().max_visible(3);
-    assert_eq!(c.max_visible, 3);
-}
-
-// =========================================================================
-// NotificationCenter builder method tests
-// =========================================================================
-
-#[test]
-fn test_notification_center_position_builder() {
-    let center = notification_center().position(NotificationPosition::TopLeft);
-    assert_eq!(center.position, NotificationPosition::TopLeft);
-}
-
-#[test]
-fn test_notification_center_max_visible_builder() {
-    let center = notification_center().max_visible(10);
-    assert_eq!(center.max_visible, 10);
-}
-
-#[test]
-fn test_notification_center_max_visible_minimum() {
-    let center = notification_center().max_visible(0);
-    assert_eq!(center.max_visible, 1); // Minimum is 1
-}
-
-#[test]
-fn test_notification_center_width_builder() {
-    let center = notification_center().width(60);
-    assert_eq!(center.width, 60);
-}
-
-#[test]
-fn test_notification_center_width_minimum() {
-    let center = notification_center().width(10);
-    assert_eq!(center.width, 20); // Minimum is 20
-}
-
-#[test]
-fn test_notification_center_show_icons_builder() {
-    let center = notification_center().show_icons(false);
-    assert!(!center.show_icons);
-}
-
-#[test]
-fn test_notification_center_show_timer_builder() {
-    let center = notification_center().show_timer(false);
-    assert!(!center.show_timer);
-}
-
-#[test]
-fn test_notification_center_spacing_builder() {
-    let center = notification_center().spacing(3);
-    assert_eq!(center.spacing, 3);
-}
-
-#[test]
-fn test_notification_center_focused_builder() {
-    let center = notification_center().focused(true);
-    assert!(center.focused);
-}
-
-// =========================================================================
-// NotificationCenter builder chain tests
-// =========================================================================
-
-#[test]
-fn test_notification_center_builder_chain() {
-    let center = notification_center()
-        .position(NotificationPosition::BottomLeft)
-        .max_visible(7)
-        .width(50)
-        .show_icons(true)
-        .show_timer(false)
-        .spacing(2)
-        .focused(true);
-
-    assert_eq!(center.position, NotificationPosition::BottomLeft);
-    assert_eq!(center.max_visible, 7);
-    assert_eq!(center.width, 50);
-    assert!(center.show_icons);
-    assert!(!center.show_timer);
-    assert_eq!(center.spacing, 2);
-    assert!(center.focused);
-}
-
-// =========================================================================
-// NotificationCenter edge case tests
-// =========================================================================
-
-#[test]
-fn test_center_dismiss_selected_empty() {
-    let mut c = notification_center();
-    c.dismiss_selected(); // Should not panic
-    assert_eq!(c.count(), 0);
-}
-
-#[test]
-fn test_center_dismiss_selected_no_selection() {
-    let mut c = notification_center();
-    c.info("Test");
-    c.dismiss_selected(); // Should not panic (no selection)
-    assert_eq!(c.count(), 1);
-}
-
-#[test]
-fn test_center_dismiss_selected_out_of_bounds() {
-    let mut c = notification_center();
-    c.info("Test");
-    c.selected = Some(5); // Out of bounds
-    c.dismiss_selected(); // Should not panic
-    assert_eq!(c.count(), 1);
-}
-
-#[test]
-fn test_center_tick_empty() {
-    let mut c = notification_center();
-    c.tick(); // Should not panic
-    assert!(c.is_empty());
-}
-
-#[test]
-fn test_center_tick_updates_tick_counter() {
-    let mut c = notification_center();
-    assert_eq!(c.tick_counter, 0);
-    c.tick();
-    assert_eq!(c.tick_counter, 1);
-    c.tick();
-    assert_eq!(c.tick_counter, 2);
-}
-
-#[test]
-fn test_center_tick_updates_notification_ticks() {
-    let mut c = notification_center();
-    c.push(Notification::new("Test").duration(10));
-    c.tick();
-    assert_eq!(c.notifications[0].tick, 1);
-    c.tick();
-    assert_eq!(c.notifications[0].tick, 2);
-}
-
-#[test]
-fn test_center_select_next_empty() {
-    let mut c = notification_center();
-    c.select_next(); // Should not panic
-    assert_eq!(c.selected, None);
-}
-
-#[test]
-fn test_center_select_prev_empty() {
-    let mut c = notification_center();
-    c.select_prev(); // Should not panic
-    assert_eq!(c.selected, None);
-}
-
-#[test]
-fn test_center_select_next_wraps() {
-    let mut c = notification_center();
-    c.info("1");
-    c.info("2");
-    c.selected = Some(1);
-    c.select_next();
-    assert_eq!(c.selected, Some(0)); // Wraps to start
-}
-
-#[test]
-fn test_center_select_prev_wraps() {
-    let mut c = notification_center();
-    c.info("1");
-    c.info("2");
-    c.selected = Some(0);
+fn test_center_selection_wraps() {
+    let mut c = center_with(2);
     c.select_prev();
-    assert_eq!(c.selected, Some(1)); // Wraps to end
-}
-
-#[test]
-fn test_center_handle_key_not_focused() {
-    let mut c = notification_center();
-    c.info("Test");
-    let result = c.handle_key(&Key::Down);
-    assert!(!result); // Should not handle when not focused
-}
-
-#[test]
-fn test_center_handle_key_empty() {
-    let mut c = notification_center().focused(true);
-    let result = c.handle_key(&Key::Down);
-    assert!(!result); // Should not handle when empty
-}
-
-#[test]
-fn test_center_handle_key_up() {
-    let mut c = notification_center().focused(true);
-    c.info("1");
-    c.info("2");
-    let result = c.handle_key(&Key::Up);
-    assert!(result);
-    assert_eq!(c.selected, Some(1));
-}
-
-#[test]
-fn test_center_handle_key_down() {
-    let mut c = notification_center().focused(true);
-    c.info("1");
-    c.info("2");
-    let result = c.handle_key(&Key::Down);
-    assert!(result);
-    assert_eq!(c.selected, Some(0));
-}
-
-#[test]
-fn test_center_handle_key_vim_keys() {
-    let mut c = notification_center().focused(true);
-    c.info("1");
-    c.info("2");
-    c.handle_key(&Key::Char('k'));
-    assert_eq!(c.selected, Some(1));
-    c.handle_key(&Key::Char('j'));
-    assert_eq!(c.selected, Some(0));
-}
-
-#[test]
-fn test_center_handle_key_dismiss() {
-    let mut c = notification_center().focused(true);
-    c.info("Test");
+    assert_eq!(selected_messages(&c), ["2"]);
     c.select_next();
-    let result = c.handle_key(&Key::Char('d'));
-    assert!(result);
-    assert!(c.is_empty());
+    assert_eq!(selected_messages(&c), ["1"]);
+    c.select_prev();
+    assert_eq!(selected_messages(&c), ["2"]);
 }
 
 #[test]
-fn test_center_handle_key_delete() {
-    let mut c = notification_center().focused(true);
-    c.info("Test");
+fn test_center_select_on_empty_does_nothing() {
+    let mut c = notification_center();
     c.select_next();
-    let result = c.handle_key(&Key::Delete);
-    assert!(result);
+    c.select_prev();
+    c.dismiss_selected();
     assert!(c.is_empty());
 }
 
 #[test]
-fn test_center_handle_key_clear() {
-    let mut c = notification_center().focused(true);
-    c.info("1");
-    c.info("2");
-    c.info("3");
-    let result = c.handle_key(&Key::Char('c'));
-    assert!(result);
-    assert!(c.is_empty());
-    assert_eq!(c.selected, None);
+fn test_center_dismiss_selected() {
+    let mut c = center_with(2);
+    c.dismiss_selected(); // nothing selected
+    assert_eq!(c.count(), 2);
+
+    c.select_next(); // "1"
+    c.dismiss_selected();
+    assert_eq!(c.count(), 1);
+    let buffer = render(&c, 50, 20);
+    assert_eq!(message_of(&row(&buffer, 1)), "2");
 }
 
 #[test]
-fn test_center_handle_key_unknown() {
-    let mut c = notification_center().focused(true);
-    c.info("Test");
-    let result = c.handle_key(&Key::Char('x'));
-    assert!(!result);
-}
+fn test_center_dismiss_moves_selection_to_last() {
+    let mut c = center_with(3);
+    c.select_prev(); // "3"
+    c.dismiss_selected();
+    assert_eq!(selected_messages(&c), ["2"]);
 
-// =========================================================================
-// NotificationCenter Default trait tests
-// =========================================================================
-
-#[test]
-fn test_notification_center_default() {
-    let center = notification_center();
-    assert!(center.is_empty());
-    assert_eq!(center.count(), 0);
-    assert_eq!(center.max_visible, 5);
-    assert_eq!(center.position, NotificationPosition::TopRight);
-    assert_eq!(center.width, 40);
-    assert!(center.show_icons);
-    assert!(center.show_timer);
-    assert_eq!(center.spacing, 1);
-    assert_eq!(center.tick_counter, 0);
-    assert_eq!(center.selected, None);
-    assert!(!center.focused);
-}
-
-#[test]
-fn test_notification_center_default_vs_new() {
-    let default_center = notification_center();
-    let new_center = notification_center();
-
-    assert_eq!(default_center.max_visible, new_center.max_visible);
-    assert_eq!(default_center.position, new_center.position);
-    assert_eq!(default_center.width, new_center.width);
-}
-
-// =========================================================================
-// NotificationCenter render tests
-// =========================================================================
-
-#[test]
-fn test_center_render_with_title() {
-    let mut buffer = Buffer::new(50, 20);
-    let area = Rect::new(0, 0, 50, 20);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let mut c = notification_center();
-    c.push(Notification::new("Test message").title("Title"));
-    c.render(&mut ctx);
-    // Smoke test - should render without panic
-}
-
-#[test]
-fn test_center_render_with_progress() {
-    let mut buffer = Buffer::new(50, 20);
-    let area = Rect::new(0, 0, 50, 20);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let mut c = notification_center();
-    c.push(Notification::new("Test message").progress(0.5));
-    c.render(&mut ctx);
-}
-
-#[test]
-fn test_center_render_with_action() {
-    let mut buffer = Buffer::new(50, 20);
-    let area = Rect::new(0, 0, 50, 20);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let mut c = notification_center();
-    c.push(Notification::new("Test message").action("Retry"));
-    c.render(&mut ctx);
-}
-
-#[test]
-fn test_center_render_without_icons() {
-    let mut buffer = Buffer::new(50, 20);
-    let area = Rect::new(0, 0, 50, 20);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let mut c = notification_center().show_icons(false);
-    c.info("Test");
-    c.render(&mut ctx);
-}
-
-#[test]
-fn test_center_render_without_timer() {
-    let mut buffer = Buffer::new(50, 20);
-    let area = Rect::new(0, 0, 50, 20);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let mut c = notification_center().show_timer(false);
-    c.info("Test");
-    c.render(&mut ctx);
-}
-
-#[test]
-fn test_center_render_max_visible() {
-    let mut buffer = Buffer::new(50, 20);
-    let area = Rect::new(0, 0, 50, 20);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let mut c = notification_center().max_visible(2);
-    c.info("1");
-    c.info("2");
-    c.info("3");
-    c.render(&mut ctx);
-    // Only 2 should be visible
-}
-
-#[test]
-fn test_center_render_selected() {
-    let mut buffer = Buffer::new(50, 20);
-    let area = Rect::new(0, 0, 50, 20);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let mut c = notification_center();
-    c.info("1");
-    c.info("2");
-    c.selected = Some(0);
-    c.render(&mut ctx);
-    // First notification should render as selected
-}
-
-// =========================================================================
-// NotificationCenter dismissal tests
-// =========================================================================
-
-#[test]
-fn test_center_dismiss_adjusts_selection() {
-    let mut c = notification_center();
-    c.info("1");
-    c.info("2");
-    c.info("3");
-    c.selected = Some(2);
-
-    // Dismiss the selected one
-    let id = c.notifications[2].id;
-    c.dismiss(id);
-
-    // Selection should be adjusted
-    assert_eq!(c.selected, Some(1));
-}
-
-#[test]
-fn test_center_dismiss_clears_selection_if_empty() {
-    let mut c = notification_center();
-    c.info("Test");
-    c.selected = Some(0);
-
-    let id = c.notifications[0].id;
-    c.dismiss(id);
-
-    assert!(c.is_empty());
-    assert_eq!(c.selected, None);
+    let mut single = center_with(1);
+    single.select_next();
+    single.dismiss_selected();
+    assert!(single.is_empty());
+    single.info("new");
+    assert!(selected_messages(&single).is_empty());
 }
 
 #[test]
 fn test_center_tick_adjusts_selection() {
-    let mut c = notification_center();
-    c.push(Notification::new("Test").duration(1));
-    c.selected = Some(0);
+    let mut c = notification_center()
+        .position(NotificationPosition::TopLeft)
+        .show_icons(false);
+    c.push(Notification::info("stays").duration(0));
+    c.push(Notification::info("expires").duration(1));
+    c.select_prev(); // "expires"
+    c.tick();
+    assert_eq!(c.count(), 1);
+    assert_eq!(selected_messages(&c), ["stays"]);
+}
 
-    c.tick(); // Notification expires
+// =========================================================================
+// Keys
+// =========================================================================
 
-    assert!(c.is_empty());
-    assert_eq!(c.selected, None);
+#[test]
+fn test_center_handle_key_needs_focus_and_content() {
+    let mut unfocused = notification_center();
+    unfocused.info("Test");
+    assert!(!unfocused.handle_key(&Key::Down));
+
+    let mut empty = notification_center().focused(true);
+    assert!(!empty.handle_key(&Key::Down));
+
+    let mut c = center_with(1);
+    assert!(!c.handle_key(&Key::Char('x')));
+    assert!(c.handle_key(&Key::Down));
 }
 
 #[test]
-fn test_center_push_sets_created_at() {
-    let mut c = notification_center();
-    assert_eq!(c.tick_counter, 0);
+fn test_center_handle_key_navigation() {
+    let mut c = center_with(2);
+    assert!(c.handle_key(&Key::Up));
+    assert_eq!(selected_messages(&c), ["2"]);
+    assert!(c.handle_key(&Key::Down));
+    assert_eq!(selected_messages(&c), ["1"]);
+    assert!(c.handle_key(&Key::Char('k')));
+    assert_eq!(selected_messages(&c), ["2"]);
+    assert!(c.handle_key(&Key::Char('j')));
+    assert_eq!(selected_messages(&c), ["1"]);
+}
 
-    c.info("Test 1");
-    assert_eq!(c.notifications[0].created_at, 0);
+#[test]
+fn test_center_handle_key_dismiss() {
+    for key in [Key::Char('d'), Key::Delete] {
+        let mut c = center_with(1);
+        c.select_next();
+        assert!(c.handle_key(&key));
+        assert!(c.is_empty(), "{key:?}");
+    }
+}
+
+#[test]
+fn test_center_handle_key_clear() {
+    let mut c = center_with(3);
+    assert!(c.handle_key(&Key::Char('c')));
+    assert!(c.is_empty());
+}
+
+// =========================================================================
+// Builders, observed through rendering
+// =========================================================================
+
+#[test]
+fn test_center_positions() {
+    // 40 wide, 3 tall (message line plus borders).
+    let cases = [
+        (NotificationPosition::TopRight, (40, 0)),
+        (NotificationPosition::TopLeft, (0, 0)),
+        (NotificationPosition::TopCenter, (20, 0)),
+        (NotificationPosition::BottomRight, (40, 21)),
+        (NotificationPosition::BottomLeft, (0, 21)),
+        (NotificationPosition::BottomCenter, (20, 21)),
+    ];
+    for (position, corner) in cases {
+        let mut c = notification_center().position(position);
+        c.info("Test");
+        assert_eq!(corners(&render(&c, 80, 24)), [corner], "{position:?}");
+    }
+}
+
+#[test]
+fn test_center_newest_first_and_spacing() {
+    let mut c = center_with(2).spacing(3);
+    let buffer = render(&c, 50, 20);
+    assert_eq!(corners(&buffer), [(0, 0), (0, 6)]);
+    assert_eq!(message_of(&row(&buffer, 1)), "2");
+    assert_eq!(message_of(&row(&buffer, 7)), "1");
+
+    c.clear();
+    c.info("only");
+    assert_eq!(corners(&render(&c, 50, 20)), [(0, 0)]);
+}
+
+#[test]
+fn test_center_bottom_stacks_upward() {
+    let mut c = notification_center()
+        .position(NotificationPosition::BottomLeft)
+        .show_icons(false);
+    c.info("old");
+    c.info("new");
+    let buffer = render(&c, 50, 20);
+    assert_eq!(corners(&buffer), [(0, 13), (0, 17)]);
+    assert_eq!(message_of(&row(&buffer, 18)), "new");
+    assert_eq!(message_of(&row(&buffer, 14)), "old");
+}
+
+#[test]
+fn test_center_max_visible() {
+    let mut c = center_with(3).max_visible(2);
+    let buffer = render(&c, 50, 30);
+    assert_eq!(corners(&buffer).len(), 2);
+    assert_eq!(c.count(), 3);
+
+    c = c.max_visible(0);
+    assert_eq!(corners(&render(&c, 50, 30)).len(), 1, "minimum is 1");
+}
+
+#[test]
+fn test_center_width() {
+    let mut c = notification_center().position(NotificationPosition::TopLeft);
+    c.info("Test");
+    assert_eq!(box_width(&render(&c, 80, 10), (0, 0)), 40);
+
+    let c = c.width(60);
+    assert_eq!(box_width(&render(&c, 80, 10), (0, 0)), 60);
+
+    let c = c.width(10);
+    assert_eq!(box_width(&render(&c, 80, 10), (0, 0)), 20, "minimum is 20");
+}
+
+#[test]
+fn test_center_show_icons() {
+    let mut with = notification_center().position(NotificationPosition::TopLeft);
+    with.success("Done");
+    assert_eq!(message_of(&row(&render(&with, 50, 10), 1)), "✓ Done");
+
+    let mut without = notification_center()
+        .position(NotificationPosition::TopLeft)
+        .show_icons(false);
+    without.success("Done");
+    assert_eq!(message_of(&row(&render(&without, 50, 10), 1)), "Done");
+}
+
+#[test]
+fn test_center_title_line_carries_the_icon() {
+    let mut c = notification_center().position(NotificationPosition::TopLeft);
+    c.push(Notification::warning("Body").title("Heads up"));
+    let buffer = render(&c, 50, 10);
+    assert_eq!(message_of(&row(&buffer, 1)), "⚠ Heads up");
+    assert_eq!(message_of(&row(&buffer, 2)), "Body");
+    assert_eq!(corners(&buffer), [(0, 0)]);
+    assert!(row(&buffer, 3).starts_with('╰'));
+}
+
+#[test]
+fn test_center_progress_bar() {
+    let mut c = notification_center()
+        .position(NotificationPosition::TopLeft)
+        .width(24);
+    c.push(Notification::info("Uploading").progress(0.5));
+    let bar = row(&render(&c, 50, 10), 2);
+    // 20 cells wide, half filled.
+    assert_eq!(bar.trim_end(), "│ ██████████░░░░░░░░░░ │");
+}
+
+#[test]
+fn test_center_timer_bar_drains() {
+    let mut c = notification_center()
+        .position(NotificationPosition::TopLeft)
+        .width(24);
+    c.push(Notification::info("Timed").duration(4));
+    let full = row(&render(&c, 50, 10), 2);
+    assert_eq!(full.matches('━').count(), 20);
 
     c.tick();
-    assert_eq!(c.tick_counter, 1);
+    c.tick();
+    let half = row(&render(&c, 50, 10), 2);
+    assert_eq!(half.matches('━').count(), 10);
 
-    c.info("Test 2");
-    assert_eq!(c.notifications[1].created_at, 1);
+    let c = c.show_timer(false);
+    let off = row(&render(&c, 50, 10), 2);
+    assert_eq!(off.matches('━').count(), 0);
+    assert_eq!(off.trim_end(), format!("╰{}╯", "─".repeat(22)));
+}
+
+#[test]
+#[ignore = "BUG: NotificationCenter reserves a row for Notification::action but never draws it"]
+fn test_center_action_line() {
+    let mut c = notification_center().position(NotificationPosition::TopLeft);
+    c.push(Notification::info("Failed").action("Retry"));
+    let buffer = render(&c, 50, 10);
+    let text: Vec<String> = (0..10).map(|y| row(&buffer, y)).collect();
+    assert!(text.iter().any(|r| r.contains("Retry")), "{text:#?}");
 }

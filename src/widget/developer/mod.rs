@@ -124,8 +124,8 @@ pub use code_editor::{
 pub use diff::{diff, diff_viewer, ChangeType, DiffColors, DiffLine, DiffMode, DiffViewer};
 pub use httpclient::{
     delete as http_delete, get as http_get, http_client, patch as http_patch, post as http_post,
-    put as http_put, ContentType, HttpBackend, HttpClient, HttpMethod, HttpRequest, HttpResponse,
-    MockHttpBackend, RequestBuilder, RequestState, ResponseView,
+    put as http_put, ContentType, HttpBackend, HttpClient, HttpColors, HttpMethod, HttpRequest,
+    HttpResponse, MockHttpBackend, RequestBuilder, RequestState, ResponseView,
 };
 pub use presentation::{presentation, slide, Presentation, Slide, SlideAlign, Transition};
 #[cfg(feature = "sysinfo")]

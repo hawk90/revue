@@ -1,333 +1,136 @@
-//! Tests for rich_text_editor selection module
+//! Selection in the rich text editor
+//!
+//! A selection runs from the anchor set by start_selection() to the
+//! cursor. The move_* methods clear it; set_cursor() does not, so it is
+//! how these tests extend a selection. start_selection/clear_selection
+//! and the initial state are covered by the in-source selection tests.
 
-use revue::widget::form::rich_text_editor::RichTextEditor;
+use revue::widget::RichTextEditor;
 
-    // =========================================================================
-    // Selection state tests
-    // =========================================================================
+#[test]
+fn test_get_selection_none_without_anchor() {
+    let editor = RichTextEditor::new().content("hello");
+    assert_eq!(editor.get_selection(), None);
+}
 
-    #[test]
-    fn test_has_selection_default() {
-        let editor = RichTextEditor::new();
-        assert!(!editor.has_selection());
-    }
+#[test]
+fn test_get_selection_empty_when_cursor_at_anchor() {
+    let mut editor = RichTextEditor::new().content("test");
+    editor.start_selection();
+    assert_eq!(editor.get_selection().as_deref(), Some(""));
 
-    #[test]
-    fn test_has_selection_after_start() {
-        let mut editor = RichTextEditor::new();
+    let mut empty = RichTextEditor::new();
+    empty.start_selection();
+    assert_eq!(empty.get_selection().as_deref(), Some(""));
+}
+
+#[test]
+fn test_get_selection_single_line() {
+    let mut editor = RichTextEditor::new().content("hello world");
+    editor.start_selection();
+    editor.set_cursor(0, 5);
+    assert_eq!(editor.get_selection().as_deref(), Some("hello"));
+}
+
+#[test]
+fn test_get_selection_reversed() {
+    let mut editor = RichTextEditor::new().content("hello world");
+    editor.set_cursor(0, 11);
+    editor.start_selection();
+    editor.set_cursor(0, 6);
+    assert_eq!(editor.get_selection().as_deref(), Some("world"));
+}
+
+#[test]
+fn test_get_selection_multiline() {
+    let mut editor = RichTextEditor::new().content("line 1\nline 2\nline 3");
+    editor.set_cursor(0, 5);
+    editor.start_selection();
+    editor.set_cursor(2, 4);
+    assert_eq!(editor.get_selection().as_deref(), Some("1\nline 2\nline"));
+}
+
+#[test]
+fn test_every_movement_clears_selection() {
+    type Move = fn(&mut RichTextEditor);
+    let moves: [(&str, Move); 8] = [
+        ("move_left", RichTextEditor::move_left),
+        ("move_right", RichTextEditor::move_right),
+        ("move_up", RichTextEditor::move_up),
+        ("move_down", RichTextEditor::move_down),
+        ("move_home", RichTextEditor::move_home),
+        ("move_end", RichTextEditor::move_end),
+        ("move_document_start", RichTextEditor::move_document_start),
+        ("move_document_end", RichTextEditor::move_document_end),
+    ];
+    for (name, movement) in moves {
+        let mut editor = RichTextEditor::new().content("ab\ncd");
+        editor.set_cursor(0, 1);
         editor.start_selection();
-        assert!(editor.has_selection());
+        movement(&mut editor);
+        assert!(!editor.has_selection(), "{name} kept the selection");
+        assert_eq!(editor.get_selection(), None, "{name}");
     }
+}
 
-    #[test]
-    fn test_has_selection_after_clear() {
-        let mut editor = RichTextEditor::new();
-        editor.start_selection();
-        editor.clear_selection();
-        assert!(!editor.has_selection());
-    }
+#[test]
+fn test_clear_selection_idempotent() {
+    let mut editor = RichTextEditor::new();
+    editor.start_selection();
+    editor.clear_selection();
+    editor.clear_selection();
+    assert!(!editor.has_selection());
+}
 
-    // =========================================================================
-    // start_selection tests
-    // =========================================================================
+#[test]
+fn test_start_selection_again_moves_anchor() {
+    let mut editor = RichTextEditor::new().content("abcdef");
+    editor.start_selection();
+    editor.set_cursor(0, 2);
+    editor.start_selection();
+    editor.set_cursor(0, 4);
+    assert_eq!(editor.get_selection().as_deref(), Some("cd"));
+}
 
-    #[test]
-    fn test_start_selection_sets_anchor() {
-        let mut editor = RichTextEditor::new();
-        editor.start_selection();
-        assert!(editor.has_selection());
-    }
+#[test]
+fn test_delete_selection_without_anchor_does_nothing() {
+    let mut editor = RichTextEditor::new().content("hello");
+    editor.set_cursor(0, 3);
+    editor.delete_selection();
+    assert_eq!(editor.get_content(), "hello");
+    assert_eq!(editor.cursor_position(), (0, 3));
+}
 
-    #[test]
-    fn test_start_selection_with_cursor_position() {
-        let mut editor = RichTextEditor::new().content("hello");
-        editor.move_right();
-        editor.start_selection();
-        assert!(editor.has_selection());
-    }
+#[test]
+fn test_delete_selection_reversed_moves_cursor_to_start() {
+    let mut editor = RichTextEditor::new().content("testing");
+    editor.set_cursor(0, 7);
+    editor.start_selection();
+    editor.set_cursor(0, 4);
+    editor.delete_selection();
+    assert_eq!(editor.get_content(), "test");
+    assert_eq!(editor.cursor_position(), (0, 4));
+    assert!(!editor.has_selection());
+}
 
-    // =========================================================================
-    // clear_selection tests
-    // =========================================================================
+#[test]
+fn test_delete_selection_entire_line() {
+    let mut editor = RichTextEditor::new().content("single line");
+    editor.start_selection();
+    editor.set_cursor(0, 11);
+    editor.delete_selection();
+    assert_eq!(editor.get_content(), "");
+    assert_eq!(editor.cursor_position(), (0, 0));
+}
 
-    #[test]
-    fn test_clear_selection_removes_anchor() {
-        let mut editor = RichTextEditor::new();
-        editor.start_selection();
-        editor.clear_selection();
-        assert!(!editor.has_selection());
-    }
-
-    #[test]
-    fn test_clear_selection_idempotent() {
-        let mut editor = RichTextEditor::new();
-        editor.start_selection();
-        editor.clear_selection();
-        editor.clear_selection();
-        assert!(!editor.has_selection());
-    }
-
-    // =========================================================================
-    // get_selection tests
-    // =========================================================================
-
-    #[test]
-    fn test_get_selection_none_when_no_selection() {
-        let editor = RichTextEditor::new();
-        assert_eq!(editor.get_selection(), None);
-    }
-
-    #[test]
-    fn test_get_selection_single_line() {
-        let mut editor = RichTextEditor::new().content("hello world");
-        // Start selection at position 0,0
-        editor.start_selection();
-        // Movement clears selection
-        editor.move_right();
-        // After movement, selection is cleared
-        assert_eq!(editor.get_selection(), None);
-    }
-
-    #[test]
-    fn test_get_selection_reversed() {
-        let mut editor = RichTextEditor::new().content("hello");
-        editor.move_end();
-        editor.start_selection();
-        // Movement clears selection
-        editor.move_left();
-        assert_eq!(editor.get_selection(), None);
-    }
-
-    #[test]
-    fn test_get_selection_empty_selection() {
-        let mut editor = RichTextEditor::new().content("test");
-        editor.start_selection();
-        // Cursor and anchor are same (both at 0,0)
-        let selection = editor.get_selection();
-        // Empty string when cursor == anchor
-        assert!(selection.is_some());
-        assert_eq!(selection.unwrap(), "");
-    }
-
-    #[test]
-    fn test_get_selection_multiline() {
-        let mut editor = RichTextEditor::new().content("line 1\nline 2\nline 3");
-        editor.move_down();
-        editor.start_selection();
-        // Movement clears selection
-        editor.move_down();
-        assert_eq!(editor.get_selection(), None);
-    }
-
-    #[test]
-    fn test_get_selection_full_line() {
-        let mut editor = RichTextEditor::new().content("hello world");
-        editor.start_selection();
-        // Movement clears selection
-        editor.move_end();
-        assert_eq!(editor.get_selection(), None);
-    }
-
-    #[test]
-    fn test_get_selection_at_start() {
-        let mut editor = RichTextEditor::new().content("test");
-        editor.start_selection();
-        // At position 0,0, anchor = (0,0), cursor = (0,0)
-        let selection = editor.get_selection();
-        assert!(selection.is_some());
-        assert_eq!(selection.unwrap(), "");
-    }
-
-    #[test]
-    fn test_get_selection_empty_content() {
-        let mut editor = RichTextEditor::new();
-        editor.start_selection();
-        let selection = editor.get_selection();
-        // Empty editor with selection
-        assert!(selection.is_some());
-        assert_eq!(selection.unwrap(), "");
-    }
-
-    // =========================================================================
-    // delete_selection tests
-    // =========================================================================
-
-    #[test]
-    fn test_delete_selection_no_selection() {
-        let mut editor = RichTextEditor::new().content("hello");
-        let cursor_before = editor.cursor_position();
-        editor.delete_selection();
-        // Should do nothing when no selection
-        assert_eq!(editor.cursor_position(), cursor_before);
-        assert_eq!(editor.get_content(), "hello");
-    }
-
-    #[test]
-    fn test_delete_selection_single_char() {
-        let mut editor = RichTextEditor::new().content("hello");
-        editor.start_selection();
-        // Movement clears selection, so delete_selection won't do anything
-        editor.move_right();
-        editor.move_right();
-        let content_before = editor.get_content();
-        editor.delete_selection();
-        let content_after = editor.get_content();
-        assert_eq!(content_before, content_after);
-    }
-
-    #[test]
-    fn test_delete_selection_multiple_chars() {
-        let mut editor = RichTextEditor::new().content("hello world");
-        editor.start_selection();
-        // Movement clears selection
-        editor.move_right();
-        editor.move_right();
-        editor.move_right();
-        editor.move_right();
-        editor.move_right();
-        editor.delete_selection();
-        // Content unchanged since selection was cleared
-        assert_eq!(editor.get_content(), "hello world");
-    }
-
-    #[test]
-    fn test_delete_selection_clears_anchor() {
-        let mut editor = RichTextEditor::new().content("test");
-        editor.start_selection();
-        // Movement clears selection
-        editor.move_right();
-        editor.move_right();
-        editor.delete_selection();
-        assert!(!editor.has_selection());
-    }
-
-    #[test]
-    fn test_delete_selection_moves_cursor() {
-        let mut editor = RichTextEditor::new().content("test");
-        editor.move_end();
-        editor.start_selection();
-        editor.move_left();
-        let pos_before = editor.cursor_position();
-        editor.delete_selection();
-        let pos_after = editor.cursor_position();
-        // Cursor unchanged since selection was cleared
-        assert_eq!(pos_before, pos_after);
-    }
-
-    #[test]
-    fn test_delete_selection_multiline() {
-        let mut editor = RichTextEditor::new().content("line 1\nline 2\nline 3");
-        editor.move_down();
-        editor.start_selection();
-        editor.move_down();
-        let blocks_before = editor.block_count();
-        editor.delete_selection();
-        let blocks_after = editor.block_count();
-        // No blocks deleted since selection was cleared
-        assert_eq!(blocks_before, blocks_after);
-    }
-
-    #[test]
-    fn test_delete_selection_entire_content() {
-        let mut editor = RichTextEditor::new().content("hello");
-        editor.start_selection();
-        editor.move_end();
-        editor.delete_selection();
-        // Content unchanged since selection was cleared by movement
-        assert_eq!(editor.get_content(), "hello");
-    }
-
-    #[test]
-    fn test_delete_selection_from_end() {
-        let mut editor = RichTextEditor::new().content("testing");
-        editor.move_end();
-        editor.start_selection();
-        // Move left a few times - clears selection
-        editor.move_left();
-        editor.move_left();
-        editor.delete_selection();
-        // Content unchanged since selection was cleared
-        assert_eq!(editor.get_content(), "testing");
-    }
-
-    #[test]
-    fn test_delete_selection_full_line() {
-        let mut editor = RichTextEditor::new().content("single line");
-        editor.start_selection();
-        editor.move_end();
-        editor.delete_selection();
-        // Content unchanged since selection was cleared
-        assert_eq!(editor.get_content(), "single line");
-    }
-
-    // =========================================================================
-    // Selection behavior tests
-    // =========================================================================
-
-    #[test]
-    fn test_movement_clears_selection() {
-        let mut editor = RichTextEditor::new().content("hello");
-        editor.start_selection();
-        editor.move_right();
-        assert!(!editor.has_selection());
-        // Movement should clear selection
-    }
-
-    #[test]
-    fn test_start_selection_twice() {
-        let mut editor = RichTextEditor::new().content("test");
-        editor.move_right();
-        editor.start_selection();
-        assert!(editor.has_selection());
-        editor.move_right();
-        assert!(!editor.has_selection());
-        editor.start_selection();
-        // Starting selection again should set anchor at new position
-        assert!(editor.has_selection());
-    }
-
-    #[test]
-    fn test_selection_with_empty_editor() {
-        let mut editor = RichTextEditor::new();
-        editor.start_selection();
-        let selection = editor.get_selection();
-        assert!(selection.is_some());
-        // Empty selection when editor is empty
-        assert_eq!(selection.unwrap(), "");
-    }
-
-    #[test]
-    fn test_forward_selection() {
-        let mut editor = RichTextEditor::new().content("hello");
-        // Move to position first (clears any selection)
-        editor.move_right();
-        assert!(!editor.has_selection());
-        // Start selection - this sets anchor
-        editor.start_selection();
-        assert!(editor.has_selection());
-        // Movement clears selection
-        editor.move_right();
-        assert!(!editor.has_selection());
-    }
-
-    #[test]
-    fn test_backward_selection() {
-        let mut editor = RichTextEditor::new().content("hello");
-        editor.move_end();
-        assert!(!editor.has_selection());
-        // Start selection
-        editor.start_selection();
-        assert!(editor.has_selection());
-        // Movement clears selection
-        editor.move_left();
-        assert!(!editor.has_selection());
-    }
-
-    #[test]
-    fn test_selection_cursor_tracking() {
-        let mut editor = RichTextEditor::new().content("hello");
-        editor.start_selection();
-        editor.move_end();
-        // Movement clears selection
-        assert!(!editor.has_selection());
-    }
+#[test]
+fn test_delete_selection_multiline_merges_blocks() {
+    let mut editor = RichTextEditor::new().content("line 1\nline 2\nline 3");
+    editor.set_cursor(0, 4);
+    editor.start_selection();
+    editor.set_cursor(2, 4);
+    editor.delete_selection();
+    assert_eq!(editor.block_count(), 1);
+    assert_eq!(editor.get_content(), "line 3");
+    assert_eq!(editor.cursor_position(), (0, 4));
+}

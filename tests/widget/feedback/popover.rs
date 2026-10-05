@@ -1,62 +1,140 @@
 //! Popover widget tests
 //!
-//! Tests for the Popover widget extracted from source files.
+//! Popover's fields are private and it has no getters, so its state is read
+//! through is_open(), the key and click handlers, and what it renders.
 
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::widget::feedback::popover;
-use revue::widget::feedback::Popover;
-use revue::widget::traits::View;
+use revue::style::Color;
+use revue::widget::{
+    popover, Popover, PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger, RenderContext,
+    View,
+};
+
+fn render(p: &Popover) -> Buffer {
+    let mut buffer = Buffer::new(40, 20);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 40, 20));
+    p.render(&mut ctx);
+    buffer
+}
+
+fn symbol(buffer: &Buffer, x: u16, y: u16) -> char {
+    buffer.get(x, y).map(|c| c.symbol).unwrap_or(' ')
+}
+
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width()).map(|x| symbol(buffer, x, y)).collect()
+}
+
+fn is_blank(buffer: &Buffer) -> bool {
+    (0..buffer.height()).all(|y| row(buffer, y).trim().is_empty())
+}
+
+/// Top-left corner of the popover's border.
+fn corner(buffer: &Buffer) -> Option<(u16, u16)> {
+    (0..buffer.height()).find_map(|y| {
+        (0..buffer.width())
+            .find(|&x| matches!(symbol(buffer, x, y), '┌' | '╭'))
+            .map(|x| (x, y))
+    })
+}
 
 // =========================================================================
-// Popover basic tests
+// Enums
 // =========================================================================
 
 #[test]
-fn test_popover_new() {
-    let p = Popover::new("Test content");
-    assert!(!p.is_open());
-    // Note: accessing pub(crate) fields directly
+fn test_popover_enum_defaults() {
+    assert_eq!(PopoverPosition::default(), PopoverPosition::Bottom);
+    assert_eq!(PopoverTrigger::default(), PopoverTrigger::Click);
+    assert_eq!(PopoverArrow::default(), PopoverArrow::None);
+    assert_eq!(PopoverStyle::default(), PopoverStyle::Default);
 }
 
 #[test]
-fn test_popover_builder() {
-    let p = Popover::new("Content")
-        .anchor(10, 5)
-        .position(revue::widget::feedback::PopoverPosition::Top)
-        .trigger(revue::widget::feedback::PopoverTrigger::Hover);
+fn test_popover_enum_variants_are_distinct() {
+    let positions = [
+        PopoverPosition::Top,
+        PopoverPosition::Bottom,
+        PopoverPosition::Left,
+        PopoverPosition::Right,
+        PopoverPosition::Auto,
+    ];
+    let triggers = [
+        PopoverTrigger::Click,
+        PopoverTrigger::Hover,
+        PopoverTrigger::Focus,
+        PopoverTrigger::Manual,
+    ];
+    let arrows = [
+        PopoverArrow::None,
+        PopoverArrow::Simple,
+        PopoverArrow::Unicode,
+    ];
+    let styles = [
+        PopoverStyle::Default,
+        PopoverStyle::Rounded,
+        PopoverStyle::Minimal,
+        PopoverStyle::Elevated,
+    ];
+    for (i, a) in positions.iter().enumerate() {
+        for (j, b) in positions.iter().enumerate() {
+            assert_eq!(i == j, a == b);
+        }
+    }
+    for (i, a) in triggers.iter().enumerate() {
+        for (j, b) in triggers.iter().enumerate() {
+            assert_eq!(i == j, a == b);
+        }
+    }
+    for (i, a) in arrows.iter().enumerate() {
+        for (j, b) in arrows.iter().enumerate() {
+            assert_eq!(i == j, a == b);
+        }
+    }
+    for (i, a) in styles.iter().enumerate() {
+        for (j, b) in styles.iter().enumerate() {
+            assert_eq!(i == j, a == b);
+        }
+    }
+}
 
-    assert_eq!(p.anchor, (10, 5));
-    assert_eq!(p.position, revue::widget::feedback::PopoverPosition::Top);
-    assert_eq!(p.trigger, revue::widget::feedback::PopoverTrigger::Hover);
+// =========================================================================
+// Open state
+// =========================================================================
+
+#[test]
+fn test_popover_starts_closed_and_draws_nothing() {
+    for p in [Popover::new("Test").anchor(10, 5), Popover::default()] {
+        assert!(!p.is_open());
+        assert!(is_blank(&render(&p)));
+    }
 }
 
 #[test]
 fn test_popover_visibility() {
     let mut p = Popover::new("Test");
-    assert!(!p.is_open());
-
     p.show();
     assert!(p.is_open());
-
     p.hide();
     assert!(!p.is_open());
-
     p.toggle();
     assert!(p.is_open());
-
     p.toggle();
     assert!(!p.is_open());
+    assert!(Popover::new("Test").open(true).is_open());
 }
 
 #[test]
 fn test_popover_handle_escape() {
     let mut p = Popover::new("Test").open(true);
-    assert!(p.is_open());
-
     assert!(p.handle_key(&Key::Escape));
     assert!(!p.is_open());
+
+    let mut other = Popover::new("Test").open(true);
+    assert!(!other.handle_key(&Key::Enter));
+    assert!(other.is_open());
 }
 
 #[test]
@@ -70,76 +148,23 @@ fn test_popover_handle_escape_disabled() {
 fn test_popover_handle_key_closed() {
     let mut p = Popover::new("Test");
     assert!(!p.handle_key(&Key::Escape));
-}
-
-#[test]
-fn test_popover_helper() {
-    let p = popover("Quick popover");
-    assert_eq!(p.content, "Quick popover");
-}
-
-#[test]
-fn test_popover_default() {
-    let p = Popover::default();
-    assert_eq!(p.content, "");
     assert!(!p.is_open());
-    assert_eq!(p.position, revue::widget::feedback::PopoverPosition::Bottom);
 }
 
 #[test]
-fn test_popover_set_anchor() {
-    let mut p = Popover::new("Test");
-    p.set_anchor(15, 25);
-    assert_eq!(p.anchor, (15, 25));
-}
-
-#[test]
-fn test_popover_trigger_types() {
-    use revue::widget::feedback::PopoverTrigger;
-
-    let p_click = Popover::new("Test").trigger(PopoverTrigger::Click);
-    let p_hover = Popover::new("Test").trigger(PopoverTrigger::Hover);
-    let p_focus = Popover::new("Test").trigger(PopoverTrigger::Focus);
-    let p_manual = Popover::new("Test").trigger(PopoverTrigger::Manual);
-
-    assert_eq!(p_click.trigger, PopoverTrigger::Click);
-    assert_eq!(p_hover.trigger, PopoverTrigger::Hover);
-    assert_eq!(p_focus.trigger, PopoverTrigger::Focus);
-    assert_eq!(p_manual.trigger, PopoverTrigger::Manual);
-}
-
-#[test]
-fn test_popover_custom_colors() {
-    use revue::style::Color;
-
-    let p = Popover::new("Test")
-        .fg(Color::RED)
-        .bg(Color::BLUE)
-        .border_color(Color::GREEN);
-
-    assert_eq!(p.state.fg, Some(Color::RED));
-    assert_eq!(p.state.bg, Some(Color::BLUE));
-    assert_eq!(p.border_color, Some(Color::GREEN));
-}
-
-#[test]
-fn test_popover_handle_click_inside() {
+fn test_popover_handle_click_inside_keeps_open() {
+    // "Test" below (20, 10): a 10 x 3 box at (15, 11).
     let mut p = Popover::new("Test").anchor(20, 10).open(true);
-
-    // Click inside the popover area
-    let handled = p.handle_click(20, 12, 40, 20);
-    assert!(handled);
-    assert!(p.is_open()); // Should stay open
+    assert!(p.handle_click(15, 11, 40, 20));
+    assert!(p.handle_click(24, 13, 40, 20));
+    assert!(p.is_open());
 }
 
 #[test]
-fn test_popover_handle_click_outside() {
+fn test_popover_handle_click_outside_closes() {
     let mut p = Popover::new("Test").anchor(20, 10).open(true);
-
-    // Click outside the popover
-    let handled = p.handle_click(0, 0, 40, 20);
-    assert!(handled);
-    assert!(!p.is_open()); // Should close
+    assert!(p.handle_click(25, 11, 40, 20));
+    assert!(!p.is_open());
 }
 
 #[test]
@@ -148,604 +173,241 @@ fn test_popover_handle_click_outside_disabled() {
         .anchor(20, 10)
         .open(true)
         .close_on_click_outside(false);
-
-    let handled = p.handle_click(0, 0, 40, 20);
-    assert!(!handled);
-    assert!(p.is_open()); // Should stay open
-}
-
-#[test]
-fn test_popover_handle_click_on_anchor() {
-    use revue::widget::feedback::PopoverTrigger;
-
-    let mut p = Popover::new("Test")
-        .anchor(10, 5)
-        .trigger(PopoverTrigger::Click);
-    assert!(!p.is_open());
-
-    // Click on anchor should open
-    let handled = p.handle_click(10, 5, 40, 20);
-    assert!(handled);
+    assert!(!p.handle_click(0, 0, 40, 20));
     assert!(p.is_open());
 }
 
 #[test]
-fn test_popover_handle_click_on_anchor_hover_trigger() {
-    use revue::widget::feedback::PopoverTrigger;
-
+fn test_popover_click_trigger_opens_on_anchor() {
     let mut p = Popover::new("Test")
         .anchor(10, 5)
-        .trigger(PopoverTrigger::Hover);
-
-    // Hover trigger shouldn't toggle on click
-    let handled = p.handle_click(10, 5, 40, 20);
-    assert!(!handled);
+        .trigger(PopoverTrigger::Click);
+    assert!(!p.handle_click(11, 5, 40, 20));
     assert!(!p.is_open());
-}
-
-// =========================================================================
-// PopoverPosition enum tests
-// =========================================================================
-
-#[test]
-fn test_popover_position_default() {
-    use revue::widget::feedback::PopoverPosition;
-    assert_eq!(PopoverPosition::default(), PopoverPosition::Bottom);
+    assert!(p.handle_click(10, 5, 40, 20));
+    assert!(p.is_open());
 }
 
 #[test]
-fn test_popover_position_clone() {
-    use revue::widget::feedback::PopoverPosition;
-    let pos1 = PopoverPosition::Top;
-    let pos2 = pos1.clone();
-    assert_eq!(pos1, pos2);
-}
-
-#[test]
-fn test_popover_position_copy() {
-    use revue::widget::feedback::PopoverPosition;
-    let pos1 = PopoverPosition::Left;
-    let pos2 = pos1;
-    assert_eq!(pos2, PopoverPosition::Left);
-    assert_eq!(pos1, PopoverPosition::Left);
-}
-
-#[test]
-fn test_popover_position_partial_eq() {
-    use revue::widget::feedback::PopoverPosition;
-    assert_eq!(PopoverPosition::Top, PopoverPosition::Top);
-    assert_eq!(PopoverPosition::Bottom, PopoverPosition::Bottom);
-    assert_eq!(PopoverPosition::Left, PopoverPosition::Left);
-    assert_eq!(PopoverPosition::Right, PopoverPosition::Right);
-    assert_eq!(PopoverPosition::Auto, PopoverPosition::Auto);
-
-    assert_ne!(PopoverPosition::Top, PopoverPosition::Bottom);
-    assert_ne!(PopoverPosition::Left, PopoverPosition::Right);
-    assert_ne!(PopoverPosition::Auto, PopoverPosition::Top);
-}
-
-#[test]
-fn test_popover_position_all_variants() {
-    use revue::widget::feedback::PopoverPosition;
-    let positions = [
-        PopoverPosition::Top,
-        PopoverPosition::Bottom,
-        PopoverPosition::Left,
-        PopoverPosition::Right,
-        PopoverPosition::Auto,
-    ];
-
-    for (i, pos1) in positions.iter().enumerate() {
-        for (j, pos2) in positions.iter().enumerate() {
-            if i == j {
-                assert_eq!(pos1, pos2);
-            } else {
-                assert_ne!(pos1, pos2);
-            }
-        }
-    }
-}
-
-// =========================================================================
-// PopoverTrigger enum tests
-// =========================================================================
-
-#[test]
-fn test_popover_trigger_default() {
-    use revue::widget::feedback::PopoverTrigger;
-    assert_eq!(PopoverTrigger::default(), PopoverTrigger::Click);
-}
-
-#[test]
-fn test_popover_trigger_clone() {
-    use revue::widget::feedback::PopoverTrigger;
-    let trigger1 = PopoverTrigger::Hover;
-    let trigger2 = trigger1.clone();
-    assert_eq!(trigger1, trigger2);
-}
-
-#[test]
-fn test_popover_trigger_copy() {
-    use revue::widget::feedback::PopoverTrigger;
-    let trigger1 = PopoverTrigger::Focus;
-    let trigger2 = trigger1;
-    assert_eq!(trigger2, PopoverTrigger::Focus);
-    assert_eq!(trigger1, PopoverTrigger::Focus);
-}
-
-#[test]
-fn test_popover_trigger_partial_eq() {
-    use revue::widget::feedback::PopoverTrigger;
-    assert_eq!(PopoverTrigger::Click, PopoverTrigger::Click);
-    assert_eq!(PopoverTrigger::Hover, PopoverTrigger::Hover);
-    assert_eq!(PopoverTrigger::Focus, PopoverTrigger::Focus);
-    assert_eq!(PopoverTrigger::Manual, PopoverTrigger::Manual);
-
-    assert_ne!(PopoverTrigger::Click, PopoverTrigger::Hover);
-    assert_ne!(PopoverTrigger::Focus, PopoverTrigger::Manual);
-}
-
-#[test]
-fn test_popover_trigger_all_variants() {
-    use revue::widget::feedback::PopoverTrigger;
-    let triggers = [
-        PopoverTrigger::Click,
+fn test_popover_other_triggers_ignore_anchor_click() {
+    for trigger in [
         PopoverTrigger::Hover,
         PopoverTrigger::Focus,
         PopoverTrigger::Manual,
-    ];
-
-    for (i, trigger1) in triggers.iter().enumerate() {
-        for (j, trigger2) in triggers.iter().enumerate() {
-            if i == j {
-                assert_eq!(trigger1, trigger2);
-            } else {
-                assert_ne!(trigger1, trigger2);
-            }
-        }
+    ] {
+        let mut p = Popover::new("Test").anchor(10, 5).trigger(trigger);
+        assert!(!p.handle_click(10, 5, 40, 20), "{trigger:?}");
+        assert!(!p.is_open(), "{trigger:?}");
     }
 }
 
 // =========================================================================
-// PopoverArrow enum tests
+// Content and placement
 // =========================================================================
 
 #[test]
-fn test_popover_arrow_default() {
-    use revue::widget::feedback::PopoverArrow;
-    assert_eq!(PopoverArrow::default(), PopoverArrow::None);
+fn test_popover_helper_and_content() {
+    let buffer = render(&popover("Quick").anchor(20, 5).open(true));
+    assert_eq!(
+        &row(&buffer, 7)[..],
+        format!("{:15}│ Quick  │{:15}", "", "")
+    );
+
+    let replaced = Popover::new("Original")
+        .content("Updated")
+        .anchor(20, 5)
+        .open(true);
+    assert!(row(&render(&replaced), 7).contains("│ Updated │"));
 }
 
 #[test]
-fn test_popover_arrow_clone() {
-    use revue::widget::feedback::PopoverArrow;
-    let arrow1 = PopoverArrow::Unicode;
-    let arrow2 = arrow1.clone();
-    assert_eq!(arrow1, arrow2);
-}
-
-#[test]
-fn test_popover_arrow_copy() {
-    use revue::widget::feedback::PopoverArrow;
-    let arrow1 = PopoverArrow::Simple;
-    let arrow2 = arrow1;
-    assert_eq!(arrow2, PopoverArrow::Simple);
-    assert_eq!(arrow1, PopoverArrow::Simple);
-}
-
-#[test]
-fn test_popover_arrow_partial_eq() {
-    use revue::widget::feedback::PopoverArrow;
-    assert_eq!(PopoverArrow::None, PopoverArrow::None);
-    assert_eq!(PopoverArrow::Simple, PopoverArrow::Simple);
-    assert_eq!(PopoverArrow::Unicode, PopoverArrow::Unicode);
-
-    assert_ne!(PopoverArrow::None, PopoverArrow::Simple);
-    assert_ne!(PopoverArrow::Simple, PopoverArrow::Unicode);
-    assert_ne!(PopoverArrow::Unicode, PopoverArrow::None);
-}
-
-#[test]
-fn test_popover_arrow_all_variants() {
-    use revue::widget::feedback::PopoverArrow;
-    let arrows = [
-        PopoverArrow::None,
-        PopoverArrow::Simple,
-        PopoverArrow::Unicode,
+fn test_popover_positions() {
+    // "Test" is 10 x 3; anchor (20, 5).
+    let cases = [
+        (PopoverPosition::Bottom, (15, 6)),
+        (PopoverPosition::Top, (15, 2)),
+        (PopoverPosition::Left, (10, 4)),
+        (PopoverPosition::Right, (21, 4)),
+        (PopoverPosition::Auto, (15, 6)),
     ];
-
-    for (i, arrow1) in arrows.iter().enumerate() {
-        for (j, arrow2) in arrows.iter().enumerate() {
-            if i == j {
-                assert_eq!(arrow1, arrow2);
-            } else {
-                assert_ne!(arrow1, arrow2);
-            }
-        }
+    for (position, expected) in cases {
+        let p = Popover::new("Test")
+            .anchor(20, 5)
+            .position(position)
+            .open(true);
+        assert_eq!(corner(&render(&p)), Some(expected), "{position:?}");
     }
 }
 
 #[test]
-fn test_popover_arrow_chars_all_combinations() {
-    use revue::widget::feedback::{PopoverArrow, PopoverPosition};
-    let arrows = [
-        PopoverArrow::None,
-        PopoverArrow::Simple,
-        PopoverArrow::Unicode,
+fn test_popover_auto_goes_above_without_room_below() {
+    let p = Popover::new("Test")
+        .anchor(20, 18)
+        .position(PopoverPosition::Auto)
+        .open(true);
+    assert_eq!(corner(&render(&p)), Some((15, 15)));
+}
+
+#[test]
+fn test_popover_set_anchor() {
+    let mut p = Popover::new("Test").anchor(20, 5).open(true);
+    p.set_anchor(10, 10);
+    assert_eq!(corner(&render(&p)), Some((5, 11)));
+}
+
+#[test]
+fn test_popover_arrow_points_at_anchor() {
+    let cases = [
+        (PopoverArrow::Unicode, PopoverPosition::Top, (20, 9), '▼'),
+        (
+            PopoverArrow::Unicode,
+            PopoverPosition::Bottom,
+            (20, 11),
+            '▲',
+        ),
+        (PopoverArrow::Unicode, PopoverPosition::Left, (19, 10), '▶'),
+        (PopoverArrow::Unicode, PopoverPosition::Right, (21, 10), '◀'),
+        (PopoverArrow::Simple, PopoverPosition::Top, (20, 9), 'v'),
+        (PopoverArrow::Simple, PopoverPosition::Bottom, (20, 11), '^'),
+        (PopoverArrow::Simple, PopoverPosition::Left, (19, 10), '>'),
+        (PopoverArrow::Simple, PopoverPosition::Right, (21, 10), '<'),
     ];
-    let positions = [
-        PopoverPosition::Top,
-        PopoverPosition::Bottom,
-        PopoverPosition::Left,
-        PopoverPosition::Right,
-        PopoverPosition::Auto,
-    ];
-
-    for arrow in arrows {
-        for pos in positions {
-            let ch = arrow.chars(pos);
-            assert!(ch.len_utf8() >= 1);
-        }
-    }
-}
-
-// =========================================================================
-// PopoverStyle enum tests
-// =========================================================================
-
-#[test]
-fn test_popover_style_default() {
-    use revue::widget::feedback::PopoverStyle;
-    assert_eq!(PopoverStyle::default(), PopoverStyle::Default);
-}
-
-#[test]
-fn test_popover_style_clone() {
-    use revue::widget::feedback::PopoverStyle;
-    let style1 = PopoverStyle::Rounded;
-    let style2 = style1.clone();
-    assert_eq!(style1, style2);
-}
-
-#[test]
-fn test_popover_style_copy() {
-    use revue::widget::feedback::PopoverStyle;
-    let style1 = PopoverStyle::Minimal;
-    let style2 = style1;
-    assert_eq!(style2, PopoverStyle::Minimal);
-    assert_eq!(style1, PopoverStyle::Minimal);
-}
-
-#[test]
-fn test_popover_style_partial_eq() {
-    use revue::widget::feedback::PopoverStyle;
-    assert_eq!(PopoverStyle::Default, PopoverStyle::Default);
-    assert_eq!(PopoverStyle::Rounded, PopoverStyle::Rounded);
-    assert_eq!(PopoverStyle::Minimal, PopoverStyle::Minimal);
-    assert_eq!(PopoverStyle::Elevated, PopoverStyle::Elevated);
-
-    assert_ne!(PopoverStyle::Default, PopoverStyle::Rounded);
-    assert_ne!(PopoverStyle::Minimal, PopoverStyle::Elevated);
-}
-
-#[test]
-fn test_popover_style_all_variants() {
-    use revue::widget::feedback::PopoverStyle;
-    let styles = [
-        PopoverStyle::Default,
-        PopoverStyle::Rounded,
-        PopoverStyle::Minimal,
-        PopoverStyle::Elevated,
-    ];
-
-    for (i, style1) in styles.iter().enumerate() {
-        for (j, style2) in styles.iter().enumerate() {
-            if i == j {
-                assert_eq!(style1, style2);
-            } else {
-                assert_ne!(style1, style2);
-            }
-        }
-    }
-}
-
-#[test]
-fn test_popover_style_colors_all_variants() {
-    use revue::widget::feedback::PopoverStyle;
-    let styles = [
-        PopoverStyle::Default,
-        PopoverStyle::Rounded,
-        PopoverStyle::Minimal,
-        PopoverStyle::Elevated,
-    ];
-
-    for style in styles {
-        let (fg, bg, border) = style.colors();
-        // u8 values are always valid 0-255, just verify colors exist
-        let _ = (
-            fg.r, fg.g, fg.b, bg.r, bg.g, bg.b, border.r, border.g, border.b,
+    for (arrow, position, (x, y), glyph) in cases {
+        let p = Popover::new("Test")
+            .anchor(20, 10)
+            .arrow(arrow)
+            .position(position)
+            .open(true);
+        assert_eq!(
+            symbol(&render(&p), x, y),
+            glyph,
+            "{arrow:?} at {position:?}"
         );
     }
 }
 
 #[test]
-fn test_popover_style_border_chars_all_variants() {
-    use revue::widget::feedback::PopoverStyle;
-    let styles = [
-        PopoverStyle::Default,
-        PopoverStyle::Rounded,
-        PopoverStyle::Minimal,
-        PopoverStyle::Elevated,
-    ];
+fn test_popover_title() {
+    let p = Popover::new("Content")
+        .title("Title")
+        .anchor(20, 5)
+        .open(true);
+    let buffer = render(&p);
+    let (x, y) = corner(&buffer).unwrap();
+    assert_eq!(symbol(&buffer, x + 2, y + 1), 'T');
+    assert!(buffer
+        .get(x + 2, y + 1)
+        .unwrap()
+        .modifier
+        .contains(revue::render::Modifier::BOLD));
+    assert!(row(&buffer, y + 2).contains("│ Content"));
+    assert_eq!(symbol(&buffer, x, y + 3), '└');
+}
 
-    for style in styles {
-        let border = style.border_chars();
-        if matches!(style, PopoverStyle::Minimal) {
-            assert!(border.is_none());
-        } else {
-            assert!(border.is_some());
-        }
+#[test]
+fn test_popover_max_width_wraps_content() {
+    let p = Popover::new("aaa bbb ccc")
+        .max_width(5)
+        .anchor(20, 5)
+        .open(true);
+    let buffer = render(&p);
+    let (x, y) = corner(&buffer).unwrap();
+    for (i, word) in ["aaa", "bbb", "ccc"].iter().enumerate() {
+        let line: String = (x + 2..x + 5)
+            .map(|cx| symbol(&buffer, cx, y + 1 + i as u16))
+            .collect();
+        assert_eq!(&line, word);
     }
 }
 
-// =========================================================================
-// Popover builder method tests
-// =========================================================================
-
 #[test]
-fn test_popover_content() {
-    let p = Popover::new("Original").content("Updated");
-    assert_eq!(p.content, "Updated");
+fn test_popover_styles() {
+    let draw = |style| {
+        render(
+            &Popover::new("Test")
+                .anchor(20, 5)
+                .popover_style(style)
+                .open(true),
+        )
+    };
+
+    assert_eq!(symbol(&draw(PopoverStyle::Default), 15, 6), '┌');
+    assert_eq!(symbol(&draw(PopoverStyle::Rounded), 15, 6), '╭');
+    assert_eq!(symbol(&draw(PopoverStyle::Elevated), 15, 6), '┌');
+
+    // Minimal: no border, content one cell in from the left edge.
+    let minimal = draw(PopoverStyle::Minimal);
+    assert!(corner(&minimal).is_none());
+    assert_eq!(row(&minimal, 6).trim(), "Test");
+    assert_eq!(symbol(&minimal, 16, 6), 'T');
 }
 
 #[test]
-fn test_popover_anchor_builder() {
-    let p = Popover::new("Test").anchor(100, 200);
-    assert_eq!(p.anchor, (100, 200));
+fn test_popover_minimal_draws_every_line() {
+    let p = Popover::new("a\nb\nc")
+        .anchor(20, 5)
+        .popover_style(PopoverStyle::Minimal)
+        .open(true);
+    let buffer = render(&p);
+    let lines: Vec<String> = (6..9).map(|y| row(&buffer, y).trim().to_string()).collect();
+    assert_eq!(lines, ["a", "b", "c"]);
 }
 
 #[test]
-fn test_popover_position_builder() {
-    use revue::widget::feedback::PopoverPosition;
-    let p = Popover::new("Test").position(PopoverPosition::Top);
-    assert_eq!(p.position, PopoverPosition::Top);
+fn test_popover_elevated_shadow() {
+    let p = Popover::new("Test")
+        .anchor(20, 5)
+        .popover_style(PopoverStyle::Elevated)
+        .open(true);
+    let buffer = render(&p);
+    // Box is (15, 6) to (24, 8); the shadow is one cell right and below.
+    let shadow = Some(Color::rgb(15, 15, 15));
+    assert_eq!(buffer.get(25, 7).unwrap().bg, shadow);
+    assert_eq!(buffer.get(16, 9).unwrap().bg, shadow);
+    assert_ne!(buffer.get(24, 8).unwrap().bg, shadow);
 }
 
 #[test]
-fn test_popover_trigger_builder() {
-    use revue::widget::feedback::PopoverTrigger;
-    let p = Popover::new("Test").trigger(PopoverTrigger::Manual);
-    assert_eq!(p.trigger, PopoverTrigger::Manual);
+fn test_popover_default_colors() {
+    let buffer = render(&Popover::new("Test").anchor(20, 5).open(true));
+    let border = buffer.get(15, 6).unwrap();
+    assert_eq!(border.fg, Some(Color::rgb(70, 70, 80)));
+    assert_eq!(border.bg, Some(Color::rgb(30, 30, 35)));
+    let text = buffer.get(17, 7).unwrap();
+    assert_eq!(text.symbol, 'T');
+    assert_eq!(text.fg, Some(Color::WHITE));
 }
 
 #[test]
-fn test_popover_style_builder() {
-    use revue::widget::feedback::PopoverStyle;
-    let p = Popover::new("Test").popover_style(PopoverStyle::Elevated);
-    assert_eq!(p.popover_style, PopoverStyle::Elevated);
+fn test_popover_custom_colors() {
+    let p = Popover::new("Test")
+        .fg(Color::RED)
+        .bg(Color::BLUE)
+        .border_color(Color::GREEN)
+        .anchor(20, 5)
+        .open(true);
+    let buffer = render(&p);
+    assert_eq!(buffer.get(15, 6).unwrap().fg, Some(Color::GREEN));
+    let text = buffer.get(17, 7).unwrap();
+    assert_eq!(text.fg, Some(Color::RED));
+    assert_eq!(text.bg, Some(Color::BLUE));
 }
-
-#[test]
-fn test_popover_arrow_builder() {
-    use revue::widget::feedback::PopoverArrow;
-    let p = Popover::new("Test").arrow(PopoverArrow::Simple);
-    assert_eq!(p.arrow, PopoverArrow::Simple);
-}
-
-#[test]
-fn test_popover_open_builder() {
-    let p = Popover::new("Test").open(true);
-    assert!(p.open);
-}
-
-#[test]
-fn test_popover_close_on_escape_builder() {
-    let p = Popover::new("Test").close_on_escape(false);
-    assert!(!p.close_on_escape);
-}
-
-#[test]
-fn test_popover_close_on_click_outside_builder() {
-    let p = Popover::new("Test").close_on_click_outside(false);
-    assert!(!p.close_on_click_outside);
-}
-
-#[test]
-fn test_popover_title_builder() {
-    let p = Popover::new("Test").title("My Title");
-    assert_eq!(p.title, Some("My Title".to_string()));
-}
-
-#[test]
-fn test_popover_max_width_builder() {
-    let p = Popover::new("Test").max_width(100);
-    assert_eq!(p.max_width, 100);
-}
-
-#[test]
-fn test_popover_border_color_builder() {
-    use revue::style::Color;
-    let p = Popover::new("Test").border_color(Color::YELLOW);
-    assert_eq!(p.border_color, Some(Color::YELLOW));
-}
-
-// =========================================================================
-// Popover builder chain tests
-// =========================================================================
 
 #[test]
 fn test_popover_builder_chain() {
-    use revue::widget::feedback::{PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger};
     let p = Popover::new("Chain test")
-        .anchor(50, 25)
+        .anchor(10, 10)
         .position(PopoverPosition::Right)
         .trigger(PopoverTrigger::Hover)
         .popover_style(PopoverStyle::Rounded)
         .arrow(PopoverArrow::Unicode)
         .title("Chain Title")
         .max_width(60)
-        .close_on_escape(true)
-        .close_on_click_outside(true);
-
-    assert_eq!(p.content, "Chain test");
-    assert_eq!(p.anchor, (50, 25));
-    assert_eq!(p.position, PopoverPosition::Right);
-    assert_eq!(p.trigger, PopoverTrigger::Hover);
-    assert_eq!(p.popover_style, PopoverStyle::Rounded);
-    assert_eq!(p.arrow, PopoverArrow::Unicode);
-    assert_eq!(p.title, Some("Chain Title".to_string()));
-    assert_eq!(p.max_width, 60);
-    assert!(p.close_on_escape);
-    assert!(p.close_on_click_outside);
-}
-
-// =========================================================================
-// Popover render tests
-// =========================================================================
-
-#[test]
-fn test_popover_render_hidden() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let p = Popover::new("Test").anchor(10, 5);
-    p.render(&mut ctx);
-    // Hidden popover shouldn't render anything special
-}
-
-#[test]
-fn test_popover_render_visible() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    use revue::widget::feedback::PopoverStyle;
-    let p = Popover::new("Visible content")
-        .anchor(10, 5)
-        .open(true)
-        .popover_style(PopoverStyle::Default);
-
-    p.render(&mut ctx);
-    // Smoke test - should render without panic
-}
-
-#[test]
-fn test_popover_render_with_title() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let p = Popover::new("Content")
-        .title("Title")
-        .anchor(10, 5)
         .open(true);
-
-    p.render(&mut ctx);
-}
-
-#[test]
-fn test_popover_render_all_styles() {
-    use revue::widget::feedback::PopoverStyle;
-    let styles = [
-        PopoverStyle::Default,
-        PopoverStyle::Rounded,
-        PopoverStyle::Minimal,
-        PopoverStyle::Elevated,
-    ];
-
-    for style in styles {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-        let p = Popover::new("Test")
-            .anchor(10, 5)
-            .open(true)
-            .popover_style(style);
-
-        p.render(&mut ctx);
-    }
-}
-
-#[test]
-fn test_popover_render_all_positions() {
-    use revue::widget::feedback::PopoverPosition;
-    let positions = [
-        PopoverPosition::Top,
-        PopoverPosition::Bottom,
-        PopoverPosition::Left,
-        PopoverPosition::Right,
-        PopoverPosition::Auto,
-    ];
-
-    for position in positions {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-        let p = Popover::new("Test")
-            .anchor(40, 12)
-            .open(true)
-            .position(position);
-
-        p.render(&mut ctx);
-    }
-}
-
-#[test]
-fn test_popover_render_with_arrow() {
-    use revue::widget::feedback::PopoverArrow;
-    let arrows = [
-        PopoverArrow::None,
-        PopoverArrow::Simple,
-        PopoverArrow::Unicode,
-    ];
-
-    for arrow in arrows {
-        let mut buffer = Buffer::new(80, 24);
-        let area = Rect::new(0, 0, 80, 24);
-        let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-        use revue::widget::feedback::PopoverPosition;
-        let p = Popover::new("Test")
-            .anchor(40, 12)
-            .open(true)
-            .arrow(arrow)
-            .position(PopoverPosition::Top);
-
-        p.render(&mut ctx);
-    }
-}
-
-// =========================================================================
-// Popover Default trait tests
-// =========================================================================
-
-#[test]
-fn test_popover_default_trait() {
-    use revue::widget::feedback::{PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger};
-    let p = Popover::default();
-    assert_eq!(p.content, "");
-    assert_eq!(p.anchor, (0, 0));
-    assert_eq!(p.position, PopoverPosition::Bottom);
-    assert_eq!(p.trigger, PopoverTrigger::Click);
-    assert_eq!(p.popover_style, PopoverStyle::Default);
-    assert_eq!(p.arrow, PopoverArrow::None);
-    assert!(!p.open);
-    assert!(p.close_on_escape);
-    assert!(p.close_on_click_outside);
-    assert!(p.title.is_none());
-    assert_eq!(p.max_width, 40);
-    assert!(p.border_color.is_none());
-}
-
-#[test]
-fn test_popover_default_vs_new_empty() {
-    let default_p = Popover::default();
-    let new_p = Popover::new("");
-
-    assert_eq!(default_p.content, new_p.content);
-    assert_eq!(default_p.position, new_p.position);
-    assert_eq!(default_p.open, new_p.open);
+    let buffer = render(&p);
+    // Right of the anchor, past the arrow.
+    let (x, _) = corner(&buffer).unwrap();
+    assert_eq!(x, 12);
+    assert_eq!(symbol(&buffer, 11, 10), '◀');
+    assert_eq!(symbol(&buffer, x, corner(&buffer).unwrap().1), '╭');
 }

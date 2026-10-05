@@ -1,7 +1,4 @@
 //! Widget integration tests - split into modules by widget type
-//!
-//! NOTE: Some modules are temporarily disabled due to API mismatches.
-//! Search for "TODO(test-coverage)" to find disabled modules.
 
 #[path = "widget/accordion.rs"]
 mod accordion;
@@ -70,35 +67,23 @@ mod dropzone;
 mod edge_cases;
 #[path = "widget/empty_state.rs"]
 mod empty_state;
-// TODO(test-coverage): feedback has API mismatches
-// #[path = "widget/feedback/mod.rs"]
-// pub mod feedback;
-// TODO(test-coverage): filepicker has API mismatches
-// #[path = "widget/filepicker/mod.rs"]
-// mod filepicker;
-// TODO(test-coverage): filetree has API mismatches
-// #[path = "widget/filetree/mod.rs"]
-// mod filetree;
-// TODO(test-coverage): form has API mismatches
-// #[path = "widget/form/mod.rs"]
-// pub mod form;
-// TODO(test-coverage): form_tests has API mismatches
-// #[path = "widget/form_tests.rs"]
-// mod form_tests;
+#[path = "widget/feedback/mod.rs"]
+mod feedback;
+#[path = "widget/filepicker/mod.rs"]
+mod filepicker;
+#[path = "widget/form/mod.rs"]
+mod form;
+#[path = "widget/form_tests.rs"]
+mod form_tests;
 #[path = "widget/gauge.rs"]
 mod gauge;
-// TODO(test-coverage): httpclient has API mismatches
-// #[path = "widget/httpclient/mod.rs"]
-// pub mod httpclient;
-// TODO(test-coverage): multi_select has API mismatches
-// #[path = "widget/multi_select/mod.rs"]
-// pub mod multi_select;
+#[path = "widget/httpclient/mod.rs"]
+mod httpclient;
 #[cfg(feature = "image")]
 #[path = "widget/image.rs"]
 mod image;
-// TODO(test-coverage): input has API mismatches
-// #[path = "widget/input/mod.rs"]
-// mod input;
+#[path = "widget/input/mod.rs"]
+mod input;
 #[path = "widget/layout/mod.rs"]
 mod layout;
 #[path = "widget/link.rs"]
@@ -121,6 +106,8 @@ mod masked_input;
 mod masked_input_tests;
 #[path = "widget/mermaid/mod.rs"]
 mod mermaid;
+#[path = "widget/multi_select/mod.rs"]
+mod multi_select;
 #[path = "widget/option_list.rs"]
 mod option_list;
 #[path = "widget/pagination.rs"]

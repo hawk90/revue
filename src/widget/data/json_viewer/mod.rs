@@ -11,7 +11,7 @@
 #![allow(dead_code)]
 
 mod helpers;
-mod parser;
+pub(crate) mod parser;
 mod search;
 mod types;
 mod view;

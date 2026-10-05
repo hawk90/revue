@@ -33,6 +33,27 @@ pub fn char_to_byte_index(s: &str, char_idx: usize) -> usize {
         .unwrap_or(s.len())
 }
 
+/// Char index of the first match of `query` in `line` at or after char index
+/// `from`, comparing chars case-insensitively unless `case_sensitive`.
+pub(crate) fn find_chars(
+    line: &[char],
+    query: &[char],
+    from: usize,
+    case_sensitive: bool,
+) -> Option<usize> {
+    if query.is_empty() || query.len() > line.len() {
+        return None;
+    }
+    let same =
+        |a: char, b: char| a == b || (!case_sensitive && a.to_lowercase().eq(b.to_lowercase()));
+    (from..=line.len() - query.len()).find(|&i| {
+        line[i..i + query.len()]
+            .iter()
+            .zip(query)
+            .all(|(&a, &b)| same(a, b))
+    })
+}
+
 /// Get byte index from character index, also returning the character at that position
 ///
 /// # Returns

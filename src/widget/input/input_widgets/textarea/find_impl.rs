@@ -2,6 +2,7 @@
 
 use super::cursor::CursorPos;
 use super::find_replace::{FindMatch, FindOptions, FindReplaceMode, FindReplaceState};
+use crate::utils::text::find_chars;
 
 impl TextArea {
     /// Open find panel (Ctrl+F)
@@ -375,27 +376,6 @@ impl TextArea {
 }
 
 use super::TextArea;
-
-/// Char index of the first match of `query` in `line` at or after char index
-/// `from`, comparing chars case-insensitively unless `case_sensitive`.
-pub(super) fn find_chars(
-    line: &[char],
-    query: &[char],
-    from: usize,
-    case_sensitive: bool,
-) -> Option<usize> {
-    if query.is_empty() || query.len() > line.len() {
-        return None;
-    }
-    let same =
-        |a: char, b: char| a == b || (!case_sensitive && a.to_lowercase().eq(b.to_lowercase()));
-    (from..=line.len() - query.len()).find(|&i| {
-        line[i..i + query.len()]
-            .iter()
-            .zip(query)
-            .all(|(&a, &b)| same(a, b))
-    })
-}
 
 /// Build a compiled regex from the query, honoring the case-sensitivity and
 /// whole-word options. Returns `None` when the pattern fails to compile.

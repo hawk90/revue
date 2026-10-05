@@ -61,7 +61,7 @@ MSRV bumps are treated as minor version changes and documented in CHANGELOG.md.
 
 ## CSS Property Support
 
-All CSS properties documented in [docs/FEATURES.md](docs/FEATURES.md) are considered stable. New properties are added in minor versions and never removed.
+All CSS properties listed in the feature registry ([docs/specs/features.yaml](docs/specs/features.yaml), `CSS-*` items) are considered stable. New properties are added in minor versions and never removed.
 
 ### Supported Property Categories
 
