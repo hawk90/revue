@@ -580,9 +580,15 @@ impl View for Tooltip {
             0
         };
 
+        // The last row is the bottom border, if there is one.
+        let text_end = if self.style.border_chars().is_some() {
+            tooltip_h.saturating_sub(1)
+        } else {
+            tooltip_h
+        };
         for (i, line) in lines.iter().enumerate() {
             let ry = content_ry + text_y_off + i as u16;
-            if ry >= tooltip_h.saturating_sub(1) {
+            if ry >= text_end {
                 break;
             }
             for (j, ch) in line.chars().enumerate() {
