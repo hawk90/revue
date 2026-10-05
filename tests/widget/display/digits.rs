@@ -236,9 +236,41 @@ fn test_digit_style_default() {
 }
 
 #[test]
-#[ignore = "BUG: Digits::leading_zeros() is stored but never read"]
 fn test_leading_zeros_changes_output() {
     let with = Digits::new(42).min_width(5).leading_zeros(true);
     let without = Digits::new(42).min_width(5).leading_zeros(false);
     assert_ne!(with.format_value(), without.format_value());
+    assert_eq!(with.format_value(), "00042");
+    assert_eq!(without.format_value(), "   42");
+    // Zero padding stays the default
+    assert_eq!(Digits::new(42).min_width(5).format_value(), "00042");
+    // Blank padding goes before the sign and the separators
+    assert_eq!(
+        Digits::new(-42)
+            .min_width(5)
+            .leading_zeros(false)
+            .format_value(),
+        "  -42"
+    );
+    assert_eq!(
+        Digits::new(1234)
+            .min_width(7)
+            .separator(',')
+            .leading_zeros(false)
+            .format_value(),
+        "  1,234"
+    );
+}
+
+#[test]
+fn test_leading_zeros_off_renders_blank_columns() {
+    let lines = Digits::new(7)
+        .min_width(3)
+        .leading_zeros(false)
+        .render_lines();
+    let zeros = Digits::new(7).min_width(3).render_lines();
+    assert_ne!(lines, zeros);
+    // The two padding digits are blank, only the 7 draws
+    assert!(lines[0].trim_start().starts_with("███"));
+    assert!(zeros[0].starts_with("███"));
 }
