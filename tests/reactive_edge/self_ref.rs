@@ -14,12 +14,12 @@ fn test_signal_self_update() {
 
     // Correct way: use the mutable reference
     counter.update(|val| {
-        *val = *val + 1;
+        *val += 1;
     });
     assert_eq!(counter.get(), 1);
 
     counter.update(|val| {
-        *val = *val * 2;
+        *val *= 2;
     });
     assert_eq!(counter.get(), 2);
 

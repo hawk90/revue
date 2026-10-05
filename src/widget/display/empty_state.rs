@@ -244,7 +244,9 @@ impl View for EmptyState {
 impl EmptyState {
     fn render_full(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let accent = self.state_type.color();
+        // The state palette is this widget's own default; a rule naming
+        // this node outranks it.
+        let accent = ctx.css_color(self.state_type.color());
 
         // Calculate vertical centering
         let content_height = self.height();
@@ -328,7 +330,9 @@ impl EmptyState {
 
     fn render_compact(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let accent = self.state_type.color();
+        // The state palette is this widget's own default; a rule naming
+        // this node outranks it.
+        let accent = ctx.css_color(self.state_type.color());
         let mut y: u16 = 0;
 
         // Icon + Title on same line
@@ -396,7 +400,9 @@ impl EmptyState {
 
     fn render_minimal(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let accent = self.state_type.color();
+        // The state palette is this widget's own default; a rule naming
+        // this node outranks it.
+        let accent = ctx.css_color(self.state_type.color());
         let mut x: u16 = 0;
 
         // Icon

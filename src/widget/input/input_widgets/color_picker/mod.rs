@@ -529,13 +529,13 @@ mod tests {
             .class("form-control")
             .class("color-input");
 
-        assert!(cp.props.classes.contains(&"form-control".to_string()));
-        assert!(cp.props.classes.contains(&"color-input".to_string()));
-        assert!(!cp.props.classes.contains(&"optional".to_string()));
+        assert!(cp.props.classes.iter().any(|c| c == "form-control"));
+        assert!(cp.props.classes.iter().any(|c| c == "color-input"));
+        assert!(!cp.props.classes.iter().any(|c| c == "optional"));
 
         let meta = cp.meta();
-        assert!(meta.classes.contains(&"form-control".to_string()));
-        assert!(meta.classes.contains(&"color-input".to_string()));
+        assert!(meta.classes.iter().any(|c| c == "form-control"));
+        assert!(meta.classes.iter().any(|c| c == "color-input"));
     }
 
     #[test]
@@ -545,13 +545,13 @@ mod tests {
             .class("focused");
 
         assert_eq!(View::id(&cp), Some("test-picker"));
-        assert!(cp.props.classes.contains(&"focused".to_string()));
+        assert!(cp.props.classes.iter().any(|c| c == "focused"));
 
         let cp2 = cp.class("error");
-        assert!(cp2.props.classes.contains(&"error".to_string()));
+        assert!(cp2.props.classes.iter().any(|c| c == "error"));
 
         let meta = cp2.meta();
-        assert!(meta.classes.contains(&"error".to_string()));
+        assert!(meta.classes.iter().any(|c| c == "error"));
     }
 
     // =========================================================================

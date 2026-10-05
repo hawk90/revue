@@ -69,7 +69,8 @@ pub struct QrCodeWidget {
     /// Display style
     style: QrStyle,
     /// Foreground color (dark modules)
-    fg: Color,
+    /// The color the builder named, if it named one - see #656.
+    fg: Option<Color>,
     /// Background color (light modules)
     bg: Color,
     /// Error correction level
@@ -88,7 +89,7 @@ impl QrCodeWidget {
         Self {
             data: data.into(),
             style: QrStyle::default(),
-            fg: Color::BLACK,
+            fg: None,
             bg: Color::WHITE,
             ec_level: ErrorCorrection::default(),
             quiet_zone: 1,
@@ -105,7 +106,7 @@ impl QrCodeWidget {
 
     /// Set foreground color (dark modules)
     pub fn fg(mut self, color: Color) -> Self {
-        self.fg = color;
+        self.fg = Some(color);
         self
     }
 
@@ -150,7 +151,7 @@ impl QrCodeWidget {
     }
 
     #[doc(hidden)]
-    pub fn get_fg(&self) -> Color {
+    pub fn get_fg(&self) -> Option<Color> {
         self.fg
     }
 
@@ -200,10 +201,14 @@ impl QrCodeWidget {
         let height = matrix.len();
         let width = if height > 0 { matrix[0].len() } else { 0 };
 
+        // The modules take `color` and `background`. A QR code needs contrast to
+        // scan, so a rule that changes these is the caller's to get right.
+        let module = self.fg.unwrap_or_else(|| ctx.css_color(Color::BLACK));
+        let quiet = ctx.css_background(self.bg);
         let (fg, bg) = if self.inverted {
-            (self.bg, self.fg)
+            (quiet, module)
         } else {
-            (self.fg, self.bg)
+            (module, quiet)
         };
 
         // Two rows of QR = one terminal row
@@ -249,10 +254,11 @@ impl QrCodeWidget {
         let height = matrix.len();
         let width = if height > 0 { matrix[0].len() } else { 0 };
 
+        let module = self.fg.unwrap_or_else(|| ctx.css_color(Color::BLACK));
         let (fg, bg) = if self.inverted {
-            (self.bg, self.fg)
+            (self.bg, module)
         } else {
-            (self.fg, self.bg)
+            (module, self.bg)
         };
 
         for row in 0..height {
@@ -281,6 +287,7 @@ impl QrCodeWidget {
 
     /// Render using ASCII characters
     fn render_ascii(&self, ctx: &mut RenderContext, matrix: &[Vec<bool>]) {
+        let module = self.fg.unwrap_or_else(|| ctx.css_color(Color::BLACK));
         let area = ctx.area;
         let height = matrix.len();
         let width = if height > 0 { matrix[0].len() } else { 0 };
@@ -299,7 +306,7 @@ impl QrCodeWidget {
                 let ch = if dark { '#' } else { ' ' };
 
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(self.fg);
+                cell.fg = Some(module);
                 cell.bg = Some(self.bg);
 
                 ctx.set(col as u16 * 2, row as u16, cell);
@@ -310,6 +317,7 @@ impl QrCodeWidget {
 
     /// Render using Braille characters for highest resolution
     fn render_braille(&self, ctx: &mut RenderContext, matrix: &[Vec<bool>]) {
+        let module = self.fg.unwrap_or_else(|| ctx.css_color(Color::BLACK));
         let area = ctx.area;
         let height = matrix.len();
         let width = if height > 0 { matrix[0].len() } else { 0 };
@@ -375,7 +383,7 @@ impl QrCodeWidget {
                 let ch = char::from_u32(braille_base + dots as u32).unwrap_or('⠀');
 
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(self.fg);
+                cell.fg = Some(module);
                 cell.bg = Some(self.bg);
                 ctx.set(col as u16, row as u16, cell);
             }

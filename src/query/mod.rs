@@ -716,8 +716,8 @@ mod tests {
 
     #[test]
     fn test_query_value_float() {
-        let val = QueryValue::float(3.14);
-        assert_eq!(val, QueryValue::Float(3.14));
+        let val = QueryValue::float(1.25);
+        assert_eq!(val, QueryValue::Float(1.25));
     }
 
     #[test]
@@ -743,9 +743,9 @@ mod tests {
 
     #[test]
     fn test_query_value_contains_float() {
-        let val = QueryValue::float(3.14);
-        assert!(val.contains("3.14"));
-        assert!(val.contains("3"));
+        let val = QueryValue::float(1.25);
+        assert!(val.contains("1.25"));
+        assert!(val.contains("1"));
         assert!(!val.contains("999"));
     }
 

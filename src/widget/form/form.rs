@@ -163,8 +163,11 @@ impl Form {
             return;
         }
 
+        // A valid border takes `border-color` (falling back to `color`, as CSS
+        // does); the invalid red is validity state and stays put - a rule has no
+        // way to address it separately, so flattening it would hide the signal.
         let border_color = if self.is_valid() {
-            DISABLED_FG
+            ctx.css_border_or_text_color().unwrap_or(DISABLED_FG)
         } else {
             Color::rgb(200, 80, 80) // Red for invalid
         };
@@ -174,6 +177,9 @@ impl Form {
 
     /// Render form title
     fn render_title(&self, ctx: &mut RenderContext) {
+        // The title takes `color`; the error red below is validity state and a
+        // rule cannot address it separately, so it stays.
+        let title_fg = ctx.css_color(Color::WHITE);
         let area = ctx.area;
         if area.width < 4 {
             return;
@@ -187,7 +193,7 @@ impl Form {
             let cw = char_width(ch) as u16;
             if title_x + dx < area.width - 1 {
                 let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
+                cell.fg = Some(title_fg);
                 cell.bg = Some(Color::BLACK);
                 ctx.set(title_x + dx, 0, cell);
             }
@@ -258,7 +264,7 @@ impl View for Form {
             let (display_text, text_color) = if value.is_empty() {
                 (field.placeholder.clone(), SUBTLE_GRAY)
             } else {
-                (value, Color::WHITE)
+                (value, ctx.css_color(Color::WHITE))
             };
 
             for (i, ch) in display_text.chars().enumerate() {

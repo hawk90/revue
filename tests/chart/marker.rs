@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn test_marker_clone() {
         let marker1 = Marker::Circle;
-        let marker2 = marker1.clone();
+        let marker2 = marker1;
         assert_eq!(marker1, marker2);
     }
 

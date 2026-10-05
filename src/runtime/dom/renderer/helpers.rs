@@ -61,8 +61,10 @@ mod tests {
         let mut buffer = Buffer::new(30, 15);
         let area = Rect::new(0, 0, 30, 15);
         let style = Style::default();
-        let mut state = NodeState::default();
-        state.focused = true;
+        let state = NodeState {
+            focused: true,
+            ..Default::default()
+        };
 
         let ctx = styled_context(&mut buffer, area, &style, &state);
 

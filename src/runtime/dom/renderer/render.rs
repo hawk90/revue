@@ -68,6 +68,14 @@ impl DomRenderer {
         buffer.clear();
         let mut overlay_queue = crate::widget::OverlayQueue::new();
         let mut next = 1; // index 0 is the root, consumed here
+
+        // Moved out so the paint pass can fill it while `painted` still borrows
+        // the tree and the style cache. Its capacity survives the round trip.
+        let mut hits = std::mem::take(&mut self.hit_map);
+        hits.clear();
+        if let Some(root_node) = painted.first() {
+            hits.push((root_node.id, area));
+        }
         {
             let mut ctx = RenderContext::new(buffer, area);
             if let Some(root_node) = painted.first() {
@@ -78,16 +86,23 @@ impl DomRenderer {
                 nodes: &painted,
                 next: &mut next,
                 css_layout: self.css_layout,
+                hits: &mut hits,
             });
             ctx = ctx.with_overlay_queue(&mut overlay_queue);
             root.render(&mut ctx);
         }
+        drop(painted);
+        self.hit_map = hits;
         overlay_queue.render_to(buffer);
     }
 
     /// The original path: the DOM comes from `View::children`, and only the root
     /// widget is handed a computed style.
     fn render_from_children<V: View>(&mut self, root: &V, buffer: &mut Buffer, area: Rect) {
+        // Only the paint pass records where nodes land, so on this path there
+        // is nothing to hit-test against. Better empty than stale.
+        self.hit_map.clear();
+
         // Compute styles with inheritance
         self.compute_styles_with_inheritance();
 

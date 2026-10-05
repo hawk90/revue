@@ -110,9 +110,11 @@ pub struct Terminal {
     /// ANSI parser
     parser: AnsiParser,
     /// Default foreground color
-    default_fg: Color,
+    /// The color the builder named, if it named one - see #656.
+    default_fg: Option<Color>,
     /// Default background color
-    default_bg: Color,
+    /// The color the builder named, if it named one - see #656.
+    default_bg: Option<Color>,
     /// Show cursor
     show_cursor: bool,
     /// Cursor style
@@ -151,8 +153,8 @@ impl Terminal {
             width,
             height,
             parser: AnsiParser::new(),
-            default_fg: Color::WHITE,
-            default_bg: Color::BLACK,
+            default_fg: None,
+            default_bg: None,
             show_cursor: true,
             cursor_style: CursorStyle::Block,
             title: None,
@@ -172,14 +174,14 @@ impl Terminal {
 
     /// Set default foreground color
     pub fn default_fg(mut self, color: Color) -> Self {
-        self.default_fg = color;
+        self.default_fg = Some(color);
         self.parser.reset_fg(color);
         self
     }
 
     /// Set default background color
     pub fn default_bg(mut self, color: Color) -> Self {
-        self.default_bg = color;
+        self.default_bg = Some(color);
         self.parser.reset_bg(color);
         self
     }
@@ -488,10 +490,20 @@ impl View for Terminal {
             return;
         }
 
+        // The cell colors come from the *content* - the ANSI codes the program
+        // wrote - so a rule cannot have them, the same reading a syntax
+        // highlighter gets. The terminal's own defaults are the base.
+        let default_fg = self
+            .default_fg
+            .unwrap_or_else(|| ctx.css_color(Color::WHITE));
+        let default_bg = self
+            .default_bg
+            .unwrap_or_else(|| ctx.css_background(Color::BLACK));
+
         // Fill background
         for y in 0..area.height {
             for x in 0..area.width {
-                ctx.set(x, y, Cell::new(' ').bg(self.default_bg));
+                ctx.set(x, y, Cell::new(' ').bg(default_bg));
             }
         }
 
@@ -510,7 +522,20 @@ impl View for Terminal {
                         break;
                     }
 
-                    let mut render_cell = Cell::new(cell.ch).fg(cell.fg).bg(cell.bg);
+                    // Two cells read as "no ANSI code spoke for this": one
+                    // the parser never touched, which is `Color::default()` -
+                    // the same sentinel the cascade uses for unspecified - and
+                    // one reset by code 39, which asks for the *default*
+                    // foreground by name. Both are what `default_fg` is for,
+                    // so both go through it. A cell the content actually
+                    // colored keeps that color, the reading a syntax
+                    // highlighter's tokens get.
+                    let fg = if cell.fg.is_default() || cell.fg == Color::WHITE {
+                        default_fg
+                    } else {
+                        cell.fg
+                    };
+                    let mut render_cell = Cell::new(cell.ch).fg(fg).bg(cell.bg);
                     render_cell.modifier = cell.modifiers;
                     ctx.set(col as u16, render_y, render_cell);
                 }
@@ -535,11 +560,7 @@ impl View for Terminal {
                     CursorStyle::Bar => '│',
                 };
 
-                ctx.set(
-                    cursor_x,
-                    cursor_y,
-                    Cell::new(cursor_char).fg(self.default_fg),
-                );
+                ctx.set(cursor_x, cursor_y, Cell::new(cursor_char).fg(default_fg));
             }
         }
 
@@ -571,7 +592,7 @@ impl View for Terminal {
                 if ix + cw > area.width {
                     break;
                 }
-                ctx.set(ix, input_y, Cell::new(ch).fg(Color::WHITE).bg(DARK_BG));
+                ctx.set(ix, input_y, Cell::new(ch).fg(default_fg).bg(DARK_BG));
                 ix += cw;
             }
         }

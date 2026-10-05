@@ -49,13 +49,6 @@ mod response;
 mod result;
 mod types;
 
-#[cfg(test)]
-mod tests {
-    // Tests for custom event system
-    // Original file had tests moved to tests/event_tests.rs
-    // Keeping module for future tests
-}
-
 // Re-exports
 pub use bus::{CustomEventBus, EventRecord};
 pub use dispatcher::EventDispatcher;
@@ -64,3 +57,10 @@ pub use handler::{CustomHandlerId, HandlerOptions};
 pub use response::EventResponse;
 pub use result::DispatchResult;
 pub use types::{CustomEvent, DispatchPhase, EventEnvelope, EventId, EventMeta, EventPriority};
+
+#[cfg(test)]
+mod tests {
+    // Tests for custom event system
+    // Original file had tests moved to tests/event_tests.rs
+    // Keeping module for future tests
+}

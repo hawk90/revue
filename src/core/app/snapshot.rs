@@ -423,7 +423,7 @@ mod tests {
     fn test_snapshot_helper() {
         let snap = snapshot();
         // Verify snapshot helper returns valid instance
-        assert!(snap.config.snapshot_dir.as_os_str().len() > 0);
+        assert!(!snap.config.snapshot_dir.as_os_str().is_empty());
     }
 
     // =========================================================================

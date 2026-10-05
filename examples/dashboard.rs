@@ -5,7 +5,6 @@
 //! Run with: cargo run --example textual_dashboard
 
 use revue::prelude::*;
-use revue::widget::*;
 
 // Catppuccin Mocha colors
 #[allow(dead_code)]

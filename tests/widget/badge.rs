@@ -588,11 +588,13 @@ fn test_badge_css_colors_from_context() {
     let mut buffer = Buffer::new(20, 1);
     let area = Rect::new(0, 0, 20, 1);
 
-    let mut style = Style::default();
-    style.visual = VisualStyle {
-        color: Color::RED,
-        background: Color::BLUE,
-        ..VisualStyle::default()
+    let style = Style {
+        visual: VisualStyle {
+            color: Color::RED,
+            background: Color::BLUE,
+            ..VisualStyle::default()
+        },
+        ..Default::default()
     };
 
     let mut ctx = RenderContext::with_style(&mut buffer, area, &style);
@@ -606,11 +608,13 @@ fn test_badge_inline_override_css() {
     let mut buffer = Buffer::new(20, 1);
     let area = Rect::new(0, 0, 20, 1);
 
-    let mut style = Style::default();
-    style.visual = VisualStyle {
-        color: Color::RED,
-        background: Color::BLUE,
-        ..VisualStyle::default()
+    let style = Style {
+        visual: VisualStyle {
+            color: Color::RED,
+            background: Color::BLUE,
+            ..VisualStyle::default()
+        },
+        ..Default::default()
     };
 
     let mut ctx = RenderContext::with_style(&mut buffer, area, &style);

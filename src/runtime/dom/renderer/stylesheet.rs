@@ -7,15 +7,8 @@ impl DomRenderer {
     /// Create with a stylesheet
     pub fn with_stylesheet(stylesheet: StyleSheet) -> Self {
         Self {
-            tree: crate::dom::DomTree::new(),
             stylesheet,
-            styles: std::collections::HashMap::new(),
-            cached_selectors: None,
-            focused: None,
-            hovered: None,
-            structure_dirty: false,
-            dom_from_render: false,
-            css_layout: false,
+            ..Self::new_internal()
         }
     }
 

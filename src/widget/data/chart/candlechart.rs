@@ -834,7 +834,7 @@ mod tests {
     #[test]
     fn test_candle_clone() {
         let candle1 = Candle::new(100.0, 110.0, 95.0, 105.0).timestamp(123);
-        let candle2 = candle1.clone();
+        let candle2 = candle1;
         assert_eq!(candle1.open, candle2.open);
         assert_eq!(candle1.timestamp, candle2.timestamp);
     }
@@ -862,7 +862,7 @@ mod tests {
     #[test]
     fn test_chart_style_clone() {
         let style1 = ChartStyle::Ohlc;
-        let style2 = style1.clone();
+        let style2 = style1;
         assert_eq!(style1, style2);
     }
 

@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn test_grid_style_clone() {
         let style1 = GridStyle::Dashed;
-        let style2 = style1.clone();
+        let style2 = style1;
         assert_eq!(style1, style2);
     }
 

@@ -110,7 +110,7 @@ fn test_use_async_poll() {
     assert!(state.get().is_loading());
 
     // Wait for async operation to complete (up to 500ms)
-    poll_until(|| poll(), 500);
+    poll_until(poll, 500);
 
     assert_eq!(state.get(), AsyncState::Ready("done".to_string()));
 }
@@ -212,7 +212,7 @@ fn test_use_async_poll_start_from_different_thread() {
     assert!(state.get().is_loading());
 
     // Wait for async operation to complete (up to 500ms)
-    poll_until(|| poll(), 500);
+    poll_until(poll, 500);
 
     assert_eq!(state.get(), AsyncState::Ready("cross-thread".to_string()));
 }

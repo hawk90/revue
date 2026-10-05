@@ -461,7 +461,7 @@ impl View for Modal {
         if !self.title.is_empty() && modal_width > 4 {
             let title_x = x + 2;
             let title_width = modal_width.saturating_sub(4);
-            let title_fg = self.title_fg.unwrap_or(Color::WHITE);
+            let title_fg = self.title_fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
             ctx.draw_text_clipped_bold(title_x, y + 1, &self.title, title_fg, title_width);
 
             // Title separator
@@ -486,8 +486,7 @@ impl View for Modal {
         if let Some(ref body_widget) = self.body {
             // Render child widget
             let content_area = ctx.sub_area(x + 2, content_y, content_width, content_height);
-            let mut body_ctx = RenderContext::new(ctx.buffer, content_area);
-            body_widget.render(&mut body_ctx);
+            ctx.render_child(body_widget.as_ref(), content_area);
         } else {
             // Render text content
             for (i, line) in self.content.iter().enumerate() {
@@ -890,7 +889,7 @@ World",
     #[test]
     fn test_modal_button_style_clone() {
         let style1 = ModalButtonStyle::Primary;
-        let style2 = style1.clone();
+        let style2 = style1;
         assert_eq!(style1, style2);
     }
 

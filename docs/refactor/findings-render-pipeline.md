@@ -8,6 +8,8 @@
 > - F-6 — 박스 속성은 `.css_layout(true)`로 해결, 흐름 속성(`gap`, `flex-*`,
 >   `grid-*`)은 남았다. 조사 결과와 설계 선택은
 >   [`findings-layout.md`](findings-layout.md)
+> - F-4의 후속 — `:hover`는 `dom_from_render` 위에서 마우스로 구동된다. 히트 테스트는
+>   페인트 기록을 근거로 답한다. [`phase2-hit-test.md`](phase2-hit-test.md)
 >
 > 아래 조사 기록은 그대로 둔다 — 무엇이 왜 틀렸는지가 다음 단계의 근거다.
 
@@ -196,6 +198,7 @@ README의 대표 기능이 실제로 어디까지 작동하는지:
 | paint 속성 — 그 외 모든 위젯 | ❌ F-5 |
 | layout 박스 속성 (`width`, `height`, `margin`, `display`) — 어디든 | ❌ F-6 |
 | layout 흐름 속성 (`gap`, `flex-*`, `grid-*`) — 어디든 | ❌ F-6 |
+| 상태 의사클래스 (`:hover`) — 어디든 | ❌ 호출부 없음 → [phase2-hit-test](phase2-hit-test.md) |
 
 F-5의 메커니즘 자체는 배선된 곳에서 작동한다 (`Text`가 `ctx.style`을 읽는 9개 파일 중
 하나다). 전달이 루트에서 멈출 뿐이다.

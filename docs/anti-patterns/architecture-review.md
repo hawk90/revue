@@ -413,7 +413,7 @@ revue-css
 
 ```rust
 button("Save")
-    .style(ButtonStyle::primary());
+    .variant(ButtonVariant::Primary);
 ```
 
 또는:

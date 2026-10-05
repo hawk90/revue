@@ -265,7 +265,7 @@ impl crate::widget::traits::View for Combobox {
         render::render_combobox(self, ctx);
     }
 
-    crate::impl_view_meta!("Combobox");
+    crate::impl_view_meta!("Combobox", focusable);
 }
 
 impl crate::widget::traits::Interactive for Combobox {

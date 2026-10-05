@@ -379,11 +379,13 @@ mod tests {
         let mut buffer = Buffer::new(30, 3);
         let area = Rect::new(1, 1, 25, 1);
 
-        let mut style = Style::default();
-        style.visual = VisualStyle {
-            color: Color::CYAN,
-            background: Color::rgb(40, 40, 40),
-            ..VisualStyle::default()
+        let style = Style {
+            visual: VisualStyle {
+                color: Color::CYAN,
+                background: Color::rgb(40, 40, 40),
+                ..VisualStyle::default()
+            },
+            ..Default::default()
         };
 
         let mut ctx = RenderContext::with_style(&mut buffer, area, &style);

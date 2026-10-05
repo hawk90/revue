@@ -114,7 +114,9 @@ DOM에 실려야 하고 — 그러고 나서도 엔진이 내재 콘텐츠 크�
 - 적용 안 함: `padding` — 위젯의 *콘텐츠*를 들여쓰는 것이라 테두리를 직접 그리는
   위젯(`Border`, `Card`)의 테두리가 안쪽으로 밀린다
 - `gap` / `column-gap` / `row-gap` — 흐름 속성이라 **컨테이너가 읽는다**.
-  `ctx.gap_or(self.gap)` 한 줄이고, `gap: 0`이 초깃값이라 미지정으로 읽혀 빌더 값이 남는다.
+  `ctx.gap_or(self.gap)` 한 줄이다. 처음에는 `gap`이 평범한 `u16`이라 `gap: 0`이
+  미지정으로 읽혀 빌더 값이 남았는데 — **스타일시트가 gap을 닫을 방법이 없었다** —
+  `column_gap`/`row_gap`처럼 `Option<u16>`으로 바꿔 해결했다.
   `Stack`과 `Grid`에 배선했다
 - 적용 안 함: `flex-*`, `grid-template-*` — 컨테이너가 직접 계산한다
 

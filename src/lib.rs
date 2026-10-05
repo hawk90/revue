@@ -154,8 +154,8 @@
 //!     let mut pilot = Pilot::new(&mut app);
 //!
 //!     pilot
-//!         .press(Key::Up)
-//!         .press(Key::Up)
+//!         .press_key(Key::Up)
+//!         .press_key(Key::Up)
 //!         .assert_contains("2");
 //! }
 //! ```
@@ -527,6 +527,9 @@ pub mod prelude {
         Button,
         ButtonVariant,
         Canvas,
+        // Layout containers that `widget::` exported but the prelude did not
+        Card,
+        CardVariant,
         Checkbox,
         CheckboxStyle,
         Circle,

@@ -499,7 +499,7 @@ impl View for SelectionList {
             } else if is_selected {
                 self.selected_fg.unwrap_or(Color::GREEN)
             } else {
-                self.fg.unwrap_or(Color::WHITE)
+                self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE))
             };
 
             let mut text_widget = Text::new(&text).fg(fg);
@@ -533,7 +533,7 @@ impl View for SelectionList {
         content.render(ctx);
     }
 
-    crate::impl_view_meta!("SelectionList");
+    crate::impl_view_meta!("SelectionList", focusable);
 }
 
 impl_styled_view!(SelectionList);

@@ -53,7 +53,9 @@ impl Spinner {
             style: SpinnerStyle::default(),
             frame: 0,
             label: None,
-            fg: Some(Color::CYAN),
+            // `None` means "the builder said nothing", which is what lets a
+            // stylesheet fill it in. The cyan default is applied at paint time.
+            fg: None,
             props: WidgetProps::new(),
         }
     }
@@ -118,7 +120,8 @@ impl View for Spinner {
         // Render spinner character (get first char from frame string)
         if let Some(ch) = current_frame.chars().next() {
             let mut cell = Cell::new(ch);
-            cell.fg = self.fg;
+            // Builder first, then the stylesheet, then the widget's own default.
+            cell.fg = Some(self.fg.unwrap_or_else(|| ctx.css_color(Color::CYAN)));
             ctx.set(0, 0, cell);
         }
 

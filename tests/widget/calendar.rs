@@ -1028,11 +1028,13 @@ fn test_calendar_css_colors_from_context() {
     let mut buffer = Buffer::new(30, 12);
     let area = Rect::new(0, 0, 30, 12);
 
-    let mut style = Style::default();
-    style.visual = VisualStyle {
-        color: Color::RED,
-        background: Color::BLUE,
-        ..VisualStyle::default()
+    let style = Style {
+        visual: VisualStyle {
+            color: Color::RED,
+            background: Color::BLUE,
+            ..VisualStyle::default()
+        },
+        ..Default::default()
     };
 
     let mut ctx = RenderContext::with_style(&mut buffer, area, &style);
@@ -1048,11 +1050,13 @@ fn test_calendar_inline_override_css() {
     let mut buffer = Buffer::new(30, 12);
     let area = Rect::new(0, 0, 30, 12);
 
-    let mut style = Style::default();
-    style.visual = VisualStyle {
-        color: Color::RED,
-        background: Color::BLUE,
-        ..VisualStyle::default()
+    let style = Style {
+        visual: VisualStyle {
+            color: Color::RED,
+            background: Color::BLUE,
+            ..VisualStyle::default()
+        },
+        ..Default::default()
     };
 
     let mut ctx = RenderContext::with_style(&mut buffer, area, &style);
@@ -1254,9 +1258,8 @@ fn test_calendar_rapid_navigation() {
     }
 
     // 선택이 계속 유효해야 함 (Selection should still be valid)
-    let selected = cal.get_selected();
-    if selected.is_some() {
-        let date: Date = selected.unwrap();
+    if let Some(date) = cal.get_selected() {
+        let date: Date = date;
         assert!(date.is_valid());
     }
 }

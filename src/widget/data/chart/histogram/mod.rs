@@ -285,7 +285,7 @@ impl Histogram {
                         if self.bar_border.is_some() && (dx == 0 || dx == bar_width - 1) {
                             cell.fg = self.bar_border;
                         } else {
-                            cell.fg = Some(self.fill_color);
+                            cell.fg = Some(ctx.css_color(self.fill_color));
                         }
                         ctx.set(x, y, cell);
                     }

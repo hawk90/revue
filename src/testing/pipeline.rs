@@ -94,6 +94,16 @@ impl PipelineHarness {
         self
     }
 
+    /// Mirrors [`AppBuilder::tab_navigation`](crate::app::AppBuilder::tab_navigation),
+    /// which is off by default.
+    ///
+    /// With it on, sending a `Tab` key through [`send`](Self::send) moves
+    /// `:focus` exactly as the event loop does.
+    pub fn tab_navigation(mut self, enabled: bool) -> Self {
+        self.app.set_tab_navigation(enabled);
+        self
+    }
+
     fn build(app: App, width: u16, height: u16) -> Self {
         Self {
             app,
@@ -194,9 +204,9 @@ impl PipelineHarness {
 
     /// Set the focused node by element id (`None` clears focus).
     ///
-    /// Mirrors what the runtime will do once `set_focus` is wired into the
-    /// event path in Phase 2. Until then this is the only way to observe
-    /// `:focus` behavior in a test.
+    /// Names a node directly. To exercise the paths the runtime actually uses,
+    /// click through [`send`](Self::send) with a mouse event, or send a `Tab`
+    /// key with [`tab_navigation`](Self::tab_navigation) on.
     pub fn focus(&mut self, element_id: Option<&str>) -> &mut Self {
         self.app.dom_renderer().set_focus(element_id);
         self
@@ -206,6 +216,77 @@ impl PipelineHarness {
     pub fn hover(&mut self, element_id: Option<&str>) -> &mut Self {
         self.app.dom_renderer().set_hover(element_id);
         self
+    }
+
+    /// Move the pointer to `(x, y)`, exactly as the event loop does.
+    ///
+    /// Returns `true` if `:hover` moved. Unlike [`hover`](Self::hover), which
+    /// names a node directly, this goes through the hit test - so it observes
+    /// where the last frame actually painted things. Draw first.
+    pub fn mouse_at(&mut self, x: u16, y: u16) -> bool {
+        self.app.track_hover_for_test(x, y)
+    }
+
+    /// Push an event through the real `App::handle_event`, with a user handler
+    /// that does nothing.
+    ///
+    /// Returns whether the app asked for a redraw. Use this rather than
+    /// [`mouse_at`](Self::mouse_at) when the point of the test is that the
+    /// event loop *reacts* to the event at all.
+    pub fn send<V: View>(&mut self, event: crate::event::Event, view: &mut V) -> bool {
+        self.app.dispatch_for_test(event, view)
+    }
+
+    /// Element id of the node under `(x, y)` in the last painted frame.
+    pub fn element_at(&self, x: u16, y: u16) -> Option<String> {
+        self.app.dom().element_at(x, y).map(str::to_owned)
+    }
+
+    /// Element id of the node a click at `(x, y)` would focus.
+    pub fn focus_target_at(&self, x: u16, y: u16) -> Option<String> {
+        self.app
+            .dom()
+            .focus_target_at(x, y)
+            .and_then(|id| self.app.dom().tree().get(id))
+            .and_then(|node| node.meta.id.clone())
+    }
+
+    /// Whether the node with this element id is a focusable *kind* of widget.
+    pub fn is_focusable(&self, element_id: &str) -> bool {
+        self.app
+            .dom()
+            .get_by_id(element_id)
+            .is_some_and(|node| node.meta.focusable)
+    }
+
+    /// Element id of the node currently hovered, if it has one.
+    pub fn hovered_element(&self) -> Option<String> {
+        self.app
+            .dom()
+            .hovered_node()
+            .and_then(|id| self.app.dom().tree().get(id))
+            .and_then(|node| node.meta.id.clone())
+    }
+
+    /// Where the last frame painted the node with this element id.
+    ///
+    /// This is what the user saw, which is not what
+    /// [`layout_rect`](Self::layout_rect) reports - see
+    /// `docs/refactor/findings-layout.md`.
+    pub fn painted_rect(&self, element_id: &str) -> Option<Rect> {
+        self.node_id(element_id)
+            .and_then(|id| self.app.dom().painted_rect(id))
+    }
+
+    /// The `color` the cascade computed for a node, if it set one.
+    ///
+    /// What the *stylesheet* decided, as distinct from what reached the screen -
+    /// a widget can still paint something else, and several do.
+    pub fn computed_color(&self, element_id: &str) -> Option<crate::style::Color> {
+        let id = self.node_id(element_id)?;
+        let style = self.app.dom().computed_style(id)?;
+        let color = style.visual.color;
+        (color != crate::style::Color::default()).then_some(color)
     }
 
     /// Element ids of every node currently marked focused.

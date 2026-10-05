@@ -95,8 +95,12 @@ impl ErrorBoundary {
             return;
         }
 
-        let border_color = Color::rgb(200, 60, 60);
-        let text_color = Color::rgb(200, 60, 60);
+        // A boundary has one state, so a rule naming it targets the whole node
+        // and the author outranks the widget's red.
+        let border_color = ctx
+            .css_border_or_text_color()
+            .unwrap_or(Color::rgb(200, 60, 60));
+        let text_color = ctx.css_color(Color::rgb(200, 60, 60));
         let dim_color = Color::rgb(140, 60, 60);
 
         // Draw top and bottom borders

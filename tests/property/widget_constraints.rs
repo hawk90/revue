@@ -12,7 +12,7 @@ proptest! {
     fn test_positioned_percent_x_in_bounds(percent in 0.0f32..100.0f32) {
         // When percent is in [0, 100], resulting offset should be non-negative
         let clamped = percent.clamp(0.0, 100.0);
-        prop_assert!(clamped >= 0.0 && clamped <= 100.0);
+        prop_assert!((0.0..=100.0).contains(&clamped));
     }
 
     /// Test that percentage calculation is monotonic

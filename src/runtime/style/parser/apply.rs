@@ -160,7 +160,7 @@ fn apply_display_layout(style: &mut Style, property: &str, value: &str) -> bool 
         }
         "gap" => {
             if let Ok(v) = value.trim().parse::<u16>() {
-                style.layout.gap = v;
+                style.layout.gap = Some(v);
                 return true;
             }
             false
@@ -564,25 +564,25 @@ pub(super) fn resolve_animation(
 fn apply_visual(style: &mut Style, property: &str, value: &str) {
     match property {
         "border-style" => {
-            style.visual.border_style = match value {
+            style.visual.border_style = Some(match value {
                 "none" => BorderStyle::None,
                 "solid" => BorderStyle::Solid,
                 "dashed" => BorderStyle::Dashed,
                 "double" => BorderStyle::Double,
                 "rounded" => BorderStyle::Rounded,
                 _ => return,
-            };
+            });
         }
         "border" => {
             // Shorthand: border: <style> [color] or border: <style>
             let parts: Vec<&str> = value.split_whitespace().collect();
             for part in &parts {
                 match *part {
-                    "none" => style.visual.border_style = BorderStyle::None,
-                    "solid" => style.visual.border_style = BorderStyle::Solid,
-                    "dashed" => style.visual.border_style = BorderStyle::Dashed,
-                    "double" => style.visual.border_style = BorderStyle::Double,
-                    "rounded" => style.visual.border_style = BorderStyle::Rounded,
+                    "none" => style.visual.border_style = Some(BorderStyle::None),
+                    "solid" => style.visual.border_style = Some(BorderStyle::Solid),
+                    "dashed" => style.visual.border_style = Some(BorderStyle::Dashed),
+                    "double" => style.visual.border_style = Some(BorderStyle::Double),
+                    "rounded" => style.visual.border_style = Some(BorderStyle::Rounded),
                     _ => {
                         if let Some(c) = parse_color(part) {
                             style.visual.border_color = c;

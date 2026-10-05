@@ -317,14 +317,16 @@ impl Timer {
     }
 
     /// Get appropriate color based on remaining time
-    fn current_color(&self) -> Color {
+    /// The normal color takes `color`; the warning and danger thresholds
+    /// keep theirs - those are the reading.
+    fn current_color(&self, ctx: &RenderContext) -> Color {
         let secs = self.remaining_seconds();
         if secs <= self.danger_threshold {
             self.danger_fg.unwrap_or(Color::RED)
         } else if secs <= self.warning_threshold {
             self.warning_fg.unwrap_or(Color::YELLOW)
         } else {
-            self.fg.unwrap_or(Color::WHITE)
+            self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE))
         }
     }
 }
@@ -335,7 +337,7 @@ impl View for Timer {
         use crate::widget::Progress;
         use crate::widget::Text;
 
-        let color = self.current_color();
+        let color = self.current_color(ctx);
         let mut content = vstack();
 
         // Title

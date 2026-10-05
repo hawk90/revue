@@ -47,7 +47,8 @@ pub struct Pagination {
     /// Active color
     active_color: Color,
     /// Inactive color
-    inactive_color: Color,
+    /// The color the builder named, if it named one - see #656.
+    inactive_color: Option<Color>,
     /// Is focused
     focused: bool,
     /// CSS styling properties (id, classes)
@@ -65,7 +66,7 @@ impl Pagination {
             show_arrows: true,
             show_edges: true,
             active_color: Color::rgb(60, 120, 200),
-            inactive_color: SUBTLE_GRAY,
+            inactive_color: None,
             focused: false,
             props: WidgetProps::new(),
         }
@@ -127,7 +128,7 @@ impl Pagination {
 
     /// Set inactive color
     pub fn inactive_color(mut self, color: Color) -> Self {
-        self.inactive_color = color;
+        self.inactive_color = Some(color);
         self
     }
 
@@ -227,7 +228,7 @@ impl Pagination {
     }
 
     #[doc(hidden)]
-    pub fn get_inactive_color(&self) -> Color {
+    pub fn get_inactive_color(&self) -> Option<Color> {
         self.inactive_color
     }
 
@@ -262,6 +263,10 @@ impl View for Pagination {
     crate::impl_view_meta!("Pagination");
 
     fn render(&self, ctx: &mut RenderContext) {
+        // Inactive page numbers take `color`; the active one keeps its highlight.
+        let inactive_color = self
+            .inactive_color
+            .unwrap_or_else(|| ctx.css_color(SUBTLE_GRAY));
         let area = ctx.area;
         let mut x: u16 = 0;
 
@@ -271,7 +276,7 @@ impl View for Pagination {
                 if self.show_edges {
                     // First button
                     let color = if self.is_first() {
-                        self.inactive_color
+                        inactive_color
                     } else {
                         self.active_color
                     };
@@ -284,7 +289,7 @@ impl View for Pagination {
                 if self.show_arrows {
                     // Prev button
                     let color = if self.is_first() {
-                        self.inactive_color
+                        inactive_color
                     } else {
                         self.active_color
                     };
@@ -300,13 +305,13 @@ impl View for Pagination {
                 // Ellipsis before
                 if start > 1 {
                     let mut one = Cell::new('1');
-                    one.fg = Some(self.inactive_color);
+                    one.fg = Some(inactive_color);
                     ctx.set(x, 0, one);
                     x += 2;
 
                     if start > 2 {
                         let mut dots = Cell::new('…');
-                        dots.fg = Some(self.inactive_color);
+                        dots.fg = Some(inactive_color);
                         ctx.set(x, 0, dots);
                         x += 2;
                     }
@@ -330,7 +335,7 @@ impl View for Pagination {
                             cell.fg = Some(self.active_color);
                             cell.modifier |= Modifier::BOLD;
                         } else {
-                            cell.fg = Some(self.inactive_color);
+                            cell.fg = Some(inactive_color);
                         }
                         ctx.set(x, 0, cell);
                         x += 1;
@@ -350,7 +355,7 @@ impl View for Pagination {
                 if end < self.total {
                     if end < self.total - 1 {
                         let mut dots = Cell::new('…');
-                        dots.fg = Some(self.inactive_color);
+                        dots.fg = Some(inactive_color);
                         ctx.set(x, 0, dots);
                         x += 2;
                     }
@@ -358,7 +363,7 @@ impl View for Pagination {
                     let total_str = self.total.to_string();
                     for ch in total_str.chars() {
                         let mut cell = Cell::new(ch);
-                        cell.fg = Some(self.inactive_color);
+                        cell.fg = Some(inactive_color);
                         ctx.set(x, 0, cell);
                         x += 1;
                     }
@@ -368,7 +373,7 @@ impl View for Pagination {
                 if self.show_arrows {
                     // Next button
                     let color = if self.is_last() {
-                        self.inactive_color
+                        inactive_color
                     } else {
                         self.active_color
                     };
@@ -381,7 +386,7 @@ impl View for Pagination {
                 if self.show_edges {
                     // Last button
                     let color = if self.is_last() {
-                        self.inactive_color
+                        inactive_color
                     } else {
                         self.active_color
                     };
@@ -393,7 +398,7 @@ impl View for Pagination {
             PaginationStyle::Simple => {
                 // ← Page 3 of 10 →
                 let prev_color = if self.is_first() {
-                    self.inactive_color
+                    inactive_color
                 } else {
                     self.active_color
                 };
@@ -405,14 +410,14 @@ impl View for Pagination {
                 let text = format!("Page {} of {}", self.current, self.total);
                 for ch in text.chars() {
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(self.inactive_color);
+                    cell.fg = Some(inactive_color);
                     ctx.set(x, 0, cell);
                     x += 1;
                 }
                 x += 1;
 
                 let next_color = if self.is_last() {
-                    self.inactive_color
+                    inactive_color
                 } else {
                     self.active_color
                 };
@@ -444,7 +449,7 @@ impl View for Pagination {
                     cell.fg = Some(if is_current {
                         self.active_color
                     } else {
-                        self.inactive_color
+                        inactive_color
                     });
                     ctx.set(x, 0, cell);
                     x += 2;

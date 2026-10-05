@@ -38,8 +38,11 @@ proptest! {
         size in 40000u16..u16::MAX,
         gap in 1000u16..5000u16
     ) {
-        // These operations should not overflow
+        // `result <= u16::MAX` was the old assertion and it is true of every
+        // `u16`. What the layout code actually relies on is that adding a gap
+        // never moves an edge *backwards*.
         let result = size.saturating_add(gap);
-        prop_assert!(result <= u16::MAX);
+        prop_assert!(result >= size);
+        prop_assert_eq!(result, size.saturating_add(gap));
     }
 }

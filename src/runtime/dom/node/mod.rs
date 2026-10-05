@@ -95,6 +95,24 @@ pub struct WidgetMeta {
     /// `None` means the widget's identity is positional, which is the
     /// pre-existing behavior.
     pub key: Option<WidgetKey>,
+    /// Can this kind of widget hold keyboard focus?
+    ///
+    /// A property of the widget *type*, not of the moment - `Button` is
+    /// focusable, `Text` is not, and that does not change frame to frame.
+    /// Whether a particular node can be focused *right now* additionally
+    /// depends on its [`NodeState::disabled`], the same split HTML makes
+    /// between a `<button>` and a `<button disabled>`.
+    ///
+    /// Defaults to `false`, so a widget that says nothing stays unfocusable.
+    pub focusable: bool,
+    /// Has the application declared this widget disabled?
+    ///
+    /// Unlike [`NodeState::focused`] and [`NodeState::hovered`], which the
+    /// runtime *discovers*, this is *declared* by the view - the same split
+    /// HTML makes between the `disabled` attribute and the `:focus`
+    /// pseudo-class. So it travels with the widget's description of itself and
+    /// is copied onto the node, rather than being written by an event.
+    pub disabled: bool,
 }
 
 impl WidgetMeta {
@@ -105,7 +123,21 @@ impl WidgetMeta {
             id: None,
             classes: HashSet::new(),
             key: None,
+            focusable: false,
+            disabled: false,
         }
+    }
+
+    /// Mark this widget type as able to hold keyboard focus.
+    pub fn focusable(mut self) -> Self {
+        self.focusable = true;
+        self
+    }
+
+    /// Declare this widget disabled.
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = disabled;
+        self
     }
 
     /// Set the reconciliation key.
@@ -163,6 +195,17 @@ pub struct NodeState {
     pub empty: bool,
     /// Node's content, style or layout is dirty and needs repaint
     pub dirty: bool,
+    /// Something below this node is dirty, even if this node is not.
+    ///
+    /// The style walk stops descending at any node it considers settled, which
+    /// is what keeps an unchanged frame from recomputing the whole cascade. Without
+    /// this bit "settled" would mean "this node is clean", and a clean root would
+    /// hide every stale descendant beneath it - so a class added on frame two
+    /// would never restyle anything.
+    ///
+    /// Set on the ancestors of an invalidated node and cleared as the walk
+    /// passes through.
+    pub subtree_dirty: bool,
     /// Node is first child of parent
     pub first_child: bool,
     /// Node is last child of parent
@@ -255,8 +298,13 @@ impl DomNode {
     pub fn new(id: DomId, meta: WidgetMeta) -> Self {
         Self {
             id,
+            // Declared state arrives with the meta; discovered state
+            // (`focused`, `hovered`) starts empty and is written by events.
+            state: NodeState {
+                disabled: meta.disabled,
+                ..NodeState::default()
+            },
             meta,
-            state: NodeState::default(),
             parent: None,
             children: Vec::new(),
             computed_style: Style::default(),

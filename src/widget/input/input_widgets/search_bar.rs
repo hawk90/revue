@@ -54,7 +54,8 @@ pub struct SearchBar {
     /// Colors
     bg_color: Color,
     border_color: Color,
-    text_color: Color,
+    /// The color the builder named, if it named one - see #656.
+    text_color: Option<Color>,
     placeholder_color: Color,
     error_color: Color,
     /// Widget properties
@@ -76,7 +77,7 @@ impl SearchBar {
             icon: '🔍',
             bg_color: Color::rgb(30, 30, 40),
             border_color: Color::rgb(80, 80, 100),
-            text_color: Color::WHITE,
+            text_color: None,
             placeholder_color: Color::rgb(100, 100, 120),
             error_color: Color::RED,
             props: WidgetProps::new(),
@@ -111,7 +112,7 @@ impl SearchBar {
     pub fn colors(mut self, bg: Color, border: Color, text: Color) -> Self {
         self.bg_color = bg;
         self.border_color = border;
-        self.text_color = text;
+        self.text_color = Some(text);
         self
     }
 
@@ -294,6 +295,10 @@ impl Default for SearchBar {
 
 impl View for SearchBar {
     fn render(&self, ctx: &mut RenderContext) {
+        // The query text takes `color`; the placeholder and border keep theirs.
+        let text_color = self
+            .text_color
+            .unwrap_or_else(|| ctx.css_color(Color::WHITE));
         let area = ctx.area;
         let width = self.width.min(area.width);
 
@@ -380,7 +385,7 @@ impl View for SearchBar {
                 cell.fg = Some(if self.parse_error.is_some() {
                     self.error_color
                 } else {
-                    self.text_color
+                    text_color
                 });
                 cell.bg = Some(self.bg_color);
                 ctx.set(input_x + dx, 0, cell);
@@ -407,7 +412,7 @@ impl View for SearchBar {
                 let cursor_char = self.input.chars().skip(self.cursor).next().unwrap_or(' ');
                 let mut cursor_cell = Cell::new(cursor_char);
                 cursor_cell.fg = Some(self.bg_color);
-                cursor_cell.bg = Some(self.text_color);
+                cursor_cell.bg = Some(text_color);
                 ctx.set(cursor_x, 0, cursor_cell);
             }
         }
@@ -448,7 +453,7 @@ impl View for SearchBar {
         }
     }
 
-    crate::impl_view_meta!("SearchBar");
+    crate::impl_view_meta!("SearchBar", focusable);
 }
 
 impl_styled_view!(SearchBar);

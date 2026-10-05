@@ -162,15 +162,17 @@ proptest! {
         prop_assert!(union.x <= r2.x);
         prop_assert!(union.y <= r2.y);
 
-        // Union should extend to or past both rects' right/bottom edges
-        if r1.right() <= u16::MAX && r2.right() <= u16::MAX {
-            prop_assert!(union.right() >= r1.right());
-            prop_assert!(union.right() >= r2.right());
-        }
-        if r1.bottom() <= u16::MAX && r2.bottom() <= u16::MAX {
-            prop_assert!(union.bottom() >= r1.bottom());
-            prop_assert!(union.bottom() >= r2.bottom());
-        }
+        // Union should extend to or past both rects' right/bottom edges.
+        //
+        // These used to be guarded by `if r1.right() <= u16::MAX`, which is
+        // always true - `right()` returns a `u16`. The guard was dead and the
+        // assertions ran unconditionally anyway; now they say so. The
+        // generated ranges top out at 599, so saturation is not reachable here
+        // - `rect_right_saturates` below covers that.
+        prop_assert!(union.right() >= r1.right());
+        prop_assert!(union.right() >= r2.right());
+        prop_assert!(union.bottom() >= r1.bottom());
+        prop_assert!(union.bottom() >= r2.bottom());
     }
 
     /// Intersects is symmetric
@@ -196,19 +198,22 @@ proptest! {
     #[test]
     fn rect_right_saturates(x in 60000u16..=u16::MAX, w in 10000u16..=u16::MAX) {
         let rect = Rect::new(x, 0, w, 1);
-        // Should not panic, should saturate
+        // `x + w` always overflows for these ranges, so `right()` must land
+        // exactly on the ceiling. `right <= u16::MAX` was the old assertion and
+        // it is true of every `u16` - it could not have failed.
         let right = rect.right();
         prop_assert!(right >= x);
-        prop_assert!(right <= u16::MAX);
+        prop_assert_eq!(right, u16::MAX);
     }
 
     /// Test edge saturation behavior - rect.bottom() saturates at u16::MAX
     #[test]
     fn rect_bottom_saturates(y in 60000u16..=u16::MAX, h in 10000u16..=u16::MAX) {
         let rect = Rect::new(0, y, 1, h);
-        // Should not panic, should saturate
+        // Same as `rect_right_saturates`: these ranges always overflow, so the
+        // ceiling is the answer, and `bottom <= u16::MAX` proved nothing.
         let bottom = rect.bottom();
         prop_assert!(bottom >= y);
-        prop_assert!(bottom <= u16::MAX);
+        prop_assert_eq!(bottom, u16::MAX);
     }
 }

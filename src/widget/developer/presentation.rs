@@ -67,7 +67,7 @@ impl Slide {
             notes: String::new(),
             bg: None,
             title_color: Color::CYAN,
-            content_color: Color::WHITE,
+            content_color: SLIDE_FG,
             align: SlideAlign::Center,
         }
     }
@@ -178,12 +178,19 @@ pub struct Presentation {
     /// Timer (seconds)
     timer: Option<u64>,
     /// Background color
-    bg: Color,
+    /// The color the builder named, if it named one - see #656.
+    bg: Option<Color>,
     /// Accent color
     accent: Color,
     /// Widget properties
     props: WidgetProps,
 }
+
+/// The slide fill and body text a presentation uses when nothing says
+/// otherwise. Named so `background_or` / `color_or` can tell "the builder set
+/// this" from "the builder said nothing".
+const SLIDE_BG: Color = Color::rgb(20, 20, 30);
+const SLIDE_FG: Color = Color::WHITE;
 
 impl Presentation {
     /// Create a new presentation
@@ -198,7 +205,7 @@ impl Presentation {
             show_numbers: true,
             show_progress: true,
             timer: None,
-            bg: Color::rgb(20, 20, 30),
+            bg: None,
             accent: Color::CYAN,
             props: WidgetProps::new(),
         }
@@ -248,7 +255,7 @@ impl Presentation {
 
     /// Set background color
     pub fn bg(mut self, color: Color) -> Self {
-        self.bg = color;
+        self.bg = Some(color);
         self
     }
 
@@ -356,8 +363,11 @@ impl Presentation {
     fn render_content_slide(&self, ctx: &mut RenderContext, slide: &Slide) {
         let area = ctx.area;
 
-        // Background
-        let bg = slide.bg.unwrap_or(self.bg);
+        // Background. A per-slide `bg` is an explicit override and stays on
+        // top; otherwise the stylesheet gets the fill.
+        let bg = slide
+            .bg
+            .unwrap_or_else(|| self.bg.unwrap_or_else(|| ctx.css_background(SLIDE_BG)));
         for y in 0..area.height {
             for x in 0..area.width {
                 let mut cell = Cell::new(' ');
@@ -386,7 +396,9 @@ impl Presentation {
             ctx.set(sep_start as u16 + i as u16, sep_y, cell);
         }
 
-        // Content
+        // Content. The slide title and the accent each say something one rule
+        // cannot; the body is the base they are a departure from.
+        let content_fg = ctx.color_or(slide.content_color, SLIDE_FG);
         let content_start_y = 6;
         for (i, line) in slide.content.iter().enumerate() {
             let y = content_start_y + i as u16;
@@ -401,19 +413,19 @@ impl Presentation {
                             break;
                         }
                         let mut cell = Cell::new(ch);
-                        cell.fg = Some(slide.content_color);
+                        cell.fg = Some(content_fg);
                         ctx.set(2 + j as u16, y, cell);
                     }
                 }
                 SlideAlign::Center => {
-                    self.render_centered_text(ctx, line, y, slide.content_color, Modifier::empty());
+                    self.render_centered_text(ctx, line, y, content_fg, Modifier::empty());
                 }
                 SlideAlign::Right => {
                     let line_len = line.chars().count();
                     let start_x = area.width.saturating_sub(line_len as u16 + 2);
                     for (j, ch) in line.chars().enumerate() {
                         let mut cell = Cell::new(ch);
-                        cell.fg = Some(slide.content_color);
+                        cell.fg = Some(content_fg);
                         ctx.set(start_x + j as u16, y, cell);
                     }
                 }
@@ -495,10 +507,11 @@ impl View for Presentation {
         let area = ctx.area;
 
         // Background
+        let bg = self.bg.unwrap_or_else(|| ctx.css_background(SLIDE_BG));
         for y in 0..area.height {
             for x in 0..area.width {
                 let mut cell = Cell::new(' ');
-                cell.bg = Some(self.bg);
+                cell.bg = Some(bg);
                 ctx.set(x, y, cell);
             }
         }

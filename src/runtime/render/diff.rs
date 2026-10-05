@@ -121,7 +121,9 @@ mod tests {
         let mut new = Buffer::new(80, 24);
 
         // Make a change at (5, 5)
-        new.get_mut(5, 5).map(|c| *c = Cell::new('X'));
+        if let Some(c) = new.get_mut(5, 5) {
+            *c = Cell::new('X');
+        }
 
         let rect = Rect::new(0, 0, 80, 24);
         let changes = diff(&old, &new, &[rect]);
@@ -149,8 +151,12 @@ mod tests {
         let mut new = Buffer::new(80, 24);
 
         // Make changes in different regions
-        new.get_mut(10, 10).map(|c| *c = Cell::new('A'));
-        new.get_mut(50, 15).map(|c| *c = Cell::new('B'));
+        if let Some(c) = new.get_mut(10, 10) {
+            *c = Cell::new('A');
+        }
+        if let Some(c) = new.get_mut(50, 15) {
+            *c = Cell::new('B');
+        }
 
         let rect1 = Rect::new(0, 0, 20, 20);
         let rect2 = Rect::new(40, 10, 20, 20);
@@ -165,7 +171,9 @@ mod tests {
         let mut new = Buffer::new(80, 24);
 
         // Make a single change in the overlap region
-        new.get_mut(15, 15).map(|c| *c = Cell::new('X'));
+        if let Some(c) = new.get_mut(15, 15) {
+            *c = Cell::new('X');
+        }
 
         let rect1 = Rect::new(0, 0, 20, 20);
         let rect2 = Rect::new(10, 10, 20, 20);

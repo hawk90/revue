@@ -576,7 +576,7 @@ fn test_selection_list_render_with_title() {
     let text: String = (0..area.width)
         .filter_map(|x| buffer.get(x, area.y).map(|c| c.symbol))
         .collect();
-    assert!(text.contains("Choose") || text.len() > 0);
+    assert!(text.contains("Choose") || !text.is_empty());
 }
 
 #[test]

@@ -14,6 +14,11 @@ impl View for Streamline {
             return;
         }
 
+        // The layer palette carries the data - flattening ten series to one
+        // color leaves a chart that shows nothing - so it stays. The chrome
+        // around it (title, legend names, axis labels) is ordinary text.
+        let chrome = ctx.css_color(crate::style::Color::WHITE);
+
         // Background
         if let Some(bg) = self.bg_color {
             for y in 0..height.min(area.height) {
@@ -31,7 +36,7 @@ impl View for Streamline {
         // Title
         if let Some(ref title) = self.title {
             let title_x = (area.width.saturating_sub(display_width(title) as u16)) / 2;
-            ctx.draw_text(title_x, chart_y, title, crate::style::Color::WHITE);
+            ctx.draw_text(title_x, chart_y, title, chrome);
             chart_y += 1;
             chart_height = chart_height.saturating_sub(1);
         }
@@ -52,7 +57,7 @@ impl View for Streamline {
                         break;
                     }
                     let mut c = Cell::new(ch);
-                    c.fg = Some(crate::style::Color::WHITE);
+                    c.fg = Some(chrome);
                     c.bg = self.bg_color;
                     ctx.set(x + dx, chart_y, c);
                     dx += cw;
@@ -176,7 +181,7 @@ impl View for Streamline {
                             break;
                         }
                         let mut c = Cell::new(ch);
-                        c.fg = Some(crate::style::Color::WHITE);
+                        c.fg = Some(chrome);
                         c.bg = Some(display_color);
                         ctx.set(label_x + dx, screen_y, c);
                         dx += cw;
@@ -201,7 +206,7 @@ impl View for Streamline {
                         break;
                     }
                     let mut c = Cell::new(ch);
-                    c.fg = Some(crate::style::Color::WHITE);
+                    c.fg = Some(chrome);
                     c.bg = self.bg_color;
                     ctx.set(label_x + dx, label_y, c);
                     dx += cw;

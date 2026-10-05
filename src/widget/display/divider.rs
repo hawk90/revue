@@ -49,7 +49,12 @@ pub struct Divider {
     /// Style
     style: DividerStyle,
     /// Color
-    color: Color,
+    /// The color the builder named, if it named one.
+    ///
+    /// `None` is not the same as `Some(DARK_GRAY)`. While this was a plain
+    /// `Color`, naming the default explicitly was indistinguishable from
+    /// saying nothing, so a stylesheet outranked a builder that had spoken.
+    color: Option<Color>,
     /// Label (centered in the divider)
     label: Option<String>,
     /// Label color
@@ -68,7 +73,7 @@ impl Divider {
         Self {
             orientation: Orientation::Horizontal,
             style: DividerStyle::Solid,
-            color: DARK_GRAY,
+            color: None,
             label: None,
             label_color: None,
             margin: 0,
@@ -99,7 +104,7 @@ impl Divider {
 
     /// Set color
     pub fn color(mut self, color: Color) -> Self {
-        self.color = color;
+        self.color = Some(color);
         self
     }
 
@@ -180,6 +185,9 @@ impl View for Divider {
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let line_char = self.line_char();
+        // The builder can only outrank the stylesheet by moving off the initial
+        // value - see [`RenderContext::color_or`].
+        let color = self.color.unwrap_or_else(|| ctx.css_color(DARK_GRAY));
 
         match self.orientation {
             Orientation::Horizontal => {
@@ -201,28 +209,28 @@ impl View for Divider {
                         let label_end = label_start + label_len + 2;
 
                         // Left part
-                        ctx.draw_hline(start_x, 0, label_start - start_x, line_char, self.color);
+                        ctx.draw_hline(start_x, 0, label_start - start_x, line_char, color);
 
                         // Space before label
-                        ctx.draw_char(label_start, 0, ' ', self.color);
+                        ctx.draw_char(label_start, 0, ' ', color);
 
                         // Label
-                        let label_color = self.label_color.unwrap_or(self.color);
+                        let label_color = self.label_color.unwrap_or(color);
                         ctx.draw_text(label_start + 1, 0, label, label_color);
 
                         // Space after label
-                        ctx.draw_char(label_end - 1, 0, ' ', self.color);
+                        ctx.draw_char(label_end - 1, 0, ' ', color);
 
                         // Right part
-                        ctx.draw_hline(label_end, 0, end_x - label_end, line_char, self.color);
+                        ctx.draw_hline(label_end, 0, end_x - label_end, line_char, color);
                     } else {
                         // Not enough space, just draw label (clipped)
-                        let label_color = self.label_color.unwrap_or(self.color);
+                        let label_color = self.label_color.unwrap_or(color);
                         ctx.draw_text_clipped(start_x, 0, label, label_color, end_x - start_x);
                     }
                 } else {
                     // Simple line without label
-                    ctx.draw_hline(start_x, 0, end_x - start_x, line_char, self.color);
+                    ctx.draw_hline(start_x, 0, end_x - start_x, line_char, color);
                 }
             }
             Orientation::Vertical => {
@@ -233,7 +241,7 @@ impl View for Divider {
                     area.height.saturating_sub(self.margin)
                 };
 
-                ctx.draw_vline(0, start_y, end_y - start_y, line_char, self.color);
+                ctx.draw_vline(0, start_y, end_y - start_y, line_char, color);
             }
         }
     }

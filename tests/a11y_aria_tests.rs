@@ -418,7 +418,7 @@ fn test_live_region_default() {
 #[test]
 fn test_live_region_clone() {
     let region = LiveRegion::Assertive;
-    let cloned = region.clone();
+    let cloned = region;
     assert_eq!(region, cloned);
 }
 

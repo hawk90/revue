@@ -15,6 +15,11 @@ impl View for TimeSeries {
             return;
         }
 
+        // The series palette carries the data and the grid has its own builder
+        // field; the chrome around them - title, legend, axis labels - is
+        // ordinary text.
+        let chrome = ctx.css_color(crate::style::Color::WHITE);
+
         let mut current_y = 0u16;
 
         // Background
@@ -36,7 +41,7 @@ impl View for TimeSeries {
                 let x = title_x + dx;
                 if x < area.width {
                     let mut cell = Cell::new(ch);
-                    cell.fg = Some(crate::style::Color::WHITE);
+                    cell.fg = Some(chrome);
                     cell.bg = self.bg_color;
                     ctx.set(x, current_y, cell);
                 }
@@ -68,7 +73,7 @@ impl View for TimeSeries {
                 for ch in series.name.chars() {
                     if x < area.width {
                         let mut cell = Cell::new(ch);
-                        cell.fg = Some(crate::style::Color::WHITE);
+                        cell.fg = Some(chrome);
                         cell.bg = self.bg_color;
                         ctx.set(x, current_y, cell);
                     }
@@ -121,7 +126,7 @@ impl View for TimeSeries {
                     let x = label_x + dx;
                     if x < area.width {
                         let mut cell = Cell::new(ch);
-                        cell.fg = Some(crate::style::Color::WHITE);
+                        cell.fg = Some(chrome);
                         cell.bg = self.bg_color;
                         ctx.set(x, y, cell);
                     }
@@ -198,7 +203,7 @@ impl View for TimeSeries {
                     let lx = label_x + dx;
                     if lx < area.width {
                         let mut cell = Cell::new(ch);
-                        cell.fg = Some(crate::style::Color::WHITE);
+                        cell.fg = Some(chrome);
                         cell.bg = self.bg_color;
                         ctx.set(lx, x_label_y, cell);
                     }

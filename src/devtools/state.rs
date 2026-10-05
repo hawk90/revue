@@ -342,7 +342,7 @@ mod tests {
 
     #[test]
     fn test_state_value_display_all_types() {
-        assert_eq!(StateValue::Float(3.14159).display(), "3.14");
+        assert_eq!(StateValue::Float(1.23456).display(), "1.23");
         assert_eq!(StateValue::Null.display(), "null");
         assert_eq!(
             StateValue::List(vec![StateValue::Int(1), StateValue::Int(2)]).display(),

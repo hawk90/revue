@@ -65,6 +65,13 @@ pub enum RenderPass<'a> {
         /// Apply each node's specified CSS box properties to the area its
         /// parent gave it. See [`AppBuilder::css_layout`](crate::app::AppBuilder::css_layout).
         css_layout: bool,
+        /// Where each node ends up on screen, in paint order.
+        ///
+        /// Filled here because this is the only point that holds both a node's
+        /// identity and the area it was actually painted into. A node that is
+        /// entirely clipped away contributes nothing - it is not on screen, so
+        /// it cannot be under the pointer.
+        hits: &'a mut Vec<(DomId, Rect)>,
     },
 }
 
@@ -164,27 +171,31 @@ impl<'a> RenderContext<'a> {
         overflow_hidden: bool,
         parent_clip: Option<Rect>,
     ) {
+        // The clip is *this* widget's box, never the child's. `set` already
+        // refuses to paint outside the area a widget was handed, so clipping a
+        // child to its own area clips nothing; a child escapes only when it is
+        // given an area larger than its container. Nested clips intersect, so an
+        // inner `overflow: hidden` cannot widen an outer one.
+        let clip = if overflow_hidden {
+            match parent_clip {
+                Some(outer) => self.area.intersection(&outer),
+                None => Some(self.area),
+            }
+        } else {
+            parent_clip
+        };
+
         // Destructured so the buffer and the pass can be borrowed at once.
         let RenderContext { buffer, pass, .. } = self;
 
         match pass {
             None => {
-                let mut ctx = RenderContext::child_ctx_with_overflow(
-                    buffer,
-                    area,
-                    overflow_hidden,
-                    parent_clip,
-                );
+                let mut ctx = RenderContext::child_ctx_clipped(buffer, area, clip);
                 child.render(&mut ctx);
             }
             Some(RenderPass::Collect { sink, parent }) => {
                 let me = sink.push(child.meta(), *parent);
-                let mut ctx = RenderContext::child_ctx_with_overflow(
-                    buffer,
-                    area,
-                    overflow_hidden,
-                    parent_clip,
-                );
+                let mut ctx = RenderContext::child_ctx_clipped(buffer, area, clip);
                 ctx.pass = Some(RenderPass::Collect {
                     sink,
                     parent: Some(me),
@@ -195,6 +206,7 @@ impl<'a> RenderContext<'a> {
                 nodes,
                 next,
                 css_layout,
+                hits,
             }) => {
                 // Pre-order, exactly as the collect pass pushed.
                 let idx = **next;
@@ -216,12 +228,19 @@ impl<'a> RenderContext<'a> {
                     }
                 }
 
-                let mut ctx = RenderContext::child_ctx_with_overflow(
-                    buffer,
-                    area,
-                    overflow_hidden,
-                    parent_clip,
-                );
+                if let Some(node) = node {
+                    // The clip the child will draw under, which is also the
+                    // only part of it the pointer can reach.
+                    let visible = match clip {
+                        Some(clip) => area.intersection(&clip),
+                        None => Some(area),
+                    };
+                    if let Some(visible) = visible {
+                        hits.push((node.id, visible));
+                    }
+                }
+
+                let mut ctx = RenderContext::child_ctx_clipped(buffer, area, clip);
                 if let Some(node) = node {
                     ctx.style = node.style;
                     ctx.state = node.state;
@@ -231,6 +250,7 @@ impl<'a> RenderContext<'a> {
                     nodes,
                     next,
                     css_layout,
+                    hits,
                 });
                 child.render(&mut ctx);
 
@@ -243,6 +263,44 @@ impl<'a> RenderContext<'a> {
                 }
             }
         }
+    }
+
+    /// A context over the same buffer for a sub-area of this widget's own box.
+    ///
+    /// For a widget that paints part of itself somewhere else - shifting text
+    /// for alignment, laying out its own internals - rather than for rendering
+    /// a *child widget*, which is [`render_child`](Self::render_child)'s job
+    /// and registers a DOM node.
+    ///
+    /// Carries across everything that describes *this node*: its computed
+    /// style, its state, its transitions and the clip. The sub-area is a
+    /// smaller rectangle of the same widget, not a different one, so dropping
+    /// any of those makes the widget stop being styled halfway through
+    /// painting itself.
+    ///
+    /// That is not hypothetical. This used to carry the clip alone, and
+    /// `Gauge` - which carves out a sub-area for its bar - painted its fill
+    /// with the built-in green no matter what `color` the stylesheet resolved
+    /// for it. The ratchet was happy because the source mentioned
+    /// `ctx.css_color`; the value just never reached a cell.
+    ///
+    /// `pass` is deliberately *not* carried: this is the same node, so
+    /// registering it again would put a duplicate in the tree. Overlays are
+    /// left behind for the same borrow reason `render_child` has.
+    pub fn sub_ctx<'b>(&'b mut self, area: Rect) -> RenderContext<'b> {
+        let clip = self.clip;
+        let style = self.style;
+        let state = self.state;
+        let transitions = self.transitions;
+
+        let mut ctx = RenderContext::new(self.buffer, area);
+        ctx.style = style;
+        ctx.state = state;
+        ctx.transitions = transitions;
+        if let Some(clip) = clip {
+            ctx = ctx.with_clip(clip);
+        }
+        ctx
     }
 
     /// Are CSS box and gap properties being applied this frame?
@@ -360,7 +418,7 @@ impl<'a> RenderContext<'a> {
     /// absolute buffer coordinates suitable for constructing a child context:
     /// ```ignore
     /// let inner = ctx.sub_area(1, 1, w - 2, h - 2);
-    /// let mut child_ctx = RenderContext::new(ctx.buffer, inner);
+    /// let mut child_ctx = ctx.sub_ctx(inner);
     /// ```
     pub fn sub_area(&self, x: u16, y: u16, w: u16, h: u16) -> Rect {
         Rect::new(

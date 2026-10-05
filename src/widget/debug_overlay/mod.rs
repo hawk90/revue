@@ -525,7 +525,7 @@ mod tests {
     #[test]
     fn test_debug_position_clone() {
         let pos = DebugPosition::BottomLeft;
-        let cloned = pos.clone();
+        let cloned = pos;
         assert_eq!(pos, cloned);
     }
 

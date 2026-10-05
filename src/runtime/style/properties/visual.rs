@@ -8,7 +8,12 @@ use super::types::{BorderStyle, Color, FontWeight, Overflow, TextAlign, TextDeco
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VisualStyle {
     /// Border style
-    pub border_style: BorderStyle,
+    ///
+    /// `None` is "the stylesheet said nothing"; `Some(BorderStyle::None)` is a
+    /// stylesheet asking for no border. A plain enum could not tell those
+    /// apart, so `border-style: none` could not remove a border the builder
+    /// drew. Same shape `gap` had before it became an `Option`.
+    pub border_style: Option<BorderStyle>,
     /// Border color
     pub border_color: Color,
     /// Text/foreground color (INHERITED)
@@ -57,7 +62,7 @@ pub fn apply_opacity(opacity: f32, modifier: &mut crate::render::Modifier) -> bo
 impl Default for VisualStyle {
     fn default() -> Self {
         Self {
-            border_style: BorderStyle::default(),
+            border_style: None,
             border_color: Color::default(),
             color: Color::default(),
             background: Color::default(),
@@ -79,20 +84,22 @@ mod tests {
     #[test]
     fn test_visual_style_default() {
         let style = VisualStyle::default();
-        assert_eq!(style.border_style, BorderStyle::default());
+        assert_eq!(style.border_style, None);
         assert_eq!(style.border_color, Color::default());
         assert_eq!(style.color, Color::default());
         assert_eq!(style.background, Color::default());
         assert_eq!(style.opacity, 1.0);
-        assert_eq!(style.visible, true);
+        assert!(style.visible);
         assert_eq!(style.z_index, 0);
     }
 
     #[test]
     fn test_visual_style_clone() {
-        let mut style = VisualStyle::default();
-        style.opacity = 0.5;
-        let cloned = style.clone();
+        let style = VisualStyle {
+            opacity: 0.5,
+            ..Default::default()
+        };
+        let cloned = style;
         assert_eq!(cloned.opacity, 0.5);
     }
 
@@ -105,8 +112,10 @@ mod tests {
 
     #[test]
     fn test_visual_style_not_equal() {
-        let mut style1 = VisualStyle::default();
-        style1.opacity = 0.5;
+        let style1 = VisualStyle {
+            opacity: 0.5,
+            ..Default::default()
+        };
         let style2 = VisualStyle::default();
         assert_ne!(style1, style2);
     }
@@ -132,7 +141,7 @@ mod tests {
     fn test_visual_style_default_values() {
         let style = VisualStyle::default();
         assert_eq!(style.opacity, 1.0);
-        assert_eq!(style.visible, true);
+        assert!(style.visible);
         assert_eq!(style.z_index, 0);
     }
 }

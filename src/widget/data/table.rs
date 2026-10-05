@@ -346,7 +346,9 @@ impl View for Table {
                 let (fg, bg) = if is_selected {
                     (self.selected_fg, self.selected_bg)
                 } else {
-                    (None, None)
+                    // These were `(None, None)`, so a rule matching the table
+                    // never reached its rows.
+                    (ctx.css_color_if_set(), ctx.css_background_if_set())
                 };
 
                 let row_style = RowStyle {
@@ -394,7 +396,9 @@ impl View for Table {
                 let (fg, bg) = if is_selected {
                     (self.selected_fg, self.selected_bg)
                 } else {
-                    (None, None)
+                    // These were `(None, None)`, so a rule matching the table
+                    // never reached its rows.
+                    (ctx.css_color_if_set(), ctx.css_background_if_set())
                 };
 
                 let row_style = RowStyle {

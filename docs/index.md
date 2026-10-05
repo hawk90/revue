@@ -141,6 +141,11 @@ impl View for Counter {
 | [Phase 1 Reconciliation](refactor/phase1-reconciliation.md) | Keyed reconciliation, per-frame DOM updates, and what the benchmarks say |
 | [Render Pipeline Findings](refactor/findings-render-pipeline.md) | Verified defects in how repaints are decided, and what they mean for 3.0 |
 | [Layout Findings](refactor/findings-layout.md) | Why CSS layout properties did nothing, and what `css_layout` does about it |
+| [Phase 2 Hit Test](refactor/phase2-hit-test.md) | Why `:hover` never matched in a running app, and what now drives it |
+| [Style Invalidation Findings](refactor/findings-style-invalidation.md) | Why CSS stopped updating after the first frame, and what makes the cascade re-run |
+| [Phase 2 Cascade Precedence](refactor/phase2-cascade-precedence.md) | Where a widget's own colors rank against the stylesheet, and why disabled was in the wrong row |
+| [Selector Matcher Findings](refactor/findings-selector-matchers.md) | Two selector matchers that disagreed, and why descendant selectors stopped one level down |
+| [Prelude Coverage](refactor/findings-prelude-coverage.md) | 74 widgets the docs use from the prelude but the prelude does not export |
 
 ---
 
