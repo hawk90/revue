@@ -246,7 +246,7 @@ impl MaskedInput {
     /// Set initial value
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.value = value.into();
-        self.cursor = self.value.len();
+        self.cursor = self.char_count();
         self
     }
 
@@ -292,7 +292,7 @@ impl MaskedInput {
 
     /// Set cursor position
     pub fn set_cursor(&mut self, pos: usize) {
-        self.cursor = pos.min(self.value.len());
+        self.cursor = pos.min(self.char_count());
     }
 
     /// Get focused state
@@ -358,7 +358,7 @@ impl MaskedInput {
     /// Set value programmatically
     pub fn set_value(&mut self, value: impl Into<String>) {
         self.value = value.into();
-        self.cursor = self.cursor.min(self.value.len());
+        self.cursor = self.cursor.min(self.char_count());
     }
 
     /// Clear the input
@@ -374,6 +374,17 @@ impl MaskedInput {
         }
     }
 
+    /// Length of the value in chars: the cursor, `max_length` and
+    /// `min_length` all count chars, not bytes.
+    fn char_count(&self) -> usize {
+        self.value.chars().count()
+    }
+
+    /// Byte offset of char index `idx` in the value.
+    fn byte_at(&self, idx: usize) -> usize {
+        crate::utils::text::char_to_byte_index(&self.value, idx)
+    }
+
     /// Insert character at cursor
     pub fn insert_char(&mut self, c: char) {
         if self.disabled {
@@ -381,11 +392,11 @@ impl MaskedInput {
         }
 
         // Check max length
-        if self.max_length > 0 && self.value.len() >= self.max_length {
+        if self.max_length > 0 && self.char_count() >= self.max_length {
             return;
         }
 
-        self.value.insert(self.cursor, c);
+        self.value.insert(self.byte_at(self.cursor), c);
         self.cursor += 1;
 
         // Start peek countdown
@@ -401,16 +412,16 @@ impl MaskedInput {
         }
 
         self.cursor -= 1;
-        self.value.remove(self.cursor);
+        self.value.remove(self.byte_at(self.cursor));
     }
 
     /// Delete character at cursor
     pub fn delete_forward(&mut self) {
-        if self.disabled || self.cursor >= self.value.len() {
+        if self.disabled || self.cursor >= self.char_count() {
             return;
         }
 
-        self.value.remove(self.cursor);
+        self.value.remove(self.byte_at(self.cursor));
     }
 
     /// Move cursor left
@@ -422,7 +433,7 @@ impl MaskedInput {
 
     /// Move cursor right
     pub fn move_right(&mut self) {
-        if self.cursor < self.value.len() {
+        if self.cursor < self.char_count() {
             self.cursor += 1;
         }
     }
@@ -434,7 +445,7 @@ impl MaskedInput {
 
     /// Move cursor to end
     pub fn move_end(&mut self) {
-        self.cursor = self.value.len();
+        self.cursor = self.char_count();
     }
 
     /// Update (call each frame for peek mode)
@@ -446,7 +457,7 @@ impl MaskedInput {
 
     /// Calculate password strength (0-4)
     pub fn password_strength(&self) -> usize {
-        let len = self.value.len();
+        let len = self.char_count();
         let has_lower = self.value.chars().any(|c| c.is_lowercase());
         let has_upper = self.value.chars().any(|c| c.is_uppercase());
         let has_digit = self.value.chars().any(|c| c.is_ascii_digit());
@@ -497,7 +508,7 @@ impl MaskedInput {
 
     /// Validate the input
     pub fn validate(&mut self) -> bool {
-        if self.min_length > 0 && self.value.len() < self.min_length {
+        if self.min_length > 0 && self.char_count() < self.min_length {
             self.validation = ValidationState::Invalid(format!(
                 "Minimum {} characters required",
                 self.min_length
@@ -520,7 +531,7 @@ impl MaskedInput {
             return self.value.clone();
         }
 
-        let len = self.value.len();
+        let len = self.char_count();
         if len == 0 {
             return String::new();
         }
@@ -537,7 +548,7 @@ impl MaskedInput {
                     let mask_count = len - n;
                     let mut result = String::with_capacity(len);
                     result.extend(std::iter::repeat_n(self.mask_char, mask_count));
-                    result.push_str(&self.value[len - n..]);
+                    result.push_str(&self.value[self.byte_at(len - n)..]);
                     result
                 }
             }
@@ -546,7 +557,7 @@ impl MaskedInput {
                     self.value.clone()
                 } else {
                     let mut result = String::with_capacity(len);
-                    result.push_str(&self.value[..n]);
+                    result.push_str(&self.value[..self.byte_at(n)]);
                     result.extend(std::iter::repeat_n(self.mask_char, len - n));
                     result
                 }
