@@ -3,9 +3,31 @@
 use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
+use revue::render::Modifier;
 use revue::style::Color;
 use revue::widget::traits::{RenderContext, StyledView, View};
-use revue::widget::breadcrumb::{breadcrumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
+use revue::widget::{breadcrumb, Breadcrumb, BreadcrumbItem, SeparatorStyle};
+
+/// Render `bc` into a `width` x 1 buffer.
+fn render(bc: &Breadcrumb, width: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, 1);
+    let area = Rect::new(0, 0, width, 1);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    bc.render(&mut ctx);
+    buffer
+}
+
+/// The rendered line, with trailing blanks trimmed.
+fn line(bc: &Breadcrumb, width: u16) -> String {
+    let buffer = render(bc, width);
+    (0..width)
+        .filter_map(|x| buffer.get(x, 0))
+        .filter(|c| !c.is_continuation())
+        .map(|c| c.symbol)
+        .collect::<String>()
+        .trim_end()
+        .to_string()
+}
 
 // =============================================================================
 // Breadcrumb Constructor Tests
@@ -17,8 +39,22 @@ fn test_breadcrumb_new() {
     assert!(bc.is_empty());
     assert_eq!(bc.len(), 0);
     assert_eq!(bc.selected(), 0);
-    assert!(bc.show_home);
-    assert!(bc.collapse);
+    // The home icon is shown by default
+    let buffer = render(&bc.push("Docs"), 20);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '🏠');
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, '›');
+    assert_eq!(buffer.get(4, 0).unwrap().symbol, 'D');
+}
+
+#[test]
+fn test_breadcrumb_collapses_by_default() {
+    let bc = Breadcrumb::new()
+        .home(false)
+        .push("Alpha")
+        .push("Beta")
+        .push("Gamma")
+        .push("Delta");
+    assert_eq!(line(&bc, 27), "Alpha › ... › Gamma › Delta");
 }
 
 #[test]
@@ -51,8 +87,11 @@ fn test_breadcrumb_item_multiple() {
 
 #[test]
 fn test_breadcrumb_item_with_icon() {
-    let bc = Breadcrumb::new().item(BreadcrumbItem::new("Home").icon('🏠'));
-    assert_eq!(bc.items()[0].icon, Some('🏠'));
+    let bc = Breadcrumb::new()
+        .home(false)
+        .item(BreadcrumbItem::new("Home").icon('*'));
+    assert_eq!(bc.items()[0].icon, Some('*'));
+    assert_eq!(line(&bc, 20), "* Home");
 }
 
 #[test]
@@ -123,71 +162,130 @@ fn test_breadcrumb_path_single_segment() {
 #[test]
 fn test_breadcrumb_separator() {
     let bc = Breadcrumb::new()
+        .home(false)
         .separator(SeparatorStyle::Arrow)
-        .push("Test");
-    assert_eq!(bc.len(), 1);
+        .push("A")
+        .push("B");
+    assert_eq!(line(&bc, 20), "A > B");
+}
+
+#[test]
+fn test_breadcrumb_default_separator_is_chevron() {
+    let bc = Breadcrumb::new().home(false).push("A").push("B");
+    assert_eq!(line(&bc, 20), "A › B");
 }
 
 #[test]
 fn test_breadcrumb_item_color() {
-    let bc = Breadcrumb::new().item_color(Color::RED).push("Test");
-    assert_eq!(bc.len(), 1);
+    let mut bc = Breadcrumb::new()
+        .home(false)
+        .item_color(Color::RED)
+        .push("A")
+        .push("B");
+    bc.set_selected(1);
+    let buffer = render(&bc, 10);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::RED));
+    assert_ne!(buffer.get(4, 0).unwrap().fg, Some(Color::RED));
 }
 
 #[test]
 fn test_breadcrumb_selected_color() {
-    let bc = Breadcrumb::new().selected_color(Color::CYAN).push("Test");
-    assert_eq!(bc.len(), 1);
+    let bc = Breadcrumb::new()
+        .home(false)
+        .selected_color(Color::GREEN)
+        .push("A")
+        .push("B");
+    let buffer = render(&bc, 10);
+    // The last item is selected: drawn bold in the selected color
+    let cell = buffer.get(4, 0).unwrap();
+    assert_eq!(cell.fg, Some(Color::GREEN));
+    assert!(cell.modifier.contains(Modifier::BOLD));
+    let first = buffer.get(0, 0).unwrap();
+    assert_ne!(first.fg, Some(Color::GREEN));
+    assert!(!first.modifier.contains(Modifier::BOLD));
 }
 
 #[test]
 fn test_breadcrumb_separator_color() {
     let bc = Breadcrumb::new()
+        .home(false)
         .separator_color(Color::rgb(128, 128, 128))
-        .push("Test");
-    assert_eq!(bc.len(), 1);
+        .push("A")
+        .push("B");
+    let buffer = render(&bc, 10);
+    let sep = buffer.get(2, 0).unwrap();
+    assert_eq!(sep.symbol, '›');
+    assert_eq!(sep.fg, Some(Color::rgb(128, 128, 128)));
 }
 
 #[test]
 fn test_breadcrumb_home_enabled() {
-    let bc = Breadcrumb::new().home(true).push("Test");
-    assert_eq!(bc.len(), 1);
+    let bc = Breadcrumb::new().home(true).home_icon('~').push("Test");
+    assert_eq!(line(&bc, 20), "~ › Test");
+}
+
+#[test]
+fn test_breadcrumb_home_without_items() {
+    // No separator after the home icon when the trail is empty
+    let bc = Breadcrumb::new().home_icon('~');
+    assert_eq!(line(&bc, 20), "~");
 }
 
 #[test]
 fn test_breadcrumb_home_disabled() {
     let bc = Breadcrumb::new().home(false).push("Test");
-    assert_eq!(bc.len(), 1);
+    assert_eq!(line(&bc, 20), "Test");
 }
 
 #[test]
 fn test_breadcrumb_home_icon() {
     let bc = Breadcrumb::new().home_icon('🏡').home(true).push("Test");
-    assert_eq!(bc.len(), 1);
+    assert_eq!(render(&bc, 20).get(0, 0).unwrap().symbol, '🏡');
 }
 
 #[test]
 fn test_breadcrumb_max_width() {
-    let bc = Breadcrumb::new().max_width(50).push("Test");
-    assert_eq!(bc.len(), 1);
+    // max_width clips the trail even when the area is wider
+    let bc = Breadcrumb::new()
+        .home(false)
+        .collapse(false)
+        .max_width(6)
+        .push("Documents");
+    assert_eq!(line(&bc, 20), "Docume");
 }
 
 #[test]
 fn test_breadcrumb_max_width_zero() {
-    let bc = Breadcrumb::new().max_width(0).push("Test");
-    assert_eq!(bc.len(), 1);
+    // 0 means no limit beyond the area
+    let bc = Breadcrumb::new().home(false).max_width(0).push("Documents");
+    assert_eq!(line(&bc, 20), "Documents");
+    assert_eq!(line(&bc, 4), "Docu");
 }
 
 #[test]
 fn test_breadcrumb_collapse_enabled() {
-    let bc = Breadcrumb::new().collapse(true).push("Test");
-    assert_eq!(bc.len(), 1);
+    let bc = Breadcrumb::new()
+        .home(false)
+        .collapse(true)
+        .max_width(27)
+        .push("Alpha")
+        .push("Beta")
+        .push("Gamma")
+        .push("Delta");
+    assert_eq!(line(&bc, 40), "Alpha › ... › Gamma › Delta");
 }
 
 #[test]
 fn test_breadcrumb_collapse_disabled() {
-    let bc = Breadcrumb::new().collapse(false).push("Test");
-    assert_eq!(bc.len(), 1);
+    let bc = Breadcrumb::new()
+        .home(false)
+        .collapse(false)
+        .max_width(27)
+        .push("Alpha")
+        .push("Beta")
+        .push("Gamma")
+        .push("Delta");
+    assert_eq!(line(&bc, 40), "Alpha › Beta › Gamma › Delt");
 }
 
 #[test]
@@ -576,32 +674,72 @@ fn test_breadcrumb_navigate_to_empty() {
 // =============================================================================
 
 #[test]
-fn test_breadcrumb_total_width_empty() {
-    let bc = Breadcrumb::new();
-    // Home icon
-    assert_eq!(bc.total_width(), 2);
-}
-
-#[test]
-fn test_breadcrumb_total_width_no_home() {
-    let bc = Breadcrumb::new().home(false).push("Home");
-    assert_eq!(bc.total_width(), 4); // "Home" = 4 chars
-}
-
-#[test]
-fn test_breadcrumb_total_width_with_separator() {
-    let bc = Breadcrumb::new().home(false).push("Home").push("Folder");
-    // Home(4) + sep(3) + Folder(6) = 13
-    assert_eq!(bc.total_width(), 13);
-}
-
-#[test]
-fn test_breadcrumb_total_width_with_icon() {
+fn test_breadcrumb_fits_exactly_without_collapse() {
+    // "Alpha › Beta › Gamma › Delta" is 28 columns
     let bc = Breadcrumb::new()
         .home(false)
-        .item(BreadcrumbItem::new("Home").icon('🏠'));
-    // icon(2) + Home(4) = 6
-    assert_eq!(bc.total_width(), 6);
+        .max_width(28)
+        .push("Alpha")
+        .push("Beta")
+        .push("Gamma")
+        .push("Delta");
+    assert_eq!(line(&bc, 40), "Alpha › Beta › Gamma › Delta");
+}
+
+#[test]
+fn test_breadcrumb_home_counts_toward_collapse_width() {
+    // "~ › Alpha › Beta › Gamma › Delta" is 32 columns: it fits in 32 ...
+    let make = || {
+        Breadcrumb::new()
+            .home_icon('~')
+            .push("Alpha")
+            .push("Beta")
+            .push("Gamma")
+            .push("Delta")
+    };
+    assert_eq!(
+        line(&make().max_width(32), 40),
+        "~ › Alpha › Beta › Gamma › Delta"
+    );
+    // ... and collapses in 31 instead of being cut off
+    assert_eq!(
+        line(&make().max_width(31), 40),
+        "~ › Alpha › ... › Gamma › Delta"
+    );
+}
+
+#[test]
+fn test_breadcrumb_three_items_never_show_ellipsis() {
+    // Collapsing keeps the first and last two items, so with three items
+    // there is nothing to hide: the trail is clipped instead.
+    let bc = Breadcrumb::new()
+        .home(false)
+        .max_width(12)
+        .push("Alpha")
+        .push("Beta")
+        .push("Gamma");
+    assert_eq!(line(&bc, 40), "Alpha › Beta");
+}
+
+#[test]
+fn test_breadcrumb_icon_counts_toward_collapse_width() {
+    // "* Alpha › Beta › Gamma › Delta" is 30 columns
+    let make = || {
+        Breadcrumb::new()
+            .home(false)
+            .item(BreadcrumbItem::new("Alpha").icon('*'))
+            .push("Beta")
+            .push("Gamma")
+            .push("Delta")
+    };
+    assert_eq!(
+        line(&make().max_width(30), 40),
+        "* Alpha › Beta › Gamma › Delta"
+    );
+    assert_eq!(
+        line(&make().max_width(29), 40),
+        "* Alpha › ... › Gamma › Delta"
+    );
 }
 
 // =============================================================================
@@ -610,64 +748,43 @@ fn test_breadcrumb_total_width_with_icon() {
 
 #[test]
 fn test_breadcrumb_render_basic() {
-    let mut buffer = Buffer::new(40, 3);
-    let area = Rect::new(0, 0, 40, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let bc = Breadcrumb::new().home(false).push("Home").push("Documents");
-    bc.render(&mut ctx);
+    assert_eq!(line(&bc, 40), "Home › Documents");
 }
 
 #[test]
 fn test_breadcrumb_render_with_home() {
-    let mut buffer = Buffer::new(40, 3);
-    let area = Rect::new(0, 0, 40, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let bc = Breadcrumb::new().home(true).push("Documents");
-    bc.render(&mut ctx);
+    let buffer = render(&bc, 40);
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '🏠');
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, '›');
+    let text: String = (4..13).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+    assert_eq!(text, "Documents");
 }
 
 #[test]
 fn test_breadcrumb_render_with_icons() {
-    let mut buffer = Buffer::new(60, 3);
-    let area = Rect::new(0, 0, 60, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let bc = Breadcrumb::new()
         .home(false)
-        .item(BreadcrumbItem::new("Documents").icon('📁'))
-        .item(BreadcrumbItem::new("Work").icon('💼'));
-
-    bc.render(&mut ctx);
+        .item(BreadcrumbItem::new("Documents").icon('D'))
+        .item(BreadcrumbItem::new("Work").icon('W'));
+    assert_eq!(line(&bc, 60), "D Documents › W Work");
 }
 
 #[test]
 fn test_breadcrumb_render_empty() {
-    let mut buffer = Buffer::new(40, 3);
-    let area = Rect::new(0, 0, 40, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let bc = Breadcrumb::new().home(false);
-    bc.render(&mut ctx);
+    assert_eq!(line(&bc, 40), "");
 }
 
 #[test]
 fn test_breadcrumb_render_single_item() {
-    let mut buffer = Buffer::new(40, 3);
-    let area = Rect::new(0, 0, 40, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let bc = Breadcrumb::new().home(false).push("Only");
-    bc.render(&mut ctx);
+    assert_eq!(line(&bc, 40), "Only");
 }
 
 #[test]
 fn test_breadcrumb_render_long_path() {
-    let mut buffer = Buffer::new(80, 3);
-    let area = Rect::new(0, 0, 80, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let bc = Breadcrumb::new()
         .home(false)
         .push("home")
@@ -676,16 +793,14 @@ fn test_breadcrumb_render_long_path() {
         .push("work")
         .push("projects")
         .push("revue");
-
-    bc.render(&mut ctx);
+    assert_eq!(
+        line(&bc, 80),
+        "home › user › documents › work › projects › revue"
+    );
 }
 
 #[test]
 fn test_breadcrumb_render_with_collapse() {
-    let mut buffer = Buffer::new(30, 3);
-    let area = Rect::new(0, 0, 30, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let bc = Breadcrumb::new()
         .home(false)
         .max_width(25)
@@ -696,34 +811,27 @@ fn test_breadcrumb_render_with_collapse() {
         .push("That")
         .push("Needs")
         .push("Collapse");
-
-    bc.render(&mut ctx);
+    // First item, ellipsis, then the last two (clipped at max_width)
+    assert_eq!(line(&bc, 30), "Very › ... › Needs › Coll");
 }
 
 #[test]
 fn test_breadcrumb_render_no_collapse() {
-    let mut buffer = Buffer::new(30, 3);
-    let area = Rect::new(0, 0, 30, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let bc = Breadcrumb::new()
         .home(false)
         .collapse(false)
         .push("A")
         .push("B")
         .push("C");
-
-    bc.render(&mut ctx);
+    assert_eq!(line(&bc, 30), "A › B › C");
 }
 
 #[test]
 fn test_breadcrumb_render_small_area() {
-    let mut buffer = Buffer::new(2, 1);
-    let area = Rect::new(0, 0, 2, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let bc = Breadcrumb::new().push("Test");
-    bc.render(&mut ctx);
+    // Areas narrower than three columns are left untouched
+    let bc = Breadcrumb::new().home(false).push("Test");
+    assert_eq!(line(&bc, 2), "");
+    assert_eq!(line(&bc, 3), "Tes");
 }
 
 #[test]
@@ -749,35 +857,27 @@ fn test_breadcrumb_render_zero_height() {
 #[test]
 fn test_breadcrumb_render_all_separator_styles() {
     let styles = [
-        SeparatorStyle::Slash,
-        SeparatorStyle::Arrow,
-        SeparatorStyle::Chevron,
-        SeparatorStyle::DoubleArrow,
-        SeparatorStyle::Dot,
-        SeparatorStyle::Pipe,
+        (SeparatorStyle::Slash, "A / B"),
+        (SeparatorStyle::Arrow, "A > B"),
+        (SeparatorStyle::Chevron, "A › B"),
+        (SeparatorStyle::DoubleArrow, "A » B"),
+        (SeparatorStyle::Dot, "A • B"),
+        (SeparatorStyle::Pipe, "A | B"),
+        (SeparatorStyle::Custom('→'), "A → B"),
     ];
 
-    for style in styles {
-        let mut buffer = Buffer::new(40, 3);
-        let area = Rect::new(0, 0, 40, 1);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
+    for (style, expected) in styles {
         let bc = Breadcrumb::new()
             .home(false)
             .separator(style)
             .push("A")
             .push("B");
-
-        bc.render(&mut ctx);
+        assert_eq!(line(&bc, 40), expected, "{style:?}");
     }
 }
 
 #[test]
 fn test_breadcrumb_render_with_custom_colors() {
-    let mut buffer = Buffer::new(40, 3);
-    let area = Rect::new(0, 0, 40, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let bc = Breadcrumb::new()
         .home(false)
         .item_color(Color::RED)
@@ -785,24 +885,31 @@ fn test_breadcrumb_render_with_custom_colors() {
         .separator_color(Color::rgb(128, 128, 128))
         .push("Home")
         .push("Documents");
-
-    bc.render(&mut ctx);
+    let buffer = render(&bc, 40);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::RED));
+    assert_eq!(
+        buffer.get(5, 0).unwrap().fg,
+        Some(Color::rgb(128, 128, 128))
+    );
+    assert_eq!(buffer.get(7, 0).unwrap().fg, Some(Color::CYAN));
 }
 
 #[test]
 fn test_breadcrumb_render_selected_item() {
-    let mut buffer = Buffer::new(40, 3);
-    let area = Rect::new(0, 0, 40, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let mut bc = Breadcrumb::new()
         .home(false)
+        .selected_color(Color::CYAN)
         .push("First")
         .push("Second")
         .push("Third");
-
     bc.set_selected(1);
-    bc.render(&mut ctx);
+    let buffer = render(&bc, 40);
+    // "First › Second › Third": Second starts at column 8
+    assert_eq!(buffer.get(8, 0).unwrap().symbol, 'S');
+    assert_eq!(buffer.get(8, 0).unwrap().fg, Some(Color::CYAN));
+    assert!(buffer.get(8, 0).unwrap().modifier.contains(Modifier::BOLD));
+    assert_ne!(buffer.get(0, 0).unwrap().fg, Some(Color::CYAN));
+    assert_ne!(buffer.get(17, 0).unwrap().fg, Some(Color::CYAN));
 }
 
 // =============================================================================
@@ -850,20 +957,16 @@ fn test_breadcrumb_meta() {
 
 #[test]
 fn test_breadcrumb_empty_label() {
-    let bc = Breadcrumb::new().push("").push("Valid");
+    let bc = Breadcrumb::new().home(false).push("").push("Valid");
     assert_eq!(bc.len(), 2);
+    assert_eq!(line(&bc, 20), " › Valid");
 }
 
 #[test]
 fn test_breadcrumb_very_long_label() {
     let long_label = "This is a very long breadcrumb item label that exceeds normal width";
-    let bc = Breadcrumb::new().push(long_label);
-
-    let mut buffer = Buffer::new(40, 3);
-    let area = Rect::new(0, 0, 40, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    bc.render(&mut ctx);
+    let bc = Breadcrumb::new().home(false).push(long_label);
+    assert_eq!(line(&bc, 40), long_label[..40]);
 }
 
 #[test]
@@ -882,6 +985,7 @@ fn test_breadcrumb_special_characters() {
         .push("project <test>");
 
     assert_eq!(bc.len(), 3);
+    assert_eq!(bc.path_string(), "home & office/docs/files/project <test>");
 }
 
 #[test]
@@ -926,9 +1030,11 @@ fn test_breadcrumb_select_after_pop() {
     bc.pop();
     assert_eq!(bc.len(), 2);
 
-    // Selection should be valid
+    // Selection is clamped to the remaining items
     bc.select_next();
+    assert_eq!(bc.selected_item().unwrap().label, "B");
     bc.select_prev();
+    assert_eq!(bc.selected_item().unwrap().label, "A");
 }
 
 #[test]
@@ -959,60 +1065,60 @@ fn test_breadcrumb_multiple_items_same_label() {
 fn test_breadcrumb_item_with_all_properties() {
     let bc = Breadcrumb::new()
         .home(false)
-        .item(BreadcrumbItem::new("Complete").icon('✓').clickable(true))
-        .item(BreadcrumbItem::new("Disabled").icon('🔒').clickable(false));
+        .item(BreadcrumbItem::new("Complete").icon('+').clickable(true))
+        .item(BreadcrumbItem::new("Disabled").icon('x').clickable(false));
 
     assert_eq!(bc.len(), 2);
+    assert!(bc.items()[0].clickable);
+    assert!(!bc.items()[1].clickable);
+    assert_eq!(line(&bc, 40), "+ Complete › x Disabled");
 }
 
 #[test]
 fn test_breadcrumb_render_multiple_times() {
-    let mut buffer = Buffer::new(40, 3);
+    let mut buffer = Buffer::new(40, 1);
     let area = Rect::new(0, 0, 40, 1);
 
     let bc = Breadcrumb::new().home(false).push("A").push("B");
 
-    // Render multiple times - shouldn't crash
+    // Rendering is idempotent
     for _ in 0..3 {
         let mut ctx = RenderContext::new(&mut buffer, area);
         bc.render(&mut ctx);
     }
+    let text: String = (0..5).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+    assert_eq!(text, "A › B");
 }
 
 #[test]
 fn test_breadcrumb_all_builder_chains() {
-    // Test different builder chain combinations
+    // Builder order does not matter
     let bc1 = Breadcrumb::new()
+        .home(false)
         .push("A")
         .push("B")
         .separator(SeparatorStyle::Arrow);
 
     let bc2 = Breadcrumb::new()
-        .separator(SeparatorStyle::Chevron)
+        .separator(SeparatorStyle::Arrow)
         .push("A")
-        .push("B");
+        .push("B")
+        .home(false);
 
     let bc3 = breadcrumb().home(false).collapse(false).max_width(50);
 
-    assert_eq!(bc1.len(), 2);
-    assert_eq!(bc2.len(), 2);
+    assert_eq!(line(&bc1, 20), "A > B");
+    assert_eq!(line(&bc2, 20), "A > B");
     assert!(bc3.is_empty());
 }
 
 #[test]
 fn test_breadcrumb_custom_home_icon_renders() {
-    let mut buffer = Buffer::new(40, 3);
-    let area = Rect::new(0, 0, 40, 1);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let bc = Breadcrumb::new()
         .home(true)
         .home_icon('⌂')
         .push("Documents");
-
-    bc.render(&mut ctx);
-
-    // Just verify it doesn't crash
+    assert_eq!(line(&bc, 40), "⌂ › Documents");
 }
 
 #[test]

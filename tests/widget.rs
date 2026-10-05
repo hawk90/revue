@@ -15,9 +15,8 @@ mod autocomplete;
 mod avatar;
 #[path = "widget/badge.rs"]
 mod badge;
-// TODO(test-coverage): breadcrumb has API mismatches
-// #[path = "widget/breadcrumb/mod.rs"]
-// pub mod breadcrumb;
+#[path = "widget/breadcrumb/mod.rs"]
+mod breadcrumb;
 #[path = "widget/button.rs"]
 mod button;
 #[path = "widget/calendar.rs"]

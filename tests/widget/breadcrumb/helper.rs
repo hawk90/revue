@@ -1,6 +1,6 @@
 //! Breadcrumb helper function tests
 
-use revue::widget::breadcrumb::{breadcrumb, crumb, Breadcrumb, BreadcrumbItem};
+use revue::widget::{breadcrumb, crumb};
 
 // =============================================================================
 // Helper Function Tests

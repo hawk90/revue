@@ -1,6 +1,6 @@
 //! Breadcrumb type tests
 
-use revue::widget::breadcrumb::{BreadcrumbItem, SeparatorStyle};
+use revue::widget::{BreadcrumbItem, SeparatorStyle};
 
 // =============================================================================
 // BreadcrumbItem Constructor Tests
@@ -77,63 +77,6 @@ fn test_separator_style_debug() {
     assert!(debug_str.contains("Chevron"));
 }
 
-#[test]
-fn test_separator_style_all_variants() {
-    let styles = [
-        SeparatorStyle::Slash,
-        SeparatorStyle::Arrow,
-        SeparatorStyle::Chevron,
-        SeparatorStyle::DoubleArrow,
-        SeparatorStyle::Dot,
-        SeparatorStyle::Pipe,
-        SeparatorStyle::Custom('→'),
-    ];
-
-    // Test that all styles can be created and used
-    for style in styles {
-        let _bc = Breadcrumb::new().separator(style).push("Test");
-    }
-}
-
-// =============================================================================
-// SeparatorStyle::char() tests
-// =============================================================================
-
-#[test]
-fn test_separator_style_char_slash() {
-    assert_eq!(SeparatorStyle::Slash.char(), '/');
-}
-
-#[test]
-fn test_separator_style_char_arrow() {
-    assert_eq!(SeparatorStyle::Arrow.char(), '>');
-}
-
-#[test]
-fn test_separator_style_char_chevron() {
-    assert_eq!(SeparatorStyle::Chevron.char(), '›');
-}
-
-#[test]
-fn test_separator_style_char_double_arrow() {
-    assert_eq!(SeparatorStyle::DoubleArrow.char(), '»');
-}
-
-#[test]
-fn test_separator_style_char_dot() {
-    assert_eq!(SeparatorStyle::Dot.char(), '•');
-}
-
-#[test]
-fn test_separator_style_char_pipe() {
-    assert_eq!(SeparatorStyle::Pipe.char(), '|');
-}
-
-#[test]
-fn test_separator_style_char_custom() {
-    assert_eq!(SeparatorStyle::Custom('*').char(), '*');
-}
-
 // =============================================================================
 // BreadcrumbItem edge cases
 // =============================================================================
@@ -146,19 +89,7 @@ fn test_breadcrumb_item_empty_label() {
 }
 
 #[test]
-fn test_breadcrumb_item_icon() {
-    let item = BreadcrumbItem::new("Home").icon('H');
-    assert_eq!(item.icon, Some('H'));
-}
-
-#[test]
-fn test_breadcrumb_item_clickable_false() {
-    let item = BreadcrumbItem::new("Current").clickable(false);
-    assert!(!item.clickable);
-}
-
-#[test]
-fn test_breadcrumb_item_builder_chain() {
+fn test_breadcrumb_item_builder_chain_not_clickable() {
     let item = BreadcrumbItem::new("Chain").icon('C').clickable(false);
     assert_eq!(item.label, "Chain");
     assert_eq!(item.icon, Some('C'));
