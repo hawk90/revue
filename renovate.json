@@ -1,0 +1,63 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "semanticCommitType": "chore",
+  "timezone": "Asia/Seoul",
+  "schedule": ["before 9am on monday"],
+  "labels": ["dependencies"],
+  "minimumReleaseAge": "3 days",
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": { "enabled": true, "schedule": ["at any time"] },
+  "lockFileMaintenance": { "enabled": true, "schedule": ["before 9am on the first day of the month"] },
+  "nodenv": { "enabled": false },
+  "packageRules": [
+    {
+      "description": "Non-major updates: one weekly PR, auto-merged once CI is green",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "non-major dependencies",
+      "automerge": true
+    },
+    {
+      "description": "GitHub Actions: group, automerge non-major",
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Major updates stay separate and manual",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "Rust toolchain pin (rust-toolchain.toml): manual, one PR per release",
+      "matchDepNames": ["rust-toolchain"],
+      "automerge": false,
+      "commitMessageTopic": "Rust toolchain",
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "description": "dtolnay/rust-toolchain: the tag is the MSRV pin (e.g. @1.88), not an action release",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["dtolnay/rust-toolchain"],
+      "enabled": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Bump the pinned channel in rust-toolchain.toml",
+      "managerFilePatterns": ["/(^|/)rust-toolchain\\.toml$/"],
+      "matchStrings": ["channel\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""],
+      "depNameTemplate": "rust-toolchain",
+      "packageNameTemplate": "rust-lang/rust",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    }
+  ]
+}
