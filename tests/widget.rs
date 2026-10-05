@@ -119,9 +119,8 @@ mod masked_input_tests;
 // TODO(test-coverage): mermaid has API mismatches
 // #[path = "widget/mermaid/mod.rs"]
 // mod mermaid;
-// TODO(test-coverage): option_list has API mismatches
-// #[path = "widget/option_list/mod.rs"]
-// mod option_list;
+#[path = "widget/option_list.rs"]
+mod option_list;
 #[path = "widget/pagination.rs"]
 mod pagination;
 #[cfg(feature = "sysinfo")]
