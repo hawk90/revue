@@ -14,6 +14,7 @@ mod chart_stats;
 mod chart_types;
 mod color_scheme;
 mod histogram;
+mod piechart;
 mod scatterchart;
 
 /// Render `view` into a fresh `width` x `height` buffer.
