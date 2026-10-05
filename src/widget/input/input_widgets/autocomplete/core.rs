@@ -156,7 +156,7 @@ impl Autocomplete {
     /// Set value programmatically
     pub fn set_value(&mut self, value: impl Into<String>) {
         self.value = value.into();
-        self.cursor = self.value.len();
+        self.cursor = self.value.chars().count();
         self.update_filter();
     }
 
@@ -194,7 +194,7 @@ impl Autocomplete {
     pub fn accept_selection(&mut self) -> bool {
         if let Some(suggestion) = self.selected_suggestion() {
             self.value = suggestion.value.clone();
-            self.cursor = self.value.len();
+            self.cursor = self.value.chars().count();
             self.dropdown_visible = false;
             true
         } else {
@@ -204,7 +204,7 @@ impl Autocomplete {
 
     /// Update filtered suggestions
     fn update_filter(&mut self) {
-        if self.value.len() < self.min_chars {
+        if self.value.chars().count() < self.min_chars {
             self.filtered.clear();
             self.dropdown_visible = false;
             return;
