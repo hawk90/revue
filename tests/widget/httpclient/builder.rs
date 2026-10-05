@@ -1,318 +1,154 @@
 //! RequestBuilder tests
+//!
+//! Each constructor's method, a single header, params in full_url(),
+//! body, json, form, bearer_auth and the "Basic " prefix of basic_auth
+//! are covered by the in-source tests in src/widget/developer/httpclient/
+//! tests.rs, as are the "Hello"/"user:pass" base64 vectors.
 
-use revue::widget::developer::httpclient::builder::RequestBuilder;
-use revue::widget::developer::httpclient::types::HttpMethod;
+use revue::widget::{HttpMethod, RequestBuilder};
 
-// =========================================================================
-// RequestBuilder::get tests
-// =========================================================================
-
-#[test]
-fn test_request_builder_get() {
-    let builder = RequestBuilder::get("https://example.com");
-    let request = builder.build();
-    assert_eq!(request.url, "https://example.com");
-    assert_eq!(request.method, HttpMethod::GET);
+fn authorization(builder: RequestBuilder) -> String {
+    builder
+        .build()
+        .headers
+        .get("Authorization")
+        .cloned()
+        .expect("Authorization header")
 }
 
 #[test]
-fn test_request_builder_get_with_string() {
-    let builder = RequestBuilder::get(String::from("https://api.test.com"));
-    let request = builder.build();
-    assert_eq!(request.url, "https://api.test.com");
-}
-
-// =========================================================================
-// RequestBuilder::post tests
-// =========================================================================
-
-#[test]
-fn test_request_builder_post() {
-    let builder = RequestBuilder::post("https://example.com");
-    let request = builder.build();
-    assert_eq!(request.url, "https://example.com");
-    assert_eq!(request.method, HttpMethod::POST);
-}
-
-// =========================================================================
-// RequestBuilder::put tests
-// =========================================================================
-
-#[test]
-fn test_request_builder_put() {
-    let builder = RequestBuilder::put("https://example.com");
-    let request = builder.build();
-    assert_eq!(request.url, "https://example.com");
-    assert_eq!(request.method, HttpMethod::PUT);
-}
-
-// =========================================================================
-// RequestBuilder::delete tests
-// =========================================================================
-
-#[test]
-fn test_request_builder_delete() {
-    let builder = RequestBuilder::delete("https://example.com");
-    let request = builder.build();
-    assert_eq!(request.url, "https://example.com");
-    assert_eq!(request.method, HttpMethod::DELETE);
-}
-
-// =========================================================================
-// RequestBuilder::patch tests
-// =========================================================================
-
-#[test]
-fn test_request_builder_patch() {
-    let builder = RequestBuilder::patch("https://example.com");
-    let request = builder.build();
-    assert_eq!(request.url, "https://example.com");
-    assert_eq!(request.method, HttpMethod::PATCH);
-}
-
-// =========================================================================
-// RequestBuilder::header tests
-// =========================================================================
-
-#[test]
-fn test_request_builder_header_single() {
-    let builder =
-        RequestBuilder::get("https://example.com").header("Authorization", "Bearer token");
-    let request = builder.build();
-    assert!(request.headers.contains_key("Authorization"));
-}
-
-#[test]
-fn test_request_builder_header_multiple() {
-    let builder = RequestBuilder::get("https://example.com")
-        .header("Accept", "application/json")
-        .header("User-Agent", "TestClient");
-    let request = builder.build();
-    assert!(request.headers.contains_key("Accept"));
-    assert!(request.headers.contains_key("User-Agent"));
-}
-
-// =========================================================================
-// RequestBuilder::param tests
-// =========================================================================
-
-#[test]
-fn test_request_builder_param_single() {
-    let builder = RequestBuilder::get("https://example.com").param("page", "1");
-    let request = builder.build();
-    assert!(request.params.contains_key("page"));
-    assert_eq!(request.params.get("page").map(|v| v.as_str()), Some("1"));
-}
-
-#[test]
-fn test_request_builder_param_multiple() {
-    let builder = RequestBuilder::get("https://example.com")
-        .param("page", "1")
-        .param("limit", "10");
-    let request = builder.build();
-    assert!(request.params.contains_key("page"));
-    assert!(request.params.contains_key("limit"));
-    assert_eq!(request.params.get("page").map(|v| v.as_str()), Some("1"));
-    assert_eq!(request.params.get("limit").map(|v| v.as_str()), Some("10"));
-}
-
-// =========================================================================
-// RequestBuilder::body tests
-// =========================================================================
-
-#[test]
-fn test_request_builder_body() {
-    let builder = RequestBuilder::post("https://example.com").body("{\"key\":\"value\"}");
-    let request = builder.build();
-    assert_eq!(request.body, "{\"key\":\"value\"}");
-}
-
-#[test]
-fn test_request_builder_body_empty() {
-    let builder = RequestBuilder::post("https://example.com").body("");
-    let request = builder.build();
+fn test_request_builder_keeps_url() {
+    let request = RequestBuilder::get(String::from("https://api.test.com"))
+        .unwrap()
+        .build();
+    assert_eq!(request.url(), "https://api.test.com");
+    assert!(request.headers.is_empty());
+    assert!(request.params.is_empty());
     assert_eq!(request.body, "");
 }
 
-// =========================================================================
-// RequestBuilder::json tests
-// =========================================================================
+#[test]
+fn test_request_builder_rejects_invalid_urls() {
+    for url in ["", "ftp://example.com", "file:///etc/passwd"] {
+        assert!(RequestBuilder::get(url).is_none(), "get {url}");
+        assert!(RequestBuilder::post(url).is_none(), "post {url}");
+        assert!(RequestBuilder::put(url).is_none(), "put {url}");
+        assert!(RequestBuilder::delete(url).is_none(), "delete {url}");
+        assert!(RequestBuilder::patch(url).is_none(), "patch {url}");
+    }
+}
 
 #[test]
-fn test_request_builder_json() {
-    let builder = RequestBuilder::post("https://example.com").json("{\"test\":true}");
-    let request = builder.build();
-    assert_eq!(request.body, "{\"test\":true}");
-    assert!(request.headers.contains_key("Content-Type"));
+fn test_request_builder_multiple_headers() {
+    let request = RequestBuilder::get("https://example.com")
+        .unwrap()
+        .header("Accept", "application/json")
+        .header("User-Agent", "TestClient")
+        .build();
+    assert_eq!(request.headers.len(), 2);
     assert_eq!(
-        request.headers.get("Content-Type").map(|v| v.as_str()),
+        request.headers.get("Accept").map(String::as_str),
         Some("application/json")
     );
-}
-
-// =========================================================================
-// RequestBuilder::form tests
-// =========================================================================
-
-#[test]
-fn test_request_builder_form() {
-    let builder = RequestBuilder::post("https://example.com").form("key=value&foo=bar");
-    let request = builder.build();
-    assert_eq!(request.body, "key=value&foo=bar");
-    assert!(request.headers.contains_key("Content-Type"));
     assert_eq!(
-        request.headers.get("Content-Type").map(|v| v.as_str()),
-        Some("application/x-www-form-urlencoded")
+        request.headers.get("User-Agent").map(String::as_str),
+        Some("TestClient")
     );
 }
 
-// =========================================================================
-// RequestBuilder::bearer_auth tests
-// =========================================================================
-
 #[test]
-fn test_request_builder_bearer_auth() {
-    let builder = RequestBuilder::get("https://example.com").bearer_auth("my-token");
-    let request = builder.build();
-    assert!(request.headers.contains_key("Authorization"));
-    let auth_header = request.headers.get("Authorization").map(|v| v.as_str());
-    assert_eq!(auth_header, Some("Bearer my-token"));
-}
-
-// =========================================================================
-// RequestBuilder::basic_auth tests
-// =========================================================================
-
-#[test]
-fn test_request_builder_basic_auth() {
-    let builder = RequestBuilder::get("https://example.com").basic_auth("user", "pass");
-    let request = builder.build();
-    assert!(request.headers.contains_key("Authorization"));
-    let auth_header = request.headers.get("Authorization").map(|v| v.as_str());
-    assert!(auth_header.unwrap().starts_with("Basic "));
+fn test_request_builder_params() {
+    let request = RequestBuilder::get("https://example.com")
+        .unwrap()
+        .param("page", "1")
+        .param("limit", "10")
+        .build();
+    assert_eq!(request.params.len(), 2);
+    assert_eq!(request.params.get("page").map(String::as_str), Some("1"));
+    assert_eq!(request.params.get("limit").map(String::as_str), Some("10"));
 }
 
 #[test]
-fn test_request_builder_basic_auth_empty_password() {
-    let builder = RequestBuilder::get("https://example.com").basic_auth("user", "");
-    let request = builder.build();
-    assert!(request.headers.contains_key("Authorization"));
+fn test_request_builder_json_and_form_bodies() {
+    let json = RequestBuilder::post("https://example.com")
+        .unwrap()
+        .json("{\"test\":true}")
+        .build();
+    assert_eq!(json.body, "{\"test\":true}");
+
+    let form = RequestBuilder::post("https://example.com")
+        .unwrap()
+        .form("key=value&foo=bar")
+        .build();
+    assert_eq!(form.body, "key=value&foo=bar");
 }
 
-// =========================================================================
-// RequestBuilder::build tests
-// =========================================================================
+#[test]
+fn test_request_builder_basic_auth_encodes_credentials() {
+    let get = || RequestBuilder::get("https://example.com").unwrap();
+    assert_eq!(
+        authorization(get().basic_auth("user", "pass")),
+        "Basic dXNlcjpwYXNz"
+    );
+    assert_eq!(
+        authorization(get().basic_auth("user", "")),
+        "Basic dXNlcjo="
+    );
+    assert_eq!(
+        authorization(get().basic_auth("Aladdin", "open sesame")),
+        "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ=="
+    );
+    assert_eq!(
+        authorization(get().basic_auth("사용자", "비밀")),
+        "Basic 7IKs7Jqp7J6QOuu5hOuwgA=="
+    );
+}
 
 #[test]
-fn test_request_builder_build_simple() {
-    let request = RequestBuilder::get("https://example.com").build();
-    assert_eq!(request.url, "https://example.com");
-    assert_eq!(request.method, HttpMethod::GET);
+fn test_request_builder_basic_auth_padding() {
+    // "u:" is 2 bytes, "ab:" 3 and "abc:" 4: one, no and two padding chars.
+    let get = || RequestBuilder::get("https://example.com").unwrap();
+    assert_eq!(authorization(get().basic_auth("u", "")), "Basic dTo=");
+    assert_eq!(authorization(get().basic_auth("ab", "")), "Basic YWI6");
+    assert_eq!(authorization(get().basic_auth("abc", "")), "Basic YWJjOg==");
+}
+
+#[test]
+fn test_request_builder_later_auth_replaces_earlier() {
+    let builder = RequestBuilder::get("https://example.com")
+        .unwrap()
+        .basic_auth("user", "pass")
+        .bearer_auth("token");
+    assert_eq!(authorization(builder), "Bearer token");
 }
 
 #[test]
 fn test_request_builder_build_complex() {
     let request = RequestBuilder::post("https://api.example.com/data")
-        .header("Authorization", "Bearer token")
-        .header("Accept", "application/json")
+        .unwrap()
+        .header("X-Custom", "value")
         .param("version", "v1")
+        .bearer_auth("token")
         .json("{\"key\":\"value\"}")
         .build();
 
     assert_eq!(request.method, HttpMethod::POST);
-    assert!(request.headers.contains_key("Authorization"));
-    assert!(request.headers.contains_key("Content-Type"));
-    assert!(request.params.contains_key("version"));
+    assert_eq!(request.url(), "https://api.example.com/data");
     assert_eq!(
-        request.params.get("version").map(|v| v.as_str()),
-        Some("v1")
+        request.headers.get("X-Custom").map(String::as_str),
+        Some("value")
     );
-}
-
-// =========================================================================
-// RequestBuilder chaining tests
-// =========================================================================
-
-#[test]
-fn test_request_builder_chain_all_methods() {
-    let request = RequestBuilder::post("https://example.com")
-        .header("X-Custom", "value")
-        .param("debug", "true")
-        .bearer_auth("token")
-        .body("request body")
-        .build();
-
-    assert_eq!(request.method, HttpMethod::POST);
-    assert!(request.headers.contains_key("X-Custom"));
-    assert!(request.headers.contains_key("Authorization"));
-    assert!(request.params.contains_key("debug"));
     assert_eq!(
-        request.params.get("debug").map(|v| v.as_str()),
-        Some("true")
+        request.headers.get("Authorization").map(String::as_str),
+        Some("Bearer token")
     );
-    assert_eq!(request.body, "request body");
-}
-
-// =========================================================================
-// base64_encode tests
-// =========================================================================
-
-#[test]
-fn test_base64_encode_empty() {
-    assert_eq!(revue::widget::developer::httpclient::builder::base64_encode(b""), "");
-}
-
-#[test]
-fn test_base64_encode_single_byte() {
-    assert_eq!(revue::widget::developer::httpclient::builder::base64_encode(b"M"), "TQ==");
-}
-
-#[test]
-fn test_base64_encode_two_bytes() {
-    assert_eq!(revue::widget::developer::httpclient::builder::base64_encode(b"Ma"), "TWE=");
-}
-
-#[test]
-fn test_base64_encode_three_bytes() {
-    assert_eq!(revue::widget::developer::httpclient::builder::base64_encode(b"Man"), "TWFu");
-}
-
-#[test]
-fn test_base64_encode_four_bytes() {
-    assert_eq!(revue::widget::developer::httpclient::builder::base64_encode(b"Mana"), "TWFuYQ==");
-}
-
-#[test]
-fn test_base64_encode_six_bytes() {
-    assert_eq!(revue::widget::developer::httpclient::builder::base64_encode(b"Manam"), "TWFuYW0=");
-}
-
-#[test]
-fn test_base64_encode_hello() {
-    assert_eq!(revue::widget::developer::httpclient::builder::base64_encode(b"Hello"), "SGVsbG8=");
-}
-
-#[test]
-fn test_base64_encode_credentials() {
-    // user:pass in base64
-    assert_eq!(revue::widget::developer::httpclient::builder::base64_encode(b"user:pass"), "dXNlcjpwYXNz");
-}
-
-#[test]
-fn test_base64_encode_all_bytes() {
-    // Test all 256 byte values would be too long,
-    // just verify it works on a larger input
-    let input = b"The quick brown fox jumps over the lazy dog.";
-    let result = revue::widget::developer::httpclient::builder::base64_encode(input);
-    // Just verify it's a valid base64 string (only valid chars)
-    assert!(result
-        .chars()
-        .all(|c| c.is_alphanumeric() || c == '+' || c == '/' || c == '='));
-}
-
-#[test]
-fn test_base64_encode_binary_data() {
-    // Test with binary data (null bytes)
-    assert_eq!(revue::widget::developer::httpclient::builder::base64_encode(&[0, 0, 0]), "AAAA");
-    assert_eq!(revue::widget::developer::httpclient::builder::base64_encode(&[255, 255, 255]), "////");
+    assert_eq!(
+        request.headers.get("Content-Type").map(String::as_str),
+        Some("application/json")
+    );
+    assert_eq!(request.body, "{\"key\":\"value\"}");
+    assert_eq!(
+        request.full_url(),
+        "https://api.example.com/data?version=v1"
+    );
 }

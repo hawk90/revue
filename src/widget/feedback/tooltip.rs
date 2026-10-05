@@ -575,9 +575,15 @@ impl View for Tooltip {
             0
         };
 
+        // The last row is the bottom border, if there is one.
+        let text_end = if self.style.border_chars().is_some() {
+            tooltip_h.saturating_sub(1)
+        } else {
+            tooltip_h
+        };
         for (i, line) in lines.iter().enumerate() {
             let ry = content_ry + text_y_off + i as u16;
-            if ry >= tooltip_h.saturating_sub(1) {
+            if ry >= text_end {
                 break;
             }
             entry.push_str_with(content_rx, ry, line, tooltip_w.saturating_sub(1), |ch| {
@@ -609,7 +615,10 @@ impl View for Tooltip {
                 let mut cell = Cell::new(arrow_char);
                 cell.fg = Some(fg);
                 arrow_entry.push(0, 0, cell);
-                ctx.queue_overlay(arrow_entry);
+                // Without an overlay layer, draw inline like the body below.
+                if !ctx.queue_overlay(arrow_entry) {
+                    ctx.set(arrow_abs_x, arrow_abs_y, cell);
+                }
             }
         }
 

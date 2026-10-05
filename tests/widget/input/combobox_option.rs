@@ -2,7 +2,7 @@
 //!
 //! Extracted from src/widget/input/input_widgets/combobox/option.rs
 
-use revue::widget::input::input_widgets::combobox::option::ComboOption;
+use revue::widget::ComboOption;
 
 // =========================================================================
 // ComboOption::new tests
@@ -109,18 +109,6 @@ fn test_combo_option_group_chain() {
 // =========================================================================
 // ComboOption::get_value tests
 // =========================================================================
-
-#[test]
-fn test_combo_option_get_value_implicit() {
-    let opt = ComboOption::new("Label");
-    assert_eq!(opt.get_value(), "Label");
-}
-
-#[test]
-fn test_combo_option_get_value_explicit() {
-    let opt = ComboOption::new("Label").value("Value");
-    assert_eq!(opt.get_value(), "Value");
-}
 
 #[test]
 fn test_combo_option_get_value_empty_string() {

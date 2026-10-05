@@ -6,6 +6,7 @@ use std::time::Duration;
 use crate::style::Color;
 
 use super::types::ContentType;
+use crate::widget::data::json_viewer::parser::is_json;
 
 /// HTTP response
 #[derive(Clone, Debug, Default)]
@@ -123,7 +124,11 @@ impl HttpResponse {
     /// Get formatted body based on content type
     pub fn formatted_body(&self) -> String {
         match self.content_type() {
-            ContentType::Json => self.pretty_json().unwrap_or_else(|| self.body.clone()),
+            // format_json re-indents tokens without validating them, so only
+            // hand it a body that parses; anything else is shown as sent.
+            ContentType::Json if is_json(&self.body) => {
+                self.pretty_json().unwrap_or_else(|| self.body.clone())
+            }
             _ => self.body.clone(),
         }
     }

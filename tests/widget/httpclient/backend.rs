@@ -1,230 +1,121 @@
-//! HttpBackend and MockHttpBackend tests
+//! MockHttpBackend tests
+//!
+//! The default mock response, a custom response matched by URL, mock_json
+//! status/content type, mock_error, the "*" wildcard and "most recent
+//! match wins" are covered by the in-source tests in
+//! src/widget/developer/httpclient/tests.rs.
 
-use revue::widget::developer::httpclient::backend::{HttpBackend, MockHttpBackend};
-use revue::widget::developer::httpclient::request::HttpRequest;
-use revue::widget::developer::httpclient::response::HttpResponse;
+use revue::widget::{HttpBackend, HttpRequest, HttpResponse, MockHttpBackend};
+use std::collections::HashMap;
 use std::time::Duration;
 
-// =========================================================================
-// MockHttpBackend tests
-// =========================================================================
+fn request(url: &str) -> HttpRequest {
+    HttpRequest::new(url).expect("valid URL")
+}
+
+fn response(status: u16, body: &str) -> HttpResponse {
+    HttpResponse {
+        status,
+        status_text: String::new(),
+        headers: HashMap::new(),
+        body: body.to_string(),
+        time: Duration::from_millis(10),
+        size: body.len(),
+    }
+}
 
 #[test]
-fn test_mock_http_backend_new() {
+fn test_mock_http_backend_starts_empty() {
+    assert!(MockHttpBackend::new()
+        .responses_for_testing()
+        .unwrap()
+        .is_empty());
+    assert!(MockHttpBackend::default()
+        .responses_for_testing()
+        .unwrap()
+        .is_empty());
+}
+
+#[test]
+fn test_mock_http_backend_records_mocks() {
     let backend = MockHttpBackend::new();
-    assert!(backend.responses_for_testing().is_ok());
-    assert!(backend.responses_for_testing().unwrap().is_empty());
+    backend.mock_response("a", response(200, "a"));
+    backend.mock_json("b", 201, "{}");
+    assert_eq!(backend.responses_for_testing().unwrap().len(), 2);
 }
 
 #[test]
-fn test_mock_http_backend_default() {
-    let backend = MockHttpBackend::default();
-    assert!(backend.responses_for_testing().unwrap().is_empty());
-}
-
-#[test]
-fn test_mock_http_backend_send_no_mock() {
-    let backend = MockHttpBackend::new();
-    let request = HttpRequest::new("https://example.com");
-    let result = backend.send(&request);
-    assert!(result.is_ok());
-    let response = result.unwrap();
-    assert_eq!(response.status, 200);
-    assert!(response.body.contains("mock"));
-}
-
-#[test]
-fn test_mock_http_backend_send_with_wildcard() {
-    let backend = MockHttpBackend::new();
-    backend.mock_response(
-        "*",
-        HttpResponse {
-            status: 200,
-            status_text: "OK".to_string(),
-            headers: std::collections::HashMap::new(),
-            body: "wildcard response".to_string(),
-            time: Duration::from_millis(10),
-            size: 17,
-        },
-    );
-
-    let request = HttpRequest::new("https://any-url.com");
-    let result = backend.send(&request);
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().body, "wildcard response");
-}
-
-#[test]
-fn test_mock_http_backend_send_url_pattern() {
-    let backend = MockHttpBackend::new();
-    backend.mock_response(
-        "api",
-        HttpResponse {
-            status: 201,
-            status_text: "Created".to_string(),
-            headers: std::collections::HashMap::new(),
-            body: "created".to_string(),
-            time: Duration::from_millis(5),
-            size: 7,
-        },
-    );
-
-    let request = HttpRequest::new("https://example.com/api/users");
-    let result = backend.send(&request);
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().status, 201);
-}
-
-#[test]
-fn test_mock_http_backend_mock_response() {
-    let backend = MockHttpBackend::new();
-    let response = HttpResponse {
-        status: 200,
-        status_text: "OK".to_string(),
-        headers: std::collections::HashMap::new(),
-        body: "test body".to_string(),
-        time: Duration::from_millis(50),
-        size: 9,
-    };
-    backend.mock_response("test", response.clone());
-
-    let request = HttpRequest::new("https://example.com/test");
-    let result = backend.send(&request);
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().body, "test body");
-}
-
-#[test]
-fn test_mock_http_backend_mock_json() {
+fn test_mock_http_backend_mock_json_headers() {
     let backend = MockHttpBackend::new();
     backend.mock_json("api/users", 200, r#"{"name":"test"}"#);
 
-    let request = HttpRequest::new("https://example.com/api/users");
-    let result = backend.send(&request);
-    assert!(result.is_ok());
-    let response = result.unwrap();
+    let response = backend
+        .send(&request("https://example.com/api/users"))
+        .unwrap();
     assert_eq!(response.status, 200);
     assert_eq!(response.status_text, "OK");
-    assert!(response.body.contains("test"));
+    assert_eq!(response.body, r#"{"name":"test"}"#);
     assert_eq!(
-        response.headers.get("Content-Type"),
-        Some(&"application/json".to_string())
+        response.headers.get("Content-Type").map(String::as_str),
+        Some("application/json")
     );
 }
 
 #[test]
-fn test_mock_http_backend_mock_error() {
+fn test_mock_http_backend_mock_error_body_and_status_text() {
     let backend = MockHttpBackend::new();
-    backend.mock_error("api/error", 404, "Not found");
+    backend.mock_error("missing", 404, "Not found");
+    backend.mock_error("teapot", 418, "short and stout");
 
-    let request = HttpRequest::new("https://example.com/api/error");
-    let result = backend.send(&request);
-    assert!(result.is_ok());
-    let response = result.unwrap();
+    let response = backend
+        .send(&request("https://example.com/missing"))
+        .unwrap();
     assert_eq!(response.status, 404);
-    assert!(response.body.contains("Not found"));
+    assert_eq!(response.status_text, "Not Found");
+    assert_eq!(response.body, r#"{"error": "Not found"}"#);
+    assert_eq!(response.size, response.body.len());
+
+    let response = backend
+        .send(&request("https://example.com/teapot"))
+        .unwrap();
+    assert_eq!(response.status, 418);
+    assert_eq!(response.status_text, "Unknown");
+}
+
+#[test]
+fn test_mock_http_backend_unmatched_url_gets_default() {
+    let backend = MockHttpBackend::new();
+    backend.mock_response("api/users", response(201, "users"));
+
+    let response = backend.send(&request("https://example.com/other")).unwrap();
+    assert_eq!(response.status, 200);
+    assert_ne!(response.body, "users");
 }
 
 #[test]
 fn test_mock_http_backend_multiple_mocks() {
     let backend = MockHttpBackend::new();
-    backend.mock_response(
-        "api1",
-        HttpResponse {
-            status: 200,
-            status_text: "OK".to_string(),
-            headers: std::collections::HashMap::new(),
-            body: "response1".to_string(),
-            time: Duration::from_millis(10),
-            size: 9,
-        },
-    );
-    backend.mock_response(
-        "api2",
-        HttpResponse {
-            status: 201,
-            status_text: "Created".to_string(),
-            headers: std::collections::HashMap::new(),
-            body: "response2".to_string(),
-            time: Duration::from_millis(10),
-            size: 9,
-        },
-    );
+    backend.mock_response("api1", response(200, "response1"));
+    backend.mock_response("api2", response(201, "response2"));
 
-    let request1 = HttpRequest::new("https://example.com/api1");
-    let result1 = backend.send(&request1);
-    assert_eq!(result1.unwrap().body, "response1");
+    let first = backend.send(&request("https://example.com/api1")).unwrap();
+    assert_eq!((first.status, first.body.as_str()), (200, "response1"));
 
-    let request2 = HttpRequest::new("https://example.com/api2");
-    let result2 = backend.send(&request2);
-    assert_eq!(result2.unwrap().body, "response2");
+    let second = backend.send(&request("https://example.com/api2")).unwrap();
+    assert_eq!((second.status, second.body.as_str()), (201, "response2"));
 }
 
 #[test]
-fn test_mock_http_backend_latest_mock_takes_precedence() {
-    let backend = MockHttpBackend::new();
-    backend.mock_response(
-        "test",
-        HttpResponse {
-            status: 200,
-            status_text: "OK".to_string(),
-            headers: std::collections::HashMap::new(),
-            body: "first".to_string(),
-            time: Duration::from_millis(10),
-            size: 5,
-        },
-    );
-    backend.mock_response(
-        "test",
-        HttpResponse {
-            status: 201,
-            status_text: "Created".to_string(),
-            headers: std::collections::HashMap::new(),
-            body: "second".to_string(),
-            time: Duration::from_millis(10),
-            size: 6,
-        },
-    );
+fn test_mock_http_backend_mocks_from_another_thread() {
+    use std::sync::Arc;
 
-    let request = HttpRequest::new("https://example.com/test");
-    let result = backend.send(&request);
-    assert_eq!(result.unwrap().body, "second");
-}
+    let backend = Arc::new(MockHttpBackend::new());
+    let writer = Arc::clone(&backend);
+    std::thread::spawn(move || writer.mock_response("test", response(202, "threaded")))
+        .join()
+        .unwrap();
 
-// =========================================================================
-// HttpBackend trait tests
-// =========================================================================
-
-#[test]
-fn test_http_backend_trait_send() {
-    let backend = MockHttpBackend::new();
-    let request = HttpRequest::new("https://example.com");
-    // Test that the trait method is callable
-    let result = backend.send(&request);
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_http_backend_send_and_sync() {
-    // Test that MockHttpBackend implements Send + Sync
-    use std::sync::{Arc, Mutex};
-    let backend = Arc::new(Mutex::new(MockHttpBackend::new()));
-    let backend_clone = Arc::clone(&backend);
-
-    std::thread::spawn(move || {
-        let b = backend_clone.lock().unwrap();
-        b.mock_response(
-            "test",
-            HttpResponse {
-                status: 200,
-                status_text: "OK".to_string(),
-                headers: std::collections::HashMap::new(),
-                body: "test".to_string(),
-                time: Duration::from_millis(10),
-                size: 4,
-            },
-        );
-    })
-    .join()
-    .unwrap();
+    let response = backend.send(&request("https://example.com/test")).unwrap();
+    assert_eq!(response.status, 202);
+    assert_eq!(response.body, "threaded");
 }
