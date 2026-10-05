@@ -25,13 +25,12 @@ mod calendar;
 mod callout;
 #[path = "widget/candlechart.rs"]
 mod candlechart;
-#[path = "widget/data/chart/mod.rs"]
-mod chart;
-// TODO(test-coverage): card has API mismatches
-// #[path = "widget/card.rs"]
-// mod card;
 #[path = "widget/canvas/mod.rs"]
 mod canvas;
+#[path = "widget/card.rs"]
+mod card;
+#[path = "widget/data/chart/mod.rs"]
+mod chart;
 // TODO(test-coverage): checkbox has API mismatches
 // #[path = "widget/checkbox/mod.rs"]
 // mod checkbox;

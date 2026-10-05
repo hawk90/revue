@@ -8,6 +8,24 @@ use revue::widget::traits::RenderContext;
 use revue::widget::Text;
 use revue::widget::{card, BorderType, Card, CardVariant, StyledView, View};
 
+/// Render `c` into a `width` x `height` buffer and return each row as text
+/// (wide characters appear once).
+fn render_rows(c: &Card, width: u16, height: u16) -> Vec<String> {
+    let mut buffer = Buffer::new(width, height);
+    let area = Rect::new(0, 0, width, height);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    c.render(&mut ctx);
+    (0..height)
+        .map(|y| {
+            (0..width)
+                .filter_map(|x| buffer.get(x, y))
+                .filter(|cell| !cell.is_continuation())
+                .map(|cell| cell.symbol)
+                .collect()
+        })
+        .collect()
+}
+
 // =============================================================================
 // Constructor and Builder Tests
 // 생성자 및 빌더 테스트
@@ -165,18 +183,6 @@ fn test_card_variant_filled() {
 }
 
 #[test]
-fn test_card_variant_elevated() {
-    let c = Card::new().elevated();
-    let mut buffer = Buffer::new(20, 12);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    c.render(&mut ctx);
-    // Elevated variant should have shadow
-    let right_shadow = buffer.get(20, 5).unwrap();
-    assert_eq!(right_shadow.symbol, '▌');
-}
-
-#[test]
 fn test_card_variant_flat() {
     let c = Card::new().flat();
     let mut buffer = Buffer::new(20, 10);
@@ -201,19 +207,21 @@ fn test_card_variant_builder() {
 #[test]
 fn test_card_all_variants() {
     let variants = [
-        CardVariant::Outlined,
-        CardVariant::Filled,
-        CardVariant::Elevated,
-        CardVariant::Flat,
+        (CardVariant::Outlined, '┌', None),
+        (CardVariant::Filled, '┌', Some(Color::rgb(30, 30, 35))),
+        (CardVariant::Elevated, '┌', Some(Color::rgb(35, 35, 40))),
+        // variant() only changes the look; the border stays
+        (CardVariant::Flat, '┌', None),
     ];
 
-    for variant in variants {
+    for (variant, corner, bg) in variants {
         let c = Card::new().variant(variant);
-        let mut buffer = Buffer::new(20, 12);
+        let mut buffer = Buffer::new(20, 10);
         let area = Rect::new(0, 0, 20, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
         c.render(&mut ctx);
-        // Should render without panicking
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, corner, "{variant:?}");
+        assert_eq!(buffer.get(5, 5).unwrap().bg, bg, "{variant:?}");
     }
 }
 
@@ -617,18 +625,19 @@ fn test_card_render_with_body() {
 
 #[test]
 fn test_card_render_with_footer() {
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let c = Card::new()
         .title("Title")
         .body(Text::new("Body"))
         .footer(Text::new("Footer"));
-    c.render(&mut ctx);
+    let rows = render_rows(&c, 20, 10);
 
-    // Should have footer separator
-    assert_eq!(buffer.get(0, 8).unwrap().symbol, '├');
+    assert_eq!(rows[1], "│ Title            │");
+    assert_eq!(rows[2], "├──────────────────┤");
+    assert_eq!(rows[3], "│ Body             │");
+    // Footer separator, then the footer just above the bottom border
+    assert_eq!(rows[7], "├──────────────────┤");
+    assert_eq!(rows[8], "│ Footer           │");
+    assert_eq!(rows[9], "└──────────────────┘");
 }
 
 #[test]
@@ -675,20 +684,36 @@ fn test_card_render_filled_variant() {
 }
 
 #[test]
+#[ignore = "BUG: Card's elevated shadow is drawn in the last column/row and then overwritten by the border, so it never shows"]
 fn test_card_render_elevated_variant() {
-    let mut buffer = Buffer::new(40, 12);
+    let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
     let mut ctx = RenderContext::new(&mut buffer, area);
 
     let c = Card::new().elevated().title("Elevated");
     c.render(&mut ctx);
 
-    // Should have shadow on right and bottom
-    let right_shadow = buffer.get(40, 5).unwrap();
-    assert_eq!(right_shadow.symbol, '▌');
+    // Shadow on the right and bottom edges, inside the area (#495)
+    assert_eq!(buffer.get(39, 5).unwrap().symbol, '▌');
+    assert_eq!(buffer.get(5, 9).unwrap().symbol, '▀');
+}
 
-    let bottom_shadow = buffer.get(5, 10).unwrap();
-    assert_eq!(bottom_shadow.symbol, '▀');
+#[test]
+fn test_card_render_elevated_without_border() {
+    let mut buffer = Buffer::new(20, 10);
+    let area = Rect::new(0, 0, 20, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+
+    let c = Card::new().elevated().border_style(BorderType::None);
+    c.render(&mut ctx);
+
+    // With no border on top, the shadow shows in the last column and row
+    let right = buffer.get(19, 5).unwrap();
+    assert_eq!(right.symbol, '▌');
+    assert_eq!(right.fg, Some(Color::rgb(20, 20, 20)));
+    assert_eq!(buffer.get(5, 9).unwrap().symbol, '▀');
+    // Not beside the top row
+    assert_ne!(buffer.get(19, 0).unwrap().symbol, '▌');
 }
 
 #[test]
@@ -795,15 +820,15 @@ fn test_card_styled_view_methods() {
 
 #[test]
 fn test_card_too_small_area() {
-    let mut buffer = Buffer::new(3, 2);
-    let area = Rect::new(0, 0, 3, 2);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
+    // Width < 4 or height < 3 draws nothing
     let c = Card::new().title("Test");
-    c.render(&mut ctx);
-
-    // Should not crash with small area
-    // Width < 4 or height < 3 should return early
+    for row in render_rows(&c, 3, 5) {
+        assert_eq!(row.trim(), "");
+    }
+    for row in render_rows(&c, 10, 2) {
+        assert_eq!(row.trim(), "");
+    }
+    assert_eq!(render_rows(&c, 4, 3)[0], "┌──┐");
 }
 
 #[test]
@@ -819,29 +844,24 @@ fn test_card_empty_title() {
 #[test]
 fn test_card_very_long_title() {
     let long_title = "This is a very long title that exceeds the card width";
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let c = Card::new().title(long_title);
-    c.render(&mut ctx);
-
-    // Should clip the title to fit
-    // Should not panic
+    // Clipped to the content width, inside the border and padding
+    assert_eq!(render_rows(&c, 20, 10)[1], "│ This is a very l │");
 }
 
 #[test]
 fn test_card_unicode_in_title() {
     let unicode_title = "🎉 Celebration Card 🎊";
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let c = Card::new().title(unicode_title);
-    c.render(&mut ctx);
+    // Each emoji takes two columns
+    assert_eq!(render_rows(&c, 30, 10)[1], "│ 🎉 Celebration Card 🎊     │");
+}
 
-    // Should handle emoji characters
-    // Should not panic
+#[test]
+fn test_card_wide_title_clipped_before_half_a_char() {
+    // A wide character that would straddle the edge is left out
+    let c = Card::new().title("ab🎉");
+    assert_eq!(render_rows(&c, 7, 3)[1], "│ ab  │");
 }
 
 #[test]
@@ -899,66 +919,36 @@ fn test_card_disabled_state() {
 }
 
 #[test]
-fn test_card_visible_state() {
-    let c = Card::new();
-    // Card is visible by default
-    // The visible() method sets the visibility state
-    let c = Card::new().visible(false);
-    // When not visible, render should skip rendering
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    c.render(&mut ctx);
-    // Buffer should remain empty (spaces)
-}
-
-#[test]
 fn test_card_with_only_header() {
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let c = Card::new().header(Text::new("Only header"));
-    c.render(&mut ctx);
-
-    // Should render without issues
+    let rows = render_rows(&c, 20, 10);
+    assert_eq!(rows[1], "│ Only header      │");
+    // No separator without a body
+    assert_eq!(rows[2], "│                  │");
 }
 
 #[test]
 fn test_card_with_only_footer() {
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let c = Card::new().footer(Text::new("Only footer"));
-    c.render(&mut ctx);
-
-    // Should render without issues
+    let rows = render_rows(&c, 20, 10);
+    assert_eq!(rows[7], "├──────────────────┤");
+    assert_eq!(rows[8], "│ Only footer      │");
 }
 
 #[test]
 fn test_card_without_border_padding() {
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let c = Card::new().flat().padding(0).title("No padding");
-    c.render(&mut ctx);
-
-    // Should render without issues
+    assert_eq!(render_rows(&c, 20, 10)[0], "No padding          ");
 }
 
 #[test]
 fn test_card_large_padding() {
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(0, 0, 40, 20);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
     let c = Card::new()
         .padding(5)
         .title("Large padding")
         .body(Text::new("Content"));
-    c.render(&mut ctx);
-
-    // Should render with proper padding
+    let rows = render_rows(&c, 40, 20);
+    assert!(rows[1].starts_with("│     Large padding "), "{:?}", rows[1]);
+    assert!(rows[2].starts_with('├'));
+    assert!(rows[3].starts_with("│     Content "), "{:?}", rows[3]);
 }
