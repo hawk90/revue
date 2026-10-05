@@ -329,13 +329,6 @@ fn test_chart_type_default() {
 }
 
 #[test]
-fn test_chart_type_clone() {
-    let ct1 = ChartType::Area;
-    let ct2 = ct1.clone();
-    assert_eq!(ct1, ct2);
-}
-
-#[test]
 fn test_chart_type_copy() {
     let ct1 = ChartType::StepAfter;
     let ct2 = ct1;
@@ -362,13 +355,6 @@ fn test_chart_type_debug() {
 #[test]
 fn test_line_style_default() {
     assert_eq!(LineStyle::default(), LineStyle::Solid);
-}
-
-#[test]
-fn test_line_style_clone() {
-    let ls1 = LineStyle::Dashed;
-    let ls2 = ls1.clone();
-    assert_eq!(ls1, ls2);
 }
 
 #[test]
