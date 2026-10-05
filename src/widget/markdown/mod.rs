@@ -506,7 +506,11 @@ impl Markdown {
         if ctx.in_table {
             ctx.current_cell.push_str(text);
         } else if !ctx.in_code_block {
+            // Inline code is drawn in the code color
+            let fg = ctx.current_fg;
+            ctx.current_fg = Some(ctx.code_fg);
             ctx.add_text(text);
+            ctx.current_fg = fg;
         }
     }
 
