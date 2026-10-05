@@ -4,7 +4,6 @@
 //! a new client being Idle, builder method/header/body, and send() on a
 //! helper-built client.
 
-use revue::style::Color;
 use revue::widget::{
     HttpClient, HttpMethod, HttpRequest, HttpResponse, RequestState, ResponseView,
 };
@@ -108,14 +107,6 @@ fn test_http_client_body() {
     let unicode = r#"{"message":"안녕하세요"}"#;
     assert_eq!(HttpClient::new().body(unicode).request().body, unicode);
     assert_eq!(HttpClient::new().body("").request().body, "");
-}
-
-#[test]
-fn test_http_client_colors() {
-    let mut colors = HttpClient::new().colors_for_testing().clone();
-    colors.tab_active = Color::RED;
-    let client = HttpClient::new().colors(colors);
-    assert_eq!(client.colors_for_testing().tab_active, Color::RED);
 }
 
 #[test]

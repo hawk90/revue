@@ -3,15 +3,13 @@
 //! tests/widget/statusbar.rs covers StatusSection and KeyHint (new, every
 //! builder, width, clone, helpers) and renders each StatusBar builder;
 //! these tests check the StatusBar's own state directly.
-//!
-//! StatusBarPosition is not exported, so positions are compared through
-//! get_position() and get_render_y() of bars built with header()/footer().
 
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::{
-    footer, header, statusbar, KeyHint, RenderContext, SectionAlign, StatusBar, StatusSection, View,
+    footer, header, statusbar, KeyHint, RenderContext, SectionAlign, StatusBar, StatusBarPosition,
+    StatusSection, View,
 };
 
 fn row(bar: &StatusBar, y: u16) -> String {
@@ -46,7 +44,7 @@ fn test_status_bar_new() {
     assert_eq!(bar.get_height(), 1);
     assert_eq!(bar.get_separator(), None);
     assert_eq!(bar.get_fg(), None);
-    assert_eq!(bar.get_position(), footer().get_position());
+    assert_eq!(bar.get_position(), StatusBarPosition::Bottom);
 }
 
 #[test]
@@ -55,22 +53,40 @@ fn test_status_bar_default_and_helper_match_new() {
         assert!(bar.get_left().is_empty());
         assert_eq!(bar.get_height(), 1);
         assert_eq!(bar.get_bg(), StatusBar::new().get_bg());
-        assert_eq!(bar.get_position(), StatusBar::new().get_position());
+        assert_eq!(bar.get_position(), StatusBarPosition::Bottom);
     }
 }
 
 #[test]
+fn test_status_bar_position_default_and_variants() {
+    assert_eq!(StatusBarPosition::default(), StatusBarPosition::Bottom);
+    assert_ne!(StatusBarPosition::Top, StatusBarPosition::Bottom);
+}
+
+#[test]
 fn test_status_bar_header_and_footer_positions() {
-    assert_ne!(header().get_position(), footer().get_position());
+    assert_eq!(StatusBar::new().get_position(), StatusBarPosition::Bottom);
+    assert_eq!(header().get_position(), StatusBarPosition::Top);
+    assert_eq!(footer().get_position(), StatusBarPosition::Bottom);
     assert_eq!(
         StatusBar::new().header().get_position(),
-        header().get_position()
+        StatusBarPosition::Top
     );
-    assert_eq!(header().footer().get_position(), footer().get_position());
+    assert_eq!(header().footer().get_position(), StatusBarPosition::Bottom);
+}
 
-    // position() takes what get_position() returns.
-    let top = StatusBar::new().position(header().get_position());
-    assert_eq!(top.get_render_y(24), 0);
+#[test]
+fn test_status_bar_position_builder_moves_the_bar() {
+    let top = StatusBar::new()
+        .position(StatusBarPosition::Top)
+        .left_text("Top");
+    assert_eq!(top.get_position(), StatusBarPosition::Top);
+    assert_eq!(row(&top, 0), "Top");
+    assert_eq!(row(&top, 4), "");
+
+    let bottom = top.position(StatusBarPosition::Bottom);
+    assert_eq!(row(&bottom, 0), "");
+    assert_eq!(row(&bottom, 4), "Top");
 }
 
 #[test]

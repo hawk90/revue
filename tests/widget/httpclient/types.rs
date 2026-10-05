@@ -6,7 +6,7 @@
 //! src/widget/developer/httpclient/tests.rs.
 
 use revue::style::Color;
-use revue::widget::{ContentType, HttpClient, HttpMethod, RequestState, ResponseView};
+use revue::widget::{ContentType, HttpClient, HttpColors, HttpMethod, RequestState, ResponseView};
 
 #[test]
 fn test_http_method_colors() {
@@ -64,13 +64,17 @@ fn test_response_view_default_and_variants() {
 
 #[test]
 fn test_http_colors_default() {
-    // HttpColors is not exported; read the defaults off a new client.
-    let client = HttpClient::new();
-    let colors = client.colors_for_testing();
+    let colors = HttpColors::default();
     assert_eq!(colors.url_bg, Color::rgb(30, 30, 40));
     assert_eq!(colors.method_bg, Color::rgb(40, 40, 60));
     assert_eq!(colors.header_key, Color::rgb(97, 175, 239));
     assert_eq!(colors.header_value, Color::rgb(171, 178, 191));
     assert_eq!(colors.tab_bg, Color::rgb(40, 40, 50));
     assert_eq!(colors.tab_active, Color::rgb(60, 60, 80));
+
+    // A new client starts with them.
+    assert_eq!(
+        HttpClient::new().colors_for_testing().tab_active,
+        colors.tab_active
+    );
 }

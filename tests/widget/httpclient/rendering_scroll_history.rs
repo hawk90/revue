@@ -2,8 +2,9 @@
 
 use revue::layout::Rect;
 use revue::render::Buffer;
+use revue::style::Color;
 use revue::widget::{
-    http_delete, http_get, HttpClient, HttpResponse, RenderContext, ResponseView, View,
+    http_delete, http_get, HttpClient, HttpColors, HttpResponse, RenderContext, ResponseView, View,
 };
 use std::collections::HashMap;
 use std::time::Duration;
@@ -116,4 +117,30 @@ fn test_render_after_history_back_shows_recalled_url() {
         rows[0].starts_with("GET https://api.example.com/1"),
         "{rows:?}"
     );
+}
+
+#[test]
+fn test_render_uses_colors_builder() {
+    let colors = HttpColors {
+        tab_active: Color::RED,
+        tab_bg: Color::BLUE,
+        header_key: Color::GREEN,
+        header_value: Color::YELLOW,
+        ..HttpColors::default()
+    };
+    let mut client = with_body(1).colors(colors);
+    client.set_view(ResponseView::Headers);
+
+    let mut buffer = Buffer::new(80, 20);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 80, 20));
+    client.render(&mut ctx);
+
+    // Tab bar on row 3: "Body Headers Raw", Headers active.
+    assert_eq!(buffer.get(0, 3).unwrap().bg, Some(Color::BLUE));
+    assert_eq!(buffer.get(5, 3).unwrap().symbol, 'H');
+    assert_eq!(buffer.get(5, 3).unwrap().bg, Some(Color::RED));
+    // Header row 4: "X-Key: x-value".
+    assert_eq!(buffer.get(0, 4).unwrap().fg, Some(Color::GREEN));
+    assert_eq!(buffer.get(7, 4).unwrap().symbol, 'x');
+    assert_eq!(buffer.get(7, 4).unwrap().fg, Some(Color::YELLOW));
 }
