@@ -107,11 +107,10 @@ mod image;
 // TODO(test-coverage): input has API mismatches
 // #[path = "widget/input/mod.rs"]
 // mod input;
-// TODO(test-coverage): link has API mismatches
-// #[path = "widget/link.rs"]
-// mod link;
 #[path = "widget/layout/mod.rs"]
 mod layout;
+#[path = "widget/link.rs"]
+mod link;
 // TODO(test-coverage): list has API mismatches
 // #[path = "widget/list.rs"]
 // mod list;
