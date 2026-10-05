@@ -133,13 +133,7 @@ impl View for TextArea {
 
         // Draw background
         if let Some(bg) = self.bg {
-            for y in 0..area.height {
-                for x in 0..area.width {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(bg);
-                    ctx.set(x, y, cell);
-                }
-            }
+            ctx.fill_box_background(bg);
         }
 
         // Show placeholder if empty
