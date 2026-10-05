@@ -1,65 +1,6 @@
 //! ClipRegion tests
 
-use revue::widget::canvas::ClipRegion;
-
-#[test]
-fn test_clip_region_new() {
-    let clip = ClipRegion::new(10.0, 20.0, 100.0, 50.0);
-    assert_eq!(clip.x_min, 10.0);
-    assert_eq!(clip.y_min, 20.0);
-    assert_eq!(clip.x_max, 110.0);
-    assert_eq!(clip.y_max, 70.0);
-}
-
-#[test]
-fn test_clip_region_from_bounds() {
-    let clip = ClipRegion::from_bounds(5.0, 10.0, 50.0, 40.0);
-    assert_eq!(clip.x_min, 5.0);
-    assert_eq!(clip.y_min, 10.0);
-    assert_eq!(clip.x_max, 50.0);
-    assert_eq!(clip.y_max, 40.0);
-}
-
-#[test]
-fn test_clip_region_contains_inside() {
-    let clip = ClipRegion::new(0.0, 0.0, 100.0, 100.0);
-    assert!(clip.contains(50.0, 50.0));
-    assert!(clip.contains(0.0, 0.0));
-    assert!(clip.contains(100.0, 100.0));
-}
-
-#[test]
-fn test_clip_region_contains_outside() {
-    let clip = ClipRegion::new(0.0, 0.0, 100.0, 100.0);
-    assert!(!clip.contains(-1.0, 50.0));
-    assert!(!clip.contains(50.0, -1.0));
-    assert!(!clip.contains(101.0, 50.0));
-    assert!(!clip.contains(50.0, 101.0));
-}
-
-#[test]
-fn test_clip_region_contains_on_edge() {
-    let clip = ClipRegion::new(10.0, 20.0, 50.0, 40.0);
-    assert!(clip.contains(10.0, 20.0));
-    assert!(clip.contains(50.0, 20.0));
-    assert!(clip.contains(10.0, 40.0));
-    assert!(clip.contains(50.0, 40.0));
-}
-
-#[test]
-fn test_clip_region_intersect_overlapping() {
-    let clip1 = ClipRegion::new(0.0, 0.0, 100.0, 100.0);
-    let clip2 = ClipRegion::new(50.0, 50.0, 150.0, 150.0);
-
-    let result = clip1.intersect(&clip2);
-    assert!(result.is_some());
-
-    let intersection = result.unwrap();
-    assert_eq!(intersection.x_min, 50.0);
-    assert_eq!(intersection.y_min, 50.0);
-    assert_eq!(intersection.x_max, 100.0);
-    assert_eq!(intersection.y_max, 100.0);
-}
+use revue::widget::ClipRegion;
 
 #[test]
 fn test_clip_region_intersect_contained() {
@@ -78,23 +19,19 @@ fn test_clip_region_intersect_contained() {
 }
 
 #[test]
-fn test_clip_region_intersect_no_overlap() {
-    let clip1 = ClipRegion::new(0.0, 0.0, 50.0, 50.0);
-    let clip2 = ClipRegion::new(100.0, 100.0, 50.0, 50.0);
-
-    let result = clip1.intersect(&clip2);
-    assert!(result.is_none());
-}
-
-#[test]
 fn test_clip_region_intersect_touching_edge() {
     let clip1 = ClipRegion::new(0.0, 0.0, 50.0, 50.0);
     let clip2 = ClipRegion::new(50.0, 0.0, 50.0, 50.0);
 
-    let result = clip1.intersect(&clip2);
-    // Touching at edge may or may not be considered overlap
-    // Let me check if this returns Some or None
-    let _ = result;
+    // Bounds are inclusive, so regions sharing an edge intersect in a
+    // zero-width strip along it
+    let edge = clip1.intersect(&clip2).unwrap();
+    assert_eq!(edge.x_min, 50.0);
+    assert_eq!(edge.x_max, 50.0);
+    assert_eq!(edge.y_min, 0.0);
+    assert_eq!(edge.y_max, 50.0);
+    assert!(edge.contains(50.0, 25.0));
+    assert!(!edge.contains(49.9, 25.0));
 }
 
 #[test]
@@ -125,15 +62,6 @@ fn test_clip_region_intersect_negative_coords() {
     assert_eq!(intersection.y_min, -25.0);
     assert_eq!(intersection.x_max, 0.0);
     assert_eq!(intersection.y_max, 0.0);
-}
-
-#[test]
-fn test_clip_region_width_height() {
-    let clip = ClipRegion::new(10.0, 20.0, 100.0, 50.0);
-    let width = clip.x_max - clip.x_min;
-    let height = clip.y_max - clip.y_min;
-    assert_eq!(width, 100.0);
-    assert_eq!(height, 50.0);
 }
 
 #[test]

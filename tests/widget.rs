@@ -30,9 +30,8 @@ mod chart;
 // TODO(test-coverage): card has API mismatches
 // #[path = "widget/card.rs"]
 // mod card;
-// TODO(test-coverage): canvas has API mismatches
-// #[path = "widget/canvas/mod.rs"]
-// pub mod canvas;
+#[path = "widget/canvas/mod.rs"]
+mod canvas;
 // TODO(test-coverage): checkbox has API mismatches
 // #[path = "widget/checkbox/mod.rs"]
 // mod checkbox;
