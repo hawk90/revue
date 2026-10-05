@@ -154,7 +154,24 @@ area로 자식을 그리므로 자식이 다른 개수의 노드를 낼 수 있�
 
 **지금은 그 계산을 아무도 읽지 않는다.** L-1은 정확성 수정이고(틀린 레이아웃 트리보다는
 맞는 쪽이 낫다), devtools·rect 기반 히트 테스트·향후 CSS 레이아웃의 전제이기도 하다.
-소비자가 없을 때 레이아웃 패스를 통째로 건너뛰는 것은 별도로 한다.
+
+### 읽는 사람이 없으면 돌리지 않는다
+
+그래서 `App`은 레이아웃 패스를 **기본으로 건너뛴다**(`App::layout_engine`, crate 내부).
+켜는 쪽은 `PipelineHarness`뿐이다 — `layout_rect`/`layout_child_ids`가 릴리스된
+API라 계속 답해야 한다. 엔진 출력은 화면에 아무 영향이 없으므로 harness의 화면은 실제
+앱과 같다(`turning_the_engine_off_changes_nothing_painted`가 고정한다).
+`benches/frame.rs`는 실제 앱의 비용을 재도록 `.layout_engine(false)`로 끈다.
+
+| 같은 실행 안에서 | 10 rows | 50 rows | 200 rows |
+|---|---:|---:|---:|
+| `dom_from_render` | −5.8% | −8.2% | −13.8% |
+| `css_layout` | −6.8% | −10.4% | −14.4% |
+| `changed` (기본 경로) | 변화 없음 | 변화 없음 | 변화 없음 |
+
+위 표의 `dom_from_render` 증가분이 거의 그대로 돌아왔다. 기본 경로는 DOM이 루트 하나라
+원래 레이아웃 비용이 없었다. (A)를 시작하면 엔진을 읽는 쪽이 생기므로 그때 기본 on으로
+되돌린다.
 
 ## 남은 것
 
