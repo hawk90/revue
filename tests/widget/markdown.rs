@@ -504,7 +504,6 @@ fn test_markdown_toc_fg() {
 // ─────────────────────────────────────────────────────────────────────────
 
 #[test]
-#[ignore = "BUG: Markdown headings lost their # prefix in the #271 module split"]
 fn test_markdown_render_basic() {
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
