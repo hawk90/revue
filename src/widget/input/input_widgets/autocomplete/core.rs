@@ -347,8 +347,10 @@ impl View for Autocomplete {
         };
 
         // In columns: a wide glyph takes two cells. The cursor is a char
-        // index; scroll so it stays in view (the placeholder never scrolls).
-        let scroll = if self.value.is_empty() {
+        // index; while editing, scroll so it stays in view. Unfocused, show
+        // the value from its start - the cursor is not drawn, and the start is
+        // what identifies the value. The placeholder never scrolls.
+        let scroll = if self.value.is_empty() || !self.focused {
             0
         } else {
             scroll_to_cursor(

@@ -27,9 +27,15 @@ fn render(a: &Autocomplete, width: u16, height: u16) -> Buffer {
     buffer
 }
 
+/// The row as a terminal shows it: a wide glyph's continuation cell is the
+/// right half of that glyph, not a character of its own.
 fn row(buffer: &Buffer, y: u16, width: u16) -> String {
     (0..width)
-        .map(|x| buffer.get(x, y).map(|c| c.symbol).unwrap_or(' '))
+        .filter_map(|x| match buffer.get(x, y) {
+            Some(c) if c.is_continuation() => None,
+            Some(c) => Some(c.symbol),
+            None => Some(' '),
+        })
         .collect()
 }
 

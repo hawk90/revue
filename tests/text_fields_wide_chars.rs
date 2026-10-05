@@ -338,3 +338,24 @@ fn masked_input_lengths_count_chars() {
     let mut input = MaskedInput::new().min_length(3).value("비밀");
     assert!(!input.validate(), "two chars pass a three-char minimum");
 }
+
+/// Unfocused, a long value shows from its start; focused, the view follows
+/// the cursor at the end.
+#[test]
+fn autocomplete_scrolls_only_while_focused() {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    let value = "this is a very long value";
+    let draw = |a: &Autocomplete| {
+        let mut buffer = Buffer::new(20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 1));
+        a.render(&mut ctx);
+        (0..20)
+            .filter_map(|x| buffer.get(x, 0).map(|c| c.symbol))
+            .collect::<String>()
+    };
+    let mut a = Autocomplete::new().value(value);
+    assert!(draw(&a).starts_with("this is"));
+    a.focus();
+    assert!(draw(&a).contains("value"));
+}
