@@ -1,13 +1,32 @@
 //! HttpResponse tests
+//!
+//! is_success for 200/201/299/404/500, distinct status colors, content
+//! type from a JSON header, pretty_json, formatted_body for JSON and text,
+//! and format_json on objects, nested objects, arrays, escaped quotes and
+//! empty input are covered by the in-source tests in
+//! src/widget/developer/httpclient/tests.rs.
 
-use revue::widget::developer::httpclient::response::HttpResponse;
-use revue::widget::developer::httpclient::types::ContentType;
 use revue::style::Color;
+use revue::widget::{ContentType, HttpResponse};
 use std::time::Duration;
 
-// =========================================================================
-// HttpResponse struct tests
-// =========================================================================
+fn with_status(status: u16) -> HttpResponse {
+    HttpResponse {
+        status,
+        ..Default::default()
+    }
+}
+
+fn with_content_type(content_type: &str, body: &str) -> HttpResponse {
+    let mut response = HttpResponse {
+        body: body.to_string(),
+        ..Default::default()
+    };
+    response
+        .headers
+        .insert("Content-Type".to_string(), content_type.to_string());
+    response
+}
 
 #[test]
 fn test_http_response_default() {
@@ -21,215 +40,87 @@ fn test_http_response_default() {
 }
 
 #[test]
-fn test_http_response_clone() {
-    let mut response1 = HttpResponse::default();
-    response1.status = 200;
-    response1.body = "test".to_string();
-    let response2 = response1.clone();
-    assert_eq!(response1.status, response2.status);
-    assert_eq!(response1.body, response2.body);
+fn test_is_success_only_for_2xx() {
+    for status in 200..=299 {
+        assert!(with_status(status).is_success(), "{status}");
+    }
+    for status in [0, 100, 199, 300, 301, 404, 500] {
+        assert!(!with_status(status).is_success(), "{status}");
+    }
 }
 
 #[test]
-fn test_http_response_debug() {
-    let response = HttpResponse::default();
-    let debug_str = format!("{:?}", response);
-    assert!(debug_str.contains("HttpResponse"));
+fn test_status_color_by_class() {
+    assert_eq!(with_status(200).status_color(), Color::rgb(152, 195, 121));
+    assert_eq!(with_status(301).status_color(), Color::rgb(229, 192, 123));
+    assert_eq!(with_status(404).status_color(), Color::rgb(224, 108, 117));
+    assert_eq!(with_status(500).status_color(), Color::rgb(198, 120, 221));
+    assert_eq!(with_status(100).status_color(), Color::rgb(171, 178, 191));
 }
 
 #[test]
-fn test_is_success_true_2xx() {
-    let mut response = HttpResponse::default();
-    response.status = 200;
-    assert!(response.is_success());
-
-    response.status = 250;
-    assert!(response.is_success());
-
-    response.status = 299;
-    assert!(response.is_success());
+fn test_content_type_from_response_header() {
+    assert_eq!(
+        with_content_type("application/xml", "").content_type(),
+        ContentType::Xml
+    );
+    assert_eq!(
+        with_content_type("text/html", "").content_type(),
+        ContentType::Html
+    );
+    assert_eq!(
+        with_content_type("text/plain", "").content_type(),
+        ContentType::Text
+    );
+    assert_eq!(HttpResponse::default().content_type(), ContentType::Text);
 }
 
 #[test]
-fn test_is_success_false_3xx() {
-    let mut response = HttpResponse::default();
-    response.status = 301;
-    assert!(!response.is_success());
+fn test_pretty_json_exact_layout() {
+    let response = HttpResponse {
+        body: r#"{"name":"test","value":123}"#.to_string(),
+        ..Default::default()
+    };
+    assert_eq!(
+        response.pretty_json().as_deref(),
+        Some("{\n  \"name\": \"test\",\n  \"value\": 123\n}")
+    );
 }
 
 #[test]
-fn test_is_success_false_4xx() {
-    let mut response = HttpResponse::default();
-    response.status = 404;
-    assert!(!response.is_success());
+fn test_pretty_json_empty_body() {
+    assert_eq!(HttpResponse::default().pretty_json(), None);
 }
 
 #[test]
-fn test_is_success_false_5xx() {
-    let mut response = HttpResponse::default();
-    response.status = 500;
-    assert!(!response.is_success());
+fn test_format_json_keeps_whitespace_inside_strings() {
+    let formatted = HttpResponse::default()
+        .format_json(r#"{ "key" : "value with spaces" }"#)
+        .unwrap();
+    assert_eq!(formatted, "{\n  \"key\": \"value with spaces\"\n}");
 }
 
 #[test]
-fn test_status_color_2xx() {
-    let mut response = HttpResponse::default();
-    response.status = 200;
-    assert_eq!(response.status_color(), Color::rgb(152, 195, 121));
+fn test_format_json_nested_indentation() {
+    let formatted = HttpResponse::default()
+        .format_json(r#"{"outer":{"inner":[1,2]}}"#)
+        .unwrap();
+    assert_eq!(
+        formatted,
+        "{\n  \"outer\": {\n    \"inner\": [\n      1,\n      2\n    ]\n  }\n}"
+    );
 }
 
 #[test]
-fn test_status_color_3xx() {
-    let mut response = HttpResponse::default();
-    response.status = 301;
-    assert_eq!(response.status_color(), Color::rgb(229, 192, 123));
+fn test_formatted_body_non_json_untouched() {
+    let response = with_content_type("text/plain", "  plain   text  ");
+    assert_eq!(response.formatted_body(), "  plain   text  ");
 }
 
 #[test]
-fn test_status_color_4xx() {
-    let mut response = HttpResponse::default();
-    response.status = 404;
-    assert_eq!(response.status_color(), Color::rgb(224, 108, 117));
-}
-
-#[test]
-fn test_status_color_5xx() {
-    let mut response = HttpResponse::default();
-    response.status = 500;
-    assert_eq!(response.status_color(), Color::rgb(198, 120, 221));
-}
-
-#[test]
-fn test_status_color_other() {
-    let mut response = HttpResponse::default();
-    response.status = 100;
-    assert_eq!(response.status_color(), Color::rgb(171, 178, 191));
-}
-
-#[test]
-fn test_content_type_json() {
-    let mut response = HttpResponse::default();
-    response
-        .headers
-        .insert("Content-Type".to_string(), "application/json".to_string());
-    assert_eq!(response.content_type(), ContentType::Json);
-}
-
-#[test]
-fn test_content_type_xml() {
-    let mut response = HttpResponse::default();
-    response
-        .headers
-        .insert("Content-Type".to_string(), "application/xml".to_string());
-    assert_eq!(response.content_type(), ContentType::Xml);
-}
-
-#[test]
-fn test_content_type_html() {
-    let mut response = HttpResponse::default();
-    response
-        .headers
-        .insert("Content-Type".to_string(), "text/html".to_string());
-    assert_eq!(response.content_type(), ContentType::Html);
-}
-
-#[test]
-fn test_content_type_text() {
-    let mut response = HttpResponse::default();
-    response
-        .headers
-        .insert("Content-Type".to_string(), "text/plain".to_string());
-    assert_eq!(response.content_type(), ContentType::Text);
-}
-
-#[test]
-fn test_content_type_missing() {
-    let response = HttpResponse::default();
-    assert_eq!(response.content_type(), ContentType::Text);
-}
-
-#[test]
-fn test_pretty_json_valid() {
-    let mut response = HttpResponse::default();
-    response.body = r#"{"name":"test","value":123}"#.to_string();
-    let formatted = response.pretty_json();
-    assert!(formatted.is_some());
-    let formatted_str = formatted.unwrap();
-    assert!(formatted_str.contains("{"));
-    assert!(formatted_str.contains("\n"));
-}
-
-#[test]
-fn test_pretty_json_empty() {
-    let mut response = HttpResponse::default();
-    response.body = "".to_string();
-    let formatted = response.pretty_json();
-    // Empty string returns None (line 116-120: if result.is_empty() { None })
-    assert!(formatted.is_none());
-}
-
-#[test]
-fn test_format_json_nested() {
-    let response = HttpResponse::default();
-    let json = r#"{"outer":{"inner":"value"}}"#;
-    let formatted = response.format_json(json);
-    assert!(formatted.is_some());
-    let formatted_str = formatted.unwrap();
-    assert!(formatted_str.contains("outer"));
-    assert!(formatted_str.contains("inner"));
-}
-
-#[test]
-fn test_format_json_array() {
-    let response = HttpResponse::default();
-    let json = r#"[1,2,3]"#;
-    let formatted = response.format_json(json);
-    assert!(formatted.is_some());
-    let formatted_str = formatted.unwrap();
-    assert!(formatted_str.contains("["));
-}
-
-#[test]
-fn test_format_json_with_strings() {
-    let response = HttpResponse::default();
-    let json = r#"{"key":"value with spaces"}"#;
-    let formatted = response.format_json(json);
-    assert!(formatted.is_some());
-    let formatted_str = formatted.unwrap();
-    assert!(formatted_str.contains("value with spaces"));
-}
-
-#[test]
-fn test_formatted_body_json() {
-    let mut response = HttpResponse::default();
-    response
-        .headers
-        .insert("Content-Type".to_string(), "application/json".to_string());
-    response.body = r#"{"test":true}"#.to_string();
-    let formatted = response.formatted_body();
-    assert!(formatted.contains("{"));
-    assert!(formatted.contains("\n"));
-}
-
-#[test]
-fn test_formatted_body_non_json() {
-    let mut response = HttpResponse::default();
-    response
-        .headers
-        .insert("Content-Type".to_string(), "text/plain".to_string());
-    response.body = "plain text".to_string();
-    let formatted = response.formatted_body();
-    assert_eq!(formatted, "plain text");
-}
-
-#[test]
-fn test_formatted_body_invalid_json_fallback() {
-    let mut response = HttpResponse::default();
-    response
-        .headers
-        .insert("Content-Type".to_string(), "application/json".to_string());
-    response.body = "not json".to_string();
-    let formatted = response.formatted_body();
-    // format_json strips whitespace outside strings, so "not json" becomes "notjson"
-    assert_eq!(formatted, "notjson");
+fn test_formatted_body_json_header_on_non_json_body() {
+    // format_json is a token re-indenter, not a validator: it drops all
+    // whitespace outside strings, so a non-JSON body loses its spaces.
+    let response = with_content_type("application/json", "not json");
+    assert_eq!(response.formatted_body(), "notjson");
 }

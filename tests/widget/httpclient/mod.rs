@@ -1,24 +1,13 @@
-//! HTTPClient widget tests
+//! HttpClient widget tests
 //!
-//! HTTPClient 위젯의 통합 테스트 모음입니다.
+//! No test touches the network: HttpClient::send() builds a mock response
+//! and MockHttpBackend only answers from its registered mocks.
 
-// Test files extracted from source modules
 pub mod backend;
 pub mod builder;
 pub mod client;
 pub mod helpers;
+pub mod rendering_scroll_history;
 pub mod request;
 pub mod response;
 pub mod types;
-
-// Existing test files
-pub mod base64;
-pub mod builder_request;
-pub mod common;
-pub mod constructor;
-pub mod edge_cases;
-pub mod headers_body;
-pub mod methods;
-pub mod rendering_scroll_history;
-pub mod response_types;
-pub mod url;

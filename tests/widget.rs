@@ -81,9 +81,8 @@ mod form;
 mod form_tests;
 #[path = "widget/gauge.rs"]
 mod gauge;
-// TODO(test-coverage): httpclient has API mismatches
-// #[path = "widget/httpclient/mod.rs"]
-// pub mod httpclient;
+#[path = "widget/httpclient/mod.rs"]
+mod httpclient;
 #[cfg(feature = "image")]
 #[path = "widget/image.rs"]
 mod image;
