@@ -426,6 +426,15 @@ impl BoxPlot {
     }
 
     /// Enable notched box plot
+    ///
+    /// A notched box pinches in around the median over its approximate 95%
+    /// confidence interval (`median ± 1.57 * IQR / sqrt(n)`); boxes whose
+    /// notches don't overlap have medians that differ significantly.
+    ///
+    /// The interval needs the sample size, so only groups added from raw
+    /// data ([`group`](Self::group), [`BoxGroup::new`]) are notched; groups
+    /// built from precomputed [`BoxStats`] are drawn plain. A notch that does
+    /// not fit inside the box at the rendered size is also left out.
     pub fn notched(mut self, enabled: bool) -> Self {
         self.notched = enabled;
         self
@@ -551,6 +560,7 @@ impl View for BoxPlot {
             self.box_width,
             self.whisker_style,
             self.show_outliers,
+            self.notched,
         );
 
         if horizontal {

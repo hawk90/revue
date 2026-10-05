@@ -512,7 +512,6 @@ fn test_boxplot_horizontal_groups_stack_top_to_bottom() {
 }
 
 #[test]
-#[ignore = "BUG: BoxPlot::notched() is stored but never drawn"]
 fn test_boxplot_notched_differs_from_plain() {
     let data: Vec<f64> = (0..30).map(|x| x as f64).collect();
     let plain = rows(&render(&BoxPlot::new().group("Data", &data), 40, 20));
@@ -522,4 +521,80 @@ fn test_boxplot_notched_differs_from_plain() {
         20,
     ));
     assert_ne!(plain, notched);
+}
+
+#[test]
+fn test_boxplot_notch_layout() {
+    // 0..30: n = 30, Q1 = 7.25, median = 14.5, Q3 = 21.75, so the notch is
+    // 14.5 ± 1.57 * 14.5 / sqrt(30) = 10.34..18.66. On the padded -2.9..31.9
+    // scale over 18 rows that is rows 7..11 inside the box (rows 5..13),
+    // with the median on row 9. The box spans columns 13..32.
+    let data: Vec<f64> = (0..30).map(|x| x as f64).collect();
+    let buffer = render(&BoxPlot::new().group("Data", &data).notched(true), 40, 20);
+    let (left, right) = (13usize, 32usize);
+
+    let start = row_chars(&buffer, 7);
+    assert_eq!((start[left], start[right]), ('╲', '╱'));
+    let end = row_chars(&buffer, 11);
+    assert_eq!((end[left], end[right]), ('╱', '╲'));
+    for y in [8, 10] {
+        let row = row_chars(&buffer, y);
+        assert_eq!((row[left], row[right]), (' ', ' '), "row {y}");
+        assert_eq!((row[left + 1], row[right - 1]), ('│', '│'), "row {y}");
+    }
+    // The median line is pinched in with the sides
+    let median = row_chars(&buffer, 9);
+    assert_eq!(median[left], ' ');
+    assert_eq!(median[left + 1], '├');
+    assert_eq!(median[right - 1], '┤');
+    assert_eq!(median[right], ' ');
+    // Outside the notch the box keeps its full width
+    for y in [6, 12] {
+        let row = row_chars(&buffer, y);
+        assert_eq!((row[left], row[right]), ('│', '│'), "row {y}");
+    }
+
+    // The plain box has no notch
+    let plain = render(&BoxPlot::new().group("Data", &data), 40, 20);
+    assert_eq!(count_char(&plain, '╲') + count_char(&plain, '╱'), 0);
+}
+
+#[test]
+fn test_boxplot_notch_horizontal() {
+    // Same data laid out horizontally: the box is rows 4..15 and columns
+    // 14..28; the notch pinches the top and bottom edges in by one row.
+    let data: Vec<f64> = (0..30).map(|x| x as f64).collect();
+    let bp = BoxPlot::new()
+        .group("Data", &data)
+        .notched(true)
+        .horizontal();
+    let buffer = render(&bp, 40, 20);
+    let top = rows(&buffer)[4].clone();
+    let bottom = rows(&buffer)[15].clone();
+    assert_eq!(top.matches('╲').count(), 1, "{top:?}");
+    assert_eq!(top.matches('╱').count(), 1, "{top:?}");
+    assert_eq!(bottom.matches('╱').count(), 1, "{bottom:?}");
+    assert_eq!(bottom.matches('╲').count(), 1, "{bottom:?}");
+    // The median line starts and ends inside the notch
+    assert!(!top.contains('┬'), "{top:?}");
+    assert!(rows(&buffer)[5].contains('┬'));
+    assert!(rows(&buffer)[14].contains('┴'));
+}
+
+#[test]
+fn test_boxplot_notch_needs_sample_size() {
+    // Precomputed stats carry no sample size, so there is no interval to draw
+    let plain = rows(&render(
+        &BoxPlot::new().group_stats("Data", even_stats()),
+        40,
+        20,
+    ));
+    let notched = rows(&render(
+        &BoxPlot::new()
+            .group_stats("Data", even_stats())
+            .notched(true),
+        40,
+        20,
+    ));
+    assert_eq!(plain, notched);
 }

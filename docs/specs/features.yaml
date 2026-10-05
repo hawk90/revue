@@ -1304,7 +1304,7 @@ items:
     area: chart
     priority: P2
     priority_inferred: true
-    status: partial
+    status: done
     acceptance:
       - multiple groups, outliers
       - IQR/min-max/percentile whiskers
@@ -1312,12 +1312,12 @@ items:
       - notched box shows the median CI
     evidence:
       - src/widget/data/chart/boxplot/mod.rs::boxplot
-      - tests/widget/data/chart/boxplot.rs
+      - tests/widget/data/chart/boxplot.rs::test_boxplot_horizontal_layout
+      - tests/widget/data/chart/boxplot.rs::test_boxplot_notch_layout
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / BoxPlot
       - FEATURES.md §Advanced Widgets / Advanced Charts
-    notes: 'BUG: notched(true) only stores the flag; render never reads self.notched, so a notched plot looks identical (the
-      unit test only checks it renders).'
+    notes: The notch is median ± 1.57·IQR/√n, so it needs raw data; groups from precomputed BoxStats draw without one.
   - id: CHART-007
     title: Heatmap
     area: chart

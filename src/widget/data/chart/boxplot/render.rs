@@ -18,6 +18,8 @@ pub struct BoxPlotRender<'a> {
     pub box_width: f64,
     pub whisker_style: WhiskerStyle,
     pub show_outliers: bool,
+    /// Pinch each box in around the median's confidence interval
+    pub notched: bool,
     pub group_count: usize,
 }
 
@@ -30,6 +32,7 @@ impl<'a> BoxPlotRender<'a> {
         box_width: f64,
         whisker_style: WhiskerStyle,
         show_outliers: bool,
+        notched: bool,
     ) -> Self {
         Self {
             groups,
@@ -38,6 +41,7 @@ impl<'a> BoxPlotRender<'a> {
             box_width,
             whisker_style,
             show_outliers,
+            notched,
             group_count: groups.len(),
         }
     }
@@ -47,6 +51,24 @@ impl<'a> BoxPlotRender<'a> {
         let (min, max) = self.bounds;
         let range = (max - min).max(1.0);
         ((value - min) / range * (length as f64 - 1.0)) as u16
+    }
+
+    /// The notch of a group: the approximate 95% confidence interval of the
+    /// median, `median ± 1.57 * IQR / sqrt(n)`.
+    ///
+    /// `None` when notches are off, when the group was built from
+    /// precomputed [`BoxStats`](super::BoxStats) (its sample size is
+    /// unknown), or when the interval is empty.
+    pub fn notch_bounds(&self, group: &BoxGroup, stats: &super::BoxStats) -> Option<(f64, f64)> {
+        if !self.notched || group.stats.is_some() {
+            return None;
+        }
+        let n = group.data.iter().filter(|v| v.is_finite()).count();
+        if n == 0 {
+            return None;
+        }
+        let half = 1.57 * (stats.q3 - stats.q1) / (n as f64).sqrt();
+        (half > 0.0).then_some((stats.median - half, stats.median + half))
     }
 
     /// Get color for group at index
@@ -172,16 +194,67 @@ impl<'a> BoxPlotRender<'a> {
                 }
             }
 
+            // Notch: the box sides step in by one column over the median's
+            // confidence interval. Only drawn when it fits strictly inside
+            // the box with the median between its ends.
+            let (y_top, y_bottom) = (y_q3.min(y_q1), y_q3.max(y_q1));
+            let notch_rows = self.notch_bounds(group, &stats).and_then(|(low, high)| {
+                let to_y = |v: f64| {
+                    let pos = self
+                        .value_to_screen(v, self.chart_area.height)
+                        .min(self.chart_area.height - 1);
+                    self.chart_area.y + self.chart_area.height - 1 - pos
+                };
+                let (y_high, y_low) = (
+                    to_y(high).max(y_top + 1),
+                    to_y(low).min(y_bottom.saturating_sub(1)),
+                );
+                (box_right - box_left >= 4 && y_high < y_median && y_median < y_low)
+                    .then_some((y_high, y_low))
+            });
+            if let Some((y_high, y_low)) = notch_rows {
+                let mut put = |x: u16, y: u16, ch: char| {
+                    if x >= self.chart_area.x
+                        && x < self.chart_area.x + self.chart_area.width
+                        && y >= self.chart_area.y
+                        && y < self.chart_area.y + self.chart_area.height
+                    {
+                        let mut cell = Cell::new(ch);
+                        cell.fg = Some(color);
+                        ctx.set(x, y, cell);
+                    }
+                };
+                for y in y_high..=y_low {
+                    if y == y_high {
+                        put(box_left, y, '╲');
+                        put(box_right, y, '╱');
+                    } else if y == y_low {
+                        put(box_left, y, '╱');
+                        put(box_right, y, '╲');
+                    } else {
+                        put(box_left, y, ' ');
+                        put(box_right, y, ' ');
+                        put(box_left + 1, y, '│');
+                        put(box_right - 1, y, '│');
+                    }
+                }
+            }
+            let (median_left, median_right) = if notch_rows.is_some() {
+                (box_left + 1, box_right - 1)
+            } else {
+                (box_left, box_right)
+            };
+
             // Draw median line
-            for x in box_left..=box_right {
+            for x in median_left..=median_right {
                 if x >= self.chart_area.x
                     && x < self.chart_area.x + self.chart_area.width
                     && y_median >= self.chart_area.y
                     && y_median < self.chart_area.y + self.chart_area.height
                 {
-                    let ch = if x == box_left {
+                    let ch = if x == median_left {
                         '├'
-                    } else if x == box_right {
+                    } else if x == median_right {
                         '┤'
                     } else {
                         '─'
@@ -296,11 +369,46 @@ impl<'a> BoxPlotRender<'a> {
                 }
             }
 
+            // Notch: the top and bottom edges step in by one row over the
+            // median's confidence interval. Only drawn when it fits strictly
+            // inside the box with the median between its ends.
+            let notch_cols = self.notch_bounds(group, &stats).and_then(|(low, high)| {
+                let to_x =
+                    |v: f64| area.x + self.value_to_screen(v, area.width).min(area.width - 1);
+                let (x_low, x_high) = (
+                    to_x(low).max(left + 1),
+                    to_x(high).min(right.saturating_sub(1)),
+                );
+                (box_bottom - box_top >= 4 && x_low < x_median && x_median < x_high)
+                    .then_some((x_low, x_high))
+            });
+            if let Some((x_low, x_high)) = notch_cols {
+                for x in x_low..=x_high {
+                    if x == x_low {
+                        put(x, box_top, '╲', color);
+                        put(x, box_bottom, '╱', color);
+                    } else if x == x_high {
+                        put(x, box_top, '╱', color);
+                        put(x, box_bottom, '╲', color);
+                    } else {
+                        put(x, box_top, ' ', color);
+                        put(x, box_bottom, ' ', color);
+                        put(x, box_top + 1, '─', color);
+                        put(x, box_bottom - 1, '─', color);
+                    }
+                }
+            }
+            let (median_top, median_bottom) = if notch_cols.is_some() {
+                (box_top + 1, box_bottom - 1)
+            } else {
+                (box_top, box_bottom)
+            };
+
             // Median line
-            for y in box_top..=box_bottom {
-                let ch = if y == box_top {
+            for y in median_top..=median_bottom {
+                let ch = if y == median_top {
                     '┬'
-                } else if y == box_bottom {
+                } else if y == median_bottom {
                     '┴'
                 } else {
                     '│'
