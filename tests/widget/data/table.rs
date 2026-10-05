@@ -596,3 +596,23 @@ fn test_table_virtual_scroll_shows_first_rows() {
         );
     }
 }
+
+#[test]
+fn test_table_virtual_scroll_keeps_selection_visible() {
+    for overscan in [0, 3, 5] {
+        let t = scroll_table(500).overscan(overscan).selected(50);
+        let buffer = render(&t, 10, 6);
+
+        let rows: Vec<String> = (1..6)
+            .map(|y| {
+                row_text(&buffer, y)
+                    .trim_end_matches(['█', '░'])
+                    .trim_end()
+                    .to_string()
+            })
+            .collect();
+        // Five data rows fit; scrolling down to row 50 leaves it at the bottom
+        assert_eq!(rows, ["46", "47", "48", "49", "50"], "overscan {overscan}");
+        assert_eq!(buffer.get(0, 5).unwrap().bg, Some(Color::BLUE));
+    }
+}
