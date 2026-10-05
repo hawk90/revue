@@ -24,9 +24,10 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo generate-lockfile
-      - uses: rustsec/audit-check@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      # `rustsec/audit-check` runs on Node 20, which GitHub is retiring, and
+      # the action has no Node 24 release. Install the binary and run it.
+      - uses: taiki-e/install-action@cargo-audit
+      - run: cargo audit
 
   deny:
     name: Cargo Deny
