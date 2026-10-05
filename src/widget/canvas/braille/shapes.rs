@@ -39,24 +39,35 @@ impl Line {
 
 impl Shape for Line {
     fn draw(&self, grid: &mut dyn Grid) {
-        // Bresenham's line algorithm for floating point
-        let dx = (self.x1 - self.x0).abs();
-        let dy = (self.y1 - self.y0).abs();
-        let sx = if self.x0 < self.x1 { 1.0 } else { -1.0 };
-        let sy = if self.y0 < self.y1 { 1.0 } else { -1.0 };
+        // Bresenham between the dots the endpoints fall in. Stepping in whole
+        // dots keeps the walk on the integer lattice, so it always lands on
+        // the end dot; stepping the fractional coordinates by 1.0 could step
+        // past an end that is not a whole number of dots away and never stop.
+        let x0 = self.x0.floor() as i64;
+        let y0 = self.y0.floor() as i64;
+        let x1 = self.x1.floor() as i64;
+        let y1 = self.y1.floor() as i64;
+
+        let dx = (x1 - x0).abs();
+        let dy = (y1 - y0).abs();
+        let sx = if x0 < x1 { 1 } else { -1 };
+        let sy = if y0 < y1 { 1 } else { -1 };
         let mut err = dx - dy;
 
-        let mut x = self.x0;
-        let mut y = self.y0;
+        let mut x = x0;
+        let mut y = y0;
 
         loop {
-            grid.set(x as usize, y as usize, self.color);
+            // Dots left of or above the grid are off it, not on its edge
+            if x >= 0 && y >= 0 {
+                grid.set(x as usize, y as usize, self.color);
+            }
 
-            if (x - self.x1).abs() < 0.5 && (y - self.y1).abs() < 0.5 {
+            if x == x1 && y == y1 {
                 break;
             }
 
-            let e2 = 2.0 * err;
+            let e2 = 2 * err;
             if e2 > -dy {
                 err -= dy;
                 x += sx;
