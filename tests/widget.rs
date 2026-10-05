@@ -33,9 +33,10 @@ mod card;
 mod chart;
 #[path = "widget/checkbox/mod.rs"]
 mod checkbox;
-// TODO(test-coverage): code_editor_tests has API mismatches
-// #[path = "widget/code_editor_tests.rs"]
-// pub mod code_editor_tests;
+#[path = "widget/code_editor/mod.rs"]
+mod code_editor;
+#[path = "widget/code_editor_tests.rs"]
+mod code_editor_tests;
 #[path = "widget/collapsible.rs"]
 pub mod collapsible;
 #[path = "widget/color_picker.rs"]

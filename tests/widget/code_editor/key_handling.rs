@@ -3,7 +3,7 @@
 //! Extracted from src/widget/developer/code_editor/key_handling.rs
 
 use revue::event::Key;
-use revue::widget::developer::code_editor::CodeEditor;
+use revue::widget::CodeEditor;
 
 // =========================================================================
 // handle_key tests

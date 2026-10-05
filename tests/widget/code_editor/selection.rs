@@ -2,7 +2,7 @@
 //!
 //! Extracted from src/widget/developer/code_editor/selection.rs
 
-use revue::widget::developer::code_editor::CodeEditor;
+use revue::widget::CodeEditor;
 
 // =========================================================================
 // start_selection tests
@@ -28,10 +28,10 @@ fn test_start_selection_overwrites() {
     let mut editor = CodeEditor::new().content("test");
     editor.start_selection();
     editor.move_right();
-    let anchor1 = editor.anchor;
+    // A second start_selection keeps the existing anchor at column 0
     editor.start_selection();
-    let anchor2 = editor.anchor;
-    assert_eq!(anchor1, anchor2);
+    editor.move_right();
+    assert_eq!(editor.get_selection(), Some("te".to_string()));
 }
 
 // =========================================================================
@@ -172,12 +172,14 @@ fn test_delete_selection_when_none() {
 }
 
 #[test]
-fn test_delete_selection_clears_anchor() {
+fn test_delete_selection_clears_selection() {
     let mut editor = CodeEditor::new().content("test");
     editor.start_selection();
     editor.move_right();
     editor.delete_selection();
-    assert!(editor.anchor.is_none());
+    assert!(!editor.has_selection());
+    assert_eq!(editor.get_selection(), None);
+    assert_eq!(editor.get_content(), "est");
 }
 
 #[test]
@@ -209,7 +211,7 @@ fn test_select_all_empty() {
     let mut editor = CodeEditor::new();
     editor.select_all();
     assert!(editor.has_selection());
-    assert_eq!(editor.anchor, Some((0, 0)));
+    assert_eq!(editor.get_selection(), Some(String::new()));
     assert_eq!(editor.cursor_position(), (0, 0));
 }
 
@@ -225,7 +227,7 @@ fn test_select_all_single_line() {
 fn test_select_all_multiple_lines() {
     let mut editor = CodeEditor::new().content("a\nb\nc\nd");
     editor.select_all();
-    assert_eq!(editor.anchor, Some((0, 0)));
+    assert_eq!(editor.get_selection(), Some("a\nb\nc\nd".to_string()));
     assert_eq!(editor.cursor_position(), (3, 1));
 }
 
@@ -235,5 +237,6 @@ fn test_select_all_overwrites() {
     editor.start_selection();
     editor.move_right();
     editor.select_all();
-    assert_eq!(editor.anchor, Some((0, 0)));
+    // select_all re-anchors at the document start
+    assert_eq!(editor.get_selection(), Some("test".to_string()));
 }
