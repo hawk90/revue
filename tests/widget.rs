@@ -1,7 +1,4 @@
 //! Widget integration tests - split into modules by widget type
-//!
-//! NOTE: Some modules are temporarily disabled due to API mismatches.
-//! Search for "TODO(test-coverage)" to find disabled modules.
 
 #[path = "widget/accordion.rs"]
 mod accordion;

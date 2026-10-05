@@ -144,3 +144,25 @@ fn test_render_uses_colors_builder() {
     assert_eq!(buffer.get(7, 4).unwrap().symbol, 'x');
     assert_eq!(buffer.get(7, 4).unwrap().fg, Some(Color::YELLOW));
 }
+
+#[test]
+#[ignore = "BUG: HttpColors::url_bg and method_bg are never read by HttpClient::render"]
+fn test_render_uses_url_and_method_backgrounds() {
+    let colors = HttpColors {
+        url_bg: Color::MAGENTA,
+        method_bg: Color::CYAN,
+        ..HttpColors::default()
+    };
+    let client = with_body(1).colors(colors);
+
+    let mut buffer = Buffer::new(80, 20);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 80, 20));
+    client.render(&mut ctx);
+
+    // Row 0 is "GET https://example.com ...": the badge takes method_bg,
+    // the URL takes url_bg.
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, 'G');
+    assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::CYAN));
+    assert_eq!(buffer.get(4, 0).unwrap().symbol, 'h');
+    assert_eq!(buffer.get(4, 0).unwrap().bg, Some(Color::MAGENTA));
+}
