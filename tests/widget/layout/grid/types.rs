@@ -1,7 +1,7 @@
 //! Grid widget types tests
 
-use super::super::grid::{TrackSize, GridPlacement, GridItem, GridAlign};
-use crate::widget::Text;
+use revue::widget::Text;
+use revue::widget::{GridAlign, GridItem, GridPlacement, TrackSize};
 
 // =========================================================================
 // TrackSize enum tests

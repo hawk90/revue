@@ -1,6 +1,6 @@
 //! Grid widget core implementation tests
 
-use super::super::grid::{Grid, GridAlign, GridItem, TrackSize};
+use revue::widget::{Grid, GridAlign, GridItem, TrackSize};
 
 // =========================================================================
 // Constructor tests
@@ -120,23 +120,23 @@ fn test_grid_auto_rows() {
 
 #[test]
 fn test_grid_item() {
-    let item = GridItem::new(crate::widget::Text::new("Test"));
+    let item = GridItem::new(revue::widget::Text::new("Test"));
     let grid = Grid::new().item(item);
     assert_eq!(grid.items.len(), 1);
 }
 
 #[test]
 fn test_grid_child() {
-    let grid = Grid::new().child(crate::widget::Text::new("Child"));
+    let grid = Grid::new().child(revue::widget::Text::new("Child"));
     assert_eq!(grid.items.len(), 1);
 }
 
 #[test]
 fn test_grid_children() {
-    let widgets: Vec<Box<dyn crate::widget::traits::View>> = vec![
-        Box::new(crate::widget::Text::new("A")),
-        Box::new(crate::widget::Text::new("B")),
-        Box::new(crate::widget::Text::new("C")),
+    let widgets: Vec<Box<dyn revue::widget::traits::View>> = vec![
+        Box::new(revue::widget::Text::new("A")),
+        Box::new(revue::widget::Text::new("B")),
+        Box::new(revue::widget::Text::new("C")),
     ];
     let grid = Grid::new().children(widgets);
     assert_eq!(grid.items.len(), 3);
@@ -168,8 +168,8 @@ fn test_grid_builder_chain() {
         .gap(2)
         .justify_items(GridAlign::Center)
         .align_items(GridAlign::Start)
-        .child(crate::widget::Text::new("A"))
-        .child(crate::widget::Text::new("B"));
+        .child(revue::widget::Text::new("A"))
+        .child(revue::widget::Text::new("B"));
 
     assert_eq!(grid.columns.len(), 3);
     assert_eq!(grid.rows.len(), 2);
