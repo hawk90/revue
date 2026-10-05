@@ -96,9 +96,8 @@ mod gauge;
 #[cfg(feature = "image")]
 #[path = "widget/image.rs"]
 mod image;
-// TODO(test-coverage): input has API mismatches
-// #[path = "widget/input/mod.rs"]
-// mod input;
+#[path = "widget/input/mod.rs"]
+mod input;
 #[path = "widget/layout/mod.rs"]
 mod layout;
 #[path = "widget/link.rs"]
