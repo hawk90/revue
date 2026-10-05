@@ -25,23 +25,11 @@ impl DataGrid {
             return;
         }
 
-        let row_num_width = if self.options.show_row_numbers { 5 } else { 0 };
-        let mut col_x = area.x + row_num_width;
-
-        let widths = self.get_display_widths(area.width);
-
-        for (i, col) in self.columns.iter().enumerate() {
-            if !col.visible {
-                continue;
-            }
-            let width = widths.get(i).copied().unwrap_or(col.min_width);
-            let mid = col_x + width / 2;
-
-            if x < mid {
+        for (i, col_x, width) in self.header_slots_by_x(area) {
+            if x < col_x + width / 2 {
                 self.drop_target_col = Some(i);
                 return;
             }
-            col_x += width + 1;
         }
 
         // If past all columns, drop at the end

@@ -57,6 +57,21 @@ impl DataGrid {
         }
     }
 
+    /// Header slots for a grid drawn into `area`, ordered left to right.
+    ///
+    /// Uses the renderer's geometry (row-number gutter, column freeze and
+    /// horizontal scroll), so a click lands on the column that is drawn there.
+    pub(super) fn header_slots_by_x(&self, area: Rect) -> Vec<(usize, u16, u16)> {
+        let visible_cols = self.visible_columns_in_order();
+        let mut slots: Vec<(usize, u16, u16)> = self
+            .layout_column_slots(&visible_cols, area)
+            .iter()
+            .map(|s| (s.orig_idx, s.x, s.width))
+            .collect();
+        slots.sort_by_key(|&(_, x, _)| x);
+        slots
+    }
+
     /// Test if position is on a column resize handle
     pub(crate) fn hit_test_resize_handle(&self, x: u16, y: u16, area: Rect) -> Option<usize> {
         // Only detect in header row
@@ -64,20 +79,12 @@ impl DataGrid {
             return None;
         }
 
-        let row_num_width = if self.options.show_row_numbers { 5 } else { 0 };
-        let mut col_x = area.x + row_num_width;
-
-        let widths = self.get_display_widths(area.width);
-
-        for (i, col) in self.columns.iter().enumerate() {
-            if !col.visible {
-                continue;
-            }
-            let width = widths.get(i).copied().unwrap_or(col.min_width);
-            col_x += width + 1; // +1 for separator
-
-            // Check if x is within ±1 of column boundary
-            if x >= col_x.saturating_sub(1) && x <= col_x && col.resizable {
+        for (i, col_x, width) in self.header_slots_by_x(area) {
+            let resizable = self.columns.get(i).is_some_and(|c| c.resizable);
+            // The separator sits right after the column; accept it and the
+            // cell after it.
+            let sep_x = col_x + width;
+            if resizable && x >= sep_x && x <= sep_x + 1 {
                 return Some(i);
             }
         }
@@ -91,23 +98,9 @@ impl DataGrid {
             return None;
         }
 
-        let row_num_width = if self.options.show_row_numbers { 5 } else { 0 };
-        let mut col_x = area.x + row_num_width;
-
-        let widths = self.get_display_widths(area.width);
-
-        for (i, col) in self.columns.iter().enumerate() {
-            if !col.visible {
-                continue;
-            }
-            let width = widths.get(i).copied().unwrap_or(col.min_width);
-            let next_x = col_x + width;
-
-            if x >= col_x && x < next_x {
-                return Some(i);
-            }
-            col_x = next_x + 1; // +1 for separator
-        }
-        None
+        self.header_slots_by_x(area)
+            .into_iter()
+            .find(|&(_, col_x, width)| x >= col_x && x < col_x + width)
+            .map(|(i, _, _)| i)
     }
 }
