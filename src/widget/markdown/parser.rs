@@ -92,7 +92,7 @@ impl<'a> ParserContext<'a> {
             footnote_counter: 0,
             footnote_label_map: std::collections::HashMap::new(),
             in_blockquote: false,
-            blockquote_first_text: true,
+            blockquote_first_text: false,
             current_admonition: None,
             accumulated_blockquote: String::new(),
             current_modifier: Modifier::empty(),
@@ -118,7 +118,13 @@ impl<'a> ParserContext<'a> {
     }
 
     /// Add text to the current line
+    ///
+    /// The first text of an unordered list item is preceded by its bullet.
     pub fn add_text(&mut self, text: &str) {
+        if !text.is_empty() && self.item_needs_bullet {
+            self.item_needs_bullet = false;
+            self.current_line.push(StyledText::new("• "));
+        }
         if !text.is_empty() {
             self.current_line.push(StyledText {
                 text: text.to_string(),
@@ -127,6 +133,36 @@ impl<'a> ParserContext<'a> {
                 modifier: self.current_modifier,
             });
         }
+    }
+
+    /// Add blockquote text; a line inside a quote starts with the quote bar.
+    pub fn add_quote_text(&mut self, text: &str) {
+        if text.is_empty() {
+            return;
+        }
+        if self.current_line.is_empty() {
+            self.add_text("│ ");
+        }
+        self.add_text(text);
+    }
+
+    /// Emit the text held back at the start of a blockquote while waiting to
+    /// see whether it forms a callout marker. It did not, so it is quote text.
+    pub fn flush_pending_quote(&mut self) {
+        if !(self.in_blockquote && self.blockquote_first_text) {
+            return;
+        }
+        let pending = std::mem::take(&mut self.accumulated_blockquote);
+        if pending.is_empty() {
+            return;
+        }
+        self.blockquote_first_text = false;
+        if self.current_admonition.is_none() {
+            self.current_modifier |= Modifier::ITALIC;
+            self.current_fg = Some(self.quote_fg);
+        }
+        self.flush_line();
+        self.add_quote_text(pending.trim_start());
     }
 
     /// Get parser options for extended markdown features

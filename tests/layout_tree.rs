@@ -208,3 +208,18 @@ fn layout_runs_a_frame_behind_dom_from_render_today() {
         "the second frame must lay out the tree the first one discovered"
     );
 }
+
+/// The engine is off in a real app and only the harness keeps it on. Turning
+/// it off in the harness must leave the engine with nothing to report - and
+/// nothing on screen may change.
+#[test]
+fn turning_the_engine_off_changes_nothing_painted() {
+    let mut on = harness("");
+    let mut off = harness("").layout_engine(false);
+    on.draw(&column()).draw(&column());
+    off.draw(&column()).draw(&column());
+
+    assert_eq!(off.layout_rect("a"), None);
+    assert!(on.layout_rect("a").is_some());
+    assert_eq!(on.screen_text(), off.screen_text());
+}

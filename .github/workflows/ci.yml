@@ -49,6 +49,8 @@ jobs:
         with:
           components: rustfmt
           cache: false
+      - name: Verify Cargo.lock is current
+        run: cargo fetch --locked
       - run: cargo fmt --all -- --check
 
   clippy:
@@ -184,6 +186,22 @@ jobs:
       # which run on stable. See CONTRIBUTING.md.
       - run: cargo check
 
+  # The same rustdoc build CD runs. CD is not a PR check, so a broken
+  # intra-doc link used to reach main unnoticed and fail every deploy after it.
+  docs:
+    name: Docs
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          cache: false
+      - run: cargo doc --no-deps --all-features --document-private-items
+        env:
+          RUSTDOCFLAGS: --cfg docsrs -D warnings
+
   typos:
     name: Typos
     if: github.event_name == 'pull_request'
@@ -202,7 +220,7 @@ jobs:
   ci-gate:
     name: CI Gate
     if: always()
-    needs: [changes, fmt, clippy, test, coverage, msrv, typos]
+    needs: [changes, fmt, clippy, test, coverage, msrv, docs, typos]
     runs-on: ubuntu-24.04
     steps:
       - name: Verify required jobs succeeded or were skipped
@@ -213,10 +231,11 @@ jobs:
           TEST: ${{ needs.test.result }}
           COVERAGE: ${{ needs.coverage.result }}
           MSRV: ${{ needs.msrv.result }}
+          DOCS: ${{ needs.docs.result }}
           TYPOS: ${{ needs.typos.result }}
         run: |
           fail=0
-          for pair in "changes:$CHANGES" "fmt:$FMT" "clippy:$CLIPPY" "test:$TEST" "coverage:$COVERAGE" "msrv:$MSRV" "typos:$TYPOS"; do
+          for pair in "changes:$CHANGES" "fmt:$FMT" "clippy:$CLIPPY" "test:$TEST" "coverage:$COVERAGE" "msrv:$MSRV" "docs:$DOCS" "typos:$TYPOS"; do
             job="${pair%%:*}"
             res="${pair#*:}"
             if [ "$res" = "success" ] || [ "$res" = "skipped" ]; then

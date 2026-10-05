@@ -274,12 +274,13 @@ impl View for Waveline {
 
         // Label
         if let Some(ref label) = self.label {
-            for (i, ch) in label.chars().enumerate() {
+            let bg = self.bg_color;
+            ctx.put_str_with(0, chart_y, label, u16::MAX, |ch| {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(chrome);
-                cell.bg = self.bg_color;
-                ctx.set(i as u16, chart_y, cell);
-            }
+                cell.bg = bg;
+                cell
+            });
             chart_y += 1;
             chart_height = chart_height.saturating_sub(1);
         }

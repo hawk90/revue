@@ -34,6 +34,26 @@ impl AdmonitionType {
         }
     }
 
+    /// Parse a complete callout marker: the text must be exactly `[!TYPE]`
+    /// (surrounding whitespace aside), with nothing else around it.
+    pub fn from_exact_marker(text: &str) -> Option<Self> {
+        let text = text.trim();
+        if text.find(']') != Some(text.len().saturating_sub(1)) {
+            return None;
+        }
+        Self::from_marker(text)
+    }
+
+    /// Whether `text` could still grow into a callout marker as more of the
+    /// quote's text arrives: `[`, `[!`, or `[!` followed only by letters.
+    pub fn is_marker_prefix(text: &str) -> bool {
+        let text = text.trim();
+        text == "["
+            || text
+                .strip_prefix("[!")
+                .is_some_and(|rest| rest.chars().all(|c| c.is_ascii_alphabetic()))
+    }
+
     /// Get icon for this admonition type
     pub fn icon(&self) -> &'static str {
         match self {

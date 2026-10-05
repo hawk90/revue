@@ -368,13 +368,7 @@ impl Presentation {
         let bg = slide
             .bg
             .unwrap_or_else(|| self.bg.unwrap_or_else(|| ctx.css_background(SLIDE_BG)));
-        for y in 0..area.height {
-            for x in 0..area.width {
-                let mut cell = Cell::new(' ');
-                cell.bg = Some(bg);
-                ctx.set(x, y, cell);
-            }
-        }
+        ctx.fill_box_background(bg);
 
         // Title (top center)
         let title_y = 2;
@@ -504,17 +498,9 @@ impl View for Presentation {
     crate::impl_view_meta!("Presentation");
 
     fn render(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
-
         // Background
         let bg = self.bg.unwrap_or_else(|| ctx.css_background(SLIDE_BG));
-        for y in 0..area.height {
-            for x in 0..area.width {
-                let mut cell = Cell::new(' ');
-                cell.bg = Some(bg);
-                ctx.set(x, y, cell);
-            }
-        }
+        ctx.fill_box_background(bg);
 
         // Render current slide
         if self.slides.is_empty() || self.current == 0 && !self.title.is_empty() {

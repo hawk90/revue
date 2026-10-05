@@ -225,22 +225,14 @@ impl Alert {
         if self.dismissed {
             return 0;
         }
-        let has_title = self.title.is_some();
+        // Title and message each take a row.
+        let text_rows = if self.title.is_some() { 2 } else { 1 };
         match self.variant {
-            AlertVariant::Filled | AlertVariant::Outlined => {
-                if has_title {
-                    4 // border + title + message + border
-                } else {
-                    3 // border + message + border
-                }
-            }
-            AlertVariant::Minimal => {
-                if has_title {
-                    2
-                } else {
-                    1
-                }
-            }
+            // Rounded border above and below the text.
+            AlertVariant::Filled => text_rows + 2,
+            // Outlined is only the accent bar down the left edge, and Minimal
+            // has no border at all: neither adds a row.
+            AlertVariant::Outlined | AlertVariant::Minimal => text_rows,
         }
     }
 

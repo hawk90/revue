@@ -42,8 +42,9 @@ pre-push:
   parallel: true
   commands:
     doc:
-      run: cargo doc --no-deps --all-features --document-private-items
-      fail_text: "Documentation build failed. Check for invalid code blocks."
+      # Same flags as CI and CD: a broken intra-doc link is an error, not a warning.
+      run: RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo doc --no-deps --all-features --document-private-items
+      fail_text: "Documentation build failed. Check for broken intra-doc links or invalid code blocks."
 
     test:
       # Run tests for changed Rust files
@@ -92,3 +93,17 @@ pre-push:
         fi
       fail_text: "Coverage check failed. Tests did not pass successfully."
       skip: [ -n "$CI" ]  # Skip in CI, only run locally
+
+# --- keep local deps in sync with the lockfiles after pull / checkout / rebase ---
+post-merge:
+  commands:
+    sync-deps:
+      run: scripts/sync-deps.sh
+post-checkout:
+  commands:
+    sync-deps:
+      run: scripts/sync-deps.sh --since {1}
+post-rewrite:
+  commands:
+    sync-deps:
+      run: scripts/sync-deps.sh
