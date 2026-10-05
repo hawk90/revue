@@ -7,6 +7,7 @@ use revue::widget::{
     away_indicator, busy_indicator, offline, online, status_indicator, Status, StatusSize,
     StatusStyle, Text,
 };
+use std::time::{Duration, Instant};
 
 /// Current view mode
 #[derive(Clone, Copy, PartialEq)]
@@ -34,6 +35,9 @@ impl ViewTab {
 struct StatusIndicatorDemo {
     tab: ViewTab,
     pulsing: bool,
+    /// Pulse frame, kept here because the indicators are rebuilt every render
+    pulse_frame: usize,
+    last_pulse: Instant,
 }
 
 impl StatusIndicatorDemo {
@@ -41,7 +45,19 @@ impl StatusIndicatorDemo {
         Self {
             tab: ViewTab::States,
             pulsing: false,
+            pulse_frame: 0,
+            last_pulse: Instant::now(),
         }
+    }
+
+    /// Advance the pulse about every 100ms; redraw only when it moved
+    fn tick(&mut self) -> bool {
+        if !self.pulsing || self.last_pulse.elapsed() < Duration::from_millis(100) {
+            return false;
+        }
+        self.last_pulse = Instant::now();
+        self.pulse_frame = self.pulse_frame.wrapping_add(1);
+        true
     }
 
     fn handle_key(&mut self, key: &Key) -> bool {
@@ -102,7 +118,7 @@ impl StatusIndicatorDemo {
             .child(
                 hstack()
                     .gap(2)
-                    .child(online().pulsing(self.pulsing))
+                    .child(online().pulsing(self.pulsing).frame(self.pulse_frame))
                     .child(Text::new("Online - User is available")),
             )
             .child(Text::new(""))
@@ -116,7 +132,11 @@ impl StatusIndicatorDemo {
             .child(
                 hstack()
                     .gap(2)
-                    .child(busy_indicator().pulsing(self.pulsing))
+                    .child(
+                        busy_indicator()
+                            .pulsing(self.pulsing)
+                            .frame(self.pulse_frame),
+                    )
                     .child(Text::new("Busy - Do not disturb")),
             )
             .child(Text::new(""))
@@ -137,7 +157,11 @@ impl StatusIndicatorDemo {
             .child(
                 hstack()
                     .gap(2)
-                    .child(status_indicator(Status::Error).pulsing(self.pulsing))
+                    .child(
+                        status_indicator(Status::Error)
+                            .pulsing(self.pulsing)
+                            .frame(self.pulse_frame),
+                    )
                     .child(Text::new("Error - Connection issue")),
             )
             .child(Text::new(""))
@@ -302,5 +326,9 @@ fn main() -> Result<()> {
     let mut app = App::builder().build();
     let demo = StatusIndicatorDemo::new();
 
-    app.run_with_handler(demo, |key_event, demo| demo.handle_key(&key_event.key))
+    app.run(demo, |event, demo, _app| match event {
+        Event::Key(key_event) => demo.handle_key(&key_event.key),
+        Event::Tick => demo.tick(),
+        _ => false,
+    })
 }
