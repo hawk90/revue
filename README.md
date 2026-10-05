@@ -239,7 +239,7 @@ app.run(view, handler)?;
 | **Advanced** | `rich_text_editor` `json_viewer` `csv_viewer` `diagram` `command_palette` |
 | **Dev** | `debug_overlay` `snapshot_test` `profiler` |
 
-> **100+ Widgets** — See [FEATURES.md](docs/FEATURES.md) for complete catalog
+> **100+ Widgets** — See the [feature registry](docs/specs/features.yaml) for the complete list and status ([overview](docs/FEATURES.md))
 
 <br>
 
@@ -346,7 +346,7 @@ Browse all examples in the [examples/](examples/) directory.
 ## Documentation
 
 - **[Getting Started](docs/tutorials/01-getting-started.md)** — 5-minute tutorial
-- **[Widget Catalog](docs/FEATURES.md)** — Complete widget reference
+- **[Features](docs/FEATURES.md)** — Overview and design notes; full list and status in [docs/specs/features.yaml](docs/specs/features.yaml)
 - **[App Builder Guide](docs/guides/app-builder.md)** — Complete App Builder API reference
 - **[Styling Guide](docs/guides/styling.md)** — CSS properties and theming
 - **[State Management](docs/guides/state.md)** — Signals, Computed, Effects
