@@ -210,7 +210,7 @@ fn test_card_all_variants() {
         (CardVariant::Outlined, '┌', None),
         (CardVariant::Filled, '┌', Some(Color::rgb(30, 30, 35))),
         (CardVariant::Elevated, '┌', Some(Color::rgb(35, 35, 40))),
-        // variant(Flat) clears the border, like Card::flat()
+        // Flat is documented as borderless, and variant(Flat) removes it (#693)
         (CardVariant::Flat, ' ', None),
     ];
 

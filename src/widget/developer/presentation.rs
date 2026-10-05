@@ -502,8 +502,7 @@ impl View for Presentation {
     crate::impl_view_meta!("Presentation");
 
     fn render(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
-        if area.width == 0 || area.height == 0 {
+        if ctx.area.width == 0 || ctx.area.height == 0 {
             return;
         }
 
