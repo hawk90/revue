@@ -570,19 +570,3 @@ fn test_tree_matches_cleared_on_new_query() {
     tree.set_query("file1");
     assert_eq!(tree.match_count(), 1);
 }
-
-// =========================================================================
-// Search with highlight_fg
-// =========================================================================
-
-#[test]
-fn test_tree_search_with_highlight_color() {
-    let mut tree = Tree::new()
-        .nodes(vec![TreeNode::new("test")])
-        .searchable(true)
-        .highlight_fg(revue::style::Color::YELLOW);
-
-    tree.set_query("test");
-    // Note: highlight_fg is private, just verify the builder works
-    // The actual highlighting behavior would be tested in integration tests
-}

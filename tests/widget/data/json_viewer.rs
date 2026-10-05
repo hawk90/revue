@@ -72,11 +72,28 @@ fn test_json_viewer_parse_empty_array() {
 fn test_json_viewer_navigation() {
     let mut viewer = JsonViewer::from_content(r#"{"a": 1, "b": 2, "c": 3}"#);
 
+    assert_eq!(viewer.selected_index(), 0);
+
     viewer.select_down();
     viewer.select_down();
+    assert_eq!(viewer.selected_index(), 2);
+    assert_eq!(viewer.selected_path().as_deref(), Some("$.b"));
+
     viewer.select_up();
-    viewer.select_first();
+    assert_eq!(viewer.selected_index(), 1);
+
     viewer.select_last();
+    assert_eq!(viewer.selected_index(), 3);
+    assert_eq!(viewer.selected_path().as_deref(), Some("$.c"));
+
+    // No wrap at either end
+    viewer.select_down();
+    assert_eq!(viewer.selected_index(), 3);
+
+    viewer.select_first();
+    assert_eq!(viewer.selected_index(), 0);
+    viewer.select_up();
+    assert_eq!(viewer.selected_index(), 0);
 }
 
 // =========================================================================
