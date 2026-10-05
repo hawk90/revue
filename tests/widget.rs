@@ -5,9 +5,8 @@
 
 #[path = "widget/accordion.rs"]
 mod accordion;
-// TODO(test-coverage): aistream has API mismatches
-// #[path = "widget/aistream/mod.rs"]
-// mod aistream;
+#[path = "widget/aistream/mod.rs"]
+mod aistream;
 #[path = "widget/alert.rs"]
 mod alert;
 // TODO(test-coverage): autocomplete has API mismatches
