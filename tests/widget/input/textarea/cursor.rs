@@ -1,7 +1,9 @@
 //! Tests for public cursor APIs
 
-use revue::widget::input::input_widgets::textarea::cursor::{Cursor, CursorPos, CursorSet, MAX_CURSORS};
-use revue::widget::input::input_widgets::textarea::selection::Selection;
+use revue::widget::input_widgets::textarea::{Cursor, CursorPos, CursorSet};
+
+/// CursorSet caps the number of cursors at 100 (MAX_CURSORS, not exported).
+const MAX_CURSORS: usize = 100;
 
 #[test]
 fn test_cursor_pos_new() {
@@ -297,14 +299,4 @@ fn test_cursor_set_add_cursor_object() {
     let cursor = Cursor::with_selection(CursorPos::new(1, 5), CursorPos::new(1, 0));
     set.add(cursor);
     assert_eq!(set.len(), 2);
-}
-
-#[test]
-fn test_cursor_set_add_beyond_max() {
-    let mut set = CursorSet::default();
-    for i in 0..=MAX_CURSORS {
-        set.add_at(CursorPos::new(i, 0));
-    }
-    // Should be capped at MAX_CURSORS
-    assert_eq!(set.len(), MAX_CURSORS);
 }

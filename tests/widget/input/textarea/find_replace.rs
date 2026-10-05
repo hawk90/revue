@@ -1,8 +1,7 @@
 //! Tests for public find/replace APIs
 
-use revue::widget::input::input_widgets::textarea::{
-    cursor::CursorPos,
-    find_replace::{FindMatch, FindOptions, FindReplaceMode, FindReplaceState},
+use revue::widget::input_widgets::textarea::{
+    CursorPos, FindMatch, FindOptions, FindReplaceMode, FindReplaceState,
 };
 
 #[test]
@@ -209,7 +208,10 @@ fn test_find_replace_state_current_match_index() {
 #[test]
 fn test_find_replace_state_clear_matches() {
     let mut state = FindReplaceState::new(FindReplaceMode::Find);
-    state.matches = vec![FindMatch::new(CursorPos { line: 0, col: 0 }, CursorPos { line: 0, col: 1 })];
+    state.matches = vec![FindMatch::new(
+        CursorPos { line: 0, col: 0 },
+        CursorPos { line: 0, col: 1 },
+    )];
     state.current_match = Some(0);
 
     // Clear all matches

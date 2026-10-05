@@ -1,9 +1,7 @@
-//! Tests for color_picker/types.rs
-//!
-//! Extracted from src/widget/input/input_widgets/color_picker/types.rs
+//! Tests for ColorPickerMode and ColorPalette
 
 use revue::style::Color;
-use revue::widget::input::input_widgets::color_picker::types::{ColorPalette, ColorPickerMode};
+use revue::widget::{ColorPalette, ColorPickerMode};
 
 // =========================================================================
 // ColorPickerMode tests
@@ -23,24 +21,10 @@ fn test_color_picker_mode_partial_eq() {
 }
 
 #[test]
-fn test_color_picker_mode_ne() {
-    assert_ne!(ColorPickerMode::Palette, ColorPickerMode::Rgb);
-    assert_ne!(ColorPickerMode::Rgb, ColorPickerMode::Hsl);
-    assert_ne!(ColorPickerMode::Hex, ColorPickerMode::Palette);
-}
-
-#[test]
 fn test_color_picker_mode_copy() {
     let mode = ColorPickerMode::Rgb;
     let copied = mode;
     assert_eq!(mode, copied);
-}
-
-#[test]
-fn test_color_picker_mode_clone() {
-    let mode = ColorPickerMode::Hsl;
-    let cloned = mode.clone();
-    assert_eq!(mode, cloned);
 }
 
 #[test]
@@ -72,24 +56,10 @@ fn test_color_palette_partial_eq() {
 }
 
 #[test]
-fn test_color_palette_ne() {
-    assert_ne!(ColorPalette::Basic, ColorPalette::Extended);
-    assert_ne!(ColorPalette::Basic, ColorPalette::WebSafe);
-    assert_ne!(ColorPalette::Material, ColorPalette::Pastel);
-}
-
-#[test]
 fn test_color_palette_copy() {
     let palette = ColorPalette::Material;
     let copied = palette;
     assert_eq!(palette, copied);
-}
-
-#[test]
-fn test_color_palette_clone() {
-    let palette = ColorPalette::Pastel;
-    let cloned = palette.clone();
-    assert_eq!(palette, cloned);
 }
 
 #[test]
@@ -156,36 +126,6 @@ fn test_color_palette_colors_pastel() {
     assert_eq!(colors.len(), 16);
 }
 
-#[test]
-fn test_color_palette_colors_basic_not_empty() {
-    let colors = ColorPalette::Basic.colors();
-    assert!(!colors.is_empty());
-}
-
-#[test]
-fn test_color_palette_colors_extended_not_empty() {
-    let colors = ColorPalette::Extended.colors();
-    assert!(!colors.is_empty());
-}
-
-#[test]
-fn test_color_palette_colors_websafe_not_empty() {
-    let colors = ColorPalette::WebSafe.colors();
-    assert!(!colors.is_empty());
-}
-
-#[test]
-fn test_color_palette_colors_material_not_empty() {
-    let colors = ColorPalette::Material.colors();
-    assert!(!colors.is_empty());
-}
-
-#[test]
-fn test_color_palette_colors_pastel_not_empty() {
-    let colors = ColorPalette::Pastel.colors();
-    assert!(!colors.is_empty());
-}
-
 // =========================================================================
 // ColorPalette::grid_size tests
 // =========================================================================
@@ -216,57 +156,7 @@ fn test_color_palette_grid_size_pastel() {
 }
 
 #[test]
-fn test_color_palette_grid_size_basic_total() {
-    let (w, h) = ColorPalette::Basic.grid_size();
-    assert_eq!(w * h, 16);
-}
-
-#[test]
-fn test_color_palette_grid_size_extended_total() {
-    let (w, h) = ColorPalette::Extended.grid_size();
-    assert_eq!(w * h, 256);
-}
-
-#[test]
-fn test_color_palette_grid_size_websafe_total() {
-    let (w, h) = ColorPalette::WebSafe.grid_size();
-    assert_eq!(w * h, 216);
-}
-
-#[test]
-fn test_color_palette_grid_size_material_total() {
-    let (w, h) = ColorPalette::Material.grid_size();
-    // 6x5 = 30 colors
-    assert_eq!(w * h, 30);
-}
-
-#[test]
-fn test_color_palette_grid_size_pastel_total() {
-    let (w, h) = ColorPalette::Pastel.grid_size();
-    // 4x4 = 16 colors
-    assert_eq!(w * h, 16);
-}
-
-// =========================================================================
-// ColorPalette all variants have tests
-// =========================================================================
-
-#[test]
-fn test_color_palette_all_variants_have_colors() {
-    for palette in [
-        ColorPalette::Basic,
-        ColorPalette::Extended,
-        ColorPalette::WebSafe,
-        ColorPalette::Material,
-        ColorPalette::Pastel,
-    ] {
-        let colors = palette.colors();
-        assert!(!colors.is_empty(), "Palette {:?} has no colors", palette);
-    }
-}
-
-#[test]
-fn test_color_palette_all_variants_have_grid_size() {
+fn test_color_palette_grid_holds_every_color() {
     for palette in [
         ColorPalette::Basic,
         ColorPalette::Extended,
@@ -275,10 +165,6 @@ fn test_color_palette_all_variants_have_grid_size() {
         ColorPalette::Pastel,
     ] {
         let (w, h) = palette.grid_size();
-        assert!(
-            w > 0 && h > 0,
-            "Palette {:?} has invalid grid size",
-            palette
-        );
+        assert_eq!(w * h, palette.colors().len(), "{palette:?}");
     }
 }
