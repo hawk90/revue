@@ -1,7 +1,7 @@
 //! Rendering functions for the Diagram widget
 
 use super::core::Diagram;
-use super::types::{ArrowStyle, DiagramEdge, NodeShape};
+use super::types::{ArrowStyle, DiagramDirection, DiagramEdge, NodeShape};
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::unicode::{display_width, truncate_to_width};
@@ -176,9 +176,22 @@ impl Diagram {
         let Some(&(x2, y2)) = self.positions.get(&edge.to) else {
             return;
         };
-        let Some(&(w2, _h2)) = self.sizes.get(&edge.to) else {
+        let Some(&(w2, h2)) = self.sizes.get(&edge.to) else {
             return;
         };
+
+        match self.direction {
+            DiagramDirection::TopDown => {}
+            DiagramDirection::BottomUp => {
+                // From the top of the source up to the bottom of the target
+                self.render_vertical_up(ctx, edge, (x1, y1, w1), (x2, y2, w2, h2));
+                return;
+            }
+            DiagramDirection::LeftRight | DiagramDirection::RightLeft => {
+                self.render_horizontal(ctx, edge, (x1, y1, w1, h1), (x2, y2, w2, h2));
+                return;
+            }
+        }
 
         // Simple arrow: draw from bottom of source to top of target
         let start_x = x1 + w1 / 2;
@@ -186,12 +199,7 @@ impl Diagram {
         let end_x = x2 + w2 / 2;
         let end_y = y2;
 
-        let arrow_char = match edge.style {
-            ArrowStyle::Solid => '│',
-            ArrowStyle::Dashed => '┊',
-            ArrowStyle::Thick => '┃',
-            ArrowStyle::Line => '│',
-        };
+        let arrow_char = Self::vertical_char(edge.style);
 
         // Vertical line
         if start_y < end_y {
@@ -218,6 +226,111 @@ impl Diagram {
             let label_x = start_x.saturating_sub(display_width(label_str) as u16 / 2);
             let label_fg = self.colors.label;
             ctx.put_str_with(label_x, label_y, label_str, area.width, |ch| {
+                Cell::new(ch).fg(label_fg).italic()
+            });
+        }
+    }
+
+    /// Line glyph of an edge running up or down
+    fn vertical_char(style: ArrowStyle) -> char {
+        match style {
+            ArrowStyle::Solid => '│',
+            ArrowStyle::Dashed => '┊',
+            ArrowStyle::Thick => '┃',
+            ArrowStyle::Line => '│',
+        }
+    }
+
+    /// Line glyph of an edge running left or right
+    fn horizontal_char(style: ArrowStyle) -> char {
+        match style {
+            ArrowStyle::Solid => '─',
+            ArrowStyle::Dashed => '┈',
+            ArrowStyle::Thick => '━',
+            ArrowStyle::Line => '─',
+        }
+    }
+
+    /// Bottom-up edge: from the top of the source to the bottom of the target
+    fn render_vertical_up(
+        &self,
+        ctx: &mut RenderContext,
+        edge: &DiagramEdge,
+        (x1, y1, w1): (u16, u16, u16),
+        (x2, y2, w2, h2): (u16, u16, u16, u16),
+    ) {
+        let area = ctx.area;
+        let start_x = x1 + w1 / 2;
+        let end_x = x2 + w2 / 2;
+        // Rows strictly between the two boxes
+        let top = y2 + h2;
+        let bottom = y1;
+        if top >= bottom {
+            return;
+        }
+
+        let fg = self.colors.arrow;
+        let line = Self::vertical_char(edge.style);
+        for y in top..bottom {
+            if y < area.height {
+                ctx.set(start_x, y, Cell::new(line).fg(fg));
+            }
+        }
+        if top < area.height {
+            ctx.set(end_x, top, Cell::new('▲').fg(fg));
+        }
+
+        if let Some(ref label) = edge.label {
+            let label_y = (top + bottom) / 2;
+            let label_x = start_x.saturating_sub(display_width(label) as u16 / 2);
+            let label_fg = self.colors.label;
+            ctx.put_str_with(label_x, label_y, label, area.width, |ch| {
+                Cell::new(ch).fg(label_fg).italic()
+            });
+        }
+    }
+
+    /// Left-right or right-left edge: across the gap between the two boxes,
+    /// on the source's middle row
+    fn render_horizontal(
+        &self,
+        ctx: &mut RenderContext,
+        edge: &DiagramEdge,
+        (x1, y1, w1, h1): (u16, u16, u16, u16),
+        (x2, y2, w2, h2): (u16, u16, u16, u16),
+    ) {
+        let area = ctx.area;
+        let rightward = self.direction == DiagramDirection::LeftRight;
+        // Columns strictly between the two boxes, and where the head goes
+        let (left, right, head_x, head) = if rightward {
+            (x1 + w1, x2, x2.saturating_sub(1), '▶')
+        } else {
+            (x2 + w2, x1, x2 + w2, '◀')
+        };
+        if left >= right {
+            return;
+        }
+        let start_y = y1 + h1 / 2;
+        let end_y = y2 + h2 / 2;
+
+        let fg = self.colors.arrow;
+        let line = Self::horizontal_char(edge.style);
+        for x in left..right {
+            if x < area.width {
+                ctx.set(x, start_y, Cell::new(line).fg(fg));
+            }
+        }
+        if head_x < area.width {
+            ctx.set(head_x, end_y, Cell::new(head).fg(fg));
+        }
+
+        // Label above the line, centered in the gap
+        if let Some(ref label) = edge.label {
+            let mid = (left + right) / 2;
+            let label_x = mid.saturating_sub(display_width(label) as u16 / 2);
+            let label_y = start_y.saturating_sub(1);
+            let label_fg = self.colors.label;
+            ctx.put_str_with(label_x, label_y, label, area.width, |ch| {
                 Cell::new(ch).fg(label_fg).italic()
             });
         }
