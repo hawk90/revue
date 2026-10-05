@@ -30,6 +30,8 @@ pub struct Stack {
     max_width: u16,
     /// Maximum height constraint (0 = no constraint)
     max_height: u16,
+    /// Size unsized children to their content - see [`Stack::content_sized`].
+    content_sized: bool,
     /// CSS styling properties (id, classes)
     props: WidgetProps,
 }
@@ -56,6 +58,7 @@ impl Stack {
             min_height: 0,
             max_width: 0,
             max_height: 0,
+            content_sized: false,
             props: WidgetProps::new(),
         }
     }
@@ -76,6 +79,24 @@ impl Stack {
     pub fn child(mut self, child: impl View + 'static) -> Self {
         self.children.push(Box::new(child));
         self.child_sizes.push(ChildSize::Auto);
+        self
+    }
+
+    /// Give each child added with [`child`](Self::child) the size of its
+    /// content instead of an equal share of the space.
+    ///
+    /// **Off by default** in 2.x; 3.0 turns it on. With it off, every unsized
+    /// child gets an equal share of what the sized ones left, so
+    /// `vstack().child(Text::new("a")).child(Text::new("b"))` puts `b` halfway
+    /// down the screen.
+    ///
+    /// With it on, a child whose [`View::measure`] answers gets that size
+    /// along the stack's axis, and only the children that fill (`measure`
+    /// returns `None`) share what is left - equally, as before. `child_sized`
+    /// and `child_flex` still win. The cross axis is unchanged: every child
+    /// gets the stack's full width (in a column) or height (in a row).
+    pub fn content_sized(mut self, enabled: bool) -> Self {
+        self.content_sized = enabled;
         self
     }
 
@@ -199,7 +220,8 @@ impl View for Stack {
         match self.direction {
             Direction::Row => {
                 let available_width = area.width.saturating_sub(total_gap);
-                let widths = self.calculate_sizes(available_width, n);
+                let sizes = self.effective_sizes(available_width, area.height);
+                let widths = Self::calculate_sizes(&sizes, available_width, n);
 
                 let mut x: u16 = 0;
                 let mut y: u16 = 0;
@@ -231,7 +253,8 @@ impl View for Stack {
             }
             Direction::Column => {
                 let available_height = area.height.saturating_sub(total_gap);
-                let heights = self.calculate_sizes(available_height, n);
+                let sizes = self.effective_sizes(available_height, area.width);
+                let heights = Self::calculate_sizes(&sizes, available_height, n);
 
                 let mut y: u16 = 0;
                 for (i, child) in self.children.iter().enumerate() {
@@ -251,6 +274,56 @@ impl View for Stack {
         }
     }
 
+    /// Children laid end to end along the axis, plus the gaps; as wide (in a
+    /// column) or tall (in a row) as the largest. A child that fills, or one
+    /// added with `child_flex`, makes the whole stack fill.
+    ///
+    /// This is the stack's content whether or not it is
+    /// [`content_sized`](Self::content_sized) itself - the flag decides how it
+    /// lays out its children, not how large its children are.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let gaps = self
+            .gap
+            .saturating_mul(self.children.len().saturating_sub(1) as u16);
+        let (mut main, mut cross) = (gaps, 0u16);
+        for (child, size) in self.children.iter().zip(&self.child_sizes) {
+            let (w, h) = match (size, self.direction) {
+                (ChildSize::Flex(_), _) => return None,
+                (ChildSize::Fixed(n), Direction::Column) => {
+                    (child.measure(max_width, *n).map_or(max_width, |m| m.0), *n)
+                }
+                (ChildSize::Fixed(n), Direction::Row) => (
+                    *n,
+                    child.measure(*n, max_height).map_or(max_height, |m| m.1),
+                ),
+                (ChildSize::Auto, _) => child.measure(max_width, max_height)?,
+            };
+            let (along, across) = match self.direction {
+                Direction::Column => (h, w),
+                Direction::Row => (w, h),
+            };
+            main = main.saturating_add(along);
+            cross = cross.max(across);
+        }
+        let (w, h) = match self.direction {
+            Direction::Column => (cross, main),
+            Direction::Row => (main, cross),
+        };
+        let w = w.max(self.min_width);
+        let h = h.max(self.min_height);
+        let w = if self.max_width > 0 {
+            w.min(self.max_width)
+        } else {
+            w
+        };
+        let h = if self.max_height > 0 {
+            h.min(self.max_height)
+        } else {
+            h
+        };
+        Some((w.min(max_width), h.min(max_height)))
+    }
+
     fn children(&self) -> &[Box<dyn View>] {
         &self.children
     }
@@ -262,13 +335,44 @@ impl_styled_view!(Stack);
 impl_props_builders!(Stack);
 
 impl Stack {
+    /// The size rule each child is laid out by.
+    ///
+    /// Without [`content_sized`](Self::content_sized) that is what the builder
+    /// recorded. With it, an unsized child that can measure itself is laid out
+    /// as if it had been added with `child_sized` at its measured size.
+    fn effective_sizes(&self, main: u16, cross: u16) -> Vec<ChildSize> {
+        if !self.content_sized {
+            return self.child_sizes.clone();
+        }
+        self.children
+            .iter()
+            .zip(&self.child_sizes)
+            .map(|(child, size)| match size {
+                ChildSize::Auto => {
+                    let (w, h) = match self.direction {
+                        Direction::Column => (cross, main),
+                        Direction::Row => (main, cross),
+                    };
+                    match child.measure(w, h) {
+                        Some((w, h)) => ChildSize::Fixed(match self.direction {
+                            Direction::Column => h,
+                            Direction::Row => w,
+                        }),
+                        None => ChildSize::Auto,
+                    }
+                }
+                other => *other,
+            })
+            .collect()
+    }
+
     /// Calculate sizes for children based on available space
     ///
     /// Strategy:
     /// - Fixed children get their exact size
     /// - Flex children share remaining space proportionally by grow factor
     /// - Auto children share remaining space equally (after flex allocation)
-    fn calculate_sizes(&self, available: u16, n: usize) -> Vec<u16> {
+    fn calculate_sizes(child_sizes: &[ChildSize], available: u16, n: usize) -> Vec<u16> {
         if n == 0 {
             return Vec::new();
         }
@@ -278,7 +382,7 @@ impl Stack {
         let mut total_grow: f32 = 0.0;
         let mut fixed_total = 0u16;
 
-        for cs in &self.child_sizes {
+        for cs in child_sizes {
             match cs {
                 ChildSize::Fixed(size) => fixed_total = fixed_total.saturating_add(*size),
                 ChildSize::Flex(grow) => total_grow += grow,
@@ -290,7 +394,7 @@ impl Stack {
         let mut result = vec![0u16; n];
 
         // Assign fixed sizes
-        for (i, cs) in self.child_sizes.iter().enumerate() {
+        for (i, cs) in child_sizes.iter().enumerate() {
             if let ChildSize::Fixed(size) = cs {
                 result[i] = *size;
             }
@@ -298,8 +402,7 @@ impl Stack {
 
         if total_grow > 0.0 {
             // Distribute remaining space to flex children proportionally
-            let flex_indices: Vec<usize> = self
-                .child_sizes
+            let flex_indices: Vec<usize> = child_sizes
                 .iter()
                 .enumerate()
                 .filter(|(_, cs)| matches!(cs, ChildSize::Flex(_)))
@@ -312,7 +415,7 @@ impl Stack {
             let mut distributed: u16 = 0;
 
             for (fi, &i) in flex_indices.iter().enumerate() {
-                let grow = match self.child_sizes[i] {
+                let grow = match child_sizes[i] {
                     ChildSize::Flex(g) => g,
                     _ => 0.0,
                 };
@@ -326,7 +429,7 @@ impl Stack {
             }
 
             // Auto children get 1 pixel each when flex is active
-            for (i, cs) in self.child_sizes.iter().enumerate() {
+            for (i, cs) in child_sizes.iter().enumerate() {
                 if matches!(cs, ChildSize::Auto) {
                     result[i] = 1;
                 }
@@ -343,7 +446,7 @@ impl Stack {
             };
 
             let mut extra_given = 0u16;
-            for (i, cs) in self.child_sizes.iter().enumerate() {
+            for (i, cs) in child_sizes.iter().enumerate() {
                 if matches!(cs, ChildSize::Auto) {
                     let mut size = per_auto;
                     if extra_given < extra {
@@ -431,7 +534,7 @@ mod tests {
             .child(Text::new("A"))
             .child(Text::new("B"))
             .child(Text::new("C"));
-        let sizes = s.calculate_sizes(30, 3);
+        let sizes = Stack::calculate_sizes(&s.child_sizes, 30, 3);
         assert_eq!(sizes.len(), 3);
         assert_eq!(sizes.iter().sum::<u16>(), 30);
     }
@@ -441,7 +544,7 @@ mod tests {
         let s = Stack::new()
             .child_sized(Text::new("A"), 10)
             .child_sized(Text::new("B"), 20);
-        let sizes = s.calculate_sizes(50, 2);
+        let sizes = Stack::calculate_sizes(&s.child_sizes, 50, 2);
         assert_eq!(sizes, vec![10, 20]);
     }
 
@@ -450,7 +553,7 @@ mod tests {
         let s = Stack::new()
             .child_flex(Text::new("A"), 1.0)
             .child_flex(Text::new("B"), 2.0);
-        let sizes = s.calculate_sizes(30, 2);
+        let sizes = Stack::calculate_sizes(&s.child_sizes, 30, 2);
         assert_eq!(sizes[0], 10);
         assert_eq!(sizes[1], 20);
     }
@@ -460,7 +563,7 @@ mod tests {
         let s = Stack::new()
             .child_sized(Text::new("Fixed"), 10)
             .child_flex(Text::new("Flex"), 1.0);
-        let sizes = s.calculate_sizes(30, 2);
+        let sizes = Stack::calculate_sizes(&s.child_sizes, 30, 2);
         assert_eq!(sizes[0], 10);
         assert_eq!(sizes[1], 20); // 30 - 10 = 20 (no auto children)
     }
@@ -468,7 +571,7 @@ mod tests {
     #[test]
     fn test_stack_calculate_sizes_empty() {
         let s = Stack::new();
-        let sizes = s.calculate_sizes(100, 0);
+        let sizes = Stack::calculate_sizes(&s.child_sizes, 100, 0);
         assert!(sizes.is_empty());
     }
 
