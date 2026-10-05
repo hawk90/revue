@@ -180,6 +180,8 @@ pub struct Presentation {
     show_progress: bool,
     /// Timer (seconds)
     timer: Option<u64>,
+    /// Seconds counted by `tick`, for the timer
+    elapsed: f32,
     /// Background color
     /// The color the builder named, if it named one - see #656.
     bg: Option<Color>,
@@ -209,6 +211,7 @@ impl Presentation {
             show_numbers: true,
             show_progress: true,
             timer: None,
+            elapsed: 0.0,
             bg: None,
             accent: Color::CYAN,
             props: WidgetProps::new(),
@@ -270,6 +273,9 @@ impl Presentation {
     }
 
     /// Set timer (in seconds)
+    ///
+    /// The footer counts the time left down as `MM:SS`, advanced by
+    /// [`tick`](Self::tick).
     pub fn timer(mut self, seconds: u64) -> Self {
         self.timer = Some(seconds);
         self
@@ -355,8 +361,9 @@ impl Presentation {
         self.current_slide().map(|s| s.notes.as_str())
     }
 
-    /// Update transition animation
+    /// Advance the transition animation and the timer by `dt` seconds
     pub fn tick(&mut self, dt: f32) {
+        self.elapsed += dt.max(0.0);
         if self.transition_progress < 1.0 {
             self.transition_progress = (self.transition_progress + dt * 3.0).min(1.0);
         }
@@ -484,6 +491,20 @@ impl Presentation {
     fn render_footer(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let footer_y = area.height.saturating_sub(1);
+
+        // Time left, centered; the progress bar and slide numbers draw over
+        // it when the footer is too narrow for all three
+        if let Some(total) = self.timer {
+            let left = (total as f32 - self.elapsed).max(0.0).ceil() as u64;
+            let text = format!("{:02}:{:02}", left / 60, left % 60);
+            let fg = if left == 0 { Color::RED } else { DISABLED_FG };
+            let start_x = area.width.saturating_sub(text.len() as u16) / 2;
+            for (i, ch) in text.chars().enumerate() {
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(fg);
+                ctx.set(start_x + i as u16, footer_y, cell);
+            }
+        }
 
         // Slide numbers
         if self.show_numbers && !self.slides.is_empty() {

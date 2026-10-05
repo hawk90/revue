@@ -586,10 +586,20 @@ fn test_presentation_title_slide_comes_before_slide_zero() {
 }
 
 #[test]
-#[ignore = "BUG: Presentation::timer() is stored but never displayed"]
 fn test_presentation_timer_is_shown() {
     let pres = || Presentation::new().slide(slide("A"));
     assert_ne!(screen(&render(&pres().timer(60))), screen(&render(&pres())));
+}
+
+#[test]
+fn test_presentation_timer_counts_down_with_tick() {
+    let mut pres = Presentation::new().slide(slide("A")).timer(90);
+    assert!(row(&render(&pres), 23).contains("01:30"));
+    pres.tick(31.0);
+    assert!(row(&render(&pres), 23).contains("00:59"));
+    // Stops at zero
+    pres.tick(120.0);
+    assert!(row(&render(&pres), 23).contains("00:00"));
 }
 
 #[test]
