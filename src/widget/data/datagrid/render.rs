@@ -229,7 +229,14 @@ impl DataGrid {
 
             // Draw row number
             if self.options.show_row_numbers {
-                self.render_row_number(ctx, params.area_x, row_y, render_idx + 1, row_bg);
+                self.render_row_number(
+                    ctx,
+                    params.area_x,
+                    row_y,
+                    render_idx + 1,
+                    params.row_num_width,
+                    row_bg,
+                );
             }
 
             // Fill the content background first so any gap between the scrolled
@@ -335,11 +342,11 @@ impl DataGrid {
                 self.colors.header_fg
             };
 
-            let truncated = truncate_to_width(&title, w as usize - 1);
+            let truncated = truncate_to_width(&title, (w as usize).saturating_sub(1));
             let mut dx: u16 = 0;
             for ch in truncated.chars() {
                 let cw = char_width(ch) as u16;
-                if dx + cw > w - 1 {
+                if dx + cw > w.saturating_sub(1) {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -394,8 +401,21 @@ impl DataGrid {
     }
 
     /// Render row number column
-    fn render_row_number(&self, ctx: &mut RenderContext, x: u16, y: u16, num: usize, bg: Color) {
-        let num_str = format!("{:>4}", num);
+    ///
+    /// `gutter` is the row-number column width computed in `render()`
+    /// (digits + space + separator); the number is right-aligned in the
+    /// digit part so it never runs into the first data column.
+    fn render_row_number(
+        &self,
+        ctx: &mut RenderContext,
+        x: u16,
+        y: u16,
+        num: usize,
+        gutter: u16,
+        bg: Color,
+    ) {
+        let digits = gutter.saturating_sub(2) as usize;
+        let num_str = format!("{:>digits$}", num);
         for (j, ch) in num_str.chars().enumerate() {
             let mut cell = Cell::new(ch);
             cell.fg = Some(DISABLED_FG);
@@ -436,12 +456,13 @@ impl DataGrid {
 
     /// Render cell in edit mode with cursor
     fn render_edit_cell(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16, bg: Color) {
-        let truncated = truncate_to_width(&self.edit_state.buffer, width as usize - 1);
+        let truncated =
+            truncate_to_width(&self.edit_state.buffer, (width as usize).saturating_sub(1));
         let mut dx: u16 = 0;
         let mut char_idx = 0;
         for ch in truncated.chars() {
             let cw = char_width(ch) as u16;
-            if dx + cw > width - 1 {
+            if dx + cw > width.saturating_sub(1) {
                 break;
             }
             let is_cursor = char_idx == self.edit_state.cursor;
@@ -474,7 +495,7 @@ impl DataGrid {
         row_bg: Color,
         is_selected: bool,
     ) {
-        let truncated = truncate_to_width(value, pos.width as usize - 1);
+        let truncated = truncate_to_width(value, (pos.width as usize).saturating_sub(1));
         let dw = display_width(truncated) as u16;
         let start_x = match col.align {
             super::types::Alignment::Left => pos.x,

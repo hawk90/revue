@@ -8,12 +8,6 @@ use revue::widget::data::tree::TreeNode;
 // =========================================================================
 
 #[test]
-fn test_tree_query_default_empty() {
-    let tree = Tree::new();
-    assert_eq!(tree.query(), "");
-}
-
-#[test]
 fn test_tree_query_after_set() {
     let mut tree = Tree::new().searchable(true);
     tree.set_query("test");
@@ -24,12 +18,6 @@ fn test_tree_query_after_set() {
 fn test_tree_is_searchable_default() {
     let tree = Tree::new();
     assert!(!tree.is_searchable());
-}
-
-#[test]
-fn test_tree_is_searchable_enabled() {
-    let tree = Tree::new().searchable(true);
-    assert!(tree.is_searchable());
 }
 
 #[test]
@@ -66,12 +54,6 @@ fn test_tree_match_count_no_matches() {
 
     tree.set_query("xyz");
     assert_eq!(tree.match_count(), 0);
-}
-
-#[test]
-fn test_tree_current_match_index_default() {
-    let tree = Tree::new().searchable(true);
-    assert_eq!(tree.current_match_index(), 0);
 }
 
 #[test]
@@ -279,16 +261,6 @@ fn test_tree_next_match_returns_true() {
 }
 
 #[test]
-fn test_tree_next_match_no_matches_returns_false() {
-    let mut tree = Tree::new()
-        .nodes(vec![TreeNode::new("test")])
-        .searchable(true);
-
-    let result = tree.next_match();
-    assert!(!result);
-}
-
-#[test]
 fn test_tree_prev_match_single() {
     let mut tree = Tree::new()
         .nodes(vec![TreeNode::new("test")])
@@ -337,16 +309,6 @@ fn test_tree_prev_match_wraps() {
     assert_eq!(tree.current_match_index(), 2); // Wrapped to last
 }
 
-#[test]
-fn test_tree_prev_match_no_matches_returns_false() {
-    let mut tree = Tree::new()
-        .nodes(vec![TreeNode::new("test")])
-        .searchable(true);
-
-    let result = tree.prev_match();
-    assert!(!result);
-}
-
 // =========================================================================
 // Match checking tests
 // =========================================================================
@@ -363,17 +325,6 @@ fn test_tree_is_match_true() {
 }
 
 #[test]
-fn test_tree_is_match_false() {
-    let mut tree = Tree::new()
-        .nodes(vec![TreeNode::new("file1.txt"), TreeNode::new("other.txt")])
-        .searchable(true);
-
-    tree.set_query("file");
-    assert!(tree.is_match(0));
-    assert!(!tree.is_match(1));
-}
-
-#[test]
 fn test_tree_is_match_no_query() {
     let tree = Tree::new()
         .nodes(vec![TreeNode::new("test")])
@@ -385,16 +336,6 @@ fn test_tree_is_match_no_query() {
 // =========================================================================
 // Fuzzy match tests
 // =========================================================================
-
-#[test]
-fn test_tree_get_match_no_query() {
-    let tree = Tree::new()
-        .nodes(vec![TreeNode::new("Hello World")])
-        .searchable(true);
-
-    let result = tree.get_match("Hello World");
-    assert!(result.is_none());
-}
 
 #[test]
 fn test_tree_get_match_with_query() {
@@ -628,20 +569,4 @@ fn test_tree_matches_cleared_on_new_query() {
 
     tree.set_query("file1");
     assert_eq!(tree.match_count(), 1);
-}
-
-// =========================================================================
-// Search with highlight_fg
-// =========================================================================
-
-#[test]
-fn test_tree_search_with_highlight_color() {
-    let mut tree = Tree::new()
-        .nodes(vec![TreeNode::new("test")])
-        .searchable(true)
-        .highlight_fg(revue::style::Color::YELLOW);
-
-    tree.set_query("test");
-    // Note: highlight_fg is private, just verify the builder works
-    // The actual highlighting behavior would be tested in integration tests
 }

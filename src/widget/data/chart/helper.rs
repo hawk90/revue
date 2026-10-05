@@ -574,9 +574,13 @@ impl View for Chart {
                 chart_bounds.width,
                 chart_bounds.height,
             );
+            // Non-finite points are left out of the bounds, so they are left
+            // out of the plot too (mapping them would overflow or pin them
+            // to the left edge).
             let screen_points: Vec<(u16, u16)> = series
                 .data
                 .iter()
+                .filter(|(x, y)| x.is_finite() && y.is_finite())
                 .map(|&(x, y)| self.map_point(x, y, bounds, chart_area))
                 .collect();
 
@@ -686,24 +690,23 @@ impl View for Chart {
                 .unwrap_or(10) as u16;
             let legend_height = self.series.len() as u16 + 2;
 
+            // A legend larger than the plot is pinned to its top/left edge
+            // (and clipped below) instead of underflowing.
+            let left = inner_x + 1;
+            let center_x = inner_x + inner_w.saturating_sub(legend_width) / 2;
+            let right = inner_x + inner_w.saturating_sub(legend_width + 1);
+            let top = inner_y + 1;
+            let middle_y = inner_y + inner_h.saturating_sub(legend_height) / 2;
+            let bottom = inner_y + inner_h.saturating_sub(legend_height + 1);
             let (legend_x, legend_y) = match self.legend {
-                LegendPosition::TopLeft => (inner_x + 1, inner_y + 1),
-                LegendPosition::TopCenter => (inner_x + (inner_w - legend_width) / 2, inner_y + 1),
-                LegendPosition::TopRight => (inner_x + inner_w - legend_width - 1, inner_y + 1),
-                LegendPosition::BottomLeft => (inner_x + 1, inner_y + inner_h - legend_height - 1),
-                LegendPosition::BottomCenter => (
-                    inner_x + (inner_w - legend_width) / 2,
-                    inner_y + inner_h - legend_height - 1,
-                ),
-                LegendPosition::BottomRight => (
-                    inner_x + inner_w - legend_width - 1,
-                    inner_y + inner_h - legend_height - 1,
-                ),
-                LegendPosition::Left => (inner_x + 1, inner_y + (inner_h - legend_height) / 2),
-                LegendPosition::Right => (
-                    inner_x + inner_w - legend_width - 1,
-                    inner_y + (inner_h - legend_height) / 2,
-                ),
+                LegendPosition::TopLeft => (left, top),
+                LegendPosition::TopCenter => (center_x, top),
+                LegendPosition::TopRight => (right, top),
+                LegendPosition::BottomLeft => (left, bottom),
+                LegendPosition::BottomCenter => (center_x, bottom),
+                LegendPosition::BottomRight => (right, bottom),
+                LegendPosition::Left => (left, middle_y),
+                LegendPosition::Right => (right, middle_y),
                 // None is filtered out by the if condition above, but provide fallback
                 LegendPosition::None => (inner_x + 1, inner_y + 1),
             };
