@@ -301,18 +301,30 @@ impl FilePicker {
         }
 
         let validated = validate_and_canonicalize(path, &self.current_dir)?;
-        self.current_dir = validated.clone();
+        self.visit(validated);
+        Ok(())
+    }
+
+    /// Make `dir` the current directory and record it in the history.
+    fn visit(&mut self, dir: PathBuf) {
+        self.current_dir = dir;
         self.history.truncate(self.history_idx + 1);
         self.history.push(self.current_dir.clone());
         self.history_idx = self.history.len() - 1;
         self.refresh();
-        Ok(())
     }
 
     /// Go to parent directory
     pub fn go_up(&mut self) {
-        if let Some(parent) = self.current_dir.parent().map(Path::to_path_buf) {
-            let _ = self.navigate_to(&parent); // Ignore errors, parent should be valid
+        // Not through `navigate_to`: that only accepts paths inside the
+        // current directory, and a parent never is one, so going up was a
+        // silent no-op. The parent of a canonical directory has no `..` or
+        // symlink left in it to validate.
+        let Ok(current) = self.current_dir.canonicalize() else {
+            return;
+        };
+        if let Some(parent) = current.parent().map(Path::to_path_buf) {
+            self.visit(parent);
         }
     }
 
