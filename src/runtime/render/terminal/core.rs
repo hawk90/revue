@@ -22,12 +22,22 @@ impl<W: Write> Terminal<W> {
     /// Create a new terminal with the given writer
     pub fn new(writer: W) -> Result<Self> {
         let (width, height) = terminal::size()?;
-        Ok(Self {
+        Ok(Self::with_size(writer, width, height))
+    }
+
+    /// Create a terminal with an explicit size, without querying the OS.
+    ///
+    /// Unlike [`new`](Self::new) this never touches the controlling terminal,
+    /// so it works in headless environments (tests, CI, snapshot rendering).
+    /// The returned terminal is *not* initialized - [`init`](Self::init) is
+    /// what enables raw mode and the alternate screen.
+    pub fn with_size(writer: W, width: u16, height: u16) -> Self {
+        Self {
             writer,
             current: Buffer::new(width, height),
             raw_mode: false,
             mouse_capture: false,
-        })
+        }
     }
 
     /// Initialize the terminal for TUI mode with mouse capture
@@ -42,6 +52,9 @@ impl<W: Write> Terminal<W> {
     pub fn init_with_mouse(&mut self, mouse_capture: bool) -> Result<()> {
         enable_raw_mode()?;
         self.raw_mode = true;
+        // `Drop` does not run on abort, and the release profile aborts on panic.
+        // The hook is what actually restores the terminal - see `panic_hook`.
+        super::install_panic_hook();
         self.mouse_capture = mouse_capture;
         if mouse_capture {
             execute!(
@@ -78,8 +91,17 @@ impl<W: Write> Terminal<W> {
             }
             disable_raw_mode()?;
             self.raw_mode = false;
+            super::panic_hook::disarm();
         }
         Ok(())
+    }
+
+    /// Borrow the underlying writer.
+    ///
+    /// Mainly useful with an in-memory writer (`Vec<u8>`) to assert on exactly
+    /// what was emitted - e.g. that an unchanged frame writes nothing.
+    pub fn writer(&self) -> &W {
+        &self.writer
     }
 
     /// Get terminal size

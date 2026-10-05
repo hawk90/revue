@@ -2,7 +2,6 @@
 
 use super::{BlockType, RichTextEditor};
 use crate::render::{Cell, Modifier};
-use crate::style::Color;
 use crate::widget::traits::RenderContext;
 
 impl RichTextEditor {
@@ -15,7 +14,9 @@ impl RichTextEditor {
         width: u16,
         height: u16,
     ) {
-        let fg = self.fg.unwrap_or(Color::rgb(205, 214, 244));
+        let fg = self
+            .fg
+            .unwrap_or_else(|| ctx.css_color(super::core::EDITOR_FG));
 
         // Fill preview background
         for row in 0..height {

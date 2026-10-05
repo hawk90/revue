@@ -281,9 +281,13 @@ impl View for Alert {
             return;
         }
 
-        let accent_color = self.level.color();
-        let bg_color = self.level.bg_color();
-        let border_color = self.level.border_color();
+        // The level's palette is the widget's own default - the bottom row of
+        // the precedence table - so a rule that named a color outranks it.
+        let accent_color = ctx.css_color(self.level.color());
+        let bg_color = ctx.css_background(self.level.bg_color());
+        let border_color = ctx
+            .css_border_or_text_color()
+            .unwrap_or(self.level.border_color());
 
         match self.variant {
             AlertVariant::Filled => {

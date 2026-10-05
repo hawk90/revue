@@ -180,7 +180,7 @@ mod tests {
     fn test_snapshot_value_conversions() {
         assert_eq!(SnapshotValue::from(true), SnapshotValue::Bool(true));
         assert_eq!(SnapshotValue::from(42i32), SnapshotValue::Int(42));
-        assert_eq!(SnapshotValue::from(3.14), SnapshotValue::Float(3.14));
+        assert_eq!(SnapshotValue::from(1.25), SnapshotValue::Float(1.25));
         assert_eq!(
             SnapshotValue::from("hello"),
             SnapshotValue::String("hello".to_string())
@@ -233,7 +233,7 @@ mod tests {
         assert_eq!(SnapshotValue::Bool(true).display(), "true");
         assert_eq!(SnapshotValue::Bool(false).display(), "false");
         assert_eq!(SnapshotValue::Int(42).display(), "42");
-        assert_eq!(SnapshotValue::Float(3.14159).display(), "3.14");
+        assert_eq!(SnapshotValue::Float(1.23456).display(), "1.23");
         assert_eq!(
             SnapshotValue::String("hello".to_string()).display(),
             "\"hello\""
@@ -252,7 +252,7 @@ mod tests {
         assert_eq!(SnapshotValue::Null.type_name(), "null");
         assert_eq!(SnapshotValue::Bool(true).type_name(), "bool");
         assert_eq!(SnapshotValue::Int(42).type_name(), "i64");
-        assert_eq!(SnapshotValue::Float(3.14).type_name(), "f64");
+        assert_eq!(SnapshotValue::Float(1.25).type_name(), "f64");
         assert_eq!(
             SnapshotValue::String("test".to_string()).type_name(),
             "String"

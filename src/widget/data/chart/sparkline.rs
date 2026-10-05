@@ -181,7 +181,8 @@ impl View for Sparkline {
             return;
         }
 
-        let fg = self.fg.unwrap_or(Color::CYAN);
+        // Builder, then the stylesheet, then the widget's own default.
+        let fg = self.fg.unwrap_or_else(|| ctx.css_color(Color::CYAN));
         let chars = self.style.chars();
 
         // Calculate bounds

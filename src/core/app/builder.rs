@@ -19,6 +19,14 @@ pub struct AppBuilder {
     devtools: bool,
     mouse_capture: bool,
     plugins: PluginRegistry,
+    /// Explicit initial size; when None the size is queried from the terminal
+    size: Option<(u16, u16)>,
+    /// Reconcile the DOM against the view on every frame
+    incremental_dom: bool,
+    tab_navigation: bool,
+    /// Build the DOM from the render traversal instead of `View::children`
+    dom_from_render: bool,
+    css_layout: bool,
 }
 
 impl AppBuilder {
@@ -31,7 +39,138 @@ impl AppBuilder {
             devtools: cfg!(feature = "devtools"),
             mouse_capture: true,
             plugins: PluginRegistry::new(),
+            size: None,
+            incremental_dom: false,
+            tab_navigation: false,
+            dom_from_render: false,
+            css_layout: false,
         }
+    }
+
+    /// Build the DOM from the render traversal instead of `View::children`.
+    ///
+    /// **Off by default.** With it off the DOM only contains widgets exposed
+    /// through [`View::children`](crate::widget::View::children), which almost
+    /// nothing implements - a widget assembled inside `render` is invisible to
+    /// it. A real application therefore has a DOM of one node, and CSS matching,
+    /// `:focus`/`:hover` and devtools all work against a tree that does not
+    /// describe it.
+    ///
+    /// With it on, the frame renders twice - once to discover the tree, once to
+    /// paint it - and every widget rendered through
+    /// [`RenderContext::render_child`](crate::widget::RenderContext::render_child)
+    /// gets a DOM node and its own computed style. That is what makes CSS reach
+    /// widgets below the root.
+    ///
+    /// Implies per-frame reconciliation, so `incremental_dom` has no additional
+    /// effect when this is on.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let app = App::builder()
+    ///     .dom_from_render(true)
+    ///     .build();
+    /// ```
+    pub fn dom_from_render(mut self, enabled: bool) -> Self {
+        self.dom_from_render = enabled;
+        self
+    }
+
+    /// Let CSS box properties override the geometry a container computed.
+    ///
+    /// **Off by default**, and inert unless
+    /// [`dom_from_render`](Self::dom_from_render) is also on - the properties
+    /// are read from the node the paint pass is holding, and without the render
+    /// traversal there is no such node below the root.
+    ///
+    /// Container widgets keep deciding the *flow*: `vstack()` still stacks, and
+    /// its `gap` and per-child sizes still apply. On top of that, a node's own
+    /// specified `display`, `width`, `height`, `margin` and the `min`/`max`
+    /// constraints adjust the box the container handed it. That is what makes
+    /// `#sidebar { width: 20; }` and `.hidden { display: none; }` do something.
+    ///
+    /// Not applied: `padding`, which insets a widget's content and would move
+    /// the border of a widget that draws one, and `gap` / `flex-*` / `grid-*`,
+    /// which describe flow and belong to the container.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let app = App::builder()
+    ///     .dom_from_render(true)
+    ///     .css_layout(true)
+    ///     .build();
+    /// ```
+    pub fn css_layout(mut self, enabled: bool) -> Self {
+        self.css_layout = enabled;
+        self
+    }
+
+    /// Reconcile the DOM against the view on every frame.
+    ///
+    /// **Off by default.** Without it the DOM is built once and then stops
+    /// following the view, so a widget added after the first frame is invisible
+    /// to CSS matching, to layout and to devtools. With it on, every frame
+    /// reconciles: nodes that still match keep their `DomId`, their state
+    /// (focus, hover, selection) and their cached style, and only the parts
+    /// that actually changed are marked dirty.
+    ///
+    /// Widgets in a dynamic collection should implement
+    /// [`View::key`](crate::widget::View::key) so they are matched by identity
+    /// rather than by position.
+    ///
+    /// This is opt-in while the performance characteristics are being measured
+    /// against the Phase 0 benchmark baseline; it will become the default.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let app = App::builder()
+    ///     .incremental_dom(true)
+    ///     .build();
+    /// ```
+    pub fn incremental_dom(mut self, enabled: bool) -> Self {
+        self.incremental_dom = enabled;
+        self
+    }
+
+    /// Let Tab and Shift+Tab move `:focus` between focusable widgets.
+    ///
+    /// **Off by default.** Until now the only thing that produced focus was a
+    /// click, so an app with no mouse had no `:focus` at all and every rule
+    /// naming it was dead. This walks the DOM in document order - the order the
+    /// reader meets things - skipping `disabled` nodes and wrapping at both
+    /// ends.
+    ///
+    /// It is off by default because Tab is a key an existing app may already
+    /// handle itself; the runtime taking it would be a silent behavior change.
+    /// The app's own handler runs first either way.
+    ///
+    /// This sets `NodeState.focused` and nothing else. Widgets still read their
+    /// own `focused` field, so no widget *behavior* changes - what changes is
+    /// that `:focus` rules finally match without a mouse.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let app = App::builder()
+    ///     .dom_from_render(true)
+    ///     .tab_navigation(true)
+    ///     .build();
+    /// ```
+    pub fn tab_navigation(mut self, enabled: bool) -> Self {
+        self.tab_navigation = enabled;
+        self
+    }
+
+    /// Set an explicit initial size instead of querying the terminal.
+    ///
+    /// Required for headless use (tests, snapshots, CI) where
+    /// `crossterm::terminal::size()` is unavailable or non-deterministic.
+    pub fn size(mut self, width: u16, height: u16) -> Self {
+        self.size = Some((width.max(1), height.max(1)));
+        self
     }
 
     /// Register a plugin
@@ -124,10 +263,13 @@ impl AppBuilder {
 
     /// Build the application
     pub fn build(mut self) -> App {
-        let initial_size = {
-            let (w, h) = crossterm::terminal::size().unwrap_or((80, 24));
-            // Clamp to a sane minimum to avoid 0x0 buffers on some environments
-            (w.max(1), h.max(1))
+        let initial_size = match self.size {
+            Some(size) => size,
+            None => {
+                let (w, h) = crossterm::terminal::size().unwrap_or((80, 24));
+                // Clamp to a sane minimum to avoid 0x0 buffers on some environments
+                (w.max(1), h.max(1))
+            }
         };
 
         // Collect and merge plugin styles
@@ -164,8 +306,13 @@ impl AppBuilder {
             None
         };
 
+        let incremental_dom = self.incremental_dom;
+        let tab_navigation = self.tab_navigation;
+        let dom_from_render = self.dom_from_render;
+        let css_layout = self.css_layout;
+
         #[cfg(feature = "hot-reload")]
-        return App::new_with_hot_reload(
+        let mut app = App::new_with_hot_reload(
             initial_size,
             self.stylesheet,
             self.mouse_capture,
@@ -176,13 +323,19 @@ impl AppBuilder {
         );
 
         #[cfg(not(feature = "hot-reload"))]
-        App::new_with_plugins(
+        let mut app = App::new_with_plugins(
             initial_size,
             self.stylesheet,
             self.mouse_capture,
             self.plugins,
             self.devtools,
-        )
+        );
+
+        app.set_incremental_dom(incremental_dom);
+        app.set_tab_navigation(tab_navigation);
+        app.set_dom_from_render(dom_from_render);
+        app.set_css_layout(css_layout);
+        app
     }
 }
 

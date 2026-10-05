@@ -29,15 +29,15 @@ fn test_column_width_constraints() {
 
     // Set custom width
     grid.set_column_width(0, 15);
-    assert_eq!(grid.column_widths.get(0), Some(&15));
+    assert_eq!(grid.column_widths.first(), Some(&15));
 
     // Test min constraint
     grid.set_column_width(0, 2);
-    assert_eq!(grid.column_widths.get(0), Some(&5)); // constrained to min
+    assert_eq!(grid.column_widths.first(), Some(&5)); // constrained to min
 
     // Test max constraint
     grid.set_column_width(0, 100);
-    assert_eq!(grid.column_widths.get(0), Some(&20)); // constrained to max
+    assert_eq!(grid.column_widths.first(), Some(&20)); // constrained to max
 }
 
 #[test]

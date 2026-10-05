@@ -255,7 +255,7 @@ impl View for SignupForm {
                 if is_touched && !errors.is_empty() {
                     for error in &errors {
                         field_view = field_view
-                            .child(Text::new(format!("  ↳ {}", &error.message)).fg(Color::RED));
+                            .child(Text::new(format!("  ↳ {}", error.message)).fg(Color::RED));
                     }
                 }
 

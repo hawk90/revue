@@ -79,14 +79,16 @@ fn test_zen_render_enabled() {
 #[test]
 fn test_zen_dark_helper() {
     let z = zen_dark(Text::new("Hello"));
-    assert_eq!(z.get_bg_color(), Color::rgb(15, 15, 25));
+    // The preset names the color explicitly, so it is `Some` even though it
+    // matches the default - which is the whole point: it outranks a stylesheet.
+    assert_eq!(z.get_bg_color(), Some(Color::rgb(15, 15, 25)));
     assert_eq!(z.get_padding_x(), 4);
 }
 
 #[test]
 fn test_zen_light_helper() {
     let z = zen_light(Text::new("Hello"));
-    assert_eq!(z.get_bg_color(), Color::rgb(250, 250, 250));
+    assert_eq!(z.get_bg_color(), Some(Color::rgb(250, 250, 250)));
 }
 
 #[test]
@@ -95,7 +97,9 @@ fn test_zen_mode_new_defaults() {
     assert!(!z.is_enabled());
     assert_eq!(z.get_padding_x(), 4);
     assert_eq!(z.get_padding_y(), 2);
-    assert_eq!(z.get_bg_color(), Color::rgb(15, 15, 25));
+    // Nothing named a color, so the stylesheet can reach it; the dark default
+    // is applied where the fill is painted.
+    assert_eq!(z.get_bg_color(), None);
     assert_eq!(z.get_dim_opacity(), 0.0);
     assert!(!z.get_center_vertical());
 }
@@ -103,7 +107,7 @@ fn test_zen_mode_new_defaults() {
 #[test]
 fn test_zen_bg() {
     let z = ZenMode::new(Text::new("Test")).bg(Color::RED);
-    assert_eq!(z.get_bg_color(), Color::RED);
+    assert_eq!(z.get_bg_color(), Some(Color::RED));
 }
 
 #[test]
@@ -140,7 +144,7 @@ fn test_zen_builder_chain() {
 
     assert_eq!(z.get_padding_x(), 6);
     assert_eq!(z.get_padding_y(), 6);
-    assert_eq!(z.get_bg_color(), Color::CYAN);
+    assert_eq!(z.get_bg_color(), Some(Color::CYAN));
     assert_eq!(z.get_dim_opacity(), 0.3);
     assert!(z.get_center_vertical());
 }

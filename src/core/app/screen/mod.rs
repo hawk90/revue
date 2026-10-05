@@ -69,7 +69,7 @@ mod tests {
     #[test]
     fn test_transition_clone() {
         let t = Transition::Fade;
-        let cloned = t.clone();
+        let cloned = t;
         assert_eq!(t, cloned);
     }
 

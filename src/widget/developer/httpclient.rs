@@ -38,6 +38,10 @@ mod helpers;
 mod render;
 mod request;
 mod response;
+// The file's own `#[cfg(test)] mod tests` wrapper was removed (it made the
+// path `tests::tests`), so the gate has to live on the declaration instead -
+// otherwise the imports compile into normal builds with nothing using them.
+#[cfg(test)]
 mod tests;
 mod types;
 

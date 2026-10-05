@@ -9,12 +9,18 @@ Thank you for your interest in contributing to Revue! We welcome contributions o
 ### Prerequisites
 
 ```bash
-# Rust (1.87+)
+# Rust (1.88+)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Optional: typos (spell checker)
 cargo install typos-cli
 ```
+
+**What 1.88 covers.** It is the floor for building `revue` with **default
+features**, which is what the `MSRV (1.88)` CI job checks. Optional features
+pull dependencies with their own, higher floors — `sysinfo` currently needs
+1.95 — so `--all-features` needs a newer toolchain. Contributors should use
+stable; the MSRV job exists to keep the default build honest for consumers.
 
 ### Project Setup
 
@@ -87,6 +93,12 @@ chore(deps): update crossterm to 0.28
 # Breaking changes - add ! after type
 feat!(api): change View trait signature
 ```
+
+**The description must not start with a capital letter.** CI enforces this on
+the PR title with `subjectPattern: ^(?![A-Z]).+$`, and a squash merge takes the
+PR title as the commit message — so `feat(event): Tab moves focus` fails and
+`feat(event): move focus with Tab` passes. Rewrite the sentence rather than
+lowercasing a proper noun.
 
 **Types:**
 

@@ -148,7 +148,7 @@ fn test_pagination_active_color() {
 #[test]
 fn test_pagination_inactive_color() {
     let p = Pagination::new(10).inactive_color(Color::BLUE);
-    assert_eq!(p.get_inactive_color(), Color::BLUE);
+    assert_eq!(p.get_inactive_color(), Some(Color::BLUE));
 }
 
 #[test]

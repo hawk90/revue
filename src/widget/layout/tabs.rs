@@ -274,7 +274,12 @@ impl View for Tabs {
             let (fg, bg) = if is_active {
                 (self.active_fg, self.active_bg)
             } else {
-                (self.fg, self.bg)
+                // Inactive tabs take the stylesheet's colors; the active tab
+                // keeps its highlight, which a rule cannot address separately.
+                (
+                    self.fg.or_else(|| ctx.css_color_if_set()),
+                    self.bg.or_else(|| ctx.css_background_if_set()),
+                )
             };
 
             // Draw padding

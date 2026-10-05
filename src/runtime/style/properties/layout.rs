@@ -29,7 +29,12 @@ pub struct LayoutStyle {
     /// Item order (lower values rendered first)
     pub order: i16,
     /// Gap between flex/grid items
-    pub gap: u16,
+    ///
+    /// `None` is "not specified", which is not the same as `Some(0)`. A plain
+    /// `u16` could not tell those apart, so a stylesheet saying `gap: 0` read
+    /// as saying nothing and the builder's own gap survived. `column_gap` and
+    /// `row_gap` were already `Option` and did not have that problem.
+    pub gap: Option<u16>,
     /// Column gap for grid
     pub column_gap: Option<u16>,
     /// Row gap for grid
@@ -56,17 +61,19 @@ mod tests {
         assert_eq!(layout.flex_direction, FlexDirection::default());
         assert_eq!(layout.justify_content, JustifyContent::default());
         assert_eq!(layout.align_items, AlignItems::default());
-        assert_eq!(layout.gap, 0);
+        assert_eq!(layout.gap, None);
         assert_eq!(layout.column_gap, None);
         assert_eq!(layout.row_gap, None);
     }
 
     #[test]
     fn test_layout_style_clone() {
-        let mut layout = LayoutStyle::default();
-        layout.gap = 10;
+        let layout = LayoutStyle {
+            gap: Some(10),
+            ..Default::default()
+        };
         let cloned = layout.clone();
-        assert_eq!(cloned.gap, 10);
+        assert_eq!(cloned.gap, Some(10));
     }
 
     #[test]
@@ -78,24 +85,30 @@ mod tests {
 
     #[test]
     fn test_layout_style_not_equal() {
-        let mut layout1 = LayoutStyle::default();
-        layout1.gap = 10;
+        let layout1 = LayoutStyle {
+            gap: Some(10),
+            ..Default::default()
+        };
         let layout2 = LayoutStyle::default();
         assert_ne!(layout1, layout2);
     }
 
     #[test]
     fn test_layout_style_grid_template() {
-        let mut layout = LayoutStyle::default();
-        layout.grid_template_columns = GridTemplate::fr(&[1.0, 2.0]);
+        let layout = LayoutStyle {
+            grid_template_columns: GridTemplate::fr(&[1.0, 2.0]),
+            ..Default::default()
+        };
         assert_eq!(layout.grid_template_columns.tracks.len(), 2);
     }
 
     #[test]
     fn test_layout_style_grid_placement() {
-        let mut layout = LayoutStyle::default();
-        layout.grid_column = GridPlacement::span(2);
-        layout.grid_row = GridPlacement::from_to(1, 3);
+        let layout = LayoutStyle {
+            grid_column: GridPlacement::span(2),
+            grid_row: GridPlacement::from_to(1, 3),
+            ..Default::default()
+        };
         assert_eq!(layout.grid_column, GridPlacement::span(2));
         assert_eq!(layout.grid_row, GridPlacement::from_to(1, 3));
     }

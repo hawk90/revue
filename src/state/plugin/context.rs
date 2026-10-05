@@ -377,12 +377,12 @@ mod tests {
         ctx.set_current_plugin("test");
 
         ctx.set_data("int", 42i32);
-        ctx.set_data("float", 3.14f64);
+        ctx.set_data("float", 1.25f64);
         ctx.set_data("string", "hello".to_string());
         ctx.set_data("bool", true);
 
         assert_eq!(ctx.get_data::<i32>("int"), Some(&42));
-        assert_eq!(ctx.get_data::<f64>("float"), Some(&3.14));
+        assert_eq!(ctx.get_data::<f64>("float"), Some(&1.25));
         assert_eq!(ctx.get_data::<String>("string"), Some(&"hello".to_string()));
         assert_eq!(ctx.get_data::<bool>("bool"), Some(&true));
     }

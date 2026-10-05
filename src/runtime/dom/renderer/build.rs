@@ -12,6 +12,8 @@ impl DomRenderer {
         self.tree = crate::dom::DomTree::new();
         self.styles.clear();
 
+        self.structure_dirty = true;
+
         // Create root node and recursively build children
         let meta = root.meta();
         let root_id = self.tree.create_root(meta);

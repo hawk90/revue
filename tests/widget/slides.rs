@@ -248,7 +248,7 @@ fn test_parse_slides_leading_delimiter() {
 fn test_parse_slides_trailing_delimiter() {
     let markdown = "# Last Slide\n\n---";
     let slides = parse_slides(markdown);
-    assert!(slides.len() >= 1);
+    assert!(!slides.is_empty());
 }
 
 #[test]
@@ -306,7 +306,7 @@ fn test_parse_slides_newlines_in_delimiter() {
     let slides = parse_slides(markdown);
     // The asterisks are treated as content, not a delimiter
     // So this becomes one slide with all the content
-    assert!(slides.len() >= 1);
+    assert!(!slides.is_empty());
 }
 
 #[test]
@@ -457,7 +457,7 @@ Content
 <!-- notes: Second note -->"#;
     let slides = parse_slides(markdown);
     // Should handle multiple notes blocks (implementation dependent)
-    assert!(slides.len() >= 1);
+    assert!(!slides.is_empty());
 }
 
 #[test]
@@ -499,7 +499,7 @@ fn test_parse_slides_mixed_delimiter_styles() {
     let slides = parse_slides(markdown);
     // Different delimiter styles may or may not work
     // At minimum, dashes should work
-    assert!(slides.len() >= 1);
+    assert!(!slides.is_empty());
 }
 
 #[test]
@@ -621,14 +621,14 @@ fn test_parse_slides_empty_title_h1() {
     let markdown = "#\n\nContent without title";
     let slides = parse_slides(markdown);
     // Empty heading should be handled
-    assert!(slides.len() >= 1);
+    assert!(!slides.is_empty());
 }
 
 #[test]
 fn test_parse_slides_heading_only_hash() {
     let markdown = "##\n\nContent";
     let slides = parse_slides(markdown);
-    assert!(slides.len() >= 1);
+    assert!(!slides.is_empty());
 }
 
 #[test]
@@ -738,7 +738,7 @@ fn test_parse_slides_notes_empty() {
     let markdown = "# Title\n\n<!-- notes: -->";
     let slides = parse_slides(markdown);
     // Empty notes should be handled
-    assert!(slides.len() >= 1);
+    assert!(!slides.is_empty());
 }
 
 #[test]
@@ -761,7 +761,7 @@ fn test_parse_slides_frontmatter_like_content() {
     let markdown = "---\nkey: value\n---\n\n# Title";
     let slides = parse_slides(markdown);
     // Frontmatter-like content should be handled
-    assert!(slides.len() >= 1);
+    assert!(!slides.is_empty());
 }
 
 #[test]

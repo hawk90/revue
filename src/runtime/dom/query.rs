@@ -12,7 +12,7 @@
 //! let cards = dom.query_all(".card");
 //! ```
 
-use super::selector::{parse_selector, Combinator, Selector, SelectorPart};
+use super::selector::{parse_selector, Selector};
 use super::{DomId, DomNode};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -194,7 +194,132 @@ impl DomTree {
             }
         }
 
+        // A brand new node has no computed style, so the walk has to reach it.
+        self.mark_subtree_dirty(id);
+
         id
+    }
+
+    /// Apply a new element id and class set to an existing node, keeping the
+    /// id and class indices consistent.
+    ///
+    /// Reconciliation reuses nodes across frames, so a node's classes and even
+    /// its element id can change while its [`DomId`] stays the same. Writing
+    /// `node.meta` directly leaves `id_map` and `class_index` pointing at the
+    /// old values, and every `query(".foo")` after that is wrong.
+    ///
+    /// Returns `true` if anything changed.
+    pub(crate) fn apply_meta(&mut self, id: DomId, new_meta: &super::node::WidgetMeta) -> bool {
+        let Some(node) = self.nodes.get(&id) else {
+            return false;
+        };
+
+        let id_changed = node.meta.id != new_meta.id;
+        let classes_changed = node.meta.classes != new_meta.classes;
+        let key_changed = node.meta.key != new_meta.key;
+        // Static per widget type, so in practice it only differs when the node
+        // is being replaced rather than updated - but leaving it out of both
+        // the test and the copy below would make that the one case it is wrong.
+        let focusable_changed = node.meta.focusable != new_meta.focusable;
+        // Unlike the rest of the meta, this one really does change frame to
+        // frame - a form disables its submit button while it validates. It also
+        // has to reach `NodeState`, since that is what `:disabled` matches.
+        let disabled_changed = node.meta.disabled != new_meta.disabled;
+        if !id_changed
+            && !classes_changed
+            && !key_changed
+            && !focusable_changed
+            && !disabled_changed
+        {
+            return false;
+        }
+
+        let old_element_id = node.meta.id.clone();
+        let old_classes: Vec<Arc<str>> = node
+            .meta
+            .classes
+            .iter()
+            .map(|c| Arc::from(c.as_str()))
+            .collect();
+
+        if id_changed {
+            if let Some(old) = old_element_id {
+                self.id_map.remove(&Arc::from(old.as_str()));
+            }
+            if let Some(ref new) = new_meta.id {
+                self.id_map.insert(Arc::from(new.as_str()), id);
+            }
+        }
+
+        if classes_changed {
+            for class in &old_classes {
+                if let Some(ids) = self.class_index.get_mut(class) {
+                    ids.retain(|&x| x != id);
+                    if ids.is_empty() {
+                        self.class_index.remove(class);
+                    }
+                }
+            }
+            for class in &new_meta.classes {
+                self.class_index
+                    .entry(Arc::from(class.as_str()))
+                    .or_default()
+                    .push(id);
+            }
+        }
+
+        if let Some(node) = self.nodes.get_mut(&id) {
+            node.meta.id = new_meta.id.clone();
+            node.meta.classes = new_meta.classes.clone();
+            node.meta.key = new_meta.key.clone();
+            node.meta.focusable = new_meta.focusable;
+            node.meta.disabled = new_meta.disabled;
+            if disabled_changed {
+                node.state.disabled = new_meta.disabled;
+                // `:disabled` may now match or stop matching.
+                node.state.dirty = true;
+            }
+        }
+
+        true
+    }
+
+    /// Replace a parent's child list and refresh every child's structural
+    /// state (`first_child`, `last_child`, `only_child`, `child_index`,
+    /// `sibling_count`).
+    ///
+    /// Reconciliation reorders and removes children, and `:first-child` /
+    /// `:nth-child` selectors read that state. Assigning `parent.children`
+    /// without this leaves the CSS matching one frame behind - or permanently
+    /// wrong, since nothing else recomputes it.
+    pub(crate) fn set_children(&mut self, parent_id: DomId, children: Vec<DomId>) {
+        if !self.nodes.contains_key(&parent_id) {
+            return;
+        }
+
+        let total = children.len();
+        let mut moved = Vec::new();
+        for (idx, &child_id) in children.iter().enumerate() {
+            if let Some(child) = self.nodes.get_mut(&child_id) {
+                // `first_child`, `last_child` and `only_child` are all derived
+                // from these two, so they are the whole comparison.
+                if (child.state.child_index, child.state.sibling_count) != (idx, total) {
+                    child.state.update_position(idx, total);
+                    // The node moved, so it may now match a different
+                    // structural pseudo-class and its computed style is stale.
+                    child.state.dirty = true;
+                    moved.push(child_id);
+                }
+            }
+        }
+
+        for child_id in moved {
+            self.mark_subtree_dirty(child_id);
+        }
+
+        if let Some(parent) = self.nodes.get_mut(&parent_id) {
+            parent.children = children;
+        }
     }
 
     /// Remove a node and its children
@@ -328,158 +453,144 @@ impl DomTree {
         }
     }
 
-    /// Set hovered node
+    /// Set the hovered node and its ancestors.
+    ///
+    /// `:hover` matches the element under the pointer *and every element that
+    /// contains it* - that is what makes `.button:hover` work when the pointer
+    /// is really over the button's inner label. Marking only the deepest node
+    /// would leave every container rule dead.
+    ///
+    /// `:focus` is not like this: exactly one element has focus, and the
+    /// ancestor form is a separate selector (`:focus-within`). See
+    /// [`set_focused`](Self::set_focused).
     pub fn set_hovered(&mut self, id: Option<DomId>) {
         // Clear previous hover
         for node in self.nodes.values_mut() {
             node.state.hovered = false;
         }
 
-        // Set new hover
-        if let Some(hover_id) = id {
-            if let Some(node) = self.nodes.get_mut(&hover_id) {
-                node.state.hovered = true;
-            }
+        let mut current = id;
+        while let Some(node_id) = current {
+            let Some(node) = self.nodes.get_mut(&node_id) else {
+                break;
+            };
+            node.state.hovered = true;
+            current = node.parent;
         }
     }
 
-    /// Internal matcher for selectors with full combinator support
+    /// The nearest node at or above `id` that can take focus right now.
     ///
-    /// Matches selectors from right to left, following CSS combinator rules:
-    /// - Descendant (` `): Matches any ancestor
-    /// - Child (`>`): Matches direct parent only
-    /// - AdjacentSibling (`+`): Matches immediately preceding sibling
-    /// - GeneralSibling (`~`): Matches any preceding sibling
+    /// A click lands on the deepest node under the pointer, which for a button
+    /// is its inner label - a node that holds no focus and reacts to no key.
+    /// Focus belongs to the nearest enclosing thing that does, exactly as a
+    /// click on a `<button>`'s text focuses the button.
+    ///
+    /// `disabled` nodes are skipped rather than blocking: a disabled control
+    /// does not swallow focus, it just is not the one that gets it.
+    pub fn focus_target(&self, id: DomId) -> Option<DomId> {
+        let mut current = Some(id);
+        while let Some(node_id) = current {
+            let node = self.nodes.get(&node_id)?;
+            if node.meta.focusable && !node.state.disabled {
+                return Some(node_id);
+            }
+            current = node.parent;
+        }
+        None
+    }
+
+    /// Every node that can take focus, in document order.
+    ///
+    /// Document order is what Tab follows - the order the reader meets things,
+    /// not the order they were registered - so this is a pre-order walk, the
+    /// same walk the paint pass makes. A widget that moves in the view moves in
+    /// the tab ring with it, for free.
+    ///
+    /// `disabled` nodes are left out, matching
+    /// [`focus_target`](Self::focus_target) and every browser: a disabled
+    /// control is not in the ring at all, rather than being a stop that does
+    /// nothing.
+    pub fn focusable_in_order(&self) -> Vec<DomId> {
+        let mut out = Vec::new();
+        if let Some(root) = self.root_id() {
+            self.collect_focusable(root, &mut out);
+        }
+        out
+    }
+
+    fn collect_focusable(&self, id: DomId, out: &mut Vec<DomId>) {
+        let Some(node) = self.nodes.get(&id) else {
+            return;
+        };
+        if node.meta.focusable && !node.state.disabled {
+            out.push(id);
+        }
+        for &child in &node.children {
+            self.collect_focusable(child, out);
+        }
+    }
+
+    /// Tell every ancestor of `id` that something below it needs recomputing.
+    ///
+    /// Call this whenever a node's computed style is invalidated. The style walk
+    /// descends from the root and turns back at settled nodes, so an invalidated
+    /// node that no ancestor points at is simply never visited.
+    ///
+    /// Stops early if an ancestor is already marked - the rest of the chain to
+    /// the root was marked by whoever set it.
+    pub fn mark_subtree_dirty(&mut self, id: DomId) {
+        let mut current = self.nodes.get(&id).and_then(|node| node.parent);
+        while let Some(node_id) = current {
+            let Some(node) = self.nodes.get_mut(&node_id) else {
+                break;
+            };
+            if node.state.subtree_dirty {
+                break;
+            }
+            node.state.subtree_dirty = true;
+            current = node.parent;
+        }
+    }
+
+    /// The siblings that come after `id`, in order.
+    ///
+    /// `+` and `~` only ever look backwards, so a change on a node can affect
+    /// the ones after it and never the ones before.
+    pub fn following_siblings_of(&self, id: DomId) -> Vec<DomId> {
+        let Some(parent_id) = self.nodes.get(&id).and_then(|node| node.parent) else {
+            return Vec::new();
+        };
+        let Some(parent) = self.nodes.get(&parent_id) else {
+            return Vec::new();
+        };
+        match parent.children.iter().position(|&child| child == id) {
+            Some(pos) => parent.children[pos + 1..].to_vec(),
+            None => Vec::new(),
+        }
+    }
+
+    /// The node and its ancestors, deepest first.
+    pub fn ancestors_of(&self, id: DomId) -> Vec<DomId> {
+        let mut chain = Vec::new();
+        let mut current = Some(id);
+        while let Some(node_id) = current {
+            let Some(node) = self.nodes.get(&node_id) else {
+                break;
+            };
+            chain.push(node_id);
+            current = node.parent;
+        }
+        chain
+    }
+
+    /// Internal matcher for selectors with full combinator support.
+    ///
+    /// Delegates to the shared matcher - see
+    /// [`selector::matching`](crate::dom::selector::matching) for why this and
+    /// the cascade must not have one each.
     fn matches_selector(&self, node: &DomNode, selector: &Selector) -> bool {
-        if selector.parts.is_empty() {
-            return false;
-        }
-
-        // Match from right to left (target first, then ancestors/siblings)
-        self.matches_selector_from(node, selector, selector.parts.len() - 1)
-    }
-
-    /// Recursively match selector parts from right to left
-    fn matches_selector_from(&self, node: &DomNode, selector: &Selector, part_idx: usize) -> bool {
-        let (part, _) = &selector.parts[part_idx];
-
-        // Check if current part matches node
-        if !self.matches_part(part, node) {
-            return false;
-        }
-
-        // If this is the first part (leftmost), we're done
-        if part_idx == 0 {
-            return true;
-        }
-
-        // Get the combinator from the previous part
-        let prev_combinator = selector.parts[part_idx - 1].1;
-
-        match prev_combinator {
-            Some(Combinator::Descendant) => {
-                // Any ancestor must match
-                let mut current = node.parent;
-                while let Some(parent_id) = current {
-                    if let Some(parent) = self.nodes.get(&parent_id) {
-                        if self.matches_selector_from(parent, selector, part_idx - 1) {
-                            return true;
-                        }
-                        current = parent.parent;
-                    } else {
-                        break;
-                    }
-                }
-                false
-            }
-            Some(Combinator::Child) => {
-                // Direct parent must match
-                if let Some(parent_id) = node.parent {
-                    if let Some(parent) = self.nodes.get(&parent_id) {
-                        return self.matches_selector_from(parent, selector, part_idx - 1);
-                    }
-                }
-                false
-            }
-            Some(Combinator::AdjacentSibling) => {
-                // Immediately preceding sibling must match
-                if let Some(prev_sibling) = self.get_previous_sibling(node) {
-                    return self.matches_selector_from(prev_sibling, selector, part_idx - 1);
-                }
-                false
-            }
-            Some(Combinator::GeneralSibling) => {
-                // Any preceding sibling must match
-                let mut current = self.get_previous_sibling(node);
-                while let Some(sibling) = current {
-                    if self.matches_selector_from(sibling, selector, part_idx - 1) {
-                        return true;
-                    }
-                    current = self.get_previous_sibling(sibling);
-                }
-                false
-            }
-            None => {
-                // No combinator means simple selector - already matched above
-                true
-            }
-        }
-    }
-
-    /// Check if a selector part matches a node
-    fn matches_part(&self, part: &SelectorPart, node: &DomNode) -> bool {
-        // Universal selector matches everything
-        if part.universal
-            && part.id.is_none()
-            && part.classes.is_empty()
-            && part.pseudo_classes.is_empty()
-            && part.element.is_none()
-        {
-            return true;
-        }
-
-        // Check element type
-        if let Some(ref elem) = part.element {
-            if node.widget_type() != elem {
-                return false;
-            }
-        }
-
-        // Check ID
-        if let Some(id) = &part.id {
-            if node.element_id() != Some(id.as_str()) {
-                return false;
-            }
-        }
-
-        // Check classes
-        for class in &part.classes {
-            if !node.has_class(class) {
-                return false;
-            }
-        }
-
-        // Check pseudo-classes
-        for pseudo in &part.pseudo_classes {
-            if !node.matches_pseudo(pseudo) {
-                return false;
-            }
-        }
-
-        true
-    }
-
-    /// Get previous sibling of a node
-    fn get_previous_sibling(&self, node: &DomNode) -> Option<&DomNode> {
-        let parent_id = node.parent?;
-        let parent = self.nodes.get(&parent_id)?;
-
-        let idx = parent.children.iter().position(|&id| id == node.id)?;
-        if idx > 0 {
-            self.nodes.get(&parent.children[idx - 1])
-        } else {
-            None
-        }
+        crate::dom::selector::matching::matches(node, selector, &|id| self.nodes.get(&id))
     }
 
     /// Get a parsed selector from cache, or parse and cache it
@@ -736,7 +847,7 @@ mod tests {
 
         // Test len() and is_empty()
         assert!(!tree.is_empty());
-        assert!(tree.len() > 0);
+        assert!(!tree.is_empty());
 
         // Test nodes() iterator
         let count = tree.nodes().count();

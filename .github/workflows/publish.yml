@@ -7,14 +7,17 @@ on:
 jobs:
   publish-macros:
     name: Publish revue-macros to crates.io
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: crates-io
     permissions:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          cache: false
+          build-warnings: allow
       - uses: Swatinem/rust-cache@v2
       - uses: rust-lang/crates-io-auth-action@v1
         id: auth
@@ -27,15 +30,18 @@ jobs:
 
   publish:
     name: Publish revue to crates.io
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: crates-io
     needs: publish-macros
     permissions:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          cache: false
+          build-warnings: allow
       - uses: Swatinem/rust-cache@v2
       - uses: rust-lang/crates-io-auth-action@v1
         id: auth

@@ -201,6 +201,18 @@ impl LayoutEngine {
             .ok_or_else(|| LayoutError::NodeNotFound(dom_id.inner()))
     }
 
+    /// Children of a node, in layout order.
+    ///
+    /// Empty for a leaf - and, before the post-order fix in
+    /// `App::build_layout_tree`, empty for *every* node, which is how the
+    /// layout tree ended up with no edges at all.
+    pub fn children(&self, dom_id: DomId) -> Vec<DomId> {
+        self.tree
+            .get(dom_id.inner())
+            .map(|node| node.children.iter().map(|&id| DomId::new(id)).collect())
+            .unwrap_or_default()
+    }
+
     /// Get the computed layout for a node, returning None if not found
     ///
     /// This is a convenience method that converts errors to None.
@@ -233,7 +245,7 @@ fn style_to_layout_node(id: u64, style: &Style) -> LayoutNode {
             justify_content: style.layout.justify_content,
             align_items: style.layout.align_items,
             flex_grow: style.layout.flex_grow,
-            gap: style.layout.gap,
+            gap: style.layout.gap.unwrap_or(0),
             column_gap: style.layout.column_gap,
             row_gap: style.layout.row_gap,
         },
@@ -277,7 +289,7 @@ fn update_node_from_style(node: &mut LayoutNode, style: &Style) {
         justify_content: style.layout.justify_content,
         align_items: style.layout.align_items,
         flex_grow: style.layout.flex_grow,
-        gap: style.layout.gap,
+        gap: style.layout.gap.unwrap_or(0),
         column_gap: style.layout.column_gap,
         row_gap: style.layout.row_gap,
     };

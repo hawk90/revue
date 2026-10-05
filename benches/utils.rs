@@ -47,7 +47,7 @@ fn bench_path_shortening(c: &mut Criterion) {
 fn bench_home_replacement(c: &mut Criterion) {
     let mut group = c.benchmark_group("home_replacement");
 
-    let paths = vec![
+    let paths = [
         "/Users/john/Documents/file.txt",
         "/home/user/projects/rust/src/main.rs",
         "/Users/verylong/path/to/some/file.txt",

@@ -1,8 +1,8 @@
 [package]
 name = "revue-macros"
-version = "2.74.0"
+version = "2.75.0"
 edition = "2021"
-rust-version = "1.87"
+rust-version = "1.88"
 description = "Internal proc-macros for revue framework"
 license = "MIT"
 repository = "https://github.com/hawk90/revue"

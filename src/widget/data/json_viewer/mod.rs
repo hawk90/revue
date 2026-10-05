@@ -66,7 +66,7 @@ mod tests {
         assert_eq!(viewer.selected_index(), 0);
 
         viewer.select_last();
-        assert_eq!(viewer.selected_index() > 0, true);
+        assert!(viewer.selected_index() > 0);
     }
 
     // KEEP HERE: accesses private fields (selected_index, page_down, page_up)

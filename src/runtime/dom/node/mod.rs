@@ -4,6 +4,83 @@ use super::NodeId;
 use crate::style::Style;
 use std::collections::HashSet;
 
+/// Reconciliation key - the identity a widget claims across frames.
+///
+/// Without a key, a widget's identity is its position among its siblings. That
+/// is fine for a fixed layout and wrong for a dynamic collection: insert a row
+/// at the top of a list and every row below it is reconciled against the wrong
+/// node, so focus, selection and scroll offset all shift by one.
+///
+/// A key says "this is the same widget as last frame" regardless of where it
+/// moved to. Use the identity of the *data*, never the loop index - an index is
+/// just positional identity spelled differently.
+///
+/// ```
+/// use revue::dom::WidgetKey;
+///
+/// # struct Row { id: u64 }
+/// # let row = Row { id: 7 };
+/// let good = WidgetKey::from(row.id);   // stable across reorders
+/// let also_good = WidgetKey::from("inbox");
+/// ```
+/// The string form is `Arc<str>` rather than `String` on purpose. `View::meta`
+/// clones the key on every frame for every keyed widget; with `String` that is
+/// a heap allocation per widget per frame, and with `Arc<str>` it is a refcount
+/// bump. Prefer [`WidgetKey::Int`] where the data has a numeric id - it does not
+/// allocate at all.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum WidgetKey {
+    /// Numeric key - a database id, a stable hash, an entity id.
+    Int(u64),
+    /// String key - a name, a uuid, a path.
+    Str(std::sync::Arc<str>),
+}
+
+impl From<u64> for WidgetKey {
+    fn from(v: u64) -> Self {
+        WidgetKey::Int(v)
+    }
+}
+
+impl From<u32> for WidgetKey {
+    fn from(v: u32) -> Self {
+        WidgetKey::Int(v as u64)
+    }
+}
+
+impl From<usize> for WidgetKey {
+    fn from(v: usize) -> Self {
+        WidgetKey::Int(v as u64)
+    }
+}
+
+impl From<&str> for WidgetKey {
+    fn from(v: &str) -> Self {
+        WidgetKey::Str(std::sync::Arc::from(v))
+    }
+}
+
+impl From<String> for WidgetKey {
+    fn from(v: String) -> Self {
+        WidgetKey::Str(std::sync::Arc::from(v.as_str()))
+    }
+}
+
+impl From<std::sync::Arc<str>> for WidgetKey {
+    fn from(v: std::sync::Arc<str>) -> Self {
+        WidgetKey::Str(v)
+    }
+}
+
+impl std::fmt::Display for WidgetKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WidgetKey::Int(v) => write!(f, "{v}"),
+            WidgetKey::Str(v) => write!(f, "{v}"),
+        }
+    }
+}
+
 /// Widget metadata for CSS matching
 #[derive(Debug, Clone, Default)]
 pub struct WidgetMeta {
@@ -13,6 +90,29 @@ pub struct WidgetMeta {
     pub id: Option<String>,
     /// CSS classes (e.g., ["primary", "large"])
     pub classes: HashSet<String>,
+    /// Reconciliation key - see [`WidgetKey`].
+    ///
+    /// `None` means the widget's identity is positional, which is the
+    /// pre-existing behavior.
+    pub key: Option<WidgetKey>,
+    /// Can this kind of widget hold keyboard focus?
+    ///
+    /// A property of the widget *type*, not of the moment - `Button` is
+    /// focusable, `Text` is not, and that does not change frame to frame.
+    /// Whether a particular node can be focused *right now* additionally
+    /// depends on its [`NodeState::disabled`], the same split HTML makes
+    /// between a `<button>` and a `<button disabled>`.
+    ///
+    /// Defaults to `false`, so a widget that says nothing stays unfocusable.
+    pub focusable: bool,
+    /// Has the application declared this widget disabled?
+    ///
+    /// Unlike [`NodeState::focused`] and [`NodeState::hovered`], which the
+    /// runtime *discovers*, this is *declared* by the view - the same split
+    /// HTML makes between the `disabled` attribute and the `:focus`
+    /// pseudo-class. So it travels with the widget's description of itself and
+    /// is copied onto the node, rather than being written by an event.
+    pub disabled: bool,
 }
 
 impl WidgetMeta {
@@ -22,7 +122,28 @@ impl WidgetMeta {
             widget_type: widget_type.into(),
             id: None,
             classes: HashSet::new(),
+            key: None,
+            focusable: false,
+            disabled: false,
         }
+    }
+
+    /// Mark this widget type as able to hold keyboard focus.
+    pub fn focusable(mut self) -> Self {
+        self.focusable = true;
+        self
+    }
+
+    /// Declare this widget disabled.
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = disabled;
+        self
+    }
+
+    /// Set the reconciliation key.
+    pub fn key(mut self, key: impl Into<WidgetKey>) -> Self {
+        self.key = Some(key.into());
+        self
     }
 
     /// Set element ID
@@ -74,6 +195,17 @@ pub struct NodeState {
     pub empty: bool,
     /// Node's content, style or layout is dirty and needs repaint
     pub dirty: bool,
+    /// Something below this node is dirty, even if this node is not.
+    ///
+    /// The style walk stops descending at any node it considers settled, which
+    /// is what keeps an unchanged frame from recomputing the whole cascade. Without
+    /// this bit "settled" would mean "this node is clean", and a clean root would
+    /// hide every stale descendant beneath it - so a class added on frame two
+    /// would never restyle anything.
+    ///
+    /// Set on the ancestors of an invalidated node and cleared as the walk
+    /// passes through.
+    pub subtree_dirty: bool,
     /// Node is first child of parent
     pub first_child: bool,
     /// Node is last child of parent
@@ -166,8 +298,13 @@ impl DomNode {
     pub fn new(id: DomId, meta: WidgetMeta) -> Self {
         Self {
             id,
+            // Declared state arrives with the meta; discovered state
+            // (`focused`, `hovered`) starts empty and is written by events.
+            state: NodeState {
+                disabled: meta.disabled,
+                ..NodeState::default()
+            },
             meta,
-            state: NodeState::default(),
             parent: None,
             children: Vec::new(),
             computed_style: Style::default(),

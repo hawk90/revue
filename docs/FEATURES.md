@@ -88,6 +88,23 @@ text {
 
 ### Supported Properties
 
+> **Layout properties need `css_layout`.** Paint properties - colors, border,
+> text - apply as soon as the widget has a DOM node. Box properties (`display`,
+> `width`, `height`, `margin`, `min-*`/`max-*`) override geometry a container
+> already computed, so they only take effect with
+> `App::builder().dom_from_render(true).css_layout(true)`. Flow properties
+> A property whose *initial* value is also its "off" value has to track whether
+> it was specified at all, or a stylesheet cannot set it back to that value.
+> `gap`, `border-style` and the two grid gaps all do, so `gap: 0` closes a gap
+> the builder opened and `border-style: none` removes a border it drew. A
+> stylesheet that says nothing still leaves the builder's value alone — that is
+> the point of the distinction.
+>
+> `gap` (and `column-gap` / `row-gap`) reaches `vstack`, `hstack` and `grid`
+> under the same flag. The remaining flow properties (`flex-*`, `grid-template-*`)
+> are the container's own and are not applied from CSS - see
+> `docs/refactor/findings-layout.md`.
+
 | Property | Values | Example |
 |----------|--------|---------|
 | `display` | `flex`, `block`, `none` | `display: flex;` |
@@ -97,6 +114,8 @@ text {
 | `gap` | `<number>` | `gap: 1;` |
 | `padding` | `<number>` or `<top> <right> <bottom> <left>` | `padding: 1 2;` |
 | `margin` | same as padding | `margin: 1;` |
+| `padding-top` / `-right` / `-bottom` / `-left` | `<number>` | `padding-left: 2;` |
+| `margin-top` / `-right` / `-bottom` / `-left` | `<number>` | `margin-left: 3;` |
 | `width` | `<number>`, `<percent>`, `auto` | `width: 50%;` |
 | `height` | same as width | `height: 10;` |
 | `min-width` | same as width | `min-width: 20;` |
@@ -110,18 +129,34 @@ text {
 | `row-gap` | `<number>` | `row-gap: 1;` |
 | `border` | `<style> [color]` | `border: solid cyan;` |
 | `border-style` | `none`, `solid`, `dashed`, `double`, `rounded` | `border-style: rounded;` |
+| | `dashed` draws a single line — terminals have no dashed box-drawing set | |
 | `border-color` | `<color>` | `border-color: red;` |
 | `color` | `<color>` | `color: #ff0000;` |
 | `background` | `<color>` | `background: blue;` |
-| `opacity` | `0.0` - `1.0` | `opacity: 0.5;` |
+| `opacity` | `0.0` - `1.0` | parsed, **not applied** — see below |
 | `visibility` | `visible`, `hidden` | `visibility: hidden;` |
 | `overflow` | `visible`, `hidden`, `scroll`, `auto` | `overflow: hidden;` |
 | `text-align` | `left`, `center`, `right` | `text-align: center;` |
 | `font-weight` | `normal`, `bold`, `700`-`900` | `font-weight: bold;` |
 | `text-decoration` | `none`, `underline`, `line-through` | `text-decoration: underline;` |
-| `z-index` | `<integer>` | `z-index: 10;` |
-| `position` | `static`, `relative`, `absolute`, `fixed` | `position: absolute;` |
-| `top`, `right`, `bottom`, `left` | `<number>` | `top: 5;` |
+| `z-index` | `<integer>` | parsed, **not applied** — see below |
+| `position` | `static`, `relative`, `absolute`, `fixed` | parsed, **not applied** — see below |
+| `top`, `right`, `bottom`, `left` | `<number>` | parsed, **not applied** — see below |
+
+### Parsed but not applied
+
+These four are accepted by the parser and reach the computed style, and nothing
+reads them at paint time. They are listed so the gap is findable, not because
+they work.
+
+| | Why it is not a one-line fix |
+|---|---|
+| `opacity` | A terminal cell has no alpha. Applying it means deciding what to blend against, and cells do not carry a reliable backdrop. `Text::dim()` is the terminal-native approximation. |
+| `z-index` | Needs paint ordering. Widgets paint in traversal order today, and overlays are a separate queue. |
+| `position` | Read by the layout engine, whose rects nothing paints from — see [Layout Findings](refactor/findings-layout.md). |
+| `top` / `right` / `bottom` / `left` | Only meaningful once `position` is. |
+
+`Positioned` and `Layers` cover absolute placement and stacking as builders.
 
 ### Color Formats
 
@@ -589,17 +624,20 @@ card()
 #### Modal
 
 ```rust
-if show_modal.get() {
-    modal()
-        .title("Confirm")
-        .content(text("Are you sure?"))
-        .actions([
-            button("Cancel").on_click(|| show_modal.set(false)),
-            button("OK").on_click(|| {
-                do_action();
-                show_modal.set(false);
-            }),
-        ])
+let mut dialog = Modal::new()
+    .title("Confirm")
+    .content("Are you sure?")
+    .ok_cancel();
+
+dialog.show();
+
+// The modal owns its selection; `handle_key` returns the index of the button
+// the user activated, and `None` while they are still moving between them.
+if let Some(index) = dialog.handle_key(&key) {
+    if index == 0 {
+        do_action();
+    }
+    dialog.hide();
 }
 ```
 
@@ -984,17 +1022,32 @@ match screen.get() {
 
 ### Focus Management
 
-```rust
-// Auto focus order (Tab / Shift+Tab)
-vbox().children([
-    input().focus_order(1),
-    input().focus_order(2),
-    button("Submit").focus_order(3),
-])
+Tab order is **document order** — the order the reader meets things. There is no
+`focus_order` to assign; move the widget and it moves in the ring.
 
-// Manual focus
-focus_manager.focus("input-1");
+```rust
+// Opt in: Tab and Shift+Tab move `:focus`
+App::builder()
+    .dom_from_render(true)
+    .tab_navigation(true)
 ```
+
+```rust
+vstack()
+    .child(Input::new().element_id("name"))
+    .child(Input::new().element_id("email"))
+    .child(Button::new("Submit").element_id("submit"))
+```
+
+```css
+#name:focus { border-color: cyan; }
+```
+
+`disabled` widgets are left out of the ring entirely, and a left click focuses
+the nearest enclosing focusable widget. Both need `dom_from_render` — without it
+no node below the root is associated with an area and neither `:focus` nor
+`:hover` matches anything. See
+[App builder › tab_navigation](guides/app-builder.md#tab_navigationenabled).
 
 ### Layers (z-index)
 
@@ -1021,9 +1074,9 @@ let table = CharWidthTable::detect();
 
 // Manual configuration
 let table = CharWidthTable::new()
-    .cjk(2)
-    .emoji(2)
-    .nerd_font(1);  // Depends on your font
+    .with_cjk(2)
+    .with_emoji(2)
+    .with_nerd_font(1);  // Depends on your font
 ```
 
 ### Configuration
@@ -1085,25 +1138,27 @@ let mut app = App::builder()
 ### Testing
 
 ```rust
-use revue::testing::{TestApp, Pilot};
+use revue::event::{Key, KeyEvent};
+use revue::testing::TestApp;
 
 #[test]
 fn test_counter() {
     let mut app = TestApp::new(Counter::new());
 
     // Simulate key presses
-    app.press_key(Key::Up);
-    app.press_key(Key::Up);
+    app.send_key(KeyEvent::new(Key::Up));
+    app.send_key(KeyEvent::new(Key::Up));
 
     // Render and check output
-    let output = app.render_to_string();
-    assert!(output.contains("Count: 2"));
+    app.render();
+    assert!(app.contains("Count: 2"));
 }
 
 #[test]
 fn test_snapshot() {
     let mut app = TestApp::new(Counter::new());
-    insta::assert_snapshot!(app.render_to_string());
+    app.render();
+    insta::assert_snapshot!(app.screen_text());
 }
 ```
 
@@ -1461,7 +1516,7 @@ boxplot()
 // Heatmap
 heatmap()
     .data(matrix)
-    .color_scale(HeatmapColor::Viridis)
+    .color_scale(ColorScale::Viridis)
 
 // Candle chart (financial)
 candle_chart(ohlc_data)
@@ -1489,10 +1544,9 @@ REST API client widget:
 
 ```rust
 http_client()
-    .base_url("https://api.example.com")
-    .endpoint("/users")
-    .method(Method::GET)
-    .on_response(|data| handle_response(data))
+    .url("https://api.example.com/users")
+    .method(HttpMethod::GET)
+    .header("Accept", "application/json")
 ```
 
 ### QR Code
@@ -1500,10 +1554,8 @@ http_client()
 QR code generation:
 
 ```rust
-qrcode()
-    .data("https://example.com")
-    .size(QrSize::Medium)
-    .error_correction(QrLevel::M)
+qrcode("https://example.com")
+    .error_correction(ErrorCorrection::Medium)
 ```
 
 ### Rating
@@ -1565,12 +1617,12 @@ status_indicator()
 Large text with size presets:
 
 ```rust
-h1().child("Heading 1")  // Largest
-h2().child("Heading 2")
-h3().child("Heading 3")
+h1("Heading 1")  // Largest
+h2("Heading 2")
+h3("Heading 3")
 
-// Or use generic bigtext
-bigtext().size(BigTextSize::XL).child("XL Text")
+// Or name the tier directly - 1 is largest
+bigtext("Custom", 2)
 ```
 
 ### Skeleton
@@ -1589,7 +1641,7 @@ Label tags:
 
 ```rust
 tag("Rust").color(Color::ORANGE)
-chip("v1.0").variant(ChipVariant::Outlined)
+chip("v1.0").outlined()
 ```
 
 ### Number Input
@@ -1624,9 +1676,10 @@ range_picker()
 Distraction-free mode:
 
 ```rust
-zen()
-    .content(main_view())
-    .exit_key(Key::Escape)
+let mut focus = zen(main_view()).padding(4);
+
+// The wrapper does not take the key itself - toggle it from your handler
+focus.toggle();
 ```
 
 ---

@@ -38,7 +38,7 @@ let img = image_from_file("path.png");
 
 // With chaining
 let btn = button("Click")
-    .style(ButtonStyle::Primary)
+    .variant(ButtonVariant::Primary)
     .on_click(|_| println!("Clicked!"));
 ```
 
@@ -150,32 +150,40 @@ pub fn specialized_widget() -> Widget {
 ### Examples
 
 ```rust
-// From existing codebase
+// From existing codebase - src/widget/filepicker/mod.rs
 pub fn file_picker() -> FilePicker {
-    FilePicker::new().mode(FilePickerMode::OpenFile)
+    FilePicker::new()
 }
 
 pub fn save_picker() -> FilePicker {
-    FilePicker::new().mode(FilePickerMode::SaveFile)
+    FilePicker::save()
 }
 
 pub fn dir_picker() -> FilePicker {
-    FilePicker::new().mode(FilePickerMode::SelectDirectory)
+    FilePicker::directory()
+}
+```
+
+A preset can also be an associated function rather than a free one, which is
+what `Timer` does - `src/widget/data/timer/mod.rs`:
+
+```rust
+pub fn pomodoro() -> Self {
+    Self::countdown(25 * 60)
 }
 
-pub fn percentage_slider() -> Slider {
-    Slider::new().min(0.0).max(100.0).step(1.0)
+pub fn short_break() -> Self {
+    Self::countdown(5 * 60).title("Short Break")
 }
+```
 
-pub fn volume_slider() -> Slider {
-    Slider::new().min(0.0).max(1.0).step(0.1)
-}
+Either is fine. Prefer the free function when the caller would otherwise have
+to name the type twice, and the associated one when the preset is a variation
+of another constructor on the same type.
 
-pub fn pomodoro() -> Timer {
-    Timer::new()
-        .duration(Duration::from_secs(25 * 60))
-        .mode(TimerMode::Countdown)
-}
+```rust
+// Configuration goes through the builder, not a second constructor
+let volume = Slider::new().range(0.0, 1.0).step(0.1);
 ```
 
 ## Builder Methods
@@ -275,32 +283,21 @@ pub fn new() -> Self {
 
 ### Simple Widget Implementation
 
-```rust
-// src/widget/widgets/button.rs
+The shape `Button` has, in `src/widget/input/input_widgets/button.rs`:
 
+```rust
 #[derive(Clone, Debug)]
 pub struct Button {
     label: String,
-    style: ButtonStyle,
+    variant: ButtonVariant,
     on_click: Option<Box<dyn Fn() + 'static>>,
 }
 
 impl Button {
-    pub fn new() -> Self {
-        Self {
-            label: String::new(),
-            style: ButtonStyle::default(),
-            on_click: None,
-        }
-    }
+    pub fn new(label: impl Into<String>) -> Self { /* ... */ }
 
-    pub fn label(mut self, label: impl Into<String>) -> Self {
-        self.label = label.into();
-        self
-    }
-
-    pub fn style(mut self, style: ButtonStyle) -> Self {
-        self.style = style;
+    pub fn variant(mut self, variant: ButtonVariant) -> Self {
+        self.variant = variant;
         self
     }
 
@@ -308,25 +305,16 @@ impl Button {
         self.on_click = Some(Box::new(f));
         self
     }
-}
 
-impl Default for Button {
-    fn default() -> Self {
-        Self::new()
+    /// A preset, as an associated function
+    pub fn primary(label: impl Into<String>) -> Self {
+        Self::new(label).variant(ButtonVariant::Primary)
     }
 }
 
-// src/widget/widgets/mod.rs
-/// Create a new button
+/// The function-style constructor, re-exported from `src/widget/mod.rs`
 pub fn button(label: impl Into<String>) -> Button {
-    Button::new().label(label)
-}
-
-/// Create a primary button
-pub fn primary_button(label: impl Into<String>) -> Button {
-    Button::new()
-        .label(label)
-        .style(ButtonStyle::Primary)
+    Button::new(label)
 }
 ```
 

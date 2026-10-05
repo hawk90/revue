@@ -93,4 +93,4 @@ pub use image_protocol::{
     GraphicsCapabilities, ImageEncoder, ImageProtocol, Iterm2Image, KittyImage, PixelFormat,
     SixelEncoder,
 };
-pub use terminal::{stdout_terminal, Terminal};
+pub use terminal::{install_panic_hook, restore_terminal, stdout_terminal, Terminal};

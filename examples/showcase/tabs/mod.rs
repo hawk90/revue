@@ -11,6 +11,10 @@ pub mod layout;
 use crate::example::Example;
 use crate::SubTab;
 
+// A demo dispatcher: every sub-tab needs a different slice of the showcase's
+// state, so it threads all of it. Bundling the arguments into a struct would
+// only move the list somewhere else.
+#[allow(clippy::too_many_arguments)]
 pub fn get_examples(
     sub_tab: SubTab,
     frame: u64,

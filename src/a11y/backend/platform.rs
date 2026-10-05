@@ -491,16 +491,24 @@ mod tests {
     #[test]
     fn test_logged_announcement_fields() {
         let backend = LoggingBackend::new();
+
+        // Bracket the call rather than asserting a wall-clock budget: on a
+        // loaded CI runner "under 100ms" is a coin flip, and the thing worth
+        // checking is that the timestamp is taken during `announce` rather
+        // than defaulted.
+        let before = std::time::Instant::now();
         backend.announce("Test message", Priority::Assertive);
+        let after = std::time::Instant::now();
 
         let announcements = backend.announcements();
         let logged = &announcements[0];
 
         assert_eq!(logged.message, "Test message");
         assert_eq!(logged.priority, Priority::Assertive);
-        // timestamp should be very recent
-        let elapsed = logged.timestamp.elapsed().as_millis();
-        assert!(elapsed < 100); // Should be less than 100ms
+        assert!(
+            logged.timestamp >= before && logged.timestamp <= after,
+            "timestamp was not taken during the announce call"
+        );
     }
 
     // NullBackend tests

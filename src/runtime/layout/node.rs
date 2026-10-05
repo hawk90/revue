@@ -242,9 +242,11 @@ mod tests {
 
     #[test]
     fn test_flex_props_gap() {
-        let mut props = FlexProps::default();
-        props.gap = 5;
-        props.direction = FlexDirection::Row;
+        let mut props = FlexProps {
+            gap: 5,
+            direction: FlexDirection::Row,
+            ..Default::default()
+        };
 
         // Default uses gap
         assert_eq!(props.main_gap(), 5);
@@ -288,9 +290,11 @@ mod tests {
 
     #[test]
     fn test_layout_node_with_children() {
-        let mut node = LayoutNode::default();
-        node.id = 1;
-        node.children = vec![2, 3, 4];
+        let node = LayoutNode {
+            id: 1,
+            children: vec![2, 3, 4],
+            ..Default::default()
+        };
 
         assert_eq!(node.children.len(), 3);
         assert!(node.children.contains(&2));
@@ -298,18 +302,22 @@ mod tests {
 
     #[test]
     fn test_layout_node_with_parent() {
-        let mut node = LayoutNode::default();
-        node.id = 5;
-        node.parent = Some(1);
+        let node = LayoutNode {
+            id: 5,
+            parent: Some(1),
+            ..Default::default()
+        };
 
         assert_eq!(node.parent, Some(1));
     }
 
     #[test]
     fn test_layout_node_clone() {
-        let mut node = LayoutNode::default();
-        node.id = 10;
-        node.children = vec![20, 30];
+        let node = LayoutNode {
+            id: 10,
+            children: vec![20, 30],
+            ..Default::default()
+        };
 
         let cloned = node.clone();
         assert_eq!(cloned.id, 10);
@@ -330,9 +338,11 @@ mod tests {
 
     #[test]
     fn test_flex_props_main_gap_row() {
-        let mut props = FlexProps::default();
-        props.direction = FlexDirection::Row;
-        props.gap = 8;
+        let mut props = FlexProps {
+            direction: FlexDirection::Row,
+            gap: 8,
+            ..Default::default()
+        };
 
         assert_eq!(props.main_gap(), 8);
 
@@ -342,9 +352,11 @@ mod tests {
 
     #[test]
     fn test_flex_props_main_gap_column() {
-        let mut props = FlexProps::default();
-        props.direction = FlexDirection::Column;
-        props.gap = 8;
+        let mut props = FlexProps {
+            direction: FlexDirection::Column,
+            gap: 8,
+            ..Default::default()
+        };
 
         assert_eq!(props.main_gap(), 8);
 
@@ -354,9 +366,11 @@ mod tests {
 
     #[test]
     fn test_flex_props_cross_gap_row() {
-        let mut props = FlexProps::default();
-        props.direction = FlexDirection::Row;
-        props.gap = 8;
+        let mut props = FlexProps {
+            direction: FlexDirection::Row,
+            gap: 8,
+            ..Default::default()
+        };
 
         assert_eq!(props.cross_gap(), 8);
 
@@ -366,9 +380,11 @@ mod tests {
 
     #[test]
     fn test_flex_props_cross_gap_column() {
-        let mut props = FlexProps::default();
-        props.direction = FlexDirection::Column;
-        props.gap = 8;
+        let mut props = FlexProps {
+            direction: FlexDirection::Column,
+            gap: 8,
+            ..Default::default()
+        };
 
         assert_eq!(props.cross_gap(), 8);
 

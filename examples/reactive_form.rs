@@ -208,7 +208,7 @@ impl View for ReactiveForm {
                 if (is_touched || is_focused) && !value.is_empty() {
                     for error in errors {
                         field_view =
-                            field_view.child(Text::error(format!("  → {}", &error.message)));
+                            field_view.child(Text::error(format!("  → {}", error.message)));
                     }
                 }
 

@@ -43,7 +43,8 @@ pub struct ZenMode {
     /// Vertical padding in zen mode
     padding_y: u16,
     /// Background color in zen mode
-    bg_color: Color,
+    /// The color the builder named, if it named one - see #656.
+    bg_color: Option<Color>,
     /// Optional overlay opacity (0.0-1.0) for dimming
     dim_opacity: f32,
     /// Whether to center content vertically
@@ -51,6 +52,12 @@ pub struct ZenMode {
     /// Widget properties
     props: WidgetProps,
 }
+
+/// The fill a zen-mode wrapper uses when nothing says otherwise.
+///
+/// Named so `background_or` can tell "the builder set this" from "the builder
+/// said nothing" - the two are the same value in a plain `Color` field.
+const ZEN_BG: Color = Color::rgb(15, 15, 25);
 
 impl ZenMode {
     /// Create a new zen mode wrapper
@@ -60,7 +67,7 @@ impl ZenMode {
             enabled: false,
             padding_x: 4,
             padding_y: 2,
-            bg_color: Color::rgb(15, 15, 25),
+            bg_color: None,
             dim_opacity: 0.0,
             center_vertical: false,
             props: WidgetProps::new(),
@@ -88,7 +95,7 @@ impl ZenMode {
 
     /// Set background color
     pub fn bg(mut self, color: Color) -> Self {
-        self.bg_color = color;
+        self.bg_color = Some(color);
         self
     }
 
@@ -151,7 +158,7 @@ impl ZenMode {
     }
 
     #[doc(hidden)]
-    pub fn get_bg_color(&self) -> Color {
+    pub fn get_bg_color(&self) -> Option<Color> {
         self.bg_color
     }
 
@@ -178,10 +185,11 @@ impl View for ZenMode {
 
         if self.enabled {
             // Zen mode: fill background and render content with padding
+            let bg = self.bg_color.unwrap_or_else(|| ctx.css_background(ZEN_BG));
             for y in 0..area.height {
                 for x in 0..area.width {
                     let mut cell = Cell::new(' ');
-                    cell.bg = Some(self.bg_color);
+                    cell.bg = Some(bg);
                     ctx.set(x, y, cell);
                 }
             }
@@ -198,8 +206,7 @@ impl View for ZenMode {
                     content_height,
                 );
 
-                let mut sub_ctx = RenderContext::new(ctx.buffer, content_area);
-                self.content.render(&mut sub_ctx);
+                ctx.render_child(self.content.as_ref(), content_area);
             }
         } else {
             // Normal mode: just render content in full area

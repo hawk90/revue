@@ -403,7 +403,7 @@ fn test_tree_nav_render_items_structure() {
     let items = nav.render_items();
     assert_eq!(items.len(), 2);
     // Each item should be (item_ref, prefix, is_selected)
-    assert_eq!(items[0].2, true); // First is selected
+    assert!(items[0].2); // First is selected
     assert!(!items[1].2); // Second is not selected
 }
 

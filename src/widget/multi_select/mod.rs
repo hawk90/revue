@@ -83,7 +83,7 @@ mod tests {
 
         select.select_option(0);
         select.select_option(1);
-        assert!(select.can_select_more() == false);
+        assert!(!select.can_select_more());
 
         select.select_option(2); // Should not add
         assert!(!select.is_selected(2));

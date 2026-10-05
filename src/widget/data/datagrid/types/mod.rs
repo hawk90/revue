@@ -13,6 +13,16 @@ pub mod row;
 
 // Public API tests extracted to tests/widget/data/datagrid_types.rs
 // KEEP HERE - Private implementation tests (accesses private fields of GridColors, GridOptions, ColumnType, etc.)
+
+// Re-exports for backward compatibility
+pub use aggregation::{AggregationType, ColumnAggregation, FooterRow};
+pub use colors::GridColors;
+pub use column::GridColumn;
+pub use column_types::{Alignment, ColumnType, SortDirection};
+pub use export::{ExportFormat, ExportOptions};
+pub use options::GridOptions;
+pub use row::GridRow;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -490,12 +500,3 @@ mod tests {
         assert_eq!(footer.aggregations.len(), 5);
     }
 }
-
-// Re-exports for backward compatibility
-pub use aggregation::{AggregationType, ColumnAggregation, FooterRow};
-pub use colors::GridColors;
-pub use column::GridColumn;
-pub use column_types::{Alignment, ColumnType, SortDirection};
-pub use export::{ExportFormat, ExportOptions};
-pub use options::GridOptions;
-pub use row::GridRow;

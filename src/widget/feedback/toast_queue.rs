@@ -501,7 +501,7 @@ impl ToastQueue {
                 break;
             }
             let mut cell = Cell::new(ch);
-            cell.fg = Some(Color::WHITE);
+            cell.fg = Some(ctx.css_color(Color::WHITE));
             cell.bg = Some(bg);
             ctx.set(msg_x + dx, content_y, cell);
             dx += cw;

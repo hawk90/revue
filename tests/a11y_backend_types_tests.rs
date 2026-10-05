@@ -83,9 +83,9 @@ fn test_backend_type_debug() {
 fn test_screen_reader_config_default() {
     let config = ScreenReaderConfig::default();
     assert_eq!(config.backend_type, BackendType::Auto);
-    assert_eq!(config.log_announcements, false);
+    assert!(!config.log_announcements);
     assert_eq!(config.debounce_ms, 100);
-    assert_eq!(config.announce_roles, true);
+    assert!(config.announce_roles);
 }
 
 #[test]
@@ -97,9 +97,9 @@ fn test_screen_reader_config_public_fields() {
         announce_roles: false,
     };
     assert_eq!(config.backend_type, BackendType::Logging);
-    assert_eq!(config.log_announcements, true);
+    assert!(config.log_announcements);
     assert_eq!(config.debounce_ms, 50);
-    assert_eq!(config.announce_roles, false);
+    assert!(!config.announce_roles);
 }
 
 #[test]

@@ -14,6 +14,8 @@ pub struct WidgetProps {
     pub classes: Vec<String>,
     /// Inline style override
     pub inline_style: Option<Style>,
+    /// Reconciliation key - see [`WidgetKey`](crate::dom::WidgetKey)
+    pub key: Option<crate::dom::WidgetKey>,
 }
 
 impl WidgetProps {
@@ -22,9 +24,45 @@ impl WidgetProps {
         Self::default()
     }
 
+    /// Build the [`WidgetMeta`] a widget reports to the DOM.
+    ///
+    /// This lives here rather than inside
+    /// [`impl_view_meta!`](crate::impl_view_meta) so that the macro's arms
+    /// differ by one argument instead of repeating the whole body. `disabled`
+    /// is passed in because the macro cannot read it: widgets keep it either on
+    /// a `WidgetState` or as a field of their own, and a `self.…` path cannot
+    /// cross a macro fragment.
+    ///
+    /// Must stay in step with [`View::meta`](crate::widget::View::meta)'s
+    /// default body - widgets using the macro never run that one.
+    pub fn build_meta(
+        &self,
+        widget_type: &str,
+        focusable: bool,
+        disabled: bool,
+    ) -> crate::dom::WidgetMeta {
+        let mut meta = crate::dom::WidgetMeta::new(widget_type);
+        if let Some(ref id) = self.id {
+            meta.id = Some(id.clone());
+        }
+        for class in &self.classes {
+            meta.classes.insert(class.clone());
+        }
+        meta.key = self.key.clone();
+        meta.focusable = focusable;
+        meta.disabled = disabled;
+        meta
+    }
+
     /// Set element ID
     pub fn id(mut self, id: impl Into<String>) -> Self {
         self.id = Some(id.into());
+        self
+    }
+
+    /// Set the reconciliation key
+    pub fn key(mut self, key: impl Into<crate::dom::WidgetKey>) -> Self {
+        self.key = Some(key.into());
         self
     }
 
@@ -172,7 +210,12 @@ impl WidgetState {
     /// Get colors for current state with hover highlighting
     pub fn state_colors(&self, base_fg: Color, base_bg: Color, hover_bg: Color) -> (Color, Color) {
         if self.disabled {
-            (DISABLED_FG, DISABLED_BG)
+            // No `css_style` reaches here, so the inline override is the only
+            // thing that can outrank the disabled default.
+            (
+                self.fg.unwrap_or(DISABLED_FG),
+                self.bg.unwrap_or(DISABLED_BG),
+            )
         } else if self.hovered || self.pressed {
             (base_fg, hover_bg)
         } else {
@@ -249,14 +292,15 @@ impl WidgetState {
     /// Resolve foreground color with CSS cascade priority
     ///
     /// Priority order:
-    /// 1. Disabled state (DISABLED_FG)
-    /// 2. Widget inline override (via .fg())
-    /// 3. CSS computed style from context
-    /// 4. Default color
+    /// 1. Widget inline override (via .fg()) - the widget's own "inline style"
+    /// 2. CSS computed style from context
+    /// 3. Default color, which is `DISABLED_FG` when the widget is disabled
     pub fn resolve_fg(&self, css_style: Option<&Style>, default: Color) -> Color {
-        if self.disabled {
-            return DISABLED_FG;
-        }
+        // Being disabled changes what the widget looks like when nothing else
+        // says otherwise - it does not silence the stylesheet. Returning the
+        // grey here instead would make `:disabled { color: ... }` computable but
+        // unpaintable, which is what it used to be.
+        let default = if self.disabled { DISABLED_FG } else { default };
 
         if let Some(fg) = self.fg {
             return fg;
@@ -275,14 +319,12 @@ impl WidgetState {
     /// Resolve background color with CSS cascade priority
     ///
     /// Priority order:
-    /// 1. Disabled state (DISABLED_BG)
-    /// 2. Widget inline override (via .bg())
-    /// 3. CSS computed style from context
-    /// 4. Default color
+    /// 1. Widget inline override (via .bg()) - the widget's own "inline style"
+    /// 2. CSS computed style from context
+    /// 3. Default color, which is `DISABLED_BG` when the widget is disabled
     pub fn resolve_bg(&self, css_style: Option<&Style>, default: Color) -> Color {
-        if self.disabled {
-            return DISABLED_BG;
-        }
+        // See [`resolve_fg`](Self::resolve_fg): a default, not an override.
+        let default = if self.disabled { DISABLED_BG } else { default };
 
         if let Some(bg) = self.bg {
             return bg;
@@ -321,14 +363,16 @@ impl WidgetState {
         default_fg: Color,
         default_bg: Color,
     ) -> (Color, Color) {
-        if self.disabled {
-            return (DISABLED_FG, DISABLED_BG);
-        }
-
         let fg = self.resolve_fg(css_style, default_fg);
         let bg = self.resolve_bg(css_style, default_bg);
 
-        // Apply interaction effects
+        // A disabled widget does not react to the pointer, so it gets no
+        // interaction tint - but it still takes whatever colors the cascade
+        // resolved above.
+        if self.disabled {
+            return (fg, bg);
+        }
+
         let bg = bg.with_interaction(self.pressed, self.hovered, self.focused);
 
         (fg, bg)

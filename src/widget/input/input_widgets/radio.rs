@@ -240,7 +240,7 @@ impl RadioGroup {
         let label_fg = if self.disabled {
             DISABLED_FG
         } else {
-            self.fg.unwrap_or(Color::WHITE)
+            self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE))
         };
 
         let indicator_fg = if self.disabled {
@@ -248,7 +248,7 @@ impl RadioGroup {
         } else if is_selected {
             self.selected_fg.unwrap_or(Color::CYAN)
         } else {
-            self.fg.unwrap_or(LIGHT_GRAY)
+            self.fg.unwrap_or_else(|| ctx.css_color(LIGHT_GRAY))
         };
 
         let mut current_x = x;
@@ -317,7 +317,7 @@ impl Default for RadioGroup {
 }
 
 impl View for RadioGroup {
-    crate::impl_view_meta!("RadioGroup");
+    crate::impl_view_meta!("RadioGroup", focusable, disabled: direct);
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;

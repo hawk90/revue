@@ -28,7 +28,7 @@ pub struct VirtualList<T> {
     /// Selection foreground color
     pub selected_fg: Color,
     /// Normal item foreground color
-    pub item_fg: Color,
+    pub item_fg: Option<Color>,
     /// Show scrollbar
     pub show_scrollbar: bool,
     /// Scrollbar foreground color
@@ -62,7 +62,7 @@ impl<T: ToString + Clone> VirtualList<T> {
             selected: if len > 0 { Some(0) } else { None },
             selected_bg: Color::rgb(60, 60, 120),
             selected_fg: Color::WHITE,
-            item_fg: Color::WHITE,
+            item_fg: None,
             show_scrollbar: true,
             scrollbar_fg: Color::WHITE,
             scrollbar_bg: DARK_BG,
@@ -97,7 +97,7 @@ impl<T: ToString + Clone> VirtualList<T> {
 
     /// Set item foreground color
     pub fn item_fg(mut self, color: Color) -> Self {
-        self.item_fg = color;
+        self.item_fg = Some(color);
         self
     }
 

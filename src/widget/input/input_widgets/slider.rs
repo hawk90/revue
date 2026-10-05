@@ -58,7 +58,8 @@ pub struct Slider {
     /// Track color
     track_color: Color,
     /// Fill color
-    fill_color: Color,
+    /// The color the builder named, if it named one - see #656.
+    fill_color: Option<Color>,
     /// Knob color
     knob_color: Color,
     /// Focused state
@@ -89,7 +90,7 @@ impl Slider {
             show_value: true,
             value_format: None,
             track_color: SEPARATOR_COLOR,
-            fill_color: Color::CYAN,
+            fill_color: None,
             knob_color: Color::WHITE,
             focused: false,
             disabled: false,
@@ -170,7 +171,7 @@ impl Slider {
 
     /// Set fill color
     pub fn fill_color(mut self, color: Color) -> Self {
-        self.fill_color = color;
+        self.fill_color = Some(color);
         self
     }
 
@@ -316,6 +317,11 @@ impl Slider {
 
     /// Render horizontal slider
     fn render_horizontal(&self, ctx: &mut RenderContext) {
+        // A single `color` cannot describe every part of this widget, so it
+        // sets the primary one and the rest keep their defaults - the filled part of the track is the slider's primary element.
+        let fill_color = self
+            .fill_color
+            .unwrap_or_else(|| ctx.css_color(Color::CYAN));
         let area = ctx.area;
         let mut x: u16 = 0;
         let y: u16 = 0;
@@ -346,7 +352,7 @@ impl Slider {
                 for i in 0..track_len {
                     let ch = if i <= filled { '█' } else { '░' };
                     let fg = if i <= filled {
-                        self.fill_color
+                        fill_color
                     } else {
                         self.track_color
                     };
@@ -362,7 +368,7 @@ impl Slider {
                     let fg = if is_knob {
                         self.knob_color
                     } else if i < filled {
-                        self.fill_color
+                        fill_color
                     } else {
                         self.track_color
                     };
@@ -400,7 +406,7 @@ impl Slider {
                         '░'
                     };
                     let fg = if i as f64 / track_len as f64 <= self.normalized() {
-                        self.fill_color
+                        fill_color
                     } else {
                         self.track_color
                     };
@@ -413,7 +419,7 @@ impl Slider {
                 for i in 0..track_len {
                     let ch = if i <= filled { '●' } else { '○' };
                     let fg = if i <= filled {
-                        self.fill_color
+                        fill_color
                     } else {
                         self.track_color
                     };
@@ -464,6 +470,11 @@ impl Slider {
 
     /// Render vertical slider
     fn render_vertical(&self, ctx: &mut RenderContext) {
+        // A single `color` cannot describe every part of this widget, so it
+        // sets the primary one and the rest keep their defaults - the filled part of the track is the slider's primary element.
+        let fill_color = self
+            .fill_color
+            .unwrap_or_else(|| ctx.css_color(Color::CYAN));
         let area = ctx.area;
         let x: u16 = 0;
         let track_len = self.length.min(area.height);
@@ -476,7 +487,7 @@ impl Slider {
             let (ch, fg) = match self.style {
                 SliderStyle::Block => {
                     if from_bottom <= filled {
-                        ('█', self.fill_color)
+                        ('█', fill_color)
                     } else {
                         ('░', self.track_color)
                     }
@@ -488,7 +499,7 @@ impl Slider {
                         (
                             '│',
                             if from_bottom < filled {
-                                self.fill_color
+                                fill_color
                             } else {
                                 self.track_color
                             },
@@ -497,7 +508,7 @@ impl Slider {
                 }
                 SliderStyle::Gradient | SliderStyle::Dots => {
                     if from_bottom <= filled {
-                        ('●', self.fill_color)
+                        ('●', fill_color)
                     } else {
                         ('○', self.track_color)
                     }
@@ -536,7 +547,7 @@ impl Default for Slider {
 }
 
 impl View for Slider {
-    crate::impl_view_meta!("Slider");
+    crate::impl_view_meta!("Slider", focusable, disabled: direct);
 
     fn render(&self, ctx: &mut RenderContext) {
         match self.orientation {

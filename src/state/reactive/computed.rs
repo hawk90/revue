@@ -306,8 +306,8 @@ mod tests {
 
     #[test]
     fn test_computed_with_f64() {
-        let c = Computed::new(|| 3.14_f64);
-        assert!((c.get() - 3.14).abs() < 0.001);
+        let c = Computed::new(|| 1.25_f64);
+        assert!((c.get() - 1.25).abs() < 0.001);
     }
 
     #[test]

@@ -92,7 +92,7 @@
 
 mod element;
 mod event;
-mod render_context;
+pub(crate) mod render_context;
 mod symbols;
 mod timeout;
 mod view;
@@ -181,6 +181,7 @@ macro_rules! impl_state_builders {
 ///
 /// This macro generates the following methods:
 /// - `element_id(self, impl Into<String>) -> Self` - Set CSS element ID
+/// - `keyed(self, impl Into<WidgetKey>) -> Self` - Set the reconciliation key
 /// - `class(self, impl Into<String>) -> Self` - Add a CSS class
 /// - `classes(self, IntoIterator<Item=S>) -> Self` - Add multiple CSS classes
 ///
@@ -199,6 +200,19 @@ macro_rules! impl_props_builders {
             /// Set element ID for CSS selector (#id)
             pub fn element_id(mut self, id: impl Into<String>) -> Self {
                 self.props.id = Some(id.into());
+                self
+            }
+
+            /// Set the reconciliation key - this widget's identity across frames
+            ///
+            /// Give it the identity of the *data*, never the loop index. See
+            /// [`WidgetKey`](crate::dom::WidgetKey).
+            ///
+            /// Named `keyed` rather than `key` because `StatusBar::key`
+            /// already means "keyboard shortcut"; two inherent methods of the
+            /// same name cannot coexist.
+            pub fn keyed(mut self, key: impl Into<$crate::dom::WidgetKey>) -> Self {
+                self.props.key = Some(key.into());
                 self
             }
 
@@ -237,7 +251,7 @@ macro_rules! impl_props_builders {
 ///
 /// Generated methods:
 /// - State: `focused`, `disabled`, `fg`, `bg`, `is_focused`, `is_disabled`, `set_focused`
-/// - Props: `element_id`, `class`, `classes`
+/// - Props: `element_id`, `keyed`, `class`, `classes`
 ///
 /// # Example
 /// ```rust,ignore
@@ -269,10 +283,11 @@ macro_rules! impl_widget_builders {
     };
 }
 
-/// Generate View trait id(), classes(), and meta() methods for widgets with props.
+/// Generate View trait id(), classes(), key(), and meta() methods for widgets
+/// with props.
 ///
-/// This macro generates the id(), classes(), and meta() methods for the View trait
-/// that delegate to WidgetProps.
+/// This macro generates the id(), classes(), key(), and meta() methods for the
+/// View trait that delegate to WidgetProps.
 ///
 /// # Example
 /// ```rust,ignore
@@ -286,7 +301,38 @@ macro_rules! impl_widget_builders {
 /// ```
 #[macro_export]
 macro_rules! impl_view_meta {
+    // The widget can hold keyboard focus, and its declared `disabled` lives on
+    // its `state: WidgetState` field.
+    ($name:expr, focusable, disabled: state) => {
+        $crate::impl_view_meta!(@common);
+        fn meta(&self) -> $crate::dom::WidgetMeta {
+            self.props.build_meta($name, true, self.state.disabled)
+        }
+    };
+    // Focusable, with `disabled` as a field on the widget itself.
+    ($name:expr, focusable, disabled: direct) => {
+        $crate::impl_view_meta!(@common);
+        fn meta(&self) -> $crate::dom::WidgetMeta {
+            self.props.build_meta($name, true, self.disabled)
+        }
+    };
+    // Focusable, with no notion of being disabled.
+    ($name:expr, focusable) => {
+        $crate::impl_view_meta!(@common);
+        fn meta(&self) -> $crate::dom::WidgetMeta {
+            self.props.build_meta($name, true, false)
+        }
+    };
     ($name:expr) => {
+        $crate::impl_view_meta!(@common);
+        fn meta(&self) -> $crate::dom::WidgetMeta {
+            self.props.build_meta($name, false, false)
+        }
+    };
+    // Each arm writes its own `meta` rather than delegating, because a `self.…`
+    // path cannot be captured as a fragment and passed to another arm - `self`
+    // resolves against the arm that wrote it, not the impl it lands in.
+    (@common) => {
         fn id(&self) -> Option<&str> {
             self.props.id.as_deref()
         }
@@ -295,15 +341,8 @@ macro_rules! impl_view_meta {
             &self.props.classes
         }
 
-        fn meta(&self) -> $crate::dom::WidgetMeta {
-            let mut meta = $crate::dom::WidgetMeta::new($name);
-            if let Some(ref id) = self.props.id {
-                meta.id = Some(id.clone());
-            }
-            for class in &self.props.classes {
-                meta.classes.insert(class.clone());
-            }
-            meta
+        fn key(&self) -> Option<$crate::dom::WidgetKey> {
+            self.props.key.clone()
         }
     };
 }

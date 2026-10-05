@@ -1,7 +1,9 @@
 //! Rendering implementation for the FileTree widget
 
+use super::types::FileType;
 use super::FileTree;
 use crate::render::{Cell, Modifier};
+use crate::style::Color;
 use crate::widget::theme::LIGHT_GRAY;
 use crate::widget::traits::{RenderContext, View};
 
@@ -10,6 +12,18 @@ impl View for FileTree {
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
+        // The type colors are how the tree is read - a cyan directory against a
+        // magenta symlink - so a `color` rule cannot have all of them. It gets
+        // the plain file, which is the base every other type is a departure
+        // from. Same split the syntax-colored viewers took.
+        let base_fg = ctx.css_color(Color::WHITE);
+        let entry_fg = |file_type: FileType| {
+            if file_type == FileType::File {
+                base_fg
+            } else {
+                file_type.color()
+            }
+        };
         let entries = self.visible_entries();
         let visible_height = if self.height > 0 {
             self.height
@@ -68,7 +82,7 @@ impl View for FileTree {
                     entry.file_type.icon()
                 };
                 let mut cell = Cell::new(icon);
-                cell.fg = Some(entry.file_type.color());
+                cell.fg = Some(entry_fg(entry.file_type));
                 if is_selected {
                     cell.bg = Some(self.selected_bg);
                 }
@@ -80,7 +94,7 @@ impl View for FileTree {
             let fg = if is_selected {
                 self.selected_fg
             } else {
-                entry.file_type.color()
+                entry_fg(entry.file_type)
             };
 
             for ch in entry.name.chars() {

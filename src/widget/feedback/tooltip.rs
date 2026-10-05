@@ -492,9 +492,10 @@ impl View for Tooltip {
         let (tooltip_x, tooltip_y, actual_position) =
             self.calculate_position(area.width, area.height);
 
+        // Builder, then the stylesheet, then the tooltip style's own palette.
         let (default_fg, default_bg) = self.style.colors();
-        let fg = self.fg.unwrap_or(default_fg);
-        let bg = self.bg.unwrap_or(default_bg);
+        let fg = self.fg.unwrap_or_else(|| ctx.css_color(default_fg));
+        let bg = self.bg.unwrap_or_else(|| ctx.css_background(default_bg));
 
         // Build overlay entry (all coordinates relative to tooltip area)
         let overlay_area = crate::layout::Rect::new(tooltip_x, tooltip_y, tooltip_w, tooltip_h);
