@@ -15,6 +15,9 @@ pub use value_parsers::{
 };
 
 #[cfg(test)]
+mod value_parser_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::style::{
