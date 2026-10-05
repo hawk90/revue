@@ -6,7 +6,7 @@
 //! ## Features
 //!
 //! - **Full CommonMark support** via pulldown-cmark
-//! - **Syntax highlighting** for code blocks (via syntect)
+//! - **Syntax highlighting** for fenced code blocks, by the fence language
 //! - **Table of contents** generation
 //! - **Admonitions** (note, tip, warning, danger)
 //! - **Footnotes** support
@@ -200,6 +200,11 @@ impl Markdown {
         let mut ctx = parser::ParserContext::new(&self.source, &self.config);
 
         for event in parser {
+            // Text held back as a possible callout marker is plain quote
+            // text once anything but more text follows it
+            if !matches!(event, Event::Text(_)) {
+                ctx.flush_pending_quote();
+            }
             match event {
                 Event::Start(tag) => self.handle_start_tag(&mut ctx, tag),
                 Event::End(tag_end) => self.handle_end_tag(&mut ctx, tag_end),
@@ -310,10 +315,14 @@ impl Markdown {
             Tag::CodeBlock(kind) => {
                 ctx.in_code_block = true;
                 match kind {
-                    CodeBlockKind::Fenced(_) => {
-                        // Language will be determined from the next event
+                    // The info string's first word names the language
+                    CodeBlockKind::Fenced(info) => {
+                        let lang = info.split_whitespace().next().unwrap_or("");
+                        ctx.code_block_lang = Language::from_fence(lang);
                     }
-                    CodeBlockKind::Indented => {}
+                    CodeBlockKind::Indented => {
+                        ctx.code_block_lang = Language::Unknown;
+                    }
                 }
             }
             Tag::List(num) => {
@@ -462,55 +471,26 @@ impl Markdown {
         } else if ctx.in_heading {
             ctx.heading_text.push_str(text);
         } else if ctx.in_blockquote && ctx.blockquote_first_text {
-            // Accumulate text for admonition detection
+            // Hold the quote's opening text back only while it can still
+            // become a callout marker like `[!NOTE]`
             ctx.accumulated_blockquote.push_str(text);
-
-            // Try to detect admonition marker
-            let full_text = ctx.accumulated_blockquote.trim().to_string();
-            if let Some(admonition) = AdmonitionType::from_marker(&full_text) {
+            let pending = ctx.accumulated_blockquote.clone();
+            if let Some(admonition) = AdmonitionType::from_exact_marker(&pending) {
                 ctx.current_admonition = Some(admonition);
                 ctx.flush_line();
                 // Render admonition header with icon and label
-                let color = admonition.color();
-                ctx.current_fg = Some(color);
+                ctx.current_fg = Some(admonition.color());
                 ctx.current_modifier |= Modifier::BOLD;
                 ctx.add_text(&format!("{} {}", admonition.icon(), admonition.label()));
                 ctx.new_line();
                 ctx.accumulated_blockquote.clear();
                 ctx.blockquote_first_text = false;
-            } else {
-                // Not a complete admonition marker yet, keep accumulating
-                if !full_text.ends_with(']') {
-                    // If text doesn't contain '[', it's definitely not an admonition
-                    if !full_text.contains('[') {
-                        ctx.flush_line();
-                        let color = ctx.quote_fg;
-                        ctx.current_modifier |= Modifier::ITALIC;
-                        ctx.current_fg = Some(color);
-                        ctx.add_text("│ ");
-                        ctx.add_text(&full_text);
-                        ctx.accumulated_blockquote.clear();
-                        ctx.blockquote_first_text = false;
-                    }
-                    // Otherwise keep accumulating
-                } else {
-                    // Complete text but not an admonition
-                    ctx.flush_line();
-                    let color = ctx.quote_fg;
-                    ctx.current_modifier |= Modifier::ITALIC;
-                    ctx.current_fg = Some(color);
-                    ctx.add_text("│ ");
-                    ctx.add_text(&full_text);
-                    ctx.accumulated_blockquote.clear();
-                    ctx.blockquote_first_text = false;
-                }
+            } else if !AdmonitionType::is_marker_prefix(&pending) {
+                ctx.flush_pending_quote();
             }
-        } else if let Some(_admonition) = ctx.current_admonition {
-            // Admonition content - add quote prefix
-            ctx.add_text(&format!("│ {}", text));
         } else if ctx.in_blockquote {
-            // Regular blockquote continuation
-            ctx.add_text(&format!("│ {}", text));
+            // Blockquote / admonition content
+            ctx.add_quote_text(text);
         } else {
             ctx.add_text(text);
         }
