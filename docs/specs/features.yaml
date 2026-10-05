@@ -1,0 +1,1645 @@
+# Revue feature registry — single source of truth for feature status.
+# Edit items in place; never renumber ids. Schema and rules: docs/specs/README.md.
+# Verified against the code on 2026-10-05 (code wins over docs). `source` § refers to the
+# pre-2026-10-05 docs/FEATURES.md layout (see git history / docs narrative).
+schema: 1
+updated: '2026-10-05'
+sources:
+  - 'docs/FEATURES.md (pre-2026-10-05 layout: §1–§11, Advanced Widgets, Feature Comparison)'
+statuses:
+  done: public API exported AND covered by a test or used by an example; acceptance met
+  partial: some acceptance met, or code exists but is not wired/applied/tested
+  todo: not started
+  dropped: intentionally out of scope (reason in notes)
+items:
+  - id: CSS-001
+    title: External CSS files via App::builder().style()
+    area: css
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - App::builder().style(path) loads one or more stylesheets
+      - later stylesheets merge into the cascade
+    evidence:
+      - src/core/app/builder.rs::style
+      - src/runtime/style/parser/types.rs::variables
+      - examples/css_features.rs
+    source:
+      - FEATURES.md §1 CSS Styling / External CSS Files
+  - id: CSS-002
+    title: Type, class, compound-class and id selectors
+    area: css
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - element (type) selector matches widget_type
+      - .class and .a.b compound selectors match
+      - '#id selector matches element_id'
+    evidence:
+      - src/runtime/dom/selector/parser.rs
+      - src/runtime/dom/selector/tests.rs::test_selector_part_class
+      - tests/css_reaches_the_screen.rs::color_reaches_the_cell
+    source:
+      - FEATURES.md §1 CSS Styling / Selectors
+  - id: CSS-003
+    title: State pseudo-classes (:focus, :hover, :disabled, …)
+    area: css
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - ':focus/:hover/:disabled/:checked/:selected parse and match node state'
+      - a :focus rule repaints after focus moves
+    evidence:
+      - src/runtime/dom/selector/types.rs::PseudoClass
+      - tests/tab_navigation.rs::a_focus_rule_reaches_the_buffer_after_tab
+      - tests/cascade_precedence.rs::a_disabled_rule_repaints_the_widget_when_it_is_disabled
+    source:
+      - FEATURES.md §1 CSS Styling / Selectors
+    notes: Dynamic state only exists with App::builder().dom_from_render(true); without it no node below the root has state
+      (see NAV-002).
+  - id: CSS-004
+    title: Descendant, child and sibling combinators
+    area: css
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - '"A B" matches any ancestor'
+      - '"A > B" matches direct child only'
+    evidence:
+      - src/runtime/dom/selector/types.rs::Combinator
+      - tests/cascade_combinators.rs::a_descendant_rule_reaches_past_one_level
+      - tests/cascade_combinators.rs::a_child_rule_still_means_direct_child_only
+    source:
+      - FEATURES.md §1 CSS Styling / Selectors
+    notes: Code also supports + and ~ sibling combinators and attribute selectors (not in the doc).
+  - id: CSS-005
+    title: ':nth-child() with full An+B syntax'
+    area: css
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - odd/even keywords
+      - An+B including negative A (-n+3)
+    evidence:
+      - src/runtime/dom/selector/types.rs::NthExpr
+      - src/runtime/dom/selector/tests.rs::test_parse_nth_child
+    source:
+      - FEATURES.md §1 CSS Styling / Selectors (nth-child)
+  - id: CSS-006
+    title: CSS custom properties (:root variables + var())
+    area: css
+    priority: P0
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - ':root { --x: v } defines a variable'
+      - var(--x) resolves in any declaration
+      - a rule (e.g. .dark-theme) can override a variable for its subtree
+    evidence:
+      - src/runtime/style/parser/parse.rs::parse_root_variables_str
+      - src/runtime/style/parser/apply.rs::apply_declaration
+      - tests/style/parser.rs::test_apply_with_variables
+    source:
+      - FEATURES.md §1 CSS Styling / CSS Variables
+    notes: 'Variables are a single global map filled only from :root blocks. The doc example "Override in specific context"
+      (.dark-theme { --color-bg: … }) does not work: custom properties inside ordinary rules are not scoped/inherited.'
+  - id: CSS-007
+    title: var() fallback value
+    area: css
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - var(--missing, fallback) uses fallback
+      - nested var() fallback chain
+    evidence:
+      - src/runtime/style/parser/apply.rs::apply_declaration
+      - tests/e2e_scenarios.rs::test_css_variable_fallback_chain
+    source:
+      - FEATURES.md §1 CSS Styling / CSS Variables with Fallback
+  - id: CSS-008
+    title: 'Color formats: hex (3/6), rgb(), hsl(), hsla(), transparent'
+    area: css
+    priority: P0
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - '#rgb and #rrggbb'
+      - rgb(r,g,b)
+      - hsl()/hsla()
+      - transparent keyword yields a transparent color
+    evidence:
+      - src/runtime/style/parser/value_parsers.rs::parse_color
+      - tests/css_reaches_the_screen.rs::a_three_digit_hex_color_reaches_the_cell
+      - tests/css_reaches_the_screen.rs::an_rgb_color_reaches_the_cell
+    source:
+      - FEATURES.md §1 CSS Styling / Color Formats
+      - FEATURES.md §1 CSS Styling / Colors
+    notes: 'BUG: parse_color maps "transparent" to Color::rgb(0,0,0) = opaque black (Color::TRANSPARENT exists but is not
+      used). hsla() alpha is parsed past and discarded. rgba() is not accepted.'
+  - id: CSS-009
+    title: Extended CSS named colors (50+)
+    area: css
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - basic names (red, cyan, …)
+      - extended names (orange, rebeccapurple, teal, coral, …)
+      - gray/grey aliases
+    evidence:
+      - src/runtime/style/parser/value_parsers.rs::parse_named_color
+      - tests/css_reaches_the_screen.rs::a_named_color_reaches_the_cell
+    source:
+      - FEATURES.md §1 CSS Styling / Color Formats
+  - id: CSS-010
+    title: ansi(n) 256-color function
+    area: css
+    priority: P3
+    priority_inferred: true
+    status: todo
+    acceptance:
+      - 'color: ansi(196) parses to ANSI palette index 196'
+    evidence: []
+    source:
+      - FEATURES.md §1 CSS Styling / Colors
+    notes: Doc shows ansi(196); parse_color has no ansi() branch, the value is rejected.
+  - id: CSS-011
+    title: Paint properties apply without css_layout (color, background, font-weight, text-decoration, text-align, visibility)
+    area: css
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - color/background reach the cell
+      - font-weight bold, text-decoration underline/line-through
+      - text-align left/center/right
+      - 'visibility: hidden stops the paint'
+      - color inherits to children
+    evidence:
+      - src/widget/traits/render_context/css.rs::css_color
+      - tests/css_reaches_the_screen.rs::font_weight_bold_reaches_the_cell
+      - tests/css_reaches_the_screen.rs::visibility_hidden_stops_the_paint
+      - tests/css_reaches_the_screen.rs::text_align_center_moves_the_text
+    source:
+      - FEATURES.md §1 CSS Styling / Supported Properties
+    notes: Requires dom_from_render(true) so widgets have DOM nodes.
+  - id: CSS-012
+    title: Border properties (border, border-style, border-color)
+    area: css
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - border shorthand <style> [color]
+      - border-style none/solid/double/rounded; dashed draws a single line
+      - 'border-style: none removes a builder border; silent stylesheet keeps it'
+    evidence:
+      - src/widget/traits/render_context/css.rs::css_border_style
+      - tests/css_border_reaches_the_screen.rs::border_style_none_removes_a_builders_border
+      - tests/css_card_and_overflow.rs::border_style_reaches_a_card
+    source:
+      - FEATURES.md §1 CSS Styling / Supported Properties
+  - id: CSS-013
+    title: 'overflow: hidden clips children'
+    area: css
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - overflow hidden clips a child to the container box
+    evidence:
+      - tests/css_card_and_overflow.rs::overflow_hidden_clips_a_child_to_its_container
+    source:
+      - FEATURES.md §1 CSS Styling / Supported Properties
+    notes: scroll/auto parse but behave like visible/hidden; no CSS-driven scrolling.
+  - id: CSS-014
+    title: Box properties via css_layout (display, width, height, margin, padding, min/max)
+    area: css
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - effective only with dom_from_render(true).css_layout(true)
+      - 'display: none hides the subtree'
+      - width/percent, min/max clamp, margin offsets, spacing longhands
+    evidence:
+      - src/core/app/builder.rs::css_layout
+      - tests/css_layout.rs::display_none_hides_a_widget
+      - tests/css_layout.rs::max_width_clamps_and_min_width_floors
+      - tests/css_layout.rs::a_percentage_resolves_against_the_offered_area
+    source:
+      - FEATURES.md §1 CSS Styling / Supported Properties
+  - id: CSS-015
+    title: gap / column-gap / row-gap from CSS (specified-vs-unset tracking)
+    area: css
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - gap reaches vstack/hstack/grid under css_layout
+      - 'gap: 0 overrides a builder gap'
+      - silent stylesheet leaves the builder value
+    evidence:
+      - src/widget/traits/render_context/css.rs::gap_or
+      - tests/css_layout.rs::a_css_gap_of_zero_overrides_the_builders_gap
+      - tests/css_layout.rs::a_css_gap_is_ignored_without_the_flag
+    source:
+      - FEATURES.md §1 CSS Styling / Supported Properties
+    notes: 'Stale comment in src/widget/layout/stack.rs says "gap: 0 … reads as not specified"; behaviour (and test) follow
+      the doc.'
+  - id: CSS-016
+    title: Flex/grid container properties from CSS (flex-direction, justify-content, align-items, flex-grow, flex, flex-wrap,
+      align-self, order, grid-template-*)
+    area: css
+    priority: P1
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - each property parses into the computed style
+      - containers lay out according to the CSS value
+    evidence:
+      - src/runtime/style/parser/apply.rs
+      - src/widget/traits/render_context/css.rs::css_flex_wrap
+    source:
+      - FEATURES.md §1 CSS Styling / Supported Properties
+    notes: 'Doc table lists them as supported, doc note says they are not applied. Code: all parse; only flex-wrap is read
+      (Stack row wrap, crude: row height = area/2). The rest are the container''s own builder state — see docs/refactor/findings-layout.md
+      L-2.'
+  - id: CSS-017
+    title: opacity
+    area: css
+    priority: P3
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - opacity parses
+      - opacity affects painted cells
+    evidence:
+      - src/widget/traits/render_context/css.rs::css_opacity
+    source:
+      - FEATURES.md §1 CSS Styling / Supported Properties
+      - FEATURES.md §1 CSS Styling / Parsed but not applied
+    notes: Parsed and readable via css_opacity(), no widget reads it at paint time (terminal cells have no alpha). Text::dim()
+      is the approximation.
+  - id: CSS-018
+    title: z-index paint ordering
+    area: css
+    priority: P3
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - z-index parses
+      - higher z-index paints on top
+    evidence:
+      - src/runtime/style/parser/apply.rs
+    source:
+      - FEATURES.md §1 CSS Styling / Supported Properties
+      - FEATURES.md §1 CSS Styling / Parsed but not applied
+    notes: Parsed only. Builder alternative Layers::child_z is NAV-004.
+  - id: CSS-019
+    title: position + top/right/bottom/left
+    area: css
+    priority: P3
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - position/offsets parse
+      - absolute/relative placement on screen
+    evidence:
+      - src/runtime/style/parser/apply.rs
+      - src/runtime/layout/position.rs
+    source:
+      - FEATURES.md §1 CSS Styling / Supported Properties
+      - FEATURES.md §1 CSS Styling / Parsed but not applied
+    notes: 'Read by the layout engine whose rects nothing paints from. Builder alternative: Positioned.'
+  - id: CSS-020
+    title: 'CSS transitions (transition: prop duration easing)'
+    area: css
+    priority: P2
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - transition shorthand and lists parse
+      - state change (e.g. :focus) animates the property automatically
+    evidence:
+      - src/runtime/style/transition.rs::TransitionManager
+      - src/core/app/mod.rs::start_transition
+      - tests/style/transition.rs::test_transitions_parse
+    source:
+      - FEATURES.md §1 CSS Styling / Transitions
+    notes: Parsing and a TransitionManager ticked by App::run exist, but nothing starts a transition when a selector state
+      changes and no widget reads transition values at paint; only manual App::start_transition/transition_value. Doc example
+      animates opacity, which is not applied at all (CSS-017).
+  - id: LAY-001
+    title: Row/column stacking (hstack/vstack)
+    area: layout
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - vstack stacks children vertically
+      - hstack horizontally
+    evidence:
+      - src/widget/layout/stack.rs::vstack
+      - src/widget/layout/stack.rs::hstack
+      - tests/sibling_invalidation.rs
+    source:
+      - FEATURES.md §2 Flexbox Layout / Direction
+    notes: Direction is a builder property; flex-direction in CSS is not applied (CSS-016).
+  - id: LAY-002
+    title: justify-content / align-items alignment
+    area: layout
+    priority: P1
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - start/center/end/space-between/space-around on the main axis
+      - start/center/end/stretch on the cross axis
+      - usable from a container widget
+    evidence:
+      - src/runtime/layout/flex.rs::compute_justify_offsets
+      - src/widget/layout/grid/core.rs::justify_items
+    source:
+      - FEATURES.md §2 Flexbox Layout / Justify & Align
+    notes: Engine computes justify/align offsets, but Stack has no justify/align API and engine rects are not painted from
+      (findings-layout L-2). Grid has justify_items/align_items for cells.
+  - id: LAY-003
+    title: Gap between children
+    area: layout
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - Stack::gap and Grid gaps
+      - CSS gap/row-gap/column-gap (CSS-015)
+    evidence:
+      - src/widget/layout/stack.rs::gap
+      - tests/css_layout.rs::a_css_gap_overrides_the_builders_gap
+    source:
+      - FEATURES.md §2 Flexbox Layout / Gap
+  - id: LAY-004
+    title: 'Sizing: fixed, flex-grow, percent, min/max'
+    area: layout
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - fixed child size
+      - flex-grow share of remaining space
+      - min/max constraints
+      - percent width via CSS
+    evidence:
+      - src/widget/layout/stack.rs::child_flex
+      - src/widget/layout/stack.rs::child_sized
+      - src/widget/layout/stack.rs::constrain
+      - tests/css_layout.rs::width_narrows_a_widget
+    source:
+      - FEATURES.md §2 Flexbox Layout / Sizing
+    notes: Builder-based (child_sized/child_flex/constrain); CSS flex-grow is not applied (CSS-016), CSS width/min/max need
+      css_layout (CSS-014).
+  - id: LAY-005
+    title: In-tree flexbox + grid layout engine drives on-screen layout
+    area: layout
+    priority: P1
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - hand-written flex and grid solver, no third-party layout crate
+      - engine output decides what is painted
+    evidence:
+      - src/runtime/layout/engine.rs
+      - src/runtime/layout/flex.rs::compute_flex
+      - src/runtime/layout/grid.rs
+      - tests/layout_module.rs
+    source:
+      - FEATURES.md §2 Flexbox Layout
+    notes: 'Engine exists and is tested, and the tree-linking bug (L-1) is fixed, but widgets still lay out their own children;
+      engine rects only feed css_layout overrides. Open: L-2 (widget intent not in node style), L-3 (auto cross size collapses),
+      L-4 (one-frame lag) in docs/refactor/findings-layout.md.'
+  - id: RX-001
+    title: 'signal(): get / set / update'
+    area: reactive
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - signal(v) creates state
+      - get() reads
+      - set()/update() notify subscribers and trigger re-render
+    evidence:
+      - src/state/reactive/mod.rs::signal
+      - src/state/reactive/signal.rs::update
+      - tests/reactive.rs
+    source:
+      - FEATURES.md §3 Reactivity / Signal
+  - id: RX-002
+    title: 'computed(): derived values'
+    area: reactive
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - computed recomputes when a dependency signal changes
+    evidence:
+      - src/state/reactive/mod.rs::computed
+      - src/state/reactive/computed.rs
+      - tests/reactive.rs
+    source:
+      - FEATURES.md §3 Reactivity / Computed
+  - id: RX-003
+    title: 'effect(): side effects on change'
+    area: reactive
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - effect re-runs when a read signal changes
+    evidence:
+      - src/state/reactive/mod.rs::effect
+      - src/state/reactive/effect.rs
+      - tests/reactive.rs
+    source:
+      - FEATURES.md §3 Reactivity / Effect
+  - id: RX-004
+    title: Reactive collections
+    area: reactive
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - signal(Vec) updated via update(|v| v.push(..))
+      - dedicated SignalVec with push etc.
+    evidence:
+      - src/state/reactive/signal_vec.rs::SignalVec
+      - src/state/reactive/signal.rs::update
+    source:
+      - FEATURES.md §3 Reactivity / Reactive Collections
+  - id: WID-001
+    title: 100+ built-in widgets
+    area: widget
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - at least 100 public widget types implementing View
+    evidence:
+      - src/widget/mod.rs
+    source:
+      - FEATURES.md §Overview
+      - FEATURES.md §4 Widgets
+    notes: 120 `impl View for` types under src/widget on 2026-10-05.
+  - id: WID-002
+    title: Text widget
+    area: widget
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - text("…") renders a string
+      - class() for styling
+    evidence:
+      - src/widget/mod.rs::text
+      - tests/text_tests.rs
+    source:
+      - FEATURES.md §4 Widgets / Basic Widgets / Text
+  - id: WID-003
+    title: List widget
+    area: widget
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - list(items) renders items
+      - selection with keyboard
+    evidence:
+      - src/widget/data/list.rs::list
+      - src/widget/data/list.rs::select_next
+      - tests/data_widgets_read_css.rs
+    source:
+      - FEATURES.md §4 Widgets / Basic Widgets / List
+    notes: Doc API .on_select(closure) does not exist; selection is state (selected/selected_index/handle_key), the app reacts
+      in its handler.
+  - id: WID-004
+    title: Table widget
+    area: widget
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - columns + rows
+      - row selection
+      - virtual scroll
+    evidence:
+      - src/widget/data/table.rs::table
+      - src/widget/data/table.rs::virtual_scroll
+      - tests/table_tests.rs
+    source:
+      - FEATURES.md §4 Widgets / Basic Widgets / Table
+    notes: Doc .headers([...]) / .on_select do not exist; headers come from table(columns) / Column.
+  - id: WID-005
+    title: Input (single-line text field)
+    area: widget
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - placeholder, value
+      - selection, undo/redo, copy/cut/paste
+    evidence:
+      - src/widget/input/input_widgets/input/mod.rs::input
+      - tests/widget_validation_tests.rs
+    source:
+      - FEATURES.md §4 Widgets / Input Widgets / Input
+    notes: Doc .on_change(closure) does not exist; read get_value() in the handler.
+  - id: WID-006
+    title: Select (dropdown)
+    area: widget
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - options, selected
+      - open/close, searchable
+    evidence:
+      - src/widget/input/input_widgets/select/mod.rs::select
+      - tests/widget_interaction_tests.rs
+    source:
+      - FEATURES.md §4 Widgets / Input Widgets / Select
+    notes: No .on_change; state-based.
+  - id: WID-007
+    title: Checkbox
+    area: widget
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - checkbox(label) with checked state
+      - toggle via keyboard
+    evidence:
+      - src/widget/input/input_widgets/checkbox.rs::checkbox
+      - tests/widget/checkbox/basic.rs
+    source:
+      - FEATURES.md §4 Widgets / Input Widgets / Checkbox
+    notes: Label is the constructor argument; no .label()/.on_change.
+  - id: WID-008
+    title: DateTimePicker / date_picker / time_picker
+    area: widget
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - calendar month view
+      - time fields with optional seconds
+      - min/max date
+      - 'keys: arrows/hjkl, [ ] month, { } year, Tab mode switch, Enter select'
+    evidence:
+      - src/widget/datetime_picker/helpers.rs::datetime_picker
+      - src/widget/datetime_picker/input.rs
+      - tests/widget/datetime_picker.rs
+      - examples/datetime_picker.rs
+    source:
+      - FEATURES.md §4 Widgets / Input Widgets / DateTimePicker
+  - id: WID-009
+    title: 'TextArea: multi-line editing, line numbers, read-only, syntax highlighting'
+    area: widget
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - content/placeholder
+      - line_numbers, read_only
+      - syntax highlighting by language
+    evidence:
+      - src/widget/input/input_widgets/textarea/mod.rs::textarea
+      - src/widget/input/input_widgets/textarea/mod.rs::syntax
+      - tests/textarea_unicode_tests.rs
+      - examples/text_editor.rs
+    source:
+      - FEATURES.md §4 Widgets / Input Widgets / TextArea
+    notes: Doc .language("rust").theme("one-dark") is .syntax(Language)/.syntax_with_theme(Language, SyntaxTheme); no .on_change.
+  - id: WID-010
+    title: TextArea undo/redo and line operations
+    area: widget
+    priority: P1
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - undo()/redo() API
+      - Ctrl+Z undo, Ctrl+Y / Ctrl+Shift+Z redo
+      - Ctrl+D duplicate line, Ctrl+Shift+K delete line
+      - Ctrl+A select all, Shift/Ctrl+Shift+Arrow extend selection
+    evidence:
+      - src/widget/input/input_widgets/textarea/undo.rs
+      - src/widget/input/input_widgets/textarea/editing.rs::duplicate_line
+      - tests/textarea_undo_tests.rs
+    source:
+      - FEATURES.md §4 Widgets / Input Widgets / TextArea
+    notes: 'Methods exist (undo, redo, duplicate_line, delete_line, select_all) but handle_key_event binds none of these keys.
+      BUG: an unbound Ctrl+letter falls through to handle_key(&event.key) and inserts the letter (Ctrl+Z types "z"). Doc assigns
+      Ctrl+D to both duplicate-line and select-next-occurrence; code binds select-next-occurrence.'
+  - id: WID-011
+    title: TextArea find/replace
+    area: widget
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - Ctrl+F find, Ctrl+H replace, F3/Shift+F3 next/prev, Esc closes
+      - case-sensitive / whole-word / regex toggles
+      - replace current / replace all
+    evidence:
+      - src/widget/input/input_widgets/textarea/find_impl.rs::toggle_regex
+      - src/widget/input/input_widgets/textarea/mod.rs::handle_key_event
+    source:
+      - FEATURES.md §4 Widgets / Input Widgets / TextArea
+    notes: Regex toggle needs the `regex` feature.
+  - id: WID-012
+    title: TextArea multiple cursors
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - add_cursor_at/above/below
+      - Ctrl+Alt+Up/Down add cursor
+      - Ctrl+D select next occurrence
+      - Esc clears secondary cursors
+    evidence:
+      - src/widget/input/input_widgets/textarea/multi_cursor.rs
+      - src/widget/input/input_widgets/textarea/mod.rs::handle_key_event
+    source:
+      - FEATURES.md §4 Widgets / Input Widgets / TextArea
+  - id: WID-013
+    title: Tabs
+    area: widget
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - tab labels, selected index
+      - keyboard next/prev
+    evidence:
+      - src/widget/layout/tabs.rs::tabs
+      - tests/e2e_scenarios.rs
+    source:
+      - FEATURES.md §4 Widgets / Navigation Widgets / Tabs
+    notes: Doc .active()/.on_change()/.content() do not exist (selected/selected_index/select); the app renders the tab body.
+  - id: WID-014
+    title: Menu bar with items and separators
+    area: widget
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - menu_bar with menus
+      - menu items with shortcuts and callbacks
+      - separator items
+    evidence:
+      - src/widget/feedback/menu/helpers.rs::menu_bar
+      - src/widget/feedback/menu/types.rs::separator
+      - tests/menu_helpers_tests.rs
+    source:
+      - FEATURES.md §4 Widgets / Navigation Widgets / Menu Bar
+    notes: Doc menu_separator() does not exist; use MenuItem::separator().
+  - id: WID-015
+    title: Card with variants, collapsible body, header/footer
+    area: widget
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - title/subtitle/body/footer
+      - outlined/filled/elevated/flat
+      - collapsible + expanded
+    evidence:
+      - src/widget/layout/card/helper.rs::card
+      - tests/css_card_and_overflow.rs
+      - examples/card.rs
+    source:
+      - FEATURES.md §4 Widgets / Layout Widgets / Card
+  - id: WID-016
+    title: Modal dialog
+    area: widget
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - title/content, ok_cancel buttons
+      - show/hide
+      - handle_key returns the activated button index
+    evidence:
+      - src/widget/feedback/modal/mod.rs::modal
+      - src/widget/feedback/modal/mod.rs::handle_key
+      - tests/rendering_overlap_tests.rs
+    source:
+      - FEATURES.md §4 Widgets / Feedback Widgets / Modal
+  - id: WID-017
+    title: Toast notifications
+    area: widget
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - toast(message) with level and position
+      - auto-dismiss duration
+    evidence:
+      - src/widget/feedback/toast.rs::toast
+      - src/widget/feedback/toast_queue.rs::ToastQueue
+      - tests/widget/feedback/toast.rs
+    source:
+      - FEATURES.md §4 Widgets / Feedback Widgets / Toast
+    notes: Toast has no .duration()/.show(); timing lives in ToastQueue (default_duration / with_duration).
+  - id: WID-018
+    title: Progress bar
+    area: widget
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - progress(value) 0..1
+      - optional percentage label
+    evidence:
+      - src/widget/display/progress.rs::progress
+      - tests/display_widgets_read_css.rs
+    source:
+      - FEATURES.md §4 Widgets / Feedback Widgets / Progress
+    notes: Doc .max(100).label(..) do not exist; value is a 0.0–1.0 fraction, show_percentage(true).
+  - id: WID-019
+    title: Alert (levels, variants, dismissible, icon, title)
+    area: widget
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - info/success/warning/error helpers
+      - Filled/Outlined/Minimal variants
+      - dismissible, icon toggle, custom icon, title
+    evidence:
+      - src/widget/feedback/alert.rs::alert
+      - tests/alert_tests.rs
+      - examples/alert.rs
+    source:
+      - FEATURES.md §4 Widgets / Feedback Widgets / Alert
+  - id: WID-020
+    title: Callout (note/tip/important/warning/danger)
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - five callout types
+      - Filled/LeftBorder/Minimal variants
+      - collapsible, custom title
+    evidence:
+      - src/widget/callout/helpers.rs::note
+      - src/widget/callout/helpers.rs::warning_callout
+      - examples/callout.rs
+    source:
+      - FEATURES.md §4 Widgets / Feedback Widgets / Callout
+  - id: WID-021
+    title: StatusIndicator (online/offline/busy/away)
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - four status helpers
+      - Dot/DotWithLabel/Badge styles, sizes, custom label
+      - pulsing animation
+    evidence:
+      - src/widget/display/status_indicator.rs::status_indicator
+      - tests/widget/display/status_indicator.rs
+      - examples/status_indicator.rs
+    source:
+      - FEATURES.md §4 Widgets / Feedback Widgets / StatusIndicator
+      - FEATURES.md §Advanced Widgets / Status Indicator
+    notes: 'Merged duplicate section. Doc status_indicator().status(..) form: constructor takes the Status.'
+  - id: WID-022
+    title: EmptyState (no-results/error/first-use, variants)
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - empty_state(title) with description/action
+      - no_results/error/first_use presets
+      - Full/Compact/Minimal variants, custom icon
+    evidence:
+      - src/widget/display/empty_state.rs::empty_state
+      - tests/widget/display/empty_state.rs
+    source:
+      - FEATURES.md §4 Widgets / Feedback Widgets / EmptyState
+  - id: WID-023
+    title: Markdown rendering (with code-block syntax highlighting)
+    area: widget
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - headings, emphasis, lists, code blocks
+      - syntax highlighting of fenced code
+    evidence:
+      - src/widget/markdown/helpers.rs::markdown
+      - src/widget/markdown/mod.rs::syntax_highlight
+      - tests/widget/markdown.rs
+    source:
+      - FEATURES.md §4 Widgets / Content Widgets / Markdown
+      - FEATURES.md §Overview
+    notes: 'Needs `markdown` feature (highlighting: `syntax-highlighting`).'
+  - id: WID-024
+    title: Markdown presentation (slides)
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - '--- splits slides'
+      - preview and slides modes, next_slide/toggle_mode
+      - H1–H6 sizing via Kitty text sizing with figlet fallback
+      - '<!-- notes: --> speaker notes extracted'
+    evidence:
+      - src/widget/markdown_presentation.rs::markdown_presentation
+      - src/widget/markdown_presentation.rs::text_sizing
+      - src/widget/slides.rs::notes
+      - tests/widget/markdown_presentation.rs
+      - examples/slideshow.rs
+    source:
+      - FEATURES.md §4 Widgets / Content Widgets / Markdown Presentation
+  - id: WID-025
+    title: Image widget (Kitty graphics protocol)
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - load PNG/file
+      - scale modes
+      - image is displayed via the Kitty protocol
+    evidence:
+      - src/widget/image.rs::image_from_file
+      - src/widget/image.rs::kitty_escape
+      - tests/image_tests.rs
+    source:
+      - FEATURES.md §4 Widgets / Content Widgets / Image (Kitty Protocol)
+    notes: Render paints placeholder cells only ("For now, render placeholder characters"); kitty_escape() is built but nothing
+      emits it. Doc image(path).width().height() does not exist (Image::from_file / image_from_file; width()/height() are
+      getters). Feature-comparison row "Image ✅ Kitty" overstated.
+  - id: WID-026
+    title: Command palette widget (fuzzy search)
+    area: widget
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - command list with fuzzy filtering
+      - placeholder, show/hide
+    evidence:
+      - src/widget/command_palette/helper.rs::command_palette
+      - tests/fuzzy_tests.rs
+      - examples/ide.rs
+    source:
+      - FEATURES.md §4 Widgets / Special Widgets / Command Palette
+      - FEATURES.md §Advanced Widgets / Command Palette
+    notes: Merged the two doc sections (widget part).
+  - id: WID-027
+    title: App-level built-in Ctrl+P command palette
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: todo
+    acceptance:
+      - app.command_palette().command(..) registers commands
+      - Ctrl+P opens it without app code
+    evidence: []
+    source:
+      - FEATURES.md §4 Widgets / Special Widgets / Command Palette
+    notes: App has no command_palette() method; the app must mount CommandPalette and bind the key itself (examples/ide.rs).
+  - id: WID-028
+    title: Form system with validation
+    area: widget
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - 'typed fields: text/password/email/number/textarea'
+      - required/min_length/… validators
+      - errors per field, submit
+    evidence:
+      - src/state/patterns/form/state.rs
+      - src/state/patterns/form/field.rs
+      - src/widget/form/form.rs::on_submit
+      - tests/widget/form_tests.rs
+      - examples/form_validation.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Form System
+    notes: 'Doc API differs (revue::widget::form::{Form, FormField, FormState}; FormField::new(..).checkbox(); form.state()):
+      no checkbox field type, state is FormState built separately.'
+  - id: WID-029
+    title: File / directory / save pickers
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - file_picker with title and filter
+      - dir_picker
+      - save_picker with default_name
+    evidence:
+      - src/widget/filepicker/mod.rs::file_picker
+      - src/widget/filepicker/mod.rs::save_picker
+      - tests/widget/filepicker/mod.rs
+    source:
+      - FEATURES.md §Advanced Widgets / File Pickers
+    notes: No .on_select closure; filter takes FileFilter, not a glob string.
+  - id: WID-030
+    title: Color picker
+    area: widget
+    priority: P3
+    priority_inferred: true
+    status: done
+    acceptance:
+      - interactive color selection
+    evidence:
+      - src/widget/input/input_widgets/color_picker/helper.rs::color_picker
+      - tests/picker_widgets_read_css.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Color Picker
+    notes: No .on_change.
+  - id: WID-031
+    title: Process monitor (htop-style)
+    area: widget
+    priority: P3
+    priority_inferred: true
+    status: done
+    acceptance:
+      - process list with sort and update interval
+    evidence:
+      - src/widget/developer/procmon.rs::process_monitor
+      - tests/widget/developer/procmon.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Process Monitor
+    notes: Needs `sysinfo` feature.
+  - id: WID-032
+    title: HTTP client widget
+    area: widget
+    priority: P3
+    priority_inferred: true
+    status: done
+    acceptance:
+      - url, method, headers
+      - request/response view with history
+    evidence:
+      - src/widget/developer/httpclient/helpers.rs::http_client
+      - tests/widget/httpclient/methods.rs
+    source:
+      - FEATURES.md §Advanced Widgets / HTTP Client
+  - id: WID-033
+    title: QR code widget
+    area: widget
+    priority: P3
+    priority_inferred: true
+    status: done
+    acceptance:
+      - qrcode(data) renders
+      - error-correction level
+    evidence:
+      - src/widget/qrcode.rs::qrcode
+      - tests/widget/qrcode.rs
+      - examples/qrcode_generator.rs
+    source:
+      - FEATURES.md §Advanced Widgets / QR Code
+    notes: Needs `qrcode` feature.
+  - id: WID-034
+    title: Rating (stars)
+    area: widget
+    priority: P3
+    priority_inferred: true
+    status: done
+    acceptance:
+      - value/max, keyboard change
+    evidence:
+      - src/widget/input/input_widgets/rating.rs::rating
+      - tests/input_widgets_read_css.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Rating
+    notes: No .interactive()/.on_change.
+  - id: WID-035
+    title: Drop zone (drag and drop)
+    area: widget
+    priority: P3
+    priority_inferred: true
+    status: done
+    acceptance:
+      - drop_zone(placeholder) accepts dropped data
+      - on_drop callback
+    evidence:
+      - src/widget/dropzone/helper.rs::drop_zone
+      - tests/widget/dropzone/helper.rs
+      - examples/drag_drop.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Drop Zone
+    notes: Placeholder is the constructor argument (no .label()).
+  - id: WID-036
+    title: Search bar
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - placeholder, query input
+    evidence:
+      - src/widget/input/input_widgets/search_bar.rs::search_bar
+      - tests/input_widgets_read_css.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Search Bar
+    notes: Doc .suggestions()/.on_select() do not exist on SearchBar; suggestion lists are the Autocomplete/Combobox widgets.
+  - id: WID-037
+    title: Multi select
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - multiple selection list
+    evidence:
+      - src/widget/multi_select/helpers.rs::multi_select
+      - tests/widget/multi_select/navigation.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Multi Select
+    notes: Doc .items()/.selected()/.on_change() names differ.
+  - id: WID-038
+    title: Big text (h1/h2/h3, bigtext tier)
+    area: widget
+    priority: P3
+    priority_inferred: true
+    status: done
+    acceptance:
+      - h1/h2/h3 presets
+      - bigtext(text, tier)
+    evidence:
+      - src/widget/display/bigtext.rs::bigtext
+      - tests/widget/display/bigtext.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Big Text
+  - id: WID-039
+    title: Skeleton loading placeholder
+    area: widget
+    priority: P3
+    priority_inferred: true
+    status: done
+    acceptance:
+      - width/height placeholder
+    evidence:
+      - src/widget/display/skeleton.rs::skeleton
+      - tests/widget/skeleton.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Skeleton
+  - id: WID-040
+    title: Tag / chip
+    area: widget
+    priority: P3
+    priority_inferred: true
+    status: done
+    acceptance:
+      - tag(text).color(..)
+      - chip(text).outlined()
+    evidence:
+      - src/widget/display/tag.rs::tag
+      - src/widget/display/tag.rs::chip
+      - tests/display_widgets_read_css.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Tag/Chip
+  - id: WID-041
+    title: Number input
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - value/min/max/step
+    evidence:
+      - src/widget/input/input_widgets/number_input/helper.rs::number_input
+      - tests/widget/input/number_input_helper.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Number Input
+    notes: No .on_change.
+  - id: WID-042
+    title: Date range picker
+    area: widget
+    priority: P3
+    priority_inferred: true
+    status: done
+    acceptance:
+      - start/end dates
+      - presets
+    evidence:
+      - src/widget/range_picker/helpers.rs::range_picker
+      - tests/widget/range_picker.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Range Picker
+    notes: No .on_change.
+  - id: WID-043
+    title: Zen mode (distraction-free wrapper)
+    area: widget
+    priority: P3
+    priority_inferred: true
+    status: done
+    acceptance:
+      - zen(view).padding(n)
+      - toggle() from the app handler
+    evidence:
+      - src/widget/zen.rs::zen
+      - tests/zen_tests.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Zen Mode
+  - id: WID-044
+    title: Error boundary (catch widget panics)
+    area: widget
+    priority: P2
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - render panics of the child are caught
+      - fallback view shown with the error
+    evidence:
+      - src/widget/feedback/error_boundary.rs::error_boundary
+    source:
+      - FEATURES.md §7 Developer Experience / Error Handling
+    notes: Exported and uses catch_unwind, but no test or example exercises it. Doc .fallback(|err| ..) takes a closure; real
+      fallback() takes a View.
+  - id: CHART-001
+    title: Shared chart components (Axis, Legend, ColorScheme, ChartGrid)
+    area: chart
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - Axis title/min/max/ticks/grid
+      - Legend position/orientation
+      - ColorScheme default palette / monochrome
+    evidence:
+      - src/widget/data/chart/chart_common
+      - tests/widget/data/chart_helper.rs
+    source:
+      - FEATURES.md §4 Widgets / Chart Widgets / Common Components
+  - id: CHART-002
+    title: Line and bar charts (+ sparkline)
+    area: chart
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - line_chart / chart
+      - barchart
+      - sparkline
+    evidence:
+      - src/widget/data/chart/helper.rs::line_chart
+      - src/widget/data/chart/barchart.rs::barchart
+      - src/widget/data/chart/sparkline.rs::sparkline
+    source:
+      - FEATURES.md §Overview
+    notes: Only named in the Overview table.
+  - id: CHART-003
+    title: Pie and donut charts
+    area: chart
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - slices with legend and label styles
+      - donut with hole ratio
+      - explode a slice
+    evidence:
+      - src/widget/data/chart/piechart.rs::pie_chart
+      - src/widget/data/chart/piechart.rs::donut_chart
+      - tests/widget/data/piechart.rs
+    source:
+      - FEATURES.md §4 Widgets / Chart Widgets / PieChart
+    notes: Doc .donut_ratio(0.5) is .donut(ratio).
+  - id: CHART-004
+    title: Scatter and bubble charts
+    area: chart
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - multiple series
+      - bubble sizes
+      - markers
+      - auto-scaled axes
+    evidence:
+      - src/widget/data/chart/scatterchart.rs::scatter_chart
+      - src/widget/data/chart/scatterchart.rs::bubble_chart
+      - tests/widget/data_chart_tests.rs
+    source:
+      - FEATURES.md §4 Widgets / Chart Widgets / ScatterChart
+  - id: CHART-005
+    title: Histogram
+    area: chart
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - Auto/Count/Width/Edges binning
+      - density, cumulative
+      - mean/median stats overlay
+      - horizontal orientation
+    evidence:
+      - src/widget/data/chart/histogram/mod.rs::histogram
+      - src/widget/data/chart/histogram/mod.rs::show_stats
+      - tests/widget/data/chart_histogram.rs
+    source:
+      - FEATURES.md §4 Widgets / Chart Widgets / Histogram
+      - FEATURES.md §Advanced Widgets / Advanced Charts
+  - id: CHART-006
+    title: Box plot
+    area: chart
+    priority: P2
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - multiple groups, outliers
+      - IQR/min-max/percentile whiskers
+      - horizontal orientation
+      - notched box shows the median CI
+    evidence:
+      - src/widget/data/chart/boxplot/mod.rs::boxplot
+      - tests/widget/chart_boxplot_render_tests.rs
+    source:
+      - FEATURES.md §4 Widgets / Chart Widgets / BoxPlot
+      - FEATURES.md §Advanced Widgets / Advanced Charts
+    notes: 'BUG: notched(true) only stores the flag; render never reads self.notched, so a notched plot looks identical (the
+      unit test only checks it renders).'
+  - id: CHART-007
+    title: Heatmap
+    area: chart
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - matrix data
+      - color scales incl. Viridis
+    evidence:
+      - src/widget/data/chart/heatmap/mod.rs::heatmap
+      - src/widget/data/chart/heatmap/mod.rs::color_scale
+      - tests/widget/heatmap_tests.rs
+    source:
+      - FEATURES.md §Overview
+      - FEATURES.md §Advanced Widgets / Advanced Charts
+  - id: CHART-008
+    title: Candlestick (OHLC) chart
+    area: chart
+    priority: P3
+    priority_inferred: true
+    status: done
+    acceptance:
+      - candle_chart(data) with title
+    evidence:
+      - src/widget/data/chart/candlechart.rs::candle_chart
+      - tests/widget/candlechart.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Advanced Charts
+  - id: NAV-001
+    title: Screen routing
+    area: navigation
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - switch screens by setting a signal and matching in render
+      - Router with push/back for path-based navigation
+    evidence:
+      - src/core/app/router.rs::Router
+      - src/core/app/router.rs::push
+    source:
+      - FEATURES.md §5 Navigation / Screen Routing
+    notes: Doc shows the plain signal pattern; a Router also exists (docs/guides/routing.md).
+  - id: NAV-002
+    title: 'Focus management: Tab ring in document order, click-to-focus'
+    area: navigation
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - tab_navigation(true) makes Tab/Shift+Tab move :focus in document order
+      - disabled widgets skipped
+      - left click focuses nearest focusable ancestor
+      - needs dom_from_render
+    evidence:
+      - src/core/app/builder.rs::tab_navigation
+      - tests/tab_navigation.rs::tab_moves_to_the_next_control_in_document_order
+      - tests/click_focus.rs::clicking_a_control_focuses_it
+    source:
+      - FEATURES.md §5 Navigation / Focus Management
+  - id: NAV-003
+    title: Layers (z-ordered stacking)
+    area: navigation
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - layers() stacks children
+      - child_z(view, z) orders them
+    evidence:
+      - src/widget/layout/layer.rs::layers
+      - src/widget/layout/layer.rs::child_z
+      - tests/container_children_get_nodes.rs
+    source:
+      - FEATURES.md §5 Navigation / Layers (z-index)
+    notes: Doc layer(0, view) function does not exist; use layers().child_z(view, z). CSS z-index is not applied (CSS-018).
+  - id: TEXT-001
+    title: Wide-character width (CJK, emoji = 2 cells)
+    area: unicode
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - ASCII 1, CJK 2, emoji 2
+      - zero-width joiners/combining marks 0
+    evidence:
+      - src/utils/unicode.rs::char_width
+      - src/utils/unicode.rs::display_width
+      - tests/unicode_tests.rs
+    source:
+      - FEATURES.md §6 Unicode & Font Support / Supported Characters
+    notes: display_width sums per-char widths, so a ZWJ emoji sequence like the family emoji measures 8, not the doc's 2 (no
+      grapheme clustering).
+  - id: TEXT-002
+    title: 'CharWidthTable: detect / configure CJK, emoji, Nerd Font widths'
+    area: unicode
+    priority: P2
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - CharWidthTable::detect() per terminal
+      - with_cjk/with_emoji/with_nerd_font overrides
+      - configured widths used by rendering
+    evidence:
+      - src/text/width.rs::CharWidthTable
+      - src/text/width.rs::with_nerd_font
+    source:
+      - FEATURES.md §6 Unicode & Font Support / Character Width Detection
+    notes: Type is exported and unit-tested but nothing in rendering consults it; buffer widths come from utils::unicode::char_width.
+  - id: TEXT-003
+    title: revue.toml [font] width configuration
+    area: unicode
+    priority: P3
+    priority_inferred: true
+    status: todo
+    acceptance:
+      - '[font] detect / [font.width] cjk, emoji, nerd_font read at startup'
+    evidence: []
+    source:
+      - FEATURES.md §6 Unicode & Font Support / Configuration
+    notes: No code reads revue.toml or a [font] table.
+  - id: DX-001
+    title: Stylesheet hot reload
+    area: dx
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - App::builder().style(..).hot_reload(true) reloads CSS on file change without restart
+    evidence:
+      - src/core/app/builder.rs::hot_reload
+      - src/core/app/hot_reload.rs::HotReload
+      - examples/text_editor.rs
+    source:
+      - FEATURES.md §7 Developer Experience / Hot Reload
+    notes: Needs `hot-reload` feature; no automated test.
+  - id: DX-002
+    title: '`revue dev` CLI with file watching'
+    area: dx
+    priority: P2
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - revue dev watches src/ and styles/ and rebuilds/restarts on change
+      - CSS changes apply without restart
+    evidence:
+      - revue-cli/src/commands.rs::dev_server
+    source:
+      - FEATURES.md §7 Developer Experience / Hot Reload
+    notes: 'BUG: dev_server prints "Dev server: http://localhost:PORT" and "Watching for changes…" but starts no server and
+      no watcher: it runs cargo build + cargo run once. --watch takes extra paths (not a boolean flag as the doc implies).'
+  - id: DX-003
+    title: Devtools (inspector, style debugger, event logger, profiler)
+    area: dx
+    priority: P2
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - widget tree inspector, style inspector, event logger, profiler panels
+      - App::builder().devtools(true) enables an overlay
+      - Ctrl+Shift+D toggles it
+    evidence:
+      - src/devtools/mod.rs::DevTools
+      - src/devtools/inspector
+      - src/devtools/style
+      - src/devtools/events
+      - src/devtools/profiler
+    source:
+      - FEATURES.md §7 Developer Experience / Devtools
+    notes: 'Panels exist as a library (DevTools view the app must mount). App only stores devtools_enabled: nothing renders
+      an overlay from it and no Ctrl+Shift+D binding exists. Feature-comparison "Devtools ✅" overstated.'
+  - id: DX-004
+    title: 'Headless testing: TestApp + snapshots'
+    area: dx
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - TestApp::new(view)
+      - send_key/send_click, render
+      - contains/screen_text for assertions and insta snapshots
+    evidence:
+      - src/testing/test_app.rs::send_key
+      - src/testing/test_app.rs::screen_text
+      - tests/snapshots_widget.rs
+    source:
+      - FEATURES.md §7 Developer Experience / Testing
+  - id: THEME-001
+    title: TOML theme files ([colors], [font])
+    area: theme
+    priority: P3
+    priority_inferred: true
+    status: todo
+    acceptance:
+      - themes/*.toml with [colors] palette loaded as a theme
+    evidence: []
+    source:
+      - FEATURES.md §8 Theming / Theme Files
+    notes: No TOML theme loader; built-in themes are CSS (src/runtime/style/themes/*.css) and Theme structs.
+  - id: THEME-002
+    title: Apply theme via stylesheet
+    area: theme
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - App::builder().style("themes/x.css")
+      - built-in theme stylesheets (dracula, nord, catppuccin, …)
+    evidence:
+      - src/core/app/builder.rs::style
+      - src/runtime/style/themes/mod.rs
+    source:
+      - FEATURES.md §8 Theming / Applying Themes
+  - id: THEME-003
+    title: Runtime theme switching
+    area: theme
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - set_theme/toggle_theme/cycle_theme at runtime
+      - theme exposed as CSS variables
+    evidence:
+      - src/runtime/style/theme_signal.rs::set_theme
+      - src/runtime/style/theme_signal.rs::theme_to_css_variables
+      - examples/theme_switcher.rs
+    source:
+      - FEATURES.md §8 Theming / Runtime Theme Switching
+  - id: KEY-001
+    title: Clipboard copy/paste API
+    area: input
+    priority: P1
+    priority_inferred: true
+    status: done
+    acceptance:
+      - revue::utils::copy / paste
+      - pluggable backend (system / memory), history
+    evidence:
+      - src/utils/clipboard.rs::copy
+      - src/utils/clipboard.rs::paste
+      - tests/clipboard_tests.rs
+    source:
+      - FEATURES.md §9 Clipboard
+    notes: System backend needs `clipboard` feature. Doc clipboard::copy path is utils::clipboard::copy; widget .on_key(Ctrl(..))
+      form does not exist (Input/TextArea have copy/cut/paste built in).
+  - id: KEY-002
+    title: Global key handler on App::run
+    area: input
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - app.run(view, |event, view, app| -> bool) receives every event
+      - app.quit()
+    evidence:
+      - src/core/app/mod.rs::run
+    source:
+      - FEATURES.md §10 Keyboard Shortcuts / Global Shortcuts
+  - id: KEY-003
+    title: Per-widget key bindings
+    area: input
+    priority: P2
+    priority_inferred: true
+    status: partial
+    acceptance:
+      - widget.on_key(key, closure)
+      - mode-aware keymaps with chords (vim/emacs presets)
+    evidence:
+      - src/utils/keymap.rs::vim_preset
+      - src/runtime/event/keymap.rs
+    source:
+      - FEATURES.md §10 Keyboard Shortcuts / Widget Shortcuts
+    notes: No widget exposes on_key (only TestApp). A KeyMap utility with chords and vim/emacs presets exists for the app
+      to route keys itself.
+  - id: KEY-004
+    title: Key modifiers (Ctrl/Alt/Shift)
+    area: input
+    priority: P0
+    priority_inferred: true
+    status: done
+    acceptance:
+      - KeyEvent carries ctrl/alt/shift
+      - helpers like KeyEvent::ctrl(Key::Char(c))
+    evidence:
+      - src/runtime/event/mod.rs::KeyEvent
+      - tests/event.rs
+    source:
+      - FEATURES.md §10 Keyboard Shortcuts / Key Modifiers
+    notes: Doc notation Key::Ctrl(..)/Key::Alt(..)/Key::Shift(..) does not exist; modifiers are KeyEvent fields.
+  - id: UTIL-001
+    title: Debounce
+    area: util
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - debounce_ms(n) / Debouncer::new
+      - call() + is_ready() trailing edge
+    evidence:
+      - src/utils/debounce.rs::debounce_ms
+      - tests/debounce_tests.rs::test_debouncer_trailing_edge
+    source:
+      - FEATURES.md §11 Event Utilities / Debounce
+  - id: UTIL-002
+    title: Throttle
+    area: util
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - 'throttle_ms(n): at most once per interval'
+    evidence:
+      - src/utils/debounce.rs::throttle_ms
+      - tests/debounce_tests.rs
+    source:
+      - FEATURES.md §11 Event Utilities / Throttle
+  - id: UTIL-003
+    title: Debounce edge modes, cancel, remaining
+    area: util
+    priority: P3
+    priority_inferred: true
+    status: done
+    acceptance:
+      - leading / trailing / both_edges
+      - cancel()
+      - remaining()
+    evidence:
+      - src/utils/debounce.rs::both_edges
+      - src/utils/debounce.rs::remaining
+      - tests/debounce_tests.rs::test_debouncer_leading_edge
+    source:
+      - FEATURES.md §11 Event Utilities / Edge Modes
+  - id: UTIL-004
+    title: Animation system (presets, sequences, easing)
+    area: util
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - fade_in/slide_in_left presets return Sequence
+      - Sequence::then_eased/repeat/start/value
+      - Easing functions
+    evidence:
+      - src/utils/animation/presets.rs::fade_in
+      - src/utils/animation/sequence.rs::then_eased
+      - tests/utils_animation_mod_tests.rs
+      - examples/animations.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Animation System
+  - id: UTIL-005
+    title: Worker pool and handles
+    area: util
+    priority: P2
+    priority_inferred: true
+    status: done
+    acceptance:
+      - WorkerPool::new(n).submit(..)
+      - WorkerHandle::spawn_blocking + state()/join()
+      - Pending/Running/Completed/Failed/Cancelled states
+    evidence:
+      - src/state/worker/pool.rs::submit
+      - src/state/worker/handle.rs::spawn_blocking
+      - tests/worker/pool.rs
+      - examples/worker_basic.rs
+    source:
+      - FEATURES.md §Advanced Widgets / Worker Pool
