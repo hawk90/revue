@@ -145,7 +145,7 @@ impl Interactive for SortableList {
         event: &crate::event::MouseEvent,
         area: Rect,
     ) -> crate::widget::traits::EventResult {
-        if !area.contains(event.x, event.y) {
+        if !area.contains(event.x, event.y) || self.items.is_empty() {
             return crate::widget::traits::EventResult::Ignored;
         }
 

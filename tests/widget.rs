@@ -146,13 +146,10 @@ mod richlog;
 mod richtext;
 #[path = "widget/screen.rs"]
 pub mod screen;
-#[path = "widget/search_bar.rs"]
-mod search_bar;
-// TODO(test-coverage): sortable has API mismatches
-// #[path = "widget/sortable/mod.rs"]
-// pub mod sortable;
 #[path = "widget/scroll.rs"]
 mod scroll;
+#[path = "widget/search_bar.rs"]
+mod search_bar;
 #[path = "widget/select.rs"]
 mod select;
 #[path = "widget/selection_list.rs"]
@@ -166,6 +163,8 @@ mod slider;
 #[cfg(feature = "markdown")]
 #[path = "widget/slides.rs"]
 mod slides;
+#[path = "widget/sortable/mod.rs"]
+mod sortable;
 #[path = "widget/spinner.rs"]
 mod spinner;
 #[path = "widget/splitter/mod.rs"]
