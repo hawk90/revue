@@ -17,7 +17,7 @@ permissions:
 jobs:
   pr-title:
     name: Validate PR Title
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request_target'
     steps:
       - uses: amannn/action-semantic-pull-request@v6
@@ -44,7 +44,7 @@ jobs:
 
   label:
     name: Label PR
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request_target'
     steps:
       - uses: actions/labeler@v7
@@ -55,7 +55,7 @@ jobs:
 
   welcome:
     name: Welcome
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request_target' || github.event_name == 'issues'
     steps:
       - uses: actions/first-interaction@v3
@@ -68,7 +68,7 @@ jobs:
 
   stale:
     name: Mark Stale
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/stale@v10
