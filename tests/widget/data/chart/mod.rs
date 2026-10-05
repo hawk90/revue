@@ -16,6 +16,7 @@ mod color_scheme;
 mod histogram;
 mod piechart;
 mod scatterchart;
+mod sparkline;
 
 /// Render `view` into a fresh `width` x `height` buffer.
 pub fn render(view: &impl View, width: u16, height: u16) -> Buffer {
