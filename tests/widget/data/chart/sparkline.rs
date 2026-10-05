@@ -140,6 +140,16 @@ fn test_sparkline_nan_is_lowest() {
 }
 
 #[test]
+fn test_sparkline_infinity_does_not_flatten_finite_values() {
+    // Bounds come from the finite values; infinities clamp to the ends
+    let sl = Sparkline::new(vec![1.0, f64::INFINITY, 3.0, f64::NEG_INFINITY]);
+    assert_eq!(line(&sl, 4), "▃██▁");
+    // Only non-finite values: nothing to scale, but nothing panics either
+    let sl = Sparkline::new(vec![f64::INFINITY, f64::NAN]);
+    assert_eq!(line(&sl, 3).chars().count(), 3);
+}
+
+#[test]
 fn test_sparkline_styles() {
     let data = vec![0.0, 50.0, 100.0];
     assert_eq!(SparklineStyle::default(), SparklineStyle::Block);
