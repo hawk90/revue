@@ -1,150 +1,176 @@
-//! Tests for streamline widget helper functions
+//! Tests for the streamline preset constructors (`streamline_with_data`,
+//! `genre_stream`, `traffic_stream`, `resource_stream`)
 
-use revue::widget::streamline::helpers::*;
+use revue::layout::Rect;
+use revue::render::Buffer;
+use revue::style::Color;
+use revue::widget::traits::RenderContext;
+use revue::widget::View;
+use revue::widget::{
+    genre_stream, resource_stream, streamline, streamline_with_data, traffic_stream, StreamLayer,
+    Streamline,
+};
 
-#[test]
-fn test_streamline_function() {
-    let chart = streamline();
-    let _ = chart;
+fn render_rows(chart: &Streamline, w: u16, h: u16) -> Vec<String> {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    chart.render(&mut ctx);
+    (0..h)
+        .map(|y| {
+            (0..w)
+                .filter_map(|x| buffer.get(x, y).map(|c| c.symbol))
+                .collect()
+        })
+        .collect()
+}
+
+fn approx(a: f64, b: f64) -> bool {
+    (a - b).abs() < 1e-9
 }
 
 #[test]
-fn test_streamline_with_data_function() {
-    let layers = vec![
-        revue::widget::streamline::types::StreamLayer::new("Layer1").data(vec![1.0, 2.0, 3.0]),
-        revue::widget::streamline::types::StreamLayer::new("Layer2").data(vec![2.0, 3.0, 4.0]),
-    ];
-    let chart = streamline_with_data(layers);
-    let _ = chart;
+fn test_streamline_has_no_stacks() {
+    assert!(streamline().compute_stacks().is_empty());
 }
 
 #[test]
-fn test_genre_stream_function() {
-    let data = vec![("Rock", vec![1.0, 2.0, 3.0]), ("Pop", vec![2.0, 3.0, 4.0])];
-    let chart = genre_stream(data);
-    let _ = chart;
+fn test_streamline_with_data_keeps_every_layer() {
+    let chart = streamline_with_data(vec![
+        StreamLayer::new("A").data(vec![1.0, 2.0, 3.0]),
+        StreamLayer::new("B").data(vec![2.0, 3.0, 4.0]),
+        StreamLayer::new("C").data(vec![3.0]),
+    ]);
+    let stacks = chart.compute_stacks();
+    assert_eq!(stacks.len(), 3);
+    // Every layer gets one band per x position, padded to the longest layer
+    assert!(stacks.iter().all(|s| s.len() == 3));
 }
 
 #[test]
-fn test_traffic_stream_function() {
-    let data = vec![
+fn test_streamline_with_data_empty() {
+    assert!(streamline_with_data(vec![]).compute_stacks().is_empty());
+}
+
+#[test]
+fn test_genre_stream_is_symmetric_around_zero() {
+    let chart = genre_stream(vec![("Rock", vec![1.0, 2.0]), ("Pop", vec![3.0, 4.0])]);
+    let stacks = chart.compute_stacks();
+    assert_eq!(stacks.len(), 2);
+    for x in 0..2 {
+        let low = stacks.iter().map(|s| s[x].0).fold(f64::INFINITY, f64::min);
+        let high = stacks
+            .iter()
+            .map(|s| s[x].1)
+            .fold(f64::NEG_INFINITY, f64::max);
+        assert!(approx(low, -high), "x={x}: {low} vs {high}");
+    }
+    // x = 0: total 4 -> spans -2..2
+    let low0 = stacks.iter().map(|s| s[0].0).fold(f64::INFINITY, f64::min);
+    assert!(approx(low0, -2.0));
+}
+
+#[test]
+fn test_genre_stream_colors_cycle_after_six() {
+    let names = ["a", "b", "c", "d", "e", "f", "g"];
+    let chart = genre_stream(names.iter().map(|n| (*n, vec![1.0])).collect());
+    assert_eq!(chart.get_layer_color(0), Color::rgb(231, 76, 60));
+    assert_eq!(chart.get_layer_color(1), Color::rgb(52, 152, 219));
+    assert_eq!(chart.get_layer_color(6), chart.get_layer_color(0));
+    assert_ne!(chart.get_layer_color(5), chart.get_layer_color(0));
+}
+
+#[test]
+fn test_genre_stream_empty() {
+    assert!(genre_stream(vec![]).compute_stacks().is_empty());
+}
+
+#[test]
+fn test_genre_stream_renders_title() {
+    let chart = genre_stream(vec![("Jazz", vec![5.0, 10.0, 15.0])]);
+    let rows = render_rows(&chart, 40, 10);
+    assert!(rows[0].contains("Music Genre Trends"), "{rows:?}");
+    assert!(rows[1].contains("Jazz"), "{rows:?}");
+}
+
+#[test]
+fn test_traffic_stream_expands_to_unit_height() {
+    let chart = traffic_stream(vec![
         ("Organic", vec![10.0, 20.0, 30.0]),
         ("Direct", vec![15.0, 25.0, 35.0]),
-    ];
-    let chart = traffic_stream(data);
-    let _ = chart;
+    ]);
+    let stacks = chart.compute_stacks();
+    for x in 0..3 {
+        let low = stacks.iter().map(|s| s[x].0).fold(f64::INFINITY, f64::min);
+        let high = stacks
+            .iter()
+            .map(|s| s[x].1)
+            .fold(f64::NEG_INFINITY, f64::max);
+        assert!(approx(low, 0.0));
+        assert!(approx(high, 1.0));
+    }
 }
 
 #[test]
-fn test_resource_stream_function() {
+fn test_traffic_stream_puts_largest_source_at_bottom() {
+    let chart = traffic_stream(vec![("Small", vec![1.0, 1.0]), ("Large", vec![9.0, 9.0])]);
+    let stacks = chart.compute_stacks();
+    // Descending order: "Large" (index 1) is stacked first, from 0
+    assert!(approx(stacks[1][0].0, 0.0));
+    assert!(approx(stacks[1][0].1, 0.9));
+    assert!(approx(stacks[0][0].0, 0.9));
+}
+
+#[test]
+fn test_traffic_stream_empty() {
+    assert!(traffic_stream(vec![]).compute_stacks().is_empty());
+}
+
+#[test]
+fn test_resource_stream_stacks_from_zero_in_fixed_order() {
     let chart = resource_stream(
         vec![10.0, 20.0],
         vec![30.0, 40.0],
         vec![50.0, 60.0],
         vec![70.0, 80.0],
     );
-    let _ = chart;
+    let stacks = chart.compute_stacks();
+    assert_eq!(stacks.len(), 4);
+    assert_eq!(stacks[0][0], (0.0, 10.0));
+    assert_eq!(stacks[1][0], (10.0, 40.0));
+    assert_eq!(stacks[2][0], (40.0, 90.0));
+    assert_eq!(stacks[3][0], (90.0, 160.0));
 }
 
 #[test]
-fn test_streamline_empty_data() {
-    let layers: Vec<revue::widget::streamline::types::StreamLayer> = vec![];
-    let chart = streamline_with_data(layers);
-    let _ = chart;
+fn test_resource_stream_layer_colors() {
+    let chart = resource_stream(vec![1.0], vec![1.0], vec![1.0], vec![1.0]);
+    assert_eq!(chart.get_layer_color(0), Color::rgb(52, 152, 219));
+    assert_eq!(chart.get_layer_color(1), Color::rgb(155, 89, 182));
+    assert_eq!(chart.get_layer_color(2), Color::rgb(46, 204, 113));
+    assert_eq!(chart.get_layer_color(3), Color::rgb(241, 196, 15));
 }
 
 #[test]
-fn test_genre_stream_empty() {
-    let data: Vec<(&str, Vec<f64>)> = vec![];
-    let chart = genre_stream(data);
-    let _ = chart;
-}
-
-#[test]
-fn test_genre_stream_single_genre() {
-    let data = vec![("Jazz", vec![5.0, 10.0, 15.0])];
-    let chart = genre_stream(data);
-    let _ = chart;
-}
-
-#[test]
-fn test_genre_stream_many_genres() {
-    let data = vec![
-        ("Rock", vec![1.0, 2.0]),
-        ("Pop", vec![2.0, 3.0]),
-        ("Jazz", vec![3.0, 4.0]),
-        ("Classical", vec![4.0, 5.0]),
-        ("Electronic", vec![5.0, 6.0]),
-        ("Hip-Hop", vec![6.0, 7.0]),
-        ("Country", vec![7.0, 8.0]),
-    ];
-    let chart = genre_stream(data);
-    let _ = chart;
-}
-
-#[test]
-fn test_traffic_stream_empty() {
-    let data: Vec<(&str, Vec<f64>)> = vec![];
-    let chart = traffic_stream(data);
-    let _ = chart;
-}
-
-#[test]
-fn test_traffic_stream_single_source() {
-    let data = vec![("Social", vec![100.0, 200.0])];
-    let chart = traffic_stream(data);
-    let _ = chart;
+fn test_resource_stream_single_resource_pads_others_with_zero() {
+    let stacks = resource_stream(vec![10.0], vec![], vec![], vec![]).compute_stacks();
+    assert_eq!(stacks.len(), 4);
+    assert_eq!(stacks[0][0], (0.0, 10.0));
+    assert_eq!(stacks[3][0], (10.0, 10.0));
 }
 
 #[test]
 fn test_resource_stream_empty_data() {
-    let chart = resource_stream(vec![], vec![], vec![], vec![]);
-    let _ = chart;
+    assert!(resource_stream(vec![], vec![], vec![], vec![])
+        .compute_stacks()
+        .is_empty());
 }
 
 #[test]
-fn test_resource_stream_single_resource() {
-    let chart = resource_stream(vec![10.0], vec![], vec![], vec![]);
-    let _ = chart;
-}
-
-#[test]
-fn test_streamline_multiple() {
-    let chart1 = streamline();
-    let chart2 = streamline();
-    let _ = chart1;
-    let _ = chart2;
-}
-
-#[test]
-fn test_helpers_do_not_panic() {
-    // All helper functions should not panic with valid input
-    let _ = streamline();
-    let _ = streamline_with_data(vec![]);
-    let _ = genre_stream(vec![]);
-    let _ = traffic_stream(vec![]);
-    let _ = resource_stream(vec![], vec![], vec![], vec![]);
-}
-
-#[test]
-fn test_streamline_with_data_multiple_layers() {
-    let layers = vec![
-        revue::widget::streamline::types::StreamLayer::new("A").data(vec![1.0]),
-        revue::widget::streamline::types::StreamLayer::new("B").data(vec![2.0]),
-        revue::widget::streamline::types::StreamLayer::new("C").data(vec![3.0]),
-        revue::widget::streamline::types::StreamLayer::new("D").data(vec![4.0]),
-        revue::widget::streamline::types::StreamLayer::new("E").data(vec![5.0]),
-    ];
-    let chart = streamline_with_data(layers);
-    let _ = chart;
-}
-
-#[test]
-fn test_genre_stream_with_string_names() {
-    let data = vec![
-        (String::from("R&B"), vec![1.0, 2.0]),
-        (String::from("Blues"), vec![2.0, 3.0]),
-    ];
-    let chart = genre_stream(data.iter().map(|(n, d)| (n.as_str(), d.clone())).collect());
-    let _ = chart;
+fn test_resource_stream_renders_legend() {
+    let chart = resource_stream(vec![1.0, 2.0], vec![1.0, 2.0], vec![1.0], vec![1.0]);
+    let rows = render_rows(&chart, 60, 10);
+    assert!(rows[0].contains("Resource Usage"), "{rows:?}");
+    for name in ["CPU", "Memory", "Disk", "Network"] {
+        assert!(rows[1].contains(name), "{name} missing: {rows:?}");
+    }
 }

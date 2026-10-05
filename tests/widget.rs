@@ -178,9 +178,8 @@ mod splitter;
 mod statusbar;
 #[path = "widget/stepper.rs"]
 mod stepper;
-// TODO(test-coverage): streamline has API mismatches
-// #[path = "widget/streamline/mod.rs"]
-// mod streamline;
+#[path = "widget/streamline/mod.rs"]
+mod streamline;
 #[path = "widget/switch.rs"]
 mod switch;
 #[path = "widget/syntax.rs"]
