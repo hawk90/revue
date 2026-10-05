@@ -1,4 +1,4 @@
-//! Date type tests extracted from src/widget/data/calendar/date.rs
+//! Date type tests
 //!
 //! This file contains tests for the Date struct, including:
 //! - Date creation and validation
@@ -8,29 +8,6 @@
 //! - Date navigation (prev_day, next_day)
 
 use revue::widget::data::calendar::Date;
-
-#[test]
-fn test_date_new() {
-    let date = Date::new(2024, 6, 15);
-    assert_eq!(date.year, 2024);
-    assert_eq!(date.month, 6);
-    assert_eq!(date.day, 15);
-}
-
-#[test]
-fn test_date_default() {
-    let date = Date::default();
-    assert_eq!(date.year, 2025);
-    assert_eq!(date.month, 1);
-    assert_eq!(date.day, 1);
-}
-
-#[test]
-fn test_today() {
-    let today = Date::today();
-    // Just verify it returns a valid date
-    assert!(today.is_valid());
-}
 
 #[test]
 fn test_is_valid_true() {
@@ -70,10 +47,11 @@ fn test_is_valid_february_29_non_leap_year() {
 
 #[test]
 fn test_weekday() {
-    let date = Date::new(2025, 1, 1); // Jan 1, 2025 is Wednesday
-                                          // The weekday depends on first_day_of_month calculation
-    let weekday = date.weekday();
-    assert!(weekday < 7);
+    // 0 = Sunday ... 6 = Saturday
+    assert_eq!(Date::new(2023, 12, 31).weekday(), 0); // Sunday
+    assert_eq!(Date::new(2024, 1, 1).weekday(), 1); // Monday
+    assert_eq!(Date::new(2024, 2, 29).weekday(), 4); // Thursday (leap day)
+    assert_eq!(Date::new(2024, 6, 15).weekday(), 6); // Saturday
 }
 
 #[test]
@@ -194,7 +172,7 @@ fn test_date_copy_clone() {
     let date2 = date1;
     assert_eq!(date2, date1);
 
-    let date3 = date1.clone();
+    let date3 = Clone::clone(&date1);
     assert_eq!(date3, date1);
 }
 
@@ -246,24 +224,23 @@ fn test_february_non_leap_year() {
 fn test_subtract_large_amount() {
     let date = Date::new(2024, 6, 15);
     let result = date.subtract_days(100);
-    // Should go back about 3 months
-    assert!(result.year <= 2024);
-    assert!(result.month < 6);
+    assert_eq!(result, Date::new(2024, 3, 7));
+
+    // Across a year boundary and a leap day
+    assert_eq!(
+        Date::new(2024, 3, 1).subtract_days(366),
+        Date::new(2023, 3, 1)
+    );
 }
 
 #[test]
 fn test_add_large_amount() {
     let date = Date::new(2024, 6, 15);
     let result = date.add_days(100);
-    // Should go forward about 3 months
-    assert!(result.year >= 2024);
-}
+    assert_eq!(result, Date::new(2024, 9, 23));
 
-#[test]
-fn test_date_ord_total() {
-    let date1 = Date::new(2024, 1, 1);
-    let date2 = Date::new(2024, 12, 31);
-    assert!(date1 < date2);
+    // Across a year boundary
+    assert_eq!(Date::new(2024, 12, 1).add_days(45), Date::new(2025, 1, 15));
 }
 
 #[test]

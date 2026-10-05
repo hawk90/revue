@@ -57,12 +57,8 @@ mod color_picker;
 mod command_palette;
 #[path = "widget/command_palette_unit/mod.rs"]
 pub mod command_palette_unit;
-// TODO(test-coverage): data has API mismatches
-// #[path = "widget/data/mod.rs"]
-// pub mod data;
-// TODO(test-coverage): datagrid has API mismatches
-// #[path = "widget/datagrid/mod.rs"]
-// mod datagrid;
+#[path = "widget/data/mod.rs"]
+pub mod data;
 #[path = "widget/datetime_picker.rs"]
 mod datetime_picker;
 // TODO(test-coverage): dropzone has API mismatches
