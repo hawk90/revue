@@ -8,6 +8,7 @@ use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::{fuzzy_match, FilterMode, Selection};
 use crate::widget::theme::{DARK_BG, DISABLED_FG, EDITOR_BG, SUBTLE_GRAY};
+use crate::widget::traits::render_context::edit_line::{col_of, cursor_width, scroll_to_cursor};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -156,7 +157,7 @@ impl Autocomplete {
     /// Set value programmatically
     pub fn set_value(&mut self, value: impl Into<String>) {
         self.value = value.into();
-        self.cursor = self.value.len();
+        self.cursor = self.value.chars().count();
         self.update_filter();
     }
 
@@ -194,7 +195,7 @@ impl Autocomplete {
     pub fn accept_selection(&mut self) -> bool {
         if let Some(suggestion) = self.selected_suggestion() {
             self.value = suggestion.value.clone();
-            self.cursor = self.value.len();
+            self.cursor = self.value.chars().count();
             self.dropdown_visible = false;
             true
         } else {
@@ -204,7 +205,7 @@ impl Autocomplete {
 
     /// Update filtered suggestions
     fn update_filter(&mut self) {
-        if self.value.len() < self.min_chars {
+        if self.value.chars().count() < self.min_chars {
             self.filtered.clear();
             self.dropdown_visible = false;
             return;
@@ -345,25 +346,32 @@ impl View for Autocomplete {
             input_fg
         };
 
-        for (i, ch) in display_text.chars().enumerate() {
-            let x = i as u16;
-            if x >= input_width {
-                break;
+        // In columns: a wide glyph takes two cells. The cursor is a char
+        // index; scroll so it stays in view (the placeholder never scrolls).
+        let scroll = if self.value.is_empty() {
+            0
+        } else {
+            scroll_to_cursor(
+                0,
+                col_of(&self.value, self.cursor),
+                cursor_width(&self.value, self.cursor),
+                col_of(&self.value, usize::MAX) + 1,
+                input_width as usize,
+            )
+        };
+        // The cursor sits on the char at its index - over the first
+        // placeholder glyph when the value is empty - or past the end.
+        ctx.put_edit_line(0, 0, display_text, scroll, input_width, |i, ch| {
+            if self.focused && i == self.cursor {
+                Cell::new(ch).fg(self.input_bg).bg(input_fg)
+            } else {
+                Cell::new(ch).fg(text_fg).bg(self.input_bg)
             }
-            ctx.set(x, 0, Cell::new(ch).fg(text_fg).bg(self.input_bg));
-        }
-
-        // Render cursor if focused
-        if self.focused {
-            let cursor_x = self.cursor as u16;
-            if cursor_x < input_width {
-                // Use skip().next() for O(n) instead of O(n²) with .chars().nth()
-                let cursor_char = self.value.chars().skip(self.cursor).next().unwrap_or(' ');
-                ctx.set(
-                    cursor_x,
-                    0,
-                    Cell::new(cursor_char).fg(self.input_bg).bg(input_fg),
-                );
+        });
+        if self.focused && self.cursor >= display_text.chars().count() {
+            let x = col_of(display_text, usize::MAX).saturating_sub(scroll);
+            if x < input_width as usize {
+                ctx.set(x as u16, 0, Cell::new(' ').fg(self.input_bg).bg(input_fg));
             }
         }
 
@@ -401,40 +409,29 @@ impl View for Autocomplete {
                     x += 2;
                 }
 
-                // Label with highlight
-                if let Some(fm) = fuzzy_match(&self.value, &suggestion.label) {
-                    for (j, ch) in suggestion.label.chars().enumerate() {
-                        if x >= input_width {
-                            break;
-                        }
-                        let char_fg = if fm.indices.contains(&j) {
-                            self.highlight_fg
-                        } else {
-                            fg
-                        };
-                        ctx.set(x, y, Cell::new(ch).fg(char_fg).bg(bg));
-                        x += 1;
-                    }
-                } else {
-                    for ch in suggestion.label.chars() {
-                        if x >= input_width {
-                            break;
-                        }
-                        ctx.set(x, y, Cell::new(ch).fg(fg).bg(bg));
-                        x += 1;
-                    }
-                }
+                // Label with highlight (fuzzy indices are char indices), in
+                // columns: a wide glyph takes two cells.
+                let matched = fuzzy_match(&self.value, &suggestion.label)
+                    .map(|fm| fm.indices)
+                    .unwrap_or_default();
+                let room = input_width.saturating_sub(x);
+                ctx.put_edit_line(x, y, &suggestion.label, 0, room, |j, ch| {
+                    let char_fg = if matched.contains(&j) {
+                        self.highlight_fg
+                    } else {
+                        fg
+                    };
+                    Cell::new(ch).fg(char_fg).bg(bg)
+                });
+                x = x.saturating_add(col_of(&suggestion.label, usize::MAX) as u16);
 
                 // Description (if fits)
                 if let Some(ref desc) = suggestion.description {
-                    x += 1;
-                    for ch in desc.chars() {
-                        if x >= input_width {
-                            break;
-                        }
-                        ctx.set(x, y, Cell::new(ch).fg(self.description_fg).bg(bg));
-                        x += 1;
-                    }
+                    x = x.saturating_add(1);
+                    let room = input_width.saturating_sub(x);
+                    ctx.put_edit_line(x, y, desc, 0, room, |_, ch| {
+                        Cell::new(ch).fg(self.description_fg).bg(bg)
+                    });
                 }
             }
         }

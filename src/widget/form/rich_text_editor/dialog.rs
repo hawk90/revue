@@ -3,8 +3,28 @@
 use super::{DialogType, RichTextEditor};
 use crate::render::Cell;
 use crate::style::Color;
-use crate::utils::{char_width, display_width};
+use crate::utils::display_width;
+use crate::widget::traits::render_context::edit_line::{col_of, scroll_to_cursor};
 use crate::widget::traits::RenderContext;
+
+/// Draw a dialog field's text in `width` columns: a wide glyph takes two
+/// cells, and a text longer than the field scrolls so its end - where
+/// typing happens - stays in view.
+fn put_field(
+    ctx: &mut RenderContext,
+    x: u16,
+    y: u16,
+    width: u16,
+    text: &str,
+    fg: Color,
+    bg: Color,
+) {
+    let text_w = col_of(text, usize::MAX);
+    let scroll = scroll_to_cursor(0, text_w, 0, text_w, width as usize);
+    ctx.put_edit_line(x, y, text, scroll, width, |_, ch| {
+        Cell::new(ch).fg(fg).bg(bg)
+    });
+}
 
 impl RichTextEditor {
     /// Render dialog
@@ -66,18 +86,19 @@ impl RichTextEditor {
             );
         }
 
+        // Typed text runs from column 8 to the right border's padding.
+        let field_w = dialog_width.saturating_sub(10);
+
         match &self.dialog {
             DialogType::InsertLink { text, url, field } => {
                 // Title
                 let title = "Insert Link";
                 let title_x =
                     dialog_x + (dialog_width.saturating_sub(display_width(title) as u16)) / 2;
-                let mut dx: u16 = 0;
-                for ch in title.chars() {
-                    let cw = char_width(ch) as u16;
-                    ctx.set(title_x + dx, dialog_y + 1, Cell::new(ch).fg(fg).bg(bg));
-                    dx += cw;
-                }
+                let title_w = dialog_x + dialog_width - 1 - title_x;
+                ctx.put_edit_line(title_x, dialog_y + 1, title, 0, title_w, |_, ch| {
+                    Cell::new(ch).fg(fg).bg(bg)
+                });
 
                 // Text field
                 let label = "Text: ";
@@ -89,15 +110,7 @@ impl RichTextEditor {
                         Cell::new(ch).fg(fg).bg(bg),
                     );
                 }
-                for (i, ch) in text.chars().enumerate() {
-                    if dialog_x + 8 + (i as u16) < dialog_x + dialog_width - 2 {
-                        ctx.set(
-                            dialog_x + 8 + i as u16,
-                            dialog_y + 3,
-                            Cell::new(ch).fg(fg).bg(input_bg),
-                        );
-                    }
-                }
+                put_field(ctx, dialog_x + 8, dialog_y + 3, field_w, text, fg, input_bg);
 
                 // URL field
                 let label = "URL:  ";
@@ -109,27 +122,17 @@ impl RichTextEditor {
                         Cell::new(ch).fg(fg).bg(bg),
                     );
                 }
-                for (i, ch) in url.chars().enumerate() {
-                    if dialog_x + 8 + (i as u16) < dialog_x + dialog_width - 2 {
-                        ctx.set(
-                            dialog_x + 8 + i as u16,
-                            dialog_y + 4,
-                            Cell::new(ch).fg(fg).bg(input_bg),
-                        );
-                    }
-                }
+                put_field(ctx, dialog_x + 8, dialog_y + 4, field_w, url, fg, input_bg);
             }
             DialogType::InsertImage { alt, src, field } => {
                 // Title
                 let title = "Insert Image";
                 let title_x =
                     dialog_x + (dialog_width.saturating_sub(display_width(title) as u16)) / 2;
-                let mut dx: u16 = 0;
-                for ch in title.chars() {
-                    let cw = char_width(ch) as u16;
-                    ctx.set(title_x + dx, dialog_y + 1, Cell::new(ch).fg(fg).bg(bg));
-                    dx += cw;
-                }
+                let title_w = dialog_x + dialog_width - 1 - title_x;
+                ctx.put_edit_line(title_x, dialog_y + 1, title, 0, title_w, |_, ch| {
+                    Cell::new(ch).fg(fg).bg(bg)
+                });
 
                 // Alt field
                 let label = "Alt:  ";
@@ -141,15 +144,7 @@ impl RichTextEditor {
                         Cell::new(ch).fg(fg).bg(bg),
                     );
                 }
-                for (i, ch) in alt.chars().enumerate() {
-                    if dialog_x + 8 + (i as u16) < dialog_x + dialog_width - 2 {
-                        ctx.set(
-                            dialog_x + 8 + i as u16,
-                            dialog_y + 3,
-                            Cell::new(ch).fg(fg).bg(input_bg),
-                        );
-                    }
-                }
+                put_field(ctx, dialog_x + 8, dialog_y + 3, field_w, alt, fg, input_bg);
 
                 // Src field
                 let label = "Src:  ";
@@ -161,15 +156,7 @@ impl RichTextEditor {
                         Cell::new(ch).fg(fg).bg(bg),
                     );
                 }
-                for (i, ch) in src.chars().enumerate() {
-                    if dialog_x + 8 + (i as u16) < dialog_x + dialog_width - 2 {
-                        ctx.set(
-                            dialog_x + 8 + i as u16,
-                            dialog_y + 4,
-                            Cell::new(ch).fg(fg).bg(input_bg),
-                        );
-                    }
-                }
+                put_field(ctx, dialog_x + 8, dialog_y + 4, field_w, src, fg, input_bg);
             }
             DialogType::None => {}
         }

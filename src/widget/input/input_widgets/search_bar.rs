@@ -3,12 +3,10 @@
 //! A search input widget that parses queries in real-time and provides
 //! visual feedback for query syntax.
 
-#![allow(clippy::iter_skip_next)]
-//!
 use crate::query::{ParseError, Query};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::utils::{char_width, truncate_to_width};
+use crate::widget::traits::render_context::edit_line::{col_of, cursor_width, scroll_to_cursor};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -326,94 +324,59 @@ impl View for SearchBar {
         });
         ctx.set(width - 1, 0, right_border);
 
-        // Draw search icon
-        let mut icon_cell = Cell::new(self.icon);
-        icon_cell.bg = Some(self.bg_color);
-        ctx.set(2, 0, icon_cell);
+        // Draw search icon (an emoji by default: two columns)
+        ctx.put_edit_line(2, 0, &self.icon.to_string(), 0, 2, |_, ch| {
+            let mut cell = Cell::new(ch);
+            cell.bg = Some(self.bg_color);
+            cell
+        });
 
-        // Draw input or placeholder
+        // Draw input or placeholder, in columns: a wide glyph takes two
+        // cells. The cursor is a char index; scroll so it stays in view.
         let input_x: u16 = 4;
         let input_width = width.saturating_sub(6);
 
         if self.input.is_empty() {
-            // Draw placeholder
-            let ph = truncate_to_width(&self.placeholder, input_width as usize);
-            let mut dx: u16 = 0;
-            for ch in ph.chars() {
-                let cw = char_width(ch) as u16;
-                if dx + cw > input_width {
-                    break;
-                }
+            ctx.put_edit_line(input_x, 0, &self.placeholder, 0, input_width, |_, ch| {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(self.placeholder_color);
                 cell.bg = Some(self.bg_color);
-                ctx.set(input_x + dx, 0, cell);
-                dx += cw;
-            }
-        } else {
-            // Calculate display_start based on display width up to cursor
-            let chars: Vec<char> = self.input.chars().collect();
-            let mut cursor_display_width: u16 = 0;
-            for &ch in &chars[..self.cursor.min(chars.len())] {
-                cursor_display_width += char_width(ch) as u16;
-            }
-            let display_start = if cursor_display_width >= input_width {
-                // Find the character offset where display should start
-                let target_width = cursor_display_width - input_width + 1;
-                let mut w: u16 = 0;
-                let mut start = 0;
-                for (i, &ch) in chars.iter().enumerate() {
-                    if w >= target_width {
-                        start = i;
-                        break;
-                    }
-                    w += char_width(ch) as u16;
-                    start = i + 1;
-                }
-                start
-            } else {
-                0
-            };
-
-            let mut dx: u16 = 0;
-            for &ch in &chars[display_start..] {
-                let cw = char_width(ch) as u16;
-                if dx + cw > input_width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(if self.parse_error.is_some() {
-                    self.error_color
-                } else {
-                    text_color
-                });
-                cell.bg = Some(self.bg_color);
-                ctx.set(input_x + dx, 0, cell);
-                dx += cw;
-            }
+                cell
+            });
         }
 
-        // Draw cursor
-        if self.focused {
-            let cursor_display_x: u16 = self
-                .input
-                .chars()
-                .take(self.cursor)
-                .map(|ch| char_width(ch) as u16)
-                .sum();
-            let visible_start: u16 = if cursor_display_x >= input_width {
-                cursor_display_x - input_width + 1
+        let scroll = scroll_to_cursor(
+            0,
+            col_of(&self.input, self.cursor),
+            cursor_width(&self.input, self.cursor),
+            col_of(&self.input, usize::MAX) + 1,
+            input_width as usize,
+        );
+        let input_fg = if self.parse_error.is_some() {
+            self.error_color
+        } else {
+            text_color
+        };
+        ctx.put_edit_line(input_x, 0, &self.input, scroll, input_width, |i, ch| {
+            let mut cell = Cell::new(ch);
+            if self.focused && i == self.cursor {
+                cell.fg = Some(self.bg_color);
+                cell.bg = Some(text_color);
             } else {
-                0
-            };
-            let cursor_x = input_x + cursor_display_x.saturating_sub(visible_start);
-            if cursor_x < width - 1 {
-                // Use skip().next() for O(n) instead of O(n²) with .chars().nth()
-                let cursor_char = self.input.chars().skip(self.cursor).next().unwrap_or(' ');
-                let mut cursor_cell = Cell::new(cursor_char);
+                cell.fg = Some(input_fg);
+                cell.bg = Some(self.bg_color);
+            }
+            cell
+        });
+
+        // Draw the cursor past the end of the text
+        if self.focused && self.cursor >= self.input.chars().count() {
+            let x = col_of(&self.input, usize::MAX).saturating_sub(scroll);
+            if x < input_width as usize {
+                let mut cursor_cell = Cell::new(' ');
                 cursor_cell.fg = Some(self.bg_color);
                 cursor_cell.bg = Some(text_color);
-                ctx.set(cursor_x, 0, cursor_cell);
+                ctx.set(input_x + x as u16, 0, cursor_cell);
             }
         }
 
