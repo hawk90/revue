@@ -207,10 +207,11 @@ impl Splitter {
 
         let total_splitter_width =
             (visible_panes.len().saturating_sub(1)) as u16 * self.splitter_width;
-        let available = match self.orientation {
-            SplitOrientation::Horizontal => area.width.saturating_sub(total_splitter_width),
-            SplitOrientation::Vertical => area.height.saturating_sub(total_splitter_width),
+        let extent = match self.orientation {
+            SplitOrientation::Horizontal => area.width,
+            SplitOrientation::Vertical => area.height,
         };
+        let available = extent.saturating_sub(total_splitter_width);
 
         // Normalize ratios
         let total_ratio: f32 = visible_panes.iter().map(|p| p.ratio).sum();
@@ -231,9 +232,11 @@ impl Splitter {
                 size = size.min(pane.max_size);
             }
 
-            // Last pane takes remaining space
+            // Last pane takes the remaining space. `offset` already counts
+            // the dividers placed so far, so measure it against the whole
+            // extent, not against `available` (which has them taken out).
             if i == visible_panes.len() - 1 {
-                size = available.saturating_sub(offset);
+                size = extent.saturating_sub(offset);
             }
 
             let pane_area = match self.orientation {
@@ -289,7 +292,7 @@ impl Splitter {
 
     /// Start resizing divider
     pub fn start_resize(&mut self, divider: usize) {
-        if divider < self.panes.len() - 1 {
+        if divider + 1 < self.panes.len() {
             self.active_divider = Some(divider);
         }
     }

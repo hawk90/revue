@@ -172,9 +172,8 @@ mod slider;
 mod slides;
 #[path = "widget/spinner.rs"]
 mod spinner;
-// TODO(test-coverage): splitter has API mismatches
-// #[path = "widget/splitter/mod.rs"]
-// mod splitter;
+#[path = "widget/splitter/mod.rs"]
+mod splitter;
 #[path = "widget/statusbar.rs"]
 mod statusbar;
 #[path = "widget/stepper.rs"]
