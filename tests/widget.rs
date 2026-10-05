@@ -70,9 +70,8 @@ mod dropzone;
 mod edge_cases;
 #[path = "widget/empty_state.rs"]
 mod empty_state;
-// TODO(test-coverage): feedback has API mismatches
-// #[path = "widget/feedback/mod.rs"]
-// pub mod feedback;
+#[path = "widget/feedback/mod.rs"]
+mod feedback;
 #[path = "widget/filepicker/mod.rs"]
 mod filepicker;
 #[path = "widget/form/mod.rs"]
