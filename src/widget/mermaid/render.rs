@@ -81,6 +81,9 @@ impl Diagram {
 
         // Draw box based on shape
         match node.shape {
+            NodeShape::Rectangle | NodeShape::Rounded | NodeShape::Diamond if width < 3 => {
+                // No room for a border and a label
+            }
             NodeShape::Rectangle | NodeShape::Rounded => {
                 let (tl, tr, bl, br, h, v) = if node.shape == NodeShape::Rounded {
                     ('╭', '╮', '╰', '╯', '─', '│')

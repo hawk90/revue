@@ -51,7 +51,7 @@ pub enum ArrowStyle {
 
 /// Layout direction
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Direction {
+pub enum DiagramDirection {
     /// Top to bottom
     #[default]
     TopDown,

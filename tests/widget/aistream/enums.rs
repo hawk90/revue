@@ -1,6 +1,6 @@
 //! AIStream enum trait tests
 
-use revue::widget::developer::{TypingStyle, StreamCursor, StreamStatus};
+use revue::widget::{StreamCursor, StreamStatus, TypingStyle};
 
 // =========================================================================
 // TypingStyle enum trait tests

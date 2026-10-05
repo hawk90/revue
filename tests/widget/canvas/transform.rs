@@ -1,6 +1,9 @@
 //! Transform tests
+//!
+//! Applying each constructor and the with_* builders to a point is covered in
+//! tests/canvas/transform.rs; these check the matrix entries and composition.
 
-use revue::widget::canvas::Transform;
+use revue::widget::Transform;
 
 #[test]
 fn test_identity() {
@@ -11,13 +14,6 @@ fn test_identity() {
     assert_eq!(t.ty, 0.0);
     assert_eq!(t.shx, 0.0);
     assert_eq!(t.shy, 0.0);
-}
-
-#[test]
-fn test_default() {
-    let t = Transform::default();
-    assert_eq!(t.sx, 1.0);
-    assert_eq!(t.sy, 1.0);
 }
 
 #[test]
@@ -67,30 +63,6 @@ fn test_rotate_degrees() {
 }
 
 #[test]
-fn test_apply_identity() {
-    let t = Transform::identity();
-    let (x, y) = t.apply(5.0, 10.0);
-    assert_eq!(x, 5.0);
-    assert_eq!(y, 10.0);
-}
-
-#[test]
-fn test_apply_translate() {
-    let t = Transform::translate(10.0, 20.0);
-    let (x, y) = t.apply(5.0, 10.0);
-    assert_eq!(x, 15.0);
-    assert_eq!(y, 30.0);
-}
-
-#[test]
-fn test_apply_scale() {
-    let t = Transform::scale(2.0, 3.0);
-    let (x, y) = t.apply(5.0, 10.0);
-    assert_eq!(x, 10.0);
-    assert_eq!(y, 30.0);
-}
-
-#[test]
 fn test_then_identity() {
     let t1 = Transform::identity();
     let t2 = Transform::identity();
@@ -120,27 +92,6 @@ fn test_then_scale() {
 }
 
 #[test]
-fn test_with_translate() {
-    let t = Transform::identity().with_translate(10.0, 20.0);
-    assert_eq!(t.tx, 10.0);
-    assert_eq!(t.ty, 20.0);
-}
-
-#[test]
-fn test_with_scale() {
-    let t = Transform::identity().with_scale(2.0, 3.0);
-    assert_eq!(t.sx, 2.0);
-    assert_eq!(t.sy, 3.0);
-}
-
-#[test]
-fn test_with_rotate() {
-    let t = Transform::identity().with_rotate(std::f64::consts::FRAC_PI_2);
-    let t2 = Transform::rotate(std::f64::consts::FRAC_PI_2);
-    assert!((t.sx - t2.sx).abs() < 1e-10);
-}
-
-#[test]
 fn test_apply_combined_transform() {
     let t = Transform::identity()
         .with_scale(2.0, 2.0)
@@ -158,14 +109,6 @@ fn test_transform_copy() {
     let t2 = t1;
     assert_eq!(t2.tx, 10.0);
     assert_eq!(t2.ty, 20.0);
-}
-
-#[test]
-fn test_transform_clone() {
-    let t1 = Transform::scale(2.0, 3.0);
-    let t2 = t1.clone();
-    assert_eq!(t2.sx, 2.0);
-    assert_eq!(t2.sy, 3.0);
 }
 
 #[test]
@@ -252,20 +195,17 @@ fn test_scale_with_translation() {
 
 #[test]
 fn test_transform_fields_public() {
+    // A hand-built matrix (with shear) applies as x' = sx*x + shx*y + tx,
+    // y' = shy*x + sy*y + ty
     let t = Transform {
         sx: 1.0,
         shx: 0.5,
         tx: 10.0,
-        shy: 0.3,
+        shy: 0.25,
         sy: 1.0,
         ty: 20.0,
     };
-    assert_eq!(t.sx, 1.0);
-    assert_eq!(t.shx, 0.5);
-    assert_eq!(t.tx, 10.0);
-    assert_eq!(t.shy, 0.3);
-    assert_eq!(t.sy, 1.0);
-    assert_eq!(t.ty, 20.0);
+    assert_eq!(t.apply(2.0, 4.0), (14.0, 24.5));
 }
 
 #[test]
@@ -291,7 +231,8 @@ fn test_complex_transform_chain() {
         .with_rotate(90_f64.to_radians())
         .with_translate(10.0, 20.0);
     let (x, y): (f64, f64) = t.apply(5.0, 0.0);
-    // The order matters here - this tests the full chain
-    let _ = (x, y);
-    // Just verify it computes without panicking
+    // The last builder applies first: translate (15, 20), rotate 90 degrees
+    // (-20, 15), scale (-40, 30)
+    assert!((x + 40.0).abs() < 1e-10, "{x}");
+    assert!((y - 30.0).abs() < 1e-10, "{y}");
 }

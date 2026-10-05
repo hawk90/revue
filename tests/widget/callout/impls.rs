@@ -1,8 +1,11 @@
 //! Callout implementation tests
 
-use revue::widget::callout::*;
-use revue::widget::callout::types::{CalloutType, CalloutVariant};
 use revue::event::Key;
+use revue::layout::Rect;
+use revue::render::Buffer;
+use revue::widget::traits::RenderContext;
+use revue::widget::View;
+use revue::widget::{Callout, CalloutType, CalloutVariant};
 
 // =========================================================================
 // Callout::new tests
@@ -292,8 +295,33 @@ fn test_get_title_custom() {
 #[test]
 fn test_height_filled_variant() {
     let callout = Callout::new("Line 1\nLine 2").variant(CalloutVariant::Filled);
-    // title + content (2 lines) = 1 + 2 = 3; the accent bar adds no rows
+    // title + content (2 lines) = 1 + 2 = 3
     assert_eq!(callout.height(), 3);
+}
+
+#[test]
+fn test_height_matches_rendered_rows() {
+    // Every variant draws exactly height() rows of text: rendering into
+    // that many rows shows all of it, and nothing is drawn past it.
+    for variant in [
+        CalloutVariant::Filled,
+        CalloutVariant::LeftBorder,
+        CalloutVariant::Minimal,
+    ] {
+        let callout = Callout::new("Line 1\nLine 2").variant(variant).icon(false);
+        let h = callout.height();
+        let rows = render_rows(&callout, 20, h + 2);
+        assert!(
+            rows[h as usize - 1].ends_with("Line 2"),
+            "{variant:?}: {rows:?}"
+        );
+        for row in &rows[h as usize..] {
+            assert!(
+                row.trim_start_matches('┃').trim().is_empty(),
+                "{variant:?}: {rows:?}"
+            );
+        }
+    }
 }
 
 #[test]
@@ -322,7 +350,7 @@ fn test_height_collapsed() {
 #[test]
 fn test_height_empty_content() {
     let callout = Callout::new("").variant(CalloutVariant::Filled);
-    // title + content (1 line minimum) = 2
+    // title + one (empty) content line minimum
     assert_eq!(callout.height(), 2);
 }
 
@@ -419,4 +447,74 @@ fn test_callout_clone() {
     assert_eq!(callout1.content, callout2.content);
     assert_eq!(callout1.title, callout2.title);
     assert_eq!(callout1.callout_type, callout2.callout_type);
+}
+
+// =========================================================================
+// Rendering
+// =========================================================================
+
+fn render_rows(callout: &Callout, width: u16, height: u16) -> Vec<String> {
+    let mut buffer = Buffer::new(width, height);
+    let area = Rect::new(0, 0, width, height);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    callout.render(&mut ctx);
+    (0..height)
+        .map(|y| {
+            (0..width)
+                .filter_map(|x| buffer.get(x, y))
+                .filter(|c| !c.is_continuation())
+                .map(|c| c.symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .collect()
+}
+
+#[test]
+fn test_render_filled() {
+    let callout = Callout::new("Body text").icon(false);
+    let rows = render_rows(&callout, 20, 3);
+    assert_eq!(rows[0], "┃ Note");
+    assert_eq!(rows[1], "┃ Body text");
+    assert_eq!(rows[2], "┃");
+}
+
+#[test]
+fn test_render_left_border_with_custom_icon() {
+    let callout = Callout::tip("Use it")
+        .variant(CalloutVariant::LeftBorder)
+        .custom_icon('*')
+        .title("Hint");
+    let rows = render_rows(&callout, 20, 2);
+    assert_eq!(rows[0], "┃ * Hint");
+    assert_eq!(rows[1], "┃ Use it");
+}
+
+#[test]
+fn test_render_minimal() {
+    let callout = Callout::warning("Line 1\nLine 2")
+        .variant(CalloutVariant::Minimal)
+        .icon(false);
+    let rows = render_rows(&callout, 20, 3);
+    assert_eq!(rows, vec!["Warning", "Line 1", "Line 2"]);
+}
+
+#[test]
+fn test_render_collapsed_hides_content() {
+    let mut callout = Callout::new("Hidden")
+        .variant(CalloutVariant::Minimal)
+        .icon(false)
+        .collapsible(true)
+        .collapse_icons('+', '-');
+    assert_eq!(render_rows(&callout, 20, 2), vec!["- Note", "Hidden"]);
+    callout.toggle();
+    assert_eq!(render_rows(&callout, 20, 2), vec!["+ Note", ""]);
+}
+
+#[test]
+fn test_render_too_narrow() {
+    // Below five columns nothing is drawn
+    let callout = Callout::new("x");
+    assert_eq!(render_rows(&callout, 4, 2), vec!["", ""]);
 }

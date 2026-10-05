@@ -1,7 +1,7 @@
 //! CalloutType implementation tests
 
-use revue::widget::callout::types::CalloutType;
 use revue::style::Color;
+use revue::widget::CalloutType;
 
 // =========================================================================
 // CalloutType::icon() tests
@@ -176,7 +176,8 @@ fn test_callout_type_default_title_info() {
 
 #[test]
 fn test_callout_type_consistency() {
-    // All types should have icons, colors, and titles
+    // Every type has a title, a readable accent on its own background,
+    // and a title drawn in its accent color
     for ct in [
         CalloutType::Note,
         CalloutType::Tip,
@@ -185,11 +186,9 @@ fn test_callout_type_consistency() {
         CalloutType::Danger,
         CalloutType::Info,
     ] {
-        let _ = ct.icon();
-        let _ = ct.accent_color();
-        let _ = ct.bg_color();
-        let _ = ct.title_color();
-        let _ = ct.default_title();
+        assert!(!ct.default_title().is_empty(), "{ct:?}");
+        assert_ne!(ct.accent_color(), ct.bg_color(), "{ct:?}");
+        assert_eq!(ct.title_color(), ct.accent_color(), "{ct:?}");
     }
 }
 

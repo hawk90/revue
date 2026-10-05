@@ -3,20 +3,15 @@
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
-use revue::widget::canvas::{BrailleGrid, Layer};
+use revue::widget::{BrailleGrid, Layer};
+
+fn sym(buffer: &Buffer, x: u16, y: u16) -> char {
+    buffer.get(x, y).map(|c| c.symbol).unwrap_or('\0')
+}
 
 // =========================================================================
 // BrailleGrid::new tests
 // =========================================================================
-
-#[test]
-fn test_braille_grid_new() {
-    let grid = BrailleGrid::new(40, 20);
-    assert_eq!(grid.width(), 80); // 40 * 2
-    assert_eq!(grid.height(), 80); // 20 * 4
-    assert_eq!(grid.cells().len(), 40 * 20);
-    assert_eq!(grid.colors().len(), 40 * 20);
-}
 
 #[test]
 fn test_braille_grid_new_small() {
@@ -45,18 +40,6 @@ fn test_braille_grid_new_single_cell() {
 // width and height tests
 // =========================================================================
 
-#[test]
-fn test_braille_grid_width() {
-    let grid = BrailleGrid::new(60, 30);
-    assert_eq!(grid.width(), 120); // 60 * 2
-}
-
-#[test]
-fn test_braille_grid_height() {
-    let grid = BrailleGrid::new(60, 30);
-    assert_eq!(grid.height(), 120); // 30 * 4
-}
-
 // =========================================================================
 // set tests
 // =========================================================================
@@ -76,9 +59,35 @@ fn test_braille_grid_set_multiple_dots_same_cell() {
     grid.set(0, 0, Color::RED);
     grid.set(1, 0, Color::BLUE);
     grid.set(0, 1, Color::GREEN);
-    // Cell (0,0) should have dots OR'd together
-    assert_ne!(grid.cells()[0], 0);
+    // Cell (0,0) has the three dots OR'd together
+    assert_eq!(grid.cells()[0], 0x01 | 0x08 | 0x02);
     assert_eq!(grid.colors()[0], Some(Color::GREEN)); // Last color wins
+}
+
+#[test]
+fn test_braille_grid_dot_bit_positions() {
+    // Unicode braille numbering: dots 1-3 and 7 down the left column,
+    // dots 4-6 and 8 down the right column
+    let expected = [
+        ((0, 0), 0x01),
+        ((0, 1), 0x02),
+        ((0, 2), 0x04),
+        ((0, 3), 0x40),
+        ((1, 0), 0x08),
+        ((1, 1), 0x10),
+        ((1, 2), 0x20),
+        ((1, 3), 0x80),
+    ];
+    for ((x, y), bit) in expected {
+        let mut grid = BrailleGrid::new(1, 1);
+        grid.set(x, y, Color::WHITE);
+        assert_eq!(grid.cells()[0], bit, "dot ({x}, {y})");
+        assert_eq!(
+            grid.get_char(0, 0),
+            char::from_u32(0x2800 + bit as u32).unwrap(),
+            "dot ({x}, {y})"
+        );
+    }
 }
 
 #[test]
@@ -111,8 +120,9 @@ fn test_braille_grid_set_at_boundary() {
     grid.set(0, 0, Color::RED);
     grid.set(19, 0, Color::RED); // max width - 1
     grid.set(0, 39, Color::RED); // max height - 1
-                                 // Should not panic
-    assert_ne!(grid.cells()[0], 0);
+    assert_eq!(grid.cells()[0], 0x01);
+    assert_eq!(grid.cells()[9], 0x08); // top-right dot of the last column
+    assert_eq!(grid.cells()[90], 0x40); // bottom-left dot of the last row
 }
 
 #[test]
@@ -217,19 +227,25 @@ fn test_braille_grid_get_char_different_cells() {
 fn test_braille_grid_render() {
     let mut grid = BrailleGrid::new(10, 10);
     grid.set(0, 0, Color::RED);
+    grid.set(3, 7, Color::BLUE);
     let mut buffer = Buffer::new(10, 10);
-    let area = Rect::new(0, 0, 10, 10);
-    grid.render(&mut buffer, area);
-    // Should not panic
+    grid.render(&mut buffer, Rect::new(0, 0, 10, 10));
+    assert_eq!(sym(&buffer, 0, 0), '⠁');
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::RED));
+    // Dot (3, 7) is the bottom-right dot of cell (1, 1)
+    assert_eq!(sym(&buffer, 1, 1), '\u{2880}');
+    assert_eq!(buffer.get(1, 1).unwrap().fg, Some(Color::BLUE));
 }
 
 #[test]
 fn test_braille_grid_render_empty() {
+    // Cells without dots are not written, so the buffer keeps its content
     let grid = BrailleGrid::new(10, 10);
     let mut buffer = Buffer::new(10, 10);
-    let area = Rect::new(0, 0, 10, 10);
-    grid.render(&mut buffer, area);
-    // Should not panic
+    buffer.set(3, 3, revue::render::Cell::new('#'));
+    grid.render(&mut buffer, Rect::new(0, 0, 10, 10));
+    assert_eq!(sym(&buffer, 3, 3), '#');
+    assert_eq!(sym(&buffer, 0, 0), ' ');
 }
 
 #[test]
@@ -237,19 +253,22 @@ fn test_braille_grid_render_partial_area() {
     let mut grid = BrailleGrid::new(20, 20);
     grid.set(0, 0, Color::RED);
     let mut buffer = Buffer::new(20, 20);
-    let area = Rect::new(5, 5, 10, 10);
-    grid.render(&mut buffer, area);
-    // Should not panic
+    grid.render(&mut buffer, Rect::new(5, 5, 10, 10));
+    // Drawn relative to the area's origin
+    assert_eq!(sym(&buffer, 5, 5), '⠁');
+    assert_eq!(sym(&buffer, 0, 0), ' ');
 }
 
 #[test]
 fn test_braille_grid_render_with_color() {
     let mut grid = BrailleGrid::new(10, 10);
     grid.set(0, 0, Color::RED);
+    grid.set(1, 1, Color::GREEN); // same cell: last color wins
     let mut buffer = Buffer::new(10, 10);
-    let area = Rect::new(0, 0, 10, 10);
-    grid.render(&mut buffer, area);
-    // Should not panic
+    grid.render(&mut buffer, Rect::new(0, 0, 10, 10));
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.symbol, '\u{2811}');
+    assert_eq!(cell.fg, Some(Color::GREEN));
 }
 
 // =========================================================================
@@ -261,9 +280,12 @@ fn test_braille_grid_composite_layer() {
     let mut grid = BrailleGrid::new(10, 10);
     let mut layer = Layer::new(10, 10);
     layer.set(0, 0, Color::RED);
+    layer.set(7, 9, Color::GREEN);
     grid.composite_layer(&layer);
-    // Grid should have the layer's dots
-    assert_ne!(grid.cells()[0], 0);
+    // Grid has the layer's dots and colors
+    assert_eq!(grid.cells(), layer.cells());
+    assert_eq!(grid.colors()[0], Some(Color::RED));
+    assert_eq!(grid.get_char(3, 2), '\u{2810}');
 }
 
 #[test]
@@ -295,8 +317,9 @@ fn test_braille_grid_composite_layer_partial_opacity() {
     layer.set_opacity(0.5);
     layer.set(0, 0, Color::RED);
     grid.composite_layer(&layer);
-    // Grid should have the layer's dots (opacity doesn't affect pattern)
-    assert_ne!(grid.cells()[0], 0);
+    // Opacity only gates compositing: any opacity above zero copies in full
+    assert_eq!(grid.cells()[0], 0x01);
+    assert_eq!(grid.colors()[0], Some(Color::RED));
 }
 
 #[test]
@@ -313,12 +336,31 @@ fn test_braille_grid_composite_layer_or_dots() {
 
 #[test]
 fn test_braille_grid_composite_layer_different_sizes() {
-    let mut grid = BrailleGrid::new(20, 20);
-    let mut layer = Layer::new(10, 10);
-    layer.set(0, 0, Color::RED);
+    // A smaller layer lands on the same terminal cells it covers, row by row
+    let mut grid = BrailleGrid::new(4, 2);
+    let mut layer = Layer::new(2, 2);
+    layer.set(0, 0, Color::RED); // cell (0, 0)
+    layer.set(3, 4, Color::GREEN); // cell (1, 1)
     grid.composite_layer(&layer);
-    // Should only composite up to the layer size
-    assert_ne!(grid.cells()[0], 0);
+    assert_eq!(grid.get_char(0, 0), '\u{2801}');
+    assert_eq!(grid.get_char(1, 1), '\u{2808}');
+    assert_eq!(grid.colors()[4 + 1], Some(Color::GREEN));
+    // Nothing spills into the cells the layer does not cover
+    for (cx, cy) in [(1, 0), (2, 0), (3, 0), (0, 1), (2, 1), (3, 1)] {
+        assert_eq!(grid.get_char(cx, cy), '\u{2800}', "cell ({cx}, {cy})");
+    }
+}
+
+#[test]
+fn test_braille_grid_composite_larger_layer() {
+    // Parts of a larger layer beyond the grid are dropped
+    let mut grid = BrailleGrid::new(2, 1);
+    let mut layer = Layer::new(4, 2);
+    layer.set(2, 0, Color::RED); // cell (1, 0): inside the grid
+    layer.set(6, 0, Color::RED); // cell (3, 0): beyond the grid
+    layer.set(0, 4, Color::RED); // cell (0, 1): beyond the grid
+    grid.composite_layer(&layer);
+    assert_eq!(grid.cells(), &[0, 0x01]);
 }
 
 #[test]
@@ -385,15 +427,14 @@ fn test_braille_grid_pattern_order() {
 #[test]
 fn test_braille_grid_render_smaller_area() {
     let mut grid = BrailleGrid::new(20, 20);
-    for x in 0..10 {
-        for y in 0..10 {
-            grid.set(x, y, Color::WHITE);
-        }
+    for x in 0..40 {
+        grid.set(x, 0, Color::WHITE);
     }
     let mut buffer = Buffer::new(20, 20);
-    let area = Rect::new(0, 0, 10, 10);
-    grid.render(&mut buffer, area);
-    // Should not panic
+    grid.render(&mut buffer, Rect::new(0, 0, 10, 10));
+    // Cut off at the area's width
+    assert_eq!(sym(&buffer, 9, 0), '\u{2809}');
+    assert_eq!(sym(&buffer, 10, 0), ' ');
 }
 
 #[test]

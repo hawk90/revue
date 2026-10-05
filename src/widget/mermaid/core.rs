@@ -1,6 +1,6 @@
 //! Core Diagram implementation
 
-use super::types::{DiagramColors, DiagramEdge, DiagramNode, DiagramType, Direction};
+use super::types::{DiagramColors, DiagramDirection, DiagramEdge, DiagramNode, DiagramType};
 use crate::widget::traits::WidgetProps;
 use std::collections::HashMap;
 
@@ -31,7 +31,7 @@ pub struct Diagram {
     /// Colors
     pub colors: DiagramColors,
     /// Direction (TD = top-down, LR = left-right)
-    pub direction: Direction,
+    pub direction: DiagramDirection,
     /// Node positions (computed during layout)
     pub positions: HashMap<String, (u16, u16)>,
     /// Node sizes
@@ -55,7 +55,7 @@ impl Diagram {
             nodes: Vec::new(),
             edges: Vec::new(),
             colors: DiagramColors::default(),
-            direction: Direction::default(),
+            direction: DiagramDirection::default(),
             positions: HashMap::new(),
             sizes: HashMap::new(),
             props: WidgetProps::new(),
@@ -75,7 +75,7 @@ impl Diagram {
     }
 
     /// Set direction
-    pub fn direction(mut self, dir: Direction) -> Self {
+    pub fn direction(mut self, dir: DiagramDirection) -> Self {
         self.direction = dir;
         self
     }
@@ -214,12 +214,15 @@ impl Diagram {
             let row = i as u16 / cols;
             let col = i as u16 % cols;
 
+            // A crowded area can leave a grid cell narrower or shorter than a
+            // node; shrink the node or let it overhang instead of
+            // underflowing.
             let label_width = crate::utils::unicode::display_width(&node.label) as u16;
-            let node_width = (label_width + 4).min(cell_width - 2);
+            let node_width = (label_width + 4).min(cell_width.saturating_sub(2));
             let node_height = 3u16;
 
-            let x = col * cell_width + (cell_width - node_width) / 2;
-            let y = row * cell_height + (cell_height - node_height) / 2;
+            let x = col * cell_width + cell_width.saturating_sub(node_width) / 2;
+            let y = row * cell_height + cell_height.saturating_sub(node_height) / 2;
 
             self.positions.insert(node.id.clone(), (x, y));
             self.sizes

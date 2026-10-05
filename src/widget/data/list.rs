@@ -121,13 +121,21 @@ impl<T: Display> View for List<T> {
             return;
         }
 
-        // Render each visible item
-        for (i, item) in self.items.iter().enumerate() {
-            if i as u16 >= area.height {
-                break;
-            }
+        // Scroll so the selected item is on screen: the selection keeps the
+        // offset and moves it only as far as needed to show the selection.
+        self.selection.set_visible(area.height as usize);
+        let visible = self.selection.visible_range();
 
-            let y = i as u16;
+        // Render each visible item
+        for (row, (i, item)) in self
+            .items
+            .iter()
+            .enumerate()
+            .skip(visible.start)
+            .take(visible.len())
+            .enumerate()
+        {
+            let y = row as u16;
             let is_selected = self.selection.is_selected(i);
             // An unselected row had no color at all, so a rule matching the
             // list never reached its items. Selection colors still win.

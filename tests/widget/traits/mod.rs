@@ -1,15 +1,13 @@
 //! Widget traits tests
 //!
-//! Tests for widget-related traits extracted from source files.
+//! dropdown.rs, focus_handlers.rs and theme.rs in this directory are
+//! compiled by their own `#[path]` entries in tests/widget.rs, so they are
+//! not declared here.
 
-pub mod dropdown;
-pub mod element;
-pub mod event;
-pub mod focus_handlers;
-pub mod mod_tests;
-pub mod render_context;
-pub mod symbols;
-pub mod theme;
-pub mod timeout;
-pub mod view;
-pub mod widget_state;
+mod element;
+mod event;
+mod render_context;
+mod symbols;
+mod timeout;
+mod view;
+mod widget_state;

@@ -222,6 +222,9 @@ impl Breadcrumb {
 
         if self.show_home {
             width += 2; // home icon + space
+            if !self.items.is_empty() {
+                width += 2; // separator + space
+            }
         }
 
         for (i, item) in self.items.iter().enumerate() {
@@ -283,8 +286,10 @@ impl View for Breadcrumb {
         }
 
         // Determine which items to show
-        let (start_idx, show_ellipsis) = if need_collapse && self.items.len() > 2 {
-            // Show first, ..., last few items
+        // Collapsing keeps the first and the last two items, so it only hides
+        // something - and only saves room - when there are more than three.
+        let (start_idx, show_ellipsis) = if need_collapse && self.items.len() > 3 {
+            // Show first, ..., last two items
             (self.items.len().saturating_sub(2), true)
         } else {
             (0, false)

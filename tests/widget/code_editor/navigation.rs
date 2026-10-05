@@ -2,7 +2,7 @@
 //!
 //! Extracted from src/widget/developer/code_editor/navigation.rs
 
-use revue::widget::developer::code_editor::CodeEditor;
+use revue::widget::CodeEditor;
 
 // =========================================================================
 // cursor_position tests

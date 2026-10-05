@@ -120,14 +120,21 @@ impl BrailleGrid {
         }
 
         let layer_grid = layer.grid();
-        let max_cells = self.cells.len().min(layer_grid.cells.len());
 
-        for idx in 0..max_cells {
-            let pattern = layer_grid.cells[idx];
-            if pattern != 0 {
-                self.cells[idx] |= pattern;
-                if let Some(color) = layer_grid.colors[idx] {
-                    self.colors[idx] = Some(color);
+        // Match cells by position, not by index: the two grids' rows are
+        // only the same length when the widths agree.
+        let rows = self.term_height.min(layer_grid.term_height);
+        let cols = self.term_width.min(layer_grid.term_width);
+        for cy in 0..rows {
+            for cx in 0..cols {
+                let src = cy * layer_grid.term_width + cx;
+                let dst = cy * self.term_width + cx;
+                let pattern = layer_grid.cells[src];
+                if pattern != 0 {
+                    self.cells[dst] |= pattern;
+                    if let Some(color) = layer_grid.colors[src] {
+                        self.colors[dst] = Some(color);
+                    }
                 }
             }
         }

@@ -1,5 +1,5 @@
 //! Drop zone widget tests
 
-pub mod core;
-pub mod helper;
-pub mod types;
+mod core;
+mod helper;
+mod types;

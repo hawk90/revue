@@ -292,15 +292,6 @@ mod image_edge_cases {
     }
 
     #[test]
-    fn test_image_scale_modes() {
-        // Test all scale modes (create separate images since Image doesn't implement Clone)
-        let _ = test_image().scale(ScaleMode::Fit);
-        let _ = test_image().scale(ScaleMode::Fill);
-        let _ = test_image().scale(ScaleMode::Stretch);
-        let _ = test_image().scale(ScaleMode::None);
-    }
-
-    #[test]
     fn test_image_placeholder() {
         let image = Image::from_rgb(vec![255, 0, 0], 2, 2).placeholder('#');
         let mut buffer = Buffer::new(5, 5);
@@ -452,6 +443,7 @@ mod pagination_edge_cases {
     #[test]
     fn test_pagination_with_single_item() {
         let pagination = Pagination::new(1);
+        assert!(pagination.is_first() && pagination.is_last());
         let mut buffer = Buffer::new(20, 10);
         let area = Rect::new(0, 0, 20, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
@@ -472,6 +464,8 @@ mod pagination_edge_cases {
     #[test]
     fn test_pagination_first_page() {
         let pagination = Pagination::new(10).current(1);
+        assert!(pagination.is_first());
+        assert!(!pagination.is_last());
         let mut buffer = Buffer::new(30, 10);
         let area = Rect::new(0, 0, 30, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
@@ -482,6 +476,8 @@ mod pagination_edge_cases {
     #[test]
     fn test_pagination_last_page() {
         let pagination = Pagination::new(10).current(10);
+        assert!(pagination.is_last());
+        assert!(!pagination.is_first());
         let mut buffer = Buffer::new(30, 10);
         let area = Rect::new(0, 0, 30, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
@@ -492,6 +488,8 @@ mod pagination_edge_cases {
     #[test]
     fn test_pagination_out_of_bounds_page() {
         let pagination = Pagination::new(10).current(100);
+        // Clamped to the last page
+        assert_eq!(pagination.get_current(), 10);
         let mut buffer = Buffer::new(30, 10);
         let area = Rect::new(0, 0, 30, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
@@ -513,6 +511,7 @@ mod pagination_edge_cases {
     fn test_pagination_negative_page() {
         // Using current(0) should clamp to 1
         let pagination = Pagination::new(10).current(0);
+        assert_eq!(pagination.get_current(), 1);
         let mut buffer = Buffer::new(30, 10);
         let area = Rect::new(0, 0, 30, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);

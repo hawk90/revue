@@ -229,7 +229,10 @@ impl RenderContext<'_> {
                         continue;
                     }
                     if pos + ch_width > border_end {
-                        break;
+                        // The rest of the title does not fit: drop it and
+                        // finish the border instead of leaving a gap
+                        title_chars.by_ref().for_each(drop);
+                        continue;
                     }
                     self.draw_char(x + pos, y, ch, fg);
                     for i in 1..ch_width {

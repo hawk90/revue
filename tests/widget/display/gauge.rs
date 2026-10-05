@@ -1,98 +1,78 @@
 //! Tests for Gauge widget
 //!
-//! Extracted from src/widget/display/gauge.rs
+//! Extracted from src/widget/display/gauge.rs. The value and helper cases
+//! live in tests/widget/gauge.rs; these cover the degenerate range and the
+//! threshold colors.
 
-use revue::prelude::*;
+use revue::layout::Rect;
+use revue::render::Buffer;
+use revue::style::Color;
+use revue::widget::traits::{RenderContext, View};
+use revue::widget::Gauge;
 
-#[test]
-fn test_gauge_new() {
-    let g = Gauge::new();
-    assert_eq!(g.get_value(), 0.0);
+/// Foreground color of the first (filled) bar cell.
+fn fill_color(g: &Gauge) -> Option<Color> {
+    let mut buffer = Buffer::new(20, 1);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 1));
+    g.render(&mut ctx);
+    buffer.get(0, 0).unwrap().fg
+}
+
+fn gauge_at(value: f64) -> Gauge {
+    Gauge::new()
+        .fill_color(Color::GREEN)
+        .warning_color(Color::YELLOW)
+        .critical_color(Color::RED)
+        .value(value)
 }
 
 #[test]
-fn test_gauge_value() {
-    let g = Gauge::new().value(0.5);
-    assert_eq!(g.get_value(), 0.5);
-}
-
-#[test]
-fn test_gauge_percent() {
-    let g = Gauge::new().percent(75.0);
-    assert_eq!(g.get_value(), 0.75);
-}
-
-#[test]
-fn test_gauge_value_clamp() {
-    let g1 = Gauge::new().value(1.5);
-    assert_eq!(g1.get_value(), 1.0);
-
-    let g2 = Gauge::new().value(-0.5);
-    assert_eq!(g2.get_value(), 0.0);
-}
-
-#[test]
-fn test_gauge_value_range() {
-    let g = Gauge::new().value_range(50.0, 0.0, 100.0);
-    assert_eq!(g.get_value(), 0.5);
-}
-
-#[test]
-fn test_gauge_style() {
-    let g = Gauge::new().style(GaugeStyle::Battery);
-    // Can't access private style field
-    // Just verify builder compiles
-}
-
-#[test]
-fn test_gauge_thresholds() {
-    let g = Gauge::new().thresholds(0.7, 0.9).value(0.95);
-    // Can't directly test current_color() as it's private
-    // Just verify builder compiles
-}
-
-#[test]
-fn test_gauge_helper_value() {
-    let g = gauge().percent(50.0);
-    assert_eq!(g.get_value(), 0.5);
-}
-
-#[test]
-fn test_percentage_helper_value() {
-    let g = percentage(75.0);
-    assert_eq!(g.get_value(), 0.75);
-}
-
-#[test]
-fn test_battery_helper_fields() {
-    let g = battery(80.0);
-    assert_eq!(g.get_value(), 0.8);
-}
-
-#[test]
-fn test_value_range_validation() {
-    // Normal case
-    let g = Gauge::new().value_range(50.0, 0.0, 100.0);
-    assert_eq!(g.get_value(), 0.5);
-
-    // Swapped min/max
-    let g = Gauge::new().value_range(50.0, 100.0, 0.0);
-    assert_eq!(g.get_value(), 0.5);
-
-    // Equal min/max (division by zero case)
+fn test_value_range_equal_min_max() {
+    // An empty range has no position in it: no division by zero
     let g = Gauge::new().value_range(50.0, 50.0, 50.0);
     assert_eq!(g.get_value(), 0.0);
 }
 
 #[test]
-fn test_thresholds_validation() {
-    // Normal case
-    let g = Gauge::new().thresholds(0.5, 0.8);
-    // Can't access private threshold fields
-    // Just verify builder compiles
+fn test_gauge_thresholds() {
+    assert_eq!(
+        fill_color(&gauge_at(0.3).thresholds(0.5, 0.8)),
+        Some(Color::GREEN)
+    );
+    assert_eq!(
+        fill_color(&gauge_at(0.6).thresholds(0.5, 0.8)),
+        Some(Color::YELLOW)
+    );
+    assert_eq!(
+        fill_color(&gauge_at(0.95).thresholds(0.5, 0.8)),
+        Some(Color::RED)
+    );
+}
 
-    // Swapped thresholds
-    let g = Gauge::new().thresholds(0.8, 0.5);
-    // Can't access private threshold fields
-    // Just verify builder compiles
+#[test]
+fn test_gauge_thresholds_inclusive() {
+    assert_eq!(
+        fill_color(&gauge_at(0.5).thresholds(0.5, 0.8)),
+        Some(Color::YELLOW)
+    );
+    assert_eq!(
+        fill_color(&gauge_at(0.8).thresholds(0.5, 0.8)),
+        Some(Color::RED)
+    );
+}
+
+#[test]
+fn test_thresholds_validation() {
+    // Swapped thresholds are put back in order
+    for v in [0.3, 0.6, 0.95] {
+        assert_eq!(
+            fill_color(&gauge_at(v).thresholds(0.8, 0.5)),
+            fill_color(&gauge_at(v).thresholds(0.5, 0.8)),
+        );
+    }
+}
+
+#[test]
+fn test_gauge_without_thresholds_uses_fill_color() {
+    assert_eq!(fill_color(&gauge_at(0.99)), Some(Color::GREEN));
 }

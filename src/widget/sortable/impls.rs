@@ -66,7 +66,7 @@ impl SortableList {
     /// Move selected item down
     pub fn move_down(&mut self) {
         if let Some(idx) = self.selected {
-            if idx < self.items.len() - 1 {
+            if idx + 1 < self.items.len() {
                 self.items.swap(idx, idx + 1);
                 self.selected = Some(idx + 1);
                 if let Some(ref mut callback) = self.on_reorder {
@@ -78,7 +78,7 @@ impl SortableList {
 
     /// Start dragging selected item
     pub fn start_drag(&mut self) {
-        if let Some(idx) = self.selected {
+        if let Some(idx) = self.selected.filter(|&idx| idx < self.items.len()) {
             self.dragging = Some(idx);
             self.items[idx].dragging = true;
         }
@@ -99,11 +99,10 @@ impl SortableList {
             }
         }
 
-        // Reset drag state
-        if let Some(idx) = self.dragging {
-            if idx < self.items.len() {
-                self.items[idx].dragging = false;
-            }
+        // Reset drag state. The dragged item may have just moved, so clear
+        // the flag on every item rather than at the index it started from.
+        for item in &mut self.items {
+            item.dragging = false;
         }
         self.dragging = None;
         self.drop_target = None;

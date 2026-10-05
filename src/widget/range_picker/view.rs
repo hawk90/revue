@@ -169,14 +169,14 @@ impl RangePicker {
                 (Color::WHITE, None, false)
             };
 
+            // draw_text replaces whole cells, so the background goes on after
+            // the digits, or it is lost.
+            self.draw_text(ctx, day_x, day_y, &day_str, fg, bold);
             if let Some(bg_color) = bg {
                 for i in 0..2 {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(bg_color);
-                    ctx.set(day_x + i, day_y, cell);
+                    ctx.set_bg(day_x + i, day_y, bg_color);
                 }
             }
-            self.draw_text(ctx, day_x, day_y, &day_str, fg, bold);
 
             col += 1;
             if col > 6 {
@@ -219,6 +219,12 @@ impl RangePicker {
                 }
             }
             self.draw_text(ctx, x, preset_y, &text, fg, is_cursor);
+            // draw_text replaces whole cells, so paint the bar again on top
+            if let Some(bg_color) = bg {
+                for dx in 0..16 {
+                    ctx.set_bg(x + dx, preset_y, bg_color);
+                }
+            }
         }
     }
 

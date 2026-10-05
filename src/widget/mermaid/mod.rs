@@ -10,7 +10,9 @@ mod types;
 
 pub use core::Diagram;
 pub use helpers::{diagram, edge, flowchart, node};
-pub use types::{ArrowStyle, DiagramEdge, DiagramNode, DiagramType, NodeShape};
+pub use types::{
+    ArrowStyle, DiagramColors, DiagramDirection, DiagramEdge, DiagramNode, DiagramType, NodeShape,
+};
 
 crate::impl_styled_view!(Diagram);
 crate::impl_props_builders!(Diagram);

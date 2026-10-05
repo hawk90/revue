@@ -151,7 +151,7 @@ pub use sidebar::{
     Sidebar, SidebarItem, SidebarSection,
 };
 pub use splitter::{
-    hsplit, pane, splitter, vsplit, HSplit, Pane, SplitOrientation, Splitter, VSplit,
+    hsplit, pane, splitter, vsplit, HSplit, Pane, SplitOrientation, Splitter, SplitterStyle, VSplit,
 };
 pub use stack::{hstack, vstack, Direction, Stack};
 pub use tabs::{tabs, Tab, Tabs};
