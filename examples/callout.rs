@@ -140,83 +140,104 @@ impl CalloutDemo {
     }
 
     fn render_tabs(&self) -> impl View {
+        // A stack shares its space equally among the children added with
+        // `child`; it does not size them to their content. So everything in
+        // this file that should take only its own rows or columns says so with
+        // `child_sized`, and only the piece that should take the rest is left
+        // as a plain `child`.
         let mut tabs = hstack().gap(2);
 
         for (i, tab) in ViewTab::all().iter().enumerate() {
             let label = format!("[{}] {}", i + 1, tab.name());
+            let width = cols(&label);
             let text = if *tab == self.tab {
                 Text::new(label).fg(Color::CYAN).bold()
             } else {
                 Text::new(label).fg(Color::rgb(128, 128, 128))
             };
-            tabs = tabs.child(text);
+            tabs = tabs.child_sized(text, width);
         }
 
         tabs
     }
 
     fn render_types_demo(&self) -> impl View {
+        // A filled callout draws two rows: its title and its one-line message.
         vstack()
-            .gap(1)
-            .child(Text::new("All Callout Types:").bold())
-            .child(Text::new(""))
-            .child(Callout::note(
-                "This is a note callout for general information.",
-            ))
-            .child(Text::new(""))
-            .child(Callout::tip(
-                "This is a tip callout for helpful suggestions.",
-            ))
-            .child(Text::new(""))
-            .child(Callout::important(
-                "This is an important callout for key information.",
-            ))
-            .child(Text::new(""))
-            .child(Callout::warning(
-                "This is a warning callout for potential issues.",
-            ))
-            .child(Text::new(""))
-            .child(Callout::danger(
-                "This is a danger callout for critical warnings.",
-            ))
-            .child(Text::new(""))
-            .child(Callout::info(
-                "This is an info callout for supplementary details.",
-            ))
+            .child_sized(Text::new("All Callout Types:").bold(), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Callout::note("This is a note callout for general information."),
+                2,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Callout::tip("This is a tip callout for helpful suggestions."),
+                2,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Callout::important("This is an important callout for key information."),
+                2,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Callout::warning("This is a warning callout for potential issues."),
+                2,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Callout::danger("This is a danger callout for critical warnings."),
+                2,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Callout::info("This is an info callout for supplementary details."),
+                2,
+            )
     }
 
     fn render_variants_demo(&self) -> impl View {
         vstack()
-            .gap(1)
-            .child(Text::new("Callout Variants:").bold())
-            .child(Text::new(""))
-            .child(Text::new("Filled (default):").fg(Color::rgb(150, 150, 150)))
-            .child(
+            .child_sized(Text::new("Callout Variants:").bold(), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Text::new("Filled (default):").fg(Color::rgb(150, 150, 150)),
+                1,
+            )
+            .child_sized(
                 Callout::tip("Filled variant with background color.")
                     .variant(CalloutVariant::Filled),
+                2,
             )
-            .child(Text::new(""))
-            .child(Text::new("Left Border:").fg(Color::rgb(150, 150, 150)))
-            .child(
+            .child_sized(Text::new(""), 1)
+            .child_sized(Text::new("Left Border:").fg(Color::rgb(150, 150, 150)), 1)
+            .child_sized(
                 Callout::warning("Left border variant - minimal with accent.")
                     .variant(CalloutVariant::LeftBorder),
+                2,
             )
-            .child(Text::new(""))
-            .child(Text::new("Minimal:").fg(Color::rgb(150, 150, 150)))
-            .child(
+            .child_sized(Text::new(""), 1)
+            .child_sized(Text::new("Minimal:").fg(Color::rgb(150, 150, 150)), 1)
+            .child_sized(
                 Callout::info("Minimal variant - just icon and text.")
                     .variant(CalloutVariant::Minimal),
+                2,
             )
-            .child(Text::new(""))
-            .child(Text::new("Custom Title and Icon:").fg(Color::rgb(150, 150, 150)))
-            .child(
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Text::new("Custom Title and Icon:").fg(Color::rgb(150, 150, 150)),
+                1,
+            )
+            .child_sized(
                 Callout::note("You can customize the title and icon.")
                     .title("Custom Title")
                     .custom_icon('*'),
+                2,
             )
-            .child(Text::new(""))
-            .child(Text::new("No Icon:").fg(Color::rgb(150, 150, 150)))
-            .child(Callout::important("Callout without icon.").icon(false))
+            .child_sized(Text::new(""), 1)
+            .child_sized(Text::new("No Icon:").fg(Color::rgb(150, 150, 150)), 1)
+            .child_sized(Callout::important("Callout without icon.").icon(false), 2)
     }
 
     fn render_collapsible_demo(&self) -> impl View {
@@ -228,29 +249,33 @@ impl CalloutDemo {
                 Text::new(format!("   {}", arrow)).fg(Color::rgb(100, 100, 100))
             }
         };
+        // Expanded, these callouts draw their title and two lines of message;
+        // collapsed, just the title.
+        let rows = |callout: &Callout| if callout.is_expanded() { 3 } else { 1 };
 
         vstack()
-            .gap(1)
-            .child(Text::new("Collapsible Callouts:").bold())
-            .child(Text::new(
-                "(j/k or arrows: navigate, Space/Enter: toggle, h/l: collapse/expand)",
-            ))
-            .child(Text::new(""))
-            .child(indicator(0, self.note_callout.is_expanded()))
-            .child(self.note_callout.clone())
-            .child(Text::new(""))
-            .child(indicator(1, self.tip_callout.is_expanded()))
-            .child(self.tip_callout.clone())
-            .child(Text::new(""))
-            .child(indicator(2, self.warning_callout.is_expanded()))
-            .child(self.warning_callout.clone())
+            .child_sized(Text::new("Collapsible Callouts:").bold(), 1)
+            .child_sized(
+                Text::new("(j/k or arrows: navigate, Space/Enter: toggle, h/l: collapse/expand)"),
+                1,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(indicator(0, self.note_callout.is_expanded()), 1)
+            .child_sized(self.note_callout.clone(), rows(&self.note_callout))
+            .child_sized(Text::new(""), 1)
+            .child_sized(indicator(1, self.tip_callout.is_expanded()), 1)
+            .child_sized(self.tip_callout.clone(), rows(&self.tip_callout))
+            .child_sized(Text::new(""), 1)
+            .child_sized(indicator(2, self.warning_callout.is_expanded()), 1)
+            .child_sized(self.warning_callout.clone(), rows(&self.warning_callout))
     }
 }
 
 impl View for CalloutDemo {
     fn render(&self, ctx: &mut RenderContext) {
+        let title = " Callout Widget Demo ";
         let header = hstack()
-            .child(Text::new(" Callout Widget Demo ").fg(Color::CYAN).bold())
+            .child_sized(Text::new(title).fg(Color::CYAN).bold(), cols(title))
             .child(Text::new(" | Tab/Shift+Tab or 1-3 to switch").fg(Color::rgb(100, 100, 100)));
 
         let tabs = self.render_tabs();
@@ -271,14 +296,19 @@ impl View for CalloutDemo {
             Text::new("Press 'q' to quit | Tab: next | Shift+Tab: prev").fg(Color::rgb(80, 80, 80));
 
         vstack()
-            .child(header)
-            .child(tabs)
-            .child(Text::new(""))
+            .child_sized(header, 1)
+            .child_sized(tabs, 1)
+            .child_sized(Text::new(""), 1)
             .child(content)
-            .child(Text::new(""))
-            .child(help)
+            .child_sized(Text::new(""), 1)
+            .child_sized(help, 1)
             .render(ctx);
     }
+}
+
+/// Columns `s` takes on screen.
+fn cols(s: &str) -> u16 {
+    revue::utils::unicode::display_width(s) as u16
 }
 
 fn main() -> Result<()> {
