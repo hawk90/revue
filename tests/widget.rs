@@ -124,9 +124,6 @@ mod masked_input_tests;
 // mod option_list;
 #[path = "widget/pagination.rs"]
 mod pagination;
-// TODO(test-coverage): presentation has API mismatches
-// #[path = "widget/presentation/mod.rs"]
-// mod presentation;
 #[cfg(feature = "sysinfo")]
 #[path = "widget/procmon.rs"]
 mod procmon;
@@ -192,15 +189,6 @@ mod terminal;
 mod terminal_ansi;
 #[path = "widget/terminal_types.rs"]
 mod terminal_types;
-#[cfg(feature = "syntax-highlighting")]
-#[path = "widget/tree_sitter_highlight.rs"]
-mod tree_sitter_highlight;
-// TODO(test-coverage): text has API mismatches
-// #[path = "widget/text/mod.rs"]
-// mod text;
-// TODO(test-coverage): textarea has API mismatches
-// #[path = "widget/textarea/mod.rs"]
-// mod textarea;
 #[path = "widget/theme_picker.rs"]
 mod theme_picker;
 #[path = "widget/timeline.rs"]
@@ -213,6 +201,9 @@ pub mod timeseries_tests;
 mod tooltip;
 #[path = "widget/transition/mod.rs"]
 mod transition;
+#[cfg(feature = "syntax-highlighting")]
+#[path = "widget/tree_sitter_highlight.rs"]
+mod tree_sitter_highlight;
 #[path = "widget/validation.rs"]
 mod validation;
 #[path = "widget/vim.rs"]
