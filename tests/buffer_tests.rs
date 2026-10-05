@@ -216,7 +216,7 @@ fn test_cell_modifier() {
 #[test]
 fn test_cell_clone() {
     let cell1 = Cell::new('X');
-    let cell2 = cell1.clone();
+    let cell2 = cell1;
     assert_eq!(cell1.symbol, cell2.symbol);
 }
 

@@ -95,8 +95,10 @@ fn test_is_focused_no_state() {
 fn test_is_focused_with_state() {
     let mut buffer = test_buffer();
     let style = Style::default();
-    let mut state = NodeState::default();
-    state.focused = true;
+    let state = NodeState {
+        focused: true,
+        ..Default::default()
+    };
     let ctx = RenderContext::full(&mut buffer, test_area(), &style, &state);
     assert!(ctx.is_focused());
 }
@@ -105,8 +107,10 @@ fn test_is_focused_with_state() {
 fn test_is_hovered() {
     let mut buffer = test_buffer();
     let style = Style::default();
-    let mut state = NodeState::default();
-    state.hovered = true;
+    let state = NodeState {
+        hovered: true,
+        ..Default::default()
+    };
     let ctx = RenderContext::full(&mut buffer, test_area(), &style, &state);
     assert!(ctx.is_hovered());
 }
@@ -115,8 +119,10 @@ fn test_is_hovered() {
 fn test_is_disabled() {
     let mut buffer = test_buffer();
     let style = Style::default();
-    let mut state = NodeState::default();
-    state.disabled = true;
+    let state = NodeState {
+        disabled: true,
+        ..Default::default()
+    };
     let ctx = RenderContext::full(&mut buffer, test_area(), &style, &state);
     assert!(ctx.is_disabled());
 }
@@ -630,7 +636,10 @@ fn test_css_border_style_no_style() {
     let ctx = RenderContext::new(&mut buffer, test_area());
 
     let border_style = ctx.css_border_style();
-    assert_eq!(border_style, BorderStyle::None);
+    assert_eq!(
+        border_style, None,
+        "no style at all is \"said nothing\", not \"no border\""
+    );
 }
 
 #[test]
@@ -638,7 +647,7 @@ fn test_css_gap_no_style() {
     let mut buffer = test_buffer();
     let ctx = RenderContext::new(&mut buffer, test_area());
 
-    assert_eq!(ctx.css_gap(), 0);
+    assert_eq!(ctx.css_gap(), None);
 }
 
 #[test]
@@ -776,11 +785,11 @@ fn test_css_height_with_style() {
 fn test_css_border_style_with_style() {
     let mut buffer = test_buffer();
     let mut style = Style::default();
-    style.visual.border_style = BorderStyle::Dashed;
+    style.visual.border_style = Some(BorderStyle::Dashed);
 
     let ctx = RenderContext::with_style(&mut buffer, test_area(), &style);
 
-    assert_eq!(ctx.css_border_style(), BorderStyle::Dashed);
+    assert_eq!(ctx.css_border_style(), Some(BorderStyle::Dashed));
 }
 
 #[test]
@@ -789,11 +798,11 @@ fn test_css_gap_with_style() {
 
     let mut buffer = test_buffer();
     let mut style = Style::default();
-    style.layout.gap = 10;
+    style.layout.gap = Some(10);
 
     let ctx = RenderContext::with_style(&mut buffer, test_area(), &style);
 
-    assert_eq!(ctx.css_gap(), 10);
+    assert_eq!(ctx.css_gap(), Some(10));
 }
 
 // =========================================================================
@@ -1186,8 +1195,9 @@ fn test_set_get_with_offset() {
     let cell = ctx.get(2, 1).unwrap();
     assert_eq!(cell.symbol, 'Z');
 
-    // Verify via buffer directly (drop ctx first)
-    drop(ctx);
+    // Verify via the buffer directly. `drop(ctx)` used to stand here to end
+    // the borrow, but `RenderContext` has no `Drop` - the borrow already ends
+    // at its last use above, which is what actually frees `buffer`.
     assert_eq!(buffer.get(7, 4).unwrap().symbol, 'Z');
 }
 

@@ -325,16 +325,20 @@ mod tests {
         let mut tree = LayoutTree::new();
 
         // Create parent
-        let mut parent = LayoutNode::default();
-        parent.id = 1;
+        let mut parent = LayoutNode {
+            id: 1,
+            ..Default::default()
+        };
         parent.flex.direction = direction;
         parent.sizing.width = Size::Fixed(parent_width);
         parent.sizing.height = Size::Fixed(parent_height);
 
         let mut child_ids = Vec::new();
         for (i, width) in child_widths.iter().enumerate() {
-            let mut child = LayoutNode::default();
-            child.id = (i + 2) as u64;
+            let mut child = LayoutNode {
+                id: (i + 2) as u64,
+                ..Default::default()
+            };
             child.sizing.width = *width;
             child.sizing.height = Size::Auto;
             child_ids.push(child.id);
@@ -700,10 +704,12 @@ mod tests {
     #[test]
     fn test_flex_empty_container() {
         let mut tree = LayoutTree::new();
-        let mut parent = LayoutNode::default();
-        parent.id = 1;
-        parent.display = crate::style::Display::Flex;
-        parent.children = vec![];
+        let parent = LayoutNode {
+            id: 1,
+            display: crate::style::Display::Flex,
+            children: vec![],
+            ..Default::default()
+        };
         tree.insert(parent);
         tree.set_root(1);
 
@@ -717,19 +723,25 @@ mod tests {
     fn test_flex_no_auto_children() {
         // Test that auto_count = 0 doesn't cause division by zero at line 87
         let mut tree = LayoutTree::new();
-        let mut parent = LayoutNode::default();
-        parent.id = 1;
+        let mut parent = LayoutNode {
+            id: 1,
+            ..Default::default()
+        };
         parent.flex.direction = FlexDirection::Row;
         parent.sizing.width = Size::Fixed(100);
         parent.sizing.height = Size::Fixed(50);
 
-        let mut child1 = LayoutNode::default();
-        child1.id = 2;
+        let mut child1 = LayoutNode {
+            id: 2,
+            ..Default::default()
+        };
         child1.sizing.width = Size::Fixed(30);
         child1.sizing.height = Size::Auto;
 
-        let mut child2 = LayoutNode::default();
-        child2.id = 3;
+        let mut child2 = LayoutNode {
+            id: 3,
+            ..Default::default()
+        };
         child2.sizing.width = Size::Fixed(40);
         child2.sizing.height = Size::Auto;
 
@@ -753,19 +765,25 @@ mod tests {
     fn test_flex_all_percent_children() {
         // All children are percentage sized - no Auto children
         let mut tree = LayoutTree::new();
-        let mut parent = LayoutNode::default();
-        parent.id = 1;
+        let mut parent = LayoutNode {
+            id: 1,
+            ..Default::default()
+        };
         parent.flex.direction = FlexDirection::Row;
         parent.sizing.width = Size::Fixed(100);
         parent.sizing.height = Size::Fixed(50);
 
-        let mut child1 = LayoutNode::default();
-        child1.id = 2;
+        let mut child1 = LayoutNode {
+            id: 2,
+            ..Default::default()
+        };
         child1.sizing.width = Size::Percent(30.0);
         child1.sizing.height = Size::Auto;
 
-        let mut child2 = LayoutNode::default();
-        child2.id = 3;
+        let mut child2 = LayoutNode {
+            id: 3,
+            ..Default::default()
+        };
         child2.sizing.width = Size::Percent(50.0);
         child2.sizing.height = Size::Auto;
 
@@ -788,14 +806,18 @@ mod tests {
     fn test_flex_zero_width_container() {
         // Should not panic with zero width
         let mut tree = LayoutTree::new();
-        let mut parent = LayoutNode::default();
-        parent.id = 1;
+        let mut parent = LayoutNode {
+            id: 1,
+            ..Default::default()
+        };
         parent.flex.direction = FlexDirection::Row;
         parent.sizing.width = Size::Fixed(0);
         parent.sizing.height = Size::Fixed(50);
 
-        let mut child = LayoutNode::default();
-        child.id = 2;
+        let mut child = LayoutNode {
+            id: 2,
+            ..Default::default()
+        };
         child.sizing.width = Size::Auto;
         child.sizing.height = Size::Auto;
 
@@ -815,15 +837,19 @@ mod tests {
     fn test_flex_justify_space_between_single_child() {
         // Should not divide by zero with single child
         let mut tree = LayoutTree::new();
-        let mut parent = LayoutNode::default();
-        parent.id = 1;
+        let mut parent = LayoutNode {
+            id: 1,
+            ..Default::default()
+        };
         parent.flex.direction = FlexDirection::Row;
         parent.flex.justify_content = JustifyContent::SpaceBetween;
         parent.sizing.width = Size::Fixed(100);
         parent.sizing.height = Size::Fixed(50);
 
-        let mut child = LayoutNode::default();
-        child.id = 2;
+        let mut child = LayoutNode {
+            id: 2,
+            ..Default::default()
+        };
         child.sizing.width = Size::Fixed(30);
         child.sizing.height = Size::Auto;
 
@@ -843,8 +869,10 @@ mod tests {
     fn test_flex_justify_space_around_empty() {
         // Should not divide by zero with empty children
         let mut tree = LayoutTree::new();
-        let mut parent = LayoutNode::default();
-        parent.id = 1;
+        let mut parent = LayoutNode {
+            id: 1,
+            ..Default::default()
+        };
         parent.flex.direction = FlexDirection::Row;
         parent.flex.justify_content = JustifyContent::SpaceAround;
         parent.sizing.width = Size::Fixed(100);
@@ -861,8 +889,10 @@ mod tests {
     fn test_flex_gap_with_empty() {
         // Should not panic with gap but no children
         let mut tree = LayoutTree::new();
-        let mut parent = LayoutNode::default();
-        parent.id = 1;
+        let mut parent = LayoutNode {
+            id: 1,
+            ..Default::default()
+        };
         parent.flex.direction = FlexDirection::Row;
         parent.flex.gap = 10;
         parent.sizing.width = Size::Fixed(100);

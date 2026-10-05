@@ -122,7 +122,7 @@ pub use snapshot::{snapshot, Snapshot, SnapshotConfig, SnapshotResult};
 
 use crate::constants::FRAME_DURATION_60FPS;
 use crate::dom::DomRenderer;
-use crate::event::{Event, KeyEvent};
+use crate::event::{Event, Key, KeyEvent, MouseButton, MouseEventKind};
 use crate::layout::LayoutEngine;
 use crate::render::{Buffer, Terminal};
 use crate::style::{StyleSheet, TransitionManager};
@@ -144,6 +144,15 @@ pub type TickHandler<V> = Box<dyn FnMut(&mut V, Duration) -> bool>;
 #[inline]
 fn is_quit_key(key: &KeyEvent) -> bool {
     key.is_ctrl_c()
+}
+
+/// Is this the key that moves focus?
+///
+/// Terminals disagree about Shift+Tab: most send `BackTab` as its own key,
+/// some send `Tab` with the shift flag. Both count.
+#[inline]
+fn is_tab_key(key: &KeyEvent) -> bool {
+    !key.ctrl && !key.alt && matches!(key.key, Key::Tab | Key::BackTab)
 }
 
 /// Main application struct
@@ -211,6 +220,12 @@ pub struct App {
     needs_layout_rebuild: bool,
     /// Track if DOM tree needs rebuild (root node creation)
     needs_dom_rebuild: bool,
+    /// Reconcile the DOM against the view on every frame (opt-in, see
+    /// [`AppBuilder::incremental_dom`](crate::app::AppBuilder::incremental_dom))
+    incremental_dom: bool,
+    /// Tab moves `:focus` between focusable nodes (see
+    /// [`AppBuilder::tab_navigation`](crate::app::AppBuilder::tab_navigation))
+    tab_navigation: bool,
     /// Plugin registry
     plugins: crate::plugin::PluginRegistry,
     /// Whether devtools are enabled for this app instance
@@ -246,6 +261,8 @@ impl App {
             needs_force_redraw: true, // Initial render should be a full draw
             needs_layout_rebuild: true, // Initial render needs full layout build
             needs_dom_rebuild: true,  // Initial render needs DOM root creation
+            incremental_dom: false,   // Opt-in until the benches say otherwise
+            tab_navigation: false,    // Opt-in: Tab may already be the app's key
             plugins,
             devtools_enabled,
             #[cfg(feature = "hot-reload")]
@@ -279,11 +296,48 @@ impl App {
             needs_force_redraw: true,
             needs_layout_rebuild: true,
             needs_dom_rebuild: true,
+            incremental_dom: false,
+            tab_navigation: false,
             plugins,
             devtools_enabled,
             hot_reload,
             style_paths,
         }
+    }
+
+    /// Enable per-frame DOM reconciliation.
+    pub(crate) fn set_incremental_dom(&mut self, enabled: bool) {
+        self.incremental_dom = enabled;
+    }
+
+    /// Let Tab and Shift+Tab move focus.
+    pub(crate) fn set_tab_navigation(&mut self, enabled: bool) {
+        self.tab_navigation = enabled;
+    }
+
+    /// Build the DOM from the render traversal instead of `View::children`.
+    pub(crate) fn set_dom_from_render(&mut self, enabled: bool) {
+        self.dom.set_dom_from_render(enabled);
+    }
+
+    /// Is the DOM built from the render traversal?
+    pub fn dom_from_render(&self) -> bool {
+        self.dom.dom_from_render()
+    }
+
+    /// Let CSS box properties override the geometry a container computed.
+    pub(crate) fn set_css_layout(&mut self, enabled: bool) {
+        self.dom.set_css_layout(enabled);
+    }
+
+    /// Do CSS box properties override container-computed geometry?
+    pub fn css_layout(&self) -> bool {
+        self.dom.css_layout()
+    }
+
+    /// Is per-frame DOM reconciliation enabled?
+    pub fn incremental_dom(&self) -> bool {
+        self.incremental_dom
     }
 
     /// Create a new application builder
@@ -449,6 +503,21 @@ impl App {
                 self.needs_layout_rebuild = true; // Resize requires full layout rebuild
                 should_draw = true;
             }
+            Event::Key(key) if self.tab_navigation && is_tab_key(&key) => {
+                if self.track_tab_focus(&key) {
+                    should_draw = true;
+                }
+            }
+            Event::Mouse(ref mouse) => {
+                if self.track_hover(mouse.x, mouse.y) {
+                    should_draw = true;
+                }
+                if matches!(mouse.kind, MouseEventKind::Down(MouseButton::Left))
+                    && self.track_click_focus(mouse.x, mouse.y)
+                {
+                    should_draw = true;
+                }
+            }
             Event::Tick => {
                 let now = Instant::now();
                 let delta = now.duration_since(self.last_tick);
@@ -543,20 +612,28 @@ impl App {
     }
 
     /// Draw the UI to the terminal
-    fn draw<V: View, W: std::io::Write>(
+    pub(crate) fn draw<V: View, W: std::io::Write>(
         &mut self,
         view: &V,
         terminal: &mut Terminal<W>,
         force_redraw: bool,
     ) -> crate::Result<()> {
-        let root_dom_id = self.update_dom_and_get_root(view)?;
         let (width, height) = self.get_buffer_size();
-        self.update_layout_tree(root_dom_id, width, height);
-        let dirty_rects = self.collect_dirty_regions(width, height, force_redraw);
+
+        if self.dom.dom_from_render() {
+            // The render pass builds the DOM. Lay out whatever the previous
+            // frame produced; on the first frame there is nothing yet.
+            if let Some(root_dom_id) = self.dom.tree().root_id() {
+                self.update_layout_tree(root_dom_id, width, height);
+            }
+        } else {
+            let root_dom_id = self.update_dom_and_get_root(view)?;
+            self.update_layout_tree(root_dom_id, width, height);
+        }
 
         let new_buffer_idx = self.swap_buffers();
-        self.render_to_buffer(view, new_buffer_idx, &dirty_rects);
-        self.draw_to_terminal(terminal, new_buffer_idx, force_redraw, &dirty_rects)?;
+        self.render_to_buffer(view, new_buffer_idx);
+        self.draw_to_terminal(terminal, new_buffer_idx, force_redraw)?;
 
         // Clear dirty flags after rendering
         self.dom.tree_mut().clear_dirty_flags();
@@ -564,14 +641,92 @@ impl App {
         Ok(())
     }
 
+    /// Move `:hover` to whatever the pointer is over.
+    ///
+    /// Returns `true` if it moved, which is when the frame has to be redrawn.
+    ///
+    /// The map it queries is filled by the paint pass, so this is inert unless
+    /// [`dom_from_render`](crate::dom::DomRenderer::dom_from_render) is on -
+    /// without it no node below the root is ever associated with an area, and
+    /// `:hover` never matched anything anyway.
+    fn track_hover(&mut self, x: u16, y: u16) -> bool {
+        if !self.dom.dom_from_render() {
+            return false;
+        }
+        let target = self.dom.node_at(x, y);
+        self.dom.set_hover_node(target)
+    }
+
+    /// Drive [`handle_event`](Self::handle_event) with a no-op user handler.
+    ///
+    /// The harness needs the real dispatch, not a reimplementation of it -
+    /// otherwise a test can agree with itself while the event loop ignores the
+    /// event entirely.
+    pub(crate) fn dispatch_for_test<V: View>(&mut self, event: Event, view: &mut V) -> bool {
+        let mut handler = |_: &Event, _: &mut V, _: &mut Self| false;
+        self.handle_event(event, view, &mut handler)
+    }
+
+    /// Move focus to whatever focusable thing was clicked.
+    ///
+    /// Returns `true` if focus moved. A click on nothing focusable - a label,
+    /// a plain container - leaves focus where it was, rather than clearing it;
+    /// that is what every other toolkit does and what users expect.
+    ///
+    /// This sets `NodeState.focused` and nothing else. Widgets still read their
+    /// own `focused` field, so no widget *behavior* changes yet - what changes
+    /// is that `:focus` rules finally match. Handing widgets the node's state
+    /// is Phase 2-2.
+    fn track_click_focus(&mut self, x: u16, y: u16) -> bool {
+        if !self.dom.dom_from_render() {
+            return false;
+        }
+        match self.dom.focus_target_at(x, y) {
+            Some(target) => self.dom.set_focus_node(Some(target)),
+            None => false,
+        }
+    }
+
+    /// Move focus to the next or previous focusable node.
+    ///
+    /// Returns `true` if focus moved. Terminals send Shift+Tab as its own key
+    /// (`BackTab`) rather than Tab with a shift flag, but some send the flag
+    /// instead, so both are read as backwards.
+    fn track_tab_focus(&mut self, key: &KeyEvent) -> bool {
+        let backwards = key.key == Key::BackTab || key.shift;
+        if backwards {
+            self.dom.focus_prev()
+        } else {
+            self.dom.focus_next()
+        }
+    }
+
+    /// [`track_hover`](Self::track_hover), for the pipeline harness.
+    ///
+    /// The harness drives the same code the event loop does; without this it
+    /// would have to reimplement the hit test and could then agree with itself
+    /// while disagreeing with production.
+    pub(crate) fn track_hover_for_test(&mut self, x: u16, y: u16) -> bool {
+        self.track_hover(x, y)
+    }
+
     /// Update DOM and return the root DOM ID
     fn update_dom_and_get_root<V: View>(&mut self, view: &V) -> crate::Result<crate::dom::DomId> {
-        // Only rebuild DOM root if needed (first frame or explicit request)
-        if self.needs_dom_rebuild {
+        // With reconciliation off, the DOM is built once and then never follows
+        // the view again - so a widget added after the first frame is invisible
+        // to CSS, to layout and to devtools until something forces a rebuild.
+        //
+        // With it on, `build` reconciles every frame: nodes that still match
+        // keep their DomId, their state and their cached style.
+        if self.needs_dom_rebuild || self.incremental_dom {
             self.dom.build(view);
             self.needs_dom_rebuild = false;
-            // DOM rebuild requires layout rebuild
-            self.needs_layout_rebuild = true;
+            // Only a change in the *shape* of the DOM invalidates layout.
+            // Rebuilding it on every reconciled frame would cost more than the
+            // full rebuild reconciliation replaces.
+            if self.dom.take_structure_dirty() {
+                self.needs_layout_rebuild = true;
+            }
         }
 
         // Always compute styles (has internal dirty checking optimization)
@@ -610,124 +765,27 @@ impl App {
         }
     }
 
-    /// Collect dirty regions that need to be redrawn
-    fn collect_dirty_regions(
-        &mut self,
-        width: u16,
-        height: u16,
-        force_redraw: bool,
-    ) -> Vec<crate::layout::Rect> {
-        let dirty_dom_ids = self.dom.tree_mut().get_dirty_nodes();
-        let mut dirty_rects = Vec::new();
-        for dom_id in &dirty_dom_ids {
-            if let Ok(rect) = self.layout.layout(*dom_id) {
-                dirty_rects.push(rect);
-            }
-        }
-
-        // Merge overlapping dirty rects to minimize update regions
-        if !dirty_rects.is_empty() {
-            dirty_rects = crate::layout::merge_rects(&dirty_rects);
-        }
-
-        // Collect transition rects if no dirty rects
-        if dirty_rects.is_empty() {
-            dirty_rects = self.collect_transition_rects(width, height);
-        }
-
-        // Force full redraw if explicitly requested
-        if dirty_rects.is_empty() && (self.needs_force_redraw || force_redraw) {
-            let full_screen_rect = crate::layout::Rect::new(0, 0, width, height);
-            dirty_rects.push(full_screen_rect);
-            self.needs_force_redraw = false;
-        }
-
-        dirty_rects
-    }
-
-    /// Collect rects for nodes with active transitions
-    fn collect_transition_rects(&mut self, width: u16, height: u16) -> Vec<crate::layout::Rect> {
-        let mut dirty_rects = Vec::new();
-
-        if self.transitions.has_active() {
-            // Active transitions need redraws - only redraw affected nodes
-            let transition_rects: Vec<crate::layout::Rect> = self
-                .transitions
-                .active_node_ids()
-                .filter_map(|element_id| {
-                    // Look up DOM node by element ID and get its layout rect
-                    self.dom
-                        .get_by_id(element_id)
-                        .map(|node| node.id)
-                        .and_then(|dom_id| self.layout.layout(dom_id).ok())
-                })
-                .collect();
-
-            if transition_rects.is_empty() {
-                // Fallback: if no node-aware transitions, use legacy behavior
-                // This handles global transitions that aren't tied to specific nodes
-                if self.transitions.active_properties().next().is_some() {
-                    let full_screen_rect = crate::layout::Rect::new(0, 0, width, height);
-                    dirty_rects.push(full_screen_rect);
-                }
-            } else {
-                dirty_rects.extend(transition_rects);
-            }
-        }
-
-        dirty_rects
-    }
-
     /// Swap buffers and return the new buffer index
     fn swap_buffers(&mut self) -> usize {
         1 - self.current_buffer
     }
 
-    /// Render the view to the given buffer
+    /// Render the view into the back buffer.
     ///
-    /// When dirty_rects is non-empty, uses partial rendering:
-    /// copies the previous buffer content first, then clears only the dirty
-    /// regions before re-rendering. This preserves unchanged pixels and
-    /// reduces the amount of work the diff algorithm needs to do.
-    fn render_to_buffer<V: View>(
-        &mut self,
-        view: &V,
-        buffer_idx: usize,
-        dirty_rects: &[crate::layout::Rect],
-    ) {
-        // Use split_at_mut to borrow both buffers simultaneously without cloning
-        let (buf_0, buf_1) = self.buffers.split_at_mut(1);
-        let (new_buffer, old_buffer) = if buffer_idx == 0 {
-            (&mut buf_0[0], &buf_1[0])
-        } else {
-            (&mut buf_1[0], &buf_0[0])
-        };
-
-        // Skip rendering entirely when nothing changed
-        if dirty_rects.is_empty() {
-            new_buffer.copy_from(old_buffer);
-            return;
-        }
-
+    /// Always clears and renders the whole view. Painting into a buffer is
+    /// memory traffic; the expensive part of a frame is what goes down the wire
+    /// to the terminal, and the buffer diff in [`draw_to_terminal`] already
+    /// reduces that to exactly the cells that changed.
+    ///
+    /// This used to skip rendering when the DOM reported no dirty nodes, and to
+    /// clear only the dirty regions otherwise. Both were unsound: a widget's
+    /// content is not part of `WidgetMeta`, so an ordinary state change marks
+    /// nothing dirty - and the app simply stopped repainting.
+    fn render_to_buffer<V: View>(&mut self, view: &V, buffer_idx: usize) {
+        let new_buffer = &mut self.buffers[buffer_idx];
         let area = crate::layout::Rect::new(0, 0, new_buffer.width(), new_buffer.height());
 
-        // Check if the dirty region covers the full screen
-        let full_screen = dirty_rects.len() == 1
-            && dirty_rects[0].x == 0
-            && dirty_rects[0].y == 0
-            && dirty_rects[0].width == new_buffer.width()
-            && dirty_rects[0].height == new_buffer.height();
-
-        if full_screen {
-            // Full screen dirty: clear everything (original behavior)
-            new_buffer.clear();
-        } else {
-            // Partial dirty: copy old buffer, then clear only dirty regions
-            // This preserves unchanged content and reduces diff size
-            new_buffer.copy_from(old_buffer);
-            new_buffer.clear_regions(dirty_rects);
-        }
-
+        new_buffer.clear();
         self.dom.render(view, new_buffer, area);
     }
 
@@ -737,7 +795,6 @@ impl App {
         terminal: &mut Terminal<W>,
         buffer_idx: usize,
         force_redraw: bool,
-        dirty_rects: &[crate::layout::Rect],
     ) -> crate::Result<()> {
         let old_buffer = &self.buffers[self.current_buffer];
         let new_buffer = &self.buffers[buffer_idx];
@@ -746,7 +803,13 @@ impl App {
             terminal.force_redraw(new_buffer)?;
             self.needs_force_redraw = false;
         } else {
-            let changes = crate::render::diff(old_buffer, new_buffer, dirty_rects);
+            // Compare the whole buffer. Masking this to a region is only safe
+            // when the region provably covers everything that was painted, and
+            // nothing in the pipeline establishes that today - a change outside
+            // the mask lands in the buffer and never reaches the terminal, after
+            // which the two buffers agree with each other and no later diff can
+            // repair it.
+            let changes = crate::render::diff(old_buffer, new_buffer, &[]);
             terminal.draw_changes(changes, new_buffer)?;
         }
 
@@ -755,7 +818,13 @@ impl App {
         Ok(())
     }
 
-    /// Recursively build the layout tree from the DOM tree
+    /// Recursively build the layout tree from the DOM tree.
+    ///
+    /// **Post-order.** [`LayoutEngine::create_node_with_children`] links only
+    /// the children that already exist, so a parent built first ends up with no
+    /// children at all - and a layout tree with no edges computes a rect for
+    /// the root and leaves every other node at 0x0. That is what this used to
+    /// do, which is why nothing could read the engine's output.
     fn build_layout_tree(&mut self, dom_id: crate::dom::DomId) {
         // Clone children to own the Vec - necessary because we need mutable access to self
         // during recursion, and holding a slice reference would prevent that.
@@ -766,6 +835,10 @@ impl App {
             .get(dom_id)
             .map(|node| node.children.clone())
             .unwrap_or_default();
+
+        for child_dom_id in &children {
+            self.build_layout_tree(*child_dom_id);
+        }
 
         // Use default style if computation fails (defensive programming)
         let style = match self.dom.style_for_with_inheritance(dom_id) {
@@ -780,10 +853,6 @@ impl App {
             .create_node_with_children(dom_id, &style, &children)
         {
             crate::log_warn!("Layout node creation failed for {:?}: {}", dom_id, e);
-        }
-
-        for child_dom_id in children {
-            self.build_layout_tree(child_dom_id);
         }
     }
 
@@ -835,6 +904,32 @@ impl App {
     /// Stop the application event loop
     pub fn quit(&mut self) {
         self.running = false;
+    }
+
+    /// Buffer that was most recently presented to the terminal.
+    ///
+    /// Crate-internal: used by `testing::PipelineHarness` to assert on the
+    /// output of the real draw pipeline.
+    pub(crate) fn presented_buffer(&self) -> &Buffer {
+        &self.buffers[self.current_buffer]
+    }
+
+    /// Read-only access to the DOM built by the last draw.
+    pub(crate) fn dom(&self) -> &DomRenderer {
+        &self.dom
+    }
+
+    /// Computed layout rect for a node, as `LayoutEngine` produced it.
+    ///
+    /// Crate-internal: used by `testing::PipelineHarness`. Nothing in the
+    /// render path reads this yet - see `docs/refactor/findings-layout.md`.
+    pub(crate) fn layout_rect(&self, dom_id: crate::dom::DomId) -> Option<crate::layout::Rect> {
+        self.layout.try_layout(dom_id)
+    }
+
+    /// Children of a node in the layout tree, which must mirror the DOM tree.
+    pub(crate) fn layout_children(&self, dom_id: crate::dom::DomId) -> Vec<crate::dom::DomId> {
+        self.layout.children(dom_id)
     }
 
     /// Request a full screen redraw on the next frame

@@ -135,6 +135,119 @@ App::builder()
 
 **Default:** `true`
 
+### incremental_dom(enabled)
+
+Reconciles the DOM against the view on every frame.
+
+```rust
+App::builder()
+    .incremental_dom(true)
+```
+
+**Default:** `false`. With it off the DOM is built once, on the first frame, and
+then stops following the view — a widget added later is invisible to CSS
+matching, layout and devtools until something forces a rebuild.
+
+With it on, nodes that still match keep their `DomId`, their state (focus,
+hover, selection) and their cached style. Widgets in a dynamic collection should
+implement [`View::key`](https://docs.rs/revue/latest/revue/widget/trait.View.html#method.key)
+so they are matched by identity rather than by position — see
+[Performance › Incremental DOM](performance.md#incremental-dom-reconciliation).
+
+Opt-in while its performance is measured; it will become the default.
+
+### dom_from_render(enabled)
+
+Builds the DOM from the render traversal instead of `View::children`.
+
+```rust
+App::builder()
+    .dom_from_render(true)
+```
+
+**Default:** `false`. With it off the DOM only contains widgets exposed through
+`View::children`, which almost nothing implements — so a real application has a
+DOM of one node and CSS never reaches a widget below the root.
+
+With it on the frame renders twice, every widget rendered through
+`RenderContext::render_child` gets a node and its own computed style, and CSS
+paint properties work throughout the tree. Implies per-frame reconciliation.
+
+Only children routed through `RenderContext::render_child` get a node. A widget
+a view paints straight into its own `ctx` — `Text::new("hi").render(ctx)` rather
+than `vstack().child(Text::new("hi"))` — *is* that view's own node rather than a
+child of it, so it carries the parent's id and classes and no rule written for
+it can select it. This catches people out; if a selector matches nothing, check
+that the widget is a `render_child` away from its parent.
+
+It is also what makes the mouse able to find anything: the paint pass records
+where each node landed, the event loop asks that record what is under the
+pointer, `:hover` moves there, and a left click focuses the nearest enclosing
+focusable widget. Without it neither `:hover` nor `:focus` matches anything,
+which is what a running application used to do — see
+[Phase 2 Hit Test](../refactor/phase2-hit-test.md).
+
+Costs 1.5–2.8x per frame. See
+[Performance › DOM from the render traversal](performance.md#dom-from-the-render-traversal).
+
+### tab_navigation(enabled)
+
+Lets Tab and Shift+Tab move `:focus` between focusable widgets.
+
+```rust
+App::builder()
+    .dom_from_render(true)
+    .tab_navigation(true)
+```
+
+**Default:** `false`. Until this existed the only thing that produced focus in a
+running application was a click, so an application driven from the keyboard had
+no `:focus` at all and every rule naming it was dead.
+
+Tab walks the DOM in **document order** — the order the reader meets things,
+not the order widgets were registered — skipping `disabled` nodes and wrapping
+at both ends. A widget that moves in the view moves in the tab ring with it.
+Shift+Tab goes backwards; both the `BackTab` key most terminals send and `Tab`
+with a shift flag are read that way.
+
+It is off by default because Tab is a key an existing application may already
+handle itself, and the runtime taking it would be a silent behavior change. The
+application's own handler runs first either way.
+
+This sets `NodeState.focused` and nothing else. Widgets still read their own
+`focused` field, so no widget *behavior* changes — what changes is that
+`:focus` rules match without a mouse.
+
+### css_layout(enabled)
+
+Lets CSS box properties override the geometry a container computed.
+
+```rust
+App::builder()
+    .dom_from_render(true)
+    .css_layout(true)
+```
+
+**Default:** `false`, and inert without `dom_from_render` — the properties are
+read from the node the paint pass is holding, and without the render traversal
+there is no such node below the root.
+
+Container widgets keep deciding the *flow*: `vstack()` still stacks, and its
+`gap` and per-child sizes still apply. On top of that, a node's own specified
+`display`, `width`, `height`, `margin` and `min-*`/`max-*` adjust the box the
+container handed it — which is what makes `#sidebar { width: 20; }` and
+`.hidden { display: none; }` do something.
+
+`gap` — and `column-gap` / `row-gap` — reaches `vstack`, `hstack` and `grid`
+too. It describes flow, so the container reads it rather than having it applied
+from outside. All three track whether the stylesheet specified them, so
+`gap: 0` closes a gap the builder opened rather than reading as "said nothing".
+
+Not applied: `padding`, which insets a widget's content and would move the
+border of a widget that draws one; and `flex-*` / `grid-template-*`, which the
+container computes itself. Background:
+[Layout Findings](../refactor/findings-layout.md).
+
 ### build()
 
 Constructs the `App` instance with all configured settings.

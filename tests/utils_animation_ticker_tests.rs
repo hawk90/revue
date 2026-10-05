@@ -41,7 +41,7 @@ fn test_ticker_tick_returns_clamped() {
     // Tick returns clamped value
     for _ in 0..10 {
         let dt = ticker.tick();
-        assert!(dt >= 0.001 && dt <= 0.1);
+        assert!((0.001..=0.1).contains(&dt));
     }
 }
 

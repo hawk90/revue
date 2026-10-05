@@ -3,6 +3,7 @@
 use super::core::Diagram;
 use super::types::{ArrowStyle, DiagramEdge, NodeShape};
 use crate::render::{Cell, Modifier};
+use crate::style::Color;
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Diagram {
@@ -73,7 +74,13 @@ impl Diagram {
         _height: u16,
     ) {
         let area = ctx.area;
-        let fg = node.color.unwrap_or(self.colors.node_fg);
+        // A node that names its own color keeps it - that is how a diagram
+        // marks one box out from the rest. The arrow color, the label and the
+        // title each say something a `color` rule cannot say separately, so the
+        // rule gets the ordinary node.
+        let fg = node
+            .color
+            .unwrap_or_else(|| ctx.color_or(self.colors.node_fg, Color::WHITE));
         let bg = node.bg.or(Some(self.colors.node_bg));
 
         // Draw box based on shape

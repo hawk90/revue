@@ -1015,8 +1015,8 @@ mod tests {
         tree.add_node(TreeNode::new("btn2", Role::Button));
         tree.set_focus(&"btn1".to_string());
         tree.set_focus(&"btn2".to_string());
-        assert!(tree.get(&"btn1".to_string()).unwrap().state.focused == false);
-        assert!(tree.get(&"btn2".to_string()).unwrap().state.focused == true);
+        assert!(!tree.get(&"btn1".to_string()).unwrap().state.focused);
+        assert!(tree.get(&"btn2".to_string()).unwrap().state.focused);
     }
 
     #[test]

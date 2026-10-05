@@ -1,0 +1,2000 @@
+# Revue Framework Anti-Pattern Catalog
+#
+# 목적: 사람과 LLM이 같은 기준으로 코드 리뷰/설계 리뷰를 할 수 있게 하는 기계 판독용 카탈로그.
+# 사용법은 README.md 참고. 사람이 읽는 판은 README.md, 아키텍처 논의는 architecture-review.md.
+#
+# 주의: 이 카탈로그는 "일어날 수 있는 실패 모드"의 목록이며, Revue 코드베이스에 대한
+#       감사 결과가 아니다. 각 항목이 실제로 존재하는지는 별도로 확인해야 한다.
+
+meta:
+  schema: revue.anti-patterns/v1
+  language: ko
+  source:
+    kind: chatgpt-shared-conversation
+    title: "Revue 기술 스택 안티패턴"
+    url: https://chatgpt.com/share/6a843f6f-64f8-83e9-a269-bb1cb8a7ba44
+  imported_on: 2026-08-18
+  status: draft            # 코드베이스 대조 검증 전
+  counts:
+    categories: 24
+    entries: 150
+
+# ---------------------------------------------------------------------------
+# 코드 리뷰 태그 (커밋/PR/리뷰 코멘트 접두사로 사용)
+# ---------------------------------------------------------------------------
+review_tags:
+  - tag: ARCH
+    scope: "Architecture"
+  - tag: TREE
+    scope: "UI tree / lifecycle"
+  - tag: REACTIVE
+    scope: "Signal / computed / effect"
+  - tag: RENDER
+    scope: "Rendering / buffer"
+  - tag: LAYOUT
+    scope: "Flex / grid / geometry"
+  - tag: STYLE
+    scope: "CSS / selector / theme"
+  - tag: EVENT
+    scope: "Input / focus / command"
+  - tag: WIDGET
+    scope: "Widget API / composition"
+  - tag: ASYNC
+    scope: "Worker / task / cancellation"
+  - tag: ANIM
+    scope: "Animation / scheduling"
+  - tag: MACRO
+    scope: "Proc macro / generated code"
+  - tag: PLUGIN
+    scope: "Extension boundary"
+  - tag: PERF
+    scope: "Performance"
+  - tag: MEM
+    scope: "Memory / allocation"
+  - tag: TEST
+    scope: "Testing / fuzzing"
+  - tag: API
+    scope: "Public API / semver"
+  - tag: UX
+    scope: "Interaction / accessibility"
+  - tag: SEC
+    scope: "Security / terminal safety"
+  - tag: DOC
+    scope: "Documentation"
+
+# ---------------------------------------------------------------------------
+# 항상 성립해야 하는 설계 invariant. CI/리뷰에서 위반 여부를 확인한다.
+# ---------------------------------------------------------------------------
+invariants:
+  - id: INV-01
+    rule: "하나의 application에는 하나의 UI-thread mutation owner만 존재한다."
+  - id: INV-02
+    rule: "하나의 focus scope에는 최대 하나의 focused widget만 존재한다."
+  - id: INV-03
+    rule: "제거된 widget은 effect, task, timer, focus를 유지하지 않는다."
+  - id: INV-04
+    rule: "한 transaction 안에서 동일 effect는 불필요하게 중복 실행되지 않는다."
+  - id: INV-05
+    rule: "paint는 layout bounds와 clipping bounds를 벗어나지 않는다."
+  - id: INV-06
+    rule: "변경되지 않은 subtree는 style/layout/paint되지 않는다."
+  - id: INV-07
+    rule: "외부 입력은 terminal control sequence로 직접 출력되지 않는다."
+  - id: INV-08
+    rule: "worker result는 생성 당시 generation과 일치할 때만 적용된다."
+  - id: INV-09
+    rule: "panic 또는 정상 종료 후 terminal state는 복구된다."
+  - id: INV-10
+    rule: "experimental API는 stable namespace에 자동 편입되지 않는다."
+
+# ---------------------------------------------------------------------------
+# 리뷰에서 반복해서 던져야 하는 질문. 개별 문법 지적보다 우선한다.
+# ---------------------------------------------------------------------------
+review_questions:
+  - "이 상태 변경이 왜 이 subtree를 다시 그리는가?"
+  - "이 widget의 identity와 lifetime은 누가 관리하는가?"
+  - "이 CSS 변경이 왜 layout까지 무효화하는가?"
+  - "이 task의 결과는 widget이 제거된 뒤 어디로 가는가?"
+  - "이 event는 누가 소비하고 어디까지 전달되는가?"
+  - "이 cache는 어떤 dependency가 바뀔 때 무효화되는가?"
+
+# ---------------------------------------------------------------------------
+# 우선순위. themes는 원문 분류, covers는 대응하는 anti-pattern id.
+# ---------------------------------------------------------------------------
+priorities:
+  - level: P0
+    label: "반드시 먼저 통제할 것"
+    themes:
+      - theme: "Reactive cycle과 effect scheduling"
+        covers: [REV-REACT-003, REV-REACT-004, REV-REACT-010]
+      - theme: "Widget identity 및 lifecycle"
+        covers: [REV-TREE-003, REV-TREE-004, REV-TREE-001]
+      - theme: "Focus ownership과 event propagation"
+        covers: [REV-EVENT-003, REV-EVENT-004, REV-EVENT-005, REV-UX-004]
+      - theme: "Terminal panic recovery"
+        covers: [REV-SEC-005]
+      - theme: "Unicode width와 wide-character 처리"
+        covers: [REV-RENDER-005, REV-RENDER-006]
+      - theme: "Worker cancellation과 stale result"
+        covers: [REV-ASYNC-003, REV-ASYNC-004, REV-ASYNC-002]
+      - theme: "CSS parser resource bound"
+        covers: [REV-SEC-003, REV-SEC-004, REV-LAYOUT-004]
+      - theme: "Full-screen repaint와 uncontrolled FPS"
+        covers: [REV-RENDER-001, REV-RENDER-009, REV-ANIM-001]
+  - level: P1
+    label: "프레임워크가 커지기 전에 고정할 것"
+    themes:
+      - theme: "Core crate 분리"
+        covers: [REV-ARCH-004]
+      - theme: "Layout/paint separation"
+        covers: [REV-LAYOUT-001, REV-TREE-006]
+      - theme: "Style invalidation model"
+        covers: [REV-STYLE-007, REV-PERF-006]
+      - theme: "Plugin stability boundary"
+        covers: [REV-PLUGIN-001, REV-PLUGIN-002]
+      - theme: "Widget maturity tier"
+        covers: [REV-WIDGET-010, REV-API-002]
+      - theme: "Feature flag matrix"
+        covers: [REV-RUST-009, REV-RUST-010]
+      - theme: "Public API stability policy"
+        covers: [REV-ARCH-005, REV-API-001, REV-API-003]
+      - theme: "Collection virtualization"
+        covers: [REV-WIDGET-003]
+  - level: P2
+    label: "생태계 확장 전에 준비할 것"
+    themes:
+      - theme: "CLI-template compatibility"
+        covers: [REV-CLI-001, REV-CLI-002]
+      - theme: "Custom widget contract"
+        covers: [REV-WIDGET-001, REV-TREE-005]
+      - theme: "DevTools causality"
+        covers: [REV-DEV-002, REV-REACT-002]
+      - theme: "Accessibility convention"
+        covers: [REV-UX-001, REV-UX-002, REV-UX-003]
+      - theme: "ADR"
+        covers: [REV-PROJ-003]
+      - theme: "Performance budgets"
+        covers: [REV-PERF-005, REV-PERF-002]
+      - theme: "Migration guides"
+        covers: [REV-DOC-003, REV-API-003]
+      - theme: "Fuzz / property testing"
+        covers: [REV-TEST-004, REV-TEST-005]
+
+# ---------------------------------------------------------------------------
+# 카테고리
+# ---------------------------------------------------------------------------
+categories:
+  - id: architecture
+    order: 1
+    tag: ARCH
+    title: "Framework identity"
+    title_ko: "프레임워크 정체성 안티패턴"
+    entries: 5
+  - id: ui-tree
+    order: 2
+    tag: TREE
+    title: "Retained UI tree"
+    title_ko: "Retained UI Tree 안티패턴"
+    entries: 6
+  - id: reactive
+    order: 3
+    tag: REACTIVE
+    title: "Reactive state"
+    title_ko: "Reactive State 안티패턴"
+    entries: 10
+  - id: render
+    order: 4
+    tag: RENDER
+    title: "Rendering"
+    title_ko: "렌더링 안티패턴"
+    entries: 10
+  - id: layout
+    order: 5
+    tag: LAYOUT
+    title: "Layout"
+    title_ko: "레이아웃 안티패턴"
+    entries: 7
+  - id: style
+    order: 6
+    tag: STYLE
+    title: "CSS / style engine"
+    title_ko: "CSS 및 스타일 엔진 안티패턴"
+    entries: 9
+  - id: event
+    order: 7
+    tag: EVENT
+    title: "Event system"
+    title_ko: "이벤트 시스템 안티패턴"
+    entries: 8
+  - id: widget
+    order: 8
+    tag: WIDGET
+    title: "Widget design"
+    title_ko: "Widget 설계 안티패턴"
+    entries: 10
+  - id: async
+    order: 9
+    tag: ASYNC
+    title: "Worker pool / async"
+    title_ko: "Worker Pool 및 비동기 안티패턴"
+    entries: 7
+  - id: animation
+    order: 10
+    tag: ANIM
+    title: "Animation"
+    title_ko: "Animation 안티패턴"
+    entries: 5
+  - id: hot-reload
+    order: 11
+    tag: HOT
+    title: "Hot reload"
+    title_ko: "Hot Reload 안티패턴"
+    entries: 4
+  - id: macro
+    order: 12
+    tag: MACRO
+    title: "Proc macro"
+    title_ko: "Proc Macro 안티패턴"
+    entries: 5
+  - id: plugin
+    order: 13
+    tag: PLUGIN
+    title: "Plugin / extension"
+    title_ko: "Plugin 및 Extension 안티패턴"
+    entries: 5
+  - id: cli
+    order: 14
+    tag: CLI
+    title: "CLI / templates"
+    title_ko: "CLI 및 Template 안티패턴"
+    entries: 4
+  - id: performance
+    order: 15
+    tag: PERF
+    title: "Performance measurement"
+    title_ko: "성능 측정 안티패턴"
+    entries: 6
+  - id: rust
+    order: 16
+    tag: RUST
+    title: "Rust-specific"
+    title_ko: "Rust 특화 안티패턴"
+    entries: 10
+  - id: memory
+    order: 17
+    tag: MEM
+    title: "Memory / resources"
+    title_ko: "메모리 및 Resource 안티패턴"
+    entries: 5
+  - id: devtools
+    order: 18
+    tag: DEV
+    title: "DevTools"
+    title_ko: "DevTools 안티패턴"
+    entries: 4
+  - id: testing
+    order: 19
+    tag: TEST
+    title: "Testing"
+    title_ko: "테스트 안티패턴"
+    entries: 6
+  - id: api
+    order: 20
+    tag: API
+    title: "Public API / SemVer"
+    title_ko: "API 및 SemVer 안티패턴"
+    entries: 5
+  - id: ux
+    order: 21
+    tag: UX
+    title: "Accessibility / UX"
+    title_ko: "접근성 및 UX 안티패턴"
+    entries: 7
+  - id: security
+    order: 22
+    tag: SEC
+    title: "Security / robustness"
+    title_ko: "보안 및 안정성 안티패턴"
+    entries: 5
+  - id: documentation
+    order: 23
+    tag: DOC
+    title: "Documentation"
+    title_ko: "문서화 안티패턴"
+    entries: 3
+  - id: project
+    order: 24
+    tag: PROJ
+    title: "Project operation"
+    title_ko: "프로젝트 운영 안티패턴"
+    entries: 4
+
+# ---------------------------------------------------------------------------
+# 안티패턴 항목
+#   summary  : 패턴이 무엇인지
+#   problem  : 그래서 무엇이 깨지는지 (증상 / 결과 / 징후)
+#   detect   : 어디를 보면 발견되는지 (예시 / 취약 대상 / 검증 입력)
+#   fix      : 방지 원칙과 개선 방향
+#   snippets : 원문에 포함된 코드/도식 (등장 순서)
+#   source_labels : 원문에서 각 목록에 붙어 있던 소제목 (예: "특히 위험한 대상") — 출처 보존용
+# ---------------------------------------------------------------------------
+entries:
+  - id: REV-ARCH-001
+    title: "Ratatui Wrapper Syndrome"
+    category: architecture
+    review_tag: ARCH
+    summary: "내부 구조는 Ratatui 호출을 포장한 수준인데 외부 API만 framework처럼 확장하는 패턴이다."
+    problem:
+      - "Revue만의 렌더링 모델이 불명확해진다."
+      - "새로운 기능이 Ratatui abstraction에 종속된다."
+      - "widget마다 Ratatui 세부 구현이 노출된다."
+      - "프레임워크가 아니라 거대한 helper collection이 된다."
+    fix:
+      - "Revue의 독립적인 `View Tree`, `Layout Tree`, `Paint Tree` 계약을 정의한다."
+      - "backend adapter와 framework semantic을 분리한다."
+      - "Ratatui 타입이 public API까지 침투하지 않도록 한다."
+    source_labels: ["문제", "방지 원칙"]
+  - id: REV-ARCH-002
+    title: "Web Framework Mimicry"
+    category: architecture
+    review_tag: ARCH
+    summary: "Vue·React·CSS 개념을 터미널 환경에 의미 검토 없이 그대로 복제하는 패턴이다."
+    problem:
+      - "터미널의 cell 기반 렌더링 특성과 충돌한다."
+      - "구현 복잡도에 비해 사용자 가치가 낮다."
+      - "API는 익숙하지만 동작은 예측하기 어려워진다."
+    detect:
+      - "DOM과 동일한 lifecycle을 흉내 낸다."
+      - "터미널에서 의미 없는 CSS 속성을 계속 추가한다."
+      - "브라우저 애니메이션 모델을 그대로 적용한다."
+      - "mouse hover를 기본 UX로 가정한다."
+    fix:
+      - "Web-compatible이 아니라 terminal-native semantic을 우선한다."
+      - "지원하지 않는 CSS는 명시적으로 거부한다."
+      - "비슷하게 보이지만 다르게 동작하는 기능을 만들지 않는다."
+    source_labels: ["예", "문제", "방지 원칙"]
+  - id: REV-ARCH-003
+    title: "Feature Checklist Framework"
+    category: architecture
+    review_tag: ARCH
+    summary: "경쟁 프레임워크에 있는 기능을 계속 추가하면서 핵심 실행 모델을 안정화하지 않는 패턴이다."
+    problem:
+      - "widget 수는 증가하지만 기본 input·focus·scroll 조합이 불안정하다."
+      - "새로운 기능은 많지만 기존 기능의 compatibility contract가 없다."
+      - "README 기능표가 설계 우선순위를 결정한다."
+    fix:
+      - "correctness"
+      - "composability"
+      - "diagnosability"
+      - "performance"
+      - "feature breadth"
+      - "순서로 개발한다."
+    source_labels: ["징후", "방지 원칙"]
+  - id: REV-ARCH-004
+    title: "One Framework Does Everything"
+    category: architecture
+    review_tag: ARCH
+    summary: "core crate가 다음을 모두 책임지는 패턴이다."
+    problem:
+      - "compile time과 dependency graph가 폭증한다."
+      - "feature 간 결합도가 높아진다."
+      - "semver 변경 범위가 지나치게 넓어진다."
+      - "최소 애플리케이션도 무거워진다."
+    fix:
+      - "state management"
+      - "widgets"
+      - "CSS"
+      - "animation"
+      - "networking"
+      - "worker pool"
+      - "markdown"
+      - "image"
+      - "charts"
+      - "IDE 기능"
+      - "testing"
+      - "devtools"
+    source_labels: ["문제", "개선 방향"]
+    snippets:
+      - lang: text
+        code: |2
+          revue-core
+          revue-render
+          revue-layout
+          revue-style
+          revue-reactive
+          revue-events
+          revue-widgets
+          revue-devtools
+          revue-testing
+          revue-extra-*
+  - id: REV-ARCH-005
+    title: "Public API Mirrors Internal Representation"
+    category: architecture
+    review_tag: ARCH
+    summary: "내부 구현 편의를 위해 public API가 설계되는 패턴이다."
+    detect:
+      - "내부 enum을 그대로 공개한다."
+      - "내부 node ID가 사용자 API에 노출된다."
+      - "storage 방식 변경이 breaking change가 된다."
+      - "backend buffer 타입을 public하게 반환한다."
+    fix:
+      - "public semantic type과 internal storage type을 구분한다."
+      - "내부 최적화가 public API 변경 없이 가능해야 한다."
+    source_labels: ["예", "방지 원칙"]
+  - id: REV-TREE-001
+    title: "Rebuild Everything Every Frame"
+    category: ui-tree
+    review_tag: TREE
+    summary: "작은 상태 변경에도 전체 widget tree를 다시 생성하는 패턴이다."
+    problem:
+      - "allocation 증가"
+      - "style 재계산"
+      - "layout 재계산"
+      - "widget identity 손실"
+      - "focus와 scroll 상태 손실"
+    fix:
+      - "stable widget identity"
+      - "subtree dirty flag"
+      - "structural diff"
+      - "layout invalidation 범위 관리"
+    source_labels: ["문제", "방지 원칙"]
+  - id: REV-TREE-002
+    title: "Mutable Tree Everywhere"
+    category: ui-tree
+    review_tag: TREE
+    summary: "모든 subsystem이 UI tree를 직접 수정할 수 있는 구조다."
+    problem:
+      - "mutation 발생 지점을 추적할 수 없다."
+      - "렌더 중 tree가 변경될 수 있다."
+      - "invalidation 누락이 발생한다."
+      - "devtools snapshot의 일관성이 깨진다."
+    source_labels: ["문제", "개선"]
+    snippets:
+      - lang: text
+        code: |2
+          Mutation Request
+              ↓
+          Tree Transaction
+              ↓
+          Commit
+              ↓
+          Invalidation
+  - id: REV-TREE-003
+    title: "Widget Identity by Position"
+    category: ui-tree
+    review_tag: TREE
+    summary: "widget의 identity를 부모의 child index만으로 판단하는 패턴이다."
+    problem:
+      - "input 상태 초기화"
+      - "animation 재시작"
+      - "scroll 위치 손실"
+      - "불필요한 lifecycle 호출"
+    detect:
+      - "이때 A·B·C를 모두 새로운 widget으로 취급한다."
+    fix:
+      - "명시적 key"
+      - "stable node ID"
+      - "keyed reconciliation"
+    source_labels: ["예", "문제", "방지 원칙"]
+    snippets:
+      - lang: text
+        code: |2
+          before: [A, B, C]
+          after:  [X, A, B, C]
+  - id: REV-TREE-004
+    title: "Zombie Widget State"
+    category: ui-tree
+    review_tag: TREE
+    summary: "tree에서 제거된 widget의 signal, callback, subscription, worker가 살아남는 패턴이다."
+    problem:
+      - "memory leak"
+      - "제거된 widget에서 effect 실행"
+      - "stale event 전달"
+      - "background task가 종료되지 않음"
+    detect:
+      - "unmount 시 subscription 해제"
+      - "worker cancellation"
+      - "timer cancellation"
+      - "focus release"
+      - "resource drop"
+    source_labels: ["결과", "반드시 검증할 것"]
+  - id: REV-TREE-005
+    title: "Parent Knows Every Child Type"
+    category: ui-tree
+    review_tag: TREE
+    summary: "container가 각 child widget의 구체 타입에 따라 분기하는 패턴이다."
+    problem:
+      - "widget 추가마다 core 수정"
+      - "extension 불가능"
+      - "visitor/match가 프로젝트 전체로 확산"
+      - "closed-world architecture가 됨"
+    fix:
+      - "capability-based interface"
+      - "layout intrinsic contract"
+      - "paint contract"
+      - "event contract"
+    source_labels: ["문제", "개선"]
+    snippets:
+      - lang: rust
+        code: |2
+          match child {
+              Widget::Text(..) => ...
+              Widget::Table(..) => ...
+              Widget::Input(..) => ...
+          }
+  - id: REV-TREE-006
+    title: "Tree and Render Buffer Coupling"
+    category: ui-tree
+    review_tag: TREE
+    summary: "UI node가 terminal buffer의 좌표와 cell을 직접 소유하거나 조작하는 구조다."
+    problem:
+      - "layout과 paint가 섞인다."
+      - "backend 교체가 어렵다."
+      - "clipping·scroll·layer 처리에 중복 코드가 생긴다."
+      - "테스트 단위가 너무 커진다."
+    source_labels: ["문제"]
+  - id: REV-REACT-001
+    title: "Global Signal Graph"
+    category: reactive
+    review_tag: REACTIVE
+    summary: "모든 signal과 effect가 하나의 전역 graph에 등록되는 패턴이다."
+    problem:
+      - "애플리케이션 여러 개를 독립적으로 실행하기 어렵다."
+      - "테스트 간 상태가 누출된다."
+      - "teardown이 불완전해진다."
+      - "thread ownership이 모호하다."
+    fix:
+      - "처럼 scope를 명시한다."
+    source_labels: ["문제", "개선"]
+    snippets:
+      - lang: rust
+        code: |2
+          ReactiveRuntime
+          ApplicationRuntime
+          ComponentScope
+          EffectScope
+  - id: REV-REACT-002
+    title: "Hidden Dependency Tracking"
+    category: reactive
+    review_tag: REACTIVE
+    summary: "`Signal::get()` 호출만으로 암묵적 의존성이 생기지만 사용자가 언제 tracking되는지 알기 어려운 패턴이다."
+    problem:
+      - "helper 함수 호출 하나로 dependency가 바뀐다."
+      - "조건문에 따라 dependency graph가 매번 달라진다."
+      - "디버깅이 어렵다."
+      - "예상치 못한 rerender가 발생한다."
+    fix:
+      - "effect dependency inspector"
+      - "dependency graph dump"
+      - "“why did this rerun?” diagnostics"
+    source_labels: ["문제", "필요한 도구"]
+  - id: REV-REACT-003
+    title: "Effect Writes Its Own Dependency"
+    category: reactive
+    review_tag: REACTIVE
+    summary: "effect가 자신이 읽는 signal을 다시 수정하는 패턴이다."
+    problem:
+      - "infinite loop"
+      - "repeated scheduling"
+      - "frame starvation"
+    fix:
+      - "cycle detection"
+      - "maximum effect iterations"
+      - "source effect ID 진단"
+      - "write-after-read 경고"
+    source_labels: ["결과", "방지"]
+    snippets:
+      - lang: rust
+        code: |2
+          effect(|| {
+              let value = count.get();
+              count.set(value + 1);
+          });
+  - id: REV-REACT-004
+    title: "Diamond Dependency Explosion"
+    category: reactive
+    review_tag: REACTIVE
+    summary: "A 변경 한 번에 D가 여러 번 실행되는 패턴이다."
+    fix:
+      - "batch update"
+      - "topological scheduling"
+      - "effect deduplication"
+      - "transaction commit 후 실행"
+    source_labels: ["개선"]
+    snippets:
+      - lang: text
+        code: |2
+                A
+              /   \
+             B     C
+              \   /
+                D
+  - id: REV-REACT-005
+    title: "Eager Computed Everywhere"
+    category: reactive
+    review_tag: REACTIVE
+    summary: "변경 가능성이 있는 모든 computed value를 즉시 재계산한다."
+    problem:
+      - "사용하지 않는 값도 계산한다."
+      - "렌더되지 않는 화면의 계산이 계속된다."
+      - "hidden tab이나 offscreen widget도 비용을 발생시킨다."
+    fix:
+      - "lazy computed"
+      - "dirty marking"
+      - "consumer 존재 여부 확인"
+      - "memoized versioning"
+    source_labels: ["문제", "개선"]
+  - id: REV-REACT-006
+    title: "Reactive Primitive Leakage"
+    category: reactive
+    review_tag: REACTIVE
+    summary: "widget API 곳곳에서 반드시 `Signal<T>`를 요구하는 패턴이다."
+    problem:
+      - "plain value를 쓰기 어렵다."
+      - "framework-independent domain model과 결합된다."
+      - "테스트가 복잡해진다."
+      - "사용자가 모든 값을 reactive하게 만들어야 한다."
+    fix:
+      - "같이 plain value와 reactive value를 수용한다."
+    source_labels: ["문제", "더 나은 API"]
+    snippets:
+      - lang: rust
+        code: |2
+          Value<T>
+          Binding<T>
+          Readable<T>
+          Writable<T>
+  - id: REV-REACT-007
+    title: "Signal as Application Database"
+    category: reactive
+    review_tag: REACTIVE
+    summary: "도메인 상태 전체를 다수의 signal에 흩어놓는 패턴이다."
+    problem:
+      - "상태 변경 원인을 추적하기 어렵다."
+      - "invariants가 여러 effect에 분산된다."
+      - "undo/redo가 어려워진다."
+      - "persistence와 serialization이 복잡해진다."
+    fix:
+      - "domain store"
+      - "reducer 또는 command"
+      - "atomic transaction"
+      - "derived state와 source state 구분"
+    source_labels: ["문제", "개선"]
+  - id: REV-REACT-008
+    title: "Lock per Signal"
+    category: reactive
+    review_tag: REACTIVE
+    summary: "각 signal마다 독립된 `Arc<RwLock<T>>` 등을 배치하는 패턴이다."
+    problem:
+      - "작은 값에도 heap allocation"
+      - "lock overhead"
+      - "lock ordering 문제"
+      - "reactive graph 순회 중 deadlock 가능성"
+      - "single-threaded TUI에서도 불필요한 동기화"
+    fix:
+      - "UI thread-owned signal"
+      - "cross-thread message passing"
+      - "thread-safe signal은 별도 타입으로 분리"
+    source_labels: ["문제", "원칙"]
+  - id: REV-REACT-009
+    title: "Effects as Business Logic"
+    category: reactive
+    review_tag: REACTIVE
+    summary: "검증·저장·네트워크·도메인 규칙을 effect 안에 모두 작성하는 패턴이다."
+    problem:
+      - "실행 순서가 암묵적이다."
+      - "테스트가 어렵다."
+      - "중복 실행 시 부작용이 발생한다."
+      - "reactive scheduling과 business transaction이 혼동된다."
+      - "Effect는 동기화 경계로 제한하고 핵심 로직은 명시적 함수나 command로 둔다."
+    source_labels: ["문제"]
+  - id: REV-REACT-010
+    title: "No Batch Boundary"
+    category: reactive
+    review_tag: REACTIVE
+    summary: "signal을 연속으로 변경할 때 변경마다 render와 effect가 실행되는 패턴이다. 한 번의 사용자 작업이 세 번의 재계산과 렌더를 일으킬 수 있다."
+    source_labels: ["필수 API"]
+    snippets:
+      - lang: rust
+        code: |2
+          name.set(...);
+          email.set(...);
+          age.set(...);
+      - lang: rust
+        code: |2
+          batch(|| {
+              ...
+          });
+  - id: REV-RENDER-001
+    title: "Full Screen Repaint"
+    category: render
+    review_tag: RENDER
+    summary: "변경된 cell과 관계없이 매 frame 전체 terminal buffer를 출력한다."
+    problem:
+      - "terminal I/O 증가"
+      - "SSH 환경 성능 저하"
+      - "flicker 가능성"
+      - "CPU보다 출력 대역폭이 병목이 됨"
+    fix:
+      - "previous/current buffer diff"
+      - "dirty rectangle"
+      - "row-level change tracking"
+      - "contiguous cell write aggregation"
+    source_labels: ["문제", "개선"]
+  - id: REV-RENDER-002
+    title: "Allocation per Cell"
+    category: render
+    review_tag: RENDER
+    summary: "각 terminal cell마다 `String`, `Vec`, style object를 소유하는 패턴이다."
+    problem:
+      - "화면 크기만큼 heap allocation"
+      - "clone 비용"
+      - "cache locality 저하"
+    fix:
+      - "compact cell representation"
+      - "symbol interning 또는 inline glyph"
+      - "style ID"
+      - "contiguous buffer"
+    source_labels: ["문제", "개선"]
+  - id: REV-RENDER-003
+    title: "Formatting in Hot Render Path"
+    category: render
+    review_tag: RENDER
+    summary: "렌더링할 때마다 다음을 반복한다. 작은 예제에서는 괜찮지만 table·log viewer·chart에서는 비용이 커진다."
+    fix:
+      - "state 변경 시 text cache 갱신"
+      - "reusable buffer"
+      - "`fmt::Write`"
+      - "unchanged content reuse"
+    source_labels: ["개선"]
+    snippets:
+      - lang: rust
+        code: |2
+          format!("Count: {}", count)
+  - id: REV-RENDER-004
+    title: "Clone to Satisfy the Borrow Checker"
+    category: render
+    review_tag: RENDER
+    summary: "렌더링 경로의 borrow 문제를 빠르게 피하려고 `clone()`을 확산시키는 패턴이다."
+    detect:
+      - "widget tree"
+      - "style map"
+      - "text spans"
+      - "table rows"
+      - "CSS selector"
+      - "event payload"
+    fix:
+      - "clone 횟수를 profiler에 노출한다."
+      - "cheap clone 타입과 expensive clone 타입을 구분한다."
+      - "`Arc`도 무조건적인 해결책으로 사용하지 않는다."
+    source_labels: ["특히 위험한 대상", "원칙"]
+  - id: REV-RENDER-005
+    title: "Unicode Width Equals Character Count"
+    category: render
+    review_tag: RENDER
+    summary: "`str.len()`이나 `chars().count()`를 화면 너비로 사용하는 패턴이다."
+    detect:
+      - "한글"
+      - "CJK"
+      - "emoji"
+      - "combining character"
+      - "zero-width character"
+      - "wide glyph"
+      - "grapheme cluster"
+      - "반드시 grapheme segmentation과 terminal display width를 기준으로 처리해야 한다."
+    source_labels: ["깨지는 대상"]
+  - id: REV-RENDER-006
+    title: "Partial Wide-Character Overwrite"
+    category: render
+    review_tag: RENDER
+    summary: "폭 2인 문자의 한쪽 cell만 덮어쓰는 패턴이다."
+    problem:
+      - "잔상"
+      - "깨진 cursor 위치"
+      - "diff renderer 불일치"
+      - "buffer가 continuation cell 개념을 가져야 한다."
+    source_labels: ["결과"]
+  - id: REV-RENDER-007
+    title: "Paint Without Clipping"
+    category: render
+    review_tag: RENDER
+    summary: "모든 widget이 자신의 bounds 밖까지 그릴 수 있는 구조다."
+    problem:
+      - "sibling 침범"
+      - "scroll viewport 무시"
+      - "modal 아래 화면 손상"
+      - "nested container에서 오류 확산"
+      - "각 paint operation은 clipping stack을 따라야 한다."
+    source_labels: ["결과"]
+  - id: REV-RENDER-008
+    title: "Z-Order by Render Accident"
+    category: render
+    review_tag: RENDER
+    summary: "호출 순서가 곧 layer 순서가 되는 패턴이다."
+    problem:
+      - "modal·tooltip·popover가 component 구조에 따라 가려진다."
+      - "overlay 우선순위가 예측 불가능하다."
+    fix:
+      - "explicit layer"
+      - "overlay root"
+      - "modal stack"
+      - "portal"
+      - "z-index contract"
+    source_labels: ["문제", "필요한 개념"]
+  - id: REV-RENDER-009
+    title: "Unbounded Frame Rate"
+    category: render
+    review_tag: RENDER
+    summary: "애니메이션이나 timer가 활성화되면 가능한 한 빠르게 render하는 패턴이다."
+    problem:
+      - "CPU 100%"
+      - "노트북 배터리 소모"
+      - "terminal이 처리할 수 없는 출력"
+      - "SSH에서 latency 증가"
+    fix:
+      - "frame pacing"
+      - "max FPS"
+      - "event-driven rendering"
+      - "animation deadline scheduling"
+    source_labels: ["문제", "개선"]
+  - id: REV-RENDER-010
+    title: "Render on Every Input Byte"
+    category: render
+    review_tag: RENDER
+    summary: "escape sequence가 완전히 파싱되기 전에 입력 byte마다 render하는 패턴이다."
+    fix:
+      - "input decoding"
+      - "event coalescing"
+      - "frame boundary scheduling"
+    source_labels: ["방지"]
+  - id: REV-LAYOUT-001
+    title: "Layout and Paint Interleaving"
+    category: layout
+    review_tag: LAYOUT
+    summary: "widget이 paint 중에 child 크기를 계산하는 구조다."
+    problem:
+      - "parent-child cyclic dependency"
+      - "반복 측정"
+      - "clipping 오류"
+      - "layout caching 불가능"
+    source_labels: ["문제", "정상적인 단계"]
+    snippets:
+      - lang: text
+        code: |2
+          Measure → Layout → Paint
+  - id: REV-LAYOUT-002
+    title: "Recursive Relayout Cascade"
+    category: layout
+    review_tag: LAYOUT
+    summary: "leaf 하나의 크기 변경이 전체 root까지 전달되고 다시 모든 subtree를 계산하는 패턴이다."
+    fix:
+      - "intrinsic size dependency 추적"
+      - "dirty subtree"
+      - "containment boundary"
+      - "width-dependent height 여부 표시"
+    source_labels: ["개선"]
+  - id: REV-LAYOUT-003
+    title: "O(N²) Flex Distribution"
+    category: layout
+    review_tag: LAYOUT
+    summary: "남은 공간을 child 하나씩 반복 조정하면서 분배하는 구현이다. child 수가 많을 때 layout 시간이 제곱으로 증가한다."
+    detect:
+      - "수천 개 child"
+      - "min/max constraint 충돌"
+      - "grow/shrink 혼합"
+      - "0 폭 terminal"
+      - "overflow"
+    source_labels: ["검증해야 할 입력"]
+  - id: REV-LAYOUT-004
+    title: "Grid Track Explosion"
+    category: layout
+    review_tag: LAYOUT
+    summary: "동적으로 생성된 grid track이나 implicit track을 제한 없이 허용한다."
+    problem:
+      - "비정상 CSS 입력으로 메모리 폭증"
+      - "계산량 증가"
+      - "sparse grid 악용 가능"
+      - "상한과 diagnostic이 필요하다."
+    source_labels: ["문제"]
+  - id: REV-LAYOUT-005
+    title: "Floating-Point Geometry in Cell UI"
+    category: layout
+    review_tag: LAYOUT
+    summary: "최종 결과가 정수 cell인데 모든 layout을 `f32`로 처리하는 패턴이다."
+    problem:
+      - "반올림 불일치"
+      - "pixel 대신 cell인 환경에서 불필요한 계산"
+      - "부모와 child의 합이 전체 너비와 달라짐"
+    fix:
+      - "정수 기반 geometry"
+      - "fractional remainder를 결정론적으로 분배"
+      - "animation 값만 floating point 사용"
+    source_labels: ["문제", "개선"]
+  - id: REV-LAYOUT-006
+    title: "Negative or Overflow Geometry"
+    category: layout
+    review_tag: LAYOUT
+    summary: "padding, border, percentage, shrink를 계산한 뒤 음수 크기나 integer overflow가 발생하는 패턴이다. 모든 geometry 연산은 다음을 고려해야 한다."
+    fix:
+      - "saturating arithmetic"
+      - "checked arithmetic"
+      - "zero-sized rect"
+      - "terminal resize 중 transient state"
+  - id: REV-LAYOUT-007
+    title: "Hidden Widgets Still Participate"
+    category: layout
+    review_tag: LAYOUT
+    summary: "보이지 않는 tab, collapsed accordion, closed modal이 layout 및 paint 비용을 계속 발생시키는 패턴이다. `hidden`, `collapsed`, `offscreen`, `detached` 상태를 구분해야 한다."
+  - id: REV-STYLE-001
+    title: "Parse CSS Every Frame"
+    category: style
+    review_tag: STYLE
+    summary: "렌더링 경로에서 CSS 문자열을 반복 파싱하는 패턴이다. CSS는 다음 단계로 분리해야 한다."
+    snippets:
+      - lang: text
+        code: |2
+          Source
+          → Tokens
+          → AST
+          → Validated Rule
+          → Compiled Selector
+          → Computed Style
+  - id: REV-STYLE-002
+    title: "Match Every Rule Against Every Widget"
+    category: style
+    review_tag: STYLE
+    summary: "widget N개와 selector M개에 대해 매번 `N × M` 비교하는 패턴이다."
+    fix:
+      - "selector index by type/class/id"
+      - "ancestor dependency cache"
+      - "rule candidate filtering"
+      - "stylesheet version"
+      - "computed-style cache"
+    source_labels: ["개선"]
+  - id: REV-STYLE-003
+    title: "Stringly-Typed Properties"
+    category: style
+    review_tag: STYLE
+    summary: "모든 CSS property와 value를 문자열로 보관한다."
+    problem:
+      - "runtime parsing 반복"
+      - "typo를 늦게 발견"
+      - "value validation 분산"
+      - "메모리 낭비"
+    source_labels: ["문제", "개선"]
+    snippets:
+      - lang: rust
+        code: |2
+          HashMap<String, String>
+      - lang: rust
+        code: |2
+          enum PropertyId
+          enum PropertyValue
+          struct CompiledDeclaration
+  - id: REV-STYLE-004
+    title: "Silent Unsupported CSS"
+    category: style
+    review_tag: STYLE
+    summary: "지원하지 않는 property를 조용히 무시하는 패턴이다. 사용자는 스타일이 왜 적용되지 않는지 알 수 없다."
+    fix:
+      - "unknown property"
+      - "known but unsupported property"
+      - "invalid value"
+      - "selector never matched"
+      - "declaration overridden"
+      - "terminal capability unsupported"
+    source_labels: ["필요한 진단"]
+  - id: REV-STYLE-005
+    title: "CSS Specificity Guesswork"
+    category: style
+    review_tag: STYLE
+    summary: "CSS cascade와 specificity를 일부만 구현하면서 문서화하지 않는 패턴이다."
+    problem:
+      - "browser CSS를 아는 사용자도 결과를 예측할 수 없다."
+      - "rule 추가에 따라 기존 스타일이 바뀐다."
+      - "hot reload에서 결과가 불안정하다."
+      - "specificity tuple, source order, inheritance 규칙을 명시해야 한다."
+    source_labels: ["문제"]
+  - id: REV-STYLE-006
+    title: "Runtime String Selector Traversal"
+    category: style
+    review_tag: STYLE
+    summary: "selector match 때마다 문자열 비교와 parent traversal을 반복한다."
+    fix:
+      - "interned symbol"
+      - "compiled selector bytecode"
+      - "bloom/filter bitset"
+      - "class ID set"
+      - "parent match cache"
+    source_labels: ["개선"]
+  - id: REV-STYLE-007
+    title: "Global Style Invalidation"
+    category: style
+    review_tag: STYLE
+    summary: "CSS 한 줄 변경 시 모든 widget의 style·layout·paint를 무조건 다시 수행한다. 변경 property에 따라 invalidation을 구분해야 한다."
+    snippets:
+      - lang: text
+        code: |2
+          color change     → paint
+          border change    → layout + paint
+          display change   → tree/layout/paint
+          animation change → scheduler
+  - id: REV-STYLE-008
+    title: "Theme as Arbitrary String Map"
+    category: style
+    review_tag: STYLE
+    summary: "theme variable을 자유 문자열 map으로만 관리하는 패턴이다."
+    problem:
+      - "누락된 token을 runtime까지 발견하지 못함"
+      - "theme 간 호환성 검증 불가"
+      - "IDE completion 불가"
+      - "core semantic token은 typed schema로 두는 편이 안전하다."
+    source_labels: ["문제"]
+  - id: REV-STYLE-009
+    title: "Terminal Capability Blindness"
+    category: style
+    review_tag: STYLE
+    summary: "true color, 256 color, italic, underline style, image protocol을 항상 지원한다고 가정한다."
+    fix:
+      - "capability detection"
+      - "fallback"
+      - "deterministic downgrade"
+      - "snapshot 환경 고정"
+    source_labels: ["필요"]
+  - id: REV-EVENT-001
+    title: "Boolean Event Result"
+    category: event
+    review_tag: EVENT
+    summary: "event handler 결과를 `true/false` 하나로만 표현한다. `true`가 무엇인지 모호해진다."
+    fix:
+      - "consumed?"
+      - "rerender?"
+      - "stop propagation?"
+      - "prevent default?"
+      - "focus changed?"
+    source_labels: ["개선"]
+    snippets:
+      - lang: rust
+        code: |2
+          struct EventResult {
+              handled: bool,
+              propagate: bool,
+              request_render: bool,
+              request_layout: bool,
+              command: Option<Command>,
+          }
+  - id: REV-EVENT-002
+    title: "Global Event Match"
+    category: event
+    review_tag: EVENT
+    summary: "애플리케이션 root에서 모든 key event를 거대한 `match`로 처리한다."
+    problem:
+      - "widget encapsulation 붕괴"
+      - "key conflict"
+      - "modal context 처리 어려움"
+      - "reusable widget 구현 곤란"
+    source_labels: ["문제"]
+  - id: REV-EVENT-003
+    title: "Focus by Mutable Boolean"
+    category: event
+    review_tag: EVENT
+    summary: "각 widget이 `focused: bool`을 따로 가지는 패턴이다."
+    problem:
+      - "동시에 여러 widget이 focused될 수 있다."
+      - "제거된 widget이 focus를 유지한다."
+      - "focus 이동 순서가 불명확하다."
+      - "단일 focus manager가 focus ownership을 관리해야 한다."
+    source_labels: ["결과"]
+  - id: REV-EVENT-004
+    title: "Focus Order Equals Tree Order"
+    category: event
+    review_tag: EVENT
+    summary: "렌더 tree 순서가 곧 keyboard navigation 순서가 된다."
+    problem:
+      - "overlay·grid·splitter에서 UX가 깨진다."
+      - "disabled·hidden element가 focus됨"
+      - "동적 tree 변경 시 순서 불안정"
+      - "명시적 tab order와 focus scope가 필요하다."
+    source_labels: ["문제"]
+  - id: REV-EVENT-005
+    title: "Shortcut Ownership Collision"
+    category: event
+    review_tag: EVENT
+    summary: "widget, app, modal, command palette가 동일한 shortcut을 독립적으로 처리한다."
+    source_labels: ["해결 우선순위 예"]
+    snippets:
+      - lang: text
+        code: |2
+          system emergency
+          → modal
+          → focused widget
+          → focus scope
+          → application
+          → default action
+  - id: REV-EVENT-006
+    title: "Escape-Key Ambiguity Ignored"
+    category: event
+    review_tag: EVENT
+    summary: "터미널에서 `Esc` 단독 입력과 escape sequence 시작을 구분하지 못하는 문제를 무시한다."
+    problem:
+      - "Alt 조합 오판"
+      - "화살표 key 지연"
+      - "Esc 반응 지연"
+      - "timeout 정책을 명시하고 조정 가능하게 해야 한다."
+    source_labels: ["결과"]
+  - id: REV-EVENT-007
+    title: "Mouse-First Interaction"
+    category: event
+    review_tag: EVENT
+    summary: "hover, precise pointing, drag를 주요 interaction으로 설계한다. TUI의 기본은 keyboard-first이며 mouse는 enhancement여야 한다."
+  - id: REV-EVENT-008
+    title: "Resize Storm Rendering"
+    category: event
+    review_tag: EVENT
+    summary: "terminal resize 이벤트마다 즉시 full relayout과 repaint를 실행한다."
+    fix:
+      - "resize coalescing"
+      - "debounce"
+      - "마지막 크기만 처리"
+      - "zero-size intermediate terminal 처리"
+    source_labels: ["개선"]
+  - id: REV-WIDGET-001
+    title: "God Widget Trait"
+    category: widget
+    review_tag: WIDGET
+    summary: "하나의 trait가 다음을 모두 담당한다."
+    problem:
+      - "구현 부담 증가"
+      - "작은 widget도 거대한 interface 구현"
+      - "기능 조합이 어려움"
+      - "capability 또는 subsystem별 contract 분리를 고려한다."
+    fix:
+      - "layout"
+      - "render"
+      - "event"
+      - "state"
+      - "style"
+      - "lifecycle"
+      - "accessibility"
+      - "serialization"
+      - "debugging"
+    source_labels: ["문제"]
+  - id: REV-WIDGET-002
+    title: "Widget Owns Domain Data"
+    category: widget
+    review_tag: WIDGET
+    summary: "table이나 tree widget이 애플리케이션의 실제 domain collection을 직접 소유한다."
+    problem:
+      - "state duplication"
+      - "동기화 문제"
+      - "대용량 dataset 복사"
+      - "재사용성 저하"
+      - "widget은 view state와 adapter를 소유해야 한다."
+    source_labels: ["문제"]
+  - id: REV-WIDGET-003
+    title: "Collection Widget Without Virtualization"
+    category: widget
+    review_tag: WIDGET
+    summary: "table·list·tree·log viewer가 전체 데이터를 layout하고 render한다. 100개 widget보다 중요한 것은 **대용량 collection 하나가 효율적으로 동작하는가**다."
+    fix:
+      - "visible range calculation"
+      - "row virtualization"
+      - "lazy formatting"
+      - "variable-height row strategy"
+      - "stable row key"
+    source_labels: ["필요"]
+  - id: REV-WIDGET-004
+    title: "Stateful and Stateless Variants Diverge"
+    category: widget
+    review_tag: WIDGET
+    summary: "같은 widget에 stateful 버전과 stateless 버전을 따로 구현해 동작이 달라진다. 공통 render core와 state adapter를 사용해야 한다."
+  - id: REV-WIDGET-005
+    title: "Builder API Combinatorial Explosion"
+    category: widget
+    review_tag: WIDGET
+    summary: "모든 옵션에 builder method를 추가한다."
+    problem:
+      - "API 표면적 폭증"
+      - "문서화 부담"
+      - "조합 충돌"
+      - "CSS와 책임 중복"
+      - "semantic property와 styling property를 구분한다."
+    source_labels: ["문제"]
+    snippets:
+      - lang: rust
+        code: |2
+          .bold()
+          .italic()
+          .border()
+          .border_color()
+          .focus_border_color()
+          ...
+  - id: REV-WIDGET-006
+    title: "Widget Feature Envy"
+    category: widget
+    review_tag: WIDGET
+    summary: "widget 하나가 style engine, runtime, terminal, worker pool, clipboard에 직접 접근한다."
+    fix:
+      - "capability context"
+      - "command dispatch"
+      - "dependency inversion"
+      - "최소 context 전달"
+    source_labels: ["개선"]
+  - id: REV-WIDGET-007
+    title: "Inconsistent Interaction Semantics"
+    category: widget
+    review_tag: WIDGET
+    summary: "widget마다 Enter, Space, Esc, 방향키 동작이 다르다. framework 수준의 interaction guideline과 conformance test가 필요하다."
+  - id: REV-WIDGET-008
+    title: "Every Widget Has Its Own Scroll Logic"
+    category: widget
+    review_tag: WIDGET
+    summary: "table, textarea, markdown, tree, list가 각각 별도 scroll 구현을 가진다."
+    problem:
+      - "overscroll 동작 불일치"
+      - "scrollbar 계산 버그 반복"
+      - "page up/down 의미가 다름"
+      - "nested scroll 처리 불가"
+      - "공통 scroll model을 제공해야 한다."
+    source_labels: ["결과"]
+  - id: REV-WIDGET-009
+    title: "Visual Variant as New Widget"
+    category: widget
+    review_tag: WIDGET
+    summary: "색상이나 border 차이만으로 새로운 widget 타입을 만든다. 가능한 경우 semantic variant나 style class로 처리한다."
+    snippets:
+      - lang: text
+        code: |2
+          InfoAlert
+          WarningAlert
+          ErrorAlert
+          SuccessAlert
+  - id: REV-WIDGET-010
+    title: "100 Widgets, No Maturity Tier"
+    category: widget
+    review_tag: WIDGET
+    summary: "실험적인 widget과 안정적인 widget이 같은 수준으로 노출된다."
+    fix:
+      - "Core"
+      - "Stable"
+      - "Preview"
+      - "Experimental"
+      - "Deprecated"
+    source_labels: ["권장 구분"]
+  - id: REV-ASYNC-001
+    title: "Polling `try_join()` Every Frame"
+    category: async
+    review_tag: ASYNC
+    summary: "매 렌더 프레임마다 worker 완료 여부를 polling한다."
+    problem:
+      - "불필요한 wakeup"
+      - "idle 상태에서도 렌더 필요"
+      - "작업 완료와 UI event loop의 통합이 약함"
+    fix:
+      - "completion channel"
+      - "event-loop wakeup"
+      - "task result event"
+    source_labels: ["문제", "개선"]
+  - id: REV-ASYNC-002
+    title: "Unbounded Work Queue"
+    category: async
+    review_tag: ASYNC
+    summary: "worker pool의 submit queue에 제한이 없다."
+    problem:
+      - "사용자 입력 반복으로 task 폭증"
+      - "memory growth"
+      - "오래된 검색 결과가 뒤늦게 반영"
+      - "shutdown 지연"
+    fix:
+      - "bounded queue"
+      - "backpressure"
+      - "replace-latest"
+      - "coalescing"
+      - "rejection policy"
+    source_labels: ["결과", "필요"]
+  - id: REV-ASYNC-003
+    title: "Detached Task Without Cancellation"
+    category: async
+    review_tag: ASYNC
+    summary: "widget이 사라지거나 query가 변경되어도 task가 계속 실행된다."
+    detect:
+      - "세 작업이 모두 실행되고 가장 오래된 결과가 마지막에 UI를 덮을 수 있다."
+    fix:
+      - "cancellation token"
+      - "generation ID"
+      - "stale-result rejection"
+      - "scope-owned task"
+    source_labels: ["예", "필요"]
+    snippets:
+      - lang: text
+        code: |2
+          search "a"
+          search "ab"
+          search "abc"
+  - id: REV-ASYNC-004
+    title: "UI State Mutated from Worker Thread"
+    category: async
+    review_tag: ASYNC
+    summary: "worker가 signal이나 widget state를 직접 변경한다."
+    problem:
+      - "race"
+      - "render 중 mutation"
+      - "lock 확산"
+      - "실행 순서 비결정성"
+    source_labels: ["문제", "원칙"]
+    snippets:
+      - lang: text
+        code: |2
+          Worker → Message → UI Thread Commit
+  - id: REV-ASYNC-005
+    title: "Blocking I/O Disguised as Async"
+    category: async
+    review_tag: ASYNC
+    summary: "worker API가 있다는 이유로 모든 blocking 작업을 같은 pool에 넣는다. CPU-bound와 I/O-bound 작업을 동일 pool에 두면 starvation이 발생할 수 있다."
+  - id: REV-ASYNC-006
+    title: "No Panic Boundary"
+    category: async
+    review_tag: ASYNC
+    summary: "worker closure panic이 runtime 전체를 손상시키거나 조용히 사라진다. task result는 최소한 다음을 구분해야 한다."
+    fix:
+      - "success"
+      - "application error"
+      - "cancellation"
+      - "panic"
+      - "shutdown"
+  - id: REV-ASYNC-007
+    title: "Runtime Lock-In"
+    category: async
+    review_tag: ASYNC
+    summary: "Tokio 또는 특정 executor 타입이 public API 전반에 노출된다. framework core는 executor-neutral하거나 integration feature로 분리하는 편이 안전하다."
+  - id: REV-ANIM-001
+    title: "Animation Forces Continuous Global Render"
+    category: animation
+    review_tag: ANIM
+    summary: "animation 하나 때문에 전체 앱이 고정 FPS로 다시 그려진다."
+    fix:
+      - "active animation registry"
+      - "animation subtree dirty"
+      - "next deadline scheduling"
+      - "inactive animation 제거"
+    source_labels: ["개선"]
+  - id: REV-ANIM-002
+    title: "Sub-Cell Animation"
+    category: animation
+    review_tag: ANIM
+    summary: "터미널 cell로 표현할 수 없는 미세한 좌표 애니메이션을 계산한다. 많은 frame이 같은 정수 위치로 반올림되어 CPU만 사용한다."
+  - id: REV-ANIM-003
+    title: "Animation Changes Layout Every Frame"
+    category: animation
+    review_tag: ANIM
+    summary: "width, height, padding 같은 layout property를 매 frame 변경한다."
+    problem:
+      - "전체 relayout"
+      - "text reflow"
+      - "scroll jitter"
+      - "가능하면 paint-only property를 애니메이션한다."
+    source_labels: ["결과"]
+  - id: REV-ANIM-004
+    title: "No Reduced-Motion Mode"
+    category: animation
+    review_tag: ANIM
+    summary: "animation을 끌 방법이 없다."
+    fix:
+      - "global animation disable"
+      - "reduced motion"
+      - "zero-duration test mode"
+      - "terminal capability fallback"
+    source_labels: ["필요"]
+  - id: REV-ANIM-005
+    title: "Time-Based Snapshot Instability"
+    category: animation
+    review_tag: ANIM
+    summary: "현재 시간에 따라 snapshot 결과가 달라진다. 테스트용 virtual clock이 필요하다."
+  - id: REV-HOT-001
+    title: "File Watch Event Equals Reload"
+    category: hot-reload
+    review_tag: HOT
+    summary: "filesystem watcher 이벤트 하나당 즉시 reload한다. 실제 편집기는 저장 한 번에 여러 이벤트를 발생시킬 수 있다."
+    fix:
+      - "debounce"
+      - "atomic-save handling"
+      - "rename handling"
+      - "duplicate event suppression"
+    source_labels: ["필요"]
+  - id: REV-HOT-002
+    title: "Broken CSS Replaces Valid CSS"
+    category: hot-reload
+    review_tag: HOT
+    summary: "편집 중 일시적으로 문법이 깨졌을 때 기존 stylesheet를 제거한다."
+    fix:
+      - "마지막 정상 stylesheet 유지"
+      - "오류 위치 표시"
+      - "수정되면 atomic swap"
+    source_labels: ["더 나은 동작"]
+  - id: REV-HOT-003
+    title: "Reload During Render"
+    category: hot-reload
+    review_tag: HOT
+    summary: "렌더링 도중 style tree를 교체한다. reload는 event-loop safe point에서 transaction으로 적용해야 한다."
+  - id: REV-HOT-004
+    title: "Production Watcher Leakage"
+    category: hot-reload
+    review_tag: HOT
+    summary: "hot reload 관련 watcher, dependency, thread가 기본 production binary에 포함된다. dev-only feature로 분리한다."
+  - id: REV-MACRO-001
+    title: "Macro Hides Runtime Cost"
+    category: macro
+    review_tag: MACRO
+    summary: "간결한 선언 뒤에서 allocation, clone, subscription, dynamic dispatch를 대량 생성한다. macro expansion과 생성 비용을 사용자가 검사할 수 있어야 한다."
+  - id: REV-MACRO-002
+    title: "Stringly-Typed DSL"
+    category: macro
+    review_tag: MACRO
+    summary: "macro input 안에서 widget 이름, property, event를 문자열로 처리한다. compile-time 검증 이점을 잃는다."
+  - id: REV-MACRO-003
+    title: "Poor Span Diagnostics"
+    category: macro
+    review_tag: MACRO
+    summary: "macro 오류가 사용자 코드가 아닌 생성 코드나 macro 내부 위치를 가리킨다. 좋은 macro는 다음을 제공해야 한다."
+    fix:
+      - "정확한 span"
+      - "기대한 syntax"
+      - "잘못된 property"
+      - "가능한 수정 방향"
+  - id: REV-MACRO-004
+    title: "Macro and Manual API Semantic Drift"
+    category: macro
+    review_tag: MACRO
+    summary: "macro로 만든 widget과 builder API로 만든 widget의 동작이 다르다. 둘은 같은 intermediate representation을 생성해야 한다."
+  - id: REV-MACRO-005
+    title: "Compile-Time Explosion"
+    category: macro
+    review_tag: MACRO
+    summary: "중첩된 UI 구조를 모두 거대한 token stream으로 펼친다."
+    problem:
+      - "compile time 증가"
+      - "incremental compilation 악화"
+      - "오류 메시지 폭증"
+      - "binary size 증가"
+    source_labels: ["문제"]
+  - id: REV-PLUGIN-001
+    title: "Plugin Without Stability Boundary"
+    category: plugin
+    review_tag: PLUGIN
+    summary: "내부 trait를 그대로 plugin API로 공개한다. core 리팩터링이 곧 모든 plugin의 breaking change가 된다."
+  - id: REV-PLUGIN-002
+    title: "Unrestricted Plugin Capability"
+    category: plugin
+    review_tag: PLUGIN
+    summary: "plugin이 terminal, filesystem, runtime, global tree를 직접 수정한다. capability를 최소 권한 방식으로 제공해야 한다."
+  - id: REV-PLUGIN-003
+    title: "Plugin Panic Takes Down the App"
+    category: plugin
+    review_tag: PLUGIN
+    summary: "plugin hook에 panic boundary가 없다. 최소한 hook context와 plugin 이름을 포함해 격리·진단해야 한다."
+  - id: REV-PLUGIN-004
+    title: "Plugin Ordering by Registration Accident"
+    category: plugin
+    review_tag: PLUGIN
+    summary: "plugin 동작 순서가 등록 순서에만 의존한다. dependency와 phase를 명시해야 한다."
+    snippets:
+      - lang: text
+        code: |2
+          initialize
+          before-layout
+          after-layout
+          before-paint
+          after-event
+          shutdown
+  - id: REV-PLUGIN-005
+    title: "Extension Duplicates Core"
+    category: plugin
+    review_tag: PLUGIN
+    summary: "extension에서 필요한 내부 capability가 없어 core 기능을 복제한다. 이는 extension API가 부족하다는 신호다."
+  - id: REV-CLI-001
+    title: "Generated Project Immediately Outdated"
+    category: cli
+    review_tag: CLI
+    summary: "template가 특정 API 버전을 복사하지만 업데이트·호환성 검증이 없다. 모든 template는 CI에서 실제로 build해야 한다."
+  - id: REV-CLI-002
+    title: "CLI and Library Version Drift"
+    category: cli
+    review_tag: CLI
+    summary: "CLI가 생성하는 `Cargo.toml` 버전과 CLI 자체 버전이 맞지 않는다."
+  - id: REV-CLI-003
+    title: "Destructive Generation"
+    category: cli
+    review_tag: CLI
+    summary: "기존 파일을 확인 없이 덮어쓴다."
+    fix:
+      - "dry-run"
+      - "conflict detection"
+      - "explicit force"
+      - "generated file manifest"
+    source_labels: ["필요"]
+  - id: REV-CLI-004
+    title: "Template as Copy-Paste Dump"
+    category: cli
+    review_tag: CLI
+    summary: "template가 best practice를 보여주는 최소 예제가 아니라 모든 기능을 넣은 거대한 샘플이 된다. 각 template는 하나의 architectural lesson만 전달해야 한다."
+  - id: REV-PERF-001
+    title: "Benchmarking Toy Counters"
+    category: performance
+    review_tag: PERF
+    summary: "counter나 작은 form만 benchmark하고 실제 병목을 놓친다."
+    detect:
+      - "100,000-row virtualized table"
+      - "10,000 widget tree"
+      - "deep selector hierarchy"
+      - "rapid terminal resize"
+      - "high-volume logs"
+      - "Unicode-heavy text"
+      - "nested scroll"
+      - "multiple animations"
+      - "hot reload under load"
+    source_labels: ["필수 시나리오"]
+  - id: REV-PERF-002
+    title: "Average-Only Metrics"
+    category: performance
+    review_tag: PERF
+    summary: "평균 frame time만 측정한다. TUI UX에는 다음이 더 중요하다."
+    fix:
+      - "p50 / p95 / p99 frame time"
+      - "max input latency"
+      - "dropped frames"
+      - "terminal bytes written"
+      - "allocation count"
+      - "relayout count"
+      - "selector match count"
+      - "effect rerun count"
+  - id: REV-PERF-003
+    title: "Profiler Observes the Wrong Boundary"
+    category: performance
+    review_tag: PERF
+    summary: "전체 render 시간만 측정하고 내부 단계를 구분하지 않는다."
+    source_labels: ["최소 구간"]
+    snippets:
+      - lang: text
+        code: |2
+          event decode
+          event dispatch
+          reactive update
+          style resolution
+          measure
+          layout
+          paint
+          buffer diff
+          terminal write
+  - id: REV-PERF-004
+    title: "Debug Build Performance Claims"
+    category: performance
+    review_tag: PERF
+    summary: "Rust debug build 결과로 성능을 판단하거나, 반대로 release build만 측정해 debug 개발 경험을 무시한다. 둘 다 관리해야 한다."
+  - id: REV-PERF-005
+    title: "No Performance Budget"
+    category: performance
+    review_tag: PERF
+    summary: "기능 추가 시 허용 가능한 성능 회귀 기준이 없다."
+    detect:
+      - "idle CPU ≈ 0%"
+      - "unchanged frame allocation ≈ 0"
+      - "single signal update가 unrelated subtree를 layout하지 않음"
+      - "standard terminal에서 p99 input-to-paint 제한"
+      - "CSS reload 시간 제한"
+    source_labels: ["예"]
+  - id: REV-PERF-006
+    title: "Cache Without Invalidation Model"
+    category: performance
+    review_tag: PERF
+    summary: "성능 문제를 cache로 덮지만 cache가 언제 무효화되는지 정의하지 않는다. cache보다 먼저 다음을 정의해야 한다."
+    fix:
+      - "cache key"
+      - "owner"
+      - "version"
+      - "dependency"
+      - "invalidation source"
+      - "maximum lifetime"
+  - id: REV-RUST-001
+    title: "`Arc<Mutex<...>>` Everywhere"
+    category: rust
+    review_tag: RUST
+    summary: "ownership 설계를 피하려고 모든 객체를 공유 가변 상태로 만드는 패턴이다."
+    problem:
+      - "lock 순서 복잡성"
+      - "runtime contention"
+      - "API 의미 불명확"
+      - "single-thread UI에도 동기화 비용"
+      - "UI thread ownership과 cross-thread message를 기본으로 한다."
+    source_labels: ["문제"]
+  - id: REV-RUST-002
+    title: "Interior Mutability as Architecture"
+    category: rust
+    review_tag: RUST
+    summary: "`RefCell`, `Cell`, `Mutex`, `RwLock`이 국소 구현 수단이 아니라 framework 전반의 상태 전달 방식이 된다. borrow panic이나 lock 문제가 runtime에 나타난다."
+  - id: REV-RUST-003
+    title: "Trait Object Everywhere"
+    category: rust
+    review_tag: RUST
+    summary: "모든 widget, style, event, callback을 `Box<dyn Trait>`로 처리한다."
+    problem:
+      - "allocation 증가"
+      - "indirect call"
+      - "downcast 요구"
+      - "lifetime 단순화를 위해 `'static` 확산"
+      - "capability 확인이 runtime으로 이동"
+      - "enum, generic, arena, trait object를 역할별로 선택해야 한다."
+    source_labels: ["장점도 있지만 과도하면"]
+  - id: REV-RUST-004
+    title: "Generic Type Explosion"
+    category: rust
+    review_tag: RUST
+    summary: "반대로 모든 것을 generic으로 만들어 type과 compile time이 폭발한다."
+    problem:
+      - "오류 메시지가 수백 줄"
+      - "generated type 이름이 지나치게 큼"
+      - "incremental compile 저하"
+      - "public API가 type gymnastics가 됨"
+      - "framework boundary에서는 적절한 type erasure가 필요하다."
+    source_labels: ["징후"]
+  - id: REV-RUST-005
+    title: "`'static` as Lifetime Escape Hatch"
+    category: rust
+    review_tag: RUST
+    summary: "worker, callback, effect API가 모든 입력에 `'static`을 요구한다."
+    problem:
+      - "불필요한 `Arc`"
+      - "clone"
+      - "application state의 전역화"
+      - "scoped component 구현 곤란"
+    source_labels: ["결과"]
+  - id: REV-RUST-006
+    title: "Enum Variant Explosion"
+    category: rust
+    review_tag: RUST
+    summary: "모든 widget과 event를 하나의 거대한 enum에 추가한다."
+    problem:
+      - "compile time 증가"
+      - "match 수정 범위 확대"
+      - "plugin 불가능"
+      - "binary coupling"
+      - "closed set과 open extension point를 구분해야 한다."
+    source_labels: ["문제"]
+  - id: REV-RUST-007
+    title: "Panic for User Input Error"
+    category: rust
+    review_tag: RUST
+    summary: "CSS, terminal capability, malformed event, template 입력 오류에 `unwrap()`이나 `expect()`를 사용한다. framework는 사용자 애플리케이션보다 더 강한 panic discipline이 필요하다."
+  - id: REV-RUST-008
+    title: "Error String Erasure"
+    category: rust
+    review_tag: RUST
+    summary: "모든 오류를 `anyhow::Error`나 문자열 하나로만 노출한다. 내부에서는 편리하지만 public diagnostic에는 다음이 필요하다."
+    fix:
+      - "structured error kind"
+      - "source location"
+      - "widget path"
+      - "property name"
+      - "recovery action"
+  - id: REV-RUST-009
+    title: "Feature Flag Combinatorial Failure"
+    category: rust
+    review_tag: RUST
+    summary: "feature가 많지만 일부 조합은 build되지 않는다."
+    fix:
+      - "default"
+      - "no-default-features"
+      - "minimal core"
+      - "all-features"
+      - "주요 pairwise combinations"
+    source_labels: ["필수 CI"]
+  - id: REV-RUST-010
+    title: "MSRV Declaration Without Enforcement"
+    category: rust
+    review_tag: RUST
+    summary: "Rust 1.87+ 등을 선언하지만 CI가 실제 최소 버전에서 build하지 않는다. MSRV는 문서가 아니라 테스트 계약이어야 한다."
+  - id: REV-MEM-001
+    title: "Arena Without Generation"
+    category: memory
+    review_tag: MEM
+    summary: "node ID가 단순 index라서 제거 후 재사용된 slot을 오래된 handle이 참조한다. generational index가 필요하다."
+  - id: REV-MEM-002
+    title: "Permanent String Interning"
+    category: memory
+    review_tag: MEM
+    summary: "동적 class, ID, user text를 영구 intern하여 메모리가 회수되지 않는다. intern 대상과 lifetime을 제한해야 한다."
+  - id: REV-MEM-003
+    title: "Unbounded Caches"
+    category: memory
+    review_tag: MEM
+    summary: "다음 cache에 상한이 없다. LRU나 scope lifetime이 필요하다."
+    fix:
+      - "text layout"
+      - "selector match"
+      - "image"
+      - "markdown parse"
+      - "chart data"
+      - "snapshot"
+      - "theme"
+      - "glyph"
+  - id: REV-MEM-004
+    title: "Buffer Reallocate on Every Resize"
+    category: memory
+    review_tag: MEM
+    summary: "terminal resize마다 정확한 크기로 buffer를 다시 allocation한다. capacity reuse와 resize policy가 필요하다."
+  - id: REV-MEM-005
+    title: "Closure Capture Retains Application"
+    category: memory
+    review_tag: MEM
+    summary: "effect나 callback closure가 전체 application state를 `Arc`로 capture해 일부 widget 제거 후에도 유지한다. devtools에서 retained object 또는 subscription owner를 볼 수 있어야 한다."
+  - id: REV-DEV-001
+    title: "Inspector Changes Observed Behavior"
+    category: devtools
+    review_tag: DEV
+    summary: "inspector를 켰을 때 추가 render·layout·subscription으로 원래 성능 특성이 크게 바뀐다. 측정 overhead를 별도로 표시해야 한다."
+  - id: REV-DEV-002
+    title: "Profiler Without Causality"
+    category: devtools
+    review_tag: DEV
+    summary: "“render 12ms”만 보여주고 왜 render됐는지 알려주지 않는다."
+    fix:
+      - "triggering event"
+      - "changed signal"
+      - "dirty subtree"
+      - "effect chain"
+      - "style invalidation reason"
+    source_labels: ["필요"]
+  - id: REV-DEV-003
+    title: "Widget Tree Without Semantic State"
+    category: devtools
+    review_tag: DEV
+    summary: "tree 구조만 보여주고 다음을 볼 수 없다."
+    fix:
+      - "bounds"
+      - "computed style"
+      - "focus state"
+      - "clipping"
+      - "dirty reason"
+      - "render count"
+      - "subscription"
+      - "source location"
+  - id: REV-DEV-004
+    title: "DevTools Coupled to Private Struct Layout"
+    category: devtools
+    review_tag: DEV
+    summary: "devtools가 내부 필드에 직접 접근해 core 리팩터링을 막는다. 관찰용 instrumentation API를 별도로 둔다."
+  - id: REV-TEST-001
+    title: "Snapshot-Only Testing"
+    category: testing
+    review_tag: TEST
+    summary: "모든 UI correctness를 snapshot으로만 검증한다. snapshot은 최종 출력 회귀에는 좋지만 다음을 충분히 검증하지 못한다."
+    fix:
+      - "focus transition"
+      - "event propagation"
+      - "lifecycle"
+      - "invalidation scope"
+      - "effect ordering"
+      - "cancellation"
+  - id: REV-TEST-002
+    title: "Snapshot Approval Fatigue"
+    category: testing
+    review_tag: TEST
+    summary: "대규모 변경마다 수백 개 snapshot이 바뀌고 검토 없이 일괄 승인한다. semantic assertion과 snapshot 범위를 분리해야 한다."
+  - id: REV-TEST-003
+    title: "Host Terminal-Dependent Tests"
+    category: testing
+    review_tag: TEST
+    summary: "개발자의 locale, terminal width, color capability에 따라 결과가 달라진다. virtual terminal과 고정 capability profile이 필요하다."
+  - id: REV-TEST-004
+    title: "No Model-Based Event Testing"
+    category: testing
+    review_tag: TEST
+    summary: "input·focus·modal·scroll은 상태 머신 성격이 강하다. 명령 sequence를 생성해 invariant를 검증하는 property test가 유용하다."
+    detect:
+      - "focus는 최대 하나"
+      - "hidden widget은 focused될 수 없음"
+      - "modal 활성 중 background action 금지"
+      - "scroll offset은 valid range 내부"
+    source_labels: ["예"]
+  - id: REV-TEST-005
+    title: "No Fuzzing at Parser Boundary"
+    category: testing
+    review_tag: TEST
+    summary: "CSS, escape sequence, markdown, CSV, JSON, tree-sitter 입력은 fuzzing 대상이다."
+    fix:
+      - "panic 없음"
+      - "무한 loop 없음"
+      - "allocation 상한"
+      - "bounded recursion"
+      - "deterministic result"
+    source_labels: ["필수 invariant"]
+  - id: REV-TEST-006
+    title: "Testing Public Examples Manually"
+    category: testing
+    review_tag: TEST
+    summary: "README와 tutorial 예제가 CI에서 compile되지 않는다. 문서 코드는 executable documentation이어야 한다."
+  - id: REV-API-001
+    title: "Release Number Inflation"
+    category: api
+    review_tag: API
+    summary: "아주 잦은 release가 실제 stability와 동일하다고 인식되는 패턴이다. release 빈도보다 다음이 중요하다."
+    fix:
+      - "compatibility policy"
+      - "deprecation window"
+      - "migration guide"
+      - "stability tier"
+      - "feature maturity"
+  - id: REV-API-002
+    title: "Builder Method Is Forever"
+    category: api
+    review_tag: API
+    summary: "실험 단계의 builder method도 즉시 stable public API가 된다. `experimental` module이나 feature gate를 활용해야 한다."
+  - id: REV-API-003
+    title: "Breaking Change Hidden as Fix"
+    category: api
+    review_tag: API
+    summary: "동작 의미 변경을 bug fix release로 배포한다. UI framework에서는 visual·event semantic 변경도 compatibility 문제다."
+  - id: REV-API-004
+    title: "Prelude Pollution"
+    category: api
+    review_tag: API
+    summary: "모든 trait, widget, extension을 `prelude::*`에 넣는다."
+    problem:
+      - "이름 충돌"
+      - "API 발견성 저하"
+      - "compile 영향 범위 증가"
+      - "무엇이 어디서 왔는지 불명확"
+      - "prelude에는 가장 안정적이고 필수적인 항목만 둔다."
+    source_labels: ["결과"]
+  - id: REV-API-005
+    title: "Convenience API Bypasses Core Invariants"
+    category: api
+    review_tag: API
+    summary: "shortcut API가 정상 lifecycle·validation·invalidation 절차를 우회한다. 모든 API는 동일한 내부 transaction path를 통과해야 한다."
+  - id: REV-UX-001
+    title: "Color-Only Meaning"
+    category: ux
+    review_tag: UX
+    summary: "오류·경고·선택 상태를 색상만으로 표시한다. terminal 색상 제한과 색각 다양성을 고려해 문자, symbol, label도 사용한다."
+  - id: REV-UX-002
+    title: "No Keyboard Discoverability"
+    category: ux
+    review_tag: UX
+    summary: "가능한 shortcut이 UI에 드러나지 않는다."
+    fix:
+      - "help overlay"
+      - "command palette"
+      - "contextual key hints"
+      - "discoverable focus"
+    source_labels: ["필요"]
+  - id: REV-UX-003
+    title: "Focus Invisible"
+    category: ux
+    review_tag: UX
+    summary: "focused widget이 visual하게 구분되지 않는다. theme과 무관하게 최소 focus indicator contract가 필요하다."
+  - id: REV-UX-004
+    title: "Modal Focus Leak"
+    category: ux
+    review_tag: UX
+    summary: "modal이 열린 상태에서 Tab이나 shortcut이 배경 widget으로 전달된다. modal은 독립 focus scope와 event boundary를 가져야 한다."
+  - id: REV-UX-005
+    title: "No Small-Terminal Strategy"
+    category: ux
+    review_tag: UX
+    summary: "terminal 크기가 작아졌을 때 panic하거나 모든 정보가 겹친다. widget은 최소 크기와 degradation strategy를 가져야 한다."
+    fix:
+      - "hide secondary content"
+      - "collapse panel"
+      - "scroll"
+      - "truncate"
+      - "compact mode"
+  - id: REV-UX-006
+    title: "Truncation Without Signal"
+    category: ux
+    review_tag: UX
+    summary: "텍스트가 잘렸지만 ellipsis나 scroll 가능 여부가 표시되지 않는다."
+  - id: REV-UX-007
+    title: "Mouse Hover as Persistent State"
+    category: ux
+    review_tag: UX
+    summary: "mouse를 움직이지 않으면 hover UI가 계속 남거나 keyboard 사용 중에도 hover가 우선된다. keyboard와 mouse modality 전환 정책이 필요하다."
+  - id: REV-SEC-001
+    title: "Terminal Escape Injection"
+    category: security
+    review_tag: SEC
+    summary: "사용자 문자열을 sanitize하지 않고 terminal에 출력한다. 로그·채팅·파일 viewer에서 escape sequence가 실행될 수 있다. 모든 외부 text는 control character 정책을 통과해야 한다."
+  - id: REV-SEC-002
+    title: "OSC Sequence Trust"
+    category: security
+    review_tag: SEC
+    summary: "clipboard, hyperlink, title 변경 등 OSC sequence를 무제한 허용한다. capability와 opt-in 정책이 필요하다."
+  - id: REV-SEC-003
+    title: "Untrusted CSS Resource Exhaustion"
+    category: security
+    review_tag: SEC
+    summary: "비정상적으로 깊은 selector, 거대한 grid, 많은 animation 등을 제한하지 않는다. parser 성공과 안전한 실행은 별개다."
+  - id: REV-SEC-004
+    title: "Recursive Input Stack Overflow"
+    category: security
+    review_tag: SEC
+    summary: "깊게 중첩된 markdown, JSON, tree, CSS expression을 재귀로 처리한다. depth limit과 iterative traversal을 고려한다."
+  - id: REV-SEC-005
+    title: "Panic Leaves Terminal Corrupted"
+    category: security
+    review_tag: SEC
+    summary: "panic 발생 후 raw mode, alternate screen, cursor 상태가 복구되지 않는다. 반드시 RAII terminal guard와 panic hook 복구 경로가 필요하다."
+  - id: REV-DOC-001
+    title: "Feature Documentation Without Mental Model"
+    category: documentation
+    review_tag: DOC
+    summary: "API 예제는 많지만 다음 질문에 답하지 못한다. 프레임워크는 API reference보다 실행 모델 문서가 먼저다."
+    fix:
+      - "언제 render되는가?"
+      - "state는 누가 소유하는가?"
+      - "effect는 언제 실행되는가?"
+      - "widget identity는 무엇인가?"
+      - "event는 어떻게 전파되는가?"
+      - "layout과 paint는 어떻게 구분되는가?"
+  - id: REV-DOC-002
+    title: "Happy-Path-Only Tutorial"
+    category: documentation
+    review_tag: DOC
+    summary: "counter와 todo만 설명하고 실제 문제를 다루지 않는다."
+    fix:
+      - "cancellation"
+      - "error handling"
+      - "large list"
+      - "modal/focus"
+      - "background task"
+      - "testing"
+      - "performance diagnosis"
+      - "custom widget lifecycle"
+    source_labels: ["필수 고급 문서"]
+  - id: REV-DOC-003
+    title: "Unsupported Behavior Left Ambiguous"
+    category: documentation
+    review_tag: DOC
+    summary: "CSS나 terminal 기능을 “비슷하게 지원”한다고만 쓰고 정확한 차이를 설명하지 않는다. compatibility matrix가 필요하다."
+  - id: REV-PROJ-001
+    title: "Core and Showcase Develop at Same Pace"
+    category: project
+    review_tag: PROJ
+    summary: "실제 core 안정성보다 새로운 showcase widget 개발이 더 빠르다. core quality gate를 통과한 뒤 feature를 추가해야 한다."
+  - id: REV-PROJ-002
+    title: "Number of Widgets as Primary KPI"
+    category: project
+    review_tag: PROJ
+    summary: "widget 개수가 framework 품질로 취급된다."
+    fix:
+      - "조합 가능성"
+      - "input latency"
+      - "API stability"
+      - "bug density"
+      - "accessibility"
+      - "large-data behavior"
+      - "custom widget 작성 난이도"
+    source_labels: ["더 중요한 KPI"]
+  - id: REV-PROJ-003
+    title: "No Architectural Decision Records"
+    category: project
+    review_tag: PROJ
+    summary: "retained mode, signal ownership, CSS semantic, threading 모델 같은 결정이 코드에만 남는다. ADR로 최소한 다음을 기록한다."
+    fix:
+      - "context"
+      - "decision"
+      - "alternatives"
+      - "trade-offs"
+      - "consequences"
+  - id: REV-PROJ-004
+    title: "AI-Generated Surface Expansion"
+    category: project
+    review_tag: PROJ
+    summary: "AI로 widget과 API를 빠르게 추가하지만 중복 abstraction과 semantic inconsistency를 검토하지 않는다."
+    problem:
+      - "비슷한 helper 다수"
+      - "동일 기능 enum 중복"
+      - "widget마다 다른 naming"
+      - "불필요한 clone"
+      - "shallow tests"
+      - "문서와 구현 불일치"
+      - "지나치게 많은 compatibility wrapper"
+    source_labels: ["특히 감시할 징후"]

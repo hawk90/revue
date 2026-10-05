@@ -142,43 +142,216 @@ for item in items {
 // Guards auto-complete timing on drop
 ```
 
-## Incremental Rendering
+## Incremental DOM (Reconciliation)
 
-Revue uses incremental DOM updates by default:
+**Opt-in.** By default the DOM is built once, on the first frame, and then stops
+following the view — so a widget added later is invisible to CSS matching, to
+layout, and to devtools until something forces a rebuild.
 
-```text
-// DOM diffing happens automatically inside the render loop:
-//
-//   - The first render builds the full node tree.
-//   - Subsequent renders diff against the previous tree and only
-//     update the nodes that actually changed.
-//
-// This is handled internally by the renderer — no user code is required.
-```
-
-### Dirty Rect Optimization
-
-Revue automatically tracks dirty regions and only re-renders what changed. When a widget's state changes, only the affected screen area is updated — unchanged pixels are preserved from the previous frame.
-
-This happens transparently without requiring user code changes:
-
-- **No dirty regions**: Previous buffer is reused (zero rendering work)
-- **Partial dirty**: Old buffer copied, only dirty regions cleared and re-rendered
-- **Full screen dirty**: Falls back to full clear (e.g., on resize)
-
-The selector cache is also optimized — parsed selectors are cached once and referenced without copying, eliminating per-node Vec allocations during style computation.
+Turn on per-frame reconciliation with:
 
 ```rust
-// Transitions track affected nodes
-let active_nodes = transitions.active_node_ids();
+let mut app = App::builder()
+    .incremental_dom(true)
+    .build();
+```
 
-// Only redraw changed areas
-for id in active_nodes {
-    let rect = layout.get_rect(id);
-    buffer.clear_rect(rect);
-    render_node(id, buffer);
+With it on, every frame reconciles the view against the existing tree. A node
+that still matches keeps its `DomId`, its state (focus, hover, selection) and
+its cached style; only what actually changed is marked dirty, and layout is
+rebuilt only when the *shape* of the tree changed.
+
+> This is opt-in while its performance is measured against the committed
+> baseline in [`docs/refactor/phase0-baseline.md`](../refactor/phase0-baseline.md).
+> It will become the default.
+
+### DOM from the render traversal
+
+**Opt-in, and the reason CSS reaches anything below the root.**
+
+```rust
+let mut app = App::builder()
+    .dom_from_render(true)
+    .build();
+```
+
+Off, the DOM only contains widgets exposed through `View::children`, which
+almost nothing implements — the idiomatic widget assembles its tree inside
+`render`. A real application therefore has a DOM of one node, and CSS matching,
+`:focus`/`:hover` and devtools all work against a tree that does not describe
+it.
+
+On, the frame renders twice: once to discover the tree, once to paint it.
+
+```text
+collect pass  ->  reconcile DOM  ->  compute styles  ->  paint pass
+```
+
+Every widget rendered through `RenderContext::render_child` gets a DOM node and
+its own computed style. Two passes rather than one because a node's style
+depends on the whole tree — `:last-child` and `:nth-child` cannot be resolved
+before the siblings are known.
+
+Implies per-frame reconciliation, so `incremental_dom` adds nothing on top.
+
+**Cost**, 120x40 with `cargo bench --bench frame`:
+
+| rows | one pass | two passes |
+|---:|---:|---:|
+| 10 | 20.7 µs | 31.7 µs |
+| 50 | 32.2 µs | 65.6 µs |
+| 200 | 56.5 µs | 159.5 µs |
+
+1.5x at ten widgets, 2.8x at two hundred — the second traversal is only part of
+it, the rest is that the DOM now actually exists and has to be reconciled and
+cascaded. At 60fps the worst of these is under 1% of a frame.
+
+**Writing a container.** Route child rendering through the context rather than
+building one by hand, or the child gets no node and no style:
+
+```rust
+// Registers a node, delivers the child's computed style
+ctx.render_child(child.as_ref(), child_area);
+
+// Does neither
+let mut child_ctx = RenderContext::new(ctx.buffer, child_area);
+child.render(&mut child_ctx);
+```
+
+`Stack`, `Border`, `Positioned` and `Grid` are migrated. A container that is not
+keeps working exactly as before.
+
+**Known limit.** A view that delegates its whole body to another widget merges
+with it rather than nesting under it:
+
+```rust
+fn render(&self, ctx: &mut RenderContext) {
+    vstack().element_id("list").child(...).render(ctx);  // "list" gets no node
 }
 ```
+
+`render_child` registers a *child*; a widget rendered into the caller's own
+context is the caller's own rendering. Put the id on the view itself.
+
+**Layout properties need one more flag.** `display`, `width`, `height`,
+`margin`, `min-*`/`max-*` and `gap` take effect with
+[`css_layout`](#css-box-properties) on top of this one. `flex-*` and
+`grid-template-*` still do nothing — the container computes those itself.
+See [`findings-layout.md`](../refactor/findings-layout.md).
+
+### CSS box properties
+
+**Opt-in, and needs `dom_from_render`.**
+
+```rust
+let mut app = App::builder()
+    .dom_from_render(true)
+    .css_layout(true)
+    .build();
+```
+
+The container keeps deciding the flow — `vstack()` stacks, its `gap` and
+per-child sizes still apply. On top of that, a node's own specified `display`,
+`width`, `height`, `margin` and `min-*`/`max-*` adjust the area it was handed.
+That is what makes `#sidebar { width: 20; }` and `.hidden { display: none; }` do
+something.
+
+**Cost.** Nothing measurable. Within one benchmark run, 120x40:
+
+| rows | `dom_from_render` | `+ css_layout` |
+|---:|---:|---:|
+| 10 | 32.0 µs | 32.2 µs |
+| 50 | 70.2 µs | 69.4 µs |
+| 200 | 179.7 µs | 174.5 µs |
+
+A node that specifies no box property — almost all of them — costs a handful of
+comparisons and keeps the area it was given.
+
+`gap`, `column-gap` and `row-gap` reach `vstack`, `hstack` and `grid`. They
+describe flow, so the container reads them rather than having them applied from
+outside — `ctx.gap_or(self.gap)` is the whole of it, and `gap: 0` leaves the
+builder's own value alone.
+
+`padding` is not applied: it insets a widget's *content*, and a widget that
+draws its own border would have the border move instead. `flex-*` and
+`grid-template-*` stay with the container.
+
+**Why not the layout engine.** Making its computed rects authoritative would
+first need every widget's layout intent — `vstack()`'s direction, its gap, its
+per-child sizes — to reach the DOM as inline style, and then an intrinsic-size
+measurement the engine does not have. The comparison is written up in
+[`findings-layout.md`](../refactor/findings-layout.md).
+
+### Give collection items a key
+
+Matching priority is:
+
+```text
+key  >  element id  >  position + widget type  >  build a new node
+```
+
+Without a key a widget's identity is its **position** among its siblings. That
+is fine for a fixed layout and wrong for a dynamic collection: prepend a row and
+every row below it reconciles against its neighbor's node, so focus, selection
+and scroll offset all shift by one.
+
+```rust
+use revue::dom::WidgetKey;
+
+impl View for TodoRow {
+    fn key(&self) -> Option<WidgetKey> {
+        Some(WidgetKey::from(self.todo.id))
+    }
+}
+```
+
+Use the identity of the **data**, never the loop index — an index is positional
+identity spelled differently, and it changes the moment the list reorders.
+
+`WidgetKey` is `Int(u64)` or `Str(String)`, with `From` impls for the usual
+integer types, `&str` and `String`.
+
+Two siblings claiming the same key is a bug in your code: the first one wins the
+existing node and the second gets a fresh one.
+
+### How a frame is drawn
+
+Every draw renders the whole view into a back buffer, then diffs that buffer
+against the previously presented one and writes only the cells that differ.
+
+```text
+view.render()  ->  back buffer  ->  diff vs front buffer  ->  terminal
+```
+
+Painting into a buffer is memory traffic; the expensive part of a frame is what
+goes down the wire. The diff is what makes rendering from scratch affordable —
+an unchanged frame produces zero bytes, and a one-character change produces a
+cursor move and a character.
+
+Draws happen on events, not on a timer: `App::run` only draws when the event
+handler asks for it, or when a transition is active.
+
+**Cost.** A 120x40 screen, measured with `cargo bench --bench frame`:
+
+| rows | frame with a change | unchanged frame |
+|---:|---:|---:|
+| 10 | 20.5 µs | 19.6 µs |
+| 50 | 31.5 µs | 28.7 µs |
+| 200 | 55.8 µs | 52.8 µs |
+
+At 60fps the budget is 16,667 µs, so the worst of these is 0.3% of a frame.
+
+> Revue used to skip rendering when the DOM reported no dirty nodes, and to mask
+> the diff to dirty regions. Both were unsound — a widget's content is not part
+> of its DOM metadata, so an ordinary state change marked nothing dirty and the
+> app stopped repainting entirely. See
+> [`docs/refactor/findings-render-pipeline.md`](../refactor/findings-render-pipeline.md).
+> Region-based skipping can come back once the DOM actually describes the widget
+> tree; until then, correct beats clever.
+
+The selector cache is optimized — parsed selectors are cached once and
+referenced without copying, eliminating per-node Vec allocations during style
+computation.
 
 ## Animation Performance
 

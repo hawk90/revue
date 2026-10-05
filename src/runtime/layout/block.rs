@@ -121,13 +121,17 @@ mod tests {
     fn setup_tree_with_children(heights: Vec<Size>) -> (LayoutTree, u64, Vec<u64>) {
         let mut tree = LayoutTree::new();
 
-        let mut parent = LayoutNode::default();
-        parent.id = 1;
+        let mut parent = LayoutNode {
+            id: 1,
+            ..Default::default()
+        };
 
         let mut child_ids = Vec::new();
         for (i, height) in heights.iter().enumerate() {
-            let mut child = LayoutNode::default();
-            child.id = (i + 2) as u64;
+            let mut child = LayoutNode {
+                id: (i + 2) as u64,
+                ..Default::default()
+            };
             child.sizing.height = *height;
             child.sizing.width = Size::Auto;
             child_ids.push(child.id);
@@ -240,9 +244,11 @@ mod tests {
     #[test]
     fn test_block_empty_children() {
         let mut tree = LayoutTree::new();
-        let mut parent = LayoutNode::default();
-        parent.id = 1;
-        parent.children = vec![];
+        let parent = LayoutNode {
+            id: 1,
+            children: vec![],
+            ..Default::default()
+        };
         tree.insert(parent);
         tree.set_root(1);
 

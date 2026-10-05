@@ -220,7 +220,7 @@ fn test_command_palette_many_commands() {
     // Filter should work efficiently
     palette.set_query("42");
     assert!(palette.filtered.len() < 500);
-    assert!(palette.filtered.len() >= 1); // "Command Number 42" etc.
+    assert!(!palette.filtered.is_empty()); // "Command Number 42" etc.
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

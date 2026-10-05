@@ -723,7 +723,6 @@ fn test_render_all_modifiers() {
         underline: true,
         strikethrough: true,
         code: true,
-        ..Default::default()
     })];
 
     editor.render(&mut ctx);

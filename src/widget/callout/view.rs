@@ -17,9 +17,13 @@ impl View for Callout {
             return;
         }
 
-        let accent_color = self.callout_type.accent_color();
-        let bg_color = self.callout_type.bg_color();
-        let title_color = self.callout_type.title_color();
+        // The type's palette is this widget's own default, and a rule naming the
+        // callout targets the whole node - so the author outranks it. Resolving
+        // here is safe because `render` passes these down as arguments rather
+        // than the helpers reading `self`.
+        let accent_color = ctx.css_color(self.callout_type.accent_color());
+        let bg_color = ctx.css_background(self.callout_type.bg_color());
+        let title_color = ctx.css_color(self.callout_type.title_color());
 
         match self.variant {
             CalloutVariant::Filled => {

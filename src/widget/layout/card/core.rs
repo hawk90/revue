@@ -334,6 +334,47 @@ impl Card {
     }
 
     /// Get effective colors based on variant and state
+    /// [`effective_colors`](Self::effective_colors), with the stylesheet
+    /// filling in whatever the builder left unset.
+    ///
+    /// The builder is the inline style and wins; a variant's defaults are the
+    /// bottom row, below the stylesheet. Same precedence as every other paint
+    /// property in the crate.
+    fn effective_colors_with_css(&self, ctx: &RenderContext) -> (Option<Color>, Color, Color) {
+        let (bg, border, title) = self.effective_colors();
+
+        let css_bg = ctx
+            .style
+            .map(|s| s.visual.background)
+            .filter(|c| *c != Color::default());
+        let bg = self.bg_color.or(css_bg).or(bg);
+
+        let border = match (self.border_color, ctx.css_border_or_text_color()) {
+            (Some(explicit), _) => explicit,
+            (None, Some(css)) => css,
+            (None, None) => border,
+        };
+
+        (bg, border, title)
+    }
+
+    /// The border to draw: the stylesheet's if it named one, else the builder's.
+    ///
+    /// See `Border::border_type_with_css` - a stylesheet that said nothing
+    /// leaves the builder's choice alone, and `border-style: none` removes the
+    /// border.
+    fn border_type_with_css(&self, ctx: &RenderContext) -> BorderType {
+        match ctx.css_border_style() {
+            None => self.border,
+            Some(crate::style::BorderStyle::None) => BorderType::None,
+            Some(crate::style::BorderStyle::Solid) | Some(crate::style::BorderStyle::Dashed) => {
+                BorderType::Single
+            }
+            Some(crate::style::BorderStyle::Double) => BorderType::Double,
+            Some(crate::style::BorderStyle::Rounded) => BorderType::Rounded,
+        }
+    }
+
     fn effective_colors(&self) -> (Option<Color>, Color, Color) {
         let default_bg: Option<Color> = match self.variant {
             CardVariant::Outlined => None,
@@ -379,9 +420,10 @@ impl View for Card {
             return;
         }
 
-        let (bg_color, border_color, title_color) = self.effective_colors();
-        let chars = self.border.chars();
-        let has_border = self.border != BorderType::None;
+        let (bg_color, border_color, title_color) = self.effective_colors_with_css(ctx);
+        let border_type = self.border_type_with_css(ctx);
+        let chars = border_type.chars();
+        let has_border = border_type != BorderType::None;
 
         // Fill background for filled/elevated variants
         if let Some(bg) = bg_color {
@@ -516,8 +558,7 @@ impl View for Card {
         if let Some(ref header) = self.header {
             if self.expanded || !self.collapsible {
                 let header_area = ctx.sub_area(content_x, current_y, content_width, 1);
-                let mut header_ctx = RenderContext::new(ctx.buffer, header_area);
-                header.render(&mut header_ctx);
+                ctx.render_child(header.as_ref(), header_area);
                 current_y += 1;
             }
         }
@@ -554,8 +595,7 @@ impl View for Card {
 
                 if body_height > 0 {
                     let body_area = ctx.sub_area(content_x, current_y, content_width, body_height);
-                    let mut body_ctx = RenderContext::new(ctx.buffer, body_area);
-                    body.render(&mut body_ctx);
+                    ctx.render_child(body.as_ref(), body_area);
                     current_y += body_height;
                 }
             }
@@ -570,9 +610,14 @@ impl View for Card {
                     area.height - 1
                 };
 
-                // Footer separator
+                // Footer separator.
+                //
+                // `>=`, not `>`: the body stops at `body_end`, which is this
+                // same row, so it occupies up to `sep_y - 1` and leaves this one
+                // free. Requiring a gap meant a card with both a body and a
+                // footer never drew the footer at all.
                 let sep_y = footer_y - 1;
-                if sep_y > current_y {
+                if sep_y >= current_y {
                     if has_border {
                         ctx.set(0, sep_y, Cell::new('├').fg(border_color));
                         ctx.set(area.width - 1, sep_y, Cell::new('┤').fg(border_color));
@@ -583,8 +628,7 @@ impl View for Card {
 
                     // Footer content
                     let footer_area = ctx.sub_area(content_x, footer_y, content_width, 1);
-                    let mut footer_ctx = RenderContext::new(ctx.buffer, footer_area);
-                    footer.render(&mut footer_ctx);
+                    ctx.render_child(footer.as_ref(), footer_area);
                 }
             }
         }

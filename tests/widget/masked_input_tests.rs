@@ -1370,7 +1370,7 @@ fn test_masked_input_many_toggle_operations() {
 fn test_masked_input_many_add_remove_operations() {
     let mut input = MaskedInput::new();
     for i in 0..5 {
-        input.add_class(&format!("class{}", i));
+        input.add_class(format!("class{}", i));
     }
     assert_eq!(input.get_classes().len(), 5);
 

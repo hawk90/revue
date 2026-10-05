@@ -37,7 +37,9 @@ impl Progress {
         Self {
             progress: progress.clamp(0.0, 1.0),
             style: ProgressStyle::default(),
-            filled_fg: Some(Color::GREEN),
+            // `None` means the builder said nothing, which is what lets a rule
+            // fill it in; the green default is applied at paint time.
+            filled_fg: None,
             filled_bg: None,
             empty_fg: Some(Color::rgb(64, 64, 64)),
             empty_bg: None,
@@ -126,7 +128,10 @@ impl View for Progress {
                 break;
             }
             let mut cell = Cell::new(filled_char);
-            cell.fg = self.filled_fg;
+            cell.fg = Some(
+                self.filled_fg
+                    .unwrap_or_else(|| ctx.css_color(Color::GREEN)),
+            );
             cell.bg = self.filled_bg;
             ctx.set(x, 0, cell);
         }
@@ -144,7 +149,9 @@ impl View for Progress {
             let pct = format!("{:3.0}%", self.progress * 100.0);
             let start_x = bar_width + 1;
             let max_width = area.width.saturating_sub(start_x);
-            let pct_fg = self.filled_fg.unwrap_or(Color::WHITE);
+            let pct_fg = self
+                .filled_fg
+                .unwrap_or_else(|| ctx.css_color(Color::WHITE));
             ctx.draw_text_clipped(start_x, 0, &pct, pct_fg, max_width);
         }
     }

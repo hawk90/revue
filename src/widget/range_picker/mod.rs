@@ -487,7 +487,7 @@ mod tests {
     #[test]
     fn test_preset_range_clone() {
         let preset = PresetRange::Last7Days;
-        let cloned = preset.clone();
+        let cloned = preset;
         assert_eq!(preset, cloned);
     }
 

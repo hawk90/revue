@@ -32,8 +32,10 @@ impl ScrollView {
             content_height: 0,
             scroll_offset: 0,
             show_scrollbar: true,
-            scrollbar_fg: Some(Color::WHITE),
-            scrollbar_bg: Some(Color::rgb(64, 64, 64)),
+            // `None` means the builder said nothing, which is what lets a rule
+            // fill it in; the defaults are applied at paint time.
+            scrollbar_fg: None,
+            scrollbar_bg: None,
             min_width: 0,
             min_height: 0,
             max_width: 0,
@@ -270,14 +272,20 @@ impl ScrollView {
         // Draw scrollbar track
         for y in 0..viewport_height {
             let mut cell = Cell::new('│');
-            cell.fg = self.scrollbar_bg;
+            cell.fg = Some(
+                self.scrollbar_bg
+                    .unwrap_or_else(|| ctx.css_background(Color::rgb(64, 64, 64))),
+            );
             ctx.set(scrollbar_x, y, cell);
         }
 
         // Draw scrollbar thumb
         for y in thumb_position..(thumb_position + thumb_height).min(viewport_height) {
             let mut cell = Cell::new('█');
-            cell.fg = self.scrollbar_fg;
+            cell.fg = Some(
+                self.scrollbar_fg
+                    .unwrap_or_else(|| ctx.css_color(Color::WHITE)),
+            );
             ctx.set(scrollbar_x, y, cell);
         }
     }

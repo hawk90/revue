@@ -104,13 +104,14 @@ impl View for RichTextEditor {
         }
 
         // Fill background
-        if let Some(bg) = self.bg {
-            for y in 0..area.height {
-                for x in 0..area.width {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(bg);
-                    ctx.set(x, y, cell);
-                }
+        let bg = self
+            .bg
+            .unwrap_or_else(|| ctx.css_background(core::EDITOR_BG));
+        for y in 0..area.height {
+            for x in 0..area.width {
+                let mut cell = Cell::new(' ');
+                cell.bg = Some(bg);
+                ctx.set(x, y, cell);
             }
         }
 

@@ -36,7 +36,12 @@ pub fn examples() -> Vec<Example> {
                         )
                         .child(Text::new(""))
                         .child(Text::new("Decimal precision:").fg(primary))
-                        .child(number_input().value(3.14159).precision(4).width(20))
+                        .child(
+                            number_input()
+                                .value(std::f64::consts::PI)
+                                .precision(4)
+                                .width(20),
+                        )
                         .child(Text::new(""))
                         .child(Text::new("• Increment/decrement buttons").fg(muted))
                         .child(Text::new("• Keyboard Up/Down arrows").fg(muted))

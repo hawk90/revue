@@ -37,7 +37,7 @@ fn test_qr_style_copy() {
 #[test]
 fn test_qr_style_clone() {
     let style = QrStyle::HalfBlock;
-    let cloned = style.clone();
+    let cloned = style;
     assert_eq!(style, cloned);
 }
 
@@ -86,7 +86,7 @@ fn test_error_correction_copy() {
 #[test]
 fn test_error_correction_clone() {
     let level = ErrorCorrection::Low;
-    let cloned = level.clone();
+    let cloned = level;
     assert_eq!(level, cloned);
 }
 
@@ -121,7 +121,9 @@ fn test_qrcode_default_style() {
 #[test]
 fn test_qrcode_default_colors() {
     let qr = QrCodeWidget::new("Test");
-    assert_eq!(qr.get_fg(), Color::BLACK);
+    // Nothing named a color, so the stylesheet can reach it; black is applied
+    // where the modules are painted.
+    assert_eq!(qr.get_fg(), None);
     assert_eq!(qr.get_bg(), Color::WHITE);
 }
 
@@ -170,7 +172,7 @@ fn test_qrcode_style_ascii() {
 #[test]
 fn test_qrcode_fg() {
     let qr = QrCodeWidget::new("Test").fg(Color::CYAN);
-    assert_eq!(qr.get_fg(), Color::CYAN);
+    assert_eq!(qr.get_fg(), Some(Color::CYAN));
 }
 
 #[test]
@@ -246,7 +248,7 @@ fn test_qrcode_builder_chain() {
         .inverted(true);
 
     assert_eq!(qr.get_style(), QrStyle::Braille);
-    assert_eq!(qr.get_fg(), Color::WHITE);
+    assert_eq!(qr.get_fg(), Some(Color::WHITE));
     assert_eq!(qr.get_bg(), Color::BLACK);
     assert_eq!(qr.get_ec_level(), ErrorCorrection::High);
     assert_eq!(qr.get_quiet_zone(), 2);

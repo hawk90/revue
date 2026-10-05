@@ -129,6 +129,10 @@ impl<T: Display> View for List<T> {
 
             let y = i as u16;
             let is_selected = self.selection.is_selected(i);
+            // An unselected row had no color at all, so a rule matching the
+            // list never reached its items. Selection colors still win.
+            let base_fg = ctx.css_color_if_set();
+            let base_bg = ctx.css_background_if_set();
 
             let text = item.to_string();
             let mut x = 0u16;
@@ -140,8 +144,11 @@ impl<T: Display> View for List<T> {
 
                 let mut cell = Cell::new(ch);
                 if is_selected {
-                    cell.fg = self.highlight_fg;
-                    cell.bg = self.highlight_bg;
+                    cell.fg = self.highlight_fg.or(base_fg);
+                    cell.bg = self.highlight_bg.or(base_bg);
+                } else {
+                    cell.fg = base_fg;
+                    cell.bg = base_bg;
                 }
 
                 ctx.set(x, y, cell);
@@ -167,6 +174,48 @@ impl<T: Display> View for List<T> {
                 }
             }
         }
+    }
+}
+
+// `impl_props_builders!` cannot name a generic type, so the chainable builders
+// it would have generated are written out here. Without them `List` reports a
+// `WidgetMeta` it has no way to fill in - it takes part in the DOM and no rule
+// can select it.
+impl<T: Display> List<T> {
+    /// Set element ID for CSS selector (#id)
+    pub fn element_id(mut self, id: impl Into<String>) -> Self {
+        self.props.id = Some(id.into());
+        self
+    }
+
+    /// Set the reconciliation key - this widget's identity across frames.
+    pub fn keyed(mut self, key: impl Into<crate::dom::WidgetKey>) -> Self {
+        self.props.key = Some(key.into());
+        self
+    }
+
+    /// Add a CSS class
+    pub fn class(mut self, class: impl Into<String>) -> Self {
+        let class_str = class.into();
+        if !self.props.classes.contains(&class_str) {
+            self.props.classes.push(class_str);
+        }
+        self
+    }
+
+    /// Add multiple CSS classes
+    pub fn classes<I, S>(mut self, classes: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        for class in classes {
+            let class_str = class.into();
+            if !self.props.classes.contains(&class_str) {
+                self.props.classes.push(class_str);
+            }
+        }
+        self
     }
 }
 

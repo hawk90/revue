@@ -14,7 +14,7 @@ fn test_alert_builder_pattern() {
         .icon(false);
 
     // Test public methods
-    assert!(a.is_dismissed() == false);
+    assert!(!a.is_dismissed());
     assert_eq!(a.height(), 4); // With title and outlined variant
 }
 
@@ -22,16 +22,16 @@ fn test_alert_builder_pattern() {
 fn test_alert_level_builder_methods() {
     // Test the builder methods for AlertLevel
     let info = Alert::info("Info message");
-    assert!(info.is_dismissed() == false);
+    assert!(!info.is_dismissed());
 
     let success = Alert::success("Success message");
-    assert!(success.is_dismissed() == false);
+    assert!(!success.is_dismissed());
 
     let warning = Alert::warning("Warning message");
-    assert!(warning.is_dismissed() == false);
+    assert!(!warning.is_dismissed());
 
     let error = Alert::error("Error message");
-    assert!(error.is_dismissed() == false);
+    assert!(!error.is_dismissed());
 }
 
 #[test]
@@ -101,20 +101,20 @@ fn test_alert_key_handling() {
 fn test_alert_helper_functions() {
     // Test the public helper functions
     let a = alert("Helper message");
-    assert!(a.is_dismissed() == false);
+    assert!(!a.is_dismissed());
     assert_eq!(a.height(), 3); // Default is Filled variant with no title
 
     let i = Alert::info("Info");
-    assert!(i.is_dismissed() == false);
+    assert!(!i.is_dismissed());
 
     let s = Alert::success("Success");
-    assert!(s.is_dismissed() == false);
+    assert!(!s.is_dismissed());
 
     let w = Alert::warning("Warning");
-    assert!(w.is_dismissed() == false);
+    assert!(!w.is_dismissed());
 
     let e = Alert::error("Error");
-    assert!(e.is_dismissed() == false);
+    assert!(!e.is_dismissed());
 }
 
 #[test]

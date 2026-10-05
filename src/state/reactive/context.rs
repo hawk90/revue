@@ -497,6 +497,38 @@ impl Drop for ContextScope {
     }
 }
 
+/// Run a function with a scoped context
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use revue::reactive::{create_context, with_context_scope, use_context};
+///
+/// let theme = create_context::<String>();
+///
+/// with_context_scope(|scope| {
+///     scope.provide(&theme, "dark".to_string());
+///
+///     let value = use_context(&theme);
+///     assert_eq!(value, Some("dark".to_string()));
+/// });
+///
+/// // Outside the scope, the value is gone
+/// let value = use_context(&theme);
+/// assert_eq!(value, None);
+/// ```
+pub fn with_context_scope<F, R>(f: F) -> R
+where
+    F: FnOnce(&ContextScope) -> R,
+{
+    let scope = ContextScope::new();
+    f(&scope)
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -847,35 +879,3 @@ mod tests {
         clear_context(&ctx2);
     }
 }
-
-/// Run a function with a scoped context
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use revue::reactive::{create_context, with_context_scope, use_context};
-///
-/// let theme = create_context::<String>();
-///
-/// with_context_scope(|scope| {
-///     scope.provide(&theme, "dark".to_string());
-///
-///     let value = use_context(&theme);
-///     assert_eq!(value, Some("dark".to_string()));
-/// });
-///
-/// // Outside the scope, the value is gone
-/// let value = use_context(&theme);
-/// assert_eq!(value, None);
-/// ```
-pub fn with_context_scope<F, R>(f: F) -> R
-where
-    F: FnOnce(&ContextScope) -> R,
-{
-    let scope = ContextScope::new();
-    f(&scope)
-}
-
-// =============================================================================
-// Tests
-// =============================================================================

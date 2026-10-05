@@ -243,10 +243,12 @@ mod tests {
 
     #[test]
     fn test_inspector_config_public_fields() {
-        let mut config = InspectorConfig::default();
-        config.show_bounds = false;
-        config.show_ids = false;
-        config.highlight_color = Color::rgb(255, 0, 0);
+        let config = InspectorConfig {
+            show_bounds: false,
+            show_ids: false,
+            highlight_color: Color::rgb(255, 0, 0),
+            ..Default::default()
+        };
 
         assert!(!config.show_bounds);
         assert!(!config.show_ids);

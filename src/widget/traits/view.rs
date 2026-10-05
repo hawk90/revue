@@ -1,6 +1,6 @@
 //! View and related traits for widgets
 
-use crate::dom::WidgetMeta;
+use crate::dom::{WidgetKey, WidgetMeta};
 use crate::event::drag::{DragData, DropResult};
 use crate::event::{KeyEvent, MouseEvent};
 use crate::layout::Rect;
@@ -214,11 +214,35 @@ pub trait View {
         true
     }
 
+    /// Reconciliation key - this widget's identity across frames
+    ///
+    /// Returns `None` by default, which means identity is positional: the
+    /// widget is reconciled against whatever node sat at the same index last
+    /// frame. That is correct for a fixed layout and wrong for a dynamic
+    /// collection - insert a row at the top of a list and every row below it
+    /// matches the wrong node, so focus, selection and scroll offset all shift
+    /// by one.
+    ///
+    /// Give the key the identity of the *data*, never the loop index.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// impl View for TodoRow {
+    ///     fn key(&self) -> Option<WidgetKey> {
+    ///         Some(WidgetKey::from(self.todo.id))
+    ///     }
+    /// }
+    /// ```
+    fn key(&self) -> Option<WidgetKey> {
+        None
+    }
+
     /// Get widget metadata for DOM
     ///
-    /// This method combines `widget_type()`, `id()`, and `classes()` into
-    /// a `WidgetMeta` struct used by the DOM builder. You typically don't need
-    /// to override this.
+    /// This method combines `widget_type()`, `id()`, `classes()` and `key()`
+    /// into a `WidgetMeta` struct used by the DOM builder. You typically don't
+    /// need to override this.
     fn meta(&self) -> WidgetMeta {
         let mut meta = WidgetMeta::new(self.widget_type());
         if let Some(id) = self.id() {
@@ -227,6 +251,7 @@ pub trait View {
         for class in self.classes() {
             meta.classes.insert(class.clone());
         }
+        meta.key = self.key();
         meta
     }
 }
@@ -255,6 +280,10 @@ impl View for Box<dyn View> {
 
     fn needs_render(&self) -> bool {
         (**self).needs_render()
+    }
+
+    fn key(&self) -> Option<WidgetKey> {
+        (**self).key()
     }
 
     fn meta(&self) -> WidgetMeta {

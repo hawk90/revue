@@ -128,13 +128,13 @@ mod renderer;
 mod selector;
 
 pub use cascade::{MatchedRule, Specificity, StyleResolver};
-pub use node::{DomId, DomNode, NodeState, WidgetMeta};
+pub use node::{DomId, DomNode, NodeState, WidgetKey, WidgetMeta};
 pub use pool::{
     buffer_pool, object_pool, string_pool, vec_pool, BufferPool, ObjectPool, PoolStats, Pooled,
     StringPool, SyncObjectPool, SyncStringPool, VecPool,
 };
 pub use query::{DomTree, Query, QueryResult};
-pub use renderer::{styled_context, DomRenderer};
+pub use renderer::{styled_context, CollectSink, DomRenderer};
 pub use selector::{
     parse_selector, parse_selectors, Combinator, NthExpr, PseudoClass, Selector, SelectorPart,
 };

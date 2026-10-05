@@ -20,7 +20,7 @@ fn test_priority_partial_eq() {
 #[test]
 fn test_priority_clone() {
     let priority = Priority::Polite;
-    let cloned = priority.clone();
+    let cloned = priority;
     assert_eq!(priority, cloned);
 }
 

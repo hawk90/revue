@@ -18,22 +18,26 @@ permissions:
 jobs:
   audit:
     name: Security Audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.actor != 'github-actions[bot]'
     steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo generate-lockfile
-      - uses: rustsec/audit-check@v2
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          cache: false
+          build-warnings: allow
+      - run: cargo generate-lockfile
+      # `rustsec/audit-check` runs on Node 20, which GitHub is retiring, and
+      # the action has no Node 24 release. Install the binary and run it.
+      - uses: taiki-e/install-action@cargo-audit
+      - run: cargo audit
 
   deny:
     name: Cargo Deny
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.actor != 'github-actions[bot]'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check all

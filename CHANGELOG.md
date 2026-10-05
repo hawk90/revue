@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.75.0](https://github.com/hawk90/revue/compare/v2.74.0...v2.75.0) (2026-08-23)
+
+
+### Features
+
+* 3.0 리팩터 안전망 (Phase 0) ([#597](https://github.com/hawk90/revue/issues/597)) ([db75692](https://github.com/hawk90/revue/commit/db7569215ffa9e8a18e5093caaccf95cc037a202))
+* **dom:** build the DOM from the render traversal (F-4/F-5) ([#602](https://github.com/hawk90/revue/issues/602)) ([b27bd0d](https://github.com/hawk90/revue/commit/b27bd0d6b73fe85ec397960a6e5faff7899f539c))
+* keyed reconciliation and per-frame DOM updates (Phase 1) ([#604](https://github.com/hawk90/revue/issues/604)) ([0742ff2](https://github.com/hawk90/revue/commit/0742ff252a116120cd274e529708cd7e355e0307))
+* **layout:** let CSS gap reach the containers ([#606](https://github.com/hawk90/revue/issues/606)) ([249d847](https://github.com/hawk90/revue/commit/249d847dc157ce0cf9e332d6d20b3f5566390032)), closes [#599](https://github.com/hawk90/revue/issues/599)
+
+
+### Bug Fixes
+
+* **ci:** make the MSRV job actually check the MSRV ([#608](https://github.com/hawk90/revue/issues/608)) ([3b29701](https://github.com/hawk90/revue/commit/3b2970179037cd468917326f7216fc364809486c))
+* **ci:** test the proc-macro crate when it changes ([#607](https://github.com/hawk90/revue/issues/607)) ([da3eeed](https://github.com/hawk90/revue/commit/da3eeed3f30a735d73f13392eb228435b31738bc))
+* **layout:** link the layout tree, and let CSS box properties work ([#605](https://github.com/hawk90/revue/issues/605)) ([6d305e7](https://github.com/hawk90/revue/commit/6d305e7437d34ca3d8ef6bfa967bd8ad7a187e32)), closes [#599](https://github.com/hawk90/revue/issues/599)
+* **render:** always repaint from the view ([#601](https://github.com/hawk90/revue/issues/601)) ([d5ec29b](https://github.com/hawk90/revue/commit/d5ec29b0db246102616f2aac46cedc2fc1b61a69))
+
 ## [2.74.0](https://github.com/hawk90/revue/compare/v2.73.0...v2.74.0) (2026-07-04)
 
 

@@ -255,7 +255,9 @@ impl View for Toast {
         let (toast_width, toast_height) = self.calculate_size(screen_w);
         let (abs_x, abs_y) = self.calculate_position(screen_w, screen_h, toast_width, toast_height);
 
-        let color = self.level.color();
+        // The level palette is this toast's own default, and a rule naming
+        // this toast targets the whole node - so the author outranks it.
+        let color = ctx.css_color(self.level.color());
         let bg = self.level.bg_color();
 
         // Build overlay entry for toast (renders on top of everything)

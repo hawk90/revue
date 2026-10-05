@@ -162,8 +162,8 @@ fn test_with_cached_selectors() {
     let get_node = |_: DomId| -> Option<&DomNode> { None };
 
     // Both should produce same results
-    let matches1 = resolver1.match_node(&node, &get_node);
-    let matches2 = resolver2.match_node(&node, &get_node);
+    let matches1 = resolver1.match_node(&node, get_node);
+    let matches2 = resolver2.match_node(&node, get_node);
     assert_eq!(matches1.len(), matches2.len());
 }
 

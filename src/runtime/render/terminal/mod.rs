@@ -2,10 +2,12 @@
 
 mod core;
 mod helper;
+pub(crate) mod panic_hook;
 mod render;
 mod types;
 
 pub use helper::stdout_terminal;
+pub use panic_hook::{install_panic_hook, restore_terminal};
 pub use types::Terminal;
 
 #[cfg(test)]
@@ -238,9 +240,12 @@ mod tests {
     #[test]
     fn test_mock_writer_multiple_writes() {
         let mut writer = MockWriter::new();
-        writer.write(b"hello").unwrap();
-        writer.write(b" ").unwrap();
-        writer.write(b"world").unwrap();
+        // `write_all` rather than `write`: the test only cares that every byte
+        // lands, and `write` may report a partial write that the old `.unwrap()`
+        // would have silently accepted.
+        writer.write_all(b"hello").unwrap();
+        writer.write_all(b" ").unwrap();
+        writer.write_all(b"world").unwrap();
         assert_eq!(writer.as_string(), "hello world");
     }
 

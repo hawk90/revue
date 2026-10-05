@@ -86,6 +86,9 @@ pub trait Rendering {
 
     /// Render calendar portion
     fn render_calendar(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16) {
+        // The cursor, the selection and the weekend each say something one
+        // rule cannot; an ordinary day is the base they depart from.
+        let day_fg = ctx.css_color(Color::WHITE);
         let days_in_month = days_in_month(self.date().year, self.date().month);
         let first_weekday = self.first_weekday();
 
@@ -129,7 +132,7 @@ pub trait Rendering {
             } else if is_weekend {
                 (self.weekend_fg(), None, false)
             } else {
-                (Color::WHITE, None, false)
+                (day_fg, None, false)
             };
 
             // Draw day with background if needed
@@ -152,6 +155,8 @@ pub trait Rendering {
 
     /// Render time picker portion
     fn render_time(&self, ctx: &mut RenderContext, x: u16, y: u16) {
+        // The active field is highlighted; the rest are the base.
+        let field_fg = ctx.color_or(self.field_fg(), Color::WHITE);
         // Draw time label
         self.draw_text(ctx, x, y, "Time:", LIGHT_GRAY, false);
 
@@ -166,7 +171,7 @@ pub trait Rendering {
         {
             (self.field_active_fg(), Some(self.field_active_bg()))
         } else {
-            (self.field_fg(), None)
+            (field_fg, None)
         };
         if let Some(bg) = hour_bg {
             for i in 0..2 {
@@ -179,7 +184,7 @@ pub trait Rendering {
         field_x += 2;
 
         // Colon
-        self.draw_text(ctx, field_x, field_y, ":", self.field_fg(), false);
+        self.draw_text(ctx, field_x, field_y, ":", field_fg, false);
         field_x += 1;
 
         // Minute
@@ -189,7 +194,7 @@ pub trait Rendering {
         {
             (self.field_active_fg(), Some(self.field_active_bg()))
         } else {
-            (self.field_fg(), None)
+            (field_fg, None)
         };
         if let Some(bg) = minute_bg {
             for i in 0..2 {
@@ -210,7 +215,7 @@ pub trait Rendering {
 
         // Second (if shown)
         if self.show_seconds() {
-            self.draw_text(ctx, field_x, field_y, ":", self.field_fg(), false);
+            self.draw_text(ctx, field_x, field_y, ":", field_fg, false);
             field_x += 1;
 
             let second_str = format!("{:02}", self.time().second);
@@ -219,7 +224,7 @@ pub trait Rendering {
             {
                 (self.field_active_fg(), Some(self.field_active_bg()))
             } else {
-                (self.field_fg(), None)
+                (field_fg, None)
             };
             if let Some(bg) = second_bg {
                 for i in 0..2 {

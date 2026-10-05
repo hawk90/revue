@@ -86,7 +86,7 @@ fn test_interpolation_mode_default() {
 #[test]
 fn test_interpolation_mode_clone() {
     let mode = InterpolationMode::Hsl;
-    let cloned = mode.clone();
+    let cloned = mode;
     assert_eq!(cloned, InterpolationMode::Hsl);
 }
 
@@ -125,7 +125,7 @@ fn test_spread_mode_default() {
 #[test]
 fn test_spread_mode_clone() {
     let mode = SpreadMode::Repeat;
-    let cloned = mode.clone();
+    let cloned = mode;
     assert_eq!(cloned, SpreadMode::Repeat);
 }
 
@@ -168,7 +168,7 @@ fn test_gradient_direction_default() {
 #[test]
 fn test_gradient_direction_clone() {
     let dir = GradientDirection::ToBottom;
-    let cloned = dir.clone();
+    let cloned = dir;
     assert_eq!(cloned, GradientDirection::ToBottom);
 }
 

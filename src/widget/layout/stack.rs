@@ -189,7 +189,10 @@ impl View for Stack {
         let parent_clip = ctx.clip();
 
         let n = self.children.len();
-        let total_gap = self.gap * (n.saturating_sub(1) as u16);
+        // CSS wins when it specified one; `gap: 0` is the initial value and so
+        // reads as "not specified".
+        let gap = ctx.gap_or(self.gap);
+        let total_gap = gap.saturating_mul(n.saturating_sub(1) as u16);
 
         let wrap = ctx.css_flex_wrap();
 
@@ -208,7 +211,7 @@ impl View for Stack {
                     // Wrap to next row if needed
                     if wrap && x > 0 && x.saturating_add(w) > area.width {
                         x = 0;
-                        y = y.saturating_add(row_height).saturating_add(self.gap);
+                        y = y.saturating_add(row_height).saturating_add(gap);
                         if y >= area.height {
                             break;
                         }
@@ -216,15 +219,14 @@ impl View for Stack {
 
                     if child.needs_render() {
                         let child_area = ctx.sub_area(x, y, w, row_height);
-                        let mut child_ctx = RenderContext::child_ctx_with_overflow(
-                            ctx.buffer,
+                        ctx.render_child_with_overflow(
+                            child.as_ref(),
                             child_area,
                             overflow_hidden,
                             parent_clip,
                         );
-                        child.render(&mut child_ctx);
                     }
-                    x = x.saturating_add(w).saturating_add(self.gap);
+                    x = x.saturating_add(w).saturating_add(gap);
                 }
             }
             Direction::Column => {
@@ -236,15 +238,14 @@ impl View for Stack {
                     let h = heights[i];
                     if child.needs_render() {
                         let child_area = ctx.sub_area(0, y, area.width, h);
-                        let mut child_ctx = RenderContext::child_ctx_with_overflow(
-                            ctx.buffer,
+                        ctx.render_child_with_overflow(
+                            child.as_ref(),
                             child_area,
                             overflow_hidden,
                             parent_clip,
                         );
-                        child.render(&mut child_ctx);
                     }
-                    y = y.saturating_add(h).saturating_add(self.gap);
+                    y = y.saturating_add(h).saturating_add(gap);
                 }
             }
         }

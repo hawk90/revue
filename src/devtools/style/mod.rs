@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn test_property_source_clone() {
         let source = PropertySource::Inline;
-        let cloned = source.clone();
+        let cloned = source;
         assert_eq!(source, cloned);
     }
 

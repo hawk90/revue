@@ -588,7 +588,7 @@ mod tests {
             for j in 0..10 {
                 css.push_str(&format!("prop{}: val{}; ", j, j));
             }
-            css.push_str("}");
+            css.push('}');
         }
 
         assert!(parse(&css).is_ok());
@@ -604,7 +604,7 @@ mod tests {
         /* Another comment */
         .text { color: red; }
         "#;
-        assert!(parse(&css).is_ok());
+        assert!(parse(css).is_ok());
     }
 
     #[test]
@@ -616,7 +616,7 @@ mod tests {
            comment */
         .box { width: 100; }
         "#;
-        assert!(parse(&css).is_ok());
+        assert!(parse(css).is_ok());
     }
 
     #[test]
@@ -625,7 +625,7 @@ mod tests {
         let css = "/* outer /* inner */ comment */ .box { width: 100; }";
         // The parser will handle this as: /* outer /* inner */ then "comment */" as text
         // It won't hang or crash
-        let _ = parse(&css);
+        let _ = parse(css);
     }
 
     #[test]
@@ -633,7 +633,7 @@ mod tests {
         // Unterminated comment should not cause infinite loop
         let css = "/* This comment is never closed .box { width: 100; }";
         // The scanner should handle this safely without infinite loop
-        let result = parse(&css);
+        let result = parse(css);
         // Should either error or parse what it can, but never hang
         assert!(result.is_ok() || result.is_err());
     }
@@ -642,14 +642,14 @@ mod tests {
     fn test_css_comment_after_property() {
         // Comment after property value
         let css = ".box { width: 100; /* comment after */ }";
-        assert!(parse(&css).is_ok());
+        assert!(parse(css).is_ok());
     }
 
     #[test]
     fn test_css_empty_comment() {
         // Empty comment should work
         let css = "/**/ .box { width: 100; }";
-        assert!(parse(&css).is_ok());
+        assert!(parse(css).is_ok());
     }
 
     // @keyframes parsing tests

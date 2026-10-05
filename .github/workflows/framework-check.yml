@@ -12,11 +12,11 @@ permissions:
 jobs:
   check:
     name: Framework Version Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       is_stale: ${{ steps.verify.outputs.is_stale }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Check framework versions
         run: |
@@ -47,9 +47,9 @@ jobs:
     name: Create Issue if Stale
     needs: check
     if: needs.check.outputs.is_stale == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Create issue
         run: |
           EXISTING=$(gh issue list --label "documentation" --state open --search "Framework comparison" --json number --jq '.[0].number // empty')

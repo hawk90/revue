@@ -1,5 +1,6 @@
 //! Render context for widget rendering
 
+mod box_model;
 mod css;
 mod focus;
 pub mod overlay;
@@ -16,10 +17,63 @@ mod tests;
 pub use overlay::{OverlayEntry, OverlayQueue};
 pub use types::ProgressBarConfig;
 
-use crate::dom::NodeState;
+use super::View;
+use crate::dom::{CollectSink, DomId, NodeState};
 use crate::layout::Rect;
 use crate::render::Buffer;
-use crate::style::Style;
+use crate::style::{Display, Style};
+
+/// One node as the paint pass sees it.
+pub struct PaintNode<'a> {
+    pub id: DomId,
+    pub style: Option<&'a Style>,
+    pub(crate) state: Option<&'a NodeState>,
+    /// Nodes in this node's subtree, itself included.
+    ///
+    /// The collect pass records pre-order, so a subtree is contiguous. That
+    /// makes this both the distance to the next sibling and the amount to skip
+    /// for a `display: none` node.
+    pub(crate) subtree_len: usize,
+}
+
+/// Which half of the frame this context belongs to.
+///
+/// A frame renders the view twice: once to discover the tree, once to paint it
+/// with the styles that tree produced. See
+/// [`dom::renderer::collect`](crate::dom::CollectSink).
+///
+/// `None` means neither - a context built directly rather than through
+/// [`RenderContext::render_child`]. Those still render; they just do not
+/// register a node, which is the pre-existing behavior.
+pub enum RenderPass<'a> {
+    /// Recording what each widget renders, in traversal order.
+    Collect {
+        sink: &'a mut CollectSink,
+        /// Index of this widget in the sink; `None` at the root's parent.
+        parent: Option<usize>,
+    },
+    /// Painting, with the nodes the collect pass produced.
+    ///
+    /// `next` is a shared cursor into `nodes`. The two traversals are the same
+    /// walk, so a counter is enough to align them - and after each child it is
+    /// reset to that child's subtree end, so a child that renders a different
+    /// number of nodes than it did during collect cannot drag its siblings out
+    /// of alignment.
+    Paint {
+        nodes: &'a [PaintNode<'a>],
+        next: &'a mut usize,
+        /// Apply each node's specified CSS box properties to the area its
+        /// parent gave it. See [`AppBuilder::css_layout`](crate::app::AppBuilder::css_layout).
+        css_layout: bool,
+        /// Where each node ends up on screen, in paint order.
+        ///
+        /// Filled here because this is the only point that holds both a node's
+        /// identity and the area it was actually painted into. A node that is
+        /// entirely clipped away contributes nothing - it is not on screen, so
+        /// it cannot be under the pointer.
+        hits: &'a mut Vec<(DomId, Rect)>,
+    },
+}
 
 /// Render context passed to widgets
 pub struct RenderContext<'a> {
@@ -40,6 +94,8 @@ pub struct RenderContext<'a> {
     /// When set, all drawing operations are clipped to this rectangle.
     /// Content outside this area is not rendered.
     clip: Option<Rect>,
+    /// Which half of the frame this context belongs to, if either.
+    pub pass: Option<RenderPass<'a>>,
 }
 
 impl<'a> RenderContext<'a> {
@@ -53,6 +109,7 @@ impl<'a> RenderContext<'a> {
             transitions: None,
             overlays: None,
             clip: None,
+            pass: None,
         }
     }
 
@@ -66,6 +123,7 @@ impl<'a> RenderContext<'a> {
             transitions: None,
             overlays: None,
             clip: None,
+            pass: None,
         }
     }
 
@@ -84,7 +142,180 @@ impl<'a> RenderContext<'a> {
             transitions: None,
             overlays: None,
             clip: None,
+            pass: None,
         }
+    }
+
+    /// Render a child widget into `area`, registering it in the DOM.
+    ///
+    /// Container widgets should route child rendering through this rather than
+    /// building a [`RenderContext`] by hand. It is what makes the DOM describe
+    /// the application: the render traversal is the real widget tree, and a
+    /// child constructed inside `render` is invisible to `View::children`.
+    ///
+    /// In exchange the child is handed the computed style and state of its own
+    /// node, so CSS reaches it. A context built directly still renders - it just
+    /// registers nothing and receives no style, which is what every container
+    /// did before.
+    pub fn render_child(&mut self, child: &dyn View, area: Rect) {
+        let clip = self.clip;
+        self.render_child_with_overflow(child, area, false, clip);
+    }
+
+    /// [`render_child`](Self::render_child), with the overflow and clip handling
+    /// that [`child_ctx_with_overflow`](Self::child_ctx_with_overflow) applies.
+    pub fn render_child_with_overflow(
+        &mut self,
+        child: &dyn View,
+        mut area: Rect,
+        overflow_hidden: bool,
+        parent_clip: Option<Rect>,
+    ) {
+        // The clip is *this* widget's box, never the child's. `set` already
+        // refuses to paint outside the area a widget was handed, so clipping a
+        // child to its own area clips nothing; a child escapes only when it is
+        // given an area larger than its container. Nested clips intersect, so an
+        // inner `overflow: hidden` cannot widen an outer one.
+        let clip = if overflow_hidden {
+            match parent_clip {
+                Some(outer) => self.area.intersection(&outer),
+                None => Some(self.area),
+            }
+        } else {
+            parent_clip
+        };
+
+        // Destructured so the buffer and the pass can be borrowed at once.
+        let RenderContext { buffer, pass, .. } = self;
+
+        match pass {
+            None => {
+                let mut ctx = RenderContext::child_ctx_clipped(buffer, area, clip);
+                child.render(&mut ctx);
+            }
+            Some(RenderPass::Collect { sink, parent }) => {
+                let me = sink.push(child.meta(), *parent);
+                let mut ctx = RenderContext::child_ctx_clipped(buffer, area, clip);
+                ctx.pass = Some(RenderPass::Collect {
+                    sink,
+                    parent: Some(me),
+                });
+                child.render(&mut ctx);
+            }
+            Some(RenderPass::Paint {
+                nodes,
+                next,
+                css_layout,
+                hits,
+            }) => {
+                // Pre-order, exactly as the collect pass pushed.
+                let idx = **next;
+                **next += 1;
+                let node = nodes.get(idx);
+
+                if *css_layout {
+                    if let Some(style) = node.and_then(|n| n.style) {
+                        if style.layout.display == Display::None {
+                            // The subtree is not painted, but it still exists -
+                            // the collect pass walked it, so the cursor has to
+                            // step over all of it.
+                            **next = idx + node.map_or(1, |n| n.subtree_len);
+                            return;
+                        }
+                        if box_model::specifies_anything(style) {
+                            area = box_model::apply(style, area);
+                        }
+                    }
+                }
+
+                if let Some(node) = node {
+                    // The clip the child will draw under, which is also the
+                    // only part of it the pointer can reach.
+                    let visible = match clip {
+                        Some(clip) => area.intersection(&clip),
+                        None => Some(area),
+                    };
+                    if let Some(visible) = visible {
+                        hits.push((node.id, visible));
+                    }
+                }
+
+                let mut ctx = RenderContext::child_ctx_clipped(buffer, area, clip);
+                if let Some(node) = node {
+                    ctx.style = node.style;
+                    ctx.state = node.state;
+                }
+                let css_layout = *css_layout;
+                ctx.pass = Some(RenderPass::Paint {
+                    nodes,
+                    next,
+                    css_layout,
+                    hits,
+                });
+                child.render(&mut ctx);
+
+                // Resynchronize. The child rendered with an area the collect
+                // pass never saw, so it may have produced a different number of
+                // nodes; without this, every later sibling would be handed the
+                // wrong node's style.
+                if let Some(node) = nodes.get(idx) {
+                    **next = idx + node.subtree_len;
+                }
+            }
+        }
+    }
+
+    /// A context over the same buffer for a sub-area of this widget's own box.
+    ///
+    /// For a widget that paints part of itself somewhere else - shifting text
+    /// for alignment, laying out its own internals - rather than for rendering
+    /// a *child widget*, which is [`render_child`](Self::render_child)'s job
+    /// and registers a DOM node.
+    ///
+    /// Carries across everything that describes *this node*: its computed
+    /// style, its state, its transitions and the clip. The sub-area is a
+    /// smaller rectangle of the same widget, not a different one, so dropping
+    /// any of those makes the widget stop being styled halfway through
+    /// painting itself.
+    ///
+    /// That is not hypothetical. This used to carry the clip alone, and
+    /// `Gauge` - which carves out a sub-area for its bar - painted its fill
+    /// with the built-in green no matter what `color` the stylesheet resolved
+    /// for it. The ratchet was happy because the source mentioned
+    /// `ctx.css_color`; the value just never reached a cell.
+    ///
+    /// `pass` is deliberately *not* carried: this is the same node, so
+    /// registering it again would put a duplicate in the tree. Overlays are
+    /// left behind for the same borrow reason `render_child` has.
+    pub fn sub_ctx<'b>(&'b mut self, area: Rect) -> RenderContext<'b> {
+        let clip = self.clip;
+        let style = self.style;
+        let state = self.state;
+        let transitions = self.transitions;
+
+        let mut ctx = RenderContext::new(self.buffer, area);
+        ctx.style = style;
+        ctx.state = state;
+        ctx.transitions = transitions;
+        if let Some(clip) = clip {
+            ctx = ctx.with_clip(clip);
+        }
+        ctx
+    }
+
+    /// Are CSS box and gap properties being applied this frame?
+    ///
+    /// See [`AppBuilder::css_layout`](crate::app::AppBuilder::css_layout). A
+    /// container should gate any CSS-derived geometry on this, so that turning
+    /// the flag off really does restore the previous behavior.
+    pub fn css_layout(&self) -> bool {
+        matches!(
+            self.pass,
+            Some(RenderPass::Paint {
+                css_layout: true,
+                ..
+            })
+        )
     }
 
     /// Attach an overlay queue to this context
@@ -187,7 +418,7 @@ impl<'a> RenderContext<'a> {
     /// absolute buffer coordinates suitable for constructing a child context:
     /// ```ignore
     /// let inner = ctx.sub_area(1, 1, w - 2, h - 2);
-    /// let mut child_ctx = RenderContext::new(ctx.buffer, inner);
+    /// let mut child_ctx = ctx.sub_ctx(inner);
     /// ```
     pub fn sub_area(&self, x: u16, y: u16, w: u16, h: u16) -> Rect {
         Rect::new(

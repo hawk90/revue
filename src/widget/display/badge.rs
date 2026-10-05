@@ -196,11 +196,14 @@ impl Badge {
     }
 
     /// Get effective colors
-    fn effective_colors(&self) -> (Color, Color) {
+    /// The colors to paint with: the builder's if it named any, else the
+    /// stylesheet's, else the variant's.
+    fn effective_colors(&self, ctx: &RenderContext) -> (Color, Color) {
         let (default_bg, default_fg) = self.variant.colors();
         (
-            self.bg_color.unwrap_or(default_bg),
-            self.fg_color.unwrap_or(default_fg),
+            self.bg_color
+                .unwrap_or_else(|| ctx.css_background(default_bg)),
+            self.fg_color.unwrap_or_else(|| ctx.css_color(default_fg)),
         )
     }
 }
@@ -214,7 +217,7 @@ impl Default for Badge {
 impl View for Badge {
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let (bg, fg) = self.effective_colors();
+        let (bg, fg) = self.effective_colors(ctx);
 
         match self.shape {
             BadgeShape::Dot => {
