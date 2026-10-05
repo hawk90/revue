@@ -31,9 +31,8 @@ mod canvas;
 mod card;
 #[path = "widget/data/chart/mod.rs"]
 mod chart;
-// TODO(test-coverage): checkbox has API mismatches
-// #[path = "widget/checkbox/mod.rs"]
-// mod checkbox;
+#[path = "widget/checkbox/mod.rs"]
+mod checkbox;
 // TODO(test-coverage): code_editor_tests has API mismatches
 // #[path = "widget/code_editor_tests.rs"]
 // pub mod code_editor_tests;
