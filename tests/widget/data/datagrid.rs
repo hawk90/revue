@@ -351,3 +351,28 @@ fn test_row_numbers_right_aligned() {
     assert_eq!(text(&buffer, 10, 5), "10  v");
     assert_eq!(text(&buffer, 12, 5), "12  v");
 }
+
+#[test]
+#[ignore = "BUG: DataGrid mouse hit-testing assumes a 5-column row-number gutter and ignores freeze/h-scroll"]
+fn test_header_click_hits_rendered_column_with_row_numbers() {
+    use revue::event::{MouseButton, MouseEventKind};
+
+    let mut grid = DataGrid::new()
+        .row_numbers(true)
+        .reorderable(true)
+        .column(GridColumn::new("a", "A").width(6).resizable(false))
+        .column(GridColumn::new("b", "B").width(6).resizable(false))
+        .rows((0..3).map(|_| GridRow::new().cell("a", "v")).collect());
+    let area = Rect::new(0, 0, 40, 5);
+
+    let mut buffer = Buffer::new(40, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    grid.render(&mut ctx);
+
+    // Press on the drawn "B" header title: that should start dragging column 1
+    let b_x = (0..40)
+        .find(|&x| buffer.get(x, 0).unwrap().symbol == 'B')
+        .expect("header B drawn");
+    assert!(grid.handle_mouse(MouseEventKind::Down(MouseButton::Left), b_x, 0, area));
+    assert_eq!(grid.dragging_col, Some(1));
+}
