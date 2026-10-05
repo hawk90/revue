@@ -47,6 +47,65 @@ impl OverlayEntry {
     pub fn push(&mut self, x: u16, y: u16, cell: Cell) {
         self.cells.push(OverlayCell { x, y, cell });
     }
+
+    /// Add `text` at `(x, y)` in terminal columns, stopping before column
+    /// `max_x`; see [`lay_out_str`]. Returns the columns used.
+    pub(crate) fn push_str_with<F>(
+        &mut self,
+        x: u16,
+        y: u16,
+        text: &str,
+        max_x: u16,
+        make_cell: F,
+    ) -> u16
+    where
+        F: FnMut(char) -> Cell,
+    {
+        lay_out_str(x, text, max_x, make_cell, |cx, cell| self.push(cx, y, cell))
+    }
+}
+
+/// Lay `text` out on one row in terminal columns, starting at column `x`
+/// and stopping before a glyph that would cross `max_x` (exclusive).
+///
+/// `make_cell` styles each glyph and `emit` receives every cell with its
+/// column: a wide glyph (emoji, CJK) takes two, the second a continuation
+/// cell carrying the glyph's colors and modifiers; a zero-width char (e.g.
+/// the VS16 in "⚙️") takes none - the same layout as
+/// [`Buffer::put_str_styled`](crate::render::Buffer::put_str_styled).
+/// Returns the columns used.
+pub(crate) fn lay_out_str<F, E>(
+    x: u16,
+    text: &str,
+    max_x: u16,
+    mut make_cell: F,
+    mut emit: E,
+) -> u16
+where
+    F: FnMut(char) -> Cell,
+    E: FnMut(u16, Cell),
+{
+    let mut cx = x;
+    for ch in text.chars() {
+        let w = crate::utils::unicode::char_width(ch) as u16;
+        if w == 0 {
+            continue;
+        }
+        if cx.saturating_add(w) > max_x {
+            break;
+        }
+        let cell = make_cell(ch);
+        emit(cx, cell);
+        for dx in 1..w {
+            let mut cont = Cell::continuation();
+            cont.fg = cell.fg;
+            cont.bg = cell.bg;
+            cont.modifier = cell.modifier;
+            emit(cx + dx, cont);
+        }
+        cx += w;
+    }
+    cx - x
 }
 
 /// Collects overlay entries during a render pass

@@ -395,13 +395,7 @@ impl View for Chart {
 
         // Fill background
         if let Some(bg) = self.bg_color {
-            for y in 0..area.height {
-                for x in 0..area.width {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(bg);
-                    ctx.set(x, y, cell);
-                }
-            }
+            ctx.fill_box_background(bg);
         }
 
         // Draw border

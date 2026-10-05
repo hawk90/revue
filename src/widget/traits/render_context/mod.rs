@@ -2,6 +2,7 @@
 
 mod box_model;
 mod css;
+pub(crate) mod edit_line;
 mod focus;
 pub mod overlay;
 mod progress;
@@ -63,7 +64,7 @@ pub enum RenderPass<'a> {
         nodes: &'a [PaintNode<'a>],
         next: &'a mut usize,
         /// Apply each node's specified CSS box properties to the area its
-        /// parent gave it. See [`AppBuilder::css_layout`](crate::app::AppBuilder::css_layout).
+        /// parent gave it. See [`AppBuilder::css_layout`](crate::core::app::AppBuilder::css_layout).
         css_layout: bool,
         /// Where each node ends up on screen, in paint order.
         ///
@@ -96,6 +97,9 @@ pub struct RenderContext<'a> {
     clip: Option<Rect>,
     /// Which half of the frame this context belongs to, if either.
     pub pass: Option<RenderPass<'a>>,
+    /// The background this widget gave its whole box, if it did - see
+    /// [`fill_box_background`](Self::fill_box_background).
+    box_background: Option<crate::style::Color>,
 }
 
 impl<'a> RenderContext<'a> {
@@ -110,6 +114,7 @@ impl<'a> RenderContext<'a> {
             overlays: None,
             clip: None,
             pass: None,
+            box_background: None,
         }
     }
 
@@ -124,6 +129,7 @@ impl<'a> RenderContext<'a> {
             overlays: None,
             clip: None,
             pass: None,
+            box_background: None,
         }
     }
 
@@ -143,6 +149,7 @@ impl<'a> RenderContext<'a> {
             overlays: None,
             clip: None,
             pass: None,
+            box_background: None,
         }
     }
 
@@ -192,6 +199,12 @@ impl<'a> RenderContext<'a> {
             None => {
                 let mut ctx = RenderContext::child_ctx_clipped(buffer, area, clip);
                 child.render(&mut ctx);
+                if let Some(bg) = ctx.box_background {
+                    let visible = clip.map_or(Some(area), |c| area.intersection(&c));
+                    if let Some(visible) = visible {
+                        fill_background_under(buffer, visible, bg);
+                    }
+                }
             }
             Some(RenderPass::Collect { sink, parent }) => {
                 let me = sink.push(child.meta(), *parent);
@@ -228,31 +241,38 @@ impl<'a> RenderContext<'a> {
                     }
                 }
 
-                if let Some(node) = node {
-                    // The clip the child will draw under, which is also the
-                    // only part of it the pointer can reach.
-                    let visible = match clip {
-                        Some(clip) => area.intersection(&clip),
-                        None => Some(area),
-                    };
-                    if let Some(visible) = visible {
-                        hits.push((node.id, visible));
-                    }
+                // The clip the child will draw under, which is also the only
+                // part of it the pointer can reach.
+                let visible = match clip {
+                    Some(clip) => area.intersection(&clip),
+                    None => Some(area),
+                };
+                if let (Some(node), Some(visible)) = (node, visible) {
+                    hits.push((node.id, visible));
                 }
 
-                let mut ctx = RenderContext::child_ctx_clipped(buffer, area, clip);
-                if let Some(node) = node {
-                    ctx.style = node.style;
-                    ctx.state = node.state;
+                let own_background = {
+                    let mut ctx = RenderContext::child_ctx_clipped(buffer, area, clip);
+                    if let Some(node) = node {
+                        ctx.style = node.style;
+                        ctx.state = node.state;
+                    }
+                    let css_layout = *css_layout;
+                    ctx.pass = Some(RenderPass::Paint {
+                        nodes,
+                        next,
+                        css_layout,
+                        hits,
+                    });
+                    child.render(&mut ctx);
+                    ctx.box_background
+                };
+
+                let background =
+                    own_background.or_else(|| css_background(node.and_then(|n| n.style)));
+                if let (Some(bg), Some(visible)) = (background, visible) {
+                    fill_background_under(buffer, visible, bg);
                 }
-                let css_layout = *css_layout;
-                ctx.pass = Some(RenderPass::Paint {
-                    nodes,
-                    next,
-                    css_layout,
-                    hits,
-                });
-                child.render(&mut ctx);
 
                 // Resynchronize. The child rendered with an area the collect
                 // pass never saw, so it may have produced a different number of
@@ -263,6 +283,34 @@ impl<'a> RenderContext<'a> {
                 }
             }
         }
+    }
+
+    /// Paint `bg` over this widget's whole box, and claim it as the box's
+    /// background.
+    ///
+    /// The claim is what matters. Whatever the widget draws on top - its own
+    /// text, a child widget - writes cells without a background, and
+    /// [`Buffer::set`] replaces the whole cell, so each glyph used to punch a
+    /// hole through to the terminal. When the widget is done, the cells it left
+    /// without a background get `bg`, and the stylesheet's `background` does
+    /// not get a say over a box the widget filled itself.
+    ///
+    /// Takes effect for widgets rendered through
+    /// [`render_child`](Self::render_child) and for the root.
+    pub fn fill_box_background(&mut self, bg: crate::style::Color) {
+        for y in 0..self.area.height {
+            for x in 0..self.area.width {
+                let mut cell = crate::render::Cell::new(' ');
+                cell.bg = Some(bg);
+                self.set(x, y, cell);
+            }
+        }
+        self.box_background = Some(bg);
+    }
+
+    /// The background claimed by [`fill_box_background`](Self::fill_box_background).
+    pub(crate) fn box_background(&self) -> Option<crate::style::Color> {
+        self.box_background
     }
 
     /// A context over the same buffer for a sub-area of this widget's own box.
@@ -305,7 +353,7 @@ impl<'a> RenderContext<'a> {
 
     /// Are CSS box and gap properties being applied this frame?
     ///
-    /// See [`AppBuilder::css_layout`](crate::app::AppBuilder::css_layout). A
+    /// See [`AppBuilder::css_layout`](crate::core::app::AppBuilder::css_layout). A
     /// container should gate any CSS-derived geometry on this, so that turning
     /// the flag off really does restore the previous behavior.
     pub fn css_layout(&self) -> bool {
@@ -427,5 +475,38 @@ impl<'a> RenderContext<'a> {
             w.min(self.area.width.saturating_sub(x)),
             h.min(self.area.height.saturating_sub(y)),
         )
+    }
+}
+
+/// The `background` a stylesheet gave this node, if it gave one.
+///
+/// `background` does not inherit, so a node with no rule of its own has none
+/// and its parent's fill shows through.
+pub(crate) fn css_background(style: Option<&Style>) -> Option<crate::style::Color> {
+    let bg = style?.visual.background;
+    (bg != crate::style::Color::default()).then_some(bg)
+}
+
+/// Give every cell in `area` that has no background yet the color `bg`.
+///
+/// Runs *after* the widget painted, so it goes underneath: a cell the widget -
+/// or a descendant with its own background - already colored keeps its color,
+/// and only what was left transparent shows this one. Painting first would not
+/// work: [`Buffer::set`] replaces the whole cell, so every glyph written without
+/// a background would punch a hole in the fill.
+///
+/// The color is the widget's own when it declared one with
+/// [`RenderContext::fill_box_background`], else the node's CSS `background` -
+/// the same order as everywhere else: what the builder said, then the
+/// stylesheet.
+pub(crate) fn fill_background_under(buffer: &mut Buffer, area: Rect, bg: crate::style::Color) {
+    for y in area.y..area.y.saturating_add(area.height) {
+        for x in area.x..area.x.saturating_add(area.width) {
+            if let Some(cell) = buffer.get_mut(x, y) {
+                if cell.bg.is_none() {
+                    cell.bg = Some(bg);
+                }
+            }
+        }
     }
 }

@@ -1,6 +1,6 @@
 //! Building the DOM from the render traversal.
 //!
-//! The DOM used to be built by walking [`View::children`], which almost nothing
+//! The DOM used to be built by walking [`View::children`](crate::widget::View::children), which almost nothing
 //! implements: the idiomatic widget assembles its tree inside `render` and
 //! returns an empty slice from `children()`. A real application therefore had a
 //! DOM of one node, and CSS matching, `:focus`/`:hover` and devtools all

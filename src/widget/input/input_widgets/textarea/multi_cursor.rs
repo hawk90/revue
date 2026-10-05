@@ -74,48 +74,41 @@ impl TextArea {
     }
 
     /// Find next occurrence of text from a given position
+    ///
+    /// Columns are char indices, so the search runs on chars: a byte offset
+    /// from `str::find` would land the cursor in the wrong place, and slicing
+    /// a line at a char column panics inside a multibyte char.
     fn find_next_from(&self, text: &str, from: CursorPos) -> Option<CursorPos> {
-        if text.is_empty() {
+        let query: Vec<char> = text.chars().collect();
+        if query.is_empty() {
             return None;
         }
 
-        let text_lower = text.to_lowercase();
-
         // Search from the position after `from`
         for line_idx in from.line..self.lines.len() {
-            let Some(line) = self.lines.get(line_idx) else {
-                continue;
-            };
-            let line_lower = line.to_lowercase();
-
+            let chars: Vec<char> = self.lines[line_idx].chars().collect();
             let start_col = if line_idx == from.line {
                 from.col + 1
             } else {
                 0
             };
-
-            if start_col < line.len() {
-                if let Some(pos) = line_lower[start_col..].find(&text_lower) {
-                    return Some(CursorPos::new(line_idx, start_col + pos));
-                }
+            if let Some(col) = find_chars(&chars, &query, start_col, false) {
+                return Some(CursorPos::new(line_idx, col));
             }
         }
 
         // Wrap around to beginning
         for line_idx in 0..=from.line.min(self.lines.len().saturating_sub(1)) {
-            let Some(line) = self.lines.get(line_idx) else {
-                continue;
-            };
-            let line_lower = line.to_lowercase();
-
-            let end_col = if line_idx == from.line {
-                from.col + 1
+            let chars: Vec<char> = self.lines[line_idx].chars().collect();
+            // On `from`'s own line, only matches starting at or before it.
+            let limit = if line_idx == from.line {
+                (from.col + query.len()).min(chars.len())
             } else {
-                line.len()
+                chars.len()
             };
 
-            if let Some(pos) = line_lower[..end_col].find(&text_lower) {
-                let found_pos = CursorPos::new(line_idx, pos);
+            if let Some(col) = find_chars(&chars[..limit], &query, 0, false) {
+                let found_pos = CursorPos::new(line_idx, col);
                 // Don't return if it's the same as one of our existing cursors
                 if !self.cursors.iter().any(|c| c.pos == found_pos) {
                     return Some(found_pos);
@@ -142,7 +135,7 @@ impl TextArea {
             .unwrap_or(CursorPos::new(0, 0));
 
         if let Some(match_pos) = self.find_next_from(&text, last_pos) {
-            let end_col = match_pos.col + text.len();
+            let end_col = match_pos.col + text.chars().count();
             let new_cursor =
                 Cursor::with_selection(CursorPos::new(match_pos.line, end_col), match_pos);
             self.cursors.add(new_cursor);
@@ -150,4 +143,5 @@ impl TextArea {
     }
 }
 
+use super::find_impl::find_chars;
 use super::TextArea;

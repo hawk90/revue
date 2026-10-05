@@ -361,19 +361,16 @@ impl PieChart {
 
             // Draw label
             let start_x = if mid_angle.cos() < 0.0 {
-                (label_x - label_text.len() as f64).max(0.0) as u16
+                (label_x - crate::utils::display_width(&label_text) as f64).max(0.0) as u16
             } else {
                 label_x as u16
             };
 
-            for (i, ch) in label_text.chars().enumerate() {
-                let x = start_x + i as u16;
-                let y = label_y as u16;
-                if x < area.width && y < area.height {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::WHITE);
-                    ctx.set(x, y, cell);
-                }
+            let y = label_y as u16;
+            if y < area.height {
+                ctx.put_str_with(start_x, y, &label_text, area.width, |ch| {
+                    Cell::new(ch).fg(Color::WHITE)
+                });
             }
 
             current_angle += slice_angle;

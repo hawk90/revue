@@ -221,11 +221,15 @@ pub struct App {
     /// Track if DOM tree needs rebuild (root node creation)
     needs_dom_rebuild: bool,
     /// Reconcile the DOM against the view on every frame (opt-in, see
-    /// [`AppBuilder::incremental_dom`](crate::app::AppBuilder::incremental_dom))
+    /// [`AppBuilder::incremental_dom`](crate::core::app::AppBuilder::incremental_dom))
     incremental_dom: bool,
     /// Tab moves `:focus` between focusable nodes (see
-    /// [`AppBuilder::tab_navigation`](crate::app::AppBuilder::tab_navigation))
+    /// [`AppBuilder::tab_navigation`](crate::core::app::AppBuilder::tab_navigation))
     tab_navigation: bool,
+    /// Run [`LayoutEngine`] every frame. Off unless something will read its
+    /// output - and nothing in the render path does: containers compute their
+    /// own geometry. See `docs/refactor/findings-layout.md`.
+    layout_engine: bool,
     /// Plugin registry
     plugins: crate::plugin::PluginRegistry,
     /// Whether devtools are enabled for this app instance
@@ -263,6 +267,7 @@ impl App {
             needs_dom_rebuild: true,  // Initial render needs DOM root creation
             incremental_dom: false,   // Opt-in until the benches say otherwise
             tab_navigation: false,    // Opt-in: Tab may already be the app's key
+            layout_engine: false,     // Nothing reads it yet
             plugins,
             devtools_enabled,
             #[cfg(feature = "hot-reload")]
@@ -298,6 +303,7 @@ impl App {
             needs_dom_rebuild: true,
             incremental_dom: false,
             tab_navigation: false,
+            layout_engine: false,
             plugins,
             devtools_enabled,
             hot_reload,
@@ -313,6 +319,13 @@ impl App {
     /// Let Tab and Shift+Tab move focus.
     pub(crate) fn set_tab_navigation(&mut self, enabled: bool) {
         self.tab_navigation = enabled;
+    }
+
+    /// Compute [`LayoutEngine`] output every frame.
+    ///
+    /// Crate-internal: the only reader is `testing::PipelineHarness`.
+    pub(crate) fn set_layout_engine(&mut self, enabled: bool) {
+        self.layout_engine = enabled;
     }
 
     /// Build the DOM from the render traversal instead of `View::children`.
@@ -624,11 +637,15 @@ impl App {
             // The render pass builds the DOM. Lay out whatever the previous
             // frame produced; on the first frame there is nothing yet.
             if let Some(root_dom_id) = self.dom.tree().root_id() {
-                self.update_layout_tree(root_dom_id, width, height);
+                if self.layout_engine {
+                    self.update_layout_tree(root_dom_id, width, height);
+                }
             }
         } else {
             let root_dom_id = self.update_dom_and_get_root(view)?;
-            self.update_layout_tree(root_dom_id, width, height);
+            if self.layout_engine {
+                self.update_layout_tree(root_dom_id, width, height);
+            }
         }
 
         let new_buffer_idx = self.swap_buffers();
@@ -774,7 +791,7 @@ impl App {
     ///
     /// Always clears and renders the whole view. Painting into a buffer is
     /// memory traffic; the expensive part of a frame is what goes down the wire
-    /// to the terminal, and the buffer diff in [`draw_to_terminal`] already
+    /// to the terminal, and the buffer diff in [`draw_to_terminal`](Self::draw_to_terminal) already
     /// reduces that to exactly the cells that changed.
     ///
     /// This used to skip rendering when the DOM reported no dirty nodes, and to
@@ -923,6 +940,8 @@ impl App {
     ///
     /// Crate-internal: used by `testing::PipelineHarness`. Nothing in the
     /// render path reads this yet - see `docs/refactor/findings-layout.md`.
+    /// Always `None` unless [`set_layout_engine`](Self::set_layout_engine)
+    /// turned the engine on.
     pub(crate) fn layout_rect(&self, dom_id: crate::dom::DomId) -> Option<crate::layout::Rect> {
         self.layout.try_layout(dom_id)
     }
@@ -1040,6 +1059,49 @@ mod tests {
             crate::plugin::PluginRegistry::new(),
             false, // devtools_enabled
         )
+    }
+
+    /// Draw `view` twice - enough for both DOM paths to have a tree.
+    fn draw_twice(app: &mut App, view: &crate::widget::Text) {
+        let (w, h) = app.get_buffer_size();
+        let mut terminal = Terminal::with_size(Vec::new(), w, h);
+        for _ in 0..2 {
+            app.draw(view, &mut terminal, true).unwrap();
+        }
+    }
+
+    /// Nothing in the render path reads `LayoutEngine`'s output, so an app that
+    /// did not ask for it must not pay for computing it.
+    #[test]
+    fn test_draw_skips_layout_nobody_reads() {
+        for dom_from_render in [false, true] {
+            let mut app = create_test_app();
+            app.set_dom_from_render(dom_from_render);
+            draw_twice(&mut app, &crate::widget::Text::new("x"));
+
+            let root = app.dom.tree().root_id().unwrap();
+            assert_eq!(
+                app.layout_rect(root),
+                None,
+                "dom_from_render={dom_from_render}: computed a layout nothing reads"
+            );
+        }
+    }
+
+    #[test]
+    fn test_draw_computes_layout_when_asked() {
+        for dom_from_render in [false, true] {
+            let mut app = create_test_app();
+            app.set_dom_from_render(dom_from_render);
+            app.set_layout_engine(true);
+            draw_twice(&mut app, &crate::widget::Text::new("x"));
+
+            let root = app.dom.tree().root_id().unwrap();
+            assert!(
+                app.layout_rect(root).is_some(),
+                "dom_from_render={dom_from_render}: asked for layout, got none"
+            );
+        }
     }
 
     #[test]

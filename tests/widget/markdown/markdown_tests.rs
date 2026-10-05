@@ -417,3 +417,251 @@ fn test_markdown_toc_levels() {
     assert_eq!(toc[1].level, 2);
     assert_eq!(toc[2].level, 1);
 }
+
+// =========================================================================
+// Rendering Regression Tests
+// =========================================================================
+
+/// Render `source` into a `width` x 24 buffer and return each row as text,
+/// with trailing blanks trimmed.
+fn render_rows(source: &str, width: u16) -> Vec<String> {
+    let mut buffer = Buffer::new(width, 24);
+    let area = Rect::new(0, 0, width, 24);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    Markdown::new(source).render(&mut ctx);
+    (0..24)
+        .map(|y| {
+            (0..width)
+                .filter_map(|x| buffer.get(x, y).map(|c| c.symbol))
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .collect()
+}
+
+fn row_containing<'a>(rows: &'a [String], needle: &str) -> Option<&'a String> {
+    rows.iter().find(|r| r.contains(needle))
+}
+
+#[test]
+fn test_markdown_text_after_table_still_renders() {
+    let rows = render_rows(
+        "| A | B |\n|---|---|\n| 1 | 2 |\n\n## After\n\nTrailing paragraph.",
+        40,
+    );
+    assert!(row_containing(&rows, "After").is_some(), "{rows:#?}");
+    assert!(
+        row_containing(&rows, "Trailing paragraph.").is_some(),
+        "{rows:#?}"
+    );
+}
+
+#[test]
+fn test_markdown_table_cells_render() {
+    let rows = render_rows(
+        "| Name | Value |\n|------|-------|\n| alpha | 1 |\n| beta | 22 |",
+        40,
+    );
+    let header = row_containing(&rows, "Name").expect("header row");
+    assert!(header.contains("Value"), "{rows:#?}");
+    let alpha = row_containing(&rows, "alpha").expect("first body row");
+    assert!(alpha.contains('1'), "{rows:#?}");
+    let beta = row_containing(&rows, "beta").expect("second body row");
+    assert!(beta.contains("22"), "{rows:#?}");
+    // Header and body are separate rows, with a separator between them
+    let header_y = rows.iter().position(|r| r.contains("Name")).unwrap();
+    let alpha_y = rows.iter().position(|r| r.contains("alpha")).unwrap();
+    assert!(alpha_y > header_y + 1, "{rows:#?}");
+    assert!(
+        rows[header_y + 1].contains('─'),
+        "separator under header: {rows:#?}"
+    );
+    // Columns line up: the second column starts at the same x on every row
+    let col = |r: &String, s: &str| r.find(s).unwrap();
+    assert_eq!(col(header, "Value"), col(alpha, "1"), "{rows:#?}");
+    assert_eq!(col(header, "Value"), col(beta, "22"), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_table_clipped_to_width() {
+    let rows = render_rows(
+        "| Column one | Column two | Column three |\n|---|---|---|\n| a | b | c |",
+        12,
+    );
+    assert!(rows.iter().all(|r| r.chars().count() <= 12));
+    assert!(row_containing(&rows, "Column").is_some(), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_bullet_precedes_item_text() {
+    let rows = render_rows("- Markdown support\n- Second", 40);
+    let first = row_containing(&rows, "Markdown support").expect("item row");
+    assert_eq!(first.trim(), "• Markdown support", "{rows:#?}");
+    let second = row_containing(&rows, "Second").expect("item row");
+    assert_eq!(second.trim(), "• Second", "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_nested_list_items_on_own_lines() {
+    let rows = render_rows("- outer\n  - inner", 40);
+    let outer = row_containing(&rows, "outer").expect("outer row");
+    assert!(!outer.contains("inner"), "{rows:#?}");
+    let inner = row_containing(&rows, "inner").expect("inner row");
+    assert_eq!(inner.trim(), "• inner", "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_code_block_keeps_lines() {
+    let rows = render_rows("```\nfirst line\nsecond line\nthird\n```", 40);
+    let first_y = rows.iter().position(|r| r.contains("first line"));
+    let second_y = rows.iter().position(|r| r.contains("second line"));
+    let third_y = rows.iter().position(|r| r.contains("third"));
+    let (first_y, second_y, third_y) = match (first_y, second_y, third_y) {
+        (Some(a), Some(b), Some(c)) => (a, b, c),
+        _ => panic!("missing code lines: {rows:#?}"),
+    };
+    assert_ne!(first_y, second_y, "{rows:#?}");
+    assert!(first_y < second_y && second_y < third_y, "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_code_block_box_fits_content() {
+    let rows = render_rows("```\nshort\na much longer line of code here\n```", 60);
+    let top = row_containing(&rows, "┌").expect("top border");
+    let bottom = row_containing(&rows, "└").expect("bottom border");
+    let short = row_containing(&rows, "short").expect("content row");
+    let long = row_containing(&rows, "a much longer").expect("content row");
+    let w = top.chars().count();
+    // Every row of the box has the same width and closes on the right
+    for r in [bottom, short, long] {
+        assert_eq!(r.chars().count(), w, "{rows:#?}");
+    }
+    assert!(short.ends_with('│') && long.ends_with('│'), "{rows:#?}");
+    assert!(top.ends_with('┐') && bottom.ends_with('┘'), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_plain_paragraph_has_no_quote_bar() {
+    let rows = render_rows("Just a paragraph.", 40);
+    assert_eq!(rows[0], "Just a paragraph.", "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_real_blockquote_keeps_quote_bar() {
+    let rows = render_rows("Intro.\n\n> Quoted text\n\nOutro.", 40);
+    let quote = row_containing(&rows, "Quoted text").expect("quote row");
+    assert!(quote.starts_with("│ "), "{rows:#?}");
+    let intro = row_containing(&rows, "Intro.").unwrap();
+    assert!(!intro.contains('│'), "{rows:#?}");
+    let outro = row_containing(&rows, "Outro.").expect("outro row");
+    assert!(!outro.contains('│'), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_blockquote_style_does_not_leak() {
+    let mut buffer = Buffer::new(40, 10);
+    let area = Rect::new(0, 0, 40, 10);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    Markdown::new("> quoted\n\nplain").render(&mut ctx);
+    let y = (0..10)
+        .find(|&y| buffer.get(0, y).map(|c| c.symbol) == Some('p'))
+        .expect("plain row");
+    let cell = buffer.get(0, y).unwrap();
+    assert!(
+        !cell.modifier.contains(revue::render::Modifier::ITALIC),
+        "text after a blockquote must not stay italic"
+    );
+}
+
+/// Render `md` into a `width` x 24 buffer and return the fg of the cell where
+/// the first occurrence of `needle` starts.
+fn fg_at(md: Markdown, width: u16, needle: &str) -> Option<revue::style::Color> {
+    let mut buffer = Buffer::new(width, 24);
+    let area = Rect::new(0, 0, width, 24);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    md.render(&mut ctx);
+    for y in 0..24 {
+        let row: String = (0..width)
+            .filter_map(|x| buffer.get(x, y).map(|c| c.symbol))
+            .collect();
+        if let Some(byte) = row.find(needle) {
+            let x = row[..byte].chars().count() as u16;
+            return buffer.get(x, y).map(|c| c.fg).unwrap_or_default();
+        }
+    }
+    None
+}
+
+#[test]
+fn test_markdown_fenced_code_block_is_highlighted() {
+    let source = "```rust\nfn main() { let value = 1; }\n```";
+    let keyword = fg_at(Markdown::new(source), 60, "fn main");
+    let ident = fg_at(Markdown::new(source), 60, "main");
+    assert!(keyword.is_some(), "keyword cell has a color");
+    assert_ne!(
+        keyword, ident,
+        "the `fn` keyword must be colored differently from plain identifiers"
+    );
+}
+
+#[test]
+fn test_markdown_fenced_code_block_plain_when_highlight_disabled() {
+    let source = "```rust\nfn main() { let value = 1; }\n```";
+    let md = || Markdown::new(source).syntax_highlight(false);
+    let keyword = fg_at(md(), 60, "fn main");
+    let ident = fg_at(md(), 60, "main");
+    assert_eq!(keyword, ident, "highlighting off renders code in one color");
+}
+
+#[test]
+fn test_markdown_fenced_code_block_unknown_language_renders_plainly() {
+    let rows = render_rows("```nosuchlang\nfn main() {}\n```", 40);
+    assert!(row_containing(&rows, "fn main() {}").is_some(), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_blockquote_with_open_bracket_renders() {
+    let rows = render_rows("> a [b", 40);
+    let quote = row_containing(&rows, "a [b").expect("quote text must render");
+    assert!(quote.starts_with("│ "), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_blockquote_starting_with_bracket_renders() {
+    for source in ["> [b", "> [not a callout", "> [!NOTE oops", "> [x] done"] {
+        let rows = render_rows(source, 40);
+        let text = &source[2..];
+        assert!(
+            row_containing(&rows, text).is_some(),
+            "{source:?} lost text: {rows:#?}"
+        );
+    }
+}
+
+#[test]
+fn test_markdown_blockquote_bracket_then_more_lines_renders() {
+    let rows = render_rows("> [b\n> second line", 40);
+    assert!(row_containing(&rows, "[b").is_some(), "{rows:#?}");
+    assert!(row_containing(&rows, "second line").is_some(), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_callout_marker_still_detected() {
+    let rows = render_rows("> [!NOTE]\n> body text", 40);
+    assert!(row_containing(&rows, "Note").is_some(), "{rows:#?}");
+    assert!(row_containing(&rows, "[!NOTE]").is_none(), "{rows:#?}");
+    assert!(row_containing(&rows, "body text").is_some(), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_blockquote_unfinished_marker_renders() {
+    // Text that could still have become `[!TYPE]` when the quote ended
+    for source in ["> [", "> [!", "> [!NOTE", "> [!NOTE\n> next line"] {
+        let rows = render_rows(source, 40);
+        let first = source[2..].lines().next().unwrap();
+        let row = row_containing(&rows, first)
+            .unwrap_or_else(|| panic!("{source:?} lost text: {rows:#?}"));
+        assert!(row.starts_with("│ "), "{source:?}: {rows:#?}");
+    }
+}

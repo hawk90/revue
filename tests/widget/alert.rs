@@ -373,13 +373,14 @@ fn test_alert_height() {
 
 #[test]
 fn test_alert_height_outlined() {
+    // Outlined is only the left accent bar - no rows above or below the text.
     let outlined = Alert::new("msg").variant(AlertVariant::Outlined);
-    assert_eq!(outlined.height(), 3);
+    assert_eq!(outlined.height(), 1);
 
     let outlined_title = Alert::new("msg")
         .title("Title")
         .variant(AlertVariant::Outlined);
-    assert_eq!(outlined_title.height(), 4);
+    assert_eq!(outlined_title.height(), 2);
 }
 
 #[test]

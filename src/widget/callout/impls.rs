@@ -165,21 +165,10 @@ impl Callout {
 
         let content_lines = self.content.lines().count().max(1) as u16;
 
-        match self.variant {
-            CalloutVariant::Filled => {
-                // title + content; the accent border is drawn down the left
-                // column, not above or below
-                1 + content_lines
-            }
-            CalloutVariant::LeftBorder => {
-                // title + content
-                1 + content_lines
-            }
-            CalloutVariant::Minimal => {
-                // title + content (no borders)
-                1 + content_lines
-            }
-        }
+        // Every variant is a title row and the content rows. Filled and
+        // LeftBorder draw their accent as a bar down the left edge, not as a
+        // border above and below, so no variant adds rows of its own.
+        1 + content_lines
     }
 
     /// Handle keyboard input

@@ -139,8 +139,14 @@ impl Card {
     }
 
     /// Set the visual variant
+    ///
+    /// [`CardVariant::Flat`] has no border, so choosing it clears the border
+    /// just as [`Card::flat`] does; a `border_style` set afterwards still wins.
     pub fn variant(mut self, variant: CardVariant) -> Self {
         self.variant = variant;
+        if variant == CardVariant::Flat {
+            self.border = BorderType::None;
+        }
         self
     }
 
@@ -427,13 +433,7 @@ impl View for Card {
 
         // Fill background for filled/elevated variants
         if let Some(bg) = bg_color {
-            for y in 0..area.height {
-                for x in 0..area.width {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(bg);
-                    ctx.set(x, y, cell);
-                }
-            }
+            ctx.fill_box_background(bg);
         }
 
         // Draw shadow for elevated variant (inside area bounds)

@@ -217,8 +217,8 @@ impl Diagram {
             // A crowded area can leave a grid cell narrower or shorter than a
             // node; shrink the node or let it overhang instead of
             // underflowing.
-            let node_width =
-                (node.label.chars().count() as u16 + 4).min(cell_width.saturating_sub(2));
+            let label_width = crate::utils::unicode::display_width(&node.label) as u16;
+            let node_width = (label_width + 4).min(cell_width.saturating_sub(2));
             let node_height = 3u16;
 
             let x = col * cell_width + cell_width.saturating_sub(node_width) / 2;
