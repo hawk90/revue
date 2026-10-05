@@ -5,7 +5,16 @@
 //! Run with: cargo run --example ide
 
 use revue::prelude::*;
+use revue::utils::unicode::display_width;
 use revue::widget::{Command, CommandPalette, TextArea};
+
+/// Height of the command palette overlay (3 lines + border).
+const PALETTE_ROWS: u16 = 5;
+
+/// Columns `text` occupies, for sizing single-line text in an `hstack`.
+fn cols(text: &str) -> u16 {
+    display_width(text) as u16
+}
 
 /// Main IDE application state
 struct IdeApp {
@@ -25,7 +34,7 @@ struct IdeApp {
     status_message: String,
     /// Mode (Normal, Insert, Command)
     mode: EditorMode,
-    /// Split ratio
+    /// Sidebar share of the width (0.0 hides it)
     split_ratio: f32,
     /// Notifications
     notifications: Vec<String>,
@@ -157,7 +166,7 @@ fn main() -> Result<()> {
             editor,
             status_message: "Ready".into(),
             mode: EditorMode::Normal,
-            split_ratio: 0.2,
+            split_ratio: 0.25,
             notifications: Vec::new(),
         }
     }
@@ -326,7 +335,7 @@ fn main() -> Result<()> {
         match id {
             "file.new" => self.status_message = "New file created".into(),
             "file.save" => self.status_message = format!("Saved: {}", self.current_file),
-            "view.sidebar" => self.split_ratio = if self.split_ratio > 0.1 { 0.0 } else { 0.2 },
+            "view.sidebar" => self.split_ratio = if self.split_ratio > 0.1 { 0.0 } else { 0.25 },
             _ => {}
         }
     }
@@ -365,7 +374,7 @@ fn main() -> Result<()> {
                 Text::new(name)
             };
 
-            tree = tree.child(text);
+            tree = tree.child_sized(text, 1);
         }
 
         Border::rounded().title("Explorer").child(tree)
@@ -380,47 +389,65 @@ fn main() -> Result<()> {
         let mut content = vstack();
         for (i, line) in text.lines().enumerate() {
             let line_num = format!("{:>width$} ", i + 1, width = line_width);
+            // Unsized stack children share the space equally, so the gutter is
+            // sized to its text and each line to one row.
             let row = hstack()
-                .child(Text::new(line_num).fg(Color::rgb(100, 100, 100)))
+                .child_sized(
+                    Text::new(&line_num).fg(Color::rgb(100, 100, 100)),
+                    cols(&line_num),
+                )
                 .child(Text::new(line));
-            content = content.child(row);
+            content = content.child_sized(row, 1);
         }
 
         let (cursor_row, cursor_col) = self.editor.cursor_position();
         let cursor_info = format!("Ln {}, Col {}", cursor_row + 1, cursor_col + 1);
 
+        // The tab shows the open file, so its flag comes from `current_file`,
+        // not from whichever entry the Explorer has selected.
+        let current_modified = self
+            .files
+            .iter()
+            .any(|f| f.modified && f.name.trim() == self.current_file);
+        let file_label = format!(" {} ", self.current_file);
         let header = hstack()
-            .child(Text::new(format!(" {} ", self.current_file)).bg(Color::rgb(50, 50, 50)))
-            .child(if self.files[self.selected_file].modified {
+            .child_sized(
+                Text::new(&file_label).bg(Color::rgb(50, 50, 50)),
+                cols(&file_label),
+            )
+            .child(if current_modified {
                 Text::new(" [Modified]").fg(Color::YELLOW)
             } else {
                 Text::new("")
             });
 
         vstack()
-            .child(header)
+            .child_sized(header, 1)
             .child(Border::single().child(content))
-            .child(Text::new(cursor_info).fg(Color::rgb(128, 128, 128)))
+            .child_sized(Text::new(cursor_info).fg(Color::rgb(128, 128, 128)), 1)
     }
 
     fn render_status_bar(&self) -> impl View {
-        let mode_text = Text::new(format!(" {} ", self.mode.name()))
+        let mode_label = format!(" {} ", self.mode.name());
+        let mode_text = Text::new(&mode_label)
             .fg(Color::BLACK)
             .bg(self.mode.color())
             .bold();
 
-        let file_text = Text::new(format!("  {} ", self.current_file));
+        let file_label = format!("  {} ", self.current_file);
+        let file_text = Text::new(&file_label);
         let status_text =
             Text::new(format!("  {} ", self.status_message)).fg(Color::rgb(180, 180, 180));
 
         let (cursor_row, cursor_col) = self.editor.cursor_position();
-        let pos_text = Text::new(format!(" {}:{} ", cursor_row + 1, cursor_col + 1));
+        let pos_label = format!(" {}:{} ", cursor_row + 1, cursor_col + 1);
+        let pos_text = Text::new(&pos_label);
 
         hstack()
-            .child(mode_text)
-            .child(file_text)
+            .child_sized(mode_text, cols(&mode_label))
+            .child_sized(file_text, cols(&file_label))
             .child(status_text)
-            .child(pos_text)
+            .child_sized(pos_text, cols(&pos_label))
     }
 
     fn render_command_palette(&self) -> impl View {
@@ -432,14 +459,18 @@ fn main() -> Result<()> {
         // Just show a simple overlay since CommandPalette has its own render
         let search_box = Border::rounded().title("Command Palette").child(
             vstack()
-                .child(Text::new(format!("> {}", self.command_palette.get_query())))
-                .child(Text::new("─".repeat(40)).fg(Color::rgb(80, 80, 80)))
-                .child(
+                .child_sized(
+                    Text::new(format!("> {}", self.command_palette.get_query())),
+                    1,
+                )
+                .child_sized(Text::new("─".repeat(40)).fg(Color::rgb(80, 80, 80)), 1)
+                .child_sized(
                     Text::new("(Use ↑↓ to select, Enter to execute)").fg(Color::rgb(100, 100, 100)),
+                    1,
                 ),
         );
 
-        vstack().child(search_box)
+        vstack().child_sized(search_box, PALETTE_ROWS)
     }
 }
 
@@ -451,14 +482,19 @@ impl View for IdeApp {
 
         // Create split pane
         let main_content = if self.split_ratio > 0.05 {
-            hstack().child(sidebar).child(editor)
+            hstack()
+                .child_flex(sidebar, self.split_ratio)
+                .child_flex(editor, 1.0 - self.split_ratio)
         } else {
             hstack().child(editor)
         };
 
         // Header
         let header = hstack()
-            .child(Text::new(" Revue IDE ").fg(Color::CYAN).bold())
+            .child_sized(
+                Text::new(" Revue IDE ").fg(Color::CYAN).bold(),
+                cols(" Revue IDE "),
+            )
             .child(
                 Text::new(" | Ctrl+P: Commands | Tab: Files | i: Insert | :: Command ")
                     .fg(Color::rgb(100, 100, 100)),
@@ -466,14 +502,16 @@ impl View for IdeApp {
 
         // Main view
         let main_view = vstack()
-            .child(header)
+            .child_sized(header, 1)
             .child(main_content)
-            .child(self.render_status_bar());
+            .child_sized(self.render_status_bar(), 1);
 
         main_view.render(ctx);
 
         // Overlay command palette
         if self.command_palette_open {
+            // Wipe the rows the palette covers so the editor doesn't show through.
+            ctx.clear(0, 0, ctx.area.width, PALETTE_ROWS);
             self.render_command_palette().render(ctx);
         }
 
@@ -481,10 +519,11 @@ impl View for IdeApp {
         if !self.notifications.is_empty() {
             let mut notif_stack = vstack();
             for msg in &self.notifications {
-                notif_stack = notif_stack.child(
+                notif_stack = notif_stack.child_sized(
                     Text::new(format!(" {} ", msg))
                         .fg(Color::WHITE)
                         .bg(Color::rgb(60, 60, 60)),
+                    1,
                 );
             }
             notif_stack.render(ctx);

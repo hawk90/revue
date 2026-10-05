@@ -5,7 +5,7 @@
 use revue::prelude::*;
 use revue::widget::{
     DigitStyle, Digits, Link, LinkStyle, MaskedInput, OptionItem, OptionList, SelectionItem,
-    SelectionList, SelectionStyle,
+    SelectionList, SelectionStyle, ValidationState,
 };
 
 /// Current demo tab
@@ -333,16 +333,22 @@ impl NewWidgetsDemo {
     }
 
     fn render_tabs(&self) -> impl View {
+        // A stack shares its space equally among the children added with
+        // `child`; it does not size them to their content. So everything in
+        // this file that should take only its own rows or columns says so with
+        // `child_sized`, and only the piece that should take the rest is left
+        // as a plain `child`.
         let mut tabs = hstack().gap(2);
 
         for (i, tab) in DemoTab::all().iter().enumerate() {
             let label = format!("[{}] {}", i + 1, tab.name());
+            let width = cols(&label);
             let text = if *tab == self.tab {
                 Text::new(label).fg(Color::CYAN).bold()
             } else {
                 Text::new(label).fg(Color::rgb(128, 128, 128))
             };
-            tabs = tabs.child(text);
+            tabs = tabs.child_sized(text, width);
         }
 
         tabs
@@ -375,18 +381,22 @@ impl NewWidgetsDemo {
             .fg(Color::YELLOW)
             .separator(',');
 
+        let digit_rows = timer_display.height() as u16;
+
         vstack()
-            .gap(1)
-            .child(Text::new(format!("Style: {} (press 's' to change)", style_name)).bold())
-            .child(Text::new(""))
-            .child(Text::new("Timer (↑↓: +/-1s, ←→: +/-1m, r: reset):"))
-            .child(timer_display)
-            .child(Text::new(""))
-            .child(Text::new("Frame Counter:"))
-            .child(counter)
-            .child(Text::new(""))
-            .child(Text::new("Price Display:"))
-            .child(price)
+            .child_sized(
+                Text::new(format!("Style: {} (press 's' to change)", style_name)).bold(),
+                1,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(Text::new("Timer (↑↓: +/-1s, ←→: +/-1m, r: reset):"), 1)
+            .child_sized(timer_display, digit_rows)
+            .child_sized(Text::new(""), 1)
+            .child_sized(Text::new("Frame Counter:"), 1)
+            .child_sized(counter, digit_rows)
+            .child_sized(Text::new(""), 1)
+            .child_sized(Text::new("Price Display:"), 1)
+            .child_sized(price, digit_rows)
     }
 
     fn render_links_demo(&self) -> impl View {
@@ -414,22 +424,29 @@ impl NewWidgetsDemo {
             .text("Disabled Link")
             .disabled(true);
 
+        let row = |label: &str, link: Link| {
+            hstack()
+                .child_sized(Text::new(label), cols(label))
+                .child(link)
+        };
+
         vstack()
-            .gap(1)
-            .child(Text::new("Link Styles:").bold())
-            .child(Text::new(""))
-            .child(hstack().child(Text::new("Underline: ")).child(link1))
-            .child(hstack().child(Text::new("Bracketed: ")).child(link2))
-            .child(hstack().child(Text::new("Arrow:     ")).child(link3))
-            .child(hstack().child(Text::new("Icon:      ")).child(link4))
-            .child(hstack().child(Text::new("Disabled:  ")).child(link5))
-            .child(Text::new(""))
-            .child(
+            .child_sized(Text::new("Link Styles:").bold(), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(row("Underline: ", link1), 1)
+            .child_sized(row("Bracketed: ", link2), 1)
+            .child_sized(row("Arrow:     ", link3), 1)
+            .child_sized(row("Icon:      ", link4), 1)
+            .child_sized(row("Disabled:  ", link5), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(
                 Text::new("Links support OSC 8 hyperlinks in compatible terminals.")
                     .fg(Color::rgb(100, 100, 100)),
+                1,
             )
-            .child(
+            .child_sized(
                 Text::new("Click or Ctrl+Click to open in browser.").fg(Color::rgb(100, 100, 100)),
+                1,
             )
     }
 
@@ -440,32 +457,41 @@ impl NewWidgetsDemo {
         let password = self.password.clone().focused(pwd_focused);
         let pin = self.pin.clone().focused(pin_focused);
 
+        let password_rows = masked_input_rows(&password);
+        let pin_rows = masked_input_rows(&pin);
+
         vstack()
-            .gap(1)
-            .child(Text::new("Masked Input Fields:").bold())
-            .child(Text::new(
-                "(↑↓: switch fields, type to enter, 'r': toggle reveal)",
-            ))
-            .child(Text::new(""))
-            .child(if pwd_focused {
-                Text::new("> Password").fg(Color::CYAN)
-            } else {
-                Text::new("  Password")
-            })
-            .child(password)
-            .child(Text::new(""))
-            .child(if pin_focused {
-                Text::new("> PIN").fg(Color::CYAN)
-            } else {
-                Text::new("  PIN")
-            })
-            .child(pin)
-            .child(Text::new(""))
-            .child(Text::new("Features:").bold())
-            .child(Text::new("  - Password strength indicator"))
-            .child(Text::new("  - Reveal toggle (press 'r')"))
-            .child(Text::new("  - Validation on Enter"))
-            .child(Text::new("  - Show last 4 digits for credit cards"))
+            .child_sized(Text::new("Masked Input Fields:").bold(), 1)
+            .child_sized(
+                Text::new("(↑↓: switch fields, type to enter, 'r': toggle reveal)"),
+                1,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                if pwd_focused {
+                    Text::new("> Password").fg(Color::CYAN)
+                } else {
+                    Text::new("  Password")
+                },
+                1,
+            )
+            .child_sized(password, password_rows)
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                if pin_focused {
+                    Text::new("> PIN").fg(Color::CYAN)
+                } else {
+                    Text::new("  PIN")
+                },
+                1,
+            )
+            .child_sized(pin, pin_rows)
+            .child_sized(Text::new(""), 1)
+            .child_sized(Text::new("Features:").bold(), 1)
+            .child_sized(Text::new("  - Password strength indicator"), 1)
+            .child_sized(Text::new("  - Reveal toggle (press 'r')"), 1)
+            .child_sized(Text::new("  - Validation on Enter"), 1)
+            .child_sized(Text::new("  - Show last 4 digits for credit cards"), 1)
     }
 
     fn render_selection_list_demo(&self) -> impl View {
@@ -477,20 +503,24 @@ impl NewWidgetsDemo {
             .map(|item| item.text.as_str())
             .collect();
 
+        // The list is 19 rows: title, count, 8 items with a description line
+        // each, and its help line.
         vstack()
-            .gap(1)
-            .child(Text::new("Multi-Selection List:").bold())
-            .child(Text::new("(↑↓: navigate, Space: toggle, a: all, n: none)"))
-            .child(Text::new(""))
-            .child(self.features.clone())
-            .child(Text::new(""))
-            .child(
+            .child_sized(Text::new("Multi-Selection List:").bold(), 1)
+            .child_sized(
+                Text::new("(↑↓: navigate, Space: toggle, a: all, n: none)"),
+                1,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(self.features.clone(), 19)
+            .child_sized(
                 Text::new(format!(
                     "Selected ({}): {}",
                     selected_count,
                     selected_items.join(", ")
                 ))
                 .fg(Color::GREEN),
+                1,
             )
     }
 
@@ -501,14 +531,17 @@ impl NewWidgetsDemo {
             .map(|item| item.text.as_str())
             .unwrap_or("None");
 
+        // The menu is 18 rows: title, 3 groups, 2 separators and 12 options.
         vstack()
-            .gap(1)
-            .child(Text::new("Option List (Menu):").bold())
-            .child(Text::new("(↑↓: navigate, Enter: select, Esc: clear)"))
-            .child(Text::new(""))
-            .child(self.menu.clone())
-            .child(Text::new(""))
-            .child(Text::new(format!("Selected: {}", selected)).fg(Color::GREEN))
+            .child_sized(Text::new("Option List (Menu):").bold(), 1)
+            .child_sized(Text::new("(↑↓: navigate, Enter: select, Esc: clear)"), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(self.menu.clone(), 18)
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Text::new(format!("Selected: {}", selected)).fg(Color::GREEN),
+                1,
+            )
     }
 
     fn update(&mut self) {
@@ -520,8 +553,9 @@ impl NewWidgetsDemo {
 
 impl View for NewWidgetsDemo {
     fn render(&self, ctx: &mut RenderContext) {
+        let title = " New Widgets Demo ";
         let header = hstack()
-            .child(Text::new(" New Widgets Demo ").fg(Color::CYAN).bold())
+            .child_sized(Text::new(title).fg(Color::CYAN).bold(), cols(title))
             .child(Text::new(" | Tab/Shift+Tab or 1-5 to switch").fg(Color::rgb(100, 100, 100)));
 
         let tabs = self.render_tabs();
@@ -548,14 +582,28 @@ impl View for NewWidgetsDemo {
             Text::new("Press 'q' to quit | Tab: next | Shift+Tab: prev").fg(Color::rgb(80, 80, 80));
 
         vstack()
-            .child(header)
-            .child(tabs)
-            .child(Text::new(""))
+            .child_sized(header, 1)
+            .child_sized(tabs, 1)
+            .child_sized(Text::new(""), 1)
             .child(content)
-            .child(Text::new(""))
-            .child(help)
+            .child_sized(Text::new(""), 1)
+            .child_sized(help, 1)
             .render(ctx);
     }
+}
+
+/// Rows a `MaskedInput` draws: its label, the field, the strength bar once
+/// something is typed, and a validation message when there is one.
+fn masked_input_rows(input: &MaskedInput) -> u16 {
+    let label = input.get_label().is_some() as u16;
+    let strength = (input.get_show_strength() && !input.get_value().is_empty()) as u16;
+    let message = matches!(input.get_validation(), ValidationState::Invalid(_)) as u16;
+    label + 1 + strength + message
+}
+
+/// Columns `s` takes on screen.
+fn cols(s: &str) -> u16 {
+    revue::utils::unicode::display_width(s) as u16
 }
 
 fn main() -> Result<()> {
