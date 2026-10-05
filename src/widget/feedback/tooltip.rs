@@ -623,7 +623,10 @@ impl View for Tooltip {
                 let mut cell = Cell::new(arrow_char);
                 cell.fg = Some(fg);
                 arrow_entry.push(0, 0, cell);
-                ctx.queue_overlay(arrow_entry);
+                // Without an overlay layer, draw inline like the body below.
+                if !ctx.queue_overlay(arrow_entry) {
+                    ctx.set(arrow_abs_x, arrow_abs_y, cell);
+                }
             }
         }
 
