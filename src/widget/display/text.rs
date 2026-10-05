@@ -3,7 +3,7 @@
 //! A simple text widget that internally uses RichText for rendering.
 //! This ensures consistent text rendering across all widgets.
 
-use super::richtext::{RichText, Style};
+use super::richtext::{RichText, Span, Style};
 use crate::style::Color;
 use crate::widget::theme::PLACEHOLDER_FG;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
@@ -42,6 +42,8 @@ pub struct Text {
     /// and an inherited `text-align: center` won, inverting the precedence
     /// the builder is supposed to have.
     align: Option<Alignment>,
+    /// OSC 8 hyperlink target for every cell this text paints
+    hyperlink: Option<String>,
     /// CSS styling properties (id, classes)
     props: WidgetProps,
 }
@@ -59,8 +61,18 @@ impl Text {
             dim: false,
             reverse: false,
             align: None,
+            hyperlink: None,
             props: WidgetProps::new(),
         }
+    }
+
+    /// Link every cell this text paints to `url` (OSC 8)
+    ///
+    /// The URL rides on the cells, not in the content: the terminal writer
+    /// opens and closes the hyperlink around the run when it prints them.
+    pub(crate) fn hyperlink(mut self, url: impl Into<String>) -> Self {
+        self.hyperlink = Some(url.into());
+        self
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -217,7 +229,11 @@ impl Text {
             style = style.reverse();
         }
 
-        RichText::new().push(&self.content, style)
+        let mut span = Span::styled(self.content.clone(), style);
+        if let Some(url) = &self.hyperlink {
+            span = span.href(url.clone());
+        }
+        RichText::new().span(span)
     }
 
     /// The alignment to paint with: the builder's if it named one, else the
@@ -293,6 +309,11 @@ impl Text {
             modifier |= Modifier::REVERSE;
         }
 
+        let hyperlink_id = self
+            .hyperlink
+            .as_ref()
+            .map(|url| ctx.buffer.register_hyperlink(url));
+
         // Render words with distributed spacing
         let mut x: u16 = 0;
         for (i, word) in words.iter().enumerate() {
@@ -305,6 +326,7 @@ impl Text {
                 cell.fg = self.fg;
                 cell.bg = self.bg;
                 cell.modifier = modifier;
+                cell.hyperlink_id = hyperlink_id;
                 ctx.set(x, 0, cell);
                 x += UnicodeWidthChar::width(ch).unwrap_or(0) as u16;
             }
