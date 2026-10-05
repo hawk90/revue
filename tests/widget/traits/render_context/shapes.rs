@@ -66,7 +66,6 @@ fn test_draw_box_titled_long_title_is_cut_before_the_corner() {
 }
 
 #[test]
-#[ignore = "BUG: a wide title char that does not fit leaves a hole in the top border"]
 fn test_draw_box_titled_wide_char_that_does_not_fit_is_replaced_by_border() {
     // Width 6: title cells are 2..=4; '标' fits at 2-3, '题' would need 4-5
     let buffer = draw(6, 3, |ctx| {
