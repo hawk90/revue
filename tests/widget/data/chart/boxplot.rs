@@ -425,7 +425,6 @@ fn test_boxplot_bg() {
 }
 
 #[test]
-#[ignore = "BUG: BoxPlot ignores orientation; horizontal() renders the same vertical boxes"]
 fn test_boxplot_horizontal_differs_from_vertical() {
     let data = [1.0, 2.0, 3.0, 4.0, 5.0];
     let v = rows(&render(
@@ -439,6 +438,77 @@ fn test_boxplot_horizontal_differs_from_vertical() {
         20,
     ));
     assert_ne!(v, h);
+}
+
+#[test]
+fn test_boxplot_horizontal_layout() {
+    // 40x20, no title: the label column is as wide as "Data" plus a gap, so
+    // the chart area is x=5, y=0, 34x19 with value labels on row 19. Bounds
+    // -10..110 map onto 34 columns; the box is 60% of 19 rows (11), centered
+    // on row 9.
+    let bp = BoxPlot::new()
+        .group_stats("Data", even_stats())
+        .horizontal();
+    let buffer = render(&bp, 40, 20);
+    let (top, bottom, center) = (4u16, 15u16, 9u16);
+    let (cap_low, q1, median, q3, cap_high) = (7usize, 14usize, 21usize, 28usize, 35usize);
+
+    // Group label on the left of its center row
+    assert!(rows(&buffer)[center as usize].starts_with("Data   │"));
+
+    // Whisker caps are vertical, the whisker itself horizontal
+    for y in top..=bottom {
+        let row = row_chars(&buffer, y);
+        assert_eq!(row[cap_low], '│', "row {y}");
+        assert_eq!(row[cap_high], '│', "row {y}");
+    }
+    let mid = row_chars(&buffer, center);
+    assert!(mid[cap_low + 1..q1].iter().all(|&c| c == '─'));
+    assert!(mid[q3 + 1..cap_high].iter().all(|&c| c == '─'));
+
+    // Box spans Q1..Q3 left to right with the median as a vertical line
+    let top_row = row_chars(&buffer, top);
+    let bottom_row = row_chars(&buffer, bottom);
+    assert_eq!(top_row[q1], '┌');
+    assert_eq!(top_row[q3], '┐');
+    assert_eq!(bottom_row[q1], '└');
+    assert_eq!(bottom_row[q3], '┘');
+    assert_eq!(top_row[median], '┬');
+    assert_eq!(bottom_row[median], '┴');
+    for y in top + 1..bottom {
+        let row = row_chars(&buffer, y);
+        assert_eq!(row[q1], '│', "row {y}");
+        assert_eq!(row[median], '│', "row {y}");
+        assert_eq!(row[q3], '│', "row {y}");
+    }
+    // The inside is cleared over the whisker
+    assert_eq!(mid[q1 + 1], ' ');
+
+    // No vertical-orientation median caps
+    assert_eq!(count_char(&buffer, '├'), 0);
+
+    // Value labels run from the padded min to the padded max along the bottom
+    let last = &rows(&buffer)[19];
+    assert!(last.trim_start().starts_with("-10.0"), "{last:?}");
+    assert!(last.trim_end().ends_with("110.0"), "{last:?}");
+    assert!(last.contains("50.0"), "{last:?}");
+}
+
+#[test]
+fn test_boxplot_horizontal_groups_stack_top_to_bottom() {
+    let bp = BoxPlot::new()
+        .group("A", &[1.0, 2.0, 3.0, 4.0, 5.0])
+        .group("Bee", &[3.0, 4.0, 5.0, 6.0, 7.0, 20.0])
+        .horizontal();
+    let buffer = render(&bp, 40, 20);
+    let rows = rows(&buffer);
+    // Two bands of 9 rows: centers at rows 4 and 13
+    assert!(rows[4].starts_with("A   "), "{rows:?}");
+    assert!(rows[13].starts_with("Bee "), "{rows:?}");
+    assert_eq!(count_char(&buffer, '┌'), 2);
+    assert_eq!(count_char(&buffer, '┬'), 2);
+    // Bee's outlier sits on its center row, right of its box
+    assert!(rows[13].contains('○'), "{rows:?}");
 }
 
 #[test]

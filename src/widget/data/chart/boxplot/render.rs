@@ -61,7 +61,8 @@ impl<'a> BoxPlotRender<'a> {
             .unwrap_or_else(|| colors.get(index))
     }
 
-    /// Render all box plots
+    /// Render all box plots vertically: values run bottom to top and each
+    /// group gets a band of columns
     pub fn render_boxes(
         &self,
         ctx: &mut RenderContext,
@@ -211,7 +212,180 @@ impl<'a> BoxPlotRender<'a> {
         }
     }
 
-    /// Render axis labels
+    /// Render all box plots horizontally: values run left to right and each
+    /// group gets a band of rows
+    pub fn render_boxes_horizontal(
+        &self,
+        ctx: &mut RenderContext,
+        colors: &crate::widget::data::chart::chart_common::ColorScheme,
+    ) {
+        if self.groups.is_empty() {
+            return;
+        }
+
+        let area = self.chart_area;
+        let in_area = |x: u16, y: u16| {
+            x >= area.x && x < area.x + area.width && y >= area.y && y < area.y + area.height
+        };
+        let n_groups = self.group_count;
+        let group_height = area.height / n_groups as u16;
+        let box_height = (group_height as f64 * self.box_width) as u16;
+        let to_x = |value: f64| area.x + self.value_to_screen(value, area.width);
+
+        for (i, group) in self.groups.iter().enumerate() {
+            let Some(stats) = group.get_stats(self.whisker_style) else {
+                continue;
+            };
+
+            let color = self.group_color(i, colors);
+            let group_center = area.y + (i as u16 * group_height) + group_height / 2;
+            let box_top = group_center.saturating_sub(box_height / 2);
+            let box_bottom = box_top + box_height;
+
+            let x_whisker_low = to_x(stats.whisker_low);
+            let x_q1 = to_x(stats.q1);
+            let x_median = to_x(stats.median);
+            let x_q3 = to_x(stats.q3);
+            let x_whisker_high = to_x(stats.whisker_high);
+
+            let mut put = |x: u16, y: u16, ch: char, fg: Color| {
+                if in_area(x, y) {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(fg);
+                    ctx.set(x, y, cell);
+                }
+            };
+
+            // Whisker (horizontal line through the center row)
+            for x in x_whisker_low.min(x_whisker_high)..=x_whisker_low.max(x_whisker_high) {
+                put(x, group_center, '─', color);
+            }
+
+            // Whisker caps
+            for y in box_top..=box_bottom {
+                put(x_whisker_low, y, '│', color);
+                put(x_whisker_high, y, '│', color);
+            }
+
+            // Box (Q1 to Q3)
+            let (left, right) = (x_q1.min(x_q3), x_q1.max(x_q3));
+            for y in box_top..=box_bottom {
+                for x in left..=right {
+                    let ch = if y == box_top {
+                        if x == left {
+                            '┌'
+                        } else if x == right {
+                            '┐'
+                        } else {
+                            '─'
+                        }
+                    } else if y == box_bottom {
+                        if x == left {
+                            '└'
+                        } else if x == right {
+                            '┘'
+                        } else {
+                            '─'
+                        }
+                    } else if x == left || x == right {
+                        '│'
+                    } else {
+                        ' '
+                    };
+                    put(x, y, ch, color);
+                }
+            }
+
+            // Median line
+            for y in box_top..=box_bottom {
+                let ch = if y == box_top {
+                    '┬'
+                } else if y == box_bottom {
+                    '┴'
+                } else {
+                    '│'
+                };
+                put(x_median, y, ch, Color::WHITE);
+            }
+
+            // Outliers
+            if self.show_outliers {
+                for &outlier in &stats.outliers {
+                    put(to_x(outlier), group_center, '○', color);
+                }
+            }
+        }
+    }
+
+    /// Render axis labels for a horizontal plot: group labels to the left of
+    /// the chart area, value labels along the bottom
+    pub fn render_axes_horizontal(
+        &self,
+        ctx: &mut RenderContext,
+        area: Rect,
+        value_axis: &crate::widget::data::chart::chart_common::Axis,
+        category_axis: &crate::widget::data::chart::chart_common::Axis,
+    ) {
+        if self.groups.is_empty() {
+            return;
+        }
+
+        let chart = self.chart_area;
+        let mut put_str = |text: &str, x: u16, y: u16, min_x: u16, max_x: u16, fg: Color| {
+            let mut dx: u16 = 0;
+            for ch in text.chars() {
+                let cx = x + dx;
+                if cx >= min_x && cx < max_x && y < area.y + area.height {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(fg);
+                    ctx.set(cx, y, cell);
+                }
+                dx += char_width(ch) as u16;
+            }
+        };
+
+        // Group labels, left-aligned in the label column on each group's center row
+        let label_width = chart.x.saturating_sub(area.x + 1) as usize;
+        let group_height = chart.height / self.group_count as u16;
+        for (i, group) in self.groups.iter().enumerate() {
+            let y = chart.y + (i as u16 * group_height) + group_height / 2;
+            let label = truncate_to_width(&group.label, label_width);
+            put_str(
+                label,
+                area.x,
+                y,
+                area.x,
+                chart.x.saturating_sub(1),
+                category_axis.color,
+            );
+        }
+
+        // Five value labels under the chart, from min (left) to max (right),
+        // centered on their tick and kept inside the chart columns. A label
+        // that would touch the previous one is skipped.
+        let (min, max) = self.bounds;
+        let y = chart.y + chart.height;
+        let right_edge = chart.x + chart.width;
+        let span = chart.width.saturating_sub(1);
+        let mut next_free = chart.x;
+        for i in 0..=4u16 {
+            let value = min + (max - min) * i as f64 / 4.0;
+            let label = value_axis.format_value(value);
+            let width = display_width(&label) as u16;
+            let tick = chart.x + i * span / 4;
+            let start = tick
+                .saturating_sub(width / 2)
+                .max(chart.x)
+                .min(right_edge.saturating_sub(width));
+            if start < next_free {
+                continue;
+            }
+            put_str(&label, start, y, chart.x, right_edge, value_axis.color);
+            next_free = start + width + 1;
+        }
+    }
+
+    /// Render axis labels for a vertical plot
     pub fn render_axes(
         &self,
         ctx: &mut RenderContext,
