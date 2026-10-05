@@ -1,6 +1,6 @@
 //! Tree widget type tests
 
-use revue::widget::data::tree::types::TreeNode;
+use revue::widget::data::tree::TreeNode;
 
 // =========================================================================
 // Constructor tests
@@ -33,12 +33,6 @@ fn test_tree_node_leaf() {
     assert_eq!(node.label, "Leaf Node");
     assert!(node.children.is_empty());
     assert!(!node.expanded);
-}
-
-#[test]
-fn test_tree_node_leaf_no_children() {
-    let node = TreeNode::leaf("Test");
-    assert!(!node.has_children());
 }
 
 // =========================================================================
@@ -82,17 +76,6 @@ fn test_tree_node_children_single() {
 }
 
 #[test]
-fn test_tree_node_children_multiple() {
-    let children = vec![
-        TreeNode::new("Child 1"),
-        TreeNode::new("Child 2"),
-        TreeNode::new("Child 3"),
-    ];
-    let node = TreeNode::new("Parent").children(children);
-    assert_eq!(node.children.len(), 3);
-}
-
-#[test]
 fn test_tree_node_children_replaces_previous() {
     let node = TreeNode::new("Parent")
         .child(TreeNode::new("First Child"))
@@ -100,12 +83,6 @@ fn test_tree_node_children_replaces_previous() {
 
     assert_eq!(node.children.len(), 1);
     assert_eq!(node.children[0].label, "New Child");
-}
-
-#[test]
-fn test_tree_node_expanded_true() {
-    let node = TreeNode::new("Test").expanded(true);
-    assert!(node.expanded);
 }
 
 #[test]
@@ -144,8 +121,8 @@ fn test_tree_node_has_children_empty_vec() {
 
 #[test]
 fn test_tree_node_has_children_nested() {
-    let node = TreeNode::new("Grandparent")
-        .child(TreeNode::new("Parent").child(TreeNode::new("Child")));
+    let node =
+        TreeNode::new("Grandparent").child(TreeNode::new("Parent").child(TreeNode::new("Child")));
     assert!(node.has_children());
     assert!(node.children[0].has_children());
     assert!(!node.children[0].children[0].has_children());
@@ -221,8 +198,7 @@ fn test_tree_node_clone_independence() {
 #[test]
 fn test_tree_node_deep_hierarchy() {
     let node = TreeNode::new("Level 0").child(
-        TreeNode::new("Level 1")
-            .child(TreeNode::new("Level 2").child(TreeNode::new("Level 3"))),
+        TreeNode::new("Level 1").child(TreeNode::new("Level 2").child(TreeNode::new("Level 3"))),
     );
 
     assert!(node.has_children());

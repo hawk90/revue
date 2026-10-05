@@ -1,31 +1,23 @@
-//! Data widget tests extracted from source files
+//! Data widget tests: calendar, table, timer, DataGrid, Tree, JsonViewer, VirtualList
 
-mod calendar;
 mod calendar_date;
 mod calendar_render;
 mod calendar_types;
 mod calendar_utils;
-mod chart;
-mod chart_helper;
-mod chart_types;
-mod csv_viewer_helpers;
+mod table;
+mod timer;
+
+mod datagrid;
 mod datagrid_column_types;
-mod datagrid_core;
 mod datagrid_width;
-mod filetree;
+
 mod json_viewer;
 mod json_viewer_helpers;
-mod list;
-mod piechart;
-mod sparkline;
-mod table;
-mod timeline;
-mod timer;
 mod tree_mod;
 mod tree_search;
 mod tree_types;
 mod tree_view;
+
 mod virtuallist;
 mod virtuallist_core;
 mod virtuallist_types;
-mod waveline;

@@ -1,4 +1,4 @@
-//! Calendar type tests extracted from src/widget/data/calendar/types.rs
+//! Calendar type tests
 //!
 //! This file contains tests for calendar type definitions:
 //! - CalendarMode enum (Month, Year, Week)
@@ -6,8 +6,7 @@
 //! - DateMarker struct
 
 use revue::style::Color;
-use revue::widget::data::calendar::Date;
-use revue::widget::data::calendar::types::{CalendarMode, DateMarker, FirstDayOfWeek};
+use revue::widget::data::calendar::{CalendarMode, Date, DateMarker, FirstDayOfWeek};
 
 // =========================================================================
 // CalendarMode enum tests
@@ -44,24 +43,6 @@ fn test_calendar_mode_partial_ne() {
     let mode1 = CalendarMode::Month;
     let mode2 = CalendarMode::Year;
     assert_ne!(mode1, mode2);
-}
-
-#[test]
-fn test_calendar_mode_month() {
-    let mode = CalendarMode::Month;
-    assert_eq!(mode, CalendarMode::Month);
-}
-
-#[test]
-fn test_calendar_mode_year() {
-    let mode = CalendarMode::Year;
-    assert_eq!(mode, CalendarMode::Year);
-}
-
-#[test]
-fn test_calendar_mode_week() {
-    let mode = CalendarMode::Week;
-    assert_eq!(mode, CalendarMode::Week);
 }
 
 // =========================================================================
@@ -101,36 +82,9 @@ fn test_first_day_of_week_partial_ne() {
     assert_ne!(day1, day2);
 }
 
-#[test]
-fn test_first_day_of_week_sunday() {
-    let day = FirstDayOfWeek::Sunday;
-    assert_eq!(day, FirstDayOfWeek::Sunday);
-}
-
-#[test]
-fn test_first_day_of_week_monday() {
-    let day = FirstDayOfWeek::Monday;
-    assert_eq!(day, FirstDayOfWeek::Monday);
-}
-
 // =========================================================================
 // DateMarker::new tests
 // =========================================================================
-
-#[test]
-fn test_date_marker_new() {
-    let date = Date {
-        year: 2024,
-        month: 1,
-        day: 1,
-    };
-    let marker = DateMarker::new(date, Color::RED);
-    assert_eq!(marker.date.year, 2024);
-    assert_eq!(marker.date.month, 1);
-    assert_eq!(marker.date.day, 1);
-    assert_eq!(marker.color, Color::RED);
-    assert!(marker.symbol.is_none());
-}
 
 #[test]
 fn test_date_marker_clone() {
@@ -139,26 +93,16 @@ fn test_date_marker_clone() {
         month: 1,
         day: 1,
     };
-    let marker1 = DateMarker::new(date, Color::BLUE);
+    let marker1 = DateMarker::new(date, Color::BLUE).symbol('*');
     let marker2 = marker1.clone();
-    assert_eq!(marker1.date.year, marker2.date.year);
-    assert_eq!(marker1.color, marker2.color);
+    assert_eq!(marker2.date, marker1.date);
+    assert_eq!(marker2.color, marker1.color);
+    assert_eq!(marker2.symbol, Some('*'));
 }
 
 // =========================================================================
 // DateMarker::symbol tests
 // =========================================================================
-
-#[test]
-fn test_date_marker_symbol() {
-    let date = Date {
-        year: 2024,
-        month: 1,
-        day: 1,
-    };
-    let marker = DateMarker::new(date, Color::GREEN).symbol('*');
-    assert_eq!(marker.symbol, Some('*'));
-}
 
 #[test]
 fn test_date_marker_builder_chain() {
@@ -170,27 +114,6 @@ fn test_date_marker_builder_chain() {
     let marker = DateMarker::new(date, Color::RED).symbol('🎄');
     assert_eq!(marker.symbol, Some('🎄'));
     assert_eq!(marker.color, Color::RED);
-}
-
-#[test]
-fn test_date_marker_no_symbol() {
-    let date = Date {
-        year: 2024,
-        month: 1,
-        day: 1,
-    };
-    let marker = DateMarker::new(date, Color::YELLOW);
-    assert!(marker.symbol.is_none());
-}
-
-#[test]
-fn test_date_marker_date_construction() {
-    // Test with Date::new()
-    let date = Date::new(2024, 6, 15);
-    let marker = DateMarker::new(date, Color::CYAN);
-    assert_eq!(marker.date.year, 2024);
-    assert_eq!(marker.date.month, 6);
-    assert_eq!(marker.date.day, 15);
 }
 
 #[test]

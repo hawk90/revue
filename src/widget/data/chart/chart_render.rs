@@ -211,7 +211,10 @@ pub fn calculate_legend_position(
 ) -> Option<(u16, u16)> {
     match position {
         LegendPosition::TopLeft => Some((area.x + 1, area.y + 1)),
-        LegendPosition::TopCenter => Some((area.x + (area.width - legend_width) / 2, area.y + 1)),
+        LegendPosition::TopCenter => Some((
+            area.x + area.width.saturating_sub(legend_width) / 2,
+            area.y + 1,
+        )),
         LegendPosition::TopRight => Some((
             area.x + area.width.saturating_sub(legend_width + 1),
             area.y + 1,
@@ -221,17 +224,20 @@ pub fn calculate_legend_position(
             area.y + area.height.saturating_sub(legend_height + 1),
         )),
         LegendPosition::BottomCenter => Some((
-            area.x + (area.width - legend_width) / 2,
+            area.x + area.width.saturating_sub(legend_width) / 2,
             area.y + area.height.saturating_sub(legend_height + 1),
         )),
         LegendPosition::BottomRight => Some((
             area.x + area.width.saturating_sub(legend_width + 1),
             area.y + area.height.saturating_sub(legend_height + 1),
         )),
-        LegendPosition::Left => Some((area.x + 1, area.y + (area.height - legend_height) / 2)),
+        LegendPosition::Left => Some((
+            area.x + 1,
+            area.y + area.height.saturating_sub(legend_height) / 2,
+        )),
         LegendPosition::Right => Some((
             area.x + area.width.saturating_sub(legend_width + 1),
-            area.y + (area.height - legend_height) / 2,
+            area.y + area.height.saturating_sub(legend_height) / 2,
         )),
         LegendPosition::None => None,
     }

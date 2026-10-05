@@ -296,9 +296,9 @@ impl BarChart {
                 break;
             }
 
-            // Calculate bar height
+            // Calculate bar height (use absolute value, as horizontal bars do)
             let bar_height = if max_value > 0.0 {
-                ((bar.value / max_value) * bar_area_height as f64) as u16
+                ((bar.value.abs() / max_value) * bar_area_height as f64) as u16
             } else {
                 0
             };
@@ -306,9 +306,9 @@ impl BarChart {
             // A bar's own color wins; otherwise the stylesheet, then the chart's.
             let color = bar.color.unwrap_or_else(|| ctx.css_color(self.fg));
 
-            // Draw bar (from bottom up)
+            // Draw bar (from bottom up), below the reserved value row
             for row in 0..bar_height {
-                let y = bar_area_height - 1 - row;
+                let y = value_height + bar_area_height - 1 - row;
                 for col in 0..self.bar_width {
                     if x + col < area.width {
                         let mut cell = Cell::new('█');

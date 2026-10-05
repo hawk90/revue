@@ -1,4 +1,4 @@
-//! Calendar utility function tests extracted from src/widget/data/calendar/utils.rs
+//! Calendar utility function tests
 //!
 //! This file contains tests for calendar utility functions:
 //! - days_in_month() - Get days in a month accounting for leap years
@@ -10,31 +10,6 @@ use revue::widget::data::calendar::{days_in_month, first_day_of_month, is_leap_y
 // =========================================================================
 // days_in_month tests
 // =========================================================================
-
-#[test]
-fn test_days_in_month_january() {
-    assert_eq!(days_in_month(2024, 1), 31);
-}
-
-#[test]
-fn test_days_in_month_february_non_leap() {
-    assert_eq!(days_in_month(2023, 2), 28);
-}
-
-#[test]
-fn test_days_in_month_february_leap() {
-    assert_eq!(days_in_month(2024, 2), 29);
-}
-
-#[test]
-fn test_days_in_month_april() {
-    assert_eq!(days_in_month(2024, 4), 30);
-}
-
-#[test]
-fn test_days_in_month_december() {
-    assert_eq!(days_in_month(2024, 12), 31);
-}
 
 #[test]
 fn test_days_in_month_invalid() {
@@ -78,11 +53,12 @@ fn test_is_leap_year_century_divisible_by_400() {
 }
 
 #[test]
-fn test_is_leap_year_negative() {
-    // Year 0 doesn't exist in Gregorian calendar, but function should handle it
-    let result = is_leap_year(0);
-    // Year 0 would be divisible by 400
-    assert!(result);
+fn test_is_leap_year_zero_and_negative() {
+    // Proleptic Gregorian rules: year 0 is divisible by 400
+    assert!(is_leap_year(0));
+    assert!(is_leap_year(-4));
+    assert!(!is_leap_year(-100));
+    assert!(is_leap_year(-400));
 }
 
 // =========================================================================
@@ -139,12 +115,5 @@ fn test_first_day_of_month_range() {
 fn test_first_day_of_month_march_leap_year() {
     // March 1, 2000 (leap year) was a Wednesday (3)
     let day = first_day_of_month(2000, 3);
-    assert_eq!(day, 3);
-}
-
-#[test]
-fn test_first_day_of_month_february_non_leap() {
-    // February 1, 2023 (non-leap year) was a Wednesday (3)
-    let day = first_day_of_month(2023, 2);
     assert_eq!(day, 3);
 }

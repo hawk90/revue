@@ -29,6 +29,8 @@ mod calendar;
 // mod callout;
 #[path = "widget/candlechart.rs"]
 mod candlechart;
+#[path = "widget/data/chart/mod.rs"]
+mod chart;
 // TODO(test-coverage): card has API mismatches
 // #[path = "widget/card.rs"]
 // mod card;
@@ -55,15 +57,8 @@ mod color_picker;
 mod command_palette;
 #[path = "widget/command_palette_unit/mod.rs"]
 pub mod command_palette_unit;
-// TODO(test-coverage): data has API mismatches
-// #[path = "widget/data/mod.rs"]
-// pub mod data;
-// TODO(test-coverage): data_chart_tests has API mismatches
-// #[path = "widget/data_chart_tests.rs"]
-// pub mod data_chart_tests;
-// TODO(test-coverage): datagrid has API mismatches
-// #[path = "widget/datagrid/mod.rs"]
-// mod datagrid;
+#[path = "widget/data/mod.rs"]
+pub mod data;
 #[path = "widget/datetime_picker.rs"]
 mod datetime_picker;
 // TODO(test-coverage): dropzone has API mismatches
@@ -105,9 +100,6 @@ mod empty_state;
 // mod form_tests;
 #[path = "widget/gauge.rs"]
 mod gauge;
-// TODO(test-coverage): heatmap_tests has API mismatches
-// #[path = "widget/heatmap_tests.rs"]
-// pub mod heatmap_tests;
 // TODO(test-coverage): httpclient has API mismatches
 // #[path = "widget/httpclient/mod.rs"]
 // pub mod httpclient;
@@ -242,9 +234,6 @@ mod tooltip;
 mod validation;
 #[path = "widget/vim.rs"]
 mod vim;
-// TODO(test-coverage): waveline has API mismatches
-// #[path = "widget/waveline/mod.rs"]
-// mod waveline;
 #[path = "widget/zen.rs"]
 mod zen;
 
