@@ -732,8 +732,10 @@ mod tests {
     fn test_polling_executor_cancellation() {
         // Test cancellation of polling executor tasks
         let handle = WorkerHandle::spawn(async {
-            // This would run forever if not cancelled
-            std::future::pending::<()>()
+            // This runs forever unless cancelled. Without `.await` the block
+            // would return the pending future as a value and complete at once,
+            // which made this test race against `cancel()` on busy CI runners.
+            std::future::pending::<()>().await
         });
 
         // Cancel immediately
