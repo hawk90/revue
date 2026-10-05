@@ -350,8 +350,8 @@ pub use markdown::{markdown, Markdown};
 #[cfg(feature = "markdown")]
 pub use markdown_presentation::{markdown_presentation, MarkdownPresentation, ViewMode};
 pub use mermaid::{
-    diagram, edge, flowchart, node, ArrowStyle, Diagram, DiagramEdge, DiagramNode, DiagramType,
-    NodeShape,
+    diagram, edge, flowchart, node, ArrowStyle, Diagram, DiagramColors, DiagramDirection,
+    DiagramEdge, DiagramNode, DiagramType, NodeShape,
 };
 pub use multi_select::{multi_select, multi_select_from, MultiSelect, MultiSelectOption};
 pub use option_list::{

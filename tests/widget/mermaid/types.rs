@@ -1,6 +1,8 @@
 //! Tests for mermaid diagram types
 
-use revue::widget::{ArrowStyle, Diagram, DiagramEdge, DiagramNode, DiagramType, NodeShape};
+use revue::widget::{
+    ArrowStyle, Diagram, DiagramDirection, DiagramEdge, DiagramNode, DiagramType, NodeShape,
+};
 
 // =========================================================================
 // DiagramType enum trait tests
@@ -288,4 +290,20 @@ fn test_diagram_colors_clone() {
     assert_eq!(colors1.arrow, colors2.arrow);
     assert_eq!(colors1.label, colors2.label);
     assert_eq!(colors1.title, colors2.title);
+}
+
+// =========================================================================
+// DiagramDirection
+// =========================================================================
+
+#[test]
+fn test_diagram_direction_default_is_top_down() {
+    assert_eq!(DiagramDirection::default(), DiagramDirection::TopDown);
+    assert_eq!(Diagram::new().direction, DiagramDirection::TopDown);
+}
+
+#[test]
+fn test_diagram_direction_builder() {
+    let d = Diagram::new().direction(DiagramDirection::LeftRight);
+    assert_eq!(d.direction, DiagramDirection::LeftRight);
 }

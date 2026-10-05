@@ -1,6 +1,6 @@
 //! Core Diagram implementation
 
-use super::types::{DiagramColors, DiagramEdge, DiagramNode, DiagramType, Direction};
+use super::types::{DiagramColors, DiagramDirection, DiagramEdge, DiagramNode, DiagramType};
 use crate::widget::traits::WidgetProps;
 use std::collections::HashMap;
 
@@ -31,7 +31,7 @@ pub struct Diagram {
     /// Colors
     pub colors: DiagramColors,
     /// Direction (TD = top-down, LR = left-right)
-    pub direction: Direction,
+    pub direction: DiagramDirection,
     /// Node positions (computed during layout)
     pub positions: HashMap<String, (u16, u16)>,
     /// Node sizes
@@ -55,7 +55,7 @@ impl Diagram {
             nodes: Vec::new(),
             edges: Vec::new(),
             colors: DiagramColors::default(),
-            direction: Direction::default(),
+            direction: DiagramDirection::default(),
             positions: HashMap::new(),
             sizes: HashMap::new(),
             props: WidgetProps::new(),
@@ -75,7 +75,7 @@ impl Diagram {
     }
 
     /// Set direction
-    pub fn direction(mut self, dir: Direction) -> Self {
+    pub fn direction(mut self, dir: DiagramDirection) -> Self {
         self.direction = dir;
         self
     }

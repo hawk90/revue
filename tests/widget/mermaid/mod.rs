@@ -7,7 +7,9 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
-use revue::widget::{diagram, flowchart, node, Diagram, NodeShape, View};
+use revue::widget::{
+    diagram, flowchart, node, Diagram, DiagramColors, DiagramDirection, NodeShape, View,
+};
 
 fn render(d: &Diagram, w: u16, h: u16) -> Buffer {
     let mut buffer = Buffer::new(w, h);
@@ -108,4 +110,50 @@ fn test_diagram_render_cells_too_narrow_for_a_box() {
     let d = flowchart(&source.join("\n"));
     assert_eq!(d.get_nodes().len(), 16);
     assert!(is_blank(&render(&d, 10, 5)));
+}
+
+/// Column and row of the first cell of `text`
+fn find(buffer: &Buffer, text: &str) -> Option<(u16, u16)> {
+    (0..buffer.height()).find_map(|y| {
+        let line = row(buffer, y);
+        line.find(text)
+            .map(|byte| (line[..byte].chars().count() as u16, y))
+    })
+}
+
+#[test]
+fn test_diagram_colors_builder() {
+    let d = diagram()
+        .title("Flow")
+        .colors(DiagramColors {
+            node_fg: Color::GREEN,
+            title: Color::RED,
+            ..DiagramColors::default()
+        })
+        .node(node("A", "Hi"));
+    let buffer = render(&d, 20, 8);
+    assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::RED));
+    let (x, y) = find(&buffer, "┌").expect("node box");
+    assert_eq!(buffer.get(x, y).unwrap().fg, Some(Color::GREEN));
+}
+
+#[test]
+#[ignore = "BUG: Diagram ignores direction(); nodes are always laid out top-down"]
+fn test_diagram_direction_left_right_places_nodes_side_by_side() {
+    let d = flowchart("A --> B").direction(DiagramDirection::LeftRight);
+    let buffer = render(&d, 40, 10);
+    let (ax, ay) = find(&buffer, "│ A │").expect("node A");
+    let (bx, by) = find(&buffer, "│ B │").expect("node B");
+    assert_eq!(ay, by, "A and B should share a row");
+    assert!(ax < bx, "A should be left of B");
+}
+
+#[test]
+#[ignore = "BUG: Diagram ignores direction(); nodes are always laid out top-down"]
+fn test_diagram_direction_bottom_up_places_target_above() {
+    let d = flowchart("A --> B").direction(DiagramDirection::BottomUp);
+    let buffer = render(&d, 20, 10);
+    let (_, ay) = find(&buffer, "│ A │").expect("node A");
+    let (_, by) = find(&buffer, "│ B │").expect("node B");
+    assert!(by < ay, "B should be above A");
 }
