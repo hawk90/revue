@@ -7,8 +7,10 @@ use revue::widget::View;
 
 mod barchart;
 mod boxplot;
+mod candlechart;
 mod chart_stats;
 mod color_scheme;
+mod scatterchart;
 
 /// Render `view` into a fresh `width` x `height` buffer.
 pub fn render(view: &impl View, width: u16, height: u16) -> Buffer {
