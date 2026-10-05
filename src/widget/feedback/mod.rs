@@ -121,7 +121,7 @@ pub use notification::{
 pub use popover::{popover, Popover, PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger};
 pub use statusbar::{
     footer, header, key_hint, section as status_section, statusbar, KeyHint, SectionAlign,
-    StatusBar, StatusSection,
+    StatusBar, StatusBarPosition, StatusSection,
 };
 pub use toast::{toast, Toast, ToastLevel, ToastPosition};
 pub use toast_queue::{toast_queue, StackDirection, ToastEntry, ToastPriority, ToastQueue};

@@ -1,7 +1,7 @@
 //! Search and filter functionality for the multi-select widget tests
 
-use revue::utils::{fuzzy_match, FuzzyMatch};
-use revue::widget::multi_select::MultiSelect;
+use revue::event::Key;
+use revue::widget::MultiSelect;
 
 fn create_test_select() -> MultiSelect {
     MultiSelect::new().options(vec!["Apple", "Banana", "Cherry", "Date", "Elderberry"])
@@ -11,318 +11,223 @@ fn create_test_select() -> MultiSelect {
 
 #[test]
 fn test_query_initial_empty() {
-    // Arrange
     let select = create_test_select();
-
-    // Act
-    let query = select.query();
-
-    // Assert
-    assert_eq!(query, "");
+    assert_eq!(select.query(), "");
 }
 
 #[test]
 fn test_query_after_set() {
-    // Arrange
     let mut select = create_test_select();
     select.set_query("app");
-
-    // Act
-    let query = select.query();
-
-    // Assert
-    assert_eq!(query, "app");
+    assert_eq!(select.query(), "app");
 }
 
 #[test]
 fn test_set_query_updates_filter() {
-    // Arrange
     let mut select = create_test_select();
 
-    // Act
     select.set_query("app");
 
-    // Assert
-    assert_eq!(select.query, "app");
-    // Filter should be updated to match "app"
-    // Should find "Apple"
-    assert!(!select.filtered.is_empty());
+    assert_eq!(select.get_query(), "app");
+    // Only "Apple" matches "app"
+    assert_eq!(select.get_filtered(), &[0]);
 }
 
 #[test]
 fn test_set_query_with_string() {
-    // Arrange
     let mut select = create_test_select();
 
-    // Act
     select.set_query(String::from("banana"));
 
-    // Assert
-    assert_eq!(select.query, "banana");
+    assert_eq!(select.get_query(), "banana");
+    assert_eq!(select.get_filtered(), &[1]);
 }
 
 #[test]
 fn test_set_query_empty() {
-    // Arrange
     let mut select = create_test_select();
-    select.query = "test".to_string();
+    select.set_query("test");
 
-    // Act
     select.set_query("");
 
-    // Assert
-    assert_eq!(select.query, "");
-    // Filter should reset to show all options
-    assert_eq!(select.filtered.len(), 5);
+    assert_eq!(select.get_query(), "");
+    // Filter resets to show all options
+    assert_eq!(select.get_filtered(), &[0, 1, 2, 3, 4]);
+    assert_eq!(select.get_dropdown_cursor(), 0);
 }
 
 #[test]
 fn test_set_query_resets_cursor() {
-    // Arrange
     let mut select = create_test_select();
-    select.dropdown_cursor = 3;
+    select.cursor_down();
+    select.cursor_down();
+    select.cursor_down();
+    assert_eq!(select.get_dropdown_cursor(), 3);
 
-    // Act
     select.set_query("test");
 
-    // Assert
-    assert_eq!(select.dropdown_cursor, 0);
+    assert_eq!(select.get_dropdown_cursor(), 0);
+}
+
+#[test]
+fn test_set_query_no_matches() {
+    let mut select = create_test_select();
+
+    select.set_query("zzz");
+
+    assert!(select.get_filtered().is_empty());
+    assert_eq!(select.current_option(), None);
+}
+
+#[test]
+fn test_set_query_multiple_matches_ranked() {
+    let mut select = MultiSelect::new().options(vec!["Apple", "Applepie", "Pineapple", "Banana"]);
+
+    select.set_query("app");
+
+    // Apple, Applepie and Pineapple match; the prefix matches outrank the
+    // mid-word match in "Pineapple", and "Banana" is filtered out.
+    assert_eq!(select.get_filtered(), &[0, 1, 2]);
 }
 
 #[test]
 fn test_clear_query() {
-    // Arrange
     let mut select = create_test_select();
-    select.query = "test".to_string();
-    select.filtered = vec![0];
+    select.set_query("app");
+    assert_eq!(select.get_filtered(), &[0]);
 
-    // Act
     select.clear_query();
 
-    // Assert
-    assert_eq!(select.query, "");
-    assert_eq!(select.filtered.len(), 5);
+    assert_eq!(select.get_query(), "");
+    assert_eq!(select.get_filtered().len(), 5);
 }
 
 #[test]
 fn test_clear_query_resets_cursor() {
-    // Arrange
     let mut select = create_test_select();
-    select.query = "test".to_string();
-    select.dropdown_cursor = 2;
+    select.set_query("e");
+    select.cursor_down();
+    select.cursor_down();
+    assert_eq!(select.get_dropdown_cursor(), 2);
 
-    // Act
     select.clear_query();
 
-    // Assert
-    assert_eq!(select.dropdown_cursor, 0);
+    assert_eq!(select.get_dropdown_cursor(), 0);
 }
 
 #[test]
 fn test_clear_query_already_empty() {
-    // Arrange
     let mut select = create_test_select();
 
-    // Act
     select.clear_query();
 
-    // Assert
-    assert_eq!(select.query, "");
-    assert_eq!(select.filtered.len(), 5);
+    assert_eq!(select.get_query(), "");
+    assert_eq!(select.get_filtered().len(), 5);
 }
 
 // Fuzzy match tests
 
 #[test]
 fn test_get_match_with_empty_query() {
-    // Arrange
     let select = create_test_select();
-
-    // Act
-    let match_result = select.get_match("Apple");
-
-    // Assert
-    assert_eq!(match_result, None);
+    assert_eq!(select.get_match("Apple"), None);
 }
 
 #[test]
 fn test_get_match_with_query() {
-    // Arrange
     let mut select = create_test_select();
     select.set_query("app");
 
-    // Act
-    let match_result = select.get_match("Apple");
+    let m = select.get_match("Apple").expect("app should match Apple");
 
-    // Assert
-    assert!(match_result.is_some());
+    assert_eq!(m.indices, vec![0, 1, 2]);
 }
 
 #[test]
 fn test_get_match_no_match() {
-    // Arrange
     let mut select = create_test_select();
     select.set_query("xyz");
-
-    // Act
-    let match_result = select.get_match("Apple");
-
-    // Assert
-    assert_eq!(match_result, None);
+    assert_eq!(select.get_match("Apple"), None);
 }
 
 #[test]
 fn test_get_match_partial_match() {
-    // Arrange
     let mut select = create_test_select();
     select.set_query("app");
 
-    // Act
-    let match_result = select.get_match("Pineapple");
+    let m = select
+        .get_match("Pineapple")
+        .expect("app should match Pineapple");
 
-    // Assert
-    assert!(match_result.is_some());
+    assert_eq!(m.indices, vec![4, 5, 6]);
 }
 
 #[test]
-fn test_get_match_case_sensitive() {
-    // Arrange
+fn test_get_match_is_case_insensitive() {
     let mut select = create_test_select();
     select.set_query("APP");
 
-    // Act
-    let match_result = select.get_match("apple");
+    let m = select.get_match("apple").expect("matching ignores case");
 
-    // Assert
-    // Fuzzy match is typically case-insensitive or case-sensitive based on implementation
-    // This test verifies the behavior
-    let result = match_result;
-    let _ = result; // Suppress unused warning
+    assert_eq!(m.indices, vec![0, 1, 2]);
 }
 
-// Filter update tests
+// Typing into the open dropdown drives the same filter
 
 #[test]
-fn test_update_filter_with_empty_query() {
-    // Arrange
+fn test_typing_filters_and_backspace_widens() {
     let mut select = create_test_select();
-    select.filtered = vec![0, 2];
-    select.query = "".to_string();
+    select.handle_key(&Key::Enter); // open
+    assert!(select.is_open());
 
-    // Act
-    select.update_filter();
+    select.handle_key(&Key::Char('z'));
+    select.handle_key(&Key::Char('z'));
+    assert_eq!(select.get_query(), "zz");
+    assert!(select.get_filtered().is_empty());
 
-    // Assert
-    assert_eq!(select.filtered.len(), 5);
-    assert_eq!(select.dropdown_cursor, 0);
-}
-
-#[test]
-fn test_update_filter_with_match() {
-    // Arrange
-    let mut select = create_test_select();
-    select.query = "app".to_string();
-
-    // Act
-    select.update_filter();
-
-    // Assert
-    // Should find "Apple"
-    assert!(!select.filtered.is_empty());
-    assert_eq!(select.dropdown_cursor, 0);
-}
-
-#[test]
-fn test_update_filter_no_matches() {
-    // Arrange
-    let mut select = create_test_select();
-    select.query = "zzz".to_string();
-
-    // Act
-    select.update_filter();
-
-    // Assert
-    assert!(select.filtered.is_empty());
-}
-
-#[test]
-fn test_update_filter_multiple_matches() {
-    // Arrange
-    let mut select =
-        MultiSelect::new().options(vec!["Apple", "Applepie", "Pineapple", "Banana"]);
-    select.query = "app".to_string();
-
-    // Act
-    select.update_filter();
-
-    // Assert
-    // Should find Apple, Applepie, Pineapple
-    assert!(select.filtered.len() >= 1);
-}
-
-#[test]
-fn test_update_filter_resets_cursor() {
-    // Arrange
-    let mut select = create_test_select();
-    select.dropdown_cursor = 3;
-    select.query = "test".to_string();
-
-    // Act
-    select.update_filter();
-
-    // Assert
-    assert_eq!(select.dropdown_cursor, 0);
+    select.handle_key(&Key::Backspace);
+    select.handle_key(&Key::Backspace);
+    assert_eq!(select.get_query(), "");
+    assert_eq!(select.get_filtered().len(), 5);
 }
 
 // Integration tests
 
 #[test]
 fn test_search_workflow() {
-    // Arrange
     let mut select = create_test_select();
 
-    // Act - Set query
     select.set_query("app");
-
-    // Assert - Query set
     assert_eq!(select.query(), "app");
+    assert_eq!(select.get_filtered(), &[0]);
 
-    // Check filter updated
-    assert!(!select.filtered.is_empty());
-
-    // Clear query
     select.clear_query();
-
-    // Assert - All options visible
     assert_eq!(select.query(), "");
-    assert_eq!(select.filtered.len(), 5);
+    assert_eq!(select.get_filtered().len(), 5);
 }
 
 #[test]
 fn test_search_and_navigate() {
-    // Arrange
     let mut select = create_test_select();
+    // "an" only matches "Banana"
     select.set_query("an");
+    assert_eq!(select.get_filtered(), &[1]);
 
-    // Act - Navigate filtered results
-    // With "an" query, should find "Banana" (only one match)
     select.cursor_down();
 
-    // Assert - Should wrap around since only one item
-    assert_eq!(select.dropdown_cursor, 0);
+    // Wraps around since there is only one item
+    assert_eq!(select.get_dropdown_cursor(), 0);
+    assert_eq!(select.current_option(), Some(1));
 }
 
 #[test]
 fn test_search_after_close() {
-    // Arrange
     let mut select = create_test_select();
     select.open();
     select.set_query("app");
 
-    // Act - Close should clear query
     select.close();
 
-    // Assert
     assert_eq!(select.query(), "");
-    assert_eq!(select.filtered.len(), 5);
+    assert_eq!(select.get_filtered().len(), 5);
 }

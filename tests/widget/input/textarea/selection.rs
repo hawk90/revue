@@ -1,6 +1,6 @@
 //! Tests for public selection APIs
 
-use revue::widget::input::input_widgets::textarea::selection::Selection;
+use revue::widget::input_widgets::textarea::Selection;
 
 #[test]
 fn test_selection_new() {
@@ -221,8 +221,8 @@ fn test_selection_contains_range() {
     let sel = Selection::new((2, 3), (4, 8));
 
     // Test single character in the middle of the selection
-    assert!(sel.contains(2, 4));  // In first line
-    assert!(sel.contains(2, 7));  // Still in first line
+    assert!(sel.contains(2, 4)); // In first line
+    assert!(sel.contains(2, 7)); // Still in first line
 
     // Test second line (entire line is selected)
     assert!(sel.contains(3, 0));
@@ -230,7 +230,7 @@ fn test_selection_contains_range() {
 
     // Test last line boundary
     assert!(sel.contains(4, 7));
-    assert!(!sel.contains(4, 8));  // End is exclusive
+    assert!(!sel.contains(4, 8)); // End is exclusive
 }
 
 #[test]
@@ -260,7 +260,7 @@ fn test_selection_nonequal_after_normalize() {
 #[test]
 fn test_selection_clone_struct() {
     let original = Selection::new((1, 2), (3, 4));
-    let cloned = original.clone();
+    let cloned = original;
 
     // Should be equal
     assert_eq!(original, cloned);

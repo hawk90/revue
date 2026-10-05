@@ -249,11 +249,16 @@ impl View for Toast {
             return;
         }
 
-        // Use buffer (screen) dimensions for positioning, not parent area
-        let screen_w = ctx.buffer.width();
-        let screen_h = ctx.buffer.height();
-        let (toast_width, toast_height) = self.calculate_size(screen_w);
-        let (abs_x, abs_y) = self.calculate_position(screen_w, screen_h, toast_width, toast_height);
+        // As an overlay the toast is placed on the screen (buffer). Without an
+        // overlay layer it is drawn inline, placed inside its own area.
+        let inline = !ctx.has_overlay_support();
+        let (space_w, space_h) = if inline {
+            (area.width, area.height)
+        } else {
+            (ctx.buffer.width(), ctx.buffer.height())
+        };
+        let (toast_width, toast_height) = self.calculate_size(space_w);
+        let (abs_x, abs_y) = self.calculate_position(space_w, space_h, toast_width, toast_height);
 
         // The level palette is this toast's own default, and a rule naming
         // this toast targets the whole node - so the author outranks it.
@@ -320,10 +325,10 @@ impl View for Toast {
             tx += cw;
         }
 
-        // Queue as overlay; fallback to inline
-        if !ctx.queue_overlay(entry.clone()) {
+        // Queue as overlay; fallback to inline, at the area-relative position
+        if inline || !ctx.queue_overlay(entry.clone()) {
             for oc in &entry.cells {
-                ctx.set(oc.x, oc.y, oc.cell);
+                ctx.set(abs_x + oc.x, abs_y + oc.y, oc.cell);
             }
         }
     }

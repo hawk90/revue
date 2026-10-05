@@ -160,14 +160,14 @@ impl View for Counter {
 | **Charts** | barchart, line_chart, sparkline, heatmap, gauge |
 | **Advanced** | rich_text_editor, json_viewer, csv_viewer, diagram |
 
-> **100+ Widgets** — See [FEATURES.md](FEATURES.md) for complete catalog
+> **100+ Widgets** — See the [feature registry](specs/features.yaml) for the complete list and status ([overview](FEATURES.md))
 
 ---
 
 ## Architecture
 
 - [**System Architecture**](ARCHITECTURE.md) - Design overview and components
-- [**Features**](FEATURES.md) - Complete widget catalog
+- [**Features**](FEATURES.md) - Overview and design notes (status: [specs/features.yaml](specs/features.yaml))
 - [**Framework Comparison**](FRAMEWORK_COMPARISON.md) - vs Textual, ratatui, r3bl_tui, tui-realm, iocraft
 - [**Tech Stack**](TECH_STACK.md) - Dependencies and tools
 

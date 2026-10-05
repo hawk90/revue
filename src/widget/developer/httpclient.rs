@@ -52,4 +52,4 @@ pub use client::HttpClient;
 pub use helpers::{delete, get, http_client, patch, post, put};
 pub use request::HttpRequest;
 pub use response::HttpResponse;
-pub use types::{ContentType, HttpMethod, RequestState, ResponseView};
+pub use types::{ContentType, HttpColors, HttpMethod, RequestState, ResponseView};
