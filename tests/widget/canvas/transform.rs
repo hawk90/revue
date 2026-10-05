@@ -112,14 +112,6 @@ fn test_transform_copy() {
 }
 
 #[test]
-fn test_transform_clone() {
-    let t1 = Transform::scale(2.0, 3.0);
-    let t2 = t1.clone();
-    assert_eq!(t2.sx, 2.0);
-    assert_eq!(t2.sy, 3.0);
-}
-
-#[test]
 fn test_zero_scale() {
     let t = Transform::scale(0.0, 1.0);
     let (x, y) = t.apply(5.0, 10.0);

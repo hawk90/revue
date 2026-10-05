@@ -26,13 +26,6 @@ fn test_callout_type_copy() {
 }
 
 #[test]
-fn test_callout_type_clone() {
-    let ct = CalloutType::Danger;
-    let cloned = ct.clone();
-    assert_eq!(ct, cloned);
-}
-
-#[test]
 fn test_callout_type_all_variants_unique() {
     assert_ne!(CalloutType::Note, CalloutType::Tip);
     assert_ne!(CalloutType::Note, CalloutType::Important);
@@ -72,13 +65,6 @@ fn test_callout_variant_copy() {
     let cv = CalloutVariant::LeftBorder;
     let copied = cv;
     assert_eq!(cv, copied);
-}
-
-#[test]
-fn test_callout_variant_clone() {
-    let cv = CalloutVariant::Minimal;
-    let cloned = cv.clone();
-    assert_eq!(cv, cloned);
 }
 
 #[test]

@@ -64,9 +64,9 @@ fn test_separator_style_equality() {
 }
 
 #[test]
-fn test_separator_style_clone() {
+fn test_separator_style_copy() {
     let style1 = SeparatorStyle::Chevron;
-    let style2 = style1.clone();
+    let style2 = style1;
     assert_eq!(style1, style2);
 }
 

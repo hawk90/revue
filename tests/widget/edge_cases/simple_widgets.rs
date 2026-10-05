@@ -136,7 +136,7 @@ mod checkbox_edge_cases {
         }
 
         // 99 is odd, so checked(true)
-        assert_eq!(checkbox.is_checked(), true);
+        assert!(checkbox.is_checked());
     }
 
     #[test]
@@ -278,7 +278,7 @@ mod switch_edge_cases {
         }
 
         // 99 is odd, so on(true)
-        assert_eq!(switch.is_on(), true);
+        assert!(switch.is_on());
     }
 
     #[test]

@@ -74,15 +74,6 @@ fn test_clip_region_copy() {
 }
 
 #[test]
-fn test_clip_region_clone() {
-    let clip1 = ClipRegion::new(10.0, 20.0, 100.0, 50.0);
-    let clip2 = clip1.clone();
-
-    assert_eq!(clip2.x_min, 10.0);
-    assert_eq!(clip2.y_min, 20.0);
-}
-
-#[test]
 fn test_clip_region_zero_size() {
     let clip = ClipRegion::new(50.0, 50.0, 0.0, 0.0);
     assert_eq!(clip.x_min, 50.0);
