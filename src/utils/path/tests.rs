@@ -1,4 +1,5 @@
 use crate::utils::path::*;
+use serial_test::serial;
 use std::path::{Path, PathBuf};
 
 #[test]
@@ -835,7 +836,12 @@ fn test_home_dir_tampered_env() {
 
 // Additional edge case tests
 
+// The two tests below rewrite HOME/USERPROFILE for the whole process. Run in
+// parallel, one test's restore of the real HOME can land between the other's
+// `set_var` and its `home_dir()` call, which then returns `Some` for a path
+// the test just made nonexistent. `#[serial]` keeps them from overlapping.
 #[test]
+#[serial]
 #[cfg(unix)]
 fn test_home_dir_with_unset_env() {
     // Temporarily unset HOME and USERPROFILE
@@ -861,6 +867,7 @@ fn test_home_dir_with_unset_env() {
 }
 
 #[test]
+#[serial]
 fn test_home_dir_with_nonexistent_path() {
     // Set HOME to a path that doesn't exist
     let home_backup = std::env::var("HOME").ok();
