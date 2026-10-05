@@ -12,13 +12,6 @@ fn test_diagram_type_default() {
 }
 
 #[test]
-fn test_diagram_type_clone() {
-    let dt1 = DiagramType::Flowchart;
-    let dt2 = dt1.clone();
-    assert_eq!(dt1, dt2);
-}
-
-#[test]
 fn test_diagram_type_copy() {
     let dt1 = DiagramType::Sequence;
     let dt2 = dt1;
@@ -51,13 +44,6 @@ fn test_diagram_type_debug() {
 #[test]
 fn test_node_shape_default() {
     assert_eq!(NodeShape::default(), NodeShape::Rectangle);
-}
-
-#[test]
-fn test_node_shape_clone() {
-    let ns1 = NodeShape::Diamond;
-    let ns2 = ns1.clone();
-    assert_eq!(ns1, ns2);
 }
 
 #[test]
@@ -95,13 +81,6 @@ fn test_node_shape_debug() {
 #[test]
 fn test_arrow_style_default() {
     assert_eq!(ArrowStyle::default(), ArrowStyle::Solid);
-}
-
-#[test]
-fn test_arrow_style_clone() {
-    let as1 = ArrowStyle::Dashed;
-    let as2 = as1.clone();
-    assert_eq!(as1, as2);
 }
 
 #[test]

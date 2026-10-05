@@ -41,7 +41,10 @@ fn row(buffer: &Buffer, y: u16) -> String {
         .collect()
 }
 
-fn recorder() -> (Rc<RefCell<Vec<(usize, usize)>>>, impl FnMut(usize, usize)) {
+/// The (from, to) pairs an on_reorder callback was called with
+type Calls = Rc<RefCell<Vec<(usize, usize)>>>;
+
+fn recorder() -> (Calls, impl FnMut(usize, usize)) {
     let calls = Rc::new(RefCell::new(Vec::new()));
     let sink = calls.clone();
     (calls, move |from, to| sink.borrow_mut().push((from, to)))

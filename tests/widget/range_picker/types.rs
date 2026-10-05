@@ -386,13 +386,6 @@ fn test_range_focus_debug() {
 }
 
 #[test]
-fn test_range_focus_clone() {
-    let focus = RangeFocus::Start;
-    let cloned = focus.clone();
-    assert_eq!(focus, cloned);
-}
-
-#[test]
 fn test_range_focus_copy() {
     let focus = RangeFocus::End;
     let copied = focus;
