@@ -8,7 +8,7 @@ use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::{RenderContext, StyledView, View};
 use revue::widget::{
-    date_range_picker, range_picker, Date, FirstDayOfWeek, PresetRange, RangePicker,
+    date_range_picker, range_picker, Date, FirstDayOfWeek, PresetRange, RangePicker, Time,
 };
 
 fn render(picker: &RangePicker, w: u16, h: u16) -> Buffer {
@@ -227,4 +227,56 @@ fn test_range_picker_manual_range_selection() {
         (Date::new(2025, 6, 1), Date::new(2025, 6, 30))
     );
     assert_eq!(picker.get_active_preset(), Some(PresetRange::Custom));
+}
+
+// =============================================================================
+// Date limits and time display
+// =============================================================================
+
+#[test]
+#[ignore = "BUG: RangePicker stores min_date but never enforces it"]
+fn test_range_picker_min_date_limits_the_start() {
+    let min = Date::new(2025, 3, 10);
+    let mut picker = march_2025()
+        .range(min, Date::new(2025, 3, 20))
+        .min_date(min);
+
+    // Start calendar has focus with its cursor on the 10th
+    picker.handle_key(&Key::Left);
+    picker.handle_key(&Key::Enter);
+    assert!(picker.get_start() >= min, "{:?}", picker.get_start());
+
+    picker.handle_key(&Key::Char('['));
+    assert!(picker.get_start() >= min, "{:?}", picker.get_start());
+}
+
+#[test]
+#[ignore = "BUG: RangePicker stores max_date but never enforces it"]
+fn test_range_picker_max_date_limits_the_end() {
+    let max = Date::new(2025, 3, 20);
+    let mut picker = march_2025()
+        .range(Date::new(2025, 3, 10), max)
+        .max_date(max);
+
+    // End calendar, cursor on the 20th
+    picker.handle_key(&Key::Tab);
+    picker.handle_key(&Key::Right);
+    picker.handle_key(&Key::Enter);
+    assert!(picker.get_end() <= max, "{:?}", picker.get_end());
+
+    picker.handle_key(&Key::Char(']'));
+    assert!(picker.get_end() <= max, "{:?}", picker.get_end());
+}
+
+#[test]
+#[ignore = "BUG: RangePicker::show_time(true) draws no times"]
+fn test_range_picker_show_time_draws_the_times() {
+    let picker = march_2025()
+        .show_time(true)
+        .start_time(Time::new(9, 30, 0))
+        .end_time(Time::new(17, 45, 0));
+    let buffer = render(&picker, 80, 14);
+    let all: String = (0..14).map(|y| text(&buffer, 0, y, 80)).collect();
+    assert!(all.contains("09:30"), "{all}");
+    assert!(all.contains("17:45"), "{all}");
 }
