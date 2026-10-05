@@ -153,7 +153,6 @@ fn test_input_set_value_overwrites_existing() {
 // =========================================================================
 
 #[test]
-#[ignore = "BUG: typing over a selection takes two undo steps"]
 fn test_input_select_all_then_undo() {
     let mut input = Input::new().value("hello");
     input.select_all();
@@ -179,7 +178,6 @@ fn test_input_clone_independence() {
 // =========================================================================
 
 #[test]
-#[ignore = "BUG: undo history keeps 99 edits, not MAX_UNDO_HISTORY (100)"]
 fn test_input_undo_history_keeps_last_100_edits() {
     let mut input = Input::new();
     for _ in 0..150 {
