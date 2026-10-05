@@ -27,6 +27,10 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    ignore:
+      # The tag IS the pinned toolchain version used by the MSRV job (e.g. @1.87),
+      # not an action release; bumping it breaks CI (see #670).
+      - dependency-name: "dtolnay/rust-toolchain"
     commit-message:
       prefix: "chore(ci)"
     labels:
