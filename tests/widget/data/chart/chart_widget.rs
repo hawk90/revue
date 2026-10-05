@@ -570,11 +570,58 @@ fn test_chart_border() {
 }
 
 #[test]
-#[ignore = "BUG: Chart::braille() is stored but never used when rendering"]
 fn test_chart_braille_changes_rendering() {
     let normal = render_rows(&plain().series(diagonal()), 40, 20);
     let braille = render_rows(&plain().braille().series(diagonal()), 40, 20);
     assert_ne!(normal, braille);
+}
+
+fn is_braille(c: char) -> bool {
+    ('\u{2801}'..='\u{28FF}').contains(&c)
+}
+
+#[test]
+fn test_chart_braille_draws_lines_with_dots() {
+    let buffer = render(
+        &plain().braille().series(diagonal().color(Color::CYAN)),
+        40,
+        20,
+    );
+    // No box-drawing line cells; the line is made of Braille dots instead
+    assert_eq!(plot_line_cells(&buffer), 0);
+    // On a 64x72 dot grid the line starts at the bottom-left dot of the plot
+    // (column 8, row 17) and climbs to the top-right cell, touching every row
+    // on the way up (row 0 is the top padding)
+    assert_eq!(sym(&buffer, 8, 17), '\u{2801}');
+    assert!(is_braille(sym(&buffer, 39, 1)));
+    for y in 1..18 {
+        assert!(
+            (8..40).any(|x| is_braille(sym(&buffer, x, y))),
+            "row {y}: {:?}",
+            rows(&buffer)[y as usize]
+        );
+    }
+    assert_eq!(buffer.get(8, 17).unwrap().fg, Some(Color::CYAN));
+}
+
+#[test]
+fn test_chart_braille_keeps_markers_and_clips() {
+    // Markers stay whole-cell characters, and data past fixed bounds is
+    // clipped at the plot edge as in cell mode
+    let s = Series::new("Data")
+        .data(vec![(-5.0, -5.0), (5.0, 5.0), (20.0, 20.0)])
+        .marker(Marker::Star);
+    let chart = plain()
+        .braille()
+        .series(s)
+        .x_axis(Axis::new().bounds(0.0, 10.0).grid(false))
+        .y_axis(Axis::new().bounds(0.0, 10.0).grid(false));
+    let buffer = render(&chart, 40, 20);
+    assert_eq!(count_char(&buffer, '★'), 1);
+    assert_eq!(sym(&buffer, 23, 9), '★');
+    assert!(is_braille(sym(&buffer, 8, 17)));
+    assert!(is_braille(sym(&buffer, 39, 0)));
+    assert_eq!(plot_line_cells(&buffer), 0);
 }
 
 // =========================================================================

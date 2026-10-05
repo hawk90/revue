@@ -6,6 +6,7 @@ use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::{char_width, display_width};
+use crate::widget::canvas::BrailleGrid;
 use crate::widget::theme::DARK_GRAY;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -117,6 +118,10 @@ impl Chart {
     }
 
     /// Enable Braille mode for higher resolution
+    ///
+    /// Series lines (line, area outline and step charts) are drawn with
+    /// Braille dots, 2x4 per cell, instead of box-drawing characters.
+    /// Markers, area fills, axes and labels still use whole cells.
     pub fn braille(mut self) -> Self {
         self.braille_mode = true;
         self
@@ -267,22 +272,13 @@ impl Chart {
             style,
         } = *seg;
 
-        let dx = (x1 as i32 - x0 as i32).abs();
-        let dy = (y1 as i32 - y0 as i32).abs();
-        let sx = if x0 < x1 { 1i32 } else { -1i32 };
-        let sy = if y0 < y1 { 1i32 } else { -1i32 };
-        let mut err = dx - dy;
-
-        let mut x = x0 as i32;
-        let mut y = y0 as i32;
-        let mut step = 0;
-
-        loop {
+        let ch = self.get_line_char(x1 as i32 - x0 as i32, y1 as i32 - y0 as i32);
+        bresenham((x0, y0), (x1, y1), |x, y, step| {
             // Check bounds
-            if x >= bounds.x as i32
-                && x < (bounds.x + bounds.width) as i32
-                && y >= bounds.y as i32
-                && y < (bounds.y + bounds.height) as i32
+            if x >= bounds.x
+                && x < bounds.x + bounds.width
+                && y >= bounds.y
+                && y < bounds.y + bounds.height
             {
                 let draw = match style {
                     LineStyle::Solid => true,
@@ -292,27 +288,61 @@ impl Chart {
                 };
 
                 if draw {
-                    let ch = self.get_line_char(x1 as i32 - x0 as i32, y1 as i32 - y0 as i32);
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(color);
-                    ctx.set(x as u16, y as u16, cell);
+                    ctx.set(x, y, cell);
                 }
             }
+        });
+    }
 
-            if x == x1 as i32 && y == y1 as i32 {
-                break;
-            }
+    /// Draw a series' line segments (in data coordinates) with Braille dots,
+    /// 2x4 dots per cell of the plot area
+    fn draw_braille_lines(
+        &self,
+        ctx: &mut RenderContext,
+        segments: &[DataSegment],
+        bounds: (f64, f64, f64, f64),
+        plot: &Rect,
+        color: Color,
+        style: LineStyle,
+    ) {
+        let gw = plot.width.saturating_mul(2);
+        let gh = plot.height.saturating_mul(4);
+        let mut grid = BrailleGrid::new(plot.width, plot.height);
 
-            let e2 = 2 * err;
-            if e2 > -dy {
-                err -= dy;
-                x += sx;
+        for &(a, b) in segments {
+            let a = Self::grid_offset(a.0, a.1, bounds, gw, gh);
+            let b = Self::grid_offset(b.0, b.1, bounds, gw, gh);
+            let Some((a, b)) = clip_segment(a, b, gw, gh) else {
+                continue;
+            };
+            let start = grid_cell(a, gw, gh);
+            let end = grid_cell(b, gw, gh);
+            bresenham(start, end, |x, y, step| {
+                // Dash and dot lengths are doubled to match the cell-mode
+                // pattern at twice the horizontal resolution
+                let draw = match style {
+                    LineStyle::Solid => true,
+                    LineStyle::Dashed => (step / 6) % 2 == 0,
+                    LineStyle::Dotted => (step / 2) % 2 == 0,
+                    LineStyle::None => false,
+                };
+                if draw {
+                    grid.set(x as usize, y as usize, color);
+                }
+            });
+        }
+
+        for cy in 0..plot.height {
+            for cx in 0..plot.width {
+                let ch = grid.get_char(cx as usize, cy as usize);
+                if ch != '\u{2800}' {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(color);
+                    ctx.set(plot.x + cx, plot.y + cy, cell);
+                }
             }
-            if e2 < dx {
-                err += dx;
-                y += sy;
-            }
-            step += 1;
         }
     }
 
@@ -373,6 +403,9 @@ impl Chart {
 /// from the bottom edge.
 type GridPoint = (f64, f64);
 
+/// A line segment between two points in data coordinates.
+type DataSegment = ((f64, f64), (f64, f64));
+
 /// Whether a grid point lies inside a `gw` x `gh` grid.
 fn grid_contains((x, y): GridPoint, gw: u16, gh: u16) -> bool {
     const EPS: f64 = 1e-9;
@@ -413,6 +446,37 @@ fn clip_segment(p0: GridPoint, p1: GridPoint, gw: u16, gh: u16) -> Option<(GridP
     let a = if t0 > 0.0 { at(t0) } else { p0 };
     let b = if t1 < 1.0 { at(t1) } else { p1 };
     Some((a, b))
+}
+
+/// Walk the cells of a line from `start` to `end` (Bresenham), calling
+/// `visit(x, y, step)` for each one.
+fn bresenham(start: (u16, u16), end: (u16, u16), mut visit: impl FnMut(u16, u16, usize)) {
+    let (x0, y0) = (start.0 as i32, start.1 as i32);
+    let (x1, y1) = (end.0 as i32, end.1 as i32);
+    let dx = (x1 - x0).abs();
+    let dy = (y1 - y0).abs();
+    let sx = if x0 < x1 { 1 } else { -1 };
+    let sy = if y0 < y1 { 1 } else { -1 };
+    let mut err = dx - dy;
+
+    let (mut x, mut y) = (x0, y0);
+    let mut step = 0;
+    loop {
+        visit(x as u16, y as u16, step);
+        if x == x1 && y == y1 {
+            break;
+        }
+        let e2 = 2 * err;
+        if e2 > -dy {
+            err -= dy;
+            x += sx;
+        }
+        if e2 < dx {
+            err += dx;
+            y += sy;
+        }
+        step += 1;
+    }
 }
 
 /// The grid cell (column, row from the top) holding a point inside a
@@ -634,7 +698,7 @@ impl View for Chart {
                 .collect();
 
             // The pieces of the series line, in data coordinates
-            let data_segments: Vec<((f64, f64), (f64, f64))> = match series.chart_type {
+            let data_segments: Vec<DataSegment> = match series.chart_type {
                 ChartType::Line | ChartType::Area => {
                     points.windows(2).map(|w| (w[0], w[1])).collect()
                 }
@@ -687,7 +751,16 @@ impl View for Chart {
             }
 
             // Draw lines
-            if !matches!(series.line_style, LineStyle::None) {
+            if !matches!(series.line_style, LineStyle::None) && self.braille_mode {
+                self.draw_braille_lines(
+                    ctx,
+                    &data_segments,
+                    bounds,
+                    &chart_bounds,
+                    series.color,
+                    series.line_style,
+                );
+            } else if !matches!(series.line_style, LineStyle::None) {
                 for &((x0, y0), (x1, y1)) in &cell_segments {
                     let seg = LineSegment {
                         x0,
