@@ -133,9 +133,8 @@ mod progress;
 mod qrcode;
 #[path = "widget/radio.rs"]
 mod radio;
-// TODO(test-coverage): range_picker has API mismatches
-// #[path = "widget/range_picker/mod.rs"]
-// mod range_picker;
+#[path = "widget/range_picker/mod.rs"]
+mod range_picker;
 #[path = "widget/rating.rs"]
 mod rating;
 #[path = "widget/resizable.rs"]

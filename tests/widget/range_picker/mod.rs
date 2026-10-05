@@ -1,14 +1,9 @@
 //! RangePicker widget tests
 //!
-//! Contains extracted tests from range_picker source files:
-//! - core.rs
-//! - helpers.rs
-//! - impls.rs
-//! - navigation.rs
-//! - types.rs
+//! The in-source tests in src/widget/range_picker/ cover the builders,
+//! getters, setters, navigation and key handling.
 
-pub mod core;
-pub mod helpers;
-pub mod impls;
-pub mod navigation;
-pub mod types;
+mod core;
+#[path = "../range_picker.rs"]
+mod integration;
+mod types;

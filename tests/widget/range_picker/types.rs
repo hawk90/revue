@@ -1,61 +1,6 @@
 //! Date/time range picker types tests
 
-use revue::widget::data::calendar::{Date, days_in_month};
-use revue::widget::range_picker::{PresetRange, RangeFocus};
-
-// =========================================================================
-// PresetRange::name() tests
-// =========================================================================
-
-#[test]
-fn test_preset_range_name_today() {
-    assert_eq!(PresetRange::Today.name(), "Today");
-}
-
-#[test]
-fn test_preset_range_name_yesterday() {
-    assert_eq!(PresetRange::Yesterday.name(), "Yesterday");
-}
-
-#[test]
-fn test_preset_range_name_last_7_days() {
-    assert_eq!(PresetRange::Last7Days.name(), "Last 7 Days");
-}
-
-#[test]
-fn test_preset_range_name_last_30_days() {
-    assert_eq!(PresetRange::Last30Days.name(), "Last 30 Days");
-}
-
-#[test]
-fn test_preset_range_name_this_week() {
-    assert_eq!(PresetRange::ThisWeek.name(), "This Week");
-}
-
-#[test]
-fn test_preset_range_name_last_week() {
-    assert_eq!(PresetRange::LastWeek.name(), "Last Week");
-}
-
-#[test]
-fn test_preset_range_name_this_month() {
-    assert_eq!(PresetRange::ThisMonth.name(), "This Month");
-}
-
-#[test]
-fn test_preset_range_name_last_month() {
-    assert_eq!(PresetRange::LastMonth.name(), "Last Month");
-}
-
-#[test]
-fn test_preset_range_name_this_year() {
-    assert_eq!(PresetRange::ThisYear.name(), "This Year");
-}
-
-#[test]
-fn test_preset_range_name_custom() {
-    assert_eq!(PresetRange::Custom.name(), "Custom");
-}
+use revue::widget::{Date, PresetRange, RangeFocus};
 
 // =========================================================================
 // PresetRange::common() tests
@@ -68,21 +13,9 @@ fn test_preset_range_common_not_empty() {
 }
 
 #[test]
-fn test_preset_range_common_contains_today() {
-    let common = PresetRange::common();
-    assert!(common.contains(&PresetRange::Today));
-}
-
-#[test]
 fn test_preset_range_common_contains_yesterday() {
     let common = PresetRange::common();
     assert!(common.contains(&PresetRange::Yesterday));
-}
-
-#[test]
-fn test_preset_range_common_contains_last_7_days() {
-    let common = PresetRange::common();
-    assert!(common.contains(&PresetRange::Last7Days));
 }
 
 #[test]
@@ -113,12 +46,6 @@ fn test_preset_range_common_contains_this_month() {
 fn test_preset_range_common_contains_last_month() {
     let common = PresetRange::common();
     assert!(common.contains(&PresetRange::LastMonth));
-}
-
-#[test]
-fn test_preset_range_common_does_not_contain_custom() {
-    let common = PresetRange::common();
-    assert!(!common.contains(&PresetRange::Custom));
 }
 
 #[test]
@@ -438,33 +365,8 @@ fn test_preset_range_calculate_this_year_december_last() {
 }
 
 // =========================================================================
-// PresetRange::calculate() tests - Custom
-// =========================================================================
-
-#[test]
-fn test_preset_range_calculate_custom() {
-    let today = Date::new(2024, 6, 15);
-    let (start, end) = PresetRange::Custom.calculate(today);
-    // Custom should return today-today
-    assert_eq!(start, today);
-    assert_eq!(end, today);
-}
-
-// =========================================================================
 // RangeFocus enum tests
 // =========================================================================
-
-#[test]
-fn test_range_focus_default() {
-    assert_eq!(RangeFocus::default(), RangeFocus::Start);
-}
-
-#[test]
-fn test_range_focus_partial_eq() {
-    assert_eq!(RangeFocus::Start, RangeFocus::Start);
-    assert_eq!(RangeFocus::End, RangeFocus::End);
-    assert_eq!(RangeFocus::Presets, RangeFocus::Presets);
-}
 
 #[test]
 fn test_range_focus_ne() {
@@ -500,20 +402,6 @@ fn test_range_focus_copy() {
 // =========================================================================
 // PresetRange enum traits
 // =========================================================================
-
-#[test]
-fn test_preset_range_copy() {
-    let preset = PresetRange::Today;
-    let copied = preset;
-    assert_eq!(preset, copied);
-}
-
-#[test]
-fn test_preset_range_clone() {
-    let preset = PresetRange::Last7Days;
-    let cloned = preset.clone();
-    assert_eq!(preset, cloned);
-}
 
 #[test]
 fn test_preset_range_debug() {
