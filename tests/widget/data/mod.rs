@@ -16,10 +16,10 @@ mod timer;
 // g4-tree: mod filetree;
 // g4-tree: mod json_viewer;
 // g4-tree: mod json_viewer_helpers;
-// g4-tree: mod tree_mod;
-// g4-tree: mod tree_search;
-// g4-tree: mod tree_types;
-// g4-tree: mod tree_view;
+mod tree_mod;
+mod tree_search;
+mod tree_types;
+mod tree_view;
 
 // g4-vlist: mod virtual_list;
 // g4-vlist: mod virtuallist;
