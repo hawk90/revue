@@ -14,13 +14,17 @@ impl View for Input {
             return;
         }
 
-        let display_text = if self.value.is_empty() && !self.focused {
+        // An empty input shows its placeholder whether or not it is focused,
+        // as browsers and most toolkits do. `Input::new()` starts focused, so
+        // hiding the placeholder while focused meant it never showed at all.
+        // When focused, the cursor (at index 0) is drawn over the first
+        // placeholder cell, so it stays visible.
+        let is_placeholder = self.value.is_empty() && !self.placeholder.is_empty();
+        let display_text = if is_placeholder {
             &self.placeholder
         } else {
             &self.value
         };
-
-        let is_placeholder = self.value.is_empty() && !self.focused;
         let selection = self.selection();
 
         // Get CSS colors with priority: inline > CSS > default

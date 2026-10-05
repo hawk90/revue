@@ -14,6 +14,10 @@ permissions:
   pull-requests: write
   statuses: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   pr-title:
     name: Validate PR Title
@@ -47,7 +51,7 @@ jobs:
     runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request_target'
     steps:
-      - uses: actions/labeler@v6
+      - uses: actions/labeler@v7
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           configuration-path: .github/labeler.yml
@@ -71,7 +75,7 @@ jobs:
     runs-on: ubuntu-24.04
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/stale@v10
+      - uses: actions/stale@v11
         with:
           stale-issue-message: "This issue has been marked as stale due to inactivity."
           stale-pr-message: "This PR has been marked as stale due to inactivity."

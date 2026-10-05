@@ -10,7 +10,16 @@
 use revue::event::drag::{DragContext, DragData};
 use revue::layout::Rect;
 use revue::prelude::*;
+use revue::utils::unicode::display_width;
 use revue::widget::{DropZone, SortableList};
+
+/// Width of the key column in the Controls list.
+const KEY_COLS: u16 = 5;
+
+/// Columns `text` occupies, for sizing single-line text in an `hstack`.
+fn cols(text: &str) -> u16 {
+    display_width(text) as u16
+}
 
 // =============================================================================
 // Demo App
@@ -77,13 +86,15 @@ impl DragDropDemo {
 
 impl View for DragDropDemo {
     fn render(&self, ctx: &mut RenderContext) {
+        // Unsized stack children share the remaining space equally, so every
+        // fixed-height row/box is `child_sized`; only the main content absorbs the rest.
         let view = vstack()
             .gap(1)
-            .child(self.render_header())
-            .child(self.render_tabs())
+            .child_sized(self.render_header(), 2)
+            .child_sized(self.render_tabs(), 1)
             .child(self.render_main_content())
-            .child(self.render_status())
-            .child(self.render_controls());
+            .child_sized(self.render_status(), 3)
+            .child_sized(self.render_controls(), 6);
 
         view.render(ctx);
     }
@@ -96,20 +107,24 @@ impl View for DragDropDemo {
 impl DragDropDemo {
     fn render_header(&self) -> impl View {
         vstack()
-            .child(
+            .child_sized(
                 Text::new("🎯 Drag & Drop Demo")
                     .bold()
                     .fg(Color::CYAN)
                     .align(Alignment::Center),
+                1,
             )
-            .child(Text::muted("Sortable lists and drop zones").align(Alignment::Center))
+            .child_sized(
+                Text::muted("Sortable lists and drop zones").align(Alignment::Center),
+                1,
+            )
     }
 
     fn render_tabs(&self) -> impl View {
         hstack()
             .gap(2)
-            .child(self.tab_button("Tasks", 0))
-            .child(self.tab_button("Completed", 1))
+            .child_sized(self.tab_button("Tasks", 0), cols("Tasks") + 2)
+            .child_sized(self.tab_button("Completed", 1), cols("Completed") + 2)
             .child(self.tab_button("Trash", 2))
     }
 
@@ -140,11 +155,11 @@ impl DragDropDemo {
             .collect();
 
         let content = if items.is_empty() {
-            vstack().child(Text::muted("No tasks"))
+            vstack().child_sized(Text::muted("No tasks"), 1)
         } else {
             let mut stack = vstack();
             for item in items {
-                stack = stack.child(item);
+                stack = stack.child_sized(item, 1);
             }
             stack
         };
@@ -173,11 +188,11 @@ impl DragDropDemo {
 
     fn render_completed_items(&self) -> impl View {
         if self.completed.is_empty() {
-            vstack().child(Text::muted("Drop completed tasks here"))
+            vstack().child_sized(Text::muted("Drop completed tasks here"), 1)
         } else {
             let mut stack = vstack();
             for item in &self.completed {
-                stack = stack.child(Text::new(format!("✓ {}", item)).fg(Color::GREEN));
+                stack = stack.child_sized(Text::new(format!("✓ {}", item)).fg(Color::GREEN), 1);
             }
             stack
         }
@@ -185,11 +200,11 @@ impl DragDropDemo {
 
     fn render_trash_items(&self) -> impl View {
         if self.trash.is_empty() {
-            vstack().child(Text::muted("Drop items to delete"))
+            vstack().child_sized(Text::muted("Drop items to delete"), 1)
         } else {
             let mut stack = vstack();
             for item in &self.trash {
-                stack = stack.child(Text::new(format!("✗ {}", item)).fg(Color::RED));
+                stack = stack.child_sized(Text::new(format!("✗ {}", item)).fg(Color::RED), 1);
             }
             stack
         }
@@ -206,29 +221,33 @@ impl DragDropDemo {
     fn render_controls(&self) -> impl View {
         Border::single().title("Controls").child(
             vstack()
-                .child(
+                .child_sized(
                     hstack()
                         .gap(4)
-                        .child(Text::muted("[1-3]"))
+                        .child_sized(Text::muted("[1-3]"), KEY_COLS)
                         .child(Text::new("Switch panels")),
+                    1,
                 )
-                .child(
+                .child_sized(
                     hstack()
                         .gap(4)
-                        .child(Text::muted("[Tab]"))
+                        .child_sized(Text::muted("[Tab]"), KEY_COLS)
                         .child(Text::new("Next panel")),
+                    1,
                 )
-                .child(
+                .child_sized(
                     hstack()
                         .gap(4)
-                        .child(Text::muted("[r]"))
+                        .child_sized(Text::muted("[r]"), KEY_COLS)
                         .child(Text::new("Reset demo")),
+                    1,
                 )
-                .child(
+                .child_sized(
                     hstack()
                         .gap(4)
-                        .child(Text::muted("[q]"))
+                        .child_sized(Text::muted("[q]"), KEY_COLS)
                         .child(Text::new("Quit")),
+                    1,
                 ),
         )
     }
@@ -269,24 +288,25 @@ impl View for SortableDemo {
         // For the demo, we'll render a simulated view
         let view = vstack()
             .gap(1)
-            .child(Text::new("SortableList API Demo").bold())
-            .child(Text::muted("Drag items to reorder"))
+            .child_sized(Text::new("SortableList API Demo").bold(), 1)
+            .child_sized(Text::muted("Drag items to reorder"), 1)
             .child(Border::single().child({
                 let mut stack = vstack();
                 for (i, item) in self.items.iter().enumerate() {
-                    stack = stack.child(
+                    stack = stack.child_sized(
                         hstack()
                             .gap(1)
-                            .child(Text::new("⠿").fg(Color::CYAN))
+                            .child_sized(Text::new("⠿").fg(Color::CYAN), 1)
                             .child(Text::new(format!("{}. {}", i + 1, item))),
+                        1,
                     );
                 }
                 stack
             }))
-            .child(Text::muted(format!(
-                "Reordered {} times",
-                self.reorder_count
-            )));
+            .child_sized(
+                Text::muted(format!("Reordered {} times", self.reorder_count)),
+                1,
+            );
 
         view.render(ctx);
     }
@@ -321,18 +341,19 @@ impl View for DropZoneDemo {
         // For the demo, we'll render a simulated view
         let view = vstack()
             .gap(1)
-            .child(Text::new("DropZone API Demo").bold())
-            .child(
+            .child_sized(Text::new("DropZone API Demo").bold(), 1)
+            .child_sized(
                 Border::rounded().fg(Color::CYAN).child(
                     vstack()
-                        .child(Text::new("📥 Drop Zone").align(Alignment::Center))
-                        .child(Text::muted("Accepts: text, file, list_item")),
+                        .child_sized(Text::new("📥 Drop Zone").align(Alignment::Center), 1)
+                        .child_sized(Text::muted("Accepts: text, file, list_item"), 1),
                 ),
+                4,
             )
-            .child(Text::new(format!(
-                "Received {} items",
-                self.dropped_items.len()
-            )));
+            .child_sized(
+                Text::new(format!("Received {} items", self.dropped_items.len())),
+                1,
+            );
 
         view.render(ctx);
     }
