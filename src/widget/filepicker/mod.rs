@@ -185,10 +185,7 @@ impl FilePicker {
     pub fn start_dir(mut self, dir: impl AsRef<Path>) -> Self {
         let path = dir.as_ref();
         match validate_security_only(path) {
-            Ok(validated) => {
-                self.current_dir = validated;
-                self.refresh();
-            }
+            Ok(validated) => self.reset_to(validated),
             Err(e) => {
                 panic!("Invalid starting directory: {}", e);
             }
@@ -202,9 +199,17 @@ impl FilePicker {
     pub fn try_set_start_dir(mut self, dir: impl AsRef<Path>) -> Result<Self, FilePickerError> {
         let path = dir.as_ref();
         let validated = validate_and_canonicalize(path, &self.current_dir)?;
-        self.current_dir = validated;
-        self.refresh();
+        self.reset_to(validated);
         Ok(self)
+    }
+
+    /// Start over in `dir`: it becomes the only history entry, so going
+    /// back never leaves for the directory the picker was built in.
+    fn reset_to(&mut self, dir: PathBuf) {
+        self.current_dir = dir;
+        self.history = vec![self.current_dir.clone()];
+        self.history_idx = 0;
+        self.refresh();
     }
 
     /// Set width
