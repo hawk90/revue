@@ -102,6 +102,20 @@ pub trait View {
     /// ```
     fn render(&self, ctx: &mut RenderContext);
 
+    /// The size this view wants, given at most `max_width` x `max_height`.
+    ///
+    /// `None` - the default - means "I fill whatever I am given", which is
+    /// what every view did before this existed. A view whose size follows from
+    /// its content answers with it, so a container that sizes children to
+    /// their content (`Stack::content_sized`) can give it exactly that.
+    ///
+    /// Answer with what the view would *paint*, clamped to the maximum: a
+    /// one-line `Text` is one row tall and as wide as its text.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let _ = (max_width, max_height);
+        None
+    }
+
     /// Get widget type name (for CSS type selectors)
     ///
     /// The default implementation extracts the type name from the Rust type.
@@ -260,6 +274,10 @@ pub trait View {
 impl View for Box<dyn View> {
     fn render(&self, ctx: &mut RenderContext) {
         (**self).render(ctx);
+    }
+
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        (**self).measure(max_width, max_height)
     }
 
     fn widget_type(&self) -> &'static str {

@@ -5,6 +5,7 @@
 //! Run with: cargo run --example data_explorer
 
 use revue::prelude::*;
+use revue::utils::unicode::display_width;
 
 /// Sample data record
 #[derive(Clone)]
@@ -510,8 +511,10 @@ impl DataExplorer {
     }
 
     fn render_header(&self) -> impl View {
+        // Unsized stack children share space equally, so fixed-width text is
+        // added with `child_sized` and only the last piece takes the rest.
         hstack()
-            .child(Text::new(" Data Explorer ").fg(Color::CYAN).bold())
+            .child_sized(Text::new(" Data Explorer ").fg(Color::CYAN).bold(), 15)
             .child(
                 Text::new(format!(
                     " | {} records | Filter: '{}' ",
@@ -527,21 +530,24 @@ impl DataExplorer {
     }
 
     fn render_stats(&self) -> impl View {
-        let active = Text::new(format!(" Active: {} ", self.stats.active)).fg(Color::GREEN);
-        let inactive = Text::new(format!(" Inactive: {} ", self.stats.inactive)).fg(Color::RED);
-        let pending = Text::new(format!(" Pending: {} ", self.stats.pending)).fg(Color::YELLOW);
-        let avg = Text::new(format!(" Avg Salary: ${:.0} ", self.stats.avg_salary)).fg(Color::CYAN);
-        let max = Text::new(format!(" Max: ${} ", self.stats.max_salary)).fg(Color::MAGENTA);
+        let items = [
+            (format!(" Active: {} ", self.stats.active), Color::GREEN),
+            (format!(" Inactive: {} ", self.stats.inactive), Color::RED),
+            (format!(" Pending: {} ", self.stats.pending), Color::YELLOW),
+            (
+                format!(" Avg Salary: ${:.0} ", self.stats.avg_salary),
+                Color::CYAN,
+            ),
+            (format!(" Max: ${} ", self.stats.max_salary), Color::MAGENTA),
+        ];
 
-        Border::rounded().title("Statistics").child(
-            hstack()
-                .gap(2)
-                .child(active)
-                .child(inactive)
-                .child(pending)
-                .child(avg)
-                .child(max),
-        )
+        let mut row = hstack().gap(2);
+        for (text, color) in items {
+            let width = display_width(&text) as u16;
+            row = row.child_sized(Text::new(text).fg(color), width);
+        }
+
+        Border::rounded().title("Statistics").child(row)
     }
 
     fn render_table(&self) -> impl View {
@@ -557,44 +563,52 @@ impl DataExplorer {
             }
         };
 
+        // Column widths: marker, ID, Name, Dept, Salary (Status takes the rest)
+        const W: [u16; 5] = [2, 4, 20, 15, 10];
+
         // Header row
         let header = hstack()
-            .child(
-                Text::new(format!("{:>4} ID{}", "", sort_indicator(SortColumn::Id)))
-                    .bold()
-                    .fg(Color::CYAN),
-            )
-            .child(
+            .child_sized(Text::new(""), W[0])
+            .child_sized(
                 Text::new(format!(
-                    "{:<20} Name{}",
-                    "",
-                    sort_indicator(SortColumn::Name)
+                    "{:>4}",
+                    format!("ID{}", sort_indicator(SortColumn::Id))
                 ))
                 .bold()
                 .fg(Color::CYAN),
+                W[1],
             )
-            .child(
+            .child_sized(
                 Text::new(format!(
-                    "{:<15} Dept{}",
-                    "",
-                    sort_indicator(SortColumn::Department)
+                    "{:<20}",
+                    format!(" Name{}", sort_indicator(SortColumn::Name))
                 ))
                 .bold()
                 .fg(Color::CYAN),
+                W[2],
             )
-            .child(
+            .child_sized(
                 Text::new(format!(
-                    "{:>10} Salary{}",
-                    "",
-                    sort_indicator(SortColumn::Salary)
+                    "{:<15}",
+                    format!("Dept{}", sort_indicator(SortColumn::Department))
                 ))
                 .bold()
                 .fg(Color::CYAN),
+                W[3],
+            )
+            .child_sized(
+                Text::new(format!(
+                    "{:>10}",
+                    format!("Salary{}", sort_indicator(SortColumn::Salary))
+                ))
+                .bold()
+                .fg(Color::CYAN),
+                W[4],
             )
             .child(Text::new("  Status").bold().fg(Color::CYAN));
 
-        let mut table = vstack().child(header);
-        table = table.child(Text::new("─".repeat(80)).fg(Color::rgb(80, 80, 80)));
+        let mut table = vstack().child_sized(header, 1);
+        table = table.child_sized(Text::new("─".repeat(80)).fg(Color::rgb(80, 80, 80)), 1);
 
         // Data rows (show up to 10)
         let start = self.selected.saturating_sub(5);
@@ -606,25 +620,26 @@ impl DataExplorer {
             let is_selected = row_idx == self.selected;
 
             let id_text = format!("{:>4}", record.id);
-            let name_text = format!("{:<20}", truncate(&record.name, 18));
+            let name_text = format!(" {:<19}", truncate(&record.name, 18));
             let dept_text = format!("{:<15}", record.department);
             let salary_text = format!("${:>9}", record.salary);
             let status_text = format!("  {}", record.status.name());
 
-            let row = hstack()
-                .child(Text::new(&id_text))
-                .child(Text::new(&name_text))
-                .child(Text::new(&dept_text))
-                .child(Text::new(&salary_text))
-                .child(Text::new(&status_text).fg(record.status.color()));
-
-            let row = if is_selected {
-                hstack().child(Text::new("> ").fg(Color::CYAN)).child(row)
+            let marker = if is_selected {
+                Text::new("> ").fg(Color::CYAN)
             } else {
-                hstack().child(Text::new("  ")).child(row)
+                Text::new("  ")
             };
 
-            table = table.child(row);
+            let row = hstack()
+                .child_sized(marker, W[0])
+                .child_sized(Text::new(&id_text), W[1])
+                .child_sized(Text::new(&name_text), W[2])
+                .child_sized(Text::new(&dept_text), W[3])
+                .child_sized(Text::new(&salary_text), W[4])
+                .child(Text::new(&status_text).fg(record.status.color()));
+
+            table = table.child_sized(row, 1);
         }
 
         Border::rounded().title("Records").child(table)
@@ -642,23 +657,28 @@ impl DataExplorer {
         let record = &self.records[idx];
 
         let content = vstack()
-            .child(Text::new(format!("ID:         {}", record.id)))
-            .child(Text::new(format!("Name:       {}", record.name)))
-            .child(Text::new(format!("Email:      {}", record.email)))
-            .child(Text::new(format!("Department: {}", record.department)))
-            .child(Text::new(format!("Salary:     ${}", record.salary)))
-            .child(
+            .child_sized(Text::new(format!("ID:         {}", record.id)), 1)
+            .child_sized(Text::new(format!("Name:       {}", record.name)), 1)
+            .child_sized(Text::new(format!("Email:      {}", record.email)), 1)
+            .child_sized(Text::new(format!("Department: {}", record.department)), 1)
+            .child_sized(Text::new(format!("Salary:     ${}", record.salary)), 1)
+            .child_sized(
                 hstack()
-                    .child(Text::new("Status:     "))
+                    .child_sized(Text::new("Status:     "), 12)
                     .child(Text::new(record.status.name()).fg(record.status.color())),
+                1,
             )
-            .child(Text::new(""))
-            .child(Text::new("Press Enter or Escape to close").fg(Color::rgb(100, 100, 100)));
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Text::new("Press Enter or Escape to close").fg(Color::rgb(100, 100, 100)),
+                1,
+            );
 
-        vstack().child(
+        vstack().child_sized(
             Border::double()
                 .title(format!("Detail: {}", record.name))
                 .child(content),
+            DETAIL_HEIGHT,
         )
     }
 
@@ -668,8 +688,11 @@ impl DataExplorer {
         }
 
         hstack()
-            .child(Text::new(" Filter: ").fg(Color::YELLOW))
-            .child(Text::new(&self.filter).fg(Color::WHITE))
+            .child_sized(Text::new(" Filter: ").fg(Color::YELLOW), 9)
+            .child_sized(
+                Text::new(&self.filter).fg(Color::WHITE),
+                display_width(&self.filter) as u16,
+            )
             .child(Text::new("_").fg(Color::WHITE)) // Cursor
     }
 
@@ -677,16 +700,21 @@ impl DataExplorer {
         let mut stack = vstack();
 
         for notif in &self.notifications {
-            let icon = Text::new(format!("[{}]", notif.level.icon())).fg(notif.level.color());
+            let icon = format!("[{}]", notif.level.icon());
+            let icon_width = display_width(&icon) as u16;
+            let icon = Text::new(icon).fg(notif.level.color());
             let msg = Text::new(format!(" {}", notif.message));
 
-            stack = stack.child(hstack().child(icon).child(msg));
+            stack = stack.child_sized(hstack().child_sized(icon, icon_width).child(msg), 1);
         }
 
         if self.notifications.is_empty() {
             stack
         } else {
-            vstack().child(Border::rounded().title("Notifications").child(stack))
+            vstack().child_sized(
+                Border::rounded().title("Notifications").child(stack),
+                self.notifications.len() as u16 + 2,
+            )
         }
     }
 
@@ -696,6 +724,9 @@ impl DataExplorer {
         ).fg(Color::rgb(100, 100, 100))
     }
 }
+
+/// Detail overlay height: 8 content lines plus the border
+const DETAIL_HEIGHT: u16 = 10;
 
 fn truncate(s: &str, max_len: usize) -> String {
     if s.len() > max_len {
@@ -707,18 +738,26 @@ fn truncate(s: &str, max_len: usize) -> String {
 
 impl View for DataExplorer {
     fn render(&self, ctx: &mut RenderContext) {
+        // Only the records table absorbs leftover rows; everything else is sized.
+        let filter_rows = if self.filter_mode { 1 } else { 0 };
+        let notification_rows = if self.notifications.is_empty() {
+            0
+        } else {
+            self.notifications.len() as u16 + 2
+        };
         let main = vstack()
-            .child(self.render_header())
-            .child(self.render_stats())
-            .child(self.render_filter_input())
+            .child_sized(self.render_header(), 1)
+            .child_sized(self.render_stats(), 3)
+            .child_sized(self.render_filter_input(), filter_rows)
             .child(self.render_table())
-            .child(self.render_notifications())
-            .child(self.render_help());
+            .child_sized(self.render_notifications(), notification_rows)
+            .child_sized(self.render_help(), 1);
 
         main.render(ctx);
 
-        // Overlay detail view
+        // Overlay detail view (clear underneath: a Border does not paint its inside)
         if self.detail_open {
+            ctx.clear(0, 0, ctx.area.width, DETAIL_HEIGHT.min(ctx.area.height));
             self.render_detail().render(ctx);
         }
     }

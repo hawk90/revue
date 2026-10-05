@@ -27,6 +27,7 @@ stable; the MSRV job exists to keep the default build honest for consumers.
 ```bash
 git clone https://github.com/hawk90/revue.git
 cd revue
+scripts/bootstrap.sh   # one-shot local setup: pinned toolchain, cargo fetch, lefthook hooks
 
 # Verify build
 cargo build

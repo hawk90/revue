@@ -15,6 +15,10 @@ on:
 permissions:
   security-events: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   audit:
     name: Security Audit
@@ -26,7 +30,9 @@ jobs:
         with:
           cache: false
           build-warnings: allow
-      - run: cargo generate-lockfile
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "security"
       # `rustsec/audit-check` runs on Node 20, which GitHub is retiring, and
       # the action has no Node 24 release. Install the binary and run it.
       - uses: taiki-e/install-action@cargo-audit

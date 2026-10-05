@@ -132,91 +132,111 @@ impl CardDemo {
     }
 
     fn render_tabs(&self) -> impl View {
+        // A stack shares its space equally among the children added with
+        // `child`; it does not size them to their content. So everything in
+        // this file that should take only its own rows or columns says so with
+        // `child_sized`, and only the piece that should take the rest is left
+        // as a plain `child`.
         let mut tabs = hstack().gap(2);
 
         for (i, tab) in ViewTab::all().iter().enumerate() {
             let label = format!("[{}] {}", i + 1, tab.name());
+            let width = cols(&label);
             let text = if *tab == self.tab {
                 Text::new(label).fg(Color::CYAN).bold()
             } else {
                 Text::new(label).fg(Color::rgb(128, 128, 128))
             };
-            tabs = tabs.child(text);
+            tabs = tabs.child_sized(text, width);
         }
 
         tabs
     }
 
     fn render_variants_demo(&self) -> impl View {
+        // A bordered card with a title, a subtitle and a one-line body is 6
+        // rows (border, title, subtitle, separator, body, border). Four of
+        // them are taller than the panel, so they go two by two.
         vstack()
-            .gap(1)
-            .child(Text::new("Card Variants:").bold())
-            .child(Text::new(""))
-            .child(
-                card()
-                    .title("Outlined")
-                    .subtitle("Default variant with border")
-                    .body(Text::new("Content goes here"))
-                    .variant(CardVariant::Outlined),
+            .child_sized(Text::new("Card Variants:").bold(), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                hstack()
+                    .gap(2)
+                    .child(
+                        card()
+                            .title("Outlined")
+                            .subtitle("Default variant with border")
+                            .body(Text::new("Content goes here"))
+                            .variant(CardVariant::Outlined),
+                    )
+                    .child(
+                        card()
+                            .title("Filled")
+                            .subtitle("With background color")
+                            .body(Text::new("Content goes here"))
+                            .variant(CardVariant::Filled),
+                    ),
+                6,
             )
-            .child(Text::new(""))
-            .child(
-                card()
-                    .title("Filled")
-                    .subtitle("With background color")
-                    .body(Text::new("Content goes here"))
-                    .variant(CardVariant::Filled),
-            )
-            .child(Text::new(""))
-            .child(
-                card()
-                    .title("Elevated")
-                    .subtitle("Elevated appearance")
-                    .body(Text::new("Content goes here"))
-                    .variant(CardVariant::Elevated),
-            )
-            .child(Text::new(""))
-            .child(
-                card()
-                    .title("Flat")
-                    .subtitle("No border, minimal style")
-                    .body(Text::new("Content goes here"))
-                    .variant(CardVariant::Flat),
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                hstack()
+                    .gap(2)
+                    .child(
+                        card()
+                            .title("Elevated")
+                            .subtitle("Elevated appearance")
+                            .body(Text::new("Content goes here"))
+                            .variant(CardVariant::Elevated),
+                    )
+                    .child(
+                        card()
+                            .title("Flat")
+                            .subtitle("No border, minimal style")
+                            .body(Text::new("Content goes here"))
+                            .variant(CardVariant::Flat),
+                    ),
+                6,
             )
     }
 
     fn render_borders_demo(&self) -> impl View {
+        // Border, title, separator, body, border: 5 rows, or 3 without a border.
         vstack()
-            .gap(1)
-            .child(Text::new("Border Styles:").bold())
-            .child(Text::new(""))
-            .child(
+            .child_sized(Text::new("Border Styles:").bold(), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(
                 card()
                     .title("Single Border")
                     .body(Text::new("Standard single-line border"))
                     .border_style(BorderType::Single),
+                5,
             )
-            .child(Text::new(""))
-            .child(
+            .child_sized(Text::new(""), 1)
+            .child_sized(
                 card()
                     .title("Rounded Border")
                     .body(Text::new("Rounded corners"))
                     .border_style(BorderType::Rounded),
+                5,
             )
-            .child(Text::new(""))
-            .child(
+            .child_sized(Text::new(""), 1)
+            .child_sized(
                 card()
                     .title("Double Border")
                     .body(Text::new("Double-line border"))
                     .border_style(BorderType::Double),
+                5,
             )
-            .child(Text::new(""))
-            .child(
+            .child_sized(Text::new(""), 1)
+            .child_sized(
                 card()
                     .title("No Border")
                     .body(Text::new("No visible border"))
                     .border_style(BorderType::None)
                     .variant(CardVariant::Filled),
+                3,
             )
     }
 
@@ -229,49 +249,64 @@ impl CardDemo {
                 Text::new(format!("   {}", arrow)).fg(Color::rgb(100, 100, 100))
             }
         };
+        // A card's rows: its border, its title (and subtitle), and when
+        // expanded a separator and the body's lines.
+        let rows = |header: u16, body: u16, expanded: bool| {
+            2 + header + if expanded { 1 + body } else { 0 }
+        };
 
-        vstack()
-            .gap(1)
-            .child(Text::new("Collapsible Cards:").bold())
-            .child(Text::new(
-                "(j/k or arrows: navigate, Space/Enter: toggle, h/l: collapse/expand)",
-            ))
-            .child(Text::new(""))
-            .child(indicator(0, self.card1_expanded))
-            .child(
+        // All three expanded are taller than the panel, so the third card
+        // gets a column of its own.
+        let left = vstack()
+            .child_sized(indicator(0, self.card1_expanded), 1)
+            .child_sized(
                 card()
                     .title("User Profile")
                     .subtitle("Account Information")
-                    .body(Text::new("Name: John Doe\nEmail: john@example.com"))
+                    .body(lines("Name: John Doe\nEmail: john@example.com"))
                     .collapsible(true)
                     .expanded(self.card1_expanded),
+                rows(2, 2, self.card1_expanded),
             )
-            .child(Text::new(""))
-            .child(indicator(1, self.card2_expanded))
-            .child(
+            .child_sized(Text::new(""), 1)
+            .child_sized(indicator(1, self.card2_expanded), 1)
+            .child_sized(
                 card()
                     .title("Settings")
-                    .body(Text::new("Theme: Dark\nLanguage: English"))
+                    .body(lines("Theme: Dark\nLanguage: English"))
                     .collapsible(true)
                     .expanded(self.card2_expanded),
-            )
-            .child(Text::new(""))
-            .child(indicator(2, self.card3_expanded))
-            .child(
+                rows(1, 2, self.card2_expanded),
+            );
+
+        let right = vstack()
+            .child_sized(indicator(2, self.card3_expanded), 1)
+            .child_sized(
                 card()
                     .title("Notifications")
                     .subtitle("3 unread")
-                    .body(Text::new("- New message\n- Update available\n- Reminder"))
+                    .body(lines("- New message\n- Update available\n- Reminder"))
                     .collapsible(true)
                     .expanded(self.card3_expanded),
+                rows(2, 3, self.card3_expanded),
+            );
+
+        vstack()
+            .child_sized(Text::new("Collapsible Cards:").bold(), 1)
+            .child_sized(
+                Text::new("(j/k or arrows: navigate, Space/Enter: toggle, h/l: collapse/expand)"),
+                1,
             )
+            .child_sized(Text::new(""), 1)
+            .child(hstack().gap(2).child(left).child(right))
     }
 }
 
 impl View for CardDemo {
     fn render(&self, ctx: &mut RenderContext) {
+        let title = " Card Widget Demo ";
         let header = hstack()
-            .child(Text::new(" Card Widget Demo ").fg(Color::CYAN).bold())
+            .child_sized(Text::new(title).fg(Color::CYAN).bold(), cols(title))
             .child(Text::new(" | Tab/Shift+Tab or 1-3 to switch").fg(Color::rgb(100, 100, 100)));
 
         let tabs = self.render_tabs();
@@ -292,14 +327,26 @@ impl View for CardDemo {
             Text::new("Press 'q' to quit | Tab: next | Shift+Tab: prev").fg(Color::rgb(80, 80, 80));
 
         vstack()
-            .child(header)
-            .child(tabs)
-            .child(Text::new(""))
+            .child_sized(header, 1)
+            .child_sized(tabs, 1)
+            .child_sized(Text::new(""), 1)
             .child(content)
-            .child(Text::new(""))
-            .child(help)
+            .child_sized(Text::new(""), 1)
+            .child_sized(help, 1)
             .render(ctx);
     }
+}
+
+/// One `Text` per line: a `Text` is a single line and does not break at `\n`.
+fn lines(text: &str) -> impl View {
+    text.lines().fold(vstack(), |stack, line| {
+        stack.child_sized(Text::new(line), 1)
+    })
+}
+
+/// Columns `s` takes on screen.
+fn cols(s: &str) -> u16 {
+    revue::utils::unicode::display_width(s) as u16
 }
 
 fn main() -> Result<()> {

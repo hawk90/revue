@@ -430,22 +430,20 @@ impl DiffViewer {
 
     /// Render header
     fn render_header(&self, ctx: &mut RenderContext, half_width: u16) {
-        // Left header
-        for (i, ch) in self.left_name.chars().enumerate() {
-            if i as u16 >= half_width {
-                break;
-            }
+        let header_bg = self.colors.header_bg;
+        let name_cell = |ch: char| {
             let mut cell = Cell::new(ch);
-            cell.bg = Some(self.colors.header_bg);
+            cell.bg = Some(header_bg);
             cell.modifier = Modifier::BOLD;
-            ctx.set(i as u16, 0, cell);
-        }
+            cell
+        };
 
-        // Fill left header
-        for i in self.left_name.len()..half_width as usize {
+        // Left header, in columns; the fill picks up where the name ends
+        let used = ctx.put_str_with(0, 0, &self.left_name, half_width, name_cell);
+        for x in used..half_width {
             let mut cell = Cell::new(' ');
-            cell.bg = Some(self.colors.header_bg);
-            ctx.set(i as u16, 0, cell);
+            cell.bg = Some(header_bg);
+            ctx.set(x, 0, cell);
         }
 
         // Separator
@@ -455,21 +453,13 @@ impl DiffViewer {
         ctx.set(half_width, 0, sep);
 
         // Right header
-        for (i, ch) in self.right_name.chars().enumerate() {
-            if i as u16 >= half_width {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.bg = Some(self.colors.header_bg);
-            cell.modifier = Modifier::BOLD;
-            ctx.set(half_width + 1 + i as u16, 0, cell);
-        }
-
-        // Fill right header
-        for i in self.right_name.len()..half_width as usize {
+        let right_x = half_width + 1;
+        let right_end = right_x.saturating_add(half_width);
+        let used = ctx.put_str_with(right_x, 0, &self.right_name, right_end, name_cell);
+        for x in right_x + used..right_end {
             let mut cell = Cell::new(' ');
-            cell.bg = Some(self.colors.header_bg);
-            ctx.set(half_width + 1 + i as u16, 0, cell);
+            cell.bg = Some(header_bg);
+            ctx.set(x, 0, cell);
         }
     }
 

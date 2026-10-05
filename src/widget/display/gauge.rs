@@ -606,15 +606,9 @@ impl View for Gauge {
         // Draw title if present
         let mut y_offset = 0u16;
         if let Some(ref title) = self.title {
-            for (i, ch) in title.chars().enumerate() {
-                if i as u16 >= area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::WHITE);
-                cell.modifier |= Modifier::BOLD;
-                ctx.set(i as u16, 0, cell);
-            }
+            ctx.put_str_with(0, 0, title, area.width, |ch| {
+                Cell::new(ch).fg(Color::WHITE).bold()
+            });
             y_offset = 1;
         }
 

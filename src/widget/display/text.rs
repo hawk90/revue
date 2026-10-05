@@ -341,6 +341,15 @@ impl Text {
 }
 
 impl View for Text {
+    /// One row, as wide as the text. Empty text is still a row - a spacer.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let width = unicode_width::UnicodeWidthStr::width(self.content.as_str());
+        Some((
+            (width.min(u16::MAX as usize) as u16).min(max_width),
+            1.min(max_height),
+        ))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width == 0 || area.height == 0 {

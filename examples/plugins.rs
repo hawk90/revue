@@ -7,7 +7,16 @@
 
 use revue::plugin::{LoggerPlugin, PerformancePlugin, Plugin, PluginContext};
 use revue::prelude::*;
+use revue::utils::unicode::display_width;
 use std::time::Duration;
+
+/// Width of the plugin-name column in "Active Plugins" (`PerformancePlugin`).
+const NAME_COLS: u16 = 17;
+
+/// Columns `text` occupies, for sizing single-line text in an `hstack`.
+fn cols(text: &str) -> u16 {
+    display_width(text) as u16
+}
 
 // =============================================================================
 // Custom Plugin: Counter Plugin
@@ -212,23 +221,27 @@ impl PluginDemoApp {
 
 impl View for PluginDemoApp {
     fn render(&self, ctx: &mut RenderContext) {
+        // Unsized stack children share the remaining space equally, so every
+        // fixed-height row/box is `child_sized` to its content.
         let view = vstack()
             .gap(1)
-            .child(
+            .child_sized(
                 Text::new("🔌 Plugin System Demo")
                     .bold()
                     .fg(Color::CYAN)
                     .align(Alignment::Center),
+                1,
             )
-            .child(
+            .child_sized(
                 hstack()
                     .gap(2)
                     .child(self.render_counter_panel())
                     .child(self.render_stats_panel())
                     .child(self.render_performance_panel()),
+                7,
             )
-            .child(self.render_plugins_info())
-            .child(self.render_controls());
+            .child_sized(self.render_plugins_info(), 7)
+            .child_sized(self.render_controls(), 3);
 
         view.render(ctx);
     }
@@ -246,12 +259,13 @@ impl PluginDemoApp {
             .child(
                 vstack()
                     .gap(1)
-                    .child(Text::new("Tick Count").class("plugin-label"))
-                    .child(Text::muted("(updated every 10 ticks)"))
-                    .child(
+                    .child_sized(Text::new("Tick Count").class("plugin-label"), 1)
+                    .child_sized(Text::muted("(updated every 10 ticks)"), 1)
+                    .child_sized(
                         Text::new("Check logs for values")
                             .class("plugin-value")
                             .align(Alignment::Center),
+                        1,
                     ),
             )
     }
@@ -263,12 +277,13 @@ impl PluginDemoApp {
             .child(
                 vstack()
                     .gap(1)
-                    .child(Text::new("Cross-Plugin Data").class("plugin-label"))
-                    .child(Text::muted("(reads from Counter)"))
-                    .child(
+                    .child_sized(Text::new("Cross-Plugin Data").class("plugin-label"), 1)
+                    .child_sized(Text::muted("(reads from Counter)"), 1)
+                    .child_sized(
                         Text::new("Computes averages")
                             .class("plugin-value")
                             .align(Alignment::Center),
+                        1,
                     ),
             )
     }
@@ -280,12 +295,13 @@ impl PluginDemoApp {
             .child(
                 vstack()
                     .gap(1)
-                    .child(Text::new("Built-in Plugin").class("plugin-label"))
-                    .child(Text::muted("(FPS & frame time)"))
-                    .child(
+                    .child_sized(Text::new("Built-in Plugin").class("plugin-label"), 1)
+                    .child_sized(Text::muted("(FPS & frame time)"), 1)
+                    .child_sized(
                         Text::new("Tracks metrics")
                             .class("plugin-value")
                             .align(Alignment::Center),
+                        1,
                     ),
             )
     }
@@ -293,40 +309,45 @@ impl PluginDemoApp {
     fn render_plugins_info(&self) -> Border {
         Border::rounded().title("Active Plugins").child(
             vstack()
-                .child(
+                .child_sized(
                     hstack()
                         .gap(2)
-                        .child(Text::new("1.").fg(Color::YELLOW))
-                        .child(Text::new("LoggerPlugin").bold())
+                        .child_sized(Text::new("1.").fg(Color::YELLOW), 2)
+                        .child_sized(Text::new("LoggerPlugin").bold(), NAME_COLS)
                         .child(Text::muted("(priority: 100)")),
+                    1,
                 )
-                .child(
+                .child_sized(
                     hstack()
                         .gap(2)
-                        .child(Text::new("2.").fg(Color::YELLOW))
-                        .child(Text::new("CounterPlugin").bold())
+                        .child_sized(Text::new("2.").fg(Color::YELLOW), 2)
+                        .child_sized(Text::new("CounterPlugin").bold(), NAME_COLS)
                         .child(Text::muted("(priority: 50)")),
+                    1,
                 )
-                .child(
+                .child_sized(
                     hstack()
                         .gap(2)
-                        .child(Text::new("3.").fg(Color::YELLOW))
-                        .child(Text::new("ThemePlugin").bold())
+                        .child_sized(Text::new("3.").fg(Color::YELLOW), 2)
+                        .child_sized(Text::new("ThemePlugin").bold(), NAME_COLS)
                         .child(Text::muted("(priority: 0)")),
+                    1,
                 )
-                .child(
+                .child_sized(
                     hstack()
                         .gap(2)
-                        .child(Text::new("4.").fg(Color::YELLOW))
-                        .child(Text::new("PerformancePlugin").bold())
+                        .child_sized(Text::new("4.").fg(Color::YELLOW), 2)
+                        .child_sized(Text::new("PerformancePlugin").bold(), NAME_COLS)
                         .child(Text::muted("(priority: 0)")),
+                    1,
                 )
-                .child(
+                .child_sized(
                     hstack()
                         .gap(2)
-                        .child(Text::new("5.").fg(Color::YELLOW))
-                        .child(Text::new("StatsPlugin").bold())
+                        .child_sized(Text::new("5.").fg(Color::YELLOW), 2)
+                        .child_sized(Text::new("StatsPlugin").bold(), NAME_COLS)
                         .child(Text::muted("(priority: -10)")),
+                    1,
                 ),
         )
     }
@@ -335,16 +356,17 @@ impl PluginDemoApp {
         Border::single().title("Controls").child(
             hstack()
                 .gap(4)
-                .child(
+                .child_sized(
                     hstack()
                         .gap(1)
-                        .child(Text::muted("[q]"))
+                        .child_sized(Text::muted("[q]"), 3)
                         .child(Text::new("Quit")),
+                    cols("[q] Quit"),
                 )
                 .child(
                     hstack()
                         .gap(1)
-                        .child(Text::muted("[h]"))
+                        .child_sized(Text::muted("[h]"), 3)
                         .child(Text::new("Toggle Help")),
                 ),
         )

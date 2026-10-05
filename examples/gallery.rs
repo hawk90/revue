@@ -9,7 +9,13 @@
 //! - q: Quit
 
 use revue::prelude::*;
+use revue::utils::unicode::display_width;
 use revue::widget::*;
+
+/// Columns `text` occupies, for sizing single-line text in an `hstack`.
+fn cols(text: &str) -> u16 {
+    display_width(text) as u16
+}
 
 fn main() -> Result<()> {
     let mut app = App::builder().build();
@@ -225,17 +231,19 @@ impl View for Gallery {
     fn render(&self, ctx: &mut RenderContext) {
         let cat = &self.categories[self.category];
 
-        // Main layout
+        // Main layout. Unsized stack children share the remaining space
+        // equally, so fixed-height rows are `child_sized`; the content absorbs the rest.
         vstack()
             .gap(1)
             // Header
-            .child(
+            .child_sized(
                 vstack()
-                    .child(Text::new("Revue Widget Gallery").bold())
-                    .child(Text::muted("Interactive showcase of 70+ widgets")),
+                    .child_sized(Text::new("Revue Widget Gallery").bold(), 1)
+                    .child_sized(Text::muted("Interactive showcase of 70+ widgets"), 1),
+                2,
             )
             // Category tabs
-            .child(self.render_tabs())
+            .child_sized(self.render_tabs(), 1)
             // Content
             .child(
                 hstack()
@@ -244,7 +252,7 @@ impl View for Gallery {
                     .child(self.render_preview()),
             )
             // Footer
-            .child(Text::muted("[Tab] Category  [↑↓] Navigate  [q] Quit"))
+            .child_sized(Text::muted("[Tab] Category  [↑↓] Navigate  [q] Quit"), 1)
             .render(ctx);
     }
 }
@@ -263,7 +271,7 @@ impl Gallery {
                 Text::muted(format!(" {} ", label))
             };
 
-            row = row.child(tab);
+            row = row.child_sized(tab, cols(&label) + 2);
         }
 
         row
@@ -283,7 +291,7 @@ impl Gallery {
                 Text::new(line)
             };
 
-            list = list.child(text);
+            list = list.child_sized(text, 1);
         }
 
         Border::rounded()
@@ -295,9 +303,9 @@ impl Gallery {
         if let Some(widget) = self.current_widget() {
             let content = vstack()
                 .gap(1)
-                .child(Text::new(widget.name).bold())
-                .child(Text::muted(widget.description))
-                .child(Text::new(""))
+                .child_sized(Text::new(widget.name).bold(), 1)
+                .child_sized(Text::muted(widget.description), 1)
+                .child_sized(Text::new(""), 1)
                 .child(self.render_demo(widget.name));
 
             Border::rounded().child(content).title(" Preview ")
@@ -329,51 +337,54 @@ impl Gallery {
 
 fn demo_text() -> impl View {
     vstack()
-        .child(Text::new("Normal text"))
-        .child(Text::new("Bold text").bold())
-        .child(Text::muted("Muted text"))
+        .child_sized(Text::new("Normal text"), 1)
+        .child_sized(Text::new("Bold text").bold(), 1)
+        .child_sized(Text::muted("Muted text"), 1)
 }
 
 fn demo_button() -> impl View {
     hstack()
         .gap(2)
-        .child(Button::primary("Primary"))
-        .child(Button::new("Secondary"))
+        .child_sized(Button::primary("Primary"), cols("Primary") + 4)
+        .child_sized(Button::new("Secondary"), cols("Secondary") + 4)
         .child(Button::new("Disabled").disabled(true))
 }
 
 fn demo_progress() -> impl View {
     vstack()
         .gap(1)
-        .child(Progress::new(0.3))
-        .child(Progress::new(0.7))
+        .child_sized(Progress::new(0.3), 1)
+        .child_sized(Progress::new(0.7), 1)
 }
 
 fn demo_spinner() -> impl View {
     hstack()
         .gap(2)
-        .child(Spinner::new())
+        .child_sized(Spinner::new(), 1)
         .child(Text::new("Loading..."))
 }
 
 fn demo_checkbox() -> impl View {
     vstack()
-        .child(Checkbox::new("Option A").checked(true))
-        .child(Checkbox::new("Option B").checked(false))
-        .child(Checkbox::new("Option C").checked(true))
+        .child_sized(Checkbox::new("Option A").checked(true), 1)
+        .child_sized(Checkbox::new("Option B").checked(false), 1)
+        .child_sized(Checkbox::new("Option C").checked(true), 1)
 }
 
 fn demo_switch() -> impl View {
     vstack()
-        .child(Switch::new().on(true).label("Enabled"))
-        .child(Switch::new().on(false).label("Disabled"))
+        .child_sized(Switch::new().on(true).label("Enabled"), 1)
+        .child_sized(Switch::new().on(false).label("Disabled"), 1)
 }
 
 fn demo_badge() -> impl View {
     hstack()
         .gap(1)
-        .child(Badge::new("New"))
-        .child(Badge::new("Hot").variant(BadgeVariant::Warning))
+        .child_sized(Badge::new("New"), cols("New") + 2)
+        .child_sized(
+            Badge::new("Hot").variant(BadgeVariant::Warning),
+            cols("Hot") + 2,
+        )
         .child(Badge::new("Error").variant(BadgeVariant::Error))
 }
 
@@ -383,6 +394,6 @@ fn demo_gauge() -> impl View {
 
 fn demo_placeholder(name: &str) -> impl View {
     vstack()
-        .child(Text::muted(format!("{} widget demo", name)))
-        .child(Text::new("Coming soon..."))
+        .child_sized(Text::muted(format!("{} widget demo", name)), 1)
+        .child_sized(Text::new("Coming soon..."), 1)
 }
