@@ -7,6 +7,9 @@
 
 use revue::prelude::*;
 
+/// Width of the key column in the Controls list.
+const KEY_COLS: u16 = 9;
+
 /// A counter widget that uses Signal for reactive state
 struct ReactiveCounter {
     /// Reactive counter value
@@ -99,62 +102,73 @@ impl View for ReactiveCounter {
             Color::WHITE
         };
 
+        // Unsized stack children share the remaining space equally, so each
+        // row and box here is `child_sized` to its content.
         let view = vstack()
             .gap(1)
-            .child(
+            .child_sized(
                 Border::panel().title("🔄 Reactive Counter").child(
                     vstack()
                         .gap(1)
-                        .child(
+                        .child_sized(
                             Text::new(format!("Count: {}", count))
                                 .fg(color)
                                 .bold()
                                 .align(Alignment::Center),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             Text::new(format!("Doubled: {}", doubled))
                                 .fg(Color::CYAN)
                                 .align(Alignment::Center),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             Text::new(format!("Status: {}", status))
                                 .fg(Color::YELLOW)
                                 .align(Alignment::Center),
+                            1,
                         ),
                 ),
+                7,
             )
-            .child(
+            .child_sized(
                 Border::single().title("Controls").child(
                     vstack()
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[+/-/↑/↓]"))
+                                .child_sized(Text::muted("[+/-/↑/↓]"), KEY_COLS)
                                 .child(Text::new("Increment/Decrement")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[r]"))
+                                .child_sized(Text::muted("[r]"), KEY_COLS)
                                 .child(Text::new("Reset")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[q]"))
+                                .child_sized(Text::muted("[q]"), KEY_COLS)
                                 .child(Text::new("Quit")),
+                            1,
                         ),
                 ),
+                5,
             )
-            .child(
+            .child_sized(
                 Border::rounded().title("ℹ️  How It Works").child(
                     vstack()
-                        .child(Text::success("✓ count is a Signal<i32>"))
-                        .child(Text::success("✓ doubled is a Computed value"))
-                        .child(Text::success("✓ status is computed based on count"))
-                        .child(Text::info("→ Computed values auto-update!"))
-                        .child(Text::info("→ No manual recalculation needed!")),
+                        .child_sized(Text::success("✓ count is a Signal<i32>"), 1)
+                        .child_sized(Text::success("✓ doubled is a Computed value"), 1)
+                        .child_sized(Text::success("✓ status is computed based on count"), 1)
+                        .child_sized(Text::info("→ Computed values auto-update!"), 1)
+                        .child_sized(Text::info("→ No manual recalculation needed!"), 1),
                 ),
+                7,
             );
 
         view.render(ctx);

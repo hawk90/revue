@@ -191,6 +191,29 @@ mod tests {
     use super::*;
     use std::time::Duration;
 
+    /// Poll until the runner yields a result, or fail after `timeout`.
+    ///
+    /// A fixed `sleep(50ms)` before `poll().unwrap()` was not enough on slow CI
+    /// runners (Windows, especially for the panicking tasks whose unwinding and
+    /// backtrace capture take longer than the sleep), so the tests waited on a
+    /// race instead of on the result.
+    fn poll_within<T: Send + 'static>(
+        runner: &mut TaskRunner<T>,
+        timeout: Duration,
+    ) -> TaskResult<T> {
+        let deadline = std::time::Instant::now() + timeout;
+        loop {
+            if let Some(result) = runner.poll() {
+                return result;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "no task result within {timeout:?}"
+            );
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    }
+
     #[test]
     fn test_spawn_and_poll() {
         let mut runner: TaskRunner<i32> = TaskRunner::new();
@@ -302,9 +325,7 @@ mod tests {
 
         runner.spawn_result("ok_task", || -> Result<i32, &str> { Ok(100) });
 
-        std::thread::sleep(Duration::from_millis(50));
-
-        let result = runner.poll().unwrap();
+        let result = poll_within(&mut runner, Duration::from_secs(5));
         assert_eq!(result.id, "ok_task");
         assert_eq!(result.result, Ok(100));
     }
@@ -315,9 +336,7 @@ mod tests {
 
         runner.spawn_result("err_task", || -> Result<i32, &str> { Err("failed") });
 
-        std::thread::sleep(Duration::from_millis(50));
-
-        let result = runner.poll().unwrap();
+        let result = poll_within(&mut runner, Duration::from_secs(5));
         assert_eq!(result.id, "err_task");
         assert!(result.result.is_err());
         assert_eq!(result.result.unwrap_err(), "failed");
@@ -389,9 +408,7 @@ mod tests {
 
         runner.spawn("string_task", || "hello".to_string());
 
-        std::thread::sleep(Duration::from_millis(50));
-
-        let result = runner.poll().unwrap();
+        let result = poll_within(&mut runner, Duration::from_secs(5));
         assert_eq!(result.result, Ok("hello".to_string()));
     }
 
@@ -401,9 +418,7 @@ mod tests {
 
         runner.spawn("vec_task", || vec![1, 2, 3]);
 
-        std::thread::sleep(Duration::from_millis(50));
-
-        let result = runner.poll().unwrap();
+        let result = poll_within(&mut runner, Duration::from_secs(5));
         assert_eq!(result.result, Ok(vec![1, 2, 3]));
     }
 
@@ -415,9 +430,7 @@ mod tests {
             panic!("intentional panic");
         });
 
-        std::thread::sleep(Duration::from_millis(50));
-
-        let result = runner.poll().unwrap();
+        let result = poll_within(&mut runner, Duration::from_secs(5));
         assert_eq!(result.id, "panic_task");
         assert!(result.result.is_err());
         assert!(result.result.unwrap_err().contains("panicked"));
@@ -431,9 +444,7 @@ mod tests {
             panic!("panic in result task");
         });
 
-        std::thread::sleep(Duration::from_millis(50));
-
-        let result = runner.poll().unwrap();
+        let result = poll_within(&mut runner, Duration::from_secs(5));
         assert!(result.result.is_err());
         assert!(result.result.unwrap_err().contains("panicked"));
     }

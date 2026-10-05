@@ -105,6 +105,26 @@ Input::new().placeholder("Enter text...")
 Checkbox::new("Enable feature").checked(true)
 ```
 
+#### How a stack sizes its children
+
+A child added with `.child(...)` gets an **equal share** of the stack's space
+by default, so `vstack().child(Text::new("Top")).child(Text::new("Bottom"))` on
+a 24-row terminal puts "Bottom" on row 12. Two ways to pack them instead:
+
+```rust
+// Each child takes the size of its content (on by default from 3.0)
+vstack()
+    .content_sized(true)
+    .child(Text::new("Top"))
+    .child(Text::new("Bottom"))
+
+// Or say exactly how many rows (vstack) or columns (hstack) a child gets
+vstack()
+    .child_sized(Text::new("Header"), 1)
+    .child(body)                       // takes what is left
+    .child_sized(Text::new("Footer"), 1)
+```
+
 ### Handling Events
 
 Use `app.run()` to respond to events:

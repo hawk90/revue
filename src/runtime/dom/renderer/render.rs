@@ -4,6 +4,7 @@ use crate::dom::renderer::types::DomRenderer;
 use crate::dom::Query;
 use crate::layout::Rect;
 use crate::render::Buffer;
+use crate::widget::traits::render_context;
 use crate::widget::{RenderContext, View};
 
 impl DomRenderer {
@@ -76,7 +77,7 @@ impl DomRenderer {
         if let Some(root_node) = painted.first() {
             hits.push((root_node.id, area));
         }
-        {
+        let own_background = {
             let mut ctx = RenderContext::new(buffer, area);
             if let Some(root_node) = painted.first() {
                 ctx.style = root_node.style;
@@ -90,6 +91,12 @@ impl DomRenderer {
             });
             ctx = ctx.with_overlay_queue(&mut overlay_queue);
             root.render(&mut ctx);
+            ctx.box_background()
+        };
+        let background = own_background
+            .or_else(|| render_context::css_background(painted.first().and_then(|n| n.style)));
+        if let Some(bg) = background {
+            render_context::fill_background_under(buffer, area, bg);
         }
         drop(painted);
         self.hit_map = hits;
@@ -129,10 +136,14 @@ impl DomRenderer {
         ctx = ctx.with_overlay_queue(&mut overlay_queue);
 
         root.render(&mut ctx);
+        let own_background = ctx.box_background();
 
         // Phase 2: Render overlays on top (sorted by z-index)
         // ctx must go out of scope so buffer borrow is released
         let _ = ctx;
+        if let Some(bg) = own_background {
+            render_context::fill_background_under(buffer, area, bg);
+        }
         overlay_queue.render_to(buffer);
     }
 

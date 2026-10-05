@@ -328,19 +328,13 @@ impl Slider {
 
         // Label
         if let Some(ref label) = self.label {
-            for (i, ch) in label.chars().enumerate() {
-                if x + i as u16 >= area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(if self.disabled {
-                    DISABLED_FG
-                } else {
-                    Color::WHITE
-                });
-                ctx.set(x + i as u16, y, cell);
-            }
-            x += label.len() as u16 + 1;
+            let label_fg = if self.disabled {
+                DISABLED_FG
+            } else {
+                Color::WHITE
+            };
+            ctx.put_str_with(x, y, label, area.width, |ch| Cell::new(ch).fg(label_fg));
+            x += crate::utils::display_width(label) as u16 + 1;
         }
 
         let track_len = self.length.min(area.width.saturating_sub(x));

@@ -4,6 +4,7 @@
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::unicode::truncate_with_ellipsis;
 use crate::widget::theme::{DISABLED_FG, SEPARATOR_COLOR, SUBTLE_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -446,45 +447,27 @@ impl Stepper {
             }
 
             // Title (below indicator)
+            // Measured in columns: slicing the title at a byte count would
+            // split (and panic on) a multibyte glyph.
             if y + 1 < area.height {
-                let max_title_len = step_width.saturating_sub(1);
-                let title = if step.title.len() > max_title_len {
-                    format!("{}…", &step.title[..max_title_len.saturating_sub(1)])
-                } else {
-                    step.title.clone()
-                };
-
-                for (j, ch) in title.chars().enumerate() {
-                    if x + j as u16 >= area.width {
-                        break;
-                    }
+                let title = truncate_with_ellipsis(&step.title, step_width.saturating_sub(1));
+                ctx.put_str_with(x, y + 1, &title, area.width, |ch| {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(color);
                     if step.status == StepStatus::Active {
                         cell.modifier |= Modifier::BOLD;
                     }
-                    ctx.set(x + j as u16, y + 1, cell);
-                }
+                    cell
+                });
             }
 
             // Description (if enabled and space available)
             if self.show_descriptions && y + 2 < area.height {
                 if let Some(ref desc) = step.description {
-                    let max_desc_len = step_width.saturating_sub(1);
-                    let desc_str = if desc.len() > max_desc_len {
-                        format!("{}…", &desc[..max_desc_len.saturating_sub(1)])
-                    } else {
-                        desc.clone()
-                    };
-
-                    for (j, ch) in desc_str.chars().enumerate() {
-                        if x + j as u16 >= area.width {
-                            break;
-                        }
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(SUBTLE_GRAY);
-                        ctx.set(x + j as u16, y + 2, cell);
-                    }
+                    let desc_str = truncate_with_ellipsis(desc, step_width.saturating_sub(1));
+                    ctx.put_str_with(x, y + 2, &desc_str, area.width, |ch| {
+                        Cell::new(ch).fg(SUBTLE_GRAY)
+                    });
                 }
             }
         }
@@ -520,17 +503,14 @@ impl Stepper {
 
             // Title
             let title_x = x + 3;
-            for (j, ch) in step.title.chars().enumerate() {
-                if title_x + j as u16 >= area.width {
-                    break;
-                }
+            ctx.put_str_with(title_x, y, &step.title, area.width, |ch| {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(color);
                 if step.status == StepStatus::Active {
                     cell.modifier |= Modifier::BOLD;
                 }
-                ctx.set(title_x + j as u16, y, cell);
-            }
+                cell
+            });
 
             y += 1;
 
@@ -539,14 +519,9 @@ impl Stepper {
                 if let Some(ref desc) = step.description {
                     if y < area.height {
                         let desc_x = x + 3;
-                        for (j, ch) in desc.chars().enumerate() {
-                            if desc_x + j as u16 >= area.width {
-                                break;
-                            }
-                            let mut cell = Cell::new(ch);
-                            cell.fg = Some(SUBTLE_GRAY);
-                            ctx.set(desc_x + j as u16, y, cell);
-                        }
+                        ctx.put_str_with(desc_x, y, desc, area.width, |ch| {
+                            Cell::new(ch).fg(SUBTLE_GRAY)
+                        });
                         y += 1;
                     }
                 }

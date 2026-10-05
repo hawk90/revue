@@ -46,8 +46,10 @@
 | `datetime_picker/mod.rs` | `DateTimePicker.field_fg` | `pub` 필드 |
 | `data/calendar/` | `day_fg` | 빌더가 없고 `CalendarView` params 구조체 경유 |
 
-**3.0 후보다.** 계획서 Phase 4가 "제거만 한다"이므로 여기에 얹으려면 범위를 명시적으로
-넓혀야 한다 — 사람이 판단할 일이다.
+**3.0에 넣는다** (2026-10-05 결정). 계획서 Phase 4는 "제거만 한다"였지만 범위를 명시적으로
+넓혔다 — 3.0은 어차피 breaking 릴리스이고, 미루면 4.0까지 이 네 곳만 우선순위가 뒤집힌 채
+남는다. `Calendar`는 아래 이유로 뺀다. 사용자 쪽 안내는
+[`docs/migration/v3.0.0.md`](../migration/v3.0.0.md).
 
 `Calendar`는 다르다: 빌더가 아예 없어 스타일시트와 다툴 것이 없으므로 **결함이
 아니다.** `ContextMenu.fg`, `Stepper.pending_color`도 같다. 일관성만 문제인 것들은

@@ -219,23 +219,6 @@ impl Link {
             LinkStyle::Plain => text.to_string(),
         }
     }
-
-    /// Generate OSC 8 hyperlink escape sequence
-    fn osc8_start(&self) -> String {
-        if self.osc8 && !self.disabled {
-            format!("\x1b]8;;{}\x1b\\", self.url)
-        } else {
-            String::new()
-        }
-    }
-
-    fn osc8_end(&self) -> String {
-        if self.osc8 && !self.disabled {
-            "\x1b]8;;\x1b\\".to_string()
-        } else {
-            String::new()
-        }
-    }
 }
 
 impl View for Link {
@@ -246,14 +229,14 @@ impl View for Link {
 
         let display = self.format_display();
 
-        // Build the text with OSC 8 sequences
-        let content = if self.osc8 {
-            format!("{}{}{}", self.osc8_start(), display, self.osc8_end())
-        } else {
-            display
-        };
+        let mut text = Text::new(display);
 
-        let mut text = Text::new(content);
+        // The URL goes on the cells, and the terminal writer wraps the run in
+        // OSC 8. Pasting the escape sequence into the text instead made each
+        // of its bytes a cell, written one by one between cursor moves.
+        if self.osc8 && !self.disabled {
+            text = text.hyperlink(&self.url);
+        }
 
         // Apply colors
         let fg = if self.disabled {

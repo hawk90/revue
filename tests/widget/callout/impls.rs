@@ -292,8 +292,8 @@ fn test_get_title_custom() {
 #[test]
 fn test_height_filled_variant() {
     let callout = Callout::new("Line 1\nLine 2").variant(CalloutVariant::Filled);
-    // 2 (top and title) + content_lines (2) + 1 (bottom) = 5
-    assert_eq!(callout.height(), 5);
+    // title + content (2 lines) = 1 + 2 = 3; the accent bar adds no rows
+    assert_eq!(callout.height(), 3);
 }
 
 #[test]
@@ -322,8 +322,8 @@ fn test_height_collapsed() {
 #[test]
 fn test_height_empty_content() {
     let callout = Callout::new("").variant(CalloutVariant::Filled);
-    // top border + title + content (1 line minimum) + bottom border = 2 + 1 + 1 + 1 = 5
-    assert!(callout.height() >= 1);
+    // title + content (1 line minimum) = 2
+    assert_eq!(callout.height(), 2);
 }
 
 // =========================================================================

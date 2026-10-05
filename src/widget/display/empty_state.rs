@@ -195,23 +195,27 @@ impl EmptyState {
 
     /// Calculate the height needed for this empty state
     pub fn height(&self) -> u16 {
+        let has_desc = self.description.is_some();
+        let has_action = self.action.is_some();
         match self.variant {
             EmptyStateVariant::Full => {
-                let mut h = 5; // icon + title + padding
-                if self.description.is_some() {
+                // Mirrors `render_full`: icon and a blank row, the title, the
+                // description and a blank row before the action, the action.
+                let mut h = 1; // title
+                if self.show_icon {
+                    h += 2;
+                }
+                if has_desc {
                     h += 1;
                 }
-                if self.action.is_some() {
-                    h += 2;
+                if has_action {
+                    h += if has_desc { 2 } else { 1 };
                 }
                 h
             }
             EmptyStateVariant::Compact => {
-                let mut h = 3;
-                if self.description.is_some() {
-                    h += 1;
-                }
-                h
+                // Icon and title share the first row; then description, action.
+                1 + u16::from(has_desc) + u16::from(has_action)
             }
             EmptyStateVariant::Minimal => 1,
         }
