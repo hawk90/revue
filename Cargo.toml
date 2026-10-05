@@ -84,7 +84,7 @@ tree-sitter-md = { version = "0.5", optional = true }
 # Image (Kitty Protocol, optional)
 # ═══════════════════════════════════════════
 image = { version = "0.25", optional = true }
-base64 = { version = "0.22", optional = true }
+base64 = { version = "0.23", optional = true }
 
 # ═══════════════════════════════════════════
 # Serialization & Config (optional)
@@ -130,7 +130,7 @@ pretty_assertions = "1.4"
 criterion = { version = "0.8", features = ["html_reports"] }
 proptest = "1.4"
 tempfile = "3.10"
-serial_test = "3.1"
+serial_test = "4.0"
 
 [[bench]]
 name = "render"
