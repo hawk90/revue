@@ -13,9 +13,8 @@ mod timer;
 // g4-datagrid: mod datagrid_types;
 // g4-datagrid: mod datagrid_width;
 
-// g4-tree: mod filetree;
-// g4-tree: mod json_viewer;
-// g4-tree: mod json_viewer_helpers;
+mod json_viewer;
+mod json_viewer_helpers;
 mod tree_mod;
 mod tree_search;
 mod tree_types;
