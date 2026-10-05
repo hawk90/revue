@@ -1,5 +1,9 @@
 [workspace]
 members = ["revue-macros"]
+# Standalone crates that live inside this tree but are not part of the
+# workspace: cargo (and tools that run it per manifest, e.g. Renovate) fails
+# on them with "current package believes it's in a workspace" otherwise.
+exclude = ["playground", "templates/basic", "templates/counter", "templates/dashboard"]
 resolver = "2"
 
 [package]
