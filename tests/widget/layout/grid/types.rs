@@ -54,13 +54,6 @@ fn test_track_size_default() {
 }
 
 #[test]
-fn test_track_size_clone() {
-    let track1 = TrackSize::Fr(2.5);
-    let track2 = track1.clone();
-    assert_eq!(track1, track2);
-}
-
-#[test]
 fn test_track_size_copy() {
     let track1 = TrackSize::Fixed(10);
     let track2 = track1;
@@ -170,16 +163,6 @@ fn test_grid_placement_span_rows_no_start() {
     // Should not modify if row_start is 0
     assert_eq!(result.row_start, 0);
     assert_eq!(result.row_end, 0);
-}
-
-#[test]
-fn test_grid_placement_clone() {
-    let placement1 = GridPlacement::cell(2, 3);
-    let placement2 = placement1.clone();
-    assert_eq!(placement1.col_start, placement2.col_start);
-    assert_eq!(placement1.col_end, placement2.col_end);
-    assert_eq!(placement1.row_start, placement2.row_start);
-    assert_eq!(placement1.row_end, placement2.row_end);
 }
 
 #[test]
@@ -324,13 +307,6 @@ fn test_grid_align_end() {
 fn test_grid_align_default() {
     let align = GridAlign::default();
     assert_eq!(align, GridAlign::Stretch);
-}
-
-#[test]
-fn test_grid_align_clone() {
-    let align1 = GridAlign::Center;
-    let align2 = align1.clone();
-    assert_eq!(align1, align2);
 }
 
 #[test]

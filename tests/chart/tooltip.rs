@@ -68,13 +68,6 @@ mod tests {
     }
 
     #[test]
-    fn test_tooltip_position_clone() {
-        let pos1 = ChartTooltipPosition::Fixed;
-        let pos2 = pos1.clone();
-        assert_eq!(pos1, pos2);
-    }
-
-    #[test]
     fn test_tooltip_position_copy() {
         let pos1 = ChartTooltipPosition::Follow;
         let pos2 = pos1;

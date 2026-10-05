@@ -9,13 +9,6 @@ mod tests {
     }
 
     #[test]
-    fn test_orientation_clone() {
-        let orientation1 = ChartOrientation::Horizontal;
-        let orientation2 = orientation1.clone();
-        assert_eq!(orientation1, orientation2);
-    }
-
-    #[test]
     fn test_orientation_copy() {
         let orientation1 = ChartOrientation::Vertical;
         let orientation2 = orientation1;
