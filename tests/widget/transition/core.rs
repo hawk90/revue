@@ -57,7 +57,6 @@ fn untouched(buffer: &Buffer, width: u16) -> bool {
 // =========================================================================
 
 #[test]
-#[ignore = "BUG: phase stays Leaving/Entering forever when no animation is set"]
 fn test_hide_without_leave_animation_goes_straight_to_hidden() {
     let mut t = Transition::new("test");
     t.hide();
@@ -66,7 +65,6 @@ fn test_hide_without_leave_animation_goes_straight_to_hidden() {
 }
 
 #[test]
-#[ignore = "BUG: phase stays Leaving/Entering forever when no animation is set"]
 fn test_show_without_enter_animation_goes_straight_to_visible() {
     let mut t = Transition::new("test");
     t.hide();
@@ -228,7 +226,6 @@ fn test_render_wide_char_that_does_not_fit_is_dropped() {
 }
 
 #[test]
-#[ignore = "BUG: phase stays Leaving/Entering forever when no animation is set"]
 fn test_render_hidden_draws_nothing() {
     let mut t = Transition::new("Hello");
     t.hide();

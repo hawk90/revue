@@ -61,13 +61,17 @@ impl Transition {
     pub fn show(&mut self) {
         if !self.visible {
             self.visible = true;
-            self.phase = TransitionPhase::Entering;
             if let Some(anim) = &self.enter_animation {
+                self.phase = TransitionPhase::Entering;
                 let mut tween = crate::style::Tween::new(0.0, 1.0, anim.get_duration())
                     .easing(anim.get_easing())
                     .delay(anim.get_delay());
                 tween.start();
                 self.tween = Some(tween);
+            } else {
+                // Nothing to animate: the content is fully shown right away
+                self.phase = TransitionPhase::Visible;
+                self.tween = None;
             }
         }
     }
@@ -75,15 +79,18 @@ impl Transition {
     /// Hide the content (triggers leave animation if set)
     pub fn hide(&mut self) {
         if self.visible {
-            self.phase = TransitionPhase::Leaving;
             if let Some(anim) = &self.leave_animation {
+                self.phase = TransitionPhase::Leaving;
                 let mut tween = crate::style::Tween::new(1.0, 0.0, anim.get_duration())
                     .easing(anim.get_easing())
                     .delay(anim.get_delay());
                 tween.start();
                 self.tween = Some(tween);
             } else {
+                // Nothing to animate: the content is gone right away
+                self.phase = TransitionPhase::Hidden;
                 self.visible = false;
+                self.tween = None;
             }
         }
     }
