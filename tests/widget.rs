@@ -75,9 +75,8 @@ mod empty_state;
 // pub mod feedback;
 #[path = "widget/filepicker/mod.rs"]
 mod filepicker;
-// TODO(test-coverage): form has API mismatches
-// #[path = "widget/form/mod.rs"]
-// pub mod form;
+#[path = "widget/form/mod.rs"]
+mod form;
 // TODO(test-coverage): form_tests has API mismatches
 // #[path = "widget/form_tests.rs"]
 // mod form_tests;
