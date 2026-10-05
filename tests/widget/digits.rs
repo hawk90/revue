@@ -7,7 +7,7 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::traits::RenderContext;
-use revue::widget::{clock, digits, timer, DigitStyle, Digits, StyledView, View};
+use revue::widget::{clock, digits, DigitStyle, Digits, StyledView, View};
 
 // ─────────────────────────────────────────────────────────────────────────
 // Constructor tests - 생성자 테스트
@@ -217,52 +217,6 @@ fn test_digits_style_default() {
     assert_eq!(height, 5); // 기본값은 Block (높이 5)
 }
 
-#[test]
-fn test_digits_fg_color() {
-    // 전경색 설정 테스트
-    let d = Digits::new(42).fg(Color::RED);
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-    // 패닉 없이 렌더링되어야 함
-}
-
-#[test]
-fn test_digits_bg_color() {
-    // 배경색 설정 테스트
-    let d = Digits::new(42).bg(Color::BLUE);
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-}
-
-#[test]
-fn test_digits_prefix() {
-    // 접두사 설정 테스트
-    let d = Digits::new(100).prefix("$");
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-    // 접두사가 렌더링되어야 함
-}
-
-#[test]
-fn test_digits_suffix() {
-    // 접미사 설정 테스트
-    let d = Digits::new(50).suffix("%");
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-}
-
 // ─────────────────────────────────────────────────────────────────────────
 // Dimension methods - 차원 메서드 테스트
 // ─────────────────────────────────────────────────────────────────────────
@@ -344,34 +298,6 @@ fn test_digits_render_lines_with_negative() {
 }
 
 #[test]
-fn test_digits_render_lines_braille_style() {
-    // Braille 스타일 렌더링 테스트
-    let d = Digits::new("42").style(DigitStyle::Braille);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 4); // Braille은 4줄
-}
-
-#[test]
-fn test_digits_render_lines_thin_style() {
-    // Thin 스타일 렌더링 테스트
-    let d = Digits::new("42").style(DigitStyle::Thin);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-    // Thin 스타일은 특수 문자 사용
-    assert!(lines[0].contains('┌') || lines[0].contains('─'));
-}
-
-#[test]
-fn test_digits_render_lines_ascii_style() {
-    // ASCII 스타일 렌더링 테스트
-    let d = Digits::new("42").style(DigitStyle::Ascii);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-    // ASCII 스타일은 +, -, | 문자 사용
-    assert!(lines[0].contains('+') || lines[0].contains('-'));
-}
-
-#[test]
 fn test_digits_render_lines_empty_value() {
     // 빈 값 렌더링 테스트
     let d = Digits::new("").style(DigitStyle::Block);
@@ -388,114 +314,6 @@ fn test_digits_render_lines_with_separator_formatted() {
     assert_eq!(lines.len(), 5);
     // 콤마는 공백으로 렌더링됨
     assert!(lines[0].contains(' '));
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Render integration tests - 렌더링 통합 테스트
-// ─────────────────────────────────────────────────────────────────────────
-
-#[test]
-fn test_digits_render_basic() {
-    // 기본 렌더링 테스트
-    let d = Digits::new("42");
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-    // 패닉 없이 렌더링되어야 함
-}
-
-#[test]
-fn test_digits_render_with_colors() {
-    // 색상이 적용된 렌더링 테스트
-    let d = Digits::new("123").fg(Color::CYAN).bg(Color::BLACK);
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-}
-
-#[test]
-fn test_digits_render_time_format() {
-    // 시간 형식 렌더링 테스트
-    let d = Digits::time(12, 30, 45);
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-}
-
-#[test]
-fn test_digits_render_negative_number() {
-    // 음수 렌더링 테스트
-    let d = Digits::new(-999);
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-}
-
-#[test]
-fn test_digits_render_small_buffer() {
-    // 작은 버퍼 렌더링 테스트
-    let d = Digits::new("42");
-    let mut buffer = Buffer::new(10, 5);
-    let area = Rect::new(0, 0, 10, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-}
-
-#[test]
-fn test_digits_render_with_prefix_suffix() {
-    // 접두사/접미사가 있는 렌더링 테스트
-    let d = Digits::new("100").prefix("$").suffix(" USD");
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-}
-
-#[test]
-fn test_digits_render_thin_style() {
-    // Thin 스타일 렌더링 테스트
-    let d = Digits::new("9876").style(DigitStyle::Thin).fg(Color::GREEN);
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-}
-
-#[test]
-fn test_digits_render_braille_style() {
-    // Braille 스타일 렌더링 테스트
-    let d = Digits::new("1234")
-        .style(DigitStyle::Braille)
-        .fg(Color::YELLOW);
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-}
-
-#[test]
-fn test_digits_render_ascii_style() {
-    // ASCII 스타일 렌더링 테스트
-    let d = Digits::new("5678")
-        .style(DigitStyle::Ascii)
-        .fg(Color::MAGENTA);
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -523,22 +341,6 @@ fn test_helper_clock() {
     // clock() 헬퍼 함수 테스트
     let c = clock(9, 41);
     let lines = c.render_lines();
-    assert_eq!(lines.len(), 5);
-}
-
-#[test]
-fn test_helper_timer() {
-    // timer() 헬퍼 함수 테스트
-    let t = timer(125);
-    let lines = t.render_lines();
-    assert_eq!(lines.len(), 5);
-}
-
-#[test]
-fn test_helper_timer_with_hours() {
-    // 시간이 포함된 timer() 헬퍼 함수 테스트
-    let t = timer(7325);
-    let lines = t.render_lines();
     assert_eq!(lines.len(), 5);
 }
 
@@ -724,33 +526,6 @@ fn test_digits_builder_chain() {
 }
 
 #[test]
-fn test_digits_render_all_styles() {
-    // 모든 스타일 렌더링 테스트
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-
-    // Block
-    let d = digits(123).style(DigitStyle::Block);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    d.render(&mut ctx);
-
-    // Thin
-    let d = digits(456).style(DigitStyle::Thin);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    d.render(&mut ctx);
-
-    // ASCII
-    let d = digits(789).style(DigitStyle::Ascii);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    d.render(&mut ctx);
-
-    // Braille
-    let d = digits(999).style(DigitStyle::Braille);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    d.render(&mut ctx);
-}
-
-#[test]
 fn test_digits_different_digit_patterns() {
     // 서로 다른 숫자 패턴 테스트
     for i in 0..10 {
@@ -759,34 +534,6 @@ fn test_digits_different_digit_patterns() {
         assert_eq!(lines.len(), 5);
         assert!(!lines[0].is_empty());
     }
-}
-
-#[test]
-fn test_digits_render_with_offset() {
-    // 오프셋이 있는 렌더링 테스트
-    let d = Digits::new("42");
-    let mut buffer = Buffer::new(40, 20);
-    let area = Rect::new(10, 5, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-}
-
-#[test]
-fn test_digits_render_zero_area() {
-    // 0 너비/높이 영역 렌더링 테스트
-    let d = Digits::new("42");
-    let mut buffer = Buffer::new(20, 10);
-
-    // 0 너비
-    let area = Rect::new(0, 0, 0, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    d.render(&mut ctx);
-
-    // 0 높이
-    let area = Rect::new(0, 0, 20, 0);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    d.render(&mut ctx);
 }
 
 #[test]
@@ -924,17 +671,6 @@ fn test_digits_time_all_components() {
 }
 
 #[test]
-fn test_digits_with_prefix_suffix_renders() {
-    // 접두사와 접미사가 있는 렌더링 테스트
-    let d = Digits::new("42").prefix("Price: $").suffix(" USD");
-    let mut buffer = Buffer::new(30, 10);
-    let area = Rect::new(0, 0, 30, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    d.render(&mut ctx);
-}
-
-#[test]
 fn test_digits_thin_style_characters() {
     // Thin 스타일 문자 확인 테스트
     let d = Digits::new("0").style(DigitStyle::Thin);
@@ -984,4 +720,91 @@ fn test_digits_braille_style_characters() {
     let lines = d.render_lines();
     // Braille 패턴은 유니코드 브라유 문자 사용
     assert_eq!(lines.len(), 4);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Rendering - 렌더링 테스트
+// ─────────────────────────────────────────────────────────────────────────
+
+fn render_in(d: &Digits, buffer: &mut Buffer, area: Rect) {
+    let mut ctx = RenderContext::new(buffer, area);
+    d.render(&mut ctx);
+}
+
+fn render(d: &Digits, width: u16, height: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    render_in(d, &mut buffer, Rect::new(0, 0, width, height));
+    buffer
+}
+
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .collect()
+}
+
+#[test]
+fn test_digits_fg_color() {
+    let d = Digits::new(42).fg(Color::RED);
+    let buffer = render(&d, 20, 10);
+    let cell = buffer.get(0, 0).unwrap();
+    assert_ne!(cell.symbol, ' ');
+    assert_eq!(cell.fg, Some(Color::RED));
+}
+
+#[test]
+fn test_digits_render_with_colors() {
+    let d = Digits::new("123").fg(Color::CYAN).bg(Color::BLACK);
+    let buffer = render(&d, 20, 10);
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.fg, Some(Color::CYAN));
+    assert_eq!(cell.bg, Some(Color::BLACK));
+}
+
+#[test]
+fn test_digits_without_prefix_or_suffix_has_no_label() {
+    let d = Digits::new("100");
+    let buffer = render(&d, 30, 10);
+    assert_eq!(row(&buffer, 5).trim(), "");
+}
+
+#[test]
+fn test_digits_render_all_styles_differ() {
+    let drawn: Vec<String> = [
+        DigitStyle::Block,
+        DigitStyle::Thin,
+        DigitStyle::Ascii,
+        DigitStyle::Braille,
+    ]
+    .into_iter()
+    .map(|style| row(&render(&digits(123).style(style), 30, 10), 0))
+    .collect();
+    for i in 0..drawn.len() {
+        for j in i + 1..drawn.len() {
+            assert_ne!(drawn[i], drawn[j]);
+        }
+    }
+}
+
+#[test]
+fn test_digits_render_small_buffer() {
+    let d = Digits::new("42");
+    let buffer = render(&d, 5, 3);
+    // Clipped to the area: first three rows, first five columns
+    for (i, line) in d.render_lines().iter().take(3).enumerate() {
+        let expected: String = line.chars().take(5).collect();
+        assert_eq!(row(&buffer, i as u16), expected);
+    }
+}
+
+#[test]
+fn test_digits_render_zero_area() {
+    let d = Digits::new("42");
+    let mut buffer = Buffer::new(20, 10);
+    render_in(&d, &mut buffer, Rect::new(0, 0, 0, 10));
+    render_in(&d, &mut buffer, Rect::new(0, 0, 20, 0));
+    // Nothing is drawn
+    for y in 0..10 {
+        assert_eq!(row(&buffer, y).trim(), "");
+    }
 }

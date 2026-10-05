@@ -61,9 +61,8 @@ mod dropzone;
 #[cfg(feature = "diff")]
 #[path = "widget/diff.rs"]
 mod diff;
-// TODO(test-coverage): digits has API mismatches
-// #[path = "widget/digits.rs"]
-// mod digits;
+#[path = "widget/digits.rs"]
+mod digits;
 #[path = "widget/divider.rs"]
 mod divider;
 // TODO(test-coverage): display has API mismatches
