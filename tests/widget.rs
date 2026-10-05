@@ -53,11 +53,8 @@ pub mod data;
 mod datetime_picker;
 #[path = "widget/debug_overlay.rs"]
 mod debug_overlay;
-#[path = "widget/dropzone/mod.rs"]
-mod dropzone;
-// TODO(test-coverage): developer has API mismatches
-// #[path = "widget/developer/mod.rs"]
-// pub mod developer;
+#[path = "widget/developer/mod.rs"]
+mod developer;
 #[cfg(feature = "diff")]
 #[path = "widget/diff.rs"]
 mod diff;
@@ -67,6 +64,8 @@ mod digits;
 mod display;
 #[path = "widget/divider.rs"]
 mod divider;
+#[path = "widget/dropzone/mod.rs"]
+mod dropzone;
 #[path = "widget/edge_cases/mod.rs"]
 mod edge_cases;
 #[path = "widget/empty_state.rs"]

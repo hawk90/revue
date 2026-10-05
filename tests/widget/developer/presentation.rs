@@ -2,20 +2,15 @@
 //!
 //! Tests for public API of Presentation widget
 
-use revue::widget::developer::{Presentation, Slide, Transition, SlideAlign};
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
+use revue::widget::traits::{RenderContext, View};
+use revue::widget::{presentation, slide, Presentation, Slide, SlideAlign, Transition};
 
 // =========================================================================
 // Presentation creation tests
 // =========================================================================
-
-#[test]
-fn test_presentation_creation() {
-    let pres = Presentation::new().title("Test").author("Author");
-    assert_eq!(pres.slide_count(), 0);
-}
 
 #[test]
 fn test_presentation_default() {
@@ -71,21 +66,9 @@ fn test_slide_notes() {
 }
 
 #[test]
-fn test_slide_notes_empty() {
-    let s = Slide::new("Test").notes("");
-    assert_eq!(s.notes, "");
-}
-
-#[test]
 fn test_slide_bg() {
     let s = Slide::new("Test").bg(Color::BLACK);
     assert_eq!(s.bg, Some(Color::BLACK));
-}
-
-#[test]
-fn test_slide_bg_none() {
-    let s = Slide::new("Test");
-    assert!(s.bg.is_none());
 }
 
 #[test]
@@ -143,7 +126,7 @@ fn test_slide_content_code_empty() {
 
 #[test]
 fn test_presentation_slides() {
-    let slides = vec![revue::widget::developer::slide("A"), revue::widget::developer::slide("B"), revue::widget::developer::slide("C")];
+    let slides = vec![slide("A"), slide("B"), slide("C")];
     let pres = Presentation::new().slides(slides);
     assert_eq!(pres.slide_count(), 3);
 }
@@ -154,72 +137,6 @@ fn test_presentation_slides_empty() {
     assert_eq!(pres.slide_count(), 0);
 }
 
-#[test]
-fn test_presentation_transition() {
-    let pres = Presentation::new().transition(Transition::Fade);
-    assert_eq!(pres.transition, Transition::Fade);
-}
-
-#[test]
-fn test_presentation_transition_slide() {
-    let pres = Presentation::new().transition(Transition::SlideLeft);
-    assert_eq!(pres.transition, Transition::SlideLeft);
-}
-
-#[test]
-fn test_presentation_transition_zoom() {
-    let pres = Presentation::new().transition(Transition::ZoomIn);
-    assert_eq!(pres.transition, Transition::ZoomIn);
-}
-
-#[test]
-fn test_presentation_numbers_hide() {
-    let pres = Presentation::new().numbers(false);
-    assert!(!pres.show_numbers);
-}
-
-#[test]
-fn test_presentation_numbers_show() {
-    let pres = Presentation::new().numbers(true);
-    assert!(pres.show_numbers);
-}
-
-#[test]
-fn test_presentation_progress_hide() {
-    let pres = Presentation::new().progress(false);
-    assert!(!pres.show_progress);
-}
-
-#[test]
-fn test_presentation_progress_show() {
-    let pres = Presentation::new().progress(true);
-    assert!(pres.show_progress);
-}
-
-#[test]
-fn test_presentation_bg() {
-    let pres = Presentation::new().bg(Color::BLACK);
-    assert_eq!(pres.bg, Color::BLACK);
-}
-
-#[test]
-fn test_presentation_accent() {
-    let pres = Presentation::new().accent(Color::MAGENTA);
-    assert_eq!(pres.accent, Color::MAGENTA);
-}
-
-#[test]
-fn test_presentation_timer() {
-    let pres = Presentation::new().timer(60);
-    assert_eq!(pres.timer, Some(60));
-}
-
-#[test]
-fn test_presentation_timer_none() {
-    let pres = Presentation::new();
-    assert!(pres.timer.is_none());
-}
-
 // =========================================================================
 // Navigation tests
 // =========================================================================
@@ -227,9 +144,9 @@ fn test_presentation_timer_none() {
 #[test]
 fn test_navigation() {
     let mut pres = Presentation::new()
-        .slide(revue::widget::developer::slide("Slide 1"))
-        .slide(revue::widget::developer::slide("Slide 2"))
-        .slide(revue::widget::developer::slide("Slide 3"));
+        .slide(slide("Slide 1"))
+        .slide(slide("Slide 2"))
+        .slide(slide("Slide 3"));
 
     assert_eq!(pres.current_index(), 0);
     assert!(pres.next_slide());
@@ -242,9 +159,9 @@ fn test_navigation() {
 #[test]
 fn test_goto_valid() {
     let mut pres = Presentation::new()
-        .slide(revue::widget::developer::slide("A"))
-        .slide(revue::widget::developer::slide("B"))
-        .slide(revue::widget::developer::slide("C"));
+        .slide(slide("A"))
+        .slide(slide("B"))
+        .slide(slide("C"));
 
     pres.goto(1);
     assert_eq!(pres.current_index(), 1);
@@ -252,7 +169,7 @@ fn test_goto_valid() {
 
 #[test]
 fn test_goto_out_of_bounds() {
-    let mut pres = Presentation::new().slide(revue::widget::developer::slide("A")).slide(revue::widget::developer::slide("B"));
+    let mut pres = Presentation::new().slide(slide("A")).slide(slide("B"));
 
     pres.goto(10); // Out of bounds
     assert_eq!(pres.current_index(), 0); // Unchanged
@@ -267,7 +184,7 @@ fn test_goto_empty() {
 
 #[test]
 fn test_first() {
-    let mut pres = Presentation::new().slide(revue::widget::developer::slide("A")).slide(revue::widget::developer::slide("B"));
+    let mut pres = Presentation::new().slide(slide("A")).slide(slide("B"));
     pres.goto(1);
     pres.first();
     assert_eq!(pres.current_index(), 0);
@@ -283,9 +200,9 @@ fn test_first_empty() {
 #[test]
 fn test_last() {
     let mut pres = Presentation::new()
-        .slide(revue::widget::developer::slide("A"))
-        .slide(revue::widget::developer::slide("B"))
-        .slide(revue::widget::developer::slide("C"));
+        .slide(slide("A"))
+        .slide(slide("B"))
+        .slide(slide("C"));
     pres.last();
     assert_eq!(pres.current_index(), 2);
 }
@@ -303,7 +220,7 @@ fn test_last_empty() {
 
 #[test]
 fn test_current_slide() {
-    let pres = Presentation::new().slide(revue::widget::developer::slide("First"));
+    let pres = Presentation::new().slide(slide("First"));
     let slide = pres.current_slide();
     assert!(slide.is_some());
     assert_eq!(slide.unwrap().title, "First");
@@ -318,7 +235,7 @@ fn test_current_slide_empty() {
 
 #[test]
 fn test_current_slide_second() {
-    let mut pres = Presentation::new().slide(revue::widget::developer::slide("A")).slide(revue::widget::developer::slide("B"));
+    let mut pres = Presentation::new().slide(slide("A")).slide(slide("B"));
     pres.goto(1);
     let slide = pres.current_slide();
     assert!(slide.is_some());
@@ -327,7 +244,7 @@ fn test_current_slide_second() {
 
 #[test]
 fn test_current_notes() {
-    let pres = Presentation::new().slide(revue::widget::developer::slide("Test").notes("Speaker notes"));
+    let pres = Presentation::new().slide(slide("Test").notes("Speaker notes"));
     let notes = pres.current_notes();
     assert!(notes.is_some());
     assert_eq!(notes.unwrap(), "Speaker notes");
@@ -335,7 +252,7 @@ fn test_current_notes() {
 
 #[test]
 fn test_current_notes_no_notes() {
-    let pres = Presentation::new().slide(revue::widget::developer::slide("Test"));
+    let pres = Presentation::new().slide(slide("Test"));
     let notes = pres.current_notes();
     assert!(notes.is_some());
     assert_eq!(notes.unwrap(), ""); // Empty notes
@@ -360,7 +277,7 @@ fn test_next_slide_empty() {
 
 #[test]
 fn test_next_slide_at_end() {
-    let mut pres = Presentation::new().slide(revue::widget::developer::slide("Only"));
+    let mut pres = Presentation::new().slide(slide("Only"));
     assert!(!pres.next_slide()); // Already at end
 }
 
@@ -372,57 +289,13 @@ fn test_prev_empty() {
 
 #[test]
 fn test_prev_at_start() {
-    let mut pres = Presentation::new().slide(revue::widget::developer::slide("A"));
+    let mut pres = Presentation::new().slide(slide("A"));
     assert!(!pres.prev()); // Already at 0
-}
-
-// =========================================================================
-// Tick tests
-// =========================================================================
-
-#[test]
-fn test_tick_no_transition() {
-    let mut pres = Presentation::new().transition(Transition::None);
-    pres.tick(0.1);
-    assert_eq!(pres.transition_progress, 1.0); // No transition
-}
-
-#[test]
-fn test_tick_with_transition() {
-    let mut pres = Presentation::new().transition(Transition::Fade);
-    pres.tick(0.1);
-    assert!(pres.transition_progress > 0.0);
-}
-
-#[test]
-fn test_tick_complete() {
-    let mut pres = Presentation::new().transition(Transition::Fade);
-    pres.tick(1.0);
-    assert_eq!(pres.transition_progress, 1.0);
 }
 
 // =========================================================================
 // Builder chain tests
 // =========================================================================
-
-#[test]
-fn test_presentation_builder_chain() {
-    let pres = Presentation::new()
-        .title("Title")
-        .author("Author")
-        .transition(Transition::Fade)
-        .numbers(false)
-        .progress(false)
-        .bg(Color::BLACK)
-        .accent(Color::WHITE)
-        .timer(30);
-
-    assert_eq!(pres.title, "Title");
-    assert_eq!(pres.author, "Author");
-    assert_eq!(pres.transition, Transition::Fade);
-    assert!(!pres.show_numbers);
-    assert!(!pres.show_progress);
-}
 
 #[test]
 fn test_slide_builder_chain() {
@@ -450,65 +323,12 @@ fn test_slide_clone() {
 }
 
 // =========================================================================
-// Render tests
-// =========================================================================
-
-#[test]
-fn test_presentation_render() {
-    let pres = Presentation::new()
-        .title("Test Presentation")
-        .slide(revue::widget::developer::slide("Intro").bullet("Hello"));
-
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    pres.render(&mut ctx);
-}
-
-#[test]
-fn test_render_empty_presentation() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let pres = Presentation::new();
-    pres.render(&mut ctx); // Should show title slide
-}
-
-#[test]
-fn test_render_with_content() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = revue::widget::traits::RenderContext::new(&mut buffer, area);
-
-    let mut pres = Presentation::new().slide(revue::widget::developer::slide("Content").line("Content here"));
-    pres.goto(1);
-    pres.render(&mut ctx);
-}
-
-// =========================================================================
 // Enum tests
 // =========================================================================
 
 #[test]
 fn test_transition_default() {
     assert_eq!(Transition::default(), Transition::None);
-}
-
-#[test]
-fn test_transition_clone() {
-    let t = Transition::Fade;
-    let cloned = t;
-    assert_eq!(t, cloned);
-}
-
-#[test]
-fn test_transition_copy() {
-    let t1 = Transition::SlideLeft;
-    let t2 = t1;
-    assert_eq!(t1, Transition::SlideLeft);
-    assert_eq!(t2, Transition::SlideLeft);
 }
 
 #[test]
@@ -522,33 +342,227 @@ fn test_slide_align_default() {
     assert_eq!(SlideAlign::default(), SlideAlign::Center);
 }
 
-#[test]
-fn test_slide_align_clone() {
-    let align = SlideAlign::Left;
-    let cloned = align;
-    assert_eq!(align, cloned);
-}
-
-#[test]
-fn test_slide_align_copy() {
-    let a1 = SlideAlign::Right;
-    let a2 = a1;
-    assert_eq!(a1, SlideAlign::Right);
-    assert_eq!(a2, SlideAlign::Right);
-}
-
 // =========================================================================
 // Helper function tests
 // =========================================================================
 
 #[test]
 fn test_presentation_helper() {
-    let pres = revue::widget::developer::presentation();
+    let pres = presentation();
     assert!(pres.slide_count() == 0);
 }
 
 #[test]
 fn test_slide_helper() {
-    let s = revue::widget::developer::slide("Title");
+    let s = slide("Title");
     assert_eq!(s.title, "Title");
+}
+
+// =========================================================================
+// Rendering
+// =========================================================================
+
+fn render_sized(pres: &Presentation, width: u16, height: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, height));
+    pres.render(&mut ctx);
+    buffer
+}
+
+fn render(pres: &Presentation) -> Buffer {
+    render_sized(pres, 80, 24)
+}
+
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .collect()
+}
+
+fn screen(buffer: &Buffer) -> String {
+    (0..buffer.height())
+        .map(|y| row(buffer, y))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Foreground color of the first cell on row `y` showing `ch`.
+fn fg_of(buffer: &Buffer, y: u16, ch: char) -> Option<Color> {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap())
+        .find(|c| c.symbol == ch)
+        .and_then(|c| c.fg)
+}
+
+#[test]
+fn test_slide_defaults() {
+    let s = Slide::new("Test");
+    assert!(s.bg.is_none());
+    assert!(s.notes.is_empty());
+    assert!(s.content.is_empty());
+    assert_eq!(s.align, SlideAlign::Center);
+}
+
+#[test]
+fn test_presentation_creation() {
+    let pres = Presentation::new().title("Test").author("Author");
+    assert_eq!(pres.slide_count(), 0);
+    // The title slide shows title and author
+    let text = screen(&render(&pres));
+    assert!(text.contains("Test"));
+    assert!(text.contains("Author"));
+}
+
+#[test]
+fn test_render_empty_presentation() {
+    let buffer = render(&Presentation::new());
+    assert!(screen(&buffer).contains("Press → or Space to start"));
+    // No slides: no slide number or progress bar
+    assert!(!row(&buffer, 23).contains('/'));
+    assert!(!row(&buffer, 23).contains('━'));
+}
+
+#[test]
+fn test_render_with_content() {
+    let mut pres = Presentation::new().slide(slide("Content").line("Content here"));
+    // Out of range: stays on the only slide
+    pres.goto(1);
+    let text = screen(&render(&pres));
+    assert!(text.contains("Content here"));
+    assert!(!text.contains("Press → or Space to start"));
+}
+
+#[test]
+fn test_render_slide_align() {
+    let left = Presentation::new().slide(slide("T").line("abc").align(SlideAlign::Left));
+    assert!(row(&render(&left), 6).starts_with("  abc"));
+
+    let right = Presentation::new().slide(slide("T").line("abc").align(SlideAlign::Right));
+    assert!(row(&render(&right), 6).ends_with("abc  "));
+
+    let center = Presentation::new().slide(slide("T").line("abc"));
+    let r = row(&render(&center), 6);
+    assert_eq!(r.find("abc"), Some((80 - 3) / 2));
+}
+
+#[test]
+fn test_render_slide_colors() {
+    let pres = Presentation::new().slide(
+        slide("Title")
+            .line("body")
+            .bg(Color::BLUE)
+            .title_color(Color::YELLOW)
+            .content_color(Color::GREEN),
+    );
+    let buffer = render(&pres);
+    assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::BLUE));
+    assert_eq!(fg_of(&buffer, 2, 'T'), Some(Color::YELLOW));
+    assert_eq!(fg_of(&buffer, 6, 'b'), Some(Color::GREEN));
+}
+
+#[test]
+fn test_presentation_numbers() {
+    let pres = || Presentation::new().slide(slide("A")).slide(slide("B"));
+    assert!(row(&render(&pres()), 23).contains("1/2"));
+    assert!(row(&render(&pres().numbers(true)), 23).contains("1/2"));
+    assert!(!row(&render(&pres().numbers(false)), 23).contains("1/2"));
+
+    let mut second = pres();
+    second.next_slide();
+    assert!(row(&render(&second), 23).contains("2/2"));
+}
+
+#[test]
+fn test_presentation_progress() {
+    let pres = || Presentation::new().slide(slide("A")).slide(slide("B"));
+    assert!(row(&render(&pres()), 23).contains('━'));
+    assert!(row(&render(&pres().progress(true)), 23).contains('━'));
+    assert!(!row(&render(&pres().progress(false)), 23).contains('━'));
+}
+
+#[test]
+fn test_presentation_progress_fills_with_position() {
+    let mut pres = Presentation::new()
+        .slide(slide("A"))
+        .slide(slide("B"))
+        .numbers(false);
+    let filled = |p: &Presentation| row(&render(p), 23).matches('━').count();
+    let first = filled(&pres);
+    pres.last();
+    let last = filled(&pres);
+    assert!(first < last);
+}
+
+#[test]
+fn test_presentation_bg() {
+    let pres = Presentation::new().bg(Color::BLACK);
+    assert_eq!(render(&pres).get(0, 0).unwrap().bg, Some(Color::BLACK));
+}
+
+#[test]
+fn test_presentation_accent() {
+    let pres = Presentation::new()
+        .slide(slide("Title"))
+        .accent(Color::MAGENTA);
+    let buffer = render(&pres);
+    // The title separator and the filled progress bar use the accent
+    assert_eq!(fg_of(&buffer, 4, '─'), Some(Color::MAGENTA));
+    assert_eq!(fg_of(&buffer, 23, '━'), Some(Color::MAGENTA));
+}
+
+#[test]
+fn test_presentation_builder_chain() {
+    let pres = Presentation::new()
+        .title("Title")
+        .author("Author")
+        .transition(Transition::Fade)
+        .numbers(false)
+        .progress(false)
+        .bg(Color::BLACK)
+        .accent(Color::WHITE)
+        .timer(30)
+        .slide(slide("One"));
+    let buffer = render(&pres);
+    let text = screen(&buffer);
+    assert!(text.contains("Title"));
+    assert!(text.contains("Author"));
+    assert!(!row(&buffer, 23).contains("1/1"));
+    assert!(!row(&buffer, 23).contains('━'));
+    assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::BLACK));
+}
+
+#[test]
+#[ignore = "BUG: with a title set, slide 0 is never shown (the title slide replaces it)"]
+fn test_presentation_title_slide_does_not_hide_first_slide() {
+    let mut pres = Presentation::new()
+        .title("Deck")
+        .slide(slide("Intro"))
+        .slide(slide("Next"));
+    let mut seen_intro = false;
+    for i in 0..pres.slide_count() {
+        pres.goto(i);
+        seen_intro |= screen(&render(&pres)).contains("Intro");
+    }
+    assert!(seen_intro);
+}
+
+#[test]
+#[ignore = "BUG: Presentation::timer() is stored but never displayed"]
+fn test_presentation_timer_is_shown() {
+    let pres = || Presentation::new().slide(slide("A"));
+    assert_ne!(screen(&render(&pres().timer(60))), screen(&render(&pres())));
+}
+
+#[test]
+#[ignore = "BUG: Presentation transitions have no visible effect (transition progress is never rendered)"]
+fn test_presentation_transition_is_rendered() {
+    let mut pres = Presentation::new()
+        .slide(slide("A").line("first"))
+        .slide(slide("B").line("second"))
+        .transition(Transition::Fade);
+    pres.next_slide();
+    let mid = screen(&render(&pres));
+    pres.tick(1.0);
+    let done = screen(&render(&pres));
+    assert_ne!(mid, done);
 }
