@@ -20,7 +20,10 @@ jobs:
       has_outdated: ${{ steps.check.outputs.has_outdated }}
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          cache: false
+          build-warnings: allow
       - name: Install cargo-outdated
         run: cargo install cargo-outdated
       - name: Check outdated
@@ -45,7 +48,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          cache: false
+          build-warnings: allow
       - uses: Swatinem/rust-cache@v2
       - name: Install cargo-semver-checks
         run: cargo install cargo-semver-checks
@@ -69,7 +75,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          cache: false
+          build-warnings: allow
       - name: Calculate stats
         run: |
           echo "## 📊 Dependency Statistics" >> $GITHUB_STEP_SUMMARY
@@ -83,7 +92,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          cache: false
+          build-warnings: allow
       - uses: Swatinem/rust-cache@v2
       - name: Build and measure
         run: |
@@ -116,7 +128,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          cache: false
+          build-warnings: allow
       - uses: Swatinem/rust-cache@v2
       - name: Run benchmarks
         run: |
