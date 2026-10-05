@@ -653,3 +653,15 @@ fn test_markdown_callout_marker_still_detected() {
     assert!(row_containing(&rows, "[!NOTE]").is_none(), "{rows:#?}");
     assert!(row_containing(&rows, "body text").is_some(), "{rows:#?}");
 }
+
+#[test]
+fn test_markdown_blockquote_unfinished_marker_renders() {
+    // Text that could still have become `[!TYPE]` when the quote ended
+    for source in ["> [", "> [!", "> [!NOTE", "> [!NOTE\n> next line"] {
+        let rows = render_rows(source, 40);
+        let first = source[2..].lines().next().unwrap();
+        let row = row_containing(&rows, first)
+            .unwrap_or_else(|| panic!("{source:?} lost text: {rows:#?}"));
+        assert!(row.starts_with("│ "), "{source:?}: {rows:#?}");
+    }
+}
