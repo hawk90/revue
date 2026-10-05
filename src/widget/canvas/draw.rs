@@ -141,6 +141,8 @@ impl<'a> DrawContext<'a> {
                 5 => '▋',
                 6 => '▊',
                 7 => '▉',
+                // Within 1/16 of the next whole cell: draw it full
+                8 => '█',
                 _ => ' ',
             };
             self.set_styled(x + full_blocks, y, partial_char, Some(fg), None);
