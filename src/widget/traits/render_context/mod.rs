@@ -2,6 +2,7 @@
 
 mod box_model;
 mod css;
+pub(crate) mod edit_line;
 mod focus;
 pub mod overlay;
 mod progress;
