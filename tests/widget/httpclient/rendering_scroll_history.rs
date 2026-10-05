@@ -146,7 +146,6 @@ fn test_render_uses_colors_builder() {
 }
 
 #[test]
-#[ignore = "BUG: HttpColors::url_bg and method_bg are never read by HttpClient::render"]
 fn test_render_uses_url_and_method_backgrounds() {
     let colors = HttpColors {
         url_bg: Color::MAGENTA,
@@ -165,4 +164,10 @@ fn test_render_uses_url_and_method_backgrounds() {
     assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::CYAN));
     assert_eq!(buffer.get(4, 0).unwrap().symbol, 'h');
     assert_eq!(buffer.get(4, 0).unwrap().bg, Some(Color::MAGENTA));
+    // The whole bar is url_bg: the gap after the badge, the blank run before
+    // the send hint, and the hint itself.
+    assert_eq!(buffer.get(3, 0).unwrap().bg, Some(Color::MAGENTA));
+    assert_eq!(buffer.get(50, 0).unwrap().bg, Some(Color::MAGENTA));
+    assert_eq!(buffer.get(79, 0).unwrap().symbol, ']');
+    assert_eq!(buffer.get(79, 0).unwrap().bg, Some(Color::MAGENTA));
 }
