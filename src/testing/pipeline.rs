@@ -67,7 +67,7 @@ impl PipelineHarness {
 
     /// Turn per-frame DOM reconciliation on or off for this harness.
     ///
-    /// Mirrors [`AppBuilder::incremental_dom`](crate::app::AppBuilder::incremental_dom),
+    /// Mirrors [`AppBuilder::incremental_dom`](crate::core::app::AppBuilder::incremental_dom),
     /// which is off by default. A test that exercises reconciliation must turn
     /// it on explicitly - otherwise the DOM is built once and never follows the
     /// view again, and the test silently passes against a frozen tree.
@@ -78,7 +78,7 @@ impl PipelineHarness {
 
     /// Build the DOM from the render traversal for this harness.
     ///
-    /// Mirrors [`AppBuilder::dom_from_render`](crate::app::AppBuilder::dom_from_render),
+    /// Mirrors [`AppBuilder::dom_from_render`](crate::core::app::AppBuilder::dom_from_render),
     /// which is off by default.
     pub fn dom_from_render(mut self, enabled: bool) -> Self {
         self.app.set_dom_from_render(enabled);
@@ -87,14 +87,14 @@ impl PipelineHarness {
 
     /// Let CSS box properties override container-computed geometry.
     ///
-    /// Mirrors [`AppBuilder::css_layout`](crate::app::AppBuilder::css_layout),
+    /// Mirrors [`AppBuilder::css_layout`](crate::core::app::AppBuilder::css_layout),
     /// which is off by default and inert without `dom_from_render`.
     pub fn css_layout(mut self, enabled: bool) -> Self {
         self.app.set_css_layout(enabled);
         self
     }
 
-    /// Mirrors [`AppBuilder::tab_navigation`](crate::app::AppBuilder::tab_navigation),
+    /// Mirrors [`AppBuilder::tab_navigation`](crate::core::app::AppBuilder::tab_navigation),
     /// which is off by default.
     ///
     /// With it on, sending a `Tab` key through [`send`](Self::send) moves

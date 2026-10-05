@@ -1,7 +1,38 @@
 //! Tests for sidebar layout widget
 
-use crate::widget::layout::sidebar::{CollapseMode, Sidebar, SidebarItem, SidebarSection};
-use crate::widget::layout::sidebar::state::SidebarState;
+use revue::layout::Rect;
+use revue::render::Buffer;
+use revue::widget::traits::RenderContext;
+use revue::widget::View;
+use revue::widget::{CollapseMode, FlattenedItem, Sidebar, SidebarItem, SidebarSection};
+
+/// Render `sidebar` into a `width` x `height` buffer and return each row as text.
+fn render_rows(sidebar: &Sidebar, width: u16, height: u16) -> Vec<String> {
+    let mut buffer = Buffer::new(width, height);
+    let area = Rect::new(0, 0, width, height);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    sidebar.render(&mut ctx);
+    let rows: Vec<String> = (0..height)
+        .map(|y| {
+            (0..width)
+                .map(|x| buffer.get(x, y).map(|c| c.symbol).unwrap_or(' '))
+                .collect::<String>()
+        })
+        .collect();
+    rows
+}
+
+/// Id and depth of each visible item, skipping section rows.
+fn item_depths(sidebar: &Sidebar) -> Vec<(String, usize)> {
+    sidebar
+        .visible_items()
+        .into_iter()
+        .filter_map(|f| match f {
+            FlattenedItem::Item { item, depth } => Some((item.id, depth)),
+            FlattenedItem::Section(_) => None,
+        })
+        .collect()
+}
 
 // =========================================================================
 // Sidebar::new tests
@@ -10,34 +41,53 @@ use crate::widget::layout::sidebar::state::SidebarState;
 #[test]
 fn test_sidebar_new() {
     let sidebar = Sidebar::new();
-    assert!(sidebar.sections.is_empty());
-    assert!(sidebar.selected.is_none());
-    assert_eq!(sidebar.hovered, 0);
-    assert_eq!(sidebar.collapse_mode, CollapseMode::Expanded);
-    assert_eq!(sidebar.expanded_width, 20);
-    assert_eq!(sidebar.collapsed_width, 5);
-    assert_eq!(sidebar.collapse_threshold, 15);
+    assert!(sidebar.visible_items().is_empty());
+    assert!(sidebar.selected_id().is_none());
+    assert_eq!(sidebar.hovered_index(), 0);
+    assert!(!sidebar.is_collapsed());
+    assert_eq!(sidebar.current_width(), 24);
+    assert_eq!(
+        Sidebar::new()
+            .collapse_mode(CollapseMode::Collapsed)
+            .current_width(),
+        4
+    );
+}
+
+#[test]
+fn test_sidebar_default_collapse_threshold() {
+    // Default threshold is 20: Auto collapses below it, stays expanded at it.
+    let sidebar = Sidebar::new()
+        .header("Header")
+        .collapse_mode(CollapseMode::Auto);
+    assert!(render_rows(&sidebar, 20, 4)[0].contains("Header"));
+    assert!(!render_rows(&sidebar, 19, 4)[0].contains("Head"));
 }
 
 #[test]
 fn test_sidebar_new_with_collapse_mode() {
     let sidebar = Sidebar::new().collapse_mode(CollapseMode::Collapsed);
-    assert_eq!(sidebar.collapse_mode, CollapseMode::Collapsed);
+    assert!(sidebar.is_collapsed());
 }
 
 #[test]
 fn test_sidebar_new_with_widths() {
-    let sidebar = Sidebar::new()
-        .expanded_width(30)
-        .collapsed_width(10);
-    assert_eq!(sidebar.expanded_width, 30);
-    assert_eq!(sidebar.collapsed_width, 10);
+    let sidebar = Sidebar::new().expanded_width(30).collapsed_width(10);
+    assert_eq!(sidebar.current_width(), 30);
+    let sidebar = sidebar.collapse_mode(CollapseMode::Collapsed);
+    assert_eq!(sidebar.current_width(), 10);
 }
 
 #[test]
 fn test_sidebar_new_with_threshold() {
-    let sidebar = Sidebar::new().collapse_threshold(20);
-    assert_eq!(sidebar.collapse_threshold, 20);
+    let sidebar = Sidebar::new()
+        .header("Header")
+        .collapse_mode(CollapseMode::Auto)
+        .collapse_threshold(20);
+    // Width 19 is below the threshold: collapsed, header text is hidden.
+    assert!(!render_rows(&sidebar, 19, 4)[0].contains("Head"));
+    // Width 20 meets the threshold: expanded, header is drawn.
+    assert!(render_rows(&sidebar, 20, 4)[0].contains("Header"));
 }
 
 // =========================================================================
@@ -47,19 +97,25 @@ fn test_sidebar_new_with_threshold() {
 #[test]
 fn test_sidebar_header() {
     let sidebar = Sidebar::new().header("Test Header");
-    assert_eq!(sidebar.header.as_deref(), Some("Test Header"));
+    let rows = render_rows(&sidebar, 20, 5);
+    assert!(rows[0].contains("Test Header"));
+    // A separator line follows the header.
+    assert!(rows[1].trim_end_matches('│').chars().all(|c| c == '─'));
 }
 
 #[test]
 fn test_sidebar_header_empty() {
     let sidebar = Sidebar::new().header("");
-    assert_eq!(sidebar.header.as_deref(), Some(""));
+    let rows = render_rows(&sidebar, 20, 5);
+    // An empty header still reserves its row and draws the separator.
+    assert!(rows[0].trim_end_matches('│').trim().is_empty());
+    assert!(rows[1].trim_end_matches('│').chars().all(|c| c == '─'));
 }
 
 #[test]
 fn test_sidebar_header_with_string() {
     let sidebar = Sidebar::new().header(String::from("Header"));
-    assert_eq!(sidebar.header.as_deref(), Some("Header"));
+    assert!(render_rows(&sidebar, 20, 5)[0].contains("Header"));
 }
 
 // =========================================================================
@@ -69,13 +125,19 @@ fn test_sidebar_header_with_string() {
 #[test]
 fn test_sidebar_footer() {
     let sidebar = Sidebar::new().footer("Test Footer");
-    assert_eq!(sidebar.footer.as_deref(), Some("Test Footer"));
+    let rows = render_rows(&sidebar, 20, 6);
+    assert!(rows[5].contains("Test Footer"));
+    // A separator line precedes the footer.
+    assert!(rows[4].trim_end_matches('│').chars().all(|c| c == '─'));
 }
 
 #[test]
 fn test_sidebar_footer_empty() {
     let sidebar = Sidebar::new().footer("");
-    assert_eq!(sidebar.footer.as_deref(), Some(""));
+    let rows = render_rows(&sidebar, 20, 6);
+    // An empty footer still draws its separator.
+    assert!(rows[4].trim_end_matches('│').chars().all(|c| c == '─'));
+    assert!(rows[5].trim_end_matches('│').trim().is_empty());
 }
 
 // =========================================================================
@@ -86,35 +148,37 @@ fn test_sidebar_footer_empty() {
 fn test_sidebar_section() {
     let section = SidebarSection::new(vec![SidebarItem::new("item1", "Item 1")]);
     let sidebar = Sidebar::new().section(section);
-    assert_eq!(sidebar.sections.len(), 1);
-    assert_eq!(sidebar.sections[0].items.len(), 1);
-    assert_eq!(sidebar.sections[0].items[0].id, "item1");
+    assert_eq!(item_depths(&sidebar), vec![("item1".to_string(), 0)]);
 }
 
 #[test]
 fn test_sidebar_section_with_string() {
     let section = SidebarSection::titled("Section", vec![SidebarItem::new("a", "A")]);
     let sidebar = Sidebar::new().section(section);
-    assert_eq!(sidebar.sections[0].title.as_deref(), Some("Section"));
+    match &sidebar.visible_items()[0] {
+        FlattenedItem::Section(title) => assert_eq!(title.as_deref(), Some("Section")),
+        other => panic!("expected section row, got {other:?}"),
+    }
 }
 
 #[test]
 fn test_sidebar_section_multiple() {
     let section1 = SidebarSection::new(vec![SidebarItem::new("a", "A")]);
     let section2 = SidebarSection::titled("Section B", vec![SidebarItem::new("b", "B")]);
-    let sidebar = Sidebar::new()
-        .section(section1)
-        .section(section2);
-    assert_eq!(sidebar.sections.len(), 2);
-    assert!(sidebar.sections[0].title.is_none());
-    assert_eq!(sidebar.sections[1].title.as_deref(), Some("Section B"));
+    let sidebar = Sidebar::new().section(section1).section(section2);
+    // Untitled section contributes no header row; titled one does.
+    let items = sidebar.visible_items();
+    assert_eq!(items.len(), 3);
+    assert!(matches!(&items[0], FlattenedItem::Item { item, .. } if item.id == "a"));
+    assert!(matches!(&items[1], FlattenedItem::Section(Some(t)) if t == "Section B"));
+    assert!(matches!(&items[2], FlattenedItem::Item { item, .. } if item.id == "b"));
 }
 
 #[test]
 fn test_sidebar_section_empty() {
     let sidebar = Sidebar::new().section(SidebarSection::new(vec![]));
-    assert_eq!(sidebar.sections.len(), 1);
-    assert!(sidebar.sections[0].items.is_empty());
+    assert!(sidebar.visible_items().is_empty());
+    assert_eq!(sidebar.item_count(), 0);
 }
 
 // =========================================================================
@@ -127,18 +191,25 @@ fn test_sidebar_width_builder() {
         .expanded_width(30)
         .collapsed_width(10)
         .collapse_threshold(20);
-    assert_eq!(sidebar.expanded_width, 30);
-    assert_eq!(sidebar.collapsed_width, 10);
-    assert_eq!(sidebar.collapse_threshold, 20);
+    assert_eq!(sidebar.current_width(), 30);
+    assert_eq!(
+        sidebar
+            .collapse_mode(CollapseMode::Collapsed)
+            .current_width(),
+        10
+    );
 }
 
 #[test]
 fn test_sidebar_width_zero() {
-    let sidebar = Sidebar::new()
-        .expanded_width(0)
-        .collapsed_width(0);
-    assert_eq!(sidebar.expanded_width, 0);
-    assert_eq!(sidebar.collapsed_width, 0);
+    let sidebar = Sidebar::new().expanded_width(0).collapsed_width(0);
+    assert_eq!(sidebar.current_width(), 0);
+    assert_eq!(
+        sidebar
+            .collapse_mode(CollapseMode::Collapsed)
+            .current_width(),
+        0
+    );
 }
 
 // =========================================================================
@@ -153,8 +224,7 @@ fn test_selected_id_none() {
 
 #[test]
 fn test_selected_id_some() {
-    let mut sidebar = Sidebar::new();
-    sidebar.selected = Some("test_id".to_string());
+    let sidebar = Sidebar::new().selected("test_id");
     assert_eq!(sidebar.selected_id(), Some("test_id"));
 }
 
@@ -170,8 +240,14 @@ fn test_hovered_index_default() {
 
 #[test]
 fn test_hovered_index_custom() {
-    let mut sidebar = Sidebar::new();
-    sidebar.hovered = 5;
+    let mut sidebar = Sidebar::new().section(SidebarSection::new(
+        (0..6)
+            .map(|i| SidebarItem::new(format!("item{i}"), format!("Item {i}")))
+            .collect(),
+    ));
+    for _ in 0..5 {
+        sidebar.hover_down();
+    }
     assert_eq!(sidebar.hovered_index(), 5);
 }
 
@@ -304,72 +380,36 @@ fn test_visible_items_expanded_children() {
 }
 
 // =========================================================================
-// Sidebar::flatten_item tests
+// visible_items depth tests
 // =========================================================================
 
 #[test]
-fn test_flatten_item_no_children() {
-    let sidebar = Sidebar::new();
-    let item = SidebarItem::new("item1", "Item 1");
-    let mut items = Vec::new();
-    sidebar.flatten_item(&item, 0, &mut items);
-    assert_eq!(items.len(), 1);
+fn test_visible_items_top_level_depth_zero() {
+    let sidebar = Sidebar::new().section(SidebarSection::new(vec![SidebarItem::new(
+        "item1", "Item 1",
+    )]));
+    assert_eq!(item_depths(&sidebar), vec![("item1".to_string(), 0)]);
 }
 
 #[test]
-fn test_flatten_item_with_children_not_expanded() {
-    let sidebar = Sidebar::new();
-    let mut item = SidebarItem::new("item1", "Item 1");
-    item.children.push(SidebarItem::new("child1", "Child 1"));
+fn test_visible_items_nested_depth() {
+    let grandchild = SidebarItem::new("grandchild", "Grandchild");
+    let child = SidebarItem::new("child", "Child")
+        .children(vec![grandchild])
+        .expanded(true);
+    let parent = SidebarItem::new("parent", "Parent")
+        .children(vec![child])
+        .expanded(true);
+    let sidebar = Sidebar::new().section(SidebarSection::new(vec![parent]));
 
-    let mut items = Vec::new();
-    sidebar.flatten_item(&item, 0, &mut items);
-    assert_eq!(items.len(), 1); // Only parent
-}
-
-#[test]
-fn test_flatten_item_with_children_expanded() {
-    let sidebar = Sidebar::new();
-    let mut item = SidebarItem::new("item1", "Item 1");
-    item.expanded = true;
-    item.children.push(SidebarItem::new("child1", "Child 1"));
-
-    let mut items = Vec::new();
-    sidebar.flatten_item(&item, 0, &mut items);
-    assert_eq!(items.len(), 2); // Parent + child
-}
-
-#[test]
-fn test_flatten_item_depth() {
-    let sidebar = Sidebar::new();
-    let item = SidebarItem::new("item1", "Item 1");
-    let mut items = Vec::new();
-    sidebar.flatten_item(&item, 3, &mut items);
-
-    if let Some(crate::widget::layout::sidebar::types::FlattenedItem::Item { depth, .. }) = items.first() {
-        assert_eq!(*depth, 3);
-    } else {
-        panic!("Expected Item with depth");
-    }
-}
-
-#[test]
-fn test_flatten_item_nested_depth() {
-    let sidebar = Sidebar::new();
-    let mut parent = SidebarItem::new("parent", "Parent");
-    parent.expanded = true;
-    parent.children.push(SidebarItem::new("child", "Child"));
-
-    let mut items = Vec::new();
-    sidebar.flatten_item(&parent, 1, &mut items);
-
-    assert_eq!(items.len(), 2);
-    if let crate::widget::layout::sidebar::types::FlattenedItem::Item { depth, .. } = &items[0] {
-        assert_eq!(*depth, 1);
-    }
-    if let crate::widget::layout::sidebar::types::FlattenedItem::Item { depth, .. } = &items[1] {
-        assert_eq!(*depth, 2);
-    }
+    assert_eq!(
+        item_depths(&sidebar),
+        vec![
+            ("parent".to_string(), 0),
+            ("child".to_string(), 1),
+            ("grandchild".to_string(), 2),
+        ]
+    );
 }
 
 // =========================================================================
@@ -433,7 +473,7 @@ fn test_item_count_includes_expanded_children() {
 fn test_hover_down_empty() {
     let mut sidebar = Sidebar::new();
     sidebar.hover_down();
-    assert_eq!(sidebar.hovered, 0);
+    assert_eq!(sidebar.hovered_index(), 0);
 }
 
 #[test]
@@ -442,10 +482,10 @@ fn test_hover_down_single_item() {
         "item1", "Item 1",
     )]));
     sidebar.hover_down();
-    assert_eq!(sidebar.hovered, 0);
+    assert_eq!(sidebar.hovered_index(), 0);
     sidebar.hover_down();
     // Should stay at first item if only one
-    assert_eq!(sidebar.hovered, 0);
+    assert_eq!(sidebar.hovered_index(), 0);
 }
 
 #[test]
@@ -456,11 +496,11 @@ fn test_hover_down_multiple_items() {
         SidebarItem::new("item3", "Item 3"),
     ]));
     sidebar.hover_down(); // Initial hovered is 0, moves to 1
-    assert_eq!(sidebar.hovered, 1);
+    assert_eq!(sidebar.hovered_index(), 1);
     sidebar.hover_down(); // Moves to 2
-    assert_eq!(sidebar.hovered, 2);
+    assert_eq!(sidebar.hovered_index(), 2);
     sidebar.hover_down(); // Stays at 2 (last item)
-    assert_eq!(sidebar.hovered, 2);
+    assert_eq!(sidebar.hovered_index(), 2);
 }
 
 #[test]
@@ -471,9 +511,9 @@ fn test_hover_down_skips_disabled() {
         SidebarItem::new("item3", "Item 3"),
     ]));
     sidebar.hover_down(); // Initial hovered is 0, but item2 is disabled, so moves to item3 (index 2)
-    assert_eq!(sidebar.hovered, 2);
+    assert_eq!(sidebar.hovered_index(), 2);
     sidebar.hover_down(); // Stays at 2 (last non-disabled item)
-    assert_eq!(sidebar.hovered, 2);
+    assert_eq!(sidebar.hovered_index(), 2);
 }
 
 // =========================================================================
@@ -484,7 +524,7 @@ fn test_hover_down_skips_disabled() {
 fn test_hover_up_empty() {
     let mut sidebar = Sidebar::new();
     sidebar.hover_up();
-    assert_eq!(sidebar.hovered, 0);
+    assert_eq!(sidebar.hovered_index(), 0);
 }
 
 #[test]
@@ -493,7 +533,7 @@ fn test_hover_up_single_item() {
         "item1", "Item 1",
     )]));
     sidebar.hover_up();
-    assert_eq!(sidebar.hovered, 0);
+    assert_eq!(sidebar.hovered_index(), 0);
 }
 
 #[test]
@@ -503,11 +543,13 @@ fn test_hover_up_multiple_items() {
         SidebarItem::new("item2", "Item 2"),
         SidebarItem::new("item3", "Item 3"),
     ]));
-    sidebar.hovered = 2;
+    sidebar.hover_down();
+    sidebar.hover_down();
+    assert_eq!(sidebar.hovered_index(), 2);
     sidebar.hover_up();
-    assert_eq!(sidebar.hovered, 1);
+    assert_eq!(sidebar.hovered_index(), 1);
     sidebar.hover_up();
-    assert_eq!(sidebar.hovered, 0);
+    assert_eq!(sidebar.hovered_index(), 0);
 }
 
 #[test]
@@ -517,9 +559,10 @@ fn test_hover_up_skips_disabled() {
         SidebarItem::new("item2", "Item 2").disabled(true),
         SidebarItem::new("item3", "Item 3"),
     ]));
-    sidebar.hovered = 2;
+    sidebar.hover_down(); // Skips disabled item2
+    assert_eq!(sidebar.hovered_index(), 2);
     sidebar.hover_up(); // Should skip to item1
-    assert_eq!(sidebar.hovered, 0);
+    assert_eq!(sidebar.hovered_index(), 0);
 }
 
 // =========================================================================
@@ -530,7 +573,7 @@ fn test_hover_up_skips_disabled() {
 fn test_select_hovered_empty() {
     let mut sidebar = Sidebar::new();
     sidebar.select_hovered();
-    assert!(sidebar.selected.is_none());
+    assert!(sidebar.selected_id().is_none());
 }
 
 #[test]
@@ -539,7 +582,7 @@ fn test_select_hovered_valid() {
         "item1", "Item 1",
     )]));
     sidebar.select_hovered();
-    assert_eq!(sidebar.selected.as_deref(), Some("item1"));
+    assert_eq!(sidebar.selected_id(), Some("item1"));
 }
 
 #[test]
@@ -549,7 +592,7 @@ fn test_select_hovered_disabled() {
     )
     .disabled(true)]));
     sidebar.select_hovered();
-    assert!(sidebar.selected.is_none());
+    assert!(sidebar.selected_id().is_none());
 }
 
 // =========================================================================
@@ -560,7 +603,7 @@ fn test_select_hovered_disabled() {
 fn test_toggle_hovered_empty() {
     let mut sidebar = Sidebar::new();
     sidebar.toggle_hovered();
-    // Should not crash
+    assert!(sidebar.visible_items().is_empty());
 }
 
 #[test]
@@ -569,8 +612,15 @@ fn test_toggle_hovered_with_children() {
     item.children.push(SidebarItem::new("child1", "Child 1"));
 
     let mut sidebar = Sidebar::new().section(SidebarSection::new(vec![item]));
+    assert_eq!(sidebar.item_count(), 1);
     sidebar.toggle_hovered();
-    // Item should now be expanded
+    // Item is now expanded: its child is visible
+    assert_eq!(
+        item_depths(&sidebar),
+        vec![("item1".to_string(), 0), ("child1".to_string(), 1)]
+    );
+    sidebar.toggle_hovered();
+    assert_eq!(sidebar.item_count(), 1);
 }
 
 #[test]
@@ -579,7 +629,8 @@ fn test_toggle_hovered_without_children() {
         "item1", "Item 1",
     )]));
     sidebar.toggle_hovered();
-    // Should not crash on item without children
+    // Toggling a leaf changes nothing
+    assert_eq!(item_depths(&sidebar), vec![("item1".to_string(), 0)]);
 }
 
 // =========================================================================
@@ -594,7 +645,10 @@ fn test_toggle_item_by_id() {
     let mut sidebar = Sidebar::new().section(SidebarSection::new(vec![item]));
 
     sidebar.toggle_item("item1");
-    // Item should now be expanded
+    // Item is now expanded: its child is visible
+    assert_eq!(sidebar.item_count(), 2);
+    sidebar.toggle_item("item1");
+    assert_eq!(sidebar.item_count(), 1);
 }
 
 #[test]
@@ -604,7 +658,7 @@ fn test_toggle_item_nonexistent() {
     )]));
 
     sidebar.toggle_item("nonexistent");
-    // Should not crash
+    assert_eq!(item_depths(&sidebar), vec![("item1".to_string(), 0)]);
 }
 
 // =========================================================================
@@ -649,51 +703,57 @@ fn test_collapse_all() {
 fn test_expand_empty_sidebar() {
     let mut sidebar = Sidebar::new();
     sidebar.expand_all();
-    // Should not crash
+    assert!(sidebar.visible_items().is_empty());
 }
 
 #[test]
 fn test_collapse_empty_sidebar() {
     let mut sidebar = Sidebar::new();
     sidebar.collapse_all();
-    // Should not crash
+    assert!(sidebar.visible_items().is_empty());
 }
 
 // =========================================================================
-// Sidebar::set_expanded_recursive tests
+// expand_all / collapse_all recurse into nested children
 // =========================================================================
 
-#[test]
-fn test_set_expanded_recursive_true() {
-    let mut parent = SidebarItem::new("parent", "Parent");
-    parent.children.push(SidebarItem::new("child", "Child"));
-
-    Sidebar::set_expanded_recursive(&mut parent, true);
-    assert!(parent.expanded);
-    assert!(parent.children[0].expanded);
-}
-
-#[test]
-fn test_set_expanded_recursive_false() {
-    let mut parent = SidebarItem::new("parent", "Parent");
-    parent.expanded = true;
-    parent.children.push(SidebarItem::new("child", "Child"));
-
-    Sidebar::set_expanded_recursive(&mut parent, false);
-    assert!(!parent.expanded);
-    assert!(!parent.children[0].expanded);
-}
-
-#[test]
-fn test_set_expanded_deep_nesting() {
+fn three_level_sidebar(expanded: bool) -> Sidebar {
     let grandchild = SidebarItem::new("grandchild", "Grandchild");
-    let mut child = SidebarItem::new("child", "Child");
-    child.children.push(grandchild);
-    let mut parent = SidebarItem::new("parent", "Parent");
-    parent.children.push(child);
+    let child = SidebarItem::new("child", "Child")
+        .children(vec![grandchild])
+        .expanded(expanded);
+    let parent = SidebarItem::new("parent", "Parent")
+        .children(vec![child])
+        .expanded(expanded);
+    Sidebar::new().section(SidebarSection::new(vec![parent]))
+}
 
-    Sidebar::set_expanded_recursive(&mut parent, true);
-    assert!(parent.expanded);
-    assert!(parent.children[0].expanded);
-    assert!(parent.children[0].children[0].expanded);
+#[test]
+fn test_expand_all_deep_nesting() {
+    let mut sidebar = three_level_sidebar(false);
+    assert_eq!(sidebar.item_count(), 1);
+    sidebar.expand_all();
+    assert_eq!(
+        item_depths(&sidebar),
+        vec![
+            ("parent".to_string(), 0),
+            ("child".to_string(), 1),
+            ("grandchild".to_string(), 2),
+        ]
+    );
+}
+
+#[test]
+fn test_collapse_all_deep_nesting() {
+    let mut sidebar = three_level_sidebar(true);
+    assert_eq!(sidebar.item_count(), 3);
+    sidebar.collapse_all();
+    assert_eq!(sidebar.item_count(), 1);
+    // The nested child was collapsed too, not just the top level:
+    // re-opening only the parent must not reveal the grandchild.
+    sidebar.toggle_item("parent");
+    assert_eq!(
+        item_depths(&sidebar),
+        vec![("parent".to_string(), 0), ("child".to_string(), 1)]
+    );
 }

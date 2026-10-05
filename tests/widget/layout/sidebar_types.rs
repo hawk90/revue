@@ -1,6 +1,6 @@
 //! Tests for sidebar layout widget types
 
-use crate::widget::layout::sidebar::{CollapseMode, SidebarItem, SidebarSection};
+use revue::widget::{CollapseMode, SidebarItem, SidebarSection};
 
 // =========================================================================
 // SidebarItem::new tests
@@ -138,8 +138,7 @@ fn test_sidebar_item_nested_children() {
 
 #[test]
 fn test_sidebar_section_new_no_title() {
-    let section =
-        SidebarSection::new(vec![SidebarItem::new("a", "A"), SidebarItem::new("b", "B")]);
+    let section = SidebarSection::new(vec![SidebarItem::new("a", "A"), SidebarItem::new("b", "B")]);
     assert!(section.title.is_none());
     assert_eq!(section.items.len(), 2);
 }
@@ -199,18 +198,18 @@ fn test_collapse_mode_partial_eq() {
 
 #[test]
 fn test_flattened_item_section() {
-    let item = crate::widget::layout::sidebar::types::FlattenedItem::Section(Some("Header".to_string()));
+    let item = revue::widget::FlattenedItem::Section(Some("Header".to_string()));
     match item {
-        crate::widget::layout::sidebar::types::FlattenedItem::Section(Some(title)) => assert_eq!(title, "Header"),
+        revue::widget::FlattenedItem::Section(Some(title)) => assert_eq!(title, "Header"),
         _ => panic!("Expected Section with title"),
     }
 }
 
 #[test]
 fn test_flattened_item_section_none() {
-    let item = crate::widget::layout::sidebar::types::FlattenedItem::Section(None);
+    let item = revue::widget::FlattenedItem::Section(None);
     match item {
-        crate::widget::layout::sidebar::types::FlattenedItem::Section(None) => {}
+        revue::widget::FlattenedItem::Section(None) => {}
         _ => panic!("Expected Section with None"),
     }
 }
@@ -218,12 +217,12 @@ fn test_flattened_item_section_none() {
 #[test]
 fn test_flattened_item_item() {
     let sidebar_item = SidebarItem::new("id", "Label");
-    let item = crate::widget::layout::sidebar::types::FlattenedItem::Item {
+    let item = revue::widget::FlattenedItem::Item {
         item: sidebar_item,
         depth: 2,
     };
     match item {
-        crate::widget::layout::sidebar::types::FlattenedItem::Item { item, depth } => {
+        revue::widget::FlattenedItem::Item { item, depth } => {
             assert_eq!(item.id, "id");
             assert_eq!(depth, 2);
         }
@@ -234,12 +233,12 @@ fn test_flattened_item_item() {
 #[test]
 fn test_flattened_item_item_depth_zero() {
     let sidebar_item = SidebarItem::new("root", "Root");
-    let item = crate::widget::layout::sidebar::types::FlattenedItem::Item {
+    let item = revue::widget::FlattenedItem::Item {
         item: sidebar_item,
         depth: 0,
     };
     match item {
-        crate::widget::layout::sidebar::types::FlattenedItem::Item { depth, .. } => assert_eq!(depth, 0),
+        revue::widget::FlattenedItem::Item { depth, .. } => assert_eq!(depth, 0),
         _ => panic!("Expected Item"),
     }
 }

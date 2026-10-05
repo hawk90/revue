@@ -1,25 +1,13 @@
 //! Tooltip public API tests
 mod tests {
-    use revue::widget::data::chart::{ChartTooltip, ChartTooltipFormat, ChartTooltipPosition};
-
-    #[test]
-    fn test_tooltip_new() {
-        let tooltip = ChartTooltip::new();
-        assert!(!tooltip.enabled);
-        assert!(matches!(tooltip.format, ChartTooltipFormat::Auto));
-        assert_eq!(tooltip.position, ChartTooltipPosition::Follow);
-    }
+    use revue::widget::data::chart::chart_common::{
+        ChartTooltip, ChartTooltipFormat, ChartTooltipPosition,
+    };
 
     #[test]
     fn test_tooltip_default() {
         let tooltip = ChartTooltip::default();
         assert!(!tooltip.enabled);
-    }
-
-    #[test]
-    fn test_tooltip_enabled() {
-        let tooltip = ChartTooltip::enabled();
-        assert!(tooltip.enabled);
     }
 
     #[test]
@@ -38,19 +26,19 @@ mod tests {
     fn test_tooltip_format() {
         let tooltip =
             ChartTooltip::new().format(ChartTooltipFormat::Custom("{x}: {y}".to_string()));
-        assert!(matches!(tooltip.format, ChartTooltipFormat::Custom(_)));
+        assert!(matches!(&tooltip.format, ChartTooltipFormat::Custom(f) if f == "{x}: {y}"));
     }
 
     #[test]
     fn test_tooltip_custom_format() {
         let tooltip = ChartTooltip::new().custom_format("Value: {}");
-        assert!(matches!(tooltip.format, ChartTooltipFormat::Custom(_)));
+        assert!(matches!(&tooltip.format, ChartTooltipFormat::Custom(f) if f == "Value: {}"));
     }
 
     #[test]
     fn test_tooltip_custom_format_string() {
         let tooltip = ChartTooltip::new().custom_format(String::from("Label: {l}"));
-        assert!(matches!(tooltip.format, ChartTooltipFormat::Custom(_)));
+        assert!(matches!(&tooltip.format, ChartTooltipFormat::Custom(f) if f == "Label: {l}"));
     }
 
     #[test]
@@ -80,13 +68,6 @@ mod tests {
     }
 
     #[test]
-    fn test_tooltip_position_clone() {
-        let pos1 = ChartTooltipPosition::Fixed;
-        let pos2 = pos1.clone();
-        assert_eq!(pos1, pos2);
-    }
-
-    #[test]
     fn test_tooltip_position_copy() {
         let pos1 = ChartTooltipPosition::Follow;
         let pos2 = pos1;
@@ -108,6 +89,7 @@ mod tests {
         let tooltip2 = tooltip1.clone();
         assert_eq!(tooltip1.enabled, tooltip2.enabled);
         assert_eq!(tooltip1.position, tooltip2.position);
+        assert!(matches!(&tooltip2.format, ChartTooltipFormat::Custom(f) if f == "test"));
     }
 
     #[test]
@@ -120,7 +102,7 @@ mod tests {
     fn test_tooltip_format_clone() {
         let format1 = ChartTooltipFormat::Custom("test".to_string());
         let format2 = format1.clone();
-        assert!(matches!(format1, ChartTooltipFormat::Custom(_)));
-        assert!(matches!(format2, ChartTooltipFormat::Custom(_)));
+        assert!(matches!(&format1, ChartTooltipFormat::Custom(f) if f == "test"));
+        assert!(matches!(&format2, ChartTooltipFormat::Custom(f) if f == "test"));
     }
 }
