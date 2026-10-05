@@ -4,7 +4,7 @@ mod calendar_date;
 mod calendar_render;
 mod calendar_types;
 mod calendar_utils;
-// g4-calendar: mod table;
+mod table;
 mod timer;
 
 // g4-datagrid: mod datagrid;
