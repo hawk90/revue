@@ -243,6 +243,9 @@ impl Presentation {
     }
 
     /// Set transition effect
+    ///
+    /// It plays each time the slide changes, advanced by
+    /// [`tick`](Self::tick); the footer stays still.
     pub fn transition(mut self, transition: Transition) -> Self {
         self.transition = transition;
         self
@@ -369,25 +372,60 @@ impl Presentation {
         }
     }
 
+    /// How the current transition moves the slide, from its progress
+    fn slide_fx(&self, area: crate::layout::Rect, bg: Color) -> SlideFx {
+        let p = self.transition_progress.clamp(0.0, 1.0);
+        let rest = 1.0 - p;
+        let (w, h) = (area.width as f32, area.height as f32);
+        let mut fx = SlideFx {
+            dx: 0,
+            dy: 0,
+            alpha: 1.0,
+            bg,
+            zoom: None,
+            max_y: area.height.saturating_sub(1),
+        };
+        if p >= 1.0 {
+            return fx;
+        }
+        match self.transition {
+            Transition::None => {}
+            Transition::Fade => fx.alpha = p,
+            Transition::SlideLeft => fx.dx = -(rest * w).round() as i32,
+            Transition::SlideRight => fx.dx = (rest * w).round() as i32,
+            Transition::SlideUp => fx.dy = (rest * h).round() as i32,
+            Transition::ZoomIn => fx.zoom = Some((p * w / 2.0, p * h / 2.0)),
+        }
+        fx
+    }
+
     /// Render the title slide (before slide 0, or for an empty presentation)
-    fn render_title_slide(&self, ctx: &mut RenderContext) {
+    fn render_title_slide(&self, ctx: &mut RenderContext, bg: Color) {
         let area = ctx.area;
+        let fx = &self.slide_fx(area, bg);
         let center_y = area.height / 2;
 
         // Title
         let title_y = center_y.saturating_sub(2);
-        self.render_centered_text(ctx, &self.title, title_y, self.accent, Modifier::BOLD);
+        self.render_centered_text(ctx, fx, &self.title, title_y, self.accent, Modifier::BOLD);
 
         // Author
         if !self.author.is_empty() {
             let author_y = center_y + 1;
-            self.render_centered_text(ctx, &self.author, author_y, LIGHT_GRAY, Modifier::ITALIC);
+            self.render_centered_text(
+                ctx,
+                fx,
+                &self.author,
+                author_y,
+                LIGHT_GRAY,
+                Modifier::ITALIC,
+            );
         }
 
         // Press key hint
         let hint = "Press → or Space to start";
         let hint_y = area.height.saturating_sub(2);
-        self.render_centered_text(ctx, hint, hint_y, DISABLED_FG, Modifier::empty());
+        self.render_centered_text(ctx, fx, hint, hint_y, DISABLED_FG, Modifier::empty());
     }
 
     /// Render a content slide
@@ -400,11 +438,13 @@ impl Presentation {
             .bg
             .unwrap_or_else(|| self.bg.unwrap_or_else(|| ctx.css_background(SLIDE_BG)));
         ctx.fill_box_background(bg);
+        let fx = &self.slide_fx(area, bg);
 
         // Title (top center)
         let title_y = 2;
         self.render_centered_text(
             ctx,
+            fx,
             &slide.title,
             title_y,
             slide.title_color,
@@ -422,7 +462,7 @@ impl Presentation {
         for i in 0..sep_len {
             let mut cell = Cell::new('─');
             cell.fg = Some(self.accent);
-            ctx.set(sep_start as u16 + i as u16, sep_y, cell);
+            fx.put(ctx, sep_start as u16 + i as u16, sep_y, cell);
         }
 
         // Content. The slide title and the accent each say something one rule
@@ -443,11 +483,11 @@ impl Presentation {
                         }
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(content_fg);
-                        ctx.set(2 + j as u16, y, cell);
+                        fx.put(ctx, 2 + j as u16, y, cell);
                     }
                 }
                 SlideAlign::Center => {
-                    self.render_centered_text(ctx, line, y, content_fg, Modifier::empty());
+                    self.render_centered_text(ctx, fx, line, y, content_fg, Modifier::empty());
                 }
                 SlideAlign::Right => {
                     let line_len = line.chars().count();
@@ -455,7 +495,7 @@ impl Presentation {
                     for (j, ch) in line.chars().enumerate() {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(content_fg);
-                        ctx.set(start_x + j as u16, y, cell);
+                        fx.put(ctx, start_x + j as u16, y, cell);
                     }
                 }
             }
@@ -466,6 +506,7 @@ impl Presentation {
     fn render_centered_text(
         &self,
         ctx: &mut RenderContext,
+        fx: &SlideFx,
         text: &str,
         y: u16,
         fg: Color,
@@ -483,7 +524,7 @@ impl Presentation {
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
             cell.modifier = modifier;
-            ctx.set(x, y, cell);
+            fx.put(ctx, x, y, cell);
         }
     }
 
@@ -537,6 +578,51 @@ impl Presentation {
     }
 }
 
+/// Where and how a slide's cells land while a transition runs. The footer
+/// and the background are drawn outside it, so only the slide moves.
+struct SlideFx {
+    /// Column offset (slide transitions)
+    dx: i32,
+    /// Row offset (slide-up transition)
+    dy: i32,
+    /// How far text has faded in over the background, 0.0 to 1.0
+    alpha: f32,
+    /// The slide background text fades from
+    bg: Color,
+    /// Half width and half height of the centered window a zoom shows
+    zoom: Option<(f32, f32)>,
+    /// First row the slide may not draw on (the footer's)
+    max_y: u16,
+}
+
+impl SlideFx {
+    /// Draw a slide cell at `(x, y)` with the transition applied
+    fn put(&self, ctx: &mut RenderContext, x: u16, y: u16, mut cell: Cell) {
+        if self.alpha <= 0.0 {
+            return;
+        }
+        let x = i32::from(x) + self.dx;
+        let y = i32::from(y) + self.dy;
+        let area = ctx.area;
+        if x < 0 || y < 0 || x >= i32::from(area.width) || y >= i32::from(self.max_y) {
+            return;
+        }
+        if let Some((half_w, half_h)) = self.zoom {
+            let cx = (x as f32 + 0.5) - area.width as f32 / 2.0;
+            let cy = (y as f32 + 0.5) - area.height as f32 / 2.0;
+            if cx.abs() > half_w || cy.abs() > half_h {
+                return;
+            }
+        }
+        if self.alpha < 1.0 {
+            cell.fg = cell
+                .fg
+                .map(|fg| crate::utils::color::blend(fg, self.bg, self.alpha));
+        }
+        ctx.set(x as u16, y as u16, cell);
+    }
+}
+
 impl Default for Presentation {
     fn default() -> Self {
         Self::new()
@@ -557,7 +643,7 @@ impl View for Presentation {
 
         // Render current slide
         if self.on_title_slide() {
-            self.render_title_slide(ctx);
+            self.render_title_slide(ctx, bg);
         } else if let Some(slide) = self.slides.get(self.current) {
             self.render_content_slide(ctx, slide);
         }
