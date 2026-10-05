@@ -261,7 +261,6 @@ fn test_selection_list_highlight_needs_focus() {
 }
 
 #[test]
-#[ignore = "BUG: SelectionList::bg() is stored but render() never reads it"]
 fn test_selection_list_bg() {
     let list = SelectionList::new(vec![SelectionItem::new("A").description("about A")])
         .show_descriptions(true)
