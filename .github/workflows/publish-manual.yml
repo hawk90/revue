@@ -9,6 +9,10 @@ on:
         type: string
         default: ''
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish-macros:
     name: Publish revue-macros to crates.io
