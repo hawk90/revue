@@ -277,7 +277,7 @@ fn test_grid_row_deep_hierarchy() {
 fn test_grid_row_many_cells() {
     let mut row = GridRow::new();
     for i in 0..10 {
-        row = row.cell(&format!("col{}", i), &format!("val{}", i));
+        row = row.cell(format!("col{}", i), format!("val{}", i));
     }
 
     assert_eq!(row.data.len(), 10);

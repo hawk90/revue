@@ -1,4 +1,4 @@
-//! Data widget tests (calendar, table, timer, datagrid, tree, JSON viewer, file tree, virtual list)
+//! Data widget tests: calendar, table, timer, DataGrid, Tree, JsonViewer, VirtualList
 
 mod calendar_date;
 mod calendar_render;

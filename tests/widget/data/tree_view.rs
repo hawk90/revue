@@ -227,7 +227,7 @@ fn test_tree_render_selected_colors() {
 
 #[test]
 fn test_tree_render_custom_fg() {
-    // Row 0 is selected and uses the selection colours; row 1 uses fg
+    // Row 0 is selected and uses the selection colors; row 1 uses fg
     let tree = Tree::new()
         .nodes(vec![TreeNode::new("Selected"), TreeNode::new("Test")])
         .fg(Color::RED);

@@ -35,7 +35,7 @@ fn test_virtual_list_new_default_values() {
     assert_eq!(list.scroll_sub_offset, 0);
     assert_eq!(list.selected_bg, revue::style::Color::rgb(60, 60, 120));
     assert_eq!(list.selected_fg, revue::style::Color::WHITE);
-    assert_eq!(list.item_fg, None); // unset: the stylesheet colour applies
+    assert_eq!(list.item_fg, None); // unset: the stylesheet color applies
     assert!(list.show_scrollbar);
     assert_eq!(list.scrollbar_fg, revue::style::Color::WHITE);
     assert_eq!(list.scrollbar_bg, revue::style::Color::rgb(40, 40, 40));

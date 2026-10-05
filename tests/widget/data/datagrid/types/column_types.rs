@@ -197,7 +197,7 @@ fn test_alignment_debug() {
 
 #[test]
 fn test_column_type_all_variants_distinct() {
-    let types = vec![
+    let types = [
         ColumnType::Text,
         ColumnType::Number,
         ColumnType::Date,
@@ -223,7 +223,7 @@ fn test_sort_direction_both_variants_distinct() {
 
 #[test]
 fn test_alignment_all_variants_distinct() {
-    let alignments = vec![Alignment::Left, Alignment::Center, Alignment::Right];
+    let alignments = [Alignment::Left, Alignment::Center, Alignment::Right];
 
     for (i, a1) in alignments.iter().enumerate() {
         for (j, a2) in alignments.iter().enumerate() {

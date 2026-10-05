@@ -1,6 +1,6 @@
 //! Public API tests for the Table widget
 //!
-//! Table keeps its columns, colours, border and scroll settings private, so
+//! Table keeps its columns, colors, border and scroll settings private, so
 //! those are checked through what `render()` draws.
 
 use revue::layout::Rect;

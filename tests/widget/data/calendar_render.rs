@@ -5,7 +5,7 @@
 //! - range highlighting (start, end, reversed, single-day)
 //! - date markers
 //! - day-name header for each first day of the week
-//! - weekend colouring
+//! - weekend coloring
 //! - ISO 8601 week numbers
 
 use revue::layout::Rect;
@@ -74,7 +74,7 @@ fn test_range_highlights_days_between_ends() {
     let cal = Calendar::new(2024, 1).range(Date::new(2024, 1, 10), Date::new(2024, 1, 20));
     let buffer = render(&cal);
 
-    // The start is the selected date and keeps the selection colour
+    // The start is the selected date and keeps the selection color
     assert_eq!(day_bg(&buffer, 2024, 1, 10), Some(SELECTED_BG));
     for day in 11..=20 {
         assert_eq!(day_bg(&buffer, 2024, 1, day), Some(RANGE_BG), "day {day}");
