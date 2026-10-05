@@ -54,9 +54,8 @@ mod datetime_picker;
 // TODO(test-coverage): dropzone has API mismatches
 // #[path = "widget/dropzone/mod.rs"]
 // pub mod dropzone;
-// TODO(test-coverage): debug_overlay has API mismatches
-// #[path = "widget/debug_overlay.rs"]
-// mod debug_overlay;
+#[path = "widget/debug_overlay.rs"]
+mod debug_overlay;
 // TODO(test-coverage): developer has API mismatches
 // #[path = "widget/developer/mod.rs"]
 // pub mod developer;

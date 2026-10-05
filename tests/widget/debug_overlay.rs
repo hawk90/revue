@@ -1,138 +1,420 @@
 //! DebugOverlay widget integration tests
 //!
-//! DebugOverlay 위젯의 통합 테스트 모음입니다.
+//! The overlay keeps its configuration private, so builder options are
+//! checked through what the panel draws.
 
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::style::Color;
-use revue::widget::debug_overlay::{
-    disable_debug, enable_debug, is_debug_enabled, toggle_debug, DebugConfig, DebugEvent,
-    DebugOverlay, DebugPosition, EventLog, PerfMetrics, WidgetInfo,
+use revue::widget::traits::{RenderContext, View};
+use revue::widget::{
+    disable_debug, enable_debug, is_debug_enabled, DebugConfig, DebugEvent, DebugOverlay,
+    DebugPosition, EventLog, PerfMetrics, Text, WidgetInfo,
 };
-use revue::widget::traits::RenderContext;
-use revue::widget::Text;
+use serial_test::serial;
 use std::time::Duration;
 
 // =============================================================================
-// Constructor and Builder Tests
-// 생성자 및 빌더 메서드 테스트
+// Helpers
+// =============================================================================
+
+fn render_in(overlay: &DebugOverlay<Text>, buffer: &mut Buffer, area: Rect) {
+    let mut ctx = RenderContext::new(buffer, area);
+    overlay.render(&mut ctx);
+}
+
+/// Render into an 80x24 buffer.
+fn render(overlay: &DebugOverlay<Text>) -> Buffer {
+    let mut buffer = Buffer::new(80, 24);
+    render_in(overlay, &mut buffer, Rect::new(0, 0, 80, 24));
+    buffer
+}
+
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .collect()
+}
+
+fn text(buffer: &Buffer) -> String {
+    (0..buffer.height())
+        .map(|y| row(buffer, y))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn symbol(buffer: &Buffer, x: u16, y: u16) -> char {
+    buffer.get(x, y).unwrap().symbol
+}
+
+fn has_panel(buffer: &Buffer) -> bool {
+    text(buffer).contains('┌')
+}
+
+fn event_text(event: &DebugEvent) -> &str {
+    match event {
+        DebugEvent::KeyPress(s)
+        | DebugEvent::Mouse(s)
+        | DebugEvent::StateChange(s)
+        | DebugEvent::Custom(s) => s,
+    }
+}
+
+// =============================================================================
+// Builder options, observed through the rendered panel
 // =============================================================================
 
 #[test]
-fn test_debug_overlay_wrap() {
-    let text = Text::new("Hello");
-    let overlay = DebugOverlay::wrap(text);
+fn test_debug_overlay_wrap_defaults() {
+    let overlay = DebugOverlay::wrap(Text::new("Hello"));
+    let buffer = render(&overlay);
 
-    assert!(overlay.visible);
-    assert!(overlay.config.show_metrics);
-    assert!(!overlay.config.show_tree);
-    assert!(!overlay.config.show_events);
-    assert!(!overlay.config.show_styles);
-}
-
-#[test]
-fn test_debug_overlay_visible_builder() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).visible(true);
-
-    assert!(overlay.visible);
+    // Visible by default, top-right, 40 columns wide, at most 20 rows
+    assert_eq!(symbol(&buffer, 40, 0), '┌');
+    assert_eq!(symbol(&buffer, 79, 0), '┐');
+    assert_eq!(symbol(&buffer, 40, 19), '└');
+    // Metrics on; tree and events off
+    let all = text(&buffer);
+    assert!(all.contains("FPS: 0.0"));
+    assert!(!all.contains("Widgets:"));
+    assert!(!all.contains("Events:"));
+    // The wrapped view is still drawn
+    assert!(row(&buffer, 0).starts_with("Hello"));
 }
 
 #[test]
 fn test_debug_overlay_visible_false() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).visible(false);
-
-    assert!(!overlay.visible);
+    let overlay = DebugOverlay::wrap(Text::new("Hello")).visible(false);
+    let buffer = render(&overlay);
+    assert!(!has_panel(&buffer));
+    assert!(row(&buffer, 0).starts_with("Hello"));
 }
 
 #[test]
-fn test_debug_overlay_show_metrics() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).show_metrics(true);
+fn test_debug_overlay_toggle() {
+    let mut overlay = DebugOverlay::wrap(Text::new("Test")).visible(true);
+    assert!(has_panel(&render(&overlay)));
 
-    assert!(overlay.config.show_metrics);
+    overlay.toggle();
+    assert!(!has_panel(&render(&overlay)));
+
+    overlay.toggle();
+    assert!(has_panel(&render(&overlay)));
+}
+
+#[test]
+fn test_debug_overlay_toggle_from_hidden() {
+    let mut overlay = DebugOverlay::wrap(Text::new("Test")).visible(false);
+    overlay.toggle();
+    assert!(has_panel(&render(&overlay)));
 }
 
 #[test]
 fn test_debug_overlay_show_metrics_false() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).show_metrics(false);
-
-    assert!(!overlay.config.show_metrics);
+    let overlay = DebugOverlay::wrap(Text::new("Test")).show_metrics(false);
+    let all = text(&render(&overlay));
+    assert!(has_panel(&render(&overlay)));
+    assert!(!all.contains("FPS:"));
+    assert!(!all.contains("Layout:"));
 }
 
 #[test]
 fn test_debug_overlay_show_tree() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).show_tree(true);
-
-    assert!(overlay.config.show_tree);
+    let overlay = DebugOverlay::wrap(Text::new("Test")).show_tree(true);
+    assert!(text(&render(&overlay)).contains("Widgets:"));
 }
 
 #[test]
 fn test_debug_overlay_show_events() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).show_events(true);
-
-    assert!(overlay.config.show_events);
+    let overlay = DebugOverlay::wrap(Text::new("Test")).show_events(true);
+    assert!(text(&render(&overlay)).contains("Events:"));
 }
 
 #[test]
-fn test_debug_overlay_show_styles() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).show_styles(true);
-
-    assert!(overlay.config.show_styles);
+fn test_debug_overlay_all_sections_enabled() {
+    let overlay = DebugOverlay::wrap(Text::new("Test"))
+        .show_metrics(true)
+        .show_tree(true)
+        .show_events(true);
+    let all = text(&render(&overlay));
+    let fps = all.find("FPS:").unwrap();
+    let widgets = all.find("Widgets:").unwrap();
+    let events = all.find("Events:").unwrap();
+    // Sections are stacked in this order
+    assert!(fps < widgets && widgets < events);
 }
 
 #[test]
-fn test_debug_overlay_position() {
-    let text = Text::new("Test");
-
-    let overlay_tl = DebugOverlay::wrap(text.clone()).position(DebugPosition::TopLeft);
-    assert_eq!(overlay_tl.config.position, DebugPosition::TopLeft);
-
-    let overlay_tr = DebugOverlay::wrap(text.clone()).position(DebugPosition::TopRight);
-    assert_eq!(overlay_tr.config.position, DebugPosition::TopRight);
-
-    let overlay_bl = DebugOverlay::wrap(text.clone()).position(DebugPosition::BottomLeft);
-    assert_eq!(overlay_bl.config.position, DebugPosition::BottomLeft);
-
-    let overlay_br = DebugOverlay::wrap(text).position(DebugPosition::BottomRight);
-    assert_eq!(overlay_br.config.position, DebugPosition::BottomRight);
+fn test_debug_overlay_all_sections_disabled() {
+    let overlay = DebugOverlay::wrap(Text::new("Test"))
+        .show_metrics(false)
+        .show_tree(false)
+        .show_events(false);
+    let buffer = render(&overlay);
+    let all = text(&buffer);
+    assert!(has_panel(&buffer));
+    assert!(!all.contains("FPS:"));
+    assert!(!all.contains("Widgets:"));
+    assert!(!all.contains("Events:"));
 }
 
 #[test]
 fn test_debug_overlay_width() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).width(30);
-
-    assert_eq!(overlay.config.width, 30);
+    let overlay = DebugOverlay::wrap(Text::new("Test")).width(30);
+    let buffer = render(&overlay);
+    assert_eq!(symbol(&buffer, 50, 0), '┌');
+    assert_eq!(symbol(&buffer, 79, 0), '┐');
+    assert_ne!(symbol(&buffer, 49, 0), '─');
 }
 
 #[test]
 fn test_debug_overlay_builder_chain() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text)
+    let overlay = DebugOverlay::wrap(Text::new("Test"))
         .visible(true)
         .show_metrics(true)
         .show_tree(true)
         .show_events(true)
         .position(DebugPosition::TopLeft)
         .width(25);
-
-    assert!(overlay.visible);
-    assert!(overlay.config.show_metrics);
-    assert!(overlay.config.show_tree);
-    assert!(overlay.config.show_events);
-    assert_eq!(overlay.config.position, DebugPosition::TopLeft);
-    assert_eq!(overlay.config.width, 25);
+    let buffer = render(&overlay);
+    assert_eq!(symbol(&buffer, 0, 0), '┌');
+    assert_eq!(symbol(&buffer, 24, 0), '┐');
+    let all = text(&buffer);
+    assert!(all.contains("FPS:"));
+    assert!(all.contains("Widgets:"));
+    assert!(all.contains("Events:"));
 }
 
 // =============================================================================
-// DebugConfig Tests
-// 디버그 설정 테스트
+// Panel placement
+// =============================================================================
+
+#[test]
+fn test_debug_position_top_left() {
+    let overlay = DebugOverlay::wrap(Text::new("Test"))
+        .width(20)
+        .position(DebugPosition::TopLeft);
+    let buffer = render(&overlay);
+    assert_eq!(symbol(&buffer, 0, 0), '┌');
+    assert_eq!(symbol(&buffer, 19, 0), '┐');
+    assert_eq!(symbol(&buffer, 0, 19), '└');
+}
+
+#[test]
+fn test_debug_position_top_right() {
+    let overlay = DebugOverlay::wrap(Text::new("Test"))
+        .width(20)
+        .position(DebugPosition::TopRight);
+    let buffer = render(&overlay);
+    assert_eq!(symbol(&buffer, 60, 0), '┌');
+    assert_eq!(symbol(&buffer, 79, 19), '┘');
+}
+
+#[test]
+fn test_debug_position_bottom_left() {
+    let overlay = DebugOverlay::wrap(Text::new("Test"))
+        .width(20)
+        .position(DebugPosition::BottomLeft);
+    let buffer = render(&overlay);
+    // 20 rows high, flush with the bottom of a 24-row area
+    assert_eq!(symbol(&buffer, 0, 4), '┌');
+    assert_eq!(symbol(&buffer, 0, 23), '└');
+    assert_eq!(symbol(&buffer, 19, 23), '┘');
+}
+
+#[test]
+fn test_debug_position_bottom_right() {
+    let overlay = DebugOverlay::wrap(Text::new("Test"))
+        .width(20)
+        .position(DebugPosition::BottomRight);
+    let buffer = render(&overlay);
+    assert_eq!(symbol(&buffer, 60, 4), '┌');
+    assert_eq!(symbol(&buffer, 79, 23), '┘');
+}
+
+#[test]
+fn test_panel_rect_width_clamping() {
+    let overlay = DebugOverlay::wrap(Text::new("Test")).width(100);
+    let buffer = render(&overlay);
+    // Clamped to the 80-column area
+    assert_eq!(symbol(&buffer, 0, 0), '┌');
+    assert_eq!(symbol(&buffer, 79, 0), '┐');
+}
+
+#[test]
+fn test_panel_rect_height_clamping() {
+    let overlay = DebugOverlay::wrap(Text::new("Test")).width(20);
+    let mut buffer = Buffer::new(80, 10);
+    render_in(&overlay, &mut buffer, Rect::new(0, 0, 80, 10));
+    // Clamped to the 10-row area
+    assert_eq!(symbol(&buffer, 60, 9), '└');
+}
+
+#[test]
+fn test_panel_rect_with_offset_area() {
+    let overlay = DebugOverlay::wrap(Text::new("Test"))
+        .width(20)
+        .position(DebugPosition::TopLeft);
+    let mut buffer = Buffer::new(100, 40);
+    render_in(&overlay, &mut buffer, Rect::new(10, 5, 80, 24));
+    assert_eq!(symbol(&buffer, 10, 5), '┌');
+    assert_eq!(symbol(&buffer, 29, 5), '┐');
+    assert_eq!(symbol(&buffer, 9, 5), ' ');
+}
+
+#[test]
+fn test_debug_overlay_render_small_buffer() {
+    let overlay = DebugOverlay::wrap(Text::new("Test")).width(10);
+    let mut buffer = Buffer::new(20, 10);
+    render_in(&overlay, &mut buffer, Rect::new(0, 0, 20, 10));
+    assert_eq!(symbol(&buffer, 10, 0), '┌');
+    assert_eq!(symbol(&buffer, 19, 9), '┘');
+    assert!(row(&buffer, 0).starts_with("Test"));
+}
+
+#[test]
+fn test_debug_overlay_render_one_row_area() {
+    let overlay = DebugOverlay::wrap(Text::new("Test"));
+    let mut buffer = Buffer::new(80, 1);
+    render_in(&overlay, &mut buffer, Rect::new(0, 0, 80, 1));
+    // No room for a bordered panel
+    assert!(!has_panel(&buffer));
+    assert!(row(&buffer, 0).starts_with("Test"));
+}
+
+// =============================================================================
+// Panel contents
+// =============================================================================
+
+#[test]
+fn test_debug_overlay_render_with_metrics() {
+    let mut overlay = DebugOverlay::wrap(Text::new("Test"))
+        .show_metrics(true)
+        .width(30);
+    overlay.metrics_mut().start_frame();
+    overlay
+        .metrics_mut()
+        .record_layout(Duration::from_millis(5));
+    overlay
+        .metrics_mut()
+        .record_render(Duration::from_millis(3));
+
+    let all = text(&render(&overlay));
+    assert!(all.contains("FPS: 0.0"));
+    assert!(all.contains("Frame: 0.00ms"));
+    assert!(all.contains("Layout: 5.00ms"));
+    assert!(all.contains("Render: 3.00ms"));
+}
+
+#[test]
+fn test_debug_overlay_render_with_tree() {
+    let mut overlay = DebugOverlay::wrap(Text::new("Test"))
+        .show_tree(true)
+        .width(30);
+    overlay.record_widget(WidgetInfo::new("Button").id("submit").class("primary"));
+
+    let all = text(&render(&overlay));
+    assert!(all.contains("Widgets:"));
+    assert!(all.contains("Button #submit .primary"));
+}
+
+#[test]
+fn test_debug_overlay_clear_widgets() {
+    let mut overlay = DebugOverlay::wrap(Text::new("Test"))
+        .show_tree(true)
+        .width(30);
+    overlay.record_widget(WidgetInfo::new("Button"));
+    overlay.record_widget(WidgetInfo::new("Label"));
+    let all = text(&render(&overlay));
+    assert!(all.contains("Button"));
+    assert!(all.contains("Label"));
+
+    overlay.clear_widgets();
+    let all = text(&render(&overlay));
+    assert!(all.contains("Widgets:"));
+    assert!(!all.contains("Button"));
+    assert!(!all.contains("Label"));
+}
+
+#[test]
+fn test_debug_overlay_many_widgets() {
+    let mut overlay = DebugOverlay::wrap(Text::new("Test"))
+        .show_metrics(false)
+        .show_tree(true)
+        .width(30);
+    for i in 0..100 {
+        overlay.record_widget(WidgetInfo::new(format!("Widget{}", i)));
+    }
+    let buffer = render(&overlay);
+    let all = text(&buffer);
+    assert!(all.contains("Widget0"));
+    // Only what fits in the 20-row panel is listed, and the bottom border
+    // stays intact
+    assert!(!all.contains("Widget99"));
+    assert_eq!(symbol(&buffer, 50, 19), '└');
+    assert_eq!(symbol(&buffer, 79, 19), '┘');
+    assert_eq!(row(&buffer, 20).trim(), "");
+}
+
+#[test]
+fn test_debug_overlay_render_with_events() {
+    let mut overlay = DebugOverlay::wrap(Text::new("Test"))
+        .show_events(true)
+        .width(30);
+    overlay.log_event(DebugEvent::KeyPress("a".to_string()));
+    overlay.log_event(DebugEvent::Mouse("click".to_string()));
+    overlay.log_event(DebugEvent::StateChange("focus".to_string()));
+    overlay.log_event(DebugEvent::Custom("hello".to_string()));
+
+    let all = text(&render(&overlay));
+    assert!(all.contains("Key: a"));
+    assert!(all.contains("Mouse: click"));
+    assert!(all.contains("State: focus"));
+    assert!(all.contains("hello"));
+    // Most recent first
+    assert!(all.find("hello").unwrap() < all.find("Key: a").unwrap());
+}
+
+#[test]
+fn test_debug_overlay_events_mut() {
+    let mut overlay = DebugOverlay::wrap(Text::new("Test")).show_events(true);
+    overlay
+        .events_mut()
+        .log(DebugEvent::KeyPress("x".to_string()));
+    assert!(text(&render(&overlay)).contains("Key: x"));
+
+    overlay.events_mut().clear();
+    assert!(!text(&render(&overlay)).contains("Key: x"));
+}
+
+#[test]
+fn test_debug_overlay_shows_five_recent_events() {
+    let mut overlay = DebugOverlay::wrap(Text::new("Test"))
+        .show_metrics(false)
+        .show_events(true);
+    for i in 0..8 {
+        overlay.log_event(DebugEvent::Custom(format!("event-{}", i)));
+    }
+    let all = text(&render(&overlay));
+    for i in 3..8 {
+        assert!(all.contains(&format!("event-{}", i)));
+    }
+    for i in 0..3 {
+        assert!(!all.contains(&format!("event-{}", i)));
+    }
+}
+
+#[test]
+fn test_perf_metrics_metrics_mut() {
+    let mut overlay = DebugOverlay::wrap(Text::new("Test"));
+    overlay
+        .metrics_mut()
+        .record_layout(Duration::from_millis(5));
+    assert_eq!(overlay.metrics_mut().avg_layout_time_ms(), 5.0);
+    assert!(text(&render(&overlay)).contains("Layout: 5.00ms"));
+}
+
+// =============================================================================
+// DebugConfig
 // =============================================================================
 
 #[test]
@@ -149,110 +431,13 @@ fn test_debug_config_default() {
     assert_eq!(config.opacity, 220);
 }
 
-#[test]
-fn test_debug_config_custom_colors() {
-    let config = DebugConfig {
-        bg_color: Color::RED,
-        fg_color: Color::GREEN,
-        accent_color: Color::BLUE,
-        ..DebugConfig::default()
-    };
-
-    assert_eq!(config.bg_color, Color::RED);
-    assert_eq!(config.fg_color, Color::GREEN);
-    assert_eq!(config.accent_color, Color::BLUE);
-}
-
 // =============================================================================
-// DebugPosition Tests
-// 디버그 패널 위치 테스트
-// =============================================================================
-
-#[test]
-fn test_debug_position_top_left() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).width(20);
-    let area = Rect::new(0, 0, 80, 24);
-    let panel = overlay.panel_rect(area);
-
-    assert_eq!(panel.x, 80 - 20);
-    assert_eq!(panel.y, 0);
-    assert_eq!(panel.width, 20);
-}
-
-#[test]
-fn test_debug_position_top_right() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text)
-        .width(20)
-        .position(DebugPosition::TopRight);
-    let area = Rect::new(0, 0, 80, 24);
-    let panel = overlay.panel_rect(area);
-
-    assert_eq!(panel.x, 80 - 20);
-    assert_eq!(panel.y, 0);
-    assert_eq!(panel.width, 20);
-}
-
-#[test]
-fn test_debug_position_bottom_left() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text)
-        .width(20)
-        .position(DebugPosition::BottomLeft);
-    let area = Rect::new(0, 0, 80, 24);
-    let panel = overlay.panel_rect(area);
-
-    assert_eq!(panel.x, 0);
-    assert_eq!(panel.y, 24 - 20);
-    assert_eq!(panel.width, 20);
-}
-
-#[test]
-fn test_debug_position_bottom_right() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text)
-        .width(20)
-        .position(DebugPosition::BottomRight);
-    let area = Rect::new(0, 0, 80, 24);
-    let panel = overlay.panel_rect(area);
-
-    assert_eq!(panel.x, 80 - 20);
-    assert_eq!(panel.y, 24 - 20);
-    assert_eq!(panel.width, 20);
-}
-
-#[test]
-fn test_panel_rect_width_clamping() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).width(100);
-    let area = Rect::new(0, 0, 80, 24);
-    let panel = overlay.panel_rect(area);
-
-    // Width should be clamped to area width
-    assert_eq!(panel.width, 80);
-}
-
-#[test]
-fn test_panel_rect_height_clamping() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).width(20);
-    let area = Rect::new(0, 0, 80, 10);
-    let panel = overlay.panel_rect(area);
-
-    // Height should be clamped to max_height
-    assert_eq!(panel.height, 10);
-}
-
-// =============================================================================
-// PerfMetrics Tests
-// 성능 메트릭 테스트
+// PerfMetrics
 // =============================================================================
 
 #[test]
 fn test_perf_metrics_new() {
     let metrics = PerfMetrics::new();
-
     assert_eq!(metrics.fps(), 0.0);
     assert_eq!(metrics.avg_frame_time_ms(), 0.0);
     assert_eq!(metrics.avg_layout_time_ms(), 0.0);
@@ -262,32 +447,32 @@ fn test_perf_metrics_new() {
 #[test]
 fn test_perf_metrics_start_frame() {
     let mut metrics = PerfMetrics::new();
-
+    // A single frame start has no completed frame to measure yet
     metrics.start_frame();
-    // First frame doesn't record a time since there's no previous frame
     assert_eq!(metrics.fps(), 0.0);
+    assert_eq!(metrics.avg_frame_time_ms(), 0.0);
 }
 
 #[test]
 fn test_perf_metrics_multiple_frames() {
     let mut metrics = PerfMetrics::new();
-
-    // Simulate frame timing - use longer duration for reliability
     metrics.start_frame();
-    std::thread::sleep(Duration::from_millis(50));
+    std::thread::sleep(Duration::from_millis(20));
     metrics.start_frame();
 
-    // Should have recorded a frame time
-    assert!(metrics.avg_frame_time_ms() > 0.0);
+    let frame_ms = metrics.avg_frame_time_ms();
+    assert!(frame_ms >= 20.0);
+    // fps is the inverse of the average frame time
+    let fps = metrics.fps();
+    assert!(fps > 0.0 && fps <= 50.0);
+    assert!((fps - 1000.0 / frame_ms).abs() < 1e-6);
 }
 
 #[test]
 fn test_perf_metrics_record_layout() {
     let mut metrics = PerfMetrics::new();
-
     metrics.record_layout(Duration::from_millis(5));
     assert_eq!(metrics.avg_layout_time_ms(), 5.0);
-
     metrics.record_layout(Duration::from_millis(10));
     assert_eq!(metrics.avg_layout_time_ms(), 7.5);
 }
@@ -295,35 +480,21 @@ fn test_perf_metrics_record_layout() {
 #[test]
 fn test_perf_metrics_record_render() {
     let mut metrics = PerfMetrics::new();
-
     metrics.record_render(Duration::from_millis(3));
     assert_eq!(metrics.avg_render_time_ms(), 3.0);
-
     metrics.record_render(Duration::from_millis(7));
     assert_eq!(metrics.avg_render_time_ms(), 5.0);
 }
 
 #[test]
-fn test_perf_metrics_fps_calculation() {
-    let mut metrics = PerfMetrics::new();
-
-    // Record 60 FPS (16.67ms per frame)
-    for _ in 0..10 {
-        metrics.start_frame();
-        metrics.frame_times.push_back(Duration::from_millis(16));
-    }
-
-    let fps = metrics.fps();
-    assert!(fps > 50.0 && fps < 70.0);
-}
-
-#[test]
 fn test_perf_metrics_reset() {
     let mut metrics = PerfMetrics::new();
-
+    metrics.start_frame();
+    std::thread::sleep(Duration::from_millis(1));
     metrics.start_frame();
     metrics.record_layout(Duration::from_millis(5));
     metrics.record_render(Duration::from_millis(3));
+    assert!(metrics.fps() > 0.0);
 
     metrics.reset();
 
@@ -331,572 +502,132 @@ fn test_perf_metrics_reset() {
     assert_eq!(metrics.avg_frame_time_ms(), 0.0);
     assert_eq!(metrics.avg_layout_time_ms(), 0.0);
     assert_eq!(metrics.avg_render_time_ms(), 0.0);
+
+    // reset also forgets the last frame start
+    metrics.start_frame();
+    assert_eq!(metrics.avg_frame_time_ms(), 0.0);
 }
 
 #[test]
 fn test_perf_metrics_max_samples() {
     let mut metrics = PerfMetrics::new();
-
-    // Add more than max_samples (60) frame times
-    for _ in 0..100 {
-        metrics.frame_times.push_back(Duration::from_millis(10));
+    for _ in 0..40 {
+        metrics.record_layout(Duration::from_millis(100));
     }
-
-    // Should only keep 60 samples
-    assert_eq!(metrics.frame_times.len(), 60);
+    for _ in 0..60 {
+        metrics.record_layout(Duration::from_millis(10));
+    }
+    // Only the last 60 samples count
+    assert_eq!(metrics.avg_layout_time_ms(), 10.0);
 }
 
 #[test]
-fn test_perf_metrics_metrics_mut() {
-    let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text);
+fn test_perf_metrics_zero_duration() {
+    let mut metrics = PerfMetrics::new();
+    metrics.record_layout(Duration::ZERO);
+    metrics.record_render(Duration::ZERO);
+    assert_eq!(metrics.avg_layout_time_ms(), 0.0);
+    assert_eq!(metrics.avg_render_time_ms(), 0.0);
+}
 
-    let metrics = overlay.metrics_mut();
-    metrics.record_layout(Duration::from_millis(5));
-
-    assert_eq!(overlay.metrics.avg_layout_time_ms(), 5.0);
+#[test]
+fn test_perf_metrics_very_long_duration() {
+    let mut metrics = PerfMetrics::new();
+    metrics.record_layout(Duration::from_secs(10));
+    metrics.record_render(Duration::from_secs(5));
+    assert_eq!(metrics.avg_layout_time_ms(), 10000.0);
+    assert_eq!(metrics.avg_render_time_ms(), 5000.0);
 }
 
 // =============================================================================
-// EventLog Tests
-// 이벤트 로그 테스트
+// EventLog
 // =============================================================================
-
-#[test]
-fn test_event_log_new() {
-    let log = EventLog::new();
-
-    assert_eq!(log.recent(10).count(), 0);
-}
-
-#[test]
-fn test_event_log_log_key_press() {
-    let mut log = EventLog::new();
-
-    log.log(DebugEvent::KeyPress("a".to_string()));
-    log.log(DebugEvent::KeyPress("Enter".to_string()));
-
-    assert_eq!(log.recent(10).count(), 2);
-}
-
-#[test]
-fn test_event_log_log_mouse() {
-    let mut log = EventLog::new();
-
-    log.log(DebugEvent::Mouse("click".to_string()));
-    log.log(DebugEvent::Mouse("move".to_string()));
-
-    assert_eq!(log.recent(10).count(), 2);
-}
-
-#[test]
-fn test_event_log_log_state_change() {
-    let mut log = EventLog::new();
-
-    log.log(DebugEvent::StateChange("focus".to_string()));
-    log.log(DebugEvent::StateChange("blur".to_string()));
-
-    assert_eq!(log.recent(10).count(), 2);
-}
-
-#[test]
-fn test_event_log_log_custom() {
-    let mut log = EventLog::new();
-
-    log.log(DebugEvent::Custom("Custom event".to_string()));
-
-    assert_eq!(log.recent(10).count(), 1);
-}
 
 #[test]
 fn test_event_log_recent_limit() {
     let mut log = EventLog::new();
-
     for i in 0..10 {
         log.log(DebugEvent::KeyPress(i.to_string()));
     }
-
-    assert_eq!(log.recent(5).count(), 5);
+    let recent: Vec<_> = log.recent(5).map(|(_, e)| event_text(e)).collect();
+    assert_eq!(recent, ["9", "8", "7", "6", "5"]);
 }
 
 #[test]
 fn test_event_log_recent_order() {
     let mut log = EventLog::new();
-
     log.log(DebugEvent::KeyPress("first".to_string()));
-    log.log(DebugEvent::KeyPress("second".to_string()));
-    log.log(DebugEvent::KeyPress("third".to_string()));
+    log.log(DebugEvent::Mouse("second".to_string()));
+    log.log(DebugEvent::Custom("third".to_string()));
 
-    let events: Vec<_> = log.recent(10).collect();
-    // Most recent first (reversed)
-    assert!(events[0].1.to_string().contains("third"));
-    assert!(events[1].1.to_string().contains("second"));
-    assert!(events[2].1.to_string().contains("first"));
-}
-
-#[test]
-fn test_event_log_clear() {
-    let mut log = EventLog::new();
-
-    log.log(DebugEvent::KeyPress("a".to_string()));
-    log.log(DebugEvent::KeyPress("b".to_string()));
-
-    log.clear();
-
-    assert_eq!(log.recent(10).count(), 0);
+    let events: Vec<_> = log.recent(10).map(|(_, e)| e).collect();
+    assert!(matches!(events[0], DebugEvent::Custom(s) if s == "third"));
+    assert!(matches!(events[1], DebugEvent::Mouse(s) if s == "second"));
+    assert!(matches!(events[2], DebugEvent::KeyPress(s) if s == "first"));
 }
 
 #[test]
 fn test_event_log_max_events() {
     let mut log = EventLog::new();
-
-    // Add more than max_events (50)
     for i in 0..100 {
         log.log(DebugEvent::KeyPress(i.to_string()));
     }
-
-    // Should only keep 50 events
-    assert_eq!(log.events.len(), 50);
+    // Only the last 50 are kept
+    let kept: Vec<_> = log.recent(usize::MAX).map(|(_, e)| event_text(e)).collect();
+    assert_eq!(kept.len(), 50);
+    assert_eq!(kept[0], "99");
+    assert_eq!(kept[49], "50");
 }
 
 #[test]
-fn test_debug_overlay_events_mut() {
-    let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text);
-
-    let events = overlay.events_mut();
-    events.log(DebugEvent::KeyPress("a".to_string()));
-
-    assert_eq!(overlay.events.recent(10).count(), 1);
+fn test_event_log_request_more_than_available() {
+    let mut log = EventLog::new();
+    log.log(DebugEvent::KeyPress("a".to_string()));
+    log.log(DebugEvent::KeyPress("b".to_string()));
+    assert_eq!(log.recent(100).count(), 2);
 }
 
 #[test]
-fn test_debug_overlay_log_event() {
-    let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text);
-
-    overlay.log_event(DebugEvent::KeyPress("a".to_string()));
-    overlay.log_event(DebugEvent::Mouse("click".to_string()));
-
-    assert_eq!(overlay.events.recent(10).count(), 2);
+fn test_debug_event_clone() {
+    let event = DebugEvent::StateChange("focus".to_string());
+    let cloned = event.clone();
+    assert!(matches!(cloned, DebugEvent::StateChange(ref s) if s == "focus"));
+    assert_eq!(event_text(&event), event_text(&cloned));
 }
 
 // =============================================================================
-// WidgetInfo Tests (DebugWidget as WidgetInfo)
-// 위젯 정보 테스트
+// WidgetInfo
 // =============================================================================
-
-#[test]
-fn test_widget_info_new() {
-    let info = WidgetInfo::new("Button");
-
-    assert_eq!(info.type_name, "Button");
-    assert!(info.id.is_none());
-    assert!(info.classes.is_empty());
-    assert_eq!(info.depth, 0);
-    assert!(!info.focused);
-    assert!(!info.hovered);
-}
 
 #[test]
 fn test_widget_info_id() {
     let info = WidgetInfo::new("Button").id("submit");
-
     assert_eq!(info.id, Some("submit".to_string()));
+    assert_eq!(info.tree_line(), "Button #submit");
 }
 
 #[test]
 fn test_widget_info_class() {
     let info = WidgetInfo::new("Button").class("primary").class("large");
-
-    assert_eq!(info.classes.len(), 2);
-    assert!(info.classes.contains(&"primary".to_string()));
-    assert!(info.classes.contains(&"large".to_string()));
+    assert_eq!(info.classes, ["primary", "large"]);
+    assert_eq!(info.tree_line(), "Button .primary .large");
 }
 
 #[test]
 fn test_widget_info_rect() {
     let rect = Rect::new(5, 10, 20, 5);
     let info = WidgetInfo::new("Button").rect(rect);
-
     assert_eq!(info.rect, rect);
 }
 
 #[test]
-fn test_widget_info_depth() {
-    let info = WidgetInfo::new("Container").depth(2);
-
-    assert_eq!(info.depth, 2);
-}
-
-#[test]
-fn test_widget_info_tree_line() {
-    let info = WidgetInfo::new("Button")
-        .id("submit")
-        .class("primary")
-        .depth(1);
-
-    let line = info.tree_line();
-    assert!(line.contains("Button"));
-    assert!(line.contains("#submit"));
-    assert!(line.contains(".primary"));
-    assert!(line.starts_with("  ")); // 2 spaces for depth 1
-}
-
-#[test]
-fn test_widget_info_tree_line_focused() {
-    let mut info = WidgetInfo::new("Button");
-    info.focused = true;
-
-    let line = info.tree_line();
-    assert!(line.contains("[focused]"));
-}
-
-#[test]
-fn test_widget_info_tree_line_hovered() {
-    let mut info = WidgetInfo::new("Button");
-    info.hovered = true;
-
-    let line = info.tree_line();
-    assert!(line.contains("[hover]"));
-}
-
-#[test]
 fn test_widget_info_tree_line_indent() {
-    let info0 = WidgetInfo::new("Root").depth(0);
-    let info1 = WidgetInfo::new("Child").depth(1);
-    let info2 = WidgetInfo::new("GrandChild").depth(2);
-
-    assert!(!info0.tree_line().starts_with(" "));
-    assert!(info1.tree_line().starts_with("  "));
-    assert!(info2.tree_line().starts_with("    "));
-}
-
-#[test]
-fn test_debug_overlay_record_widget() {
-    let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text);
-
-    let widget = WidgetInfo::new("Button").id("submit").class("primary");
-    overlay.record_widget(widget);
-
-    assert_eq!(overlay.widgets.len(), 1);
-    assert_eq!(overlay.widgets[0].type_name, "Button");
-}
-
-#[test]
-fn test_debug_overlay_clear_widgets() {
-    let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text);
-
-    overlay.record_widget(WidgetInfo::new("Button"));
-    overlay.record_widget(WidgetInfo::new("Text"));
-
-    assert_eq!(overlay.widgets.len(), 2);
-
-    overlay.clear_widgets();
-
-    assert_eq!(overlay.widgets.len(), 0);
-}
-
-// =============================================================================
-// Rendering Tests
-// 렌더링 테스트
-// =============================================================================
-
-#[test]
-fn test_debug_overlay_render_visible() {
-    let text = Text::new("Hello");
-    let overlay = DebugOverlay::wrap(text).visible(true);
-
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    overlay.render(&mut ctx);
-
-    // Inner text should be rendered
-    let mut found_text = false;
-    for x in 0..80 {
-        if let Some(cell) = buffer.get(x, 0) {
-            if cell.symbol == 'H' {
-                found_text = true;
-                break;
-            }
-        }
-    }
-    assert!(found_text);
-}
-
-#[test]
-fn test_debug_overlay_render_not_visible() {
-    let text = Text::new("Hello");
-    let overlay = DebugOverlay::wrap(text).visible(false);
-
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    overlay.render(&mut ctx);
-
-    // Inner text should still be rendered
-    let mut found_text = false;
-    for x in 0..80 {
-        if let Some(cell) = buffer.get(x, 0) {
-            if cell.symbol == 'H' {
-                found_text = true;
-                break;
-            }
-        }
-    }
-    assert!(found_text);
-}
-
-#[test]
-fn test_debug_overlay_render_with_metrics() {
-    let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text).show_metrics(true).width(30);
-
-    overlay.metrics.start_frame();
-    overlay.metrics.record_layout(Duration::from_millis(5));
-    overlay.metrics.record_render(Duration::from_millis(3));
-
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    overlay.render(&mut ctx);
-
-    // Should render the panel with metrics
-    // Check for panel background in top-right corner
-    let panel_x = 80 - 30;
-    let cell = buffer.get(panel_x + 1, 1);
-    assert!(cell.is_some());
-}
-
-#[test]
-fn test_debug_overlay_render_with_tree() {
-    let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text).show_tree(true).width(30);
-
-    overlay.record_widget(WidgetInfo::new("Button").id("submit"));
-
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    overlay.render(&mut ctx);
-
-    // Should render the panel with widget tree
-    let panel_x = 80 - 30;
-    let cell = buffer.get(panel_x + 1, 1);
-    assert!(cell.is_some());
-}
-
-#[test]
-fn test_debug_overlay_render_with_events() {
-    let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text).show_events(true).width(30);
-
-    overlay.log_event(DebugEvent::KeyPress("a".to_string()));
-
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    overlay.render(&mut ctx);
-
-    // Should render the panel with event log
-    let panel_x = 80 - 30;
-    let cell = buffer.get(panel_x + 1, 1);
-    assert!(cell.is_some());
-}
-
-#[test]
-fn test_debug_overlay_render_zero_width() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).width(0);
-
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    overlay.render(&mut ctx);
-    // Should not panic
-}
-
-#[test]
-fn test_debug_overlay_render_small_buffer() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).width(10);
-
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    overlay.render(&mut ctx);
-    // Should not panic
-}
-
-// =============================================================================
-// Toggle Tests
-// 토글 테스트
-// =============================================================================
-
-#[test]
-fn test_debug_overlay_toggle() {
-    let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text).visible(true);
-
-    assert!(overlay.visible);
-
-    overlay.toggle();
-    assert!(!overlay.visible);
-
-    overlay.toggle();
-    assert!(overlay.visible);
-}
-
-#[test]
-fn test_debug_overlay_toggle_from_hidden() {
-    let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text).visible(false);
-
-    assert!(!overlay.visible);
-
-    overlay.toggle();
-    assert!(overlay.visible);
-
-    overlay.toggle();
-    assert!(!overlay.visible);
-}
-
-// =============================================================================
-// Global Debug State Tests
-// 전역 디버그 상태 테스트
-// =============================================================================
-
-#[test]
-fn test_global_debug_enable() {
-    disable_debug();
-    assert!(!is_debug_enabled());
-
-    enable_debug();
-    assert!(is_debug_enabled());
-}
-
-#[test]
-fn test_global_debug_disable() {
-    enable_debug();
-    assert!(is_debug_enabled());
-
-    disable_debug();
-    assert!(!is_debug_enabled());
-}
-
-#[test]
-fn test_global_debug_toggle() {
-    disable_debug();
-    assert!(!is_debug_enabled());
-
-    let result = toggle_debug();
-    assert!(result);
-    assert!(is_debug_enabled());
-
-    let result = toggle_debug();
-    assert!(!result);
-    assert!(!is_debug_enabled());
-}
-
-#[test]
-fn test_global_debug_multiple_enables() {
-    disable_debug();
-
-    enable_debug();
-    enable_debug();
-    enable_debug();
-
-    assert!(is_debug_enabled());
-}
-
-#[test]
-fn test_global_debug_multiple_disables() {
-    enable_debug();
-
-    disable_debug();
-    disable_debug();
-    disable_debug();
-
-    assert!(!is_debug_enabled());
-}
-
-// =============================================================================
-// Edge Cases
-// 엣지 케이스 테스트
-// =============================================================================
-
-#[test]
-fn test_debug_overlay_empty_widgets() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).show_tree(true);
-
-    assert_eq!(overlay.widgets.len(), 0);
-}
-
-#[test]
-fn test_debug_overlay_many_widgets() {
-    let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text).show_tree(true);
-
-    for i in 0..100 {
-        overlay.record_widget(WidgetInfo::new(&format!("Widget{}", i)));
-    }
-
-    assert_eq!(overlay.widgets.len(), 100);
-}
-
-#[test]
-fn test_perf_metrics_empty_frame_times() {
-    let metrics = PerfMetrics::new();
-
-    assert_eq!(metrics.fps(), 0.0);
-    assert_eq!(metrics.avg_frame_time_ms(), 0.0);
-}
-
-#[test]
-fn test_perf_metrics_single_frame() {
-    let mut metrics = PerfMetrics::new();
-
-    metrics.start_frame();
-    std::thread::sleep(Duration::from_millis(50));
-    metrics.start_frame();
-
-    assert!(metrics.avg_frame_time_ms() > 0.0);
-}
-
-#[test]
-fn test_event_log_empty() {
-    let log = EventLog::new();
-
-    assert_eq!(log.recent(100).count(), 0);
-}
-
-#[test]
-fn test_event_log_request_more_than_available() {
-    let mut log = EventLog::new();
-
-    log.log(DebugEvent::KeyPress("a".to_string()));
-    log.log(DebugEvent::KeyPress("b".to_string()));
-
-    assert_eq!(log.recent(100).count(), 2);
-}
-
-#[test]
-fn test_widget_info_empty_attributes() {
-    let info = WidgetInfo::new("Minimal");
-
-    let line = info.tree_line();
-    assert_eq!(line, "Minimal");
+    assert_eq!(WidgetInfo::new("Root").depth(0).tree_line(), "Root");
+    assert_eq!(WidgetInfo::new("Child").depth(1).tree_line(), "  Child");
+    assert_eq!(
+        WidgetInfo::new("GrandChild").depth(2).tree_line(),
+        "    GrandChild"
+    );
 }
 
 #[test]
@@ -905,140 +636,38 @@ fn test_widget_info_all_attributes() {
         .id("test-id")
         .class("class1")
         .class("class2")
-        .depth(2)
+        .depth(1)
         .rect(Rect::new(5, 5, 10, 3));
-
     info.focused = true;
     info.hovered = true;
 
-    let line = info.tree_line();
-    assert!(line.contains("Complete"));
-    assert!(line.contains("#test-id"));
-    assert!(line.contains(".class1"));
-    assert!(line.contains(".class2"));
-    assert!(line.contains("[focused]"));
-    assert!(line.contains("[hover]"));
+    assert_eq!(
+        info.tree_line(),
+        "  Complete #test-id .class1 .class2 [focused] [hover]"
+    );
+}
+
+// =============================================================================
+// Global debug state
+// =============================================================================
+
+#[test]
+#[serial]
+fn test_global_debug_multiple_enables() {
+    disable_debug();
+    enable_debug();
+    enable_debug();
+    enable_debug();
+    assert!(is_debug_enabled());
+    disable_debug();
 }
 
 #[test]
-fn test_debug_overlay_width_zero() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).width(0);
-
-    assert_eq!(overlay.config.width, 0);
-}
-
-#[test]
-fn test_debug_overlay_width_very_large() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text).width(1000);
-
-    assert_eq!(overlay.config.width, 1000);
-
-    let area = Rect::new(0, 0, 80, 24);
-    let panel = overlay.panel_rect(area);
-
-    // Should be clamped to area width
-    assert_eq!(panel.width, 80);
-}
-
-#[test]
-fn test_debug_overlay_max_height_zero() {
-    let text = Text::new("Test");
-    let mut overlay = DebugOverlay::wrap(text);
-    overlay.config.max_height = 0;
-
-    let area = Rect::new(0, 0, 80, 24);
-    let panel = overlay.panel_rect(area);
-
-    assert_eq!(panel.height, 0);
-}
-
-#[test]
-fn test_debug_overlay_all_sections_enabled() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text)
-        .show_metrics(true)
-        .show_tree(true)
-        .show_events(true)
-        .show_styles(true);
-
-    assert!(overlay.config.show_metrics);
-    assert!(overlay.config.show_tree);
-    assert!(overlay.config.show_events);
-    assert!(overlay.config.show_styles);
-}
-
-#[test]
-fn test_debug_overlay_all_sections_disabled() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text)
-        .show_metrics(false)
-        .show_tree(false)
-        .show_events(false)
-        .show_styles(false);
-
-    assert!(!overlay.config.show_metrics);
-    assert!(!overlay.config.show_tree);
-    assert!(!overlay.config.show_events);
-    assert!(!overlay.config.show_styles);
-}
-
-#[test]
-fn test_debug_event_all_variants() {
-    let events = vec![
-        DebugEvent::KeyPress("a".to_string()),
-        DebugEvent::Mouse("click".to_string()),
-        DebugEvent::StateChange("focus".to_string()),
-        DebugEvent::Custom("custom".to_string()),
-    ];
-
-    for event in events {
-        let mut log = EventLog::new();
-        log.log(event.clone());
-        assert_eq!(log.recent(10).count(), 1);
-    }
-}
-
-#[test]
-fn test_perf_metrics_zero_duration() {
-    let mut metrics = PerfMetrics::new();
-
-    metrics.record_layout(Duration::ZERO);
-    metrics.record_render(Duration::ZERO);
-
-    assert_eq!(metrics.avg_layout_time_ms(), 0.0);
-    assert_eq!(metrics.avg_render_time_ms(), 0.0);
-}
-
-#[test]
-fn test_perf_metrics_very_long_duration() {
-    let mut metrics = PerfMetrics::new();
-
-    metrics.record_layout(Duration::from_secs(10));
-    metrics.record_render(Duration::from_secs(5));
-
-    assert_eq!(metrics.avg_layout_time_ms(), 10000.0);
-    assert_eq!(metrics.avg_render_time_ms(), 5000.0);
-}
-
-#[test]
-fn test_panel_rect_with_offset_area() {
-    let text = Text::new("Test");
-    let overlay = DebugOverlay::wrap(text)
-        .width(20)
-        .position(DebugPosition::TopLeft);
-
-    let area = Rect::new(10, 5, 80, 24);
-    let panel = overlay.panel_rect(area);
-
-    assert_eq!(panel.x, 10);
-    assert_eq!(panel.y, 5);
-}
-
-#[test]
-fn test_debug_clone_types() {
-    let event1 = DebugEvent::KeyPress("a".to_string());
-    let event2 = event1.clone();
-    assert_eq!(event1.to_string(), event2.to_string());
+#[serial]
+fn test_global_debug_multiple_disables() {
+    enable_debug();
+    disable_debug();
+    disable_debug();
+    disable_debug();
+    assert!(!is_debug_enabled());
 }
