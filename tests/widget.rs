@@ -86,9 +86,6 @@ mod gauge;
 // TODO(test-coverage): httpclient has API mismatches
 // #[path = "widget/httpclient/mod.rs"]
 // pub mod httpclient;
-// TODO(test-coverage): multi_select has API mismatches
-// #[path = "widget/multi_select/mod.rs"]
-// pub mod multi_select;
 #[cfg(feature = "image")]
 #[path = "widget/image.rs"]
 mod image;
@@ -116,6 +113,8 @@ mod masked_input;
 mod masked_input_tests;
 #[path = "widget/mermaid/mod.rs"]
 mod mermaid;
+#[path = "widget/multi_select/mod.rs"]
+mod multi_select;
 #[path = "widget/option_list.rs"]
 mod option_list;
 #[path = "widget/pagination.rs"]
