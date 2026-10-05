@@ -25,7 +25,7 @@
 //! ```
 
 use crate::impl_props_builders;
-use crate::patterns::form::FormState;
+use crate::patterns::form::{FieldType, FormState};
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::widget::theme::{DISABLED_FG, SECONDARY_TEXT, SUBTLE_GRAY};
@@ -278,6 +278,12 @@ impl View for Form {
             let value = field.value();
             let (display_text, text_color) = if value.is_empty() {
                 (field.placeholder.clone(), SUBTLE_GRAY)
+            } else if field.field_type == FieldType::Password {
+                // One bullet per char, never the text itself.
+                (
+                    "•".repeat(value.chars().count()),
+                    ctx.css_color(Color::WHITE),
+                )
             } else {
                 (value, ctx.css_color(Color::WHITE))
             };

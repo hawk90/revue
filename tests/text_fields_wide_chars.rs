@@ -222,6 +222,31 @@ fn form_draws_hangul_label_placeholder_and_value_in_columns() {
     assert_eq!(sym(&buf, x + 2, y), '울');
 }
 
+#[test]
+fn form_masks_a_password_one_bullet_per_char() {
+    let state = FormState::new()
+        .field("pw", |f| f.label("PW").password())
+        .build();
+    state
+        .get("pw")
+        .unwrap()
+        .value_signal()
+        .set("비밀번호".to_string());
+    let form = Form::new(state);
+    let buf = render(&form, 30, 8);
+
+    let rows: Vec<String> = (0..8).map(|y| row_text(&buf, y)).collect();
+    assert!(
+        rows.iter().all(|r| !r.contains('비')),
+        "password shown in clear: {rows:?}"
+    );
+    assert!(
+        rows.iter()
+            .any(|r| r.contains("••••") && !r.contains("•••••")),
+        "expected four bullets: {rows:?}"
+    );
+}
+
 // ─── RichTextEditor dialog ──────────────────────────────────────────────────
 
 #[test]
