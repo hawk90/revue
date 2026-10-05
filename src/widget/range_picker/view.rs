@@ -167,6 +167,9 @@ impl RangePicker {
                 (Color::BLACK, Some(Color::WHITE), true)
             } else if is_selected {
                 (self.selected_fg, Some(self.selected_bg), true)
+            } else if !self.is_date_allowed(&check_date) {
+                // Outside min_date/max_date: dimmed and not selectable
+                (DISABLED_FG, None, false)
             } else if in_range {
                 (Color::WHITE, Some(self.range_bg), false)
             } else {

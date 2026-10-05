@@ -1,6 +1,7 @@
 //! Range picker navigation and key handling
 
 use super::core::RangePicker;
+use super::impls::clamp_date;
 use super::types::RangeFocus;
 use crate::event::Key;
 use crate::widget::data::calendar::{days_in_month, Date};
@@ -161,14 +162,51 @@ impl RangePicker {
         *cursor = (*cursor).min(max_day);
     }
 
+    /// Keep the focused calendar's cursor, and the date it navigates, within
+    /// `min_date`/`max_date`.
+    ///
+    /// Month and year navigation move the stored date along with the cursor,
+    /// so both are clamped: the cursor stops at the limit instead of leaving
+    /// the allowed range.
+    fn keep_cursor_in_limits(&mut self) {
+        let (min, max) = (self.min_date, self.max_date);
+        if min.is_none() && max.is_none() {
+            return;
+        }
+        let (date, cursor) = self.current_date_mut();
+        let at_cursor = Date::new(date.year, date.month, *cursor);
+        let clamped = clamp_date(at_cursor, min, max);
+        if clamped != at_cursor {
+            date.year = clamped.year;
+            date.month = clamped.month;
+            *cursor = clamped.day;
+        }
+        *date = clamp_date(*date, min, max);
+    }
+
     /// Select current cursor position
+    ///
+    /// A day outside `min_date`/`max_date` is not selected.
     fn select_date(&mut self) {
         match self.focus {
             RangeFocus::Start => {
+                let at_cursor = Date::new(
+                    self.start.date.year,
+                    self.start.date.month,
+                    self.start_cursor_day,
+                );
+                if !self.is_date_allowed(&at_cursor) {
+                    return;
+                }
                 self.start.date.day = self.start_cursor_day;
                 self.active_preset = Some(super::types::PresetRange::Custom);
             }
             RangeFocus::End => {
+                let at_cursor =
+                    Date::new(self.end.date.year, self.end.date.month, self.end_cursor_day);
+                if !self.is_date_allowed(&at_cursor) {
+                    return;
+                }
                 self.end.date.day = self.end_cursor_day;
                 self.active_preset = Some(super::types::PresetRange::Custom);
             }
@@ -222,18 +260,22 @@ impl RangePicker {
             // Navigation
             Key::Left | Key::Char('h') if self.focus != RangeFocus::Presets => {
                 self.move_day_left();
+                self.keep_cursor_in_limits();
                 true
             }
             Key::Right | Key::Char('l') if self.focus != RangeFocus::Presets => {
                 self.move_day_right();
+                self.keep_cursor_in_limits();
                 true
             }
             Key::Up | Key::Char('k') if self.focus != RangeFocus::Presets => {
                 self.move_week_up();
+                self.keep_cursor_in_limits();
                 true
             }
             Key::Down | Key::Char('j') if self.focus != RangeFocus::Presets => {
                 self.move_week_down();
+                self.keep_cursor_in_limits();
                 true
             }
 
@@ -250,18 +292,22 @@ impl RangePicker {
             // Month/Year navigation
             Key::Char('[') if self.focus != RangeFocus::Presets => {
                 self.prev_month();
+                self.keep_cursor_in_limits();
                 true
             }
             Key::Char(']') if self.focus != RangeFocus::Presets => {
                 self.next_month();
+                self.keep_cursor_in_limits();
                 true
             }
             Key::Char('{') if self.focus != RangeFocus::Presets => {
                 self.prev_year();
+                self.keep_cursor_in_limits();
                 true
             }
             Key::Char('}') if self.focus != RangeFocus::Presets => {
                 self.next_year();
+                self.keep_cursor_in_limits();
                 true
             }
 
