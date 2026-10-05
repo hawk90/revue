@@ -532,6 +532,20 @@ fn test_presentation_builder_chain() {
 }
 
 #[test]
+fn test_presentation_render_small_area() {
+    let title = Presentation::new()
+        .title("A long presentation title")
+        .slide(slide("A slide title").line("content"));
+    let content = Presentation::new().slide(slide("A slide title").line("content"));
+    for (w, h) in [(0, 0), (1, 1), (3, 2), (5, 3), (10, 4)] {
+        render_sized(&title, w, h);
+        render_sized(&content, w, h);
+    }
+    // Still draws the footer when it fits
+    assert!(row(&render_sized(&content, 30, 4), 3).contains("1/1"));
+}
+
+#[test]
 #[ignore = "BUG: with a title set, slide 0 is never shown (the title slide replaces it)"]
 fn test_presentation_title_slide_does_not_hide_first_slide() {
     let mut pres = Presentation::new()

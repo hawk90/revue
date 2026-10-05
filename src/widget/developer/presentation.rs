@@ -355,7 +355,7 @@ impl Presentation {
 
         // Press key hint
         let hint = "Press → or Space to start";
-        let hint_y = area.height - 2;
+        let hint_y = area.height.saturating_sub(2);
         self.render_centered_text(ctx, hint, hint_y, DISABLED_FG, Modifier::empty());
     }
 
@@ -388,7 +388,11 @@ impl Presentation {
 
         // Separator
         let sep_y = 4;
-        let sep_len = slide.title.chars().count().min(area.width as usize - 4);
+        let sep_len = slide
+            .title
+            .chars()
+            .count()
+            .min((area.width as usize).saturating_sub(4));
         let sep_start = (area.width as usize - sep_len) / 2;
         for i in 0..sep_len {
             let mut cell = Cell::new('─');
@@ -402,7 +406,7 @@ impl Presentation {
         let content_start_y = 6;
         for (i, line) in slide.content.iter().enumerate() {
             let y = content_start_y + i as u16;
-            if y >= area.height - 3 {
+            if y >= area.height.saturating_sub(3) {
                 break;
             }
 
@@ -461,12 +465,12 @@ impl Presentation {
     /// Render footer (slide numbers, progress)
     fn render_footer(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
-        let footer_y = area.height - 1;
+        let footer_y = area.height.saturating_sub(1);
 
         // Slide numbers
         if self.show_numbers && !self.slides.is_empty() {
             let num_str = format!("{}/{}", self.current + 1, self.slides.len());
-            let start_x = area.width - num_str.len() as u16 - 1;
+            let start_x = area.width.saturating_sub(num_str.len() as u16 + 1);
             for (i, ch) in num_str.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(DISABLED_FG);
@@ -505,6 +509,9 @@ impl View for Presentation {
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
+        if area.width == 0 || area.height == 0 {
+            return;
+        }
 
         // Background
         let bg = self.bg.unwrap_or_else(|| ctx.css_background(SLIDE_BG));
