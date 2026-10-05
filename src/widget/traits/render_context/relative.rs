@@ -31,6 +31,27 @@ impl super::RenderContext<'_> {
         }
     }
 
+    /// Draw `text` at relative `(x, y)` in terminal columns, stopping before
+    /// relative column `max_x` (and the area's edge), with each glyph's cell
+    /// built by `make_cell`. Respects clipping like [`Self::set`]. A wide
+    /// glyph takes two columns, a zero-width char none; see
+    /// [`overlay::lay_out_str`](super::overlay::lay_out_str). Returns the
+    /// columns used.
+    pub(crate) fn put_str_with<F>(
+        &mut self,
+        x: u16,
+        y: u16,
+        text: &str,
+        max_x: u16,
+        make_cell: F,
+    ) -> u16
+    where
+        F: FnMut(char) -> Cell,
+    {
+        let max_x = max_x.min(self.area.width);
+        super::overlay::lay_out_str(x, text, max_x, make_cell, |cx, cell| self.set(cx, y, cell))
+    }
+
     /// Set foreground color at relative position
     pub fn set_fg(&mut self, x: u16, y: u16, fg: Color) {
         if x < self.area.width && y < self.area.height {

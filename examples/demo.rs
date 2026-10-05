@@ -6,6 +6,7 @@ use revue::prelude::App;
 use revue::{
     event::Key,
     style::Color,
+    utils::unicode::display_width,
     widget::{hstack, vstack, Border, Input, List, Progress, RenderContext, Text, View},
 };
 
@@ -101,7 +102,7 @@ impl View for MainView {
 
         // Counter display
         let counter_text = format!("Counter: {}", self.state.counter);
-        let counter = Text::new(counter_text).fg(Color::YELLOW);
+        let counter = Text::new(&counter_text).fg(Color::YELLOW);
 
         // Progress bar with border
         let progress_bar = Border::single().title("Progress").child(
@@ -123,13 +124,21 @@ impl View for MainView {
                 .highlight_fg(Color::WHITE),
         );
 
-        // Layout
+        // Layout. Unsized stack children share space equally, so fixed-size
+        // pieces use `child_sized` (a Border needs content + 2 rows) and only
+        // the list takes the leftover rows.
         let layout = vstack()
             .gap(1)
-            .child(title)
-            .child(instructions)
-            .child(hstack().gap(1).child(counter).child(progress_bar))
-            .child(input_box)
+            .child_sized(title, 3)
+            .child_sized(instructions, 1)
+            .child_sized(
+                hstack()
+                    .gap(1)
+                    .child_sized(counter, display_width(&counter_text) as u16)
+                    .child(progress_bar),
+                3,
+            )
+            .child_sized(input_box, 3)
             .child(list);
 
         layout.render(ctx);

@@ -15,7 +15,7 @@ fn test_alert_builder_pattern() {
 
     // Test public methods
     assert!(!a.is_dismissed());
-    assert_eq!(a.height(), 4); // With title and outlined variant
+    assert_eq!(a.height(), 2); // Title + message; outlined has no top/bottom border
 }
 
 #[test]

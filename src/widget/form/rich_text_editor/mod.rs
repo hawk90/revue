@@ -24,7 +24,6 @@ pub mod undo;
 #[cfg(test)]
 mod tests;
 
-use crate::render::Cell;
 use crate::widget::traits::{RenderContext, View};
 
 // Public exports (also used internally)
@@ -107,13 +106,7 @@ impl View for RichTextEditor {
         let bg = self
             .bg
             .unwrap_or_else(|| ctx.css_background(core::EDITOR_BG));
-        for y in 0..area.height {
-            for x in 0..area.width {
-                let mut cell = Cell::new(' ');
-                cell.bg = Some(bg);
-                ctx.set(x, y, cell);
-            }
-        }
+        ctx.fill_box_background(bg);
 
         let mut y: u16 = 0;
 

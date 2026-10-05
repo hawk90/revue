@@ -59,6 +59,75 @@ mod tests {
     }
 
     #[test]
+    fn test_input_placeholder_shown_when_focused_and_empty() {
+        // Input::new() starts focused; its placeholder must still be visible.
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let input = Input::new().placeholder("Type here...");
+        input.render(&mut ctx);
+
+        let row: String = (0..12).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+        assert_eq!(row, "Type here...");
+        // The cursor sits on the first placeholder cell, so it stays visible
+        assert_eq!(buffer.get(0, 0).unwrap().fg, Some(Color::BLACK));
+        assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::WHITE));
+        // The rest of the placeholder is dimmed, not cursor-colored
+        assert_eq!(
+            buffer.get(1, 0).unwrap().fg,
+            Some(crate::widget::theme::PLACEHOLDER_FG)
+        );
+        assert_ne!(buffer.get(1, 0).unwrap().bg, Some(Color::WHITE));
+    }
+
+    #[test]
+    fn test_input_placeholder_shown_when_unfocused_and_empty() {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let input = Input::new().placeholder("Type here...").focused(false);
+        input.render(&mut ctx);
+
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'T');
+        assert_eq!(
+            buffer.get(0, 0).unwrap().fg,
+            Some(crate::widget::theme::PLACEHOLDER_FG)
+        );
+        // No cursor when unfocused
+        assert_ne!(buffer.get(0, 0).unwrap().bg, Some(Color::WHITE));
+    }
+
+    #[test]
+    fn test_input_placeholder_hidden_once_value_typed() {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let input = Input::new().placeholder("Type here...").value("a");
+        input.render(&mut ctx);
+
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'a');
+        // Cursor after the value, and no placeholder text left over
+        assert_eq!(buffer.get(1, 0).unwrap().symbol, ' ');
+        assert_eq!(buffer.get(1, 0).unwrap().bg, Some(Color::WHITE));
+        assert_eq!(buffer.get(2, 0).unwrap().symbol, ' ');
+    }
+
+    #[test]
+    fn test_input_focused_empty_without_placeholder_draws_cursor() {
+        let mut buffer = Buffer::new(20, 1);
+        let area = Rect::new(0, 0, 20, 1);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        let input = Input::new();
+        input.render(&mut ctx);
+
+        assert_eq!(buffer.get(0, 0).unwrap().bg, Some(Color::WHITE));
+    }
+
+    #[test]
     fn test_input_selection() {
         let mut input = Input::new().value("hello world");
         input.cursor = 0;

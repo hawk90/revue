@@ -5,6 +5,7 @@
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::border::BorderChars;
+use crate::utils::unicode::display_width;
 use crate::widget::theme::{DARK_BG, EDITOR_BG};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -326,8 +327,9 @@ impl Tooltip {
         };
 
         let mut lines = Vec::new();
+        // Widths are terminal columns, the unit the box is sized in.
         for line in self.text.lines() {
-            if line.len() <= max_width {
+            if display_width(line) <= max_width {
                 lines.push(line.to_string());
             } else {
                 // Simple word wrap
@@ -335,7 +337,7 @@ impl Tooltip {
                 for word in line.split_whitespace() {
                     if current_line.is_empty() {
                         current_line = word.to_string();
-                    } else if current_line.len() + 1 + word.len() <= max_width {
+                    } else if display_width(&current_line) + 1 + display_width(word) <= max_width {
                         current_line.push(' ');
                         current_line.push_str(word);
                     } else {
@@ -362,15 +364,11 @@ impl Tooltip {
         let has_border = self.style.border_chars().is_some();
         let has_title = self.title.is_some();
 
-        let content_width = lines
-            .iter()
-            .map(|l| crate::utils::display_width(l))
-            .max()
-            .unwrap_or(0) as u16;
+        let content_width = lines.iter().map(|l| display_width(l)).max().unwrap_or(0) as u16;
         let title_width = self
             .title
             .as_ref()
-            .map(|t| crate::utils::display_width(t) as u16 + 2)
+            .map(|t| display_width(t) as u16 + 2)
             .unwrap_or(0);
         let text_width = content_width.max(title_width);
 
@@ -536,14 +534,11 @@ impl View for Tooltip {
 
             // Title (bold)
             if let Some(ref title) = self.title {
-                for (i, ch) in title.chars().enumerate() {
-                    let rx = 2 + i as u16;
-                    if rx < tooltip_w.saturating_sub(2) {
-                        let mut c = cell_with(ch, fg, bg);
-                        c.modifier |= Modifier::BOLD;
-                        entry.push(rx, 1, c);
-                    }
-                }
+                entry.push_str_with(2, 1, title, tooltip_w.saturating_sub(2), |ch| {
+                    let mut c = cell_with(ch, fg, bg);
+                    c.modifier |= Modifier::BOLD;
+                    c
+                });
             }
 
             // Side borders
@@ -585,12 +580,9 @@ impl View for Tooltip {
             if ry >= tooltip_h.saturating_sub(1) {
                 break;
             }
-            for (j, ch) in line.chars().enumerate() {
-                let rx = content_rx + j as u16;
-                if rx < tooltip_w.saturating_sub(1) {
-                    entry.push(rx, ry, cell_with(ch, fg, bg));
-                }
-            }
+            entry.push_str_with(content_rx, ry, line, tooltip_w.saturating_sub(1), |ch| {
+                cell_with(ch, fg, bg)
+            });
         }
 
         // Arrow — queue as separate 1-cell overlay at higher z-index

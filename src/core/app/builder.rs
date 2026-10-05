@@ -60,7 +60,8 @@ impl AppBuilder {
     /// paint it - and every widget rendered through
     /// [`RenderContext::render_child`](crate::widget::RenderContext::render_child)
     /// gets a DOM node and its own computed style. That is what makes CSS reach
-    /// widgets below the root.
+    /// widgets below the root. A node's `background` fills its whole box, under
+    /// whatever the widget painted.
     ///
     /// Implies per-frame reconciliation, so `incremental_dom` has no additional
     /// effect when this is on.

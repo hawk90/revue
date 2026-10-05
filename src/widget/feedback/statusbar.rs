@@ -91,9 +91,9 @@ impl StatusSection {
         self
     }
 
-    /// Get display width
+    /// Get display width in terminal columns (a wide character counts as two)
     pub fn width(&self) -> u16 {
-        self.content.chars().count().max(self.min_width as usize) as u16
+        crate::utils::display_width(&self.content).max(self.min_width as usize) as u16
     }
 }
 
@@ -432,9 +432,15 @@ impl StatusBar {
             .unwrap_or_else(|| self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE)));
         let bg = section.bg.unwrap_or(self.bg);
 
+        // Advance by each character's column width, so a section takes the
+        // columns `StatusSection::width` reports.
         let mut current_x = x;
         for ch in section.content.chars() {
-            if current_x >= ctx.area.width {
+            let cw = crate::utils::char_width(ch) as u16;
+            if cw == 0 {
+                continue;
+            }
+            if current_x + cw > ctx.area.width {
                 break;
             }
             let mut cell = Cell::new(ch);
@@ -444,7 +450,12 @@ impl StatusBar {
                 cell.modifier |= Modifier::BOLD;
             }
             ctx.set(current_x, y, cell);
-            current_x += 1;
+            for i in 1..cw {
+                let mut cont = Cell::continuation();
+                cont.bg = Some(bg);
+                ctx.set(current_x + i, y, cont);
+            }
+            current_x += cw;
         }
 
         // Pad to min_width
