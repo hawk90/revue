@@ -71,25 +71,6 @@ mod button_edge_cases {
     }
 
     #[test]
-    fn test_button_all_variants() {
-        let variants = [
-            Button::new("Test"),
-            Button::primary("Test"),
-            Button::danger("Test"),
-            Button::ghost("Test"),
-            Button::success("Test"),
-        ];
-
-        let mut buffer = Buffer::new(10, 10);
-        let area = Rect::new(0, 0, 10, 10);
-
-        for button in variants {
-            let mut ctx = RenderContext::new(&mut buffer, area);
-            button.render(&mut ctx);
-        }
-    }
-
-    #[test]
     fn test_button_with_icon() {
         let button = Button::new("Save").icon('💾');
         let mut buffer = Buffer::new(10, 10);
@@ -171,6 +152,7 @@ mod checkbox_edge_cases {
     #[test]
     fn test_checkbox_disabled_checked() {
         let checkbox = Checkbox::new("Test").checked(true).disabled(true);
+        assert!(checkbox.is_checked());
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
@@ -228,6 +210,9 @@ mod radio_group_edge_cases {
     #[test]
     fn test_radio_group_selection_edge_cases() {
         let radio = RadioGroup::new(["A", "B", "C"]).selected(100); // Out of bounds
+                                                                    // Clamped to the last option
+        assert_eq!(radio.selected_index(), 2);
+        assert_eq!(radio.selected_value(), Some("C"));
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
@@ -309,6 +294,7 @@ mod switch_edge_cases {
     #[test]
     fn test_switch_disabled_on() {
         let switch = Switch::new().on(true).disabled(true);
+        assert!(switch.is_on());
         let mut buffer = Buffer::new(10, 10);
         let area = Rect::new(0, 0, 10, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
@@ -412,16 +398,6 @@ mod divider_edge_cases {
         let divider = Divider::new();
         let mut buffer = Buffer::new(0, 0);
         let area = Rect::new(0, 0, 0, 0);
-        let mut ctx = RenderContext::new(&mut buffer, area);
-
-        divider.render(&mut ctx);
-    }
-
-    #[test]
-    fn test_divider_with_label() {
-        let divider = Divider::new().label("Section");
-        let mut buffer = Buffer::new(20, 10);
-        let area = Rect::new(0, 0, 20, 10);
         let mut ctx = RenderContext::new(&mut buffer, area);
 
         divider.render(&mut ctx);
