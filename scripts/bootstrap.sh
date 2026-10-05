@@ -7,7 +7,7 @@ cd "$(git rev-parse --show-toplevel)"
 if command -v mise >/dev/null 2>&1; then
   mise install                       # node (.node-version) and anything in mise.toml
 else
-  echo "bootstrap: mise not found — install it (brew install mise) so .node-version is honoured" >&2
+  echo "bootstrap: mise not found — install it (brew install mise) so .node-version is honored" >&2
 fi
 if [ -f rust-toolchain.toml ] && command -v rustup >/dev/null 2>&1; then
   rustup show active-toolchain >/dev/null   # installs the pinned toolchain on first use
