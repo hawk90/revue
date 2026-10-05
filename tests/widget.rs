@@ -112,6 +112,9 @@ mod macros;
 #[cfg(feature = "markdown")]
 #[path = "widget/markdown/mod.rs"]
 mod markdown;
+#[cfg(feature = "markdown")]
+#[path = "widget/markdown_presentation.rs"]
+mod markdown_presentation;
 #[path = "widget/masked_input.rs"]
 mod masked_input;
 #[path = "widget/masked_input_tests.rs"]
