@@ -164,6 +164,41 @@ fn test_chart_single_point_marker_is_centered() {
 }
 
 #[test]
+fn test_chart_nan_points_are_skipped() {
+    let s = Series::new("Data")
+        .data(vec![
+            (1.0, 2.0),
+            (f64::NAN, 3.0),
+            (3.0, f64::NAN),
+            (4.0, 5.0),
+        ])
+        .marker(Marker::Star);
+    let buffer = render(&plain().series(s), 40, 20);
+    // Only the two finite points get markers: (1,2) -> (8,17), (4,5) -> (39,1)
+    assert_eq!(count_char(&buffer, '★'), 2);
+    assert_eq!(sym(&buffer, 8, 17), '★');
+    assert_eq!(sym(&buffer, 39, 1), '★');
+    // ... joined by a single rising line
+    assert!(rows(&buffer).iter().all(|r| !r.contains('╲')));
+}
+
+#[test]
+fn test_chart_infinite_points_are_skipped() {
+    let s = Series::new("Data")
+        .data(vec![
+            (1.0, 2.0),
+            (f64::INFINITY, 3.0),
+            (3.0, f64::NEG_INFINITY),
+            (4.0, 5.0),
+        ])
+        .marker(Marker::Star);
+    let buffer = render(&plain().series(s), 40, 20);
+    assert_eq!(count_char(&buffer, '★'), 2);
+    assert_eq!(sym(&buffer, 8, 17), '★');
+    assert_eq!(sym(&buffer, 39, 1), '★');
+}
+
+#[test]
 #[ignore = "BUG: Chart overflows u16 (panics in debug) mapping points outside fixed axis bounds"]
 fn test_chart_points_outside_axis_bounds_are_clipped() {
     // Fixed bounds 0..10 with data reaching past both ends
@@ -448,6 +483,14 @@ fn test_chart_no_legend() {
     let buffer = render(&chart, 40, 20);
     assert_eq!(count_char(&buffer, '■'), 0);
     assert!(!rows(&buffer).join("").contains("Data"));
+}
+
+#[test]
+fn test_chart_legend_wider_than_plot() {
+    let chart = Chart::new()
+        .series(Series::new("A very long series name that does not fit").data(vec![(1.0, 2.0)]));
+    let buffer = render(&chart, 20, 10);
+    assert_eq!(count_char(&buffer, '■'), 1);
 }
 
 #[test]
