@@ -4,6 +4,7 @@ use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::{BorderStyle, Color};
 use crate::utils::border::BorderChars;
+use crate::utils::unicode::{char_width, truncate_to_width};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -286,27 +287,38 @@ impl View for Border {
 
         // Top horizontal line with optional title
         let title_start = if let Some(ref title) = self.title {
-            let max_title_len = (area.width as usize).saturating_sub(4);
-            let display_title: String = title.chars().take(max_title_len).collect();
-            let title_len = display_title.len();
+            // Everything here is in terminal columns: a wide glyph takes two
+            // cells and a zero-width one (e.g. the VS16 in "⚙️") takes none.
+            let max_title_width = (area.width as usize).saturating_sub(4);
+            let display_title = truncate_to_width(title, max_title_width);
 
             // Draw horizontal before title
-            for x in 1..2 {
-                let mut c = Cell::new(chars.horizontal);
-                c.fg = fg;
-                c.bg = bg;
-                ctx.set(x, 0, c);
-            }
+            let mut c = Cell::new(chars.horizontal);
+            c.fg = fg;
+            c.bg = bg;
+            ctx.set(1, 0, c);
 
-            // Draw title
-            for (i, ch) in display_title.chars().enumerate() {
+            // Draw title, the way `Buffer::put_str_styled` lays text out
+            let mut x = 2u16;
+            for ch in display_title.chars() {
+                let w = char_width(ch) as u16;
+                if w == 0 {
+                    continue;
+                }
                 let mut c = Cell::new(ch);
                 c.fg = fg;
                 c.bg = bg;
-                ctx.set(2 + i as u16, 0, c);
+                ctx.set(x, 0, c);
+                for dx in 1..w {
+                    let mut cont = Cell::continuation();
+                    cont.fg = fg;
+                    cont.bg = bg;
+                    ctx.set(x + dx, 0, cont);
+                }
+                x += w;
             }
 
-            2 + title_len as u16
+            x
         } else {
             1
         };
