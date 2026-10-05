@@ -5,8 +5,17 @@
 //! Run with: cargo run --example worker_basic
 
 use revue::prelude::*;
+use revue::utils::unicode::display_width;
 use revue::worker::{WorkerHandle, WorkerState};
 use std::time::Duration;
+
+/// Width of the key column in the Controls list.
+const KEY_COLS: u16 = 3;
+
+/// Columns `text` occupies, for sizing single-line text in an `hstack`.
+fn cols(text: &str) -> u16 {
+    display_width(text) as u16
+}
 
 struct WorkerDemo {
     handle: Option<WorkerHandle<String>>,
@@ -144,96 +153,114 @@ impl View for WorkerDemo {
             _ => Color::rgb(100, 100, 100),
         };
 
+        // Unsized stack children share the remaining space equally, so every
+        // fixed-height row/box is `child_sized`; only the Result box absorbs the rest.
         let view = vstack()
             .gap(1)
-            .child(
+            .child_sized(
                 Border::panel().title("⚙️  Worker Handle Demo").child(
                     vstack()
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::new("Status:").bold())
+                                .child_sized(Text::new("Status:").bold(), cols("Status:"))
                                 .child(Text::new(&self.status).fg(Color::CYAN)),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::new("Worker state:"))
+                                .child_sized(Text::new("Worker state:"), cols("Worker state:"))
                                 .child(Text::new(state_text).fg(state_color)),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::new("Tasks completed:"))
+                                .child_sized(
+                                    Text::new("Tasks completed:"),
+                                    cols("Tasks completed:"),
+                                )
                                 .child(Text::new(format!("{}", self.task_count))),
+                            1,
                         ),
                 ),
+                5,
             )
             .child(
                 Border::single()
                     .title("Result")
                     .child(if let Some(result) = &self.result {
                         vstack()
-                            .child(Text::success("✓ Task completed"))
-                            .child(Text::new(result).fg(Color::WHITE))
+                            .child_sized(Text::success("✓ Task completed"), 1)
+                            .child_sized(Text::new(result).fg(Color::WHITE), 1)
                     } else {
-                        vstack().child(Text::muted("No result yet"))
+                        vstack().child_sized(Text::muted("No result yet"), 1)
                     }),
             )
-            .child(
+            .child_sized(
                 Border::success_box()
                     .title("✨ Features Demonstrated")
                     .child(
                         vstack()
-                            .child(Text::success("✓ WorkerHandle: Spawn blocking tasks"))
-                            .child(Text::success(
-                                "✓ State tracking: Pending → Running → Completed",
-                            ))
-                            .child(Text::success("✓ Result retrieval with join()"))
-                            .child(Text::success("✓ Cancellation support"))
-                            .child(Text::success("✓ Panic handling")),
+                            .child_sized(Text::success("✓ WorkerHandle: Spawn blocking tasks"), 1)
+                            .child_sized(
+                                Text::success("✓ State tracking: Pending → Running → Completed"),
+                                1,
+                            )
+                            .child_sized(Text::success("✓ Result retrieval with join()"), 1)
+                            .child_sized(Text::success("✓ Cancellation support"), 1)
+                            .child_sized(Text::success("✓ Panic handling"), 1),
                     ),
+                7,
             )
-            .child(
+            .child_sized(
                 Border::rounded().title("Controls").child(
                     vstack()
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[1]"))
+                                .child_sized(Text::muted("[1]"), KEY_COLS)
                                 .child(Text::new("Start 1s task")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[2]"))
+                                .child_sized(Text::muted("[2]"), KEY_COLS)
                                 .child(Text::new("Start 3s task")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[3]"))
+                                .child_sized(Text::muted("[3]"), KEY_COLS)
                                 .child(Text::new("Start 5s task")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[c]"))
+                                .child_sized(Text::muted("[c]"), KEY_COLS)
                                 .child(Text::new("Cancel task")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[r]"))
+                                .child_sized(Text::muted("[r]"), KEY_COLS)
                                 .child(Text::new("Clear result")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[q]"))
+                                .child_sized(Text::muted("[q]"), KEY_COLS)
                                 .child(Text::new("Quit")),
+                            1,
                         ),
                 ),
+                8,
             );
 
         view.render(ctx);

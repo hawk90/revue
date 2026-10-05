@@ -478,14 +478,11 @@ pub fn draw_border_title(ctx: &mut RenderContext, area: Rect, title: &BorderTitl
                 ctx.buffer.set(x + dx, y, cell);
             }
 
-            // Draw text
+            // Draw text by column: a wide glyph takes two cells, a
+            // zero-width one (e.g. VS16) none, matching `text_width`.
             let text_x = x + title.pad_start;
-            for (i, ch) in title.text.chars().enumerate() {
-                let mut cell = Cell::new(ch);
-                cell.fg = title.fg;
-                cell.bg = title.bg;
-                ctx.buffer.set(text_x + i as u16, y, cell);
-            }
+            ctx.buffer
+                .put_str_styled(text_x, y, &title.text, title.fg, title.bg);
 
             // Draw end padding
             let end_x = text_x + text_width;
@@ -694,6 +691,43 @@ mod tests {
         assert_eq!(buffer.get(15, 0).unwrap().symbol, 'E');
         assert_eq!(buffer.get(16, 0).unwrap().symbol, 'n');
         assert_eq!(buffer.get(17, 0).unwrap().symbol, 'd');
+    }
+
+    #[test]
+    fn test_draw_border_title_wide_chars_advance_by_columns() {
+        let mut buffer = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        render_border(&mut ctx, area, Color::WHITE);
+        draw_border_title(&mut ctx, area, &BorderTitle::new("🔄Sync").padding(1));
+
+        // 1: pad, 2-3: 🔄, 4-7: Sync, 8: pad, 9: border again
+        assert_eq!(buffer.get(1, 0).unwrap().symbol, ' ');
+        assert_eq!(buffer.get(2, 0).unwrap().symbol, '🔄');
+        assert!(buffer.get(3, 0).unwrap().is_continuation());
+        assert_eq!(buffer.get(4, 0).unwrap().symbol, 'S');
+        assert_eq!(buffer.get(7, 0).unwrap().symbol, 'c');
+        assert_eq!(buffer.get(8, 0).unwrap().symbol, ' ');
+        assert_eq!(buffer.get(9, 0).unwrap().symbol, '─');
+    }
+
+    #[test]
+    fn test_draw_border_title_vs16_takes_no_cell() {
+        let mut buffer = Buffer::new(20, 5);
+        let area = Rect::new(0, 0, 20, 5);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+
+        render_border(&mut ctx, area, Color::WHITE);
+        draw_border_title(&mut ctx, area, &BorderTitle::new("⚙\u{FE0F}Set").padding(1));
+
+        // 1: pad, 2-3: ⚙ (selector dropped), 4-6: Set, 7: pad, 8: border
+        assert_eq!(buffer.get(2, 0).unwrap().symbol, '⚙');
+        assert!(buffer.get(3, 0).unwrap().is_continuation());
+        assert_eq!(buffer.get(4, 0).unwrap().symbol, 'S');
+        assert_eq!(buffer.get(6, 0).unwrap().symbol, 't');
+        assert_eq!(buffer.get(7, 0).unwrap().symbol, ' ');
+        assert_eq!(buffer.get(8, 0).unwrap().symbol, '─');
     }
 
     #[test]
