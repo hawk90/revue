@@ -743,6 +743,43 @@ fn row(buffer: &Buffer, y: u16) -> String {
         .collect()
 }
 
+/// The buffer rows start with the digit pattern lines.
+fn assert_draws_lines(d: &Digits, buffer: &Buffer, x0: usize, y0: u16) {
+    for (i, line) in d.render_lines().iter().enumerate() {
+        let drawn: String = row(buffer, y0 + i as u16).chars().skip(x0).collect();
+        assert!(
+            drawn.starts_with(line.trim_end()),
+            "row {}: {:?} does not start with {:?}",
+            i,
+            drawn,
+            line
+        );
+    }
+}
+
+#[test]
+fn test_digits_render_basic() {
+    let d = Digits::new("42");
+    let buffer = render(&d, 20, 10);
+    assert_draws_lines(&d, &buffer, 0, 0);
+    // Nothing below the five pattern rows
+    assert_eq!(row(&buffer, 5).trim(), "");
+}
+
+#[test]
+fn test_digits_render_time_format() {
+    let d = Digits::time(12, 30, 45);
+    let buffer = render(&d, 40, 10);
+    assert_draws_lines(&d, &buffer, 0, 0);
+}
+
+#[test]
+fn test_digits_render_negative_number() {
+    let d = Digits::new(-999);
+    let buffer = render(&d, 20, 10);
+    assert_draws_lines(&d, &buffer, 0, 0);
+}
+
 #[test]
 fn test_digits_fg_color() {
     let d = Digits::new(42).fg(Color::RED);
@@ -750,6 +787,15 @@ fn test_digits_fg_color() {
     let cell = buffer.get(0, 0).unwrap();
     assert_ne!(cell.symbol, ' ');
     assert_eq!(cell.fg, Some(Color::RED));
+}
+
+#[test]
+fn test_digits_bg_color() {
+    let d = Digits::new(42).bg(Color::BLUE);
+    let buffer = render(&d, 20, 10);
+    for y in 0..5 {
+        assert_eq!(buffer.get(0, y).unwrap().bg, Some(Color::BLUE));
+    }
 }
 
 #[test]
@@ -762,10 +808,60 @@ fn test_digits_render_with_colors() {
 }
 
 #[test]
+fn test_digits_prefix() {
+    let d = Digits::new(100).prefix("$");
+    let buffer = render(&d, 30, 10);
+    // The prefix is shown in a small label below the big digits
+    assert_draws_lines(&d, &buffer, 0, 0);
+    assert!(row(&buffer, 5).starts_with("$100"));
+}
+
+#[test]
+fn test_digits_suffix() {
+    let d = Digits::new(50).suffix("%");
+    let buffer = render(&d, 30, 10);
+    assert!(row(&buffer, 5).starts_with("50%"));
+}
+
+#[test]
+fn test_digits_render_with_prefix_suffix() {
+    let d = Digits::new("100").prefix("$").suffix("USD");
+    let buffer = render(&d, 30, 10);
+    assert!(row(&buffer, 5).starts_with("$100USD"));
+}
+
+#[test]
 fn test_digits_without_prefix_or_suffix_has_no_label() {
     let d = Digits::new("100");
     let buffer = render(&d, 30, 10);
     assert_eq!(row(&buffer, 5).trim(), "");
+}
+
+#[test]
+fn test_digits_render_thin_style() {
+    let d = Digits::new("9876").style(DigitStyle::Thin).fg(Color::GREEN);
+    let buffer = render(&d, 30, 10);
+    assert_draws_lines(&d, &buffer, 0, 0);
+}
+
+#[test]
+fn test_digits_render_braille_style() {
+    let d = Digits::new("1234")
+        .style(DigitStyle::Braille)
+        .fg(Color::YELLOW);
+    let buffer = render(&d, 20, 10);
+    assert_draws_lines(&d, &buffer, 0, 0);
+    // Braille digits are four rows high
+    assert_eq!(row(&buffer, 4).trim(), "");
+}
+
+#[test]
+fn test_digits_render_ascii_style() {
+    let d = Digits::new("5678")
+        .style(DigitStyle::Ascii)
+        .fg(Color::MAGENTA);
+    let buffer = render(&d, 30, 10);
+    assert_draws_lines(&d, &buffer, 0, 0);
 }
 
 #[test]
@@ -798,6 +894,19 @@ fn test_digits_render_small_buffer() {
 }
 
 #[test]
+fn test_digits_render_with_offset() {
+    let d = Digits::new("42");
+    let mut buffer = Buffer::new(40, 20);
+    render_in(&d, &mut buffer, Rect::new(10, 5, 30, 10));
+    assert_draws_lines(&d, &buffer, 10, 5);
+    // Nothing drawn left of or above the area
+    for y in 0..20 {
+        assert!(row(&buffer, y).chars().take(10).all(|c| c == ' '));
+    }
+    assert_eq!(row(&buffer, 4).trim(), "");
+}
+
+#[test]
 fn test_digits_render_zero_area() {
     let d = Digits::new("42");
     let mut buffer = Buffer::new(20, 10);
@@ -807,4 +916,11 @@ fn test_digits_render_zero_area() {
     for y in 0..10 {
         assert_eq!(row(&buffer, y).trim(), "");
     }
+}
+
+#[test]
+fn test_digits_min_width_negative() {
+    // Zero padding goes after the sign, like "{:05}"
+    assert_eq!(Digits::new(-42).min_width(5).format_value(), "-0042");
+    assert_eq!(Digits::new(-42).min_width(2).format_value(), "-42");
 }
