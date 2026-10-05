@@ -167,12 +167,13 @@ fn test_add_subtract_roundtrip() {
 }
 
 #[test]
+#[allow(clippy::clone_on_copy)] // exercises the Clone impl itself
 fn test_date_copy_clone() {
     let date1 = Date::new(2024, 6, 15);
     let date2 = date1;
     assert_eq!(date2, date1);
 
-    let date3 = Clone::clone(&date1);
+    let date3 = date1.clone();
     assert_eq!(date3, date1);
 }
 
