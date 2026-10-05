@@ -139,8 +139,14 @@ impl Card {
     }
 
     /// Set the visual variant
+    ///
+    /// [`CardVariant::Flat`] has no border, so choosing it clears the border
+    /// just as [`Card::flat`] does; a `border_style` set afterwards still wins.
     pub fn variant(mut self, variant: CardVariant) -> Self {
         self.variant = variant;
+        if variant == CardVariant::Flat {
+            self.border = BorderType::None;
+        }
         self
     }
 
