@@ -22,6 +22,7 @@ impl Input {
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             props: WidgetProps::new(),
+            scroll_x: std::cell::Cell::new(0),
         }
     }
 

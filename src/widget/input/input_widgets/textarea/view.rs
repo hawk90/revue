@@ -3,7 +3,9 @@
 use crate::event::KeyEvent;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
+use crate::utils::text::char_to_byte_index;
 use crate::widget::theme::PLACEHOLDER_FG;
+use crate::widget::traits::render_context::edit_line::{col_of, cursor_width, scroll_to_cursor};
 use crate::widget::traits::{EventResult, Interactive, RenderContext, View};
 
 /// Split a logical line into visual segments `[start, end)` (character indices) that each
@@ -72,14 +74,14 @@ impl TextArea {
     ///
     /// Each entry is `(line_idx, seg_start, seg_end, is_first_segment)`. When `wrap` is on a
     /// single logical line may span several visual rows; otherwise every logical line maps to
-    /// exactly one visual row (honoring the horizontal scroll offset).
+    /// exactly one visual row, scrolled horizontally when drawn.
     fn visual_rows(
         &self,
         text_width: u16,
         visible_lines: usize,
     ) -> Vec<(usize, usize, usize, bool)> {
         let mut rows = Vec::with_capacity(visible_lines);
-        let mut line_idx = self.scroll.0;
+        let mut line_idx = self.scroll;
 
         while rows.len() < visible_lines && line_idx < self.lines.len() {
             let char_count = self.lines[line_idx].chars().count();
@@ -93,12 +95,8 @@ impl TextArea {
                     rows.push((line_idx, s, e, k == 0));
                 }
             } else {
-                let start = if self.wrap {
-                    0
-                } else {
-                    self.scroll.1.min(char_count)
-                };
-                rows.push((line_idx, start, char_count, true));
+                // Unwrapped rows are scrolled by columns when drawn.
+                rows.push((line_idx, 0, char_count, true));
             }
 
             line_idx += 1;
@@ -143,6 +141,24 @@ impl View for TextArea {
             }
         }
 
+        // Unwrapped lines scroll horizontally, in columns, to keep the
+        // primary cursor (and the whole glyph under it) in view.
+        let scroll_x = if self.wrap {
+            0
+        } else {
+            let pos = self.cursors.primary().pos;
+            let line = self.lines.get(pos.line).map_or("", String::as_str);
+            scroll_to_cursor(
+                self.scroll_x.get(),
+                col_of(line, pos.col),
+                cursor_width(line, pos.col),
+                col_of(line, usize::MAX) + 1,
+                text_width as usize,
+            )
+        };
+        self.scroll_x.set(scroll_x);
+        let css_fg = ctx.css_color_if_set();
+
         // Render visible visual rows (a logical line may span multiple rows when wrapping).
         let rows = self.visual_rows(text_width, visible_lines);
         for (view_row, &(line_idx, seg_start, seg_end, is_first)) in rows.iter().enumerate() {
@@ -164,24 +180,17 @@ impl View for TextArea {
                 }
             }
 
-            // Draw text
+            // Draw text. Columns, not chars: a wide glyph takes two cells.
             let line = &self.lines[line_idx];
-            let chars: Vec<char> = line.chars().collect();
-            let is_last_segment = seg_end >= chars.len();
+            let char_count = line.chars().count();
+            let is_last_segment = seg_end >= char_count;
+            let seg = &line[char_to_byte_index(line, seg_start)..char_to_byte_index(line, seg_end)];
 
             // Get syntax highlighting spans for this line
             let highlights = self.highlighter.as_ref().map(|h| h.highlight_line(line));
 
-            // Render characters within this segment with display-width awareness
-            let mut display_x: u16 = 0;
-            for (char_idx, &ch) in chars.iter().enumerate().take(seg_end).skip(seg_start) {
-                let cw = crate::utils::char_width(ch) as u16;
-                if display_x + cw > text_width {
-                    break;
-                }
-
-                let x = text_start_x + display_x;
-
+            ctx.put_edit_line(text_start_x, y, seg, scroll_x, text_width, |i, ch| {
+                let char_idx = seg_start + i;
                 let mut cell = Cell::new(ch);
 
                 // Check if this position is selected (from any cursor)
@@ -253,29 +262,24 @@ impl View for TextArea {
                     if !highlight_applied {
                         // The body text takes the stylesheet; the cursor,
                         // line numbers and selection keep their own.
-                        cell.fg = self.fg.or_else(|| ctx.css_color_if_set());
+                        cell.fg = self.fg.or(css_fg);
                     }
                     cell.bg = self.bg;
                 }
-
-                ctx.set(x, y, cell);
-                display_x += cw;
-            }
+                cell
+            });
 
             // Draw cursors at end of line if needed (only on the last visual row of the line)
             if self.focused && is_last_segment {
+                let end_x = col_of(seg, usize::MAX);
                 for cursor in self.cursors.iter() {
-                    if cursor.pos.line == line_idx && cursor.pos.col >= chars.len() {
-                        // Calculate display position from the widths of this segment's chars
-                        let cursor_display_x: u16 = chars[seg_start..chars.len()]
-                            .iter()
-                            .map(|&ch| crate::utils::char_width(ch) as u16)
-                            .sum();
-                        let cursor_x = text_start_x + cursor_display_x;
-                        if cursor_x < area.width {
-                            let mut cell = Cell::new(' ');
-                            cell.bg = Some(Color::WHITE);
-                            ctx.set(cursor_x, y, cell);
+                    if cursor.pos.line == line_idx && cursor.pos.col >= char_count {
+                        if let Some(x) = end_x.checked_sub(scroll_x) {
+                            if x < text_width as usize {
+                                let mut cell = Cell::new(' ');
+                                cell.bg = Some(Color::WHITE);
+                                ctx.set(text_start_x + x as u16, y, cell);
+                            }
                         }
                     }
                 }
