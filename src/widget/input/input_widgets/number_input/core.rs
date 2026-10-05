@@ -65,8 +65,8 @@ pub struct NumberInput {
     input_buffer: String,
     /// Cursor position in input buffer (character index)
     cursor: usize,
-    /// Width of the input field (characters)
-    width: u16,
+    /// Width of the input field (characters); `None` fills the area
+    width: Option<u16>,
     /// Whether to show +/- buttons
     show_buttons: bool,
     /// Widget state (focused, disabled, colors)
@@ -89,7 +89,7 @@ impl NumberInput {
             editing: false,
             input_buffer: String::new(),
             cursor: 0,
-            width: 10,
+            width: None,
             show_buttons: true,
             state: WidgetState::new(),
             props: WidgetProps::new(),
@@ -141,8 +141,11 @@ impl NumberInput {
     }
 
     /// Set the width of the input field
+    ///
+    /// The field, including its +/- buttons, takes at most `width` columns
+    /// (minimum 5). Without it the field fills the area it is given.
     pub fn width(mut self, width: u16) -> Self {
-        self.width = width.max(5);
+        self.width = Some(width.max(5));
         self
     }
 
@@ -459,6 +462,8 @@ impl View for NumberInput {
         if area.width == 0 || area.height == 0 {
             return;
         }
+        // The field spans its configured width, never more than the area.
+        let field_width = self.width.map_or(area.width, |w| w.min(area.width));
 
         let (fg, bg) =
             self.state
@@ -468,8 +473,8 @@ impl View for NumberInput {
 
         // Draw prefix
         if let Some(ref prefix) = self.prefix {
-            ctx.draw_text(x, 0, prefix, LIGHT_GRAY);
-            x += prefix.chars().count() as u16;
+            ctx.draw_text_clipped(x, 0, prefix, LIGHT_GRAY, field_width.saturating_sub(x));
+            x = x.saturating_add(prefix.chars().count() as u16);
         }
 
         // Draw value (or input buffer when editing)
@@ -480,7 +485,7 @@ impl View for NumberInput {
         };
 
         for (i, ch) in value_str.chars().enumerate() {
-            if x >= area.width {
+            if x >= field_width {
                 break;
             }
 
@@ -503,7 +508,7 @@ impl View for NumberInput {
         if self.editing
             && self.state.focused
             && self.cursor >= value_str.chars().count()
-            && x < area.width
+            && x < field_width
         {
             let mut cursor_cell = Cell::new(' ');
             cursor_cell.fg = Some(Color::BLACK);
@@ -514,13 +519,13 @@ impl View for NumberInput {
 
         // Draw suffix
         if let Some(ref suffix) = self.suffix {
-            ctx.draw_text(x, 0, suffix, LIGHT_GRAY);
-            x += suffix.chars().count() as u16;
+            ctx.draw_text_clipped(x, 0, suffix, LIGHT_GRAY, field_width.saturating_sub(x));
+            x = x.saturating_add(suffix.chars().count() as u16);
         }
 
         // Draw buttons if enabled and space available
-        if self.show_buttons && x + 4 <= area.width {
-            let button_x = area.width - 4;
+        if self.show_buttons && x.saturating_add(4) <= field_width {
+            let button_x = field_width - 4;
             let button_fg = if self.state.disabled {
                 DARK_GRAY
             } else {
