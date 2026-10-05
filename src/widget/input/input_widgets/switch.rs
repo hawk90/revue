@@ -294,14 +294,15 @@ impl Switch {
         });
         ctx.set(x, y, open);
 
-        for (i, ch) in text.chars().enumerate() {
+        let on = self.on;
+        let text_width = ctx.put_str_with(x + 1, y, text, u16::MAX, |ch| {
             let mut cell = Cell::new(ch);
             cell.fg = Some(color);
-            if self.on {
+            if on {
                 cell.modifier |= Modifier::BOLD;
             }
-            ctx.set(x + 1 + i as u16, y, cell);
-        }
+            cell
+        });
 
         let mut close = Cell::new(']');
         close.fg = Some(if self.focused {
@@ -309,7 +310,7 @@ impl Switch {
         } else {
             Color::WHITE
         });
-        ctx.set(x + 1 + text.len() as u16, y, close);
+        ctx.set(x + 1 + text_width, y, close);
     }
 
     /// Render emoji style
@@ -414,7 +415,7 @@ impl View for Switch {
                     } else {
                         self.off_text.as_deref().unwrap_or("OFF")
                     };
-                    text.len() as u16 + 2
+                    crate::utils::display_width(text) as u16 + 2
                 }
                 SwitchStyle::Emoji => 2,
                 _ => self.width,
@@ -471,7 +472,7 @@ impl View for Switch {
                     } else {
                         self.off_text.as_deref().unwrap_or("OFF")
                     };
-                    text.len() as u16 + 2
+                    crate::utils::display_width(text) as u16 + 2
                 }
                 SwitchStyle::Emoji => 2,
                 _ => self.width,
