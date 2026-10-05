@@ -52,16 +52,20 @@ impl View for RangePicker {
             self.render_presets(ctx, presets_x, y, presets_focused);
         }
 
-        // Render selected range summary
+        // Render selected range summary, with the times when shown
         let summary_y = y + 9;
+        let endpoint = |dt: &crate::widget::datetime_picker::DateTime| {
+            let date = format!("{}-{:02}-{:02}", dt.date.year, dt.date.month, dt.date.day);
+            if self.show_time {
+                format!("{} {}", date, dt.time.format_hm())
+            } else {
+                date
+            }
+        };
         let range_str = format!(
-            "Range: {}-{:02}-{:02} to {}-{:02}-{:02}",
-            self.start.date.year,
-            self.start.date.month,
-            self.start.date.day,
-            self.end.date.year,
-            self.end.date.month,
-            self.end.date.day,
+            "Range: {} to {}",
+            endpoint(&self.start),
+            endpoint(&self.end)
         );
         self.draw_text(ctx, x, summary_y, &range_str, SECONDARY_TEXT, false);
 

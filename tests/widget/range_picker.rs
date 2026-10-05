@@ -269,7 +269,6 @@ fn test_range_picker_max_date_limits_the_end() {
 }
 
 #[test]
-#[ignore = "BUG: RangePicker::show_time(true) draws no times"]
 fn test_range_picker_show_time_draws_the_times() {
     let picker = march_2025()
         .show_time(true)
@@ -279,4 +278,18 @@ fn test_range_picker_show_time_draws_the_times() {
     let all: String = (0..14).map(|y| text(&buffer, 0, y, 80)).collect();
     assert!(all.contains("09:30"), "{all}");
     assert!(all.contains("17:45"), "{all}");
+    // Each time sits next to its own date in the summary
+    assert_eq!(
+        text(&buffer, 0, 9, 43),
+        "Range: 2025-03-01 09:30 to 2025-03-31 17:45"
+    );
+
+    // Without show_time the times stay hidden
+    let picker = march_2025()
+        .show_time(false)
+        .start_time(Time::new(9, 30, 0))
+        .end_time(Time::new(17, 45, 0));
+    let buffer = render(&picker, 80, 14);
+    let all: String = (0..14).map(|y| text(&buffer, 0, y, 80)).collect();
+    assert!(!all.contains("09:30"), "{all}");
 }
