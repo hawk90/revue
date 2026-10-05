@@ -196,6 +196,9 @@ impl View for Tag {
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
+        if area.width == 0 || area.height == 0 {
+            return;
+        }
         let (bg, fg) = self.effective_colors(ctx);
 
         let mut content = String::new();

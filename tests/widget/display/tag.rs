@@ -164,3 +164,9 @@ fn test_tag_truncated_to_area() {
     let buffer = render_in(&tag("A long tag text"), 6);
     assert_eq!(text(&buffer), " A lo");
 }
+
+#[test]
+fn test_tag_zero_width_area() {
+    let buffer = render_in(&tag("Test"), 0);
+    assert_eq!(text(&buffer), "");
+}
