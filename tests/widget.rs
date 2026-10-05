@@ -51,11 +51,10 @@ pub mod command_palette_unit;
 pub mod data;
 #[path = "widget/datetime_picker.rs"]
 mod datetime_picker;
-// TODO(test-coverage): dropzone has API mismatches
-// #[path = "widget/dropzone/mod.rs"]
-// pub mod dropzone;
 #[path = "widget/debug_overlay.rs"]
 mod debug_overlay;
+#[path = "widget/dropzone/mod.rs"]
+mod dropzone;
 // TODO(test-coverage): developer has API mismatches
 // #[path = "widget/developer/mod.rs"]
 // pub mod developer;
