@@ -777,7 +777,23 @@ mod tests {
     #[test]
     #[cfg(not(feature = "async"))]
     fn test_polling_executor_state_transitions() {
-        let handle = WorkerHandle::spawn(async { 42 });
+        // Held until the first state has been read. `async { 42 }` finishes
+        // on its first poll, so on a fast runner the worker could already be
+        // Completed by the time `state()` ran - the test raced the executor.
+        let release = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let gate = release.clone();
+        let handle = WorkerHandle::spawn(async move {
+            std::future::poll_fn(|cx| {
+                if gate.load(std::sync::atomic::Ordering::SeqCst) {
+                    std::task::Poll::Ready(())
+                } else {
+                    cx.waker().wake_by_ref();
+                    std::task::Poll::Pending
+                }
+            })
+            .await;
+            42
+        });
 
         // Should start in Pending or Running
         let initial_state = handle.state();
@@ -785,9 +801,11 @@ mod tests {
             initial_state,
             WorkerState::Pending | WorkerState::Running
         ));
+        release.store(true, std::sync::atomic::Ordering::SeqCst);
 
-        // Wait for completion
-        let timeout = std::time::Instant::now() + Duration::from_millis(100);
+        // Wait for completion. An upper bound, not the expected time: the loop
+        // ends as soon as the worker finishes.
+        let timeout = std::time::Instant::now() + Duration::from_secs(10);
         while !handle.is_finished() && std::time::Instant::now() < timeout {
             thread::sleep(Duration::from_millis(1));
         }
