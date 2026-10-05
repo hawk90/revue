@@ -7,7 +7,7 @@ on:
 jobs:
   publish-macros:
     name: Publish revue-macros to crates.io
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: crates-io
     permissions:
       id-token: write
@@ -27,7 +27,7 @@ jobs:
 
   publish:
     name: Publish revue to crates.io
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: crates-io
     needs: publish-macros
     permissions:

@@ -16,7 +16,7 @@ env:
 jobs:
   changes:
     name: Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
@@ -41,8 +41,8 @@ jobs:
   fmt:
     name: Format
     needs: changes
-    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -53,8 +53,8 @@ jobs:
   clippy:
     name: Clippy
     needs: changes
-    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -80,8 +80,8 @@ jobs:
   features:
     name: Feature Combinations
     needs: changes
-    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -106,7 +106,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-24.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -124,7 +124,7 @@ jobs:
       needs.changes.outputs.code == 'true' &&
       (needs.fmt.result == 'success' || needs.fmt.result == 'skipped') &&
       (needs.clippy.result == 'success' || needs.clippy.result == 'skipped')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -158,7 +158,7 @@ jobs:
           fail_ci_if_error: false
 
   msrv:
-    name: MSRV (1.87)
+    name: MSRV (1.88)
     needs: [changes, fmt, clippy]
     if: |
       always() &&
@@ -166,11 +166,11 @@ jobs:
       needs.changes.outputs.code == 'true' &&
       (needs.fmt.result == 'success' || needs.fmt.result == 'skipped') &&
       (needs.clippy.result == 'success' || needs.clippy.result == 'skipped')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      # Pinned, not `stable`. On `stable` this job checked nothing about 1.87.
-      - uses: dtolnay/rust-toolchain@1.87
+      # Pinned, not `stable`. On `stable` this job checked nothing about 1.88.
+      - uses: dtolnay/rust-toolchain@1.88
       - uses: Swatinem/rust-cache@v2
       # Default features only. The MSRV covers what a consumer gets by default;
       # optional features pull dependencies with their own, higher floors -
@@ -181,10 +181,10 @@ jobs:
   typos:
     name: Typos
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: crate-ci/typos@master
+      - uses: crate-ci/typos@v1.50.3
         with:
           config: .typos.toml
 
@@ -197,7 +197,7 @@ jobs:
     name: CI Gate
     if: always()
     needs: [changes, fmt, clippy, test, coverage, msrv, typos]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Verify required jobs succeeded or were skipped
         env:
