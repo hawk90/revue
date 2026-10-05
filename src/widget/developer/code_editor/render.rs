@@ -4,7 +4,21 @@ use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::code_editor::CodeEditor;
 use crate::widget::theme::PLACEHOLDER_FG;
+use crate::widget::traits::render_context::edit_line::{col_of, cursor_width, scroll_to_cursor};
 use crate::widget::traits::{RenderContext, View};
+
+/// Draw a dialog's typed text on row 0 in `width` columns, scrolled so its
+/// end (where typing happens) stays in view.
+fn put_query(ctx: &mut RenderContext, x: u16, width: u16, text: &str) {
+    let text_w = col_of(text, usize::MAX);
+    let scroll = scroll_to_cursor(0, text_w, 0, text_w, width as usize);
+    ctx.put_edit_line(x, 0, text, scroll, width, |_, ch| {
+        let mut cell = Cell::new(ch);
+        cell.fg = Some(Color::rgb(166, 227, 161));
+        cell.bg = Some(Color::rgb(49, 50, 68));
+        cell
+    });
+}
 
 impl CodeEditor {
     // =========================================================================
@@ -103,8 +117,22 @@ impl View for CodeEditor {
             }
         }
 
+        // Scroll horizontally, in columns, to keep the cursor (and the whole
+        // glyph under it) in view.
+        let scroll_x = {
+            let line = self.lines.get(self.cursor.0).map_or("", String::as_str);
+            scroll_to_cursor(
+                self.scroll_x.get(),
+                col_of(line, self.cursor.1),
+                cursor_width(line, self.cursor.1),
+                col_of(line, usize::MAX) + 1,
+                text_width as usize,
+            )
+        };
+        self.scroll_x.set(scroll_x);
+
         // Render visible lines
-        let start_line = self.scroll.0;
+        let start_line = self.scroll;
         let end_line = (start_line + visible_lines).min(self.lines.len());
 
         for (view_row, line_idx) in (start_line..end_line).enumerate() {
@@ -145,92 +173,86 @@ impl View for CodeEditor {
             // Get syntax highlights
             let highlights = self.get_highlights(line);
 
-            // Draw text
-            let chars: Vec<char> = line.chars().collect();
-            let scroll_col = self.scroll.1;
+            // Draw text, in columns: a wide glyph takes two cells.
+            ctx.put_edit_line(
+                line_num_width,
+                y,
+                line,
+                scroll_x,
+                text_width,
+                |char_idx, ch| {
+                    let mut cell = Cell::new(ch);
 
-            let mut display_x: u16 = 0;
-            for (char_idx, &ch) in chars.iter().enumerate().skip(scroll_col) {
-                let cw = crate::utils::char_width(ch) as u16;
-                if display_x + cw > text_width {
-                    break;
-                }
-                let x = line_num_width + display_x;
-                if x >= area.width - minimap_width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
+                    // Check cursor position
+                    let is_cursor =
+                        self.focused && line_idx == self.cursor.0 && char_idx == self.cursor.1;
 
-                // Check cursor position
-                let is_cursor =
-                    self.focused && line_idx == self.cursor.0 && char_idx == self.cursor.1;
+                    // Check selection
+                    let is_selected = self.is_selected(line_idx, char_idx);
 
-                // Check selection
-                let is_selected = self.is_selected(line_idx, char_idx);
+                    // Check bracket match
+                    let is_bracket_match = bracket_match
+                        .as_ref()
+                        .map(|m| m.position == (line_idx, char_idx))
+                        .unwrap_or(false);
 
-                // Check bracket match
-                let is_bracket_match = bracket_match
-                    .as_ref()
-                    .map(|m| m.position == (line_idx, char_idx))
-                    .unwrap_or(false);
+                    // Check find match
+                    let find_match = self.get_find_match_at(line_idx, char_idx);
 
-                // Check find match
-                let find_match = self.get_find_match_at(line_idx, char_idx);
-
-                if is_cursor {
-                    cell.bg = Some(self.cursor_bg);
-                    cell.fg = Some(Color::BLACK);
-                } else if is_selected {
-                    cell.bg = Some(self.selection_bg);
-                    cell.fg = self.fg;
-                } else if is_bracket_match {
-                    cell.bg = Some(self.bracket_match_bg);
-                    cell.fg = Some(Color::BLACK);
-                    cell.modifier |= crate::render::Modifier::BOLD;
-                } else if let Some((is_current, _)) = find_match {
-                    cell.bg = Some(if is_current {
-                        self.current_find_bg
+                    if is_cursor {
+                        cell.bg = Some(self.cursor_bg);
+                        cell.fg = Some(Color::BLACK);
+                    } else if is_selected {
+                        cell.bg = Some(self.selection_bg);
+                        cell.fg = self.fg;
+                    } else if is_bracket_match {
+                        cell.bg = Some(self.bracket_match_bg);
+                        cell.fg = Some(Color::BLACK);
+                        cell.modifier |= crate::render::Modifier::BOLD;
+                    } else if let Some((is_current, _)) = find_match {
+                        cell.bg = Some(if is_current {
+                            self.current_find_bg
+                        } else {
+                            self.find_match_bg
+                        });
+                        cell.fg = Some(Color::BLACK);
                     } else {
-                        self.find_match_bg
-                    });
-                    cell.fg = Some(Color::BLACK);
-                } else {
-                    // Apply syntax highlighting
-                    let mut fg_set = false;
-                    for span in &highlights {
-                        if char_idx >= span.start && char_idx < span.end {
-                            cell.fg = Some(span.fg);
-                            if span.bold {
-                                cell.modifier |= crate::render::Modifier::BOLD;
+                        // Apply syntax highlighting
+                        let mut fg_set = false;
+                        for span in &highlights {
+                            if char_idx >= span.start && char_idx < span.end {
+                                cell.fg = Some(span.fg);
+                                if span.bold {
+                                    cell.modifier |= crate::render::Modifier::BOLD;
+                                }
+                                if span.italic {
+                                    cell.modifier |= crate::render::Modifier::ITALIC;
+                                }
+                                fg_set = true;
+                                break;
                             }
-                            if span.italic {
-                                cell.modifier |= crate::render::Modifier::ITALIC;
-                            }
-                            fg_set = true;
-                            break;
+                        }
+                        if !fg_set {
+                            cell.fg = self.fg;
+                        }
+                        if self.config.highlight_current_line && is_current_line && self.focused {
+                            cell.bg = Some(self.current_line_bg);
+                        } else {
+                            cell.bg = self.bg;
                         }
                     }
-                    if !fg_set {
-                        cell.fg = self.fg;
-                    }
-                    if self.config.highlight_current_line && is_current_line && self.focused {
-                        cell.bg = Some(self.current_line_bg);
-                    } else {
-                        cell.bg = self.bg;
-                    }
-                }
-
-                ctx.set(x, y, cell);
-                display_x += cw;
-            }
+                    cell
+                },
+            );
 
             // Draw cursor at end of line if needed
-            if self.focused && line_idx == self.cursor.0 && self.cursor.1 >= chars.len() {
-                let cursor_x = line_num_width + display_x;
-                if cursor_x < area.width - minimap_width {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(self.cursor_bg);
-                    ctx.set(cursor_x, y, cell);
+            if self.focused && line_idx == self.cursor.0 && self.cursor.1 >= line.chars().count() {
+                if let Some(x) = col_of(line, usize::MAX).checked_sub(scroll_x) {
+                    if x < text_width as usize {
+                        let mut cell = Cell::new(' ');
+                        cell.bg = Some(self.cursor_bg);
+                        ctx.set(line_num_width + x as u16, y, cell);
+                    }
                 }
             }
         }
@@ -259,7 +281,7 @@ impl View for CodeEditor {
                 let y = row as u16;
 
                 // Highlight visible area
-                if start_line >= self.scroll.0 && start_line < self.scroll.0 + visible_lines {
+                if start_line >= self.scroll && start_line < self.scroll + visible_lines {
                     for x in 0..minimap_width {
                         let mut cell = Cell::new(' ');
                         cell.bg = Some(self.minimap_visible_bg);
@@ -303,12 +325,9 @@ impl View for CodeEditor {
             }
 
             // Input
-            for (i, ch) in self.goto_line_input.chars().enumerate() {
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(Color::rgb(166, 227, 161));
-                cell.bg = Some(Color::rgb(49, 50, 68));
-                ctx.set(dialog_x + label.len() as u16 + i as u16, 0, cell);
-            }
+            let input_x = dialog_x + label.len() as u16;
+            let input_w = dialog_width.saturating_sub(label.len() as u16);
+            put_query(ctx, input_x, input_w, &self.goto_line_input);
         }
 
         // Draw find dialog
@@ -332,15 +351,10 @@ impl View for CodeEditor {
                 ctx.set(dialog_x + i as u16, 0, cell);
             }
 
-            // Query
-            for (i, ch) in self.find_query.chars().enumerate() {
-                if (label.len() + i) < dialog_width as usize - 8 {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::rgb(166, 227, 161));
-                    cell.bg = Some(Color::rgb(49, 50, 68));
-                    ctx.set(dialog_x + label.len() as u16 + i as u16, 0, cell);
-                }
-            }
+            // Query, leaving 8 columns for the match count
+            let query_x = dialog_x + label.len() as u16;
+            let query_w = dialog_width.saturating_sub(label.len() as u16 + 8);
+            put_query(ctx, query_x, query_w, &self.find_query);
 
             // Match count
             let count = format!(" {}/{}", self.current_find_index(), self.find_match_count());

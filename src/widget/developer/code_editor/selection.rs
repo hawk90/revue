@@ -2,6 +2,8 @@
 //!
 //! Public API tests extracted to tests/widget/code_editor/selection.rs
 
+use super::editing::byte_at;
+
 impl super::CodeEditor {
     // =========================================================================
     // Selection
@@ -41,10 +43,11 @@ impl super::CodeEditor {
             }
             let line = &self.lines[line_idx];
             let start_col = if line_idx == start.0 { start.1 } else { 0 };
-            let end_col = if line_idx == end.0 { end.1 } else { line.len() };
+            let end_col = if line_idx == end.0 { end.1 } else { usize::MAX };
 
-            if start_col < line.len() {
-                result.push_str(&line[start_col..end_col.min(line.len())]);
+            let (from, to) = (byte_at(line, start_col), byte_at(line, end_col));
+            if from < to {
+                result.push_str(&line[from..to]);
             }
             if line_idx < end.0 {
                 result.push('\n');
@@ -70,7 +73,8 @@ impl super::CodeEditor {
         if start.0 == end.0 {
             // Single line
             if let Some(line) = self.lines.get_mut(start.0) {
-                let deleted: String = line.drain(start.1..end.1.min(line.len())).collect();
+                let range = byte_at(line, start.1)..byte_at(line, end.1);
+                let deleted: String = line.drain(range).collect();
                 self.push_undo(super::types::EditOp::Delete {
                     line: start.0,
                     col: start.1,

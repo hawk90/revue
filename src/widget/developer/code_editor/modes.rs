@@ -1,6 +1,7 @@
 //! Code editor modes (go-to-line, find)
 
 use crate::event::Key;
+use crate::utils::text::find_chars;
 
 impl super::CodeEditor {
     // =========================================================================
@@ -97,13 +98,15 @@ impl super::CodeEditor {
             return;
         }
 
-        let query_lower = self.find_query.to_lowercase();
+        // Columns are char indices: search on chars, case-insensitively. A
+        // byte offset from `str::find` is not a column, and restarting one
+        // byte after a match slices into a multibyte char.
+        let query: Vec<char> = self.find_query.chars().collect();
         for (line_idx, line) in self.lines.iter().enumerate() {
-            let line_lower = line.to_lowercase();
+            let chars: Vec<char> = line.chars().collect();
             let mut start = 0;
-            while let Some(pos) = line_lower[start..].find(&query_lower) {
-                let match_start = start + pos;
-                let match_end = match_start + self.find_query.len();
+            while let Some(match_start) = find_chars(&chars, &query, start, false) {
+                let match_end = match_start + query.len();
                 self.find_matches.push((line_idx, match_start, match_end));
                 start = match_start + 1;
             }
