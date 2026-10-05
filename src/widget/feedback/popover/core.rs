@@ -1,7 +1,8 @@
 use super::types::{PopoverArrow, PopoverPosition, PopoverStyle, PopoverTrigger};
 use crate::event::Key;
-use crate::render::{Cell, Modifier};
+use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::unicode::display_width;
 use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 
 /// A popover widget for interactive overlays
@@ -218,15 +219,16 @@ impl Popover {
         };
 
         let mut lines = Vec::new();
+        // Widths are terminal columns, the unit the box is sized in.
         for line in self.content.lines() {
-            if line.len() <= max_width {
+            if display_width(line) <= max_width {
                 lines.push(line.to_string());
             } else {
                 let mut current_line = String::new();
                 for word in line.split_whitespace() {
                     if current_line.is_empty() {
                         current_line = word.to_string();
-                    } else if current_line.len() + 1 + word.len() <= max_width {
+                    } else if display_width(&current_line) + 1 + display_width(word) <= max_width {
                         current_line.push(' ');
                         current_line.push_str(word);
                     } else {
@@ -253,8 +255,13 @@ impl Popover {
         let has_border = self.popover_style.border_chars().is_some();
         let has_title = self.title.is_some();
 
-        let content_width = lines.iter().map(|l| l.len()).max().unwrap_or(0) as u16;
-        let title_width = self.title.as_ref().map(|t| t.len() as u16 + 2).unwrap_or(0);
+        // Terminal columns, not bytes: a wide glyph takes two cells.
+        let content_width = lines.iter().map(|l| display_width(l)).max().unwrap_or(0) as u16;
+        let title_width = self
+            .title
+            .as_ref()
+            .map(|t| display_width(t) as u16 + 2)
+            .unwrap_or(0);
         let text_width = content_width.max(title_width);
 
         let width = text_width + if has_border { 4 } else { 2 };
@@ -456,16 +463,9 @@ impl View for Popover {
             if let Some(ref title) = self.title {
                 let title_x = popup_x + 2;
                 let title_y = popup_y + 1;
-                for (i, ch) in title.chars().enumerate() {
-                    let x = title_x + i as u16;
-                    if x < popup_x + popup_w - 2 && x < area.width {
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(fg);
-                        cell.bg = Some(bg);
-                        cell.modifier |= Modifier::BOLD;
-                        ctx.set(x, title_y, cell);
-                    }
-                }
+                ctx.put_str_with(title_x, title_y, title, popup_x + popup_w - 2, |ch| {
+                    Cell::new(ch).fg(fg).bg(bg).bold()
+                });
             }
 
             // Side borders
@@ -529,15 +529,9 @@ impl View for Popover {
                 break;
             }
 
-            for (j, ch) in line.chars().enumerate() {
-                let x = content_start_x + j as u16;
-                if x < popup_x + popup_w - 1 && x < area.width {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(fg);
-                    cell.bg = Some(bg);
-                    ctx.set(x, y, cell);
-                }
-            }
+            ctx.put_str_with(content_start_x, y, line, popup_x + popup_w - 1, |ch| {
+                Cell::new(ch).fg(fg).bg(bg)
+            });
         }
 
         // Draw arrow

@@ -196,9 +196,14 @@ impl FilePicker {
     /// Set starting directory (non-panicking version)
     ///
     /// Returns error if the path contains traversal patterns or is invalid.
+    ///
+    /// Accepts exactly what [`start_dir`](Self::start_dir) accepts. It used to
+    /// also require the path to lie inside the *current* directory - the
+    /// process's working directory for a new picker - so the two disagreed
+    /// about any start directory outside it.
     pub fn try_set_start_dir(mut self, dir: impl AsRef<Path>) -> Result<Self, FilePickerError> {
         let path = dir.as_ref();
-        let validated = validate_and_canonicalize(path, &self.current_dir)?;
+        let validated = validate_security_only(path)?;
         self.reset_to(validated);
         Ok(self)
     }

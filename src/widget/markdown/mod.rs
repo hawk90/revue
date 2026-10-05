@@ -6,7 +6,7 @@
 //! ## Features
 //!
 //! - **Full CommonMark support** via pulldown-cmark
-//! - **Syntax highlighting** for code blocks (via syntect)
+//! - **Syntax highlighting** for fenced code blocks, by the fence language
 //! - **Table of contents** generation
 //! - **Admonitions** (note, tip, warning, danger)
 //! - **Footnotes** support
@@ -57,6 +57,7 @@ use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::figlet::FigletFont;
 use crate::utils::syntax::{Language, SyntaxTheme};
+use crate::utils::unicode::{center_to_width, display_width, pad_to_width, right_align_to_width};
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG, PLACEHOLDER_FG};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -199,6 +200,11 @@ impl Markdown {
         let mut ctx = parser::ParserContext::new(&self.source, &self.config);
 
         for event in parser {
+            // Text held back as a possible callout marker is plain quote
+            // text once anything but more text follows it
+            if !matches!(event, Event::Text(_)) {
+                ctx.flush_pending_quote();
+            }
             match event {
                 Event::Start(tag) => self.handle_start_tag(&mut ctx, tag),
                 Event::End(tag_end) => self.handle_end_tag(&mut ctx, tag_end),
@@ -224,13 +230,13 @@ impl Markdown {
                     ctx.new_line();
                 }
                 Event::TaskListMarker(checked) => {
-                    // Task list item - add checkbox
+                    // Task list item - the checkbox stands in for the bullet
+                    ctx.item_needs_bullet = false;
                     if checked {
                         ctx.add_text("[x] ");
                     } else {
                         ctx.add_text("[ ] ");
                     }
-                    ctx.item_needs_bullet = false;
                 }
                 // Handle remaining events
                 _ => {}
@@ -309,10 +315,14 @@ impl Markdown {
             Tag::CodeBlock(kind) => {
                 ctx.in_code_block = true;
                 match kind {
-                    CodeBlockKind::Fenced(_) => {
-                        // Language will be determined from the next event
+                    // The info string's first word names the language
+                    CodeBlockKind::Fenced(info) => {
+                        let lang = info.split_whitespace().next().unwrap_or("");
+                        ctx.code_block_lang = Language::from_fence(lang);
                     }
-                    CodeBlockKind::Indented => {}
+                    CodeBlockKind::Indented => {
+                        ctx.code_block_lang = Language::Unknown;
+                    }
                 }
             }
             Tag::List(num) => {
@@ -320,6 +330,8 @@ impl Markdown {
                 ctx.ordered_list_num = num;
             }
             Tag::Item => {
+                // A nested item must not continue its parent's line
+                ctx.flush_line();
                 let indent = "  ".repeat(ctx.list_depth.saturating_sub(1));
                 ctx.add_text(&indent);
 
@@ -329,7 +341,8 @@ impl Markdown {
                     ctx.add_text(&format!("{}. ", n));
                     ctx.item_needs_bullet = false;
                 } else {
-                    // For unordered lists, wait to see if it's a task list
+                    // For unordered lists, wait to see if it's a task list;
+                    // `add_text` emits the bullet before the item's first text
                     ctx.item_needs_bullet = true;
                 }
             }
@@ -337,11 +350,21 @@ impl Markdown {
                 // Start new line if not empty
                 ctx.flush_line();
             }
-            Tag::Table(_) | Tag::TableHead | Tag::TableRow | Tag::TableCell => {
+            Tag::Table(alignments) => {
+                ctx.flush_line();
                 ctx.in_table = true;
-                if matches!(tag, Tag::TableHead) {
-                    ctx.in_table_head = true;
-                }
+                ctx.table_alignments = alignments;
+                ctx.table_rows.clear();
+            }
+            Tag::TableHead => {
+                ctx.in_table_head = true;
+                ctx.table_row.clear();
+            }
+            Tag::TableRow => {
+                ctx.table_row.clear();
+            }
+            Tag::TableCell => {
+                ctx.current_cell.clear();
             }
             Tag::FootnoteDefinition(name) => {
                 ctx.in_footnote_definition = true;
@@ -399,6 +422,7 @@ impl Markdown {
             }
             TagEnd::BlockQuote(_) => {
                 ctx.in_blockquote = false;
+                ctx.blockquote_first_text = false;
                 ctx.flush_line();
                 // Add empty line after admonition
                 if ctx.current_admonition.is_some() {
@@ -408,18 +432,29 @@ impl Markdown {
                 }
                 ctx.current_admonition = None;
                 ctx.accumulated_blockquote.clear();
+                // The quote / admonition styling ends with the quote
+                ctx.current_fg = None;
+                ctx.current_modifier &= !(Modifier::ITALIC | Modifier::BOLD);
             }
             TagEnd::List(_) => {
                 ctx.list_depth = ctx.list_depth.saturating_sub(1);
                 ctx.flush_line();
             }
             TagEnd::Item => {
-                // Add bullet if needed (wasn't a task list)
-                if ctx.item_needs_bullet {
-                    ctx.add_text("• ");
-                }
                 ctx.flush_line();
                 ctx.item_needs_bullet = false;
+            }
+            TagEnd::TableCell => {
+                let cell = std::mem::take(&mut ctx.current_cell);
+                ctx.table_row.push(cell.trim().to_string());
+            }
+            TagEnd::TableHead | TagEnd::TableRow => {
+                let row = std::mem::take(&mut ctx.table_row);
+                ctx.table_rows.push(row);
+                ctx.in_table_head = false;
+            }
+            TagEnd::Table => {
+                self.render_table(ctx);
             }
             _ => {}
         }
@@ -427,6 +462,7 @@ impl Markdown {
 
     fn handle_text(&self, ctx: &mut parser::ParserContext, text: &str) {
         if ctx.in_code_block {
+            // Collected verbatim; split into lines when the block ends
             ctx.code_block_lines.push(text.to_string());
         } else if ctx.in_footnote_definition {
             ctx.current_footnote_content.push_str(text);
@@ -434,63 +470,36 @@ impl Markdown {
             ctx.current_cell.push_str(text);
         } else if ctx.in_heading {
             ctx.heading_text.push_str(text);
-        } else if ctx.blockquote_first_text {
-            // Accumulate text for admonition detection
+        } else if ctx.in_blockquote && ctx.blockquote_first_text {
+            // Hold the quote's opening text back only while it can still
+            // become a callout marker like `[!NOTE]`
             ctx.accumulated_blockquote.push_str(text);
-
-            // Try to detect admonition marker
-            let full_text = ctx.accumulated_blockquote.trim().to_string();
-            if let Some(admonition) = AdmonitionType::from_marker(&full_text) {
+            let pending = ctx.accumulated_blockquote.clone();
+            if let Some(admonition) = AdmonitionType::from_exact_marker(&pending) {
                 ctx.current_admonition = Some(admonition);
                 ctx.flush_line();
                 // Render admonition header with icon and label
-                let color = admonition.color();
-                ctx.current_fg = Some(color);
+                ctx.current_fg = Some(admonition.color());
                 ctx.current_modifier |= Modifier::BOLD;
                 ctx.add_text(&format!("{} {}", admonition.icon(), admonition.label()));
                 ctx.new_line();
                 ctx.accumulated_blockquote.clear();
                 ctx.blockquote_first_text = false;
-            } else {
-                // Not a complete admonition marker yet, keep accumulating
-                if !full_text.ends_with(']') {
-                    // If text doesn't contain '[', it's definitely not an admonition
-                    if !full_text.contains('[') {
-                        ctx.flush_line();
-                        let color = ctx.quote_fg;
-                        ctx.current_modifier |= Modifier::ITALIC;
-                        ctx.current_fg = Some(color);
-                        ctx.add_text("│ ");
-                        ctx.add_text(&full_text);
-                        ctx.accumulated_blockquote.clear();
-                        ctx.blockquote_first_text = false;
-                    }
-                    // Otherwise keep accumulating
-                } else {
-                    // Complete text but not an admonition
-                    ctx.flush_line();
-                    let color = ctx.quote_fg;
-                    ctx.current_modifier |= Modifier::ITALIC;
-                    ctx.current_fg = Some(color);
-                    ctx.add_text("│ ");
-                    ctx.add_text(&full_text);
-                    ctx.accumulated_blockquote.clear();
-                    ctx.blockquote_first_text = false;
-                }
+            } else if !AdmonitionType::is_marker_prefix(&pending) {
+                ctx.flush_pending_quote();
             }
-        } else if let Some(_admonition) = ctx.current_admonition {
-            // Admonition content - add quote prefix
-            ctx.add_text(&format!("│ {}", text));
         } else if ctx.in_blockquote {
-            // Regular blockquote continuation
-            ctx.add_text(&format!("│ {}", text));
+            // Blockquote / admonition content
+            ctx.add_quote_text(text);
         } else {
             ctx.add_text(text);
         }
     }
 
     fn handle_code(&self, ctx: &mut parser::ParserContext, text: &str) {
-        if !ctx.in_code_block {
+        if ctx.in_table {
+            ctx.current_cell.push_str(text);
+        } else if !ctx.in_code_block {
             ctx.add_text(text);
         }
     }
@@ -525,57 +534,146 @@ impl Markdown {
         ctx.in_code_block = false;
         ctx.new_line();
 
-        // Code border
+        // pulldown-cmark may hand the block over in several text events;
+        // join them and split on newlines so each source line is its own row.
+        let code = std::mem::take(&mut ctx.code_block_lines).concat();
+        let rows: Vec<(String, &str)> = code
+            .lines()
+            .enumerate()
+            .map(|(line_num, line)| {
+                let mut prefix = if ctx.code_border {
+                    "│ ".to_string()
+                } else {
+                    String::new()
+                };
+                if ctx.code_line_numbers {
+                    prefix.push_str(&format!("{:3} │ ", line_num + 1));
+                }
+                (prefix, line)
+            })
+            .collect();
+
+        // The box is as wide as its widest line (prefix included)
+        let inner_width = rows
+            .iter()
+            .map(|(prefix, line)| display_width(prefix) + display_width(line))
+            .max()
+            .unwrap_or(0)
+            .max(2);
+
+        let border = |left: &str, right: &str| {
+            let mut line = Line::new();
+            line.push(
+                StyledText::new(format!("{left}{}{right}", "─".repeat(inner_width)))
+                    .with_fg(DISABLED_FG),
+            );
+            line
+        };
+
         if ctx.code_border {
-            let mut border_line = Line::new();
-            border_line.push(StyledText::new("┌").with_fg(DISABLED_FG));
-            for _ in 0..30 {
-                border_line.push(StyledText::new("─").with_fg(DISABLED_FG));
-            }
-            border_line.push(StyledText::new("┐").with_fg(DISABLED_FG));
-            ctx.lines.push(border_line);
+            ctx.lines.push(border("┌", "┐"));
         }
 
-        for (line_num, line) in ctx.code_block_lines.iter().enumerate() {
+        for (prefix, line) in &rows {
             let mut code_line = Line::new();
 
-            if ctx.code_line_numbers {
-                code_line
-                    .push(StyledText::new(format!("{:3} │ ", line_num + 1)).with_fg(DISABLED_FG));
-            } else if ctx.code_border {
-                code_line.push(StyledText::new("│ ").with_fg(DISABLED_FG));
+            if !prefix.is_empty() {
+                code_line.push(StyledText::new(prefix.clone()).with_fg(DISABLED_FG));
             }
 
             // Apply syntax highlighting if enabled
-            if ctx.syntax_highlight && ctx.code_block_lang != Language::Unknown {
-                let tokens = ctx.highlighter.highlight_line(line, ctx.code_block_lang);
-                if !tokens.is_empty() {
-                    // Render highlighted code - tokens contain the text directly
-                    for token in &tokens {
-                        let fg = ctx.highlighter.token_color(token.token_type);
-                        code_line.push(StyledText::new(token.text.clone()).with_fg(fg));
-                    }
-                } else {
-                    code_line.push(StyledText::new(line.clone()).with_fg(ctx.code_fg));
-                }
+            let tokens = if ctx.syntax_highlight && ctx.code_block_lang != Language::Unknown {
+                ctx.highlighter.highlight_line(line, ctx.code_block_lang)
             } else {
-                code_line.push(StyledText::new(line.clone()).with_fg(ctx.code_fg));
+                Vec::new()
+            };
+            if tokens.is_empty() {
+                code_line.push(StyledText::new(*line).with_fg(ctx.code_fg));
+            } else {
+                // Render highlighted code - tokens contain the text directly
+                for token in &tokens {
+                    let fg = ctx.highlighter.token_color(token.token_type);
+                    code_line.push(StyledText::new(token.text.clone()).with_fg(fg));
+                }
+            }
+
+            if ctx.code_border {
+                let pad = inner_width - display_width(prefix) - display_width(line);
+                code_line
+                    .push(StyledText::new(format!("{} │", " ".repeat(pad))).with_fg(DISABLED_FG));
             }
 
             ctx.lines.push(code_line);
         }
 
-        ctx.code_block_lines.clear();
-
         if ctx.code_border {
-            let mut border_line = Line::new();
-            border_line.push(StyledText::new("└").with_fg(DISABLED_FG));
-            for _ in 0..30 {
-                border_line.push(StyledText::new("─").with_fg(DISABLED_FG));
-            }
-            border_line.push(StyledText::new("┘").with_fg(DISABLED_FG));
-            ctx.lines.push(border_line);
+            ctx.lines.push(border("└", "┘"));
         }
+
+        ctx.new_line();
+    }
+
+    /// Lay out the collected table: a box with the header row, a separator,
+    /// and the body rows, each column as wide as its widest cell. Rows wider
+    /// than the widget are clipped at render time like any other line.
+    fn render_table(&self, ctx: &mut parser::ParserContext) {
+        use pulldown_cmark::Alignment;
+
+        ctx.in_table = false;
+        ctx.in_table_head = false;
+        let rows = std::mem::take(&mut ctx.table_rows);
+        let alignments = std::mem::take(&mut ctx.table_alignments);
+
+        let columns = rows.iter().map(Vec::len).max().unwrap_or(0);
+        if columns == 0 {
+            return;
+        }
+        let widths: Vec<usize> = (0..columns)
+            .map(|col| {
+                rows.iter()
+                    .filter_map(|row| row.get(col))
+                    .map(|cell| display_width(cell))
+                    .max()
+                    .unwrap_or(0)
+            })
+            .collect();
+
+        let border = |left: &str, mid: &str, right: &str| {
+            let segments: Vec<String> = widths.iter().map(|w| "─".repeat(w + 2)).collect();
+            let mut line = Line::new();
+            line.push(
+                StyledText::new(format!("{left}{}{right}", segments.join(mid)))
+                    .with_fg(DISABLED_FG),
+            );
+            line
+        };
+
+        ctx.lines.push(border("┌", "┬", "┐"));
+        for (row_idx, row) in rows.iter().enumerate() {
+            let is_header = row_idx == 0;
+            let mut line = Line::new();
+            line.push(StyledText::new("│").with_fg(DISABLED_FG));
+            for (col, width) in widths.iter().enumerate() {
+                let cell = row.get(col).map(String::as_str).unwrap_or("");
+                let text = match alignments.get(col) {
+                    Some(Alignment::Center) => center_to_width(cell, *width),
+                    Some(Alignment::Right) => right_align_to_width(cell, *width),
+                    _ => pad_to_width(cell, *width),
+                };
+                let text = StyledText::new(format!(" {text} "));
+                line.push(if is_header {
+                    text.with_fg(ctx.heading_fg).with_modifier(Modifier::BOLD)
+                } else {
+                    text
+                });
+                line.push(StyledText::new("│").with_fg(DISABLED_FG));
+            }
+            ctx.lines.push(line);
+            if is_header && rows.len() > 1 {
+                ctx.lines.push(border("├", "┼", "┤"));
+            }
+        }
+        ctx.lines.push(border("└", "┴", "┘"));
 
         ctx.new_line();
     }
@@ -769,5 +867,11 @@ mod tests {
         assert_ne!(AdmonitionType::Important.color(), Color::BLACK);
         assert_ne!(AdmonitionType::Warning.color(), Color::BLACK);
         assert_ne!(AdmonitionType::Caution.color(), Color::BLACK);
+    }
+
+    #[test]
+    fn test_markdown_helper() {
+        let md = markdown("Test content");
+        assert_eq!(md.source(), "Test content");
     }
 }

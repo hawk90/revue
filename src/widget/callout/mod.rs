@@ -98,7 +98,7 @@ mod tests {
 
         // Filled with single line content
         let filled = Callout::new("Single line").variant(CalloutVariant::Filled);
-        assert_eq!(filled.height(), 2); // title + content
+        assert_eq!(filled.height(), 2); // title + content (accent bar adds no rows)
 
         // Filled with multi-line content
         let multi = Callout::new(

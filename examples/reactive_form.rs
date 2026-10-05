@@ -11,6 +11,7 @@
 
 use revue::patterns::form::FormState;
 use revue::prelude::*;
+use revue::utils::unicode::display_width;
 
 struct ReactiveForm {
     form: FormState,
@@ -122,30 +123,42 @@ impl View for ReactiveForm {
         let form_valid = self.form.is_valid();
         let focused_name = self.form.focused();
 
-        let mut main_view = vstack().gap(1);
+        // Unsized stack children share space equally, so fixed-height pieces
+        // use `child_sized` (a Border needs content + 2 rows) and only the
+        // field list absorbs the leftover rows. Everything has to fit in 30.
+        let mut main_view = vstack();
 
-        // Header
-        main_view =
-            main_view.child(
-                Border::panel()
-                    .title("Reactive Form (FormState API)")
-                    .child(
-                        vstack()
-                            .child(hstack().gap(2).child(Text::new("Status:")).child(
-                                if form_valid {
-                                    Text::success("Valid - Ready to submit!")
-                                } else {
-                                    Text::error("Please complete all fields")
-                                },
-                            ))
-                            .child(if !message.is_empty() {
-                                Text::new(message).fg(Color::CYAN).bold()
+        // Header: status and the last message share one row
+        let status = if form_valid {
+            "Valid - Ready to submit!"
+        } else {
+            "Please complete all fields"
+        };
+        main_view = main_view.child_sized(
+            Border::panel()
+                .title("Reactive Form (FormState API)")
+                .child(
+                    hstack()
+                        .gap(2)
+                        .child_sized(Text::new("Status:"), 7)
+                        .child_sized(
+                            if form_valid {
+                                Text::success(status)
                             } else {
-                                Text::new("")
-                            }),
-                    ),
-            );
+                                Text::error(status)
+                            },
+                            display_width(status) as u16,
+                        )
+                        .child(if !message.is_empty() {
+                            Text::new(message).fg(Color::CYAN).bold()
+                        } else {
+                            Text::new("")
+                        }),
+                ),
+            3,
+        );
 
+        let mut fields_view = vstack();
         // Render each field
         for name in self.form.field_names() {
             if let Some(field) = self.form.get(name) {
@@ -190,84 +203,86 @@ impl View for ReactiveForm {
                 };
 
                 let mut field_view = vstack()
-                    .child(
+                    .child_sized(
                         hstack()
                             .gap(1)
-                            .child(Text::new(status_icon).fg(status_color))
+                            .child_sized(Text::new(status_icon).fg(status_color), 1)
                             .child(Text::new(&field.label).bold()),
+                        1,
                     )
-                    .child(Text::new(&display_value).fg(if is_focused {
-                        Color::YELLOW
-                    } else if value.is_empty() {
-                        Color::rgb(100, 100, 100)
-                    } else {
-                        Color::WHITE
-                    }));
+                    .child_sized(
+                        Text::new(&display_value).fg(if is_focused {
+                            Color::YELLOW
+                        } else if value.is_empty() {
+                            Color::rgb(100, 100, 100)
+                        } else {
+                            Color::WHITE
+                        }),
+                        1,
+                    );
+                let mut rows = 2;
 
                 // Show errors only if touched or focused
                 if (is_touched || is_focused) && !value.is_empty() {
                     for error in errors {
-                        field_view =
-                            field_view.child(Text::error(format!("  → {}", error.message)));
+                        field_view = field_view
+                            .child_sized(Text::error(format!("  → {}", error.message)), 1);
+                        rows += 1;
                     }
                 }
 
-                main_view = main_view.child(border.child(field_view));
+                fields_view = fields_view.child_sized(border.child(field_view), rows + 2);
             }
         }
 
-        // Controls
-        main_view = main_view.child(
-            Border::rounded().title("Controls").child(
-                vstack()
-                    .child(
-                        hstack()
-                            .gap(2)
-                            .child(Text::muted("[Type]"))
-                            .child(Text::new("Enter text")),
-                    )
-                    .child(
-                        hstack()
-                            .gap(2)
-                            .child(Text::muted("[Tab]"))
-                            .child(Text::new("Next field")),
-                    )
-                    .child(
-                        hstack()
-                            .gap(2)
-                            .child(Text::muted("[Shift+Tab]"))
-                            .child(Text::new("Previous field")),
-                    )
-                    .child(
-                        hstack()
-                            .gap(2)
-                            .child(Text::muted("[Enter]"))
-                            .child(Text::new("Submit form")),
-                    )
-                    .child(
-                        hstack()
-                            .gap(2)
-                            .child(Text::muted("[q]"))
-                            .child(Text::new("Quit")),
-                    ),
-            ),
-        );
+        main_view = main_view.child(fields_view);
 
-        // Feature highlights
-        main_view = main_view.child(
-            Border::success_box().title("FormState Features").child(
-                vstack()
-                    .child(Text::success(
-                        "Builder pattern: FormState::new().field(...).build()",
-                    ))
-                    .child(Text::success(
-                        "Auto validation: errors update on value change",
-                    ))
-                    .child(Text::success(
-                        "matches() validator for password confirmation",
-                    ))
-                    .child(Text::info("→ Minimal boilerplate, maximum reactivity!")),
-            ),
+        // Controls and feature highlights side by side
+        let mut controls = vstack();
+        for (key, action) in [
+            ("[Type]", "Enter text"),
+            ("[Tab]", "Next field"),
+            ("[Shift+Tab]", "Previous field"),
+            ("[Enter]", "Submit form"),
+            ("[q]", "Quit"),
+        ] {
+            controls = controls.child_sized(
+                hstack()
+                    .gap(2)
+                    .child_sized(Text::muted(key), 11)
+                    .child(Text::new(action)),
+                1,
+            );
+        }
+
+        main_view = main_view.child_sized(
+            hstack()
+                .gap(1)
+                .child_sized(Border::rounded().title("Controls").child(controls), 32)
+                .child(
+                    Border::success_box().title("FormState Features").child(
+                        vstack()
+                            .child_sized(
+                                Text::success(
+                                    "Builder pattern: FormState::new().field(...).build()",
+                                ),
+                                1,
+                            )
+                            .child_sized(
+                                Text::success("Auto validation: errors update on value change"),
+                                1,
+                            )
+                            .child_sized(
+                                Text::success("matches() validator for password confirmation"),
+                                1,
+                            )
+                            .child_sized(
+                                Text::info("→ Minimal boilerplate, maximum reactivity!"),
+                                1,
+                            ),
+                    ),
+                ),
+            7,
         );
 
         main_view.render(ctx);

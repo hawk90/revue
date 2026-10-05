@@ -13,7 +13,7 @@
 //!
 //! ```text
 //! update_dom_and_get_root -> compute_styles_with_inheritance
-//!   -> update_layout_tree -> render_to_buffer
+//!   -> update_layout_tree (harness only, see `layout_engine`) -> render_to_buffer
 //!   -> diff -> terminal
 //! ```
 //!
@@ -67,7 +67,7 @@ impl PipelineHarness {
 
     /// Turn per-frame DOM reconciliation on or off for this harness.
     ///
-    /// Mirrors [`AppBuilder::incremental_dom`](crate::app::AppBuilder::incremental_dom),
+    /// Mirrors [`AppBuilder::incremental_dom`](crate::core::app::AppBuilder::incremental_dom),
     /// which is off by default. A test that exercises reconciliation must turn
     /// it on explicitly - otherwise the DOM is built once and never follows the
     /// view again, and the test silently passes against a frozen tree.
@@ -78,7 +78,7 @@ impl PipelineHarness {
 
     /// Build the DOM from the render traversal for this harness.
     ///
-    /// Mirrors [`AppBuilder::dom_from_render`](crate::app::AppBuilder::dom_from_render),
+    /// Mirrors [`AppBuilder::dom_from_render`](crate::core::app::AppBuilder::dom_from_render),
     /// which is off by default.
     pub fn dom_from_render(mut self, enabled: bool) -> Self {
         self.app.set_dom_from_render(enabled);
@@ -87,14 +87,14 @@ impl PipelineHarness {
 
     /// Let CSS box properties override container-computed geometry.
     ///
-    /// Mirrors [`AppBuilder::css_layout`](crate::app::AppBuilder::css_layout),
+    /// Mirrors [`AppBuilder::css_layout`](crate::core::app::AppBuilder::css_layout),
     /// which is off by default and inert without `dom_from_render`.
     pub fn css_layout(mut self, enabled: bool) -> Self {
         self.app.set_css_layout(enabled);
         self
     }
 
-    /// Mirrors [`AppBuilder::tab_navigation`](crate::app::AppBuilder::tab_navigation),
+    /// Mirrors [`AppBuilder::tab_navigation`](crate::core::app::AppBuilder::tab_navigation),
     /// which is off by default.
     ///
     /// With it on, sending a `Tab` key through [`send`](Self::send) moves
@@ -104,7 +104,22 @@ impl PipelineHarness {
         self
     }
 
-    fn build(app: App, width: u16, height: u16) -> Self {
+    /// Run `LayoutEngine` every frame so [`layout_rect`](Self::layout_rect) and
+    /// [`layout_child_ids`](Self::layout_child_ids) have something to report.
+    ///
+    /// **On by default here, off in a real app.** Nothing in the render path
+    /// reads the engine's output, so `App` skips it; the harness keeps it so
+    /// layout queries keep answering. It has no effect on what is painted.
+    /// Turn it off to measure the frame a real app pays for - see
+    /// `benches/frame.rs` and `docs/refactor/findings-layout.md`.
+    pub fn layout_engine(mut self, enabled: bool) -> Self {
+        self.app.set_layout_engine(enabled);
+        self
+    }
+
+    fn build(mut app: App, width: u16, height: u16) -> Self {
+        // Layout queries are part of the harness's API; keep answering them.
+        app.set_layout_engine(true);
         Self {
             app,
             // Never initialized: no raw mode, no alternate screen, no TTY.
@@ -421,6 +436,9 @@ impl PipelineHarness {
     ///
     /// Nothing in the render path reads these yet; widgets still compute their
     /// own geometry. See `docs/refactor/findings-layout.md`.
+    ///
+    /// Requires [`layout_engine`](Self::layout_engine), which the harness turns
+    /// on by default.
     pub fn layout_rect(&self, element_id: &str) -> Option<Rect> {
         self.node_id(element_id)
             .and_then(|id| self.app.layout_rect(id))

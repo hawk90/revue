@@ -210,8 +210,8 @@ fn test_card_all_variants() {
         (CardVariant::Outlined, '┌', None),
         (CardVariant::Filled, '┌', Some(Color::rgb(30, 30, 35))),
         (CardVariant::Elevated, '┌', Some(Color::rgb(35, 35, 40))),
-        // variant() only changes the look; the border stays
-        (CardVariant::Flat, '┌', None),
+        // variant(Flat) clears the border, like Card::flat()
+        (CardVariant::Flat, ' ', None),
     ];
 
     for (variant, corner, bg) in variants {

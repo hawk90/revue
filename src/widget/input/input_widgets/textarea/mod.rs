@@ -74,8 +74,11 @@ pub struct TextArea {
     pub(super) lines: Vec<String>,
     /// Multiple cursors (primary cursor is at index 0)
     pub(super) cursors: CursorSet,
-    /// Scroll offset (line, column)
-    pub(super) scroll: (usize, usize),
+    /// First visible line
+    pub(super) scroll: usize,
+    /// Horizontal scroll in terminal COLUMNS when not wrapping, kept between
+    /// renders so the view only moves when the cursor would leave it
+    pub(super) scroll_x: std::cell::Cell<usize>,
     /// Undo history
     pub(super) undo_stack: Vec<edit::EditOperation>,
     /// Redo history
@@ -126,7 +129,8 @@ impl TextArea {
         Self {
             lines: vec![String::new()],
             cursors: CursorSet::default(),
-            scroll: (0, 0),
+            scroll: 0,
+            scroll_x: std::cell::Cell::new(0),
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             show_line_numbers: false,
@@ -449,7 +453,8 @@ mod tests {
         let textarea = TextArea::new();
         assert_eq!(textarea.lines.len(), 1);
         assert_eq!(textarea.lines[0], "");
-        assert_eq!(textarea.scroll, (0, 0));
+        assert_eq!(textarea.scroll, 0);
+        assert_eq!(textarea.scroll_x.get(), 0);
         assert!(!textarea.show_line_numbers);
         assert!(textarea.wrap); // wrap defaults to true for intuitive multi-line editing
         assert!(!textarea.read_only);

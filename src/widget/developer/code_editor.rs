@@ -12,6 +12,9 @@ mod render;
 mod selection;
 mod types;
 
+#[cfg(test)]
+mod tests;
+
 use std::path::Path;
 
 use crate::style::Color;

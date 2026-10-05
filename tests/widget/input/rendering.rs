@@ -70,9 +70,11 @@ fn test_input_render_placeholder_with_string() {
 }
 
 #[test]
-fn test_input_render_placeholder_hidden_when_focused() {
+fn test_input_render_placeholder_shown_when_focused() {
+    // An empty input shows its placeholder whether or not it is focused;
+    // the cursor is drawn over the first placeholder cell.
     let i = input().placeholder("Enter text...").focused(true);
-    assert_eq!(text(&render(&i, 30), 30), "");
+    assert_eq!(text(&render(&i, 30), 30), "Enter text...");
 }
 
 #[test]
@@ -179,7 +181,9 @@ fn test_input_render_small_area() {
     let i = input().value("test").focused(false);
     let mut b = Buffer::new(5, 1);
     render_in(&i, &mut b, Rect::new(0, 0, 3, 1));
-    assert_eq!(text(&b, 5), "tes");
+    // The cursor sits after "test"; three columns show the tail plus the
+    // cursor cell, and nothing is drawn outside the area.
+    assert_eq!(text(&b, 5), "st");
 }
 
 #[test]
@@ -199,19 +203,32 @@ fn test_input_render_zero_height_area() {
 }
 
 #[test]
-fn test_input_render_long_text_truncates() {
+fn test_input_render_long_text_scrolls_to_cursor() {
+    // value() leaves the cursor at the end, and the line scrolls so the
+    // cursor stays in view: the tail of the text is shown, in the last
+    // columns before the cursor cell, and nothing is drawn past the width.
     let i = input()
         .value("This is a very long text that should be truncated")
         .focused(false);
-    assert_eq!(text(&render(&i, 10), 10), "This is a");
-    assert_eq!(render(&i, 10).get(8, 0).unwrap().symbol, 'a');
+    let b = render(&i, 10);
+    assert_eq!(text(&b, 10), "truncated");
+    assert_eq!(b.get(8, 0).unwrap().symbol, 'd');
+    assert_eq!(b.get(9, 0).unwrap().symbol, ' ');
 }
 
 #[test]
 fn test_input_render_wide_char_does_not_split_at_edge() {
+    // "a한" is three columns plus the cursor cell. In two columns the line
+    // scrolls to the cursor, which leaves only the right half of "한" in
+    // view; a wide glyph is never split, so it is dropped rather than drawn
+    // as a stray half cell.
     let i = input().value("a한").focused(false);
-    // "한" needs two columns; with only one left after 'a' it is dropped.
-    assert_eq!(text(&render(&i, 2), 2), "a");
+    assert_eq!(text(&render(&i, 2), 2), "");
+    // With room for the glyph and the cursor, it is drawn whole: the glyph
+    // in column 0 and its continuation cell in column 1.
+    let b = render(&i, 3);
+    assert_eq!(b.get(0, 0).unwrap().symbol, '한');
+    assert!(b.get(1, 0).unwrap().is_continuation());
 }
 
 #[test]
