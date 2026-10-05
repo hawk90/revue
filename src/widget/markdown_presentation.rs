@@ -451,17 +451,10 @@ impl MarkdownPresentation {
 
     /// Fill the background with the background color
     fn fill_background(&self, ctx: &mut RenderContext) {
-        let area = ctx.area;
         // The accent, the link color and the code color each say something one
         // rule cannot; the slide fill and its heading are the base.
         let bg = self.bg.unwrap_or_else(|| ctx.css_background(SLIDE_BG));
-        for y in 0..area.height {
-            for x in 0..area.width {
-                let mut cell = Cell::new(' ');
-                cell.bg = Some(bg);
-                ctx.set(x, y, cell);
-            }
-        }
+        ctx.fill_box_background(bg);
     }
 
     /// Render mode indicator
