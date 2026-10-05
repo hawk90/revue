@@ -10,3 +10,7 @@ mod grid;
 mod legend;
 #[path = "chart/marker.rs"]
 mod marker;
+#[path = "chart/orientation.rs"]
+mod orientation;
+#[path = "chart/tooltip.rs"]
+mod tooltip;

@@ -1,12 +1,11 @@
 //! Grid widget helper functions tests
 
-use super::super::grid::grid_item;
-use super::super::grid::GridAlign;
-use super::super::grid::GridPlacement;
-use super::super::grid::grid_template;
-use super::super::grid::grid;
-use super::super::grid::Grid;
-use crate::widget::Text;
+use revue::widget::grid;
+use revue::widget::grid_item;
+use revue::widget::grid_template;
+use revue::widget::GridAlign;
+use revue::widget::GridPlacement;
+use revue::widget::Text;
 
 #[test]
 fn test_grid_function_creates_grid() {
