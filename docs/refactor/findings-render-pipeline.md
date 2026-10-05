@@ -5,8 +5,8 @@
 > - F-4·F-5 — `App::builder().dom_from_render(true)`로 해결. **기본 off**이므로
 >   `tests/render_pipeline.rs`가 계속 기본 동작을 고정한다. 새 경로의 계약은
 >   `tests/dom_from_render.rs`
-> - F-6 — 박스 속성은 `.css_layout(true)`로 해결, 흐름 속성(`gap`, `flex-*`,
->   `grid-*`)은 남았다. 조사 결과와 설계 선택은
+> - F-6 — 박스 속성은 `.css_layout(true)`로, `gap`은 컨테이너가 읽는 것으로 해결.
+>   `flex-*`·`grid-*`는 설계상 컨테이너가 계산한다(3.0은 (B)). 조사 결과와 설계 선택은
 >   [`findings-layout.md`](findings-layout.md)
 > - F-4의 후속 — `:hover`는 `dom_from_render` 위에서 마우스로 구동된다. 히트 테스트는
 >   페인트 기록을 근거로 답한다. [`phase2-hit-test.md`](phase2-hit-test.md)

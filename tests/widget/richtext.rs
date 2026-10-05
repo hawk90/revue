@@ -402,6 +402,126 @@ fn test_rich_text_plain() {
 }
 
 // =============================================================================
+// Newline Tests
+// =============================================================================
+
+fn row(buffer: &Buffer, y: u16, width: u16) -> String {
+    (0..width)
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .collect::<String>()
+        .trim_end()
+        .to_string()
+}
+
+#[test]
+fn test_render_newline_inside_span_starts_new_row() {
+    let rt = RichText::new().text("ab\ncd");
+
+    let mut buffer = Buffer::new(10, 3);
+    let area = Rect::new(0, 0, 10, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    rt.render(&mut ctx);
+
+    assert_eq!(row(&buffer, 0, 10), "ab");
+    assert_eq!(row(&buffer, 1, 10), "cd");
+}
+
+#[test]
+fn test_render_newline_span_keeps_following_styles() {
+    // Same shape as examples/dashboard.rs render_json_syntax: styled
+    // pieces with a separate "\n" span after each line.
+    let rt = RichText::new()
+        .push("{", Style::new().fg(Color::WHITE))
+        .push("\n", Style::new())
+        .push("  ", Style::new())
+        .push("\"k\"", Style::new().fg(Color::BLUE))
+        .push(": 1", Style::new().fg(Color::GREEN))
+        .push("\n", Style::new())
+        .push("}", Style::new().fg(Color::WHITE));
+
+    let mut buffer = Buffer::new(12, 4);
+    let area = Rect::new(0, 0, 12, 4);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    rt.render(&mut ctx);
+
+    assert_eq!(row(&buffer, 0, 12), "{");
+    assert_eq!(row(&buffer, 1, 12), "  \"k\": 1");
+    assert_eq!(row(&buffer, 2, 12), "}");
+    assert_eq!(buffer.get(2, 1).unwrap().fg, Some(Color::BLUE));
+    assert_eq!(buffer.get(5, 1).unwrap().fg, Some(Color::GREEN));
+    assert_eq!(buffer.get(0, 2).unwrap().fg, Some(Color::WHITE));
+}
+
+#[test]
+fn test_render_newline_continues_span_style_on_next_row() {
+    let rt = RichText::new().push("one\ntwo", Style::new().fg(Color::RED).bold());
+
+    let mut buffer = Buffer::new(10, 2);
+    let area = Rect::new(0, 0, 10, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    rt.render(&mut ctx);
+
+    assert_eq!(row(&buffer, 1, 10), "two");
+    let cell = buffer.get(0, 1).unwrap();
+    assert_eq!(cell.fg, Some(Color::RED));
+    assert!(cell.modifier.contains(Modifier::BOLD));
+}
+
+#[test]
+fn test_render_newline_starts_at_area_left_edge() {
+    let rt = RichText::new().text("ab\ncd");
+
+    let mut buffer = Buffer::new(10, 4);
+    let area = Rect::new(3, 1, 5, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    rt.render(&mut ctx);
+
+    assert_eq!(buffer.get(3, 1).unwrap().symbol, 'a');
+    assert_eq!(buffer.get(3, 2).unwrap().symbol, 'c');
+    assert_eq!(buffer.get(4, 2).unwrap().symbol, 'd');
+}
+
+#[test]
+fn test_render_newline_clips_at_area_height() {
+    let rt = RichText::new().text("1\n2\n3\n4");
+
+    let mut buffer = Buffer::new(5, 4);
+    let area = Rect::new(0, 0, 5, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    rt.render(&mut ctx);
+
+    assert_eq!(row(&buffer, 0, 5), "1");
+    assert_eq!(row(&buffer, 1, 5), "2");
+    // Nothing spills below the area
+    assert_eq!(row(&buffer, 2, 5), "");
+    assert_eq!(row(&buffer, 3, 5), "");
+}
+
+#[test]
+fn test_render_long_line_truncates_but_next_line_still_renders() {
+    let rt = RichText::new().text("abcdefgh\nxy");
+
+    let mut buffer = Buffer::new(4, 2);
+    let area = Rect::new(0, 0, 4, 2);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    rt.render(&mut ctx);
+
+    assert_eq!(row(&buffer, 0, 4), "abcd");
+    assert_eq!(row(&buffer, 1, 4), "xy");
+}
+
+#[test]
+fn test_rich_text_width_is_widest_line() {
+    let rt = RichText::new()
+        .push("abc", Style::new())
+        .push("\n", Style::new())
+        .push("defgh", Style::new())
+        .push("\nij", Style::new());
+
+    assert_eq!(rt.width(), 5);
+}
+
+// =============================================================================
 // Style Tests
 // =============================================================================
 

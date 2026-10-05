@@ -4,8 +4,7 @@
 
 use revue::prelude::*;
 use revue::widget::{
-    date_picker, datetime_picker, time_picker, Date, DateTimeFormat, DateTimeMode, DateTimePicker,
-    Text, Time,
+    date_picker, datetime_picker, time_picker, Date, DateTimeMode, DateTimePicker, Text, Time,
 };
 
 /// Current view mode
@@ -86,16 +85,22 @@ impl DateTimePickerDemo {
     }
 
     fn render_tabs(&self) -> impl View {
+        // A stack shares its space equally among the children added with
+        // `child`; it does not size them to their content. So everything in
+        // this file that should take only its own rows or columns says so with
+        // `child_sized`, and only the piece that should take the rest is left
+        // as a plain `child`.
         let mut tabs = hstack().gap(2);
 
         for (i, tab) in ViewTab::all().iter().enumerate() {
             let label = format!("[{}] {}", i + 1, tab.name());
+            let width = cols(&label);
             let text = if *tab == self.tab {
                 Text::new(label).fg(Color::CYAN).bold()
             } else {
                 Text::new(label).fg(Color::rgb(128, 128, 128))
             };
-            tabs = tabs.child(text);
+            tabs = tabs.child_sized(text, width);
         }
 
         tabs
@@ -108,89 +113,111 @@ impl DateTimePickerDemo {
             DateTimeMode::Time => "Time",
         };
 
+        // The combined picker is 13 rows: the calendar, then the time below it.
         vstack()
-            .gap(1)
-            .child(Text::new("Combined DateTime Picker:").bold())
-            .child(Text::new(""))
-            .child(self.datetime_picker.clone_picker())
-            .child(Text::new(""))
-            .child(Text::new(format!(
-                "Selected: {}-{:02}-{:02} {:02}:{:02}:{:02}",
-                dt.date.year,
-                dt.date.month,
-                dt.date.day,
-                dt.time.hour,
-                dt.time.minute,
-                dt.time.second
-            )))
-            .child(Text::new(format!("Current mode: {}", mode_str)).fg(Color::rgb(150, 150, 150)))
-            .child(Text::new(""))
-            .child(
+            .child_sized(Text::new("Combined DateTime Picker:").bold(), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                self.datetime_picker
+                    .clone_picker(datetime_picker().show_seconds(true)),
+                13,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Text::new(format!(
+                    "Selected: {}-{:02}-{:02} {:02}:{:02}:{:02}",
+                    dt.date.year,
+                    dt.date.month,
+                    dt.date.day,
+                    dt.time.hour,
+                    dt.time.minute,
+                    dt.time.second
+                )),
+                1,
+            )
+            .child_sized(
+                Text::new(format!("Current mode: {}", mode_str)).fg(Color::rgb(150, 150, 150)),
+                1,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(
                 Text::new("Navigation: arrows/hjkl | [/]: month | {/}: year | Tab: date/time")
                     .fg(Color::rgb(100, 100, 100)),
+                1,
             )
     }
 
     fn render_date_demo(&self) -> impl View {
         let date = self.date_picker.get_date();
 
+        // The calendar is 8 rows: month, weekdays and six weeks.
         vstack()
-            .gap(1)
-            .child(Text::new("Date Only Picker:").bold())
-            .child(Text::new(""))
-            .child(self.date_picker.clone_picker())
-            .child(Text::new(""))
-            .child(Text::new(format!(
-                "Selected: {}-{:02}-{:02}",
-                date.year, date.month, date.day
-            )))
-            .child(Text::new(""))
-            .child(
+            .child_sized(Text::new("Date Only Picker:").bold(), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(self.date_picker.clone_picker(date_picker()), 8)
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Text::new(format!(
+                    "Selected: {}-{:02}-{:02}",
+                    date.year, date.month, date.day
+                )),
+                1,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(
                 Text::new("Navigation: arrows/hjkl | [/]: month | {/}: year | Enter: select")
                     .fg(Color::rgb(100, 100, 100)),
+                1,
             )
     }
 
     fn render_time_demo(&self) -> impl View {
         let time = self.time_picker.get_time();
 
+        // The time picker draws 4 rows (label, fields, a blank, its help
+        // line) but draws nothing at all in fewer than 5.
         vstack()
-            .gap(1)
-            .child(Text::new("Time Only Picker:").bold())
-            .child(Text::new(""))
-            .child(self.time_picker.clone_picker())
-            .child(Text::new(""))
-            .child(Text::new(format!(
-                "Selected: {:02}:{:02}",
-                time.hour, time.minute
-            )))
-            .child(Text::new(""))
-            .child(Text::new("Navigation: ←→: field | ↑↓: value").fg(Color::rgb(100, 100, 100)))
+            .child_sized(Text::new("Time Only Picker:").bold(), 1)
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                self.time_picker
+                    .clone_picker(time_picker().show_seconds(false)),
+                5,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Text::new(format!("Selected: {:02}:{:02}", time.hour, time.minute)),
+                1,
+            )
+            .child_sized(Text::new(""), 1)
+            .child_sized(
+                Text::new("Navigation: ←→: field | ↑↓: value").fg(Color::rgb(100, 100, 100)),
+                1,
+            )
     }
 }
 
 // Helper trait to clone the picker for rendering
 trait ClonePicker {
-    fn clone_picker(&self) -> DateTimePicker;
+    fn clone_picker(&self, fresh: DateTimePicker) -> DateTimePicker;
 }
 
 impl ClonePicker for DateTimePicker {
-    fn clone_picker(&self) -> DateTimePicker {
-        // Recreate based on current state
-        let date = self.get_date();
-        let time = self.get_time();
-
-        datetime_picker()
-            .selected_date(date)
-            .selected_time(time)
-            .format(DateTimeFormat::DateTime)
+    /// `fresh`, built the way this picker was, showing this picker's date
+    /// and time. Built from `fresh` so each tab keeps its own format: always
+    /// rebuilding a combined picker put a calendar on the Time Only tab.
+    fn clone_picker(&self, fresh: DateTimePicker) -> DateTimePicker {
+        fresh
+            .selected_date(self.get_date())
+            .selected_time(self.get_time())
     }
 }
 
 impl View for DateTimePickerDemo {
     fn render(&self, ctx: &mut RenderContext) {
+        let title = " DateTime Picker Demo ";
         let header = hstack()
-            .child(Text::new(" DateTime Picker Demo ").fg(Color::CYAN).bold())
+            .child_sized(Text::new(title).fg(Color::CYAN).bold(), cols(title))
             .child(Text::new(" | 1-3 to switch views").fg(Color::rgb(100, 100, 100)));
 
         let tabs = self.render_tabs();
@@ -210,14 +237,19 @@ impl View for DateTimePickerDemo {
         let help = Text::new("Press 'q' to quit").fg(Color::rgb(80, 80, 80));
 
         vstack()
-            .child(header)
-            .child(tabs)
-            .child(Text::new(""))
+            .child_sized(header, 1)
+            .child_sized(tabs, 1)
+            .child_sized(Text::new(""), 1)
             .child(content)
-            .child(Text::new(""))
-            .child(help)
+            .child_sized(Text::new(""), 1)
+            .child_sized(help, 1)
             .render(ctx);
     }
+}
+
+/// Columns `s` takes on screen.
+fn cols(s: &str) -> u16 {
+    revue::utils::unicode::display_width(s) as u16
 }
 
 fn main() -> Result<()> {

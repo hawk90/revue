@@ -13,6 +13,7 @@
 
 use revue::patterns::form::{FormState, ValidationError, Validators};
 use revue::prelude::*;
+use revue::utils::unicode::display_width;
 
 struct SignupForm {
     form: FormState,
@@ -160,35 +161,55 @@ impl View for SignupForm {
         let focused_name = self.form.focused();
         let submitted = self.submitted_data.get();
 
-        let mut main_view = vstack().gap(1);
+        // Unsized stack children share space equally, so every fixed-height
+        // piece is added with `child_sized` (a Border needs content + 2 rows)
+        // and only the field list absorbs the leftover rows.
+        let mut main_view = vstack();
 
         // Title
-        main_view = main_view.child(
+        main_view = main_view.child_sized(
             Border::double().fg(Color::CYAN).child(
                 Text::new(" Signup Form - Validation Demo ")
                     .bold()
                     .fg(Color::CYAN),
             ),
+            3,
         );
 
         // Success message if submitted
         if let Some(data) = submitted {
-            main_view = main_view.child(
+            // Two content lines so the six fields still fit in 30 rows.
+            let age = if !data.age.is_empty() {
+                data.age.clone()
+            } else {
+                "Not provided".to_string()
+            };
+            main_view = main_view.child_sized(
                 Border::success_box().title("Success!").child(
                     vstack()
-                        .child(Text::success("Account created successfully!"))
-                        .child(Text::new(format!("Username: {}", data.username)))
-                        .child(Text::new(format!("Email: {}", data.email)))
-                        .child(if !data.age.is_empty() {
-                            Text::new(format!("Age: {}", data.age))
-                        } else {
-                            Text::new("Age: Not provided")
-                        }),
+                        .child_sized(Text::success("Account created successfully!"), 1)
+                        .child_sized(
+                            Text::new(format!(
+                                "Username: {}   Email: {}   Age: {}",
+                                data.username, data.email, age
+                            )),
+                            1,
+                        ),
                 ),
+                4,
             );
         }
 
-        // Form fields
+        // Form fields: one row per field (label + value) plus its error rows
+        let label_width = self
+            .form
+            .field_names()
+            .iter()
+            .filter_map(|name| self.form.get(name))
+            .map(|field| display_width(&field.label))
+            .max()
+            .unwrap_or(0) as u16;
+        let mut fields_view = vstack();
         for name in self.form.field_names() {
             if let Some(field) = self.form.get(name) {
                 let is_focused = focused_name.as_deref() == Some(name);
@@ -237,31 +258,40 @@ impl View for SignupForm {
                     Color::WHITE
                 };
 
-                let mut field_view = vstack()
-                    .child(
-                        hstack()
-                            .gap(1)
-                            .child(Text::new(status_icon).fg(status_color))
-                            .child(Text::new(&field.label).bold())
-                            .child(if is_focused {
+                let mut field_view = vstack().child_sized(
+                    hstack()
+                        .gap(1)
+                        .child_sized(Text::new(status_icon).fg(status_color), 1)
+                        .child_sized(Text::new(&field.label).bold(), label_width)
+                        .child_sized(
+                            if is_focused {
                                 Text::new("(editing)").fg(Color::CYAN)
                             } else {
                                 Text::new("")
-                            }),
-                    )
-                    .child(Text::new(&display_value).fg(value_color));
+                            },
+                            9,
+                        )
+                        .child(Text::new(&display_value).fg(value_color)),
+                    1,
+                );
+                let mut rows = 1;
 
                 // Show errors if touched and has errors
                 if is_touched && !errors.is_empty() {
                     for error in &errors {
-                        field_view = field_view
-                            .child(Text::new(format!("  ↳ {}", error.message)).fg(Color::RED));
+                        field_view = field_view.child_sized(
+                            Text::new(format!("  ↳ {}", error.message)).fg(Color::RED),
+                            1,
+                        );
+                        rows += 1;
                     }
                 }
 
-                main_view = main_view.child(border.child(field_view));
+                fields_view = fields_view.child_sized(border.child(field_view), rows + 2);
             }
         }
+
+        main_view = main_view.child(fields_view);
 
         // Form status bar
         let status_text = if form_valid {
@@ -274,20 +304,20 @@ impl View for SignupForm {
                 if error_count == 1 { "" } else { "s" }
             ))
         };
-        main_view = main_view.child(status_text);
+        main_view = main_view.child_sized(status_text, 1);
 
         // Help section
-        main_view = main_view.child(
-            Border::rounded().title("Controls").child(
-                hstack()
-                    .gap(3)
-                    .child(Text::muted("[Tab] Next"))
-                    .child(Text::muted("[Shift+Tab] Prev"))
-                    .child(Text::muted("[Enter] Submit"))
-                    .child(Text::muted("[Esc] Reset"))
-                    .child(Text::muted("[q] Quit")),
-            ),
-        );
+        let mut controls = hstack().gap(3);
+        for hint in [
+            "[Tab] Next",
+            "[Shift+Tab] Prev",
+            "[Enter] Submit",
+            "[Esc] Reset",
+            "[q] Quit",
+        ] {
+            controls = controls.child_sized(Text::muted(hint), display_width(hint) as u16);
+        }
+        main_view = main_view.child_sized(Border::rounded().title("Controls").child(controls), 3);
 
         main_view.render(ctx);
     }

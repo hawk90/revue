@@ -396,7 +396,9 @@ fn test_handle_drop_cancels() {
 fn test_state_after_completion() {
     let handle = WorkerHandle::spawn_blocking(|| 42);
 
-    thread::sleep(Duration::from_millis(50));
+    // Wait for the task to finish rather than sleeping a fixed 50 ms: on a
+    // loaded CI runner the thread may not have been scheduled yet.
+    assert!(poll_until(|| handle.is_finished(), 2000));
 
     // State should be Completed
     assert_eq!(handle.state(), WorkerState::Completed);
@@ -409,7 +411,7 @@ fn test_state_after_panic() {
         panic!("test");
     });
 
-    thread::sleep(Duration::from_millis(50));
+    assert!(poll_until(|| handle.is_finished(), 2000));
 
     // State should be Failed
     assert_eq!(handle.state(), WorkerState::Failed);
@@ -441,7 +443,7 @@ fn test_spawn_convenience() {
 fn test_try_join_consumes() {
     let handle = WorkerHandle::spawn_blocking(|| 42);
 
-    thread::sleep(Duration::from_millis(50));
+    assert!(poll_until(|| handle.is_finished(), 2000));
 
     let mut handle_ref = handle;
     let result1 = handle_ref.try_join();

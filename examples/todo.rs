@@ -8,6 +8,15 @@
 //! Run with: cargo run --example reactive_todo
 
 use revue::prelude::*;
+use revue::utils::unicode::display_width;
+
+/// Width of the key column in the Controls list (`[Space]`, `[Enter]`).
+const KEY_COLS: u16 = 7;
+
+/// Columns `text` occupies, for sizing single-line text in an `hstack`.
+fn cols(text: &str) -> u16 {
+    display_width(text) as u16
+}
 
 #[derive(Clone, Debug, PartialEq)]
 enum Filter {
@@ -273,103 +282,129 @@ impl View for ReactiveTodoList {
                 Color::WHITE
             };
 
-            items_view = items_view.child(Text::new(text).fg(color));
+            items_view = items_view.child_sized(Text::new(text).fg(color), 1);
         }
 
         if filtered.is_empty() {
-            items_view = items_view.child(Text::muted("No items to show"));
+            items_view = items_view.child_sized(Text::muted("No items to show"), 1);
         }
 
+        let filter_text = format!("Filter: {}", filter.label());
+        let total_text = format!("Total: {}", total_count);
+        let active_text = format!("Active: {}", active_count);
+
+        // Unsized stack children share the remaining space equally, so every
+        // fixed-height row/box is `child_sized`; only the Items box absorbs the rest.
         let view = vstack()
             .gap(1)
-            .child(
+            .child_sized(
                 Border::panel().title("📝 Reactive Todo List").child(
                     vstack()
                         .gap(1)
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::new("New:"))
+                                .child_sized(Text::new("New:"), cols("New:"))
                                 .child(Text::new(format!("[{}]", input)).fg(Color::YELLOW)),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(
-                                    Text::new(format!("Filter: {}", filter.label()))
-                                        .fg(Color::CYAN),
+                                .child_sized(
+                                    Text::new(&filter_text).fg(Color::CYAN),
+                                    cols(&filter_text),
                                 )
-                                .child(Text::muted("|"))
-                                .child(Text::new(format!("Total: {}", total_count)))
-                                .child(
-                                    Text::new(format!("Active: {}", active_count)).fg(Color::GREEN),
+                                .child_sized(Text::muted("|"), 1)
+                                .child_sized(Text::new(&total_text), cols(&total_text))
+                                .child_sized(
+                                    Text::new(&active_text).fg(Color::GREEN),
+                                    cols(&active_text),
                                 )
                                 .child(
                                     Text::new(format!("Done: {}", completed_count))
                                         .fg(Color::rgb(100, 100, 100)),
                                 ),
+                            1,
                         ),
                 ),
+                5,
             )
             .child(Border::single().title("Items").child(items_view))
-            .child(
+            .child_sized(
                 Border::rounded().title("Controls").child(
                     vstack()
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[Type]"))
+                                .child_sized(Text::muted("[Type]"), KEY_COLS)
                                 .child(Text::new("Add text to new item")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[Enter]"))
+                                .child_sized(Text::muted("[Enter]"), KEY_COLS)
                                 .child(Text::new("Add item")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[↑/↓]"))
+                                .child_sized(Text::muted("[↑/↓]"), KEY_COLS)
                                 .child(Text::new("Navigate")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[Space]"))
+                                .child_sized(Text::muted("[Space]"), KEY_COLS)
                                 .child(Text::new("Toggle completed")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[d]"))
+                                .child_sized(Text::muted("[d]"), KEY_COLS)
                                 .child(Text::new("Delete item")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[f]"))
+                                .child_sized(Text::muted("[f]"), KEY_COLS)
                                 .child(Text::new("Cycle filter")),
+                            1,
                         )
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::muted("[q]"))
+                                .child_sized(Text::muted("[q]"), KEY_COLS)
                                 .child(Text::new("Quit")),
+                            1,
                         ),
                 ),
+                9,
             )
-            .child(
+            .child_sized(
                 Border::success_box().title("✨ Reactive Features").child(
                     vstack()
-                        .child(Text::success(
-                            "✓ filtered_items auto-updates when filter or items change",
-                        ))
-                        .child(Text::success(
-                            "✓ Counts are computed - no manual recalculation",
-                        ))
-                        .child(Text::success("✓ All derived state is cached and efficient")),
+                        .child_sized(
+                            Text::success(
+                                "✓ filtered_items auto-updates when filter or items change",
+                            ),
+                            1,
+                        )
+                        .child_sized(
+                            Text::success("✓ Counts are computed - no manual recalculation"),
+                            1,
+                        )
+                        .child_sized(
+                            Text::success("✓ All derived state is cached and efficient"),
+                            1,
+                        ),
                 ),
+                5,
             );
 
         view.render(ctx);

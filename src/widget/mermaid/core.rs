@@ -214,7 +214,8 @@ impl Diagram {
             let row = i as u16 / cols;
             let col = i as u16 % cols;
 
-            let node_width = (node.label.chars().count() as u16 + 4).min(cell_width - 2);
+            let label_width = crate::utils::unicode::display_width(&node.label) as u16;
+            let node_width = (label_width + 4).min(cell_width - 2);
             let node_height = 3u16;
 
             let x = col * cell_width + (cell_width - node_width) / 2;
