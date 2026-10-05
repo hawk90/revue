@@ -263,6 +263,21 @@ mod tests {
         assert_eq!(cloned.name, "test");
     }
 
+    #[test]
+    fn test_test_result_debug() {
+        let result = TestResult {
+            name: "test_debug".to_string(),
+            passed: true,
+            message: None,
+            diff_path: None,
+            duration_ms: 5,
+        };
+
+        let debug = format!("{:?}", result);
+        assert!(debug.contains("TestResult"));
+        assert!(debug.contains("test_debug"));
+    }
+
     // =========================================================================
     // TestReport tests
     // =========================================================================

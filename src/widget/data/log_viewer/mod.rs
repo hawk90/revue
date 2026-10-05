@@ -6,6 +6,8 @@
 mod entry;
 mod filter;
 mod parser;
+#[cfg(test)]
+mod tests;
 mod types;
 mod view;
 

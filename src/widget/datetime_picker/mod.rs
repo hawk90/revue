@@ -29,6 +29,9 @@ mod navigation;
 pub mod render;
 pub mod types;
 
+#[cfg(test)]
+mod state_tests;
+
 use crate::event::Key;
 use crate::style::Color;
 use crate::widget::data::calendar::{Date, FirstDayOfWeek};

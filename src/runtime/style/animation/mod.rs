@@ -10,6 +10,9 @@ mod stagger;
 mod tween;
 
 #[cfg(test)]
+mod choreography_tests;
+
+#[cfg(test)]
 mod tests {
     //! Animation system tests
 
