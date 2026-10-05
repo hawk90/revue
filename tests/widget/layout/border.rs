@@ -3,9 +3,10 @@
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
-use revue::widget::layout::border::{border, Border, BorderType};
 use revue::widget::traits::RenderContext;
 use revue::widget::Text;
+use revue::widget::View;
+use revue::widget::{border, Border, BorderType};
 
 // =========================================================================
 // BorderType enum tests
@@ -558,7 +559,7 @@ fn test_border_child_area() {
 
 #[test]
 fn test_draw_border_utility() {
-    use revue::widget::layout::border::draw_border;
+    use revue::widget::draw_border;
 
     let mut buffer = Buffer::new(10, 5);
     let area = Rect::new(0, 0, 10, 5);
@@ -573,7 +574,7 @@ fn test_draw_border_utility() {
 
 #[test]
 fn test_draw_border_none_type() {
-    use revue::widget::layout::border::draw_border;
+    use revue::widget::draw_border;
 
     let mut buffer = Buffer::new(10, 5);
     let area = Rect::new(0, 0, 10, 5);
@@ -586,7 +587,7 @@ fn test_draw_border_none_type() {
 
 #[test]
 fn test_draw_border_with_color() {
-    use revue::widget::layout::border::draw_border;
+    use revue::widget::draw_border;
 
     let mut buffer = Buffer::new(10, 5);
     let area = Rect::new(0, 0, 10, 5);
@@ -607,7 +608,7 @@ fn test_draw_border_with_color() {
 
 #[test]
 fn test_draw_border_with_bg_color() {
-    use revue::widget::layout::border::draw_border;
+    use revue::widget::draw_border;
 
     let mut buffer = Buffer::new(10, 5);
     let area = Rect::new(0, 0, 10, 5);
@@ -626,7 +627,7 @@ fn test_draw_border_with_bg_color() {
 
 #[test]
 fn test_draw_border_small_area() {
-    use revue::widget::layout::border::draw_border;
+    use revue::widget::draw_border;
 
     let mut buffer = Buffer::new(2, 2);
     let area = Rect::new(0, 0, 2, 2);
@@ -642,7 +643,7 @@ fn test_draw_border_small_area() {
 
 #[test]
 fn test_draw_border_too_small() {
-    use revue::widget::layout::border::draw_border;
+    use revue::widget::draw_border;
 
     let mut buffer = Buffer::new(1, 1);
     let area = Rect::new(0, 0, 1, 1);
@@ -655,7 +656,7 @@ fn test_draw_border_too_small() {
 
 #[test]
 fn test_draw_border_all_types() {
-    use revue::widget::layout::border::draw_border;
+    use revue::widget::draw_border;
 
     let types = [
         BorderType::Single,
