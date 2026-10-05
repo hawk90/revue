@@ -30,7 +30,7 @@ fn test_handle_key_tab() {
     let mut editor = CodeEditor::new();
     let handled = editor.handle_key(&Key::Tab);
     assert!(handled);
-    assert!(editor.get_content().len() > 0);
+    assert_eq!(editor.get_content(), "    ");
 }
 
 #[test]

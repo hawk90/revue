@@ -68,7 +68,8 @@ fn test_digits_from_float_zero_decimals() {
 #[test]
 fn test_digits_from_float_rounding() {
     // float 반올림 테스트
-    let d = Digits::from_float(3.14159, 3);
+    let d = Digits::from_float(1.23456, 3);
+    assert_eq!(d.format_value(), "1.235");
     let lines = d.render_lines();
     assert_eq!(lines.len(), 5);
 }
@@ -437,7 +438,7 @@ fn test_digits_time_colon_rendering() {
     // 시간 콜론 렌더링 테스트
     let d = Digits::new("12:34").style(DigitStyle::Block);
     let lines = d.render_lines();
-    assert!(lines.len() > 0);
+    assert!(!lines.is_empty());
 }
 
 #[test]
@@ -529,7 +530,7 @@ fn test_digits_builder_chain() {
 fn test_digits_different_digit_patterns() {
     // 서로 다른 숫자 패턴 테스트
     for i in 0..10 {
-        let d = Digits::new(&format!("{}", i)).style(DigitStyle::Block);
+        let d = Digits::new(format!("{}", i)).style(DigitStyle::Block);
         let lines = d.render_lines();
         assert_eq!(lines.len(), 5);
         assert!(!lines[0].is_empty());
@@ -654,7 +655,7 @@ fn test_digits_all_styles_have_correct_widths() {
 fn test_digits_render_all_digits() {
     // 모든 숫자(0-9) 렌더링 테스트
     for digit in 0..=9 {
-        let d = Digits::new(&format!("{}", digit)).style(DigitStyle::Block);
+        let d = Digits::new(format!("{}", digit)).style(DigitStyle::Block);
         let lines = d.render_lines();
         assert_eq!(lines.len(), 5);
         assert!(!lines[0].is_empty());
