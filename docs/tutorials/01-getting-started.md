@@ -4,7 +4,7 @@ This tutorial will get you up and running with Revue in 5 minutes.
 
 ## Prerequisites
 
-- Rust 1.87 or later
+- Rust 1.88 or later
 - A terminal that supports 256 colors (most modern terminals)
 
 ## Installation
