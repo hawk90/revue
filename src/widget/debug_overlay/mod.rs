@@ -504,6 +504,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_global_debug_state() {
         disable_debug();
         assert!(!is_debug_enabled());
