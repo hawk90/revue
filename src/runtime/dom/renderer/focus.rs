@@ -41,7 +41,7 @@ impl DomRenderer {
         self.step_focus(-1)
     }
 
-    /// The shared body of [`focus_next`] and [`focus_prev`].
+    /// The shared body of [`focus_next`](Self::focus_next) and [`focus_prev`](Self::focus_prev).
     ///
     /// The ring is recomputed on each step rather than cached. It has to be:
     /// reconciliation can add, remove or reorder nodes between two key presses,

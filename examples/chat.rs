@@ -3,6 +3,7 @@
 //! Run with: cargo run --example chat
 
 use revue::prelude::*;
+use revue::utils::unicode::display_width;
 
 #[derive(Clone)]
 struct Message {
@@ -166,13 +167,18 @@ impl View for ChatApp {
             Color::rgb(100, 100, 100)
         };
 
+        // Unsized stack children share space equally, so fixed-size pieces are
+        // added with `child_sized`; only the last piece of each stack takes
+        // the rest.
+        let name = format!(" {} ", current_contact.name);
+        let status = format!("- {}", current_contact.status);
         let header = Border::rounded().child(
             hstack()
-                .child(Text::new(status_dot).fg(status_color))
-                .child(Text::new(format!(" {} ", current_contact.name)).bold())
-                .child(
-                    Text::new(format!("- {}", current_contact.status))
-                        .fg(Color::rgb(128, 128, 128)),
+                .child_sized(Text::new(status_dot).fg(status_color), 1)
+                .child_sized(Text::new(&name).bold(), display_width(&name) as u16)
+                .child_sized(
+                    Text::new(&status).fg(Color::rgb(128, 128, 128)),
+                    display_width(&status) as u16,
                 )
                 .child(Text::new("          Chat App").fg(Color::CYAN)),
         );
@@ -200,7 +206,7 @@ impl View for ChatApp {
             } else {
                 Text::new(name_text).fg(dot_color)
             };
-            contact_list = contact_list.child(row);
+            contact_list = contact_list.child_sized(row, 1);
         }
 
         let sidebar = Border::rounded().title("Contacts").child(contact_list);
@@ -223,7 +229,7 @@ impl View for ChatApp {
             ))
             .fg(sender_color);
 
-            messages_content = messages_content.child(msg_line);
+            messages_content = messages_content.child_sized(msg_line, 1);
         }
 
         let messages_panel = Border::rounded()
@@ -251,11 +257,15 @@ impl View for ChatApp {
         };
 
         // Layout - sidebar and main content
-        let main_content = vstack().child(messages_panel).child(input_area);
+        let main_content = vstack().child(messages_panel).child_sized(input_area, 3);
 
-        let body = hstack().gap(1).child(sidebar).child(main_content);
+        let body = hstack().gap(1).child_sized(sidebar, 24).child(main_content);
 
-        let layout = vstack().gap(1).child(header).child(body).child(help);
+        let layout = vstack()
+            .gap(1)
+            .child_sized(header, 3)
+            .child(body)
+            .child_sized(help, 1);
 
         layout.render(ctx);
     }

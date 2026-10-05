@@ -18,6 +18,33 @@
 //!     .size(StatusSize::Large)
 //!     .pulsing(true);
 //! ```
+//!
+//! # Pulsing needs the app to drive it
+//!
+//! `pulsing(true)` alone does not animate. The widget owns no clock: it
+//! blinks on an 8-frame cycle (dot shown for 6 frames, hidden for 2), and
+//! the frame only moves when the app moves it.
+//!
+//! - An indicator the app keeps between renders can call [`StatusIndicator::tick`].
+//! - An indicator built fresh inside `render` (the usual case) starts at
+//!   frame 0 every time, so `tick()` on it never shows. Keep the frame in
+//!   your app state, advance it when `Event::Tick` arrives, and pass it in
+//!   with [`StatusIndicator::frame`].
+//!
+//! Either way the app must also redraw on `Event::Tick`: return `true` from
+//! the `App::run` handler for it. `App::run_with_handler` only sees key
+//! events, so it never redraws on a tick.
+//!
+//! ```rust,ignore
+//! // Advance about every 100ms for a ~0.8s blink.
+//! Event::Tick if last_step.elapsed() >= Duration::from_millis(100) => {
+//!     last_step = Instant::now();
+//!     pulse_frame = pulse_frame.wrapping_add(1);
+//!     true
+//! }
+//! // ... in render:
+//! StatusIndicator::busy().pulsing(true).frame(pulse_frame)
+//! ```
 
 use crate::render::Cell;
 use crate::style::Color;
@@ -231,12 +258,28 @@ impl StatusIndicator {
     }
 
     /// Enable/disable pulsing animation
+    ///
+    /// The pulse only advances when the app advances it, through
+    /// [`tick`](Self::tick) or [`frame`](Self::frame). See the module docs.
     pub fn pulsing(mut self, pulsing: bool) -> Self {
         self.pulsing = pulsing;
         self
     }
 
-    /// Update animation frame
+    /// Set the animation frame
+    ///
+    /// For an indicator rebuilt on every render: keep the frame in app state,
+    /// advance it on `Event::Tick`, and hand it in here. Frames `n % 8` of 6
+    /// and 7 hide the dot when [`pulsing`](Self::pulsing) is on.
+    pub fn frame(mut self, frame: usize) -> Self {
+        self.frame = frame;
+        self
+    }
+
+    /// Advance the animation frame by one
+    ///
+    /// Nothing calls this for you. Call it from the app (typically on
+    /// `Event::Tick`) on an indicator that lives across renders, and redraw.
     pub fn tick(&mut self) {
         self.frame = self.frame.wrapping_add(1);
     }

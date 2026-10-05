@@ -1,9 +1,8 @@
 //! Grid layout calculations tests
 
-use super::super::grid::{Grid, GridItem};
-use super::super::grid::TrackSize;
-use super::super::grid::GridPlacement;
-use crate::widget::Text;
+use revue::widget::Text;
+use revue::widget::TrackSize;
+use revue::widget::{Grid, GridItem};
 
 // =========================================================================
 // calculate_tracks tests

@@ -1,9 +1,10 @@
 //! Tests for sidebar layout widget rendering
 
-use crate::layout::Rect;
-use crate::render::Buffer;
-use crate::widget::layout::sidebar::{CollapseMode, Sidebar};
-use crate::widget::traits::RenderContext;
+use revue::layout::Rect;
+use revue::render::Buffer;
+use revue::widget::traits::RenderContext;
+use revue::widget::View;
+use revue::widget::{CollapseMode, Sidebar};
 
 // =========================================================================
 // Render edge case tests
@@ -205,7 +206,7 @@ fn test_render_sidebar_header_truncation() {
 
 #[test]
 fn test_render_sidebar_background() {
-    let sidebar = Sidebar::new().bg(crate::style::Color::rgb(0, 0, 255));
+    let sidebar = Sidebar::new().bg(revue::style::Color::rgb(0, 0, 255));
 
     let mut buffer = Buffer::new(20, 10);
     let area = Rect::new(0, 0, 20, 10);
@@ -215,7 +216,7 @@ fn test_render_sidebar_background() {
 
     // Background should be rendered
     let cell = buffer.get(0, 0).unwrap();
-    assert_eq!(cell.bg, Some(crate::style::Color::rgb(0, 0, 255)));
+    assert_eq!(cell.bg, Some(revue::style::Color::rgb(0, 0, 255)));
 }
 
 // =========================================================================
@@ -225,7 +226,7 @@ fn test_render_sidebar_background() {
 #[test]
 fn test_render_sidebar_border() {
     let sidebar = Sidebar::new()
-        .border_color(crate::style::Color::rgb(255, 0, 0))
+        .border_color(revue::style::Color::rgb(255, 0, 0))
         .expanded_width(15);
 
     let mut buffer = Buffer::new(20, 10);
@@ -246,10 +247,10 @@ fn test_render_sidebar_border() {
 #[test]
 fn test_render_sidebar_with_colors() {
     let sidebar = Sidebar::new()
-        .fg(crate::style::Color::rgb(255, 255, 255))
-        .bg(crate::style::Color::rgb(0, 0, 0))
-        .border_color(crate::style::Color::rgb(128, 128, 128))
-        .section_color(crate::style::Color::rgb(0, 255, 255));
+        .fg(revue::style::Color::rgb(255, 255, 255))
+        .bg(revue::style::Color::rgb(0, 0, 0))
+        .border_color(revue::style::Color::rgb(128, 128, 128))
+        .section_color(revue::style::Color::rgb(0, 255, 255));
 
     let mut buffer = Buffer::new(20, 10);
     let area = Rect::new(0, 0, 20, 10);

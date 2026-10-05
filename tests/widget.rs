@@ -123,9 +123,8 @@ mod image;
 // TODO(test-coverage): link has API mismatches
 // #[path = "widget/link.rs"]
 // mod link;
-// TODO(test-coverage): layout has API mismatches
-// #[path = "widget/layout/mod.rs"]
-// mod layout;
+#[path = "widget/layout/mod.rs"]
+mod layout;
 // TODO(test-coverage): list has API mismatches
 // #[path = "widget/list.rs"]
 // mod list;

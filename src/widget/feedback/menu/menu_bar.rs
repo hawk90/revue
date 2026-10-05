@@ -4,6 +4,7 @@ use super::types::Menu;
 use crate::event::Key;
 use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::unicode::display_width;
 use crate::widget::theme::{DARK_BG, LIGHT_GRAY};
 use crate::widget::traits::{RenderContext, View, WidgetProps, DISABLED_FG};
 use crate::{impl_props_builders, impl_styled_view};
@@ -233,22 +234,16 @@ impl View for MenuBar {
         for (i, menu) in self.menus.iter().enumerate() {
             let is_selected = i == self.selected_menu;
             let title = format!(" {} ", menu.title);
-
-            for ch in title.chars() {
-                if x >= area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                if is_selected {
-                    cell.bg = Some(self.selected_bg);
-                    cell.fg = Some(self.selected_fg);
-                } else {
-                    cell.bg = Some(self.bg);
-                    cell.fg = Some(fg);
-                }
-                ctx.set(x, 0, cell);
-                x += 1;
-            }
+            let (title_fg, title_bg) = if is_selected {
+                (self.selected_fg, self.selected_bg)
+            } else {
+                (fg, self.bg)
+            };
+            ctx.put_str_with(x, 0, &title, area.width, |ch| {
+                Cell::new(ch).fg(title_fg).bg(title_bg)
+            });
+            // Advance by the title's columns, the offset the dropdown uses.
+            x = x.saturating_add(display_width(&title) as u16);
         }
 
         // Draw dropdown if open
@@ -275,7 +270,7 @@ impl MenuBar {
             if i == self.selected_menu {
                 break;
             }
-            menu_x += m.title.len() as u16 + 2;
+            menu_x += display_width(&m.title) as u16 + 2;
         }
 
         // Calculate max width
@@ -284,8 +279,12 @@ impl MenuBar {
             .iter()
             .filter(|item| !item.separator)
             .map(|item| {
-                let shortcut_len = item.shortcut.as_ref().map(|s| s.len() + 2).unwrap_or(0);
-                item.label.len() + shortcut_len + 4
+                let shortcut_width = item
+                    .shortcut
+                    .as_ref()
+                    .map(|s| display_width(s) + 2)
+                    .unwrap_or(0);
+                display_width(&item.label) + shortcut_width + 4
             })
             .max()
             .unwrap_or(10) as u16;
@@ -386,26 +385,26 @@ impl MenuBar {
                 }
 
                 // Draw label
-                for ch in item.label.chars() {
-                    if text_x >= menu_x + dropdown_width - 2 {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(fg);
-                    cell.bg = Some(bg);
-                    ctx.set(text_x, item_y, cell);
-                    text_x += 1;
-                }
+                ctx.put_str_with(
+                    text_x,
+                    item_y,
+                    &item.label,
+                    menu_x + dropdown_width - 2,
+                    |ch| Cell::new(ch).fg(fg).bg(bg),
+                );
 
-                // Draw shortcut
+                // Draw shortcut, right-aligned by its columns
                 if let Some(ref shortcut) = item.shortcut {
-                    let shortcut_x = menu_x + dropdown_width - 2 - shortcut.len() as u16;
-                    for (j, ch) in shortcut.chars().enumerate() {
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(self.shortcut_fg);
-                        cell.bg = Some(bg);
-                        ctx.set(shortcut_x + j as u16, item_y, cell);
-                    }
+                    let shortcut_x = (menu_x + dropdown_width - 2)
+                        .saturating_sub(display_width(shortcut) as u16);
+                    let shortcut_fg = self.shortcut_fg;
+                    ctx.put_str_with(
+                        shortcut_x,
+                        item_y,
+                        shortcut,
+                        menu_x + dropdown_width - 1,
+                        |ch| Cell::new(ch).fg(shortcut_fg).bg(bg),
+                    );
                 }
 
                 // Draw submenu indicator

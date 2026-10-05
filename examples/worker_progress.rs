@@ -5,9 +5,18 @@
 //! Run with: cargo run --example worker_progress
 
 use revue::prelude::*;
+use revue::utils::unicode::display_width;
 use revue::worker::{WorkerChannel, WorkerCommand, WorkerMessage, WorkerSender};
 use std::thread;
 use std::time::Duration;
+
+/// Width of the key column in the Controls list.
+const KEY_COLS: u16 = 3;
+
+/// Columns `text` occupies, for sizing single-line text in an `hstack`.
+fn cols(text: &str) -> u16 {
+    display_width(text) as u16
+}
 
 struct ProgressDemo {
     receiver: Option<revue::worker::WorkerReceiver<String>>,
@@ -159,36 +168,60 @@ impl View for ProgressDemo {
             progress_percent
         );
 
+        // Unsized stack children share the remaining space equally, so every
+        // fixed-height row/box is `child_sized`.
         let view = vstack()
             .gap(1)
-            .child(
+            .child_sized(
                 Border::panel().title("📊 Worker Progress Demo").child(
                     vstack()
                         .gap(1)
-                        .child(
+                        .child_sized(
                             hstack()
                                 .gap(2)
-                                .child(Text::new("Status:").bold())
+                                .child_sized(Text::new("Status:").bold(), cols("Status:"))
                                 .child(Text::new(&self.status).fg(Color::CYAN)),
+                            1,
                         )
-                        .child(hstack().gap(2).child(Text::new("Running:")).child(
-                            if self.is_running {
-                                Text::new("Yes").fg(Color::YELLOW)
-                            } else {
-                                Text::new("No").fg(Color::rgb(100, 100, 100))
-                            },
-                        )),
+                        .child_sized(
+                            hstack()
+                                .gap(2)
+                                .child_sized(Text::new("Running:"), cols("Running:"))
+                                .child(if self.is_running {
+                                    Text::new("Yes").fg(Color::YELLOW)
+                                } else {
+                                    Text::new("No").fg(Color::rgb(100, 100, 100))
+                                }),
+                            1,
+                        ),
                 ),
+                5,
             )
-            .child(
-                Border::single().title("Progress").child(
-                    vstack()
-                        .child(Text::new(progress_bar).fg(Color::GREEN))
-                        .child(Text::muted(format!(
-                            "{:.1}% complete",
-                            self.progress * 100.0
-                        ))),
-                ),
+            // A 100x30 terminal can't fit all six boxes stacked, so the short
+            // ones sit side by side and only Partial Results absorbs the rest.
+            .child_sized(
+                hstack()
+                    .gap(1)
+                    .child(
+                        Border::single().title("Progress").child(
+                            vstack()
+                                .child_sized(Text::new(progress_bar).fg(Color::GREEN), 1)
+                                .child_sized(
+                                    Text::muted(format!("{:.1}% complete", self.progress * 100.0)),
+                                    1,
+                                ),
+                        ),
+                    )
+                    .child(Border::single().title("Final Result").child(
+                        if let Some(result) = &self.final_result {
+                            vstack()
+                                .child_sized(Text::success("✓ Task completed"), 1)
+                                .child_sized(Text::new(result).fg(Color::WHITE), 1)
+                        } else {
+                            vstack().child_sized(Text::muted("Not completed yet"), 1)
+                        },
+                    )),
+                4,
             )
             .child(
                 Border::single()
@@ -196,78 +229,89 @@ impl View for ProgressDemo {
                     .child({
                         let mut stack = vstack();
                         if self.partial_results.is_empty() {
-                            stack = stack.child(Text::muted("No partial results yet"));
+                            stack = stack.child_sized(Text::muted("No partial results yet"), 1);
                         } else {
                             for result in &self.partial_results {
-                                stack = stack.child(Text::new(format!("• {}", result)));
+                                stack = stack.child_sized(Text::new(format!("• {}", result)), 1);
                             }
                         }
                         stack
                     }),
             )
-            .child(Border::single().title("Final Result").child(
-                if let Some(result) = &self.final_result {
-                    vstack()
-                        .child(Text::success("✓ Task completed"))
-                        .child(Text::new(result).fg(Color::WHITE))
-                } else {
-                    vstack().child(Text::muted("Not completed yet"))
-                },
-            ))
-            .child(
-                Border::success_box()
-                    .title("✨ Features Demonstrated")
+            .child_sized(
+                hstack()
+                    .gap(1)
                     .child(
-                        vstack()
-                            .child(Text::success(
-                                "✓ WorkerChannel: Bidirectional communication",
-                            ))
-                            .child(Text::success("✓ Progress updates (0.0 to 1.0)"))
-                            .child(Text::success("✓ Status messages"))
-                            .child(Text::success("✓ Partial results"))
-                            .child(Text::success("✓ Commands: Cancel, Pause, Resume")),
-                    ),
-            )
-            .child(
-                Border::rounded().title("Controls").child(
-                    vstack()
-                        .child(
-                            hstack()
-                                .gap(2)
-                                .child(Text::muted("[s]"))
-                                .child(Text::new("Start processing")),
-                        )
-                        .child(
-                            hstack()
-                                .gap(2)
-                                .child(Text::muted("[c]"))
-                                .child(Text::new("Cancel task")),
-                        )
-                        .child(
-                            hstack()
-                                .gap(2)
-                                .child(Text::muted("[p]"))
-                                .child(Text::new("Pause task")),
-                        )
-                        .child(
-                            hstack()
-                                .gap(2)
-                                .child(Text::muted("[r]"))
-                                .child(Text::new("Resume task")),
-                        )
-                        .child(
-                            hstack()
-                                .gap(2)
-                                .child(Text::muted("[x]"))
-                                .child(Text::new("Clear all")),
-                        )
-                        .child(
-                            hstack()
-                                .gap(2)
-                                .child(Text::muted("[q]"))
-                                .child(Text::new("Quit")),
+                        Border::success_box()
+                            .title("✨ Features Demonstrated")
+                            .child(
+                                vstack()
+                                    .child_sized(
+                                        Text::success(
+                                            "✓ WorkerChannel: Bidirectional communication",
+                                        ),
+                                        1,
+                                    )
+                                    .child_sized(
+                                        Text::success("✓ Progress updates (0.0 to 1.0)"),
+                                        1,
+                                    )
+                                    .child_sized(Text::success("✓ Status messages"), 1)
+                                    .child_sized(Text::success("✓ Partial results"), 1)
+                                    .child_sized(
+                                        Text::success("✓ Commands: Cancel, Pause, Resume"),
+                                        1,
+                                    ),
+                            ),
+                    )
+                    .child(
+                        Border::rounded().title("Controls").child(
+                            vstack()
+                                .child_sized(
+                                    hstack()
+                                        .gap(2)
+                                        .child_sized(Text::muted("[s]"), KEY_COLS)
+                                        .child(Text::new("Start processing")),
+                                    1,
+                                )
+                                .child_sized(
+                                    hstack()
+                                        .gap(2)
+                                        .child_sized(Text::muted("[c]"), KEY_COLS)
+                                        .child(Text::new("Cancel task")),
+                                    1,
+                                )
+                                .child_sized(
+                                    hstack()
+                                        .gap(2)
+                                        .child_sized(Text::muted("[p]"), KEY_COLS)
+                                        .child(Text::new("Pause task")),
+                                    1,
+                                )
+                                .child_sized(
+                                    hstack()
+                                        .gap(2)
+                                        .child_sized(Text::muted("[r]"), KEY_COLS)
+                                        .child(Text::new("Resume task")),
+                                    1,
+                                )
+                                .child_sized(
+                                    hstack()
+                                        .gap(2)
+                                        .child_sized(Text::muted("[x]"), KEY_COLS)
+                                        .child(Text::new("Clear all")),
+                                    1,
+                                )
+                                .child_sized(
+                                    hstack()
+                                        .gap(2)
+                                        .child_sized(Text::muted("[q]"), KEY_COLS)
+                                        .child(Text::new("Quit")),
+                                    1,
+                                ),
                         ),
-                ),
+                    ),
+                8,
             );
 
         view.render(ctx);
