@@ -20,7 +20,6 @@ mod tree_search;
 mod tree_types;
 mod tree_view;
 
-// g4-vlist: mod virtual_list;
-// g4-vlist: mod virtuallist;
-// g4-vlist: mod virtuallist_core;
-// g4-vlist: mod virtuallist_types;
+mod virtuallist;
+mod virtuallist_core;
+mod virtuallist_types;
