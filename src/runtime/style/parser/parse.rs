@@ -64,7 +64,7 @@ pub fn parse(css: &str) -> Result<StyleSheet, ParseError> {
             ));
         }
         // Skip whitespace and comments
-        pos = skip_whitespace_bytes(bytes, pos);
+        pos = skip_whitespace_and_comments_bytes(bytes, pos);
         if pos >= bytes.len() {
             break;
         }
@@ -97,8 +97,8 @@ pub fn parse(css: &str) -> Result<StyleSheet, ParseError> {
         let (selector, new_pos) = parse_selector_str(css, pos)?;
         pos = new_pos;
 
-        // Skip whitespace
-        pos = skip_whitespace_bytes(bytes, pos);
+        // Skip whitespace and comments
+        pos = skip_whitespace_and_comments_bytes(bytes, pos);
 
         // Expect '{'
         if pos >= bytes.len() || bytes[pos] != b'{' {
@@ -291,14 +291,25 @@ fn parse_root_variables_str(
     Ok(pos)
 }
 
-/// Parse selector using zero-copy str slicing
+/// Parse a selector up to its `{`, dropping any `/* ... */` comments in it
 fn parse_selector_str(css: &str, mut pos: usize) -> Result<(String, usize), ParseError> {
     let bytes = css.as_bytes();
-    let start = pos;
+    let mut selector = String::new();
+    let mut start = pos;
     while pos < bytes.len() && bytes[pos] != b'{' {
-        pos += 1;
+        if bytes[pos..].starts_with(b"/*") {
+            selector.push_str(&css[start..pos]);
+            pos = match css[pos + 2..].find("*/") {
+                Some(end) => pos + 2 + end + 2,
+                None => bytes.len(),
+            };
+            start = pos;
+        } else {
+            pos += 1;
+        }
     }
-    Ok((css[start..pos].trim().to_string(), pos))
+    selector.push_str(&css[start..pos]);
+    Ok((selector.trim().to_string(), pos))
 }
 
 /// Parse declarations block using zero-copy str slicing
@@ -654,6 +665,52 @@ mod tests {
         assert_eq!(sheet.rules.len(), 1);
         assert_eq!(sheet.rules[0].declarations.len(), 1);
         assert_eq!(sheet.rules[0].declarations[0].property, "width");
+    }
+
+    #[test]
+    fn test_css_comment_before_rule_is_not_part_of_selector() {
+        let sheet = parse("/* header */\n.box { width: 100; }").unwrap();
+        assert_eq!(sheet.rules.len(), 1);
+        assert_eq!(sheet.rules[0].selector, ".box");
+    }
+
+    #[test]
+    fn test_css_comment_between_rules_is_not_part_of_selector() {
+        let sheet = parse(".a { width: 1; }\n/* next */\n.b { width: 2; }").unwrap();
+        let selectors: Vec<&str> = sheet.rules.iter().map(|r| r.selector.as_str()).collect();
+        assert_eq!(selectors, [".a", ".b"]);
+    }
+
+    #[test]
+    fn test_css_comment_inside_selector_is_ignored() {
+        let sheet = parse(".a /* why */ .b /* x */ { width: 1; }").unwrap();
+        assert_eq!(sheet.rules[0].selector, ".a  .b");
+        // ...which selects exactly what `.a .b` does.
+        let parsed = crate::runtime::dom::parse_selector(&sheet.rules[0].selector).unwrap();
+        let plain = crate::runtime::dom::parse_selector(".a .b").unwrap();
+        assert_eq!(format!("{parsed:?}"), format!("{plain:?}"));
+        // A comment with no surrounding whitespace joins the two parts.
+        let sheet = parse(".a/**/.b { width: 1; }").unwrap();
+        assert_eq!(sheet.rules[0].selector, ".a.b");
+    }
+
+    #[test]
+    fn test_css_comment_before_root_and_keyframes() {
+        let sheet = parse(
+            "/* vars */ :root { --c: red; }\n/* anim */ @keyframes f { from { opacity: 0; } to { opacity: 1; } }",
+        )
+        .unwrap();
+        assert!(sheet.rules.is_empty());
+        assert_eq!(sheet.keyframes.len(), 1);
+        assert_eq!(sheet.variables.get("--c").map(String::as_str), Some("red"));
+    }
+
+    #[test]
+    fn test_css_brace_inside_selector_comment() {
+        // A `{` inside a comment does not open the rule.
+        let sheet = parse(".a /* { */ { width: 1; }").unwrap();
+        assert_eq!(sheet.rules.len(), 1);
+        assert_eq!(sheet.rules[0].declarations.len(), 1);
     }
 
     #[test]
