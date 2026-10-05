@@ -167,6 +167,9 @@ pub struct Presentation {
     slides: Vec<Slide>,
     /// Current slide index
     current: usize,
+    /// Whether the deck has moved past the title slide. A presentation with
+    /// a title opens on its title slide, which comes before slide 0.
+    started: bool,
     /// Transition effect
     transition: Transition,
     /// Transition progress (0.0 to 1.0)
@@ -200,6 +203,7 @@ impl Presentation {
             author: String::new(),
             slides: Vec::new(),
             current: 0,
+            started: false,
             transition: Transition::None,
             transition_progress: 1.0,
             show_numbers: true,
@@ -271,9 +275,21 @@ impl Presentation {
         self
     }
 
+    /// Whether the title slide is showing: always for an empty deck, and
+    /// before the first move when the presentation has a title
+    fn on_title_slide(&self) -> bool {
+        self.slides.is_empty() || !self.title.is_empty() && !self.started
+    }
+
     /// Go to next slide
+    ///
+    /// From the title slide this moves to slide 0.
     pub fn next_slide(&mut self) -> bool {
-        if self.current < self.slides.len().saturating_sub(1) {
+        if self.on_title_slide() && !self.slides.is_empty() {
+            self.started = true;
+            self.transition_progress = 0.0;
+            true
+        } else if self.current < self.slides.len().saturating_sub(1) {
             self.current += 1;
             self.transition_progress = 0.0;
             true
@@ -283,8 +299,15 @@ impl Presentation {
     }
 
     /// Go to previous slide
+    ///
+    /// From slide 0 of a presentation with a title this returns to the
+    /// title slide.
     pub fn prev(&mut self) -> bool {
-        if self.current > 0 {
+        if self.current == 0 && !self.on_title_slide() && !self.title.is_empty() {
+            self.started = false;
+            self.transition_progress = 0.0;
+            true
+        } else if self.current > 0 {
             self.current -= 1;
             self.transition_progress = 0.0;
             true
@@ -297,6 +320,7 @@ impl Presentation {
     pub fn goto(&mut self, index: usize) {
         if index < self.slides.len() {
             self.current = index;
+            self.started = true;
             self.transition_progress = 0.0;
         }
     }
@@ -338,7 +362,7 @@ impl Presentation {
         }
     }
 
-    /// Render title slide (slide 0 or empty presentation)
+    /// Render the title slide (before slide 0, or for an empty presentation)
     fn render_title_slide(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let center_y = area.height / 2;
@@ -511,7 +535,7 @@ impl View for Presentation {
         ctx.fill_box_background(bg);
 
         // Render current slide
-        if self.slides.is_empty() || self.current == 0 && !self.title.is_empty() {
+        if self.on_title_slide() {
             self.render_title_slide(ctx);
         } else if let Some(slide) = self.slides.get(self.current) {
             self.render_content_slide(ctx, slide);

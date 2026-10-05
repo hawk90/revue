@@ -546,7 +546,6 @@ fn test_presentation_render_small_area() {
 }
 
 #[test]
-#[ignore = "BUG: with a title set, slide 0 is never shown (the title slide replaces it)"]
 fn test_presentation_title_slide_does_not_hide_first_slide() {
     let mut pres = Presentation::new()
         .title("Deck")
@@ -558,6 +557,32 @@ fn test_presentation_title_slide_does_not_hide_first_slide() {
         seen_intro |= screen(&render(&pres)).contains("Intro");
     }
     assert!(seen_intro);
+}
+
+#[test]
+fn test_presentation_title_slide_comes_before_slide_zero() {
+    let mut pres = Presentation::new()
+        .title("Deck")
+        .slide(slide("Intro"))
+        .slide(slide("Next"));
+    let hint = "Press → or Space to start";
+    assert!(screen(&render(&pres)).contains(hint));
+
+    // Leaving the title slide shows slide 0
+    assert!(pres.next_slide());
+    assert_eq!(pres.current_index(), 0);
+    let text = screen(&render(&pres));
+    assert!(text.contains("Intro"));
+    assert!(!text.contains(hint));
+
+    assert!(pres.next_slide());
+    assert_eq!(pres.current_index(), 1);
+
+    // Going back from slide 0 returns to the title slide, and no further
+    assert!(pres.prev());
+    assert!(pres.prev());
+    assert!(screen(&render(&pres)).contains(hint));
+    assert!(!pres.prev());
 }
 
 #[test]
