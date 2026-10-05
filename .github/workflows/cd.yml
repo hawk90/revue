@@ -20,7 +20,7 @@ permissions:
 jobs:
   docs:
     name: Build Docs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.actor != 'github-actions[bot]'
     steps:
       - uses: actions/checkout@v7
@@ -40,7 +40,7 @@ jobs:
   deploy-docs:
     name: Deploy Docs
     needs: docs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
