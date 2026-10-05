@@ -229,7 +229,14 @@ impl DataGrid {
 
             // Draw row number
             if self.options.show_row_numbers {
-                self.render_row_number(ctx, params.area_x, row_y, render_idx + 1, row_bg);
+                self.render_row_number(
+                    ctx,
+                    params.area_x,
+                    row_y,
+                    render_idx + 1,
+                    params.row_num_width,
+                    row_bg,
+                );
             }
 
             // Fill the content background first so any gap between the scrolled
@@ -394,8 +401,21 @@ impl DataGrid {
     }
 
     /// Render row number column
-    fn render_row_number(&self, ctx: &mut RenderContext, x: u16, y: u16, num: usize, bg: Color) {
-        let num_str = format!("{:>4}", num);
+    ///
+    /// `gutter` is the row-number column width computed in `render()`
+    /// (digits + space + separator); the number is right-aligned in the
+    /// digit part so it never runs into the first data column.
+    fn render_row_number(
+        &self,
+        ctx: &mut RenderContext,
+        x: u16,
+        y: u16,
+        num: usize,
+        gutter: u16,
+        bg: Color,
+    ) {
+        let digits = gutter.saturating_sub(2) as usize;
+        let num_str = format!("{:>digits$}", num);
         for (j, ch) in num_str.chars().enumerate() {
             let mut cell = Cell::new(ch);
             cell.fg = Some(DISABLED_FG);

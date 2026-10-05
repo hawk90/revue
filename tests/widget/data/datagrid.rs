@@ -6,7 +6,10 @@ mod types {
     mod row;
 }
 
+use revue::layout::Rect;
+use revue::render::Buffer;
 use revue::widget::data::datagrid::{DataGrid, GridColors, GridColumn, GridRow, SortDirection};
+use revue::widget::traits::{RenderContext, View};
 
 #[test]
 fn test_datagrid_new() {
@@ -308,4 +311,43 @@ fn test_datagrid_multiple_freeze_operations() {
 
     assert_eq!(grid.frozen_left, 2);
     assert_eq!(grid.frozen_right, 2);
+}
+
+// =========================================================================
+// Row numbers
+// =========================================================================
+
+fn row_numbers_grid(rows: usize) -> Buffer {
+    let grid = DataGrid::new()
+        .row_numbers(true)
+        .column(GridColumn::new("a", "A"))
+        .rows((0..rows).map(|_| GridRow::new().cell("a", "v")).collect());
+    let height = rows as u16 + 2;
+    let mut buffer = Buffer::new(20, height);
+    let area = Rect::new(0, 0, 20, height);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    grid.render(&mut ctx);
+    buffer
+}
+
+fn text(buffer: &Buffer, y: u16, len: u16) -> String {
+    (0..len).map(|x| buffer.get(x, y).unwrap().symbol).collect()
+}
+
+#[test]
+fn test_row_numbers_visible_for_few_rows() {
+    // 3 rows: a 3-wide gutter (digit, space, separator); data from column 3
+    let buffer = row_numbers_grid(3);
+    assert_eq!(text(&buffer, 1, 4), "1  v");
+    assert_eq!(text(&buffer, 2, 4), "2  v");
+    assert_eq!(text(&buffer, 3, 4), "3  v");
+}
+
+#[test]
+fn test_row_numbers_right_aligned() {
+    // 12 rows: two right-aligned digits; data from column 4
+    let buffer = row_numbers_grid(12);
+    assert_eq!(text(&buffer, 1, 5), " 1  v");
+    assert_eq!(text(&buffer, 10, 5), "10  v");
+    assert_eq!(text(&buffer, 12, 5), "12  v");
 }
