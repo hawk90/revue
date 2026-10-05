@@ -173,6 +173,7 @@ fn skip_whitespace_and_comments_bytes(bytes: &[u8], mut pos: usize) -> usize {
             // Skip block comment
             pos += 2;
             let comment_start = pos;
+            let mut closed = false;
 
             // Look for comment end (*/), with protection against malformed comments
             while pos + 1 < bytes.len() {
@@ -184,13 +185,14 @@ fn skip_whitespace_and_comments_bytes(bytes: &[u8], mut pos: usize) -> usize {
 
                 if bytes[pos] == b'*' && bytes[pos + 1] == b'/' {
                     pos += 2; // Skip the closing */
+                    closed = true;
                     break;
                 }
                 pos += 1;
             }
 
             // If we reached the end without finding closing */, skip to end
-            if pos >= bytes.len() || pos + 1 >= bytes.len() {
+            if !closed {
                 #[cfg(debug_assertions)]
                 eprintln!("[revue css] warning: unterminated comment in CSS");
                 return bytes.len();
@@ -643,6 +645,24 @@ mod tests {
         // Comment after property value
         let css = ".box { width: 100; /* comment after */ }";
         assert!(parse(css).is_ok());
+    }
+
+    #[test]
+    fn test_css_comment_closed_one_byte_before_end() {
+        // The byte right after `*/` is the last one in the input
+        let sheet = parse(".box { width: 100; /* c */}").unwrap();
+        assert_eq!(sheet.rules.len(), 1);
+        assert_eq!(sheet.rules[0].declarations.len(), 1);
+        assert_eq!(sheet.rules[0].declarations[0].property, "width");
+    }
+
+    #[test]
+    fn test_skip_comment_keeps_following_byte() {
+        let bytes = b"/* c */x";
+        assert_eq!(skip_whitespace_and_comments_bytes(bytes, 0), 7);
+        assert_eq!(skip_whitespace_and_comments_bytes(b"/* c */", 0), 7);
+        // Unterminated comments still consume the rest of the input
+        assert_eq!(skip_whitespace_and_comments_bytes(b"/* c *", 0), 6);
     }
 
     #[test]
