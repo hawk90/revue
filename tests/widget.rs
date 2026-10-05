@@ -115,6 +115,8 @@ mod link;
 mod list;
 #[path = "widget/log_viewer_tests.rs"]
 mod log_viewer_tests;
+#[path = "widget/macros.rs"]
+mod macros;
 #[cfg(feature = "markdown")]
 #[path = "widget/markdown/mod.rs"]
 mod markdown;
