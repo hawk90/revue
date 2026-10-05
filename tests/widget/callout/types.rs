@@ -1,6 +1,6 @@
 //! Type definitions tests
 
-use revue::widget::callout::types::{CalloutType, CalloutVariant};
+use revue::widget::{CalloutType, CalloutVariant};
 
 // =========================================================================
 // CalloutType tests

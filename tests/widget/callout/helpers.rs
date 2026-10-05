@@ -1,7 +1,7 @@
 //! Helper functions tests
 
-use revue::widget::callout::helpers::*;
-use revue::widget::callout::types::CalloutType;
+use revue::widget::CalloutType;
+use revue::widget::{callout, danger, important, info_callout, note, tip, warning_callout};
 
 #[test]
 fn test_callout_function() {

@@ -21,9 +21,8 @@ mod breadcrumb;
 mod button;
 #[path = "widget/calendar.rs"]
 mod calendar;
-// TODO(test-coverage): callout has API mismatches
-// #[path = "widget/callout/mod.rs"]
-// mod callout;
+#[path = "widget/callout/mod.rs"]
+mod callout;
 #[path = "widget/candlechart.rs"]
 mod candlechart;
 #[path = "widget/data/chart/mod.rs"]
