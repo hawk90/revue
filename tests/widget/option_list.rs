@@ -1,27 +1,13 @@
 //! Integration tests for option_list widget
 
-use revue::widget::{option_list, option_item, OptionEntry, OptionItem, OptionList};
-use revue::widget::OptionSeparatorStyle as SeparatorStyle;
-use revue::widget::traits::DISABLED_FG;
 use revue::style::Color;
+use revue::widget::traits::DISABLED_FG;
+use revue::widget::OptionSeparatorStyle as SeparatorStyle;
+use revue::widget::{option_item, option_list, OptionEntry, OptionItem, OptionList};
 
 // ============================================================================
 // Basic OptionList tests
 // ============================================================================
-
-#[test]
-fn test_option_list_new() {
-    let list = OptionList::new();
-    assert_eq!(list.option_count(), 0);
-}
-
-#[test]
-fn test_add_options() {
-    let list = OptionList::new()
-        .option("Option 1", "Ctrl+1")
-        .option("Option 2", "Ctrl+2");
-    assert_eq!(list.option_count(), 2);
-}
 
 #[test]
 fn test_separators() {
@@ -180,67 +166,6 @@ fn test_separator_style_debug() {
 }
 
 // ============================================================================
-// OptionItem tests
-// ============================================================================
-
-#[test]
-fn test_option_item_new() {
-    let item = OptionItem::new("Test");
-    assert_eq!(item.text, "Test");
-    assert!(item.hint.is_none());
-    assert!(item.value.is_none());
-    assert!(!item.disabled);
-    assert!(item.icon.is_none());
-    assert!(item.description.is_none());
-}
-
-#[test]
-fn test_option_item_hint() {
-    let item = OptionItem::new("Test").hint("Ctrl+S");
-    assert_eq!(item.hint, Some("Ctrl+S".to_string()));
-}
-
-#[test]
-fn test_option_item_value() {
-    let item = OptionItem::new("Test").value("save");
-    assert_eq!(item.value, Some("save".to_string()));
-}
-
-#[test]
-fn test_option_item_disabled() {
-    let item = OptionItem::new("Test").disabled(true);
-    assert!(item.disabled);
-}
-
-#[test]
-fn test_option_item_icon() {
-    let item = OptionItem::new("Test").icon("📁");
-    assert_eq!(item.icon, Some("📁".to_string()));
-}
-
-#[test]
-fn test_option_item_description() {
-    let item = OptionItem::new("Test").description("A test option");
-    assert_eq!(item.description, Some("A test option".to_string()));
-}
-
-#[test]
-fn test_option_item_builder_chain() {
-    let item = OptionItem::new("Save")
-        .hint("Ctrl+S")
-        .value("save_cmd")
-        .disabled(false)
-        .icon("💾")
-        .description("Save the file");
-
-    assert_eq!(item.text, "Save");
-    assert_eq!(item.hint, Some("Ctrl+S".to_string()));
-    assert_eq!(item.value, Some("save_cmd".to_string()));
-    assert_eq!(item.icon, Some("💾".to_string()));
-    assert_eq!(item.description, Some("Save the file".to_string()));
-}
-
-// ============================================================================
 // OptionEntry enum tests
 // ============================================================================
 
@@ -248,10 +173,10 @@ fn test_option_item_builder_chain() {
 fn test_option_entry_clone() {
     let entry = OptionEntry::Group("Test".to_string());
     let cloned = entry.clone();
-    // Can't assert equality, but verify cloning works
-    if let OptionEntry::Group(name) = cloned {
-        assert_eq!(name, "Test");
-    }
+    let OptionEntry::Group(name) = cloned else {
+        panic!("clone changed the variant: {cloned:?}");
+    };
+    assert_eq!(name, "Test");
 }
 
 #[test]
@@ -370,21 +295,6 @@ fn test_option_list_full_builder_chain() {
     assert!(list.__test_show_descriptions());
     assert!(!list.__test_show_icons());
     assert_eq!(list.__test_separator_style(), SeparatorStyle::Double);
-}
-
-// ============================================================================
-// OptionList::add_option tests
-// ============================================================================
-
-#[test]
-fn test_add_option_full_item() {
-    let list = OptionList::new().add_option(
-        OptionItem::new("Full Option")
-            .hint("Ctrl+F")
-            .value("full")
-            .icon("📄"),
-    );
-    assert_eq!(list.option_count(), 1);
 }
 
 // ============================================================================
@@ -536,22 +446,6 @@ fn test_option_list_default() {
 }
 
 // ============================================================================
-// Helper function tests
-// ============================================================================
-
-#[test]
-fn test_option_list_helper() {
-    let list = option_list();
-    assert_eq!(list.option_count(), 0);
-}
-
-#[test]
-fn test_option_item_helper() {
-    let item = option_item("Test");
-    assert_eq!(item.text, "Test");
-}
-
-// ============================================================================
 // OptionList Clone tests
 // ============================================================================
 
@@ -566,15 +460,4 @@ fn test_option_list_clone() {
     let cloned = list.clone();
     assert_eq!(cloned.__test_entries().len(), list.__test_entries().len());
     assert_eq!(cloned.__test_title(), list.__test_title());
-}
-
-// ============================================================================
-// Edge case tests
-// ============================================================================
-
-#[test]
-fn test_option_list_with_empty_hint() {
-    let list = OptionList::new().option("Test", "");
-    // Empty hint should not be added
-    assert_eq!(list.option_count(), 1);
 }

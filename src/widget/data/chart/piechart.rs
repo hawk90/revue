@@ -304,8 +304,10 @@ impl PieChart {
                     if in_slice {
                         let screen_x =
                             (center_x as i16 + offset_x + x as i16 - radius as i16) as u16;
+                        // `dy` already doubled the vertical distance, so each
+                        // step of `y` is one terminal row.
                         let screen_y =
-                            (center_y as i16 + offset_y + (y as i16 - radius as i16) / 2) as u16;
+                            (center_y as i16 + offset_y + (y as i16 - radius as i16)) as u16;
 
                         if screen_x < area.width && screen_y < area.height {
                             let mut cell = Cell::new('█');
@@ -339,10 +341,11 @@ impl PieChart {
             let mid_angle = current_angle + slice_angle / 2.0;
             let rad = mid_angle.to_radians();
 
-            // Position label outside the pie
+            // Position label just outside the pie, which is `radius` columns
+            // wide and `radius / 2` rows tall from its center
             let label_distance = radius as f64 * 1.3;
-            let label_x = center_x as f64 + label_distance * rad.cos() * 2.0;
-            let label_y = center_y as f64 + label_distance * rad.sin();
+            let label_x = center_x as f64 + label_distance * rad.cos();
+            let label_y = center_y as f64 + label_distance * rad.sin() / 2.0;
 
             let label_text = match self.labels {
                 PieLabelStyle::None => String::new(),
@@ -358,19 +361,16 @@ impl PieChart {
 
             // Draw label
             let start_x = if mid_angle.cos() < 0.0 {
-                (label_x - label_text.len() as f64).max(0.0) as u16
+                (label_x - crate::utils::display_width(&label_text) as f64).max(0.0) as u16
             } else {
                 label_x as u16
             };
 
-            for (i, ch) in label_text.chars().enumerate() {
-                let x = start_x + i as u16;
-                let y = label_y as u16;
-                if x < area.width && y < area.height {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(Color::WHITE);
-                    ctx.set(x, y, cell);
-                }
+            let y = label_y as u16;
+            if y < area.height {
+                ctx.put_str_with(start_x, y, &label_text, area.width, |ch| {
+                    Cell::new(ch).fg(Color::WHITE)
+                });
             }
 
             current_angle += slice_angle;

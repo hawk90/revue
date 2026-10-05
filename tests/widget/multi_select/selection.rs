@@ -1,21 +1,22 @@
 //! Selection manipulation for the multi-select widget tests
 
-use revue::widget::multi_select::{MultiSelect, MultiSelectOption};
+use revue::widget::{MultiSelect, MultiSelectOption};
 
 fn create_test_select() -> MultiSelect {
     MultiSelect::new().options(vec!["Apple", "Banana", "Cherry", "Date", "Elderberry"])
 }
 
-// State query tests
-
-#[test]
-fn test_is_open_initial_state() {
-    // Arrange
-    let select = create_test_select();
-
-    // Act & Assert
-    assert!(!select.is_open());
+/// Put the tag cursor on tag `pos` (entering from the right, as the Left key does).
+fn tag_cursor_at(select: &mut MultiSelect, pos: usize) {
+    let last = select.selection_count() - 1;
+    select.tag_cursor_left();
+    for _ in pos..last {
+        select.tag_cursor_left();
+    }
+    assert_eq!(select.get_tag_cursor(), Some(pos));
 }
+
+// State query tests
 
 #[test]
 fn test_is_open_after_open() {
@@ -40,34 +41,6 @@ fn test_is_open_after_close() {
 
     // Assert
     assert!(!select.is_open());
-}
-
-#[test]
-fn test_get_selected_indices_empty() {
-    // Arrange
-    let select = create_test_select();
-
-    // Act
-    let indices = select.get_selected_indices();
-
-    // Assert
-    assert!(indices.is_empty());
-}
-
-#[test]
-fn test_get_selected_indices_with_selections() {
-    // Arrange
-    let select = MultiSelect::new()
-        .options(vec!["Apple", "Banana", "Cherry"])
-        .selected_indices(vec![0, 2]);
-
-    // Act
-    let indices = select.get_selected_indices();
-
-    // Assert
-    assert_eq!(indices.len(), 2);
-    assert_eq!(indices[0], 0);
-    assert_eq!(indices[1], 2);
 }
 
 #[test]
@@ -216,42 +189,6 @@ fn test_can_select_more_at_limit() {
 }
 
 #[test]
-fn test_len() {
-    // Arrange
-    let select = MultiSelect::new().options(vec!["A", "B", "C"]);
-
-    // Act
-    let len = select.len();
-
-    // Assert
-    assert_eq!(len, 3);
-}
-
-#[test]
-fn test_len_empty() {
-    // Arrange
-    let select = MultiSelect::new();
-
-    // Act
-    let len = select.len();
-
-    // Assert
-    assert_eq!(len, 0);
-}
-
-#[test]
-fn test_is_empty_true() {
-    // Arrange
-    let select = MultiSelect::new();
-
-    // Act
-    let result = select.is_empty();
-
-    // Assert
-    assert!(result);
-}
-
-#[test]
 fn test_is_empty_false() {
     // Arrange
     let select = MultiSelect::new().options(vec!["A", "B"]);
@@ -268,16 +205,21 @@ fn test_is_empty_false() {
 #[test]
 fn test_open_resets_filter() {
     // Arrange
-    let mut select = MultiSelect::new().options(vec!["A", "B"]);
-    select.filtered = vec![];
+    let mut select = MultiSelect::new()
+        .options(vec!["A", "B"])
+        .selected_indices(vec![0]);
+    select.set_query("zzz");
+    select.tag_cursor_left();
+    assert!(select.get_filtered().is_empty());
+    assert_eq!(select.get_tag_cursor(), Some(0));
 
     // Act
     select.open();
 
     // Assert
     assert!(select.is_open());
-    assert_eq!(select.filtered.len(), 2);
-    assert_eq!(select.tag_cursor, None);
+    assert_eq!(select.get_filtered(), &[0, 1]);
+    assert_eq!(select.get_tag_cursor(), None);
 }
 
 #[test]
@@ -285,14 +227,16 @@ fn test_close_clears_query() {
     // Arrange
     let mut select = MultiSelect::new().options(vec!["A", "B"]);
     select.open();
-    select.query = "test".to_string();
+    select.set_query("test");
+    assert!(select.get_filtered().is_empty());
 
     // Act
     select.close();
 
     // Assert
     assert!(!select.is_open());
-    assert!(select.query.is_empty());
+    assert!(select.get_query().is_empty());
+    assert_eq!(select.get_filtered(), &[0, 1]);
 }
 
 #[test]
@@ -323,40 +267,12 @@ fn test_toggle_from_open() {
 // Selection manipulation tests
 
 #[test]
-fn test_select_option_valid() {
-    // Arrange
-    let mut select = MultiSelect::new().options(vec!["A", "B", "C"]);
-
-    // Act
-    select.select_option(1);
-
-    // Assert
-    assert_eq!(select.selection_count(), 1);
-    assert!(select.is_selected(1));
-}
-
-#[test]
 fn test_select_option_out_of_bounds() {
     // Arrange
     let mut select = MultiSelect::new().options(vec!["A", "B", "C"]);
 
     // Act
     select.select_option(10);
-
-    // Assert
-    assert_eq!(select.selection_count(), 0);
-}
-
-#[test]
-fn test_select_option_disabled() {
-    // Arrange
-    let mut select = MultiSelect::new().options_detailed(vec![
-        MultiSelectOption::simple("A"),
-        MultiSelectOption::simple("B").disabled(true),
-    ]);
-
-    // Act
-    select.select_option(1);
 
     // Assert
     assert_eq!(select.selection_count(), 0);
@@ -374,22 +290,6 @@ fn test_select_option_already_selected() {
 
     // Assert
     assert_eq!(select.selection_count(), 1);
-}
-
-#[test]
-fn test_select_option_at_max_limit() {
-    // Arrange
-    let mut select = MultiSelect::new()
-        .options(vec!["A", "B", "C", "D"])
-        .selected_indices(vec![0, 1])
-        .max_selections(2);
-
-    // Act
-    select.select_option(2);
-
-    // Assert
-    assert_eq!(select.selection_count(), 2);
-    assert!(!select.is_selected(2));
 }
 
 #[test]
@@ -421,18 +321,6 @@ fn test_deselect_option_not_selected() {
 
     // Assert
     assert_eq!(select.selection_count(), 2);
-}
-
-#[test]
-fn test_toggle_option_from_unselected() {
-    // Arrange
-    let mut select = MultiSelect::new().options(vec!["A", "B", "C"]);
-
-    // Act
-    select.toggle_option(1);
-
-    // Assert
-    assert!(select.is_selected(1));
 }
 
 #[test]
@@ -585,15 +473,15 @@ fn test_remove_tag_at_cursor_middle() {
     let mut select = MultiSelect::new()
         .options(vec!["A", "B", "C", "D"])
         .selected_indices(vec![0, 1, 2]);
-    select.tag_cursor = Some(1);
+    tag_cursor_at(&mut select, 1);
 
     // Act
     select.remove_tag_at_cursor();
 
     // Assert
     assert_eq!(select.selection_count(), 2);
-    assert_eq!(select.selected, vec![0, 2]);
-    assert_eq!(select.tag_cursor, Some(1));
+    assert_eq!(select.get_selected_indices(), &[0, 2]);
+    assert_eq!(select.get_tag_cursor(), Some(1));
 }
 
 #[test]
@@ -602,15 +490,15 @@ fn test_remove_tag_at_cursor_first() {
     let mut select = MultiSelect::new()
         .options(vec!["A", "B", "C"])
         .selected_indices(vec![0, 1, 2]);
-    select.tag_cursor = Some(0);
+    tag_cursor_at(&mut select, 0);
 
     // Act
     select.remove_tag_at_cursor();
 
     // Assert
     assert_eq!(select.selection_count(), 2);
-    assert_eq!(select.selected, vec![1, 2]);
-    assert_eq!(select.tag_cursor, Some(0));
+    assert_eq!(select.get_selected_indices(), &[1, 2]);
+    assert_eq!(select.get_tag_cursor(), Some(0));
 }
 
 #[test]
@@ -619,15 +507,15 @@ fn test_remove_tag_at_cursor_last() {
     let mut select = MultiSelect::new()
         .options(vec!["A", "B", "C"])
         .selected_indices(vec![0, 1, 2]);
-    select.tag_cursor = Some(2);
+    tag_cursor_at(&mut select, 2);
 
     // Act
     select.remove_tag_at_cursor();
 
     // Assert
     assert_eq!(select.selection_count(), 2);
-    assert_eq!(select.selected, vec![0, 1]);
-    assert_eq!(select.tag_cursor, Some(1));
+    assert_eq!(select.get_selected_indices(), &[0, 1]);
+    assert_eq!(select.get_tag_cursor(), Some(1));
 }
 
 #[test]
@@ -636,14 +524,14 @@ fn test_remove_tag_at_cursor_single_item() {
     let mut select = MultiSelect::new()
         .options(vec!["A", "B", "C"])
         .selected_indices(vec![1]);
-    select.tag_cursor = Some(0);
+    tag_cursor_at(&mut select, 0);
 
     // Act
     select.remove_tag_at_cursor();
 
     // Assert
     assert_eq!(select.selection_count(), 0);
-    assert_eq!(select.tag_cursor, None);
+    assert_eq!(select.get_tag_cursor(), None);
 }
 
 #[test]

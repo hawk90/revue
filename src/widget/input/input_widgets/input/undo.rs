@@ -10,7 +10,7 @@ impl Input {
     /// Push an operation to the undo stack
     pub(super) fn push_undo(&mut self, op: EditOperation) {
         self.undo_stack.push(op);
-        if self.undo_stack.len() >= super::types::MAX_UNDO_HISTORY {
+        if self.undo_stack.len() > super::types::MAX_UNDO_HISTORY {
             self.undo_stack.remove(0);
         }
         self.redo_stack.clear();
@@ -19,7 +19,7 @@ impl Input {
     /// Push an operation to the undo stack without clearing redo (internal use)
     fn push_undo_internal(&mut self, op: EditOperation) {
         self.undo_stack.push(op);
-        if self.undo_stack.len() >= super::types::MAX_UNDO_HISTORY {
+        if self.undo_stack.len() > super::types::MAX_UNDO_HISTORY {
             self.undo_stack.remove(0);
         }
     }

@@ -503,6 +503,9 @@ impl View for SelectionList {
             };
 
             let mut text_widget = Text::new(&text).fg(fg);
+            if let Some(bg) = self.bg {
+                text_widget = text_widget.bg(bg);
+            }
 
             if is_highlighted {
                 text_widget = text_widget.bold();
@@ -514,7 +517,11 @@ impl View for SelectionList {
             if self.show_descriptions {
                 if let Some(desc) = &item.description {
                     let desc_text = format!("    {}", desc);
-                    content = content.child(Text::new(desc_text).fg(PLACEHOLDER_FG));
+                    let mut desc_widget = Text::new(desc_text).fg(PLACEHOLDER_FG);
+                    if let Some(bg) = self.bg {
+                        desc_widget = desc_widget.bg(bg);
+                    }
+                    content = content.child(desc_widget);
                 }
             }
         }

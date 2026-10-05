@@ -1,40 +1,46 @@
 //! BigText widget tests extracted from src/widget/display/bigtext.rs
 
-use revue::prelude::*;
+use revue::layout::Rect;
+use revue::render::{Buffer, Modifier};
+use revue::style::Color;
+use revue::utils::figlet::FigletFont;
+use revue::widget::traits::{RenderContext, View};
+use revue::widget::{bigtext, h1, h2, h3, BigText};
 
-// =========================================================================
-// BigText creation tests
-// =========================================================================
+fn render(bt: &BigText) -> Buffer {
+    let mut buffer = Buffer::new(80, 10);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 80, 10));
+    bt.render(&mut ctx);
+    buffer
+}
 
-// BigText widget tests using public API
+fn has_content(buffer: &Buffer) -> bool {
+    (0..buffer.height())
+        .any(|y| (0..buffer.width()).any(|x| buffer.get(x, y).unwrap().symbol != ' '))
+}
 
 #[test]
 fn test_bigtext_creation() {
     let bt = BigText::new("Hello", 1);
-    // No public getters available for private fields
-    // We can only test the height method
+    assert_eq!(bt.get_text(), "Hello");
+    assert_eq!(bt.get_tier(), 1);
     assert!(bt.height() > 0);
 }
 
 #[test]
 fn test_tier_clamping() {
-    let bt = BigText::new("Test", 10);
-    assert!(bt.height() > 0); // H6 uses Mini font
-
-    let bt = BigText::new("Test", 0);
-    assert!(bt.height() > 0); // H1 uses Block font
+    assert_eq!(BigText::new("Test", 10).get_tier(), 6);
+    assert_eq!(BigText::new("Test", 0).get_tier(), 1);
+    assert_eq!(BigText::new("Test", 3).tier(9).get_tier(), 6);
 }
 
 #[test]
 fn test_helper_functions() {
-    let h1 = h1("Header 1");
-    let h2 = h2("Header 2");
-    let h3 = h3("Header 3");
-
-    // Different tiers have different heights
-    assert!(h1.height() > 0);
-    assert!(h2.height() > 0);
-    assert!(h3.height() > 0);
+    assert_eq!(h1("Header 1").get_tier(), 1);
+    assert_eq!(h2("Header 2").get_tier(), 2);
+    assert_eq!(h3("Header 3").get_tier(), 3);
+    let b = bigtext("Header 4", 4);
+    assert_eq!((b.get_text(), b.get_tier()), ("Header 4", 4));
 }
 
 #[test]
@@ -45,66 +51,66 @@ fn test_builder_pattern() {
         .figlet_font(FigletFont::Slant)
         .force_figlet(true);
 
-    // Can't test private fields with public API
-    // But we can test the height method which may change based on settings
-    assert!(bt.height() > 0);
+    assert_eq!(bt.get_fg(), Some(Color::CYAN));
+    assert_eq!(bt.get_bg(), Some(Color::BLACK));
+    assert_eq!(bt.get_figlet_font(), FigletFont::Slant);
+    assert!(bt.get_force_figlet());
 }
 
 #[test]
 fn test_render_figlet() {
-    let mut buffer = Buffer::new(80, 10);
-    let area = Rect::new(0, 0, 80, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+    let bt = BigText::h1("Hi")
+        .force_figlet(true)
+        .fg(Color::CYAN)
+        .bg(Color::BLACK);
+    let buffer = render(&bt);
 
-    let bt = BigText::h1("Hi").force_figlet(true);
-    bt.render(&mut ctx);
-
-    // Should have rendered something (Figlet art)
-    // Check that at least some non-space cells exist
-    let mut found_content = false;
-    for y in 0..10 {
-        for x in 0..80 {
-            if let Some(cell) = buffer.get(x, y) {
-                if cell.symbol != ' ' {
-                    found_content = true;
-                    break;
-                }
-            }
-        }
-    }
-    assert!(found_content, "Figlet should render some content");
+    assert!(has_content(&buffer), "Figlet should render some content");
+    // Drawn cells carry the colors and bold
+    let cell = (0..10)
+        .flat_map(|y| (0..80).map(move |x| (x, y)))
+        .map(|(x, y)| buffer.get(x, y).unwrap())
+        .find(|c| c.symbol != ' ')
+        .unwrap();
+    assert_eq!(cell.fg, Some(Color::CYAN));
+    assert_eq!(cell.bg, Some(Color::BLACK));
+    assert!(cell.modifier.contains(Modifier::BOLD));
+    // Nothing below the font height
+    let h = bt.height();
+    assert!((0..80).all(|x| buffer.get(x, h).unwrap().symbol == ' '));
 }
 
 #[test]
 fn test_font_for_tier() {
-    // Can't test font_for_tier directly with public API
-    // Test that different tiers have different heights (which depends on font)
-    let h1 = BigText::h1("Test");
-    let h2 = BigText::h2("Test");
-    let h3 = BigText::h3("Test");
-    let h6 = BigText::h6("Test");
+    // H1 uses the configured font, H2 slant, H3 small, H4-H6 mini
+    assert_eq!(BigText::h1("T").get_font_for_tier(), FigletFont::Block);
+    assert_eq!(
+        BigText::h1("T")
+            .figlet_font(FigletFont::Slant)
+            .get_font_for_tier(),
+        FigletFont::Slant
+    );
+    assert_eq!(BigText::h2("T").get_font_for_tier(), FigletFont::Slant);
+    assert_eq!(BigText::h3("T").get_font_for_tier(), FigletFont::Small);
+    for tier in 4..=6 {
+        assert_eq!(
+            BigText::new("T", tier).get_font_for_tier(),
+            FigletFont::Mini
+        );
+    }
 
-    // H1 uses configured font (Block by default) - height = font_height(Block)
-    // H2 uses Slant - height = font_height(Slant)
-    // H3 uses Small - height = font_height(Small)
-    // H4-H6 use Mini - height = font_height(Mini)
-
-    // Block font is tallest, Mini is shortest
-    assert!(h1.height() >= h2.height());
-    assert!(h2.height() >= h3.height());
-    assert_eq!(h3.height(), h6.height()); // H3, H4, H5, H6 all use Mini
+    // Heights follow the font: block is tallest, mini the shortest
+    let height = |b: BigText| b.force_figlet(true).height();
+    assert!(height(BigText::h1("T")) >= height(BigText::h2("T")));
+    assert!(height(BigText::h2("T")) >= height(BigText::h3("T")));
+    assert!(height(BigText::h3("T")) >= height(BigText::h6("T")));
+    assert_eq!(height(BigText::h4("T")), height(BigText::h6("T")));
 }
 
 #[test]
 fn test_empty_text() {
-    let mut buffer = Buffer::new(80, 10);
-    let area = Rect::new(0, 0, 80, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let bt = BigText::h1("");
-    bt.render(&mut ctx);
-
-    // Should not crash, and should not render anything
+    let buffer = render(&BigText::h1("").force_figlet(true));
+    assert!(!has_content(&buffer));
 }
 
 #[test]
@@ -112,8 +118,6 @@ fn test_text_sizing_rendering() {
     let mut buffer = Buffer::new(80, 10);
     let area = Rect::new(0, 0, 80, 10);
 
-    // Simulate text sizing support for testing
-    // render_text_sizing writes an escape sequence to the buffer
     let bt = BigText::h1("Test");
 
     // Call render_text_sizing directly (bypasses the is_supported check)
@@ -144,8 +148,8 @@ fn test_text_sizing_rendering() {
 
 #[test]
 fn test_text_sizing_height() {
+    // With text sizing the heading is 2 rows; without, the figlet height
     let bt = BigText::h1("Test");
-    // When text sizing is not supported, height is figlet height
-    // When supported, height is TextSizing::height() = 2
-    assert!(bt.height() > 0);
+    let figlet = BigText::h1("Test").force_figlet(true).height();
+    assert!(bt.height() == 2 || bt.height() == figlet);
 }

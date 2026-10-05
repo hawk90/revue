@@ -39,7 +39,7 @@ items:
       - '#id selector matches element_id'
     evidence:
       - src/runtime/dom/selector/parser.rs
-      - src/runtime/dom/selector/tests.rs::test_selector_part_class
+      - src/runtime/dom/selector/mod.rs::test_selector_part_class
       - tests/css_reaches_the_screen.rs::color_reaches_the_cell
     source:
       - FEATURES.md §1 CSS Styling / Selectors
@@ -87,7 +87,7 @@ items:
       - An+B including negative A (-n+3)
     evidence:
       - src/runtime/dom/selector/types.rs::NthExpr
-      - src/runtime/dom/selector/tests.rs::test_parse_nth_child
+      - src/runtime/dom/selector/mod.rs::test_parse_nth_child
     source:
       - FEATURES.md §1 CSS Styling / Selectors (nth-child)
   - id: CSS-006
@@ -811,15 +811,18 @@ items:
     acceptance:
       - four status helpers
       - Dot/DotWithLabel/Badge styles, sizes, custom label
-      - pulsing animation
+      - pulsing animation, driven by the app (tick() on a kept widget, or frame(n) on one rebuilt every render)
     evidence:
       - src/widget/display/status_indicator.rs::status_indicator
+      - src/widget/display/status_indicator.rs::frame
       - tests/widget/display/status_indicator.rs
+      - tests/status_indicator_pulse.rs
       - examples/status_indicator.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / StatusIndicator
       - FEATURES.md §Advanced Widgets / Status Indicator
-    notes: 'Merged duplicate section. Doc status_indicator().status(..) form: constructor takes the Status.'
+    notes: 'Merged duplicate section. Doc status_indicator().status(..) form: constructor takes the Status. The pulse
+      does not advance by itself: the app owns the clock and must redraw on Event::Tick (#689).'
   - id: WID-022
     title: EmptyState (no-results/error/first-use, variants)
     area: widget
@@ -832,7 +835,7 @@ items:
       - Full/Compact/Minimal variants, custom icon
     evidence:
       - src/widget/display/empty_state.rs::empty_state
-      - tests/widget/display/empty_state.rs
+      - tests/widget/empty_state.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / EmptyState
   - id: WID-023
@@ -981,7 +984,7 @@ items:
       - process list with sort and update interval
     evidence:
       - src/widget/developer/procmon.rs::process_monitor
-      - tests/widget/developer/procmon.rs
+      - tests/widget/procmon.rs
     source:
       - FEATURES.md §Advanced Widgets / Process Monitor
     notes: Needs `sysinfo` feature.
@@ -996,7 +999,7 @@ items:
       - request/response view with history
     evidence:
       - src/widget/developer/httpclient/helpers.rs::http_client
-      - tests/widget/httpclient/methods.rs
+      - tests/widget/httpclient/client.rs
     source:
       - FEATURES.md §Advanced Widgets / HTTP Client
   - id: WID-033
@@ -1125,7 +1128,7 @@ items:
       - value/min/max/step
     evidence:
       - src/widget/input/input_widgets/number_input/helper.rs::number_input
-      - tests/widget/input/number_input_helper.rs
+      - tests/widget/input/number_input.rs
     source:
       - FEATURES.md §Advanced Widgets / Number Input
     notes: No .on_change.
@@ -1139,7 +1142,7 @@ items:
       - start/end dates
       - presets
     evidence:
-      - src/widget/range_picker/helpers.rs::range_picker
+      - src/widget/range_picker/impls.rs::range_picker
       - tests/widget/range_picker.rs
     source:
       - FEATURES.md §Advanced Widgets / Range Picker
@@ -1185,7 +1188,10 @@ items:
       - ColorScheme default palette / monochrome
     evidence:
       - src/widget/data/chart/chart_common
-      - tests/widget/data/chart_helper.rs
+      - tests/chart/axis.rs
+      - tests/chart/legend.rs
+      - tests/chart/color_scheme.rs
+      - tests/chart/grid.rs
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / Common Components
   - id: CHART-002
@@ -1218,7 +1224,7 @@ items:
     evidence:
       - src/widget/data/chart/piechart.rs::pie_chart
       - src/widget/data/chart/piechart.rs::donut_chart
-      - tests/widget/data/piechart.rs
+      - tests/widget/data/chart/piechart.rs
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / PieChart
     notes: Doc .donut_ratio(0.5) is .donut(ratio).
@@ -1236,7 +1242,7 @@ items:
     evidence:
       - src/widget/data/chart/scatterchart.rs::scatter_chart
       - src/widget/data/chart/scatterchart.rs::bubble_chart
-      - tests/widget/data_chart_tests.rs
+      - tests/widget/data/chart/scatterchart.rs
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / ScatterChart
   - id: CHART-005
@@ -1253,7 +1259,7 @@ items:
     evidence:
       - src/widget/data/chart/histogram/mod.rs::histogram
       - src/widget/data/chart/histogram/mod.rs::show_stats
-      - tests/widget/data/chart_histogram.rs
+      - tests/widget/data/chart/histogram.rs
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / Histogram
       - FEATURES.md §Advanced Widgets / Advanced Charts
@@ -1270,7 +1276,7 @@ items:
       - notched box shows the median CI
     evidence:
       - src/widget/data/chart/boxplot/mod.rs::boxplot
-      - tests/widget/chart_boxplot_render_tests.rs
+      - tests/widget/data/chart/boxplot.rs
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / BoxPlot
       - FEATURES.md §Advanced Widgets / Advanced Charts
@@ -1288,7 +1294,7 @@ items:
     evidence:
       - src/widget/data/chart/heatmap/mod.rs::heatmap
       - src/widget/data/chart/heatmap/mod.rs::color_scale
-      - tests/widget/heatmap_tests.rs
+      - tests/widget/data/chart/heatmap.rs
     source:
       - FEATURES.md §Overview
       - FEATURES.md §Advanced Widgets / Advanced Charts

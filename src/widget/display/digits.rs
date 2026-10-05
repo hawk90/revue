@@ -349,11 +349,14 @@ impl Digits {
     pub fn format_value(&self) -> String {
         let mut result = self.value.clone();
 
-        // Apply minimum width with leading zeros
+        // Apply minimum width with leading zeros, after any sign
         if let Some(width) = self.min_width {
             if result.len() < width {
                 let pad = "0".repeat(width - result.len());
-                result = format!("{}{}", pad, result);
+                result = match result.strip_prefix('-') {
+                    Some(digits) => format!("-{}{}", pad, digits),
+                    None => format!("{}{}", pad, result),
+                };
             }
         }
 
@@ -438,7 +441,9 @@ impl View for Digits {
             if let Some(bg) = self.bg {
                 text = text.bg(bg);
             }
-            stack = stack.child(text);
+            // One row per pattern line: an auto-sized child would get an
+            // equal share of a taller area and pull the glyph rows apart.
+            stack = stack.child_sized(text, 1);
         }
 
         // Add prefix/suffix as regular text below
@@ -453,7 +458,7 @@ impl View for Digits {
             if let Some(fg) = self.fg {
                 text = text.fg(fg);
             }
-            stack = stack.child(text);
+            stack = stack.child_sized(text, 1);
         }
 
         stack.render(ctx);

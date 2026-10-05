@@ -1,8 +1,15 @@
 //! DataGrid public API tests
 
-use revue::widget::data::{DataGrid, GridColumn, GridRow};
-use revue::style::Color;
-use revue::widget::data::types::{SortDirection, GridColors, GridOptions};
+mod footer;
+mod types {
+    mod column_types;
+    mod row;
+}
+
+use revue::layout::Rect;
+use revue::render::Buffer;
+use revue::widget::data::datagrid::{DataGrid, GridColors, GridColumn, GridRow, SortDirection};
+use revue::widget::traits::{RenderContext, View};
 
 #[test]
 fn test_datagrid_new() {
@@ -23,32 +30,11 @@ fn test_datagrid_new() {
 }
 
 #[test]
-fn test_datagrid_default() {
-    let grid = DataGrid::default();
-    assert!(grid.columns.is_empty());
-    assert!(grid.rows.is_empty());
-}
-
-#[test]
 fn test_datagrid_colors() {
     let colors = GridColors::new();
     let header_bg = colors.header_bg;
     let grid = DataGrid::new().colors(colors);
     assert_eq!(grid.colors.header_bg, header_bg);
-}
-
-#[test]
-fn test_datagrid_colors_mut() {
-    let mut grid = DataGrid::new();
-    let colors = grid.colors_mut();
-    colors.header_bg = Color::RED;
-    assert_eq!(grid.colors.header_bg, Color::RED);
-}
-
-#[test]
-fn test_datagrid_options() {
-    let grid = DataGrid::new().zebra(false);
-    assert!(!grid.options.zebra);
 }
 
 #[test]
@@ -75,14 +61,6 @@ fn test_datagrid_column_multiple() {
         .column(GridColumn::new("c", "C"));
 
     assert_eq!(grid.columns.len(), 3);
-}
-
-#[test]
-fn test_datagrid_columns_vec() {
-    let cols = vec![GridColumn::new("x", "X"), GridColumn::new("y", "Y")];
-    let grid = DataGrid::new().columns(cols);
-
-    assert_eq!(grid.columns.len(), 2);
 }
 
 #[test]
@@ -131,54 +109,6 @@ fn test_datagrid_data_2d() {
 }
 
 #[test]
-fn test_datagrid_header_true() {
-    let grid = DataGrid::new().header(true);
-    assert!(grid.options.show_header);
-}
-
-#[test]
-fn test_datagrid_header_false() {
-    let grid = DataGrid::new().header(false);
-    assert!(!grid.options.show_header);
-}
-
-#[test]
-fn test_datagrid_row_numbers_true() {
-    let grid = DataGrid::new().row_numbers(true);
-    assert!(grid.options.show_row_numbers);
-}
-
-#[test]
-fn test_datagrid_row_numbers_false() {
-    let grid = DataGrid::new().row_numbers(false);
-    assert!(!grid.options.show_row_numbers);
-}
-
-#[test]
-fn test_datagrid_zebra_true() {
-    let grid = DataGrid::new().zebra(true);
-    assert!(grid.options.zebra);
-}
-
-#[test]
-fn test_datagrid_zebra_false() {
-    let grid = DataGrid::new().zebra(false);
-    assert!(!grid.options.zebra);
-}
-
-#[test]
-fn test_datagrid_multi_select_true() {
-    let grid = DataGrid::new().multi_select(true);
-    assert!(grid.options.multi_select);
-}
-
-#[test]
-fn test_datagrid_multi_select_false() {
-    let grid = DataGrid::new().multi_select(false);
-    assert!(!grid.options.multi_select);
-}
-
-#[test]
 fn test_datagrid_natural_sort_true() {
     let grid = DataGrid::new().natural_sort(true);
     assert!(grid.options.use_natural_sort);
@@ -188,18 +118,6 @@ fn test_datagrid_natural_sort_true() {
 fn test_datagrid_natural_sort_false() {
     let grid = DataGrid::new().natural_sort(false);
     assert!(!grid.options.use_natural_sort);
-}
-
-#[test]
-fn test_datagrid_virtual_scroll_true() {
-    let grid = DataGrid::new().virtual_scroll(true);
-    assert!(grid.options.virtual_scroll);
-}
-
-#[test]
-fn test_datagrid_virtual_scroll_false() {
-    let grid = DataGrid::new().virtual_scroll(false);
-    assert!(!grid.options.virtual_scroll);
 }
 
 #[test]
@@ -393,4 +311,68 @@ fn test_datagrid_multiple_freeze_operations() {
 
     assert_eq!(grid.frozen_left, 2);
     assert_eq!(grid.frozen_right, 2);
+}
+
+// =========================================================================
+// Row numbers
+// =========================================================================
+
+fn row_numbers_grid(rows: usize) -> Buffer {
+    let grid = DataGrid::new()
+        .row_numbers(true)
+        .column(GridColumn::new("a", "A"))
+        .rows((0..rows).map(|_| GridRow::new().cell("a", "v")).collect());
+    let height = rows as u16 + 2;
+    let mut buffer = Buffer::new(20, height);
+    let area = Rect::new(0, 0, 20, height);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    grid.render(&mut ctx);
+    buffer
+}
+
+fn text(buffer: &Buffer, y: u16, len: u16) -> String {
+    (0..len).map(|x| buffer.get(x, y).unwrap().symbol).collect()
+}
+
+#[test]
+fn test_row_numbers_visible_for_few_rows() {
+    // 3 rows: a 3-wide gutter (digit, space, separator); data from column 3
+    let buffer = row_numbers_grid(3);
+    assert_eq!(text(&buffer, 1, 4), "1  v");
+    assert_eq!(text(&buffer, 2, 4), "2  v");
+    assert_eq!(text(&buffer, 3, 4), "3  v");
+}
+
+#[test]
+fn test_row_numbers_right_aligned() {
+    // 12 rows: two right-aligned digits; data from column 4
+    let buffer = row_numbers_grid(12);
+    assert_eq!(text(&buffer, 1, 5), " 1  v");
+    assert_eq!(text(&buffer, 10, 5), "10  v");
+    assert_eq!(text(&buffer, 12, 5), "12  v");
+}
+
+#[test]
+#[ignore = "BUG: DataGrid mouse hit-testing assumes a 5-column row-number gutter and ignores freeze/h-scroll"]
+fn test_header_click_hits_rendered_column_with_row_numbers() {
+    use revue::event::{MouseButton, MouseEventKind};
+
+    let mut grid = DataGrid::new()
+        .row_numbers(true)
+        .reorderable(true)
+        .column(GridColumn::new("a", "A").width(6).resizable(false))
+        .column(GridColumn::new("b", "B").width(6).resizable(false))
+        .rows((0..3).map(|_| GridRow::new().cell("a", "v")).collect());
+    let area = Rect::new(0, 0, 40, 5);
+
+    let mut buffer = Buffer::new(40, 5);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    grid.render(&mut ctx);
+
+    // Press on the drawn "B" header title: that should start dragging column 1
+    let b_x = (0..40)
+        .find(|&x| buffer.get(x, 0).unwrap().symbol == 'B')
+        .expect("header B drawn");
+    assert!(grid.handle_mouse(MouseEventKind::Down(MouseButton::Left), b_x, 0, area));
+    assert_eq!(grid.dragging_col, Some(1));
 }

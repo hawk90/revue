@@ -3,7 +3,7 @@
 //! Extracted from src/widget/developer/code_editor/key_handling.rs
 
 use revue::event::Key;
-use revue::widget::developer::code_editor::CodeEditor;
+use revue::widget::CodeEditor;
 
 // =========================================================================
 // handle_key tests
@@ -30,7 +30,7 @@ fn test_handle_key_tab() {
     let mut editor = CodeEditor::new();
     let handled = editor.handle_key(&Key::Tab);
     assert!(handled);
-    assert!(editor.get_content().len() > 0);
+    assert_eq!(editor.get_content(), "    ");
 }
 
 #[test]

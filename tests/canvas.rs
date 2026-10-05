@@ -12,6 +12,8 @@ mod canvas_widget;
 mod clip_region;
 #[path = "canvas/draw_context.rs"]
 mod draw_context;
+#[path = "canvas/integration.rs"]
+mod integration;
 #[path = "canvas/layer.rs"]
 mod layer;
 #[path = "canvas/polygon.rs"]

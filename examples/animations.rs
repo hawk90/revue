@@ -499,6 +499,8 @@ fn main() -> Result<()> {
 
     app.run(showcase, |event, showcase, _app| match event {
         Event::Key(key_event) => showcase.handle_key(&key_event.key),
+        // The animations read the clock when they render, so redraw on every tick
+        Event::Tick => true,
         _ => false,
     })
 }

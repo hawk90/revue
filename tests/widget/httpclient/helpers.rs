@@ -1,75 +1,49 @@
-//! HTTP Client helper functions tests
+//! http_client() and the per-method helpers
 
-use revue::widget::developer::httpclient::helpers::*;
-use revue::widget::developer::httpclient::types::HttpMethod;
-
-// =========================================================================
-// Helper function tests
-// =========================================================================
+use revue::widget::{
+    http_client, http_delete, http_get, http_patch, http_post, http_put, HttpClient, HttpMethod,
+    RequestState,
+};
 
 #[test]
-fn test_http_client_function() {
+fn test_http_client_helper() {
     let client = http_client();
-    let _ = client;
+    assert_eq!(client.state(), RequestState::Idle);
+    assert_eq!(client.request().url(), "");
+    assert_eq!(client.request().method, HttpMethod::GET);
+}
+
+/// A per-method helper such as http_get.
+type Helper = fn(String) -> HttpClient;
+
+#[test]
+fn test_method_helpers_set_method_and_url() {
+    let cases: [(Helper, HttpMethod); 5] = [
+        (http_get, HttpMethod::GET),
+        (http_post, HttpMethod::POST),
+        (http_put, HttpMethod::PUT),
+        (http_delete, HttpMethod::DELETE),
+        (http_patch, HttpMethod::PATCH),
+    ];
+    for (helper, method) in cases {
+        let client = helper("https://api.example.com/users".to_string());
+        assert_eq!(client.request().method, method);
+        assert_eq!(client.request().url(), "https://api.example.com/users");
+        assert_eq!(client.state(), RequestState::Idle);
+        assert!(client.error().is_none());
+    }
 }
 
 #[test]
-fn test_get_function() {
-    let client = get("https://example.com");
-    let _ = client;
-}
-
-#[test]
-fn test_get_function_with_string() {
-    let url = String::from("https://test.com");
-    let client = get(url);
-    let _ = client;
-}
-
-#[test]
-fn test_post_function() {
-    let client = post("https://example.com");
-    let _ = client;
-}
-
-#[test]
-fn test_put_function() {
-    let client = put("https://example.com");
-    let _ = client;
-}
-
-#[test]
-fn test_delete_function() {
-    let client = delete("https://example.com");
-    let _ = client;
-}
-
-#[test]
-fn test_patch_function() {
-    let client = patch("https://example.com");
-    let _ = client;
-}
-
-// =========================================================================
-// Edge cases
-// =========================================================================
-
-#[test]
-fn test_get_with_empty_url() {
-    let client = get("");
-    let _ = client;
-}
-
-#[test]
-fn test_post_with_string_url() {
-    let url = "https://api.example.com".to_string();
-    let client = post(url);
-    let _ = client;
-}
-
-#[test]
-fn test_put_with_long_url() {
+fn test_method_helper_accepts_str_and_long_paths() {
     let url = "https://example.com/very/long/path/that/goes/on/and/on";
-    let client = put(url);
-    let _ = client;
+    assert_eq!(http_put(url).request().url(), url);
+}
+
+#[test]
+fn test_method_helper_with_invalid_url_reports_error() {
+    let client = http_get("");
+    assert_eq!(client.request().url(), "");
+    assert_eq!(client.state(), RequestState::Error);
+    assert!(client.error().unwrap().contains("Invalid URL"));
 }

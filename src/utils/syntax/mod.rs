@@ -17,3 +17,6 @@ pub use highlighter::SyntaxHighlighter;
 pub use language::Language;
 pub use theme::SyntaxTheme;
 pub use types::{Token, TokenType};
+
+#[cfg(test)]
+mod tests;

@@ -1,11 +1,10 @@
 //! Canvas widget tests
 //!
-//! Tests for canvas-related widgets extracted from source files.
+//! tests/canvas.rs is the main canvas target; these cover what it does not.
 
 pub mod braille;
 pub mod clip;
 pub mod draw;
-pub mod integration;
 pub mod layer;
 pub mod transform;
 pub mod widget;

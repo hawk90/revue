@@ -126,7 +126,13 @@ impl View for ContextMenu {
             return;
         }
 
-        let width = self.items.iter().map(|i| i.label.len()).max().unwrap_or(10) as u16 + 4;
+        let width = self
+            .items
+            .iter()
+            .map(|i| crate::utils::display_width(&i.label))
+            .max()
+            .unwrap_or(10) as u16
+            + 4;
         let height = self.items.len() as u16 + 2;
 
         // Adjust position to fit in area (relative coordinates)
@@ -178,19 +184,11 @@ impl View for ContextMenu {
                 ctx.set(x + dx, item_y, cell);
             }
 
-            // Draw label
-            let mut dx: u16 = 0;
-            for ch in item.label.chars() {
-                let cw = crate::utils::char_width(ch) as u16;
-                if dx + cw + 2 >= width - 1 {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(fg);
-                cell.bg = Some(bg);
-                ctx.set(x + 2 + dx, item_y, cell);
-                dx += cw;
-            }
+            // Draw label (wide glyphs get their continuation cell, so the
+            // row fill does not show through their right half)
+            ctx.put_str_with(x + 2, item_y, &item.label, x + width - 2, |ch| {
+                Cell::new(ch).fg(fg).bg(bg)
+            });
         }
     }
 }

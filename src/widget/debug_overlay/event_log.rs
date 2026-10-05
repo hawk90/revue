@@ -17,12 +17,18 @@ pub enum DebugEvent {
 }
 
 /// Event log for debugging
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct EventLog {
     /// Logged events
     pub(super) events: VecDeque<(Instant, DebugEvent)>,
     /// Max events to keep
     pub(super) max_events: usize,
+}
+
+impl Default for EventLog {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl EventLog {

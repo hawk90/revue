@@ -23,6 +23,7 @@ crate::impl_props_builders!(CsvViewer);
 
 #[cfg(test)]
 mod tests {
+    use super::core::{MAX_CSV_COLS, MAX_CSV_ROWS};
     use super::*;
 
     fn sample_csv() -> &'static str {
@@ -174,5 +175,59 @@ mod tests {
         assert_eq!(Delimiter::Pipe.char(), Some('|'));
         assert_eq!(Delimiter::Auto.char(), None);
         assert_eq!(Delimiter::Custom('#').char(), Some('#'));
+    }
+
+    #[test]
+    fn test_csv_viewer_explicit_delimiter_overrides_detection() {
+        // Commas dominate, but an explicit delimiter wins over auto-detection
+        let mut v = CsvViewer::new().delimiter(Delimiter::Semicolon);
+        v.parse("a,b;c,d\n1,2;3,4");
+        assert_eq!(v.column_count(), 2);
+        assert_eq!(v.get_header(0), Some("a,b"));
+        assert_eq!(v.get_cell(0, 1), Some("3,4"));
+    }
+
+    #[test]
+    fn test_csv_viewer_quoted_delimiter() {
+        let v = CsvViewer::from_content("h1,h2\n\"a,b\",c");
+        assert_eq!(v.column_count(), 2);
+        assert_eq!(v.get_cell(0, 0), Some("a,b"));
+        assert_eq!(v.get_cell(0, 1), Some("c"));
+    }
+
+    #[test]
+    fn test_csv_viewer_whitespace_trimmed() {
+        let v = CsvViewer::from_content(" a , b , c \n 1 , 2 , 3 ");
+        assert_eq!(v.get_header(0), Some("a"));
+        assert_eq!(v.get_header(2), Some("c"));
+        assert_eq!(v.get_cell(0, 1), Some("2"));
+    }
+
+    #[test]
+    fn test_csv_viewer_row_limit() {
+        let mut content = String::from("n\n");
+        for i in 0..MAX_CSV_ROWS + 10 {
+            content.push_str(&i.to_string());
+            content.push('\n');
+        }
+        let v = CsvViewer::from_content(&content);
+        // The header counts toward the row limit
+        assert_eq!(v.row_count(), MAX_CSV_ROWS - 1);
+        assert_eq!(v.get_cell(0, 0), Some("0"));
+    }
+
+    #[test]
+    fn test_csv_viewer_column_limit() {
+        let wide: Vec<String> = (0..MAX_CSV_COLS + 5).map(|i| i.to_string()).collect();
+        let content = format!("{}\nnext,row", wide.join(","));
+        let v = CsvViewer::from_content(&content).has_header(false);
+        assert_eq!(v.column_count(), MAX_CSV_COLS);
+        assert_eq!(
+            v.get_cell(0, MAX_CSV_COLS - 1),
+            Some((MAX_CSV_COLS - 1).to_string().as_str())
+        );
+        // The truncated line does not swallow the line after it
+        assert_eq!(v.row_count(), 2);
+        assert_eq!(v.get_cell(1, 0), Some("next"));
     }
 }

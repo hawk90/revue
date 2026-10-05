@@ -15,6 +15,8 @@
 mod helpers;
 mod render;
 mod state;
+#[cfg(test)]
+mod tests;
 pub mod types;
 
 pub use types::{CollapseMode, FlattenedItem, SidebarItem, SidebarSection};

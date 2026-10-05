@@ -1,8 +1,8 @@
 //! DataGrid footer functionality tests
 
+use revue::widget::data::datagrid::AggregationType;
 use revue::widget::data::datagrid::DataGrid;
-use revue::widget::data::datagrid::types::{FooterRow, GridColumn, GridRow};
-use revue::widget::data::datagrid::core::AggregationType;
+use revue::widget::data::datagrid::{FooterRow, GridColumn, GridRow};
 
 #[test]
 fn test_footer_adds_footer_row() {

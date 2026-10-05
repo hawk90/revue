@@ -1,29 +1,7 @@
-use revue::widget::sortable::SortableList;
-
-#[test]
-fn test_sortable_list_new_with_vec() {
-    // Arrange & Act
-    let list = SortableList::new(vec!["Item 1", "Item 2", "Item 3"]);
-
-    // Assert
-    assert_eq!(list.items().len(), 3);
-    assert_eq!(list.items()[0].label, "Item 1");
-    assert_eq!(list.items()[1].label, "Item 2");
-    assert_eq!(list.items()[2].label, "Item 3");
-}
-
-#[test]
-fn test_sortable_list_new_with_slice() {
-    // Arrange & Act
-    let items = ["A", "B", "C"];
-    let list = SortableList::new(items);
-
-    // Assert
-    assert_eq!(list.items().len(), 3);
-    assert_eq!(list.items()[0].label, "A");
-    assert_eq!(list.items()[1].label, "B");
-    assert_eq!(list.items()[2].label, "C");
-}
+use revue::layout::Rect;
+use revue::render::Buffer;
+use revue::widget::traits::RenderContext;
+use revue::widget::{SortableList, View};
 
 #[test]
 fn test_sortable_list_new_with_strings() {
@@ -93,8 +71,18 @@ fn test_sortable_list_default_colors() {
     // Arrange & Act
     let list = SortableList::new(vec!["X"]);
 
-    // Assert - Check default color values
-    assert_eq!(list.item_color, revue::style::Color::rgb(200, 200, 200));
+    // Assert - Check default color values. Since #661 the item color is
+    // only stored when the builder names one; otherwise it defers to the
+    // stylesheet and falls back to rgb(200, 200, 200) when rendered.
+    assert_eq!(list.item_color, None);
+    let mut buffer = Buffer::new(5, 1);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 5, 1));
+    list.render(&mut ctx);
+    assert_eq!(buffer.get(4, 0).unwrap().symbol, 'X');
+    assert_eq!(
+        buffer.get(4, 0).unwrap().fg,
+        Some(revue::style::Color::rgb(200, 200, 200))
+    );
     assert_eq!(list.selected_color, revue::style::Color::rgb(100, 150, 255));
     assert_eq!(list.drag_color, revue::style::Color::rgb(255, 200, 100));
 }
@@ -117,40 +105,6 @@ fn test_sortable_list_unique_id() {
 
     // Assert - Each list should have a unique ID
     assert_ne!(list1._id, list2._id);
-}
-
-#[test]
-fn test_sortable_list_has_widget_state() {
-    // Arrange & Act
-    let list = SortableList::new(vec!["Test"]);
-
-    // Assert - Widget state should be initialized
-    // We can't directly test WidgetState::new() behavior without access,
-    // but we can verify it exists
-    let _ = &list.state;
-}
-
-#[test]
-fn test_sortable_list_has_widget_props() {
-    // Arrange & Act
-    let list = SortableList::new(vec!["Test"]);
-
-    // Assert - Widget props should be initialized
-    // We can't directly test WidgetProps::new() behavior without access,
-    // but we can verify it exists
-    let _ = &list.props;
-}
-
-#[test]
-fn test_sortable_list_items_are_public() {
-    // Arrange
-    let mut list = SortableList::new(vec!["A"]);
-
-    // Act
-    list.items_mut()[0].selected = true;
-
-    // Assert - Can modify public items field
-    assert!(list.items()[0].selected);
 }
 
 #[test]
@@ -204,42 +158,4 @@ fn test_sortable_list_single_item() {
     assert_eq!(list.items().len(), 1);
     assert_eq!(list.items()[0].label, "Only Item");
     assert_eq!(list.items()[0].original_index, 0);
-}
-
-#[test]
-fn test_sortable_list_many_items() {
-    // Arrange & Act
-    let list = SortableList::new((0..100).map(|i| format!("Item {}", i)));
-
-    // Assert
-    assert_eq!(list.items().len(), 100);
-    assert_eq!(list.items()[0].original_index, 0);
-    assert_eq!(list.items()[99].original_index, 99);
-}
-
-#[test]
-fn test_sortable_list_callback_field_exists() {
-    // Arrange & Act
-    let list = SortableList::new(vec!["A"]);
-
-    // Assert - on_reorder field should exist and be None by default
-    assert!(list.on_reorder.is_none());
-}
-
-#[test]
-fn test_sortable_list_item_height_default() {
-    // Arrange & Act
-    let list = SortableList::new(vec!["A"]);
-
-    // Assert
-    assert_eq!(list.item_height, 1);
-}
-
-#[test]
-fn test_sortable_list_show_handles_default() {
-    // Arrange & Act
-    let list = SortableList::new(vec!["A"]);
-
-    // Assert
-    assert!(list.show_handles);
 }

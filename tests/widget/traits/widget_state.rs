@@ -1,9 +1,7 @@
 //! Tests for WidgetState and WidgetProps
-//!
-//! Extracted from src/widget/traits/widget_state.rs
 
 use revue::style::Color;
-use revue::widget::traits::widget_state::{DISABLED_BG, DISABLED_FG, WidgetProps, WidgetState};
+use revue::widget::traits::{WidgetProps, WidgetState, DISABLED_BG, DISABLED_FG};
 
 // =========================================================================
 // WidgetProps tests
@@ -201,11 +199,16 @@ fn test_widget_state_state_colors() {
 
 #[test]
 fn test_widget_state_reset_transient() {
-    let mut state = WidgetState::new().focused(true).pressed(true).hovered(true);
+    let mut state = WidgetState::new()
+        .focused(true)
+        .disabled(true)
+        .pressed(true)
+        .hovered(true);
 
     state.reset_transient();
 
     assert!(state.is_focused()); // Persistent, not reset
+    assert!(state.is_disabled()); // Persistent, not reset
     assert!(!state.is_pressed()); // Transient, reset
     assert!(!state.is_hovered()); // Transient, reset
 }
@@ -303,8 +306,12 @@ fn test_widget_state_resolve_fg() {
     let state = WidgetState::new().fg(custom);
     assert_eq!(state.resolve_fg(None, default), custom);
 
-    // Disabled overrides everything
+    // Disabled only replaces the default (since #613): the inline override
+    // still wins, and with nothing else set the disabled grey is used
     let state = WidgetState::new().fg(custom).disabled(true);
+    assert_eq!(state.resolve_fg(None, default), custom);
+
+    let state = WidgetState::new().disabled(true);
     assert_eq!(state.resolve_fg(None, default), DISABLED_FG);
 }
 

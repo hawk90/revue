@@ -2,6 +2,7 @@
 
 mod box_model;
 mod css;
+pub(crate) mod edit_line;
 mod focus;
 pub mod overlay;
 mod progress;
@@ -63,7 +64,7 @@ pub enum RenderPass<'a> {
         nodes: &'a [PaintNode<'a>],
         next: &'a mut usize,
         /// Apply each node's specified CSS box properties to the area its
-        /// parent gave it. See [`AppBuilder::css_layout`](crate::app::AppBuilder::css_layout).
+        /// parent gave it. See [`AppBuilder::css_layout`](crate::core::app::AppBuilder::css_layout).
         css_layout: bool,
         /// Where each node ends up on screen, in paint order.
         ///
@@ -352,7 +353,7 @@ impl<'a> RenderContext<'a> {
 
     /// Are CSS box and gap properties being applied this frame?
     ///
-    /// See [`AppBuilder::css_layout`](crate::app::AppBuilder::css_layout). A
+    /// See [`AppBuilder::css_layout`](crate::core::app::AppBuilder::css_layout). A
     /// container should gate any CSS-derived geometry on this, so that turning
     /// the flag off really does restore the previous behavior.
     pub fn css_layout(&self) -> bool {

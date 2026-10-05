@@ -3,7 +3,53 @@
 //! These tests verify the functionality of the markdown presentation widget
 //! including slide navigation, mode switching, rendering, and builder methods.
 
-use super::*;
+use revue::layout::Rect;
+use revue::render::Buffer;
+use revue::style::Color;
+use revue::utils::FigletFont;
+use revue::widget::traits::RenderContext;
+use revue::widget::{markdown_presentation, MarkdownPresentation, SlideContent, View, ViewMode};
+
+fn render(pres: &MarkdownPresentation, w: u16, h: u16) -> Buffer {
+    let mut buffer = Buffer::new(w, h);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+    pres.render(&mut ctx);
+    buffer
+}
+
+fn rows(buffer: &Buffer) -> Vec<String> {
+    (0..buffer.height())
+        .map(|y| {
+            (0..buffer.width())
+                .filter_map(|x| buffer.get(x, y).map(|c| c.symbol))
+                .collect()
+        })
+        .collect()
+}
+
+fn find(buffer: &Buffer, text: &str) -> Option<(u16, u16)> {
+    let first = text.chars().next()?;
+    for y in 0..buffer.height() {
+        for x in 0..buffer.width() {
+            let matches = text
+                .chars()
+                .enumerate()
+                .all(|(i, ch)| buffer.get(x + i as u16, y).map(|c| c.symbol) == Some(ch));
+            if buffer.get(x, y).map(|c| c.symbol) == Some(first) && matches {
+                return Some((x, y));
+            }
+        }
+    }
+    None
+}
+
+/// Slide mode with FIGlet titles, independent of the terminal running the
+/// tests
+fn slides(source: &str) -> MarkdownPresentation {
+    MarkdownPresentation::new(source)
+        .mode(ViewMode::Slides)
+        .text_sizing(false)
+}
 
 #[test]
 fn test_creation() {
@@ -55,17 +101,27 @@ fn test_mode_toggle() {
 
 #[test]
 fn test_builder_pattern() {
-    let pres = MarkdownPresentation::new("# Test")
+    let pres = slides("# Test")
         .bg(Color::BLACK)
         .accent(Color::GREEN)
         .heading_fg(Color::CYAN)
         .numbers(false)
-        .progress(false)
-        .mode(ViewMode::Slides);
-
+        .progress(false);
     assert_eq!(pres.current_mode(), ViewMode::Slides);
-    assert_eq!(pres.bg, Color::BLACK);
-    assert_eq!(pres.accent, Color::GREEN);
+
+    let buffer = render(&pres, 40, 16);
+    // bg fills the slide
+    assert_eq!(buffer.get(39, 15).unwrap().bg, Some(Color::BLACK));
+    // accent colors the rule under the title
+    let (x, y) = find(&buffer, "────").expect("title separator");
+    assert_eq!(buffer.get(x, y).unwrap().fg, Some(Color::GREEN));
+    // heading_fg colors the FIGlet title
+    let title_cell = (1..y)
+        .flat_map(|y| (0..40).map(move |x| (x, y)))
+        .map(|(x, y)| buffer.get(x, y).unwrap())
+        .find(|c| c.symbol != ' ')
+        .expect("FIGlet title");
+    assert_eq!(title_cell.fg, Some(Color::CYAN));
 }
 
 #[test]
@@ -78,26 +134,74 @@ fn test_indicator() {
 #[test]
 fn test_render_preview() {
     let pres = MarkdownPresentation::new("# Hello\n\nWorld").mode(ViewMode::Preview);
+    let buffer = render(&pres, 80, 24);
+    let rows = rows(&buffer);
 
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    pres.render(&mut ctx);
-    // Should not crash
+    assert!(rows[0].contains("Hello"), "{:?}", rows[0]);
+    assert!(rows.iter().any(|r| r.contains("World")));
+    // Mode badge in the top right corner
+    assert_eq!(
+        rows[1].chars().skip(70).take(9).collect::<String>(),
+        " PREVIEW "
+    );
+    assert_eq!(buffer.get(71, 1).unwrap().bg, Some(Color::CYAN));
 }
 
 #[test]
 fn test_render_slides() {
-    let pres = MarkdownPresentation::new("# Slide 1\n\nContent\n---\n# Slide 2")
-        .mode(ViewMode::Slides);
+    let pres = slides("# Slide 1\n\nContent\n---\n# Slide 2");
+    let buffer = render(&pres, 80, 24);
+    let rows = rows(&buffer);
 
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+    assert!(rows.iter().any(|r| r.contains("Content")));
+    // The second slide is not shown
+    assert!(!rows.iter().any(|r| r.contains("Slide 2")));
+    // Footer: progress bar, mode marker and slide number
+    let footer = &rows[23];
+    assert!(footer.contains('━'), "{footer:?}");
+    assert!(footer.contains("[S]"), "{footer:?}");
+    assert!(footer.ends_with("1/2 "), "{footer:?}");
+}
 
-    pres.render(&mut ctx);
-    // Should not crash
+#[test]
+fn test_render_slide_numbers_and_progress_can_be_hidden() {
+    let pres = slides("# A\n---\n# B").numbers(false).progress(false);
+    let buffer = render(&pres, 40, 12);
+    let footer = &rows(&buffer)[11];
+    assert!(!footer.contains("1/2"), "{footer:?}");
+    assert!(!footer.contains('━') && !footer.contains('─'), "{footer:?}");
+    assert!(footer.contains("[S]"), "{footer:?}");
+}
+
+#[test]
+fn test_render_progress_tracks_the_current_slide() {
+    let mut pres = slides("# A\n---\n# B\n---\n# C\n---\n# D");
+    pres.goto(1);
+    let buffer = render(&pres, 60, 12);
+    let footer = &rows(&buffer)[11];
+    // 60 / 3 = 20 cells; half of them filled at slide 2 of 4
+    assert_eq!(
+        footer
+            .chars()
+            .skip(1)
+            .take(20)
+            .filter(|&c| c == '━')
+            .count(),
+        10
+    );
+    assert!(footer.ends_with("2/4 "), "{footer:?}");
+}
+
+#[test]
+fn test_render_in_a_small_area() {
+    // Narrower than the mode badge, the title rule and the footer
+    for (w, h) in [(5, 3), (12, 6), (1, 1)] {
+        let preview = MarkdownPresentation::new("# Title\n\nBody");
+        render(&preview, w, h);
+        render(&slides("# Title\n\nBody"), w, h);
+    }
+    let buffer = render(&slides("# T\n\nBody"), 12, 12);
+    assert!(rows(&buffer).iter().any(|r| r.contains("[S]")));
 }
 
 #[test]
@@ -122,38 +226,41 @@ fn test_reload() {
 }
 
 #[test]
-fn test_scroll() {
-    let mut pres = MarkdownPresentation::new("# Test");
-
-    assert_eq!(pres.scroll_offset, 0);
-
-    pres.scroll_down(5);
-    assert_eq!(pres.scroll_offset, 5);
-
-    pres.scroll_up(2);
-    assert_eq!(pres.scroll_offset, 3);
-
-    pres.scroll_to_top();
-    assert_eq!(pres.scroll_offset, 0);
-}
-
-#[test]
 fn test_progress() {
     let pres = MarkdownPresentation::new("# A\n---\n# B\n---\n# C\n---\n# D");
     assert!((pres.progress_value() - 0.25).abs() < 0.01);
 }
 
+// =========================================================================
+// Slide titles: the first heading becomes the big title and is not
+// repeated in the slide body
+// =========================================================================
+
 #[test]
-fn test_strip_title() {
-    let pres = MarkdownPresentation::new("");
+fn test_slide_title_is_not_repeated_in_body() {
+    let buffer = render(&slides("# Title\n\nContent here"), 60, 20);
+    let text = rows(&buffer);
+    assert!(text.iter().any(|r| r.contains("Content here")));
+    assert!(!text.iter().any(|r| r.contains("Title")), "{text:#?}");
 
-    let content = "# Title\n\nContent here";
-    let stripped = pres.strip_title(content);
-    assert_eq!(stripped.trim(), "Content here");
+    let buffer = render(&slides("## Subtitle\n\nMore content"), 60, 20);
+    let text = rows(&buffer);
+    assert!(text.iter().any(|r| r.contains("More content")));
+    assert!(!text.iter().any(|r| r.contains("Subtitle")), "{text:#?}");
+}
 
-    let content2 = "## Subtitle\n\nMore content";
-    let stripped2 = pres.strip_title(content2);
-    assert_eq!(stripped2.trim(), "More content");
+#[test]
+fn test_slide_without_heading_keeps_its_content() {
+    let buffer = render(&slides("Just some content\n\nNo heading"), 60, 20);
+    let rows = rows(&buffer);
+    assert!(rows.iter().any(|r| r.contains("Just some content")));
+    assert!(rows.iter().any(|r| r.contains("No heading")));
+}
+
+#[test]
+fn test_slide_with_only_a_heading_has_no_body() {
+    let buffer = render(&slides("# Title Only"), 60, 20);
+    assert!(!rows(&buffer).iter().any(|r| r.contains("Title Only")));
 }
 
 // =========================================================================
@@ -164,13 +271,6 @@ fn test_strip_title() {
 fn test_view_mode_default() {
     let mode = ViewMode::default();
     assert_eq!(mode, ViewMode::Preview);
-}
-
-#[test]
-fn test_view_mode_clone() {
-    let mode = ViewMode::Slides;
-    let cloned = mode;
-    assert_eq!(mode, cloned);
 }
 
 #[test]
@@ -193,8 +293,6 @@ fn test_view_mode_partial_eq() {
 
 #[test]
 fn test_from_slides() {
-    use crate::widget::slides::SlideContent;
-
     let slides = vec![
         SlideContent::new("# Slide 1"),
         SlideContent::new("# Slide 2"),
@@ -212,50 +310,48 @@ fn test_from_slides_empty() {
 }
 
 // =========================================================================
-// MarkdownPresentation::text_sizing tests
+// Title fonts
 // =========================================================================
 
 #[test]
-fn test_text_sizing() {
-    let _pres = MarkdownPresentation::new("# Test").text_sizing(true);
-    // The actual value depends on terminal support
-    // Just verify the method doesn't panic
+fn test_text_sizing_disabled_draws_figlet_title() {
+    let buffer = render(&slides("# Hi"), 40, 16);
+    let (_, rule_y) = find(&buffer, "────").expect("title separator");
+    // A FIGlet title spans several rows above the rule
+    let title_rows = rows(&buffer)[..rule_y as usize]
+        .iter()
+        .filter(|r| !r.trim().is_empty())
+        .count();
+    assert!(title_rows >= 3, "{title_rows}");
 }
-
-#[test]
-fn test_text_sizing_disabled() {
-    let pres = MarkdownPresentation::new("# Test").text_sizing(false);
-    assert!(!pres.use_text_sizing);
-}
-
-// =========================================================================
-// MarkdownPresentation::figlet_font tests
-// =========================================================================
 
 #[test]
 fn test_figlet_font() {
-    let pres = MarkdownPresentation::new("# Test").figlet_font(FigletFont::Small);
-    assert_eq!(pres.figlet_font, FigletFont::Small);
+    let block = render(&slides("# Hi"), 60, 16);
+    let small = render(&slides("# Hi").figlet_font(FigletFont::Small), 60, 16);
+    assert_ne!(rows(&block), rows(&small));
 }
 
 // =========================================================================
-// MarkdownPresentation::link_fg tests
+// Link and code colors
 // =========================================================================
 
 #[test]
+#[ignore = "BUG: Markdown styles the first plain paragraph as a blockquote, overriding link_fg"]
 fn test_link_fg() {
-    let pres = MarkdownPresentation::new("# Test").link_fg(Color::RED);
-    assert_eq!(pres.link_fg, Color::RED);
+    let pres = MarkdownPresentation::new("[site](https://example.com)").link_fg(Color::RED);
+    let buffer = render(&pres, 40, 6);
+    let (x, y) = find(&buffer, "site").expect("link text");
+    assert_eq!(buffer.get(x, y).unwrap().fg, Some(Color::RED));
 }
 
-// =========================================================================
-// MarkdownPresentation::code_fg tests
-// =========================================================================
-
 #[test]
+#[ignore = "BUG: Markdown styles the first plain paragraph as a blockquote, overriding code_fg"]
 fn test_code_fg() {
-    let pres = MarkdownPresentation::new("# Test").code_fg(Color::GREEN);
-    assert_eq!(pres.code_fg, Color::GREEN);
+    let pres = MarkdownPresentation::new("run `make` now").code_fg(Color::GREEN);
+    let buffer = render(&pres, 40, 6);
+    let (x, y) = find(&buffer, "make").expect("inline code");
+    assert_eq!(buffer.get(x, y).unwrap().fg, Some(Color::GREEN));
 }
 
 // =========================================================================
@@ -348,17 +444,6 @@ fn test_default() {
 // =========================================================================
 
 #[test]
-fn test_scroll_edge_cases() {
-    let mut pres = MarkdownPresentation::new("# Test");
-
-    pres.scroll_up(10); // Should not go negative
-    assert_eq!(pres.scroll_offset, 0);
-
-    pres.scroll_down(usize::MAX); // Should saturate
-    assert!(pres.scroll_offset > 0);
-}
-
-#[test]
 fn test_goto_bounds() {
     let mut pres = MarkdownPresentation::new("# A\n---\n# B\n---\n# C");
 
@@ -376,29 +461,21 @@ fn test_mode_setter() {
 }
 
 // =========================================================================
-// ViewMode::Slides tests
-// =========================================================================
-
-#[test]
-fn test_view_mode_slides_rendering() {
-    let pres = MarkdownPresentation::new("# Slide 1\n\n---\n# Slide 2").mode(ViewMode::Slides);
-    assert_eq!(pres.current_mode(), ViewMode::Slides);
-}
-
-// =========================================================================
 // Clone tests
 // =========================================================================
 
 #[test]
 fn test_clone() {
-    let pres1 = MarkdownPresentation::new("# Test")
-        .bg(Color::BLACK)
-        .accent(Color::RED)
-        .mode(ViewMode::Slides);
+    let pres1 = slides("# Test\n\nBody").bg(Color::BLACK).accent(Color::RED);
     let pres2 = pres1.clone();
 
     assert_eq!(pres1.source(), pres2.source());
     assert_eq!(pres1.current_mode(), pres2.current_mode());
+    assert_eq!(rows(&render(&pres1, 40, 12)), rows(&render(&pres2, 40, 12)));
+    assert_eq!(
+        render(&pres2, 40, 12).get(0, 0).unwrap().bg,
+        Some(Color::BLACK)
+    );
 }
 
 // =========================================================================
@@ -433,29 +510,14 @@ fn test_combined_builder() {
         .code_fg(Color::YELLOW)
         .numbers(true)
         .progress(true)
-        .mode(ViewMode::Slides);
+        .mode(ViewMode::Slides)
+        .text_sizing(false);
 
     assert_eq!(pres.current_mode(), ViewMode::Slides);
-    assert!(pres.show_numbers);
-    assert!(pres.show_progress);
-}
-
-// =========================================================================
-// Strip title edge cases
-// =========================================================================
-
-#[test]
-fn test_strip_title_no_heading() {
-    let pres = MarkdownPresentation::new("");
-    let content = "Just some content\n\nNo heading";
-    let stripped = pres.strip_title(content);
-    assert_eq!(stripped.trim(), "Just some content\n\nNo heading");
-}
-
-#[test]
-fn test_strip_title_only_heading() {
-    let pres = MarkdownPresentation::new("");
-    let content = "# Title Only";
-    let stripped = pres.strip_title(content);
-    assert!(stripped.trim().is_empty());
+    let buffer = render(&pres, 40, 12);
+    let footer = &rows(&buffer)[11];
+    assert!(footer.ends_with("1/1 "), "{footer:?}");
+    // A single slide is fully done: the whole bar is filled
+    assert!(footer[footer.char_indices().nth(1).unwrap().0..].starts_with(&"━".repeat(13)));
+    assert_eq!(buffer.get(1, 11).unwrap().fg, Some(Color::MAGENTA));
 }

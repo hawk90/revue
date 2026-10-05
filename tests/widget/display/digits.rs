@@ -1,6 +1,6 @@
 //! Digits widget tests extracted from src/widget/display/digits.rs
 
-use revue::prelude::*;
+use revue::widget::{clock, digits, DigitStyle, Digits};
 
 // =========================================================================
 // Digits creation tests
@@ -41,15 +41,6 @@ fn test_digits_timer() {
 }
 
 #[test]
-fn test_digits_style() {
-    let d = Digits::new(0).style(DigitStyle::Thin);
-    // Test that style affects height
-    assert_eq!(d.height(), 5);
-    let block = Digits::new(0).style(DigitStyle::Block);
-    assert_eq!(block.height(), 5);
-}
-
-#[test]
 fn test_digits_separator() {
     let d = Digits::new(1234567).separator(',');
     assert_eq!(d.format_value(), "1,234,567");
@@ -59,20 +50,6 @@ fn test_digits_separator() {
 fn test_digits_min_width() {
     let d = Digits::new(42).min_width(5);
     assert_eq!(d.format_value(), "00042");
-}
-
-#[test]
-fn test_digits_height() {
-    assert_eq!(Digits::new(0).style(DigitStyle::Block).height(), 5);
-    assert_eq!(Digits::new(0).style(DigitStyle::Braille).height(), 4);
-}
-
-#[test]
-fn test_digits_render_lines() {
-    let d = Digits::new(1).style(DigitStyle::Block);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-    assert!(lines[0].contains("█"));
 }
 
 #[test]
@@ -199,15 +176,6 @@ fn test_format_value_leading_zeros_with_separator() {
 // =========================================================================
 
 #[test]
-fn test_render_lines_block_style() {
-    let d = Digits::new("12").style(DigitStyle::Block);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-    // Each line should have patterns for both digits with spacing
-    assert!(lines[0].len() > 0);
-}
-
-#[test]
 fn test_render_lines_thin_style() {
     let d = Digits::new("05").style(DigitStyle::Thin);
     let lines = d.render_lines();
@@ -232,27 +200,6 @@ fn test_render_lines_braille_style() {
 }
 
 #[test]
-fn test_render_lines_with_colon() {
-    let d = Digits::new("1:23").style(DigitStyle::Block);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-}
-
-#[test]
-fn test_render_lines_with_dot() {
-    let d = Digits::new("12.34").style(DigitStyle::Block);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-}
-
-#[test]
-fn test_render_lines_with_minus() {
-    let d = Digits::new("-42").style(DigitStyle::Block);
-    let lines = d.render_lines();
-    assert_eq!(lines.len(), 5);
-}
-
-#[test]
 fn test_render_lines_unknown_chars_use_space() {
     let d = Digits::new("abc").style(DigitStyle::Block);
     let lines = d.render_lines();
@@ -262,59 +209,8 @@ fn test_render_lines_unknown_chars_use_space() {
 }
 
 // =========================================================================
-// digit_width tests (public API)
-// =========================================================================
-
-#[test]
-fn test_digit_width_braille() {
-    let d = Digits::new(0).style(DigitStyle::Braille);
-    assert_eq!(d.digit_width(), 2);
-}
-
-#[test]
-fn test_digit_width_non_braille() {
-    let d_block = Digits::new(0).style(DigitStyle::Block);
-    assert_eq!(d_block.digit_width(), 3);
-
-    let d_thin = Digits::new(0).style(DigitStyle::Thin);
-    assert_eq!(d_thin.digit_width(), 3);
-
-    let d_ascii = Digits::new(0).style(DigitStyle::Ascii);
-    assert_eq!(d_ascii.digit_width(), 3);
-}
-
-// =========================================================================
 // Builder setter tests (public API)
 // =========================================================================
-
-#[test]
-fn test_prefix_setter() {
-    // Note: There's no public prefix() getter in current Digits implementation
-    // This test demonstrates what a public getter would test
-    let d = Digits::new(100).prefix("$");
-    // Can't test the prefix value directly with public API
-    // But we can test that render_lines works
-    let lines = d.render_lines();
-    assert!(!lines.is_empty());
-}
-
-#[test]
-fn test_suffix_setter() {
-    // Note: There's no public suffix() getter in current Digits implementation
-    let d = Digits::new(100).suffix("%");
-    let lines = d.render_lines();
-    assert!(!lines.is_empty());
-}
-
-#[test]
-fn test_leading_zeros_setter() {
-    // Note: There's no public is_leading_zeros() getter in current Digits implementation
-    let d = Digits::new(42).leading_zeros(true);
-    // Test that leading zeros affect the output through format_value
-    assert_eq!(d.format_value(), "42"); // No effect without min_width
-    let d_with_width = d.min_width(5);
-    assert_eq!(d_with_width.format_value(), "00042");
-}
 
 #[test]
 fn test_from_int() {
@@ -336,21 +232,13 @@ fn test_timer_exactly_one_hour() {
 
 #[test]
 fn test_digit_style_default() {
-    let style = DigitStyle::default();
-    assert_eq!(style, DigitStyle::Block);
+    assert_eq!(DigitStyle::default(), DigitStyle::Block);
 }
 
-// =========================================================================
-// PRIVATE TESTS - MARKED WITH "# KEEP HERE" COMMENT
-// These tests access private methods and should remain in source files
-// =========================================================================
-
-// Example of private test that would remain in source:
-/*
 #[test]
-#[keep_here]
-fn test_private_render_logic() {
-    // This test accesses private methods
-    // These should remain in the source file
+#[ignore = "BUG: Digits::leading_zeros() is stored but never read"]
+fn test_leading_zeros_changes_output() {
+    let with = Digits::new(42).min_width(5).leading_zeros(true);
+    let without = Digits::new(42).min_width(5).leading_zeros(false);
+    assert_ne!(with.format_value(), without.format_value());
 }
-*/

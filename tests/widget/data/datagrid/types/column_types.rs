@@ -1,6 +1,6 @@
 //! Column type definitions tests
 
-use revue::widget::data::datagrid::types::{ColumnType, SortDirection, Alignment};
+use revue::widget::data::datagrid::{Alignment, ColumnType, SortDirection};
 
 #[test]
 fn test_column_type_text() {
@@ -138,12 +138,6 @@ fn test_sort_direction_partial_eq() {
 }
 
 #[test]
-fn test_sort_direction_eq() {
-    assert_eq!(SortDirection::Ascending, SortDirection::Ascending);
-    assert_eq!(SortDirection::Descending, SortDirection::Descending);
-}
-
-#[test]
 fn test_sort_direction_debug() {
     let sd = SortDirection::Ascending;
     let debug_str = format!("{:?}", sd);
@@ -183,13 +177,6 @@ fn test_alignment_copy() {
 }
 
 #[test]
-fn test_alignment_partial_eq() {
-    assert_eq!(Alignment::Left, Alignment::Left);
-    assert_eq!(Alignment::Center, Alignment::Center);
-    assert_ne!(Alignment::Left, Alignment::Right);
-}
-
-#[test]
 fn test_alignment_eq() {
     assert_eq!(Alignment::Left, Alignment::Left);
     assert_eq!(Alignment::Right, Alignment::Right);
@@ -210,7 +197,7 @@ fn test_alignment_debug() {
 
 #[test]
 fn test_column_type_all_variants_distinct() {
-    let types = vec![
+    let types = [
         ColumnType::Text,
         ColumnType::Number,
         ColumnType::Date,
@@ -236,7 +223,7 @@ fn test_sort_direction_both_variants_distinct() {
 
 #[test]
 fn test_alignment_all_variants_distinct() {
-    let alignments = vec![Alignment::Left, Alignment::Center, Alignment::Right];
+    let alignments = [Alignment::Left, Alignment::Center, Alignment::Right];
 
     for (i, a1) in alignments.iter().enumerate() {
         for (j, a2) in alignments.iter().enumerate() {
@@ -265,12 +252,6 @@ fn test_sort_direction_icons_different() {
         SortDirection::Ascending.icon(),
         SortDirection::Descending.icon()
     );
-}
-
-#[test]
-fn test_sort_direction_icon_characters() {
-    assert_eq!(SortDirection::Ascending.icon(), '▲');
-    assert_eq!(SortDirection::Descending.icon(), '▼');
 }
 
 #[test]

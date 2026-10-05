@@ -1,0 +1,256 @@
+//! Tests for the CSS value parsers: colors, sizes, grid templates and
+//! placements, and spacing shorthands
+
+use super::*;
+use crate::style::{Color, GridTrack, Size, Style};
+
+#[test]
+fn test_parse_color_hex() {
+    assert_eq!(parse_color("#ff0000"), Some(Color::RED));
+    assert_eq!(parse_color("#00ff00"), Some(Color::GREEN));
+    assert_eq!(parse_color("#f00"), Some(Color::RED));
+}
+
+#[test]
+fn test_parse_color_rgb() {
+    assert_eq!(parse_color("rgb(255, 0, 0)"), Some(Color::RED));
+    assert_eq!(parse_color("rgb(0, 255, 0)"), Some(Color::GREEN));
+}
+
+#[test]
+fn test_parse_color_named() {
+    assert_eq!(parse_color("red"), Some(Color::RED));
+    assert_eq!(parse_color("WHITE"), Some(Color::WHITE));
+}
+
+#[test]
+fn test_parse_size() {
+    assert_eq!(parse_size("auto"), Size::Auto);
+    assert_eq!(parse_size("100"), Size::Fixed(100));
+    assert_eq!(parse_size("100px"), Size::Fixed(100));
+    assert_eq!(parse_size("50%"), Size::Percent(50.0));
+}
+
+#[test]
+fn test_parse_grid_template() {
+    let template = parse_grid_template("1fr 2fr 1fr");
+    assert_eq!(template.tracks.len(), 3);
+    assert!(matches!(template.tracks[0], GridTrack::Fr(v) if (v - 1.0).abs() < 0.01));
+    assert!(matches!(template.tracks[1], GridTrack::Fr(v) if (v - 2.0).abs() < 0.01));
+}
+
+#[test]
+fn test_parse_grid_template_mixed() {
+    let template = parse_grid_template("100px auto 1fr");
+    assert_eq!(template.tracks.len(), 3);
+    assert!(matches!(template.tracks[0], GridTrack::Fixed(100)));
+    assert!(matches!(template.tracks[1], GridTrack::Auto));
+    assert!(matches!(template.tracks[2], GridTrack::Fr(_)));
+}
+
+#[test]
+fn test_parse_grid_placement_line() {
+    let placement = parse_grid_placement("2");
+    assert_eq!(placement.start, 2);
+    assert_eq!(placement.end, 0);
+}
+
+#[test]
+fn test_parse_grid_placement_span() {
+    let placement = parse_grid_placement("span 3");
+    assert_eq!(placement.start, 0);
+    assert_eq!(placement.end, -3);
+}
+
+#[test]
+fn test_parse_grid_placement_range() {
+    let placement = parse_grid_placement("1 / 4");
+    assert_eq!(placement.start, 1);
+    assert_eq!(placement.end, 4);
+}
+
+#[test]
+fn test_parse_grid_template_repeat() {
+    // Test repeat() function parsing with byte-slicing
+    let template = parse_grid_template("repeat(3, 1fr)");
+    assert_eq!(template.tracks.len(), 3);
+    assert!(matches!(template.tracks[0], GridTrack::Fr(v) if (v - 1.0).abs() < 0.01));
+    assert!(matches!(template.tracks[1], GridTrack::Fr(v) if (v - 1.0).abs() < 0.01));
+    assert!(matches!(template.tracks[2], GridTrack::Fr(v) if (v - 1.0).abs() < 0.01));
+}
+
+#[test]
+fn test_parse_grid_template_repeat_fixed() {
+    // Test repeat() with fixed values
+    let template = parse_grid_template("repeat(2, 100px)");
+    assert_eq!(template.tracks.len(), 2);
+    assert!(matches!(template.tracks[0], GridTrack::Fixed(100)));
+    assert!(matches!(template.tracks[1], GridTrack::Fixed(100)));
+}
+
+#[test]
+fn test_parse_grid_template_minmax() {
+    // Test minmax() function parsing with byte-slicing
+    let template = parse_grid_template("minmax(100px, 1fr)");
+    assert_eq!(template.tracks.len(), 1);
+    // Currently uses max value (simplified implementation)
+    assert!(matches!(template.tracks[0], GridTrack::Fr(_)));
+}
+
+#[test]
+fn test_parse_grid_template_repeat_with_minmax() {
+    // Test nested repeat() with minmax()
+    let template = parse_grid_template("repeat(2, minmax(50px, 1fr))");
+    assert_eq!(template.tracks.len(), 2);
+}
+
+#[test]
+fn test_parse_grid_template_complex() {
+    // Test complex grid template with mixed values
+    let template = parse_grid_template("100px repeat(2, 1fr) auto");
+    assert_eq!(template.tracks.len(), 4);
+    assert!(matches!(template.tracks[0], GridTrack::Fixed(100)));
+    assert!(matches!(template.tracks[1], GridTrack::Fr(_)));
+    assert!(matches!(template.tracks[2], GridTrack::Fr(_)));
+    assert!(matches!(template.tracks[3], GridTrack::Auto));
+}
+
+#[test]
+fn test_parse_grid_template_whitespace() {
+    // Test that whitespace is handled correctly
+    let template = parse_grid_template("  1fr   2fr   ");
+    assert_eq!(template.tracks.len(), 2);
+}
+
+#[test]
+fn test_parse_repeat_function_invalid() {
+    // Test that invalid repeat() returns None through parse_grid_template
+    let template = parse_grid_template("repeat(abc, 1fr)");
+    assert!(template.tracks.is_empty());
+}
+
+#[test]
+fn test_parse_minmax_function_invalid() {
+    // Test that invalid minmax() is handled
+    let template = parse_grid_template("minmax(100px)"); // Missing second arg
+    assert!(template.tracks.is_empty());
+}
+
+#[test]
+fn test_parse_spacing_one_value() {
+    // padding: 10px -> all sides
+    let spacing = parse_spacing("10px").unwrap();
+    assert_eq!(spacing.top, 10);
+    assert_eq!(spacing.right, 10);
+    assert_eq!(spacing.bottom, 10);
+    assert_eq!(spacing.left, 10);
+}
+
+#[test]
+fn test_parse_spacing_one_value_no_unit() {
+    // padding: 10 -> all sides
+    let spacing = parse_spacing("10").unwrap();
+    assert_eq!(spacing.top, 10);
+    assert_eq!(spacing.right, 10);
+    assert_eq!(spacing.bottom, 10);
+    assert_eq!(spacing.left, 10);
+}
+
+#[test]
+fn test_parse_spacing_two_values() {
+    // padding: 10px 20px -> top/bottom: 10, left/right: 20
+    let spacing = parse_spacing("10px 20px").unwrap();
+    assert_eq!(spacing.top, 10);
+    assert_eq!(spacing.right, 20);
+    assert_eq!(spacing.bottom, 10);
+    assert_eq!(spacing.left, 20);
+}
+
+#[test]
+fn test_parse_spacing_three_values() {
+    // padding: 10px 20px 5px -> top: 10, left/right: 20, bottom: 5
+    let spacing = parse_spacing("10px 20px 5px").unwrap();
+    assert_eq!(spacing.top, 10);
+    assert_eq!(spacing.right, 20);
+    assert_eq!(spacing.bottom, 5);
+    assert_eq!(spacing.left, 20);
+}
+
+#[test]
+fn test_parse_spacing_four_values() {
+    // padding: 10px 20px 15px 25px
+    let spacing = parse_spacing("10px 20px 15px 25px").unwrap();
+    assert_eq!(spacing.top, 10);
+    assert_eq!(spacing.right, 20);
+    assert_eq!(spacing.bottom, 15);
+    assert_eq!(spacing.left, 25);
+}
+
+#[test]
+fn test_parse_spacing_with_extra_whitespace() {
+    // Extra whitespace should be handled correctly
+    let spacing = parse_spacing("  10px   20px  ").unwrap();
+    assert_eq!(spacing.top, 10);
+    assert_eq!(spacing.right, 20);
+    assert_eq!(spacing.bottom, 10);
+    assert_eq!(spacing.left, 20);
+}
+
+#[test]
+fn test_parse_spacing_invalid() {
+    // Empty string
+    assert!(parse_spacing("").is_none());
+
+    // Too many values (5+)
+    assert!(parse_spacing("10 20 30 40 50").is_none());
+}
+
+#[test]
+fn test_apply_padding_shorthand() {
+    // Test that shorthand padding works through CSS parser
+    let css = r#"
+        .box {
+            padding: 10px 20px;
+        }
+    "#;
+    let sheet = parse(css).unwrap();
+    let style = sheet.apply(".box", &Style::default());
+
+    assert_eq!(style.spacing.padding.top, 10);
+    assert_eq!(style.spacing.padding.right, 20);
+    assert_eq!(style.spacing.padding.bottom, 10);
+    assert_eq!(style.spacing.padding.left, 20);
+}
+
+#[test]
+fn test_apply_margin_shorthand() {
+    // Test that shorthand margin works through CSS parser
+    let css = r#"
+        .box {
+            margin: 5 10 15 20;
+        }
+    "#;
+    let sheet = parse(css).unwrap();
+    let style = sheet.apply(".box", &Style::default());
+
+    assert_eq!(style.spacing.margin.top, 5);
+    assert_eq!(style.spacing.margin.right, 10);
+    assert_eq!(style.spacing.margin.bottom, 15);
+    assert_eq!(style.spacing.margin.left, 20);
+}
+
+#[test]
+fn test_apply_padding_three_values() {
+    let css = r#"
+        .box {
+            padding: 10 20 5;
+        }
+    "#;
+    let sheet = parse(css).unwrap();
+    let style = sheet.apply(".box", &Style::default());
+
+    assert_eq!(style.spacing.padding.top, 10);
+    assert_eq!(style.spacing.padding.right, 20);
+    assert_eq!(style.spacing.padding.bottom, 5);
+    assert_eq!(style.spacing.padding.left, 20);
+}

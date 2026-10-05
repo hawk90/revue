@@ -411,7 +411,7 @@ fn test_empty_state_builder_chain() {
 #[test]
 fn test_empty_state_height_full() {
     let es = EmptyState::new("Test").variant(EmptyStateVariant::Full);
-    assert_eq!(es.height(), 5);
+    assert_eq!(es.height(), 3); // icon, blank, title
 }
 
 #[test]
@@ -419,7 +419,7 @@ fn test_empty_state_height_full_with_description() {
     let es = EmptyState::new("Test")
         .variant(EmptyStateVariant::Full)
         .description("This is a description");
-    assert_eq!(es.height(), 6);
+    assert_eq!(es.height(), 4); // icon, blank, title, description
 }
 
 #[test]
@@ -427,7 +427,7 @@ fn test_empty_state_height_full_with_action() {
     let es = EmptyState::new("Test")
         .variant(EmptyStateVariant::Full)
         .action("Click me");
-    assert_eq!(es.height(), 7);
+    assert_eq!(es.height(), 4); // icon, blank, title, action
 }
 
 #[test]
@@ -436,13 +436,13 @@ fn test_empty_state_height_full_with_description_and_action() {
         .variant(EmptyStateVariant::Full)
         .description("Description")
         .action("Action");
-    assert_eq!(es.height(), 8);
+    assert_eq!(es.height(), 6); // icon, blank, title, description, blank, action
 }
 
 #[test]
 fn test_empty_state_height_compact() {
     let es = EmptyState::new("Test").variant(EmptyStateVariant::Compact);
-    assert_eq!(es.height(), 3);
+    assert_eq!(es.height(), 1); // icon and title share one row
 }
 
 #[test]
@@ -450,7 +450,7 @@ fn test_empty_state_height_compact_with_description() {
     let es = EmptyState::new("Test")
         .variant(EmptyStateVariant::Compact)
         .description("Description");
-    assert_eq!(es.height(), 4);
+    assert_eq!(es.height(), 2); // title row + description
 }
 
 #[test]

@@ -15,6 +15,16 @@ pub fn parse_json(json: &str) -> Option<JsonNode> {
     parse_value(json, "", 0).map(|(node, _)| node)
 }
 
+/// Whether `json` is one complete JSON value (surrounding whitespace allowed)
+pub(crate) fn is_json(json: &str) -> bool {
+    let json = json.trim();
+    match parse_value(json, "", 0) {
+        // `consumed` counts chars, not bytes.
+        Some((_, consumed)) => json.chars().skip(consumed).all(char::is_whitespace),
+        None => false,
+    }
+}
+
 fn parse_value(json: &str, path: &str, depth: usize) -> Option<(JsonNode, usize)> {
     // Prevent stack overflow from deeply nested JSON
     if depth > MAX_JSON_DEPTH {

@@ -388,7 +388,7 @@ impl MarkdownPresentation {
 
                 // Separator line
                 if content_start_y < area.height {
-                    let sep_len = (area.width as usize).min(title.len() * 2).max(20);
+                    let sep_len = (title.len() * 2).max(20).min(area.width as usize);
                     let sep_start = (area.width as usize - sep_len) / 2;
                     for i in 0..sep_len {
                         let mut cell = Cell::new('─');
@@ -461,7 +461,7 @@ impl MarkdownPresentation {
     fn render_mode_indicator(&self, ctx: &mut RenderContext, mode_text: &str) {
         let area = ctx.area;
         let text = format!(" {} ", mode_text);
-        let start_x = area.width - text.len() as u16 - 1;
+        let start_x = area.width.saturating_sub(text.len() as u16 + 1);
         let y: u16 = 1;
 
         for (i, ch) in text.chars().enumerate() {
@@ -481,7 +481,7 @@ impl MarkdownPresentation {
         // Slide numbers
         if self.show_numbers && self.nav.slide_count() > 0 {
             let num_str = self.nav.indicator();
-            let start_x = area.width - num_str.len() as u16 - 1;
+            let start_x = area.width.saturating_sub(num_str.len() as u16 + 1);
             for (i, ch) in num_str.chars().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(DISABLED_FG);
@@ -512,7 +512,7 @@ impl MarkdownPresentation {
             ViewMode::Preview => "[P]",
             ViewMode::Slides => "[S]",
         };
-        let mode_x = area.width / 2 - 1;
+        let mode_x = (area.width / 2).saturating_sub(1);
         for (i, ch) in mode_str.chars().enumerate() {
             let mut cell = Cell::new(ch);
             cell.fg = Some(DARK_GRAY);

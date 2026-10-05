@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 /// Performance metrics tracker
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct PerfMetrics {
     /// Frame times (last N frames)
     pub(super) frame_times: VecDeque<Duration>,
@@ -16,6 +16,12 @@ pub struct PerfMetrics {
     pub(super) render_times: VecDeque<Duration>,
     /// Maximum samples to keep
     pub(super) max_samples: usize,
+}
+
+impl Default for PerfMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PerfMetrics {

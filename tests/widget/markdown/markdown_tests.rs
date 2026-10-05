@@ -573,3 +573,95 @@ fn test_markdown_blockquote_style_does_not_leak() {
         "text after a blockquote must not stay italic"
     );
 }
+
+/// Render `md` into a `width` x 24 buffer and return the fg of the cell where
+/// the first occurrence of `needle` starts.
+fn fg_at(md: Markdown, width: u16, needle: &str) -> Option<revue::style::Color> {
+    let mut buffer = Buffer::new(width, 24);
+    let area = Rect::new(0, 0, width, 24);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    md.render(&mut ctx);
+    for y in 0..24 {
+        let row: String = (0..width)
+            .filter_map(|x| buffer.get(x, y).map(|c| c.symbol))
+            .collect();
+        if let Some(byte) = row.find(needle) {
+            let x = row[..byte].chars().count() as u16;
+            return buffer.get(x, y).map(|c| c.fg).unwrap_or_default();
+        }
+    }
+    None
+}
+
+#[test]
+fn test_markdown_fenced_code_block_is_highlighted() {
+    let source = "```rust\nfn main() { let value = 1; }\n```";
+    let keyword = fg_at(Markdown::new(source), 60, "fn main");
+    let ident = fg_at(Markdown::new(source), 60, "main");
+    assert!(keyword.is_some(), "keyword cell has a color");
+    assert_ne!(
+        keyword, ident,
+        "the `fn` keyword must be colored differently from plain identifiers"
+    );
+}
+
+#[test]
+fn test_markdown_fenced_code_block_plain_when_highlight_disabled() {
+    let source = "```rust\nfn main() { let value = 1; }\n```";
+    let md = || Markdown::new(source).syntax_highlight(false);
+    let keyword = fg_at(md(), 60, "fn main");
+    let ident = fg_at(md(), 60, "main");
+    assert_eq!(keyword, ident, "highlighting off renders code in one color");
+}
+
+#[test]
+fn test_markdown_fenced_code_block_unknown_language_renders_plainly() {
+    let rows = render_rows("```nosuchlang\nfn main() {}\n```", 40);
+    assert!(row_containing(&rows, "fn main() {}").is_some(), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_blockquote_with_open_bracket_renders() {
+    let rows = render_rows("> a [b", 40);
+    let quote = row_containing(&rows, "a [b").expect("quote text must render");
+    assert!(quote.starts_with("│ "), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_blockquote_starting_with_bracket_renders() {
+    for source in ["> [b", "> [not a callout", "> [!NOTE oops", "> [x] done"] {
+        let rows = render_rows(source, 40);
+        let text = &source[2..];
+        assert!(
+            row_containing(&rows, text).is_some(),
+            "{source:?} lost text: {rows:#?}"
+        );
+    }
+}
+
+#[test]
+fn test_markdown_blockquote_bracket_then_more_lines_renders() {
+    let rows = render_rows("> [b\n> second line", 40);
+    assert!(row_containing(&rows, "[b").is_some(), "{rows:#?}");
+    assert!(row_containing(&rows, "second line").is_some(), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_callout_marker_still_detected() {
+    let rows = render_rows("> [!NOTE]\n> body text", 40);
+    assert!(row_containing(&rows, "Note").is_some(), "{rows:#?}");
+    assert!(row_containing(&rows, "[!NOTE]").is_none(), "{rows:#?}");
+    assert!(row_containing(&rows, "body text").is_some(), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_blockquote_unfinished_marker_renders() {
+    // Text that could still have become `[!TYPE]` when the quote ended
+    for source in ["> [", "> [!", "> [!NOTE", "> [!NOTE\n> next line"] {
+        let rows = render_rows(source, 40);
+        let first = source[2..].lines().next().unwrap();
+        let row = row_containing(&rows, first)
+            .unwrap_or_else(|| panic!("{source:?} lost text: {rows:#?}"));
+        assert!(row.starts_with("│ "), "{source:?}: {rows:#?}");
+    }
+}

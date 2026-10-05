@@ -335,9 +335,15 @@ impl View for Table {
             // Virtual scroll mode
             self.ensure_selected_visible(viewport_rows);
             let (render_start, render_end) = self.visible_row_range(viewport_rows);
+            let scroll = self.scroll_row.get();
 
             for i in render_start..render_end {
-                let viewport_y = y + (i - render_start) as u16;
+                // Overscan rows above the scroll offset are off screen; the
+                // viewport starts at `scroll`, not at `render_start`.
+                if i < scroll {
+                    continue;
+                }
+                let viewport_y = y + (i - scroll) as u16;
                 if viewport_y >= max_data_y {
                     break;
                 }

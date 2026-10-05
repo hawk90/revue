@@ -81,15 +81,9 @@ impl Input {
 
         match key {
             Key::Char(c) if !c.is_control() => {
-                self.delete_selection_with_undo();
-                // Create a string from the character and insert at cursor
-                let s = c.to_string();
-                let pos = self.cursor;
-                self.push_undo(EditOperation::Insert {
-                    pos,
-                    text: s.clone(),
-                });
-                self.cursor = self.insert_at_char(self.cursor, &s);
+                // Typing over a selection replaces it as one undo step,
+                // the same as pasting over it.
+                self.paste_text(&c.to_string());
                 true
             }
             Key::Backspace => {

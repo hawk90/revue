@@ -1,4 +1,2 @@
-pub mod basic;
+//! Autocomplete widget tests
 pub mod core;
-pub mod selection;
-pub mod suggestions;

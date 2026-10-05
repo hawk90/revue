@@ -1,7 +1,6 @@
 //! Tree widget public API tests
 
-use revue::widget::data::tree::Tree;
-use revue::widget::data::tree::TreeNode;
+use revue::widget::data::tree::{tree, tree_node, Tree, TreeNode};
 
 // =========================================================================
 // Basic creation and builder tests
@@ -32,8 +31,9 @@ fn test_tree_builder() {
 
 #[test]
 fn test_tree_helper() {
-    let t = Tree::new().node(TreeNode::new("Test"));
+    let t = tree().node(tree_node("Test"));
     assert_eq!(t.len(), 1);
+    assert_eq!(t.selected_label(), Some("Test"));
 }
 
 // =========================================================================

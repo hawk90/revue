@@ -2,8 +2,9 @@
 
 use super::core::Diagram;
 use super::types::{ArrowStyle, DiagramEdge, NodeShape};
-use crate::render::{Cell, Modifier};
+use crate::render::Cell;
 use crate::style::Color;
+use crate::utils::unicode::{display_width, truncate_to_width};
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Diagram {
@@ -17,15 +18,10 @@ impl View for Diagram {
 
         // Title
         let title_height = if !self.title.is_empty() {
-            for (i, ch) in self.title.chars().enumerate() {
-                if i as u16 >= area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(self.colors.title);
-                cell.modifier = Modifier::BOLD;
-                ctx.set(i as u16, 0, cell);
-            }
+            let title_fg = self.colors.title;
+            ctx.put_str_with(0, 0, &self.title, area.width, |ch| {
+                Cell::new(ch).fg(title_fg).bold()
+            });
             2u16
         } else {
             0u16
@@ -85,6 +81,9 @@ impl Diagram {
 
         // Draw box based on shape
         match node.shape {
+            NodeShape::Rectangle | NodeShape::Rounded | NodeShape::Diamond if width < 3 => {
+                // No room for a border and a label
+            }
             NodeShape::Rectangle | NodeShape::Rounded => {
                 let (tl, tr, bl, br, h, v) = if node.shape == NodeShape::Rounded {
                     ('╭', '╮', '╰', '╯', '─', '│')
@@ -114,13 +113,17 @@ impl Diagram {
                 ctx.set(x + width - 1, y + 1, cell);
 
                 // Label
-                let label_start = (width as usize - node.label.chars().count()) / 2;
-                for (i, ch) in node.label.chars().enumerate() {
+                // Centered in columns, and kept inside the side borders: a
+                // label wider than its box is cut, not drawn over them.
+                let inner = width.saturating_sub(2);
+                let label = truncate_to_width(&node.label, inner as usize);
+                let label_start = 1 + (inner - display_width(label) as u16) / 2;
+                ctx.put_str_with(x + label_start, y + 1, label, x + width - 1, |ch| {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(fg);
                     cell.bg = bg;
-                    ctx.set(x + label_start as u16 + i as u16, y + 1, cell);
-                }
+                    cell
+                });
 
                 // Bottom border
                 let mut cell = Cell::new(bl);
@@ -145,11 +148,9 @@ impl Diagram {
                 cell.fg = Some(fg);
                 ctx.set(x, y + 1, cell);
 
-                for (i, ch) in node.label.chars().enumerate() {
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(fg);
-                    ctx.set(x + 1 + i as u16, y + 1, cell);
-                }
+                ctx.put_str_with(x + 1, y + 1, &node.label, x + width - 1, |ch| {
+                    Cell::new(ch).fg(fg)
+                });
 
                 let mut cell = Cell::new('>');
                 cell.fg = Some(fg);
@@ -157,14 +158,7 @@ impl Diagram {
             }
             _ => {
                 // Default: just render label
-                for (i, ch) in node.label.chars().enumerate() {
-                    if x + i as u16 >= area.width {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(fg);
-                    ctx.set(x + i as u16, y, cell);
-                }
+                ctx.put_str_with(x, y, &node.label, area.width, |ch| Cell::new(ch).fg(fg));
             }
         }
     }
@@ -221,16 +215,11 @@ impl Diagram {
         if let Some(ref label) = edge.label {
             let label_y = (start_y + end_y) / 2;
             let label_str = label.as_str();
-            let label_x = start_x.saturating_sub(label_str.chars().count() as u16 / 2);
-            for (i, ch) in label_str.chars().enumerate() {
-                if label_x + i as u16 >= area.width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(self.colors.label);
-                cell.modifier = Modifier::ITALIC;
-                ctx.set(label_x + i as u16, label_y, cell);
-            }
+            let label_x = start_x.saturating_sub(display_width(label_str) as u16 / 2);
+            let label_fg = self.colors.label;
+            ctx.put_str_with(label_x, label_y, label_str, area.width, |ch| {
+                Cell::new(ch).fg(label_fg).italic()
+            });
         }
     }
 }

@@ -35,7 +35,7 @@ fn test_virtual_list_new_default_values() {
     assert_eq!(list.scroll_sub_offset, 0);
     assert_eq!(list.selected_bg, revue::style::Color::rgb(60, 60, 120));
     assert_eq!(list.selected_fg, revue::style::Color::WHITE);
-    assert_eq!(list.item_fg, revue::style::Color::WHITE);
+    assert_eq!(list.item_fg, None); // unset: the stylesheet color applies
     assert!(list.show_scrollbar);
     assert_eq!(list.scrollbar_fg, revue::style::Color::WHITE);
     assert_eq!(list.scrollbar_bg, revue::style::Color::rgb(40, 40, 40));
@@ -89,7 +89,8 @@ fn test_selected_empty_list() {
 
 #[test]
 fn test_selected_style() {
-    let list = VirtualList::new(vec!["A"]).selected_style(revue::style::Color::CYAN, revue::style::Color::BLUE);
+    let list = VirtualList::new(vec!["A"])
+        .selected_style(revue::style::Color::CYAN, revue::style::Color::BLUE);
     assert_eq!(list.selected_fg, revue::style::Color::CYAN);
     assert_eq!(list.selected_bg, revue::style::Color::BLUE);
 }
@@ -101,7 +102,7 @@ fn test_selected_style() {
 #[test]
 fn test_item_fg() {
     let list = VirtualList::new(vec!["A"]).item_fg(revue::style::Color::GREEN);
-    assert_eq!(list.item_fg, revue::style::Color::GREEN);
+    assert_eq!(list.item_fg, Some(revue::style::Color::GREEN));
 }
 
 // =========================================================================
@@ -120,7 +121,10 @@ fn test_show_scrollbar() {
 
 #[test]
 fn test_scrollbar_style() {
-    let list = VirtualList::new(vec!["A"]).scrollbar_style(revue::style::Color::RED, revue::style::Color::rgb(40, 40, 40));
+    let list = VirtualList::new(vec!["A"]).scrollbar_style(
+        revue::style::Color::RED,
+        revue::style::Color::rgb(40, 40, 40),
+    );
     assert_eq!(list.scrollbar_fg, revue::style::Color::RED);
     assert_eq!(list.scrollbar_bg, revue::style::Color::rgb(40, 40, 40));
 }
@@ -151,9 +155,8 @@ fn test_wrap_navigation() {
 
 #[test]
 fn test_renderer_custom() {
-    let list = VirtualList::new(vec!["A", "B"]).renderer(|item, _idx, selected| {
-        format!("{}{}", if selected { "> " } else { "  " }, item)
-    });
+    let list = VirtualList::new(vec!["A", "B"])
+        .renderer(|item, _idx, selected| format!("{}{}", if selected { "> " } else { "  " }, item));
     assert!(list.renderer.is_some());
 }
 
@@ -733,9 +736,8 @@ fn test_render_item_default() {
 
 #[test]
 fn test_render_item_custom() {
-    let list = VirtualList::new(vec!["A", "B"]).renderer(|item, idx, sel| {
-        format!("{}: {} ({})", idx, item, if sel { "X" } else { " " })
-    });
+    let list = VirtualList::new(vec!["A", "B"])
+        .renderer(|item, idx, sel| format!("{}: {} ({})", idx, item, if sel { "X" } else { " " }));
     let rendered = list.render_item(&"A", 0, true);
     assert_eq!(rendered, "0: A (X)");
 }
@@ -752,7 +754,10 @@ fn test_full_builder_chain() {
         .selected_style(revue::style::Color::CYAN, revue::style::Color::BLUE)
         .item_fg(revue::style::Color::WHITE)
         .show_scrollbar(false)
-        .scrollbar_style(revue::style::Color::RED, revue::style::Color::rgb(40, 40, 40))
+        .scrollbar_style(
+            revue::style::Color::RED,
+            revue::style::Color::rgb(40, 40, 40),
+        )
         .overscan(3)
         .wrap_navigation(true)
         .scroll_mode(ScrollMode::Smooth);
@@ -761,7 +766,7 @@ fn test_full_builder_chain() {
     assert_eq!(list.selected, Some(1));
     assert_eq!(list.selected_fg, revue::style::Color::CYAN);
     assert_eq!(list.selected_bg, revue::style::Color::BLUE);
-    assert_eq!(list.item_fg, revue::style::Color::WHITE);
+    assert_eq!(list.item_fg, Some(revue::style::Color::WHITE));
     assert!(!list.show_scrollbar);
     assert_eq!(list.scrollbar_fg, revue::style::Color::RED);
     assert_eq!(list.overscan, 3);

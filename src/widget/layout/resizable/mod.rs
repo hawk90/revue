@@ -16,6 +16,9 @@
 
 mod types;
 
+#[cfg(test)]
+mod tests;
+
 pub use types::{ResizeDirection, ResizeHandle, ResizeStyle};
 
 use crate::event::Key;

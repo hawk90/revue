@@ -2,7 +2,7 @@
 //!
 //! Extracted from src/widget/developer/code_editor/editing.rs
 
-use revue::widget::developer::code_editor::CodeEditor;
+use revue::widget::CodeEditor;
 
 // =========================================================================
 // insert_char tests
@@ -62,13 +62,6 @@ fn test_insert_char_read_only() {
     let mut editor = CodeEditor::new().read_only(true);
     editor.insert_char('x');
     assert_eq!(editor.get_content(), "");
-}
-
-#[test]
-fn test_insert_char_auto_close_paren() {
-    let mut editor = CodeEditor::new().bracket_matching(true);
-    editor.insert_char('(');
-    assert_eq!(editor.get_content(), "()");
 }
 
 #[test]

@@ -1,17 +1,10 @@
 //! JSON Viewer widget public API tests
 
-use revue::widget::data::json_viewer::{JsonNode, JsonType};
-use revue::widget::data::json_viewer::*;
+use revue::widget::data::json_viewer::{json_viewer, JsonNode, JsonType, JsonViewer, Search};
 
 // =========================================================================
 // Basic creation and parsing tests
 // =========================================================================
-
-#[test]
-fn test_json_viewer_new() {
-    let viewer = JsonViewer::new();
-    assert!(!viewer.has_data());
-}
 
 #[test]
 fn test_json_viewer_from_content() {
@@ -79,11 +72,28 @@ fn test_json_viewer_parse_empty_array() {
 fn test_json_viewer_navigation() {
     let mut viewer = JsonViewer::from_content(r#"{"a": 1, "b": 2, "c": 3}"#);
 
+    assert_eq!(viewer.selected_index(), 0);
+
     viewer.select_down();
     viewer.select_down();
+    assert_eq!(viewer.selected_index(), 2);
+    assert_eq!(viewer.selected_path().as_deref(), Some("$.b"));
+
     viewer.select_up();
-    viewer.select_first();
+    assert_eq!(viewer.selected_index(), 1);
+
     viewer.select_last();
+    assert_eq!(viewer.selected_index(), 3);
+    assert_eq!(viewer.selected_path().as_deref(), Some("$.c"));
+
+    // No wrap at either end
+    viewer.select_down();
+    assert_eq!(viewer.selected_index(), 3);
+
+    viewer.select_first();
+    assert_eq!(viewer.selected_index(), 0);
+    viewer.select_up();
+    assert_eq!(viewer.selected_index(), 0);
 }
 
 // =========================================================================
@@ -187,34 +197,6 @@ fn test_json_viewer_selected_value() {
 // =========================================================================
 
 #[test]
-fn test_json_viewer_builders() {
-    use revue::style::Color;
-
-    let viewer = JsonViewer::new()
-        .json(r#"{"a": 1}"#)
-        .show_line_numbers(false)
-        .indent_size(4)
-        .show_type_badges(true)
-        .key_color(Color::RED)
-        .string_color(Color::GREEN)
-        .number_color(Color::YELLOW)
-        .bool_color(Color::MAGENTA)
-        .null_color(Color::WHITE)
-        .selected_style(Color::WHITE, Color::BLUE)
-        .match_style(Color::BLACK, Color::YELLOW)
-        .fg(Color::WHITE)
-        .bg(Color::BLACK);
-
-    assert!(viewer.has_data());
-}
-
-#[test]
-fn test_json_viewer_default() {
-    let viewer = JsonViewer::default();
-    assert!(!viewer.has_data());
-}
-
-#[test]
 fn test_json_viewer_helper() {
     let viewer = json_viewer();
     assert!(!viewer.has_data());
@@ -283,9 +265,7 @@ fn test_parse_json_negative_number() {
 
 #[test]
 fn test_parse_json_escaped_string() {
-    let viewer = JsonViewer::from_content(
-        r#"{"msg": "hello\nworld"}"#,
-    );
+    let viewer = JsonViewer::from_content(r#"{"msg": "hello\nworld"}"#);
     assert!(viewer.has_data());
 }
 

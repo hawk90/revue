@@ -1,6 +1,6 @@
 //! Type definitions tests
 
-use revue::widget::callout::types::{CalloutType, CalloutVariant};
+use revue::widget::{CalloutType, CalloutVariant};
 
 // =========================================================================
 // CalloutType tests
@@ -23,13 +23,6 @@ fn test_callout_type_copy() {
     let ct = CalloutType::Warning;
     let copied = ct;
     assert_eq!(ct, copied);
-}
-
-#[test]
-fn test_callout_type_clone() {
-    let ct = CalloutType::Danger;
-    let cloned = ct.clone();
-    assert_eq!(ct, cloned);
 }
 
 #[test]
@@ -72,13 +65,6 @@ fn test_callout_variant_copy() {
     let cv = CalloutVariant::LeftBorder;
     let copied = cv;
     assert_eq!(cv, copied);
-}
-
-#[test]
-fn test_callout_variant_clone() {
-    let cv = CalloutVariant::Minimal;
-    let cloned = cv.clone();
-    assert_eq!(cv, cloned);
 }
 
 #[test]

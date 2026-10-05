@@ -274,12 +274,13 @@ impl View for Waveline {
 
         // Label
         if let Some(ref label) = self.label {
-            for (i, ch) in label.chars().enumerate() {
+            let bg = self.bg_color;
+            ctx.put_str_with(0, chart_y, label, u16::MAX, |ch| {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(chrome);
-                cell.bg = self.bg_color;
-                ctx.set(i as u16, chart_y, cell);
-            }
+                cell.bg = bg;
+                cell
+            });
             chart_y += 1;
             chart_height = chart_height.saturating_sub(1);
         }
@@ -307,6 +308,7 @@ impl View for Waveline {
             let y = chart_y + baseline_row;
             for x in 0..area.width {
                 let mut cell = Cell::new('─');
+                cell.bg = self.bg_color;
                 cell.fg = Some(self.baseline_color);
                 ctx.set(x, y, cell);
             }
@@ -323,6 +325,7 @@ impl View for Waveline {
                     if y >= chart_y && y < chart_y + chart_height {
                         let screen_x = x as u16;
                         let mut cell = Cell::new('●');
+                        cell.bg = self.bg_color;
                         cell.fg = Some(self.get_color(y_ratio));
                         ctx.set(screen_x, y, cell);
                     }
@@ -351,6 +354,7 @@ impl View for Waveline {
                             let ch = if dy == y { '█' } else { '▓' };
                             let ratio = 1.0 - dy as f64 / (chart_height - 1) as f64;
                             let mut cell = Cell::new(ch);
+                            cell.bg = self.bg_color;
                             cell.fg = Some(self.get_color(ratio));
                             ctx.set(screen_x, screen_y, cell);
                         }
@@ -374,6 +378,7 @@ impl View for Waveline {
                             let intensity = 1.0 - dy as f64 / center_y as f64;
                             let ch = if dy == half_height { '▀' } else { '█' };
                             let mut cell = Cell::new(ch);
+                            cell.bg = self.bg_color;
                             cell.fg = Some(self.get_color(0.5 + intensity * 0.5));
                             ctx.set(screen_x, screen_y, cell);
                         }
@@ -386,6 +391,7 @@ impl View for Waveline {
                             let intensity = 1.0 - dy as f64 / center_y as f64;
                             let ch = if dy == half_height { '▄' } else { '█' };
                             let mut cell = Cell::new(ch);
+                            cell.bg = self.bg_color;
                             cell.fg = Some(self.get_color(0.5 + intensity * 0.5));
                             ctx.set(screen_x, screen_y, cell);
                         }
@@ -415,6 +421,7 @@ impl View for Waveline {
                                     '█'
                                 };
                                 let mut cell = Cell::new(ch);
+                                cell.bg = self.bg_color;
                                 cell.fg = Some(self.get_color(y_ratio));
                                 ctx.set(screen_x, screen_y, cell);
                             }
@@ -430,6 +437,7 @@ impl View for Waveline {
                                     '█'
                                 };
                                 let mut cell = Cell::new(ch);
+                                cell.bg = self.bg_color;
                                 cell.fg = Some(self.get_color(y_ratio));
                                 ctx.set(screen_x, screen_y, cell);
                             }
@@ -447,6 +455,7 @@ impl View for Waveline {
                     if y >= chart_y && y < chart_y + chart_height {
                         let screen_x = x as u16;
                         let mut cell = Cell::new('⣿');
+                        cell.bg = self.bg_color;
                         cell.fg = Some(self.get_color(y_ratio));
                         ctx.set(screen_x, y, cell);
                     }
@@ -489,7 +498,7 @@ pub fn area_wave(data: Vec<f64>) -> Waveline {
     Waveline::new(data)
         .style(WaveStyle::Filled)
         .color(Color::MAGENTA)
-        .baseline(1.0)
+        .baseline(0.0)
 }
 
 /// Create a bar spectrum visualization
@@ -497,7 +506,7 @@ pub fn spectrum(data: Vec<f64>) -> Waveline {
     Waveline::new(data)
         .style(WaveStyle::Bars)
         .color(Color::YELLOW)
-        .baseline(1.0)
+        .baseline(0.0)
 }
 
 /// Generate sine wave data

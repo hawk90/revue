@@ -139,8 +139,11 @@ impl Sparkline {
 
     /// Calculate actual min/max from data
     fn calc_bounds(&self) -> (f64, f64) {
-        let data_min = self.data.iter().cloned().fold(f64::INFINITY, f64::min);
-        let data_max = self.data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        // Non-finite values would make the range infinite and flatten every
+        // other value; they are drawn clamped to the ends instead.
+        let finite = || self.data.iter().cloned().filter(|v| v.is_finite());
+        let data_min = finite().fold(f64::INFINITY, f64::min);
+        let data_max = finite().fold(f64::NEG_INFINITY, f64::max);
 
         let min = self.min.unwrap_or(data_min.min(0.0));
         let max = self.max.unwrap_or(data_max);

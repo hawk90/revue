@@ -2,4 +2,5 @@
 //!
 //! Tests for developer-related widgets extracted from source files.
 
-pub mod code_editor;
+mod presentation;
+mod vim;

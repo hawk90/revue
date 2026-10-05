@@ -185,10 +185,7 @@ impl FilePicker {
     pub fn start_dir(mut self, dir: impl AsRef<Path>) -> Self {
         let path = dir.as_ref();
         match validate_security_only(path) {
-            Ok(validated) => {
-                self.current_dir = validated;
-                self.refresh();
-            }
+            Ok(validated) => self.reset_to(validated),
             Err(e) => {
                 panic!("Invalid starting directory: {}", e);
             }
@@ -199,12 +196,25 @@ impl FilePicker {
     /// Set starting directory (non-panicking version)
     ///
     /// Returns error if the path contains traversal patterns or is invalid.
+    ///
+    /// Accepts exactly what [`start_dir`](Self::start_dir) accepts. It used to
+    /// also require the path to lie inside the *current* directory - the
+    /// process's working directory for a new picker - so the two disagreed
+    /// about any start directory outside it.
     pub fn try_set_start_dir(mut self, dir: impl AsRef<Path>) -> Result<Self, FilePickerError> {
         let path = dir.as_ref();
-        let validated = validate_and_canonicalize(path, &self.current_dir)?;
-        self.current_dir = validated;
-        self.refresh();
+        let validated = validate_security_only(path)?;
+        self.reset_to(validated);
         Ok(self)
+    }
+
+    /// Start over in `dir`: it becomes the only history entry, so going
+    /// back never leaves for the directory the picker was built in.
+    fn reset_to(&mut self, dir: PathBuf) {
+        self.current_dir = dir;
+        self.history = vec![self.current_dir.clone()];
+        self.history_idx = 0;
+        self.refresh();
     }
 
     /// Set width
@@ -301,18 +311,30 @@ impl FilePicker {
         }
 
         let validated = validate_and_canonicalize(path, &self.current_dir)?;
-        self.current_dir = validated.clone();
+        self.visit(validated);
+        Ok(())
+    }
+
+    /// Make `dir` the current directory and record it in the history.
+    fn visit(&mut self, dir: PathBuf) {
+        self.current_dir = dir;
         self.history.truncate(self.history_idx + 1);
         self.history.push(self.current_dir.clone());
         self.history_idx = self.history.len() - 1;
         self.refresh();
-        Ok(())
     }
 
     /// Go to parent directory
     pub fn go_up(&mut self) {
-        if let Some(parent) = self.current_dir.parent().map(Path::to_path_buf) {
-            let _ = self.navigate_to(&parent); // Ignore errors, parent should be valid
+        // Not through `navigate_to`: that only accepts paths inside the
+        // current directory, and a parent never is one, so going up was a
+        // silent no-op. The parent of a canonical directory has no `..` or
+        // symlink left in it to validate.
+        let Ok(current) = self.current_dir.canonicalize() else {
+            return;
+        };
+        if let Some(parent) = current.parent().map(Path::to_path_buf) {
+            self.visit(parent);
         }
     }
 

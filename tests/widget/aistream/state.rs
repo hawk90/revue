@@ -1,9 +1,39 @@
-//! AIStream state-changing method tests
+//! AiStream state, typing animation and rendering tests
 
 use revue::layout::Rect;
-use revue::render::Buffer;
-use revue::widget::developer::{AiStream, StreamStatus, TypingStyle};
+use revue::render::{Buffer, Modifier};
+use revue::style::Color;
 use revue::widget::traits::RenderContext;
+use revue::widget::View;
+use revue::widget::{ai_response, ai_stream, AiStream, StreamCursor, StreamStatus, TypingStyle};
+
+/// Render `stream` into a `width` x `height` buffer.
+fn render(stream: &AiStream, width: u16, height: u16) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    let area = Rect::new(0, 0, width, height);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    stream.render(&mut ctx);
+    buffer
+}
+
+/// Each row of `buffer` as text.
+fn rows(buffer: &Buffer, width: u16, height: u16) -> Vec<String> {
+    (0..height)
+        .map(|y| {
+            (0..width)
+                .map(|x| buffer.get(x, y).map(|c| c.symbol).unwrap_or(' '))
+                .collect::<String>()
+        })
+        .collect()
+}
+
+fn render_rows(stream: &AiStream, width: u16, height: u16) -> Vec<String> {
+    rows(&render(stream, width, height), width, height)
+}
+
+fn symbol(buffer: &Buffer, x: u16, y: u16) -> char {
+    buffer.get(x, y).unwrap().symbol
+}
 
 // =========================================================================
 // State-changing method tests
@@ -15,6 +45,8 @@ fn test_append() {
     stream.append("Hello ");
     stream.append("World");
     assert_eq!(stream.status(), StreamStatus::Streaming);
+    stream.complete();
+    assert_eq!(render_rows(&stream, 12, 1)[0], "Hello World ");
 }
 
 #[test]
@@ -23,6 +55,8 @@ fn test_append_from_idle_to_streaming() {
     assert_eq!(stream.status(), StreamStatus::Idle);
     stream.append("test");
     assert_eq!(stream.status(), StreamStatus::Streaming);
+    // Nothing has been typed yet
+    assert_eq!(stream.progress(), 0.0);
 }
 
 #[test]
@@ -31,14 +65,17 @@ fn test_set_content() {
     stream.set_content("Complete text");
     assert!(stream.is_complete());
     assert_eq!(stream.progress(), 1.0);
+    assert_eq!(render_rows(&stream, 13, 1)[0], "Complete text");
 }
 
 #[test]
 fn test_clear() {
     let mut stream = AiStream::new();
-    stream.append("Some content");
+    stream.set_content("Some content");
     stream.clear();
     assert_eq!(stream.status(), StreamStatus::Idle);
+    assert_eq!(stream.progress(), 1.0); // empty content
+    assert_eq!(render_rows(&stream, 12, 1)[0].trim(), "");
 }
 
 #[test]
@@ -48,6 +85,7 @@ fn test_complete() {
     stream.complete();
     assert!(stream.is_complete());
     assert_eq!(stream.status(), StreamStatus::Complete);
+    assert_eq!(stream.progress(), 1.0);
 }
 
 #[test]
@@ -73,6 +111,20 @@ fn test_pause_when_not_streaming() {
 }
 
 #[test]
+fn test_paused_stream_does_not_advance() {
+    let mut stream = AiStream::new()
+        .content("abcd")
+        .typing_style(TypingStyle::Character)
+        .typing_speed(0);
+    stream.pause();
+    stream.tick();
+    assert_eq!(stream.progress(), 0.0);
+    stream.resume();
+    stream.tick();
+    assert_eq!(stream.progress(), 0.25);
+}
+
+#[test]
 fn test_resume() {
     let mut stream = AiStream::new();
     stream.append("test");
@@ -87,27 +139,39 @@ fn test_resume_when_not_paused() {
     stream.append("test");
     stream.resume(); // Should not change status
     assert_eq!(stream.status(), StreamStatus::Streaming);
+
+    let mut idle = AiStream::new();
+    idle.resume();
+    assert_eq!(idle.status(), StreamStatus::Idle);
 }
 
 #[test]
-fn test_scroll_down() {
-    let mut stream = AiStream::new();
-    stream.scroll_down(10);
-    // Just verify it doesn't panic - scroll is private
-}
-
-#[test]
-fn test_scroll_up() {
-    let mut stream = AiStream::new();
-    stream.scroll_up(10);
-    // Just verify it doesn't panic
-}
-
-#[test]
-fn test_tick_updates_animation() {
-    let mut stream = AiStream::new();
+fn test_tick_advances_thinking_indicator() {
+    // Streaming with no content yet shows the thinking spinner, one frame per tick.
+    let mut stream = AiStream::new().content("");
+    let buffer = render(&stream, 20, 1);
+    assert_eq!(symbol(&buffer, 0, 0), '⠋');
+    assert_eq!(rows(&buffer, 20, 1)[0].trim_end(), "⠋ Thinking...");
+    assert!(buffer
+        .get(2, 0)
+        .unwrap()
+        .modifier
+        .contains(Modifier::ITALIC));
     stream.tick();
-    // Just verify it doesn't panic
+    assert_eq!(symbol(&render(&stream, 20, 1), 0, 0), '⠙');
+    stream.tick();
+    assert_eq!(symbol(&render(&stream, 20, 1), 0, 0), '⠹');
+    stream.tick();
+    assert_eq!(symbol(&render(&stream, 20, 1), 0, 0), '⠸');
+    stream.tick();
+    assert_eq!(symbol(&render(&stream, 20, 1), 0, 0), '⠋');
+}
+
+#[test]
+fn test_thinking_disabled() {
+    // Without the indicator only the streaming cursor is drawn.
+    let stream = AiStream::new().thinking(false).content("");
+    assert_eq!(render_rows(&stream, 20, 1)[0].trim_end(), "█");
 }
 
 #[test]
@@ -117,6 +181,7 @@ fn test_tick_with_content_no_style() {
         .typing_style(TypingStyle::None);
     stream.tick();
     assert!(stream.is_complete());
+    assert_eq!(render_rows(&stream, 5, 1)[0], "Hello");
 }
 
 // =========================================================================
@@ -147,15 +212,20 @@ fn test_progress_empty() {
 
 #[test]
 fn test_progress_partial() {
-    let mut stream = AiStream::new();
-    stream.set_content("hello");
-    assert_eq!(stream.progress(), 1.0); // set_content shows all
+    let mut stream = AiStream::new()
+        .content("hello")
+        .typing_style(TypingStyle::Character)
+        .typing_speed(0);
+    stream.tick();
+    stream.tick();
+    assert_eq!(stream.progress(), 0.4);
 }
 
 #[test]
 fn test_content_builder() {
     let stream = AiStream::new().content("Initial text");
     assert_eq!(stream.status(), StreamStatus::Streaming);
+    assert_eq!(stream.progress(), 0.0);
 }
 
 // =========================================================================
@@ -164,18 +234,26 @@ fn test_content_builder() {
 
 #[test]
 fn test_ai_stream_render() {
-    let stream = revue::widget::developer::ai_response("Test content");
+    // Nothing typed yet: the block cursor sits at the origin.
+    let stream = ai_response("Test content");
+    let buffer = render(&stream, 40, 10);
+    assert_eq!(symbol(&buffer, 0, 0), '█');
+    assert_eq!(rows(&buffer, 40, 10)[0].trim_end(), "█");
+}
 
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    stream.render(&mut ctx);
+#[test]
+fn test_render_default() {
+    // An idle stream with no content draws nothing.
+    let stream = AiStream::default();
+    for row in render_rows(&stream, 40, 10) {
+        assert_eq!(row.trim(), "");
+    }
 }
 
 #[test]
 fn test_render_empty_area() {
-    let stream = AiStream::new();
+    let mut stream = AiStream::new();
+    stream.set_content("text");
 
     let mut buffer = Buffer::new(0, 0);
     let area = Rect::new(0, 0, 0, 0);
@@ -186,24 +264,42 @@ fn test_render_empty_area() {
 
 #[test]
 fn test_render_with_newlines() {
-    let stream = AiStream::new().content("Line 1\nLine 2\nLine 3");
-
-    let mut buffer = Buffer::new(40, 10);
-    let area = Rect::new(0, 0, 40, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    stream.render(&mut ctx);
+    let mut stream = AiStream::new();
+    stream.set_content("Line 1\nLine 2\nLine 3");
+    let rows = render_rows(&stream, 40, 10);
+    assert_eq!(rows[0].trim_end(), "Line 1");
+    assert_eq!(rows[1].trim_end(), "Line 2");
+    assert_eq!(rows[2].trim_end(), "Line 3");
+    assert_eq!(rows[3].trim_end(), "");
 }
 
 #[test]
 fn test_render_with_wrap() {
-    let stream = AiStream::new().wrap(true).content(&"A".repeat(100));
+    let mut stream = AiStream::new().wrap(true);
+    stream.set_content("A".repeat(50));
+    let rows = render_rows(&stream, 20, 10);
+    assert_eq!(rows[0], "A".repeat(20));
+    assert_eq!(rows[1], "A".repeat(20));
+    assert_eq!(rows[2].trim_end(), "A".repeat(10));
+    assert_eq!(rows[3].trim_end(), "");
+}
 
-    let mut buffer = Buffer::new(20, 10);
-    let area = Rect::new(0, 0, 20, 10);
-    let mut ctx = RenderContext::new(&mut buffer, area);
+#[test]
+fn test_render_without_wrap() {
+    let mut stream = AiStream::new().wrap(false);
+    stream.set_content("A".repeat(50));
+    let rows = render_rows(&stream, 20, 10);
+    assert_eq!(rows[0], "A".repeat(20));
+    assert_eq!(rows[1].trim_end(), "");
+}
 
-    stream.render(&mut ctx);
+#[test]
+fn test_render_clips_to_height() {
+    let mut stream = AiStream::new();
+    stream.set_content("1\n2\n3\n4");
+    let rows = render_rows(&stream, 5, 2);
+    assert_eq!(rows[0].trim_end(), "1");
+    assert_eq!(rows[1].trim_end(), "2");
 }
 
 // =========================================================================
@@ -211,21 +307,59 @@ fn test_render_with_wrap() {
 // =========================================================================
 
 #[test]
-fn test_builder_chain() {
-    use revue::widget::developer::{StreamCursor, TypingStyle};
-    use revue::style::Color;
+fn test_builder_colors() {
+    let mut stream = AiStream::new().fg(Color::MAGENTA).bg(Color::BLACK);
+    stream.set_content("x");
+    let buffer = render(&stream, 3, 1);
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.symbol, 'x');
+    assert_eq!(cell.fg, Some(Color::MAGENTA));
+    assert_eq!(cell.bg, Some(Color::BLACK));
+}
 
-    let _stream = AiStream::new()
-        .typing_style(TypingStyle::Word)
-        .typing_speed(50)
+#[test]
+fn test_builder_cursor_and_color() {
+    let stream = AiStream::new()
         .cursor(StreamCursor::Bar)
-        .fg(Color::CYAN)
-        .bg(Color::BLACK)
         .cursor_color(Color::YELLOW)
-        .thinking(false)
-        .wrap(false)
-        .markdown(false);
-    // If it compiles, the chain works
+        .content("abc");
+    let buffer = render(&stream, 5, 1);
+    let cell = buffer.get(0, 0).unwrap();
+    assert_eq!(cell.symbol, '│');
+    assert_eq!(cell.fg, Some(Color::YELLOW));
+}
+
+#[test]
+fn test_builder_cursor_styles() {
+    let cases = [
+        (StreamCursor::Block, '█'),
+        (StreamCursor::Underline, '_'),
+        (StreamCursor::Bar, '│'),
+        (StreamCursor::None, ' '),
+    ];
+    for (cursor, expected) in cases {
+        let stream = AiStream::new().cursor(cursor).content("abc");
+        assert_eq!(symbol(&render(&stream, 5, 1), 0, 0), expected, "{cursor:?}");
+    }
+}
+
+#[test]
+fn test_cursor_follows_typed_text() {
+    let mut stream = AiStream::new()
+        .content("abc")
+        .typing_style(TypingStyle::Character)
+        .typing_speed(0);
+    stream.tick();
+    stream.tick();
+    // Two ticks advance the animation frame to 2, so the cursor is drawn.
+    assert_eq!(render_rows(&stream, 5, 1)[0], "ab█  ");
+}
+
+#[test]
+fn test_cursor_hidden_once_complete() {
+    let mut stream = AiStream::new().content("abc");
+    stream.complete();
+    assert_eq!(render_rows(&stream, 5, 1)[0], "abc  ");
 }
 
 // =========================================================================
@@ -234,14 +368,16 @@ fn test_builder_chain() {
 
 #[test]
 fn test_ai_stream_helper() {
-    let stream = revue::widget::developer::ai_stream();
+    let stream = ai_stream();
     assert_eq!(stream.status(), StreamStatus::Idle);
 }
 
 #[test]
 fn test_ai_response_helper() {
-    let stream = revue::widget::developer::ai_response("Hello World");
+    let mut stream = ai_response("Hello World");
     assert_eq!(stream.status(), StreamStatus::Streaming);
+    stream.complete();
+    assert_eq!(render_rows(&stream, 11, 1)[0], "Hello World");
 }
 
 // =========================================================================
@@ -252,14 +388,21 @@ fn test_ai_response_helper() {
 fn test_append_empty_string() {
     let mut stream = AiStream::new();
     stream.append("");
-    // Should not panic
+    assert_eq!(stream.status(), StreamStatus::Streaming);
+    assert_eq!(stream.progress(), 1.0);
 }
 
 #[test]
 fn test_append_unicode() {
-    let mut stream = AiStream::new();
+    let mut stream = AiStream::new()
+        .typing_style(TypingStyle::Character)
+        .typing_speed(0);
     stream.append("Hello 世界");
-    // Should handle unicode
+    stream.tick();
+    // Progress is counted in characters, not bytes
+    assert_eq!(stream.progress(), 1.0 / 8.0);
+    stream.complete();
+    assert!(render_rows(&stream, 10, 1)[0].starts_with("Hello 世界"));
 }
 
 #[test]
@@ -280,38 +423,35 @@ fn test_pause_resume_cycle() {
     assert_eq!(stream.status(), StreamStatus::Paused);
 }
 
-#[test]
-fn test_scroll_methods() {
-    let mut stream = AiStream::new();
-    stream.scroll_up(100);
-    stream.scroll_down(100);
-    // Should not panic, saturating arithmetic used
-}
-
 // =========================================================================
-// Typing animation tests (public API only)
+// Typing animation tests
 // =========================================================================
 
 #[test]
 fn test_tick_with_word_style() {
     let mut stream = AiStream::new()
         .content("hello world")
-        .typing_style(TypingStyle::Word);
+        .typing_style(TypingStyle::Word)
+        .typing_speed(0);
     stream.tick();
-    // Progress should increase
-    let p1 = stream.progress();
+    // First word plus its trailing space
+    assert_eq!(stream.progress(), 6.0 / 11.0);
     stream.tick();
-    let p2 = stream.progress();
-    assert!(p2 >= p1);
+    assert_eq!(stream.progress(), 1.0);
+    assert!(stream.is_complete());
 }
 
 #[test]
 fn test_tick_with_line_style() {
     let mut stream = AiStream::new()
         .content("line1\nline2")
-        .typing_style(TypingStyle::Line);
+        .typing_style(TypingStyle::Line)
+        .typing_speed(0);
     stream.tick();
-    // Should not panic
+    // First line including its newline
+    assert_eq!(stream.progress(), 6.0 / 11.0);
+    stream.tick();
+    assert!(stream.is_complete());
 }
 
 #[test]
@@ -319,10 +459,11 @@ fn test_tick_with_chunk_style() {
     let mut stream = AiStream::new()
         .content("0123456789")
         .typing_style(TypingStyle::Chunk)
-        .typing_speed(0); // Set to 0 for immediate progress
+        .typing_speed(0);
     stream.tick();
-    // Should show some progress
-    assert!(stream.progress() > 0.0);
+    assert_eq!(stream.progress(), 0.5);
+    stream.tick();
+    assert!(stream.is_complete());
 }
 
 #[test]
@@ -330,49 +471,17 @@ fn test_tick_with_character_style() {
     let mut stream = AiStream::new()
         .content("test")
         .typing_style(TypingStyle::Character)
-        .typing_speed(0); // Set to 0 for immediate progress
+        .typing_speed(0);
     stream.tick();
-    // Should show some progress
-    assert!(stream.progress() > 0.0);
-}
-
-// =========================================================================
-// Builder method tests
-// =========================================================================
-
-#[test]
-fn test_builder_typing_style() {
-    use revue::widget::developer::TypingStyle;
-
-    let stream = AiStream::new().typing_style(TypingStyle::Word);
-    // Builder returns self, we can verify it compiles
-    let _ = stream.typing_style(TypingStyle::Line);
+    assert_eq!(stream.progress(), 0.25);
 }
 
 #[test]
-fn test_builder_typing_speed() {
-    let stream = AiStream::new().typing_speed(100);
-    let _ = stream.typing_speed(50);
-}
-
-#[test]
-fn test_builder_cursor() {
-    use revue::widget::developer::StreamCursor;
-
-    let stream = AiStream::new().cursor(StreamCursor::Bar);
-    let _ = stream.cursor(StreamCursor::None);
-}
-
-#[test]
-fn test_builder_colors() {
-    use revue::style::Color;
-
-    let stream = AiStream::new().fg(Color::MAGENTA).bg(Color::BLACK);
-    let _ = stream.cursor_color(Color::YELLOW);
-}
-
-#[test]
-fn test_builder_flags() {
-    let stream = AiStream::new().thinking(false).wrap(false).markdown(false);
-    let _ = stream.thinking(true).wrap(true).markdown(true);
+fn test_typing_speed_throttles_ticks() {
+    let mut stream = AiStream::new()
+        .content("test")
+        .typing_style(TypingStyle::Character)
+        .typing_speed(60_000);
+    stream.tick();
+    assert_eq!(stream.progress(), 0.0);
 }

@@ -221,10 +221,10 @@ pub struct App {
     /// Track if DOM tree needs rebuild (root node creation)
     needs_dom_rebuild: bool,
     /// Reconcile the DOM against the view on every frame (opt-in, see
-    /// [`AppBuilder::incremental_dom`](crate::app::AppBuilder::incremental_dom))
+    /// [`AppBuilder::incremental_dom`](crate::core::app::AppBuilder::incremental_dom))
     incremental_dom: bool,
     /// Tab moves `:focus` between focusable nodes (see
-    /// [`AppBuilder::tab_navigation`](crate::app::AppBuilder::tab_navigation))
+    /// [`AppBuilder::tab_navigation`](crate::core::app::AppBuilder::tab_navigation))
     tab_navigation: bool,
     /// Run [`LayoutEngine`] every frame. Off unless something will read its
     /// output - and nothing in the render path does: containers compute their
@@ -791,7 +791,7 @@ impl App {
     ///
     /// Always clears and renders the whole view. Painting into a buffer is
     /// memory traffic; the expensive part of a frame is what goes down the wire
-    /// to the terminal, and the buffer diff in [`draw_to_terminal`] already
+    /// to the terminal, and the buffer diff in [`draw_to_terminal`](Self::draw_to_terminal) already
     /// reduces that to exactly the cells that changed.
     ///
     /// This used to skip rendering when the DOM reported no dirty nodes, and to

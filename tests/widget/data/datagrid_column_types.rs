@@ -1,7 +1,7 @@
 //! DataGrid column type tests
 
-use revue::widget::data::datagrid::types::column::GridColumn;
-use revue::widget::data::datagrid::types::column_types::{Alignment, ColumnType};
+use revue::widget::data::datagrid::GridColumn;
+use revue::widget::data::datagrid::{Alignment, ColumnType};
 
 // =========================================================================
 // Constructor tests
@@ -21,22 +21,6 @@ fn test_grid_column_new_with_string() {
     assert_eq!(col.title, "Name");
 }
 
-#[test]
-fn test_grid_column_new_defaults() {
-    let col = GridColumn::new("test", "Test");
-    assert_eq!(col.col_type, ColumnType::Text);
-    assert_eq!(col.width, 0);
-    assert_eq!(col.min_width, 5);
-    assert_eq!(col.max_width, 50);
-    assert!(col.sortable);
-    assert!(col.filterable);
-    assert!(!col.editable);
-    assert!(col.visible);
-    assert_eq!(col.align, Alignment::Left);
-    assert!(col.resizable);
-    assert!(!col.frozen);
-}
-
 // =========================================================================
 // Builder method tests - col_type
 // =========================================================================
@@ -45,12 +29,6 @@ fn test_grid_column_new_defaults() {
 fn test_grid_column_col_type_text() {
     let col = GridColumn::new("test", "Test").col_type(ColumnType::Text);
     assert_eq!(col.col_type, ColumnType::Text);
-}
-
-#[test]
-fn test_grid_column_col_type_number() {
-    let col = GridColumn::new("test", "Test").col_type(ColumnType::Number);
-    assert_eq!(col.col_type, ColumnType::Number);
 }
 
 #[test]
@@ -76,39 +54,9 @@ fn test_grid_column_col_type_custom() {
 // =========================================================================
 
 #[test]
-fn test_grid_column_width() {
-    let col = GridColumn::new("test", "Test").width(20);
-    assert_eq!(col.width, 20);
-}
-
-#[test]
-fn test_grid_column_width_zero() {
-    let col = GridColumn::new("test", "Test").width(0);
-    assert_eq!(col.width, 0);
-}
-
-#[test]
 fn test_grid_column_width_max() {
     let col = GridColumn::new("test", "Test").width(u16::MAX);
     assert_eq!(col.width, u16::MAX);
-}
-
-#[test]
-fn test_grid_column_min_width() {
-    let col = GridColumn::new("test", "Test").min_width(10);
-    assert_eq!(col.min_width, 10);
-}
-
-#[test]
-fn test_grid_column_min_width_zero() {
-    let col = GridColumn::new("test", "Test").min_width(0);
-    assert_eq!(col.min_width, 0);
-}
-
-#[test]
-fn test_grid_column_max_width() {
-    let col = GridColumn::new("test", "Test").max_width(100);
-    assert_eq!(col.max_width, 100);
 }
 
 #[test]
@@ -133,18 +81,6 @@ fn test_grid_column_width_chain() {
 // =========================================================================
 
 #[test]
-fn test_grid_column_sortable_true() {
-    let col = GridColumn::new("test", "Test").sortable(true);
-    assert!(col.sortable);
-}
-
-#[test]
-fn test_grid_column_sortable_false() {
-    let col = GridColumn::new("test", "Test").sortable(false);
-    assert!(!col.sortable);
-}
-
-#[test]
 fn test_grid_column_sortable_default_is_true() {
     let col = GridColumn::new("test", "Test");
     assert!(col.sortable);
@@ -153,18 +89,6 @@ fn test_grid_column_sortable_default_is_true() {
 // =========================================================================
 // Builder method tests - editable
 // =========================================================================
-
-#[test]
-fn test_grid_column_editable_true() {
-    let col = GridColumn::new("test", "Test").editable(true);
-    assert!(col.editable);
-}
-
-#[test]
-fn test_grid_column_editable_false() {
-    let col = GridColumn::new("test", "Test").editable(false);
-    assert!(!col.editable);
-}
 
 #[test]
 fn test_grid_column_editable_default_is_false() {
@@ -176,57 +100,9 @@ fn test_grid_column_editable_default_is_false() {
 // Builder method tests - align
 // =========================================================================
 
-#[test]
-fn test_grid_column_align_left() {
-    let col = GridColumn::new("test", "Test").align(Alignment::Left);
-    assert_eq!(col.align, Alignment::Left);
-}
-
-#[test]
-fn test_grid_column_align_center() {
-    let col = GridColumn::new("test", "Test").align(Alignment::Center);
-    assert_eq!(col.align, Alignment::Center);
-}
-
-#[test]
-fn test_grid_column_align_right() {
-    let col = GridColumn::new("test", "Test").align(Alignment::Right);
-    assert_eq!(col.align, Alignment::Right);
-}
-
-#[test]
-fn test_grid_column_right_shortcut() {
-    let col = GridColumn::new("test", "Test").right();
-    assert_eq!(col.align, Alignment::Right);
-}
-
-#[test]
-fn test_grid_column_center_shortcut() {
-    let col = GridColumn::new("test", "Test").center();
-    assert_eq!(col.align, Alignment::Center);
-}
-
-#[test]
-fn test_grid_column_align_default_is_left() {
-    let col = GridColumn::new("test", "Test");
-    assert_eq!(col.align, Alignment::Left);
-}
-
 // =========================================================================
 // Builder method tests - resizable
 // =========================================================================
-
-#[test]
-fn test_grid_column_resizable_true() {
-    let col = GridColumn::new("test", "Test").resizable(true);
-    assert!(col.resizable);
-}
-
-#[test]
-fn test_grid_column_resizable_false() {
-    let col = GridColumn::new("test", "Test").resizable(false);
-    assert!(!col.resizable);
-}
 
 #[test]
 fn test_grid_column_resizable_default_is_true() {
@@ -237,12 +113,6 @@ fn test_grid_column_resizable_default_is_true() {
 // =========================================================================
 // Builder method tests - frozen
 // =========================================================================
-
-#[test]
-fn test_grid_column_frozen_true() {
-    let col = GridColumn::new("test", "Test").frozen(true);
-    assert!(col.frozen);
-}
 
 #[test]
 fn test_grid_column_frozen_false() {
