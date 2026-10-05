@@ -9,9 +9,11 @@ mod barchart;
 mod boxplot;
 mod candlechart;
 mod chart;
+mod chart_render;
 mod chart_stats;
 mod chart_types;
 mod color_scheme;
+mod histogram;
 mod scatterchart;
 
 /// Render `view` into a fresh `width` x `height` buffer.
