@@ -8,7 +8,9 @@ use revue::widget::View;
 mod barchart;
 mod boxplot;
 mod candlechart;
+mod chart;
 mod chart_stats;
+mod chart_types;
 mod color_scheme;
 mod scatterchart;
 
