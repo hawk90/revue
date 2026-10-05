@@ -214,9 +214,8 @@ mod timer;
 pub mod timeseries_tests;
 #[path = "widget/tooltip.rs"]
 mod tooltip;
-// TODO(test-coverage): transition has API mismatches
-// #[path = "widget/transition/mod.rs"]
-// mod transition;
+#[path = "widget/transition/mod.rs"]
+mod transition;
 #[path = "widget/validation.rs"]
 mod validation;
 #[path = "widget/vim.rs"]
