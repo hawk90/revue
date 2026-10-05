@@ -49,7 +49,7 @@ These APIs work but may be refined:
 
 ## Minimum Supported Rust Version (MSRV)
 
-**Current MSRV: 1.87**
+**Current MSRV: 1.88**
 
 MSRV bumps are treated as minor version changes and documented in CHANGELOG.md.
 
