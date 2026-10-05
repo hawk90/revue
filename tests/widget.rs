@@ -165,9 +165,8 @@ mod selection_list;
 mod sidebar_tests;
 #[path = "widget/skeleton.rs"]
 mod skeleton;
-// TODO(test-coverage): slider has API mismatches
-// #[path = "widget/slider/mod.rs"]
-// mod slider;
+#[path = "widget/slider/mod.rs"]
+mod slider;
 #[cfg(feature = "markdown")]
 #[path = "widget/slides.rs"]
 mod slides;

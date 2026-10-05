@@ -344,7 +344,7 @@ impl Slider {
         }
 
         let track_len = self.length.min(area.width.saturating_sub(x));
-        let filled = (self.normalized() * (track_len - 1) as f64).round() as u16;
+        let filled = (self.normalized() * track_len.saturating_sub(1) as f64).round() as u16;
 
         // Render based on style
         match self.style {
@@ -458,7 +458,8 @@ impl Slider {
             let tick_y = y + 1;
             for i in 0..self.tick_count {
                 let tick_x = (self.label.as_ref().map(|l| l.len() + 1).unwrap_or(0) as u16)
-                    + (i as f64 / (self.tick_count - 1) as f64 * (track_len - 1) as f64) as u16;
+                    + (i as f64 / (self.tick_count - 1) as f64 * track_len.saturating_sub(1) as f64)
+                        as u16;
                 if tick_x < area.width {
                     let mut cell = Cell::new('┴');
                     cell.fg = Some(self.track_color);
@@ -478,7 +479,7 @@ impl Slider {
         let area = ctx.area;
         let x: u16 = 0;
         let track_len = self.length.min(area.height);
-        let filled = (self.normalized() * (track_len - 1) as f64).round() as u16;
+        let filled = (self.normalized() * track_len.saturating_sub(1) as f64).round() as u16;
 
         for i in 0..track_len {
             let from_bottom = track_len - 1 - i;
