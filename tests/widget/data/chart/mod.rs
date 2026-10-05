@@ -13,6 +13,7 @@ mod chart_render;
 mod chart_stats;
 mod chart_types;
 mod color_scheme;
+mod heatmap;
 mod histogram;
 mod piechart;
 mod scatterchart;
