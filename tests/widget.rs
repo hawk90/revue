@@ -9,9 +9,8 @@ mod accordion;
 mod aistream;
 #[path = "widget/alert.rs"]
 mod alert;
-// TODO(test-coverage): autocomplete has API mismatches
-// #[path = "widget/autocomplete/mod.rs"]
-// mod autocomplete;
+#[path = "widget/autocomplete/mod.rs"]
+mod autocomplete;
 #[path = "widget/avatar.rs"]
 mod avatar;
 #[path = "widget/badge.rs"]
