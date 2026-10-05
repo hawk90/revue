@@ -407,14 +407,19 @@ mod tests {
 
     #[test]
     fn test_worker_state() {
-        let handle = WorkerHandle::spawn_blocking(|| {
-            thread::sleep(Duration::from_millis(50));
+        // Held until the assertion is made. A sleep here made the test assume
+        // the main thread reaches `is_finished` within the sleep, which a
+        // loaded CI runner does not promise.
+        let (release, wait) = std::sync::mpsc::channel::<()>();
+        let handle = WorkerHandle::spawn_blocking(move || {
+            let _ = wait.recv();
             "done"
         });
 
         // Should be running or pending
         assert!(!handle.is_finished());
 
+        release.send(()).unwrap();
         let result = handle.join();
         assert_eq!(result.unwrap(), "done");
     }
@@ -608,7 +613,10 @@ mod tests {
             42
         });
 
-        let result = handle.join_timeout(Duration::from_millis(100));
+        // The deadline is an upper bound, not the expected time: `join_timeout`
+        // returns as soon as the task finishes. 100ms failed on a loaded macOS
+        // runner.
+        let result = handle.join_timeout(Duration::from_secs(10));
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 42);
     }
@@ -654,7 +662,7 @@ mod tests {
         });
 
         // Wait for completion using is_finished() instead of fixed sleep
-        let timeout = std::time::Instant::now() + Duration::from_millis(200);
+        let timeout = std::time::Instant::now() + Duration::from_secs(10);
         while !handle.is_finished() && std::time::Instant::now() < timeout {
             thread::sleep(Duration::from_millis(1));
         }
