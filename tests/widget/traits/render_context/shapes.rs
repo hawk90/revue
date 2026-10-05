@@ -1,211 +1,110 @@
-//! Tests for RenderContext shape drawing methods
+//! RenderContext shape drawing tests
 //!
-//! Extracted from src/widget/traits/render_context/shapes.rs
+//! Lines, boxes, fill/clear and titled boxes with an ASCII title are
+//! covered by tests/shapes_tests.rs and the in-source tests in
+//! src/widget/traits/render_context/tests.rs. These cover titles that are
+//! empty, wide or too long, and zero-sized shapes.
 
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
-use revue::widget::traits::render_context::RenderContext;
-use revue::widget::View;
+use revue::widget::traits::RenderContext;
 
-// Test widget to create a render context
-#[allow(dead_code)]
-struct TestWidget;
-impl View for TestWidget {
-    fn render(&self, _ctx: &mut RenderContext) {}
+fn row(buffer: &Buffer, y: u16) -> String {
+    (0..buffer.width())
+        .map(|x| buffer.get(x, y).unwrap().symbol)
+        .collect()
+}
+
+fn draw(width: u16, height: u16, f: impl FnOnce(&mut RenderContext)) -> Buffer {
+    let mut buffer = Buffer::new(width, height);
+    {
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, height));
+        f(&mut ctx);
+    }
+    buffer
 }
 
 #[test]
-fn test_draw_hline() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    // Should not panic
-    ctx.draw_hline(10, 5, 20, '-', Color::rgb(255, 255, 255));
+fn test_draw_box_titled_empty_title_is_a_plain_border() {
+    let buffer = draw(6, 3, |ctx| {
+        ctx.draw_box_titled(0, 0, 6, 3, "", Color::WHITE)
+    });
+    assert_eq!(row(&buffer, 0), "╭────╮");
+    assert_eq!(row(&buffer, 1), "│    │");
+    assert_eq!(row(&buffer, 2), "╰────╯");
 }
 
 #[test]
-fn test_draw_vline() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.draw_vline(10, 5, 10, '|', Color::rgb(255, 255, 255));
+fn test_draw_box_titled_title_starts_after_one_border_cell() {
+    let buffer = draw(10, 3, |ctx| {
+        ctx.draw_box_titled(0, 0, 10, 3, "Ab", Color::WHITE)
+    });
+    assert_eq!(row(&buffer, 0), "╭─Ab─────╮");
 }
 
 #[test]
-fn test_draw_box_rounded() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.draw_box_rounded(5, 5, 20, 10, Color::rgb(255, 255, 255));
+fn test_draw_box_titled_wide_title() {
+    let buffer = draw(10, 3, |ctx| {
+        ctx.draw_box_titled(0, 0, 10, 3, "标题", Color::WHITE)
+    });
+    assert_eq!(buffer.get(1, 0).unwrap().symbol, '─');
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, '标');
+    assert!(buffer.get(3, 0).unwrap().is_continuation());
+    assert_eq!(buffer.get(4, 0).unwrap().symbol, '题');
+    assert!(buffer.get(5, 0).unwrap().is_continuation());
+    assert_eq!(buffer.get(6, 0).unwrap().symbol, '─');
+    assert_eq!(buffer.get(9, 0).unwrap().symbol, '╮');
 }
 
 #[test]
-fn test_draw_box_rounded_too_small() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    // Width or height < 2 should return early
-    ctx.draw_box_rounded(5, 5, 1, 10, Color::rgb(255, 255, 255));
-    ctx.draw_box_rounded(5, 5, 10, 1, Color::rgb(255, 255, 255));
+fn test_draw_box_titled_long_title_is_cut_before_the_corner() {
+    let buffer = draw(8, 3, |ctx| {
+        ctx.draw_box_titled_single(0, 0, 8, 3, "Very long title", Color::WHITE)
+    });
+    assert_eq!(row(&buffer, 0), "┌─Very ┐");
 }
 
 #[test]
-fn test_draw_box_no_top() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.draw_box_no_top(5, 5, 20, 10, Color::rgb(255, 255, 255));
+#[ignore = "BUG: a wide title char that does not fit leaves a hole in the top border"]
+fn test_draw_box_titled_wide_char_that_does_not_fit_is_replaced_by_border() {
+    // Width 6: title cells are 2..=4; '标' fits at 2-3, '题' would need 4-5
+    let buffer = draw(6, 3, |ctx| {
+        ctx.draw_box_titled_double(0, 0, 6, 3, "标题", Color::WHITE)
+    });
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '╔');
+    assert_eq!(buffer.get(1, 0).unwrap().symbol, '═');
+    assert_eq!(buffer.get(2, 0).unwrap().symbol, '标');
+    assert!(buffer.get(3, 0).unwrap().is_continuation());
+    assert_eq!(buffer.get(4, 0).unwrap().symbol, '═');
+    assert_eq!(buffer.get(5, 0).unwrap().symbol, '╗');
 }
 
 #[test]
-fn test_draw_header_line() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let parts = &[("Title", Color::rgb(255, 0, 0))];
-    ctx.draw_header_line(5, 5, 30, parts, Color::rgb(255, 255, 255));
+fn test_zero_sized_shapes_draw_nothing() {
+    let buffer = draw(6, 6, |ctx| {
+        ctx.fill(1, 1, 0, 0, '*', Color::WHITE);
+        ctx.fill(1, 1, 3, 0, '*', Color::WHITE);
+        ctx.fill(1, 1, 0, 3, '*', Color::WHITE);
+        ctx.fill_bg(1, 1, 0, 0, Color::BLUE);
+        ctx.draw_hline(1, 1, 0, '-', Color::WHITE);
+        ctx.draw_vline(1, 1, 0, '|', Color::WHITE);
+    });
+    for y in 0..6 {
+        for x in 0..6 {
+            let cell = buffer.get(x, y).unwrap();
+            assert_eq!(cell.symbol, ' ');
+            assert!(cell.bg.is_none());
+        }
+    }
 }
 
 #[test]
-fn test_draw_header_line_multiple_parts() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let parts = &[
-        ("A", Color::rgb(255, 0, 0)),
-        ("B", Color::rgb(0, 255, 0)),
-        ("C", Color::rgb(0, 0, 255)),
-    ];
-    ctx.draw_header_line(5, 5, 40, parts, Color::rgb(255, 255, 255));
-}
-
-#[test]
-fn test_draw_header_line_too_small() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    let parts = &[("Title", Color::rgb(255, 0, 0))];
-    // Width < 4 should return early
-    ctx.draw_header_line(5, 5, 3, parts, Color::rgb(255, 255, 255));
-}
-
-#[test]
-fn test_draw_box_single() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.draw_box_single(5, 5, 20, 10, Color::rgb(255, 255, 255));
-}
-
-#[test]
-fn test_draw_box_double() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.draw_box_double(5, 5, 20, 10, Color::rgb(255, 255, 255));
-}
-
-#[test]
-fn test_fill() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.fill(10, 10, 5, 3, '*', Color::rgb(255, 255, 255));
-}
-
-#[test]
-fn test_fill_bg() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.fill_bg(10, 10, 5, 3, Color::rgb(100, 100, 100));
-}
-
-#[test]
-fn test_clear() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.clear(10, 10, 5, 3);
-}
-
-#[test]
-fn test_draw_box_titled() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.draw_box_titled(5, 5, 30, 10, "Title", Color::rgb(255, 255, 255));
-}
-
-#[test]
-fn test_draw_box_titled_empty_title() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.draw_box_titled(5, 5, 30, 10, "", Color::rgb(255, 255, 255));
-}
-
-#[test]
-fn test_draw_box_titled_unicode() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.draw_box_titled(5, 5, 30, 10, "标题", Color::rgb(255, 255, 255));
-}
-
-#[test]
-fn test_draw_box_titled_single() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.draw_box_titled_single(5, 5, 30, 10, "Title", Color::rgb(255, 255, 255));
-}
-
-#[test]
-fn test_draw_box_titled_double() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.draw_box_titled_double(5, 5, 30, 10, "Title", Color::rgb(255, 255, 255));
-}
-
-#[test]
-fn test_fill_zero_area() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    // Zero width/height should not panic
-    ctx.fill(10, 10, 0, 0, '*', Color::rgb(255, 255, 255));
-    ctx.fill_bg(10, 10, 0, 0, Color::rgb(100, 100, 100));
-    ctx.clear(10, 10, 0, 0);
-}
-
-#[test]
-fn test_draw_lines_zero_length() {
-    let mut buffer = Buffer::new(80, 24);
-    let area = Rect::new(0, 0, 80, 24);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-
-    ctx.draw_hline(10, 5, 0, '-', Color::rgb(255, 255, 255));
-    ctx.draw_vline(10, 5, 0, '|', Color::rgb(255, 255, 255));
+fn test_zero_sized_clear_leaves_content() {
+    let buffer = draw(4, 2, |ctx| {
+        ctx.fill(0, 0, 4, 2, '#', Color::WHITE);
+        ctx.clear(0, 0, 0, 0);
+    });
+    assert_eq!(row(&buffer, 0), "####");
+    assert_eq!(row(&buffer, 1), "####");
 }

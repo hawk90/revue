@@ -1,16 +1,13 @@
-//! Tests for View, Interactive, and Draggable traits
-//!
-//! Extracted from src/widget/traits/view.rs
+//! Tests for the View, Interactive and Draggable trait defaults
 
-use revue::event::drag::{DragData, DropResult};
-use revue::event::{KeyEvent, MouseEvent, MouseEventKind, MouseButton};
+use revue::event::drag::DragData;
+use revue::event::{Key, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use revue::layout::Rect;
 use revue::render::Buffer;
-use revue::widget::traits::event::EventResult;
-use revue::widget::traits::render_context::RenderContext;
-use revue::widget::traits::{Draggable, Interactive, StyledView, View};
+use revue::widget::traits::{Draggable, EventResult, Interactive, RenderContext, View};
+use revue::widget::Text;
 
-// Test View implementation
+/// A view with an id and classes that draws a marker character
 struct TestView {
     id: Option<String>,
     classes: Vec<String>,
@@ -36,7 +33,9 @@ impl TestView {
 }
 
 impl View for TestView {
-    fn render(&self, _ctx: &mut RenderContext) {}
+    fn render(&self, ctx: &mut RenderContext) {
+        ctx.draw_char(0, 0, '#', revue::style::Color::WHITE);
+    }
 
     fn id(&self) -> Option<&str> {
         self.id.as_deref()
@@ -47,75 +46,93 @@ impl View for TestView {
     }
 }
 
+// =========================================================================
+// View defaults
+// =========================================================================
+
 #[test]
-fn test_view_widget_type() {
-    let view = TestView::new();
-    assert!(view.widget_type().contains("TestView"));
+fn test_view_widget_type_is_the_type_name() {
+    assert_eq!(TestView::new().widget_type(), "TestView");
 }
 
 #[test]
-fn test_view_id_none() {
-    let view = TestView::new();
-    assert!(view.id().is_none());
-}
+fn test_view_id_and_classes() {
+    let plain = TestView::new();
+    assert!(plain.id().is_none());
+    assert!(plain.classes().is_empty());
 
-#[test]
-fn test_view_id_some() {
-    let view = TestView::new().with_id("my-view");
+    let view = TestView::new()
+        .with_id("my-view")
+        .with_class("primary")
+        .with_class("active");
     assert_eq!(view.id(), Some("my-view"));
+    assert_eq!(view.classes(), &["primary", "active"]);
 }
 
 #[test]
-fn test_view_classes_empty() {
-    let view = TestView::new();
-    assert!(view.classes().is_empty());
-}
-
-#[test]
-fn test_view_classes_with_values() {
-    let view = TestView::new().with_class("primary").with_class("active");
-    assert_eq!(view.classes().len(), 2);
-}
-
-#[test]
-fn test_view_children_default() {
+fn test_view_defaults() {
     let view = TestView::new();
     assert!(view.children().is_empty());
+    assert!(view.needs_render());
+    assert!(view.key().is_none());
 }
 
 #[test]
-fn test_view_meta() {
+fn test_view_meta_combines_type_id_and_classes() {
     let view = TestView::new().with_id("test-id").with_class("test-class");
     let meta = view.meta();
+    assert_eq!(meta.widget_type, "TestView");
     assert_eq!(meta.id, Some("test-id".to_string()));
     assert!(meta.classes.contains("test-class"));
+    assert!(meta.key.is_none());
 }
 
 #[test]
-fn test_view_render() {
-    let view = TestView::new();
-    let mut buffer = Buffer::new(10, 5);
-    let area = Rect::new(0, 0, 10, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    view.render(&mut ctx);
+fn test_widget_classes_exposure() {
+    let widget = Text::new("Test").class("btn").class("primary");
+
+    let classes = View::classes(&widget);
+    assert_eq!(classes.len(), 2);
+    assert!(classes.contains(&"btn".to_string()));
+    assert!(classes.contains(&"primary".to_string()));
+
+    let meta = widget.meta();
+    assert!(meta.classes.contains("btn"));
+    assert!(meta.classes.contains("primary"));
 }
 
+// =========================================================================
+// Box<dyn View> delegates to the inner view
+// =========================================================================
+
 #[test]
-fn test_boxed_view() {
-    let view: Box<dyn View> = Box::new(TestView::new().with_id("boxed"));
+fn test_boxed_view_delegates_metadata() {
+    let view: Box<dyn View> = Box::new(TestView::new().with_id("boxed").with_class("a"));
+    assert_eq!(view.widget_type(), "TestView");
     assert_eq!(view.id(), Some("boxed"));
-    assert!(view.widget_type().contains("TestView"));
+    assert_eq!(view.classes(), &["a"]);
     assert!(view.children().is_empty());
+
+    let meta = view.meta();
+    assert_eq!(meta.widget_type, "TestView");
+    assert!(meta.classes.contains("a"));
 }
 
 #[test]
-fn test_boxed_view_meta() {
-    let view: Box<dyn View> = Box::new(TestView::new().with_class("box-class"));
-    let meta = view.meta();
-    assert!(meta.classes.contains("box-class"));
+fn test_boxed_view_delegates_render() {
+    let view: Box<dyn View> = Box::new(TestView::new());
+    let mut buffer = Buffer::new(4, 1);
+    {
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 4, 1));
+        view.render(&mut ctx);
+    }
+    assert_eq!(buffer.get(0, 0).unwrap().symbol, '#');
 }
 
-// Interactive trait tests
+// =========================================================================
+// Interactive defaults
+// =========================================================================
+
 struct TestInteractive;
 
 impl View for TestInteractive {
@@ -125,36 +142,29 @@ impl View for TestInteractive {
 impl Interactive for TestInteractive {}
 
 #[test]
-fn test_interactive_handle_key_default() {
-    use revue::event::Key;
+fn test_interactive_ignores_events_by_default() {
     let mut widget = TestInteractive;
-    let event = KeyEvent::new(Key::Enter);
-    assert_eq!(widget.handle_key(&event), EventResult::Ignored);
-}
+    assert_eq!(
+        widget.handle_key(&KeyEvent::new(Key::Enter)),
+        EventResult::Ignored
+    );
 
-#[test]
-fn test_interactive_handle_mouse_default() {
-    let mut widget = TestInteractive;
     let event = MouseEvent::new(5, 5, MouseEventKind::Down(MouseButton::Left));
-    let area = Rect::new(0, 0, 10, 10);
-    assert_eq!(widget.handle_mouse(&event, area), EventResult::Ignored);
+    assert_eq!(
+        widget.handle_mouse(&event, Rect::new(0, 0, 10, 10)),
+        EventResult::Ignored
+    );
 }
 
 #[test]
-fn test_interactive_focusable_default() {
-    let widget = TestInteractive;
-    assert!(widget.focusable());
+fn test_interactive_focusable_by_default() {
+    assert!(TestInteractive.focusable());
 }
 
-#[test]
-fn test_interactive_focus_blur() {
-    let mut widget = TestInteractive;
-    widget.on_focus();
-    widget.on_blur();
-    // Just verify they don't panic
-}
+// =========================================================================
+// Draggable defaults
+// =========================================================================
 
-// Draggable trait tests
 struct TestDraggable;
 
 impl View for TestDraggable {
@@ -163,84 +173,45 @@ impl View for TestDraggable {
 
 impl Draggable for TestDraggable {}
 
+struct FileDropTarget;
+
+impl View for FileDropTarget {
+    fn render(&self, _ctx: &mut RenderContext) {}
+}
+
+impl Draggable for FileDropTarget {
+    fn accepted_types(&self) -> &[&'static str] {
+        &["file"]
+    }
+}
+
 #[test]
-fn test_draggable_can_drag_default() {
-    let widget = TestDraggable;
+fn test_draggable_is_inert_by_default() {
+    let mut widget = TestDraggable;
     assert!(!widget.can_drag());
-}
-
-#[test]
-fn test_draggable_drag_data_default() {
-    let widget = TestDraggable;
     assert!(widget.drag_data().is_none());
-}
-
-#[test]
-fn test_draggable_drag_preview_default() {
-    let widget = TestDraggable;
     assert!(widget.drag_preview().is_none());
-}
-
-#[test]
-fn test_draggable_on_drag_start_end() {
-    let mut widget = TestDraggable;
-    widget.on_drag_start();
-    widget.on_drag_end(DropResult::Cancelled);
-}
-
-#[test]
-fn test_draggable_can_drop_default() {
-    let widget = TestDraggable;
     assert!(!widget.can_drop());
-}
-
-#[test]
-fn test_draggable_accepted_types_default() {
-    let widget = TestDraggable;
     assert!(widget.accepted_types().is_empty());
+    assert!(!widget.on_drop(DragData::text("test")));
 }
 
 #[test]
-fn test_draggable_can_accept_empty_types() {
+fn test_draggable_empty_accepted_types_accepts_anything() {
     let widget = TestDraggable;
-    let data = DragData::text("test");
-    // Empty accepted_types means accept all
-    assert!(widget.can_accept(&data));
+    assert!(widget.can_accept(&DragData::text("test")));
+    assert!(widget.can_accept(&DragData::new("file", 42u32)));
 }
 
 #[test]
-fn test_draggable_on_drag_enter_leave() {
-    let mut widget = TestDraggable;
-    let data = DragData::text("test");
-    widget.on_drag_enter(&data);
-    widget.on_drag_leave();
+fn test_draggable_accepted_types_filters_by_type_id() {
+    let widget = FileDropTarget;
+    assert!(widget.can_accept(&DragData::new("file", 42u32)));
+    assert!(!widget.can_accept(&DragData::text("test")));
 }
 
 #[test]
-fn test_draggable_on_drop_default() {
-    let mut widget = TestDraggable;
-    let data = DragData::text("test");
-    assert!(!widget.on_drop(data));
-}
-
-#[test]
-fn test_draggable_drop_bounds_default() {
-    let widget = TestDraggable;
+fn test_draggable_drop_bounds_default_is_the_area() {
     let area = Rect::new(10, 20, 30, 40);
-    assert_eq!(widget.drop_bounds(area), area);
-}
-
-#[test]
-fn test_boxed_view_render() {
-    let view: Box<dyn View> = Box::new(TestView::new());
-    let mut buffer = Buffer::new(10, 5);
-    let area = Rect::new(0, 0, 10, 5);
-    let mut ctx = RenderContext::new(&mut buffer, area);
-    view.render(&mut ctx);
-}
-
-#[test]
-fn test_boxed_view_classes() {
-    let view: Box<dyn View> = Box::new(TestView::new().with_class("a").with_class("b"));
-    assert_eq!(view.classes().len(), 2);
+    assert_eq!(TestDraggable.drop_bounds(area), area);
 }

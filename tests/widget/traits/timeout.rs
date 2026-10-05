@@ -1,6 +1,4 @@
 //! Tests for Timeout
-//!
-//! Extracted from src/widget/traits/timeout.rs
 
 use revue::widget::traits::Timeout;
 use std::thread;
@@ -127,8 +125,10 @@ fn test_timeout_reset_timer() {
     timeout.set("hello".to_string());
     thread::sleep(Duration::from_millis(30));
     timeout.reset_timer();
-    // After reset, should not be expired yet
+    // After reset, should not be expired yet and the full window is back
     assert!(!timeout.is_expired());
+    assert!(timeout.remaining().unwrap() > Duration::from_millis(20));
+    assert_eq!(timeout.get(), Some(&"hello".to_string()));
 }
 
 #[test]

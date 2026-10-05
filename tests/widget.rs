@@ -230,3 +230,5 @@ mod dropdown_tests;
 mod focus_handlers_tests;
 #[path = "widget/traits/theme.rs"]
 mod theme_constants_tests;
+#[path = "widget/traits/mod.rs"]
+mod traits;

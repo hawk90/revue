@@ -1,8 +1,6 @@
-//! Tests for event types
-//!
-//! Extracted from src/widget/traits/event.rs
+//! Tests for EventResult and FocusStyle
 
-use revue::widget::traits::event::{EventResult, FocusStyle};
+use revue::widget::traits::{EventResult, FocusStyle};
 
 // =========================================================================
 // EventResult tests
@@ -96,20 +94,6 @@ fn test_focus_style_variants() {
             assert_ne!(styles[i], styles[j]);
         }
     }
-}
-
-#[test]
-fn test_focus_style_clone() {
-    let style = FocusStyle::Rounded;
-    let cloned = style.clone();
-    assert_eq!(style, cloned);
-}
-
-#[test]
-fn test_focus_style_copy() {
-    let style = FocusStyle::Double;
-    let copied = style;
-    assert_eq!(style, copied);
 }
 
 #[test]
