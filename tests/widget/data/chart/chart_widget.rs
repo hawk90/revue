@@ -199,7 +199,6 @@ fn test_chart_infinite_points_are_skipped() {
 }
 
 #[test]
-#[ignore = "BUG: Chart overflows u16 (panics in debug) mapping points outside fixed axis bounds"]
 fn test_chart_points_outside_axis_bounds_are_clipped() {
     // Fixed bounds 0..10 with data reaching past both ends
     let s = Series::new("Data")
@@ -210,8 +209,51 @@ fn test_chart_points_outside_axis_bounds_are_clipped() {
         .x_axis(Axis::new().bounds(0.0, 10.0).grid(false))
         .y_axis(Axis::new().bounds(0.0, 10.0).grid(false));
     let buffer = render(&chart, 40, 20);
-    // Only (5, 5) is inside the plot
+    // Only (5, 5) is inside the plot: x = 8 + 5/10*31, y = 17 - 5/10*17
     assert_eq!(count_char(&buffer, '★'), 1);
+    assert_eq!(sym(&buffer, 23, 9), '★');
+    // The line through it is cut off at the plot edges, not dropped: it
+    // runs from the bottom-left corner to the top-right corner
+    assert_eq!(sym(&buffer, 8, 17), '╱');
+    assert_eq!(sym(&buffer, 39, 0), '╱');
+}
+
+#[test]
+fn test_chart_segment_crossing_the_plot_is_clipped() {
+    // Both ends outside the bounds; the segment still crosses the plot
+    let s = Series::new("Data").data(vec![(-10.0, 5.0), (20.0, 5.0)]);
+    let chart = plain()
+        .series(s)
+        .x_axis(Axis::new().bounds(0.0, 10.0).grid(false))
+        .y_axis(Axis::new().bounds(0.0, 10.0).grid(false));
+    let buffer = render(&chart, 40, 20);
+    let row: String = rows(&buffer)[9].chars().skip(8).collect();
+    assert_eq!(row, "─".repeat(32));
+}
+
+#[test]
+fn test_chart_segment_missing_the_plot_draws_nothing() {
+    // Entirely above the plot, with an area fill and step series too
+    let chart = plain()
+        .series(Series::new("L").data(vec![(0.0, 50.0), (10.0, 60.0)]))
+        .series(
+            Series::new("A")
+                .data(vec![(0.0, 50.0), (10.0, 60.0)])
+                .area(Color::BLUE),
+        )
+        .series(
+            Series::new("S")
+                .data(vec![(0.0, 50.0), (10.0, 60.0)])
+                .step(),
+        )
+        .x_axis(Axis::new().bounds(0.0, 10.0).grid(false))
+        .y_axis(Axis::new().bounds(0.0, 10.0).grid(false));
+    let buffer = render(&chart, 40, 20);
+    for y in 0..18 {
+        for x in 8..40 {
+            assert_eq!(sym(&buffer, x, y), ' ', "({x}, {y})");
+        }
+    }
 }
 
 // =========================================================================

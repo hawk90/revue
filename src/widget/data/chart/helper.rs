@@ -220,33 +220,29 @@ impl Chart {
         }
     }
 
-    /// Map data coordinates to screen coordinates
-    fn map_point(
-        &self,
-        x: f64,
-        y: f64,
-        bounds: (f64, f64, f64, f64),
-        chart_area: (u16, u16, u16, u16),
-    ) -> (u16, u16) {
+    /// Map a data point onto a `gw` x `gh` grid laid over the plot area.
+    ///
+    /// Returns fractional offsets: columns from the left edge and rows up from
+    /// the bottom edge. Points inside the axis bounds land in
+    /// `[0, gw - 1] x [0, gh - 1]`; points outside fall outside that range
+    /// (they are clipped by `clip_segment` and `grid_contains`, never
+    /// cast to `u16` unchecked).
+    fn grid_offset(x: f64, y: f64, bounds: (f64, f64, f64, f64), gw: u16, gh: u16) -> GridPoint {
         let (x_min, x_max, y_min, y_max) = bounds;
-        let (cx, cy, cw, ch) = chart_area;
-
         let x_range = x_max - x_min;
         let y_range = y_max - y_min;
 
-        let px = if x_range > 0.0 {
-            cx + ((x - x_min) / x_range * (cw as f64 - 1.0)) as u16
+        let ox = if x_range > 0.0 {
+            (x - x_min) / x_range * (gw as f64 - 1.0)
         } else {
-            cx + cw / 2
+            (gw / 2) as f64
         };
-
-        let py = if y_range > 0.0 {
-            cy + ch - 1 - ((y - y_min) / y_range * (ch as f64 - 1.0)) as u16
+        let oy = if y_range > 0.0 {
+            (y - y_min) / y_range * (gh as f64 - 1.0)
         } else {
-            cy + ch / 2
+            (gh - 1 - gh / 2) as f64
         };
-
-        (px, py)
+        (ox, oy)
     }
 
     /// Get line character based on direction
@@ -371,6 +367,60 @@ impl Chart {
             }
         }
     }
+}
+
+/// A point on the plot grid: fractional columns from the left edge and rows up
+/// from the bottom edge.
+type GridPoint = (f64, f64);
+
+/// Whether a grid point lies inside a `gw` x `gh` grid.
+fn grid_contains((x, y): GridPoint, gw: u16, gh: u16) -> bool {
+    const EPS: f64 = 1e-9;
+    x >= -EPS && x <= gw as f64 - 1.0 + EPS && y >= -EPS && y <= gh as f64 - 1.0 + EPS
+}
+
+/// Clip a segment to a `gw` x `gh` grid (Liang-Barsky).
+///
+/// Returns `None` when the segment misses the grid. Endpoints that are already
+/// inside are returned unchanged.
+fn clip_segment(p0: GridPoint, p1: GridPoint, gw: u16, gh: u16) -> Option<(GridPoint, GridPoint)> {
+    let (x_max, y_max) = (gw as f64 - 1.0, gh as f64 - 1.0);
+    let (dx, dy) = (p1.0 - p0.0, p1.1 - p0.1);
+    let (mut t0, mut t1) = (0.0f64, 1.0f64);
+    for (p, q) in [
+        (-dx, p0.0),
+        (dx, x_max - p0.0),
+        (-dy, p0.1),
+        (dy, y_max - p0.1),
+    ] {
+        if p == 0.0 {
+            if q < 0.0 {
+                return None;
+            }
+        } else {
+            let r = q / p;
+            if p < 0.0 {
+                t0 = t0.max(r);
+            } else {
+                t1 = t1.min(r);
+            }
+        }
+    }
+    if t0 > t1 {
+        return None;
+    }
+    let at = |t: f64| (p0.0 + t * dx, p0.1 + t * dy);
+    let a = if t0 > 0.0 { at(t0) } else { p0 };
+    let b = if t1 < 1.0 { at(t1) } else { p1 };
+    Some((a, b))
+}
+
+/// The grid cell (column, row from the top) holding a point inside a
+/// `gw` x `gh` grid.
+fn grid_cell((x, y): GridPoint, gw: u16, gh: u16) -> (u16, u16) {
+    let col = x.floor().clamp(0.0, gw as f64 - 1.0) as u16;
+    let up = y.floor().clamp(0.0, gh as f64 - 1.0) as u16;
+    (col, gh - 1 - up)
 }
 
 impl Default for Chart {
@@ -567,7 +617,6 @@ impl View for Chart {
                 continue;
             }
 
-            // Map all points to screen coordinates
             let chart_area = (
                 chart_bounds.x,
                 chart_bounds.y,
@@ -577,105 +626,93 @@ impl View for Chart {
             // Non-finite points are left out of the bounds, so they are left
             // out of the plot too (mapping them would overflow or pin them
             // to the left edge).
-            let screen_points: Vec<(u16, u16)> = series
+            let points: Vec<(f64, f64)> = series
                 .data
                 .iter()
+                .copied()
                 .filter(|(x, y)| x.is_finite() && y.is_finite())
-                .map(|&(x, y)| self.map_point(x, y, bounds, chart_area))
+                .collect();
+
+            // The pieces of the series line, in data coordinates
+            let data_segments: Vec<((f64, f64), (f64, f64))> = match series.chart_type {
+                ChartType::Line | ChartType::Area => {
+                    points.windows(2).map(|w| (w[0], w[1])).collect()
+                }
+                // Horizontal then vertical
+                ChartType::StepAfter => points
+                    .windows(2)
+                    .flat_map(|w| {
+                        let corner = (w[1].0, w[0].1);
+                        [(w[0], corner), (corner, w[1])]
+                    })
+                    .collect(),
+                // Vertical then horizontal
+                ChartType::StepBefore => points
+                    .windows(2)
+                    .flat_map(|w| {
+                        let corner = (w[0].0, w[1].1);
+                        [(w[0], corner), (corner, w[1])]
+                    })
+                    .collect(),
+                ChartType::Scatter => Vec::new(),
+            };
+
+            // Segments clipped to the plot, as screen cells. Points outside
+            // fixed axis bounds are cut off at the plot edge.
+            let (w, h) = (chart_bounds.width, chart_bounds.height);
+            let cell_segments: Vec<((u16, u16), (u16, u16))> = data_segments
+                .iter()
+                .filter_map(|&(a, b)| {
+                    let a = Self::grid_offset(a.0, a.1, bounds, w, h);
+                    let b = Self::grid_offset(b.0, b.1, bounds, w, h);
+                    clip_segment(a, b, w, h)
+                })
+                .map(|(a, b)| {
+                    let (ax, ay) = grid_cell(a, w, h);
+                    let (bx, by) = grid_cell(b, w, h);
+                    (
+                        (chart_bounds.x + ax, chart_bounds.y + ay),
+                        (chart_bounds.x + bx, chart_bounds.y + by),
+                    )
+                })
                 .collect();
 
             // Draw area fill first (if applicable)
             if matches!(series.chart_type, ChartType::Area) {
                 if let Some(fill_color) = series.fill_color {
-                    self.draw_area_fill(ctx, &screen_points, fill_color, chart_area, y_bottom);
+                    for &(a, b) in &cell_segments {
+                        self.draw_area_fill(ctx, &[a, b], fill_color, chart_area, y_bottom);
+                    }
                 }
             }
 
             // Draw lines
             if !matches!(series.line_style, LineStyle::None) {
-                match series.chart_type {
-                    ChartType::Line | ChartType::Area => {
-                        for window in screen_points.windows(2) {
-                            let (x0, y0) = window[0];
-                            let (x1, y1) = window[1];
-                            let seg = LineSegment {
-                                x0,
-                                y0,
-                                x1,
-                                y1,
-                                color: series.color,
-                                style: series.line_style,
-                            };
-                            self.draw_line(ctx, &seg, &chart_bounds);
-                        }
-                    }
-                    ChartType::StepAfter => {
-                        for window in screen_points.windows(2) {
-                            let (x0, y0) = window[0];
-                            let (x1, y1) = window[1];
-                            // Horizontal then vertical
-                            let horiz = LineSegment {
-                                x0,
-                                y0,
-                                x1,
-                                y1: y0,
-                                color: series.color,
-                                style: series.line_style,
-                            };
-                            self.draw_line(ctx, &horiz, &chart_bounds);
-                            let vert = LineSegment {
-                                x0: x1,
-                                y0,
-                                x1,
-                                y1,
-                                color: series.color,
-                                style: series.line_style,
-                            };
-                            self.draw_line(ctx, &vert, &chart_bounds);
-                        }
-                    }
-                    ChartType::StepBefore => {
-                        for window in screen_points.windows(2) {
-                            let (x0, y0) = window[0];
-                            let (x1, y1) = window[1];
-                            // Vertical then horizontal
-                            let vert = LineSegment {
-                                x0,
-                                y0,
-                                x1: x0,
-                                y1,
-                                color: series.color,
-                                style: series.line_style,
-                            };
-                            self.draw_line(ctx, &vert, &chart_bounds);
-                            let horiz = LineSegment {
-                                x0,
-                                y0: y1,
-                                x1,
-                                y1,
-                                color: series.color,
-                                style: series.line_style,
-                            };
-                            self.draw_line(ctx, &horiz, &chart_bounds);
-                        }
-                    }
-                    ChartType::Scatter => {}
+                for &((x0, y0), (x1, y1)) in &cell_segments {
+                    let seg = LineSegment {
+                        x0,
+                        y0,
+                        x1,
+                        y1,
+                        color: series.color,
+                        style: series.line_style,
+                    };
+                    self.draw_line(ctx, &seg, &chart_bounds);
                 }
             }
 
-            // Draw markers
+            // Draw markers (only for points inside the plot)
             if !matches!(series.marker, Marker::None) {
                 let marker_char = series.marker.char();
-                for &(x, y) in &screen_points {
-                    if x >= inner_x
-                        && x < inner_x + inner_w
-                        && y >= inner_y
-                        && y < inner_y + inner_h
-                    {
-                        let mut cell = Cell::new(marker_char);
-                        cell.fg = Some(series.color);
-                        ctx.set(x, y, cell);
+                for &(x, y) in &points {
+                    let p = Self::grid_offset(x, y, bounds, w, h);
+                    if !grid_contains(p, w, h) {
+                        continue;
                     }
+                    let (col, row) = grid_cell(p, w, h);
+                    let mut cell = Cell::new(marker_char);
+                    cell.fg = Some(series.color);
+                    ctx.set(chart_bounds.x + col, chart_bounds.y + row, cell);
                 }
             }
         }
