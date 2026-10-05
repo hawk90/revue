@@ -82,6 +82,12 @@ fn test_debug_overlay_wrap_defaults() {
 }
 
 #[test]
+fn test_debug_overlay_title() {
+    let buffer = render(&DebugOverlay::wrap(Text::new("Hello")));
+    assert!(row(&buffer, 0).contains(" Debug "));
+}
+
+#[test]
 fn test_debug_overlay_visible_false() {
     let overlay = DebugOverlay::wrap(Text::new("Hello")).visible(false);
     let buffer = render(&overlay);
@@ -272,6 +278,15 @@ fn test_debug_overlay_render_small_buffer() {
 }
 
 #[test]
+fn test_debug_overlay_render_zero_width() {
+    let overlay = DebugOverlay::wrap(Text::new("Test")).width(0);
+    let buffer = render(&overlay);
+    // No room for a panel: only the wrapped view is drawn
+    assert!(!has_panel(&buffer));
+    assert!(row(&buffer, 0).starts_with("Test"));
+}
+
+#[test]
 fn test_debug_overlay_render_one_row_area() {
     let overlay = DebugOverlay::wrap(Text::new("Test"));
     let mut buffer = Buffer::new(80, 1);
@@ -279,6 +294,51 @@ fn test_debug_overlay_render_one_row_area() {
     // No room for a bordered panel
     assert!(!has_panel(&buffer));
     assert!(row(&buffer, 0).starts_with("Test"));
+}
+
+#[test]
+fn test_debug_overlay_narrow_panel_truncates_lines() {
+    let mut overlay = DebugOverlay::wrap(Text::new("Test"))
+        .show_metrics(false)
+        .show_tree(true)
+        .width(4);
+    overlay.record_widget(WidgetInfo::new("VeryLongWidgetName"));
+    let buffer = render(&overlay);
+    // Nothing is drawn outside the 4-column panel
+    assert_eq!(symbol(&buffer, 76, 0), '┌');
+    assert_eq!(symbol(&buffer, 79, 0), '┐');
+    assert!(!text(&buffer).contains("Very"));
+}
+
+#[test]
+fn test_debug_overlay_metrics_stay_inside_narrow_panel() {
+    let mut overlay = DebugOverlay::wrap(Text::new(""))
+        .position(DebugPosition::TopLeft)
+        .width(12);
+    overlay.metrics_mut().record_layout(Duration::from_secs(10));
+    let buffer = render(&overlay);
+    let layout_row = (0..24)
+        .find(|&y| row(&buffer, y).contains("Layout"))
+        .unwrap();
+    // "Layout: 10000.00ms" is cut at the right border, not drawn past it
+    assert_eq!(symbol(&buffer, 11, layout_row), '│');
+    let past_panel: String = row(&buffer, layout_row).chars().skip(12).collect();
+    assert_eq!(past_panel.trim(), "");
+}
+
+#[test]
+fn test_debug_overlay_truncates_wide_chars() {
+    let mut overlay = DebugOverlay::wrap(Text::new("Test"))
+        .show_metrics(false)
+        .show_events(true)
+        .width(12);
+    overlay.log_event(DebugEvent::Custom("한글로 된 아주 긴 이벤트".to_string()));
+    let buffer = render(&overlay);
+    let all = text(&buffer);
+    assert!(all.contains("Events:"));
+    assert!(all.contains("..."));
+    // The right border is intact
+    assert_eq!(symbol(&buffer, 79, 3), '│');
 }
 
 // =============================================================================
@@ -445,6 +505,15 @@ fn test_perf_metrics_new() {
 }
 
 #[test]
+fn test_perf_metrics_default_keeps_samples() {
+    let mut metrics = PerfMetrics::default();
+    metrics.record_layout(Duration::from_millis(4));
+    metrics.record_render(Duration::from_millis(2));
+    assert_eq!(metrics.avg_layout_time_ms(), 4.0);
+    assert_eq!(metrics.avg_render_time_ms(), 2.0);
+}
+
+#[test]
 fn test_perf_metrics_start_frame() {
     let mut metrics = PerfMetrics::new();
     // A single frame start has no completed frame to measure yet
@@ -542,6 +611,13 @@ fn test_perf_metrics_very_long_duration() {
 // =============================================================================
 // EventLog
 // =============================================================================
+
+#[test]
+fn test_event_log_default_keeps_events() {
+    let mut log = EventLog::default();
+    log.log(DebugEvent::KeyPress("a".to_string()));
+    assert_eq!(log.recent(10).count(), 1);
+}
 
 #[test]
 fn test_event_log_recent_limit() {

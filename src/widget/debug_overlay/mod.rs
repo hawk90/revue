@@ -29,7 +29,7 @@ pub use widget_info::WidgetInfo;
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use crate::utils::draw_text_overlay;
+use crate::utils::{draw_text_overlay, truncate_to_width, truncate_with_suffix};
 use crate::widget::theme::{EDITOR_BG, SECONDARY_TEXT};
 use crate::widget::{RenderContext, View};
 
@@ -222,6 +222,12 @@ impl<V: View> DebugOverlay<V> {
 
     /// Render debug panel
     fn render_panel(&self, buffer: &mut Buffer, rect: Rect) {
+        // A bordered panel needs at least 2x2 cells
+        if rect.width < 2 || rect.height < 2 {
+            return;
+        }
+        let inner_width = (rect.width - 2) as usize;
+
         // Fill background
         for y in rect.y..rect.y + rect.height {
             for x in rect.x..rect.x + rect.width {
@@ -233,24 +239,17 @@ impl<V: View> DebugOverlay<V> {
             }
         }
 
-        let mut y = rect.y;
+        // Content goes between the top border (which carries the title) and
+        // the bottom border
+        let mut y = rect.y + 1;
         let x = rect.x + 1;
-        let max_y = rect.y + rect.height;
-
-        // Title bar
-        let title = " Debug ";
-        self.draw_text(buffer, x, y, title, self.config.accent_color);
-        y += 1;
+        let max_y = rect.y + rect.height - 1;
 
         // Separator
-        self.draw_text(
-            buffer,
-            x,
-            y,
-            &"-".repeat((rect.width - 2) as usize),
-            self.config.fg_color,
-        );
-        y += 1;
+        if y < max_y {
+            self.draw_text(buffer, x, y, &"-".repeat(inner_width), self.config.fg_color);
+            y += 1;
+        }
 
         // Performance metrics
         if self.config.show_metrics && y < max_y {
@@ -266,7 +265,7 @@ impl<V: View> DebugOverlay<V> {
                 buffer,
                 x,
                 y,
-                &format!("FPS: {:.1}", self.metrics.fps()),
+                truncate_to_width(&format!("FPS: {:.1}", self.metrics.fps()), inner_width),
                 fps_color,
             );
             y += 1;
@@ -276,7 +275,10 @@ impl<V: View> DebugOverlay<V> {
                     buffer,
                     x,
                     y,
-                    &format!("Frame: {:.2}ms", self.metrics.avg_frame_time_ms()),
+                    truncate_to_width(
+                        &format!("Frame: {:.2}ms", self.metrics.avg_frame_time_ms()),
+                        inner_width,
+                    ),
                     self.config.fg_color,
                 );
                 y += 1;
@@ -287,7 +289,10 @@ impl<V: View> DebugOverlay<V> {
                     buffer,
                     x,
                     y,
-                    &format!("Layout: {:.2}ms", self.metrics.avg_layout_time_ms()),
+                    truncate_to_width(
+                        &format!("Layout: {:.2}ms", self.metrics.avg_layout_time_ms()),
+                        inner_width,
+                    ),
                     self.config.fg_color,
                 );
                 y += 1;
@@ -298,7 +303,10 @@ impl<V: View> DebugOverlay<V> {
                     buffer,
                     x,
                     y,
-                    &format!("Render: {:.2}ms", self.metrics.avg_render_time_ms()),
+                    truncate_to_width(
+                        &format!("Render: {:.2}ms", self.metrics.avg_render_time_ms()),
+                        inner_width,
+                    ),
                     self.config.fg_color,
                 );
                 y += 1;
@@ -309,19 +317,20 @@ impl<V: View> DebugOverlay<V> {
 
         // Widget tree
         if self.config.show_tree && y < max_y {
-            self.draw_text(buffer, x, y, "Widgets:", self.config.accent_color);
+            self.draw_text(
+                buffer,
+                x,
+                y,
+                truncate_to_width("Widgets:", inner_width),
+                self.config.accent_color,
+            );
             y += 1;
 
             for widget in &self.widgets {
                 if y >= max_y {
                     break;
                 }
-                let line = widget.tree_line();
-                let truncated = if line.len() > (rect.width - 2) as usize {
-                    format!("{}...", &line[..(rect.width - 5) as usize])
-                } else {
-                    line
-                };
+                let truncated = truncate_with_suffix(&widget.tree_line(), inner_width, "...");
                 let color = if widget.focused {
                     self.config.accent_color
                 } else {
@@ -336,7 +345,13 @@ impl<V: View> DebugOverlay<V> {
 
         // Event log
         if self.config.show_events && y < max_y {
-            self.draw_text(buffer, x, y, "Events:", self.config.accent_color);
+            self.draw_text(
+                buffer,
+                x,
+                y,
+                truncate_to_width("Events:", inner_width),
+                self.config.accent_color,
+            );
             y += 1;
 
             for (_, event) in self.events.recent(5) {
@@ -349,18 +364,21 @@ impl<V: View> DebugOverlay<V> {
                     DebugEvent::StateChange(s) => format!("State: {}", s),
                     DebugEvent::Custom(c) => c.clone(),
                 };
-                let truncated = if text.len() > (rect.width - 2) as usize {
-                    format!("{}...", &text[..(rect.width - 5) as usize])
-                } else {
-                    text
-                };
+                let truncated = truncate_with_suffix(&text, inner_width, "...");
                 self.draw_text(buffer, x, y, &truncated, self.config.fg_color);
                 y += 1;
             }
         }
 
-        // Border
+        // Border, then the title on top of it
         self.draw_border(buffer, rect);
+        self.draw_text(
+            buffer,
+            x,
+            rect.y,
+            truncate_to_width(" Debug ", inner_width),
+            self.config.accent_color,
+        );
     }
 
     /// Draw text at position
