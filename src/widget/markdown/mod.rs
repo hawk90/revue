@@ -770,4 +770,10 @@ mod tests {
         assert_ne!(AdmonitionType::Warning.color(), Color::BLACK);
         assert_ne!(AdmonitionType::Caution.color(), Color::BLACK);
     }
+
+    #[test]
+    fn test_markdown_helper() {
+        let md = markdown("Test content");
+        assert_eq!(md.source(), "Test content");
+    }
 }
