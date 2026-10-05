@@ -119,8 +119,23 @@ fn test_formatted_body_non_json_untouched() {
 
 #[test]
 fn test_formatted_body_json_header_on_non_json_body() {
-    // format_json is a token re-indenter, not a validator: it drops all
-    // whitespace outside strings, so a non-JSON body loses its spaces.
-    let response = with_content_type("application/json", "not json");
-    assert_eq!(response.formatted_body(), "notjson");
+    // A body that is not JSON is shown as sent, not re-indented.
+    for body in [
+        "not json",
+        "Internal Server Error",
+        "{\"truncated\": [1, 2",
+        "{} trailing",
+    ] {
+        let response = with_content_type("application/json", body);
+        assert_eq!(response.formatted_body(), body);
+    }
+}
+
+#[test]
+fn test_formatted_body_json_with_surrounding_whitespace() {
+    let response = with_content_type("application/json", "  {\"a\": [1, 2]}\n");
+    assert_eq!(
+        response.formatted_body(),
+        "{\n  \"a\": [\n    1,\n    2\n  ]\n}"
+    );
 }
