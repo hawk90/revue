@@ -8,8 +8,8 @@ use super::{count_char, render, render_rows, rows};
 use revue::render::Buffer;
 use revue::style::Color;
 use revue::widget::data::chart::{
-    audio_waveform, sawtooth_wave, signal_wave, sine_wave, square_wave, waveline, Interpolation,
-    WaveStyle, Waveline,
+    area_wave, audio_waveform, sawtooth_wave, signal_wave, sine_wave, spectrum, square_wave,
+    waveline, Interpolation, WaveStyle, Waveline,
 };
 
 fn sym(buffer: &Buffer, x: u16, y: u16) -> char {
@@ -133,6 +133,20 @@ fn test_waveline_color_and_gradient() {
     let buffer = render(&wave, 2, 5);
     assert_eq!(buffer.get(0, 4).unwrap().fg, Some(start));
     assert_eq!(buffer.get(1, 0).unwrap().fg, Some(end));
+}
+
+#[test]
+fn test_waveline_bg() {
+    let buffer = render(&waveline(vec![0.0]).bg(Color::BLUE), 3, 5);
+    for y in 0..5 {
+        for x in 0..3 {
+            assert_eq!(
+                buffer.get(x, y).unwrap().bg,
+                Some(Color::BLUE),
+                "({x}, {y})"
+            );
+        }
+    }
 }
 
 #[test]
@@ -287,6 +301,23 @@ fn test_signal_wave() {
         )
     );
     assert!(count_char(&buffer, '─') > 0);
+}
+
+#[test]
+fn test_area_wave_fills_up_from_the_bottom() {
+    let buffer = render(&area_wave(vec![0.0, 0.5, 1.0]), 3, 5);
+    assert_eq!(rows(&buffer), vec!["  █", "  ▓", " █▓", " ▓▓", "█▓▓"]);
+    assert_eq!(buffer.get(2, 0).unwrap().fg, Some(Color::MAGENTA));
+}
+
+#[test]
+fn test_spectrum_bars_rise_from_the_bottom() {
+    let buffer = render(&spectrum(vec![0.0, 0.5, 1.0]), 3, 5);
+    let heights: Vec<usize> = (0..3)
+        .map(|x| (0..5).filter(|&y| sym(&buffer, x, y) != ' ').count())
+        .collect();
+    assert_eq!(heights, vec![1, 3, 5]);
+    assert_eq!(buffer.get(2, 4).unwrap().fg, Some(Color::YELLOW));
 }
 
 // =========================================================================
