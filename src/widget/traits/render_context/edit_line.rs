@@ -16,6 +16,21 @@ pub(crate) fn col_of(text: &str, idx: usize) -> usize {
     text.chars().take(idx).map(char_width).sum()
 }
 
+/// Char index of the glyph covering column `col` of `text` (the char count
+/// when `col` is past the end): the inverse of [`col_of`], landing on a wide
+/// glyph when `col` is its right half.
+pub(crate) fn char_at_col(text: &str, col: usize) -> usize {
+    let mut start = 0;
+    for (idx, ch) in text.chars().enumerate() {
+        let end = start + char_width(ch);
+        if col < end {
+            return idx;
+        }
+        start = end;
+    }
+    text.chars().count()
+}
+
 /// Columns the cursor at char index `idx` covers: the glyph under it, or one
 /// past the end of the text (also on a zero-width char, so it stays visible).
 pub(crate) fn cursor_width(text: &str, idx: usize) -> usize {
@@ -116,6 +131,10 @@ mod tests {
         assert_eq!(col_of("a한b", 9), 4);
         assert_eq!(cursor_width("a한b", 1), 2);
         assert_eq!(cursor_width("a한b", 3), 1);
+        assert_eq!(char_at_col("a한b", 1), 1);
+        assert_eq!(char_at_col("a한b", 2), 1);
+        assert_eq!(char_at_col("a한b", 3), 2);
+        assert_eq!(char_at_col("a한b", 9), 3);
     }
 
     #[test]

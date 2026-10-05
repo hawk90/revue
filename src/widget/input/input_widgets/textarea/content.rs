@@ -35,7 +35,8 @@ impl TextArea {
             self.lines.push(String::new());
         }
         self.cursors = CursorSet::default();
-        self.scroll = (0, 0);
+        self.scroll = 0;
+        self.scroll_x.set(0);
         self.undo_stack.clear();
         self.redo_stack.clear();
     }
