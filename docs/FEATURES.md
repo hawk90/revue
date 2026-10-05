@@ -124,7 +124,7 @@ which is why a configurable `CharWidthTable` exists — wiring it into rendering
 ## 7. Developer experience
 
 The loop Revue aims for is: edit CSS, see it immediately (`hot_reload(true)`), inspect what matched
-(devtools panels: inspector, style inspector, event logger, profiler), and pin behaviour down with
+(devtools panels: inspector, style inspector, event logger, profiler), and pin behavior down with
 headless tests (`TestApp` + `insta` snapshots) that drive the same event and render pipeline as the real
 terminal.
 

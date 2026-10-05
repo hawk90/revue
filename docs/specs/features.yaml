@@ -251,7 +251,7 @@ items:
       - tests/css_layout.rs::a_css_gap_is_ignored_without_the_flag
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
-    notes: 'Stale comment in src/widget/layout/stack.rs says "gap: 0 … reads as not specified"; behaviour (and test) follow
+    notes: 'Stale comment in src/widget/layout/stack.rs says "gap: 0 … reads as not specified"; behavior (and test) follow
       the doc.'
   - id: CSS-016
     title: Flex/grid container properties from CSS (flex-direction, justify-content, align-items, flex-grow, flex, flex-wrap,
