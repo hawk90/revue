@@ -92,7 +92,7 @@ impl<'a> ParserContext<'a> {
             footnote_counter: 0,
             footnote_label_map: std::collections::HashMap::new(),
             in_blockquote: false,
-            blockquote_first_text: true,
+            blockquote_first_text: false,
             current_admonition: None,
             accumulated_blockquote: String::new(),
             current_modifier: Modifier::empty(),
@@ -118,7 +118,13 @@ impl<'a> ParserContext<'a> {
     }
 
     /// Add text to the current line
+    ///
+    /// The first text of an unordered list item is preceded by its bullet.
     pub fn add_text(&mut self, text: &str) {
+        if !text.is_empty() && self.item_needs_bullet {
+            self.item_needs_bullet = false;
+            self.current_line.push(StyledText::new("• "));
+        }
         if !text.is_empty() {
             self.current_line.push(StyledText {
                 text: text.to_string(),

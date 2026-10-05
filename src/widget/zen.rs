@@ -5,7 +5,6 @@
 //!
 //! Inspired by eilmeldung's ArticleContentDistractionFree mode.
 
-use crate::render::Cell;
 use crate::style::Color;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -186,13 +185,7 @@ impl View for ZenMode {
         if self.enabled {
             // Zen mode: fill background and render content with padding
             let bg = self.bg_color.unwrap_or_else(|| ctx.css_background(ZEN_BG));
-            for y in 0..area.height {
-                for x in 0..area.width {
-                    let mut cell = Cell::new(' ');
-                    cell.bg = Some(bg);
-                    ctx.set(x, y, cell);
-                }
-            }
+            ctx.fill_box_background(bg);
 
             // Calculate padded area
             let content_width = area.width.saturating_sub(self.padding_x * 2);
