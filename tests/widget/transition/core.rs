@@ -156,7 +156,6 @@ fn test_animations_sets_both_directions() {
 }
 
 #[test]
-#[ignore = "BUG: show()/toggle() cannot reverse a running leave animation"]
 fn test_show_during_leave_reverses_it() {
     let mut t = Transition::new("test").animations(slow(), quick());
     t.hide();
@@ -173,7 +172,6 @@ fn test_show_during_leave_reverses_it() {
 }
 
 #[test]
-#[ignore = "BUG: show()/toggle() cannot reverse a running leave animation"]
 fn test_toggle_during_leave_reverses_it() {
     let mut t = Transition::new("test").animations(slow(), slow());
     t.hide();

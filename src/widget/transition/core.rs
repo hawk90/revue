@@ -58,8 +58,10 @@ impl Transition {
     }
 
     /// Show the content (triggers enter animation if set)
+    ///
+    /// Also reverses a leave animation that is still running.
     pub fn show(&mut self) {
-        if !self.visible {
+        if !self.visible || self.phase == TransitionPhase::Leaving {
             self.visible = true;
             if let Some(anim) = &self.enter_animation {
                 self.phase = TransitionPhase::Entering;
@@ -97,7 +99,8 @@ impl Transition {
 
     /// Toggle visibility
     pub fn toggle(&mut self) {
-        if self.visible {
+        // Content that is on its way out counts as hidden
+        if self.visible && self.phase != TransitionPhase::Leaving {
             self.hide();
         } else {
             self.show();
