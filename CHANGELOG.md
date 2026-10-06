@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.77.0](https://github.com/hawk90/revue/compare/v2.76.1...v2.77.0) (2026-10-06)
+
+
+### Features
+
+* **datetimepicker:** implement Clone ([#723](https://github.com/hawk90/revue/issues/723)) ([8966f0f](https://github.com/hawk90/revue/commit/8966f0f1d056f90f604fdb90928f1d38a2a2ca19))
+
+
+### Bug Fixes
+
+* **aistream:** place wide-character text by terminal columns ([e144a42](https://github.com/hawk90/revue/commit/e144a4244f9d17206a0071c6daf161c20d2ee112))
+* **canvas:** place wide-character text by terminal columns ([e144a42](https://github.com/hawk90/revue/commit/e144a4244f9d17206a0071c6daf161c20d2ee112))
+* **code-editor:** scroll vertically to keep the cursor visible ([e62c370](https://github.com/hawk90/revue/commit/e62c370f9dcab42871a38f89765520690f7df0e1))
+* **collapsible:** place wide-character text by terminal columns ([e144a42](https://github.com/hawk90/revue/commit/e144a4244f9d17206a0071c6daf161c20d2ee112))
+* **datagrid:** map dragged columns through display order ([8de03a3](https://github.com/hawk90/revue/commit/8de03a35427f8cbd92107348c22949dd38b8d0a5))
+* **datagrid:** reorder columns from the keyboard through display order ([8de03a3](https://github.com/hawk90/revue/commit/8de03a35427f8cbd92107348c22949dd38b8d0a5))
+* **datagrid:** size columns with the real gutter width ([8de03a3](https://github.com/hawk90/revue/commit/8de03a35427f8cbd92107348c22949dd38b8d0a5))
+* **examples:** count form validation errors correctly ([d3b8432](https://github.com/hawk90/revue/commit/d3b8432f6c5aa7980ad6a2256b85707f93bc3f4a))
+* **examples:** draw ide notifications at the bottom right ([d3b8432](https://github.com/hawk90/revue/commit/d3b8432f6c5aa7980ad6a2256b85707f93bc3f4a))
+* **examples:** keep todo selection on a visible item ([d3b8432](https://github.com/hawk90/revue/commit/d3b8432f6c5aa7980ad6a2256b85707f93bc3f4a))
+* **markdown-presentation:** size the title separator by display width ([e144a42](https://github.com/hawk90/revue/commit/e144a4244f9d17206a0071c6daf161c20d2ee112))
+* **markdown:** render figlet headings again ([f7c14c6](https://github.com/hawk90/revue/commit/f7c14c6c0173d6cd121ef3c7dd0131f4e05ec189))
+* **markdown:** render the table of contents again ([f7c14c6](https://github.com/hawk90/revue/commit/f7c14c6c0173d6cd121ef3c7dd0131f4e05ec189))
+* **presentation:** place wide-character text by terminal columns ([e144a42](https://github.com/hawk90/revue/commit/e144a4244f9d17206a0071c6daf161c20d2ee112))
+* **statusbar:** place wide-character key hints by terminal columns ([e144a42](https://github.com/hawk90/revue/commit/e144a4244f9d17206a0071c6daf161c20d2ee112))
+* **textarea:** scroll vertically to keep the cursor visible ([e62c370](https://github.com/hawk90/revue/commit/e62c370f9dcab42871a38f89765520690f7df0e1))
+* **transition:** give wide glyphs their continuation cell ([e144a42](https://github.com/hawk90/revue/commit/e144a4244f9d17206a0071c6daf161c20d2ee112))
+
 ## [2.76.1](https://github.com/hawk90/revue/compare/v2.76.0...v2.76.1) (2026-10-06)
 
 
