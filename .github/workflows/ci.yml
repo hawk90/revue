@@ -41,8 +41,14 @@ jobs:
               - '.github/workflows/ci.yml'
             # Crates in this tree that are not workspace members, so none of the
             # root `cargo` jobs above ever build them.
+            # The templates are built against this checkout, so a change to
+            # the library can break them too.
             standalone:
               - 'revue-cli/**'
+              - 'templates/**'
+              - 'src/**'
+              - 'revue-macros/**'
+              - 'Cargo.toml'
               - '.github/workflows/ci.yml'
 
   fmt:
@@ -157,6 +163,20 @@ jobs:
           cargo fmt --all -- --check
           cargo clippy --locked --all-targets -- -D warnings
           cargo test --locked
+      # The templates pin the released crate (`revue = "3.0.0"`), so building
+      # them as committed only re-checks that release. Point each one at this
+      # checkout instead: a change that breaks a template fails here, in the
+      # PR that makes it, not after the next release.
+      - name: templates
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target/templates
+        run: |
+          for t in templates/*/; do
+            echo "::group::$t"
+            sed -i 's|^revue = .*|revue = { path = "../.." }|' "$t/Cargo.toml"
+            (cd "$t" && cargo fmt -- --check && cargo clippy -- -D warnings)
+            echo "::endgroup::"
+          done
 
   coverage:
     name: Coverage

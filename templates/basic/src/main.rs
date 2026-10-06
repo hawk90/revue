@@ -7,9 +7,14 @@ fn main() -> Result<()> {
         .child(Text::muted("A Vue-style TUI framework for Rust"))
         .child(Text::info("Press 'q' to quit"));
 
-    App::builder().build().run(view, |event, _view, _app| {
-        if let Event::Key(KeyEvent { key: Key::Char('q'), .. }) = event {
-            std::process::exit(0);
+    App::builder().build().run(view, |event, _view, app| {
+        if let Event::Key(KeyEvent {
+            key: Key::Char('q'),
+            ..
+        }) = event
+        {
+            // Stop the loop so `run` restores the terminal on the way out.
+            app.quit();
         }
         false
     })

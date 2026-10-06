@@ -249,7 +249,7 @@ Get started quickly with ready-to-use project templates:
 
 | Template | Description |
 |----------|-------------|
-| [basic](templates/basic/) | Minimal hello world (~15 lines) |
+| [basic](templates/basic/) | Minimal hello world (~20 lines) |
 | [counter](templates/counter/) | Reactive counter with Signal/Computed |
 | [form-app](templates/form-app/) | Form with inputs, validation, feedback |
 | [dashboard](templates/dashboard/) | Multi-panel dashboard with CSS styling |

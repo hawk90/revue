@@ -40,32 +40,39 @@ impl View for CounterApp {
                     .child(Text::new(format!("Count: {}", count)))
                     .child(Text::muted(format!("Doubled: {}", doubled)))
                     .child(Divider::new())
-                    .child(Text::info("[+] increment  [-] decrement  [r] reset  [q] quit")),
+                    .child(Text::info(
+                        "[+] increment  [-] decrement  [r] reset  [q] quit",
+                    )),
             )
             .render(ctx);
     }
 
-    fn meta(&self) -> WidgetMeta { WidgetMeta::new("CounterApp") }
+    fn meta(&self) -> WidgetMeta {
+        WidgetMeta::new("CounterApp")
+    }
 }
 
 fn main() -> Result<()> {
-    let mut app_state = CounterApp::new();
+    let app_state = CounterApp::new();
 
     // The Border is this view's own body, so it is styled through the view's
     // type. A widget added with `.child(...)` gets its own node and class.
     App::builder()
         .css("CounterApp { border: rounded cyan; }")
         .build()
-        .run(app_state, |event, view, _app| {
-            if let Event::Key(KeyEvent { key, .. }) = event {
-                match key {
-                    Key::Char('+') | Key::Char('=') | Key::Up => view.increment(),
-                    Key::Char('-') | Key::Down => view.decrement(),
-                    Key::Char('r') => view.reset(),
-                    Key::Char('q') => std::process::exit(0),
-                    _ => {}
-                }
+        .run(app_state, |event, view, app| {
+            let Event::Key(KeyEvent { key, .. }) = event else {
+                return false;
+            };
+            match key {
+                Key::Char('+') | Key::Char('=') | Key::Up => view.increment(),
+                Key::Char('-') | Key::Down => view.decrement(),
+                Key::Char('r') => view.reset(),
+                // Stop the loop so `run` restores the terminal on the way out.
+                Key::Char('q') => app.quit(),
+                _ => return false,
             }
-            false
+            // Returning `true` asks for a redraw.
+            true
         })
 }

@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-revue = "2.75.0"
+revue = "3.0.0"
