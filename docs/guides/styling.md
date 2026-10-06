@@ -144,6 +144,10 @@ On widgets that draw a border - `Border`, `Card`, `Accordion`, `Alert`,
     row-gap: 1;             /* grid */
     overflow: hidden;       /* Border / stacks: clip children to the box */
 }
+
+.tags {
+    flex-wrap: wrap;        /* hstack: what does not fit goes to the next line */
+}
 ```
 
 The container still places each child; these adjust the box it was handed.
@@ -151,12 +155,17 @@ In a content-sized `vstack`/`hstack` a child's `height`/`width`, `min-*`/`max-*`
 and margins along the stack count toward its slot, so `margin-top: 2` moves a
 line of text down. `gap: 0` closes a gap the builder opened.
 
-**Nested stacks.** A content-sized stack sizes a child stack from that
-stack's content without its CSS, so a `margin` or `gap` a stylesheet adds
-*inside* the child is not reserved and the child's last line is cut. Give the
-child's slot a size - `child_flex(.., 1.0)` or `child_sized(.., n)` - when its
-contents carry vertical margins or a CSS `gap`. (Lifting this needs `measure`
-to see styles; planned for 3.x.)
+**Nested stacks.** A stack inside a stack is sized with its CSS: its own
+`gap`, and the sizes and margins of its children - and of their children,
+at any depth - all count, so `.form { gap: 1 }` on a form column inside the
+screen's `vstack` keeps its last field on screen. Another widget that sizes
+itself from its content but wraps styled spacing (say, a `Border` around a
+`.form` stack with a `gap`) cannot add that spacing up, so it takes the
+space left over instead of being cut short.
+
+**`flex-wrap: wrap`** on an `hstack` moves items that do not fit onto the
+next line. Each line is as tall as its tallest item, `gap` separates the
+items and the lines, and a content-sized parent reserves every line.
 
 ### Parsed but not applied yet (planned for 3.x)
 
@@ -170,7 +179,6 @@ time yet. Builders cover what they would do:
 | `justify-content`, `align-items`, `align-self` | `Text::align`, `child_sized`, `Positioned` |
 | `flex`, `flex-grow`, `flex-shrink`, `flex-basis`, `order` | `child_flex(..)`, `child_sized(..)`, child order |
 | `grid-template-*`, `grid-row`, `grid-column` | `Grid` builders |
-| `flex-wrap` | - (an `hstack` with `flex-wrap: wrap` splits its height into two rows; a one-line row draws nothing) |
 | `opacity` | `Text::dim()` |
 | `font-style` | `.italic()` where the widget has it |
 | `z-index`, `position`, `top`/`right`/`bottom`/`left` | `Positioned`, `Layers` |
@@ -206,8 +214,10 @@ Define reusable values:
 }
 ```
 
-`var()` has to be the whole value: `border-color: var(--accent)` works,
-`border: rounded var(--accent)` does not - write the longhands.
+`var()` works anywhere in a value, so shorthands take it too:
+`border: rounded var(--accent)`, `margin: var(--gap-y) var(--gap-x)`. A
+variable's value and a fallback may themselves use `var()`. An undefined
+variable with no fallback makes the declaration do nothing.
 
 ## Pseudo-Classes
 

@@ -149,21 +149,22 @@ On widgets that draw a border (`Border`, `Card`, `Accordion`, `Alert`, ...):
 .list {
     gap: 1;             /* vstack / hstack / grid: between children */
 }
+
+.tags {
+    flex-wrap: wrap;    /* hstack: what does not fit goes to the next line */
+}
 ```
 
 The container still places each child; these adjust the box it was handed.
-
-**Nested stacks.** A content-sized stack sizes a child stack from that
-stack's content without its CSS, so a `margin` or `gap` a stylesheet adds
-*inside* the child is not reserved and the child's last line is cut. Give the
-child's slot a size - `child_flex(.., 1.0)` or `child_sized(.., n)` - when its
-contents carry vertical margins or a CSS `gap`. (Lifting this needs `measure`
-to see styles; planned for 3.x.)
+A stack inside a stack is sized with its CSS too - its `gap` and its
+children's margins count - so a `.form { gap: 1 }` column keeps its last
+field on screen. A wrapping `hstack` makes each line as tall as its tallest
+item.
 
 ### Not applied yet
 
 `padding`, `flex-direction`, `justify-content`, `align-items`, `flex`,
-`order`, `flex-wrap`, `grid-template-*`, `opacity`, `font-style`, `z-index`,
+`order`, `grid-template-*`, `opacity`, `font-style`, `z-index`,
 `position` and `transition` parse but do nothing yet (planned for 3.x). The
 container's builder decides layout instead: `vstack()` / `hstack()`,
 `child_sized`, `child_flex`, `Text::align`. See the
@@ -193,8 +194,9 @@ Button.primary {
 }
 ```
 
-`var()` has to be the whole value: `border-color: var(--accent)` works,
-`border: rounded var(--accent)` does not.
+`var()` works anywhere in a value, shorthands included:
+`border: rounded var(--accent)`. `var(--accent, orange)` falls back to
+`orange` when `--accent` is not defined.
 
 ## Pseudo-Classes
 
