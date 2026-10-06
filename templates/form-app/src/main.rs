@@ -20,14 +20,6 @@ impl FormApp {
         }
     }
 
-    fn active_value(&self) -> String {
-        match self.active_field.get() {
-            0 => self.name.get(),
-            1 => self.email.get(),
-            _ => String::new(),
-        }
-    }
-
     fn handle_input(&self, ch: char) {
         match self.active_field.get() {
             0 => self.name.update(|v| v.push(ch)),

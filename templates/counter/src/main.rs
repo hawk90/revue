@@ -49,7 +49,7 @@ impl View for CounterApp {
 }
 
 fn main() -> Result<()> {
-    let mut app_state = CounterApp::new();
+    let app_state = CounterApp::new();
 
     // The Border is this view's own body, so it is styled through the view's
     // type. A widget added with `.child(...)` gets its own node and class.

@@ -26,7 +26,7 @@ impl Dashboard {
         self.cpu.set(40.0 + (t * 0.1).sin() * 20.0);
         self.memory.set(60.0 + (t * 0.05).cos() * 15.0);
         self.requests.update(|v| *v += 7);
-        if self.tick.get() % 10 == 0 {
+        if self.tick.get().is_multiple_of(10) {
             self.errors.update(|v| *v += 1);
         }
     }
@@ -54,7 +54,7 @@ impl View for Dashboard {
                             .child(
                                 vstack()
                                     .child(Text::new(format!("{:.1}%", cpu)))
-                                    .child(progress().value(cpu / 100.0)),
+                                    .child(progress(cpu / 100.0)),
                             ),
                     )
                     .child(
@@ -63,7 +63,7 @@ impl View for Dashboard {
                             .child(
                                 vstack()
                                     .child(Text::new(format!("{:.1}%", mem)))
-                                    .child(progress().value(mem / 100.0)),
+                                    .child(progress(mem / 100.0)),
                             ),
                     ),
             )
