@@ -469,74 +469,61 @@ impl StatusBar {
         current_x
     }
 
+    /// Key hints on their own row, laid out in terminal columns and cut off
+    /// at `x + width`
     fn render_key_hints(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16) {
+        let fg = self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
+        let (key_fg, key_bg, bg) = (self.key_fg, self.key_bg, self.bg);
+        let end = x.saturating_add(width);
         let mut current_x = x;
 
         for hint in &self.key_hints {
-            if current_x >= x + width {
+            if current_x >= end {
                 break;
             }
 
             // Render key
-            for ch in hint.key.chars() {
-                if current_x >= x + width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(self.key_fg);
-                cell.bg = Some(self.key_bg);
-                cell.modifier |= Modifier::BOLD;
-                ctx.set(current_x, y, cell);
-                current_x += 1;
-            }
+            current_x += ctx.put_str_with(current_x, y, &hint.key, end, |ch| {
+                Cell::new(ch).fg(key_fg).bg(key_bg).bold()
+            });
 
             // Render description
             let desc = format!(" {} ", hint.description);
-            for ch in desc.chars() {
-                if current_x >= x + width {
-                    break;
-                }
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE)));
-                cell.bg = Some(self.bg);
-                ctx.set(current_x, y, cell);
-                current_x += 1;
-            }
+            current_x +=
+                ctx.put_str_with(current_x, y, &desc, end, |ch| Cell::new(ch).fg(fg).bg(bg));
         }
     }
 
+    /// Key hints between the left and right sections: only hints that fit
+    /// whole in `width` columns are drawn
     fn render_key_hints_inline(&self, ctx: &mut RenderContext, x: u16, y: u16, width: u16) {
         // Resolved once: the builder's color if it named one, else the
         // stylesheet's, else white.
         let fg = self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
+        let (key_fg, key_bg, bg) = (self.key_fg, self.key_bg, self.bg);
+        let end = x.saturating_add(width);
         let mut current_x = x;
 
         for hint in &self.key_hints {
-            let hint_width = hint.key.len() + hint.description.len() + 3;
-            if current_x + hint_width as u16 > x + width {
+            let hint_width = crate::utils::display_width(&hint.key)
+                + crate::utils::display_width(&hint.description)
+                + 3;
+            if current_x as usize + hint_width > end as usize {
                 break;
             }
 
             // Render key
-            for ch in hint.key.chars() {
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(self.key_fg);
-                cell.bg = Some(self.key_bg);
-                ctx.set(current_x, y, cell);
-                current_x += 1;
-            }
+            current_x += ctx.put_str_with(current_x, y, &hint.key, end, |ch| {
+                Cell::new(ch).fg(key_fg).bg(key_bg)
+            });
 
             // Space
             current_x += 1;
 
             // Render description
-            for ch in hint.description.chars() {
-                let mut cell = Cell::new(ch);
-                cell.fg = Some(fg);
-                cell.bg = Some(self.bg);
-                ctx.set(current_x, y, cell);
-                current_x += 1;
-            }
+            current_x += ctx.put_str_with(current_x, y, &hint.description, end, |ch| {
+                Cell::new(ch).fg(fg).bg(bg)
+            });
 
             // Separator
             current_x += 2;

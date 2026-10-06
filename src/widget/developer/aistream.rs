@@ -408,9 +408,11 @@ impl View for AiStream {
         let visible = self.visible_text();
         let _width = area.width as usize;
 
-        // Simple word wrap and render
+        // Simple wrap and render, in terminal columns: a wide glyph takes two
+        // and wraps whole, a zero-width char takes none
         let mut x = 0u16;
         let mut y = 0u16;
+        let mut glyph = [0u8; 4];
 
         for ch in visible.chars() {
             if ch == '\n' {
@@ -419,7 +421,12 @@ impl View for AiStream {
                 continue;
             }
 
-            if self.wrap && x >= area.width {
+            let w = crate::utils::char_width(ch) as u16;
+            if w == 0 {
+                continue;
+            }
+
+            if self.wrap && x > 0 && x.saturating_add(w) > area.width {
                 x = 0;
                 y += 1;
             }
@@ -428,12 +435,13 @@ impl View for AiStream {
                 break;
             }
 
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(text_fg);
-            cell.bg = text_bg;
-            ctx.set(x, y, cell);
+            ctx.put_str_with(x, y, ch.encode_utf8(&mut glyph), area.width, |ch| {
+                let mut cell = Cell::new(ch).fg(text_fg);
+                cell.bg = text_bg;
+                cell
+            });
 
-            x += 1;
+            x = x.saturating_add(w);
         }
 
         // Render cursor

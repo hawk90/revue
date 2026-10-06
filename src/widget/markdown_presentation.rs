@@ -388,7 +388,9 @@ impl MarkdownPresentation {
 
                 // Separator line
                 if content_start_y < area.height {
-                    let sep_len = (title.len() * 2).max(20).min(area.width as usize);
+                    let sep_len = (crate::utils::display_width(title) * 2)
+                        .max(20)
+                        .min(area.width as usize);
                     let sep_start = (area.width as usize - sep_len) / 2;
                     for i in 0..sep_len {
                         let mut cell = Cell::new('─');

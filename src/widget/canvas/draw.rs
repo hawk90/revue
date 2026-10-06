@@ -149,29 +149,31 @@ impl<'a> DrawContext<'a> {
         }
     }
 
-    /// Draw text at position
+    /// Draw text at position, in terminal columns: a wide glyph (CJK, emoji)
+    /// takes two, a zero-width char none. Text stops before a glyph that
+    /// would cross the canvas edge.
     pub fn text(&mut self, x: u16, y: u16, s: &str, fg: Option<Color>) {
-        for (i, ch) in s.chars().enumerate() {
-            let pos_x = x + i as u16;
-            if pos_x < self.area.width {
-                self.set_styled(pos_x, y, ch, fg, None);
-            }
-        }
+        self.put_text(x, y, s, fg, Modifier::empty());
     }
 
-    /// Draw bold text at position
+    /// Draw bold text at position, laid out like [`Self::text`]
     pub fn text_bold(&mut self, x: u16, y: u16, s: &str, fg: Option<Color>) {
-        for (i, ch) in s.chars().enumerate() {
-            let pos_x = x + i as u16;
-            if pos_x < self.area.width {
-                let abs_x = self.area.x + pos_x;
-                let abs_y = self.area.y + y;
+        self.put_text(x, y, s, fg, Modifier::BOLD);
+    }
+
+    fn put_text(&mut self, x: u16, y: u16, s: &str, fg: Option<Color>, modifier: Modifier) {
+        crate::widget::traits::render_context::overlay::lay_out_str(
+            x,
+            s,
+            self.area.width,
+            |ch| {
                 let mut cell = Cell::new(ch);
                 cell.fg = fg;
-                cell.modifier = Modifier::BOLD;
-                self.buffer.set(abs_x, abs_y, cell);
-            }
-        }
+                cell.modifier = modifier;
+                cell
+            },
+            |cx, cell| self.set_cell(cx, y, cell),
+        );
     }
 
     /// Clear the canvas
