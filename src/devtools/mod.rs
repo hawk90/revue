@@ -51,7 +51,6 @@ pub use time_travel::{
 use crate::layout::Rect;
 use crate::render::Buffer;
 use crate::style::Color;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 // =============================================================================
 // DevTools Panel
@@ -524,60 +523,12 @@ impl Default for DevTools {
 }
 
 // =============================================================================
-// Global DevTools State (Deprecated)
-// =============================================================================
-//
-// These global functions are deprecated. Use `App::is_devtools_enabled()`,
-// `App::enable_devtools()`, `App::disable_devtools()`, and `App::toggle_devtools()`
-// instead for proper test isolation and cleaner architecture.
-
-static DEVTOOLS_ENABLED: AtomicBool = AtomicBool::new(false);
-
-/// Enable global devtools
-///
-/// # Deprecated
-/// Use `App::enable_devtools()` instead for proper test isolation.
-#[deprecated(since = "2.1.0", note = "Use App::enable_devtools() instead")]
-pub fn enable_devtools() {
-    DEVTOOLS_ENABLED.store(true, Ordering::Relaxed);
-}
-
-/// Disable global devtools
-///
-/// # Deprecated
-/// Use `App::disable_devtools()` instead for proper test isolation.
-#[deprecated(since = "2.1.0", note = "Use App::disable_devtools() instead")]
-pub fn disable_devtools() {
-    DEVTOOLS_ENABLED.store(false, Ordering::Relaxed);
-}
-
-/// Check if devtools are enabled
-///
-/// # Deprecated
-/// Use `App::is_devtools_enabled()` instead for proper test isolation.
-#[deprecated(since = "2.1.0", note = "Use App::is_devtools_enabled() instead")]
-pub fn is_devtools_enabled() -> bool {
-    DEVTOOLS_ENABLED.load(Ordering::Relaxed)
-}
-
-/// Toggle devtools
-///
-/// # Deprecated
-/// Use `App::toggle_devtools()` instead for proper test isolation.
-#[deprecated(since = "2.1.0", note = "Use App::toggle_devtools() instead")]
-pub fn toggle_devtools() -> bool {
-    let was = DEVTOOLS_ENABLED.fetch_xor(true, Ordering::Relaxed);
-    !was
-}
-
-// =============================================================================
 // Tests
 // =============================================================================
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::app::App;
 
     #[test]
     fn test_devtools_config_default() {
@@ -926,37 +877,5 @@ mod tests {
         // Content should handle large size gracefully
         assert_eq!(content.width, 0); // 100 - 100 = 0
         assert_eq!(content.height, 50);
-    }
-
-    #[test]
-    fn test_global_enable_disable_devtools() {
-        // Use App methods instead of deprecated global functions
-        // Start with devtools explicitly disabled
-        let mut app = App::builder().devtools(false).build();
-        assert!(!app.is_devtools_enabled());
-
-        app.enable_devtools();
-        assert!(app.is_devtools_enabled());
-
-        app.disable_devtools();
-        assert!(!app.is_devtools_enabled());
-    }
-
-    #[test]
-    fn test_global_toggle_devtools() {
-        // Use App methods instead of deprecated global functions
-        // Start with devtools explicitly disabled
-        let mut app = App::builder().devtools(false).build();
-        assert!(!app.is_devtools_enabled());
-
-        // Toggle should enable
-        let result = app.toggle_devtools();
-        assert!(result); // Returns new state (enabled)
-        assert!(app.is_devtools_enabled());
-
-        // Toggle should disable
-        let result = app.toggle_devtools();
-        assert!(!result); // Returns new state (disabled)
-        assert!(!app.is_devtools_enabled());
     }
 }
