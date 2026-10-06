@@ -37,6 +37,64 @@ pub struct PaintNode<'a> {
     pub(crate) subtree_len: usize,
 }
 
+/// A node and everything under it, as this frame's paint pass recorded them.
+///
+/// What a container hands [`View::measure_styled`]: the node's own computed
+/// style, and its children's subtrees in the order it rendered them. It only
+/// exists in a paint pass with [`css_layout`](RenderContext::css_layout) on,
+/// so every subtree length in it is real.
+///
+/// The slice is bounded to the subtree, so a walk over a node that rendered
+/// fewer children during collect than it holds simply runs out - it never
+/// reads a sibling's node.
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct StyledSubtree<'a> {
+    /// `nodes[0]` is the node itself; the rest is its subtree, pre-order.
+    nodes: &'a [PaintNode<'a>],
+}
+
+impl<'a> StyledSubtree<'a> {
+    /// The subtree rooted at `nodes[idx]`, if there is such a node.
+    fn at(nodes: &'a [PaintNode<'a>], idx: usize) -> Option<Self> {
+        let node = nodes.get(idx)?;
+        let end = idx.saturating_add(node.subtree_len.max(1)).min(nodes.len());
+        Some(Self {
+            nodes: &nodes[idx..end],
+        })
+    }
+
+    /// The node's own computed style.
+    pub(crate) fn style(&self) -> Option<&'a Style> {
+        self.nodes.first().and_then(|n| n.style)
+    }
+
+    /// The subtrees of the node's children, in the order they were rendered.
+    pub(crate) fn children(&self) -> impl Iterator<Item = StyledSubtree<'a>> {
+        let nodes = self.nodes;
+        let mut idx = 1;
+        std::iter::from_fn(move || {
+            let child = Self::at(nodes, idx)?;
+            idx += child.nodes.len();
+            Some(child)
+        })
+    }
+
+    /// Does any descendant's style add space that a bare
+    /// [`measure`](View::measure) cannot know about?
+    ///
+    /// That is a CSS box (margins, sizes, bounds), a positive `gap`, or
+    /// `flex-wrap`. The node's own box is not counted: whoever lays the node
+    /// out folds that in itself.
+    pub(crate) fn descendants_add_space(&self) -> bool {
+        self.nodes.iter().skip(1).filter_map(|n| n.style).any(|s| {
+            box_model::specifies_anything(s)
+                || s.layout.gap.is_some_and(|g| g > 0)
+                || s.layout.flex_wrap != crate::style::FlexWrap::NoWrap
+        })
+    }
+}
+
 /// Which half of the frame this context belongs to.
 ///
 /// A frame renders the view twice: once to discover the tree, once to paint it
@@ -288,12 +346,14 @@ impl<'a> RenderContext<'a> {
         }
     }
 
-    /// The computed styles of the next `count` children this widget will
-    /// render, read without rendering them.
+    /// The subtrees of the next `count` children this widget will render,
+    /// read without rendering them.
     ///
     /// For a container that has to know its children's CSS box *before* it
     /// lays them out - a content-sized [`Stack`](crate::widget::Stack) folds a
-    /// child's `height` and margins into the slot it hands that child.
+    /// child's `height` and margins into the slot it hands that child, and
+    /// measures a child with the spacing its descendants' styles add (see
+    /// [`View::measure_styled`]).
     ///
     /// Entry `k` belongs to the `k`-th call to
     /// [`render_child`](Self::render_child) (or
@@ -313,10 +373,9 @@ impl<'a> RenderContext<'a> {
     /// Every entry is `None` outside a paint pass, or when
     /// [`css_layout`](Self::css_layout) is off - CSS box properties do not
     /// apply then, so a container sees nothing to fold in. An entry is also
-    /// `None` past the end of the node list, or for a node with no computed
-    /// style.
-    pub(crate) fn peek_child_styles(&self, count: usize) -> Vec<Option<&'a Style>> {
-        let mut styles = vec![None; count];
+    /// `None` past the end of the node list.
+    pub(crate) fn peek_child_subtrees(&self, count: usize) -> Vec<Option<StyledSubtree<'a>>> {
+        let mut subtrees = vec![None; count];
         if let Some(RenderPass::Paint {
             nodes,
             next,
@@ -326,13 +385,15 @@ impl<'a> RenderContext<'a> {
         {
             let nodes: &'a [PaintNode<'a>] = nodes;
             let mut idx = **next;
-            for slot in &mut styles {
-                let Some(node) = nodes.get(idx) else { break };
-                *slot = node.style;
-                idx += node.subtree_len.max(1);
+            for slot in &mut subtrees {
+                let Some(subtree) = StyledSubtree::at(nodes, idx) else {
+                    break;
+                };
+                idx += subtree.nodes.len();
+                *slot = Some(subtree);
             }
         }
-        styles
+        subtrees
     }
 
     /// Paint `bg` over this widget's whole box, and claim it as the box's

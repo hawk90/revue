@@ -1,8 +1,8 @@
 //! Stack container widget
 
 use crate::layout::Rect;
-use crate::style::{Display, Size, Style};
-use crate::widget::traits::render_context::box_model;
+use crate::style::{Display, FlexWrap, Size, Style};
+use crate::widget::traits::render_context::{box_model, StyledSubtree};
 use crate::widget::traits::{Fill, RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -256,10 +256,10 @@ impl View for Stack {
         let gap = ctx.gap_or(self.gap);
 
         let wrap = ctx.css_flex_wrap();
-        let styles = self.child_styles(ctx, wrap);
-        let hidden: Vec<bool> = styles
+        let subtrees = self.child_subtrees(ctx);
+        let hidden: Vec<bool> = subtrees
             .iter()
-            .map(|s| s.is_some_and(|s| s.layout.display == Display::None))
+            .map(|s| is_hidden(s.and_then(|s| s.style())))
             .collect();
         // A hidden child takes no gap either.
         let shown = hidden.iter().filter(|h| !**h).count();
@@ -268,7 +268,9 @@ impl View for Stack {
         match self.direction {
             Direction::Row => {
                 let available_width = area.width.saturating_sub(total_gap);
-                let mut sizes = self.effective_sizes(available_width, area.height, &styles);
+                // Each item of a wrapping row may take a whole line.
+                let measure_width = if wrap { area.width } else { available_width };
+                let mut sizes = self.effective_sizes(measure_width, area.height, &subtrees);
                 if wrap {
                     // A wrapping row moves what does not fit to the next row
                     // instead of shrinking it.
@@ -279,25 +281,25 @@ impl View for Stack {
                     }
                 }
                 let widths = Self::calculate_sizes(&sizes, available_width, n);
-
-                let mut x: u16 = 0;
-                let mut y: u16 = 0;
-                let row_height = if wrap { area.height / 2 } else { area.height };
+                let wrap_width = if wrap { area.width } else { u16::MAX };
+                let places = row_places(&widths, &hidden, wrap_width, gap);
+                let lines = if wrap {
+                    self.wrapped_lines(area, &widths, &hidden, &places, &subtrees, gap)
+                } else {
+                    vec![(0, area.height)]
+                };
 
                 for (i, child) in self.children.iter().enumerate() {
-                    let w = widths[i];
-
-                    // Wrap to next row if needed
-                    if wrap && x > 0 && x.saturating_add(w) > area.width {
-                        x = 0;
-                        y = y.saturating_add(row_height).saturating_add(gap);
-                        if y >= area.height {
-                            break;
-                        }
-                    }
+                    let (line, x) = places[i];
+                    // A line that starts below the stack is not drawn, nor is
+                    // anything after it.
+                    let Some(&(y, row_height)) = lines.get(line).filter(|l| l.0 < area.height)
+                    else {
+                        break;
+                    };
 
                     if child.needs_render() {
-                        let child_area = ctx.sub_area(x, y, w, row_height);
+                        let child_area = ctx.sub_area(x, y, widths[i], row_height);
                         ctx.render_child_with_overflow(
                             child.as_ref(),
                             child_area,
@@ -305,14 +307,11 @@ impl View for Stack {
                             parent_clip,
                         );
                     }
-                    if !hidden[i] {
-                        x = x.saturating_add(w).saturating_add(gap);
-                    }
                 }
             }
             Direction::Column => {
                 let available_height = area.height.saturating_sub(total_gap);
-                let sizes = self.effective_sizes(available_height, area.width, &styles);
+                let sizes = self.effective_sizes(available_height, area.width, &subtrees);
                 let heights = Self::calculate_sizes(&sizes, available_height, n);
 
                 let mut y: u16 = 0;
@@ -343,55 +342,32 @@ impl View for Stack {
     /// [`content_sized`](Self::content_sized) itself - the flag decides how it
     /// lays out its children, not how large its children are.
     ///
-    /// It does not include the children's CSS box: `measure` has no render
-    /// context, so the children's computed styles are out of reach. A
-    /// content-sized stack nested in another sizes itself from its children's
-    /// bare content, and only its own CSS box is folded in by its parent.
+    /// This is the children's bare content: `measure` has no render context,
+    /// so their computed styles are out of reach. A content-sized parent
+    /// stack calls [`measure_styled`](View::measure_styled) instead, which
+    /// adds the spacing the stylesheet gives this stack and its descendants.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
-        let gaps = self
-            .gap
-            .saturating_mul(self.children.len().saturating_sub(1) as u16);
-        let (mut main, mut cross) = (gaps, 0u16);
-        for (child, size) in self.children.iter().zip(&self.child_sizes) {
-            let (w, h) = match (size, self.direction) {
-                (ChildSize::Flex(_), _) => return None,
-                (ChildSize::Fixed(n), Direction::Column) => {
-                    (child.measure(max_width, *n).map_or(max_width, |m| m.0), *n)
-                }
-                (ChildSize::Fixed(n), Direction::Row) => (
-                    *n,
-                    child.measure(*n, max_height).map_or(max_height, |m| m.1),
-                ),
-                // `child_sizes` holds what the builder recorded; `Content` is
-                // only ever produced while laying out.
-                (ChildSize::Auto | ChildSize::Content(_), _) => {
-                    child.measure(max_width, max_height)?
-                }
-            };
-            let (along, across) = match self.direction {
-                Direction::Column => (h, w),
-                Direction::Row => (w, h),
-            };
-            main = main.saturating_add(along);
-            cross = cross.max(across);
-        }
-        let (w, h) = match self.direction {
-            Direction::Column => (cross, main),
-            Direction::Row => (main, cross),
-        };
-        let w = w.max(self.min_width);
-        let h = h.max(self.min_height);
-        let w = if self.max_width > 0 {
-            w.min(self.max_width)
-        } else {
-            w
-        };
-        let h = if self.max_height > 0 {
-            h.min(self.max_height)
-        } else {
-            h
-        };
-        Some((w.min(max_width), h.min(max_height)))
+        self.measure_with(max_width, max_height, None)
+    }
+
+    /// [`measure`](View::measure), plus what the stylesheet adds inside this
+    /// stack: its own CSS `gap`, and each child's CSS box - the same rule a
+    /// content-sized stack lays its children out by (see
+    /// [`content_sized`](Self::content_sized)): an explicit size replaces the
+    /// measured one, `min-*`/`max-*` clamp it and the margins are added
+    /// around it, on both axes. A child that is itself a stack is measured
+    /// the same way, so this recurses through every level of nesting. A child
+    /// whose stylesheet says `display: none` takes no space and no gap.
+    ///
+    /// A percentage size on a child has no basis here, so the stack fills
+    /// (`None`) rather than guess.
+    fn measure_styled(
+        &self,
+        max_width: u16,
+        max_height: u16,
+        subtree: StyledSubtree<'_>,
+    ) -> Option<(u16, u16)> {
+        self.measure_with(max_width, max_height, Some(subtree))
     }
 
     /// The axes any child added with [`child`](Self::child) fills.
@@ -420,6 +396,116 @@ impl_styled_view!(Stack);
 impl_props_builders!(Stack);
 
 impl Stack {
+    /// [`measure`](View::measure) when `subtree` is `None`,
+    /// [`measure_styled`](View::measure_styled) otherwise.
+    ///
+    /// Children laid end to end along the axis, plus the gaps; as wide (in a
+    /// column) or tall (in a row) as the largest - each child's extent being
+    /// its CSS box around its content when its style is known.
+    fn measure_with(
+        &self,
+        max_width: u16,
+        max_height: u16,
+        subtree: Option<StyledSubtree<'_>>,
+    ) -> Option<(u16, u16)> {
+        let own = subtree.and_then(|s| s.style());
+        let gap = own.and_then(|s| s.layout.gap).unwrap_or(self.gap);
+        let subtrees = match subtree {
+            Some(subtree) => self.align_subtrees(subtree.children()),
+            None => vec![None; self.children.len()],
+        };
+        let column = self.direction == Direction::Column;
+        let wrap = !column && own.is_some_and(wraps);
+        let (max_main, max_cross) = self.oriented(max_width, max_height);
+
+        // Each shown child's (main, cross) extent; `None` for a hidden one.
+        let mut items = Vec::with_capacity(self.children.len());
+        for ((child, size), sub) in self.children.iter().zip(&self.child_sizes).zip(&subtrees) {
+            let style = sub.and_then(|s| s.style());
+            if is_hidden(style) {
+                items.push(None);
+                continue;
+            }
+            let along = AxisBox::of(style, column);
+            let across = AxisBox::of(style, !column);
+            if along.percent || across.percent {
+                return None;
+            }
+            // What the box model will leave the child's content on each axis.
+            let inner_cross = across.clamp(
+                across
+                    .size
+                    .unwrap_or(max_cross.saturating_sub(across.margins)),
+            );
+            let (child_main, child_cross) = match size {
+                ChildSize::Flex(_) => return None,
+                ChildSize::Fixed(n) => {
+                    let (w, h) = self.oriented(*n, inner_cross);
+                    let measured = measure_child(child.as_ref(), *sub, w, h);
+                    let content = across.size.or(measured.map(|(w, h)| self.oriented(w, h).1));
+                    (*n, content.map_or(max_cross, |c| across.slot(c)))
+                }
+                // `child_sizes` holds what the builder recorded; `Content` is
+                // only ever produced while laying out.
+                ChildSize::Auto | ChildSize::Content(_) => {
+                    let inner_main =
+                        along.clamp(along.size.unwrap_or(max_main.saturating_sub(along.margins)));
+                    let (w, h) = self.oriented(inner_main, inner_cross);
+                    let measured =
+                        measure_child(child.as_ref(), *sub, w, h).map(|(w, h)| self.oriented(w, h));
+                    let content_main = along.size.or(measured.map(|m| m.0))?;
+                    let content_cross = across.size.or(measured.map(|m| m.1))?;
+                    (along.slot(content_main), across.slot(content_cross))
+                }
+            };
+            items.push(Some((child_main, child_cross)));
+        }
+
+        let (w, h) = if wrap {
+            // A wrapping row: its lines within `max_width`, as `render` breaks
+            // them, stacked with the gap between them.
+            let widths: Vec<u16> = items.iter().map(|i| i.map_or(0, |i| i.0)).collect();
+            let hidden: Vec<bool> = items.iter().map(Option::is_none).collect();
+            let places = row_places(&widths, &hidden, max_width, gap);
+            let lines = places.iter().map(|p| p.0 + 1).max().unwrap_or(0);
+            let (mut heights, mut width) = (vec![0u16; lines], 0u16);
+            for (item, &(line, x)) in items.iter().zip(&places) {
+                if let Some((w, h)) = *item {
+                    heights[line] = heights[line].max(h);
+                    width = width.max(x.saturating_add(w));
+                }
+            }
+            let gaps = gap.saturating_mul(lines.saturating_sub(1) as u16);
+            let height = heights
+                .iter()
+                .fold(gaps, |total, &h| total.saturating_add(h));
+            (width, height)
+        } else {
+            let shown = items.iter().flatten().count() as u16;
+            let gaps = gap.saturating_mul(shown.saturating_sub(1));
+            let (main, cross) = items
+                .iter()
+                .flatten()
+                .fold((gaps, 0u16), |(main, cross), &(m, c)| {
+                    (main.saturating_add(m), cross.max(c))
+                });
+            self.oriented(main, cross)
+        };
+        let w = w.max(self.min_width);
+        let h = h.max(self.min_height);
+        let w = if self.max_width > 0 {
+            w.min(self.max_width)
+        } else {
+            w
+        };
+        let h = if self.max_height > 0 {
+            h.min(self.max_height)
+        } else {
+            h
+        };
+        Some((w.min(max_width), h.min(max_height)))
+    }
+
     /// The size rule each child is laid out by.
     ///
     /// Without [`content_sized`](Self::content_sized) that is what the builder
@@ -428,21 +514,24 @@ impl Stack {
     /// that it may shrink when the stack overflows) - its CSS box folded in,
     /// see [`content_size`](Self::content_size).
     ///
-    /// A child whose computed style (see [`child_styles`](Self::child_styles))
+    /// A child whose computed style (see [`child_subtrees`](Self::child_subtrees))
     /// is `display: none` takes no space at all.
-    fn effective_sizes(&self, main: u16, cross: u16, styles: &[Option<&Style>]) -> Vec<ChildSize> {
+    fn effective_sizes(
+        &self,
+        main: u16,
+        cross: u16,
+        subtrees: &[Option<StyledSubtree<'_>>],
+    ) -> Vec<ChildSize> {
         if !self.content_sized {
             return self.child_sizes.clone();
         }
         self.children
             .iter()
             .zip(&self.child_sizes)
-            .zip(styles)
-            .map(|((child, size), style)| match size {
-                _ if style.is_some_and(|s| s.layout.display == Display::None) => {
-                    ChildSize::Fixed(0)
-                }
-                ChildSize::Auto => self.content_size(child.as_ref(), *style, main, cross),
+            .zip(subtrees)
+            .map(|((child, size), subtree)| match size {
+                _ if is_hidden(subtree.and_then(|s| s.style())) => ChildSize::Fixed(0),
+                ChildSize::Auto => self.content_size(child.as_ref(), *subtree, main, cross),
                 other => *other,
             })
             .collect()
@@ -472,6 +561,11 @@ impl Stack {
     /// *reserves*, the box model *places*. The cross axis is left entirely to
     /// the box model, as before.
     ///
+    /// The content is measured with [`measure_styled`](View::measure_styled)
+    /// when the child's subtree is known, so the spacing CSS adds *inside*
+    /// the child - a nested stack's `gap`, its own children's margins - is in
+    /// the size too.
+    ///
     /// A child keeps filling (`ChildSize::Auto`, an equal share of what is
     /// left) when:
     ///
@@ -490,52 +584,19 @@ impl Stack {
     fn content_size(
         &self,
         child: &dyn View,
-        style: Option<&Style>,
+        subtree: Option<StyledSubtree<'_>>,
         main: u16,
         cross: u16,
     ) -> ChildSize {
-        let style = style.filter(|s| box_model::specifies_anything(s));
-        let Some(style) = style else {
-            if self.fills_main_axis(child) {
-                return ChildSize::Auto;
-            }
-            let (w, h) = self.oriented(main, cross);
-            return match child.measure(w, h) {
-                Some((w, h)) => ChildSize::Content(self.oriented(w, h).0),
-                None => ChildSize::Auto,
-            };
-        };
-
-        let (sizing, margin) = (&style.sizing, &style.spacing.margin);
-        let (size_spec, min, max, before, after) = match self.direction {
-            Direction::Column => (
-                sizing.height,
-                sizing.min_height,
-                sizing.max_height,
-                margin.top,
-                margin.bottom,
-            ),
-            Direction::Row => (
-                sizing.width,
-                sizing.min_width,
-                sizing.max_width,
-                margin.left,
-                margin.right,
-            ),
-        };
-        if [size_spec, min, max]
-            .iter()
-            .any(|s| matches!(s, Size::Percent(_)))
-        {
+        let style = subtree
+            .and_then(|s| s.style())
+            .filter(|s| box_model::specifies_anything(s));
+        let along = AxisBox::of(style, self.direction == Direction::Column);
+        if along.percent {
             return ChildSize::Auto;
         }
-        let fixed = |s: Size| match s {
-            Size::Fixed(v) => Some(v),
-            _ => None,
-        };
-        let margins = before.saturating_add(after);
 
-        let size = match fixed(size_spec) {
+        let size = match along.size {
             Some(size) => size,
             // No explicit size: a child that fills the axis shares what is
             // left, its margins and bounds applying to its share.
@@ -543,23 +604,26 @@ impl Stack {
             None => {
                 // The cross extent is what the box model will leave the child;
                 // a narrower box can wrap to more rows.
-                let (w, h) = self.oriented(main, cross);
-                let boxed = box_model::apply(style, Rect::new(0, 0, w, h));
-                let cross = self.oriented(boxed.width, boxed.height).1;
-                let (w, h) = self.oriented(main.saturating_sub(margins), cross);
-                match child.measure(w, h) {
+                let cross = match style {
+                    Some(style) => {
+                        let (w, h) = self.oriented(main, cross);
+                        let boxed = box_model::apply(style, Rect::new(0, 0, w, h));
+                        self.oriented(boxed.width, boxed.height).1
+                    }
+                    None => cross,
+                };
+                let (w, h) = self.oriented(main.saturating_sub(along.margins), cross);
+                match measure_child(child, subtree, w, h) {
                     Some((w, h)) => self.oriented(w, h).0,
                     None => return ChildSize::Auto,
                 }
             }
         };
-        let slot = fixed(max).map_or(size, |m| size.min(m));
-        let slot = fixed(min).map_or(slot, |m| slot.max(m));
-        let slot = slot.saturating_add(margins);
+        let slot = along.slot(size);
         // An explicit size or minimum is put back by the box model whatever
         // slot the child gets, so shrinking that slot would only make the
         // next sibling start inside it. Only a measured size may shrink.
-        if fixed(size_spec).is_some() || fixed(min).is_some() {
+        if along.pinned() {
             ChildSize::Fixed(slot)
         } else {
             ChildSize::Content(slot)
@@ -585,34 +649,123 @@ impl Stack {
         }
     }
 
-    /// Each child's computed style, for a [`content_sized`](Self::content_sized)
-    /// stack to lay out by - `None` for every child otherwise.
+    /// Each child's subtree - its computed style and its descendants' - for a
+    /// [`content_sized`](Self::content_sized) stack to lay out by; `None` for
+    /// every child otherwise.
     ///
     /// Equal-share stacks do not look: there the CSS box is applied to the
-    /// share afterwards, as it always was. Neither does a wrapping row, which
-    /// may stop rendering partway along when it runs out of rows - the peek is
-    /// only sound for children the stack is sure to render (see
-    /// [`RenderContext::peek_child_styles`]).
+    /// share afterwards, as it always was.
     ///
-    /// A child that does not need rendering is never handed to
-    /// `render_child`, so it has no node, and is skipped in the walk.
-    fn child_styles<'s>(&self, ctx: &RenderContext<'s>, wrap: bool) -> Vec<Option<&'s Style>> {
-        let n = self.children.len();
-        if !self.content_sized || (wrap && self.direction == Direction::Row) {
-            return vec![None; n];
+    /// A wrapping row looks too, although it may stop painting partway along
+    /// when it runs out of lines. What the peek needs (see
+    /// [`RenderContext::peek_child_subtrees`]) is that the *collect* pass
+    /// rendered every child, and it did: `flex-wrap` is CSS, the collect pass
+    /// has no computed styles, so there every row is a plain row that renders
+    /// all of its children. Stopping early in the paint pass only leaves nodes
+    /// unvisited, which the parent's resynchronization steps over.
+    fn child_subtrees<'s>(&self, ctx: &RenderContext<'s>) -> Vec<Option<StyledSubtree<'s>>> {
+        if !self.content_sized {
+            return vec![None; self.children.len()];
         }
         let rendered = self.children.iter().filter(|c| c.needs_render()).count();
-        let mut peeked = ctx.peek_child_styles(rendered).into_iter();
+        self.align_subtrees(ctx.peek_child_subtrees(rendered).into_iter().flatten())
+    }
+
+    /// Match `subtrees`, in render order, to the children they belong to.
+    ///
+    /// A child that does not need rendering is never handed to
+    /// `render_child`, so it has no node and is skipped. A child past the end
+    /// of `subtrees` gets `None`.
+    fn align_subtrees<'s>(
+        &self,
+        subtrees: impl IntoIterator<Item = StyledSubtree<'s>>,
+    ) -> Vec<Option<StyledSubtree<'s>>> {
+        let mut subtrees = subtrees.into_iter();
         self.children
             .iter()
             .map(|c| {
                 if c.needs_render() {
-                    peeked.next().flatten()
+                    subtrees.next()
                 } else {
                     None
                 }
             })
             .collect()
+    }
+
+    /// Each line of a wrapping row: `(y, height)`, top to bottom.
+    ///
+    /// A line is as tall as its tallest item - an item's measured height with
+    /// its vertical CSS box folded in, as [`measure_styled`](View::measure_styled)
+    /// reports it - and the lines are stacked with `gap` between them. An item
+    /// that does not measure fills, so its line takes the rest of the height.
+    /// A line past the bottom gets no height.
+    ///
+    /// An equal-share stack keeps the 2.x rule - every line half the height.
+    fn wrapped_lines(
+        &self,
+        area: Rect,
+        widths: &[u16],
+        hidden: &[bool],
+        places: &[(usize, u16)],
+        subtrees: &[Option<StyledSubtree<'_>>],
+        gap: u16,
+    ) -> Vec<(u16, u16)> {
+        let count = places.iter().map(|p| p.0 + 1).max().unwrap_or(0);
+        if !self.content_sized {
+            let h = area.height / 2;
+            let step = h.saturating_add(gap);
+            return (0..count)
+                .map(|line| (step.saturating_mul(line.min(u16::MAX as usize) as u16), h))
+                .collect();
+        }
+        let mut heights = vec![0u16; count];
+        for (i, child) in self.children.iter().enumerate() {
+            if hidden[i] {
+                continue;
+            }
+            let h = self
+                .wrapped_item_height(child.as_ref(), subtrees[i], widths[i], area.height)
+                .unwrap_or(u16::MAX);
+            let line = places[i].0;
+            heights[line] = heights[line].max(h);
+        }
+        let mut y = 0u16;
+        heights
+            .into_iter()
+            .map(|h| {
+                let h = h.min(area.height.saturating_sub(y));
+                let line = (y, h);
+                y = y.saturating_add(h).saturating_add(gap);
+                line
+            })
+            .collect()
+    }
+
+    /// How tall an item of a wrapping row is in a slot `width` wide: its
+    /// measured height inside its CSS box, with the box's vertical margins and
+    /// bounds - or `None` if it does not measure.
+    fn wrapped_item_height(
+        &self,
+        child: &dyn View,
+        subtree: Option<StyledSubtree<'_>>,
+        width: u16,
+        max_height: u16,
+    ) -> Option<u16> {
+        let style = subtree.and_then(|s| s.style());
+        let vertical = AxisBox::of(style, true);
+        if vertical.percent {
+            return None;
+        }
+        let content = match vertical.size {
+            Some(size) => size,
+            None => {
+                let inner_width = width.saturating_sub(AxisBox::of(style, false).margins);
+                let inner_height = vertical.clamp(max_height.saturating_sub(vertical.margins));
+                measure_child(child, subtree, inner_width, inner_height)?.1
+            }
+        };
+        Some(vertical.slot(content))
     }
 
     /// Calculate sizes for children based on available space
@@ -763,6 +916,127 @@ impl Stack {
             }
         }
         used as u16
+    }
+}
+
+/// Does this computed style say `display: none`?
+fn is_hidden(style: Option<&Style>) -> bool {
+    style.is_some_and(|s| s.layout.display == Display::None)
+}
+
+/// Does this computed style make a row wrap? The same test as
+/// [`RenderContext::css_flex_wrap`].
+fn wraps(style: &Style) -> bool {
+    style.layout.flex_wrap != FlexWrap::NoWrap
+}
+
+/// Where each child of a row goes: `(line, x)`.
+///
+/// Children are laid end to end with `gap` between them; one that would
+/// cross `width` starts a new line, unless it is the first on its line. A
+/// hidden child takes no space and no gap. `width` = `u16::MAX` never wraps.
+fn row_places(widths: &[u16], hidden: &[bool], width: u16, gap: u16) -> Vec<(usize, u16)> {
+    let (mut line, mut x) = (0usize, 0u16);
+    widths
+        .iter()
+        .zip(hidden)
+        .map(|(&w, &hidden)| {
+            if x > 0 && x.saturating_add(w) > width {
+                line += 1;
+                x = 0;
+            }
+            let place = (line, x);
+            if !hidden {
+                x = x.saturating_add(w).saturating_add(gap);
+            }
+            place
+        })
+        .collect()
+}
+
+/// `child`'s size, with its styled subtree when that is known.
+fn measure_child(
+    child: &dyn View,
+    subtree: Option<StyledSubtree<'_>>,
+    max_width: u16,
+    max_height: u16,
+) -> Option<(u16, u16)> {
+    match subtree {
+        Some(subtree) => child.measure_styled(max_width, max_height, subtree),
+        None => child.measure(max_width, max_height),
+    }
+}
+
+/// What a child's CSS box says along one axis - see
+/// [`Stack::content_size`]. Empty for a child with no box properties.
+#[derive(Default)]
+struct AxisBox {
+    /// Explicit `height` / `width`
+    size: Option<u16>,
+    /// `min-height` / `min-width`
+    min: Option<u16>,
+    /// `max-height` / `max-width`
+    max: Option<u16>,
+    /// Both margins on the axis
+    margins: u16,
+    /// Any of the three sizes is a percentage
+    percent: bool,
+}
+
+impl AxisBox {
+    /// The box along the vertical axis if `vertical`, else the horizontal one.
+    fn of(style: Option<&Style>, vertical: bool) -> Self {
+        let Some(style) = style.filter(|s| box_model::specifies_anything(s)) else {
+            return Self::default();
+        };
+        let (sizing, margin) = (&style.sizing, &style.spacing.margin);
+        let (size, min, max, before, after) = if vertical {
+            (
+                sizing.height,
+                sizing.min_height,
+                sizing.max_height,
+                margin.top,
+                margin.bottom,
+            )
+        } else {
+            (
+                sizing.width,
+                sizing.min_width,
+                sizing.max_width,
+                margin.left,
+                margin.right,
+            )
+        };
+        let fixed = |s: Size| match s {
+            Size::Fixed(v) => Some(v),
+            _ => None,
+        };
+        Self {
+            size: fixed(size),
+            min: fixed(min),
+            max: fixed(max),
+            margins: before.saturating_add(after),
+            percent: [size, min, max]
+                .iter()
+                .any(|s| matches!(s, Size::Percent(_))),
+        }
+    }
+
+    /// `size` clamped by `max`, then `min` - the box model's order.
+    fn clamp(&self, size: u16) -> u16 {
+        let size = self.max.map_or(size, |m| size.min(m));
+        self.min.map_or(size, |m| size.max(m))
+    }
+
+    /// The space the box takes for `content`: clamped, margins added.
+    fn slot(&self, content: u16) -> u16 {
+        self.clamp(content).saturating_add(self.margins)
+    }
+
+    /// Does the box model put the size back whatever slot it gets? An
+    /// explicit size or minimum does.
+    fn pinned(&self) -> bool {
+        self.size.is_some() || self.min.is_some()
     }
 }
 

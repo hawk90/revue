@@ -138,12 +138,16 @@ DOM에 실려야 하고 — 그러고 나서도 엔진이 내재 콘텐츠 크�
 `margin-top`은 한 줄을 0줄로 들이고, `height: 3`은 다음 형제를 덮는다.
 
 그래서 내용 크기 스택은 렌더 전에 자식의 계산된 스타일을 엿보고
-(`RenderContext::peek_child_styles`, 커서를 움직이지 않는다) **주축 박스를 슬롯에 접어
+(`RenderContext::peek_child_subtrees`, 커서를 움직이지 않는다) **주축 박스를 슬롯에 접어
 넣는다**: 슬롯 = 앞 마진 + clamp(명시 크기 또는 측정값) + 뒤 마진. 박스 모델이 나중에 같은
 마진으로 들이면 정확히 그 크기가 남으므로 두 번 적용되는 것은 없다 — 스택은 예약하고,
-박스 모델은 배치한다. 퍼센트, 빌더 크기, 균등 분배 스택은 예외다. 자세한 규칙과 한계는
+박스 모델은 배치한다. 퍼센트, 빌더 크기, 균등 분배 스택은 예외다. 엿보기는 자식의
+서브트리 전체를 돌려주므로, 바깥 스택은 안쪽 스택을 `View::measure_styled`로 재어 안쪽의
+`gap`과 손자들의 박스까지 예약한다(중첩 단계마다 같은 규칙). `flex-wrap` 행은 줄마다 가장
+큰 항목의 높이를 쓰고, 내용 크기 부모에게 줄 수만큼의 높이를 답한다. 자세한 규칙은
 [`design-content-sized-stack.md`](design-content-sized-stack.md) §3,
-`tests/content_sized_css.rs`가 고정한다.
+`tests/content_sized_css.rs`, `tests/content_sized_nested_css.rs`, `tests/flex_wrap_content_sized.rs`가
+고정한다.
 
 ### 페인트 커서 재동기화
 

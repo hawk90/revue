@@ -21,8 +21,8 @@ mod value_parser_tests;
 mod tests {
     use super::*;
     use crate::style::{
-        AlignSelf, Color, Display, FlexDirection, FlexWrap, FontWeight, Overflow, Position, Size,
-        Spacing, Style, TextAlign, VisualStyle,
+        AlignSelf, BorderStyle, Color, Display, FlexDirection, FlexWrap, FontWeight, Overflow,
+        Position, Size, Spacing, Style, TextAlign, VisualStyle,
     };
 
     #[test]
@@ -392,6 +392,93 @@ mod tests {
         let sheet = parse(css).unwrap();
         let style = sheet.apply(".text", &Style::default());
         assert_eq!(style.visual.color, Color::RED);
+    }
+
+    // var() inside multi-token values
+
+    #[test]
+    fn test_var_inside_border_shorthand() {
+        let css = r#"
+        :root { --accent: #ff0000; }
+        .box { border: rounded var(--accent); }
+        "#;
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".box", &Style::default());
+        assert_eq!(style.visual.border_style, Some(BorderStyle::Rounded));
+        assert_eq!(style.visual.border_color, Color::RED);
+    }
+
+    #[test]
+    fn test_var_inside_margin_shorthand() {
+        let css = r#"
+        :root { --y: 1; --x: 3; }
+        .box { margin: var(--y) var(--x); }
+        "#;
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".box", &Style::default());
+        let m = style.spacing.margin;
+        assert_eq!((m.top, m.right, m.bottom, m.left), (1, 3, 1, 3));
+    }
+
+    #[test]
+    fn test_var_fallback_inside_shorthand() {
+        let css = ".box { border: solid var(--missing, #00ff00); }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".box", &Style::default());
+        assert_eq!(style.visual.border_style, Some(BorderStyle::Solid));
+        assert_eq!(style.visual.border_color, Color::GREEN);
+    }
+
+    #[test]
+    fn test_var_fallback_with_a_function_and_commas() {
+        let css = ".box { border: solid var(--missing, rgb(0,255,0)); }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".box", &Style::default());
+        assert_eq!(style.visual.border_color, Color::GREEN);
+    }
+
+    #[test]
+    fn test_var_whose_value_is_a_var() {
+        let css = r#"
+        :root { --base: #ff0000; --accent: var(--base); }
+        .text { color: var(--accent); }
+        "#;
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::RED);
+    }
+
+    #[test]
+    fn test_var_fallback_that_is_a_var() {
+        let css = r#"
+        :root { --base: #ff0000; }
+        .text { color: var(--missing, var(--base)); }
+        "#;
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Color::RED);
+    }
+
+    /// An undefined variable with no fallback leaves the value unparsable,
+    /// as before: the declaration does nothing.
+    #[test]
+    fn test_undefined_var_without_fallback_changes_nothing() {
+        let css = ".text { color: var(--missing); margin: 1 var(--missing); }";
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Style::default().visual.color);
+        assert_eq!(style.spacing.margin, Spacing::default());
+    }
+
+    #[test]
+    fn test_var_cycle_terminates() {
+        let css = r#"
+        :root { --a: var(--b); --b: var(--a); }
+        .text { color: var(--a); }
+        "#;
+        let sheet = parse(css).unwrap();
+        let style = sheet.apply(".text", &Style::default());
+        assert_eq!(style.visual.color, Style::default().visual.color);
     }
 
     #[test]

@@ -98,12 +98,14 @@ items:
     status: partial
     acceptance:
       - ':root { --x: v } defines a variable'
-      - var(--x) resolves in any declaration
+      - var(--x) resolves in any declaration, also inside multi-token values (border, margin shorthands)
       - a rule (e.g. .dark-theme) can override a variable for its subtree
     evidence:
       - src/runtime/style/parser/parse.rs::parse_root_variables_str
-      - src/runtime/style/parser/apply.rs::apply_declaration
+      - src/runtime/style/parser/apply.rs::substitute_vars
       - tests/style/parser.rs::test_apply_with_variables
+      - src/runtime/style/parser/mod.rs::test_var_inside_border_shorthand
+      - src/runtime/style/parser/mod.rs::test_var_inside_margin_shorthand
     source:
       - FEATURES.md §1 CSS Styling / CSS Variables
     notes: 'Variables are a single global map filled only from :root blocks. The doc example "Override in specific context"
@@ -118,8 +120,10 @@ items:
       - var(--missing, fallback) uses fallback
       - nested var() fallback chain
     evidence:
-      - src/runtime/style/parser/apply.rs::apply_declaration
+      - src/runtime/style/parser/apply.rs::resolve_var
       - tests/e2e_scenarios.rs::test_css_variable_fallback_chain
+      - src/runtime/style/parser/mod.rs::test_var_fallback_inside_shorthand
+      - src/runtime/style/parser/mod.rs::test_var_fallback_that_is_a_var
     source:
       - FEATURES.md §1 CSS Styling / CSS Variables with Fallback
   - id: CSS-008
@@ -276,10 +280,12 @@ items:
     evidence:
       - src/runtime/style/parser/apply.rs
       - src/widget/traits/render_context/css.rs::css_flex_wrap
+      - tests/flex_wrap_content_sized.rs::a_wrapped_line_is_as_tall_as_its_tallest_item
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
     notes: 'Doc table lists them as supported, doc note says they are not applied. Code: all parse; only flex-wrap is read
-      (Stack row wrap, crude: row height = area/2). The rest are the container''s own builder state — see docs/refactor/findings-layout.md
+      (Stack row wrap: each line as tall as its tallest item in a content-sized row; an equal-share row keeps the
+      2.x half-height lines). The rest are the container''s own builder state — see docs/refactor/findings-layout.md
       L-2.'
   - id: CSS-017
     title: opacity
@@ -453,6 +459,9 @@ items:
         from their height() helpers
       - under css_layout, a measured child's main-axis CSS box (height/width, min/max, margins) is folded into its
         slot; display none takes no space or gap
+      - a nested stack is measured with the CSS inside it (its gap, its children's boxes, at any depth); another
+        measuring widget whose subtree adds CSS spacing fills instead of clipping
+      - a flex-wrap row in a content-sized parent shows every line, each as tall as its tallest item
     evidence:
       - src/widget/traits/view.rs::measure
       - src/widget/layout/stack.rs::content_sized
@@ -471,13 +480,17 @@ items:
       - tests/content_sized_css.rs::a_margin_top_pushes_the_text_down_and_keeps_it_visible
       - tests/content_sized_css.rs::a_height_reserves_its_rows_and_the_next_sibling_starts_after_them
       - tests/content_sized_css.rs::a_hidden_child_takes_no_space
+      - tests/content_sized_nested_css.rs::the_inner_stacks_css_gap_is_reserved
+      - tests/content_sized_nested_css.rs::spacing_two_levels_down_is_reserved
+      - tests/content_sized_nested_css.rs::a_wrapper_around_styled_spacing_fills_instead_of_clipping
+      - tests/flex_wrap_content_sized.rs::a_wrapping_row_takes_as_many_lines_as_it_needs
     source:
       - PR #687
     notes: Opt-in in 2.x; on by default since 3.0 (docs/migration/v3.0.0.md section 2). Widgets without an obvious
       natural size (lists, tables, editors, charts, Positioned, Gauge Arc/Circle) fill by design. Design and the
       list of widgets that measure in docs/refactor/design-content-sized-stack.md.
-      Stack::measure does not see its children's CSS box (no render context), so a nested content-sized stack
-      sizes itself from their bare content.
+      Nested stacks are measured through the crate-internal View::measure_styled hook with the paint pass's
+      styled subtree (design doc section 3).
   - id: RX-001
     title: 'signal(): get / set / update'
     area: reactive

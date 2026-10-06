@@ -6,7 +6,7 @@ use crate::event::{KeyEvent, MouseEvent};
 use crate::layout::Rect;
 
 use super::event::EventResult;
-use super::render_context::RenderContext;
+use super::render_context::{RenderContext, StyledSubtree};
 
 /// The axes along which a view takes whatever space it is offered - see
 /// [`View::fills`].
@@ -152,6 +152,32 @@ pub trait View {
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
         let _ = (max_width, max_height);
         None
+    }
+
+    /// [`measure`](Self::measure), with this frame's computed styles for the
+    /// view's own subtree in hand.
+    ///
+    /// A crate-internal hook: a content-sized stack calls it for a child it is
+    /// about to lay out under `css_layout`, so that CSS spacing *inside* the
+    /// child - a nested stack's `gap`, its children's margins - is part of
+    /// the size the child gets. `measure` alone cannot see the stylesheet.
+    ///
+    /// The default cannot account for that spacing, so it does not guess: when
+    /// any descendant's style adds space, the view fills (`None`) rather than
+    /// be handed a slot its content is clipped to. Otherwise it is `measure`.
+    /// `Stack` answers exactly instead.
+    #[doc(hidden)]
+    fn measure_styled(
+        &self,
+        max_width: u16,
+        max_height: u16,
+        subtree: StyledSubtree<'_>,
+    ) -> Option<(u16, u16)> {
+        if subtree.descendants_add_space() {
+            None
+        } else {
+            self.measure(max_width, max_height)
+        }
     }
 
     /// The axes along which this view takes whatever space it is offered;
@@ -330,6 +356,15 @@ impl View for Box<dyn View> {
 
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
         (**self).measure(max_width, max_height)
+    }
+
+    fn measure_styled(
+        &self,
+        max_width: u16,
+        max_height: u16,
+        subtree: StyledSubtree<'_>,
+    ) -> Option<(u16, u16)> {
+        (**self).measure_styled(max_width, max_height, subtree)
     }
 
     fn fills(&self) -> Fill {
