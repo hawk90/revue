@@ -321,7 +321,8 @@ fn a_mouse_event_that_changes_nothing_asks_for_no_redraw() {
 /// area, so there is nothing to hit-test and nothing to hover.
 #[test]
 fn it_is_inert_without_dom_from_render() {
-    let mut h = PipelineHarness::with_css("#b:hover { color: #ff0000; }", 20, 6);
+    let mut h =
+        PipelineHarness::with_css("#b:hover { color: #ff0000; }", 20, 6).dom_from_render(false);
     h.draw(&Rows);
 
     assert_eq!(h.element_at(0, 2), None);

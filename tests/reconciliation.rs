@@ -120,9 +120,12 @@ impl List {
 }
 
 impl View for List {
+    // `render_child` gives each child a node on the default path
+    // (`dom_from_render`); `children()` does with it turned off.
     fn render(&self, ctx: &mut RenderContext) {
         for child in &self.children {
-            child.render(ctx);
+            let area = ctx.area;
+            ctx.render_child(child.as_ref(), area);
         }
     }
     fn widget_type(&self) -> &'static str {
@@ -432,15 +435,13 @@ fn structural_state_follows_a_removal() {
 // The flag itself
 // ---------------------------------------------------------------------------
 
-/// Off by default. The DOM is built on the first frame and then stops
-/// following the view - a widget added later is invisible to CSS, layout and
-/// devtools until something forces a rebuild.
-///
-/// This documents the behavior the flag exists to fix; when the default flips,
-/// this test flips with it.
+/// The 2.x pipeline (`dom_from_render(false)`) with the flag off: the DOM is
+/// built on the first frame and then stops following the view - a widget
+/// added later is invisible to CSS, layout and devtools until something forces
+/// a rebuild.
 #[test]
 fn without_the_flag_the_dom_does_not_follow_the_view() {
-    let mut h = PipelineHarness::new(40, 10);
+    let mut h = PipelineHarness::new(40, 10).dom_from_render(false);
 
     h.draw(&List::named(&["a"]));
     assert_eq!(h.child_ids("root").len(), 1);
@@ -453,6 +454,21 @@ fn without_the_flag_the_dom_does_not_follow_the_view() {
         "the DOM followed the view with incremental_dom off"
     );
     assert!(h.node_id("b").is_none());
+}
+
+/// `dom_from_render`, on by default since 3.0, reconciles every frame, so the
+/// DOM follows the view without `incremental_dom`.
+#[test]
+fn by_default_the_dom_follows_the_view_without_the_flag() {
+    let mut h = PipelineHarness::new(40, 10);
+
+    h.draw(&List::named(&["a"]));
+    assert_eq!(h.child_ids("root").len(), 1);
+
+    h.draw(&List::named(&["a", "b"]));
+
+    assert_eq!(h.child_ids("root").len(), 2);
+    assert!(h.node_id("b").is_some());
 }
 
 #[test]

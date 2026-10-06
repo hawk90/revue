@@ -332,8 +332,8 @@ fn an_equal_share_stack_behaves_as_before() {
 /// sized or not.
 #[test]
 fn it_is_inert_without_css_layout() {
-    let mut h = PipelineHarness::with_css("#AAAA { height: 3; margin-top: 2; }", 20, 8)
-        .dom_from_render(true);
+    let mut h =
+        PipelineHarness::with_css("#AAAA { height: 3; margin-top: 2; }", 20, 8).css_layout(false);
     h.draw(&Column::content_sized(&["AAAA", "BBBB"]));
     assert_eq!(h.screen_text(), "AAAA\nBBBB");
 }

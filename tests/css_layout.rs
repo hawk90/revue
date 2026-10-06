@@ -165,19 +165,19 @@ fn a_percentage_resolves_against_the_offered_area() {
 // Guards
 // ---------------------------------------------------------------------------
 
-/// Off by default. A stylesheet that sets layout properties must not change
-/// anything until the flag is on.
+/// On by default since 3.0; turned off, a stylesheet's layout properties
+/// change nothing, as in 2.x.
 #[test]
-fn it_is_off_by_default() {
+fn it_can_be_turned_off() {
     let view = App::new(&["AAAA", "BBBB"]);
     let css = "#BBBB { display: none; } #AAAA { width: 1; }";
 
-    let mut off = PipelineHarness::with_css(css, 20, 6).dom_from_render(true);
+    let mut off = PipelineHarness::with_css(css, 20, 6).css_layout(false);
     off.draw(&view);
 
     assert!(
         off.contains("BBBB") && off.contains("AAAA"),
-        "css_layout took effect without being enabled"
+        "css_layout took effect after being turned off"
     );
 }
 
@@ -188,7 +188,7 @@ fn enabling_it_changes_nothing_without_layout_css() {
     let view = App::new(&["AAAA", "BBBB", "CCCC"]);
     let paint_only = "#BBBB { color: rgb(255, 0, 0); }";
 
-    let mut off = PipelineHarness::with_css(paint_only, 20, 6).dom_from_render(true);
+    let mut off = PipelineHarness::with_css(paint_only, 20, 6).css_layout(false);
     off.draw(&view);
 
     let mut on = harness(paint_only);
@@ -203,7 +203,9 @@ fn enabling_it_changes_nothing_without_layout_css() {
 fn it_is_inert_without_dom_from_render() {
     let view = App::new(&["AAAA", "BBBB"]);
 
-    let mut h = PipelineHarness::with_css("#BBBB { display: none; }", 20, 6).css_layout(true);
+    let mut h = PipelineHarness::with_css("#BBBB { display: none; }", 20, 6)
+        .dom_from_render(false)
+        .css_layout(true);
     h.draw(&view);
 
     assert!(
@@ -394,9 +396,9 @@ fn a_css_gap_is_ignored_without_the_flag() {
         }
     }
 
-    let mut off = PipelineHarness::with_css("#app { gap: 2; }", 20, 6).dom_from_render(true);
+    let mut off = PipelineHarness::with_css("#app { gap: 2; }", 20, 6).css_layout(false);
     off.draw(&Two);
-    let mut plain = PipelineHarness::with_css("", 20, 6).dom_from_render(true);
+    let mut plain = PipelineHarness::with_css("", 20, 6).css_layout(false);
     plain.draw(&Two);
 
     assert_eq!(

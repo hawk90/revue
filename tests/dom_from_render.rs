@@ -158,7 +158,7 @@ fn a_class_selector_matches_and_follows_the_widget() {
 fn enabling_it_does_not_change_the_output_without_css() {
     let view = App::new(&["a", "b", "c"], 1);
 
-    let mut off = PipelineHarness::new(40, 10);
+    let mut off = PipelineHarness::new(40, 10).dom_from_render(false);
     off.draw(&view);
 
     let mut on = PipelineHarness::new(40, 10).dom_from_render(true);

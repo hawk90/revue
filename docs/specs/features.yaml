@@ -58,8 +58,8 @@ items:
       - tests/cascade_precedence.rs::a_disabled_rule_repaints_the_widget_when_it_is_disabled
     source:
       - FEATURES.md §1 CSS Styling / Selectors
-    notes: Dynamic state only exists with App::builder().dom_from_render(true); without it no node below the root has state
-      (see NAV-002).
+    notes: Dynamic state needs dom_from_render (on by default since 3.0); with it turned off no node below the root has
+      state (see NAV-002).
   - id: CSS-004
     title: Descendant, child and sibling combinators
     area: css
@@ -170,7 +170,7 @@ items:
       - FEATURES.md §1 CSS Styling / Colors
     notes: Doc shows ansi(196); parse_color has no ansi() branch, the value is rejected.
   - id: CSS-011
-    title: Paint properties apply without css_layout (color, background, font-weight, text-decoration, text-align, visibility)
+    title: Paint properties reach every widget (color, background, font-weight, text-decoration, text-align, visibility)
     area: css
     priority: P0
     priority_inferred: true
@@ -190,10 +190,12 @@ items:
       - tests/css_reaches_the_screen.rs::font_weight_bold_reaches_the_cell
       - tests/css_reaches_the_screen.rs::visibility_hidden_stops_the_paint
       - tests/css_reaches_the_screen.rs::text_align_center_moves_the_text
+      - tests/css_defaults.rs::a_rule_on_a_nested_widget_applies_by_default
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
       - PR #676
-    notes: Requires dom_from_render(true) so widgets have DOM nodes.
+    notes: Needs dom_from_render so widgets have DOM nodes - on by default since 3.0 (docs/migration/v3.0.0.md section 1);
+      independent of css_layout.
   - id: CSS-012
     title: Border properties (border, border-style, border-color)
     area: css
@@ -224,17 +226,20 @@ items:
       - FEATURES.md §1 CSS Styling / Supported Properties
     notes: scroll/auto parse but behave like visible/hidden; no CSS-driven scrolling.
   - id: CSS-014
-    title: Box properties via css_layout (display, width, height, margin, padding, min/max)
+    title: Box properties via css_layout (display, width, height, margin, min/max)
     area: css
     priority: P0
     priority_inferred: true
     status: done
     acceptance:
-      - effective only with dom_from_render(true).css_layout(true)
+      - on by default (3.0); css_layout(false) or dom_from_render(false) turns it off
       - 'display: none hides the subtree'
       - width/percent, min/max clamp, margin offsets, spacing longhands
+      - padding is not applied (it would move a widget's own border)
     evidence:
       - src/core/app/builder.rs::css_layout
+      - tests/css_defaults.rs::both_are_on_by_default
+      - tests/css_layout.rs::it_can_be_turned_off
       - tests/css_layout.rs::display_none_hides_a_widget
       - tests/css_layout.rs::max_width_clamps_and_min_width_floors
       - tests/css_layout.rs::a_percentage_resolves_against_the_offered_area
@@ -407,8 +412,8 @@ items:
       - tests/css_layout.rs::width_narrows_a_widget
     source:
       - FEATURES.md §2 Flexbox Layout / Sizing
-    notes: Builder-based (child_sized/child_flex/constrain); CSS flex-grow is not applied (CSS-016), CSS width/min/max need
-      css_layout (CSS-014).
+    notes: Builder-based (child_sized/child_flex/constrain); CSS flex-grow is not applied (CSS-016), CSS width/min/max go
+      through css_layout (CSS-014, on by default).
   - id: LAY-005
     title: In-tree flexbox + grid layout engine drives on-screen layout
     area: layout
@@ -1403,7 +1408,7 @@ items:
       - tab_navigation(true) makes Tab/Shift+Tab move :focus in document order
       - disabled widgets skipped
       - left click focuses nearest focusable ancestor
-      - needs dom_from_render
+      - needs dom_from_render (on by default)
     evidence:
       - src/core/app/builder.rs::tab_navigation
       - tests/tab_navigation.rs::tab_moves_to_the_next_control_in_document_order
