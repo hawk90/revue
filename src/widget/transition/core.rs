@@ -193,27 +193,31 @@ impl View for Transition {
         // Determine if we should dim (partial opacity)
         let should_dim = effective_progress > 0.0 && effective_progress < 1.0;
 
+        // Laid out in terminal columns: a wide glyph takes two (the second a
+        // continuation cell), a zero-width char none
         let mut x: u16 = 0;
+        let mut glyph = [0u8; 4];
         for (j, ch) in self.child_content.chars().enumerate() {
             let cw = crate::utils::char_width(ch) as u16;
-            if x + cw <= area.width && area.height > 0 {
-                let cell = if j < chars_to_show {
-                    let mut c = Cell::new(ch);
-                    c.fg = Some(default_fg);
-                    c.bg = Some(default_bg);
-                    if should_dim {
-                        c.modifier |= Modifier::DIM;
-                    }
-                    c
+            if x.saturating_add(cw) <= area.width && area.height > 0 {
+                if j < chars_to_show {
+                    ctx.put_str_with(x, 0, ch.encode_utf8(&mut glyph), area.width, |ch| {
+                        let mut c = Cell::new(ch).fg(default_fg).bg(default_bg);
+                        if should_dim {
+                            c.modifier |= Modifier::DIM;
+                        }
+                        c
+                    });
                 } else {
-                    // Character not yet revealed: render as space
-                    let mut c = Cell::new(' ');
-                    c.bg = Some(default_bg);
-                    c
-                };
-                ctx.set(x, 0, cell);
+                    // Character not yet revealed: blank every column it takes
+                    for dx in 0..cw {
+                        let mut c = Cell::new(' ');
+                        c.bg = Some(default_bg);
+                        ctx.set(x + dx, 0, c);
+                    }
+                }
             }
-            x += cw;
+            x = x.saturating_add(cw);
         }
     }
 

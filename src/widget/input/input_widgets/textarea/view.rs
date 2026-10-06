@@ -70,6 +70,48 @@ impl TextArea {
         }
     }
 
+    /// Visual rows logical line `idx` takes: one, or one per wrapped segment.
+    fn line_rows(&self, idx: usize, text_width: u16) -> Vec<(usize, usize)> {
+        let line = self.lines.get(idx).map_or("", String::as_str);
+        if self.wrap && text_width > 0 {
+            let chars: Vec<char> = line.chars().collect();
+            wrap_segments(&chars, text_width)
+        } else {
+            vec![(0, line.chars().count())]
+        }
+    }
+
+    /// The first visible line that keeps the primary cursor's visual row in a
+    /// view `visible_lines` rows high, moving the current scroll as little as
+    /// possible: the vertical counterpart of `scroll_to_cursor`.
+    fn scroll_to_cursor_row(&self, text_width: u16, visible_lines: usize) -> usize {
+        let pos = self.cursors.primary().pos;
+        let cursor_line = pos.line.min(self.lines.len().saturating_sub(1));
+        let scroll = self.scroll.get().min(cursor_line);
+
+        // Rows from the top of the cursor's line down to the cursor's row. A
+        // cursor at a wrap point is drawn at the start of the next segment.
+        let segments = self.line_rows(cursor_line, text_width);
+        let cursor_row = segments
+            .iter()
+            .position(|&(_, end)| pos.col < end)
+            .unwrap_or(segments.len() - 1);
+        let mut rows = cursor_row + 1;
+
+        // Walk up from the cursor's line while the lines above still fit,
+        // stopping at the current scroll so a cursor in view does not move it.
+        let mut top = cursor_line;
+        while top > scroll {
+            let above = self.line_rows(top - 1, text_width).len();
+            if rows + above > visible_lines {
+                break;
+            }
+            rows += above;
+            top -= 1;
+        }
+        top
+    }
+
     /// Build the list of visual rows to render, starting from the vertical scroll offset.
     ///
     /// Each entry is `(line_idx, seg_start, seg_end, is_first_segment)`. When `wrap` is on a
@@ -81,7 +123,7 @@ impl TextArea {
         visible_lines: usize,
     ) -> Vec<(usize, usize, usize, bool)> {
         let mut rows = Vec::with_capacity(visible_lines);
-        let mut line_idx = self.scroll;
+        let mut line_idx = self.scroll.get();
 
         while rows.len() < visible_lines && line_idx < self.lines.len() {
             let char_count = self.lines[line_idx].chars().count();
@@ -157,6 +199,10 @@ impl View for TextArea {
             )
         };
         self.scroll_x.set(scroll_x);
+
+        // Scroll vertically, in visual rows, to keep the primary cursor in view.
+        self.scroll
+            .set(self.scroll_to_cursor_row(text_width, visible_lines));
         let css_fg = ctx.css_color_if_set();
 
         // Render visible visual rows (a logical line may span multiple rows when wrapping).

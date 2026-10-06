@@ -16,12 +16,15 @@ fn render(stream: &AiStream, width: u16, height: u16) -> Buffer {
     buffer
 }
 
-/// Each row of `buffer` as text.
+/// Each row of `buffer` as the terminal shows it: a wide glyph's
+/// continuation cell contributes nothing.
 fn rows(buffer: &Buffer, width: u16, height: u16) -> Vec<String> {
     (0..height)
         .map(|y| {
             (0..width)
-                .map(|x| buffer.get(x, y).map(|c| c.symbol).unwrap_or(' '))
+                .filter_map(|x| buffer.get(x, y))
+                .filter(|c| !c.is_continuation())
+                .map(|c| c.symbol)
                 .collect::<String>()
         })
         .collect()

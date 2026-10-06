@@ -10,8 +10,9 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{
-    ContextMenu, Diagram, DiagramNode, Gauge, Menu, MenuBar, MenuItem, PieChart, PieLabelStyle,
-    Popover, Slider, Step, Stepper, Switch, SwitchStyle, Tooltip, TooltipPosition, Waveline,
+    AiStream, Canvas, Collapsible, ContextMenu, Diagram, DiagramNode, DrawContext, Gauge, Menu,
+    MenuBar, MenuItem, PieChart, PieLabelStyle, Popover, Presentation, Slide, SlideAlign, Slider,
+    StatusBar, Step, Stepper, Switch, SwitchStyle, Tooltip, TooltipPosition, Waveline,
 };
 
 fn render(view: &dyn View, width: u16, height: u16) -> Buffer {
@@ -375,4 +376,272 @@ fn waveline_wide_label_takes_two_cells_per_glyph() {
     let wave = Waveline::new(vec![0.1, 0.5, 0.9]).label("🔄Wave");
     let buffer = render(&wave, 20, 5);
     assert_wide_then(&buffer, '🔄', 'W');
+}
+
+// ─── Presentation ───────────────────────────────────────────────────────────
+
+fn presentation_slide(slide: Slide) -> Presentation {
+    Presentation::new()
+        .numbers(false)
+        .progress(false)
+        .slide(slide)
+}
+
+#[test]
+fn presentation_wide_title_is_centered_by_columns() {
+    let pres = presentation_slide(Slide::new("発表"));
+    let buffer = render(&pres, 20, 12);
+    // 4 columns in 20: starts at column 8 (chars would have said 9)
+    assert_eq!(assert_wide_then(&buffer, '発', '表'), (8, 2));
+    // The separator under it is as wide as the title in columns
+    assert_eq!(row_text(&buffer, 4).trim(), "────");
+}
+
+#[test]
+fn presentation_wide_left_and_right_lines_take_two_cells_per_glyph() {
+    let left = presentation_slide(Slide::new("T").line("設定x").align(SlideAlign::Left));
+    let buffer = render(&left, 20, 12);
+    assert_eq!(assert_wide_then(&buffer, '設', '定'), (2, 6));
+    assert_wide_then(&buffer, '定', 'x');
+
+    let right = presentation_slide(Slide::new("T").line("設定x").align(SlideAlign::Right));
+    let buffer = render(&right, 20, 12);
+    // 5 columns ending 2 before the edge: starts at column 13
+    assert_eq!(assert_wide_then(&buffer, '設', '定'), (13, 6));
+    assert_wide_then(&buffer, '定', 'x');
+}
+
+#[test]
+fn presentation_wide_title_slide_is_centered_by_columns() {
+    let pres = Presentation::new().title("発表会").author("🔄me");
+    let buffer = render(&pres, 20, 12);
+    assert_eq!(assert_wide_then(&buffer, '発', '表').0, 7);
+    assert_eq!(assert_wide_then(&buffer, '🔄', 'm').0, 8);
+}
+
+#[test]
+fn presentation_ascii_slide_unchanged() {
+    let pres = presentation_slide(Slide::new("Hello").line("abc").align(SlideAlign::Left));
+    let buffer = render(&pres, 21, 12);
+    assert_eq!(row_text(&buffer, 2), "        Hello        ");
+    assert_eq!(row_text(&buffer, 4).trim(), "─────");
+    assert_eq!(row_text(&buffer, 6).trim_end(), "  abc");
+}
+
+// ─── MarkdownPresentation ───────────────────────────────────────────────────
+
+/// Length of the title separator: the first row (above the footer) drawn
+/// only in `─`.
+#[cfg(feature = "markdown")]
+fn separator_len(buffer: &Buffer) -> usize {
+    (0..buffer.height() - 1)
+        .map(|y| row_text(buffer, y))
+        .find(|row| !row.trim().is_empty() && row.trim().chars().all(|c| c == '─'))
+        .map(|row| row.trim().chars().count())
+        .expect("no separator row")
+}
+
+#[cfg(feature = "markdown")]
+#[test]
+fn markdown_presentation_separator_is_sized_by_title_columns() {
+    use revue::widget::{MarkdownPresentation, ViewMode};
+    // 8 glyphs, 16 columns, 24 bytes: twice the columns is 32 (bytes gave 48)
+    let pres = MarkdownPresentation::new("# 日本語のタイトル\n\nbody\n")
+        .mode(ViewMode::Slides)
+        .text_sizing(false)
+        .numbers(false)
+        .progress(false);
+    let buffer = render(&pres, 60, 20);
+    assert_eq!(separator_len(&buffer), 32);
+}
+
+#[cfg(feature = "markdown")]
+#[test]
+fn markdown_presentation_ascii_separator_unchanged() {
+    use revue::widget::{MarkdownPresentation, ViewMode};
+    let pres = MarkdownPresentation::new("# A title that is long\n\nbody\n")
+        .mode(ViewMode::Slides)
+        .text_sizing(false)
+        .numbers(false)
+        .progress(false);
+    let buffer = render(&pres, 60, 20);
+    assert_eq!(separator_len(&buffer), 40);
+}
+
+// ─── AiStream ───────────────────────────────────────────────────────────────
+
+fn ai_stream(text: &str) -> AiStream {
+    let mut stream = AiStream::new();
+    stream.set_content(text);
+    stream
+}
+
+#[test]
+fn ai_stream_wide_text_takes_two_cells_per_glyph() {
+    let buffer = render(&ai_stream("設定🔄x"), 20, 2);
+    assert_wide_then(&buffer, '設', '定');
+    assert_wide_then(&buffer, '定', '🔄');
+    assert_wide_then(&buffer, '🔄', 'x');
+}
+
+#[test]
+fn ai_stream_wraps_by_display_width() {
+    // 5 columns hold two 2-column glyphs; the third wraps
+    let buffer = render(&ai_stream("日本語"), 5, 3);
+    assert_eq!(row_text(&buffer, 0).trim_end(), "日本");
+    assert_eq!(row_text(&buffer, 1).trim_end(), "語");
+}
+
+#[test]
+fn ai_stream_ascii_wrap_unchanged() {
+    let buffer = render(&ai_stream("abcdefg\nhi"), 5, 3);
+    assert_eq!(row_text(&buffer, 0), "abcde");
+    assert_eq!(row_text(&buffer, 1).trim_end(), "fg");
+    assert_eq!(row_text(&buffer, 2).trim_end(), "hi");
+}
+
+// ─── Transition ─────────────────────────────────────────────────────────────
+
+#[test]
+fn transition_wide_text_takes_two_cells_per_glyph() {
+    let transition = revue::widget::AnimationTransition::new("設定🔄x");
+    let buffer = render(&transition, 20, 1);
+    assert_wide_then(&buffer, '設', '定');
+    assert_wide_then(&buffer, '定', '🔄');
+    assert_wide_then(&buffer, '🔄', 'x');
+}
+
+#[test]
+fn transition_ascii_text_unchanged() {
+    let transition = revue::widget::AnimationTransition::new("Hello");
+    let buffer = render(&transition, 8, 1);
+    assert_eq!(row_text(&buffer, 0), "Hello   ");
+}
+
+#[test]
+fn transition_group_wide_items_take_two_cells_per_glyph() {
+    let group = revue::widget::TransitionGroup::new(["設定x", "🔄y"]);
+    let buffer = render(&group, 20, 2);
+    assert_wide_then(&buffer, '設', '定');
+    assert_wide_then(&buffer, '定', 'x');
+    assert_eq!(assert_wide_then(&buffer, '🔄', 'y'), (0, 1));
+}
+
+// ─── Collapsible ────────────────────────────────────────────────────────────
+
+#[test]
+fn collapsible_wide_title_and_content_take_two_cells_per_glyph() {
+    let c = Collapsible::new("設定x").line("日本y").expanded(true);
+    let buffer = render(&c, 20, 4);
+    assert_eq!(assert_wide_then(&buffer, '設', '定'), (2, 0));
+    assert_wide_then(&buffer, '定', 'x');
+    assert_eq!(assert_wide_then(&buffer, '日', '本'), (2, 1));
+    assert_wide_then(&buffer, '本', 'y');
+}
+
+#[test]
+fn collapsible_truncates_content_by_display_width() {
+    // 10 wide leaves 7 columns for content: three glyphs, not seven
+    let c = Collapsible::new("T").line("日本語のテスト").expanded(true);
+    let buffer = render(&c, 10, 4);
+    assert_eq!(row_text(&buffer, 1).trim_end(), "│ 日本語");
+}
+
+#[test]
+fn collapsible_ascii_unchanged() {
+    let c = Collapsible::new("Title").line("abcdefghij").expanded(true);
+    let buffer = render(&c, 10, 4);
+    assert_eq!(row_text(&buffer, 0), "▼ Title   ");
+    assert_eq!(row_text(&buffer, 1).trim_end(), "│ abcdefg");
+}
+
+// ─── Canvas ─────────────────────────────────────────────────────────────────
+
+#[test]
+fn canvas_wide_text_takes_two_cells_per_glyph() {
+    let canvas = Canvas::new(|ctx: &mut DrawContext| {
+        ctx.text(1, 0, "設定x", None);
+        ctx.text_bold(1, 1, "🔄y", None);
+    });
+    let buffer = render(&canvas, 10, 2);
+    assert_eq!(assert_wide_then(&buffer, '設', '定'), (1, 0));
+    assert_wide_then(&buffer, '定', 'x');
+    assert_eq!(assert_wide_then(&buffer, '🔄', 'y'), (1, 1));
+    let cont = buffer.get(2, 1).unwrap();
+    assert!(cont.modifier.contains(revue::render::Modifier::BOLD));
+}
+
+#[test]
+fn canvas_text_stops_before_a_wide_glyph_that_would_cross_the_edge() {
+    let canvas = Canvas::new(|ctx: &mut DrawContext| ctx.text(0, 0, "ab設", None));
+    let buffer = render(&canvas, 3, 1);
+    assert_eq!(row_text(&buffer, 0), "ab ");
+}
+
+#[test]
+fn canvas_text_bold_stays_inside_its_area() {
+    // A canvas one row tall, inside a taller buffer: text on row 1 is
+    // outside it
+    let canvas = Canvas::new(|ctx: &mut DrawContext| ctx.text_bold(0, 1, "x", None));
+    let mut buffer = Buffer::new(4, 3);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 4, 1));
+    canvas.render(&mut ctx);
+    assert_eq!(row_text(&buffer, 1), "    ");
+}
+
+#[test]
+fn canvas_ascii_text_unchanged() {
+    let canvas = Canvas::new(|ctx: &mut DrawContext| ctx.text(1, 0, "abcdef", None));
+    let buffer = render(&canvas, 5, 1);
+    assert_eq!(row_text(&buffer, 0), " abcd");
+}
+
+// ─── StatusBar key hints ────────────────────────────────────────────────────
+
+#[test]
+fn status_bar_key_hint_row_advances_by_columns() {
+    let bar = StatusBar::new()
+        .header()
+        .height(2)
+        .key("^S", "保存")
+        .key("q", "終了");
+    let buffer = render(&bar, 30, 2);
+    assert_eq!(assert_wide_then(&buffer, '保', '存'), (3, 1));
+    // "^S" + " 保存 " is 8 columns (6 chars)
+    assert_eq!(find_in_row(&buffer, 1, 'q'), Some(8));
+    assert_wide_then(&buffer, '終', '了');
+}
+
+#[test]
+fn status_bar_inline_key_hints_advance_by_columns() {
+    let bar = StatusBar::new()
+        .header()
+        .left_text("A")
+        .key("^S", "保存")
+        .key("^Q", "終了");
+    let buffer = render(&bar, 24, 1);
+    // Hints start at column 4; the second follows "^S 保存" and a 2-column gap
+    assert_eq!(assert_wide_then(&buffer, '保', '存'), (7, 0));
+    assert_eq!(find_in_row(&buffer, 0, 'Q'), Some(14));
+    assert_wide_then(&buffer, '終', '了');
+}
+
+#[test]
+fn status_bar_inline_key_hint_fits_by_columns_not_bytes() {
+    // 9 columns of room: "^S 保存" + its 3-column allowance is 9 wide
+    // (its byte length would have made it 11 and dropped it)
+    let bar = StatusBar::new().header().left_text("A").key("^S", "保存");
+    let buffer = render(&bar, 15, 1);
+    assert_wide_then(&buffer, '保', '存');
+}
+
+#[test]
+fn status_bar_ascii_key_hints_unchanged() {
+    let bar = StatusBar::new()
+        .header()
+        .height(2)
+        .key("^S", "Save")
+        .key("q", "Quit");
+    let buffer = render(&bar, 20, 2);
+    assert_eq!(row_text(&buffer, 1).trim_end(), "^S Save q Quit");
 }

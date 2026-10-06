@@ -343,22 +343,15 @@ impl View for Collapsible {
         // Title
         let max_title_width = (area.width.saturating_sub(3)) as usize;
         let title_display = crate::utils::truncate_to_width(&self.title, max_title_width);
-        for ch in title_display.chars() {
-            let cw = crate::utils::char_width(ch) as u16;
-            if x + cw > area.width {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(header_fg);
-            if let Some(bg) = self.header_bg {
-                cell.bg = Some(bg);
-            }
+        let header_bg = self.header_bg;
+        ctx.put_str_with(x, 0, title_display, area.width, |ch| {
+            let mut cell = Cell::new(ch).fg(header_fg);
+            cell.bg = header_bg;
             if is_focused {
                 cell.modifier |= Modifier::BOLD;
             }
-            ctx.set(x, 0, cell);
-            x += cw;
-        }
+            cell
+        });
 
         // Render content if expanded
         if self.expanded && area.height > 1 {
@@ -398,19 +391,13 @@ impl View for Collapsible {
 
                 // Content text
                 let text_x: u16 = if self.show_border { 2 } else { 1 };
-                let max_content_width = content_width.saturating_sub(1) as usize;
-
-                for (ci, ch) in line.chars().enumerate() {
-                    if ci >= max_content_width {
-                        break;
-                    }
-                    let mut cell = Cell::new(ch);
-                    cell.fg = Some(self.content_fg);
-                    if let Some(bg) = self.content_bg {
-                        cell.bg = Some(bg);
-                    }
-                    ctx.set(text_x + ci as u16, y, cell);
-                }
+                let max_content_width = content_width.saturating_sub(1);
+                let (content_fg, content_bg) = (self.content_fg, self.content_bg);
+                ctx.put_str_with(text_x, y, line, text_x + max_content_width, |ch| {
+                    let mut cell = Cell::new(ch).fg(content_fg);
+                    cell.bg = content_bg;
+                    cell
+                });
             }
 
             // Draw bottom border
