@@ -12,7 +12,7 @@ use revue::widget::traits::{RenderContext, View};
 use revue::widget::{
     AiStream, Canvas, Collapsible, ContextMenu, Diagram, DiagramNode, DrawContext, Gauge, Menu,
     MenuBar, MenuItem, PieChart, PieLabelStyle, Popover, Presentation, Slide, SlideAlign, Slider,
-    Step, Stepper, Switch, SwitchStyle, Tooltip, TooltipPosition, Waveline,
+    StatusBar, Step, Stepper, Switch, SwitchStyle, Tooltip, TooltipPosition, Waveline,
 };
 
 fn render(view: &dyn View, width: u16, height: u16) -> Buffer {
@@ -594,4 +594,54 @@ fn canvas_ascii_text_unchanged() {
     let canvas = Canvas::new(|ctx: &mut DrawContext| ctx.text(1, 0, "abcdef", None));
     let buffer = render(&canvas, 5, 1);
     assert_eq!(row_text(&buffer, 0), " abcd");
+}
+
+// ─── StatusBar key hints ────────────────────────────────────────────────────
+
+#[test]
+fn status_bar_key_hint_row_advances_by_columns() {
+    let bar = StatusBar::new()
+        .header()
+        .height(2)
+        .key("^S", "保存")
+        .key("q", "終了");
+    let buffer = render(&bar, 30, 2);
+    assert_eq!(assert_wide_then(&buffer, '保', '存'), (3, 1));
+    // "^S" + " 保存 " is 8 columns (6 chars)
+    assert_eq!(find_in_row(&buffer, 1, 'q'), Some(8));
+    assert_wide_then(&buffer, '終', '了');
+}
+
+#[test]
+fn status_bar_inline_key_hints_advance_by_columns() {
+    let bar = StatusBar::new()
+        .header()
+        .left_text("A")
+        .key("^S", "保存")
+        .key("^Q", "終了");
+    let buffer = render(&bar, 24, 1);
+    // Hints start at column 4; the second follows "^S 保存" and a 2-column gap
+    assert_eq!(assert_wide_then(&buffer, '保', '存'), (7, 0));
+    assert_eq!(find_in_row(&buffer, 0, 'Q'), Some(14));
+    assert_wide_then(&buffer, '終', '了');
+}
+
+#[test]
+fn status_bar_inline_key_hint_fits_by_columns_not_bytes() {
+    // 9 columns of room: "^S 保存" + its 3-column allowance is 9 wide
+    // (its byte length would have made it 11 and dropped it)
+    let bar = StatusBar::new().header().left_text("A").key("^S", "保存");
+    let buffer = render(&bar, 15, 1);
+    assert_wide_then(&buffer, '保', '存');
+}
+
+#[test]
+fn status_bar_ascii_key_hints_unchanged() {
+    let bar = StatusBar::new()
+        .header()
+        .height(2)
+        .key("^S", "Save")
+        .key("q", "Quit");
+    let buffer = render(&bar, 20, 2);
+    assert_eq!(row_text(&buffer, 1).trim_end(), "^S Save q Quit");
 }
