@@ -337,3 +337,23 @@ fn it_is_inert_without_css_layout() {
     h.draw(&Column::content_sized(&["AAAA", "BBBB"]));
     assert_eq!(h.screen_text(), "AAAA\nBBBB");
 }
+
+/// An explicit main-axis size outranks a child that fills that axis.
+#[test]
+fn an_explicit_width_beats_a_child_that_fills_the_row() {
+    struct Row;
+    impl View for Row {
+        fn render(&self, ctx: &mut RenderContext) {
+            hstack()
+                .content_sized(true)
+                .child(Text::new("["))
+                .child(Progress::new(1.0).element_id("bar"))
+                .child(Text::new("]"))
+                .render(ctx);
+        }
+        fn id(&self) -> Option<&str> {
+            Some("app")
+        }
+    }
+    assert_eq!(draw("#bar { width: 5; }", &Row), "[█████]");
+}

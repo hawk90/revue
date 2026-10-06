@@ -6,13 +6,13 @@
 
 use revue::prelude::*;
 use revue::testing::PipelineHarness;
-use revue::widget::{card, Alert, Switch};
+use revue::widget::{card, Alert, Fill, Switch};
 
 /// A view that fills whatever it is given and does not measure - the default
 /// for every widget that has not learned to answer.
-struct Fill(&'static str);
+struct Filler(&'static str);
 
-impl View for Fill {
+impl View for Filler {
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         for y in 0..area.height {
@@ -67,7 +67,7 @@ fn a_child_that_fills_gets_what_the_measured_ones_leave() {
     let view = vstack()
         .content_sized(true)
         .child(Text::new("header"))
-        .child(Fill("body"))
+        .child(Filler("body"))
         .child(Text::new("footer"));
     let screen = rows(&view, 6);
     assert_eq!(screen, ["header", "body", "body", "body", "body", "footer"]);
@@ -117,8 +117,8 @@ fn measure_answers() {
         Some((4, 3))
     );
     assert_eq!(three_lines().measure(80, 24), Some((1, 3)));
-    assert_eq!(vstack().child(Fill("x")).measure(80, 24), None);
-    assert_eq!(Fill("x").measure(80, 24), None);
+    assert_eq!(vstack().child(Filler("x")).measure(80, 24), None);
+    assert_eq!(Filler("x").measure(80, 24), None);
 }
 
 // ==================== Widgets that measure ====================
@@ -197,4 +197,81 @@ fn an_alert_and_a_card_take_their_rows() {
     assert!(screen[4].contains("Card"), "{screen:?}");
     assert!(screen[6].contains("body"), "{screen:?}");
     assert_eq!(screen[8], "after");
+}
+
+// ==================== Children that fill the main axis ====================
+//
+// A stretchy widget measures the whole offered width - one row of it - and
+// says so with `View::fills`. In a column that is its one row; in a row it
+// shares what the measured siblings leave instead of taking all of it.
+
+#[test]
+fn a_progress_bar_takes_the_row_the_brackets_leave() {
+    let view = hstack()
+        .content_sized(true)
+        .child(Text::new("["))
+        .child(Progress::new(1.0))
+        .child(Text::new("]"));
+    assert_eq!(rows(&view, 1)[0], format!("[{}]", "█".repeat(18)));
+}
+
+#[test]
+fn a_search_button_sits_right_after_the_input() {
+    let view = hstack()
+        .content_sized(true)
+        .child(Input::new().value("query"))
+        .child(Button::new("Search"));
+    let row = &rows(&view, 1)[0];
+    // The button is 10 columns wide (`  Search  `) and ends at the right
+    // edge, so its label starts at column 12.
+    assert!(row.starts_with("query"), "{row:?}");
+    assert_eq!(row.find("Search"), Some(12), "{row:?}");
+}
+
+#[test]
+fn two_fillers_in_a_row_split_the_leftover() {
+    let view = hstack()
+        .content_sized(true)
+        .child(Text::new("a"))
+        .child(Progress::new(1.0))
+        .child(Progress::new(0.0).style(ProgressStyle::Ascii))
+        .child(Text::new("b"));
+    let row = &rows(&view, 1)[0];
+    assert_eq!(row, &format!("a{}{}b", "█".repeat(9), "-".repeat(9)));
+}
+
+#[test]
+fn a_filler_in_a_column_is_still_one_row() {
+    let view = vstack()
+        .content_sized(true)
+        .child(Progress::new(1.0))
+        .child(Text::new("after"));
+    let screen = rows(&view, 6);
+    assert_eq!(screen[0], "█".repeat(20));
+    assert_eq!(screen[1], "after");
+}
+
+#[test]
+fn a_row_holding_a_filler_fills_in_an_outer_row() {
+    let field = hstack()
+        .content_sized(true)
+        .child(Text::new(">"))
+        .child(Progress::new(1.0));
+    assert_eq!(field.fills(), Fill::WIDTH);
+    let view = hstack()
+        .content_sized(true)
+        .child(field)
+        .child(Text::new("|"));
+    assert_eq!(rows(&view, 1)[0], format!(">{}|", "█".repeat(18)));
+}
+
+#[test]
+fn a_vertical_divider_fills_a_column_but_not_a_row() {
+    assert_eq!(Divider::vertical().fills(), Fill::HEIGHT);
+    let view = hstack()
+        .content_sized(true)
+        .child(Text::new("left"))
+        .child(Divider::vertical())
+        .child(Text::new("right"));
+    assert_eq!(rows(&view, 2)[0], "left│right");
 }

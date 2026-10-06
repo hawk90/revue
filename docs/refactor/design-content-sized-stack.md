@@ -65,8 +65,8 @@ pub trait View {
 | | `Spinner`, `Rating`, `Slider` | 글리프/별/트랙 + 라벨·값. `Slider`는 `length` 고정, 눈금이 있으면 2행 |
 | | `Link`, `Breadcrumb`, `RichText`, `StatusIndicator` | 보이는 글자 폭(`RichText`는 줄 수만큼 행) |
 | | `Gauge` (Bar, Battery, Segments, Dots, Vertical, Thermometer) | `width`/`height`/`segments` + 제목 1행 |
-| 가로로 늘어남 | `Input`, `Progress`, `Sparkline`, 가로 `Divider` | 주어진 폭 × 1행 (`Divider::length`가 있으면 그 길이) |
-| | 세로 `Divider` | 1열 × 주어진 높이 |
+| 가로로 늘어남 (`fills` = `WIDTH`) | `Input`, `Progress`, `Sparkline`, 가로 `Divider` | 주어진 폭 × 1행 (`Divider::length`가 있으면 그 길이, `fills` = `NONE`) |
+| 세로로 늘어남 (`fills` = `HEIGHT`) | 세로 `Divider` | 1열 × 주어진 높이 |
 | 헬퍼 재사용 | `Alert`, `Callout`, `EmptyState` | 주어진 폭 × `height()` (닫힌 `Alert`는 0×0) |
 | | `StatusBar` | 주어진 폭 × `height` |
 | | `BigText` | Figlet: 가장 긴 줄 × `height()`. 텍스트 크기 프로토콜: 주어진 폭 |
@@ -79,9 +79,23 @@ pub trait View {
 것, `Positioned`(부모 영역 안의 오프셋으로 놓으므로 자식 크기가 자기 크기가 아님),
 `Layers`, `Gauge`의 Arc·Circle.
 
-**알려진 한계** — "가로로 늘어남" 위젯은 열(`vstack`)에서는 원하는 대로 1행이지만,
-행(`hstack`)에서는 주어진 폭 전부를 답하므로 뒤의 형제가 밀려난다(`None`이면 남은 공간을
-나눠 가졌을 것). `measure`가 "이 축은 채운다"를 표현할 수 없기 때문이다. 3.0 전에 정한다.
+#### 어느 축을 채우는가 — `View::fills`
+
+`measure`만으로는 "1행이지만 폭은 주는 만큼"을 말할 수 없다. 늘어나는 위젯이 주어진 폭
+전부를 답하면 열(`vstack`)에서는 1행으로 옳지만, 행(`hstack`)에서는 그 폭이 고정 크기가 되어
+뒤의 형제를 밀어낸다(`[` `Progress` `]`에서 `]`가 사라졌다).
+
+그래서 `View::fills() -> Fill`(기본 `Fill::NONE`)이 **주는 만큼 차지하는 축**을 말한다.
+`measure`는 다른 축의 자연 크기를 그대로 답한다. `Fill`은 `NONE`/`WIDTH`/`HEIGHT`/`BOTH`.
+
+- `WIDTH`: `Input`, `Progress`, `Sparkline`, 가로 `Divider`, `Alert`(닫히지 않았을 때),
+  `Callout`, `EmptyState`, `StatusBar`, `Card`, 텍스트 크기 프로토콜로 그리는 `BigText`
+- `HEIGHT`: 세로 `Divider`. `length`가 있는 `Divider`는 `NONE`
+- `Box<dyn View>`, `ErrorBoundary`, `ZenMode`, `DebugOverlay`는 `measure`와 같은 조건으로 전달
+  (켜진 `ZenMode`, 보이는 `DebugOverlay`는 `BOTH`)
+- `Stack::fills`: `child`로 넣은 자식 중 하나라도 채우는 축은 스택도 채운다. 그래서 `Input`을
+  담은 `hstack`은 바깥 `hstack`에서도 남은 폭을 나눠 받는다. `child_sized`/`child_flex` 자식은
+  세지 않는다
 
 ### 2. Stack이 그 답을 쓴다 — 3.0, 기본값 변경
 
@@ -90,9 +104,11 @@ pub trait View {
 | 자식의 `measure` | 주축 크기 |
 |---|---|
 | `Some((w, h))` | 그 크기 (남은 공간을 넘지 않게) |
+| `Some(..)`, 그러나 `fills()`가 주축을 덮음 | `None`과 같다 — 남은 공간을 나눠 받는다 |
 | `None` | 측정된 자식들을 뺀 나머지를 `None` 자식끼리 균등 분배 — 지금 규칙 그대로 |
 
 - `child_sized` / `child_flex`는 그대로 우선한다
+- `css_layout`에서 주축의 명시적 CSS 크기(열은 `height`, 행은 `width`)는 `fills`보다 우선한다
 - 교차축은 지금처럼 전체를 준다(stretch)
 - 3.0 전까지는 `Stack::content_sized(true)`로 옵트인, 3.0에서 기본 on. `false`로 2.x 동작
 

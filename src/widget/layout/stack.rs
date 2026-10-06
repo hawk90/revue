@@ -3,7 +3,7 @@
 use crate::layout::Rect;
 use crate::style::{Display, Size, Style};
 use crate::widget::traits::render_context::box_model;
-use crate::widget::traits::{RenderContext, View, WidgetProps};
+use crate::widget::traits::{Fill, RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Size specification for a stack child
@@ -93,8 +93,11 @@ impl Stack {
     /// down the screen.
     ///
     /// With it on, a child whose [`View::measure`] answers gets that size
-    /// along the stack's axis, and only the children that fill (`measure`
-    /// returns `None`) share what is left - equally, as before. `child_sized`
+    /// along the stack's axis, and only the children that fill share what is
+    /// left - equally, as before. A child fills when `measure` returns `None`
+    /// or when [`View::fills`] covers the stack's axis: a text field in a row
+    /// takes the width its siblings leave, while in a column it is still the
+    /// one row it measures. `child_sized`
     /// and `child_flex` still win. The cross axis is unchanged: every child
     /// gets the stack's full width (in a column) or height (in a row).
     ///
@@ -352,6 +355,21 @@ impl View for Stack {
         Some((w.min(max_width), h.min(max_height)))
     }
 
+    /// The axes any child added with [`child`](Self::child) fills.
+    ///
+    /// A row holding a text field fills the width, so an outer row shares
+    /// its leftover with it rather than handing it the width the field
+    /// measured. Children added with `child_sized` / `child_flex` do not
+    /// count: their size along the axis is the builder's, and a flex child
+    /// already makes the stack's `measure` answer `None`.
+    fn fills(&self) -> Fill {
+        self.children
+            .iter()
+            .zip(&self.child_sizes)
+            .filter(|(_, size)| matches!(size, ChildSize::Auto))
+            .fold(Fill::NONE, |acc, (child, _)| acc.or(child.fills()))
+    }
+
     fn children(&self) -> &[Box<dyn View>] {
         &self.children
     }
@@ -419,6 +437,8 @@ impl Stack {
     ///
     /// - it does not measure itself and has no explicit size - its margins and
     ///   bounds then apply to its share, as in an equal-share stack
+    /// - it fills this stack's axis ([`View::fills`]) and has no explicit
+    ///   size - an explicit `height` (column) / `width` (row) still wins
     /// - any main-axis size is a percentage. A percentage needs a basis and the
     ///   box model resolves it against the slot, so no slot computed from it
     ///   would survive the box model unchanged; the share is the basis an
@@ -436,6 +456,9 @@ impl Stack {
     ) -> ChildSize {
         let style = style.filter(|s| box_model::specifies_anything(s));
         let Some(style) = style else {
+            if self.fills_main_axis(child) {
+                return ChildSize::Auto;
+            }
             let (w, h) = self.oriented(main, cross);
             return match child.measure(w, h) {
                 Some((w, h)) => ChildSize::Fixed(self.oriented(w, h).0),
@@ -474,6 +497,9 @@ impl Stack {
 
         let size = match fixed(size) {
             Some(size) => size,
+            // No explicit size: a child that fills the axis shares what is
+            // left, its margins and bounds applying to its share.
+            None if self.fills_main_axis(child) => return ChildSize::Auto,
             None => {
                 // The cross extent is what the box model will leave the child;
                 // a narrower box can wrap to more rows.
@@ -490,6 +516,16 @@ impl Stack {
         let size = fixed(max).map_or(size, |m| size.min(m));
         let size = fixed(min).map_or(size, |m| size.max(m));
         ChildSize::Fixed(size.saturating_add(margins))
+    }
+
+    /// Whether `child` takes whatever it is offered along this stack's axis
+    /// ([`View::fills`]): the width in a row, the height in a column.
+    fn fills_main_axis(&self, child: &dyn View) -> bool {
+        let fills = child.fills();
+        match self.direction {
+            Direction::Column => fills.height,
+            Direction::Row => fills.width,
+        }
     }
 
     /// Swap `(main, cross)` into `(width, height)` for this stack - or back:
