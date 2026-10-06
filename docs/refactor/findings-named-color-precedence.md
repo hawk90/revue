@@ -43,7 +43,7 @@
 | `mermaid/types.rs` | `DiagramColors.node_fg` | `pub` 필드를 가진 `pub struct`, `.colors(DiagramColors)` | 3.0에서 해결 |
 | `developer/procmon.rs` | `ProcColors.name` | 같음 | 3.0에서 해결 |
 | `developer/presentation.rs` | `Slide.content_color` | `pub` 필드 | 3.0에서 해결 |
-| `datetime_picker/mod.rs` | `DateTimePicker.field_fg` | `pub` 필드 (빌더 없음) | 3.0에서 해결 |
+| `datetime_picker/mod.rs` | `DateTimePicker.field_fg` | `pub` 필드 | 3.0에서 해결, `.field_color()` 빌더 추가 |
 | `data/calendar/` | `day_fg` | 빌더가 없고 `CalendarView` params 구조체 경유 | 남김 (아래) |
 
 **3.0에 넣었다** (2026-10-05 결정). 네 필드 모두 `Option<Color>`이 되었고 렌더는

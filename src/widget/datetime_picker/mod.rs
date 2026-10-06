@@ -238,6 +238,14 @@ impl DateTimePicker {
         self
     }
 
+    /// Set time field color (the fields that are not being edited)
+    ///
+    /// A color named here outranks the stylesheet's `color`.
+    pub fn field_color(mut self, color: Color) -> Self {
+        self.field_fg = Some(color);
+        self
+    }
+
     /// Set selected colors
     pub fn selected_colors(mut self, fg: Color, bg: Color) -> Self {
         self.selected_fg = fg;

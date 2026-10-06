@@ -767,8 +767,8 @@ three_ways!(
 );
 
 // DateTimePicker.field_fg - probed on the minute digits; the hour is the active
-// field and carries its own highlight. `field_fg` has no builder; naming it
-// means assigning the public field.
+// field and carries its own highlight. Named through `field_color`, and once
+// more by assigning the public field directly.
 
 fn last_digit_fg(h: &PipelineHarness) -> Option<Color> {
     let buffer = h.buffer();
@@ -780,11 +780,12 @@ fn last_digit_fg(h: &PipelineHarness) -> Option<Color> {
 }
 
 fn picker(named: bool) -> DateTimePicker {
-    let mut p = DateTimePicker::time_only().element_id("w");
     if named {
-        p.field_fg = Some(Color::WHITE);
+        DateTimePicker::time_only().field_color(Color::WHITE)
+    } else {
+        DateTimePicker::time_only()
     }
-    p
+    .element_id("w")
 }
 
 case!(PickerNamed, PickerSilent, picker(true), picker(false));
@@ -799,3 +800,28 @@ three_ways!(
     (40, 8),
     |h: &PipelineHarness| last_digit_fg(h)
 );
+
+fn assigned_picker() -> DateTimePicker {
+    let mut p = DateTimePicker::time_only().element_id("w");
+    p.field_fg = Some(Color::WHITE);
+    p
+}
+
+case!(
+    PickerAssigned,
+    PickerUnassigned,
+    assigned_picker(),
+    picker(false)
+);
+
+#[test]
+fn an_assigned_picker_field_beats_css() {
+    let h = draw_sized("#w { color: #ff0000; }", &PickerAssigned, 40, 8);
+    assert_eq!(last_digit_fg(&h), Some(Color::WHITE));
+}
+
+#[test]
+fn an_unassigned_picker_field_defers_to_css() {
+    let h = draw_sized("#w { color: #ff0000; }", &PickerUnassigned, 40, 8);
+    assert_eq!(last_digit_fg(&h), Some(RED));
+}
