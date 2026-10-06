@@ -186,27 +186,42 @@ fn the_engine_and_the_screen_disagree_today() {
     );
 }
 
-/// **Pins a bug.** With `dom_from_render` the DOM is built *during* the render
-/// pass, so `draw` lays out whatever the previous frame produced. On the first
-/// frame there is nothing to lay out at all.
+/// With `dom_from_render` the DOM is built *during* the render pass, so the
+/// layout pass runs after it - in the same frame. It used to run before, on
+/// whatever the previous frame produced, and the first frame had nothing to
+/// lay out at all (L-4).
 #[test]
-fn layout_runs_a_frame_behind_dom_from_render_today() {
-    let mut h = PipelineHarness::with_css("#a { height: 4; }", 20, 8)
-        .incremental_dom(true)
-        .dom_from_render(true);
-
-    h.draw(&column());
-    assert_eq!(
-        h.layout_rect("a"),
-        None,
-        "the first frame produced layout - the frame lag is fixed"
-    );
+fn layout_follows_the_dom_the_same_frame_built() {
+    let mut h = PipelineHarness::with_css("#a { height: 4; }", 20, 8).dom_from_render(true);
 
     h.draw(&column());
     assert_eq!(
         h.layout_rect("a").map(|r| r.height),
         Some(4),
-        "the second frame must lay out the tree the first one discovered"
+        "the first frame must lay out the tree it discovered"
+    );
+    assert_eq!(
+        h.layout_child_ids("root"),
+        vec!["a".to_string(), "b".to_string()]
+    );
+}
+
+/// A structural change reaches the layout tree in the frame that made it.
+#[test]
+fn a_structural_change_reaches_the_layout_in_the_same_frame() {
+    fn rows(ids: &[&str]) -> Stack {
+        ids.iter().fold(vstack().element_id("root"), |s, id| {
+            s.child(Text::new(*id).element_id(*id))
+        })
+    }
+
+    let mut h = PipelineHarness::with_css("", 20, 8).dom_from_render(true);
+    h.draw(&rows(&["a", "b"]));
+    h.draw(&rows(&["a", "b", "c"]));
+
+    assert_eq!(
+        h.layout_child_ids("root"),
+        vec!["a".to_string(), "b".to_string(), "c".to_string()]
     );
 }
 

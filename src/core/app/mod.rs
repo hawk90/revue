@@ -633,15 +633,8 @@ impl App {
     ) -> crate::Result<()> {
         let (width, height) = self.get_buffer_size();
 
-        if self.dom.dom_from_render() {
-            // The render pass builds the DOM. Lay out whatever the previous
-            // frame produced; on the first frame there is nothing yet.
-            if let Some(root_dom_id) = self.dom.tree().root_id() {
-                if self.layout_engine {
-                    self.update_layout_tree(root_dom_id, width, height);
-                }
-            }
-        } else {
+        let dom_from_render = self.dom.dom_from_render();
+        if !dom_from_render {
             let root_dom_id = self.update_dom_and_get_root(view)?;
             if self.layout_engine {
                 self.update_layout_tree(root_dom_id, width, height);
@@ -650,6 +643,18 @@ impl App {
 
         let new_buffer_idx = self.swap_buffers();
         self.render_to_buffer(view, new_buffer_idx);
+
+        if dom_from_render && self.layout_engine {
+            // The render pass built this frame's DOM, so lay it out now rather
+            // than a frame late. Nothing paints from the result (containers
+            // place their own children), so running after the paint is safe.
+            if self.dom.take_structure_dirty() {
+                self.needs_layout_rebuild = true;
+            }
+            if let Some(root_dom_id) = self.dom.tree().root_id() {
+                self.update_layout_tree(root_dom_id, width, height);
+            }
+        }
         self.draw_to_terminal(terminal, new_buffer_idx, force_redraw)?;
 
         // Clear dirty flags after rendering

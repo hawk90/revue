@@ -427,7 +427,7 @@ items:
       - FEATURES.md §2 Flexbox Layout
     notes: 'Engine exists and is tested, and the tree-linking bug (L-1) is fixed, but widgets still lay out their own children;
       engine rects only feed css_layout overrides. Open: L-2 (widget intent not in node style), L-3 (auto cross size collapses),
-      L-4 (one-frame lag) in docs/refactor/findings-layout.md.'
+      L-4 (layout before paint; the one-frame lag readers saw is fixed) in docs/refactor/findings-layout.md.'
   - id: LAY-006
     title: Content-sized stack children (View::measure, Stack::content_sized)
     area: layout
