@@ -10,9 +10,9 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{
-    AiStream, ContextMenu, Diagram, DiagramNode, Gauge, Menu, MenuBar, MenuItem, PieChart,
-    PieLabelStyle, Popover, Presentation, Slide, SlideAlign, Slider, Step, Stepper, Switch,
-    SwitchStyle, Tooltip, TooltipPosition, Waveline,
+    AiStream, Collapsible, ContextMenu, Diagram, DiagramNode, Gauge, Menu, MenuBar, MenuItem,
+    PieChart, PieLabelStyle, Popover, Presentation, Slide, SlideAlign, Slider, Step, Stepper,
+    Switch, SwitchStyle, Tooltip, TooltipPosition, Waveline,
 };
 
 fn render(view: &dyn View, width: u16, height: u16) -> Buffer {
@@ -525,4 +525,32 @@ fn transition_group_wide_items_take_two_cells_per_glyph() {
     assert_wide_then(&buffer, '設', '定');
     assert_wide_then(&buffer, '定', 'x');
     assert_eq!(assert_wide_then(&buffer, '🔄', 'y'), (0, 1));
+}
+
+// ─── Collapsible ────────────────────────────────────────────────────────────
+
+#[test]
+fn collapsible_wide_title_and_content_take_two_cells_per_glyph() {
+    let c = Collapsible::new("設定x").line("日本y").expanded(true);
+    let buffer = render(&c, 20, 4);
+    assert_eq!(assert_wide_then(&buffer, '設', '定'), (2, 0));
+    assert_wide_then(&buffer, '定', 'x');
+    assert_eq!(assert_wide_then(&buffer, '日', '本'), (2, 1));
+    assert_wide_then(&buffer, '本', 'y');
+}
+
+#[test]
+fn collapsible_truncates_content_by_display_width() {
+    // 10 wide leaves 7 columns for content: three glyphs, not seven
+    let c = Collapsible::new("T").line("日本語のテスト").expanded(true);
+    let buffer = render(&c, 10, 4);
+    assert_eq!(row_text(&buffer, 1).trim_end(), "│ 日本語");
+}
+
+#[test]
+fn collapsible_ascii_unchanged() {
+    let c = Collapsible::new("Title").line("abcdefghij").expanded(true);
+    let buffer = render(&c, 10, 4);
+    assert_eq!(row_text(&buffer, 0), "▼ Title   ");
+    assert_eq!(row_text(&buffer, 1).trim_end(), "│ abcdefg");
 }
