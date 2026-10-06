@@ -24,6 +24,14 @@ pub fn new_project(name: &str, template: &str, init_git: bool) -> Result<()> {
             .progress_chars("█▓▒░"),
     );
 
+    let files = templates::project_files(template).ok_or_else(|| {
+        format!(
+            "Unknown template '{}' (available: {})",
+            template,
+            templates::PROJECT_TEMPLATES.join(", ")
+        )
+    })?;
+
     // Step 1: Create directory
     pb.set_message("Creating project directory...");
     let project_path = Path::new(name);
@@ -50,21 +58,13 @@ pub fn new_project(name: &str, template: &str, init_git: bool) -> Result<()> {
 
     // Step 3: Generate source files based on template
     pb.set_message("Generating source files...");
-    let (main_rs, app_rs) = match template {
-        "basic" => (templates::basic_main(), templates::basic_app()),
-        "dashboard" => (templates::dashboard_main(), templates::dashboard_app()),
-        "todo" => (templates::todo_main(), templates::todo_app()),
-        "chat" => (templates::chat_main(), templates::chat_app()),
-        _ => (templates::basic_main(), templates::basic_app()),
-    };
-    fs::write(project_path.join("src/main.rs"), main_rs)?;
-    fs::write(project_path.join("src/app.rs"), app_rs)?;
+    fs::write(project_path.join("src/main.rs"), files.main_rs)?;
+    fs::write(project_path.join("src/app.rs"), files.app_rs)?;
     pb.inc(1);
 
     // Step 4: Generate style files
     pb.set_message("Generating style files...");
-    let style_css = templates::default_style();
-    fs::write(project_path.join("styles/main.css"), style_css)?;
+    fs::write(project_path.join("styles/main.css"), files.style_css)?;
     pb.inc(1);
 
     // Step 5: Initialize git

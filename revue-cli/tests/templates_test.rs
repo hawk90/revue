@@ -59,46 +59,46 @@ fn gitignore_not_empty() {
     assert!(content.contains("target"));
 }
 
-#[test]
-fn default_style_not_empty() {
-    let content = templates::default_style();
-    assert!(!content.is_empty());
-}
-
 // =============================================================================
 // Project type templates
 // =============================================================================
 
 #[test]
-fn basic_templates_valid() {
-    let main = templates::basic_main();
-    let app = templates::basic_app();
-    assert!(main.contains("fn main"));
-    assert!(!app.is_empty());
+fn every_project_template_has_its_files() {
+    for &name in templates::PROJECT_TEMPLATES {
+        let files = templates::project_files(name).unwrap_or_else(|| panic!("{name}: no files"));
+        assert!(files.main_rs.contains("fn main"), "{name}: main.rs");
+        assert!(
+            files.main_rs.contains("mod app;"),
+            "{name}: main.rs declares app.rs"
+        );
+        assert!(
+            files.main_rs.contains(r#".style("styles/main.css")"#),
+            "{name}: main.rs loads the stylesheet"
+        );
+        assert!(files.app_rs.contains("impl View for"), "{name}: app.rs");
+        assert!(!files.style_css.is_empty(), "{name}: styles/main.css");
+    }
+}
+
+/// Calls the templates made before revue 3.0, which no longer compile (or,
+/// for `process::exit`, skip restoring the terminal).
+#[test]
+fn project_templates_do_not_use_removed_api() {
+    let removed = [".mount(", ".alignment(", ".percentage()", "process::exit"];
+    for &name in templates::PROJECT_TEMPLATES {
+        let files = templates::project_files(name).unwrap();
+        for source in [files.main_rs, files.app_rs] {
+            for call in removed {
+                assert!(!source.contains(call), "{name}: uses `{call}`");
+            }
+        }
+    }
 }
 
 #[test]
-fn dashboard_templates_valid() {
-    let main = templates::dashboard_main();
-    let app = templates::dashboard_app();
-    assert!(main.contains("fn main"));
-    assert!(!app.is_empty());
-}
-
-#[test]
-fn todo_templates_valid() {
-    let main = templates::todo_main();
-    let app = templates::todo_app();
-    assert!(main.contains("fn main"));
-    assert!(!app.is_empty());
-}
-
-#[test]
-fn chat_templates_valid() {
-    let main = templates::chat_main();
-    let app = templates::chat_app();
-    assert!(main.contains("fn main"));
-    assert!(!app.is_empty());
+fn unknown_project_template_has_no_files() {
+    assert!(templates::project_files("nope").is_none());
 }
 
 // =============================================================================
