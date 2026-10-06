@@ -24,9 +24,9 @@ commit-msg:
     commitlint:
       run: |
         # Validate Conventional Commits format
-        # Format: type(scope)?: description
+        # Format: type(scope)?!?: description  (! marks a breaking change)
         MSG=$(cat {1})
-        if ! echo "$MSG" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+$"; then
+        if ! echo "$MSG" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: .+$"; then
           echo "Commit message does not follow Conventional Commits format."
           echo ""
           echo "Expected format: <type>: <description>"
@@ -34,6 +34,7 @@ commit-msg:
           echo "  feat: add new feature"
           echo "  fix: resolve bug"
           echo "  docs: update documentation"
+          echo "  refactor(api)!: remove a deprecated method"
           echo ""
           exit 1
         fi
