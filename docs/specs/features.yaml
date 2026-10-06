@@ -442,6 +442,8 @@ items:
       - the common fixed-size widgets measure what they paint (buttons, badges, tags, checkboxes, switches, radios,
         spinners, ...), stretchy one-row widgets answer one row of the offered width, and multi-row widgets answer
         from their height() helpers
+      - under css_layout, a measured child's main-axis CSS box (height/width, min/max, margins) is folded into its
+        slot; display none takes no space or gap
     evidence:
       - src/widget/traits/view.rs::measure
       - src/widget/layout/stack.rs::content_sized
@@ -450,12 +452,17 @@ items:
       - tests/content_sized_stack.rs::a_switch_and_its_label_sit_side_by_side
       - tests/widget_measure.rs::assert_measures_paint
       - tests/widget_size_agreement.rs::measure_answers_with_the_height_helpers
+      - tests/content_sized_css.rs::a_margin_top_pushes_the_text_down_and_keeps_it_visible
+      - tests/content_sized_css.rs::a_height_reserves_its_rows_and_the_next_sibling_starts_after_them
+      - tests/content_sized_css.rs::a_hidden_child_takes_no_space
     source:
       - PR #687
     notes: Opt-in in 2.x (off by default); 3.0 turns it on (docs/migration/v3.0.0.md). Partial because the flag is
       still off by default and the widgets without an obvious natural size (lists, tables, editors, charts, Positioned,
       Gauge Arc/Circle) still fill. Design and the list of widgets that measure in
       docs/refactor/design-content-sized-stack.md.
+      Stack::measure does not see its children's CSS box (no render context), so a nested content-sized stack
+      sizes itself from their bare content.
   - id: RX-001
     title: 'signal(): get / set / update'
     area: reactive

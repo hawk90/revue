@@ -273,7 +273,7 @@ fn test_diagram_edge_with_empty_label() {
 #[test]
 fn test_diagram_colors_default() {
     let colors = Diagram::new().colors;
-    assert_eq!(colors.node_fg, revue::style::Color::WHITE);
+    assert_eq!(colors.node_fg, None);
     assert_eq!(colors.node_bg, revue::style::Color::rgb(40, 60, 80));
     assert_eq!(colors.arrow, revue::style::Color::rgb(100, 150, 200));
     assert_eq!(colors.label, revue::style::Color::rgb(180, 180, 180));

@@ -140,7 +140,7 @@ fn test_diagram_colors_builder() {
     let d = diagram()
         .title("Flow")
         .colors(DiagramColors {
-            node_fg: Color::GREEN,
+            node_fg: Some(Color::GREEN),
             title: Color::RED,
             ..DiagramColors::default()
         })

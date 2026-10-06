@@ -81,7 +81,9 @@ pub struct DateTimePicker {
     pub weekend_fg: Color,
     pub cursor_fg: Color,
     pub cursor_bg: Color,
-    pub field_fg: Color,
+    /// Time field text color. `None` lets the stylesheet's `color` decide,
+    /// falling back to white; `Some` outranks the stylesheet.
+    pub field_fg: Option<Color>,
     pub field_active_fg: Color,
     pub field_active_bg: Color,
     /// Widget state
@@ -114,7 +116,7 @@ impl DateTimePicker {
             weekend_fg: LIGHT_GRAY,
             cursor_fg: Color::BLACK,
             cursor_bg: Color::WHITE,
-            field_fg: Color::WHITE,
+            field_fg: None,
             field_active_fg: Color::BLACK,
             field_active_bg: Color::CYAN,
             state: WidgetState::new(),
@@ -233,6 +235,14 @@ impl DateTimePicker {
     /// Set header color
     pub fn header_color(mut self, color: Color) -> Self {
         self.header_fg = color;
+        self
+    }
+
+    /// Set time field color (the fields that are not being edited)
+    ///
+    /// A color named here outranks the stylesheet's `color`.
+    pub fn field_color(mut self, color: Color) -> Self {
+        self.field_fg = Some(color);
         self
     }
 
@@ -475,7 +485,7 @@ impl render::Rendering for DateTimePicker {
         self.cursor_bg
     }
 
-    fn field_fg(&self) -> Color {
+    fn field_fg(&self) -> Option<Color> {
         self.field_fg
     }
 
