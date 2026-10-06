@@ -539,7 +539,10 @@ pub fn plugin_search(query: &str) -> Result<()> {
         urlencoding::encode(&search_query)
     );
 
-    let response = match ureq::get(&url).set("User-Agent", "revue-cli/0.1.0").call() {
+    let mut response = match ureq::get(&url)
+        .header("User-Agent", "revue-cli/0.1.0")
+        .call()
+    {
         Ok(resp) => resp,
         Err(e) => {
             pb.finish_and_clear();
@@ -547,7 +550,7 @@ pub fn plugin_search(query: &str) -> Result<()> {
         }
     };
 
-    let body: serde_json::Value = response.into_json()?;
+    let body: serde_json::Value = response.body_mut().read_json()?;
     pb.finish_and_clear();
 
     let crates = body["crates"].as_array();
@@ -694,7 +697,10 @@ pub fn plugin_info(name: &str) -> Result<()> {
     pb.enable_steady_tick(Duration::from_millis(100));
 
     let url = format!("https://crates.io/api/v1/crates/{}", plugin_name);
-    let response = match ureq::get(&url).set("User-Agent", "revue-cli/0.1.0").call() {
+    let mut response = match ureq::get(&url)
+        .header("User-Agent", "revue-cli/0.1.0")
+        .call()
+    {
         Ok(resp) => resp,
         Err(e) => {
             pb.finish_and_clear();
@@ -702,7 +708,7 @@ pub fn plugin_info(name: &str) -> Result<()> {
         }
     };
 
-    let body: serde_json::Value = response.into_json()?;
+    let body: serde_json::Value = response.body_mut().read_json()?;
     pb.finish_and_clear();
 
     let crate_info = &body["crate"];
