@@ -1,7 +1,7 @@
 //! Stack container widget
 
 use crate::layout::Rect;
-use crate::style::{Display, Size, Style};
+use crate::style::{Display, FlexWrap, Size, Style};
 use crate::widget::traits::render_context::{box_model, StyledSubtree};
 use crate::widget::traits::{Fill, RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
@@ -256,7 +256,7 @@ impl View for Stack {
         let gap = ctx.gap_or(self.gap);
 
         let wrap = ctx.css_flex_wrap();
-        let subtrees = self.child_subtrees(ctx, wrap);
+        let subtrees = self.child_subtrees(ctx);
         let hidden: Vec<bool> = subtrees
             .iter()
             .map(|s| is_hidden(s.and_then(|s| s.style())))
@@ -268,7 +268,9 @@ impl View for Stack {
         match self.direction {
             Direction::Row => {
                 let available_width = area.width.saturating_sub(total_gap);
-                let mut sizes = self.effective_sizes(available_width, area.height, &subtrees);
+                // Each item of a wrapping row may take a whole line.
+                let measure_width = if wrap { area.width } else { available_width };
+                let mut sizes = self.effective_sizes(measure_width, area.height, &subtrees);
                 if wrap {
                     // A wrapping row moves what does not fit to the next row
                     // instead of shrinking it.
@@ -279,34 +281,31 @@ impl View for Stack {
                     }
                 }
                 let widths = Self::calculate_sizes(&sizes, available_width, n);
-
-                let mut x: u16 = 0;
-                let mut y: u16 = 0;
-                let row_height = if wrap { area.height / 2 } else { area.height };
+                let wrap_width = if wrap { area.width } else { u16::MAX };
+                let places = row_places(&widths, &hidden, wrap_width, gap);
+                let lines = if wrap {
+                    self.wrapped_lines(area, &widths, &hidden, &places, &subtrees, gap)
+                } else {
+                    vec![(0, area.height)]
+                };
 
                 for (i, child) in self.children.iter().enumerate() {
-                    let w = widths[i];
-
-                    // Wrap to next row if needed
-                    if wrap && x > 0 && x.saturating_add(w) > area.width {
-                        x = 0;
-                        y = y.saturating_add(row_height).saturating_add(gap);
-                        if y >= area.height {
-                            break;
-                        }
-                    }
+                    let (line, x) = places[i];
+                    // A line that starts below the stack is not drawn, nor is
+                    // anything after it.
+                    let Some(&(y, row_height)) = lines.get(line).filter(|l| l.0 < area.height)
+                    else {
+                        break;
+                    };
 
                     if child.needs_render() {
-                        let child_area = ctx.sub_area(x, y, w, row_height);
+                        let child_area = ctx.sub_area(x, y, widths[i], row_height);
                         ctx.render_child_with_overflow(
                             child.as_ref(),
                             child_area,
                             overflow_hidden,
                             parent_clip,
                         );
-                    }
-                    if !hidden[i] {
-                        x = x.saturating_add(w).saturating_add(gap);
                     }
                 }
             }
@@ -416,6 +415,7 @@ impl Stack {
             None => vec![None; self.children.len()],
         };
         let column = self.direction == Direction::Column;
+        let wrap = !column && own.is_some_and(wraps);
         let (max_main, max_cross) = self.oriented(max_width, max_height);
 
         // Each shown child's (main, cross) extent; `None` for a hidden one.
@@ -461,15 +461,36 @@ impl Stack {
             items.push(Some((child_main, child_cross)));
         }
 
-        let shown = items.iter().flatten().count() as u16;
-        let gaps = gap.saturating_mul(shown.saturating_sub(1));
-        let (main, cross) = items
-            .iter()
-            .flatten()
-            .fold((gaps, 0u16), |(main, cross), &(m, c)| {
-                (main.saturating_add(m), cross.max(c))
-            });
-        let (w, h) = self.oriented(main, cross);
+        let (w, h) = if wrap {
+            // A wrapping row: its lines within `max_width`, as `render` breaks
+            // them, stacked with the gap between them.
+            let widths: Vec<u16> = items.iter().map(|i| i.map_or(0, |i| i.0)).collect();
+            let hidden: Vec<bool> = items.iter().map(Option::is_none).collect();
+            let places = row_places(&widths, &hidden, max_width, gap);
+            let lines = places.iter().map(|p| p.0 + 1).max().unwrap_or(0);
+            let (mut heights, mut width) = (vec![0u16; lines], 0u16);
+            for (item, &(line, x)) in items.iter().zip(&places) {
+                if let Some((w, h)) = *item {
+                    heights[line] = heights[line].max(h);
+                    width = width.max(x.saturating_add(w));
+                }
+            }
+            let gaps = gap.saturating_mul(lines.saturating_sub(1) as u16);
+            let height = heights
+                .iter()
+                .fold(gaps, |total, &h| total.saturating_add(h));
+            (width, height)
+        } else {
+            let shown = items.iter().flatten().count() as u16;
+            let gaps = gap.saturating_mul(shown.saturating_sub(1));
+            let (main, cross) = items
+                .iter()
+                .flatten()
+                .fold((gaps, 0u16), |(main, cross), &(m, c)| {
+                    (main.saturating_add(m), cross.max(c))
+                });
+            self.oriented(main, cross)
+        };
         let w = w.max(self.min_width);
         let h = h.max(self.min_height);
         let w = if self.max_width > 0 {
@@ -633,16 +654,17 @@ impl Stack {
     /// every child otherwise.
     ///
     /// Equal-share stacks do not look: there the CSS box is applied to the
-    /// share afterwards, as it always was. Neither does a wrapping row, which
-    /// may stop rendering partway along when it runs out of rows - the peek is
-    /// only sound for children the stack is sure to render (see
-    /// [`RenderContext::peek_child_subtrees`]).
-    fn child_subtrees<'s>(
-        &self,
-        ctx: &RenderContext<'s>,
-        wrap: bool,
-    ) -> Vec<Option<StyledSubtree<'s>>> {
-        if !self.content_sized || (wrap && self.direction == Direction::Row) {
+    /// share afterwards, as it always was.
+    ///
+    /// A wrapping row looks too, although it may stop painting partway along
+    /// when it runs out of lines. What the peek needs (see
+    /// [`RenderContext::peek_child_subtrees`]) is that the *collect* pass
+    /// rendered every child, and it did: `flex-wrap` is CSS, the collect pass
+    /// has no computed styles, so there every row is a plain row that renders
+    /// all of its children. Stopping early in the paint pass only leaves nodes
+    /// unvisited, which the parent's resynchronization steps over.
+    fn child_subtrees<'s>(&self, ctx: &RenderContext<'s>) -> Vec<Option<StyledSubtree<'s>>> {
+        if !self.content_sized {
             return vec![None; self.children.len()];
         }
         let rendered = self.children.iter().filter(|c| c.needs_render()).count();
@@ -669,6 +691,81 @@ impl Stack {
                 }
             })
             .collect()
+    }
+
+    /// Each line of a wrapping row: `(y, height)`, top to bottom.
+    ///
+    /// A line is as tall as its tallest item - an item's measured height with
+    /// its vertical CSS box folded in, as [`measure_styled`](View::measure_styled)
+    /// reports it - and the lines are stacked with `gap` between them. An item
+    /// that does not measure fills, so its line takes the rest of the height.
+    /// A line past the bottom gets no height.
+    ///
+    /// An equal-share stack keeps the 2.x rule - every line half the height.
+    fn wrapped_lines(
+        &self,
+        area: Rect,
+        widths: &[u16],
+        hidden: &[bool],
+        places: &[(usize, u16)],
+        subtrees: &[Option<StyledSubtree<'_>>],
+        gap: u16,
+    ) -> Vec<(u16, u16)> {
+        let count = places.iter().map(|p| p.0 + 1).max().unwrap_or(0);
+        if !self.content_sized {
+            let h = area.height / 2;
+            let step = h.saturating_add(gap);
+            return (0..count)
+                .map(|line| (step.saturating_mul(line.min(u16::MAX as usize) as u16), h))
+                .collect();
+        }
+        let mut heights = vec![0u16; count];
+        for (i, child) in self.children.iter().enumerate() {
+            if hidden[i] {
+                continue;
+            }
+            let h = self
+                .wrapped_item_height(child.as_ref(), subtrees[i], widths[i], area.height)
+                .unwrap_or(u16::MAX);
+            let line = places[i].0;
+            heights[line] = heights[line].max(h);
+        }
+        let mut y = 0u16;
+        heights
+            .into_iter()
+            .map(|h| {
+                let h = h.min(area.height.saturating_sub(y));
+                let line = (y, h);
+                y = y.saturating_add(h).saturating_add(gap);
+                line
+            })
+            .collect()
+    }
+
+    /// How tall an item of a wrapping row is in a slot `width` wide: its
+    /// measured height inside its CSS box, with the box's vertical margins and
+    /// bounds - or `None` if it does not measure.
+    fn wrapped_item_height(
+        &self,
+        child: &dyn View,
+        subtree: Option<StyledSubtree<'_>>,
+        width: u16,
+        max_height: u16,
+    ) -> Option<u16> {
+        let style = subtree.and_then(|s| s.style());
+        let vertical = AxisBox::of(style, true);
+        if vertical.percent {
+            return None;
+        }
+        let content = match vertical.size {
+            Some(size) => size,
+            None => {
+                let inner_width = width.saturating_sub(AxisBox::of(style, false).margins);
+                let inner_height = vertical.clamp(max_height.saturating_sub(vertical.margins));
+                measure_child(child, subtree, inner_width, inner_height)?.1
+            }
+        };
+        Some(vertical.slot(content))
     }
 
     /// Calculate sizes for children based on available space
@@ -825,6 +922,36 @@ impl Stack {
 /// Does this computed style say `display: none`?
 fn is_hidden(style: Option<&Style>) -> bool {
     style.is_some_and(|s| s.layout.display == Display::None)
+}
+
+/// Does this computed style make a row wrap? The same test as
+/// [`RenderContext::css_flex_wrap`].
+fn wraps(style: &Style) -> bool {
+    style.layout.flex_wrap != FlexWrap::NoWrap
+}
+
+/// Where each child of a row goes: `(line, x)`.
+///
+/// Children are laid end to end with `gap` between them; one that would
+/// cross `width` starts a new line, unless it is the first on its line. A
+/// hidden child takes no space and no gap. `width` = `u16::MAX` never wraps.
+fn row_places(widths: &[u16], hidden: &[bool], width: u16, gap: u16) -> Vec<(usize, u16)> {
+    let (mut line, mut x) = (0usize, 0u16);
+    widths
+        .iter()
+        .zip(hidden)
+        .map(|(&w, &hidden)| {
+            if x > 0 && x.saturating_add(w) > width {
+                line += 1;
+                x = 0;
+            }
+            let place = (line, x);
+            if !hidden {
+                x = x.saturating_add(w).saturating_add(gap);
+            }
+            place
+        })
+        .collect()
 }
 
 /// `child`'s size, with its styled subtree when that is known.
