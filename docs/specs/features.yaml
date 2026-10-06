@@ -439,15 +439,23 @@ items:
       - with content_sized(true) an unsized child that measures gets that size; children that fill share the rest
       - child_sized / child_flex still win
       - Text, Border and Stack measure themselves
+      - the common fixed-size widgets measure what they paint (buttons, badges, tags, checkboxes, switches, radios,
+        spinners, ...), stretchy one-row widgets answer one row of the offered width, and multi-row widgets answer
+        from their height() helpers
     evidence:
       - src/widget/traits/view.rs::measure
       - src/widget/layout/stack.rs::content_sized
       - tests/content_sized_stack.rs::a_column_stacks_text_line_after_line
       - tests/content_sized_stack.rs::a_child_that_fills_gets_what_the_measured_ones_leave
+      - tests/content_sized_stack.rs::a_switch_and_its_label_sit_side_by_side
+      - tests/widget_measure.rs::assert_measures_paint
+      - tests/widget_size_agreement.rs::measure_answers_with_the_height_helpers
     source:
       - PR #687
-    notes: Opt-in in 2.x (off by default); 3.0 turns it on (docs/migration/v3.0.0.md). Partial because only Text, Border
-      and Stack measure; every other widget still fills. Design in docs/refactor/design-content-sized-stack.md.
+    notes: Opt-in in 2.x (off by default); 3.0 turns it on (docs/migration/v3.0.0.md). Partial because the flag is
+      still off by default and the widgets without an obvious natural size (lists, tables, editors, charts, Positioned,
+      Gauge Arc/Circle) still fill. Design and the list of widgets that measure in
+      docs/refactor/design-content-sized-stack.md.
   - id: RX-001
     title: 'signal(): get / set / update'
     area: reactive

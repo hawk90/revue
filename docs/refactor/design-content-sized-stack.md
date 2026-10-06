@@ -51,6 +51,38 @@ pub trait View {
   빈 `Text`, 구분선 류
 - 나머지 위젯은 필요할 때 하나씩 답하게 한다. 답하지 않는 위젯은 지금처럼 채운다
 
+#### 지금 답하는 위젯
+
+답은 `render`가 실제로 칠하는 크기다(테두리·여백·괄호 포함, 폭은 표시 폭). 최대값을 넘지
+않는다. 각 답은 `tests/widget_measure.rs`가 칠해진 영역과 대조하고, `height()` 헬퍼가 있는
+위젯은 `tests/widget_size_agreement.rs`가 헬퍼와 대조한다.
+
+| 종류 | 위젯 | 답 |
+|---|---|---|
+| 내용 크기 | `Button` | 라벨(+아이콘) + 좌우 2칸씩, `width()`보다 작지 않게 × 1행 |
+| | `Badge`, `Tag` | 글자 + 좌우 여백/가장자리 × 1행 (`Badge::dot`은 1×1) |
+| | `Checkbox`, `Switch`, `RadioGroup` | 상자/트랙 + 라벨. 포커스 표시(`> `, 오른쪽 `]`)가 칸을 더하면 포함 |
+| | `Spinner`, `Rating`, `Slider` | 글리프/별/트랙 + 라벨·값. `Slider`는 `length` 고정, 눈금이 있으면 2행 |
+| | `Link`, `Breadcrumb`, `RichText`, `StatusIndicator` | 보이는 글자 폭(`RichText`는 줄 수만큼 행) |
+| | `Gauge` (Bar, Battery, Segments, Dots, Vertical, Thermometer) | `width`/`height`/`segments` + 제목 1행 |
+| 가로로 늘어남 | `Input`, `Progress`, `Sparkline`, 가로 `Divider` | 주어진 폭 × 1행 (`Divider::length`가 있으면 그 길이) |
+| | 세로 `Divider` | 1열 × 주어진 높이 |
+| 헬퍼 재사용 | `Alert`, `Callout`, `EmptyState` | 주어진 폭 × `height()` (닫힌 `Alert`는 0×0) |
+| | `StatusBar` | 주어진 폭 × `height` |
+| | `BigText` | Figlet: 가장 긴 줄 × `height()`. 텍스트 크기 프로토콜: 주어진 폭 |
+| | `Digits` | 가장 넓은 글리프 행 × `height()` (+ 접두/접미 1행) |
+| | `Card` | 주어진 폭 × 테두리·제목·부제·헤더·구분선·본문 측정·푸터(+`Elevated` 그림자), 최소 3행. 본문이 `None`이면 `None` |
+| 감싸기 | `ErrorBoundary` | 보여 주는 쪽(자식, 패닉 뒤에는 대체 뷰) |
+| | `ZenMode`, `DebugOverlay` | 꺼져/숨겨져 있으면 안쪽 뷰, 켜져 있으면 `None` |
+
+답하지 않는(채우는) 위젯: 리스트·테이블·트리·에디터·차트처럼 크기가 데이터와 스크롤에 달린
+것, `Positioned`(부모 영역 안의 오프셋으로 놓으므로 자식 크기가 자기 크기가 아님),
+`Layers`, `Gauge`의 Arc·Circle.
+
+**알려진 한계** — "가로로 늘어남" 위젯은 열(`vstack`)에서는 원하는 대로 1행이지만,
+행(`hstack`)에서는 주어진 폭 전부를 답하므로 뒤의 형제가 밀려난다(`None`이면 남은 공간을
+나눠 가졌을 것). `measure`가 "이 축은 채운다"를 표현할 수 없기 때문이다. 3.0 전에 정한다.
+
 ### 2. Stack이 그 답을 쓴다 — 3.0, 기본값 변경
 
 `ChildSize::Auto` 자식에 대해:
@@ -77,7 +109,8 @@ pub trait View {
 ## 순서
 
 1. 예제를 `child_sized`로 고친다 — 지금 깨진 화면을 바로잡는다(#681, #682, #683)
-2. `View::measure` 추가, 기본 위젯이 답하게 함, `Stack::content_sized` 옵트인 — 2.x (이 문서와 같은 PR)
+2. `View::measure` 추가, 기본 위젯이 답하게 함, `Stack::content_sized` 옵트인 — 2.x (이 문서와 같은 PR).
+   자주 쓰는 위젯이 답하게 한 것은 그다음 PR — 위 "지금 답하는 위젯"
 3. 3.0: `content_sized` 기본 on. [`docs/migration/v3.0.0.md`](../migration/v3.0.0.md)에 추가
 
 1에서 넣은 `child_sized`는 3.0 이후에도 옳다 — 명시한 크기는 계속 우선한다.
