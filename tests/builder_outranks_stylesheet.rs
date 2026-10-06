@@ -26,7 +26,7 @@ use revue::widget::{
     MenuBar, Pagination, Rating, Resizable, SearchBar, Skeleton, Slider, SortableList, Splitter,
     StatusBar, Switch, Tag, Terminal, VirtualList, ZenMode,
 };
-use revue::widget::{Presentation, Slide};
+use revue::widget::{diagram, node, DiagramColors, Presentation, Slide};
 
 const RED: Color = Color {
     r: 255,
@@ -618,3 +618,91 @@ fn a_silent_markdown_deck_defers_to_css() {
     let h = draw("#w { background: #ff0000; }", &MdDeckSilent);
     assert!(any_bg(&h, RED));
 }
+
+// ---------------------------------------------------------------------------
+// 3.0: public fields that became `Option<Color>`
+//
+// These could not tell "you named this color" from "this is the default" while
+// they were plain `Color`s, and being public they had to wait for a breaking
+// release. Each is asserted three ways: the default render is what it always
+// was, a named color - even the default one - outranks the stylesheet, and a
+// silent builder still yields to it.
+// ---------------------------------------------------------------------------
+
+fn draw_sized<V: View>(css: &str, view: &V, width: u16, height: u16) -> PipelineHarness {
+    let mut h = PipelineHarness::with_css(css, width, height).dom_from_render(true);
+    h.draw(view);
+    h
+}
+
+/// The foreground of the first cell, in reading order, whose symbol matches.
+fn fg_where(h: &PipelineHarness, matches: impl Fn(char) -> bool) -> Option<Color> {
+    let buffer = h.buffer();
+    (0..buffer.height()).find_map(|y| {
+        (0..buffer.width()).find_map(|x| {
+            buffer
+                .get(x, y)
+                .filter(|c| matches(c.symbol))
+                .and_then(|c| c.fg)
+        })
+    })
+}
+
+macro_rules! three_ways {
+    (
+        $default_test:ident, $named_test:ident, $silent_test:ident,
+        $named:ident, $silent:ident, $default:expr, ($w:expr, $h:expr), $probe:expr
+    ) => {
+        #[test]
+        fn $default_test() {
+            let h = draw_sized("", &$silent, $w, $h);
+            assert_eq!($probe(&h), Some($default), "the default render changed");
+        }
+
+        #[test]
+        fn $named_test() {
+            let h = draw_sized("#w { color: #ff0000; }", &$named, $w, $h);
+            assert_eq!(
+                $probe(&h),
+                Some($default),
+                "a stylesheet outranked a color the user named"
+            );
+        }
+
+        #[test]
+        fn $silent_test() {
+            let h = draw_sized("#w { color: #ff0000; }", &$silent, $w, $h);
+            assert_eq!(
+                $probe(&h),
+                Some(RED),
+                "a silent builder stopped deferring to the stylesheet"
+            );
+        }
+    };
+}
+
+// DiagramColors.node_fg - probed on the node's top-left corner.
+
+case!(
+    DiagramNamed,
+    DiagramSilent,
+    diagram()
+        .node(node("A", "Hi"))
+        .colors(DiagramColors {
+            node_fg: Some(Color::WHITE),
+            ..DiagramColors::default()
+        })
+        .element_id("w"),
+    diagram().node(node("A", "Hi")).element_id("w")
+);
+
+three_ways!(
+    a_default_diagram_node_is_unchanged,
+    a_named_diagram_node_fg_beats_css,
+    a_silent_diagram_node_defers_to_css,
+    DiagramNamed,
+    DiagramSilent,
+    Color::WHITE,
+    (40, 10),
+    |h: &PipelineHarness| fg_where(h, |c| c == '┌')
+);
