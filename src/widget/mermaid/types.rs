@@ -149,8 +149,9 @@ impl DiagramEdge {
 /// Diagram color scheme
 #[derive(Clone, Debug)]
 pub struct DiagramColors {
-    /// Default node color
-    pub node_fg: Color,
+    /// Node color. `None` lets the stylesheet's `color` decide, falling back
+    /// to white; `Some` outranks the stylesheet.
+    pub node_fg: Option<Color>,
     /// Default node background
     pub node_bg: Color,
     /// Arrow color
@@ -164,7 +165,7 @@ pub struct DiagramColors {
 impl Default for DiagramColors {
     fn default() -> Self {
         Self {
-            node_fg: Color::WHITE,
+            node_fg: None,
             node_bg: Color::rgb(40, 60, 80),
             arrow: Color::rgb(100, 150, 200),
             label: MUTED_TEXT,
