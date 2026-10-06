@@ -499,3 +499,30 @@ fn ai_stream_ascii_wrap_unchanged() {
     assert_eq!(row_text(&buffer, 1).trim_end(), "fg");
     assert_eq!(row_text(&buffer, 2).trim_end(), "hi");
 }
+
+// ─── Transition ─────────────────────────────────────────────────────────────
+
+#[test]
+fn transition_wide_text_takes_two_cells_per_glyph() {
+    let transition = revue::widget::AnimationTransition::new("設定🔄x");
+    let buffer = render(&transition, 20, 1);
+    assert_wide_then(&buffer, '設', '定');
+    assert_wide_then(&buffer, '定', '🔄');
+    assert_wide_then(&buffer, '🔄', 'x');
+}
+
+#[test]
+fn transition_ascii_text_unchanged() {
+    let transition = revue::widget::AnimationTransition::new("Hello");
+    let buffer = render(&transition, 8, 1);
+    assert_eq!(row_text(&buffer, 0), "Hello   ");
+}
+
+#[test]
+fn transition_group_wide_items_take_two_cells_per_glyph() {
+    let group = revue::widget::TransitionGroup::new(["設定x", "🔄y"]);
+    let buffer = render(&group, 20, 2);
+    assert_wide_then(&buffer, '設', '定');
+    assert_wide_then(&buffer, '定', 'x');
+    assert_eq!(assert_wide_then(&buffer, '🔄', 'y'), (0, 1));
+}
