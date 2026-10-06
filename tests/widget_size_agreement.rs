@@ -377,3 +377,84 @@ fn status_bar_paints_wide_text_at_the_width_it_reports() {
     assert_eq!(buffer.get(x + 2, 0).unwrap().symbol, '글', "{row:?}");
     assert!(x + 4 <= 20, "right section runs off the edge: {row:?}");
 }
+
+// ==================== measure ====================
+//
+// `View::measure` is how a content-sized stack sizes these widgets, so it must
+// answer with the same helpers the tests above hold to what `render` paints.
+
+#[test]
+fn measure_answers_with_the_height_helpers() {
+    const H: u16 = 30;
+    for variant in [
+        AlertVariant::Filled,
+        AlertVariant::Outlined,
+        AlertVariant::Minimal,
+    ] {
+        let a = Alert::new("Saved").title("Done").variant(variant);
+        assert_eq!(a.measure(W, H), Some((W, a.height())), "{variant:?}");
+    }
+    let mut dismissed = Alert::new("Saved");
+    dismissed.dismiss();
+    assert_eq!(dismissed.measure(W, H), Some((0, 0)));
+
+    for variant in [
+        CalloutVariant::Filled,
+        CalloutVariant::LeftBorder,
+        CalloutVariant::Minimal,
+    ] {
+        let c = Callout::new("one\ntwo").title("T").variant(variant);
+        assert_eq!(c.measure(W, H), Some((W, c.height())), "{variant:?}");
+    }
+
+    for variant in [
+        EmptyStateVariant::Full,
+        EmptyStateVariant::Compact,
+        EmptyStateVariant::Minimal,
+    ] {
+        let e = EmptyState::new("Nothing")
+            .description("Try later")
+            .action("Retry")
+            .variant(variant);
+        assert_eq!(e.measure(W, H), Some((W, e.height())), "{variant:?}");
+    }
+
+    for tier in 1..=6u8 {
+        let b = BigText::new("Hi 42", tier).force_figlet(true);
+        assert_eq!(
+            b.measure(80, H).map(|m| m.1),
+            Some(b.height()),
+            "tier {tier}"
+        );
+    }
+
+    for style in [
+        DigitStyle::Block,
+        DigitStyle::Thin,
+        DigitStyle::Ascii,
+        DigitStyle::Braille,
+    ] {
+        let d = Digits::new(8080).style(style);
+        assert_eq!(
+            d.measure(80, H).map(|m| m.1),
+            Some(d.height() as u16),
+            "{style:?}"
+        );
+    }
+
+    let bar = StatusBar::new().left(StatusSection::new("main"));
+    assert_eq!(bar.measure(W, H), Some((W, 1)));
+    assert_eq!(bar.height(2).measure(W, H), Some((W, 2)));
+}
+
+#[test]
+fn measure_never_exceeds_what_it_is_offered() {
+    let alert = Alert::new("Saved").title("Done");
+    assert_eq!(alert.measure(10, 2), Some((10, 2)));
+    let digits = Digits::new(8080);
+    let (w, h) = digits.measure(4, 2).unwrap();
+    assert!(w <= 4 && h <= 2);
+    let big = BigText::new("Hi", 1).force_figlet(true);
+    let (w, h) = big.measure(3, 1).unwrap();
+    assert!(w <= 3 && h <= 1);
+}

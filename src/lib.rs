@@ -505,6 +505,7 @@ pub mod prelude {
     };
 
     // Widgets - Types
+    pub use crate::widget::Fill;
     pub use crate::widget::{
         Alignment,
         Anchor,

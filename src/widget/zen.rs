@@ -179,6 +179,25 @@ impl Default for ZenMode {
 }
 
 impl View for ZenMode {
+    /// Off, it is just its content and measures as that. On, it paints its
+    /// background over the whole area, so it fills.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        if self.enabled {
+            None
+        } else {
+            self.content.measure(max_width, max_height)
+        }
+    }
+
+    /// Off, what its content fills; on, everything.
+    fn fills(&self) -> crate::widget::Fill {
+        if self.enabled {
+            crate::widget::Fill::BOTH
+        } else {
+            self.content.fills()
+        }
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
 

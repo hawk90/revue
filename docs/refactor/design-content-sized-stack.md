@@ -51,6 +51,52 @@ pub trait View {
   빈 `Text`, 구분선 류
 - 나머지 위젯은 필요할 때 하나씩 답하게 한다. 답하지 않는 위젯은 지금처럼 채운다
 
+#### 지금 답하는 위젯
+
+답은 `render`가 실제로 칠하는 크기다(테두리·여백·괄호 포함, 폭은 표시 폭). 최대값을 넘지
+않는다. 각 답은 `tests/widget_measure.rs`가 칠해진 영역과 대조하고, `height()` 헬퍼가 있는
+위젯은 `tests/widget_size_agreement.rs`가 헬퍼와 대조한다.
+
+| 종류 | 위젯 | 답 |
+|---|---|---|
+| 내용 크기 | `Button` | 라벨(+아이콘) + 좌우 2칸씩, `width()`보다 작지 않게 × 1행 |
+| | `Badge`, `Tag` | 글자 + 좌우 여백/가장자리 × 1행 (`Badge::dot`은 1×1) |
+| | `Checkbox`, `Switch`, `RadioGroup` | 상자/트랙 + 라벨. 포커스 표시(`> `, 오른쪽 `]`)가 칸을 더하면 포함 |
+| | `Spinner`, `Rating`, `Slider` | 글리프/별/트랙 + 라벨·값. `Slider`는 `length` 고정, 눈금이 있으면 2행 |
+| | `Link`, `Breadcrumb`, `RichText`, `StatusIndicator` | 보이는 글자 폭(`RichText`는 줄 수만큼 행) |
+| | `Gauge` (Bar, Battery, Segments, Dots, Vertical, Thermometer) | `width`/`height`/`segments` + 제목 1행 |
+| 가로로 늘어남 (`fills` = `WIDTH`) | `Input`, `Progress`, `Sparkline`, 가로 `Divider` | 주어진 폭 × 1행 (`Divider::length`가 있으면 그 길이, `fills` = `NONE`) |
+| 세로로 늘어남 (`fills` = `HEIGHT`) | 세로 `Divider` | 1열 × 주어진 높이 |
+| 헬퍼 재사용 | `Alert`, `Callout`, `EmptyState` | 주어진 폭 × `height()` (닫힌 `Alert`는 0×0) |
+| | `StatusBar` | 주어진 폭 × `height` |
+| | `BigText` | Figlet: 가장 긴 줄 × `height()`. 텍스트 크기 프로토콜: 주어진 폭 |
+| | `Digits` | 가장 넓은 글리프 행 × `height()` (+ 접두/접미 1행) |
+| | `Card` | 주어진 폭 × 테두리·제목·부제·헤더·구분선·본문 측정·푸터(+`Elevated` 그림자), 최소 3행. 본문이 `None`이면 `None` |
+| 감싸기 | `ErrorBoundary` | 보여 주는 쪽(자식, 패닉 뒤에는 대체 뷰) |
+| | `ZenMode`, `DebugOverlay` | 꺼져/숨겨져 있으면 안쪽 뷰, 켜져 있으면 `None` |
+
+답하지 않는(채우는) 위젯: 리스트·테이블·트리·에디터·차트처럼 크기가 데이터와 스크롤에 달린
+것, `Positioned`(부모 영역 안의 오프셋으로 놓으므로 자식 크기가 자기 크기가 아님),
+`Layers`, `Gauge`의 Arc·Circle.
+
+#### 어느 축을 채우는가 — `View::fills`
+
+`measure`만으로는 "1행이지만 폭은 주는 만큼"을 말할 수 없다. 늘어나는 위젯이 주어진 폭
+전부를 답하면 열(`vstack`)에서는 1행으로 옳지만, 행(`hstack`)에서는 그 폭이 고정 크기가 되어
+뒤의 형제를 밀어낸다(`[` `Progress` `]`에서 `]`가 사라졌다).
+
+그래서 `View::fills() -> Fill`(기본 `Fill::NONE`)이 **주는 만큼 차지하는 축**을 말한다.
+`measure`는 다른 축의 자연 크기를 그대로 답한다. `Fill`은 `NONE`/`WIDTH`/`HEIGHT`/`BOTH`.
+
+- `WIDTH`: `Input`, `Progress`, `Sparkline`, 가로 `Divider`, `Alert`(닫히지 않았을 때),
+  `Callout`, `EmptyState`, `StatusBar`, `Card`, 텍스트 크기 프로토콜로 그리는 `BigText`
+- `HEIGHT`: 세로 `Divider`. `length`가 있는 `Divider`는 `NONE`
+- `Box<dyn View>`, `ErrorBoundary`, `ZenMode`, `DebugOverlay`는 `measure`와 같은 조건으로 전달
+  (켜진 `ZenMode`, 보이는 `DebugOverlay`는 `BOTH`)
+- `Stack::fills`: `child`로 넣은 자식 중 하나라도 채우는 축은 스택도 채운다. 그래서 `Input`을
+  담은 `hstack`은 바깥 `hstack`에서도 남은 폭을 나눠 받는다. `child_sized`/`child_flex` 자식은
+  세지 않는다
+
 ### 2. Stack이 그 답을 쓴다 — 3.0, 기본값 변경
 
 `ChildSize::Auto` 자식에 대해:
@@ -58,9 +104,11 @@ pub trait View {
 | 자식의 `measure` | 주축 크기 |
 |---|---|
 | `Some((w, h))` | 그 크기 (남은 공간을 넘지 않게) |
+| `Some(..)`, 그러나 `fills()`가 주축을 덮음 | `None`과 같다 — 남은 공간을 나눠 받는다 |
 | `None` | 측정된 자식들을 뺀 나머지를 `None` 자식끼리 균등 분배 — 지금 규칙 그대로 |
 
 - `child_sized` / `child_flex`는 그대로 우선한다
+- `css_layout`에서 주축의 명시적 CSS 크기(열은 `height`, 행은 `width`)는 `fills`보다 우선한다
 - 교차축은 지금처럼 전체를 준다(stretch)
 - 3.0 전까지는 `Stack::content_sized(true)`로 옵트인, 3.0에서 기본 on. `false`로 2.x 동작
 
@@ -127,7 +175,8 @@ pub trait View {
 ## 순서
 
 1. 예제를 `child_sized`로 고친다 — 지금 깨진 화면을 바로잡는다(#681, #682, #683)
-2. `View::measure` 추가, 기본 위젯이 답하게 함, `Stack::content_sized` 옵트인 — 2.x (이 문서와 같은 PR)
+2. `View::measure` 추가, 기본 위젯이 답하게 함, `Stack::content_sized` 옵트인 — 2.x (이 문서와 같은 PR).
+   자주 쓰는 위젯이 답하게 한 것은 그다음 PR — 위 "지금 답하는 위젯"
 3. 3.0: `content_sized` 기본 on. [`docs/migration/v3.0.0.md`](../migration/v3.0.0.md)에 추가
 
 1에서 넣은 `child_sized`는 3.0 이후에도 옳다 — 명시한 크기는 계속 우선한다.

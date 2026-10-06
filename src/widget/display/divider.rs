@@ -182,6 +182,33 @@ impl Default for Divider {
 impl View for Divider {
     crate::impl_view_meta!("Divider");
 
+    /// A horizontal divider is one row and runs the width it is offered; a
+    /// vertical one is one column and runs the height. With a
+    /// [`length`](Divider::length) set, it runs the margin plus that length.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let fixed = (self.length > 0).then(|| self.margin.saturating_add(self.length));
+        Some(match self.orientation {
+            Orientation::Horizontal => {
+                (fixed.unwrap_or(max_width).min(max_width), 1.min(max_height))
+            }
+            Orientation::Vertical => (
+                1.min(max_width),
+                fixed.unwrap_or(max_height).min(max_height),
+            ),
+        })
+    }
+
+    /// It runs along its orientation as far as it is offered - unless a
+    /// [`length`](Divider::length) fixes it.
+    fn fills(&self) -> crate::widget::Fill {
+        use crate::widget::Fill;
+        match self.orientation {
+            _ if self.length > 0 => Fill::NONE,
+            Orientation::Horizontal => Fill::WIDTH,
+            Orientation::Vertical => Fill::HEIGHT,
+        }
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let line_char = self.line_char();

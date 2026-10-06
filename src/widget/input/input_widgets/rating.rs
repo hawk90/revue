@@ -256,8 +256,54 @@ impl Default for Rating {
     }
 }
 
+impl Rating {
+    /// Columns the label takes (0 without one).
+    fn label_width(&self) -> u16 {
+        self.label.as_deref().map_or(0, |l| {
+            crate::utils::unicode::display_width(l).min(u16::MAX as usize) as u16
+        })
+    }
+
+    /// The `3.5/5` text `show_value` adds, for the value on display.
+    fn value_text(&self) -> String {
+        let display_value = self.hover_value.unwrap_or(self.value);
+        format!("{:.1}/{}", display_value, self.max_value)
+    }
+
+    /// The columns `render` paints given room: the label and a space, the
+    /// stars at their spacing, then a space and the value if shown.
+    fn natural_width(&self) -> u16 {
+        let label = if self.label.is_some() {
+            self.label_width().saturating_add(1)
+        } else {
+            0
+        };
+        let stars = u16::from(self.max_value);
+        let spacing = self.size.spacing() as u16;
+        if self.show_value {
+            let value = self.value_text().chars().count() as u16;
+            label
+                .saturating_add(stars.saturating_mul(spacing))
+                .saturating_add(1)
+                .saturating_add(value)
+        } else if stars > 0 {
+            // The last star is one column; the spacing after it is not drawn.
+            label
+                .saturating_add((stars - 1).saturating_mul(spacing))
+                .saturating_add(1)
+        } else {
+            self.label_width()
+        }
+    }
+}
+
 impl View for Rating {
     crate::impl_view_meta!("Rating", focusable);
+
+    /// One row: label, stars and value, as laid out by `render`.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((self.natural_width().min(max_width), 1.min(max_height)))
+    }
 
     fn render(&self, ctx: &mut RenderContext) {
         // A single `color` cannot describe every part of this widget, so it
@@ -275,14 +321,8 @@ impl View for Rating {
 
         // Render label if present
         if let Some(ref label) = self.label {
-            for ch in label.chars() {
-                if x >= area.width {
-                    break;
-                }
-                ctx.set(x, y, Cell::new(ch).fg(Color::WHITE));
-                x += 1;
-            }
-            x += 1; // Space after label
+            ctx.put_str_with(x, y, label, area.width, |ch| Cell::new(ch).fg(Color::WHITE));
+            x += self.label_width() + 1; // Space after label
         }
 
         // Determine which value to display (hover or actual)
@@ -324,7 +364,7 @@ impl View for Rating {
         // Show numeric value if enabled
         if self.show_value {
             x += 1;
-            let value_str = format!("{:.1}/{}", display_value, self.max_value);
+            let value_str = self.value_text();
             for ch in value_str.chars() {
                 if x >= area.width {
                     break;

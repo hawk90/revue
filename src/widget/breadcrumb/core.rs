@@ -251,6 +251,16 @@ impl Default for Breadcrumb {
 impl View for Breadcrumb {
     crate::impl_view_meta!("Breadcrumb");
 
+    /// One row, as wide as the whole trail, capped at
+    /// [`max_width`](Breadcrumb::max_width) when one is set.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let mut width = self.total_width();
+        if self.max_width > 0 {
+            width = width.min(self.max_width);
+        }
+        Some((width.min(max_width), 1.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         // The trail's own items take `color`; the selected one and the separator keep theirs.
         let item_color = self.item_color.unwrap_or_else(|| ctx.css_color(LIGHT_GRAY));

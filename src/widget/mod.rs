@@ -376,7 +376,7 @@ pub use theme::{
 };
 pub use theme_picker::{theme_picker, ThemePicker};
 pub use traits::{
-    Draggable, Element, EventResult, FocusStyle, Interactive, OverlayEntry, OverlayQueue,
+    Draggable, Element, EventResult, Fill, FocusStyle, Interactive, OverlayEntry, OverlayQueue,
     RenderContext, StyledView, Timeout, ToggleWidget, View, WidgetProps, WidgetState, DISABLED_BG,
     DISABLED_FG,
 };

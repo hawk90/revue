@@ -368,7 +368,48 @@ impl Default for Switch {
     }
 }
 
+impl Switch {
+    /// Columns the switch itself takes, without its label.
+    fn track_width(&self) -> u16 {
+        match self.style {
+            SwitchStyle::Text => {
+                let text = if self.on {
+                    self.on_text.as_deref().unwrap_or("ON")
+                } else {
+                    self.off_text.as_deref().unwrap_or("OFF")
+                };
+                (crate::utils::display_width(text) as u16).saturating_add(2)
+            }
+            SwitchStyle::Emoji => 2,
+            _ => self.width,
+        }
+    }
+
+    /// The columns `render` paints given room: the label and a space on
+    /// whichever side it sits, the switch, and - while focused - the focus
+    /// bracket `render` puts in the column after the switch.
+    fn natural_width(&self) -> u16 {
+        let label = self.label.as_deref().map_or(0, |l| {
+            (crate::utils::display_width(l) as u16).saturating_add(1)
+        });
+        let width = self.track_width().saturating_add(label);
+        // The right bracket lands just after the switch: inside the gap
+        // before a label on the right, past the end otherwise.
+        let bracket_outside = self.label.is_none() || self.label_left;
+        if self.focused && !self.disabled && bracket_outside {
+            width.saturating_add(1)
+        } else {
+            width
+        }
+    }
+}
+
 impl View for Switch {
+    /// One row: the switch and its label (see `natural_width`).
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((self.natural_width().min(max_width), 1.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width == 0 || area.height == 0 {
@@ -408,18 +449,7 @@ impl View for Switch {
                 SwitchStyle::Block => self.render_block(ctx, x, y),
             }
 
-            x += match self.style {
-                SwitchStyle::Text => {
-                    let text = if self.on {
-                        self.on_text.as_deref().unwrap_or("ON")
-                    } else {
-                        self.off_text.as_deref().unwrap_or("OFF")
-                    };
-                    crate::utils::display_width(text) as u16 + 2
-                }
-                SwitchStyle::Emoji => 2,
-                _ => self.width,
-            };
+            x += self.track_width();
         }
 
         // Render label if on right
@@ -465,18 +495,7 @@ impl View for Switch {
             }
 
             // Draw focus bracket on right
-            let switch_width = match self.style {
-                SwitchStyle::Text => {
-                    let text = if self.on {
-                        self.on_text.as_deref().unwrap_or("ON")
-                    } else {
-                        self.off_text.as_deref().unwrap_or("OFF")
-                    };
-                    crate::utils::display_width(text) as u16 + 2
-                }
-                SwitchStyle::Emoji => 2,
-                _ => self.width,
-            };
+            let switch_width = self.track_width();
             let right_x = switch_x + switch_width;
             if right_x < area.width {
                 let mut right = Cell::new(']');

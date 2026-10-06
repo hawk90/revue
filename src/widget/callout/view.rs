@@ -11,6 +11,16 @@ use unicode_width::UnicodeWidthChar;
 impl View for Callout {
     crate::impl_view_meta!("Callout");
 
+    /// [`height`](Callout::height) rows, as wide as offered.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((max_width, self.height().min(max_height)))
+    }
+
+    /// It stretches across the width it is offered.
+    fn fills(&self) -> crate::widget::Fill {
+        crate::widget::Fill::WIDTH
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width < 5 || area.height < 1 {

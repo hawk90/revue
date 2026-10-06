@@ -169,6 +169,23 @@ impl Button {
         self.state.is_hovered()
     }
 
+    /// Columns the icon (plus the space after it) and the label take.
+    fn content_width(&self) -> u16 {
+        let icon = self
+            .icon
+            .map_or(0, |c| crate::utils::unicode::char_width(c) + 1);
+        let label = crate::utils::unicode::display_width(&self.label);
+        (icon + label).min(u16::MAX as usize) as u16
+    }
+
+    /// The content plus two columns of padding each side, at least
+    /// [`width`](Self::width) - what `render` paints given room.
+    fn natural_width(&self) -> u16 {
+        self.content_width()
+            .saturating_add(4)
+            .max(self.width.unwrap_or(0))
+    }
+
     /// Get base colors for the variant (without state effects)
     fn get_variant_base_colors(&self) -> (Color, Color) {
         match self.variant {
@@ -202,6 +219,12 @@ impl Default for Button {
 }
 
 impl View for Button {
+    /// One row, as wide as the label and icon plus their padding (or the
+    /// [`width`](Button::width) set, if larger).
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((self.natural_width().min(max_width), 1.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width == 0 || area.height == 0 {
@@ -211,13 +234,8 @@ impl View for Button {
         // Get colors: prefer CSS if available, otherwise use variant colors
         let (fg, bg) = self.get_colors_from_ctx(ctx);
 
-        // Calculate content width (icon + space + label)
-        let icon_width = if self.icon.is_some() { 2u16 } else { 0 }; // icon + space
-        let label_width = self.label.chars().count() as u16;
-        let content_width = icon_width + label_width;
-        let padding = 2; // 1 space on each side
-        let min_width = self.width.unwrap_or(0);
-        let button_width = (content_width + padding * 2).max(min_width).min(area.width);
+        let content_width = self.content_width();
+        let button_width = self.natural_width().min(area.width);
 
         // Render button background
         for x in 0..button_width {
@@ -233,14 +251,18 @@ impl View for Button {
         // Render icon if present
         if let Some(icon) = self.icon {
             if x < button_width {
-                let mut cell = Cell::new(icon);
-                cell.fg = Some(fg);
-                cell.bg = Some(bg);
-                if self.state.focused && !self.state.disabled {
-                    cell.modifier = crate::render::Modifier::BOLD;
-                }
-                ctx.set(x, 0, cell);
-                x += 1;
+                let bold = self.state.focused && !self.state.disabled;
+                let mut utf8 = [0u8; 4];
+                // A wide icon (emoji) takes two columns.
+                x += ctx.put_str_with(x, 0, icon.encode_utf8(&mut utf8), button_width, |ch| {
+                    let mut cell = Cell::new(ch);
+                    cell.fg = Some(fg);
+                    cell.bg = Some(bg);
+                    if bold {
+                        cell.modifier = crate::render::Modifier::BOLD;
+                    }
+                    cell
+                });
 
                 // Space after icon
                 if x < button_width {

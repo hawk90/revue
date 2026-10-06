@@ -163,6 +163,27 @@ impl Default for ErrorBoundary {
 impl View for ErrorBoundary {
     crate::impl_view_meta!("ErrorBoundary");
 
+    /// Whatever it is showing measures: the child, or after a panic the
+    /// fallback. The built-in fallback message fills.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let shown = if self.has_error.get() {
+            self.fallback.as_ref()
+        } else {
+            self.child.as_ref()
+        };
+        shown?.measure(max_width, max_height)
+    }
+
+    /// Whatever it is showing fills, as with [`measure`](View::measure).
+    fn fills(&self) -> crate::widget::Fill {
+        let shown = if self.has_error.get() {
+            self.fallback.as_ref()
+        } else {
+            self.child.as_ref()
+        };
+        shown.map_or(crate::widget::Fill::NONE, |v| v.fills())
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         // If already in error state, show fallback
         if self.has_error.get() {

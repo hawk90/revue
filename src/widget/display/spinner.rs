@@ -108,6 +108,15 @@ impl Default for Spinner {
 }
 
 impl View for Spinner {
+    /// One row: the spinner glyph, then a space and the label if there is one.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let label = self.label.as_deref().map_or(0, |l| {
+            crate::utils::unicode::display_width(l).saturating_add(1)
+        });
+        let width = (1 + label).min(u16::MAX as usize) as u16;
+        Some((width.min(max_width), 1.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width == 0 || area.height == 0 {
@@ -125,16 +134,9 @@ impl View for Spinner {
             ctx.set(0, 0, cell);
         }
 
-        // Render label if present
+        // Render label if present, after a space, by terminal columns
         if let Some(ref label) = self.label {
-            // Space after spinner
-            for (x, ch) in (2_u16..).zip(label.chars()) {
-                if x >= area.width {
-                    break;
-                }
-                let cell = Cell::new(ch);
-                ctx.set(x, 0, cell);
-            }
+            ctx.put_str_with(2, 0, label, area.width, Cell::new);
         }
     }
 

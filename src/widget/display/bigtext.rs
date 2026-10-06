@@ -251,6 +251,36 @@ impl Default for BigText {
 impl View for BigText {
     crate::impl_view_meta!("BigText");
 
+    /// [`height`](BigText::height) rows. Figlet art is as wide as its widest
+    /// line; the text sizing protocol clears the full width, so that path
+    /// takes all of it. Empty text paints nothing.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        if self.text.is_empty() {
+            return Some((0, 0));
+        }
+        let width = if !self.force_figlet && text_sizing_supported() {
+            max_width
+        } else {
+            figlet_with_font(&self.text, self.font_for_tier())
+                .lines()
+                .map(|line| line.chars().count())
+                .max()
+                .unwrap_or(0)
+                .min(u16::MAX as usize) as u16
+        };
+        Some((width.min(max_width), self.height().min(max_height)))
+    }
+
+    /// Through the text sizing protocol it clears, and so takes, the full
+    /// width; Figlet art is its own width.
+    fn fills(&self) -> crate::widget::Fill {
+        if !self.text.is_empty() && !self.force_figlet && text_sizing_supported() {
+            crate::widget::Fill::WIDTH
+        } else {
+            crate::widget::Fill::NONE
+        }
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         if ctx.area.width == 0 || ctx.area.height == 0 {
             return;

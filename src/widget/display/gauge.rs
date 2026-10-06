@@ -597,6 +597,31 @@ impl Default for Gauge {
 impl View for Gauge {
     crate::impl_view_meta!("Gauge");
 
+    /// The styles drawn at a set size answer with it, plus a row for the
+    /// title: `Bar` is [`width`](Gauge::width) columns, `Battery` the same
+    /// but at least 6, `Segments` two columns per segment, `Dots` one per
+    /// dot, `Vertical` [`height`](Gauge::height) rows and `Thermometer` the
+    /// same but at least 3. `Arc` and `Circle` fill what they are given.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let (w, h) = match self.style {
+            GaugeStyle::Bar => (self.width, 1),
+            GaugeStyle::Battery => (self.width.max(6), 1),
+            GaugeStyle::Segments => (self.segments.saturating_mul(2), 1),
+            GaugeStyle::Dots => (self.segments, 1),
+            GaugeStyle::Vertical => (1, self.height),
+            GaugeStyle::Thermometer => (1, self.height.max(3)),
+            GaugeStyle::Arc | GaugeStyle::Circle => return None,
+        };
+        let (w, h) = match &self.title {
+            Some(title) => (
+                w.max(display_width(title).min(u16::MAX as usize) as u16),
+                h.saturating_add(1),
+            ),
+            None => (w, h),
+        };
+        Some((w.min(max_width), h.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width == 0 || area.height == 0 {

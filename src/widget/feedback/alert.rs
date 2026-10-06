@@ -263,6 +263,24 @@ impl Default for Alert {
 impl View for Alert {
     crate::impl_view_meta!("Alert");
 
+    /// [`height`](Alert::height) rows, as wide as offered (the box and its
+    /// background run the full width). A dismissed alert takes no room.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        if self.dismissed {
+            return Some((0, 0));
+        }
+        Some((max_width, self.height().min(max_height)))
+    }
+
+    /// It stretches across the width it is offered - unless dismissed.
+    fn fills(&self) -> crate::widget::Fill {
+        if self.dismissed {
+            crate::widget::Fill::NONE
+        } else {
+            crate::widget::Fill::WIDTH
+        }
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         if self.dismissed {
             return;

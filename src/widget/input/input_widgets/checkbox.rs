@@ -137,7 +137,36 @@ impl Default for Checkbox {
     }
 }
 
+impl Checkbox {
+    /// The columns `render` paints given room: the focus marker while
+    /// focused, the box, and a space and the label when there is one.
+    fn natural_width(&self) -> u16 {
+        let focus = if self.state.focused && !self.state.disabled {
+            2
+        } else {
+            0
+        };
+        let check = if self.style.brackets().is_some() {
+            3
+        } else {
+            1
+        };
+        let label = if self.label.is_empty() {
+            0
+        } else {
+            1 + crate::utils::unicode::display_width(&self.label)
+        };
+        (focus + check + label).min(u16::MAX as usize) as u16
+    }
+}
+
 impl View for Checkbox {
+    /// One row: the box and its label. Focus puts the two-column `> ` marker
+    /// in front, as `render` does.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((self.natural_width().min(max_width), 1.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width == 0 || area.height == 0 {
@@ -215,19 +244,16 @@ impl View for Checkbox {
         ctx.set(x, 0, Cell::new(' '));
         x += 1;
 
-        // Render label
-        for ch in self.label.chars() {
-            if x >= area.width {
-                break;
-            }
+        // Render label, by terminal columns
+        let bold = self.state.focused && !self.state.disabled;
+        ctx.put_str_with(x, 0, &self.label, area.width, |ch| {
             let mut cell = Cell::new(ch);
             cell.fg = Some(label_fg);
-            if self.state.focused && !self.state.disabled {
+            if bold {
                 cell.modifier = crate::render::Modifier::BOLD;
             }
-            ctx.set(x, 0, cell);
-            x += 1;
-        }
+            cell
+        });
     }
 
     crate::impl_view_meta!("Checkbox", focusable, disabled: state);

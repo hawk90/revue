@@ -434,6 +434,18 @@ impl Default for RichText {
 impl View for RichText {
     crate::impl_view_meta!("RichText");
 
+    /// One row per line (a `\n` in any span starts one), as wide as the
+    /// widest line.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let lines = 1 + self
+            .spans
+            .iter()
+            .map(|span| span.text.matches('\n').count())
+            .sum::<usize>();
+        let clamp = |v: usize, max: u16| v.min(max as usize) as u16;
+        Some((clamp(self.width(), max_width), clamp(lines, max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width == 0 || area.height == 0 {

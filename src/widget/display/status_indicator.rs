@@ -336,6 +336,11 @@ impl Default for StatusIndicator {
 impl View for StatusIndicator {
     crate::impl_view_meta!("StatusIndicator");
 
+    /// One row, [`width`](StatusIndicator::width) columns.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((self.width().min(max_width), 1.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width < 1 || area.height < 1 {

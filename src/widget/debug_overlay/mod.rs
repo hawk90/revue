@@ -429,6 +429,25 @@ impl<V: View> DebugOverlay<V> {
 }
 
 impl<V: View> View for DebugOverlay<V> {
+    /// Hidden, it is just the wrapped view and measures as that. Shown, its
+    /// panel is placed within the whole area, so it fills.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        if self.visible {
+            None
+        } else {
+            self.inner.measure(max_width, max_height)
+        }
+    }
+
+    /// Hidden, what the wrapped view fills; shown, everything.
+    fn fills(&self) -> crate::widget::Fill {
+        if self.visible {
+            crate::widget::Fill::BOTH
+        } else {
+            self.inner.fills()
+        }
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         // Render inner view
         self.inner.render(ctx);

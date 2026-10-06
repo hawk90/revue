@@ -8,6 +8,44 @@ use crate::layout::Rect;
 use super::event::EventResult;
 use super::render_context::RenderContext;
 
+/// The axes along which a view takes whatever space it is offered - see
+/// [`View::fills`].
+///
+/// ```
+/// use revue::widget::Fill;
+///
+/// assert!(Fill::WIDTH.width && !Fill::WIDTH.height);
+/// assert_eq!(Fill::new(true, true), Fill::BOTH);
+/// ```
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Fill {
+    /// Takes all the width it is offered
+    pub width: bool,
+    /// Takes all the height it is offered
+    pub height: bool,
+}
+
+impl Fill {
+    /// Fills neither axis: the view is the size it measures
+    pub const NONE: Self = Self::new(false, false);
+    /// Fills the width it is offered (a text field, a progress bar)
+    pub const WIDTH: Self = Self::new(true, false);
+    /// Fills the height it is offered (a vertical divider)
+    pub const HEIGHT: Self = Self::new(false, true);
+    /// Fills both axes
+    pub const BOTH: Self = Self::new(true, true);
+
+    /// Fill `width`, `height`, or both
+    pub const fn new(width: bool, height: bool) -> Self {
+        Self { width, height }
+    }
+
+    /// Fills each axis that either fills
+    pub const fn or(self, other: Self) -> Self {
+        Self::new(self.width || other.width, self.height || other.height)
+    }
+}
+
 /// The core trait for all renderable components
 ///
 /// Every widget in Revue implements the `View` trait, which provides:
@@ -114,6 +152,20 @@ pub trait View {
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
         let _ = (max_width, max_height);
         None
+    }
+
+    /// The axes along which this view takes whatever space it is offered;
+    /// [`measure`](Self::measure) still gives its natural size on the other
+    /// axis.
+    ///
+    /// A text field is one row tall but as wide as it is given: it answers
+    /// [`Fill::WIDTH`], and `measure` answers one row. A content-sized stack
+    /// (`Stack::content_sized`) treats a child that fills its main axis like
+    /// one that does not measure (it shares what the measured children leave)
+    /// and sizes it by `measure` otherwise. The default, [`Fill::NONE`],
+    /// leaves `measure` in charge of both axes.
+    fn fills(&self) -> Fill {
+        Fill::NONE
     }
 
     /// Get widget type name (for CSS type selectors)
@@ -278,6 +330,10 @@ impl View for Box<dyn View> {
 
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
         (**self).measure(max_width, max_height)
+    }
+
+    fn fills(&self) -> Fill {
+        (**self).fills()
     }
 
     fn widget_type(&self) -> &'static str {
