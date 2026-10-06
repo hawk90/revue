@@ -231,6 +231,12 @@ impl Default for EmptyState {
 impl View for EmptyState {
     crate::impl_view_meta!("EmptyState");
 
+    /// [`height`](EmptyState::height) rows, as wide as offered (the content
+    /// is centred across it).
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((max_width, self.height().min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width < 5 || area.height < 1 {

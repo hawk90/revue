@@ -15,9 +15,9 @@ use revue::prelude::*;
 use revue::render::{Buffer, Cell};
 use revue::widget::traits::RenderContext;
 use revue::widget::{
-    Badge, Button, Checkbox, CheckboxStyle, Divider, Gauge, GaugeStyle, Input, Progress,
-    RadioGroup, RadioLayout, RadioStyle, Rating, RatingSize, Slider, Sparkline, Spinner, Switch,
-    SwitchStyle, Tag,
+    card, Badge, BigText, Button, CardVariant, Checkbox, CheckboxStyle, DigitStyle, Digits,
+    Divider, Gauge, GaugeStyle, Input, Progress, RadioGroup, RadioLayout, RadioStyle, Rating,
+    RatingSize, Slider, Sparkline, Spinner, Switch, SwitchStyle, Tag,
 };
 
 const W: u16 = 60;
@@ -329,4 +329,122 @@ fn gauge_measures_the_styles_drawn_at_a_set_size() {
     for style in [GaugeStyle::Arc, GaugeStyle::Circle] {
         assert_eq!(Gauge::new().style(style).measure(W, H), None, "{style:?}");
     }
+}
+
+// ==================== Digits, BigText, Card ====================
+
+#[test]
+fn digits_measure_their_glyphs() {
+    for style in [
+        DigitStyle::Block,
+        DigitStyle::Thin,
+        DigitStyle::Ascii,
+        DigitStyle::Braille,
+    ] {
+        let d = Digits::new(1234).style(style);
+        let (w, h) = d.measure(W, H).unwrap();
+        // Trailing blank columns paint as default cells, so compare the ink.
+        let buffer = render_into(&d, W, H);
+        assert_eq!((w, h), painted_box(&buffer, W, H), "{style:?}");
+        assert_nothing_clipped(&format!("{style:?}"), &d, (w, h));
+    }
+    assert_measures_paint("suffix", &Digits::new(42).suffix(" ms"));
+}
+
+#[test]
+fn figlet_bigtext_measures_its_art() {
+    for tier in 1..=6u8 {
+        assert_measures_paint(
+            &format!("tier {tier}"),
+            &BigText::new("Hi 42", tier).force_figlet(true),
+        );
+    }
+    assert_eq!(BigText::new("", 1).measure(W, H), Some((0, 0)));
+}
+
+/// Cards fill the width they are offered, so only the rows are checked: at
+/// the measured height every part shows, and one row less loses the body.
+fn assert_card_rows<V: View>(label: &str, view: &V, rows: u16, must_show: &[&str]) {
+    assert_eq!(view.measure(W, H), Some((W, rows)), "{label}");
+    let buffer = render_into(view, W, rows);
+    let text = screen(&buffer, W, rows);
+    for s in must_show {
+        assert!(
+            text.contains(s),
+            "{label}: {s:?} missing at {rows} rows:\n{text}"
+        );
+    }
+    let last = screen(&buffer, W, rows)
+        .lines()
+        .last()
+        .unwrap_or("")
+        .to_string();
+    assert!(!last.trim().is_empty(), "{label}: last row blank:\n{text}");
+}
+
+#[test]
+fn card_measures_its_rows() {
+    let body = || Text::new("hello");
+    assert_card_rows(
+        "title + body",
+        &card().title("T").body(body()),
+        5,
+        &["T", "hello"],
+    );
+    assert_card_rows(
+        "subtitle",
+        &card().title("T").subtitle("sub").body(body()),
+        6,
+        &["T", "sub", "hello"],
+    );
+    assert_card_rows(
+        "footer",
+        &card().title("T").body(body()).footer(Text::new("foot")),
+        7,
+        &["T", "hello", "foot"],
+    );
+    assert_card_rows(
+        "body only",
+        &card().body(vstack().child(body()).child(body())),
+        4,
+        &["hello"],
+    );
+    assert_card_rows(
+        "flat",
+        &card().title("T").body(body()).flat(),
+        3,
+        &["T", "hello"],
+    );
+    assert_card_rows(
+        "elevated",
+        &card()
+            .title("T")
+            .body(body())
+            .variant(CardVariant::Elevated),
+        6,
+        &["T", "hello"],
+    );
+    assert_card_rows(
+        "collapsed",
+        &card()
+            .title("T")
+            .body(body())
+            .collapsible(true)
+            .expanded(false),
+        3,
+        &["T"],
+    );
+
+    // One row less and the body has no room.
+    let c = card().title("T").body(body());
+    let short = screen(&render_into(&c, W, 4), W, 4);
+    assert!(!short.contains("hello"), "{short}");
+
+    // A body that fills makes the card fill.
+    struct Fill;
+    impl View for Fill {
+        fn render(&self, _: &mut RenderContext) {}
+    }
+    assert_eq!(card().title("T").body(Fill).measure(W, H), None);
+    assert_eq!(card().title("T").measure(W, H), Some((W, 3)));
 }

@@ -421,6 +421,47 @@ impl Default for Card {
 impl View for Card {
     crate::impl_view_meta!("Card");
 
+    /// As wide as offered (the frame and background run the full width) and
+    /// as tall as its rows: the frame, title, subtitle, header, separators,
+    /// the body's measured height and the footer - plus the shadow row of
+    /// `Elevated`. A body that fills (`None`) makes the card fill. Never
+    /// shorter than the 3 rows `render` needs to draw anything.
+    ///
+    /// The frame counted is the builder's: a stylesheet `border-style`
+    /// is applied at paint time, which `measure` cannot see.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let shown = self.expanded || !self.collapsible;
+        let frame: u16 = if self.border != BorderType::None {
+            2
+        } else {
+            0
+        };
+        let shadow = u16::from(self.variant == CardVariant::Elevated);
+
+        let mut rows = frame + shadow;
+        rows += u16::from(self.title.is_some()) + u16::from(self.subtitle.is_some());
+        let has_header = self.title.is_some() || self.subtitle.is_some() || self.header.is_some();
+        if shown {
+            rows += u16::from(self.header.is_some());
+            if let Some(body) = &self.body {
+                rows += u16::from(has_header); // separator under the header
+                let side = frame + self.padding.saturating_mul(2) + shadow;
+                let (_, h) = body.measure(
+                    max_width.saturating_sub(side),
+                    max_height.saturating_sub(rows),
+                )?;
+                rows = rows.saturating_add(h);
+            }
+            rows = rows.saturating_add(self.footer_height());
+        }
+
+        let mut h = rows.max(3).max(self.min_height);
+        if self.max_height > 0 {
+            h = h.min(self.max_height);
+        }
+        Some((max_width, h.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width < 4 || area.height < 3 {

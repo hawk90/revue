@@ -348,6 +348,11 @@ impl Default for StatusBar {
 impl View for StatusBar {
     crate::impl_view_meta!("StatusBar");
 
+    /// Its [`height`](StatusBar::height) in rows, across the full width.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((max_width, self.height.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let y = self.render_y(area.height);

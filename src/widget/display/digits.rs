@@ -444,6 +444,28 @@ impl Digits {
 impl View for Digits {
     crate::impl_view_meta!("Digits");
 
+    /// The glyph rows ([`height`](Digits::height)), plus a row for the
+    /// prefix/suffix label if there is one; as wide as the widest of them.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let glyphs = self
+            .render_lines()
+            .iter()
+            .map(|line| crate::utils::unicode::display_width(line.trim_end()))
+            .max()
+            .unwrap_or(0);
+        let (label, label_rows) = if self.prefix.is_some() || self.suffix.is_some() {
+            let label = crate::utils::unicode::display_width(self.prefix.as_deref().unwrap_or(""))
+                + crate::utils::unicode::display_width(&self.value)
+                + crate::utils::unicode::display_width(self.suffix.as_deref().unwrap_or(""));
+            (label, 1)
+        } else {
+            (0, 0)
+        };
+        let width = glyphs.max(label).min(u16::MAX as usize) as u16;
+        let height = (self.height() + label_rows).min(u16::MAX as usize) as u16;
+        Some((width.min(max_width), height.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         use crate::widget::stack::vstack;
         use crate::widget::Text;

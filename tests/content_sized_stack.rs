@@ -6,7 +6,7 @@
 
 use revue::prelude::*;
 use revue::testing::PipelineHarness;
-use revue::widget::Switch;
+use revue::widget::{card, Alert, Switch};
 
 /// A view that fills whatever it is given and does not measure - the default
 /// for every widget that has not learned to answer.
@@ -181,4 +181,20 @@ fn a_spinner_and_its_label_sit_side_by_side() {
         .child(Spinner::new())
         .child(Text::new(" Loading"));
     assert_eq!(rows(&view, 1)[0], "⠋ Loading");
+}
+
+#[test]
+fn an_alert_and_a_card_take_their_rows() {
+    let view = vstack()
+        .content_sized(true)
+        .child(Alert::new("Saved"))
+        .child(card().title("Card").body(Text::new("body")))
+        .child(Text::new("after"));
+    let screen = rows(&view, 16);
+    // A filled alert is its message between two border rows.
+    assert!(screen[1].contains("Saved"), "{screen:?}");
+    // The card: frame, title, separator, body, frame.
+    assert!(screen[4].contains("Card"), "{screen:?}");
+    assert!(screen[6].contains("body"), "{screen:?}");
+    assert_eq!(screen[8], "after");
 }
