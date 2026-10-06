@@ -47,8 +47,7 @@ pub fn render_sub_tabs(sub_tabs: &[crate::SubTab], active_sub_tab: usize) -> imp
     for (i, sub_tab) in sub_tabs.iter().enumerate() {
         let is_active = i == active_sub_tab;
         let label = sub_tab.name().to_string();
-        // Unsized stack children share the width equally, so each label and
-        // separator is sized to its text instead of getting 1/N of the row.
+        // Each label and separator is sized to its text.
         let width = display_width(&label) as u16;
 
         tabs = tabs.child_sized(

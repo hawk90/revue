@@ -123,9 +123,10 @@ impl View for ReactiveForm {
         let form_valid = self.form.is_valid();
         let focused_name = self.form.focused();
 
-        // Unsized stack children share space equally, so fixed-height pieces
-        // use `child_sized` (a Border needs content + 2 rows) and only the
-        // field list absorbs the leftover rows. Everything has to fit in 30.
+        // Fixed-height pieces use `child_sized` (a Border needs content + 2
+        // rows), and the field list takes the leftover rows with `child_flex`
+        // - a stack would otherwise size it to its content. Everything has to
+        // fit in 30.
         let mut main_view = vstack();
 
         // Header: status and the last message share one row
@@ -235,7 +236,7 @@ impl View for ReactiveForm {
             }
         }
 
-        main_view = main_view.child(fields_view);
+        main_view = main_view.child_flex(fields_view, 1.0);
 
         // Controls and feature highlights side by side
         let mut controls = vstack();
@@ -259,7 +260,7 @@ impl View for ReactiveForm {
             hstack()
                 .gap(1)
                 .child_sized(Border::rounded().title("Controls").child(controls), 32)
-                .child(
+                .child_flex(
                     Border::success_box().title("FormState Features").child(
                         vstack()
                             .child_sized(
@@ -281,6 +282,7 @@ impl View for ReactiveForm {
                                 1,
                             ),
                     ),
+                    1.0,
                 ),
             7,
         );

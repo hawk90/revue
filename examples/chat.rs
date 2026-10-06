@@ -167,9 +167,9 @@ impl View for ChatApp {
             Color::rgb(100, 100, 100)
         };
 
-        // Unsized stack children share space equally, so fixed-size pieces are
-        // added with `child_sized`; only the last piece of each stack takes
-        // the rest.
+        // A stack sizes unsized children to their content. Fixed-size pieces
+        // are added with `child_sized`, and the pieces that should take the
+        // rest of the space - the message list, the body - with `child_flex`.
         let name = format!(" {} ", current_contact.name);
         let status = format!("- {}", current_contact.status);
         let header = Border::rounded().child(
@@ -257,14 +257,19 @@ impl View for ChatApp {
         };
 
         // Layout - sidebar and main content
-        let main_content = vstack().child(messages_panel).child_sized(input_area, 3);
+        let main_content = vstack()
+            .child_flex(messages_panel, 1.0)
+            .child_sized(input_area, 3);
 
-        let body = hstack().gap(1).child_sized(sidebar, 24).child(main_content);
+        let body = hstack()
+            .gap(1)
+            .child_sized(sidebar, 24)
+            .child_flex(main_content, 1.0);
 
         let layout = vstack()
             .gap(1)
             .child_sized(header, 3)
-            .child(body)
+            .child_flex(body, 1.0)
             .child_sized(help, 1);
 
         layout.render(ctx);

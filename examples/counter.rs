@@ -102,8 +102,9 @@ impl View for ReactiveCounter {
             Color::WHITE
         };
 
-        // Unsized stack children share the remaining space equally, so each
-        // row and box here is `child_sized` to its content.
+        // Each row and box here is `child_sized` to its content. (A stack sizes
+        // children to their content on its own; the explicit sizes pin the
+        // layout.)
         let view = vstack()
             .gap(1)
             .child_sized(

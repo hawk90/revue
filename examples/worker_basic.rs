@@ -153,8 +153,8 @@ impl View for WorkerDemo {
             _ => Color::rgb(100, 100, 100),
         };
 
-        // Unsized stack children share the remaining space equally, so every
-        // fixed-height row/box is `child_sized`; only the Result box absorbs the rest.
+        // Every fixed-height row/box is `child_sized`; the Result box takes the
+        // rest with `child_flex` - a stack would otherwise size it to its content.
         let view = vstack()
             .gap(1)
             .child_sized(
@@ -187,7 +187,7 @@ impl View for WorkerDemo {
                 ),
                 5,
             )
-            .child(
+            .child_flex(
                 Border::single()
                     .title("Result")
                     .child(if let Some(result) = &self.result {
@@ -197,6 +197,7 @@ impl View for WorkerDemo {
                     } else {
                         vstack().child_sized(Text::muted("No result yet"), 1)
                     }),
+                1.0,
             )
             .child_sized(
                 Border::success_box()

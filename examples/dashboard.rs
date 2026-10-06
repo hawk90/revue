@@ -212,26 +212,30 @@ impl Dashboard {
 
 impl View for Dashboard {
     fn render(&self, ctx: &mut RenderContext) {
-        // Unsized stack children share space equally, so each panel is given
-        // its content height + 2 with `child_sized`; only the middle row and
-        // the bottom panel of each column take what is left. That needs all
-        // 30 rows, so the blank spacer rows and column gaps are gone.
+        // Each panel is given its content height + 2 with `child_sized`; the
+        // middle row, its two columns and the bottom panel of each column
+        // take what is left with `child_flex` - a stack would otherwise size
+        // them to their content. That needs all 30 rows, so the blank spacer
+        // rows and column gaps are gone.
         vstack()
             .gap(0)
             .child_sized(self.render_header(), 1)
-            .child(
+            .child_flex(
                 hstack()
                     .gap(1)
-                    .child(
+                    .child_flex(
                         vstack()
                             .child_sized(self.render_json_panel(), 11)
-                            .child(self.render_markdown_panel()),
+                            .child_flex(self.render_markdown_panel(), 1.0),
+                        1.0,
                     )
-                    .child(
+                    .child_flex(
                         vstack()
                             .child_sized(self.render_csv_panel(), 8)
-                            .child(self.render_progress_panel()),
+                            .child_flex(self.render_progress_panel(), 1.0),
+                        1.0,
                     ),
+                1.0,
             )
             .child_sized(self.render_log_panel(), 7)
             .child_sized(self.render_footer(), 1)

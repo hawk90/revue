@@ -95,11 +95,10 @@ impl StatusIndicatorDemo {
     }
 
     fn render_tabs(&self) -> impl View {
-        // A stack shares its space equally among the children added with
-        // `child`; it does not size them to their content. So everything in
-        // this file that should take only its own rows or columns says so with
-        // `child_sized`, and only the piece that should take the rest is left
-        // as a plain `child`.
+        // A stack sizes each child added with `child` to its content. The
+        // rows and columns in this file are spelled out with `child_sized`
+        // anyway, and the tab body is added with `child_flex` so it takes the
+        // rest of the screen whatever it holds.
         let mut tabs = hstack().gap(2);
 
         for (i, tab) in ViewTab::all().iter().enumerate() {
@@ -345,7 +344,7 @@ impl View for StatusIndicatorDemo {
             .child_sized(header, 1)
             .child_sized(tabs, 1)
             .child_sized(Text::new(""), 1)
-            .child(content)
+            .child_flex(content, 1.0)
             .child_sized(Text::new(""), 1)
             .child_sized(help, 1)
             .render(ctx);

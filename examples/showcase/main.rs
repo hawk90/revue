@@ -259,7 +259,7 @@ impl View for Showcase {
             .child_sized(Text::new(""), 1)
             .child_sized(render_example_header(title, description, index, total), 1)
             .child_sized(Text::new(""), 1)
-            .child(widget)
+            .child_flex(widget, 1.0)
             .child_sized(Text::new(""), 1)
             .child_sized(render_footer(index, total), 1)
             .render(ctx);

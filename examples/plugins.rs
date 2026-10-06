@@ -221,8 +221,9 @@ impl PluginDemoApp {
 
 impl View for PluginDemoApp {
     fn render(&self, ctx: &mut RenderContext) {
-        // Unsized stack children share the remaining space equally, so every
-        // fixed-height row/box is `child_sized` to its content.
+        // Every fixed-height row/box is `child_sized` to its content; the three
+        // plugin panels split the width with `child_flex` - a stack would
+        // otherwise size them to their content.
         let view = vstack()
             .gap(1)
             .child_sized(
@@ -235,9 +236,9 @@ impl View for PluginDemoApp {
             .child_sized(
                 hstack()
                     .gap(2)
-                    .child(self.render_counter_panel())
-                    .child(self.render_stats_panel())
-                    .child(self.render_performance_panel()),
+                    .child_flex(self.render_counter_panel(), 1.0)
+                    .child_flex(self.render_stats_panel(), 1.0)
+                    .child_flex(self.render_performance_panel(), 1.0),
                 7,
             )
             .child_sized(self.render_plugins_info(), 7)

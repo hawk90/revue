@@ -511,8 +511,8 @@ impl DataExplorer {
     }
 
     fn render_header(&self) -> impl View {
-        // Unsized stack children share space equally, so fixed-width text is
-        // added with `child_sized` and only the last piece takes the rest.
+        // Fixed-width text is added with `child_sized`; the last piece takes
+        // what it needs.
         hstack()
             .child_sized(Text::new(" Data Explorer ").fg(Color::CYAN).bold(), 15)
             .child(
@@ -749,7 +749,7 @@ impl View for DataExplorer {
             .child_sized(self.render_header(), 1)
             .child_sized(self.render_stats(), 3)
             .child_sized(self.render_filter_input(), filter_rows)
-            .child(self.render_table())
+            .child_flex(self.render_table(), 1.0)
             .child_sized(self.render_notifications(), notification_rows)
             .child_sized(self.render_help(), 1);
 

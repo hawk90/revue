@@ -171,9 +171,9 @@ impl View for SignupForm {
         let focused_name = self.form.focused();
         let submitted = self.submitted_data.get();
 
-        // Unsized stack children share space equally, so every fixed-height
-        // piece is added with `child_sized` (a Border needs content + 2 rows)
-        // and only the field list absorbs the leftover rows.
+        // Every fixed-height piece is added with `child_sized` (a Border needs
+        // content + 2 rows), and the field list takes the leftover rows with
+        // `child_flex` - a stack would otherwise size it to its content.
         let mut main_view = vstack();
 
         // Title
@@ -301,7 +301,7 @@ impl View for SignupForm {
             }
         }
 
-        main_view = main_view.child(fields_view);
+        main_view = main_view.child_flex(fields_view, 1.0);
 
         // Form status bar
         let status_text = if form_valid {

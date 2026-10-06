@@ -276,9 +276,9 @@ impl AnimationShowcase {
             "Running"
         };
 
-        // Unsized stack children share space equally, so every one-line row
-        // (here and in the other demos) uses `child_sized`; only the demo
-        // panel in `render` takes the leftover rows.
+        // Every one-line row (here and in the other demos) uses `child_sized`;
+        // the demo panel in `render` takes the leftover rows with `child_flex`
+        // - a stack would otherwise size it to its content.
         vstack()
             .gap(1)
             .child_sized(Text::new("Tween Animation").bold().fg(Color::CYAN), 1)
@@ -462,13 +462,14 @@ impl View for AnimationShowcase {
 
         let view = vstack()
             .gap(1)
-            .child(
+            .child_flex(
                 Border::panel().title("Animation Showcase").child(
                     vstack()
                         .gap(2)
                         .child_sized(self.render_mode_tabs(), 1)
-                        .child(demo_content),
+                        .child_flex(demo_content, 1.0),
                 ),
+                1.0,
             )
             .child_sized(
                 Border::single()

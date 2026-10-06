@@ -86,13 +86,14 @@ impl DragDropDemo {
 
 impl View for DragDropDemo {
     fn render(&self, ctx: &mut RenderContext) {
-        // Unsized stack children share the remaining space equally, so every
-        // fixed-height row/box is `child_sized`; only the main content absorbs the rest.
+        // Every fixed-height row/box is `child_sized`; the main content takes
+        // the rest with `child_flex` - a stack would otherwise size it to its
+        // content.
         let view = vstack()
             .gap(1)
             .child_sized(self.render_header(), 2)
             .child_sized(self.render_tabs(), 1)
-            .child(self.render_main_content())
+            .child_flex(self.render_main_content(), 1.0)
             .child_sized(self.render_status(), 3)
             .child_sized(self.render_controls(), 6);
 
@@ -137,10 +138,12 @@ impl DragDropDemo {
     }
 
     fn render_main_content(&self) -> impl View {
+        // The list and the drop zones split the width; each drop zone takes
+        // half of the height.
         hstack()
             .gap(2)
-            .child(self.render_task_list())
-            .child(self.render_drop_zones())
+            .child_flex(self.render_task_list(), 1.0)
+            .child_flex(self.render_drop_zones(), 1.0)
     }
 
     fn render_task_list(&self) -> Border {
@@ -172,17 +175,19 @@ impl DragDropDemo {
     fn render_drop_zones(&self) -> impl View {
         vstack()
             .gap(1)
-            .child(
+            .child_flex(
                 Border::rounded()
                     .title(format!("✅ Completed ({})", self.completed.len()))
                     .fg(Color::GREEN)
                     .child(self.render_completed_items()),
+                1.0,
             )
-            .child(
+            .child_flex(
                 Border::rounded()
                     .title(format!("🗑️  Trash ({})", self.trash.len()))
                     .fg(Color::RED)
                     .child(self.render_trash_items()),
+                1.0,
             )
     }
 
