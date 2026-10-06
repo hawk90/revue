@@ -10,9 +10,9 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{
-    AiStream, Collapsible, ContextMenu, Diagram, DiagramNode, Gauge, Menu, MenuBar, MenuItem,
-    PieChart, PieLabelStyle, Popover, Presentation, Slide, SlideAlign, Slider, Step, Stepper,
-    Switch, SwitchStyle, Tooltip, TooltipPosition, Waveline,
+    AiStream, Canvas, Collapsible, ContextMenu, Diagram, DiagramNode, DrawContext, Gauge, Menu,
+    MenuBar, MenuItem, PieChart, PieLabelStyle, Popover, Presentation, Slide, SlideAlign, Slider,
+    Step, Stepper, Switch, SwitchStyle, Tooltip, TooltipPosition, Waveline,
 };
 
 fn render(view: &dyn View, width: u16, height: u16) -> Buffer {
@@ -553,4 +553,45 @@ fn collapsible_ascii_unchanged() {
     let buffer = render(&c, 10, 4);
     assert_eq!(row_text(&buffer, 0), "▼ Title   ");
     assert_eq!(row_text(&buffer, 1).trim_end(), "│ abcdefg");
+}
+
+// ─── Canvas ─────────────────────────────────────────────────────────────────
+
+#[test]
+fn canvas_wide_text_takes_two_cells_per_glyph() {
+    let canvas = Canvas::new(|ctx: &mut DrawContext| {
+        ctx.text(1, 0, "設定x", None);
+        ctx.text_bold(1, 1, "🔄y", None);
+    });
+    let buffer = render(&canvas, 10, 2);
+    assert_eq!(assert_wide_then(&buffer, '設', '定'), (1, 0));
+    assert_wide_then(&buffer, '定', 'x');
+    assert_eq!(assert_wide_then(&buffer, '🔄', 'y'), (1, 1));
+    let cont = buffer.get(2, 1).unwrap();
+    assert!(cont.modifier.contains(revue::render::Modifier::BOLD));
+}
+
+#[test]
+fn canvas_text_stops_before_a_wide_glyph_that_would_cross_the_edge() {
+    let canvas = Canvas::new(|ctx: &mut DrawContext| ctx.text(0, 0, "ab設", None));
+    let buffer = render(&canvas, 3, 1);
+    assert_eq!(row_text(&buffer, 0), "ab ");
+}
+
+#[test]
+fn canvas_text_bold_stays_inside_its_area() {
+    // A canvas one row tall, inside a taller buffer: text on row 1 is
+    // outside it
+    let canvas = Canvas::new(|ctx: &mut DrawContext| ctx.text_bold(0, 1, "x", None));
+    let mut buffer = Buffer::new(4, 3);
+    let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 4, 1));
+    canvas.render(&mut ctx);
+    assert_eq!(row_text(&buffer, 1), "    ");
+}
+
+#[test]
+fn canvas_ascii_text_unchanged() {
+    let canvas = Canvas::new(|ctx: &mut DrawContext| ctx.text(1, 0, "abcdef", None));
+    let buffer = render(&canvas, 5, 1);
+    assert_eq!(row_text(&buffer, 0), " abcd");
 }
