@@ -15,10 +15,10 @@ use revue::prelude::*;
 use revue::render::{Buffer, Cell};
 use revue::widget::traits::RenderContext;
 use revue::widget::{
-    card, Badge, BigText, Breadcrumb, Button, CardVariant, Checkbox, CheckboxStyle, DigitStyle,
-    Digits, Divider, Gauge, GaugeStyle, Input, Link, Progress, RadioGroup, RadioLayout, RadioStyle,
-    Rating, RatingSize, RichText, Slider, Sparkline, Spinner, Status, StatusIndicator, StatusSize,
-    StatusStyle, Switch, SwitchStyle, Tag,
+    card, Badge, BigText, Breadcrumb, Button, CardVariant, Checkbox, CheckboxStyle, DebugOverlay,
+    DigitStyle, Digits, Divider, ErrorBoundary, Gauge, GaugeStyle, Input, Link, Progress,
+    RadioGroup, RadioLayout, RadioStyle, Rating, RatingSize, RichText, Slider, Sparkline, Spinner,
+    Status, StatusIndicator, StatusSize, StatusStyle, Switch, SwitchStyle, Tag, ZenMode,
 };
 
 const W: u16 = 60;
@@ -501,4 +501,54 @@ fn status_indicator_measures_its_width() {
             assert_measures_paint(&format!("{style:?} {size:?}"), &s);
         }
     }
+}
+
+// ==================== Wrappers ====================
+
+#[test]
+fn wrappers_that_draw_nothing_of_their_own_forward_measure() {
+    let inner = || Text::new("ok");
+
+    assert_eq!(
+        ErrorBoundary::new().child(inner()).measure(W, H),
+        Some((2, 1))
+    );
+    assert_eq!(ErrorBoundary::new().measure(W, H), None);
+
+    let mut zen = ZenMode::new(inner());
+    assert_eq!(zen.measure(W, H), Some((2, 1)));
+    // On, it paints its background over the whole area.
+    zen.enable();
+    assert_eq!(zen.measure(W, H), None);
+
+    assert_eq!(
+        DebugOverlay::wrap(inner()).visible(false).measure(W, H),
+        Some((2, 1))
+    );
+    assert_eq!(
+        DebugOverlay::wrap(inner()).visible(true).measure(W, H),
+        None
+    );
+
+    let boxed: Box<dyn View> = Box::new(inner());
+    assert_eq!(boxed.measure(W, H), Some((2, 1)));
+}
+
+#[test]
+fn an_error_boundary_measures_its_fallback_after_a_panic() {
+    struct Boom;
+    impl View for Boom {
+        fn render(&self, _: &mut RenderContext) {
+            panic!("boom");
+        }
+        fn measure(&self, _: u16, _: u16) -> Option<(u16, u16)> {
+            Some((9, 9))
+        }
+    }
+    let boundary = ErrorBoundary::new()
+        .child(Boom)
+        .fallback(Text::new("failed"));
+    assert_eq!(boundary.measure(W, H), Some((9, 9)));
+    render_into(&boundary, W, H);
+    assert_eq!(boundary.measure(W, H), Some((6, 1)));
 }
