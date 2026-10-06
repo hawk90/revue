@@ -105,6 +105,11 @@ impl Default for Progress {
 }
 
 impl View for Progress {
+    /// One row, as wide as it is offered: the bar stretches to fill it.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((max_width, 1.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width == 0 || area.height == 0 {

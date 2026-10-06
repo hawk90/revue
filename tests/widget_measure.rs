@@ -15,8 +15,9 @@ use revue::prelude::*;
 use revue::render::{Buffer, Cell};
 use revue::widget::traits::RenderContext;
 use revue::widget::{
-    Badge, Button, Checkbox, CheckboxStyle, Input, RadioGroup, RadioLayout, RadioStyle, Rating,
-    RatingSize, Slider, Switch, SwitchStyle, Tag,
+    Badge, Button, Checkbox, CheckboxStyle, Divider, Gauge, GaugeStyle, Input, Progress,
+    RadioGroup, RadioLayout, RadioStyle, Rating, RatingSize, Slider, Sparkline, Spinner, Switch,
+    SwitchStyle, Tag,
 };
 
 const W: u16 = 60;
@@ -267,4 +268,65 @@ fn slider_measures_its_fixed_track() {
     assert_eq!(Slider::new().show_value(false).measure(W, H), Some((20, 1)));
     // The value, after a space: "0".
     assert_eq!(Slider::new().measure(W, H), Some((22, 1)));
+}
+
+// ==================== Progress, Spinner, Divider, Gauge, Sparkline ====================
+
+#[test]
+fn progress_takes_one_row_of_whatever_width_it_is_offered() {
+    assert_stretches("half", &Progress::new(0.5), 1);
+    assert_stretches("percentage", &Progress::new(0.25).show_percentage(true), 1);
+}
+
+#[test]
+fn sparkline_takes_one_row_of_whatever_width_it_is_offered() {
+    assert_stretches("data", &Sparkline::new([1.0, 4.0, 2.0, 8.0]), 1);
+}
+
+#[test]
+fn spinner_measures_its_glyph_and_label() {
+    assert_measures_paint("bare", &Spinner::new());
+    assert_measures_paint("label", &Spinner::new().label("Loading..."));
+    assert_measures_paint("wide label", &Spinner::new().label("로딩"));
+    assert_eq!(Spinner::new().measure(W, H), Some((1, 1)));
+    assert_eq!(Spinner::new().label("Wait").measure(W, H), Some((6, 1)));
+}
+
+#[test]
+fn divider_runs_the_length_it_is_offered() {
+    assert_stretches("horizontal", &Divider::new(), 1);
+    assert_stretches("label", &Divider::new().label("Section"), 1);
+    assert_measures_paint("fixed", &Divider::new().length(10));
+    assert_measures_paint("fixed + margin", &Divider::new().margin(2).length(10));
+
+    // Vertical: one column, the full height.
+    let v = Divider::vertical();
+    assert_eq!(v.measure(W, H), Some((1, H)));
+    assert_eq!(painted_box(&render_into(&v, W, H), W, H), (1, H));
+    assert_nothing_clipped("vertical", &v, (1, H));
+    assert_measures_paint("vertical fixed", &Divider::vertical().length(4));
+    assert_clamped("vertical", &v);
+}
+
+#[test]
+fn gauge_measures_the_styles_drawn_at_a_set_size() {
+    assert_measures_paint("bar", &Gauge::new().value(0.4));
+    assert_measures_paint("bar + title", &Gauge::new().value(0.4).title("CPU"));
+    assert_measures_paint("long title", &Gauge::new().width(4).title("Memory usage"));
+    assert_measures_paint("battery", &Gauge::new().style(GaugeStyle::Battery));
+    assert_measures_paint("dots", &Gauge::new().style(GaugeStyle::Dots).value(0.5));
+    assert_measures_paint("vertical", &Gauge::new().style(GaugeStyle::Vertical));
+    assert_measures_paint("thermometer", &Gauge::new().style(GaugeStyle::Thermometer));
+    assert_eq!(Gauge::new().measure(W, H), Some((20, 1)));
+
+    // Segments are two columns apart; render fits `width / 2` of them, so
+    // the last one needs its gap column too.
+    let segments = Gauge::new().style(GaugeStyle::Segments).segments(5);
+    assert_eq!(segments.measure(W, H), Some((10, 1)));
+    assert_eq!(painted_box(&render_into(&segments, W, H), W, H), (9, 1));
+    assert_nothing_clipped("segments", &segments, (10, 1));
+
+    for style in [GaugeStyle::Arc, GaugeStyle::Circle] {
+        assert_eq!(Gauge::new().style(style).measure(W, H), None, "{style:?}");
+    }
 }

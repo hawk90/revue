@@ -178,6 +178,12 @@ impl Default for Sparkline {
 impl View for Sparkline {
     crate::impl_view_meta!("Sparkline");
 
+    /// One row, as wide as it is offered: the line shows as many
+    /// points as fit and pads the rest.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((max_width, 1.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width == 0 || area.height == 0 {

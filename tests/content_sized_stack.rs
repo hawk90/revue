@@ -160,3 +160,25 @@ fn buttons_in_a_row_sit_next_to_each_other() {
         .child(Button::new("Cancel"));
     assert_eq!(rows(&view, 1)[0], "  OK     Cancel");
 }
+
+#[test]
+fn a_divider_between_two_lines_is_one_row() {
+    let view = vstack()
+        .content_sized(true)
+        .child(Text::new("above"))
+        .child(Divider::new())
+        .child(Text::new("below"));
+    let screen = rows(&view, 9);
+    assert_eq!(screen[0], "above");
+    assert_eq!(screen[1], "─".repeat(20));
+    assert_eq!(screen[2], "below");
+}
+
+#[test]
+fn a_spinner_and_its_label_sit_side_by_side() {
+    let view = hstack()
+        .content_sized(true)
+        .child(Spinner::new())
+        .child(Text::new(" Loading"));
+    assert_eq!(rows(&view, 1)[0], "⠋ Loading");
+}
