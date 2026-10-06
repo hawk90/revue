@@ -1,6 +1,6 @@
 //! Render context for widget rendering
 
-mod box_model;
+pub(crate) mod box_model;
 mod css;
 pub(crate) mod edit_line;
 mod focus;
@@ -286,6 +286,53 @@ impl<'a> RenderContext<'a> {
                 }
             }
         }
+    }
+
+    /// The computed styles of the next `count` children this widget will
+    /// render, read without rendering them.
+    ///
+    /// For a container that has to know its children's CSS box *before* it
+    /// lays them out - a content-sized [`Stack`](crate::widget::Stack) folds a
+    /// child's `height` and margins into the slot it hands that child.
+    ///
+    /// Entry `k` belongs to the `k`-th call to
+    /// [`render_child`](Self::render_child) (or
+    /// [`render_child_with_overflow`](Self::render_child_with_overflow)) this
+    /// widget makes from here on. So the caller must count exactly the
+    /// children it is about to render, in order: one it skips - say, because
+    /// its `needs_render()` is false - has no node and must not be counted.
+    /// The walk is only meaningful for children the collect pass rendered too;
+    /// a container that renders fewer children when the area is small must not
+    /// peek past what it is sure to render.
+    ///
+    /// It is a read: the paint cursor does not move. Child `k`'s node is the
+    /// cursor plus the subtree lengths of children `0..k`, which is the same
+    /// arithmetic `render_child_with_overflow` resynchronizes with, so the
+    /// peek and the paint agree.
+    ///
+    /// Every entry is `None` outside a paint pass, or when
+    /// [`css_layout`](Self::css_layout) is off - CSS box properties do not
+    /// apply then, so a container sees nothing to fold in. An entry is also
+    /// `None` past the end of the node list, or for a node with no computed
+    /// style.
+    pub(crate) fn peek_child_styles(&self, count: usize) -> Vec<Option<&'a Style>> {
+        let mut styles = vec![None; count];
+        if let Some(RenderPass::Paint {
+            nodes,
+            next,
+            css_layout: true,
+            ..
+        }) = &self.pass
+        {
+            let nodes: &'a [PaintNode<'a>] = nodes;
+            let mut idx = **next;
+            for slot in &mut styles {
+                let Some(node) = nodes.get(idx) else { break };
+                *slot = node.style;
+                idx += node.subtree_len.max(1);
+            }
+        }
+        styles
     }
 
     /// Paint `bg` over this widget's whole box, and claim it as the box's

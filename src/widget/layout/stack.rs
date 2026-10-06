@@ -1,6 +1,7 @@
 //! Stack container widget
 
 use crate::layout::Rect;
+use crate::style::{Display, Style};
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -95,6 +96,10 @@ impl Stack {
     /// returns `None`) share what is left - equally, as before. `child_sized`
     /// and `child_flex` still win. The cross axis is unchanged: every child
     /// gets the stack's full width (in a column) or height (in a row).
+    ///
+    /// Under [`css_layout`](crate::core::app::AppBuilder::css_layout), a child
+    /// whose stylesheet says `display: none` takes no space and no gap. (An
+    /// equal-share stack keeps its share for it, as it always has.)
     pub fn content_sized(mut self, enabled: bool) -> Self {
         self.content_sized = enabled;
         self
@@ -213,14 +218,21 @@ impl View for Stack {
         // CSS wins when it specified one; `gap: 0` is the initial value and so
         // reads as "not specified".
         let gap = ctx.gap_or(self.gap);
-        let total_gap = gap.saturating_mul(n.saturating_sub(1) as u16);
 
         let wrap = ctx.css_flex_wrap();
+        let styles = self.child_styles(ctx, wrap);
+        let hidden: Vec<bool> = styles
+            .iter()
+            .map(|s| s.is_some_and(|s| s.layout.display == Display::None))
+            .collect();
+        // A hidden child takes no gap either.
+        let shown = hidden.iter().filter(|h| !**h).count();
+        let total_gap = gap.saturating_mul(shown.saturating_sub(1) as u16);
 
         match self.direction {
             Direction::Row => {
                 let available_width = area.width.saturating_sub(total_gap);
-                let sizes = self.effective_sizes(available_width, area.height);
+                let sizes = self.effective_sizes(available_width, area.height, &styles);
                 let widths = Self::calculate_sizes(&sizes, available_width, n);
 
                 let mut x: u16 = 0;
@@ -248,12 +260,14 @@ impl View for Stack {
                             parent_clip,
                         );
                     }
-                    x = x.saturating_add(w).saturating_add(gap);
+                    if !hidden[i] {
+                        x = x.saturating_add(w).saturating_add(gap);
+                    }
                 }
             }
             Direction::Column => {
                 let available_height = area.height.saturating_sub(total_gap);
-                let sizes = self.effective_sizes(available_height, area.width);
+                let sizes = self.effective_sizes(available_height, area.width, &styles);
                 let heights = Self::calculate_sizes(&sizes, available_height, n);
 
                 let mut y: u16 = 0;
@@ -268,7 +282,9 @@ impl View for Stack {
                             parent_clip,
                         );
                     }
-                    y = y.saturating_add(h).saturating_add(gap);
+                    if !hidden[i] {
+                        y = y.saturating_add(h).saturating_add(gap);
+                    }
                 }
             }
         }
@@ -340,14 +356,21 @@ impl Stack {
     /// Without [`content_sized`](Self::content_sized) that is what the builder
     /// recorded. With it, an unsized child that can measure itself is laid out
     /// as if it had been added with `child_sized` at its measured size.
-    fn effective_sizes(&self, main: u16, cross: u16) -> Vec<ChildSize> {
+    ///
+    /// A child whose computed style (see [`child_styles`](Self::child_styles))
+    /// is `display: none` takes no space at all.
+    fn effective_sizes(&self, main: u16, cross: u16, styles: &[Option<&Style>]) -> Vec<ChildSize> {
         if !self.content_sized {
             return self.child_sizes.clone();
         }
         self.children
             .iter()
             .zip(&self.child_sizes)
-            .map(|(child, size)| match size {
+            .zip(styles)
+            .map(|((child, size), style)| match size {
+                _ if style.is_some_and(|s| s.layout.display == Display::None) => {
+                    ChildSize::Fixed(0)
+                }
                 ChildSize::Auto => {
                     let (w, h) = match self.direction {
                         Direction::Column => (cross, main),
@@ -362,6 +385,36 @@ impl Stack {
                     }
                 }
                 other => *other,
+            })
+            .collect()
+    }
+
+    /// Each child's computed style, for a [`content_sized`](Self::content_sized)
+    /// stack to lay out by - `None` for every child otherwise.
+    ///
+    /// Equal-share stacks do not look: there the CSS box is applied to the
+    /// share afterwards, as it always was. Neither does a wrapping row, which
+    /// may stop rendering partway along when it runs out of rows - the peek is
+    /// only sound for children the stack is sure to render (see
+    /// [`RenderContext::peek_child_styles`]).
+    ///
+    /// A child that does not need rendering is never handed to
+    /// `render_child`, so it has no node, and is skipped in the walk.
+    fn child_styles<'s>(&self, ctx: &RenderContext<'s>, wrap: bool) -> Vec<Option<&'s Style>> {
+        let n = self.children.len();
+        if !self.content_sized || (wrap && self.direction == Direction::Row) {
+            return vec![None; n];
+        }
+        let rendered = self.children.iter().filter(|c| c.needs_render()).count();
+        let mut peeked = ctx.peek_child_styles(rendered).into_iter();
+        self.children
+            .iter()
+            .map(|c| {
+                if c.needs_render() {
+                    peeked.next().flatten()
+                } else {
+                    None
+                }
             })
             .collect()
     }
