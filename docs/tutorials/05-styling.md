@@ -13,12 +13,17 @@ let mut app = App::builder()
 
 A rule reaches every widget its parent renders as a child, so in
 `vstack().child(Text::new("Hi").class("title"))` a `.title` rule styles the
-text. Colors, borders and text properties apply everywhere; `width`, `height`,
-`margin`, `min-*`/`max-*`, `display` and `gap` adjust the box a container
-gave the widget, while the container still decides the flow (`padding` and
-`flex-*` are parsed but not applied). Before 3.0 only the root widget was
+text. Colors apply to every widget; borders to widgets that draw one; text
+properties to `Text`. `width`, `height`, `margin`, `min-*`/`max-*`, `display`
+and `gap` adjust the box a container gave the widget, while the container
+still decides the flow. Some properties parse but do nothing yet - see
+[Not applied yet](#not-applied-yet). Before 3.0 only the root widget was
 styled unless the app opted in - see the
 [migration guide](../migration/v3.0.0.md#1-css-reaches-every-widget-by-default).
+
+Put classes on children: a widget your view renders as its whole body
+(`vstack()...render(ctx)`) *is* the view's own node, so a class on it matches
+nothing.
 
 ## Selectors
 
@@ -32,7 +37,7 @@ Text {
 }
 
 Button {
-    padding: 0 2;
+    background: #24283b;
 }
 ```
 
@@ -60,8 +65,8 @@ Text::new("Subtitle").class("muted")
 
 ```css
 #main-panel {
-    border: rounded;
-    padding: 1;
+    border: rounded cyan;
+    margin: 1;
 }
 ```
 
@@ -102,19 +107,23 @@ Named colors: `red`, `green`, `blue`, `cyan`, `magenta`, `yellow`, `white`, `bla
 
 ### Text
 
+Read by `Text`:
+
 ```css
 .text {
     font-weight: bold;
-    font-style: italic;
-    text-decoration: underline;
+    text-decoration: underline;   /* underline, line-through, none */
+    text-align: center;           /* left, center, right */
 }
 ```
 
 ### Borders
 
+On widgets that draw a border (`Border`, `Card`, `Accordion`, `Alert`, ...):
+
 ```css
 .panel {
-    border: solid;      /* solid, double, rounded, thick, none */
+    border-style: double;   /* solid, double, rounded, dashed, none */
     border-color: cyan;
 }
 
@@ -124,26 +133,42 @@ Named colors: `red`, `green`, `blue`, `cyan`, `magenta`, `yellow`, `white`, `bla
 }
 ```
 
-### Spacing
+### Box
 
 ```css
-.container {
-    padding: 1;         /* All sides */
-    padding: 1 2;       /* Vertical, horizontal */
-    margin: 1;
-    gap: 1;             /* Between children */
+.sidebar {
+    width: 20;          /* cells, or a percentage: 30% */
+    max-width: 40;
+    margin: 1;          /* also margin-top / -right / -bottom / -left */
+}
+
+.hidden {
+    display: none;      /* takes no space */
+}
+
+.list {
+    gap: 1;             /* vstack / hstack / grid: between children */
 }
 ```
 
-### Layout
+The container still places each child; these adjust the box it was handed.
 
-```css
-.stack {
-    flex-direction: column;   /* column, row */
-    align-items: center;      /* start, center, end */
-    justify-content: center;
-}
-```
+**Nested stacks.** A content-sized stack sizes a child stack from that
+stack's content without its CSS, so a `margin` or `gap` a stylesheet adds
+*inside* the child is not reserved and the child's last line is cut. Give the
+child's slot a size - `child_flex(.., 1.0)` or `child_sized(.., n)` - when its
+contents carry vertical margins or a CSS `gap`. (Lifting this needs `measure`
+to see styles; planned for 3.x.)
+
+### Not applied yet
+
+`padding`, `flex-direction`, `justify-content`, `align-items`, `flex`,
+`order`, `flex-wrap`, `grid-template-*`, `opacity`, `font-style`, `z-index`,
+`position` and `transition` parse but do nothing yet (planned for 3.x). The
+container's builder decides layout instead: `vstack()` / `hstack()`,
+`child_sized`, `child_flex`, `Text::align`. See the
+[Styling Guide](../guides/styling.md#parsed-but-not-applied-yet-planned-for-3x)
+for the full list.
 
 ## CSS Variables
 
@@ -168,6 +193,9 @@ Button.primary {
 }
 ```
 
+`var()` has to be the whole value: `border-color: var(--accent)` works,
+`border: rounded var(--accent)` does not.
+
 ## Pseudo-Classes
 
 > `:hover` and `:focus` follow the mouse because the app builds its DOM from
@@ -189,41 +217,17 @@ Button:hover {
 }
 
 Button:focus {
-    border: double cyan;
+    background: #7aa2f7;
+    color: #1a1b26;
 }
 
 Button:disabled {
-    opacity: 0.5;
+    color: gray;
 }
 ```
 
-### Selection
-
-```css
-List-item:selected {
-    background: var(--accent);
-    color: var(--bg);
-}
-```
-
-## Transitions
-
-Animate property changes:
-
-```css
-Button {
-    background: #24283b;
-    transition: background 0.3s ease;
-}
-
-Button:hover {
-    background: #7aa2f7;
-}
-```
-
-Syntax: `property duration easing`
-
-Easing: `linear`, `ease`, `ease-in`, `ease-out`, `ease-in-out`
+`:checked` and `:selected` parse, but nothing sets that state in a running
+app yet.
 
 ## Themes
 
@@ -276,33 +280,26 @@ set_theme_by_id("my-theme");
 }
 
 .panel {
-    border: rounded var(--border);
-    padding: 1;
+    border-style: rounded;
+    border-color: var(--border);
     background: var(--bg);
+    color: var(--fg);
 }
 
-Button {
-    padding: 0 2;
-    border: solid var(--border);
-    transition: all 0.2s ease;
+.title {
+    color: var(--accent);
+    font-weight: bold;
+    margin-bottom: 1;
 }
 
 Button:hover {
-    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--bg);
 }
 
 Button.primary {
     background: var(--accent);
     color: var(--bg);
-}
-
-Input {
-    border: solid var(--border);
-    padding: 0 1;
-}
-
-Input:focus {
-    border-color: var(--accent);
 }
 ```
 
@@ -329,11 +326,20 @@ struct MyApp;
 
 impl View for MyApp {
     fn render(&self, ctx: &mut RenderContext) {
+        // The panel is a child, so `.panel` has a node to match; a class on
+        // the outer vstack - this view's own body - would not. `child_flex`
+        // gives the panel the rest of the screen, so the title's CSS margin
+        // has room.
         vstack()
-            .class("panel")
-            .child(Text::new("Styled App").class("title"))
-            .child(Input::new().placeholder("Enter text..."))
-            .child(Button::new("Submit").class("primary"))
+            .child_flex(
+                Border::new().class("panel").child(
+                    vstack()
+                        .child(Text::new("Styled App").class("title"))
+                        .child(Input::new().placeholder("Enter text..."))
+                        .child(Button::new("Submit").class("primary")),
+                ),
+                1.0,
+            )
             .render(ctx);
     }
 }
