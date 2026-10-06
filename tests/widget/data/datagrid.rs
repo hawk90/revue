@@ -565,3 +565,99 @@ fn test_drag_reorder_callback_reports_display_positions() {
     drag_header(&mut grid, 'C', DRAG_WIDTH - 1);
     assert_eq!(*moved.borrow(), Some((1, 2)));
 }
+
+// =========================================================================
+// Keyboard column reorder
+// =========================================================================
+
+/// Focus the column with key `key`.
+fn focus_column(grid: &mut DataGrid, key: &str) {
+    grid.selected_col = grid
+        .columns
+        .iter()
+        .position(|c| c.key == key)
+        .expect("column exists");
+}
+
+#[test]
+fn test_keyboard_move_without_drag() {
+    let mut grid = drag_grid(&[("a", true), ("b", true), ("c", true)]);
+
+    focus_column(&mut grid, "b");
+    grid.move_column_right();
+    assert_eq!(header_titles(&grid), "ACB");
+
+    // B stays focused and moves back
+    grid.move_column_left();
+    assert_eq!(header_titles(&grid), "ABC");
+    grid.move_column_left();
+    assert_eq!(header_titles(&grid), "BAC");
+
+    // Already first: no-op
+    grid.move_column_left();
+    assert_eq!(header_titles(&grid), "BAC");
+}
+
+#[test]
+fn test_keyboard_move_after_drag_moves_on_screen_neighbor() {
+    let mut grid = drag_grid(&[("a", true), ("b", true), ("c", true), ("d", true)]);
+    drag_header(&mut grid, 'A', DRAG_WIDTH - 1);
+    assert_eq!(header_titles(&grid), "BCDA");
+
+    // A is drawn last: moving it left swaps it with D, its on-screen neighbor
+    focus_column(&mut grid, "a");
+    grid.move_column_left();
+    assert_eq!(header_titles(&grid), "BCAD");
+
+    // C moves right past A, its neighbor on screen
+    focus_column(&mut grid, "c");
+    grid.move_column_right();
+    assert_eq!(header_titles(&grid), "BACD");
+}
+
+#[test]
+fn test_keyboard_move_skips_hidden_columns() {
+    // B is hidden: the display is A C D
+    let mut grid = drag_grid(&[("a", true), ("b", false), ("c", true), ("d", true)]);
+
+    focus_column(&mut grid, "c");
+    grid.move_column_left();
+    assert_eq!(header_titles(&grid), "CAD");
+
+    focus_column(&mut grid, "a");
+    grid.move_column_right();
+    assert_eq!(header_titles(&grid), "CDA");
+}
+
+#[test]
+fn test_keyboard_move_keeps_column_widths_with_columns() {
+    let mut grid = DataGrid::new()
+        .reorderable(true)
+        .column(GridColumn::new("a", "A").width(3).resizable(false))
+        .column(GridColumn::new("b", "B").width(8).resizable(false))
+        .row(GridRow::new().cell("a", "v"));
+    // User-set widths (as after a resize) follow their column too
+    grid.set_column_widths(vec![3, 8]);
+
+    focus_column(&mut grid, "a");
+    grid.move_column_right();
+    let header: String = render_header_row(&grid).into_iter().take(13).collect();
+    assert_eq!(header, "B       │A  │");
+}
+
+#[test]
+fn test_keyboard_reorder_callback_reports_display_positions() {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    let moved = Rc::new(RefCell::new(None::<(usize, usize)>));
+    let moved_clone = moved.clone();
+    let mut grid = drag_grid(&[("a", true), ("b", false), ("c", true), ("d", true)])
+        .on_column_reorder(move |from, to| *moved_clone.borrow_mut() = Some((from, to)));
+
+    // Display A C D: D (display position 2) moves left to position 1
+    focus_column(&mut grid, "d");
+    grid.move_column_left();
+    assert_eq!(header_titles(&grid), "ADC");
+    assert_eq!(*moved.borrow(), Some((2, 1)));
+}

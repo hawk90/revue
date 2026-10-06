@@ -117,47 +117,33 @@ impl DataGrid {
         self.dragging_col.is_some()
     }
 
-    /// Move selected column left (keyboard reorder)
+    /// Move the selected column one display position left (keyboard reorder)
+    ///
+    /// Like a drag, this only changes `column_order` and skips hidden
+    /// columns; the selected column stays selected.
     pub fn move_column_left(&mut self) {
-        if !self.reorderable || self.selected_col == 0 {
+        if !self.reorderable {
             return;
         }
-
-        let from = self.selected_col;
-        let to = self.selected_col - 1;
-
-        self.columns.swap(from, to);
-
-        if !self.column_widths.is_empty() && from < self.column_widths.len() {
-            self.column_widths.swap(from, to);
-        }
-
-        self.selected_col = to;
-
-        if let Some(ref mut cb) = self.on_column_reorder {
-            cb(from, to);
+        if let Some(from) = self.display_position(self.selected_col) {
+            if from > 0 {
+                self.move_column_to_display_position(self.selected_col, from - 1);
+            }
         }
     }
 
-    /// Move selected column right (keyboard reorder)
+    /// Move the selected column one display position right (keyboard reorder)
+    ///
+    /// Like a drag, this only changes `column_order` and skips hidden
+    /// columns; the selected column stays selected.
     pub fn move_column_right(&mut self) {
-        if !self.reorderable || self.selected_col >= self.columns.len().saturating_sub(1) {
+        if !self.reorderable {
             return;
         }
-
-        let from = self.selected_col;
-        let to = self.selected_col + 1;
-
-        self.columns.swap(from, to);
-
-        if !self.column_widths.is_empty() && to < self.column_widths.len() {
-            self.column_widths.swap(from, to);
-        }
-
-        self.selected_col = to;
-
-        if let Some(ref mut cb) = self.on_column_reorder {
-            cb(from, to);
+        if let Some(from) = self.display_position(self.selected_col) {
+            // Insert before the column two positions on, i.e. after the
+            // right-hand neighbor (no-op when already last).
+            self.move_column_to_display_position(self.selected_col, from + 2);
         }
     }
 }

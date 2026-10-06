@@ -46,10 +46,10 @@ fn test_move_column_left() {
     grid.selected_col = 1;
     grid.move_column_left();
 
-    // B should now be at position 0 (columns swapped)
-    assert_eq!(grid.columns[0].key, "b");
-    assert_eq!(grid.columns[1].key, "a");
-    assert_eq!(grid.selected_col, 0);
+    // B is now drawn first; `columns` is untouched and B stays selected
+    assert_eq!(grid.column_order, vec![1, 0, 2]);
+    assert_eq!(grid.columns[0].key, "a");
+    assert_eq!(grid.selected_col, 1);
 }
 
 #[test]
@@ -65,10 +65,10 @@ fn test_move_column_right() {
     grid.selected_col = 0;
     grid.move_column_right();
 
-    // A should now be at position 1 (columns swapped)
-    assert_eq!(grid.columns[0].key, "b");
-    assert_eq!(grid.columns[1].key, "a");
-    assert_eq!(grid.selected_col, 1);
+    // A is now drawn second; `columns` is untouched and A stays selected
+    assert_eq!(grid.column_order, vec![1, 0, 2]);
+    assert_eq!(grid.columns[0].key, "a");
+    assert_eq!(grid.selected_col, 0);
 }
 
 #[test]
