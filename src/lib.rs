@@ -808,12 +808,10 @@ pub mod prelude {
     };
 
     // DevTools
-    #[allow(deprecated)] // Re-exporting deprecated functions for backwards compatibility
     pub use crate::devtools::{
-        disable_devtools, enable_devtools, is_devtools_enabled, toggle_devtools, ComputedProperty,
-        DevTools, DevToolsConfig, DevToolsPosition, DevToolsTab, EventFilter, EventLogger,
-        EventType, Inspector, InspectorConfig, LoggedEvent, PropertySource, StateDebugger,
-        StateEntry, StateValue, StyleCategory, StyleInspector, WidgetNode,
+        ComputedProperty, DevTools, DevToolsConfig, DevToolsPosition, DevToolsTab, EventFilter,
+        EventLogger, EventType, Inspector, InspectorConfig, LoggedEvent, PropertySource,
+        StateDebugger, StateEntry, StateValue, StyleCategory, StyleInspector, WidgetNode,
     };
 
     // Profiler
