@@ -15,6 +15,16 @@ use revue::patterns::form::{FormState, ValidationError, Validators};
 use revue::prelude::*;
 use revue::utils::unicode::display_width;
 
+/// Total validation errors across all fields.
+///
+/// `FormState::errors()` yields only the first error of each invalid field,
+/// but the field list shows every error, so counting it under-reports a field
+/// that fails several rules at once (e.g. an empty password is both required
+/// and too short).
+fn error_count(form: &FormState) -> usize {
+    form.iter().map(|(_, field)| field.errors().len()).sum()
+}
+
 struct SignupForm {
     form: FormState,
     submitted_data: Signal<Option<UserData>>,
@@ -297,7 +307,7 @@ impl View for SignupForm {
         let status_text = if form_valid {
             Text::success("✓ All fields valid - Press Enter to submit")
         } else {
-            let error_count = self.form.errors().len();
+            let error_count = error_count(&self.form);
             Text::error(format!(
                 "✗ {} validation error{} - Fix before submitting",
                 error_count,
@@ -338,4 +348,44 @@ fn main() -> Result<()> {
         Event::Key(key_event) => form.handle_key(&key_event.key),
         _ => false,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn counts_every_error_the_fields_show() {
+        let mut signup = SignupForm::new();
+        signup.form.set_value("username", "a!"); // too short + not alphanumeric
+        signup.submit(); // fails, touching every field
+
+        let shown: usize = signup
+            .form
+            .iter()
+            .filter(|(_, field)| field.is_touched())
+            .map(|(_, field)| field.errors().len())
+            .sum();
+        // username 2, email 1, password 2 (required + min length),
+        // confirm_password 1, terms 1; age is optional and empty.
+        assert_eq!(shown, 7);
+        assert_eq!(error_count(&signup.form), shown);
+    }
+
+    #[test]
+    fn valid_form_has_no_errors() {
+        let signup = SignupForm::new();
+        for (name, value) in [
+            ("username", "alice"),
+            ("email", "alice@example.com"),
+            ("password", "hunter22"),
+            ("confirm_password", "hunter22"),
+            ("terms", "yes"),
+        ] {
+            signup.form.set_value(name, value);
+        }
+
+        assert!(signup.form.is_valid());
+        assert_eq!(error_count(&signup.form), 0);
+    }
 }

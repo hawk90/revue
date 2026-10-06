@@ -877,9 +877,15 @@ items:
       - inline code drawn in code_fg
       - tables (header, separator, rows; columns sized to content)
       - syntax highlighting of fenced code
+      - figlet_headings(true) draws headings up to figlet_max_level as FIGlet big text in heading_fg
+      - show_toc(true) draws a table of contents (toc_title, entries indented by level in toc_fg) before the document
     evidence:
       - src/widget/markdown/helpers.rs::markdown
       - src/widget/markdown/mod.rs::syntax_highlight
+      - src/widget/markdown/mod.rs::figlet_headings
+      - tests/widget/markdown/markdown_tests.rs::test_markdown_figlet_headings_render_big_text
+      - src/widget/markdown/mod.rs::show_toc
+      - tests/widget/markdown/markdown_tests.rs::test_markdown_show_toc_renders_contents_first
       - tests/widget/markdown.rs
       - tests/widget/markdown/markdown_tests.rs::test_markdown_table_cells_render
       - tests/widget/markdown/markdown_tests.rs::test_markdown_fenced_code_block_is_highlighted

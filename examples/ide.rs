@@ -515,20 +515,43 @@ impl View for IdeApp {
             self.render_command_palette().render(ctx);
         }
 
-        // Notifications (bottom right)
+        // Notifications (bottom right, just above the status bar)
         if !self.notifications.is_empty() {
+            let (x, y, w, h) =
+                notification_area(ctx.area.width, ctx.area.height, &self.notifications);
             let mut notif_stack = vstack();
             for msg in &self.notifications {
+                // Pad every line to the box width so the editor can't show
+                // through beside a short message.
+                let line = format!(" {} ", msg);
+                let pad = (w as usize).saturating_sub(display_width(&line));
                 notif_stack = notif_stack.child_sized(
-                    Text::new(format!(" {} ", msg))
+                    Text::new(format!("{}{}", line, " ".repeat(pad)))
                         .fg(Color::WHITE)
                         .bg(Color::rgb(60, 60, 60)),
                     1,
                 );
             }
-            notif_stack.render(ctx);
+            ctx.clear(x, y, w, h);
+            let area = ctx.sub_area(x, y, w, h);
+            notif_stack.render(&mut ctx.sub_ctx(area));
         }
     }
+}
+
+/// Where the notification stack goes, relative to the screen area: flush
+/// right, with its last line on the row just above the status bar.
+/// Returns `(x, y, width, height)`.
+fn notification_area(width: u16, height: u16, messages: &[String]) -> (u16, u16, u16, u16) {
+    let widest = messages
+        .iter()
+        .map(|msg| display_width(msg) + 2)
+        .max()
+        .unwrap_or(0);
+    let w = widest.min(width as usize) as u16;
+    let above_status = height.saturating_sub(1);
+    let h = messages.len().min(above_status as usize) as u16;
+    (width - w, above_status - h, w, h)
 }
 
 fn main() -> Result<()> {
@@ -536,4 +559,35 @@ fn main() -> Result<()> {
     let ide = IdeApp::new();
 
     app.run_with_handler(ide, |key_event, ide| ide.handle_key(&key_event.key))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use revue::testing::TestApp;
+
+    #[test]
+    fn notification_area_sits_bottom_right_above_status_bar() {
+        let msgs = vec!["Command: file.new".to_string(), "short".to_string()];
+        // The widest line is " Command: file.new " = 19 columns.
+        assert_eq!(notification_area(80, 24, &msgs), (61, 21, 19, 2));
+    }
+
+    #[test]
+    fn notification_area_fits_a_tiny_screen() {
+        let msgs = vec!["a very long notification message".to_string(); 3];
+        assert_eq!(notification_area(10, 3, &msgs), (0, 0, 10, 2));
+    }
+
+    #[test]
+    fn notifications_render_bottom_right() {
+        let mut ide = IdeApp::new();
+        ide.execute_command("file.new");
+        let mut app = TestApp::with_size(ide, 80, 24);
+        app.render();
+
+        assert!(app.get_line(22).ends_with(" Command: file.new"));
+        assert!(!app.get_line(0).contains("Command: file.new"));
+        assert!(app.get_line(23).contains("New file created"));
+    }
 }
