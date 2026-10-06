@@ -195,6 +195,29 @@ impl Badge {
         self
     }
 
+    /// Blank columns each side of the text.
+    fn padding(&self) -> u16 {
+        match self.shape {
+            BadgeShape::Pill => 2,
+            _ => 1,
+        }
+    }
+
+    /// The columns `render` paints given room: one for a dot, else the text
+    /// and its padding, capped at `max_width` when one is set.
+    fn natural_width(&self) -> u16 {
+        if self.shape == BadgeShape::Dot {
+            return 1;
+        }
+        let text = crate::utils::display_width(&self.text).min(u16::MAX as usize) as u16;
+        let total = text.saturating_add(self.padding() * 2);
+        if self.max_width > 0 {
+            total.min(self.max_width)
+        } else {
+            total
+        }
+    }
+
     /// Get effective colors
     /// The colors to paint with: the builder's if it named any, else the
     /// stylesheet's, else the variant's.
@@ -215,6 +238,12 @@ impl Default for Badge {
 }
 
 impl View for Badge {
+    /// One row: a dot is one column; otherwise the text and its padding, no
+    /// wider than [`max_width`](Badge::max_width).
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((self.natural_width().min(max_width), 1.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let (bg, fg) = self.effective_colors(ctx);
@@ -227,40 +256,32 @@ impl View for Badge {
                 ctx.set(0, 0, cell);
             }
             BadgeShape::Rounded | BadgeShape::Square | BadgeShape::Pill => {
-                let text_len = crate::utils::display_width(&self.text) as u16;
-                let padding = match self.shape {
-                    BadgeShape::Pill => 2,
-                    BadgeShape::Rounded => 1,
-                    BadgeShape::Square => 1,
-                    _ => 1,
-                };
+                let padding = self.padding();
+                let width = self.natural_width().min(area.width);
 
-                let total_width = text_len + padding * 2;
-                let width = if self.max_width > 0 {
-                    total_width.min(self.max_width).min(area.width)
-                } else {
-                    total_width.min(area.width)
-                };
-
-                // Render background and text
-                // Pre-collect chars to avoid O(n²) with .chars().nth() in loop
-                let text_chars: Vec<char> = self.text.chars().collect();
-                for i in 0..width {
-                    let ch = if i < padding || i >= width - padding {
-                        ' '
-                    } else {
-                        let char_idx = (i - padding) as usize;
-                        text_chars.get(char_idx).copied().unwrap_or(' ')
-                    };
-
+                let bold = self.bold;
+                let make_cell = |ch: char| {
                     let mut cell = Cell::new(ch);
                     cell.fg = Some(fg);
                     cell.bg = Some(bg);
-                    if self.bold {
+                    if bold {
                         cell.modifier |= Modifier::BOLD;
                     }
-                    ctx.set(i, 0, cell);
+                    cell
+                };
+
+                // Background across the whole badge, then the text over it by
+                // terminal columns, so a wide glyph keeps both of its cells.
+                for i in 0..width {
+                    ctx.set(i, 0, make_cell(' '));
                 }
+                ctx.put_str_with(
+                    padding,
+                    0,
+                    &self.text,
+                    width.saturating_sub(padding),
+                    make_cell,
+                );
             }
         }
     }

@@ -191,8 +191,31 @@ impl Default for Tag {
     }
 }
 
+impl Tag {
+    /// The icon, text and close mark, as `render` lays them out.
+    fn content(&self) -> String {
+        let mut content = String::new();
+        if let Some(icon) = self.icon {
+            content.push(icon);
+            content.push(' ');
+        }
+        content.push_str(&self.text);
+        if self.closable {
+            content.push_str(" ×");
+        }
+        content
+    }
+}
+
 impl View for Tag {
     crate::impl_view_meta!("Tag");
+
+    /// One row: the content plus an edge column each side.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        let content = crate::utils::unicode::display_width(&self.content());
+        let width = (content.saturating_add(2)).min(u16::MAX as usize) as u16;
+        Some((width.min(max_width), 1.min(max_height)))
+    }
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
@@ -201,23 +224,7 @@ impl View for Tag {
         }
         let (bg, fg) = self.effective_colors(ctx);
 
-        let mut content = String::new();
-
-        // Icon
-        if let Some(icon) = self.icon {
-            content.push(icon);
-            content.push(' ');
-        }
-
-        // Text
-        content.push_str(&self.text);
-
-        // Close button
-        if self.closable {
-            content.push_str(" ×");
-        }
-
-        let _text_len = content.chars().count() as u16;
+        let content = self.content();
 
         // Border characters for outlined
         let (left_char, right_char) = match self.style {
@@ -237,25 +244,22 @@ impl View for Tag {
         ctx.set(x, 0, left);
         x += 1;
 
-        // Content
-        for ch in content.chars() {
-            if x >= area.width - 1 {
-                break;
-            }
+        // Content, by terminal columns, leaving the last column for the edge
+        let (selected, disabled) = (self.selected, self.disabled);
+        x += ctx.put_str_with(x, 0, &content, area.width - 1, |ch| {
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
             if let Some(bg_color) = bg {
                 cell.bg = Some(bg_color);
             }
-            if self.selected {
+            if selected {
                 cell.modifier |= Modifier::BOLD;
             }
-            if self.disabled {
+            if disabled {
                 cell.modifier |= Modifier::DIM;
             }
-            ctx.set(x, 0, cell);
-            x += 1;
-        }
+            cell
+        });
 
         // Right padding/border
         if x < area.width {
