@@ -69,12 +69,155 @@ fn draw(css: &str, view: &impl View) -> String {
     h.screen_text()
 }
 
+// ---------------------------------------------------------------------------
+// The box is folded into the content size
+// ---------------------------------------------------------------------------
+
 /// The reported bug: the margin used to inset a one-row area to nothing.
+#[test]
+fn a_margin_top_pushes_the_text_down_and_keeps_it_visible() {
+    assert_eq!(
+        draw(
+            "#AAAA { margin-top: 2; }",
+            &Column::content_sized(&["AAAA", "BBBB"])
+        ),
+        "\n\nAAAA\nBBBB"
+    );
+}
+
+#[test]
+fn a_margin_bottom_pushes_the_next_sibling_down() {
+    assert_eq!(
+        draw(
+            "#AAAA { margin-bottom: 1; }",
+            &Column::content_sized(&["AAAA", "BBBB"])
+        ),
+        "AAAA\n\nBBBB"
+    );
+}
+
 /// Cross-axis margins are left to the box model, as before.
+#[test]
+fn a_cross_axis_margin_still_insets_the_box() {
+    assert_eq!(
+        draw(
+            "#AAAA { margin-left: 2; }",
+            &Column::content_sized(&["AAAA", "BBBB"])
+        ),
+        "  AAAA\nBBBB"
+    );
+}
+
 /// The other half of the bug: the height used to grow a one-row area over the
 /// next sibling instead of reserving rows for itself.
+#[test]
+fn a_height_reserves_its_rows_and_the_next_sibling_starts_after_them() {
+    assert_eq!(
+        draw(
+            "#AAAA { height: 3; }",
+            &Column::content_sized(&["AAAA", "BBBB"])
+        ),
+        "AAAA\n\n\nBBBB"
+    );
+}
+
+#[test]
+fn a_height_and_margins_add_up() {
+    assert_eq!(
+        draw(
+            "#AAAA { height: 2; margin-top: 1; margin-bottom: 1; }",
+            &Column::content_sized(&["AAAA", "BBBB"])
+        ),
+        "\nAAAA\n\n\nBBBB"
+    );
+}
+
+#[test]
+fn a_min_height_floors_the_content_size() {
+    assert_eq!(
+        draw(
+            "#AAAA { min-height: 2; }",
+            &Column::content_sized(&["AAAA", "BBBB"])
+        ),
+        "AAAA\n\nBBBB"
+    );
+}
+
+#[test]
+fn a_max_height_caps_the_content_size() {
+    /// A three-row stack, nested.
+    struct Nested;
+    impl View for Nested {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .content_sized(true)
+                .child(
+                    vstack()
+                        .content_sized(true)
+                        .element_id("group")
+                        .child(Text::new("X"))
+                        .child(Text::new("Y"))
+                        .child(Text::new("Z")),
+                )
+                .child(Text::new("BBBB"))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "Nested"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("app")
+        }
+    }
+
+    assert_eq!(draw("", &Nested), "X\nY\nZ\nBBBB");
+    assert_eq!(draw("#group { max-height: 2; }", &Nested), "X\nY\nBBBB");
+}
+
 /// `height` then `max-height`, in that order - as the box model does it.
+#[test]
+fn a_max_height_caps_an_explicit_height() {
+    assert_eq!(
+        draw(
+            "#AAAA { height: 5; max-height: 2; }",
+            &Column::content_sized(&["AAAA", "BBBB"])
+        ),
+        "AAAA\n\nBBBB"
+    );
+}
+
 /// In a row the main axis is the width.
+#[test]
+fn a_row_folds_width_and_horizontal_margins() {
+    struct Row;
+    impl View for Row {
+        fn render(&self, ctx: &mut RenderContext) {
+            hstack()
+                .content_sized(true)
+                .child(Text::new("AA").element_id("a"))
+                .child(Text::new("BB").element_id("b"))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "Row"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("app")
+        }
+    }
+
+    assert_eq!(draw("", &Row), "AABB");
+    assert_eq!(draw("#a { width: 4; }", &Row), "AA  BB");
+    assert_eq!(
+        draw("#a { margin-left: 1; margin-right: 2; }", &Row),
+        " AA  BB"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// display: none
+// ---------------------------------------------------------------------------
+
 #[test]
 fn a_hidden_child_takes_no_space() {
     assert_eq!(
@@ -121,9 +264,42 @@ fn the_sibling_after_a_hidden_child_keeps_its_own_style() {
 
 /// Builder over stylesheet: `child_sized` decides the slot, CSS `height` does
 /// not move the next sibling.
+#[test]
+fn a_builder_child_sized_beats_a_css_height() {
+    struct Sized;
+    impl View for Sized {
+        fn render(&self, ctx: &mut RenderContext) {
+            vstack()
+                .content_sized(true)
+                .child_sized(Text::new("AAAA").element_id("AAAA"), 2)
+                .child(Text::new("BBBB").element_id("BBBB"))
+                .render(ctx);
+        }
+        fn widget_type(&self) -> &'static str {
+            "Sized"
+        }
+        fn id(&self) -> Option<&str> {
+            Some("app")
+        }
+    }
+
+    assert_eq!(draw("#AAAA { height: 5; }", &Sized), "AAAA\n\nBBBB");
+    // A margin does not grow the builder's slot either; the box model insets
+    // inside it, as it does in an equal-share stack.
+    assert_eq!(draw("#AAAA { margin-top: 1; }", &Sized), "\nAAAA\nBBBB");
+}
+
 /// A percentage has no basis in a content-sized slot, so such a child fills
 /// like an unmeasured one and the box model resolves the percentage against
 /// its share - exactly as an equal-share stack does.
+#[test]
+fn a_percentage_height_makes_the_child_fill() {
+    // 8 rows: BBBB measures 1, AAAA fills the other 7 and keeps 50% of them.
+    let mut h = harness("#AAAA { height: 50%; }");
+    h.draw(&Column::content_sized(&["AAAA", "BBBB"]));
+    assert_eq!(h.screen_text(), "AAAA\n\n\n\n\n\n\nBBBB");
+}
+
 /// Equal-share stacks are untouched: the box model still adjusts the share.
 #[test]
 fn an_equal_share_stack_behaves_as_before() {

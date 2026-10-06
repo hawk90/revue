@@ -1,7 +1,8 @@
 //! Stack container widget
 
 use crate::layout::Rect;
-use crate::style::{Display, Style};
+use crate::style::{Display, Size, Style};
+use crate::widget::traits::render_context::box_model;
 use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
@@ -97,9 +98,15 @@ impl Stack {
     /// and `child_flex` still win. The cross axis is unchanged: every child
     /// gets the stack's full width (in a column) or height (in a row).
     ///
-    /// Under [`css_layout`](crate::core::app::AppBuilder::css_layout), a child
-    /// whose stylesheet says `display: none` takes no space and no gap. (An
-    /// equal-share stack keeps its share for it, as it always has.)
+    /// Under [`css_layout`](crate::core::app::AppBuilder::css_layout), each
+    /// such child's CSS box counts along the stack's axis: an explicit
+    /// `height` (column) or `width` (row) replaces the measured size,
+    /// `min-*`/`max-*` clamp it, and the margins on that axis are added
+    /// around it - so `margin-top: 2` on a one-row `Text` pushes it down two
+    /// rows instead of insetting it out of sight. A child whose stylesheet
+    /// says `display: none` takes no space and no gap. A percentage on the
+    /// axis leaves the child filling, and builder sizes still win. (An
+    /// equal-share stack is unchanged: the box is applied to the share.)
     pub fn content_sized(mut self, enabled: bool) -> Self {
         self.content_sized = enabled;
         self
@@ -297,6 +304,11 @@ impl View for Stack {
     /// This is the stack's content whether or not it is
     /// [`content_sized`](Self::content_sized) itself - the flag decides how it
     /// lays out its children, not how large its children are.
+    ///
+    /// It does not include the children's CSS box: `measure` has no render
+    /// context, so the children's computed styles are out of reach. A
+    /// content-sized stack nested in another sizes itself from its children's
+    /// bare content, and only its own CSS box is folded in by its parent.
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
         let gaps = self
             .gap
@@ -355,7 +367,8 @@ impl Stack {
     ///
     /// Without [`content_sized`](Self::content_sized) that is what the builder
     /// recorded. With it, an unsized child that can measure itself is laid out
-    /// as if it had been added with `child_sized` at its measured size.
+    /// as if it had been added with `child_sized` at its measured size - its
+    /// CSS box folded in, see [`content_size`](Self::content_size).
     ///
     /// A child whose computed style (see [`child_styles`](Self::child_styles))
     /// is `display: none` takes no space at all.
@@ -371,22 +384,121 @@ impl Stack {
                 _ if style.is_some_and(|s| s.layout.display == Display::None) => {
                     ChildSize::Fixed(0)
                 }
-                ChildSize::Auto => {
-                    let (w, h) = match self.direction {
-                        Direction::Column => (cross, main),
-                        Direction::Row => (main, cross),
-                    };
-                    match child.measure(w, h) {
-                        Some((w, h)) => ChildSize::Fixed(match self.direction {
-                            Direction::Column => h,
-                            Direction::Row => w,
-                        }),
-                        None => ChildSize::Auto,
-                    }
-                }
+                ChildSize::Auto => self.content_size(child.as_ref(), *style, main, cross),
                 other => *other,
             })
             .collect()
+    }
+
+    /// The slot an unsized child gets in a content-sized stack.
+    ///
+    /// The paint pass applies the child's CSS box to whatever area the stack
+    /// hands it (`box_model::apply`: margins inset, then `height`/`width`
+    /// replaces, then `min-*`/`max-*` clamp). Handing it its bare content size
+    /// would let that run on a box already the size of the content - a
+    /// `margin-top` insets one row to nothing, a `height: 3` grows over the
+    /// next sibling.
+    ///
+    /// So the box is folded in here, along the stack's axis, and the slot is
+    /// chosen so that the box model, run afterwards, lands exactly on it:
+    ///
+    /// 1. `size` = the explicit `height` (column) / `width` (row) if there is
+    ///    one, else the measured content - measured within the cross extent
+    ///    the box model will give the child, minus the main-axis margins
+    /// 2. clamp `size` by `max-*`, then `min-*` - the box model's order
+    /// 3. slot = margin before + `size` + margin after
+    ///
+    /// The box model then insets the slot by the same margins and gets
+    /// `size` back; replacing with the same explicit size and clamping by the
+    /// same bounds changes nothing. Nothing is applied twice - the stack
+    /// *reserves*, the box model *places*. The cross axis is left entirely to
+    /// the box model, as before.
+    ///
+    /// A child keeps filling (`ChildSize::Auto`, an equal share of what is
+    /// left) when:
+    ///
+    /// - it does not measure itself and has no explicit size - its margins and
+    ///   bounds then apply to its share, as in an equal-share stack
+    /// - any main-axis size is a percentage. A percentage needs a basis and the
+    ///   box model resolves it against the slot, so no slot computed from it
+    ///   would survive the box model unchanged; the share is the basis an
+    ///   equal-share stack would have used
+    ///
+    /// Builder sizes (`child_sized`, `child_flex`) never reach here: the
+    /// builder outranks the stylesheet, so their slot is what the builder said
+    /// and the box model adjusts inside it, as before.
+    fn content_size(
+        &self,
+        child: &dyn View,
+        style: Option<&Style>,
+        main: u16,
+        cross: u16,
+    ) -> ChildSize {
+        let style = style.filter(|s| box_model::specifies_anything(s));
+        let Some(style) = style else {
+            let (w, h) = self.oriented(main, cross);
+            return match child.measure(w, h) {
+                Some((w, h)) => ChildSize::Fixed(self.oriented(w, h).0),
+                None => ChildSize::Auto,
+            };
+        };
+
+        let (sizing, margin) = (&style.sizing, &style.spacing.margin);
+        let (size, min, max, before, after) = match self.direction {
+            Direction::Column => (
+                sizing.height,
+                sizing.min_height,
+                sizing.max_height,
+                margin.top,
+                margin.bottom,
+            ),
+            Direction::Row => (
+                sizing.width,
+                sizing.min_width,
+                sizing.max_width,
+                margin.left,
+                margin.right,
+            ),
+        };
+        if [size, min, max]
+            .iter()
+            .any(|s| matches!(s, Size::Percent(_)))
+        {
+            return ChildSize::Auto;
+        }
+        let fixed = |s: Size| match s {
+            Size::Fixed(v) => Some(v),
+            _ => None,
+        };
+        let margins = before.saturating_add(after);
+
+        let size = match fixed(size) {
+            Some(size) => size,
+            None => {
+                // The cross extent is what the box model will leave the child;
+                // a narrower box can wrap to more rows.
+                let (w, h) = self.oriented(main, cross);
+                let boxed = box_model::apply(style, Rect::new(0, 0, w, h));
+                let cross = self.oriented(boxed.width, boxed.height).1;
+                let (w, h) = self.oriented(main.saturating_sub(margins), cross);
+                match child.measure(w, h) {
+                    Some((w, h)) => self.oriented(w, h).0,
+                    None => return ChildSize::Auto,
+                }
+            }
+        };
+        let size = fixed(max).map_or(size, |m| size.min(m));
+        let size = fixed(min).map_or(size, |m| size.max(m));
+        ChildSize::Fixed(size.saturating_add(margins))
+    }
+
+    /// Swap `(main, cross)` into `(width, height)` for this stack - or back:
+    /// the swap is its own inverse.
+    fn oriented(&self, a: u16, b: u16) -> (u16, u16) {
+        match self.direction {
+            Direction::Column => (b, a),
+            Direction::Row => (a, b),
+        }
     }
 
     /// Each child's computed style, for a [`content_sized`](Self::content_sized)
