@@ -42,19 +42,21 @@ same cascade. The selector engine covers type, class, id, compound, state pseudo
 descendant/child/sibling combinators and attribute selectors. Custom properties are declared in `:root`
 and read with `var(--name, fallback)`.
 
-### Layout properties need `css_layout`
+### Every widget is styled by default
 
-Paint properties — colors, border, text — apply as soon as the widget has a DOM node
-(`App::builder().dom_from_render(true)`). Box properties (`display`, `width`, `height`, `margin`,
-`min-*`/`max-*`) override geometry a container already computed, so they only take effect with
-`App::builder().dom_from_render(true).css_layout(true)`.
+Since 3.0 a stylesheet reaches every widget a parent renders as a child: the DOM is built from the
+render traversal (`dom_from_render`, on by default), so paint properties — colors, border, text — apply
+to each widget's own node. Box properties (`display`, `width`, `height`, `margin`, `min-*`/`max-*`)
+override geometry a container already computed (`css_layout`, also on by default).
+`App::builder().dom_from_render(false).css_layout(false)` restores 2.x, where only the root widget was
+styled; `css_layout(false)` alone keeps paint properties and drops box properties.
 
 A property whose *initial* value is also its "off" value has to track whether it was specified at all,
 or a stylesheet cannot set it back to that value. `gap`, `border-style` and the two grid gaps all do, so
 `gap: 0` closes a gap the builder opened and `border-style: none` removes a border it drew. A stylesheet
 that says nothing still leaves the builder's value alone — that is the point of the distinction.
 
-`gap` (and `column-gap` / `row-gap`) reaches `vstack`, `hstack` and `grid` under the same flag. The
+`gap` (and `column-gap` / `row-gap`) reaches `vstack`, `hstack` and `grid` under `css_layout`. The
 remaining flow properties (`flex-*`, `grid-template-*`) are the container's own and are not applied from
 CSS — see [Layout Findings](refactor/findings-layout.md).
 
@@ -110,10 +112,11 @@ Screens are just state: keep the current screen in a signal and match on it in t
 `Router` for path-based navigation (see [Routing](guides/routing.md)).
 
 Tab order is **document order** — the order the reader meets things. There is no `focus_order` to assign;
-move the widget and it moves in the ring. `App::builder().dom_from_render(true).tab_navigation(true)`
+move the widget and it moves in the ring. `App::builder().tab_navigation(true)`
 makes Tab and Shift+Tab move `:focus`. `disabled` widgets are left out of the ring entirely, and a left
-click focuses the nearest enclosing focusable widget. Both need `dom_from_render` — without it no node
-below the root is associated with an area and neither `:focus` nor `:hover` matches anything. See
+click focuses the nearest enclosing focusable widget. Both need `dom_from_render` (on by default) — with
+it turned off no node below the root is associated with an area and neither `:focus` nor `:hover`
+matches anything. See
 [App builder › tab_navigation](guides/app-builder.md#tab_navigationenabled).
 
 ## 6. Unicode

@@ -32,7 +32,7 @@ impl View for CounterApp {
         let count = self.count.get();
         let doubled = self.doubled.get();
 
-        Border::panel()
+        Border::new()
             .title("Counter")
             .child(
                 vstack()
@@ -51,8 +51,10 @@ impl View for CounterApp {
 fn main() -> Result<()> {
     let mut app_state = CounterApp::new();
 
+    // The Border is this view's own body, so it is styled through the view's
+    // type. A widget added with `.child(...)` gets its own node and class.
     App::builder()
-        .css("Border { border: rounded cyan; }")
+        .css("CounterApp { border: rounded cyan; }")
         .build()
         .run(app_state, |event, view, _app| {
             if let Event::Key(KeyEvent { key, .. }) = event {

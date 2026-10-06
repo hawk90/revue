@@ -167,11 +167,12 @@ rebuilt only when the *shape* of the tree changed.
 
 ### DOM from the render traversal
 
-**Opt-in, and the reason CSS reaches anything below the root.**
+**On by default since 3.0, and the reason CSS reaches anything below the root.**
+To measure without it, or to keep the 2.x pipeline:
 
 ```rust
 let mut app = App::builder()
-    .dom_from_render(true)
+    .dom_from_render(false)
     .build();
 ```
 
@@ -219,7 +220,7 @@ child.render(&mut child_ctx);
 ```
 
 `Stack`, `Border`, `Positioned` and `Grid` are migrated. A container that is not
-keeps working exactly as before.
+keeps painting exactly as before, but its children have no nodes.
 
 **Known limit.** A view that delegates its whole body to another widget merges
 with it rather than nesting under it:
@@ -233,20 +234,20 @@ fn render(&self, ctx: &mut RenderContext) {
 `render_child` registers a *child*; a widget rendered into the caller's own
 context is the caller's own rendering. Put the id on the view itself.
 
-**Layout properties need one more flag.** `display`, `width`, `height`,
-`margin`, `min-*`/`max-*` and `gap` take effect with
-[`css_layout`](#css-box-properties) on top of this one. `flex-*` and
+**Layout properties ride on it.** `display`, `width`, `height`, `margin`,
+`min-*`/`max-*` and `gap` take effect through
+[`css_layout`](#css-box-properties), also on by default, which needs this one. `flex-*` and
 `grid-template-*` still do nothing — the container computes those itself.
 See [`findings-layout.md`](../refactor/findings-layout.md).
 
 ### CSS box properties
 
-**Opt-in, and needs `dom_from_render`.**
+**On by default since 3.0, and inert without `dom_from_render`.** To keep CSS
+paint properties but ignore box properties:
 
 ```rust
 let mut app = App::builder()
-    .dom_from_render(true)
-    .css_layout(true)
+    .css_layout(false)
     .build();
 ```
 
@@ -269,8 +270,9 @@ comparisons and keeps the area it was given.
 
 `gap`, `column-gap` and `row-gap` reach `vstack`, `hstack` and `grid`. They
 describe flow, so the container reads them rather than having them applied from
-outside — `ctx.gap_or(self.gap)` is the whole of it, and `gap: 0` leaves the
-builder's own value alone.
+outside — `ctx.gap_or(self.gap)` is the whole of it. A stylesheet that says
+nothing leaves the builder's value alone; `gap: 0` closes a gap the builder
+opened.
 
 `padding` is not applied: it insets a widget's *content*, and a widget that
 draws its own border would have the border move instead. `flex-*` and

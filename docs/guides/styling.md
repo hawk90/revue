@@ -13,6 +13,22 @@ let mut app = App::builder()
     .build();
 ```
 
+A rule reaches every widget its parent renders as a child, so in
+`vstack().child(Text::new("Hi").class("title"))` a `.title` rule styles the
+text. Colors apply to every widget; borders to widgets that draw one; text
+properties to `Text`. `width`, `height`, `margin`, `min-*`/`max-*`, `display`
+and `gap` adjust the box a container gave the widget, while the container
+still decides the flow. Some properties
+parse but do nothing yet - see [Not applied yet](#parsed-but-not-applied-yet-planned-for-3x).
+Before 3.0 only the root widget was styled unless the app opted in - see the
+[migration guide](../migration/v3.0.0.md#1-css-reaches-every-widget-by-default).
+
+**Put classes on children.** A widget your view renders as its whole body -
+`vstack()...render(ctx)` at the end of `render` - *is* the view's own node, so
+a class on it matches nothing. Select it by the view's type (the name its
+`widget_type` / `WidgetMeta` reports), or wrap the part you want to style in a
+child.
+
 ### Basic Selectors
 
 ```css
@@ -29,8 +45,8 @@ Text {
 
 /* ID selector */
 #main-panel {
-    border: rounded;
-    padding: 1;
+    border: rounded cyan;
+    margin: 1;
 }
 
 /* Combining selectors */
@@ -43,12 +59,10 @@ Button.primary {
 ### Applying Classes
 
 ```rust
-Text::new("Hello")
-    .class("title")
-
-Button::new("Submit")
-    .id("submit-btn")
-    .class("primary")
+vstack()
+    .child(Text::new("Hello").class("title"))
+    .child(Border::new().element_id("main-panel").child(Text::new("Body")))
+    .child(Button::new("Submit").element_id("submit-btn").class("primary"))
 ```
 
 ## CSS Properties
@@ -63,69 +77,108 @@ Button::new("Submit")
     color: rgb(122, 162, 247);      /* RGB */
     color: hsl(220, 90%, 72%);      /* HSL */
     color: hsla(120, 100%, 50%, 1); /* HSLA */
-    color: transparent;             /* Transparent */
     background: #1a1b26;
 }
 ```
 
 50+ CSS named colors: `red`, `green`, `blue`, `cyan`, `magenta`, `yellow`, `white`, `black`, `orange`, `coral`, `salmon`, `pink`, `hotpink`, `deeppink`, `purple`, `rebeccapurple`, `indigo`, `violet`, `gold`, `lime`, `olive`, `teal`, `navy`, `royalblue`, `dodgerblue`, `skyblue`, `brown`, `maroon`, `crimson`, `gray`/`grey`, `silver`, and more.
 
+`color` inherits to children. A `background` fills the widget's whole box,
+under whatever the widget paints; a widget's own builder background (`.bg(...)`)
+wins over the stylesheet.
+
 ### Text Styling
+
+Read by `Text`:
 
 ```css
 .text {
-    font-weight: bold;    /* bold, normal */
-    font-style: italic;   /* italic, normal */
-    text-decoration: underline; /* underline, none */
+    font-weight: bold;              /* bold, normal */
+    text-decoration: underline;     /* underline, line-through, none */
+    text-align: center;             /* left, center, right */
+    visibility: hidden;             /* visible, hidden */
 }
 ```
 
+A builder `.align(..)` wins over `text-align`. `font-weight` and
+`text-decoration` can only turn a flag on: a stylesheet cannot un-bold a
+`Text` built with `.bold()`.
+
 ### Borders
+
+On widgets that draw a border - `Border`, `Card`, `Accordion`, `Alert`,
+`Popover`, `Form`, `ErrorBoundary`, `DropZone`:
 
 ```css
 .panel {
-    border: solid;        /* solid, double, rounded, thick, none */
+    border-style: double;   /* solid, double, rounded, dashed, none */
     border-color: white;
 }
 
-/* Border shorthand */
+/* Shorthand: <style> [color] */
 .box {
     border: rounded cyan;
 }
 ```
 
-### Spacing
+`dashed` draws a single line - terminals have no dashed box-drawing set.
+`border-style: none` removes a border the builder drew.
+
+### Box
 
 ```css
-.container {
-    padding: 1;           /* All sides */
-    padding: 1 2;         /* Vertical, horizontal */
-    padding: 1 2 1 2;     /* Top, right, bottom, left */
-    margin: 1;
-    gap: 1;               /* Space between children */
+.sidebar {
+    width: 20;              /* cells, or a percentage: 30% */
+    min-height: 3;
+    max-width: 40;
+    margin: 1;              /* also 1 2, 1 2 1 2, and margin-top/-right/-bottom/-left */
+}
+
+.hidden {
+    display: none;          /* takes no space, keeps its node */
+}
+
+.list {
+    gap: 1;                 /* vstack / hstack / grid: space between children */
+    column-gap: 2;          /* grid */
+    row-gap: 1;             /* grid */
+    overflow: hidden;       /* Border / stacks: clip children to the box */
 }
 ```
 
-### Layout
+The container still places each child; these adjust the box it was handed.
+In a content-sized `vstack`/`hstack` a child's `height`/`width`, `min-*`/`max-*`
+and margins along the stack count toward its slot, so `margin-top: 2` moves a
+line of text down. `gap: 0` closes a gap the builder opened.
 
-```css
-.stack {
-    flex-direction: column;  /* column, row */
-    align-items: center;     /* start, center, end, stretch */
-    justify-content: center; /* start, center, end, space-between */
-    flex-wrap: wrap;         /* nowrap, wrap, wrap-reverse */
-    gap: 1;                  /* space between children */
-    column-gap: 2;           /* grid column gap */
-    row-gap: 1;              /* grid row gap */
-}
+**Nested stacks.** A content-sized stack sizes a child stack from that
+stack's content without its CSS, so a `margin` or `gap` a stylesheet adds
+*inside* the child is not reserved and the child's last line is cut. Give the
+child's slot a size - `child_flex(.., 1.0)` or `child_sized(.., n)` - when its
+contents carry vertical margins or a CSS `gap`. (Lifting this needs `measure`
+to see styles; planned for 3.x.)
 
-.item {
-    flex: 1;                 /* shorthand for flex-grow */
-    align-self: center;      /* override parent align-items */
-    order: -1;               /* render order (lower = first) */
-    overflow: hidden;        /* visible, hidden, scroll, auto */
-}
-```
+### Parsed but not applied yet (planned for 3.x)
+
+The parser accepts these without an error, but nothing acts on them at paint
+time yet. Builders cover what they would do:
+
+| Property | Use instead |
+|---|---|
+| `padding`, `padding-*` | `margin` on the child, or a builder padding where the widget has one |
+| `flex-direction` | `vstack()` / `hstack()` |
+| `justify-content`, `align-items`, `align-self` | `Text::align`, `child_sized`, `Positioned` |
+| `flex`, `flex-grow`, `flex-shrink`, `flex-basis`, `order` | `child_flex(..)`, `child_sized(..)`, child order |
+| `grid-template-*`, `grid-row`, `grid-column` | `Grid` builders |
+| `flex-wrap` | - (an `hstack` with `flex-wrap: wrap` splits its height into two rows; a one-line row draws nothing) |
+| `opacity` | `Text::dim()` |
+| `font-style` | `.italic()` where the widget has it |
+| `z-index`, `position`, `top`/`right`/`bottom`/`left` | `Positioned`, `Layers` |
+| `transition`, `animation` | `revue::style::TransitionManager` driven from your own code |
+| `color: transparent` | parses as black; a cell has no alpha |
+
+`:active`, `:checked` and `:selected` parse and match node state, but nothing
+sets that state in a running app yet, so rules naming them never match.
 
 ## CSS Variables
 
@@ -153,13 +206,19 @@ Define reusable values:
 }
 ```
 
+`var()` has to be the whole value: `border-color: var(--accent)` works,
+`border: rounded var(--accent)` does not - write the longhands.
+
 ## Pseudo-Classes
 
-> `:hover` and `:focus` follow the mouse only when the app is built with
-> [`dom_from_render(true)`](app-builder.md). Without it no widget below
-> the root is associated with a screen area, so nothing can be found under the
-> pointer and the rule never matches. The same flag makes a left click focus the
-> nearest enclosing input widget, which is what makes `:focus` match.
+> `:hover` and `:focus` follow the mouse because the app builds its DOM from
+> the render traversal ([`dom_from_render`](app-builder.md#dom_from_renderenabled),
+> on by default since 3.0). That is what associates every widget with a screen
+> area, so the pointer can find it; a left click focuses the nearest enclosing
+> input widget, which is what makes `:focus` match. With
+> `dom_from_render(false)` no widget below the root has an area and these rules
+> never match. [`tab_navigation(true)`](app-builder.md#tab_navigationenabled)
+> lets Tab move `:focus` too.
 >
 > Keyboard is the primary modality in a terminal - treat hover as an
 > enhancement, and never put information only there.
@@ -171,44 +230,32 @@ Button:hover {
 }
 
 Button:focus {
-    border: double var(--accent);
+    background: #7aa2f7;
+    color: #1a1b26;
 }
 
+/* Button::new("Save").disabled(true) */
 Button:disabled {
-    opacity: 0.5;
+    color: gray;
 }
-
-/* Selection state */
-List-item:selected {
-    background: var(--accent);
-    color: var(--bg-primary);
-}
-
-/* Structural pseudo-classes with An+B formula */
-tr:nth-child(odd) { background: #2a2a3a; }
-tr:nth-child(even) { background: #1e1e2e; }
-li:nth-child(3n+1) { color: cyan; }
-li:nth-child(-n+3) { font-weight: bold; }  /* first 3 items */
 ```
 
-## Transitions
+### Structural pseudo-classes
 
-Smooth property changes:
+`:first-child`, `:last-child`, `:only-child` and `:nth-child(An+B)` (with
+`odd` / `even`) count a widget's siblings in the DOM:
 
 ```css
-Button {
-    background: #24283b;
-    transition: background 0.3s ease;
-}
-
-Button:hover {
-    background: #7aa2f7;
-}
+.row:nth-child(odd)  { background: #2a2a3a; }
+.row:nth-child(even) { background: #1e1e2e; }
+.row:nth-child(-n+3) { font-weight: bold; }  /* first 3 rows */
 ```
 
-Transition syntax: `property duration easing`
-
-Easing functions: `linear`, `ease`, `ease-in`, `ease-out`, `ease-in-out`
+```rust
+let rows = ["alpha", "beta", "gamma", "delta"]
+    .iter()
+    .fold(vstack(), |list, name| list.child(Text::new(*name).class("row")));
+```
 
 ## Themes
 
@@ -274,37 +321,36 @@ Text::new("Colored")
     --border: #565f89;
 }
 
-/* Base styles */
+/* Inherited by everything below the root */
 * {
     color: var(--fg);
 }
 
-/* Layout containers */
 .panel {
-    border: rounded var(--border);
-    padding: 1;
+    border-style: rounded;
+    border-color: var(--border);
     background: var(--bg);
 }
 
 .header {
-    padding: 0 1;
+    color: var(--accent);
+    font-weight: bold;
     margin-bottom: 1;
 }
 
 /* Buttons */
 Button {
-    padding: 0 2;
-    border: solid var(--border);
-    transition: all 0.2s ease;
+    background: var(--border);
 }
 
 Button:hover {
-    border-color: var(--accent);
-    color: var(--accent);
+    background: var(--accent);
+    color: var(--bg);
 }
 
 Button:focus {
-    border: double var(--accent);
+    background: var(--accent);
+    color: var(--bg);
 }
 
 Button.primary {
@@ -314,22 +360,36 @@ Button.primary {
 
 /* Inputs */
 Input {
-    border: solid var(--border);
-    padding: 0 1;
-}
-
-Input:focus {
-    border-color: var(--accent);
-}
-
-/* Lists */
-List-item:selected {
-    background: var(--accent);
-    color: var(--bg);
+    background: var(--bg);
 }
 
 /* Progress */
 Progress {
     color: var(--accent);
+}
+```
+
+```rust
+use revue::prelude::*;
+
+struct Settings;
+
+impl View for Settings {
+    fn render(&self, ctx: &mut RenderContext) {
+        // The panel is a child, so `.panel` has a node to match; `child_flex`
+        // gives it the rest of the screen (see "Box" for why).
+        vstack()
+            .child_flex(
+                Border::new().class("panel").child(
+                    vstack()
+                        .child(Text::new("Settings").class("header"))
+                        .child(Input::new().placeholder("Name"))
+                        .child(Progress::new(0.4))
+                        .child(Button::new("Save").class("primary")),
+                ),
+                1.0,
+            )
+            .render(ctx);
+    }
 }
 ```

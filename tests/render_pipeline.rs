@@ -2,15 +2,14 @@
 //!
 //! Two groups. The first states what the pipeline must do - the repaint
 //! guarantees, which `fix(render): always repaint from the view` established.
-//! The second still **pins behavior that is wrong**, asserting what happens
-//! today so it fails loudly when fixed. Same pattern as
-//! `invariants.rs::keyless_children_are_identified_by_position_today`.
+//! The second pins the **2.x pipeline**, which 3.0 keeps behind
+//! `dom_from_render(false)` / `css_layout(false)`: paint properties reach the
+//! root widget and stop there, and layout properties reach nothing at all.
+//! Those tests turn the flags off explicitly; the default path is pinned by
+//! `tests/dom_from_render.rs`, `tests/css_reaches_the_screen.rs`,
+//! `tests/css_layout.rs` and `tests/css_defaults.rs`.
 //!
 //! Background and evidence: `docs/refactor/findings-render-pipeline.md`.
-//!
-//! The still-wrong group is what "CSS styling" currently amounts to: paint
-//! properties reach the root widget and stop there, and layout properties reach
-//! nothing at all.
 
 use revue::prelude::*;
 use revue::testing::PipelineHarness;
@@ -219,50 +218,64 @@ fn an_unchanged_view_writes_nothing() {
 }
 
 // ---------------------------------------------------------------------------
-// 2. The DOM only contains widgets exposed through `View::children()`
+// 2. Without `dom_from_render` the DOM only contains `View::children()`
 // ---------------------------------------------------------------------------
 
-/// **Pins a bug.** A view that assembles its tree inside `render` - which is
-/// how every tutorial and example is written - produces a DOM of exactly one
-/// node.
-///
-/// The DOM is built by walking `View::children()`, and in the whole widget
-/// library only `Stack` implements it. So CSS matching, `:focus` / `:hover`,
-/// dirty-rect tracking and devtools all operate on a tree that does not
-/// describe the application.
+/// The fix is the default: a view that assembles its tree inside `render` -
+/// which is how every tutorial and example is written - gets a node for each
+/// widget routed through `render_child`.
 #[test]
-fn children_composed_inside_render_get_no_dom_node_today() {
-    let mut h = PipelineHarness::new(30, 4).incremental_dom(true);
+fn children_composed_inside_render_get_dom_nodes() {
+    let mut h = PipelineHarness::new(30, 4);
+    h.draw(&Composed);
+
+    assert!(h.contains("HELLO"));
+    assert!(
+        h.node_id("greeting").is_some(),
+        "#greeting did not resolve on the default path"
+    );
+}
+
+/// **Pins the 2.x pipeline.** With `dom_from_render(false)` such a view
+/// produces a DOM of exactly one node.
+///
+/// The DOM is then built by walking `View::children()`, and in the whole
+/// widget library only `Stack` implements it. So CSS matching, `:focus` /
+/// `:hover`, dirty-rect tracking and devtools all operate on a tree that does
+/// not describe the application - the reason 3.0 turned the flag on.
+#[test]
+fn children_composed_inside_render_get_no_dom_node_without_dom_from_render() {
+    let mut h = PipelineHarness::new(30, 4)
+        .incremental_dom(true)
+        .dom_from_render(false);
     h.draw(&Composed);
 
     assert!(
         h.contains("HELLO"),
         "the widget rendered, so it exists as far as the user is concerned"
     );
-    assert_eq!(
-        h.node_count(),
-        1,
-        "the composed subtree gained DOM nodes - the bug is fixed"
-    );
-    assert!(
-        h.node_id("greeting").is_none(),
-        "#greeting resolved - the bug is fixed, rewrite this as the positive contract"
-    );
+    assert_eq!(h.node_count(), 1, "the composed subtree gained DOM nodes");
+    assert!(h.node_id("greeting").is_none(), "#greeting resolved");
 }
 
 // ---------------------------------------------------------------------------
 // 3. Computed styles never reach a child widget
 // ---------------------------------------------------------------------------
 
-/// **Pins a bug.** `DomRenderer::render` fills `RenderContext::style` for the
-/// root view only. Every child context is built fresh, so the entire CSS
-/// cascade is computed into `DomRenderer::styles` and then read by nobody.
+/// **Pins the 2.x pipeline.** With `dom_from_render(false)`,
+/// `DomRenderer::render` fills `RenderContext::style` for the root view only.
+/// Every child context is built fresh, so the entire CSS cascade is computed
+/// into `DomRenderer::styles` and then read by nobody.
+///
+/// On the default path a child gets its style through `render_child` - see
+/// `tests/css_reaches_the_screen.rs`.
 #[test]
-fn a_child_render_context_carries_no_computed_style_today() {
+fn a_child_render_context_carries_no_computed_style_without_dom_from_render() {
     let seen = std::rc::Rc::new(std::cell::Cell::new(false));
 
-    let mut h =
-        PipelineHarness::with_css("#probe { color: rgb(255, 0, 0); }", 30, 4).incremental_dom(true);
+    let mut h = PipelineHarness::with_css("#probe { color: rgb(255, 0, 0); }", 30, 4)
+        .incremental_dom(true)
+        .dom_from_render(false);
     h.draw(&Parent {
         children: vec![Box::new(StyleProbe {
             saw_style: seen.clone(),
@@ -273,11 +286,7 @@ fn a_child_render_context_carries_no_computed_style_today() {
         h.node_id("probe").is_some(),
         "the probe has a DOM node, so a style was computed for it"
     );
-    assert!(
-        !seen.get(),
-        "a child received its computed style - the bug is fixed, rewrite this \
-         as the positive contract"
-    );
+    assert!(!seen.get(), "a child received its computed style");
 }
 
 /// The root view does get its style, which is why this is a delivery problem
@@ -302,7 +311,8 @@ fn the_root_render_context_does_carry_a_computed_style() {
 // 4. CSS layout properties have no effect
 // ---------------------------------------------------------------------------
 
-/// **Pins a bug.** The layout engine runs every frame and nothing reads it.
+/// **Pins the 2.x pipeline.** The layout engine runs every frame and nothing
+/// reads it.
 ///
 /// `App::update_layout_tree` calls `LayoutEngine::compute`, but the only place
 /// that reads a computed rect back is the existence check inside
@@ -314,12 +324,12 @@ fn the_root_render_context_does_carry_a_computed_style() {
 /// The consequence is that `width`, `padding`, `gap` and even `display: none`
 /// do nothing.
 ///
-/// Still true on the default path. `App::builder().dom_from_render(true)
-/// .css_layout(true)` makes the box properties work by letting them override
-/// container-computed geometry - see `tests/css_layout.rs` and
-/// `docs/refactor/findings-layout.md`. `gap` remains the container's own.
+/// Still true with `dom_from_render(false).css_layout(false)`. The 3.0 default
+/// makes the box properties work by letting them override container-computed
+/// geometry - see `tests/css_layout.rs` and `docs/refactor/findings-layout.md`.
+/// `gap` is read by the container itself.
 #[test]
-fn css_layout_properties_have_no_effect_today() {
+fn css_layout_properties_have_no_effect_without_the_flags() {
     fn view() -> Stack {
         vstack()
             .element_id("root")
@@ -327,22 +337,26 @@ fn css_layout_properties_have_no_effect_today() {
             .child(Text::new("BBBBBBBBBB").element_id("b"))
     }
 
-    let mut plain = PipelineHarness::with_css("", 20, 6);
+    let off = |css: &str| {
+        PipelineHarness::with_css(css, 20, 6)
+            .dom_from_render(false)
+            .css_layout(false)
+    };
+    let mut plain = off("");
     plain.draw(&view());
 
     let css = "#a { width: 3; padding: 2; } #root { gap: 3; } #b { display: none; }";
-    let mut styled = PipelineHarness::with_css(css, 20, 6);
+    let mut styled = off(css);
     styled.draw(&view());
 
     assert_eq!(
         plain.screen_text(),
         styled.screen_text(),
-        "a layout property changed the output - the bug is fixed, rewrite this \
-         as the positive contract"
+        "a layout property changed the output"
     );
     assert!(
         styled.screen_text().contains('B'),
-        "`display: none` hid the element - the bug is fixed"
+        "`display: none` hid the element"
     );
 }
 

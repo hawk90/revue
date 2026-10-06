@@ -175,12 +175,6 @@ impl Plugin for ThemePlugin {
             r#"
 .plugin-panel {
     border: double cyan;
-    padding: 1;
-}
-
-.plugin-title {
-    color: #7aa2f7;
-    bold: true;
 }
 
 .plugin-value {

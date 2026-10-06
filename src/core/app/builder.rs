@@ -42,26 +42,26 @@ impl AppBuilder {
             size: None,
             incremental_dom: false,
             tab_navigation: false,
-            dom_from_render: false,
-            css_layout: false,
+            dom_from_render: true,
+            css_layout: true,
         }
     }
 
     /// Build the DOM from the render traversal instead of `View::children`.
     ///
-    /// **Off by default.** With it off the DOM only contains widgets exposed
-    /// through [`View::children`](crate::widget::View::children), which almost
-    /// nothing implements - a widget assembled inside `render` is invisible to
-    /// it. A real application therefore has a DOM of one node, and CSS matching,
-    /// `:focus`/`:hover` and devtools all work against a tree that does not
-    /// describe it.
-    ///
-    /// With it on, the frame renders twice - once to discover the tree, once to
-    /// paint it - and every widget rendered through
+    /// **On by default** since 3.0. The frame renders twice - once to discover
+    /// the tree, once to paint it - and every widget rendered through
     /// [`RenderContext::render_child`](crate::widget::RenderContext::render_child)
     /// gets a DOM node and its own computed style. That is what makes CSS reach
-    /// widgets below the root. A node's `background` fills its whole box, under
-    /// whatever the widget painted.
+    /// widgets below the root, and what lets the mouse find a widget for
+    /// `:hover` and click-to-focus. A node's `background` fills its whole box,
+    /// under whatever the widget painted.
+    ///
+    /// Turn it off to get the 2.x behavior: the DOM only contains widgets
+    /// exposed through [`View::children`](crate::widget::View::children), which
+    /// almost nothing implements, so a stylesheet reaches the root widget and
+    /// nothing below it. Turning it off also makes
+    /// [`css_layout`](Self::css_layout) inert.
     ///
     /// Implies per-frame reconciliation, so `incremental_dom` has no additional
     /// effect when this is on.
@@ -69,8 +69,10 @@ impl AppBuilder {
     /// # Example
     ///
     /// ```rust,ignore
+    /// // Opt out: 2.x behavior, CSS reaches only the root widget.
     /// let app = App::builder()
-    ///     .dom_from_render(true)
+    ///     .dom_from_render(false)
+    ///     .css_layout(false)
     ///     .build();
     /// ```
     pub fn dom_from_render(mut self, enabled: bool) -> Self {
@@ -80,7 +82,7 @@ impl AppBuilder {
 
     /// Let CSS box properties override the geometry a container computed.
     ///
-    /// **Off by default**, and inert unless
+    /// **On by default** since 3.0, and inert unless
     /// [`dom_from_render`](Self::dom_from_render) is also on - the properties
     /// are read from the node the paint pass is holding, and without the render
     /// traversal there is no such node below the root.
@@ -92,15 +94,19 @@ impl AppBuilder {
     /// `#sidebar { width: 20; }` and `.hidden { display: none; }` do something.
     ///
     /// Not applied: `padding`, which insets a widget's content and would move
-    /// the border of a widget that draws one, and `gap` / `flex-*` / `grid-*`,
-    /// which describe flow and belong to the container.
+    /// the border of a widget that draws one, and `flex-*` / `grid-*`, which
+    /// describe flow and belong to the container. `gap` is read by the
+    /// container itself.
+    ///
+    /// Turn it off to keep paint properties (colors, `text-align`, borders)
+    /// while ignoring box properties, as 2.x did.
     ///
     /// # Example
     ///
     /// ```rust,ignore
+    /// // CSS colors apply, but CSS never moves or resizes a widget.
     /// let app = App::builder()
-    ///     .dom_from_render(true)
-    ///     .css_layout(true)
+    ///     .css_layout(false)
     ///     .build();
     /// ```
     pub fn css_layout(mut self, enabled: bool) -> Self {
@@ -121,8 +127,9 @@ impl AppBuilder {
     /// [`View::key`](crate::widget::View::key) so they are matched by identity
     /// rather than by position.
     ///
-    /// This is opt-in while the performance characteristics are being measured
-    /// against the Phase 0 benchmark baseline; it will become the default.
+    /// It only matters with [`dom_from_render`](Self::dom_from_render) turned
+    /// off: the render-built DOM, the default, reconciles every frame on its
+    /// own.
     ///
     /// # Example
     ///
@@ -156,7 +163,6 @@ impl AppBuilder {
     ///
     /// ```rust,ignore
     /// let app = App::builder()
-    ///     .dom_from_render(true)
     ///     .tab_navigation(true)
     ///     .build();
     /// ```

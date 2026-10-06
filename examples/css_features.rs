@@ -60,17 +60,20 @@ impl View for CssShowcase {
             .child(Divider::new())
             // Colors section
             .child(
-                Border::rounded().title("Named Colors & HSL").child(
-                    vstack()
-                        .child(Text::new("success: green").class("success"))
-                        .child(Text::new("warning: orange").class("warning"))
-                        .child(Text::new("error: crimson").class("error"))
-                        .child(Text::new("muted: slategray").class("muted")),
-                ),
+                Border::rounded()
+                    .title("Named Colors & HSL")
+                    .class("card")
+                    .child(
+                        vstack()
+                            .child(Text::new("success: green").class("success"))
+                            .child(Text::new("warning: orange").class("warning"))
+                            .child(Text::new("error: crimson").class("error"))
+                            .child(Text::new("muted: slategray").class("muted")),
+                    ),
             )
             // Text styling
             .child(
-                Border::rounded().title("Text Styling").child(
+                Border::rounded().title("Text Styling").class("card").child(
                     vstack()
                         .child(Text::new("Bold text").class("bold"))
                         .child(Text::new("Underlined text").class("underline"))
@@ -81,11 +84,14 @@ impl View for CssShowcase {
             )
             // Variables with fallback
             .child(
-                Border::rounded().title("CSS Variables").child(
-                    vstack()
-                        .child(Text::new("var(--primary) = blue"))
-                        .child(Text::new("var(--undefined, orange) = fallback")),
-                ),
+                Border::rounded()
+                    .title("CSS Variables")
+                    .class("card")
+                    .child(
+                        vstack()
+                            .child(Text::new("var(--primary) = blue"))
+                            .child(Text::new("var(--undefined, orange) = fallback")),
+                    ),
             )
             .child(Text::info("Press 'q' to quit").class("center"))
             .render(ctx);

@@ -57,9 +57,12 @@ impl Container {
 }
 
 impl View for Container {
+    // `render_child` gives each child a node on the default path
+    // (`dom_from_render`); `children()` does with it turned off.
     fn render(&self, ctx: &mut RenderContext) {
         for child in &self.children {
-            child.render(ctx);
+            let area = ctx.area;
+            ctx.render_child(child.as_ref(), area);
         }
     }
     fn widget_type(&self) -> &'static str {
@@ -312,9 +315,12 @@ impl AnonContainer {
 }
 
 impl View for AnonContainer {
+    // `render_child` gives each child a node on the default path
+    // (`dom_from_render`); `children()` does with it turned off.
     fn render(&self, ctx: &mut RenderContext) {
         for child in &self.children {
-            child.render(ctx);
+            let area = ctx.area;
+            ctx.render_child(child.as_ref(), area);
         }
     }
     fn widget_type(&self) -> &'static str {

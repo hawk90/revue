@@ -85,3 +85,19 @@ CSS 배경 채우기는 `dom_from_render`에서만 동작한다 — 루트 아�
 
 곁가지로 본 것: `text_editor`는 두 모드 모두 첫 화면 본문이 비어 있다("52 lines"라고
 표시하면서). 플래그와 무관하다.
+
+## 뒤집은 뒤 — 3.0
+
+기본값을 뒤집은 PR에서 같은 방법(100×30, 첫 화면 + 같은 키 입력, `pyte`, 속성에 밑줄·취소선·
+기울임 추가)으로 내용 크기 스택이 기본인 `main`과 다시 대조했다. 달라진 것은 이번에도 위의
+셋뿐이고, 원인도 같다. 반복 실행으로 실행마다 달라지는 예제(`showcase` 시계, `theme_switcher`
+키 입력 뒤, `demo`, `reactive_form`, `tasks_usage`, `todo`, `qrcode_showcase`)를 걸러 냈다.
+
+CSS가 적용되기 시작하면서 **적힌 CSS 자체가 틀렸던** 예제가 드러났고, 같은 PR에서 고쳤다.
+
+| 예제 | 틀린 것 | 고침 |
+|---|---|---|
+| `css_features` | `.card` 규칙을 쓰는 위젯이 없었다 | 세 `Border`에 `.class("card")` |
+| `plugins` | `bold: true`(CSS가 아니다), 아무도 쓰지 않는 `.plugin-title`, 적용되지 않는 `padding` | 죽은 선언 삭제 |
+| `theme_switcher` | 정의된 적 없는 `var(--theme-primary)`, 노드가 없는 위임 본문의 `.container` | 테마 색을 `render`에서 직접 읽는다 |
+| `templates/counter`, `form-app` | `Border { … }` — `Border`가 뷰의 위임 본문이라 노드가 뷰의 것이고, `Border::panel()` 빌더가 이긴다 | 뷰 타입으로 선택(`CounterApp { … }`), `Border::new()` |

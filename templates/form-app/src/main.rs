@@ -67,7 +67,7 @@ impl View for FormApp {
         let active = self.active_field.get();
         let msg = self.message.get();
 
-        Border::panel()
+        Border::new()
             .title("Registration Form")
             .child(
                 vstack()
@@ -105,9 +105,11 @@ impl View for FormApp {
 fn main() -> Result<()> {
     let form = FormApp::new();
 
+    // The Border is this view's own body, so it is styled through the view's
+    // type; the status line is a child with its own node, so its class works.
     App::builder()
         .css(r#"
-            Border { border: rounded cyan; }
+            FormApp { border: rounded cyan; }
             .status-ok { color: #a6e3a1; }
             .status-error { color: #f38ba8; }
         "#)

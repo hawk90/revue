@@ -153,7 +153,8 @@ fn the_builders_color_still_wins() {
 
 #[test]
 fn it_is_inert_without_dom_from_render() {
-    let mut h = PipelineHarness::with_css("#b { border-style: double; }", 20, 6);
+    let mut h =
+        PipelineHarness::with_css("#b { border-style: double; }", 20, 6).dom_from_render(false);
     h.draw(&Boxed);
 
     assert_eq!(

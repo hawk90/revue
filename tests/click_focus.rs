@@ -229,7 +229,7 @@ fn a_focus_rule_reaches_the_screen() {
 
 #[test]
 fn it_is_inert_without_dom_from_render() {
-    let mut h = PipelineHarness::with_css("", 20, 6);
+    let mut h = PipelineHarness::with_css("", 20, 6).dom_from_render(false);
     let mut view = Form;
     h.draw(&view);
 

@@ -2,6 +2,10 @@
 //!
 //! `layout_engine(false)` everywhere: the harness keeps `LayoutEngine` on so
 //! its layout queries answer, but a real app skips it.
+//!
+//! Each series sets both pipeline flags explicitly so its meaning does not
+//! move with the defaults: `changed`/`unchanged` are the 2.x pipeline
+//! (`dom_from_render(false)`), `css_layout` is the 3.0 default.
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use revue::prelude::*;
 use revue::testing::PipelineHarness;
@@ -34,6 +38,8 @@ fn bench_frame(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("changed", rows), &rows, |b, &rows| {
             let mut h = PipelineHarness::new(120, 40)
                 .layout_engine(false)
+                .dom_from_render(false)
+                .css_layout(false)
                 .incremental_dom(true);
             h.draw(&Rows { n: rows, tick: 0 });
             let mut tick = 0usize;
@@ -49,7 +55,8 @@ fn bench_frame(c: &mut Criterion) {
             |b, &rows| {
                 let mut h = PipelineHarness::new(120, 40)
                     .layout_engine(false)
-                    .dom_from_render(true);
+                    .dom_from_render(true)
+                    .css_layout(false);
                 h.draw(&Rows { n: rows, tick: 0 });
                 let mut tick = 0usize;
                 b.iter(|| {
@@ -75,6 +82,8 @@ fn bench_frame(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("unchanged", rows), &rows, |b, &rows| {
             let mut h = PipelineHarness::new(120, 40)
                 .layout_engine(false)
+                .dom_from_render(false)
+                .css_layout(false)
                 .incremental_dom(true);
             h.draw(&Rows { n: rows, tick: 0 });
             b.iter(|| {

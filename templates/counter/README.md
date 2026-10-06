@@ -19,5 +19,5 @@ cargo run
 
 - `Signal<i32>` for mutable reactive state
 - `Computed<i32>` for derived values (auto-cached)
-- `Border::panel()` layout with inline CSS
+- A `Border` styled by inline CSS (`CounterApp { border: rounded cyan; }`)
 - Event handling with key matching
