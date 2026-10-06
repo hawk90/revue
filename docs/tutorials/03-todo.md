@@ -119,11 +119,13 @@ impl View for TodoApp {
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
 
-        // Main container
+        // Main container. Each child takes the rows its content needs; the
+        // list takes the rest with `child_flex`, which keeps the footer at
+        // the bottom.
         let content = vstack()
             .child(self.render_header())
             .child(self.render_input())
-            .child(self.render_list())
+            .child_flex(self.render_list(), 1.0)
             .child(self.render_footer());
 
         Border::rounded()
@@ -139,7 +141,7 @@ impl TodoApp {
         let completed = self.todos.iter().filter(|t| t.completed).count();
         let active = total - completed;
 
-        hstack()
+        hstack().gap(2)
             .child(Text::new("Todo List").bold())
             .child(Text::muted(format!("{} active, {} completed", active, completed)))
     }
