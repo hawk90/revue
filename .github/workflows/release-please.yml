@@ -14,6 +14,7 @@ permissions:
   contents: write
   pull-requests: write
   id-token: write
+  checks: read
 
 jobs:
   release-please:
@@ -29,8 +30,43 @@ jobs:
           manifest-file: .release-please-manifest.json
           skip-github-pull-request: false
 
-  publish:
+  # A crates.io publish is irreversible, and this workflow runs on the same
+  # push as CI, so CI is usually still in flight when the release is cut.
+  # Wait for `CI Gate` (the required check) on this exact commit and refuse
+  # to publish unless it succeeded.
+  ci-gate-passed:
+    name: Wait for CI Gate on main
     needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      checks: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Wait for CI Gate
+        run: |
+          for minute in $(seq 1 40); do
+            runs="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?check_name=CI%20Gate" \
+                     --jq '[.check_runs[] | {status, conclusion}]')"
+            if [ "$(jq 'map(select(.conclusion == "success")) | length' <<< "$runs")" -gt 0 ]; then
+              echo "CI Gate passed for ${GITHUB_SHA}"
+              exit 0
+            fi
+            if [ "$(jq 'map(select(.status == "completed")) | length' <<< "$runs")" -gt 0 ] \
+               && [ "$(jq 'map(select(.status != "completed")) | length' <<< "$runs")" -eq 0 ]; then
+              echo "::error::CI Gate did not pass for ${GITHUB_SHA}: $(jq -c 'map(.conclusion)' <<< "$runs"). Fix main, then re-run this workflow."
+              exit 1
+            fi
+            echo "waiting for CI Gate on ${GITHUB_SHA} (minute ${minute}/40)"
+            sleep 60
+          done
+          echo "::error::CI Gate did not finish within 40 minutes. Re-run this job once it has."
+          exit 1
+
+  publish:
+    needs: [release-please, ci-gate-passed]
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     uses: ./.github/workflows/publish.yml
     secrets: inherit

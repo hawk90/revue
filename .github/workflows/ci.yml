@@ -17,6 +17,7 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
@@ -43,6 +44,7 @@ jobs:
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
@@ -58,6 +60,7 @@ jobs:
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
@@ -65,7 +68,6 @@ jobs:
           components: clippy
           cache: false
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-features -- -D warnings
       # `--all-targets` adds the tests, the examples and the benches. Those
       # carried ~200 lints that no CI configuration looked at until the backlog
       # was cleared; checking them here is what stops it coming back.
@@ -143,13 +145,6 @@ jobs:
           cache: false
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-llvm-cov
-      - name: Get changed files
-        id: changed
-        run: |
-          CHANGED=$(git diff --name-only origin/main...HEAD | grep '^src/' || true)
-          echo "changed<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGED" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
       # PR: Quick coverage check without report (run tests for coverage)
       - name: Coverage (PR)
         if: github.event_name == 'pull_request'
@@ -175,6 +170,7 @@ jobs:
       (needs.fmt.result == 'success' || needs.fmt.result == 'skipped') &&
       (needs.clippy.result == 'success' || needs.clippy.result == 'skipped')
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       # Pinned, not `stable`. On `stable` this job checked nothing about 1.88.
@@ -193,6 +189,7 @@ jobs:
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
@@ -206,6 +203,7 @@ jobs:
     name: Typos
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
       - uses: crate-ci/typos@v1.50.3
@@ -220,14 +218,16 @@ jobs:
   ci-gate:
     name: CI Gate
     if: always()
-    needs: [changes, fmt, clippy, test, coverage, msrv, docs, typos]
+    needs: [changes, fmt, clippy, features, test, coverage, msrv, docs, typos]
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - name: Verify required jobs succeeded or were skipped
         env:
           CHANGES: ${{ needs.changes.result }}
           FMT: ${{ needs.fmt.result }}
           CLIPPY: ${{ needs.clippy.result }}
+          FEATURES: ${{ needs.features.result }}
           TEST: ${{ needs.test.result }}
           COVERAGE: ${{ needs.coverage.result }}
           MSRV: ${{ needs.msrv.result }}
@@ -235,7 +235,7 @@ jobs:
           TYPOS: ${{ needs.typos.result }}
         run: |
           fail=0
-          for pair in "changes:$CHANGES" "fmt:$FMT" "clippy:$CLIPPY" "test:$TEST" "coverage:$COVERAGE" "msrv:$MSRV" "docs:$DOCS" "typos:$TYPOS"; do
+          for pair in "changes:$CHANGES" "fmt:$FMT" "clippy:$CLIPPY" "features:$FEATURES" "test:$TEST" "coverage:$COVERAGE" "msrv:$MSRV" "docs:$DOCS" "typos:$TYPOS"; do
             job="${pair%%:*}"
             res="${pair#*:}"
             if [ "$res" = "success" ] || [ "$res" = "skipped" ]; then

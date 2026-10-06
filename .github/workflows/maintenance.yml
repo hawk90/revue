@@ -14,7 +14,7 @@ env:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 jobs:
   outdated:
@@ -29,7 +29,7 @@ jobs:
           cache: false
           build-warnings: allow
       - name: Install cargo-outdated
-        run: cargo install cargo-outdated
+        run: cargo install cargo-outdated --locked
       - name: Check outdated
         id: check
         run: |
@@ -58,7 +58,7 @@ jobs:
           build-warnings: allow
       - uses: Swatinem/rust-cache@v2
       - name: Install cargo-semver-checks
-        run: cargo install cargo-semver-checks
+        run: cargo install cargo-semver-checks --locked
       - name: Check API stability
         continue-on-error: true
         run: |
