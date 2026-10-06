@@ -26,7 +26,7 @@ use revue::widget::{
     MenuBar, Pagination, Rating, Resizable, SearchBar, Skeleton, Slider, SortableList, Splitter,
     StatusBar, Switch, Tag, Terminal, VirtualList, ZenMode,
 };
-use revue::widget::{diagram, node, DiagramColors, Presentation, Slide};
+use revue::widget::{diagram, node, DateTimePicker, DiagramColors, Presentation, Slide};
 #[cfg(feature = "sysinfo")]
 use revue::widget::{ProcColors, ProcessMonitor};
 
@@ -764,4 +764,38 @@ three_ways!(
     Color::WHITE,
     (40, 12),
     |h: &PipelineHarness| fg_where(h, |c| c == '~')
+);
+
+// DateTimePicker.field_fg - probed on the minute digits; the hour is the active
+// field and carries its own highlight. `field_fg` has no builder; naming it
+// means assigning the public field.
+
+fn last_digit_fg(h: &PipelineHarness) -> Option<Color> {
+    let buffer = h.buffer();
+    (0..buffer.height())
+        .flat_map(|y| (0..buffer.width()).map(move |x| (x, y)))
+        .filter_map(|(x, y)| buffer.get(x, y))
+        .rfind(|c| c.symbol.is_ascii_digit())
+        .and_then(|c| c.fg)
+}
+
+fn picker(named: bool) -> DateTimePicker {
+    let mut p = DateTimePicker::time_only().element_id("w");
+    if named {
+        p.field_fg = Some(Color::WHITE);
+    }
+    p
+}
+
+case!(PickerNamed, PickerSilent, picker(true), picker(false));
+
+three_ways!(
+    a_default_picker_field_is_unchanged,
+    a_named_picker_field_beats_css,
+    a_silent_picker_field_defers_to_css,
+    PickerNamed,
+    PickerSilent,
+    Color::WHITE,
+    (40, 8),
+    |h: &PipelineHarness| last_digit_fg(h)
 );
