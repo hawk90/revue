@@ -12,12 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * **app:** AppBuilder::dom_from_render and AppBuilder::css_layout default to true. Stylesheet rules written for widgets below the root now take effect, a node's CSS background fills its box, :hover follows the pointer and a left click moves :focus. A custom container that paints children with child.render(ctx) instead of ctx.render_child(..) gives them no DOM node. To keep 2.x behavior, build with `.dom_from_render(false).css_layout(false)`; `.css_layout(false)` alone keeps CSS paint properties and drops box properties.
 * **layout:** stacks size unsized children to their content by default. `vstack().child(Text::new("a")).child(Text::new("b"))` now puts "b" on the row under "a" instead of halfway down the screen. A layout that relied on the spread and whose body is itself content-sized (text, a bordered box of text) should add the body with `child_flex(body, 1.0)`. Call `.content_sized(false)` on a stack to keep the 2.x equal shares.
-* **procmon:** make ProcColors.name an Option<Color>
-* **presentation:** make Slide.content_color an Option<Color>
-* **datetimepicker:** make DateTimePicker.field_fg an Option<Color>
-* **mermaid:** DateTimePicker.field_fg is now Option<Color>; wrap direct assignments in Some(..).
-* **render:** remove RenderContext::child_ctx_with_overflow
-* **devtools:** RenderContext::child_ctx_with_overflow is removed. Use RenderContext::render_child_with_overflow, which clips to the container's box and registers the child in the DOM.
+* **mermaid:** DiagramColors.node_fg is now Option<Color>; wrap direct assignments in Some(..).
+* **procmon:** ProcColors.name is now Option<Color>; wrap direct assignments in Some(..).
+* **presentation:** Slide.content_color is now Option<Color>; wrap direct assignments in Some(..). The `Slide::content_color(c)` builder is unchanged.
+* **datetimepicker:** DateTimePicker.field_fg is now Option<Color>; wrap direct assignments in Some(..), or use the new `.field_color(c)` builder.
+* **devtools:** devtools::enable_devtools, disable_devtools, is_devtools_enabled and toggle_devtools are removed. Use App::enable_devtools, App::disable_devtools, App::is_devtools_enabled and App::toggle_devtools instead.
+* **render:** RenderContext::child_ctx_with_overflow is removed. Use RenderContext::render_child_with_overflow, which clips to the container's box and registers the child in the DOM.
 
 ### Features
 
