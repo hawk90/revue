@@ -937,3 +937,53 @@ fn test_datetime_picker_time_operations_sequence() {
     picker.handle_key(&Key::Up);
     assert_eq!(picker.get_time().second, 46);
 }
+
+// =============================================================================
+// Clone 테스트 (Clone Tests)
+// =============================================================================
+
+fn render_picker(picker: &DateTimePicker) -> Buffer {
+    let mut buffer = Buffer::new(30, 15);
+    let area = Rect::new(0, 0, 30, 15);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    picker.render(&mut ctx);
+    buffer
+}
+
+fn assert_same_render(a: &Buffer, b: &Buffer) {
+    for y in 0..15 {
+        for x in 0..30 {
+            assert_eq!(a.get(x, y), b.get(x, y), "cell ({x}, {y}) differs");
+        }
+    }
+}
+
+#[test]
+fn test_datetime_picker_clone() {
+    let mut original = datetime_picker()
+        .selected(Date::new(2025, 6, 15), Time::new(14, 30, 0))
+        .format(DateTimeFormat::DateTime24)
+        .first_day(FirstDayOfWeek::Monday)
+        .min_date(Date::new(2025, 1, 1))
+        .selected_colors(Color::RED, Color::BLUE);
+    // Move the cursor off the selected day so the clone carries non-default state
+    original.handle_key(&Key::Right);
+
+    let mut cloned = original.clone();
+
+    // The clone matches the original in state and in rendered output
+    assert_eq!(cloned.get_datetime(), original.get_datetime());
+    assert_eq!(cloned.get_mode(), original.get_mode());
+    assert!(!cloned.is_date_valid(&Date::new(2024, 12, 31)));
+    let original_buf = render_picker(&original);
+    assert_same_render(&original_buf, &render_picker(&cloned));
+
+    // The clone is independent: changing it leaves the original untouched
+    cloned.handle_key(&Key::Char(']'));
+    cloned.handle_key(&Key::Tab);
+    assert_eq!(cloned.get_date().month, 7);
+    assert_eq!(cloned.get_mode(), DateTimeMode::Time);
+    assert_eq!(original.get_date(), Date::new(2025, 6, 15));
+    assert_eq!(original.get_mode(), DateTimeMode::Date);
+    assert_same_render(&original_buf, &render_picker(&original));
+}
