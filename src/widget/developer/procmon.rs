@@ -64,10 +64,8 @@ pub struct ProcessInfo {
     pub user: String,
 }
 
-/// The process-row text color a monitor uses when nothing says otherwise.
-///
-/// Named so `color_or` can tell "the builder set this" from "the builder said
-/// nothing" - the two are the same value in a plain `Color` field.
+/// The process-row text color a monitor uses when neither
+/// [`ProcColors::name`] nor the stylesheet names one.
 const PROC_FG: Color = Color::WHITE;
 
 /// Color scheme for process monitor
@@ -87,8 +85,9 @@ pub struct ProcColors {
     pub low_cpu: Color,
     /// High memory color
     pub high_mem: Color,
-    /// Process name color
-    pub name: Color,
+    /// Process row text color. `None` lets the stylesheet's `color` decide,
+    /// falling back to white; `Some` outranks the stylesheet.
+    pub name: Option<Color>,
     /// PID color
     pub pid: Color,
 }
@@ -103,7 +102,7 @@ impl Default for ProcColors {
             medium_cpu: Color::YELLOW,
             low_cpu: Color::GREEN,
             high_mem: Color::MAGENTA,
-            name: PROC_FG,
+            name: None,
             pid: Color::CYAN,
         }
     }
@@ -460,7 +459,7 @@ impl View for ProcessMonitor {
 
         // The CPU and memory thresholds carry the reading - red is why you are
         // looking - so they stay. The process rows are the base.
-        let row_fg = ctx.color_or(self.colors.name, PROC_FG);
+        let row_fg = self.colors.name.unwrap_or_else(|| ctx.css_color(PROC_FG));
 
         // Stats bar
         self.render_stats(ctx, 0);

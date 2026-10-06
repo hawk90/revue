@@ -27,6 +27,8 @@ use revue::widget::{
     StatusBar, Switch, Tag, Terminal, VirtualList, ZenMode,
 };
 use revue::widget::{diagram, node, DiagramColors, Presentation, Slide};
+#[cfg(feature = "sysinfo")]
+use revue::widget::{ProcColors, ProcessMonitor};
 
 const RED: Color = Color {
     r: 255,
@@ -705,4 +707,37 @@ three_ways!(
     Color::WHITE,
     (40, 10),
     |h: &PipelineHarness| fg_where(h, |c| c == '┌')
+);
+
+// ProcColors.name - probed on the first process row's name column. The rows
+// come from the live process table, which always holds at least this test.
+
+#[cfg(feature = "sysinfo")]
+fn procmon(named: bool) -> ProcessMonitor {
+    let mut m = if named {
+        ProcessMonitor::new().colors(ProcColors {
+            name: Some(Color::WHITE),
+            ..ProcColors::default()
+        })
+    } else {
+        ProcessMonitor::new()
+    }
+    .element_id("w");
+    m.refresh();
+    m
+}
+
+#[cfg(feature = "sysinfo")]
+case!(ProcNamed, ProcSilent, procmon(true), procmon(false));
+
+#[cfg(feature = "sysinfo")]
+three_ways!(
+    a_default_process_name_is_unchanged,
+    a_named_process_name_beats_css,
+    a_silent_process_name_defers_to_css,
+    ProcNamed,
+    ProcSilent,
+    Color::WHITE,
+    (60, 8),
+    |h: &PipelineHarness| h.buffer().get(7, 2).and_then(|c| c.fg)
 );
