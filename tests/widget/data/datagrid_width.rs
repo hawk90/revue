@@ -114,10 +114,30 @@ fn test_widths_mixed_fixed_and_auto() {
 
 #[test]
 fn test_widths_with_row_numbers() {
-    // Width calculation reserves 5 columns for row numbers: 50 - 5 - 2 = 43.
-    // The gutter drawn for a one-row grid is 3 wide ("1 │").
+    // The gutter drawn for a one-row grid is 3 wide ("1 │"); the column takes
+    // the rest minus its separator and the scrollbar column: 50 - 3 - 2 = 45.
     let grid = DataGrid::new().column(col("a")).row_numbers(true);
-    assert_eq!(rendered_widths(grid, 50, 3), vec![43]);
+    assert_eq!(rendered_widths(grid, 50, 3), vec![45]);
+}
+
+#[test]
+fn test_widths_with_two_digit_row_numbers() {
+    // 12 rows: a 4-wide gutter ("12 │"): 50 - 4 - 2 = 44
+    let grid = DataGrid::new()
+        .column(col("a"))
+        .row_numbers(true)
+        .rows((0..11).map(|_| GridRow::new().cell("a", "x")).collect());
+    assert_eq!(rendered_widths(grid, 50, 4), vec![44]);
+}
+
+#[test]
+fn test_widths_with_row_numbers_split_between_columns() {
+    // 3-wide gutter, two separators and the scrollbar column: 60 - 3 - 3 = 54
+    let grid = DataGrid::new()
+        .column(col("a"))
+        .column(col("b"))
+        .row_numbers(true);
+    assert_eq!(rendered_widths(grid, 60, 3), vec![27, 27]);
 }
 
 #[test]

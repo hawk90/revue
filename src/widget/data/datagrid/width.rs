@@ -46,9 +46,11 @@ impl DataGrid {
             return vec![];
         }
 
-        let row_num_width = if self.options.show_row_numbers { 5 } else { 0 };
+        // Reserve the row-number gutter as drawn, each column's trailing
+        // separator and the scrollbar column.
+        let gutter = self.row_number_gutter_width();
         let borders = visible_cols.len() as u16 + 1;
-        let available = available.saturating_sub(row_num_width + borders);
+        let available = available.saturating_sub(gutter + borders);
 
         // Start with fixed or min widths
         let mut widths: Vec<u16> = visible_cols
