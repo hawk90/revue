@@ -427,3 +427,43 @@ fn presentation_ascii_slide_unchanged() {
     assert_eq!(row_text(&buffer, 4).trim(), "─────");
     assert_eq!(row_text(&buffer, 6).trim_end(), "  abc");
 }
+
+// ─── MarkdownPresentation ───────────────────────────────────────────────────
+
+/// Length of the title separator: the first row (above the footer) drawn
+/// only in `─`.
+#[cfg(feature = "markdown")]
+fn separator_len(buffer: &Buffer) -> usize {
+    (0..buffer.height() - 1)
+        .map(|y| row_text(buffer, y))
+        .find(|row| !row.trim().is_empty() && row.trim().chars().all(|c| c == '─'))
+        .map(|row| row.trim().chars().count())
+        .expect("no separator row")
+}
+
+#[cfg(feature = "markdown")]
+#[test]
+fn markdown_presentation_separator_is_sized_by_title_columns() {
+    use revue::widget::{MarkdownPresentation, ViewMode};
+    // 8 glyphs, 16 columns, 24 bytes: twice the columns is 32 (bytes gave 48)
+    let pres = MarkdownPresentation::new("# 日本語のタイトル\n\nbody\n")
+        .mode(ViewMode::Slides)
+        .text_sizing(false)
+        .numbers(false)
+        .progress(false);
+    let buffer = render(&pres, 60, 20);
+    assert_eq!(separator_len(&buffer), 32);
+}
+
+#[cfg(feature = "markdown")]
+#[test]
+fn markdown_presentation_ascii_separator_unchanged() {
+    use revue::widget::{MarkdownPresentation, ViewMode};
+    let pres = MarkdownPresentation::new("# A title that is long\n\nbody\n")
+        .mode(ViewMode::Slides)
+        .text_sizing(false)
+        .numbers(false)
+        .progress(false);
+    let buffer = render(&pres, 60, 20);
+    assert_eq!(separator_len(&buffer), 40);
+}
