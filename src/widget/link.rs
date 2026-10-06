@@ -224,6 +224,11 @@ impl Link {
 impl View for Link {
     crate::impl_view_meta!("Link");
 
+    /// One row, as wide as the text it shows - it renders as a `Text`.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        crate::widget::Text::new(self.format_display()).measure(max_width, max_height)
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         use crate::widget::Text;
 

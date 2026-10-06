@@ -15,9 +15,10 @@ use revue::prelude::*;
 use revue::render::{Buffer, Cell};
 use revue::widget::traits::RenderContext;
 use revue::widget::{
-    card, Badge, BigText, Button, CardVariant, Checkbox, CheckboxStyle, DigitStyle, Digits,
-    Divider, Gauge, GaugeStyle, Input, Progress, RadioGroup, RadioLayout, RadioStyle, Rating,
-    RatingSize, Slider, Sparkline, Spinner, Switch, SwitchStyle, Tag,
+    card, Badge, BigText, Breadcrumb, Button, CardVariant, Checkbox, CheckboxStyle, DigitStyle,
+    Digits, Divider, Gauge, GaugeStyle, Input, Link, Progress, RadioGroup, RadioLayout, RadioStyle,
+    Rating, RatingSize, RichText, Slider, Sparkline, Spinner, Status, StatusIndicator, StatusSize,
+    StatusStyle, Switch, SwitchStyle, Tag,
 };
 
 const W: u16 = 60;
@@ -447,4 +448,57 @@ fn card_measures_its_rows() {
     }
     assert_eq!(card().title("T").body(Fill).measure(W, H), None);
     assert_eq!(card().title("T").measure(W, H), Some((W, 3)));
+}
+
+// ==================== Link, Breadcrumb, RichText, StatusIndicator ====================
+
+#[test]
+fn link_measures_the_text_it_shows() {
+    assert_measures_paint("url", &Link::new("https://example.com"));
+    assert_measures_paint("text", &Link::new("https://example.com").text("docs"));
+    assert_eq!(Link::new("u").text("docs").measure(W, H), Some((4, 1)));
+}
+
+#[test]
+fn breadcrumb_measures_its_trail() {
+    let trail = Breadcrumb::new().push("src").push("widget").push("mod.rs");
+    assert_measures_paint("trail", &trail);
+    assert_measures_paint("home", &Breadcrumb::new().home(true).push("docs"));
+    assert_measures_paint("wide", &Breadcrumb::new().push("문서").push("설정"));
+    // "src › widget › mod.rs": 15 columns of names, 3 per separator.
+    let no_home = Breadcrumb::new()
+        .home(false)
+        .push("src")
+        .push("widget")
+        .push("mod.rs");
+    assert_eq!(no_home.measure(W, H), Some((21, 1)));
+    // The home icon and its separator add 4.
+    assert_eq!(trail.measure(W, H), Some((25, 1)));
+}
+
+#[test]
+fn rich_text_measures_its_lines() {
+    assert_measures_paint("one line", &RichText::new().text("plain ").text("more"));
+    assert_measures_paint("two lines", &RichText::new().text("first\nsecond line"));
+    assert_eq!(
+        RichText::new().text("ab\ncdef").text("\ng").measure(W, H),
+        Some((4, 3))
+    );
+}
+
+#[test]
+fn status_indicator_measures_its_width() {
+    for style in [
+        StatusStyle::Dot,
+        StatusStyle::DotWithLabel,
+        StatusStyle::LabelOnly,
+        StatusStyle::Badge,
+    ] {
+        for size in [StatusSize::Small, StatusSize::Medium, StatusSize::Large] {
+            let s = StatusIndicator::new(Status::Online)
+                .indicator_style(style)
+                .size(size);
+            assert_measures_paint(&format!("{style:?} {size:?}"), &s);
+        }
+    }
 }
