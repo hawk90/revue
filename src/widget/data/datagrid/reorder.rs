@@ -4,72 +4,112 @@ use super::core::DataGrid;
 use crate::layout::Rect;
 
 impl DataGrid {
-    /// Start dragging a column
+    /// Start dragging a column (`col` indexes `columns`)
     pub(super) fn start_column_drag(&mut self, col: usize) {
         if !self.reorderable || col >= self.columns.len() {
             return;
         }
 
-        // Initialize column order if not set
-        if self.column_order.is_empty() {
-            self.column_order = (0..self.columns.len()).collect();
-        }
-
         self.dragging_col = Some(col);
-        self.drop_target_col = Some(col);
+        self.drop_target_col = self.display_position(col);
     }
 
     /// Update drop target during drag
+    ///
+    /// The target is a display position: the dragged column goes before the
+    /// visible column drawn at that position.
     pub(super) fn update_drop_target(&mut self, x: u16, area: Rect) {
         if self.dragging_col.is_none() {
             return;
         }
 
-        for (i, col_x, width) in self.header_slots_by_x(area) {
-            if x < col_x + width / 2 {
-                self.drop_target_col = Some(i);
-                return;
-            }
-        }
+        let visible_cols = self.visible_columns_in_order();
+        let mut slots: Vec<(usize, u16, u16)> = self
+            .layout_column_slots(&visible_cols, area)
+            .iter()
+            .map(|s| (s.display_idx, s.x, s.width))
+            .collect();
+        slots.sort_by_key(|&(_, x, _)| x);
 
-        // If past all columns, drop at the end
-        self.drop_target_col = Some(self.columns.len());
+        let target = slots
+            .into_iter()
+            .find(|&(_, col_x, width)| x < col_x + width / 2)
+            .map(|(display_idx, _, _)| display_idx)
+            // Past all columns: drop at the end
+            .unwrap_or(visible_cols.len());
+        self.drop_target_col = Some(target);
     }
 
     /// End column drag and perform reorder
+    ///
+    /// `dragging_col` is an index into `columns` and `drop_target_col` a
+    /// display position, so both are mapped onto `column_order`. Only
+    /// `column_order` changes: `columns` (and everything indexed like it,
+    /// such as `column_widths`, `selected_col` and the sort columns) stays put.
     pub(super) fn end_column_drag(&mut self) {
-        if let (Some(from), Some(to)) = (self.dragging_col, self.drop_target_col) {
-            if from != to && to != from + 1 {
-                // Initialize column order if not set
-                if self.column_order.is_empty() {
-                    self.column_order = (0..self.columns.len()).collect();
-                }
-
-                // Perform reorder on column_order
-                let col_idx = self.column_order.remove(from);
-                let insert_idx = if to > from { to - 1 } else { to };
-                let insert_idx = insert_idx.min(self.column_order.len());
-                self.column_order.insert(insert_idx, col_idx);
-
-                // Also reorder column_widths if set
-                if !self.column_widths.is_empty() {
-                    let width = self.column_widths.remove(from);
-                    self.column_widths.insert(insert_idx, width);
-                }
-
-                // Reorder the actual columns vector
-                let col = self.columns.remove(from);
-                self.columns.insert(insert_idx, col);
-
-                // Call callback
-                if let Some(ref mut cb) = self.on_column_reorder {
-                    cb(from, insert_idx);
-                }
-            }
+        if let (Some(col), Some(to)) = (self.dragging_col, self.drop_target_col) {
+            self.move_column_to_display_position(col, to);
         }
 
         self.dragging_col = None;
         self.drop_target_col = None;
+    }
+
+    /// Display position (among visible columns) of column `col`
+    fn display_position(&self, col: usize) -> Option<usize> {
+        self.visible_columns_in_order()
+            .iter()
+            .position(|&(orig, _)| orig == col)
+    }
+
+    /// Move column `col` (index into `columns`) so it is drawn before the
+    /// visible column at display position `to` (`to` == visible count: last).
+    fn move_column_to_display_position(&mut self, col: usize, to: usize) {
+        let visible: Vec<usize> = self
+            .visible_columns_in_order()
+            .iter()
+            .map(|&(orig, _)| orig)
+            .collect();
+        let Some(from) = visible.iter().position(|&orig| orig == col) else {
+            return;
+        };
+        let to = to.min(visible.len());
+        if to == from || to == from + 1 {
+            return;
+        }
+
+        // Make column_order a full permutation of `columns` (hidden ones
+        // included, so they keep their place relative to their neighbors).
+        let mut order = std::mem::take(&mut self.column_order);
+        order.retain(|&i| i < self.columns.len());
+        for i in 0..self.columns.len() {
+            if !order.contains(&i) {
+                order.push(i);
+            }
+        }
+
+        order.retain(|&i| i != col);
+        let insert_at = if to < visible.len() {
+            let anchor = visible[to];
+            order
+                .iter()
+                .position(|&i| i == anchor)
+                .unwrap_or(order.len())
+        } else {
+            // After the last visible column
+            let last = visible[visible.len() - 1];
+            order
+                .iter()
+                .position(|&i| i == last)
+                .map_or(order.len(), |p| p + 1)
+        };
+        order.insert(insert_at, col);
+        self.column_order = order;
+
+        let new_pos = if to > from { to - 1 } else { to };
+        if let Some(ref mut cb) = self.on_column_reorder {
+            cb(from, new_pos);
+        }
     }
 
     /// Check if currently dragging a column

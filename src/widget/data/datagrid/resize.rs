@@ -10,9 +10,9 @@ impl DataGrid {
             return;
         }
 
-        // Ensure column_widths is populated
+        // Ensure column_widths is populated (indexed like `columns`)
         if self.column_widths.is_empty() {
-            self.column_widths = self.get_display_widths(area.width);
+            self.column_widths = self.widths_by_column(area.width);
         }
 
         self.resizing_col = Some(col);

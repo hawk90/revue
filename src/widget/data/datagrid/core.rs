@@ -128,7 +128,8 @@ pub struct DataGrid {
     pub resize_start_width: u16,
     /// Column resize handle being hovered
     pub hovered_resize: Option<usize>,
-    /// User-set column widths (overrides auto calculation)
+    /// User-set column widths (overrides auto calculation), indexed like
+    /// `columns`
     pub column_widths: Vec<u16>,
     /// Callback when column is resized
     pub on_column_resize: Option<Box<dyn FnMut(usize, u16)>>,
@@ -136,11 +137,15 @@ pub struct DataGrid {
     // ─────────────────────────────────────────────────────────────────────────
     // Column Reorder State
     // ─────────────────────────────────────────────────────────────────────────
-    /// Column being dragged (index)
+    /// Column being dragged (index into `columns`)
     pub dragging_col: Option<usize>,
-    /// Drop target column (index)
+    /// Drop target: the display position (among visible columns) the dragged
+    /// column will be inserted before; the visible column count means "at
+    /// the end"
     pub drop_target_col: Option<usize>,
-    /// Column display order (maps display index to actual column index)
+    /// Column display order (maps display index to actual column index).
+    /// Empty means the order of `columns`; drag reorder permutes this and
+    /// leaves `columns` in place.
     pub column_order: Vec<usize>,
     /// Whether columns can be reordered
     pub reorderable: bool,
