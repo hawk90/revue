@@ -453,11 +453,8 @@ impl Presentation {
 
         // Separator
         let sep_y = 4;
-        let sep_len = slide
-            .title
-            .chars()
-            .count()
-            .min((area.width as usize).saturating_sub(4));
+        let sep_len =
+            crate::utils::display_width(&slide.title).min((area.width as usize).saturating_sub(4));
         let sep_start = (area.width as usize - sep_len) / 2;
         for i in 0..sep_len {
             let mut cell = Cell::new('─');
@@ -477,26 +474,19 @@ impl Presentation {
 
             match slide.align {
                 SlideAlign::Left => {
-                    for (j, ch) in line.chars().enumerate() {
-                        if j as u16 + 2 >= area.width {
-                            break;
-                        }
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(content_fg);
-                        fx.put(ctx, 2 + j as u16, y, cell);
-                    }
+                    fx.put_str(ctx, 2, y, line, area.width, |ch| {
+                        Cell::new(ch).fg(content_fg)
+                    });
                 }
                 SlideAlign::Center => {
                     self.render_centered_text(ctx, fx, line, y, content_fg, Modifier::empty());
                 }
                 SlideAlign::Right => {
-                    let line_len = line.chars().count();
-                    let start_x = area.width.saturating_sub(line_len as u16 + 2);
-                    for (j, ch) in line.chars().enumerate() {
-                        let mut cell = Cell::new(ch);
-                        cell.fg = Some(content_fg);
-                        fx.put(ctx, start_x + j as u16, y, cell);
-                    }
+                    let line_width = crate::utils::display_width(line);
+                    let start_x = (area.width as usize).saturating_sub(line_width + 2) as u16;
+                    fx.put_str(ctx, start_x, y, line, u16::MAX, |ch| {
+                        Cell::new(ch).fg(content_fg)
+                    });
                 }
             }
         }
@@ -513,19 +503,13 @@ impl Presentation {
         modifier: Modifier,
     ) {
         let area = ctx.area;
-        let text_len = text.chars().count();
-        let start_x = (area.width as usize).saturating_sub(text_len) / 2;
-
-        for (i, ch) in text.chars().enumerate() {
-            let x = start_x as u16 + i as u16;
-            if x >= area.width {
-                break;
-            }
-            let mut cell = Cell::new(ch);
-            cell.fg = Some(fg);
+        let text_width = crate::utils::display_width(text);
+        let start_x = ((area.width as usize).saturating_sub(text_width) / 2) as u16;
+        fx.put_str(ctx, start_x, y, text, area.width, |ch| {
+            let mut cell = Cell::new(ch).fg(fg);
             cell.modifier = modifier;
-            fx.put(ctx, x, y, cell);
-        }
+            cell
+        });
     }
 
     /// Render footer (slide numbers, progress)
@@ -596,6 +580,30 @@ struct SlideFx {
 }
 
 impl SlideFx {
+    /// Draw `text` from `(x, y)` in terminal columns, stopping before column
+    /// `max_x`, with the transition applied to every cell; see
+    /// [`lay_out_str`](crate::widget::traits::render_context::overlay::lay_out_str)
+    fn put_str<F>(
+        &self,
+        ctx: &mut RenderContext,
+        x: u16,
+        y: u16,
+        text: &str,
+        max_x: u16,
+        make_cell: F,
+    ) -> u16
+    where
+        F: FnMut(char) -> Cell,
+    {
+        crate::widget::traits::render_context::overlay::lay_out_str(
+            x,
+            text,
+            max_x,
+            make_cell,
+            |cx, cell| self.put(ctx, cx, y, cell),
+        )
+    }
+
     /// Draw a slide cell at `(x, y)` with the transition applied
     fn put(&self, ctx: &mut RenderContext, x: u16, y: u16, mut cell: Cell) {
         if self.alpha <= 0.0 {

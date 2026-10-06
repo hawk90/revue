@@ -11,7 +11,8 @@ use revue::render::Buffer;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{
     ContextMenu, Diagram, DiagramNode, Gauge, Menu, MenuBar, MenuItem, PieChart, PieLabelStyle,
-    Popover, Slider, Step, Stepper, Switch, SwitchStyle, Tooltip, TooltipPosition, Waveline,
+    Popover, Presentation, Slide, SlideAlign, Slider, Step, Stepper, Switch, SwitchStyle, Tooltip,
+    TooltipPosition, Waveline,
 };
 
 fn render(view: &dyn View, width: u16, height: u16) -> Buffer {
@@ -375,4 +376,54 @@ fn waveline_wide_label_takes_two_cells_per_glyph() {
     let wave = Waveline::new(vec![0.1, 0.5, 0.9]).label("🔄Wave");
     let buffer = render(&wave, 20, 5);
     assert_wide_then(&buffer, '🔄', 'W');
+}
+
+// ─── Presentation ───────────────────────────────────────────────────────────
+
+fn presentation_slide(slide: Slide) -> Presentation {
+    Presentation::new()
+        .numbers(false)
+        .progress(false)
+        .slide(slide)
+}
+
+#[test]
+fn presentation_wide_title_is_centered_by_columns() {
+    let pres = presentation_slide(Slide::new("発表"));
+    let buffer = render(&pres, 20, 12);
+    // 4 columns in 20: starts at column 8 (chars would have said 9)
+    assert_eq!(assert_wide_then(&buffer, '発', '表'), (8, 2));
+    // The separator under it is as wide as the title in columns
+    assert_eq!(row_text(&buffer, 4).trim(), "────");
+}
+
+#[test]
+fn presentation_wide_left_and_right_lines_take_two_cells_per_glyph() {
+    let left = presentation_slide(Slide::new("T").line("設定x").align(SlideAlign::Left));
+    let buffer = render(&left, 20, 12);
+    assert_eq!(assert_wide_then(&buffer, '設', '定'), (2, 6));
+    assert_wide_then(&buffer, '定', 'x');
+
+    let right = presentation_slide(Slide::new("T").line("設定x").align(SlideAlign::Right));
+    let buffer = render(&right, 20, 12);
+    // 5 columns ending 2 before the edge: starts at column 13
+    assert_eq!(assert_wide_then(&buffer, '設', '定'), (13, 6));
+    assert_wide_then(&buffer, '定', 'x');
+}
+
+#[test]
+fn presentation_wide_title_slide_is_centered_by_columns() {
+    let pres = Presentation::new().title("発表会").author("🔄me");
+    let buffer = render(&pres, 20, 12);
+    assert_eq!(assert_wide_then(&buffer, '発', '表').0, 7);
+    assert_eq!(assert_wide_then(&buffer, '🔄', 'm').0, 8);
+}
+
+#[test]
+fn presentation_ascii_slide_unchanged() {
+    let pres = presentation_slide(Slide::new("Hello").line("abc").align(SlideAlign::Left));
+    let buffer = render(&pres, 21, 12);
+    assert_eq!(row_text(&buffer, 2), "        Hello        ");
+    assert_eq!(row_text(&buffer, 4).trim(), "─────");
+    assert_eq!(row_text(&buffer, 6).trim_end(), "  abc");
 }
