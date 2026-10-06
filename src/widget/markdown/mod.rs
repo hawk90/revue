@@ -383,7 +383,13 @@ impl Markdown {
     fn handle_end_tag(&self, ctx: &mut parser::ParserContext, tag_end: TagEnd) {
         match tag_end {
             TagEnd::Heading(_) => {
-                // Add the heading text to the current line
+                // A heading line starts with its level's `#` marker, dimmed
+                let marker = "#".repeat(ctx.heading_level as usize);
+                let (fg, modifier) = (ctx.current_fg, ctx.current_modifier);
+                ctx.current_fg = Some(PLACEHOLDER_FG);
+                ctx.current_modifier = Modifier::empty();
+                ctx.add_text(&format!("{marker} "));
+                (ctx.current_fg, ctx.current_modifier) = (fg, modifier);
                 if !ctx.heading_text.is_empty() {
                     let text = ctx.heading_text.clone();
                     ctx.add_text(&text);
@@ -500,7 +506,11 @@ impl Markdown {
         if ctx.in_table {
             ctx.current_cell.push_str(text);
         } else if !ctx.in_code_block {
+            // Inline code is drawn in the code color
+            let fg = ctx.current_fg;
+            ctx.current_fg = Some(ctx.code_fg);
             ctx.add_text(text);
+            ctx.current_fg = fg;
         }
     }
 

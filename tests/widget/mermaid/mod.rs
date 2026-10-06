@@ -56,6 +56,20 @@ fn test_diagram_render_title() {
     assert_eq!(row(&buffer, 4), "       │ Hi │       ");
 }
 
+/// The title pushes the nodes down two rows; the arrows have to come with
+/// them. They used to stay where the nodes would have been without a title,
+/// hidden under the first box.
+#[test]
+fn test_diagram_render_title_moves_the_arrows_with_the_nodes() {
+    let d = flowchart("A[Start] --> B[End]").title("Flow");
+    let buffer = render(&d, 20, 12);
+    assert_eq!(row(&buffer, 3), "     ┌───────┐      ");
+    assert_eq!(row(&buffer, 5), "     └───────┘      ");
+    assert_eq!(buffer.get(9, 6).unwrap().symbol, '│');
+    assert_eq!(buffer.get(9, 7).unwrap().symbol, '▼');
+    assert_eq!(row(&buffer, 8), "      ┌─────┐       ");
+}
+
 #[test]
 fn test_diagram_render_edge_label() {
     let d = flowchart("A -->|go| B");
@@ -138,7 +152,6 @@ fn test_diagram_colors_builder() {
 }
 
 #[test]
-#[ignore = "BUG: Diagram ignores direction(); nodes are always laid out top-down"]
 fn test_diagram_direction_left_right_places_nodes_side_by_side() {
     let d = flowchart("A --> B").direction(DiagramDirection::LeftRight);
     let buffer = render(&d, 40, 10);
@@ -146,14 +159,70 @@ fn test_diagram_direction_left_right_places_nodes_side_by_side() {
     let (bx, by) = find(&buffer, "│ B │").expect("node B");
     assert_eq!(ay, by, "A and B should share a row");
     assert!(ax < bx, "A should be left of B");
+    // The arrow runs across the gap on the boxes' middle row, head at B
+    let chars: Vec<char> = row(&buffer, ay).chars().collect();
+    let gap = (ax + 5) as usize..(bx - 1) as usize;
+    assert!(!gap.is_empty());
+    assert!(chars[gap].iter().all(|&c| c == '─'), "{chars:?}");
+    assert_eq!(chars[bx as usize - 1], '▶');
 }
 
 #[test]
-#[ignore = "BUG: Diagram ignores direction(); nodes are always laid out top-down"]
 fn test_diagram_direction_bottom_up_places_target_above() {
     let d = flowchart("A --> B").direction(DiagramDirection::BottomUp);
     let buffer = render(&d, 20, 10);
     let (_, ay) = find(&buffer, "│ A │").expect("node A");
     let (_, by) = find(&buffer, "│ B │").expect("node B");
     assert!(by < ay, "B should be above A");
+    // Mirror of the top-down layout: B in rows 1-3, A in rows 6-8, and the
+    // arrow points up from the top of A to just below B
+    assert_eq!(row(&buffer, 1), "       ┌───┐        ");
+    assert_eq!(row(&buffer, 8), "       └───┘        ");
+    assert_eq!(buffer.get(9, 4).unwrap().symbol, '▲');
+    assert_eq!(buffer.get(9, 5).unwrap().symbol, '│');
+}
+
+#[test]
+fn test_diagram_direction_right_left_places_target_left() {
+    let d = flowchart("A -->|go| B").direction(DiagramDirection::RightLeft);
+    let buffer = render(&d, 40, 10);
+    let (ax, ay) = find(&buffer, "│ A │").expect("node A");
+    let (bx, by) = find(&buffer, "│ B │").expect("node B");
+    assert_eq!(ay, by, "A and B should share a row");
+    assert!(bx < ax, "B should be left of A");
+    // Head just right of B, line up to A, label above the line
+    let chars: Vec<char> = row(&buffer, ay).chars().collect();
+    assert_eq!(chars[bx as usize + 5], '◀');
+    assert_eq!(chars[ax as usize - 1], '─');
+    let (_, label_y) = find(&buffer, "go").expect("edge label");
+    assert_eq!(label_y, ay - 1);
+}
+
+#[test]
+fn test_diagram_direction_top_down_is_the_default() {
+    let plain = render(&flowchart("A --> B"), 20, 10);
+    let td = render(
+        &flowchart("A --> B").direction(DiagramDirection::TopDown),
+        20,
+        10,
+    );
+    let rows = |b: &Buffer| (0..10).map(|y| row(b, y)).collect::<Vec<_>>();
+    assert_eq!(rows(&plain), rows(&td));
+    let (_, ay) = find(&td, "│ A │").unwrap();
+    let (_, by) = find(&td, "│ B │").unwrap();
+    assert!(ay < by);
+}
+
+#[test]
+fn test_diagram_direction_left_right_grid_fills_columns() {
+    // Four nodes in a 2x2 grid: the flow fills columns, not rows
+    let d = flowchart("A --> B\nC --> D").direction(DiagramDirection::LeftRight);
+    let buffer = render(&d, 40, 10);
+    let (ax, ay) = find(&buffer, "│ A │").unwrap();
+    let (bx, by) = find(&buffer, "│ B │").unwrap();
+    let (cx, cy) = find(&buffer, "│ C │").unwrap();
+    assert_eq!(ax, bx);
+    assert!(ay < by);
+    assert_eq!(ay, cy);
+    assert!(ax < cx);
 }

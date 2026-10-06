@@ -1,4 +1,4 @@
-Code Example
+## Code Example
 ┌─────────────────────────┐
 │ fn main() {             │
 │     println!("Hello!"); │

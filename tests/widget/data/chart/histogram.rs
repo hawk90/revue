@@ -192,9 +192,50 @@ fn test_histogram_too_small_renders_nothing() {
 }
 
 #[test]
-#[ignore = "BUG: Histogram ignores orientation; horizontal() renders the same vertical bars"]
 fn test_histogram_horizontal_differs_from_vertical() {
     let v = render_rows(&three_bins().vertical(), 40, 20);
     let h = render_rows(&three_bins().horizontal(), 40, 20);
     assert_ne!(v, h);
+}
+
+#[test]
+fn test_histogram_horizontal_bars() {
+    // Same plot area; the 18 rows cover 0..30, so the bins take rows 0..6,
+    // 6..12 and 12..18, and bars of 3, 1 and 2 grow right over 33 columns
+    // to lengths 33, 11 and 22, each ending in a half block
+    let buffer = render(&three_bins().horizontal(), 40, 20);
+    let rows = rows(&buffer);
+    let bar = |y: usize| -> String { rows[y].chars().skip(6).collect::<String>() };
+    for (ys, len) in [(0..6, 33), (6..12, 11), (12..18, 22)] {
+        for y in ys {
+            let expected = format!("{}▌", "█".repeat(len - 1));
+            assert_eq!(bar(y).trim_end(), expected, "row {y}");
+        }
+    }
+    // No vertical bar tops
+    assert_eq!(count_char(&buffer, '▀'), 0);
+}
+
+#[test]
+fn test_histogram_horizontal_axis_labels() {
+    let rows = render_rows(&three_bins().horizontal(), 40, 20);
+    // Bin values down the left side, lowest first
+    assert!(rows[0].starts_with("0.00 "), "{:?}", rows[0]);
+    assert!(rows[4].starts_with("7.5 "), "{:?}", rows[4]);
+    assert!(rows[17].starts_with("30.0 "), "{:?}", rows[17]);
+    // Counts along the bottom, from 0 on the left to the maximum on the right
+    assert!(rows[19].starts_with("      0 "), "{:?}", rows[19]);
+    assert!(rows[19].trim_end().ends_with('3'), "{:?}", rows[19]);
+}
+
+#[test]
+fn test_histogram_horizontal_show_stats() {
+    // mean 10 -> row 6, median 7 -> row 4, each across the whole plot
+    let buffer = render(&three_bins().horizontal().show_stats(true), 40, 20);
+    for x in 6..39 {
+        assert_eq!(sym(&buffer, x, 6), '─', "mean x={x}");
+        assert_eq!(sym(&buffer, x, 4), '┄', "median x={x}");
+    }
+    assert_eq!(sym(&buffer, 38, 7), 'μ');
+    assert_eq!(sym(&buffer, 38, 5), 'M');
 }

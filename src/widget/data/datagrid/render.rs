@@ -18,42 +18,16 @@ impl View for DataGrid {
             return;
         }
 
-        let widths = self.get_display_widths(area.width);
-
-        // Get visible columns in display order (respecting column_order)
-        let visible_cols: Vec<_> = if self.column_order.is_empty() {
-            self.columns
-                .iter()
-                .enumerate()
-                .filter(|(_, c)| c.visible)
-                .collect()
-        } else {
-            self.column_order
-                .iter()
-                .filter_map(|&orig_idx| {
-                    self.columns
-                        .get(orig_idx)
-                        .filter(|c| c.visible)
-                        .map(|c| (orig_idx, c))
-                })
-                .collect()
-        };
-
-        let row_num_width: u16 = if self.options.show_row_numbers {
-            // Dynamic width: digits for total rows + 1 for separator
-            let total = self.filtered_count().max(1);
-            let digits = format!("{}", total).len() as u16;
-            digits + 2 // digits + space + separator
-        } else {
-            0
-        };
+        let row_num_width = self.row_number_gutter_width();
         let header_height: u16 = if self.options.show_header { 1 } else { 0 };
 
         // Position columns for this viewport, applying column freeze and
         // horizontal scroll. Both the header and the rows draw from this plan so
-        // they stay aligned.
+        // they stay aligned, and mouse hit-testing uses the same plan.
         let content_end = area.width;
-        let slots = self.compute_column_slots(&visible_cols, &widths, 0, area.width, row_num_width);
+        let visible_cols = self.visible_columns_in_order();
+        let slots =
+            self.layout_column_slots(&visible_cols, Rect::new(0, 0, area.width, area.height));
 
         let mut y = 0u16;
 
@@ -97,6 +71,58 @@ impl View for DataGrid {
 }
 
 impl DataGrid {
+    /// Visible columns in display order (respecting `column_order`), each
+    /// paired with its index into `self.columns`.
+    pub(super) fn visible_columns_in_order(&self) -> Vec<(usize, &GridColumn)> {
+        if self.column_order.is_empty() {
+            self.columns
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.visible)
+                .collect()
+        } else {
+            self.column_order
+                .iter()
+                .filter_map(|&orig_idx| {
+                    self.columns
+                        .get(orig_idx)
+                        .filter(|c| c.visible)
+                        .map(|c| (orig_idx, c))
+                })
+                .collect()
+        }
+    }
+
+    /// Width of the row-number gutter as drawn: digits for the row count,
+    /// a space and a separator. Zero when row numbers are off.
+    pub(super) fn row_number_gutter_width(&self) -> u16 {
+        if self.options.show_row_numbers {
+            let total = self.filtered_count().max(1);
+            let digits = format!("{}", total).len() as u16;
+            digits + 2 // digits + space + separator
+        } else {
+            0
+        }
+    }
+
+    /// The column slots for a grid drawn into `area`, in `area`'s coordinate
+    /// space. This is the single source of column geometry: `render()` draws
+    /// from it and the mouse hit-tests against it.
+    pub(super) fn layout_column_slots<'a>(
+        &self,
+        visible_cols: &[(usize, &'a GridColumn)],
+        area: Rect,
+    ) -> Vec<ColumnSlot<'a>> {
+        let widths = self.get_display_widths(area.width);
+        self.compute_column_slots(
+            visible_cols,
+            &widths,
+            area.x,
+            area.width,
+            self.row_number_gutter_width(),
+        )
+    }
+
     /// Position the visible columns for the current viewport.
     ///
     /// Applies column freeze and horizontal scroll: the first `frozen_left`

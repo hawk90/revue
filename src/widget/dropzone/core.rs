@@ -49,10 +49,8 @@ where
     can_accept_current: bool,
     /// Normal border color
     border_color: Color,
-    /// Hover border color
+    /// Border color while a drag it would accept hovers over it
     hover_color: Color,
-    /// Accept indicator color
-    accept_color: Color,
     /// Reject indicator color
     reject_color: Color,
     /// Widget state
@@ -77,8 +75,7 @@ impl DropZone<fn(DragData) -> bool> {
             hovered: false,
             can_accept_current: false,
             border_color: DISABLED_FG,
-            hover_color: Color::rgb(100, 150, 255),
-            accept_color: Color::rgb(100, 200, 100),
+            hover_color: Color::rgb(100, 200, 100),
             reject_color: Color::rgb(200, 100, 100),
             state: WidgetState::new(),
             props: WidgetProps::new(),
@@ -116,6 +113,10 @@ where
     }
 
     /// Set hover color
+    ///
+    /// Used for the border, the minimal indicator and the hint text while a
+    /// drag the zone would accept hovers over it. A drag that would be
+    /// rejected keeps the reject color, so the verdict still reads.
     pub fn hover_color(mut self, color: Color) -> Self {
         self.hover_color = color;
         self
@@ -142,7 +143,6 @@ where
             can_accept_current: self.can_accept_current,
             border_color: self.border_color,
             hover_color: self.hover_color,
-            accept_color: self.accept_color,
             reject_color: self.reject_color,
             state: self.state,
             props: self.props,
@@ -175,7 +175,7 @@ where
     fn current_border_color(&self, ctx: &RenderContext) -> Color {
         if self.hovered {
             if self.can_accept_current {
-                self.accept_color
+                self.hover_color
             } else {
                 self.reject_color
             }

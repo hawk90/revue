@@ -158,7 +158,6 @@ fn test_markdown_unordered_list_asterisk() {
 }
 
 #[test]
-#[ignore = "BUG: Markdown puts list bullets after the item text and joins nested items onto the parent line"]
 fn test_markdown_nested_list() {
     let md = Markdown::new("- Item 1\n  - Nested 1\n  - Nested 2\n- Item 2");
     assert!(md.line_count() >= 4);
@@ -212,7 +211,6 @@ fn test_markdown_code_block_javascript() {
 }
 
 #[test]
-#[ignore = "BUG: Markdown joins a fenced code block into one line with literal newlines"]
 fn test_markdown_code_block_multiple_lines() {
     let md = Markdown::new("```rust\nfn main() {\n    println!(\"Hello\");\n}\n```");
     assert!(md.line_count() >= 4);
@@ -355,28 +353,24 @@ fn test_markdown_admonition_render() {
 // ─────────────────────────────────────────────────────────────────────────
 
 #[test]
-#[ignore = "BUG: Markdown drops tables entirely (cells are collected but never emitted)"]
 fn test_markdown_table_simple() {
     let md = Markdown::new("| A | B |\n|---|---|\n| 1 | 2 |");
     assert!(md.line_count() >= 4);
 }
 
 #[test]
-#[ignore = "BUG: Markdown drops tables entirely (cells are collected but never emitted)"]
 fn test_markdown_table_multiple_rows() {
     let md = Markdown::new("| Name | Age |\n|------|-----|\n| Alice | 30 |\n| Bob | 25 |");
     assert!(md.line_count() >= 5);
 }
 
 #[test]
-#[ignore = "BUG: Markdown drops tables entirely (cells are collected but never emitted)"]
 fn test_markdown_table_multiple_columns() {
     let md = Markdown::new("| A | B | C | D |\n|---|---|---|---|\n| 1 | 2 | 3 | 4 |");
     assert!(md.line_count() >= 4);
 }
 
 #[test]
-#[ignore = "BUG: Markdown drops tables entirely (cells are collected but never emitted)"]
 fn test_markdown_table_with_content() {
     let md = Markdown::new("| Header 1 | Header 2 |\n|----------|----------|\n| Data 1 | Data 2 |");
     assert!(md.line_count() >= 4);
@@ -510,7 +504,6 @@ fn test_markdown_toc_fg() {
 // ─────────────────────────────────────────────────────────────────────────
 
 #[test]
-#[ignore = "BUG: Markdown headings lost their # prefix in the #271 module split"]
 fn test_markdown_render_basic() {
     let mut buffer = Buffer::new(40, 10);
     let area = Rect::new(0, 0, 40, 10);
@@ -531,7 +524,6 @@ fn test_markdown_render_basic() {
 }
 
 #[test]
-#[ignore = "BUG: Markdown draws a blockquote bar in front of the first plain paragraph"]
 fn test_markdown_render_plain_paragraph_has_no_quote_bar() {
     let mut buffer = Buffer::new(40, 5);
     let area = Rect::new(0, 0, 40, 5);

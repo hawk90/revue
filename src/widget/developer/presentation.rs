@@ -167,6 +167,9 @@ pub struct Presentation {
     slides: Vec<Slide>,
     /// Current slide index
     current: usize,
+    /// Whether the deck has moved past the title slide. A presentation with
+    /// a title opens on its title slide, which comes before slide 0.
+    started: bool,
     /// Transition effect
     transition: Transition,
     /// Transition progress (0.0 to 1.0)
@@ -177,6 +180,8 @@ pub struct Presentation {
     show_progress: bool,
     /// Timer (seconds)
     timer: Option<u64>,
+    /// Seconds counted by `tick`, for the timer
+    elapsed: f32,
     /// Background color
     /// The color the builder named, if it named one - see #656.
     bg: Option<Color>,
@@ -200,11 +205,13 @@ impl Presentation {
             author: String::new(),
             slides: Vec::new(),
             current: 0,
+            started: false,
             transition: Transition::None,
             transition_progress: 1.0,
             show_numbers: true,
             show_progress: true,
             timer: None,
+            elapsed: 0.0,
             bg: None,
             accent: Color::CYAN,
             props: WidgetProps::new(),
@@ -236,6 +243,9 @@ impl Presentation {
     }
 
     /// Set transition effect
+    ///
+    /// It plays each time the slide changes, advanced by
+    /// [`tick`](Self::tick); the footer stays still.
     pub fn transition(mut self, transition: Transition) -> Self {
         self.transition = transition;
         self
@@ -266,14 +276,29 @@ impl Presentation {
     }
 
     /// Set timer (in seconds)
+    ///
+    /// The footer counts the time left down as `MM:SS`, advanced by
+    /// [`tick`](Self::tick).
     pub fn timer(mut self, seconds: u64) -> Self {
         self.timer = Some(seconds);
         self
     }
 
+    /// Whether the title slide is showing: always for an empty deck, and
+    /// before the first move when the presentation has a title
+    fn on_title_slide(&self) -> bool {
+        self.slides.is_empty() || !self.title.is_empty() && !self.started
+    }
+
     /// Go to next slide
+    ///
+    /// From the title slide this moves to slide 0.
     pub fn next_slide(&mut self) -> bool {
-        if self.current < self.slides.len().saturating_sub(1) {
+        if self.on_title_slide() && !self.slides.is_empty() {
+            self.started = true;
+            self.transition_progress = 0.0;
+            true
+        } else if self.current < self.slides.len().saturating_sub(1) {
             self.current += 1;
             self.transition_progress = 0.0;
             true
@@ -283,8 +308,15 @@ impl Presentation {
     }
 
     /// Go to previous slide
+    ///
+    /// From slide 0 of a presentation with a title this returns to the
+    /// title slide.
     pub fn prev(&mut self) -> bool {
-        if self.current > 0 {
+        if self.current == 0 && !self.on_title_slide() && !self.title.is_empty() {
+            self.started = false;
+            self.transition_progress = 0.0;
+            true
+        } else if self.current > 0 {
             self.current -= 1;
             self.transition_progress = 0.0;
             true
@@ -297,6 +329,7 @@ impl Presentation {
     pub fn goto(&mut self, index: usize) {
         if index < self.slides.len() {
             self.current = index;
+            self.started = true;
             self.transition_progress = 0.0;
         }
     }
@@ -331,32 +364,68 @@ impl Presentation {
         self.current_slide().map(|s| s.notes.as_str())
     }
 
-    /// Update transition animation
+    /// Advance the transition animation and the timer by `dt` seconds
     pub fn tick(&mut self, dt: f32) {
+        self.elapsed += dt.max(0.0);
         if self.transition_progress < 1.0 {
             self.transition_progress = (self.transition_progress + dt * 3.0).min(1.0);
         }
     }
 
-    /// Render title slide (slide 0 or empty presentation)
-    fn render_title_slide(&self, ctx: &mut RenderContext) {
+    /// How the current transition moves the slide, from its progress
+    fn slide_fx(&self, area: crate::layout::Rect, bg: Color) -> SlideFx {
+        let p = self.transition_progress.clamp(0.0, 1.0);
+        let rest = 1.0 - p;
+        let (w, h) = (area.width as f32, area.height as f32);
+        let mut fx = SlideFx {
+            dx: 0,
+            dy: 0,
+            alpha: 1.0,
+            bg,
+            zoom: None,
+            max_y: area.height.saturating_sub(1),
+        };
+        if p >= 1.0 {
+            return fx;
+        }
+        match self.transition {
+            Transition::None => {}
+            Transition::Fade => fx.alpha = p,
+            Transition::SlideLeft => fx.dx = -(rest * w).round() as i32,
+            Transition::SlideRight => fx.dx = (rest * w).round() as i32,
+            Transition::SlideUp => fx.dy = (rest * h).round() as i32,
+            Transition::ZoomIn => fx.zoom = Some((p * w / 2.0, p * h / 2.0)),
+        }
+        fx
+    }
+
+    /// Render the title slide (before slide 0, or for an empty presentation)
+    fn render_title_slide(&self, ctx: &mut RenderContext, bg: Color) {
         let area = ctx.area;
+        let fx = &self.slide_fx(area, bg);
         let center_y = area.height / 2;
 
         // Title
         let title_y = center_y.saturating_sub(2);
-        self.render_centered_text(ctx, &self.title, title_y, self.accent, Modifier::BOLD);
+        self.render_centered_text(ctx, fx, &self.title, title_y, self.accent, Modifier::BOLD);
 
         // Author
         if !self.author.is_empty() {
             let author_y = center_y + 1;
-            self.render_centered_text(ctx, &self.author, author_y, LIGHT_GRAY, Modifier::ITALIC);
+            self.render_centered_text(
+                ctx,
+                fx,
+                &self.author,
+                author_y,
+                LIGHT_GRAY,
+                Modifier::ITALIC,
+            );
         }
 
         // Press key hint
         let hint = "Press → or Space to start";
         let hint_y = area.height.saturating_sub(2);
-        self.render_centered_text(ctx, hint, hint_y, DISABLED_FG, Modifier::empty());
+        self.render_centered_text(ctx, fx, hint, hint_y, DISABLED_FG, Modifier::empty());
     }
 
     /// Render a content slide
@@ -369,11 +438,13 @@ impl Presentation {
             .bg
             .unwrap_or_else(|| self.bg.unwrap_or_else(|| ctx.css_background(SLIDE_BG)));
         ctx.fill_box_background(bg);
+        let fx = &self.slide_fx(area, bg);
 
         // Title (top center)
         let title_y = 2;
         self.render_centered_text(
             ctx,
+            fx,
             &slide.title,
             title_y,
             slide.title_color,
@@ -391,7 +462,7 @@ impl Presentation {
         for i in 0..sep_len {
             let mut cell = Cell::new('─');
             cell.fg = Some(self.accent);
-            ctx.set(sep_start as u16 + i as u16, sep_y, cell);
+            fx.put(ctx, sep_start as u16 + i as u16, sep_y, cell);
         }
 
         // Content. The slide title and the accent each say something one rule
@@ -412,11 +483,11 @@ impl Presentation {
                         }
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(content_fg);
-                        ctx.set(2 + j as u16, y, cell);
+                        fx.put(ctx, 2 + j as u16, y, cell);
                     }
                 }
                 SlideAlign::Center => {
-                    self.render_centered_text(ctx, line, y, content_fg, Modifier::empty());
+                    self.render_centered_text(ctx, fx, line, y, content_fg, Modifier::empty());
                 }
                 SlideAlign::Right => {
                     let line_len = line.chars().count();
@@ -424,7 +495,7 @@ impl Presentation {
                     for (j, ch) in line.chars().enumerate() {
                         let mut cell = Cell::new(ch);
                         cell.fg = Some(content_fg);
-                        ctx.set(start_x + j as u16, y, cell);
+                        fx.put(ctx, start_x + j as u16, y, cell);
                     }
                 }
             }
@@ -435,6 +506,7 @@ impl Presentation {
     fn render_centered_text(
         &self,
         ctx: &mut RenderContext,
+        fx: &SlideFx,
         text: &str,
         y: u16,
         fg: Color,
@@ -452,7 +524,7 @@ impl Presentation {
             let mut cell = Cell::new(ch);
             cell.fg = Some(fg);
             cell.modifier = modifier;
-            ctx.set(x, y, cell);
+            fx.put(ctx, x, y, cell);
         }
     }
 
@@ -460,6 +532,20 @@ impl Presentation {
     fn render_footer(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let footer_y = area.height.saturating_sub(1);
+
+        // Time left, centered; the progress bar and slide numbers draw over
+        // it when the footer is too narrow for all three
+        if let Some(total) = self.timer {
+            let left = (total as f32 - self.elapsed).max(0.0).ceil() as u64;
+            let text = format!("{:02}:{:02}", left / 60, left % 60);
+            let fg = if left == 0 { Color::RED } else { DISABLED_FG };
+            let start_x = area.width.saturating_sub(text.len() as u16) / 2;
+            for (i, ch) in text.chars().enumerate() {
+                let mut cell = Cell::new(ch);
+                cell.fg = Some(fg);
+                ctx.set(start_x + i as u16, footer_y, cell);
+            }
+        }
 
         // Slide numbers
         if self.show_numbers && !self.slides.is_empty() {
@@ -492,6 +578,51 @@ impl Presentation {
     }
 }
 
+/// Where and how a slide's cells land while a transition runs. The footer
+/// and the background are drawn outside it, so only the slide moves.
+struct SlideFx {
+    /// Column offset (slide transitions)
+    dx: i32,
+    /// Row offset (slide-up transition)
+    dy: i32,
+    /// How far text has faded in over the background, 0.0 to 1.0
+    alpha: f32,
+    /// The slide background text fades from
+    bg: Color,
+    /// Half width and half height of the centered window a zoom shows
+    zoom: Option<(f32, f32)>,
+    /// First row the slide may not draw on (the footer's)
+    max_y: u16,
+}
+
+impl SlideFx {
+    /// Draw a slide cell at `(x, y)` with the transition applied
+    fn put(&self, ctx: &mut RenderContext, x: u16, y: u16, mut cell: Cell) {
+        if self.alpha <= 0.0 {
+            return;
+        }
+        let x = i32::from(x) + self.dx;
+        let y = i32::from(y) + self.dy;
+        let area = ctx.area;
+        if x < 0 || y < 0 || x >= i32::from(area.width) || y >= i32::from(self.max_y) {
+            return;
+        }
+        if let Some((half_w, half_h)) = self.zoom {
+            let cx = (x as f32 + 0.5) - area.width as f32 / 2.0;
+            let cy = (y as f32 + 0.5) - area.height as f32 / 2.0;
+            if cx.abs() > half_w || cy.abs() > half_h {
+                return;
+            }
+        }
+        if self.alpha < 1.0 {
+            cell.fg = cell
+                .fg
+                .map(|fg| crate::utils::color::blend(fg, self.bg, self.alpha));
+        }
+        ctx.set(x as u16, y as u16, cell);
+    }
+}
+
 impl Default for Presentation {
     fn default() -> Self {
         Self::new()
@@ -511,8 +642,8 @@ impl View for Presentation {
         ctx.fill_box_background(bg);
 
         // Render current slide
-        if self.slides.is_empty() || self.current == 0 && !self.title.is_empty() {
-            self.render_title_slide(ctx);
+        if self.on_title_slide() {
+            self.render_title_slide(ctx, bg);
         } else if let Some(slide) = self.slides.get(self.current) {
             self.render_content_slide(ctx, slide);
         }

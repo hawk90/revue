@@ -30,7 +30,8 @@ pub struct Diagram {
     pub edges: Vec<DiagramEdge>,
     /// Colors
     pub colors: DiagramColors,
-    /// Direction (TD = top-down, LR = left-right)
+    /// Direction the flow runs in (TD = top-down, LR = left-right,
+    /// BT = bottom-up, RL = right-left)
     pub direction: DiagramDirection,
     /// Node positions (computed during layout)
     pub positions: HashMap<String, (u16, u16)>,
@@ -203,16 +204,33 @@ impl Diagram {
             return;
         }
 
-        // Simple grid layout
-        let rows = ((self.nodes.len() as f32).sqrt().ceil() as u16).max(1);
-        let cols = (self.nodes.len() as u16).div_ceil(rows).max(1);
+        // Simple grid layout. The flow runs along the direction's axis: nodes
+        // fill the grid in reading order, top-down by rows and left-right by
+        // columns, and the grid is mirrored for bottom-up and right-left.
+        let count = self.nodes.len() as u16;
+        let along = ((self.nodes.len() as f32).sqrt().ceil() as u16).max(1);
+        let across = count.div_ceil(along).max(1);
+        let horizontal = matches!(
+            self.direction,
+            DiagramDirection::LeftRight | DiagramDirection::RightLeft
+        );
+        let (rows, cols) = if horizontal {
+            (across, along)
+        } else {
+            (along, across)
+        };
 
         let cell_width = width / cols;
         let cell_height = height / rows;
 
         for (i, node) in self.nodes.iter().enumerate() {
-            let row = i as u16 / cols;
-            let col = i as u16 % cols;
+            let i = i as u16;
+            let (row, col) = match self.direction {
+                DiagramDirection::TopDown => (i / cols, i % cols),
+                DiagramDirection::BottomUp => (rows - 1 - i / cols, i % cols),
+                DiagramDirection::LeftRight => (i % rows, i / rows),
+                DiagramDirection::RightLeft => (i % rows, cols - 1 - i / rows),
+            };
 
             // A crowded area can leave a grid cell narrower or shorter than a
             // node; shrink the node or let it overhang instead of

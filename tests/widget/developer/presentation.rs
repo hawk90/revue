@@ -546,7 +546,6 @@ fn test_presentation_render_small_area() {
 }
 
 #[test]
-#[ignore = "BUG: with a title set, slide 0 is never shown (the title slide replaces it)"]
 fn test_presentation_title_slide_does_not_hide_first_slide() {
     let mut pres = Presentation::new()
         .title("Deck")
@@ -561,14 +560,49 @@ fn test_presentation_title_slide_does_not_hide_first_slide() {
 }
 
 #[test]
-#[ignore = "BUG: Presentation::timer() is stored but never displayed"]
+fn test_presentation_title_slide_comes_before_slide_zero() {
+    let mut pres = Presentation::new()
+        .title("Deck")
+        .slide(slide("Intro"))
+        .slide(slide("Next"));
+    let hint = "Press → or Space to start";
+    assert!(screen(&render(&pres)).contains(hint));
+
+    // Leaving the title slide shows slide 0
+    assert!(pres.next_slide());
+    assert_eq!(pres.current_index(), 0);
+    let text = screen(&render(&pres));
+    assert!(text.contains("Intro"));
+    assert!(!text.contains(hint));
+
+    assert!(pres.next_slide());
+    assert_eq!(pres.current_index(), 1);
+
+    // Going back from slide 0 returns to the title slide, and no further
+    assert!(pres.prev());
+    assert!(pres.prev());
+    assert!(screen(&render(&pres)).contains(hint));
+    assert!(!pres.prev());
+}
+
+#[test]
 fn test_presentation_timer_is_shown() {
     let pres = || Presentation::new().slide(slide("A"));
     assert_ne!(screen(&render(&pres().timer(60))), screen(&render(&pres())));
 }
 
 #[test]
-#[ignore = "BUG: Presentation transitions have no visible effect (transition progress is never rendered)"]
+fn test_presentation_timer_counts_down_with_tick() {
+    let mut pres = Presentation::new().slide(slide("A")).timer(90);
+    assert!(row(&render(&pres), 23).contains("01:30"));
+    pres.tick(31.0);
+    assert!(row(&render(&pres), 23).contains("00:59"));
+    // Stops at zero
+    pres.tick(120.0);
+    assert!(row(&render(&pres), 23).contains("00:00"));
+}
+
+#[test]
 fn test_presentation_transition_is_rendered() {
     let mut pres = Presentation::new()
         .slide(slide("A").line("first"))
@@ -579,4 +613,68 @@ fn test_presentation_transition_is_rendered() {
     pres.tick(1.0);
     let done = screen(&render(&pres));
     assert_ne!(mid, done);
+}
+
+/// Render the second slide of a two-slide deck partway through `transition`
+/// and once it has finished.
+fn transition_frames(transition: Transition, dt: f32) -> (Buffer, Buffer) {
+    let mut pres = Presentation::new()
+        .slide(slide("A").line("first"))
+        .slide(slide("Second").line("second line"))
+        .transition(transition);
+    pres.next_slide();
+    pres.tick(dt);
+    let mid = render(&pres);
+    pres.tick(1.0);
+    (mid, render(&pres))
+}
+
+#[test]
+fn test_presentation_transitions_settle_on_the_slide() {
+    let still = {
+        let mut pres = Presentation::new()
+            .slide(slide("A").line("first"))
+            .slide(slide("Second").line("second line"));
+        pres.next_slide();
+        screen(&render(&pres))
+    };
+    for transition in [
+        Transition::Fade,
+        Transition::SlideLeft,
+        Transition::SlideRight,
+        Transition::SlideUp,
+        Transition::ZoomIn,
+    ] {
+        let (mid, done) = transition_frames(transition, 0.1);
+        // A fade changes colors only; the fade test checks those
+        if transition != Transition::Fade {
+            assert_ne!(screen(&mid), still, "{transition:?} mid-way");
+        }
+        assert_eq!(screen(&done), still, "{transition:?} finished");
+        // The footer does not move
+        assert_eq!(row(&mid, 23), row(&done, 23), "{transition:?} footer");
+    }
+}
+
+#[test]
+fn test_presentation_fade_blends_text_toward_the_background() {
+    let (mid, done) = transition_frames(Transition::Fade, 0.1);
+    // Partway through, the line is drawn in a color between the body color
+    // and the background
+    let faded = fg_of(&mid, 6, 's').expect("faded text is drawn");
+    assert_ne!(Some(faded), fg_of(&done, 6, 's'));
+    assert_ne!(faded, Color::rgb(20, 20, 30));
+}
+
+#[test]
+fn test_presentation_slide_transitions_move_the_slide() {
+    let col = |b: &Buffer| row(b, 6).find("second line");
+    // Most of the way there, so the line is still on screen
+    let (mid, done) = transition_frames(Transition::SlideRight, 0.3);
+    assert!(col(&mid) > col(&done), "slides in from the right");
+    let (mid, done) = transition_frames(Transition::SlideLeft, 0.3);
+    assert!(col(&mid) < col(&done), "slides in from the left");
+    let (mid, _) = transition_frames(Transition::SlideUp, 0.3);
+    assert!(!row(&mid, 6).contains("second line"), "comes up from below");
+    assert!(screen(&mid).contains("Second"));
 }

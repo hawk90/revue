@@ -28,6 +28,7 @@
 
 use super::super::border::BorderType;
 use crate::event::Key;
+use crate::layout::Rect;
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
 use crate::utils::unicode::char_width;
@@ -436,22 +437,27 @@ impl View for Card {
             ctx.fill_box_background(bg);
         }
 
-        // Draw shadow for elevated variant (inside area bounds)
-        if self.variant == CardVariant::Elevated && area.width > 3 && area.height > 2 {
+        // Draw shadow for elevated variant (inside area bounds). The shadow
+        // takes the last column and row and the card is drawn in what is
+        // left, so its border does not paint over the shadow.
+        let area = if self.variant == CardVariant::Elevated && area.width > 4 && area.height > 3 {
             let shadow_color = Color::rgb(20, 20, 20);
-            // Right shadow (last column, below top-right corner)
+            // Right shadow (last column, below the card's top row)
             for y in 1..area.height {
                 let mut cell = Cell::new('▌');
                 cell.fg = Some(shadow_color);
                 ctx.set(area.width - 1, y, cell);
             }
-            // Bottom shadow (last row, right of bottom-left corner)
+            // Bottom shadow (last row, right of the card's left edge)
             for x in 1..area.width {
                 let mut cell = Cell::new('▀');
                 cell.fg = Some(shadow_color);
                 ctx.set(x, area.height - 1, cell);
             }
-        }
+            Rect::new(area.x, area.y, area.width - 1, area.height - 1)
+        } else {
+            area
+        };
 
         // Draw border
         if has_border {

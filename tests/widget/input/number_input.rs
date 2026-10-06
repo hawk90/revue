@@ -159,11 +159,23 @@ fn test_number_input_show_buttons_builder() {
 }
 
 #[test]
-#[ignore = "BUG: NumberInput::width() is stored but render() never reads it; the field always fills the area"]
 fn test_number_input_width_builder() {
     // A 10-wide field keeps its buttons inside its own 10 columns.
     let input = NumberInput::new().width(10);
     assert_eq!(render_row(&input, 30).1.trim_end(), "0      -+");
+    // Nothing is drawn past the field: no background, no text.
+    let (buffer, _) = render_row(&input, 30);
+    assert!((10..30).all(|x| buffer.get(x, 0).unwrap().bg.is_none()));
+    // Prefix and suffix are clipped to the field too.
+    let input = NumberInput::new()
+        .width(6)
+        .show_buttons(false)
+        .value(1.0)
+        .suffix(" units");
+    assert_eq!(render_row(&input, 30).1.trim_end(), "1 unit");
+    // A field wider than the area is clipped to the area.
+    let input = NumberInput::new().width(20);
+    assert_eq!(render_row(&input, 10).1, "0      -+ ");
     // Widths below 5 are raised to 5.
     let input = NumberInput::new().width(3).show_buttons(false);
     let narrow = NumberInput::new().width(5).show_buttons(false);

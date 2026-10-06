@@ -23,7 +23,15 @@ impl View for HttpClient {
         // how a request is read. The URL is the base a `color` rule reaches.
         let url_fg = ctx.css_color(Color::WHITE);
 
-        // URL bar (row 0-1)
+        // URL bar (row 0-1): the whole bar sits on url_bg, the method badge
+        // on method_bg.
+        let url_bg = self.colors.url_bg;
+        for bx in 0..area.width {
+            let mut cell = Cell::new(' ');
+            cell.bg = Some(url_bg);
+            ctx.set(bx, 0, cell);
+        }
+
         // Method badge
         let method = self.request.method;
         let method_name = method.name();
@@ -35,6 +43,7 @@ impl View for HttpClient {
             }
             let mut cell = Cell::new(ch);
             cell.fg = Some(method.color());
+            cell.bg = Some(self.colors.method_bg);
             cell.modifier = Modifier::BOLD;
             ctx.set(x, 0, cell);
             x += cw;
@@ -42,22 +51,24 @@ impl View for HttpClient {
 
         // URL
         let url_start = x + 1;
-        ctx.draw_text_clipped(
+        ctx.draw_text_clipped_bg(
             url_start,
             0,
             self.request.url(),
             url_fg,
+            url_bg,
             area.width.saturating_sub(url_start),
         );
 
         // Send button hint
         let hint = "[Enter: Send]";
         let hint_start = area.width.saturating_sub(hint.len() as u16);
-        ctx.draw_text_clipped(
+        ctx.draw_text_clipped_bg(
             hint_start,
             0,
             hint,
             DISABLED_FG,
+            url_bg,
             area.width.saturating_sub(hint_start),
         );
 

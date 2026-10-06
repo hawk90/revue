@@ -11,19 +11,21 @@ impl RangePicker {
     // Builder Methods
     // =========================================================================
 
-    /// Set start date
+    /// Set start date (clamped to `min_date`/`max_date`)
     pub fn start_date(mut self, date: Date) -> Self {
         self.start.date = date;
         self.start_cursor_day = date.day;
         self.active_preset = Some(PresetRange::Custom);
+        self.enforce_limits();
         self
     }
 
-    /// Set end date
+    /// Set end date (clamped to `min_date`/`max_date`)
     pub fn end_date(mut self, date: Date) -> Self {
         self.end.date = date;
         self.end_cursor_day = date.day;
         self.active_preset = Some(PresetRange::Custom);
+        self.enforce_limits();
         self.swap_if_needed();
         self
     }
@@ -40,13 +42,14 @@ impl RangePicker {
         self
     }
 
-    /// Set date range
+    /// Set date range (clamped to `min_date`/`max_date`)
     pub fn range(mut self, start: Date, end: Date) -> Self {
         self.start.date = start;
         self.end.date = end;
         self.start_cursor_day = start.day;
         self.end_cursor_day = end.day;
         self.active_preset = Some(PresetRange::Custom);
+        self.enforce_limits();
         self.swap_if_needed();
         self
     }
@@ -76,14 +79,24 @@ impl RangePicker {
     }
 
     /// Set minimum date constraint
+    ///
+    /// Days before `date` are drawn dimmed and cannot be selected: the
+    /// calendar cursor stops at `date`, and a start or end date set earlier
+    /// (by a builder, setter or preset) is moved up to it.
     pub fn min_date(mut self, date: Date) -> Self {
         self.min_date = Some(date);
+        self.enforce_limits();
         self
     }
 
     /// Set maximum date constraint
+    ///
+    /// Days after `date` are drawn dimmed and cannot be selected: the
+    /// calendar cursor stops at `date`, and a start or end date set later
+    /// (by a builder, setter or preset) is moved back to it.
     pub fn max_date(mut self, date: Date) -> Self {
         self.max_date = Some(date);
+        self.enforce_limits();
         self
     }
 
@@ -136,23 +149,25 @@ impl RangePicker {
     // Setters
     // =========================================================================
 
-    /// Set the start date
+    /// Set the start date (clamped to `min_date`/`max_date`)
     pub fn set_start(&mut self, date: Date) {
         self.start.date = date;
         self.start_cursor_day = date.day;
         self.active_preset = Some(PresetRange::Custom);
+        self.enforce_limits();
         self.swap_if_needed();
     }
 
-    /// Set the end date
+    /// Set the end date (clamped to `min_date`/`max_date`)
     pub fn set_end(&mut self, date: Date) {
         self.end.date = date;
         self.end_cursor_day = date.day;
         self.active_preset = Some(PresetRange::Custom);
+        self.enforce_limits();
         self.swap_if_needed();
     }
 
-    /// Apply a preset range
+    /// Apply a preset range (clamped to `min_date`/`max_date`)
     pub fn apply_preset(&mut self, preset: PresetRange) {
         let today = Date::today();
         let (start, end) = preset.calculate(today);
@@ -161,6 +176,26 @@ impl RangePicker {
         self.start_cursor_day = start.day;
         self.end_cursor_day = end.day;
         self.active_preset = Some(preset);
+        self.enforce_limits();
+    }
+
+    /// Whether `date` lies within `min_date`/`max_date` (inclusive)
+    pub(crate) fn is_date_allowed(&self, date: &Date) -> bool {
+        self.min_date.is_none_or(|min| *date >= min) && self.max_date.is_none_or(|max| *date <= max)
+    }
+
+    /// Move the start and end dates into `min_date`/`max_date`
+    pub(crate) fn enforce_limits(&mut self) {
+        let start = clamp_date(self.start.date, self.min_date, self.max_date);
+        if start != self.start.date {
+            self.start.date = start;
+            self.start_cursor_day = start.day;
+        }
+        let end = clamp_date(self.end.date, self.min_date, self.max_date);
+        if end != self.end.date {
+            self.end.date = end;
+            self.end_cursor_day = end.day;
+        }
     }
 
     /// Ensure end >= start, swap if needed
@@ -175,6 +210,12 @@ impl RangePicker {
 // =============================================================================
 // Helper functions
 // =============================================================================
+
+/// Clamp `date` into `[min, max]`; when `min > max`, `max` wins.
+pub(crate) fn clamp_date(date: Date, min: Option<Date>, max: Option<Date>) -> Date {
+    let date = min.map_or(date, |min| date.max(min));
+    max.map_or(date, |max| date.min(max))
+}
 
 /// Helper function to get month name
 pub(crate) fn month_name(month: u32) -> &'static str {
