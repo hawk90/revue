@@ -796,9 +796,10 @@ keywords = ["tui", "revue", "plugin"]
 categories = ["command-line-interface"]
 
 [dependencies]
-revue = "3.0"
+revue = "{}"
 "#,
-        plugin_name
+        plugin_name,
+        templates::REVUE_VERSION
     );
     fs::write(project_path.join("Cargo.toml"), cargo_toml)?;
     pb.inc(1);
