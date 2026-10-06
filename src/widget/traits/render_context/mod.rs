@@ -169,8 +169,11 @@ impl<'a> RenderContext<'a> {
         self.render_child_with_overflow(child, area, false, clip);
     }
 
-    /// [`render_child`](Self::render_child), with the overflow and clip handling
-    /// that [`child_ctx_with_overflow`](Self::child_ctx_with_overflow) applies.
+    /// [`render_child`](Self::render_child), with overflow and clip handling.
+    ///
+    /// With `overflow_hidden`, the child is clipped to this widget's box
+    /// (intersected with `parent_clip`, if any); otherwise it inherits
+    /// `parent_clip`.
     pub fn render_child_with_overflow(
         &mut self,
         child: &dyn View,

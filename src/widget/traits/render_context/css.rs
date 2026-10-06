@@ -267,32 +267,6 @@ impl RenderContext<'_> {
         ctx
     }
 
-    /// Create a child RenderContext that inherits clipping from overflow style.
-    ///
-    /// **The clip has to be the container's box, not the child's.** `set` and
-    /// friends already refuse to paint outside the area they were handed, so
-    /// clipping a child to its own area is a no-op - which is why
-    /// `overflow: hidden` did nothing until the region started coming from the
-    /// container. A child only escapes when it is *given* an area larger than
-    /// its container, which is what `overflow` exists to contain.
-    #[deprecated(
-        since = "2.77.0",
-        note = "clips the child to its own area, which never clips anything;                 containers should call `render_child_with_overflow`"
-    )]
-    pub fn child_ctx_with_overflow<'b>(
-        buffer: &'b mut crate::render::Buffer,
-        area: crate::layout::Rect,
-        overflow_hidden: bool,
-        parent_clip: Option<crate::layout::Rect>,
-    ) -> RenderContext<'b> {
-        let clip = if overflow_hidden {
-            Some(area)
-        } else {
-            parent_clip
-        };
-        Self::child_ctx_clipped(buffer, area, clip)
-    }
-
     // NOTE: Color resolution is handled by WidgetState::resolve_fg/resolve_bg/resolve_colors_interactive
     // Use self.state.resolve_colors_interactive(ctx.style, default_fg, default_bg) for widget color resolution
 }
