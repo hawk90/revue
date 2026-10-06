@@ -8,6 +8,12 @@ use crate::widget::traits::render_context::edit_line::{col_of, cursor_width, scr
 use crate::widget::traits::{RenderContext, View};
 
 impl View for Input {
+    /// One row, as wide as it is offered: the field scrolls its text, so
+    /// its width is the layout's to choose.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        Some((max_width, 1.min(max_height)))
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width == 0 || area.height == 0 {

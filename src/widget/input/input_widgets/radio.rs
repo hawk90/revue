@@ -290,20 +290,17 @@ impl RadioGroup {
         ctx.set(current_x, y, Cell::new(' '));
         current_x += 1;
 
-        // Render label
+        // Render label, by terminal columns
         if let Some(option) = self.options.get(index) {
-            for ch in option.chars() {
-                if current_x >= area.width {
-                    break;
-                }
+            let bold = is_selected && self.focused && !self.disabled;
+            current_x += ctx.put_str_with(current_x, y, option, area.width, |ch| {
                 let mut cell = Cell::new(ch);
                 cell.fg = Some(label_fg);
-                if is_selected && self.focused && !self.disabled {
+                if bold {
                     cell.modifier = crate::render::Modifier::BOLD;
                 }
-                ctx.set(current_x, y, cell);
-                current_x += 1;
-            }
+                cell
+            });
         }
 
         current_x - x
@@ -316,8 +313,40 @@ impl Default for RadioGroup {
     }
 }
 
+impl RadioGroup {
+    /// Columns one option takes: the indicator, a space and its label.
+    fn option_width(&self, option: &str) -> usize {
+        let indicator = if self.style.has_brackets() { 3 } else { 1 };
+        indicator + 1 + crate::utils::unicode::display_width(option)
+    }
+}
+
 impl View for RadioGroup {
     crate::impl_view_meta!("RadioGroup", focusable, disabled: direct);
+
+    /// Vertical: one row per option (plus the gaps), as wide as the widest.
+    /// Horizontal: one row, the options side by side with their spacing.
+    /// Focus puts the two-column `> ` marker in front, as `render` does.
+    fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
+        if self.options.is_empty() {
+            return Some((0, 0));
+        }
+        let focus = if self.focused && !self.disabled { 2 } else { 0 };
+        let n = self.options.len();
+        let gap = self.gap as usize;
+        let (w, h) = match self.layout {
+            RadioLayout::Vertical => {
+                let widest = self.options.iter().map(|o| self.option_width(o)).max();
+                (focus + widest.unwrap_or(0), n + gap * (n - 1))
+            }
+            RadioLayout::Horizontal => {
+                let options: usize = self.options.iter().map(|o| self.option_width(o)).sum();
+                (focus + options + (2 + gap) * (n - 1), 1)
+            }
+        };
+        let clamp = |v: usize, max: u16| v.min(max as usize) as u16;
+        Some((clamp(w, max_width), clamp(h, max_height)))
+    }
 
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;

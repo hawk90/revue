@@ -6,6 +6,7 @@
 
 use revue::prelude::*;
 use revue::testing::PipelineHarness;
+use revue::widget::Switch;
 
 /// A view that fills whatever it is given and does not measure - the default
 /// for every widget that has not learned to answer.
@@ -118,4 +119,44 @@ fn measure_answers() {
     assert_eq!(three_lines().measure(80, 24), Some((1, 3)));
     assert_eq!(vstack().child(Fill("x")).measure(80, 24), None);
     assert_eq!(Fill("x").measure(80, 24), None);
+}
+
+// ==================== Widgets that measure ====================
+//
+// Before these widgets answered `measure`, each one claimed all the space the
+// measured children left, pushing the next sibling to the far edge.
+
+#[test]
+fn a_switch_and_its_label_sit_side_by_side() {
+    let view = hstack()
+        .content_sized(true)
+        .child(Switch::new())
+        .child(Text::new("Wi-Fi"));
+    assert_eq!(rows(&view, 1)[0], "[●━━━]Wi-Fi");
+}
+
+#[test]
+fn a_form_column_packs_its_controls() {
+    let view = vstack()
+        .content_sized(true)
+        .child(Text::new("Name"))
+        .child(Input::new().value("Ada"))
+        .child(Checkbox::new("Subscribe"))
+        .child(Button::new("Send"));
+    let screen = rows(&view, 10);
+    assert_eq!(screen[0], "Name");
+    assert!(screen[1].starts_with("Ada"), "{screen:?}");
+    assert_eq!(screen[2], "[ ] Subscribe");
+    assert!(screen[3].contains("Send"), "{screen:?}");
+    assert!(screen[4..].iter().all(|r| r.is_empty()), "{screen:?}");
+}
+
+#[test]
+fn buttons_in_a_row_sit_next_to_each_other() {
+    let view = hstack()
+        .content_sized(true)
+        .gap(1)
+        .child(Button::new("OK"))
+        .child(Button::new("Cancel"));
+    assert_eq!(rows(&view, 1)[0], "  OK     Cancel");
 }

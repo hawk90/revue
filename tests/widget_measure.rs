@@ -14,7 +14,10 @@ use revue::layout::Rect;
 use revue::prelude::*;
 use revue::render::{Buffer, Cell};
 use revue::widget::traits::RenderContext;
-use revue::widget::{Badge, Button, Tag};
+use revue::widget::{
+    Badge, Button, Checkbox, CheckboxStyle, Input, RadioGroup, RadioLayout, RadioStyle, Rating,
+    RatingSize, Slider, Switch, SwitchStyle, Tag,
+};
 
 const W: u16 = 60;
 const H: u16 = 20;
@@ -89,6 +92,21 @@ fn assert_measures_paint<V: View>(label: &str, view: &V) {
     assert_clamped(label, view);
 }
 
+/// A widget that stretches along the row: the full width, `rows` tall.
+fn assert_stretches<V: View>(label: &str, view: &V, rows: u16) {
+    assert_eq!(view.measure(W, H), Some((W, rows)), "{label}");
+    assert_eq!(view.measure(W / 2, H), Some((W / 2, rows)), "{label}");
+    let big = render_into(view, W, H);
+    assert_eq!(
+        painted_box(&big, W, H).1,
+        rows,
+        "{label}: painted rows disagree with measure:\n{}",
+        screen(&big, W, H)
+    );
+    assert_nothing_clipped(label, view, (W, rows));
+    assert_clamped(label, view);
+}
+
 /// Never more than offered.
 fn assert_clamped<V: View>(label: &str, view: &V) {
     for (mw, mh) in [(0, 0), (1, 1), (3, 0), (0, 3), (2, 2)] {
@@ -152,4 +170,101 @@ fn wide_labels_take_two_columns_each() {
     assert_eq!(&tag[..6], [' ', '한', '\0', '글', '\0', ' ']);
     let button = row(&Button::new("Save").icon('💾'));
     assert_eq!(&button[2..6], ['💾', '\0', ' ', 'S']);
+}
+
+// ==================== Input, Checkbox, Switch, Radio, Rating, Slider ====================
+
+#[test]
+fn input_takes_one_row_of_whatever_width_it_is_offered() {
+    assert_stretches("placeholder", &Input::new().placeholder("Search..."), 1);
+    assert_stretches("value", &Input::new().value("hello"), 1);
+}
+
+#[test]
+fn checkbox_measures_its_box_and_label() {
+    assert_measures_paint("square", &Checkbox::new("Remember me"));
+    assert_measures_paint("checked", &Checkbox::new("On").checked(true));
+    assert_measures_paint("focused", &Checkbox::new("Focus").focused(true));
+    assert_measures_paint(
+        "unicode",
+        &Checkbox::new("Unicode").style(CheckboxStyle::Unicode),
+    );
+    assert_measures_paint("wide", &Checkbox::new("동의"));
+    assert_eq!(Checkbox::new("abc").measure(W, H), Some((7, 1)));
+    // Focus adds the `> ` marker in front.
+    assert_eq!(
+        Checkbox::new("abc").focused(true).measure(W, H),
+        Some((9, 1))
+    );
+}
+
+#[test]
+fn switch_measures_track_label_and_focus_bracket() {
+    assert_measures_paint("bare", &Switch::new());
+    assert_measures_paint("on", &Switch::new().on(true));
+    assert_measures_paint("label left", &Switch::new().label("Wi-Fi"));
+    assert_measures_paint("label right", &Switch::new().label("Wi-Fi").label_right());
+    assert_measures_paint("focused", &Switch::new().focused(true));
+    assert_measures_paint("focused label", &Switch::new().label("Dark").focused(true));
+    assert_measures_paint(
+        "focused label right",
+        &Switch::new().label("Dark").label_right().focused(true),
+    );
+    assert_measures_paint("text", &Switch::new().style(SwitchStyle::Text));
+    assert_measures_paint("ios", &Switch::new().style(SwitchStyle::IOS).width(8));
+    assert_measures_paint("block", &Switch::new().style(SwitchStyle::Block));
+    assert_measures_paint("material", &Switch::new().style(SwitchStyle::Material));
+    assert_measures_paint("wide label", &Switch::new().label("알림"));
+    assert_eq!(Switch::new().measure(W, H), Some((6, 1)));
+    assert_eq!(Switch::new().label("Wi-Fi").measure(W, H), Some((12, 1)));
+}
+
+#[test]
+fn radio_group_measures_its_options() {
+    let options = ["Small", "Medium", "Large"];
+    assert_measures_paint("vertical", &RadioGroup::new(options));
+    assert_measures_paint("vertical gap", &RadioGroup::new(options).gap(1));
+    assert_measures_paint(
+        "horizontal",
+        &RadioGroup::new(options).layout(RadioLayout::Horizontal),
+    );
+    assert_measures_paint("focused", &RadioGroup::new(options).focused(true));
+    assert_measures_paint(
+        "unicode",
+        &RadioGroup::new(options).style(RadioStyle::Unicode),
+    );
+    assert_measures_paint("wide", &RadioGroup::new(["작게", "크게"]));
+    assert_eq!(RadioGroup::new(options).measure(W, H), Some((10, 3)));
+    assert_eq!(
+        RadioGroup::new(Vec::<String>::new()).measure(W, H),
+        Some((0, 0))
+    );
+}
+
+#[test]
+fn rating_measures_label_stars_and_value() {
+    assert_measures_paint("plain", &Rating::new().value(3.0));
+    assert_measures_paint("label", &Rating::new().value(2.0).label("Quality"));
+    assert_measures_paint("value", &Rating::new().value(4.5).show_value(true));
+    assert_measures_paint("large", &Rating::new().size(RatingSize::Large));
+    assert_measures_paint("ten", &Rating::new().max_value(10).show_value(true));
+    // Five stars two apart, the last with no trailing gap.
+    assert_eq!(Rating::new().measure(W, H), Some((9, 1)));
+}
+
+#[test]
+fn slider_measures_its_fixed_track() {
+    assert_measures_paint("plain", &Slider::new().value(30.0));
+    assert_measures_paint("label", &Slider::new().label("Vol").value(50.0));
+    assert_measures_paint("value", &Slider::new().show_value(true).value(42.0));
+    assert_measures_paint("short", &Slider::new().length(8));
+    assert_measures_paint("ticks", &Slider::new().ticks(5));
+    assert_measures_paint("vertical", &Slider::new().vertical().length(6));
+    assert_measures_paint(
+        "vertical value",
+        &Slider::new().vertical().length(6).show_value(true),
+    );
+    assert_eq!(Slider::new().show_value(false).measure(W, H), Some((20, 1)));
+    // The value, after a space: "0".
+    assert_eq!(Slider::new().measure(W, H), Some((22, 1)));
 }
