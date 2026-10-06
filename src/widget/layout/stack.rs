@@ -9,15 +9,30 @@ use crate::{impl_props_builders, impl_styled_view};
 /// Size specification for a stack child
 #[derive(Clone, Copy, Debug)]
 enum ChildSize {
-    /// Auto-sized (equal distribution of remaining space)
+    /// Unsized: its content size when the stack is content-sized and the
+    /// child measures without filling the axis, else an equal share of the
+    /// remaining space
     Auto,
     /// Fixed pixel size
     Fixed(u16),
+    /// The size a content-sized child measured (its CSS box folded in).
+    /// Like `Fixed`, except that when the measured and fixed children
+    /// together overflow the stack, the measured ones shrink to fit - see
+    /// [`Stack::calculate_sizes`]
+    Content(u16),
     /// Flex grow factor (proportional distribution of remaining space)
     Flex(f32),
 }
 
 /// A stack container for layout
+///
+/// Children are laid end to end along the stack's axis - top to bottom in a
+/// [`vstack`], left to right in an [`hstack`]. A child added with
+/// [`child`](Self::child) takes the size of its content when it can measure
+/// itself (see [`content_sized`](Self::content_sized), on by default) and
+/// otherwise shares the space left over with the other children that fill.
+/// [`child_sized`](Self::child_sized) and [`child_flex`](Self::child_flex)
+/// say exactly how much a child gets.
 pub struct Stack {
     children: Vec<Box<dyn View>>,
     direction: Direction,
@@ -60,7 +75,7 @@ impl Stack {
             min_height: 0,
             max_width: 0,
             max_height: 0,
-            content_sized: false,
+            content_sized: true,
             props: WidgetProps::new(),
         }
     }
@@ -87,19 +102,30 @@ impl Stack {
     /// Give each child added with [`child`](Self::child) the size of its
     /// content instead of an equal share of the space.
     ///
-    /// **Off by default** in 2.x; 3.0 turns it on. With it off, every unsized
-    /// child gets an equal share of what the sized ones left, so
-    /// `vstack().child(Text::new("a")).child(Text::new("b"))` puts `b` halfway
-    /// down the screen.
+    /// **On by default** since 3.0. A child whose [`View::measure`] answers
+    /// gets that size along the stack's axis, and only the children that fill
+    /// share what is left - equally. A child fills when `measure` returns
+    /// `None` or when [`View::fills`] covers the stack's axis: a text field in
+    /// a row takes the width its siblings leave, while in a column it is still
+    /// the one row it measures. `child_sized` and `child_flex` still win. The
+    /// cross axis is unchanged: every child gets the stack's full width (in a
+    /// column) or height (in a row).
     ///
-    /// With it on, a child whose [`View::measure`] answers gets that size
-    /// along the stack's axis, and only the children that fill share what is
-    /// left - equally, as before. A child fills when `measure` returns `None`
-    /// or when [`View::fills`] covers the stack's axis: a text field in a row
-    /// takes the width its siblings leave, while in a column it is still the
-    /// one row it measures. `child_sized`
-    /// and `child_flex` still win. The cross axis is unchanged: every child
-    /// gets the stack's full width (in a column) or height (in a row).
+    /// `content_sized(false)` restores the 2.x rule: every unsized child gets
+    /// an equal share of what the sized ones left, so
+    /// `vstack().content_sized(false).child(Text::new("a")).child(Text::new("b"))`
+    /// puts `b` halfway down the screen.
+    ///
+    /// A layout whose body is itself content-sized (text, a bordered box of
+    /// text) and should still take the rest of the screen adds the body with
+    /// [`child_flex`](Self::child_flex):
+    ///
+    /// ```rust,ignore
+    /// vstack()
+    ///     .child(Text::new("header"))
+    ///     .child_flex(Border::single().child(Text::new("body")), 1.0)
+    ///     .child(Text::new("footer"))
+    /// ```
     ///
     /// Under [`css_layout`](crate::core::app::AppBuilder::css_layout), each
     /// such child's CSS box counts along the stack's axis: an explicit
@@ -242,7 +268,16 @@ impl View for Stack {
         match self.direction {
             Direction::Row => {
                 let available_width = area.width.saturating_sub(total_gap);
-                let sizes = self.effective_sizes(available_width, area.height, &styles);
+                let mut sizes = self.effective_sizes(available_width, area.height, &styles);
+                if wrap {
+                    // A wrapping row moves what does not fit to the next row
+                    // instead of shrinking it.
+                    for size in &mut sizes {
+                        if let ChildSize::Content(n) = *size {
+                            *size = ChildSize::Fixed(n);
+                        }
+                    }
+                }
                 let widths = Self::calculate_sizes(&sizes, available_width, n);
 
                 let mut x: u16 = 0;
@@ -327,7 +362,11 @@ impl View for Stack {
                     *n,
                     child.measure(*n, max_height).map_or(max_height, |m| m.1),
                 ),
-                (ChildSize::Auto, _) => child.measure(max_width, max_height)?,
+                // `child_sizes` holds what the builder recorded; `Content` is
+                // only ever produced while laying out.
+                (ChildSize::Auto | ChildSize::Content(_), _) => {
+                    child.measure(max_width, max_height)?
+                }
             };
             let (along, across) = match self.direction {
                 Direction::Column => (h, w),
@@ -385,8 +424,9 @@ impl Stack {
     ///
     /// Without [`content_sized`](Self::content_sized) that is what the builder
     /// recorded. With it, an unsized child that can measure itself is laid out
-    /// as if it had been added with `child_sized` at its measured size - its
-    /// CSS box folded in, see [`content_size`](Self::content_size).
+    /// at its measured size (`ChildSize::Content`: like `child_sized`, except
+    /// that it may shrink when the stack overflows) - its CSS box folded in,
+    /// see [`content_size`](Self::content_size).
     ///
     /// A child whose computed style (see [`child_styles`](Self::child_styles))
     /// is `display: none` takes no space at all.
@@ -461,13 +501,13 @@ impl Stack {
             }
             let (w, h) = self.oriented(main, cross);
             return match child.measure(w, h) {
-                Some((w, h)) => ChildSize::Fixed(self.oriented(w, h).0),
+                Some((w, h)) => ChildSize::Content(self.oriented(w, h).0),
                 None => ChildSize::Auto,
             };
         };
 
         let (sizing, margin) = (&style.sizing, &style.spacing.margin);
-        let (size, min, max, before, after) = match self.direction {
+        let (size_spec, min, max, before, after) = match self.direction {
             Direction::Column => (
                 sizing.height,
                 sizing.min_height,
@@ -483,7 +523,7 @@ impl Stack {
                 margin.right,
             ),
         };
-        if [size, min, max]
+        if [size_spec, min, max]
             .iter()
             .any(|s| matches!(s, Size::Percent(_)))
         {
@@ -495,7 +535,7 @@ impl Stack {
         };
         let margins = before.saturating_add(after);
 
-        let size = match fixed(size) {
+        let size = match fixed(size_spec) {
             Some(size) => size,
             // No explicit size: a child that fills the axis shares what is
             // left, its margins and bounds applying to its share.
@@ -513,9 +553,17 @@ impl Stack {
                 }
             }
         };
-        let size = fixed(max).map_or(size, |m| size.min(m));
-        let size = fixed(min).map_or(size, |m| size.max(m));
-        ChildSize::Fixed(size.saturating_add(margins))
+        let slot = fixed(max).map_or(size, |m| size.min(m));
+        let slot = fixed(min).map_or(slot, |m| slot.max(m));
+        let slot = slot.saturating_add(margins);
+        // An explicit size or minimum is put back by the box model whatever
+        // slot the child gets, so shrinking that slot would only make the
+        // next sibling start inside it. Only a measured size may shrink.
+        if fixed(size_spec).is_some() || fixed(min).is_some() {
+            ChildSize::Fixed(slot)
+        } else {
+            ChildSize::Content(slot)
+        }
     }
 
     /// Whether `child` takes whatever it is offered along this stack's axis
@@ -571,6 +619,11 @@ impl Stack {
     ///
     /// Strategy:
     /// - Fixed children get their exact size
+    /// - Content (measured) children get their measured size; if together
+    ///   with the fixed children they overflow, they shrink to fit what the
+    ///   fixed children leave, each in proportion to its size - so a body
+    ///   one row too tall loses that row instead of pushing the footer off
+    ///   the screen
     /// - Flex children share remaining space proportionally by grow factor
     /// - Auto children share remaining space equally (after flex allocation)
     fn calculate_sizes(child_sizes: &[ChildSize], available: u16, n: usize) -> Vec<u16> {
@@ -582,16 +635,17 @@ impl Stack {
         let mut auto_count: usize = 0;
         let mut total_grow: f32 = 0.0;
         let mut fixed_total = 0u16;
+        let mut content_total = 0u32;
 
         for cs in child_sizes {
             match cs {
                 ChildSize::Fixed(size) => fixed_total = fixed_total.saturating_add(*size),
+                ChildSize::Content(size) => content_total += u32::from(*size),
                 ChildSize::Flex(grow) => total_grow += grow,
                 ChildSize::Auto => auto_count += 1,
             }
         }
 
-        let remaining = available.saturating_sub(fixed_total);
         let mut result = vec![0u16; n];
 
         // Assign fixed sizes
@@ -600,6 +654,14 @@ impl Stack {
                 result[i] = *size;
             }
         }
+
+        // Measured sizes, shrunk to fit if they overflow.
+        let content_space = u32::from(available.saturating_sub(fixed_total));
+        let content_used =
+            Self::fit_content(child_sizes, content_total, content_space, &mut result);
+        let remaining = available
+            .saturating_sub(fixed_total)
+            .saturating_sub(content_used);
 
         if total_grow > 0.0 {
             // Distribute remaining space to flex children proportionally
@@ -660,6 +722,47 @@ impl Stack {
         }
 
         result
+    }
+}
+
+impl Stack {
+    /// Give each `Content` child its measured size, or - when they total more
+    /// than `space` - a share of `space` in proportion to that size (CSS
+    /// `flex-shrink: 1`). Rounding leftovers go to the earliest children.
+    /// Returns the space used.
+    fn fit_content(child_sizes: &[ChildSize], total: u32, space: u32, result: &mut [u16]) -> u16 {
+        let content = || {
+            child_sizes
+                .iter()
+                .enumerate()
+                .filter_map(|(i, cs)| match cs {
+                    ChildSize::Content(size) => Some((i, u32::from(*size))),
+                    _ => None,
+                })
+        };
+        if total <= space {
+            for (i, size) in content() {
+                result[i] = size as u16;
+            }
+            return total as u16;
+        }
+        let mut used = 0u32;
+        for (i, size) in content() {
+            let share = size * space / total;
+            result[i] = share as u16;
+            used += share;
+        }
+        // Integer division leaves at most one cell per child undistributed.
+        for (i, size) in content() {
+            if used >= space {
+                break;
+            }
+            if u32::from(result[i]) < size {
+                result[i] += 1;
+                used += 1;
+            }
+        }
+        used as u16
     }
 }
 
@@ -767,6 +870,31 @@ mod tests {
         let sizes = Stack::calculate_sizes(&s.child_sizes, 30, 2);
         assert_eq!(sizes[0], 10);
         assert_eq!(sizes[1], 20); // 30 - 10 = 20 (no auto children)
+    }
+
+    #[test]
+    fn test_stack_calculate_sizes_content_fits() {
+        let sizes = [
+            ChildSize::Content(3),
+            ChildSize::Auto,
+            ChildSize::Content(2),
+        ];
+        assert_eq!(Stack::calculate_sizes(&sizes, 10, 3), vec![3, 5, 2]);
+    }
+
+    /// Measured sizes that overflow shrink in proportion; fixed ones do not.
+    #[test]
+    fn test_stack_calculate_sizes_content_shrinks() {
+        let sizes = [
+            ChildSize::Fixed(2),
+            ChildSize::Content(12),
+            ChildSize::Content(4),
+            ChildSize::Fixed(2),
+        ];
+        // 8 cells for 16 measured: 12 -> 6, 4 -> 2.
+        assert_eq!(Stack::calculate_sizes(&sizes, 12, 4), vec![2, 6, 2, 2]);
+        // 7 cells: 12*7/16 = 5, 4*7/16 = 1, the leftover cell to the first.
+        assert_eq!(Stack::calculate_sizes(&sizes, 11, 4), vec![2, 6, 1, 2]);
     }
 
     #[test]

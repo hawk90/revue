@@ -107,22 +107,26 @@ Checkbox::new("Enable feature").checked(true)
 
 #### How a stack sizes its children
 
-A child added with `.child(...)` gets an **equal share** of the stack's space
-by default, so `vstack().child(Text::new("Top")).child(Text::new("Bottom"))` on
-a 24-row terminal puts "Bottom" on row 12. Two ways to pack them instead:
+A child added with `.child(...)` takes the size of its **content**: one row
+for a line of text, its content plus the frame for a `Border`. So
+`vstack().child(Text::new("Top")).child(Text::new("Bottom"))` puts "Bottom"
+right under "Top". Widgets that have no natural size along the stack's axis -
+a list, a table, a text field's width in an `hstack` - share whatever the
+others leave.
 
 ```rust
-// Each child takes the size of its content (on by default from 3.0)
-vstack()
-    .content_sized(true)
-    .child(Text::new("Top"))
-    .child(Text::new("Bottom"))
-
-// Or say exactly how many rows (vstack) or columns (hstack) a child gets
+// Say exactly how many rows (vstack) or columns (hstack) a child gets,
+// or let a child take the rest of the space with `child_flex`
 vstack()
     .child_sized(Text::new("Header"), 1)
-    .child(body)                       // takes what is left
+    .child_flex(body, 1.0)             // takes what is left
     .child_sized(Text::new("Footer"), 1)
+
+// The 2.x rule - every unsized child gets an equal share - is one call away
+vstack()
+    .content_sized(false)
+    .child(Text::new("Top"))
+    .child(Text::new("Bottom"))      // halfway down the screen
 ```
 
 ### Handling Events

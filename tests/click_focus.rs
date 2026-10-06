@@ -29,13 +29,15 @@ fn click(x: u16, y: u16) -> Event {
     ))
 }
 
-/// A focusable control, a plain label, and a second control. `vstack` splits
-/// the six rows evenly, so they own `y` 0-1, 2-3 and 4-5.
+/// A focusable control, a plain label, and a second control. The stack splits
+/// the six rows evenly (`content_sized(false)`), so they own `y` 0-1, 2-3 and
+/// 4-5 - the geometry the clicks below aim at.
 struct Form;
 
 impl View for Form {
     fn render(&self, ctx: &mut RenderContext) {
         vstack()
+            .content_sized(false)
             .child(Button::new("Save").element_id("save"))
             .child(Text::new("hint").element_id("hint"))
             .child(Button::new("Quit").element_id("quit"))

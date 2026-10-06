@@ -1,8 +1,9 @@
 //! `Stack::content_sized` - unsized children take the size of their content.
 //!
-//! Without it, a stack gives every child added with `.child(...)` an equal
-//! share of the space. Twenty of the shipped examples were written as if the
-//! opposite were true. Background: `docs/refactor/design-content-sized-stack.md`.
+//! On by default since 3.0. In 2.x a stack gave every child added with
+//! `.child(...)` an equal share of the space, and twenty of the shipped
+//! examples were written as if the opposite were true; `.content_sized(false)`
+//! keeps that rule. Background: `docs/refactor/design-content-sized-stack.md`.
 
 use revue::prelude::*;
 use revue::testing::PipelineHarness;
@@ -37,25 +38,77 @@ fn three_lines() -> Stack {
         .child(Text::new("c"))
 }
 
-/// The 2.x rule, kept while the flag is off: equal shares.
+/// The 2.x rule, kept when the flag is turned off: equal shares.
 #[test]
-fn without_the_flag_children_share_equally() {
-    let screen = rows(&three_lines(), 9);
+fn turning_the_flag_off_shares_equally() {
+    let screen = rows(&three_lines().content_sized(false), 9);
     assert_eq!(screen[0], "a");
     assert_eq!(screen[3], "b");
     assert_eq!(screen[6], "c");
 }
 
+/// The 2.x rule applies to a measured child too: a bordered box spreads to
+/// its share instead of hugging its content.
+#[test]
+fn turning_the_flag_off_ignores_measure() {
+    let view = vstack()
+        .content_sized(false)
+        .child(Border::single().child(Text::new("inside")))
+        .child(Text::new("after"));
+    let screen = rows(&view, 8);
+    assert!(screen[3].starts_with('└'), "{screen:?}");
+    assert_eq!(screen[4], "after");
+}
+
 #[test]
 fn a_column_stacks_text_line_after_line() {
-    let screen = rows(&three_lines().content_sized(true), 9);
+    let screen = rows(&three_lines(), 9);
     assert_eq!(&screen[..3], ["a", "b", "c"]);
+    assert!(screen[3..].iter().all(|l| l.is_empty()), "{screen:?}");
+}
+
+#[test]
+fn every_constructor_is_content_sized_by_default() {
+    for stack in [
+        Stack::new().direction(Direction::Column),
+        Stack::default().direction(Direction::Column),
+        vstack(),
+    ] {
+        let view = stack.child(Text::new("a")).child(Text::new("b"));
+        assert_eq!(&rows(&view, 6)[..2], ["a", "b"]);
+    }
+    let view = hstack().child(Text::new("ab")).child(Text::new("cd"));
+    assert_eq!(rows(&view, 1)[0], "abcd");
+}
+
+/// Two children that fill split what the measured ones leave between them.
+#[test]
+fn children_that_fill_share_the_rest_equally() {
+    let view = vstack()
+        .child(Text::new("header"))
+        .child(Filler("one"))
+        .child(Filler("two"))
+        .child(Text::new("footer"));
+    let screen = rows(&view, 6);
+    assert_eq!(screen, ["header", "one", "one", "two", "two", "footer"]);
+}
+
+/// A content-sized body that should still take the rest says so.
+#[test]
+fn child_flex_lets_a_measured_body_take_the_rest() {
+    let view = vstack()
+        .child(Text::new("header"))
+        .child_flex(Border::single().child(Text::new("body")), 1.0)
+        .child(Text::new("footer"));
+    let screen = rows(&view, 6);
+    assert!(screen[1].starts_with('┌'), "{screen:?}");
+    assert!(screen[4].starts_with('└'), "{screen:?}");
+    assert_eq!(screen[5], "footer");
 }
 
 #[test]
 fn a_row_packs_text_side_by_side() {
     let view = hstack()
-        .content_sized(true)
         .child(Text::new("12 "))
         .child(Text::new("fn main()"));
     assert_eq!(rows(&view, 1)[0], "12 fn main()");
@@ -65,7 +118,6 @@ fn a_row_packs_text_side_by_side() {
 #[test]
 fn a_child_that_fills_gets_what_the_measured_ones_leave() {
     let view = vstack()
-        .content_sized(true)
         .child(Text::new("header"))
         .child(Filler("body"))
         .child(Text::new("footer"));
@@ -73,10 +125,40 @@ fn a_child_that_fills_gets_what_the_measured_ones_leave() {
     assert_eq!(screen, ["header", "body", "body", "body", "body", "footer"]);
 }
 
+/// Content taller than the space left shrinks to it; the footer stays.
+#[test]
+fn a_body_too_tall_shrinks_instead_of_pushing_the_footer_off() {
+    let body = Border::single().child(
+        vstack()
+            .child(Text::new("1"))
+            .child(Text::new("2"))
+            .child(Text::new("3"))
+            .child(Text::new("4")),
+    );
+    let view = vstack()
+        .child_sized(Text::new("header"), 1)
+        .child(body)
+        .child_sized(Text::new("footer"), 1);
+    let screen = rows(&view, 6);
+    assert_eq!(screen[0], "header");
+    assert!(screen[4].starts_with('└'), "{screen:?}");
+    assert_eq!(screen[5], "footer");
+}
+
+/// Measured siblings that overflow a row shrink in proportion to their size
+/// (CSS `flex-shrink: 1`): the label measures 20 (the row's width) and the
+/// tag 4, so of the 20 columns the label gets 17 and the tag 3.
+#[test]
+fn measured_children_that_overflow_shrink_in_proportion() {
+    let view = hstack()
+        .child(Text::new("a long label that does not fit"))
+        .child(Text::new("[ok]"));
+    assert_eq!(rows(&view, 1)[0], "a long label that[ok");
+}
+
 #[test]
 fn an_explicit_size_still_wins() {
     let view = vstack()
-        .content_sized(true)
         .child_sized(Text::new("a"), 3)
         .child(Text::new("b"));
     let screen = rows(&view, 6);
@@ -87,7 +169,6 @@ fn an_explicit_size_still_wins() {
 #[test]
 fn a_border_is_its_content_plus_the_frame() {
     let view = vstack()
-        .content_sized(true)
         .child(Border::single().child(Text::new("inside")))
         .child(Text::new("after"));
     let screen = rows(&view, 8);
@@ -98,12 +179,8 @@ fn a_border_is_its_content_plus_the_frame() {
 
 #[test]
 fn a_nested_stack_is_the_sum_of_its_children() {
-    let view = vstack()
-        .content_sized(true)
-        .child(three_lines())
-        .child(Text::new("d"));
-    // The inner stack is not content-sized itself, so it spreads its three
-    // lines over the three rows it measured - which is one each.
+    let view = vstack().child(three_lines()).child(Text::new("d"));
+    // The inner stack measures three rows and lays its lines out one each.
     assert_eq!(&rows(&view, 9)[..4], ["a", "b", "c", "d"]);
 }
 
@@ -128,17 +205,13 @@ fn measure_answers() {
 
 #[test]
 fn a_switch_and_its_label_sit_side_by_side() {
-    let view = hstack()
-        .content_sized(true)
-        .child(Switch::new())
-        .child(Text::new("Wi-Fi"));
+    let view = hstack().child(Switch::new()).child(Text::new("Wi-Fi"));
     assert_eq!(rows(&view, 1)[0], "[●━━━]Wi-Fi");
 }
 
 #[test]
 fn a_form_column_packs_its_controls() {
     let view = vstack()
-        .content_sized(true)
         .child(Text::new("Name"))
         .child(Input::new().value("Ada"))
         .child(Checkbox::new("Subscribe"))
@@ -154,7 +227,6 @@ fn a_form_column_packs_its_controls() {
 #[test]
 fn buttons_in_a_row_sit_next_to_each_other() {
     let view = hstack()
-        .content_sized(true)
         .gap(1)
         .child(Button::new("OK"))
         .child(Button::new("Cancel"));
@@ -164,7 +236,6 @@ fn buttons_in_a_row_sit_next_to_each_other() {
 #[test]
 fn a_divider_between_two_lines_is_one_row() {
     let view = vstack()
-        .content_sized(true)
         .child(Text::new("above"))
         .child(Divider::new())
         .child(Text::new("below"));
@@ -176,17 +247,13 @@ fn a_divider_between_two_lines_is_one_row() {
 
 #[test]
 fn a_spinner_and_its_label_sit_side_by_side() {
-    let view = hstack()
-        .content_sized(true)
-        .child(Spinner::new())
-        .child(Text::new(" Loading"));
+    let view = hstack().child(Spinner::new()).child(Text::new(" Loading"));
     assert_eq!(rows(&view, 1)[0], "⠋ Loading");
 }
 
 #[test]
 fn an_alert_and_a_card_take_their_rows() {
     let view = vstack()
-        .content_sized(true)
         .child(Alert::new("Saved"))
         .child(card().title("Card").body(Text::new("body")))
         .child(Text::new("after"));
@@ -208,7 +275,6 @@ fn an_alert_and_a_card_take_their_rows() {
 #[test]
 fn a_progress_bar_takes_the_row_the_brackets_leave() {
     let view = hstack()
-        .content_sized(true)
         .child(Text::new("["))
         .child(Progress::new(1.0))
         .child(Text::new("]"));
@@ -218,7 +284,6 @@ fn a_progress_bar_takes_the_row_the_brackets_leave() {
 #[test]
 fn a_search_button_sits_right_after_the_input() {
     let view = hstack()
-        .content_sized(true)
         .child(Input::new().value("query"))
         .child(Button::new("Search"));
     let row = &rows(&view, 1)[0];
@@ -231,7 +296,6 @@ fn a_search_button_sits_right_after_the_input() {
 #[test]
 fn two_fillers_in_a_row_split_the_leftover() {
     let view = hstack()
-        .content_sized(true)
         .child(Text::new("a"))
         .child(Progress::new(1.0))
         .child(Progress::new(0.0).style(ProgressStyle::Ascii))
@@ -242,10 +306,7 @@ fn two_fillers_in_a_row_split_the_leftover() {
 
 #[test]
 fn a_filler_in_a_column_is_still_one_row() {
-    let view = vstack()
-        .content_sized(true)
-        .child(Progress::new(1.0))
-        .child(Text::new("after"));
+    let view = vstack().child(Progress::new(1.0)).child(Text::new("after"));
     let screen = rows(&view, 6);
     assert_eq!(screen[0], "█".repeat(20));
     assert_eq!(screen[1], "after");
@@ -253,15 +314,9 @@ fn a_filler_in_a_column_is_still_one_row() {
 
 #[test]
 fn a_row_holding_a_filler_fills_in_an_outer_row() {
-    let field = hstack()
-        .content_sized(true)
-        .child(Text::new(">"))
-        .child(Progress::new(1.0));
+    let field = hstack().child(Text::new(">")).child(Progress::new(1.0));
     assert_eq!(field.fills(), Fill::WIDTH);
-    let view = hstack()
-        .content_sized(true)
-        .child(field)
-        .child(Text::new("|"));
+    let view = hstack().child(field).child(Text::new("|"));
     assert_eq!(rows(&view, 1)[0], format!(">{}|", "█".repeat(18)));
 }
 
@@ -269,7 +324,6 @@ fn a_row_holding_a_filler_fills_in_an_outer_row() {
 fn a_vertical_divider_fills_a_column_but_not_a_row() {
     assert_eq!(Divider::vertical().fills(), Fill::HEIGHT);
     let view = hstack()
-        .content_sized(true)
         .child(Text::new("left"))
         .child(Divider::vertical())
         .child(Text::new("right"));

@@ -1,5 +1,8 @@
 # Stack은 자식의 내용 크기를 따라야 한다
 
+> **상태: 구현 완료.** `View::measure`·`View::fills`와 자주 쓰는 위젯의 답은 2.x에,
+> `content_sized` 기본 on은 3.0에 들어갔다. 아래 "순서" 참고.
+
 예제 전수 대조([`findings-default-flip.md`](findings-default-flip.md)) 뒤 화면을 하나씩
 읽다가 나온 것. **예제 35개 중 20여 개가 깨져 있었고, v1.0부터 그랬다.**
 
@@ -109,8 +112,14 @@ pub trait View {
 
 - `child_sized` / `child_flex`는 그대로 우선한다
 - `css_layout`에서 주축의 명시적 CSS 크기(열은 `height`, 행은 `width`)는 `fills`보다 우선한다
+- 측정된 자식들과 고정 자식들의 합이 스택을 넘으면, **측정된 자식만** 각자의 크기에 비례해
+  줄어든다(CSS `flex-shrink: 1`). 고정 자식(`child_sized`)은 줄지 않는다 — 빌더가 말한
+  크기다. 주축에 CSS 명시 크기나 `min-*`이 있는 자식도 줄지 않는다 — 박스 모델이 그 크기를
+  되돌려 놓으므로 슬롯만 줄면 다음 형제가 그 안에서 시작한다. 이것이 위 표의 "남은 공간을 넘지 않게"다: 내용이 한 줄 넘치는 본문이 그 줄을
+  잃고, 뒤의 푸터가 화면 밖으로 밀리지 않는다(`examples/showcase`에서 본문이 1행 넘쳐
+  푸터가 사라졌다). 줄바꿈하는 행(`flex-wrap`)은 줄이지 않고 다음 행으로 넘긴다
 - 교차축은 지금처럼 전체를 준다(stretch)
-- 3.0 전까지는 `Stack::content_sized(true)`로 옵트인, 3.0에서 기본 on. `false`로 2.x 동작
+- 2.x에서는 `Stack::content_sized(true)`로 옵트인, **3.0에서 기본 on**. `false`로 2.x 동작
 
 이 규칙이면 `vstack().child(header).child(Border::new().child(list)).child(footer)`에서
 `header`·`footer`는 한 줄씩, 측정하지 않는 `list`를 감싼 `Border`는 `None`이라 나머지
@@ -177,6 +186,9 @@ pub trait View {
 1. 예제를 `child_sized`로 고친다 — 지금 깨진 화면을 바로잡는다(#681, #682, #683)
 2. `View::measure` 추가, 기본 위젯이 답하게 함, `Stack::content_sized` 옵트인 — 2.x (이 문서와 같은 PR).
    자주 쓰는 위젯이 답하게 한 것은 그다음 PR — 위 "지금 답하는 위젯"
-3. 3.0: `content_sized` 기본 on. [`docs/migration/v3.0.0.md`](../migration/v3.0.0.md)에 추가
+3. 3.0: `content_sized` 기본 on. [`docs/migration/v3.0.0.md`](../migration/v3.0.0.md) 2절 — **완료.**
+   예제 전부를 PTY에서 기본값 전후로 대조했다. 본문이 내용 크기라 퍼짐에 기대던 화면
+   (탭 예제의 본문, 나란한 패널, 상태 줄의 오른쪽 끝 항목)은 `child_flex`로 원래 모습을
+   지켰고, 나머지는 텍스트·컨트롤이 붙어 쌓이는 쪽으로 바뀌었다
 
 1에서 넣은 `child_sized`는 3.0 이후에도 옳다 — 명시한 크기는 계속 우선한다.
