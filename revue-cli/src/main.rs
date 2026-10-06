@@ -178,30 +178,18 @@ fn main() {
     let cli = Cli::parse();
 
     let result = match cli.command {
-        Commands::New { name, template, no_git } => {
-            commands::new_project(&name, &template, !no_git)
-        }
-        Commands::Dev { port, watch } => {
-            commands::dev_server(port, &watch)
-        }
-        Commands::Build { release, target } => {
-            commands::build_project(release, target.as_deref())
-        }
-        Commands::Snapshot { update, filter } => {
-            commands::run_snapshots(update, filter.as_deref())
-        }
-        Commands::Inspect { mode } => {
-            commands::inspect(&mode)
-        }
-        Commands::Themes { verbose } => {
-            commands::list_themes(verbose)
-        }
-        Commands::Theme { name } => {
-            commands::install_theme(&name)
-        }
-        Commands::Docs { output } => {
-            commands::generate_docs(&output)
-        }
+        Commands::New {
+            name,
+            template,
+            no_git,
+        } => commands::new_project(&name, &template, !no_git),
+        Commands::Dev { port, watch } => commands::dev_server(port, &watch),
+        Commands::Build { release, target } => commands::build_project(release, target.as_deref()),
+        Commands::Snapshot { update, filter } => commands::run_snapshots(update, filter.as_deref()),
+        Commands::Inspect { mode } => commands::inspect(&mode),
+        Commands::Themes { verbose } => commands::list_themes(verbose),
+        Commands::Theme { name } => commands::install_theme(&name),
+        Commands::Docs { output } => commands::generate_docs(&output),
         Commands::Add { component, name } => {
             let comp_name = match component {
                 ComponentType::Search => "search",
@@ -215,20 +203,16 @@ fn main() {
             };
             commands::add_component(comp_name, name.as_deref())
         }
-        Commands::Benchmark { filter, save } => {
-            commands::run_benchmark(filter.as_deref(), save)
-        }
-        Commands::Plugin { action } => {
-            match action {
-                PluginAction::List => commands::plugin_list(),
-                PluginAction::Search { query } => commands::plugin_search(&query),
-                PluginAction::Install { name, version } => {
-                    commands::plugin_install(&name, version.as_deref())
-                }
-                PluginAction::Info { name } => commands::plugin_info(&name),
-                PluginAction::New { name } => commands::plugin_new(&name),
+        Commands::Benchmark { filter, save } => commands::run_benchmark(filter.as_deref(), save),
+        Commands::Plugin { action } => match action {
+            PluginAction::List => commands::plugin_list(),
+            PluginAction::Search { query } => commands::plugin_search(&query),
+            PluginAction::Install { name, version } => {
+                commands::plugin_install(&name, version.as_deref())
             }
-        }
+            PluginAction::Info { name } => commands::plugin_info(&name),
+            PluginAction::New { name } => commands::plugin_new(&name),
+        },
     };
 
     if let Err(e) = result {

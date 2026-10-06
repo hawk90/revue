@@ -85,7 +85,7 @@ pub fn new_project(name: &str, template: &str, init_git: bool) -> Result<()> {
     println!("{}", "✅ Project created successfully!".green().bold());
     println!();
     println!("  {} {}", "cd".cyan(), name);
-    println!("  {} {}", "cargo".cyan(), "run");
+    println!("  {} run", "cargo".cyan());
     println!();
     println!(
         "  {} {}",
@@ -101,11 +101,7 @@ pub fn new_project(name: &str, template: &str, init_git: bool) -> Result<()> {
 pub fn dev_server(port: u16, watch_paths: &[String]) -> Result<()> {
     println!("{}", "🔥 Starting Revue dev server...".cyan().bold());
     println!();
-    println!(
-        "  {} http://localhost:{}",
-        "Dev server:".green(),
-        port
-    );
+    println!("  {} http://localhost:{}", "Dev server:".green(), port);
     println!("  {} Ctrl+C", "Stop:".yellow());
     println!();
 
@@ -126,9 +122,7 @@ pub fn dev_server(port: u16, watch_paths: &[String]) -> Result<()> {
 
     // Initial build
     println!("{}", "Building...".yellow());
-    let status = Command::new("cargo")
-        .args(["build"])
-        .status()?;
+    let status = Command::new("cargo").args(["build"]).status()?;
 
     if !status.success() {
         println!("{}", "❌ Build failed".red());
@@ -140,9 +134,7 @@ pub fn dev_server(port: u16, watch_paths: &[String]) -> Result<()> {
 
     // Run the app
     println!("{}", "Running app...".cyan());
-    let mut child = Command::new("cargo")
-        .args(["run"])
-        .spawn()?;
+    let mut child = Command::new("cargo").args(["run"]).spawn()?;
 
     // Wait for Ctrl+C or process exit
     let _ = child.wait();
@@ -172,9 +164,7 @@ pub fn build_project(release: bool, target: Option<&str>) -> Result<()> {
 
     println!();
 
-    let status = Command::new("cargo")
-        .args(&args)
-        .status()?;
+    let status = Command::new("cargo").args(&args).status()?;
 
     if status.success() {
         println!();
@@ -214,9 +204,7 @@ pub fn run_snapshots(update: bool, filter: Option<&str>) -> Result<()> {
 
     println!();
 
-    let status = Command::new("cargo")
-        .args(&args)
-        .status()?;
+    let status = Command::new("cargo").args(&args).status()?;
 
     if status.success() {
         println!();
@@ -246,9 +234,7 @@ pub fn inspect(mode: &str) -> Result<()> {
     // Set environment variable to enable inspector
     std::env::set_var("REVUE_INSPECTOR", mode);
 
-    let status = Command::new("cargo")
-        .args(["run"])
-        .status()?;
+    let status = Command::new("cargo").args(["run"]).status()?;
 
     if !status.success() {
         return Err("Failed to launch inspector".into());
@@ -263,21 +249,52 @@ pub fn list_themes(verbose: bool) -> Result<()> {
     println!();
 
     let themes = [
-        ("dracula", "Dark theme with purple accents", "#282a36", "#bd93f9"),
-        ("nord", "Arctic, north-bluish color palette", "#2e3440", "#88c0d0"),
-        ("monokai", "Sublime Text inspired dark theme", "#272822", "#f92672"),
+        (
+            "dracula",
+            "Dark theme with purple accents",
+            "#282a36",
+            "#bd93f9",
+        ),
+        (
+            "nord",
+            "Arctic, north-bluish color palette",
+            "#2e3440",
+            "#88c0d0",
+        ),
+        (
+            "monokai",
+            "Sublime Text inspired dark theme",
+            "#272822",
+            "#f92672",
+        ),
         ("gruvbox", "Retro groove color scheme", "#282828", "#fabd2f"),
         ("catppuccin", "Soothing pastel theme", "#1e1e2e", "#cba6f7"),
-        ("tokyo-night", "Clean dark theme inspired by Tokyo", "#1a1b26", "#7aa2f7"),
+        (
+            "tokyo-night",
+            "Clean dark theme inspired by Tokyo",
+            "#1a1b26",
+            "#7aa2f7",
+        ),
         ("one-dark", "Atom One Dark theme", "#282c34", "#61afef"),
-        ("solarized-dark", "Precision colors for machines and people", "#002b36", "#268bd2"),
+        (
+            "solarized-dark",
+            "Precision colors for machines and people",
+            "#002b36",
+            "#268bd2",
+        ),
     ];
 
     for (name, desc, bg, accent) in themes {
         if verbose {
             println!("  {} {}", "●".cyan(), name.bold());
             println!("    {}", desc.dimmed());
-            println!("    {} {}  {} {}", "Background:".dimmed(), bg, "Accent:".dimmed(), accent);
+            println!(
+                "    {} {}  {} {}",
+                "Background:".dimmed(),
+                bg,
+                "Accent:".dimmed(),
+                accent
+            );
             println!();
         } else {
             println!("  {} {} - {}", "●".cyan(), name.bold(), desc.dimmed());
@@ -285,22 +302,14 @@ pub fn list_themes(verbose: bool) -> Result<()> {
     }
 
     println!();
-    println!(
-        "  {} {}",
-        "Install:".dimmed(),
-        "revue theme <name>".cyan()
-    );
+    println!("  {} {}", "Install:".dimmed(), "revue theme <name>".cyan());
 
     Ok(())
 }
 
 /// Install a theme
 pub fn install_theme(name: &str) -> Result<()> {
-    println!(
-        "{} {}",
-        "🎨 Installing theme:".cyan().bold(),
-        name.bold()
-    );
+    println!("{} {}", "🎨 Installing theme:".cyan().bold(), name.bold());
     println!();
 
     let theme_css = match name {
@@ -310,7 +319,11 @@ pub fn install_theme(name: &str) -> Result<()> {
         "gruvbox" => templates::theme_gruvbox(),
         "catppuccin" => templates::theme_catppuccin(),
         _ => {
-            return Err(format!("Unknown theme: {}. Run 'revue themes' to see available themes.", name).into());
+            return Err(format!(
+                "Unknown theme: {}. Run 'revue themes' to see available themes.",
+                name
+            )
+            .into());
         }
     };
 
@@ -344,7 +357,11 @@ pub fn generate_docs(output: &str) -> Result<()> {
         .status()?;
 
     if status.success() {
-        let doc_path = if output.is_empty() { "target/doc" } else { output };
+        let doc_path = if output.is_empty() {
+            "target/doc"
+        } else {
+            output
+        };
         if Path::new(doc_path).exists() {
             println!("{}", "✅ Documentation generated!".green().bold());
             println!();
@@ -431,7 +448,10 @@ pub fn add_component(component: &str, name: Option<&str>) -> Result<()> {
     println!("  {} {}", "File:".dimmed(), filepath);
     println!();
     println!("  {} Add to your main.rs:", "Usage:".dimmed());
-    println!("    {}", format!("mod {};", filename.trim_end_matches(".rs")).cyan());
+    println!(
+        "    {}",
+        format!("mod {};", filename.trim_end_matches(".rs")).cyan()
+    );
 
     Ok(())
 }
@@ -473,8 +493,16 @@ pub fn plugin_list() -> Result<()> {
     if !plugins_found {
         println!("  {}", "No plugins installed".dimmed());
         println!();
-        println!("  {} {}", "Install:".dimmed(), "revue plugin install <name>".cyan());
-        println!("  {} {}", "Search:".dimmed(), "revue plugin search <query>".cyan());
+        println!(
+            "  {} {}",
+            "Install:".dimmed(),
+            "revue plugin install <name>".cyan()
+        );
+        println!(
+            "  {} {}",
+            "Search:".dimmed(),
+            "revue plugin search <query>".cyan()
+        );
     }
 
     println!();
@@ -494,7 +522,7 @@ pub fn plugin_search(query: &str) -> Result<()> {
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap()
+            .unwrap(),
     );
     pb.set_message("Searching crates.io...");
     pb.enable_steady_tick(Duration::from_millis(100));
@@ -511,10 +539,7 @@ pub fn plugin_search(query: &str) -> Result<()> {
         urlencoding::encode(&search_query)
     );
 
-    let response = match ureq::get(&url)
-        .set("User-Agent", "revue-cli/0.1.0")
-        .call()
-    {
+    let response = match ureq::get(&url).set("User-Agent", "revue-cli/0.1.0").call() {
         Ok(resp) => resp,
         Err(e) => {
             pb.finish_and_clear();
@@ -531,7 +556,8 @@ pub fn plugin_search(query: &str) -> Result<()> {
         let revue_crates: Vec<_> = crates
             .iter()
             .filter(|c| {
-                c["name"].as_str()
+                c["name"]
+                    .as_str()
                     .map(|n| n.starts_with("revue-plugin-") || n.starts_with("revue_plugin_"))
                     .unwrap_or(false)
             })
@@ -549,7 +575,12 @@ pub fn plugin_search(query: &str) -> Result<()> {
                 let desc = crate_info["description"].as_str().unwrap_or("");
                 let downloads = crate_info["downloads"].as_u64().unwrap_or(0);
 
-                println!("  {} {} {}", "●".green(), name.bold(), format!("v{}", version).dimmed());
+                println!(
+                    "  {} {} {}",
+                    "●".green(),
+                    name.bold(),
+                    format!("v{}", version).dimmed()
+                );
                 if !desc.is_empty() {
                     println!("    {}", desc.dimmed());
                 }
@@ -557,7 +588,11 @@ pub fn plugin_search(query: &str) -> Result<()> {
                 println!();
             }
 
-            println!("  {} {}", "Install:".dimmed(), "revue plugin install <name>".cyan());
+            println!(
+                "  {} {}",
+                "Install:".dimmed(),
+                "revue plugin install <name>".cyan()
+            );
         }
     } else {
         println!("  {}", "No results found".dimmed());
@@ -591,7 +626,7 @@ pub fn plugin_install(name: &str, version: Option<&str>) -> Result<()> {
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap()
+            .unwrap(),
     );
     pb.set_message("Adding dependency...");
     pb.enable_steady_tick(Duration::from_millis(100));
@@ -604,9 +639,7 @@ pub fn plugin_install(name: &str, version: Option<&str>) -> Result<()> {
         args = vec!["add", &version_str];
     }
 
-    let status = Command::new("cargo")
-        .args(&args)
-        .output()?;
+    let status = Command::new("cargo").args(&args).output()?;
 
     pb.finish_and_clear();
 
@@ -614,10 +647,16 @@ pub fn plugin_install(name: &str, version: Option<&str>) -> Result<()> {
         println!("{}", "✅ Plugin installed!".green().bold());
         println!();
         println!("  {} Add to your app:", "Usage:".dimmed());
-        println!("    {}", format!("use {}::*;", plugin_name.replace('-', "_")).cyan());
+        println!(
+            "    {}",
+            format!("use {}::*;", plugin_name.replace('-', "_")).cyan()
+        );
         println!();
         println!("    {}", "App::builder()".cyan());
-        println!("        {}", format!(".plugin({}Plugin::new())", to_pascal_case(&plugin_name)).cyan());
+        println!(
+            "        {}",
+            format!(".plugin({}Plugin::new())", to_pascal_case(&plugin_name)).cyan()
+        );
         println!("        {}", ".build();".cyan());
     } else {
         let stderr = String::from_utf8_lossy(&status.stderr);
@@ -649,16 +688,13 @@ pub fn plugin_info(name: &str) -> Result<()> {
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap()
+            .unwrap(),
     );
     pb.set_message("Fetching from crates.io...");
     pb.enable_steady_tick(Duration::from_millis(100));
 
     let url = format!("https://crates.io/api/v1/crates/{}", plugin_name);
-    let response = match ureq::get(&url)
-        .set("User-Agent", "revue-cli/0.1.0")
-        .call()
-    {
+    let response = match ureq::get(&url).set("User-Agent", "revue-cli/0.1.0").call() {
         Ok(resp) => resp,
         Err(e) => {
             pb.finish_and_clear();
@@ -672,7 +708,9 @@ pub fn plugin_info(name: &str) -> Result<()> {
     let crate_info = &body["crate"];
     let name = crate_info["name"].as_str().unwrap_or("unknown");
     let version = crate_info["newest_version"].as_str().unwrap_or("0.0.0");
-    let desc = crate_info["description"].as_str().unwrap_or("No description");
+    let desc = crate_info["description"]
+        .as_str()
+        .unwrap_or("No description");
     let downloads = crate_info["downloads"].as_u64().unwrap_or(0);
     let repo = crate_info["repository"].as_str().unwrap_or("");
     let docs = crate_info["documentation"].as_str().unwrap_or("");
@@ -689,7 +727,11 @@ pub fn plugin_info(name: &str) -> Result<()> {
     }
 
     println!();
-    println!("  {} {}", "Install:".dimmed(), format!("revue plugin install {}", name).cyan());
+    println!(
+        "  {} {}",
+        "Install:".dimmed(),
+        format!("revue plugin install {}", name).cyan()
+    );
 
     println!();
     Ok(())
@@ -889,7 +931,7 @@ MIT
     println!("{}", "✅ Plugin created successfully!".green().bold());
     println!();
     println!("  {} {}", "cd".cyan(), plugin_name);
-    println!("  {} {}", "cargo".cyan(), "build");
+    println!("  {} build", "cargo".cyan());
     println!();
     println!("  {} {}", "Publish:".dimmed(), "cargo publish".cyan());
     println!();
@@ -945,13 +987,11 @@ pub fn run_benchmark(filter: Option<&str>, save: bool) -> Result<()> {
 
     println!("  {} {}", "Filter:".green(), filter.unwrap_or("all"));
     if save {
-        println!("  {} {}", "Saving:".green(), "target/criterion/");
+        println!("  {} target/criterion/", "Saving:".green());
     }
     println!();
 
-    let status = Command::new("cargo")
-        .args(&args)
-        .status()?;
+    let status = Command::new("cargo").args(&args).status()?;
 
     if status.success() {
         println!();
@@ -959,7 +999,10 @@ pub fn run_benchmark(filter: Option<&str>, save: bool) -> Result<()> {
 
         if save {
             println!();
-            println!("  {} target/criterion/report/index.html", "Results:".dimmed());
+            println!(
+                "  {} target/criterion/report/index.html",
+                "Results:".dimmed()
+            );
         }
     } else {
         println!();
