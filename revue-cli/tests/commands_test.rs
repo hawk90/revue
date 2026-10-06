@@ -22,9 +22,13 @@ fn new_project_creates_basic_structure() {
     assert!(project_name.join("src/app.rs").exists());
     assert!(project_name.join("styles").exists());
 
-    let cargo = fs::read_to_string(project_name.join("Cargo.toml")).unwrap();
-    assert!(cargo.contains("test-project"));
-    assert!(cargo.contains("revue"));
+    // `name` was a full path; the package is named after its last component.
+    let cargo: toml::Table = fs::read_to_string(project_name.join("Cargo.toml"))
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert_eq!(cargo["package"]["name"].as_str(), Some("test-project"));
+    assert!(cargo["dependencies"]["revue"].is_str());
 }
 
 #[test]

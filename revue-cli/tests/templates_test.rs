@@ -16,6 +16,34 @@ fn cargo_toml_contains_project_name() {
 }
 
 #[test]
+fn cargo_toml_depends_on_revue_from_crates_io() {
+    let manifest: toml::Table = templates::cargo_toml("my-app").parse().unwrap();
+    let revue = &manifest["dependencies"]["revue"];
+    assert_eq!(revue.as_str(), Some(templates::REVUE_VERSION));
+}
+
+/// The generated projects must ask for the release line this repository's
+/// `revue` belongs to: `REVUE_VERSION` (a caret requirement such as "3.0")
+/// must match the workspace crate's version.
+#[test]
+fn revue_version_matches_the_revue_crate() {
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../Cargo.toml");
+    let manifest: toml::Table = std::fs::read_to_string(path).unwrap().parse().unwrap();
+    let crate_version = manifest["package"]["version"].as_str().unwrap();
+
+    let numbers = |v: &str| -> Vec<u64> { v.split('.').map(|n| n.parse().unwrap()).collect() };
+    let required = numbers(templates::REVUE_VERSION);
+    let actual = numbers(crate_version);
+    assert!(
+        actual[0] == required[0] && actual[1] >= required[1],
+        "templates ask for revue {}, but the crate is {}; port the templates \
+         (`revue new`) and update REVUE_VERSION",
+        templates::REVUE_VERSION,
+        crate_version
+    );
+}
+
+#[test]
 fn cargo_toml_different_names() {
     let a = templates::cargo_toml("alpha");
     let b = templates::cargo_toml("beta");

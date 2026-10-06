@@ -1,5 +1,12 @@
 //! Project templates and theme definitions
 
+/// The `revue` version requirement written into generated projects.
+///
+/// The templates are written against this release line. A test checks it
+/// against the version of the `revue` crate in this repository, so a major
+/// release that leaves the templates behind fails CI.
+pub const REVUE_VERSION: &str = "3.0";
+
 /// Generate Cargo.toml
 pub fn cargo_toml(name: &str) -> String {
     format!(
@@ -9,15 +16,17 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-revue = {{ path = "../" }}
+revue = "{REVUE_VERSION}"
 "#
     )
 }
 
 /// Generate .gitignore
+///
+/// `Cargo.lock` is not ignored: a generated project is an application, and
+/// an application commits its lock file.
 pub fn gitignore() -> &'static str {
     r#"/target
-Cargo.lock
 *.swp
 *.swo
 .DS_Store

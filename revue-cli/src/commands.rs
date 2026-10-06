@@ -30,6 +30,12 @@ pub fn new_project(name: &str, template: &str, init_git: bool) -> Result<()> {
     if project_path.exists() {
         return Err(format!("Directory '{}' already exists", name).into());
     }
+    // `name` may be a path (`revue new apps/my-app`); the package is named
+    // after its last component.
+    let package_name = project_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| format!("'{}' does not end in a project name", name))?;
     fs::create_dir_all(project_path)?;
     fs::create_dir_all(project_path.join("src"))?;
     fs::create_dir_all(project_path.join("styles"))?;
@@ -38,7 +44,7 @@ pub fn new_project(name: &str, template: &str, init_git: bool) -> Result<()> {
 
     // Step 2: Generate Cargo.toml
     pb.set_message("Generating Cargo.toml...");
-    let cargo_toml = templates::cargo_toml(name);
+    let cargo_toml = templates::cargo_toml(package_name);
     fs::write(project_path.join("Cargo.toml"), cargo_toml)?;
     pb.inc(1);
 
