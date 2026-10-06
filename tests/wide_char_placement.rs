@@ -10,9 +10,9 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::traits::{RenderContext, View};
 use revue::widget::{
-    ContextMenu, Diagram, DiagramNode, Gauge, Menu, MenuBar, MenuItem, PieChart, PieLabelStyle,
-    Popover, Presentation, Slide, SlideAlign, Slider, Step, Stepper, Switch, SwitchStyle, Tooltip,
-    TooltipPosition, Waveline,
+    AiStream, ContextMenu, Diagram, DiagramNode, Gauge, Menu, MenuBar, MenuItem, PieChart,
+    PieLabelStyle, Popover, Presentation, Slide, SlideAlign, Slider, Step, Stepper, Switch,
+    SwitchStyle, Tooltip, TooltipPosition, Waveline,
 };
 
 fn render(view: &dyn View, width: u16, height: u16) -> Buffer {
@@ -466,4 +466,36 @@ fn markdown_presentation_ascii_separator_unchanged() {
         .progress(false);
     let buffer = render(&pres, 60, 20);
     assert_eq!(separator_len(&buffer), 40);
+}
+
+// ─── AiStream ───────────────────────────────────────────────────────────────
+
+fn ai_stream(text: &str) -> AiStream {
+    let mut stream = AiStream::new();
+    stream.set_content(text);
+    stream
+}
+
+#[test]
+fn ai_stream_wide_text_takes_two_cells_per_glyph() {
+    let buffer = render(&ai_stream("設定🔄x"), 20, 2);
+    assert_wide_then(&buffer, '設', '定');
+    assert_wide_then(&buffer, '定', '🔄');
+    assert_wide_then(&buffer, '🔄', 'x');
+}
+
+#[test]
+fn ai_stream_wraps_by_display_width() {
+    // 5 columns hold two 2-column glyphs; the third wraps
+    let buffer = render(&ai_stream("日本語"), 5, 3);
+    assert_eq!(row_text(&buffer, 0).trim_end(), "日本");
+    assert_eq!(row_text(&buffer, 1).trim_end(), "語");
+}
+
+#[test]
+fn ai_stream_ascii_wrap_unchanged() {
+    let buffer = render(&ai_stream("abcdefg\nhi"), 5, 3);
+    assert_eq!(row_text(&buffer, 0), "abcde");
+    assert_eq!(row_text(&buffer, 1).trim_end(), "fg");
+    assert_eq!(row_text(&buffer, 2).trim_end(), "hi");
 }
