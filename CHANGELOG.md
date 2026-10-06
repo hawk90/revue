@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0](https://github.com/hawk90/revue/compare/v2.77.0...v3.0.0) (2026-10-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **app:** AppBuilder::dom_from_render and AppBuilder::css_layout default to true. Stylesheet rules written for widgets below the root now take effect, a node's CSS background fills its box, :hover follows the pointer and a left click moves :focus. A custom container that paints children with child.render(ctx) instead of ctx.render_child(..) gives them no DOM node. To keep 2.x behavior, build with `.dom_from_render(false).css_layout(false)`; `.css_layout(false)` alone keeps CSS paint properties and drops box properties.
+* **layout:** stacks size unsized children to their content by default. `vstack().child(Text::new("a")).child(Text::new("b"))` now puts "b" on the row under "a" instead of halfway down the screen. A layout that relied on the spread and whose body is itself content-sized (text, a bordered box of text) should add the body with `child_flex(body, 1.0)`. Call `.content_sized(false)` on a stack to keep the 2.x equal shares.
+* **mermaid:** DiagramColors.node_fg is now Option<Color>; wrap direct assignments in Some(..).
+* **procmon:** ProcColors.name is now Option<Color>; wrap direct assignments in Some(..).
+* **presentation:** Slide.content_color is now Option<Color>; wrap direct assignments in Some(..). The `Slide::content_color(c)` builder is unchanged.
+* **datetimepicker:** DateTimePicker.field_fg is now Option<Color>; wrap direct assignments in Some(..), or use the new `.field_color(c)` builder.
+* **devtools:** devtools::enable_devtools, disable_devtools, is_devtools_enabled and toggle_devtools are removed. Use App::enable_devtools, App::disable_devtools, App::is_devtools_enabled and App::toggle_devtools instead.
+* **render:** RenderContext::child_ctx_with_overflow is removed. Use RenderContext::render_child_with_overflow, which clips to the container's box and registers the child in the DOM.
+
+### Features
+
+* **datetimepicker:** add a builder for the field color ([cca5bae](https://github.com/hawk90/revue/commit/cca5bae5c69ac5606c89708321ded2c55b3259ca))
+* **input:** measure input, checkbox, switch, radio, rating and slider ([201379e](https://github.com/hawk90/revue/commit/201379e4f8a47aec5dba57a116b65d74dbc9f0dc))
+* **layout:** share leftover space among children that fill the main axis ([201379e](https://github.com/hawk90/revue/commit/201379e4f8a47aec5dba57a116b65d74dbc9f0dc))
+* **layout:** size content-sized stack children with their CSS box ([a47399f](https://github.com/hawk90/revue/commit/a47399f11eb9f55db006e7cc2d2b758033b4870d))
+* **layout:** size stack children to their content by default ([0568ecd](https://github.com/hawk90/revue/commit/0568ecd5b2827bcd946469e2d6da0b66974216a8))
+* **render:** let a container read its children's computed styles ([a47399f](https://github.com/hawk90/revue/commit/a47399f11eb9f55db006e7cc2d2b758033b4870d))
+* **widget:** forward measure through single-child wrappers ([201379e](https://github.com/hawk90/revue/commit/201379e4f8a47aec5dba57a116b65d74dbc9f0dc))
+* **widget:** let widgets say which axes they fill ([201379e](https://github.com/hawk90/revue/commit/201379e4f8a47aec5dba57a116b65d74dbc9f0dc))
+* **widget:** measure alerts, callouts, cards, digits and other multi-row widgets ([201379e](https://github.com/hawk90/revue/commit/201379e4f8a47aec5dba57a116b65d74dbc9f0dc))
+* **widget:** measure buttons, badges and tags ([201379e](https://github.com/hawk90/revue/commit/201379e4f8a47aec5dba57a116b65d74dbc9f0dc))
+* **widget:** measure links, breadcrumbs, rich text and status indicators ([201379e](https://github.com/hawk90/revue/commit/201379e4f8a47aec5dba57a116b65d74dbc9f0dc))
+* **widget:** measure progress, spinner, divider, gauge and sparkline ([201379e](https://github.com/hawk90/revue/commit/201379e4f8a47aec5dba57a116b65d74dbc9f0dc))
+
+
+### Bug Fixes
+
+* **app:** lay out the render-built DOM in the frame that built it ([54fa53e](https://github.com/hawk90/revue/commit/54fa53eb8e501edb52ed38802057c48272ad8952))
+* **css:** resolve var() inside multi-token values ([5e6be5f](https://github.com/hawk90/revue/commit/5e6be5fb28d7e959f8801aab3ea6499d9417d586))
+* **deps:** update rust crate colored to v3 ([#736](https://github.com/hawk90/revue/issues/736)) ([1e037c7](https://github.com/hawk90/revue/commit/1e037c7d10fa2e9ce3cff9753b934776becfd8c1))
+* **deps:** update rust crate handlebars to v6 ([#737](https://github.com/hawk90/revue/issues/737)) ([5441583](https://github.com/hawk90/revue/commit/544158340245da99a93441c7ef47abe7a4cfec55))
+* **deps:** update rust crate notify to v8 ([#738](https://github.com/hawk90/revue/issues/738)) ([3e73f0a](https://github.com/hawk90/revue/commit/3e73f0aa9bc910c5c60bc368dff7ae24e74a6aed))
+* **deps:** update rust crate toml to v1 ([#739](https://github.com/hawk90/revue/issues/739)) ([c9258c3](https://github.com/hawk90/revue/commit/c9258c3e8bd2b649ea2f4b598345d0f0c4947421))
+* **deps:** update rust crate ureq to v3 ([#740](https://github.com/hawk90/revue/issues/740)) ([d23900b](https://github.com/hawk90/revue/commit/d23900bb597d525176a55160c1ac43a11b6d26ae))
+* **examples:** correct stylesheets that never applied ([54fa53e](https://github.com/hawk90/revue/commit/54fa53eb8e501edb52ed38802057c48272ad8952))
+* **examples:** give stack bodies child_flex under content sizing ([0568ecd](https://github.com/hawk90/revue/commit/0568ecd5b2827bcd946469e2d6da0b66974216a8))
+* **layout:** reserve nested stacks' CSS spacing ([5e6be5f](https://github.com/hawk90/revue/commit/5e6be5fb28d7e959f8801aab3ea6499d9417d586))
+* **layout:** size wrapped rows by their content ([5e6be5f](https://github.com/hawk90/revue/commit/5e6be5fb28d7e959f8801aab3ea6499d9417d586))
+* **templates:** style the counter and form borders through the view ([54fa53e](https://github.com/hawk90/revue/commit/54fa53eb8e501edb52ed38802057c48272ad8952))
+
+
+### Code Refactoring
+
+* **datetimepicker:** make DateTimePicker.field_fg an Option&lt;Color&gt; ([cca5bae](https://github.com/hawk90/revue/commit/cca5bae5c69ac5606c89708321ded2c55b3259ca))
+* **devtools:** remove the deprecated global devtools functions ([32b6ef0](https://github.com/hawk90/revue/commit/32b6ef023ebffd1d33e1b947df795de6bed79616))
+* **mermaid:** make DiagramColors.node_fg an Option&lt;Color&gt; ([cca5bae](https://github.com/hawk90/revue/commit/cca5bae5c69ac5606c89708321ded2c55b3259ca))
+* **presentation:** make Slide.content_color an Option&lt;Color&gt; ([cca5bae](https://github.com/hawk90/revue/commit/cca5bae5c69ac5606c89708321ded2c55b3259ca))
+* **procmon:** make ProcColors.name an Option&lt;Color&gt; ([cca5bae](https://github.com/hawk90/revue/commit/cca5bae5c69ac5606c89708321ded2c55b3259ca))
+* **render:** remove RenderContext::child_ctx_with_overflow ([32b6ef0](https://github.com/hawk90/revue/commit/32b6ef023ebffd1d33e1b947df795de6bed79616))
+
 ## [2.77.0](https://github.com/hawk90/revue/compare/v2.76.1...v2.77.0) (2026-10-06)
 
 
