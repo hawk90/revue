@@ -30,8 +30,12 @@ impl FormApp {
 
     fn handle_backspace(&self) {
         match self.active_field.get() {
-            0 => self.name.update(|v| { v.pop(); }),
-            1 => self.email.update(|v| { v.pop(); }),
+            0 => self.name.update(|v| {
+                v.pop();
+            }),
+            1 => self.email.update(|v| {
+                v.pop();
+            }),
             _ => {}
         }
     }
@@ -86,12 +90,14 @@ impl View for FormApp {
                     } else {
                         Text::muted("Fill in the form and press Enter to submit")
                     })
-                    .child(Text::info("[Tab] next field  [Enter] submit  [q] quit")),
+                    .child(Text::info("[Tab] next field  [Enter] submit  [Esc] quit")),
             )
             .render(ctx);
     }
 
-    fn meta(&self) -> WidgetMeta { WidgetMeta::new("FormApp") }
+    fn meta(&self) -> WidgetMeta {
+        WidgetMeta::new("FormApp")
+    }
 }
 
 fn main() -> Result<()> {
@@ -100,23 +106,29 @@ fn main() -> Result<()> {
     // The Border is this view's own body, so it is styled through the view's
     // type; the status line is a child with its own node, so its class works.
     App::builder()
-        .css(r#"
+        .css(
+            r#"
             FormApp { border: rounded cyan; }
             .status-ok { color: #a6e3a1; }
             .status-error { color: #f38ba8; }
-        "#)
+        "#,
+        )
         .build()
-        .run(form, |event, view, _app| {
-            if let Event::Key(KeyEvent { key, .. }) = event {
-                match key {
-                    Key::Char('q') => std::process::exit(0),
-                    Key::Tab => view.next_field(),
-                    Key::Enter => view.submit(),
-                    Key::Backspace => view.handle_backspace(),
-                    Key::Char(ch) => view.handle_input(*ch),
-                    _ => {}
-                }
+        .run(form, |event, view, app| {
+            let Event::Key(KeyEvent { key, .. }) = event else {
+                return false;
+            };
+            match key {
+                // Every printable key is text for the fields, so quit on Esc.
+                // `app.quit()` stops the loop and `run` restores the terminal.
+                Key::Escape => app.quit(),
+                Key::Tab => view.next_field(),
+                Key::Enter => view.submit(),
+                Key::Backspace => view.handle_backspace(),
+                Key::Char(ch) => view.handle_input(*ch),
+                _ => return false,
             }
-            false
+            // Returning `true` asks for a redraw.
+            true
         })
 }

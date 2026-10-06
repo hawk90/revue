@@ -14,7 +14,7 @@ cargo run
 - `Enter` — Submit form
 - `Backspace` — Delete character
 - Type normally to enter text
-- `q` — Quit
+- `Esc` — Quit (`q` is text here)
 
 ## What's included
 
