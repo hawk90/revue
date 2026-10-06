@@ -174,6 +174,16 @@ impl View for ErrorBoundary {
         shown?.measure(max_width, max_height)
     }
 
+    /// Whatever it is showing fills, as with [`measure`](View::measure).
+    fn fills(&self) -> crate::widget::Fill {
+        let shown = if self.has_error.get() {
+            self.fallback.as_ref()
+        } else {
+            self.child.as_ref()
+        };
+        shown.map_or(crate::widget::Fill::NONE, |v| v.fills())
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         // If already in error state, show fallback
         if self.has_error.get() {

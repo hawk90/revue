@@ -272,6 +272,15 @@ impl View for Alert {
         Some((max_width, self.height().min(max_height)))
     }
 
+    /// It stretches across the width it is offered - unless dismissed.
+    fn fills(&self) -> crate::widget::Fill {
+        if self.dismissed {
+            crate::widget::Fill::NONE
+        } else {
+            crate::widget::Fill::WIDTH
+        }
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         if self.dismissed {
             return;

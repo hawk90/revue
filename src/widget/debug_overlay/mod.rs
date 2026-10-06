@@ -439,6 +439,15 @@ impl<V: View> View for DebugOverlay<V> {
         }
     }
 
+    /// Hidden, what the wrapped view fills; shown, everything.
+    fn fills(&self) -> crate::widget::Fill {
+        if self.visible {
+            crate::widget::Fill::BOTH
+        } else {
+            self.inner.fills()
+        }
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         // Render inner view
         self.inner.render(ctx);

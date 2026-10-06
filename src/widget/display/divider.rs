@@ -198,6 +198,17 @@ impl View for Divider {
         })
     }
 
+    /// It runs along its orientation as far as it is offered - unless a
+    /// [`length`](Divider::length) fixes it.
+    fn fills(&self) -> crate::widget::Fill {
+        use crate::widget::Fill;
+        match self.orientation {
+            _ if self.length > 0 => Fill::NONE,
+            Orientation::Horizontal => Fill::WIDTH,
+            Orientation::Vertical => Fill::HEIGHT,
+        }
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let line_char = self.line_char();

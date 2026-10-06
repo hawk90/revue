@@ -462,6 +462,11 @@ impl View for Card {
         Some((max_width, h.min(max_height)))
     }
 
+    /// It stretches across the width it is offered.
+    fn fills(&self) -> crate::widget::Fill {
+        crate::widget::Fill::WIDTH
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         if area.width < 4 || area.height < 3 {

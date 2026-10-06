@@ -15,10 +15,11 @@ use revue::prelude::*;
 use revue::render::{Buffer, Cell};
 use revue::widget::traits::RenderContext;
 use revue::widget::{
-    card, Badge, BigText, Breadcrumb, Button, CardVariant, Checkbox, CheckboxStyle, DebugOverlay,
-    DigitStyle, Digits, Divider, ErrorBoundary, Gauge, GaugeStyle, Input, Link, Progress,
-    RadioGroup, RadioLayout, RadioStyle, Rating, RatingSize, RichText, Slider, Sparkline, Spinner,
-    Status, StatusIndicator, StatusSize, StatusStyle, Switch, SwitchStyle, Tag, ZenMode,
+    card, Alert, Badge, BigText, Breadcrumb, Button, Callout, CardVariant, Checkbox, CheckboxStyle,
+    DebugOverlay, DigitStyle, Digits, Divider, EmptyState, ErrorBoundary, Fill, Gauge, GaugeStyle,
+    Input, Link, Progress, RadioGroup, RadioLayout, RadioStyle, Rating, RatingSize, RichText,
+    Slider, Sparkline, Spinner, Status, StatusBar, StatusIndicator, StatusSection, StatusSize,
+    StatusStyle, Switch, SwitchStyle, Tag, ZenMode,
 };
 
 const W: u16 = 60;
@@ -551,4 +552,58 @@ fn an_error_boundary_measures_its_fallback_after_a_panic() {
     assert_eq!(boundary.measure(W, H), Some((9, 9)));
     render_into(&boundary, W, H);
     assert_eq!(boundary.measure(W, H), Some((6, 1)));
+}
+
+// ==================== fills ====================
+
+#[test]
+fn stretchy_widgets_say_they_fill_the_width() {
+    assert_eq!(Input::new().fills(), Fill::WIDTH);
+    assert_eq!(Progress::new(0.5).fills(), Fill::WIDTH);
+    assert_eq!(Sparkline::new([1.0, 2.0]).fills(), Fill::WIDTH);
+    assert_eq!(Divider::new().fills(), Fill::WIDTH);
+    assert_eq!(Alert::new("Saved").fills(), Fill::WIDTH);
+    assert_eq!(Callout::new("Note").fills(), Fill::WIDTH);
+    assert_eq!(EmptyState::new("Nothing").fills(), Fill::WIDTH);
+    assert_eq!(
+        StatusBar::new().left(StatusSection::new("main")).fills(),
+        Fill::WIDTH
+    );
+    assert_eq!(card().title("T").fills(), Fill::WIDTH);
+}
+
+#[test]
+fn fixed_size_widgets_fill_nothing() {
+    assert_eq!(Divider::vertical().fills(), Fill::HEIGHT);
+    assert_eq!(Divider::new().length(10).fills(), Fill::NONE);
+    assert_eq!(Divider::vertical().length(4).fills(), Fill::NONE);
+    assert_eq!(BigText::new("Hi", 1).force_figlet(true).fills(), Fill::NONE);
+    let mut dismissed = Alert::new("Saved");
+    dismissed.dismiss();
+    assert_eq!(dismissed.fills(), Fill::NONE);
+    assert_eq!(Button::new("OK").fills(), Fill::NONE);
+    assert_eq!(Text::new("hi").fills(), Fill::NONE);
+}
+
+#[test]
+fn wrappers_forward_fills() {
+    assert_eq!(
+        ErrorBoundary::new().child(Input::new()).fills(),
+        Fill::WIDTH
+    );
+    assert_eq!(ErrorBoundary::new().fills(), Fill::NONE);
+    let mut zen = ZenMode::new(Input::new());
+    assert_eq!(zen.fills(), Fill::WIDTH);
+    zen.enable();
+    assert_eq!(zen.fills(), Fill::BOTH);
+    assert_eq!(
+        DebugOverlay::wrap(Input::new()).visible(false).fills(),
+        Fill::WIDTH
+    );
+    assert_eq!(
+        DebugOverlay::wrap(Text::new("x")).visible(true).fills(),
+        Fill::BOTH
+    );
+    let boxed: Box<dyn View> = Box::new(Progress::new(0.1));
+    assert_eq!(boxed.fills(), Fill::WIDTH);
 }

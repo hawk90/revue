@@ -271,6 +271,16 @@ impl View for BigText {
         Some((width.min(max_width), self.height().min(max_height)))
     }
 
+    /// Through the text sizing protocol it clears, and so takes, the full
+    /// width; Figlet art is its own width.
+    fn fills(&self) -> crate::widget::Fill {
+        if !self.text.is_empty() && !self.force_figlet && text_sizing_supported() {
+            crate::widget::Fill::WIDTH
+        } else {
+            crate::widget::Fill::NONE
+        }
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         if ctx.area.width == 0 || ctx.area.height == 0 {
             return;

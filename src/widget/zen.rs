@@ -189,6 +189,15 @@ impl View for ZenMode {
         }
     }
 
+    /// Off, what its content fills; on, everything.
+    fn fills(&self) -> crate::widget::Fill {
+        if self.enabled {
+            crate::widget::Fill::BOTH
+        } else {
+            self.content.fills()
+        }
+    }
+
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
 
