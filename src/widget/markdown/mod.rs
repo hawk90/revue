@@ -55,7 +55,7 @@ pub mod types;
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::utils::figlet::FigletFont;
+use crate::utils::figlet::{figlet_with_font, FigletFont};
 use crate::utils::syntax::{Language, SyntaxTheme};
 use crate::utils::unicode::{center_to_width, display_width, pad_to_width, right_align_to_width};
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG, PLACEHOLDER_FG};
@@ -198,6 +198,10 @@ impl Markdown {
 
         let parser = Parser::new_ext(&self.source, parser::ParserContext::parser_options());
         let mut ctx = parser::ParserContext::new(&self.source, &self.config);
+
+        if self.config.show_toc {
+            self.render_toc(&mut ctx);
+        }
 
         for event in parser {
             // Text held back as a possible callout marker is plain quote
@@ -383,6 +387,13 @@ impl Markdown {
     fn handle_end_tag(&self, ctx: &mut parser::ParserContext, tag_end: TagEnd) {
         match tag_end {
             TagEnd::Heading(_) => {
+                if let Some(font) = ctx
+                    .figlet_font
+                    .filter(|_| ctx.heading_level <= ctx.figlet_max_level)
+                {
+                    self.render_figlet_heading(ctx, font);
+                    return;
+                }
                 // A heading line starts with its level's `#` marker, dimmed
                 let marker = "#".repeat(ctx.heading_level as usize);
                 let (fg, modifier) = (ctx.current_fg, ctx.current_modifier);
@@ -538,6 +549,58 @@ impl Markdown {
 
         let num = ctx.footnote_label_map.get(text).copied().unwrap_or(1);
         ctx.add_text(&format!("[^{}]", num));
+    }
+
+    /// Lay out the table of contents ahead of the document: the title, one
+    /// entry per heading indented by its level, then a separator. Nothing is
+    /// drawn when the document has no headings.
+    fn render_toc(&self, ctx: &mut parser::ParserContext) {
+        if self.toc.is_empty() {
+            return;
+        }
+
+        let mut title = Line::new();
+        title.push(
+            StyledText::new(&self.config.toc_title)
+                .with_fg(self.config.heading_fg)
+                .with_modifier(Modifier::BOLD),
+        );
+        ctx.lines.push(title);
+
+        for entry in &self.toc {
+            let indent = "  ".repeat(entry.level.saturating_sub(1) as usize);
+            let mut line = Line::new();
+            line.push(StyledText::new(format!("{indent}- ")));
+            line.push(
+                StyledText::new(&entry.text)
+                    .with_fg(self.config.toc_fg)
+                    .with_modifier(Modifier::UNDERLINE),
+            );
+            ctx.lines.push(line);
+        }
+
+        let mut sep = Line::new();
+        sep.push(StyledText::new("─".repeat(40)).with_fg(DARK_GRAY));
+        ctx.lines.push(sep);
+    }
+
+    /// Draw the finished heading as FIGlet big text, one row per art line,
+    /// in place of the usual `#`-marked line.
+    fn render_figlet_heading(&self, ctx: &mut parser::ParserContext, font: FigletFont) {
+        ctx.in_heading = false;
+        ctx.current_modifier &= !Modifier::BOLD;
+        ctx.current_fg = None;
+        ctx.flush_line();
+        let art = figlet_with_font(&ctx.heading_text, font);
+        for art_line in art.lines() {
+            let mut line = Line::new();
+            line.push(
+                StyledText::new(art_line)
+                    .with_fg(ctx.heading_fg)
+                    .with_modifier(Modifier::BOLD),
+            );
+            ctx.lines.push(line);
+        }
     }
 
     fn render_code_block(&self, ctx: &mut parser::ParserContext) {
@@ -709,7 +772,7 @@ impl Markdown {
 
     pub fn figlet_headings(mut self, enable: bool) -> Self {
         self.config.figlet_font = if enable {
-            Some(crate::utils::figlet::FigletFont::Block)
+            Some(FigletFont::Block)
         } else {
             None
         };
