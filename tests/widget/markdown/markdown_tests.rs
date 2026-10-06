@@ -709,3 +709,62 @@ fn test_markdown_figlet_headings_use_heading_fg() {
         .figlet_headings(true);
     assert_eq!(fg_at(md, 60, "█"), Some(revue::style::Color::MAGENTA));
 }
+
+// =========================================================================
+// Table of Contents Tests
+// =========================================================================
+
+#[test]
+fn test_markdown_show_toc_renders_contents_first() {
+    let source = "# Title 1\n\n## Title 2\n\nBody text";
+    let plain = render_md_rows(Markdown::new(source), 60);
+    let rows = render_md_rows(Markdown::new(source).show_toc(true), 60);
+    assert_ne!(rows, plain, "show_toc(true) changed nothing");
+
+    assert_eq!(rows[0], "Table of Contents", "{rows:#?}");
+    let pos = |needle: &str| {
+        rows.iter()
+            .position(|r| r == needle)
+            .unwrap_or_else(|| panic!("no row {needle:?}: {rows:#?}"))
+    };
+    // Entries are indented by heading level and come before the document
+    let entry_1 = pos("- Title 1");
+    let entry_2 = pos("  - Title 2");
+    let heading_1 = pos("# Title 1");
+    assert!(entry_1 < entry_2 && entry_2 < heading_1, "{rows:#?}");
+    assert!(row_containing(&rows, "Body text").is_some(), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_show_toc_hidden_by_default() {
+    let rows = render_md_rows(Markdown::new("# Title 1"), 60);
+    assert!(
+        row_containing(&rows, "Table of Contents").is_none(),
+        "{rows:#?}"
+    );
+}
+
+#[test]
+fn test_markdown_show_toc_without_headings_renders_nothing_extra() {
+    let source = "Just text";
+    let plain = render_md_rows(Markdown::new(source), 60);
+    let rows = render_md_rows(Markdown::new(source).show_toc(true), 60);
+    assert_eq!(rows, plain);
+}
+
+#[test]
+fn test_markdown_toc_title_and_fg() {
+    let rows = render_md_rows(
+        Markdown::new("# Title 1")
+            .show_toc(true)
+            .toc_title("Contents"),
+        60,
+    );
+    assert_eq!(rows[0], "Contents", "{rows:#?}");
+
+    let md = Markdown::new("# Title 1")
+        .show_toc(true)
+        .toc_fg(revue::style::Color::GREEN);
+    // The first "Title 1" on screen is the contents entry
+    assert_eq!(fg_at(md, 60, "Title 1"), Some(revue::style::Color::GREEN));
+}

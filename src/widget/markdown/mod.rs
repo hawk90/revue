@@ -199,6 +199,10 @@ impl Markdown {
         let parser = Parser::new_ext(&self.source, parser::ParserContext::parser_options());
         let mut ctx = parser::ParserContext::new(&self.source, &self.config);
 
+        if self.config.show_toc {
+            self.render_toc(&mut ctx);
+        }
+
         for event in parser {
             // Text held back as a possible callout marker is plain quote
             // text once anything but more text follows it
@@ -545,6 +549,39 @@ impl Markdown {
 
         let num = ctx.footnote_label_map.get(text).copied().unwrap_or(1);
         ctx.add_text(&format!("[^{}]", num));
+    }
+
+    /// Lay out the table of contents ahead of the document: the title, one
+    /// entry per heading indented by its level, then a separator. Nothing is
+    /// drawn when the document has no headings.
+    fn render_toc(&self, ctx: &mut parser::ParserContext) {
+        if self.toc.is_empty() {
+            return;
+        }
+
+        let mut title = Line::new();
+        title.push(
+            StyledText::new(&self.config.toc_title)
+                .with_fg(self.config.heading_fg)
+                .with_modifier(Modifier::BOLD),
+        );
+        ctx.lines.push(title);
+
+        for entry in &self.toc {
+            let indent = "  ".repeat(entry.level.saturating_sub(1) as usize);
+            let mut line = Line::new();
+            line.push(StyledText::new(format!("{indent}- ")));
+            line.push(
+                StyledText::new(&entry.text)
+                    .with_fg(self.config.toc_fg)
+                    .with_modifier(Modifier::UNDERLINE),
+            );
+            ctx.lines.push(line);
+        }
+
+        let mut sep = Line::new();
+        sep.push(StyledText::new("─".repeat(40)).with_fg(DARK_GRAY));
+        ctx.lines.push(sep);
     }
 
     /// Draw the finished heading as FIGlet big text, one row per art line,
