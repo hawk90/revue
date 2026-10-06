@@ -154,7 +154,8 @@ implement [`View::key`](https://docs.rs/revue/latest/revue/widget/trait.View.htm
 so they are matched by identity rather than by position — see
 [Performance › Incremental DOM](performance.md#incremental-dom-reconciliation).
 
-Opt-in while its performance is measured; it will become the default.
+It only matters with [`dom_from_render`](#dom_from_renderenabled) turned off:
+the default render-built DOM reconciles every frame on its own.
 
 ### dom_from_render(enabled)
 
@@ -162,16 +163,16 @@ Builds the DOM from the render traversal instead of `View::children`.
 
 ```rust
 App::builder()
-    .dom_from_render(true)
+    .dom_from_render(false)  // 2.x behavior
 ```
 
-**Default:** `false`. With it off the DOM only contains widgets exposed through
-`View::children`, which almost nothing implements — so a real application has a
-DOM of one node and CSS never reaches a widget below the root.
+**Default:** `true` (since 3.0). The frame renders twice, every widget rendered
+through `RenderContext::render_child` gets a node and its own computed style,
+and CSS works throughout the tree. Implies per-frame reconciliation.
 
-With it on the frame renders twice, every widget rendered through
-`RenderContext::render_child` gets a node and its own computed style, and CSS
-paint properties work throughout the tree. Implies per-frame reconciliation.
+Turned off, the DOM only contains widgets exposed through `View::children`,
+which almost nothing implements — so a real application has a DOM of one node
+and CSS never reaches a widget below the root. That was the 2.x default.
 
 Only children routed through `RenderContext::render_child` get a node. A widget
 a view paints straight into its own `ctx` — `Text::new("hi").render(ctx)` rather
@@ -184,7 +185,7 @@ It is also what makes the mouse able to find anything: the paint pass records
 where each node landed, the event loop asks that record what is under the
 pointer, `:hover` moves there, and a left click focuses the nearest enclosing
 focusable widget. Without it neither `:hover` nor `:focus` matches anything,
-which is what a running application used to do — see
+which is what a running application did in 2.x — see
 [Phase 2 Hit Test](../refactor/phase2-hit-test.md).
 
 Costs 1.5–2.8x per frame. See
@@ -196,7 +197,6 @@ Lets Tab and Shift+Tab move `:focus` between focusable widgets.
 
 ```rust
 App::builder()
-    .dom_from_render(true)
     .tab_navigation(true)
 ```
 
@@ -224,13 +224,12 @@ Lets CSS box properties override the geometry a container computed.
 
 ```rust
 App::builder()
-    .dom_from_render(true)
-    .css_layout(true)
+    .css_layout(false)  // keep CSS colors, ignore CSS box properties
 ```
 
-**Default:** `false`, and inert without `dom_from_render` — the properties are
-read from the node the paint pass is holding, and without the render traversal
-there is no such node below the root.
+**Default:** `true` (since 3.0), and inert without `dom_from_render` — the
+properties are read from the node the paint pass is holding, and without the
+render traversal there is no such node below the root.
 
 Container widgets keep deciding the *flow*: `vstack()` still stacks, and its
 `gap` and per-child sizes still apply. On top of that, a node's own specified

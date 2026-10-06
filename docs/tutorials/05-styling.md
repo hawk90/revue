@@ -11,6 +11,15 @@ let mut app = App::builder()
     .build();
 ```
 
+A rule reaches every widget its parent renders as a child, so in
+`vstack().child(Text::new("Hi").class("title"))` a `.title` rule styles the
+text. Colors, borders and text properties apply everywhere; `width`, `height`,
+`margin`, `min-*`/`max-*`, `display` and `gap` adjust the box a container
+gave the widget, while the container still decides the flow (`padding` and
+`flex-*` are parsed but not applied). Before 3.0 only the root widget was
+styled unless the app opted in - see the
+[migration guide](../migration/v3.0.0.md#1-css-reaches-every-widget-by-default).
+
 ## Selectors
 
 ### Type Selector
@@ -161,11 +170,13 @@ Button.primary {
 
 ## Pseudo-Classes
 
-> `:hover` and `:focus` follow the mouse only when the app is built with
-> [`dom_from_render(true)`](../guides/app-builder.md). Without it no widget below
-> the root is associated with a screen area, so nothing can be found under the
-> pointer and the rule never matches. The same flag makes a left click focus the
-> nearest enclosing input widget, which is what makes `:focus` match.
+> `:hover` and `:focus` follow the mouse because the app builds its DOM from
+> the render traversal ([`dom_from_render`](../guides/app-builder.md#dom_from_renderenabled),
+> on by default since 3.0). That is what associates every widget with a screen
+> area, so the pointer can find it; a left click focuses the nearest enclosing
+> input widget, which is what makes `:focus` match. With
+> `dom_from_render(false)` no widget below the root has an area and these rules
+> never match.
 >
 > Keyboard is the primary modality in a terminal - treat hover as an
 > enhancement, and never put information only there.
