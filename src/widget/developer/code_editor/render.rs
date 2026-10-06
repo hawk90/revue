@@ -125,8 +125,18 @@ impl View for CodeEditor {
         };
         self.scroll_x.set(scroll_x);
 
+        // Scroll vertically to keep the cursor's line in view, moving the
+        // first visible line as little as possible.
+        let cursor_line = self.cursor.0.min(self.lines.len().saturating_sub(1));
+        let scroll = self
+            .scroll
+            .get()
+            .min(cursor_line)
+            .max((cursor_line + 1).saturating_sub(visible_lines));
+        self.scroll.set(scroll);
+
         // Render visible lines
-        let start_line = self.scroll;
+        let start_line = scroll;
         let end_line = (start_line + visible_lines).min(self.lines.len());
 
         for (view_row, line_idx) in (start_line..end_line).enumerate() {
@@ -275,7 +285,7 @@ impl View for CodeEditor {
                 let y = row as u16;
 
                 // Highlight visible area
-                if start_line >= self.scroll && start_line < self.scroll + visible_lines {
+                if start_line >= scroll && start_line < scroll + visible_lines {
                     for x in 0..minimap_width {
                         let mut cell = Cell::new(' ');
                         cell.bg = Some(self.minimap_visible_bg);
