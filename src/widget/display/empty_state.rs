@@ -232,7 +232,7 @@ impl View for EmptyState {
     crate::impl_view_meta!("EmptyState");
 
     /// [`height`](EmptyState::height) rows, as wide as offered (the content
-    /// is centred across it).
+    /// is centered across it).
     fn measure(&self, max_width: u16, max_height: u16) -> Option<(u16, u16)> {
         Some((max_width, self.height().min(max_height)))
     }
