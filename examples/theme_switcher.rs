@@ -18,21 +18,9 @@ const THEMES: [&str; 6] = [
 ];
 
 fn main() -> revue::Result<()> {
-    let mut app = App::builder()
-        .css(
-            r#"
-            .container {
-                padding: 2;
-            }
-            .title {
-                color: var(--theme-primary);
-            }
-            .hint {
-                color: var(--theme-text-muted);
-            }
-        "#,
-        )
-        .build();
+    // Colors come from the active theme in `render`, so they follow every
+    // switch; a stylesheet is parsed once and would not.
+    let mut app = App::builder().build();
 
     let state = ThemeSwitcherState::new();
 
@@ -89,9 +77,13 @@ impl View for ThemeSwitcherState {
         // Every row is `child_sized` to its content. (A stack sizes children to
         // their content on its own; the explicit sizes pin the layout.)
         vstack()
-            .class("container")
             .gap(1)
-            .child_sized(Text::new("Theme Switcher Demo").class("title").bold(), 1)
+            .child_sized(
+                Text::new("Theme Switcher Demo")
+                    .fg(theme.palette.primary)
+                    .bold(),
+                1,
+            )
             .child_sized(divider(), 1)
             .child_sized(self.picker.clone(), picker_rows)
             .child_sized(divider(), 1)
@@ -127,7 +119,7 @@ impl View for ThemeSwitcherState {
             .child_sized(divider(), 1)
             .child_sized(
                 Text::new("[t] Cycle theme  [d] Toggle dark/light  [Enter] Open picker  [q] Quit")
-                    .class("hint"),
+                    .fg(theme.colors.text_muted),
                 1,
             )
             .render(ctx);
