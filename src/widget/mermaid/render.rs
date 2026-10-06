@@ -82,7 +82,8 @@ impl Diagram {
         // rule gets the ordinary node.
         let fg = node
             .color
-            .unwrap_or_else(|| ctx.color_or(self.colors.node_fg, Color::WHITE));
+            .or(self.colors.node_fg)
+            .unwrap_or_else(|| ctx.css_color(Color::WHITE));
         let bg = node.bg.or(Some(self.colors.node_bg));
 
         // Draw box based on shape

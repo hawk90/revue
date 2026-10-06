@@ -80,7 +80,7 @@ fn test_slide_title_color() {
 #[test]
 fn test_slide_content_color() {
     let s = Slide::new("Test").content_color(Color::YELLOW);
-    assert_eq!(s.content_color, Color::YELLOW);
+    assert_eq!(s.content_color, Some(Color::YELLOW));
 }
 
 #[test]
@@ -310,7 +310,7 @@ fn test_slide_builder_chain() {
     assert_eq!(s.notes, "Notes");
     assert_eq!(s.bg, Some(Color::BLUE));
     assert_eq!(s.title_color, Color::YELLOW);
-    assert_eq!(s.content_color, Color::GREEN);
+    assert_eq!(s.content_color, Some(Color::GREEN));
     assert_eq!(s.align, SlideAlign::Left);
 }
 

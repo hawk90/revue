@@ -26,7 +26,9 @@ use revue::widget::{
     MenuBar, Pagination, Rating, Resizable, SearchBar, Skeleton, Slider, SortableList, Splitter,
     StatusBar, Switch, Tag, Terminal, VirtualList, ZenMode,
 };
-use revue::widget::{Presentation, Slide};
+use revue::widget::{diagram, node, DateTimePicker, DiagramColors, Presentation, Slide};
+#[cfg(feature = "sysinfo")]
+use revue::widget::{ProcColors, ProcessMonitor};
 
 const RED: Color = Color {
     r: 255,
@@ -617,4 +619,209 @@ fn a_named_markdown_deck_background_beats_css() {
 fn a_silent_markdown_deck_defers_to_css() {
     let h = draw("#w { background: #ff0000; }", &MdDeckSilent);
     assert!(any_bg(&h, RED));
+}
+
+// ---------------------------------------------------------------------------
+// 3.0: public fields that became `Option<Color>`
+//
+// These could not tell "you named this color" from "this is the default" while
+// they were plain `Color`s, and being public they had to wait for a breaking
+// release. Each is asserted three ways: the default render is what it always
+// was, a named color - even the default one - outranks the stylesheet, and a
+// silent builder still yields to it.
+// ---------------------------------------------------------------------------
+
+fn draw_sized<V: View>(css: &str, view: &V, width: u16, height: u16) -> PipelineHarness {
+    let mut h = PipelineHarness::with_css(css, width, height).dom_from_render(true);
+    h.draw(view);
+    h
+}
+
+/// The foreground of the first cell, in reading order, whose symbol matches.
+fn fg_where(h: &PipelineHarness, matches: impl Fn(char) -> bool) -> Option<Color> {
+    let buffer = h.buffer();
+    (0..buffer.height()).find_map(|y| {
+        (0..buffer.width()).find_map(|x| {
+            buffer
+                .get(x, y)
+                .filter(|c| matches(c.symbol))
+                .and_then(|c| c.fg)
+        })
+    })
+}
+
+macro_rules! three_ways {
+    (
+        $default_test:ident, $named_test:ident, $silent_test:ident,
+        $named:ident, $silent:ident, $default:expr, ($w:expr, $h:expr), $probe:expr
+    ) => {
+        #[test]
+        fn $default_test() {
+            let h = draw_sized("", &$silent, $w, $h);
+            assert_eq!($probe(&h), Some($default), "the default render changed");
+        }
+
+        #[test]
+        fn $named_test() {
+            let h = draw_sized("#w { color: #ff0000; }", &$named, $w, $h);
+            assert_eq!(
+                $probe(&h),
+                Some($default),
+                "a stylesheet outranked a color the user named"
+            );
+        }
+
+        #[test]
+        fn $silent_test() {
+            let h = draw_sized("#w { color: #ff0000; }", &$silent, $w, $h);
+            assert_eq!(
+                $probe(&h),
+                Some(RED),
+                "a silent builder stopped deferring to the stylesheet"
+            );
+        }
+    };
+}
+
+// DiagramColors.node_fg - probed on the node's top-left corner.
+
+case!(
+    DiagramNamed,
+    DiagramSilent,
+    diagram()
+        .node(node("A", "Hi"))
+        .colors(DiagramColors {
+            node_fg: Some(Color::WHITE),
+            ..DiagramColors::default()
+        })
+        .element_id("w"),
+    diagram().node(node("A", "Hi")).element_id("w")
+);
+
+three_ways!(
+    a_default_diagram_node_is_unchanged,
+    a_named_diagram_node_fg_beats_css,
+    a_silent_diagram_node_defers_to_css,
+    DiagramNamed,
+    DiagramSilent,
+    Color::WHITE,
+    (40, 10),
+    |h: &PipelineHarness| fg_where(h, |c| c == '┌')
+);
+
+// ProcColors.name - probed on the first process row's name column. The rows
+// come from the live process table, which always holds at least this test.
+
+#[cfg(feature = "sysinfo")]
+fn procmon(named: bool) -> ProcessMonitor {
+    let mut m = if named {
+        ProcessMonitor::new().colors(ProcColors {
+            name: Some(Color::WHITE),
+            ..ProcColors::default()
+        })
+    } else {
+        ProcessMonitor::new()
+    }
+    .element_id("w");
+    m.refresh();
+    m
+}
+
+#[cfg(feature = "sysinfo")]
+case!(ProcNamed, ProcSilent, procmon(true), procmon(false));
+
+#[cfg(feature = "sysinfo")]
+three_ways!(
+    a_default_process_name_is_unchanged,
+    a_named_process_name_beats_css,
+    a_silent_process_name_defers_to_css,
+    ProcNamed,
+    ProcSilent,
+    Color::WHITE,
+    (60, 8),
+    |h: &PipelineHarness| h.buffer().get(7, 2).and_then(|c| c.fg)
+);
+
+// Slide.content_color - probed on the body line.
+
+case!(
+    SlideNamed,
+    SlideSilent,
+    Presentation::new()
+        .slide(Slide::new("Deck").line("~").content_color(Color::WHITE))
+        .element_id("w"),
+    Presentation::new()
+        .slide(Slide::new("Deck").line("~"))
+        .element_id("w")
+);
+
+three_ways!(
+    a_default_slide_body_is_unchanged,
+    a_named_slide_body_beats_css,
+    a_silent_slide_body_defers_to_css,
+    SlideNamed,
+    SlideSilent,
+    Color::WHITE,
+    (40, 12),
+    |h: &PipelineHarness| fg_where(h, |c| c == '~')
+);
+
+// DateTimePicker.field_fg - probed on the minute digits; the hour is the active
+// field and carries its own highlight. Named through `field_color`, and once
+// more by assigning the public field directly.
+
+fn last_digit_fg(h: &PipelineHarness) -> Option<Color> {
+    let buffer = h.buffer();
+    (0..buffer.height())
+        .flat_map(|y| (0..buffer.width()).map(move |x| (x, y)))
+        .filter_map(|(x, y)| buffer.get(x, y))
+        .rfind(|c| c.symbol.is_ascii_digit())
+        .and_then(|c| c.fg)
+}
+
+fn picker(named: bool) -> DateTimePicker {
+    if named {
+        DateTimePicker::time_only().field_color(Color::WHITE)
+    } else {
+        DateTimePicker::time_only()
+    }
+    .element_id("w")
+}
+
+case!(PickerNamed, PickerSilent, picker(true), picker(false));
+
+three_ways!(
+    a_default_picker_field_is_unchanged,
+    a_named_picker_field_beats_css,
+    a_silent_picker_field_defers_to_css,
+    PickerNamed,
+    PickerSilent,
+    Color::WHITE,
+    (40, 8),
+    |h: &PipelineHarness| last_digit_fg(h)
+);
+
+fn assigned_picker() -> DateTimePicker {
+    let mut p = DateTimePicker::time_only().element_id("w");
+    p.field_fg = Some(Color::WHITE);
+    p
+}
+
+case!(
+    PickerAssigned,
+    PickerUnassigned,
+    assigned_picker(),
+    picker(false)
+);
+
+#[test]
+fn an_assigned_picker_field_beats_css() {
+    let h = draw_sized("#w { color: #ff0000; }", &PickerAssigned, 40, 8);
+    assert_eq!(last_digit_fg(&h), Some(Color::WHITE));
+}
+
+#[test]
+fn an_unassigned_picker_field_defers_to_css() {
+    let h = draw_sized("#w { color: #ff0000; }", &PickerUnassigned, 40, 8);
+    assert_eq!(last_digit_fg(&h), Some(RED));
 }

@@ -26,7 +26,7 @@ pub trait Rendering {
     fn weekend_fg(&self) -> Color;
     fn cursor_fg(&self) -> Color;
     fn cursor_bg(&self) -> Color;
-    fn field_fg(&self) -> Color;
+    fn field_fg(&self) -> Option<Color>;
     fn field_active_fg(&self) -> Color;
     fn field_active_bg(&self) -> Color;
 
@@ -156,7 +156,9 @@ pub trait Rendering {
     /// Render time picker portion
     fn render_time(&self, ctx: &mut RenderContext, x: u16, y: u16) {
         // The active field is highlighted; the rest are the base.
-        let field_fg = ctx.color_or(self.field_fg(), Color::WHITE);
+        let field_fg = self
+            .field_fg()
+            .unwrap_or_else(|| ctx.css_color(Color::WHITE));
         // Draw time label
         self.draw_text(ctx, x, y, "Time:", LIGHT_GRAY, false);
 
