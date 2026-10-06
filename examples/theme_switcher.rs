@@ -86,8 +86,8 @@ impl View for ThemeSwitcherState {
         // A badge is its label plus one space of padding on each side.
         let badge_cols = |label: &str| display_width(label) as u16 + 2;
 
-        // Unsized stack children share the remaining space equally, so every
-        // row is `child_sized` to its content.
+        // Every row is `child_sized` to its content. (A stack sizes children to
+        // their content on its own; the explicit sizes pin the layout.)
         vstack()
             .class("container")
             .gap(1)

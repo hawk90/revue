@@ -168,8 +168,8 @@ impl View for TasksDemo {
         let is_running = self.tasks.is_running("fetch_data");
         let _has_timer = self.timer.has_pending();
 
-        // Unsized stack children share the remaining space equally, so every
-        // fixed-height row/box is `child_sized`; only the Data box absorbs the rest.
+        // Every fixed-height row/box is `child_sized`; the Data box takes the
+        // rest with `child_flex` - a stack would otherwise size it to its content.
         let view = vstack()
             .gap(1)
             .child_sized(
@@ -203,7 +203,7 @@ impl View for TasksDemo {
                 ),
                 5,
             )
-            .child(
+            .child_flex(
                 Border::single()
                     .title("Data")
                     .child(if let Some(data) = &self.data {
@@ -215,6 +215,7 @@ impl View for TasksDemo {
                             .child_sized(Text::muted("No data yet"), 1)
                             .child_sized(Text::muted("Press 'f' to fetch"), 1)
                     }),
+                1.0,
             )
             .child_sized(
                 if let Some(msg) = &self.message {

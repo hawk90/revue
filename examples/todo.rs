@@ -302,8 +302,8 @@ impl View for ReactiveTodoList {
         let total_text = format!("Total: {}", total_count);
         let active_text = format!("Active: {}", active_count);
 
-        // Unsized stack children share the remaining space equally, so every
-        // fixed-height row/box is `child_sized`; only the Items box absorbs the rest.
+        // Every fixed-height row/box is `child_sized`; the Items box takes the
+        // rest with `child_flex` - a stack would otherwise size it to its content.
         let view = vstack()
             .gap(1)
             .child_sized(
@@ -339,7 +339,7 @@ impl View for ReactiveTodoList {
                 ),
                 5,
             )
-            .child(Border::single().title("Items").child(items_view))
+            .child_flex(Border::single().title("Items").child(items_view), 1.0)
             .child_sized(
                 Border::rounded().title("Controls").child(
                     vstack()

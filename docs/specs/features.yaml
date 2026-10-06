@@ -3,7 +3,7 @@
 # Verified against the code on 2026-10-05 (code wins over docs). `source` § refers to the
 # pre-2026-10-05 docs/FEATURES.md layout (see git history / docs narrative).
 schema: 1
-updated: '2026-10-06'
+updated: '2026-10-07'
 sources:
   - 'docs/FEATURES.md (pre-2026-10-05 layout: §1–§11, Advanced Widgets, Feature Comparison)'
 statuses:
@@ -433,11 +433,13 @@ items:
     area: layout
     priority: P1
     priority_inferred: true
-    status: partial
+    status: done
     acceptance:
       - a view can report the size it wants (View::measure); None keeps "fill what I am given"
-      - with content_sized(true) an unsized child that measures gets that size; children that fill share the rest
+      - by default (3.0) an unsized child that measures gets that size; children that fill share the rest;
+        content_sized(false) restores the 2.x equal shares
       - child_sized / child_flex still win
+      - measured children that overflow the stack shrink in proportion to their size; fixed ones do not
       - Text, Border and Stack measure themselves
       - a view can say which axes it fills (View::fills); in a content-sized stack a child that fills the main axis
         shares the leftover like one that does not measure, unless an explicit CSS main-axis size is set
@@ -450,6 +452,9 @@ items:
       - src/widget/traits/view.rs::measure
       - src/widget/layout/stack.rs::content_sized
       - tests/content_sized_stack.rs::a_column_stacks_text_line_after_line
+      - tests/content_sized_stack.rs::every_constructor_is_content_sized_by_default
+      - tests/content_sized_stack.rs::turning_the_flag_off_shares_equally
+      - tests/content_sized_stack.rs::a_body_too_tall_shrinks_instead_of_pushing_the_footer_off
       - tests/content_sized_stack.rs::a_child_that_fills_gets_what_the_measured_ones_leave
       - tests/content_sized_stack.rs::a_switch_and_its_label_sit_side_by_side
       - tests/widget_measure.rs::assert_measures_paint
@@ -463,10 +468,9 @@ items:
       - tests/content_sized_css.rs::a_hidden_child_takes_no_space
     source:
       - PR #687
-    notes: Opt-in in 2.x (off by default); 3.0 turns it on (docs/migration/v3.0.0.md). Partial because the flag is
-      still off by default and the widgets without an obvious natural size (lists, tables, editors, charts, Positioned,
-      Gauge Arc/Circle) still fill. Design and the list of widgets that measure in
-      docs/refactor/design-content-sized-stack.md.
+    notes: Opt-in in 2.x; on by default since 3.0 (docs/migration/v3.0.0.md section 2). Widgets without an obvious
+      natural size (lists, tables, editors, charts, Positioned, Gauge Arc/Circle) fill by design. Design and the
+      list of widgets that measure in docs/refactor/design-content-sized-stack.md.
       Stack::measure does not see its children's CSS box (no render context), so a nested content-sized stack
       sizes itself from their bare content.
   - id: RX-001

@@ -124,9 +124,9 @@ impl View for MainView {
                 .highlight_fg(Color::WHITE),
         );
 
-        // Layout. Unsized stack children share space equally, so fixed-size
-        // pieces use `child_sized` (a Border needs content + 2 rows) and only
-        // the list takes the leftover rows.
+        // Layout. Fixed-size pieces use `child_sized` (a Border needs content
+        // + 2 rows); the list does not measure itself, so it takes the
+        // leftover rows.
         let layout = vstack()
             .gap(1)
             .child_sized(title, 3)

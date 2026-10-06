@@ -70,3 +70,4 @@ not missing features — the item can still be `done`.
 
 Snapshot on 2026-10-05 (after deep verification): 103 items — 82 done, 17 partial, 4 todo, 0 dropped.
 Snapshot on 2026-10-06 (2.76.0, then the ignored-bug sweep): 105 items — 84 done, 17 partial, 4 todo, 0 dropped.
+Snapshot on 2026-10-07 (stacks content-sized by default, LAY-006 done): 105 items — 85 done, 16 partial, 4 todo, 0 dropped.

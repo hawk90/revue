@@ -172,8 +172,9 @@ fn the_engine_and_the_screen_disagree_today() {
     let mut h = harness("");
     h.draw(&column());
 
-    // The widget painted a column: one row of text per child.
-    assert_eq!(h.screen_text(), "AAAA\n\n\n\n\nBBBB");
+    // The widget painted a column: one row of text per child, one row of gap
+    // between them.
+    assert_eq!(h.screen_text(), "AAAA\n\nBBBB");
 
     // The engine placed them side by side on the same row.
     let b = h.layout_rect("b").expect("b");

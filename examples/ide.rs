@@ -389,8 +389,7 @@ fn main() -> Result<()> {
         let mut content = vstack();
         for (i, line) in text.lines().enumerate() {
             let line_num = format!("{:>width$} ", i + 1, width = line_width);
-            // Unsized stack children share the space equally, so the gutter is
-            // sized to its text and each line to one row.
+            // The gutter is sized to its text and each line to one row.
             let row = hstack()
                 .child_sized(
                     Text::new(&line_num).fg(Color::rgb(100, 100, 100)),
@@ -423,7 +422,7 @@ fn main() -> Result<()> {
 
         vstack()
             .child_sized(header, 1)
-            .child(Border::single().child(content))
+            .child_flex(Border::single().child(content), 1.0)
             .child_sized(Text::new(cursor_info).fg(Color::rgb(128, 128, 128)), 1)
     }
 
@@ -446,7 +445,7 @@ fn main() -> Result<()> {
         hstack()
             .child_sized(mode_text, cols(&mode_label))
             .child_sized(file_text, cols(&file_label))
-            .child(status_text)
+            .child_flex(status_text, 1.0)
             .child_sized(pos_text, cols(&pos_label))
     }
 

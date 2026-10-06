@@ -231,8 +231,9 @@ impl View for Gallery {
     fn render(&self, ctx: &mut RenderContext) {
         let cat = &self.categories[self.category];
 
-        // Main layout. Unsized stack children share the remaining space
-        // equally, so fixed-height rows are `child_sized`; the content absorbs the rest.
+        // Main layout. Fixed-height rows are `child_sized`; the content row and
+        // its two panels take the rest with `child_flex` - a stack would
+        // otherwise size them to their content.
         vstack()
             .gap(1)
             // Header
@@ -245,11 +246,12 @@ impl View for Gallery {
             // Category tabs
             .child_sized(self.render_tabs(), 1)
             // Content
-            .child(
+            .child_flex(
                 hstack()
                     .gap(2)
-                    .child(self.render_widget_list(cat))
-                    .child(self.render_preview()),
+                    .child_flex(self.render_widget_list(cat), 1.0)
+                    .child_flex(self.render_preview(), 1.0),
+                1.0,
             )
             // Footer
             .child_sized(Text::muted("[Tab] Category  [↑↓] Navigate  [q] Quit"), 1)

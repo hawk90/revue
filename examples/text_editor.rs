@@ -902,9 +902,10 @@ impl View for TextEditor {
         // Header, status and help take a row each; the border takes two.
         let visible_lines = ctx.area.height.saturating_sub(5) as usize;
 
-        // A stack splits its space *equally* among children it was not told
-        // the size of, so every piece that should hug its text gets
-        // `child_sized`. Only the last piece of a row takes the rest.
+        // A stack sizes the children it was not told the size of to their
+        // content. The pieces that hug their text are spelled out with
+        // `child_sized` anyway; the editor body and the status message take
+        // the rest of their stack with `child_flex`.
 
         // Header
         let modified_indicator = if self.modified { " [+]" } else { "" };
@@ -1017,7 +1018,10 @@ impl View for TextEditor {
         let status_line = hstack()
             .child_sized(mode_indicator, mode_cols)
             .child_sized(file_info, file_cols)
-            .child(Text::new(&self.status_message).fg(Color::rgb(180, 180, 180)))
+            .child_flex(
+                Text::new(&self.status_message).fg(Color::rgb(180, 180, 180)),
+                1.0,
+            )
             .child_sized(
                 Text::new(percent_label).fg(Color::rgb(100, 100, 100)),
                 percent_cols,
@@ -1040,7 +1044,7 @@ impl View for TextEditor {
         // Main layout
         vstack()
             .child_sized(header, 1)
-            .child(Border::single().child(content))
+            .child_flex(Border::single().child(content), 1.0)
             .child_sized(status_line, 1)
             .child_sized(help_line, 1)
             .render(ctx);

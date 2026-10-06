@@ -5,12 +5,12 @@
 > This page keeps only the narrative: what Revue is for, and why it behaves the way it does.
 > Schema and update rules: [docs/specs/README.md](specs/README.md). API reference: [docs.rs/revue](https://docs.rs/revue).
 
-## Status summary (2026-10-06, verified against the code)
+## Status summary (2026-10-07, verified against the code)
 
 | | done | partial | todo | dropped | total |
 |---|---|---|---|---|---|
 | CSS (`CSS-*`) | 12 | 7 | 1 | 0 | 20 |
-| Layout (`LAY-*`) | 3 | 3 | 0 | 0 | 6 |
+| Layout (`LAY-*`) | 4 | 2 | 0 | 0 | 6 |
 | Reactivity (`RX-*`) | 4 | 0 | 0 | 0 | 4 |
 | Widgets (`WID-*`) | 40 | 3 | 1 | 0 | 44 |
 | Charts (`CHART-*`) | 8 | 0 | 0 | 0 | 8 |
@@ -20,7 +20,7 @@
 | Theming (`THEME-*`) | 2 | 0 | 1 | 0 | 3 |
 | Keyboard & clipboard (`KEY-*`) | 3 | 1 | 0 | 0 | 4 |
 | Utilities (`UTIL-*`) | 5 | 0 | 0 | 0 | 5 |
-| **Total** | **84** | **17** | **4** | **0** | **105** |
+| **Total** | **85** | **16** | **4** | **0** | **105** |
 
 Known gaps worth knowing before you build on them: CSS `transparent` paints black, `opacity` /
 `z-index` / `position` are parsed but not applied, CSS transitions are not triggered by state changes,
@@ -80,7 +80,8 @@ the computed style, but nothing reads them at paint time. They stay parseable so
 Layout is computed by Revue's own in-tree engine (`src/runtime/layout/`) — a hand-written flexbox and
 grid solver with no third-party layout dependency, so the semantics stay under the project's control. In
 practice containers (`vstack`, `hstack`, `grid`) still place their own children from builder settings
-(`gap`, `child_sized`, `child_flex`, `constrain`); the engine's output is consulted only for the
+(`gap`, `child_sized`, `child_flex`, `constrain`, and each unsized child's measured content size -
+`View::measure`); the engine's output is consulted only for the
 `css_layout` overrides. Closing that gap is tracked in [Layout Findings](refactor/findings-layout.md).
 
 ## 3. Reactivity

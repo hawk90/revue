@@ -19,13 +19,15 @@ const RED: Color = Color {
     a: 255,
 };
 
-/// Three stacked rows, each with an element id of its own. `vstack` splits the
-/// six-row terminal evenly, so the rows own `y` 0-1, 2-3 and 4-5.
+/// Three stacked rows, each with an element id of its own. The stack splits the
+/// six-row terminal evenly (`content_sized(false)`), so the rows own `y` 0-1,
+/// 2-3 and 4-5 - the geometry the tests below aim at.
 struct Rows;
 
 impl View for Rows {
     fn render(&self, ctx: &mut RenderContext) {
         vstack()
+            .content_sized(false)
             .child(Text::new("AAAA").element_id("a"))
             .child(Text::new("BBBB").element_id("b"))
             .child(Text::new("CCCC").element_id("c"))

@@ -211,30 +211,36 @@ fn test_form_layout() {
 #[test]
 fn test_dashboard_layout() {
     let config = TestConfig::with_size(60, 20);
+    // The panels are content-sized (bordered text), so they say they want the
+    // rest: the row takes the height the header leaves, and the two panels
+    // split its width.
     let view = vstack()
         .child(
             Border::double()
                 .title("Dashboard")
                 .child(text("Application Status: Running")),
         )
-        .child(
+        .child_flex(
             hstack()
-                .child(
+                .child_flex(
                     Border::single().title("Stats").child(
                         vstack()
                             .child(text("CPU: 45%"))
                             .child(text("Memory: 2.1GB"))
                             .child(text("Uptime: 2h 15m")),
                     ),
+                    1.0,
                 )
-                .child(
+                .child_flex(
                     Border::single().title("Logs").child(
                         vstack()
                             .child(Text::info("[INFO] Server started"))
                             .child(Text::success("[OK] Connected"))
                             .child(Text::error("[ERR] Failed to load")),
                     ),
+                    1.0,
                 ),
+            1.0,
         );
 
     let mut app = TestApp::with_config(view, config);

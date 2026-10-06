@@ -168,8 +168,9 @@ impl View for ProgressDemo {
             progress_percent
         );
 
-        // Unsized stack children share the remaining space equally, so every
-        // fixed-height row/box is `child_sized`.
+        // Every fixed-height row/box is `child_sized`; the partial results box
+        // takes the rest, and side-by-side panels split their row, with
+        // `child_flex` - a stack would otherwise size them to their content.
         let view = vstack()
             .gap(1)
             .child_sized(
@@ -202,7 +203,7 @@ impl View for ProgressDemo {
             .child_sized(
                 hstack()
                     .gap(1)
-                    .child(
+                    .child_flex(
                         Border::single().title("Progress").child(
                             vstack()
                                 .child_sized(Text::new(progress_bar).fg(Color::GREEN), 1)
@@ -211,19 +212,23 @@ impl View for ProgressDemo {
                                     1,
                                 ),
                         ),
+                        1.0,
                     )
-                    .child(Border::single().title("Final Result").child(
-                        if let Some(result) = &self.final_result {
-                            vstack()
-                                .child_sized(Text::success("✓ Task completed"), 1)
-                                .child_sized(Text::new(result).fg(Color::WHITE), 1)
-                        } else {
-                            vstack().child_sized(Text::muted("Not completed yet"), 1)
-                        },
-                    )),
+                    .child_flex(
+                        Border::single().title("Final Result").child(
+                            if let Some(result) = &self.final_result {
+                                vstack()
+                                    .child_sized(Text::success("✓ Task completed"), 1)
+                                    .child_sized(Text::new(result).fg(Color::WHITE), 1)
+                            } else {
+                                vstack().child_sized(Text::muted("Not completed yet"), 1)
+                            },
+                        ),
+                        1.0,
+                    ),
                 4,
             )
-            .child(
+            .child_flex(
                 Border::single()
                     .title("Partial Results (last 5)".to_string())
                     .child({
@@ -237,11 +242,12 @@ impl View for ProgressDemo {
                         }
                         stack
                     }),
+                1.0,
             )
             .child_sized(
                 hstack()
                     .gap(1)
-                    .child(
+                    .child_flex(
                         Border::success_box()
                             .title("✨ Features Demonstrated")
                             .child(
@@ -263,8 +269,9 @@ impl View for ProgressDemo {
                                         1,
                                     ),
                             ),
+                        1.0,
                     )
-                    .child(
+                    .child_flex(
                         Border::rounded().title("Controls").child(
                             vstack()
                                 .child_sized(
@@ -310,6 +317,7 @@ impl View for ProgressDemo {
                                     1,
                                 ),
                         ),
+                        1.0,
                     ),
                 8,
             );
