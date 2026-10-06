@@ -342,9 +342,6 @@ Enable DevTools to debug your app:
 
 ```rust
 fn main() -> Result<()> {
-    // Enable devtools globally
-    enable_devtools();
-
     let app = App::builder()
         .devtools(true)  // F12 to toggle
         .build();
@@ -352,6 +349,9 @@ fn main() -> Result<()> {
     // ...
 }
 ```
+
+To switch DevTools from code, call `App::enable_devtools()`,
+`App::disable_devtools()` or `App::toggle_devtools()` on the app.
 
 ## Complete Example
 
