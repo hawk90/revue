@@ -30,7 +30,7 @@ cargo run --example <name>
 
 | Example | Description |
 |---------|-------------|
-| [todo](todo.rs) | Todo app with filtering and persistence |
+| [todo](todo.rs) | Reactive todo app with filtering |
 | [reactive_form](reactive_form.rs) | Form validation with signals |
 | [form_validation](form_validation.rs) | Form field validation patterns |
 | [theme_switcher](theme_switcher.rs) | Runtime theme switching |

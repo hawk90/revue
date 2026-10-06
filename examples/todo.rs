@@ -5,7 +5,7 @@
 //! - Computed derived state
 //! - Complex state transformations
 //!
-//! Run with: cargo run --example reactive_todo
+//! Run with: cargo run --example todo
 
 use revue::prelude::*;
 use revue::utils::unicode::display_width;
@@ -149,7 +149,22 @@ impl ReactiveTodoList {
                 });
             });
             self.input.set(String::new());
-            self.selected.set(0);
+            // Select the new item: it is appended, so it is the last row of
+            // any filter that shows active items.
+            if self.filter.get().matches(false) {
+                self.selected
+                    .set(self.filtered_items.get().len().saturating_sub(1));
+            } else {
+                self.clamp_selection();
+            }
+        }
+    }
+
+    /// Keep `selected` inside the filtered list after it shrinks.
+    fn clamp_selection(&mut self) {
+        let last = self.filtered_items.get().len().saturating_sub(1);
+        if self.selected.get() > last {
+            self.selected.set(last);
         }
     }
 
@@ -172,6 +187,9 @@ impl ReactiveTodoList {
                 }
             }
         });
+
+        // Under Active/Completed the toggled item leaves the view.
+        self.clamp_selection();
     }
 
     fn delete_selected(&mut self) {
@@ -190,16 +208,7 @@ impl ReactiveTodoList {
             }
         });
 
-        // Adjust selection
-        let filtered_len = self.filtered_items.get().len();
-        if filtered_len > 0 {
-            let current = self.selected.get();
-            if current >= filtered_len {
-                self.selected.set(filtered_len - 1);
-            }
-        } else {
-            self.selected.set(0);
-        }
+        self.clamp_selection();
     }
 
     fn cycle_filter(&mut self) {
@@ -426,4 +435,57 @@ fn main() -> Result<()> {
         Event::Key(key_event) => todo.handle_key(&key_event.key),
         _ => false,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn selected_text(todo: &ReactiveTodoList) -> Option<String> {
+        todo.filtered_items
+            .get()
+            .get(todo.selected.get())
+            .map(|item| item.text.clone())
+    }
+
+    #[test]
+    fn toggling_the_last_visible_item_keeps_selection_in_range() {
+        let mut todo = ReactiveTodoList::new();
+        todo.cycle_filter(); // Active: "Learn Revue TUI", "Build awesome app"
+        todo.handle_key(&Key::Down);
+        todo.toggle_selected(); // "Build awesome app" leaves the Active view
+
+        assert_eq!(selected_text(&todo).as_deref(), Some("Learn Revue TUI"));
+    }
+
+    #[test]
+    fn deleting_the_last_item_selects_the_new_last_item() {
+        let mut todo = ReactiveTodoList::new();
+        todo.handle_key(&Key::Down);
+        todo.handle_key(&Key::Down);
+        todo.delete_selected();
+
+        assert_eq!(selected_text(&todo).as_deref(), Some("Build awesome app"));
+    }
+
+    #[test]
+    fn emptying_a_filter_resets_selection() {
+        let mut todo = ReactiveTodoList::new();
+        todo.cycle_filter(); // Active: two items
+        todo.handle_key(&Key::Down);
+        todo.toggle_selected();
+        todo.toggle_selected(); // nothing active is left
+
+        assert!(todo.filtered_items.get().is_empty());
+        assert_eq!(todo.selected.get(), 0);
+    }
+
+    #[test]
+    fn adding_an_item_selects_it() {
+        let mut todo = ReactiveTodoList::new();
+        todo.input.set("Write tests".to_string());
+        todo.add_item();
+
+        assert_eq!(selected_text(&todo).as_deref(), Some("Write tests"));
+    }
 }
