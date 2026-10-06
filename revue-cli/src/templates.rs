@@ -1,5 +1,12 @@
 //! Project templates and theme definitions
 
+/// The `revue` version requirement written into generated projects.
+///
+/// The templates are written against this release line. A test checks it
+/// against the version of the `revue` crate in this repository, so a major
+/// release that leaves the templates behind fails CI.
+pub const REVUE_VERSION: &str = "3.0";
+
 /// Generate Cargo.toml
 pub fn cargo_toml(name: &str) -> String {
     format!(
@@ -9,50 +16,156 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-revue = {{ path = "../" }}
+revue = "{REVUE_VERSION}"
 "#
     )
 }
 
 /// Generate .gitignore
+///
+/// `Cargo.lock` is not ignored: a generated project is an application, and
+/// an application commits its lock file.
 pub fn gitignore() -> &'static str {
     r#"/target
-Cargo.lock
 *.swp
 *.swo
 .DS_Store
 "#
 }
 
-/// Default CSS style
-pub fn default_style() -> &'static str {
-    r#"/* Revue Default Styles */
+/// The templates `revue new --template` accepts.
+pub const PROJECT_TEMPLATES: &[&str] = &["basic", "dashboard", "todo", "chat"];
+
+/// The source files `revue new` writes for one template.
+pub struct ProjectFiles {
+    /// `src/main.rs`
+    pub main_rs: &'static str,
+    /// `src/app.rs`
+    pub app_rs: &'static str,
+    /// `styles/main.css`, which `main.rs` loads
+    pub style_css: &'static str,
+}
+
+/// The files of the template called `template`, if there is one.
+pub fn project_files(template: &str) -> Option<ProjectFiles> {
+    let (main_rs, app_rs, style_css) = match template {
+        "basic" => (basic_main(), basic_app(), basic_style()),
+        "dashboard" => (dashboard_main(), dashboard_app(), dashboard_style()),
+        "todo" => (todo_main(), todo_app(), todo_style()),
+        "chat" => (chat_main(), chat_app(), chat_style()),
+        _ => return None,
+    };
+    Some(ProjectFiles {
+        main_rs,
+        app_rs,
+        style_css,
+    })
+}
+
+// =============================================================================
+// Basic Template: a counter
+// =============================================================================
+
+/// `src/main.rs` of the `basic` template
+pub fn basic_main() -> &'static str {
+    r#"//! Basic Revue application
+
+mod app;
+
+use app::Counter;
+use revue::prelude::*;
+
+fn main() -> Result<()> {
+    // The path is relative to the working directory: start the app with
+    // `cargo run` from the project root.
+    let mut app = App::builder().style("styles/main.css").build();
+
+    app.run(Counter::new(), |event, counter, app| {
+        let Event::Key(KeyEvent { key, .. }) = event else {
+            return false;
+        };
+        if let Key::Char('q') | Key::Escape = key {
+            // Stop the loop so `run` restores the terminal on the way out.
+            app.quit();
+            return false;
+        }
+        // Returning `true` asks for a redraw.
+        counter.handle_key(key)
+    })
+}
+"#
+}
+
+/// `src/app.rs` of the `basic` template
+pub fn basic_app() -> &'static str {
+    r#"//! The application's root view
+
+use revue::prelude::*;
+
+/// A counter: state in a `Signal`, a view that renders it, and key handling.
+pub struct Counter {
+    count: Signal<i32>,
+}
+
+impl Counter {
+    pub fn new() -> Self {
+        Self { count: signal(0) }
+    }
+
+    /// Handles a key press and returns whether the view changed.
+    pub fn handle_key(&mut self, key: &Key) -> bool {
+        match key {
+            Key::Char('+') | Key::Char('=') | Key::Up => self.count.update(|n| *n += 1),
+            Key::Char('-') | Key::Down => self.count.update(|n| *n -= 1),
+            Key::Char('r') => self.count.set(0),
+            _ => return false,
+        }
+        true
+    }
+}
+
+impl Default for Counter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl View for Counter {
+    fn render(&self, ctx: &mut RenderContext) {
+        Border::rounded()
+            .title(" Revue App ")
+            .child(
+                vstack()
+                    .gap(1)
+                    .child(Text::new("Hello from Revue!").class("title"))
+                    .child(Text::new(format!("Count: {}", self.count.get())).class("count"))
+                    .child(Text::muted(
+                        "[+] increment  [-] decrement  [r] reset  [q] quit",
+                    )),
+            )
+            .render(ctx);
+    }
+
+    fn meta(&self) -> WidgetMeta {
+        WidgetMeta::new("Counter")
+    }
+}
+"#
+}
+
+/// `styles/main.css` of the `basic` template
+pub fn basic_style() -> &'static str {
+    r#"/* Starter styles: loaded by `.style("styles/main.css")` in main.rs */
 
 :root {
-    --bg-primary: #1a1b26;
-    --bg-secondary: #24283b;
-    --fg-primary: #c0caf5;
-    --fg-secondary: #565f89;
+    --fg: #c0caf5;
     --accent: #7aa2f7;
-    --success: #9ece6a;
-    --warning: #e0af68;
-    --error: #f7768e;
 }
 
-* {
-    color: var(--fg-primary);
-    background: var(--bg-primary);
-}
-
-.container {
-    padding: 1;
-    margin: 1;
-}
-
-.header {
-    background: var(--bg-secondary);
-    padding: 1;
-    text-align: center;
+/* The Border is the view's own body, so it is styled through the view's type.
+   A widget added with `.child(...)` gets its own node and can use a class. */
+Counter {
+    border-color: var(--accent);
 }
 
 .title {
@@ -60,160 +173,72 @@ pub fn default_style() -> &'static str {
     font-weight: bold;
 }
 
-.button {
-    background: var(--accent);
-    color: var(--bg-primary);
-    padding: 0 2;
-}
-
-.button:hover {
-    background: #89b4fa;
-}
-
-.button:focus {
-    border-color: var(--accent);
-}
-
-.input {
-    background: var(--bg-secondary);
-    border-color: var(--fg-secondary);
-    padding: 0 1;
-}
-
-.input:focus {
-    border-color: var(--accent);
-}
-
-.list-item {
-    padding: 0 1;
-}
-
-.list-item:selected {
-    background: var(--accent);
-    color: var(--bg-primary);
-}
-
-.card {
-    background: var(--bg-secondary);
-    border-color: var(--fg-secondary);
-    padding: 1;
-    margin: 1;
-}
-
-.success {
-    color: var(--success);
-}
-
-.warning {
-    color: var(--warning);
-}
-
-.error {
-    color: var(--error);
+.count {
+    color: var(--fg);
+    font-weight: bold;
 }
 "#
 }
 
 // =============================================================================
-// Basic Template
+// Dashboard Template: simulated system metrics in gauges and a sparkline
 // =============================================================================
 
-pub fn basic_main() -> &'static str {
-    r#"//! Basic Revue Application
-
-mod app;
-
-use revue::prelude::*;
-
-fn main() -> Result<()> {
-    App::builder()
-        .style("styles/main.css")
-        .mount(app::App::new)
-        .run()
-}
-"#
-}
-
-pub fn basic_app() -> &'static str {
-    r#"//! Application component
-
-use revue::prelude::*;
-
-pub struct App {
-    counter: Signal<i32>,
-}
-
-impl App {
-    pub fn new() -> Self {
-        Self {
-            counter: signal(0),
-        }
-    }
-
-    fn increment(&mut self) {
-        self.counter.set(self.counter.get() + 1);
-    }
-
-    fn decrement(&mut self) {
-        self.counter.set(self.counter.get() - 1);
-    }
-}
-
-impl View for App {
-    fn render(&self, ctx: &mut RenderContext) {
-        vstack()
-            .class("container")
-            .child(
-                text("🎨 Revue App")
-                    .class("title")
-                    .alignment(Alignment::Center)
-            )
-            .child(
-                text(format!("Count: {}", self.counter.get()))
-                    .alignment(Alignment::Center)
-            )
-            .child(
-                hstack()
-                    .child(button("- Decrement").class("button"))
-                    .child(button("+ Increment").class("button"))
-            )
-            .render(ctx);
-    }
-}
-"#
-}
-
-// =============================================================================
-// Dashboard Template
-// =============================================================================
-
+/// `src/main.rs` of the `dashboard` template
 pub fn dashboard_main() -> &'static str {
-    r#"//! Dashboard Application
+    r#"//! Dashboard application
 
 mod app;
 
+use app::Dashboard;
 use revue::prelude::*;
 
 fn main() -> Result<()> {
-    App::builder()
-        .title("Dashboard")
-        .style("styles/main.css")
-        .mount(app::Dashboard::new)
-        .run()
+    // The path is relative to the working directory: start the app with
+    // `cargo run` from the project root.
+    let mut app = App::builder().style("styles/main.css").build();
+
+    app.run(Dashboard::new(), |event, dashboard, app| match event {
+        Event::Key(KeyEvent {
+            key: Key::Char('q') | Key::Escape,
+            ..
+        }) => {
+            // Stop the loop so `run` restores the terminal on the way out.
+            app.quit();
+            false
+        }
+        // Returning `true` asks for a redraw.
+        Event::Tick => dashboard.on_tick(),
+        _ => false,
+    })
 }
 "#
 }
 
+/// `src/app.rs` of the `dashboard` template
 pub fn dashboard_app() -> &'static str {
-    r#"//! Dashboard component
+    r#"//! Dashboard view
 
 use revue::prelude::*;
+use std::time::{Duration, Instant};
+
+/// How often the simulated metrics change.
+const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
+
+/// How many request samples the sparkline keeps: more than a terminal is
+/// wide, so the line is always full.
+const HISTORY: usize = 300;
+
+/// A gauge at or above this percentage counts as an alert.
+const ALERT_AT: f64 = 70.0;
 
 pub struct Dashboard {
-    cpu_usage: Signal<f32>,
-    memory_usage: Signal<f32>,
-    disk_usage: Signal<f32>,
+    cpu_usage: Signal<f64>,
+    memory_usage: Signal<f64>,
+    disk_usage: Signal<f64>,
     requests: Signal<Vec<u64>>,
+    updates: Signal<u64>,
+    last_update: Instant,
 }
 
 impl Dashboard {
@@ -222,93 +247,187 @@ impl Dashboard {
             cpu_usage: signal(45.2),
             memory_usage: signal(62.8),
             disk_usage: signal(34.5),
-            requests: signal(vec![120, 145, 132, 167, 189, 156, 178]),
+            requests: signal((0..HISTORY).map(|i| requests_at(i as f64)).collect()),
+            updates: signal(0),
+            last_update: Instant::now(),
         }
+    }
+
+    /// Called on every `Event::Tick`. Advances the simulated metrics once per
+    /// `UPDATE_INTERVAL` and returns whether the view must redraw.
+    pub fn on_tick(&mut self) -> bool {
+        if self.last_update.elapsed() < UPDATE_INTERVAL {
+            return false;
+        }
+        self.last_update = Instant::now();
+
+        self.updates.update(|n| *n += 1);
+        let t = self.updates.get() as f64;
+        self.cpu_usage.set(50.0 + (t * 0.4).sin() * 30.0);
+        self.memory_usage.set(62.0 + (t * 0.15).cos() * 10.0);
+        self.disk_usage.set((34.5 + t * 0.05).min(100.0));
+        self.requests.update(|samples| {
+            samples.remove(0);
+            samples.push(requests_at(HISTORY as f64 + t));
+        });
+        true
+    }
+
+    fn gauge_panel(title: &str, percent: f64) -> Border {
+        Border::rounded().title(format!(" {title} ")).child(
+            Gauge::new()
+                .percent(percent)
+                // A gauge draws at most `width` cells; this fills its panel.
+                .width(u16::MAX)
+                .thresholds(ALERT_AT / 100.0, 0.9),
+        )
+    }
+}
+
+/// Simulated requests per second at sample `t`.
+fn requests_at(t: f64) -> u64 {
+    (150.0 + (t * 0.3).sin() * 40.0 + (t * 1.7).cos() * 15.0) as u64
+}
+
+impl Default for Dashboard {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl View for Dashboard {
     fn render(&self, ctx: &mut RenderContext) {
+        let usage = [
+            ("CPU", self.cpu_usage.get()),
+            ("Memory", self.memory_usage.get()),
+            ("Disk", self.disk_usage.get()),
+        ];
+        let alerts = usage.iter().filter(|(_, p)| *p >= ALERT_AT).count();
+        let requests = self.requests.get();
+        let latest = requests.last().copied().unwrap_or_default();
+
+        // A row of `child_flex` children has no content height of its own,
+        // so each row gets a fixed height with `child_sized`: its content
+        // lines plus 2 for the border.
+        let mut gauges = hstack().gap(1);
+        for (title, percent) in usage {
+            gauges = gauges.child_flex(Self::gauge_panel(title, percent), 1.0);
+        }
+
+        let requests_panel = Border::rounded()
+            .title(format!(" Requests/s: {latest} "))
+            .child(Sparkline::new(requests.iter().map(|&r| r as f64)));
+
+        let alert_badge = match alerts {
+            0 => Badge::new("No alerts").info(),
+            1 => Badge::new("1 alert").warning(),
+            n => Badge::new(format!("{n} alerts")).warning(),
+        };
+        let status = hstack()
+            .gap(1)
+            .child_sized(Badge::new("Online").success(), 8)
+            .child_sized(alert_badge, 11)
+            .child(Text::muted(format!(
+                "Updates: {}  [q] quit",
+                self.updates.get()
+            )));
+
         vstack()
-            .class("container")
-            .child(
-                text("📊 System Dashboard")
-                    .class("title")
-                    .alignment(Alignment::Center)
-            )
-            .child(divider().label("Metrics"))
-            .child(
-                hstack()
-                    .child(self.render_gauge("CPU", self.cpu_usage.get()))
-                    .child(self.render_gauge("Memory", self.memory_usage.get()))
-                    .child(self.render_gauge("Disk", self.disk_usage.get()))
-            )
-            .child(divider().label("Requests"))
-            .child(
-                sparkline(self.requests.get().iter().map(|&x| x as f64).collect())
-                    .class("card")
-            )
-            .child(divider())
-            .child(
-                hstack()
-                    .child(badge("Online").success())
-                    .child(badge("3 Alerts").warning())
-                    .child(text("Last updated: 2s ago").class("dimmed"))
-            )
+            .gap(1)
+            .child_sized(Text::new("System Dashboard").class("title"), 1)
+            .child_sized(gauges, 3)
+            .child_sized(requests_panel, 3)
+            .child_sized(status, 1)
             .render(ctx);
     }
-}
 
-impl Dashboard {
-    fn render_gauge(&self, label: &str, value: f32) -> impl View {
-        vstack()
-            .class("card")
-            .child(text(label).class("title"))
-            .child(gauge(value / 100.0).percentage())
-            .child(text(format!("{:.1}%", value)))
+    fn meta(&self) -> WidgetMeta {
+        WidgetMeta::new("Dashboard")
     }
 }
 "#
 }
 
+/// `styles/main.css` of the `dashboard` template
+pub fn dashboard_style() -> &'static str {
+    r#"/* Dashboard styles: loaded by `.style("styles/main.css")` in main.rs */
+
+:root {
+    --muted: #565f89;
+    --accent: #7aa2f7;
+    --success: #9ece6a;
+}
+
+/* The panels. */
+Border {
+    border-color: var(--muted);
+}
+
+Sparkline {
+    color: var(--success);
+}
+
+.title {
+    color: var(--accent);
+    font-weight: bold;
+}
+"#
+}
+
 // =============================================================================
-// Todo Template
+// Todo Template: a todo list with an input box and filters
 // =============================================================================
 
+/// `src/main.rs` of the `todo` template
 pub fn todo_main() -> &'static str {
-    r#"//! Todo Application
+    r#"//! Todo application
 
 mod app;
 
+use app::TodoApp;
 use revue::prelude::*;
 
 fn main() -> Result<()> {
-    App::builder()
-        .title("Todo App")
-        .style("styles/main.css")
-        .mount(app::TodoApp::new)
-        .run()
+    // The path is relative to the working directory: start the app with
+    // `cargo run` from the project root.
+    let mut app = App::builder().style("styles/main.css").build();
+
+    app.run(TodoApp::new(), |event, todos, app| {
+        let Event::Key(KeyEvent { key, .. }) = event else {
+            return false;
+        };
+        // While you type a todo, `q` is text.
+        if *key == Key::Char('q') && !todos.is_editing() {
+            // Stop the loop so `run` restores the terminal on the way out.
+            app.quit();
+            return false;
+        }
+        // Returning `true` asks for a redraw.
+        todos.handle_key(key)
+    })
 }
 "#
 }
 
+/// `src/app.rs` of the `todo` template
 pub fn todo_app() -> &'static str {
-    r#"//! Todo application component
+    r#"//! Todo view
 
 use revue::prelude::*;
 
 #[derive(Clone)]
 pub struct TodoItem {
-    id: usize,
     text: String,
     completed: bool,
 }
 
-pub struct TodoApp {
-    todos: Signal<Vec<TodoItem>>,
-    input: Signal<String>,
-    filter: Signal<Filter>,
-    next_id: usize,
+impl TodoItem {
+    fn new(text: impl Into<String>, completed: bool) -> Self {
+        Self {
+            text: text.into(),
+            completed,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -318,144 +437,309 @@ pub enum Filter {
     Completed,
 }
 
+impl Filter {
+    fn matches(self, item: &TodoItem) -> bool {
+        match self {
+            Filter::All => true,
+            Filter::Active => !item.completed,
+            Filter::Completed => item.completed,
+        }
+    }
+
+    fn next(self) -> Self {
+        match self {
+            Filter::All => Filter::Active,
+            Filter::Active => Filter::Completed,
+            Filter::Completed => Filter::All,
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Filter::All => "All",
+            Filter::Active => "Active",
+            Filter::Completed => "Completed",
+        }
+    }
+}
+
+pub struct TodoApp {
+    todos: Signal<Vec<TodoItem>>,
+    filter: Signal<Filter>,
+    /// Position of the selected row among the visible (filtered) todos.
+    selected: Signal<usize>,
+    input: Input,
+    /// Whether keys go to the input box rather than the list.
+    editing: bool,
+}
+
 impl TodoApp {
     pub fn new() -> Self {
         Self {
             todos: signal(vec![
-                TodoItem { id: 1, text: "Learn Revue".into(), completed: true },
-                TodoItem { id: 2, text: "Build awesome TUI".into(), completed: false },
-                TodoItem { id: 3, text: "Ship it!".into(), completed: false },
+                TodoItem::new("Learn Revue", true),
+                TodoItem::new("Build awesome TUI", false),
+                TodoItem::new("Ship it!", false),
             ]),
-            input: signal(String::new()),
             filter: signal(Filter::All),
-            next_id: 4,
+            selected: signal(0),
+            input: Input::new().placeholder("What needs to be done?"),
+            editing: false,
         }
+    }
+
+    /// Whether keys are going to the input box (so `q` is text, not quit).
+    pub fn is_editing(&self) -> bool {
+        self.editing
+    }
+
+    /// Handles a key press and returns whether the view changed.
+    pub fn handle_key(&mut self, key: &Key) -> bool {
+        if self.editing {
+            match key {
+                Key::Enter => self.add_todo(),
+                Key::Escape | Key::Tab => self.editing = false,
+                _ => return self.input.handle_key(key),
+            }
+            return true;
+        }
+
+        match key {
+            Key::Char('a') | Key::Char('i') | Key::Tab => self.editing = true,
+            Key::Up | Key::Char('k') => self.selected.update(|s| *s = s.saturating_sub(1)),
+            Key::Down | Key::Char('j') => {
+                let last = self.visible_indices().len().saturating_sub(1);
+                self.selected.update(|s| *s = (*s + 1).min(last));
+            }
+            Key::Char(' ') | Key::Enter => self.toggle_selected(),
+            Key::Char('d') | Key::Delete => self.delete_selected(),
+            Key::Char('f') => {
+                self.filter.update(|f| *f = f.next());
+                self.selected.set(0);
+            }
+            _ => return false,
+        }
+        true
     }
 
     fn add_todo(&mut self) {
-        let text = self.input.get().trim().to_string();
-        if !text.is_empty() {
-            let mut todos = self.todos.get().clone();
-            todos.push(TodoItem {
-                id: self.next_id,
-                text,
-                completed: false,
+        let text = self.input.text().trim().to_string();
+        if text.is_empty() {
+            return;
+        }
+        self.todos
+            .update(|todos| todos.push(TodoItem::new(text, false)));
+        self.input.clear();
+        // The new todo is active, so it shows unless the filter is Completed.
+        if self.filter.get() != Filter::Completed {
+            let last = self.visible_indices().len().saturating_sub(1);
+            self.selected.set(last);
+        }
+    }
+
+    fn toggle_selected(&mut self) {
+        if let Some(index) = self.selected_index() {
+            self.todos
+                .update(|todos| todos[index].completed = !todos[index].completed);
+            // Under Active or Completed the todo just left the view.
+            self.clamp_selection();
+        }
+    }
+
+    fn delete_selected(&mut self) {
+        if let Some(index) = self.selected_index() {
+            self.todos.update(|todos| {
+                todos.remove(index);
             });
-            self.next_id += 1;
-            self.todos.set(todos);
-            self.input.set(String::new());
+            self.clamp_selection();
         }
     }
 
-    fn toggle_todo(&mut self, id: usize) {
-        let mut todos = self.todos.get().clone();
-        if let Some(todo) = todos.iter_mut().find(|t| t.id == id) {
-            todo.completed = !todo.completed;
-        }
-        self.todos.set(todos);
-    }
-
-    fn delete_todo(&mut self, id: usize) {
-        let todos: Vec<_> = self.todos.get()
-            .iter()
-            .filter(|t| t.id != id)
-            .cloned()
-            .collect();
-        self.todos.set(todos);
-    }
-
-    fn filtered_todos(&self) -> Vec<TodoItem> {
+    /// Indices into `todos` of the todos the filter shows.
+    fn visible_indices(&self) -> Vec<usize> {
         let filter = self.filter.get();
-        self.todos.get()
-            .iter()
-            .filter(|t| match filter {
-                Filter::All => true,
-                Filter::Active => !t.completed,
-                Filter::Completed => t.completed,
-            })
-            .cloned()
-            .collect()
+        self.todos.with(|todos| {
+            (0..todos.len())
+                .filter(|&i| filter.matches(&todos[i]))
+                .collect()
+        })
+    }
+
+    fn selected_index(&self) -> Option<usize> {
+        self.visible_indices().get(self.selected.get()).copied()
+    }
+
+    fn clamp_selection(&mut self) {
+        let last = self.visible_indices().len().saturating_sub(1);
+        self.selected.update(|s| *s = (*s).min(last));
+    }
+}
+
+impl Default for TodoApp {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl View for TodoApp {
     fn render(&self, ctx: &mut RenderContext) {
-        let todos = self.filtered_todos();
-        let active_count = self.todos.get().iter().filter(|t| !t.completed).count();
+        let todos = self.todos.get();
+        let visible = self.visible_indices();
+        let selected = self.selected.get();
+        let filter = self.filter.get();
+        let left = todos.iter().filter(|t| !t.completed).count();
+
+        // Every row is one line high: `child_sized(.., 1)`. Each box is its
+        // content plus 2 lines of border.
+        let mut list = vstack();
+        for (row, &index) in visible.iter().enumerate() {
+            let todo = &todos[index];
+            let marker = if row == selected && !self.editing {
+                "> "
+            } else {
+                "  "
+            };
+            list = list.child_sized(
+                hstack()
+                    .child_sized(Text::new(marker).class("marker"), 2)
+                    .child(Checkbox::new(&todo.text).checked(todo.completed)),
+                1,
+            );
+        }
+        if visible.is_empty() {
+            list = list.child_sized(Text::muted("  Nothing here"), 1);
+        }
+        let list_rows = visible.len().max(1) as u16;
+
+        let input_box = Border::rounded()
+            .title(" New todo ")
+            .class(if self.editing { "editing" } else { "idle" })
+            .child(self.input.clone().focused(self.editing));
+
+        let list_box = Border::rounded()
+            .title(format!(" {} ", filter.label()))
+            .child(list);
+
+        let help = if self.editing {
+            "[Enter] add  [Esc] done"
+        } else {
+            "[a] add  [j/k] move  [Space] toggle  [d] delete  [f] filter  [q] quit"
+        };
 
         vstack()
-            .class("container")
-            .child(
-                text("📝 Todo App")
-                    .class("title")
-                    .alignment(Alignment::Center)
+            .gap(1)
+            .child_sized(Text::new("Todo App").class("title"), 1)
+            .child_sized(input_box, 3)
+            .child_sized(list_box, list_rows + 2)
+            .child_sized(
+                Text::new(format!(
+                    "{left} item{} left",
+                    if left == 1 { "" } else { "s" }
+                )),
+                1,
             )
-            .child(
-                hstack()
-                    .child(Input::new().placeholder("What needs to be done?").class("input"))
-                    .child(button("Add").class("button"))
-            )
-            .child(divider())
-            .child(
-                vstack().children(
-                    todos.iter().map(|todo| {
-                        hstack()
-                            .class("list-item")
-                            .child(checkbox(&todo.text).checked(todo.completed))
-                            .child(button("×").class("button error"))
-                    })
-                )
-            )
-            .child(divider())
-            .child(
-                hstack()
-                    .child(text(format!("{} items left", active_count)))
-                    .child(
-                        hstack()
-                            .child(button("All").class("button"))
-                            .child(button("Active").class("button"))
-                            .child(button("Completed").class("button"))
-                    )
-            )
+            .child_sized(Text::muted(help), 1)
             .render(ctx);
+    }
+
+    fn meta(&self) -> WidgetMeta {
+        WidgetMeta::new("TodoApp")
     }
 }
 "#
 }
 
-// =============================================================================
-// Chat Template
-// =============================================================================
+/// `styles/main.css` of the `todo` template
+pub fn todo_style() -> &'static str {
+    r#"/* Todo styles: loaded by `.style("styles/main.css")` in main.rs */
 
-pub fn chat_main() -> &'static str {
-    r#"//! Chat Application
+:root {
+    --muted: #565f89;
+    --accent: #7aa2f7;
+}
 
-mod app;
+Border {
+    border-color: var(--muted);
+}
 
-use revue::prelude::*;
+/* The input box while you type in it. */
+.editing {
+    border-color: var(--accent);
+}
 
-fn main() -> Result<()> {
-    App::builder()
-        .title("Chat")
-        .style("styles/main.css")
-        .mount(app::ChatApp::new)
-        .run()
+.title {
+    color: var(--accent);
+    font-weight: bold;
+}
+
+.marker {
+    color: var(--accent);
+    font-weight: bold;
 }
 "#
 }
 
+// =============================================================================
+// Chat Template: a chat room with a user list and a message input
+// =============================================================================
+
+/// `src/main.rs` of the `chat` template
+pub fn chat_main() -> &'static str {
+    r#"//! Chat application
+
+mod app;
+
+use app::ChatApp;
+use revue::prelude::*;
+
+fn main() -> Result<()> {
+    // The path is relative to the working directory: start the app with
+    // `cargo run` from the project root.
+    let mut app = App::builder().style("styles/main.css").build();
+
+    app.run(ChatApp::new(), |event, chat, app| {
+        let Event::Key(KeyEvent { key, .. }) = event else {
+            return false;
+        };
+        // Every printable key is text for the message, so quit on Esc.
+        if *key == Key::Escape {
+            // Stop the loop so `run` restores the terminal on the way out.
+            app.quit();
+            return false;
+        }
+        // Returning `true` asks for a redraw.
+        chat.handle_key(key)
+    })
+}
+"#
+}
+
+/// `src/app.rs` of the `chat` template
 pub fn chat_app() -> &'static str {
-    r#"//! Chat application component
+    r#"//! Chat view
 
 use revue::prelude::*;
 
+/// Width of the users sidebar, borders included.
+const SIDEBAR_WIDTH: u16 = 20;
+
 #[derive(Clone)]
 pub struct Message {
-    id: usize,
     user: String,
     text: String,
     timestamp: String,
     is_self: bool,
+}
+
+impl Message {
+    fn new(user: &str, text: &str, timestamp: &str, is_self: bool) -> Self {
+        Self {
+            user: user.into(),
+            text: text.into(),
+            timestamp: timestamp.into(),
+            is_self,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -473,148 +757,176 @@ pub enum UserStatus {
 
 pub struct ChatApp {
     messages: Signal<Vec<Message>>,
-    input: Signal<String>,
-    users: Signal<Vec<User>>,
+    users: Vec<User>,
+    input: Input,
     current_user: String,
 }
 
 impl ChatApp {
     pub fn new() -> Self {
+        let user = |name: &str, status| User {
+            name: name.into(),
+            status,
+        };
         Self {
             messages: signal(vec![
-                Message {
-                    id: 1,
-                    user: "Alice".into(),
-                    text: "Hey everyone! 👋".into(),
-                    timestamp: "10:30".into(),
-                    is_self: false,
-                },
-                Message {
-                    id: 2,
-                    user: "Bob".into(),
-                    text: "Hi Alice! How's it going?".into(),
-                    timestamp: "10:31".into(),
-                    is_self: false,
-                },
-                Message {
-                    id: 3,
-                    user: "You".into(),
-                    text: "Hello! Just built this chat with Revue!".into(),
-                    timestamp: "10:32".into(),
-                    is_self: true,
-                },
+                Message::new("Alice", "Hey everyone!", "10:30", false),
+                Message::new("Bob", "Hi Alice! How's it going?", "10:31", false),
+                Message::new(
+                    "You",
+                    "Hello! Just built this chat with Revue!",
+                    "10:32",
+                    true,
+                ),
             ]),
-            input: signal(String::new()),
-            users: signal(vec![
-                User { name: "Alice".into(), status: UserStatus::Online },
-                User { name: "Bob".into(), status: UserStatus::Online },
-                User { name: "Charlie".into(), status: UserStatus::Away },
-                User { name: "Diana".into(), status: UserStatus::Offline },
-            ]),
+            users: vec![
+                user("Alice", UserStatus::Online),
+                user("Bob", UserStatus::Online),
+                user("Charlie", UserStatus::Away),
+                user("Diana", UserStatus::Offline),
+            ],
+            input: Input::new().placeholder("Type a message...").focused(true),
             current_user: "You".into(),
         }
     }
 
-    fn send_message(&mut self) {
-        let text = self.input.get().trim().to_string();
-        if !text.is_empty() {
-            let mut messages = self.messages.get().clone();
-            messages.push(Message {
-                id: messages.len() + 1,
-                user: self.current_user.clone(),
-                text,
-                timestamp: "Now".into(),
-                is_self: true,
-            });
-            self.messages.set(messages);
-            self.input.set(String::new());
+    /// Handles a key press and returns whether the view changed.
+    pub fn handle_key(&mut self, key: &Key) -> bool {
+        match key {
+            Key::Enter => {
+                self.send_message();
+                true
+            }
+            _ => self.input.handle_key(key),
         }
+    }
+
+    fn send_message(&mut self) {
+        let text = self.input.text().trim().to_string();
+        if text.is_empty() {
+            return;
+        }
+        let message = Message::new(&self.current_user, &text, "now", true);
+        self.messages.update(|messages| messages.push(message));
+        self.input.clear();
+    }
+
+    fn render_user(user: &User) -> Stack {
+        let avatar = match user.status {
+            UserStatus::Online => Avatar::new(&user.name).online(),
+            UserStatus::Away => Avatar::new(&user.name).away(),
+            UserStatus::Offline => Avatar::new(&user.name).offline(),
+        };
+        // A small avatar is the initial plus a status dot: 2 columns.
+        hstack()
+            .gap(1)
+            .child_sized(avatar.small(), 2)
+            .child(Text::new(&user.name))
+    }
+
+    fn render_message(message: &Message) -> Stack {
+        let name = format!("{}:", message.user);
+        let name_width = name.chars().count() as u16;
+        hstack()
+            .gap(1)
+            .child_sized(Text::new(&message.timestamp).class("timestamp"), 5)
+            .child_sized(
+                Text::new(name).class(if message.is_self { "self" } else { "username" }),
+                name_width,
+            )
+            .child(Text::new(&message.text))
+    }
+}
+
+impl Default for ChatApp {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl View for ChatApp {
     fn render(&self, ctx: &mut RenderContext) {
-        hstack()
-            .class("container")
-            // Sidebar
-            .child(
-                vstack()
-                    .class("sidebar")
-                    .child(text("👥 Users").class("title"))
-                    .child(divider())
-                    .children(
-                        self.users.get().iter().map(|user| {
-                            hstack()
-                                .class("list-item")
-                                .child(
-                                    match user.status {
-                                        UserStatus::Online => avatar(&user.name).online(),
-                                        UserStatus::Away => avatar(&user.name).away(),
-                                        UserStatus::Offline => avatar(&user.name).offline(),
-                                    }
-                                )
-                                .child(text(&user.name))
-                        })
-                    )
+        let messages = self.messages.get();
+
+        // Show the newest messages that fit: the screen minus the help line,
+        // the input box (3 lines) and the message panel's border (2 lines).
+        let fit = ctx.area.height.saturating_sub(1 + 3 + 2) as usize;
+        let mut message_list = vstack();
+        for message in messages.iter().skip(messages.len().saturating_sub(fit)) {
+            message_list = message_list.child_sized(Self::render_message(message), 1);
+        }
+
+        let mut user_list = vstack();
+        for user in &self.users {
+            user_list = user_list.child_sized(Self::render_user(user), 1);
+        }
+
+        // Fixed-size pieces use `child_sized`; the sidebar and the message
+        // panel take the rest of the screen with `child_flex`.
+        let sidebar = Border::rounded().title(" Users ").child(user_list);
+        let chat = vstack()
+            .child_flex(
+                Border::rounded().title(" # general ").child(message_list),
+                1.0,
             )
-            // Main chat area
-            .child(
-                vstack()
-                    .class("chat-area")
-                    .child(
-                        text("💬 General Chat")
-                            .class("title")
-                    )
-                    .child(divider())
-                    // Messages
-                    .child(
-                        scroll_view(
-                            vstack().children(
-                                self.messages.get().iter().map(|msg| {
-                                    self.render_message(msg)
-                                })
-                            )
-                        )
-                    )
-                    .child(divider())
-                    // Input
-                    .child(
-                        hstack()
-                            .child(
-                                Input::new()
-                                    .placeholder("Type a message...")
-                                    .class("input")
-                            )
-                            .child(button("Send").class("button"))
-                    )
+            .child_sized(
+                Border::rounded()
+                    .class("composer")
+                    .child(self.input.clone()),
+                3,
+            );
+
+        vstack()
+            .child_flex(
+                hstack()
+                    .gap(1)
+                    .child_sized(sidebar, SIDEBAR_WIDTH)
+                    .child_flex(chat, 1.0),
+                1.0,
             )
+            .child_sized(Text::muted("[Enter] send  [Esc] quit"), 1)
             .render(ctx);
     }
+
+    fn meta(&self) -> WidgetMeta {
+        WidgetMeta::new("ChatApp")
+    }
+}
+"#
 }
 
-impl ChatApp {
-    fn render_message(&self, msg: &Message) -> impl View {
-        let align = if msg.is_self { "right" } else { "left" };
+/// `styles/main.css` of the `chat` template
+pub fn chat_style() -> &'static str {
+    r#"/* Chat styles: loaded by `.style("styles/main.css")` in main.rs */
 
-        hstack()
-            .child(
-                if !msg.is_self {
-                    Some(avatar(&msg.user).small())
-                } else {
-                    None
-                }
-            )
-            .child(
-                vstack()
-                    .class(if msg.is_self { "message self" } else { "message" })
-                    .child(
-                        hstack()
-                            .child(text(&msg.user).class("username"))
-                            .child(text(&msg.timestamp).class("timestamp"))
-                    )
-                    .child(text(&msg.text))
-            )
-    }
+:root {
+    --muted: #565f89;
+    --accent: #7aa2f7;
+    --other: #e0af68;
+}
+
+Border {
+    border-color: var(--muted);
+}
+
+/* The box around the message input. */
+.composer {
+    border-color: var(--accent);
+}
+
+.timestamp {
+    color: var(--muted);
+}
+
+.username {
+    color: var(--other);
+    font-weight: bold;
+}
+
+/* Your own name on the messages you sent. */
+.self {
+    color: var(--accent);
+    font-weight: bold;
 }
 "#
 }

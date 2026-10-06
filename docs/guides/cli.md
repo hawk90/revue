@@ -45,10 +45,18 @@ revue new <name> [options]
 
 | Template | Description |
 |----------|-------------|
-| `basic` | Minimal starter template |
-| `dashboard` | System monitoring dashboard |
-| `todo` | Todo app with persistence |
-| `chat` | Messaging interface |
+| `basic` | Counter: a `Signal`, key handling and a stylesheet |
+| `dashboard` | System monitoring dashboard: gauges, a sparkline and badges, with simulated metrics updated on `Event::Tick` |
+| `todo` | Todo list: an input box, checkboxes, and All/Active/Completed filters |
+| `chat` | Messaging interface: a user list with status avatars and a message input |
+
+An unknown template name is an error that lists these.
+
+The generated `Cargo.toml` depends on `revue = "3.0"` from crates.io, so the
+project builds wherever you create it. Run it with `cargo run` from the
+project root: `src/main.rs` loads `styles/main.css` relative to the working
+directory. Each app shows its keys on screen; it quits with `q` (in `chat`,
+where every printable key is text, with `Esc`).
 
 **Examples:**
 

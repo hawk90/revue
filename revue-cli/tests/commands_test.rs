@@ -22,44 +22,57 @@ fn new_project_creates_basic_structure() {
     assert!(project_name.join("src/app.rs").exists());
     assert!(project_name.join("styles").exists());
 
-    let cargo = fs::read_to_string(project_name.join("Cargo.toml")).unwrap();
-    assert!(cargo.contains("test-project"));
-    assert!(cargo.contains("revue"));
+    // `name` was a full path; the package is named after its last component.
+    let cargo: toml::Table = fs::read_to_string(project_name.join("Cargo.toml"))
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert_eq!(cargo["package"]["name"].as_str(), Some("test-project"));
+    assert!(cargo["dependencies"]["revue"].is_str());
 }
 
 #[test]
-fn new_project_creates_dashboard_template() {
-    let tmp = TempDir::new().unwrap();
-    let project_name = tmp.path().join("dashboard-app");
-    let name = project_name.to_str().unwrap();
+fn new_project_writes_each_template() {
+    for &template in revue_cli::templates::PROJECT_TEMPLATES {
+        let tmp = TempDir::new().unwrap();
+        let project = tmp.path().join(format!("{template}-app"));
+        let result = revue_cli::commands::new_project(project.to_str().unwrap(), template, true);
+        assert!(result.is_ok(), "{template}: {:?}", result.err());
 
-    let result = revue_cli::commands::new_project(name, "dashboard", false);
-    assert!(result.is_ok());
+        let read = |path: &str| {
+            fs::read_to_string(project.join(path))
+                .unwrap_or_else(|e| panic!("{template}: {path}: {e}"))
+        };
+        let files = revue_cli::templates::project_files(template).unwrap();
+        assert_eq!(read("src/main.rs"), files.main_rs, "{template}");
+        assert_eq!(read("src/app.rs"), files.app_rs, "{template}");
+        // main.rs loads this path, relative to the project root.
+        assert_eq!(read("styles/main.css"), files.style_css, "{template}");
+        assert_eq!(read(".gitignore"), revue_cli::templates::gitignore());
 
-    let main_rs = fs::read_to_string(project_name.join("src/main.rs")).unwrap();
-    assert!(main_rs.contains("fn main"));
+        let cargo: toml::Table = read("Cargo.toml").parse().unwrap();
+        assert_eq!(
+            cargo["package"]["name"].as_str(),
+            Some(format!("{template}-app").as_str())
+        );
+        assert_eq!(
+            cargo["dependencies"]["revue"].as_str(),
+            Some(revue_cli::templates::REVUE_VERSION),
+            "{template}: revue comes from crates.io"
+        );
+    }
 }
 
 #[test]
-fn new_project_creates_todo_template() {
+fn new_project_rejects_an_unknown_template() {
     let tmp = TempDir::new().unwrap();
-    let project_name = tmp.path().join("todo-app");
-    let name = project_name.to_str().unwrap();
+    let project = tmp.path().join("app");
 
-    let result = revue_cli::commands::new_project(name, "todo", false);
-    assert!(result.is_ok());
-    assert!(project_name.join("src/main.rs").exists());
-}
-
-#[test]
-fn new_project_creates_chat_template() {
-    let tmp = TempDir::new().unwrap();
-    let project_name = tmp.path().join("chat-app");
-    let name = project_name.to_str().unwrap();
-
-    let result = revue_cli::commands::new_project(name, "chat", false);
-    assert!(result.is_ok());
-    assert!(project_name.join("src/main.rs").exists());
+    let result = revue_cli::commands::new_project(project.to_str().unwrap(), "nope", false);
+    let error = result.unwrap_err().to_string();
+    assert!(error.contains("nope"), "{error}");
+    assert!(error.contains("dashboard"), "lists the templates: {error}");
+    assert!(!project.exists());
 }
 
 #[test]

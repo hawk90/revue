@@ -177,6 +177,24 @@ jobs:
             (cd "$t" && cargo fmt -- --check && cargo clippy -- -D warnings)
             echo "::endgroup::"
           done
+      # Likewise for the projects `revue new` writes (which ask for
+      # `revue = "3.0"` from crates.io): generate each one outside the checkout
+      # and build it against the checkout. The list is
+      # PROJECT_TEMPLATES in revue-cli/src/templates.rs.
+      - name: revue new
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target/templates
+        run: |
+          (cd revue-cli && cargo build --locked --quiet --target-dir target)
+          cli="$PWD/revue-cli/target/debug/revue"
+          for t in basic dashboard todo chat; do
+            echo "::group::revue new --template $t"
+            dir="$RUNNER_TEMP/new-$t"
+            "$cli" new "$dir" --template "$t" --no-git
+            sed -i "s|^revue = .*|revue = { path = \"$GITHUB_WORKSPACE\" }|" "$dir/Cargo.toml"
+            (cd "$dir" && cargo fmt -- --check && cargo clippy -- -D warnings)
+            echo "::endgroup::"
+          done
 
   coverage:
     name: Coverage
