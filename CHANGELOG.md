@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.76.1](https://github.com/hawk90/revue/compare/v2.76.0...v2.76.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* **widget:** clip Chart data outside fixed axis bounds instead of panicking ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** draw BoxPlot horizontally when horizontal() is set ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** draw Chart lines with Braille dots when braille() is set ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** draw Histogram bars sideways when horizontal() is set ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** draw Markdown inline code in code_fg ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** draw the median notch on notched BoxPlots ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** draw the Notification action label in NotificationCenter ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** keep Diagram arrows with their nodes under a title ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** keep NumberInput within the width set by width() ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** keep RangePicker dates within min_date and max_date ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** lay out Diagram nodes in the direction() asked for ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** line HeatMap labels up with their cells ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** make DataGrid header clicks hit the column drawn there ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** make Digits leading_zeros(false) pad with blanks ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** make DropZone hover_color() color an accepting hover ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** paint HttpClient URL bar and method badge backgrounds ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** render Presentation slide transitions ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** restore the # marker on Markdown headings ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** show RangePicker start and end times with show_time(true) ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** show slide 0 after the Presentation title slide ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** show the elevated Card's drop shadow beside its border ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+* **widget:** show the Presentation timer in the footer ([a890423](https://github.com/hawk90/revue/commit/a8904238ed421aa695888c6c198201b9a136e9bf))
+
 ## [2.76.0](https://github.com/hawk90/revue/compare/v2.75.0...v2.76.0) (2026-10-05)
 
 
