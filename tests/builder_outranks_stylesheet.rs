@@ -741,3 +741,27 @@ three_ways!(
     (60, 8),
     |h: &PipelineHarness| h.buffer().get(7, 2).and_then(|c| c.fg)
 );
+
+// Slide.content_color - probed on the body line.
+
+case!(
+    SlideNamed,
+    SlideSilent,
+    Presentation::new()
+        .slide(Slide::new("Deck").line("~").content_color(Color::WHITE))
+        .element_id("w"),
+    Presentation::new()
+        .slide(Slide::new("Deck").line("~"))
+        .element_id("w")
+);
+
+three_ways!(
+    a_default_slide_body_is_unchanged,
+    a_named_slide_body_beats_css,
+    a_silent_slide_body_defers_to_css,
+    SlideNamed,
+    SlideSilent,
+    Color::WHITE,
+    (40, 12),
+    |h: &PipelineHarness| fg_where(h, |c| c == '~')
+);

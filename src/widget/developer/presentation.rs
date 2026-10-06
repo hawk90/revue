@@ -52,8 +52,9 @@ pub struct Slide {
     pub bg: Option<Color>,
     /// Title color
     pub title_color: Color,
-    /// Content color
-    pub content_color: Color,
+    /// Body text color. `None` lets the stylesheet's `color` decide, falling
+    /// back to white; `Some` outranks the stylesheet.
+    pub content_color: Option<Color>,
     /// Text alignment
     pub align: SlideAlign,
 }
@@ -67,7 +68,7 @@ impl Slide {
             notes: String::new(),
             bg: None,
             title_color: Color::CYAN,
-            content_color: SLIDE_FG,
+            content_color: None,
             align: SlideAlign::Center,
         }
     }
@@ -128,7 +129,7 @@ impl Slide {
 
     /// Set content color
     pub fn content_color(mut self, color: Color) -> Self {
-        self.content_color = color;
+        self.content_color = Some(color);
         self
     }
 
@@ -191,9 +192,8 @@ pub struct Presentation {
     props: WidgetProps,
 }
 
-/// The slide fill and body text a presentation uses when nothing says
-/// otherwise. Named so `background_or` / `color_or` can tell "the builder set
-/// this" from "the builder said nothing".
+/// The slide fill and body text a presentation uses when neither the builder
+/// nor the stylesheet names one.
 const SLIDE_BG: Color = Color::rgb(20, 20, 30);
 const SLIDE_FG: Color = Color::WHITE;
 
@@ -464,7 +464,9 @@ impl Presentation {
 
         // Content. The slide title and the accent each say something one rule
         // cannot; the body is the base they are a departure from.
-        let content_fg = ctx.color_or(slide.content_color, SLIDE_FG);
+        let content_fg = slide
+            .content_color
+            .unwrap_or_else(|| ctx.css_color(SLIDE_FG));
         let content_start_y = 6;
         for (i, line) in slide.content.iter().enumerate() {
             let y = content_start_y + i as u16;
