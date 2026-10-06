@@ -425,10 +425,16 @@ fn test_markdown_toc_levels() {
 /// Render `source` into a `width` x 24 buffer and return each row as text,
 /// with trailing blanks trimmed.
 fn render_rows(source: &str, width: u16) -> Vec<String> {
+    render_md_rows(Markdown::new(source), width)
+}
+
+/// Render a configured `md` into a `width` x 24 buffer and return each row as
+/// text, with trailing blanks trimmed.
+fn render_md_rows(md: Markdown, width: u16) -> Vec<String> {
     let mut buffer = Buffer::new(width, 24);
     let area = Rect::new(0, 0, width, 24);
     let mut ctx = RenderContext::new(&mut buffer, area);
-    Markdown::new(source).render(&mut ctx);
+    md.render(&mut ctx);
     (0..24)
         .map(|y| {
             (0..width)
@@ -664,4 +670,42 @@ fn test_markdown_blockquote_unfinished_marker_renders() {
             .unwrap_or_else(|| panic!("{source:?} lost text: {rows:#?}"));
         assert!(row.starts_with("│ "), "{source:?}: {rows:#?}");
     }
+}
+
+// =========================================================================
+// FIGlet Heading Tests
+// =========================================================================
+
+#[test]
+fn test_markdown_figlet_headings_render_big_text() {
+    use revue::utils::figlet::{figlet_with_font, FigletFont};
+
+    let source = "# Hi\n\nBody text";
+    let plain = render_md_rows(Markdown::new(source), 60);
+    let rows = render_md_rows(Markdown::new(source).figlet_headings(true), 60);
+    assert_ne!(rows, plain, "figlet_headings(true) changed nothing");
+
+    let art = figlet_with_font("Hi", FigletFont::Block);
+    let art_rows: Vec<&str> = art.lines().map(str::trim_end).collect();
+    assert_eq!(&rows[..art_rows.len()], &art_rows[..], "{rows:#?}");
+    // The big text replaces the `# Hi` line rather than adding to it
+    assert!(row_containing(&rows, "# Hi").is_none(), "{rows:#?}");
+    assert!(row_containing(&rows, "Body text").is_some(), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_figlet_headings_only_up_to_max_level() {
+    // By default only H1 is drawn big; deeper headings keep their marker
+    let md = Markdown::new("# Hi\n\n## Sub").figlet_headings(true);
+    let rows = render_md_rows(md, 60);
+    assert!(row_containing(&rows, "# Hi").is_none(), "{rows:#?}");
+    assert!(row_containing(&rows, "## Sub").is_some(), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_figlet_headings_use_heading_fg() {
+    let md = Markdown::new("# Hi")
+        .heading_fg(revue::style::Color::MAGENTA)
+        .figlet_headings(true);
+    assert_eq!(fg_at(md, 60, "█"), Some(revue::style::Color::MAGENTA));
 }

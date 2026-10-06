@@ -55,7 +55,7 @@ pub mod types;
 
 use crate::render::{Cell, Modifier};
 use crate::style::Color;
-use crate::utils::figlet::FigletFont;
+use crate::utils::figlet::{figlet_with_font, FigletFont};
 use crate::utils::syntax::{Language, SyntaxTheme};
 use crate::utils::unicode::{center_to_width, display_width, pad_to_width, right_align_to_width};
 use crate::widget::theme::{DARK_GRAY, DISABLED_FG, PLACEHOLDER_FG};
@@ -383,6 +383,13 @@ impl Markdown {
     fn handle_end_tag(&self, ctx: &mut parser::ParserContext, tag_end: TagEnd) {
         match tag_end {
             TagEnd::Heading(_) => {
+                if let Some(font) = ctx
+                    .figlet_font
+                    .filter(|_| ctx.heading_level <= ctx.figlet_max_level)
+                {
+                    self.render_figlet_heading(ctx, font);
+                    return;
+                }
                 // A heading line starts with its level's `#` marker, dimmed
                 let marker = "#".repeat(ctx.heading_level as usize);
                 let (fg, modifier) = (ctx.current_fg, ctx.current_modifier);
@@ -538,6 +545,25 @@ impl Markdown {
 
         let num = ctx.footnote_label_map.get(text).copied().unwrap_or(1);
         ctx.add_text(&format!("[^{}]", num));
+    }
+
+    /// Draw the finished heading as FIGlet big text, one row per art line,
+    /// in place of the usual `#`-marked line.
+    fn render_figlet_heading(&self, ctx: &mut parser::ParserContext, font: FigletFont) {
+        ctx.in_heading = false;
+        ctx.current_modifier &= !Modifier::BOLD;
+        ctx.current_fg = None;
+        ctx.flush_line();
+        let art = figlet_with_font(&ctx.heading_text, font);
+        for art_line in art.lines() {
+            let mut line = Line::new();
+            line.push(
+                StyledText::new(art_line)
+                    .with_fg(ctx.heading_fg)
+                    .with_modifier(Modifier::BOLD),
+            );
+            ctx.lines.push(line);
+        }
     }
 
     fn render_code_block(&self, ctx: &mut parser::ParserContext) {
@@ -709,7 +735,7 @@ impl Markdown {
 
     pub fn figlet_headings(mut self, enable: bool) -> Self {
         self.config.figlet_font = if enable {
-            Some(crate::utils::figlet::FigletFont::Block)
+            Some(FigletFont::Block)
         } else {
             None
         };
