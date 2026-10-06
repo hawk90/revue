@@ -33,22 +33,24 @@
 그리고 `Gauge`를 파다가 **`sub_ctx`가 계산된 스타일을 통째로 버리는 것**(#657)이
 드러났다. 소스 레벨 ratchet으로는 볼 수 없는 종류였다.
 
-## 남은 것 — 전부 공개 필드라 2.x에서 못 바꾼다
+## 공개 필드 — 2.x에서 못 바꿔 3.0에서 해결
 
-아래는 같은 함정이 남아 있지만 **필드가 `pub`이라 타입 변경이 breaking이다.**
+아래는 같은 함정이 남아 있었지만 **필드가 `pub`이라 타입 변경이 breaking이었다.**
 사용자가 구조체를 직접 만들거나 필드에 대입할 수 있다.
 
-| 위치 | 필드 | 형태 |
-|---|---|---|
-| `mermaid/types.rs` | `DiagramColors.node_fg` | `pub` 필드를 가진 `pub struct`, `.colors(DiagramColors)` |
-| `developer/procmon.rs` | `ProcColors.name` | 같음 |
-| `developer/presentation.rs` | `Slide.content_color` | `pub` 필드 |
-| `datetime_picker/mod.rs` | `DateTimePicker.field_fg` | `pub` 필드 |
-| `data/calendar/` | `day_fg` | 빌더가 없고 `CalendarView` params 구조체 경유 |
+| 위치 | 필드 | 형태 | 상태 |
+|---|---|---|---|
+| `mermaid/types.rs` | `DiagramColors.node_fg` | `pub` 필드를 가진 `pub struct`, `.colors(DiagramColors)` | 3.0에서 해결 |
+| `developer/procmon.rs` | `ProcColors.name` | 같음 | 3.0에서 해결 |
+| `developer/presentation.rs` | `Slide.content_color` | `pub` 필드 | 3.0에서 해결 |
+| `datetime_picker/mod.rs` | `DateTimePicker.field_fg` | `pub` 필드 (빌더 없음) | 3.0에서 해결 |
+| `data/calendar/` | `day_fg` | 빌더가 없고 `CalendarView` params 구조체 경유 | 남김 (아래) |
 
-**3.0에 넣는다** (2026-10-05 결정). 계획서 Phase 4는 "제거만 한다"였지만 범위를 명시적으로
-넓혔다 — 3.0은 어차피 breaking 릴리스이고, 미루면 4.0까지 이 네 곳만 우선순위가 뒤집힌 채
-남는다. `Calendar`는 아래 이유로 뺀다. 사용자 쪽 안내는
+**3.0에 넣었다** (2026-10-05 결정). 네 필드 모두 `Option<Color>`이 되었고 렌더는
+`self.field.unwrap_or_else(|| ctx.css_color(D))`로 해결한다 — `Diagram`은 노드
+자체의 `color`가 그보다 앞선다. 남은 `color_or` 호출은 `Calendar` 하나다.
+계획서 Phase 4는 "제거만 한다"였지만 범위를 명시적으로 넓혔다 — 3.0은 어차피
+breaking 릴리스이고, 미루면 4.0까지 이 네 곳만 우선순위가 뒤집힌 채 남았을 것이다. `Calendar`는 아래 이유로 뺀다. 사용자 쪽 안내는
 [`docs/migration/v3.0.0.md`](../migration/v3.0.0.md).
 
 `Calendar`는 다르다: 빌더가 아예 없어 스타일시트와 다툴 것이 없으므로 **결함이
@@ -57,7 +59,8 @@
 
 ## 테스트
 
-`tests/builder_outranks_stylesheet.rs`. 위젯마다 **양방향**이다:
+`tests/builder_outranks_stylesheet.rs`. 위젯마다 **양방향**이다 (3.0의 네 필드는
+기본 렌더가 그대로인지까지 세 방향):
 
 1. 이름을 말한 빌더가 CSS를 이긴다
 2. **침묵한 빌더는 여전히 CSS에 양보한다**
