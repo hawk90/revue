@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      standalone: ${{ steps.filter.outputs.standalone }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -37,6 +38,11 @@ jobs:
               - 'tests/**'
               - 'benches/**'
               - 'examples/**'
+              - '.github/workflows/ci.yml'
+            # Crates in this tree that are not workspace members, so none of the
+            # root `cargo` jobs above ever build them.
+            standalone:
+              - 'revue-cli/**'
               - '.github/workflows/ci.yml'
 
   fmt:
@@ -124,6 +130,33 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-nextest
       - run: cargo nextest run --all-features --tests
+
+  standalone:
+    name: Standalone Crates
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.standalone == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          components: rustfmt, clippy
+          cache: false
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: revue-cli
+      # revue-cli has its own [workspace] table and Cargo.lock; nothing in the
+      # root workspace jobs touches it, so it gets the same fmt/clippy/test gate here.
+      # tools/theme-builder is deliberately not here: it does not compile against the
+      # current framework API (7 compile errors on main as of 2026-10-07; port or remove it first).
+      - name: revue-cli
+        working-directory: revue-cli
+        run: |
+          cargo fetch --locked
+          cargo fmt --all -- --check
+          cargo clippy --locked --all-targets -- -D warnings
+          cargo test --locked
 
   coverage:
     name: Coverage
@@ -218,7 +251,7 @@ jobs:
   ci-gate:
     name: CI Gate
     if: always()
-    needs: [changes, fmt, clippy, features, test, coverage, msrv, docs, typos]
+    needs: [changes, fmt, clippy, features, test, standalone, coverage, msrv, docs, typos]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -229,13 +262,14 @@ jobs:
           CLIPPY: ${{ needs.clippy.result }}
           FEATURES: ${{ needs.features.result }}
           TEST: ${{ needs.test.result }}
+          STANDALONE: ${{ needs.standalone.result }}
           COVERAGE: ${{ needs.coverage.result }}
           MSRV: ${{ needs.msrv.result }}
           DOCS: ${{ needs.docs.result }}
           TYPOS: ${{ needs.typos.result }}
         run: |
           fail=0
-          for pair in "changes:$CHANGES" "fmt:$FMT" "clippy:$CLIPPY" "features:$FEATURES" "test:$TEST" "coverage:$COVERAGE" "msrv:$MSRV" "docs:$DOCS" "typos:$TYPOS"; do
+          for pair in "changes:$CHANGES" "fmt:$FMT" "clippy:$CLIPPY" "features:$FEATURES" "test:$TEST" "standalone:$STANDALONE" "coverage:$COVERAGE" "msrv:$MSRV" "docs:$DOCS" "typos:$TYPOS"; do
             job="${pair%%:*}"
             res="${pair#*:}"
             if [ "$res" = "success" ] || [ "$res" = "skipped" ]; then
