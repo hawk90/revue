@@ -35,7 +35,7 @@ cargo run
 ### counter
 - `Signal<T>` mutable reactive state
 - `Computed<T>` derived cached values
-- `Border::panel()` styled container
+- A `Border` container styled from CSS
 - Inline CSS with `App::builder().css()`
 
 ### form-app
