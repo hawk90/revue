@@ -325,15 +325,13 @@ impl TextArea {
         self.ensure_cursor_visible();
     }
 
-    /// Ensure cursor is visible by adjusting scroll
+    /// Ensure cursor is visible by adjusting scroll. Only scrolling up can
+    /// be settled here; render scrolls down once it knows the view height.
     fn ensure_cursor_visible(&mut self) {
-        // This would need the visible area size, which we don't have here
-        // For now, just update scroll.0 to show the cursor line
         let cursor_line = self.cursors.primary().pos.line;
-        if cursor_line < self.scroll {
-            self.scroll = cursor_line;
+        if cursor_line < self.scroll.get() {
+            self.scroll.set(cursor_line);
         }
-        // Note: Full implementation would need view height
     }
 
     /// Replace text in range

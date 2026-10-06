@@ -237,12 +237,11 @@ impl super::CodeEditor {
         self.cursor = (line, char_at_col(to, col));
     }
 
-    /// Ensure cursor is visible
+    /// Ensure cursor is visible. Only scrolling up can be settled here;
+    /// render scrolls down, and sideways, once it knows the view size.
     pub(super) fn ensure_cursor_visible(&mut self) {
-        // Adjust vertical scroll
-        if self.cursor.0 < self.scroll {
-            self.scroll = self.cursor.0;
+        if self.cursor.0 < self.scroll.get() {
+            self.scroll.set(self.cursor.0);
         }
-        // Horizontal scroll adjustment would need view width
     }
 }

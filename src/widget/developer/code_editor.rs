@@ -33,8 +33,9 @@ pub struct CodeEditor {
     pub(super) cursor: (usize, usize),
     /// Selection anchor (if selecting)
     pub(super) anchor: Option<(usize, usize)>,
-    /// First visible line
-    pub(super) scroll: usize,
+    /// First visible line, kept between renders so the view only moves
+    /// when the cursor would leave it
+    pub(super) scroll: std::cell::Cell<usize>,
     /// Horizontal scroll in terminal COLUMNS, kept between renders so the
     /// view only moves when the cursor would leave it
     pub(super) scroll_x: std::cell::Cell<usize>,
@@ -102,7 +103,7 @@ impl CodeEditor {
             lines: vec![String::new()],
             cursor: (0, 0),
             anchor: None,
-            scroll: 0,
+            scroll: std::cell::Cell::new(0),
             scroll_x: std::cell::Cell::new(0),
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
@@ -142,7 +143,7 @@ impl CodeEditor {
             self.lines.push(String::new());
         }
         self.cursor = (0, 0);
-        self.scroll = 0;
+        self.scroll.set(0);
         self.scroll_x.set(0);
         self
     }
@@ -154,7 +155,7 @@ impl CodeEditor {
             self.lines.push(String::new());
         }
         self.cursor = (0, 0);
-        self.scroll = 0;
+        self.scroll.set(0);
         self.scroll_x.set(0);
         self.undo_stack.clear();
         self.redo_stack.clear();

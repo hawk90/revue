@@ -46,6 +46,7 @@ pub use types::{DateTime, DateTimeFormat, DateTimeMode, Time, TimeField};
 pub use helpers::{date_picker, datetime_picker, time_picker};
 
 /// DateTime picker widget
+#[derive(Clone)]
 pub struct DateTimePicker {
     /// Selected date
     pub date: Date,
