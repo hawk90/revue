@@ -790,7 +790,7 @@ keywords = ["tui", "revue", "plugin"]
 categories = ["command-line-interface"]
 
 [dependencies]
-revue = "0.6"
+revue = "3.0"
 "#,
         plugin_name
     );
@@ -836,12 +836,12 @@ impl Plugin for {struct_name}Plugin {{
     }}
 
     fn on_init(&mut self, ctx: &mut PluginContext) -> Result<()> {{
-        ctx.info("Plugin initialized");
+        ctx.log("Plugin initialized");
         Ok(())
     }}
 
     fn on_mount(&mut self, ctx: &mut PluginContext) -> Result<()> {{
-        ctx.info("Plugin mounted");
+        ctx.log("Plugin mounted");
         Ok(())
     }}
 
@@ -851,7 +851,7 @@ impl Plugin for {struct_name}Plugin {{
     }}
 
     fn on_unmount(&mut self, ctx: &mut PluginContext) -> Result<()> {{
-        ctx.info("Plugin unmounted");
+        ctx.log("Plugin unmounted");
         Ok(())
     }}
 
