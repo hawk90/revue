@@ -2,6 +2,7 @@
 
 use super::{OptionEntry, OptionList};
 use crate::style::Color;
+use crate::utils::display_width;
 use crate::widget::theme::{DARK_GRAY, MUTED_TEXT, PLACEHOLDER_FG};
 use crate::widget::traits::DISABLED_FG;
 use crate::widget::{RenderContext, View};
@@ -27,16 +28,19 @@ impl View for OptionList {
         let mut skipped = 0;
 
         for entry in &self.entries {
-            // Handle scrolling
-            if let OptionEntry::Option(_) = entry {
-                if option_idx < self.scroll_offset {
+            // Handle scrolling: the window holds the options from
+            // `scroll_offset` on, with the separators and group titles
+            // between them - not those before the first or after the last.
+            let is_option = matches!(entry, OptionEntry::Option(_));
+            if option_idx < self.scroll_offset {
+                if is_option {
                     option_idx += 1;
                     skipped += 1;
-                    continue;
                 }
-                if visible_count >= self.max_visible {
-                    break;
-                }
+                continue;
+            }
+            if visible_count >= self.max_visible {
+                break;
             }
 
             match entry {
@@ -63,7 +67,8 @@ impl View for OptionList {
 
                     // Calculate padding for hint
                     let hint = item.hint.as_deref().unwrap_or("");
-                    let padding = width.saturating_sub(main_text.len() + hint.len());
+                    let padding =
+                        width.saturating_sub(display_width(&main_text) + display_width(hint));
 
                     // Determine colors
                     let fg = if item.disabled {
@@ -130,5 +135,61 @@ impl View for OptionList {
         }
 
         content.render(ctx);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    fn rows(list: &OptionList) -> Vec<String> {
+        let (w, h) = (12, 8);
+        let mut buf = Buffer::new(w, h);
+        let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, w, h));
+        list.render(&mut ctx);
+        (0..h)
+            .map(|y| {
+                (0..w)
+                    .map(|x| buf.get(x, y).unwrap().symbol)
+                    .collect::<String>()
+                    .trim_end()
+                    .to_string()
+            })
+            .filter(|r| !r.is_empty())
+            .collect()
+    }
+
+    #[test]
+    fn scrolling_hides_the_entries_before_the_first_shown_option() {
+        let mut list = OptionList::new()
+            .width(10)
+            .max_visible(2)
+            .group("G1")
+            .option("a", "")
+            .separator()
+            .option("b", "")
+            .group("G2")
+            .option("c", "")
+            .option("d", "")
+            .group("G3")
+            .option("e", "");
+        list.scroll_offset = 2;
+        assert_eq!(rows(&list), ["↑", "G2", "  c", "  d", "↓"]);
+    }
+
+    #[test]
+    fn hint_aligns_to_the_right_edge_by_display_width() {
+        let list = OptionList::new()
+            .width(12)
+            .option("한글", "K")
+            .option("ab", "K");
+        let mut buf = Buffer::new(12, 2);
+        let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, 12, 2));
+        list.render(&mut ctx);
+        for y in 0..2 {
+            assert_eq!(buf.get(11, y).unwrap().symbol, 'K', "row {y}");
+        }
     }
 }

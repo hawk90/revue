@@ -158,6 +158,13 @@ impl Presentation {
     fn render_footer(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
         let footer_y = area.height.saturating_sub(1);
+        // Slides shown so far: the title slide comes before slide 0, so it
+        // counts none.
+        let shown = if self.on_title_slide() {
+            0
+        } else {
+            self.current + 1
+        };
 
         // Time left, centered; the progress bar and slide numbers draw over
         // it when the footer is too narrow for all three
@@ -175,7 +182,7 @@ impl Presentation {
 
         // Slide numbers
         if self.show_numbers && !self.slides.is_empty() {
-            let num_str = format!("{}/{}", self.current + 1, self.slides.len());
+            let num_str = format!("{}/{}", shown, self.slides.len());
             let start_x = area.width.saturating_sub(num_str.len() as u16 + 1);
             for (i, ch) in num_str.chars().enumerate() {
                 let mut cell = Cell::new(ch);
@@ -187,7 +194,7 @@ impl Presentation {
         // Progress bar
         if self.show_progress && !self.slides.is_empty() {
             let bar_width = (area.width / 3).max(10);
-            let progress = (self.current + 1) as f32 / self.slides.len() as f32;
+            let progress = shown as f32 / self.slides.len() as f32;
             let filled = (bar_width as f32 * progress) as u16;
 
             for i in 0..bar_width {
@@ -363,5 +370,29 @@ mod tests {
 
         // Just ensure render doesn't panic
         pres.render(&mut ctx);
+    }
+
+    #[test]
+    fn title_slide_footer_counts_no_slide_yet() {
+        let footer = |pres: &Presentation| -> String {
+            let mut buffer = Buffer::new(40, 10);
+            let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 40, 10));
+            pres.render(&mut ctx);
+            (0..40).map(|x| buffer.get(x, 9).unwrap().symbol).collect()
+        };
+        let mut pres = Presentation::new()
+            .title("Deck")
+            .slide(Slide::new("One"))
+            .slide(Slide::new("Two"));
+
+        // The title slide comes before slide 0: nothing shown yet.
+        let on_title = footer(&pres);
+        assert!(on_title.contains("0/2"), "{on_title:?}");
+        assert!(!on_title.contains('━'), "{on_title:?}");
+
+        pres.next_slide();
+        let on_first = footer(&pres);
+        assert!(on_first.contains("1/2"), "{on_first:?}");
+        assert!(on_first.contains('━'), "{on_first:?}");
     }
 }

@@ -17,6 +17,8 @@ impl RichText {
     /// - `[/]` - Reset to default
     ///
     /// Tags can be combined: `[bold red]text[/]`
+    ///
+    /// A `[` with no `]` after it is shown as it is.
     pub fn markup(text: &str) -> Self {
         let mut rich = Self::new();
         rich.parse_markup(text);
@@ -28,9 +30,16 @@ impl RichText {
         let mut current_style = Style::default();
         let mut current_link: Option<String> = None;
         let mut buffer = String::new();
-        let mut chars = text.chars().peekable();
+        let mut chars = text.char_indices();
+        let last_close = text.rfind(']');
 
-        while let Some(ch) = chars.next() {
+        while let Some((i, ch)) = chars.next() {
+            // A `[` that is never closed is plain text, as is everything after
+            // it (no later `[` can be closed either).
+            if ch == '[' && last_close.is_none_or(|close| close < i) {
+                buffer.push_str(&text[i..]);
+                break;
+            }
             if ch == '[' {
                 // Flush buffer with current style
                 if !buffer.is_empty() {
@@ -44,7 +53,7 @@ impl RichText {
 
                 // Parse tag
                 let mut tag = String::new();
-                for c in chars.by_ref() {
+                for (_, c) in chars.by_ref() {
                     if c == ']' {
                         break;
                     }
@@ -108,5 +117,37 @@ impl RichText {
             }
             self.spans.push(span);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::{Buffer, Modifier};
+    use crate::widget::traits::{RenderContext, View};
+
+    fn render(markup: &str) -> Buffer {
+        let mut buf = Buffer::new(20, 1);
+        let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, 20, 1));
+        RichText::markup(markup).render(&mut ctx);
+        buf
+    }
+
+    fn text(buf: &Buffer) -> String {
+        (0..20)
+            .map(|x| buf.get(x, 0).unwrap().symbol)
+            .collect::<String>()
+            .trim_end()
+            .to_string()
+    }
+
+    #[test]
+    fn unclosed_bracket_is_literal_text() {
+        assert_eq!(text(&render("a [b c")), "a [b c");
+        // Tags before it still apply, and the bracket keeps their style.
+        let buf = render("[bold]x [y");
+        assert_eq!(text(&buf), "x [y");
+        assert!(buf.get(2, 0).unwrap().modifier.contains(Modifier::BOLD));
     }
 }

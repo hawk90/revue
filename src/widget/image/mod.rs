@@ -74,8 +74,13 @@ impl Image {
     }
 
     /// Calculate scaled dimensions to fit within bounds
+    ///
+    /// An image with no pixels (a zero width or height) has no aspect ratio
+    /// to keep, so `Fit` and `Fill` scale it to `(0, 0)`.
     pub fn scaled_dimensions(&self, max_width: u16, max_height: u16) -> (u16, u16) {
+        let empty = self.width == 0 || self.height == 0;
         match self.scale {
+            ScaleMode::Fit | ScaleMode::Fill if empty => (0, 0),
             ScaleMode::None => (self.width as u16, self.height as u16),
             ScaleMode::Stretch => (max_width, max_height),
             ScaleMode::Fit => {
@@ -159,4 +164,32 @@ pub fn image_from_file(path: impl AsRef<std::path::Path>) -> ImageResult<Image> 
 /// This is a convenience function. Use `image_from_file()` if you need error details.
 pub fn try_image_from_file(path: impl AsRef<std::path::Path>) -> Option<Image> {
     Image::try_from_file(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    #[test]
+    fn zero_sized_image_scales_to_nothing() {
+        for (w, h) in [(0, 0), (0, 3), (3, 0)] {
+            for mode in [ScaleMode::Fit, ScaleMode::Fill] {
+                let img = Image::from_rgb(Vec::new(), w, h)
+                    .scale(mode)
+                    .placeholder('#');
+                assert_eq!(img.scaled_dimensions(10, 5), (0, 0), "{w}x{h} {mode:?}");
+
+                let mut buf = Buffer::new(10, 5);
+                let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, 10, 5));
+                img.render(&mut ctx);
+                let drawn = (0..5)
+                    .flat_map(|y| (0..10).map(move |x| (x, y)))
+                    .filter(|&(x, y)| buf.get(x, y).unwrap().symbol == '#')
+                    .count();
+                assert_eq!(drawn, 0, "{w}x{h} {mode:?}");
+            }
+        }
+    }
 }

@@ -207,9 +207,25 @@ impl Splitter {
         }
     }
 
+    /// The panes on either side of a divider. Dividers are counted as they
+    /// are drawn - between visible panes, skipping collapsed ones.
+    fn divider_panes(&self, divider: usize) -> Option<(usize, usize)> {
+        let mut visible = self
+            .panes
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| !p.collapsed)
+            .map(|(i, _)| i)
+            .skip(divider);
+        Some((visible.next()?, visible.next()?))
+    }
+
     /// Start resizing divider
+    ///
+    /// `divider` counts the dividers as drawn: between visible panes, so
+    /// collapsed panes are skipped.
     pub fn start_resize(&mut self, divider: usize) {
-        if divider + 1 < self.panes.len() {
+        if self.divider_panes(divider).is_some() {
             self.active_divider = Some(divider);
         }
     }
@@ -221,18 +237,16 @@ impl Splitter {
 
     /// Resize by delta
     pub fn resize(&mut self, delta: i16) {
-        if let Some(divider) = self.active_divider {
-            if divider + 1 < self.panes.len() {
-                let current_ratio = self.panes[divider].ratio;
-                let next_ratio = self.panes[divider + 1].ratio;
+        if let Some((before, after)) = self.active_divider.and_then(|d| self.divider_panes(d)) {
+            let current_ratio = self.panes[before].ratio;
+            let next_ratio = self.panes[after].ratio;
 
-                let change = delta as f32 * 0.01;
-                let new_current = (current_ratio + change).clamp(0.1, 0.9);
-                let new_next = (next_ratio - change).clamp(0.1, 0.9);
+            let change = delta as f32 * 0.01;
+            let new_current = (current_ratio + change).clamp(0.1, 0.9);
+            let new_next = (next_ratio - change).clamp(0.1, 0.9);
 
-                self.panes[divider].ratio = new_current;
-                self.panes[divider + 1].ratio = new_next;
-            }
+            self.panes[before].ratio = new_current;
+            self.panes[after].ratio = new_next;
         }
     }
 

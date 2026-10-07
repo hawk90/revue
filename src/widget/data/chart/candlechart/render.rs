@@ -21,10 +21,9 @@ impl CandleChart {
         start..end
     }
 
-    /// Calculate price range
-    fn get_price_range(&self) -> (f64, f64) {
-        let candles = self.visible_candles();
-
+    /// Calculate the price range of the candles drawn (the raw candles, or
+    /// their Heikin-Ashi form)
+    fn get_price_range(&self, candles: &[Candle]) -> (f64, f64) {
         if candles.is_empty() {
             return (0.0, 100.0);
         }
@@ -239,7 +238,7 @@ impl View for CandleChart {
             return;
         }
 
-        let (min_price, max_price) = self.get_price_range();
+        let (min_price, max_price) = self.get_price_range(&candles);
 
         // Render candles
         let mut rows: Vec<Vec<(char, Color)>> = vec![Vec::new(); self.height as usize];
@@ -355,7 +354,7 @@ mod tests {
             Candle::new(105.0, 120.0, 100.0, 115.0),
         ];
         let chart = CandleChart::new(data);
-        let (min, max) = chart.get_price_range();
+        let (min, max) = chart.get_price_range(chart.visible_candles());
 
         // Should include padding
         assert!(min < 95.0);
@@ -440,5 +439,33 @@ mod tests {
                     .scroll(usize::MAX),
             );
         }
+    }
+
+    #[test]
+    fn heikin_ashi_axis_covers_the_heikin_ashi_candles() {
+        use crate::layout::Rect;
+        use crate::render::Buffer;
+
+        // A gap down: the second Heikin-Ashi candle opens at 195 (from the
+        // first), far above the raw second candle's 100..110.
+        let data = vec![
+            Candle::new(195.0, 200.0, 190.0, 195.0),
+            Candle::new(105.0, 110.0, 100.0, 105.0),
+        ];
+        let chart = CandleChart::new(data)
+            .style(ChartStyle::HeikinAshi)
+            .width(1)
+            .scroll(1)
+            .height(10)
+            .show_volume(false);
+        let mut buffer = Buffer::new(20, 12);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 12));
+        chart.render(&mut ctx);
+        let top: String = (0..9).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+        let top: f64 = top.trim().parse().unwrap();
+        assert!(
+            top >= 195.0,
+            "axis tops out at {top}, below the candle's 195"
+        );
     }
 }

@@ -61,10 +61,23 @@ impl View for Alert {
     }
 }
 
+/// The dismiss button's glyph
+const DISMISS: char = '×';
+
 impl Alert {
     /// Get the icon to display
     fn get_icon(&self) -> char {
         self.custom_icon.unwrap_or_else(|| self.level.icon())
+    }
+
+    /// Columns the dismiss button takes from the text on its row: the button
+    /// and one blank column before it (none when not dismissible).
+    fn dismiss_reserve(&self) -> u16 {
+        if self.dismissible {
+            char_width(DISMISS) as u16 + 1
+        } else {
+            0
+        }
     }
 
     fn render_filled(
@@ -106,22 +119,30 @@ impl Alert {
         };
 
         // Title (if present)
+        // The dismiss button shares the first row with the title (or the
+        // message when there is no title).
+        let text_x = content_x + icon_offset;
+        let max_w = content_width.saturating_sub(icon_offset);
+        let first_row_w = max_w.saturating_sub(self.dismiss_reserve());
         if let Some(ref title) = self.title {
-            let text_x = content_x + icon_offset;
-            let max_w = content_width.saturating_sub(icon_offset);
-            ctx.draw_text_clipped_bg_bold(text_x, y, title, Color::WHITE, bg_color, max_w);
+            ctx.draw_text_clipped_bg_bold(text_x, y, title, Color::WHITE, bg_color, first_row_w);
             y += 1;
             ctx.draw_text_clipped_bg(text_x, y, &self.message, SECONDARY_TEXT, bg_color, max_w);
         } else {
-            let text_x = content_x + icon_offset;
-            let max_w = content_width.saturating_sub(icon_offset);
-            ctx.draw_text_clipped_bg(text_x, y, &self.message, Color::WHITE, bg_color, max_w);
+            ctx.draw_text_clipped_bg(
+                text_x,
+                y,
+                &self.message,
+                Color::WHITE,
+                bg_color,
+                first_row_w,
+            );
         }
 
         // Dismiss button
         if self.dismissible {
             let dismiss_x = area.width - 3;
-            let mut x_cell = Cell::new('×');
+            let mut x_cell = Cell::new(DISMISS);
             x_cell.fg = Some(LIGHT_GRAY);
             x_cell.bg = Some(bg_color);
             ctx.set(dismiss_x, 1, x_cell);
@@ -159,10 +180,11 @@ impl Alert {
         if let Some(ref title) = self.title {
             let title_x = content_x + icon_offset;
             let max_w = content_width - icon_offset;
+            let title_w = max_w.saturating_sub(self.dismiss_reserve());
             let mut dx: u16 = 0;
             for ch in title.chars() {
                 let cw = char_width(ch) as u16;
-                if dx + cw > max_w {
+                if dx + cw > title_w {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -188,7 +210,7 @@ impl Alert {
             }
         } else {
             let msg_x = content_x + icon_offset;
-            let max_w = content_width - icon_offset;
+            let max_w = (content_width - icon_offset).saturating_sub(self.dismiss_reserve());
             let mut dx: u16 = 0;
             for ch in self.message.chars() {
                 let cw = char_width(ch) as u16;
@@ -205,7 +227,7 @@ impl Alert {
         // Dismiss button
         if self.dismissible {
             let dismiss_x = area.width - 2;
-            let mut x_cell = Cell::new('×');
+            let mut x_cell = Cell::new(DISMISS);
             x_cell.fg = Some(LIGHT_GRAY);
             ctx.set(dismiss_x, 0, x_cell);
         }
@@ -216,6 +238,8 @@ impl Alert {
         let area = ctx.area;
         let mut x: u16 = 0;
         let y: u16 = 0;
+        // The first row ends before the dismiss button.
+        let first_row_end = area.width.saturating_sub(self.dismiss_reserve());
 
         // Icon
         if self.show_icon {
@@ -232,7 +256,7 @@ impl Alert {
             let mut dx: u16 = 0;
             for ch in title.chars() {
                 let cw = char_width(ch) as u16;
-                if x + dx + cw > area.width {
+                if x + dx + cw > first_row_end {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -262,7 +286,7 @@ impl Alert {
             let mut dx: u16 = 0;
             for ch in self.message.chars() {
                 let cw = char_width(ch) as u16;
-                if x + dx + cw > area.width {
+                if x + dx + cw > first_row_end {
                     break;
                 }
                 let mut cell = Cell::new(ch);
@@ -275,7 +299,7 @@ impl Alert {
         // Dismiss button
         if self.dismissible {
             let dismiss_x = area.width - 1;
-            let mut x_cell = Cell::new('×');
+            let mut x_cell = Cell::new(DISMISS);
             x_cell.fg = Some(DISABLED_FG);
             ctx.set(dismiss_x, y, x_cell);
         }
@@ -290,5 +314,44 @@ impl Alert {
             Some(border_color),
             Some(bg_color),
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    fn row(alert: &Alert, y: u16) -> String {
+        let (w, h) = (20, 4);
+        let mut buf = Buffer::new(w, h);
+        let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, w, h));
+        alert.render(&mut ctx);
+        (0..w).map(|x| buf.get(x, y).unwrap().symbol).collect()
+    }
+
+    #[test]
+    fn dismiss_button_keeps_its_own_columns() {
+        let long = "abcdefghijklmnopqrstuvwxyz";
+        let alert = |v| Alert::info(long).icon(false).dismissible(true).variant(v);
+        // Text stops one blank column before the `×`.
+        assert_eq!(row(&alert(AlertVariant::Filled), 1), "│ abcdefghijklmn × │");
+        assert_eq!(
+            row(&alert(AlertVariant::Outlined), 0),
+            "┃ abcdefghijklmno × "
+        );
+        assert_eq!(
+            row(&alert(AlertVariant::Minimal), 0),
+            "abcdefghijklmnopqr ×"
+        );
+        // A title on the button's row is cut the same way; the row below is not.
+        let titled = Alert::info(long)
+            .title(long)
+            .icon(false)
+            .dismissible(true)
+            .variant(AlertVariant::Outlined);
+        assert_eq!(row(&titled, 0), "┃ abcdefghijklmno × ");
+        assert_eq!(row(&titled, 1), "┃ abcdefghijklmnopq ");
     }
 }
