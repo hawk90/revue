@@ -79,15 +79,6 @@ pub const KNOWN: &[Known] = &[
             "2x5@1,65530 hello plain direct",
         ],
     },
-    Known {
-        layer: "sizes",
-        widget: "Splitter",
-        kind: Kind::Panic,
-        reason: "src/widget/layout/splitter/mod.rs:151: pane_areas: `area.x + offset` overflows near u16::MAX",
-        cases: &[
-            "5x2@65530,1 hello plain direct",
-        ],
-    },
     // ── contents ──
     Known {
         layer: "contents",
@@ -203,18 +194,6 @@ pub const KNOWN: &[Known] = &[
             "2x1 long plain direct",
             "1x2 empty plain direct",
             "1x2 hangul plain direct",
-        ],
-    },
-    Known {
-        layer: "pairwise",
-        widget: "Splitter",
-        kind: Kind::Panic,
-        reason: "src/widget/layout/splitter/mod.rs:151: pane_areas: `area.x + offset` overflows near u16::MAX",
-        cases: &[
-            "5x2@65530,1 empty plain direct",
-            "5x2@65530,1 hangul focus direct",
-            "5x2@65530,1 emoji plain direct",
-            "5x2@65530,1 long plain direct",
         ],
     },
 ];
