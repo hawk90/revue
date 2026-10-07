@@ -59,12 +59,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "keys",
-        widget: "MenuBar",
-        sequence: "[5x2] <open menu 1> Left Left",
-        reason: "dropdown size subtracts the menu x/y from the area without saturating",
-    },
-    Known {
-        layer: "keys",
         widget: "MultiSelect",
         sequence: "<select all> Escape Left <clear selection>",
         reason: "the tag cursor is not clamped when the selection shrinks",

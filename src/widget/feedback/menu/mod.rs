@@ -490,4 +490,18 @@ mod tests {
         bar.open_menu(10); // Out of bounds
         assert!(!bar.is_open());
     }
+
+    // Found by tests/event_sequences.rs: the shrunk sequence was
+    // `[5x2] <open menu 1> Left Left` - a menu whose title starts past the
+    // right edge of a narrow area.
+    #[test]
+    fn test_menu_bar_dropdown_past_the_right_edge() {
+        let mut bar = MenuBar::new()
+            .menu(Menu::new("File").item(MenuItem::new("Open")))
+            .menu(Menu::new("Edit").item(MenuItem::new("Undo")));
+        bar.open_menu(1);
+        let mut buffer = Buffer::new(5, 2);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 5, 2));
+        bar.render(&mut ctx);
+    }
 }
