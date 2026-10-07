@@ -87,7 +87,7 @@ impl<T: Send + 'static> TaskRunner<T> {
                 },
                 Err(e) => TaskMessage {
                     id,
-                    result: Err(format!("Task panicked: {:?}", e)),
+                    result: Err(format!("Task panicked: {}", super::panic_message(&*e))),
                 },
             };
             let _ = tx.send(msg);
@@ -122,7 +122,7 @@ impl<T: Send + 'static> TaskRunner<T> {
                 },
                 Err(e) => TaskMessage {
                     id,
-                    result: Err(format!("Task panicked: {:?}", e)),
+                    result: Err(format!("Task panicked: {}", super::panic_message(&*e))),
                 },
             };
             let _ = tx.send(msg);
@@ -447,5 +447,21 @@ mod tests {
         let result = poll_within(&mut runner, Duration::from_secs(5));
         assert!(result.result.is_err());
         assert!(result.result.unwrap_err().contains("panicked"));
+    }
+
+    #[test]
+    fn a_panic_keeps_its_message() {
+        let mut runner: TaskRunner<u32> = TaskRunner::new();
+        runner.spawn("boom", || {
+            std::panic::resume_unwind(Box::new("the disk is gone"))
+        });
+        let r = poll_within(&mut runner, Duration::from_secs(5));
+        assert_eq!(r.result, Err("Task panicked: the disk is gone".to_string()));
+
+        runner.spawn("owned", || {
+            std::panic::resume_unwind(Box::new(String::from("owned msg")))
+        });
+        let r = poll_within(&mut runner, Duration::from_secs(5));
+        assert_eq!(r.result, Err("Task panicked: owned msg".to_string()));
     }
 }

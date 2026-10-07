@@ -22,10 +22,13 @@ pub struct TaskResult<T> {
     pub result: Result<T, String>,
 }
 
+/// A queued task; an error it returns is its failure (not a panic).
+type Task<T> = Box<dyn FnOnce() -> Result<T, String> + Send + 'static>;
+
 /// Work item submitted to the pool
 struct WorkItem<T> {
     id: TaskId,
-    task: Box<dyn FnOnce() -> T + Send + 'static>,
+    task: Task<T>,
 }
 
 /// Message from worker to main thread
@@ -59,15 +62,11 @@ impl Worker {
                             (item.task)()
                         }));
 
-                        let msg = match result {
-                            Ok(value) => ResultMessage {
-                                id: item.id,
-                                result: Ok(value),
-                            },
-                            Err(e) => ResultMessage {
-                                id: item.id,
-                                result: Err(format!("Task panicked: {:?}", e)),
-                            },
+                        let msg = ResultMessage {
+                            id: item.id,
+                            result: result.unwrap_or_else(|e| {
+                                Err(format!("Task panicked: {}", super::panic_message(&*e)))
+                            }),
                         };
 
                         // Send result back
@@ -125,7 +124,7 @@ pub struct PooledTaskRunner<T: Send + 'static> {
     /// Pending tasks (to prevent duplicate IDs)
     pending: HashMap<TaskId, ()>,
     /// Queue of tasks waiting to be submitted (for future backpressure)
-    _queue: VecDeque<(TaskId, Box<dyn FnOnce() -> T + Send + 'static>)>,
+    _queue: VecDeque<(TaskId, Task<T>)>,
 }
 
 impl<T: Send + 'static> PooledTaskRunner<T> {
@@ -177,18 +176,18 @@ impl<T: Send + 'static> PooledTaskRunner<T> {
     where
         F: FnOnce() -> T + Send + 'static,
     {
-        let id = id.into();
+        self.submit(id.into(), Box::new(move || Ok(task())));
+    }
 
+    /// Queue a work item unless a task with its id is already pending.
+    fn submit(&mut self, id: TaskId, task: Task<T>) {
         if self.pending.contains_key(&id) {
             return; // Task already running
         }
 
         self.pending.insert(id.clone(), ());
 
-        let work_item = WorkItem {
-            id,
-            task: Box::new(task),
-        };
+        let work_item = WorkItem { id, task };
 
         // Submit to pool (non-blocking)
         // If queue is full, silently reject the task to prevent blocking
@@ -201,10 +200,12 @@ impl<T: Send + 'static> PooledTaskRunner<T> {
         F: FnOnce() -> Result<T, E> + Send + 'static,
         E: std::fmt::Display,
     {
-        self.spawn(id, move || match task() {
-            Ok(value) => value,
-            Err(e) => panic!("Task error: {}", e),
-        });
+        // The error travels as the result, not as a panic: a panic would
+        // reach the panic hook, which prints over the app's screen.
+        self.submit(
+            id.into(),
+            Box::new(move || task().map_err(|e| e.to_string())),
+        );
     }
 
     /// Poll for completed task results (non-blocking)
@@ -448,5 +449,19 @@ mod tests {
         };
         assert_eq!(result.id, "test");
         assert_eq!(result.result.unwrap(), 42);
+    }
+
+    #[test]
+    fn a_failure_keeps_its_message() {
+        let mut runner: PooledTaskRunner<u32> = PooledTaskRunner::new(1);
+        runner.spawn_result("err", || Err::<u32, _>("permission denied"));
+        let r = poll_within(&mut runner, Duration::from_secs(5));
+        assert_eq!(r.result, Err("permission denied".to_string()));
+
+        runner.spawn("boom", || {
+            std::panic::resume_unwind(Box::new("the disk is gone"))
+        });
+        let r = poll_within(&mut runner, Duration::from_secs(5));
+        assert_eq!(r.result, Err("Task panicked: the disk is gone".to_string()));
     }
 }

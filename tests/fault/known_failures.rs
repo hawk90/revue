@@ -17,11 +17,6 @@ pub const KNOWN: &[Known] = &[
     // ── concurrency ──
     Known {
         layer: "concurrency",
-        reason: "task runners format a panic payload with {:?}, and PooledTaskRunner sends errors as panics",
-        cases: &["runner panic-message", "pooled panic-message", "pooled error-message"],
-    },
-    Known {
-        layer: "concurrency",
         reason: "TaskRunner::cancel forgets the id, but the old run's result is still delivered under it",
         cases: &["runner cancelled-result", "runner cancel-then-respawn"],
     },
