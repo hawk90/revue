@@ -199,8 +199,9 @@ pub fn run_bounded(cases: Vec<Case>) -> (BTreeSet<String>, Vec<Failure>) {
             .name(format!("fault-{}", case.name))
             .stack_size(8 << 20)
             .spawn(move || {
+                let started = Instant::now();
                 let detail = catch(check).unwrap_or_else(Some);
-                let _ = tx.send((i, detail));
+                let _ = tx.send((i, detail, started.elapsed()));
             })
             .expect("spawn case thread");
     }
@@ -209,6 +210,7 @@ pub fn run_bounded(cases: Vec<Case>) -> (BTreeSet<String>, Vec<Failure>) {
     let ran: BTreeSet<String> = pending.iter().map(|(n, _)| n.clone()).collect();
     let mut failures = Vec::new();
     let mut done = vec![false; pending.len()];
+    let mut took: Vec<(Duration, usize)> = Vec::new();
     loop {
         let open: Vec<usize> = (0..pending.len()).filter(|&i| !done[i]).collect();
         if open.is_empty() {
@@ -220,8 +222,9 @@ pub fn run_bounded(cases: Vec<Case>) -> (BTreeSet<String>, Vec<Failure>) {
             break;
         }
         match rx.recv_timeout(left) {
-            Ok((i, detail)) => {
+            Ok((i, detail, elapsed)) => {
                 done[i] = true;
+                took.push((elapsed, i));
                 if let Some(detail) = detail {
                     failures.push(Failure::new(pending[i].0.clone(), detail));
                 }
@@ -237,6 +240,13 @@ pub fn run_bounded(cases: Vec<Case>) -> (BTreeSet<String>, Vec<Failure>) {
             ));
         }
     }
+    took.sort_by(|a, b| b.cmp(a));
+    let slowest: Vec<String> = took
+        .iter()
+        .take(4)
+        .map(|(d, i)| format!("{} {:.1}s", pending[*i].0, d.as_secs_f32()))
+        .collect();
+    eprintln!("  slowest: {}", slowest.join(", "));
     failures.sort_by(|a, b| a.case.cmp(&b.case));
     (ran, failures)
 }
