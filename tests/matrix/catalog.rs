@@ -97,6 +97,8 @@ fn devtools(c: &Content, tab: DevToolsTab) -> Box<dyn View> {
 // ─── The catalog ────────────────────────────────────────────────────────────
 
 pub fn catalog() -> Vec<Entry> {
+    // Only feature-gated entries push to it.
+    #[allow(unused_mut)]
     let mut v = vec![
         // Display
         e("Alert", |c, _| {
