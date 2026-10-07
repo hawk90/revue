@@ -181,6 +181,7 @@ let pool = WorkerPool::new(4);
 pool.submit(|| {
     fetch_data_from_api()
 });
+// Dropping the pool does not wait for its tasks; `pool.join_timeout(..)` does.
 
 // Get result when ready (non-blocking)
 if let Some(result) = handle.try_join() {

@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
 
 /// Unique task identifier
 pub type TaskId = &'static str;
@@ -28,6 +29,10 @@ struct TaskMessage<T> {
 }
 
 /// Background task runner
+///
+/// Each task runs on its own thread. Dropping the runner does not wait for
+/// running tasks: their threads are detached and their results discarded. Use
+/// [`join_timeout`](Self::join_timeout) to wait on purpose.
 ///
 /// # Example
 ///
@@ -194,20 +199,33 @@ impl<T: Send + 'static> TaskRunner<T> {
     pub fn cleanup(&mut self) {
         self.handles.retain(|h| !h.is_finished());
     }
+
+    /// Wait until every spawned task's thread has finished, or `timeout`
+    /// elapses. Returns `true` if they all finished.
+    ///
+    /// Dropping the runner does not wait: the threads of running tasks are
+    /// detached and their results discarded. Call this first when the tasks'
+    /// side effects must be complete - before the process exits, say. The
+    /// results of finished tasks stay available to [`poll`](Self::poll).
+    pub fn join_timeout(&mut self, timeout: Duration) -> bool {
+        let start = Instant::now();
+        loop {
+            self.cleanup();
+            if self.handles.is_empty() {
+                return true;
+            }
+            let elapsed = start.elapsed();
+            if elapsed >= timeout {
+                return false;
+            }
+            thread::sleep((timeout - elapsed).min(Duration::from_millis(5)));
+        }
+    }
 }
 
 impl<T: Send + 'static> Default for TaskRunner<T> {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl<T: Send + 'static> Drop for TaskRunner<T> {
-    fn drop(&mut self) {
-        // Wait for all threads to complete
-        for handle in self.handles.drain(..) {
-            let _ = handle.join();
-        }
     }
 }
 

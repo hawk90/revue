@@ -7,6 +7,7 @@ use super::{Priority, WorkerConfig, WorkerHandle};
 use std::collections::BinaryHeap;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
 
 // Use lock utilities for consistent poison handling
 use crate::utils::lock as lock_util;
@@ -20,6 +21,9 @@ struct SharedState {
 }
 
 /// A pool of worker threads for background tasks
+///
+/// Dropping the pool shuts it down without waiting for its workers; see
+/// [`join_timeout`](Self::join_timeout).
 pub struct WorkerPool {
     /// Worker threads
     workers: Vec<Worker>,
@@ -126,6 +130,31 @@ impl WorkerPool {
         let (lock, _) = &*self.state;
         lock_util::lock_or_recover(lock).shutdown
     }
+
+    /// Shut the pool down and wait until its workers have finished every
+    /// queued task and exited, or `timeout` elapses. Returns `true` if they
+    /// all exited.
+    ///
+    /// Dropping the pool shuts it down without waiting. Call this first when
+    /// the tasks' side effects must be complete - before the process exits,
+    /// say.
+    pub fn join_timeout(&mut self, timeout: Duration) -> bool {
+        self.shutdown();
+        let start = Instant::now();
+        loop {
+            if self.workers.iter().all(Worker::is_finished) {
+                for worker in &mut self.workers {
+                    worker.join();
+                }
+                return true;
+            }
+            let elapsed = start.elapsed();
+            if elapsed >= timeout {
+                return false;
+            }
+            thread::sleep((timeout - elapsed).min(Duration::from_millis(5)));
+        }
+    }
 }
 
 impl Default for WorkerPool {
@@ -135,13 +164,11 @@ impl Default for WorkerPool {
 }
 
 impl Drop for WorkerPool {
+    /// Shuts the pool down without waiting: the workers finish the tasks
+    /// already queued and exit on their own. Use
+    /// [`join_timeout`](WorkerPool::join_timeout) to wait for them.
     fn drop(&mut self) {
         self.shutdown();
-
-        // Join all worker threads for clean shutdown
-        for worker in &mut self.workers {
-            worker.join();
-        }
     }
 }
 
@@ -222,6 +249,11 @@ impl Worker {
     /// Check if worker is active
     pub fn is_active(&self) -> bool {
         *lock_util::lock_or_recover(&self.active)
+    }
+
+    /// Has the worker thread exited (or never started)?
+    fn is_finished(&self) -> bool {
+        self.thread.as_ref().is_none_or(JoinHandle::is_finished)
     }
 
     /// Join the worker thread, waiting for it to finish
