@@ -117,7 +117,7 @@ src/widget/
 │   ├── notification/      #   Notification center
 │   ├── alert/             #   Alert box
 │   ├── callout/           #   Callout/admonition
-│   ├── tooltip.rs         #   Tooltip
+│   ├── tooltip/           #   Tooltip
 │   ├── popover/           #   Popover
 │   ├── menu/              #   Menu
 │   └── statusbar/         #   Status bar
