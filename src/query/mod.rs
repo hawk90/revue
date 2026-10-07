@@ -456,7 +456,10 @@ impl Query {
 
     /// Check if query is empty (matches everything)
     pub fn is_empty(&self) -> bool {
-        self.filters.is_empty() && self.sort.is_none() && self.limit.is_none()
+        self.filters.is_empty()
+            && self.sort.is_none()
+            && self.limit.is_none()
+            && self.offset.is_none()
     }
 }
 
@@ -491,6 +494,21 @@ macro_rules! impl_queryable {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_query_with_offset_is_not_empty() {
+        assert!(Query::new().is_empty());
+        let query = Query::new().offset(2);
+        assert!(!query.is_empty());
+
+        // It does not match everything: it skips the first two items
+        let items = [1, 2, 3].map(|age| TestItem {
+            name: String::new(),
+            age,
+            active: true,
+        });
+        assert_eq!(query.filter_items(&items).len(), 1);
+    }
 
     struct TestItem {
         name: String,

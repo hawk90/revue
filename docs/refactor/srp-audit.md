@@ -91,7 +91,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `devtools/time_travel/debugger.rs` | 615 | 1 | 615줄 | split | 기록·탐색·diff·내보내기 상태와 탭 그리기(타임라인·diff·액션·상태 뷰)가 섞임 → debugger/{mod,render}.rs (render는 자식 모듈이라 private 필드를 그대로 봄). 버그 의심: `export()`가 label·action 이름의 따옴표를 escape하지 않아 JSON이 깨질 수 있음, `import()`는 "exported data"라 하지만 `export()` 문자열이 아닌 `Vec<StateSnapshot>`를 받음 |
 | `devtools/time_travel/types.rs` | 302 | 6 | 타입 모음, 공개 타입 6 | keep | 스냅샷·값·diff·액션·뷰·설정 타입만 모음. 가장 큰 impl은 `StateSnapshot::diff` 하나 |
 | `lib.rs` | 855 | 1 | 855줄 | split | 크레이트 루트(문서·모듈 선언·`Error`)와 prelude 재노출 목록(위젯·API가 늘 때마다 바뀜)이 섞임 → prelude 본문을 `src/prelude.rs`로. `revue::prelude` 경로와 문서는 그대로(문서는 lib.rs의 `pub mod prelude;` 선언에 남김; 생성된 rustdoc 페이지는 Source 링크만 다름). 버그 의심: "Error Handling Guidelines" `///` 블록이 아무 항목에도 붙지 않고 prelude 문서 앞에 이어 붙어, `revue::prelude` 문서가 오류 처리 지침으로 시작함 |
-| `query/mod.rs` | 489 | 7 | 공개 타입 7 | keep | 질의 모델과 평가 하나(값 비교→필터→정렬·페이지), 파서는 이미 parser.rs. 나누면 `Filter`·`Query`·`QueryValue`가 서로를 계속 부름. 버그 의심: `Query::is_empty()`는 `offset`을 보지 않음, 문자열 `Eq`·`Contains`는 대소문자를 무시하지만 `Gt`·`Lt`와 정렬은 구분함 |
+| `query/mod.rs` | 489 | 7 | 공개 타입 7 | keep | 질의 모델과 평가 하나(값 비교→필터→정렬·페이지), 파서는 이미 parser.rs. 나누면 `Filter`·`Query`·`QueryValue`가 서로를 계속 부름. 버그 의심: `Query::is_empty()`는 `offset`을 보지 않음 (→ 고침), 문자열 `Eq`·`Contains`는 대소문자를 무시하지만 `Gt`·`Lt`와 정렬은 구분함 |
 | `testing/assertions.rs` | 261 | 7 | 공개 타입 7 | keep | 버퍼 단언 하나. 공개 타입 7 중 `AssertionResult`·`Assertion` 외 다섯은 `#[cfg(test)]` 전용 |
 | `testing/visual/types.rs` | 273 | 6 | 타입 모음, 공개 타입 6 | keep | 시각 회귀 테스트의 설정·결과·캡처·diff 타입만 모음. impl은 빌더, 셀 비교, diff 요약 정도 |
 
