@@ -366,6 +366,7 @@ revue/
 │   ├── widget/        # Widget implementations
 │   ├── patterns/      # Reusable patterns
 │   ├── utils/         # Utility functions
+│   ├── prelude.rs     # `revue::prelude` re-exports
 │   └── lib.rs         # Library root
 ├── docs/              # Documentation
 ├── examples/          # Example applications

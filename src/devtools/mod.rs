@@ -34,9 +34,11 @@ mod events;
 mod helpers;
 mod inspector;
 mod profiler;
+mod render;
 mod state;
 mod style;
 mod time_travel;
+mod types;
 
 pub use events::{EventFilter, EventLogger, EventType, LoggedEvent};
 pub use inspector::{ComponentPicker, Inspector, InspectorConfig, PickerMode, WidgetNode};
@@ -47,129 +49,9 @@ pub use time_travel::{
     Action, SnapshotValue, StateDiff, StateSnapshot, TimeTravelConfig, TimeTravelDebugger,
     TimeTravelView,
 };
+pub use types::{DevToolsConfig, DevToolsPosition, DevToolsTab};
 
 use crate::layout::Rect;
-use crate::render::Buffer;
-use crate::style::Color;
-
-// =============================================================================
-// DevTools Panel
-// =============================================================================
-
-/// DevTools panel position
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum DevToolsPosition {
-    /// Right side panel
-    #[default]
-    Right,
-    /// Bottom panel
-    Bottom,
-    /// Left side panel
-    Left,
-    /// Floating overlay
-    Overlay,
-}
-
-/// DevTools configuration
-#[derive(Debug, Clone)]
-pub struct DevToolsConfig {
-    /// Panel position
-    pub position: DevToolsPosition,
-    /// Panel size (width or height depending on position)
-    pub size: u16,
-    /// Is visible
-    pub visible: bool,
-    /// Active tab
-    pub active_tab: DevToolsTab,
-    /// Background color
-    pub bg_color: Color,
-    /// Text color
-    pub fg_color: Color,
-    /// Accent color
-    pub accent_color: Color,
-}
-
-impl Default for DevToolsConfig {
-    fn default() -> Self {
-        Self {
-            position: DevToolsPosition::Right,
-            size: 50,
-            visible: false,
-            active_tab: DevToolsTab::Inspector,
-            bg_color: Color::rgb(25, 25, 35),
-            fg_color: Color::rgb(200, 200, 210),
-            accent_color: Color::rgb(130, 180, 255),
-        }
-    }
-}
-
-/// DevTools tab
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum DevToolsTab {
-    /// Widget inspector
-    #[default]
-    Inspector,
-    /// State debugger
-    State,
-    /// Style inspector
-    Styles,
-    /// Event logger
-    Events,
-    /// Performance profiler
-    Profiler,
-    /// Time-travel debugger
-    TimeTravel,
-}
-
-impl DevToolsTab {
-    /// Get tab label
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::Inspector => "Inspector",
-            Self::State => "State",
-            Self::Styles => "Styles",
-            Self::Events => "Events",
-            Self::Profiler => "Profiler",
-            Self::TimeTravel => "Travel",
-        }
-    }
-
-    /// Get all tabs
-    pub fn all() -> &'static [DevToolsTab] {
-        &[
-            DevToolsTab::Inspector,
-            DevToolsTab::State,
-            DevToolsTab::Styles,
-            DevToolsTab::Events,
-            DevToolsTab::Profiler,
-            DevToolsTab::TimeTravel,
-        ]
-    }
-
-    /// Next tab
-    pub fn next(&self) -> Self {
-        match self {
-            Self::Inspector => Self::State,
-            Self::State => Self::Styles,
-            Self::Styles => Self::Events,
-            Self::Events => Self::Profiler,
-            Self::Profiler => Self::TimeTravel,
-            Self::TimeTravel => Self::Inspector,
-        }
-    }
-
-    /// Previous tab
-    pub fn prev(&self) -> Self {
-        match self {
-            Self::Inspector => Self::TimeTravel,
-            Self::State => Self::Inspector,
-            Self::Styles => Self::State,
-            Self::Events => Self::Styles,
-            Self::Profiler => Self::Events,
-            Self::TimeTravel => Self::Profiler,
-        }
-    }
-}
 
 // =============================================================================
 // DevTools
@@ -374,146 +256,6 @@ impl DevTools {
             DevToolsPosition::Overlay => area,
         }
     }
-
-    /// Render devtools panel
-    pub fn render(&self, buffer: &mut Buffer, area: Rect) {
-        if let Some(panel) = self.panel_rect(area) {
-            self.render_panel(buffer, panel);
-        }
-    }
-
-    fn render_panel(&self, buffer: &mut Buffer, area: Rect) {
-        // Fill background
-        for y in area.y..area.y + area.height {
-            for x in area.x..area.x + area.width {
-                if let Some(cell) = buffer.get_mut(x, y) {
-                    cell.symbol = ' ';
-                    cell.bg = Some(self.config.bg_color);
-                    cell.fg = Some(self.config.fg_color);
-                }
-            }
-        }
-
-        // Draw border
-        self.draw_border(buffer, area);
-
-        // Tab bar
-        let tab_area = Rect::new(area.x + 1, area.y + 1, area.width - 2, 1);
-        self.render_tabs(buffer, tab_area);
-
-        // Content area
-        let content_area = Rect::new(
-            area.x + 1,
-            area.y + 3,
-            area.width - 2,
-            area.height.saturating_sub(4),
-        );
-
-        match self.config.active_tab {
-            DevToolsTab::Inspector => {
-                self.inspector
-                    .render_content(buffer, content_area, &self.config)
-            }
-            DevToolsTab::State => self
-                .state
-                .render_content(buffer, content_area, &self.config),
-            DevToolsTab::Styles => self
-                .styles
-                .render_content(buffer, content_area, &self.config),
-            DevToolsTab::Events => self
-                .events
-                .render_content(buffer, content_area, &self.config),
-            DevToolsTab::Profiler => {
-                self.profiler
-                    .render_content(buffer, content_area, &self.config)
-            }
-            DevToolsTab::TimeTravel => {
-                self.time_travel
-                    .render_content(buffer, content_area, &self.config)
-            }
-        }
-    }
-
-    fn render_tabs(&self, buffer: &mut Buffer, area: Rect) {
-        let mut x = area.x;
-
-        for tab in DevToolsTab::all() {
-            let label = format!(" {} ", tab.label());
-            let is_active = *tab == self.config.active_tab;
-
-            let (fg, bg) = if is_active {
-                (self.config.bg_color, self.config.accent_color)
-            } else {
-                (self.config.fg_color, self.config.bg_color)
-            };
-
-            for ch in label.chars() {
-                if x < area.x + area.width {
-                    if let Some(cell) = buffer.get_mut(x, area.y) {
-                        cell.symbol = ch;
-                        cell.fg = Some(fg);
-                        cell.bg = Some(bg);
-                    }
-                    x += 1;
-                }
-            }
-
-            x += 1; // Gap between tabs
-        }
-    }
-
-    fn draw_border(&self, buffer: &mut Buffer, area: Rect) {
-        let color = self.config.accent_color;
-
-        // Corners and edges
-        for x in area.x..area.x + area.width {
-            if let Some(cell) = buffer.get_mut(x, area.y) {
-                cell.symbol = if x == area.x {
-                    '┌'
-                } else if x == area.x + area.width - 1 {
-                    '┐'
-                } else {
-                    '─'
-                };
-                cell.fg = Some(color);
-            }
-            if let Some(cell) = buffer.get_mut(x, area.y + area.height - 1) {
-                cell.symbol = if x == area.x {
-                    '└'
-                } else if x == area.x + area.width - 1 {
-                    '┘'
-                } else {
-                    '─'
-                };
-                cell.fg = Some(color);
-            }
-        }
-
-        for y in area.y + 1..area.y + area.height - 1 {
-            if let Some(cell) = buffer.get_mut(area.x, y) {
-                cell.symbol = '│';
-                cell.fg = Some(color);
-            }
-            if let Some(cell) = buffer.get_mut(area.x + area.width - 1, y) {
-                cell.symbol = '│';
-                cell.fg = Some(color);
-            }
-        }
-
-        // Separator after tabs
-        for x in area.x..area.x + area.width {
-            if let Some(cell) = buffer.get_mut(x, area.y + 2) {
-                cell.symbol = if x == area.x {
-                    '├'
-                } else if x == area.x + area.width - 1 {
-                    '┤'
-                } else {
-                    '─'
-                };
-                cell.fg = Some(color);
-            }
-        }
-    }
 }
 
 impl Default for DevTools {
@@ -529,22 +271,7 @@ impl Default for DevTools {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_devtools_config_default() {
-        let config = DevToolsConfig::default();
-        assert!(!config.visible);
-        assert_eq!(config.position, DevToolsPosition::Right);
-        assert_eq!(config.active_tab, DevToolsTab::Inspector);
-        assert_eq!(config.size, 50);
-    }
-
-    #[test]
-    fn test_devtools_tab_cycle() {
-        let tab = DevToolsTab::Inspector;
-        assert_eq!(tab.next(), DevToolsTab::State);
-        assert_eq!(tab.prev(), DevToolsTab::TimeTravel);
-    }
+    use crate::style::Color;
 
     #[test]
     fn test_devtools_toggle() {
@@ -803,54 +530,6 @@ mod tests {
         devtools.events_mut();
         devtools.profiler_mut();
         devtools.time_travel_mut();
-    }
-
-    #[test]
-    fn test_devtools_tab_label() {
-        assert_eq!(DevToolsTab::Inspector.label(), "Inspector");
-        assert_eq!(DevToolsTab::State.label(), "State");
-        assert_eq!(DevToolsTab::Styles.label(), "Styles");
-        assert_eq!(DevToolsTab::Events.label(), "Events");
-        assert_eq!(DevToolsTab::Profiler.label(), "Profiler");
-        assert_eq!(DevToolsTab::TimeTravel.label(), "Travel");
-    }
-
-    #[test]
-    fn test_devtools_tab_all() {
-        let all = DevToolsTab::all();
-        assert_eq!(all.len(), 6);
-        assert_eq!(all[0], DevToolsTab::Inspector);
-        assert_eq!(all[5], DevToolsTab::TimeTravel);
-    }
-
-    #[test]
-    fn test_devtools_tab_next_cycle() {
-        assert_eq!(DevToolsTab::Inspector.next(), DevToolsTab::State);
-        assert_eq!(DevToolsTab::State.next(), DevToolsTab::Styles);
-        assert_eq!(DevToolsTab::Styles.next(), DevToolsTab::Events);
-        assert_eq!(DevToolsTab::Events.next(), DevToolsTab::Profiler);
-        assert_eq!(DevToolsTab::Profiler.next(), DevToolsTab::TimeTravel);
-        assert_eq!(DevToolsTab::TimeTravel.next(), DevToolsTab::Inspector);
-    }
-
-    #[test]
-    fn test_devtools_tab_prev_cycle() {
-        assert_eq!(DevToolsTab::Inspector.prev(), DevToolsTab::TimeTravel);
-        assert_eq!(DevToolsTab::TimeTravel.prev(), DevToolsTab::Profiler);
-        assert_eq!(DevToolsTab::Profiler.prev(), DevToolsTab::Events);
-        assert_eq!(DevToolsTab::Events.prev(), DevToolsTab::Styles);
-        assert_eq!(DevToolsTab::Styles.prev(), DevToolsTab::State);
-        assert_eq!(DevToolsTab::State.prev(), DevToolsTab::Inspector);
-    }
-
-    #[test]
-    fn test_devtools_position_default() {
-        assert_eq!(DevToolsPosition::default(), DevToolsPosition::Right);
-    }
-
-    #[test]
-    fn test_devtools_tab_default() {
-        assert_eq!(DevToolsTab::default(), DevToolsTab::Inspector);
     }
 
     #[test]
