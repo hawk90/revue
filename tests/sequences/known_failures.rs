@@ -41,12 +41,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "keys",
-        widget: "JsonViewer",
-        sequence: "Ctrl+End 'x'",
-        reason: "collapse_all() leaves the selection past the visible nodes",
-    },
-    Known {
-        layer: "keys",
         widget: "LogViewer",
         sequence: "<search 'e'> 'n' <clear> <push>",
         reason: "clear() and the search refresh do not keep search_index within the matches",
