@@ -220,8 +220,9 @@ impl DevTools {
                 size.min(area.height),
             ),
             DevToolsPosition::Overlay => {
-                let width = (area.width * 2 / 3).min(80);
-                let height = (area.height * 2 / 3).min(30);
+                // In u32: `area.width * 2` overflows u16 above 32767
+                let width = (u32::from(area.width) * 2 / 3).min(80) as u16;
+                let height = (u32::from(area.height) * 2 / 3).min(30) as u16;
                 Rect::new(
                     area.x + (area.width - width) / 2,
                     area.y + (area.height - height) / 2,
@@ -341,6 +342,23 @@ mod tests {
         // Overlay should be centered: 2/3 of width/height, capped at 80/30
         assert_eq!(panel.width, 66); // 100 * 2 / 3 = 66
         assert_eq!(panel.height, 30); // 50 * 2 / 3 = 33, capped at 30
+    }
+
+    #[test]
+    fn test_panel_rect_overlay_in_wide_area() {
+        let mut devtools = DevTools::new();
+        devtools.set_visible(true);
+        devtools.config.position = DevToolsPosition::Overlay;
+
+        // area.width * 2 used to overflow u16 above 32767
+        let area = Rect::new(0, 0, 60_000, 60_000);
+        let panel = devtools.panel_rect(area).unwrap();
+        assert_eq!((panel.width, panel.height), (80, 30));
+        assert_eq!((panel.x, panel.y), (29_960, 29_985));
+
+        let area = Rect::new(0, 0, u16::MAX, u16::MAX);
+        let panel = devtools.panel_rect(area).unwrap();
+        assert_eq!((panel.width, panel.height), (80, 30));
     }
 
     #[test]

@@ -271,7 +271,7 @@ impl RenderBatch {
                     if pending_y == Some(y) {
                         // Same row, try to merge
                         if let Some((last_x, _)) = pending_cells.last() {
-                            if x == last_x + 1 {
+                            if last_x.checked_add(1) == Some(x) {
                                 pending_cells.push((x, cell));
                                 continue;
                             }
@@ -416,14 +416,19 @@ impl RenderBatch {
                     bg,
                     modifier,
                 } => {
-                    let mut offset: u16 = 0;
+                    let mut px = *x;
                     for ch in text.chars() {
                         let mut cell = Cell::new(ch);
                         cell.fg = *fg;
                         cell.bg = *bg;
                         cell.modifier = *modifier;
-                        buffer.set(*x + offset, *y, cell);
-                        offset += char_width(ch) as u16;
+                        buffer.set(px, *y, cell);
+                        // Stop at the last representable column; anything
+                        // further is off every buffer anyway
+                        match px.checked_add(char_width(ch) as u16) {
+                            Some(next) => px = next,
+                            None => break,
+                        }
                     }
                 }
                 RenderOp::Clear => {
@@ -842,5 +847,32 @@ mod tests {
         batch.optimize();
         // Non-consecutive cells shouldn't merge
         assert_eq!(batch.len(), 3);
+    }
+
+    #[test]
+    fn test_apply_text_near_u16_max() {
+        let mut buffer = super::super::Buffer::new(10, 2);
+        let mut batch = RenderBatch::new();
+        batch.text(u16::MAX - 1, 0, "abc", None, None);
+        batch.apply_to_buffer(&mut buffer);
+        assert!(buffer.get(0, 0).is_some_and(|c| c.symbol == ' '));
+    }
+
+    #[test]
+    fn test_apply_text_wider_than_u16() {
+        let mut buffer = super::super::Buffer::new(10, 2);
+        let mut batch = RenderBatch::new();
+        batch.text(0, 1, "x".repeat(70_000), None, None);
+        batch.apply_to_buffer(&mut buffer);
+        assert!(buffer.get(9, 1).is_some_and(|c| c.symbol == 'x'));
+    }
+
+    #[test]
+    fn test_optimize_cells_at_u16_max() {
+        let mut batch = RenderBatch::new();
+        batch.set_cell(u16::MAX, 0, 'A', None, None);
+        batch.set_cell(u16::MAX, 0, 'B', None, None);
+        batch.optimize();
+        assert_eq!(batch.len(), 2);
     }
 }

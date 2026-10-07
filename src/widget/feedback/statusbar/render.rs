@@ -63,7 +63,7 @@ impl View for StatusBar {
         }
 
         // Render right sections
-        let mut x = area.width - right_width;
+        let mut x = area.width.saturating_sub(right_width);
         for section in &self.right {
             x = self.render_section(ctx, section, x, y);
             if self.separator.is_some() && x < area.width {
@@ -77,7 +77,7 @@ impl View for StatusBar {
         } else if self.height == 1 && !self.key_hints.is_empty() {
             // Render key hints in remaining space
             let hints_start = left_width + 2;
-            let hints_end = area.width - right_width - 2;
+            let hints_end = area.width.saturating_sub(right_width).saturating_sub(2);
             if hints_start < hints_end {
                 self.render_key_hints_inline(ctx, hints_start, y, hints_end - hints_start);
             }
@@ -195,5 +195,47 @@ impl StatusBar {
             // Separator
             current_x += 2;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    fn render_bar(bar: &StatusBar, width: u16) -> Buffer {
+        let mut buffer = Buffer::new(20, 2);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, width, 1));
+        bar.render(&mut ctx);
+        buffer
+    }
+
+    #[test]
+    fn test_render_right_sections_wider_than_area() {
+        let bar = StatusBar::new().right_text("a right section");
+        let buffer = render_bar(&bar, 5);
+        // Drawn from the left edge and cut at the area's width
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, 'a');
+        assert_eq!(buffer.get(4, 0).unwrap().symbol, 'g');
+        assert_eq!(buffer.get(5, 0).unwrap().symbol, ' ');
+    }
+
+    #[test]
+    fn test_render_inline_hints_without_room_beside_right_sections() {
+        // The right section leaves one column, less than the hints' margin
+        let bar = StatusBar::new().right_text("12345678").key("q", "Quit");
+        let buffer = render_bar(&bar, 10);
+        assert_eq!(buffer.get(1, 0).unwrap().symbol, '1');
+        assert_eq!(buffer.get(8, 0).unwrap().symbol, '8');
+    }
+
+    #[test]
+    fn test_render_in_zero_width_area() {
+        let bar = StatusBar::new()
+            .left_text("L")
+            .right_text("R")
+            .key("q", "Quit");
+        render_bar(&bar, 0);
     }
 }

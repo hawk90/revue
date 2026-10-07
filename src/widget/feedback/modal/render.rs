@@ -56,7 +56,7 @@ impl View for Modal {
             // Render text content
             for (i, line) in self.content.iter().enumerate() {
                 let cy = content_y + i as u16;
-                if cy >= y + modal_height - 2 {
+                if cy >= y + modal_height.saturating_sub(2) {
                     break;
                 }
                 ctx.draw_text_clipped(x + 2, cy, line, Color::rgb(220, 220, 220), content_width);
@@ -293,6 +293,26 @@ mod tests {
         let mut m = Modal::new().title("Test").ok();
         m.show();
         m.render(&mut ctx); // Should not panic
+    }
+
+    #[test]
+    fn test_modal_render_text_content_in_short_area() {
+        // With text content the line loop compares against the bottom of
+        // the modal, which used to underflow for modals under 2 rows
+        for height in 0..=4 {
+            let mut buffer = Buffer::new(80, 24);
+            let area = Rect::new(0, 0, 80, height);
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            let mut m = Modal::new().content("Line one\nLine two").ok();
+            m.show();
+            m.render(&mut ctx);
+
+            let mut buffer = Buffer::new(80, 24);
+            let mut ctx = RenderContext::new(&mut buffer, area);
+            let mut m = Modal::new().title("Test").content("Body").ok();
+            m.show();
+            m.render(&mut ctx);
+        }
     }
 
     #[test]
