@@ -539,3 +539,41 @@ fn test_handle_key_ignores_other_keys() {
     assert!(!list.handle_key(&Key::Enter));
     assert!(list.get_selected().is_empty());
 }
+
+// =========================================================================
+// selected(): the initial selection follows the same rules as select()
+// =========================================================================
+
+#[test]
+fn test_selected_drops_out_of_range_indices() {
+    let list = SelectionList::new(vec!["A", "B"]).selected(vec![1, 5]);
+    assert_eq!(list.get_selected(), &[1]);
+    assert_eq!(list.get_selected_values(), vec!["B"]);
+}
+
+#[test]
+fn test_selected_is_sorted_and_deduplicated() {
+    let list = SelectionList::new(vec!["A", "B", "C"]).selected(vec![2, 0, 2]);
+    assert_eq!(list.get_selected(), &[0, 2]);
+}
+
+#[test]
+fn test_selected_respects_max_selections() {
+    let list = SelectionList::new(vec!["A", "B", "C"])
+        .max_selections(2)
+        .selected(vec![0, 1, 2]);
+    assert_eq!(list.get_selected(), &[0, 1]);
+
+    // In either builder order
+    let list = SelectionList::new(vec!["A", "B", "C"])
+        .selected(vec![0, 1, 2])
+        .max_selections(2);
+    assert_eq!(list.get_selected(), &[0, 1]);
+}
+
+#[test]
+fn test_selected_then_toggle_keeps_order() {
+    let mut list = SelectionList::new(vec!["A", "B", "C"]).selected(vec![2]);
+    list.toggle(0);
+    assert_eq!(list.get_selected(), &[0, 2]);
+}

@@ -107,9 +107,24 @@ impl SelectionList {
     }
 
     /// Set initial selection
+    ///
+    /// Indices past the end are dropped, the rest are kept sorted without
+    /// duplicates, and at most `max_selections` of them are kept.
     pub fn selected(mut self, indices: Vec<usize>) -> Self {
         self.selected = indices;
+        self.normalize_selected();
         self
+    }
+
+    /// Keep `selected` in range, sorted, unique and within `max_selections`
+    fn normalize_selected(&mut self) {
+        let len = self.items.len();
+        self.selected.retain(|&i| i < len);
+        self.selected.sort_unstable();
+        self.selected.dedup();
+        if self.max_selections > 0 {
+            self.selected.truncate(self.max_selections);
+        }
     }
 
     /// Set selection style
@@ -127,9 +142,12 @@ impl SelectionList {
         }
     }
 
-    /// Set maximum selections
+    /// Set maximum selections (0 = unlimited)
+    ///
+    /// An initial selection larger than `max` keeps its first `max` indices.
     pub fn max_selections(mut self, max: usize) -> Self {
         self.max_selections = max;
+        self.normalize_selected();
         self
     }
 
