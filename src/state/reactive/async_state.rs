@@ -188,7 +188,7 @@ where
         let latest = latest.clone();
 
         thread::spawn(move || {
-            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f_clone));
+            let result = crate::render::catch_panic(std::panic::AssertUnwindSafe(f_clone));
             let result = match result {
                 Ok(r) => r,
                 Err(_) => Err("Task panicked".to_string()),
@@ -283,7 +283,7 @@ where
         let latest = latest.clone();
 
         thread::spawn(move || {
-            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f_clone));
+            let result = crate::render::catch_panic(std::panic::AssertUnwindSafe(f_clone));
             let result = match result {
                 Ok(r) => r,
                 Err(_) => Err("Task panicked".to_string()),
@@ -337,7 +337,7 @@ where
     let state_for_thread = state.clone();
 
     thread::spawn(move || {
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+        let result = crate::render::catch_panic(std::panic::AssertUnwindSafe(f));
         let result = match result {
             Ok(r) => r,
             Err(_) => Err("Task panicked".to_string()),

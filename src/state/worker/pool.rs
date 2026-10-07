@@ -194,8 +194,10 @@ impl Worker {
                     // a thread for good, and with its last one every queued
                     // task would wait forever.
                     if let Some(queued_task) = task {
-                        if std::panic::catch_unwind(std::panic::AssertUnwindSafe(queued_task.task))
-                            .is_err()
+                        if crate::render::catch_panic(std::panic::AssertUnwindSafe(
+                            queued_task.task,
+                        ))
+                        .is_err()
                         {
                             log_warn!("revue-worker-{}: a task panicked", id);
                         }

@@ -197,7 +197,7 @@ impl View for ErrorBoundary {
 
         // Try rendering child with panic catch
         if let Some(ref child) = self.child {
-            let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            let result = crate::render::catch_panic(panic::AssertUnwindSafe(|| {
                 child.render(ctx);
             }));
 

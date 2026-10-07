@@ -93,4 +93,5 @@ pub use image_protocol::{
     GraphicsCapabilities, ImageEncoder, ImageProtocol, Iterm2Image, KittyImage, PixelFormat,
     SixelEncoder,
 };
+pub(crate) use terminal::catch_panic;
 pub use terminal::{install_panic_hook, restore_terminal, stdout_terminal, Terminal};

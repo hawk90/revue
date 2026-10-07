@@ -293,6 +293,18 @@ On abort the process dies without unwinding, so **no destructor runs**. A panic
 hook runs in both unwind and abort mode; that is why the hook, not `Drop`, is
 what upholds the guarantee.
 
+**Panics revue catches leave the terminal alone.** Some panics do not end the
+app: a `TaskRunner`, `PooledTaskRunner`, `WorkerPool` or `WorkerHandle` task
+that panics is reported as a failed task, `AsyncState` turns it into an error,
+and `ErrorBoundary` shows its fallback for a child that panics while rendering.
+The hook knows these panics are caught and keeps the terminal in TUI mode. It
+also skips the chained hook, whose message would be printed onto the alternate
+screen; with the `tracing` feature the panic is logged as a warning instead. A
+panic caught by *your own* `catch_unwind` cannot be told apart from a fatal one,
+so it still restores the terminal. And under `panic = "abort"` nothing is
+caught at all: every panic ends the process, after the hook restores the
+terminal.
+
 For other paths out of TUI mode - shelling out to `$EDITOR`, or your own
 custom panic hook - call the restore directly:
 
