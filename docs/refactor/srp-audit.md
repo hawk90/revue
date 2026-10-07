@@ -50,12 +50,12 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
-| `runtime/render/batch.rs` | 511 | 3 |  | todo | |
+| `runtime/render/batch.rs` | 511 | 3 |  | keep | 렌더 배치 하나: 연산 큐, 병합 최적화, 버퍼 적용, 통계가 모두 `RenderOp`를 중심으로 맞물림. 버그 의심: `optimize()`가 위치로 정렬해 `Clear`·커서 연산의 순서가 셀 쓰기와 바뀜, `apply_to_buffer`의 Text는 `*x + offset`을 검사 없이 더함 |
 | `runtime/render/image_protocol.rs` | 696 | 8 | 696줄, 공개 타입 8 | split | 감지·인코더·Sixel 알고리즘·터미널별 명령이 섞임 → image_protocol/{mod,protocol,encoder,sixel,kitty,iterm2}.rs |
 | `runtime/style/error.rs` | 669 | 6 | 669줄, 공개 타입 6 | split | 오류 보고 타입과 "did you mean" 속성 목록·Levenshtein이 섞임 → error/{mod,suggest}.rs. 참고: `suggest_property`/`KNOWN_PROPERTIES`는 크레이트 안에서 쓰이지 않고 목록이 실제 지원 속성과 어긋남 |
 | `runtime/style/parser/apply.rs` | 707 | 0 | 707줄 | split | 속성 적용, `var()` 치환, 애니메이션 선언→`@keyframes` 해석이 섞임 → parser/{apply,vars,animation}.rs. 참고: `resolve_animation`의 `found_shorthand`는 쓰이지 않음, `CubicBezier`는 ease_in_out으로 대체됨 |
-| `runtime/style/parser/types.rs` | 103 | 5 | 타입 모음, 공개 타입 5 | todo | |
-| `runtime/style/properties/types.rs` | 427 | 20 | 타입 모음, 공개 타입 20 | todo | |
+| `runtime/style/parser/types.rs` | 103 | 5 | 타입 모음, 공개 타입 5 | keep | 파싱된 CSS 데이터 모델만 모음. `StyleSheet` 메서드는 얇은 조회·위임뿐 |
+| `runtime/style/properties/types.rs` | 427 | 20 | 타입 모음, 공개 타입 20 | keep | CSS 속성 값 타입만 모음. impl은 생성자와 `CalcExpr` 계산 정도로 작음 |
 | `runtime/style/theme.rs` | 747 | 8 | 747줄, 공개 타입 8 | split | 테마 정의, 색 세트, 내장 테마 데이터, 런타임 전환(매니저·리스너)이 섞임 → theme/{mod,palette,builtin,manager}.rs (`ThemeBuilder`는 테스트가 private 필드를 보므로 mod.rs에 둠). 참고: `Themes`(Rust)와 `themes::BuiltinTheme`(CSS) 두 내장 테마 체계가 따로 있음 |
 | `runtime/style/transition.rs` | 504 | 5 | 공개 타입 5 | split | CSS 정의·파싱과 실행 중 전환 상태·매니저가 섞임 → transition/{mod,definition,manager}.rs (lerp는 mod.rs). 버그 의심: `Transition::parse("opacity 0.3s 0.1s")`는 첫 길이가 기본값 300ms와 같아 두 번째 값이 delay가 아닌 duration을 덮어씀 |
 
