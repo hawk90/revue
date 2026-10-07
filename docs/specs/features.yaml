@@ -821,7 +821,7 @@ items:
       - auto-dismiss duration
     evidence:
       - src/widget/feedback/toast.rs::toast
-      - src/widget/feedback/toast_queue.rs::ToastQueue
+      - src/widget/feedback/toast_queue/mod.rs::ToastQueue
       - tests/widget/feedback/toast.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / Toast
