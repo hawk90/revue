@@ -118,7 +118,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 |---|---:|---:|---|---|---|
 | `widget/data/chart/candlechart.rs` | 630 | 3 | 630줄, 위젯 한 파일 | split | `Candle`·`ChartStyle` 데이터 타입, 빌더, 가격 축척·캔들 열 그리기·Heikin-Ashi 변환과 `View`가 섞임 → candlechart/{mod,types,render}.rs (테스트는 각 코드와 함께 옮김). 버그 의심: `scroll(offset)`이 데이터 길이보다 크면 `visible_candles`(와 Heikin-Ashi 경로)의 `data[start..end]`가 `start > end`로 패닉함. 참고: Heikin-Ashi 모드도 축 범위는 원본 캔들의 고저가로 잡음(변환된 캔들은 잘릴 수 있음) |
 | `widget/data/chart/helper.rs` | 898 | 1 | 898줄, 위젯 한 파일 | split | 파일 이름과 달리 `Chart` 위젯 전체: 빌더, 범위·축 라벨·선 그리기와 `View`, 범용 선분 클리핑(Liang-Barsky)·래스터화(Bresenham)가 섞임 → helper/{mod,render,geometry}.rs. geometry의 타입 별칭·함수 6개는 render.rs가 쓰므로 `pub(super)`(helper 안으로만). `LineSegment`의 `pub(super)`는 render.rs로 옮겨 helper 안으로 좁아짐(밖에서 쓰는 곳 없음) |
-| `widget/data/chart/histogram/mod.rs` | 623 | 1 | 623줄, 위젯 한 파일 | todo | |
+| `widget/data/chart/histogram/mod.rs` | 623 | 1 | 623줄, 위젯 한 파일 | split | 빌더·통계 접근자와 막대·통계선·축 그리기(`View`)가 섞임 → histogram/{mod,render}.rs (boxplot과 같은 모양). `max_value`·`bin_value`는 그리기에서만 쓰여 render.rs로. 렌더 테스트도 render.rs로 옮기며 `BinConfig`·`ChartGrid` import를 테스트 모듈에 추가 |
 | `widget/data/chart/piechart.rs` | 442 | 4 | 위젯 한 파일 | todo | |
 | `widget/data/chart/timeseries/types.rs` | 197 | 7 | 타입 모음, 공개 타입 7 | todo | |
 | `widget/data/chart/waveline.rs` | 544 | 3 | 위젯 한 파일 | todo | |
