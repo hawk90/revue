@@ -551,8 +551,7 @@ fn bidi_info_is_pure_ltr_false_for_rtl() {
 }
 
 #[test]
-fn bidi_info_is_pure_rtl_with_no_runs() {
-    // With empty runs vec, all() returns true vacuously
+fn bidi_info_is_pure_rtl_for_rtl_text() {
     let info = BidiInfo::new("مرحبا", TextDirection::Rtl);
     assert!(info.is_pure_rtl());
 }
@@ -561,6 +560,111 @@ fn bidi_info_is_pure_rtl_with_no_runs() {
 fn bidi_info_visual_text() {
     let info = BidiInfo::new("Hello", TextDirection::Ltr);
     assert_eq!(info.visual_text(), "Hello");
+}
+
+/// (text, level) of each run, in logical order
+fn runs_of(info: &BidiInfo) -> Vec<(&str, u8)> {
+    info.runs
+        .iter()
+        .map(|r| (r.text.as_str(), r.level))
+        .collect()
+}
+
+#[test]
+fn bidi_info_ltr_text_is_one_ltr_run() {
+    let info = BidiInfo::new("Hello world", TextDirection::Auto);
+    assert_eq!(runs_of(&info), vec![("Hello world", 0)]);
+    assert_eq!(info.runs[0].range, 0..11);
+    assert!(info.is_pure_ltr());
+    assert!(!info.is_pure_rtl());
+    assert_eq!(info.visual_text(), "Hello world");
+}
+
+#[test]
+fn bidi_info_rtl_text_is_reversed() {
+    let info = BidiInfo::new("שלום עולם", TextDirection::Auto);
+    assert_eq!(info.base_direction, ResolvedDirection::Rtl);
+    assert_eq!(runs_of(&info), vec![("שלום עולם", 1)]);
+    assert!(info.is_pure_rtl());
+    assert!(info.has_rtl());
+    assert_eq!(info.visual_text(), "םלוע םולש");
+}
+
+#[test]
+fn bidi_info_mixed_text_in_ltr_paragraph() {
+    let info = BidiInfo::new("abc שלום def", TextDirection::Auto);
+    assert_eq!(info.base_direction, ResolvedDirection::Ltr);
+    assert_eq!(runs_of(&info), vec![("abc ", 0), ("שלום", 1), (" def", 0)]);
+    assert_eq!(info.runs[1].range, 4..8);
+    assert_eq!(info.runs[1].direction, ResolvedDirection::Rtl);
+    // LTR base but RTL characters present
+    assert!(info.has_rtl());
+    assert!(!info.is_pure_ltr());
+    assert!(!info.is_pure_rtl());
+    assert_eq!(info.visual_order, vec![0, 1, 2]);
+    assert_eq!(info.visual_text(), "abc םולש def");
+}
+
+#[test]
+fn bidi_info_mixed_text_in_rtl_paragraph() {
+    let info = BidiInfo::new("שלום abc def", TextDirection::Auto);
+    assert_eq!(info.base_direction, ResolvedDirection::Rtl);
+    assert_eq!(runs_of(&info), vec![("שלום ", 1), ("abc def", 2)]);
+    assert_eq!(info.visual_order, vec![1, 0]);
+    assert_eq!(info.visual_text(), "abc def םולש");
+}
+
+#[test]
+fn bidi_info_numbers_in_rtl_keep_their_order() {
+    let info = BidiInfo::new("שלום 123", TextDirection::Auto);
+    assert_eq!(runs_of(&info), vec![("שלום ", 1), ("123", 2)]);
+    assert_eq!(info.visual_text(), "123 םולש");
+
+    // A decimal number stays one number
+    let info = BidiInfo::new("מחיר 3.50", TextDirection::Auto);
+    assert_eq!(runs_of(&info), vec![("מחיר ", 1), ("3.50", 2)]);
+    assert_eq!(info.visual_text(), "3.50 ריחמ");
+}
+
+#[test]
+fn bidi_info_arabic_digits_after_arabic_letters() {
+    // EN after AL becomes AN (W2); both are numbers at level 2 in RTL
+    let info = BidiInfo::new("عدد ١٢ و 34", TextDirection::Auto);
+    assert_eq!(
+        runs_of(&info),
+        vec![("عدد ", 1), ("١٢", 2), (" و ", 1), ("34", 2)]
+    );
+    assert_eq!(info.visual_text(), "34 و ١٢ ددع");
+}
+
+#[test]
+fn bidi_info_numbers_in_ltr_paragraph_stay_ltr() {
+    let info = BidiInfo::new("abc 123", TextDirection::Auto);
+    assert_eq!(runs_of(&info), vec![("abc 123", 0)]);
+}
+
+#[test]
+fn bidi_info_mirrors_brackets_in_rtl_runs() {
+    let info = BidiInfo::new("(שלום)", TextDirection::Rtl);
+    assert_eq!(runs_of(&info), vec![("(שלום)", 1)]);
+    assert_eq!(info.visual_text(), "(םולש)");
+}
+
+#[test]
+fn bidi_info_trailing_whitespace_takes_paragraph_level() {
+    let info = BidiInfo::new("abc  ", TextDirection::Rtl);
+    assert_eq!(runs_of(&info), vec![("abc", 2), ("  ", 1)]);
+    assert_eq!(info.visual_text(), "  abc");
+}
+
+#[test]
+fn bidi_info_empty_text_has_no_runs() {
+    let info = BidiInfo::new("", TextDirection::Auto);
+    assert!(info.runs.is_empty());
+    assert!(info.visual_order.is_empty());
+    assert!(!info.is_pure_rtl());
+    assert!(info.is_pure_ltr());
+    assert_eq!(info.visual_text(), "");
 }
 
 // ============================================================

@@ -69,17 +69,19 @@
 //!
 //! Supports proper rendering of mixed LTR/RTL text:
 //!
-//! ```rust,ignore
-//! use revue::text::{BidiInfo, BidiConfig};
+//! ```rust
+//! use revue::text::{BidiInfo, TextDirection};
 //!
-//! let text = "Hello مرحبا World";
-//! let config = BidiConfig::default();
-//! let bidi = BidiInfo::new(text, &config);
+//! let bidi = BidiInfo::new("abc שלום def", TextDirection::Auto);
 //!
-//! // Get visual runs for rendering
-//! for run in bidi.visual_runs() {
-//!     println!("{:?}: {}", run.dir, &text[run.start..run.end]);
+//! // Runs in visual (left-to-right) order for rendering
+//! for &i in &bidi.visual_order {
+//!     let run = &bidi.runs[i];
+//!     println!("{:?} {:?}: {}", run.direction, run.range, run.text);
 //! }
+//!
+//! // Or the whole line, reordered
+//! assert_eq!(bidi.visual_text(), "abc םולש def");
 //! ```
 //!
 //! # Text Overflow
