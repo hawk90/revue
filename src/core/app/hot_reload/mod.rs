@@ -45,8 +45,8 @@ pub struct HotReload {
     _watcher: notify::RecommendedWatcher,
     receiver: Receiver<HotReloadEvent>,
     watched_paths: Vec<PathBuf>,
-    /// Per-path debounce tracking: maps (event_type_variant, path) -> last_event_time
-    /// This prevents different files from debouncing each other
+    /// Per-event debounce tracking: maps `debounce_key` -> last_event_time
+    /// This prevents different files (or different errors) from debouncing each other
     last_events: HashMap<String, Instant>,
     debounce: Duration,
     recursive: bool,
@@ -182,13 +182,7 @@ impl HotReload {
             Ok(event) => {
                 // Apply per-path debouncing
                 let now = Instant::now();
-                // Create a unique key based on event type and path
-                let event_key = match &event {
-                    HotReloadEvent::StylesheetChanged(p) => format!("changed:{}", p.display()),
-                    HotReloadEvent::FileCreated(p) => format!("created:{}", p.display()),
-                    HotReloadEvent::FileDeleted(p) => format!("deleted:{}", p.display()),
-                    HotReloadEvent::Error(_) => format!("error:{}", now.elapsed().as_millis()),
-                };
+                let event_key = debounce_key(&event);
 
                 if let Some(&last) = self.last_events.get(&event_key) {
                     if now.duration_since(last) < self.debounce {
@@ -206,15 +200,8 @@ impl HotReload {
     pub fn wait(&mut self) -> Option<HotReloadEvent> {
         match self.receiver.recv() {
             Ok(event) => {
-                let now = Instant::now();
-                // Create a unique key based on event type and path
-                let event_key = match &event {
-                    HotReloadEvent::StylesheetChanged(p) => format!("changed:{}", p.display()),
-                    HotReloadEvent::FileCreated(p) => format!("created:{}", p.display()),
-                    HotReloadEvent::FileDeleted(p) => format!("deleted:{}", p.display()),
-                    HotReloadEvent::Error(_) => format!("error:{}", now.elapsed().as_millis()),
-                };
-                self.last_events.insert(event_key, now);
+                self.last_events
+                    .insert(debounce_key(&event), Instant::now());
                 Some(event)
             }
             Err(_) => None,
@@ -225,15 +212,8 @@ impl HotReload {
     pub fn wait_timeout(&mut self, timeout: Duration) -> Option<HotReloadEvent> {
         match self.receiver.recv_timeout(timeout) {
             Ok(event) => {
-                let now = Instant::now();
-                // Create a unique key based on event type and path
-                let event_key = match &event {
-                    HotReloadEvent::StylesheetChanged(p) => format!("changed:{}", p.display()),
-                    HotReloadEvent::FileCreated(p) => format!("created:{}", p.display()),
-                    HotReloadEvent::FileDeleted(p) => format!("deleted:{}", p.display()),
-                    HotReloadEvent::Error(_) => format!("error:{}", now.elapsed().as_millis()),
-                };
-                self.last_events.insert(event_key, now);
+                self.last_events
+                    .insert(debounce_key(&event), Instant::now());
                 Some(event)
             }
             Err(_) => None,
@@ -302,6 +282,17 @@ impl HotReloadBuilder {
     }
 }
 
+/// Debounce key of an event: its kind and path, or for an error its message,
+/// so only repeats of the same event debounce each other
+fn debounce_key(event: &HotReloadEvent) -> String {
+    match event {
+        HotReloadEvent::StylesheetChanged(p) => format!("changed:{}", p.display()),
+        HotReloadEvent::FileCreated(p) => format!("created:{}", p.display()),
+        HotReloadEvent::FileDeleted(p) => format!("deleted:{}", p.display()),
+        HotReloadEvent::Error(message) => format!("error:{message}"),
+    }
+}
+
 impl Default for HotReloadBuilder {
     fn default() -> Self {
         Self::new()
@@ -317,6 +308,54 @@ pub fn hot_reload() -> HotReloadBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A watcher whose events come from the returned sender
+    fn with_test_channel() -> (HotReload, std::sync::mpsc::Sender<HotReloadEvent>) {
+        let mut hr = HotReload::with_config(HotReloadConfig {
+            debounce: Duration::from_secs(60),
+            recursive: false,
+        })
+        .unwrap();
+        let (tx, rx) = channel();
+        hr.receiver = rx;
+        (hr, tx)
+    }
+
+    #[test]
+    fn test_poll_does_not_debounce_different_errors() {
+        let (mut hr, tx) = with_test_channel();
+        tx.send(HotReloadEvent::Error("first".into())).unwrap();
+        tx.send(HotReloadEvent::Error("second".into())).unwrap();
+
+        assert!(matches!(hr.poll(), Some(HotReloadEvent::Error(m)) if m == "first"));
+        assert!(matches!(hr.poll(), Some(HotReloadEvent::Error(m)) if m == "second"));
+    }
+
+    #[test]
+    fn test_poll_debounces_a_repeated_error() {
+        let (mut hr, tx) = with_test_channel();
+        tx.send(HotReloadEvent::Error("same".into())).unwrap();
+        tx.send(HotReloadEvent::Error("same".into())).unwrap();
+
+        assert!(hr.poll().is_some());
+        assert!(hr.poll().is_none());
+    }
+
+    #[test]
+    fn test_wait_records_the_same_key_poll_checks() {
+        let (mut hr, tx) = with_test_channel();
+        tx.send(HotReloadEvent::Error("e".into())).unwrap();
+        tx.send(HotReloadEvent::Error("e".into())).unwrap();
+        tx.send(HotReloadEvent::FileCreated("a.css".into()))
+            .unwrap();
+        tx.send(HotReloadEvent::FileCreated("a.css".into()))
+            .unwrap();
+
+        assert!(hr.wait().is_some());
+        assert!(hr.poll().is_none());
+        assert!(hr.wait_timeout(Duration::from_secs(1)).is_some());
+        assert!(hr.poll().is_none());
+    }
 
     #[test]
     fn test_hot_reload_new() {
