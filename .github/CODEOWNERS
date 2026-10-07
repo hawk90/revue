@@ -6,6 +6,7 @@
 
 # Core library
 /src/lib.rs @hawk90
+/src/prelude.rs @hawk90
 /src/app/ @hawk90
 /src/reactive/ @hawk90
 /src/dom/ @hawk90

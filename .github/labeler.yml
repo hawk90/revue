@@ -5,6 +5,7 @@
 core:
   - changed-files:
       - any-glob-to-any-file: "src/lib.rs"
+      - any-glob-to-any-file: "src/prelude.rs"
       - any-glob-to-any-file: "src/app/**"
 
 # Widgets
