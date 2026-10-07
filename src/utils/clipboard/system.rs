@@ -174,27 +174,40 @@ fn run_tool(
         })
     });
 
+    // Wait for the tool to exit *and* for its pipes to close: a process the
+    // tool started may hold them open after the tool itself is gone (a shell
+    // that forks its command, a tool that daemonizes), and the whole call is
+    // bounded by `timeout`, not just the tool.
     let deadline = Instant::now() + timeout;
-    let status = loop {
-        if let Some(status) = child.try_wait()? {
-            break Some(status);
+    let mut status = None;
+    loop {
+        if status.is_none() {
+            status = child.try_wait()?;
+        }
+        let io_done = writer.as_ref().is_none_or(|w| w.is_finished())
+            && reader.as_ref().is_none_or(|r| r.is_finished());
+        if status.is_some() && io_done {
+            break;
         }
         if Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            break None;
+            if status.is_none() {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
+            // The threads finish once whatever still holds the pipes closes
+            // them; nothing waits for that.
+            return Err(ClipboardError::CommandFailed(format!(
+                "{cmd} did not finish within {timeout:?}"
+            )));
         }
         thread::sleep(Duration::from_millis(5));
+    }
+    let Some(status) = status else {
+        unreachable!("the loop only ends once the tool has exited");
     };
 
-    // Killing the tool closed its ends of the pipes, so both threads finish.
     let written = writer.map(|w| w.join());
     let read = reader.map(|r| r.join());
-    let Some(status) = status else {
-        return Err(ClipboardError::CommandFailed(format!(
-            "{cmd} did not finish within {timeout:?}"
-        )));
-    };
     match written {
         Some(Ok(Err(e))) => return Err(e.into()),
         Some(Err(_)) => {
@@ -277,7 +290,14 @@ mod tests {
     #[test]
     fn a_tool_that_hangs_is_killed_at_the_timeout() {
         let start = Instant::now();
-        let result = run_tool("sh", &["-c", "sleep 30"], None, Duration::from_millis(200));
+        // `; :` keeps the shell from exec-ing sleep: the shell is killed, but
+        // the sleep it forked still holds stdout open.
+        let result = run_tool(
+            "sh",
+            &["-c", "sleep 30; :"],
+            None,
+            Duration::from_millis(200),
+        );
         assert!(matches!(result, Err(ClipboardError::CommandFailed(_))));
         assert!(start.elapsed() < Duration::from_secs(5));
     }
@@ -289,7 +309,7 @@ mod tests {
         let start = Instant::now();
         let result = run_tool(
             "sh",
-            &["-c", "sleep 30"],
+            &["-c", "sleep 30; :"],
             Some(input),
             Duration::from_millis(200),
         );

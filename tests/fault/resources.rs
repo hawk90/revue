@@ -785,6 +785,11 @@ const SYSTEM_CLIPBOARD: &[(&str, Option<&str>, ClipboardCheck)] = &[
     ("get hangs", Some("exec /bin/sleep 60"), || {
         expect_err("paste", revue::utils::clipboard::paste())
     }),
+    // The tool exits at once, but a process it started keeps its output
+    // open: a shell that forks, a tool that daemonizes.
+    ("get forked-hangs", Some("/bin/sleep 60 &"), || {
+        expect_err("paste", revue::utils::clipboard::paste())
+    }),
     ("set hangs", Some("exec /bin/sleep 60"), || {
         expect_err("copy", revue::utils::clipboard::copy("x"))
     }),
