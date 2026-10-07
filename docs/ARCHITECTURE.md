@@ -120,7 +120,7 @@ src/widget/
 │   ├── tooltip.rs         #   Tooltip
 │   ├── popover/           #   Popover
 │   ├── menu/              #   Menu
-│   └── statusbar.rs       #   Status bar
+│   └── statusbar/         #   Status bar
 │
 ├── developer/             # Developer-facing widgets
 │   ├── terminal/          #   Embedded terminal
