@@ -71,6 +71,28 @@ fn test_candidates() {
 }
 
 #[test]
+fn test_clearing_candidates_returns_to_composing() {
+    let mut ime = ImeState::new();
+    ime.start_composition();
+    ime.update_composition("kan", 3);
+    ime.set_candidates(vec![Candidate::new("漢"), Candidate::new("感")]);
+    assert_eq!(ime.state(), CompositionState::Selecting);
+
+    ime.set_candidates(vec![]);
+    assert!(ime.candidates().is_empty());
+    assert_eq!(ime.state(), CompositionState::Composing);
+    assert!(ime.is_composing());
+    assert_eq!(ime.composing_text(), "kan");
+}
+
+#[test]
+fn test_empty_candidates_while_idle_stay_idle() {
+    let mut ime = ImeState::new();
+    ime.set_candidates(vec![]);
+    assert_eq!(ime.state(), CompositionState::Idle);
+}
+
+#[test]
 fn test_candidate_navigation() {
     let mut ime = ImeState::new();
     ime.start_composition();
