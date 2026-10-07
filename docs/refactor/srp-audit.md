@@ -99,18 +99,18 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
-| `a11y/backend/platform.rs` | 307 | 6 | 공개 타입 6 | todo | |
-| `a11y/tree.rs` | 521 | 3 |  | todo | |
-| `state/reactive/context.rs` | 530 | 4 |  | todo | |
-| `state/reactive/store/mod.rs` | 181 | 5 | 공개 타입 5 | todo | |
-| `state/worker/channel.rs` | 324 | 5 | 공개 타입 5 | todo | |
-| `text/bidi/types.rs` | 444 | 8 | 타입 모음, 공개 타입 8 | todo | |
-| `utils/border/mod.rs` | 568 | 5 | 공개 타입 5 | todo | |
-| `utils/clipboard.rs` | 503 | 6 | 공개 타입 6 | todo | |
-| `utils/diff.rs` | 456 | 3 |  | todo | |
-| `utils/i18n.rs` | 427 | 4 |  | todo | |
-| `utils/keymap.rs` | 469 | 4 |  | todo | |
-| `utils/profiler.rs` | 472 | 5 | 공개 타입 5 | todo | |
+| `a11y/backend/platform.rs` | 307 | 6 | 공개 타입 6 | keep | `ScreenReader` 구현체 모음: 플랫폼별 백엔드 셋과 기록·무동작 백엔드가 각각 50줄 안팎이고 감지·전역·설정은 이미 backend/의 다른 파일에 있음. 참고: `LoggingBackend::announcements()`가 돌려주는 `LoggedAnnouncement`는 다시 내보내지 않아 크레이트 밖에서 이름을 쓸 수 없음, `MacOSBackend` 등은 `pub`이지만 닿을 경로가 없음 |
+| `a11y/tree.rs` | 521 | 3 |  | keep | 접근성 트리 데이터 모델 하나: `TreeNode`, 그것을 담는 `AccessibilityTree`(노드 맵·루트·포커스), 그 위의 얇은 빌더. 버그 의심: `focus_next`/`focus_prev`는 HashMap 순회 순서를 쓰므로 Tab 순서가 문서 순서가 아닌 임의 순서, `remove_node`로 루트를 지워도 `root`는 그대로 |
+| `state/reactive/context.rs` | 530 | 4 |  | keep | 컨텍스트 API 하나: `Context`/`Provider`와 provide·use·scope 함수가 모두 같은 thread-local 저장소(전역 맵·스코프 스택)를 씀. 참고: `Provider::new`는 값을 저장소에 등록하지 않아 `use_context`로 보이지 않음, `ContextScope`는 drop 순서와 상관없이 맨 위 스코프를 꺼냄 |
+| `state/reactive/store/mod.rs` | 181 | 5 | 공개 타입 5 | keep | 테스트를 뺀 약 180줄에 스토어 ID·트레이트·확장 트레이트·레지스트리만 있음. 사용 도우미는 이미 usage.rs. 참고: `StoreExt::subscribe`는 자리표시자라 아무것도 구독하지 않음 |
+| `state/worker/channel.rs` | 324 | 5 | 공개 타입 5 | keep | 양방향 채널 하나: 메시지·명령 타입과 채널, 송신·수신 반쪽이 모두 private `ChannelInner`를 나눠 씀. 참고: `WorkerReceiver::send_command`는 용량을 검사하지 않음(`WorkerChannel::send_command`는 검사), `WorkerSender::send`는 넘칠 때 경고를 남기지 않음 |
+| `text/bidi/types.rs` | 444 | 8 | 타입 모음, 공개 타입 8 | keep | BiDi 데이터 타입만 모음(방향, 문자 분류, run, 분석 결과, 설정, 정렬). 가장 큰 impl은 `BidiClass::of`의 문자 범위 표. 참고: `BidiInfo::new`는 run을 계산하지 않는 자리표시자라 `runs`가 늘 비어 `is_pure_rtl()`이 늘 true, `visual_text()`는 원문 그대로 |
+| `utils/border/mod.rs` | 568 | 5 | 공개 타입 5 | split | 테두리 문자·스타일·그리기와 테두리 제목(위치·변·제목 타입과 그리기)이 섞임 → border/{mod,title}.rs. 참고: 왼쪽·오른쪽 변 제목은 표시 폭이 아닌 `chars().count()`로 길이를 잼(위·아래 변은 표시 폭), `offset` 적용은 `i16`으로 바꿔 더해 32767을 넘는 좌표에서 넘침 |
+| `utils/clipboard.rs` | 503 | 6 | 공개 타입 6 | split | 오류·백엔드 트레이트·`Clipboard`와 플랫폼 명령을 찾아 실행하는 시스템 백엔드, 메모리 백엔드, 앱 안 복사 기록(`ClipboardHistory`)이 섞임 → clipboard/{mod,system,memory,history}.rs. 참고: `SystemClipboard::set`은 내용을 정리(ANSI·제어 문자 제거)하지만 `MemoryClipboard::set`은 그대로 저장함 |
+| `utils/diff.rs` | 456 | 3 |  | keep | LCS 기반 텍스트 비교 알고리즘 하나와 그 결과 타입·통계·unified 형식 출력. 버그 의심: 입력이 클 때 쓰는 `simplified_diff`는 b 쪽 위치가 거꾸로 가는 짝을 돌려줘 결과 diff가 틀릴 수 있음 |
+| `utils/i18n.rs` | 427 | 4 |  | keep | 번역 조회 하나: `Locale`(내장 로케일 생성자는 몇 줄짜리 복수형 규칙뿐), `Translation`, `I18n` 저장소. 참고: `t_plural`은 현재 로케일의 복수형 번호를 대체 로케일 번역에도 그대로 씀 |
+| `utils/keymap.rs` | 469 | 4 |  | split | 모드·키 묶음과 묶음 조회 상태(`KeymapConfig`), 키 문자열 파싱·표시, 내장 Vim·Emacs 프리셋 데이터가 섞임 → keymap/{mod,parse,presets}.rs. 버그 의심: `s-` 수식어를 먼저 떼므로 `parse_key`의 `"s-tab"`(BackTab) 별칭에 닿지 않음(`S-Tab`은 Shift+Tab), 전역 묶음은 접두사 대기를 하지 않아 여러 키 전역 묶음은 맞을 수 없음, `chord_timeout`은 저장만 되고 읽히지 않음 |
+| `utils/profiler.rs` | 472 | 5 | 공개 타입 5 | keep | 프로파일러 하나: 타이밍·통계·RAII 가드·보고서가 모두 private `ProfilerInner`를 씀. `FlameNode`는 작은 독립 타입(약 60줄). 버그 의심: `report()`의 `&name[..27]`은 바이트로 잘라 30바이트 넘는 비ASCII 이름에서 panic, `stack`은 아무도 push하지 않아 `Timing::parent`는 늘 None, `FlameNode`는 크레이트 안에서 만들지 않음 |
 
 ### 5. widget: data (11)
 
@@ -132,13 +132,13 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
-| `widget/developer/aistream.rs` | 481 | 4 | 위젯 한 파일 | todo | |
-| `widget/developer/code_editor/types.rs` | 108 | 5 | 타입 모음, 공개 타입 5 | todo | |
-| `widget/developer/diff.rs` | 567 | 5 | 공개 타입 5, 위젯 한 파일 | todo | |
-| `widget/developer/httpclient/types.rs` | 139 | 5 | 타입 모음, 공개 타입 5 | todo | |
-| `widget/developer/presentation.rs` | 682 | 4 | 682줄, 위젯 한 파일 | todo | |
-| `widget/developer/procmon.rs` | 606 | 5 | 606줄, 공개 타입 5, 위젯 한 파일 | todo | |
-| `widget/developer/vim.rs` | 646 | 5 | 646줄, 공개 타입 5 | todo | |
+| `widget/developer/aistream.rs` | 481 | 4 | 위젯 한 파일 | split | 설정 타입, 구조체·빌더, 스트리밍 상태 변경(추가·완료·일시정지·타이핑 애니메이션 `tick`), 렌더가 한 파일에 섞임 → aistream/{mod,types,stream,render}.rs (구조체·빌더·생성 함수는 mod.rs). 참고: `markdown()`이 켜는 `render_markdown`은 어디서도 읽지 않아, 모듈 문서의 "markdown rendering, code block syntax highlighting"이 구현되지 않음 |
+| `widget/developer/code_editor/types.rs` | 108 | 5 | 타입 모음, 공개 타입 5 | keep | 코드 편집기의 데이터 타입(괄호 쌍·매치, 들여쓰기, 설정, 되돌리기 연산)만 모음. impl은 `EditorConfig::default` 하나. 참고: `EditorConfig::show_whitespace`·`word_wrap`은 어디서도 읽지 않음 |
+| `widget/developer/diff.rs` | 567 | 5 | 공개 타입 5, 위젯 한 파일 | split | 모드·줄·변경 종류·색 타입, 구조체·빌더·diff 계산, 분할·통합 뷰 그리기(약 240줄)가 섞임 → diff/{mod,types,render}.rs (구조체·빌더·`compute_diff`·생성 함수는 mod.rs, private `LineLayout`은 render.rs). 참고: `context()`가 정하는 `context_lines`는 어디서도 읽지 않음, `compute_diff`는 `ChangeType::Modified`를 만들지 않음, `DiffMode::Inline`은 통합 뷰와 같음(문자 단위 diff 없음), 모듈 문서의 "syntax highlighting"은 없음, 끝 주석의 테스트 경로(`tests/widget/developer/diff.rs`)는 실제로 `tests/widget/diff.rs` |
+| `widget/developer/httpclient/types.rs` | 139 | 5 | 타입 모음, 공개 타입 5 | keep | HTTP 클라이언트의 데이터 타입(메서드·요청 상태·내용 형식·응답 보기·색)만 모음. impl은 메서드 이름·색, Content-Type 판별, 기본 색 정도로 작음. 디렉터리가 이미 backend·builder·client·render 등으로 나뉨 |
+| `widget/developer/presentation.rs` | 682 | 4 | 682줄, 위젯 한 파일 | split | 설정 타입, 공개 `Slide`와 그 빌더, 구조체·빌더, 슬라이드 이동·조회·`tick`, 그리기(제목·본문 슬라이드, 전환 효과 `SlideFx`, 아래줄)가 한 파일에 섞임 → presentation/{mod,types,slide,navigation,render}.rs (`on_title_slide`는 이동과 그리기가 함께 쓰므로 mod.rs, `SlideFx`·`slide_fx`·`SLIDE_BG`/`SLIDE_FG`와 렌더 smoke 테스트는 render.rs). 참고: 제목 슬라이드에서도 아래줄은 "1/N"과 1/N만큼 찬 진행 막대를 그림, `Slide::content` 문서의 "supports basic markdown"은 구현되지 않음 |
+| `widget/developer/procmon.rs` | 606 | 5 | 606줄, 공개 타입 5, 위젯 한 파일 | split | 데이터·색 타입, 구조체·빌더, 시스템에서 프로세스 읽기·거르기·정렬, 선택 이동, 그리기(통계 줄·열 머리·행, 약 230줄)가 섞임 → procmon/{mod,types,refresh,navigation,render}.rs (`PROC_FG`·`format_bytes`는 render.rs, `ProcessInfo` 테스트는 types.rs, `refresh` 테스트는 refresh.rs). 버그 의심: `filter()`·`toggle_sort()`·`clear_filter()`는 다음 `refresh()`까지 목록에 반영되지 않고, `clear_filter()`는 선택을 되돌리지 않음; 전체 메모리가 0이면 MEM%·통계 줄이 NaN·inf. 참고: `view()`(`ProcessView`의 User·Tree)와 `show_cmd()`는 저장만 되고 어디서도 읽지 않음 |
+| `widget/developer/vim.rs` | 646 | 5 | 646줄, 공개 타입 5 | split | 렌더 없는 상태 기계. 모드·이동·동작·명령 결과 타입(약 180줄)과 모드별 키 처리(약 320줄)가 상태·명령 해석 옆에 섞임 → vim/{mod,types,key_handling}.rs (구조체·접근자·`map`·`execute_command`·생성 함수는 mod.rs, 모드별 처리기와 `handle_key`, `handle_key`를 부르는 테스트는 key_handling.rs). 버그 의심: Normal 모드에서 `0`은 count 숫자로 먼저 잡혀 `LineStart`가 되지 않음. 참고: `set_mode`는 Normal로 갈 때만 operator를 지워, `d` 다음 `i`로 Insert에 들어가면 operator가 남음(테스트 `test_set_mode_from_insert_clears_operator`는 이름과 달리 아무것도 확인하지 않음), `map()`의 `mappings`는 `handle_key`가 보지 않고 `last_action`은 기록만 됨(`.`은 `Repeat`만 돌려줌), `Replace`·`VisualBlock` 모드와 `FindChar`·`TillChar` 이동은 어떤 키로도 들어가지 않음 |
 
 ### 7. widget: display, feedback (11)
 
