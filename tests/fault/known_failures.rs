@@ -17,11 +17,6 @@ pub const KNOWN: &[Known] = &[
     // ── concurrency ──
     Known {
         layer: "concurrency",
-        reason: "TaskRunner::cancel forgets the id, but the old run's result is still delivered under it",
-        cases: &["runner cancelled-result", "runner cancel-then-respawn"],
-    },
-    Known {
-        layer: "concurrency",
         reason: "TaskRunner and WorkerPool join running tasks on drop (design: wait or detach?)",
         cases: &["runner drop-running", "pool drop-running"],
     },
