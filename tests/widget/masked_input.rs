@@ -1239,3 +1239,21 @@ fn test_masked_input_max_length_builder_cuts_earlier_value() {
     assert_eq!(input.get_value(), "abc");
     assert_eq!(input.get_cursor(), 3);
 }
+
+#[test]
+fn test_masked_input_focused_placeholder_is_gray() {
+    use revue::widget::theme::PLACEHOLDER_FG;
+
+    let input = MaskedInput::new().placeholder("Enter").focused(true);
+    let mut buffer = Buffer::new(30, 3);
+    let area = Rect::new(0, 0, 30, 3);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    input.render(&mut ctx);
+
+    // "[" then the cursor over 'E', then the rest of the placeholder
+    let row: String = (0..8).map(|x| buffer.get(x, 0).unwrap().symbol).collect();
+    assert!(row.starts_with("[Enter"), "{row:?}");
+    for x in 2..6 {
+        assert_eq!(buffer.get(x, 0).unwrap().fg, Some(PLACEHOLDER_FG), "x={x}");
+    }
+}
