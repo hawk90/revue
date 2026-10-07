@@ -57,7 +57,15 @@ impl SyntaxHighlighter {
         let (line_comment, block_comment) = lang.comment_patterns();
         let mut in_block = in_block_comment;
 
+        // `i` counts chars; slicing `line` needs bytes. `at[i]` is the byte
+        // offset of char `i`, and `at[chars.len()]` is the end of the line.
         let chars: Vec<char> = line.chars().collect();
+        let at: Vec<usize> = line
+            .char_indices()
+            .map(|(byte, _)| byte)
+            .chain(std::iter::once(line.len()))
+            .collect();
+        let char_index = |byte: usize| at.partition_point(|&b| b < byte);
         let mut i = 0;
 
         // If we're continuing from a block comment
@@ -66,7 +74,7 @@ impl SyntaxHighlighter {
                 // Look for end of block comment
                 if let Some(end_pos) = line.find(end) {
                     tokens.push(Token::new(&line[..end_pos + end.len()], TokenType::Comment));
-                    i = end_pos + end.len();
+                    i = char_index(end_pos + end.len());
                     in_block = false;
                 } else {
                     // Entire line is a comment
@@ -79,17 +87,17 @@ impl SyntaxHighlighter {
         while i < chars.len() {
             // Check for block comment start
             if let Some((start, end)) = block_comment {
-                if line[i..].starts_with(start) {
-                    let comment_start = i;
-                    i += start.len();
+                if line[at[i]..].starts_with(start) {
+                    let comment_start = at[i];
+                    let after_start = comment_start + start.len();
                     // Look for end of block comment on same line
-                    if let Some(rel_end) = line[i..].find(end) {
-                        let comment_end = i + rel_end + end.len();
+                    if let Some(rel_end) = line[after_start..].find(end) {
+                        let comment_end = after_start + rel_end + end.len();
                         tokens.push(Token::new(
                             &line[comment_start..comment_end],
                             TokenType::Comment,
                         ));
-                        i = comment_end;
+                        i = char_index(comment_end);
                         continue;
                     } else {
                         // Block comment continues to next line
@@ -100,8 +108,8 @@ impl SyntaxHighlighter {
             }
 
             // Check for line comment
-            if !line_comment.is_empty() && line[i..].starts_with(line_comment) {
-                tokens.push(Token::new(&line[i..], TokenType::Comment));
+            if !line_comment.is_empty() && line[at[i]..].starts_with(line_comment) {
+                tokens.push(Token::new(&line[at[i]..], TokenType::Comment));
                 break;
             }
 
@@ -268,7 +276,7 @@ impl SyntaxHighlighter {
                 || lang == Language::Toml)
                 && chars[i] == '#'
             {
-                tokens.push(Token::new(&line[i..], TokenType::Comment));
+                tokens.push(Token::new(&line[at[i]..], TokenType::Comment));
                 break;
             }
 

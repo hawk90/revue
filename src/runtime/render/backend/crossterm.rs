@@ -83,6 +83,12 @@ impl<W: Write> Backend for CrosstermBackend<W> {
         // The hook is what actually restores the terminal - see `panic_hook`.
         crate::render::install_panic_hook();
 
+        // Record the modes before writing them: if the write fails part-way,
+        // some of them may already be on, and `restore` only undoes what is
+        // recorded here. Undoing a mode that never got switched on is harmless.
+        self.mouse_enabled = enable_mouse;
+        self.bracketed_paste_enabled = true;
+        self.focus_events_enabled = true;
         if enable_mouse {
             execute!(
                 self.writer,
@@ -93,7 +99,6 @@ impl<W: Write> Backend for CrosstermBackend<W> {
                 Hide,
                 Clear(ClearType::All)
             )?;
-            self.mouse_enabled = true;
         } else {
             execute!(
                 self.writer,
@@ -104,8 +109,6 @@ impl<W: Write> Backend for CrosstermBackend<W> {
                 Clear(ClearType::All)
             )?;
         }
-        self.bracketed_paste_enabled = true;
-        self.focus_events_enabled = true;
         Ok(())
     }
 
@@ -221,8 +224,10 @@ impl<W: Write> Backend for CrosstermBackend<W> {
 
     fn enable_mouse(&mut self) -> Result<()> {
         if !self.mouse_enabled {
-            execute!(self.writer, EnableMouseCapture)?;
+            // Recorded first, as in `init_with_mouse`: a failed flush may still
+            // have sent the sequence, and `restore` must then turn it off.
             self.mouse_enabled = true;
+            execute!(self.writer, EnableMouseCapture)?;
         }
         Ok(())
     }
@@ -275,6 +280,8 @@ mod tests {
         /// Refuse this many writes before accepting any, like a console that
         /// rejects one command.
         fail_writes: usize,
+        /// Refuse to flush.
+        fail_flush: bool,
     }
 
     impl MockWriter {
@@ -282,6 +289,7 @@ mod tests {
             Self {
                 buffer: Vec::new(),
                 fail_writes: 0,
+                fail_flush: false,
             }
         }
     }
@@ -297,6 +305,9 @@ mod tests {
         }
 
         fn flush(&mut self) -> io::Result<()> {
+            if self.fail_flush {
+                return Err(io::Error::other("rejected flush"));
+            }
             Ok(())
         }
     }
@@ -370,6 +381,29 @@ mod tests {
         let out = String::from_utf8_lossy(&backend.writer().buffer).into_owned();
         assert!(out.contains("\x1b[?25h"), "cursor not shown: {out:?}");
         assert_eq!(leaves_alt_screen(&backend), 1, "{out:?}");
+    }
+
+    /// `enable_mouse` writes the sequence before it flushes, so a failed flush
+    /// may still have switched mouse reporting on. The restore that follows
+    /// must switch it off again, or the shell receives mouse garbage.
+    #[test]
+    #[serial_test::serial]
+    #[cfg(not(windows))]
+    fn a_failed_enable_mouse_is_still_undone_by_restore() {
+        let mut backend = live_backend();
+        backend.mouse_enabled = false;
+        backend.writer.fail_flush = true;
+
+        assert!(backend.enable_mouse().is_err());
+        backend.writer.fail_flush = false;
+        let _ = backend.restore();
+
+        let out = String::from_utf8_lossy(&backend.writer().buffer).into_owned();
+        assert!(out.contains("\x1b[?1000h"), "{out:?}");
+        assert!(
+            out.rfind("\x1b[?1000l") > out.rfind("\x1b[?1000h"),
+            "mouse capture left on: {out:?}"
+        );
     }
 
     #[test]

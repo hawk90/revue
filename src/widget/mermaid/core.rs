@@ -166,29 +166,31 @@ impl Diagram {
     fn parse_node_def(s: &str) -> (String, Option<String>) {
         let s = s.trim();
 
-        // `[Label]`
+        // `[Label]`. Each closing bracket is looked for after its opening
+        // one: `s.find` on the whole string may land before it, and the slice
+        // between them then runs backwards.
         if let Some(bracket_start) = s.find('[') {
-            if let Some(bracket_end) = s.find(']') {
+            if let Some(len) = s[bracket_start + 1..].find(']') {
                 let id = s[..bracket_start].trim().to_string();
-                let label = s[bracket_start + 1..bracket_end].to_string();
+                let label = s[bracket_start + 1..bracket_start + 1 + len].to_string();
                 return (id, Some(label));
             }
         }
 
         // {Label}
         if let Some(brace_start) = s.find('{') {
-            if let Some(brace_end) = s.find('}') {
+            if let Some(len) = s[brace_start + 1..].find('}') {
                 let id = s[..brace_start].trim().to_string();
-                let label = s[brace_start + 1..brace_end].to_string();
+                let label = s[brace_start + 1..brace_start + 1 + len].to_string();
                 return (id, Some(label));
             }
         }
 
         // (Label)
         if let Some(paren_start) = s.find('(') {
-            if let Some(paren_end) = s.rfind(')') {
+            if let Some(len) = s[paren_start + 1..].rfind(')') {
                 let id = s[..paren_start].trim().to_string();
-                let label = s[paren_start + 1..paren_end].to_string();
+                let label = s[paren_start + 1..paren_start + 1 + len].to_string();
                 return (id, Some(label));
             }
         }

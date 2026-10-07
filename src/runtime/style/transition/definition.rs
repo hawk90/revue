@@ -202,7 +202,11 @@ pub(crate) fn parse_duration(s: &str) -> Option<Duration> {
     if let Some(ms) = s.strip_suffix("ms") {
         ms.parse::<u64>().ok().map(Duration::from_millis)
     } else if let Some(secs) = s.strip_suffix('s') {
-        secs.parse::<f64>().ok().map(Duration::from_secs_f64)
+        // Negative, NaN, infinite or too large is no duration - as `-1ms`
+        // already is - rather than a panic in `from_secs_f64`.
+        secs.parse::<f64>()
+            .ok()
+            .and_then(|secs| Duration::try_from_secs_f64(secs).ok())
     } else {
         None
     }

@@ -750,3 +750,28 @@ fn test_helpers_do_not_panic() {
     let _ = highlight("test", "");
     let _ = highlight_line("test", "");
 }
+
+/// Comment detection sliced the line with a char index as if it were a byte
+/// index: anything multi-byte before a comment, a string or the end of the
+/// line panicked (markdown code blocks included).
+#[test]
+fn multi_byte_text_before_comments_and_strings() {
+    let h = SyntaxHighlighter::new();
+    for (line, lang) in [
+        ("¡\0", Language::Rust),
+        ("\"\"漢\"", Language::Rust),
+        ("漢 // 字", Language::Rust),
+        ("é /* 字 */ x", Language::JavaScript),
+        ("字 # 漢", Language::Python),
+        ("\u{301}#", Language::Rust),
+    ] {
+        let tokens = h.highlight_line(line, lang);
+        let text: String = tokens.iter().map(|t| t.text.as_str()).collect();
+        assert_eq!(text, line, "{lang:?}");
+    }
+
+    let (tokens, open) = h.highlight_line_with_state("漢 */ 字 // c", Language::Rust, true);
+    let text: String = tokens.iter().map(|t| t.text.as_str()).collect();
+    assert_eq!(text, "漢 */ 字 // c");
+    assert!(!open);
+}
