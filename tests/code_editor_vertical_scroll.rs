@@ -177,6 +177,50 @@ fn page_keys_clamp_at_the_buffer_edges() {
     assert_eq!(rows(&ed, 5, 8)[0], "l00");
 }
 
+// The find (30 columns) and go-to-line (20 columns) boxes are drawn on row 0.
+// The views below are exactly as wide as the box, so it covers the row.
+
+#[test]
+fn a_find_match_on_the_top_row_is_not_hidden_under_the_find_box() {
+    let mut ed = long();
+    ed.set_cursor(20, 0);
+    assert_eq!(rows(&ed, 30, 4), ["l17", "l18", "l19", "l20"]);
+
+    ed.open_find();
+    ed.set_find_query("l17");
+    ed.handle_key(&Key::Enter);
+    assert_eq!(ed.cursor_position(), (17, 0));
+    let shown = rows(&ed, 30, 4);
+    assert!(shown[0].starts_with("Find:"), "{shown:?}");
+    assert!(shown[1..].contains(&"l17".to_string()), "{shown:?}");
+}
+
+#[test]
+fn the_first_line_shows_below_the_find_box() {
+    let mut ed = long();
+    ed.open_find();
+    let shown = rows(&ed, 30, 4);
+    assert!(shown[0].starts_with("Find:"), "{shown:?}");
+    assert_eq!(shown[1..], ["l00", "l01", "l02"]);
+
+    ed.handle_key(&Key::Escape);
+    assert_eq!(rows(&ed, 30, 4), ["l00", "l01", "l02", "l03"]);
+}
+
+#[test]
+fn the_cursor_line_shows_below_the_goto_line_box() {
+    let mut ed = long();
+    ed.set_cursor(20, 0);
+    rows(&ed, 20, 4);
+    ed.set_cursor(17, 0);
+    assert_eq!(rows(&ed, 20, 4)[0], "l17");
+
+    ed.open_goto_line();
+    let shown = rows(&ed, 20, 4);
+    assert!(shown[0].starts_with("Go to line:"), "{shown:?}");
+    assert!(shown[1..].contains(&"l17".to_string()), "{shown:?}");
+}
+
 #[test]
 fn page_keys_use_a_default_page_before_the_first_render() {
     let mut ed = long();
