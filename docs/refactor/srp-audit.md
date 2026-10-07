@@ -124,7 +124,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `widget/data/chart/waveline.rs` | 544 | 3 | 위젯 한 파일 | split | 스타일·보간 타입, 빌더, 색 그라데이션·보간과 `View`(약 265줄), 위젯과 무관한 데모용 파형 데이터 생성 함수가 섞임 → waveline/{mod,types,render,generators}.rs (사전 설정 생성 함수 `audio_waveform` 등은 mod.rs) |
 | `widget/data/datagrid/render.rs` | 603 | 0 | 603줄, 위젯 한 파일 | split | 이미 나뉜 위젯의 render.rs지만 셀 그리기와 열 배치 계산(표시 순서·행 번호 여백·고정/가로 스크롤 열 슬롯, 약 140줄)이 섞임. 열 배치는 mouse.rs·reorder.rs·width.rs도 씀 → datagrid/layout.rs로 옮김(이미 `pub(super)`라 가시성 그대로) |
 | `widget/data/json_viewer/view.rs` | 656 | 1 | 656줄, 위젯 한 파일 | split | `JsonViewer` 구조체·빌더·조회, 선택 이동·펼침/접기, `Search` 구현, 그리기(`View`, 약 225줄)가 섞임 → json_viewer/view/{mod,navigation,search_impl,render}.rs. 새 파일은 view의 자식이라 private 필드·`get_visible_nodes`를 그대로 봄(가시성 변경 없음). `parse`가 부르는 `clear_search` 때문에 mod.rs에 `Search` import 유지. 참고: `ensure_visible`은 빈 함수("Handled during render") |
-| `widget/data/log_viewer/view.rs` | 908 | 1 | 908줄, 위젯 한 파일 | todo | |
+| `widget/data/log_viewer/view.rs` | 908 | 1 | 908줄, 위젯 한 파일 | split | `LogViewer` 구조체·적재·빌더·조회·내보내기, 검색, 북마크·점프·스크롤·선택, 키 처리, 그리기(`View`, 약 220줄)가 섞임 → log_viewer/view/{mod,search,navigation,handler,render}.rs (자식 모듈이라 private 필드를 그대로 봄; 공용 `filtered_entries`·`ensure_visible`은 mod.rs). `update_search`는 mod.rs의 `load`/`push`도 부르므로 `pub(super)`(view 안으로만). 버그 의심: `update_search`가 찾은 위치 다음 바이트(`actual_start + 1`)부터 다시 잘라 `msg_lower[start..]`가 멀티바이트 문자(예: 한글) 경계가 아니면 패닉함, 일치 끝을 원래 질의의 바이트 길이로 잡아 소문자 변환으로 길이가 바뀌면 범위가 어긋남 |
 | `widget/data/timeline.rs` | 556 | 5 | 공개 타입 5, 위젯 한 파일 | todo | |
 | `widget/data/timer/mod.rs` | 692 | 4 | 692줄, 위젯 한 파일 | todo | |
 
