@@ -22,11 +22,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "concurrency",
-        reason: "Computed::get re-entered on one thread deadlocks on its recompute lock",
-        cases: &["reactive computed-cycle", "reactive computed-self"],
-    },
-    Known {
-        layer: "concurrency",
         reason: "end_batch flushes while holding the batch-depth RefCell borrow",
         cases: &["reactive batch-queue-in-flush"],
     },
