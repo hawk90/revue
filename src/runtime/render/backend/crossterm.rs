@@ -310,8 +310,10 @@ mod tests {
     fn restore_leaves_the_alternate_screen_once() {
         let mut backend = live_backend();
 
-        backend.restore().unwrap();
-        backend.restore().unwrap();
+        // Raw mode is only faked here; Windows refuses to leave it, so the
+        // result is not the point - the bytes written are.
+        let _ = backend.restore();
+        let _ = backend.restore();
 
         assert_eq!(leaves_alt_screen(&backend), 1);
     }
@@ -324,7 +326,9 @@ mod tests {
         let mut backend = live_backend();
 
         assert!(crate::runtime::render::terminal::panic_hook::claim_restore());
-        backend.restore().unwrap();
+        // Raw mode is only faked here; Windows refuses to leave it, so the
+        // result is not the point - the bytes written are.
+        let _ = backend.restore();
 
         assert_eq!(leaves_alt_screen(&backend), 0);
     }

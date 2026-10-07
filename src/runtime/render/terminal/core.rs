@@ -252,8 +252,10 @@ mod restore_tests {
     fn restore_leaves_the_alternate_screen_once() {
         let mut terminal = live_terminal();
 
-        terminal.restore().unwrap();
-        terminal.restore().unwrap();
+        // Raw mode is only faked here; Windows refuses to leave it, so the
+        // result is not the point - the bytes written are.
+        let _ = terminal.restore();
+        let _ = terminal.restore();
 
         assert_eq!(leaves(&terminal), 1);
     }
@@ -269,7 +271,9 @@ mod restore_tests {
         // What the panic hook does before it writes the restore sequence.
         assert!(claim_restore());
 
-        terminal.restore().unwrap();
+        // Raw mode is only faked here; Windows refuses to leave it, so the
+        // result is not the point - the bytes written are.
+        let _ = terminal.restore();
 
         assert_eq!(leaves(&terminal), 0, "{:?}", terminal.writer());
         assert!(!terminal.raw_mode);
