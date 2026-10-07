@@ -12,10 +12,4 @@ pub struct Known {
     pub cases: &'static [&'static str],
 }
 
-pub const KNOWN: &[Known] = &[
-    Known {
-        layer: "parsers",
-        reason: "parse_duration hands negative / non-finite / huge seconds to Duration::from_secs_f64, which panics",
-        cases: &["transition soup"],
-    },
-];
+pub const KNOWN: &[Known] = &[];

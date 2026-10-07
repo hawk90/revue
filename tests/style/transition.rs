@@ -166,3 +166,18 @@ fn test_clear_clears_node_transitions() {
     assert!(!manager.has_active());
     assert!(!manager.node_has_active("btn1"));
 }
+
+/// A duration `Duration` cannot hold - negative, NaN, infinite, past
+/// `u64::MAX` seconds - is not a duration, like `-1ms` already was. It used to
+/// reach `Duration::from_secs_f64`, which panics.
+#[test]
+fn test_transition_parse_rejects_unrepresentable_seconds() {
+    let default = Transition::parse("opacity -1ms").unwrap();
+    for value in ["-1s", "NaNs", "infs", "1e400s", "1e30s", "-0.5s"] {
+        let t = Transition::parse(&format!("opacity {value}")).unwrap();
+        assert_eq!(t.duration, default.duration, "{value}");
+        assert_eq!(t.delay, default.delay, "{value}");
+    }
+    let t = Transition::parse("opacity 0.25s").unwrap();
+    assert_eq!(t.duration, std::time::Duration::from_millis(250));
+}
