@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.1](https://github.com/hawk90/revue/compare/v3.3.0...v3.3.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* **clipboard:** bound the whole tool call, not just the tool process ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **clipboard:** kill a clipboard tool that does not finish ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **code-editor:** refresh the find matches when the content is replaced ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **csv-viewer:** reset the selection and search when the data changes ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **csv-viewer:** search only the columns the viewer shows ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **datagrid:** keep the selection on a row when the rows shrink ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **datetime-picker:** keep a real date when the month changes ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **datetime-picker:** stop date navigation at the allowed range ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **event:** call custom event handlers outside the handler-table lock ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **filepicker:** list a file whose name is not valid UTF-8 ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **filepicker:** report a directory it cannot list instead of entering it ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **hot-reload:** hold back a debounced change instead of dropping it ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **input:** drop an empty selection when Backspace or Delete edits ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **io:** cap file reads at the size limit, not just the metadata check ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **json-viewer:** keep the selection visible after collapse_all ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **log-viewer:** keep the current search match within the matches ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **menu:** skip a dropdown whose menu starts past the area ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **multi-select:** keep the tag cursor on a tag when tags go away ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **pagination:** stay on page 1 when there are no pages ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **plugin:** remember which plugins a failed init or mount already ran ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **popover:** saturate the anchor offsets ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **range-picker:** keep real dates when the month changes ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **reactive:** call SignalVec diff subscribers outside the subscriber lock ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **reactive:** count subscriber notifications toward the update-depth limit ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **reactive:** drop the result of a superseded use_async run ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **reactive:** end a batch whose closure panics ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **reactive:** flush a batch with the batch-depth borrow released ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **reactive:** panic on a computed cycle instead of deadlocking ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **reactive:** stop tracking when an effect or computed panics ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **rich-text-editor:** measure blocks in characters for the cursor ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **rich-text-editor:** skip the link dialog when it has no width ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **scroll-view:** clamp a stale offset to the viewport it is used in ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **slider:** ignore a NaN value ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **sortable:** cancel a drag when an item is removed under it ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **tabs:** ignore the '0' key instead of underflowing ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **tasks:** do not leave a task the full queue refused pending ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **tasks:** drop the result of a cancelled TaskRunner task ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **tasks:** keep the message of a task that panics or fails ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **textarea:** keep secondary cursors inside the text after an edit ([5ca5243](https://github.com/hawk90/revue/commit/5ca5243f94357460815e600cf6bd2a8b01513420))
+* **worker:** fail a WorkerHandle whose future panics ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **worker:** keep a WorkerPool worker alive when its task panics ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **worker:** let cancel end a running future on tokio ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+* **worker:** make a WorkerChannel cancel always arrive and stay ([0197d9b](https://github.com/hawk90/revue/commit/0197d9bc5c5f58325d2cf427e5c77fb4396bcc1b))
+
 ## [3.3.0](https://github.com/hawk90/revue/compare/v3.2.2...v3.3.0) (2026-10-07)
 
 
