@@ -178,7 +178,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
 | `widget/canvas/braille/shapes.rs` | 515 | 10 | 공개 타입 10 | todo | |
-| `widget/debug_overlay/mod.rs` | 495 | 3 | 위젯 한 파일 | todo | |
+| `widget/debug_overlay/mod.rs` | 495 | 3 | 위젯 한 파일 | split | 패널 위치·설정 타입, 오버레이 구조체·빌더, 약 250줄의 패널 그리기(위치 계산, 지표·위젯 트리·이벤트, 테두리)가 섞임 → debug_overlay/{mod,types,render}.rs (전역 디버그 플래그는 25줄이라 mod.rs). 참고: `DebugConfig::show_styles`(스타일 검사기)와 `opacity`는 저장만 되고 읽히지 않음, 전역 `is_debug_enabled()`는 크레이트 안 어디서도 읽지 않음 |
 | `widget/image.rs` | 476 | 4 | 위젯 한 파일 | todo | |
 | `widget/markdown/mod.rs` | 898 | 2 | 898줄, 위젯 한 파일 | todo | |
 | `widget/markdown/types.rs` | 163 | 5 | 타입 모음, 공개 타입 5 | todo | |
