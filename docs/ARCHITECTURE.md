@@ -128,7 +128,7 @@ src/widget/
 │   ├── httpclient/        #   HTTP client widget
 │   ├── aistream/          #   AI streaming widget
 │   ├── diff/              #   Diff viewer
-│   ├── procmon.rs         #   Process monitor
+│   ├── procmon/           #   Process monitor
 │   ├── vim.rs             #   Vim mode
 │   └── tree_sitter_highlight.rs # Syntax highlighting
 │

@@ -137,7 +137,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `widget/developer/diff.rs` | 567 | 5 | 공개 타입 5, 위젯 한 파일 | split | 모드·줄·변경 종류·색 타입, 구조체·빌더·diff 계산, 분할·통합 뷰 그리기(약 240줄)가 섞임 → diff/{mod,types,render}.rs (구조체·빌더·`compute_diff`·생성 함수는 mod.rs, private `LineLayout`은 render.rs). 참고: `context()`가 정하는 `context_lines`는 어디서도 읽지 않음, `compute_diff`는 `ChangeType::Modified`를 만들지 않음, `DiffMode::Inline`은 통합 뷰와 같음(문자 단위 diff 없음), 모듈 문서의 "syntax highlighting"은 없음, 끝 주석의 테스트 경로(`tests/widget/developer/diff.rs`)는 실제로 `tests/widget/diff.rs` |
 | `widget/developer/httpclient/types.rs` | 139 | 5 | 타입 모음, 공개 타입 5 | todo | |
 | `widget/developer/presentation.rs` | 682 | 4 | 682줄, 위젯 한 파일 | split | 설정 타입, 공개 `Slide`와 그 빌더, 구조체·빌더, 슬라이드 이동·조회·`tick`, 그리기(제목·본문 슬라이드, 전환 효과 `SlideFx`, 아래줄)가 한 파일에 섞임 → presentation/{mod,types,slide,navigation,render}.rs (`on_title_slide`는 이동과 그리기가 함께 쓰므로 mod.rs, `SlideFx`·`slide_fx`·`SLIDE_BG`/`SLIDE_FG`와 렌더 smoke 테스트는 render.rs). 참고: 제목 슬라이드에서도 아래줄은 "1/N"과 1/N만큼 찬 진행 막대를 그림, `Slide::content` 문서의 "supports basic markdown"은 구현되지 않음 |
-| `widget/developer/procmon.rs` | 606 | 5 | 606줄, 공개 타입 5, 위젯 한 파일 | todo | |
+| `widget/developer/procmon.rs` | 606 | 5 | 606줄, 공개 타입 5, 위젯 한 파일 | split | 데이터·색 타입, 구조체·빌더, 시스템에서 프로세스 읽기·거르기·정렬, 선택 이동, 그리기(통계 줄·열 머리·행, 약 230줄)가 섞임 → procmon/{mod,types,refresh,navigation,render}.rs (`PROC_FG`·`format_bytes`는 render.rs, `ProcessInfo` 테스트는 types.rs, `refresh` 테스트는 refresh.rs). 버그 의심: `filter()`·`toggle_sort()`·`clear_filter()`는 다음 `refresh()`까지 목록에 반영되지 않고, `clear_filter()`는 선택을 되돌리지 않음; 전체 메모리가 0이면 MEM%·통계 줄이 NaN·inf. 참고: `view()`(`ProcessView`의 User·Tree)와 `show_cmd()`는 저장만 되고 어디서도 읽지 않음 |
 | `widget/developer/vim.rs` | 646 | 5 | 646줄, 공개 타입 5 | todo | |
 
 ### 7. widget: display, feedback (11)
