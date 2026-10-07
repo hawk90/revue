@@ -18,11 +18,31 @@ impl RichText {
     ///
     /// Tags can be combined: `[bold red]text[/]`
     ///
-    /// A `[` with no `]` after it is shown as it is.
+    /// `[[` is a literal `[`: `"[[x] done"` shows `[x] done`. A `[` with no
+    /// `]` after it is shown as it is. Use [`escape`](Self::escape) on text
+    /// that must not be read as markup, such as user input.
     pub fn markup(text: &str) -> Self {
         let mut rich = Self::new();
         rich.parse_markup(text);
         rich
+    }
+
+    /// Escape `text` so that [`markup`](Self::markup) shows it as it is.
+    ///
+    /// Every `[` becomes `[[`. Use it for text from outside the program -
+    /// a file name, a message - placed inside markup, so a `[` in it cannot
+    /// open a tag.
+    ///
+    /// ```
+    /// use revue::widget::RichText;
+    ///
+    /// let name = "[draft] notes.txt";
+    /// assert_eq!(RichText::escape(name), "[[draft] notes.txt");
+    /// // Shows "[draft] notes.txt" in bold; without `escape`, `[draft]` would be read as a tag.
+    /// let rich = RichText::markup(&format!("[bold]{}[/]", RichText::escape(name)));
+    /// ```
+    pub fn escape(text: &str) -> String {
+        text.replace('[', "[[")
     }
 
     /// Parse markup string
@@ -34,6 +54,12 @@ impl RichText {
         let last_close = text.rfind(']');
 
         while let Some((i, ch)) = chars.next() {
+            // `[[` is a literal `[`.
+            if ch == '[' && text[i + 1..].starts_with('[') {
+                chars.next();
+                buffer.push('[');
+                continue;
+            }
             // A `[` that is never closed is plain text, as is everything after
             // it (no later `[` can be closed either).
             if ch == '[' && last_close.is_none_or(|close| close < i) {
@@ -140,6 +166,39 @@ mod tests {
             .collect::<String>()
             .trim_end()
             .to_string()
+    }
+
+    #[test]
+    fn a_doubled_bracket_is_a_literal_bracket() {
+        assert_eq!(text(&render("[[x] done")), "[x] done");
+        assert_eq!(text(&render("a[[b")), "a[b");
+        assert_eq!(text(&render("[[[bold]x[/]")), "[x");
+        let buf = render("[[[bold]x");
+        assert!(buf.get(1, 0).unwrap().modifier.contains(Modifier::BOLD));
+        assert!(!buf.get(0, 0).unwrap().modifier.contains(Modifier::BOLD));
+        // An escaped tag is text, not a tag.
+        assert_eq!(text(&render("[[bold]")), "[bold]");
+    }
+
+    #[test]
+    fn escape_makes_any_text_render_as_itself() {
+        for raw in [
+            "[x] done",
+            "a[b",
+            "[bold]",
+            "[[",
+            "]",
+            "[/]",
+            "plain",
+            "[link=u]x[/]",
+        ] {
+            let escaped = RichText::escape(raw);
+            assert_eq!(
+                text(&render(&escaped)),
+                raw,
+                "escape({raw:?}) = {escaped:?}"
+            );
+        }
     }
 
     #[test]
