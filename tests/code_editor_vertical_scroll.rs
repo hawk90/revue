@@ -119,3 +119,69 @@ fn goto_line_shows_the_target_line() {
     assert_eq!(ed.cursor_position(), (30, 0));
     assert_eq!(rows(&ed, 5, 3), ["l28", "l29", "l30"]);
 }
+
+/// A hundred lines `l00` to `l99`.
+fn long() -> CodeEditor {
+    let text: Vec<String> = (0..100).map(|i| format!("l{i:02}")).collect();
+    editor(&text.join("\n"))
+}
+
+#[test]
+fn page_keys_move_by_the_visible_height() {
+    for h in [3u16, 5, 8, 13] {
+        let mut ed = long();
+        rows(&ed, 5, h);
+        let page = h as usize;
+
+        press(&mut ed, Key::PageDown, 1);
+        assert_eq!(ed.cursor_position().0, page, "height {h}");
+        rows(&ed, 5, h);
+        press(&mut ed, Key::PageDown, 1);
+        assert_eq!(ed.cursor_position().0, 2 * page, "height {h}");
+        let shown = rows(&ed, 5, h);
+        assert!(shown.contains(&format!("l{:02}", 2 * page)), "height {h}");
+
+        press(&mut ed, Key::PageUp, 1);
+        assert_eq!(ed.cursor_position().0, page, "height {h}");
+        let shown = rows(&ed, 5, h);
+        assert!(shown.contains(&format!("l{page:02}")), "height {h}");
+    }
+}
+
+#[test]
+fn page_keys_follow_a_resize() {
+    let mut ed = long();
+    rows(&ed, 5, 10);
+    press(&mut ed, Key::PageDown, 1);
+    assert_eq!(ed.cursor_position().0, 10);
+
+    rows(&ed, 5, 4);
+    press(&mut ed, Key::PageDown, 1);
+    assert_eq!(ed.cursor_position().0, 14);
+}
+
+#[test]
+fn page_keys_clamp_at_the_buffer_edges() {
+    let mut ed = long();
+    rows(&ed, 5, 8);
+    ed.set_cursor(95, 0);
+    rows(&ed, 5, 8);
+    press(&mut ed, Key::PageDown, 1);
+    assert_eq!(ed.cursor_position().0, 99);
+    assert_eq!(rows(&ed, 5, 8).last().map(String::as_str), Some("l99"));
+
+    ed.set_cursor(3, 0);
+    rows(&ed, 5, 8);
+    press(&mut ed, Key::PageUp, 1);
+    assert_eq!(ed.cursor_position().0, 0);
+    assert_eq!(rows(&ed, 5, 8)[0], "l00");
+}
+
+#[test]
+fn page_keys_use_a_default_page_before_the_first_render() {
+    let mut ed = long();
+    press(&mut ed, Key::PageDown, 1);
+    assert_eq!(ed.cursor_position().0, 20);
+    press(&mut ed, Key::PageUp, 1);
+    assert_eq!(ed.cursor_position().0, 0);
+}

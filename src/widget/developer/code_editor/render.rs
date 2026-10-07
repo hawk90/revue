@@ -102,6 +102,7 @@ impl View for CodeEditor {
         };
         let text_width = area.width.saturating_sub(line_num_width + minimap_width);
         let visible_lines = area.height as usize;
+        self.page_height.set(visible_lines);
 
         // Find matching bracket
         let bracket_match = self.find_matching_bracket();
