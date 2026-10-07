@@ -25,6 +25,10 @@ use crate::{impl_props_builders, impl_styled_view};
 // Public exports
 pub use types::{BracketMatch, BracketPair, EditOp, EditorConfig, IndentStyle};
 
+/// Lines PageUp and PageDown move before the editor has been rendered and
+/// so knows how many rows it shows
+const DEFAULT_PAGE_HEIGHT: usize = 20;
+
 /// Code editor widget
 pub struct CodeEditor {
     /// Lines of code
@@ -39,6 +43,9 @@ pub struct CodeEditor {
     /// Horizontal scroll in terminal COLUMNS, kept between renders so the
     /// view only moves when the cursor would leave it
     pub(super) scroll_x: std::cell::Cell<usize>,
+    /// Rows showing lines at the last render, the step for PageUp and
+    /// PageDown ([`DEFAULT_PAGE_HEIGHT`] before the first render)
+    pub(super) page_height: std::cell::Cell<usize>,
     /// Undo stack
     pub(super) undo_stack: Vec<EditOp>,
     /// Redo stack
@@ -105,6 +112,7 @@ impl CodeEditor {
             anchor: None,
             scroll: std::cell::Cell::new(0),
             scroll_x: std::cell::Cell::new(0),
+            page_height: std::cell::Cell::new(DEFAULT_PAGE_HEIGHT),
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             language: Language::None,
