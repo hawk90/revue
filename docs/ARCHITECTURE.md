@@ -132,7 +132,7 @@ src/widget/
 │   ├── vim/               #   Vim mode
 │   └── tree_sitter_highlight.rs # Syntax highlighting
 │
-├── markdown/              # Markdown renderer (parser, types, helpers)
+├── markdown/              # Markdown renderer (events, blocks, parser, types, helpers)
 │
 └── # Additional top-level widgets & categories
     ├── syntax/            # Syntax highlighting support
@@ -147,8 +147,8 @@ src/widget/
     ├── dropzone/          # Drag-and-drop zone
     ├── sortable/          # Sortable list
     ├── form/              # Form container
-    ├── qrcode.rs          # QR code
-    ├── image.rs           # Kitty image protocol
+    ├── qrcode/            # QR code
+    ├── image/             # Kitty image protocol
     ├── link.rs            # Clickable links
     ├── pagination.rs      # Pagination
     ├── slides.rs          # Slide widget

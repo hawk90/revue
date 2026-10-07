@@ -177,11 +177,11 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
-| `widget/canvas/braille/shapes.rs` | 515 | 10 | 공개 타입 10 | todo | |
-| `widget/debug_overlay/mod.rs` | 495 | 3 | 위젯 한 파일 | todo | |
-| `widget/image.rs` | 476 | 4 | 위젯 한 파일 | todo | |
-| `widget/markdown/mod.rs` | 898 | 2 | 898줄, 위젯 한 파일 | todo | |
-| `widget/markdown/types.rs` | 163 | 5 | 타입 모음, 공개 타입 5 | todo | |
-| `widget/mermaid/types.rs` | 175 | 7 | 타입 모음, 공개 타입 7 | todo | |
-| `widget/option_list.rs` | 724 | 4 | 724줄, 위젯 한 파일 | todo | |
-| `widget/qrcode.rs` | 438 | 3 | 위젯 한 파일 | todo | |
+| `widget/canvas/braille/shapes.rs` | 515 | 10 | 공개 타입 10 | keep | `Shape` 트레이트 하나와 그것을 구현하는 도형 타입들(선·원·호·다각형·사각형·점)만 모음. 각 타입은 생성자와 `draw` 정도(채운 다각형만 내부 판정 도우미가 하나 더)이고 서로 독립적이라 같은 이유로 바뀜 |
+| `widget/debug_overlay/mod.rs` | 495 | 3 | 위젯 한 파일 | split | 패널 위치·설정 타입, 오버레이 구조체·빌더, 약 250줄의 패널 그리기(위치 계산, 지표·위젯 트리·이벤트, 테두리)가 섞임 → debug_overlay/{mod,types,render}.rs (전역 디버그 플래그는 25줄이라 mod.rs). 참고: `DebugConfig::show_styles`(스타일 검사기)와 `opacity`는 저장만 되고 읽히지 않음, 전역 `is_debug_enabled()`는 크레이트 안 어디서도 읽지 않음 |
+| `widget/image.rs` | 476 | 4 | 위젯 한 파일 | split | 오류·크기 모드·픽셀 형식 타입, PNG·파일 디코딩과 원시 픽셀 생성(크기 제한 검사 포함, 약 180줄), Kitty 이스케이프 인코딩, 크기 계산·렌더가 섞임 → image/{mod,types,load,kitty}.rs (`rand_id`는 mod.rs). 버그 의심: `from_png`는 `with_guessed_format`으로 JPEG 등도 받지만 형식을 `Png`로 적어 Kitty에 `f=100`으로 보냄, 너비나 높이가 0이면(`from_rgb`로 가능) Fit/Fill 계산이 0으로 나눠 NaN·inf가 됨. 참고: `ImageFormat`은 `pub`이고 `get_format()`이 돌려주지만 밖으로 다시 내보내지 않음 |
+| `widget/markdown/mod.rs` | 898 | 2 | 898줄, 위젯 한 파일 | split | 설정·구조체·생성·빌더 옆에 pulldown-cmark 이벤트 처리(이벤트 루프, 태그 시작·끝, 텍스트·코드·HTML·각주 참조, 약 380줄)와 통째로 짜는 블록 배치(목차, FIGlet 제목, 코드 블록, 표, 약 200줄)가 섞임 → markdown/{mod,events,blocks}.rs (`extract_toc`는 `new`만 부르므로 mod.rs). mod.rs가 부르는 `parse_with_options`와 events.rs가 부르는 `render_toc`·`render_figlet_heading`·`render_code_block`·`render_table`은 `pub(super)`(실제 보이는 범위는 전과 같음). 참고: `Tag::Strikethrough` 시작은 아무것도 켜지 않는데 끝에서 `CROSSED_OUT`을 끔 |
+| `widget/markdown/types.rs` | 163 | 5 | 타입 모음, 공개 타입 5 | keep | 렌더된 줄 데이터 타입만 모음(`StyledText`·`Line`·`TocEntry`·`FootnoteDefinition`)과 콜아웃 종류 `AdmonitionType`. impl은 생성자·표식 해석·아이콘/색/이름 표 정도로 작음. 참고: `AdmonitionType` 테스트는 markdown/mod.rs에 있음 |
+| `widget/mermaid/types.rs` | 175 | 7 | 타입 모음, 공개 타입 7 | keep | 다이어그램 데이터 모델만 모음(종류·방향·노드 모양·화살표·노드·간선·색). impl은 생성자·빌더·Default뿐 |
+| `widget/option_list.rs` | 724 | 4 | 724줄, 위젯 한 파일 | split | 항목·옵션·구분선 타입(약 85줄), 구조체·빌더, 조회·선택·하이라이트 이동(약 155줄), 약 125줄의 렌더, 테스트용 getter가 한 파일에 섞임 → option_list/{mod,types,navigation,render}.rs (`separator_char`는 렌더와 테스트 getter가 함께 쓰므로 mod.rs). 버그 의심: 옵션이 없을 때 `highlight_first`는 `option_count() - 1`이 넘침(디버그 빌드는 패닉), 스크롤은 옵션만 건너뛰어 앞쪽 구분선·그룹 제목은 계속 그려짐, 힌트 정렬이 `len()`(바이트)이라 한글·아이콘이 있으면 어긋남. 참고: 모듈 문서는 키보드 탐색을 말하지만 키 처리기가 없고, 예제가 없는 `Option`을 import함 |
+| `widget/qrcode.rs` | 438 | 3 | 위젯 한 파일 | split | 표시 방식·오류 정정 타입, 구조체·빌더·getter·QR 행렬 생성 옆에 네 가지 방식(반 블록·전체 블록·ASCII·점자)으로 그리는 약 200줄의 렌더가 섞임 → qrcode/{mod,types,render}.rs (`ErrorCorrection::to_ec_level`은 `get_matrix`만 쓰므로 mod.rs). 버그 의심: `inverted`는 `get_matrix`에서 모듈을 뒤집는데 반 블록·전체 블록 렌더는 전경·배경색도 맞바꿔 두 번 뒤집혀 효과가 사라짐(ASCII·점자는 한 번만 뒤집힘). 참고: 구조체 문서 예제가 `QrCodeWidget` 대신 `QrCode::new`를 씀 |
