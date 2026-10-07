@@ -411,3 +411,20 @@ fn test_popover_builder_chain() {
     assert_eq!(symbol(&buffer, 11, 10), '◀');
     assert_eq!(symbol(&buffer, x, corner(&buffer).unwrap().1), '╭');
 }
+
+// Found by tests/event_sequences.rs: the shrunk sequence was `<anchor far>`,
+// an anchor at (u16::MAX, u16::MAX).
+#[test]
+fn test_anchor_at_the_far_corner_does_not_overflow() {
+    for position in [
+        PopoverPosition::Auto,
+        PopoverPosition::Top,
+        PopoverPosition::Bottom,
+        PopoverPosition::Left,
+        PopoverPosition::Right,
+    ] {
+        let mut p = Popover::new("content").position(position).open(true);
+        p.set_anchor(u16::MAX, u16::MAX);
+        render(&p);
+    }
+}

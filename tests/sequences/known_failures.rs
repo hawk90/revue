@@ -71,12 +71,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "keys",
-        widget: "Popover",
-        sequence: "<anchor far>",
-        reason: "anchor + 1 overflows when the anchor is at u16::MAX",
-    },
-    Known {
-        layer: "keys",
         widget: "RangePicker",
         sequence: "'j'",
         reason: "month navigation keeps the stored day, so Jan 31 becomes Feb 31",
@@ -116,12 +110,6 @@ pub const KNOWN: &[Known] = &[
         widget: "DataGrid",
         sequence: "Ctrl+End <drop rows>",
         reason: "recompute_cache() does not clamp the selection/scroll after the rows shrink",
-    },
-    Known {
-        layer: "mouse",
-        widget: "Popover",
-        sequence: "<anchor far>",
-        reason: "anchor + 1 overflows when the anchor is at u16::MAX",
     },
     Known {
         layer: "mouse",

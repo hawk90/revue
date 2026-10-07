@@ -287,9 +287,9 @@ impl Popover {
             PopoverPosition::Auto => {
                 // Auto-detect best position based on available space
                 let space_above = anchor_y;
-                let space_below = area_height.saturating_sub(anchor_y + 1);
+                let space_below = area_height.saturating_sub(anchor_y.saturating_add(1));
                 let space_left = anchor_x;
-                let space_right = area_width.saturating_sub(anchor_x + 1);
+                let space_right = area_width.saturating_sub(anchor_x.saturating_add(1));
 
                 let pos = if space_below >= popup_h + arrow_offset {
                     PopoverPosition::Bottom
@@ -314,7 +314,7 @@ impl Popover {
                     }
                     PopoverPosition::Bottom => {
                         let x = anchor_x.saturating_sub(popup_w / 2);
-                        let y = anchor_y + 1 + arrow_offset;
+                        let y = anchor_y.saturating_add(1 + arrow_offset);
                         (x, y)
                     }
                     PopoverPosition::Left => {
@@ -323,7 +323,7 @@ impl Popover {
                         (x, y)
                     }
                     PopoverPosition::Right => {
-                        let x = anchor_x + 1 + arrow_offset;
+                        let x = anchor_x.saturating_add(1 + arrow_offset);
                         let y = anchor_y.saturating_sub(popup_h / 2);
                         (x, y)
                     }
@@ -341,7 +341,7 @@ impl Popover {
             }
             PopoverPosition::Bottom => {
                 let x = anchor_x.saturating_sub(popup_w / 2);
-                let y = anchor_y + 1 + arrow_offset;
+                let y = anchor_y.saturating_add(1 + arrow_offset);
                 (x, y, PopoverPosition::Bottom)
             }
             PopoverPosition::Left => {
@@ -350,7 +350,7 @@ impl Popover {
                 (x, y, PopoverPosition::Left)
             }
             PopoverPosition::Right => {
-                let x = anchor_x + 1 + arrow_offset;
+                let x = anchor_x.saturating_add(1 + arrow_offset);
                 let y = anchor_y.saturating_sub(popup_h / 2);
                 (x, y, PopoverPosition::Right)
             }
