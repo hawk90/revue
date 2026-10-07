@@ -22,11 +22,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "concurrency",
-        reason: "batch() does not end the batch when its closure panics",
-        cases: &["reactive batch-panics"],
-    },
-    Known {
-        layer: "concurrency",
         reason: "use_async lets a superseded run overwrite a newer result",
         cases: &["reactive use-async-stale"],
     },
