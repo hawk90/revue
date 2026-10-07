@@ -16,35 +16,4 @@ pub struct Known {
     pub cases: &'static [&'static str],
 }
 
-pub const KNOWN: &[Known] = &[
-    // ── contents ──
-    Known {
-        layer: "contents",
-        widget: "DevToolsProfiler",
-        kind: Kind::OutOfArea,
-        reason: "long text rows are not clipped to the panel's right edge [not covered by #767]",
-        cases: &["40x10 long plain direct", "40x10 items200 plain direct"],
-    },
-    Known {
-        layer: "contents",
-        widget: "DevToolsStyles",
-        kind: Kind::OutOfArea,
-        reason: "long text rows are not clipped to the panel's right edge [not covered by #767]",
-        cases: &["40x10 long plain direct"],
-    },
-    // ── pairwise ──
-    Known {
-        layer: "pairwise",
-        widget: "DevToolsProfiler",
-        kind: Kind::OutOfArea,
-        reason: "long text rows are not clipped to the panel's right edge [not covered by #767]",
-        cases: &["80x24 long plain direct"],
-    },
-    Known {
-        layer: "pairwise",
-        widget: "DevToolsStyles",
-        kind: Kind::OutOfArea,
-        reason: "long text rows are not clipped to the panel's right edge [not covered by #767]",
-        cases: &["80x24 long plain direct"],
-    },
-];
+pub const KNOWN: &[Known] = &[];

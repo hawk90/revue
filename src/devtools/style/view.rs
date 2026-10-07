@@ -3,6 +3,7 @@
 use super::core::StyleInspector;
 use super::helper::RenderCtx;
 use super::types::StyleCategory;
+use crate::devtools::helpers::draw_text_overlay_clipped;
 use crate::devtools::DevToolsConfig;
 use crate::layout::Rect;
 use crate::render::Buffer;
@@ -123,19 +124,10 @@ impl StyleInspector {
             None
         };
 
-        let x = ctx.x + indent;
-        let width = ctx.width.saturating_sub(indent);
-        for (i, ch) in line.chars().enumerate() {
-            if (i as u16) < width {
-                if let Some(cell) = ctx.buffer.get_mut(x + i as u16, y) {
-                    cell.symbol = ch;
-                    cell.fg = Some(fg);
-                    if let Some(b) = bg {
-                        cell.bg = Some(b);
-                    }
-                }
-            }
-        }
+        // Cut by display width at the panel's right edge.
+        let x = ctx.x.saturating_add(indent);
+        let max_x = ctx.x.saturating_add(ctx.width);
+        draw_text_overlay_clipped(ctx.buffer, x, y, max_x, &line, fg, bg);
     }
 }
 

@@ -1,6 +1,6 @@
 //! Event logger implementation
 
-use super::super::helpers::{draw_separator, draw_text_overlay};
+use super::super::helpers::{draw_separator, draw_text_overlay_clipped};
 use super::super::DevToolsConfig;
 use super::types::{EventFilter, EventType, LoggedEvent};
 use crate::layout::Rect;
@@ -28,8 +28,10 @@ impl<'a> RenderCtx<'a> {
         }
     }
 
+    /// Draw `text` at row `y`, cut at the right edge of the panel.
     fn draw_text(&mut self, y: u16, text: &str, color: Color) {
-        draw_text_overlay(self.buffer, self.x, y, text, color);
+        let max_x = self.x.saturating_add(self.width);
+        draw_text_overlay_clipped(self.buffer, self.x, y, max_x, text, color, None);
     }
 
     fn draw_separator(&mut self, y: u16) {
@@ -347,17 +349,9 @@ impl EventLogger {
             None
         };
 
-        for (i, ch) in line.chars().enumerate() {
-            if (i as u16) < ctx.width {
-                if let Some(cell) = ctx.buffer.get_mut(ctx.x + i as u16, y) {
-                    cell.symbol = ch;
-                    cell.fg = Some(fg);
-                    if let Some(b) = bg {
-                        cell.bg = Some(b);
-                    }
-                }
-            }
-        }
+        // Cut by display width (the icons and emoji are wide).
+        let max_x = ctx.x.saturating_add(ctx.width);
+        draw_text_overlay_clipped(ctx.buffer, ctx.x, y, max_x, &line, fg, bg);
     }
 
     fn render_details(ctx: &mut RenderCtx<'_>, y: u16, event: &LoggedEvent) {

@@ -264,4 +264,52 @@ mod tests {
             }
         }
     }
+
+    // Long rows - a long widget name, class list, component name, event or
+    // action - are cut at the panel's right edge, by display width.
+    #[test]
+    fn test_render_tabs_clip_long_rows_to_the_area() {
+        use crate::devtools::{Action, ProfilerView, SnapshotValue, TimeTravelView};
+        let (area_x, area_y, w, h) = (2u16, 1u16, 40u16, 10u16);
+        let texts = ["abc ".repeat(250), "가나다 ".repeat(100), "👩‍👩‍👧‍👦".repeat(60)];
+        for text in &texts {
+            for items in [3, 200] {
+                for tab in DevToolsTab::all() {
+                    let mut devtools = populated(*tab, text, items);
+                    for i in 0..3 {
+                        let state = [(format!("{text}{i}"), SnapshotValue::String(text.clone()))]
+                            .into_iter()
+                            .collect();
+                        devtools
+                            .time_travel_mut()
+                            .record_action(Action::new(format!("{text}{i}")), state);
+                    }
+                    for view in 0..4 {
+                        devtools.profiler_mut().set_view(ProfilerView::all()[view]);
+                        devtools
+                            .time_travel_mut()
+                            .set_view(TimeTravelView::all()[view]);
+                        let mut buffer = Buffer::new(w + 4, h + 2);
+                        for y in 0..h + 2 {
+                            for x in 0..w + 4 {
+                                buffer.get_mut(x, y).unwrap().symbol = '#';
+                            }
+                        }
+                        devtools.render_panel(&mut buffer, Rect::new(area_x, area_y, w, h));
+                        for y in 0..h + 2 {
+                            for x in 0..w + 4 {
+                                let inside = (area_x..area_x + w).contains(&x)
+                                    && (area_y..area_y + h).contains(&y);
+                                let cell = buffer.get(x, y).unwrap();
+                                assert!(
+                                    inside || (cell.symbol == '#' && cell.bg.is_none()),
+                                    "{tab:?} view {view} {items} items: wrote outside at ({x}, {y})"
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
