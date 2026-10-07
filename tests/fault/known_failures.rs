@@ -22,11 +22,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "concurrency",
-        reason: "a WorkerPool worker does not catch a panicking task and dies",
-        cases: &["pool task-panic"],
-    },
-    Known {
-        layer: "concurrency",
         reason: "WorkerChannel cancel is a queued command: refused when the queue is full, gone once read",
         cases: &["channel cancel-full-queue", "channel cancel-zero-capacity", "channel cancel-consumed"],
     },
