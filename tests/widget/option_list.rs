@@ -50,6 +50,25 @@ fn test_navigation() {
 }
 
 #[test]
+fn test_navigation_on_empty_list() {
+    for mut list in [
+        OptionList::new().focused(true),
+        // Separators and groups are not options
+        OptionList::new().separator().group("Empty").focused(true),
+    ] {
+        list.highlight_first();
+        list.highlight_last();
+        list.highlight_next();
+        list.highlight_previous();
+        assert_eq!(list.__test_highlighted(), 0);
+        assert_eq!(list.__test_scroll_offset(), 0);
+        assert!(list.get_highlighted().is_none());
+        assert!(!list.select_highlighted());
+        assert!(list.__test_selected().is_none());
+    }
+}
+
+#[test]
 fn test_selection() {
     let mut list = OptionList::new()
         .option("A", "")

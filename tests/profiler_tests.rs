@@ -87,6 +87,40 @@ fn test_profiler_report() {
 }
 
 #[test]
+fn test_profiler_report_truncates_long_non_ascii_name() {
+    let profiler = Profiler::new();
+    // 31 two-byte characters: byte 27 is inside the fourteenth one
+    let name = "é".repeat(31);
+    profiler.record(&name, Duration::from_millis(10));
+
+    let report = profiler.report();
+    let expected = format!("{}...", "é".repeat(27));
+    assert!(report.contains(&expected), "{report}");
+    assert!(!report.contains(&name));
+}
+
+#[test]
+fn test_profiler_report_truncates_long_ascii_name() {
+    let profiler = Profiler::new();
+    let name = "a".repeat(31);
+    profiler.record(&name, Duration::from_millis(10));
+
+    let report = profiler.report();
+    assert!(report.contains(&format!("{}... ", "a".repeat(27))));
+    assert!(!report.contains(&name));
+}
+
+#[test]
+fn test_profiler_report_keeps_30_char_non_ascii_name() {
+    let profiler = Profiler::new();
+    // 30 characters but 90 bytes: fits the column, so it is not cut
+    let name = "렌".repeat(30);
+    profiler.record(&name, Duration::from_millis(10));
+
+    assert!(profiler.report().contains(&name));
+}
+
+#[test]
 fn test_flame_node() {
     let mut root = FlameNode::new("main");
     root.add_time(Duration::from_millis(100));

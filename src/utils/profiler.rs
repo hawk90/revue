@@ -333,8 +333,9 @@ impl Profiler {
         for (name, stat) in entries {
             output.push_str(&format!(
                 "{:<30} {:>8} {:>10.2} {:>10.3} {:>10.3} {:>10.3}\n",
-                if name.len() > 30 {
-                    format!("{}...", &name[..27])
+                // `{:<30}` pads by characters, so count characters here too
+                if name.chars().count() > 30 {
+                    format!("{}...", name.chars().take(27).collect::<String>())
                 } else {
                     name.clone()
                 },

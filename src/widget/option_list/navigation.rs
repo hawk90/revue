@@ -121,7 +121,7 @@ impl OptionList {
         self.highlighted = 0;
 
         // Skip disabled items
-        while self.highlighted < self.option_count() - 1 {
+        while self.highlighted < self.option_count().saturating_sub(1) {
             if let Some(item) = self.get_highlighted() {
                 if !item.disabled {
                     break;
