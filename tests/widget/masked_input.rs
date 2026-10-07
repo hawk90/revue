@@ -1212,3 +1212,30 @@ fn test_masked_input_handle_key_ignores_disabled_and_other_keys() {
     assert!(!input.handle_key(&Key::Char('\u{7}')));
     assert_eq!(input.get_value(), "");
 }
+
+#[test]
+fn test_masked_input_set_value_respects_max_length() {
+    let mut input = MaskedInput::new().max_length(4);
+    input.set_value("123456");
+    assert_eq!(input.get_value(), "1234");
+    assert!(input.get_cursor() <= 4);
+
+    // Counts chars, not bytes
+    let mut input = MaskedInput::new().max_length(2);
+    input.set_value("한글값");
+    assert_eq!(input.get_value(), "한글");
+}
+
+#[test]
+fn test_masked_input_value_builder_respects_max_length() {
+    let input = MaskedInput::new().max_length(3).value("abcdef");
+    assert_eq!(input.get_value(), "abc");
+    assert_eq!(input.get_cursor(), 3);
+}
+
+#[test]
+fn test_masked_input_max_length_builder_cuts_earlier_value() {
+    let input = MaskedInput::new().value("abcdef").max_length(3);
+    assert_eq!(input.get_value(), "abc");
+    assert_eq!(input.get_cursor(), 3);
+}
