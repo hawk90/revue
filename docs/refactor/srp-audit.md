@@ -65,17 +65,17 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 |---|---:|---:|---|---|---|
 | `runtime/dom/node/mod.rs` | 383 | 5 | 공개 타입 5 | keep | DOM 노드 데이터 모델 하나: `WidgetKey`·`WidgetMeta`·`NodeState`·`DomId`는 모두 `DomNode`의 필드이고 impl은 생성자·빌더·조회 정도로 작음 |
 | `runtime/dom/pool/mod.rs` | 578 | 8 | 공개 타입 8 | split | 범용 객체·Vec 풀, 렌더 버퍼 전용 풀, 문자열 인터닝이 섞임 → pool/{mod,object,buffer,string,vec}.rs (`PoolStats`와 생성 함수는 mod.rs) |
-| `runtime/dom/query.rs` | 683 | 3 | 683줄 | keep | 파일 이름과 달리 대부분 `DomTree` 하나: 노드 맵과 id·타입·클래스 색인을 추가·삭제·재조정하면서 함께 유지하고, `Query` 구현과 상태 갱신도 같은 맵·색인을 씀. 나누면 private 필드를 넘나들어야 함. 버그 의심: `remove()`는 루트를 지워도 `root`를 그대로 두고, 남은 형제의 위치 상태(`first_child` 등)를 갱신하지 않음. 참고: `query_one`은 HashMap 순회라 여러 개가 맞으면 문서 순서가 아닌 임의의 노드를 돌려줌 |
+| `runtime/dom/query.rs` | 683 | 3 | 683줄 | keep | 파일 이름과 달리 대부분 `DomTree` 하나: 노드 맵과 id·타입·클래스 색인을 추가·삭제·재조정하면서 함께 유지하고, `Query` 구현과 상태 갱신도 같은 맵·색인을 씀. 나누면 private 필드를 넘나들어야 함. 버그 의심: `remove()`는 루트를 지워도 `root`를 그대로 두고 (→ 고침), 남은 형제의 위치 상태(`first_child` 등)를 갱신하지 않음 (→ 고침). 참고: `query_one`은 HashMap 순회라 여러 개가 맞으면 문서 순서가 아닌 임의의 노드를 돌려줌 (→ 고침) |
 | `runtime/dom/selector/types.rs` | 382 | 8 | 타입 모음, 공개 타입 8 | keep | 셀렉터 AST 타입만 모음. impl은 생성자·명시도·Display로 작음 |
 | `runtime/event/custom/types.rs` | 212 | 6 | 타입 모음, 공개 타입 6 | keep | 사용자 이벤트의 트레이트·ID·우선순위·메타데이터·봉투 타입만 모음. impl은 생성자와 전파 플래그 정도 |
-| `runtime/event/drag.rs` | 580 | 5 | 공개 타입 5 | split | 끌어 옮길 데이터, 상태·결과, 놓을 곳, 상태 기계, 전역 싱글턴이 섞임 → drag/{mod,data,state,target,context,global}.rs (`DragId`는 mod.rs). 버그 의심: `clear_targets()`는 `hovered_target`만 비우고 상태를 `OverTarget`으로 남김(`unregister_target`은 `Dragging`으로 되돌림), `DragState::is_active` 문서는 Dragging·OverTarget이라 하지만 `Pending`도 포함 |
-| `runtime/event/focus.rs` | 534 | 4 |  | keep | 포커스 관리자 하나: Tab 순서, 2D 이동, 트랩(중첩 포함)이 모두 같은 위젯 목록·현재 인덱스·트랩 상태를 씀. `FocusTrap`은 그 위의 얇은 도우미(약 110줄). 참고: `FocusTrapConfig::loop_focus`는 저장만 되고 어디서도 읽지 않음(`next`/`prev`는 항상 순환) |
+| `runtime/event/drag.rs` | 580 | 5 | 공개 타입 5 | split | 끌어 옮길 데이터, 상태·결과, 놓을 곳, 상태 기계, 전역 싱글턴이 섞임 → drag/{mod,data,state,target,context,global}.rs (`DragId`는 mod.rs). 버그 의심: `clear_targets()`는 `hovered_target`만 비우고 상태를 `OverTarget`으로 남김(`unregister_target`은 `Dragging`으로 되돌림) (→ 고침), `DragState::is_active` 문서는 Dragging·OverTarget이라 하지만 `Pending`도 포함 (→ 코드가 맞음: 테스트와 `is_dragging`·`end_drag`가 Pending을 활성으로 쓰므로 문서를 고침) |
+| `runtime/event/focus.rs` | 534 | 4 |  | keep | 포커스 관리자 하나: Tab 순서, 2D 이동, 트랩(중첩 포함)이 모두 같은 위젯 목록·현재 인덱스·트랩 상태를 씀. `FocusTrap`은 그 위의 얇은 도우미(약 110줄). 참고: `FocusTrapConfig::loop_focus`는 저장만 되고 어디서도 읽지 않음(`next`/`prev`는 항상 순환) (→ 고침) |
 | `runtime/event/gesture/recognizer.rs` | 607 | 1 | 607줄 | keep | 제스처 인식 상태 기계 하나: 설정, 핸들러 등록, 마우스 이벤트 처리, 발행이 같은 추적 상태와 핸들러 목록을 씀 |
 | `runtime/event/gesture/types.rs` | 381 | 11 | 타입 모음, 공개 타입 11 | keep | 제스처 결과·방향·상태·설정 데이터 타입만 모음. impl은 delta 계산과 Default 정도. 참고: 이 타입들의 테스트는 gesture/mod.rs에 있음 |
-| `runtime/event/ime.rs` | 654 | 8 | 654줄, 공개 타입 8 | split | 조합 데이터 타입·설정, 조합 상태 기계, 렌더용 preedit 조각이 섞임 → ime/{mod,types,state,preedit}.rs (길이 제한 상수는 state.rs). 참고: 빈 목록으로 `set_candidates`를 부르면 `Selecting` 상태가 그대로 남음 |
+| `runtime/event/ime.rs` | 654 | 8 | 654줄, 공개 타입 8 | split | 조합 데이터 타입·설정, 조합 상태 기계, 렌더용 preedit 조각이 섞임 → ime/{mod,types,state,preedit}.rs (길이 제한 상수는 state.rs). 참고: 빈 목록으로 `set_candidates`를 부르면 `Selecting` 상태가 그대로 남음 (→ 고침) |
 | `runtime/event/mod.rs` | 349 | 5 | 공개 타입 5 | keep | 하위 모듈 선언·re-export와 기본 입력 이벤트 타입(`Event`, `KeyEvent`, `MouseEvent` 등)만 있음. impl은 생성자·판별 메서드로 작음. 참고: 모듈 문서의 `CustomEvent` 예제는 없는 `fn id(&self)`를 씀(실제는 `event_type()`, `ignore`라 컴파일되지 않음) |
 | `runtime/layout/node.rs` | 215 | 8 | 공개 타입 8 | keep | 레이아웃 노드 데이터 모델만 모음(속성 묶음·간격·크기 제약·계산 결과). impl은 gap·여백 계산 정도로 작음 |
-| `runtime/layout/responsive.rs` | 571 | 7 | 공개 타입 7 | split | 중단점·중단점별 값, 화면 기준 레이아웃·미디어 쿼리, 컨테이너 쿼리가 섞임 → responsive/{mod,breakpoint,viewport,container}.rs (도우미 `responsive::responsive` 모듈은 `ResponsiveLayout`의 private 필드를 읽으므로 viewport.rs 안에 두고 mod.rs에서 다시 내보냄). 참고: `Breakpoints::current`는 첫 중단점보다 좁은 폭에도 첫 중단점을 돌려줌(`simple()`이면 폭 10도 "sm") |
+| `runtime/layout/responsive.rs` | 571 | 7 | 공개 타입 7 | split | 중단점·중단점별 값, 화면 기준 레이아웃·미디어 쿼리, 컨테이너 쿼리가 섞임 → responsive/{mod,breakpoint,viewport,container}.rs (도우미 `responsive::responsive` 모듈은 `ResponsiveLayout`의 private 필드를 읽으므로 viewport.rs 안에 두고 mod.rs에서 다시 내보냄). 참고: `Breakpoints::current`는 첫 중단점보다 좁은 폭에도 첫 중단점을 돌려줌(`simple()`이면 폭 10도 "sm") (→ 의도된 동작: 기존 테스트가 이 대체를 확인하고 반환형이 `&Breakpoint`라 문서에 적음) |
 
 ### 3. core, devtools, testing, query (13)
 
@@ -100,11 +100,11 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
 | `a11y/backend/platform.rs` | 307 | 6 | 공개 타입 6 | keep | `ScreenReader` 구현체 모음: 플랫폼별 백엔드 셋과 기록·무동작 백엔드가 각각 50줄 안팎이고 감지·전역·설정은 이미 backend/의 다른 파일에 있음. 참고: `LoggingBackend::announcements()`가 돌려주는 `LoggedAnnouncement`는 다시 내보내지 않아 크레이트 밖에서 이름을 쓸 수 없음, `MacOSBackend` 등은 `pub`이지만 닿을 경로가 없음 |
-| `a11y/tree.rs` | 521 | 3 |  | keep | 접근성 트리 데이터 모델 하나: `TreeNode`, 그것을 담는 `AccessibilityTree`(노드 맵·루트·포커스), 그 위의 얇은 빌더. 버그 의심: `focus_next`/`focus_prev`는 HashMap 순회 순서를 쓰므로 Tab 순서가 문서 순서가 아닌 임의 순서, `remove_node`로 루트를 지워도 `root`는 그대로 |
-| `state/reactive/context.rs` | 530 | 4 |  | keep | 컨텍스트 API 하나: `Context`/`Provider`와 provide·use·scope 함수가 모두 같은 thread-local 저장소(전역 맵·스코프 스택)를 씀. 참고: `Provider::new`는 값을 저장소에 등록하지 않아 `use_context`로 보이지 않음, `ContextScope`는 drop 순서와 상관없이 맨 위 스코프를 꺼냄 |
+| `a11y/tree.rs` | 521 | 3 |  | keep | 접근성 트리 데이터 모델 하나: `TreeNode`, 그것을 담는 `AccessibilityTree`(노드 맵·루트·포커스), 그 위의 얇은 빌더. 버그 의심: `focus_next`/`focus_prev`는 HashMap 순회 순서를 쓰므로 Tab 순서가 문서 순서가 아닌 임의 순서 (→ 고침), `remove_node`로 루트를 지워도 `root`는 그대로 (→ 고침) |
+| `state/reactive/context.rs` | 530 | 4 |  | keep | 컨텍스트 API 하나: `Context`/`Provider`와 provide·use·scope 함수가 모두 같은 thread-local 저장소(전역 맵·스코프 스택)를 씀. 참고: `Provider::new`는 값을 저장소에 등록하지 않아 `use_context`로 보이지 않음 (→ 고침), `ContextScope`는 drop 순서와 상관없이 맨 위 스코프를 꺼냄 (→ 고침) |
 | `state/reactive/store/mod.rs` | 181 | 5 | 공개 타입 5 | keep | 테스트를 뺀 약 180줄에 스토어 ID·트레이트·확장 트레이트·레지스트리만 있음. 사용 도우미는 이미 usage.rs. 참고: `StoreExt::subscribe`는 자리표시자라 아무것도 구독하지 않음 |
 | `state/worker/channel.rs` | 324 | 5 | 공개 타입 5 | keep | 양방향 채널 하나: 메시지·명령 타입과 채널, 송신·수신 반쪽이 모두 private `ChannelInner`를 나눠 씀. 참고: `WorkerReceiver::send_command`는 용량을 검사하지 않음(`WorkerChannel::send_command`는 검사), `WorkerSender::send`는 넘칠 때 경고를 남기지 않음 |
-| `text/bidi/types.rs` | 444 | 8 | 타입 모음, 공개 타입 8 | keep | BiDi 데이터 타입만 모음(방향, 문자 분류, run, 분석 결과, 설정, 정렬). 가장 큰 impl은 `BidiClass::of`의 문자 범위 표. 참고: `BidiInfo::new`는 run을 계산하지 않는 자리표시자라 `runs`가 늘 비어 `is_pure_rtl()`이 늘 true, `visual_text()`는 원문 그대로 |
+| `text/bidi/types.rs` | 444 | 8 | 타입 모음, 공개 타입 8 | keep | BiDi 데이터 타입만 모음(방향, 문자 분류, run, 분석 결과, 설정, 정렬). 가장 큰 impl은 `BidiClass::of`의 문자 범위 표. 참고: `BidiInfo::new`는 run을 계산하지 않는 자리표시자라 `runs`가 늘 비어 `is_pure_rtl()`이 늘 true, `visual_text()`는 원문 그대로 (→ 고침) |
 | `utils/border/mod.rs` | 568 | 5 | 공개 타입 5 | split | 테두리 문자·스타일·그리기와 테두리 제목(위치·변·제목 타입과 그리기)이 섞임 → border/{mod,title}.rs. 참고: 왼쪽·오른쪽 변 제목은 표시 폭이 아닌 `chars().count()`로 길이를 잼(위·아래 변은 표시 폭), `offset` 적용은 `i16`으로 바꿔 더해 32767을 넘는 좌표에서 넘침 (→ 이 PR에서 고침) |
 | `utils/clipboard.rs` | 503 | 6 | 공개 타입 6 | split | 오류·백엔드 트레이트·`Clipboard`와 플랫폼 명령을 찾아 실행하는 시스템 백엔드, 메모리 백엔드, 앱 안 복사 기록(`ClipboardHistory`)이 섞임 → clipboard/{mod,system,memory,history}.rs. 참고: `SystemClipboard::set`은 내용을 정리(ANSI·제어 문자 제거)하지만 `MemoryClipboard::set`은 그대로 저장함 |
 | `utils/diff.rs` | 456 | 3 |  | keep | LCS 기반 텍스트 비교 알고리즘 하나와 그 결과 타입·통계·unified 형식 출력. 버그 의심: 입력이 클 때 쓰는 `simplified_diff`는 b 쪽 위치가 거꾸로 가는 짝을 돌려줘 결과 diff가 틀릴 수 있음 |

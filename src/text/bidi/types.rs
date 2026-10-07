@@ -1,6 +1,7 @@
 //! Core types for BiDi text handling
 
-use super::helpers::detect_direction;
+use super::helpers::{contains_rtl, detect_direction, mirror_char};
+use super::resolve::{reorder, resolve_levels};
 
 /// Text direction
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -303,15 +304,21 @@ pub enum TextAlign {
 }
 
 /// Result of BiDi analysis
+///
+/// Levels are resolved with a simplified Unicode Bidirectional Algorithm
+/// (UAX #9): weak and neutral types, implicit levels, trailing whitespace,
+/// reordering and mirroring. The text is treated as a single paragraph and
+/// line; explicit embeddings, overrides and isolates are ignored, and bracket
+/// pairs are not matched.
 #[derive(Clone, Debug)]
 pub struct BidiInfo {
     /// The original text
     pub text: String,
     /// The base/paragraph direction
     pub base_direction: ResolvedDirection,
-    /// The BiDi runs (segments with uniform direction)
+    /// The BiDi runs (segments with uniform direction), in logical order
     pub runs: Vec<BidiRun>,
-    /// Visual ordering of runs (indices into runs)
+    /// Visual ordering of runs (indices into runs), left to right
     pub visual_order: Vec<usize>,
 }
 
@@ -319,8 +326,21 @@ impl BidiInfo {
     /// Analyze text for BiDi properties
     pub fn new(text: &str, direction: TextDirection) -> Self {
         let base_direction = direction.resolve(text);
-        let runs = Vec::new(); // Simplified - would compute runs
-        let visual_order = Vec::new(); // Simplified
+        let chars: Vec<char> = text.chars().collect();
+        let levels = resolve_levels(&chars, base_direction);
+
+        let mut runs = Vec::new();
+        let mut start = 0;
+        for end in 1..=chars.len() {
+            if end == chars.len() || levels[end] != levels[start] {
+                let run_text: String = chars[start..end].iter().collect();
+                runs.push(BidiRun::new(run_text, start..end, levels[start]));
+                start = end;
+            }
+        }
+
+        let run_levels: Vec<u8> = runs.iter().map(|r| r.level).collect();
+        let visual_order = reorder(&run_levels);
 
         Self {
             text: text.to_string(),
@@ -330,14 +350,25 @@ impl BidiInfo {
         }
     }
 
-    /// Get the text reordered for visual display
+    /// Get the text reordered for visual display (left to right)
+    ///
+    /// RTL runs are reversed and their brackets mirrored.
     pub fn visual_text(&self) -> String {
-        self.text.clone() // Simplified
+        let mut out = String::with_capacity(self.text.len());
+        for &i in &self.visual_order {
+            let run = &self.runs[i];
+            if run.direction.is_rtl() {
+                out.extend(run.text.chars().rev().map(mirror_char));
+            } else {
+                out.push_str(&run.text);
+            }
+        }
+        out
     }
 
     /// Check if the text contains any RTL characters
     pub fn has_rtl(&self) -> bool {
-        self.base_direction.is_rtl()
+        contains_rtl(&self.text)
     }
 
     /// Check if the text is pure LTR
@@ -345,9 +376,9 @@ impl BidiInfo {
         !self.has_rtl()
     }
 
-    /// Check if the text is pure RTL
+    /// Check if the text is pure RTL (non-empty, with every run RTL)
     pub fn is_pure_rtl(&self) -> bool {
-        self.runs.iter().all(|r| r.direction.is_rtl())
+        !self.runs.is_empty() && self.runs.iter().all(|r| r.direction.is_rtl())
     }
 }
 

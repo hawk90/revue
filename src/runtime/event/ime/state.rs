@@ -189,6 +189,9 @@ impl ImeState {
     }
 
     /// Set candidates
+    ///
+    /// A non-empty list enters [`CompositionState::Selecting`]; an empty one
+    /// while selecting goes back to [`CompositionState::Composing`].
     pub fn set_candidates(&mut self, candidates: Vec<Candidate>) {
         // Reject excessive candidates to prevent memory exhaustion
         if candidates.len() > MAX_CANDIDATES {
@@ -200,6 +203,9 @@ impl ImeState {
 
         if !self.candidates.is_empty() {
             self.state = CompositionState::Selecting;
+        } else if self.state == CompositionState::Selecting {
+            // Nothing left to select from; keep composing the text
+            self.state = CompositionState::Composing;
         }
 
         self.emit_candidates_changed();

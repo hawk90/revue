@@ -229,6 +229,61 @@ fn test_provider_struct() {
 }
 
 #[test]
+fn test_provider_value_is_visible_to_use_context() {
+    let ctx: Context<String> = create_context();
+    let provider = Provider::new(&ctx, "initial".to_string());
+
+    assert!(has_context(&ctx));
+    assert_eq!(use_context(&ctx), Some("initial".to_string()));
+
+    // The provider and its consumers share one signal
+    provider.set("updated".to_string());
+    assert_eq!(use_context(&ctx), Some("updated".to_string()));
+    let signal = use_context_signal(&ctx).unwrap();
+    provider.update(|s| s.push('!'));
+    assert_eq!(signal.get(), "updated!");
+
+    clear_context(&ctx);
+    assert_eq!(use_context(&ctx), None);
+}
+
+#[test]
+fn test_context_scope_drop_removes_its_own_scope() {
+    let outer_ctx: Context<&'static str> = create_context();
+    let inner_ctx: Context<&'static str> = create_context();
+
+    let outer = ContextScope::new();
+    outer.provide(&outer_ctx, "outer");
+    let inner = ContextScope::new();
+    inner.provide(&inner_ctx, "inner");
+
+    // Dropped out of order: the outer scope's values go, the inner's stay
+    drop(outer);
+    assert_eq!(use_context(&outer_ctx), None);
+    assert_eq!(use_context(&inner_ctx), Some("inner"));
+
+    drop(inner);
+    assert_eq!(use_context(&inner_ctx), None);
+}
+
+#[test]
+fn test_context_scope_provides_into_its_own_scope() {
+    let ctx: Context<&'static str> = create_context();
+
+    let outer = ContextScope::new();
+    let inner = ContextScope::new();
+    inner.provide(&ctx, "inner");
+    // The outer scope's value is shadowed by the inner one, not replacing it
+    outer.provide(&ctx, "outer");
+    assert_eq!(use_context(&ctx), Some("inner"));
+
+    drop(inner);
+    assert_eq!(use_context(&ctx), Some("outer"));
+    drop(outer);
+    assert_eq!(use_context(&ctx), None);
+}
+
+#[test]
 fn test_context_clone() {
     let ctx = create_context_with_default(42);
     let ctx_clone = ctx.clone();
