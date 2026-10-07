@@ -3,7 +3,7 @@
 # Verified against the code on 2026-10-05 (code wins over docs). `source` § refers to the
 # pre-2026-10-05 docs/FEATURES.md layout (see git history / docs narrative).
 schema: 1
-updated: '2026-10-07'
+updated: '2026-10-08'
 sources:
   - 'docs/FEATURES.md (pre-2026-10-05 layout: §1–§11, Advanced Widgets, Feature Comparison)'
 statuses:
@@ -224,8 +224,11 @@ items:
     status: done
     acceptance:
       - overflow hidden clips a child to the container box
+      - every RenderContext drawing primitive honors the clip, text and single characters included
     evidence:
       - tests/css_card_and_overflow.rs::overflow_hidden_clips_a_child_to_its_container
+      - src/widget/traits/render_context/tests.rs::test_clip_text_primitives
+      - tests/config_matrix.rs::every_screen_survives_every_combination_of_switches
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
     notes: scroll/auto parse but behave like visible/hidden; no CSS-driven scrolling.

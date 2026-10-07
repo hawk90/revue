@@ -1335,6 +1335,77 @@ fn test_clip_set_fg_bg() {
     assert_eq!(buffer.get(0, 0).unwrap().bg, None);
 }
 
+/// Every text primitive honors the clip, not just `set` and `put_str`: a
+/// `Button` label (`draw_text_bg`) given an area below an `overflow: hidden`
+/// box used to paint outside it (`tests/config_matrix.rs`).
+#[test]
+fn test_clip_text_primitives() {
+    type Draw = fn(&mut RenderContext);
+    let draws: [(&str, Draw); 9] = [
+        ("draw_text", |c| c.draw_text(0, 0, "ABCDEFGH", Color::RED)),
+        ("draw_text_bg", |c| {
+            c.draw_text_bg(0, 0, "ABCDEFGH", Color::RED, Color::BLUE)
+        }),
+        ("draw_text_bold", |c| {
+            c.draw_text_bold(0, 0, "ABCDEFGH", Color::RED)
+        }),
+        ("draw_text_bg_bold", |c| {
+            c.draw_text_bg_bold(0, 0, "ABCDEFGH", Color::RED, Color::BLUE)
+        }),
+        ("draw_text_clipped", |c| {
+            c.draw_text_clipped(0, 0, "ABCDEFGH", Color::RED, 8)
+        }),
+        ("draw_text_dim", |c| {
+            c.draw_text_dim(0, 0, "ABCDEFGH", Color::RED)
+        }),
+        ("draw_char", |c| {
+            for x in 0..8 {
+                c.draw_char(x, 0, 'X', Color::RED);
+            }
+        }),
+        ("draw_char_bg", |c| {
+            for x in 0..8 {
+                c.draw_char_bg(x, 0, 'X', Color::RED, Color::BLUE);
+            }
+        }),
+        ("draw_char_bold", |c| {
+            for x in 0..8 {
+                c.draw_char_bold(x, 0, 'X', Color::RED);
+            }
+        }),
+    ];
+    for (name, draw) in draws {
+        let mut buffer = test_buffer();
+        {
+            let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 10))
+                .with_clip(Rect::new(2, 0, 3, 10));
+            draw(&mut ctx);
+        }
+        for x in [0, 1, 5, 6, 7] {
+            assert_eq!(
+                buffer.get(x, 0).unwrap().symbol,
+                ' ',
+                "{name} painted column {x}, outside the clip"
+            );
+        }
+        assert_ne!(
+            buffer.get(2, 0).unwrap().symbol,
+            ' ',
+            "{name} painted nothing"
+        );
+    }
+
+    // A wide glyph straddling the clip's edge leaves no half behind.
+    let mut buffer = test_buffer();
+    {
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 20, 10))
+            .with_clip(Rect::new(2, 0, 3, 10));
+        ctx.draw_text(1, 0, "漢字", Color::RED);
+    }
+    assert_eq!(buffer.get(1, 0).unwrap().symbol, ' ');
+    assert_eq!(buffer.get(5, 0).unwrap().symbol, ' ');
+}
+
 #[test]
 fn test_is_clipped() {
     let mut buffer = test_buffer();

@@ -451,3 +451,121 @@ test와 nextest 어느 쪽에서도 같게 동작한다.
 - `WorkerSender::is_cancelled`: 한 번 참이면 계속 참이다.
 - `Computed::get`: 순환 의존은 교착 대신 패닉한다.
 - `BatchGuard`(그리고 `batch`): 패닉으로 풀리며 drop되면 flush하지 않는다.
+
+## 빌드·설정 조합 — cargo 기능 조합과 런타임 스위치 조합
+
+위의 층들은 한 가지 빌드, 한 가지 설정에서 입력을 흔든다. 이 층은 반대로 입력을 고정하고
+**빌드와 설정**을 흔든다. 두 갈래다.
+
+- **3a. cargo 기능 조합.** CI의 Feature Combinations 잡은 `--all-features`와
+  `--no-default-features` 두 끝만 본다. 기능 하나만 켰을 때만 깨지는 경우는 보지 못한다.
+  예를 들어 `cfg` 게이트가 빠졌거나, cfg 아래에서 import가 쓰이지 않거나, 어떤 기능이 다른
+  기능을 말없이 필요로 하는 경우다.
+- **3b. 런타임 스위치 조합.** `App`/`PipelineHarness`에는 프레임을 만드는 방식을 바꾸는
+  스위치가 있다. `dom_from_render`, `css_layout`, `tab_navigation`, `incremental_dom`,
+  `layout_engine`, 그리고 뷰 쪽의 `Stack::content_sized`다(3.0에서 모두 켜짐으로 바뀌었다).
+  이 중 둘은 **출력을 바꾸면 안 된다.** `incremental_dom`은 정적인 뷰에서,
+  `layout_engine`은 언제나 그렇다.
+
+### 3a. cargo 기능 조합
+
+`cargo-hack`으로 돌렸다. 기능은 19개(`default` 포함)이고, 그중 `full`, `std`, `gui`,
+`all-gui`, `default`는 다른 기능을 묶은 프리셋이다.
+
+| 명령 | 실행 수 | 로컬 시간(12코어) | 결과 |
+|---|---|---|---|
+| `cargo hack check --each-feature --no-dev-deps` | 21 | 2분 29초 | 경고·에러 0 |
+| `cargo hack clippy --each-feature --no-dev-deps -- -D warnings` | 21 | 1분 47초 | 경고·에러 0 |
+| `cargo hack check --feature-powerset --depth 2 --exclude-features full,std,gui,all-gui,default --no-dev-deps` | 106 | 7분 23초 | 경고·에러 0 |
+| `cargo hack check --each-feature --all-targets` (테스트·예제 포함) | 21 | 4분 47초 | 경고·에러 0 |
+
+**고칠 것이 없었다.** 기능 하나만 켜도, 두 개를 어떻게 짝지어도, 라이브러리와 테스트,
+예제가 경고 없이 빌드된다. 이 상태가 깨지지 않게 하는 것이 남은 일이다.
+
+`.github/workflows/features.yml`:
+
+- **Each Feature** 잡: `cargo hack check --each-feature`와 `cargo hack clippy --each-feature`
+  (`RUSTFLAGS=-Dwarnings`, `--keep-going`으로 실패한 기능을 모두 보고한다). 다음 경우에 돈다.
+  - 매주 월요일
+  - `workflow_dispatch`
+  - `Cargo.toml`이나 이 워크플로를 건드린 PR
+- **Feature Pairs** 잡: 깊이 2의 기능 멱집합(106번 빌드). 매주와 수동 실행에서만 돈다.
+- `taiki-e/install-action@cargo-hack`은 저장소의 다른 `install-action` 사용
+  (`@cargo-nextest`, `@cargo-audit`)과 같은 방식으로 고정했다.
+
+**필수 CI Gate에 넣지 않았다.** `--each-feature`는 크레이트를 21번 빌드한다. 로컬
+12코어에서 2분 반이었으니, 2코어 러너의 콜드 캐시에서는 5분을 넘는다. 그래서 기존
+Feature Combinations 잡에 붙이지 않고 따로 두었다. 기능을 바꾸는 PR은 `Cargo.toml`을
+건드리므로 그 PR에서는 여전히 돈다. 기능 게이트만 바뀌는 `src/` 변경은 주간 실행이 잡는다.
+
+### 3b. 런타임 스위치 조합 — `tests/config_matrix.rs`
+
+| 요인 | 값 |
+|---|---|
+| 화면 | 11개: 폼, 대시보드(카드 행 + 표), 스크롤 뷰 속 목록, CSS 여백이 있는 중첩 스택, `flex-wrap` 태그 행, `display: none`/`visibility: hidden`, 화면보다 큰 CSS 크기, 넓은 문자(한글·이모지·한자), 그리드 + 탭, 겹침(`Layers` + `Positioned`), 입력 컨트롤 |
+| 크기 | 1×1, 7×3, 40×12, 120×40 |
+| `dom_from_render` | 켬 / 끔 |
+| `css_layout` | 켬 / 끔 |
+| `content_sized` | 켬 / 끔 (화면이 만드는 모든 스택에 적용) |
+| `tab_navigation` | 켬 / 끔 |
+| 스타일시트 | 없음 / 화면의 것 / 화면의 것 + 프레임에 `overflow: hidden` |
+
+**전체 곱을 돈다.** 2,112 케이스이고 디버그 빌드에서 약 6초 걸린다. 위젯 매트릭스의 all-pairs
+생성기를 먼저 써 봤다. 44 케이스로 줄었지만, 전체 곱이 찾은 넘침 52건 중 3건만 잡았다. 이
+크기에서는 전체 곱을 돌릴 만큼 싸다.
+
+각 케이스는 두 프레임을 그리고, Tab을 두 번 보내고, 세 번째 프레임을 그린다. 불변식은
+다음과 같다.
+
+1. **패닉하지 않는다.**
+2. **화면 밖에 쓰지 않는다.** 화면은 센티널 칸으로 된 테두리 한 칸 안쪽에 그린다. 테두리는
+   모든 프레임에서 그대로 남아야 한다. 이 검사는 스타일시트가 없을 때와 `overflow: hidden`일
+   때만 한다. 이유는 아래 "설계대로인 것"에 있다.
+3. **바뀌지 않은 뷰를 다시 그리면 같은 화면이 나온다**(프레임 2 = 프레임 1).
+4. **출력을 바꾸면 안 되는 스위치는 출력을 바꾸지 않는다.** 같은 케이스를
+   `incremental_dom(true)`로 돌린 것, `layout_engine(false)`로 돌린 것 모두 세 프레임이
+   칸 단위로(글자·색·modifier) 같아야 한다.
+
+래칫은 다른 층과 같고, 목록(`tests/config_matrix.rs`의 `KNOWN`)은 지금 비어 있다.
+
+```bash
+cargo test --test config_matrix                        # 기본 기능
+cargo test --no-default-features --test config_matrix  # 기능 없이
+```
+
+#### 발견하고 고친 것
+
+| 원인 | 증상 | 고친 것 |
+|---|---|---|
+| `RenderContext`의 `draw_text*`/`draw_char*`가 `overflow: hidden` 클립을 보지 않았다(`set`과 `put_str`은 봤다). | 1×1 화면에서 equal-share 스택이 `Button`을 화면 아래 칸으로 밀어냈다. 버튼 배경(`set`)은 잘렸지만 라벨 `P`(`draw_text_bg`)는 `overflow: hidden` 상자 밖에 그려졌다(2 케이스). | `put_text_char`와 `draw_char*`가 클립을 확인한다. 칸 하나라도 클립 밖인 글리프는 그리지 않아서, 클립 경계에 걸린 넓은 문자가 반쪽만 남지 않는다. 단위 테스트 `render_context::tests::test_clip_text_primitives`. |
+
+#### 설계대로인 것 — CSS 크기는 슬롯을 넘을 수 있다
+
+스타일시트를 그대로 쓰면 52 케이스가 화면 밖에 쓴다. `dom+ layout+`에서
+`.card { width: 20 }`, `.nav { width: 14 }`, `.tall { height: 3 }`,
+`.huge { width: 500 }` 같은 크기가 컨테이너가 준 슬롯보다 크면, `box_model::apply`가 상자를
+슬롯 밖으로 키운다. 그러면 위젯이 이웃이나 화면 가장자리 위에 그린다.
+
+이것은 CSS의 기본값 `overflow: visible`이다. `tests/css_card_and_overflow.rs`의
+`a_child_can_paint_outside_its_container`가 이 동작을 못박아 두었다. 이 동작이 없으면
+`overflow: hidden`도 관찰할 수 없다. 슬롯으로 잘라내는 수정을 시험해 봤지만 그 테스트를
+깨서 되돌렸다. 대신 매트릭스는 **넘친 것이 모두 `overflow: hidden` 상자 안에 갇히는지**를
+본다. 그래서 세 번째 스타일시트 값이 있다. 위의 버그 하나를 고친 뒤 그 검사는 전부 통과한다.
+
+남는 질문은 이것이다. 터미널에서는 넘친 칸이 갈 곳 없이 이웃을 덮어쓴다. 그런데도 기본값이
+`visible`이어야 하는가? 바꾸면 동작이 바뀌는 일이라 여기서는 결정하지 않는다.
+
+#### 견딘 것
+
+- 2,112 케이스 모두에서 패닉이 없었다.
+- `incremental_dom`과 `layout_engine`을 바꿔도 출력은 한 칸도 달라지지 않았다.
+- 다시 그린 프레임은 언제나 같았다.
+- `Positioned`를 화면 밖 좌표(118, 39)에 두어도, 크기가 1×1이어도, 화면 밖에 쓰지 않았다.
+
+#### 남은 틈
+
+- `RenderContext::get_mut`은 클립을 보지 않고 칸을 돌려준다. 이것으로 칸을 고치는 위젯은
+  클립을 넘을 수 있다. 매트릭스의 화면에서는 나타나지 않았다.
+- `ctx.buffer`에 직접 쓰는 위젯(예: `DevTools`)은 클립과 무관하다.
+- 뷰가 프레임마다 바뀌는 경우는 보지 않는다. `incremental_dom`은 그때 출력을 바꾸는 것이
+  목적이므로, 같음을 검사할 수 없다.
