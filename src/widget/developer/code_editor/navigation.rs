@@ -208,9 +208,20 @@ impl super::CodeEditor {
         self.ensure_cursor_visible();
     }
 
-    /// Page up
+    /// Page up: scroll the view up `page_size` lines and move the cursor up
+    /// the same number, keeping its screen row and column. When the view is
+    /// already at the top, the cursor moves to the first line instead.
     pub fn page_up(&mut self, page_size: usize) {
-        self.move_to_line(self.cursor.0.saturating_sub(page_size));
+        let page = page_size.max(1);
+        let top = self.scroll_for_cursor(page);
+        if top == 0 {
+            self.scroll.set(top);
+            self.move_to_line(0);
+        } else {
+            let new_top = top.saturating_sub(page);
+            self.scroll.set(new_top);
+            self.move_to_line(self.cursor.0 - (top - new_top));
+        }
         // Only clear selection if not in selection mode
         if self.anchor.is_none() {
             self.clear_selection();
@@ -218,14 +229,38 @@ impl super::CodeEditor {
         self.ensure_cursor_visible();
     }
 
-    /// Page down
+    /// Page down: scroll the view down `page_size` lines and move the cursor
+    /// down the same number, keeping its screen row and column. The view
+    /// stops with the last line on its bottom row; once there, the cursor
+    /// moves to the last line instead.
     pub fn page_down(&mut self, page_size: usize) {
-        self.move_to_line((self.cursor.0 + page_size).min(self.lines.len().saturating_sub(1)));
+        let page = page_size.max(1);
+        let top = self.scroll_for_cursor(page);
+        let last = self.lines.len().saturating_sub(1);
+        let max_top = self.lines.len().saturating_sub(page);
+        let new_top = (top + page).min(max_top);
+        if new_top <= top {
+            self.scroll.set(top);
+            self.move_to_line(last);
+        } else {
+            self.scroll.set(new_top);
+            self.move_to_line((self.cursor.0 + (new_top - top)).min(last));
+        }
         // Only clear selection if not in selection mode
         if self.anchor.is_none() {
             self.clear_selection();
         }
         self.ensure_cursor_visible();
+    }
+
+    /// The first visible line that keeps the cursor's line in a view
+    /// `visible_lines` high, moving the current scroll as little as possible.
+    pub(super) fn scroll_for_cursor(&self, visible_lines: usize) -> usize {
+        let cursor_line = self.cursor.0.min(self.lines.len().saturating_sub(1));
+        self.scroll
+            .get()
+            .min(cursor_line)
+            .max((cursor_line + 1).saturating_sub(visible_lines))
     }
 
     /// Move the cursor to `line`, keeping its screen column: a char index
