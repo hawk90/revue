@@ -40,7 +40,7 @@ use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::widget::{RenderContext, View};
 
-use super::{eventually, ratchet, run_bounded, Case};
+use super::{ratchet, run_bounded, Case};
 
 const LAYER: &str = "resources";
 const LIMIT: Duration = Duration::from_secs(10);
@@ -550,7 +550,7 @@ fn watch_cases(cases: &mut Vec<Case>) {
     fn event_for(hr: &mut HotReload, file: &Path, limit: Duration) -> Option<HotReloadEvent> {
         let name = file.file_name().unwrap().to_owned();
         let mut found = None;
-        eventually(limit, || {
+        super::eventually(limit, || {
             while let Some(e) = hr.poll() {
                 let p = match &e {
                     HotReloadEvent::StylesheetChanged(p)
