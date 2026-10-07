@@ -126,10 +126,10 @@ src/widget/
 │   ├── terminal/          #   Embedded terminal
 │   ├── code_editor/       #   Code editor
 │   ├── httpclient/        #   HTTP client widget
-│   ├── aistream.rs        #   AI streaming widget
-│   ├── diff.rs            #   Diff viewer
-│   ├── procmon.rs         #   Process monitor
-│   ├── vim.rs             #   Vim mode
+│   ├── aistream/          #   AI streaming widget
+│   ├── diff/              #   Diff viewer
+│   ├── procmon/           #   Process monitor
+│   ├── vim/               #   Vim mode
 │   └── tree_sitter_highlight.rs # Syntax highlighting
 │
 ├── markdown/              # Markdown renderer (parser, types, helpers)
