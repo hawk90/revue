@@ -20,6 +20,26 @@ mod tests {
         assert_eq!(terminal.lines[0].cells.len(), 1);
     }
 
+    /// A tab that reaches the right edge wraps the cursor to column 0; the tab
+    /// must stop there instead of filling line after line forever.
+    #[test]
+    fn a_tab_at_the_right_edge_ends() {
+        let mut terminal = Terminal::new(16, 4);
+        terminal.write("0123456789\tX");
+        assert_eq!(terminal.cursor_row, 1);
+        assert_eq!(terminal.cursor_col, 1);
+
+        terminal.write(&"\t".repeat(100));
+        assert!(terminal.cursor_col < 16);
+    }
+
+    /// Spaces a pending escape sequence swallows do not move the cursor.
+    #[test]
+    fn a_tab_inside_an_escape_sequence_ends() {
+        let mut terminal = Terminal::new(16, 4);
+        terminal.write("\x1b[\t\tX");
+    }
+
     #[test]
     fn test_put_cell_private() {
         // Test private put_cell method
@@ -243,9 +263,16 @@ impl Terminal {
             return;
         }
         if ch == '\t' {
-            // Tab to next 8-column boundary
+            // Tab to the next 8-column boundary, or to the right edge. Count
+            // the spaces up front: the cursor wraps to column 0 when a space
+            // fills the last column, and a space the ANSI parser swallows does
+            // not move it at all - a loop on the cursor never ends in either
+            // case.
             let next_tab = ((self.cursor_col / 8) + 1) * 8;
-            while self.cursor_col < next_tab && self.cursor_col < self.width as usize {
+            let spaces = next_tab
+                .min(self.width as usize)
+                .saturating_sub(self.cursor_col);
+            for _ in 0..spaces {
                 self.write_char(' ');
             }
             return;

@@ -15,11 +15,6 @@ pub struct Known {
 pub const KNOWN: &[Known] = &[
     Known {
         layer: "parsers",
-        reason: "Terminal widget: a tab near the right edge wraps the cursor back to column 0 inside its own fill loop, which then never ends",
-        cases: &["terminal hang"],
-    },
-    Known {
-        layer: "parsers",
         reason: "SyntaxHighlighter slices the line with a char index as if it were a byte index",
         cases: &["markdown soup", "syntax corpus", "syntax soup", "syntax unicode"],
     },
