@@ -15,11 +15,6 @@ pub struct Known {
 pub const KNOWN: &[Known] = &[
     Known {
         layer: "parsers",
-        reason: "var() substitution is bounded in depth but not in size: a value that refers to itself several times expands exponentially",
-        cases: &["declaration hang"],
-    },
-    Known {
-        layer: "parsers",
         reason: "Terminal widget: a tab near the right edge wraps the cursor back to column 0 inside its own fill loop, which then never ends",
         cases: &["terminal hang"],
     },
