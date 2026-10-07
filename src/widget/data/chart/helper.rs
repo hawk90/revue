@@ -22,7 +22,7 @@ pub(super) struct LineSegment {
 }
 
 /// Chart widget
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Chart {
     /// Chart title
     title: Option<String>,

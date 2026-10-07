@@ -312,6 +312,7 @@ impl_props_builders!(DockArea);
 impl_styled_view!(DockArea);
 
 /// Dock manager - orchestrates multiple dock areas
+#[derive(Clone)]
 pub struct DockManager {
     /// Left dock area
     left: Option<DockArea>,

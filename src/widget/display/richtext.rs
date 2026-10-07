@@ -219,6 +219,7 @@ impl Span {
 }
 
 /// Rich text widget with multiple styled spans
+#[derive(Clone)]
 pub struct RichText {
     /// Spans
     spans: Vec<Span>,

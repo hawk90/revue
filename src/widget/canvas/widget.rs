@@ -5,6 +5,7 @@ use super::draw::DrawContext;
 use crate::widget::traits::{RenderContext, View};
 
 /// A canvas widget for custom drawing (character-based)
+#[derive(Clone)]
 pub struct Canvas<F>
 where
     F: Fn(&mut DrawContext),
@@ -64,6 +65,7 @@ where
 ///     ctx.circle(40.0, 20.0, 15.0, Color::YELLOW);
 /// });
 /// ```
+#[derive(Clone)]
 pub struct BrailleCanvas<F>
 where
     F: Fn(&mut BrailleContext),

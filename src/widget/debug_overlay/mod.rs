@@ -103,6 +103,7 @@ impl Default for DebugConfig {
 /// Debug overlay widget
 ///
 /// Wraps another view and displays debugging information.
+#[derive(Clone)]
 pub struct DebugOverlay<V: View> {
     /// Inner view
     inner: V,

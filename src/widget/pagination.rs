@@ -31,6 +31,7 @@ pub enum PaginationStyle {
 ///     .current(3)
 ///     .on_change(|page| { /* ... */ })
 /// ```
+#[derive(Clone)]
 pub struct Pagination {
     /// Total number of pages
     total: u16,

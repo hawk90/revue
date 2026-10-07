@@ -41,6 +41,7 @@ pub enum AvatarShape {
 ///     .child(avatar("John Doe").circle())
 ///     .child(text("John Doe"))
 /// ```
+#[derive(Clone)]
 pub struct Avatar {
     /// Name to derive initials from
     name: String,

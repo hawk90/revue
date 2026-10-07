@@ -117,6 +117,7 @@ impl KeyHint {
 }
 
 /// Status bar widget
+#[derive(Clone)]
 pub struct StatusBar {
     /// Left-aligned sections
     left: Vec<StatusSection>,

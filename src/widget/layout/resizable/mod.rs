@@ -29,6 +29,7 @@ use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 use crate::{impl_styled_view, impl_view_meta, impl_widget_builders};
 
 /// Resizable widget wrapper
+#[derive(Clone)]
 pub struct Resizable<F = fn(u16, u16)>
 where
     F: FnMut(u16, u16),

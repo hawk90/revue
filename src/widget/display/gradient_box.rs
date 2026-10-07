@@ -36,6 +36,7 @@ use std::time::Duration;
 ///
 /// The widget supports animated gradients that shift colors over time,
 /// creating a flowing "colors passing through" effect.
+#[derive(Clone)]
 pub struct GradientBox {
     /// Gradient to render
     gradient: Gradient,

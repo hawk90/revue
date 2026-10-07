@@ -10,6 +10,7 @@ use crate::widget::traits::{RenderContext, View, WidgetProps, WidgetState};
 /// Popovers are positioned relative to an anchor point and can contain
 /// interactive content. They support various triggers and can be configured
 /// to close on escape or click outside.
+#[derive(Clone)]
 pub struct Popover {
     /// Content text (for simple popovers)
     pub(crate) content: String,

@@ -29,6 +29,7 @@ use super::types::DropZoneStyle;
 /// Atomic counter for generating unique drop zone IDs
 static DROPZONE_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
 /// Drop zone widget
+#[derive(Clone)]
 pub struct DropZone<F = fn(DragData) -> bool>
 where
     F: FnMut(DragData) -> bool,

@@ -72,6 +72,7 @@ impl ScatterSeries {
 }
 
 /// Scatter chart widget
+#[derive(Clone)]
 pub struct ScatterChart {
     /// Data series
     series: Vec<ScatterSeries>,

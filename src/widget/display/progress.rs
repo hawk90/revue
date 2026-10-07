@@ -20,6 +20,7 @@ pub enum ProgressStyle {
 }
 
 /// A progress bar widget
+#[derive(Clone)]
 pub struct Progress {
     progress: f32, // 0.0 to 1.0
     style: ProgressStyle,

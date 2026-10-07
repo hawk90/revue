@@ -63,6 +63,7 @@ impl ErrorCorrection {
 ///     .fg(Color::WHITE)
 ///     .bg(Color::BLACK);
 /// ```
+#[derive(Clone)]
 pub struct QrCodeWidget {
     /// Data to encode
     data: String,

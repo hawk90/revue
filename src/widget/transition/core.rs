@@ -7,6 +7,7 @@ use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Transition widget for single element animations
+#[derive(Clone)]
 pub struct Transition {
     /// Child widget content (stored as boxed renderable)
     child_content: String,

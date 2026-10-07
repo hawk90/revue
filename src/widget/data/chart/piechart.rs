@@ -68,6 +68,7 @@ impl PieSlice {
 }
 
 /// Pie chart widget
+#[derive(Clone)]
 pub struct PieChart {
     /// Pie slices
     slices: Vec<PieSlice>,

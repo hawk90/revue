@@ -30,6 +30,7 @@ pub enum TagStyle {
 ///     .child(tag("TUI").outlined())
 ///     .child(tag("Framework").closable())
 /// ```
+#[derive(Clone)]
 pub struct Tag {
     /// Label text
     text: String,

@@ -7,6 +7,7 @@ use crate::widget::traits::{RenderContext, View, WidgetProps};
 use std::fmt::Display;
 
 /// A list widget for displaying items
+#[derive(Clone)]
 pub struct List<T> {
     items: Vec<T>,
     selection: Selection,

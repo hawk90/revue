@@ -36,6 +36,7 @@ pub enum SliderStyle {
 }
 
 /// Slider widget
+#[derive(Clone)]
 pub struct Slider {
     /// Current value
     value: f64,

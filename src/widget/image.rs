@@ -74,6 +74,7 @@ pub enum ScaleMode {
 }
 
 /// Image widget using Kitty graphics protocol
+#[derive(Clone)]
 pub struct Image {
     data: Vec<u8>,
     width: u32,

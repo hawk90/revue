@@ -8,6 +8,7 @@ use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Color Picker widget
+#[derive(Clone)]
 pub struct ColorPicker {
     /// Current mode
     pub mode: ColorPickerMode,

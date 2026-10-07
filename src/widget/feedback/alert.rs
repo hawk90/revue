@@ -103,6 +103,7 @@ pub enum AlertVariant {
 ///
 /// Displays important messages that require user attention.
 /// Unlike Toast, Alert stays visible until explicitly dismissed.
+#[derive(Clone)]
 pub struct Alert {
     /// Alert message
     message: String,

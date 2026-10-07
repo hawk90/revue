@@ -82,6 +82,7 @@ pub enum ToastPosition {
 ///     .level(ToastLevel::Success)
 ///     .position(ToastPosition::TopRight);
 /// ```
+#[derive(Clone)]
 pub struct Toast {
     message: String,
     level: ToastLevel,

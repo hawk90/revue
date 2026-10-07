@@ -9,6 +9,7 @@ use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Breadcrumb widget
+#[derive(Clone)]
 pub struct Breadcrumb {
     /// Items in the breadcrumb
     items: Vec<BreadcrumbItem>,
