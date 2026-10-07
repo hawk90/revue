@@ -273,6 +273,13 @@ The hook chains to the previously installed hook, so the panic message still
 prints - and it prints *after* the alternate screen is torn down, where the user
 can actually read it.
 
+The terminal is restored **once** per TUI session, by whichever path gets there
+first: the panic hook, `restore_terminal()`, or the `Terminal`'s own
+`restore`/`Drop`. The later ones write nothing. This matters for unwinding
+panics: the `Drop` that runs after the hook would otherwise leave the alternate
+screen a second time, which moves the cursor back above the panic message so
+the shell prompt overwrites it.
+
 **Do not rely on `Drop` for this.** `Terminal` and `CrosstermBackend` do
 implement `Drop`, and that covers a normal exit, but the release profile sets
 `panic = "abort"`:
@@ -286,14 +293,17 @@ On abort the process dies without unwinding, so **no destructor runs**. A panic
 hook runs in both unwind and abort mode; that is why the hook, not `Drop`, is
 what upholds the guarantee.
 
-For other paths out of TUI mode - a signal handler, or shelling out to
-`$EDITOR` - call the restore directly:
+For other paths out of TUI mode - shelling out to `$EDITOR`, or your own
+custom panic hook - call the restore directly:
 
 ```rust
 use revue::render::restore_terminal;
 
-restore_terminal(); // idempotent, and a no-op if no mode was enabled
+restore_terminal(); // ends the session: the Terminal's own restore/Drop then writes nothing
 ```
+
+If you enter TUI mode again by hand afterwards, call `install_panic_hook()`
+again to start a new session.
 
 ### Validation Errors
 

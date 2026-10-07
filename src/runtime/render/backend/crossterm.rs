@@ -110,7 +110,18 @@ impl<W: Write> Backend for CrosstermBackend<W> {
 
     fn restore(&mut self) -> Result<()> {
         if self.raw_mode {
-            if self.mouse_enabled {
+            let mouse_enabled = self.mouse_enabled;
+            self.raw_mode = false;
+            self.mouse_enabled = false;
+            self.bracketed_paste_enabled = false;
+            self.focus_events_enabled = false;
+            // Restore once per session: if the panic hook already did, leaving
+            // the alternate screen again would move the cursor back over the
+            // panic message. See `panic_hook`.
+            if !crate::runtime::render::terminal::panic_hook::claim_restore() {
+                return Ok(());
+            }
+            let written = if mouse_enabled {
                 execute!(
                     self.writer,
                     DisableMouseCapture,
@@ -119,7 +130,7 @@ impl<W: Write> Backend for CrosstermBackend<W> {
                     ResetColor,
                     Show,
                     LeaveAlternateScreen
-                )?;
+                )
             } else {
                 execute!(
                     self.writer,
@@ -128,14 +139,13 @@ impl<W: Write> Backend for CrosstermBackend<W> {
                     ResetColor,
                     Show,
                     LeaveAlternateScreen
-                )?;
-            }
-            disable_raw_mode()?;
-            self.raw_mode = false;
-            self.mouse_enabled = false;
-            self.bracketed_paste_enabled = false;
-            self.focus_events_enabled = false;
-            crate::runtime::render::terminal::panic_hook::disarm();
+                )
+            };
+            // There is no second attempt, so leave raw mode even if the
+            // writer refused the sequence.
+            let raw = disable_raw_mode();
+            written?;
+            raw?;
         }
         Ok(())
     }
@@ -277,6 +287,46 @@ mod tests {
         fn flush(&mut self) -> io::Result<()> {
             Ok(())
         }
+    }
+
+    /// A backend as `init_with_mouse` leaves it, minus the parts that need a
+    /// real TTY.
+    fn live_backend() -> CrosstermBackend<MockWriter> {
+        let mut backend = CrosstermBackend::new(MockWriter::new());
+        backend.raw_mode = true;
+        backend.mouse_enabled = true;
+        crate::render::install_panic_hook();
+        backend
+    }
+
+    fn leaves_alt_screen(backend: &CrosstermBackend<MockWriter>) -> usize {
+        String::from_utf8_lossy(&backend.writer().buffer)
+            .matches("\x1b[?1049l")
+            .count()
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn restore_leaves_the_alternate_screen_once() {
+        let mut backend = live_backend();
+
+        backend.restore().unwrap();
+        backend.restore().unwrap();
+
+        assert_eq!(leaves_alt_screen(&backend), 1);
+    }
+
+    /// The unwinding `Drop` after a panic must not undo the panic hook's work
+    /// by leaving the alternate screen a second time.
+    #[test]
+    #[serial_test::serial]
+    fn restore_after_the_panic_hook_writes_nothing() {
+        let mut backend = live_backend();
+
+        assert!(crate::runtime::render::terminal::panic_hook::claim_restore());
+        backend.restore().unwrap();
+
+        assert_eq!(leaves_alt_screen(&backend), 0);
     }
 
     #[test]
