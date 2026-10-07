@@ -14,11 +14,6 @@ pub struct Known {
 
 pub const KNOWN: &[Known] = &[
     // ── resources ──
-    Known {
-        layer: "resources",
-        reason: "HotReload::poll drops an event inside the debounce window instead of deferring it",
-        cases: &["watch rapid-saves"],
-    },
     // ── concurrency ──
     Known {
         layer: "concurrency",

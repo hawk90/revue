@@ -48,6 +48,10 @@ pub struct HotReload {
     /// Per-event debounce tracking: maps `debounce_key` -> last_event_time
     /// This prevents different files (or different errors) from debouncing each other
     last_events: HashMap<String, Instant>,
+    /// The latest event that arrived inside its key's debounce window, held
+    /// until the window has passed: debouncing must delay a repeat, not lose
+    /// it, or the last of two quick saves is never reloaded.
+    deferred: HashMap<String, HotReloadEvent>,
     debounce: Duration,
     recursive: bool,
 }
@@ -111,6 +115,7 @@ impl HotReload {
             receiver: rx,
             watched_paths: Vec::new(),
             last_events: HashMap::new(),
+            deferred: HashMap::new(),
             debounce: config.debounce,
             recursive: config.recursive,
         })
@@ -177,23 +182,40 @@ impl HotReload {
     }
 
     /// Poll for events (non-blocking)
+    ///
+    /// Events are debounced per kind and path: a repeat inside the debounce
+    /// window is held back and returned once the window has passed, so the
+    /// last change is always reported.
     pub fn poll(&mut self) -> Option<HotReloadEvent> {
-        match self.receiver.try_recv() {
-            Ok(event) => {
-                // Apply per-path debouncing
-                let now = Instant::now();
-                let event_key = debounce_key(&event);
+        let now = Instant::now();
 
-                if let Some(&last) = self.last_events.get(&event_key) {
-                    if now.duration_since(last) < self.debounce {
-                        return None; // Debounced
-                    }
-                }
-                self.last_events.insert(event_key, now);
-                Some(event)
-            }
-            Err(_) => None,
+        // A held-back repeat whose window has passed comes first.
+        let due = self
+            .deferred
+            .keys()
+            .find(|key| {
+                self.last_events
+                    .get(*key)
+                    .is_none_or(|&last| now.duration_since(last) >= self.debounce)
+            })
+            .cloned();
+        if let Some(key) = due {
+            let event = self.deferred.remove(&key)?;
+            self.last_events.insert(key, now);
+            return Some(event);
         }
+
+        let event = self.receiver.try_recv().ok()?;
+        let event_key = debounce_key(&event);
+        if let Some(&last) = self.last_events.get(&event_key) {
+            if now.duration_since(last) < self.debounce {
+                self.deferred.insert(event_key, event);
+                return None; // Debounced: held back until the window has passed
+            }
+        }
+        self.deferred.remove(&event_key);
+        self.last_events.insert(event_key, now);
+        Some(event)
     }
 
     /// Wait for next event (blocking)
@@ -329,6 +351,31 @@ mod tests {
 
         assert!(matches!(hr.poll(), Some(HotReloadEvent::Error(m)) if m == "first"));
         assert!(matches!(hr.poll(), Some(HotReloadEvent::Error(m)) if m == "second"));
+    }
+
+    #[test]
+    fn test_poll_defers_a_repeat_until_the_window_has_passed() {
+        let mut hr = HotReload::with_config(HotReloadConfig {
+            debounce: Duration::from_millis(50),
+            recursive: false,
+        })
+        .unwrap();
+        let (tx, rx) = channel();
+        hr.receiver = rx;
+        tx.send(HotReloadEvent::StylesheetChanged("a.css".into()))
+            .unwrap();
+        tx.send(HotReloadEvent::StylesheetChanged("a.css".into()))
+            .unwrap();
+
+        assert!(hr.poll().is_some());
+        // The second save is inside the window: held back, not lost.
+        assert!(hr.poll().is_none());
+        std::thread::sleep(Duration::from_millis(80));
+        assert!(matches!(
+            hr.poll(),
+            Some(HotReloadEvent::StylesheetChanged(p)) if p == Path::new("a.css")
+        ));
+        assert!(hr.poll().is_none());
     }
 
     #[test]
