@@ -60,6 +60,23 @@ fn test_transition_parse_with_delay() {
     assert_eq!(t.easing, Easing::EaseOut);
 }
 
+/// The second time is the delay even when the first equals the 300ms default
+#[test]
+fn test_transition_parse_delay_after_default_duration() {
+    let t = Transition::parse("opacity 0.3s 0.1s").unwrap();
+    assert_eq!(t.duration, Duration::from_millis(300));
+    assert_eq!(t.delay, Duration::from_millis(100));
+
+    let t = Transition::parse("opacity ease-in 300ms 50ms").unwrap();
+    assert_eq!(t.duration, Duration::from_millis(300));
+    assert_eq!(t.delay, Duration::from_millis(50));
+    assert_eq!(t.easing, Easing::EaseIn);
+
+    let t = Transition::parse("opacity ease-in 0.5s 0.2s").unwrap();
+    assert_eq!(t.duration, Duration::from_millis(500));
+    assert_eq!(t.delay, Duration::from_millis(200));
+}
+
 #[test]
 fn test_transitions_parse() {
     let ts = Transitions::parse("opacity 0.3s, background 0.5s ease-out");
