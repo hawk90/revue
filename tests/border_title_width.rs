@@ -68,3 +68,35 @@ fn ascii_title_unchanged() {
     let buffer = render_titled(20, "Panel");
     assert_eq!(row_text(&buffer, 0), "┌─Panel────────────┐");
 }
+
+/// Left and right titles run down the edge one glyph per row. A zero-width
+/// char (VS16) takes no row, the same as it takes no column on the top edge.
+mod side_titles {
+    use revue::layout::Rect;
+    use revue::render::Buffer;
+    use revue::utils::border::{draw_border_title, BorderTitle};
+    use revue::widget::traits::RenderContext;
+
+    fn column(title: BorderTitle, height: u16) -> String {
+        let mut buffer = Buffer::new(4, height);
+        let area = Rect::new(0, 0, 4, height);
+        let mut ctx = RenderContext::new(&mut buffer, area);
+        draw_border_title(&mut ctx, area, &title);
+        (0..height)
+            .map(|y| buffer.get(0, y).unwrap().symbol)
+            .collect()
+    }
+
+    #[test]
+    fn vs16_takes_no_row() {
+        // Three glyphs fit the three rows between the corners
+        let col = column(BorderTitle::new("⚙\u{FE0F}ab").padding(0).left(), 5);
+        assert_eq!(col, " ⚙ab ");
+    }
+
+    #[test]
+    fn end_position_measures_glyph_rows() {
+        let col = column(BorderTitle::new("⚙\u{FE0F}ab").padding(0).left().end(), 6);
+        assert_eq!(col, "  ⚙ab ");
+    }
+}

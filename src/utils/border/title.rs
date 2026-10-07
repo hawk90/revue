@@ -231,7 +231,15 @@ pub fn draw_border_title(ctx: &mut RenderContext, area: Rect, title: &BorderTitl
         }
         BorderEdge::Left | BorderEdge::Right => {
             let available = area.height.saturating_sub(2); // Exclude corners
-            let text_len = title.text.chars().count() as u16;
+                                                           // One row per glyph that takes a cell: a zero-width char (e.g.
+                                                           // VS16) takes no row, as it takes no column on the top edge.
+            let glyphs = || {
+                title
+                    .text
+                    .chars()
+                    .filter(|&ch| crate::utils::unicode::char_width(ch) > 0)
+            };
+            let text_len = glyphs().count() as u16;
             let total_height = text_len + title.pad_start + title.pad_end;
 
             if total_height > available {
@@ -264,7 +272,7 @@ pub fn draw_border_title(ctx: &mut RenderContext, area: Rect, title: &BorderTitl
 
             // Draw text (vertically)
             let text_y = y.saturating_add(title.pad_start);
-            for (i, ch) in title.text.chars().enumerate() {
+            for (i, ch) in glyphs().enumerate() {
                 let mut cell = Cell::new(ch);
                 cell.fg = title.fg;
                 cell.bg = title.bg;
