@@ -15,11 +15,6 @@ pub struct Known {
 pub const KNOWN: &[Known] = &[
     Known {
         layer: "parsers",
-        reason: "Diagram node definitions slice between an opening and a closing bracket without checking that the closing one comes after",
-        cases: &["mermaid soup"],
-    },
-    Known {
-        layer: "parsers",
         reason: "parse_duration hands negative / non-finite / huge seconds to Duration::from_secs_f64, which panics",
         cases: &["transition soup"],
     },

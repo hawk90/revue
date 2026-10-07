@@ -226,3 +226,16 @@ fn test_diagram_direction_left_right_grid_fills_columns() {
     assert_eq!(ay, cy);
     assert!(ax < cx);
 }
+
+/// A closing bracket before the opening one sliced the node definition
+/// backwards and panicked; every bracket kind takes its label from after the
+/// opening bracket.
+#[test]
+fn closing_bracket_before_the_opening_one_does_not_panic() {
+    for source in ["A-->A][", "A]x[B]-->C", "A}{-->B", "A)(-->B", "X-->Y)(z)"] {
+        let d = Diagram::new().parse(source);
+        assert_eq!(d.get_edges().len(), 1, "{source:?}");
+    }
+    let d = Diagram::new().parse("A]x[Label]-->B");
+    assert_eq!(d.get_nodes()[0].label, "Label");
+}
