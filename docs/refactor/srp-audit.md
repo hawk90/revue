@@ -53,7 +53,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `runtime/render/batch.rs` | 511 | 3 |  | todo | |
 | `runtime/render/image_protocol.rs` | 696 | 8 | 696줄, 공개 타입 8 | split | 감지·인코더·Sixel 알고리즘·터미널별 명령이 섞임 → image_protocol/{mod,protocol,encoder,sixel,kitty,iterm2}.rs |
 | `runtime/style/error.rs` | 669 | 6 | 669줄, 공개 타입 6 | split | 오류 보고 타입과 "did you mean" 속성 목록·Levenshtein이 섞임 → error/{mod,suggest}.rs. 참고: `suggest_property`/`KNOWN_PROPERTIES`는 크레이트 안에서 쓰이지 않고 목록이 실제 지원 속성과 어긋남 |
-| `runtime/style/parser/apply.rs` | 707 | 0 | 707줄 | todo | |
+| `runtime/style/parser/apply.rs` | 707 | 0 | 707줄 | split | 속성 적용, `var()` 치환, 애니메이션 선언→`@keyframes` 해석이 섞임 → parser/{apply,vars,animation}.rs. 참고: `resolve_animation`의 `found_shorthand`는 쓰이지 않음, `CubicBezier`는 ease_in_out으로 대체됨 |
 | `runtime/style/parser/types.rs` | 103 | 5 | 타입 모음, 공개 타입 5 | todo | |
 | `runtime/style/properties/types.rs` | 427 | 20 | 타입 모음, 공개 타입 20 | todo | |
 | `runtime/style/theme.rs` | 747 | 8 | 747줄, 공개 타입 8 | todo | |

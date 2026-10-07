@@ -98,6 +98,6 @@ impl StyleSheet {
     /// Looks for `animation` or `animation-*` properties in the selector's rules,
     /// then resolves the referenced @keyframes definition into a `KeyframeAnimation`.
     pub fn animation(&self, selector: &str) -> Option<crate::style::animation::KeyframeAnimation> {
-        super::apply::resolve_animation(self, selector)
+        super::animation::resolve_animation(self, selector)
     }
 }
