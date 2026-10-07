@@ -1101,7 +1101,7 @@ items:
       - qrcode(data) renders
       - error-correction level
     evidence:
-      - src/widget/qrcode.rs::qrcode
+      - src/widget/qrcode/mod.rs::qrcode
       - tests/widget/qrcode.rs
       - examples/qrcode_generator.rs
     source:

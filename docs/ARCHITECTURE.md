@@ -147,7 +147,7 @@ src/widget/
     ├── dropzone/          # Drag-and-drop zone
     ├── sortable/          # Sortable list
     ├── form/              # Form container
-    ├── qrcode.rs          # QR code
+    ├── qrcode/            # QR code
     ├── image/             # Kitty image protocol
     ├── link.rs            # Clickable links
     ├── pagination.rs      # Pagination

@@ -184,4 +184,4 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `widget/markdown/types.rs` | 163 | 5 | 타입 모음, 공개 타입 5 | todo | |
 | `widget/mermaid/types.rs` | 175 | 7 | 타입 모음, 공개 타입 7 | todo | |
 | `widget/option_list.rs` | 724 | 4 | 724줄, 위젯 한 파일 | split | 항목·옵션·구분선 타입(약 85줄), 구조체·빌더, 조회·선택·하이라이트 이동(약 155줄), 약 125줄의 렌더, 테스트용 getter가 한 파일에 섞임 → option_list/{mod,types,navigation,render}.rs (`separator_char`는 렌더와 테스트 getter가 함께 쓰므로 mod.rs). 버그 의심: 옵션이 없을 때 `highlight_first`는 `option_count() - 1`이 넘침(디버그 빌드는 패닉), 스크롤은 옵션만 건너뛰어 앞쪽 구분선·그룹 제목은 계속 그려짐, 힌트 정렬이 `len()`(바이트)이라 한글·아이콘이 있으면 어긋남. 참고: 모듈 문서는 키보드 탐색을 말하지만 키 처리기가 없고, 예제가 없는 `Option`을 import함 |
-| `widget/qrcode.rs` | 438 | 3 | 위젯 한 파일 | todo | |
+| `widget/qrcode.rs` | 438 | 3 | 위젯 한 파일 | split | 표시 방식·오류 정정 타입, 구조체·빌더·getter·QR 행렬 생성 옆에 네 가지 방식(반 블록·전체 블록·ASCII·점자)으로 그리는 약 200줄의 렌더가 섞임 → qrcode/{mod,types,render}.rs (`ErrorCorrection::to_ec_level`은 `get_matrix`만 쓰므로 mod.rs). 버그 의심: `inverted`는 `get_matrix`에서 모듈을 뒤집는데 반 블록·전체 블록 렌더는 전경·배경색도 맞바꿔 두 번 뒤집혀 효과가 사라짐(ASCII·점자는 한 번만 뒤집힘). 참고: 구조체 문서 예제가 `QrCodeWidget` 대신 `QrCode::new`를 씀 |
