@@ -81,10 +81,4 @@ pub const KNOWN: &[Known] = &[
         sequence: "ScrollDown@(start,start) ScrollDown@(start,start) ScrollDown@(start,start) ScrollDown@(start,start) [7x40]",
         reason: "the offset is clamped only against the viewport of the last scroll call, not the one rendered",
     },
-    Known {
-        layer: "keys",
-        widget: "CsvViewer",
-        sequence: "<search '1'> 'n'",
-        reason: "search matches cells of a ragged row past the shown columns and selects a column that is not there",
-    },
 ];

@@ -535,3 +535,16 @@ fn test_parse_resets_the_selection_and_the_search() {
     assert_eq!(viewer.row_count(), 0);
     assert_eq!(viewer.selected_row(), 0);
 }
+
+// Found by tests/event_sequences.rs: the shrunk sequence was
+// `<search '1'> 'n'` - a ragged row's extra cell (never drawn) matched, and
+// next_match() selected a column the viewer does not have.
+#[test]
+fn test_search_skips_cells_past_the_shown_columns() {
+    let mut viewer = CsvViewer::from_content("a,b,c\n7,8,9,10\n1,2,3");
+    assert_eq!(viewer.column_count(), 3);
+    viewer.search("1");
+    assert_eq!(viewer.match_count(), 1);
+    viewer.next_match();
+    assert_eq!((viewer.selected_row(), viewer.selected_col()), (1, 0));
+}

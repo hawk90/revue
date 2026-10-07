@@ -418,8 +418,10 @@ impl CsvViewer {
         }
 
         let start = if self.has_header { 1 } else { 0 };
+        // Only the shown columns: a ragged row's extra cells are never drawn
+        let columns = self.column_count();
         for (row_idx, row) in self.data.iter().enumerate().skip(start) {
-            for (col_idx, cell) in row.iter().enumerate() {
+            for (col_idx, cell) in row.iter().enumerate().take(columns) {
                 if cell.to_lowercase().contains(&self.search_query) {
                     self.search_matches.push((row_idx - start, col_idx));
                 }
