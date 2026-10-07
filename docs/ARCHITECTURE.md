@@ -70,7 +70,7 @@ src/widget/
 │       ├── textarea/      #   Multi-line editor
 │       ├── button.rs      #   Button
 │       ├── checkbox.rs    #   Checkbox
-│       ├── radio.rs       #   Radio buttons
+│       ├── radio/         #   Radio buttons
 │       ├── switch.rs      #   Toggle switch
 │       ├── select/        #   Dropdown select
 │       ├── slider.rs      #   Slider control
