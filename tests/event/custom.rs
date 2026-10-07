@@ -299,3 +299,39 @@ fn test_priority_ordering() {
 }
 
 // =============================================================================
+
+#[test]
+fn a_handler_can_register_and_remove_handlers_while_dispatched() {
+    // It used to take the handler table's write lock while the dispatch
+    // held its read lock on the same thread: a deadlock. Run it on a thread
+    // so a regression fails instead of hanging the suite.
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let dispatcher = EventDispatcher::new();
+        let inner = Arc::new(std::sync::Mutex::new(dispatcher.clone()));
+        let mut outer = dispatcher.clone();
+        let i = inner.clone();
+        let first = outer.on::<TestEvent>(move |_, _| {
+            let mut d = i.lock().unwrap();
+            d.on::<TestEvent>(|_, _| EventResponse::Handled);
+            EventResponse::Handled
+        });
+        dispatcher.dispatch(TestEvent { value: 1 });
+        let after_on = dispatcher.handler_count::<TestEvent>();
+
+        let i = inner.clone();
+        outer.on::<TestEvent>(move |_, _| {
+            i.lock().unwrap().off(first);
+            EventResponse::Handled
+        });
+        dispatcher.dispatch(TestEvent { value: 2 });
+        let _ = tx.send((after_on, dispatcher.handler_count::<TestEvent>()));
+    });
+    let (after_on, after_off) = rx
+        .recv_timeout(std::time::Duration::from_secs(5))
+        .expect("dispatch deadlocked");
+    assert_eq!(after_on, 2);
+    // The second dispatch ran `first` once more (adding a handler) and then
+    // the remover took `first` out: 2 + 1 (remover) + 1 (added) - 1 (first).
+    assert_eq!(after_off, 3);
+}

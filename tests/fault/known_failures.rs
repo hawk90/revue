@@ -22,11 +22,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "concurrency",
-        reason: "EventDispatcher calls handlers while holding the handler read lock",
-        cases: &["dispatch on-in-handler"],
-    },
-    Known {
-        layer: "concurrency",
         reason: "PluginRegistry forgets which plugins a failed init or mount already ran",
         cases: &["plugin init-error", "plugin mount-error"],
     },

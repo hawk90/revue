@@ -58,10 +58,13 @@ impl HandlerOptions {
     }
 }
 
-// Internal handler wrapper
+// Internal handler wrapper. Shared, so a dispatch can call the handlers
+// after releasing the lock on the handler table.
 pub type BoxedHandler =
-    Box<dyn Fn(&dyn std::any::Any, &mut EventMeta) -> EventResponse + Send + Sync>;
+    std::sync::Arc<dyn Fn(&dyn std::any::Any, &mut EventMeta) -> EventResponse + Send + Sync>;
 
+/// One registered handler
+#[derive(Clone)]
 pub struct HandlerEntry {
     pub id: CustomHandlerId,
     pub handler: BoxedHandler,
