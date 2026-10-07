@@ -121,7 +121,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `widget/data/chart/histogram/mod.rs` | 623 | 1 | 623줄, 위젯 한 파일 | split | 빌더·통계 접근자와 막대·통계선·축 그리기(`View`)가 섞임 → histogram/{mod,render}.rs (boxplot과 같은 모양). `max_value`·`bin_value`는 그리기에서만 쓰여 render.rs로. 렌더 테스트도 render.rs로 옮기며 `BinConfig`·`ChartGrid` import를 테스트 모듈에 추가 |
 | `widget/data/chart/piechart.rs` | 442 | 4 | 위젯 한 파일 | split | 경계선: 442줄이지만 슬라이스·스타일 타입(약 55줄), 빌더(약 115줄), 원 그리기·라벨·범례(`View`, 약 210줄)가 각각 수십 줄을 넘음 → piechart/{mod,types,render}.rs (heatmap과 같은 모양) |
 | `widget/data/chart/timeseries/types.rs` | 197 | 7 | 타입 모음, 공개 타입 7 | todo | |
-| `widget/data/chart/waveline.rs` | 544 | 3 | 위젯 한 파일 | todo | |
+| `widget/data/chart/waveline.rs` | 544 | 3 | 위젯 한 파일 | split | 스타일·보간 타입, 빌더, 색 그라데이션·보간과 `View`(약 265줄), 위젯과 무관한 데모용 파형 데이터 생성 함수가 섞임 → waveline/{mod,types,render,generators}.rs (사전 설정 생성 함수 `audio_waveform` 등은 mod.rs) |
 | `widget/data/datagrid/render.rs` | 603 | 0 | 603줄, 위젯 한 파일 | todo | |
 | `widget/data/json_viewer/view.rs` | 656 | 1 | 656줄, 위젯 한 파일 | todo | |
 | `widget/data/log_viewer/view.rs` | 908 | 1 | 908줄, 위젯 한 파일 | todo | |
