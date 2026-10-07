@@ -22,11 +22,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "concurrency",
-        reason: "end_batch flushes while holding the batch-depth RefCell borrow",
-        cases: &["reactive batch-queue-in-flush"],
-    },
-    Known {
-        layer: "concurrency",
         reason: "batch() does not end the batch when its closure panics",
         cases: &["reactive batch-panics"],
     },

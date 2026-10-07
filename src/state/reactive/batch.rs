@@ -100,14 +100,16 @@ pub fn start_batch() {
 ///
 /// Flushes pending updates if this is the outermost batch.
 pub fn end_batch() {
-    BATCH_DEPTH.with(|depth| {
+    let outermost = BATCH_DEPTH.with(|depth| {
         let mut d = depth.borrow_mut();
         *d = d.saturating_sub(1);
-
-        if *d == 0 {
-            flush_updates();
-        }
+        *d == 0
     });
+    // Flush with the depth borrow released: a flushed update may queue
+    // another or start a batch, which reads the depth.
+    if outermost {
+        flush_updates();
+    }
 }
 
 /// Check if currently in a batch
@@ -318,6 +320,23 @@ impl Drop for BatchGuard {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_flushed_update_can_queue_another() {
+        use std::cell::Cell;
+        use std::rc::Rc;
+        let ran = Rc::new(Cell::new(0));
+        let r = ran.clone();
+        batch(|| {
+            queue_update(move || {
+                let r2 = r.clone();
+                queue_update(move || r2.set(r2.get() + 1));
+                batch(|| ());
+            });
+        });
+        assert_eq!(ran.get(), 1);
+        assert!(!is_batching());
+    }
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
 
