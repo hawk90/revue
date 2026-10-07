@@ -86,7 +86,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `core/app/profiler.rs` | 582 | 10 | 공개 타입 10 | todo | |
 | `core/app/router.rs` | 556 | 5 | 공개 타입 5 | todo | |
 | `core/app/screen/types.rs` | 240 | 7 | 타입 모음, 공개 타입 7 | todo | |
-| `devtools/mod.rs` | 527 | 4 |  | todo | |
+| `devtools/mod.rs` | 527 | 4 |  | split | 모듈 선언·재노출에 패널 설정 타입(위치·설정·탭), `DevTools` 상태·영역 계산, 패널 그리기가 함께 있음 → devtools/{mod,types,render}.rs (`DevTools`는 테스트가 private `config`를 보므로 mod.rs에 둠). 버그 의심: 패널 폭이 2 미만이거나 높이가 0이면(`size` 0, 아주 작은 화면) `render_panel`의 `area.width - 2`와 `draw_border`의 `area.height - 1`이 넘침 |
 | `devtools/profiler/types.rs` | 233 | 5 | 타입 모음, 공개 타입 5 | todo | |
 | `devtools/time_travel/debugger.rs` | 615 | 1 | 615줄 | todo | |
 | `devtools/time_travel/types.rs` | 302 | 6 | 타입 모음, 공개 타입 6 | todo | |
