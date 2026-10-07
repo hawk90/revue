@@ -4,6 +4,7 @@
 //! select_all); these cover the item/style types, the remaining builders,
 //! highlight navigation and the rendered item prefixes.
 
+use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
@@ -493,4 +494,48 @@ fn test_selection_list_empty_item_text() {
     let list = SelectionList::new(vec![""]).selected(vec![0]);
     assert_eq!(list.get_selected_values(), vec![""]);
     assert_eq!(first_row(&list), "[x]");
+}
+
+// =========================================================================
+// Key handling: the keys the focused help line lists
+// =========================================================================
+
+#[test]
+fn test_handle_key_navigates_with_arrows() {
+    let mut list = SelectionList::new(vec!["A", "B", "C"]);
+    assert!(list.handle_key(&Key::Down));
+    assert_eq!(highlighted(&list), Some(1));
+    assert!(list.handle_key(&Key::Char('j')));
+    assert_eq!(highlighted(&list), Some(2));
+    assert!(list.handle_key(&Key::Up));
+    assert_eq!(highlighted(&list), Some(1));
+    assert!(list.handle_key(&Key::Char('k')));
+    assert_eq!(highlighted(&list), Some(0));
+}
+
+#[test]
+fn test_handle_key_space_toggles_highlighted() {
+    let mut list = SelectionList::new(vec!["A", "B", "C"]);
+    list.handle_key(&Key::Down);
+    assert!(list.handle_key(&Key::Char(' ')));
+    assert_eq!(list.get_selected(), &[1]);
+    assert!(list.handle_key(&Key::Char(' ')));
+    assert!(list.get_selected().is_empty());
+}
+
+#[test]
+fn test_handle_key_a_selects_all_and_n_none() {
+    let mut list = SelectionList::new(vec!["A", "B", "C"]);
+    assert!(list.handle_key(&Key::Char('a')));
+    assert_eq!(list.get_selected(), &[0, 1, 2]);
+    assert!(list.handle_key(&Key::Char('n')));
+    assert!(list.get_selected().is_empty());
+}
+
+#[test]
+fn test_handle_key_ignores_other_keys() {
+    let mut list = SelectionList::new(vec!["A", "B"]);
+    assert!(!list.handle_key(&Key::Char('x')));
+    assert!(!list.handle_key(&Key::Enter));
+    assert!(list.get_selected().is_empty());
 }

@@ -1,8 +1,27 @@
 //! Changing the selection and moving the highlight
 
 use super::SelectionList;
+use crate::event::Key;
 
 impl SelectionList {
+    /// Handle key input, returns true if the key was handled
+    ///
+    /// These are the keys the focused help line lists:
+    /// - `Up`/`k`, `Down`/`j`: move the highlight
+    /// - `Space`: toggle the highlighted item
+    /// - `a`: select all, `n`: select none
+    pub fn handle_key(&mut self, key: &Key) -> bool {
+        match key {
+            Key::Up | Key::Char('k') => self.highlight_previous(),
+            Key::Down | Key::Char('j') => self.highlight_next(),
+            Key::Char(' ') => self.toggle_highlighted(),
+            Key::Char('a') => self.select_all(),
+            Key::Char('n') => self.deselect_all(),
+            _ => return false,
+        }
+        true
+    }
+
     /// Toggle selection of an item
     pub fn toggle(&mut self, index: usize) {
         if index >= self.items.len() {

@@ -22,6 +22,12 @@
 //!     "Feature C",
 //! ]).show_checkboxes(true);
 //! ```
+//!
+//! # Keys
+//!
+//! [`SelectionList::handle_key`] handles the keys the focused list's help
+//! line shows: `Up`/`k` and `Down`/`j` move the highlight, `Space` toggles the
+//! highlighted item, `a` selects all and `n` selects none.
 
 mod render;
 mod selection;
