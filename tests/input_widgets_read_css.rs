@@ -10,6 +10,7 @@
 use revue::prelude::*;
 use revue::style::Color;
 use revue::testing::PipelineHarness;
+use revue::widget::theme::{SECONDARY_TEXT, SUBTLE_GRAY};
 use revue::widget::{Rating, SearchBar, Slider, Step, Stepper, Switch};
 
 const RED: Color = Color {
@@ -135,4 +136,56 @@ fn color_reaches_a_steppers_pending_steps() {
         any_fg(&h, RED),
         "`color` did not reach Stepper's pending steps"
     );
+}
+
+/// The foreground of the first cell, in reading order, whose symbol matches.
+fn fg_where(h: &PipelineHarness, matches: impl Fn(char) -> bool) -> Option<Color> {
+    let buffer = h.buffer();
+    (0..buffer.height()).find_map(|y| {
+        (0..buffer.width()).find_map(|x| {
+            buffer
+                .get(x, y)
+                .filter(|c| matches(c.symbol))
+                .and_then(|c| c.fg)
+        })
+    })
+}
+
+// `FormField` draws its label, then its placeholder, then helper text.
+wrap!(
+    FormFieldView,
+    revue::widget::form_field("Email")
+        .placeholder("you@x")
+        .helper_text("~")
+        .element_id("w")
+);
+
+/// Untouched by a stylesheet, a form field paints as it always has.
+#[test]
+fn a_form_field_keeps_its_default_colors() {
+    let h = draw("", &FormFieldView);
+    assert_eq!(fg_where(&h, |c| c == 'E'), Some(SECONDARY_TEXT));
+    assert_eq!(fg_where(&h, |c| c == 'y'), Some(SUBTLE_GRAY));
+}
+
+/// `FormField`'s `View` read no CSS at all; the ratchet missed it because
+/// `Form` is declared first in the same file. Its label takes `color`, as a
+/// `Checkbox`'s label does.
+#[test]
+fn color_reaches_a_form_fields_label() {
+    let h = draw("#w { color: #ff0000; }", &FormFieldView);
+    assert_eq!(
+        fg_where(&h, |c| c == 'E'),
+        Some(RED),
+        "`color` did not reach FormField's label"
+    );
+}
+
+/// The placeholder keeps its gray, as an `Input`'s and a `Form`'s do: it
+/// reads as "nothing entered", which one `color` for the whole field would
+/// erase.
+#[test]
+fn a_form_fields_placeholder_keeps_its_color() {
+    let h = draw("#w { color: #ff0000; }", &FormFieldView);
+    assert_eq!(fg_where(&h, |c| c == 'y'), Some(SUBTLE_GRAY));
 }

@@ -332,7 +332,10 @@ impl View for FormFieldWidget {
     fn render(&self, ctx: &mut RenderContext) {
         let area = ctx.area;
 
-        // Row 0: Label (field name)
+        // Row 0: Label (field name). The label takes `color`, as a
+        // `Checkbox`'s does; the placeholder and helper text keep their grays,
+        // which say "nothing entered" and "aside".
+        let label_fg = ctx.css_color(SECONDARY_TEXT);
         if self.show_label && area.height >= 1 && area.width > 0 {
             put_text(
                 ctx,
@@ -340,7 +343,7 @@ impl View for FormFieldWidget {
                 0,
                 &self.name,
                 area.width,
-                SECONDARY_TEXT,
+                label_fg,
                 Modifier::empty(),
             );
         }
