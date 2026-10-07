@@ -658,3 +658,18 @@ fn test_focus_next_follows_tree_order() {
         .collect();
     assert_eq!(focusable, order);
 }
+
+#[test]
+fn test_remove_root_clears_root() {
+    let mut tree = AccessibilityTree::with_root(TreeNode::new("app", Role::Main));
+    tree.add_child(&"app".to_string(), TreeNode::new("btn", Role::Button));
+
+    tree.remove_node(&"app".to_string());
+    assert!(tree.is_empty());
+    assert!(tree.root().is_none());
+
+    // A later node that reuses the id must not silently become the root
+    tree.add_node(TreeNode::new("app", Role::Button));
+    assert!(tree.root().is_none());
+    assert_eq!(tree.debug_string(), "");
+}

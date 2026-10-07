@@ -228,6 +228,11 @@ impl AccessibilityTree {
                 self.focus = None;
             }
 
+            // Clear the root if the root was removed
+            if self.root.as_ref() == Some(id) {
+                self.root = None;
+            }
+
             Some(node)
         } else {
             None
