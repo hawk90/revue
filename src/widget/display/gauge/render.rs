@@ -10,15 +10,18 @@ use crate::widget::traits::{RenderContext, View};
 impl Gauge {
     /// Get current display color based on thresholds
     fn current_color(&self, ctx: &RenderContext) -> Color {
-        if let Some(critical) = self.critical_threshold {
-            if self.value >= critical {
-                return self.critical_color;
+        let crosses = |threshold: f64| {
+            if self.thresholds_below {
+                self.value <= threshold
+            } else {
+                self.value >= threshold
             }
+        };
+        if self.critical_threshold.is_some_and(crosses) {
+            return self.critical_color;
         }
-        if let Some(warning) = self.warning_threshold {
-            if self.value >= warning {
-                return self.warning_color;
-            }
+        if self.warning_threshold.is_some_and(crosses) {
+            return self.warning_color;
         }
         // The normal fill takes `color`; the warning and critical thresholds
         // keep theirs - they are the reading, and a rule cannot address them
@@ -398,5 +401,38 @@ mod tests {
         let mut ctx = RenderContext::new(&mut buf, area);
         let g = Gauge::new().value(0.5).style(GaugeStyle::Bar);
         g.render(&mut ctx);
+    }
+
+    fn render(g: &Gauge, w: u16, h: u16) -> Buffer {
+        let mut buf = Buffer::new(w, h);
+        let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, w, h));
+        g.render(&mut ctx);
+        buf
+    }
+
+    #[test]
+    fn battery_flags_a_low_charge_not_a_full_one() {
+        // Cell 1 is the first fill cell inside `[`.
+        let fill = |level: f64| {
+            render(&super::super::battery(level), 12, 1)
+                .get(1, 0)
+                .unwrap()
+                .fg
+        };
+        assert_eq!(
+            fill(80.0),
+            Some(Color::GREEN),
+            "a full battery is not normal"
+        );
+        assert_eq!(
+            fill(40.0),
+            Some(Color::YELLOW),
+            "a half-empty battery is not a warning"
+        );
+        assert_eq!(
+            fill(10.0),
+            Some(Color::RED),
+            "an almost empty battery is not critical"
+        );
     }
 }
