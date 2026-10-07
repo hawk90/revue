@@ -32,17 +32,18 @@ impl DevTools {
         // Draw border
         self.draw_border(buffer, area);
 
-        // Tab bar
+        // Tab bar: needs a row between the top and bottom borders
+        if area.height < 3 {
+            return;
+        }
         let tab_area = Rect::new(area.x + 1, area.y + 1, area.width - 2, 1);
         self.render_tabs(buffer, tab_area);
 
-        // Content area
-        let content_area = Rect::new(
-            area.x + 1,
-            area.y + 3,
-            area.width - 2,
-            area.height.saturating_sub(4),
-        );
+        // Content area: below the tab separator, above the bottom border
+        if area.height < 5 {
+            return;
+        }
+        let content_area = Rect::new(area.x + 1, area.y + 3, area.width - 2, area.height - 4);
 
         match self.config.active_tab {
             DevToolsTab::Inspector => {
@@ -135,7 +136,10 @@ impl DevTools {
             }
         }
 
-        // Separator after tabs
+        // Separator after tabs, if it fits above the bottom border
+        if area.height < 4 {
+            return;
+        }
         for x in area.x..area.x + area.width {
             if let Some(cell) = buffer.get_mut(x, area.y + 2) {
                 cell.symbol = if x == area.x {
@@ -165,6 +169,42 @@ mod tests {
                 devtools.set_tab(*tab);
                 let mut buffer = Buffer::new(10, 10);
                 devtools.render(&mut buffer, Rect::new(0, 0, 10, h));
+            }
+        }
+    }
+
+    #[test]
+    fn test_render_panel_stays_inside_its_area() {
+        let area_x = 2;
+        let area_y = 2;
+        for tab in DevToolsTab::all() {
+            for h in 0..=4u16 {
+                for w in 0..=4u16 {
+                    let mut devtools = DevTools::new();
+                    devtools.set_tab(*tab);
+                    let mut buffer = Buffer::new(10, 10);
+                    for y in 0..10 {
+                        for x in 0..10 {
+                            buffer.get_mut(x, y).unwrap().symbol = '#';
+                        }
+                    }
+
+                    devtools.render_panel(&mut buffer, Rect::new(area_x, area_y, w, h));
+
+                    for y in 0..10 {
+                        for x in 0..10 {
+                            let inside = (area_x..area_x + w).contains(&x)
+                                && (area_y..area_y + h).contains(&y);
+                            if !inside {
+                                assert_eq!(
+                                    buffer.get(x, y).unwrap().symbol,
+                                    '#',
+                                    "{tab:?} {w}x{h} panel wrote outside its area at ({x}, {y})"
+                                );
+                            }
+                        }
+                    }
+                }
             }
         }
     }
