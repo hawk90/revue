@@ -27,6 +27,12 @@
 //! // Using helper
 //! let pwd = password_input("Password");
 //! ```
+//!
+//! # Keys
+//!
+//! [`MaskedInput::handle_key`] types printable characters, deletes with
+//! `Backspace`/`Delete` and moves the cursor with `Left`, `Right`, `Home` and
+//! `End`, like [`Input::handle_key`](crate::widget::Input::handle_key).
 
 mod editing;
 mod render;

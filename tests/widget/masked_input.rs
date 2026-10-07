@@ -4,6 +4,7 @@
 //! 생성자, 빌더 메서드, 값 관리, 입력 처리, 마스크 스타일,
 //! 비밀번호 강도, 검증, 렌더링 등 다양한 기능을 테스트합니다.
 
+use revue::event::Key;
 use revue::layout::Rect;
 use revue::render::Buffer;
 use revue::style::Color;
@@ -1165,4 +1166,49 @@ fn test_masked_input_meta_empty() {
     let meta = input.meta();
     assert_eq!(meta.widget_type, "MaskedInput");
     assert_eq!(meta.id, None);
+}
+
+// =============================================================================
+// Key handling (키 처리)
+// =============================================================================
+
+#[test]
+fn test_masked_input_handle_key_types_and_edits() {
+    let mut input = MaskedInput::password();
+    for c in "abc".chars() {
+        assert!(input.handle_key(&Key::Char(c)));
+    }
+    assert_eq!(input.get_value(), "abc");
+
+    assert!(input.handle_key(&Key::Left));
+    assert!(input.handle_key(&Key::Backspace));
+    assert_eq!(input.get_value(), "ac");
+    assert!(input.handle_key(&Key::Home));
+    assert!(input.handle_key(&Key::Delete));
+    assert_eq!(input.get_value(), "c");
+    assert!(input.handle_key(&Key::End));
+    assert_eq!(input.get_cursor(), 1);
+    assert!(input.handle_key(&Key::Right));
+    assert_eq!(input.get_cursor(), 1);
+}
+
+#[test]
+fn test_masked_input_handle_key_respects_max_length() {
+    let mut input = MaskedInput::pin(2);
+    input.handle_key(&Key::Char('1'));
+    input.handle_key(&Key::Char('2'));
+    input.handle_key(&Key::Char('3'));
+    assert_eq!(input.get_value(), "12");
+}
+
+#[test]
+fn test_masked_input_handle_key_ignores_disabled_and_other_keys() {
+    let mut input = MaskedInput::new().disabled(true);
+    assert!(!input.handle_key(&Key::Char('a')));
+    assert_eq!(input.get_value(), "");
+
+    let mut input = MaskedInput::new();
+    assert!(!input.handle_key(&Key::Enter));
+    assert!(!input.handle_key(&Key::Char('\u{7}')));
+    assert_eq!(input.get_value(), "");
 }

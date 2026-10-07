@@ -1,8 +1,32 @@
 //! Editing the value: inserting, deleting, moving the cursor and the peek countdown
 
 use super::{MaskStyle, MaskedInput};
+use crate::event::Key;
 
 impl MaskedInput {
+    /// Handle key input, returns true if the key was handled
+    ///
+    /// Like [`Input::handle_key`](crate::widget::Input::handle_key): printable
+    /// characters are typed at the cursor (up to `max_length`), `Backspace`
+    /// and `Delete` remove a character, and `Left`, `Right`, `Home` and `End`
+    /// move the cursor. A disabled input handles no keys.
+    pub fn handle_key(&mut self, key: &Key) -> bool {
+        if self.disabled {
+            return false;
+        }
+        match key {
+            Key::Char(c) if !c.is_control() => self.insert_char(*c),
+            Key::Backspace => self.delete_backward(),
+            Key::Delete => self.delete_forward(),
+            Key::Left => self.move_left(),
+            Key::Right => self.move_right(),
+            Key::Home => self.move_start(),
+            Key::End => self.move_end(),
+            _ => return false,
+        }
+        true
+    }
+
     /// Insert character at cursor
     pub fn insert_char(&mut self, c: char) {
         if self.disabled {
