@@ -13,7 +13,7 @@ cargo install revue-cli
 | Command | Description |
 |---------|-------------|
 | `revue new` | Create a new project |
-| `revue dev` | Start development server |
+| `revue dev` | Run the app; rebuild and restart it on change |
 | `revue build` | Build for release |
 | `revue add` | Add components/patterns |
 | `revue snapshot` | Run snapshot tests |
@@ -87,7 +87,7 @@ my-app/
 
 ### `revue dev`
 
-Start development server with hot reload.
+Run the app and rebuild and restart it whenever its source changes.
 
 ```bash
 revue dev [options]
@@ -97,17 +97,59 @@ revue dev [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `-p, --port` | Dev server port | `3000` |
-| `-w, --watch` | Additional watch paths | `src`, `styles` |
+| `-w, --watch <PATH>` | Also watch this file or directory (repeatable) | none |
+| `--bin <NAME>` | Binary to run when the package has several | the only binary, or `default-run` |
+
+`revue dev` always watches `src/`, `styles/`, `Cargo.toml` and `build.rs`
+(those that exist), recursively. Changes under `target/`, in dot-files and
+dot-directories (`.git/`), in editor swap and backup files, and to
+`Cargo.lock` are ignored.
+
+**What happens on a change:**
+
+1. Changes are collected until the tree has been quiet for 250 ms (at most
+   2 s), so one save or a `git checkout` restarts the app once.
+2. A Rust change (anything under `src/`, `Cargo.toml`, `build.rs`, or a
+   `--watch` path, other than a `.css` file) stops the app, rebuilds with
+   `cargo build`, and starts the new binary. Build errors are printed with
+   the terminal back in its normal mode; `revue dev` then waits, and the next
+   save that builds starts the app again.
+3. A stylesheet change (`.css`, or anything under `styles/`) is applied by the
+   running app itself, without a restart, so its state survives: `revue dev`
+   builds the app with revue's `hot-reload` feature and runs it with
+   `REVUE_HOT_RELOAD=1`, which turns on
+   [`AppBuilder::hot_reload`](app-builder.md#hot_reloadenabled) for the files
+   loaded with `.style(path)`. If the project's revue predates
+   `REVUE_HOT_RELOAD` (3.0.1 and earlier), or the package does not depend on
+   revue directly, CSS changes restart the app instead; the banner says which
+   mode is in effect.
+
+The app owns the terminal while it runs, so `revue dev` prints nothing until
+it stops. To stop the app for a restart it sends `SIGTERM` (then kills it
+after 2 s) and restores the terminal itself: leaves the alternate screen,
+shows the cursor, turns mouse reporting off and resets the tty settings.
+
+**Stopping:** quit the app normally (for the templates, `q`) and `revue dev`
+exits with it. If the app crashes, `revue dev` reports the exit status and
+waits for the next change. While it is waiting (after a crash or a build
+error), `Ctrl+C` stops it.
+
+CSS hot reload covers stylesheet *files* added with `.style(path)`, read
+relative to the working directory (the project root). Inline `.css(...)`
+and stylesheets compiled in with `include_str!` change only on a rebuild:
+put those under `src/` or `--watch` them.
 
 **Examples:**
 
 ```bash
-# Start dev server
+# Run with live reload
 revue dev
 
-# Watch additional paths
-revue dev --watch config --watch templates
+# Also restart when files under config/ change
+revue dev --watch config --watch assets/data.json
+
+# Pick the binary in a package with several
+revue dev --bin server
 ```
 
 ### `revue build`

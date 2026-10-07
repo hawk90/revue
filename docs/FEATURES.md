@@ -16,11 +16,11 @@
 | Charts (`CHART-*`) | 8 | 0 | 0 | 0 | 8 |
 | Navigation (`NAV-*`) | 3 | 0 | 0 | 0 | 3 |
 | Unicode (`TEXT-*`) | 2 | 1 | 1 | 0 | 4 |
-| Developer experience (`DX-*`) | 2 | 2 | 0 | 0 | 4 |
+| Developer experience (`DX-*`) | 3 | 1 | 0 | 0 | 4 |
 | Theming (`THEME-*`) | 2 | 0 | 1 | 0 | 3 |
 | Keyboard & clipboard (`KEY-*`) | 3 | 1 | 0 | 0 | 4 |
 | Utilities (`UTIL-*`) | 5 | 0 | 0 | 0 | 5 |
-| **Total** | **85** | **16** | **4** | **0** | **105** |
+| **Total** | **86** | **15** | **4** | **0** | **105** |
 
 Known gaps worth knowing before you build on them: CSS `transparent` paints black, `opacity` /
 `z-index` / `position` are parsed but not applied, CSS transitions are not triggered by state changes,
@@ -127,7 +127,8 @@ which is why a configurable `CharWidthTable` exists — wiring it into rendering
 
 ## 7. Developer experience
 
-The loop Revue aims for is: edit CSS, see it immediately (`hot_reload(true)`), inspect what matched
+The loop Revue aims for is: edit CSS, see it immediately (`hot_reload(true)`, or `revue dev`, which also
+rebuilds and restarts the app on Rust changes), inspect what matched
 (devtools panels: inspector, style inspector, event logger, profiler), and pin behavior down with
 headless tests (`TestApp` + `insta` snapshots) that drive the same event and render pipeline as the real
 terminal.

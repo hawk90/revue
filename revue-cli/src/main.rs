@@ -2,7 +2,8 @@
 
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use revue_cli::commands;
+use revue_cli::{commands, dev};
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "revue")]
@@ -31,15 +32,19 @@ enum Commands {
         no_git: bool,
     },
 
-    /// Start development server with hot reload
+    /// Run the app, rebuilding and restarting it when the source changes
+    ///
+    /// Watches src/, styles/, Cargo.toml and build.rs. A Rust change stops
+    /// the app, rebuilds it and starts it again; stylesheets reload in place
+    /// when the app's revue supports it (REVUE_HOT_RELOAD).
     Dev {
-        /// Port for the dev server
-        #[arg(short, long, default_value = "3000")]
-        port: u16,
+        /// Also watch this file or directory (repeatable)
+        #[arg(short, long, value_name = "PATH")]
+        watch: Vec<PathBuf>,
 
-        /// Watch additional paths
-        #[arg(short, long)]
-        watch: Vec<String>,
+        /// Binary to run, when the package has several
+        #[arg(long, value_name = "NAME")]
+        bin: Option<String>,
     },
 
     /// Build the project for release
@@ -183,7 +188,7 @@ fn main() {
             template,
             no_git,
         } => commands::new_project(&name, &template, !no_git),
-        Commands::Dev { port, watch } => commands::dev_server(port, &watch),
+        Commands::Dev { watch, bin } => dev::run(&dev::DevOptions { watch, bin }),
         Commands::Build { release, target } => commands::build_project(release, target.as_deref()),
         Commands::Snapshot { update, filter } => commands::run_snapshots(update, filter.as_deref()),
         Commands::Inspect { mode } => commands::inspect(&mode),
@@ -218,5 +223,56 @@ fn main() {
     if let Err(e) = result {
         eprintln!("{} {}", "Error:".red().bold(), e);
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    fn parse(args: &[&str]) -> Result<Cli, clap::Error> {
+        Cli::try_parse_from(std::iter::once("revue").chain(args.iter().copied()))
+    }
+
+    #[test]
+    fn dev_takes_no_flags_by_default() {
+        let Commands::Dev { watch, bin } = parse(&["dev"]).unwrap().command else {
+            panic!("expected dev");
+        };
+        assert!(watch.is_empty());
+        assert_eq!(bin, None);
+    }
+
+    #[test]
+    fn dev_watch_is_a_repeatable_path() {
+        let cli = parse(&[
+            "dev",
+            "--watch",
+            "config",
+            "-w",
+            "assets/data.json",
+            "--bin",
+            "demo",
+        ]);
+        let Commands::Dev { watch, bin } = cli.unwrap().command else {
+            panic!("expected dev");
+        };
+        assert_eq!(
+            watch,
+            [PathBuf::from("config"), PathBuf::from("assets/data.json")]
+        );
+        assert_eq!(bin.as_deref(), Some("demo"));
+    }
+
+    #[test]
+    fn dev_watch_needs_a_path() {
+        assert!(parse(&["dev", "--watch"]).is_err());
+    }
+
+    #[test]
+    fn dev_has_no_port() {
+        assert!(parse(&["dev", "--port", "3000"]).is_err());
+        assert!(parse(&["dev", "-p", "3000"]).is_err());
     }
 }
