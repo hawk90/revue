@@ -113,12 +113,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "keys",
-        widget: "Tabs",
-        sequence: "'0'",
-        reason: "a '0' digit key underflows `c - '1'`",
-    },
-    Known {
-        layer: "keys",
         widget: "TextArea",
         sequence: "<set content> Enter PageUp <add cursor below> Delete",
         reason: "edits move only the primary cursor; secondary cursors are left past the text",
