@@ -367,6 +367,77 @@ fn test_focus_trap_add_child() {
     assert_eq!(trap.container_id(), 100);
 }
 
+fn manager_with(ids: &[u64]) -> FocusManager {
+    let mut fm = FocusManager::new();
+    for &id in ids {
+        fm.register(id);
+    }
+    fm
+}
+
+#[test]
+fn test_focus_trap_without_loop_stops_at_the_ends() {
+    let mut fm = manager_with(&[1, 2, 3, 4]);
+    let mut trap = FocusTrap::new(100)
+        .with_children(&[2, 3, 4])
+        .loop_focus(false);
+    trap.activate(&mut fm);
+    assert_eq!(fm.current(), Some(2));
+
+    fm.next();
+    fm.next();
+    assert_eq!(fm.current(), Some(4));
+    fm.next();
+    assert_eq!(fm.current(), Some(4), "Tab stays on the last element");
+
+    fm.prev();
+    fm.prev();
+    assert_eq!(fm.current(), Some(2));
+    fm.prev();
+    assert_eq!(
+        fm.current(),
+        Some(2),
+        "Shift+Tab stays on the first element"
+    );
+
+    // Released, Tab wraps again over every widget
+    trap.deactivate(&mut fm);
+    fm.focus(4);
+    fm.next();
+    assert_eq!(fm.current(), Some(1));
+}
+
+#[test]
+fn test_focus_trap_with_loop_wraps() {
+    let mut fm = manager_with(&[1, 2, 3]);
+    let mut trap = FocusTrap::new(100).with_children(&[2, 3]);
+    trap.activate(&mut fm);
+
+    fm.next();
+    fm.next();
+    assert_eq!(fm.current(), Some(2));
+    fm.prev();
+    assert_eq!(fm.current(), Some(3));
+}
+
+#[test]
+fn test_nested_focus_traps_keep_their_own_loop_setting() {
+    let mut fm = manager_with(&[1, 2, 3, 4, 5]);
+    let mut outer = FocusTrap::new(100).with_children(&[1, 2]).loop_focus(false);
+    outer.activate(&mut fm);
+
+    let mut inner = FocusTrap::new(200).with_children(&[4, 5]);
+    inner.activate(&mut fm);
+    fm.next();
+    fm.next();
+    assert_eq!(fm.current(), Some(4), "inner trap loops");
+
+    inner.deactivate(&mut fm);
+    fm.focus(2);
+    fm.next();
+    assert_eq!(fm.current(), Some(2), "outer trap still does not loop");
+}
+
 #[test]
 fn test_focus_trap_config() {
     let config = FocusTrapConfig::default();
