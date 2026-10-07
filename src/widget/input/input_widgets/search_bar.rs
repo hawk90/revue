@@ -30,6 +30,7 @@ use crate::{impl_props_builders, impl_styled_view};
 ///     let filtered = query.filter_items(&items);
 /// }
 /// ```
+#[derive(Clone)]
 pub struct SearchBar {
     /// Current input text
     input: String,

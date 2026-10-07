@@ -61,6 +61,7 @@ impl Bar {
 ///     .bar_width(2)
 ///     .fg(Color::CYAN);
 /// ```
+#[derive(Clone)]
 pub struct BarChart {
     bars: Vec<Bar>,
     orientation: BarOrientation,

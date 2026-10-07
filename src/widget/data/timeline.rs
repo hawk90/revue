@@ -158,6 +158,7 @@ pub enum TimelineStyle {
 }
 
 /// Timeline widget
+#[derive(Clone)]
 pub struct Timeline {
     /// Events
     events: Vec<TimelineEvent>,

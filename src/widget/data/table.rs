@@ -49,6 +49,7 @@ impl Column {
 }
 
 /// A table widget for displaying rows and columns
+#[derive(Clone)]
 pub struct Table {
     columns: Vec<Column>,
     rows: Vec<Vec<String>>,

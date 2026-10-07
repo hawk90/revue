@@ -52,6 +52,7 @@ pub enum LabelPosition {
 }
 
 /// Gauge widget
+#[derive(Clone)]
 pub struct Gauge {
     /// Current value (0.0 - 1.0)
     value: f64,

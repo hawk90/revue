@@ -92,6 +92,7 @@ use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Embedded terminal widget
+#[derive(Clone)]
 pub struct Terminal {
     /// Terminal lines (scrollback + visible)
     lines: Vec<TermLine>,

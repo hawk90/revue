@@ -28,6 +28,7 @@ use crate::widget::traits::WidgetProps;
 ///     println!("Status: {}", response.status);
 /// }
 /// ```
+#[derive(Clone)]
 pub struct HttpClient {
     /// Current request
     pub(super) request: HttpRequest,

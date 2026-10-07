@@ -63,6 +63,7 @@ pub enum BadgeShape {
 ///     .child(text("Messages"))
 ///     .child(badge("5").primary())
 /// ```
+#[derive(Clone)]
 pub struct Badge {
     /// Content text
     text: String,

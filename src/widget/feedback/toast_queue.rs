@@ -126,6 +126,7 @@ impl ToastEntry {
 }
 
 /// Centralized toast queue manager
+#[derive(Clone)]
 pub struct ToastQueue {
     /// Queue of pending toasts
     queue: Vec<ToastEntry>,

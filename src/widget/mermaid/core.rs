@@ -19,6 +19,7 @@ use std::collections::HashMap;
 ///     .edge(DiagramEdge::new("A", "B"))
 ///     .edge(DiagramEdge::new("B", "C").label("check"));
 /// ```
+#[derive(Clone)]
 pub struct Diagram {
     /// Diagram title
     pub title: String,

@@ -123,6 +123,7 @@ impl DiffColors {
 ///     .right("Modified text\nLine 2\nLine 3")
 ///     .mode(DiffMode::Split);
 /// ```
+#[derive(Clone)]
 pub struct DiffViewer {
     /// Left (original) content
     left_content: String,

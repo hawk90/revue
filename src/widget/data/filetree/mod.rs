@@ -15,6 +15,7 @@ use crate::{impl_props_builders, impl_styled_view};
 use std::path::{Path, PathBuf};
 
 /// File tree widget
+#[derive(Clone)]
 pub struct FileTree {
     /// Root entries
     pub(crate) root: Vec<FileEntry>,

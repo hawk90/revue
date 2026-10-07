@@ -89,6 +89,7 @@ pub enum EmptyStateVariant {
 /// An empty state widget for no-data scenarios
 ///
 /// Displays a consistent, helpful message when there's no content to show.
+#[derive(Clone)]
 pub struct EmptyState {
     /// Primary message/title
     title: String,

@@ -295,6 +295,7 @@ pub use group::BoxGroup;
 pub use types::{BoxStats, WhiskerStyle};
 
 /// Box plot widget
+#[derive(Clone)]
 pub struct BoxPlot {
     /// Box groups
     groups: Vec<BoxGroup>,

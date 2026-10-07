@@ -14,6 +14,7 @@ use crate::widget::traits::WidgetProps;
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Accordion widget
+#[derive(Clone)]
 pub struct Accordion {
     /// Sections
     pub(crate) sections: Vec<AccordionSection>,

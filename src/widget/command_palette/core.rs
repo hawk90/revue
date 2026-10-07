@@ -7,6 +7,7 @@ use crate::widget::traits::WidgetProps;
 ///
 /// Provides a searchable command interface similar to VSCode's Ctrl+P
 /// or Sublime Text's Command Palette.
+#[derive(Clone)]
 pub struct CommandPalette {
     /// All commands
     pub commands: Vec<Command>,

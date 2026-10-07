@@ -31,6 +31,7 @@ pub enum SkeletonShape {
 ///     text("Content loaded!")
 /// }
 /// ```
+#[derive(Clone)]
 pub struct Skeleton {
     /// Width (0 = fill)
     width: u16,

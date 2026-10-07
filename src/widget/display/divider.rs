@@ -43,6 +43,7 @@ pub enum DividerStyle {
 ///     .child(divider())
 ///     .child(text("Section 2"))
 /// ```
+#[derive(Clone)]
 pub struct Divider {
     /// Orientation
     orientation: Orientation,

@@ -76,6 +76,7 @@ impl WidgetInfo {
 }
 
 /// Widget Inspector overlay
+#[derive(Clone)]
 pub struct Inspector {
     /// Is inspector visible
     visible: bool,

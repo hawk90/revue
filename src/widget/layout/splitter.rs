@@ -49,6 +49,7 @@ impl SplitterStyle {
 }
 
 /// A pane in the splitter
+#[derive(Clone)]
 pub struct Pane {
     /// Pane identifier
     pub id: String,
@@ -110,6 +111,7 @@ impl Pane {
 }
 
 /// Splitter widget
+#[derive(Clone)]
 pub struct Splitter {
     /// Panes
     panes: Vec<Pane>,
@@ -414,6 +416,7 @@ impl_styled_view!(Splitter);
 impl_props_builders!(Splitter);
 
 /// Two-pane horizontal split
+#[derive(Clone)]
 pub struct HSplit {
     /// Left pane ratio
     pub ratio: f32,
@@ -494,6 +497,7 @@ impl View for HSplit {
 }
 
 /// Two-pane vertical split
+#[derive(Clone)]
 pub struct VSplit {
     /// Top pane ratio
     pub ratio: f32,

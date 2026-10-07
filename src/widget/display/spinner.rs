@@ -38,6 +38,7 @@ impl SpinnerStyle {
 }
 
 /// A spinner widget for loading states
+#[derive(Clone)]
 pub struct Spinner {
     style: SpinnerStyle,
     frame: usize,

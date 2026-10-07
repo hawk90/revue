@@ -159,6 +159,7 @@ impl Slide {
 /// pres.next_slide();
 /// pres.prev();
 /// ```
+#[derive(Clone)]
 pub struct Presentation {
     /// Presentation title
     title: String,

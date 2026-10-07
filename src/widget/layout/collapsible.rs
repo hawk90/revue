@@ -31,6 +31,7 @@ use crate::{impl_styled_view, impl_widget_builders};
 ///
 /// Like HTML's `<details>/<summary>`, this provides a toggleable
 /// section with a header and hidden content.
+#[derive(Clone)]
 pub struct Collapsible {
     /// Header/summary text
     title: String,

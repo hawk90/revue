@@ -305,6 +305,7 @@ pub use types::{CalendarMode, DateMarker, FirstDayOfWeek};
 pub use utils::{days_in_month, first_day_of_month, is_leap_year};
 
 /// Calendar widget
+#[derive(Clone)]
 pub struct Calendar {
     /// Current displayed year
     year: i32,

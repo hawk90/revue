@@ -29,6 +29,7 @@ use crate::{impl_props_builders, impl_styled_view};
 ///
 /// BigText renders text at different sizes based on a "tier" (1-6, like HTML headings).
 /// It uses Kitty's Text Sizing Protocol when available, falling back to Figlet ASCII art.
+#[derive(Clone)]
 pub struct BigText {
     /// The text to render
     text: String,

@@ -25,6 +25,7 @@ use crate::widget::traits::{WidgetProps, WidgetState};
 /// // Analytics-style range picker
 /// let picker = analytics_range_picker();
 /// ```
+#[derive(Clone)]
 pub struct RangePicker {
     /// Start datetime
     pub(crate) start: DateTime,

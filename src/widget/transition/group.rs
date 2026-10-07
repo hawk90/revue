@@ -7,6 +7,7 @@ use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// TransitionGroup for animating lists with automatic reordering
+#[derive(Clone)]
 pub struct TransitionGroup {
     /// List of items
     items: Vec<String>,

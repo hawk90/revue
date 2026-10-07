@@ -7,6 +7,7 @@ use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// A scrollable view widget
+#[derive(Clone)]
 pub struct ScrollView {
     content_height: u16,
     scroll_offset: u16,

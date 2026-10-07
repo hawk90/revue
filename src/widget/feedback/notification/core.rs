@@ -9,6 +9,7 @@ use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Notification Center widget
+#[derive(Clone)]
 pub struct NotificationCenter {
     /// Active notifications
     notifications: Vec<Notification>,

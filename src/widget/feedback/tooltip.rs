@@ -103,6 +103,7 @@ impl TooltipStyle {
 }
 
 /// Tooltip widget
+#[derive(Clone)]
 pub struct Tooltip {
     /// Tooltip text (supports multiple lines)
     text: String,

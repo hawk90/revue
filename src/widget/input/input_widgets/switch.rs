@@ -31,6 +31,7 @@ pub enum SwitchStyle {
 }
 
 /// Switch widget
+#[derive(Clone)]
 pub struct Switch {
     /// Current state
     on: bool,

@@ -71,6 +71,7 @@ pub enum StreamStatus {
 /// stream.append("Hello, ");
 /// stream.append("I am an AI assistant.");
 /// ```
+#[derive(Clone)]
 pub struct AiStream {
     /// Full text content
     content: String,

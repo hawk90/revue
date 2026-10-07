@@ -13,6 +13,7 @@ use crate::widget::traits::{RenderContext, View, WidgetProps};
 use crate::{impl_props_builders, impl_styled_view};
 
 /// Advanced Log Viewer widget
+#[derive(Clone)]
 pub struct LogViewer {
     /// All log entries
     entries: Vec<LogEntry>,

@@ -30,6 +30,7 @@ pub use types::{BracketMatch, BracketPair, EditOp, EditorConfig, IndentStyle};
 const DEFAULT_PAGE_HEIGHT: usize = 20;
 
 /// Code editor widget
+#[derive(Clone)]
 pub struct CodeEditor {
     /// Lines of code
     pub(super) lines: Vec<String>,

@@ -110,6 +110,7 @@ impl Default for MarkdownConfig {
 }
 
 /// A markdown widget for rendering markdown content
+#[derive(Clone)]
 pub struct Markdown {
     pub source: String,
     pub lines: Vec<Line>,

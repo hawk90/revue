@@ -183,6 +183,7 @@ pub enum LogFormat {
 }
 
 /// RichLog widget
+#[derive(Clone)]
 pub struct RichLog {
     /// Log entries
     entries: Vec<LogEntry>,

@@ -16,6 +16,7 @@ use crate::{impl_props_builders, impl_styled_view};
 pub use super::chart_stats::{BinConfig, HistogramBin};
 
 /// Histogram widget
+#[derive(Clone)]
 pub struct Histogram {
     /// Raw data values
     data: Vec<f64>,

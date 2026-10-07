@@ -72,6 +72,7 @@ pub(super) const MAX_UNDO_HISTORY: usize = 100;
 ///
 /// A page is the height of the view at the last render (10 rows before the
 /// first render). With wrapping on, pages are counted in screen rows.
+#[derive(Clone)]
 pub struct TextArea {
     /// Lines of text
     pub(super) lines: Vec<String>,

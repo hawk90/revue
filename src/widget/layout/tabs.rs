@@ -24,6 +24,7 @@ impl Tab {
 }
 
 /// Tabs widget for tabbed navigation
+#[derive(Clone)]
 pub struct Tabs {
     tabs: Vec<Tab>,
     selection: Selection,

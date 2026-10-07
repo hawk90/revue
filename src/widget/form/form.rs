@@ -51,6 +51,12 @@ pub enum InputType {
 }
 
 /// Form widget for automated form rendering with FormState binding
+///
+/// Cloning a `Form` gives a second view over the same form: the
+/// [`FormState`]'s fields are reactive signals, so the clone and the original
+/// read and write the same values (and share the submit callback). Build a
+/// new `FormState` for an independent form.
+#[derive(Clone)]
 pub struct Form {
     /// Form state for two-way binding
     form_state: FormState,
@@ -379,6 +385,7 @@ impl View for Form {
 impl_props_builders!(Form);
 
 /// FormField widget for individual form field rendering
+#[derive(Clone)]
 pub struct FormFieldWidget {
     /// Field name (key in FormState)
     name: String,
