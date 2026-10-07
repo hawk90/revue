@@ -183,5 +183,5 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `widget/markdown/mod.rs` | 898 | 2 | 898줄, 위젯 한 파일 | split | 설정·구조체·생성·빌더 옆에 pulldown-cmark 이벤트 처리(이벤트 루프, 태그 시작·끝, 텍스트·코드·HTML·각주 참조, 약 380줄)와 통째로 짜는 블록 배치(목차, FIGlet 제목, 코드 블록, 표, 약 200줄)가 섞임 → markdown/{mod,events,blocks}.rs (`extract_toc`는 `new`만 부르므로 mod.rs). mod.rs가 부르는 `parse_with_options`와 events.rs가 부르는 `render_toc`·`render_figlet_heading`·`render_code_block`·`render_table`은 `pub(super)`(실제 보이는 범위는 전과 같음). 참고: `Tag::Strikethrough` 시작은 아무것도 켜지 않는데 끝에서 `CROSSED_OUT`을 끔 |
 | `widget/markdown/types.rs` | 163 | 5 | 타입 모음, 공개 타입 5 | todo | |
 | `widget/mermaid/types.rs` | 175 | 7 | 타입 모음, 공개 타입 7 | todo | |
-| `widget/option_list.rs` | 724 | 4 | 724줄, 위젯 한 파일 | todo | |
+| `widget/option_list.rs` | 724 | 4 | 724줄, 위젯 한 파일 | split | 항목·옵션·구분선 타입(약 85줄), 구조체·빌더, 조회·선택·하이라이트 이동(약 155줄), 약 125줄의 렌더, 테스트용 getter가 한 파일에 섞임 → option_list/{mod,types,navigation,render}.rs (`separator_char`는 렌더와 테스트 getter가 함께 쓰므로 mod.rs). 버그 의심: 옵션이 없을 때 `highlight_first`는 `option_count() - 1`이 넘침(디버그 빌드는 패닉), 스크롤은 옵션만 건너뛰어 앞쪽 구분선·그룹 제목은 계속 그려짐, 힌트 정렬이 `len()`(바이트)이라 한글·아이콘이 있으면 어긋남. 참고: 모듈 문서는 키보드 탐색을 말하지만 키 처리기가 없고, 예제가 없는 `Option`을 import함 |
 | `widget/qrcode.rs` | 438 | 3 | 위젯 한 파일 | todo | |
