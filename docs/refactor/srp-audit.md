@@ -180,7 +180,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `widget/canvas/braille/shapes.rs` | 515 | 10 | 공개 타입 10 | todo | |
 | `widget/debug_overlay/mod.rs` | 495 | 3 | 위젯 한 파일 | split | 패널 위치·설정 타입, 오버레이 구조체·빌더, 약 250줄의 패널 그리기(위치 계산, 지표·위젯 트리·이벤트, 테두리)가 섞임 → debug_overlay/{mod,types,render}.rs (전역 디버그 플래그는 25줄이라 mod.rs). 참고: `DebugConfig::show_styles`(스타일 검사기)와 `opacity`는 저장만 되고 읽히지 않음, 전역 `is_debug_enabled()`는 크레이트 안 어디서도 읽지 않음 |
 | `widget/image.rs` | 476 | 4 | 위젯 한 파일 | split | 오류·크기 모드·픽셀 형식 타입, PNG·파일 디코딩과 원시 픽셀 생성(크기 제한 검사 포함, 약 180줄), Kitty 이스케이프 인코딩, 크기 계산·렌더가 섞임 → image/{mod,types,load,kitty}.rs (`rand_id`는 mod.rs). 버그 의심: `from_png`는 `with_guessed_format`으로 JPEG 등도 받지만 형식을 `Png`로 적어 Kitty에 `f=100`으로 보냄, 너비나 높이가 0이면(`from_rgb`로 가능) Fit/Fill 계산이 0으로 나눠 NaN·inf가 됨. 참고: `ImageFormat`은 `pub`이고 `get_format()`이 돌려주지만 밖으로 다시 내보내지 않음 |
-| `widget/markdown/mod.rs` | 898 | 2 | 898줄, 위젯 한 파일 | todo | |
+| `widget/markdown/mod.rs` | 898 | 2 | 898줄, 위젯 한 파일 | split | 설정·구조체·생성·빌더 옆에 pulldown-cmark 이벤트 처리(이벤트 루프, 태그 시작·끝, 텍스트·코드·HTML·각주 참조, 약 380줄)와 통째로 짜는 블록 배치(목차, FIGlet 제목, 코드 블록, 표, 약 200줄)가 섞임 → markdown/{mod,events,blocks}.rs (`extract_toc`는 `new`만 부르므로 mod.rs). mod.rs가 부르는 `parse_with_options`와 events.rs가 부르는 `render_toc`·`render_figlet_heading`·`render_code_block`·`render_table`은 `pub(super)`(실제 보이는 범위는 전과 같음). 참고: `Tag::Strikethrough` 시작은 아무것도 켜지 않는데 끝에서 `CROSSED_OUT`을 끔 |
 | `widget/markdown/types.rs` | 163 | 5 | 타입 모음, 공개 타입 5 | todo | |
 | `widget/mermaid/types.rs` | 175 | 7 | 타입 모음, 공개 타입 7 | todo | |
 | `widget/option_list.rs` | 724 | 4 | 724줄, 위젯 한 파일 | todo | |

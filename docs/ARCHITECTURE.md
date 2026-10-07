@@ -132,7 +132,7 @@ src/widget/
 │   ├── vim/               #   Vim mode
 │   └── tree_sitter_highlight.rs # Syntax highlighting
 │
-├── markdown/              # Markdown renderer (parser, types, helpers)
+├── markdown/              # Markdown renderer (events, blocks, parser, types, helpers)
 │
 └── # Additional top-level widgets & categories
     ├── syntax/            # Syntax highlighting support
