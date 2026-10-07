@@ -135,7 +135,9 @@ jobs:
           cache: false
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-nextest
-      - run: cargo nextest run --all-features --tests
+      # Report every failing test, not just the first: a platform-specific
+      # break (Windows above all) usually fails several tests at once.
+      - run: cargo nextest run --all-features --tests --no-fail-fast
 
   standalone:
     name: Standalone Crates
