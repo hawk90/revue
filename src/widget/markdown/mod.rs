@@ -426,8 +426,11 @@ impl Markdown {
                 ctx.current_modifier &= !Modifier::CROSSED_OUT;
             }
             TagEnd::Link => {
-                ctx.current_fg = None;
+                ctx.current_fg = ctx.in_heading.then_some(ctx.heading_fg);
                 ctx.current_modifier &= !Modifier::UNDERLINE;
+            }
+            TagEnd::Image => {
+                ctx.current_fg = ctx.in_heading.then_some(ctx.heading_fg);
             }
             TagEnd::CodeBlock => {
                 self.render_code_block(ctx);

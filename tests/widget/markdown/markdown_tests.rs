@@ -852,3 +852,20 @@ fn test_markdown_heading_keeps_emphasis() {
         "{modifier:?}"
     );
 }
+
+#[test]
+fn test_markdown_heading_color_returns_after_a_link() {
+    let md = || {
+        Markdown::new("# See [docs](https://example.com) now")
+            .heading_fg(revue::style::Color::MAGENTA)
+            .link_fg(revue::style::Color::CYAN)
+    };
+    assert_eq!(fg_at(md(), 60, "docs"), Some(revue::style::Color::CYAN));
+    assert_eq!(fg_at(md(), 60, "now"), Some(revue::style::Color::MAGENTA));
+}
+
+#[test]
+fn test_markdown_text_after_an_image_drops_the_link_color() {
+    let md = Markdown::new("![alt](pic.png) after").link_fg(revue::style::Color::CYAN);
+    assert_eq!(fg_at(md, 40, "after"), None);
+}
