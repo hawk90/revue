@@ -76,7 +76,7 @@ src/widget/
 │       ├── slider/        #   Slider control
 │       ├── color_picker/  #   Color picker
 │       ├── autocomplete/  #   Autocomplete input
-│       └── stepper.rs     #   Step indicator
+│       └── stepper/       #   Step indicator
 │
 ├── data/                  # Data display & visualization
 │   ├── list.rs            #   List widget
