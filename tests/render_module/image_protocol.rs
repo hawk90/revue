@@ -51,6 +51,26 @@ fn test_encoder_kitty_output() {
 }
 
 #[test]
+fn test_encoder_kitty_raw_pixels_carry_their_size() {
+    // Raw pixels have no header: Kitty needs their size (`s`, `v`) to show them
+    let rgb = ImageEncoder::from_rgb(vec![0; 18], 3, 2)
+        .protocol(ImageProtocol::Kitty)
+        .encode(10, 5, 1);
+    assert!(rgb.starts_with("\x1b_Ga=T,f=24,s=3,v=2,"), "{rgb:?}");
+
+    let rgba = ImageEncoder::from_rgba(vec![0; 24], 3, 2)
+        .protocol(ImageProtocol::Kitty)
+        .encode(10, 5, 1);
+    assert!(rgba.starts_with("\x1b_Ga=T,f=32,s=3,v=2,"), "{rgba:?}");
+
+    // PNG carries its own size
+    let png = ImageEncoder::from_png(vec![0; 8], 3, 2)
+        .protocol(ImageProtocol::Kitty)
+        .encode(10, 5, 1);
+    assert!(png.starts_with("\x1b_Ga=T,f=100,i=1,"), "{png:?}");
+}
+
+#[test]
 fn test_encoder_iterm2_output() {
     let data = vec![0; 12];
     let encoder = ImageEncoder::from_rgb(data, 2, 2).protocol(ImageProtocol::Iterm2);

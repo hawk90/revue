@@ -123,6 +123,14 @@ impl ImageEncoder {
             PixelFormat::Rgba => 32,
         };
 
+        // Raw pixels need their size (`s`, `v`); PNG carries its own.
+        let size = match self.format {
+            PixelFormat::Png => String::new(),
+            PixelFormat::Rgb | PixelFormat::Rgba => {
+                format!("s={},v={},", self.width, self.height)
+            }
+        };
+
         // Encode data as base64
         let encoded = BASE64.encode(&self.data);
 
@@ -153,8 +161,8 @@ impl ImageEncoder {
                 use std::fmt::Write;
                 let _ = write!(
                     output,
-                    "\x1b_Ga=T,f={},i={},c={},r={},m={};{}\x1b\\",
-                    format_code, image_id, cols, rows, more, chunk
+                    "\x1b_Ga=T,f={},{}i={},c={},r={},m={};{}\x1b\\",
+                    format_code, size, image_id, cols, rows, more, chunk
                 );
             } else {
                 // Continuation chunks
