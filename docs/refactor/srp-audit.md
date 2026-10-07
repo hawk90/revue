@@ -68,7 +68,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `runtime/dom/query.rs` | 683 | 3 | 683줄 | todo | |
 | `runtime/dom/selector/types.rs` | 382 | 8 | 타입 모음, 공개 타입 8 | todo | |
 | `runtime/event/custom/types.rs` | 212 | 6 | 타입 모음, 공개 타입 6 | todo | |
-| `runtime/event/drag.rs` | 580 | 5 | 공개 타입 5 | todo | |
+| `runtime/event/drag.rs` | 580 | 5 | 공개 타입 5 | split | 끌어 옮길 데이터, 상태·결과, 놓을 곳, 상태 기계, 전역 싱글턴이 섞임 → drag/{mod,data,state,target,context,global}.rs (`DragId`는 mod.rs). 버그 의심: `clear_targets()`는 `hovered_target`만 비우고 상태를 `OverTarget`으로 남김(`unregister_target`은 `Dragging`으로 되돌림), `DragState::is_active` 문서는 Dragging·OverTarget이라 하지만 `Pending`도 포함 |
 | `runtime/event/focus.rs` | 534 | 4 |  | todo | |
 | `runtime/event/gesture/recognizer.rs` | 607 | 1 | 607줄 | todo | |
 | `runtime/event/gesture/types.rs` | 381 | 11 | 타입 모음, 공개 타입 11 | todo | |
