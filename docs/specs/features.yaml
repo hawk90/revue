@@ -120,7 +120,7 @@ items:
       - var(--missing, fallback) uses fallback
       - nested var() fallback chain
     evidence:
-      - src/runtime/style/parser/apply.rs::resolve_var
+      - src/runtime/style/parser/vars.rs::resolve_var
       - tests/e2e_scenarios.rs::test_css_variable_fallback_chain
       - src/runtime/style/parser/mod.rs::test_var_fallback_inside_shorthand
       - src/runtime/style/parser/mod.rs::test_var_fallback_that_is_a_var
@@ -344,7 +344,7 @@ items:
       - transition shorthand and lists parse
       - state change (e.g. :focus) animates the property automatically
     evidence:
-      - src/runtime/style/transition.rs::TransitionManager
+      - src/runtime/style/transition/manager.rs::TransitionManager
       - src/core/app/mod.rs::start_transition
       - tests/style/transition.rs::test_transitions_parse
     source:

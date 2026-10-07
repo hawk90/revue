@@ -179,10 +179,10 @@ src/runtime/style/
 ├── parser/          # Custom CSS parser (scanner, tokenizer, parse, apply)
 ├── properties/      # CSS property definitions
 ├── computed.rs      # Computed style values
-├── transition.rs    # CSS transitions
+├── transition/      # CSS transitions (definitions, running state)
 ├── animation/       # @keyframes / animation support
-├── theme.rs         # Theme definitions
-└── error.rs         # ParseError
+├── theme/           # Theme definitions, palettes, built-in themes, switching
+└── error/           # ParseError and property suggestions
 ```
 
 Selector matching lives alongside the DOM/cascade code in `src/runtime/dom/`
@@ -280,7 +280,7 @@ src/runtime/layout/
 ├── grid.rs          # Grid algorithm
 ├── block.rs         # Block layout
 ├── position.rs      # Absolute/relative positioning
-└── responsive.rs    # Responsive breakpoints
+└── responsive/      # Breakpoints, viewport and container queries
 ```
 
 **Layout Process:**
@@ -336,7 +336,7 @@ src/runtime/render/
 ├── diff.rs            # Buffer diff algorithm
 ├── cell.rs            # Terminal cell representation
 ├── batch.rs           # Batched draw commands
-├── image_protocol.rs  # Kitty image protocol
+├── image_protocol/    # Terminal image protocols (Kitty, iTerm2, Sixel)
 ├── backend/           # Rendering backends
 └── terminal/          # Terminal driver
 ```
@@ -381,9 +381,9 @@ src/runtime/event/
 ├── focus.rs         # Focus management
 ├── keymap.rs        # Key binding system
 ├── click.rs         # Mouse click handling
-├── drag.rs          # Drag handling
+├── drag/            # Drag and drop
 ├── gesture/         # Gesture recognition
-└── ime.rs           # IME / composition input
+└── ime/             # IME / composition input
 ```
 
 **Event Flow:**
