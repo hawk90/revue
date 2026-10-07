@@ -10,9 +10,15 @@ use crate::widget::{RenderContext, View};
 impl CandleChart {
     /// Get visible candles
     fn visible_candles(&self) -> &[Candle] {
-        let start = self.offset;
-        let end = (start + self.width).min(self.data.len());
-        &self.data[start..end]
+        &self.data[self.visible_range(self.data.len())]
+    }
+
+    /// Index range of the visible candles in a series of `len` candles,
+    /// empty when scrolled past the end
+    fn visible_range(&self, len: usize) -> std::ops::Range<usize> {
+        let start = self.offset.min(len);
+        let end = start.saturating_add(self.width).min(len);
+        start..end
     }
 
     /// Calculate price range
@@ -54,6 +60,9 @@ impl CandleChart {
     /// Render a single candle column
     fn render_candle(&self, candle: &Candle, min: f64, max: f64) -> Vec<(char, Color)> {
         let mut column = vec![(' ', DARK_BG); self.height as usize];
+        if self.height == 0 {
+            return column;
+        }
 
         let high_row = self.price_to_row(candle.high, min, max);
         let low_row = self.price_to_row(candle.low, min, max);
@@ -219,9 +228,7 @@ impl View for CandleChart {
         // Get candles to render
         let candles = if self.style == ChartStyle::HeikinAshi {
             let ha = self.to_heikin_ashi();
-            let start = self.offset;
-            let end = (start + self.width).min(ha.len());
-            ha[start..end].to_vec()
+            ha[self.visible_range(ha.len())].to_vec()
         } else {
             self.visible_candles().to_vec()
         };
@@ -390,5 +397,48 @@ mod tests {
         let chart = CandleChart::new(vec![]);
         let visible = chart.visible_candles();
         assert_eq!(visible.len(), 0);
+    }
+
+    fn three_candles() -> Vec<Candle> {
+        vec![
+            Candle::new(100.0, 105.0, 98.0, 103.0),
+            Candle::new(103.0, 108.0, 102.0, 107.0),
+            Candle::new(107.0, 112.0, 106.0, 111.0),
+        ]
+    }
+
+    fn render_chart(chart: &CandleChart) {
+        use crate::layout::Rect;
+        use crate::render::Buffer;
+
+        let mut buffer = Buffer::new(40, 20);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 40, 20));
+        chart.render(&mut ctx);
+    }
+
+    #[test]
+    fn test_visible_candles_scrolled_past_end_is_empty() {
+        let chart = CandleChart::new(three_candles()).scroll(10);
+        assert!(chart.visible_candles().is_empty());
+
+        let chart = CandleChart::new(three_candles()).scroll(usize::MAX);
+        assert!(chart.visible_candles().is_empty());
+    }
+
+    #[test]
+    fn test_render_zero_height() {
+        render_chart(&CandleChart::new(three_candles()).height(0));
+    }
+
+    #[test]
+    fn test_render_scrolled_past_end() {
+        for style in [ChartStyle::Candle, ChartStyle::HeikinAshi] {
+            render_chart(&CandleChart::new(three_candles()).style(style).scroll(10));
+            render_chart(
+                &CandleChart::new(three_candles())
+                    .style(style)
+                    .scroll(usize::MAX),
+            );
+        }
     }
 }
