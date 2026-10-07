@@ -86,7 +86,7 @@ src/widget/
 │   ├── filetree/          #   File tree
 │   ├── datagrid/          #   Data grid
 │   ├── calendar/          #   Calendar
-│   ├── timeline.rs        #   Timeline
+│   ├── timeline/          #   Timeline
 │   └── chart/             #   Charts
 │       ├── barchart.rs    #     Bar chart
 │       ├── piechart/      #     Pie/donut chart
