@@ -100,7 +100,7 @@ src/widget/
 │
 ├── display/               # Static/decorative display
 │   ├── text.rs            #   Text display
-│   ├── richtext.rs        #   Styled text
+│   ├── richtext/          #   Styled text
 │   ├── bigtext.rs         #   Large ASCII text
 │   ├── badge.rs           #   Badge
 │   ├── tag.rs             #   Tag/chip
