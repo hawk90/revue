@@ -107,17 +107,22 @@ where
 // =============================================================================
 
 /// A provider that holds a context value
+///
+/// Creating one provides the value like [`provide_signal`]: it is visible to
+/// [`use_context`] until replaced or cleared with [`clear_context`], and the
+/// provider and its consumers share one signal, so [`Provider::set`] is seen
+/// by every consumer.
 pub struct Provider<T: Clone + Send + Sync + 'static> {
     context_id: ContextId,
     value: Signal<T>,
 }
 
 impl<T: Clone + Send + Sync + 'static> Provider<T> {
-    /// Create a new provider
+    /// Create a new provider and provide its value for `context`
     pub fn new(context: &Context<T>, value: T) -> Self {
         Self {
             context_id: context.id,
-            value: Signal::new(value),
+            value: provide_signal(context, value),
         }
     }
 

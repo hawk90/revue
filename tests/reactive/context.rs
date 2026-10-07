@@ -229,6 +229,25 @@ fn test_provider_struct() {
 }
 
 #[test]
+fn test_provider_value_is_visible_to_use_context() {
+    let ctx: Context<String> = create_context();
+    let provider = Provider::new(&ctx, "initial".to_string());
+
+    assert!(has_context(&ctx));
+    assert_eq!(use_context(&ctx), Some("initial".to_string()));
+
+    // The provider and its consumers share one signal
+    provider.set("updated".to_string());
+    assert_eq!(use_context(&ctx), Some("updated".to_string()));
+    let signal = use_context_signal(&ctx).unwrap();
+    provider.update(|s| s.push('!'));
+    assert_eq!(signal.get(), "updated!");
+
+    clear_context(&ctx);
+    assert_eq!(use_context(&ctx), None);
+}
+
+#[test]
 fn test_context_clone() {
     let ctx = create_context_with_default(42);
     let ctx_clone = ctx.clone();
