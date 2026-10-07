@@ -272,16 +272,26 @@ mod tests {
 
     struct MockWriter {
         buffer: Vec<u8>,
+        /// Refuse this many writes before accepting any, like a console that
+        /// rejects one command.
+        fail_writes: usize,
     }
 
     impl MockWriter {
         fn new() -> Self {
-            Self { buffer: Vec::new() }
+            Self {
+                buffer: Vec::new(),
+                fail_writes: 0,
+            }
         }
     }
 
     impl Write for MockWriter {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            if self.fail_writes > 0 {
+                self.fail_writes -= 1;
+                return Err(io::Error::other("rejected"));
+            }
             self.buffer.extend_from_slice(buf);
             Ok(buf.len())
         }
@@ -344,6 +354,22 @@ mod tests {
         #[cfg(not(windows))]
         assert_eq!(leaves_alt_screen(&backend), 0);
         assert!(!backend.raw_mode);
+    }
+
+    /// A command the console rejects must not cost the rest of the restore:
+    /// the session is restored once, so a cursor left hidden stays hidden.
+    #[test]
+    #[serial_test::serial]
+    #[cfg(not(windows))]
+    fn a_rejected_command_does_not_skip_the_rest_of_the_restore() {
+        let mut backend = live_backend();
+        backend.writer.fail_writes = 1;
+
+        assert!(backend.restore().is_err());
+
+        let out = String::from_utf8_lossy(&backend.writer().buffer).into_owned();
+        assert!(out.contains("\x1b[?25h"), "cursor not shown: {out:?}");
+        assert_eq!(leaves_alt_screen(&backend), 1, "{out:?}");
     }
 
     #[test]
