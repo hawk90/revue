@@ -15,11 +15,6 @@ pub struct Known {
 pub const KNOWN: &[Known] = &[
     Known {
         layer: "parsers",
-        reason: "SyntaxHighlighter slices the line with a char index as if it were a byte index",
-        cases: &["markdown soup", "syntax corpus", "syntax soup", "syntax unicode"],
-    },
-    Known {
-        layer: "parsers",
         reason: "Diagram node definitions slice between an opening and a closing bracket without checking that the closing one comes after",
         cases: &["mermaid soup"],
     },
