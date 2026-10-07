@@ -806,7 +806,7 @@ items:
       - handle_key returns the activated button index
     evidence:
       - src/widget/feedback/modal/mod.rs::modal
-      - src/widget/feedback/modal/mod.rs::handle_key
+      - src/widget/feedback/modal/key_handling.rs::handle_key
       - tests/rendering_overlap_tests.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / Modal
