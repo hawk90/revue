@@ -768,3 +768,87 @@ fn test_markdown_toc_title_and_fg() {
     // The first "Title 1" on screen is the contents entry
     assert_eq!(fg_at(md, 60, "Title 1"), Some(revue::style::Color::GREEN));
 }
+
+// =========================================================================
+// Inline content inside headings
+// =========================================================================
+
+/// The modifier of the cell under the first occurrence of `needle`.
+fn modifier_at(md: Markdown, width: u16, needle: &str) -> Option<revue::render::Modifier> {
+    let mut buffer = Buffer::new(width, 24);
+    let area = Rect::new(0, 0, width, 24);
+    let mut ctx = RenderContext::new(&mut buffer, area);
+    md.render(&mut ctx);
+    for y in 0..24 {
+        let row: String = (0..width)
+            .filter_map(|x| buffer.get(x, y).map(|c| c.symbol))
+            .collect();
+        if let Some(byte) = row.find(needle) {
+            let x = row[..byte].chars().count() as u16;
+            return buffer.get(x, y).map(|c| c.modifier);
+        }
+    }
+    None
+}
+
+#[test]
+fn test_markdown_heading_inline_code_stays_in_place() {
+    let rows = render_md_rows(Markdown::new("# Use `zz` now"), 40);
+    assert!(row_containing(&rows, "# Use zz now").is_some(), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_heading_inline_code_uses_the_code_color() {
+    let md = || {
+        Markdown::new("# Use `zz` now")
+            .heading_fg(revue::style::Color::MAGENTA)
+            .code_fg(revue::style::Color::GREEN)
+    };
+    assert_eq!(fg_at(md(), 40, "zz"), Some(revue::style::Color::GREEN));
+    assert_eq!(fg_at(md(), 40, "Use"), Some(revue::style::Color::MAGENTA));
+    assert_eq!(fg_at(md(), 40, "now"), Some(revue::style::Color::MAGENTA));
+}
+
+#[test]
+fn test_markdown_toc_keeps_inline_code() {
+    let md = Markdown::new("# Use `zz` now");
+    assert_eq!(md.toc()[0].text, "Use zz now");
+}
+
+#[test]
+fn test_markdown_figlet_heading_keeps_inline_code() {
+    use revue::utils::figlet::{figlet_with_font, FigletFont};
+
+    let rows = render_md_rows(Markdown::new("# A`B`").figlet_headings(true), 60);
+    let art = figlet_with_font("AB", FigletFont::Block);
+    let art_rows: Vec<&str> = art.lines().map(str::trim_end).collect();
+    assert_eq!(&rows[..art_rows.len()], &art_rows[..], "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_heading_footnote_reference_follows_the_marker() {
+    let rows = render_md_rows(Markdown::new("# Title[^n]\n\n[^n]: A note."), 40);
+    assert!(row_containing(&rows, "# Title[^1]").is_some(), "{rows:#?}");
+}
+
+#[test]
+fn test_markdown_heading_stays_bold_after_strong_text() {
+    let modifier = modifier_at(Markdown::new("# **Aa** Bb"), 40, "Bb").unwrap();
+    assert!(
+        modifier.contains(revue::render::Modifier::BOLD),
+        "{modifier:?}"
+    );
+}
+
+#[test]
+fn test_markdown_heading_keeps_emphasis() {
+    let modifier = modifier_at(Markdown::new("# Aa *Bb*"), 40, "Bb").unwrap();
+    assert!(
+        modifier.contains(revue::render::Modifier::ITALIC),
+        "{modifier:?}"
+    );
+    assert!(
+        modifier.contains(revue::render::Modifier::BOLD),
+        "{modifier:?}"
+    );
+}

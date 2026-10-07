@@ -175,7 +175,7 @@ impl Markdown {
                     }
                     in_heading = false;
                 }
-                Event::Text(text) if in_heading => {
+                Event::Text(text) | Event::Code(text) if in_heading => {
                     heading_text.push_str(text.as_ref());
                 }
                 _ => {}
@@ -297,6 +297,18 @@ impl Markdown {
                     pulldown_cmark::HeadingLevel::H6 => 6,
                 };
                 ctx.heading_text.clear();
+                ctx.heading_is_figlet =
+                    ctx.figlet_font.is_some() && ctx.heading_level <= ctx.figlet_max_level;
+                if !ctx.heading_is_figlet {
+                    // The line starts with its level's `#` marker, dimmed;
+                    // the heading's content follows as it arrives, so inline
+                    // code, emphasis and footnote references keep their
+                    // place and style
+                    let marker = "#".repeat(ctx.heading_level as usize);
+                    ctx.current_fg = Some(PLACEHOLDER_FG);
+                    ctx.current_modifier = Modifier::empty();
+                    ctx.add_text(&format!("{marker} "));
+                }
                 ctx.current_modifier |= Modifier::BOLD;
                 ctx.current_fg = Some(ctx.heading_fg);
             }
@@ -387,24 +399,11 @@ impl Markdown {
     fn handle_end_tag(&self, ctx: &mut parser::ParserContext, tag_end: TagEnd) {
         match tag_end {
             TagEnd::Heading(_) => {
-                if let Some(font) = ctx
-                    .figlet_font
-                    .filter(|_| ctx.heading_level <= ctx.figlet_max_level)
-                {
+                if let Some(font) = ctx.figlet_font.filter(|_| ctx.heading_is_figlet) {
                     self.render_figlet_heading(ctx, font);
                     return;
                 }
-                // A heading line starts with its level's `#` marker, dimmed
-                let marker = "#".repeat(ctx.heading_level as usize);
-                let (fg, modifier) = (ctx.current_fg, ctx.current_modifier);
-                ctx.current_fg = Some(PLACEHOLDER_FG);
-                ctx.current_modifier = Modifier::empty();
-                ctx.add_text(&format!("{marker} "));
-                (ctx.current_fg, ctx.current_modifier) = (fg, modifier);
-                if !ctx.heading_text.is_empty() {
-                    let text = ctx.heading_text.clone();
-                    ctx.add_text(&text);
-                }
+                // The marker and content are already on the line
                 ctx.in_heading = false;
                 ctx.current_modifier &= !Modifier::BOLD;
                 ctx.current_fg = None;
@@ -415,7 +414,10 @@ impl Markdown {
                 ctx.new_line();
             }
             TagEnd::Strong => {
-                ctx.current_modifier &= !Modifier::BOLD;
+                // A heading is bold throughout, strong text or not
+                if !ctx.in_heading {
+                    ctx.current_modifier &= !Modifier::BOLD;
+                }
             }
             TagEnd::Emphasis => {
                 ctx.current_modifier &= !Modifier::ITALIC;
@@ -487,6 +489,9 @@ impl Markdown {
             ctx.current_cell.push_str(text);
         } else if ctx.in_heading {
             ctx.heading_text.push_str(text);
+            if !ctx.heading_is_figlet {
+                ctx.add_text(text);
+            }
         } else if ctx.in_blockquote && ctx.blockquote_first_text {
             // Hold the quote's opening text back only while it can still
             // become a callout marker like `[!NOTE]`
@@ -516,7 +521,13 @@ impl Markdown {
     fn handle_code(&self, ctx: &mut parser::ParserContext, text: &str) {
         if ctx.in_table {
             ctx.current_cell.push_str(text);
+        } else if ctx.in_heading && ctx.heading_is_figlet {
+            // Part of the big text, drawn when the heading ends
+            ctx.heading_text.push_str(text);
         } else if !ctx.in_code_block {
+            if ctx.in_heading {
+                ctx.heading_text.push_str(text);
+            }
             // Inline code is drawn in the code color
             let fg = ctx.current_fg;
             ctx.current_fg = Some(ctx.code_fg);
@@ -548,6 +559,11 @@ impl Markdown {
         }
 
         let num = ctx.footnote_label_map.get(text).copied().unwrap_or(1);
+        // Big text has no room for a reference mark; the numbering above
+        // still counts it so later references keep their numbers
+        if ctx.in_heading && ctx.heading_is_figlet {
+            return;
+        }
         ctx.add_text(&format!("[^{}]", num));
     }
 
