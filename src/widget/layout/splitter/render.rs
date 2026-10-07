@@ -92,4 +92,51 @@ mod tests {
             .pane(Pane::new("b").ratio(0.5));
         s.render(&mut ctx);
     }
+
+    /// The divider columns, and which of them is highlighted.
+    fn dividers(s: &Splitter) -> (Vec<u16>, Option<u16>) {
+        let mut buf = Buffer::new(40, 1);
+        let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, 40, 1));
+        s.render(&mut ctx);
+        let xs: Vec<u16> = (0..40)
+            .filter(|&x| buf.get(x, 0).unwrap().symbol == '│')
+            .collect();
+        let active = xs
+            .iter()
+            .copied()
+            .find(|&x| buf.get(x, 0).unwrap().fg == Some(s.active_color));
+        (xs, active)
+    }
+
+    #[test]
+    fn resize_moves_the_highlighted_divider_past_a_collapsed_pane() {
+        let pane = |id| Pane::new(id).ratio(0.3).min_size(0);
+        let mut s = Splitter::new()
+            .pane(pane("a"))
+            .pane(pane("b").collapsible())
+            .pane(pane("c"))
+            .pane(pane("d"));
+        s.toggle_pane(1);
+        // Visible: a | c | d - divider 1 sits between c and d.
+        s.start_resize(1);
+        let (before, active) = dividers(&s);
+        assert_eq!(before.len(), 2);
+        assert_eq!(
+            active,
+            Some(before[1]),
+            "divider 1 is not the highlighted one"
+        );
+
+        s.resize(10);
+        let (after, active) = dividers(&s);
+        assert_eq!(
+            after[0], before[0],
+            "a divider other than the highlighted one moved"
+        );
+        assert!(
+            after[1] > before[1],
+            "the highlighted divider did not move right"
+        );
+        assert_eq!(active, Some(after[1]));
+    }
 }

@@ -51,8 +51,15 @@ impl RichLog {
 
     /// Toggle selected entry details
     pub fn toggle_selected(&mut self) {
+        // `selected` indexes the visible (level-filtered) entries.
         if let Some(i) = self.selected {
-            if let Some(entry) = self.entries.get_mut(i) {
+            let min_level = self.min_level;
+            if let Some(entry) = self
+                .entries
+                .iter_mut()
+                .filter(|e| e.level >= min_level)
+                .nth(i)
+            {
                 entry.toggle();
             }
         }
@@ -91,5 +98,28 @@ impl RichLog {
             }
             _ => false,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::LogLevel;
+    use super::*;
+
+    #[test]
+    fn toggle_selected_toggles_the_selected_visible_entry() {
+        let mut log = RichLog::new();
+        log.debug("hidden");
+        log.error("shown");
+        // Filtering after logging hides the debug entry, so visible entry 0
+        // is the error.
+        let mut log = log.min_level(LogLevel::Warning);
+        log.select_next();
+        log.toggle_selected();
+        assert!(!log.entries[0].expanded, "the hidden entry was toggled");
+        assert!(
+            log.entries[1].expanded,
+            "the selected entry was not toggled"
+        );
     }
 }

@@ -81,13 +81,13 @@ pub fn examples(cpu: f64, memory: f64) -> Vec<Example> {
                     .child(
                         vstack()
                             .gap(1)
-                            .child(battery(0.85).label("Laptop"))
-                            .child(battery(0.45).label("Phone"))
-                            .child(battery(0.15).label("Mouse")),
+                            .child(battery(85.0).label("Laptop"))
+                            .child(battery(45.0).label("Phone"))
+                            .child(battery(15.0).label("Mouse")),
                     )
                     .child(Text::new(""))
                     .child(Text::new("Charging:").fg(primary))
-                    .child(battery(0.67).label("Tablet"))
+                    .child(battery(67.0).label("Tablet"))
                     .child(Text::new(""))
                     .child(Text::new("• Device battery").fg(muted))
                     .child(Text::new("• Charging indicator").fg(muted))

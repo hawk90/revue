@@ -15,6 +15,11 @@ const MAX_IMAGE_PIXELS: u64 = 67_108_864; // 8192 * 8192
 impl Image {
     /// Create an image from raw PNG data
     ///
+    /// PNG data is kept as it is (`ImageFormat::Png`). Other formats the
+    /// decoder recognizes (JPEG, BMP, GIF, ...) are decoded to RGBA pixels and
+    /// kept as `ImageFormat::Rgba`, so the terminal is never told raw bytes
+    /// of another format are PNG.
+    ///
     /// # Errors
     ///
     /// Returns `Err(ImageError::FileTooLarge)` if data size exceeds MAX_IMAGE_FILE_SIZE.
@@ -36,6 +41,7 @@ impl Image {
         let reader = image::ImageReader::new(std::io::Cursor::new(&data))
             .with_guessed_format()
             .map_err(|e| ImageError::DecodeError(e.to_string()))?;
+        let is_png = reader.format() == Some(image::ImageFormat::Png);
         let img = reader
             .decode()
             .map_err(|e| ImageError::DecodeError(e.to_string()))?;
@@ -62,11 +68,19 @@ impl Image {
             });
         }
 
+        // PNG bytes go to the terminal as they are (Kitty `f=100`); any other
+        // format is sent as the decoded RGBA pixels (`f=32`).
+        let (data, format) = if is_png {
+            (data, ImageFormat::Png)
+        } else {
+            (img.into_rgba8().into_raw(), ImageFormat::Rgba)
+        };
+
         Ok(Self {
             data,
             width,
             height,
-            format: ImageFormat::Png,
+            format,
             scale: ScaleMode::Fit,
             placeholder: ' ',
             id: rand_id(),
@@ -91,6 +105,9 @@ impl Image {
     ///
     /// Returns `Err(ImageError::FileTooLarge)` if file size exceeds MAX_IMAGE_FILE_SIZE.
     /// Returns `Err(ImageError::DecodeError)` if the image cannot be decoded.
+    ///
+    /// The file may be any format the decoder recognizes; see
+    /// [`from_png`](Self::from_png) for how it is kept.
     pub fn from_file(path: impl AsRef<std::path::Path>) -> ImageResult<Self> {
         let path_ref = path.as_ref();
 
@@ -192,5 +209,57 @@ impl Image {
             id: rand_id(),
             props: WidgetProps::new(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A 3x2 image with a different color in every pixel
+    fn sample() -> image::RgbImage {
+        image::RgbImage::from_fn(3, 2, |x, y| image::Rgb([x as u8 * 80, y as u8 * 120, 200]))
+    }
+
+    fn encode(format: image::ImageFormat) -> Vec<u8> {
+        let mut bytes = std::io::Cursor::new(Vec::new());
+        sample().write_to(&mut bytes, format).unwrap();
+        bytes.into_inner()
+    }
+
+    #[test]
+    fn png_is_kept_as_png() {
+        let data = encode(image::ImageFormat::Png);
+        let png = Image::from_png(data.clone()).unwrap();
+        assert_eq!(png.get_format(), ImageFormat::Png);
+        assert_eq!(png.get_data(), &data[..]);
+        assert!(png.kitty_escape(1, 1).contains("f=100"));
+    }
+
+    #[test]
+    fn other_formats_load_as_rgba_pixels() {
+        let expected: Vec<u8> = image::DynamicImage::ImageRgb8(sample())
+            .to_rgba8()
+            .into_raw();
+
+        let bmp = Image::from_png(encode(image::ImageFormat::Bmp)).unwrap();
+        assert_eq!(bmp.get_format(), ImageFormat::Rgba);
+        assert_eq!((bmp.width(), bmp.height()), (3, 2));
+        assert_eq!(bmp.get_data(), &expected[..]);
+        // Raw RGBA for Kitty, not `f=100` (PNG).
+        let escape = bmp.kitty_escape(1, 1);
+        assert!(escape.contains("f=32") && !escape.contains("f=100"));
+
+        // JPEG is lossy: check the shape, not the exact pixels.
+        let jpeg = Image::from_png(encode(image::ImageFormat::Jpeg)).unwrap();
+        assert_eq!(jpeg.get_format(), ImageFormat::Rgba);
+        assert_eq!((jpeg.width(), jpeg.height()), (3, 2));
+        assert_eq!(jpeg.get_data().len(), 3 * 2 * 4);
+    }
+
+    #[test]
+    fn data_that_does_not_decode_is_an_error() {
+        let garbage = Image::from_png(b"not an image at all".to_vec());
+        assert!(matches!(garbage, Err(ImageError::DecodeError(_))));
     }
 }

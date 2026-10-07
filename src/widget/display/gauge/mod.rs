@@ -48,6 +48,9 @@ pub struct Gauge {
     warning_threshold: Option<f64>,
     /// Critical threshold (0.0-1.0)
     critical_threshold: Option<f64>,
+    /// The thresholds flag values at or below them (a battery running low)
+    /// rather than at or above them
+    thresholds_below: bool,
     /// Warning color
     warning_color: Color,
     /// Critical color
@@ -80,6 +83,7 @@ impl Gauge {
             border_color: None,
             warning_threshold: None,
             critical_threshold: None,
+            thresholds_below: false,
             warning_color: Color::YELLOW,
             critical_color: Color::RED,
             segments: 10,
@@ -202,6 +206,7 @@ impl Gauge {
         };
         self.warning_threshold = Some(warning);
         self.critical_threshold = Some(critical);
+        self.thresholds_below = false;
         self
     }
 
@@ -260,11 +265,16 @@ pub fn percentage(value: f64) -> Gauge {
 }
 
 /// Helper to create a battery gauge
+///
+/// `level` is a percentage (0-100). A low charge is flagged: the warning
+/// color at or below 50%, the critical color at or below 20%.
 pub fn battery(level: f64) -> Gauge {
-    Gauge::new()
-        .percent(level)
-        .style(GaugeStyle::Battery)
-        .thresholds(0.5, 0.2)
+    let mut gauge = Gauge::new().percent(level).style(GaugeStyle::Battery);
+    // `thresholds` flags high values; a battery is in trouble when it is low.
+    gauge.warning_threshold = Some(0.5);
+    gauge.critical_threshold = Some(0.2);
+    gauge.thresholds_below = true;
+    gauge
 }
 
 // Most tests moved to tests/widget_tests.rs

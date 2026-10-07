@@ -36,10 +36,11 @@ impl Avatar {
             .name
             .bytes()
             .fold(0u32, |acc, b| acc.wrapping_add(b as u32));
-        let hue = (hash % 360) as u8;
+        // 0..360 does not fit in a u8; keep the full range.
+        let hue = (hash % 360) as u16;
 
         // Convert HSL to RGB (simplified)
-        let h = hue as f32 / 60.0;
+        let h = f32::from(hue) / 60.0;
         let s = 0.6_f32;
         let l = 0.4_f32;
 
@@ -314,5 +315,26 @@ impl View for Avatar {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    #[test]
+    fn name_hue_reaches_the_magenta_range() {
+        // "AAAAA" sums to 325, a hue in the magenta range (300..360).
+        let avatar = Avatar::new("AAAAA").size(AvatarSize::Small);
+        let mut buf = Buffer::new(2, 1);
+        let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, 2, 1));
+        avatar.render(&mut ctx);
+        let bg = buf.get(0, 0).unwrap().bg.unwrap();
+        assert!(
+            bg.r > bg.g && bg.b > bg.g,
+            "hue 325 should be magenta (green lowest), got {bg:?}"
+        );
     }
 }

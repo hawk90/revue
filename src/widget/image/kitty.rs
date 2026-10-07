@@ -14,6 +14,14 @@ impl Image {
             ImageFormat::Rgba => 32,
         };
 
+        // Raw pixels need their size (`s`, `v`); PNG carries its own.
+        let size = match self.format {
+            ImageFormat::Png => String::new(),
+            ImageFormat::Rgb | ImageFormat::Rgba => {
+                format!("s={},v={},", self.width, self.height)
+            }
+        };
+
         // Encode data as base64
         let encoded = BASE64.encode(&self.data);
 
@@ -42,8 +50,8 @@ impl Image {
             if is_first {
                 // First chunk includes all parameters
                 output.push_str(&format!(
-                    "\x1b_Ga=T,f={},i={},c={},r={},m={};{}\x1b\\",
-                    format_code, self.id, cols, rows, more, chunk
+                    "\x1b_Ga=T,f={},{}i={},c={},r={},m={};{}\x1b\\",
+                    format_code, size, self.id, cols, rows, more, chunk
                 ));
             } else {
                 // Continuation chunks
@@ -61,5 +69,19 @@ impl Image {
             || std::env::var("TERM_PROGRAM")
                 .map(|v| v == "kitty")
                 .unwrap_or(false)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn raw_pixels_carry_their_size() {
+        // Kitty cannot read raw RGB/RGBA data without its pixel size.
+        let rgba = Image::from_rgba(vec![0; 3 * 2 * 4], 3, 2).kitty_escape(1, 1);
+        assert!(rgba.starts_with("\x1b_Ga=T,f=32,s=3,v=2,"), "{rgba:?}");
+        let rgb = Image::from_rgb(vec![0; 3 * 2 * 3], 3, 2).kitty_escape(1, 1);
+        assert!(rgb.starts_with("\x1b_Ga=T,f=24,s=3,v=2,"), "{rgb:?}");
     }
 }
