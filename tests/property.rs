@@ -6,6 +6,8 @@ mod buffer_ops;
 mod color;
 #[path = "property/css_parsing.rs"]
 mod css_parsing;
+#[path = "property/diff.rs"]
+mod diff;
 #[path = "property/float_conversion.rs"]
 mod float_conversion;
 #[path = "property/layout_edge.rs"]

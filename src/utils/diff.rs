@@ -187,7 +187,7 @@ const MAX_DIFF_MEMORY_MB: usize = 50;
 /// Compute LCS indices
 ///
 /// Uses simplified algorithm for inputs that are too large.
-fn longest_common_subsequence<T: PartialEq>(a: &[T], b: &[T]) -> Vec<(usize, usize)> {
+fn longest_common_subsequence<T: Eq + std::hash::Hash>(a: &[T], b: &[T]) -> Vec<(usize, usize)> {
     let m = a.len();
     let n = b.len();
 
@@ -246,18 +246,29 @@ fn longest_common_subsequence<T: PartialEq>(a: &[T], b: &[T]) -> Vec<(usize, usi
 
 /// Simplified diff algorithm for large inputs
 ///
-/// Finds exact matches only (no insertions/deletions within sequences).
-/// Much faster and uses O(min(m,n)) memory instead of O(m*n).
-fn simplified_diff<T: PartialEq>(a: &[T], b: &[T]) -> Vec<(usize, usize)> {
-    let mut result = Vec::new();
+/// Greedy matching: each item of `a`, in order, is paired with the first
+/// equal item of `b` after the previous pair. The pairs are a common
+/// subsequence (both indices strictly increase), so the diff built from them
+/// is correct, just not always minimal. O((m + n) log n) time, O(n) memory.
+fn simplified_diff<T: Eq + std::hash::Hash>(a: &[T], b: &[T]) -> Vec<(usize, usize)> {
+    use std::collections::HashMap;
 
+    // Positions of each value in `b`, ascending
+    let mut positions: HashMap<&T, Vec<usize>> = HashMap::new();
+    for (j, b_val) in b.iter().enumerate() {
+        positions.entry(b_val).or_default().push(j);
+    }
+
+    let mut result = Vec::new();
+    let mut next_j = 0;
     for (i, a_val) in a.iter().enumerate() {
-        // Find matching position in b
-        for (j, b_val) in b.iter().enumerate() {
-            if a_val == b_val {
-                result.push((i, j));
-                break;
-            }
+        let Some(js) = positions.get(a_val) else {
+            continue;
+        };
+        // First position in `b` at or after `next_j`
+        if let Some(&j) = js.get(js.partition_point(|&j| j < next_j)) {
+            result.push((i, j));
+            next_j = j + 1;
         }
     }
 
