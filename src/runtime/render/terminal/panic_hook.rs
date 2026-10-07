@@ -18,6 +18,21 @@
 //! and it prints *after* the alternate screen has been left - which is the
 //! whole point, since a message written to the alternate screen disappears with
 //! it.
+//!
+//! # Restoring exactly once
+//!
+//! With unwinding (the dev profile), a panic used to restore the terminal twice:
+//! the hook first, then the `Drop` of the `Terminal` the unwind passes through.
+//! The second restore is not harmless. `LeaveAlternateScreen` (`?1049l`) also
+//! restores the cursor position saved on entry, so a second one moves the
+//! cursor back above the panic message the hook just printed, and whatever is
+//! written next - the shell prompt - overwrites it.
+//!
+//! So a TUI session is restored once. `ARMED` doubles as the session's "still
+//! needs restoring" flag: every restore path - the hook, [`restore_terminal`],
+//! `Terminal::restore` and `CrosstermBackend::restore` - goes through
+//! `claim_restore`, and only the caller that flips it from `true` to `false`
+//! writes the restore sequence.
 
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -26,7 +41,6 @@ use std::sync::Once;
 use crossterm::{
     cursor::Show,
     event::{DisableBracketedPaste, DisableFocusChange, DisableMouseCapture},
-    execute,
     style::ResetColor,
     terminal::{disable_raw_mode, LeaveAlternateScreen},
 };
@@ -67,21 +81,74 @@ pub fn install_panic_hook() {
         std::panic::set_hook(Box::new(move |info| {
             // Restore first: the default hook writes to stderr, and that message
             // is worthless if it lands on an alternate screen we are about to
-            // tear down. `swap` also makes a double panic restore only once.
-            if ARMED.swap(false, Ordering::SeqCst) {
-                restore_terminal();
+            // tear down. Claiming the session also turns the unwinding `Drop`
+            // that follows into a no-op, which keeps the message on screen.
+            if claim_restore() {
+                write_restore_sequence();
             }
             previous(info);
         }));
     });
 }
 
-/// Disarm the hook after a clean shutdown.
+/// Claim the live TUI session for restoring, and disarm the hook.
 ///
-/// After this, a later panic will not emit restore sequences - the terminal is
-/// already back to normal and the process may be doing ordinary stdout work.
-pub(crate) fn disarm() {
-    ARMED.store(false, Ordering::SeqCst);
+/// Returns `true` to exactly one caller per session - the one that should write
+/// the restore sequence. Every later caller gets `false`: the terminal is
+/// already back to normal, and restoring it again would move the cursor back
+/// over whatever was printed since (see the module docs).
+///
+/// After this, a later panic does not emit restore sequences either - the
+/// process may be doing ordinary stdout work by then.
+pub(crate) fn claim_restore() -> bool {
+    ARMED.swap(false, Ordering::SeqCst)
+}
+
+/// Issue each restore command on its own and report the first error.
+///
+/// Chaining them through one `execute!` aborts the rest at the first failure,
+/// and on a Windows console without VT processing crossterm dispatches to
+/// WinAPI, where a command such as `DisableBracketedPaste` has no counterpart
+/// and errors. A restore that stops there leaves the cursor hidden and the
+/// alternate screen up - and since a session is restored once, nothing tries
+/// again.
+macro_rules! restore_each {
+    ($writer:expr, $($command:expr),+ $(,)?) => {{
+        $crate::runtime::render::terminal::panic_hook::note_restore_written();
+        let mut first: ::std::io::Result<()> = Ok(());
+        $(
+            if let Err(error) = ::crossterm::execute!($writer, $command) {
+                if first.is_ok() {
+                    first = Err(error);
+                }
+            }
+        )+
+        first
+    }};
+}
+pub(crate) use restore_each;
+
+/// Record that a restore sequence is being written. Test builds count these per
+/// thread; release builds compile it away.
+#[inline]
+pub(crate) fn note_restore_written() {
+    #[cfg(test)]
+    WRITES.with(|c| c.set(c.get() + 1));
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Restore sequences written on this thread. Counting them, rather than
+    /// the escape bytes in a writer, works on every platform: on Windows
+    /// crossterm drives the console through WinAPI and writes no bytes a test
+    /// could count.
+    static WRITES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// How many restore sequences this thread has written so far.
+#[cfg(test)]
+pub(crate) fn restores_performed() -> usize {
+    WRITES.with(|c| c.get())
 }
 
 /// Is the panic hook currently armed?
@@ -96,25 +163,33 @@ pub(crate) fn is_armed() -> bool {
 /// signal handler's cleanup path, before shelling out to `$EDITOR`, or from a
 /// custom panic hook of your own.
 ///
-/// Every operation is a no-op when the corresponding mode was never enabled, so
-/// calling this without a live TUI session is harmless, as is calling it twice.
+/// It ends the current TUI session: the panic hook and the `restore` (or
+/// `Drop`) of the [`Terminal`](super::Terminal) or
+/// [`CrosstermBackend`](crate::render::CrosstermBackend) that started the
+/// session will not restore a second time. If you enter TUI mode again by hand
+/// afterwards, call [`install_panic_hook`] again to start a new session.
+///
 /// Errors are deliberately ignored: this runs on the way out, and there is
 /// nothing useful to do if the terminal will not take the bytes.
 pub fn restore_terminal() {
+    claim_restore();
+    write_restore_sequence();
+}
+
+/// Write the restore sequence to stdout and leave raw mode, unconditionally.
+fn write_restore_sequence() {
     let mut out = std::io::stdout();
 
-    // Each command is issued on its own and its error dropped. Chaining them
-    // through one `execute!` would abort the rest of the restore at the first
-    // failure - and on a Windows console without VT processing, crossterm
-    // dispatches to WinAPI, where `DisableBracketedPaste` has no counterpart
-    // and errors. Leaving the cursor hidden because an unrelated command was
-    // unsupported is exactly the outcome this function exists to prevent.
-    let _ = execute!(out, DisableMouseCapture);
-    let _ = execute!(out, DisableBracketedPaste);
-    let _ = execute!(out, DisableFocusChange);
-    let _ = execute!(out, ResetColor);
-    let _ = execute!(out, Show);
-    let _ = execute!(out, LeaveAlternateScreen);
+    // Errors are dropped: this runs on the way out, with nowhere to report them.
+    let _ = restore_each!(
+        out,
+        DisableMouseCapture,
+        DisableBracketedPaste,
+        DisableFocusChange,
+        ResetColor,
+        Show,
+        LeaveAlternateScreen,
+    );
 
     let _ = out.flush();
     let _ = disable_raw_mode();
@@ -191,16 +266,30 @@ mod tests {
 
     #[test]
     #[serial]
-    fn install_arms_and_disarm_clears() {
+    fn install_arms_and_claim_disarms() {
         install_panic_hook();
         assert!(is_armed());
 
-        disarm();
+        assert!(claim_restore());
         assert!(!is_armed());
 
-        // Re-arming works after a disarm - an app may enter TUI mode again.
+        // Re-arming works after a restore - an app may enter TUI mode again.
         install_panic_hook();
         assert!(is_armed());
-        disarm();
+        assert!(claim_restore());
+    }
+
+    /// One session, one restore: whoever claims it first restores, and every
+    /// later restore path is told the terminal is already back to normal.
+    #[test]
+    #[serial]
+    fn claim_restore_succeeds_once_per_session() {
+        install_panic_hook();
+
+        assert!(claim_restore(), "the first restore path must restore");
+        assert!(
+            !claim_restore(),
+            "a second restore would leave the alternate screen twice"
+        );
     }
 }

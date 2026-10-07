@@ -2,6 +2,7 @@
 //!
 //! This backend uses the crossterm library for cross-platform terminal I/O.
 
+use crate::runtime::render::terminal::panic_hook::restore_each;
 use crossterm::{
     cursor::{Hide, MoveTo, Show},
     event::{
@@ -110,32 +111,42 @@ impl<W: Write> Backend for CrosstermBackend<W> {
 
     fn restore(&mut self) -> Result<()> {
         if self.raw_mode {
-            if self.mouse_enabled {
-                execute!(
+            let mouse_enabled = self.mouse_enabled;
+            self.raw_mode = false;
+            self.mouse_enabled = false;
+            self.bracketed_paste_enabled = false;
+            self.focus_events_enabled = false;
+            // Restore once per session: if the panic hook already did, leaving
+            // the alternate screen again would move the cursor back over the
+            // panic message. See `panic_hook`.
+            if !crate::runtime::render::terminal::panic_hook::claim_restore() {
+                return Ok(());
+            }
+            let written = if mouse_enabled {
+                restore_each!(
                     self.writer,
                     DisableMouseCapture,
                     DisableBracketedPaste,
                     DisableFocusChange,
                     ResetColor,
                     Show,
-                    LeaveAlternateScreen
-                )?;
+                    LeaveAlternateScreen,
+                )
             } else {
-                execute!(
+                restore_each!(
                     self.writer,
                     DisableBracketedPaste,
                     DisableFocusChange,
                     ResetColor,
                     Show,
-                    LeaveAlternateScreen
-                )?;
-            }
-            disable_raw_mode()?;
-            self.raw_mode = false;
-            self.mouse_enabled = false;
-            self.bracketed_paste_enabled = false;
-            self.focus_events_enabled = false;
-            crate::runtime::render::terminal::panic_hook::disarm();
+                    LeaveAlternateScreen,
+                )
+            };
+            // There is no second attempt, so leave raw mode even if the
+            // writer refused the sequence.
+            let raw = disable_raw_mode();
+            written?;
+            raw?;
         }
         Ok(())
     }
@@ -257,19 +268,30 @@ fn to_crossterm_color(color: Color) -> CrosstermColor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::runtime::render::terminal::panic_hook::restores_performed;
 
     struct MockWriter {
         buffer: Vec<u8>,
+        /// Refuse this many writes before accepting any, like a console that
+        /// rejects one command.
+        fail_writes: usize,
     }
 
     impl MockWriter {
         fn new() -> Self {
-            Self { buffer: Vec::new() }
+            Self {
+                buffer: Vec::new(),
+                fail_writes: 0,
+            }
         }
     }
 
     impl Write for MockWriter {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            if self.fail_writes > 0 {
+                self.fail_writes -= 1;
+                return Err(io::Error::other("rejected"));
+            }
             self.buffer.extend_from_slice(buf);
             Ok(buf.len())
         }
@@ -277,6 +299,77 @@ mod tests {
         fn flush(&mut self) -> io::Result<()> {
             Ok(())
         }
+    }
+
+    /// A backend as `init_with_mouse` leaves it, minus the parts that need a
+    /// real TTY.
+    fn live_backend() -> CrosstermBackend<MockWriter> {
+        let mut backend = CrosstermBackend::new(MockWriter::new());
+        backend.raw_mode = true;
+        backend.mouse_enabled = true;
+        crate::render::install_panic_hook();
+        backend
+    }
+
+    #[cfg(not(windows))]
+    fn leaves_alt_screen(backend: &CrosstermBackend<MockWriter>) -> usize {
+        String::from_utf8_lossy(&backend.writer().buffer)
+            .matches("\x1b[?1049l")
+            .count()
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn restore_leaves_the_alternate_screen_once() {
+        let mut backend = live_backend();
+        let before = restores_performed();
+
+        // Raw mode is only faked here, and Windows refuses to leave a raw mode
+        // that was never entered, so the result is not what is under test.
+        let _ = backend.restore();
+        let _ = backend.restore();
+
+        assert_eq!(restores_performed() - before, 1);
+        // Where crossterm speaks ANSI, the bytes agree. On Windows it drives
+        // the console through WinAPI and writes nothing to count.
+        #[cfg(not(windows))]
+        assert_eq!(leaves_alt_screen(&backend), 1);
+    }
+
+    /// The unwinding `Drop` after a panic must not undo the panic hook's work
+    /// by leaving the alternate screen a second time.
+    #[test]
+    #[serial_test::serial]
+    fn restore_after_the_panic_hook_writes_nothing() {
+        let mut backend = live_backend();
+
+        assert!(crate::runtime::render::terminal::panic_hook::claim_restore());
+        let before = restores_performed();
+
+        // Raw mode is only faked here, and Windows refuses to leave a raw mode
+        // that was never entered, so the result is not what is under test.
+        let _ = backend.restore();
+
+        assert_eq!(restores_performed() - before, 0);
+        #[cfg(not(windows))]
+        assert_eq!(leaves_alt_screen(&backend), 0);
+        assert!(!backend.raw_mode);
+    }
+
+    /// A command the console rejects must not cost the rest of the restore:
+    /// the session is restored once, so a cursor left hidden stays hidden.
+    #[test]
+    #[serial_test::serial]
+    #[cfg(not(windows))]
+    fn a_rejected_command_does_not_skip_the_rest_of_the_restore() {
+        let mut backend = live_backend();
+        backend.writer.fail_writes = 1;
+
+        assert!(backend.restore().is_err());
+
+        let out = String::from_utf8_lossy(&backend.writer().buffer).into_owned();
+        assert!(out.contains("\x1b[?25h"), "cursor not shown: {out:?}");
+        assert_eq!(leaves_alt_screen(&backend), 1, "{out:?}");
     }
 
     #[test]

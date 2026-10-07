@@ -76,22 +76,39 @@ impl<W: Write> Terminal<W> {
     }
 
     /// Restore the terminal to normal mode
+    ///
+    /// Restores at most once per TUI session. If the panic hook or
+    /// [`restore_terminal`](super::restore_terminal) already restored it, this
+    /// writes nothing: leaving the alternate screen a second time moves the
+    /// cursor back over whatever was printed in between, such as a panic
+    /// message.
     pub fn restore(&mut self) -> Result<()> {
         if self.raw_mode {
-            if self.mouse_capture {
-                execute!(
+            self.raw_mode = false;
+            if !super::panic_hook::claim_restore() {
+                return Ok(());
+            }
+            let written = if self.mouse_capture {
+                super::panic_hook::restore_each!(
                     self.writer,
                     DisableMouseCapture,
                     ResetColor,
                     Show,
-                    LeaveAlternateScreen
-                )?;
+                    LeaveAlternateScreen,
+                )
             } else {
-                execute!(self.writer, ResetColor, Show, LeaveAlternateScreen)?;
-            }
-            disable_raw_mode()?;
-            self.raw_mode = false;
-            super::panic_hook::disarm();
+                super::panic_hook::restore_each!(
+                    self.writer,
+                    ResetColor,
+                    Show,
+                    LeaveAlternateScreen
+                )
+            };
+            // There is no second attempt, so leave raw mode even if the
+            // writer refused the sequence.
+            let raw = disable_raw_mode();
+            written?;
+            raw?;
         }
         Ok(())
     }
@@ -208,5 +225,74 @@ impl<W: Write> Terminal<W> {
 impl<W: Write> Drop for Terminal<W> {
     fn drop(&mut self) {
         let _ = self.restore();
+    }
+}
+
+#[cfg(test)]
+mod restore_tests {
+    use super::*;
+    use crate::render::terminal::panic_hook::{
+        claim_restore, install_panic_hook, restores_performed,
+    };
+    use serial_test::serial;
+
+    #[cfg(not(windows))]
+    const LEAVE_ALT_SCREEN: &str = "\x1b[?1049l";
+
+    /// A terminal in the state `init_with_mouse` leaves it, minus the parts
+    /// that need a real TTY: in raw mode as far as `Terminal` knows, and the
+    /// session armed for restoring.
+    fn live_terminal() -> Terminal<Vec<u8>> {
+        let mut terminal = Terminal::with_size(Vec::new(), 10, 4);
+        terminal.raw_mode = true;
+        install_panic_hook();
+        terminal
+    }
+
+    #[cfg(not(windows))]
+    fn leaves(terminal: &Terminal<Vec<u8>>) -> usize {
+        String::from_utf8_lossy(terminal.writer())
+            .matches(LEAVE_ALT_SCREEN)
+            .count()
+    }
+
+    #[test]
+    #[serial]
+    fn restore_leaves_the_alternate_screen_once() {
+        let mut terminal = live_terminal();
+        let before = restores_performed();
+
+        // Raw mode is only faked here, and Windows refuses to leave a raw mode
+        // that was never entered, so the result is not what is under test.
+        let _ = terminal.restore();
+        let _ = terminal.restore();
+
+        assert_eq!(restores_performed() - before, 1);
+        // Where crossterm speaks ANSI, the bytes agree. On Windows it drives
+        // the console through WinAPI and writes nothing to count.
+        #[cfg(not(windows))]
+        assert_eq!(leaves(&terminal), 1);
+    }
+
+    /// The panic hook restores first; the unwinding `Drop` that follows must
+    /// not leave the alternate screen again, or the cursor jumps back over
+    /// the panic message and the shell prompt overwrites it.
+    #[test]
+    #[serial]
+    fn restore_after_the_panic_hook_writes_nothing() {
+        let mut terminal = live_terminal();
+
+        // What the panic hook does before it writes the restore sequence.
+        assert!(claim_restore());
+        let before = restores_performed();
+
+        // Raw mode is only faked here, and Windows refuses to leave a raw mode
+        // that was never entered, so the result is not what is under test.
+        let _ = terminal.restore();
+
+        assert_eq!(restores_performed() - before, 0);
+        #[cfg(not(windows))]
+        assert_eq!(leaves(&terminal), 0, "{:?}", terminal.writer());
+        assert!(!terminal.raw_mode);
     }
 }
