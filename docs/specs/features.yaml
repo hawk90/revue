@@ -265,7 +265,7 @@ items:
       - tests/css_layout.rs::a_css_gap_is_ignored_without_the_flag
     source:
       - FEATURES.md §1 CSS Styling / Supported Properties
-    notes: 'Stale comment in src/widget/layout/stack.rs says "gap: 0 … reads as not specified"; behavior (and test) follow
+    notes: 'Stale comment in src/widget/layout/stack/sizing.rs says "gap: 0 … reads as not specified"; behavior (and test) follow
       the doc.'
   - id: CSS-016
     title: Flex/grid container properties from CSS (flex-direction, justify-content, align-items, flex-grow, flex, flex-wrap,
@@ -362,8 +362,8 @@ items:
       - vstack stacks children vertically
       - hstack horizontally
     evidence:
-      - src/widget/layout/stack.rs::vstack
-      - src/widget/layout/stack.rs::hstack
+      - src/widget/layout/stack/mod.rs::vstack
+      - src/widget/layout/stack/mod.rs::hstack
       - tests/sibling_invalidation.rs
     source:
       - FEATURES.md §2 Flexbox Layout / Direction
@@ -396,7 +396,7 @@ items:
       - Stack::gap and Grid gaps
       - CSS gap/row-gap/column-gap (CSS-015)
     evidence:
-      - src/widget/layout/stack.rs::gap
+      - src/widget/layout/stack/mod.rs::gap
       - tests/css_layout.rs::a_css_gap_overrides_the_builders_gap
     source:
       - FEATURES.md §2 Flexbox Layout / Gap
@@ -412,9 +412,9 @@ items:
       - min/max constraints
       - percent width via CSS
     evidence:
-      - src/widget/layout/stack.rs::child_flex
-      - src/widget/layout/stack.rs::child_sized
-      - src/widget/layout/stack.rs::constrain
+      - src/widget/layout/stack/mod.rs::child_flex
+      - src/widget/layout/stack/mod.rs::child_sized
+      - src/widget/layout/stack/mod.rs::constrain
       - tests/css_layout.rs::width_narrows_a_widget
     source:
       - FEATURES.md §2 Flexbox Layout / Sizing
@@ -464,7 +464,7 @@ items:
       - a flex-wrap row in a content-sized parent shows every line, each as tall as its tallest item
     evidence:
       - src/widget/traits/view.rs::measure
-      - src/widget/layout/stack.rs::content_sized
+      - src/widget/layout/stack/mod.rs::content_sized
       - tests/content_sized_stack.rs::a_column_stacks_text_line_after_line
       - tests/content_sized_stack.rs::every_constructor_is_content_sized_by_default
       - tests/content_sized_stack.rs::turning_the_flag_off_shares_equally
@@ -1025,7 +1025,7 @@ items:
     evidence:
       - src/state/patterns/form/state.rs
       - src/state/patterns/form/field.rs
-      - src/widget/form/form.rs::on_submit
+      - src/widget/form/form/mod.rs::on_submit
       - tests/widget/form_tests.rs
       - examples/form_validation.rs
     source:

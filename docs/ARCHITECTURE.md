@@ -52,12 +52,12 @@ src/widget/
 ├── macros.rs              # Widget builder macros
 │
 ├── layout/                # Containers & structure
-│   ├── stack.rs           #   VStack, HStack
+│   ├── stack/             #   VStack, HStack
 │   ├── grid/              #   Grid layout
 │   ├── card/              #   Card container
 │   ├── border.rs          #   Border decoration
 │   ├── scroll.rs          #   Scrollable container
-│   ├── splitter.rs        #   Split panes
+│   ├── splitter/          #   Split panes
 │   ├── tabs.rs            #   Tab container
 │   ├── accordion/         #   Accordion
 │   ├── sidebar/           #   Sidebar
@@ -70,13 +70,13 @@ src/widget/
 │       ├── textarea/      #   Multi-line editor
 │       ├── button.rs      #   Button
 │       ├── checkbox.rs    #   Checkbox
-│       ├── radio.rs       #   Radio buttons
+│       ├── radio/         #   Radio buttons
 │       ├── switch.rs      #   Toggle switch
 │       ├── select/        #   Dropdown select
-│       ├── slider.rs      #   Slider control
+│       ├── slider/        #   Slider control
 │       ├── color_picker/  #   Color picker
 │       ├── autocomplete/  #   Autocomplete input
-│       └── stepper.rs     #   Step indicator
+│       └── stepper/       #   Step indicator
 │
 ├── data/                  # Data display & visualization
 │   ├── list.rs            #   List widget

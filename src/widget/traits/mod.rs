@@ -90,21 +90,27 @@
 //!     .bg(Color::Black);
 //! ```
 
+mod draggable;
 mod element;
 mod event;
+mod interactive;
 pub(crate) mod render_context;
+mod styled_view;
 mod symbols;
 mod timeout;
 mod view;
 mod widget_state;
 
 // Re-export all public types
+pub use draggable::Draggable;
 pub use element::Element;
 pub use event::{EventResult, FocusStyle};
+pub use interactive::{Interactive, ToggleWidget};
 pub use render_context::{OverlayEntry, OverlayQueue, ProgressBarConfig, RenderContext};
+pub use styled_view::StyledView;
 pub use symbols::Symbols;
 pub use timeout::Timeout;
-pub use view::{Draggable, Fill, Interactive, StyledView, ToggleWidget, View};
+pub use view::{Fill, View};
 pub use widget_state::{WidgetProps, WidgetState, DISABLED_BG, DISABLED_FG};
 
 // =============================================================================
