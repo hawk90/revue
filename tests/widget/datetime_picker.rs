@@ -987,3 +987,21 @@ fn test_datetime_picker_clone() {
     assert_eq!(original.get_mode(), DateTimeMode::Date);
     assert_same_render(&original_buf, &render_picker(&original));
 }
+
+// Found by tests/event_sequences.rs: the shrunk sequence was `'j'` from
+// Jan 31 - moving into February kept the stored day 31.
+#[test]
+fn test_month_navigation_keeps_a_real_date() {
+    let mut picker = DateTimePicker::new().selected_date(Date::new(2024, 1, 31));
+    picker.handle_key(&Key::Char('j'));
+    assert!(picker.get_date().is_valid(), "{:?}", picker.get_date());
+    assert_eq!(picker.get_date().month, 2);
+
+    let mut picker = DateTimePicker::new().selected_date(Date::new(2024, 2, 29));
+    picker.handle_key(&Key::Char('}'));
+    assert_eq!(picker.get_date(), Date::new(2025, 2, 28));
+
+    let mut picker = DateTimePicker::new().selected_date(Date::new(2024, 3, 31));
+    picker.handle_key(&Key::Char('['));
+    assert_eq!(picker.get_date(), Date::new(2024, 2, 29));
+}
