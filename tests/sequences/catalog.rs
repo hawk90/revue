@@ -200,6 +200,23 @@ fn nav(ev: &KeyEvent) -> Nav {
     }
 }
 
+/// A `ScrollView` and the viewport height its handlers were last given.
+struct Scrolled {
+    view: ScrollView,
+    viewport: u16,
+}
+
+impl View for Scrolled {
+    fn render(&self, ctx: &mut RenderContext) {
+        // Draw some content, so the offset is drawn too
+        let mut content = self.view.create_content_buffer(ctx.area.width);
+        for y in 0..50u16 {
+            content.put_str(0, y, &format!("line {y}"));
+        }
+        self.view.render_content(ctx, &content);
+    }
+}
+
 fn items(n: usize) -> Vec<String> {
     (0..n).map(|i| format!("item {i}")).collect()
 }
@@ -1189,19 +1206,34 @@ pub fn catalog() -> Vec<Entry> {
             .mutate("reset", |w| w.reset())
             .done()
         }),
+        // The offset is clamped against the viewport a handler is given (the
+        // widget is not told about a resize until then), so the invariant is
+        // checked against the viewport of the last key or mouse step.
         e("ScrollView", || {
-            W::new(ScrollView::new().content_height(50), |w, k, area| {
-                w.handle_key(&k.key, area.height);
-            })
+            W::new(
+                Scrolled {
+                    view: ScrollView::new().content_height(50),
+                    viewport: 10,
+                },
+                |w, k, area| {
+                    w.viewport = area.height;
+                    w.view.handle_key(&k.key, area.height);
+                },
+            )
             .mouse(|w, m, area| {
-                w.handle_mouse(m, area.height);
+                w.viewport = area.height;
+                w.view.handle_mouse(m, area.height);
             })
-            .check(|w, area| {
-                let max = 50u16.saturating_sub(area.height);
-                if w.offset() <= max {
+            .check(|w, _| {
+                let max = 50u16.saturating_sub(w.viewport);
+                if w.view.offset() <= max {
                     Ok(())
                 } else {
-                    Err(format!("offset {} past max {max}", w.offset()))
+                    Err(format!(
+                        "offset {} past max {max} (viewport {})",
+                        w.view.offset(),
+                        w.viewport
+                    ))
                 }
             })
             .done()

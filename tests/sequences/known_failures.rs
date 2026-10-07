@@ -41,20 +41,8 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "keys",
-        widget: "ScrollView",
-        sequence: "Ctrl+End [80x24]",
-        reason: "the offset is clamped only against the viewport of the last scroll call, not the one rendered",
-    },
-    Known {
-        layer: "keys",
         widget: "TextArea",
         sequence: "<set content> Enter PageUp <add cursor below> Delete",
         reason: "edits move only the primary cursor; secondary cursors are left past the text",
-    },
-    Known {
-        layer: "mouse",
-        widget: "ScrollView",
-        sequence: "ScrollDown@(start,start) ScrollDown@(start,start) ScrollDown@(start,start) ScrollDown@(start,start) [7x40]",
-        reason: "the offset is clamped only against the viewport of the last scroll call, not the one rendered",
     },
 ];

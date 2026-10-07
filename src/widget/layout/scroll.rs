@@ -135,6 +135,16 @@ impl ScrollView {
         self.scroll_offset
     }
 
+    /// The offset as drawn in a viewport `viewport_height` rows tall.
+    ///
+    /// The stored offset is clamped against the viewport of the last scroll
+    /// call; after the viewport grows it can lie past the end, which would
+    /// leave blank rows under the content.
+    fn offset_for(&self, viewport_height: u16) -> u16 {
+        self.scroll_offset
+            .min(self.content_height.saturating_sub(viewport_height))
+    }
+
     /// Set scroll offset with bounds checking
     pub fn set_offset(&mut self, offset: u16, viewport_height: u16) {
         let max_offset = self.content_height.saturating_sub(viewport_height);
@@ -176,6 +186,8 @@ impl ScrollView {
     /// Handle mouse events, returns true if scroll changed
     pub fn handle_mouse(&mut self, event: &crate::event::MouseEvent, viewport_height: u16) -> bool {
         use crate::event::MouseEventKind;
+        // The viewport may have grown since the last scroll
+        self.scroll_offset = self.offset_for(viewport_height);
         let old_offset = self.scroll_offset;
         match event.kind {
             MouseEventKind::ScrollUp => {
@@ -193,6 +205,8 @@ impl ScrollView {
     pub fn handle_key(&mut self, key: &crate::event::Key, viewport_height: u16) -> bool {
         use crate::event::Key;
 
+        // The viewport may have grown since the last scroll
+        self.scroll_offset = self.offset_for(viewport_height);
         let old_offset = self.scroll_offset;
 
         match key {
@@ -261,7 +275,7 @@ impl ScrollView {
 
         let max_offset = self.content_height.saturating_sub(viewport_height);
         let scroll_ratio = if max_offset > 0 {
-            self.scroll_offset as f32 / max_offset as f32
+            self.offset_for(viewport_height) as f32 / max_offset as f32
         } else {
             0.0
         };
@@ -314,9 +328,10 @@ impl ScrollView {
     pub fn render_content(&self, ctx: &mut RenderContext, content_buffer: &Buffer) {
         let area = self.content_area(ctx.area);
         let viewport_height = area.height;
+        let offset = self.offset_for(viewport_height);
 
         for y in 0..viewport_height {
-            let content_y = self.scroll_offset + y;
+            let content_y = offset + y;
             if content_y >= self.content_height {
                 break;
             }
@@ -483,5 +498,32 @@ mod tests {
     fn test_scroll_view_helper_fn() {
         let s = scroll_view();
         assert_eq!(s.offset(), 0);
+    }
+
+    // Found by tests/event_sequences.rs: the shrunk sequence was
+    // `Ctrl+End [80x24]` - scrolled to the bottom of a 10-row viewport, then
+    // the viewport grew to 24 rows. The stored offset (40) was drawn as is,
+    // leaving blank rows under the content, and Up needed many presses
+    // before anything moved.
+    #[test]
+    fn test_scroll_view_offset_after_the_viewport_grows() {
+        let mut s = ScrollView::new().content_height(50);
+        s.handle_key(&crate::event::Key::End, 10);
+        assert_eq!(s.offset(), 40);
+
+        let mut content = s.create_content_buffer(10);
+        for y in 0..50u16 {
+            content.put_str(0, y, &format!("{y:02}"));
+        }
+        let mut buffer = Buffer::new(10, 24);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, 10, 24));
+        s.render_content(&mut ctx, &content);
+        // The last 24 rows of the content fill the viewport
+        assert_eq!(buffer.get(0, 0).unwrap().symbol, '2');
+        assert_eq!(buffer.get(1, 0).unwrap().symbol, '6');
+        assert_eq!(buffer.get(1, 23).unwrap().symbol, '9');
+
+        s.handle_key(&crate::event::Key::Up, 24);
+        assert_eq!(s.offset(), 25);
     }
 }
