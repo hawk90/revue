@@ -257,8 +257,14 @@ impl EventLogger {
     /// Render event logger content
     pub fn render_content(&self, buffer: &mut Buffer, area: Rect, config: &DevToolsConfig) {
         let mut ctx = RenderCtx::new(buffer, area.x, area.width, config);
+        // The row cursor saturates and every row is drawn only above
+        // `max_y`, so a panel at the bottom of the coordinate space cannot
+        // overflow it.
         let mut y = area.y;
-        let max_y = area.y + area.height;
+        let max_y = area.y.saturating_add(area.height);
+        if y >= max_y {
+            return;
+        }
 
         // Header
         let status = if self.paused {
@@ -268,7 +274,10 @@ impl EventLogger {
         };
         let header = format!("{} | {} events", status, self.filtered_count());
         ctx.draw_text(y, &header, config.accent_color);
-        y += 1;
+        y = y.saturating_add(1);
+        if y >= max_y {
+            return;
+        }
 
         // Filter info
         let mut filters = Vec::new();
@@ -286,24 +295,24 @@ impl EventLogger {
         }
         let filter_str = format!("Showing: {}", filters.join(", "));
         ctx.draw_text(y, &filter_str, config.fg_color);
-        y += 2;
+        y = y.saturating_add(2);
 
         // Events list (newest first)
         let filtered: Vec<_> = self.filtered().into_iter().rev().collect();
         for (i, event) in filtered.iter().enumerate().skip(self.scroll) {
-            if y >= max_y - 2 {
+            if y.saturating_add(2) >= max_y {
                 break;
             }
 
             let is_selected = self.selected == Some(i);
             Self::render_event(&mut ctx, y, event, is_selected);
-            y += 1;
+            y = y.saturating_add(1);
         }
 
         // Selected event details
         if let Some(idx) = self.selected {
             if let Some(event) = filtered.get(idx) {
-                if y + 2 < max_y {
+                if y.saturating_add(2) < max_y {
                     y = max_y - 3;
                     ctx.draw_separator(y);
                     y += 1;

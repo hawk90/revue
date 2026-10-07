@@ -17,34 +17,6 @@ pub struct Known {
 }
 
 pub const KNOWN: &[Known] = &[
-    // ── sizes ──
-    Known {
-        layer: "sizes",
-        widget: "DevToolsEvents",
-        kind: Kind::Panic,
-        reason: "src/devtools/events/core.rs:289: row cursor `y += 2` overflows at the far-y offset [not covered by #767]",
-        cases: &[
-            "2x5@1,65530 hello plain direct",
-        ],
-    },
-    Known {
-        layer: "sizes",
-        widget: "DevToolsStyles",
-        kind: Kind::Panic,
-        reason: "src/devtools/style/view.rs:39: row cursor `y += 1` overflows at the far-y offset [not covered by #767]",
-        cases: &[
-            "2x5@1,65530 hello plain direct",
-        ],
-    },
-    Known {
-        layer: "sizes",
-        widget: "DevToolsTimeTravel",
-        kind: Kind::Panic,
-        reason: "src/devtools/time_travel/debugger/render.rs:31: row cursor `y += 2` overflows at the far-y offset [not covered by #767]",
-        cases: &[
-            "2x5@1,65530 hello plain direct",
-        ],
-    },
     // ── contents ──
     Known {
         layer: "contents",
@@ -70,7 +42,7 @@ pub const KNOWN: &[Known] = &[
         layer: "pairwise",
         widget: "DevToolsEvents",
         kind: Kind::Panic,
-        reason: "src/devtools/events/core.rs:324: event details truncated by bytes (`&details[..n]`) panic inside a multibyte char [not covered by #767]",
+        reason: "src/devtools/events/core.rs:333: event details truncated by bytes (`&details[..n]`) panic inside a multibyte char [not covered by #767]",
         cases: &[
             "80x24 emoji plain direct",
         ],

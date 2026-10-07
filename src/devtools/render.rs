@@ -217,4 +217,51 @@ mod tests {
         devtools.render(&mut buffer, Rect::new(0, 0, 10, 10));
         devtools.render(&mut buffer, Rect::new(0, 0, 0, 0));
     }
+
+    /// A panel on `tab` with `items` rows of `text` in every tab, as the
+    /// widget matrix builds it.
+    fn populated(tab: DevToolsTab, text: &str, items: usize) -> DevTools {
+        use crate::devtools::{EventType, RenderEvent, StateEntry, StateValue};
+        let mut d = DevTools::new();
+        d.set_visible(true);
+        d.set_tab(tab);
+        let root = d.inspector_mut().add_root(text);
+        for i in 0..items {
+            let item = format!("{text}{i}");
+            d.inspector_mut().add_child(root, item.clone());
+            d.state_mut().add(StateEntry::new(
+                item.clone(),
+                StateValue::String(text.into()),
+            ));
+            d.events_mut().log(EventType::KeyPress, item);
+        }
+        d.styles_mut().set_widget(text, Some(text.to_string()));
+        d.styles_mut().add_class(text);
+        let profiler = d.profiler_mut();
+        profiler.start_recording();
+        for i in 0..items {
+            profiler.start_frame();
+            profiler.record_render(RenderEvent::new(
+                format!("{text}{i}"),
+                std::time::Duration::from_micros(250),
+            ));
+            profiler.end_frame();
+        }
+        d
+    }
+
+    // Each tab advances a row cursor (`y += n`) past its header rows; in a
+    // panel at the bottom of the coordinate space that used to overflow.
+    #[test]
+    fn test_render_tabs_at_the_bottom_of_the_coordinate_space() {
+        for tab in DevToolsTab::all() {
+            for h in 1..=8u16 {
+                for w in [2, 30] {
+                    let devtools = populated(*tab, "hello", 3);
+                    let mut buffer = Buffer::new(4, 16);
+                    devtools.render_panel(&mut buffer, Rect::new(1, u16::MAX - h, w, h));
+                }
+            }
+        }
+    }
 }
