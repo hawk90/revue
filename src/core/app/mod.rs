@@ -19,6 +19,7 @@
 //!    ├─ Mount plugins
 //!    ├─ Build initial DOM
 //!    ├─ Enter event loop:
+//!    │   ├─ SIGTERM/SIGHUP/SIGINT received (unix) → stop running
 //!    │   ├─ Check hot reload (if enabled)
 //!    │   ├─ Read next event
 //!    │   ├─ Handle event → may trigger redraw
@@ -99,6 +100,7 @@ mod inspector;
 pub mod profiler;
 pub mod router;
 pub mod screen;
+mod signals;
 pub mod snapshot;
 #[cfg(feature = "hot-reload")]
 mod style_sources;
@@ -375,6 +377,16 @@ impl App {
     /// * `view` - The root view component to render
     /// * `handler` - Callback for handling events, returns whether to redraw
     ///
+    /// # Shutdown
+    ///
+    /// `run` returns `Ok(())` after [`quit`](Self::quit), after plugins have
+    /// unmounted and the terminal has been restored. On unix, `SIGTERM`,
+    /// `SIGHUP` and `SIGINT` take the same path while `run` is running; a
+    /// second signal during that shutdown kills the process. Ctrl+C is not a
+    /// signal here - in raw mode it arrives as a key event. Windows has no
+    /// equivalent: Ctrl+Break or closing the console ends the process without
+    /// unmounting plugins.
+    ///
     /// # Errors
     ///
     /// Returns an error if:
@@ -406,6 +418,13 @@ impl App {
     {
         use crate::event::EventReader;
 
+        // From here on `kill`, a closed terminal window or `kill -INT` ends the
+        // loop like `quit()` does, so plugins unmount and the terminal is
+        // restored. In raw mode Ctrl+C is a key event and never reaches this.
+        // Listening starts before the terminal changes mode, so there is no
+        // window in which a signal kills the process mid-TUI.
+        let signals = signals::ShutdownSignals::listen();
+
         let mut terminal = Terminal::new(stdout())?;
         terminal.init_with_mouse(self.mouse_capture)?;
 
@@ -427,6 +446,11 @@ impl App {
         let reader = EventReader::new(FRAME_DURATION_60FPS);
 
         while self.running {
+            if signals.requested() {
+                self.quit();
+                break;
+            }
+
             // Check for hot reload events
             #[cfg(feature = "hot-reload")]
             {

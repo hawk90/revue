@@ -305,6 +305,22 @@ restore_terminal(); // ends the session: the Terminal's own restore/Drop then wr
 If you enter TUI mode again by hand afterwards, call `install_panic_hook()`
 again to start a new session.
 
+### Termination Signals
+
+On unix, `App::run` treats `SIGTERM` (`kill`), `SIGHUP` (the terminal window
+closed) and `SIGINT` (`kill -INT`) as a quit: the event loop stops, plugins'
+`on_unmount` runs, the terminal is restored, and `run` returns `Ok(())` - the
+same path as `app.quit()`. Ctrl+C is unaffected: in raw mode it is a key event,
+not a signal.
+
+- A second signal while that shutdown is still running kills the process.
+- Outside `App::run`, the signals keep their default behavior.
+- A signal that is already ignored (for example `SIGHUP` under `nohup`) stays
+  ignored, and a handler another library installed first keeps running.
+
+Windows has no such hook: Ctrl+Break or closing the console window ends the
+process without unmounting plugins.
+
 ### Validation Errors
 
 For user input validation, collect multiple errors:

@@ -134,6 +134,14 @@ thiserror = "2.0.21"
 revue-macros = { path = "revue-macros", version = "3.1.0" }
 anyhow = "1.0.104"
 
+# ═══════════════════════════════════════════
+# Signals (unix): App::run shuts down cleanly on SIGTERM/SIGHUP/SIGINT.
+# Both are already in the tree through crossterm.
+# ═══════════════════════════════════════════
+[target.'cfg(unix)'.dependencies]
+signal-hook = { version = "0.3.18", default-features = false }
+libc = "0.2.190"
+
 [dev-dependencies]
 insta = "1.48.0"
 tokio-test = "0.4.6"
