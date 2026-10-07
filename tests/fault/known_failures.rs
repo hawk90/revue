@@ -16,11 +16,6 @@ pub const KNOWN: &[Known] = &[
     // ── resources ──
     Known {
         layer: "resources",
-        reason: "SystemClipboard waits on the clipboard tool with no timeout",
-        cases: &["clipboard get hangs", "clipboard set hangs"],
-    },
-    Known {
-        layer: "resources",
         reason: "file loaders check the size in the metadata, then read without a bound",
         cases: &["config stream"],
     },
