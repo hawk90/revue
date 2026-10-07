@@ -65,6 +65,30 @@ impl From<io::Error> for ClipboardError {
 /// Result type for clipboard operations
 pub type ClipboardResult<T> = Result<T, ClipboardError>;
 
+/// Check and clean content before a built-in backend stores it
+///
+/// Content over [`MAX_CLIPBOARD_SIZE`](crate::constants::MAX_CLIPBOARD_SIZE)
+/// bytes is refused, to prevent DoS. ANSI escape sequences, and control
+/// characters other than tab, newline and carriage return, are removed, to
+/// prevent terminal injection when the content is pasted.
+fn prepare_content(content: &str) -> ClipboardResult<String> {
+    use crate::constants::MAX_CLIPBOARD_SIZE;
+
+    if content.len() > MAX_CLIPBOARD_SIZE {
+        return Err(ClipboardError::InvalidInput(format!(
+            "Clipboard content too large ({} bytes, max {})",
+            content.len(),
+            MAX_CLIPBOARD_SIZE
+        )));
+    }
+
+    let stripped = crate::utils::ansi::strip_ansi(content);
+    Ok(stripped
+        .chars()
+        .filter(|&c| (c >= ' ' && c != '\x1b') || c == '\t' || c == '\n' || c == '\r')
+        .collect())
+}
+
 /// Clipboard backend trait
 pub trait ClipboardBackend {
     /// Copy text to clipboard

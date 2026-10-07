@@ -1,25 +1,10 @@
 //! System clipboard backend that runs the platform's copy and paste tools
 
-use super::{ClipboardBackend, ClipboardError, ClipboardResult};
+use super::{prepare_content, ClipboardBackend, ClipboardError, ClipboardResult};
 use crate::constants::MAX_CLIPBOARD_SIZE;
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
-
-/// Sanitize clipboard content by removing dangerous characters and ANSI escapes
-fn sanitize_clipboard_content(content: &str) -> String {
-    // First strip ANSI escape sequences to prevent terminal injection
-    let stripped = crate::utils::ansi::strip_ansi(content);
-    stripped
-        .chars()
-        .filter(|&c| {
-            // Keep printable characters and common whitespace
-            // Filter out null bytes, ESC (0x1B), and other control characters except:
-            // - \t (tab), \n (newline), \r (carriage return)
-            (c >= ' ' && c != '\x1b') || c == '\t' || c == '\n' || c == '\r'
-        })
-        .collect()
-}
 
 /// Cached clipboard command detection to avoid repeated subprocess spawning
 static COPY_COMMAND_CACHE: OnceLock<Option<(&'static str, &'static [&'static str])>> =
@@ -135,17 +120,7 @@ impl SystemClipboard {
 
 impl ClipboardBackend for SystemClipboard {
     fn set(&self, content: &str) -> ClipboardResult<()> {
-        // Validate size to prevent DoS
-        if content.len() > MAX_CLIPBOARD_SIZE {
-            return Err(ClipboardError::InvalidInput(format!(
-                "Clipboard content too large ({} bytes, max {})",
-                content.len(),
-                MAX_CLIPBOARD_SIZE
-            )));
-        }
-
-        // Sanitize content to remove dangerous control characters
-        let sanitized = sanitize_clipboard_content(content);
+        let sanitized = prepare_content(content)?;
 
         let (cmd, args) = Self::copy_command().ok_or(ClipboardError::NoClipboardTool)?;
 
