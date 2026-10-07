@@ -905,7 +905,7 @@ items:
       - no_results/error/first_use presets
       - Full/Compact/Minimal variants, custom icon
     evidence:
-      - src/widget/display/empty_state.rs::empty_state
+      - src/widget/display/empty_state/mod.rs::empty_state
       - tests/widget/empty_state.rs
     source:
       - FEATURES.md §4 Widgets / Feedback Widgets / EmptyState
