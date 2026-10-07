@@ -1,15 +1,16 @@
-//! Helper functions for chart widget
+//! Chart rendering: bounds, axis labels, line drawing and the `View` impl
 
-use super::chart_common::{Axis, AxisFormat, LegendPosition, Marker};
-use super::types::{ChartType, LineStyle, Series};
+use super::geometry::{bresenham, clip_segment, grid_cell, grid_contains, DataSegment, GridPoint};
+use super::Chart;
 use crate::layout::Rect;
 use crate::render::Cell;
 use crate::style::Color;
 use crate::utils::{char_width, display_width};
 use crate::widget::canvas::BrailleGrid;
+use crate::widget::data::chart::chart_common::{AxisFormat, LegendPosition, Marker};
+use crate::widget::data::chart::types::{ChartType, LineStyle};
 use crate::widget::theme::DARK_GRAY;
-use crate::widget::traits::{RenderContext, View, WidgetProps};
-use crate::{impl_props_builders, impl_styled_view};
+use crate::widget::traits::{RenderContext, View};
 
 /// Line segment for drawing
 pub(super) struct LineSegment {
@@ -21,124 +22,7 @@ pub(super) struct LineSegment {
     style: LineStyle,
 }
 
-/// Chart widget
-#[derive(Debug, Clone)]
-pub struct Chart {
-    /// Chart title
-    title: Option<String>,
-    /// Data series
-    series: Vec<Series>,
-    /// X axis
-    x_axis: Axis,
-    /// Y axis
-    y_axis: Axis,
-    /// Legend position
-    legend: LegendPosition,
-    /// Background color
-    bg_color: Option<Color>,
-    /// Border color
-    border_color: Option<Color>,
-    /// Use Braille for higher resolution
-    braille_mode: bool,
-    /// Tooltip configuration
-    tooltip: Option<super::chart_common::ChartTooltip>,
-    /// Widget properties
-    props: WidgetProps,
-}
-
 impl Chart {
-    /// Create a new chart
-    pub fn new() -> Self {
-        Self {
-            title: None,
-            series: Vec::new(),
-            x_axis: Axis::default(),
-            y_axis: Axis::default(),
-            legend: LegendPosition::TopRight,
-            bg_color: None,
-            border_color: None,
-            braille_mode: false,
-            tooltip: None,
-            props: WidgetProps::new(),
-        }
-    }
-
-    /// Set chart title
-    pub fn title(mut self, title: impl Into<String>) -> Self {
-        self.title = Some(title.into());
-        self
-    }
-
-    /// Add a series
-    pub fn series(mut self, series: Series) -> Self {
-        self.series.push(series);
-        self
-    }
-
-    /// Add multiple series
-    pub fn series_vec(mut self, series: Vec<Series>) -> Self {
-        self.series.extend(series);
-        self
-    }
-
-    /// Set X axis
-    pub fn x_axis(mut self, axis: Axis) -> Self {
-        self.x_axis = axis;
-        self
-    }
-
-    /// Set Y axis
-    pub fn y_axis(mut self, axis: Axis) -> Self {
-        self.y_axis = axis;
-        self
-    }
-
-    /// Set legend position
-    pub fn legend(mut self, position: LegendPosition) -> Self {
-        self.legend = position;
-        self
-    }
-
-    /// Hide legend
-    pub fn no_legend(mut self) -> Self {
-        self.legend = LegendPosition::None;
-        self
-    }
-
-    /// Set background color
-    pub fn bg(mut self, color: Color) -> Self {
-        self.bg_color = Some(color);
-        self
-    }
-
-    /// Set border color
-    pub fn border(mut self, color: Color) -> Self {
-        self.border_color = Some(color);
-        self
-    }
-
-    /// Enable Braille mode for higher resolution
-    ///
-    /// Series lines (line, area outline and step charts) are drawn with
-    /// Braille dots, 2x4 per cell, instead of box-drawing characters.
-    /// Markers, area fills, axes and labels still use whole cells.
-    pub fn braille(mut self) -> Self {
-        self.braille_mode = true;
-        self
-    }
-
-    /// Set tooltip configuration
-    pub fn tooltip(mut self, tooltip: super::chart_common::ChartTooltip) -> Self {
-        self.tooltip = Some(tooltip);
-        self
-    }
-
-    /// Enable tooltips with default settings
-    pub fn with_tooltip(mut self) -> Self {
-        self.tooltip = Some(super::chart_common::ChartTooltip::enabled());
-        self
-    }
-
     /// Compute data bounds
     ///
     /// Returns (x_min, x_max, y_min, y_max) with safe defaults for edge cases.
@@ -396,100 +280,6 @@ impl Chart {
                 }
             }
         }
-    }
-}
-
-/// A point on the plot grid: fractional columns from the left edge and rows up
-/// from the bottom edge.
-type GridPoint = (f64, f64);
-
-/// A line segment between two points in data coordinates.
-type DataSegment = ((f64, f64), (f64, f64));
-
-/// Whether a grid point lies inside a `gw` x `gh` grid.
-fn grid_contains((x, y): GridPoint, gw: u16, gh: u16) -> bool {
-    const EPS: f64 = 1e-9;
-    x >= -EPS && x <= gw as f64 - 1.0 + EPS && y >= -EPS && y <= gh as f64 - 1.0 + EPS
-}
-
-/// Clip a segment to a `gw` x `gh` grid (Liang-Barsky).
-///
-/// Returns `None` when the segment misses the grid. Endpoints that are already
-/// inside are returned unchanged.
-fn clip_segment(p0: GridPoint, p1: GridPoint, gw: u16, gh: u16) -> Option<(GridPoint, GridPoint)> {
-    let (x_max, y_max) = (gw as f64 - 1.0, gh as f64 - 1.0);
-    let (dx, dy) = (p1.0 - p0.0, p1.1 - p0.1);
-    let (mut t0, mut t1) = (0.0f64, 1.0f64);
-    for (p, q) in [
-        (-dx, p0.0),
-        (dx, x_max - p0.0),
-        (-dy, p0.1),
-        (dy, y_max - p0.1),
-    ] {
-        if p == 0.0 {
-            if q < 0.0 {
-                return None;
-            }
-        } else {
-            let r = q / p;
-            if p < 0.0 {
-                t0 = t0.max(r);
-            } else {
-                t1 = t1.min(r);
-            }
-        }
-    }
-    if t0 > t1 {
-        return None;
-    }
-    let at = |t: f64| (p0.0 + t * dx, p0.1 + t * dy);
-    let a = if t0 > 0.0 { at(t0) } else { p0 };
-    let b = if t1 < 1.0 { at(t1) } else { p1 };
-    Some((a, b))
-}
-
-/// Walk the cells of a line from `start` to `end` (Bresenham), calling
-/// `visit(x, y, step)` for each one.
-fn bresenham(start: (u16, u16), end: (u16, u16), mut visit: impl FnMut(u16, u16, usize)) {
-    let (x0, y0) = (start.0 as i32, start.1 as i32);
-    let (x1, y1) = (end.0 as i32, end.1 as i32);
-    let dx = (x1 - x0).abs();
-    let dy = (y1 - y0).abs();
-    let sx = if x0 < x1 { 1 } else { -1 };
-    let sy = if y0 < y1 { 1 } else { -1 };
-    let mut err = dx - dy;
-
-    let (mut x, mut y) = (x0, y0);
-    let mut step = 0;
-    loop {
-        visit(x as u16, y as u16, step);
-        if x == x1 && y == y1 {
-            break;
-        }
-        let e2 = 2 * err;
-        if e2 > -dy {
-            err -= dy;
-            x += sx;
-        }
-        if e2 < dx {
-            err += dx;
-            y += sy;
-        }
-        step += 1;
-    }
-}
-
-/// The grid cell (column, row from the top) holding a point inside a
-/// `gw` x `gh` grid.
-fn grid_cell((x, y): GridPoint, gw: u16, gh: u16) -> (u16, u16) {
-    let col = x.floor().clamp(0.0, gw as f64 - 1.0) as u16;
-    let up = y.floor().clamp(0.0, gh as f64 - 1.0) as u16;
-    (col, gh - 1 - up)
-}
-
-impl Default for Chart {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -877,22 +667,4 @@ impl View for Chart {
             }
         }
     }
-}
-
-impl_styled_view!(Chart);
-impl_props_builders!(Chart);
-
-/// Helper function to create a chart
-pub fn chart() -> Chart {
-    Chart::new()
-}
-
-/// Quick line chart from data
-pub fn line_chart(data: &[f64]) -> Chart {
-    Chart::new().series(Series::new("Data").data_y(data).line())
-}
-
-/// Quick scatter plot from data
-pub fn scatter_plot(data: &[(f64, f64)]) -> Chart {
-    Chart::new().series(Series::new("Data").data(data.to_vec()).scatter())
 }

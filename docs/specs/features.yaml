@@ -1294,7 +1294,7 @@ items:
       - barchart
       - sparkline
     evidence:
-      - src/widget/data/chart/helper.rs::line_chart
+      - src/widget/data/chart/helper/mod.rs::line_chart
       - src/widget/data/chart/barchart.rs::barchart
       - src/widget/data/chart/sparkline.rs::sparkline
     source:
@@ -1311,8 +1311,8 @@ items:
       - donut with hole ratio
       - explode a slice
     evidence:
-      - src/widget/data/chart/piechart.rs::pie_chart
-      - src/widget/data/chart/piechart.rs::donut_chart
+      - src/widget/data/chart/piechart/mod.rs::pie_chart
+      - src/widget/data/chart/piechart/mod.rs::donut_chart
       - tests/widget/data/chart/piechart.rs
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / PieChart
@@ -1396,7 +1396,7 @@ items:
     acceptance:
       - candle_chart(data) with title
     evidence:
-      - src/widget/data/chart/candlechart.rs::candle_chart
+      - src/widget/data/chart/candlechart/mod.rs::candle_chart
       - tests/widget/candlechart.rs
     source:
       - FEATURES.md §Advanced Widgets / Advanced Charts
