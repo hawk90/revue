@@ -88,7 +88,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `core/app/screen/types.rs` | 240 | 7 | 타입 모음, 공개 타입 7 | todo | |
 | `devtools/mod.rs` | 527 | 4 |  | split | 모듈 선언·재노출에 패널 설정 타입(위치·설정·탭), `DevTools` 상태·영역 계산, 패널 그리기가 함께 있음 → devtools/{mod,types,render}.rs (`DevTools`는 테스트가 private `config`를 보므로 mod.rs에 둠). 버그 의심: 패널 폭이 2 미만이거나 높이가 0이면(`size` 0, 아주 작은 화면) `render_panel`의 `area.width - 2`와 `draw_border`의 `area.height - 1`이 넘침 |
 | `devtools/profiler/types.rs` | 233 | 5 | 타입 모음, 공개 타입 5 | todo | |
-| `devtools/time_travel/debugger.rs` | 615 | 1 | 615줄 | todo | |
+| `devtools/time_travel/debugger.rs` | 615 | 1 | 615줄 | split | 기록·탐색·diff·내보내기 상태와 탭 그리기(타임라인·diff·액션·상태 뷰)가 섞임 → debugger/{mod,render}.rs (render는 자식 모듈이라 private 필드를 그대로 봄). 버그 의심: `export()`가 label·action 이름의 따옴표를 escape하지 않아 JSON이 깨질 수 있음, `import()`는 "exported data"라 하지만 `export()` 문자열이 아닌 `Vec<StateSnapshot>`를 받음 |
 | `devtools/time_travel/types.rs` | 302 | 6 | 타입 모음, 공개 타입 6 | todo | |
 | `lib.rs` | 855 | 1 | 855줄 | todo | |
 | `query/mod.rs` | 489 | 7 | 공개 타입 7 | todo | |
