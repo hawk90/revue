@@ -58,6 +58,7 @@ impl LogViewer {
         self.search_matches.clear();
 
         if self.search_query.is_empty() {
+            self.search_index = 0;
             return;
         }
 
@@ -85,6 +86,12 @@ impl LogViewer {
                     .map_or(1, char::len_utf8);
                 start = actual_start + step;
             }
+        }
+
+        // The entries changed under the query (pushed, trimmed, cleared):
+        // keep the current match a real one
+        if self.search_index >= self.search_matches.len() {
+            self.search_index = 0;
         }
     }
 }
@@ -160,5 +167,24 @@ mod tests {
         viewer.search("İSTANBUL");
         // Each "İstanbul" spans 9 bytes of the original message
         assert_eq!(ranges(&viewer), vec![(0, 0, 9), (0, 10, 19)]);
+    }
+
+    // Found by tests/event_sequences.rs: the shrunk sequence was
+    // `<search 'e'> 'n' <clear> <push>` - the current match stayed at the
+    // old index after the entries were cleared and a new one matched.
+    #[test]
+    fn test_search_index_stays_within_the_matches() {
+        let mut viewer = LogViewer::new();
+        viewer.push("one e");
+        viewer.push("two e");
+        viewer.search("e");
+        viewer.next_match();
+        assert_eq!(viewer.current_search_index(), 1);
+
+        viewer.clear();
+        assert_eq!(viewer.current_search_index(), 0);
+        viewer.push("x e");
+        assert_eq!(viewer.search_match_count(), 1);
+        assert!(viewer.current_search_index() < viewer.search_match_count());
     }
 }

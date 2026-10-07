@@ -41,12 +41,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "keys",
-        widget: "LogViewer",
-        sequence: "<search 'e'> 'n' <clear> <push>",
-        reason: "clear() and the search refresh do not keep search_index within the matches",
-    },
-    Known {
-        layer: "keys",
         widget: "Pagination",
         sequence: "<total 0> End",
         reason: "last()/goto() set page 0 when there are no pages (set_total keeps 1)",
