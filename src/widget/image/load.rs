@@ -22,7 +22,8 @@ impl Image {
     /// Returns `Err(ImageError::DecodeError)` if:
     /// - The data is not a valid image format
     /// - The image is corrupted
-    /// - The image format is not supported
+    /// - The image format is not supported (anything but PNG: the data is
+    ///   sent to the terminal as PNG)
     pub fn from_png(data: Vec<u8>) -> ImageResult<Self> {
         // Check file size
         if data.len() > MAX_IMAGE_FILE_SIZE {
@@ -36,6 +37,15 @@ impl Image {
         let reader = image::ImageReader::new(std::io::Cursor::new(&data))
             .with_guessed_format()
             .map_err(|e| ImageError::DecodeError(e.to_string()))?;
+        // The data is kept as it is and sent to Kitty as PNG (`f=100`), so
+        // other formats the decoder recognizes cannot be accepted.
+        if let Some(format) = reader.format() {
+            if format != image::ImageFormat::Png {
+                return Err(ImageError::DecodeError(format!(
+                    "unsupported image format {format:?}: only PNG is supported"
+                )));
+            }
+        }
         let img = reader
             .decode()
             .map_err(|e| ImageError::DecodeError(e.to_string()))?;
@@ -90,7 +100,8 @@ impl Image {
     /// - The file cannot be read (permission denied, etc.)
     ///
     /// Returns `Err(ImageError::FileTooLarge)` if file size exceeds MAX_IMAGE_FILE_SIZE.
-    /// Returns `Err(ImageError::DecodeError)` if the image cannot be decoded.
+    /// Returns `Err(ImageError::DecodeError)` if the image cannot be decoded
+    /// or is not a PNG (see [`from_png`](Self::from_png)).
     pub fn from_file(path: impl AsRef<std::path::Path>) -> ImageResult<Self> {
         let path_ref = path.as_ref();
 
@@ -192,5 +203,32 @@ impl Image {
             id: rand_id(),
             props: WidgetProps::new(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn encode(format: image::ImageFormat) -> Vec<u8> {
+        let mut bytes = std::io::Cursor::new(Vec::new());
+        image::RgbImage::new(2, 2)
+            .write_to(&mut bytes, format)
+            .unwrap();
+        bytes.into_inner()
+    }
+
+    #[test]
+    fn from_png_accepts_png_and_rejects_other_formats() {
+        let png = Image::from_png(encode(image::ImageFormat::Png)).unwrap();
+        assert_eq!(png.get_format(), ImageFormat::Png);
+        assert!(png.kitty_escape(1, 1).contains("f=100"));
+
+        // A BMP would be sent to Kitty as `f=100` (PNG) and fail to show.
+        let bmp = Image::from_png(encode(image::ImageFormat::Bmp));
+        assert!(
+            matches!(bmp, Err(ImageError::DecodeError(_))),
+            "non-PNG data was accepted as PNG"
+        );
     }
 }
