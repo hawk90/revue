@@ -22,11 +22,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "concurrency",
-        reason: "WorkerHandle::spawn on tokio never looks at the cancel flag",
-        cases: &["handle tokio-cancel"],
-    },
-    Known {
-        layer: "concurrency",
         reason: "a WorkerPool worker does not catch a panicking task and dies",
         cases: &["pool task-panic"],
     },
