@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0](https://github.com/hawk90/revue/compare/v3.1.2...v3.2.0) (2026-10-07)
+
+
+### Features
+
+* **widget:** implement Clone for every widget whose fields allow it ([4936514](https://github.com/hawk90/revue/commit/493651474e159fe0baa4dd976fa2e04912ea50a4))
+
+
+### Bug Fixes
+
+* **markdown:** keep inline content in place in headings ([285b4be](https://github.com/hawk90/revue/commit/285b4be1b7f20ceb7175ab082bc263839790382f))
+* **markdown:** restore the text color after links and images ([285b4be](https://github.com/hawk90/revue/commit/285b4be1b7f20ceb7175ab082bc263839790382f))
+
 ## [3.1.2](https://github.com/hawk90/revue/compare/v3.1.1...v3.1.2) (2026-10-07)
 
 
