@@ -14,21 +14,6 @@ pub struct Known {
 
 pub const KNOWN: &[Known] = &[
     Known {
-        layer: "output",
-        reason: "CrosstermBackend marks mouse capture on only after the whole enabling write succeeds, so a failed init/enable_mouse that already sent ?1000h is never undone by restore",
-        cases: &[
-            "backend fail-write#3 bail",
-            "backend fail-write#4 bail",
-            "backend fail-write#5 bail",
-            "backend fail-write#6 bail",
-            "backend fail-write#47 bail",
-            "backend fail-flush#1 bail",
-            "backend fail-flush#7 bail",
-            "backend fail-write#47 continue",
-            "backend fail-flush#7 continue",
-        ],
-    },
-    Known {
         layer: "events",
         reason: "Buffer::resize ignores the 16384-per-side / 10 M-cell limits Buffer::new enforces, so a huge Resize allocates billions of cells",
         cases: &["resize 65535x65535"],
