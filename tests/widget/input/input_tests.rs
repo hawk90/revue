@@ -191,3 +191,39 @@ fn test_input_undo_history_keeps_last_100_edits() {
     // The oldest 50 edits fell off the history.
     assert_eq!(input.text(), "a".repeat(50));
 }
+
+// Found by tests/event_sequences.rs: the shrunk sequence was
+// `Shift+Right Backspace` at the end of the text. Shift+Right there leaves
+// an empty selection (anchor at the cursor); Backspace deleted the last
+// character but kept the anchor, which became a selection past the end.
+#[test]
+fn test_empty_selection_does_not_outlive_backspace_or_delete() {
+    use revue::event::KeyEvent;
+    let shift_right = KeyEvent {
+        key: Key::Right,
+        ctrl: false,
+        alt: false,
+        shift: true,
+    };
+
+    let mut i = Input::new().value("abc").focused(true);
+    i.handle_key_event(&shift_right);
+    i.handle_key_event(&KeyEvent::new(Key::Backspace));
+    assert_eq!(i.text(), "ab");
+    assert_eq!(i.selection(), None);
+    // The next Backspace deletes one character, not a stale range
+    i.handle_key_event(&KeyEvent::new(Key::Backspace));
+    assert_eq!(i.text(), "a");
+
+    let mut i = Input::new().value("abc").focused(true);
+    i.handle_key_event(&KeyEvent::new(Key::Home));
+    i.handle_key_event(&KeyEvent {
+        key: Key::Left,
+        ctrl: false,
+        alt: false,
+        shift: true,
+    });
+    i.handle_key_event(&KeyEvent::new(Key::Delete));
+    assert_eq!(i.text(), "bc");
+    assert_eq!(i.selection(), None);
+}

@@ -41,12 +41,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "keys",
-        widget: "Input",
-        sequence: "Shift+Right Backspace",
-        reason: "an empty selection anchor survives Backspace/Delete and becomes a selection past the text",
-    },
-    Known {
-        layer: "keys",
         widget: "JsonViewer",
         sequence: "Ctrl+End 'x'",
         reason: "collapse_all() leaves the selection past the visible nodes",
