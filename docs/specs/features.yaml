@@ -1649,8 +1649,8 @@ items:
       - revue::utils::copy / paste
       - pluggable backend (system / memory), history
     evidence:
-      - src/utils/clipboard.rs::copy
-      - src/utils/clipboard.rs::paste
+      - src/utils/clipboard/mod.rs::copy
+      - src/utils/clipboard/mod.rs::paste
       - tests/clipboard_tests.rs
     source:
       - FEATURES.md §9 Clipboard
@@ -1679,7 +1679,7 @@ items:
       - widget.on_key(key, closure)
       - mode-aware keymaps with chords (vim/emacs presets)
     evidence:
-      - src/utils/keymap.rs::vim_preset
+      - src/utils/keymap/presets.rs::vim_preset
       - src/runtime/event/keymap.rs
     source:
       - FEATURES.md §10 Keyboard Shortcuts / Widget Shortcuts

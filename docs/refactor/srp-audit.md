@@ -99,18 +99,18 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
-| `a11y/backend/platform.rs` | 307 | 6 | 공개 타입 6 | todo | |
-| `a11y/tree.rs` | 521 | 3 |  | todo | |
-| `state/reactive/context.rs` | 530 | 4 |  | todo | |
-| `state/reactive/store/mod.rs` | 181 | 5 | 공개 타입 5 | todo | |
-| `state/worker/channel.rs` | 324 | 5 | 공개 타입 5 | todo | |
-| `text/bidi/types.rs` | 444 | 8 | 타입 모음, 공개 타입 8 | todo | |
-| `utils/border/mod.rs` | 568 | 5 | 공개 타입 5 | todo | |
-| `utils/clipboard.rs` | 503 | 6 | 공개 타입 6 | todo | |
-| `utils/diff.rs` | 456 | 3 |  | todo | |
-| `utils/i18n.rs` | 427 | 4 |  | todo | |
-| `utils/keymap.rs` | 469 | 4 |  | todo | |
-| `utils/profiler.rs` | 472 | 5 | 공개 타입 5 | todo | |
+| `a11y/backend/platform.rs` | 307 | 6 | 공개 타입 6 | keep | `ScreenReader` 구현체 모음: 플랫폼별 백엔드 셋과 기록·무동작 백엔드가 각각 50줄 안팎이고 감지·전역·설정은 이미 backend/의 다른 파일에 있음. 참고: `LoggingBackend::announcements()`가 돌려주는 `LoggedAnnouncement`는 다시 내보내지 않아 크레이트 밖에서 이름을 쓸 수 없음, `MacOSBackend` 등은 `pub`이지만 닿을 경로가 없음 |
+| `a11y/tree.rs` | 521 | 3 |  | keep | 접근성 트리 데이터 모델 하나: `TreeNode`, 그것을 담는 `AccessibilityTree`(노드 맵·루트·포커스), 그 위의 얇은 빌더. 버그 의심: `focus_next`/`focus_prev`는 HashMap 순회 순서를 쓰므로 Tab 순서가 문서 순서가 아닌 임의 순서, `remove_node`로 루트를 지워도 `root`는 그대로 |
+| `state/reactive/context.rs` | 530 | 4 |  | keep | 컨텍스트 API 하나: `Context`/`Provider`와 provide·use·scope 함수가 모두 같은 thread-local 저장소(전역 맵·스코프 스택)를 씀. 참고: `Provider::new`는 값을 저장소에 등록하지 않아 `use_context`로 보이지 않음, `ContextScope`는 drop 순서와 상관없이 맨 위 스코프를 꺼냄 |
+| `state/reactive/store/mod.rs` | 181 | 5 | 공개 타입 5 | keep | 테스트를 뺀 약 180줄에 스토어 ID·트레이트·확장 트레이트·레지스트리만 있음. 사용 도우미는 이미 usage.rs. 참고: `StoreExt::subscribe`는 자리표시자라 아무것도 구독하지 않음 |
+| `state/worker/channel.rs` | 324 | 5 | 공개 타입 5 | keep | 양방향 채널 하나: 메시지·명령 타입과 채널, 송신·수신 반쪽이 모두 private `ChannelInner`를 나눠 씀. 참고: `WorkerReceiver::send_command`는 용량을 검사하지 않음(`WorkerChannel::send_command`는 검사), `WorkerSender::send`는 넘칠 때 경고를 남기지 않음 |
+| `text/bidi/types.rs` | 444 | 8 | 타입 모음, 공개 타입 8 | keep | BiDi 데이터 타입만 모음(방향, 문자 분류, run, 분석 결과, 설정, 정렬). 가장 큰 impl은 `BidiClass::of`의 문자 범위 표. 참고: `BidiInfo::new`는 run을 계산하지 않는 자리표시자라 `runs`가 늘 비어 `is_pure_rtl()`이 늘 true, `visual_text()`는 원문 그대로 |
+| `utils/border/mod.rs` | 568 | 5 | 공개 타입 5 | split | 테두리 문자·스타일·그리기와 테두리 제목(위치·변·제목 타입과 그리기)이 섞임 → border/{mod,title}.rs. 참고: 왼쪽·오른쪽 변 제목은 표시 폭이 아닌 `chars().count()`로 길이를 잼(위·아래 변은 표시 폭), `offset` 적용은 `i16`으로 바꿔 더해 32767을 넘는 좌표에서 넘침 |
+| `utils/clipboard.rs` | 503 | 6 | 공개 타입 6 | split | 오류·백엔드 트레이트·`Clipboard`와 플랫폼 명령을 찾아 실행하는 시스템 백엔드, 메모리 백엔드, 앱 안 복사 기록(`ClipboardHistory`)이 섞임 → clipboard/{mod,system,memory,history}.rs. 참고: `SystemClipboard::set`은 내용을 정리(ANSI·제어 문자 제거)하지만 `MemoryClipboard::set`은 그대로 저장함 |
+| `utils/diff.rs` | 456 | 3 |  | keep | LCS 기반 텍스트 비교 알고리즘 하나와 그 결과 타입·통계·unified 형식 출력. 버그 의심: 입력이 클 때 쓰는 `simplified_diff`는 b 쪽 위치가 거꾸로 가는 짝을 돌려줘 결과 diff가 틀릴 수 있음 |
+| `utils/i18n.rs` | 427 | 4 |  | keep | 번역 조회 하나: `Locale`(내장 로케일 생성자는 몇 줄짜리 복수형 규칙뿐), `Translation`, `I18n` 저장소. 참고: `t_plural`은 현재 로케일의 복수형 번호를 대체 로케일 번역에도 그대로 씀 |
+| `utils/keymap.rs` | 469 | 4 |  | split | 모드·키 묶음과 묶음 조회 상태(`KeymapConfig`), 키 문자열 파싱·표시, 내장 Vim·Emacs 프리셋 데이터가 섞임 → keymap/{mod,parse,presets}.rs. 버그 의심: `s-` 수식어를 먼저 떼므로 `parse_key`의 `"s-tab"`(BackTab) 별칭에 닿지 않음(`S-Tab`은 Shift+Tab), 전역 묶음은 접두사 대기를 하지 않아 여러 키 전역 묶음은 맞을 수 없음, `chord_timeout`은 저장만 되고 읽히지 않음 |
+| `utils/profiler.rs` | 472 | 5 | 공개 타입 5 | keep | 프로파일러 하나: 타이밍·통계·RAII 가드·보고서가 모두 private `ProfilerInner`를 씀. `FlameNode`는 작은 독립 타입(약 60줄). 버그 의심: `report()`의 `&name[..27]`은 바이트로 잘라 30바이트 넘는 비ASCII 이름에서 panic, `stack`은 아무도 push하지 않아 `Timing::parent`는 늘 None, `FlameNode`는 크레이트 안에서 만들지 않음 |
 
 ### 5. widget: data (11)
 
