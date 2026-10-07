@@ -72,7 +72,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `runtime/event/focus.rs` | 534 | 4 |  | todo | |
 | `runtime/event/gesture/recognizer.rs` | 607 | 1 | 607줄 | todo | |
 | `runtime/event/gesture/types.rs` | 381 | 11 | 타입 모음, 공개 타입 11 | todo | |
-| `runtime/event/ime.rs` | 654 | 8 | 654줄, 공개 타입 8 | todo | |
+| `runtime/event/ime.rs` | 654 | 8 | 654줄, 공개 타입 8 | split | 조합 데이터 타입·설정, 조합 상태 기계, 렌더용 preedit 조각이 섞임 → ime/{mod,types,state,preedit}.rs (길이 제한 상수는 state.rs). 참고: 빈 목록으로 `set_candidates`를 부르면 `Selecting` 상태가 그대로 남음 |
 | `runtime/event/mod.rs` | 349 | 5 | 공개 타입 5 | todo | |
 | `runtime/layout/node.rs` | 215 | 8 | 공개 타입 8 | todo | |
 | `runtime/layout/responsive.rs` | 571 | 7 | 공개 타입 7 | todo | |
