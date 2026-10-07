@@ -2,6 +2,7 @@
 
 use super::{OptionEntry, OptionList};
 use crate::style::Color;
+use crate::utils::display_width;
 use crate::widget::theme::{DARK_GRAY, MUTED_TEXT, PLACEHOLDER_FG};
 use crate::widget::traits::DISABLED_FG;
 use crate::widget::{RenderContext, View};
@@ -66,7 +67,8 @@ impl View for OptionList {
 
                     // Calculate padding for hint
                     let hint = item.hint.as_deref().unwrap_or("");
-                    let padding = width.saturating_sub(main_text.len() + hint.len());
+                    let padding =
+                        width.saturating_sub(display_width(&main_text) + display_width(hint));
 
                     // Determine colors
                     let fg = if item.disabled {
@@ -175,5 +177,19 @@ mod tests {
             .option("e", "");
         list.scroll_offset = 2;
         assert_eq!(rows(&list), ["↑", "G2", "  c", "  d", "↓"]);
+    }
+
+    #[test]
+    fn hint_aligns_to_the_right_edge_by_display_width() {
+        let list = OptionList::new()
+            .width(12)
+            .option("한글", "K")
+            .option("ab", "K");
+        let mut buf = Buffer::new(12, 2);
+        let mut ctx = RenderContext::new(&mut buf, Rect::new(0, 0, 12, 2));
+        list.render(&mut ctx);
+        for y in 0..2 {
+            assert_eq!(buf.get(11, y).unwrap().symbol, 'K', "row {y}");
+        }
     }
 }
