@@ -1,6 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// Global drag context (optional singleton)
-// ─────────────────────────────────────────────────────────────────────────────
+//! The global drag context (an optional singleton)
 
 use std::sync::{Arc, OnceLock, RwLock};
 
