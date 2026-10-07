@@ -563,7 +563,9 @@ impl View for Stopwatch {
         use crate::widget::stack::vstack;
         use crate::widget::Text;
 
-        let color = self.fg.unwrap_or(Color::WHITE);
+        // The elapsed time takes `color`, a builder color outranking it; the
+        // state and lap lines keep theirs, as `Timer`'s do.
+        let color = self.fg.unwrap_or_else(|| ctx.css_color(Color::WHITE));
         let mut content = vstack();
 
         // Title

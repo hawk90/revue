@@ -136,3 +136,67 @@ fn color_reaches_a_calendars_ordinary_days() {
     let h = draw("#cal { color: #ff0000; }", &CalendarView);
     assert!(any_fg(&h, RED), "`color` did not reach Calendar");
 }
+
+/// The foreground of the first cell, in reading order, whose symbol matches.
+fn fg_where(h: &PipelineHarness, matches: impl Fn(char) -> bool) -> Option<Color> {
+    let buffer = h.buffer();
+    (0..buffer.height()).find_map(|y| {
+        (0..buffer.width()).find_map(|x| {
+            buffer
+                .get(x, y)
+                .filter(|c| matches(c.symbol))
+                .and_then(|c| c.fg)
+        })
+    })
+}
+
+struct StopwatchView(Option<Color>);
+
+impl View for StopwatchView {
+    fn render(&self, ctx: &mut RenderContext) {
+        let mut sw = revue::widget::Stopwatch::new().element_id("sw");
+        if let Some(color) = self.0 {
+            sw = sw.fg(color);
+        }
+        vstack().child(sw).render(ctx);
+    }
+    fn widget_type(&self) -> &'static str {
+        "StopwatchView"
+    }
+    fn id(&self) -> Option<&str> {
+        Some("root")
+    }
+}
+
+/// The elapsed time's color - the digits of "00:00".
+fn stopwatch_digit_fg(css: &str, builder: Option<Color>) -> Option<Color> {
+    fg_where(&draw(css, &StopwatchView(builder)), |c| c == '0')
+}
+
+/// Untouched by a stylesheet, the stopwatch paints as it always has.
+#[test]
+fn a_stopwatch_keeps_its_default_color() {
+    assert_eq!(stopwatch_digit_fg("", None), Some(Color::WHITE));
+}
+
+/// `Stopwatch` used `self.fg.unwrap_or(WHITE)` and never looked at its
+/// computed style, while `Timer` in the same file did - the ratchet only read
+/// the file's first widget.
+#[test]
+fn color_reaches_a_stopwatchs_time() {
+    assert_eq!(
+        stopwatch_digit_fg("#sw { color: #ff0000; }", None),
+        Some(RED),
+        "`color` did not reach Stopwatch"
+    );
+}
+
+/// A color the builder named outranks the stylesheet.
+#[test]
+fn a_named_stopwatch_color_beats_css() {
+    let green = Color::rgb(0, 255, 0);
+    assert_eq!(
+        stopwatch_digit_fg("#sw { color: #ff0000; }", Some(green)),
+        Some(green)
+    );
+}
