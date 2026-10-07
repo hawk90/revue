@@ -104,7 +104,7 @@ src/widget/
 │   ├── bigtext.rs         #   Large ASCII text
 │   ├── badge.rs           #   Badge
 │   ├── tag.rs             #   Tag/chip
-│   ├── avatar.rs          #   Avatar
+│   ├── avatar/            #   Avatar
 │   ├── progress.rs        #   Progress bar
 │   ├── spinner.rs         #   Loading spinner
 │   ├── skeleton.rs        #   Skeleton loader

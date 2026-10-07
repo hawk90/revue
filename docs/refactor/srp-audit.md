@@ -144,7 +144,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
-| `widget/display/avatar.rs` | 543 | 3 | 위젯 한 파일 | todo | |
+| `widget/display/avatar.rs` | 543 | 3 | 위젯 한 파일 | split | 크기·모양 타입, 구조체·생성자·빌더(약 150줄), 크기·모양별 그리기(약 250줄)가 섞임 → avatar/{mod,types,render}.rs (이니셜·이름 기반 배경색을 구하는 `get_initials`·`get_bg_color`는 그리기만 쓰므로 render.rs). 버그 의심: `get_bg_color`의 `(hash % 360) as u8`이 256 이상인 색상값을 잘라 hue가 0..=255에 머물러 자홍 계열(h≥5)은 나오지 않음. 참고: Large인데 높이가 3 미만이면 주석("Fall back to medium")과 달리 굵게 하지 않은 한 글자만 그림 |
 | `widget/display/empty_state.rs` | 469 | 3 | 위젯 한 파일 | todo | |
 | `widget/display/gauge.rs` | 684 | 3 | 684줄, 위젯 한 파일 | todo | |
 | `widget/display/richlog.rs` | 623 | 4 | 623줄, 위젯 한 파일 | todo | |
