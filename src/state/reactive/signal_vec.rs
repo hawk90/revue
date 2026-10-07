@@ -7,6 +7,7 @@
 use super::signal::{Signal, Subscription};
 use super::tracker::notify_dependents;
 use super::SignalId;
+use crate::utils::lock::lock_or_recover;
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 
@@ -249,9 +250,7 @@ impl<T: Send + Sync + Clone + 'static> SignalVec<T> {
         let callback = Arc::new(callback);
 
         // Register the callback
-        if let Ok(mut subs) = self.diff_subscribers.lock() {
-            subs.push(callback.clone());
-        }
+        lock_or_recover(&self.diff_subscribers).push(callback.clone());
 
         // Create a subscription to the inner signal (to keep it alive)
         let inner_sub = self.inner.subscribe(|| {});
@@ -265,11 +264,12 @@ impl<T: Send + Sync + Clone + 'static> SignalVec<T> {
 
     /// Notify diff subscribers
     fn notify_diff(&self, diff: VecDiff<T>) {
-        // Emit to all diff subscribers
-        if let Ok(subs) = self.diff_subscribers.lock() {
-            for callback in subs.iter() {
-                callback(diff.clone());
-            }
+        // Emit to all diff subscribers - outside the lock, so a subscriber
+        // can drop a subscription, subscribe, or change this vector, and one
+        // that panics does not poison the list for everyone after it.
+        let callbacks: Vec<_> = lock_or_recover(&self.diff_subscribers).clone();
+        for callback in callbacks {
+            callback(diff.clone());
         }
         // Also notify regular signal dependents
         notify_dependents(self.id);
@@ -306,15 +306,55 @@ pub struct VecSubscription<T> {
 impl<T> Drop for VecSubscription<T> {
     fn drop(&mut self) {
         // Remove the callback from subscribers when dropped
-        if let Ok(mut subs) = self._diff_subscribers.lock() {
-            subs.retain(|cb| !Arc::ptr_eq(cb, &self._callback));
-        }
+        lock_or_recover(&self._diff_subscribers).retain(|cb| !Arc::ptr_eq(cb, &self._callback));
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_subscriber_can_drop_its_subscription_while_notified() {
+        let v = SignalVec::new(vec![0]);
+        let slot: Arc<StdMutex<Option<VecSubscription<i32>>>> = Arc::new(StdMutex::new(None));
+        let s = slot.clone();
+        let sub = v.subscribe_diff(move |_| {
+            s.lock().unwrap().take();
+        });
+        *slot.lock().unwrap() = Some(sub);
+        v.push(1); // deadlocked: the drop re-locked the subscriber list
+        v.push(2);
+        assert_eq!(v.len(), 3);
+    }
+
+    #[test]
+    fn a_subscriber_can_change_the_vector() {
+        let v = SignalVec::new(vec![0]);
+        let v2 = v.clone();
+        let _sub = v.subscribe_diff(move |_| {
+            if v2.len() < 4 {
+                v2.push(9);
+            }
+        });
+        v.push(1);
+        assert_eq!(v.len(), 4);
+    }
+
+    #[test]
+    fn a_panicking_subscriber_does_not_silence_the_others() {
+        let v = SignalVec::new(vec![0]);
+        let bad = v.subscribe_diff(|_| panic!("subscriber boom"));
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| v.push(1))).is_err());
+        drop(bad);
+        let seen = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let n = seen.clone();
+        let _good = v.subscribe_diff(move |_| {
+            n.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        });
+        v.push(2);
+        assert_eq!(seen.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
 
     #[test]
     fn test_signal_vec_new() {

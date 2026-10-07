@@ -22,15 +22,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "concurrency",
-        reason: "SignalVec calls diff subscribers while holding the subscriber mutex",
-        cases: &[
-            "reactive vec-drop-subscription-in-callback",
-            "reactive vec-push-from-subscriber",
-            "lock signal-vec-subscriber-panics",
-        ],
-    },
-    Known {
-        layer: "concurrency",
         reason: "Effect and Computed leave the dependency tracker tracking when their function panics",
         cases: &["reactive effect-panics", "reactive effect-loop"],
     },
