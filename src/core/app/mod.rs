@@ -84,10 +84,12 @@
 //!
 //! # Hot Reload
 //!
-//! With the `hot-reload` feature enabled:
-//! - CSS files are watched for changes
-//! - Stylesheets are automatically reloaded on change
-//! - Invalid CSS logs warnings but doesn't crash the app
+//! With the `hot-reload` feature enabled and hot reload turned on
+//! ([`AppBuilder::hot_reload`] or the `REVUE_HOT_RELOAD` environment variable):
+//! - the directories of the files added with [`AppBuilder::style`] are watched
+//! - on a change the stylesheet is rebuilt from its sources, so edited,
+//!   added and deleted declarations all take effect
+//! - invalid CSS logs a warning and keeps the last version that parsed
 
 mod builder;
 pub mod declarative_router;
@@ -98,6 +100,8 @@ pub mod profiler;
 pub mod router;
 pub mod screen;
 pub mod snapshot;
+#[cfg(feature = "hot-reload")]
+mod style_sources;
 
 pub use builder::AppBuilder;
 pub use declarative_router::{
@@ -131,11 +135,7 @@ use std::io::stdout;
 use std::time::{Duration, Instant};
 
 #[cfg(feature = "hot-reload")]
-use crate::style::parse_css;
-#[cfg(feature = "hot-reload")]
-use std::fs;
-#[cfg(feature = "hot-reload")]
-use std::path::PathBuf;
+use style_sources::StyleSources;
 
 /// Tick handler callback type
 pub type TickHandler<V> = Box<dyn FnMut(&mut V, Duration) -> bool>;
@@ -237,9 +237,9 @@ pub struct App {
     /// Hot reload watcher
     #[cfg(feature = "hot-reload")]
     hot_reload: Option<HotReload>,
-    /// Style file paths for hot reload
+    /// What the stylesheet is built from, for hot reload
     #[cfg(feature = "hot-reload")]
-    style_paths: Vec<PathBuf>,
+    style_sources: StyleSources,
 }
 
 impl App {
@@ -273,7 +273,7 @@ impl App {
             #[cfg(feature = "hot-reload")]
             hot_reload: None,
             #[cfg(feature = "hot-reload")]
-            style_paths: Vec::new(),
+            style_sources: StyleSources::default(),
         }
     }
 
@@ -286,7 +286,7 @@ impl App {
         plugins: crate::plugin::PluginRegistry,
         devtools_enabled: bool,
         hot_reload: Option<HotReload>,
-        style_paths: Vec<PathBuf>,
+        style_sources: StyleSources,
     ) -> Self {
         let (width, height) = initial_size;
         Self {
@@ -307,7 +307,7 @@ impl App {
             plugins,
             devtools_enabled,
             hot_reload,
-            style_paths,
+            style_sources,
         }
     }
 
@@ -552,76 +552,46 @@ impl App {
         should_draw || self.needs_force_redraw
     }
 
-    /// Check for hot reload events and reload stylesheets if needed
+    /// Drain pending hot reload events and, if a stylesheet file changed,
+    /// rebuild the stylesheet. Returns `Some(true)` when a redraw is needed,
+    /// `None` when hot reload is off.
     #[cfg(feature = "hot-reload")]
     fn check_hot_reload(&mut self) -> Option<bool> {
         let hr = self.hot_reload.as_mut()?;
 
-        hr.poll().map(|event| self.handle_hot_reload_event(event))
-    }
-
-    /// Handle a single hot reload event, returns true if redraw is needed
-    #[cfg(feature = "hot-reload")]
-    fn handle_hot_reload_event(&mut self, event: HotReloadEvent) -> bool {
-        match event {
-            HotReloadEvent::StylesheetChanged(ref path) => {
-                self.log_and_reload(path, "stylesheet changed");
-                true
-            }
-            HotReloadEvent::FileCreated(ref path) => {
-                crate::log_debug!("Hot reload: file created {:?}", path);
-                if self.style_paths.contains(path) {
-                    self.reload_stylesheet(path);
-                    true
-                } else {
-                    false
+        let mut touched = false;
+        while let Some(event) = hr.poll() {
+            match event {
+                // Which path an event names depends on the platform and on how
+                // the editor saved (in place, or via a temp file and a rename),
+                // so any change in a watched directory re-reads the files;
+                // `reload_styles` ignores files whose text did not change.
+                HotReloadEvent::StylesheetChanged(path) | HotReloadEvent::FileCreated(path) => {
+                    crate::log_debug!("Hot reload: {:?} changed", path);
+                    touched = true;
+                }
+                HotReloadEvent::FileDeleted(path) => {
+                    crate::log_debug!("Hot reload: {:?} deleted", path);
+                }
+                HotReloadEvent::Error(e) => {
+                    crate::log_warn!("Hot reload error: {}", e);
                 }
             }
-            HotReloadEvent::FileDeleted(ref path) => {
-                crate::log_debug!("Hot reload: file deleted {:?}", path);
-                false
-            }
-            HotReloadEvent::Error(ref e) => {
-                crate::log_warn!("Hot reload error: {}", e);
-                false
-            }
         }
+
+        Some(touched && self.reload_styles())
     }
 
-    /// Log a hot reload event and reload the stylesheet
+    /// Re-read the stylesheet files and, if any changed, replace the
+    /// stylesheet with one rebuilt from all sources. Returns whether it did.
     #[cfg(feature = "hot-reload")]
-    fn log_and_reload(&mut self, path: &PathBuf, action: &str) {
-        crate::log_debug!("Hot reload: {action} {:?}", path);
-        self.reload_stylesheet(path);
-    }
-
-    /// Reload a single stylesheet file
-    #[cfg(feature = "hot-reload")]
-    fn reload_stylesheet(&mut self, path: &PathBuf) {
-        let content = match fs::read_to_string(path) {
-            Ok(c) => c,
-            Err(e) => {
-                crate::log_warn!("Hot reload: failed to read {:?}: {}", path, e);
-                return;
-            }
-        };
-
-        self.parse_and_merge_stylesheet(path, &content);
-    }
-
-    /// Parse CSS content and merge into stylesheet
-    #[cfg(feature = "hot-reload")]
-    fn parse_and_merge_stylesheet(&mut self, path: &PathBuf, content: &str) {
-        match parse_css(content) {
-            Ok(sheet) => {
-                self.dom.stylesheet_mut().merge(sheet);
-                self.needs_force_redraw = true;
-                crate::log_debug!("Hot reload: reloaded {:?}", path);
-            }
-            Err(e) => {
-                crate::log_warn!("Hot reload: failed to parse CSS from {:?}: {}", path, e);
-            }
+    fn reload_styles(&mut self) -> bool {
+        if !self.style_sources.reload_files() {
+            return false;
         }
+        self.dom.set_stylesheet(self.style_sources.stylesheet());
+        self.needs_force_redraw = true;
+        true
     }
 
     /// Draw the UI to the terminal
