@@ -1275,3 +1275,21 @@ fn test_richlog_all_log_levels() {
     // Fatal icon at y=5, x=12
     assert_eq!(buffer.get(12, 5).unwrap().symbol, '☠');
 }
+
+// A log with more entries than rows draws a scroll indicator; at zero height
+// or zero width there is no row or column to draw it in.
+#[test]
+fn test_richlog_render_zero_sized_area_with_entries() {
+    let mut log = RichLog::new();
+    log.info("one");
+    log.info("two");
+    for (w, h) in [(0, 0), (10, 0), (0, 1), (0, 3)] {
+        let mut buffer = Buffer::new(12, 4);
+        let mut ctx = RenderContext::new(&mut buffer, Rect::new(1, 1, w, h));
+        log.render(&mut ctx);
+        assert!(
+            buffer.cells().iter().all(|c| c.symbol == ' '),
+            "{w}x{h} drew outside its area"
+        );
+    }
+}

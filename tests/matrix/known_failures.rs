@@ -90,15 +90,6 @@ pub const KNOWN: &[Known] = &[
     },
     Known {
         layer: "sizes",
-        widget: "RichLog",
-        kind: Kind::Panic,
-        reason: "src/widget/display/richlog/render.rs:141: scrollbar math `area.height as usize - 1` underflows at height 0",
-        cases: &[
-            "0x0 hello plain direct",
-        ],
-    },
-    Known {
-        layer: "sizes",
         widget: "Splitter",
         kind: Kind::Panic,
         reason: "src/widget/layout/splitter/mod.rs:151: pane_areas: `area.x + offset` overflows near u16::MAX",
@@ -221,17 +212,6 @@ pub const KNOWN: &[Known] = &[
             "2x1 long plain direct",
             "1x2 empty plain direct",
             "1x2 hangul plain direct",
-        ],
-    },
-    Known {
-        layer: "pairwise",
-        widget: "RichLog",
-        kind: Kind::Panic,
-        reason: "src/widget/display/richlog/render.rs:141: scrollbar math `area.height as usize - 1` underflows at height 0",
-        cases: &[
-            "0x0 empty plain direct",
-            "0x0 emoji plain direct",
-            "0x0 long plain direct",
         ],
     },
     Known {
