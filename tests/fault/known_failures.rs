@@ -14,11 +14,6 @@ pub struct Known {
 
 pub const KNOWN: &[Known] = &[
     Known {
-        layer: "events",
-        reason: "Buffer::resize ignores the 16384-per-side / 10 M-cell limits Buffer::new enforces, so a huge Resize allocates billions of cells",
-        cases: &["resize 65535x65535"],
-    },
-    Known {
         layer: "parsers",
         reason: "var() substitution is bounded in depth but not in size: a value that refers to itself several times expands exponentially",
         cases: &["declaration hang"],

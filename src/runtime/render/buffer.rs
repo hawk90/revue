@@ -372,10 +372,20 @@ impl Buffer {
 
     /// Resize the buffer, keeping content where possible
     ///
+    /// The size is clamped to the limits [`new`](Self::new) enforces: at most
+    /// `MAX_BUFFER_DIMENSION` (16384) per side, and - by giving up rows - at
+    /// most `MAX_BUFFER_SIZE` (10,000,000) cells. A resize comes from the
+    /// terminal, so it cannot be refused; a size past the limits would
+    /// otherwise allocate billions of cells.
+    ///
     /// Optimized using slice copy operations for better performance.
     pub fn resize(&mut self, width: u16, height: u16) {
-        // Use saturating arithmetic to prevent overflow
-        let new_size = (width as usize).saturating_mul(height as usize);
+        let width = width.min(MAX_BUFFER_DIMENSION);
+        let mut height = height.min(MAX_BUFFER_DIMENSION);
+        if width > 0 && (width as usize) * (height as usize) > MAX_BUFFER_SIZE {
+            height = (MAX_BUFFER_SIZE / width as usize) as u16;
+        }
+        let new_size = (width as usize) * (height as usize);
         let mut new_cells = vec![Cell::empty(); new_size];
 
         // Copy existing content using slice operations
@@ -571,6 +581,30 @@ impl Buffer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A resize past the limits `new` enforces is clamped to them rather than
+    /// allocating billions of cells (a terminal reporting `u16::MAX` square).
+    #[test]
+    fn resize_is_clamped_to_the_buffer_limits() {
+        let mut buffer = Buffer::new(10, 5);
+        buffer.set(1, 1, Cell::new('x'));
+
+        buffer.resize(u16::MAX, u16::MAX);
+        assert_eq!(buffer.width(), MAX_BUFFER_DIMENSION);
+        assert!(buffer.cells().len() <= MAX_BUFFER_SIZE);
+        assert_eq!(
+            buffer.cells().len(),
+            buffer.width() as usize * buffer.height() as usize
+        );
+        assert_eq!(buffer.get(1, 1).map(|c| c.symbol), Some('x'));
+
+        buffer.resize(u16::MAX, 1);
+        assert_eq!((buffer.width(), buffer.height()), (MAX_BUFFER_DIMENSION, 1));
+
+        buffer.resize(0, u16::MAX);
+        assert_eq!((buffer.width(), buffer.height()), (0, MAX_BUFFER_DIMENSION));
+        assert!(buffer.cells().is_empty());
+    }
 
     #[test]
     fn test_buffer_new() {
