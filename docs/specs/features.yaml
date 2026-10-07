@@ -918,6 +918,8 @@ items:
     acceptance:
       - headings (with their `#` marker), emphasis, lists (bullet before the text), code blocks kept line by line
       - inline code drawn in code_fg
+      - a heading keeps its inline content in place after the `#` marker (inline code, emphasis, links, footnote references), in the TOC and FIGlet text too
+      - text after a link or image returns to the surrounding color (the heading color inside a heading)
       - tables (header, separator, rows; columns sized to content)
       - syntax highlighting of fenced code
       - figlet_headings(true) draws headings up to figlet_max_level as FIGlet big text in heading_fg
@@ -929,6 +931,8 @@ items:
       - tests/widget/markdown/markdown_tests.rs::test_markdown_figlet_headings_render_big_text
       - src/widget/markdown/mod.rs::show_toc
       - tests/widget/markdown/markdown_tests.rs::test_markdown_show_toc_renders_contents_first
+      - tests/widget/markdown/markdown_tests.rs::test_markdown_heading_inline_code_stays_in_place
+      - tests/widget/markdown/markdown_tests.rs::test_markdown_heading_color_returns_after_a_link
       - tests/widget/markdown.rs
       - tests/widget/markdown/markdown_tests.rs::test_markdown_table_cells_render
       - tests/widget/markdown/markdown_tests.rs::test_markdown_fenced_code_block_is_highlighted
