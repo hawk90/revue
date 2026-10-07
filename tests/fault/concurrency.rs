@@ -28,7 +28,8 @@
 //! deadlocks or hangs (every case has a time limit; the update-loop cases run
 //! in a child process, since a stack overflow aborts); state stays consistent
 //! (pending counts return to 0, a cancelled task's result is not delivered,
-//! the dependency tracker is left clean, every mounted plugin is unmounted);
+//! the dependency tracker is left clean, every mounted plugin is unmounted, a
+//! panicking plugin is disabled while the others run their whole lifecycle);
 //! errors keep their message.
 //!
 //! Background tasks that "panic" do it with `resume_unwind`, which skips the
@@ -976,19 +977,59 @@ fn plugin_cases(cases: &mut Vec<Case>) {
             .then(|| "a failing unmount stopped the plugins after it".into())
     }));
 
+    // A panicking hook disables its plugin: the panic is caught, the hook
+    // reports an error, the plugin gets no more hooks, and every other plugin
+    // still runs its whole lifecycle.
     for hook in ["init", "mount", "tick", "unmount"] {
         cases.push(Case::new(
             format!("plugin {hook}-panic"),
             LIMIT,
             move || {
-                let (mut reg, _log) = registry(hook, Act::Panic);
+                let (mut reg, log) = registry(hook, Act::Panic);
+                let mut errors = Vec::new();
                 let p = panics(|| {
-                    let _ = reg.init();
-                    let _ = reg.mount();
-                    let _ = reg.tick(Duration::from_millis(16));
-                    let _ = reg.unmount();
+                    errors.push(("init", reg.init().is_err()));
+                    errors.push(("mount", reg.mount().is_err()));
+                    errors.push(("tick", reg.tick(Duration::from_millis(16)).is_err()));
+                    errors.push(("tick", reg.tick(Duration::from_millis(16)).is_err()));
+                    errors.push(("unmount", reg.unmount().is_err()));
                 });
-                p.map(|m| format!("a panic in on_{hook} escaped the registry: {m}"))
+                if let Some(m) = p {
+                    return Some(format!("a panic in on_{hook} escaped the registry: {m}"));
+                }
+                if !errors.iter().any(|&(h, err)| h == hook && err) {
+                    return Some(format!("a panic in on_{hook} was not reported as an error"));
+                }
+                if let Some(&(h, _)) = errors.iter().find(|&&(h, err)| h != hook && err) {
+                    return Some(format!("{h} failed although only on_{hook} panicked"));
+                }
+                if reg.disabled_plugins() != ["bad"] {
+                    return Some(format!(
+                        "disabled plugins are {:?}, not [\"bad\"]",
+                        reg.disabled_plugins()
+                    ));
+                }
+                let log = log.lock().unwrap().clone();
+                let after = log
+                    .iter()
+                    .skip_while(|e| *e != &format!("bad:{hook}"))
+                    .skip(1)
+                    .find(|e| e.starts_with("bad:"));
+                if let Some(e) = after {
+                    return Some(format!("the disabled plugin still got `{e}`"));
+                }
+                for h in ["init", "mount", "tick", "unmount"] {
+                    let want = if h == "tick" { 2 } else { 1 };
+                    for name in ["a", "c"] {
+                        let got = log.iter().filter(|e| **e == format!("{name}:{h}")).count();
+                        if got != want {
+                            return Some(format!(
+                                "plugin `{name}` ran on_{h} {got} times, not {want}, after `bad` panicked in on_{hook}"
+                            ));
+                        }
+                    }
+                }
+                None
             },
         ));
     }

@@ -3,12 +3,30 @@
 use super::{Plugin, PluginContext};
 use std::time::Duration;
 
+/// A registered plugin, and whether a panic has disabled it.
+struct Entry {
+    plugin: Box<dyn Plugin>,
+    disabled: bool,
+}
+
 /// Registry for managing plugins
 ///
 /// Handles plugin lifecycle, ordering by priority, and collecting styles.
+///
+/// # Panicking plugins
+///
+/// A hook that panics disables its plugin instead of ending the app. The
+/// panic is caught, reported through the context's error log, and returned
+/// as an error from that lifecycle call; the plugin gets no more hooks - not
+/// even `on_unmount`, since its state is whatever the panic left. The other
+/// plugins carry on. [`disabled_plugins`](Self::disabled_plugins) lists the
+/// plugins disabled so far.
+///
+/// This needs unwinding: built with `panic = "abort"`, a panic in a plugin
+/// ends the process like any other.
 pub struct PluginRegistry {
     /// Registered plugins (sorted by priority, highest first)
-    plugins: Vec<Box<dyn Plugin>>,
+    plugins: Vec<Entry>,
     /// Shared context
     context: PluginContext,
     /// Whether plugins have been initialized
@@ -21,6 +39,13 @@ pub struct PluginRegistry {
     /// How many plugins (in order) are mounted: after a failed `mount` these
     /// are still mounted, and `unmount` must unmount them
     mount_done: usize,
+}
+
+/// How one plugin hook went.
+enum Hook {
+    Ok,
+    Failed(crate::Error),
+    Panicked(crate::Error),
 }
 
 impl PluginRegistry {
@@ -41,15 +66,21 @@ impl PluginRegistry {
     /// Plugins are sorted by priority (higher priority runs first).
     pub fn register<P: Plugin + 'static>(&mut self, plugin: P) {
         let priority = plugin.priority();
-        self.plugins.push(Box::new(plugin));
+        self.plugins.push(Entry {
+            plugin: Box::new(plugin),
+            disabled: false,
+        });
 
         // Sort by priority (descending)
         self.plugins
-            .sort_by_key(|p| std::cmp::Reverse(p.priority()));
+            .sort_by_key(|e| std::cmp::Reverse(e.plugin.priority()));
 
         crate::log_debug!(
             "Registered plugin '{}' with priority {}",
-            self.plugins.last().map(|p| p.name()).unwrap_or("unknown"),
+            self.plugins
+                .last()
+                .map(|e| e.plugin.name())
+                .unwrap_or("unknown"),
             priority
         );
     }
@@ -66,12 +97,23 @@ impl PluginRegistry {
 
     /// Get plugin names
     pub fn plugin_names(&self) -> Vec<&str> {
-        self.plugins.iter().map(|p| p.name()).collect()
+        self.plugins.iter().map(|e| e.plugin.name()).collect()
     }
 
     /// Check if a plugin is registered
     pub fn has_plugin(&self, name: &str) -> bool {
-        self.plugins.iter().any(|p| p.name() == name)
+        self.plugins.iter().any(|e| e.plugin.name() == name)
+    }
+
+    /// Names of the plugins a panic has disabled, in priority order
+    ///
+    /// See [Panicking plugins](Self#panicking-plugins).
+    pub fn disabled_plugins(&self) -> Vec<&str> {
+        self.plugins
+            .iter()
+            .filter(|e| e.disabled)
+            .map(|e| e.plugin.name())
+            .collect()
     }
 
     /// Get access to the plugin context
@@ -88,7 +130,7 @@ impl PluginRegistry {
     pub fn collect_styles(&self) -> String {
         self.plugins
             .iter()
-            .filter_map(|p| p.styles())
+            .filter_map(|e| e.plugin.styles())
             .collect::<Vec<_>>()
             .join("\n\n")
     }
@@ -97,32 +139,70 @@ impl PluginRegistry {
     // Lifecycle methods
     // =========================================================================
 
+    /// Run hook `name` of one plugin with the context pointed at it.
+    ///
+    /// A panic disables the plugin; an error or a panic is logged to the
+    /// context as `"<Stage> failed: ..."`, as before.
+    fn run_hook(
+        entry: &mut Entry,
+        context: &mut PluginContext,
+        stage: &str,
+        hook: impl FnOnce(&mut dyn Plugin, &mut PluginContext) -> crate::Result<()>,
+    ) -> Hook {
+        context.set_current_plugin(entry.plugin.name());
+        let outcome = crate::render::catch_panic(std::panic::AssertUnwindSafe(|| {
+            hook(entry.plugin.as_mut(), context)
+        }));
+        let hook = match outcome {
+            Ok(Ok(())) => Hook::Ok,
+            Ok(Err(e)) => {
+                context.error(&format!("{stage} failed: {e}"));
+                Hook::Failed(e)
+            }
+            Err(payload) => {
+                entry.disabled = true;
+                let message = format!(
+                    "plugin '{}' panicked in {stage}: {}",
+                    entry.plugin.name(),
+                    crate::tasks::panic_message(&*payload)
+                );
+                context.error(&format!("{stage} failed: {message}"));
+                Hook::Panicked(crate::Error::Other(anyhow::anyhow!(message)))
+            }
+        };
+        context.clear_current_plugin();
+        hook
+    }
+
     /// Initialize all plugins
     ///
     /// Called once when the app is being built.
     ///
     /// Stops at the first plugin whose `on_init` fails and returns its error;
     /// calling `init` again goes on from that plugin, so none is initialized
-    /// twice.
+    /// twice. A plugin whose `on_init` panics is disabled instead, and the
+    /// others are still initialized; the panic is returned as the error.
     pub fn init(&mut self) -> crate::Result<()> {
         if self.initialized {
             return Ok(());
         }
 
-        for plugin in self.plugins.iter_mut().skip(self.init_done) {
-            self.context.set_current_plugin(plugin.name());
-            let result = plugin.on_init(&mut self.context);
-            if let Err(e) = result {
-                self.context.error(&format!("Init failed: {}", e));
-                self.context.clear_current_plugin();
-                return Err(e);
+        let mut panicked = None;
+        for entry in self.plugins.iter_mut().skip(self.init_done) {
+            if !entry.disabled {
+                match Self::run_hook(entry, &mut self.context, "Init", |p, ctx| p.on_init(ctx)) {
+                    Hook::Ok => {}
+                    Hook::Failed(e) => return Err(e),
+                    Hook::Panicked(e) => {
+                        panicked.get_or_insert(e);
+                    }
+                }
             }
-            self.context.clear_current_plugin();
             self.init_done += 1;
         }
 
         self.initialized = true;
-        Ok(())
+        panicked.map_or(Ok(()), Err)
     }
 
     /// Mount all plugins
@@ -132,6 +212,8 @@ impl PluginRegistry {
     /// Stops at the first plugin whose `on_mount` fails and returns its
     /// error. The plugins mounted before it stay mounted: [`unmount`](Self::unmount)
     /// unmounts them, and calling `mount` again goes on from the one that failed.
+    /// A plugin whose `on_mount` panics is disabled instead, and the others are
+    /// still mounted; the panic is returned as the error.
     pub fn mount(&mut self) -> crate::Result<()> {
         if self.mounted {
             return Ok(());
@@ -139,35 +221,40 @@ impl PluginRegistry {
 
         self.context.set_running(true);
 
-        for plugin in self.plugins.iter_mut().skip(self.mount_done) {
-            self.context.set_current_plugin(plugin.name());
-            let result = plugin.on_mount(&mut self.context);
-            if let Err(e) = result {
-                self.context.error(&format!("Mount failed: {}", e));
-                self.context.clear_current_plugin();
-                return Err(e);
+        let mut panicked = None;
+        for entry in self.plugins.iter_mut().skip(self.mount_done) {
+            if !entry.disabled {
+                match Self::run_hook(entry, &mut self.context, "Mount", |p, ctx| p.on_mount(ctx)) {
+                    Hook::Ok => {}
+                    Hook::Failed(e) => return Err(e),
+                    Hook::Panicked(e) => {
+                        panicked.get_or_insert(e);
+                    }
+                }
             }
-            self.context.clear_current_plugin();
             self.mount_done += 1;
         }
 
         self.mounted = true;
-        Ok(())
+        panicked.map_or(Ok(()), Err)
     }
 
     /// Tick all plugins
     ///
-    /// Called on each frame update.
+    /// Called on each frame update. A failing tick does not stop the plugins
+    /// after it. A panicking one disables its plugin and is returned as the
+    /// error once every plugin has ticked.
     pub fn tick(&mut self, delta: Duration) -> crate::Result<()> {
-        for plugin in &mut self.plugins {
-            self.context.set_current_plugin(plugin.name());
-            if let Err(e) = plugin.on_tick(&mut self.context, delta) {
-                self.context.error(&format!("Tick failed: {}", e));
-                // Continue with other plugins even if one fails
+        let mut panicked = None;
+        for entry in self.plugins.iter_mut().filter(|e| !e.disabled) {
+            // Continue with other plugins even if one fails
+            if let Hook::Panicked(e) = Self::run_hook(entry, &mut self.context, "Tick", |p, ctx| {
+                p.on_tick(ctx, delta)
+            }) {
+                panicked.get_or_insert(e);
             }
-            self.context.clear_current_plugin();
         }
-        Ok(())
+        panicked.map_or(Ok(()), Err)
     }
 
     /// Unmount all plugins
@@ -175,7 +262,9 @@ impl PluginRegistry {
     /// Called when the app is shutting down.
     /// Plugins are unmounted in reverse order (lowest priority first). Only
     /// mounted plugins are unmounted - after a failed [`mount`](Self::mount),
-    /// those before the one that failed.
+    /// those before the one that failed - and not the ones a panic disabled.
+    /// A panicking `on_unmount` is returned as the error once every plugin has
+    /// been unmounted.
     pub fn unmount(&mut self) -> crate::Result<()> {
         // Not mounted - and no plugins left mounted by a mount that failed
         if !self.mounted && self.mount_done == 0 {
@@ -186,18 +275,25 @@ impl PluginRegistry {
 
         // Unmount in reverse order - only the plugins that were mounted
         let mounted = self.mount_done.min(self.plugins.len());
-        for plugin in self.plugins[..mounted].iter_mut().rev() {
-            self.context.set_current_plugin(plugin.name());
-            if let Err(e) = plugin.on_unmount(&mut self.context) {
-                self.context.error(&format!("Unmount failed: {}", e));
-                // Continue with other plugins even if one fails
+        let mut panicked = None;
+        for entry in self.plugins[..mounted]
+            .iter_mut()
+            .rev()
+            .filter(|e| !e.disabled)
+        {
+            // Continue with other plugins even if one fails
+            if let Hook::Panicked(e) =
+                Self::run_hook(entry, &mut self.context, "Unmount", |p, ctx| {
+                    p.on_unmount(ctx)
+                })
+            {
+                panicked.get_or_insert(e);
             }
-            self.context.clear_current_plugin();
         }
 
         self.mounted = false;
         self.mount_done = 0;
-        Ok(())
+        panicked.map_or(Ok(()), Err)
     }
 
     /// Update terminal size in context
