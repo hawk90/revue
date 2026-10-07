@@ -13,16 +13,20 @@ pub struct Known {
 }
 
 pub const KNOWN: &[Known] = &[
-    // ── resources ──
-    // ── concurrency ──
+    // Both remaining entries need a design decision, not a fix; see
+    // docs/refactor/findings-fault-injection.md, "남긴 것".
     Known {
         layer: "concurrency",
-        reason: "TaskRunner and WorkerPool join running tasks on drop (design: wait or detach?)",
+        reason: "design decision: TaskRunner and WorkerPool join running tasks on drop, so a \
+                 task that never finishes blocks the drop for good - keep the join, or detach \
+                 like PooledTaskRunner and WorkerHandle?",
         cases: &["runner drop-running", "pool drop-running"],
     },
     Known {
         layer: "concurrency",
-        reason: "a panicking plugin hook unwinds out of the registry (design: crash or isolate?)",
+        reason: "design decision: a panic in a plugin hook unwinds through PluginRegistry and \
+                 App and ends the app - should a plugin bug crash the app, or be caught, the \
+                 plugin disabled and the panic reported as an error?",
         cases: &[
             "plugin init-panic",
             "plugin mount-panic",
