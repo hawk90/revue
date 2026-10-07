@@ -64,7 +64,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
 | `runtime/dom/node/mod.rs` | 383 | 5 | 공개 타입 5 | todo | |
-| `runtime/dom/pool/mod.rs` | 578 | 8 | 공개 타입 8 | todo | |
+| `runtime/dom/pool/mod.rs` | 578 | 8 | 공개 타입 8 | split | 범용 객체·Vec 풀, 렌더 버퍼 전용 풀, 문자열 인터닝이 섞임 → pool/{mod,object,buffer,string,vec}.rs (`PoolStats`와 생성 함수는 mod.rs) |
 | `runtime/dom/query.rs` | 683 | 3 | 683줄 | todo | |
 | `runtime/dom/selector/types.rs` | 382 | 8 | 타입 모음, 공개 타입 8 | todo | |
 | `runtime/event/custom/types.rs` | 212 | 6 | 타입 모음, 공개 타입 6 | todo | |
