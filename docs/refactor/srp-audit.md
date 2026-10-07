@@ -51,7 +51,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
 | `runtime/render/batch.rs` | 511 | 3 |  | todo | |
-| `runtime/render/image_protocol.rs` | 696 | 8 | 696줄, 공개 타입 8 | todo | |
+| `runtime/render/image_protocol.rs` | 696 | 8 | 696줄, 공개 타입 8 | split | 감지·인코더·Sixel 알고리즘·터미널별 명령이 섞임 → image_protocol/{mod,protocol,encoder,sixel,kitty,iterm2}.rs |
 | `runtime/style/error.rs` | 669 | 6 | 669줄, 공개 타입 6 | todo | |
 | `runtime/style/parser/apply.rs` | 707 | 0 | 707줄 | todo | |
 | `runtime/style/parser/types.rs` | 103 | 5 | 타입 모음, 공개 타입 5 | todo | |
