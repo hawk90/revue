@@ -127,7 +127,7 @@ src/widget/
 │   ├── code_editor/       #   Code editor
 │   ├── httpclient/        #   HTTP client widget
 │   ├── aistream/          #   AI streaming widget
-│   ├── diff.rs            #   Diff viewer
+│   ├── diff/              #   Diff viewer
 │   ├── procmon.rs         #   Process monitor
 │   ├── vim.rs             #   Vim mode
 │   └── tree_sitter_highlight.rs # Syntax highlighting
