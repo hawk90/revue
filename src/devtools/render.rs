@@ -24,6 +24,11 @@ impl DevTools {
             }
         }
 
+        // Too small for a border; the background is all there is room for
+        if area.width < 2 || area.height < 2 {
+            return;
+        }
+
         // Draw border
         self.draw_border(buffer, area);
 
@@ -143,5 +148,33 @@ impl DevTools {
                 cell.fg = Some(color);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::devtools::DevToolsPosition;
+
+    #[test]
+    fn test_render_panel_in_tiny_areas() {
+        for tab in DevToolsTab::all() {
+            for (w, h) in [(0, 0), (1, 5), (5, 0), (1, 1), (2, 1), (2, 2), (5, 3)] {
+                let mut devtools = DevTools::new().position(DevToolsPosition::Left).size(w);
+                devtools.set_visible(true);
+                devtools.set_tab(*tab);
+                let mut buffer = Buffer::new(10, 10);
+                devtools.render(&mut buffer, Rect::new(0, 0, 10, h));
+            }
+        }
+    }
+
+    #[test]
+    fn test_render_zero_size_panel() {
+        let mut devtools = DevTools::new().size(0);
+        devtools.set_visible(true);
+        let mut buffer = Buffer::new(10, 10);
+        devtools.render(&mut buffer, Rect::new(0, 0, 10, 10));
+        devtools.render(&mut buffer, Rect::new(0, 0, 0, 0));
     }
 }
