@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1](https://github.com/hawk90/revue/compare/v3.1.0...v3.1.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* **app:** shut down cleanly on SIGTERM ([276ac7e](https://github.com/hawk90/revue/commit/276ac7e81f27a3d4c10fe04921ecf2d74fd17a37))
+* **code-editor:** keep the cursor line clear of the find and go-to-line boxes ([2a83727](https://github.com/hawk90/revue/commit/2a83727d98144f06bcf4756c4c283618bb1dc5c1))
+* **code-editor:** page by the visible height ([2a83727](https://github.com/hawk90/revue/commit/2a83727d98144f06bcf4756c4c283618bb1dc5c1))
+* **terminal:** issue each restore command on its own ([276ac7e](https://github.com/hawk90/revue/commit/276ac7e81f27a3d4c10fe04921ecf2d74fd17a37))
+* **terminal:** restore the terminal once so panic output survives ([276ac7e](https://github.com/hawk90/revue/commit/276ac7e81f27a3d4c10fe04921ecf2d74fd17a37))
+
 ## [3.1.0](https://github.com/hawk90/revue/compare/v3.0.1...v3.1.0) (2026-10-07)
 
 
