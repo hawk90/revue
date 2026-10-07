@@ -129,7 +129,7 @@ src/widget/
 │   ├── aistream/          #   AI streaming widget
 │   ├── diff/              #   Diff viewer
 │   ├── procmon/           #   Process monitor
-│   ├── vim.rs             #   Vim mode
+│   ├── vim/               #   Vim mode
 │   └── tree_sitter_highlight.rs # Syntax highlighting
 │
 ├── markdown/              # Markdown renderer (parser, types, helpers)
