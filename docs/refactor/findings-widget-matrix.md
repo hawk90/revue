@@ -84,12 +84,30 @@ CI의 `cargo nextest run --all-features --tests`에 그대로 포함된다.
 ## 발견한 실패
 
 처음 돌렸을 때 16개 위젯에서 285 케이스가 실패했다. #767(패닉 수정)이 들어온 뒤
-**12개 위젯, 80 케이스**가 남았다. 아래 표의 위쪽이 남은 실패, 아래쪽이 #767로
-사라진 실패다.
+**12개 위젯, 80 케이스**가 남았고, 그 80 케이스를 원인별 커밋으로 모두 고쳤다.
+**지금 `KNOWN`은 비어 있다** — 매트릭스의 모든 케이스가 두 불변식을 지킨다. 아래
+표의 위쪽이 이번에 고친 실패, 아래쪽이 #767로 사라진 실패다.
 
-### 남은 실패
+### 원인별로 고친 실패 (80 케이스 → 0)
 
-| 위젯 | 종류 | 층 | 예시 케이스 | 원인 추정 |
+각 원인은 커밋 하나와, 고치기 전에 실패하는 회귀 테스트 하나를 갖는다.
+
+| 원인 | 고친 방법 | 회귀 테스트 |
+|---|---|---|
+| 공용 `draw_text`의 넓은 문자 overflow | 들어갈 자리를 u32로 계산하고 영역 끝과 좌표 공간 끝에서 멈춤. `draw_text_centered`/`_right`도 포화 | `render_context::tests::test_draw_text_wide_chars_stop_at_the_edge_of_the_coordinate_space` 외 |
+| `LogViewer` 타임스탬프 바이트 자르기 | `s.get(..8)`/`s.get(..19)`. ISO 검사 `&s[..19]`도 같은 버그였다 | `log_viewer::tests::test_parse_does_not_slice_inside_a_multibyte_char` |
+| `RichLog` 높이 0 | 크기 0 영역이면 바로 반환(폭 0의 `area.width - 1`도) | `tests/widget/richlog.rs::test_richlog_render_zero_sized_area_with_entries` |
+| `CommandPalette` 좁은 영역 | 오른쪽 테두리·글 끝·라벨 끝 열을 포화 계산으로 한 번만 구함(단축키·결과 수 위치도) | `tests/widget/command_palette.rs::test_command_palette_render_fits_very_narrow_areas` |
+| `Splitter` 패널 배치 overflow | `min_size`로 넘치는 패널을 영역 끝에서 자르고 offset 포화 | `splitter::tests::test_splitter_pane_areas_stay_inside_an_area_at_the_coordinate_edge` |
+| `Inspector` 패널 산술 | `panel_width - 3`, 제목 `title_x + i`, 행 커서를 포화 계산 | `inspector::tests::test_inspector_render_in_tiny_areas_and_at_the_coordinate_edge` |
+| `Inspector` 영역 밖 강조 | 모든 쓰기를 받은 영역(과 clip)으로 자름. 인스펙터는 화면 전체를 받도록 설계됐으므로(패널이 영역 오른쪽 끝, 강조는 패널 앞에서 멈춤) 그 쓰임에서는 바뀌는 것이 없다 | `inspector::tests::test_inspector_render_stays_inside_its_area`, `…_highlights_the_selected_widget_on_the_whole_screen` |
+| DevTools 탭 행 커서 overflow | Events·Styles·Time Travel의 `y += n`과 `max_y`를 포화, 머리 행은 `max_y` 위에서만 그림 | `devtools::render::tests::test_render_tabs_at_the_bottom_of_the_coordinate_space` |
+| DevTools 이벤트 설명 바이트 자르기 | `truncate_with_suffix`로 표시 폭 기준 자르기 | `events::core::tests::test_render_truncates_details_inside_multibyte_chars` |
+| DevTools 긴 행의 오른쪽 넘침 | 표시 폭으로 그리고 패널 오른쪽 끝 앞에서 멈추는 `draw_text_overlay_clipped`. Profiler·Styles·Events·Time Travel이 쓴다. 프로파일러 이름의 `&stat.name[..17]`도 고침 | `devtools::render::tests::test_render_tabs_clip_long_rows_to_the_area` |
+
+고치기 전의 실패 목록:
+
+| 위젯 | 종류 | 층 | 예시 케이스 | 원인 |
 |---|---|---|---|---|
 | `LogViewer` | 패닉 ×8 | 내용·쌍 | `contents: 40x10 hangul plain direct` | `log_viewer/parser.rs:292` 타임스탬프를 찾으며 `&s[..8]`을 바이트로 자름. 8바이트째가 멀티바이트 문자 안이면 패닉. 그리기 전 `load`에서 난다. #767은 검색 쪽만 고쳤다 |
 | `RichLog` | 패닉 ×4 | 크기·쌍 | `sizes: 0x0 hello plain direct` | `richlog/render.rs:141` 스크롤바 `area.height as usize - 1`이 높이 0에서 underflow |
@@ -119,12 +137,15 @@ CI의 `cargo nextest run --all-features --tests`에 그대로 포함된다.
 - **앱 경로에서만 나는 실패는 없었다.** 앱 경로의 실패(`Modal`, `StatusBar`)는
   직접 경로에서도 같은 위치에서 났고, #767로 함께 사라졌다.
 - **한 위치가 여러 위젯을 깨뜨린다.** `draw_text`의 넓은 문자 처리 하나가
-  `Button`·`Layers`·`ScreenStack`을 한꺼번에 깨뜨린다. 고치면 세 항목이 함께
-  사라진다.
+  `Button`·`Layers`·`ScreenStack`을 한꺼번에 깨뜨렸고, 고치자 세 항목이 함께
+  사라졌다.
+- **패닉이 다른 실패를 가린다.** `Inspector`의 산술 패닉을 고치자 같은 케이스들이
+  끝까지 그려지면서 영역 밖 쓰기가 드러났다(그 커밋에서 해당 케이스가 패닉
+  항목에서 영역 밖 항목으로 옮겨 갔고, 다음 커밋에서 사라졌다).
 - **매트릭스로 재현되지 않은 #767 수정.** `CandleChart` 스크롤, `OptionList`
   underflow, `RenderBatch`/테두리 overflow, 프로파일러 문자열 자르기,
   `hot_reload` 경로 검사는 처음부터 이 매트릭스에서 나타나지 않았다. 특정
   상태(스크롤 위치, 검색어, 배치 입력)나 렌더 밖의 경로가 필요해서 크기·내용·
   포커스 축으로는 닿지 않는다.
-- 그 밖의 위젯 119개(기본 기능 113개)는 6,419 케이스 전부에서 두 불변식을
-  지켰다.
+- 지금은 위젯 131개(기본 기능 125개) 전부가 6,419 케이스 전부에서 두 불변식을
+  지킨다.
