@@ -79,6 +79,14 @@ pub fn install_panic_hook() {
     INSTALL.call_once(|| {
         let previous = std::panic::take_hook();
         std::panic::set_hook(Box::new(move |info| {
+            // A panic revue is about to catch leaves the app running, so the
+            // terminal must stay in TUI mode. The chained hook is skipped too:
+            // its message would land on the alternate screen, and the catcher
+            // reports the panic itself.
+            if panic_is_caught() && ARMED.load(Ordering::SeqCst) {
+                crate::log_warn!("revue caught a panic: {}", info);
+                return;
+            }
             // Restore first: the default hook writes to stderr, and that message
             // is worthless if it lands on an alternate screen we are about to
             // tear down. Claiming the session also turns the unwinding `Drop`
@@ -89,6 +97,42 @@ pub fn install_panic_hook() {
             previous(info);
         }));
     });
+}
+
+thread_local! {
+    /// How many [`catch_panic`] calls are on this thread's stack.
+    static CATCHING: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// [`std::panic::catch_unwind`], for the places revue catches a panic and keeps
+/// going: background tasks and workers that report a panic as an error, and
+/// `ErrorBoundary` showing its fallback.
+///
+/// The panic hook runs *before* `catch_unwind` receives the panic, and on its
+/// own it cannot tell a caught panic from a fatal one. Inside `catch_panic` it
+/// knows: it leaves the terminal in TUI mode instead of restoring it under the
+/// app that is still running. A panic the user's own `catch_unwind` catches
+/// still restores the terminal - the hook cannot see that one.
+pub(crate) fn catch_panic<F, R>(f: F) -> std::thread::Result<R>
+where
+    F: FnOnce() -> R + std::panic::UnwindSafe,
+{
+    struct Depth;
+    impl Drop for Depth {
+        fn drop(&mut self) {
+            CATCHING.with(|c| c.set(c.get() - 1));
+        }
+    }
+
+    CATCHING.with(|c| c.set(c.get() + 1));
+    let _depth = Depth;
+    std::panic::catch_unwind(f)
+}
+
+/// Is the current panic inside a [`catch_panic`] on this thread?
+fn panic_is_caught() -> bool {
+    // `try_with`: a panic during thread-local destruction must not panic again.
+    CATCHING.try_with(|c| c.get() > 0).unwrap_or(false)
 }
 
 /// Claim the live TUI session for restoring, and disarm the hook.
@@ -218,6 +262,22 @@ fn ansi_restore_sequence() -> String {
 mod tests {
     use super::*;
     use serial_test::serial;
+
+    /// The hook decides by the catch depth, so it must be exact: inside a
+    /// `catch_panic` (also nested, also after a caught panic) and zero outside.
+    #[test]
+    fn catch_panic_marks_exactly_its_own_extent() {
+        assert!(!panic_is_caught());
+        let inner = catch_panic(|| {
+            assert!(panic_is_caught());
+            let nested: std::thread::Result<()> = catch_panic(|| panic!("nested"));
+            assert!(nested.is_err());
+            assert!(panic_is_caught(), "the outer catch is still running");
+            7
+        });
+        assert_eq!(inner.ok(), Some(7));
+        assert!(!panic_is_caught(), "a caught panic left the depth raised");
+    }
 
     /// The sequence must leave the alternate screen and show the cursor - the
     /// two things whose absence makes a terminal look broken after a crash.

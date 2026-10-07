@@ -1264,9 +1264,10 @@ items:
       - fallback view shown with the error
     evidence:
       - src/widget/feedback/error_boundary.rs::error_boundary
+      - tests/invariants.rs::inv09_a_panic_revue_catches_does_not_restore_the_terminal
     source:
       - FEATURES.md §7 Developer Experience / Error Handling
-    notes: Exported and uses catch_unwind, but no test or example exercises it. Doc .fallback(|err| ..) takes a closure; real
+    notes: Catches a child's render panic without restoring the terminal (tests/invariants.rs); no test checks the fallback content. Doc .fallback(|err| ..) takes a closure; real
       fallback() takes a View.
   - id: CHART-001
     title: Shared chart components (Axis, Legend, ColorScheme, ChartGrid)

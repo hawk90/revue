@@ -67,7 +67,7 @@ impl<T: Send + 'static> WorkerHandle<T> {
             }
 
             // Execute task with panic handling
-            let task_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+            let task_result = crate::render::catch_panic(std::panic::AssertUnwindSafe(f));
 
             // Store result
             match task_result {
@@ -127,7 +127,7 @@ impl<T: Send + 'static> WorkerHandle<T> {
             // dropping the handle) ends a future that would never finish.
             let watch = cancelled_clone.clone();
             let result_value = match super::get_runtime_handle() {
-                Ok(handle) => std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                Ok(handle) => crate::render::catch_panic(std::panic::AssertUnwindSafe(|| {
                     handle.block_on(async move {
                         let cancel_requested = async {
                             while !*lock_util::lock_or_recover(&watch) {
@@ -273,7 +273,7 @@ impl<T: Send + 'static> WorkerHandle<T> {
                     return;
                 }
 
-                let polled = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let polled = crate::render::catch_panic(std::panic::AssertUnwindSafe(|| {
                     Pin::as_mut(&mut future).poll(&mut cx)
                 }));
                 let polled = match polled {

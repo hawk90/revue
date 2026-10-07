@@ -85,7 +85,7 @@ impl<T: Send + 'static> TaskRunner<T> {
         let tx = self.tx.clone();
 
         let handle = thread::spawn(move || {
-            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(task));
+            let result = crate::render::catch_panic(std::panic::AssertUnwindSafe(task));
             let msg = match result {
                 Ok(value) => TaskMessage {
                     id,
@@ -118,7 +118,7 @@ impl<T: Send + 'static> TaskRunner<T> {
         let tx = self.tx.clone();
 
         let handle = thread::spawn(move || {
-            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(task));
+            let result = crate::render::catch_panic(std::panic::AssertUnwindSafe(task));
             let msg = match result {
                 Ok(Ok(value)) => TaskMessage {
                     id,

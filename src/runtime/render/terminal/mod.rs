@@ -7,6 +7,7 @@ mod render;
 mod types;
 
 pub use helper::stdout_terminal;
+pub(crate) use panic_hook::catch_panic;
 pub use panic_hook::{install_panic_hook, restore_terminal};
 pub use types::Terminal;
 

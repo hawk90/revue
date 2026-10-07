@@ -624,3 +624,80 @@ fn inv09_hook_is_silent_for_a_process_that_never_entered_tui_mode() {
         "restore sequence emitted by a process that never entered TUI mode"
     );
 }
+
+/// A panic revue catches on purpose must not restore the terminal.
+///
+/// `TaskRunner` reports a panicking task as an error and `ErrorBoundary` shows
+/// a fallback for a panicking child; the app keeps running in both cases. The
+/// hook runs before `catch_unwind` gets the panic, so a hook that restored on
+/// every panic would drop the still-running app out of the alternate screen
+/// and raw mode. The child below survives both panics, then panics for real:
+/// the restore sequence must appear exactly once, for the real one.
+#[test]
+fn inv09_a_panic_revue_catches_does_not_restore_the_terminal() {
+    const CHILD_ENV: &str = "REVUE_INV09_CAUGHT_CHILD";
+
+    if std::env::var_os(CHILD_ENV).is_some() {
+        revue::render::install_panic_hook();
+
+        let mut runner = revue::tasks::TaskRunner::<i32>::new();
+        runner.spawn("boom", || panic!("inv09 task panic"));
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        let result = loop {
+            if let Some(result) = runner.poll() {
+                break result;
+            }
+            assert!(std::time::Instant::now() < deadline, "task never reported");
+            std::thread::yield_now();
+        };
+        assert!(result.result.is_err(), "the panicking task did not fail");
+
+        struct Panics;
+        impl View for Panics {
+            fn render(&self, _ctx: &mut RenderContext) {
+                panic!("inv09 render panic");
+            }
+        }
+        let mut h = PipelineHarness::new(20, 3);
+        h.draw(&revue::widget::error_boundary().child(Panics));
+
+        println!("inv09-survived");
+        panic!("inv09 real panic");
+    }
+
+    let exe = std::env::current_exe().expect("test binary path");
+    let out = std::process::Command::new(exe)
+        .args([
+            "inv09_a_panic_revue_catches_does_not_restore_the_terminal",
+            "--exact",
+            "--nocapture",
+        ])
+        .env(CHILD_ENV, "1")
+        .output()
+        .expect("re-exec the test binary");
+
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stdout.contains("inv09-survived"),
+        "the child did not get past the caught panics; stdout {stdout:?}, stderr {stderr:?}"
+    );
+    assert!(
+        stderr.contains("inv09 real panic"),
+        "the real panic did not reach the chained hook; stderr {stderr:?}"
+    );
+
+    #[cfg(unix)]
+    {
+        let survived = stdout.find("inv09-survived").unwrap();
+        assert!(
+            !stdout[..survived].contains("\x1b[?1049l"),
+            "a caught panic restored the terminal while the app kept running; stdout {stdout:?}"
+        );
+        assert_eq!(
+            stdout.matches("\x1b[?1049l").count(),
+            1,
+            "the real panic must restore the terminal exactly once; stdout {stdout:?}"
+        );
+    }
+}

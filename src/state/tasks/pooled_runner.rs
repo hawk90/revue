@@ -58,9 +58,10 @@ impl Worker {
                 match work_item {
                     Ok(item) => {
                         // Execute the task
-                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            (item.task)()
-                        }));
+                        let result =
+                            crate::render::catch_panic(std::panic::AssertUnwindSafe(|| {
+                                (item.task)()
+                            }));
 
                         let msg = ResultMessage {
                             id: item.id,
