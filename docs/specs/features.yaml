@@ -1666,7 +1666,7 @@ items:
       - app.run(view, |event, view, app| -> bool) receives every event
       - app.quit()
     evidence:
-      - src/core/app/mod.rs::run
+      - src/core/app/event_loop.rs::run
     source:
       - FEATURES.md §10 Keyboard Shortcuts / Global Shortcuts
   - id: KEY-003

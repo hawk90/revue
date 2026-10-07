@@ -415,7 +415,9 @@ Application lifecycle and coordination.
 
 ```
 src/core/app/
-├── mod.rs
+├── mod.rs                 # App struct, state flags, accessors
+├── event_loop.rs          # run loop, event dispatch, hover/focus tracking
+├── draw.rs                # draw pipeline: DOM, layout tree, buffers
 ├── builder.rs             # App builder pattern
 ├── router.rs              # Screen routing
 ├── declarative_router/    # Declarative routing
