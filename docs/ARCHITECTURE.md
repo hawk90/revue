@@ -93,7 +93,7 @@ src/widget/
 │       ├── scatterchart.rs#     Scatter/bubble chart
 │       ├── histogram/     #     Histogram
 │       ├── boxplot/       #     Box-and-whisker plot
-│       ├── candlechart.rs #     Candlestick chart
+│       ├── candlechart/   #     Candlestick chart
 │       ├── heatmap/       #     Heat map
 │       ├── sparkline.rs   #     Sparkline
 │       └── timeseries/    #     Time series

@@ -1396,7 +1396,7 @@ items:
     acceptance:
       - candle_chart(data) with title
     evidence:
-      - src/widget/data/chart/candlechart.rs::candle_chart
+      - src/widget/data/chart/candlechart/mod.rs::candle_chart
       - tests/widget/candlechart.rs
     source:
       - FEATURES.md §Advanced Widgets / Advanced Charts

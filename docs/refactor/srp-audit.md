@@ -116,7 +116,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
-| `widget/data/chart/candlechart.rs` | 630 | 3 | 630줄, 위젯 한 파일 | todo | |
+| `widget/data/chart/candlechart.rs` | 630 | 3 | 630줄, 위젯 한 파일 | split | `Candle`·`ChartStyle` 데이터 타입, 빌더, 가격 축척·캔들 열 그리기·Heikin-Ashi 변환과 `View`가 섞임 → candlechart/{mod,types,render}.rs (테스트는 각 코드와 함께 옮김). 버그 의심: `scroll(offset)`이 데이터 길이보다 크면 `visible_candles`(와 Heikin-Ashi 경로)의 `data[start..end]`가 `start > end`로 패닉함. 참고: Heikin-Ashi 모드도 축 범위는 원본 캔들의 고저가로 잡음(변환된 캔들은 잘릴 수 있음) |
 | `widget/data/chart/helper.rs` | 898 | 1 | 898줄, 위젯 한 파일 | todo | |
 | `widget/data/chart/histogram/mod.rs` | 623 | 1 | 623줄, 위젯 한 파일 | todo | |
 | `widget/data/chart/piechart.rs` | 442 | 4 | 위젯 한 파일 | todo | |
