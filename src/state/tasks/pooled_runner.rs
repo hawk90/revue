@@ -22,10 +22,13 @@ pub struct TaskResult<T> {
     pub result: Result<T, String>,
 }
 
+/// A queued task; an error it returns is its failure (not a panic).
+type Task<T> = Box<dyn FnOnce() -> Result<T, String> + Send + 'static>;
+
 /// Work item submitted to the pool
 struct WorkItem<T> {
     id: TaskId,
-    task: Box<dyn FnOnce() -> T + Send + 'static>,
+    task: Task<T>,
 }
 
 /// Message from worker to main thread
@@ -59,15 +62,11 @@ impl Worker {
                             (item.task)()
                         }));
 
-                        let msg = match result {
-                            Ok(value) => ResultMessage {
-                                id: item.id,
-                                result: Ok(value),
-                            },
-                            Err(e) => ResultMessage {
-                                id: item.id,
-                                result: Err(format!("Task panicked: {:?}", e)),
-                            },
+                        let msg = ResultMessage {
+                            id: item.id,
+                            result: result.unwrap_or_else(|e| {
+                                Err(format!("Task panicked: {}", super::panic_message(&*e)))
+                            }),
                         };
 
                         // Send result back
@@ -125,7 +124,7 @@ pub struct PooledTaskRunner<T: Send + 'static> {
     /// Pending tasks (to prevent duplicate IDs)
     pending: HashMap<TaskId, ()>,
     /// Queue of tasks waiting to be submitted (for future backpressure)
-    _queue: VecDeque<(TaskId, Box<dyn FnOnce() -> T + Send + 'static>)>,
+    _queue: VecDeque<(TaskId, Task<T>)>,
 }
 
 impl<T: Send + 'static> PooledTaskRunner<T> {
@@ -167,7 +166,8 @@ impl<T: Send + 'static> PooledTaskRunner<T> {
     /// The task will be queued and executed by an available worker thread.
     /// If a task with the same ID is already pending, this is a no-op.
     ///
-    /// If the task queue is full, the task will be rejected (not spawned).
+    /// If the task queue is full, the task will be rejected (not spawned):
+    /// [`is_pending`](Self::is_pending) is then false for its id.
     ///
     /// # Arguments
     ///
@@ -177,22 +177,25 @@ impl<T: Send + 'static> PooledTaskRunner<T> {
     where
         F: FnOnce() -> T + Send + 'static,
     {
-        let id = id.into();
+        self.submit(id.into(), Box::new(move || Ok(task())));
+    }
 
+    /// Queue a work item unless a task with its id is already pending.
+    fn submit(&mut self, id: TaskId, task: Task<T>) {
         if self.pending.contains_key(&id) {
             return; // Task already running
         }
 
-        self.pending.insert(id.clone(), ());
-
+        // Submit to pool (non-blocking). If the queue is full the task is
+        // rejected to prevent blocking - and is not pending, or it would stay
+        // pending forever and block its id.
         let work_item = WorkItem {
-            id,
-            task: Box::new(task),
+            id: id.clone(),
+            task,
         };
-
-        // Submit to pool (non-blocking)
-        // If queue is full, silently reject the task to prevent blocking
-        let _ = self.work_tx.try_send(work_item);
+        if self.work_tx.try_send(work_item).is_ok() {
+            self.pending.insert(id, ());
+        }
     }
 
     /// Spawn a task that returns Result
@@ -201,10 +204,12 @@ impl<T: Send + 'static> PooledTaskRunner<T> {
         F: FnOnce() -> Result<T, E> + Send + 'static,
         E: std::fmt::Display,
     {
-        self.spawn(id, move || match task() {
-            Ok(value) => value,
-            Err(e) => panic!("Task error: {}", e),
-        });
+        // The error travels as the result, not as a panic: a panic would
+        // reach the panic hook, which prints over the app's screen.
+        self.submit(
+            id.into(),
+            Box::new(move || task().map_err(|e| e.to_string())),
+        );
     }
 
     /// Poll for completed task results (non-blocking)
@@ -448,5 +453,49 @@ mod tests {
         };
         assert_eq!(result.id, "test");
         assert_eq!(result.result.unwrap(), 42);
+    }
+
+    #[test]
+    fn a_failure_keeps_its_message() {
+        let mut runner: PooledTaskRunner<u32> = PooledTaskRunner::new(1);
+        runner.spawn_result("err", || Err::<u32, _>("permission denied"));
+        let r = poll_within(&mut runner, Duration::from_secs(5));
+        assert_eq!(r.result, Err("permission denied".to_string()));
+
+        runner.spawn("boom", || {
+            std::panic::resume_unwind(Box::new("the disk is gone"))
+        });
+        let r = poll_within(&mut runner, Duration::from_secs(5));
+        assert_eq!(r.result, Err("Task panicked: the disk is gone".to_string()));
+    }
+
+    #[test]
+    fn a_task_the_full_queue_refuses_is_not_pending() {
+        let (release_tx, release_rx) = std::sync::mpsc::channel::<()>();
+        let release_rx = Arc::new(std::sync::Mutex::new(release_rx));
+        let mut runner: PooledTaskRunner<usize> = PooledTaskRunner::new(1);
+        let total = MAX_TASK_QUEUE_SIZE + 5;
+        for i in 0..total {
+            let rx = release_rx.clone();
+            runner.spawn(format!("t{i}"), move || {
+                let _ = rx.lock().unwrap().recv_timeout(Duration::from_secs(5));
+                i
+            });
+        }
+        let accepted = runner.pending_count();
+        assert!(accepted < total, "a full queue accepted every task");
+        assert!(!runner.is_pending(&format!("t{}", total - 1)));
+        drop(release_tx);
+
+        let mut got = 0;
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        while runner.has_pending() && std::time::Instant::now() < deadline {
+            while runner.poll().is_some() {
+                got += 1;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(got, accepted);
+        assert_eq!(runner.pending_count(), 0);
     }
 }

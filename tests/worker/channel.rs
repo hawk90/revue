@@ -170,9 +170,9 @@ fn test_sender_is_cancelled() {
     receiver.cancel();
     assert!(sender.is_cancelled());
 
-    // Clear the command
+    // Reading the command does not undo the cancel
     let _ = sender.check_command();
-    assert!(!sender.is_cancelled());
+    assert!(sender.is_cancelled());
 }
 
 #[test]

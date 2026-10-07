@@ -21,6 +21,9 @@ pub struct TaskResult<T> {
 /// Internal task message
 struct TaskMessage<T> {
     id: TaskId,
+    /// Which run of `id` this is: a result whose run was cancelled or
+    /// replaced is dropped.
+    run: u64,
     result: Result<T, String>,
 }
 
@@ -47,7 +50,9 @@ struct TaskMessage<T> {
 pub struct TaskRunner<T: Send + 'static> {
     rx: Receiver<TaskMessage<T>>,
     tx: Sender<TaskMessage<T>>,
-    pending: HashMap<TaskId, ()>,
+    /// Pending tasks, each with the number of its current run
+    pending: HashMap<TaskId, u64>,
+    next_run: u64,
     handles: Vec<JoinHandle<()>>,
 }
 
@@ -59,6 +64,7 @@ impl<T: Send + 'static> TaskRunner<T> {
             rx,
             tx,
             pending: HashMap::new(),
+            next_run: 0,
             handles: Vec::new(),
         }
     }
@@ -75,7 +81,7 @@ impl<T: Send + 'static> TaskRunner<T> {
             return; // Task with this ID already running
         }
 
-        self.pending.insert(id, ());
+        let run = self.start_run(id);
         let tx = self.tx.clone();
 
         let handle = thread::spawn(move || {
@@ -83,11 +89,13 @@ impl<T: Send + 'static> TaskRunner<T> {
             let msg = match result {
                 Ok(value) => TaskMessage {
                     id,
+                    run,
                     result: Ok(value),
                 },
                 Err(e) => TaskMessage {
                     id,
-                    result: Err(format!("Task panicked: {:?}", e)),
+                    run,
+                    result: Err(format!("Task panicked: {}", super::panic_message(&*e))),
                 },
             };
             let _ = tx.send(msg);
@@ -106,7 +114,7 @@ impl<T: Send + 'static> TaskRunner<T> {
             return;
         }
 
-        self.pending.insert(id, ());
+        let run = self.start_run(id);
         let tx = self.tx.clone();
 
         let handle = thread::spawn(move || {
@@ -114,15 +122,18 @@ impl<T: Send + 'static> TaskRunner<T> {
             let msg = match result {
                 Ok(Ok(value)) => TaskMessage {
                     id,
+                    run,
                     result: Ok(value),
                 },
                 Ok(Err(e)) => TaskMessage {
                     id,
+                    run,
                     result: Err(e.to_string()),
                 },
                 Err(e) => TaskMessage {
                     id,
-                    result: Err(format!("Task panicked: {:?}", e)),
+                    run,
+                    result: Err(format!("Task panicked: {}", super::panic_message(&*e))),
                 },
             };
             let _ = tx.send(msg);
@@ -131,18 +142,30 @@ impl<T: Send + 'static> TaskRunner<T> {
         self.handles.push(handle);
     }
 
+    /// Record a new run of `id` as pending and return its number.
+    fn start_run(&mut self, id: TaskId) -> u64 {
+        let run = self.next_run;
+        self.next_run = self.next_run.wrapping_add(1);
+        self.pending.insert(id, run);
+        run
+    }
+
     /// Poll for completed task results. Call this in your tick handler.
+    ///
+    /// The result of a cancelled run is dropped, also when a new task was
+    /// spawned under the same id since.
     pub fn poll(&mut self) -> Option<TaskResult<T>> {
-        match self.rx.try_recv() {
-            Ok(msg) => {
-                self.pending.remove(msg.id);
-                Some(TaskResult {
-                    id: msg.id,
-                    result: msg.result,
-                })
+        while let Ok(msg) = self.rx.try_recv() {
+            if self.pending.get(msg.id) != Some(&msg.run) {
+                continue; // Cancelled, or replaced by a newer run
             }
-            Err(_) => None,
+            self.pending.remove(msg.id);
+            return Some(TaskResult {
+                id: msg.id,
+                result: msg.result,
+            });
         }
+        None
     }
 
     /// Check if a specific task is running
@@ -161,6 +184,8 @@ impl<T: Send + 'static> TaskRunner<T> {
     }
 
     /// Cancel tracking of a task (doesn't stop the thread)
+    ///
+    /// The task's result, when it comes, is dropped: `poll` never returns it.
     pub fn cancel(&mut self, id: TaskId) {
         self.pending.remove(id);
     }
@@ -447,5 +472,41 @@ mod tests {
         let result = poll_within(&mut runner, Duration::from_secs(5));
         assert!(result.result.is_err());
         assert!(result.result.unwrap_err().contains("panicked"));
+    }
+
+    #[test]
+    fn a_panic_keeps_its_message() {
+        let mut runner: TaskRunner<u32> = TaskRunner::new();
+        runner.spawn("boom", || {
+            std::panic::resume_unwind(Box::new("the disk is gone"))
+        });
+        let r = poll_within(&mut runner, Duration::from_secs(5));
+        assert_eq!(r.result, Err("Task panicked: the disk is gone".to_string()));
+
+        runner.spawn("owned", || {
+            std::panic::resume_unwind(Box::new(String::from("owned msg")))
+        });
+        let r = poll_within(&mut runner, Duration::from_secs(5));
+        assert_eq!(r.result, Err("Task panicked: owned msg".to_string()));
+    }
+
+    #[test]
+    fn a_cancelled_run_is_not_delivered_even_after_a_respawn() {
+        let (first_tx, first_rx) = std::sync::mpsc::channel::<()>();
+        let mut runner: TaskRunner<u32> = TaskRunner::new();
+        runner.spawn("job", move || {
+            let _ = first_rx.recv();
+            1
+        });
+        runner.cancel("job");
+        assert!(!runner.is_running("job"));
+        runner.spawn("job", || 2);
+        first_tx.send(()).unwrap();
+
+        let r = poll_within(&mut runner, Duration::from_secs(5));
+        assert_eq!(r.result, Ok(2));
+        assert_eq!(runner.pending_count(), 0);
+        std::thread::sleep(Duration::from_millis(50));
+        assert!(runner.poll().is_none(), "the cancelled run surfaced");
     }
 }

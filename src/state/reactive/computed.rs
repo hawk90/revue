@@ -2,10 +2,16 @@
 //!
 //! Thread-safe computed values using Arc and atomic operations.
 
-use super::tracker::{dispose_subscriber, start_tracking, stop_tracking, Subscriber, SubscriberId};
+use super::tracker::{dispose_subscriber, run_tracked, Subscriber, SubscriberId};
 use crate::utils::lock::{lock_or_recover, read_or_recover, write_or_recover};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
+
+thread_local! {
+    /// The computed values this thread is computing right now, innermost last.
+    static COMPUTING: std::cell::RefCell<Vec<SubscriberId>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
 
 /// A derived value that automatically updates when dependencies change
 ///
@@ -54,6 +60,12 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
     /// and invalidates when any dependency changes.
     ///
     /// Thread-safe: uses a lock to prevent concurrent recomputation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the computation reads this same computed value - directly,
+    /// or through others that read it (a circular dependency). Waiting on its
+    /// own recompute lock would deadlock the thread instead.
     pub fn get(&self) -> T {
         // Fast path: check if we can use cached value without locking
         if !self.needs_recompute() {
@@ -61,6 +73,12 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
                 return value;
             }
             // Cache unexpectedly empty, fall through to recompute
+        }
+
+        // Re-entered while computing on this thread: a cycle. The lock below
+        // is held by this very thread, so taking it would never return.
+        if COMPUTING.with(|c| c.borrow().contains(&self.id)) {
+            panic!("Circular dependency: a Computed value was read while it was being computed");
         }
 
         // Slow path: acquire recompute lock to prevent data race
@@ -100,10 +118,17 @@ impl<T: Clone + Send + Sync + 'static> Computed<T> {
             }),
         };
 
-        // Track dependencies during computation
-        start_tracking(subscriber);
-        let value = (self.compute)();
-        stop_tracking();
+        // Track dependencies during computation, marked as computing on this
+        // thread until it returns or unwinds.
+        struct Computing(SubscriberId);
+        impl Drop for Computing {
+            fn drop(&mut self) {
+                COMPUTING.with(|c| c.borrow_mut().retain(|id| *id != self.0));
+            }
+        }
+        COMPUTING.with(|c| c.borrow_mut().push(self.id));
+        let _computing = Computing(self.id);
+        let value = run_tracked(subscriber, || (self.compute)());
 
         // Cache the result and mark as clean
         *write_or_recover(&self.cached) = Some(value.clone());
@@ -359,5 +384,45 @@ mod tests {
         // This test just verifies that Computed implements Send and Sync
         fn is_send_sync<T: Send + Sync>() {}
         is_send_sync::<Computed<i32>>();
+    }
+
+    #[test]
+    fn a_panicking_compute_stops_tracking() {
+        use crate::reactive::is_tracking;
+        let c = Computed::new(|| -> i32 { panic!("compute boom") });
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.get())).is_err());
+        assert!(
+            !is_tracking(),
+            "the panicked computed is still the current subscriber"
+        );
+    }
+
+    #[test]
+    fn a_cycle_panics_instead_of_deadlocking() {
+        use std::sync::OnceLock;
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let b_cell: Arc<OnceLock<Computed<i32>>> = Arc::new(OnceLock::new());
+            let bc = b_cell.clone();
+            let a = Computed::new(move || bc.get().map_or(0, |b| b.get()) + 1);
+            let a2 = a.clone();
+            let _ = b_cell.set(Computed::new(move || a2.get() + 1));
+            let cycle = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| a.get()));
+
+            let self_cell: Arc<OnceLock<Computed<i32>>> = Arc::new(OnceLock::new());
+            let sc = self_cell.clone();
+            let c = Computed::new(move || sc.get().map_or(0, |c| c.get()) + 1);
+            let _ = self_cell.set(c.clone());
+            let own = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.get()));
+
+            // Neither left this thread marked as computing.
+            let ok = Computed::new(|| 7);
+            let _ = tx.send((cycle.is_err(), own.is_err(), ok.get()));
+        });
+        let (cycle, own, ok) = rx
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .expect("a cyclic computed deadlocked");
+        assert!(cycle && own);
+        assert_eq!(ok, 7);
     }
 }

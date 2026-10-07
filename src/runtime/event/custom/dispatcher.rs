@@ -43,7 +43,7 @@ impl EventDispatcher {
         let id = CustomHandlerId::new();
         let type_id = TypeId::of::<E>();
 
-        let boxed: BoxedHandler = Box::new(move |any, meta| {
+        let boxed: BoxedHandler = Arc::new(move |any, meta| {
             if let Some(event) = any.downcast_ref::<E>() {
                 handler(event, meta)
             } else {
@@ -116,26 +116,27 @@ impl EventDispatcher {
         let mut handlers_to_remove = Vec::new();
         let mut handler_count = 0;
 
-        // Get read lock and process handlers - O(1) lookup by TypeId
-        let handlers = match self.handlers.read() {
-            Ok(h) => h,
-            Err(_) => return DispatchResult::error("Failed to acquire lock"),
+        // Take a snapshot of this type's handlers (O(1) lookup by TypeId) and
+        // release the lock before calling them: a handler may register or
+        // remove handlers, which needs the write lock - taken on this thread
+        // while it held the read lock, that deadlocked.
+        let type_handlers: Vec<HandlerEntry> = {
+            let handlers = match self.handlers.read() {
+                Ok(h) => h,
+                Err(_) => return DispatchResult::error("Failed to acquire lock"),
+            };
+            handlers.get(&type_id).cloned().unwrap_or_default()
         };
-
-        // Get handlers for this specific event type (O(1) lookup)
-        let type_handlers = match handlers.get(&type_id) {
-            Some(h) => h,
-            None => {
-                // No handlers for this event type
-                return DispatchResult {
-                    event_id: meta.id,
-                    cancelled: false,
-                    propagation_stopped: false,
-                    handler_count: 0,
-                    error: None,
-                };
-            }
-        };
+        if type_handlers.is_empty() {
+            // No handlers for this event type
+            return DispatchResult {
+                event_id: meta.id,
+                cancelled: false,
+                propagation_stopped: false,
+                handler_count: 0,
+                error: None,
+            };
+        }
 
         // Process capture phase handlers first
         for entry in type_handlers.iter().filter(|h| h.options.capture) {
@@ -180,9 +181,6 @@ impl EventDispatcher {
                 }
             }
         }
-
-        // Drop the read lock before writing
-        drop(handlers);
 
         // Remove one-time handlers
         if !handlers_to_remove.is_empty() {

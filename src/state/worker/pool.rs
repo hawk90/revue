@@ -189,9 +189,16 @@ impl Worker {
                         state.queue.pop()
                     };
 
-                    // Execute the task outside the lock
+                    // Execute the task outside the lock. A panicking task
+                    // must not take the worker with it: the pool would lose
+                    // a thread for good, and with its last one every queued
+                    // task would wait forever.
                     if let Some(queued_task) = task {
-                        (queued_task.task)();
+                        if std::panic::catch_unwind(std::panic::AssertUnwindSafe(queued_task.task))
+                            .is_err()
+                        {
+                            log_warn!("revue-worker-{}: a task panicked", id);
+                        }
                     }
                 }
 
@@ -424,5 +431,18 @@ mod tests {
         assert_eq!(result.len(), 2);
         assert_eq!(result[0], "high");
         assert_eq!(result[1], "low");
+    }
+
+    #[test]
+    fn a_panicking_task_does_not_kill_the_worker() {
+        let pool = WorkerPool::new(1);
+        assert!(pool.submit(|| std::panic::resume_unwind(Box::new("task boom"))));
+        let (tx, rx) = std::sync::mpsc::channel();
+        assert!(pool.submit(move || tx.send(()).unwrap()));
+        assert!(
+            rx.recv_timeout(std::time::Duration::from_secs(5)).is_ok(),
+            "the pool ran nothing after a task panicked"
+        );
+        assert_eq!(pool.active_workers(), 1);
     }
 }

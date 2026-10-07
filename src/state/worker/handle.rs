@@ -78,13 +78,7 @@ impl<T: Send + 'static> WorkerHandle<T> {
                     *s = WorkerState::Completed;
                 }
                 Err(panic_info) => {
-                    let msg = if let Some(s) = panic_info.downcast_ref::<&str>() {
-                        s.to_string()
-                    } else if let Some(s) = panic_info.downcast_ref::<String>() {
-                        s.clone()
-                    } else {
-                        "Unknown panic".to_string()
-                    };
+                    let msg = panic_message(&*panic_info);
 
                     let mut r = lock_util::lock_or_recover(&result_clone);
                     *r = Some(Err(WorkerError::Panicked(msg)));
@@ -116,7 +110,7 @@ impl<T: Send + 'static> WorkerHandle<T> {
 
         let state_clone = state.clone();
         let result_clone = result.clone();
-        let _cancelled_clone = cancelled.clone();
+        let cancelled_clone = cancelled.clone();
 
         let thread = thread::spawn(move || {
             // Update state to running
@@ -125,10 +119,35 @@ impl<T: Send + 'static> WorkerHandle<T> {
                 *s = WorkerState::Running;
             }
 
-            // Use shared runtime for async task (avoids ~100KB allocation per task)
+            // Use shared runtime for async task (avoids ~100KB allocation per task).
+            // A panicking future must not unwind out of this thread: the
+            // state would stay Running and the result empty for good.
+            //
+            // The future races a watch on the cancel flag, so `cancel()` (or
+            // dropping the handle) ends a future that would never finish.
+            let watch = cancelled_clone.clone();
             let result_value = match super::get_runtime_handle() {
-                Ok(handle) => Ok(handle.block_on(future)),
+                Ok(handle) => std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    handle.block_on(async move {
+                        let cancel_requested = async {
+                            while !*lock_util::lock_or_recover(&watch) {
+                                tokio::time::sleep(CANCEL_POLL).await;
+                            }
+                        };
+                        tokio::select! {
+                            biased;
+                            value = future => Ok(value),
+                            _ = cancel_requested => Err(WorkerError::Cancelled),
+                        }
+                    })
+                }))
+                .unwrap_or_else(|p| Err(WorkerError::Panicked(panic_message(&*p)))),
                 Err(e) => Err(crate::worker::WorkerError::RuntimeCreationFailed(e)),
+            };
+            let finished = match &result_value {
+                Ok(_) => WorkerState::Completed,
+                Err(WorkerError::Cancelled) => WorkerState::Cancelled,
+                Err(_) => WorkerState::Failed,
             };
 
             // Store result
@@ -137,7 +156,7 @@ impl<T: Send + 'static> WorkerHandle<T> {
                 *r = Some(result_value);
             }
             let mut s = lock_util::lock_or_recover(&state_clone);
-            *s = WorkerState::Completed;
+            *s = finished;
         });
 
         Self {
@@ -254,7 +273,20 @@ impl<T: Send + 'static> WorkerHandle<T> {
                     return;
                 }
 
-                match Pin::as_mut(&mut future).poll(&mut cx) {
+                let polled = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    Pin::as_mut(&mut future).poll(&mut cx)
+                }));
+                let polled = match polled {
+                    Ok(polled) => polled,
+                    Err(p) => {
+                        let mut r = lock_util::lock_or_recover(&result_clone);
+                        *r = Some(Err(WorkerError::Panicked(panic_message(&*p))));
+                        let mut s = lock_util::lock_or_recover(&state_clone);
+                        *s = WorkerState::Failed;
+                        return;
+                    }
+                };
+                match polled {
                     Poll::Ready(value) => {
                         let mut r = lock_util::lock_or_recover(&result_clone);
                         *r = Some(Ok(value));
@@ -378,6 +410,21 @@ impl<T: Send + 'static> WorkerHandle<T> {
     /// Poll for result (non-blocking)
     pub fn poll(&self) -> Option<WorkerState> {
         Some(self.state())
+    }
+}
+
+/// How often a running future checks whether it was cancelled.
+#[cfg(feature = "async")]
+const CANCEL_POLL: Duration = Duration::from_millis(10);
+
+/// The message of a caught panic: the `&str` or `String` it was raised with.
+fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+    if let Some(s) = payload.downcast_ref::<&str>() {
+        (*s).to_string()
+    } else if let Some(s) = payload.downcast_ref::<String>() {
+        s.clone()
+    } else {
+        "Unknown panic".to_string()
     }
 }
 
@@ -816,5 +863,25 @@ mod tests {
         let result = handle.join();
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    fn a_panicking_future_fails_the_handle() {
+        let handle: WorkerHandle<u32> =
+            WorkerHandle::spawn(async { std::panic::resume_unwind(Box::new("future boom")) });
+        match handle.join_timeout(Duration::from_secs(5)) {
+            Err(WorkerError::Panicked(msg)) => assert_eq!(msg, "future boom"),
+            other => panic!("expected Panicked, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn cancel_ends_a_future_that_never_finishes() {
+        let handle: WorkerHandle<u32> = WorkerHandle::spawn(std::future::pending());
+        handle.cancel();
+        assert!(matches!(
+            handle.join_timeout(Duration::from_secs(5)),
+            Err(WorkerError::Cancelled)
+        ));
     }
 }

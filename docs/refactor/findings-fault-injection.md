@@ -1,4 +1,4 @@
-# 결함 주입 — 고장 난 출력, 이상한 이벤트, 망가진 텍스트
+# 결함 주입 — 고장 난 출력, 이상한 이벤트, 망가진 텍스트, 외부 자원, 동시성
 
 ## 왜
 
@@ -15,16 +15,21 @@
 
 ## 층
 
-층마다 파일 하나를 두어 실패 메시지가 층 이름을 단다. 세 층 모두 테스트 타깃
-`tests/fault_injection.rs` 하나(`mod fault;`)에 들어 있다.
+층마다 파일 하나를 두어 실패 메시지가 층 이름을 단다. 다섯 층 모두 테스트 타깃
+`tests/fault_injection.rs` 하나(`mod fault;`)에 들어 있다. 4d와 4e는 아래
+[4d 외부 자원](#4d-외부-자원--파일클립보드감시http)과 [4e 동시성](#4e-동시성--태스크워커잠금반응형플러그인)에서
+따로 다룬다.
 
 | 층 | 파일 | 케이스 | 디버그 빌드 시간 |
 |---|---|---|---|
 | 4a 출력 | `tests/fault/output.rs` | 2,504(PTY) + 2,394(TTY 없이) | 0.6초 + 0.2초 |
 | 4b 이벤트 | `tests/fault/events.rs` | 98 | 1.1초 |
 | 4c 파서 | `tests/fault/parsers.rs` | 대상 16개 × 4(기본 기능은 15개) | 1.9초 |
+| 4d 외부 자원 | `tests/fault/resources.rs` | 65(모든 기능), 50(기본), 41(기능 없이) | 10초 |
+| 4e 동시성 | `tests/fault/concurrency.rs` | 51 | 4초 |
 
-층들이 병렬로 돌기 때문에 타깃 전체가 약 2초에 끝난다(빌드 제외).
+층들이 병렬로 돌기 때문에 타깃 전체가 약 10초에 끝난다(빌드 제외). 가장 긴 것은
+4d의 클립보드 멈춤 케이스로, 고친 뒤의 도구 제한 시간 10초를 그대로 기다린다.
 
 ### 4a 출력 — 고장 난 writer
 
@@ -183,7 +188,8 @@ test와 nextest 어느 쪽에서도 같게 동작한다.
   한다. 그래서 목록은 줄어들기만 한다.
 - 이번 구성에서 돌지 않은 케이스(꺼진 기능 뒤의 대상)는 어느 쪽으로도 세지 않는다.
 
-**지금 `KNOWN`은 비어 있다.**
+**지금 `KNOWN`에는 4e의 두 항목만 남아 있다.** 둘 다 버그라기보다 설계 결정이
+필요한 것이다. [4e의 남긴 것](#남긴-것--설계-결정이-필요하다)을 보라. 4a–4d는 비어 있다.
 
 ## 발견하고 고친 것
 
@@ -222,3 +228,226 @@ test와 nextest 어느 쪽에서도 같게 동작한다.
   2,000단(약 400만 자) 입력에서 3초 제한을 넘었다. 하이라이터는 공백 하나마다 토큰을
   하나 만드는데, 400만 자를 언어 6개로 넣었으니 버그가 아니라 크기 문제다. 그래서
   코퍼스를 500단으로 줄였다.
+
+## 4d 외부 자원 — 파일·클립보드·감시·HTTP
+
+앱 밖에서 오는 것은 언제든 고장 날 수 있다. 파일은 없거나, 읽을 수 없거나, 디렉터리이거나,
+크기를 속인다. 클립보드 도구는 실패하거나 멈춘다. 감시하던 파일은 지워지거나 rename으로
+바뀐다. HTTP 백엔드는 에러나 쓰레기를 보낸다.
+
+### 주입한 것
+
+- **파일:** 경로를 받는 로더 셋에 넣는다. `Image::from_file`(`image` 기능),
+  `AppBuilder::style`(스타일시트 파일), `AppConfig::load_from`(`config` 기능)이다.
+  - 없는 파일, 읽기 권한 없음(`chmod 000`, unix, root가 아닐 때만), 디렉터리.
+  - 로더의 크기 한계보다 1바이트 큰 sparse 파일.
+  - 반쯤 잘린 내용, 깨진 내용(PNG 서명 뒤 100,000×100,000을 주장하는 IHDR 등),
+    UTF-8이 아닌 바이트.
+  - 심볼릭 링크 고리(unix).
+  - 한계보다 1 MiB 더 흘려보내는 FIFO(unix). 메타데이터로는 0바이트다.
+- **디렉터리:** `FilePicker`에 넣는다. 없는 디렉터리, 만든 뒤 지운 디렉터리, 읽을 수 없는
+  하위 디렉터리로 `navigate_to`, 심볼릭 링크 고리 항목, UTF-8이 아닌 이름(파일 시스템이
+  허락할 때만, 곧 Linux), 항목 2,000개. 그리고 8 MB짜리 깨진 로그 파일을 앱처럼 읽어
+  `LogViewer::load`에 넣는다.
+- **파일 감시**(`hot-reload` 기능):
+  - 없는 경로 감시.
+  - 감시하던 파일 삭제 뒤 다시 만들기, 임시 파일을 rename으로 덮어쓰기.
+  - 감시하던 디렉터리 삭제.
+  - 디바운스 창 안의 두 번 저장.
+  - 디렉터리가 없는 스타일시트에 `AppBuilder::hot_reload(true)`.
+- **클립보드:**
+  - 모든 메서드가 실패하는 `ClipboardBackend`.
+  - 크기 한계와 제어 문자를 받는 `MemoryClipboard`, 8 스레드 동시 사용.
+  - 시스템 백엔드(unix): 자식 프로세스에서 `PATH`를 가짜 `pbcopy`/`pbpaste`/`xclip`/
+    `xsel`/`wl-copy`/`wl-paste`만 있는 디렉터리로 바꾼다. 가짜 도구는 실패하거나,
+    멈추거나, 곧 끝나면서 출력을 쥔 자식을 남기거나, UTF-8이 아닌 것이나 20 MB를
+    출력하거나, 입력을 읽지 않고 끝나거나, 아예 없다.
+- **HTTP:** `HttpBackend` 구현이 돌려준 것을 앱처럼 `HttpClient`에 넣고, 보기 셋
+  (본문·헤더·원본)을 위아래 끝까지 스크롤하며 그린다.
+  - 백엔드 에러.
+  - 이상한 상태 코드: 0, 100, 204(본문 있음), 302, 399, 600, 999, 65535.
+  - 손실 변환한 바이너리 본문, 8 MB 본문, 100,000단 JSON 본문, 헤더 10,000개.
+
+### 불변식
+
+1. **패닉하지 않는다.**
+2. **고장을 알린다.** `Err`, 에러 상태(`HttpClient::state()`가 `Error`이고 화면에
+   메시지가 보인다), 또는 아무것도 읽어 들이지 않음(스타일시트 규칙 0개)이다. 반쯤 잘린
+   파일만은 예외다. 반쪽도 올바른 내용일 수 있다.
+3. **멈추지 않는다.** 케이스마다 제한 시간(대부분 10초)이 있다. 클립보드 케이스는 자식
+   프로세스에서 35초 제한으로 돈다.
+
+모든 케이스는 `CARGO_TARGET_TMPDIR` 아래의 임시 디렉터리에서 돈다. 핫 리로드 감시자가
+작업 디렉터리 밖의 경로를 거부하기 때문이다.
+
+케이스 키는 `"<대상> <고장>"`이다. 예: `"image denied"`, `"css stream"`,
+`"clipboard get hangs"`, `"watch rapid-saves"`, `"http status-999"`.
+
+### 발견하고 고친 것
+
+처음 돌렸을 때 5 케이스가 실패했다. macOS에서는 만들 수 없는 케이스 하나가 Linux에서
+더 실패했을 것이다. 원인은 5개였다. 클립보드 수정에는 Linux CI가 찾은 후속 수정이 하나
+더 있다(표의 둘째 줄).
+
+| 실패한 케이스 | 원인 | 고친 방법 | 회귀 테스트 |
+|---|---|---|---|
+| `clipboard get hangs`, `clipboard set hangs` | `SystemClipboard`가 클립보드 도구를 제한 없이 기다렸다. 멈춘 붙여넣기 도구, 그리고 입력을 읽지 않는 복사 도구(쓰기가 꽉 찬 파이프에서 막힌다)가 호출한 쪽을 영원히 붙잡았다 | 입력 쓰기와 출력 읽기를 각자의 스레드에서 하고, 10초가 지나면 도구를 죽여 `CommandFailed`를 돌려준다. 출력은 `MAX_CLIPBOARD_SIZE`+1바이트까지만 보관하고 나머지는 읽어 버린다 | `utils::clipboard::system::tests::a_tool_that_hangs_is_killed_at_the_timeout` 외 3개 |
+| `clipboard get forked-hangs`(후속) | 제한 시간이 도구 프로세스만 덮었다. 도구가 끝나거나 죽은 뒤에는 파이프를 읽고 쓰는 스레드를 제한 없이 join했다. 도구가 시작한 프로세스가 파이프를 쥐고 있으면(명령을 fork하는 셸 — Linux CI의 dash가 그랬다 — 이나 데몬이 되는 도구) 그 프로세스가 끝날 때까지 호출이 붙잡혔다. 첫 수정의 단위 테스트가 Linux CI에서 30초 걸려 드러났다 | 도구가 끝나고 *파이프도 닫힐 때까지*를 모두 제한 시간 안에서 기다린다. 넘으면 (필요하면 도구를 죽이고) 스레드는 스스로 끝나게 둔다. 이 케이스를 4d에 더했다 | 같은 단위 테스트들. 이제 `sh -c 'sleep 30; :'`로 모든 플랫폼에서 셸이 fork한다 |
+| `config stream` | 로더들이 메타데이터로 크기를 본 뒤 파일 전체를 읽었다. FIFO나 문자 장치, 쓰이는 중인 파일은 메타데이터 크기가 읽히는 양과 무관하다. FIFO로 흘린 2 MiB 설정이 1 MiB 한계를 넘어 읽혔고, `/dev/zero`라면 메모리가 바닥날 때까지 읽었을 것이다. CSS는 파서가 크기를 다시 봐서 케이스는 통과했지만 같은 길이었다 | `read_capped`: 한계+1바이트에서 읽기를 멈추고 그보다 길면 거부한다. 설정, `AppBuilder::style`, 핫 리로드, `Image::from_file`(한계까지 읽고 `from_png`가 거부)에 쓴다 | `utils::tests::read_capped_reads_up_to_the_limit_and_refuses_more`, `state::patterns::config::tests::a_stream_past_the_size_limit_is_refused` |
+| `picker denied` | `FilePicker::navigate_to`가 읽을 수 없는 디렉터리로 들어가 빈 디렉터리처럼 보여 주었다 | `FilePickerError::IoError`를 돌려주고 제자리에 머문다 | `widget::filepicker::tests::navigate_to_an_unreadable_directory_is_an_error_and_stays_put` |
+| `watch rapid-saves` | `HotReload::poll`이 디바운스 창 안에 온 이벤트를 버렸다. 빠른 두 번 저장에서 첫 이벤트의 리로드가 두 번째 저장 전에 파일을 읽으면, 마지막 변경은 파일이 다시 바뀔 때까지 반영되지 않았다 | 창 안의 반복은 키마다 가장 최근 것 하나를 붙잡아 두었다가 창이 지나면 `poll`이 돌려준다 | `core::app::hot_reload::tests::test_poll_defers_a_repeat_until_the_window_has_passed` |
+| `picker non-utf8`(Linux에서만 돈다) | `PickerEntry::from_path`가 이름을 `to_str()?`로 받아, UTF-8이 아닌 이름의 파일을 목록에서 조용히 뺐다. APFS와 NTFS는 그런 이름을 거부하므로 처음 돌린 macOS에서는 케이스가 돌지 않았다 | 이름을 손실 변환해 보여 준다. `path`는 실제 이름을 지닌다 | `widget::filepicker::tests::an_entry_whose_name_is_not_utf8_is_listed`(파일 없이 모든 unix에서 돈다) |
+
+### 견딘 것
+
+- **이미지·CSS·설정 로더는 나머지 고장을 모두 견뎠다.** 없음, 권한 없음, 디렉터리, sparse
+  파일, 깨진 내용, 심볼릭 링크 고리에서 모두 `Err`(또는 경고 로그와 규칙 0개)였다.
+  100,000×100,000을 주장하는 PNG 헤더는 `image` 크레이트의 할당 한계(512 MiB)에 걸려
+  바로 거부되었다.
+- **`HttpClient`는 모든 응답을 견뎠다.** 8 MB 본문도, 100,000단 JSON도 세 보기 모두
+  3초 안에 그렸다. 상태 코드 분류(2xx만 성공)도 맞았다.
+- **감시자는 파일 삭제·rename·디렉터리 삭제 뒤에도 계속 동작했다.**
+
+### 남은 틈
+
+- **시스템 클립보드의 명령은 바꿀 수 없다.** 명령이 코드에 고정되어 있고 `OnceLock`에
+  캐시된다. 그래서 새 API 없이 `PATH`를 바꾼 자식 프로세스로 가짜 도구를 끼웠다. unix에서만
+  돈다. Windows(`clip`, PowerShell)는 덮지 못한다.
+- **`HttpClient`는 `HttpBackend`를 부르지 않는다.** `send()`는 모의 응답을 만들 뿐이다.
+  그래서 "백엔드 시간 초과"는 위젯에 해당하지 않는다. 트레이트는 동기이고 시간 제한이 없다.
+  위젯은 앱이 넘긴 응답과 에러를 보여 줄 뿐이다. 이 경로(`set_response`/`set_error`)를
+  시험했다. 본문은 `String`이라 UTF-8이 아닌 본문은 백엔드가 손실 변환해야 한다.
+- **감시자의 `Error` 이벤트는 밖에서 주입할 수 없다.** 채널이 비공개다. 실제 파일 시스템
+  상황만 주입했다.
+- **`LogViewer`와 `FileTree`에는 파일 입출력이 없다.** 앱이 읽어서 넘긴다. `LogViewer`는
+  읽은 텍스트를 받는 쪽을 시험했다.
+
+## 4e 동시성 — 태스크·워커·잠금·반응형·플러그인
+
+### 주입한 것
+
+- **태스크**(`TaskRunner`, `PooledTaskRunner`):
+  - 패닉하는 태스크와 에러를 돌려주는 태스크.
+  - 끝나지 않는 태스크가 도는 동안 러너 drop.
+  - 같은 id로 취소한 뒤 다시 spawn.
+  - 꽉 찬 작업 큐(`MAX_TASK_QUEUE_SIZE`+10개).
+  - spawn 500개.
+- **워커**(`WorkerHandle`, `WorkerPool`, `WorkerChannel`):
+  - 패닉하는 blocking 태스크와 future.
+  - 끝나지 않는 future의 취소.
+  - 태스크가 도는 동안 핸들과 풀 drop.
+  - 꽉 찬 풀 큐, shutdown 뒤 submit.
+  - 꽉 찬(그리고 용량 0인) 명령 큐로 취소, 명령을 읽은 뒤의 취소 상태.
+  - 받는 쪽 drop, 보내는 쪽 4 스레드 동시 전송.
+- **잠금:** 잠금을 쥔 채 패닉하는 `Signal::update`, `Computed`, `SignalVec` diff 구독자.
+- **반응형:**
+  - 반응하는 시그널을 스스로 바꾸는 구독자와 effect. 수렴하는 것과 끝없는 것.
+  - 패닉하는 effect.
+  - 알림 중에 구독 drop.
+  - 자기 벡터에 push하는 `SignalVec` 구독자.
+  - 서로 읽는 `Computed` 둘, 자기를 읽는 `Computed`.
+  - flush 중에 다른 업데이트를 큐에 넣는 업데이트, 패닉하는 `batch`.
+  - 겹치는 `use_async` 두 번 트리거, 패닉하는 `use_async` 태스크.
+  - 다른 핸들러를 등록하는 커스텀 이벤트 핸들러, 재진입 dispatch.
+- **플러그인:** init, mount, tick, unmount에서 에러를 내거나 패닉하는 플러그인.
+
+### 불변식
+
+1. **호출한 쪽으로 패닉이 새지 않는다.** 예외는 문서화된 패닉 하나다. 끝없는 업데이트
+   루프의 "Maximum reactive update depth" 패닉이다.
+2. **교착도 멈춤도 없다.** 케이스마다 제한 시간이 있다(멈춤이 예상되는 케이스는 4초).
+   끝없는 업데이트 루프 케이스는 자식 프로세스에서 돈다. 스택 오버플로는 잡을 수 없는
+   abort이기 때문이다.
+3. **상태가 일관된다.**
+   - 대기 수는 0으로 돌아온다.
+   - 취소한 태스크의 결과는 전달되지 않는다.
+   - 의존성 추적기는 깨끗하게 남는다(`is_tracking()`이 effect 밖에서 거짓).
+   - mount된 플러그인은 모두 unmount된다.
+4. **에러는 메시지를 지닌다.**
+
+백그라운드 태스크는 `resume_unwind`로 패닉한다. 패닉 훅을 거치지 않아 출력이 조용하다.
+"끝나지 않는" 태스크는 케이스가 끝날 때 여는 `Gate`에서 기다린다. 열리지 않아도 30초
+뒤에는 놓아 주므로 스레드가 오래 남지 않는다. 케이스는 각자의 스레드에서 동시에 돈다.
+그래서 스레드 지역 반응형 상태가 케이스마다 깨끗하다.
+
+케이스 키는 `"<영역> <고장>"`이다. 예: `"runner cancel-then-respawn"`,
+`"reactive computed-cycle"`, `"plugin mount-error"`. `WorkerHandle::spawn`의
+케이스는 실행기 이름을 단다. `async` 기능이 켜지면 `tokio-panic`/`tokio-cancel`이고,
+꺼지면 `polling-panic`/`polling-cancel`이다. 같은 케이스가 기능에 따라 다르게 실패하기
+때문이다.
+
+### 발견하고 고친 것
+
+처음 돌렸을 때 32 케이스가 실패했다(모든 기능). 원인은 18개였다. 그중 16개를 원인마다
+커밋 하나로 고쳤다.
+
+| 실패한 케이스 | 원인 | 고친 방법 | 회귀 테스트 |
+|---|---|---|---|
+| `runner panic-message`, `pooled panic-message`, `pooled error-message` | 두 러너가 잡은 패닉 payload를 `{:?}`로 찍었다. `Box<dyn Any>`는 `Any { .. }`로 찍힌다. `PooledTaskRunner::spawn_result`는 에러를 패닉으로 실어 날라서 메시지를 같은 식으로 잃었고, 패닉 훅이 그것을 앱 화면 위에 찍었다 | payload의 `&str`/`String`을 메시지로 쓴다. 풀의 작업 항목이 `Result`를 돌려주게 해서 에러가 결과로 온다 | `tasks::runner::tests::a_panic_keeps_its_message`, `tasks::pooled_runner::tests::a_failure_keeps_its_message` |
+| `runner cancelled-result`, `runner cancel-then-respawn` | `TaskRunner::cancel`은 id만 잊었다. 스레드의 결과는 나중에 그대로 `poll`로 나왔다. 취소 뒤 같은 id로 spawn하면 옛 실행의 결과가 새 실행의 결과로 전달되고, 새 실행이 아직 도는데 `is_running`이 거짓이 되었다 | 실행마다 번호를 매긴다. `poll`은 지금 대기 중인 실행이 아닌 결과를 버린다 | `tasks::runner::tests::a_cancelled_run_is_not_delivered_even_after_a_respawn` |
+| `pooled full-queue` | `PooledTaskRunner::spawn`이 `try_send` 전에 id를 대기로 표시하고, 큐가 꽉 찬 것은 무시했다. 거부된 태스크는 영원히 대기로 남았다 | 큐가 받아들인 뒤에만 대기로 표시한다 | `tasks::pooled_runner::tests::a_task_the_full_queue_refuses_is_not_pending` |
+| `handle tokio-panic`, `handle polling-panic` | `WorkerHandle::spawn`은 `spawn_blocking`과 달리 패닉을 잡지 않았다. 패닉한 future는 결과를 남기기 전에 워커 스레드를 풀어 버렸다. 상태가 영원히 `Running`이었다 | `block_on`과 매 poll 둘레에서 패닉을 잡아 `Failed` + `WorkerError::Panicked(메시지)`로 끝낸다. 런타임을 못 만든 경우도 `Completed`가 아니라 `Failed`가 된다 | `worker::handle::tests::a_panicking_future_fails_the_handle` |
+| `handle tokio-cancel` | `async` 기능에서 `spawn`은 `block_on`만 하고 취소 플래그를 보지 않았다. `cancel()`, `join_timeout`의 취소, 핸들 drop이 도는 future에 아무 효과가 없었다 | future와 플래그 감시(10ms마다)를 `select!`로 경주시킨다. 플래그가 서면 `Cancelled`로 끝난다 | `worker::handle::tests::cancel_ends_a_future_that_never_finishes` |
+| `pool task-panic` | `WorkerPool`의 워커가 태스크의 패닉을 잡지 않았다. 패닉한 태스크가 워커 스레드를 끝냈다. 마지막 워커가 죽으면 큐의 모든 태스크가 영원히 기다렸다. `active_workers()`는 죽은 워커도 셌다 | 태스크 둘레에서 패닉을 잡아 로그를 남기고 워커를 계속 돌린다 | `worker::pool::tests::a_panicking_task_does_not_kill_the_worker` |
+| `channel cancel-full-queue`, `channel cancel-zero-capacity`, `channel cancel-consumed` | `WorkerChannel`의 취소는 큐에 넣는 명령 하나였다. 명령 큐가 꽉 차면(용량 0도) 버려졌다. `is_cancelled()`는 큐에서 `Cancel`을 찾았으므로, Pause/Resume을 처리하려고 명령을 읽는 워커는 취소를 읽어 없앴다 | 큐 옆에 취소 플래그를 둔다. `Cancel`은 큐에 들어가든 말든 플래그를 세우고, 플래그는 지워지지 않는다. 명령을 읽으면 취소가 풀린다고 기대하던 기존 테스트(`tests/worker/channel.rs::test_sender_is_cancelled`)는 취소가 남는다고 기대하도록 바꿨다 | `worker::channel::tests::cancel_gets_through_a_full_queue_and_stays` |
+| `reactive vec-drop-subscription-in-callback`, `reactive vec-push-from-subscriber`, `lock signal-vec-subscriber-panics` | `SignalVec::notify_diff`가 구독자 목록의 mutex를 쥔 채 구독자를 불렀다. 구독을 drop하거나, 구독하거나, 같은 벡터를 바꾸는 구독자는 같은 스레드에서 그 mutex를 다시 잠가 교착했다. 패닉한 구독자는 mutex를 오염시켰고, 모든 사용처의 `if let Ok(..) = lock()`이 그 뒤의 구독·해지·알림을 조용히 건너뛰었다 | 콜백을 복사해 두고 잠금을 푼 뒤 부른다(`Signal::notify`와 같다). 오염된 잠금은 다른 반응형 코드처럼 복구한다 | `reactive::signal_vec::tests::a_subscriber_can_drop_its_subscription_while_notified` 외 2개 |
+| `reactive effect-panics`, `reactive effect-loop` | `Effect`와 `Computed`는 `start_tracking`, 사용자 함수, `stop_tracking` 순으로 불렀다. 그 사이의 패닉(effect의 버그, 또는 업데이트 루프의 문서화된 깊이 패닉)이 `stop_tracking`을 건너뛰어 죽은 구독자가 추적 스택에 남았다. 그 뒤 그 스레드의 모든 시그널 읽기가 그것의 의존성이 되었고, 상관없는 시그널을 바꾸면 패닉한 effect가 다시 돌았다 | `run_tracked`가 drop 가드로 구독자를 꺼낸다. 풀림(unwind) 중에도 꺼낸다 | `reactive::effect::tests::a_panicking_effect_stops_tracking`, `reactive::computed::tests::a_panicking_compute_stops_tracking` |
+| `reactive subscriber-loop` | 깊이 제한은 `notify_dependents`(effect·computed 알림)에만 있었다. `Signal::subscribe` 콜백과 `SignalVec` diff 구독자는 그 밖에서 불렸다. 자기 시그널을 매번 바꾸는 구독자는 스택이 넘칠 때까지 재귀했고, 잡을 수 없는 abort로 프로세스가 죽었다 | 가드를 `enter_notify`로 빼고 `Signal::notify`와 `SignalVec::notify_diff`에서도 들어간다. 그런 루프는 effect 사이의 순환과 같은 문서화된 패닉으로 끝난다 | `reactive::signal::tests::a_subscriber_loop_ends_in_the_depth_panic_not_a_stack_overflow`, `reactive::signal_vec::tests::a_diff_subscriber_loop_ends_in_the_depth_panic` |
+| `reactive computed-cycle`, `reactive computed-self` | `Computed::get`은 recompute mutex를 쥔 채 다시 계산한다. 자기를 읽거나 서로 읽는 computed는 같은 스레드에서 `get()`으로 돌아와 이미 쥔 mutex를 다시 잠갔다. 스레드가 영원히 멈췄다 | 스레드가 지금 계산 중인 computed를 스레드 지역 목록에 둔다. 그중 하나에 `get()`하면 "Circular dependency"로 패닉한다(`# Panics`에 문서화) | `reactive::computed::tests::a_cycle_panics_instead_of_deadlocking` |
+| `reactive batch-queue-in-flush` | `end_batch`가 `BATCH_DEPTH`의 `borrow_mut()`을 쥔 채 큐의 업데이트를 돌렸다. 다른 업데이트를 큐에 넣거나 batch를 시작하거나 `is_batching()`을 묻는 업데이트가 같은 `RefCell`을 빌리려다 "already mutably borrowed"로 패닉했다 | 깊이를 줄이고 빌림을 놓은 뒤 flush한다 | `reactive::batch::tests::a_flushed_update_can_queue_another` |
+| `reactive batch-panics` | `batch()`는 클로저가 패닉하면 `end_batch`를 건너뛰었다. 스레드의 batch 깊이가 1에 영원히 남아, 그 뒤의 모든 `queue_update`가 오지 않을 flush로 미뤄졌다 | 클로저를 `BatchGuard` 아래에서 돌린다. 풀림 중에 drop되는 가드는 flush하지 않고 batch를 떠난다(flush한 업데이트가 또 패닉하면 프로세스가 abort한다). 끝나지 못한 가장 바깥 batch는 큐의 업데이트를 버린다 | `reactive::batch::tests::a_panicking_batch_still_ends` |
+| `reactive use-async-stale` | `use_async`의 트리거마다 실행이 하나씩 돌아 끝나면 결과를 썼다. 두 번 트리거하면, 늦게 끝난 첫 실행이 더 새 결과를 옛 결과로 덮었다 | 실행에 번호를 매긴다. 여전히 최신인 실행만 결과를 쓴다. 확인과 쓰기는 시그널의 잠금 아래에서 한다(`use_async_poll`은 poll 상태의 잠금) | `reactive::async_state::tests::a_superseded_run_does_not_overwrite_the_newer_result`, `a_superseded_polled_run_is_not_reported` |
+| `dispatch on-in-handler` | `EventDispatcher::dispatch`가 핸들러 표의 읽기 잠금을 쥔 채 핸들러를 불렀다. (표를 공유하는 복제본으로) 핸들러를 등록하거나 지우는 핸들러가 같은 스레드에서 쓰기 잠금을 청해 교착했다 | 그 이벤트 형식의 핸들러(이제 공유 `Arc`)를 복사해 두고 잠금을 푼 뒤 부른다. dispatch 중에 더하거나 지운 핸들러는 다음 dispatch부터 적용된다 | `tests/event/custom.rs::a_handler_can_register_and_remove_handlers_while_dispatched` |
+| `plugin init-error`, `plugin mount-error` | `PluginRegistry::mount`는 `on_mount`가 실패한 첫 플러그인에서 돌아가며 `mounted`를 거짓으로 두었다. 그 앞에서 mount된 플러그인은 mount된 채였지만 `unmount()`는 `mounted == false`를 보고 바로 돌아갔다. 그래서 끝내 unmount되지 않았다. `App`은 mount 실패를 로그로 남기고 계속 도므로 이것이 평범한 길이다. 다시 부른 `init()`도 이미 초기화된 플러그인의 `on_init`을 또 불렀다 | init과 mount가 몇 번째 플러그인까지 갔는지 센다. 다시 부르면 실패한 플러그인부터 잇고, `unmount`는 mount된 것만 정확히 unmount한다. 실패한 플러그인이 컨텍스트의 현재 플러그인으로 남던 것도 지운다 | `plugin::registry::tests::a_failed_mount_leaves_the_mounted_plugins_to_unmount`, `a_retried_init_does_not_initialize_a_plugin_twice` |
+
+### 남긴 것 — 설계 결정이 필요하다
+
+두 원인은 고치지 않고 `KNOWN`에 남겼다. 어느 쪽이 맞는지는 API의 약속을 정하는
+문제이기 때문이다.
+
+| 케이스 | 지금 동작 | 정해야 할 것 |
+|---|---|---|
+| `runner drop-running`, `pool drop-running` | `TaskRunner`와 `WorkerPool`은 drop될 때 도는 태스크를 join한다(코드 주석에 "Wait for all threads to complete", "clean shutdown"이라고 의도가 적혀 있다). 끝나지 않는 태스크가 있으면 drop이 영원히 막힌다. 화면을 바꾸며 러너를 쥔 컴포넌트를 drop하면 UI 스레드가 네트워크 태스크가 끝날 때까지 멈춘다 | join을 지킬 것인가(drop 뒤에 태스크의 부수 효과가 남지 않는다), 아니면 형제들처럼 떼어 낼 것인가(`PooledTaskRunner`와 `WorkerHandle`은 drop에서 기다리지 않는다) |
+| `plugin init-panic`, `plugin mount-panic`, `plugin tick-panic`, `plugin unmount-panic` | 플러그인 훅의 패닉은 `PluginRegistry`와 `App`을 지나 그대로 풀린다. 앱이 죽는다 | 플러그인 버그가 앱을 죽여야 하는가, 아니면 레지스트리가 패닉을 잡아 그 플러그인을 끄고 에러로 알려야 하는가 |
+
+### 견딘 것
+
+- `PooledTaskRunner`의 drop, `WorkerHandle`의 drop과 `join_timeout`은 도는 태스크를
+  기다리지 않았다.
+- `WorkerPool`은 꽉 찬 큐와 shutdown 뒤의 submit을 `false`로 알렸다.
+- `Signal`은 `update` 중 패닉으로 오염된 값 잠금을 복구했고, 알림 중에 자기나 다른
+  구독을 drop해도 교착하지 않았다. `Computed`도 패닉 뒤 다시 계산했다.
+- `WorkerChannel`은 4 스레드가 동시에 보낸 8,000개를 모두 전달하고 수를 0으로 되돌렸다.
+- 수렴하는 재진입(구독자·effect·`SignalVec` 구독자가 조건부로 자기 값을 바꾸기)은 모두
+  제대로 끝났다.
+
+### 남은 틈
+
+- **`if let Ok(..) = lock()`으로 오염을 조용히 건너뛰는 잠금이 더 있다.** profiler,
+  커스텀 이벤트 dispatcher·bus, `MockHttpBackend`, 드래그 컨텍스트다. 하지만 그 쓰기 잠금
+  아래에서 사용자 코드가 돌지 않아 밖에서 오염시킬 수 없다. 그래서 바꾸지 않았다.
+- **`WorkerChannel`에는 닫힘이 없다.** 받는 쪽이 drop되어도 보내기는 큐가 찰 때까지
+  성공한다. 보내는 쪽이 drop되면 `recv`는 `None`이라 "아직 도는 중"과 구별되지 않는다.
+  기능의 문제라 바꾸지 않았다.
+- **`PluginRegistry::tick`은 mount되지 않은 플러그인도 돌린다.** mount가 실패한 뒤 `App`이
+  계속 돌면 그렇다. 바꾸지 않았다.
+- **알림 중에 drop한 구독의 콜백은 그 회차에 한 번 더 불릴 수 있다.** 콜백을 복사해 두고
+  부르기 때문이다(`Signal`은 전부터, `SignalVec`과 `EventDispatcher`는 이번 수정부터).
+
+## 동작이 바뀐 것
+
+4d·4e 수정 가운데 공개 API의 동작이 눈에 띄게 바뀐 것은 다음과 같다. 시그니처는 바뀌지
+않았다.
+
+- `SystemClipboard`: 10초 안에 끝나지 않는 도구는 죽고 `CommandFailed`가 된다.
+- 설정·CSS·이미지 로더: FIFO 같은 특수 파일도 한계를 넘으면 거부된다.
+- `FilePicker::navigate_to`: 읽을 수 없는 디렉터리는 `Err(IoError)`이고 제자리에 머문다.
+  UTF-8이 아닌 이름은 손실 변환되어 보인다.
+- `HotReload::poll`: 디바운스 창 안의 반복이 창이 지난 뒤 나온다.
+- `PooledTaskRunner::spawn_result`: 에러 메시지에 `Task error:` 접두어가 붙지 않는다
+  (`TaskRunner::spawn_result`와 같다).
+- `TaskRunner::cancel`: 취소한 태스크의 결과는 `poll`로 나오지 않는다.
+- `WorkerHandle`: 런타임을 만들지 못하면 `Completed`가 아니라 `Failed`다.
+- `WorkerSender::is_cancelled`: 한 번 참이면 계속 참이다.
+- `Computed::get`: 순환 의존은 교착 대신 패닉한다.
+- `BatchGuard`(그리고 `batch`): 패닉으로 풀리며 drop되면 flush하지 않는다.

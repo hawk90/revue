@@ -170,3 +170,14 @@ pub use event_bus::{EventBus, EventId, Subscription};
 pub use pooled_runner::PooledTaskRunner;
 pub use runner::{TaskId, TaskResult, TaskRunner};
 pub use timer::{Timer, TimerEntry, TimerId};
+
+/// The message of a caught panic: the `&str` or `String` it was raised with.
+fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+    if let Some(s) = payload.downcast_ref::<&str>() {
+        (*s).to_string()
+    } else if let Some(s) = payload.downcast_ref::<String>() {
+        s.clone()
+    } else {
+        "unknown panic payload".to_string()
+    }
+}

@@ -93,8 +93,12 @@ pub struct PickerEntry {
 
 impl PickerEntry {
     /// Create from path
+    ///
+    /// `None` only for a path without a file name (`/`, `..`). A name that
+    /// is not valid UTF-8 is shown lossily (`�` for the bad bytes) rather
+    /// than left out of the listing; `path` keeps the real name.
     pub fn from_path(path: &Path) -> Option<Self> {
-        let name = path.file_name()?.to_str()?.to_string();
+        let name = path.file_name()?.to_string_lossy().into_owned();
         let is_hidden = name.starts_with('.');
         let metadata = path.metadata().ok();
         let is_dir = metadata.as_ref().map(|m| m.is_dir()).unwrap_or(false);

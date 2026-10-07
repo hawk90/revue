@@ -30,6 +30,7 @@
 
 use crate::utils::lock::{read_or_recover, write_or_recover};
 use std::fmt;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread;
 
@@ -168,12 +169,23 @@ where
 {
     let state: Signal<AsyncState<T>> = signal(AsyncState::Idle);
     let state_clone = state.clone();
+    // Which trigger is the latest: a run started by an earlier one must not
+    // overwrite the state once it finishes - it would replace a newer result,
+    // or end the newer run's Loading early.
+    let latest = Arc::new(AtomicU64::new(0));
 
     let trigger = move || {
-        state_clone.set(AsyncState::Loading);
+        // Bumped and set under the signal's lock, as the result is checked
+        // and stored below, so the two cannot interleave.
+        let run = state_clone.with_mut(|s| {
+            *s = AsyncState::Loading;
+            latest.fetch_add(1, Ordering::SeqCst) + 1
+        });
+        state_clone.notify_change();
 
         let f_clone = f.clone();
         let state_for_thread = state_clone.clone();
+        let latest = latest.clone();
 
         thread::spawn(move || {
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f_clone));
@@ -182,9 +194,18 @@ where
                 Err(_) => Err("Task panicked".to_string()),
             };
 
-            match result {
-                Ok(value) => state_for_thread.set(AsyncState::Ready(value)),
-                Err(e) => state_for_thread.set(AsyncState::Error(e)),
+            let stored = state_for_thread.with_mut(|s| {
+                if latest.load(Ordering::SeqCst) != run {
+                    return false; // Superseded by a later trigger
+                }
+                *s = match result {
+                    Ok(value) => AsyncState::Ready(value),
+                    Err(e) => AsyncState::Error(e),
+                };
+                true
+            });
+            if stored {
+                state_for_thread.notify_change();
             }
         });
     };
@@ -244,15 +265,22 @@ where
     let state: Signal<AsyncState<T>> = signal(AsyncState::Idle);
     // Use thread-safe shared state instead of channel (Receiver is !Sync)
     let poll_state: Arc<RwLock<PollState<T>>> = Arc::new(RwLock::new(PollState::Idle));
+    // Which start is the latest: a superseded run's result is dropped.
+    let latest = Arc::new(AtomicU64::new(0));
 
     let poll_state_start = poll_state.clone();
     let state_start = state.clone();
     let start = move || {
         state_start.set(AsyncState::Loading);
-        *write_or_recover(&poll_state_start) = PollState::Running;
+        let run = {
+            let mut guard = write_or_recover(&poll_state_start);
+            *guard = PollState::Running;
+            latest.fetch_add(1, Ordering::SeqCst) + 1
+        };
 
         let f_clone = f.clone();
         let poll_state_thread = poll_state_start.clone();
+        let latest = latest.clone();
 
         thread::spawn(move || {
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f_clone));
@@ -260,7 +288,10 @@ where
                 Ok(r) => r,
                 Err(_) => Err("Task panicked".to_string()),
             };
-            *write_or_recover(&poll_state_thread) = PollState::Done(result);
+            let mut guard = write_or_recover(&poll_state_thread);
+            if latest.load(Ordering::SeqCst) == run {
+                *guard = PollState::Done(result);
+            }
         });
     };
 
@@ -360,6 +391,61 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A task whose first run waits for `release` and returns 1; later runs
+    /// return their run number at once.
+    fn first_run_waits(
+        release: std::sync::mpsc::Receiver<()>,
+    ) -> impl Fn() -> AsyncResult<usize> + Send + Sync + Clone + 'static {
+        let release = Arc::new(std::sync::Mutex::new(release));
+        let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        move || {
+            let n = calls.fetch_add(1, Ordering::SeqCst) + 1;
+            if n == 1 {
+                let _ = release
+                    .lock()
+                    .unwrap()
+                    .recv_timeout(std::time::Duration::from_secs(5));
+            }
+            Ok(n)
+        }
+    }
+
+    fn wait_until(mut cond: impl FnMut() -> bool) {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while !cond() {
+            assert!(std::time::Instant::now() < deadline, "timed out");
+            thread::sleep(std::time::Duration::from_millis(2));
+        }
+    }
+
+    #[test]
+    fn a_superseded_run_does_not_overwrite_the_newer_result() {
+        let (release, rx) = std::sync::mpsc::channel();
+        let (state, trigger) = use_async(first_run_waits(rx));
+        trigger();
+        thread::sleep(std::time::Duration::from_millis(20));
+        trigger();
+        wait_until(|| matches!(state.get(), AsyncState::Ready(2)));
+        release.send(()).unwrap();
+        thread::sleep(std::time::Duration::from_millis(100));
+        assert!(matches!(state.get(), AsyncState::Ready(2)));
+    }
+
+    #[test]
+    fn a_superseded_polled_run_is_not_reported() {
+        let (release, rx) = std::sync::mpsc::channel();
+        let (state, start, poll) = use_async_poll(first_run_waits(rx));
+        start();
+        thread::sleep(std::time::Duration::from_millis(20));
+        start();
+        wait_until(&poll);
+        assert!(matches!(state.get(), AsyncState::Ready(2)));
+        release.send(()).unwrap();
+        thread::sleep(std::time::Duration::from_millis(100));
+        assert!(!poll(), "the first, superseded run was reported");
+        assert!(matches!(state.get(), AsyncState::Ready(2)));
+    }
     use std::sync::atomic::{AtomicI32, Ordering};
     use std::sync::Arc;
     use std::time::Duration;

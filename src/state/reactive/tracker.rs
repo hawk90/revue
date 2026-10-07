@@ -252,29 +252,7 @@ pub fn track_read(signal_id: SignalId) {
 /// a circular dependency in the reactive graph.
 pub fn notify_dependents(signal_id: SignalId) {
     // Check and increment recursion depth
-    let depth = NOTIFY_DEPTH.with(|d| {
-        let current = d.get();
-        let new_depth = current + 1;
-        d.set(new_depth);
-        new_depth
-    });
-
-    // Guard ensures depth is decremented even if a callback panics
-    struct DepthGuard;
-    impl Drop for DepthGuard {
-        fn drop(&mut self) {
-            NOTIFY_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
-        }
-    }
-    let _guard = DepthGuard;
-
-    if depth > MAX_NOTIFY_DEPTH {
-        panic!(
-            "Maximum reactive update depth ({}) exceeded. \
-             This usually indicates a circular dependency in your reactive graph.",
-            MAX_NOTIFY_DEPTH
-        );
-    }
+    let _depth = enter_notify();
 
     // Collect callbacks while holding borrow, then call them after releasing
     let callbacks: Vec<SubscriberCallback> = with_tracker(|t| {
@@ -293,6 +271,59 @@ pub fn notify_dependents(signal_id: SignalId) {
     for callback in callbacks {
         callback();
     }
+}
+
+/// Count one level of nested change notification on this thread, until the
+/// returned guard drops (also on unwind).
+///
+/// Every way a change reaches callbacks goes through this - tracked
+/// dependents, `Signal::subscribe` callbacks, `SignalVec` diff subscribers -
+/// so an update loop through any of them ends in the documented panic
+/// instead of overflowing the stack.
+///
+/// # Panics
+///
+/// Panics if notifications nest deeper than `MAX_NOTIFY_DEPTH`.
+pub(crate) fn enter_notify() -> impl Drop {
+    struct DepthGuard;
+    impl Drop for DepthGuard {
+        fn drop(&mut self) {
+            NOTIFY_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
+        }
+    }
+
+    let depth = NOTIFY_DEPTH.with(|d| {
+        let new_depth = d.get() + 1;
+        d.set(new_depth);
+        new_depth
+    });
+    // Created before the check, so the panic below still decrements.
+    let guard = DepthGuard;
+
+    if depth > MAX_NOTIFY_DEPTH {
+        panic!(
+            "Maximum reactive update depth ({}) exceeded. \
+             This usually indicates a circular dependency in your reactive graph.",
+            MAX_NOTIFY_DEPTH
+        );
+    }
+    guard
+}
+
+/// Run `f` with `subscriber` as the current subscriber, and stop tracking
+/// afterwards - also when `f` panics. A panic between `start_tracking` and
+/// `stop_tracking` would leave the subscriber on the stack: every later read
+/// on the thread would be recorded as its dependency, and re-run it.
+pub(crate) fn run_tracked<R>(subscriber: Subscriber, f: impl FnOnce() -> R) -> R {
+    struct StopOnDrop;
+    impl Drop for StopOnDrop {
+        fn drop(&mut self) {
+            stop_tracking();
+        }
+    }
+    start_tracking(subscriber);
+    let _stop = StopOnDrop;
+    f()
 }
 
 /// Dispose a subscriber (called when effect is dropped)

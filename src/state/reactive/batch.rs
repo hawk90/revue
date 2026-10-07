@@ -50,6 +50,9 @@ static BATCH_COUNTER: AtomicUsize = AtomicUsize::new(0);
 ///
 /// Batches can be nested - updates are only flushed when the outermost batch completes.
 ///
+/// If `f` panics the batch still ends; the updates queued in it are
+/// discarded if it was the outermost one, never run during the unwind.
+///
 /// # Example
 ///
 /// ```rust,ignore
@@ -71,10 +74,9 @@ pub fn batch<F, R>(f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    start_batch();
-    let result = f();
-    end_batch();
-    result
+    // The guard ends the batch also when `f` panics.
+    let _batch = BatchGuard::new();
+    f()
 }
 
 /// Start a batch manually
@@ -100,14 +102,16 @@ pub fn start_batch() {
 ///
 /// Flushes pending updates if this is the outermost batch.
 pub fn end_batch() {
-    BATCH_DEPTH.with(|depth| {
+    let outermost = BATCH_DEPTH.with(|depth| {
         let mut d = depth.borrow_mut();
         *d = d.saturating_sub(1);
-
-        if *d == 0 {
-            flush_updates();
-        }
+        *d == 0
     });
+    // Flush with the depth borrow released: a flushed update may queue
+    // another or start a batch, which reads the depth.
+    if outermost {
+        flush_updates();
+    }
 }
 
 /// Check if currently in a batch
@@ -280,7 +284,9 @@ impl Drop for Transaction {
 
 /// RAII guard for batch scope
 ///
-/// Automatically starts a batch when created and ends it when dropped.
+/// Automatically starts a batch when created and ends it when dropped. When
+/// it is dropped by a panic unwinding, the batch ends without flushing, and
+/// an outermost batch discards the updates it queued.
 ///
 /// # Example
 ///
@@ -311,13 +317,63 @@ impl Default for BatchGuard {
 
 impl Drop for BatchGuard {
     fn drop(&mut self) {
-        end_batch();
+        if std::thread::panicking() {
+            // Unwinding: leave the batch, but do not run its updates now -
+            // one that panicked too would abort the process. An outermost
+            // batch that did not complete drops what it queued.
+            let outermost = BATCH_DEPTH.with(|depth| {
+                let mut d = depth.borrow_mut();
+                *d = d.saturating_sub(1);
+                *d == 0
+            });
+            if outermost {
+                PENDING_UPDATES.with(|updates| updates.borrow_mut().clear());
+            }
+        } else {
+            end_batch();
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_panicking_batch_still_ends() {
+        let r = std::panic::catch_unwind(|| {
+            batch(|| {
+                queue_update(|| panic!("must not run during the unwind"));
+                panic!("batch boom");
+            })
+        });
+        assert!(r.is_err());
+        assert!(!is_batching(), "the thread stayed in the batch");
+        assert_eq!(pending_count(), 0);
+
+        // Updates run immediately again.
+        let ran = std::rc::Rc::new(std::cell::Cell::new(false));
+        let r2 = ran.clone();
+        queue_update(move || r2.set(true));
+        assert!(ran.get());
+    }
+
+    #[test]
+    fn a_flushed_update_can_queue_another() {
+        use std::cell::Cell;
+        use std::rc::Rc;
+        let ran = Rc::new(Cell::new(0));
+        let r = ran.clone();
+        batch(|| {
+            queue_update(move || {
+                let r2 = r.clone();
+                queue_update(move || r2.set(r2.get() + 1));
+                batch(|| ());
+            });
+        });
+        assert_eq!(ran.get(), 1);
+        assert!(!is_batching());
+    }
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
 
