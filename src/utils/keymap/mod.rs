@@ -169,20 +169,20 @@ impl KeymapConfig {
         }
 
         // Check mode-specific bindings
-        if let Some(mode_bindings) = self.bindings.get(&self.current_mode) {
-            if let Some(action) = mode_bindings.get(&chord) {
-                self.pending.clear();
-                return LookupResult::Action(action.clone());
-            }
+        let mode_bindings = self.bindings.get(&self.current_mode);
+        if let Some(action) = mode_bindings.and_then(|m| m.get(&chord)) {
+            self.pending.clear();
+            return LookupResult::Action(action.clone());
+        }
 
-            // Check if this could be a prefix of a longer chord
-            for existing_chord in mode_bindings.keys() {
-                if existing_chord.keys.len() > self.pending.len()
-                    && existing_chord.keys.starts_with(&self.pending)
-                {
-                    return LookupResult::Pending;
-                }
-            }
+        // Check if this could be a prefix of a longer chord, global or mode
+        let is_prefix = |existing: &KeyChord| {
+            existing.keys.len() > self.pending.len() && existing.keys.starts_with(&self.pending)
+        };
+        if self.global_bindings.keys().any(is_prefix)
+            || mode_bindings.is_some_and(|m| m.keys().any(is_prefix))
+        {
+            return LookupResult::Pending;
         }
 
         // No match and no prefix match
