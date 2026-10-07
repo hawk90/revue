@@ -110,7 +110,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `utils/diff.rs` | 456 | 3 |  | keep | LCS 기반 텍스트 비교 알고리즘 하나와 그 결과 타입·통계·unified 형식 출력. 버그 의심: 입력이 클 때 쓰는 `simplified_diff`는 b 쪽 위치가 거꾸로 가는 짝을 돌려줘 결과 diff가 틀릴 수 있음 |
 | `utils/i18n.rs` | 427 | 4 |  | keep | 번역 조회 하나: `Locale`(내장 로케일 생성자는 몇 줄짜리 복수형 규칙뿐), `Translation`, `I18n` 저장소. 참고: `t_plural`은 현재 로케일의 복수형 번호를 대체 로케일 번역에도 그대로 씀 |
 | `utils/keymap.rs` | 469 | 4 |  | split | 모드·키 묶음과 묶음 조회 상태(`KeymapConfig`), 키 문자열 파싱·표시, 내장 Vim·Emacs 프리셋 데이터가 섞임 → keymap/{mod,parse,presets}.rs. 버그 의심: `s-` 수식어를 먼저 떼므로 `parse_key`의 `"s-tab"`(BackTab) 별칭에 닿지 않음(`S-Tab`은 Shift+Tab), 전역 묶음은 접두사 대기를 하지 않아 여러 키 전역 묶음은 맞을 수 없음, `chord_timeout`은 저장만 되고 읽히지 않음 |
-| `utils/profiler.rs` | 472 | 5 | 공개 타입 5 | keep | 프로파일러 하나: 타이밍·통계·RAII 가드·보고서가 모두 private `ProfilerInner`를 씀. `FlameNode`는 작은 독립 타입(약 60줄). 버그 의심: `report()`의 `&name[..27]`은 바이트로 잘라 30바이트 넘는 비ASCII 이름에서 panic, `stack`은 아무도 push하지 않아 `Timing::parent`는 늘 None, `FlameNode`는 크레이트 안에서 만들지 않음 |
+| `utils/profiler.rs` | 472 | 5 | 공개 타입 5 | keep | 프로파일러 하나: 타이밍·통계·RAII 가드·보고서가 모두 private `ProfilerInner`를 씀. `FlameNode`는 작은 독립 타입(약 60줄). 버그 의심: `report()`의 `&name[..27]`은 바이트로 잘라 30바이트 넘는 비ASCII 이름에서 panic (→ 이 PR에서 고침), `stack`은 아무도 push하지 않아 `Timing::parent`는 늘 None, `FlameNode`는 크레이트 안에서 만들지 않음 |
 
 ### 5. widget: data (11)
 
