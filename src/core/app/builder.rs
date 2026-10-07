@@ -235,7 +235,15 @@ impl AppBuilder {
         self
     }
 
-    /// Enable hot reload for CSS files
+    /// Reload the stylesheet files added with [`style`](Self::style) when
+    /// they change on disk, without restarting the app.
+    ///
+    /// Needs the `hot-reload` cargo feature; without it this is a no-op, so a
+    /// production build carries no file watcher. With the feature compiled
+    /// in, setting the `REVUE_HOT_RELOAD` environment variable (to anything
+    /// but empty, `0`, `false`, `no` or `off`) turns hot reload on even when
+    /// this was not called - that is how `revue dev` enables it for an app
+    /// it runs. Inline [`css`](Self::css) is not watched.
     pub fn hot_reload(mut self, enabled: bool) -> Self {
         self.hot_reload = enabled;
         self
@@ -279,9 +287,13 @@ impl AppBuilder {
             log_warn!("Plugin initialization failed: {}", e);
         }
 
-        // Set up hot reload if enabled and there are style paths
+        // Set up hot reload if enabled (by the builder or by `REVUE_HOT_RELOAD`)
+        // and there are style paths
         #[cfg(feature = "hot-reload")]
-        let hot_reload = if self.hot_reload && !self.style_paths.is_empty() {
+        let hot_reload_on =
+            self.hot_reload || env_requests_hot_reload(std::env::var_os(HOT_RELOAD_ENV).as_deref());
+        #[cfg(feature = "hot-reload")]
+        let hot_reload = if hot_reload_on && !self.style_paths.is_empty() {
             // Watch each file's directory rather than the file: an editor that
             // saves by writing a new file and renaming it over the old one
             // replaces the inode a file watch is attached to.
@@ -385,6 +397,28 @@ fn load_css_file(path: &Path) -> Option<(String, StyleSheet)> {
             None
         }
     }
+}
+
+/// Environment variable that turns stylesheet hot reload on without code
+/// changes (see [`AppBuilder::hot_reload`]). `revue dev` sets it.
+#[cfg(feature = "hot-reload")]
+const HOT_RELOAD_ENV: &str = "REVUE_HOT_RELOAD";
+
+/// Does this value of `REVUE_HOT_RELOAD` ask for hot reload?
+///
+/// Unset, empty, `0`, `false`, `no` and `off` (any case) mean no.
+#[cfg(feature = "hot-reload")]
+fn env_requests_hot_reload(value: Option<&std::ffi::OsStr>) -> bool {
+    let Some(value) = value.and_then(|v| v.to_str()) else {
+        // Unset; a value that is not UTF-8 is still "set".
+        return value.is_some();
+    };
+    let value = value.trim();
+    !(value.is_empty()
+        || value == "0"
+        || ["false", "no", "off"]
+            .iter()
+            .any(|off| value.eq_ignore_ascii_case(off)))
 }
 
 impl Default for AppBuilder {
@@ -589,6 +623,26 @@ mod tests {
             app.hot_reload.is_none(),
             "hot_reload should be None when disabled"
         );
+    }
+
+    #[test]
+    #[cfg(feature = "hot-reload")]
+    fn test_env_requests_hot_reload() {
+        use std::ffi::OsStr;
+
+        assert!(!env_requests_hot_reload(None));
+        for off in ["", " ", "0", "false", "FALSE", "no", "Off"] {
+            assert!(
+                !env_requests_hot_reload(Some(OsStr::new(off))),
+                "{off:?} should not enable hot reload"
+            );
+        }
+        for on in ["1", "true", "yes", "on", "anything"] {
+            assert!(
+                env_requests_hot_reload(Some(OsStr::new(on))),
+                "{on:?} should enable hot reload"
+            );
+        }
     }
 
     #[test]

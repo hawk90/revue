@@ -49,7 +49,7 @@ revue = { version = "2.71", features = ["gui"] }
 | `regex` | `regex` | Real regex engine for TextArea find/replace (falls back to literal search when off) |
 | `sysinfo` | `sysinfo` | System information widget (CPU, memory, processes) |
 | `clipboard` | `arboard` | System clipboard copy/paste support |
-| `hot-reload` | `notify` | Watch CSS/layout files and reload on change during development |
+| `hot-reload` | `notify` | Reload `.style()` CSS files on change during development (`.hot_reload(true)` or `REVUE_HOT_RELOAD=1`; `revue dev` enables both) |
 | `http` | `reqwest` | HTTP request support |
 
 ### Development
