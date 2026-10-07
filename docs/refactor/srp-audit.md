@@ -75,7 +75,7 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 | `runtime/event/ime.rs` | 654 | 8 | 654줄, 공개 타입 8 | split | 조합 데이터 타입·설정, 조합 상태 기계, 렌더용 preedit 조각이 섞임 → ime/{mod,types,state,preedit}.rs (길이 제한 상수는 state.rs). 참고: 빈 목록으로 `set_candidates`를 부르면 `Selecting` 상태가 그대로 남음 |
 | `runtime/event/mod.rs` | 349 | 5 | 공개 타입 5 | keep | 하위 모듈 선언·re-export와 기본 입력 이벤트 타입(`Event`, `KeyEvent`, `MouseEvent` 등)만 있음. impl은 생성자·판별 메서드로 작음. 참고: 모듈 문서의 `CustomEvent` 예제는 없는 `fn id(&self)`를 씀(실제는 `event_type()`, `ignore`라 컴파일되지 않음) |
 | `runtime/layout/node.rs` | 215 | 8 | 공개 타입 8 | keep | 레이아웃 노드 데이터 모델만 모음(속성 묶음·간격·크기 제약·계산 결과). impl은 gap·여백 계산 정도로 작음 |
-| `runtime/layout/responsive.rs` | 571 | 7 | 공개 타입 7 | split | 중단점·중단점별 값, 화면 기준 레이아웃·미디어 쿼리, 컨테이너 쿼리가 섞임 → responsive/{mod,breakpoint,viewport,container}.rs (도우미 `responsive::responsive` 모듈은 `ResponsiveLayout`의 private 필드를 읽으므로 viewport.rs 안에 두고 mod.rs에서 다시 내보냄). 참고: `Breakpoints::current`는 첫 중단점보다 좁은 폭에도 첫 중단점을 돌려줌(`simple()`이면 폭 10도 "sm") |
+| `runtime/layout/responsive.rs` | 571 | 7 | 공개 타입 7 | split | 중단점·중단점별 값, 화면 기준 레이아웃·미디어 쿼리, 컨테이너 쿼리가 섞임 → responsive/{mod,breakpoint,viewport,container}.rs (도우미 `responsive::responsive` 모듈은 `ResponsiveLayout`의 private 필드를 읽으므로 viewport.rs 안에 두고 mod.rs에서 다시 내보냄). 참고: `Breakpoints::current`는 첫 중단점보다 좁은 폭에도 첫 중단점을 돌려줌(`simple()`이면 폭 10도 "sm") (→ 의도된 동작: 기존 테스트가 이 대체를 확인하고 반환형이 `&Breakpoint`라 문서에 적음) |
 
 ### 3. core, devtools, testing, query (13)
 

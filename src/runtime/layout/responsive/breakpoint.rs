@@ -87,7 +87,13 @@ impl Breakpoints {
         self
     }
 
-    /// Get current breakpoint for width
+    /// Get current breakpoint for width: the widest breakpoint whose
+    /// `min_width` is at most `width`
+    ///
+    /// A width below the smallest breakpoint counts as the smallest one (with
+    /// [`Breakpoints::simple`], width 10 is "sm"), and an empty set gives
+    /// [`Breakpoint::XS`]. Use [`Breakpoints::below`] to tell such widths apart,
+    /// or include a breakpoint at 0 as [`Breakpoints::terminal`] does.
     pub fn current(&self, width: u16) -> &Breakpoint {
         self.points
             .iter()
@@ -102,6 +108,9 @@ impl Breakpoints {
     }
 
     /// Check if width matches a breakpoint name
+    ///
+    /// Same as comparing [`Breakpoints::current`]'s name, so a width below the
+    /// smallest breakpoint matches the smallest one.
     pub fn matches(&self, width: u16, name: &str) -> bool {
         self.current(width).name == name
     }
@@ -247,8 +256,11 @@ mod tests {
     fn test_breakpoints_simple() {
         let bp = Breakpoints::simple();
         assert_eq!(bp.points.len(), 3);
-        // Should fall back to SM (smallest in simple set)
-        assert!(bp.current(30).min_width >= 40 || bp.current(30).name == "sm");
+        // A width below every breakpoint counts as the smallest one
+        assert_eq!(bp.current(10).name, "sm");
+        assert_eq!(bp.current(30).name, "sm");
+        assert!(bp.matches(10, "sm"));
+        assert!(bp.below(10, "sm"));
     }
 
     #[test]
