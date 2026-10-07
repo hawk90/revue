@@ -17,12 +17,6 @@ pub struct Known {
 pub const KNOWN: &[Known] = &[
     Known {
         layer: "keys",
-        widget: "RangePicker",
-        sequence: "'j'",
-        reason: "month navigation keeps the stored day, so Jan 31 becomes Feb 31",
-    },
-    Known {
-        layer: "keys",
         widget: "RangePicker(order)",
         sequence: "BackTab <start after end> <start after end> BackTab Up",
         reason: "navigation moves the stored start/end with the cursor and only a selection swaps them, so start can pass end - design decision",

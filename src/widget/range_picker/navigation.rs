@@ -6,6 +6,11 @@ use super::types::RangeFocus;
 use crate::event::Key;
 use crate::widget::data::calendar::{days_in_month, Date};
 
+/// Keep a date's day within its month after the month changed under it
+fn clamp_day(date: &mut Date) {
+    date.day = date.day.min(days_in_month(date.year, date.month));
+}
+
 impl RangePicker {
     // =========================================================================
     // Navigation
@@ -63,6 +68,7 @@ impl RangePicker {
                 date.year -= 1;
             }
             *cursor = days_in_month(date.year, date.month);
+            clamp_day(date);
         }
     }
 
@@ -81,6 +87,7 @@ impl RangePicker {
                 date.year += 1;
             }
             *cursor = 1;
+            clamp_day(date);
         }
     }
 
@@ -99,6 +106,7 @@ impl RangePicker {
             }
             let max_day = days_in_month(date.year, date.month);
             *cursor = max_day - (7 - *cursor);
+            clamp_day(date);
         }
     }
 
@@ -117,6 +125,7 @@ impl RangePicker {
                 date.year += 1;
             }
             *cursor = overflow;
+            clamp_day(date);
         }
     }
 
@@ -131,6 +140,7 @@ impl RangePicker {
         }
         let max_day = days_in_month(date.year, date.month);
         *cursor = (*cursor).min(max_day);
+        date.day = date.day.min(max_day);
     }
 
     /// Go to next month
@@ -144,6 +154,7 @@ impl RangePicker {
         }
         let max_day = days_in_month(date.year, date.month);
         *cursor = (*cursor).min(max_day);
+        date.day = date.day.min(max_day);
     }
 
     /// Go to previous year
@@ -152,6 +163,7 @@ impl RangePicker {
         date.year -= 1;
         let max_day = days_in_month(date.year, date.month);
         *cursor = (*cursor).min(max_day);
+        date.day = date.day.min(max_day);
     }
 
     /// Go to next year
@@ -160,6 +172,7 @@ impl RangePicker {
         date.year += 1;
         let max_day = days_in_month(date.year, date.month);
         *cursor = (*cursor).min(max_day);
+        date.day = date.day.min(max_day);
     }
 
     /// Keep the focused calendar's cursor, and the date it navigates, within
@@ -1024,5 +1037,22 @@ mod tests {
         picker.move_day_left();
         // Start date should not change
         assert_eq!(picker.start_cursor_day, original_start_day);
+    }
+
+    // Found by tests/event_sequences.rs: the shrunk sequence was `'j'` from
+    // a range starting Jan 31 - moving a week down into February kept the
+    // stored day 31.
+    #[test]
+    fn test_navigation_keeps_real_dates() {
+        let mut picker = RangePicker::new().range(Date::new(2026, 1, 31), Date::new(2026, 3, 31));
+        picker.handle_key(&Key::Char('j'));
+        let (start, _) = picker.get_range();
+        assert!(start.is_valid(), "{start:?}");
+        assert_eq!(start.month, 2);
+
+        picker.focus = RangeFocus::End;
+        picker.handle_key(&Key::Char('['));
+        let (_, end) = picker.get_range();
+        assert_eq!(end, Date::new(2026, 2, 28));
     }
 }
