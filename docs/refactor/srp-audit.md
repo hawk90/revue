@@ -116,17 +116,17 @@ PR은 아래 묶음마다 하나다(묶음 번호 순서로 진행). 파일마�
 
 | 파일 | 줄 | 공개 타입 | 신호 | 판단 | 비고 |
 |---|---:|---:|---|---|---|
-| `widget/data/chart/candlechart.rs` | 630 | 3 | 630줄, 위젯 한 파일 | todo | |
-| `widget/data/chart/helper.rs` | 898 | 1 | 898줄, 위젯 한 파일 | todo | |
-| `widget/data/chart/histogram/mod.rs` | 623 | 1 | 623줄, 위젯 한 파일 | todo | |
-| `widget/data/chart/piechart.rs` | 442 | 4 | 위젯 한 파일 | todo | |
-| `widget/data/chart/timeseries/types.rs` | 197 | 7 | 타입 모음, 공개 타입 7 | todo | |
-| `widget/data/chart/waveline.rs` | 544 | 3 | 위젯 한 파일 | todo | |
-| `widget/data/datagrid/render.rs` | 603 | 0 | 603줄, 위젯 한 파일 | todo | |
-| `widget/data/json_viewer/view.rs` | 656 | 1 | 656줄, 위젯 한 파일 | todo | |
-| `widget/data/log_viewer/view.rs` | 908 | 1 | 908줄, 위젯 한 파일 | todo | |
-| `widget/data/timeline.rs` | 556 | 5 | 공개 타입 5, 위젯 한 파일 | todo | |
-| `widget/data/timer/mod.rs` | 692 | 4 | 692줄, 위젯 한 파일 | todo | |
+| `widget/data/chart/candlechart.rs` | 630 | 3 | 630줄, 위젯 한 파일 | split | `Candle`·`ChartStyle` 데이터 타입, 빌더, 가격 축척·캔들 열 그리기·Heikin-Ashi 변환과 `View`가 섞임 → candlechart/{mod,types,render}.rs (테스트는 각 코드와 함께 옮김). 버그 의심: `scroll(offset)`이 데이터 길이보다 크면 `visible_candles`(와 Heikin-Ashi 경로)의 `data[start..end]`가 `start > end`로 패닉함. 참고: Heikin-Ashi 모드도 축 범위는 원본 캔들의 고저가로 잡음(변환된 캔들은 잘릴 수 있음) |
+| `widget/data/chart/helper.rs` | 898 | 1 | 898줄, 위젯 한 파일 | split | 파일 이름과 달리 `Chart` 위젯 전체: 빌더, 범위·축 라벨·선 그리기와 `View`, 범용 선분 클리핑(Liang-Barsky)·래스터화(Bresenham)가 섞임 → helper/{mod,render,geometry}.rs. geometry의 타입 별칭·함수 6개는 render.rs가 쓰므로 `pub(super)`(helper 안으로만). `LineSegment`의 `pub(super)`는 render.rs로 옮겨 helper 안으로 좁아짐(밖에서 쓰는 곳 없음) |
+| `widget/data/chart/histogram/mod.rs` | 623 | 1 | 623줄, 위젯 한 파일 | split | 빌더·통계 접근자와 막대·통계선·축 그리기(`View`)가 섞임 → histogram/{mod,render}.rs (boxplot과 같은 모양). `max_value`·`bin_value`는 그리기에서만 쓰여 render.rs로. 렌더 테스트도 render.rs로 옮기며 `BinConfig`·`ChartGrid` import를 테스트 모듈에 추가 |
+| `widget/data/chart/piechart.rs` | 442 | 4 | 위젯 한 파일 | split | 경계선: 442줄이지만 슬라이스·스타일 타입(약 55줄), 빌더(약 115줄), 원 그리기·라벨·범례(`View`, 약 210줄)가 각각 수십 줄을 넘음 → piechart/{mod,types,render}.rs (heatmap과 같은 모양) |
+| `widget/data/chart/timeseries/types.rs` | 197 | 7 | 타입 모음, 공개 타입 7 | keep | 시계열 데이터 타입만 모음(점·계열·선 스타일·시간 형식·범위·마커·마커 스타일). impl은 생성자와 빌더 몇 줄뿐이고 위젯 본체·그리기는 이미 mod.rs·view.rs |
+| `widget/data/chart/waveline.rs` | 544 | 3 | 위젯 한 파일 | split | 스타일·보간 타입, 빌더, 색 그라데이션·보간과 `View`(약 265줄), 위젯과 무관한 데모용 파형 데이터 생성 함수가 섞임 → waveline/{mod,types,render,generators}.rs (사전 설정 생성 함수 `audio_waveform` 등은 mod.rs) |
+| `widget/data/datagrid/render.rs` | 603 | 0 | 603줄, 위젯 한 파일 | split | 이미 나뉜 위젯의 render.rs지만 셀 그리기와 열 배치 계산(표시 순서·행 번호 여백·고정/가로 스크롤 열 슬롯, 약 140줄)이 섞임. 열 배치는 mouse.rs·reorder.rs·width.rs도 씀 → datagrid/layout.rs로 옮김(이미 `pub(super)`라 가시성 그대로) |
+| `widget/data/json_viewer/view.rs` | 656 | 1 | 656줄, 위젯 한 파일 | split | `JsonViewer` 구조체·빌더·조회, 선택 이동·펼침/접기, `Search` 구현, 그리기(`View`, 약 225줄)가 섞임 → json_viewer/view/{mod,navigation,search_impl,render}.rs. 새 파일은 view의 자식이라 private 필드·`get_visible_nodes`를 그대로 봄(가시성 변경 없음). `parse`가 부르는 `clear_search` 때문에 mod.rs에 `Search` import 유지. 참고: `ensure_visible`은 빈 함수("Handled during render") |
+| `widget/data/log_viewer/view.rs` | 908 | 1 | 908줄, 위젯 한 파일 | split | `LogViewer` 구조체·적재·빌더·조회·내보내기, 검색, 북마크·점프·스크롤·선택, 키 처리, 그리기(`View`, 약 220줄)가 섞임 → log_viewer/view/{mod,search,navigation,handler,render}.rs (자식 모듈이라 private 필드를 그대로 봄; 공용 `filtered_entries`·`ensure_visible`은 mod.rs). `update_search`는 mod.rs의 `load`/`push`도 부르므로 `pub(super)`(view 안으로만). 버그 의심: `update_search`가 찾은 위치 다음 바이트(`actual_start + 1`)부터 다시 잘라 `msg_lower[start..]`가 멀티바이트 문자(예: 한글) 경계가 아니면 패닉함, 일치 끝을 원래 질의의 바이트 길이로 잡아 소문자 변환으로 길이가 바뀌면 범위가 어긋남 |
+| `widget/data/timeline.rs` | 556 | 5 | 공개 타입 5, 위젯 한 파일 | split | 이벤트·이벤트 종류·방향·스타일 타입(약 145줄), 빌더·선택 상태, 세로·가로 그리기(`View`, 약 220줄)가 섞임 → timeline/{mod,types,render}.rs. 렌더 테스트는 render.rs로(테스트 모듈에 `TimelineEvent` import 추가), `test_clear`와 모듈 밖 `#[test] test_timeline_render_private`는 mod.rs에 둠(mod.rs 테스트의 쓰지 않게 된 `Rect`·`Buffer` import는 뺌). 참고: `test_timeline_render_private`는 `#[cfg(test)]` 모듈 밖에 있고 아무것도 검사하지 않음 |
+| `widget/data/timer/mod.rs` | 692 | 4 | 692줄, 위젯 한 파일 | defer | 위젯별 분할(`countdown`, `stopwatch`)은 순수 이동인데, `widgets_read_css_ratchet`이 파일당 첫 `impl_view_meta!`만 봐서 가려져 있던 "Stopwatch가 CSS를 읽지 않음"이 드러난다. Stopwatch를 CSS에 연결하고(동작 변경) 스캐너를 고친 뒤 나눈다. 비고: `Timer::format_remaining`이 `format_ms`와 출력이 다르고 Precise에서 분을 빠뜨린다(65.5s → "05.500"). |
 
 ### 6. widget: developer (7)
 

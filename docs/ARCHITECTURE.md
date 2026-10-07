@@ -86,14 +86,14 @@ src/widget/
 │   ├── filetree/          #   File tree
 │   ├── datagrid/          #   Data grid
 │   ├── calendar/          #   Calendar
-│   ├── timeline.rs        #   Timeline
+│   ├── timeline/          #   Timeline
 │   └── chart/             #   Charts
 │       ├── barchart.rs    #     Bar chart
-│       ├── piechart.rs    #     Pie/donut chart
+│       ├── piechart/      #     Pie/donut chart
 │       ├── scatterchart.rs#     Scatter/bubble chart
 │       ├── histogram/     #     Histogram
 │       ├── boxplot/       #     Box-and-whisker plot
-│       ├── candlechart.rs #     Candlestick chart
+│       ├── candlechart/   #     Candlestick chart
 │       ├── heatmap/       #     Heat map
 │       ├── sparkline.rs   #     Sparkline
 │       └── timeseries/    #     Time series

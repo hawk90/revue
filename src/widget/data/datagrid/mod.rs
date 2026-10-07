@@ -8,6 +8,7 @@ mod export;
 mod filter;
 mod footer;
 mod freeze;
+mod layout;
 mod mouse;
 mod navigation;
 mod render;
