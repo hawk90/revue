@@ -426,7 +426,7 @@ impl DockManager {
     }
 
     /// Calculate layout based on available areas
-    fn calculate_layout(&self, rect: crate::layout::Rect) -> Vec<(DockArea, crate::layout::Rect)> {
+    fn calculate_layout(&self, rect: crate::layout::Rect) -> Vec<(&DockArea, crate::layout::Rect)> {
         let mut layout = Vec::new();
         let mut current = rect;
 
@@ -441,7 +441,7 @@ impl DockManager {
                     current.width,
                     top_height.min(current.height),
                 );
-                layout.push(((*top).clone(), top_rect));
+                layout.push((top, top_rect));
                 current.y += top_height;
                 current.height = current.height.saturating_sub(top_height);
             }
@@ -461,7 +461,7 @@ impl DockManager {
                     current.width,
                     bottom_height.min(current.height),
                 );
-                layout.push(((*bottom).clone(), bottom_rect));
+                layout.push((bottom, bottom_rect));
                 current.height = current
                     .height
                     .saturating_sub(bottom_height.min(current.height));
@@ -480,7 +480,7 @@ impl DockManager {
                     left_width.min(middle.width),
                     middle.height,
                 );
-                layout.push(((*left).clone(), left_rect));
+                layout.push((left, left_rect));
                 middle.x += left_width;
                 middle.width = middle.width.saturating_sub(left_width);
             }
@@ -497,14 +497,14 @@ impl DockManager {
                     right_width.min(middle.width),
                     middle.height,
                 );
-                layout.push(((*right).clone(), right_rect));
+                layout.push((right, right_rect));
                 middle.width = middle.width.saturating_sub(right_width);
             }
         }
 
         // Center area gets remaining space
         if let Some(ref center) = self.center {
-            layout.push(((*center).clone(), middle));
+            layout.push((center, middle));
         }
 
         layout
@@ -584,6 +584,28 @@ mod tests {
     fn test_dock_position_variants() {
         assert_eq!(DockPosition::Left, DockPosition::Left);
         assert_ne!(DockPosition::Left, DockPosition::Right);
+    }
+
+    fn row_text(buf: &crate::render::Buffer, y: u16, w: u16) -> String {
+        (0..w)
+            .map(|x| buf.get(x, y).map(|c| c.symbol).unwrap_or(' '))
+            .collect()
+    }
+
+    #[test]
+    fn test_dock_manager_renders_area_content() {
+        let manager = DockManager::new()
+            .left(
+                DockArea::new("side")
+                    .min_size(5)
+                    .ratio(0.0)
+                    .panel(Text::new("LEFT")),
+            )
+            .center(DockArea::new("main").panel(Text::new("CENTER")));
+        let mut buf = crate::render::Buffer::new(20, 2);
+        let mut ctx = RenderContext::new(&mut buf, crate::layout::Rect::new(0, 0, 20, 2));
+        manager.render(&mut ctx);
+        assert_eq!(row_text(&buf, 0, 20), "LEFT CENTER         ");
     }
 
     #[test]
