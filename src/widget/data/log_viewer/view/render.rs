@@ -197,7 +197,7 @@ impl View for LogViewer {
         }
 
         // Draw scroll indicator
-        if filtered.len() > visible_height {
+        if filtered.len() > visible_height && area.width > 0 && area.height > 0 {
             let scroll_ratio = self.scroll as f32 / (filtered.len() - visible_height) as f32;
             let indicator_pos = (scroll_ratio * (area.height as f32 - 1.0)) as u16;
             let indicator_y = indicator_pos.min(area.height - 1);
@@ -222,6 +222,25 @@ impl View for LogViewer {
                 ctx.set(x + dx, y, cell);
                 dx += cw;
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout::Rect;
+    use crate::render::Buffer;
+
+    #[test]
+    fn test_render_in_zero_sized_area() {
+        let mut viewer = LogViewer::new();
+        viewer.push("first");
+        viewer.push("second");
+        for (w, h) in [(40, 0), (0, 1), (0, 0)] {
+            let mut buffer = Buffer::new(40, 5);
+            let mut ctx = RenderContext::new(&mut buffer, Rect::new(0, 0, w, h));
+            viewer.render(&mut ctx);
         }
     }
 }
