@@ -1311,8 +1311,8 @@ items:
       - donut with hole ratio
       - explode a slice
     evidence:
-      - src/widget/data/chart/piechart.rs::pie_chart
-      - src/widget/data/chart/piechart.rs::donut_chart
+      - src/widget/data/chart/piechart/mod.rs::pie_chart
+      - src/widget/data/chart/piechart/mod.rs::donut_chart
       - tests/widget/data/chart/piechart.rs
     source:
       - FEATURES.md §4 Widgets / Chart Widgets / PieChart

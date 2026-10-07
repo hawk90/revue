@@ -89,7 +89,7 @@ src/widget/
 │   ├── timeline.rs        #   Timeline
 │   └── chart/             #   Charts
 │       ├── barchart.rs    #     Bar chart
-│       ├── piechart.rs    #     Pie/donut chart
+│       ├── piechart/      #     Pie/donut chart
 │       ├── scatterchart.rs#     Scatter/bubble chart
 │       ├── histogram/     #     Histogram
 │       ├── boxplot/       #     Box-and-whisker plot
